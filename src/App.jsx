@@ -60,15 +60,21 @@ export default function App() {
 
       {/* Навигация + координаты */}
       <div className="card">
-        <div style={{ fontSize: 13, color: "#546e7a" }}>
+        <div style={{ color: "#546e7a" }}>
           {error ? (
-            <span>📍 {error}</span>
+            <span>
+              <b>Локация📍</b> {error}
+            </span>
           ) : coords.lat && coords.lon ? (
             <span>
-              📍 {coords.lat.toFixed(6)}, {coords.lon.toFixed(6)}
+              <b>Локация📍</b>
+              <b>X/ Y: </b>
+              {coords.lat.toFixed(6)}/ {coords.lon.toFixed(6)}
             </span>
           ) : (
-            <span>📍 Определение координат…</span>
+            <span>
+              <b>Локация📍</b> Определение координат…
+            </span>
           )}
         </div>
         <button onClick={() => setPage("add")}>➕ Добавить утечку</button>

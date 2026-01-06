@@ -1,11 +1,17 @@
 import * as XLSX from "xlsx";
+import {
+  density,
+  GWP,
+  percentage_gas_to_flare,
+  percentage_gas_to_utilization,
+} from "../data/variables";
 
 export const exportToExcel = (rows) => {
   const prepared = rows.map((r) => ({
     id: r.id,
     date: r.date,
-    x_coordinate: r.lat,
-    y_coordinate: r.lon,
+    x_coordinate: r.latitude,
+    y_coordinate: r.longitude,
     field: r.field,
     station: r.station,
     location: r.location,
@@ -22,6 +28,22 @@ export const exportToExcel = (rows) => {
     temperature: r.temperature,
     pressure: r.pressure,
     leak_speed: r.leak_speed,
+    leak_speed_kg: r.leak_speed * density,
+    percentage_gas_to_flare,
+    percentage_gas_to_utilization,
+    Total_Annual_Methane_Loss_m3_y: r.leak_speed * 525.6,
+    Total_Annual_Methane_Loss_t_y: r.leak_speed * 525.6 * 0.0007168,
+    Emissions_tCO2eq_year:
+      r.leak_speed *
+      525.6 *
+      0.0007168 *
+      (percentage_gas_to_flare * 28 + percentage_gas_to_utilization * 25.25),
+    Emissions_kg_CO2_eq_year:
+      r.leak_speed *
+      5256000 *
+      0.0007168 *
+      (percentage_gas_to_flare * 28 + percentage_gas_to_utilization * 25.25),
+    GWP: GWP,
   }));
 
   const ws = XLSX.utils.json_to_sheet(prepared, {
@@ -42,6 +64,13 @@ export const exportToExcel = (rows) => {
       "materials_equipment",
       "note",
       "leak_speed",
+      "percentage_gas_to_flare",
+      "percentage_gas_to_utilization",
+      "Total_Annual_Methane_Loss_m3_y",
+      "Total_Annual_Methane_Loss_t_y",
+      "Emissions_tCO2eq_year",
+      "Emissions_kg_CO2_eq_year",
+      "GWP",
       "x_coordinate",
       "y_coordinate",
     ],
