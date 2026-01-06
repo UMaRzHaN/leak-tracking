@@ -53,7 +53,6 @@ button {
 button:active {
   transform: scale(0.98);
 }
-<<<<<<< HEAD
 
 .radio-group {
   display: flex;
@@ -83,44 +82,6 @@ button:active {
 
 .radio-item span {
   font-size: 16px;
-=======
-.input-error {
-  border: 2px solid #d32f2f;
-  background: #fdecea;
-}
-
-.error-text {
-  color: #d32f2f;
-  font-size: 13px;
-}
-.mode-switch {
-  display: flex;
-  flex-direction: row;
-  gap: 10px;
-}
-
-.mode-btn {
-  flex: 1;
-  /* padding: 14px 10px; */
-  border-radius: 10px;
-  border: 2px solid #cfd8dc;
-  background: #f9fafb;
-  color: #37474f;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.mode-btn.active {
-  background: #1976d2;
-  color: #fff;
-  border-color: #1976d2;
-}
-
-.mode-btn:active {
-  transform: scale(0.98);
->>>>>>> eaa8437 (Initial commit)
 }
 
 .header {
@@ -151,8 +112,6 @@ button:active {
 #temperature {
   background-image: url(img/temperature.png);
 }
-<<<<<<< HEAD
-=======
 .field {
   position: relative;
   display: flex;
@@ -190,7 +149,7 @@ button:active {
 .field input:not(:placeholder-shown) + label,
 .field textarea:focus + label,
 .field textarea:not(:placeholder-shown) + label {
-  top: -7px;
+  top: -8px;
   font-size: 12px;
   color: #1976d2;
 }
@@ -215,4 +174,3 @@ button:active {
   border: 1px solid #cfd8dc;
   background: #fff;
 }
->>>>>>> eaa8437 (Initial commit)
