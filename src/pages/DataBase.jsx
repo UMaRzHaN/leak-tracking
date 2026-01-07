@@ -75,7 +75,7 @@ export default function DataBase({ data, setData }) {
     <div className="card">
       {/* Экспорт */}
       <button onClick={() => exportToExcel(filteredData)}>
-        📥 Выгрузить в Excel
+        📥 Экспорт в Excel
       </button>
 
       {/* Поиск */}

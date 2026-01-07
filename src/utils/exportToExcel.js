@@ -1,4 +1,6 @@
 import * as XLSX from "xlsx";
+import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
+import { Capacitor } from "@capacitor/core";
 import {
   density,
   GWP,
@@ -6,7 +8,14 @@ import {
   percentage_gas_to_utilization,
 } from "../data/variables";
 
-export const exportToExcel = (rows) => {
+export const exportToExcel = async (rows) => {
+  const FOLDER_NAME = "LeakReports";
+  if (!rows || rows.length === 0) {
+    alert("Нет данных для выгрузки");
+    return;
+  }
+
+  /* ---------- подготовка данных ---------- */
   const prepared = rows.map((r) => ({
     id: r.id,
     date: r.date,
@@ -43,40 +52,42 @@ export const exportToExcel = (rows) => {
       5256000 *
       0.0007168 *
       (percentage_gas_to_flare * 28 + percentage_gas_to_utilization * 25.25),
-    GWP: GWP,
+    GWP,
   }));
 
-  const ws = XLSX.utils.json_to_sheet(prepared, {
-    header: [
-      "id",
-      "date",
-      "field",
-      "station",
-      "location",
-      "object",
-      "component",
-      "leak_id",
-      "video_id",
-      "leak_description",
-      "leak_cause",
-      "technological_solution",
-      "repair_recommendation",
-      "materials_equipment",
-      "note",
-      "leak_speed",
-      "percentage_gas_to_flare",
-      "percentage_gas_to_utilization",
-      "Total_Annual_Methane_Loss_m3_y",
-      "Total_Annual_Methane_Loss_t_y",
-      "Emissions_tCO2eq_year",
-      "Emissions_kg_CO2_eq_year",
-      "GWP",
-      "x_coordinate",
-      "y_coordinate",
-    ],
-  });
-
+  const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Утечки");
-  XLSX.writeFile(wb, "leaks.xlsx");
+
+  const fileName = `leaks_${Date.now()}.xlsx`;
+  if (Capacitor.isNativePlatform()) {
+    // 1️⃣ создаём папку в Download / Documents
+    try {
+      await Filesystem.mkdir({
+        path: FOLDER_NAME,
+        directory: Directory.Documents,
+        recursive: true,
+      });
+    } catch (e) {
+      // папка уже есть — нормально
+    }
+
+    // 2️⃣ Excel → base64
+    const base64 = XLSX.write(wb, {
+      bookType: "xlsx",
+      type: "base64",
+    });
+
+    // 3️⃣ сохраняем файл
+    await Filesystem.writeFile({
+      path: `${FOLDER_NAME}/${fileName}`,
+      data: base64,
+      directory: Directory.Documents,
+      encoding: Encoding.BASE64,
+    });
+
+    alert(`Файл сохранён: Download/${FOLDER_NAME}/${fileName}`);
+  } else {
+    XLSX.writeFile(wb, fileName);
+  }
 };

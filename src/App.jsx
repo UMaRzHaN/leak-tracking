@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Geolocation } from "@capacitor/geolocation";
 import AddLeak from "./pages/AddLeak";
 import DataBase from "./pages/DataBase";
 import "./index.css";
@@ -26,23 +27,31 @@ export default function App() {
 
   // 🔹 Геолокация
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setError("Геолокация не поддерживается браузером");
-      return;
-    }
+    const getLocation = async () => {
+      try {
+        const perm = await Geolocation.requestPermissions();
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
+        if (perm.location !== "granted") {
+          setError("Нет разрешения на геолокацию");
+          return;
+        }
+
+        const position = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+        });
+
         setCoords({
           lat: position.coords.latitude,
           lon: position.coords.longitude,
         });
-      },
-      (err) => {
-        setError(err.message);
+      } catch (err) {
+        setError(err.message || "Ошибка получения координат");
       }
-    );
+    };
+
+    getLocation();
   }, []);
+
   const clearDatabase = () => {
     if (!window.confirm("Вы уверены, что хотите удалить ВСЮ базу данных?")) {
       return;
