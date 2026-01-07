@@ -1,10 +1,38 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Geolocation } from "@capacitor/geolocation";
 import AddLeak from "./pages/AddLeak";
 import DataBase from "./pages/DataBase";
 import "./index.css";
 
+import { SpeechRecognition } from "@capacitor-community/speech-recognition";
+
 const STORAGE_KEY = "leaks_database_v1";
+
+const parseVoiceText = (text) => {
+  const result = {};
+
+  const normalized = text.toLowerCase().replace(",", ".");
+
+  const patterns = [
+    { key: "leak_speed", regex: /скорост[ьи]?\s*(\d+(\.\d+)?)/ },
+    { key: "temperature", regex: /температур[аы]?\s*(-?\d+)/ },
+    { key: "pressure", regex: /давлени[ея]?\s*(\d+(\.\d+)?)/ },
+    { key: "leak_id", regex: /утечк[аи]?\s*(\d+)/ },
+    { key: "video_id", regex: /видео\s*(\d+)/ },
+    { key: "leak_description", regex: /описани[е,я]\s*(\d+)/ },
+    { key: "technological_solution", regex: /техрешени[e,я]\s*(\d+)/ },
+    { key: "repair_recommendation", regex: /устрани[e,я]\s*(\d+)/ },
+    { key: "materials_equipment", regex: /МТР\s*(\d+)/ },
+    { key: "note", regex: /Примечани[e,я]\s*(\d+)/ },
+  ];
+
+  patterns.forEach(({ key, regex }) => {
+    const match = normalized.match(regex);
+    if (match) result[key] = Number(match[1]);
+  });
+
+  return result;
+};
 
 export default function App() {
   const [page, setPage] = useState("db");
@@ -12,6 +40,39 @@ export default function App() {
 
   const [coords, setCoords] = useState({ lat: null, lon: null });
   const [error, setError] = useState(null);
+
+  // 🔹 Голосовой ввод
+  const startVoiceInput = async () => {
+    try {
+      await SpeechRecognition.requestPermissions();
+
+      const { matches } = await SpeechRecognition.start({
+        language: "ru-RU",
+        maxResults: 1,
+        prompt: "Говорите параметры утечки",
+      });
+
+      if (!matches || !matches[0]) return;
+
+      const parsed = parseVoiceText(matches[0]);
+
+      if (Object.keys(parsed).length === 0) {
+        alert("Не удалось распознать параметры");
+        return;
+      }
+
+      setVoiceData(parsed);
+      setPage("add");
+    } catch (e) {
+      alert("Ошибка голосового ввода");
+      console.error(e);
+    }
+  };
+
+  const [voiceData, setVoiceData] = useState(null);
+  const clearVoiceData = useCallback(() => {
+    setVoiceData(null);
+  }, []);
 
   // 🔹 Загрузка данных из localStorage при старте
   useEffect(() => {
@@ -63,9 +124,7 @@ export default function App() {
   return (
     <div className="app">
       {/* Header */}
-      <div className="header" onClick={() => setPage("add")}>
-        Журнал утечек газа
-      </div>
+      <div className="header">Журнал утечек газа</div>
 
       {/* Навигация + координаты */}
       <div className="card">
@@ -106,7 +165,13 @@ export default function App() {
 
       {/* Страницы */}
       {page === "add" && (
-        <AddLeak data={data} setData={setData} coords={coords} />
+        <AddLeak
+          data={data}
+          setData={setData}
+          coords={coords}
+          voiceData={voiceData}
+          clearVoiceData={clearVoiceData} on
+        />
       )}
 
       {page === "db" && <DataBase data={data} setData={setData} />}

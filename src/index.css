@@ -23,8 +23,12 @@ body {
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  padding-bottom: calc(36px + env(safe-area-inset-bottom));
 }
-
+.input-error {
+  border: 2px solid #e53935;
+  background-color: #fff5f5;
+}
 input,
 select,
 textarea,
@@ -173,4 +177,14 @@ button:active {
   border-radius: 8px;
   border: 1px solid #cfd8dc;
   background: #fff;
+}
+.voice-button {
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 12px;
+  font-size: 15px;
+  border-radius: 10px;
+  background: #e3f2fd;
+  color: #0d47a1;
+  border: 1px solid #bbdefb;
 }

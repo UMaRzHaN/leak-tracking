@@ -1,12 +1,8 @@
 import * as XLSX from "xlsx";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
-import {
-  density,
-  GWP,
-  percentage_gas_to_flare,
-  percentage_gas_to_utilization,
-} from "../data/variables";
+import { calculations } from "../utils/calculations";
+import { headers, keysOrder, normalizeRow } from "../utils/calculations";
 
 export const exportToExcel = async (rows) => {
   const FOLDER_NAME = "LeakReports";
@@ -17,6 +13,7 @@ export const exportToExcel = async (rows) => {
   }
 
   /* ---------- подготовка данных ---------- */
+<<<<<<< Updated upstream
   const prepared = rows.map((r) => {
     const leakSpeed = Number(r.leak_speed) || 0;
 
@@ -65,12 +62,26 @@ export const exportToExcel = async (rows) => {
 
   /* ---------- Excel ---------- */
   const ws = XLSX.utils.json_to_sheet(prepared);
+=======
+  const prepared = rows.map((rows) => calculations(rows));
+
+  const preparedOrdered = prepared.map((r) =>
+    Object.fromEntries(keysOrder.map((k) => [k, normalizeRow(r)[k]]))
+  );
+  const ws = XLSX.utils.json_to_sheet(preparedOrdered);
+>>>>>>> Stashed changes
   const wb = XLSX.utils.book_new();
+
+  XLSX.utils.sheet_add_aoa(ws, [headers], { origin: "A1" });
   XLSX.utils.book_append_sheet(wb, ws, "Утечки");
 
   const fileName = `leaks_${Date.now()}.xlsx`;
+<<<<<<< Updated upstream
 
   /* ---------- Mobile (Capacitor) ---------- */
+=======
+  console.log(preparedOrdered);
+>>>>>>> Stashed changes
   if (Capacitor.isNativePlatform()) {
     try {
       await Filesystem.mkdir({

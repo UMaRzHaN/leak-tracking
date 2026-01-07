@@ -1,5 +1,9 @@
+<<<<<<< Updated upstream
 import { useEffect, useState } from "react";
 import { SpeechRecognition } from "@capacitor-community/speech-recognition";
+=======
+import { useState, useEffect } from "react";
+>>>>>>> Stashed changes
 import {
   locations,
   objects,
@@ -10,10 +14,21 @@ import {
   recommendations,
   materials,
 } from "../data/dictionaries";
-
+import { normalizeNumber } from "../utils/calculations";
 const REQUIRED_FIELDS = ["leak_id", "video_id", "leak_speed"];
-
-export default function LeakForm({ onAdd }) {
+const NUMBER_FIELDS = [
+  "leak_id",
+  "video_id",
+  "leak_speed",
+  "temperature",
+  "pressure",
+];
+export default function LeakForm({
+  onAdd,
+  voiceData,
+  clearVoiceData,
+  onVoiceInput,
+}) {
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
   const [activeField, setActiveField] = useState(null);
@@ -21,7 +36,17 @@ export default function LeakForm({ onAdd }) {
 
   /* ===== helpers ===== */
   const handle = (key, value) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    const finalValue = NUMBER_FIELDS.includes(key)
+      ? normalizeNumber(value)
+      : value;
+
+    setForm((prev) => ({
+      ...prev,
+      [key]: finalValue,
+    }));
+
+    // сразу чистим ошибку
+    setErrors((prev) => ({ ...prev, [key]: "" }));
   };
 
   const bind = (key) => ({
@@ -84,11 +109,17 @@ export default function LeakForm({ onAdd }) {
   /* ===== VALIDATION ===== */
   const validate = () => {
     const newErrors = {};
+
     REQUIRED_FIELDS.forEach((key) => {
-      if (!form[key] || form[key].trim() === "") {
-        newErrors[key] = "Обязательное поле";
+      const value = form[key];
+
+      if (value === "" || value === null || value === undefined) {
+        newErrors[key] = "Обязательное числовое поле";
+      } else if (NUMBER_FIELDS.includes(key) && typeof value !== "number") {
+        newErrors[key] = "Введите число";
       }
     });
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -100,9 +131,16 @@ export default function LeakForm({ onAdd }) {
     setErrors({});
     setActiveField(null);
   };
+  useEffect(() => {
+    if (voiceData) {
+      setForm((prev) => ({ ...prev, ...voiceData }));
+      clearVoiceData();
+    }
+  }, [voiceData, clearVoiceData]);
 
   /* ===== UI ===== */
   return (
+<<<<<<< Updated upstream
     <div className="card" style={{ marginBottom: "40px" }}>
       {/* 🎤 VOICE PANEL */}
       <div
@@ -121,39 +159,95 @@ export default function LeakForm({ onAdd }) {
       </div>
 
       {/* ===== ОБЯЗАТЕЛЬНЫЕ ===== */}
+=======
+    <div className="card">
+      {/* 🎙 Голосовой ввод */}
+      <button type="button" className="voice-button" onClick={onVoiceInput}>
+        🎙️ Голосовой ввод
+      </button>
+
+      {/* Обязательные поля */}
+
+      {/* Обязательные поля */}
+>>>>>>> Stashed changes
       <input
         className="emojis"
         id="tag"
+<<<<<<< Updated upstream
         placeholder="Индивидуальный номер утечки *"
         {...bind("leak_id")}
+=======
+        type="number"
+        inputMode="numeric"
+        className={`emojis ${errors.leak_id ? "input-error" : ""}`}
+        placeholder="Индивидуальный номер утечки *"
+        value={form.leak_id ?? ""}
+        onChange={(e) => handle("leak_id", e.target.value)}
+>>>>>>> Stashed changes
       />
       {errors.leak_id && <div className="error-text">{errors.leak_id}</div>}
 
       <input
         className="emojis"
         id="video"
+<<<<<<< Updated upstream
         placeholder="Индивидуальный номер видео *"
         {...bind("video_id")}
+=======
+        type="number"
+        inputMode="numeric"
+        className={`emojis ${errors.video_id ? "input-error" : ""}`}
+        placeholder="Индивидуальный номер утечки *"
+        value={form.video_id ?? ""}
+        onChange={(e) => handle("video_id", e.target.value)}
+>>>>>>> Stashed changes
       />
       <input
         className="emojis"
         id="speed"
+<<<<<<< Updated upstream
         placeholder="Скорость утечки *"
         {...bind("leak_speed")}
+=======
+        type="number"
+        inputMode="decimal"
+        step="any"
+        className={`emojis ${errors.leak_speed ? "input-error" : ""}`}
+        placeholder="Скорость утечки *"
+        value={form.leak_speed ?? ""}
+        onChange={(e) => handle("leak_speed", e.target.value)}
+>>>>>>> Stashed changes
       />
 
       {/* ===== ПАРАМЕТРЫ ===== */}
       <input
         className="emojis"
         id="temperature"
+<<<<<<< Updated upstream
         placeholder="Температура"
         {...bind("temperature")}
+=======
+        className="emojis"
+        type="number"
+        inputMode="numeric"
+        placeholder="Температура"
+        value={form.temperature ?? ""}
+        onChange={(e) => handle("temperature", e.target.value)}
+>>>>>>> Stashed changes
       />
       <input
         className="emojis"
+<<<<<<< Updated upstream
         id="pressure"
         placeholder="Давление"
         {...bind("pressure")}
+=======
+        type="number"
+        inputMode="numeric"
+        placeholder="Давление"
+        value={form.pressure ?? ""}
+        onChange={(e) => handle("pressure", e.target.value)}
+>>>>>>> Stashed changes
       />
       <input placeholder="УМГ" {...bind("field")} />
       <input placeholder="Компрессорная станция" {...bind("station")} />
@@ -261,7 +355,7 @@ export default function LeakForm({ onAdd }) {
           ))}
       </datalist>
 
-      <button onClick={add}>➕ Добавить утечку</button>
+      <button onClick={add}>💾 Сохранить</button>
     </div>
   );
 }
