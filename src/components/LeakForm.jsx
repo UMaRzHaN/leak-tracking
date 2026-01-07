@@ -22,7 +22,8 @@ export default function LeakForm({
   onAdd,
   voiceData,
   clearVoiceData,
-  onVoiceInput,
+  stopVoiceInput,
+  startVoiceInput,
 }) {
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
@@ -77,8 +78,15 @@ export default function LeakForm({
   return (
     <div className="card">
       {/* 🎙 Голосовой ввод */}
-      <button type="button" className="voice-button" onClick={onVoiceInput}>
-        🎙️ Голосовой ввод
+      <button
+        type="button"
+        className="voice-button"
+        onMouseDown={startVoiceInput}
+        onMouseUp={stopVoiceInput}
+        onTouchStart={startVoiceInput}
+        onTouchEnd={stopVoiceInput}
+      >
+        🎙️ Удерживай для записи
       </button>
 
       {/* Обязательные поля */}

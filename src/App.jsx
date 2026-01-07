@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Geolocation } from "@capacitor/geolocation";
 import { Capacitor } from "@capacitor/core";
 import { SpeechRecognition } from "@capacitor-community/speech-recognition";
@@ -118,6 +118,7 @@ export default function App() {
   const [error, setError] = useState(null);
 
   const [voiceData, setVoiceData] = useState(null);
+  const recognitionRef = useRef(null);
 
   const clearVoiceData = useCallback(() => {
     setVoiceData(null);
@@ -138,10 +139,11 @@ export default function App() {
       }
 
       const recognition = new SpeechAPI();
+      recognitionRef.current = recognition;
 
       recognition.lang = "ru-RU";
       recognition.interimResults = false;
-      recognition.continuous = true; // ✅ ЗДЕСЬ
+      recognition.continuous = true;
 
       recognition.onresult = (event) => {
         const text = event.results[0][0].transcript;
@@ -150,37 +152,44 @@ export default function App() {
         const parsed = parseVoiceText(text);
         setVoiceData(parsed);
         setPage("add");
-
-        recognition.stop(); // ⛔ остановка вручную
       };
 
       recognition.start();
       return;
     }
 
-    /* ===== MOBILE (CAPACITOR) ===== */
+    /* ===== MOBILE ===== */
     try {
       await SpeechRecognition.requestPermissions();
 
-      const { matches } = await SpeechRecognition.start({
+      await SpeechRecognition.start({
         language: "ru-RU",
-        maxResults: 1,
-        prompt: "Говорите параметры утечки",
+        partialResults: false,
+        popup: false,
       });
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка голосового ввода");
+    }
+  };
+  const stopVoiceInput = async () => {
+    /* ===== WEB ===== */
+    if (!Capacitor.isNativePlatform()) {
+      recognitionRef.current?.stop();
+      recognitionRef.current = null;
+      return;
+    }
 
+    /* ===== MOBILE ===== */
+    try {
+      const { matches } = await SpeechRecognition.stop();
       if (!matches?.[0]) return;
 
       const parsed = parseVoiceText(matches[0]);
-      if (Object.keys(parsed).length === 0) {
-        alert("Не удалось распознать параметры");
-        return;
-      }
-
       setVoiceData(parsed);
       setPage("add");
     } catch (e) {
       console.error(e);
-      alert("Ошибка голосового ввода");
     }
   };
 
@@ -308,7 +317,8 @@ export default function App() {
           coords={coords}
           voiceData={voiceData}
           clearVoiceData={clearVoiceData}
-          onVoiceInput={startVoiceInput}
+          startVoiceInput={startVoiceInput}
+          stopVoiceInput={stopVoiceInput}
         />
       )}
 
