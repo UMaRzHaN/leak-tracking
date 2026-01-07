@@ -303,8 +303,7 @@ export default function DataBase({ data, setData }) {
                 <b>Бирка / видео:</b> {row.leak_id} / {row.video_id}
               </div>
               <div>
-                <b>Давление / Температура:</b> {row.pressure} /{" "}
-                {row.temperature}
+                <b>Давление / Температура:</b> {row.pressure} / {row.temperature}
               </div>
               <div>
                 <b>Станция:</b> {row.station}

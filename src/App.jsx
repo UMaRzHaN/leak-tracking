@@ -170,7 +170,8 @@ export default function App() {
           setData={setData}
           coords={coords}
           voiceData={voiceData}
-          clearVoiceData={clearVoiceData} on
+          clearVoiceData={clearVoiceData}
+          onVoiceInput={startVoiceInput}
         />
       )}
 
