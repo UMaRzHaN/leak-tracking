@@ -84,136 +84,263 @@ export default function LeakForm({
       {/* Обязательные поля */}
 
       {/* Обязательные поля */}
-      <input
-        id="tag"
-        type="number"
-        inputMode="numeric"
-        className={`emojis ${errors.leak_id ? "input-error" : ""}`}
-        placeholder="Индивидуальный номер утечки *"
-        value={form.leak_id ?? ""}
-        onChange={(e) => handle("leak_id", e.target.value)}
-      />
-      {errors.leak_id && <div className="error-text">{errors.leak_id}</div>}
+      <div className="form-field">
+        <label htmlFor="tag">
+          Индивидуальный номер утечки (бирка){" "}
+          <span className="required">*</span>
+        </label>
 
-      <input
-        id="video"
-        type="number"
-        inputMode="numeric"
-        className={`emojis ${errors.video_id ? "input-error" : ""}`}
-        placeholder="Индивидуальный номер утечки *"
-        value={form.video_id ?? ""}
-        onChange={(e) => handle("video_id", e.target.value)}
-      />
-      <input
-        id="speed"
-        type="number"
-        inputMode="decimal"
-        step="any"
-        className={`emojis ${errors.leak_speed ? "input-error" : ""}`}
-        placeholder="Скорость утечки *"
-        value={form.leak_speed ?? ""}
-        onChange={(e) => handle("leak_speed", e.target.value)}
-      />
+        <input
+          id="tag"
+          type="number"
+          inputMode="numeric"
+          className={`emojis field ${errors.leak_id ? "input-error" : ""}`}
+          placeholder="Введите номер бирки"
+          value={form.leak_id ?? ""}
+          onChange={(e) => handle("leak_id", e.target.value)}
+        />
+
+        {errors.leak_id && <div className="error-text">{errors.leak_id}</div>}
+      </div>
+
+      <div className="form-field">
+        <label htmlFor="video">
+          Индивидуальный номер видео (видео)<span className="required">*</span>
+        </label>
+
+        <input
+          id="video"
+          type="number"
+          inputMode="numeric"
+          className={`emojis ${errors.video_id ? "input-error" : ""}`}
+          placeholder="Введите номер видео"
+          value={form.video_id ?? ""}
+          onChange={(e) => handle("video_id", e.target.value)}
+        />
+      </div>
+
+      <div className="form-field">
+        <label htmlFor="speed">
+          Скорость утечки (скорость)<span className="required">*</span>
+        </label>
+
+        <input
+          id="speed"
+          type="number"
+          inputMode="decimal"
+          step="any"
+          className={`emojis ${errors.leak_speed ? "input-error" : ""}`}
+          placeholder="Введите скорость"
+          value={form.leak_speed ?? ""}
+          onChange={(e) => handle("leak_speed", e.target.value)}
+        />
+      </div>
 
       {/* ===== ПАРАМЕТРЫ ===== */}
-      <input
-        className="emojis"
-        id="temperature"
-        type="number"
-        inputMode="numeric"
-        placeholder="Температура"
-        value={form.temperature ?? ""}
-        onChange={(e) => handle("temperature", e.target.value)}
-      />
-      <input
-        className="emojis"
-        id="pressure"
-        type="number"
-        inputMode="numeric"
-        placeholder="Давление"
-        value={form.pressure ?? ""}
-        onChange={(e) => handle("pressure", e.target.value)}
-      />
-      <input placeholder="УМГ" />
-      <input placeholder="Компрессорная станция" />
+      <div className="form-field">
+        <label htmlFor="temperature">Температура </label>
+        <input
+          className="emojis"
+          id="temperature"
+          type="number"
+          inputMode="numeric"
+          placeholder="Введите температуру"
+          value={form.temperature ?? ""}
+          onChange={(e) => handle("temperature", e.target.value)}
+        />
+      </div>
 
-      <textarea placeholder="Примечание" />
+      <div className="form-field">
+        <label htmlFor="pressure">Давление </label>
+        <input
+          className="emojis"
+          id="pressure"
+          type="number"
+          inputMode="numeric"
+          placeholder="Введите давление"
+          value={form.pressure ?? ""}
+          onChange={(e) => handle("pressure", e.target.value)}
+        />
+      </div>
+
+      <div className="form-field">
+        <label htmlFor="field">УМГ</label>
+        <input
+          id="field"
+          placeholder="Введите УМГ"
+          value={form.field ?? ""}
+          onChange={(e) => handle("field", e.target.value)}
+        />
+      </div>
+
+      <div className="form-field">
+        <label htmlFor="station">Компрессорная станция</label>
+        <input
+          id="station"
+          placeholder="Введите компрессорная станция"
+          value={form.station ?? ""}
+          onChange={(e) => handle("station", e.target.value)}
+        />
+      </div>
+
+      <div className="form-field">
+        <label htmlFor="note">Примечание</label>
+        <textarea
+          id="note"
+          placeholder="Введите примечание"
+          value={form.note ?? ""}
+          onChange={(e) => handle("note", e.target.value)}
+        />
+      </div>
 
       {/* ===== СПРАВОЧНИКИ ===== */}
-      <input list="locations-list" placeholder="Локация" />
-      <datalist id="locations-list">
-        {Object.values(locations)
-          .flat()
-          .map((v, i) => (
-            <option key={i} value={v} />
-          ))}
-      </datalist>
+      <div className="form-field">
+        <label htmlFor="location">Локация</label>
+        <input
+          id="location"
+          list="locations-list"
+          placeholder="Введите локацию"
+          value={form.location ?? ""}
+          onChange={(e) => handle("location", e.target.value)}
+        />
+        <datalist id="locations-list">
+          {Object.values(locations)
+            .flat()
+            .map((v, i) => (
+              <option key={i} value={v} />
+            ))}
+        </datalist>
+      </div>
 
-      <input list="objects-list" placeholder="Объект" />
-      <datalist id="objects-list">
-        {Object.values(objects)
-          .flat()
-          .map((v, i) => (
-            <option key={i} value={v} />
-          ))}
-      </datalist>
+      <div className="form-field">
+        <label htmlFor="object">Объект</label>
+        <input
+          id="object"
+          list="objects-list"
+          placeholder="Введите объект"
+          value={form.object ?? ""}
+          onChange={(e) => handle("object", e.target.value)}
+        />
+        <datalist id="objects-list">
+          {Object.values(objects)
+            .flat()
+            .map((v, i) => (
+              <option key={i} value={v} />
+            ))}
+        </datalist>
+      </div>
 
-      <input list="components-list" placeholder="Компонент" />
-      <datalist id="components-list">
-        {Object.values(components)
-          .flat()
-          .map((v, i) => (
-            <option key={i} value={v} />
-          ))}
-      </datalist>
+      <div className="form-field">
+        <label htmlFor="component">Компонент</label>
+        <input
+          id="component"
+          list="components-list"
+          placeholder="Введите компонент"
+          value={form.component ?? ""}
+          onChange={(e) => handle("component", e.target.value)}
+        />
+        <datalist id="components-list">
+          {Object.values(components)
+            .flat()
+            .map((v, i) => (
+              <option key={i} value={v} />
+            ))}
+        </datalist>
+      </div>
 
-      <input list="description-list" placeholder="Описание утечки" />
-      <datalist id="description-list">
-        {Object.values(description)
-          .flat()
-          .map((v, i) => (
-            <option key={i} value={v} />
-          ))}
-      </datalist>
+      <div className="form-field">
+        <label htmlFor="description">Описание утечки</label>
+        <input
+          id="description"
+          list="description-list"
+          placeholder="Введите описание утечки"
+          value={form.description ?? ""}
+          onChange={(e) => handle("description", e.target.value)}
+        />
+        <datalist id="description-list">
+          {Object.values(description)
+            .flat()
+            .map((v, i) => (
+              <option key={i} value={v} />
+            ))}
+        </datalist>
+      </div>
 
-      <input list="cause-list" placeholder="Причина утечки" />
-      <datalist id="cause-list">
-        {Object.values(cause)
-          .flat()
-          .map((v, i) => (
-            <option key={i} value={v} />
-          ))}
-      </datalist>
+      <div className="form-field">
+        <label htmlFor="leak_cause">Причина утечки</label>
+        <input
+          id="leak_cause"
+          list="cause-list"
+          placeholder="Введите причину утечки"
+          value={form.leak_cause ?? ""}
+          onChange={(e) => handle("leak_cause", e.target.value)}
+        />
+        <datalist id="cause-list">
+          {Object.values(cause)
+            .flat()
+            .map((v, i) => (
+              <option key={i} value={v} />
+            ))}
+        </datalist>
+      </div>
 
-      <input list="solutions-list" placeholder="Технологическое решение" />
-      <datalist id="solutions-list">
-        {Object.values(solutions)
-          .flat()
-          .map((v, i) => (
-            <option key={i} value={v} />
-          ))}
-      </datalist>
+      <div className="form-field">
+        <label htmlFor="technological_solution">
+          Технологическое решение (техрешение)
+        </label>
+        <input
+          id="technological_solution"
+          list="solutions-list"
+          placeholder="Введите технологическое решение"
+          value={form.technological_solution ?? ""}
+          onChange={(e) => handle("technological_solution", e.target.value)}
+        />
+        <datalist id="solutions-list">
+          {Object.values(solutions)
+            .flat()
+            .map((v, i) => (
+              <option key={i} value={v} />
+            ))}
+        </datalist>
+      </div>
 
-      <input
-        list="recommendations-list"
-        placeholder="Решение / План устранения"
-      />
-      <datalist id="recommendations-list">
-        {Object.values(recommendations)
-          .flat()
-          .map((v, i) => (
-            <option key={i} value={v} />
-          ))}
-      </datalist>
+      <div className="form-field">
+        <label htmlFor="repair_recommendation">
+          Решение / План устранения (план устранения)
+        </label>
+        <input
+          id="repair_recommendation"
+          list="recommendations-list"
+          placeholder="Введите решение / план устранения"
+          value={form.repair_recommendation ?? ""}
+          onChange={(e) => handle("repair_recommendation", e.target.value)}
+        />
+        <datalist id="recommendations-list">
+          {Object.values(recommendations)
+            .flat()
+            .map((v, i) => (
+              <option key={i} value={v} />
+            ))}
+        </datalist>
+      </div>
 
-      <input list="materials-list" placeholder="МТР ремонта" />
-      <datalist id="materials-list">
-        {Object.values(materials)
-          .flat()
-          .map((v, i) => (
-            <option key={i} value={v} />
-          ))}
-      </datalist>
+      <div className="form-field">
+        <label htmlFor="materials_equipment">МТР ремонта (МТР)</label>
+        <input
+          id="materials_equipment"
+          list="materials-list"
+          placeholder="Введите МТР ремонта"
+          value={form.materials_equipment ?? ""}
+          onChange={(e) => handle("materials_equipment", e.target.value)}
+        />
+        <datalist id="materials-list">
+          {Object.values(materials)
+            .flat()
+            .map((v, i) => (
+              <option key={i} value={v} />
+            ))}
+        </datalist>
+      </div>
 
       <button onClick={add}>💾 Сохранить</button>
     </div>

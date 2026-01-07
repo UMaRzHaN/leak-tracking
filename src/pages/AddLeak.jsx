@@ -8,6 +8,7 @@ export default function AddLeak({
   coords,
   voiceData,
   clearVoiceData,
+  onVoiceInput,
 }) {
   const handleAdd = (row) => {
     const updated = [
@@ -30,6 +31,7 @@ export default function AddLeak({
       onAdd={handleAdd}
       voiceData={voiceData}
       clearVoiceData={clearVoiceData}
+      onVoiceInput={onVoiceInput}
     />
   );
 }

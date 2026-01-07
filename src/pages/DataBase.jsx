@@ -6,7 +6,7 @@ const STORAGE_KEY = "leaks_database_v1";
 /* Поля для поиска */
 const SEARCH_FIELDS = [
   { key: "all", label: "По всем полям" },
-  { key: "leak_id", label: "Индивидуальный номер утечки" },
+  { key: "leak_id", label: "Индивидуальный номер утечки (бирка)" },
   { key: "video_id", label: "Индивидуальный номер видео" },
   { key: "station", label: "Компрессорная станция" },
   { key: "location", label: "Локация" },
@@ -301,9 +301,6 @@ export default function DataBase({ data, setData }) {
               </div>
               <div>
                 <b>Бирка / видео:</b> {row.leak_id} / {row.video_id}
-              </div>
-              <div>
-                <b>Давление / Температура:</b> {row.pressure} / {row.temperature}
               </div>
               <div>
                 <b>Станция:</b> {row.station}
