@@ -73,10 +73,13 @@ export default function LeakForm({
 
     setForm((prev) => ({
       ...prev,
-      ...voiceData, // ✅ обновляем ТОЛЬКО распознанные поля
+      ...voiceData,
     }));
 
-    clearVoiceData();
+    // ⏳ даём React обновить input
+    setTimeout(() => {
+      clearVoiceData();
+    }, 0);
   }, [voiceData, clearVoiceData]);
 
   /* ===== UI ===== */
@@ -86,8 +89,12 @@ export default function LeakForm({
       <button
         type="button"
         className={`voice-button ${isRecording ? "recording" : ""}`}
-        onPointerDown={startVoiceInput}
-        onPointerUp={stopVoiceInput}
+        onPointerDown={() => {
+          if (!isRecording) startVoiceInput();
+        }}
+        onPointerUp={() => {
+          if (isRecording) stopVoiceInput();
+        }}
       >
         {isRecording ? "🎙 Запись…" : "🎙 Удерживай для записи"}
       </button>

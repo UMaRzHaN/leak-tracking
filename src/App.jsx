@@ -7,117 +7,11 @@ import { normalizeNumberWords } from "./utils/normalizeNumberWords";
 import { normalizeEquipment } from "./utils/normalizeEquipment";
 import AddLeak from "./pages/AddLeak";
 import DataBase from "./pages/DataBase";
+
 import "./index.css";
-import { capitalizeFirst } from "./utils/calculations";
+import { parseVoiceText } from "./utils/parseVoiceText";
 
 const STORAGE_KEY = "leaks_database_v1";
-const FIELD_MARKERS =
-  "умг|компрессорная станция|примечание|локация|объект|компонент|описание утечки|причина утечки|решение|план устранения|мтр";
-
-const parseVoiceText = (text) => {
-  const result = {};
-  const normalized = text.toLowerCase().replace(",", ".");
-
-  const patterns = [
-    { key: "leak_id", regex: /бирк[аи]?\s*(\d+)/, type: "number" },
-    { key: "video_id", regex: /видео\s*(\d+)/, type: "number" },
-    {
-      key: "leak_speed",
-      regex: /скорост[ьи]?\s*(\d+(\.\d+)?)/,
-      type: "number",
-    },
-    {
-      key: "pressure",
-      regex: /давлени[ея]?\s*(\d+(\.\d+)?)/,
-      type: "number",
-    },
-    {
-      key: "temperature",
-      regex: /температур[аы]?\s*(-?\d+(\.\d+)?)/,
-      type: "number",
-    },
-
-    {
-      key: "field",
-      regex: new RegExp(
-        `(?:умг|умк|умгэ|умге|умга|омг|управление)\\s+(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
-      ),
-      type: "string",
-    },
-    {
-      key: "station",
-      regex: new RegExp(
-        `компрессорная станци[я]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
-      ),
-      type: "string",
-    },
-    {
-      key: "note",
-      regex: new RegExp(`примечани[ея]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`),
-      type: "string",
-    },
-    {
-      key: "location",
-      regex: new RegExp(`локаци[яи]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`),
-      type: "string",
-    },
-    {
-      key: "object",
-      regex: new RegExp(`объект\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`),
-      type: "string",
-    },
-    {
-      key: "component",
-      regex: new RegExp(`компонент[ы]?\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`),
-      type: "string",
-    },
-    {
-      key: "leak_description",
-      regex: new RegExp(
-        `описание утечк[и]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
-      ),
-      type: "string",
-    },
-    {
-      key: "leak_cause",
-      regex: new RegExp(
-        `причина утечк[и]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
-      ),
-      type: "string",
-    },
-    {
-      key: "technological_solution",
-      regex: new RegExp(
-        `(технологическ(ое|ий) решени(е|я)|тех решени(е|я)|способ устранени(й|я)|метод устранени(й|я)\\s+(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
-      ),
-      type: "string",
-    },
-    {
-      key: "repair_recommendation",
-      regex: new RegExp(
-        `план устранения\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
-      ),
-      type: "string",
-    },
-    {
-      key: "materials_equipment",
-      regex: new RegExp(`мтр\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`),
-      type: "string",
-    },
-  ];
-
-  patterns.forEach(({ key, regex, type }) => {
-    const match = normalized.match(regex);
-    if (!match) return;
-
-    result[key] =
-      type === "number"
-        ? Number(match[1])
-        : capitalizeFirst(match[match.length - 1].trim());
-  });
-
-  return result;
-};
 
 export default function App() {
   const [page, setPage] = useState("db");
@@ -128,8 +22,6 @@ export default function App() {
   const [isRecording, setIsRecording] = useState(false);
 
   const [voiceData, setVoiceData] = useState(null);
-  const recognitionRef = useRef(null);
-
   const clearVoiceData = useCallback(() => {
     setVoiceData(null);
   }, []);
@@ -137,124 +29,72 @@ export default function App() {
   /* =========================
      VOICE INPUT
   ========================= */
-  const startVoiceInput = async () => {
-    if (isRecording) return;
+  const recognitionBusyRef = useRef(false);
 
-    setIsRecording(true);
-    setVoiceData(null);
+  const handleVoiceText = (text) => {
+    const normalizedText = normalizeNumberWords(text);
+    const parsed = parseVoiceText(normalizedText);
+    const data = normalizeSynonyms(parsed);
 
-    /* ===== WEB ===== */
-    if (!Capacitor.isNativePlatform()) {
-      const SpeechAPI =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-
-      if (!SpeechAPI) {
-        alert("Браузер не поддерживает голосовой ввод");
-        setIsRecording(false);
-        return;
-      }
-
-      const recognition = new SpeechAPI();
-      recognitionRef.current = recognition;
-
-      recognition.lang = "ru-RU";
-      recognition.interimResults = false;
-      recognition.continuous = false; // 🔥 ВАЖНО
-
-      recognition.onresult = (event) => {
-        const text = event.results[0][0].transcript;
-        const normalizedText = normalizeNumberWords(text);
-        const parsed = parseVoiceText(normalizedText);
-        const normalized = normalizeSynonyms(parsed);
-        // component
-        if (normalized.component) {
-          const res = normalizeEquipment(normalized.component);
-          normalized.component = res.value;
-          if (res.type) normalized.component_type = res.type;
-        }
-
-        // object
-        if (normalized.object) {
-          const res = normalizeEquipment(normalized.object);
-          normalized.object = res.value;
-          if (res.type) normalized.object_type = res.type;
-        }
-        console.log(normalizedText);
-
-        setVoiceData(normalized);
-        setPage("add");
-      };
-
-      recognition.onerror = () => setIsRecording(false);
-      recognition.onend = () => setIsRecording(false);
-
-      recognition.start();
-      return;
+    if (data.component) {
+      const r = normalizeEquipment(data.component);
+      data.component = r.value;
+      if (r.type) data.component_type = r.type;
     }
 
-    /* ===== MOBILE ===== */
-    try {
-      await SpeechRecognition.requestPermissions();
+    if (data.object) {
+      const r = normalizeEquipment(data.object);
+      data.object = r.value;
+      if (r.type) data.object_type = r.type;
+    }
 
-      await SpeechRecognition.start({
+    setVoiceData(data);
+    setPage("add");
+  };
+
+  const startVoiceInput = async () => {
+    if (recognitionBusyRef.current) return;
+
+    try {
+      const perm = await SpeechRecognition.checkPermissions();
+      if (perm.speechRecognition !== "granted") {
+        const req = await SpeechRecognition.requestPermissions();
+        if (req.speechRecognition !== "granted") return;
+      }
+
+      recognitionBusyRef.current = true;
+      setIsRecording(true);
+
+      const result = await SpeechRecognition.start({
         language: "ru-RU",
         partialResults: false,
         popup: false,
       });
+
+      // 🔑 ВОТ ЭТОТ БЛОК — КЛЮЧ
+      if (result?.matches?.[0]) {
+        handleVoiceText(result.matches[0]);
+      }
     } catch (e) {
+      console.error("Speech start error:", e);
+      recognitionBusyRef.current = false;
       setIsRecording(false);
-      alert("Ошибка голосового ввода");
     }
   };
 
   const stopVoiceInput = async () => {
-    if (!isRecording) return;
+    if (!recognitionBusyRef.current) return;
 
-    /* ===== WEB ===== */
-    if (!Capacitor.isNativePlatform()) {
-      recognitionRef.current?.stop();
-      recognitionRef.current = null;
-      setIsRecording(false);
-      return;
-    }
-
-    /* ===== MOBILE ===== */
     try {
-      const { matches } = await SpeechRecognition.stop();
-      setIsRecording(false);
+      const result = await SpeechRecognition.stop();
 
-      if (!matches || !matches[0]) return;
-
-      const text = matches[0];
-
-      // 1️⃣ нормализация чисел и размеров
-      const normalizedText = normalizeNumberWords(text);
-
-      // 2️⃣ парсинг полей
-      const parsed = parseVoiceText(normalizedText);
-
-      // 3️⃣ нормализация причин / рекомендаций
-      const data = normalizeSynonyms(parsed);
-
-      // 4️⃣ component → normalizeEquipment
-      if (data.component) {
-        const res = normalizeEquipment(data.component);
-        data.component = res.value;
-        if (res.type) data.component_type = res.type;
+      if (result?.matches?.[0]) {
+        handleVoiceText(result.matches[0]);
       }
-
-      // 5️⃣ object → normalizeEquipment
-      if (data.object) {
-        const res = normalizeEquipment(data.object);
-        data.object = res.value;
-        if (res.type) data.object_type = res.type;
-      }
-
-      // 6️⃣ передаём в форму
-      setVoiceData(data);
-      setPage("add");
     } catch (e) {
-      console.error("Voice stop error:", e);
+      console.error("Speech stop error:", e);
+    } finally {
+      recognitionBusyRef.current = false;
       setIsRecording(false);
     }
   };
@@ -344,7 +184,6 @@ export default function App() {
   return (
     <div className="app">
       <div className="header">Журнал утечек газа</div>
-
       <div className="card">
         <div style={{ color: "#546e7a" }}>
           {error ? (
@@ -360,6 +199,7 @@ export default function App() {
 
         <button onClick={() => setPage("add")}>➕ Добавить утечку</button>
         <button onClick={() => setPage("db")}>📄 База данных</button>
+        <button onClick={() => setPage("test")}>📄 Test</button>
 
         {data.length > 0 && (
           <button
@@ -375,7 +215,6 @@ export default function App() {
           </button>
         )}
       </div>
-
       {page === "add" && (
         <AddLeak
           data={data}
@@ -387,8 +226,7 @@ export default function App() {
           stopVoiceInput={stopVoiceInput}
           isRecording={isRecording}
         />
-      )}
-
+      )}{" "}
       {page === "db" && <DataBase data={data} setData={setData} />}
     </div>
   );

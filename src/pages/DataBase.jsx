@@ -20,7 +20,7 @@ const SEARCH_FIELDS = [
   { key: "note", label: "Примечание" },
 ];
 
-export default function DataBase({ data, setData }) {
+export default function DataBase({ data = [], setData }) {
   const [editId, setEditId] = useState(null);
   const [editRow, setEditRow] = useState({});
   const [search, setSearch] = useState("");

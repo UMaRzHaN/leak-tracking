@@ -1,0 +1,132 @@
+import { capitalizeFirst } from "./capitalizeFirst";
+
+// ОБЯЗАТЕЛЬНО: маркеры должны быть БЕЗ захватывающих скобок
+const FIELD_MARKERS =
+  "бирк[аи]?|видео|скорост[ьи]?|давлени[ея]?|температур[аы]?|" +
+  "умг|умк|умгэ|умге|умга|омг|управление|" +
+  "компрессорная станци[я]|примечани[ея]|локаци[яи]|" +
+  "объект|компонент[ы]?|описание утечк[и]|причина утечк[и]|" +
+  "технологическ(ое|ий) решени(е|я)|тех решени(е|я)|способ устранени(й|я)|метод устранени(й|я)|" +
+  "план устранения|мтр";
+
+export const parseVoiceText = (text) => {
+  const result = {};
+  if (!text) return result;
+
+  const normalized = text.toLowerCase().replace(",", ".");
+
+  const patterns = [
+    { key: "leak_id", regex: /бирк[аи]?\s*(\d+)/, type: "number" },
+    { key: "video_id", regex: /видео\s*(\d+)/, type: "number" },
+    {
+      key: "leak_speed",
+      regex: /скорост[ьи]?\s*(\d+(\.\d+)?)/,
+      type: "number",
+    },
+    {
+      key: "pressure",
+      regex: /давлени[ея]?\s*(\d+(\.\d+)?)/,
+      type: "number",
+    },
+    {
+      key: "temperature",
+      regex: /температур[аы]?\s*(-?\d+(\.\d+)?)/,
+      type: "number",
+    },
+
+    // ===== ТЕКСТОВЫЕ ПОЛЯ =====
+    {
+      key: "field",
+      regex: new RegExp(
+        `(?:умг|умк|умгэ|умге|умга|омг|управление)\\s+(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+      ),
+      type: "string",
+    },
+    {
+      key: "station",
+      regex: new RegExp(
+        `компрессорная станци[я]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+      ),
+      type: "string",
+    },
+    {
+      key: "note",
+      regex: new RegExp(
+        `примечани[ея]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+      ),
+      type: "string",
+    },
+    {
+      key: "location",
+      regex: new RegExp(
+        `локаци[яи]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+      ),
+      type: "string",
+    },
+    {
+      key: "object",
+      regex: new RegExp(
+        `объект\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+      ),
+      type: "string",
+    },
+    {
+      key: "component",
+      regex: new RegExp(
+        `компонент[ы]?\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+      ),
+      type: "string",
+    },
+    {
+      key: "leak_description",
+      regex: new RegExp(
+        `описание утечк[и]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+      ),
+      type: "string",
+    },
+    {
+      key: "leak_cause",
+      regex: new RegExp(
+        `причина утечк[и]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+      ),
+      type: "string",
+    },
+    {
+      key: "technological_solution",
+      regex: new RegExp(
+        `(технологическ(ое|ий) решени(е|я)|тех решени(е|я)|способ устранени(й|я)|метод устранени(й|я))\\s+(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+      ),
+      type: "string",
+    },
+    {
+      key: "repair_recommendation",
+      regex: new RegExp(
+        `план устранения\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+      ),
+      type: "string",
+    },
+    {
+      key: "materials_equipment",
+      regex: new RegExp(
+        `мтр\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+      ),
+      type: "string",
+    },
+  ];
+
+  patterns.forEach(({ key, regex, type }) => {
+    const match = normalized.match(regex);
+    if (!match) return;
+
+    if (type === "number") {
+      result[key] = Number(match[1]);
+    } else {
+      // всегда берём последнюю строковую группу
+      const value = match.findLast((v) => typeof v === "string");
+      if (!value) return;
+      result[key] = capitalizeFirst(value.trim());
+    }
+  });
+
+  return result;
+};
