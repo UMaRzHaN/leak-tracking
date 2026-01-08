@@ -10,15 +10,16 @@ export default function AddLeak({
   clearVoiceData,
   startVoiceInput,
   stopVoiceInput,
+  isRecording,
 }) {
   const handleAdd = (row) => {
     const updated = [
       ...data,
       {
-        id: data.length + 1,
+        id: Date.now(),
         latitude: toNumber(coords?.lat),
         longitude: toNumber(coords?.lon),
-
+        index: data.length + 1,
         ...row,
       },
     ];
@@ -34,6 +35,7 @@ export default function AddLeak({
       clearVoiceData={clearVoiceData}
       startVoiceInput={startVoiceInput}
       stopVoiceInput={stopVoiceInput}
+      isRecording={isRecording}
     />
   );
 }

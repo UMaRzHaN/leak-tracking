@@ -24,6 +24,7 @@ export default function LeakForm({
   clearVoiceData,
   stopVoiceInput,
   startVoiceInput,
+  isRecording,
 }) {
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
@@ -52,7 +53,7 @@ export default function LeakForm({
 
       if (value === "" || value === null || value === undefined) {
         newErrors[key] = "Обязательное числовое поле";
-      } else if (NUMBER_FIELDS.includes(key) && typeof value !== "number") {
+      } else if (NUMBER_FIELDS.includes(key) && !Number.isFinite(value)) {
         newErrors[key] = "Введите число";
       }
     });
@@ -68,10 +69,14 @@ export default function LeakForm({
     setErrors({});
   };
   useEffect(() => {
-    if (voiceData) {
-      setForm((prev) => ({ ...prev, ...voiceData }));
-      clearVoiceData();
-    }
+    if (!voiceData) return;
+
+    setForm((prev) => ({
+      ...prev,
+      ...voiceData, // ✅ обновляем ТОЛЬКО распознанные поля
+    }));
+
+    clearVoiceData();
   }, [voiceData, clearVoiceData]);
 
   /* ===== UI ===== */
@@ -80,13 +85,11 @@ export default function LeakForm({
       {/* 🎙 Голосовой ввод */}
       <button
         type="button"
-        className="voice-button"
-        onMouseDown={startVoiceInput}
-        onMouseUp={stopVoiceInput}
-        onTouchStart={startVoiceInput}
-        onTouchEnd={stopVoiceInput}
+        className={`voice-button ${isRecording ? "recording" : ""}`}
+        onPointerDown={startVoiceInput}
+        onPointerUp={stopVoiceInput}
       >
-        🎙️ Удерживай для записи
+        {isRecording ? "🎙 Запись…" : "🎙 Удерживай для записи"}
       </button>
 
       {/* Обязательные поля */}
@@ -262,8 +265,8 @@ export default function LeakForm({
           id="description"
           list="description-list"
           placeholder="Введите описание утечки"
-          value={form.description ?? ""}
-          onChange={(e) => handle("description", e.target.value)}
+          value={form.leak_description ?? ""}
+          onChange={(e) => handle("leak_description", e.target.value)}
         />
         <datalist id="description-list">
           {Object.values(description)

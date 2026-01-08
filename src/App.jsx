@@ -2,7 +2,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Geolocation } from "@capacitor/geolocation";
 import { Capacitor } from "@capacitor/core";
 import { SpeechRecognition } from "@capacitor-community/speech-recognition";
-
+import { normalizeSynonyms } from "./utils/normalizeSynonyms";
+import { normalizeNumberWords } from "./utils/normalizeNumberWords";
+import { normalizeEquipment } from "./utils/normalizeEquipment";
 import AddLeak from "./pages/AddLeak";
 import DataBase from "./pages/DataBase";
 import "./index.css";
@@ -10,7 +12,7 @@ import { capitalizeFirst } from "./utils/calculations";
 
 const STORAGE_KEY = "leaks_database_v1";
 const FIELD_MARKERS =
-  "умг|компрессорная станция|примечание|локация|объект|компонент|описание утечки|причина утечки|техрешение|план устранения|мтр";
+  "умг|компрессорная станция|примечание|локация|объект|компонент|описание утечки|причина утечки|решение|план устранения|мтр";
 
 const parseVoiceText = (text) => {
   const result = {};
@@ -31,70 +33,75 @@ const parseVoiceText = (text) => {
     },
     {
       key: "temperature",
-      regex: /температур[аы]?\s*(-?\d+)/,
+      regex: /температур[аы]?\s*(-?\d+(\.\d+)?)/,
       type: "number",
     },
 
-    // 👇 ТЕКСТОВЫЕ ПОЛЯ
     {
       key: "field",
-      regex: new RegExp(`умг\\s*(.+?)(?=\\s+(${FIELD_MARKERS})|$)`),
+      regex: new RegExp(
+        `(?:умг|умк|умгэ|умге|умга|омг|управление)\\s+(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+      ),
       type: "string",
     },
     {
       key: "station",
       regex: new RegExp(
-        `компрессорная станци[я]\\s*(.+?)(?=\\s+(${FIELD_MARKERS})|$)`
+        `компрессорная станци[я]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
       ),
       type: "string",
     },
     {
       key: "note",
-      regex: new RegExp(`примечани[ея]\\s*(.+?)(?=\\s+(${FIELD_MARKERS})|$)`),
+      regex: new RegExp(`примечани[ея]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`),
       type: "string",
     },
     {
       key: "location",
-      regex: new RegExp(`локаци[яи]\\s*(.+?)(?=\\s+(${FIELD_MARKERS})|$)`),
+      regex: new RegExp(`локаци[яи]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`),
       type: "string",
     },
     {
       key: "object",
-      regex: new RegExp(`объект\\s*(.+?)(?=\\s+(${FIELD_MARKERS})|$)`),
+      regex: new RegExp(`объект\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`),
       type: "string",
     },
     {
       key: "component",
-      regex: new RegExp(`компонент[ы]?\\s*(.+?)(?=\\s+(${FIELD_MARKERS})|$)`),
+      regex: new RegExp(`компонент[ы]?\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`),
       type: "string",
     },
     {
       key: "leak_description",
       regex: new RegExp(
-        `описание утечк[и]\\s*(.+?)(?=\\s+(${FIELD_MARKERS})|$)`
+        `описание утечк[и]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
       ),
       type: "string",
     },
     {
       key: "leak_cause",
       regex: new RegExp(
-        `причина утечк[и]\\s*(.+?)(?=\\s+(${FIELD_MARKERS})|$)`
+        `причина утечк[и]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
       ),
       type: "string",
     },
     {
       key: "technological_solution",
-      regex: new RegExp(`техрешени[ея]\\s*(.+?)(?=\\s+(${FIELD_MARKERS})|$)`),
+      regex: new RegExp(
+        `(технологическ(ое|ий) решени(е|я)|тех решени(е|я)|способ устранени(й|я)|метод устранени(й|я)\\s+(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+      ),
       type: "string",
     },
     {
       key: "repair_recommendation",
-      regex: new RegExp(`план устранения\\s*(.+?)(?=\\s+(${FIELD_MARKERS})|$)`),
+      regex: new RegExp(
+        `план устранения\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+      ),
       type: "string",
     },
     {
       key: "materials_equipment",
-      regex: new RegExp(`мтр\\s*(.+?)(?=\\s+(${FIELD_MARKERS})|$)`),
+      regex: new RegExp(`мтр\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`),
       type: "string",
     },
   ];
@@ -104,7 +111,9 @@ const parseVoiceText = (text) => {
     if (!match) return;
 
     result[key] =
-      type === "number" ? Number(match[1]) : capitalizeFirst(match[1].trim());
+      type === "number"
+        ? Number(match[1])
+        : capitalizeFirst(match[match.length - 1].trim());
   });
 
   return result;
@@ -116,6 +125,7 @@ export default function App() {
 
   const [coords, setCoords] = useState({ lat: null, lon: null });
   const [error, setError] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
 
   const [voiceData, setVoiceData] = useState(null);
   const recognitionRef = useRef(null);
@@ -128,6 +138,11 @@ export default function App() {
      VOICE INPUT
   ========================= */
   const startVoiceInput = async () => {
+    if (isRecording) return;
+
+    setIsRecording(true);
+    setVoiceData(null);
+
     /* ===== WEB ===== */
     if (!Capacitor.isNativePlatform()) {
       const SpeechAPI =
@@ -135,6 +150,7 @@ export default function App() {
 
       if (!SpeechAPI) {
         alert("Браузер не поддерживает голосовой ввод");
+        setIsRecording(false);
         return;
       }
 
@@ -143,16 +159,34 @@ export default function App() {
 
       recognition.lang = "ru-RU";
       recognition.interimResults = false;
-      recognition.continuous = true;
+      recognition.continuous = false; // 🔥 ВАЖНО
 
       recognition.onresult = (event) => {
         const text = event.results[0][0].transcript;
-        console.log("VOICE (WEB):", text);
+        const normalizedText = normalizeNumberWords(text);
+        const parsed = parseVoiceText(normalizedText);
+        const normalized = normalizeSynonyms(parsed);
+        // component
+        if (normalized.component) {
+          const res = normalizeEquipment(normalized.component);
+          normalized.component = res.value;
+          if (res.type) normalized.component_type = res.type;
+        }
 
-        const parsed = parseVoiceText(text);
-        setVoiceData(parsed);
+        // object
+        if (normalized.object) {
+          const res = normalizeEquipment(normalized.object);
+          normalized.object = res.value;
+          if (res.type) normalized.object_type = res.type;
+        }
+        console.log(normalizedText);
+
+        setVoiceData(normalized);
         setPage("add");
       };
+
+      recognition.onerror = () => setIsRecording(false);
+      recognition.onend = () => setIsRecording(false);
 
       recognition.start();
       return;
@@ -168,28 +202,60 @@ export default function App() {
         popup: false,
       });
     } catch (e) {
-      console.error(e);
+      setIsRecording(false);
       alert("Ошибка голосового ввода");
     }
   };
+
   const stopVoiceInput = async () => {
+    if (!isRecording) return;
+
     /* ===== WEB ===== */
     if (!Capacitor.isNativePlatform()) {
       recognitionRef.current?.stop();
       recognitionRef.current = null;
+      setIsRecording(false);
       return;
     }
 
     /* ===== MOBILE ===== */
     try {
       const { matches } = await SpeechRecognition.stop();
-      if (!matches?.[0]) return;
+      setIsRecording(false);
 
-      const parsed = parseVoiceText(matches[0]);
-      setVoiceData(parsed);
+      if (!matches || !matches[0]) return;
+
+      const text = matches[0];
+
+      // 1️⃣ нормализация чисел и размеров
+      const normalizedText = normalizeNumberWords(text);
+
+      // 2️⃣ парсинг полей
+      const parsed = parseVoiceText(normalizedText);
+
+      // 3️⃣ нормализация причин / рекомендаций
+      const data = normalizeSynonyms(parsed);
+
+      // 4️⃣ component → normalizeEquipment
+      if (data.component) {
+        const res = normalizeEquipment(data.component);
+        data.component = res.value;
+        if (res.type) data.component_type = res.type;
+      }
+
+      // 5️⃣ object → normalizeEquipment
+      if (data.object) {
+        const res = normalizeEquipment(data.object);
+        data.object = res.value;
+        if (res.type) data.object_type = res.type;
+      }
+
+      // 6️⃣ передаём в форму
+      setVoiceData(data);
       setPage("add");
     } catch (e) {
-      console.error(e);
+      console.error("Voice stop error:", e);
+      setIsRecording(false);
     }
   };
 
@@ -319,6 +385,7 @@ export default function App() {
           clearVoiceData={clearVoiceData}
           startVoiceInput={startVoiceInput}
           stopVoiceInput={stopVoiceInput}
+          isRecording={isRecording}
         />
       )}
 

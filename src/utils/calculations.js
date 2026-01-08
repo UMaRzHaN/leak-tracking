@@ -16,9 +16,7 @@ export const calculations = (r) => {
     Total_Annual_Methane_Loss_t_y *
     (percentage_gas_to_flare * 28 + percentage_gas_to_utilization * 25.25);
 
-  const Emissions_kg_CO2_eq_year =
-    Total_Annual_Methane_Loss_t_y *
-    (percentage_gas_to_flare * 28 + percentage_gas_to_utilization * 25.25);
+  const Emissions_kg_CO2_eq_year = Emissions_t_CO2eq_year * 1000;
 
   return {
     ...r,
@@ -61,7 +59,7 @@ export const headers = [
   "Координата Y, м",
 ];
 export const keysOrder = [
-  "id",
+  "index",
   "date",
   "field",
   "station",

@@ -117,7 +117,7 @@ export default function DataBase({ data, setData }) {
                 <input
                   value={editRow.leak_id || ""}
                   onChange={(e) =>
-                    setEditRow({ ...editRow, leak_id: e.target.value })
+                    setEditRow({ ...editRow, leak_id: Number(e.target.value) })
                   }
                   placeholder=" "
                 />
@@ -128,7 +128,7 @@ export default function DataBase({ data, setData }) {
                 <input
                   value={editRow.video_id || ""}
                   onChange={(e) =>
-                    setEditRow({ ...editRow, video_id: e.target.value })
+                    setEditRow({ ...editRow, video_id: Number(e.target.value) })
                   }
                   placeholder=" "
                 />
@@ -138,7 +138,10 @@ export default function DataBase({ data, setData }) {
                 <input
                   value={editRow.leak_speed || ""}
                   onChange={(e) =>
-                    setEditRow({ ...editRow, leak_speed: e.target.value })
+                    setEditRow({
+                      ...editRow,
+                      leak_speed: Number(e.target.value),
+                    })
                   }
                   placeholder=" "
                 />
@@ -149,7 +152,10 @@ export default function DataBase({ data, setData }) {
                 <input
                   value={editRow.temperature || ""}
                   onChange={(e) =>
-                    setEditRow({ ...editRow, temperature: e.target.value })
+                    setEditRow({
+                      ...editRow,
+                      temperature: Number(e.target.value),
+                    })
                   }
                   placeholder=" "
                 />
@@ -160,7 +166,7 @@ export default function DataBase({ data, setData }) {
                 <input
                   value={editRow.pressure || ""}
                   onChange={(e) =>
-                    setEditRow({ ...editRow, pressure: e.target.value })
+                    setEditRow({ ...editRow, pressure: Number(e.target.value) })
                   }
                   placeholder=" "
                 />
@@ -295,7 +301,7 @@ export default function DataBase({ data, setData }) {
             </>
           ) : (
             <>
-              <strong>#{row.id}</strong>
+              <strong>#{row.index}</strong>
               <div>
                 <b> Дата:</b> {row.date}
               </div>
