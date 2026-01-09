@@ -12,6 +12,7 @@ import {
 import { normalizeNumber } from "../utils/normalizeNumber";
 import AutocompleteInput from "./AutocompleteInput";
 import { useCamera } from "../hooks/useCamera";
+import { savePhoto } from "../services/cameraService";
 
 const REQUIRED_FIELDS = ["leak_id", "video_id", "leak_speed"];
 const NUMBER_FIELDS = [
@@ -28,13 +29,33 @@ export default function LeakForm({
   startVoiceInput,
   stopVoiceInput,
 }) {
-  const [form, setForm] = useState({});
+  const [form, setForm] = useState({
+    leak_id: "",
+    photo: null, // 💾 путь (ПОСЛЕ сохранения)
+    photoPreview: null, // 👁 dataUrl (ДО сохранения)
+  });
   const [errors, setErrors] = useState({});
-  const { takePhoto, pickFromBrowser, isNative } = useCamera();
+  const { isNative, takePhoto, pickFromBrowser } = useCamera();
 
   /* =========================
      HELPERS
      ========================= */
+  const handlePhoto = async (file) => {
+    try {
+      const dataUrl = isNative
+        ? await takePhoto()
+        : await pickFromBrowser(file);
+
+      setForm((prev) => ({
+        ...prev,
+        photoPreview: dataUrl, // только превью
+        photo: null, // ещё не сохранено
+      }));
+    } catch (e) {
+      alert(e.message || "Ошибка получения фото");
+    }
+  };
+
   const handle = (key, value) => {
     const finalValue = NUMBER_FIELDS.includes(key)
       ? normalizeNumber(value)
@@ -66,17 +87,31 @@ export default function LeakForm({
   /* =========================
      ACTIONS
   ========================= */
-  const add = () => {
+  const add = async () => {
     if (!validate()) return;
 
-    onAdd({
-      ...form,
-      date: new Date().toLocaleDateString(),
-    });
+    let photoPath = null;
 
-    setForm({});
-    setErrors({});
-    clearVoiceData?.();
+    try {
+      if (form.photoPreview) {
+        photoPath = await savePhoto(
+          form.photoPreview,
+          `photo_${form.leak_id}.jpg` // ← КЛЮЧЕВО
+        );
+      }
+
+      onAdd({
+        ...form,
+        photo: photoPath,
+        date: new Date().toLocaleDateString(),
+      });
+
+      setForm({});
+      setErrors({});
+      clearVoiceData?.();
+    } catch (e) {
+      alert(e.message || "Ошибка при сохранении фото");
+    }
   };
 
   const clearForm = () => {
@@ -298,17 +333,7 @@ export default function LeakForm({
           onChange={(e) => handle("note", e.target.value)}
         />
       </div>
-      <button
-        type="button"
-        onClick={async () => {
-          try {
-            const photo = await takePhoto();
-            setForm((prev) => ({ ...prev, photo }));
-          } catch (e) {
-            alert(e.message || e);
-          }
-        }}
-      >
+      <button type="button" onClick={() => handlePhoto()}>
         📷 Сделать фото
       </button>
 
@@ -316,20 +341,13 @@ export default function LeakForm({
         <input
           type="file"
           accept="image/*"
-          onChange={async (e) => {
-            try {
-              const photo = await pickFromBrowser(e.target.files[0]);
-              setForm((prev) => ({ ...prev, photo }));
-            } catch (e) {
-              alert(e);
-            }
-          }}
+          onChange={async (e) => handlePhoto(e.target.files[0])}
         />
       )}
 
-      {form.photo && (
+      {form.photoPreview && (
         <img
-          src={form.photo}
+          src={form.photoPreview}
           alt="Фото утечки"
           style={{
             maxWidth: 200,

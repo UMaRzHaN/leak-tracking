@@ -1,6 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
-
+import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 /**
  * 📱 Сделать фото с камеры (MOBILE)
  * @returns base64 (dataUrl)
@@ -61,3 +61,72 @@ export const readPhotoFromFile = (file) =>
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+export const savePhotoToDocuments = async (
+  dataUrl,
+  fileName,
+  folder = "LeakReports"
+) => {
+  if (!dataUrl) return null;
+
+  const base64 = dataUrl.split(",")[1];
+
+  try {
+    await Filesystem.mkdir({
+      path: folder,
+      directory: Directory.Documents,
+      recursive: true,
+    });
+  } catch (_) {
+    // папка уже есть
+  }
+
+  const path = `${folder}/${fileName}`;
+
+  await Filesystem.writeFile({
+    path,
+    data: base64,
+    directory: Directory.Documents,
+    encoding: Encoding.BASE64,
+  });
+
+  return `Documents/${path}`;
+};
+export const savePhoto = async (dataUrl, fileName) => {
+  if (!dataUrl) return null;
+
+  /* ===== MOBILE ===== */
+  if (Capacitor.isNativePlatform()) {
+    const base64 = dataUrl.split(",")[1];
+    const folder = "LeakReports";
+
+    try {
+      await Filesystem.mkdir({
+        path: folder,
+        directory: Directory.Documents,
+        recursive: true,
+      });
+    } catch (_) {}
+
+    const path = `${folder}/${fileName}`;
+
+    // 🔁 ПЕРЕЗАПИСЬ — writeFile перезапишет файл автоматически
+    await Filesystem.writeFile({
+      path,
+      data: base64,
+      directory: Directory.Documents,
+      encoding: Encoding.BASE64,
+    });
+
+    return `Documents/${path}`;
+  }
+
+  /* ===== WEB ===== */
+  const link = document.createElement("a");
+  link.href = dataUrl;
+  link.download = fileName; // одинаковое имя → логическая перезапись
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  return `Downloads/${fileName}`;
+};

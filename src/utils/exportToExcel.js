@@ -59,19 +59,19 @@ export const exportToExcel = async (rows) => {
     alert(`Файл сохранён:\nDocuments/${FOLDER_NAME}/${fileName}`);
   } else {
     /* ---------- Browser ---------- */
-    for (const row of prepared) {
-      if (!row.photo) continue;
+    // for (const row of prepared) {
+    //   if (!row.photo) continue;
 
-      const base64 = row.photo.split(",")[1];
-      const photoName = `photo_${row.leak_id}.jpg`;
+    //   const base64 = row.photo.split(",")[1];
+    //   const photoName = `photo_${row.leak_id}.jpg`;
 
-      await Filesystem.writeFile({
-        path: `${FOLDER_NAME}/${photoName}`,
-        data: base64,
-        directory: Directory.Documents,
-        encoding: Encoding.BASE64,
-      });
-    }
+    //   await Filesystem.writeFile({
+    //     path: `${FOLDER_NAME}/${photoName}`,
+    //     data: base64,
+    //     directory: Directory.Documents,
+    //     encoding: Encoding.BASE64,
+    //   });
+    // }
 
     XLSX.writeFile(wb, fileName);
   }

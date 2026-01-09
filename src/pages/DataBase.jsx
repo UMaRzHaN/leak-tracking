@@ -306,10 +306,10 @@ export default function DataBase({ data = [], setData, coords }) {
             </>
           ) : (
             <>
-              <strong>
-                #{row.index} <b>X/Y: </b>
-                {row.latitude}/{row.longitude}
-              </strong>
+              <strong>#{row.index}</strong>
+              <div>
+                <b> X/Y:</b> {row.latitude}/{row.longitude}
+              </div>
               <div>
                 <b> Дата:</b> {row.date}
               </div>
@@ -353,7 +353,7 @@ export default function DataBase({ data = [], setData, coords }) {
                     <b>Фото:</b>
                   </p>
                   <img
-                    src={row.photo}
+                    src={row.photoPreview}
                     alt="Фото утечки"
                     style={{
                       width: "100%",
@@ -365,7 +365,6 @@ export default function DataBase({ data = [], setData, coords }) {
                   />
                 </div>
               )}
-
               <button onClick={() => startEdit(row)}>✏️ Изменить</button>
               <button onClick={() => remove(row.id)}>🗑 Удалить</button>
             </>
