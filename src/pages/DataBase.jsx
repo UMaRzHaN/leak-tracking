@@ -26,6 +26,7 @@ export default function DataBase({ data = [], setData, coords }) {
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("all");
   const [sortByDistance, setSortByDistance] = useState(false);
+  console.log(data);
 
   /* ---------- helpers ---------- */
 
@@ -82,7 +83,27 @@ export default function DataBase({ data = [], setData, coords }) {
       return da - db;
     });
   }, [filteredData, sortByDistance, coords]);
+  // Edit PHOTO
+  const handleEditPhoto = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
+    if (!file.type.startsWith("image/")) {
+      alert("Выберите изображение");
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onloadend = (event) => {
+      setEditRow((prev) => ({
+        ...prev,
+        photo: event.target.result, // base64
+      }));
+    };
+
+    reader.readAsDataURL(file);
+  };
   return (
     <div className="card">
       {/* Экспорт */}
@@ -314,6 +335,48 @@ export default function DataBase({ data = [], setData, coords }) {
                 />
                 <label>Примечание</label>
               </div>
+              {/* ===== ФОТО ===== */}
+              <div className="field">
+                <label>Фото утечки</label>
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  id={`edit-photo-${row.id}`}
+                  style={{ display: "none" }}
+                  onChange={handleEditPhoto}
+                />
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    document.getElementById(`edit-photo-${row.id}`).click()
+                  }
+                  style={{
+                    background: "#e3f2fd",
+                    color: "#0d47a1",
+                    border: "1px solid #90caf9",
+                    marginBottom: 8,
+                  }}
+                >
+                  📷 Изменить фото
+                </button>
+
+                {editRow.photo && (
+                  <img
+                    src={editRow.photo}
+                    alt="Фото утечки"
+                    style={{
+                      width: "100%",
+                      maxWidth: 300,
+                      marginTop: 6,
+                      borderRadius: 8,
+                      border: "1px solid #e0e0e0",
+                    }}
+                  />
+                )}
+              </div>
+
               <button onClick={saveEdit}>💾 Сохранить</button>
             </>
           ) : (
@@ -352,6 +415,22 @@ export default function DataBase({ data = [], setData, coords }) {
               <div>
                 <b>Примечание:</b> {row.note}
               </div>
+              {row.photo && (
+                <div style={{ marginTop: 10 }}>
+                  <b>Фото:</b>
+                  <img
+                    src={row.photo}
+                    alt="Фото утечки"
+                    style={{
+                      width: "100%",
+                      maxWidth: 300,
+                      marginTop: 6,
+                      borderRadius: 8,
+                      border: "1px solid #e0e0e0",
+                    }}
+                  />
+                </div>
+              )}
 
               <button onClick={() => startEdit(row)}>✏️ Изменить</button>
               <button onClick={() => remove(row.id)}>🗑 Удалить</button>

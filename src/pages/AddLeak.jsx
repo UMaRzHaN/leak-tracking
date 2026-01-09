@@ -1,5 +1,5 @@
 import LeakForm from "../components/LeakForm";
-import { toNumber } from "../utils/calculations";
+import { toNumber } from "../utils/toNumber";
 const STORAGE_KEY = "leaks_database_v1";
 
 export default function AddLeak({
@@ -10,6 +10,8 @@ export default function AddLeak({
   clearVoiceData,
   startVoiceInput,
   stopVoiceInput,
+  photo,
+  setPhoto,
 }) {
   const handleAdd = (row) => {
     const updated = [
@@ -34,6 +36,8 @@ export default function AddLeak({
       clearVoiceData={clearVoiceData}
       startVoiceInput={startVoiceInput}
       stopVoiceInput={stopVoiceInput}
+      photo={photo}
+      setPhoto={setPhoto}
     />
   );
 }

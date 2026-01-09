@@ -9,7 +9,7 @@ import {
   recommendations,
   materials,
 } from "../data/dictionaries";
-import { normalizeNumber } from "../utils/calculations";
+import { normalizeNumber } from "../utils/normalizeNumber";
 import AutocompleteInput from "./AutocompleteInput";
 const REQUIRED_FIELDS = ["leak_id", "video_id", "leak_speed"];
 const NUMBER_FIELDS = [
@@ -25,11 +25,41 @@ export default function LeakForm({
   clearVoiceData,
   stopVoiceInput,
   startVoiceInput,
+  photo,
+  setPhoto,
 }) {
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
 
   /* ===== helpers ===== */
+  const handlePhotoAdd = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // опционально: проверка, что это изображение
+    if (!file.type.startsWith("image/")) {
+      alert("Пожалуйста, выберите изображение");
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onloadend = (event) => {
+      const base64 = event.target.result;
+
+      setForm((prev) => ({
+        ...prev,
+        photo: base64, // data:image/...;base64,...
+      }));
+    };
+
+    reader.onerror = () => {
+      console.error("Ошибка чтения файла");
+    };
+
+    reader.readAsDataURL(file);
+  };
+
   const handle = (key, value) => {
     const finalValue = NUMBER_FIELDS.includes(key)
       ? normalizeNumber(value)
@@ -67,18 +97,17 @@ export default function LeakForm({
     onAdd({ ...form, date: new Date().toLocaleDateString() });
     setForm({});
     setErrors({});
-  };
-  const clearForm = () => {
-    // если идёт запись — останавливаем
-    stopVoiceInput?.();
-
-    // очищаем форму
-    setForm({});
-    setErrors({});
-
-    // очищаем голосовые данные
+    setPhoto(null);
     clearVoiceData?.();
   };
+  const clearForm = () => {
+    stopVoiceInput?.();
+    setForm({});
+    setErrors({});
+    setPhoto(null);
+    clearVoiceData?.();
+  };
+
   useEffect(() => {
     if (!voiceData) return;
 
@@ -116,82 +145,6 @@ export default function LeakForm({
       >
         🧹 Очистить лист
       </button>
-      {/* Обязательные поля */}
-      {/* Обязательные поля */}
-      <div className="form-field">
-        <label htmlFor="leak_id">
-          Индивидуальный номер утечки (бирка)
-          <span className="required">*</span>
-        </label>
-
-        <input
-          id="leak_id"
-          type="number"
-          inputMode="numeric"
-          className={`emojis field ${errors.leak_id ? "input-error" : ""}`}
-          placeholder="Введите номер бирки"
-          value={form.leak_id ?? ""}
-          onChange={(e) => handle("leak_id", e.target.value)}
-        />
-
-        {errors.leak_id && <div className="error-text">{errors.leak_id}</div>}
-      </div>
-      <div className="form-field">
-        <label htmlFor="video">
-          Индивидуальный номер видео (видео)<span className="required">*</span>
-        </label>
-
-        <input
-          id="video"
-          type="number"
-          inputMode="numeric"
-          className={`emojis ${errors.video_id ? "input-error" : ""}`}
-          placeholder="Введите номер видео"
-          value={form.video_id ?? ""}
-          onChange={(e) => handle("video_id", e.target.value)}
-        />
-      </div>
-      <div className="form-field">
-        <label htmlFor="speed">
-          Скорость утечки (скорость)<span className="required">*</span>
-        </label>
-
-        <input
-          id="speed"
-          type="number"
-          inputMode="decimal"
-          step="any"
-          className={`emojis ${errors.leak_speed ? "input-error" : ""}`}
-          placeholder="Введите скорость"
-          value={form.leak_speed ?? ""}
-          onChange={(e) => handle("leak_speed", e.target.value)}
-        />
-      </div>
-      {/* ===== ПАРАМЕТРЫ ===== */}
-      <div className="form-field">
-        <label htmlFor="temperature">Температура </label>
-        <input
-          className="emojis"
-          id="temperature"
-          type="number"
-          inputMode="numeric"
-          placeholder="Введите температуру"
-          value={form.temperature ?? ""}
-          onChange={(e) => handle("temperature", e.target.value)}
-        />
-      </div>
-      <div className="form-field">
-        <label htmlFor="pressure">Давление </label>
-        <input
-          className="emojis"
-          id="pressure"
-          type="number"
-          inputMode="numeric"
-          placeholder="Введите давление"
-          value={form.pressure ?? ""}
-          onChange={(e) => handle("pressure", e.target.value)}
-        />
-      </div>
       <div className="form-field">
         <label htmlFor="field">УМГ</label>
         <input
@@ -210,16 +163,6 @@ export default function LeakForm({
           onChange={(e) => handle("station", e.target.value)}
         />
       </div>
-      <div className="form-field">
-        <label htmlFor="note">Примечание</label>
-        <textarea
-          id="note"
-          placeholder="Введите примечание"
-          value={form.note ?? ""}
-          onChange={(e) => handle("note", e.target.value)}
-        />
-      </div>
-      {/* ===== СПРАВОЧНИКИ ===== */}
       <AutocompleteInput
         id="location"
         label="Локация"
@@ -238,6 +181,24 @@ export default function LeakForm({
         onChange={(v) => handle("object", v)}
         error={errors.object}
       />
+      <div className="form-field">
+        <label htmlFor="leak_id">
+          Индивидуальный номер утечки (бирка)
+          <span className="required">*</span>
+        </label>
+
+        <input
+          id="leak_id"
+          type="number"
+          inputMode="numeric"
+          className={`emojis field ${errors.leak_id ? "input-error" : ""}`}
+          placeholder="Введите номер бирки"
+          value={form.leak_id ?? ""}
+          onChange={(e) => handle("leak_id", e.target.value)}
+        />
+
+        {errors.leak_id && <div className="error-text">{errors.leak_id}</div>}
+      </div>
       <AutocompleteInput
         id="component"
         label="Компонент"
@@ -247,6 +208,66 @@ export default function LeakForm({
         onChange={(v) => handle("component", v)}
         error={errors.component}
       />
+      {/* Обязательные поля */}
+
+      <div className="form-field">
+        <label htmlFor="video">
+          Индивидуальный номер видео (видео)<span className="required">*</span>
+        </label>
+
+        <input
+          id="video"
+          type="number"
+          inputMode="numeric"
+          className={`emojis ${errors.video_id ? "input-error" : ""}`}
+          placeholder="Введите номер видео"
+          value={form.video_id ?? ""}
+          onChange={(e) => handle("video_id", e.target.value)}
+        />
+      </div>
+      {/* ===== ПАРАМЕТРЫ ===== */}
+      <div className="form-field">
+        <label htmlFor="pressure">Давление </label>
+        <input
+          className="emojis"
+          id="pressure"
+          type="number"
+          inputMode="numeric"
+          placeholder="Введите давление"
+          value={form.pressure ?? ""}
+          onChange={(e) => handle("pressure", e.target.value)}
+        />
+      </div>
+      <div className="form-field">
+        <label htmlFor="temperature">Температура </label>
+        <input
+          className="emojis"
+          id="temperature"
+          type="number"
+          inputMode="numeric"
+          placeholder="Введите температуру"
+          value={form.temperature ?? ""}
+          onChange={(e) => handle("temperature", e.target.value)}
+        />
+      </div>
+
+      <div className="form-field">
+        <label htmlFor="speed">
+          Скорость утечки (скорость)<span className="required">*</span>
+        </label>
+
+        <input
+          id="speed"
+          type="number"
+          inputMode="decimal"
+          step="any"
+          className={`emojis ${errors.leak_speed ? "input-error" : ""}`}
+          placeholder="Введите скорость"
+          value={form.leak_speed ?? ""}
+          onChange={(e) => handle("leak_speed", e.target.value)}
+        />
+      </div>
+      {/* ===== СПРАВОЧНИКИ ===== */}
       <AutocompleteInput
         id="description"
         label="Описание утечки"
@@ -292,6 +313,56 @@ export default function LeakForm({
         onChange={(v) => handle("materials_equipment", v)}
         error={errors.materials_equipment}
       />
+      <div className="form-field">
+        <label htmlFor="note">Примечание</label>
+        <textarea
+          id="note"
+          placeholder="Введите примечание"
+          value={form.note ?? ""}
+          onChange={(e) => handle("note", e.target.value)}
+        />
+      </div>
+      <div className="form-field">
+        <label>Фото утечки</label>
+
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          id="photo"
+          style={{ display: "none" }}
+          onChange={handlePhotoAdd}
+        />
+
+        <button
+          type="button"
+          onClick={() => document.getElementById("photo").click()}
+          style={{
+            background: "#e3f2fd",
+            color: "#0d47a1",
+            border: "1px solid #90caf9",
+            marginBottom: 8,
+          }}
+        >
+          📷 Добавить фото
+        </button>
+
+        {form.photo && (
+          <div style={{ marginTop: 8 }}>
+            <img
+              src={form.photo}
+              alt="Фото утечки"
+              style={{
+                width: "100%",
+                maxHeight: 200,
+                objectFit: "cover",
+                borderRadius: 8,
+                border: "1px solid #e0e0e0",
+              }}
+            />
+          </div>
+        )}
+      </div>
 
       <button onClick={add}>💾 Сохранить</button>
     </div>

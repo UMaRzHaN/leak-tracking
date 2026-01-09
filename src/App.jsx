@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Geolocation } from "@capacitor/geolocation";
 import { Capacitor } from "@capacitor/core";
 import { SpeechRecognition } from "@capacitor-community/speech-recognition";
-import { normalizeSynonyms } from "./utils/normalizeSynonyms";
-import { normalizeNumberWords } from "./utils/normalizeNumberWords";
-import { normalizeEquipment } from "./utils/normalizeEquipment";
-import { parseVoiceText } from "./utils/parseVoiceText";
+// import { normalizeSynonyms } from "./utils/normalizeSynonyms";
+// import { normalizeNumberWords } from "./utils/normalizeNumberWords";
+// import { normalizeEquipment } from "./utils/normalizeEquipment";
+// import { parseVoiceText } from "./utils/parseVoiceText";
+import { handleVoiceText } from "./utils/handleVoiceText";
 import AddLeak from "./pages/AddLeak";
 import DataBase from "./pages/DataBase";
 
@@ -21,6 +22,7 @@ export default function App() {
   const [error, setError] = useState(null);
 
   const [voiceData, setVoiceData] = useState(null);
+  const [photo, setPhoto] = useState(null);
   const clearVoiceData = useCallback(() => {
     setVoiceData(null);
   }, []);
@@ -29,27 +31,6 @@ export default function App() {
      VOICE INPUT
   ========================= */
   const recognitionBusyRef = useRef(false);
-
-  const handleVoiceText = (text) => {
-    const normalizedText = normalizeNumberWords(text);
-    const parsed = parseVoiceText(normalizedText);
-    const data = normalizeSynonyms(parsed);
-
-    if (data.component) {
-      const r = normalizeEquipment(data.component);
-      data.component = r.value;
-      if (r.type) data.component_type = r.type;
-    }
-
-    if (data.object) {
-      const r = normalizeEquipment(data.object);
-      data.object = r.value;
-      if (r.type) data.object_type = r.type;
-    }
-
-    setVoiceData(data);
-    setPage("add");
-  };
 
   const startVoiceInput = async () => {
     if (recognitionBusyRef.current) return;
@@ -69,7 +50,7 @@ export default function App() {
       });
 
       if (result?.matches?.[0]) {
-        handleVoiceText(result.matches[0]);
+        handleVoiceText(result.matches[0], setVoiceData, setPage);
       }
     } catch (e) {
       console.error("Speech start error:", e);
@@ -85,7 +66,7 @@ export default function App() {
       const result = await SpeechRecognition.stop();
 
       if (result?.matches?.[0]) {
-        handleVoiceText(result.matches[0]);
+        handleVoiceText(result.matches[0], setVoiceData, setPage);
       }
     } catch (e) {
       console.error("Speech stop error:", e);
@@ -218,10 +199,18 @@ export default function App() {
           clearVoiceData={clearVoiceData}
           startVoiceInput={startVoiceInput}
           stopVoiceInput={stopVoiceInput}
+          photo={photo}
+          setPhoto={setPhoto}
         />
       )}{" "}
       {page === "db" && (
-        <DataBase data={data} setData={setData} coords={coords} />
+        <DataBase
+          data={data}
+          setData={setData}
+          coords={coords}
+          photo={photo}
+          setPhoto={setPhoto}
+        />
       )}
     </div>
   );

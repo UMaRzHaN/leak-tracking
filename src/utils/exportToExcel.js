@@ -2,7 +2,8 @@ import * as XLSX from "xlsx";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { calculations } from "../utils/calculations";
-import { headers, keysOrder, normalizeRow } from "../utils/calculations";
+import { normalizeRow } from "../utils/normalizeRow";
+import { headers, keysOrder } from "../data/excelImportData";
 
 export const exportToExcel = async (rows) => {
   const FOLDER_NAME = "LeakReports";
@@ -16,7 +17,14 @@ export const exportToExcel = async (rows) => {
   const prepared = rows.map((rows) => calculations(rows));
 
   const preparedOrdered = prepared.map((r) =>
-    Object.fromEntries(keysOrder.map((k) => [k, normalizeRow(r)[k]]))
+    Object.fromEntries(
+      keysOrder.map((k) => {
+        if (k === "photo" && r.photo) {
+          return [k, `Documents/${FOLDER_NAME}/photo_${r.leak_id}.jpg`];
+        }
+        return [k, normalizeRow(r)[k]];
+      })
+    )
   );
   const ws = XLSX.utils.json_to_sheet(preparedOrdered);
   const wb = XLSX.utils.book_new();
@@ -25,7 +33,6 @@ export const exportToExcel = async (rows) => {
   XLSX.utils.book_append_sheet(wb, ws, "Утечки");
 
   const fileName = `leaks_${Date.now()}.xlsx`;
-  console.log(preparedOrdered);
   if (Capacitor.isNativePlatform()) {
     try {
       await Filesystem.mkdir({
@@ -49,12 +56,23 @@ export const exportToExcel = async (rows) => {
       encoding: Encoding.BASE64,
     });
 
-    alert(
-      `Файл сохранён:\nDocuments/${FOLDER_NAME}/${fileName}`
-    );
-  }
-  /* ---------- Browser ---------- */
-  else {
+    alert(`Файл сохранён:\nDocuments/${FOLDER_NAME}/${fileName}`);
+  } else {
+    /* ---------- Browser ---------- */
+    for (const row of prepared) {
+      if (!row.photo) continue;
+
+      const base64 = row.photo.split(",")[1];
+      const photoName = `photo_${row.leak_id}.jpg`;
+
+      await Filesystem.writeFile({
+        path: `${FOLDER_NAME}/${photoName}`,
+        data: base64,
+        directory: Directory.Documents,
+        encoding: Encoding.BASE64,
+      });
+    }
+
     XLSX.writeFile(wb, fileName);
   }
 };
