@@ -103,13 +103,13 @@ export default function LeakForm({
 
       {/* Обязательные поля */}
       <div className="form-field">
-        <label htmlFor="tag">
+        <label htmlFor="leak_id">
           Индивидуальный номер утечки (бирка){" "}
           <span className="required">*</span>
         </label>
 
         <input
-          id="tag"
+          id="leak_id"
           type="number"
           inputMode="numeric"
           className={`emojis field ${errors.leak_id ? "input-error" : ""}`}

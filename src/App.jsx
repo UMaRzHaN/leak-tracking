@@ -199,7 +199,6 @@ export default function App() {
 
         <button onClick={() => setPage("add")}>➕ Добавить утечку</button>
         <button onClick={() => setPage("db")}>📄 База данных</button>
-        <button onClick={() => setPage("test")}>📄 Test</button>
 
         {data.length > 0 && (
           <button
