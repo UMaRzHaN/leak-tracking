@@ -1,12 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { Geolocation } from "@capacitor/geolocation";
-import { Capacitor } from "@capacitor/core";
-import { SpeechRecognition } from "@capacitor-community/speech-recognition";
-// import { normalizeSynonyms } from "./utils/normalizeSynonyms";
-// import { normalizeNumberWords } from "./utils/normalizeNumberWords";
-// import { normalizeEquipment } from "./utils/normalizeEquipment";
-// import { parseVoiceText } from "./utils/parseVoiceText";
+import { useState, useEffect, useCallback } from "react";
+
+import { useGeolocation } from "./hooks/useGeolocation";
+import { useSpeechRecognition } from "./hooks/useSpeechRecognition";
 import { handleVoiceText } from "./utils/handleVoiceText";
+
 import AddLeak from "./pages/AddLeak";
 import DataBase from "./pages/DataBase";
 
@@ -15,134 +12,47 @@ import "./index.css";
 const STORAGE_KEY = "leaks_database_v1";
 
 export default function App() {
+  /* =========================
+     STATE
+  ========================= */
   const [page, setPage] = useState("db");
   const [data, setData] = useState([]);
 
-  const [coords, setCoords] = useState({ lat: null, lon: null });
-  const [error, setError] = useState(null);
-
   const [voiceData, setVoiceData] = useState(null);
-  const [photo, setPhoto] = useState(null);
+
   const clearVoiceData = useCallback(() => {
     setVoiceData(null);
   }, []);
 
   /* =========================
-     VOICE INPUT
+     GEOLOCATION (HOOK)
   ========================= */
-  const recognitionBusyRef = useRef(false);
+  const {
+    coords,
+    error: geoError,
+    loading: geoLoading,
+  } = useGeolocation();
 
-  const startVoiceInput = async () => {
-    if (recognitionBusyRef.current) return;
-
-    try {
-      const perm = await SpeechRecognition.checkPermissions();
-      if (perm.speechRecognition !== "granted") {
-        const req = await SpeechRecognition.requestPermissions();
-        if (req.speechRecognition !== "granted") return;
-      }
-
-      recognitionBusyRef.current = true;
-
-      const result = await SpeechRecognition.start({
-        language: "ru-RU",
-        popup: true, // ✅ Google UI
-      });
-
-      if (result?.matches?.[0]) {
-        handleVoiceText(result.matches[0], setVoiceData, setPage);
-      }
-    } catch (e) {
-      console.error("Speech start error:", e);
-    } finally {
-      recognitionBusyRef.current = false;
-    }
-  };
-
-  const stopVoiceInput = async () => {
-    if (!recognitionBusyRef.current) return;
-
-    try {
-      const result = await SpeechRecognition.stop();
-
-      if (result?.matches?.[0]) {
-        handleVoiceText(result.matches[0], setVoiceData, setPage);
-      }
-    } catch (e) {
-      console.error("Speech stop error:", e);
-    } finally {
-      recognitionBusyRef.current = false;
-    }
-  };
+  /* =========================
+     SPEECH RECOGNITION (HOOK)
+  ========================= */
+  const { start: startVoiceInput, stop: stopVoiceInput } =
+    useSpeechRecognition((text) => {
+      handleVoiceText(text, setVoiceData, setPage);
+    });
 
   /* =========================
      LOAD STORAGE
   ========================= */
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        setData(JSON.parse(saved));
-      } catch (e) {
-        console.error("Ошибка чтения localStorage", e);
-      }
+    if (!saved) return;
+
+    try {
+      setData(JSON.parse(saved));
+    } catch (e) {
+      console.error("Ошибка чтения localStorage", e);
     }
-  }, []);
-
-  /* =========================
-     GEOLOCATION
-  ========================= */
-  useEffect(() => {
-    const getLocation = async () => {
-      /* ===== WEB ===== */
-      if (!Capacitor.isNativePlatform()) {
-        if (!navigator.geolocation) {
-          setError("Браузер не поддерживает геолокацию");
-          return;
-        }
-
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            setCoords({
-              lat: pos.coords.latitude,
-              lon: pos.coords.longitude,
-            });
-          },
-          (err) => {
-            setError(err.message || "Ошибка геолокации (WEB)");
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-          }
-        );
-
-        return;
-      }
-
-      /* ===== MOBILE (CAPACITOR) ===== */
-      try {
-        const perm = await Geolocation.requestPermissions();
-
-        if (perm.location !== "granted") {
-          setError("Нет разрешения на геолокацию");
-          return;
-        }
-
-        const pos = await Geolocation.getCurrentPosition({
-          enableHighAccuracy: true,
-        });
-
-        setCoords({
-          lat: pos.coords.latitude,
-          lon: pos.coords.longitude,
-        });
-      } catch (err) {
-        setError(err.message || "Ошибка геолокации (MOBILE)");
-      }
-    };
-
-    getLocation();
   }, []);
 
   /* =========================
@@ -160,16 +70,20 @@ export default function App() {
   return (
     <div className="app">
       <div className="header">Журнал утечек газа</div>
+
       <div className="card">
         <div style={{ color: "#546e7a" }}>
-          {error ? (
-            <b>Локация 📍 {error}</b>
+          {geoError ? (
+            <b>Локация 📍 {geoError}</b>
+          ) : geoLoading ? (
+            <b>Локация 📍 Определение…</b>
           ) : coords.lat && coords.lon ? (
             <b>
-              Локация 📍 X/Y: {coords.lat.toFixed(6)} / {coords.lon.toFixed(6)}
+              Локация 📍 X/Y: {coords.lat.toFixed(6)} /{" "}
+              {coords.lon.toFixed(6)}
             </b>
           ) : (
-            <b>Локация 📍 Определение…</b>
+            <b>Локация 📍 Нет данных</b>
           )}
         </div>
 
@@ -190,6 +104,7 @@ export default function App() {
           </button>
         )}
       </div>
+
       {page === "add" && (
         <AddLeak
           data={data}
@@ -199,18 +114,11 @@ export default function App() {
           clearVoiceData={clearVoiceData}
           startVoiceInput={startVoiceInput}
           stopVoiceInput={stopVoiceInput}
-          photo={photo}
-          setPhoto={setPhoto}
         />
-      )}{" "}
+      )}
+
       {page === "db" && (
-        <DataBase
-          data={data}
-          setData={setData}
-          coords={coords}
-          photo={photo}
-          setPhoto={setPhoto}
-        />
+        <DataBase data={data} setData={setData} coords={coords} />
       )}
     </div>
   );

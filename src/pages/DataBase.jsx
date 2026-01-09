@@ -26,7 +26,6 @@ export default function DataBase({ data = [], setData, coords }) {
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("all");
   const [sortByDistance, setSortByDistance] = useState(false);
-  console.log(data);
 
   /* ---------- helpers ---------- */
 

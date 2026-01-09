@@ -11,6 +11,8 @@ import {
 } from "../data/dictionaries";
 import { normalizeNumber } from "../utils/normalizeNumber";
 import AutocompleteInput from "./AutocompleteInput";
+import { useCamera } from "../hooks/useCamera";
+
 const REQUIRED_FIELDS = ["leak_id", "video_id", "leak_speed"];
 const NUMBER_FIELDS = [
   "leak_id",
@@ -25,40 +27,12 @@ export default function LeakForm({
   clearVoiceData,
   stopVoiceInput,
   startVoiceInput,
-  photo,
   setPhoto,
 }) {
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
 
   /* ===== helpers ===== */
-  const handlePhotoAdd = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // опционально: проверка, что это изображение
-    if (!file.type.startsWith("image/")) {
-      alert("Пожалуйста, выберите изображение");
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onloadend = (event) => {
-      const base64 = event.target.result;
-
-      setForm((prev) => ({
-        ...prev,
-        photo: base64, // data:image/...;base64,...
-      }));
-    };
-
-    reader.onerror = () => {
-      console.error("Ошибка чтения файла");
-    };
-
-    reader.readAsDataURL(file);
-  };
 
   const handle = (key, value) => {
     const finalValue = NUMBER_FIELDS.includes(key)
@@ -123,6 +97,8 @@ export default function LeakForm({
   }, [voiceData, clearVoiceData]);
 
   /* ===== UI ===== */
+  const { takePhoto, pickFromBrowser, isNative } = useCamera();
+
   return (
     <div className="card" style={{ paddingBottom: 120 }}>
       {/* 🎙 Голосовой ввод */}
@@ -324,43 +300,47 @@ export default function LeakForm({
       </div>
       <div className="form-field">
         <label>Фото утечки</label>
-
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          id="photo"
-          style={{ display: "none" }}
-          onChange={handlePhotoAdd}
-        />
-
+        {!isNative && (
+          <input
+            type="file"
+            accept="image/*"
+            onChange={async (e) => {
+              try {
+                const base64 = await pickFromBrowser(e.target.files[0]);
+                setForm((prev) => ({ ...prev, photo: base64 }));
+              } catch (e) {
+                alert(e);
+              }
+            }}
+          />
+        )}
         <button
           type="button"
-          onClick={() => document.getElementById("photo").click()}
-          style={{
-            background: "#e3f2fd",
-            color: "#0d47a1",
-            border: "1px solid #90caf9",
-            marginBottom: 8,
+          onClick={async () => {
+            try {
+              const base64 = await takePhoto();
+              setForm((prev) => ({ ...prev, photo: base64 }));
+            } catch (e) {
+              alert(e.message || e);
+            }
           }}
         >
-          📷 Добавить фото
+          📷 Сделать фото
         </button>
 
         {form.photo && (
-          <div style={{ marginTop: 8 }}>
-            <img
-              src={form.photo}
-              alt="Фото утечки"
-              style={{
-                width: "100%",
-                maxHeight: 200,
-                objectFit: "cover",
-                borderRadius: 8,
-                border: "1px solid #e0e0e0",
-              }}
-            />
-          </div>
+          <img
+            src={form.photo}
+            alt="Фото утечки"
+            style={{
+              maxWidth: 200,
+
+              maxHeight: 200,
+              objectFit: "cover",
+              borderRadius: 8,
+              border: "1px solid #e0e0e0",
+            }}
+          />
         )}
       </div>
 
