@@ -25,102 +25,102 @@ export default function LeakForm({
   onAdd,
   voiceData,
   clearVoiceData,
-  stopVoiceInput,
   startVoiceInput,
-  setPhoto,
+  stopVoiceInput,
 }) {
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
+  const { takePhoto, pickFromBrowser, isNative } = useCamera();
 
-  /* ===== helpers ===== */
-
+  /* =========================
+     HELPERS
+     ========================= */
   const handle = (key, value) => {
     const finalValue = NUMBER_FIELDS.includes(key)
       ? normalizeNumber(value)
       : value;
 
-    setForm((prev) => ({
-      ...prev,
-      [key]: finalValue,
-    }));
-
-    // сразу чистим ошибку
+    setForm((prev) => ({ ...prev, [key]: finalValue }));
     setErrors((prev) => ({ ...prev, [key]: "" }));
   };
 
-  /* ===== VALIDATION ===== */
+  /* =========================
+     VALIDATION
+  ========================= */
   const validate = () => {
-    const newErrors = {};
+    const nextErrors = {};
 
     REQUIRED_FIELDS.forEach((key) => {
       const value = form[key];
-
       if (value === "" || value === null || value === undefined) {
-        newErrors[key] = "Обязательное числовое поле";
+        nextErrors[key] = "Обязательное числовое поле";
       } else if (NUMBER_FIELDS.includes(key) && !Number.isFinite(value)) {
-        newErrors[key] = "Введите число";
+        nextErrors[key] = "Введите число";
       }
     });
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
+  /* =========================
+     ACTIONS
+  ========================= */
   const add = () => {
     if (!validate()) return;
-    onAdd({ ...form, date: new Date().toLocaleDateString() });
+
+    onAdd({
+      ...form,
+      date: new Date().toLocaleDateString(),
+    });
+
     setForm({});
     setErrors({});
-    setPhoto(null);
     clearVoiceData?.();
   };
+
   const clearForm = () => {
     stopVoiceInput?.();
     setForm({});
     setErrors({});
-    setPhoto(null);
     clearVoiceData?.();
   };
 
+  /* =========================
+     VOICE DATA
+  ========================= */
   useEffect(() => {
     if (!voiceData) return;
 
-    setForm((prev) => ({
-      ...prev,
-      ...voiceData,
-    }));
-
-    // ⏳ даём React обновить input
-    setTimeout(() => {
-      clearVoiceData();
-    }, 0);
+    setForm((prev) => ({ ...prev, ...voiceData }));
+    setTimeout(() => clearVoiceData?.(), 0);
   }, [voiceData, clearVoiceData]);
 
-  /* ===== UI ===== */
-  const { takePhoto, pickFromBrowser, isNative } = useCamera();
-
+  /* =========================
+     UI
+  ========================= */
   return (
-    <div className="card" style={{ paddingBottom: 120 }}>
+    <div className="card" style={{ paddingBottom: 136 }}>
       {/* 🎙 Голосовой ввод */}
-      <button
-        className={`voice-button fixed`}
-        onPointerDown={startVoiceInput}
-        onPointerUp={stopVoiceInput}
-      >
-        🎙
-      </button>
-      <button
-        type="button"
-        onClick={clearForm}
-        style={{
-          marginBottom: 12,
-          background: "#f5f5f5",
-          color: "#455a64",
-          border: "1px solid #e0e0e0",
-        }}
-      >
-        🧹 Очистить лист
-      </button>
+      <div className="floating-actions">
+        <button
+          className="fab mic"
+          onPointerDown={startVoiceInput}
+          onPointerUp={stopVoiceInput}
+          onPointerCancel={stopVoiceInput}
+          onPointerLeave={stopVoiceInput}
+        >
+          🎙
+        </button>
+        <button
+          className="fab pen"
+          id="fixed"
+          type="button"
+          onClick={clearForm}
+        >
+          🧹
+        </button>
+      </div>
       <div className="form-field">
         <label htmlFor="field">УМГ</label>
         <input
@@ -248,10 +248,10 @@ export default function LeakForm({
         id="description"
         label="Описание утечки"
         placeholder="Введите описание утечки"
-        value={form.description}
+        value={form.leak_description}
         options={Object.values(description).flat()}
-        onChange={(v) => handle("description", v)}
-        error={errors.description}
+        onChange={(v) => handle("leak_description", v)}
+        error={errors.leak_description}
       />
       <AutocompleteInput
         id="leak_cause"
@@ -298,51 +298,47 @@ export default function LeakForm({
           onChange={(e) => handle("note", e.target.value)}
         />
       </div>
-      <div className="form-field">
-        <label>Фото утечки</label>
-        {!isNative && (
-          <input
-            type="file"
-            accept="image/*"
-            onChange={async (e) => {
-              try {
-                const base64 = await pickFromBrowser(e.target.files[0]);
-                setForm((prev) => ({ ...prev, photo: base64 }));
-              } catch (e) {
-                alert(e);
-              }
-            }}
-          />
-        )}
-        <button
-          type="button"
-          onClick={async () => {
+      <button
+        type="button"
+        onClick={async () => {
+          try {
+            const photo = await takePhoto();
+            setForm((prev) => ({ ...prev, photo }));
+          } catch (e) {
+            alert(e.message || e);
+          }
+        }}
+      >
+        📷 Сделать фото
+      </button>
+
+      {!isNative && (
+        <input
+          type="file"
+          accept="image/*"
+          onChange={async (e) => {
             try {
-              const base64 = await takePhoto();
-              setForm((prev) => ({ ...prev, photo: base64 }));
+              const photo = await pickFromBrowser(e.target.files[0]);
+              setForm((prev) => ({ ...prev, photo }));
             } catch (e) {
-              alert(e.message || e);
+              alert(e);
             }
           }}
-        >
-          📷 Сделать фото
-        </button>
+        />
+      )}
 
-        {form.photo && (
-          <img
-            src={form.photo}
-            alt="Фото утечки"
-            style={{
-              maxWidth: 200,
-
-              maxHeight: 200,
-              objectFit: "cover",
-              borderRadius: 8,
-              border: "1px solid #e0e0e0",
-            }}
-          />
-        )}
-      </div>
+      {form.photo && (
+        <img
+          src={form.photo}
+          alt="Фото утечки"
+          style={{
+            maxWidth: 200,
+            maxHeight: 200,
+            objectFit: "cover",
+            borderRadius: 8,
+          }}
+        />
+      )}
 
       <button onClick={add}>💾 Сохранить</button>
     </div>

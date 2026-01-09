@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { exportToExcel } from "../utils/exportToExcel";
 import { getDistanceMeters } from "../utils/getDistanceMeters";
+import EditTextField from "../components/EditTextField";
 const STORAGE_KEY = "leaks_database_v1";
 
 /* Поля для поиска */
@@ -150,190 +151,115 @@ export default function DataBase({ data = [], setData, coords }) {
         <div key={row.id} className="card" style={{ margin: "10px 0" }}>
           {editId === row.id ? (
             <>
-              <div className="field">
-                <input
-                  value={editRow.leak_id || ""}
-                  onChange={(e) =>
-                    setEditRow({ ...editRow, leak_id: Number(e.target.value) })
-                  }
-                  placeholder=" "
-                />
-                <label>Индивидуальный номер утечки</label>
-              </div>
+              <EditTextField
+                label="Индивидуальный номер утечки"
+                value={editRow.leak_id}
+                onChange={(value) => setEditRow({ ...editRow, leak_id: value })}
+              />
 
-              <div className="field">
-                <input
-                  value={editRow.video_id || ""}
-                  onChange={(e) =>
-                    setEditRow({ ...editRow, video_id: Number(e.target.value) })
-                  }
-                  placeholder=" "
-                />
-                <label>Индивидуальный номер видео</label>
-              </div>
-              <div className="field">
-                <input
-                  value={editRow.leak_speed || ""}
-                  onChange={(e) =>
-                    setEditRow({
-                      ...editRow,
-                      leak_speed: Number(e.target.value),
-                    })
-                  }
-                  placeholder=" "
-                />
-                <label>Скорость утечки</label>
-              </div>
+              <EditTextField
+                label="Видео"
+                value={editRow.video}
+                onChange={(value) => setEditRow({ ...editRow, video: value })}
+              />
+              <EditTextField
+                label="Скорость утечки"
+                value={editRow.leak_speed}
+                onChange={(value) =>
+                  setEditRow({ ...editRow, leak_speed: value })
+                }
+              />
 
-              <div className="field">
-                <input
-                  value={editRow.temperature || ""}
-                  onChange={(e) =>
-                    setEditRow({
-                      ...editRow,
-                      temperature: Number(e.target.value),
-                    })
-                  }
-                  placeholder=" "
-                />
-                <label>Температура</label>
-              </div>
+              <EditTextField
+                label="Температура"
+                value={editRow.temperature}
+                onChange={(value) =>
+                  setEditRow({ ...editRow, temperature: value })
+                }
+              />
 
-              <div className="field">
-                <input
-                  value={editRow.pressure || ""}
-                  onChange={(e) =>
-                    setEditRow({ ...editRow, pressure: Number(e.target.value) })
-                  }
-                  placeholder=" "
-                />
-                <label>Давление</label>
-              </div>
-              <div className="field">
-                <input
-                  value={editRow.field || ""}
-                  onChange={(e) =>
-                    setEditRow({ ...editRow, field: e.target.value })
-                  }
-                  placeholder=" "
-                />
-                <label>УМГ</label>
-              </div>
+              <EditTextField
+                label="Давление"
+                value={editRow.pressure}
+                onChange={(value) =>
+                  setEditRow({ ...editRow, pressure: value })
+                }
+              />
+              <EditTextField
+                label="УМГ"
+                value={editRow.field}
+                onChange={(value) => setEditRow({ ...editRow, field: value })}
+              />
 
-              <div className="field">
-                <input
-                  value={editRow.station || ""}
-                  onChange={(e) =>
-                    setEditRow({ ...editRow, station: e.target.value })
-                  }
-                  placeholder=" "
-                />
-                <label>Компрессорная станция</label>
-              </div>
-              <div className="field">
-                <input
-                  value={editRow.location || ""}
-                  onChange={(e) =>
-                    setEditRow({ ...editRow, location: e.target.value })
-                  }
-                  placeholder=" "
-                />
-                <label>Локация</label>
-              </div>
+              <EditTextField
+                label="Компрессорная станция"
+                value={editRow.station}
+                onChange={(value) => setEditRow({ ...editRow, station: value })}
+              />
+              <EditTextField
+                label="Локация"
+                value={editRow.location}
+                onChange={(value) =>
+                  setEditRow({ ...editRow, location: value })
+                }
+              />
 
-              <div className="field">
-                <input
-                  value={editRow.object || ""}
-                  onChange={(e) =>
-                    setEditRow({ ...editRow, object: e.target.value })
-                  }
-                  placeholder=" "
-                />
-                <label>Объект</label>
-              </div>
-              <div className="field">
-                <input
-                  value={editRow.component || ""}
-                  onChange={(e) =>
-                    setEditRow({ ...editRow, component: e.target.value })
-                  }
-                  placeholder=" "
-                />
-                <label>Компонент</label>
-              </div>
+              <EditTextField
+                label="Объект"
+                value={editRow.object}
+                onChange={(value) => setEditRow({ ...editRow, object: value })}
+              />
+              <EditTextField
+                label="Компонент"
+                value={editRow.component}
+                onChange={(value) =>
+                  setEditRow({ ...editRow, component: value })
+                }
+              />
 
-              <div className="field">
-                <input
-                  value={editRow.leak_description || ""}
-                  onChange={(e) =>
-                    setEditRow({ ...editRow, leak_description: e.target.value })
-                  }
-                  placeholder=" "
-                />
-                <label>Описание утечки</label>
-              </div>
+              <EditTextField
+                label="Описание утечки"
+                value={editRow.leak_description}
+                onChange={(value) =>
+                  setEditRow({ ...editRow, leak_description: value })
+                }
+              />
 
-              <div className="field">
-                <input
-                  value={editRow.leak_cause || ""}
-                  onChange={(e) =>
-                    setEditRow({ ...editRow, leak_cause: e.target.value })
-                  }
-                  placeholder=" "
-                />
-                <label>Причина утечки</label>
-              </div>
-              <div className="field">
-                <input
-                  value={editRow.technological_solution || ""}
-                  onChange={(e) =>
-                    setEditRow({
-                      ...editRow,
-                      technological_solution: e.target.value,
-                    })
-                  }
-                  placeholder=" "
-                />
-                <label>Технологическое решение</label>
-              </div>
+              <EditTextField
+                label="Причина утечки"
+                value={editRow.leak_cause}
+                onChange={(value) =>
+                  setEditRow({ ...editRow, leak_cause: value })
+                }
+              />
+              <EditTextField
+                label="Технологическое решение"
+                value={editRow.technological_solution}
+                onChange={(value) =>
+                  setEditRow({ ...editRow, technological_solution: value })
+                }
+              />
 
-              <div className="field">
-                <input
-                  value={editRow.repair_recommendation || ""}
-                  onChange={(e) =>
-                    setEditRow({
-                      ...editRow,
-                      repair_recommendation: e.target.value,
-                    })
-                  }
-                  placeholder=" "
-                />
-                <label>Решение / План устранения</label>
-              </div>
+              <EditTextField
+                label="Решение/ План устранения"
+                value={editRow.repair_recommendation}
+                onChange={(value) =>
+                  setEditRow({ ...editRow, repair_recommendation: value })
+                }
+              />
 
-              <div className="field">
-                <input
-                  value={editRow.materials_equipment || ""}
-                  onChange={(e) =>
-                    setEditRow({
-                      ...editRow,
-                      materials_equipment: e.target.value,
-                    })
-                  }
-                  placeholder=" "
-                />
-                <label>МТР ремонта (предполагаемый)</label>
-              </div>
-              <div className="field">
-                <textarea
-                  value={editRow.note || ""}
-                  onChange={(e) =>
-                    setEditRow({ ...editRow, note: e.target.value })
-                  }
-                  placeholder=" "
-                />
-                <label>Примечание</label>
-              </div>
+              <EditTextField
+                label="МТР ремонта (предполагаемый)"
+                value={editRow.materials_equipment}
+                onChange={(value) =>
+                  setEditRow({ ...editRow, materials_equipment: value })
+                }
+              />
+              <EditTextField
+                label="Примечание"
+                value={editRow.note}
+                onChange={(value) => setEditRow({ ...editRow, note: value })}
+              />
               {/* ===== ФОТО ===== */}
               <div className="field">
                 <label>Фото утечки</label>
@@ -380,7 +306,10 @@ export default function DataBase({ data = [], setData, coords }) {
             </>
           ) : (
             <>
-              <strong>#{row.index}</strong>
+              <strong>
+                #{row.index} <b>X/Y: </b>
+                {row.latitude}/{row.longitude}
+              </strong>
               <div>
                 <b> Дата:</b> {row.date}
               </div>
@@ -415,8 +344,14 @@ export default function DataBase({ data = [], setData, coords }) {
                 <b>Примечание:</b> {row.note}
               </div>
               {row.photo && (
-                <div style={{ marginTop: 10 }}>
-                  <b>Фото:</b>
+                <div
+                  style={{
+                    marginTop: 20,
+                  }}
+                >
+                  <p>
+                    <b>Фото:</b>
+                  </p>
                   <img
                     src={row.photo}
                     alt="Фото утечки"

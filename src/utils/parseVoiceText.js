@@ -135,6 +135,7 @@ export const parseVoiceText = (text) => {
       result[key] = capitalizeFirst(value.trim());
     }
   });
+console.log(result);
 
   return result;
 };

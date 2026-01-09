@@ -50,15 +50,20 @@
     <uses-permission android:name="android.permission.CAMERA" />
 
 <!-- 📂 Доступ к файлам (Android 10 и ниже) -->
-    <uses-permission
-    android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-    android:maxSdkVersion="28" />
-
-    <uses-permission
+    <!-- <uses-permission
     android:name="android.permission.READ_EXTERNAL_STORAGE"
     android:maxSdkVersion="32" />
+    <uses-permission
+    android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+    android:maxSdkVersion="28" /> -->
 
-<!-- 📂 Для Android 13+ (замена READ_EXTERNAL_STORAGE) -->
+
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission
+    android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+<!-- 📂 Android 13+ (ОБЯЗАТЕЛЬНО) -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
 
 </manifest>

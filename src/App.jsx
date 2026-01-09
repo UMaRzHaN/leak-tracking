@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 
 import { useGeolocation } from "./hooks/useGeolocation";
 import { useSpeechRecognition } from "./hooks/useSpeechRecognition";
+
 import { handleVoiceText } from "./utils/handleVoiceText";
 
 import AddLeak from "./pages/AddLeak";
@@ -27,19 +28,16 @@ export default function App() {
   /* =========================
      GEOLOCATION (HOOK)
   ========================= */
-  const {
-    coords,
-    error: geoError,
-    loading: geoLoading,
-  } = useGeolocation();
+  const { coords, error: geoError, loading: geoLoading } = useGeolocation();
 
   /* =========================
      SPEECH RECOGNITION (HOOK)
   ========================= */
-  const { start: startVoiceInput, stop: stopVoiceInput } =
-    useSpeechRecognition((text) => {
+  const { start: startVoiceInput, stop: stopVoiceInput } = useSpeechRecognition(
+    (text) => {
       handleVoiceText(text, setVoiceData, setPage);
-    });
+    }
+  );
 
   /* =========================
      LOAD STORAGE
@@ -79,8 +77,7 @@ export default function App() {
             <b>Локация 📍 Определение…</b>
           ) : coords.lat && coords.lon ? (
             <b>
-              Локация 📍 X/Y: {coords.lat.toFixed(6)} /{" "}
-              {coords.lon.toFixed(6)}
+              Локация 📍 X/Y: {coords.lat.toFixed(6)} / {coords.lon.toFixed(6)}
             </b>
           ) : (
             <b>Локация 📍 Нет данных</b>

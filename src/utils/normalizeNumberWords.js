@@ -1,16 +1,17 @@
-import { NUMBER_WORDS } from "./numberWords";
+import { NUMBER_WORDS } from "./NUMBER_WORDS";
+import { parseNumberFromWords } from "./parseNumberFromWords";
 
 export function normalizeNumberWords(text) {
   if (!text) return text;
 
   let result = text.toLowerCase();
 
-  /* ===== минус ===== */
+  /* ===== МИНУС ===== */
   result = result.replace(/\bминус\s+/g, "-");
 
-  /* ===== РАЗМЕРЫ: "50 на 40" И "50 дробь 40" → "50/40" ===== */
+  /* ===== РАЗМЕРЫ: "50 на 40", "пятьдесят на сорок" → "50/40" ===== */
   result = result.replace(
-    /\b(\w+|\d+)\s+(на|дробь|x|)\s+(\w+|\d+)\b/g,
+    /\b([\w-]+)\s+(на|дробь|x)\s+([\w-]+)\b/g,
     (match, a, _sep, b) => {
       const left =
         NUMBER_WORDS[a] !== undefined ? NUMBER_WORDS[a] : a;
@@ -24,14 +25,18 @@ export function normalizeNumberWords(text) {
     }
   );
 
-  /* ===== ДЕСЯТИЧНЫЕ (БЕЗ слова "дробь") ===== */
+  /* ===== ДЕСЯТИЧНЫЕ: "два и пять", "2 целых 3" ===== */
   result = result.replace(
-    /\b(\w+|\d+)\s+(целых|и|точка)\s+(\w+|\d+)\b/g,
+    /\b([\w-]+)\s+(целых|и|точка)\s+([\w-]+)\b/g,
     (match, intPart, _sep, fracPart) => {
       const a =
-        NUMBER_WORDS[intPart] !== undefined ? NUMBER_WORDS[intPart] : intPart;
+        NUMBER_WORDS[intPart] !== undefined
+          ? NUMBER_WORDS[intPart]
+          : intPart;
       const b =
-        NUMBER_WORDS[fracPart] !== undefined ? NUMBER_WORDS[fracPart] : fracPart;
+        NUMBER_WORDS[fracPart] !== undefined
+          ? NUMBER_WORDS[fracPart]
+          : fracPart;
 
       if (!Number.isFinite(Number(a)) || !Number.isFinite(Number(b)))
         return match;
@@ -40,11 +45,14 @@ export function normalizeNumberWords(text) {
     }
   );
 
-  /* ===== одиночные числа ===== */
-  Object.entries(NUMBER_WORDS).forEach(([word, num]) => {
-    const re = new RegExp(`\\b${word}\\b`, "g");
-    result = result.replace(re, String(num));
-  });
+  /* ===== СЛОВЕСНЫЕ ЧИСЛА ЛЮБОЙ ДЛИНЫ ===== */
+  result = result.replace(
+    /((ноль|один|одна|одно|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать|тринадцать|четырнадцать|пятнадцать|шестнадцать|семнадцать|восемнадцать|девятнадцать|двадцать|тридцать|сорок|пятьдесят|шестьдесят|семьдесят|восемьдесят|девяносто|сто|двести|триста|четыреста|пятьсот|шестьсот|семьсот|восемьсот|девятьсот|тысяча|тысячи|тысяч)(\s+|$))+?/gi,
+    (match) => {
+      const num = parseNumberFromWords(match);
+      return num !== null ? String(num) : match;
+    }
+  );
 
   return result;
 }
