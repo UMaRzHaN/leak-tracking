@@ -10,7 +10,7 @@ export function normalizeNumberWords(text) {
 
   /* ===== РАЗМЕРЫ: "50 на 40" И "50 дробь 40" → "50/40" ===== */
   result = result.replace(
-    /\b(\w+|\d+)\s+(на|дробь)\s+(\w+|\d+)\b/g,
+    /\b(\w+|\d+)\s+(на|дробь|x|)\s+(\w+|\d+)\b/g,
     (match, a, _sep, b) => {
       const left =
         NUMBER_WORDS[a] !== undefined ? NUMBER_WORDS[a] : a;

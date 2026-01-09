@@ -1,13 +1,18 @@
 import { capitalizeFirst } from "./capitalizeFirst";
 
-// ОБЯЗАТЕЛЬНО: маркеры должны быть БЕЗ захватывающих скобок
+/**
+ * ЕДИНЫЙ СПИСОК МАРКЕРОВ
+ * ❗ Используется ТОЛЬКО в lookahead
+ * ❗ НЕ должен иметь захватывающих скобок
+ */
 const FIELD_MARKERS =
   "бирк[аи]?|видео|скорост[ьи]?|давлени[ея]?|температур[аы]?|" +
   "умг|умк|умгэ|умге|умга|омг|управление|" +
-  "компрессорная станци[я]|примечани[ея]|локаци[яи]|" +
-  "объект|компонент[ы]?|описание утечк[и]|причина утечк[и]|" +
-  "технологическ(ое|ий) решени(е|я)|тех решени(е|я)|способ устранени(й|я)|метод устранени(й|я)|" +
-  "план устранения|мтр";
+  "компрессорная станци[я]|станци[я]|" +
+  "локаци[яи]|объект|компонент[ы]?|" +
+  "описание утечк[и]|причина утечк[и]|" +
+  "технологическ(ое|ий) решени(е|я)|тех решени(е|я)|способ устранени(я|й)|метод устранени(я|й)|" +
+  "план устранения|мтр|примечани[ея]";
 
 export const parseVoiceText = (text) => {
   const result = {};
@@ -16,6 +21,7 @@ export const parseVoiceText = (text) => {
   const normalized = text.toLowerCase().replace(",", ".");
 
   const patterns = [
+    /* ===== ЧИСЛА ===== */
     { key: "leak_id", regex: /бирк[аи]?\s*(\d+)/, type: "number" },
     { key: "video_id", regex: /видео\s*(\d+)/, type: "number" },
     {
@@ -34,81 +40,81 @@ export const parseVoiceText = (text) => {
       type: "number",
     },
 
-    // ===== ТЕКСТОВЫЕ ПОЛЯ =====
+    /* ===== STRING (ВСЕ ПО ОДНОМУ ПРИНЦИПУ) ===== */
     {
       key: "field",
       regex: new RegExp(
-        `(?:умг|умк|умгэ|умге|умга|омг|управление)\\s+(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+        `(?:умг|умк|умгэ|умге|умга|омг|управление)\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
       ),
       type: "string",
     },
     {
       key: "station",
       regex: new RegExp(
-        `компрессорная станци[я]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
-      ),
-      type: "string",
-    },
-    {
-      key: "note",
-      regex: new RegExp(
-        `примечани[ея]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+        `компрессорная станци[я]\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
       ),
       type: "string",
     },
     {
       key: "location",
       regex: new RegExp(
-        `локаци[яи]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+        `локаци[яи]\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
       ),
       type: "string",
     },
     {
       key: "object",
       regex: new RegExp(
-        `объект\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+        `объект\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
       ),
       type: "string",
     },
     {
       key: "component",
       regex: new RegExp(
-        `компонент[ы]?\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+        `компонент[ы]?\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
       ),
       type: "string",
     },
     {
       key: "leak_description",
       regex: new RegExp(
-        `описание утечк[и]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+        `описание утечк[и]\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
       ),
       type: "string",
     },
     {
       key: "leak_cause",
       regex: new RegExp(
-        `причина утечк[и]\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+        `причина утечк[и]\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
       ),
       type: "string",
     },
     {
       key: "technological_solution",
       regex: new RegExp(
-        `(технологическ(ое|ий) решени(е|я)|тех решени(е|я)|способ устранени(й|я)|метод устранени(й|я))\\s+(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+        `(технологическ(ое|ий) решени(е|я)|тех решени(е|я)|способ устранени(я|й)|метод устранени(я|й))\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
       ),
       type: "string",
     },
     {
       key: "repair_recommendation",
       regex: new RegExp(
-        `план устранения\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+        `план устранения\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
       ),
       type: "string",
     },
     {
       key: "materials_equipment",
       regex: new RegExp(
-        `мтр\\s*(.+)(?=\\s+(?:${FIELD_MARKERS})|$)`
+        `мтр\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
+      ),
+      type: "string",
+    },
+    {
+      key: "note",
+      regex: new RegExp(
+        `примечани[ея]\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
       ),
       type: "string",
     },
@@ -121,8 +127,10 @@ export const parseVoiceText = (text) => {
     if (type === "number") {
       result[key] = Number(match[1]);
     } else {
-      // всегда берём последнюю строковую группу
-      const value = match.findLast((v) => typeof v === "string");
+      // берём ПОСЛЕДНЮЮ строковую группу (без маркеров)
+      const value = match.findLast(
+        (v) => typeof v === "string" && v.trim()
+      );
       if (!value) return;
       result[key] = capitalizeFirst(value.trim());
     }

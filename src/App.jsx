@@ -5,11 +5,11 @@ import { SpeechRecognition } from "@capacitor-community/speech-recognition";
 import { normalizeSynonyms } from "./utils/normalizeSynonyms";
 import { normalizeNumberWords } from "./utils/normalizeNumberWords";
 import { normalizeEquipment } from "./utils/normalizeEquipment";
+import { parseVoiceText } from "./utils/parseVoiceText";
 import AddLeak from "./pages/AddLeak";
 import DataBase from "./pages/DataBase";
 
 import "./index.css";
-import { parseVoiceText } from "./utils/parseVoiceText";
 
 const STORAGE_KEY = "leaks_database_v1";
 
@@ -52,6 +52,35 @@ export default function App() {
     setPage("add");
   };
 
+  // const startVoiceInput = async () => {
+  //   if (recognitionBusyRef.current) return;
+
+  //   try {
+  //     const perm = await SpeechRecognition.checkPermissions();
+  //     if (perm.speechRecognition !== "granted") {
+  //       const req = await SpeechRecognition.requestPermissions();
+  //       if (req.speechRecognition !== "granted") return;
+  //     }
+
+  //     recognitionBusyRef.current = true;
+  //     setIsRecording(true);
+
+  //     const result = await SpeechRecognition.start({
+  //       language: "ru-RU",
+  //       partialResults: false,
+  //       popup: true,
+  //     });
+
+  //     // 🔑 ВОТ ЭТОТ БЛОК — КЛЮЧ
+  //     if (result?.matches?.[0]) {
+  //       handleVoiceText(result.matches[0]);
+  //     }
+  //   } catch (e) {
+  //     console.error("Speech start error:", e);
+  //     recognitionBusyRef.current = false;
+  //     setIsRecording(false);
+  //   }
+  // };
   const startVoiceInput = async () => {
     if (recognitionBusyRef.current) return;
 
@@ -67,16 +96,15 @@ export default function App() {
 
       const result = await SpeechRecognition.start({
         language: "ru-RU",
-        partialResults: false,
-        popup: false,
+        popup: true, // ✅ Google UI
       });
 
-      // 🔑 ВОТ ЭТОТ БЛОК — КЛЮЧ
       if (result?.matches?.[0]) {
         handleVoiceText(result.matches[0]);
       }
     } catch (e) {
       console.error("Speech start error:", e);
+    } finally {
       recognitionBusyRef.current = false;
       setIsRecording(false);
     }
