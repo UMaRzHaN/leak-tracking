@@ -19,7 +19,6 @@ export default function App() {
 
   const [coords, setCoords] = useState({ lat: null, lon: null });
   const [error, setError] = useState(null);
-  const [isRecording, setIsRecording] = useState(false);
 
   const [voiceData, setVoiceData] = useState(null);
   const clearVoiceData = useCallback(() => {
@@ -52,35 +51,6 @@ export default function App() {
     setPage("add");
   };
 
-  // const startVoiceInput = async () => {
-  //   if (recognitionBusyRef.current) return;
-
-  //   try {
-  //     const perm = await SpeechRecognition.checkPermissions();
-  //     if (perm.speechRecognition !== "granted") {
-  //       const req = await SpeechRecognition.requestPermissions();
-  //       if (req.speechRecognition !== "granted") return;
-  //     }
-
-  //     recognitionBusyRef.current = true;
-  //     setIsRecording(true);
-
-  //     const result = await SpeechRecognition.start({
-  //       language: "ru-RU",
-  //       partialResults: false,
-  //       popup: true,
-  //     });
-
-  //     // 🔑 ВОТ ЭТОТ БЛОК — КЛЮЧ
-  //     if (result?.matches?.[0]) {
-  //       handleVoiceText(result.matches[0]);
-  //     }
-  //   } catch (e) {
-  //     console.error("Speech start error:", e);
-  //     recognitionBusyRef.current = false;
-  //     setIsRecording(false);
-  //   }
-  // };
   const startVoiceInput = async () => {
     if (recognitionBusyRef.current) return;
 
@@ -92,7 +62,6 @@ export default function App() {
       }
 
       recognitionBusyRef.current = true;
-      setIsRecording(true);
 
       const result = await SpeechRecognition.start({
         language: "ru-RU",
@@ -106,7 +75,6 @@ export default function App() {
       console.error("Speech start error:", e);
     } finally {
       recognitionBusyRef.current = false;
-      setIsRecording(false);
     }
   };
 
@@ -123,7 +91,6 @@ export default function App() {
       console.error("Speech stop error:", e);
     } finally {
       recognitionBusyRef.current = false;
-      setIsRecording(false);
     }
   };
 
@@ -251,10 +218,11 @@ export default function App() {
           clearVoiceData={clearVoiceData}
           startVoiceInput={startVoiceInput}
           stopVoiceInput={stopVoiceInput}
-          isRecording={isRecording}
         />
       )}{" "}
-      {page === "db" && <DataBase data={data} setData={setData} />}
+      {page === "db" && (
+        <DataBase data={data} setData={setData} coords={coords} />
+      )}
     </div>
   );
 }

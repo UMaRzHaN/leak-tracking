@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { exportToExcel } from "../utils/exportToExcel";
-
+import { getDistanceMeters } from "../utils/getDistanceMeters";
 const STORAGE_KEY = "leaks_database_v1";
 
 /* Поля для поиска */
@@ -20,11 +20,12 @@ const SEARCH_FIELDS = [
   { key: "note", label: "Примечание" },
 ];
 
-export default function DataBase({ data = [], setData }) {
+export default function DataBase({ data = [], setData, coords }) {
   const [editId, setEditId] = useState(null);
   const [editRow, setEditRow] = useState({});
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("all");
+  const [sortByDistance, setSortByDistance] = useState(false);
 
   /* ---------- helpers ---------- */
 
@@ -70,6 +71,17 @@ export default function DataBase({ data = [], setData }) {
   });
 
   /* ---------- render ---------- */
+  const sortedData = useMemo(() => {
+    if (!sortByDistance || !coords?.lat || !coords?.lon) {
+      return filteredData;
+    }
+
+    return [...filteredData].sort((a, b) => {
+      const da = getDistanceMeters(coords.lat, coords.lon, a.lat, a.lon);
+      const db = getDistanceMeters(coords.lat, coords.lon, b.lat, b.lon);
+      return da - db;
+    });
+  }, [filteredData, sortByDistance, coords]);
 
   return (
     <div className="card">
@@ -77,7 +89,12 @@ export default function DataBase({ data = [], setData }) {
       <button onClick={() => exportToExcel(filteredData)}>
         📥 Экспорт в Excel
       </button>
-
+      <button
+        onClick={() => setSortByDistance((v) => !v)}
+        className={`sort-btn ${sortByDistance ? "active" : ""}`}
+      >
+        {sortByDistance ? "↩️ Обычный порядок" : "📍 Отсортировать по близости"}
+      </button>
       {/* Поиск */}
       <div className="card" style={{ marginBottom: 12 }}>
         <div className="field">
@@ -109,7 +126,7 @@ export default function DataBase({ data = [], setData }) {
       </div>
 
       {/* Список записей */}
-      {filteredData.map((row) => (
+      {sortedData.map((row) => (
         <div key={row.id} className="card" style={{ margin: "10px 0" }}>
           {editId === row.id ? (
             <>

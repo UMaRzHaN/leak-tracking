@@ -1,5 +1,7 @@
 * {
   box-sizing: border-box;
+  padding: 0;
+  margin: 0;
   font-family: system-ui, Arial, sans-serif;
 }
 
@@ -23,11 +25,10 @@ body {
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  padding-bottom: calc(36px + env(safe-area-inset-bottom));
 }
 .input-error {
   border: 2px solid #e53935;
-  background-color: #fff5f5;
+  background-color: #f1f8e9;
 }
 input,
 select,
@@ -105,13 +106,13 @@ button:active {
   background-image: url(img/tag.png);
 }
 #video {
-  background-image: url(img/video.jpg);
+  background-image: url(img/video.png);
 }
 #speed {
-  background-image: url(img/speed.jpg);
+  background-image: url(img/speed.png);
 }
 #pressure {
-  background-image: url(img/pressure.jpg);
+  background-image: url(img/pressure.png);
 }
 #temperature {
   background-image: url(img/temperature.png);
@@ -193,6 +194,7 @@ button:active {
   flex-direction: column;
   gap: 4px;
   margin-bottom: 10px;
+  position: relative;
 }
 
 .form-field label {
@@ -213,4 +215,87 @@ button:active {
   background: #ffebee;
   color: #b71c1c;
   border: 2px solid #b71c1c;
+}
+/* ===== Заполненные поля ===== */
+.form-field input:not(:placeholder-shown),
+.form-field textarea:not(:placeholder-shown) {
+  background-color: #f1f8e9; /* светло-зелёный */
+  border-color: #aed581;
+}
+
+/* при фокусе — чуть ярче */
+.form-field input:focus:not(:placeholder-shown),
+.form-field textarea:focus:not(:placeholder-shown) {
+  background-color: #e8f5e9;
+  border-color: #66bb6a;
+}
+
+/* если ошибка — ошибка важнее */
+.form-field .input-error,
+.form-field input.input-error {
+  background-color: #ffebee !important;
+  border-color: #e53935 !important;
+}
+
+.form-field input[list] {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2390caf9' viewBox='0 0 16 16'%3E%3Cpath d='M3 6h10M3 10h10'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 14px;
+  padding-right: 28px;
+}
+.form-field input[list]:focus {
+  border-color: #42a5f5;
+  box-shadow: 0 0 0 2px rgba(66, 165, 245, 0.2);
+}
+
+/* выпадающий список */
+.autocomplete-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid #cfd8dc;
+  border-radius: 8px;
+  z-index: 1000;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* пункт списка */
+.autocomplete-list li {
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+/* hover / tap */
+.autocomplete-list li:hover {
+  background: #e3f2fd;
+}
+.autocomplete-list li:active {
+  background: #bbdefb;
+}
+.voice-button.fixed {
+  font-size: x-large;
+  position: fixed;
+  bottom: 24px;
+  right: 0%;
+  transform: translateX(-50%);
+  z-index: 100;
+  border-radius: 50%;
+  height: 56px;
+  width: max-content;
+}
+.sort-btn.active {
+  background: #e3f2fd; /* светло-голубой */
+  color: #0d47a1; /* глубокий синий */
+  border: 1px solid #90caf9;
+}
+.sort-btn {
+  background: #f5f5f5; /* нейтральный */
+  color: #455a64; /* спокойный серо-синий */
+  border: 1px solid #e0e0e0;
 }

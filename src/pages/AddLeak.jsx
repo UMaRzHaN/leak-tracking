@@ -10,7 +10,6 @@ export default function AddLeak({
   clearVoiceData,
   startVoiceInput,
   stopVoiceInput,
-  isRecording,
 }) {
   const handleAdd = (row) => {
     const updated = [
@@ -35,7 +34,6 @@ export default function AddLeak({
       clearVoiceData={clearVoiceData}
       startVoiceInput={startVoiceInput}
       stopVoiceInput={stopVoiceInput}
-      isRecording={isRecording}
     />
   );
 }

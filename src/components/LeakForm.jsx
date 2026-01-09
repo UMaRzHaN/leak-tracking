@@ -10,6 +10,7 @@ import {
   materials,
 } from "../data/dictionaries";
 import { normalizeNumber } from "../utils/calculations";
+import AutocompleteInput from "./AutocompleteInput";
 const REQUIRED_FIELDS = ["leak_id", "video_id", "leak_speed"];
 const NUMBER_FIELDS = [
   "leak_id",
@@ -24,7 +25,6 @@ export default function LeakForm({
   clearVoiceData,
   stopVoiceInput,
   startVoiceInput,
-  isRecording,
 }) {
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
@@ -68,6 +68,17 @@ export default function LeakForm({
     setForm({});
     setErrors({});
   };
+  const clearForm = () => {
+    // если идёт запись — останавливаем
+    stopVoiceInput?.();
+
+    // очищаем форму
+    setForm({});
+    setErrors({});
+
+    // очищаем голосовые данные
+    clearVoiceData?.();
+  };
   useEffect(() => {
     if (!voiceData) return;
 
@@ -84,27 +95,32 @@ export default function LeakForm({
 
   /* ===== UI ===== */
   return (
-    <div className="card">
+    <div className="card" style={{ paddingBottom: 120 }}>
       {/* 🎙 Голосовой ввод */}
       <button
+        className={`voice-button fixed`}
+        onPointerDown={startVoiceInput}
+        onPointerUp={stopVoiceInput}
+      >
+        🎙
+      </button>
+      <button
         type="button"
-        className={`voice-button ${isRecording ? "recording" : ""}`}
-        onPointerDown={() => {
-          if (!isRecording) startVoiceInput();
-        }}
-        onPointerUp={() => {
-          if (isRecording) stopVoiceInput();
+        onClick={clearForm}
+        style={{
+          marginBottom: 12,
+          background: "#f5f5f5",
+          color: "#455a64",
+          border: "1px solid #e0e0e0",
         }}
       >
-        {isRecording ? "🎙 Запись…" : "🎙 Удерживай для записи"}
+        🧹 Очистить лист
       </button>
-
       {/* Обязательные поля */}
-
       {/* Обязательные поля */}
       <div className="form-field">
         <label htmlFor="leak_id">
-          Индивидуальный номер утечки (бирка){" "}
+          Индивидуальный номер утечки (бирка)
           <span className="required">*</span>
         </label>
 
@@ -120,7 +136,6 @@ export default function LeakForm({
 
         {errors.leak_id && <div className="error-text">{errors.leak_id}</div>}
       </div>
-
       <div className="form-field">
         <label htmlFor="video">
           Индивидуальный номер видео (видео)<span className="required">*</span>
@@ -136,7 +151,6 @@ export default function LeakForm({
           onChange={(e) => handle("video_id", e.target.value)}
         />
       </div>
-
       <div className="form-field">
         <label htmlFor="speed">
           Скорость утечки (скорость)<span className="required">*</span>
@@ -153,7 +167,6 @@ export default function LeakForm({
           onChange={(e) => handle("leak_speed", e.target.value)}
         />
       </div>
-
       {/* ===== ПАРАМЕТРЫ ===== */}
       <div className="form-field">
         <label htmlFor="temperature">Температура </label>
@@ -167,7 +180,6 @@ export default function LeakForm({
           onChange={(e) => handle("temperature", e.target.value)}
         />
       </div>
-
       <div className="form-field">
         <label htmlFor="pressure">Давление </label>
         <input
@@ -180,7 +192,6 @@ export default function LeakForm({
           onChange={(e) => handle("pressure", e.target.value)}
         />
       </div>
-
       <div className="form-field">
         <label htmlFor="field">УМГ</label>
         <input
@@ -190,7 +201,6 @@ export default function LeakForm({
           onChange={(e) => handle("field", e.target.value)}
         />
       </div>
-
       <div className="form-field">
         <label htmlFor="station">Компрессорная станция</label>
         <input
@@ -200,7 +210,6 @@ export default function LeakForm({
           onChange={(e) => handle("station", e.target.value)}
         />
       </div>
-
       <div className="form-field">
         <label htmlFor="note">Примечание</label>
         <textarea
@@ -210,155 +219,79 @@ export default function LeakForm({
           onChange={(e) => handle("note", e.target.value)}
         />
       </div>
-
       {/* ===== СПРАВОЧНИКИ ===== */}
-      <div className="form-field">
-        <label htmlFor="location">Локация</label>
-        <input
-          id="location"
-          list="locations-list"
-          placeholder="Введите локацию"
-          value={form.location ?? ""}
-          onChange={(e) => handle("location", e.target.value)}
-        />
-        <datalist id="locations-list">
-          {Object.values(locations)
-            .flat()
-            .map((v, i) => (
-              <option key={i} value={v} />
-            ))}
-        </datalist>
-      </div>
-
-      <div className="form-field">
-        <label htmlFor="object">Объект</label>
-        <input
-          id="object"
-          list="objects-list"
-          placeholder="Введите объект"
-          value={form.object ?? ""}
-          onChange={(e) => handle("object", e.target.value)}
-        />
-        <datalist id="objects-list">
-          {Object.values(objects)
-            .flat()
-            .map((v, i) => (
-              <option key={i} value={v} />
-            ))}
-        </datalist>
-      </div>
-
-      <div className="form-field">
-        <label htmlFor="component">Компонент</label>
-        <input
-          id="component"
-          list="components-list"
-          placeholder="Введите компонент"
-          value={form.component ?? ""}
-          onChange={(e) => handle("component", e.target.value)}
-        />
-        <datalist id="components-list">
-          {Object.values(components)
-            .flat()
-            .map((v, i) => (
-              <option key={i} value={v} />
-            ))}
-        </datalist>
-      </div>
-
-      <div className="form-field">
-        <label htmlFor="description">Описание утечки</label>
-        <input
-          id="description"
-          list="description-list"
-          placeholder="Введите описание утечки"
-          value={form.leak_description ?? ""}
-          onChange={(e) => handle("leak_description", e.target.value)}
-        />
-        <datalist id="description-list">
-          {Object.values(description)
-            .flat()
-            .map((v, i) => (
-              <option key={i} value={v} />
-            ))}
-        </datalist>
-      </div>
-
-      <div className="form-field">
-        <label htmlFor="leak_cause">Причина утечки</label>
-        <input
-          id="leak_cause"
-          list="cause-list"
-          placeholder="Введите причину утечки"
-          value={form.leak_cause ?? ""}
-          onChange={(e) => handle("leak_cause", e.target.value)}
-        />
-        <datalist id="cause-list">
-          {Object.values(cause)
-            .flat()
-            .map((v, i) => (
-              <option key={i} value={v} />
-            ))}
-        </datalist>
-      </div>
-
-      <div className="form-field">
-        <label htmlFor="technological_solution">
-          Технологическое решение (техрешение)
-        </label>
-        <input
-          id="technological_solution"
-          list="solutions-list"
-          placeholder="Введите технологическое решение"
-          value={form.technological_solution ?? ""}
-          onChange={(e) => handle("technological_solution", e.target.value)}
-        />
-        <datalist id="solutions-list">
-          {Object.values(solutions)
-            .flat()
-            .map((v, i) => (
-              <option key={i} value={v} />
-            ))}
-        </datalist>
-      </div>
-
-      <div className="form-field">
-        <label htmlFor="repair_recommendation">
-          Решение / План устранения (план устранения)
-        </label>
-        <input
-          id="repair_recommendation"
-          list="recommendations-list"
-          placeholder="Введите решение / план устранения"
-          value={form.repair_recommendation ?? ""}
-          onChange={(e) => handle("repair_recommendation", e.target.value)}
-        />
-        <datalist id="recommendations-list">
-          {Object.values(recommendations)
-            .flat()
-            .map((v, i) => (
-              <option key={i} value={v} />
-            ))}
-        </datalist>
-      </div>
-
-      <div className="form-field">
-        <label htmlFor="materials_equipment">МТР ремонта (МТР)</label>
-        <input
-          id="materials_equipment"
-          list="materials-list"
-          placeholder="Введите МТР ремонта"
-          value={form.materials_equipment ?? ""}
-          onChange={(e) => handle("materials_equipment", e.target.value)}
-        />
-        <datalist id="materials-list">
-          {Object.values(materials)
-            .flat()
-            .map((v, i) => (
-              <option key={i} value={v} />
-            ))}
-        </datalist>
-      </div>
+      <AutocompleteInput
+        id="location"
+        label="Локация"
+        placeholder="Введите локацию"
+        value={form.location}
+        options={Object.values(locations).flat()}
+        onChange={(v) => handle("location", v)}
+        error={errors.location}
+      />
+      <AutocompleteInput
+        id="object"
+        label="Объект"
+        placeholder="Введите объект"
+        value={form.object}
+        options={Object.values(objects).flat()}
+        onChange={(v) => handle("object", v)}
+        error={errors.object}
+      />
+      <AutocompleteInput
+        id="component"
+        label="Компонент"
+        placeholder="Введите компонент"
+        value={form.component}
+        options={Object.values(components).flat()}
+        onChange={(v) => handle("component", v)}
+        error={errors.component}
+      />
+      <AutocompleteInput
+        id="description"
+        label="Описание утечки"
+        placeholder="Введите описание утечки"
+        value={form.description}
+        options={Object.values(description).flat()}
+        onChange={(v) => handle("description", v)}
+        error={errors.description}
+      />
+      <AutocompleteInput
+        id="leak_cause"
+        label="Причина утечки"
+        placeholder="Введите причину утечки"
+        value={form.leak_cause}
+        options={Object.values(cause).flat()}
+        onChange={(v) => handle("leak_cause", v)}
+        error={errors.leak_cause}
+      />
+      <AutocompleteInput
+        id="technological_solution"
+        label="Технологическое решение (техрешение)"
+        placeholder="Введите технологическое решение"
+        value={form.technological_solution}
+        options={Object.values(solutions).flat()}
+        onChange={(v) => handle("technological_solution", v)}
+        error={errors.technological_solution}
+      />
+      <AutocompleteInput
+        id="repair_recommendation"
+        label="Решение / План устранения (план устранения)"
+        placeholder="Введите решение / план устранения"
+        value={form.repair_recommendation}
+        options={Object.values(recommendations).flat()}
+        onChange={(v) => handle("repair_recommendation", v)}
+        error={errors.repair_recommendation}
+      />
+      <AutocompleteInput
+        id="materials_equipment"
+        label="МТР ремонта (МТР)"
+        placeholder="Введите МТР ремонта"
+        value={form.materials_equipment}
+        options={Object.values(materials).flat()}
+        onChange={(v) => handle("materials_equipment", v)}
+        error={errors.materials_equipment}
+      />
 
       <button onClick={add}>💾 Сохранить</button>
     </div>
