@@ -287,9 +287,9 @@ export default function DataBase({ data = [], setData, coords }) {
                   📷 Изменить фото
                 </button>
 
-                {editRow.photo && (
+                {editRow.photoPreview && (
                   <img
-                    src={editRow.photo}
+                    src={editRow.photoPreview}
                     alt="Фото утечки"
                     style={{
                       width: "100%",
