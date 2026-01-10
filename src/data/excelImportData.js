@@ -49,6 +49,8 @@ export const keysOrder = [
   "leak_speed_kg",
   "pressure",
   "temperature",
+  "percentage_gas_to_flare",
+  "percentage_gas_to_utilization",
   "Total_Annual_Methane_Loss_m3_y",
   "Total_Annual_Methane_Loss_t_y",
   "Emissions_t_CO2eq_year",

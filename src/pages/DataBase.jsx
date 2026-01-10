@@ -41,10 +41,17 @@ export default function DataBase({ data = [], setData, coords }) {
   };
 
   const saveEdit = () => {
-    const updated = data.map((r) => (r.id === editId ? editRow : r));
+    const updated = data.map((r) =>
+      r.id === editId
+        ? {
+            ...editRow,
+            photoPreview: editRow.photoPreview ?? r.photoPreview ?? null,
+          }
+        : r
+    );
+
     save(updated);
     setEditId(null);
-    console.log(data);
   };
 
   const remove = (id) => {
@@ -52,7 +59,7 @@ export default function DataBase({ data = [], setData, coords }) {
 
     const updated = data
       .filter((r) => r.id !== id)
-      .map((r, i) => ({ ...r, id: i + 1 }));
+      .map((r, i) => ({ ...r, index: i + 1 }));
 
     save(updated);
   };
