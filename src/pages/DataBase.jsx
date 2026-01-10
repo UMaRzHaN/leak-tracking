@@ -44,6 +44,7 @@ export default function DataBase({ data = [], setData, coords }) {
     const updated = data.map((r) => (r.id === editId ? editRow : r));
     save(updated);
     setEditId(null);
+    console.log(data);
   };
 
   const remove = (id) => {
@@ -98,10 +99,9 @@ export default function DataBase({ data = [], setData, coords }) {
     reader.onloadend = (event) => {
       setEditRow((prev) => ({
         ...prev,
-        photo: event.target.result, // base64
+        photoPreview: event.target.result, // base64
       }));
     };
-
     reader.readAsDataURL(file);
   };
   return (
