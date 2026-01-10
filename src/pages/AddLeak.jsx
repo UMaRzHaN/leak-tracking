@@ -1,4 +1,5 @@
 import LeakForm from "../components/LeakForm";
+import { savePhoto } from "../services/cameraService";
 import { toNumber } from "../utils/toNumber";
 const STORAGE_KEY = "leaks_database_v1";
 
@@ -13,20 +14,32 @@ export default function AddLeak({
   photo,
   setPhoto,
 }) {
-  const handleAdd = (row) => {
-    const updated = [
-      ...data,
-      {
-        id: Date.now(),
-        latitude: toNumber(coords?.lat),
-        longitude: toNumber(coords?.lon),
-        index: data.length + 1,
-        ...row,
-      },
-    ];
+  const handleAdd = async (row) => {
+    const id = Date.now();
+
+    let photo = null;
+
+    if (row.photoPreview) {
+      photo = await savePhoto(row.photoPreview, id);
+    }
+
+    const newRow = {
+      id,
+      latitude: toNumber(coords?.lat),
+      longitude: toNumber(coords?.lon),
+      index: data.length + 1,
+      ...row,
+      photo, // ✅ путь к файлу
+      photoPreview: undefined, // ❌ не храним preview
+    };
+
+    const updated = [...data, newRow];
 
     setData(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(updated.map(({ photoPreview, ...r }) => r))
+    );
   };
 
   return (

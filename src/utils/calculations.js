@@ -21,6 +21,8 @@ export const calculations = (r) => {
   return {
     ...r,
     leak_speed_kg,
+    percentage_gas_to_flare,
+    percentage_gas_to_utilization,
     Total_Annual_Methane_Loss_m3_y,
     Total_Annual_Methane_Loss_t_y,
     Emissions_t_CO2eq_year,

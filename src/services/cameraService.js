@@ -1,6 +1,8 @@
 import { Capacitor } from "@capacitor/core";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
+
+const PHOTO_FOLDER = "LeakReports/photos";
 /**
  * 📱 Сделать фото с камеры (MOBILE)
  * @returns base64 (dataUrl)
@@ -61,72 +63,43 @@ export const readPhotoFromFile = (file) =>
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-export const savePhotoToDocuments = async (
-  dataUrl,
-  fileName,
-  folder = "LeakReports"
-) => {
-  if (!dataUrl) return null;
-
-  const base64 = dataUrl.split(",")[1];
-
-  try {
-    await Filesystem.mkdir({
-      path: folder,
-      directory: Directory.Documents,
-      recursive: true,
-    });
-  } catch (_) {
-    // папка уже есть
-  }
-
-  const path = `${folder}/${fileName}`;
-
-  await Filesystem.writeFile({
-    path,
-    data: base64,
-    directory: Directory.Documents,
-    encoding: Encoding.BASE64,
-  });
-
-  return `Documents/${path}`;
-};
 export const savePhoto = async (dataUrl, fileName) => {
-  if (!dataUrl) return null;
+  if (!dataUrl || !fileName) return null;
 
-  /* ===== MOBILE ===== */
+  /* ===== MOBILE (Android / iOS) ===== */
   if (Capacitor.isNativePlatform()) {
-    const base64 = dataUrl.split(",")[1];
-    const folder = "LeakReports";
-
     try {
-      await Filesystem.mkdir({
-        path: folder,
+      const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, "");
+
+      // гарантируем папку
+      try {
+        await Filesystem.mkdir({
+          path: PHOTO_FOLDER,
+          directory: Directory.Documents,
+          recursive: true,
+        });
+      } catch (_) {
+        // папка уже есть — ок
+      }
+
+      const path = `${PHOTO_FOLDER}/${fileName}`;
+
+      await Filesystem.writeFile({
+        path,
+        data: base64,
         directory: Directory.Documents,
-        recursive: true,
+        encoding: Encoding.BASE64,
       });
-    } catch (_) {}
 
-    const path = `${folder}/${fileName}`;
-
-    // 🔁 ПЕРЕЗАПИСЬ — writeFile перезапишет файл автоматически
-    await Filesystem.writeFile({
-      path,
-      data: base64,
-      directory: Directory.Documents,
-      encoding: Encoding.BASE64,
-    });
-
-    return `Documents/${path}`;
+      // ⚠️ КРИТИЧНО: возвращаем ТОЛЬКО Documents/...
+      return `Documents/${path}`;
+    } catch (e) {
+      console.error("cameraService.savePhoto error:", e);
+      return null;
+    }
   }
 
   /* ===== WEB ===== */
-  const link = document.createElement("a");
-  link.href = dataUrl;
-  link.download = fileName; // одинаковое имя → логическая перезапись
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-
-  return `Downloads/${fileName}`;
+  // ⚠️ На web НЕ сохраняем путь — используем только preview
+  return dataUrl;
 };

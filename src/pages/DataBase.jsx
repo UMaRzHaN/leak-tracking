@@ -1,7 +1,13 @@
 import { useState, useMemo } from "react";
 import { exportToExcel } from "../utils/exportToExcel";
 import { getDistanceMeters } from "../utils/getDistanceMeters";
+import { usePhotoStorage } from "../hooks/usePhotoStorage";
+
+import { deletePhotoFromFS } from "../services/photoService";
 import EditTextField from "../components/EditTextField";
+import LeakRow from "../components/LeakRow";
+import SearchPanel from "../components/SearchPanel";
+
 const STORAGE_KEY = "leaks_database_v1";
 
 /* Поля для поиска */
@@ -27,35 +33,55 @@ export default function DataBase({ data = [], setData, coords }) {
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("all");
   const [sortByDistance, setSortByDistance] = useState(false);
-
+  const {
+    photoPreview,
+    setPhotoPreview,
+    savePhoto,
+    loadPhoto,
+    // deletePhoto,
+    clearPreview,
+  } = usePhotoStorage();
   /* ---------- helpers ---------- */
-
   const save = (updated) => {
+    const forStorage = updated.map(({ photoPreview, ...rest }) => rest);
     setData(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(forStorage));
   };
 
-  const startEdit = (row) => {
+  const startEdit = async (row) => {
+    clearPreview();
     setEditId(row.id);
     setEditRow(row);
+
+    if (row.photo) {
+      await loadPhoto(row.photo);
+    }
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
+    let photo = editRow.photo;
+
+    if (photoPreview) {
+      photo = await savePhoto(photoPreview, editRow.id);
+    }
+
     const updated = data.map((r) =>
-      r.id === editId
-        ? {
-            ...editRow,
-            photoPreview: editRow.photoPreview ?? r.photoPreview ?? null,
-          }
-        : r
+      r.id === editId ? { ...editRow, photo } : r
     );
 
     save(updated);
+    clearPreview();
     setEditId(null);
   };
 
-  const remove = (id) => {
+  const remove = async (id) => {
     if (!window.confirm("Удалить запись?")) return;
+
+    const row = data.find((r) => r.id === id);
+
+    if (row?.photo) {
+      await deletePhotoFromFS(row.photo); // ✅ ЧЁТКО по пути
+    }
 
     const updated = data
       .filter((r) => r.id !== id)
@@ -81,36 +107,29 @@ export default function DataBase({ data = [], setData, coords }) {
 
   /* ---------- render ---------- */
   const sortedData = useMemo(() => {
+    const base = filteredData;
+
     if (!sortByDistance || !coords?.lat || !coords?.lon) {
-      return filteredData;
+      return base;
     }
 
-    return [...filteredData].sort((a, b) => {
+    return [...base].sort((a, b) => {
       const da = getDistanceMeters(coords.lat, coords.lon, a.lat, a.lon);
       const db = getDistanceMeters(coords.lat, coords.lon, b.lat, b.lon);
       return da - db;
     });
   }, [filteredData, sortByDistance, coords]);
+
   // Edit PHOTO
   const handleEditPhoto = (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      alert("Выберите изображение");
-      return;
-    }
+    if (!file || !file.type.startsWith("image/")) return;
 
     const reader = new FileReader();
-
-    reader.onloadend = (event) => {
-      setEditRow((prev) => ({
-        ...prev,
-        photoPreview: event.target.result, // base64
-      }));
-    };
+    reader.onloadend = (ev) => setPhotoPreview(ev.target.result);
     reader.readAsDataURL(file);
   };
+
   return (
     <div className="card">
       {/* Экспорт */}
@@ -124,34 +143,14 @@ export default function DataBase({ data = [], setData, coords }) {
         {sortByDistance ? "↩️ Обычный порядок" : "📍 Отсортировать по близости"}
       </button>
       {/* Поиск */}
-      <div className="card" style={{ marginBottom: 12 }}>
-        <div className="field">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder=" "
-          />
-          <label>🔍 Поиск</label>
-        </div>
-
-        <div className="field field-select">
-          <label>Искать по</label>
-          <select
-            value={searchField}
-            onChange={(e) => setSearchField(e.target.value)}
-          >
-            {SEARCH_FIELDS.map((f) => (
-              <option key={f.key} value={f.key}>
-                {f.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={{ fontSize: 13, color: "#546e7a" }}>
-          Найдено записей: {filteredData.length}
-        </div>
-      </div>
+      <SearchPanel
+        search={search}
+        setSearch={setSearch}
+        searchField={searchField}
+        setSearchField={setSearchField}
+        fields={SEARCH_FIELDS}
+        resultCount={filteredData.length}
+      />
 
       {/* Список записей */}
       {sortedData.map((row) => (
@@ -284,27 +283,16 @@ export default function DataBase({ data = [], setData, coords }) {
                   onClick={() =>
                     document.getElementById(`edit-photo-${row.id}`).click()
                   }
-                  style={{
-                    background: "#e3f2fd",
-                    color: "#0d47a1",
-                    border: "1px solid #90caf9",
-                    marginBottom: 8,
-                  }}
                 >
                   📷 Изменить фото
                 </button>
 
-                {editRow.photoPreview && (
+                {/* ✅ ТОЛЬКО photoPreview */}
+                {photoPreview && (
                   <img
-                    src={editRow.photoPreview}
+                    src={photoPreview}
                     alt="Фото утечки"
-                    style={{
-                      width: "100%",
-                      maxWidth: 300,
-                      marginTop: 6,
-                      borderRadius: 8,
-                      border: "1px solid #e0e0e0",
-                    }}
+                    style={{ maxWidth: 300, marginTop: 8 }}
                   />
                 )}
               </div>
@@ -312,69 +300,12 @@ export default function DataBase({ data = [], setData, coords }) {
               <button onClick={saveEdit}>💾 Сохранить</button>
             </>
           ) : (
-            <>
-              <strong>#{row.index}</strong>
-              <div>
-                <b> X/Y:</b> {row.latitude}/{row.longitude}
-              </div>
-              <div>
-                <b> Дата:</b> {row.date}
-              </div>
-              <div>
-                <b>Бирка / видео:</b> {row.leak_id} / {row.video_id}
-              </div>
-              <div>
-                <b>Станция:</b> {row.station}
-              </div>
-              <div>
-                <b>Локация / объект:</b> {row.location} / {row.object}
-              </div>
-              <div>
-                <b>Компонент:</b> {row.component}
-              </div>
-              <div>
-                <b>Описание утечки:</b> {row.leak_description}
-              </div>
-              <div>
-                <b>Причина утечки:</b> {row.leak_cause}
-              </div>
-              <div>
-                <b>Технологическое решение:</b> {row.technological_solution}
-              </div>
-              <div>
-                <b>Решение / План устранения</b> {row.repair_recommendation}
-              </div>
-              <div>
-                <b>МТР ремонта (предполагаемый)</b> {row.materials_equipment}
-              </div>
-              <div>
-                <b>Примечание:</b> {row.note}
-              </div>
-              {row.photo && (
-                <div
-                  style={{
-                    marginTop: 20,
-                  }}
-                >
-                  <p>
-                    <b>Фото:</b>
-                  </p>
-                  <img
-                    src={row.photoPreview}
-                    alt="Фото утечки"
-                    style={{
-                      width: "100%",
-                      maxWidth: 300,
-                      marginTop: 6,
-                      borderRadius: 8,
-                      border: "1px solid #e0e0e0",
-                    }}
-                  />
-                </div>
-              )}
-              <button onClick={() => startEdit(row)}>✏️ Изменить</button>
-              <button onClick={() => remove(row.id)}>🗑 Удалить</button>
-            </>
+            <LeakRow
+              key={row.id}
+              row={row}
+              onEdit={startEdit}
+              onRemove={remove}
+            />
           )}
         </div>
       ))}

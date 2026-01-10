@@ -12,7 +12,6 @@ import {
 import { normalizeNumber } from "../utils/normalizeNumber";
 import AutocompleteInput from "./AutocompleteInput";
 import { useCamera } from "../hooks/useCamera";
-import { savePhoto } from "../services/cameraService";
 
 const REQUIRED_FIELDS = ["leak_id", "video_id", "leak_speed"];
 const NUMBER_FIELDS = [
@@ -31,7 +30,6 @@ export default function LeakForm({
 }) {
   const [form, setForm] = useState({
     leak_id: "",
-    photo: null, // 💾 путь (ПОСЛЕ сохранения)
     photoPreview: null, // 👁 dataUrl (ДО сохранения)
   });
   const [errors, setErrors] = useState({});
@@ -48,14 +46,15 @@ export default function LeakForm({
 
       setForm((prev) => ({
         ...prev,
-        photoPreview: dataUrl, // только превью
-        photo: null, // ещё не сохранено
+        photoPreview: dataUrl,
       }));
     } catch (e) {
       alert(e.message || "Ошибка получения фото");
     }
   };
-
+  /* =========================
+     INPUT HANDLER
+  ========================= */
   const handle = (key, value) => {
     const finalValue = NUMBER_FIELDS.includes(key)
       ? normalizeNumber(value)
@@ -73,7 +72,7 @@ export default function LeakForm({
 
     REQUIRED_FIELDS.forEach((key) => {
       const value = form[key];
-      if (value === "" || value === null || value === undefined) {
+      if (value === "" || value == null) {
         nextErrors[key] = "Обязательное числовое поле";
       } else if (NUMBER_FIELDS.includes(key) && !Number.isFinite(value)) {
         nextErrors[key] = "Введите число";
@@ -87,36 +86,24 @@ export default function LeakForm({
   /* =========================
      ACTIONS
   ========================= */
-  const add = async () => {
+  const add = () => {
     if (!validate()) return;
 
-    let photoPath = null;
+    onAdd({
+      ...form,
+      photo: null, // путь появится ПОЗЖЕ (в DataBase)
+      photoPreview: form.photoPreview,
+      date: new Date().toLocaleDateString(),
+    });
 
-    try {
-      if (form.photoPreview) {
-        photoPath = await savePhoto(
-          form.photoPreview,
-          `photo_${form.leak_id}.jpg` // ← КЛЮЧЕВО
-        );
-      }
-
-      onAdd({
-        ...form,
-        photo: photoPath,
-        date: new Date().toLocaleDateString(),
-      });
-
-      setForm({});
-      setErrors({});
-      clearVoiceData?.();
-    } catch (e) {
-      alert(e.message || "Ошибка при сохранении фото");
-    }
+    setForm({ leak_id: "", photoPreview: null });
+    setErrors({});
+    clearVoiceData?.();
   };
 
   const clearForm = () => {
     stopVoiceInput?.();
-    setForm({});
+    setForm({ leak_id: "", photoPreview: null });
     setErrors({});
     clearVoiceData?.();
   };
