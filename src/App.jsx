@@ -21,6 +21,7 @@ export default function App() {
   const [data, setData] = useState([]);
 
   const [voiceData, setVoiceData] = useState(null);
+  const [gpsEnabled, setGpsEnabled] = useState(true);
 
   const clearVoiceData = useCallback(() => {
     setVoiceData(null);
@@ -29,7 +30,11 @@ export default function App() {
   /* =========================
      GEOLOCATION (HOOK)
   ========================= */
-  const { coords, error: geoError, loading: geoLoading } = useGeolocation();
+  const {
+    coords,
+    error: geoError,
+    loading: geoLoading,
+  } = useGeolocation(gpsEnabled);
 
   /* =========================
      SPEECH RECOGNITION (HOOK)
@@ -90,6 +95,21 @@ export default function App() {
             <b>Локация 📍 Нет данных</b>
           )}
         </div>
+        <button
+          onClick={() => setGpsEnabled((v) => !v)}
+          
+          style={{
+            marginTop: 8,
+            padding: "10px",
+            borderRadius: 8,
+            fontWeight: 500,
+            background: gpsEnabled ? "#E3F2FD" : "#ECEFF1",
+            color: gpsEnabled ? "#1565C0" : "#455A64",
+            border: "1px solid #BBDEFB",
+          }}
+        >
+          {gpsEnabled ? "⏸ Пауза GPS" : "▶️ Запустить GPS"}
+        </button>
 
         <button onClick={() => setPage("add")}>➕ Добавить утечку</button>
         <button onClick={() => setPage("db")}>📄 База данных</button>
