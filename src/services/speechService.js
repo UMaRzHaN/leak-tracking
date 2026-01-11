@@ -1,5 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { SpeechRecognition } from "@capacitor-community/speech-recognition";
+import { normalizeSpokenNumber } from "../utils/normalizeSpokenNumber";
 
 /* ======================================
    INTERNAL WEB INSTANCE (singleton)
@@ -22,10 +23,10 @@ export const startSpeechRecognition = async () => {
 
     const result = await SpeechRecognition.start({
       language: "ru-RU",
-      popup: true, // Google UI
+      popup: false, // Google UI
     });
-
-    return result?.matches?.[0] || null;
+    const text = result?.matches?.[0] || null;
+    return normalizeSpokenNumber(text);
   }
 
   /* ---------- 🖥 WEB (Web Speech API) ---------- */
@@ -34,11 +35,7 @@ export const startSpeechRecognition = async () => {
       window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechAPI) {
-      reject(
-        new Error(
-          "Голосовой ввод не поддерживается в этом браузере"
-        )
-      );
+      reject(new Error("Голосовой ввод не поддерживается в этом браузере"));
       return;
     }
 
@@ -49,17 +46,11 @@ export const startSpeechRecognition = async () => {
     webRecognition.maxAlternatives = 1;
 
     webRecognition.onresult = (event) => {
-      const text =
-        event.results?.[0]?.[0]?.transcript || null;
-      resolve(text);
+      const text = event.results?.[0]?.[0]?.transcript || null;
+      resolve(normalizeSpokenNumber(text));
     };
-
     webRecognition.onerror = (event) => {
-      reject(
-        new Error(
-          event.error || "Ошибка распознавания речи"
-        )
-      );
+      reject(new Error(event.error || "Ошибка распознавания речи"));
     };
 
     webRecognition.onend = () => {
