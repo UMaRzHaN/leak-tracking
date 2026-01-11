@@ -27,11 +27,14 @@ export default function LeakForm({
   clearVoiceData,
   startVoiceInput,
   stopVoiceInput,
+  coords,
 }) {
   const [form, setForm] = useState({
     leak_id: "",
-    photoPreview: null, // 👁 dataUrl (ДО сохранения)
+    photoPreview: null, // webPath
+    photo: null, // объект photo
   });
+
   const [errors, setErrors] = useState({});
   const { isNative, takePhoto, pickFromBrowser } = useCamera();
 
@@ -39,19 +42,15 @@ export default function LeakForm({
      HELPERS
      ========================= */
   const handlePhoto = async (file) => {
-    try {
-      const dataUrl = isNative
-        ? await takePhoto()
-        : await pickFromBrowser(file);
+    const photo = isNative ? await takePhoto() : await pickFromBrowser(file);
 
-      setForm((prev) => ({
-        ...prev,
-        photoPreview: dataUrl,
-      }));
-    } catch (e) {
-      alert(e.message || "Ошибка получения фото");
-    }
+    setForm((prev) => ({
+      ...prev,
+      _newPhoto: photo, // 🔑 ОБЯЗАТЕЛЬНО
+      photoPreview: photo.webPath, // 👁 preview
+    }));
   };
+
   /* =========================
      INPUT HANDLER
   ========================= */
@@ -72,10 +71,17 @@ export default function LeakForm({
 
     REQUIRED_FIELDS.forEach((key) => {
       const value = form[key];
+
       if (value === "" || value == null) {
         nextErrors[key] = "Обязательное числовое поле";
-      } else if (NUMBER_FIELDS.includes(key) && !Number.isFinite(value)) {
-        nextErrors[key] = "Введите число";
+        return;
+      }
+
+      if (NUMBER_FIELDS.includes(key)) {
+        const num = Number(value);
+        if (!Number.isFinite(num)) {
+          nextErrors[key] = "Введите число";
+        }
       }
     });
 
@@ -91,12 +97,14 @@ export default function LeakForm({
 
     onAdd({
       ...form,
-      photo: null, // путь появится ПОЗЖЕ (в DataBase)
-      photoPreview: form.photoPreview,
+      photo: null,
+      _newPhoto: form._newPhoto,
+      lat: coords?.lat ?? null,
+      lon: coords?.lon ?? null,
       date: new Date().toLocaleDateString(),
     });
 
-    setForm({ leak_id: "", photoPreview: null });
+    setForm({ leak_id: "", photoPreview: null, _newPhoto: null });
     setErrors({});
     clearVoiceData?.();
   };

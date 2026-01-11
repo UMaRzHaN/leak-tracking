@@ -9,6 +9,7 @@ import AddLeak from "./pages/AddLeak";
 import DataBase from "./pages/DataBase";
 
 import "./index.css";
+import { Directory, Filesystem } from "@capacitor/filesystem";
 
 const STORAGE_KEY = "leaks_database_v1";
 
@@ -52,7 +53,13 @@ export default function App() {
       console.error("Ошибка чтения localStorage", e);
     }
   }, []);
-
+  useEffect(() => {
+    Filesystem.mkdir({
+      path: "LeakReports/photos",
+      Directory: Directory.Documents,
+      recursive: true,
+    }).catch(() => {});
+  }, []);
   /* =========================
      CLEAR DATABASE
   ========================= */

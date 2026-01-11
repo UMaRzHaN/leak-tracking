@@ -6,19 +6,35 @@ import {
 } from "../services/cameraService";
 
 export const useCamera = () => {
+  const isNative = Capacitor.isNativePlatform();
+
+  const normalizePhoto = (photo) => {
+    if (!photo) return null;
+
+    // 📱 Native (Camera.getPhoto)
+    if (photo.webPath) {
+      return {
+        webPath: photo.webPath,
+        path: photo.path, // может быть undefined — это нормально
+        isNative: true,
+      };
+    }
+
+    // 🌐 Web (base64)
+    return {
+      webPath: photo, // dataUrl
+      isNative: false,
+    };
+  };
+
   return {
-    isNative: Capacitor.isNativePlatform(),
+    isNative,
 
-    takePhoto: async () => {
-      return await takePhotoFromCamera();
-    },
+    takePhoto: async () => normalizePhoto(await takePhotoFromCamera()),
 
-    pickFromGallery: async () => {
-      return await pickPhotoFromGallery();
-    },
+    pickFromGallery: async () => normalizePhoto(await pickPhotoFromGallery()),
 
-    pickFromBrowser: async (file) => {
-      return await readPhotoFromFile(file);
-    },
+    pickFromBrowser: async (file) =>
+      normalizePhoto(await readPhotoFromFile(file)),
   };
 };

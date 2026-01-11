@@ -14,18 +14,19 @@ export const exportToExcel = async (rows) => {
   }
 
   /* ---------- подготовка данных ---------- */
-  const prepared = rows.map((rows) => calculations(rows));
+  const prepared = rows.map((row) => calculations(row));
 
   const preparedOrdered = prepared.map((r) =>
     Object.fromEntries(
       keysOrder.map((k) => {
-        if (k === "photo" && r.photo) {
-          return [k, `Documents/${FOLDER_NAME}/photos/photo_${r.leak_id}.jpg`];
+        if (k === "photo") {
+          return [k, `file://${r.photo}`];
         }
         return [k, normalizeRow(r)[k]];
       })
     )
   );
+
   const ws = XLSX.utils.json_to_sheet(preparedOrdered);
   const wb = XLSX.utils.book_new();
 

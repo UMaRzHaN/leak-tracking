@@ -2,8 +2,9 @@ import { useState, useMemo } from "react";
 import { exportToExcel } from "../utils/exportToExcel";
 import { getDistanceMeters } from "../utils/getDistanceMeters";
 import { usePhotoStorage } from "../hooks/usePhotoStorage";
-
+import { useCamera } from "../hooks/useCamera";
 import { deletePhotoFromFS } from "../services/photoService";
+
 import EditTextField from "../components/EditTextField";
 import LeakRow from "../components/LeakRow";
 import SearchPanel from "../components/SearchPanel";
@@ -28,14 +29,15 @@ const SEARCH_FIELDS = [
 ];
 
 export default function DataBase({ data = [], setData, coords }) {
+  const { isNative, takePhoto, pickFromBrowser } = useCamera();
   const [editId, setEditId] = useState(null);
   const [editRow, setEditRow] = useState({});
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("all");
   const [sortByDistance, setSortByDistance] = useState(false);
   const {
-    photoPreview,
-    setPhotoPreview,
+    // photoPreview,
+    // setPhotoPreview,
     savePhoto,
     loadPhoto,
     // deletePhoto,
@@ -49,24 +51,36 @@ export default function DataBase({ data = [], setData, coords }) {
   };
 
   const startEdit = async (row) => {
-    clearPreview();
     setEditId(row.id);
-    setEditRow(row);
 
+    let photoSrc = null;
     if (row.photo) {
-      await loadPhoto(row.photo);
+      photoSrc = await loadPhoto(row.photo);
     }
+
+    setEditRow({
+      ...row,
+      photoPreview: photoSrc,
+    });
   };
 
   const saveEdit = async () => {
     let photo = editRow.photo;
 
-    if (photoPreview) {
-      photo = await savePhoto(photoPreview, editRow.id);
+    if (editRow._newPhoto) {
+      photo = await savePhoto(editRow._newPhoto, editRow.leak_id);
     }
 
+    const { photoPreview, _newPhoto, ...cleanEditRow } = editRow;
+
     const updated = data.map((r) =>
-      r.id === editId ? { ...editRow, photo } : r
+      r.id === editId
+        ? {
+            ...cleanEditRow,
+            photo,
+            photoUpdatedAt: Date.now(),
+          }
+        : r
     );
 
     save(updated);
@@ -121,13 +135,24 @@ export default function DataBase({ data = [], setData, coords }) {
   }, [filteredData, sortByDistance, coords]);
 
   // Edit PHOTO
-  const handleEditPhoto = (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
+  const handleEditPhoto = async (e) => {
+    let photo;
 
-    const reader = new FileReader();
-    reader.onloadend = (ev) => setPhotoPreview(ev.target.result);
-    reader.readAsDataURL(file);
+    if (isNative) {
+      // 📱 Mobile — делаем НОВОЕ фото
+      photo = await takePhoto();
+    } else {
+      // 🌐 Web — выбираем файл
+      const file = e.target.files?.[0];
+      if (!file) return;
+      photo = await pickFromBrowser(file);
+    }
+
+    setEditRow((prev) => ({
+      ...prev,
+      _newPhoto: photo, // 🔥 новое фото
+      photoPreview: photo.webPath, // 👁 сразу обновляем preview
+    }));
   };
 
   return (
@@ -270,27 +295,31 @@ export default function DataBase({ data = [], setData, coords }) {
               <div className="field">
                 <label>Фото утечки</label>
 
-                <input
-                  type="file"
-                  accept="image/*"
-                  id={`edit-photo-${row.id}`}
-                  style={{ display: "none" }}
-                  onChange={handleEditPhoto}
-                />
+                {!isNative && (
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id={`edit-photo-${row.id}`}
+                    style={{ display: "none" }}
+                    onChange={handleEditPhoto}
+                  />
+                )}
 
                 <button
                   type="button"
                   onClick={() =>
-                    document.getElementById(`edit-photo-${row.id}`).click()
+                    isNative
+                      ? handleEditPhoto() // 📱 камера
+                      : document.getElementById(`edit-photo-${row.id}`).click()
                   }
                 >
                   📷 Изменить фото
                 </button>
 
                 {/* ✅ ТОЛЬКО photoPreview */}
-                {photoPreview && (
+                {editRow.photoPreview && (
                   <img
-                    src={photoPreview}
+                    src={editRow.photoPreview}
                     alt="Фото утечки"
                     style={{ maxWidth: 300, marginTop: 8 }}
                   />

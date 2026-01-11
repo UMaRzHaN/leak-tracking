@@ -1,13 +1,13 @@
 import { usePhotoSrc } from "../hooks/usePhotoSrc";
 
 export default function LeakRow({ row, onEdit, onRemove }) {
-  const photoSrc = usePhotoSrc(row.photo);
+  const photoSrc = usePhotoSrc(row.photo, row.photoUpdatedAt);
 
   return (
     <div className="card" style={{ margin: "10px 0" }}>
       <strong>#{row.index}</strong>
       <div>
-        <b> X/Y:</b> {row.latitude}/{row.longitude}
+        <b> X/Y:</b> {row.lat}/{row.lon}
       </div>
       <div>
         <b> Дата:</b> {row.date}
@@ -45,11 +45,20 @@ export default function LeakRow({ row, onEdit, onRemove }) {
       <div>
         <b>Примечание:</b> {row.note}
       </div>
+      <div style={{ fontSize: 12, color: "#888" }}>
+        путь к фото: {String(row.photo)}
+      </div>
+      {row.photo && !photoSrc && (
+        <div style={{ marginTop: 8, opacity: 0.6 }}>
+          📷 Фото доступно только в мобильном приложении
+        </div>
+      )}
+
       {photoSrc && (
         <img
           src={photoSrc}
           alt="Фото утечки"
-          style={{ maxWidth: 300, marginTop: 8 }}
+          style={{ maxWidth: "100%", borderRadius: 8 }}
         />
       )}
       <button onClick={() => onEdit(row)}>✏️ Изменить</button>
