@@ -1,6 +1,5 @@
 import { Capacitor } from "@capacitor/core";
 import { SpeechRecognition } from "@capacitor-community/speech-recognition";
-import { normalizeSpokenNumber } from "../utils/normalizeSpokenNumber";
 
 /* ======================================
    INTERNAL WEB INSTANCE (singleton)
@@ -25,8 +24,8 @@ export const startSpeechRecognition = async () => {
       language: "ru-RU",
       popup: true, // Google UI
     });
-    const text = result?.matches?.[0] || null;
-    return normalizeSpokenNumber(text);
+
+    return result?.matches?.[0] || null;
   }
 
   /* ---------- 🖥 WEB (Web Speech API) ---------- */
@@ -47,8 +46,9 @@ export const startSpeechRecognition = async () => {
 
     webRecognition.onresult = (event) => {
       const text = event.results?.[0]?.[0]?.transcript || null;
-      resolve(normalizeSpokenNumber(text));
+      resolve(text);
     };
+
     webRecognition.onerror = (event) => {
       reject(new Error(event.error || "Ошибка распознавания речи"));
     };

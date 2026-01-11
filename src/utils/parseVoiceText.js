@@ -18,15 +18,32 @@ export const parseVoiceText = (text) => {
   const result = {};
   if (!text) return result;
 
-  const normalized = text.toLowerCase().replace(",", ".");
+  function normalizeRuNumber(str) {
+    if (!str) return str;
 
+    let v = str.replace(/\u00A0/g, " ").replace(/\s+/g, "");
+
+    const hasDot = v.includes(".");
+    const hasComma = v.includes(",");
+
+    if (hasDot && hasComma) {
+      return v.replace(/\./g, "").replace(",", ".");
+    }
+
+    if (hasComma) {
+      return v.replace(",", ".");
+    }
+
+    return v;
+  }
+  const normalized = text.toLowerCase();
   const patterns = [
     /* ===== ЧИСЛА ===== */
     { key: "leak_id", regex: /бирк[аи]?\s*(\d+)/, type: "number" },
     { key: "video_id", regex: /видео\s*(\d+)/, type: "number" },
     {
       key: "leak_speed",
-      regex: /скорост[ьи]?\s*(\d+(\.\d+)?)/,
+      regex: /скорост[ьи]?\s*([\d.,\s]+)/,
       type: "number",
     },
     {
@@ -57,23 +74,17 @@ export const parseVoiceText = (text) => {
     },
     {
       key: "location",
-      regex: new RegExp(
-        `локаци[яи]\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
-      ),
+      regex: new RegExp(`локаци[яи]\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`),
       type: "string",
     },
     {
       key: "object",
-      regex: new RegExp(
-        `объект\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
-      ),
+      regex: new RegExp(`объект\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`),
       type: "string",
     },
     {
       key: "component",
-      regex: new RegExp(
-        `компонент[ы]?\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
-      ),
+      regex: new RegExp(`компонент[ы]?\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`),
       type: "string",
     },
     {
@@ -106,16 +117,12 @@ export const parseVoiceText = (text) => {
     },
     {
       key: "materials_equipment",
-      regex: new RegExp(
-        `мтр\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
-      ),
+      regex: new RegExp(`мтр\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`),
       type: "string",
     },
     {
       key: "note",
-      regex: new RegExp(
-        `примечани[ея]\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
-      ),
+      regex: new RegExp(`примечани[ея]\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`),
       type: "string",
     },
   ];
@@ -125,17 +132,17 @@ export const parseVoiceText = (text) => {
     if (!match) return;
 
     if (type === "number") {
-      result[key] = Number(match[1]);
+      const raw = match[1];
+      const fixed = normalizeRuNumber(raw);
+      result[key] = Number(fixed);
     } else {
       // берём ПОСЛЕДНЮЮ строковую группу (без маркеров)
-      const value = match.findLast(
-        (v) => typeof v === "string" && v.trim()
-      );
+      const value = match.findLast((v) => typeof v === "string" && v.trim());
       if (!value) return;
       result[key] = capitalizeFirst(value.trim());
     }
   });
-console.log(result);
+  console.log(result);
 
   return result;
 };
