@@ -23,7 +23,7 @@ export const startSpeechRecognition = async () => {
 
     const result = await SpeechRecognition.start({
       language: "ru-RU",
-      popup: false, // Google UI
+      popup: true, // Google UI
     });
     const text = result?.matches?.[0] || null;
     return normalizeSpokenNumber(text);
