@@ -20,7 +20,7 @@ export const exportToExcel = async (rows) => {
     Object.fromEntries(
       keysOrder.map((k) => {
         if (k === "photo" && r.photo) {
-          return [k, `Documents/${FOLDER_NAME}/photo_${r.leak_id}.jpg`];
+          return [k, `Documents/${FOLDER_NAME}/photos/photo_${r.leak_id}.jpg`];
         }
         return [k, normalizeRow(r)[k]];
       })
