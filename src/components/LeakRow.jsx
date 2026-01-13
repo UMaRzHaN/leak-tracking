@@ -16,6 +16,9 @@ export default function LeakRow({ row, onEdit, onRemove }) {
         <b>Бирка / видео:</b> {row.leak_id} / {row.video_id}
       </div>
       <div>
+        <b>Давление / температура:</b> {row.pressure} / {row.temperature}
+      </div>
+      <div>
         <b>Скорость:</b> {row.leak_speed}
       </div>
       <div>
