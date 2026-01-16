@@ -89,7 +89,7 @@ export default function App() {
             <b>Локация 📍 Определение…</b>
           ) : coords.lat && coords.lon ? (
             <b>
-              Локация 📍 X/Y: {coords.lat.toFixed(6)} / {coords.lon.toFixed(6)}
+              Локация 📍 {coords.lat.toFixed(6)} / {coords.lon.toFixed(6)}
             </b>
           ) : (
             <b>Локация 📍 Нет данных</b>
@@ -97,7 +97,6 @@ export default function App() {
         </div>
         <button
           onClick={() => setGpsEnabled((v) => !v)}
-          
           style={{
             marginTop: 8,
             padding: "10px",
