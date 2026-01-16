@@ -126,6 +126,15 @@ export default function LeakForm({
     setTimeout(() => clearVoiceData?.(), 0);
   }, [voiceData, clearVoiceData]);
 
+  const isWeb = !isNative;
+  const onPhotoClick = async (e) => {
+    if (isWeb) {
+      handlePhoto(e.target.files[0]);
+    } else {
+      handlePhoto(); // камера (Capacitor)
+    }
+  };
+
   /* =========================
      UI
   ========================= */
@@ -215,7 +224,6 @@ export default function LeakForm({
         error={errors.component}
       />
       {/* Обязательные поля */}
-
       <div className="form-field">
         <label htmlFor="video">
           Индивидуальный номер видео (видео)<span className="required">*</span>
@@ -256,7 +264,6 @@ export default function LeakForm({
           onChange={(e) => handle("temperature", e.target.value)}
         />
       </div>
-
       <div className="form-field">
         <label htmlFor="speed">
           Скорость утечки (скорость)<span className="required">*</span>
@@ -328,18 +335,19 @@ export default function LeakForm({
           onChange={(e) => handle("note", e.target.value)}
         />
       </div>
-      <button type="button" onClick={() => handlePhoto()}>
-        📷 Сделать фото
-      </button>
 
-      {!isNative && (
+      {isWeb ? (
         <input
           type="file"
           accept="image/*"
-          onChange={async (e) => handlePhoto(e.target.files[0])}
+          capture="environment"
+          onChange={onPhotoClick}
         />
+      ) : (
+        <button type="button" onClick={onPhotoClick}>
+          📷 Сделать фото
+        </button>
       )}
-
       {form.photoPreview && (
         <img
           src={form.photoPreview}
@@ -352,7 +360,6 @@ export default function LeakForm({
           }}
         />
       )}
-
       <button onClick={add}>💾 Сохранить</button>
     </div>
   );

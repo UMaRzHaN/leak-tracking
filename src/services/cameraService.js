@@ -16,7 +16,7 @@ export const takePhotoFromCamera = async () => {
   }
   const photo = await Camera.getPhoto({
     quality: 80,
-    source: CameraSource.Camera,
+    source: CameraSource.Prompt,
     resultType: CameraResultType.Uri,
   });
 
@@ -77,10 +77,9 @@ export const readPhotoFromFile = (file) =>
     reader.onloadend = () =>
       resolve({
         webPath: reader.result, // ✅ preview
-        isNative: false,        // ✅ КЛЮЧЕВОЙ ФЛАГ
+        isNative: false, // ✅ КЛЮЧЕВОЙ ФЛАГ
       });
 
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-

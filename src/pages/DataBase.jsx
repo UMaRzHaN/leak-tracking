@@ -35,14 +35,7 @@ export default function DataBase({ data = [], setData, coords }) {
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("all");
   const [sortByDistance, setSortByDistance] = useState(false);
-  const {
-    // photoPreview,
-    // setPhotoPreview,
-    savePhoto,
-    loadPhoto,
-    // deletePhoto,
-    clearPreview,
-  } = usePhotoStorage();
+  const { savePhoto, loadPhoto, clearPreview } = usePhotoStorage();
   /* ---------- helpers ---------- */
   const save = (updated) => {
     const forStorage = updated.map(({ photoPreview, ...rest }) => rest);
