@@ -7,6 +7,7 @@ import { handleVoiceText } from "./utils/handleVoiceText";
 
 import AddLeak from "./pages/AddLeak";
 import DataBase from "./pages/DataBase";
+import MapPage from "./pages/MapPage";
 
 import "./index.css";
 import { Directory, Filesystem } from "@capacitor/filesystem";
@@ -112,6 +113,7 @@ export default function App() {
 
         <button onClick={() => setPage("add")}>➕ Добавить утечку</button>
         <button onClick={() => setPage("db")}>📄 База данных</button>
+        <button onClick={() => setPage("map")}>🗺 Карта утечек</button>
 
         {data.length > 0 && (
           <button
@@ -143,6 +145,7 @@ export default function App() {
       {page === "db" && (
         <DataBase data={data} setData={setData} coords={coords} />
       )}
+      {page === "map" && <MapPage leaks={data} />}
     </div>
   );
 }
