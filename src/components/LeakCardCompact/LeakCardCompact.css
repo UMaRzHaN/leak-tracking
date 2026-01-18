@@ -81,6 +81,7 @@
   transition: transform 0.25s ease;
   position: relative;
   z-index: 2;
+  min-height: 140px;
 }
 
 .leak-card.swiped {
