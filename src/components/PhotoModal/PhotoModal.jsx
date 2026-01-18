@@ -9,7 +9,7 @@ export function PhotoModal({ open, item, onClose }) {
           📷 Фото доступно только в мобильном приложении
         </div>
       )}
-      <img src={item.photoSrc} alt="Утечка" />
+      {item.photoSrc && <img src={item.photoSrc} alt="Утечка" />}
       <div style={{ color: "#000000", marginTop: 6 }}>
         путь к фото: {String(item.photo)}
       </div>
