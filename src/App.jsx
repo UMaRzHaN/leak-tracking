@@ -11,6 +11,7 @@ import MapPage from "./pages/MapPage";
 
 import "./index.css";
 import { Directory, Filesystem } from "@capacitor/filesystem";
+import MainPage from "./pages/MainPage";
 
 const STORAGE_KEY = "leaks_database_v1";
 
@@ -18,7 +19,7 @@ export default function App() {
   /* =========================
      STATE
   ========================= */
-  const [page, setPage] = useState("add");
+  const [page, setPage] = useState("");
   const [data, setData] = useState([]);
 
   const [voiceData, setVoiceData] = useState(null);
@@ -80,10 +81,9 @@ export default function App() {
   ========================= */
   return (
     <div className="app">
-      <div className="header">Журнал утечек газа</div>
-
-      <div className="card">
-        <div style={{ color: "#546e7a" }}>
+      <header className="header">
+        Журнал утечек газа
+        <div style={{ color: "gray" }}>
           {geoError ? (
             <b>Локация 📍 {geoError}</b>
           ) : geoLoading ? (
@@ -96,40 +96,15 @@ export default function App() {
             <b>Локация 📍 Нет данных</b>
           )}
         </div>
-        <button
-          onClick={() => setGpsEnabled((v) => !v)}
-          style={{
-            marginTop: 8,
-            padding: "10px",
-            borderRadius: 8,
-            fontWeight: 500,
-            background: gpsEnabled ? "#E3F2FD" : "#ECEFF1",
-            color: gpsEnabled ? "#1565C0" : "#455A64",
-            border: "1px solid #BBDEFB",
-          }}
-        >
-          {gpsEnabled ? "⏸ Пауза GPS" : "▶️ Запустить GPS"}
-        </button>
+      </header>
 
-        <button onClick={() => setPage("add")}>➕ Добавить утечку</button>
-        <button onClick={() => setPage("db")}>📄 База данных</button>
-        <button onClick={() => setPage("map")}>🗺 Карта утечек</button>
-
-        {data.length > 0 && (
-          <button
-            onClick={clearDatabase}
-            style={{
-              marginTop: 8,
-              background: "#ffebee",
-              color: "#b71c1c",
-              border: "1px solid #ffcdd2",
-            }}
-          >
-            🗑 Очистить базу данных
-          </button>
-        )}
-      </div>
-
+      {page === "" && (
+        <MainPage
+          setGpsEnabled={setGpsEnabled}
+          setPage={setPage}
+          gpsEnabled={gpsEnabled}
+        />
+      )}
       {page === "add" && (
         <AddLeak
           data={data}
@@ -143,9 +118,38 @@ export default function App() {
       )}
 
       {page === "db" && (
-        <DataBase data={data} setData={setData} coords={coords} />
+        <DataBase
+          data={data}
+          setData={setData}
+          coords={coords}
+          clearDatabase={clearDatabase}
+        />
       )}
       {page === "map" && <MapPage leaks={data} />}
+      <footer className="bottom-nav">
+        <button
+          className={`nav-item ${page === "map" ? "active" : ""}`}
+          onClick={() => setPage("map")}
+        >
+          <span className="nav-icon">🗺️</span>
+          <span className="nav-label">Map</span>
+        </button>
+        <button
+          className={`nav-item ${page === "" ? "active" : ""}`}
+          onClick={() => setPage("")}
+        >
+          <span className="nav-icon">🏠</span>
+          <span className="nav-label">Home</span>
+        </button>
+
+        <button
+          className={`nav-item ${page === "settings" ? "active" : ""}`}
+          onClick={() => setPage("settings")}
+        >
+          <span className="nav-icon">⚙️</span>
+          <span className="nav-label">Settings</span>
+        </button>
+      </footer>
     </div>
   );
 }

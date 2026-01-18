@@ -1,0 +1,116 @@
+.recent-leaks {
+  /* background: #8a94a6; */
+  margin-top: 24px;
+}
+
+/* ===== Header ===== */
+
+.recent-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.recent-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: #263238;
+}
+
+.view-all {
+  background: none;
+  border: none;
+  padding: 4px 0;
+  width: max-content;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1976d2;
+
+  cursor: pointer;
+}
+
+/* ===== List ===== */
+
+.leak-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ===== Item ===== */
+
+/* ===== Item ===== */
+
+.leak-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+
+  width: 100%;
+  padding: 14px 16px;
+
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #f1f3f4;
+
+  text-align: left;
+  cursor: pointer;
+
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.leak-item:active {
+  transform: scale(0.985);
+}
+
+/* ===== Icon ===== */
+
+.leak-icon {
+  width: 18px; /* ⬅️ БОЛЬШЕ */
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* уровни утечки — цвета как на фото */
+.leak-icon.high {
+  background: #e53935;
+}
+
+.leak-icon.medium {
+  background: #fb8c00;
+}
+
+.leak-icon.low {
+  background: #43a047;
+}
+
+/* ===== Text ===== */
+
+.leak-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2933; /* чуть темнее */
+  line-height: 1.25;
+}
+
+.leak-meta {
+  margin-top: 4px; /* больше воздуха */
+  font-size: 12px;
+  color: #8a94a6; /* мягче, как на макете */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===== Arrow ===== */
+
+.leak-arrow {
+  margin-left: auto; /* ⬅️ ВАЖНО */
+  font-size: 36px;
+  color: #c5ccd3;
+  line-height: 1;
+}

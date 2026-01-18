@@ -59,16 +59,6 @@ export default function MobileSheet({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        {query && (
-          <button
-            type="button"
-            className="clear-btn"
-            onClick={() => setQuery("")}
-            aria-label="Очистить поиск"
-          >
-            ✕
-          </button>
-        )}
       </div>
 
       {/* ===== СПИСОК УТЕЧЕК ===== */}

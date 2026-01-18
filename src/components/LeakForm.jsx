@@ -153,7 +153,6 @@ export default function LeakForm({
         </button>
         <button
           className="fab pen"
-          id="fixed"
           type="button"
           onClick={clearForm}
         >

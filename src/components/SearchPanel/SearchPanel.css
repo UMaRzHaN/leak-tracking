@@ -1,0 +1,67 @@
+.search-panel {
+  background: #fff;
+  padding: 12px;
+  border-radius: 14px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  margin-bottom: 12px;
+}
+
+/* search */
+.search-input {
+  display: flex;
+  align-items: center;
+  justify-content: start;
+  background: #f3f6f9;
+  border-radius: 10px;
+  /* padding: 8px 10px; */
+}
+
+.search-input input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  flex: 1;
+}
+
+.search-icon {
+  opacity: 0.6;
+  font-size: 15px;
+  margin-left: 10px;
+}
+
+/* chips */
+.filter-chips {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+  width: max-content;
+}
+
+.chip {
+  appearance: none;
+  border: 1px solid #e0e6ed;
+  background: #f7f9fc;
+  /* border-radius: 999px; */
+  padding: 6px 28px 6px 12px;
+  font-size: 13px;
+  color: #37474f;
+
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2390caf9' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+.chip.more {
+  padding: 6px 12px;
+  background: #f0f3f7;
+  font-size: 16px;
+}
+
+/* result */
+.result-count {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #607d8b;
+}

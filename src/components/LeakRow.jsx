@@ -4,51 +4,32 @@ export default function LeakRow({ row, onEdit, onRemove }) {
   const photoSrc = usePhotoSrc(row.photo, row.photoUpdatedAt);
 
   return (
-    <div className="card" style={{ margin: "10px 0" }}>
+    <div className="card">
+      <div>{row.date}</div>
       <strong>#{row.index}</strong>
       <div>
-        <b> X/Y:</b> {row.lat}/{row.lon}
+        <b>Бирка | Видео:</b> {row.leak_id} | {row.video_id}
       </div>
       <div>
-        <b> Дата:</b> {row.date}
+        {row.location} | {row.object}
       </div>
-      <div>
-        <b>Бирка / видео:</b> {row.leak_id} / {row.video_id}
-      </div>
-      <div>
-        <b>Давление / температура:</b> {row.pressure} / {row.temperature}
-      </div>
+      <span>
+        📍 {row.lat}/{row.lon}
+      </span>
       <div>
         <b>Скорость:</b> {row.leak_speed}
       </div>
       <div>
         <b>Станция:</b> {row.station}
       </div>
-      <div>
-        <b>Локация / объект:</b> {row.location} / {row.object}
-      </div>
+
       <div>
         <b>Компонент:</b> {row.component}
       </div>
       <div>
         <b>Описание утечки:</b> {row.leak_description}
       </div>
-      <div>
-        <b>Причина утечки:</b> {row.leak_cause}
-      </div>
-      <div>
-        <b>Технологическое решение:</b> {row.technological_solution}
-      </div>
-      <div>
-        <b>Решение / План устранения</b> {row.repair_recommendation}
-      </div>
-      <div>
-        <b>МТР ремонта (предполагаемый)</b> {row.materials_equipment}
-      </div>
-      <div>
-        <b>Примечание:</b> {row.note}
-      </div>
-      <div style={{ fontSize: 12, color: "#888" }}>
+      {/* <div style={{ fontSize: 12, color: "#888" }}>
         путь к фото: {String(row.photo)}
       </div>
       {row.photo && !photoSrc && (
@@ -56,14 +37,13 @@ export default function LeakRow({ row, onEdit, onRemove }) {
           📷 Фото доступно только в мобильном приложении
         </div>
       )}
-
       {photoSrc && (
         <img
           src={photoSrc}
           alt="Фото утечки"
           style={{ maxWidth: "100%", borderRadius: 8 }}
         />
-      )}
+      )} */}
       <button onClick={() => onEdit(row)}>✏️ Изменить</button>
       <button onClick={() => onRemove(row.id)}>🗑 Удалить</button>
     </div>

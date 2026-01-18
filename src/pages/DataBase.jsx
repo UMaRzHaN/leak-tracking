@@ -6,8 +6,9 @@ import { useCamera } from "../hooks/useCamera";
 import { deletePhotoFromFS } from "../services/photoService";
 
 import EditTextField from "../components/EditTextField";
-import LeakRow from "../components/LeakRow";
-import SearchPanel from "../components/SearchPanel";
+import SearchPanel from "../components/SearchPanel/SearchPanel";
+import LeakCardCompact from "../components/LeakCardCompact/LeakCardCompact";
+import { PhotoModal } from "../components/PhotoModal/PhotoModal";
 
 const STORAGE_KEY = "leaks_database_v1";
 
@@ -28,7 +29,12 @@ const SEARCH_FIELDS = [
   { key: "note", label: "Примечание" },
 ];
 
-export default function DataBase({ data = [], setData, coords }) {
+export default function DataBase({
+  data = [],
+  setData,
+  coords,
+  clearDatabase,
+}) {
   const { isNative, takePhoto, pickFromBrowser } = useCamera();
   const [editId, setEditId] = useState(null);
   const [editRow, setEditRow] = useState({});
@@ -36,6 +42,9 @@ export default function DataBase({ data = [], setData, coords }) {
   const [searchField, setSearchField] = useState("all");
   const [sortByDistance, setSortByDistance] = useState(false);
   const { savePhoto, loadPhoto, clearPreview } = usePhotoStorage();
+
+  const [activeItem, setActiveItem] = useState(null);
+  const [photoOpen, setPhotoOpen] = useState(false);
   /* ---------- helpers ---------- */
   const save = (updated) => {
     const forStorage = updated.map(({ photoPreview, ...rest }) => rest);
@@ -160,6 +169,19 @@ export default function DataBase({ data = [], setData, coords }) {
       >
         {sortByDistance ? "↩️ Обычный порядок" : "📍 Отсортировать по близости"}
       </button>
+      {data.length > 0 && (
+        <button
+          onClick={clearDatabase}
+          style={{
+            marginTop: 8,
+            background: "#ffebee",
+            color: "#b71c1c",
+            border: "1px solid #ffcdd2",
+          }}
+        >
+          🗑 Очистить базу данных
+        </button>
+      )}
       {/* Поиск */}
       <SearchPanel
         search={search}
@@ -172,7 +194,7 @@ export default function DataBase({ data = [], setData, coords }) {
 
       {/* Список записей */}
       {sortedData.map((row) => (
-        <div key={row.id} className="card" style={{ margin: "10px 0" }}>
+        <div key={row.id} className="card" style={{ padding: 0 }}>
           {editId === row.id ? (
             <>
               <EditTextField
@@ -322,15 +344,24 @@ export default function DataBase({ data = [], setData, coords }) {
               <button onClick={saveEdit}>💾 Сохранить</button>
             </>
           ) : (
-            <LeakRow
+            <LeakCardCompact
               key={row.id}
-              row={row}
+              leak={row}
               onEdit={startEdit}
               onRemove={remove}
+              onOpenPhoto={(item) => {
+                setActiveItem(item);
+                setPhotoOpen(true);
+              }}
             />
           )}
         </div>
       ))}
+      <PhotoModal
+        open={photoOpen}
+        item={activeItem}
+        onClose={() => setPhotoOpen(false)}
+      />
     </div>
   );
 }

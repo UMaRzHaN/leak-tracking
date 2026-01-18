@@ -1,3 +1,5 @@
+import "./SearchPanel.css";
+
 export default function SearchPanel({
   search,
   setSearch,
@@ -7,19 +9,22 @@ export default function SearchPanel({
   resultCount,
 }) {
   return (
-    <div className="card" style={{ marginBottom: 12 }}>
-      <div className="field">
+    <div className="search-panel">
+      {/* Search input */}
+      <div className="search-input">
+        <span className="search-icon">🔍</span>
         <input
+          type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder=" "
+          placeholder="Поиск утечки..."
         />
-        <label>🔍 Поиск</label>
       </div>
 
-      <div className="field field-select">
-        <label>Искать по</label>
+      {/* Filters */}
+      <div className="filter-chips">
         <select
+          className="chip"
           value={searchField}
           onChange={(e) => setSearchField(e.target.value)}
         >
@@ -32,9 +37,7 @@ export default function SearchPanel({
       </div>
 
       {typeof resultCount === "number" && (
-        <div style={{ fontSize: 13, color: "#546e7a" }}>
-          Найдено записей: {resultCount}
-        </div>
+        <div className="result-count">Найдено записей: {resultCount}</div>
       )}
     </div>
   );
