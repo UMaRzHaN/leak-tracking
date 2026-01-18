@@ -265,16 +265,7 @@ button:active {
   background: #bbdefb;
 }
 
-.sort-btn.active {
-  background: #e3f2fd; /* светло-голубой */
-  color: #0d47a1; /* глубокий синий */
-  border: 1px solid #90caf9;
-}
-.sort-btn {
-  background: #f5f5f5; /* нейтральный */
-  color: #455a64; /* спокойный серо-синий */
-  border: 1px solid #e0e0e0;
-}
+
 .floating-actions {
   position: fixed;
   bottom: 70px;
@@ -444,7 +435,7 @@ button:active {
 .map-mobile-wrapper {
   position: relative;
   width: 100%;
-  height: calc(100svh - 64px - 64px);
+  height: calc(100svh - 74px - 64px);
   background: #000;
   overflow: hidden;
 }

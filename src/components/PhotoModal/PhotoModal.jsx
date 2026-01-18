@@ -9,8 +9,9 @@ export function PhotoModal({ open, item, onClose }) {
           📷 Фото доступно только в мобильном приложении
         </div>
       )}
-      {item.photoSrc && <img src="../../img/pressure.png" alt="Фото утечки" />}
-      <div style={{ color: "#000000" }}>путь к фото: {String(item.photo)}</div>
+      <div style={{ color: "#000000", marginTop: 6 }}>
+        путь к фото: {String(item.photo)}
+      </div>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import DatabaseOverflow from "../DatabaseOverflow/DatabaseOverflow";
 import "./SearchPanel.css";
 
 export default function SearchPanel({
@@ -7,6 +8,10 @@ export default function SearchPanel({
   setSearchField,
   fields,
   resultCount,
+  setSortByDistance,
+  sortByDistance,
+  clearDatabase,
+  filteredData,
 }) {
   return (
     <div className="search-panel">
@@ -24,6 +29,7 @@ export default function SearchPanel({
       {/* Filters */}
       <div className="filter-chips">
         <select
+          id="select"
           className="chip"
           value={searchField}
           onChange={(e) => setSearchField(e.target.value)}
@@ -34,6 +40,19 @@ export default function SearchPanel({
             </option>
           ))}
         </select>
+        <button
+          onClick={() => setSortByDistance((v) => !v)}
+          className={`sort-btn ${sortByDistance ? "active" : ""}`}
+        >
+          {sortByDistance
+            ? "↩️ Обычный порядок"
+            : "📍 Отсортировать по близости"}
+        </button>
+        <DatabaseOverflow
+          onClearDb={clearDatabase}
+          filteredData={filteredData}
+          actions
+        />
       </div>
 
       {typeof resultCount === "number" && (

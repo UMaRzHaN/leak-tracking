@@ -1,6 +1,5 @@
 .swipe-wrapper {
   position: relative;
-  margin-bottom: 12px;
 }
 /* контейнер действий */
 /* контейнер свайп-действий */
@@ -204,3 +203,5 @@
   background: #e53935;
   color: #ffffff;
 }
+
+

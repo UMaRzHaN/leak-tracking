@@ -1,6 +1,9 @@
+import { timeAgo } from "../../utils/timeAgo";
 import "./RecentLeaks.css";
 
 export default function RecentLeaks({ leaks = [], onSelect, onViewAll }) {
+  console.log(leaks);
+
   return (
     <div className="recent-leaks">
       <div className="recent-header">
@@ -17,11 +20,13 @@ export default function RecentLeaks({ leaks = [], onSelect, onViewAll }) {
             className="leak-item"
             onClick={() => onSelect(leak)}
           >
-            <div className={`leak-icon ${leak.level}`} aria-hidden />
+            {/* <div className={`leak-icon ${leak.level}`} aria-hidden /> */}
             <div className="leak-info">
-              <div className="leak-title">{leak.title}</div>
+              <div className="leak-title">{leak.component}</div>
               <div className="leak-meta">
-                {leak.levelLabel} • {leak.location} • {leak.time}
+                <span>{leak.location}</span> •
+                <span>{leak.leak_description}</span> •{" "}
+                <span>{timeAgo(leak.time)}</span>
               </div>
             </div>
             <div className="leak-arrow">›</div>

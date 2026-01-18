@@ -94,14 +94,15 @@ export default function LeakForm({
   ========================= */
   const add = () => {
     if (!validate()) return;
-
+    const Date_now = new Date();
     onAdd({
       ...form,
       photo: null,
       _newPhoto: form._newPhoto,
       lat: coords?.lat ?? null,
       lon: coords?.lon ?? null,
-      date: new Date().toLocaleDateString(),
+      date: Date_now.toLocaleDateString(),
+      time: Date_now,
     });
 
     setForm({ leak_id: "", photoPreview: null, _newPhoto: null });
@@ -151,11 +152,7 @@ export default function LeakForm({
         >
           🎙
         </button>
-        <button
-          className="fab pen"
-          type="button"
-          onClick={clearForm}
-        >
+        <button className="fab pen" type="button" onClick={clearForm}>
           🧹
         </button>
       </div>

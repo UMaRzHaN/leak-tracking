@@ -1,0 +1,89 @@
+/* кнопка ⋮ */
+.overflow-actions {
+  margin-left: auto;
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateZ(0);
+}
+
+.overflow-btn {
+  width: 31px;
+  height: 31px;
+  border-radius: 50%;
+
+  border: none;
+  background: #f3f6f9;
+  border-radius: 10px;
+  color: #37474f;
+
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.overflow-btn:active {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* само меню */
+.overflow-menu {
+  position: absolute;
+  right: 0;
+  top: 44px;
+
+  width: max-content;
+  background: #ffffff;
+  color: #1e293b;
+
+  border-radius: 12px;
+  padding: 6px;
+
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.12),
+    0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* пункты меню */
+.overflow-menu button {
+  width: 100%;
+  border: none;
+  background: transparent;
+
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 8px;
+
+  font-size: 14px;
+  color: #1e293b;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.overflow-menu button:hover {
+  background: #f1f5f9;
+}
+
+/* разделитель */
+.overflow-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 6px 0;
+}
+
+/* опасное действие */
+.overflow-menu .danger {
+  color: #c62828;
+}
+
+.overflow-menu .danger:hover {
+  background: #fdecea;
+}

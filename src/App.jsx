@@ -83,7 +83,7 @@ export default function App() {
     <div className="app">
       <header className="header">
         Журнал утечек газа
-        <div style={{ color: "gray" }}>
+        <div style={{ color: "gray", marginTop: 10 }}>
           {geoError ? (
             <b>Локация 📍 {geoError}</b>
           ) : geoLoading ? (
@@ -103,6 +103,7 @@ export default function App() {
           setGpsEnabled={setGpsEnabled}
           setPage={setPage}
           gpsEnabled={gpsEnabled}
+          data={data}
         />
       )}
       {page === "add" && (

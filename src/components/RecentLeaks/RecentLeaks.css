@@ -35,7 +35,7 @@
 
 .leak-list {
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   gap: 10px;
 }
 
@@ -60,6 +60,7 @@
   cursor: pointer;
 
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  min-width: 25px;
 }
 
 .leak-item:active {
@@ -96,6 +97,9 @@
   color: #1f2933; /* чуть темнее */
   line-height: 1.25;
 }
+.leak-info {
+  min-width: 25px; /* 🔥 обязательно */
+}
 
 .leak-meta {
   margin-top: 4px; /* больше воздуха */
@@ -104,13 +108,31 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  overflow: hidden;
+  white-space: nowrap;
 }
 
-/* ===== Arrow ===== */
+.leak-meta span {
+  flex-shrink: 0;
+}
 
-.leak-arrow {
-  margin-left: auto; /* ⬅️ ВАЖНО */
-  font-size: 36px;
-  color: #c5ccd3;
-  line-height: 1;
+/* первые два — АВТО */
+.leak-meta span:nth-child(1),
+.leak-meta span:nth-child(2) {
+  flex: 1 1 auto;   /* 👈 занимает всё доступное */
+  min-width: 25px;     /* 👈 разрешаем сжиматься */
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* время — всегда видно */
+.leak-meta span:nth-child(3) {
+  flex-shrink: 0;
 }

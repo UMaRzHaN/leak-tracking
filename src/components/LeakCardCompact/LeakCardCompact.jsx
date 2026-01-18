@@ -59,12 +59,12 @@ export default function LeakCardCompact({
 
         {/* Component */}
         <div className="leak-tech">
-          <span>🔧 Компонент {leak.component}</span>
+          <span>🔧 Компонент: {leak.component}</span>
         </div>
 
         {/* Description */}
         {leak.leak_description && (
-          <div className="leak-desc">📝 Описание {leak.leak_description}</div>
+          <div className="leak-desc">📝 Описание: {leak.leak_description}</div>
         )}
 
         {/* Footer */}
