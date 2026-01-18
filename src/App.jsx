@@ -18,7 +18,7 @@ export default function App() {
   /* =========================
      STATE
   ========================= */
-  const [page, setPage] = useState("db");
+  const [page, setPage] = useState("add");
   const [data, setData] = useState([]);
 
   const [voiceData, setVoiceData] = useState(null);
