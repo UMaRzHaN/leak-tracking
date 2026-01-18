@@ -47,9 +47,13 @@ export default function LeaksMap({ leaks, mapApiRef }) {
 
       mapInstance.current = new Map(mapRef.current, {
         center: { lat: 41.3111, lng: 69.2797 },
-        zoom: 6,
+        zoom: 10,
         mapTypeId: "hybrid",
-        mapId: "ВСТАВЬ_РЕАЛЬНЫЙ_MAP_ID_ИЗ_GOOGLE",
+        mapId: "f1754e62f5aea817edc5ba25",
+        mapTypeControl: false,
+        zoomControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
       });
 
       mapApiRef.current = {

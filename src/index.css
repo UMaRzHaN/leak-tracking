@@ -433,36 +433,66 @@ button:active {
 }
 /* ===== MOBILE MAP ===== */
 
+/* =========================
+   MAP WRAPPER
+   ========================= */
+
+/* =====================================================
+   MOBILE MAP WRAPPER
+   ===================================================== */
+
 .map-mobile-wrapper {
   position: relative;
   width: 100%;
-  height: 100vh;
+  height: 100svh; /* mobile safe viewport */
+  background: #000;
+  overflow: hidden;
 }
 
-/* карта */
+/* =====================================================
+   MAP CANVAS
+   ===================================================== */
+
 .map-canvas {
   width: 100%;
   height: 100%;
+  transition: height 0.25s ease;
 }
 
-/* ===== Floating Button ===== */
+.map-canvas.sheet-open {
+  height: 65svh;
+}
+
+.map-canvas.sheet-closed {
+  height: 100svh;
+}
+
+/* =====================================================
+   FLOATING SEARCH BUTTON (FAB)
+   ===================================================== */
 
 .fab-search {
   position: absolute;
-  bottom: 24px;
-  right: 20px;
+  left: 16px;
+  bottom: calc(20px + env(safe-area-inset-bottom));
   width: 56px;
   height: 56px;
   border-radius: 50%;
   border: none;
-  background: #4285f4;
+  background: #1a73e8;
   color: #fff;
   font-size: 22px;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.35);
-  z-index: 20;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
+  z-index: 60;
 }
 
-/* ===== Bottom Sheet ===== */
+.fab-search:active {
+  transform: scale(0.94);
+}
+
+/* =====================================================
+   BOTTOM SHEET
+   ===================================================== */
 
 .sheet {
   position: absolute;
@@ -471,10 +501,10 @@ button:active {
   bottom: -75%;
   height: 75%;
   background: #fff;
-  border-radius: 16px 16px 0 0;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.25);
-  transition: bottom 0.3s ease;
-  z-index: 30;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.28);
+  transition: bottom 0.28s ease;
+  z-index: 100;
   display: flex;
   flex-direction: column;
 }
@@ -483,58 +513,126 @@ button:active {
   bottom: 0;
 }
 
+/* =====================================================
+   SHEET HANDLE
+   ===================================================== */
+
 .sheet-handle {
-  width: 48px;
+  width: 44px;
   height: 5px;
-  background: #ccc;
-  border-radius: 3px;
-  margin: 8px auto;
+  background: #d0d0d0;
+  border-radius: 4px;
+  margin: 10px auto 6px;
 }
 
-.sheet-header {
-  padding: 12px 16px;
+/* =====================================================
+   STATION LAYERS
+   ===================================================== */
+
+.station-list {
+  padding: 6px 16px;
   border-bottom: 1px solid #eee;
 }
 
-.sheet-header h3 {
-  margin: 0;
-  font-size: 16px;
+.station-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  padding: 8px 0;
 }
 
-.sheet-header span {
-  font-size: 13px;
-  color: #666;
+.station-item input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
 }
 
-/* ===== List ===== */
+/* =====================================================
+   SEARCH BAR
+   ===================================================== */
+
+.sheet-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #eee;
+  background: #fafafa;
+}
+
+.sheet-search input {
+  flex: 1;
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  font-size: 15px;
+  outline: none;
+}
+
+.sheet-search input:focus {
+  border-color: #1a73e8;
+}
+
+/* clear button */
+.clear-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: #e0e0e0;
+  font-size: 18px;
+}
+
+/* =====================================================
+   LEAK LIST
+   ===================================================== */
 
 .sheet-list {
   flex: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .sheet-item {
-  padding: 14px 16px;
+  padding: 16px;
   display: flex;
-  gap: 10px;
   align-items: center;
+  gap: 12px;
   font-size: 15px;
   border-bottom: 1px solid #f0f0f0;
 }
 
 .sheet-item:active {
-  background: #f5f5f5;
+  background: #f4f4f4;
 }
 
+/* =====================================================
+   DOT
+   ===================================================== */
+
 .dot {
-  width: 10px;
-  height: 10px;
-  background: #fbc02d;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
+  background: #fbc02d;
 }
-.map-mobile-wrapper {
+
+/* =====================================================
+   EMPTY STATE
+   ===================================================== */
+
+.sheet-empty {
+  padding: 24px;
+  text-align: center;
+  color: #777;
+  font-size: 14px;
+}
+
+/* =====================================================
+   SAFE AREA
+   ===================================================== */
+
+.sheet {
   padding-bottom: env(safe-area-inset-bottom);
-}
-.fab-search {
-  bottom: calc(24px + env(safe-area-inset-bottom));
 }
