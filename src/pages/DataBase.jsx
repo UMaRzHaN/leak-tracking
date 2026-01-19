@@ -1,12 +1,12 @@
 import { useState, useMemo } from "react";
 import SearchPanel from "../components/SearchPanel/SearchPanel";
 import LeakCardCompact from "../components/LeakCardCompact/LeakCardCompact";
-import { PhotoModal } from "../components/PhotoModal/PhotoModal";
-import LeakDetailsSheet from "../components/LeakDetailsSheet/LeakDetailsSheet";
+import PhotoModal  from "../components/PhotoModal/PhotoModal";
+import LeakDetailsSheet from "../components/LeakCardCompact/LeakDetailsSheet";
 import { getDistanceMeters } from "../utils/getDistanceMeters";
 import { deletePhotoFromFS } from "../services/photoService";
+import { save } from "../utils/saveJSON";
 
-const STORAGE_KEY = "leaks_database_v1";
 
 /* Поля для поиска */
 const SEARCH_FIELDS = [
@@ -27,9 +27,9 @@ const SEARCH_FIELDS = [
 
 export default function DataBase({
   data = [],
-  setData,
   clearDatabase,
   coords,
+  setData,
 }) {
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("all");
@@ -37,11 +37,6 @@ export default function DataBase({
   const [activeLeak, setActiveLeak] = useState(null);
   const [photoItem, setPhotoItem] = useState(null);
   const [photoOpen, setPhotoOpen] = useState(false);
-
-  const save = (updated) => {
-    setData(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  };
 
   const remove = async (id) => {
     if (!window.confirm("Удалить запись?")) return;
@@ -62,7 +57,7 @@ export default function DataBase({
       .filter((r) => r.id !== id)
       .map((r, i) => ({ ...r, index: i + 1 }));
 
-    save(updated);
+    save(updated, setData);
   };
 
   /* ---------- search ---------- */

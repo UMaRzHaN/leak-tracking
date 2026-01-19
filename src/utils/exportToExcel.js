@@ -4,6 +4,7 @@ import { Capacitor } from "@capacitor/core";
 import { calculations } from "../utils/calculations";
 import { normalizeRow } from "../utils/normalizeRow";
 import { headers, keysOrder } from "../data/excelImportData";
+import { Share } from "@capacitor/share";
 
 /* ===============================
    MAIN EXPORT
@@ -67,31 +68,24 @@ const exportXLSX = async (prepared) => {
    MOBILE → CSV
    =============================== */
 const exportCSV = async (prepared) => {
-  const FOLDER = "LeakReports";
   const fileName = `leaks_${Date.now()}.csv`;
-
-  await Filesystem.requestPermissions();
-
-  await Filesystem.mkdir({
-    path: FOLDER,
-    directory: Directory.Documents,
-    recursive: true,
-  });
-
   const csv = generateCSV(prepared);
 
-  await Filesystem.writeFile({
-    path: `${FOLDER}/${fileName}`,
+  // 1️⃣ пишем во временный cache
+  const result = await Filesystem.writeFile({
+    path: fileName,
     data: csv,
-    directory: Directory.Documents,
+    directory: Directory.Cache,
     encoding: Encoding.UTF8,
   });
 
-  alert(
-    `✅ Экспорт завершён\n\n` +
-    `Файл: Documents/${FOLDER}/${fileName}\n` +
-    `Формат: CSV (оптимально для телефона)`
-  );
+  // 2️⃣ шарим файл (Google Drive, Telegram, Files, WhatsApp, etc.)
+  await Share.share({
+    title: "Экспорт утечек",
+    text: "CSV файл с данными",
+    url: result.uri,
+    dialogTitle: "Поделиться файлом",
+  });
 };
 
 /* ===============================

@@ -6,7 +6,48 @@ export const useLeaksMap = ({ leaks, mapApiRef }) => {
   const mapInstance = useRef(null);
   const markersRef = useRef([]);
   const clustererRef = useRef(null);
+
   const [mapReady, setMapReady] = useState(false);
+
+  const userMarkerRef = useRef(null);
+  const followUserRef = useRef(false);
+
+  const locateMe = () => {
+    if (!mapInstance.current) return;
+
+    followUserRef.current = true;
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const userPos = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        };
+
+        mapInstance.current.panTo(userPos);
+        mapInstance.current.setZoom(16);
+
+        if (!userMarkerRef.current) {
+          userMarkerRef.current = new window.google.maps.Marker({
+            position: userPos,
+            map: mapInstance.current,
+            icon: {
+              path: window.google.maps.SymbolPath.CIRCLE,
+              scale: 8,
+              fillColor: "#1a73e8",
+              fillOpacity: 1,
+              strokeColor: "#fff",
+              strokeWeight: 2,
+            },
+          });
+        } else {
+          userMarkerRef.current.setPosition(userPos);
+        }
+      },
+      console.error,
+      { enableHighAccuracy: true }
+    );
+  };
 
   /* ===== INIT MAP ===== */
   useEffect(() => {
@@ -28,7 +69,7 @@ export const useLeaksMap = ({ leaks, mapApiRef }) => {
         mapTypeId: "hybrid",
         mapId: "f1754e62f5aea817edc5ba25",
         fullscreenControl: false,
-        rotateControl: false, // ⬅️ ВОТ ОНА
+        rotateControl: false,
         zoomControl: true,
         zoomControlOptions: {
           position: window.google.maps.ControlPosition.RIGHT_TOP,
@@ -39,6 +80,7 @@ export const useLeaksMap = ({ leaks, mapApiRef }) => {
 
       mapApiRef.current = {
         focus(leak) {
+          followUserRef.current = false; // 🔥 отключаем follow
           mapInstance.current.panTo({
             lat: Number(leak.lat),
             lng: Number(leak.lon),
@@ -56,7 +98,7 @@ export const useLeaksMap = ({ leaks, mapApiRef }) => {
     };
   }, [mapApiRef]);
 
-  /* ===== MARKERS + CENTER ===== */
+  /* ===== MARKERS + AUTO CENTER ===== */
   useEffect(() => {
     if (!mapReady || !mapInstance.current) return;
 
@@ -67,11 +109,13 @@ export const useLeaksMap = ({ leaks, mapApiRef }) => {
       clustererRef,
     });
 
-    autoCenterMap({
-      map: mapInstance.current,
-      leaks,
-    });
+    if (!followUserRef.current) {
+      autoCenterMap({
+        map: mapInstance.current,
+        leaks,
+      });
+    }
   }, [mapReady, leaks]);
 
-  return { mapRef };
+  return { mapRef, locateMe };
 };

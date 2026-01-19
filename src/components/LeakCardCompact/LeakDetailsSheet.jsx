@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from "react";
 
 import { usePhotoStorage } from "../../hooks/usePhotoStorage";
 import { useCamera } from "../../hooks/useCamera";
-import EditTextField from "../EditTextField";
-import "./LeakDetailsSheet.css";
+import EditTextField from "../EditTextField/EditTextField";
+// import "./LeakDetailsSheet.css";
 
 const VIEW_FIELDS = [
   { key: "date", label: "Дата" },

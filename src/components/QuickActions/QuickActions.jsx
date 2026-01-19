@@ -1,4 +1,3 @@
-import "./QuickActions.css";
 
 export default function QuickActions({ setPage, setGpsEnabled, gpsEnabled }) {
   return (

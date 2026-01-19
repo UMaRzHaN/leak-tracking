@@ -12,6 +12,8 @@ import MapPage from "./pages/MapPage";
 import "./index.css";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import MainPage from "./pages/MainPage";
+import Header from "./components/Header/Header";
+import Footer from "./components/Footer/Footer";
 
 const STORAGE_KEY = "leaks_database_v1";
 
@@ -81,29 +83,19 @@ export default function App() {
   ========================= */
   return (
     <div className="app">
-      <header className="header" onClick={() => setPage("")}>
-        Журнал утечек газа
-        <div style={{ color: "gray", marginTop: 10 }}>
-          {geoError ? (
-            <b>Локация 📍 {geoError}</b>
-          ) : geoLoading ? (
-            <b>Локация 📍 Определение…</b>
-          ) : coords.lat && coords.lon ? (
-            <b>
-              Локация 📍 {coords.lat.toFixed(6)} / {coords.lon.toFixed(6)}
-            </b>
-          ) : (
-            <b>Локация 📍 Нет данных</b>
-          )}
-        </div>
-      </header>
-
+      <Header
+        geoLoading={geoLoading}
+        coords={coords}
+        geoError={geoError}
+        setPage={setPage}
+      />
       {page === "" && (
         <MainPage
           setGpsEnabled={setGpsEnabled}
           setPage={setPage}
           gpsEnabled={gpsEnabled}
           data={data}
+          setData={setData}
         />
       )}
       {page === "add" && (
@@ -127,30 +119,7 @@ export default function App() {
         />
       )}
       {page === "map" && <MapPage leaks={data} />}
-      <footer className="bottom-nav">
-        <button
-          className={`nav-item ${page === "map" ? "active" : ""}`}
-          onClick={() => setPage("map")}
-        >
-          <span className="nav-icon">🗺️</span>
-          <span className="nav-label">Map</span>
-        </button>
-        <button
-          className={`nav-item ${page === "" ? "active" : ""}`}
-          onClick={() => setPage("")}
-        >
-          <span className="nav-icon">🏠</span>
-          <span className="nav-label">Home</span>
-        </button>
-
-        <button
-          className={`nav-item ${page === "settings" ? "active" : ""}`}
-          onClick={() => setPage("settings")}
-        >
-          <span className="nav-icon">⚙️</span>
-          <span className="nav-label">Settings</span>
-        </button>
-      </footer>
+      <Footer page={page} setPage={setPage} />
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import { useMemo, useRef, useState } from "react";
-import LeaksMap from "../components/LeaksMap";
-import MobileSheet from "../components/MobileSheet";
-import MobileSearchButton from "../components/MobileSearchButton";
+import LeaksMap from "../components/LeaksMap/LeaksMap";
+import MobileSheet from "../components/MobileSheet/MobileSheet";
 
 const NO_STATION_LABEL = "Без станции";
 
@@ -26,7 +25,7 @@ export default function MapPage({ leaks }) {
     stations.reduce((acc, s) => {
       acc[s] = true;
       return acc;
-    }, {})
+    }, {}),
   );
 
   // 🔹 фильтрация leaks
@@ -45,9 +44,11 @@ export default function MapPage({ leaks }) {
 
   return (
     <div className="map-mobile-wrapper">
-      <LeaksMap leaks={visibleLeaks} mapApiRef={mapApiRef} />
-
-      <MobileSearchButton onClick={() => setOpen(true)} />
+      <LeaksMap
+        leaks={visibleLeaks}
+        mapApiRef={mapApiRef}
+        onClick={() => setOpen(true)}
+      />
 
       <MobileSheet
         open={open}

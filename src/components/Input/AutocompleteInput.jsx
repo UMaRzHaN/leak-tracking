@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-
 export default function AutocompleteInput({
   id,
   label,
@@ -30,7 +29,7 @@ export default function AutocompleteInput({
   }, []);
 
   const filtered = options.filter((o) =>
-    o.toLowerCase().includes(query.toLowerCase())
+    o.toLowerCase().includes(query.toLowerCase()),
   );
 
   const select = (val) => {

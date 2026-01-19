@@ -1,4 +1,4 @@
-import LeakForm from "../components/LeakForm";
+import LeakForm from "../components/LeakForm/LeakForm";
 import { usePhotoStorage } from "../hooks/usePhotoStorage";
 
 import { toNumber } from "../utils/toNumber";

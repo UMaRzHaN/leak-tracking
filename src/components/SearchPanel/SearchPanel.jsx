@@ -1,5 +1,4 @@
 import DatabaseOverflow from "../DatabaseOverflow/DatabaseOverflow";
-import "./SearchPanel.css";
 
 export default function SearchPanel({
   search,

@@ -1,5 +1,4 @@
-import "./PhotoModal.css";
-export function PhotoModal({ open, item, onClose }) {
+export default function PhotoModal({ open, item, onClose }) {
   if (!open) return null;
 
   return (

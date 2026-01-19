@@ -1,11 +1,9 @@
 import { useState } from "react";
 import { usePhotoSrc } from "../../hooks/usePhotoSrc";
 import { useSwipeActions } from "../../hooks/useSwipeActions";
-import "./LeakCardCompact.css";
 
 export default function LeakCardCompact({
   leak,
-  onEdit,
   onRemove,
   onOpenPhoto,
   onOpenDetails,
@@ -45,7 +43,7 @@ export default function LeakCardCompact({
       </div>
 
       {/* ACTION BUTTONS */}
-      {onEdit && onRemove && (
+      {onRemove && (
         <div className="swipe-actions">
           <button
             className="swipe-photo"
@@ -55,9 +53,6 @@ export default function LeakCardCompact({
             }}
           >
             📷
-          </button>
-          <button className="swipe-edit" onClick={() => onEdit(leak)}>
-            ✏️
           </button>
           <button className="swipe-delete" onClick={() => onRemove(leak.id)}>
             🗑
@@ -83,9 +78,7 @@ export default function LeakCardCompact({
       >
         {/* content */}
         <div className="leak-header">
-          <div className="leak-title">
-            Бирка №{leak.leak_id} | Видео №{leak.video_id}
-          </div>
+          <div className="leak-title">Бирка №{leak.leak_id}</div>
           <div className="leak-date">{leak.date}</div>
         </div>
 
@@ -101,7 +94,7 @@ export default function LeakCardCompact({
 
         <div className="leak-footer">
           <div className="leak-coords">
-            📍 {leak.lat} / {leak.lon}
+            🛠️ МТР: {leak.repair_recommendation}
           </div>
           <div className="leak-speed">⏲ Скорость {leak.leak_speed}</div>
         </div>
