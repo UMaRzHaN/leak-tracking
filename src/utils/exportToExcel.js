@@ -116,5 +116,5 @@ const generateCSV = (prepared) => {
     rows.push(row.join(";"));
   });
 
-  return rows.join("\n");
+  return "\uFEFF" + rows.join("\n");
 };

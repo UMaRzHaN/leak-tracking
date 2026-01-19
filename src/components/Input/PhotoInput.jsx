@@ -44,7 +44,7 @@ export default function PhotoInput({
           src={value}
           alt="Фото"
           className={s.photoPreview}
-          style={{ maxWidth: 120 }}
+          style={{ maxWidth: 120, marginTop: 10 }}
         />
       )}
       {!isNative && (

@@ -6,7 +6,7 @@ export default function RecentLeaks({ leaks = [], onViewAll, onOpenDetails }) {
     speed <= 25 ? "low" : speed >= 100 ? "high" : "medium";
 
   return (
-    <div className={s.recentLeaks}>
+    <div className={s.recentLeaks} style={{paddingBottom: 60}}>
       <div className={s.recentHeader}>
         <h3 className={s.title}>Недавнее</h3>
         <button className={s.viewAll} onClick={onViewAll}>

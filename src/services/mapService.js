@@ -12,34 +12,83 @@ export function getColorByStatus(status) {
 
 export function createMarkerContent(color, label) {
   const el = document.createElement("div");
+
   el.style.width = "28px";
   el.style.height = "28px";
   el.style.borderRadius = "50%";
   el.style.background = color;
+
   el.style.display = "flex";
   el.style.alignItems = "center";
   el.style.justifyContent = "center";
+
   el.style.color = "#fff";
   el.style.fontSize = "13px";
   el.style.fontWeight = "600";
+
   el.style.boxShadow = "0 2px 6px rgba(0,0,0,0.35)";
   el.style.transform = "translateY(-14px)";
+  el.style.userSelect = "none";
+
   el.textContent = label;
+
   return el;
+}
+
+/* ======================================
+   CLUSTER RENDERER (IMPORTANT)
+====================================== */
+
+function createClusterRenderer() {
+  return {
+    render({ count, position }) {
+      const el = document.createElement("div");
+
+      el.style.width = "36px";
+      el.style.height = "36px";
+      el.style.borderRadius = "50%";
+      el.style.background = "#2563eb";
+      el.style.color = "#fff";
+
+      el.style.display = "flex";
+      el.style.alignItems = "center";
+      el.style.justifyContent = "center";
+
+      el.style.fontSize = "14px";
+      el.style.fontWeight = "700";
+      el.style.boxShadow = "0 4px 10px rgba(0,0,0,0.35)";
+      el.textContent = count;
+
+      return new window.google.maps.marker.AdvancedMarkerElement({
+        position,
+        content: el,
+        zIndex: 1000 + count,
+      });
+    },
+  };
 }
 
 /* ======================================
    MARKERS + CLUSTER
 ====================================== */
 
-export async function updateMarkers({ map, leaks, markersRef, clustererRef }) {
+export async function updateMarkers({
+  map,
+  leaks,
+  markersRef,
+  clustererRef,
+  onSelectLeak,
+}) {
   const { AdvancedMarkerElement } =
     await window.google.maps.importLibrary("marker");
 
-  // очистка
-  markersRef.current.forEach((m) => (m.map = null));
+  /* ===== CLEAR OLD ===== */
+  markersRef.current.forEach((m) => {
+    m.map = null;
+  });
   markersRef.current = [];
 
+  /* ===== CREATE MARKERS ===== */
   leaks.forEach((leak) => {
     if (leak?.lat == null || leak?.lon == null) return;
 
@@ -55,10 +104,13 @@ export async function updateMarkers({ map, leaks, markersRef, clustererRef }) {
     markersRef.current.push(marker);
   });
 
+  /* ===== CLUSTER ===== */
   clustererRef.current?.clearMarkers();
+
   clustererRef.current = new MarkerClusterer({
     map,
     markers: markersRef.current,
+    renderer: createClusterRenderer(),
   });
 }
 
@@ -107,7 +159,7 @@ export function autoCenterMap({ map, leaks }) {
       () => {
         map.setCenter({ lat: 41.3111, lng: 69.2797 });
         map.setZoom(12);
-      }
+      },
     );
   }
 }

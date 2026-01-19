@@ -4,30 +4,33 @@ import { updateMarkers, autoCenterMap } from "../services/mapService";
 export const useLeaksMap = ({ leaks, mapApiRef }) => {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
+
   const markersRef = useRef([]);
   const clustererRef = useRef(null);
+
   const userCoordsRef = useRef(null);
-
-  const [mapReady, setMapReady] = useState(false);
-
   const userMarkerRef = useRef(null);
   const followUserRef = useRef(false);
 
+  const [mapReady, setMapReady] = useState(false);
+
+  /* ===== LOCATE ME ===== */
   const locateMe = () => {
     if (!mapInstance.current || !userCoordsRef.current) return;
 
     followUserRef.current = true;
-
     mapInstance.current.panTo(userCoordsRef.current);
     mapInstance.current.setZoom(16);
   };
 
-  /* ===== INIT MAP ===== */
+  /* ======================================================
+     GEOLOCATION + USER MARKER (AdvancedMarker)
+     ====================================================== */
   useEffect(() => {
     if (!navigator.geolocation) return;
 
     const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
+      async (pos) => {
         const coords = {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
@@ -35,26 +38,33 @@ export const useLeaksMap = ({ leaks, mapApiRef }) => {
 
         userCoordsRef.current = coords;
 
-        if (mapInstance.current) {
-          if (!userMarkerRef.current) {
-            userMarkerRef.current = new window.google.maps.Marker({
-              map: mapInstance.current,
-              icon: {
-                path: window.google.maps.SymbolPath.CIRCLE,
-                scale: 8,
-                fillColor: "#1a73e8",
-                fillOpacity: 1,
-                strokeColor: "#fff",
-                strokeWeight: 2,
-              },
-            });
-          }
+        if (!mapInstance.current) return;
 
-          userMarkerRef.current.setPosition(coords);
+        // лениво импортируем marker lib
+        const { AdvancedMarkerElement } =
+          await window.google.maps.importLibrary("marker");
 
-          if (followUserRef.current) {
-            mapInstance.current.panTo(coords);
-          }
+        if (!userMarkerRef.current) {
+          const el = document.createElement("div");
+          el.style.width = "14px";
+          el.style.height = "14px";
+          el.style.borderRadius = "50%";
+          el.style.background = "#1a73e8";
+          el.style.border = "2px solid #fff";
+          el.style.boxShadow = "0 0 6px rgba(0,0,0,0.3)";
+
+          userMarkerRef.current = new AdvancedMarkerElement({
+            map: mapInstance.current,
+            position: coords,
+            content: el,
+            zIndex: 9999,
+          });
+        } else {
+          userMarkerRef.current.position = coords;
+        }
+
+        if (followUserRef.current) {
+          mapInstance.current.panTo(coords);
         }
       },
       console.error,
@@ -68,6 +78,9 @@ export const useLeaksMap = ({ leaks, mapApiRef }) => {
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
+  /* ======================================================
+     INIT MAP
+     ====================================================== */
   useEffect(() => {
     let cancelled = false;
 
@@ -95,15 +108,18 @@ export const useLeaksMap = ({ leaks, mapApiRef }) => {
         streetViewControl: false,
         mapTypeControl: false,
       });
+
       mapInstance.current.addListener("dragstart", () => {
         followUserRef.current = false;
       });
+
       mapInstance.current.addListener("zoom_changed", () => {
         followUserRef.current = false;
       });
+
       mapApiRef.current = {
         focus(leak) {
-          followUserRef.current = false; // 🔥 отключаем follow
+          followUserRef.current = false;
           mapInstance.current.panTo({
             lat: Number(leak.lat),
             lng: Number(leak.lon),
@@ -121,7 +137,9 @@ export const useLeaksMap = ({ leaks, mapApiRef }) => {
     };
   }, [mapApiRef]);
 
-  /* ===== MARKERS + AUTO CENTER ===== */
+  /* ======================================================
+     LEAK MARKERS + AUTO CENTER
+     ====================================================== */
   useEffect(() => {
     if (!mapReady || !mapInstance.current) return;
 

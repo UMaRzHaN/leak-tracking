@@ -11,7 +11,7 @@ export default function DataBaseList({
   }
 
   return (
-    <>
+    <div style={{ paddingBottom: 60 }}>
       {data.map((row) => (
         <LeakCardCompact
           key={row.id}
@@ -21,6 +21,6 @@ export default function DataBaseList({
           onOpenPhoto={onOpenPhoto}
         />
       ))}
-    </>
+    </div>
   );
 }

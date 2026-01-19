@@ -92,7 +92,7 @@ export default function App() {
           setPage={setPage}
         />
       )}
-      <div className={s.page}>
+      <div className={s.pages}>
         {page === "" && (
           <MainPage
             setGpsEnabled={setGpsEnabled}
