@@ -44,7 +44,7 @@ export default function App() {
   const { start: startVoiceInput, stop: stopVoiceInput } = useSpeechRecognition(
     (text) => {
       handleVoiceText(text, setVoiceData, setPage);
-    }
+    },
   );
 
   /* =========================
@@ -81,7 +81,7 @@ export default function App() {
   ========================= */
   return (
     <div className="app">
-      <header className="header">
+      <header className="header" onClick={() => setPage("")}>
         Журнал утечек газа
         <div style={{ color: "gray", marginTop: 10 }}>
           {geoError ? (

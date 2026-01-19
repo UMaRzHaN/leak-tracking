@@ -53,6 +53,7 @@ button {
   color: #fff;
   border: none;
   font-weight: 600;
+  cursor: pointer;
 }
 
 button:active {
@@ -95,6 +96,7 @@ button:active {
   color: white;
   text-align: center;
   font-weight: 600;
+  cursor: pointer;
 }
 .emojis {
   background-repeat: no-repeat;
@@ -264,7 +266,6 @@ button:active {
 .autocomplete-list li:active {
   background: #bbdefb;
 }
-
 
 .floating-actions {
   position: fixed;

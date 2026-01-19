@@ -1,13 +1,10 @@
 import { useState, useMemo } from "react";
-import { getDistanceMeters } from "../utils/getDistanceMeters";
-import { usePhotoStorage } from "../hooks/usePhotoStorage";
-import { useCamera } from "../hooks/useCamera";
-import { deletePhotoFromFS } from "../services/photoService";
-
-import EditTextField from "../components/EditTextField";
 import SearchPanel from "../components/SearchPanel/SearchPanel";
 import LeakCardCompact from "../components/LeakCardCompact/LeakCardCompact";
 import { PhotoModal } from "../components/PhotoModal/PhotoModal";
+import LeakDetailsSheet from "../components/LeakDetailsSheet/LeakDetailsSheet";
+import { getDistanceMeters } from "../utils/getDistanceMeters";
+import { deletePhotoFromFS } from "../services/photoService";
 
 const STORAGE_KEY = "leaks_database_v1";
 
@@ -31,62 +28,19 @@ const SEARCH_FIELDS = [
 export default function DataBase({
   data = [],
   setData,
-  coords,
   clearDatabase,
+  coords,
 }) {
-  const { isNative, takePhoto, pickFromBrowser } = useCamera();
-  const [editId, setEditId] = useState(null);
-  const [editRow, setEditRow] = useState({});
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("all");
   const [sortByDistance, setSortByDistance] = useState(false);
-  const { savePhoto, loadPhoto, clearPreview } = usePhotoStorage();
-
-  const [activeItem, setActiveItem] = useState(null);
+  const [activeLeak, setActiveLeak] = useState(null);
+  const [photoItem, setPhotoItem] = useState(null);
   const [photoOpen, setPhotoOpen] = useState(false);
-  /* ---------- helpers ---------- */
+
   const save = (updated) => {
-    const forStorage = updated.map(({ photoPreview, ...rest }) => rest);
     setData(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(forStorage));
-  };
-
-  const startEdit = async (row) => {
-    setEditId(row.id);
-
-    let photoSrc = null;
-    if (row.photo) {
-      photoSrc = await loadPhoto(row.photo);
-    }
-
-    setEditRow({
-      ...row,
-      photoPreview: photoSrc,
-    });
-  };
-
-  const saveEdit = async () => {
-    let photo = editRow.photo;
-
-    if (editRow._newPhoto) {
-      photo = await savePhoto(editRow._newPhoto, editRow.leak_id);
-    }
-
-    const { photoPreview, _newPhoto, ...cleanEditRow } = editRow;
-
-    const updated = data.map((r) =>
-      r.id === editId
-        ? {
-            ...cleanEditRow,
-            photo,
-            photoUpdatedAt: Date.now(),
-          }
-        : r
-    );
-
-    save(updated);
-    clearPreview();
-    setEditId(null);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   };
 
   const remove = async (id) => {
@@ -94,10 +48,16 @@ export default function DataBase({
 
     const row = data.find((r) => r.id === id);
 
+    // 🗑 удаляем фото из файловой системы
     if (row?.photo) {
-      await deletePhotoFromFS(row.photo); // ✅ ЧЁТКО по пути
+      try {
+        await deletePhotoFromFS(row.photo);
+      } catch (e) {
+        console.warn("Не удалось удалить фото:", e);
+      }
     }
 
+    // 🗑 удаляем запись из базы
     const updated = data
       .filter((r) => r.id !== id)
       .map((r, i) => ({ ...r, index: i + 1 }));
@@ -107,252 +67,81 @@ export default function DataBase({
 
   /* ---------- search ---------- */
 
-  const filteredData = data.filter((row) => {
-    if (!search.trim()) return true;
+  const filteredData = useMemo(() => {
+    if (!search.trim()) return data;
+
     const q = search.toLowerCase();
 
-    if (searchField === "all") {
-      return SEARCH_FIELDS.filter((f) => f.key !== "all").some(({ key }) =>
-        row[key]?.toString().toLowerCase().includes(q)
-      );
-    }
+    return data.filter((row) => {
+      if (searchField === "all") {
+        return SEARCH_FIELDS.filter((f) => f.key !== "all").some(({ key }) =>
+          row[key]?.toString().toLowerCase().includes(q),
+        );
+      }
 
-    return row[searchField]?.toString().toLowerCase().includes(q);
-  });
-
-  /* ---------- render ---------- */
+      return row[searchField]?.toString().toLowerCase().includes(q);
+    });
+  }, [data, search, searchField]);
+  /* ---------- sort by distance ---------- */
   const sortedData = useMemo(() => {
-    const base = filteredData;
-
     if (!sortByDistance || !coords?.lat || !coords?.lon) {
-      return base;
+      return filteredData;
     }
 
-    return [...base].sort((a, b) => {
+    return [...filteredData].sort((a, b) => {
       const da = getDistanceMeters(coords.lat, coords.lon, a.lat, a.lon);
       const db = getDistanceMeters(coords.lat, coords.lon, b.lat, b.lon);
       return da - db;
     });
   }, [filteredData, sortByDistance, coords]);
-
-  // Edit PHOTO
-  const handleEditPhoto = async (e) => {
-    let photo;
-
-    if (isNative) {
-      // 📱 Mobile — делаем НОВОЕ фото
-      photo = await takePhoto();
-    } else {
-      // 🌐 Web — выбираем файл
-      const file = e.target.files?.[0];
-      if (!file) return;
-      photo = await pickFromBrowser(file);
-    }
-
-    setEditRow((prev) => ({
-      ...prev,
-      _newPhoto: photo, // 🔥 новое фото
-      photoPreview: photo.webPath, // 👁 сразу обновляем preview
-    }));
-  };
-
   return (
-    <>
-      <div className="card">
-        {/* Поиск */}
-        <SearchPanel
-          search={search}
-          setSearch={setSearch}
-          searchField={searchField}
-          setSearchField={setSearchField}
-          fields={SEARCH_FIELDS}
-          resultCount={filteredData.length}
-          setSortByDistance={setSortByDistance}
-          sortByDistance={sortByDistance}
-          clearDatabase={clearDatabase}
-          filteredData={filteredData}
+    <div className="card">
+      <SearchPanel
+        search={search}
+        setSearch={setSearch}
+        searchField={searchField}
+        setSearchField={setSearchField}
+        fields={SEARCH_FIELDS}
+        resultCount={sortedData.length}
+        setSortByDistance={setSortByDistance}
+        sortByDistance={sortByDistance}
+        clearDatabase={clearDatabase}
+        filteredData={filteredData}
+        coords={coords}
+      />
+
+      {sortedData.map((row) => (
+        <LeakCardCompact
+          key={row.id}
+          leak={row}
+          onRemove={remove}
+          onOpenDetails={setActiveLeak}
+          onOpenPhoto={(item) => {
+            setPhotoItem(item);
+            setPhotoOpen(true);
+          }}
         />
+      ))}
 
-        {/* Список записей */}
-        {sortedData.map((row) => (
-          <div key={row.id} className="card" style={{ padding: 0 }}>
-            {editId === row.id ? (
-              <>
-                <EditTextField
-                  label="Индивидуальный номер утечки"
-                  value={editRow.leak_id}
-                  onChange={(value) =>
-                    setEditRow({ ...editRow, leak_id: value })
-                  }
-                />
-
-                <EditTextField
-                  label="Видео"
-                  value={editRow.video}
-                  onChange={(value) => setEditRow({ ...editRow, video: value })}
-                />
-                <EditTextField
-                  label="Скорость утечки"
-                  value={editRow.leak_speed}
-                  onChange={(value) =>
-                    setEditRow({ ...editRow, leak_speed: value })
-                  }
-                />
-
-                <EditTextField
-                  label="Температура"
-                  value={editRow.temperature}
-                  onChange={(value) =>
-                    setEditRow({ ...editRow, temperature: value })
-                  }
-                />
-
-                <EditTextField
-                  label="Давление"
-                  value={editRow.pressure}
-                  onChange={(value) =>
-                    setEditRow({ ...editRow, pressure: value })
-                  }
-                />
-                <EditTextField
-                  label="УМГ"
-                  value={editRow.field}
-                  onChange={(value) => setEditRow({ ...editRow, field: value })}
-                />
-
-                <EditTextField
-                  label="Компрессорная станция"
-                  value={editRow.station}
-                  onChange={(value) =>
-                    setEditRow({ ...editRow, station: value })
-                  }
-                />
-                <EditTextField
-                  label="Локация"
-                  value={editRow.location}
-                  onChange={(value) =>
-                    setEditRow({ ...editRow, location: value })
-                  }
-                />
-
-                <EditTextField
-                  label="Объект"
-                  value={editRow.object}
-                  onChange={(value) =>
-                    setEditRow({ ...editRow, object: value })
-                  }
-                />
-                <EditTextField
-                  label="Компонент"
-                  value={editRow.component}
-                  onChange={(value) =>
-                    setEditRow({ ...editRow, component: value })
-                  }
-                />
-
-                <EditTextField
-                  label="Описание утечки"
-                  value={editRow.leak_description}
-                  onChange={(value) =>
-                    setEditRow({ ...editRow, leak_description: value })
-                  }
-                />
-
-                <EditTextField
-                  label="Причина утечки"
-                  value={editRow.leak_cause}
-                  onChange={(value) =>
-                    setEditRow({ ...editRow, leak_cause: value })
-                  }
-                />
-                <EditTextField
-                  label="Технологическое решение"
-                  value={editRow.technological_solution}
-                  onChange={(value) =>
-                    setEditRow({ ...editRow, technological_solution: value })
-                  }
-                />
-
-                <EditTextField
-                  label="Решение/ План устранения"
-                  value={editRow.repair_recommendation}
-                  onChange={(value) =>
-                    setEditRow({ ...editRow, repair_recommendation: value })
-                  }
-                />
-
-                <EditTextField
-                  label="МТР ремонта (предполагаемый)"
-                  value={editRow.materials_equipment}
-                  onChange={(value) =>
-                    setEditRow({ ...editRow, materials_equipment: value })
-                  }
-                />
-                <EditTextField
-                  label="Примечание"
-                  value={editRow.note}
-                  onChange={(value) => setEditRow({ ...editRow, note: value })}
-                />
-                {/* ===== ФОТО ===== */}
-                <div className="field">
-                  <label>Фото утечки</label>
-
-                  {!isNative && (
-                    <input
-                      type="file"
-                      accept="image/*"
-                      id={`edit-photo-${row.id}`}
-                      style={{ display: "none" }}
-                      onChange={handleEditPhoto}
-                    />
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      isNative
-                        ? handleEditPhoto() // 📱 камера
-                        : document
-                            .getElementById(`edit-photo-${row.id}`)
-                            .click()
-                    }
-                  >
-                    📷 Изменить фото
-                  </button>
-
-                  {/* ✅ ТОЛЬКО photoPreview */}
-                  {editRow.photoPreview && (
-                    <img
-                      src={editRow.photoPreview}
-                      alt="Фото утечки"
-                      style={{ maxWidth: 300, marginTop: 8 }}
-                    />
-                  )}
-                </div>
-
-                <button onClick={saveEdit}>💾 Сохранить</button>
-              </>
-            ) : (
-              <LeakCardCompact
-                key={row.id}
-                leak={row}
-                onEdit={startEdit}
-                onRemove={remove}
-                onOpenPhoto={(item) => {
-                  setActiveItem(item);
-                  setPhotoOpen(true);
-                }}
-              />
-            )}
-          </div>
-        ))}
-
-        <PhotoModal
-          open={photoOpen}
-          item={activeItem}
-          onClose={() => setPhotoOpen(false)}
+      {activeLeak && (
+        <LeakDetailsSheet
+          leak={activeLeak}
+          onClose={() => setActiveLeak(null)}
+          onSave={(updatedLeak) => {
+            const updated = data.map((r) =>
+              r.id === updatedLeak.id ? updatedLeak : r,
+            );
+            save(updated);
+            setActiveLeak(null);
+          }}
         />
-      </div>
-    </>
+      )}
+
+      <PhotoModal
+        open={photoOpen}
+        item={photoItem}
+        onClose={() => setPhotoOpen(false)}
+      />
+    </div>
   );
 }

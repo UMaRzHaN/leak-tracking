@@ -8,22 +8,50 @@ export default function LeakCardCompact({
   onEdit,
   onRemove,
   onOpenPhoto,
+  onOpenDetails,
 }) {
-  const [actionsOpen, setActionsOpen] = useState(false);
+  const [swipeState, setSwipeState] = useState(null);
+  // null | "left" | "right"
+
   const photoSrc = usePhotoSrc(leak.photo, leak.photoUpdatedAt);
-  const swipe = useSwipeActions();
+
+  const swipe = useSwipeActions({
+    // 👈 справа → налево — показываем кнопки
+    onSwipeLeft: () => {
+      setSwipeState("left");
+    },
+
+    // 👉 слева → направо
+    onSwipeRight: () => {
+      if (swipeState === "left") {
+        setSwipeState(null); // закрываем кнопки
+      } else {
+        setSwipeState("right"); // сдвигаем карточку вправо
+        setTimeout(() => {
+          onOpenDetails?.(leak);
+          setSwipeState(null);
+        }, 200);
+      }
+    },
+  });
 
   return (
-    <div className="swipe-wrapper">
-      {/* SWIPE ACTIONS */}
+    <div
+      className={`swipe-wrapper ${swipeState === "right" ? "hint-right" : ""}`}
+    >
+      {/* 👉 ПОДСКАЗКА */}
+      <div className="swipe-hint swipe-hint-right">
+        <span>Подробнее</span>
+      </div>
 
+      {/* ACTION BUTTONS */}
       {onEdit && onRemove && (
         <div className="swipe-actions">
           <button
             className="swipe-photo"
             onClick={(e) => {
               e.stopPropagation();
-              onOpenPhoto({ photoSrc: photoSrc, photo: leak.photo });
+              onOpenPhoto({ photoSrc, photo: leak.photo });
             }}
           >
             📷
@@ -39,12 +67,21 @@ export default function LeakCardCompact({
 
       {/* CARD */}
       <div
-        className={`leak-card ${actionsOpen ? "swiped" : ""}`}
+        className={`leak-card ${
+          swipeState === "left"
+            ? "swiped-left"
+            : swipeState === "right"
+              ? "swiped-right"
+              : ""
+        }`}
         onTouchStart={swipe.onTouchStart}
         onTouchMove={swipe.onTouchMove}
-        onTouchEnd={() => swipe.onTouchEnd(setActionsOpen)}
+        onTouchEnd={swipe.onTouchEnd}
+        onMouseDown={swipe.onMouseDown}
+        onMouseMove={swipe.onMouseMove}
+        onMouseUp={swipe.onMouseUp}
       >
-        {/* Header */}
+        {/* content */}
         <div className="leak-header">
           <div className="leak-title">
             Бирка №{leak.leak_id} | Видео №{leak.video_id}
@@ -52,22 +89,16 @@ export default function LeakCardCompact({
           <div className="leak-date">{leak.date}</div>
         </div>
 
-        {/* Object */}
         <div className="leak-main">
           КС: {leak.station} | Объект: {leak.object}
         </div>
 
-        {/* Component */}
-        <div className="leak-tech">
-          <span>🔧 Компонент: {leak.component}</span>
-        </div>
+        <div className="leak-tech">🔧 Компонент: {leak.component}</div>
 
-        {/* Description */}
         {leak.leak_description && (
           <div className="leak-desc">📝 Описание: {leak.leak_description}</div>
         )}
 
-        {/* Footer */}
         <div className="leak-footer">
           <div className="leak-coords">
             📍 {leak.lat} / {leak.lon}

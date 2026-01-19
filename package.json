@@ -11,6 +11,7 @@
     "@capacitor/file-transfer": "^2.0.3",
     "@capacitor/filesystem": "^8.0.0",
     "@capacitor/geolocation": "^8.0.0",
+    "@capacitor/haptics": "^8.0.0",
     "@googlemaps/js-api-loader": "^2.0.2",
     "@googlemaps/markerclusterer": "^2.6.2",
     "@testing-library/dom": "^10.4.1",
