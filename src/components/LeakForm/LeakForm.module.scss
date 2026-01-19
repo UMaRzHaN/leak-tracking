@@ -1,0 +1,270 @@
+/* ===== APP BAR ===== */
+.appBar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+
+  height: 56px;
+  background: #0f4aa1; /* как на скрине */
+
+  display: flex;
+  align-items: center;
+
+  padding: 0 12px;
+
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* BACK BUTTON */
+.backButton {
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: none;
+  border: none;
+
+  color: #ffffff;
+  font-size: 22px;
+  cursor: pointer;
+
+  border-radius: 20px;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.15);
+  }
+}
+
+/* TITLE */
+.appBarTitle {
+  flex: 1;
+  text-align: center;
+
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* ===== CARD ===== */
+.card {
+  position: relative;
+  padding-bottom: 140px;
+}
+.mic {
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: none;
+  border: none;
+
+  font-size: 20px;
+  color: #ffffff;
+
+  border-radius: 20px;
+  cursor: pointer;
+
+  touch-action: none; // 🔑 вместо preventDefault
+  user-select: none;
+
+  &:active {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(0.92);
+  }
+}
+
+/* ===== STEP HEADER ===== */
+.stepHeader {
+  margin: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+/* текст */
+.stepText {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  margin-bottom: 12px;
+
+  span {
+    color: #2563eb;
+    font-weight: 600;
+  }
+}
+
+/* ===== DOTS ===== */
+.stepDots {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.stepDot {
+  width: 28px;
+  height: 28px;
+
+  border-radius: 50%;
+  background: #e5e7eb;
+  color: #6b7280;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  transition: all 0.2s ease;
+}
+
+/* завершённые шаги */
+.done {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+/* активный шаг */
+.active {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25);
+}
+
+/* ===== FLOATING ACTIONS ===== */
+.floatingActions {
+  position: fixed;
+  right: 16px;
+  bottom: 90px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  z-index: 50;
+}
+
+/* ===== INLINE CLEAR BUTTON ===== */
+.pen {
+  margin: 10px;
+  margin-left: auto;
+  min-width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #f5f7fb;
+  border: 1px solid #e5e7eb;
+
+  color: #6b7280;
+  font-size: 15px;
+
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #eef2ff;
+    color: #2563eb;
+  }
+
+  &:active {
+    transform: scale(0.9);
+    background: #e0e7ff;
+  }
+}
+.stepCircles {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stepCircle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
+.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+/* ===== FOOTER ===== */
+.footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  padding: 12px 16px;
+  background: #ffffff; // было #020617
+  border-top: 1px solid #e5e7eb; // было #1e293b
+
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+
+  button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px; // чуть мягче, mobile-like
+
+    font-size: 15px;
+    font-weight: 600;
+
+    border: none;
+    cursor: pointer;
+
+    background: #f5f7fb; // вторичная кнопка (Назад)
+    color: #374151; // тёмно-серый текст
+
+    transition: all 0.15s ease;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    &:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+  }
+
+  /* primary button: Далее / Сохранить */
+  button:last-child {
+    background: #2563eb; // синий как на фото
+    color: #ffffff;
+  }
+}

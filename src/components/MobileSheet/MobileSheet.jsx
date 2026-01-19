@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import s from "./MobileSheet.module.scss";
 
 const NO_STATION_LABEL = "Без станции";
 
@@ -13,7 +14,6 @@ export default function MobileSheet({
 }) {
   const [query, setQuery] = useState("");
 
-  // нормализуем leaks (если нет station)
   const normalizedLeaks = useMemo(() => {
     return leaks.map((leak) => ({
       ...leak,
@@ -25,21 +25,24 @@ export default function MobileSheet({
     if (!query) return normalizedLeaks;
     const q = query.toLowerCase();
     return normalizedLeaks.filter((l) =>
-      String(l.leak_id).toLowerCase().includes(q)
+      String(l.leak_id).toLowerCase().includes(q),
     );
   }, [normalizedLeaks, query]);
 
   return (
-    <div className={`sheet ${open ? "open" : ""}`}>
-      <div className="sheet-handle" onClick={onClose} />
+    <div
+      className={`${s.sheet} ${open ? s.open : ""}`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className={s.sheetHandle} onClick={onClose} />
 
       {/* ===== СТАНЦИИ (LAYERS) ===== */}
-      <div className="station-list">
+      <div className={s.stationList}>
         {stations.map((station) => {
           const label = station || NO_STATION_LABEL;
 
           return (
-            <label key={label} className="station-item">
+            <label key={label} className={s.stationItem}>
               <input
                 type="checkbox"
                 checked={!!enabledStations[label]}
@@ -52,7 +55,7 @@ export default function MobileSheet({
       </div>
 
       {/* ===== ПОИСК ===== */}
-      <div className="sheet-search">
+      <div className={s.sheetSearch}>
         <input
           type="search"
           placeholder="Поиск по ID утечки…"
@@ -62,18 +65,18 @@ export default function MobileSheet({
       </div>
 
       {/* ===== СПИСОК УТЕЧЕК ===== */}
-      <div className="sheet-list">
+      <div className={s.sheetList}>
         {filteredLeaks.length === 0 && (
-          <div className="sheet-empty">Нет утечек</div>
+          <div className={s.sheetEmpty}>Нет утечек</div>
         )}
 
         {filteredLeaks.map((leak) => (
           <div
             key={leak.id}
-            className="sheet-item"
+            className={s.sheetItem}
             onClick={() => onSelect(leak)}
           >
-            <span className="dot" />
+            <span className={s.dot} />
             Leak ID {leak.leak_id}
           </div>
         ))}

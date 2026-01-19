@@ -19,27 +19,22 @@ const EDIT_FIELDS = [
   {
     key: "leak_description",
     label: "Описание утечки",
-    multiline: true,
   },
   {
     key: "leak_cause",
     label: "Причина утечки",
-    multiline: true,
   },
   {
     key: "technological_solution",
     label: "Технологическое решение",
-    multiline: true,
   },
   {
     key: "repair_recommendation",
     label: "Решение / План устранения",
-    multiline: true,
   },
   {
     key: "materials_equipment",
     label: "МТР ремонта",
-    multiline: true,
   },
   {
     key: "note",
@@ -171,7 +166,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
   return (
     <div className={s.detailsOverlay} onClick={onClose}>
       <div className={s.detailsSheet} onClick={(e) => e.stopPropagation()}>
-        <div className={s.detailsHandle} />
+        <div className={s.detailsHandle} onClick={onClose} />
 
         <h3 className={s.detailsTitle}>
           {mode === "edit" ? "Редактирование" : "Подробнее"}
@@ -208,43 +203,21 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
                 );
               })}
             </div>
-
             <div className={s.detailsActions}>
-              {/* ===== CHANGE PHOTO ===== */}
-              {!isNative && (
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={handleChangePhoto}
-                />
-              )}
-
               <button
                 type="button"
                 className={`${s.detailsBtn} ${s.edit}`}
-                onClick={() =>
-                  isNative ? handleChangePhoto() : fileInputRef.current?.click()
-                }
+                onClick={() => setMode("edit")}
               >
-                📷 Изменить фото
-              </button>
-
-              <button
-                type="button"
-                className={`${s.detailsBtn} ${s.edit}`}
-                onClick={handleSave}
-              >
-                💾 Сохранить
+                ✏️ Редактировать
               </button>
 
               <button
                 type="button"
                 className={`${s.detailsBtn} ${s.close}`}
-                onClick={() => setMode("view")}
+                onClick={onClose}
               >
-                Отмена
+                Закрыть
               </button>
             </div>
           </>
@@ -264,10 +237,11 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
             )}
             {EDIT_FIELDS.map(({ key, label, multiline }) => (
               <EditTextField
-                key={key}
+                key={key} // ✅ только для React
+                name={key} // ✅ НОВЫЙ проп
                 label={label}
-                value={localEdit[key] ?? ""}
                 multiline={multiline}
+                value={localEdit[key] ?? ""}
                 onChange={(v) =>
                   setLocalEdit((prev) => ({
                     ...prev,
@@ -276,6 +250,48 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
                 }
               />
             ))}
+            {
+              <div className={s.detailsActions}>
+                {/* ===== CHANGE PHOTO ===== */}
+                {!isNative && (
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={handleChangePhoto}
+                  />
+                )}
+
+                <button
+                  type="button"
+                  className={`${s.detailsBtn} ${s.edit}`}
+                  onClick={() =>
+                    isNative
+                      ? handleChangePhoto()
+                      : fileInputRef.current?.click()
+                  }
+                >
+                  📷 Изменить
+                </button>
+
+                <button
+                  type="button"
+                  className={`${s.detailsBtn} ${s.edit}`}
+                  onClick={handleSave}
+                >
+                  💾 Сохранить
+                </button>
+
+                <button
+                  type="button"
+                  className={`${s.detailsBtn} ${s.close}`}
+                  onClick={() => setMode("view")}
+                >
+                  Отмена
+                </button>
+              </div>
+            }
           </>
         )}
       </div>

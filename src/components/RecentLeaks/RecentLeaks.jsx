@@ -43,7 +43,7 @@ export default function RecentLeaks({ leaks = [], onViewAll, onOpenDetails }) {
                       : `Скорость: ${leak.leak_speed}`}
                   </span>
                   <span>•</span>
-                  <span>{timeAgo(leak.time)}</span>
+                  <span>{timeAgo(leak.createdAt)}</span>
                 </div>
               </div>
 

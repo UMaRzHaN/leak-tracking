@@ -1,53 +1,70 @@
-import s from "./Input.module.scss"
+import s from "./Input.module.scss";
+
 export default function InputCard({
   label,
   value,
   onChange,
   placeholder,
-  type = "text",
-  as = "input", // 🔥 input | textarea
+  type = "search",
+  as = "input", // input | textarea
   error,
   required = false,
   rightSlot,
-  rows = 3, // для textarea
+  rows = 3,
 }) {
   const isTextarea = as === "textarea";
+  const showClear = !isTextarea && value && String(value).length > 0;
 
   return (
     <div
-      className={["input-card", required && "is-required", error && "has-error"]
+      className={[s.inputCard, required && s.isRequired, error && s.hasError]
         .filter(Boolean)
         .join(" ")}
     >
-      <div className="input-card-header">
-        <label className="input-card-label">
+      <div className={s.inputCardHeader}>
+        <label className={s.inputCardLabel}>
           {label}
-          {required && <span className="required">*</span>}
+          {required && <span className={s.required}>*</span>}
         </label>
 
-        {rightSlot && <div className="input-card-slot">{rightSlot}</div>}
+        {rightSlot && <div className={s.inputCardSlot}>{rightSlot}</div>}
       </div>
 
-      {isTextarea ? (
-        <textarea
-          className="input-card-textarea"
-          rows={rows}
-          value={value ?? ""}
-          placeholder={placeholder}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      ) : (
-        <input
-          className="input-card-input"
-          type={type}
-          value={value ?? ""}
-          placeholder={placeholder}
-          onChange={(e) => onChange(e.target.value)}
-          inputMode={type === "number" ? "decimal" : undefined}
-        />
-      )}
+      <div className={s.inputWrapper}>
+        {isTextarea ? (
+          <textarea
+            className={s.inputCardTextarea}
+            rows={rows}
+            value={value ?? ""}
+            placeholder={placeholder}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        ) : (
+          <>
+            <input
+              className={s.inputCardInput}
+              type={type}
+              value={value ?? ""}
+              placeholder={placeholder}
+              onChange={(e) => onChange(e.target.value)}
+              inputMode={type === "number" ? "decimal" : undefined}
+            />
 
-      {error && <div className="input-card-error">{error}</div>}
+            {showClear && (
+              <button
+                type="button"
+                className={s.clearBtn}
+                onClick={() => onChange("")}
+                aria-label="Очистить"
+              >
+                ✕
+              </button>
+            )}
+          </>
+        )}
+      </div>
+
+      {error && <div className={s.inputCardError}>{error}</div>}
     </div>
   );
 }

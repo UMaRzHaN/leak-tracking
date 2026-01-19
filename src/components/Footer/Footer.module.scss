@@ -1,20 +1,16 @@
 .bottomNav {
+  height: var(--app-footer-footer);
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-
   display: flex;
   justify-content: space-around;
   align-items: center;
 
-  height: 64px;
   background: #fff;
-  border-top: 1px solid gray;
-
-  z-index: 1000;
+  border-top: 1px solid #d1d5db;
 }
-
 .navItem {
   background: none;
   border: none;

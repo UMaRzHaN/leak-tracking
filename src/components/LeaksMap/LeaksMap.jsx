@@ -1,17 +1,29 @@
 import { useLeaksMap } from "../../hooks/useLeaksMap";
+import s from "./LeaksMap.module.scss";
 
 export default function LeaksMap({ leaks, mapApiRef, onClick }) {
   const { mapRef, locateMe } = useLeaksMap({ leaks, mapApiRef });
 
   return (
-    <div className="map-wrapper">
-      <div ref={mapRef} className="map-canvas" />
-      <button className="fab fab--search" onClick={onClick}>
+    <div className={s.mapWrapper}>
+      <div ref={mapRef} className={s.mapCanvas} />
+
+      <button
+        type="button"
+        className={`${s.fab} ${s.fabSearch}`}
+        onClick={onClick}
+      >
         🔍
       </button>
-      <button className="fab fab--locate" onClick={locateMe}>
+
+      <button
+        type="button"
+        className={`${s.fab} ${s.fabLocate}`}
+        onClick={locateMe}
+      >
         📍
       </button>
     </div>
   );
 }
+  

@@ -1,0 +1,274 @@
+.photoInput {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.photoBtn {
+  padding: 10px;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  font-weight: 500;
+}
+
+.photoPreview {
+  max-width: 200px;
+  max-height: 200px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+.inputCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  padding: 12px;
+  border-radius: 14px;
+
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.inputCard:hover {
+  border-color: #c7d2fe;
+}
+
+/* required */
+.isRequired {
+  .required {
+    margin-left: 4px;
+    color: #dc2626;
+    font-weight: 600;
+  }
+}
+
+/* error */
+.hasError {
+  border-color: #dc2626;
+
+  .inputCardInput,
+  .inputCardTextarea {
+    border-color: #dc2626;
+  }
+}
+
+/* header */
+.inputCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.inputCardLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.inputCardSlot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* inputs */
+.inputCardInput,
+.inputCardTextarea {
+  width: 100%;
+  padding: 10px 12px;
+
+  font-size: 14px;
+  color: #111827;
+
+  background: #f5f7fb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+
+  &::placeholder {
+    color: #9ca3af;
+  }
+
+  &:focus {
+    border-color: #2563eb;
+    background: #ffffff;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  }
+}
+
+.inputCardTextarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* error text */
+.inputCardError {
+  font-size: 12px;
+  color: #dc2626;
+  margin-top: 2px;
+}
+.formField {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  padding: 12px;
+  border-radius: 14px;
+
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+}
+
+.formLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.formInput {
+  width: 100%;
+  padding: 10px 12px;
+
+  font-size: 14px;
+  color: #111827;
+
+  background: #f5f7fb;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+
+  outline: none;
+
+  &::placeholder {
+    color: #9ca3af;
+  }
+
+  &:focus {
+    background: #ffffff;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  }
+}
+
+.hasError {
+  border-color: #dc2626;
+
+  .formInput {
+    border-color: #dc2626;
+  }
+}
+
+/* dropdown */
+.autocompleteList {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+
+  z-index: 50;
+  max-height: 220px;
+  overflow-y: auto;
+
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+}
+
+.autocompleteItem {
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #111827;
+  cursor: pointer;
+
+  &:hover {
+    background: #f1f5ff;
+  }
+
+  &:active {
+    background: #e0e7ff;
+  }
+}
+
+.formError {
+  font-size: 12px;
+  color: #dc2626;
+  margin-top: 2px;
+}
+
+.stepRenderer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 10px;
+}
+
+/* ===== INPUT WRAPPER ===== */
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* чтобы крестик не наезжал на текст */
+.inputCardInput {
+  padding-right: 36px;
+}
+
+/* ===== CLEAR BUTTON ===== */
+.clearBtn {
+  position: absolute;
+  right: 10px;
+
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+
+  border: none;
+  background: transparent;
+  color: #374151;
+
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease;
+
+  &:hover {
+    background: #e7e8e9;
+  }
+
+  &:active {
+    transform: scale(0.9);
+  }
+}
+
+@media (max-width: 480px) {
+  .inputCard,
+  .formField {
+    padding: 10px;
+  }
+
+  .inputCardInput,
+  .inputCardTextarea,
+  .formInput {
+    font-size: 15px;
+  }
+}

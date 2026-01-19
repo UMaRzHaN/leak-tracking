@@ -81,46 +81,52 @@ export default function App() {
   /* =========================
      UI
   ========================= */
+  const hideLayout = page === "add";
   return (
     <div className={s.app}>
-      <Header
-        geoLoading={geoLoading}
-        coords={coords}
-        geoError={geoError}
-        setPage={setPage}
-      />
-      {page === "" && (
-        <MainPage
-          setGpsEnabled={setGpsEnabled}
+      {!hideLayout && (
+        <Header
+          geoLoading={geoLoading}
+          coords={coords}
+          geoError={geoError}
           setPage={setPage}
-          gpsEnabled={gpsEnabled}
-          data={data}
-          setData={setData}
         />
       )}
-      {page === "add" && (
-        <AddLeak
-          data={data}
-          setData={setData}
-          coords={coords}
-          voiceData={voiceData}
-          clearVoiceData={clearVoiceData}
-          startVoiceInput={startVoiceInput}
-          stopVoiceInput={stopVoiceInput}
-        />
-      )}
+      <div className={s.page}>
+        {page === "" && (
+          <MainPage
+            setGpsEnabled={setGpsEnabled}
+            setPage={setPage}
+            gpsEnabled={gpsEnabled}
+            data={data}
+            setData={setData}
+          />
+        )}
+        {page === "add" && (
+          <AddLeak
+            data={data}
+            setData={setData}
+            coords={coords}
+            voiceData={voiceData}
+            clearVoiceData={clearVoiceData}
+            startVoiceInput={startVoiceInput}
+            stopVoiceInput={stopVoiceInput}
+            setPage={setPage}
+          />
+        )}
 
-      {page === "db" && (
-        <DataBase
-          data={data}
-          setData={setData}
-          coords={coords}
-          clearDatabase={clearDatabase}
-          
-        />
-      )}
-      {page === "map" && <MapPage leaks={data} />}
-      <Footer page={page} setPage={setPage} />
+        {page === "db" && (
+          <DataBase
+            data={data}
+            setData={setData}
+            coords={coords}
+            clearDatabase={clearDatabase}
+          />
+        )}
+        {page === "map" && <MapPage leaks={data} />}
+      </div>
+
+      {!hideLayout && <Footer page={page} setPage={setPage} />}
     </div>
   );
 }

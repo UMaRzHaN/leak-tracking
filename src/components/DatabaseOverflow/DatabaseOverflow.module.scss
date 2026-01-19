@@ -4,6 +4,7 @@
 
 .overflowActions {
   position: relative;
+  z-index: 11;
 }
 
 /* =========================
@@ -14,7 +15,7 @@
   width: 36px;
   height: 36px;
 
-  border-radius: 20%;
+  border-radius: 10px;
   border: none;
 
   background: #f3f4f6;
@@ -26,9 +27,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-
   cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .overflowBtn:active {
@@ -44,14 +44,18 @@
   top: 44px;
   right: 0;
 
-  min-width: 210px;
+  min-width: 220px;
 
   background: #ffffff;
   border-radius: 14px;
-  padding: 6px 0;
+  padding: 0; /* ⬅️ ВАЖНО */
 
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
+  overflow: hidden; /* ⬅️ КЛЮЧ */
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.18),
+    0 2px 6px rgba(0, 0, 0, 0.08);
+
+  z-index: 12;
 }
 
 /* =========================
@@ -60,16 +64,17 @@
 
 .overflowMenu button {
   width: 100%;
-  background: none;
-  border: none;
+  padding: 14px 16px;
 
-  padding: 11px 14px;
-  font-size: 14px;
-  color: #1f2937;
+  border: none;
 
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
 
   cursor: pointer;
   text-align: left;
@@ -79,6 +84,34 @@
   background: #f3f4f6;
 }
 
+.overflowMenu button:active {
+  background: #e5e7eb;
+}
+.overflowMenu button:not(.danger) {
+  background: none;
+}
+
+.overflowMenu button:hover {
+  background: #f3f4f6;
+}
+
+.overflowMenu button:active {
+  background: #e5e7eb;
+}
+.overflowMenu button:not(.danger) {
+  background: none;
+}
+
+/* =========================
+   ICON STYLE (опционально)
+========================= */
+
+.overflowMenu button span {
+  font-size: 16px;
+  width: 18px;
+  text-align: center;
+}
+
 /* =========================
    DIVIDER
 ========================= */
@@ -86,17 +119,33 @@
 .overflowDivider {
   height: 1px;
   background: #e5e7eb;
-  margin: 6px 0;
 }
 
 /* =========================
    DANGER ACTION
 ========================= */
-
 .danger {
-  color: #dc2626;
+  color: #b91c1c !important;
+  font-weight: 600;
+
+  background: linear-gradient(to right, #fee2e2 0%, #fee2e2 64px, #eee2e2 100%);
 }
 
 .danger:hover {
-  background: #fee2e2;
+  background: linear-gradient(to right, #fecaca 0%, #fecaca 64px, #cc8989 100%);
+}
+
+.danger:active {
+  background: linear-gradient(to right, #fca5a5 0%, #fca5a5 64px, #ffffff 100%);
+}
+/* =========================
+   BACKDROP
+========================= */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 10;
+  touch-action: manipulation;
 }

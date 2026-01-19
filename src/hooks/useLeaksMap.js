@@ -6,6 +6,7 @@ export const useLeaksMap = ({ leaks, mapApiRef }) => {
   const mapInstance = useRef(null);
   const markersRef = useRef([]);
   const clustererRef = useRef(null);
+  const userCoordsRef = useRef(null);
 
   const [mapReady, setMapReady] = useState(false);
 
@@ -13,43 +14,60 @@ export const useLeaksMap = ({ leaks, mapApiRef }) => {
   const followUserRef = useRef(false);
 
   const locateMe = () => {
-    if (!mapInstance.current) return;
+    if (!mapInstance.current || !userCoordsRef.current) return;
 
     followUserRef.current = true;
 
-    navigator.geolocation.getCurrentPosition(
+    mapInstance.current.panTo(userCoordsRef.current);
+    mapInstance.current.setZoom(16);
+  };
+
+  /* ===== INIT MAP ===== */
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    const watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        const userPos = {
+        const coords = {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
         };
 
-        mapInstance.current.panTo(userPos);
-        mapInstance.current.setZoom(16);
+        userCoordsRef.current = coords;
 
-        if (!userMarkerRef.current) {
-          userMarkerRef.current = new window.google.maps.Marker({
-            position: userPos,
-            map: mapInstance.current,
-            icon: {
-              path: window.google.maps.SymbolPath.CIRCLE,
-              scale: 8,
-              fillColor: "#1a73e8",
-              fillOpacity: 1,
-              strokeColor: "#fff",
-              strokeWeight: 2,
-            },
-          });
-        } else {
-          userMarkerRef.current.setPosition(userPos);
+        if (mapInstance.current) {
+          if (!userMarkerRef.current) {
+            userMarkerRef.current = new window.google.maps.Marker({
+              map: mapInstance.current,
+              icon: {
+                path: window.google.maps.SymbolPath.CIRCLE,
+                scale: 8,
+                fillColor: "#1a73e8",
+                fillOpacity: 1,
+                strokeColor: "#fff",
+                strokeWeight: 2,
+              },
+            });
+          }
+
+          userMarkerRef.current.setPosition(coords);
+
+          if (followUserRef.current) {
+            mapInstance.current.panTo(coords);
+          }
         }
       },
       console.error,
-      { enableHighAccuracy: true }
+      {
+        enableHighAccuracy: false,
+        maximumAge: 30000,
+        timeout: 10000,
+      },
     );
-  };
 
-  /* ===== INIT MAP ===== */
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -77,7 +95,12 @@ export const useLeaksMap = ({ leaks, mapApiRef }) => {
         streetViewControl: false,
         mapTypeControl: false,
       });
-
+      mapInstance.current.addListener("dragstart", () => {
+        followUserRef.current = false;
+      });
+      mapInstance.current.addListener("zoom_changed", () => {
+        followUserRef.current = false;
+      });
       mapApiRef.current = {
         focus(leak) {
           followUserRef.current = false; // 🔥 отключаем follow

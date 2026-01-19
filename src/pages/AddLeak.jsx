@@ -12,6 +12,7 @@ export default function AddLeak({
   stopVoiceInput,
   photo,
   setPhoto,
+  setPage,
 }) {
   const { savePhoto } = usePhotoStorage();
   const handleAdd = async (row) => {
@@ -51,6 +52,7 @@ export default function AddLeak({
       photo={photo}
       setPhoto={setPhoto}
       coords={coords}
+      setPage={setPage}
     />
   );
 }

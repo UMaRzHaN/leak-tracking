@@ -5,17 +5,12 @@
   font-family: system-ui, Arial, sans-serif;
 }
 :root {
-  --app-footer-height: 56px;
+  --app-footer-header: 67.2px;
+  --app-footer-footer: 64px;
 }
 body {
   margin: 0;
   background: #f4f6f8;
-}
-
-.app {
-  display: flex;
-  flex-direction: column;
-  max-height: 100svh;
 }
 
 .emojis {
@@ -38,4 +33,9 @@ body {
 }
 #temperature {
   background-image: url(img/temperature.png);
+}
+.app {
+  max-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }

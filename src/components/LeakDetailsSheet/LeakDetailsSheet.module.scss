@@ -63,7 +63,7 @@
 }
 
 .detailsPhoto {
-    display: flex;
+  display: flex;
   margin: auto;
   width: 50%;
   border-radius: 14px;
@@ -105,32 +105,6 @@
   word-break: break-word;
 }
 
-/* =========================
-   ACTIONS
-   ========================= */
-
-.detailsActions {
-  position: sticky;
-  bottom: 0;
-
-  display: flex;
-  gap: 10px;
-
-  padding: 12px 0;
-  margin-top: 14px;
-
-  background: #ffffff;
-  z-index: 5;
-}
-.detailsBtn {
-  flex: 1;
-  height: 42px;
-  border-radius: 14px;
-  border: none;
-  font-size: 14px;
-  font-weight: 500;
-}
-
 /* ===== button variants ===== */
 
 .edit {
@@ -154,7 +128,7 @@
   margin-bottom: 10px;
 }
 .detailsSheet {
-  padding-bottom: 70px;
+  padding-bottom: 20px;
 }
 
 .detailsActions {
