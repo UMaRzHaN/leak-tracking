@@ -1,102 +1,58 @@
-import { useState } from "react";
-import { usePhotoSrc } from "../../hooks/usePhotoSrc";
-import { useSwipeActions } from "../../hooks/useSwipeActions";
+import { useSwipeCard } from "../../hooks/useSwipeCard";
+import s from "./LeakCardCompact.module.scss";
 
-export default function LeakCardCompact({
-  leak,
-  onRemove,
-  onOpenPhoto,
-  onOpenDetails,
-}) {
-  const [swipeState, setSwipeState] = useState(null);
-  // null | "left" | "right"
-
-  const photoSrc = usePhotoSrc(leak.photo, leak.photoUpdatedAt);
-
-  const swipe = useSwipeActions({
-    // 👈 справа → налево — показываем кнопки
-    onSwipeLeft: () => {
-      setSwipeState("left");
-    },
-
-    // 👉 слева → направо
-    onSwipeRight: () => {
-      if (swipeState === "left") {
-        setSwipeState(null); // закрываем кнопки
-      } else {
-        setSwipeState("right"); // сдвигаем карточку вправо
-        setTimeout(() => {
-          onOpenDetails?.(leak);
-          setSwipeState(null);
-        }, 200);
-      }
-    },
+export default function LeakCardCompact({ leak, onRemove, onOpenDetails }) {
+  const { swipeState, close, handlers } = useSwipeCard({
+    leak,
+    onOpenDetails,
+    onRemove,
   });
 
   return (
-    <div
-      className={`swipe-wrapper ${swipeState === "right" ? "hint-right" : ""}`}
-    >
-      {/* 👉 ПОДСКАЗКА */}
-      <div className="swipe-hint swipe-hint-right">
-        <span>Подробнее</span>
-      </div>
-
-      {/* ACTION BUTTONS */}
-      {onRemove && (
-        <div className="swipe-actions">
-          <button
-            className="swipe-photo"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenPhoto({ photoSrc, photo: leak.photo });
-            }}
-          >
-            📷
-          </button>
-          <button className="swipe-delete" onClick={() => onRemove(leak.id)}>
-            🗑
-          </button>
+    <div className={s.swipeWrapper} onClick={close}>
+      {/* 👉 SWIPE RIGHT → DETAILS */}
+      {swipeState === "right" && (
+        <div className={s.swipeHintRight}>
+          <span>ℹ️</span>
+          <span>Подробнее</span>
         </div>
       )}
 
+      {swipeState === "left" && onRemove && (
+        <div className={s.swipeHintLeft}>
+          <span>🗑</span>
+          <span>Удалить</span>
+        </div>
+      )}
       {/* CARD */}
       <div
-        className={`leak-card ${
+        className={`${s.card} ${
           swipeState === "left"
-            ? "swiped-left"
+            ? s.swipedLeft
             : swipeState === "right"
-              ? "swiped-right"
+              ? s.swipedRight
               : ""
         }`}
-        onTouchStart={swipe.onTouchStart}
-        onTouchMove={swipe.onTouchMove}
-        onTouchEnd={swipe.onTouchEnd}
-        onMouseDown={swipe.onMouseDown}
-        onMouseMove={swipe.onMouseMove}
-        onMouseUp={swipe.onMouseUp}
+        {...handlers}
       >
-        {/* content */}
-        <div className="leak-header">
-          <div className="leak-title">Бирка №{leak.leak_id}</div>
-          <div className="leak-date">{leak.date}</div>
+        <div className={s.header}>
+          <div className={s.title}>Бирка №{leak.leak_id}</div>
+          <div className={s.date}>{leak.date}</div>
         </div>
 
-        <div className="leak-main">
+        <div className={s.main}>
           КС: {leak.station} | Объект: {leak.object}
         </div>
 
-        <div className="leak-tech">🔧 Компонент: {leak.component}</div>
+        <div className={s.tech}>🔧 Компонент: {leak.component}</div>
 
         {leak.leak_description && (
-          <div className="leak-desc">📝 Описание: {leak.leak_description}</div>
+          <div className={s.desc}>📝 Описание: {leak.leak_description}</div>
         )}
 
-        <div className="leak-footer">
-          <div className="leak-coords">
-            🛠️ МТР: {leak.repair_recommendation}
-          </div>
-          <div className="leak-speed">⏲ Скорость {leak.leak_speed}</div>
+        <div className={s.footer}>
+          <div className={s.coords}>🛠️ МТР: {leak.repair_recommendation}</div>
+          <div className={s.speed}>⏲ Скорость {leak.leak_speed}</div>
         </div>
       </div>
     </div>

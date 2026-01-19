@@ -1,9 +1,9 @@
-import s from "./Header.module.scss"
+import s from "./Header.module.scss";
 export default function Header({ setPage, geoError, coords, geoLoading }) {
   return (
     <header className={s.header} onClick={() => setPage("")}>
       Журнал утечек газа
-      <div style={{ color: "gray", marginTop: 10 }}>
+      <div className={s.coords}>
         {geoError ? (
           <b>Локация 📍 {geoError}</b>
         ) : geoLoading ? (

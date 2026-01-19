@@ -1,0 +1,211 @@
+/* =========================
+   SWIPE WRAPPER
+   ========================= */
+
+.swipeWrapper {
+  position: relative;
+  overflow: hidden;
+  margin: 10px;
+  margin-bottom: 12px;
+  border-radius: 18px;
+}
+
+.hintRight {
+  .swipeHint {
+    opacity: 1;
+  }
+}
+
+/* =========================
+   ACTION BUTTONS (LEFT)
+   ========================= */
+
+.swipeActions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+
+  z-index: 1;
+}
+
+.swipePhoto,
+.swipeDelete {
+  width: 44px;
+  height: 44px;
+
+  border-radius: 12px;
+  border: none;
+
+  font-size: 18px;
+}
+
+.swipePhoto {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.swipeDelete {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* =========================
+   RIGHT SWIPE HINT
+   ========================= */
+
+.swipeHint {
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  height: 100%;
+  width: 80px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: linear-gradient(to right, rgba(37, 99, 235, 0.12), transparent);
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+
+  span {
+    font-size: 13px;
+    color: #1e40af;
+  }
+}
+
+/* =========================
+   CARD
+   ========================= */
+
+.card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 14px;
+
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+
+  transition: transform 0.25s ease;
+  position: relative;
+  z-index: 2;
+
+  touch-action: pan-y;
+}
+
+/* swipe states */
+
+.swipedLeft {
+  transform: translateX(-84px);
+}
+
+.swipedRight {
+  transform: translateX(84px);
+}
+
+/* =========================
+   CONTENT
+   ========================= */
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.title {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.date {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.main {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.tech {
+  font-size: 13px;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.desc {
+  font-size: 13px;
+  color: #4b5563;
+  margin-bottom: 6px;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.coords {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.speed {
+  white-space: nowrap;
+}
+.swipeHintRight,
+.swipeHintLeft {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 90px;
+
+  display: flex;
+  flex-direction: column; // 👈 КЛЮЧЕВО
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+
+  pointer-events: none;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+
+  span:first-child {
+    font-size: 18px; // эмодзи крупнее
+    line-height: 1;
+  }
+
+  span:last-child {
+    font-size: 12px;
+    opacity: 0.85;
+  }
+}
+
+/* 👉 RIGHT */
+
+.swipeHintRight {
+  left: 0;
+  background: linear-gradient(to right, rgba(37, 99, 235, 0.14), transparent);
+  color: #1e40af;
+}
+
+/* 👈 LEFT */
+
+.swipeHintLeft {
+  right: 0;
+  background: linear-gradient(to left, rgba(185, 28, 28, 0.14), transparent);
+  color: #991b1b;
+}

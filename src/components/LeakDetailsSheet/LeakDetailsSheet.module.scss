@@ -1,0 +1,187 @@
+/* =========================
+   OVERLAY
+   ========================= */
+
+.detailsOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 1000;
+
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+/* =========================
+   SHEET
+   ========================= */
+
+.detailsSheet {
+  width: 100%;
+  max-height: 92vh;
+
+  background: #ffffff;
+  border-radius: 18px 18px 0 0;
+  padding: 12px 14px 20px;
+
+  box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.2);
+
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* =========================
+   HANDLE
+   ========================= */
+
+.detailsHandle {
+  width: 36px;
+  height: 4px;
+  border-radius: 4px;
+  background: #d1d5db;
+  margin: 6px auto 10px;
+}
+
+/* =========================
+   TITLE
+   ========================= */
+
+.detailsTitle {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+/* =========================
+   PHOTO
+   ========================= */
+
+.detailsPhotoWrapper {
+  margin-bottom: 12px;
+}
+
+.detailsPhoto {
+    display: flex;
+  margin: auto;
+  width: 50%;
+  border-radius: 14px;
+  object-fit: cover;
+}
+
+/* =========================
+   VIEW MODE LIST
+   ========================= */
+
+.detailsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detailsRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+
+.multiline {
+  flex-direction: column;
+}
+
+.detailsLabel {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.detailsValue {
+  font-size: 14px;
+  color: #111827;
+  word-break: break-word;
+}
+
+/* =========================
+   ACTIONS
+   ========================= */
+
+.detailsActions {
+  position: sticky;
+  bottom: 0;
+
+  display: flex;
+  gap: 10px;
+
+  padding: 12px 0;
+  margin-top: 14px;
+
+  background: #ffffff;
+  z-index: 5;
+}
+.detailsBtn {
+  flex: 1;
+  height: 42px;
+  border-radius: 14px;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* ===== button variants ===== */
+
+.edit {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.close {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+/* =========================
+   EDIT MODE
+   ========================= */
+
+/* EditTextField уже со своими стилями,
+   здесь только отступы */
+
+:global(.editTextField) {
+  margin-bottom: 10px;
+}
+.detailsSheet {
+  padding-bottom: 70px;
+}
+
+.detailsActions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 10px;
+  padding: 12px 0 calc(12px + env(safe-area-inset-bottom));
+  background: #fff;
+  z-index: 10;
+}
+.photoEdit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.photoPlaceholder {
+  height: 180px;
+  border-radius: 14px;
+  background: #f3f4f6;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 13px;
+  color: #6b7280;
+}
