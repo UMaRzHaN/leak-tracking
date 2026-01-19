@@ -1,11 +1,13 @@
 import DatabaseOverflow from "../DatabaseOverflow/DatabaseOverflow";
+import SearchFieldSelect from "../SearchFieldSelect/SearchFieldSelect";
+import s from "./SearchPanel.module.scss";
 
 export default function SearchPanel({
   search,
   setSearch,
   searchField,
   setSearchField,
-  fields,
+  fields = [],
   resultCount,
   setSortByDistance,
   sortByDistance,
@@ -13,50 +15,43 @@ export default function SearchPanel({
   filteredData,
 }) {
   return (
-    <div className="search-panel">
-      {/* Search input */}
-      <div className="search-input">
-        <span className="search-icon">🔍</span>
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Поиск утечки..."
-        />
-      </div>
+    <div className={s.wrapper}>
+      <div className={s.card}>
+        <div className={s.searchInput}>
+          <span className={s.icon}>🔍</span>
+          <input
+            type="search"
+            placeholder="Поиск утечки..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
 
-      {/* Filters */}
-      <div className="filter-chips">
-        <select
-          id="select"
-          className="chip"
+        <SearchFieldSelect
           value={searchField}
-          onChange={(e) => setSearchField(e.target.value)}
-        >
-          {fields.map((f) => (
-            <option key={f.key} value={f.key}>
-              {f.label}
-            </option>
-          ))}
-        </select>
-        <button
-          onClick={() => setSortByDistance((v) => !v)}
-          className={`sort-btn ${sortByDistance ? "active" : ""}`}
-        >
-          {sortByDistance
-            ? "↩️ Обычный порядок"
-            : "📍 Отсортировать по близости"}
-        </button>
-        <DatabaseOverflow
-          onClearDb={clearDatabase}
-          filteredData={filteredData}
-          actions
+          onChange={setSearchField}
+          options={fields}
         />
-      </div>
 
-      {typeof resultCount === "number" && (
-        <div className="result-count">Найдено записей: {resultCount}</div>
-      )}
+        <div className={s.actions}>
+          <button
+            className={`${s.sortBtn} ${sortByDistance ? s.active : ""}`}
+            onClick={() => setSortByDistance((v) => !v)}
+          >
+            {sortByDistance
+              ? "📍 Отсортировать по близости"
+              : "↩️ Обычный порядок"}
+          </button>
+
+          <DatabaseOverflow
+            onClearDb={clearDatabase}
+            filteredData={filteredData}
+            actions
+          />
+        </div>
+
+        <div className={s.resultCount}>Найдено записей: {resultCount}</div>
+      </div>
     </div>
   );
 }

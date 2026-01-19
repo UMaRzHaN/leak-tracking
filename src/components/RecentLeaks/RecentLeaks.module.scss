@@ -1,0 +1,127 @@
+.recentLeaks {
+  padding: 0 16px 16px;
+}
+
+/* =========================
+   HEADER
+========================= */
+
+.recentHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.viewAll {
+  background: none;
+  border: none;
+  color: #1e88e5;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* =========================
+   LIST
+========================= */
+
+.leakList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* =========================
+   ITEM
+========================= */
+
+.leakItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 12px;
+  border-radius: 14px;
+
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+
+  cursor: pointer;
+  text-align: left;
+
+  transition: transform 0.08s ease, box-shadow 0.12s ease;
+}
+
+.leakItem:active {
+  transform: scale(0.98);
+}
+
+/* =========================
+   ICON (LEVEL)
+========================= */
+
+.leakIcon {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.low {
+  background: #4caf50;
+}
+
+.medium {
+  background: #ff9800;
+}
+
+.high {
+  background: #f44336;
+}
+
+/* =========================
+   INFO
+========================= */
+
+.leakInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.leakTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.leakMeta {
+  font-size: 12px;
+  color: #6b7280;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* =========================
+   ARROW
+========================= */
+
+.leakArrow {
+  color: #9ca3af;
+}
+
+/* =========================
+   EMPTY
+========================= */
+
+.empty {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 13px;
+  padding: 20px 0;
+}

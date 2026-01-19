@@ -1,7 +1,7 @@
 import { useState } from "react";
 import QuickActions from "../components/QuickActions/QuickActions";
 import RecentLeaks from "../components/RecentLeaks/RecentLeaks";
-import LeakDetailsSheet from "../components/LeakCardCompact/LeakDetailsSheet";
+import LeakDetailsSheet from "../components/LeakDetailsSheet/LeakDetailsSheet";
 import { save } from "../utils/saveJSON";
 
 export default function MainPage({

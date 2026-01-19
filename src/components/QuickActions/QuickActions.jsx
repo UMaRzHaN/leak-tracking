@@ -1,28 +1,28 @@
-
+import s from "./QuickActions.module.scss";
 export default function QuickActions({ setPage, setGpsEnabled, gpsEnabled }) {
   return (
-    <div className="quick-actions">
-      <button className="qa-btn primary" onClick={() => setPage("add")}>
-        <span className="qa-icon">➕</span>
-        <span className="qa-text">Добавить утечку</span>
+    <div className={s.quickActions}>
+      <button className={`${s.qaBtn} ${s.primary}`} onClick={() => setPage("add")}>
+        <span className={s.qaIcon}>➕</span>
+        <span className={s.qaText}>Добавить утечку</span>
       </button>
 
-      <button className="qa-btn" onClick={() => setPage("db")}>
-        <span className="qa-icon">📄</span>
-        <span className="qa-text">База данных</span>
+      <button className={s.qaBtn} onClick={() => setPage("db")}>
+        <span className={s.qaIcon}>📄</span>
+        <span className={s.qaText}>База данных</span>
       </button>
 
-      <button className="qa-btn" onClick={() => setPage("map")}>
-        <span className="qa-icon">🗺</span>
-        <span className="qa-text">Карта утечек</span>
+      <button className={s.qaBtn} onClick={() => setPage("map")}>
+        <span className={s.qaIcon}>🗺</span>
+        <span className={s.qaText}>Карта утечек</span>
       </button>
 
       <button
-        className={`qa-btn ${gpsEnabled ? "active" : ""}`}
+        className={`${s.qaBtn} ${gpsEnabled ? s.active : ""}`}
         onClick={() => setGpsEnabled((v) => !v)}
       >
-        <span className="qa-icon">{gpsEnabled ? "⏸" : "▶️"}</span>
-        <span className="qa-text">
+        <span className={s.qaIcon}>{gpsEnabled ? "⏸" : "▶️"}</span>
+        <span className={s.qaText}>
           {gpsEnabled ? "Пауза GPS" : "Запустить GPS"}
         </span>
       </button>

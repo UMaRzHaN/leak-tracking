@@ -1,0 +1,41 @@
+.bottomNav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+
+  height: 64px;
+  background: #fff;
+  border-top: 1px solid gray;
+
+  z-index: 1000;
+}
+
+.navItem {
+  background: none;
+  border: none;
+  color: #9aa0a6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.navIcon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.navLabel {
+  font-size: 12px;
+}
+
+.active {
+  color: #4da3ff;
+}

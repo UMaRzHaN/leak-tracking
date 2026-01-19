@@ -9,7 +9,7 @@ import AddLeak from "./pages/AddLeak";
 import DataBase from "./pages/DataBase";
 import MapPage from "./pages/MapPage";
 
-import "./index.css";
+import s from "./index.scss";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import MainPage from "./pages/MainPage";
 import Header from "./components/Header/Header";
@@ -82,7 +82,7 @@ export default function App() {
      UI
   ========================= */
   return (
-    <div className="app">
+    <div className={s.app}>
       <Header
         geoLoading={geoLoading}
         coords={coords}
@@ -116,6 +116,7 @@ export default function App() {
           setData={setData}
           coords={coords}
           clearDatabase={clearDatabase}
+          
         />
       )}
       {page === "map" && <MapPage leaks={data} />}

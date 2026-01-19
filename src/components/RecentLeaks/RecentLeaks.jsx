@@ -1,60 +1,69 @@
 import { timeAgo } from "../../utils/timeAgo";
+import s from "./RecentLeaks.module.scss";
 
 export default function RecentLeaks({ leaks = [], onViewAll, onOpenDetails }) {
-  const leak_level = (speed) => {
-    return speed <= 25 ? "low" : speed > 100 ? "high" : "medium";
-  };
+  const leakLevel = (speed) =>
+    speed <= 25 ? "low" : speed >= 100 ? "high" : "medium";
+
   return (
-    <div className="recent-leaks">
-      <div className="recent-header">
-        <h3>Недавнее</h3>
-        <button className="view-all" onClick={onViewAll}>
+    <div className={s.recentLeaks}>
+      <div className={s.recentHeader}>
+        <h3 className={s.title}>Недавнее</h3>
+        <button className={s.viewAll} onClick={onViewAll}>
           Показать все →
         </button>
       </div>
 
-      <div className="leak-list">
-        {leaks.length
-          ? leaks.map((leak) => (
-              <button
-                key={leak.id}
-                className="leak-item"
-                onClick={() => onOpenDetails(leak)}
-              >
-                <div
-                  className={`leak-icon ${leak_level(leak.leak_speed)}`}
-                  aria-hidden
-                />
-                <div className="leak-info">
-                  <div className="leak-title">{leak.component}</div>
-                  <div className="leak-meta">
-                    <span>
-                      {leak.location ? leak.location : "Бирка №" + leak.leak_id}
-                    </span>
-                    •
-                    <span>
-                      {leak.leak_description
-                        ? leak.leak_description
-                        : "Скорость: " + leak.leak_speed}
-                    </span>{" "}
-                    •<span>{timeAgo(leak.time)}</span>
-                  </div>
+      <div className={s.leakList}>
+        {leaks.length ? (
+          leaks.map((leak) => (
+            <button
+              key={leak.id}
+              className={s.leakItem}
+              onClick={() => onOpenDetails(leak)}
+            >
+              <div
+                className={`${s.leakIcon} ${s[leakLevel(leak.leak_speed)]}`}
+                aria-hidden
+              />
+
+              <div className={s.leakInfo}>
+                <div className={s.leakTitle}>{leak.component}</div>
+
+                <div className={s.leakMeta}>
+                  <span>
+                    {leak.location
+                      ? leak.location
+                      : `Бирка №${leak.leak_id}`}
+                  </span>
+                  <span>•</span>
+                  <span>
+                    {leak.leak_description
+                      ? leak.leak_description
+                      : `Скорость: ${leak.leak_speed}`}
+                  </span>
+                  <span>•</span>
+                  <span>{timeAgo(leak.time)}</span>
                 </div>
-                <div className="leak-arrow">
-                  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden>
-                    <path
-                      d="M9 6l6 6-6 6"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
-              </button>
-            ))
-          : "Тут пока пусто"}
+              </div>
+
+              <div className={s.leakArrow} aria-hidden>
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                  <path
+                    d="M9 6l6 6-6 6"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+            </button>
+          ))
+        ) : (
+          <div className={s.empty}>Тут пока пусто</div>
+        )}
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import s from "./Input.module.scss"
 export default function InputCard({
   label,
   value,

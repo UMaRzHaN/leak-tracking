@@ -1,26 +1,62 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { exportToExcel } from "../../utils/exportToExcel";
-
+import s from "./DatabaseOverflow.module.scss";
 
 export default function DatabaseOverflow({ filteredData, onClearDb }) {
   const [open, setOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [open]);
 
   return (
-    <div className="overflow-actions">
+    <div className={s.overflowActions} ref={menuRef}>
       {/* overflow */}
-      <button className="overflow-btn" onClick={() => setOpen((v) => !v)}>
+      <button
+        type="button"
+        className={s.overflowBtn}
+        onClick={() => setOpen((v) => !v)}
+      >
         ...
       </button>
 
       {open && (
-        <div className="overflow-menu">
-          <button onClick={() => exportToExcel(filteredData)}>
+        <div className={s.overflowMenu}>
+          <button
+            type="button"
+            onClick={() => {
+              exportToExcel(filteredData);
+              setOpen(false);
+            }}
+          >
             ⬇️ Экспорт в Excel
           </button>
 
-          <div className="overflow-divider" />
+          <div className={s.overflowDivider} />
 
-          <button className="danger" onClick={onClearDb}>
+          <button
+            type="button"
+            className={s.danger}
+            onClick={() => {
+              onClearDb();
+              setOpen(false);
+            }}
+          >
             🗑 Очистить базу данных
           </button>
         </div>
