@@ -14,7 +14,7 @@ export default function MainPage({
   const [activeLeak, setActiveLeak] = useState(null);
 
   return (
-    <div style={{ margin: 10 }}>
+    <div>
       <QuickActions
         setPage={setPage}
         setGpsEnabled={setGpsEnabled}

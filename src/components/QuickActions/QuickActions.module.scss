@@ -3,7 +3,7 @@
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 
-  padding: 16px;
+  margin: 10px;
 }
 
 /* =========================
@@ -30,7 +30,9 @@
   cursor: pointer;
   text-align: left;
 
-  transition: transform 0.08s ease, box-shadow 0.12s ease;
+  transition:
+    transform 0.08s ease,
+    box-shadow 0.12s ease;
 }
 
 .qaBtn:active {

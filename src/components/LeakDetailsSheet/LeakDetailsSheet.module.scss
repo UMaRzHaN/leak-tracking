@@ -2,7 +2,7 @@
 .detailsOverlay {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: 300;
 
   background: rgba(0, 0, 0, 0.4);
 
@@ -13,7 +13,7 @@
 /* ===== SHEET ===== */
 .detailsSheet {
   width: 100%;
-  max-height: 90vh;
+  max-height: 80vh;
 
   background: #ffffff;
   border-radius: 20px 20px 0 0;
@@ -33,9 +33,8 @@
   width: 40px;
   height: 4px;
   border-radius: 4px;
-
-  background: #d1d5db;
-  margin: 0 auto 10px;
+  border: 1px solid;
+  margin: 10px auto;
 }
 
 /* ===== TITLE ===== */
@@ -87,6 +86,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-top: 8px;
 }
 
 /* ===== ROW ===== */
@@ -122,11 +122,10 @@
 
 /* ===== ACTIONS ===== */
 .detailsActions {
-  margin-top: 16px;
-
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  // margin-top: 16px;
 }
 
 /* ===== BUTTON ===== */
@@ -171,10 +170,17 @@
     background: #e5e7eb;
   }
 }
-
+#view {
+  display: flex;
+  margin-top: 12px;
+}
 /* ===== MOBILE SAFE AREA ===== */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .detailsSheet {
     padding-bottom: calc(24px + env(safe-area-inset-bottom));
   }
+}
+.editBlock {
+  display: flex;
+  flex-direction: column;
 }

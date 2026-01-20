@@ -17,7 +17,7 @@ export default function LeakForm({
 
   const { form, errors, handle, setErrors, setForm } = useLeakForm();
   const validateStep = useStepValidation(form, setErrors);
-
+  const hasStepData = STEPS[step - 1]?.fields?.some(({ key }) => form[key]);
   const nextStep = () => {
     if (!validateStep(step)) return;
     setStep((v) => Math.min(STEPS.length, v + 1));
@@ -33,6 +33,35 @@ export default function LeakForm({
     setForm({});
     setErrors({});
     setStep(1);
+  };
+
+  const clearCurrentStep = () => {
+    const currentStep = STEPS[step - 1];
+    if (!currentStep?.fields) return;
+
+    setForm((prev) => {
+      const updated = { ...prev };
+
+      currentStep.fields.forEach(({ key, type }) => {
+        if (type === "photo") {
+          delete updated[key]; // 🔑 фото лучше удалять полностью
+        } else {
+          updated[key] = "";
+        }
+      });
+
+      return updated;
+    });
+
+    setErrors((prev) => {
+      const updated = { ...prev };
+
+      currentStep.fields.forEach(({ key }) => {
+        delete updated[key];
+      });
+
+      return updated;
+    });
   };
 
   const save = () => {
@@ -133,9 +162,22 @@ export default function LeakForm({
         errors={errors}
         onChange={handle}
       />
-      <button className={s.pen} type="button" onClick={clearForm}>
-        Очистить все поля 🧹
-      </button>
+      <div className={s.clearActions}>
+        {hasStepData && (
+          <button
+            type="button"
+            className={s.clearStepIcon}
+            onClick={clearCurrentStep}
+            title="Очистить текущий шаг"
+          >
+            Очистить шаг 🧽
+          </button>
+        )}
+        <button className={s.clearAllSteps} type="button" onClick={clearForm}>
+          Очистить все поля 🧹
+        </button>
+      </div>
+
       {/* FOOTER */}
       <div className={s.footer}>
         <button onClick={prevStep} disabled={step === 1}>

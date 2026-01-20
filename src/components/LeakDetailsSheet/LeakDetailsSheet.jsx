@@ -106,7 +106,13 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
       let photoPreview = null;
 
       if (leak?.photo) {
-        photoPreview = await loadPhoto(leak.photo);
+        const loaded = await loadPhoto(leak.photo);
+
+        // 🔑 КЛЮЧЕВО
+        photoPreview =
+          typeof loaded === "string"
+            ? loaded
+            : loaded?.webPath || loaded?.data || null;
       }
 
       if (!cancelled) {
@@ -168,21 +174,15 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
       <div className={s.detailsSheet} onClick={(e) => e.stopPropagation()}>
         <div className={s.detailsHandle} onClick={onClose} />
 
-        <h3 className={s.detailsTitle}>
-          {mode === "edit" ? "Редактирование" : "Подробнее"}
-        </h3>
-
         {/* ===== VIEW MODE ===== */}
         {mode === "view" && (
           <>
-            {localEdit.photoPreview && (
-              <div className={s.detailsPhotoWrapper}>
-                <img
-                  src={localEdit.photoPreview}
-                  alt="Фото утечки"
-                  className={s.detailsPhoto}
-                />
-              </div>
+            {typeof localEdit.photoPreview === "string" && (
+              <img
+                src={localEdit.photoPreview}
+                alt="Фото утечки"
+                className={s.detailsPhoto}
+              />
             )}
 
             <div className={s.detailsList}>
@@ -203,7 +203,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
                 );
               })}
             </div>
-            <div className={s.detailsActions}>
+            <div className={s.detailsActions} id={s.view}>
               <button
                 type="button"
                 className={`${s.detailsBtn} ${s.edit}`}
@@ -225,7 +225,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
 
         {/* ===== EDIT MODE ===== */}
         {mode === "edit" && (
-          <>
+          <div className={s.editBlock}>
             {localEdit.photoPreview ? (
               <img
                 src={localEdit.photoPreview}
@@ -292,7 +292,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
                 </button>
               </div>
             }
-          </>
+          </div>
         )}
       </div>
     </div>

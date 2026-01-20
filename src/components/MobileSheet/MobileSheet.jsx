@@ -30,57 +30,61 @@ export default function MobileSheet({
   }, [normalizedLeaks, query]);
 
   return (
-    <div
-      className={`${s.sheet} ${open ? s.open : ""}`}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className={s.sheetHandle} onClick={onClose} />
-
-      {/* ===== СТАНЦИИ (LAYERS) ===== */}
-      <div className={s.stationList}>
-        {stations.map((station) => {
-          const label = station || NO_STATION_LABEL;
-
-          return (
-            <label key={label} className={s.stationItem}>
-              <input
-                type="checkbox"
-                checked={!!enabledStations[label]}
-                onChange={() => onToggleStation(label)}
-              />
-              <span>{label}</span>
-            </label>
-          );
-        })}
-      </div>
-
-      {/* ===== ПОИСК ===== */}
-      <div className={s.sheetSearch}>
-        <input
-          type="search"
-          placeholder="Поиск по ID утечки…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-      </div>
-
-      {/* ===== СПИСОК УТЕЧЕК ===== */}
-      <div className={s.sheetList}>
-        {filteredLeaks.length === 0 && (
-          <div className={s.sheetEmpty}>Нет утечек</div>
-        )}
-
-        {filteredLeaks.map((leak) => (
+    <>
+      {/* ===== OVERLAY ===== */}
+      {open && (
+        <div className={s.overlay} onClick={onClose}>
+          {/* ===== SHEET ===== */}
           <div
-            key={leak.id}
-            className={s.sheetItem}
-            onClick={() => onSelect(leak)}
+            className={`${s.sheet} ${open ? s.open : ""}`}
+            onClick={(e) => e.stopPropagation()} // ⛔ не даём клику всплыть
           >
-            <span className={s.dot} />
-            Leak ID {leak.leak_id}
+            <div className={s.sheetHandle} />
+
+            {/* ===== СТАНЦИИ ===== */}
+            <div className={s.stationList}>
+              {stations.map((station) => {
+                const label = station || NO_STATION_LABEL;
+
+                return (
+                  <label key={label} className={s.stationItem}>
+                    <input
+                      type="checkbox"
+                      checked={!!enabledStations[label]}
+                      onChange={() => onToggleStation(label)}
+                    />
+                    <span>{label}</span>
+                  </label>
+                );
+              })}
+            </div>
+
+            {/* ===== ПОИСК ===== */}
+            <div className={s.sheetSearch}>
+              <input
+                type="search"
+                placeholder="Поиск по ID утечки…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+
+            {/* ===== СПИСОК ===== */}
+            <div className={s.sheetList}>
+              {filteredLeaks.map((leak) => (
+                <div
+                  key={leak.id}
+                  className={s.sheetItem}
+                  onClick={() => onSelect(leak)}
+                >
+                  <span className={s.dot} />
+                  Leak ID {leak.leak_id}
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 }

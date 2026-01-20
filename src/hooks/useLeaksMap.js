@@ -106,7 +106,7 @@ export const useLeaksMap = ({ leaks, mapApiRef }) => {
           position: window.google.maps.ControlPosition.RIGHT_TOP,
         },
         streetViewControl: false,
-        mapTypeControl: false,
+        mapTypeControl: true,
       });
 
       mapInstance.current.addListener("dragstart", () => {

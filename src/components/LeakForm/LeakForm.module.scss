@@ -160,35 +160,30 @@
 }
 
 /* ===== INLINE CLEAR BUTTON ===== */
-.pen {
-  margin: 10px;
-  margin-left: auto;
-  min-width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  padding: 0 12px;
+.clearActions {
   display: flex;
+  justify-content: space-between; // 🔑
   align-items: center;
-  justify-content: center;
+  gap: 12px;
+  margin: 12px 10px 8px;
+}
 
-  background: #f5f7fb;
-  border: 1px solid #e5e7eb;
+.clearStepIcon,
+.clearAllSteps {
+  height: 38px;
+  padding: 0 12px;
 
-  color: #6b7280;
-  font-size: 15px;
-
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
-
-  &:hover {
-    background: #eef2ff;
-    color: #2563eb;
-  }
-
-  &:active {
-    transform: scale(0.9);
-    background: #e0e7ff;
-  }
+  background: #fff;
+  border: 1px solid #d1d5db;
+  color: #374151;
+}
+.clearAllSteps{
+  margin-left: auto;
 }
 .stepCircles {
   display: flex;

@@ -68,18 +68,30 @@ const exportXLSX = async (prepared) => {
    MOBILE → CSV
    =============================== */
 const exportCSV = async (prepared) => {
+  const folder = "LeakReports";
   const fileName = `leaks_${Date.now()}.csv`;
   const csv = generateCSV(prepared);
 
-  // 1️⃣ пишем во временный cache
+  // 1️⃣ создаём папку (если уже есть — ошибки не будет)
+  try {
+    await Filesystem.mkdir({
+      path: folder,
+      directory: Directory.Documents,
+      recursive: true,
+    });
+  } catch (e) {
+    // папка уже существует — это нормально
+  }
+
+  // 2️⃣ сохраняем файл в Documents/LeakReports
   const result = await Filesystem.writeFile({
-    path: fileName,
+    path: `${folder}/${fileName}`,
     data: csv,
-    directory: Directory.Cache,
+    directory: Directory.Documents,
     encoding: Encoding.UTF8,
   });
 
-  // 2️⃣ шарим файл (Google Drive, Telegram, Files, WhatsApp, etc.)
+  // 3️⃣ шарим файл
   await Share.share({
     title: "Экспорт утечек",
     text: "CSV файл с данными",
