@@ -5,25 +5,44 @@ import { calculations } from "../utils/calculations";
 import { normalizeRow } from "../utils/normalizeRow";
 import { headers, keysOrder } from "../data/excelImportData";
 import { Share } from "@capacitor/share";
+import { Toast } from "@capacitor/toast";
+
+const showToast = async (message, duration = "short") => {
+  await Toast.show({
+    text: message,
+    duration, // "short" | "long"
+    position: "bottom",
+  });
+};
 
 /* ===============================
    MAIN EXPORT
    =============================== */
 export const exportToExcel = async (rows) => {
   if (!rows?.length) {
-    alert("Нет данных для выгрузки");
+    await showToast("❌ Нет данных для выгрузки");
     return;
   }
 
   const isMobile = Capacitor.isNativePlatform();
   const prepared = rows.map(calculations);
 
-  if (isMobile) {
-    await exportCSV(prepared);
-  } else {
-    await exportXLSX(prepared);
+  try {
+    await showToast("⏳ Экспорт данных…");
+
+    if (isMobile) {
+      await exportCSV(prepared);
+    } else {
+      await exportXLSX(prepared);
+    }
+
+    await showToast("✅ Экспорт завершён");
+  } catch (e) {
+    console.error("Export error:", e);
+    await showToast("❌ Ошибка при экспорте", "long");
   }
 };
+
 
 /* ===============================
    DESKTOP → XLSX
@@ -58,32 +77,30 @@ const exportXLSX = async (prepared) => {
   });
 
   const fileName = `leaks_${Date.now()}.xlsx`;
+
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
   link.download = fileName;
   link.click();
+
+  console.log("XLSX saved:", fileName);
 };
+
 
 /* ===============================
    MOBILE → CSV
    =============================== */
-const exportCSV = async (prepared) => {
+const exportCSV = async (prepared, withShare = false) => {
   const folder = "LeakReports";
   const fileName = `leaks_${Date.now()}.csv`;
   const csv = generateCSV(prepared);
 
-  // 1️⃣ создаём папку (если уже есть — ошибки не будет)
-  try {
-    await Filesystem.mkdir({
-      path: folder,
-      directory: Directory.Documents,
-      recursive: true,
-    });
-  } catch (e) {
-    // папка уже существует — это нормально
-  }
+  await Filesystem.mkdir({
+    path: folder,
+    directory: Directory.Documents,
+    recursive: true,
+  }).catch(() => {});
 
-  // 2️⃣ сохраняем файл в Documents/LeakReports
   const result = await Filesystem.writeFile({
     path: `${folder}/${fileName}`,
     data: csv,
@@ -91,13 +108,18 @@ const exportCSV = async (prepared) => {
     encoding: Encoding.UTF8,
   });
 
-  // 3️⃣ шарим файл
-  await Share.share({
-    title: "Экспорт утечек",
-    text: "CSV файл с данными",
-    url: result.uri,
-    dialogTitle: "Поделиться файлом",
-  });
+  await showToast(
+    `📁 CSV сохранён:\nDocuments/${folder}/${fileName}`,
+    "long",
+  );
+
+  if (withShare) {
+    await Share.share({
+      title: "Экспорт утечек",
+      text: "CSV файл с данными",
+      url: result.uri,
+    });
+  }
 };
 
 /* ===============================

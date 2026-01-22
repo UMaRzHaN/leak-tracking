@@ -1,10 +1,16 @@
 import { useLeaksMap } from "../../hooks/useLeaksMap";
 import s from "./LeaksMap.module.scss";
 
-export default function LeaksMap({ leaks, mapApiRef, onSearchClick }) {
+export default function LeaksMap({
+  leaks,
+  mapApiRef,
+  onSearchClick,
+  onMoveEnd,
+}) {
   const { mapRef, locateMe } = useLeaksMap({
-    leaks: leaks,
+    leaks,
     mapApiRef,
+    onMoveEnd,
   });
   return (
     <div className={s.mapWrapper}>

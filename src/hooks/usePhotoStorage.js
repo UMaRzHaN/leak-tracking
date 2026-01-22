@@ -58,7 +58,11 @@ export function usePhotoStorage() {
 
   /* ===== загрузить фото для редактирования ===== */
   const loadPhoto = useCallback(async (path) => {
-    if (!path) return;
+    if (!path) {
+      setPhotoPreview(null);
+      setPhotoPath(null);
+      return;
+    }
 
     const exists = await photoExists(path);
     if (!exists) {
@@ -66,9 +70,14 @@ export function usePhotoStorage() {
       setPhotoPath(null);
       return;
     }
-
+    const src = await getPhotoSrc(path); // 🔥 ВАЖНО
+    console.log({
+      path,
+      exists,
+      src,
+    });
     setPhotoPath(path);
-    setPhotoPreview(getPhotoSrc(path));
+    setPhotoPreview(src ?? null);
   }, []);
 
   /* ===== удалить фото ===== */

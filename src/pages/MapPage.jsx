@@ -1,13 +1,20 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import LeaksMap from "../components/LeaksMap/LeaksMap";
 import MobileSheet from "../components/MobileSheet/MobileSheet";
+import { getDistanceMeters } from "../utils/getDistanceMeters";
 
 const NO_STATION_LABEL = "Без станции";
 
 export default function MapPage({ leaks }) {
   const mapApiRef = useRef(null);
-
+  /* ===============================
+     Состояние центра карты
+     =============================== */
+  const [mapCenter, setMapCenter] = useState(null);
   // 🔹 нормализуем leaks
+  /* ===============================
+     Нормализация leaks
+     =============================== */
   const normalizedLeaks = useMemo(() => {
     return leaks.map((l) => ({
       ...l,
@@ -15,31 +22,56 @@ export default function MapPage({ leaks }) {
     }));
   }, [leaks]);
 
-  // 🔹 список станций
+  /* ===============================
+     Список станций
+     =============================== */
   const stations = useMemo(() => {
     return Array.from(new Set(normalizedLeaks.map((l) => l.station)));
   }, [normalizedLeaks]);
 
-  // 🔹 включённые станции
+  /* ===============================
+     Включённые станции
+     =============================== */
   const [enabledStations, setEnabledStations] = useState(() =>
     stations.reduce((acc, s) => {
       acc[s] = true;
       return acc;
-    }, {}),
+    }, {})
   );
 
-  // 🔹 фильтрация leaks
-  const visibleLeaks = useMemo(() => {
-    return normalizedLeaks.filter((l) => enabledStations[l.station]);
-  }, [normalizedLeaks, enabledStations]);
-
-  const toggleStation = (station) => {
+  const toggleStation = useCallback((station) => {
     setEnabledStations((prev) => ({
       ...prev,
       [station]: !prev[station],
     }));
-  };
+  }, []);
 
+  /* ===============================
+     Фильтрация + сортировка по расстоянию
+     =============================== */
+  const visibleLeaks = useMemo(() => {
+    const filtered = normalizedLeaks.filter(
+      (l) => enabledStations[l.station]
+    );
+
+    if (!mapCenter) return filtered;
+
+    return filtered
+      .map((l) => ({
+        ...l,
+        _distance: getDistanceMeters(
+          mapCenter.lat,
+          mapCenter.lng,
+          l.lat,
+          l.lng
+        ),
+      }))
+      .sort((a, b) => a._distance - b._distance);
+  }, [normalizedLeaks, enabledStations, mapCenter]);
+
+  /* ===============================
+     Mobile sheet
+     =============================== */
   const [open, setOpen] = useState(false);
 
   return (
@@ -47,7 +79,8 @@ export default function MapPage({ leaks }) {
       <LeaksMap
         leaks={visibleLeaks}
         mapApiRef={mapApiRef}
-        onClick={() => setOpen(true)}
+        onSearchClick={() => setOpen(true)}
+        onMoveEnd={(center) => setMapCenter(center)} 
       />
 
       <MobileSheet

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-
 import { usePhotoStorage } from "../../hooks/usePhotoStorage";
 import { useCamera } from "../../hooks/useCamera";
 import EditTextField from "../EditTextField/EditTextField";
@@ -92,39 +91,36 @@ const VIEW_FIELDS = [
 ];
 
 export default function LeakDetailsSheet({ leak, onClose, onSave }) {
-  const { loadPhoto, savePhoto } = usePhotoStorage();
+  const {
+    loadPhoto,
+    savePhoto,
+    photoPreview,
+    setPhotoPreview, // 🔑 ВАЖНО
+  } = usePhotoStorage();
   const { isNative, takePhoto, pickFromBrowser } = useCamera();
 
   const [mode, setMode] = useState("view"); // view | edit
   const [localEdit, setLocalEdit] = useState({});
   const fileInputRef = useRef(null);
   /* ===== аналог startEdit ===== */
+
+  const photoSrc = photoPreview;
+
   useEffect(() => {
     let cancelled = false;
 
-    const initLocalEdit = async () => {
-      let photoPreview = null;
-
+    const init = async () => {
       if (leak?.photo) {
-        const loaded = await loadPhoto(leak.photo);
-
-        // 🔑 КЛЮЧЕВО
-        photoPreview =
-          typeof loaded === "string"
-            ? loaded
-            : loaded?.webPath || loaded?.data || null;
+        await loadPhoto(leak.photo);
       }
 
       if (!cancelled) {
-        setLocalEdit({
-          ...leak,
-          photoPreview,
-        });
+        setLocalEdit({ ...leak });
         setMode("view");
       }
     };
 
-    initLocalEdit();
+    init();
 
     return () => {
       cancelled = true;
@@ -146,8 +142,9 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
     setLocalEdit((prev) => ({
       ...prev,
       _newPhoto: photo,
-      photoPreview: photo.webPath,
     }));
+
+    setPhotoPreview(photo.webPath); // ✅ ЕДИНСТВЕННО ПРАВИЛЬНО
   };
 
   /* ===== сохранение ===== */
@@ -177,12 +174,14 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
         {/* ===== VIEW MODE ===== */}
         {mode === "view" && (
           <>
-            {typeof localEdit.photoPreview === "string" && (
+            {photoSrc ? (
               <img
-                src={localEdit.photoPreview}
+                src={photoSrc}
                 alt="Фото утечки"
                 className={s.detailsPhoto}
               />
+            ) : (
+              <div className={s.photoPlaceholder}>Фото не добавлено</div>
             )}
 
             <div className={s.detailsList}>
@@ -226,9 +225,9 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
         {/* ===== EDIT MODE ===== */}
         {mode === "edit" && (
           <div className={s.editBlock}>
-            {localEdit.photoPreview ? (
+            {photoPreview ? (
               <img
-                src={localEdit.photoPreview}
+                src={photoPreview}
                 alt="Фото утечки"
                 className={s.detailsPhoto}
               />

@@ -1,28 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { updateMarkers, autoCenterMap } from "../services/mapService";
 
-export const useLeaksMap = ({ leaks, mapApiRef }) => {
+export const useLeaksMap = ({ leaks, mapApiRef, onMoveEnd }) => {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
 
   const markersRef = useRef([]);
   const clustererRef = useRef(null);
-
+  const autoCenteredRef = useRef(false);
   const userCoordsRef = useRef(null);
   const userMarkerRef = useRef(null);
   const followUserRef = useRef(false);
-
+  const lastCenterRef = useRef(null);
   const [mapReady, setMapReady] = useState(false);
 
   /* ===== LOCATE ME ===== */
   const locateMe = () => {
     if (!mapInstance.current || !userCoordsRef.current) return;
-
     followUserRef.current = true;
     mapInstance.current.panTo(userCoordsRef.current);
-    mapInstance.current.setZoom(16);
+    mapInstance.current.setZoom(12);
   };
-
   /* ======================================================
      GEOLOCATION + USER MARKER (AdvancedMarker)
      ====================================================== */
@@ -81,61 +79,83 @@ export const useLeaksMap = ({ leaks, mapApiRef }) => {
   /* ======================================================
      INIT MAP
      ====================================================== */
-  useEffect(() => {
-    let cancelled = false;
+useEffect(() => {
+  let cancelled = false;
 
-    async function initMap() {
-      if (!mapRef.current) return;
+  async function initMap() {
+    if (!mapRef.current) return;
 
-      while (!window.google || !window.google.maps) {
-        await new Promise((r) => setTimeout(r, 50));
-      }
-
-      const { Map } = await window.google.maps.importLibrary("maps");
-      if (cancelled) return;
-
-      mapInstance.current = new Map(mapRef.current, {
-        center: { lat: 41.3111, lng: 69.2797 },
-        zoom: 12,
-        mapTypeId: "hybrid",
-        mapId: "f1754e62f5aea817edc5ba25",
-        fullscreenControl: false,
-        rotateControl: false,
-        zoomControl: true,
-        zoomControlOptions: {
-          position: window.google.maps.ControlPosition.RIGHT_TOP,
-        },
-        streetViewControl: false,
-        mapTypeControl: true,
-      });
-
-      mapInstance.current.addListener("dragstart", () => {
-        followUserRef.current = false;
-      });
-
-      mapInstance.current.addListener("zoom_changed", () => {
-        followUserRef.current = false;
-      });
-
-      mapApiRef.current = {
-        focus(leak) {
-          followUserRef.current = false;
-          mapInstance.current.panTo({
-            lat: Number(leak.lat),
-            lng: Number(leak.lon),
-          });
-          mapInstance.current.setZoom(14);
-        },
-      };
-
-      setMapReady(true);
+    // ⛔ Google Maps уже загружен через <script>
+    if (!window.google?.maps) {
+      console.error("Google Maps SDK not loaded");
+      return;
     }
 
-    initMap();
-    return () => {
-      cancelled = true;
+    const { Map } = await window.google.maps.importLibrary("maps");
+    if (cancelled) return;
+
+    mapInstance.current = new Map(mapRef.current, {
+      center: { lat: 41.3111, lng: 69.2797 },
+      zoom: 12,
+      mapTypeId: "hybrid",
+      mapId: "f1754e62f5aea817edc5ba25",
+      fullscreenControl: false,
+      rotateControl: false,
+      zoomControl: true,
+      zoomControlOptions: {
+        position: window.google.maps.ControlPosition.RIGHT_TOP,
+      },
+      streetViewControl: false,
+      mapTypeControl: true,
+    });
+
+    /* ===== EMIT CENTER ===== */
+    const emitCenter = () => {
+      const c = mapInstance.current.getCenter();
+      const next = { lat: c.lat(), lng: c.lng() };
+
+      if (
+        lastCenterRef.current &&
+        Math.abs(lastCenterRef.current.lat - next.lat) < 1e-6 &&
+        Math.abs(lastCenterRef.current.lng - next.lng) < 1e-6
+      ) {
+        return;
+      }
+
+      lastCenterRef.current = next;
+      onMoveEnd?.(next);
     };
-  }, [mapApiRef]);
+
+    mapInstance.current.addListener("dragstart", () => {
+      followUserRef.current = false;
+    });
+
+    mapInstance.current.addListener("zoom_changed", () => {
+      followUserRef.current = false;
+    });
+
+    mapInstance.current.addListener("idle", emitCenter);
+
+    mapApiRef.current = {
+      focus(leak) {
+        followUserRef.current = false;
+        mapInstance.current.panTo({
+          lat: Number(leak.lat),
+          lng: Number(leak.lon),
+        });
+        mapInstance.current.setZoom(14);
+      },
+    };
+
+    emitCenter();
+    setMapReady(true);
+  }
+
+  initMap();
+  return () => {
+    cancelled = true;
+  };
+}, [mapApiRef, onMoveEnd]);
 
   /* ======================================================
      LEAK MARKERS + AUTO CENTER
@@ -150,11 +170,12 @@ export const useLeaksMap = ({ leaks, mapApiRef }) => {
       clustererRef,
     });
 
-    if (!followUserRef.current) {
+    if (!autoCenteredRef.current && leaks.length) {
       autoCenterMap({
         map: mapInstance.current,
         leaks,
       });
+      autoCenteredRef.current = true;
     }
   }, [mapReady, leaks]);
 
