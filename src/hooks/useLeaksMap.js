@@ -3,26 +3,35 @@ import { updateMarkers, autoCenterMap } from "../services/mapService";
 
 export const useLeaksMap = ({ leaks, mapApiRef, onMoveEnd }) => {
   const mapRef = useRef(null);
-  const mapInstance = useRef(null);
+  const mapRefInstance = useRef(null);
 
   const markersRef = useRef([]);
   const clustererRef = useRef(null);
-  const autoCenteredRef = useRef(false);
+
   const userCoordsRef = useRef(null);
   const userMarkerRef = useRef(null);
+
   const followUserRef = useRef(false);
+  const userMovedRef = useRef(false);
   const lastCenterRef = useRef(null);
+
   const [mapReady, setMapReady] = useState(false);
 
-  /* ===== LOCATE ME ===== */
-  const locateMe = () => {
-    if (!mapInstance.current || !userCoordsRef.current) return;
-    followUserRef.current = true;
-    mapInstance.current.panTo(userCoordsRef.current);
-    mapInstance.current.setZoom(12);
-  };
   /* ======================================================
-     GEOLOCATION + USER MARKER (AdvancedMarker)
+     LOCATE ME
+     ====================================================== */
+  const locateMe = () => {
+    if (!mapRefInstance.current || !userCoordsRef.current) return;
+
+    followUserRef.current = true;
+    userMovedRef.current = true;
+
+    mapRefInstance.current.panTo(userCoordsRef.current);
+    mapRefInstance.current.setZoom(15);
+  };
+
+  /* ======================================================
+     GEOLOCATION + USER MARKER
      ====================================================== */
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -35,10 +44,8 @@ export const useLeaksMap = ({ leaks, mapApiRef, onMoveEnd }) => {
         };
 
         userCoordsRef.current = coords;
+        if (!mapRefInstance.current) return;
 
-        if (!mapInstance.current) return;
-
-        // лениво импортируем marker lib
         const { AdvancedMarkerElement } =
           await window.google.maps.importLibrary("marker");
 
@@ -52,7 +59,7 @@ export const useLeaksMap = ({ leaks, mapApiRef, onMoveEnd }) => {
           el.style.boxShadow = "0 0 6px rgba(0,0,0,0.3)";
 
           userMarkerRef.current = new AdvancedMarkerElement({
-            map: mapInstance.current,
+            map: mapRefInstance.current,
             position: coords,
             content: el,
             zIndex: 9999,
@@ -62,7 +69,9 @@ export const useLeaksMap = ({ leaks, mapApiRef, onMoveEnd }) => {
         }
 
         if (followUserRef.current) {
-          mapInstance.current.panTo(coords);
+          mapRefInstance.current.panTo(coords);
+          mapRefInstance.current.setZoom(15);
+          followUserRef.current = false; // 🔥
         }
       },
       console.error,
@@ -79,105 +88,123 @@ export const useLeaksMap = ({ leaks, mapApiRef, onMoveEnd }) => {
   /* ======================================================
      INIT MAP
      ====================================================== */
-useEffect(() => {
-  let cancelled = false;
+  useEffect(() => {
+    let destroyed = false;
 
-  async function initMap() {
-    if (!mapRef.current) return;
-
-    // ⛔ Google Maps уже загружен через <script>
-    if (!window.google?.maps) {
-      console.error("Google Maps SDK not loaded");
-      return;
-    }
-
-    const { Map } = await window.google.maps.importLibrary("maps");
-    if (cancelled) return;
-
-    mapInstance.current = new Map(mapRef.current, {
-      center: { lat: 41.3111, lng: 69.2797 },
-      zoom: 12,
-      mapTypeId: "hybrid",
-      mapId: "f1754e62f5aea817edc5ba25",
-      fullscreenControl: false,
-      rotateControl: false,
-      zoomControl: true,
-      zoomControlOptions: {
-        position: window.google.maps.ControlPosition.RIGHT_TOP,
-      },
-      streetViewControl: false,
-      mapTypeControl: true,
-    });
-
-    /* ===== EMIT CENTER ===== */
-    const emitCenter = () => {
-      const c = mapInstance.current.getCenter();
-      const next = { lat: c.lat(), lng: c.lng() };
-
-      if (
-        lastCenterRef.current &&
-        Math.abs(lastCenterRef.current.lat - next.lat) < 1e-6 &&
-        Math.abs(lastCenterRef.current.lng - next.lng) < 1e-6
-      ) {
+    const initMap = async () => {
+      if (!mapRef.current) return;
+      if (!window.google?.maps) {
+        console.error("Google Maps SDK not loaded");
         return;
       }
 
-      lastCenterRef.current = next;
-      onMoveEnd?.(next);
-    };
+      const { Map } = await window.google.maps.importLibrary("maps");
+      const listeners = [];
+      if (destroyed) return;
 
-    mapInstance.current.addListener("dragstart", () => {
-      followUserRef.current = false;
-    });
+      const map = new Map(mapRef.current, {
+        center: { lat: 41.3111, lng: 69.2797 },
+        zoom: 12,
+        mapTypeId: "hybrid",
+        mapId: "f1754e62f5aea817edc5ba25",
+        fullscreenControl: false,
+        rotateControl: false,
+        streetViewControl: false,
+        mapTypeControl: true,
+        zoomControl: true,
+        zoomControlOptions: {
+          position: window.google.maps.ControlPosition.RIGHT_TOP,
+        },
+      });
 
-    mapInstance.current.addListener("zoom_changed", () => {
-      followUserRef.current = false;
-    });
+      mapRefInstance.current = map;
 
-    mapInstance.current.addListener("idle", emitCenter);
+      /* ===== USER INTERACTION ===== */
+      listeners.push(
+        map.addListener("dragstart", () => {
+          followUserRef.current = false;
+          userMovedRef.current = true;
+        }),
+      );
 
-    mapApiRef.current = {
-      focus(leak) {
+      map.addListener("zoom_changed", () => {
         followUserRef.current = false;
-        mapInstance.current.panTo({
-          lat: Number(leak.lat),
-          lng: Number(leak.lon),
-        });
-        mapInstance.current.setZoom(14);
-      },
+        userMovedRef.current = true;
+      });
+
+      /* ===== EMIT CENTER ===== */
+      const emitCenter = () => {
+        const c = map.getCenter();
+        if (!c) return;
+
+        const next = { lat: c.lat(), lng: c.lng() };
+
+        if (
+          lastCenterRef.current &&
+          Math.abs(lastCenterRef.current.lat - next.lat) < 1e-6 &&
+          Math.abs(lastCenterRef.current.lng - next.lng) < 1e-6
+        ) {
+          return;
+        }
+
+        lastCenterRef.current = next;
+        onMoveEnd?.(next);
+      };
+
+      map.addListener("idle", emitCenter);
+
+      /* ===== MAP API ===== */
+      mapApiRef.current = {
+        focus(leak) {
+          if (!leak) return;
+
+          followUserRef.current = false;
+          userMovedRef.current = true;
+
+          map.panTo({
+            lat: Number(leak.lat),
+            lng: Number(leak.lon),
+          });
+          map.setZoom(16);
+        },
+      };
+
+      emitCenter();
+      setMapReady(true);
     };
 
-    emitCenter();
-    setMapReady(true);
-  }
+    initMap();
 
-  initMap();
-  return () => {
-    cancelled = true;
-  };
-}, [mapApiRef, onMoveEnd]);
+    return () => {
+      destroyed = true;
+    };
+  }, [mapApiRef, onMoveEnd]);
 
   /* ======================================================
-     LEAK MARKERS + AUTO CENTER
+     MARKERS + AUTO CENTER
      ====================================================== */
   useEffect(() => {
-    if (!mapReady || !mapInstance.current) return;
+    const map = mapRefInstance.current;
+    if (!mapReady || !map) return;
 
     updateMarkers({
-      map: mapInstance.current,
+      map,
       leaks,
       markersRef,
       clustererRef,
     });
 
-    if (!autoCenteredRef.current && leaks.length) {
+    if (!userMovedRef.current) {
       autoCenterMap({
-        map: mapInstance.current,
+        map,
         leaks,
+        userCoords: userCoordsRef.current,
       });
-      autoCenteredRef.current = true;
     }
   }, [mapReady, leaks]);
 
-  return { mapRef, locateMe };
+  return {
+    mapRef,
+    locateMe,
+  };
 };

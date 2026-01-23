@@ -43,7 +43,6 @@ export const exportToExcel = async (rows) => {
   }
 };
 
-
 /* ===============================
    DESKTOP → XLSX
    =============================== */
@@ -86,7 +85,6 @@ const exportXLSX = async (prepared) => {
   console.log("XLSX saved:", fileName);
 };
 
-
 /* ===============================
    MOBILE → CSV
    =============================== */
@@ -108,10 +106,7 @@ const exportCSV = async (prepared, withShare = false) => {
     encoding: Encoding.UTF8,
   });
 
-  await showToast(
-    `📁 CSV сохранён:\nDocuments/${folder}/${fileName}`,
-    "long",
-  );
+  await showToast(`📁 CSV сохранён:\nDocuments/${folder}/${fileName}`, "long");
 
   if (withShare) {
     await Share.share({
@@ -142,7 +137,7 @@ const generateCSV = (prepared) => {
 
     const row = keysOrder.map((k) => {
       if (k === "photo") {
-        return escape(r.photo ? "См. фото" : "");
+        return escape(r.photo ? r.photo.split("/").pop() : "");
       }
       return escape(normalized[k]);
     });

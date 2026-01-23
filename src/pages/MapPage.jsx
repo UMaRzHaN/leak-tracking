@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LeaksMap from "../components/LeaksMap/LeaksMap";
 import MobileSheet from "../components/MobileSheet/MobileSheet";
 import { getDistanceMeters } from "../utils/getDistanceMeters";
@@ -7,14 +7,15 @@ const NO_STATION_LABEL = "Без станции";
 
 export default function MapPage({ leaks }) {
   const mapApiRef = useRef(null);
-  /* ===============================
-     Состояние центра карты
-     =============================== */
+
+  /* ======================================================
+     MAP CENTER (from map idle)
+     ====================================================== */
   const [mapCenter, setMapCenter] = useState(null);
-  // 🔹 нормализуем leaks
-  /* ===============================
-     Нормализация leaks
-     =============================== */
+
+  /* ======================================================
+     NORMALIZE LEAKS
+     ====================================================== */
   const normalizedLeaks = useMemo(() => {
     return leaks.map((l) => ({
       ...l,
@@ -22,22 +23,30 @@ export default function MapPage({ leaks }) {
     }));
   }, [leaks]);
 
-  /* ===============================
-     Список станций
-     =============================== */
+  /* ======================================================
+     STATIONS LIST
+     ====================================================== */
   const stations = useMemo(() => {
     return Array.from(new Set(normalizedLeaks.map((l) => l.station)));
   }, [normalizedLeaks]);
 
-  /* ===============================
-     Включённые станции
-     =============================== */
-  const [enabledStations, setEnabledStations] = useState(() =>
-    stations.reduce((acc, s) => {
-      acc[s] = true;
-      return acc;
-    }, {})
-  );
+  /* ======================================================
+     ENABLED STATIONS
+     ====================================================== */
+  const [enabledStations, setEnabledStations] = useState({});
+
+  // корректно инициализируем / дополняем при изменении stations
+  useEffect(() => {
+    setEnabledStations((prev) => {
+      const next = { ...prev };
+
+      stations.forEach((s) => {
+        if (!(s in next)) next[s] = true;
+      });
+
+      return next;
+    });
+  }, [stations]);
 
   const toggleStation = useCallback((station) => {
     setEnabledStations((prev) => ({
@@ -46,9 +55,9 @@ export default function MapPage({ leaks }) {
     }));
   }, []);
 
-  /* ===============================
-     Фильтрация + сортировка по расстоянию
-     =============================== */
+  /* ======================================================
+     FILTER + SORT BY DISTANCE
+     ====================================================== */
   const visibleLeaks = useMemo(() => {
     const filtered = normalizedLeaks.filter(
       (l) => enabledStations[l.station]
@@ -63,15 +72,15 @@ export default function MapPage({ leaks }) {
           mapCenter.lat,
           mapCenter.lng,
           l.lat,
-          l.lng
+          l.lon
         ),
       }))
       .sort((a, b) => a._distance - b._distance);
   }, [normalizedLeaks, enabledStations, mapCenter]);
 
-  /* ===============================
-     Mobile sheet
-     =============================== */
+  /* ======================================================
+     MOBILE SHEET
+     ====================================================== */
   const [open, setOpen] = useState(false);
 
   return (
@@ -80,7 +89,7 @@ export default function MapPage({ leaks }) {
         leaks={visibleLeaks}
         mapApiRef={mapApiRef}
         onSearchClick={() => setOpen(true)}
-        onMoveEnd={(center) => setMapCenter(center)} 
+        onMoveEnd={setMapCenter}
       />
 
       <MobileSheet

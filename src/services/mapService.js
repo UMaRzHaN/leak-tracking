@@ -1,8 +1,8 @@
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
 
-/* ======================================
+/* ======================================================
    HELPERS
-====================================== */
+   ====================================================== */
 
 export function getColorByStatus(status) {
   if (status === "Fixed") return "#4CAF50";
@@ -35,42 +35,40 @@ export function createMarkerContent(color, label) {
   return el;
 }
 
-/* ======================================
-   CLUSTER RENDERER (IMPORTANT)
-====================================== */
+/* ======================================================
+   CLUSTER RENDERER
+   ====================================================== */
 
-function createClusterRenderer() {
-  return {
-    render({ count, position }) {
-      const el = document.createElement("div");
+const clusterRenderer = {
+  render({ count, position }) {
+    const el = document.createElement("div");
 
-      el.style.width = "36px";
-      el.style.height = "36px";
-      el.style.borderRadius = "50%";
-      el.style.background = "#2563eb";
-      el.style.color = "#fff";
+    el.style.width = "36px";
+    el.style.height = "36px";
+    el.style.borderRadius = "50%";
+    el.style.background = "#2563eb";
+    el.style.color = "#fff";
 
-      el.style.display = "flex";
-      el.style.alignItems = "center";
-      el.style.justifyContent = "center";
+    el.style.display = "flex";
+    el.style.alignItems = "center";
+    el.style.justifyContent = "center";
 
-      el.style.fontSize = "14px";
-      el.style.fontWeight = "700";
-      el.style.boxShadow = "0 4px 10px rgba(0,0,0,0.35)";
-      el.textContent = count;
+    el.style.fontSize = "14px";
+    el.style.fontWeight = "700";
+    el.style.boxShadow = "0 4px 10px rgba(0,0,0,0.35)";
+    el.textContent = count;
 
-      return new window.google.maps.marker.AdvancedMarkerElement({
-        position,
-        content: el,
-        zIndex: 1000 + count,
-      });
-    },
-  };
-}
+    return new window.google.maps.marker.AdvancedMarkerElement({
+      position,
+      content: el,
+      zIndex: 1000 + count,
+    });
+  },
+};
 
-/* ======================================
+/* ======================================================
    MARKERS + CLUSTER
-====================================== */
+   ====================================================== */
 
 export async function updateMarkers({
   map,
@@ -79,18 +77,20 @@ export async function updateMarkers({
   clustererRef,
   onSelectLeak,
 }) {
+  if (!map) return;
+
   const { AdvancedMarkerElement } =
     await window.google.maps.importLibrary("marker");
 
-  /* ===== CLEAR OLD ===== */
-  markersRef.current.forEach((m) => {
-    m.map = null;
+  /* ===== CLEAR OLD MARKERS ===== */
+  markersRef.current.forEach((marker) => {
+    marker.map = null;
   });
   markersRef.current = [];
 
-  /* ===== CREATE MARKERS ===== */
-  leaks.forEach((leak) => {
-    if (leak?.lat == null || leak?.lon == null) return;
+  /* ===== CREATE NEW MARKERS ===== */
+  for (const leak of leaks) {
+    if (leak?.lat == null || leak?.lon == null) continue;
 
     const marker = new AdvancedMarkerElement({
       map,
@@ -101,31 +101,36 @@ export async function updateMarkers({
       content: createMarkerContent(getColorByStatus(leak.status), leak.leak_id),
     });
 
+    if (onSelectLeak) {
+      marker.addListener("click", () => onSelectLeak(leak));
+    }
+
     markersRef.current.push(marker);
-  });
+  }
 
   /* ===== CLUSTER ===== */
-  clustererRef.current?.clearMarkers();
+  if (clustererRef.current) {
+    clustererRef.current.clearMarkers();
+  }
 
   clustererRef.current = new MarkerClusterer({
     map,
     markers: markersRef.current,
-    renderer: createClusterRenderer(),
+    renderer: clusterRenderer,
   });
 }
 
-/* ======================================
+/* ======================================================
    AUTO CENTER
-====================================== */
-
-export function autoCenterMap({ map, leaks }) {
+   ====================================================== */
+export function autoCenterMap({ map, leaks, userCoords }) {
   if (!map) return;
 
   if (leaks.length > 1) {
     const bounds = new window.google.maps.LatLngBounds();
 
     leaks.forEach((l) => {
-      if (l.lat != null && l.lon != null) {
+      if (l?.lat != null && l?.lon != null) {
         bounds.extend({
           lat: Number(l.lat),
           lng: Number(l.lon),
@@ -141,25 +146,21 @@ export function autoCenterMap({ map, leaks }) {
         right: 40,
       });
     }
-  } else if (leaks.length === 1) {
+    return;
+  }
+
+  if (leaks.length === 1) {
     map.setCenter({
       lat: Number(leaks[0].lat),
       lng: Number(leaks[0].lon),
     });
+    map.setZoom(16);
+    return;
+  }
+
+  // 🔥 fallback → пользователь
+  if (userCoords) {
+    map.setCenter(userCoords);
     map.setZoom(15);
-  } else {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        map.setCenter({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        });
-        map.setZoom(14);
-      },
-      () => {
-        map.setCenter({ lat: 41.3111, lng: 69.2797 });
-        map.setZoom(12);
-      },
-    );
   }
 }
