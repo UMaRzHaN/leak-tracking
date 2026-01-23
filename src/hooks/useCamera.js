@@ -8,24 +8,26 @@ import {
 export const useCamera = () => {
   const isNative = Capacitor.isNativePlatform();
 
-  const normalizePhoto = (photo) => {
-    if (!photo) return null;
+const normalizePhoto = (photo) => {
+  if (!photo) return null;
 
-    // 📱 Native (Camera.getPhoto)
-    if (photo.webPath) {
-      return {
-        webPath: photo.webPath,
-        path: photo.path, // может быть undefined — это нормально
-        isNative: true,
-      };
-    }
-
-    // 🌐 Web (base64)
+  // 📱 Native (camera OR gallery)
+  if (photo.path) {
     return {
-      webPath: photo, // dataUrl
-      isNative: false,
+      webPath:
+        photo.webPath ||
+        Capacitor.convertFileSrc(photo.path), // 🔑 ВОТ ОН
+      path: photo.path,
+      isNative: true,
     };
+  }
+
+  // 🌐 Web (FileReader / base64)
+  return {
+    webPath: photo,
+    isNative: false,
   };
+};
 
   return {
     isNative,
