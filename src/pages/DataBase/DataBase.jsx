@@ -12,7 +12,6 @@ export default function DataBase({ data, setData, coords, clearDatabase }) {
   const [activeLeak, setActiveLeak] = useState(null);
   const [photoItem, setPhotoItem] = useState(null);
   const [photoOpen, setPhotoOpen] = useState(false);
-
   const {
     search,
     setSearch,

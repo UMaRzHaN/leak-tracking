@@ -104,14 +104,14 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
   const fileInputRef = useRef(null);
   /* ===== аналог startEdit ===== */
 
-  const photoSrc = photoPreview;
-
   useEffect(() => {
     let cancelled = false;
 
     const init = async () => {
       if (leak?.photo) {
-        await loadPhoto(leak.photo);
+        await loadPhoto(leak.photo); // ✅ ЗАГРУЖАЕТ preview
+      } else {
+        setPhotoPreview(null);
       }
 
       if (!cancelled) {
@@ -125,26 +125,32 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
     return () => {
       cancelled = true;
     };
-  }, [leak, loadPhoto]);
+  }, [leak, loadPhoto, setPhotoPreview]);
+  useEffect(() => {
+    if (!leak?.photo) return;
 
+    loadPhoto(leak.photo);
+  }, [leak?.photo, loadPhoto]);
   /* ===== изменение фото ===== */
   const handleChangePhoto = async (e) => {
-    let photo;
+    let result;
 
     if (isNative) {
-      photo = await takePhoto();
+      result = await takePhoto();
     } else {
       const file = e?.target?.files?.[0];
       if (!file) return;
-      photo = await pickFromBrowser(file);
+      result = await pickFromBrowser(file);
     }
+
+    if (!result?.preview) return;
 
     setLocalEdit((prev) => ({
       ...prev,
-      _newPhoto: photo,
+      _newPhoto: result.raw,
     }));
 
-    setPhotoPreview(photo.webPath); // ✅ ЕДИНСТВЕННО ПРАВИЛЬНО
+    setPhotoPreview(result.preview);
   };
 
   /* ===== сохранение ===== */
@@ -157,26 +163,37 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
 
     const { photoPreview, _newPhoto, ...clean } = localEdit;
 
-    onSave?.({
+    onSave({
+      ...leak,
       ...clean,
       photo,
-      photoUpdatedAt: Date.now(),
     });
 
     onClose();
   };
+  useEffect(() => {
+    return () => setPhotoPreview(null);
+  }, [setPhotoPreview]);
+  const isDirty = Boolean(localEdit._newPhoto);
 
   return (
-    <div className={s.detailsOverlay} onClick={onClose}>
+    <div
+      className={s.detailsOverlay}
+      onClick={() => {
+        if (isDirty && !window.confirm("Изменения не сохранены. Закрыть?"))
+          return;
+        onClose();
+      }}
+    >
       <div className={s.detailsSheet} onClick={(e) => e.stopPropagation()}>
         <div className={s.detailsHandle} onClick={onClose} />
 
         {/* ===== VIEW MODE ===== */}
         {mode === "view" && (
           <>
-            {photoSrc ? (
+            {photoPreview ? (
               <img
-                src={photoSrc}
+                src={photoPreview}
                 alt="Фото утечки"
                 className={s.detailsPhoto}
               />
@@ -187,7 +204,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
             <div className={s.detailsList}>
               {VIEW_FIELDS.map(({ key, label, multiline }) => {
                 const value = localEdit[key];
-                if (!value) return null;
+                if (value === null || value === undefined) return null;
 
                 return (
                   <div
@@ -214,7 +231,14 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
               <button
                 type="button"
                 className={`${s.detailsBtn} ${s.close}`}
-                onClick={onClose}
+                onClick={() => {
+                  if (
+                    isDirty &&
+                    !window.confirm("Изменения не сохранены. Закрыть?")
+                  )
+                    return;
+                  onClose();
+                }}
               >
                 Закрыть
               </button>
@@ -283,9 +307,10 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
                 </button>
 
                 <button
-                  type="button"
-                  className={`${s.detailsBtn} ${s.close}`}
-                  onClick={() => setMode("view")}
+                  onClick={() => {
+                    loadPhoto(leak.photo);
+                    setMode("view");
+                  }}
                 >
                   Отмена
                 </button>

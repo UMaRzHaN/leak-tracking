@@ -5,7 +5,7 @@ import {
   photoExists,
 } from "../services/photoService";
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
-
+import { Capacitor } from "@capacitor/core";
 export function usePhotoStorage() {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [photoPath, setPhotoPath] = useState(null);
@@ -34,27 +34,33 @@ export function usePhotoStorage() {
 
     return `Documents/${targetPath}`;
   }
-  async function savePhoto(photo, id) {
-    if (!photo?.webPath || !id) return null;
+async function savePhoto(photo, id) {
+  if (!photo || !id) return null;
 
-    // 🌐 base64 (web)
-    if (photo.webPath.startsWith("data:image")) {
-      return await savePhotoByBase64(photo.webPath, id);
-    }
-
-    // 📱 native (Android / iOS)
-    const response = await fetch(photo.webPath);
-    const blob = await response.blob();
-
-    const base64 = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result.split(",")[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-
-    return await savePhotoByBase64(`data:image/jpeg;base64,${base64}`, id);
+  // 🌐 WEB — ТОЛЬКО base64
+  if (!Capacitor.isNativePlatform()) {
+    if (typeof photo.webPath !== "string") return null;
+    return await savePhotoByBase64(photo.webPath, id);
   }
+
+  // 📱 NATIVE — path / uri
+  if (!photo.path) return null;
+
+  const response = await fetch(photo.webPath);
+  const blob = await response.blob();
+
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+  return await savePhotoByBase64(
+    `data:image/jpeg;base64,${base64}`,
+    id
+  );
+}
 
   /* ===== загрузить фото для редактирования ===== */
   const loadPhoto = useCallback(async (path) => {

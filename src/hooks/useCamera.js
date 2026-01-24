@@ -8,35 +8,34 @@ import {
 export const useCamera = () => {
   const isNative = Capacitor.isNativePlatform();
 
-const normalizePhoto = (photo) => {
-  if (!photo) return null;
+  const normalizePhoto = (photo) => {
+    if (photo.webPath) return photo.webPath;
 
-  // 📱 Native (camera OR gallery)
-  if (photo.path) {
-    return {
-      webPath:
-        photo.webPath ||
-        Capacitor.convertFileSrc(photo.path), // 🔑 ВОТ ОН
-      path: photo.path,
-      isNative: true,
-    };
-  }
+    if (photo.base64String && photo.format) {
+      return `data:image/${photo.format};base64,${photo.base64String}`;
+    }
 
-  // 🌐 Web (FileReader / base64)
-  return {
-    webPath: photo,
-    isNative: false,
+    if (photo.path) return photo.path;
+
+    return null;
   };
-};
+
+  const wrap = async (fn) => {
+    const raw = await fn();
+    return {
+      raw,
+      preview: normalizePhoto(raw),
+    };
+  };
 
   return {
     isNative,
 
-    takePhoto: async () => normalizePhoto(await takePhotoFromCamera()),
+    takePhoto: () => wrap(takePhotoFromCamera),
 
-    pickFromGallery: async () => normalizePhoto(await pickPhotoFromGallery()),
+    pickFromGallery: () => wrap(pickPhotoFromGallery),
 
-    pickFromBrowser: async (file) =>
-      normalizePhoto(await readPhotoFromFile(file)),
+    pickFromBrowser: (file) =>
+      wrap(() => readPhotoFromFile(file)),
   };
 };
