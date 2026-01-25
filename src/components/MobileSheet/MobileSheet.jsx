@@ -1,17 +1,19 @@
 import { useMemo, useState } from "react";
+import { saveLeaksKML } from "../../services/saveLeaksKML";
 import { saveLeaksGeoJSON } from "../../services/saveLeaksGeoJSON";
+
 import s from "./MobileSheet.module.scss";
 
 const NO_STATION_LABEL = "Без станции";
 
-async function handleExport(leaks) {
+async function handleExport(leaks, saveLeaksType) {
   try {
     if (!leaks.length) {
       alert("Нет данных для экспорта");
       return;
     }
 
-    const fileName = await saveLeaksGeoJSON(leaks);
+    const fileName = await saveLeaksType(leaks);
     alert(`Файл создан: ${fileName}`);
   } catch (e) {
     alert("Ошибка экспорта");
@@ -86,10 +88,17 @@ export default function MobileSheet({
             {/* ===== КНОПКА ЭКСПОРТА ===== */}
             <div className={s.sheetActions}>
               <button
-                className={s.exportBtn}
-                onClick={() => handleExport(filteredLeaks)}
+                className={`${s.exportBtn} ${s.exportGeo}`}
+                onClick={() => handleExport(filteredLeaks, saveLeaksGeoJSON)}
               >
-                Экспорт карты (GeoJSON)
+                {`Экспорт карты \n (GeoJSON)`}
+              </button>
+
+              <button
+                className={`${s.exportBtn} ${s.exportKml}`}
+                onClick={() => handleExport(filteredLeaks, saveLeaksKML)}
+              >
+                {`Экспорт карты \n (KML)`}
               </button>
             </div>
 

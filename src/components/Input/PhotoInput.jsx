@@ -6,6 +6,8 @@ export default function PhotoInput({ value, onChange, label = "Фото" }) {
   const inputRef = useRef(null);
   const { isNative, takePhoto, pickFromBrowser } = useCamera();
 
+  const inputId = "photo-input"; // 👈 стабильный id
+
   const handleClick = async () => {
     if (isNative) {
       const photo = await takePhoto(); // { raw, src }
@@ -27,23 +29,23 @@ export default function PhotoInput({ value, onChange, label = "Фото" }) {
 
   return (
     <div className={s.photoInput}>
-      <label>{label}</label>
+      {/* ✅ label связан с input */}
+      <label className={s.fieldLabel} htmlFor={inputId}>
+        {label}
+      </label>
 
-      <button type="button" onClick={handleClick}>
+      <button
+        type="button"
+        className={s.photoBtn}
+        onClick={handleClick}
+        aria-describedby={inputId} // ♿ доп. связь для screen reader
+      >
         {isNative ? "📷 Сделать / выбрать фото" : "📁 Выбрать файл"}
       </button>
 
-      {value?.src && (
-        <img
-          src={value.src}
-          alt="Фото"
-          className={s.photoPreview}
-          style={{ maxWidth: 120, marginTop: 10 }}
-        />
-      )}
-
       {!isNative && (
         <input
+          id={inputId}              // 👈 ключевой момент
           ref={inputRef}
           type="file"
           accept="image/*"
@@ -51,7 +53,14 @@ export default function PhotoInput({ value, onChange, label = "Фото" }) {
           onChange={handleFile}
         />
       )}
+
+      {value?.src && (
+        <img
+          src={value.src}
+          alt="Выбранное фото"
+          className={s.photoPreview}
+        />
+      )}
     </div>
   );
 }
-

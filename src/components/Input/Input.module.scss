@@ -3,14 +3,49 @@
   flex-direction: column;
   gap: 8px;
 }
+.fieldLabel {
+  display: block;
+  margin-bottom: 6px;
 
-.photoBtn {
-  padding: 10px;
-  border-radius: 10px;
-  background: #2563eb;
-  color: #ffffff;
-  border: none;
+  font-size: 14px;
   font-weight: 500;
+  color: #111827;
+
+  line-height: 1.4;
+}
+.photoBtn {
+  width: 100%;
+  min-height: 44px; // удобный тап-зона
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  padding: 12px 14px;
+  margin-top: 8px;
+
+  border-radius: 14px;
+  border: 1px solid #2563eb;
+
+  background: #f8fbff;
+  color: #2563eb;
+
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+
+  transition: all 0.15s ease;
+
+  &:active {
+    transform: scale(0.97);
+    background: #e0edff;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 .photoPreview {

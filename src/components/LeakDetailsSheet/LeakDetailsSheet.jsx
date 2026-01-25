@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useEditablePhoto } from "../../hooks/useEditablePhoto";
 import PhotoBlock from "./PhotoBlock";
 import ViewBlock from "./ViewBlock";
@@ -6,14 +6,25 @@ import EditBlock from "./EditBlock";
 import { EDIT_FIELDS } from "./fields.config";
 import s from "./LeakDetailsSheet.module.scss";
 
+/* =========================
+   MODES
+========================= */
+const MODES = {
+  VIEW: "view",
+  EDIT: "edit",
+};
+
 export default function LeakDetailsSheet({ leak, onClose, onSave }) {
-  const [mode, setMode] = useState("view");
+  const [mode, setMode] = useState(MODES.VIEW);
   const [localEdit, setLocalEdit] = useState({});
   const [saving, setSaving] = useState(false);
 
   const prevLeakIdRef = useRef(null);
   const fileInputRef = useRef(null);
 
+  /* =========================
+     PHOTO STATE
+  ========================= */
   const {
     src,
     isDirty: isPhotoDirty,
@@ -27,57 +38,106 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
     version: leak.updatedAt,
   });
 
+  /* =========================
+     INIT / SYNC ON LEAK CHANGE
+  ========================= */
   useEffect(() => {
     if (prevLeakIdRef.current !== leak.leak_id) {
-      setLocalEdit({ ...leak });
-      setMode("view");
+      // инициализируем ТОЛЬКО редактируемые поля
+      const editableKeys = EDIT_FIELDS.map((f) => f.key);
+
+      setLocalEdit(
+        Object.fromEntries(editableKeys.map((key) => [key, leak[key]])),
+      );
+
+      setMode(MODES.VIEW);
       resetPhoto();
       prevLeakIdRef.current = leak.leak_id;
     }
-  }, [leak, resetPhoto]);
+  }, [leak.leak_id, leak.updatedAt, leak, resetPhoto]);
 
-  const isTextDirty = EDIT_FIELDS.some(
-    ({ key }) => localEdit[key] !== leak[key],
+  /* =========================
+     DIRTY FIELDS
+  ========================= */
+  const dirtyFields = useMemo(
+    () => EDIT_FIELDS.filter(({ key }) => localEdit[key] !== leak[key]),
+    [localEdit, leak],
   );
 
+  const isTextDirty = dirtyFields.length > 0;
   const isDirty = isPhotoDirty || isTextDirty;
 
+  /* =========================
+     SAVE
+  ========================= */
   const handleSave = async () => {
     if (saving) return;
     setSaving(true);
 
-    const photoPath = await savePhoto();
+    try {
+      const photoPath = await savePhoto();
 
-    onSave({
-      ...leak,
-      ...localEdit,
-      photo: photoPath ?? leak.photo,
-      updatedAt: Date.now(),
-    });
+      // patch только изменённых текстовых полей
+      const textPatch = Object.fromEntries(
+        dirtyFields.map(({ key }) => [key, localEdit[key]]),
+      );
 
-    setSaving(false);
+      onSave({
+        ...leak,
+        ...textPatch,
+        photo: photoPath ?? leak.photo,
+        updatedAt: Date.now(),
+      });
+
+      onClose();
+    } catch (e) {
+      alert("Ошибка сохранения");
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /* =========================
+     PREVENT UNLOAD (WEB)
+  ========================= */
+  useEffect(() => {
+    const handler = (e) => {
+      if (!isDirty) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
+  /* =========================
+     CLOSE HANDLER
+  ========================= */
+  const handleClose = () => {
+    if (isDirty && !window.confirm("Изменения не сохранены. Закрыть?")) {
+      return;
+    }
     onClose();
   };
 
+  /* =========================
+     RENDER
+  ========================= */
   return (
-    <div
-      className={s.detailsOverlay}
-      onClick={() => {
-        if (isDirty && !window.confirm("Изменения не сохранены. Закрыть?"))
-          return;
-        onClose();
-      }}
-    >
+    <div className={s.detailsOverlay} onClick={handleClose}>
       <div className={s.detailsSheet} onClick={(e) => e.stopPropagation()}>
         <div className={s.detailsHandle} />
 
         <PhotoBlock src={src} />
 
-        {mode === "view" ? (
+        {mode === MODES.VIEW ? (
           <ViewBlock
-            data={localEdit}
-            onEdit={() => setMode("edit")}
-            onClose={onClose}
+            data={{ ...leak, ...localEdit }}
+            isDirty={isDirty}
+            onEdit={() => setMode(MODES.EDIT)}
+            onClose={handleClose}
           />
         ) : (
           <EditBlock
@@ -89,7 +149,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
             onSave={handleSave}
             onCancel={() => {
               resetPhoto();
-              setMode("view");
+              setMode(MODES.VIEW);
             }}
             fileInputRef={fileInputRef}
           />

@@ -11,10 +11,20 @@ export const EDIT_FIELDS = [
   { key: "component", label: "Компонент" },
   { key: "leak_description", label: "Описание утечки", multiline: true },
   { key: "leak_cause", label: "Причина утечки", multiline: true },
-  { key: "technological_solution", label: "Технологическое решение", multiline: true },
-  { key: "repair_recommendation", label: "Решение / План устранения", multiline: true },
+  {
+    key: "technological_solution",
+    label: "Технологическое решение",
+    multiline: true,
+  },
+  {
+    key: "repair_recommendation",
+    label: "Решение / План устранения",
+    multiline: true,
+  },
   { key: "materials_equipment", label: "МТР ремонта", multiline: true },
   { key: "note", label: "Примечание", multiline: true },
+  { key: "lat", label: "Координата Х" },
+  { key: "lng", label: "Координата Y" },
 ];
 
 export const VIEW_FIELDS = [
@@ -28,11 +38,25 @@ export const VIEW_FIELDS = [
   { key: "video_id", label: "Видео" },
   { key: "leak_description", label: "Описание утечки", multiline: true },
   { key: "leak_cause", label: "Причина утечки", multiline: true },
-  { key: "technological_solution", label: "Технологическое решение", multiline: true },
-  { key: "repair_recommendation", label: "Решение / План устранения", multiline: true },
-  { key: "materials_equipment", label: "Материалы и оборудование", multiline: true },
+  {
+    key: "technological_solution",
+    label: "Технологическое решение",
+    multiline: true,
+  },
+  {
+    key: "repair_recommendation",
+    label: "Решение / План устранения",
+    multiline: true,
+  },
+  {
+    key: "materials_equipment",
+    label: "Материалы и оборудование",
+    multiline: true,
+  },
   { key: "note", label: "Примечание", multiline: true },
   { key: "leak_speed", label: "Скорость утечки" },
   { key: "pressure", label: "Давление" },
   { key: "temperature", label: "Температура" },
+  { key: "lat", label: "Координата Х" },
+  { key: "lng", label: "Координата Y" },
 ];

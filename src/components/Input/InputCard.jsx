@@ -1,3 +1,4 @@
+import { useId } from "react";
 import s from "./Input.module.scss";
 
 export default function InputCard({
@@ -15,6 +16,8 @@ export default function InputCard({
   const isTextarea = as === "textarea";
   const showClear = !isTextarea && value && String(value).length > 0;
 
+  const inputId = useId(); // 👈 ключевой момент
+
   return (
     <div
       className={[s.inputCard, required && s.isRequired, error && s.hasError]
@@ -22,9 +25,10 @@ export default function InputCard({
         .join(" ")}
     >
       <div className={s.inputCardHeader}>
-        <label className={s.inputCardLabel}>
+        {/* ✅ label связан с полем */}
+        <label className={s.inputCardLabel} htmlFor={inputId}>
           {label}
-          {required && <span className={s.required}>*</span>}
+          {required && <span className={s.required}> *</span>}
         </label>
 
         {rightSlot && <div className={s.inputCardSlot}>{rightSlot}</div>}
@@ -33,6 +37,7 @@ export default function InputCard({
       <div className={s.inputWrapper}>
         {isTextarea ? (
           <textarea
+            id={inputId}
             className={s.inputCardTextarea}
             rows={rows}
             value={value ?? ""}
@@ -42,6 +47,7 @@ export default function InputCard({
         ) : (
           <>
             <input
+              id={inputId}
               className={s.inputCardInput}
               type={type}
               value={value ?? ""}

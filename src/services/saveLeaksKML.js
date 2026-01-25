@@ -1,27 +1,26 @@
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
-import { exportLeaksGeoJSON } from "../utils/exportLeaksGeoJSON";
+import { exportLeaksKML } from "../utils/exportLeaksKML";
 
 const FOLDER = "LeakReports";
 
-export async function saveLeaksGeoJSON(leaks) {
-  const geojson = exportLeaksGeoJSON(leaks);
-  const fileName = `leaks_${Date.now()}.geojson`;
-  const data = JSON.stringify(geojson, null, 2);
+export async function saveLeaksKML(leaks) {
+  const kml = exportLeaksKML(leaks);
+  const fileName = `leaks_${Date.now()}.kml`;
 
   // 📱 MOBILE (Android / iOS)
   if (Capacitor.isNativePlatform()) {
-    // 1️⃣ гарантируем папку
+    // гарантируем папку
     await Filesystem.mkdir({
       path: FOLDER,
       directory: Directory.Documents,
       recursive: true,
-    }).catch(() => {}); // папка уже есть — ок
+    }).catch(() => {});
 
-    // 2️⃣ сохраняем файл В папку
+    // сохраняем файл
     await Filesystem.writeFile({
       path: `${FOLDER}/${fileName}`,
-      data,
+      data: kml,
       directory: Directory.Documents,
       encoding: Encoding.UTF8,
     });
@@ -30,13 +29,16 @@ export async function saveLeaksGeoJSON(leaks) {
   }
 
   // 🌐 WEB (Browser)
-  downloadFileWeb(data, fileName);
-  return fileName;
+  downloadFileWeb(kml, `${FOLDER}_${fileName}`);
+  return `${FOLDER}_${fileName}`;
 }
 
 // ===== WEB helper =====
 function downloadFileWeb(data, fileName) {
-  const blob = new Blob([data], { type: "application/geo+json" });
+  const blob = new Blob([data], {
+    type: "application/vnd.google-earth.kml+xml",
+  });
+
   const url = URL.createObjectURL(blob);
 
   const a = document.createElement("a");
