@@ -5,29 +5,21 @@ import {
 } from "../services/speechService";
 
 export const useSpeechRecognition = (onResult) => {
-  const busyRef = useRef(false);
+  const listeningRef = useRef(false);
 
   const start = async () => {
-    if (busyRef.current) return;
-    busyRef.current = true;
+    if (listeningRef.current) return;
+    listeningRef.current = true;
 
-    try {
-      const text = await startSpeechRecognition();
-      if (text) onResult(text);
-    } finally {
-      busyRef.current = false;
-    }
+    await startSpeechRecognition();
   };
 
   const stop = async () => {
-    if (!busyRef.current) return;
+    if (!listeningRef.current) return;
+    listeningRef.current = false;
 
-    try {
-      const text = await stopSpeechRecognition();
-      if (text) onResult(text);
-    } finally {
-      busyRef.current = false;
-    }
+    const text = await stopSpeechRecognition();
+    if (text) onResult(text);
   };
 
   return { start, stop };

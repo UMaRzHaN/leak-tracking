@@ -3,7 +3,7 @@ import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
 
 export const useGeolocation = (enabled = true) => {
-  const [coords, setCoords] = useState({ lat: null, lon: null });
+  const [coords, setCoords] = useState({ lat: null, lng: null });
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -29,7 +29,7 @@ export const useGeolocation = (enabled = true) => {
               if (stopped) return;
               setCoords({
                 lat: pos.coords.latitude,
-                lon: pos.coords.longitude,
+                lng: pos.coords.longitude,
               });
               setLoading(false);
             },
@@ -67,7 +67,7 @@ export const useGeolocation = (enabled = true) => {
             if (pos) {
               setCoords({
                 lat: pos.coords.latitude,
-                lon: pos.coords.longitude,
+                lng: pos.coords.longitude,
               });
               setLoading(false);
             }

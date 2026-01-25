@@ -5,9 +5,9 @@ import { NUMBER_FIELDS } from "../constants";
 export function useLeakForm() {
   const [form, setForm] = useState({
     leak_id: "",
-    photoPreview: null,
-    _newPhoto: null,
+    photo: null, // 🔑 ЕДИНСТВЕННОЕ поле для фото
   });
+
   const [errors, setErrors] = useState({});
 
   const handle = (key, value) => {
@@ -15,8 +15,15 @@ export function useLeakForm() {
       ? normalizeNumber(value)
       : value;
 
-    setForm((p) => ({ ...p, [key]: finalValue }));
-    setErrors((e) => ({ ...e, [key]: "" }));
+    setForm((prev) => ({
+      ...prev,
+      [key]: finalValue,
+    }));
+
+    setErrors((prev) => ({
+      ...prev,
+      [key]: "",
+    }));
   };
 
   return { form, setForm, errors, setErrors, handle };

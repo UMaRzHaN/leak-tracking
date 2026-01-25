@@ -5,7 +5,7 @@ import { getDistanceMeters } from "../utils/getDistanceMeters";
 
 const NO_STATION_LABEL = "Без станции";
 
-export default function MapPage({ leaks }) {
+export default function MapPage({ leaks, coords }) {
   const mapApiRef = useRef(null);
 
   /* ======================================================
@@ -59,9 +59,7 @@ export default function MapPage({ leaks }) {
      FILTER + SORT BY DISTANCE
      ====================================================== */
   const visibleLeaks = useMemo(() => {
-    const filtered = normalizedLeaks.filter(
-      (l) => enabledStations[l.station]
-    );
+    const filtered = normalizedLeaks.filter((l) => enabledStations[l.station]);
 
     if (!mapCenter) return filtered;
 
@@ -72,7 +70,7 @@ export default function MapPage({ leaks }) {
           mapCenter.lat,
           mapCenter.lng,
           l.lat,
-          l.lon
+          l.lon,
         ),
       }))
       .sort((a, b) => a._distance - b._distance);
@@ -90,6 +88,7 @@ export default function MapPage({ leaks }) {
         mapApiRef={mapApiRef}
         onSearchClick={() => setOpen(true)}
         onMoveEnd={setMapCenter}
+        coords={coords}
       />
 
       <MobileSheet

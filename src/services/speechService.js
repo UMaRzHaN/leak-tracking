@@ -2,64 +2,54 @@ import { Capacitor } from "@capacitor/core";
 import { SpeechRecognition } from "@capacitor-community/speech-recognition";
 
 /* ======================================
-   INTERNAL WEB INSTANCE (singleton)
+   SHARED STATE
 ====================================== */
 let webRecognition = null;
+let webBuffer = "";
+let mobileBuffer = null;
 
 /* ======================================
    START SPEECH RECOGNITION
 ====================================== */
 export const startSpeechRecognition = async () => {
-  /* ---------- 📱 MOBILE (CAPACITOR) ---------- */
+  /* ---------- 📱 MOBILE ---------- */
   if (Capacitor.isNativePlatform()) {
-    const perm = await SpeechRecognition.checkPermissions();
+    const perm = await SpeechRecognition.requestPermissions();
     if (perm.speechRecognition !== "granted") {
-      const req = await SpeechRecognition.requestPermissions();
-      if (req.speechRecognition !== "granted") {
-        throw new Error("Нет доступа к микрофону");
-      }
+      throw new Error("Нет доступа к микрофону");
     }
 
     const result = await SpeechRecognition.start({
       language: "ru-RU",
-      popup: true, // Google UI
+      popup: true,
     });
 
-    return result?.matches?.[0] || null;
+    mobileBuffer = result?.matches?.[0] || null;
+    return;
   }
 
-  /* ---------- 🖥 WEB (Web Speech API) ---------- */
-  return new Promise((resolve, reject) => {
-    const SpeechAPI =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+  /* ---------- 🖥 WEB ---------- */
+  const SpeechAPI =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    if (!SpeechAPI) {
-      reject(new Error("Голосовой ввод не поддерживается в этом браузере"));
-      return;
-    }
+  if (!SpeechAPI) {
+    throw new Error("Голосовой ввод не поддерживается");
+  }
 
-    webRecognition = new SpeechAPI();
+  webBuffer = "";
+  webRecognition = new SpeechAPI();
 
-    webRecognition.lang = "ru-RU";
-    webRecognition.interimResults = false;
-    webRecognition.maxAlternatives = 1;
+  webRecognition.lang = "ru-RU";
+  webRecognition.interimResults = true;
+  webRecognition.maxAlternatives = 1;
 
-    webRecognition.onresult = (event) => {
-      const text = event.results?.[0]?.[0]?.transcript || null;
-      resolve(text);
-    };
+  webRecognition.onresult = (event) => {
+    webBuffer = Array.from(event.results)
+      .map(r => r[0].transcript)
+      .join(" ");
+  };
 
-    webRecognition.onerror = (event) => {
-      reject(new Error(event.error || "Ошибка распознавания речи"));
-    };
-
-    webRecognition.onend = () => {
-      // если пользователь ничего не сказал
-      resolve(null);
-    };
-
-    webRecognition.start();
-  });
+  webRecognition.start();
 };
 
 /* ======================================
@@ -68,8 +58,8 @@ export const startSpeechRecognition = async () => {
 export const stopSpeechRecognition = async () => {
   /* ---------- 📱 MOBILE ---------- */
   if (Capacitor.isNativePlatform()) {
-    const result = await SpeechRecognition.stop();
-    return result?.matches?.[0] || null;
+    await SpeechRecognition.stop();
+    return mobileBuffer;
   }
 
   /* ---------- 🖥 WEB ---------- */
@@ -78,6 +68,5 @@ export const stopSpeechRecognition = async () => {
     webRecognition = null;
   }
 
-  // ⚠️ для web результат НЕ возвращается
-  return null;
+  return webBuffer || null;
 };

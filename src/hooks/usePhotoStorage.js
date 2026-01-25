@@ -1,111 +1,93 @@
-import { useState, useCallback } from "react";
-import {
-  deletePhotoFromFS,
-  getPhotoSrc,
-  photoExists,
-} from "../services/photoService";
-import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
+import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
+
+const PHOTO_FOLDER = "LeakReports/photos";
+
 export function usePhotoStorage() {
-  const [photoPreview, setPhotoPreview] = useState(null);
-  const [photoPath, setPhotoPath] = useState(null);
+  async function savePhoto(rawPhoto, leakId) {
+    if (!rawPhoto || !leakId) return null;
 
-  /* ===== сохранить фото ===== */
+    /* =======================
+       🌐 WEB
+    ======================= */
+    if (!Capacitor.isNativePlatform()) {
+      // ❗ строго File / Blob
+      if (!(rawPhoto instanceof Blob)) {
+        console.error("WEB: rawPhoto is not File/Blob", rawPhoto);
+        return null;
+      }
+      const base64 = await fileToBase64(rawPhoto);
+      const mime = rawPhoto.type || "image/jpeg";
+      return `data:${mime};base64,${base64}`;
+    }
 
-  async function savePhotoByBase64(dataUrl, id) {
-    const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, "");
-    const folder = "LeakReports/photos";
-    const fileName = `photo_${id}.jpg`;
-    const targetPath = `${folder}/${fileName}`;
-
-    // ✅ безопасное создание папки
+    /* =======================
+       📱 MOBILE (Capacitor)
+    ======================= */
     await Filesystem.mkdir({
-      path: folder,
+      path: PHOTO_FOLDER,
       directory: Directory.Documents,
       recursive: true,
     }).catch(() => {});
 
-    await Filesystem.writeFile({
-      path: targetPath,
-      data: base64,
-      directory: Directory.Documents,
-      encoding: Encoding.BASE64,
-    });
+    const fileName = `photo_${leakId}.jpg`;
+    const targetPath = `${PHOTO_FOLDER}/${fileName}`;
 
-    return `Documents/${targetPath}`;
+    // Camera.getPhoto → webPath
+    if (rawPhoto.webPath) {
+      const base64 = await fetchWebPathAsBase64(rawPhoto.webPath);
+
+      await Filesystem.writeFile({
+        path: targetPath,
+        data: base64,
+        directory: Directory.Documents,
+        encoding: Encoding.BASE64,
+      });
+
+      return `Documents/${targetPath}`;
+    }
+
+    console.error("MOBILE: unsupported rawPhoto", rawPhoto);
+    return null;
   }
-async function savePhoto(photo, id) {
-  if (!photo || !id) return null;
 
-  // 🌐 WEB — ТОЛЬКО base64
-  if (!Capacitor.isNativePlatform()) {
-    if (typeof photo.webPath !== "string") return null;
-    return await savePhotoByBase64(photo.webPath, id);
+  async function deletePhoto(path) {
+    if (!path || !Capacitor.isNativePlatform()) return;
+
+    try {
+      await Filesystem.deleteFile({
+        directory: Directory.Documents,
+        path: path.replace(/^Documents\//, ""),
+      });
+    } catch (e) {
+      console.warn("deletePhoto error:", e);
+    }
   }
 
-  // 📱 NATIVE — path / uri
-  if (!photo.path) return null;
-
-  const response = await fetch(photo.webPath);
-  const blob = await response.blob();
-
-  const base64 = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result.split(",")[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-
-  return await savePhotoByBase64(
-    `data:image/jpeg;base64,${base64}`,
-    id
-  );
+  return { savePhoto, deletePhoto };
 }
 
-  /* ===== загрузить фото для редактирования ===== */
-  const loadPhoto = useCallback(async (path) => {
-    if (!path) {
-      setPhotoPreview(null);
-      setPhotoPath(null);
-      return;
-    }
+/* ================= HELPERS ================= */
 
-    const exists = await photoExists(path);
-    if (!exists) {
-      setPhotoPreview(null);
-      setPhotoPath(null);
-      return;
-    }
-    const src = await getPhotoSrc(path); // 🔥 ВАЖНО
-    console.log({
-      path,
-      exists,
-      src,
-    });
-    setPhotoPath(path);
-    setPhotoPreview(src ?? null);
-  }, []);
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
 
-  /* ===== удалить фото ===== */
-  const deletePhoto = useCallback(async () => {
-    if (photoPath) {
-      await deletePhotoFromFS(photoPath);
-    }
-    setPhotoPreview(null);
-    setPhotoPath(null);
-  }, [photoPath]);
+    reader.onloadend = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        reject(new Error("FileReader result is not string"));
+        return;
+      }
+      resolve(result.split(",")[1]);
+    };
 
-  const clearPreview = () => {
-    setPhotoPreview(null);
-  };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
-  return {
-    photoPreview, // src для <img>
-    photoPath, // путь для БД
-    setPhotoPreview, // при выборе файла
-    savePhoto, // сохранить в FS
-    loadPhoto, // восстановить preview
-    deletePhoto, // удалить файл
-    clearPreview,
-  };
+async function fetchWebPathAsBase64(webPath) {
+  const blob = await fetch(webPath).then((r) => r.blob());
+  return fileToBase64(blob);
 }

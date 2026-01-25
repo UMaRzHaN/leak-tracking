@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { updateMarkers, autoCenterMap } from "../services/mapService";
 
-export const useLeaksMap = ({ leaks, mapApiRef, onMoveEnd }) => {
+export const useLeaksMap = ({
+  leaks,
+  mapApiRef,
+  onMoveEnd,
+  coords = { lat: 41.3111, lng: 69.2797 },
+}) => {
+  const initialCoordsRef = useRef(coords);
   const mapRef = useRef(null);
   const mapRefInstance = useRef(null);
 
@@ -103,7 +109,10 @@ export const useLeaksMap = ({ leaks, mapApiRef, onMoveEnd }) => {
       if (destroyed) return;
 
       const map = new Map(mapRef.current, {
-        center: { lat: 41.3111, lng: 69.2797 },
+        center: {
+          lat: initialCoordsRef.current.lat,
+          lng: initialCoordsRef.current.lng,
+        },
         zoom: 12,
         mapTypeId: "hybrid",
         mapId: "f1754e62f5aea817edc5ba25",

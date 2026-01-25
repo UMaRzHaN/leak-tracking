@@ -4,14 +4,12 @@ import DataBaseSearch from "./DataBaseSearch";
 import DataBaseList from "./DataBaseList";
 
 import LeakDetailsSheet from "../../components/LeakDetailsSheet/LeakDetailsSheet";
-import PhotoModal from "../../components/PhotoModal/PhotoModal";
 
 import { useDatabaseSearch, useDatabaseSort, useDatabaseActions } from "./";
 
 export default function DataBase({ data, setData, coords, clearDatabase }) {
   const [activeLeak, setActiveLeak] = useState(null);
-  const [photoItem, setPhotoItem] = useState(null);
-  const [photoOpen, setPhotoOpen] = useState(false);
+
   const {
     search,
     setSearch,
@@ -48,25 +46,18 @@ export default function DataBase({ data, setData, coords, clearDatabase }) {
         data={sortedData}
         onRemove={remove}
         onOpenDetails={setActiveLeak}
-        onOpenPhoto={(item) => {
-          setPhotoItem(item);
-          setPhotoOpen(true);
-        }}
       />
 
       {activeLeak && (
         <LeakDetailsSheet
           leak={activeLeak}
           onClose={() => setActiveLeak(null)}
-          onSave={saveLeak}
+          onSave={(updatedLeak) => {
+            saveLeak(updatedLeak);
+            setActiveLeak(null);
+          }}
         />
       )}
-
-      <PhotoModal
-        open={photoOpen}
-        item={photoItem}
-        onClose={() => setPhotoOpen(false)}
-      />
     </div>
   );
 }

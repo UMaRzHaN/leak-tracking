@@ -13,7 +13,7 @@ export const getCurrentLocation = async () => {
         (pos) =>
           resolve({
             lat: pos.coords.latitude,
-            lon: pos.coords.longitude,
+            lng: pos.coords.longitude,
           }),
         (err) => reject(new Error(err.message)),
         {
@@ -36,6 +36,6 @@ export const getCurrentLocation = async () => {
 
   return {
     lat: pos.coords.latitude,
-    lon: pos.coords.longitude,
+    lng: pos.coords.longitude,
   };
 };

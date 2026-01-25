@@ -6,7 +6,7 @@ export default function EditTextField({
   value,
   onChange,
   multiline,
-  type = "search",
+  type = "text",
 }) {
   const id = useId();
   const showClear = multiline && value;

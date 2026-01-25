@@ -1,7 +1,7 @@
 import LeakForm from "../components/LeakForm/LeakForm";
 import { usePhotoStorage } from "../hooks/usePhotoStorage";
-
 import { toNumber } from "../utils/toNumber";
+
 export default function AddLeak({
   data,
   setData,
@@ -10,21 +10,19 @@ export default function AddLeak({
   clearVoiceData,
   startVoiceInput,
   stopVoiceInput,
-  photo,
-  setPhoto,
   setPage,
 }) {
   const { savePhoto } = usePhotoStorage();
+
   const handleAdd = async (row) => {
     const id = Date.now();
 
     let photoPath = null;
-
-    if (row._newPhoto) {
-      photoPath = await savePhoto(row._newPhoto, row.leak_id); // ✅ теперь работает и web и native
+    if (row.photo?.raw) {
+      photoPath = await savePhoto(row.photo.raw, row.leak_id);
     }
 
-    const { _newPhoto, photoPreview, ...cleanRow } = row;
+    const { photo, ...cleanRow } = row;
 
     const newRow = {
       id,
@@ -40,6 +38,8 @@ export default function AddLeak({
       localStorage.setItem("leaks_database_v1", JSON.stringify(updated));
       return updated;
     });
+
+    setPage(""); // если нужно вернуться назад
   };
 
   return (
@@ -49,8 +49,6 @@ export default function AddLeak({
       clearVoiceData={clearVoiceData}
       startVoiceInput={startVoiceInput}
       stopVoiceInput={stopVoiceInput}
-      photo={photo}
-      setPhoto={setPhoto}
       coords={coords}
       setPage={setPage}
     />

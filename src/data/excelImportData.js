@@ -57,6 +57,6 @@ export const keysOrder = [
   "Emissions_kg_CO2_eq_year",
   "GWP",
   "lat",
-  "lon",
+  "lng",
   "photo",
 ];

@@ -6,11 +6,13 @@ export default function LeaksMap({
   mapApiRef,
   onSearchClick,
   onMoveEnd,
+  coords,
 }) {
   const { mapRef, locateMe } = useLeaksMap({
     leaks,
     mapApiRef,
     onMoveEnd,
+    coords,
   });
 
   return (

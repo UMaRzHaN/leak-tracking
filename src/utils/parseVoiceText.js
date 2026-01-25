@@ -7,7 +7,7 @@ import { capitalizeFirst } from "./capitalizeFirst";
  */
 const FIELD_MARKERS =
   "бирк[аи]?|видео|скорост[ьи]?|давлени[ея]?|температур[аы]?|" +
-  "умг|умк|умгэ|умге|умга|омг|управление|" +
+  "умг|унг|умк|умгэ|умге|умга|омг|управление|" +
   "компрессорная станци[я]|станци[я]|" +
   "локаци[яи]|объект|компонент[ы]?|" +
   "описание утечк[и]|причина утечк[и]|" +
@@ -39,22 +39,22 @@ export const parseVoiceText = (text) => {
   const normalized = text.toLowerCase();
   const patterns = [
     /* ===== ЧИСЛА ===== */
-    { key: "leak_id", regex: /бирк[аи]?\s*(\d+)/, type: "number" },
-    { key: "video_id", regex: /видео\s*(\d+)/, type: "number" },
+    { key: "leak_id", regex: /бирк[аи]?\s*(\d+)/, type: "string" },
+    { key: "video_id", regex: /видео\s*(\d+)/, type: "string" },
     {
       key: "leak_speed",
       regex: /скорост[ьи]?\s*([\d.,\s]+)/,
-      type: "number",
+      type: "string",
     },
     {
       key: "pressure",
       regex: /давлени[ея]?\s*(\d+(\.\d+)?)/,
-      type: "number",
+      type: "string",
     },
     {
       key: "temperature",
       regex: /температур[аы]?\s*(-?\d+(\.\d+)?)/,
-      type: "number",
+      type: "string",
     },
 
     /* ===== STRING (ВСЕ ПО ОДНОМУ ПРИНЦИПУ) ===== */

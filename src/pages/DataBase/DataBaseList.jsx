@@ -4,7 +4,6 @@ export default function DataBaseList({
   data,
   onRemove,
   onOpenDetails,
-  onOpenPhoto,
 }) {
   if (!data.length) {
     return <div style={{ padding: 16, color: "#999" }}>Нет данных</div>;
@@ -18,7 +17,6 @@ export default function DataBaseList({
           leak={row}
           onRemove={onRemove}
           onOpenDetails={onOpenDetails}
-          onOpenPhoto={onOpenPhoto}
         />
       ))}
     </div>

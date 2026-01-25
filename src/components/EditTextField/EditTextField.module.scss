@@ -1,6 +1,6 @@
 .field {
   position: relative;
-  margin: 12px 0;
+  margin-top: 18px;
 }
 
 /* =========================
@@ -10,7 +10,7 @@
 .field input,
 .field textarea {
   width: 100%;
-  padding: 14px 12px;
+  padding: 14px 36px 14px 12px; /* справа место под крестик */
   border-radius: 12px;
   border: 1px solid #d1d5db;
 
@@ -31,7 +31,49 @@
 }
 
 /* =========================
-   LABEL (BASE)
+   INPUT WRAPPER
+   ========================= */
+
+.inputWrapper {
+  position: relative;
+}
+
+/* =========================
+   CLEAR BUTTON
+   ========================= */
+
+.clearBtn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+
+  border: none;
+  background: #e5e7eb;
+  color: #374151;
+
+  font-size: 14px;
+  line-height: 1;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.clearBtn:hover {
+  opacity: 1;
+  background: #d1d5db;
+}
+
+/* =========================
+   LABEL (FLOATING)
    ========================= */
 
 .field label {
@@ -50,65 +92,11 @@
   transition: all 0.2s ease;
 }
 
-/* =========================
-   FLOATING LOGIC ✅
-   ========================= */
+/* floating */
 
 .field:focus-within label,
 .field.hasValue label {
-  top: -12px;
+  top: -10px;
   font-size: 11px;
   color: #2563eb;
-}
-
-/* =========================
-   TEXTAREA WRAPPER
-   ========================= */
-
-.textareaWrapper {
-  position: relative;
-}
-
-.textareaWrapper textarea {
-  padding-right: 36px; /* место под крестик */
-}
-
-/* =========================
-   CLEAR BUTTON
-   ========================= */
-
-.clearBtn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-
-  border: none;
-  background: #e5e7eb;
-  color: #374151;
-
-  font-size: 14px;
-  line-height: 1;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  cursor: pointer;
-  z-index: 2;
-}
-
-.clearBtn:hover {
-  background: #d1d5db;
-}
-.textareaWrapper ~ label {
-  top: 12px;
-  transform: none;
-}
-.field:focus-within .textareaWrapper ~ label,
-.field.hasValue .textareaWrapper ~ label {
-  top: -18px;
 }
