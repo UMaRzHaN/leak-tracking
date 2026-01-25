@@ -82,7 +82,7 @@ const exportXLSX = async (prepared) => {
   link.download = fileName;
   link.click();
 
-  console.log("XLSX saved:", fileName);
+  alert("XLSX saved: " + fileName);
 };
 
 /* ===============================

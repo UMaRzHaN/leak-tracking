@@ -1,0 +1,28 @@
+.mic {
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: none;
+  border: none;
+  color: #ffffff;
+
+  font-size: 20px;
+  border-radius: 20px;
+  cursor: pointer;
+
+  touch-action: none;
+  user-select: none;
+
+  &[aria-pressed="true"] {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(0.92);
+  }
+
+  &:active {
+    background: rgba(255, 255, 255, 0.15);
+  }
+}

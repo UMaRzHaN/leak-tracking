@@ -43,6 +43,7 @@ export default function StepRenderer({ step, steps, form, errors, onChange }) {
           return (
             <PhotoInput
               key={f.key}
+              required={f.required}
               value={form.photo}
               onChange={(photo) => onChange("photo", photo)}
               label={f.label}

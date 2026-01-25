@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import s from "./Input.module.scss";
 
-export default function AutocompleteInput({
+export default function AutocompleteTextarea({
   id,
   label,
   value,
@@ -9,10 +9,11 @@ export default function AutocompleteInput({
   onChange,
   error,
   placeholder = "",
+  rows = 1,
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value ?? "");
-  const inputRef = useRef(null);
+  const textareaRef = useRef(null);
 
   const showClear = query && query.length > 0;
 
@@ -22,21 +23,21 @@ export default function AutocompleteInput({
   }, [value]);
 
   const filtered = options.filter((o) =>
-    o.toLowerCase().includes(query.toLowerCase())
+    o.toLowerCase().includes(query.toLowerCase()),
   );
 
   const select = (val) => {
     setQuery(val);
     onChange(val);
     setOpen(false);
-    inputRef.current?.blur();
+    textareaRef.current?.blur();
   };
 
   const clear = () => {
     setQuery("");
     onChange("");
     setOpen(false);
-    inputRef.current?.focus();
+    textareaRef.current?.focus();
   };
 
   return (
@@ -48,10 +49,11 @@ export default function AutocompleteInput({
       )}
 
       <div className={s.inputWrapper}>
-        <input
-          ref={inputRef}
+        <textarea
+          ref={textareaRef}
           id={id}
-          className={s.formInput}
+          className={s.formTextarea}
+          rows={rows}
           value={query}
           placeholder={placeholder}
           onFocus={() => setOpen(true)}
@@ -62,14 +64,13 @@ export default function AutocompleteInput({
             onChange(v);
             setOpen(true);
           }}
-          autoComplete="off"
         />
 
         {showClear && (
           <button
             type="button"
             className={s.clearBtn}
-            onMouseDown={(e) => e.preventDefault()} // важно!
+            onMouseDown={(e) => e.preventDefault()}
             onClick={clear}
             aria-label="Очистить"
           >
@@ -84,7 +85,7 @@ export default function AutocompleteInput({
             <li
               key={i}
               className={s.autocompleteItem}
-              onMouseDown={(e) => e.preventDefault()} // чтобы blur не закрыл раньше
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => select(opt)}
             >
               {opt}

@@ -51,6 +51,7 @@ export default function AddLeak({
       stopVoiceInput={stopVoiceInput}
       coords={coords}
       setPage={setPage}
+      lastItem={data.at(-1)}
     />
   );
 }

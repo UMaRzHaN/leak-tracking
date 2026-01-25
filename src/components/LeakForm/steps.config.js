@@ -111,7 +111,7 @@ export const STEPS = [
     title: "Примечание и фото",
     fields: [
       { type: "textarea", key: "note", label: "Примечание" },
-      { type: "photo", key: "photo", label: "Фото утечки" },
+      { type: "photo", key: "photo", label: "Фото утечки", required: true },
     ],
   },
 ];

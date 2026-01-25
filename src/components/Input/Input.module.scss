@@ -54,6 +54,15 @@
   object-fit: cover;
   border-radius: 10px;
 }
+.hasError .photoBtn {
+  border-color: #dc2626;
+}
+
+.fieldError {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #dc2626;
+}
 .inputCard {
   display: flex;
   flex-direction: column;
@@ -143,6 +152,7 @@
 
 .inputCardTextarea {
   resize: vertical;
+  padding-right: 40px;
   min-height: 80px;
 }
 
@@ -211,7 +221,7 @@
   right: 0;
 
   z-index: 50;
-  max-height: 220px;
+  max-height: 80px;
   overflow-y: auto;
 
   background: #ffffff;
@@ -255,7 +265,25 @@
   display: flex;
   align-items: center;
 }
+.formTextarea {
+  width: 100%;
+  resize: vertical;
 
+  padding: 10px 40px 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.4;
+
+  min-height: unset;
+  height: auto;
+  &:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  }
+}
 /* чтобы крестик не наезжал на текст */
 .inputCardInput {
   padding-right: 36px;
@@ -264,6 +292,7 @@
 /* ===== CLEAR BUTTON ===== */
 .clearBtn {
   position: absolute;
+  top: 10px;
   right: 10px;
 
   width: 22px;

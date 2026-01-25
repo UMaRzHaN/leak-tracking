@@ -1,0 +1,61 @@
+/* ConfirmSheet.module.scss */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.4);
+  z-index: 200;
+}
+
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  padding: 16px;
+
+  animation: slideUp .25s ease;
+}
+
+.handle {
+  width: 40px;
+  height: 4px;
+  background: #d1d5db;
+  border-radius: 4px;
+  margin: 0 auto 12px;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.description {
+  font-size: 14px;
+  color: #4b5563;
+  margin-bottom: 16px;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.cancel {
+  background: #f3f4f6;
+}
+
+.confirm {
+  background: #2563eb;
+  color: #fff;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}

@@ -63,32 +63,6 @@
   text-overflow: ellipsis;
 }
 
-/* MIC */
-.mic {
-  width: 40px;
-  height: 40px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  background: none;
-  border: none;
-  color: #ffffff;
-
-  font-size: 20px;
-  border-radius: 20px;
-  cursor: pointer;
-
-  touch-action: none;
-  user-select: none;
-
-  &:active {
-    background: rgba(255, 255, 255, 0.15);
-    transform: scale(0.92);
-  }
-}
-
 /* =========================
    STEP HEADER
 ========================= */
@@ -163,10 +137,13 @@
 /* =========================
    STEP BODY (renderer)
 ========================= */
+/* 
+  StepRenderer uses global .step-body
+  padding is controlled here intentionally
+*/
 :global(.step-body) {
   padding: 16px;
 }
-
 /* =========================
    CLEAR ACTIONS
 ========================= */
@@ -193,8 +170,10 @@
   cursor: pointer;
   transition: all 0.15s ease;
 
-  &:active {
-    transform: scale(0.97);
+  @mixin tap {
+    &:active {
+      transform: scale(0.97);
+    }
   }
 }
 

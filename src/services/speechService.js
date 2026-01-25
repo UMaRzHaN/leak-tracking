@@ -1,18 +1,10 @@
 import { Capacitor } from "@capacitor/core";
 import { SpeechRecognition } from "@capacitor-community/speech-recognition";
 
-/* ======================================
-   SHARED STATE
-====================================== */
 let webRecognition = null;
 let webBuffer = "";
-let mobileBuffer = null;
 
-/* ======================================
-   START SPEECH RECOGNITION
-====================================== */
 export const startSpeechRecognition = async () => {
-  /* ---------- 📱 MOBILE ---------- */
   if (Capacitor.isNativePlatform()) {
     const perm = await SpeechRecognition.requestPermissions();
     if (perm.speechRecognition !== "granted") {
@@ -24,11 +16,9 @@ export const startSpeechRecognition = async () => {
       popup: true,
     });
 
-    mobileBuffer = result?.matches?.[0] || null;
-    return;
+    return result?.matches?.[0] || null;
   }
 
-  /* ---------- 🖥 WEB ---------- */
   const SpeechAPI =
     window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -45,24 +35,17 @@ export const startSpeechRecognition = async () => {
 
   webRecognition.onresult = (event) => {
     webBuffer = Array.from(event.results)
-      .map(r => r[0].transcript)
+      .map((r) => r[0].transcript)
       .join(" ");
   };
 
   webRecognition.start();
+  return null;
 };
 
-/* ======================================
-   STOP SPEECH RECOGNITION
-====================================== */
 export const stopSpeechRecognition = async () => {
-  /* ---------- 📱 MOBILE ---------- */
-  if (Capacitor.isNativePlatform()) {
-    await SpeechRecognition.stop();
-    return mobileBuffer;
-  }
+  if (Capacitor.isNativePlatform()) return null;
 
-  /* ---------- 🖥 WEB ---------- */
   if (webRecognition) {
     webRecognition.stop();
     webRecognition = null;

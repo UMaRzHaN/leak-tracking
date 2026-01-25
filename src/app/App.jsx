@@ -31,7 +31,6 @@ export default function App() {
     useVoiceControl(setPage);
 
   const hideLayout = page === "add";
-  console.log(data);
 
   return (
     <div className={s.app}>

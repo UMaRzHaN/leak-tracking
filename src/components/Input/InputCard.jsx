@@ -14,7 +14,7 @@ export default function InputCard({
   rows = 3,
 }) {
   const isTextarea = as === "textarea";
-  const showClear = !isTextarea && value && String(value).length > 0;
+  const showClear = value && String(value).length > 0;
 
   const inputId = useId(); // 👈 ключевой момент
 
@@ -45,28 +45,26 @@ export default function InputCard({
             onChange={(e) => onChange(e.target.value)}
           />
         ) : (
-          <>
-            <input
-              id={inputId}
-              className={s.inputCardInput}
-              type={type}
-              value={value ?? ""}
-              placeholder={placeholder}
-              onChange={(e) => onChange(e.target.value)}
-              inputMode={type === "number" ? "decimal" : undefined}
-            />
+          <input
+            id={inputId}
+            className={s.inputCardInput}
+            type={type}
+            value={value ?? ""}
+            placeholder={placeholder}
+            onChange={(e) => onChange(e.target.value)}
+            inputMode={type === "number" ? "decimal" : undefined}
+          />
+        )}
 
-            {showClear && (
-              <button
-                type="button"
-                className={s.clearBtn}
-                onClick={() => onChange("")}
-                aria-label="Очистить"
-              >
-                ✕
-              </button>
-            )}
-          </>
+        {showClear && (
+          <button
+            type="button"
+            className={s.clearBtn}
+            onClick={() => onChange("")}
+            aria-label="Очистить"
+          >
+            ✕
+          </button>
         )}
       </div>
 
