@@ -1,6 +1,6 @@
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
-import { exportLeaksGeoJSON } from "../utils/exportLeaksGeoJSON";
+import { exportLeaksGeoJSON } from "../configs/compression/exportLeaksGeoJSON";
 
 const FOLDER = "LeakReports";
 

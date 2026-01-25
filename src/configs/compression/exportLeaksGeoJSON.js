@@ -9,7 +9,7 @@ export function exportLeaksGeoJSON(leaks) {
       },
       properties: {
         id: l.id ?? null,
-        station: l.station ?? "Без станции",
+        station: l.station ?? "Без поля",
         date: l.date ?? null,
         comment: l.comment ?? null,
       },

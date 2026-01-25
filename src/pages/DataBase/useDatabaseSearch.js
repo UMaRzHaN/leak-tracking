@@ -1,20 +1,6 @@
 import { useState, useMemo } from "react";
+import { SEARCH_FIELDS } from "../../configs/compression/constants.config";
 
-export const SEARCH_FIELDS = [
-  { key: "all", label: "По всем полям" },
-  { key: "leak_id", label: "Индивидуальный номер утечки (бирка)" },
-  { key: "video_id", label: "Индивидуальный номер видео" },
-  { key: "station", label: "Компрессорная станция" },
-  { key: "location", label: "Локация" },
-  { key: "object", label: "Объект" },
-  { key: "component", label: "Компонент" },
-  { key: "leak_description", label: "Описание утечки" },
-  { key: "leak_cause", label: "Причина утечки" },
-  { key: "technological_solution", label: "Технологическое решение" },
-  { key: "repair_recommendation", label: "Решение / План устранения" },
-  { key: "materials_equipment", label: "МТР ремонта" },
-  { key: "note", label: "Примечание" },
-];
 
 export function useDatabaseSearch(data) {
   const [search, setSearch] = useState("");

@@ -1,30 +1,17 @@
 import { useEffect, useState, useRef } from "react";
-import { STEPS } from "./steps.config";
-import StepRenderer from "../Input/StepRenderer";
 import { useLeakForm } from "./hooks/useLeakForm";
 import { useStepValidation } from "./hooks/useStepValidation";
 import VoiceButton from "../VoiceButton/VoiceButton";
 import ConfirmSheet from "../ConfirmSheet/ConfirmSheet";
+import StepRenderer from "../Input/StepRenderer";
 import s from "./LeakForm.module.scss";
+
+import { STEPS } from "../../configs/compression/steps.config";
+import { COPYABLE_FIELDS } from "../../configs/compression/constants.config";
 
 /* ======================================
    FIELDS ALLOWED TO COPY
 ====================================== */
-const COPYABLE_FIELDS = [
-  "field",
-  "station",
-  "location",
-  "object",
-  "component",
-  "pressure",
-  "temperature",
-  "leak_description",
-  "leak_cause",
-  "technological_solution",
-  "repair_recommendation",
-  "materials_equipment",
-  "note",
-];
 
 export default function LeakForm({
   onAdd,
@@ -195,8 +182,7 @@ export default function LeakForm({
         {/* ===== STEP HEADER ===== */}
         <div className={s.stepHeader}>
           <div className={s.stepText}>
-            Шаг {step} из {STEPS.length}:{" "}
-            <span>{STEPS[step - 1]?.title}</span>
+            Шаг {step} из {STEPS.length}: <span>{STEPS[step - 1]?.title}</span>
           </div>
 
           <div className={s.stepDots}>
@@ -262,11 +248,7 @@ export default function LeakForm({
             </button>
           )}
 
-          <button
-            className={s.clearAllSteps}
-            type="button"
-            onClick={clearForm}
-          >
+          <button className={s.clearAllSteps} type="button" onClick={clearForm}>
             Очистить все поля 🧹
           </button>
         </div>

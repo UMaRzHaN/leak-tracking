@@ -3,7 +3,7 @@ import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { calculations } from "../utils/calculations";
 import { normalizeRow } from "../utils/normalizeRow";
-import { headers, keysOrder } from "../data/excelImportData";
+import { headers, keysOrder } from "../configs/compression/excelImportData.config";
 import { Share } from "@capacitor/share";
 import { Toast } from "@capacitor/toast";
 

@@ -1,4 +1,4 @@
-import { STEP_REQUIRED } from "../constants";
+import { STEP_REQUIRED } from "../../../configs/compression/constants.config";
 
 export function useStepValidation(form, setErrors) {
   return function validateStep(step) {

@@ -1,7 +1,7 @@
 import { normalizeEquipment } from "./normalizeEquipment";
 import { normalizeNumberWords } from "./normalizeNumberWords";
-import { normalizeSynonyms } from "./normalizeSynonyms";
-import { parseVoiceText } from "./parseVoiceText";
+import { normalizeSynonyms } from "../configs/compression/normalizeSynonyms";
+import { parseVoiceText } from "../configs/compression/parseVoiceText";
 
 export const handleVoiceText = (text, setVoiceData, setPage) => {
   const normalizedText = normalizeNumberWords(text);

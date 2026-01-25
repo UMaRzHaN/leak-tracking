@@ -1,6 +1,6 @@
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
-import { exportLeaksKML } from "../utils/exportLeaksKML";
+import { exportLeaksKML } from "../configs/compression/exportLeaksKML";
 
 const FOLDER = "LeakReports";
 
