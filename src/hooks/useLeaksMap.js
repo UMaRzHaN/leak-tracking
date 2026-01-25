@@ -33,7 +33,7 @@ export const useLeaksMap = ({
     userMovedRef.current = true;
 
     mapRefInstance.current.panTo(userCoordsRef.current);
-    mapRefInstance.current.setZoom(15);
+    mapRefInstance.current.setZoom(18);
   };
 
   /* ======================================================
@@ -172,7 +172,7 @@ export const useLeaksMap = ({
 
           map.panTo({
             lat: Number(leak.lat),
-            lng: Number(leak.lon),
+            lng: Number(leak.lng),
           });
           map.setZoom(16);
         },

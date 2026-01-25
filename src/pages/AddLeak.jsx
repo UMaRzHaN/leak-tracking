@@ -27,7 +27,7 @@ export default function AddLeak({
     const newRow = {
       id,
       lat: toNumber(coords?.lat),
-      lon: toNumber(coords?.lon),
+      lng: toNumber(coords?.lng),
       index: data.length + 1,
       ...cleanRow,
       photo: photoPath,

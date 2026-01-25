@@ -70,7 +70,7 @@ export default function MapPage({ leaks, coords }) {
           mapCenter.lat,
           mapCenter.lng,
           l.lat,
-          l.lon,
+          l.lng,
         ),
       }))
       .sort((a, b) => a._distance - b._distance);

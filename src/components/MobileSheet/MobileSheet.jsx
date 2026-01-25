@@ -1,7 +1,23 @@
 import { useMemo, useState } from "react";
+import { saveLeaksGeoJSON } from "../../services/saveLeaksGeoJSON";
 import s from "./MobileSheet.module.scss";
 
 const NO_STATION_LABEL = "Без станции";
+
+async function handleExport(leaks) {
+  try {
+    if (!leaks.length) {
+      alert("Нет данных для экспорта");
+      return;
+    }
+
+    const fileName = await saveLeaksGeoJSON(leaks);
+    alert(`Файл создан: ${fileName}`);
+  } catch (e) {
+    alert("Ошибка экспорта");
+    console.error(e);
+  }
+}
 
 export default function MobileSheet({
   open,
@@ -31,13 +47,11 @@ export default function MobileSheet({
 
   return (
     <>
-      {/* ===== OVERLAY ===== */}
       {open && (
         <div className={s.overlay} onClick={onClose}>
-          {/* ===== SHEET ===== */}
           <div
             className={`${s.sheet} ${open ? s.open : ""}`}
-            onClick={(e) => e.stopPropagation()} // ⛔ не даём клику всплыть
+            onClick={(e) => e.stopPropagation()}
           >
             <div className={s.sheetHandle} />
 
@@ -67,6 +81,16 @@ export default function MobileSheet({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
+            </div>
+
+            {/* ===== КНОПКА ЭКСПОРТА ===== */}
+            <div className={s.sheetActions}>
+              <button
+                className={s.exportBtn}
+                onClick={() => handleExport(filteredLeaks)}
+              >
+                Экспорт карты (GeoJSON)
+              </button>
             </div>
 
             {/* ===== СПИСОК ===== */}

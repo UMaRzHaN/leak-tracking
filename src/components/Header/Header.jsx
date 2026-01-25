@@ -8,9 +8,9 @@ export default function Header({ setPage, geoError, coords, geoLoading }) {
           <b>Локация 📍 {geoError}</b>
         ) : geoLoading ? (
           <b>Локация 📍 Определение…</b>
-        ) : coords.lat && coords.lon ? (
+        ) : coords.lat && coords.lng ? (
           <b>
-            Локация 📍 {coords.lat.toFixed(6)} / {coords.lon.toFixed(6)}
+            Локация 📍 {coords.lat.toFixed(6)} / {coords.lng.toFixed(6)}
           </b>
         ) : (
           <b>Локация 📍 Нет данных</b>

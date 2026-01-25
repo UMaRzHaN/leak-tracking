@@ -4,10 +4,8 @@ import { MarkerClusterer } from "@googlemaps/markerclusterer";
    HELPERS
    ====================================================== */
 
-export function getColorByStatus(status) {
-  if (status === "Fixed") return "#4CAF50";
-  if (status === "Active") return "#F44336";
-  return "#FBC02D";
+export function getColorByStatus(speed) {
+  return speed <= 25 ? "#4caf50" : speed >= 100 ? "#f44336" : "#ff9800";
 }
 
 export function createMarkerContent(color, label) {
@@ -90,15 +88,15 @@ export async function updateMarkers({
 
   /* ===== CREATE NEW MARKERS ===== */
   for (const leak of leaks) {
-    if (leak?.lat == null || leak?.lon == null) continue;
+    if (leak?.lat == null || leak?.lng == null) continue;
 
     const marker = new AdvancedMarkerElement({
       map,
       position: {
         lat: Number(leak.lat),
-        lng: Number(leak.lon),
+        lng: Number(leak.lng),
       },
-      content: createMarkerContent(getColorByStatus(leak.status), leak.leak_id),
+      content: createMarkerContent(getColorByStatus(leak.speed), leak.leak_id),
     });
 
     if (onSelectLeak) {
@@ -130,10 +128,10 @@ export function autoCenterMap({ map, leaks, userCoords }) {
     const bounds = new window.google.maps.LatLngBounds();
 
     leaks.forEach((l) => {
-      if (l?.lat != null && l?.lon != null) {
+      if (l?.lat != null && l?.lng != null) {
         bounds.extend({
           lat: Number(l.lat),
-          lng: Number(l.lon),
+          lng: Number(l.lng),
         });
       }
     });
@@ -152,7 +150,7 @@ export function autoCenterMap({ map, leaks, userCoords }) {
   if (leaks.length === 1) {
     map.setCenter({
       lat: Number(leaks[0].lat),
-      lng: Number(leaks[0].lon),
+      lng: Number(leaks[0].lng),
     });
     map.setZoom(16);
     return;
