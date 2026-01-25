@@ -2,7 +2,7 @@ import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { EXPORT_COMPRESSION } from "../configs/compression/compressions.config";
 
-const exportLeaksGeoJSON = EXPORT_COMPRESSION.geojson;
+const exportLeaksGeoJSON = EXPORT_COMPRESSION.geojson.handler;
 const FOLDER = "LeakReports";
 
 export async function saveLeaksGeoJSON(leaks) {
