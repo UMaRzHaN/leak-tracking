@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { normalizeNumber } from "../../../utils/normalizeNumber";
-import { NUMBER_FIELDS } from "../../../configs/compression/constants.config";
+import { SYSTEM_COMPRESSION } from "../../../configs/compression/compressions.config";
+const NUMBER_FIELDS = SYSTEM_COMPRESSION.numeric;
 
 export function useLeakForm() {
   const [form, setForm] = useState({

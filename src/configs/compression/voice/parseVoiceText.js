@@ -1,4 +1,4 @@
-import { capitalizeFirst } from "../../utils/capitalizeFirst";
+import { capitalizeFirst } from "../../../utils/capitalizeFirst";
 
 /**
  * ЕДИНЫЙ СПИСОК МАРКЕРОВ
@@ -61,14 +61,14 @@ export const parseVoiceText = (text) => {
     {
       key: "field",
       regex: new RegExp(
-        `(?:умг|умк|умгэ|умге|умга|омг|управление)\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
+        `(?:умг|умк|умгэ|умге|умга|омг|управление)\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
       ),
       type: "string",
     },
     {
       key: "station",
       regex: new RegExp(
-        `компрессорная станци[я]\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
+        `компрессорная станци[я]\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
       ),
       type: "string",
     },
@@ -90,28 +90,28 @@ export const parseVoiceText = (text) => {
     {
       key: "leak_description",
       regex: new RegExp(
-        `описание утечк[и]\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
+        `описание утечк[и]\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
       ),
       type: "string",
     },
     {
       key: "leak_cause",
       regex: new RegExp(
-        `причина утечк[и]\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
+        `причина утечк[и]\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
       ),
       type: "string",
     },
     {
       key: "technological_solution",
       regex: new RegExp(
-        `(технологическ(ое|ий) решени(е|я)|тех решени(е|я)|способ устранени(я|й)|метод устранени(я|й))\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
+        `(технологическ(ое|ий) решени(е|я)|тех решени(е|я)|способ устранени(я|й)|метод устранени(я|й))\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
       ),
       type: "string",
     },
     {
       key: "repair_recommendation",
       regex: new RegExp(
-        `план устранения\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`
+        `план устранения\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
       ),
       type: "string",
     },

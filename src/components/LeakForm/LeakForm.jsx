@@ -6,9 +6,13 @@ import ConfirmSheet from "../ConfirmSheet/ConfirmSheet";
 import StepRenderer from "../Input/StepRenderer";
 import s from "./LeakForm.module.scss";
 
-import { STEPS } from "../../configs/compression/steps.config";
-import { COPYABLE_FIELDS } from "../../configs/compression/constants.config";
+import { COMPRESSION_CONFIG } from "../../configs/compression/compressions.config";
 
+const { steps } = COMPRESSION_CONFIG.steps;
+const { copyable } = COMPRESSION_CONFIG.system;
+
+const STEPS = steps;
+const COPYABLE_FIELDS = copyable;
 /* ======================================
    FIELDS ALLOWED TO COPY
 ====================================== */
@@ -28,7 +32,7 @@ export default function LeakForm({
   const pendingKeysRef = useRef([]);
 
   const { form, errors, handle, setErrors, setForm } = useLeakForm();
-  const validateStep = useStepValidation(form, setErrors);
+  const validateStep = useStepValidation({ steps: STEPS, form, setErrors });
 
   const hasStepData = STEPS[step - 1]?.fields?.some(({ key }) => form[key]);
 

@@ -8,11 +8,6 @@ export const NUMBER_FIELDS = [
   "pressure",
 ];
 
-export const STEP_REQUIRED = {
-  2: ["leak_id"],
-  3: ["video_id"],
-  4: ["leak_speed"],
-};
 export const COPYABLE_FIELDS = [
   "field",
   "station",

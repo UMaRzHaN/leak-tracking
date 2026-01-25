@@ -7,7 +7,7 @@ import {
   solutions,
   recommendations,
   materials,
-} from "../../configs/compression/dictionaries";
+} from "./dictionaries";
 
 export const STEPS = [
   {

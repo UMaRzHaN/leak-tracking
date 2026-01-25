@@ -3,9 +3,12 @@ import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { calculations } from "../utils/calculations";
 import { normalizeRow } from "../utils/normalizeRow";
-import { headers, keysOrder } from "../configs/compression/excelImportData.config";
+import { EXPORT_COMPRESSION } from "../configs/compression/compressions.config";
 import { Share } from "@capacitor/share";
 import { Toast } from "@capacitor/toast";
+
+const EXCEL_CONFIG = EXPORT_COMPRESSION.excel;
+const { headers, keysOrder } = EXCEL_CONFIG;
 
 const showToast = async (message, duration = "short") => {
   await Toast.show({

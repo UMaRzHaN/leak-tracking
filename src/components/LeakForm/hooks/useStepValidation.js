@@ -1,17 +1,17 @@
-import { STEP_REQUIRED } from "../../../configs/compression/constants.config";
-
-export function useStepValidation(form, setErrors) {
-  return function validateStep(step) {
-    const fields = STEP_REQUIRED[step];
-    if (!fields) return true;
+export function useStepValidation({ steps, form, setErrors }) {
+  return function validateStep(stepIndex) {
+    const step = steps[stepIndex - 1];
+    if (!step?.fields) return true;
 
     const nextErrors = {};
 
-    fields.forEach((key) => {
-      if (key === "photo") {
-        const photo = form.photo;
+    step.fields.forEach(({ key, required, type }) => {
+      if (!required) return;
+
+      if (type === "photo") {
+        const photo = form[key];
         if (!photo || !photo.raw || !photo.src) {
-          nextErrors.photo = "Добавьте фото";
+          nextErrors[key] = "Добавьте фото";
         }
         return;
       }
