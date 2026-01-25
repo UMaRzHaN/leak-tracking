@@ -61,7 +61,7 @@ export const parseVoiceText = (text) => {
     {
       key: "field",
       regex: new RegExp(
-        `(?:умг|умк|умгэ|умге|умга|омг|управление)\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
+        `(?:умг|унг|умк|умгэ|умге|умга|омг|управление)\\s+(.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
       ),
       type: "string",
     },
