@@ -3,41 +3,45 @@
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,.4);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
   z-index: 200;
+
+  display: flex;
+  align-items: flex-end;
 }
 
 .sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-
+  width: 100%;
   background: #fff;
-  border-radius: 16px 16px 0 0;
-  padding: 16px;
+  border-radius: 20px 20px 0 0;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
 
-  animation: slideUp .25s ease;
+  animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .handle {
-  width: 40px;
+  width: 36px;
   height: 4px;
   background: #d1d5db;
-  border-radius: 4px;
-  margin: 0 auto 12px;
+  border-radius: 999px;
+  margin: 0 auto 14px;
 }
 
 .title {
   font-size: 16px;
   font-weight: 600;
-  margin-bottom: 8px;
+  line-height: 1.3;
+  margin-bottom: 6px;
+  text-align: center;
 }
 
 .description {
   font-size: 14px;
-  color: #4b5563;
-  margin-bottom: 16px;
+  line-height: 1.45;
+  color: #6b7280;
+  margin-bottom: 20px;
+  text-align: center;
 }
 
 .actions {
@@ -46,16 +50,45 @@
   gap: 12px;
 }
 
+.actions button {
+  height: 44px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.08s ease, background 0.15s ease;
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
 .cancel {
   background: #f3f4f6;
+  color: #111827;
+
+  &:hover {
+    background: #e5e7eb;
+  }
 }
 
 .confirm {
   background: #2563eb;
   color: #fff;
+
+  &:hover {
+    background: #1d4ed8;
+  }
 }
 
 @keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
