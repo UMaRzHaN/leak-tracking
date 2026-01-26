@@ -4,7 +4,7 @@ import RecentLeaks from "../components/RecentLeaks/RecentLeaks";
 import LeakDetailsSheet from "../components/LeakDetailsSheet/LeakDetailsSheet";
 import { save } from "../utils/saveJSON";
 
-export default function MainPage({
+export default function Settings({
   setPage,
   setGpsEnabled,
   gpsEnabled,
