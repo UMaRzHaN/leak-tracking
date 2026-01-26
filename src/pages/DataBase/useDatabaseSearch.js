@@ -1,9 +1,14 @@
 import { useState, useMemo } from "react";
-import { SYSTEM_COMPRESSION } from "../../configs/compression/compressions.config";
-
-const SEARCH_FIELDS = SYSTEM_COMPRESSION.search;
+import { useProjectConfig } from "../../app/settings/useProjectConfig";
 
 export function useDatabaseSearch(data) {
+  const projectConfig = useProjectConfig();
+
+  const SEARCH_FIELDS = useMemo(
+    () => projectConfig?.system?.search ?? [],
+    [projectConfig],
+  );
+
   const [search, setSearch] = useState("");
   const [searchField, setSearchField] = useState("all");
 
@@ -17,9 +22,13 @@ export function useDatabaseSearch(data) {
           row[key]?.toString().toLowerCase().includes(q),
         );
       }
-      return row[searchField]?.toString().toLowerCase().includes(q);
+
+      return row[searchField]
+        ?.toString()
+        .toLowerCase()
+        .includes(q);
     });
-  }, [data, search, searchField]);
+  }, [data, search, searchField, SEARCH_FIELDS]);
 
   return {
     search,
@@ -27,6 +36,6 @@ export function useDatabaseSearch(data) {
     searchField,
     setSearchField,
     filteredData,
-    fields: SEARCH_FIELDS, // ✅ ВАЖНО
+    fields: SEARCH_FIELDS, // ✅ теперь project-aware
   };
 }

@@ -1,19 +1,25 @@
 import { useMemo, useState } from "react";
-import { saveLeaksKML } from "../../services/saveLeaksKML";
-import { saveLeaksGeoJSON } from "../../services/saveLeaksGeoJSON";
+import { useProjectConfig } from "../../app/settings/useProjectConfig";
 
 import s from "./MobileSheet.module.scss";
+import { saveLeaksGeoJSON } from "../../services/saveLeaksGeoJSON";
+import { saveLeaksKML } from "../../services/saveLeaksKML";
 
 const NO_STATION_LABEL = "Без станции";
 
-async function handleExport(leaks, saveLeaksType) {
+async function handleExport(leaks, saveFn) {
   try {
     if (!leaks.length) {
       alert("Нет данных для экспорта");
       return;
     }
 
-    const fileName = await saveLeaksType(leaks);
+    if (!saveFn) {
+      alert("Экспорт недоступен для этого проекта");
+      return;
+    }
+
+    const fileName = await saveFn();
     alert(`Файл создан: ${fileName}`);
   } catch (e) {
     alert("Ошибка экспорта");
@@ -30,6 +36,10 @@ export default function MobileSheet({
   onClose,
   onSelect,
 }) {
+  const projectConfig = useProjectConfig();
+
+  const exportFormats = projectConfig.export ?? {};
+
   const [query, setQuery] = useState("");
 
   const normalizedLeaks = useMemo(() => {
@@ -87,19 +97,37 @@ export default function MobileSheet({
 
             {/* ===== КНОПКА ЭКСПОРТА ===== */}
             <div className={s.sheetActions}>
-              <button
-                className={`${s.exportBtn} ${s.exportGeo}`}
-                onClick={() => handleExport(filteredLeaks, saveLeaksGeoJSON)}
-              >
-                {`Экспорт карты \n (GeoJSON)`}
-              </button>
+              {exportFormats.geojson && (
+                <button
+                  className={`${s.exportBtn} ${s.exportGeo}`}
+                  onClick={() =>
+                    handleExport(filteredLeaks, () =>
+                      saveLeaksGeoJSON(
+                        filteredLeaks,
+                        exportFormats.geojson.handler,
+                      ),
+                    )
+                  }
+                >
+                  {`Экспорт карты \n (GeoJSON)`}
+                </button>
+              )}
 
-              <button
-                className={`${s.exportBtn} ${s.exportKml}`}
-                onClick={() => handleExport(filteredLeaks, saveLeaksKML)}
-              >
-                {`Экспорт карты \n (KML)`}
-              </button>
+              {exportFormats.kml && (
+                <button
+                  className={`${s.exportBtn} ${s.exportKml}`}
+                  onClick={() =>
+                    handleExport(filteredLeaks, () =>
+                      saveLeaksKML(
+                        filteredLeaks,
+                        exportFormats.kml.handler,
+                      ),
+                    )
+                  }
+                >
+                  {`Экспорт карты \n (KML)`}
+                </button>
+              )}
             </div>
 
             {/* ===== СПИСОК ===== */}

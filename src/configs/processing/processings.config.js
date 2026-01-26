@@ -73,10 +73,11 @@ export const STEP_COMPRESSION = {
   mode: "manual",
   steps: STEPS,
 };
-export const COMPRESSION_CONFIG = Object.freeze({
+export const PROCESSING_CONFIG = Object.freeze({
   steps: STEP_COMPRESSION,
   voice: VOICE_COMPRESSION,
   semantic: SEMANTIC_COMPRESSION,
   system: SYSTEM_COMPRESSION,
   export: EXPORT_COMPRESSION,
 });
+export default PROCESSING_CONFIG;

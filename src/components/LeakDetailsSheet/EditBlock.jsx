@@ -1,5 +1,6 @@
 import EditTextField from "../EditTextField/EditTextField";
-import { EDIT_FIELDS } from "./fields.config";
+import { useProjectConfig } from "../../app/settings/useProjectConfig";
+import { useMemo } from "react";
 import s from "./LeakDetailsSheet.module.scss";
 
 export default function EditBlock({
@@ -12,6 +13,12 @@ export default function EditBlock({
   onCancel,
   fileInputRef,
 }) {
+  const projectConfig = useProjectConfig();
+
+  const EDIT_FIELDS = useMemo(
+    () => projectConfig.editFields ?? [],
+    [projectConfig],
+  );
   return (
     <div className={s.editBlock}>
       {EDIT_FIELDS.map(({ key, label, multiline }) => (

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Directory, Filesystem } from "@capacitor/filesystem";
-import { STORAGE_KEY, PHOTOS_DIR } from "./constants";
+import { STORAGE_KEY, PHOTOS_DIR } from "../constants/storage.constants";
 
 export function useAppStorage(setData) {
   // load localStorage

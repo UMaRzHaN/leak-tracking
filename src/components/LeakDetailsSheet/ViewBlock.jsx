@@ -1,7 +1,14 @@
-import { VIEW_FIELDS } from "./fields.config";
+import { useMemo } from "react";
+import { useProjectConfig } from "../../app/settings/useProjectConfig";
 import s from "./LeakDetailsSheet.module.scss";
 
 export default function ViewBlock({ data, onEdit, onClose }) {
+  const projectConfig = useProjectConfig();
+
+  const VIEW_FIELDS = useMemo(
+    () => projectConfig.viewFields ?? [],
+    [projectConfig],
+  );
   return (
     <>
       <div className={s.detailsList}>

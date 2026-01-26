@@ -1,15 +1,15 @@
 import ExcelJS from "exceljs";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
-import { calculations } from "../utils/calculations";
-import { normalizeRow } from "../utils/normalizeRow";
-import { EXPORT_COMPRESSION } from "../configs/compression/compressions.config";
 import { Share } from "@capacitor/share";
 import { Toast } from "@capacitor/toast";
 
-const EXCEL_CONFIG = EXPORT_COMPRESSION.excel;
-const { headers, keysOrder } = EXCEL_CONFIG;
+import { calculations } from "../utils/calculations";
+import { normalizeRow } from "../utils/normalizeRow";
 
+/* ===============================
+   TOAST
+================================ */
 const showToast = async (message, duration = "short") => {
   await Toast.show({
     text: message,
@@ -20,12 +20,18 @@ const showToast = async (message, duration = "short") => {
 
 /* ===============================
    MAIN EXPORT
-   =============================== */
-export const exportToExcel = async (rows) => {
+================================ */
+export const exportToExcel = async (rows, excelConfig) => {
   if (!rows?.length) {
     await showToast("❌ Нет данных для выгрузки");
     return;
   }
+
+  if (!excelConfig?.headers || !excelConfig?.keysOrder) {
+    throw new Error("Excel config is missing headers or keysOrder");
+  }
+
+  const { headers, keysOrder } = excelConfig;
 
   const isMobile = Capacitor.isNativePlatform();
   const prepared = rows.map(calculations);
@@ -34,9 +40,9 @@ export const exportToExcel = async (rows) => {
     await showToast("⏳ Экспорт данных…");
 
     if (isMobile) {
-      await exportCSV(prepared);
+      await exportCSV(prepared, headers, keysOrder);
     } else {
-      await exportXLSX(prepared);
+      await exportXLSX(prepared, headers, keysOrder);
     }
 
     await showToast("✅ Экспорт завершён");
@@ -48,8 +54,8 @@ export const exportToExcel = async (rows) => {
 
 /* ===============================
    DESKTOP → XLSX
-   =============================== */
-const exportXLSX = async (prepared) => {
+================================ */
+const exportXLSX = async (prepared, headers, keysOrder) => {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Утечки");
 
@@ -82,19 +88,20 @@ const exportXLSX = async (prepared) => {
 
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
+  if (fileName) {
+    alert("📁 Файл Excel успешно сохранен на вашем компьютере.");
+  }
   link.download = fileName;
   link.click();
-
-  alert("XLSX saved: " + fileName);
 };
 
 /* ===============================
    MOBILE → CSV
-   =============================== */
-const exportCSV = async (prepared, withShare = false) => {
+================================ */
+const exportCSV = async (prepared, headers, keysOrder, withShare = false) => {
   const folder = "LeakReports";
   const fileName = `leaks_${Date.now()}.csv`;
-  const csv = generateCSV(prepared);
+  const csv = generateCSV(prepared, headers, keysOrder);
 
   await Filesystem.mkdir({
     path: folder,
@@ -122,8 +129,8 @@ const exportCSV = async (prepared, withShare = false) => {
 
 /* ===============================
    CSV GENERATOR
-   =============================== */
-const generateCSV = (prepared) => {
+================================ */
+const generateCSV = (prepared, headers, keysOrder) => {
   const escape = (v) =>
     `"${String(v ?? "")
       .replace(/"/g, '""')

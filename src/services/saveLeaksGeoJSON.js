@@ -1,11 +1,9 @@
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
-import { EXPORT_COMPRESSION } from "../configs/compression/compressions.config";
 
-const exportLeaksGeoJSON = EXPORT_COMPRESSION.geojson.handler;
 const FOLDER = "LeakReports";
 
-export async function saveLeaksGeoJSON(leaks) {
+export async function saveLeaksGeoJSON(leaks, exportLeaksGeoJSON) {
   const geojson = exportLeaksGeoJSON(leaks);
   const fileName = `leaks_${Date.now()}.geojson`;
   const data = JSON.stringify(geojson, null, 2);

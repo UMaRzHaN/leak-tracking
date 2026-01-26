@@ -1,9 +1,14 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { normalizeNumber } from "../../../utils/normalizeNumber";
-import { SYSTEM_COMPRESSION } from "../../../configs/compression/compressions.config";
-const NUMBER_FIELDS = SYSTEM_COMPRESSION.numeric;
+import { useProjectConfig } from "../../../app/settings/useProjectConfig";
 
 export function useLeakForm() {
+  const projectConfig = useProjectConfig();
+
+  const NUMBER_FIELDS = useMemo(
+    () => projectConfig?.system?.numeric ?? [],
+    [projectConfig],
+  );
   const [form, setForm] = useState({
     leak_id: "",
     photo: null, // 🔑 ЕДИНСТВЕННОЕ поле для фото

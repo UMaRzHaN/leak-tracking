@@ -3,7 +3,7 @@ import { useEditablePhoto } from "../../hooks/useEditablePhoto";
 import PhotoBlock from "./PhotoBlock";
 import ViewBlock from "./ViewBlock";
 import EditBlock from "./EditBlock";
-import { EDIT_FIELDS } from "./fields.config";
+import { useProjectConfig } from "../../app/settings/useProjectConfig";
 import s from "./LeakDetailsSheet.module.scss";
 
 /* =========================
@@ -15,6 +15,13 @@ const MODES = {
 };
 
 export default function LeakDetailsSheet({ leak, onClose, onSave }) {
+  const projectConfig = useProjectConfig();
+
+  const EDIT_FIELDS = useMemo(
+    () => projectConfig.editFields ?? [],
+    [projectConfig],
+  );
+
   const [mode, setMode] = useState(MODES.VIEW);
   const [localEdit, setLocalEdit] = useState({});
   const [saving, setSaving] = useState(false);
@@ -54,14 +61,14 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
       resetPhoto();
       prevLeakIdRef.current = leak.leak_id;
     }
-  }, [leak.leak_id, leak.updatedAt, leak, resetPhoto]);
+  }, [leak.leak_id, leak.updatedAt, leak, resetPhoto, EDIT_FIELDS]);
 
   /* =========================
      DIRTY FIELDS
   ========================= */
   const dirtyFields = useMemo(
     () => EDIT_FIELDS.filter(({ key }) => localEdit[key] !== leak[key]),
-    [localEdit, leak],
+    [localEdit, leak, EDIT_FIELDS],
   );
 
   const isTextDirty = dirtyFields.length > 0;

@@ -1,18 +1,12 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useLeakForm } from "./hooks/useLeakForm";
 import { useStepValidation } from "./hooks/useStepValidation";
+import { useProjectConfig } from "../../app/settings/useProjectConfig";
 import VoiceButton from "../VoiceButton/VoiceButton";
 import ConfirmSheet from "../ConfirmSheet/ConfirmSheet";
 import StepRenderer from "../Input/StepRenderer";
 import s from "./LeakForm.module.scss";
 
-import { COMPRESSION_CONFIG } from "../../configs/compression/compressions.config";
-
-const { steps } = COMPRESSION_CONFIG.steps;
-const { copyable } = COMPRESSION_CONFIG.system;
-
-const STEPS = steps;
-const COPYABLE_FIELDS = copyable;
 /* ======================================
    FIELDS ALLOWED TO COPY
 ====================================== */
@@ -26,8 +20,16 @@ export default function LeakForm({
   voiceData,
   lastItem,
 }) {
-  const [step, setStep] = useState(1);
+  const projectConfig = useProjectConfig();
 
+  const STEPS = useMemo(() => projectConfig.steps.steps ?? [], [projectConfig]);
+
+  const COPYABLE_FIELDS = useMemo(
+    () => projectConfig.system?.copyable ?? [],
+    [projectConfig],
+  );
+
+  const [step, setStep] = useState(1);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const pendingKeysRef = useRef([]);
 
@@ -157,7 +159,7 @@ export default function LeakForm({
 
       return updated;
     });
-  }, [voiceData, step, setForm]);
+  }, [voiceData, step, setForm, STEPS]);
 
   return (
     <>
