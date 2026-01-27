@@ -3,9 +3,14 @@ import { useSwipeActions } from "./useSwipeActions";
 
 export function useSwipeCard({ onOpenDetails, leak, onRemove }) {
   const [swipeState, setSwipeState] = useState(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
   // null | "left" | "right"
 
   const swipe = useSwipeActions({
+    onSwipeMove: (offset) => {
+      setSwipeOffset(offset);
+    },
+
     // 👈 справа → налево — УДАЛЕНИЕ
     onSwipeLeft: () => {
       setSwipeState("left");
@@ -13,6 +18,7 @@ export function useSwipeCard({ onOpenDetails, leak, onRemove }) {
       setTimeout(() => {
         onRemove?.(leak.id);
         setSwipeState(null);
+        setSwipeOffset(0);
       }, 200);
     },
 
@@ -23,14 +29,19 @@ export function useSwipeCard({ onOpenDetails, leak, onRemove }) {
       setTimeout(() => {
         onOpenDetails?.(leak);
         setSwipeState(null);
+        setSwipeOffset(0);
       }, 200);
     },
   });
 
-  const close = () => setSwipeState(null);
+  const close = () => {
+    setSwipeState(null);
+    setSwipeOffset(0);
+  };
 
   return {
     swipeState,
+    swipeOffset,
     close,
     handlers: {
       onTouchStart: swipe.onTouchStart,

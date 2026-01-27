@@ -3,7 +3,7 @@ import { normalizeSynonyms } from "./voice/normalizeSynonyms";
 
 import { exportLeaksKML } from "./export/exportLeaksKML";
 import { exportLeaksGeoJSON } from "./export/exportLeaksGeoJSON";
-import { EDIT_FIELDS, VIEW_FIELDS } from "./data/fields";
+import { FIELDS } from "./data/fields";
 
 import {
   headers as EXCEL_HEADERS,
@@ -49,8 +49,7 @@ export const SYSTEM_COMPRESSION = {
   copyable: COPYABLE_FIELDS,
   search: SEARCH_FIELDS,
   lossy: ["rawVoiceText", "note"],
-  viewFields: VIEW_FIELDS,
-  editFields: EDIT_FIELDS,
+  fields: FIELDS,
 };
 
 export const EXPORT_COMPRESSION = {

@@ -2,7 +2,7 @@ import { useSwipeCard } from "../../hooks/useSwipeCard";
 import s from "./LeakCardCompact.module.scss";
 
 export default function LeakCardCompact({ leak, onRemove, onOpenDetails }) {
-  const { swipeState, close, handlers } = useSwipeCard({
+  const { swipeState, swipeOffset, close, handlers } = useSwipeCard({
     leak,
     onOpenDetails,
     onRemove,
@@ -11,14 +11,14 @@ export default function LeakCardCompact({ leak, onRemove, onOpenDetails }) {
   return (
     <div className={s.swipeWrapper} onClick={close}>
       {/* 👉 SWIPE RIGHT → DETAILS */}
-      {swipeState === "right" && (
+      {(swipeState === "right" || swipeOffset > 30) && (
         <div className={s.swipeHintRight}>
           <span>ℹ️</span>
           <span>Подробнее</span>
         </div>
       )}
 
-      {swipeState === "left" && onRemove && (
+      {(swipeState === "left" || swipeOffset < -30) && onRemove && (
         <div className={s.swipeHintLeft}>
           <span>🗑</span>
           <span>Удалить</span>
@@ -27,12 +27,16 @@ export default function LeakCardCompact({ leak, onRemove, onOpenDetails }) {
       {/* CARD */}
       <div
         className={`${s.card} ${
-          swipeState === "left"
+          swipeState === "left" || swipeOffset < -30
             ? s.swipedLeft
-            : swipeState === "right"
+            : swipeState === "right" || swipeOffset > 30
               ? s.swipedRight
               : ""
         }`}
+        style={{
+          transform: `translateX(${swipeOffset}px)`,
+          transition: swipeOffset === 0 ? "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
+        }}
         {...handlers}
       >
         <div className={s.header}>

@@ -2,7 +2,8 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import { useLeakForm } from "./hooks/useLeakForm";
 import { useStepValidation } from "./hooks/useStepValidation";
 import { useProjectConfig } from "../../app/settings/useProjectConfig";
-import VoiceButton from "../VoiceButton/VoiceButton";
+import AddLeakHeader from "./AddLeakHeader";
+import AddLeakFooter from "./AddLeakFooter";
 import ConfirmSheet from "../ConfirmSheet/ConfirmSheet";
 import StepRenderer from "../Input/StepRenderer";
 import s from "./LeakForm.module.scss";
@@ -165,25 +166,11 @@ export default function LeakForm({
     <>
       <div className={s.card}>
         {/* ===== HEADER ===== */}
-        <header className={s.appBar}>
-          <button
-            className={s.backButton}
-            type="button"
-            onClick={() => {
-              stopVoiceInput?.();
-              setPage("");
-            }}
-          >
-            ⇦
-          </button>
-
-          <div className={s.appBarTitle}>Добавить утечку</div>
-
-          <VoiceButton
-            startVoiceInput={startVoiceInput}
-            stopVoiceInput={stopVoiceInput}
-          />
-        </header>
+        <AddLeakHeader
+          setPage={setPage}
+          stopVoiceInput={stopVoiceInput}
+          startVoiceInput={startVoiceInput}
+        />
 
         {/* ===== STEP HEADER ===== */}
         <div className={s.stepHeader}>
@@ -260,17 +247,13 @@ export default function LeakForm({
         </div>
 
         {/* ===== FOOTER ===== */}
-        <div className={s.footer}>
-          <button onClick={prevStep} disabled={step === 1}>
-            ← Назад
-          </button>
-
-          {step < STEPS.length ? (
-            <button onClick={nextStep}>Далее →</button>
-          ) : (
-            <button onClick={save}>💾 Сохранить</button>
-          )}
-        </div>
+        <AddLeakFooter
+          prevStep={prevStep}
+          nextStep={nextStep}
+          save={save}
+          step={step}
+          stepsLength={STEPS.length}
+        />
       </div>
 
       {/* ===== CONFIRM SHEET ===== */}

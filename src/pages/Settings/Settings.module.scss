@@ -1,83 +1,175 @@
 .settings {
-  padding: 20px;
-  max-width: 800px;
-  margin: 0 auto;
+  height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 
-  h1 {
-    font-size: 28px;
-    margin-bottom: 30px;
-    color: #333;
+.content {
+  padding: 20px;
+  flex: 1;
+
+  @media (max-width: 640px) {
+    padding: 12px;
   }
 }
 
-.settingsSection {
-  margin-bottom: 40px;
+.notification {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  animation: slideDown 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: white;
+  border-bottom: 1px solid #f0f0f0;
 
-  h2 {
-    font-size: 20px;
-    margin-bottom: 15px;
-    color: #333;
-    border-bottom: 2px solid #f0f0f0;
-    padding-bottom: 10px;
+  &.warning {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-left: 4px solid #f59e0b;
+    color: #92400e;
   }
 
-  p {
-    margin: 10px 0;
-    color: #666;
-    font-size: 14px;
+  &.info {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    border-left: 4px solid #3b82f6;
+    color: #0c4a6e;
+  }
+
+  @media (max-width: 640px) {
+    padding: 12px 16px;
+    margin: 0;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-15px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.notificationIcon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.notificationText {
+  flex: 1;
+}
+
+.notificationClose {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+
+  &:hover {
+    opacity: 1;
   }
 }
 
 .description {
-  color: #999;
+  color: #9ca3af;
   font-style: italic;
-  margin-bottom: 20px !important;
+  margin-bottom: 16px !important;
+  font-size: 13px;
 }
 
 .projectsList {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-  margin-top: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-top: 12px;
+  }
 }
 
 .projectButton {
-  padding: 15px;
-  border: 2px solid #ddd;
-  border-radius: 8px;
-  background-color: white;
+  padding: 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    opacity: 0;
+    transition: left 0.4s ease;
+    z-index: -1;
+  }
 
   &:hover {
-    border-color: #0066cc;
-    background-color: #f9f9f9;
-    transform: translateY(-2px);
-    box-shadow: 0 2px 8px rgba(0, 102, 204, 0.15);
+    border-color: #667eea;
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+
+    .projectTitle {
+      color: #667eea;
+    }
   }
 
   &.active {
-    border-color: #0066cc;
-    background-color: #e6f0ff;
-    font-weight: bold;
+    border-color: #667eea;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
 
     .projectTitle {
-      color: #0066cc;
+      color: white;
+      font-weight: 700;
+    }
+
+    .projectDesc {
+      color: rgba(255, 255, 255, 0.9);
+    }
+  }
+
+  @media (max-width: 640px) {
+    padding: 12px;
+
+    &:hover {
+      transform: translateY(-2px);
     }
   }
 }
 
 .projectTitle {
   font-weight: 600;
-  color: #333;
-  margin-bottom: 5px;
-  font-size: 14px;
+  color: #1f2937;
+  margin-bottom: 6px;
+  font-size: 15px;
+  transition: color 0.3s ease;
 }
 
 .projectDesc {
   font-size: 12px;
-  color: #999;
-  line-height: 1.4;
+  color: #9ca3af;
+  line-height: 1.5;
+  transition: color 0.3s ease;
 }
-    

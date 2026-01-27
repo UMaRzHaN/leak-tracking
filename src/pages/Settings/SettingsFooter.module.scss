@@ -1,0 +1,48 @@
+.footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  padding: 8px 12px;
+  background: white;
+  border: none;
+  border-top: 1px solid #d1d5db;
+  font-size: 12px;
+  font-weight: 500;
+  color: #9aa0a6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: #4da3ff;
+    border-top-color: #4da3ff;
+  }
+
+  &:active {
+    color: #2d7cc8;
+  }
+
+  @media (max-width: 640px) {
+    padding: 6px 10px;
+    gap: 2px;
+  }
+}
+
+.icon {
+  font-size: 20px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+
+  @media (max-width: 640px) {
+    font-size: 18px;
+  }
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 500;
+}
+

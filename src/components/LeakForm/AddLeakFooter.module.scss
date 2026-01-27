@@ -1,0 +1,97 @@
+/* =====================================================
+   ADD LEAK FOOTER
+   ===================================================== */
+
+.footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 12px 16px;
+  background: #ffffff;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 12px;
+  z-index: 99;
+}
+
+/* =====================================================
+   BUTTONS
+   ===================================================== */
+
+.prevBtn,
+.nextBtn,
+.saveBtn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.prevBtn {
+  background: #f5f7fb;
+  color: #374151;
+}
+
+.prevBtn:hover:not(:disabled) {
+  background: #e5e7eb;
+}
+
+.prevBtn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.prevBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.nextBtn {
+  background: #f5f7fb;
+  color: #374151;
+}
+
+.nextBtn:hover {
+  background: #e5e7eb;
+}
+
+.nextBtn:active {
+  transform: scale(0.97);
+}
+
+.saveBtn {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.saveBtn:hover {
+  background: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.saveBtn:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15);
+}
+
+/* =====================================================
+   RESPONSIVE (MOBILE)
+   ===================================================== */
+
+@media (max-width: 640px) {
+  .footer {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .prevBtn,
+  .nextBtn,
+  .saveBtn {
+    padding: 10px;
+    font-size: 14px;
+  }
+}

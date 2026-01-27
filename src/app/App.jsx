@@ -13,7 +13,6 @@ import Settings from "../pages/Settings/Settings";
 import { useAppState } from "./useAppState";
 import { useAppStorage } from "./useAppStorage";
 import { useVoiceControl } from "./useVoiceControl";
-import { useProject } from "./settings/ProjectContext";
 
 export default function App() {
   const {
@@ -28,7 +27,6 @@ export default function App() {
     geoLoading,
   } = useAppState();
 
-  const { project } = useProject();
   const { clearDatabase } = useAppStorage(setData);
 
   const { voiceData, clearVoiceData, startVoiceInput, stopVoiceInput } =
@@ -66,7 +64,7 @@ export default function App() {
     }
   }, []);
 
-  const hideLayout = page === "add";
+  const hideLayout = page === "add" || page === "settings";
 
   return (
     <div className={s.app}>

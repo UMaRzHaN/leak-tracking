@@ -1,0 +1,99 @@
+/* =====================================================
+   SETTINGS HEADER
+   ===================================================== */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 120;
+  background: #0d47a1;
+  color: #ffffff;
+  min-height: 54px;
+  padding: 10px 14px 12px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* =====================================================
+   BACK BUTTON
+   ===================================================== */
+
+.backBtn {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  font-size: 18px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  left: 14px;
+}
+
+.backBtn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.backBtn:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* =====================================================
+   TITLE
+   ===================================================== */
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: white;
+  flex: 1;
+  text-align: center;
+}
+
+/* =====================================================
+   RESPONSIVE (MOBILE)
+   ===================================================== */
+
+@media (max-width: 640px) {
+  .header {
+    padding: 8px 12px 10px;
+    font-size: 15px;
+  }
+
+  .backBtn {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+    left: 12px;
+  }
+
+  .title {
+    font-size: 15px;
+  }
+}
+
+/* =====================================================
+   SAFE AREA (iOS NOTCH)
+   ===================================================== */
+
+@supports (padding-top: env(safe-area-inset-top)) {
+  .header {
+    padding-top: calc(10px + env(safe-area-inset-top));
+  }
+}

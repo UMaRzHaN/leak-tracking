@@ -16,9 +16,16 @@ export default function EditBlock({
   const projectConfig = useProjectConfig();
 
   const EDIT_FIELDS = useMemo(
-    () => projectConfig.system.editFields ?? [],
+    () => {
+      const fields = projectConfig.system.fields ?? [];
+      // Фильтруем только редактируемые поля и сортируем по editOrder
+      return fields
+        .filter(f => f.editable !== false)
+        .sort((a, b) => (a.editOrder ?? 999) - (b.editOrder ?? 999));
+    },
     [projectConfig],
   );
+  
   return (
     <div className={s.editBlock}>
       {EDIT_FIELDS.map(({ key, label, multiline }) => (

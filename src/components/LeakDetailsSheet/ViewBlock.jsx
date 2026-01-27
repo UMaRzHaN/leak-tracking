@@ -6,9 +6,16 @@ export default function ViewBlock({ data, onEdit, onClose }) {
   const projectConfig = useProjectConfig();
 
   const VIEW_FIELDS = useMemo(
-    () => projectConfig.system.viewFields ?? [],
+    () => {
+      const fields = projectConfig.system.fields ?? [];
+      // Фильтруем только видимые поля и сортируем по viewOrder
+      return fields
+        .filter(f => f.viewable !== false)
+        .sort((a, b) => (a.viewOrder ?? 999) - (b.viewOrder ?? 999));
+    },
     [projectConfig],
   );
+  
   return (
     <>
       <div className={s.detailsList}>

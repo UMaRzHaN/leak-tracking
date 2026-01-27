@@ -1,6 +1,6 @@
 import { useRef } from "react";
 
-export function useSwipeActions({ onSwipeLeft, onSwipeRight, threshold = 60 }) {
+export function useSwipeActions({ onSwipeLeft, onSwipeRight, onSwipeMove, threshold = 60 }) {
   const startX = useRef(0);
   const startY = useRef(0);
   const isSwiping = useRef(false);
@@ -58,7 +58,11 @@ export function useSwipeActions({ onSwipeLeft, onSwipeRight, threshold = 60 }) {
     // допускаем вертикальный шум
     if (Math.abs(dy) > Math.abs(dx) * 1.5) {
       isSwiping.current = false;
+      return;
     }
+
+    // вызываем callback с текущим offset для анимации
+    onSwipeMove?.(dx);
   };
 
   const handleEnd = (x) => {
@@ -70,6 +74,8 @@ export function useSwipeActions({ onSwipeLeft, onSwipeRight, threshold = 60 }) {
       onSwipeLeft?.();
     }
 
+    // сбрасываем offset после завершения свайпа
+    onSwipeMove?.(0);
     isSwiping.current = false;
   };
 

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { PHOTOS_DIR, getProjectDataKey, getProjectDataFile, getProjectMobileDir } from "../constants/storage.constants";
@@ -7,25 +7,7 @@ import { useProject } from "./settings/ProjectContext";
 export function useAppStorage(setData) {
   const { project } = useProject();
 
-  // Загружаем данные при загрузке приложения или смене проекта
-  useEffect(() => {
-    loadProjectData();
-  }, [project]);
-
-  // Создаём папки для фотографий и проектов
-  useEffect(() => {
-    initializeDirectories();
-  }, [project]);
-
-  const loadProjectData = async () => {
-    if (Capacitor.isNativePlatform()) {
-      await loadMobileProjectData();
-    } else {
-      await loadWebProjectData();
-    }
-  };
-
-  const loadWebProjectData = () => {
+  const loadWebProjectData = useCallback(() => {
     const storageKey = getProjectDataKey(project);
     const saved = localStorage.getItem(storageKey);
     
@@ -42,9 +24,9 @@ export function useAppStorage(setData) {
       setData([]);
       console.log(`📁 [WEB] Проект "${project}" пока не содержит данных`);
     }
-  };
+  }, [project, setData]);
 
-  const loadMobileProjectData = async () => {
+  const loadMobileProjectData = useCallback(async () => {
     try {
       const dataFile = getProjectDataFile(project);
       const result = await Filesystem.readFile({
@@ -61,9 +43,17 @@ export function useAppStorage(setData) {
       setData([]);
       console.log(`📱 [MOBILE] Проект "${project}" пока не содержит данных`);
     }
-  };
+  }, [project, setData]);
 
-  const initializeDirectories = async () => {
+  const loadProjectData = useCallback(async () => {
+    if (Capacitor.isNativePlatform()) {
+      await loadMobileProjectData();
+    } else {
+      loadWebProjectData();
+    }
+  }, [loadMobileProjectData, loadWebProjectData]);
+
+  const initializeDirectories = useCallback(async () => {
     if (!Capacitor.isNativePlatform()) return;
 
     try {
@@ -82,9 +72,19 @@ export function useAppStorage(setData) {
         recursive: true,
       }).catch(() => {});
     } catch (e) {
-      console.warn("Error creating directories:", e);
+      console.error("Ошибка инициализации директорий", e);
     }
-  };
+  }, [project]);
+
+  // Загружаем данные при загрузке приложения или смене проекта
+  useEffect(() => {
+    loadProjectData();
+  }, [loadProjectData]);
+
+  // Создаём папки для фотографий и проектов
+  useEffect(() => {
+    initializeDirectories();
+  }, [initializeDirectories]);
 
   const clearDatabase = async () => {
     if (!window.confirm("Удалить базу данных для этого проекта?")) return;
