@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useGeolocation } from "../hooks/useGeolocation";
+import { useGeolocation } from "../../hooks/useGeolocation";
 
 export function useAppState() {
   const [page, setPage] = useState("");

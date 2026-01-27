@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { useProjectConfig } from "../../app/settings/useProjectConfig";
-import s from "./LeakDetailsSheet.module.scss";
+import { useProjectConfig } from "../../../app/settings/useProjectConfig";
+import s from "../LeakDetailsSheet.module.scss";
 
 export default function ViewBlock({ data, onEdit, onClose }) {
   const projectConfig = useProjectConfig();

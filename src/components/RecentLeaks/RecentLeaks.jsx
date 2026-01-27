@@ -1,4 +1,4 @@
-import { timeAgo } from "../../utils/timeAgo";
+import { timeAgo } from "../../utils/calculations/timeAgo";
 import s from "./RecentLeaks.module.scss";
 
 export default function RecentLeaks({ leaks = [], onViewAll, onOpenDetails }) {

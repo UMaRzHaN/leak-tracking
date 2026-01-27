@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { normalizeNumber } from "../../../utils/normalizeNumber";
+import { normalizeNumber } from "../../../utils/normalize/normalizeNumber";
 import { useProjectConfig } from "../../../app/settings/useProjectConfig";
 
 export function useLeakForm() {

@@ -1,8 +1,8 @@
 import { useEffect, useCallback } from "react";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
-import { PHOTOS_DIR, getProjectDataKey, getProjectDataFile, getProjectMobileDir } from "../constants/storage.constants";
-import { useProject } from "./settings/ProjectContext";
+import { PHOTOS_DIR, getProjectDataKey, getProjectDataFile, getProjectMobileDir } from "../../constants/storage.constants";
+import { useProject } from "../settings/ProjectContext";
 
 export function useAppStorage(setData) {
   const { project } = useProject();

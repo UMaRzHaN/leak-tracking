@@ -1,8 +1,8 @@
-import { deletePhotoFromFS } from "../../services/photoService";
-import { save } from "../../utils/saveJSON";
+import { deletePhotoFromFS } from "../../../services/photoService";
+import { save } from "../../../services/saveJSON";
 import { Capacitor } from "@capacitor/core";
-import { useProject } from "../../app/settings/ProjectContext";
-import { useIndexedDB } from "../../hooks/useIndexedDB";
+import { useProject } from "../../../app/settings/ProjectContext";
+import { useIndexedDB } from "../../../hooks/useIndexedDB";
 
 export function useDatabaseActions(data, setData) {
   const { project } = useProject();

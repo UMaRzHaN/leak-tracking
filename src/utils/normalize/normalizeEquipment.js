@@ -1,4 +1,4 @@
-import { SYNONYMS } from "./synonyms";
+import { SYNONYMS } from "../voice/synonyms";
 
 function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

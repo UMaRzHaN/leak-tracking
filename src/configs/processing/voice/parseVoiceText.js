@@ -1,4 +1,4 @@
-import { capitalizeFirst } from "../../../utils/capitalizeFirst";
+import { capitalizeFirst } from "../../../utils/normalize/capitalizeFirst";
 
 /**
  * ЕДИНЫЙ СПИСОК МАРКЕРОВ

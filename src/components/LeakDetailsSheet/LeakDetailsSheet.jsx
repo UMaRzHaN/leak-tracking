@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useEditablePhoto } from "../../hooks/useEditablePhoto";
-import PhotoBlock from "./PhotoBlock";
-import ViewBlock from "./ViewBlock";
-import EditBlock from "./EditBlock";
+import PhotoBlock from "./components/PhotoBlock";
+import ViewBlock from "./components/ViewBlock";
+import EditBlock from "./components/EditBlock";
 import { useProjectConfig } from "../../app/settings/useProjectConfig";
 import s from "./LeakDetailsSheet.module.scss";
 

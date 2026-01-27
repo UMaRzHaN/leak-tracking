@@ -1,8 +1,8 @@
 import LeakForm from "../components/LeakForm/LeakForm";
 import { usePhotoStorage } from "../hooks/usePhotoStorage";
-import { toNumber } from "../utils/toNumber";
+import { toNumber } from "../utils/voice/toNumber";
 import { useProject } from "../app/settings/ProjectContext";
-import { save } from "../utils/saveJSON";
+import { save } from "../services/saveJSON";
 
 export default function AddLeak({
   data,
@@ -37,8 +37,8 @@ export default function AddLeak({
     };
 
     const updated = [...data, newRow];
-    await save(updated, setData, project).catch(err => 
-      console.error("Error saving new leak:", err)
+    await save(updated, setData, project).catch((err) =>
+      console.error("Error saving new leak:", err),
     );
 
     setPage(""); // если нужно вернуться назад

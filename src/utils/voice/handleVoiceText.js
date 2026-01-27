@@ -1,5 +1,5 @@
-import { normalizeEquipment } from "./normalizeEquipment";
-import { normalizeNumberWords } from "./normalizeNumberWords";
+import { normalizeEquipment } from "../normalize/normalizeEquipment";
+import { normalizeNumberWords } from "../normalize/normalizeNumberWords";
 
 export const handleVoiceText = (
   text,

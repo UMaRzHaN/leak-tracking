@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
-import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
-import { handleVoiceText } from "../utils/handleVoiceText";
-import { useProjectConfig } from "../app/settings/useProjectConfig";
+import { useSpeechRecognition } from "../../hooks/useSpeechRecognition";
+import { handleVoiceText } from "../../utils/voice/handleVoiceText";
+import { useProjectConfig } from "../settings/useProjectConfig";
 
 export function useVoiceControl(setPage) {
   const projectConfig = useProjectConfig();

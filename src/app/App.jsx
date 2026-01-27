@@ -10,9 +10,9 @@ import MapPage from "../pages/MapPage";
 import MainPage from "../pages/MainPage";
 import Settings from "../pages/Settings/Settings";
 
-import { useAppState } from "./useAppState";
-import { useAppStorage } from "./useAppStorage";
-import { useVoiceControl } from "./useVoiceControl";
+import { useAppState } from "./hooks/useAppState";
+import { useAppStorage } from "./hooks/useAppStorage";
+import { useVoiceControl } from "./hooks/useVoiceControl";
 
 export default function App() {
   const {

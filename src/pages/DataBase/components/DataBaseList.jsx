@@ -1,4 +1,4 @@
-import LeakCardCompact from "../../components/LeakCardCompact/LeakCardCompact";
+import LeakCardCompact from "../../../components/LeakCardCompact/LeakCardCompact";
 
 export default function DataBaseList({
   data,

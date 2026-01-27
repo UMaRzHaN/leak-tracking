@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useProjectConfig } from "../../app/settings/useProjectConfig";
+import { useProjectConfig } from "../../../app/settings/useProjectConfig";
 
 export function useDatabaseSearch(data) {
   const projectConfig = useProjectConfig();

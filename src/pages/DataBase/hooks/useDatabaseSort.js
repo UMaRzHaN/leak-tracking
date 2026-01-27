@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { getDistanceMeters } from "../../utils/getDistanceMeters";
+import { getDistanceMeters } from "../../../utils/calculations/getDistanceMeters";
 
 export function useDatabaseSort(data, coords) {
   const [sortByDistance, setSortByDistance] = useState(false);

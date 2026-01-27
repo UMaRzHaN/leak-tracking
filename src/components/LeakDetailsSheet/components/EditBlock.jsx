@@ -1,7 +1,7 @@
-import EditTextField from "../EditTextField/EditTextField";
-import { useProjectConfig } from "../../app/settings/useProjectConfig";
+import EditTextField from "../../EditTextField/EditTextField";
+import { useProjectConfig } from "../../../app/settings/useProjectConfig";
 import { useMemo } from "react";
-import s from "./LeakDetailsSheet.module.scss";
+import s from "../LeakDetailsSheet.module.scss";
 
 export default function EditBlock({
   localEdit,

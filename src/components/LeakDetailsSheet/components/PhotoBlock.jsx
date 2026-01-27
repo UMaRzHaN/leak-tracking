@@ -1,4 +1,4 @@
-import s from "./LeakDetailsSheet.module.scss";
+import s from "../LeakDetailsSheet.module.scss";
 
 export default function PhotoBlock({ src }) {
   return (

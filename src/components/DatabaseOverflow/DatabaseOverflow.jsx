@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { exportToExcel } from "../../utils/exportToExcel";
+import { exportToExcel } from "../../services/exportToExcel";
 import { useProjectConfig } from "../../app/settings/useProjectConfig";
 import s from "./DatabaseOverflow.module.scss";
 

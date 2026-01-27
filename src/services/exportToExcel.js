@@ -4,8 +4,8 @@ import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
 import { Toast } from "@capacitor/toast";
 
-import { calculations } from "../utils/calculations";
-import { normalizeRow } from "../utils/normalizeRow";
+import { calculations } from "../utils/calculations/calculations";
+import { normalizeRow } from "../utils/normalize/normalizeRow";
 
 /* ===============================
    TOAST

@@ -3,7 +3,7 @@ import {
   GWP,
   percentage_gas_to_flare,
   percentage_gas_to_utilization,
-} from "../data/variables";
+} from "../../data/variables";
 export const calculations = (r) => {
   const leak_speed_kg = r.leak_speed * density;
 

@@ -1,4 +1,4 @@
-import SearchPanel from "../../components/SearchPanel/SearchPanel";
+import SearchPanel from "../../../components/SearchPanel/SearchPanel";
 
 export default function DataBaseSearch({
   search,

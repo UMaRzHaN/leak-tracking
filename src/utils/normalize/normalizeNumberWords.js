@@ -1,5 +1,5 @@
-import { NUMBER_WORDS } from "./NUMBER_WORDS";
-import { parseNumberFromWords } from "./parseNumberFromWords";
+import { NUMBER_WORDS } from "../voice/NUMBER_WORDS";
+import { parseNumberFromWords } from "../voice/parseNumberFromWords";
 
 export function normalizeNumberWords(text) {
   if (!text) return text;

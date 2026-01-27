@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import DataBaseSearch from "./DataBaseSearch";
-import DataBaseList from "./DataBaseList";
+import DataBaseSearch from "./components/DataBaseSearch";
+import DataBaseList from "./components/DataBaseList";
 
 import LeakDetailsSheet from "../../components/LeakDetailsSheet/LeakDetailsSheet";
 
