@@ -6,7 +6,7 @@ export default function ViewBlock({ data, onEdit, onClose }) {
   const projectConfig = useProjectConfig();
 
   const VIEW_FIELDS = useMemo(
-    () => projectConfig.viewFields ?? [],
+    () => projectConfig.system.viewFields ?? [],
     [projectConfig],
   );
   return (

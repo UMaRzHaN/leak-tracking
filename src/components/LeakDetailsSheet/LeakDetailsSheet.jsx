@@ -18,7 +18,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
   const projectConfig = useProjectConfig();
 
   const EDIT_FIELDS = useMemo(
-    () => projectConfig.editFields ?? [],
+    () => projectConfig.system.editFields ?? [],
     [projectConfig],
   );
 
