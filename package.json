@@ -25,7 +25,6 @@
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-scripts": "5.0.1",
-    "sass": "^1.69.5",
     "web-vitals": "^2.1.4",
     "xlsx": "^0.18.5"
   },
@@ -54,6 +53,7 @@
     ]
   },
   "devDependencies": {
-    "sass": "^1.97.2"
+    "sass": "^1.97.3",
+    "sass-loader": "^16.0.6"
   }
 }
