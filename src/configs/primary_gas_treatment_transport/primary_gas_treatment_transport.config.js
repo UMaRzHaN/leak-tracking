@@ -8,11 +8,11 @@ import {
   headers as EXCEL_HEADERS,
   keysOrder as EXCEL_KEYS_ORDER,
 } from "./export/excelImportData";
-import { NUMBER_FIELDS, COPYABLE_FIELDS, SEARCH_FIELDS } from "./constants";
+import { NUMBER_FIELDS, COPYABLE_FIELDS, SEARCH_FIELDS } from "./data/constants";
 
-import { STEPS } from "./steps";
+import { STEPS } from "./data/steps";
 
-import { cause, description, solutions, recommendations } from "./dictionaries";
+import { cause, description, solutions, recommendations } from "./data/dictionaries";
 export const VOICE_COMPRESSION = {
   input: "rawVoiceText",
 
