@@ -1,6 +1,6 @@
 .mapWrapper {
   position: relative;
-  height: calc(100dvh - var(--app-footer-header) - var(--app-footer-footer));
+  height: calc(100dvh - var(--app-header) - var(--app-footer));
   width: 100%;
 }
 

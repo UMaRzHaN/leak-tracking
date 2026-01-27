@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { useProject } from "../../app/settings/ProjectContext";
 import { PROJECT_META } from "../../configs/projects";
-import SettingsHeader from "./SettingsHeader";
-import SettingsFooter from "./SettingsFooter";
+import SettingsHeader from "./Header/SettingsHeader";
+import SettingsFooter from "./Footer/SettingsFooter";
 import SettingsModal from "../../components/SettingsModal/SettingsModal";
 import * as variables from "../../data/variables";
 import s from "./Settings.module.scss";
