@@ -4,15 +4,26 @@ import { normalizeSynonyms } from "./voice/normalizeSynonyms";
 import { exportLeaksKML } from "./export/exportLeaksKML";
 import { exportLeaksGeoJSON } from "./export/exportLeaksGeoJSON";
 
+import { VIEW_FIELDS, EDIT_FIELDS } from "./data/fields";
+
 import {
   headers as EXCEL_HEADERS,
   keysOrder as EXCEL_KEYS_ORDER,
 } from "./export/excelImportData";
-import { NUMBER_FIELDS, COPYABLE_FIELDS, SEARCH_FIELDS } from "./data/constants";
+import {
+  NUMBER_FIELDS,
+  COPYABLE_FIELDS,
+  SEARCH_FIELDS,
+} from "./data/constants";
 
 import { STEPS } from "./data/steps";
 
-import { cause, description, solutions, recommendations } from "./data/dictionaries";
+import {
+  cause,
+  description,
+  solutions,
+  recommendations,
+} from "./data/dictionaries";
 export const VOICE_COMPRESSION = {
   input: "rawVoiceText",
 
@@ -48,6 +59,8 @@ export const SYSTEM_COMPRESSION = {
   copyable: COPYABLE_FIELDS,
   search: SEARCH_FIELDS,
   lossy: ["rawVoiceText", "note"],
+  viewFields: VIEW_FIELDS,
+  editFields: EDIT_FIELDS,
 };
 
 export const EXPORT_COMPRESSION = {
