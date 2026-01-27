@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { PROJECTS } from "../../configs/projects";
-import { useAppSettings } from "./useAppSettings";
+import { useProject } from "./ProjectContext";
 
 export function useProjectConfig() {
-  const { project } = useAppSettings();
+  const { project } = useProject();
 
   return useMemo(() => PROJECTS[project] || PROJECTS.compression, [project]);
 }

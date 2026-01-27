@@ -1,9 +1,12 @@
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
+import { useIndexedDB } from "./useIndexedDB";
 
 const PHOTO_FOLDER = "LeakReports/photos";
 
 export function usePhotoStorage() {
+  const { savePhoto: saveToIndexedDB, getPhoto: getFromIndexedDB, deletePhoto: deleteFromIndexedDB } = useIndexedDB();
+
   async function savePhoto(rawPhoto, leakId) {
     if (!rawPhoto || !leakId) return null;
 
@@ -18,7 +21,14 @@ export function usePhotoStorage() {
       }
       const base64 = await fileToBase64(rawPhoto);
       const mime = rawPhoto.type || "image/jpeg";
-      return `data:${mime};base64,${base64}`;
+      const photoId = `photo_${leakId}_${Date.now()}`;
+      const photoData = `data:${mime};base64,${base64}`;
+      
+      // Сохраняем фотографию в IndexedDB
+      await saveToIndexedDB(photoId, photoData);
+      
+      // Возвращаем только ID, а не сами данные
+      return `idb://${photoId}`;
     }
 
     /* =======================
@@ -52,19 +62,29 @@ export function usePhotoStorage() {
   }
 
   async function deletePhoto(path) {
-    if (!path || !Capacitor.isNativePlatform()) return;
-
-    try {
-      await Filesystem.deleteFile({
-        directory: Directory.Documents,
-        path: path.replace(/^Documents\//, ""),
-      });
-    } catch (e) {
-      console.warn("deletePhoto error:", e);
+    if (!path) return;
+    
+    // Если это IndexedDB ссылка
+    if (path.startsWith("idb://")) {
+      const photoId = path.replace("idb://", "");
+      await deleteFromIndexedDB(photoId);
+      return;
+    }
+    
+    // Если это Mobile ссылка
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await Filesystem.deleteFile({
+          directory: Directory.Documents,
+          path: path.replace(/^Documents\//, ""),
+        });
+      } catch (e) {
+        console.warn("deletePhoto error:", e);
+      }
     }
   }
 
-  return { savePhoto, deletePhoto };
+  return { savePhoto, deletePhoto, getFromIndexedDB };
 }
 
 /* ================= HELPERS ================= */

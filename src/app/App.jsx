@@ -1,4 +1,5 @@
 import s from "../index.scss";
+import { useEffect } from "react";
 
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer/Footer";
@@ -7,10 +8,12 @@ import AddLeak from "../pages/AddLeak";
 import DataBase from "../pages/DataBase";
 import MapPage from "../pages/MapPage";
 import MainPage from "../pages/MainPage";
+import Settings from "../pages/Settings/Settings";
 
 import { useAppState } from "./useAppState";
 import { useAppStorage } from "./useAppStorage";
 import { useVoiceControl } from "./useVoiceControl";
+import { useProject } from "./settings/ProjectContext";
 
 export default function App() {
   const {
@@ -25,10 +28,43 @@ export default function App() {
     geoLoading,
   } = useAppState();
 
+  const { project } = useProject();
   const { clearDatabase } = useAppStorage(setData);
 
   const { voiceData, clearVoiceData, startVoiceInput, stopVoiceInput } =
     useVoiceControl(setPage);
+
+  // Очищаем старые данные формата data:image из localStorage при загрузке
+  useEffect(() => {
+    const keys = Object.keys(localStorage);
+    let hasOldFormat = false;
+    
+    for (const key of keys) {
+      if (key.startsWith("leaks_database:")) {
+        try {
+          const data = JSON.parse(localStorage.getItem(key));
+          if (Array.isArray(data) && data.some(item => item.photo?.startsWith("data:image"))) {
+            hasOldFormat = true;
+            break;
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+    
+    if (hasOldFormat) {
+      console.log("🧹 Очищаем старые данные с base64 фото из localStorage");
+      // Удаляем все старые записи
+      keys.forEach(key => {
+        if (key.startsWith("leaks_database:")) {
+          localStorage.removeItem(key);
+        }
+      });
+      // Перезагружаем страницу
+      window.location.reload();
+    }
+  }, []);
 
   const hideLayout = page === "add";
 
@@ -77,6 +113,8 @@ export default function App() {
         )}
 
         {page === "map" && <MapPage leaks={data} coords={coords} />}
+
+        {page === "settings" && <Settings setPage={setPage} />}
       </div>
 
       {!hideLayout && <Footer page={page} setPage={setPage} />}

@@ -1,23 +1,35 @@
 import { deletePhotoFromFS } from "../../services/photoService";
 import { save } from "../../utils/saveJSON";
 import { Capacitor } from "@capacitor/core";
+import { useProject } from "../../app/settings/ProjectContext";
+import { useIndexedDB } from "../../hooks/useIndexedDB";
 
 export function useDatabaseActions(data, setData) {
+  const { project } = useProject();
+  const { deletePhoto: deleteFromIndexedDB } = useIndexedDB();
+
   const remove = async (id) => {
     if (!window.confirm("Удалить запись?")) return;
 
     const row = data.find((r) => r.id === id);
 
-    // 🗑 Удаляем файл ТОЛЬКО на mobile и ТОЛЬКО если это FS-путь
-    if (
-      Capacitor.isNativePlatform() &&
-      typeof row?.photo === "string" &&
-      row.photo.startsWith("Documents/")
-    ) {
-      try {
-        await deletePhotoFromFS(row.photo);
-      } catch (e) {
-        console.warn("Photo delete failed:", e);
+    // 🗑 Удаляем фото
+    if (typeof row?.photo === "string") {
+      // Удаляем из IndexedDB
+      if (row.photo.startsWith("idb://")) {
+        const photoId = row.photo.replace("idb://", "");
+        await deleteFromIndexedDB(photoId);
+      }
+      // Удаляем из Mobile FS
+      else if (
+        Capacitor.isNativePlatform() &&
+        row.photo.startsWith("Documents/")
+      ) {
+        try {
+          await deletePhotoFromFS(row.photo);
+        } catch (e) {
+          console.warn("Photo delete failed:", e);
+        }
       }
     }
 
@@ -25,10 +37,12 @@ export function useDatabaseActions(data, setData) {
       .filter((r) => r.id !== id)
       .map((r, i) => ({ ...r, index: i + 1 }));
 
-    save(updated, setData);
+    save(updated, setData, project).catch(err => 
+      console.error("Error saving after delete:", err)
+    );
   };
 
-  const saveLeak = (updatedLeak) => {
+  const saveLeak = async (updatedLeak) => {
     const updated = data.map((r) => {
       if (r.id !== updatedLeak.id) return r;
 
@@ -41,7 +55,9 @@ export function useDatabaseActions(data, setData) {
       };
     });
 
-    save(updated, setData);
+    await save(updated, setData, project).catch(err => 
+      console.error("Error saving leak:", err)
+    );
   };
 
   return { remove, saveLeak };

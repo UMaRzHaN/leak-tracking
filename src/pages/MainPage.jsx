@@ -3,6 +3,7 @@ import QuickActions from "../components/QuickActions/QuickActions";
 import RecentLeaks from "../components/RecentLeaks/RecentLeaks";
 import LeakDetailsSheet from "../components/LeakDetailsSheet/LeakDetailsSheet";
 import { save } from "../utils/saveJSON";
+import { useProject } from "../app/settings/ProjectContext";
 
 export default function MainPage({
   setPage,
@@ -12,6 +13,7 @@ export default function MainPage({
   setData,
 }) {
   const [activeLeak, setActiveLeak] = useState(null);
+  const { project } = useProject();
 
   return (
     <div>
@@ -34,7 +36,9 @@ export default function MainPage({
             const updated = data.map((r) =>
               r.id === updatedLeak.id ? updatedLeak : r,
             );
-            save(updated, setData);
+            save(updated, setData, project).catch(err => 
+              console.error("Error saving leak:", err)
+            );
             setActiveLeak(null);
           }}
         />

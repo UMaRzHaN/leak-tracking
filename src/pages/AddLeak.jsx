@@ -1,6 +1,8 @@
 import LeakForm from "../components/LeakForm/LeakForm";
 import { usePhotoStorage } from "../hooks/usePhotoStorage";
 import { toNumber } from "../utils/toNumber";
+import { useProject } from "../app/settings/ProjectContext";
+import { save } from "../utils/saveJSON";
 
 export default function AddLeak({
   data,
@@ -13,6 +15,7 @@ export default function AddLeak({
   setPage,
 }) {
   const { savePhoto } = usePhotoStorage();
+  const { project } = useProject();
 
   const handleAdd = async (row) => {
     const id = Date.now();
@@ -33,11 +36,10 @@ export default function AddLeak({
       photo: photoPath,
     };
 
-    setData((prev) => {
-      const updated = [...prev, newRow];
-      localStorage.setItem("leaks_database_v1", JSON.stringify(updated));
-      return updated;
-    });
+    const updated = [...data, newRow];
+    await save(updated, setData, project).catch(err => 
+      console.error("Error saving new leak:", err)
+    );
 
     setPage(""); // если нужно вернуться назад
   };

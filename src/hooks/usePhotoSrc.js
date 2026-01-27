@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { getPhotoSrc } from "../services/photoService";
+import { useIndexedDB } from "./useIndexedDB";
 
 export function usePhotoSrc(path, version = 0) {
   const [src, setSrc] = useState(null);
+  const { getPhoto } = useIndexedDB();
 
   useEffect(() => {
     let alive = true;
@@ -23,6 +25,27 @@ export function usePhotoSrc(path, version = 0) {
 
     // 🌐 WEB
     if (!Capacitor.isNativePlatform()) {
+      // Если это ссылка на IndexedDB
+      if (path.startsWith("idb://")) {
+        const photoId = path.replace("idb://", "");
+        getPhoto(photoId).then((photoData) => {
+          if (!alive || currentPath !== path) return;
+          if (photoData) {
+            setSrc(withVersion(photoData));
+          } else {
+            setSrc(null);
+          }
+        });
+        return;
+      }
+      
+      // Если это обычная data: URI
+      if (path.startsWith("data:")) {
+        setSrc(withVersion(path));
+        return;
+      }
+      
+      // Неверный путь для веб версии
       if (path.startsWith("Documents/")) {
         console.warn("WEB: invalid photo path", path);
         setSrc(null);
@@ -46,7 +69,7 @@ export function usePhotoSrc(path, version = 0) {
     return () => {
       alive = false;
     };
-  }, [path, version]);
+  }, [path, version, getPhoto]);
 
   return src;
 }
