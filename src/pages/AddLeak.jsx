@@ -2,7 +2,7 @@ import LeakForm from "../components/LeakForm/LeakForm";
 import { usePhotoStorage } from "../hooks/usePhotoStorage";
 import { toNumber } from "../utils/voice/toNumber";
 import { useProject } from "../app/settings/ProjectContext";
-import { save } from "../services/saveJSON";
+import { saveProjectData } from "../services/saveProjectData";
 
 export default function AddLeak({
   data,
@@ -18,30 +18,40 @@ export default function AddLeak({
   const { project } = useProject();
 
   const handleAdd = async (row) => {
-    const id = Date.now();
+    try {
+      const id = Date.now();
 
-    let photoPath = null;
-    if (row.photo?.raw) {
-      photoPath = await savePhoto(row.photo.raw, row.leak_id);
+      /* =========================
+         SAVE PHOTO (OPTIONAL)
+      ========================= */
+      let photoPath = null;
+      if (row.photo?.raw) {
+        photoPath = await savePhoto(row.photo.raw, row.leak_id);
+      }
+
+      const { photo, ...cleanRow } = row;
+
+      const newRow = {
+        id,
+        lat: toNumber(coords?.lat),
+        lng: toNumber(coords?.lng),
+        index: data.length + 1,
+        ...cleanRow,
+        photo: photoPath,
+      };
+
+      const updated = [...data, newRow];
+
+      /* =========================
+         UPDATE UI + PERSIST
+      ========================= */
+      setData(updated);
+      await saveProjectData(project, updated);
+
+      setPage(""); // возврат назад
+    } catch (err) {
+      console.error("Error adding new leak:", err);
     }
-
-    const { photo, ...cleanRow } = row;
-
-    const newRow = {
-      id,
-      lat: toNumber(coords?.lat),
-      lng: toNumber(coords?.lng),
-      index: data.length + 1,
-      ...cleanRow,
-      photo: photoPath,
-    };
-
-    const updated = [...data, newRow];
-    await save(updated, setData, project).catch((err) =>
-      console.error("Error saving new leak:", err),
-    );
-
-    setPage(""); // если нужно вернуться назад
   };
 
   return (

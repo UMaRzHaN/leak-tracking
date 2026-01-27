@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import s from "./SettingsModal.module.scss";
 import * as variables from "../../data/variables";
 
@@ -6,18 +6,39 @@ export default function SettingsModal({
   open,
   onClose,
   variables: currentVars,
-  onVariableChange,
+  onSave,
 }) {
-  const [localVars, setLocalVars] = useState({
+  /* =========================
+     LOCAL DRAFT STATE
+  ========================= */
+  const [localVars, setLocalVars] = useState(() => ({
     gasType: currentVars.gasType,
     density: currentVars.density,
     percentage_gas_to_flare: currentVars.percentage_gas_to_flare,
     Uncertainty: currentVars.Uncertainty,
-  });
+  }));
 
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // Проверяем, были ли изменения
+  /* =========================
+     SYNC ON OPEN / PROJECT CHANGE
+  ========================= */
+  useEffect(() => {
+    if (!open) return;
+
+    setLocalVars({
+      gasType: currentVars.gasType,
+      density: currentVars.density,
+      percentage_gas_to_flare: currentVars.percentage_gas_to_flare,
+      Uncertainty: currentVars.Uncertainty,
+    });
+
+    setShowConfirm(false);
+  }, [open, currentVars]);
+
+  /* =========================
+     DIRTY CHECK
+  ========================= */
   const isDirty = useMemo(() => {
     return (
       localVars.gasType !== currentVars.gasType ||
@@ -28,31 +49,38 @@ export default function SettingsModal({
     );
   }, [localVars, currentVars]);
 
+  /* =========================
+     HANDLERS
+  ========================= */
   const handleChange = (key, value) => {
-    if (key === "gasType") {
-      // При изменении типа газа обновляем плотность
-      const newDensity = variables.GAS_TYPES[value].density;
-      setLocalVars((prev) => ({
-        ...prev,
-        gasType: value,
-        density: newDensity,
-      }));
-    } else {
-      const numValue = parseFloat(value);
-      if (!isNaN(numValue)) {
-        setLocalVars((prev) => ({ ...prev, [key]: numValue }));
+    setLocalVars((prev) => {
+      const next = { ...prev };
+
+      if (key === "gasType") {
+        const gas = variables.GAS_TYPES[value];
+        if (!gas) return prev;
+
+        next.gasType = value;
+        next.density = gas.density;
+      } else {
+        const numValue = Number(value);
+        if (Number.isNaN(numValue)) return prev;
+
+        next[key] = numValue;
       }
-    }
+
+      return next;
+    });
   };
 
   const handleSave = () => {
-    onVariableChange("gasType", localVars.gasType);
-    onVariableChange("density", localVars.density);
-    onVariableChange(
-      "percentage_gas_to_flare",
-      localVars.percentage_gas_to_flare,
-    );
-    onVariableChange("Uncertainty", localVars.Uncertainty);
+    onSave({
+      ...currentVars,
+      ...localVars,
+      percentage_gas_to_utilization:
+        100 - localVars.percentage_gas_to_flare,
+    });
+
     setShowConfirm(false);
     onClose(false);
   };
@@ -61,23 +89,11 @@ export default function SettingsModal({
     if (isDirty) {
       setShowConfirm(true);
     } else {
-      setLocalVars({
-        gasType: currentVars.gasType,
-        density: currentVars.density,
-        percentage_gas_to_flare: currentVars.percentage_gas_to_flare,
-        Uncertainty: currentVars.Uncertainty,
-      });
       onClose(false);
     }
   };
 
   const handleDiscardChanges = () => {
-    setLocalVars({
-      gasType: currentVars.gasType,
-      density: currentVars.density,
-      percentage_gas_to_flare: currentVars.percentage_gas_to_flare,
-      Uncertainty: currentVars.Uncertainty,
-    });
     setShowConfirm(false);
     onClose(true);
   };
@@ -88,9 +104,13 @@ export default function SettingsModal({
 
   if (!open) return null;
 
+  /* =========================
+     RENDER
+  ========================= */
   return (
     <>
       <div className={s.backdrop} onClick={handleCancel} />
+
       <div className={s.modal}>
         <div className={s.header}>
           <h2>Параметры расчёта</h2>
@@ -104,10 +124,16 @@ export default function SettingsModal({
             <div className={s.confirmContent}>
               <span className={s.confirmIcon}>❓</span>
               <h3>Отменить изменения?</h3>
-              <p>Вы уверены? Все несохранённые изменения будут потеряны.</p>
+              <p>
+                Вы уверены? Все несохранённые изменения будут
+                потеряны.
+              </p>
             </div>
             <div className={s.confirmFooter}>
-              <button className={s.confirmKeepBtn} onClick={handleKeepEditing}>
+              <button
+                className={s.confirmKeepBtn}
+                onClick={handleKeepEditing}
+              >
                 Продолжить редактирование
               </button>
               <button
@@ -121,6 +147,7 @@ export default function SettingsModal({
         )}
 
         <div className={s.content}>
+          {/* GAS TYPE */}
           <div className={s.paramGroup}>
             <label htmlFor="gasType">
               <span className={s.label}>Тип газа</span>
@@ -128,18 +155,25 @@ export default function SettingsModal({
             <select
               id="gasType"
               value={localVars.gasType}
-              onChange={(e) => handleChange("gasType", e.target.value)}
+              onChange={(e) =>
+                handleChange("gasType", e.target.value)
+              }
               className={s.select}
             >
-              {Object.entries(variables.GAS_TYPES).map(([key, { label }]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
+              {Object.entries(variables.GAS_TYPES).map(
+                ([key, { label }]) => (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                )
+              )}
             </select>
-            <span className={s.current}>Плотность: {localVars.density}</span>
+            <span className={s.current}>
+              Плотность: {localVars.density}
+            </span>
           </div>
 
+          {/* DENSITY */}
           <div className={s.paramGroup}>
             <label htmlFor="density">
               <span className={s.label}>Плотность</span>
@@ -148,20 +182,24 @@ export default function SettingsModal({
             <input
               id="density"
               type="number"
-              step="0.000001"
               value={localVars.density}
-              onChange={(e) => handleChange("density", e.target.value)}
               className={s.input}
               disabled
             />
-            <span className={s.current}>Автоматически установлена</span>
+            <span className={s.current}>
+              Автоматически установлена
+            </span>
           </div>
 
+          {/* FLARE */}
           <div className={s.paramGroup}>
             <label htmlFor="flare">
-              <span className={s.label}>Газ на факелирование</span>
+              <span className={s.label}>
+                Газ на факелирование
+              </span>
               <span className={s.unit}>(%)</span>
             </label>
+
             <div className={s.sliderContainer}>
               <input
                 id="flare"
@@ -171,48 +209,66 @@ export default function SettingsModal({
                 step="0.1"
                 value={localVars.percentage_gas_to_flare}
                 onChange={(e) =>
-                  handleChange("percentage_gas_to_flare", e.target.value)
+                  handleChange(
+                    "percentage_gas_to_flare",
+                    e.target.value
+                  )
                 }
                 className={s.slider}
               />
               <input
                 type="number"
-                step="0.1"
                 min="0"
                 max="100"
+                step="0.1"
                 value={localVars.percentage_gas_to_flare}
                 onChange={(e) =>
-                  handleChange("percentage_gas_to_flare", e.target.value)
+                  handleChange(
+                    "percentage_gas_to_flare",
+                    e.target.value
+                  )
                 }
                 className={s.numberInput}
               />
             </div>
+
             <div className={s.distribution}>
               <span className={s.flare}>
-                Факелирование: {localVars.percentage_gas_to_flare.toFixed(1)}%
+                Факелирование:{" "}
+                {localVars.percentage_gas_to_flare.toFixed(1)}%
               </span>
               <span className={s.util}>
                 Утилизация:{" "}
-                {(100 - localVars.percentage_gas_to_flare).toFixed(1)}%
+                {(100 -
+                  localVars.percentage_gas_to_flare
+                ).toFixed(1)}
+                %
               </span>
             </div>
           </div>
 
+          {/* UNCERTAINTY */}
           <div className={s.paramGroup}>
             <label htmlFor="uncertainty">
-              <span className={s.label}>Неопределённость</span>
+              <span className={s.label}>
+                Неопределённость
+              </span>
               <span className={s.unit}>(%)</span>
             </label>
             <input
               id="uncertainty"
               type="number"
-              step="0.1"
               min="0"
+              step="0.1"
               value={localVars.Uncertainty}
-              onChange={(e) => handleChange("Uncertainty", e.target.value)}
+              onChange={(e) =>
+                handleChange("Uncertainty", e.target.value)
+              }
               className={s.input}
             />
-            <span className={s.current}>Текущее: {localVars.Uncertainty}</span>
+            <span className={s.current}>
+              Текущее: {localVars.Uncertainty}
+            </span>
           </div>
         </div>
 

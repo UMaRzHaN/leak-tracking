@@ -1,23 +1,44 @@
-import React, { createContext, useContext, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useMemo,
+  useCallback,
+} from "react";
 import { STORAGE_KEYS } from "./storageKeys";
+import { PROJECT_META } from "../../configs/projects";
 
 const DEFAULT_PROJECT = "compression";
 
-const ProjectContext = createContext();
+const ProjectContext = createContext(null);
 
 export function ProjectProvider({ children }) {
-  const [project, setProject] = useState(
-    localStorage.getItem(STORAGE_KEYS.ACTIVE_PROJECT) || DEFAULT_PROJECT
-  );
+  const [project, setProject] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.ACTIVE_PROJECT);
+    return PROJECT_META[saved] ? saved : DEFAULT_PROJECT;
+  });
 
-  const changeProject = (id) => {
+  const changeProject = useCallback((id) => {
+    if (!id || !PROJECT_META[id]) {
+      console.warn(`[Project] Unknown project id: ${id}`);
+      return;
+    }
+
     localStorage.setItem(STORAGE_KEYS.ACTIVE_PROJECT, id);
     setProject(id);
-    console.log(`✨ Проект изменён на: ${id}`);
-  };
+
+    if (process.env.NODE_ENV === "development") {
+      console.log(`✨ Проект изменён на: ${id}`);
+    }
+  }, []);
+
+  const value = useMemo(
+    () => ({ project, changeProject }),
+    [project, changeProject]
+  );
 
   return (
-    <ProjectContext.Provider value={{ project, changeProject }}>
+    <ProjectContext.Provider value={value}>
       {children}
     </ProjectContext.Provider>
   );

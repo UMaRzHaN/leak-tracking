@@ -10,16 +10,20 @@ import MapPage from "../pages/MapPage";
 import MainPage from "../pages/MainPage";
 import Settings from "../pages/Settings/Settings";
 
-import { useAppState } from "./hooks/useAppState";
-import { useAppStorage } from "./hooks/useAppStorage";
+import { useProject } from "./settings/ProjectContext";
+import { useProjectData } from "./hooks/useProjectData";
 import { useVoiceControl } from "./hooks/useVoiceControl";
+import { useAppState } from "./hooks/useAppState";
+
+import { cleanupLegacyLeaks } from "./migrations/cleanupLegacyLeaks";
 
 export default function App() {
+  /* =========================
+     GLOBAL APP STATE (UI)
+  ========================= */
   const {
     page,
     setPage,
-    data,
-    setData,
     gpsEnabled,
     setGpsEnabled,
     coords,
@@ -27,45 +31,40 @@ export default function App() {
     geoLoading,
   } = useAppState();
 
-  const { clearDatabase } = useAppStorage(setData);
+  /* =========================
+     PROJECT CONTEXT
+  ========================= */
+  const { project } = useProject();
 
+  /* =========================
+     PROJECT-AWARE DATA
+  ========================= */
+  const { data, save, clear } = useProjectData(project);
+
+  /* =========================
+     VOICE
+  ========================= */
   const { voiceData, clearVoiceData, startVoiceInput, stopVoiceInput } =
     useVoiceControl(setPage);
 
-  // Очищаем старые данные формата data:image из localStorage при загрузке
+  /* =========================
+     ONE-TIME MIGRATION
+  ========================= */
   useEffect(() => {
-    const keys = Object.keys(localStorage);
-    let hasOldFormat = false;
-    
-    for (const key of keys) {
-      if (key.startsWith("leaks_database:")) {
-        try {
-          const data = JSON.parse(localStorage.getItem(key));
-          if (Array.isArray(data) && data.some(item => item.photo?.startsWith("data:image"))) {
-            hasOldFormat = true;
-            break;
-          }
-        } catch (e) {
-          // ignore
-        }
-      }
+    const cleaned = cleanupLegacyLeaks();
+
+    if (cleaned) {
+      console.log("🧹 Legacy base64 leaks removed");
+      clear();
+      setPage("");
     }
-    
-    if (hasOldFormat) {
-      console.log("🧹 Очищаем старые данные с base64 фото из localStorage");
-      // Удаляем все старые записи
-      keys.forEach(key => {
-        if (key.startsWith("leaks_database:")) {
-          localStorage.removeItem(key);
-        }
-      });
-      // Перезагружаем страницу
-      window.location.reload();
-    }
-  }, []);
+  }, [clear, setPage]);
 
   const hideLayout = page === "add" || page === "settings";
 
+  /* =========================
+     RENDER
+  ========================= */
   return (
     <div className={s.app}>
       {!hideLayout && (
@@ -84,14 +83,14 @@ export default function App() {
             setPage={setPage}
             gpsEnabled={gpsEnabled}
             data={data}
-            setData={setData}
+            setData={save}
           />
         )}
 
         {page === "add" && (
           <AddLeak
             data={data}
-            setData={setData}
+            setData={save}
             coords={coords}
             voiceData={voiceData}
             clearVoiceData={clearVoiceData}
@@ -104,9 +103,9 @@ export default function App() {
         {page === "db" && (
           <DataBase
             data={data}
-            setData={setData}
+            setData={save}
             coords={coords}
-            clearDatabase={clearDatabase}
+            clearDatabase={clear}
           />
         )}
 
