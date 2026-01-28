@@ -7,12 +7,12 @@ const valve_types = [
   "ЗМС",
   "ЭПУУ",
 ];
-// const valve_actuator = [
-//   "Ручной",
-//   "Гидропривод",
-//   "Пневмопривод",
-//   "Автоматический",
-// ];
+export const category = [
+  "Compression",
+  "Primary Gas Treatment & Transport",
+  "Processing",
+  "Well",
+];
 const line_types = [
   "Входная линия",
   "Выходная линия",

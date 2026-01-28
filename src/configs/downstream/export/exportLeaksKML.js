@@ -1,4 +1,6 @@
 export function exportLeaksKML(leaks) {
+  console.log(leaks);
+
   // 1️⃣ группировка по field
   const byField = leaks.reduce((acc, leak) => {
     const field = leak.field || "Без участка";
@@ -21,6 +23,7 @@ export function exportLeaksKML(leaks) {
               <![CDATA[
                 <b>Участок:</b> ${field}<br/>
                 <b>Станция:</b> ${l.station ?? "Без станции"}
+                <b>Скорость:</b> ${l.leak_speed ?? "Без скорости"}
               ]]>
             </description>
             <Point>

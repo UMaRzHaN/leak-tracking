@@ -1,12 +1,11 @@
 import { timeAgo } from "../../utils/calculations/timeAgo";
 import s from "./RecentLeaks.module.scss";
 
+const leakLevel = (speed = 0) =>
+  speed <= 25 ? "low" : speed >= 100 ? "high" : "medium";
 export default function RecentLeaks({ leaks = [], onViewAll, onOpenDetails }) {
-  const leakLevel = (speed) =>
-    speed <= 25 ? "low" : speed >= 100 ? "high" : "medium";
-
   return (
-    <div className={s.recentLeaks} style={{paddingBottom: 60}}>
+    <div className={s.recentLeaks}>
       <div className={s.recentHeader}>
         <h3 className={s.title}>Недавнее</h3>
         <button className={s.viewAll} onClick={onViewAll}>
@@ -32,14 +31,21 @@ export default function RecentLeaks({ leaks = [], onViewAll, onOpenDetails }) {
 
                 <div className={s.leakMeta}>
                   <span>
-                    {leak.location
-                      ? leak.location
-                      : `Бирка №${leak.leak_id}`}
+                    {leak.location ? leak.location : `Бирка №${leak.leak_id}`}
                   </span>
                   <span>•</span>
                   <span>
                     {leak.leak_description
                       ? leak.leak_description
+                      : `Видео: ${leak.video_id}`}
+                  </span>
+                  <span>•</span>
+                  <br />
+                  <span>
+                    {leak.Emissions_t_CO2eq_year
+                      ? Math.ceil(leak.Emissions_t_CO2eq_year)
+                          .toLocaleString("ru-RU")
+                          .replace(/\s/g, ".") + " (т CO₂-экв/год)"
                       : `Скорость: ${leak.leak_speed}`}
                   </span>
                   <span>•</span>

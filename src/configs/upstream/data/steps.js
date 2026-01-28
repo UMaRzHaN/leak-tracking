@@ -85,7 +85,7 @@ export const STEPS = [
     ],
   },
   {
-    title: "Материалы и примечание",
+    title: "Техрешение, план устранения и материалы",
     fields: [
       {
         type: "autocomplete",

@@ -10,6 +10,7 @@ export default function AutocompleteTextarea({
   error,
   placeholder = "",
   rows = 1,
+  required = false,
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value ?? "");
@@ -17,7 +18,7 @@ export default function AutocompleteTextarea({
 
   const showClear = query && query.length > 0;
 
-  /* синхронизация с внешним value (voice) */
+  /* синхронизация с внешним value */
   useEffect(() => {
     setQuery(value ?? "");
   }, [value]);
@@ -41,10 +42,15 @@ export default function AutocompleteTextarea({
   };
 
   return (
-    <div className={[s.formField, error && s.hasError].filter(Boolean).join(" ")}>
+    <div
+      className={[s.formField, required && s.isRequired, error && s.hasError]
+        .filter(Boolean)
+        .join(" ")}
+    >
       {label && (
         <label htmlFor={id} className={s.formLabel}>
           {label}
+          {required && <span className={s.required}> *</span>}
         </label>
       )}
 
@@ -55,7 +61,10 @@ export default function AutocompleteTextarea({
           className={s.formTextarea}
           rows={rows}
           value={query}
-          placeholder={placeholder}
+          placeholder={placeholder || " "}
+          required={required}
+          aria-required={required}
+          aria-invalid={!!error}
           onFocus={() => setOpen(true)}
           onBlur={() => setOpen(false)}
           onChange={(e) => {

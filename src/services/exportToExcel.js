@@ -4,7 +4,6 @@ import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
 import { Toast } from "@capacitor/toast";
 
-import { calculations } from "../utils/calculations/calculations";
 import { normalizeRow } from "../utils/normalize/normalizeRow";
 
 /* ===============================
@@ -34,15 +33,14 @@ export const exportToExcel = async (rows, excelConfig) => {
   const { headers, keysOrder } = excelConfig;
 
   const isMobile = Capacitor.isNativePlatform();
-  const prepared = rows.map(calculations);
 
   try {
     await showToast("⏳ Экспорт данных…");
 
     if (isMobile) {
-      await exportCSV(prepared, headers, keysOrder);
+      await exportCSV(rows, headers, keysOrder);
     } else {
-      await exportXLSX(prepared, headers, keysOrder);
+      await exportXLSX(rows, headers, keysOrder);
     }
 
     await showToast("✅ Экспорт завершён");
@@ -71,7 +69,7 @@ const exportXLSX = async (prepared, headers, keysOrder) => {
 
     const rowData = keysOrder.map((k) => {
       if (k === "photo") {
-        return r.photo ? "См. фото" : "";
+        return r.photo ? "См. фото в приложении" : "";
       }
       return normalized[k];
     });
@@ -133,6 +131,7 @@ const exportCSV = async (prepared, headers, keysOrder, withShare = false) => {
 const generateCSV = (prepared, headers, keysOrder) => {
   const escape = (v) =>
     `"${String(v ?? "")
+      .replace(/\//g, "#")
       .replace(/"/g, '""')
       .replace(/\n/g, " ")}"`;
 

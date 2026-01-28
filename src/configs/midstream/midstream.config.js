@@ -9,12 +9,21 @@ import {
   headers as EXCEL_HEADERS,
   keysOrder as EXCEL_KEYS_ORDER,
 } from "./export/excelImportData";
-import { NUMBER_FIELDS, COPYABLE_FIELDS, SEARCH_FIELDS } from "./data/constants";
+import {
+  NUMBER_FIELDS,
+  COPYABLE_FIELDS,
+  SEARCH_FIELDS,
+} from "./data/constants";
 
 import { STEPS } from "./data/steps";
 
-import { cause, description, solutions, recommendations } from "./data/dictionaries";
-export const VOICE_COMPRESSION = {
+import {
+  cause,
+  description,
+  solutions,
+  recommendations,
+} from "./data/dictionaries";
+export const VOICE_MIDSTREAM = {
   input: "rawVoiceText",
 
   pipeline: [parseVoiceText, normalizeSynonyms],
@@ -38,13 +47,13 @@ export const VOICE_COMPRESSION = {
     "note",
   ],
 };
-export const SEMANTIC_COMPRESSION = {
+export const SEMANTIC_MIDSTREAM = {
   leak_cause: cause,
   leak_description: description,
   technological_solution: solutions,
   repair_recommendation: recommendations,
 };
-export const SYSTEM_COMPRESSION = {
+export const SYSTEM_MIDSTREAM = {
   numeric: NUMBER_FIELDS,
   copyable: COPYABLE_FIELDS,
   search: SEARCH_FIELDS,
@@ -52,7 +61,7 @@ export const SYSTEM_COMPRESSION = {
   fields: FIELDS,
 };
 
-export const EXPORT_COMPRESSION = {
+export const EXPORT_MIDSTREAM = {
   geojson: {
     format: "GeoJSON",
     handler: exportLeaksGeoJSON,
@@ -71,16 +80,16 @@ export const EXPORT_COMPRESSION = {
     keysOrder: EXCEL_KEYS_ORDER,
   },
 };
-export const STEP_COMPRESSION = {
+export const STEP_MIDSTREAM = {
   mode: "manual",
   steps: STEPS,
 };
-export const COMPRESSION_CONFIG = Object.freeze({
-  steps: STEP_COMPRESSION,
-  voice: VOICE_COMPRESSION,
-  semantic: SEMANTIC_COMPRESSION,
-  system: SYSTEM_COMPRESSION,
-  export: EXPORT_COMPRESSION,
+export const MIDSTREAM_CONFIG = Object.freeze({
+  steps: STEP_MIDSTREAM,
+  voice: VOICE_MIDSTREAM,
+  semantic: SEMANTIC_MIDSTREAM,
+  system: SYSTEM_MIDSTREAM,
+  export: EXPORT_MIDSTREAM,
 });
 
-export default COMPRESSION_CONFIG;
+export default MIDSTREAM_CONFIG;

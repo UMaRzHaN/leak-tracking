@@ -8,7 +8,7 @@ import React, {
 import { STORAGE_KEYS } from "./storageKeys";
 import { PROJECT_META } from "../../configs/projects";
 
-const DEFAULT_PROJECT = "compression";
+const DEFAULT_PROJECT = "midstream";
 
 const ProjectContext = createContext(null);
 

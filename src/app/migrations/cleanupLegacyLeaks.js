@@ -1,4 +1,3 @@
-// src/app/migrations/cleanupLegacyLeaks.js
 export function cleanupLegacyLeaks() {
   const keys = Object.keys(localStorage);
 

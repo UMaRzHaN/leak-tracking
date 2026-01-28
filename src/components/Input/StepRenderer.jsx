@@ -36,6 +36,7 @@ export default function StepRenderer({ step, steps, form, errors, onChange }) {
               options={f.options}
               error={errors[f.key]}
               onChange={(v) => onChange(f.key, v)}
+              required={f.required}
             />
           );
         }

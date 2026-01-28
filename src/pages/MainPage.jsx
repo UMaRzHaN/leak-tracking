@@ -18,7 +18,7 @@ export default function MainPage({
   const handleSaveLeak = async (updatedLeak) => {
     try {
       const updated = data.map((r) =>
-        r.id === updatedLeak.id ? updatedLeak : r
+        r.id === updatedLeak.id ? updatedLeak : r,
       );
 
       setData(updated);

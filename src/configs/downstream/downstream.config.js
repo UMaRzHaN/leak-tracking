@@ -3,7 +3,6 @@ import { normalizeSynonyms } from "./voice/normalizeSynonyms";
 
 import { exportLeaksKML } from "./export/exportLeaksKML";
 import { exportLeaksGeoJSON } from "./export/exportLeaksGeoJSON";
-
 import { FIELDS } from "./data/fields";
 
 import {
@@ -24,7 +23,7 @@ import {
   solutions,
   recommendations,
 } from "./data/dictionaries";
-export const VOICE_COMPRESSION = {
+export const VOICE_DOWNSTREAM = {
   input: "rawVoiceText",
 
   pipeline: [parseVoiceText, normalizeSynonyms],
@@ -48,13 +47,13 @@ export const VOICE_COMPRESSION = {
     "note",
   ],
 };
-export const SEMANTIC_COMPRESSION = {
+export const SEMANTIC_DOWNSTREAM = {
   leak_cause: cause,
   leak_description: description,
   technological_solution: solutions,
   repair_recommendation: recommendations,
 };
-export const SYSTEM_COMPRESSION = {
+export const SYSTEM_DOWNSTREAM = {
   numeric: NUMBER_FIELDS,
   copyable: COPYABLE_FIELDS,
   search: SEARCH_FIELDS,
@@ -62,7 +61,7 @@ export const SYSTEM_COMPRESSION = {
   fields: FIELDS,
 };
 
-export const EXPORT_COMPRESSION = {
+export const EXPORT_DOWNSTREAM = {
   geojson: {
     format: "GeoJSON",
     handler: exportLeaksGeoJSON,
@@ -81,15 +80,16 @@ export const EXPORT_COMPRESSION = {
     keysOrder: EXCEL_KEYS_ORDER,
   },
 };
-export const STEP_COMPRESSION = {
+export const STEP_DOWNSTREAM = {
   mode: "manual",
   steps: STEPS,
 };
-export const PROCESSING_CONFIG = Object.freeze({
-  steps: STEP_COMPRESSION,
-  voice: VOICE_COMPRESSION,
-  semantic: SEMANTIC_COMPRESSION,
-  system: SYSTEM_COMPRESSION,
-  export: EXPORT_COMPRESSION,
+export const DOWNSTREAM_CONFIG = Object.freeze({
+  steps: STEP_DOWNSTREAM,
+  voice: VOICE_DOWNSTREAM,
+  semantic: SEMANTIC_DOWNSTREAM,
+  system: SYSTEM_DOWNSTREAM,
+  export: EXPORT_DOWNSTREAM,
 });
-export default PROCESSING_CONFIG;
+
+export default DOWNSTREAM_CONFIG;

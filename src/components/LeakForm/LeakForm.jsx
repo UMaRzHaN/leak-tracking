@@ -7,7 +7,9 @@ import AddLeakFooter from "./Footer/AddLeakFooter";
 import ConfirmSheet from "../ConfirmSheet/ConfirmSheet";
 import StepRenderer from "../Input/StepRenderer";
 import s from "./LeakForm.module.scss";
-
+import { useProject } from "../../app/settings/ProjectContext";
+import { useProjectVars } from "../../app/settings/useProjectVars";
+import { calculations } from "../../utils/calculations/calculations";
 /* ======================================
    FIELDS ALLOWED TO COPY
 ====================================== */
@@ -22,7 +24,8 @@ export default function LeakForm({
   lastItem,
 }) {
   const projectConfig = useProjectConfig();
-
+  const { project } = useProject();
+  const { vars } = useProjectVars(project, projectConfig.vars);
   const STEPS = useMemo(() => projectConfig.steps.steps ?? [], [projectConfig]);
 
   const COPYABLE_FIELDS = useMemo(
@@ -68,8 +71,11 @@ export default function LeakForm({
   const commitSave = (data) => {
     const d = new Date();
 
+    // 🧮 расчёт ТОЛЬКО ЗДЕСЬ
+    const calculated = vars ? calculations(data, vars) : data;
+
     onAdd?.({
-      ...data,
+      ...calculated,
       date: `${String(d.getDate()).padStart(2, "0")}.${String(
         d.getMonth() + 1,
       ).padStart(2, "0")}.${d.getFullYear()}`,

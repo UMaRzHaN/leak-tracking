@@ -255,7 +255,7 @@
 .stepRenderer {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
   margin: 10px;
 }
 
@@ -334,5 +334,29 @@
   .inputCardTextarea,
   .formInput {
     font-size: 15px;
+  }
+}
+
+.inputCardInput:focus,
+.inputCardTextarea:focus,
+.formInput:focus,
+.formTextarea:focus {
+  background: #ffffff;
+}
+/* ===== FILLED STATE (green) ===== */
+.inputCardInput:not(:placeholder-shown),
+.inputCardTextarea:not(:placeholder-shown),
+.formInput:not(:placeholder-shown),
+.formTextarea:not(:placeholder-shown) {
+  background: #ecfdf5; // светло-зелёный
+  border-color: #22c55e; // зелёная рамка
+}
+.hasError {
+  .inputCardInput,
+  .inputCardTextarea,
+  .formInput,
+  .formTextarea {
+    background: #fef2f2; // светло-красный
+    border-color: #dc2626;
   }
 }

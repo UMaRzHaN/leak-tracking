@@ -5,7 +5,7 @@ import { PROJECT_META } from "../../configs/projects";
 import SettingsHeader from "./Header/SettingsHeader";
 import SettingsFooter from "./Footer/SettingsFooter";
 import SettingsModal from "../../components/SettingsModal/SettingsModal";
-import * as variables from "../../data/variables";
+
 import s from "./Settings.module.scss";
 
 /* =========================
@@ -14,15 +14,8 @@ import s from "./Settings.module.scss";
 
 export default function Settings({ setPage }) {
   const { project, changeProject } = useProject();
-  const defaultVars = {
-    gasType: variables.gasType,
-    density: variables.density,
-    percentage_gas_to_flare: variables.percentage_gas_to_flare,
-    percentage_gas_to_utilization: 100 - variables.percentage_gas_to_flare,
-    Uncertainty: variables.Uncertainty,
-  };
 
-  const { vars, setVars } = useProjectVars(project, defaultVars);
+  const { vars, setVars } = useProjectVars(project);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [notification, setNotification] = useState(null);

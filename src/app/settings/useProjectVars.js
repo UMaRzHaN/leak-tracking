@@ -1,7 +1,19 @@
 import { useCallback } from "react";
 import { STORAGE_KEYS } from "./storageKeys";
+import * as variables from "../../data/variables";
+const defaultVars = {
+  equipmentType: variables.equipmentType,
+  uncertainty: variables.uncertainty,
+  gasType: variables.gasType,
+  density: variables.density,
 
-export function useProjectVars(projectId, defaults) {
+  percentage_gas_to_flare: variables.percentage_gas_to_flare,
+  percentage_gas_to_utilization: 100 - variables.percentage_gas_to_flare,
+  GWP: variables.GWP,
+  serial_number: variables.serial_number,
+};
+
+export function useProjectVars(projectId, defaults = defaultVars) {
   if (!projectId) {
     throw new Error("useProjectVars: projectId is required");
   }

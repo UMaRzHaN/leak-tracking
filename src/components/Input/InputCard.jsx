@@ -41,7 +41,7 @@ export default function InputCard({
             className={s.inputCardTextarea}
             rows={rows}
             value={value ?? ""}
-            placeholder={placeholder}
+            placeholder={placeholder || " "}
             onChange={(e) => onChange(e.target.value)}
           />
         ) : (
@@ -50,7 +50,7 @@ export default function InputCard({
             className={s.inputCardInput}
             type={type}
             value={value ?? ""}
-            placeholder={placeholder}
+            placeholder={placeholder || " "}
             onChange={(e) => onChange(e.target.value)}
             inputMode={type === "number" ? "decimal" : undefined}
           />

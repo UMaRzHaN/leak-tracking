@@ -1,34 +1,27 @@
-import compression from "./compression/compressions.config";
-import processing from "./processing/processings.config";
-import wells from "./wells/wells.config";
-import primary from "./primary_gas_treatment_transport/primary_gas_treatment_transport.config";
+import upstream from "./upstream/upstream.config";
+import midstream from "./midstream/midstream.config";
+import downstream from "./downstream/downstream.config";
 
 export const PROJECTS = {
-  compression,
-  processing,
-  wells,
-  primary,
+  upstream,
+  midstream,
+  downstream,
 };
 
 export const PROJECT_META = {
-  compression: {
-    title: "Compression Stations",
-    description: "КС, компрессорные агрегаты",
-    folder: "Compression_Stations",
+  upstream: {
+    title: "Upstream",
+    description: "Добыча",
+    folder: "Upstream",
   },
-  processing: {
-    title: "Gas Processing",
-    description: "Установки подготовки газа",
-    folder: "Gas_Processing",
+  midstream: {
+    title: "Midstream",
+    description: "Транспортировка и хранение",
+    folder: "Midstream",
   },
-  wells: {
-    title: "Wells",
-    description: "Скважины",
-    folder: "Wells",
-  },
-  primary: {
-    title: "Primary Gas Treatment & Transport",
-    description: "Первичная подготовка и транспорт",
-    folder: "Primary_Gas_Treatment_Transport",
+  downstream: {
+    title: "Downstream",
+    description: "Переработка и сбыт",
+    folder: "Downstream",
   },
 };

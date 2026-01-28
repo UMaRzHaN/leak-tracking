@@ -5,5 +5,5 @@ import { useProject } from "./ProjectContext";
 export function useProjectConfig() {
   const { project } = useProject();
 
-  return useMemo(() => PROJECTS[project] || PROJECTS.compression, [project]);
+  return useMemo(() => PROJECTS[project] || PROJECTS.midstream, [project]);
 }

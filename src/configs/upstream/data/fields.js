@@ -12,175 +12,195 @@
 
 export const FIELDS = [
   // Дата - только просмотр
-  { 
-    key: "date", 
+  {
+    key: "date",
     label: "Дата",
     viewable: true,
     editable: false,
-    viewOrder: 1
+    viewOrder: 1,
   },
-  
+
   // Основные идентификаторы
-  { 
-    key: "leak_id", 
+  {
+    key: "leak_id",
     label: "Индивидуальный номер утечки",
     viewable: true,
     editable: true,
     viewOrder: 7,
-    editOrder: 1
+    editOrder: 1,
   },
-  { 
-    key: "video_id", 
+  {
+    key: "video_id",
     label: "Видео",
     viewable: true,
     editable: true,
     viewOrder: 8,
-    editOrder: 2
+    editOrder: 2,
   },
-  
+
   // Месторасположение
-  { 
-    key: "field", 
+  {
+    key: "field",
     label: "УМГ",
     viewable: true,
     editable: true,
     viewOrder: 2,
-    editOrder: 6
+    editOrder: 6,
   },
-  { 
-    key: "station", 
+  {
+    key: "station",
     label: "Компрессорная станция",
     viewable: true,
     editable: true,
     viewOrder: 3,
-    editOrder: 7
+    editOrder: 7,
   },
-  { 
-    key: "location", 
+  {
+    key: "location",
     label: "Локация",
     viewable: true,
     editable: true,
     viewOrder: 4,
-    editOrder: 8
+    editOrder: 8,
   },
-  { 
-    key: "object", 
+  {
+    key: "object",
     label: "Объект",
     viewable: true,
     editable: true,
     viewOrder: 5,
-    editOrder: 9
+    editOrder: 9,
   },
-  { 
-    key: "component", 
+  {
+    key: "component",
     label: "Компонент",
     viewable: true,
     editable: true,
     viewOrder: 6,
-    editOrder: 10
+    editOrder: 10,
   },
-  
+
   // Описания и решения
-  { 
-    key: "leak_description", 
+  {
+    key: "leak_description",
     label: "Описание утечки",
     viewable: true,
     editable: true,
     viewOrder: 9,
     editOrder: 11,
-    multiline: true 
+    multiline: true,
   },
-  { 
-    key: "leak_cause", 
+  {
+    key: "leak_cause",
     label: "Причина утечки",
     viewable: true,
     editable: true,
     viewOrder: 10,
     editOrder: 12,
-    multiline: true 
+    multiline: true,
   },
-  { 
-    key: "technological_solution", 
+  {
+    key: "technological_solution",
     label: "Технологическое решение",
     viewable: true,
     editable: true,
     viewOrder: 11,
     editOrder: 13,
-    multiline: true 
+    multiline: true,
   },
-  { 
-    key: "repair_recommendation", 
+  {
+    key: "repair_recommendation",
     label: "Решение / План устранения",
     viewable: true,
     editable: true,
     viewOrder: 12,
     editOrder: 14,
-    multiline: true 
+    multiline: true,
   },
-  { 
-    key: "materials_equipment", 
+  {
+    key: "materials_equipment",
     label: "Материалы и оборудование",
     viewable: true,
     editable: true,
     viewOrder: 13,
     editOrder: 15,
-    multiline: true 
+    multiline: true,
   },
-  { 
-    key: "note", 
+  {
+    key: "note",
     label: "Примечание",
     viewable: true,
     editable: true,
     viewOrder: 14,
     editOrder: 16,
-    multiline: true 
+    multiline: true,
   },
-  
+
   // Технические параметры
-  { 
-    key: "leak_speed", 
-    label: "Скорость утечки",
+  {
+    key: "leak_speed",
+    label: "Скорость утечки, л/мин",
     viewable: true,
     editable: true,
     viewOrder: 15,
-    editOrder: 3
+    editOrder: 3,
   },
-  { 
-    key: "pressure", 
-    label: "Давление",
+  {
+    key: "pressure",
+    label: "Давление, атм",
     viewable: true,
     editable: true,
     viewOrder: 16,
-    editOrder: 5
+    editOrder: 5,
   },
-  { 
-    key: "temperature", 
-    label: "Температура",
+  {
+    key: "temperature",
+    label: "Температура, °C",
     viewable: true,
     editable: true,
     viewOrder: 17,
-    editOrder: 4
+    editOrder: 4,
   },
-  
+
   // Координаты
-  { 
-    key: "lat", 
+  {
+    key: "lat",
     label: "Координата Х",
     viewable: true,
     editable: true,
     viewOrder: 18,
-    editOrder: 17
+    editOrder: 17,
   },
-  { 
-    key: "lng", 
+  {
+    key: "lng",
     label: "Координата Y",
     viewable: true,
     editable: true,
     viewOrder: 19,
-    editOrder: 18
+    editOrder: 18,
+  },
+  {
+    key: "actuator_type",
+    label: "Тип привода",
+    viewable: true,
+    editable: true,
+    viewOrder: 20,
+    editOrder: 19,
+  },
+  {
+    key: "Total_Annual_Methane_Loss_m3_y",
+    label: "Годовой объем утечки метана, м³/год",
+    viewable: true,
+    editable: true,
+    viewOrder: 21,
+    editOrder: 20,
   },
 ];
 
 // Фильтры для удобства (опционально, для обратной совместимости)
-export const VIEW_FIELDS = FIELDS.filter(f => f.viewable).sort((a, b) => a.viewOrder - b.viewOrder);
-export const EDIT_FIELDS = FIELDS.filter(f => f.editable).sort((a, b) => a.editOrder - b.editOrder);
+export const VIEW_FIELDS = FIELDS.filter((f) => f.viewable).sort(
+  (a, b) => a.viewOrder - b.viewOrder,
+);
+export const EDIT_FIELDS = FIELDS.filter((f) => f.editable).sort(
+  (a, b) => a.editOrder - b.editOrder,
+);

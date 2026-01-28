@@ -40,5 +40,7 @@ body {
   flex-direction: column;
 }
 .pages {
-  margin: 500px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
 }

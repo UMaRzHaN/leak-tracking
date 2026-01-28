@@ -1,10 +1,17 @@
 import { useState } from "react";
 import { exportToExcel } from "../../services/exportToExcel";
 import { useProjectConfig } from "../../app/settings/useProjectConfig";
+import { useProject } from "../../app/settings/ProjectContext";
+import { useProjectVars } from "../../app/settings/useProjectVars";
 import s from "./DatabaseOverflow.module.scss";
 
 export default function DatabaseOverflow({ filteredData, onClearDb }) {
+  const { project } = useProject(); // ✅ гарантированный projectId
   const projectConfig = useProjectConfig();
+
+  // ✅ vars строго из storage_key
+  const { vars } = useProjectVars(project, projectConfig.vars);
+
   const [open, setOpen] = useState(false);
 
   const handleExportExcel = () => {
@@ -12,6 +19,11 @@ export default function DatabaseOverflow({ filteredData, onClearDb }) {
 
     if (!excelConfig) {
       alert("Экспорт в Excel недоступен для этого проекта");
+      return;
+    }
+
+    if (!vars) {
+      alert("Параметры проекта не загружены");
       return;
     }
 

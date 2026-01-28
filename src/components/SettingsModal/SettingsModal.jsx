@@ -12,10 +12,13 @@ export default function SettingsModal({
      LOCAL DRAFT STATE
   ========================= */
   const [localVars, setLocalVars] = useState(() => ({
+    equipmentType: currentVars.equipmentType,
+    uncertainty: currentVars.uncertainty,
     gasType: currentVars.gasType,
     density: currentVars.density,
     percentage_gas_to_flare: currentVars.percentage_gas_to_flare,
-    Uncertainty: currentVars.Uncertainty,
+    GWP: currentVars.GWP,
+    serial_number: currentVars.serial_number,
   }));
 
   const [showConfirm, setShowConfirm] = useState(false);
@@ -27,10 +30,13 @@ export default function SettingsModal({
     if (!open) return;
 
     setLocalVars({
+      equipmentType: currentVars.equipmentType,
+      uncertainty: currentVars.uncertainty,
       gasType: currentVars.gasType,
       density: currentVars.density,
       percentage_gas_to_flare: currentVars.percentage_gas_to_flare,
-      Uncertainty: currentVars.Uncertainty,
+      GWP: currentVars.GWP,
+      serial_number: currentVars.serial_number,
     });
 
     setShowConfirm(false);
@@ -41,11 +47,15 @@ export default function SettingsModal({
   ========================= */
   const isDirty = useMemo(() => {
     return (
+      localVars.equipmentType !== currentVars.equipmentType ||
+      localVars.uncertainty !== currentVars.uncertainty ||
       localVars.gasType !== currentVars.gasType ||
       localVars.density !== currentVars.density ||
       localVars.percentage_gas_to_flare !==
         currentVars.percentage_gas_to_flare ||
-      localVars.Uncertainty !== currentVars.Uncertainty
+      localVars.uncertainty !== currentVars.uncertainty ||
+      localVars.GWP !== currentVars.GWP ||
+      localVars.serial_number !== currentVars.serial_number
     );
   }, [localVars, currentVars]);
 
@@ -62,6 +72,12 @@ export default function SettingsModal({
 
         next.gasType = value;
         next.density = gas.density;
+      } else if (key === "equipmentType") {
+        const equipment = variables.EQUIPMENT_TYPES[value];
+        if (!equipment) return prev;
+
+        next.equipmentType = value;
+        next.uncertainty = equipment.uncertainty;
       } else {
         const numValue = Number(value);
         if (Number.isNaN(numValue)) return prev;
@@ -77,8 +93,7 @@ export default function SettingsModal({
     onSave({
       ...currentVars,
       ...localVars,
-      percentage_gas_to_utilization:
-        100 - localVars.percentage_gas_to_flare,
+      percentage_gas_to_utilization: 100 - localVars.percentage_gas_to_flare,
     });
 
     setShowConfirm(false);
@@ -124,16 +139,10 @@ export default function SettingsModal({
             <div className={s.confirmContent}>
               <span className={s.confirmIcon}>❓</span>
               <h3>Отменить изменения?</h3>
-              <p>
-                Вы уверены? Все несохранённые изменения будут
-                потеряны.
-              </p>
+              <p>Вы уверены? Все несохранённые изменения будут потеряны.</p>
             </div>
             <div className={s.confirmFooter}>
-              <button
-                className={s.confirmKeepBtn}
-                onClick={handleKeepEditing}
-              >
+              <button className={s.confirmKeepBtn} onClick={handleKeepEditing}>
                 Продолжить редактирование
               </button>
               <button
@@ -145,8 +154,30 @@ export default function SettingsModal({
             </div>
           </div>
         )}
-
+        {/* EQUIPMENT TYPE */}
         <div className={s.content}>
+          <div className={s.paramGroup}>
+            <label htmlFor="equipmentType">
+              <span className={s.label}>Тип оборудования</span>
+            </label>
+            <select
+              id="equipmentType"
+              value={localVars.equipmentType}
+              onChange={(e) => handleChange("equipmentType", e.target.value)}
+              className={s.select}
+            >
+              {Object.entries(variables.EQUIPMENT_TYPES).map(
+                ([key, { label }]) => (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                ),
+              )}
+            </select>
+            <span className={s.current}>
+              Неопределённость: {localVars.uncertainty * 100}%
+            </span>
+          </div>
           {/* GAS TYPE */}
           <div className={s.paramGroup}>
             <label htmlFor="gasType">
@@ -155,48 +186,69 @@ export default function SettingsModal({
             <select
               id="gasType"
               value={localVars.gasType}
-              onChange={(e) =>
-                handleChange("gasType", e.target.value)
-              }
+              onChange={(e) => handleChange("gasType", e.target.value)}
               className={s.select}
             >
-              {Object.entries(variables.GAS_TYPES).map(
-                ([key, { label }]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
-                )
-              )}
+              {Object.entries(variables.GAS_TYPES).map(([key, { label }]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
             </select>
-            <span className={s.current}>
-              Плотность: {localVars.density}
-            </span>
+            <span className={s.current}>Плотность: {localVars.density}</span>
           </div>
-
-          {/* DENSITY */}
+          {/* GWP */}
           <div className={s.paramGroup}>
-            <label htmlFor="density">
-              <span className={s.label}>Плотность</span>
-              <span className={s.unit}>(density)</span>
+            <label htmlFor="GWP">
+              <span className={s.label}>GWP</span>
             </label>
             <input
-              id="density"
+              id="GWP"
               type="number"
-              value={localVars.density}
+              min="0"
+              step="0.1"
+              value={localVars.GWP}
+              onChange={(e) => handleChange("GWP", e.target.value)}
               className={s.input}
-              disabled
+            />
+            <span className={s.current}>Текущее: {localVars.GWP}</span>
+          </div>
+          {/* Serial Number */}
+          <div className={s.paramGroup}>
+            <label htmlFor="serial_number">
+              <span className={s.label}>Серийный номер оборудования</span>
+            </label>
+            <input
+              id="serial_number"
+              type="number"
+              min="0"
+              step="1"
+              inputMode="numeric"
+              value={localVars.serial_number ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+
+                // разрешаем пустое поле
+                if (v === "") {
+                  handleChange("serial_number", "");
+                  return;
+                }
+
+                // только целые
+                if (/^\d+$/.test(v)) {
+                  handleChange("serial_number", Number(v));
+                }
+              }}
+              className={s.input}
             />
             <span className={s.current}>
-              Автоматически установлена
+              Текущее: {localVars.serial_number}
             </span>
           </div>
-
           {/* FLARE */}
           <div className={s.paramGroup}>
             <label htmlFor="flare">
-              <span className={s.label}>
-                Газ на факелирование
-              </span>
+              <span className={s.label}>Газ на факелирование</span>
               <span className={s.unit}>(%)</span>
             </label>
 
@@ -209,10 +261,7 @@ export default function SettingsModal({
                 step="0.1"
                 value={localVars.percentage_gas_to_flare}
                 onChange={(e) =>
-                  handleChange(
-                    "percentage_gas_to_flare",
-                    e.target.value
-                  )
+                  handleChange("percentage_gas_to_flare", e.target.value)
                 }
                 className={s.slider}
               />
@@ -223,10 +272,7 @@ export default function SettingsModal({
                 step="0.1"
                 value={localVars.percentage_gas_to_flare}
                 onChange={(e) =>
-                  handleChange(
-                    "percentage_gas_to_flare",
-                    e.target.value
-                  )
+                  handleChange("percentage_gas_to_flare", e.target.value)
                 }
                 className={s.numberInput}
               />
@@ -234,41 +280,13 @@ export default function SettingsModal({
 
             <div className={s.distribution}>
               <span className={s.flare}>
-                Факелирование:{" "}
-                {localVars.percentage_gas_to_flare.toFixed(1)}%
+                Факелирование: {localVars.percentage_gas_to_flare.toFixed(1)}%
               </span>
               <span className={s.util}>
                 Утилизация:{" "}
-                {(100 -
-                  localVars.percentage_gas_to_flare
-                ).toFixed(1)}
-                %
+                {(100 - localVars.percentage_gas_to_flare).toFixed(1)}%
               </span>
             </div>
-          </div>
-
-          {/* UNCERTAINTY */}
-          <div className={s.paramGroup}>
-            <label htmlFor="uncertainty">
-              <span className={s.label}>
-                Неопределённость
-              </span>
-              <span className={s.unit}>(%)</span>
-            </label>
-            <input
-              id="uncertainty"
-              type="number"
-              min="0"
-              step="0.1"
-              value={localVars.Uncertainty}
-              onChange={(e) =>
-                handleChange("Uncertainty", e.target.value)
-              }
-              className={s.input}
-            />
-            <span className={s.current}>
-              Текущее: {localVars.Uncertainty}
-            </span>
           </div>
         </div>
 
