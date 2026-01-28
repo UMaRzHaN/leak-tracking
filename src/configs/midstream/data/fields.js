@@ -203,12 +203,6 @@ export const FIELDS = [
     viewOrder: 22,
     editOrder: 21,
   },
-  {
-    key: "Total_Annual_Methane_Loss_m3_y",
-    label: "Годовой объем утечки метана, м³/год",
-    viewable: true,
-    editable: false,
-  },
 ];
 
 // Фильтры для удобства (опционально, для обратной совместимости)

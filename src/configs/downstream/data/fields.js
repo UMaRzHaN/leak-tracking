@@ -40,16 +40,16 @@ export const FIELDS = [
 
   // Месторасположение
   {
-    key: "field",
-    label: "УМГ",
+    key: "district",
+    label: "Район",
     viewable: true,
     editable: true,
     viewOrder: 2,
     editOrder: 6,
   },
   {
-    key: "station",
-    label: "Компрессорная станция",
+    key: "locality",
+    label: "Населенный пункт",
     viewable: true,
     editable: true,
     viewOrder: 3,
@@ -178,6 +178,38 @@ export const FIELDS = [
     editable: true,
     viewOrder: 19,
     editOrder: 18,
+  },
+  {
+    key: "actuator_type",
+    label: "Тип привода",
+    viewable: true,
+    editable: true,
+    viewOrder: 20,
+    editOrder: 19,
+  },
+  {
+    key: "connection_type",
+    label: "Тип присоединения",
+    viewable: true,
+    editable: true,
+    viewOrder: 21,
+    editOrder: 20,
+  },
+  {
+    key: "installation_type",
+    label: "Тип установки",
+    viewable: true,
+    editable: true,
+    viewOrder: 22,
+    editOrder: 21,
+  },
+  {
+    key: "category",
+    label: "Категория",
+    viewOrder: 23,
+    editOrder: 22,
+    viewable: true,
+    editable: true,
   },
 ];
 

@@ -40,16 +40,16 @@ export const FIELDS = [
 
   // Месторасположение
   {
-    key: "field",
-    label: "УМГ",
+    key: "subdivision",
+    label: "Подразделение",
     viewable: true,
     editable: true,
     viewOrder: 2,
     editOrder: 6,
   },
   {
-    key: "station",
-    label: "Компрессорная станция",
+    key: "deposit",
+    label: "Месторождение",
     viewable: true,
     editable: true,
     viewOrder: 3,
@@ -188,12 +188,29 @@ export const FIELDS = [
     editOrder: 19,
   },
   {
-    key: "Total_Annual_Methane_Loss_m3_y",
-    label: "Годовой объем утечки метана, м³/год",
+    key: "connection_type",
+    label: "Тип присоединения",
     viewable: true,
     editable: true,
     viewOrder: 21,
     editOrder: 20,
+  },
+  {
+    key: "installation_type",
+    label: "Тип установки",
+    viewable: true,
+    editable: true,
+    viewOrder: 22,
+    editOrder: 21,
+  },
+
+  {
+    key: "category",
+    label: "Категория",
+    viewOrder: 23,
+    editOrder: 22,
+    viewable: true,
+    editable: true,
   },
 ];
 

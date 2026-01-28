@@ -19,6 +19,8 @@ export const calculations = (leak, vars) => {
     GWP, // GWP CH4 (например 28)
     percentage_gas_to_flare, // %
     percentage_gas_to_utilization, // %
+    serial_number,
+    equipmentType,
   } = vars;
 
   /* =========================
@@ -91,6 +93,9 @@ export const calculations = (leak, vars) => {
     // emissions
     Emissions_t_CO2eq_year,
     Emissions_kg_CO2_eq_year,
+    // equipment
+    serial_number,
+    equipmentType,
   };
 };
 export default calculations;

@@ -9,8 +9,8 @@ export const NUMBER_FIELDS = [
 ];
 
 export const COPYABLE_FIELDS = [
-  "field",
-  "station",
+  "subdivision",
+  "deposit",
   "location",
   "object",
   "component",
@@ -22,19 +22,28 @@ export const COPYABLE_FIELDS = [
   "repair_recommendation",
   "materials_equipment",
   "note",
+  "actuator_type",
+  "connection_type",
+  "installation_type",
+  "category",
 ];
 export const SEARCH_FIELDS = [
   { key: "all", label: "По всем полям" },
+  { key: "date", label: "Дата обнаружения" },
   { key: "leak_id", label: "Индивидуальный номер утечки (бирка)" },
   { key: "video_id", label: "Индивидуальный номер видео" },
-  { key: "station", label: "Компрессорная станция" },
+  { key: "deposit", label: "Месторождение" },
   { key: "location", label: "Локация" },
   { key: "object", label: "Объект" },
+  { key: "category", label: "Категория" },
   { key: "component", label: "Компонент" },
   { key: "leak_description", label: "Описание утечки" },
   { key: "leak_cause", label: "Причина утечки" },
   { key: "technological_solution", label: "Технологическое решение" },
   { key: "repair_recommendation", label: "Решение / План устранения" },
   { key: "materials_equipment", label: "МТР ремонта" },
+  { key: "actuator_type", label: "Тип привода" },
+  { key: "connection_type", label: "Тип присоединения" },
+  { key: "installation_type", label: "Тип установки" },
   { key: "note", label: "Примечание" },
 ];
