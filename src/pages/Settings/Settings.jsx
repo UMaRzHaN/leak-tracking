@@ -1,21 +1,19 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useProject } from "../../app/settings/ProjectContext";
 import { useProjectVars } from "../../app/settings/useProjectVars";
 import { PROJECT_META } from "../../configs/projects";
 import SettingsHeader from "./Header/SettingsHeader";
 import SettingsFooter from "./Footer/SettingsFooter";
 import SettingsModal from "../../components/SettingsModal/SettingsModal";
-
 import s from "./Settings.module.scss";
-
-/* =========================
-   DEFAULT VARS
-========================= */
 
 export default function Settings({ setPage }) {
   const { project, changeProject } = useProject();
 
-  const { vars, setVars } = useProjectVars(project);
+  const activeProject = PROJECT_META[project];
+  const defaultVars = activeProject?.vars ?? {};
+
+  const { vars, setVars } = useProjectVars(project, defaultVars);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [notification, setNotification] = useState(null);
@@ -24,27 +22,38 @@ export default function Settings({ setPage }) {
      PROJECTS
   ========================= */
   const projects = useMemo(() => Object.keys(PROJECT_META), []);
-  const activeProject = PROJECT_META[project];
 
   /* =========================
      HANDLERS
   ========================= */
-  const handleProjectChange = (projectId) => {
-    if (projectId === project) return;
+  const handleProjectChange = useCallback(
+    (projectId) => {
+      if (projectId === project) return;
 
-    changeProject(projectId);
+      const ok = window.confirm(
+        "При смене проекта будут использованы другие параметры расчёта. Продолжить?",
+      );
 
-    if (setPage) {
-      requestAnimationFrame(() => setPage(""));
-    }
-  };
+      if (!ok) return;
 
-  const handleModalSave = (nextVars) => {
-    setVars(nextVars);
-    setModalOpen(false);
-  };
+      changeProject(projectId);
 
-  const handleModalClose = (discarded) => {
+      requestAnimationFrame(() => {
+        setPage?.("");
+      });
+    },
+    [project, changeProject, setPage],
+  );
+
+  const handleModalSave = useCallback(
+    (nextVars) => {
+      setVars(nextVars);
+      setModalOpen(false);
+    },
+    [setVars],
+  );
+
+  const handleModalClose = useCallback((discarded) => {
     setModalOpen(false);
 
     if (discarded) {
@@ -52,10 +61,18 @@ export default function Settings({ setPage }) {
         type: "warning",
         message: "Изменения отменены",
       });
-
-      setTimeout(() => setNotification(null), 3000);
     }
-  };
+  }, []);
+
+  /* =========================
+     NOTIFICATION AUTO-CLOSE
+  ========================= */
+  useEffect(() => {
+    if (!notification) return;
+
+    const t = setTimeout(() => setNotification(null), 3000);
+    return () => clearTimeout(t);
+  }, [notification]);
 
   /* =========================
      GUARD
@@ -68,12 +85,20 @@ export default function Settings({ setPage }) {
     );
   }
 
+  if (!vars) {
+    return (
+      <div className={s.settings}>
+        <p>⏳ Загрузка параметров…</p>
+      </div>
+    );
+  }
+
   /* =========================
      RENDER
   ========================= */
   return (
     <div className={s.settings}>
-      <SettingsHeader onBack={() => setPage("")} />
+      <SettingsHeader onBack={() => setPage?.("")} />
 
       {notification && (
         <div className={`${s.notification} ${s[notification.type]}`}>
@@ -100,14 +125,13 @@ export default function Settings({ setPage }) {
           <div className={s.projectsList}>
             {projects.map((projectId) => {
               const meta = PROJECT_META[projectId];
+              const isActive = project === projectId;
 
               return (
                 <button
                   key={projectId}
                   onClick={() => handleProjectChange(projectId)}
-                  className={`${s.projectButton} ${
-                    project === projectId ? s.active : ""
-                  }`}
+                  className={`${s.projectButton} ${isActive ? s.active : ""}`}
                 >
                   <div className={s.projectTitle}>{meta.title}</div>
                   <div className={s.projectDesc}>{meta.description}</div>
