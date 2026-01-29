@@ -2,11 +2,13 @@ import { useMemo, useState } from "react";
 import { useProjectConfig } from "../../app/settings/useProjectConfig";
 
 import s from "./MobileSheet.module.scss";
-import { saveLeaksGeoJSON } from "../../services/saveLeaksGeoJSON";
 import { saveLeaksKML } from "../../services/saveLeaksKML";
 
-const NO_STATION_LABEL = "Не указано";
+const NO_LABEL = "Не указано";
 
+/* =========================
+   EXPORT HANDLER
+========================= */
 async function handleExport(leaks, saveFn) {
   try {
     if (!leaks.length) {
@@ -27,59 +29,61 @@ async function handleExport(leaks, saveFn) {
   }
 }
 
+/* =========================
+   COMPONENT
+========================= */
 export default function MobileSheet({
   open,
   leaks,
-  stations,
-  enabledStations,
-  onToggleStation,
+  locations,
+  locationLabel,
+  enabledLocations,
+  onToggleLocation,
   onClose,
   onSelect,
 }) {
   const projectConfig = useProjectConfig();
-
   const exportFormats = projectConfig.export ?? {};
 
   const [query, setQuery] = useState("");
 
-  const normalizedLeaks = useMemo(() => {
-    return leaks.map((leak) => ({
-      ...leak,
-      station: leak.station || NO_STATION_LABEL,
-      deposit: leak.deposit || NO_STATION_LABEL,
-      locality: leak.locality || NO_STATION_LABEL,
-    }));
-  }, [leaks]);
-
+  /* =========================
+     SEARCH FILTER
+  ========================= */
   const filteredLeaks = useMemo(() => {
-    if (!query) return normalizedLeaks;
+    if (!query) return leaks;
+
     const q = query.toLowerCase();
-    return normalizedLeaks.filter((l) =>
+    return leaks.filter((l) =>
       String(l.leak_id).toLowerCase().includes(q),
     );
-  }, [normalizedLeaks, query]);
+  }, [leaks, query]);
 
   return (
     <>
       {open && (
         <div className={s.overlay} onClick={onClose}>
           <div
-            className={`${s.sheet} ${open ? s.open : ""}`}
+            className={`${s.sheet} ${s.open}`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className={s.sheetHandle} />
 
-            {/* ===== СТАНЦИИ ===== */}
+            {/* ===== LOCATION FILTER ===== */}
             <div className={s.stationList}>
-              {stations.map((station) => {
-                const label = station || NO_STATION_LABEL;
+              <div className={s.stationTitle}>
+                Фильтр по: {locationLabel}
+              </div>
+
+              {locations.map((loc) => {
+                const label = loc || NO_LABEL;
 
                 return (
                   <label key={label} className={s.stationItem}>
                     <input
                       type="checkbox"
-                      checked={!!enabledStations[label]}
-                      onChange={() => onToggleStation(label)}
+                      checked={enabledLocations[label] ?? true}
+                      onChange={() => onToggleLocation(label)}
                     />
                     <span>{label}</span>
                   </label>
@@ -87,7 +91,7 @@ export default function MobileSheet({
               })}
             </div>
 
-            {/* ===== ПОИСК ===== */}
+            {/* ===== SEARCH ===== */}
             <div className={s.sheetSearch}>
               <input
                 type="search"
@@ -97,23 +101,26 @@ export default function MobileSheet({
               />
             </div>
 
-            {/* ===== КНОПКА ЭКСПОРТА ===== */}
+            {/* ===== EXPORT ===== */}
             <div className={s.sheetActions}>
               {exportFormats.kml && (
                 <button
                   className={`${s.exportBtn} ${s.exportKml}`}
                   onClick={() =>
                     handleExport(filteredLeaks, () =>
-                      saveLeaksKML(filteredLeaks, exportFormats.kml.handler),
+                      saveLeaksKML(
+                        filteredLeaks,
+                        exportFormats.kml.handler,
+                      ),
                     )
                   }
                 >
-                  {`Экспорт карты \n (KML)`}
+                  Экспорт карты (KML)
                 </button>
               )}
             </div>
 
-            {/* ===== СПИСОК ===== */}
+            {/* ===== LIST ===== */}
             <div className={s.sheetList}>
               {filteredLeaks.map((leak) => (
                 <div

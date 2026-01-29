@@ -35,7 +35,10 @@ export default function LeakCardCompact({ leak, onRemove, onOpenDetails }) {
         }`}
         style={{
           transform: `translateX(${swipeOffset}px)`,
-          transition: swipeOffset === 0 ? "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
+          transition:
+            swipeOffset === 0
+              ? "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)"
+              : "none",
         }}
         {...handlers}
       >
@@ -44,9 +47,7 @@ export default function LeakCardCompact({ leak, onRemove, onOpenDetails }) {
           <div className={s.date}>{leak.date}</div>
         </div>
 
-        <div className={s.main}>
-          КС: {leak.station} | Объект: {leak.object}
-        </div>
+        <div className={s.main}>Объект: {leak.object}</div>
 
         <div className={s.tech}>🔧 Компонент: {leak.component}</div>
 

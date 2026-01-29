@@ -1,5 +1,6 @@
-import { parseVoiceText } from "./voice/parseVoiceText";
+import { normalizeVoiceResult } from "./voice/normalizeVoiceResult";
 import { normalizeSynonyms } from "./voice/normalizeSynonyms";
+import { parseVoiceText } from "../voice/parseVoiceText";
 
 import { exportLeaksKML } from "./export/exportLeaksKML";
 import { exportLeaksGeoJSON } from "./export/exportLeaksGeoJSON";
@@ -22,11 +23,14 @@ import {
   description,
   solutions,
   recommendations,
+  connection_type,
+  installation_type,
+  actuator_type,
 } from "./data/dictionaries";
 export const VOICE_MIDSTREAM = {
   input: "rawVoiceText",
 
-  pipeline: [parseVoiceText, normalizeSynonyms],
+  pipeline: [parseVoiceText, normalizeVoiceResult, normalizeSynonyms],
 
   outputFields: [
     "field",
@@ -45,6 +49,9 @@ export const VOICE_MIDSTREAM = {
     "repair_recommendation",
     "materials_equipment",
     "note",
+    "actuator_type",
+    "connection_type",
+    "installation_type",
   ],
 };
 export const SEMANTIC_MIDSTREAM = {
@@ -52,6 +59,9 @@ export const SEMANTIC_MIDSTREAM = {
   leak_description: description,
   technological_solution: solutions,
   repair_recommendation: recommendations,
+  actuator_type: actuator_type,
+  installation_type: installation_type,
+  connection_type: connection_type,
 };
 export const SYSTEM_MIDSTREAM = {
   numeric: NUMBER_FIELDS,

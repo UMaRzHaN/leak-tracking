@@ -11,7 +11,7 @@
  */
 
 export const FIELDS = [
-  // Дата - только просмотр
+  // ===== ДАТА =====
   {
     key: "date",
     label: "Дата",
@@ -20,82 +20,114 @@ export const FIELDS = [
     viewOrder: 1,
   },
 
-  // Основные идентификаторы
+  // ===== ИДЕНТИФИКАТОРЫ =====
   {
     key: "leak_id",
     label: "Индивидуальный номер утечки",
     viewable: true,
     editable: true,
-    viewOrder: 7,
+    viewOrder: 2,
     editOrder: 1,
   },
   {
     key: "video_id",
-    label: "Видео",
+    label: "Индивидуальный номер видео",
     viewable: true,
     editable: true,
-    viewOrder: 8,
+    viewOrder: 3,
     editOrder: 2,
   },
 
-  // Месторасположение
+  // ===== МЕСТОПОЛОЖЕНИЕ =====
   {
     key: "district",
     label: "Район",
     viewable: true,
     editable: true,
-    viewOrder: 2,
-    editOrder: 6,
+    viewOrder: 4,
+    editOrder: 3,
   },
   {
     key: "locality",
     label: "Населенный пункт",
     viewable: true,
     editable: true,
-    viewOrder: 3,
-    editOrder: 7,
+    viewOrder: 5,
+    editOrder: 4,
   },
   {
     key: "address",
     label: "Адрес",
     viewable: true,
     editable: true,
-    viewOrder: 4,
-    editOrder: 8,
+    viewOrder: 6,
+    editOrder: 5,
   },
+
+  // ===== ОБЪЕКТ =====
   {
     key: "object",
     label: "Объект",
     viewable: true,
     editable: true,
-    viewOrder: 5,
-    editOrder: 9,
+    viewOrder: 7,
+    editOrder: 6,
   },
   {
     key: "component",
     label: "Компонент",
     viewable: true,
     editable: true,
-    viewOrder: 6,
+    viewOrder: 8,
+    editOrder: 7,
+  },
+
+  // ===== ТИПЫ =====
+  {
+    key: "actuator_type",
+    label: "Тип привода",
+    multiline: true,
+    viewable: true,
+    editable: true,
+    viewOrder: 9,
+    editOrder: 8,
+  },
+  {
+    key: "connection_type",
+    label: "Тип присоединения",
+    multiline: true,
+    viewable: true,
+    editable: true,
+    viewOrder: 10,
+    editOrder: 9,
+  },
+  {
+    key: "installation_type",
+    label: "Тип установки",
+    multiline: true,
+    viewable: true,
+    editable: true,
+    viewOrder: 11,
     editOrder: 10,
   },
 
-  // Описания и решения
+  // ===== КАТЕГОРИЯ =====
+  {
+    key: "category",
+    label: "Категория",
+    viewable: true,
+    editable: true,
+    viewOrder: 12,
+    editOrder: 11,
+  },
+
+  // ===== ОПИСАНИЕ =====
   {
     key: "leak_description",
     label: "Описание утечки",
     viewable: true,
     editable: true,
-    viewOrder: 9,
-    editOrder: 11,
-    multiline: true,
-  },
-  {
-    key: "leak_cause",
-    label: "Причина утечки",
-    viewable: true,
-    editable: true,
-    viewOrder: 10,
+    viewOrder: 13,
     editOrder: 12,
     multiline: true,
   },
@@ -104,7 +136,7 @@ export const FIELDS = [
     label: "Технологическое решение",
     viewable: true,
     editable: true,
-    viewOrder: 11,
+    viewOrder: 14,
     editOrder: 13,
     multiline: true,
   },
@@ -113,7 +145,7 @@ export const FIELDS = [
     label: "Решение / План устранения",
     viewable: true,
     editable: true,
-    viewOrder: 12,
+    viewOrder: 15,
     editOrder: 14,
     multiline: true,
   },
@@ -122,7 +154,7 @@ export const FIELDS = [
     label: "Материалы и оборудование",
     viewable: true,
     editable: true,
-    viewOrder: 13,
+    viewOrder: 16,
     editOrder: 15,
     multiline: true,
   },
@@ -131,85 +163,53 @@ export const FIELDS = [
     label: "Примечание",
     viewable: true,
     editable: true,
-    viewOrder: 14,
+    viewOrder: 17,
     editOrder: 16,
     multiline: true,
   },
 
-  // Технические параметры
+  // ===== ПАРАМЕТРЫ =====
   {
     key: "leak_speed",
     label: "Скорость утечки, л/мин",
-    viewable: true,
-    editable: true,
-    viewOrder: 15,
-    editOrder: 3,
-  },
-  {
-    key: "pressure",
-    label: "Давление, атм",
-    viewable: true,
-    editable: true,
-    viewOrder: 16,
-    editOrder: 5,
-  },
-  {
-    key: "temperature",
-    label: "Температура, °C",
-    viewable: true,
-    editable: true,
-    viewOrder: 17,
-    editOrder: 4,
-  },
-
-  // Координаты
-  {
-    key: "lat",
-    label: "Координата Х",
     viewable: true,
     editable: true,
     viewOrder: 18,
     editOrder: 17,
   },
   {
-    key: "lng",
-    label: "Координата Y",
+    key: "temperature",
+    label: "Температура, °C",
     viewable: true,
     editable: true,
     viewOrder: 19,
     editOrder: 18,
   },
   {
-    key: "actuator_type",
-    label: "Тип привода",
+    key: "pressure",
+    label: "Давление, атм",
     viewable: true,
     editable: true,
     viewOrder: 20,
     editOrder: 19,
   },
+
+  // ===== КООРДИНАТЫ =====
   {
-    key: "connection_type",
-    label: "Тип присоединения",
+    key: "lat",
+    label: "Координата Х",
     viewable: true,
     editable: true,
     viewOrder: 21,
     editOrder: 20,
   },
   {
-    key: "installation_type",
-    label: "Тип установки",
+    key: "lng",
+    label: "Координата Y",
     viewable: true,
     editable: true,
     viewOrder: 22,
     editOrder: 21,
-  },
-  {
-    key: "category",
-    label: "Категория",
-    viewOrder: 23,
-    editOrder: 22,
-    viewable: true,
-    editable: true,
   },
 ];
 

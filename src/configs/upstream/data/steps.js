@@ -42,6 +42,7 @@ export const STEPS = [
         key: "leak_id",
         label: "Бирка",
         required: true,
+        number: true,
       },
       {
         type: "autocomplete",

@@ -1,5 +1,6 @@
-import { parseVoiceText } from "./voice/parseVoiceText";
+import { parseVoiceText } from "../voice/parseVoiceText";
 import { normalizeSynonyms } from "./voice/normalizeSynonyms";
+import { normalizeVoiceResult } from "./voice/normalizeVoiceResult";
 
 import { exportLeaksKML } from "./export/exportLeaksKML";
 import { exportLeaksGeoJSON } from "./export/exportLeaksGeoJSON";
@@ -22,16 +23,23 @@ import {
   description,
   solutions,
   recommendations,
+  connection_type,
+  installation_type,
+  actuator_type,
+  categories,
+  addresses,
 } from "./data/dictionaries";
+
 export const VOICE_DOWNSTREAM = {
   input: "rawVoiceText",
 
-  pipeline: [parseVoiceText, normalizeSynonyms],
+  pipeline: [parseVoiceText, normalizeSynonyms, normalizeVoiceResult],
 
   outputFields: [
-    "field",
-    "station",
-    "location",
+    "district",
+    "locality",
+    "address",
+
     "object",
     "component",
     "leak_id",
@@ -45,6 +53,9 @@ export const VOICE_DOWNSTREAM = {
     "repair_recommendation",
     "materials_equipment",
     "note",
+    "actuator_type",
+    "connection_type",
+    "installation_type",
   ],
 };
 export const SEMANTIC_DOWNSTREAM = {
@@ -52,6 +63,11 @@ export const SEMANTIC_DOWNSTREAM = {
   leak_description: description,
   technological_solution: solutions,
   repair_recommendation: recommendations,
+  actuator_type: actuator_type,
+  installation_type: installation_type,
+  connection_type: connection_type,
+  category: categories,
+  address: addresses,
 };
 export const SYSTEM_DOWNSTREAM = {
   numeric: NUMBER_FIELDS,

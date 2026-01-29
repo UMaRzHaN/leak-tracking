@@ -1,7 +1,12 @@
 import { useEffect, useCallback } from "react";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
-import { PHOTOS_DIR, getProjectDataKey, getProjectDataFile, getProjectMobileDir } from "../../constants/storage.constants";
+import {
+  PHOTOS_DIR,
+  getProjectDataKey,
+  getProjectDataFile,
+  getProjectMobileDir,
+} from "../../constants/storage.constants";
 import { useProject } from "../settings/ProjectContext";
 
 export function useAppStorage(setData) {
@@ -10,19 +15,21 @@ export function useAppStorage(setData) {
   const loadWebProjectData = useCallback(() => {
     const storageKey = getProjectDataKey(project);
     const saved = localStorage.getItem(storageKey);
-    
+
     if (saved) {
       try {
         const projectData = JSON.parse(saved);
         setData(projectData);
-        console.log(`📁 [WEB] Загружены данные проекта "${project}": ${projectData.length} записей`);
+        alert(
+          `📁 [WEB] Загружены данные проекта "${project}": ${projectData.length} записей`,
+        );
       } catch (e) {
         console.error("Ошибка чтения localStorage", e);
         setData([]);
       }
     } else {
       setData([]);
-      console.log(`📁 [WEB] Проект "${project}" пока не содержит данных`);
+      alert(`📁 [WEB] Проект "${project}" пока не содержит данных`);
     }
   }, [project, setData]);
 
@@ -37,11 +44,13 @@ export function useAppStorage(setData) {
 
       const projectData = JSON.parse(result.data);
       setData(projectData);
-      console.log(`📱 [MOBILE] Загружены данные проекта "${project}": ${projectData.length} записей`);
+      alert(
+        `📱 [MOBILE] Загружены данные проекта "${project}": ${projectData.length} записей`,
+      );
     } catch (e) {
       // Файл не найден - это нормально для нового проекта
       setData([]);
-      console.log(`📱 [MOBILE] Проект "${project}" пока не содержит данных`);
+      alert(`📱 [MOBILE] Проект "${project}" пока не содержит данных`);
     }
   }, [project, setData]);
 
@@ -100,7 +109,7 @@ export function useAppStorage(setData) {
     const storageKey = getProjectDataKey(project);
     localStorage.removeItem(storageKey);
     setData([]);
-    console.log(`🗑 [WEB] Очищены данные проекта "${project}"`);
+    alert(`🗑 [WEB] Очищены данные проекта "${project}"`);
   };
 
   const clearMobileDatabase = async () => {
@@ -111,7 +120,7 @@ export function useAppStorage(setData) {
         directory: Directory.Documents,
       });
       setData([]);
-      console.log(`🗑 [MOBILE] Очищены данные проекта "${project}"`);
+      alert(`🗑 [MOBILE] Очищены данные проекта "${project}"`);
     } catch (e) {
       console.warn("Error clearing mobile database:", e);
     }

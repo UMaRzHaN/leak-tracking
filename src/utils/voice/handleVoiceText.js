@@ -1,18 +1,13 @@
 import { normalizeEquipment } from "../normalize/normalizeEquipment";
 import { normalizeNumberWords } from "../normalize/normalizeNumberWords";
 
-export const handleVoiceText = (
-  text,
-  pipeline,
-  setVoiceData,
-  setPage,
-) => {
+export const handleVoiceText = (text, pipeline, setVoiceData, setPage) => {
   if (!pipeline || pipeline.length < 2) return;
 
-  const [parseVoiceText, normalizeSynonyms] = pipeline;
+  const [parseVoiceText, normalizeVoiceResult, normalizeSynonyms] = pipeline;
 
   const normalizedText = normalizeNumberWords(text);
-  const parsed = parseVoiceText(normalizedText);
+  const parsed = normalizeVoiceResult(parseVoiceText(normalizedText));
   const data = normalizeSynonyms(parsed);
 
   if (data.component) {

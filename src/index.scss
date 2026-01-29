@@ -5,8 +5,8 @@
   font-family: system-ui, Arial, sans-serif;
 }
 :root {
-  --app-header: 67.2px;
-  --app-footer: 64px;
+  --app-header: 66px;
+  --app-footer: 66px;
 }
 body {
   margin: 0;
@@ -40,7 +40,6 @@ body {
   flex-direction: column;
 }
 .pages {
-  height: 100vh;
   display: flex;
   flex-direction: column;
 }

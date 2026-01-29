@@ -13,12 +13,8 @@ export function useVoiceControl(setPage) {
 
   const onSpeechResult = useCallback(
     (text) => {
-      handleVoiceText(
-        text,
-        projectConfig?.voice?.pipeline,
-        setVoiceData,
-        setPage,
-      );
+      const pipeline = projectConfig?.voice?.pipeline ?? [];
+      handleVoiceText(text, pipeline, setVoiceData, setPage);
     },
     [projectConfig, setPage],
   );

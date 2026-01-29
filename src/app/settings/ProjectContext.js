@@ -1,4 +1,4 @@
-import React, {
+import {
   createContext,
   useContext,
   useState,
@@ -34,13 +34,11 @@ export function ProjectProvider({ children }) {
 
   const value = useMemo(
     () => ({ project, changeProject }),
-    [project, changeProject]
+    [project, changeProject],
   );
 
   return (
-    <ProjectContext.Provider value={value}>
-      {children}
-    </ProjectContext.Provider>
+    <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>
   );
 }
 

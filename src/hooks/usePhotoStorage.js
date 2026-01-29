@@ -1,8 +1,34 @@
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { useIndexedDB } from "./useIndexedDB";
+import { useProjectConfig } from "../app/settings/useProjectConfig";
 
-const PHOTO_FOLDER = "LeakReports/photos";
+/* ================= HELPERS ================= */
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        reject(new Error("FileReader result is not string"));
+        return;
+      }
+      resolve(result.split(",")[1]);
+    };
+
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function fetchWebPathAsBase64(webPath) {
+  const blob = await fetch(webPath).then((r) => r.blob());
+  return fileToBase64(blob);
+}
+
+/* ================= HOOK ================= */
 
 export function usePhotoStorage() {
   const {
@@ -11,33 +37,22 @@ export function usePhotoStorage() {
     getPhoto: getFromIndexedDB,
     deletePhoto: deleteFromIndexedDB,
   } = useIndexedDB();
-  /* ================= HELPERS ================= */
-  function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result;
-        if (typeof result !== "string") {
-          reject(new Error("FileReader result is not string"));
-          return;
-        }
-        resolve(result.split(",")[1]);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-  async function fetchWebPathAsBase64(webPath) {
-    const blob = await fetch(webPath).then((r) => r.blob());
-    return fileToBase64(blob);
-  }
+
+  const projectConfig = useProjectConfig();
+  const projectFolder = projectConfig?.folder ?? "Common";
+
+  const isNative = Capacitor.isNativePlatform();
+
+  // 📁 итоговая папка проекта
+  const PHOTO_FOLDER = `LeakReports/${projectFolder}/photos`;
+
+  /* ================= SAVE ================= */
+
   async function savePhoto(rawPhoto, leakId) {
     if (!rawPhoto || !leakId) return null;
 
-    /* =======================
-       🌐 WEB
-    ======================= */
-    if (!Capacitor.isNativePlatform()) {
+    /* 🌐 WEB */
+    if (!isNative) {
       if (!ready) {
         console.warn("IndexedDB not ready, skip savePhoto");
         return null;
@@ -59,16 +74,14 @@ export function usePhotoStorage() {
       return `idb://${photoId}`;
     }
 
-    /* =======================
-       📱 MOBILE (Capacitor)
-    ======================= */
+    /* 📱 MOBILE */
     await Filesystem.mkdir({
       path: PHOTO_FOLDER,
       directory: Directory.Documents,
       recursive: true,
     }).catch(() => {});
 
-    const fileName = `photo_${leakId}.jpg`;
+    const fileName = `photo_${leakId}_${Date.now()}.jpg`;
     const targetPath = `${PHOTO_FOLDER}/${fileName}`;
 
     if (rawPhoto.webPath) {
@@ -88,6 +101,8 @@ export function usePhotoStorage() {
     return null;
   }
 
+  /* ================= DELETE ================= */
+
   async function deletePhoto(path) {
     if (!path) return;
 
@@ -104,7 +119,7 @@ export function usePhotoStorage() {
     }
 
     // Mobile FS
-    if (Capacitor.isNativePlatform()) {
+    if (isNative && path.startsWith("Documents/")) {
       try {
         await Filesystem.deleteFile({
           directory: Directory.Documents,
@@ -116,14 +131,17 @@ export function usePhotoStorage() {
     }
   }
 
-  // ⚠️ ВАЖНО: не отдаём getFromIndexedDB напрямую
+  /* ================= GET ================= */
+
   async function getPhoto(id) {
     if (!ready || !id) return null;
     return getFromIndexedDB(id);
   }
 
   return {
-    ready, // 👈 даём наружу
+    ready,
+    isNative,
+    projectFolder, // 👈 иногда полезно в UI / логах
     savePhoto,
     deletePhoto,
     getPhoto,

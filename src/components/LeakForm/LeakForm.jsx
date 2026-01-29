@@ -170,7 +170,7 @@ export default function LeakForm({
 
   return (
     <>
-      <div className={s.card}>
+      <div className={`${s.card} content`}>
         {/* ===== HEADER ===== */}
         <AddLeakHeader
           setPage={setPage}
