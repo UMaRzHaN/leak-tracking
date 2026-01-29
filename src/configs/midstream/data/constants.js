@@ -31,6 +31,7 @@ export const SEARCH_FIELDS = [
   { key: "date", label: "Дата обнаружения" },
   { key: "leak_id", label: "Индивидуальный номер утечки (бирка)" },
   { key: "video_id", label: "Индивидуальный номер видео" },
+  { key: "field", label: "УМГ" },
   { key: "station", label: "Компрессорная станция" },
   { key: "location", label: "Локация" },
   { key: "object", label: "Объект" },

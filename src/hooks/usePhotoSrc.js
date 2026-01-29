@@ -5,7 +5,7 @@ import { useIndexedDB } from "./useIndexedDB";
 
 export function usePhotoSrc(path, version = 0) {
   const [src, setSrc] = useState(null);
-  const { getPhoto } = useIndexedDB();
+  const { ready, getPhoto } = useIndexedDB();
 
   useEffect(() => {
     let alive = true;
@@ -23,53 +23,56 @@ export function usePhotoSrc(path, version = 0) {
       return `${url}?v=${version}`;
     };
 
-    // 🌐 WEB
+    /* =======================
+       🌐 WEB
+    ======================= */
     if (!Capacitor.isNativePlatform()) {
-      // Если это ссылка на IndexedDB
+      // IndexedDB
       if (path.startsWith("idb://")) {
+        if (!ready) {
+          setSrc(null);
+          return;
+        }
+
         const photoId = path.replace("idb://", "");
+
         getPhoto(photoId).then((photoData) => {
           if (!alive || currentPath !== path) return;
-          if (photoData) {
-            setSrc(withVersion(photoData));
-          } else {
-            setSrc(null);
-          }
+          setSrc(photoData ? withVersion(photoData) : null);
         });
+
         return;
       }
-      
-      // Если это обычная data: URI
+
+      // data: URI
       if (path.startsWith("data:")) {
         setSrc(withVersion(path));
         return;
       }
-      
-      // Неверный путь для веб версии
+
+      // invalid WEB path
       if (path.startsWith("Documents/")) {
         console.warn("WEB: invalid photo path", path);
         setSrc(null);
         return;
       }
+
       setSrc(withVersion(path));
       return;
     }
 
-    // 📱 NATIVE
+    /* =======================
+       📱 NATIVE
+    ======================= */
     getPhotoSrc(path).then((result) => {
       if (!alive || currentPath !== path) return;
-
-      if (result) {
-        setSrc(withVersion(result));
-      } else {
-        setSrc(null);
-      }
+      setSrc(result ? withVersion(result) : null);
     });
 
     return () => {
       alive = false;
     };
-  }, [path, version, getPhoto]);
+  }, [path, version, ready, getPhoto]);
 
   return src;
 }

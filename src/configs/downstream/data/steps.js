@@ -1,5 +1,5 @@
 import {
-  locations,
+  addresses,
   objects,
   components,
   description,
@@ -21,9 +21,9 @@ export const STEPS = [
       { type: "input", key: "locality", label: "Населенный пункт" },
       {
         type: "autocomplete",
-        key: "location",
-        label: "Локация",
-        options: Object.values(locations).flat(),
+        key: "address",
+        label: "Адрес",
+        options: Object.values(addresses).flat(),
       },
       {
         type: "autocomplete",

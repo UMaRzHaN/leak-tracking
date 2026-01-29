@@ -3,7 +3,7 @@ import LeaksMap from "../components/LeaksMap/LeaksMap";
 import MobileSheet from "../components/MobileSheet/MobileSheet";
 import { getDistanceMeters } from "../utils/calculations/getDistanceMeters";
 
-const NO_STATION_LABEL = "Без станции";
+const NO_STATION_LABEL = "Не указано";
 
 export default function MapPage({ leaks, coords }) {
   const mapApiRef = useRef(null);

@@ -5,7 +5,7 @@ import s from "./MobileSheet.module.scss";
 import { saveLeaksGeoJSON } from "../../services/saveLeaksGeoJSON";
 import { saveLeaksKML } from "../../services/saveLeaksKML";
 
-const NO_STATION_LABEL = "Без станции";
+const NO_STATION_LABEL = "Не указано";
 
 async function handleExport(leaks, saveFn) {
   try {
@@ -46,6 +46,8 @@ export default function MobileSheet({
     return leaks.map((leak) => ({
       ...leak,
       station: leak.station || NO_STATION_LABEL,
+      deposit: leak.deposit || NO_STATION_LABEL,
+      locality: leak.locality || NO_STATION_LABEL,
     }));
   }, [leaks]);
 
@@ -97,31 +99,12 @@ export default function MobileSheet({
 
             {/* ===== КНОПКА ЭКСПОРТА ===== */}
             <div className={s.sheetActions}>
-              {exportFormats.geojson && (
-                <button
-                  className={`${s.exportBtn} ${s.exportGeo}`}
-                  onClick={() =>
-                    handleExport(filteredLeaks, () =>
-                      saveLeaksGeoJSON(
-                        filteredLeaks,
-                        exportFormats.geojson.handler,
-                      ),
-                    )
-                  }
-                >
-                  {`Экспорт карты \n (GeoJSON)`}
-                </button>
-              )}
-
               {exportFormats.kml && (
                 <button
                   className={`${s.exportBtn} ${s.exportKml}`}
                   onClick={() =>
                     handleExport(filteredLeaks, () =>
-                      saveLeaksKML(
-                        filteredLeaks,
-                        exportFormats.kml.handler,
-                      ),
+                      saveLeaksKML(filteredLeaks, exportFormats.kml.handler),
                     )
                   }
                 >

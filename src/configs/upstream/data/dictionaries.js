@@ -27,10 +27,14 @@ export const installation_type = [
   "Подземный(закрытое исполнение)",
 ];
 export const connection_type = [
-  "Фланцевое",
-  "Внутреннее резьбовое",
-  "Внешнее резьбовое",
-  "Приварное",
+  "Фланцевое соединение",
+  "Фланцевое соединение с кольцевым уплотнением",
+  "Фланцевое соединение с паранитовым уплотнением",
+  "Муфтовая внутренняя резьба",
+  "Нипельная внешняя резьба",
+  "Сварное соединение",
+  "Болтовое соединение",
+  "Штуцерно-нипельное соединение",
 ];
 
 const line_types = [
@@ -123,7 +127,7 @@ export const recommendations = [
   "Демонтаж",
   "Установка",
 ];
-export const objects = [locations, line_types, valve_types];
+export const objects = [...locations, ...line_types, ...valve_types];
 export const components = [
   ...line_types,
   ...valve_types,

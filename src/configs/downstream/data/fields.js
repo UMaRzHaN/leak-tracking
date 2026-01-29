@@ -56,8 +56,8 @@ export const FIELDS = [
     editOrder: 7,
   },
   {
-    key: "location",
-    label: "Локация",
+    key: "address",
+    label: "Адрес",
     viewable: true,
     editable: true,
     viewOrder: 4,

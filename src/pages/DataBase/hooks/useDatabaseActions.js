@@ -9,7 +9,7 @@ import { useIndexedDB } from "../../../hooks/useIndexedDB";
 ========================= */
 export function useDatabaseActions(data, setData) {
   const { project } = useProject();
-  const { deletePhoto: deleteFromIndexedDB } = useIndexedDB();
+  const { ready, deletePhoto: deleteFromIndexedDB } = useIndexedDB();
 
   /* =========================
      HELPERS
@@ -20,15 +20,18 @@ export function useDatabaseActions(data, setData) {
     // IndexedDB
     if (photo.startsWith("idb://")) {
       const photoId = photo.replace("idb://", "");
+
+      if (!ready) {
+        console.warn("IndexedDB not ready, skip photo delete:", photoId);
+        return;
+      }
+
       await deleteFromIndexedDB(photoId);
       return;
     }
 
     // Mobile FS
-    if (
-      Capacitor.isNativePlatform() &&
-      photo.startsWith("Documents/")
-    ) {
+    if (Capacitor.isNativePlatform() && photo.startsWith("Documents/")) {
       await deletePhotoFromFS(photo);
     }
   };
@@ -70,10 +73,7 @@ export function useDatabaseActions(data, setData) {
         ...r,
         ...updatedLeak,
         // 🔒 защита от потери фото
-        photo:
-          updatedLeak.photo !== undefined
-            ? updatedLeak.photo
-            : r.photo,
+        photo: updatedLeak.photo !== undefined ? updatedLeak.photo : r.photo,
       };
     });
 

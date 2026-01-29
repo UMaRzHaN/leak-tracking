@@ -20,7 +20,7 @@ export function exportLeaksKML(leaks) {
             <description>
               <![CDATA[
                 <b>Участок:</b> ${field}<br/>
-                <b>Станция:</b> ${l.station ?? "Без станции"}
+                <b>Месторождение:</b> ${l.deposit ?? "Не указано"}
                 <b>Скорость:</b> ${l.leak_speed ?? "Без скорости"}
               ]]>
             </description>

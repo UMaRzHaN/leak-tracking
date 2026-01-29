@@ -7,15 +7,15 @@ export const GAS_TYPES = {
 };
 
 export const EQUIPMENT_TYPES = {
-  gfm: { label: "GFM", uncertainty: 0.05 },
-  bag: { label: "Розовый мешок", uncertainty: 0.1 },
-  flir: { label: "Камера FLIR", uncertainty: 0.3 },
-  drone: { label: "Дрон", uncertainty: 0.15 },
+  "GFM": { label: "GFM", uncertainty: 0.05 },
+  "Розовый мешок": { label: "Розовый мешок", uncertainty: 0.1 },
+  "Камера FLIR": { label: "Камера FLIR", uncertainty: 0.3 },
+  "Дрон": { label: "Дрон", uncertainty: 0.15 },
 };
 
 export let gasType = "methane",
-  equipmentType = "gfm",
-  uncertainty = EQUIPMENT_TYPES.gfm.uncertainty,
+  equipmentType = "GFM",
+  uncertainty = EQUIPMENT_TYPES.GFM.uncertainty,
   density = GAS_TYPES.methane.density,
   percentage_gas_to_flare = 1,
   percentage_gas_to_utilization = 100 - percentage_gas_to_flare,

@@ -5,16 +5,15 @@ import { usePhotoSrc } from "./usePhotoSrc";
 
 export function useEditablePhoto({ initialPath, leakId, version }) {
   const { isNative, takePhoto, pickFromBrowser } = useCamera();
-  const { savePhoto: saveToFS } = usePhotoStorage();
+  const { savePhoto: saveToFS, ready: storageReady } = usePhotoStorage();
 
-  // src сохранённого фото (из БД)
+  // src сохранённого фото (из БД / FS)
   const persistedSrc = usePhotoSrc(initialPath, version);
 
   const persistedPathRef = useRef(initialPath);
   const activeLeakIdRef = useRef(leakId);
 
-  // черновик фото
-  // { raw, src }
+  // черновик фото { raw, src }
   const [draftPhoto, setDraftPhoto] = useState(null);
 
   /* ===== reset on leak change ===== */
@@ -30,11 +29,11 @@ export function useEditablePhoto({ initialPath, leakId, version }) {
       let result;
 
       if (isNative) {
-        result = await takePhoto(); // { raw, src }
+        result = await takePhoto();
       } else {
         const file = e?.target?.files?.[0];
         if (!file) return;
-        result = await pickFromBrowser(file); // { raw, src }
+        result = await pickFromBrowser(file);
       }
 
       if (!result?.raw || !result?.src) return;
@@ -46,7 +45,14 @@ export function useEditablePhoto({ initialPath, leakId, version }) {
 
   /* ===== save ===== */
   const savePhoto = useCallback(async () => {
+    // нет черновика → ничего не меняем
     if (!draftPhoto?.raw || !leakId) {
+      return persistedPathRef.current;
+    }
+
+    // хранилище не готово → честно не сохраняем
+    if (!storageReady) {
+      console.warn("Photo storage not ready, save skipped");
       return persistedPathRef.current;
     }
 
@@ -66,7 +72,7 @@ export function useEditablePhoto({ initialPath, leakId, version }) {
     setDraftPhoto(null);
 
     return newPath;
-  }, [draftPhoto, leakId, saveToFS]);
+  }, [draftPhoto, leakId, saveToFS, storageReady]);
 
   /* ===== cancel ===== */
   const resetPhoto = useCallback(() => {
@@ -81,5 +87,6 @@ export function useEditablePhoto({ initialPath, leakId, version }) {
     savePhoto,
     resetPhoto,
     isNative,
+    storageReady, // 👈 можно использовать в UI
   };
 }

@@ -11,9 +11,8 @@ export default function Settings({ setPage }) {
   const { project, changeProject } = useProject();
 
   const activeProject = PROJECT_META[project];
-  const defaultVars = activeProject?.vars ?? {};
 
-  const { vars, setVars } = useProjectVars(project, defaultVars);
+  const { vars, setVars } = useProjectVars(project);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [notification, setNotification] = useState(null);
