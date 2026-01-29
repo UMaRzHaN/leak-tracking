@@ -1,8 +1,6 @@
-import { PROJECT_LOCATION_CONFIG } from "../../projectLocation.config";
+import { PROJECT_LOCATION_CONFIG } from "../../configs/projectLocation.config";
 
-const PROJECT = "midstream";
-
-export function normalizeVoiceResult(raw) {
+export function normalizeVoiceResult(raw, PROJECT) {
   if (!raw) return {};
 
   const config = PROJECT_LOCATION_CONFIG[PROJECT];

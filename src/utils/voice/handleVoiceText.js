@@ -1,14 +1,21 @@
 import { normalizeEquipment } from "../normalize/normalizeEquipment";
 import { normalizeNumberWords } from "../normalize/normalizeNumberWords";
+import { normalizeVoiceResult } from "./normalizeVoiceResult";
+import { normalizeSynonyms } from "./normalizeSynonyms";
+import { parseVoiceText } from "./parseVoiceText";
 
-export const handleVoiceText = (text, pipeline, setVoiceData, setPage) => {
-  if (!pipeline || pipeline.length < 2) return;
-
-  const [parseVoiceText, normalizeVoiceResult, normalizeSynonyms] = pipeline;
-
+export const handleVoiceText = (
+  arr,
+  text,
+  setVoiceData,
+  setPage,
+  project,
+) => {
   const normalizedText = normalizeNumberWords(text);
-  const parsed = normalizeVoiceResult(parseVoiceText(normalizedText));
-  const data = normalizeSynonyms(parsed);
+  const parsed = parseVoiceText(normalizedText);
+  const normalizedresult = normalizeVoiceResult(parsed, project);
+
+  const data = normalizedresult || normalizeSynonyms(normalizedresult, arr);
 
   if (data.component) {
     const r = normalizeEquipment(data.component);

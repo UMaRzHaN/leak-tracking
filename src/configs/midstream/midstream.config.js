@@ -1,7 +1,3 @@
-import { normalizeVoiceResult } from "./voice/normalizeVoiceResult";
-import { normalizeSynonyms } from "./voice/normalizeSynonyms";
-import { parseVoiceText } from "../voice/parseVoiceText";
-
 import { exportLeaksKML } from "./export/exportLeaksKML";
 import { exportLeaksGeoJSON } from "./export/exportLeaksGeoJSON";
 import { FIELDS } from "./data/fields";
@@ -10,11 +6,8 @@ import {
   headers as EXCEL_HEADERS,
   keysOrder as EXCEL_KEYS_ORDER,
 } from "./export/excelImportData";
-import {
-  NUMBER_FIELDS,
-  COPYABLE_FIELDS,
-  SEARCH_FIELDS,
-} from "./data/constants";
+import { COPYABLE_FIELDS, SEARCH_FIELDS } from "./data/constants";
+import { NUMBER_FIELDS } from "../data/constants";
 
 import { STEPS } from "./data/steps";
 
@@ -26,11 +19,9 @@ import {
   connection_type,
   installation_type,
   actuator_type,
-} from "./data/dictionaries";
+} from "../../data/dictionaries";
 export const VOICE_MIDSTREAM = {
   input: "rawVoiceText",
-
-  pipeline: [parseVoiceText, normalizeVoiceResult, normalizeSynonyms],
 
   outputFields: [
     "field",
@@ -49,6 +40,15 @@ export const VOICE_MIDSTREAM = {
     "repair_recommendation",
     "materials_equipment",
     "note",
+    "actuator_type",
+    "connection_type",
+    "installation_type",
+  ],
+  synonymsFields: [
+    "leak_cause",
+    "repair_recommendation",
+    "leak_description",
+    "component",
     "actuator_type",
     "connection_type",
     "installation_type",

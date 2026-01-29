@@ -1,7 +1,3 @@
-import { parseVoiceText } from "../voice/parseVoiceText";
-import { normalizeSynonyms } from "./voice/normalizeSynonyms";
-import { normalizeVoiceResult } from "./voice/normalizeVoiceResult";
-
 import { exportLeaksKML } from "./export/exportLeaksKML";
 import { exportLeaksGeoJSON } from "./export/exportLeaksGeoJSON";
 import { FIELDS } from "./data/fields";
@@ -10,11 +6,8 @@ import {
   headers as EXCEL_HEADERS,
   keysOrder as EXCEL_KEYS_ORDER,
 } from "./export/excelImportData";
-import {
-  NUMBER_FIELDS,
-  COPYABLE_FIELDS,
-  SEARCH_FIELDS,
-} from "./data/constants";
+import { COPYABLE_FIELDS, SEARCH_FIELDS } from "./data/constants";
+import { NUMBER_FIELDS } from "../data/constants";
 
 import { STEPS } from "./data/steps";
 
@@ -26,14 +19,12 @@ import {
   connection_type,
   installation_type,
   actuator_type,
-  categories,
+  categories_down,
   addresses,
-} from "./data/dictionaries";
+} from "../../data/dictionaries";
 
 export const VOICE_DOWNSTREAM = {
   input: "rawVoiceText",
-
-  pipeline: [parseVoiceText, normalizeSynonyms, normalizeVoiceResult],
 
   outputFields: [
     "district",
@@ -57,6 +48,14 @@ export const VOICE_DOWNSTREAM = {
     "connection_type",
     "installation_type",
   ],
+  synonymsFields: [
+    "repair_recommendation",
+    "leak_description",
+    "component",
+    "actuator_type",
+    "connection_type",
+    "installation_type",
+  ],
 };
 export const SEMANTIC_DOWNSTREAM = {
   leak_cause: cause,
@@ -66,7 +65,7 @@ export const SEMANTIC_DOWNSTREAM = {
   actuator_type: actuator_type,
   installation_type: installation_type,
   connection_type: connection_type,
-  category: categories,
+  category: categories_down,
   address: addresses,
 };
 export const SYSTEM_DOWNSTREAM = {

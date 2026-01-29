@@ -1,13 +1,3 @@
-export const REQUIRED_FIELDS = ["leak_id", "video_id", "leak_speed"];
-
-export const NUMBER_FIELDS = [
-  "leak_id",
-  "video_id",
-  "leak_speed",
-  "temperature",
-  "pressure",
-];
-
 export const COPYABLE_FIELDS = [
   "subdivision",
   "deposit",

@@ -1,16 +1,9 @@
-import { SYNONYMS } from "../../../utils/voice/synonyms";
+import { SYNONYMS } from "./synonyms";
 
-export function normalizeSynonyms(data) {
+export function normalizeSynonyms(data, list) {
   const result = { ...data };
 
-  [
-    "repair_recommendation",
-    "leak_description",
-    "component",
-    "actuator_type",
-    "connection_type",
-    "installation_type",
-  ].forEach((field) => {
+  list.forEach((field) => {
     if (!result[field]) return;
 
     const map = SYNONYMS[field];

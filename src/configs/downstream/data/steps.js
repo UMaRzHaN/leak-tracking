@@ -10,8 +10,8 @@ import {
   actuator_type,
   connection_type,
   installation_type,
-  categories,
-} from "./dictionaries";
+  categories_down,
+} from "../../../data/dictionaries";
 
 export const STEPS = [
   {
@@ -35,7 +35,7 @@ export const STEPS = [
         type: "autocomplete",
         key: "category",
         label: "Категория",
-        options: Object.values(categories).flat(),
+        options: Object.values(categories_down).flat(),
       },
       {
         type: "input",

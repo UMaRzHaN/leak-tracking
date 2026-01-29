@@ -1,7 +1,3 @@
-import { parseVoiceText } from "../voice/parseVoiceText";
-import { normalizeSynonyms } from "./voice/normalizeSynonyms";
-import { normalizeVoiceResult } from "./voice/normalizeVoiceResult";
-
 import { exportLeaksKML } from "./export/exportLeaksKML";
 import { exportLeaksGeoJSON } from "./export/exportLeaksGeoJSON";
 
@@ -11,11 +7,8 @@ import {
   headers as EXCEL_HEADERS,
   keysOrder as EXCEL_KEYS_ORDER,
 } from "./export/excelImportData";
-import {
-  NUMBER_FIELDS,
-  COPYABLE_FIELDS,
-  SEARCH_FIELDS,
-} from "./data/constants";
+import { COPYABLE_FIELDS, SEARCH_FIELDS } from "./data/constants";
+import { NUMBER_FIELDS } from "../data/constants";
 
 import { STEPS } from "./data/steps";
 
@@ -27,12 +20,10 @@ import {
   connection_type,
   installation_type,
   actuator_type,
-  categories,
-} from "./data/dictionaries";
+  categories_up,
+} from "../../data/dictionaries";
 export const VOICE_UPSTREAM = {
   input: "rawVoiceText",
-  pipeline: [parseVoiceText, normalizeSynonyms, normalizeVoiceResult],
-
   outputFields: [
     "field",
     "station",
@@ -54,6 +45,14 @@ export const VOICE_UPSTREAM = {
     "connection_type",
     "installation_type",
   ],
+  synonymsFields: [
+    "component",
+    "actuator_type",
+    "connection_type",
+    "installation_type",
+    "leak_description",
+    "repair_recommendation",
+  ],
 };
 export const SEMANTIC_UPSTREAM = {
   leak_cause: cause,
@@ -63,7 +62,7 @@ export const SEMANTIC_UPSTREAM = {
   actuator_type: actuator_type,
   installation_type: installation_type,
   connection_type: connection_type,
-  category: categories,
+  category: categories_up,
 };
 export const SYSTEM_UPSTREAM = {
   numeric: NUMBER_FIELDS,

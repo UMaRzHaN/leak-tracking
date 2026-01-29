@@ -10,7 +10,7 @@ import {
   actuator_type,
   connection_type,
   installation_type,
-} from "./dictionaries";
+} from "../../../data/dictionaries";
 
 export const STEPS = [
   {
