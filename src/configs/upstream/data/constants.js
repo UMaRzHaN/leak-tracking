@@ -1,22 +1,3 @@
-export const COPYABLE_FIELDS = [
-  "subdivision",
-  "deposit",
-  "location",
-  "object",
-  "component",
-  "pressure",
-  "temperature",
-  "leak_description",
-  "leak_cause",
-  "technological_solution",
-  "repair_recommendation",
-  "materials_equipment",
-  "note",
-  "actuator_type",
-  "connection_type",
-  "installation_type",
-  "category",
-];
 export const SEARCH_FIELDS = [
   { key: "all", label: "По всем полям" },
   { key: "date", label: "Дата обнаружения" },

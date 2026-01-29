@@ -5,8 +5,6 @@
  * - label: название поля
  * - viewable: видимо ли в режиме просмотра
  * - editable: редактируемо ли в режиме редактирования
- * - viewOrder: порядок отображения при просмотре (числа от 1+)
- * - editOrder: порядок отображения при редактировании (числа от 1+)
  * - multiline: многострочное текстовое поле (опционально)
  */
 
@@ -17,7 +15,6 @@ export const FIELDS = [
     label: "Дата",
     viewable: true,
     editable: false,
-    viewOrder: 1,
   },
 
   // ===== ИДЕНТИФИКАТОРЫ =====
@@ -26,16 +23,14 @@ export const FIELDS = [
     label: "Индивидуальный номер утечки",
     viewable: true,
     editable: true,
-    viewOrder: 2,
-    editOrder: 1,
+    numeric: true,
   },
   {
     key: "video_id",
     label: "Индивидуальный номер видео",
     viewable: true,
     editable: true,
-    viewOrder: 3,
-    editOrder: 2,
+    numeric: true,
   },
 
   // ===== МЕСТОПОЛОЖЕНИЕ =====
@@ -44,24 +39,21 @@ export const FIELDS = [
     label: "Район",
     viewable: true,
     editable: true,
-    viewOrder: 4,
-    editOrder: 3,
+    copyable: true,
   },
   {
     key: "locality",
     label: "Населенный пункт",
     viewable: true,
     editable: true,
-    viewOrder: 5,
-    editOrder: 4,
+    copyable: true,
   },
   {
     key: "address",
     label: "Адрес",
     viewable: true,
     editable: true,
-    viewOrder: 6,
-    editOrder: 5,
+    copyable: true,
   },
 
   // ===== ОБЪЕКТ =====
@@ -70,16 +62,14 @@ export const FIELDS = [
     label: "Объект",
     viewable: true,
     editable: true,
-    viewOrder: 7,
-    editOrder: 6,
+    copyable: true,
   },
   {
     key: "component",
     label: "Компонент",
     viewable: true,
     editable: true,
-    viewOrder: 8,
-    editOrder: 7,
+    copyable: true,
   },
 
   // ===== ТИПЫ =====
@@ -89,8 +79,7 @@ export const FIELDS = [
     multiline: true,
     viewable: true,
     editable: true,
-    viewOrder: 9,
-    editOrder: 8,
+    copyable: true,
   },
   {
     key: "connection_type",
@@ -98,8 +87,7 @@ export const FIELDS = [
     multiline: true,
     viewable: true,
     editable: true,
-    viewOrder: 10,
-    editOrder: 9,
+    copyable: true,
   },
   {
     key: "installation_type",
@@ -107,8 +95,7 @@ export const FIELDS = [
     multiline: true,
     viewable: true,
     editable: true,
-    viewOrder: 11,
-    editOrder: 10,
+    copyable: true,
   },
 
   // ===== КАТЕГОРИЯ =====
@@ -117,8 +104,7 @@ export const FIELDS = [
     label: "Категория",
     viewable: true,
     editable: true,
-    viewOrder: 12,
-    editOrder: 11,
+    copyable: true,
   },
 
   // ===== ОПИСАНИЕ =====
@@ -127,8 +113,8 @@ export const FIELDS = [
     label: "Описание утечки",
     viewable: true,
     editable: true,
-    viewOrder: 13,
-    editOrder: 12,
+    copyable: true,
+
     multiline: true,
   },
   {
@@ -136,36 +122,36 @@ export const FIELDS = [
     label: "Технологическое решение",
     viewable: true,
     editable: true,
-    viewOrder: 14,
-    editOrder: 13,
+
     multiline: true,
+    copyable: true,
   },
   {
     key: "repair_recommendation",
     label: "Решение / План устранения",
     viewable: true,
     editable: true,
-    viewOrder: 15,
-    editOrder: 14,
+
     multiline: true,
+    copyable: true,
   },
   {
     key: "materials_equipment",
     label: "Материалы и оборудование",
     viewable: true,
     editable: true,
-    viewOrder: 16,
-    editOrder: 15,
+
     multiline: true,
+    copyable: true,
   },
   {
     key: "note",
     label: "Примечание",
     viewable: true,
     editable: true,
-    viewOrder: 17,
-    editOrder: 16,
+
     multiline: true,
+    copyable: true,
   },
 
   // ===== ПАРАМЕТРЫ =====
@@ -174,24 +160,27 @@ export const FIELDS = [
     label: "Скорость утечки, л/мин",
     viewable: true,
     editable: true,
-    viewOrder: 18,
-    editOrder: 17,
+
+    numeric: true,
   },
   {
     key: "temperature",
     label: "Температура, °C",
     viewable: true,
     editable: true,
-    viewOrder: 19,
-    editOrder: 18,
+
+    numeric: true,
+    copyable: true,
   },
   {
     key: "pressure",
     label: "Давление, атм",
     viewable: true,
     editable: true,
-    viewOrder: 20,
-    editOrder: 19,
+
+    numeric: true,
+
+    copyable: true,
   },
 
   // ===== КООРДИНАТЫ =====
@@ -200,23 +189,17 @@ export const FIELDS = [
     label: "Координата Х",
     viewable: true,
     editable: true,
-    viewOrder: 21,
-    editOrder: 20,
   },
   {
     key: "lng",
     label: "Координата Y",
     viewable: true,
     editable: true,
-    viewOrder: 22,
-    editOrder: 21,
   },
 ];
 
 // Фильтры для удобства (опционально, для обратной совместимости)
-export const VIEW_FIELDS = FIELDS.filter((f) => f.viewable).sort(
-  (a, b) => a.viewOrder - b.viewOrder,
-);
-export const EDIT_FIELDS = FIELDS.filter((f) => f.editable).sort(
-  (a, b) => a.editOrder - b.editOrder,
-);
+export const VIEW_FIELDS = FIELDS.filter((f) => f.viewable);
+export const EDIT_FIELDS = FIELDS.filter((f) => f.editable);
+export const COPY_FIELDS = FIELDS.filter((f) => f.copyable);
+export const NUMBER_FIELDS = FIELDS.filter((f) => f.numeric);

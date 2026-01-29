@@ -1,4 +1,8 @@
-export function exportLeaksKML(leaks) {
+import { PROJECT_LOCATION_CONFIG } from "../configs/projectLocation.config";
+
+export function exportLeaksKML(leaks, project) {
+  const config = PROJECT_LOCATION_CONFIG[project];
+
   // 1️⃣ группировка по field
   const byField = leaks.reduce((acc, leak) => {
     const field = leak.field || "Без участка";
@@ -20,7 +24,7 @@ export function exportLeaksKML(leaks) {
             <description>
               <![CDATA[
                 <b>Участок:</b> ${field}<br/>
-                <b>Месторождение:</b> ${l.deposit ?? "Не указано"}
+                <b>${config.label}:</b> ${l[config.secondary] ?? "Не указан"}<br/>
                 <b>Скорость:</b> ${l.leak_speed ?? "Без скорости"}
               ]]>
             </description>

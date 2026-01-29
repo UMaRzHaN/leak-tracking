@@ -3,18 +3,18 @@ export const PROJECT_LOCATION_CONFIG = {
     main: "subdivision",
     secondary: "deposit",
     last: "location",
-    label: "Месторождениям",
+    label: "Месторождение",
   },
   midstream: {
     main: "field",
     secondary: "station",
     last: "location",
-    label: "Станциям",
+    label: "Станция",
   },
   downstream: {
     main: "district",
     secondary: "locality",
     last: "address",
-    label: "Населенным пунктам",
+    label: "Населенный пункт",
   },
 };

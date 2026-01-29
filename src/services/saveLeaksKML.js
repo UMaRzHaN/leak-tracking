@@ -1,10 +1,11 @@
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
+import { exportLeaksKML } from "./exportLeaksKML";
 
 const FOLDER = "LeakReports";
 
-export async function saveLeaksKML(leaks, exportLeaksKML) {
-  const kml = exportLeaksKML(leaks);
+export async function saveLeaksKML(leaks, project) {
+  const kml = exportLeaksKML(leaks, project);
   const fileName = `leaks_${Date.now()}.kml`;
 
   // 📱 MOBILE (Android / iOS)

@@ -1,14 +1,10 @@
-import { exportLeaksKML } from "./export/exportLeaksKML";
-import { exportLeaksGeoJSON } from "./export/exportLeaksGeoJSON";
-
-import { FIELDS } from "./data/fields";
+import { COPY_FIELDS, FIELDS, NUMBER_FIELDS } from "./data/fields";
 
 import {
   headers as EXCEL_HEADERS,
   keysOrder as EXCEL_KEYS_ORDER,
 } from "./export/excelImportData";
-import { COPYABLE_FIELDS, SEARCH_FIELDS } from "./data/constants";
-import { NUMBER_FIELDS } from "../data/constants";
+import { SEARCH_FIELDS } from "./data/constants";
 
 import { STEPS } from "./data/steps";
 
@@ -66,22 +62,13 @@ export const SEMANTIC_UPSTREAM = {
 };
 export const SYSTEM_UPSTREAM = {
   numeric: NUMBER_FIELDS,
-  copyable: COPYABLE_FIELDS,
+  copyable: COPY_FIELDS,
   search: SEARCH_FIELDS,
   lossy: ["rawVoiceText", "note"],
   fields: FIELDS,
 };
 
 export const EXPORT_UPSTREAM = {
-  geojson: {
-    format: "GeoJSON",
-    handler: exportLeaksGeoJSON,
-  },
-
-  kml: {
-    format: "KML",
-    handler: exportLeaksKML,
-  },
   excel: {
     format: "XLSX",
     purpose: "table",

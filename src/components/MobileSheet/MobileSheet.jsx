@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { useProjectConfig } from "../../app/settings/useProjectConfig";
 
 import s from "./MobileSheet.module.scss";
 import { saveLeaksKML } from "../../services/saveLeaksKML";
+import { useProject } from "../../app/settings/ProjectContext";
 
 const NO_LABEL = "Не указано";
 
@@ -42,8 +42,8 @@ export default function MobileSheet({
   onClose,
   onSelect,
 }) {
-  const projectConfig = useProjectConfig();
-  const exportFormats = projectConfig.export ?? {};
+  const project = useProject().project;
+  console.log(project);
 
   const [query, setQuery] = useState("");
 
@@ -54,9 +54,7 @@ export default function MobileSheet({
     if (!query) return leaks;
 
     const q = query.toLowerCase();
-    return leaks.filter((l) =>
-      String(l.leak_id).toLowerCase().includes(q),
-    );
+    return leaks.filter((l) => String(l.leak_id).toLowerCase().includes(q));
   }, [leaks, query]);
 
   return (
@@ -71,9 +69,7 @@ export default function MobileSheet({
 
             {/* ===== LOCATION FILTER ===== */}
             <div className={s.stationList}>
-              <div className={s.stationTitle}>
-                Фильтр по: {locationLabel}
-              </div>
+              <div className={s.stationTitle}>Фильтр по: {locationLabel}</div>
 
               {locations.map((loc) => {
                 const label = loc || NO_LABEL;
@@ -103,21 +99,16 @@ export default function MobileSheet({
 
             {/* ===== EXPORT ===== */}
             <div className={s.sheetActions}>
-              {exportFormats.kml && (
-                <button
-                  className={`${s.exportBtn} ${s.exportKml}`}
-                  onClick={() =>
-                    handleExport(filteredLeaks, () =>
-                      saveLeaksKML(
-                        filteredLeaks,
-                        exportFormats.kml.handler,
-                      ),
-                    )
-                  }
-                >
-                  Экспорт карты (KML)
-                </button>
-              )}
+              <button
+                className={`${s.exportBtn} ${s.exportKml}`}
+                onClick={() =>
+                  handleExport(filteredLeaks, () =>
+                    saveLeaksKML(filteredLeaks, project),
+                  )
+                }
+              >
+                Экспорт карты (KML)
+              </button>
             </div>
 
             {/* ===== LIST ===== */}
