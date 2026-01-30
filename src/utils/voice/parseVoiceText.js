@@ -8,7 +8,8 @@ import { normalizeStationName } from "./normalize/normalizeStationName";
  */
 const FIELD_MARKERS =
   "бирк[аи]?|видео|скорост[ьи]?|давлени[ея]?|температур[аы]?|" +
-  "умг|унг|умк|умгэ|умге|умга|омг|управление|район|подразделение" +
+  "умг|унг|умк|умгэ|умге|умга|омг|управление|район|подразделение|" +
+  "категори[яи]|" + // 👈 ВОТ ТУТ
   "компрессорная станци[я]|станци[я]|место рождени[ея]|месторождени[ея]?|" +
   "локаци[яи]|адрес|" +
   "привод|тип привода|присоединени[ея]|тип присоединения|установк[аи]|тип установки|" +
@@ -75,7 +76,14 @@ export const parseVoiceText = (text) => {
       regex: /температур[аы]?\s*(?<value>-?\d+(?:[.,]\d+)?)/g,
       type: "number",
     },
-
+    {
+      key: "category",
+      regex: new RegExp(
+        `(?:категори[яи])\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
+        "g",
+      ),
+      type: "string",
+    },
     /* ===== СЕМАНТИЧЕСКИЕ ЛОКАЦИИ ===== */
 
     // 1️⃣ Верхний уровень (УМГ / район / управление)
@@ -211,7 +219,6 @@ export const parseVoiceText = (text) => {
 
     if (key === "secondary") {
       const normalizedStation = normalizeStationName(rawValue);
-      console.log("✅ FINAL STATION:", normalizedStation);
       result[key] = normalizedStation;
       return;
     }
