@@ -1,6 +1,6 @@
 import LeakForm from "../components/LeakForm/LeakForm";
 import { usePhotoStorage } from "../hooks/usePhotoStorage";
-import { toNumber } from "../utils/voice/toNumber";
+import { toNumber } from "../utils/voice/normalize/toNumber";
 import { useProject } from "../app/settings/ProjectContext";
 import { saveProjectData } from "../services/saveProjectData";
 

@@ -1,4 +1,5 @@
 import { capitalizeFirst } from "../normalize/capitalizeFirst";
+import { normalizeStationName } from "./normalize/normalizeStationName";
 
 /**
  * ЕДИНЫЙ СПИСОК МАРКЕРОВ
@@ -204,14 +205,24 @@ export const parseVoiceText = (text) => {
     const matches = [...normalized.matchAll(regex)];
     if (!matches.length) return;
 
-    const last = matches.at(-1);
-    const rawValue = last?.groups?.value;
+    const rawValue = matches.at(-1)?.groups?.value;
     if (!rawValue) return;
+    console.log(matches);
 
-    result[key] =
-      type === "number"
-        ? Number(normalizeRuNumber(rawValue))
-        : capitalizeFirst(rawValue.trim());
+    if (key === "secondary") {
+      const normalizedStation = normalizeStationName(rawValue);
+      console.log("✅ FINAL STATION:", normalizedStation);
+      result[key] = normalizedStation;
+      return;
+    }
+
+    if (type === "number") {
+      const n = normalizeRuNumber(rawValue);
+      if (n !== undefined) result[key] = Number(n);
+      return;
+    }
+
+    result[key] = capitalizeFirst(rawValue.trim());
   });
 
   return result;

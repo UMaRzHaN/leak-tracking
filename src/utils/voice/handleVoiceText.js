@@ -1,7 +1,7 @@
-import { normalizeBySynonyms } from "./normalizeBySynonyms";
-import { normalizeNumberWords } from "./normalizeNumberWords";
-import { normalizeVoiceResult } from "./normalizeVoiceResult";
-import { normalizeSynonyms } from "./normalizeSynonyms";
+import { normalizeBySynonyms } from "./normalize/normalizeBySynonyms";
+import { normalizeNumberWords } from "./normalize/normalizeNumberWords";
+import { normalizeVoiceResult } from "./normalize/normalizeVoiceResult";
+import { normalizeSynonyms } from "./normalize/normalizeSynonyms";
 import { parseVoiceText } from "./parseVoiceText";
 
 export const handleVoiceText = (arr, text, setVoiceData, project) => {

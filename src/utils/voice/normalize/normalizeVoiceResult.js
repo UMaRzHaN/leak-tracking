@@ -1,4 +1,4 @@
-import { PROJECT_LOCATION_CONFIG } from "../../configs/projectLocation.config";
+import { PROJECT_LOCATION_CONFIG } from "../../../configs/projectLocation.config";
 
 export function normalizeVoiceResult(raw, PROJECT) {
   if (!raw) return {};
