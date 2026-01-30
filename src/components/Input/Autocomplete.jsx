@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import s from "./Input.module.scss";
 
 export default function Autocomplete({
@@ -16,9 +16,9 @@ export default function Autocomplete({
   const [query, setQuery] = useState(value ?? "");
   const inputRef = useRef(null);
 
-  const showClear = query && query.length > 0;
+  const showClear = query.length > 0;
 
-  /* sync с внешним value */
+  // 🔹 sync с внешним value
   useEffect(() => {
     setQuery(value ?? "");
   }, [value]);
@@ -31,19 +31,41 @@ export default function Autocomplete({
     [options, query],
   );
 
-  const select = (val) => {
-    setQuery(val);
-    onChange(val);
-    setOpen(false);
-    inputRef.current?.blur();
-  };
+  const select = useCallback(
+    (val) => {
+      setQuery(val);
+      onChange(val);
+      setOpen(false);
+      inputRef.current?.blur();
+    },
+    [onChange],
+  );
 
-  const clear = () => {
+  const clear = useCallback(() => {
     setQuery("");
     onChange("");
     setOpen(false);
     inputRef.current?.focus();
-  };
+  }, [onChange]);
+
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (e.key !== "Enter") return;
+
+      // 🔹 если есть подсказки — выбираем первую
+      if (open && filtered.length > 0) {
+        e.preventDefault();
+        select(filtered[0]);
+        return;
+      }
+
+      // 🔹 обычный Enter (как InputCard)
+      e.preventDefault();
+      inputRef.current?.blur();
+      onEnter?.(inputRef.current);
+    },
+    [open, filtered, select, onEnter],
+  );
 
   return (
     <div
@@ -72,13 +94,7 @@ export default function Autocomplete({
           enterKeyHint="next"
           onFocus={() => setOpen(true)}
           onBlur={() => setOpen(false)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              inputRef.current?.blur();
-              onEnter?.(inputRef.current); // ✅ ВАЖНО
-            }
-          }}
+          onKeyDown={handleKeyDown}
           onChange={(e) => {
             const v = e.target.value;
             setQuery(v);

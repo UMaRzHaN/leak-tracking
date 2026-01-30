@@ -1,4 +1,4 @@
-import { useId, useRef } from "react";
+import { useId, useRef, useCallback } from "react";
 import s from "./Input.module.scss";
 
 export default function InputCard({
@@ -12,7 +12,7 @@ export default function InputCard({
   required = false,
   rightSlot,
   rows = 3,
-  onEnter, // 👈 НОВОЕ
+  onEnter, // 👈 ожидает DOM-элемент
 }) {
   const isTextarea = as === "textarea";
   const showClear = value && String(value).length > 0;
@@ -20,16 +20,24 @@ export default function InputCard({
   const inputId = useId();
   const inputRef = useRef(null);
 
-  const handleKeyDown = (e) => {
-    if (e.key !== "Enter") return;
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (e.key !== "Enter") return;
 
-    // textarea: Shift+Enter → новая строка
-    if (isTextarea && e.shiftKey) return;
+      // textarea: Shift+Enter → новая строка
+      if (isTextarea && e.shiftKey) return;
 
-    e.preventDefault();
-    inputRef.current?.blur();
-    onEnter?.(inputRef.current);
-  };
+      e.preventDefault();
+      inputRef.current?.blur();
+      onEnter?.(inputRef.current);
+    },
+    [isTextarea, onEnter],
+  );
+
+  const clear = useCallback(() => {
+    onChange("");
+    inputRef.current?.focus();
+  }, [onChange]);
 
   return (
     <div
@@ -77,7 +85,9 @@ export default function InputCard({
           <button
             type="button"
             className={s.clearBtn}
-            onClick={() => onChange("")}
+            tabIndex={-1}                 // ⛔ не участвует в навигации
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={clear}
             aria-label="Очистить"
           >
             ✕

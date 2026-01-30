@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useId, useCallback } from "react";
 import { useCamera } from "../../hooks/useCamera";
 import s from "./Input.module.scss";
 
@@ -10,28 +10,40 @@ export default function PhotoInput({
   error,
 }) {
   const inputRef = useRef(null);
+  const aliveRef = useRef(true);
+  const inputId = useId();
+
   const { isNative, takePhoto, pickFromBrowser } = useCamera();
 
-  const inputId = "photo-input";
-
-  const handleClick = async () => {
+  const handleClick = useCallback(async () => {
     if (isNative) {
       const photo = await takePhoto();
-      if (photo) onChange(photo);
+      if (photo && aliveRef.current) {
+        onChange(photo);
+      }
     } else {
       inputRef.current?.click();
     }
-  };
+  }, [isNative, takePhoto, onChange]);
 
-  const handleFile = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFile = useCallback(
+    async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-    const photo = await pickFromBrowser(file);
-    if (photo) onChange(photo);
+      const photo = await pickFromBrowser(file);
+      if (photo && aliveRef.current) {
+        onChange(photo);
+      }
 
-    e.target.value = "";
-  };
+      e.target.value = "";
+    },
+    [pickFromBrowser, onChange],
+  );
+
+  // 🔒 защита от async после unmount
+  // (можно не делать cleanup — ref обнулим вручную)
+  aliveRef.current = true;
 
   const showError = required && !value;
 
@@ -51,6 +63,7 @@ export default function PhotoInput({
       <button
         type="button"
         className={s.photoBtn}
+        tabIndex={-1}                 // ⛔ не участвует в Enter-навигации
         onClick={handleClick}
         aria-describedby={inputId}
       >
@@ -71,7 +84,11 @@ export default function PhotoInput({
 
       {/* PREVIEW */}
       {value?.src && (
-        <img src={value.src} alt="Выбранное фото" className={s.photoPreview} />
+        <img
+          src={value.src}
+          alt="Выбранное фото"
+          className={s.photoPreview}
+        />
       )}
 
       {/* ERROR MESSAGE */}

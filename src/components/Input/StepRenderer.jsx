@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import InputCard from "./InputCard";
 import Autocomplete from "./Autocomplete";
 import PhotoInput from "./PhotoInput";
@@ -13,29 +14,38 @@ export default function StepRenderer({
   nextStep,
   save,
 }) {
-  const isLastStep = step === steps.length;
+  const isLastStep = step >= steps.length;
 
-  // 🔹 ХУК ВСЕГДА ВЫЗЫВАЕТСЯ
+  // ❗ config может быть undefined — это ОК
+  const config = steps[step - 1];
+
+  // 🔹 ВСЕ хуки — ДО return
+  const focusableFields = useMemo(() => {
+    if (!config) return [];
+    return config.fields.filter((f) => f.type !== "photo");
+  }, [config]);
+
+  const lastFieldKey = focusableFields.length
+    ? focusableFields.at(-1).key
+    : null;
+
   const { handleEnter } = useEnterNavigation({
     onLast: () => {
+      if (errors && Object.keys(errors).length > 0) return;
       isLastStep ? save() : nextStep();
     },
     headerOffset: 56,
   });
 
-  const config = steps[step - 1];
+  // ⛔ return ТОЛЬКО ПОСЛЕ хуков
   if (!config) return null;
 
-  // только поля, где есть Enter-навигация
-  const focusableFields = config.fields.filter((f) => f.type !== "photo");
-
-  const lastFieldKey = focusableFields.at(-1)?.key;
+  const canHandleEnter = (f) =>
+    lastFieldKey !== null && f.key === lastFieldKey;
 
   return (
     <div className={s.stepRenderer}>
       {config.fields.map((f) => {
-        const isLast = f.key === lastFieldKey;
-
         if (f.type === "input" || f.type === "textarea") {
           return (
             <InputCard
@@ -46,9 +56,9 @@ export default function StepRenderer({
               type={f.number ? "number" : "text"}
               required={f.required}
               value={form[f.key]}
-              error={errors[f.key]}
+              error={errors?.[f.key]}
               onChange={(v) => onChange(f.key, v)}
-              onEnter={isLast ? handleEnter : undefined}
+              onEnter={canHandleEnter(f) ? handleEnter : undefined}
             />
           );
         }
@@ -61,10 +71,10 @@ export default function StepRenderer({
               label={f.label}
               value={form[f.key]}
               options={f.options}
-              error={errors[f.key]}
+              error={errors?.[f.key]}
               onChange={(v) => onChange(f.key, v)}
               required={f.required}
-              onEnter={isLast ? handleEnter : undefined}
+              onEnter={canHandleEnter(f) ? handleEnter : undefined}
             />
           );
         }

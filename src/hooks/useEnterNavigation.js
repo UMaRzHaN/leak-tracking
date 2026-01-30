@@ -2,7 +2,8 @@ function scrollWithOffset(element, offset = 0) {
   if (!element) return;
 
   const rect = element.getBoundingClientRect();
-  const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+  const scrollTop =
+    window.pageYOffset || document.documentElement.scrollTop;
 
   const top = rect.top + scrollTop - offset;
 
@@ -11,7 +12,12 @@ function scrollWithOffset(element, offset = 0) {
     behavior: "smooth",
   });
 }
-export function useEnterNavigation({ onLast, headerOffset = 64 }) {
+
+export function useEnterNavigation({
+  onLast,
+  headerOffset = 64,
+  includeReadonly = false,
+}) {
   const handleEnter = (current) => {
     if (!current?.form) {
       onLast?.();
@@ -20,24 +26,26 @@ export function useEnterNavigation({ onLast, headerOffset = 64 }) {
 
     const focusable = Array.from(
       current.form.querySelectorAll(
-        "input, textarea, select, button, [tabindex]:not([tabindex='-1'])",
+        "input, textarea, select, [tabindex='0']",
       ),
-    ).filter(
-      (el) =>
-        !el.disabled &&
-        !el.readOnly &&
-        el.offsetParent !== null,
-    );
+    ).filter((el) => {
+      if (el.disabled) return false;
+      if (!includeReadonly && el.readOnly) return false;
+      if (el.offsetParent === null) return false; // hidden
+      return true;
+    });
 
     const index = focusable.indexOf(current);
+    if (index === -1) {
+      onLast?.();
+      return;
+    }
+
     const next = focusable[index + 1];
 
     if (next) {
-      next.focus();
-
-      // ✅ SCROLL С УЧЁТОМ HEADER
+      next.focus({ preventScroll: true });
       scrollWithOffset(next, headerOffset);
-
       return;
     }
 
@@ -46,4 +54,3 @@ export function useEnterNavigation({ onLast, headerOffset = 64 }) {
 
   return { handleEnter };
 }
-
