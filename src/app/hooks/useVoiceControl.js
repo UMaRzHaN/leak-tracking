@@ -4,7 +4,7 @@ import { handleVoiceText } from "../../utils/voice/handleVoiceText";
 import { useProjectConfig } from "../settings/useProjectConfig";
 import { useProject } from "../settings/ProjectContext";
 
-export function useVoiceControl(setPage) {
+export function useVoiceControl() {
   const projectConfig = useProjectConfig();
   const { project } = useProject();
   const [voiceData, setVoiceData] = useState(null);
@@ -16,9 +16,9 @@ export function useVoiceControl(setPage) {
   const onSpeechResult = useCallback(
     (text) => {
       const synonymsFields = projectConfig?.voice?.synonymsFields ?? [];
-      handleVoiceText(synonymsFields, text, setVoiceData, setPage, project);
+      handleVoiceText(synonymsFields, text, setVoiceData, project);
     },
-    [projectConfig, setPage, project],
+    [projectConfig, project],
   );
 
   const { start, stop } = useSpeechRecognition(onSpeechResult);

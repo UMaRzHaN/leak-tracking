@@ -46,7 +46,7 @@ export default function App() {
      VOICE
   ========================= */
   const { voiceData, clearVoiceData, startVoiceInput, stopVoiceInput } =
-    useVoiceControl(setPage);
+    useVoiceControl();
   const { form, errors, handle, setErrors, setForm, clearForm } = useLeakForm();
   /* =========================
      ONE-TIME MIGRATION

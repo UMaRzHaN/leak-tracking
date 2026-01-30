@@ -1,16 +1,10 @@
-import { normalizeEquipment } from "../normalize/normalizeEquipment";
-import { normalizeNumberWords } from "../normalize/normalizeNumberWords";
+import { normalizeBySynonyms } from "./normalizeBySynonyms";
+import { normalizeNumberWords } from "./normalizeNumberWords";
 import { normalizeVoiceResult } from "./normalizeVoiceResult";
 import { normalizeSynonyms } from "./normalizeSynonyms";
 import { parseVoiceText } from "./parseVoiceText";
 
-export const handleVoiceText = (
-  arr,
-  text,
-  setVoiceData,
-  setPage,
-  project,
-) => {
+export const handleVoiceText = (arr, text, setVoiceData, project) => {
   const normalizedText = normalizeNumberWords(text);
   const parsed = parseVoiceText(normalizedText);
   const normalizedresult = normalizeVoiceResult(parsed, project);
@@ -18,17 +12,52 @@ export const handleVoiceText = (
   const data = normalizedresult || normalizeSynonyms(normalizedresult, arr);
 
   if (data.component) {
-    const r = normalizeEquipment(data.component);
-    data.component = r.value;
-    if (r.type) data.component_type = r.type;
+    data.component = normalizeBySynonyms(data.component, "component").value;
   }
 
   if (data.object) {
-    const r = normalizeEquipment(data.object);
-    data.object = r.value;
-    if (r.type) data.object_type = r.type;
+    data.object = normalizeBySynonyms(data.object, "component").value;
+  }
+
+  if (data.actuator_type) {
+    data.actuator_type = normalizeBySynonyms(
+      data.actuator_type,
+      "actuator_type",
+    ).value;
+  }
+
+  if (data.connection_type) {
+    data.connection_type = normalizeBySynonyms(
+      data.connection_type,
+      "connection_type",
+    ).value;
+  }
+
+  if (data.installation_type) {
+    data.installation_type = normalizeBySynonyms(
+      data.installation_type,
+      "installation_type",
+    ).value;
+  }
+
+  // midstream only — но нормализатор сам это обработает
+  if (data.leak_cause) {
+    data.leak_cause = normalizeBySynonyms(data.leak_cause, "leak_cause").value;
+  }
+
+  if (data.leak_description) {
+    data.leak_description = normalizeBySynonyms(
+      data.leak_description,
+      "leak_description",
+    ).value;
+  }
+
+  if (data.materials_equipment) {
+    data.materials_equipment = normalizeBySynonyms(
+      data.materials_equipment,
+      "component",
+    ).value;
   }
 
   setVoiceData(data);
-  setPage("add");
 };
