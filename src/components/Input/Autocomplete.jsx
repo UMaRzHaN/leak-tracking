@@ -21,9 +21,15 @@ export default function Autocomplete({
   }, [value]);
 
   const filtered = useMemo(
-    () => options.filter((o) => o.toLowerCase().includes(query.toLowerCase())),
+    () =>
+      options.filter((o) =>
+        o.toLowerCase().includes(query.toLowerCase()),
+      ),
     [options, query],
   );
+
+  const showClear = query?.length > 0;
+
   const select = (val) => {
     setQuery(val);
     onChange(val);
@@ -31,6 +37,13 @@ export default function Autocomplete({
 
     // 🔑 единый сигнал "ввод завершён"
     onComplete?.(inputRef.current);
+  };
+
+  const clear = () => {
+    setQuery("");
+    onChange("");
+    setOpen(false);
+    inputRef.current?.focus();
   };
 
   return (
@@ -54,10 +67,15 @@ export default function Autocomplete({
           value={query}
           placeholder={placeholder || " "}
           enterKeyHint="next"
+          inputMode="text"
           onFocus={() => setOpen(true)}
           onBlur={() => {
             requestAnimationFrame(() => {
-              if (!document.activeElement?.closest(`.${s.autocompleteList}`)) {
+              if (
+                !document.activeElement?.closest(
+                  `.${s.autocompleteList}`,
+                )
+              ) {
                 setOpen(false);
               }
             });
@@ -68,8 +86,20 @@ export default function Autocomplete({
             onChange(v);
             setOpen(true);
           }}
-          inputMode="text"
         />
+
+        {showClear && (
+          <button
+            type="button"
+            className={s.clearBtn}
+            tabIndex={-1}          // ⛔ не участвует в Enter-навигации
+            aria-label="Очистить"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={clear}
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {open && filtered.length > 0 && (

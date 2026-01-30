@@ -44,27 +44,36 @@
 
 .clearBtn {
   position: absolute;
+  top: 10px;
   right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
 
   width: 22px;
   height: 22px;
   border-radius: 50%;
 
   border: none;
-  // background: #e5e7eb;
+  background: transparent;
   color: #374151;
 
   font-size: 14px;
   line-height: 1;
+  cursor: pointer;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  cursor: pointer;
-  opacity: 0.6;
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease;
+
+  &:hover {
+    background: #e7e8e9;
+  }
+
+  &:active {
+    transform: scale(0.9);
+  }
 }
 
 .clearBtn:hover {

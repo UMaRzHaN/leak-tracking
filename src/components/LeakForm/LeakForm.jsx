@@ -9,9 +9,6 @@ import s from "./LeakForm.module.scss";
 import { useProject } from "../../app/settings/ProjectContext";
 import { useProjectVars } from "../../app/settings/useProjectVars";
 import { calculations } from "../../utils/calculations/calculations";
-/* ======================================
-   FIELDS ALLOWED TO COPY
-====================================== */
 
 export default function LeakForm({
   onAdd,
@@ -30,20 +27,47 @@ export default function LeakForm({
   const projectConfig = useProjectConfig();
   const { project } = useProject();
   const { vars } = useProjectVars(project, projectConfig.vars);
-  const STEPS = useMemo(() => projectConfig.steps.steps ?? [], [projectConfig]);
 
-  const COPY_FIELDS = useMemo(
-    () => projectConfig.system?.copyable ?? [],
+  const STEPS = useMemo(
+    () => projectConfig.steps.steps ?? [],
     [projectConfig],
   );
+
+  /**
+   * copyable из конфига приходит как массив объектов
+   * [{ key: "leak_id", ... }, ...]
+   * → нормализуем в массив строк
+   */
+  const COPY_KEYS = useMemo(() => {
+    const raw = projectConfig.system?.copyable ?? [];
+    return raw.map((f) =>
+      typeof f === "string" ? f : f.key,
+    );
+  }, [projectConfig]);
 
   const [step, setStep] = useState(1);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const pendingKeysRef = useRef([]);
 
-  const validateStep = useStepValidation({ steps: STEPS, form, setErrors });
+  /**
+   * Автофокус первого поля при смене шага
+   */
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      const first = document.querySelector("[data-enter-nav]");
+      first?.focus();
+    });
+  }, [step]);
 
-  const hasStepData = STEPS[step - 1]?.fields?.some(({ key }) => form[key]);
+  const validateStep = useStepValidation({
+    steps: STEPS,
+    form,
+    setErrors,
+  });
+
+  const hasStepData = STEPS[step - 1]?.fields?.some(
+    ({ key }) => form[key],
+  );
 
   /* ======================================
      NAVIGATION
@@ -74,7 +98,6 @@ export default function LeakForm({
   const commitSave = (data) => {
     const d = new Date();
 
-    // 🧮 расчёт ТОЛЬКО ЗДЕСЬ
     const calculated = vars ? calculations(data, vars) : data;
 
     onAdd?.({
@@ -95,7 +118,7 @@ export default function LeakForm({
   const save = () => {
     if (!validateStep(step)) return;
 
-    // 🔑 Фото всегда сохраняем как есть
+    // фото сохраняем как есть
     const finalData = {
       ...form,
       photo: form.photo,
@@ -106,11 +129,15 @@ export default function LeakForm({
       return;
     }
 
-    const emptyKeys = COPY_FIELDS.filter(
+    const isEmptyValue = (v) => {
+      if (v === null || v === undefined) return true;
+      if (typeof v === "string") return v.trim() === "";
+      return false;
+    };
+
+    const emptyKeys = COPY_KEYS.filter(
       (key) =>
-        finalData[key] === "" ||
-        finalData[key] === null ||
-        finalData[key] === undefined,
+        key !== "photo" && isEmptyValue(finalData[key]),
     );
 
     if (emptyKeys.length === 0) {
@@ -128,7 +155,7 @@ export default function LeakForm({
   const handleConfirmCopy = () => {
     const merged = {
       ...form,
-      photo: form.photo, // 🔑 фото НЕ теряется
+      photo: form.photo,
     };
 
     pendingKeysRef.current.forEach((key) => {
@@ -156,16 +183,20 @@ export default function LeakForm({
     if (!voiceData) return;
 
     const currentFields = STEPS[step - 1]?.fields ?? [];
-    const allowedKeys = new Set(currentFields.map((f) => f.key));
+    const allowedKeys = new Set(
+      currentFields.map((f) => f.key),
+    );
 
     setForm((prev) => {
       const updated = { ...prev };
 
-      Object.entries(voiceData).forEach(([key, value]) => {
-        if (allowedKeys.has(key)) {
-          updated[key] = value;
-        }
-      });
+      Object.entries(voiceData).forEach(
+        ([key, value]) => {
+          if (allowedKeys.has(key)) {
+            updated[key] = value;
+          }
+        },
+      );
 
       return updated;
     });
@@ -184,7 +215,8 @@ export default function LeakForm({
         {/* ===== STEP HEADER ===== */}
         <div className={s.stepHeader}>
           <div className={s.stepText}>
-            Шаг {step} из {STEPS.length}: <span>{STEPS[step - 1]?.title}</span>
+            Шаг {step} из {STEPS.length}:{" "}
+            <span>{STEPS[step - 1]?.title}</span>
           </div>
 
           <div className={s.stepDots}>
@@ -193,7 +225,6 @@ export default function LeakForm({
               return (
                 <div
                   key={n}
-                  // onClick={() => setStep(n)}
                   className={[
                     s.stepDot,
                     n < step && s.done,
@@ -232,18 +263,22 @@ export default function LeakForm({
 
                 setForm((prev) => {
                   const updated = { ...prev };
-                  currentStep.fields.forEach(({ key, type }) => {
-                    if (type === "photo") delete updated[key];
-                    else updated[key] = "";
-                  });
+                  currentStep.fields.forEach(
+                    ({ key, type }) => {
+                      if (type === "photo") delete updated[key];
+                      else updated[key] = "";
+                    },
+                  );
                   return updated;
                 });
 
                 setErrors((prev) => {
                   const updated = { ...prev };
-                  currentStep.fields.forEach(({ key }) => {
-                    delete updated[key];
-                  });
+                  currentStep.fields.forEach(
+                    ({ key }) => {
+                      delete updated[key];
+                    },
+                  );
                   return updated;
                 });
               }}
@@ -252,7 +287,11 @@ export default function LeakForm({
             </button>
           )}
 
-          <button className={s.clearAllSteps} type="button" onClick={clearForm}>
+          <button
+            className={s.clearAllSteps}
+            type="button"
+            onClick={clearForm}
+          >
             Очистить все поля 🧹
           </button>
         </div>
