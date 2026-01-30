@@ -28,7 +28,7 @@ export default function LeakForm({
   const { vars } = useProjectVars(project, projectConfig.vars);
   const STEPS = useMemo(() => projectConfig.steps.steps ?? [], [projectConfig]);
 
-  const COPYABLE_FIELDS = useMemo(
+  const COPY_FIELDS = useMemo(
     () => projectConfig.system?.copyable ?? [],
     [projectConfig],
   );
@@ -103,7 +103,7 @@ export default function LeakForm({
       return;
     }
 
-    const emptyKeys = COPYABLE_FIELDS.filter(
+    const emptyKeys = COPY_FIELDS.filter(
       (key) =>
         finalData[key] === "" ||
         finalData[key] === null ||
