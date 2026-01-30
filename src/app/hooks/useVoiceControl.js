@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useSpeechRecognition } from "../../hooks/useSpeechRecognition";
 import { handleVoiceText } from "../../utils/voice/handleVoiceText";
 import { useProjectConfig } from "../settings/useProjectConfig";
@@ -8,10 +8,6 @@ export function useVoiceControl(setPage) {
   const projectConfig = useProjectConfig();
   const { project } = useProject();
   const [voiceData, setVoiceData] = useState(null);
-
-  useEffect(() => {
-    console.log(voiceData);
-  }, [voiceData]);
 
   const clearVoiceData = useCallback(() => {
     setVoiceData(null);

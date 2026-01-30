@@ -47,8 +47,7 @@ export default function App() {
   ========================= */
   const { voiceData, clearVoiceData, startVoiceInput, stopVoiceInput } =
     useVoiceControl(setPage);
-  const { form, errors, handle, setErrors, setForm } = useLeakForm();
-
+  const { form, errors, handle, setErrors, setForm, clearForm } = useLeakForm();
   /* =========================
      ONE-TIME MIGRATION
   ========================= */
@@ -118,7 +117,13 @@ export default function App() {
 
         {page === "map" && <MapPage leaks={data} coords={coords} />}
 
-        {page === "settings" && <Settings setPage={setPage} />}
+        {page === "settings" && (
+          <Settings
+            setPage={setPage}
+            clearVoiceData={clearVoiceData}
+            clearForm={clearForm}
+          />
+        )}
       </div>
 
       {!hideLayout && <Footer page={page} setPage={setPage} />}

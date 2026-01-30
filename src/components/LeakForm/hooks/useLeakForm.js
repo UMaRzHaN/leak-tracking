@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { normalizeNumber } from "../../../utils/normalize/normalizeNumber";
 import { useProjectConfig } from "../../../app/settings/useProjectConfig";
 
@@ -15,7 +15,12 @@ export function useLeakForm() {
   });
 
   const [errors, setErrors] = useState({});
-
+  const clearForm = useCallback(() => {
+    setForm({
+      leak_id: "",
+      photo: null,
+    });
+  }, []);
   const handle = (key, value) => {
     const finalValue = NUMBER_FIELDS.includes(key)
       ? normalizeNumber(value)
@@ -32,5 +37,5 @@ export function useLeakForm() {
     }));
   };
 
-  return { form, setForm, errors, setErrors, handle };
+  return { form, setForm, errors, setErrors, handle, clearForm };
 }

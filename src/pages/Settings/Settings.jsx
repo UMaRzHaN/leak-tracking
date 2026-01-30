@@ -7,7 +7,7 @@ import SettingsFooter from "./Footer/SettingsFooter";
 import SettingsModal from "../../components/SettingsModal/SettingsModal";
 import s from "./Settings.module.scss";
 
-export default function Settings({ setPage }) {
+export default function Settings({ setPage, clearForm, clearVoiceData }) {
   const { project, changeProject } = useProject();
 
   const activeProject = PROJECT_META[project];
@@ -39,9 +39,11 @@ export default function Settings({ setPage }) {
 
       requestAnimationFrame(() => {
         setPage?.("");
+        clearForm?.();
+        clearVoiceData?.();
       });
     },
-    [project, changeProject, setPage],
+    [project, changeProject, setPage, clearVoiceData, clearForm],
   );
 
   const handleModalSave = useCallback(
