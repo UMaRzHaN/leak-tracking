@@ -17,25 +17,34 @@ export default function LeaksMap({
 
   return (
     <div className={s.mapWrapper}>
-      <div ref={mapRef} className={s.mapCanvas} />
-
+      {/* <div ref={mapRef} className={s.mapCanvas} /> */}
+      <div className="text" style={{ padding: 10 }}>
+        Google Maps
+        <br />
+        <br />В данный момент доступен только её экспорт, для этого нажмите на
+        поиск в правом нижнем углу экрана
+        <br />
+        <br />
+        Ожидайте нововведения в следующих обновлениях
+      </div>
       <button
         type="button"
         className={`${s.fab} ${s.fabSearch}`}
         onClick={onSearchClick}
         aria-label="Search leaks"
+        style={{ bottom: 10 }}
       >
         🔍
       </button>
 
-      <button
+      {/* <button
         type="button"
         className={`${s.fab} ${s.fabLocate}`}
         onClick={locateMe}
         aria-label="Locate me"
       >
         📍
-      </button>
+      </button> */}
     </div>
   );
 }
