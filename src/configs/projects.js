@@ -12,16 +12,16 @@ export const PROJECT_META = {
   upstream: {
     title: "Upstream",
     description: "Добыча",
-    folder: "Upstream",
+    folder: "upstream",
   },
   midstream: {
     title: "Midstream",
     description: "Транспортировка и хранение",
-    folder: "Midstream",
+    folder: "midstream",
   },
   downstream: {
     title: "Downstream",
     description: "Переработка и сбыт",
-    folder: "Downstream",
+    folder: "downstream",
   },
 };

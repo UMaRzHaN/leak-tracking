@@ -1,7 +1,8 @@
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { useIndexedDB } from "./useIndexedDB";
-import { useProjectConfig } from "../app/settings/useProjectConfig";
+import { getProjectMobileDir } from "../constants/storage.constants";
+import { useProject } from "../app/settings/ProjectContext";
 
 /* ================= HELPERS ================= */
 
@@ -38,13 +39,13 @@ export function usePhotoStorage() {
     deletePhoto: deleteFromIndexedDB,
   } = useIndexedDB();
 
-  const projectConfig = useProjectConfig();
-  const projectFolder = projectConfig?.folder ?? "Common";
+  const { project } = useProject();
+  const mkdir = getProjectMobileDir(project);
 
   const isNative = Capacitor.isNativePlatform();
 
   // 📁 итоговая папка проекта
-  const PHOTO_FOLDER = `LeakReports/${projectFolder}/photos`;
+  const PHOTO_FOLDER = mkdir + "/photos";
 
   /* ================= SAVE ================= */
 
@@ -141,7 +142,7 @@ export function usePhotoStorage() {
   return {
     ready,
     isNative,
-    projectFolder, // 👈 иногда полезно в UI / логах
+    mkdir, // 👈 иногда полезно в UI / логах
     savePhoto,
     deletePhoto,
     getPhoto,

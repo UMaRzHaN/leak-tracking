@@ -20,7 +20,7 @@ const showToast = async (message, duration = "short") => {
 /* ===============================
    MAIN EXPORT
 ================================ */
-export const exportToExcel = async (rows, excelConfig) => {
+export const exportToExcel = async (rows, excelConfig, mkdir) => {
   if (!rows?.length) {
     await showToast("❌ Нет данных для выгрузки");
     return;
@@ -38,7 +38,7 @@ export const exportToExcel = async (rows, excelConfig) => {
     await showToast("⏳ Экспорт данных…");
 
     if (isMobile) {
-      await exportCSV(rows, headers, keysOrder);
+      await exportCSV(rows, headers, keysOrder, mkdir);
     } else {
       await exportXLSX(rows, headers, keysOrder);
     }
@@ -96,25 +96,30 @@ const exportXLSX = async (prepared, headers, keysOrder) => {
 /* ===============================
    MOBILE → CSV
 ================================ */
-const exportCSV = async (prepared, headers, keysOrder, withShare = false) => {
-  const folder = "LeakReports";
+const exportCSV = async (
+  prepared,
+  headers,
+  keysOrder,
+  mkdir,
+  withShare = false,
+) => {
   const fileName = `leaks_${Date.now()}.csv`;
   const csv = generateCSV(prepared, headers, keysOrder);
 
   await Filesystem.mkdir({
-    path: folder,
+    path: mkdir,
     directory: Directory.Documents,
     recursive: true,
   }).catch(() => {});
 
   const result = await Filesystem.writeFile({
-    path: `${folder}/${fileName}`,
+    path: `${mkdir}/${fileName}`,
     data: csv,
     directory: Directory.Documents,
     encoding: Encoding.UTF8,
   });
 
-  await showToast(`📁 CSV сохранён:\nDocuments/${folder}/${fileName}`, "long");
+  await showToast(`📁 CSV сохранён:\nDocuments/${mkdir}/${fileName}`, "long");
 
   if (withShare) {
     await Share.share({

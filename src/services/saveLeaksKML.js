@@ -2,35 +2,33 @@ import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { exportLeaksKML } from "./exportLeaksKML";
 
-const FOLDER = "LeakReports";
-
-export async function saveLeaksKML(leaks, project) {
+export async function saveLeaksKML(leaks, project, mkdir) {
   const kml = exportLeaksKML(leaks, project);
   const fileName = `leaks_${Date.now()}.kml`;
-
+  const MAPS_FOLDER = mkdir + "/maps";
   // 📱 MOBILE (Android / iOS)
   if (Capacitor.isNativePlatform()) {
     // гарантируем папку
     await Filesystem.mkdir({
-      path: FOLDER,
+      path: MAPS_FOLDER,
       directory: Directory.Documents,
       recursive: true,
     }).catch(() => {});
 
     // сохраняем файл
     await Filesystem.writeFile({
-      path: `${FOLDER}/${fileName}`,
+      path: `${mkdir}/${fileName}`,
       data: kml,
       directory: Directory.Documents,
       encoding: Encoding.UTF8,
     });
 
-    return `${FOLDER}/${fileName}`;
+    return `${mkdir}/${fileName}`;
   }
 
   // 🌐 WEB (Browser)
-  downloadFileWeb(kml, `${FOLDER}_${fileName}`);
-  return `${FOLDER}_${fileName}`;
+  downloadFileWeb(kml, `${mkdir}_${fileName}`);
+  return `${mkdir}_${fileName}`;
 }
 
 // ===== WEB helper =====

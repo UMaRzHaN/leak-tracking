@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import s from "./MobileSheet.module.scss";
 import { saveLeaksKML } from "../../services/saveLeaksKML";
 import { useProject } from "../../app/settings/ProjectContext";
+import { getProjectMobileDir } from "../../constants/storage.constants";
 
 const NO_LABEL = "Не указано";
 
@@ -42,8 +43,8 @@ export default function MobileSheet({
   onClose,
   onSelect,
 }) {
-  const project = useProject().project;
-  console.log(project);
+  const project = useProject();
+  const mkdir = getProjectMobileDir(project);
 
   const [query, setQuery] = useState("");
 
@@ -103,7 +104,7 @@ export default function MobileSheet({
                 className={`${s.exportBtn} ${s.exportKml}`}
                 onClick={() =>
                   handleExport(filteredLeaks, () =>
-                    saveLeaksKML(filteredLeaks, project),
+                    saveLeaksKML(filteredLeaks, project.project, mkdir),
                   )
                 }
               >

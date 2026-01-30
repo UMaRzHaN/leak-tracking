@@ -3,10 +3,11 @@ import { PROJECT_META } from "../configs/projects";
 export const PHOTOS_DIR = "LeakReports/photos";
 
 // Функция для получения ключа хранилища для конкретного проекта (WEB)
-export const getProjectDataKey = (projectId) => `leaks_database:${projectId}:v1`;
+export const getProjectDataKey = (projectId) =>
+  `leaks_database:${projectId}:v1`;
 
 // Функция для получения пути сохранения данных на мобильных устройствах
-export const getProjectMobileDir = (projectId) => {
+export const getProjectMobileDir = (projectId = "midstream") => {
   const folder = PROJECT_META[projectId]?.folder || projectId;
   return `LeakReports/${folder}`;
 };
@@ -19,4 +20,3 @@ export const getProjectDataFile = (projectId) => {
 
 // Для обратной совместимости
 export const STORAGE_KEY = "leaks_database_v1";
-

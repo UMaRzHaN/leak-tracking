@@ -4,10 +4,11 @@ import { useProjectConfig } from "../../app/settings/useProjectConfig";
 import { useProject } from "../../app/settings/ProjectContext";
 import { useProjectVars } from "../../app/settings/useProjectVars";
 import s from "./DatabaseOverflow.module.scss";
-
+import { getProjectMobileDir } from "../../constants/storage.constants";
 export default function DatabaseOverflow({ filteredData, onClearDb }) {
   const { project } = useProject(); // ✅ гарантированный projectId
   const projectConfig = useProjectConfig();
+  const mkdir = getProjectMobileDir(project);
 
   // ✅ vars строго из storage_key
   const { vars } = useProjectVars(project, projectConfig.vars);
@@ -27,7 +28,7 @@ export default function DatabaseOverflow({ filteredData, onClearDb }) {
       return;
     }
 
-    exportToExcel(filteredData, excelConfig);
+    exportToExcel(filteredData, excelConfig, mkdir);
     setOpen(false);
   };
 
