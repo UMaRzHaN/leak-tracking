@@ -193,7 +193,7 @@ export default function LeakForm({
               return (
                 <div
                   key={n}
-                  onClick={() => setStep(n)}
+                  // onClick={() => setStep(n)}
                   className={[
                     s.stepDot,
                     n < step && s.done,

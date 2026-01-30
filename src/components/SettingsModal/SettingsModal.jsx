@@ -220,6 +220,7 @@ export default function SettingsModal({
               <span className={s.label}>Серийный номер оборудования</span>
             </label>
             <input
+              disabled={localVars.equipmentType === "Розовый мешок"}
               id="serial_number"
               type="number"
               min="0"
@@ -228,16 +229,17 @@ export default function SettingsModal({
               value={localVars.serial_number ?? ""}
               onChange={(e) => {
                 const v = e.target.value;
+                if (localVars.equipmentType !== "Розовый мешок") {
+                  // разрешаем пустое поле
+                  if (v === "") {
+                    handleChange("serial_number", "");
+                    return;
+                  }
 
-                // разрешаем пустое поле
-                if (v === "") {
-                  handleChange("serial_number", "");
-                  return;
-                }
-
-                // только целые
-                if (/^\d+$/.test(v)) {
-                  handleChange("serial_number", Number(v));
+                  // только целые
+                  if (/^\d+$/.test(v)) {
+                    handleChange("serial_number", Number(v));
+                  }
                 }
               }}
               className={s.input}
