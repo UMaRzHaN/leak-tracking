@@ -28,7 +28,6 @@ export default function InputCard({
       if (isTextarea && e.shiftKey) return;
 
       e.preventDefault();
-      inputRef.current?.blur();
       onEnter?.(inputRef.current);
     },
     [isTextarea, onEnter],

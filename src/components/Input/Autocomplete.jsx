@@ -24,10 +24,7 @@ export default function Autocomplete({
   }, [value]);
 
   const filtered = useMemo(
-    () =>
-      options.filter((o) =>
-        o.toLowerCase().includes(query.toLowerCase()),
-      ),
+    () => options.filter((o) => o.toLowerCase().includes(query.toLowerCase())),
     [options, query],
   );
 
@@ -36,7 +33,6 @@ export default function Autocomplete({
       setQuery(val);
       onChange(val);
       setOpen(false);
-      inputRef.current?.blur();
     },
     [onChange],
   );
@@ -61,7 +57,6 @@ export default function Autocomplete({
 
       // 🔹 обычный Enter (как InputCard)
       e.preventDefault();
-      inputRef.current?.blur();
       onEnter?.(inputRef.current);
     },
     [open, filtered, select, onEnter],
@@ -93,7 +88,6 @@ export default function Autocomplete({
           aria-invalid={!!error}
           enterKeyHint="next"
           onFocus={() => setOpen(true)}
-          onBlur={() => setOpen(false)}
           onKeyDown={handleKeyDown}
           onChange={(e) => {
             const v = e.target.value;
