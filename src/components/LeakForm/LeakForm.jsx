@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef, useMemo } from "react";
-import { useLeakForm } from "./hooks/useLeakForm";
 import { useStepValidation } from "./hooks/useStepValidation";
 import { useProjectConfig } from "../../app/settings/useProjectConfig";
 import AddLeakHeader from "./Header/AddLeakHeader";
@@ -22,6 +21,11 @@ export default function LeakForm({
   setPage,
   voiceData,
   lastItem,
+  form,
+  errors,
+  handle,
+  setErrors,
+  setForm,
 }) {
   const projectConfig = useProjectConfig();
   const { project } = useProject();
@@ -37,7 +41,6 @@ export default function LeakForm({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const pendingKeysRef = useRef([]);
 
-  const { form, errors, handle, setErrors, setForm } = useLeakForm();
   const validateStep = useStepValidation({ steps: STEPS, form, setErrors });
 
   const hasStepData = STEPS[step - 1]?.fields?.some(({ key }) => form[key]);

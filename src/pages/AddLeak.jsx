@@ -13,6 +13,11 @@ export default function AddLeak({
   startVoiceInput,
   stopVoiceInput,
   setPage,
+  form,
+  errors,
+  handle,
+  setErrors,
+  setForm,
 }) {
   const { savePhoto, ready: photoReady } = usePhotoStorage();
   const { project } = useProject();
@@ -69,6 +74,11 @@ export default function AddLeak({
       coords={coords}
       setPage={setPage}
       lastItem={data.at(-1)}
+      form={form}
+      errors={errors}
+      handle={handle}
+      setErrors={setErrors}
+      setForm={setForm}
     />
   );
 }

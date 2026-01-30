@@ -16,6 +16,7 @@ import { useVoiceControl } from "./hooks/useVoiceControl";
 import { useAppState } from "./hooks/useAppState";
 
 import { cleanupLegacyLeaks } from "./migrations/cleanupLegacyLeaks";
+import { useLeakForm } from "../components/LeakForm/hooks/useLeakForm";
 
 export default function App() {
   /* =========================
@@ -46,6 +47,7 @@ export default function App() {
   ========================= */
   const { voiceData, clearVoiceData, startVoiceInput, stopVoiceInput } =
     useVoiceControl(setPage);
+  const { form, errors, handle, setErrors, setForm } = useLeakForm();
 
   /* =========================
      ONE-TIME MIGRATION
@@ -97,6 +99,11 @@ export default function App() {
             startVoiceInput={startVoiceInput}
             stopVoiceInput={stopVoiceInput}
             setPage={setPage}
+            form={form}
+            errors={errors}
+            handle={handle}
+            setErrors={setErrors}
+            setForm={setForm}
           />
         )}
 
