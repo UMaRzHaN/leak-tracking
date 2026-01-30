@@ -1,0 +1,97 @@
+/* ===== EMPTY STATE ===== */
+
+.emptyState {
+  margin: 10px;
+  padding: 20px;
+
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.emptyTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.emptySubtitle {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.emptyHints {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+/* ===== OPTIONAL ACTION ===== */
+
+.emptyAction {
+  margin-top: 14px;
+  align-self: flex-start;
+
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+
+  background: #f9fafb;
+  color: #1f2937;
+  font-size: 13px;
+  font-weight: 500;
+
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #f3f4f6;
+  }
+
+  &:active {
+    background: #e5e7eb;
+  }
+}
+/* ===== ADD BUTTON ===== */
+
+.emptyAddBtn {
+  margin-top: 16px;
+  align-self: flex-start;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+
+  background: #2563eb;
+  color: #ffffff;
+
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.emptyAddBtn:hover {
+  background: #1d4ed8;
+}
+
+.emptyAddBtn:active {
+  background: #1e40af;
+}
+
+/* иконка + */
+.emptyAddIcon {
+  font-size: 18px;
+  line-height: 1;
+}

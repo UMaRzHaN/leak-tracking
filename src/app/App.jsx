@@ -61,7 +61,8 @@ export default function App() {
     }
   }, [clear, setPage]);
 
-  const hideLayout = page === "add" || page === "settings";
+  const hideLayout =
+    page === "add" || page === "settings" || page === "settings";
 
   /* =========================
      RENDER
@@ -112,6 +113,7 @@ export default function App() {
             setData={save}
             coords={coords}
             clearDatabase={clear}
+            setPage={setPage}
           />
         )}
 

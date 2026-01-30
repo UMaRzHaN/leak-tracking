@@ -7,7 +7,13 @@ import LeakDetailsSheet from "../../components/LeakDetailsSheet/LeakDetailsSheet
 
 import { useDatabaseSearch, useDatabaseSort, useDatabaseActions } from "./";
 
-export default function DataBase({ data, setData, coords, clearDatabase }) {
+export default function DataBase({
+  data,
+  setData,
+  coords,
+  clearDatabase,
+  setPage,
+}) {
   const [activeLeak, setActiveLeak] = useState(null);
 
   const {
@@ -46,6 +52,7 @@ export default function DataBase({ data, setData, coords, clearDatabase }) {
         data={sortedData}
         onRemove={remove}
         onOpenDetails={setActiveLeak}
+        setPage={setPage}
       />
 
       {activeLeak && (

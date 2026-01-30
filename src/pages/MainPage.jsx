@@ -43,6 +43,7 @@ export default function MainPage({
         onOpenDetails={setActiveLeak}
         onViewAll={() => setPage("db")}
         setActiveLeak={setActiveLeak}
+        setPage={setPage}
       />
 
       {activeLeak && (

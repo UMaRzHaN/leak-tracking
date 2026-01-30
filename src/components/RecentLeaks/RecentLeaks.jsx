@@ -3,7 +3,12 @@ import s from "./RecentLeaks.module.scss";
 
 const leakLevel = (speed = 0) =>
   speed <= 25 ? "low" : speed >= 100 ? "high" : "medium";
-export default function RecentLeaks({ leaks = [], onViewAll, onOpenDetails }) {
+export default function RecentLeaks({
+  leaks = [],
+  onViewAll,
+  onOpenDetails,
+  setPage,
+}) {
   return (
     <div className={s.recentLeaks}>
       <div className={s.recentHeader}>
@@ -68,7 +73,22 @@ export default function RecentLeaks({ leaks = [], onViewAll, onOpenDetails }) {
             </button>
           ))
         ) : (
-          <div className={s.empty}>Тут пока пусто</div>
+          <div className={s.emptyRecent}>
+            <div className={s.emptyRecentTitle}>
+              Пока нет добавленных утечек
+            </div>
+
+            <div className={s.emptyRecentHint}>
+              Добавьте первую запись, чтобы она появилась здесь.
+            </div>
+
+            <button
+              className={s.emptyRecentLink}
+              onClick={() => setPage("add")}
+            >
+              + Добавить первую утечку
+            </button>
+          </div>
         )}
       </div>
     </div>

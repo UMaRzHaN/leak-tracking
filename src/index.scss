@@ -8,11 +8,16 @@
   --app-header: 66px;
   --app-footer: 66px;
 }
+html {
+  height: 100%;
+}
+
 body {
+  min-height: 100dvh;
+  min-height: calc(var(--vh, 1vh) * 100);
   margin: 0;
   background: #f4f6f8;
 }
-
 .emojis {
   background-repeat: no-repeat;
   background-position: 10px center;
@@ -35,7 +40,6 @@ body {
   background-image: url(img/temperature.png);
 }
 .app {
-  max-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
