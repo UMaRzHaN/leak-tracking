@@ -78,6 +78,7 @@ export default function SettingsModal({
 
         next.equipmentType = value;
         next.uncertainty = equipment.uncertainty;
+        next.serial_number = equipment.serial_number;
       } else {
         const numValue = Number(value);
         if (Number.isNaN(numValue)) return prev;

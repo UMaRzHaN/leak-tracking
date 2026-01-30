@@ -3,7 +3,6 @@ import {
   objects,
   components,
   description,
-  cause,
   solutions,
   recommendations,
   materials,
@@ -65,30 +64,6 @@ export const STEPS = [
         label: "Скорость",
         number: true,
         required: true,
-      },
-      {
-        type: "autocomplete",
-        key: "leak_description",
-        label: "Описание утечки",
-        options: Object.values(description).flat(),
-      },
-      {
-        type: "autocomplete",
-        key: "leak_cause",
-        label: "Причина утечки",
-        options: Object.values(cause).flat(),
-      },
-      {
-        type: "autocomplete",
-        key: "technological_solution",
-        label: "Техрешение",
-        options: Object.values(solutions).flat(),
-      },
-      {
-        type: "autocomplete",
-        key: "repair_recommendation",
-        label: "План устранения",
-        options: Object.values(recommendations).flat(),
       },
     ],
   },
@@ -177,8 +152,26 @@ export const STEPS = [
   //   ],
   // },
   {
-    title: "МТР *",
+    title: "МТР и Описание *",
     fields: [
+      {
+        type: "autocomplete",
+        key: "leak_description",
+        label: "Описание утечки",
+        options: Object.values(description).flat(),
+      },
+      {
+        type: "autocomplete",
+        key: "technological_solution",
+        label: "Техрешение",
+        options: Object.values(solutions).flat(),
+      },
+      {
+        type: "autocomplete",
+        key: "repair_recommendation",
+        label: "План устранения",
+        options: Object.values(recommendations).flat(),
+      },
       {
         type: "autocomplete",
         key: "materials_equipment",

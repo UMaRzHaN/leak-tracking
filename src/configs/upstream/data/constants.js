@@ -10,7 +10,6 @@ export const SEARCH_FIELDS = [
   { key: "category", label: "Категория" },
   { key: "component", label: "Компонент" },
   { key: "leak_description", label: "Описание утечки" },
-  { key: "leak_cause", label: "Причина утечки" },
   { key: "technological_solution", label: "Технологическое решение" },
   { key: "repair_recommendation", label: "Решение / План устранения" },
   { key: "materials_equipment", label: "МТР ремонта" },

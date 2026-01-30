@@ -7,11 +7,13 @@ export const GAS_TYPES = {
 };
 
 export const EQUIPMENT_TYPES = {
-  "GFM 2.0": { label: "GFM 2.0", uncertainty: 0.05 },
-  "GFM 3.0": { label: "GFM 3.0", uncertainty: 0.05 },
-  "Розовый мешок": { label: "Розовый мешок", uncertainty: 0.1 },
-  "Камера FLIR": { label: "Камера FLIR", uncertainty: 0.3 },
-  Дрон: { label: "Дрон", uncertainty: 0.15 },
+  "GFM 2.0": { label: "GFM 2.0", uncertainty: 0.05, serial_number: null },
+  "GFM 3.0": { label: "GFM 3.0", uncertainty: 0.05, serial_number: null },
+  "Розовый мешок": {
+    label: "Розовый мешок",
+    uncertainty: 0.1,
+    serial_number: 1,
+  },
 };
 
 export let gasType = "methane",
@@ -21,4 +23,4 @@ export let gasType = "methane",
   percentage_gas_to_flare = 1,
   percentage_gas_to_utilization = 100 - percentage_gas_to_flare,
   GWP = 28,
-  serial_number = 0;
+  serial_number = EQUIPMENT_TYPES["GFM 2.0"].serial_number;
