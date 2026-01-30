@@ -2,8 +2,7 @@ function scrollWithOffset(element, offset = 0) {
   if (!element) return;
 
   const rect = element.getBoundingClientRect();
-  const scrollTop =
-    window.pageYOffset || document.documentElement.scrollTop;
+  const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
 
   const top = rect.top + scrollTop - offset;
 
@@ -13,34 +12,19 @@ function scrollWithOffset(element, offset = 0) {
   });
 }
 
-export function useEnterNavigation({
-  onLast,
-  headerOffset = 64,
-  includeReadonly = false,
-}) {
-  const handleEnter = (current) => {
-    if (!current?.form) {
+export function useEnterNavigation({ onLast, headerOffset = 64 }) {
+  const handleSubmit = (form, activeEl) => {
+    if (!form) {
       onLast?.();
       return;
     }
 
     const focusable = Array.from(
-      current.form.querySelectorAll(
-        "input, textarea, select, [tabindex='0']",
-      ),
-    ).filter((el) => {
-      if (el.disabled) return false;
-      if (!includeReadonly && el.readOnly) return false;
-      if (el.offsetParent === null) return false; // hidden
-      return true;
-    });
+      form.querySelectorAll("[data-enter-nav]"),
+    ).filter((el) => !el.disabled && el.getClientRects().length > 0);
 
+    const current = activeEl ?? document.activeElement;
     const index = focusable.indexOf(current);
-    if (index === -1) {
-      onLast?.();
-      return;
-    }
-
     const next = focusable[index + 1];
 
     if (next) {
@@ -51,6 +35,14 @@ export function useEnterNavigation({
 
     onLast?.();
   };
+  const completeFromElement = (el) => {
+    const form = el?.closest("form");
+    if (!form) return;
 
-  return { handleEnter };
+    requestAnimationFrame(() => {
+      handleSubmit(form, el);
+    });
+  };
+
+  return { handleSubmit, completeFromElement };
 }

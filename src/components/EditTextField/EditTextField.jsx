@@ -9,7 +9,7 @@ export default function EditTextField({
   type = "text",
 }) {
   const id = useId();
-  const showClear = multiline && value;
+  const showClear = value?.length > 0;
 
   return (
     <div className={`${s.field} ${value ? s.hasValue : ""}`}>
@@ -34,13 +34,26 @@ export default function EditTextField({
           )}
         </div>
       ) : (
-        <input
-          id={id}
-          type={type}
-          value={value || ""}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder=" "
-        />
+        <div className={s.inputWrapper}>
+          <input
+            id={id}
+            type={type}
+            value={value || ""}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder=" "
+          />
+
+          {showClear && (
+            <button
+              type="button"
+              className={s.clearBtn}
+              onClick={() => onChange("")}
+              aria-label="Очистить"
+            >
+              ✕
+            </button>
+          )}
+        </div>
       )}
 
       <label htmlFor={id}>{label}</label>

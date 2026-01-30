@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import InputCard from "./InputCard";
 import Autocomplete from "./Autocomplete";
 import PhotoInput from "./PhotoInput";
@@ -15,36 +14,39 @@ export default function StepRenderer({
   save,
 }) {
   const isLastStep = step >= steps.length;
-
-  // ❗ config может быть undefined — это ОК
   const config = steps[step - 1];
 
-  // 🔹 ВСЕ хуки — ДО return
-  const focusableFields = useMemo(() => {
-    if (!config) return [];
-    return config.fields.filter((f) => f.type !== "photo");
-  }, [config]);
-
-  const lastFieldKey = focusableFields.length
-    ? focusableFields.at(-1).key
-    : null;
-
-  const { handleEnter } = useEnterNavigation({
+  const { handleSubmit, completeFromElement } = useEnterNavigation({
     onLast: () => {
-      if (errors && Object.keys(errors).length > 0) return;
+      const hasErrors =
+        errors &&
+        Object.values(errors).some(
+          (v) => v !== undefined && v !== null && v !== "",
+        );
+
+      if (hasErrors) return;
       isLastStep ? save() : nextStep();
     },
     headerOffset: 56,
   });
 
-  // ⛔ return ТОЛЬКО ПОСЛЕ хуков
   if (!config) return null;
 
-  const canHandleEnter = (f) =>
-    lastFieldKey !== null && f.key === lastFieldKey;
-
   return (
-    <div className={s.stepRenderer}>
+    <form
+      className={s.stepRenderer}
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSubmit(e.currentTarget, document.activeElement);
+      }}
+      onKeyDownCapture={(e) => {
+        if (e.key !== "Enter") return;
+        if (e.target.tagName === "TEXTAREA") return;
+
+        e.preventDefault();
+        handleSubmit(e.currentTarget, e.target);
+      }}
+    >
       {config.fields.map((f) => {
         if (f.type === "input" || f.type === "textarea") {
           return (
@@ -58,7 +60,6 @@ export default function StepRenderer({
               value={form[f.key]}
               error={errors?.[f.key]}
               onChange={(v) => onChange(f.key, v)}
-              onEnter={canHandleEnter(f) ? handleEnter : undefined}
             />
           );
         }
@@ -74,7 +75,7 @@ export default function StepRenderer({
               error={errors?.[f.key]}
               onChange={(v) => onChange(f.key, v)}
               required={f.required}
-              onEnter={canHandleEnter(f) ? handleEnter : undefined}
+              onComplete={completeFromElement}
             />
           );
         }
@@ -90,9 +91,14 @@ export default function StepRenderer({
             />
           );
         }
-
+        <button
+          type="submit"
+          style={{ position: "absolute", opacity: 0, pointerEvents: "none" }}
+          aria-hidden="true"
+          tabIndex={-1}
+        />;
         return null;
       })}
-    </div>
+    </form>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import s from "./Input.module.scss";
 
 export default function Autocomplete({
@@ -10,15 +10,12 @@ export default function Autocomplete({
   error,
   placeholder = "",
   required = false,
-  onEnter, // 👈 ожидает DOM-элемент
+  onComplete,
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value ?? "");
   const inputRef = useRef(null);
 
-  const showClear = query.length > 0;
-
-  // 🔹 sync с внешним value
   useEffect(() => {
     setQuery(value ?? "");
   }, [value]);
@@ -27,40 +24,14 @@ export default function Autocomplete({
     () => options.filter((o) => o.toLowerCase().includes(query.toLowerCase())),
     [options, query],
   );
-
-  const select = useCallback(
-    (val) => {
-      setQuery(val);
-      onChange(val);
-      setOpen(false);
-    },
-    [onChange],
-  );
-
-  const clear = useCallback(() => {
-    setQuery("");
-    onChange("");
+  const select = (val) => {
+    setQuery(val);
+    onChange(val);
     setOpen(false);
-    inputRef.current?.focus();
-  }, [onChange]);
 
-  const handleKeyDown = useCallback(
-    (e) => {
-      if (e.key !== "Enter") return;
-
-      // 🔹 если есть подсказки — выбираем первую
-      if (open && filtered.length > 0) {
-        e.preventDefault();
-        select(filtered[0]);
-        return;
-      }
-
-      // 🔹 обычный Enter (как InputCard)
-      e.preventDefault();
-      onEnter?.(inputRef.current);
-    },
-    [open, filtered, select, onEnter],
-  );
+    // 🔑 единый сигнал "ввод завершён"
+    onComplete?.(inputRef.current);
+  };
 
   return (
     <div
@@ -68,46 +39,37 @@ export default function Autocomplete({
         .filter(Boolean)
         .join(" ")}
     >
-      {label && (
-        <label htmlFor={id} className={s.formLabel}>
-          {label}
-          {required && <span className={s.required}> *</span>}
-        </label>
-      )}
+      <label htmlFor={id} className={s.formLabel}>
+        {label}
+        {required && <span className={s.required}> *</span>}
+      </label>
 
       <div className={s.inputWrapper}>
         <input
+          data-enter-nav
           ref={inputRef}
           id={id}
           className={s.formInput}
           type="text"
           value={query}
           placeholder={placeholder || " "}
-          required={required}
-          aria-required={required}
-          aria-invalid={!!error}
           enterKeyHint="next"
           onFocus={() => setOpen(true)}
-          onKeyDown={handleKeyDown}
+          onBlur={() => {
+            requestAnimationFrame(() => {
+              if (!document.activeElement?.closest(`.${s.autocompleteList}`)) {
+                setOpen(false);
+              }
+            });
+          }}
           onChange={(e) => {
             const v = e.target.value;
             setQuery(v);
             onChange(v);
             setOpen(true);
           }}
+          inputMode="text"
         />
-
-        {showClear && (
-          <button
-            type="button"
-            className={s.clearBtn}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={clear}
-            aria-label="Очистить"
-          >
-            ✕
-          </button>
-        )}
       </div>
 
       {open && filtered.length > 0 && (

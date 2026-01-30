@@ -1,4 +1,4 @@
-import { useRef, useId, useCallback } from "react";
+import { useRef, useId, useCallback, useEffect } from "react";
 import { useCamera } from "../../hooks/useCamera";
 import s from "./Input.module.scss";
 
@@ -14,6 +14,14 @@ export default function PhotoInput({
   const inputId = useId();
 
   const { isNative, takePhoto, pickFromBrowser } = useCamera();
+
+  // 🔒 корректная защита от async после unmount
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
 
   const handleClick = useCallback(async () => {
     if (isNative) {
@@ -36,14 +44,11 @@ export default function PhotoInput({
         onChange(photo);
       }
 
+      // 🔄 сброс input, чтобы можно было выбрать тот же файл повторно
       e.target.value = "";
     },
     [pickFromBrowser, onChange],
   );
-
-  // 🔒 защита от async после unmount
-  // (можно не делать cleanup — ref обнулим вручную)
-  aliveRef.current = true;
 
   const showError = required && !value;
 
@@ -54,16 +59,16 @@ export default function PhotoInput({
         .join(" ")}
     >
       {/* LABEL */}
-      <label className={s.fieldLabel} htmlFor={inputId}>
+      <div className={s.fieldLabel}>
         {label}
         {required && <span className={s.required}> *</span>}
-      </label>
+      </div>
 
       {/* ACTION BUTTON */}
       <button
         type="button"
         className={s.photoBtn}
-        tabIndex={-1}                 // ⛔ не участвует в Enter-навигации
+        tabIndex={-1} // ⛔ не участвует в Enter-навигации
         onClick={handleClick}
         aria-describedby={inputId}
       >
@@ -93,7 +98,9 @@ export default function PhotoInput({
 
       {/* ERROR MESSAGE */}
       {showError && (
-        <div className={s.fieldError}>Поле «{label}» обязательно</div>
+        <div className={s.fieldError}>
+          Поле «{label}» обязательно
+        </div>
       )}
     </div>
   );

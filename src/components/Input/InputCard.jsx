@@ -1,4 +1,4 @@
-import { useId, useRef, useCallback } from "react";
+import { useId, useRef } from "react";
 import s from "./Input.module.scss";
 
 export default function InputCard({
@@ -7,37 +7,18 @@ export default function InputCard({
   onChange,
   placeholder,
   type = "search",
-  as = "input", // input | textarea
+  as = "input",
   error,
   required = false,
   rightSlot,
   rows = 3,
-  onEnter, // 👈 ожидает DOM-элемент
 }) {
   const isTextarea = as === "textarea";
   const showClear = value && String(value).length > 0;
 
   const inputId = useId();
   const inputRef = useRef(null);
-
-  const handleKeyDown = useCallback(
-    (e) => {
-      if (e.key !== "Enter") return;
-
-      // textarea: Shift+Enter → новая строка
-      if (isTextarea && e.shiftKey) return;
-
-      e.preventDefault();
-      onEnter?.(inputRef.current);
-    },
-    [isTextarea, onEnter],
-  );
-
-  const clear = useCallback(() => {
-    onChange("");
-    inputRef.current?.focus();
-  }, [onChange]);
-
+  const isNumber = type === "number";
   return (
     <div
       className={[s.inputCard, required && s.isRequired, error && s.hasError]
@@ -49,13 +30,13 @@ export default function InputCard({
           {label}
           {required && <span className={s.required}> *</span>}
         </label>
-
         {rightSlot && <div className={s.inputCardSlot}>{rightSlot}</div>}
       </div>
 
       <div className={s.inputWrapper}>
         {isTextarea ? (
           <textarea
+            data-enter-nav
             ref={inputRef}
             id={inputId}
             className={s.inputCardTextarea}
@@ -63,20 +44,20 @@ export default function InputCard({
             value={value ?? ""}
             placeholder={placeholder || " "}
             onChange={(e) => onChange(e.target.value)}
-            onKeyDown={handleKeyDown}
+            enterKeyHint="enter"
           />
         ) : (
           <input
+            data-enter-nav
             ref={inputRef}
             id={inputId}
             className={s.inputCardInput}
-            type={type}
+            type={isNumber ? "text" : type}
+            inputMode={isNumber ? "decimal" : undefined}
+            enterKeyHint="next"
             value={value ?? ""}
             placeholder={placeholder || " "}
             onChange={(e) => onChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            inputMode={type === "number" ? "decimal" : undefined}
-            enterKeyHint="next"
           />
         )}
 
@@ -84,10 +65,12 @@ export default function InputCard({
           <button
             type="button"
             className={s.clearBtn}
-            tabIndex={-1}                 // ⛔ не участвует в навигации
+            tabIndex={-1}
             onMouseDown={(e) => e.preventDefault()}
-            onClick={clear}
-            aria-label="Очистить"
+            onClick={() => {
+              onChange("");
+              inputRef.current?.focus();
+            }}
           >
             ✕
           </button>
