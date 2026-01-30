@@ -1,25 +1,27 @@
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 
-const PHOTO_FOLDER = "LeakReports/photos";
-
+/* =======================
+   💾 SAVE
+======================= */
 /**
- * 💾 Сохраняет фото
- * @param {File|Blob|CameraPhoto} rawPhoto
+ * Сохраняет фото и возвращает путь
+ * WEB    → data:image/...
+ * NATIVE → Documents/LeakReports/{projectId}/photo/photo_{id}.jpg
+ *
+ * @param {Blob|File|CameraPhoto} rawPhoto
  * @param {string|number} id
+ * @param {string|number} projectId
  * @returns {Promise<string|null>}
  */
-export async function savePhotoToFS(rawPhoto, id) {
-  if (!rawPhoto || !id) return null;
+export async function savePhotoToFS(rawPhoto, id, projectId) {
+  if (!rawPhoto || !id || !projectId) return null;
 
   /* =======================
      🌐 WEB
   ======================= */
   if (!Capacitor.isNativePlatform()) {
-    if (!(rawPhoto instanceof Blob)) {
-      console.error("WEB: rawPhoto is not File/Blob", rawPhoto);
-      return null;
-    }
+    if (!(rawPhoto instanceof Blob)) return null;
 
     const base64 = await fileToBase64(rawPhoto);
     return `data:image/jpeg;base64,${base64}`;
@@ -28,29 +30,31 @@ export async function savePhotoToFS(rawPhoto, id) {
   /* =======================
      📱 NATIVE
   ======================= */
-  if (!rawPhoto.path) return null;
-
   try {
+    const folder = `LeakReports/${projectId}/photo`;
+    const fileName = `photo_${id}.jpg`;
+    const filePath = `${folder}/${fileName}`;
+
     await Filesystem.mkdir({
-      path: PHOTO_FOLDER,
+      path: folder,
       directory: Directory.Documents,
       recursive: true,
-    });
+    }).catch(() => {});
 
-    const fileName = `photo_${id}.jpg`;
-    const targetPath = `${PHOTO_FOLDER}/${fileName}`;
+    const blob = rawPhoto.webPath
+      ? await fetch(rawPhoto.webPath).then((r) => r.blob())
+      : rawPhoto;
 
-    const base64 = await fetch(rawPhoto.webPath).then((r) => r.blob());
-    const base64Data = await fileToBase64(base64);
+    const base64Data = await fileToBase64(blob);
 
     await Filesystem.writeFile({
-      path: targetPath,
-      data: base64Data,
+      path: filePath,
       directory: Directory.Documents,
+      data: base64Data,
       encoding: Encoding.BASE64,
     });
 
-    return `Documents/${targetPath}`;
+    return `Documents/${filePath}`;
   } catch (e) {
     console.error("savePhotoToFS error:", e);
     return null;
@@ -58,15 +62,11 @@ export async function savePhotoToFS(rawPhoto, id) {
 }
 
 /* =======================
-   🗑 DELETE (native only)
+   🗑 DELETE
 ======================= */
 export async function deletePhotoFromFS(path) {
-  if (
-    !path ||
-    !Capacitor.isNativePlatform() ||
-    !path.startsWith("Documents/")
-  )
-    return;
+  if (!path || !Capacitor.isNativePlatform()) return;
+  if (!path.startsWith("Documents/")) return;
 
   try {
     await Filesystem.deleteFile({
@@ -106,7 +106,7 @@ export async function getPhotoSrc(path) {
   if (!path) return null;
 
   if (!Capacitor.isNativePlatform()) {
-    return path; // data:image/...
+    return path;
   }
 
   try {
@@ -122,9 +122,10 @@ export async function getPhotoSrc(path) {
   }
 }
 
-/* ================= HELPERS ================= */
-
-function fileToBase64(file) {
+/* =======================
+   🔧 HELPERS
+======================= */
+function fileToBase64(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -138,6 +139,6 @@ function fileToBase64(file) {
     };
 
     reader.onerror = reject;
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(blob);
   });
 }

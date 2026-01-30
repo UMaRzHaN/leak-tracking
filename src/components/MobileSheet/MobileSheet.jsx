@@ -44,7 +44,7 @@ export default function MobileSheet({
   onSelect,
 }) {
   const project = useProject();
-  const mkdir = getProjectMobileDir(project);
+  const mkdir = getProjectMobileDir(project.project);
 
   const [query, setQuery] = useState("");
 

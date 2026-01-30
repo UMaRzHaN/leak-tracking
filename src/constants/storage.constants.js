@@ -1,7 +1,5 @@
 import { PROJECT_META } from "../configs/projects";
 
-export const PHOTOS_DIR = "LeakReports/photos";
-
 // Функция для получения ключа хранилища для конкретного проекта (WEB)
 export const getProjectDataKey = (projectId) =>
   `leaks_database:${projectId}:v1`;
@@ -15,7 +13,7 @@ export const getProjectMobileDir = (projectId = "midstream") => {
 // Функция для получения пути файла с данными проекта на мобильных устройствах
 export const getProjectDataFile = (projectId) => {
   const dir = getProjectMobileDir(projectId);
-  return `${dir}/data.json`;
+  return `${dir}/data/data.json`;
 };
 
 // Для обратной совместимости

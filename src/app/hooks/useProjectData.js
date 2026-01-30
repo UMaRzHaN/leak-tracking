@@ -4,7 +4,7 @@ import { Directory, Filesystem } from "@capacitor/filesystem";
 import { STORAGE_KEYS } from "../settings/storageKeys";
 
 /* =========================
-   HELPERS
+   HELPERS — WEB
 ========================= */
 const readWeb = (key) => {
   try {
@@ -19,22 +19,40 @@ const writeWeb = (key, data) => {
   localStorage.setItem(key, JSON.stringify(data));
 };
 
-const readMobile = async (file) => {
+/* =========================
+   HELPERS — MOBILE
+========================= */
+const ensureDir = async (filePath) => {
+  const dir = filePath.substring(0, filePath.lastIndexOf("/"));
+
+  await Filesystem.mkdir({
+    path: dir,
+    directory: Directory.Documents,
+    recursive: true,
+  }).catch(() => {
+    // mkdir может падать, если директория уже существует — это нормально
+  });
+};
+
+const readMobile = async (filePath) => {
   try {
     const res = await Filesystem.readFile({
-      path: file,
+      path: filePath,
       directory: Directory.Documents,
       encoding: "utf8",
     });
+
     return JSON.parse(res.data || "[]");
   } catch {
     return [];
   }
 };
 
-const writeMobile = async (file, data) => {
+const writeMobile = async (data, filePath) => {
+  await ensureDir(filePath);
+
   await Filesystem.writeFile({
-    path: file,
+    path: filePath,
     directory: Directory.Documents,
     data: JSON.stringify(data),
     encoding: "utf8",
@@ -50,7 +68,7 @@ export function useProjectData(projectId) {
   }
 
   const storageKey = STORAGE_KEYS.PROJECT_DATA(projectId);
-  const fileName = `${projectId}.json`;
+  const filePath = `LeakReports/${projectId}/data/${projectId}.json`;
 
   const [data, setData] = useState([]);
 
@@ -62,7 +80,7 @@ export function useProjectData(projectId) {
 
     const load = async () => {
       const loaded = Capacitor.isNativePlatform()
-        ? await readMobile(fileName)
+        ? await readMobile(filePath)
         : readWeb(storageKey);
 
       if (!cancelled) {
@@ -71,25 +89,26 @@ export function useProjectData(projectId) {
     };
 
     load();
+
     return () => {
       cancelled = true;
     };
-  }, [projectId, fileName, storageKey]);
+  }, [filePath, storageKey]);
 
   /* =========================
      SAVE
   ========================= */
   const save = useCallback(
     async (next) => {
-      setData(next);
+      setData(() => next);
 
       if (Capacitor.isNativePlatform()) {
-        await writeMobile(fileName, next);
+        await writeMobile(next, filePath);
       } else {
         writeWeb(storageKey, next);
       }
     },
-    [fileName, storageKey],
+    [filePath, storageKey],
   );
 
   /* =========================
@@ -99,15 +118,15 @@ export function useProjectData(projectId) {
     setData([]);
 
     if (Capacitor.isNativePlatform()) {
-      await writeMobile(fileName, []);
+      await writeMobile([], filePath);
     } else {
       localStorage.removeItem(storageKey);
     }
-  }, [fileName, storageKey]);
+  }, [filePath, storageKey]);
 
   return {
     data,
-    setData, // редко нужен, но оставляем
+    setData, // оставляем осознанно, для редких кейсов
     save,
     clear,
   };

@@ -216,6 +216,8 @@ export default function LeakForm({
           form={form}
           errors={errors}
           onChange={handle}
+          nextStep={nextStep}
+          save={save}
         />
 
         {/* ===== CLEAR ACTIONS ===== */}

@@ -29,6 +29,34 @@ async function fetchWebPathAsBase64(webPath) {
   return fileToBase64(blob);
 }
 
+/**
+ * 🧹 Удаляет все старые версии фото утечки, кроме текущей
+ */
+async function cleanupOldPhotoVersions(folder, leakId, keepFileName) {
+  try {
+    const { files } = await Filesystem.readdir({
+      path: folder,
+      directory: Directory.Documents,
+    });
+
+    const prefix = `photo_${leakId}_`;
+
+    for (const file of files) {
+      if (
+        file.name.startsWith(prefix) &&
+        file.name !== keepFileName
+      ) {
+        await Filesystem.deleteFile({
+          directory: Directory.Documents,
+          path: `${folder}/${file.name}`,
+        });
+      }
+    }
+  } catch (e) {
+    console.warn("cleanupOldPhotoVersions error:", e);
+  }
+}
+
 /* ================= HOOK ================= */
 
 export function usePhotoStorage() {
@@ -37,22 +65,27 @@ export function usePhotoStorage() {
     savePhoto: saveToIndexedDB,
     getPhoto: getFromIndexedDB,
     deletePhoto: deleteFromIndexedDB,
+    listKeys, // ⚠️ предполагается, что хук умеет это
   } = useIndexedDB();
 
   const { project } = useProject();
-  const mkdir = getProjectMobileDir(project);
+  const baseDir = getProjectMobileDir(project);
 
   const isNative = Capacitor.isNativePlatform();
 
-  // 📁 итоговая папка проекта
-  const PHOTO_FOLDER = mkdir + "/photos";
+  // Documents/LeakReports/{folder}/photos
+  const PHOTO_FOLDER = `${baseDir}/photos`;
 
   /* ================= SAVE ================= */
 
   async function savePhoto(rawPhoto, leakId) {
     if (!rawPhoto || !leakId) return null;
 
-    /* 🌐 WEB */
+    const version = Date.now();
+
+    /* =================
+       🌐 WEB (IndexedDB)
+    ================= */
     if (!isNative) {
       if (!ready) {
         console.warn("IndexedDB not ready, skip savePhoto");
@@ -66,23 +99,38 @@ export function usePhotoStorage() {
 
       const base64 = await fileToBase64(rawPhoto);
       const mime = rawPhoto.type || "image/jpeg";
-      const photoId = `photo_${leakId}_${Date.now()}`;
+
+      const photoId = `photo_${leakId}_${version}`;
       const photoData = `data:${mime};base64,${base64}`;
 
       const ok = await saveToIndexedDB(photoId, photoData);
       if (!ok) return null;
 
+      // 🧹 cleanup старых версий (WEB)
+      if (typeof listKeys === "function") {
+        const keys = await listKeys();
+        const prefix = `photo_${leakId}_`;
+
+        for (const key of keys) {
+          if (key.startsWith(prefix) && key !== photoId) {
+            await deleteFromIndexedDB(key);
+          }
+        }
+      }
+
       return `idb://${photoId}`;
     }
 
-    /* 📱 MOBILE */
+    /* =================
+       📱 MOBILE (FS)
+    ================= */
     await Filesystem.mkdir({
       path: PHOTO_FOLDER,
       directory: Directory.Documents,
       recursive: true,
     }).catch(() => {});
 
-    const fileName = `photo_${leakId}_${Date.now()}.jpg`;
+    const fileName = `photo_${leakId}_${version}.jpg`;
     const targetPath = `${PHOTO_FOLDER}/${fileName}`;
 
     if (rawPhoto.webPath) {
@@ -94,6 +142,9 @@ export function usePhotoStorage() {
         directory: Directory.Documents,
         encoding: Encoding.BASE64,
       });
+
+      // 🧹 cleanup старых версий (MOBILE)
+      await cleanupOldPhotoVersions(PHOTO_FOLDER, leakId, fileName);
 
       return `Documents/${targetPath}`;
     }
@@ -107,7 +158,7 @@ export function usePhotoStorage() {
   async function deletePhoto(path) {
     if (!path) return;
 
-    // IndexedDB
+    /* 🌐 IndexedDB */
     if (path.startsWith("idb://")) {
       if (!ready) {
         console.warn("IndexedDB not ready, skip deletePhoto");
@@ -119,7 +170,7 @@ export function usePhotoStorage() {
       return;
     }
 
-    // Mobile FS
+    /* 📱 Mobile FS */
     if (isNative && path.startsWith("Documents/")) {
       try {
         await Filesystem.deleteFile({
@@ -142,7 +193,7 @@ export function usePhotoStorage() {
   return {
     ready,
     isNative,
-    mkdir, // 👈 иногда полезно в UI / логах
+    mkdir: baseDir, // полезно для логов / отладки
     savePhoto,
     deletePhoto,
     getPhoto,

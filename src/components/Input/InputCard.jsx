@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useRef } from "react";
 import s from "./Input.module.scss";
 
 export default function InputCard({
@@ -12,11 +12,24 @@ export default function InputCard({
   required = false,
   rightSlot,
   rows = 3,
+  onEnter, // 👈 НОВОЕ
 }) {
   const isTextarea = as === "textarea";
   const showClear = value && String(value).length > 0;
 
-  const inputId = useId(); // 👈 ключевой момент
+  const inputId = useId();
+  const inputRef = useRef(null);
+
+  const handleKeyDown = (e) => {
+    if (e.key !== "Enter") return;
+
+    // textarea: Shift+Enter → новая строка
+    if (isTextarea && e.shiftKey) return;
+
+    e.preventDefault();
+    inputRef.current?.blur();
+    onEnter?.(inputRef.current);
+  };
 
   return (
     <div
@@ -25,7 +38,6 @@ export default function InputCard({
         .join(" ")}
     >
       <div className={s.inputCardHeader}>
-        {/* ✅ label связан с полем */}
         <label className={s.inputCardLabel} htmlFor={inputId}>
           {label}
           {required && <span className={s.required}> *</span>}
@@ -37,22 +49,27 @@ export default function InputCard({
       <div className={s.inputWrapper}>
         {isTextarea ? (
           <textarea
+            ref={inputRef}
             id={inputId}
             className={s.inputCardTextarea}
             rows={rows}
             value={value ?? ""}
             placeholder={placeholder || " "}
             onChange={(e) => onChange(e.target.value)}
+            onKeyDown={handleKeyDown}
           />
         ) : (
           <input
+            ref={inputRef}
             id={inputId}
             className={s.inputCardInput}
             type={type}
             value={value ?? ""}
             placeholder={placeholder || " "}
             onChange={(e) => onChange(e.target.value)}
+            onKeyDown={handleKeyDown}
             inputMode={type === "number" ? "decimal" : undefined}
+            enterKeyHint="next"
           />
         )}
 

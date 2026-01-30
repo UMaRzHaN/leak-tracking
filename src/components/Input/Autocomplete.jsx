@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import s from "./Input.module.scss";
 
-export default function AutocompleteTextarea({
+export default function Autocomplete({
   id,
   label,
   value,
@@ -9,36 +9,40 @@ export default function AutocompleteTextarea({
   onChange,
   error,
   placeholder = "",
-  rows = 1,
   required = false,
+  onEnter, // 👈 ожидает DOM-элемент
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value ?? "");
-  const textareaRef = useRef(null);
+  const inputRef = useRef(null);
 
   const showClear = query && query.length > 0;
 
-  /* синхронизация с внешним value */
+  /* sync с внешним value */
   useEffect(() => {
     setQuery(value ?? "");
   }, [value]);
 
-  const filtered = options.filter((o) =>
-    o.toLowerCase().includes(query.toLowerCase()),
+  const filtered = useMemo(
+    () =>
+      options.filter((o) =>
+        o.toLowerCase().includes(query.toLowerCase()),
+      ),
+    [options, query],
   );
 
   const select = (val) => {
     setQuery(val);
     onChange(val);
     setOpen(false);
-    textareaRef.current?.blur();
+    inputRef.current?.blur();
   };
 
   const clear = () => {
     setQuery("");
     onChange("");
     setOpen(false);
-    textareaRef.current?.focus();
+    inputRef.current?.focus();
   };
 
   return (
@@ -55,18 +59,26 @@ export default function AutocompleteTextarea({
       )}
 
       <div className={s.inputWrapper}>
-        <textarea
-          ref={textareaRef}
+        <input
+          ref={inputRef}
           id={id}
-          className={s.formTextarea}
-          rows={rows}
+          className={s.formInput}
+          type="text"
           value={query}
           placeholder={placeholder || " "}
           required={required}
           aria-required={required}
           aria-invalid={!!error}
+          enterKeyHint="next"
           onFocus={() => setOpen(true)}
           onBlur={() => setOpen(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              inputRef.current?.blur();
+              onEnter?.(inputRef.current); // ✅ ВАЖНО
+            }
+          }}
           onChange={(e) => {
             const v = e.target.value;
             setQuery(v);

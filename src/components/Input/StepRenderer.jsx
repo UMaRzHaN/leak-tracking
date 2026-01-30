@@ -1,34 +1,61 @@
 import InputCard from "./InputCard";
-import AutocompleteInput from "./AutocompleteInput";
+import Autocomplete from "./Autocomplete";
 import PhotoInput from "./PhotoInput";
+import { useEnterNavigation } from "../../hooks/useEnterNavigation";
 import s from "./Input.module.scss";
 
-export default function StepRenderer({ step, steps, form, errors, onChange }) {
+export default function StepRenderer({
+  step,
+  steps,
+  form,
+  errors,
+  onChange,
+  nextStep,
+  save,
+}) {
+  const isLastStep = step === steps.length;
+
+  // 🔹 ХУК ВСЕГДА ВЫЗЫВАЕТСЯ
+  const { handleEnter } = useEnterNavigation({
+    onLast: () => {
+      isLastStep ? save() : nextStep();
+    },
+    headerOffset: 56,
+  });
+
   const config = steps[step - 1];
   if (!config) return null;
+
+  // только поля, где есть Enter-навигация
+  const focusableFields = config.fields.filter((f) => f.type !== "photo");
+
+  const lastFieldKey = focusableFields.at(-1)?.key;
 
   return (
     <div className={s.stepRenderer}>
       {config.fields.map((f) => {
+        const isLast = f.key === lastFieldKey;
+
         if (f.type === "input" || f.type === "textarea") {
           return (
             <InputCard
+              key={f.key}
               as={f.type === "textarea" ? "textarea" : "input"}
               rows={f.type === "textarea" ? 4 : undefined}
-              key={f.key}
               label={f.label}
               type={f.number ? "number" : "text"}
               required={f.required}
               value={form[f.key]}
               error={errors[f.key]}
               onChange={(v) => onChange(f.key, v)}
+              onEnter={isLast ? handleEnter : undefined}
             />
           );
         }
 
         if (f.type === "autocomplete") {
           return (
-            <AutocompleteInput
+            <Autocomplete
               key={f.key}
               id={f.key}
               label={f.label}
@@ -37,9 +64,11 @@ export default function StepRenderer({ step, steps, form, errors, onChange }) {
               error={errors[f.key]}
               onChange={(v) => onChange(f.key, v)}
               required={f.required}
+              onEnter={isLast ? handleEnter : undefined}
             />
           );
         }
+
         if (f.type === "photo") {
           return (
             <PhotoInput
@@ -51,6 +80,7 @@ export default function StepRenderer({ step, steps, form, errors, onChange }) {
             />
           );
         }
+
         return null;
       })}
     </div>
