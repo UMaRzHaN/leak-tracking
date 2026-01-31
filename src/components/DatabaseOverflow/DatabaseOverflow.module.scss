@@ -27,12 +27,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
+
   cursor: pointer;
   touch-action: manipulation;
+
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.overflowBtn:hover {
+  background: #e5e7eb;
 }
 
 .overflowBtn:active {
-  background: #e5e7eb;
+  background: #d1d5db;
 }
 
 /* =========================
@@ -48,14 +57,27 @@
 
   background: #ffffff;
   border-radius: 14px;
-  padding: 0; /* ⬅️ ВАЖНО */
+  padding: 0;
 
-  overflow: hidden; /* ⬅️ КЛЮЧ */
+  overflow: hidden;
   box-shadow:
     0 12px 28px rgba(0, 0, 0, 0.18),
     0 2px 6px rgba(0, 0, 0, 0.08);
 
   z-index: 12;
+
+  animation: menuFadeIn 0.15s ease-out;
+}
+
+@keyframes menuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* =========================
@@ -67,6 +89,7 @@
   padding: 14px 16px;
 
   border: none;
+  background: none;
 
   display: flex;
   align-items: center;
@@ -78,6 +101,8 @@
 
   cursor: pointer;
   text-align: left;
+
+  transition: background 0.12s ease;
 }
 
 .overflowMenu button:hover {
@@ -87,29 +112,21 @@
 .overflowMenu button:active {
   background: #e5e7eb;
 }
-.overflowMenu button:not(.danger) {
-  background: none;
-}
 
-.overflowMenu button:hover {
-  background: #f3f4f6;
-}
-
-.overflowMenu button:active {
-  background: #e5e7eb;
-}
-.overflowMenu button:not(.danger) {
-  background: none;
+.overflowMenu button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* =========================
-   ICON STYLE (опционально)
+   ICON STYLE
 ========================= */
 
 .overflowMenu button span {
   font-size: 16px;
   width: 18px;
   text-align: center;
+  flex-shrink: 0;
 }
 
 /* =========================
@@ -128,16 +145,32 @@
   color: #b91c1c !important;
   font-weight: 600;
 
-  background: linear-gradient(to right, #fee2e2 0%, #fee2e2 64px, #eee2e2 100%);
+  background: linear-gradient(
+    to right,
+    #fee2e2 0%,
+    #fee2e2 64px,
+    #fee2e2 100%
+  ) !important;
 }
 
 .danger:hover {
-  background: linear-gradient(to right, #fecaca 0%, #fecaca 64px, #cc8989 100%);
+  background: linear-gradient(
+    to right,
+    #fecaca 0%,
+    #fecaca 64px,
+    #fecaca 100%
+  ) !important;
 }
 
 .danger:active {
-  background: linear-gradient(to right, #fca5a5 0%, #fca5a5 64px, #ffffff 100%);
+  background: linear-gradient(
+    to right,
+    #fca5a5 0%,
+    #fca5a5 64px,
+    #fca5a5 100%
+  ) !important;
 }
+
 /* =========================
    BACKDROP
 ========================= */

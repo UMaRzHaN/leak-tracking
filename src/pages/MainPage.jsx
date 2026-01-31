@@ -4,6 +4,7 @@ import RecentLeaks from "../components/RecentLeaks/RecentLeaks";
 import LeakDetailsSheet from "../components/LeakDetailsSheet/LeakDetailsSheet";
 import { saveProjectData } from "../services/saveProjectData";
 import { useProject } from "../app/settings/ProjectContext";
+import { useDatabaseActions } from "./DataBase";
 
 export default function MainPage({
   setPage,
@@ -29,6 +30,7 @@ export default function MainPage({
       setActiveLeak(null);
     }
   };
+  const { remove } = useDatabaseActions(data, setData);
 
   return (
     <div>
@@ -44,6 +46,7 @@ export default function MainPage({
         onViewAll={() => setPage("db")}
         setActiveLeak={setActiveLeak}
         setPage={setPage}
+        onRemove={remove}
       />
 
       {activeLeak && (

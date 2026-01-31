@@ -27,7 +27,7 @@ export default function StepRenderer({
       if (hasErrors) return;
       isLastStep ? save() : nextStep();
     },
-    headerOffset: 56,
+    headerOffset: 70,
   });
 
   if (!config) return null;

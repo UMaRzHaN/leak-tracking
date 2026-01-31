@@ -27,42 +27,108 @@
 }
 
 /* =========================
-   LIST
+   LIST / SWIPE WRAPPER
 ========================= */
 
-.leakList {
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 10px;
-  padding-bottom: 70px;
+.swipeWrapper {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  margin-bottom: 12px;
+  background: #f9fafb;
 }
 
 /* =========================
-   ITEM
+   SWIPE ACTION HINTS (BACKGROUND)
+   swipe LEFT  → DETAILS
+   swipe RIGHT → DELETE
 ========================= */
 
-.leakItem {
+.swipeHintLeft,
+.swipeHintRight {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 80px;
+
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  gap: 6px;
 
-  padding: 12px;
-  border-radius: 14px;
+  pointer-events: none;
+  z-index: 0;
+  text-align: center;
 
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  span:first-child {
+    font-size: 20px;
+    line-height: 1;
+  }
 
-  cursor: pointer;
-  text-align: left;
-
-  transition:
-    transform 0.08s ease,
-    box-shadow 0.12s ease;
+  span:last-child {
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.9;
+  }
 }
 
-.leakItem:active {
-  transform: scale(0.98);
+/* 👉 SWIPE LEFT → DETAILS */
+
+.swipeHintLeft {
+  left: 0;
+  background: linear-gradient(
+    to right,
+    rgba(59, 130, 246, 0.85),
+    rgba(59, 130, 246, 0.35),
+    transparent
+  );
+  color: #ffffff;
+}
+
+/* 👉 SWIPE RIGHT → DELETE */
+
+.swipeHintRight {
+  right: 0;
+  background: linear-gradient(
+    to left,
+    rgba(220, 38, 38, 0.85),
+    rgba(220, 38, 38, 0.35),
+    transparent
+  );
+  color: #ffffff;
+}
+
+/* =========================
+   CARD
+========================= */
+
+.card {
+  position: relative;
+  z-index: 2;
+
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 14px 14px 14px 12px;
+
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+
+  will-change: transform;
+  touch-action: pan-y;
+
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* Swipe emphasis */
+
+.swipedLeft {
+  box-shadow: 6px 6px 20px rgba(220, 38, 38, 0.28);
+}
+
+.swipedRight {
+  box-shadow: -6px 6px 20px rgba(59, 130, 246, 0.28);
 }
 
 /* =========================
@@ -70,21 +136,23 @@
 ========================= */
 
 .leakIcon {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  min-width: 12px;
+  height: 12px;
   border-radius: 50%;
-}
+  margin-top: 6px;
 
-.low {
-  background: #4caf50;
-}
+  &.low {
+    background: #4caf50;
+  }
 
-.medium {
-  background: #ff9800;
-}
+  &.medium {
+    background: #ff9800;
+  }
 
-.high {
-  background: #f44336;
+  &.high {
+    background: #f44336;
+  }
 }
 
 /* =========================
@@ -97,17 +165,28 @@
 }
 
 .leakTitle {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
+  color: #1f2937;
   margin-bottom: 4px;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .leakMeta {
-  font-size: 12px;
+  font-size: 12.5px;
   color: #6b7280;
+  line-height: 1.35;
+
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+
+  span {
+    white-space: nowrap;
+  }
 }
 
 /* =========================
@@ -115,14 +194,16 @@
 ========================= */
 
 .leakArrow {
+  margin-left: 6px;
   color: #9ca3af;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 
 /* =========================
-   EMPTY
+   EMPTY STATE
 ========================= */
-
-/* ===== EMPTY RECENT ===== */
 
 .emptyRecent {
   margin-top: 20px;
@@ -133,9 +214,9 @@
   gap: 6px;
 
   text-align: center;
-  border: 1px dashed;
-  padding: 5px;
-  border-radius: 10px;
+  border: 1px dashed #d1d5db;
+  padding: 10px;
+  border-radius: 12px;
 }
 
 .emptyRecentTitle {
@@ -162,8 +243,8 @@
   color: #2563eb;
 
   cursor: pointer;
-}
 
-.emptyRecentLink:hover {
-  text-decoration: underline;
+  &:hover {
+    text-decoration: underline;
+  }
 }

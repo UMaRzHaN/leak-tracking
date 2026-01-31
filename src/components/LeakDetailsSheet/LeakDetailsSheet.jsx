@@ -6,6 +6,10 @@ import EditBlock from "./components/EditBlock";
 import { useProjectConfig } from "../../app/settings/useProjectConfig";
 import s from "./LeakDetailsSheet.module.scss";
 
+import { calculations } from "../../utils/calculations/calculations";
+import { useProject } from "../../app/settings/ProjectContext";
+import { useProjectVars } from "../../app/settings/useProjectVars";
+
 /* =========================
    MODES
 ========================= */
@@ -16,17 +20,15 @@ const MODES = {
 
 export default function LeakDetailsSheet({ leak, onClose, onSave }) {
   const projectConfig = useProjectConfig();
-
-  const EDIT_FIELDS = useMemo(
-    () => {
-      const fields = projectConfig.system.fields ?? [];
-      // Фильтруем только редактируемые поля и сортируем по editOrder
-      return fields
-        .filter(f => f.editable !== false)
-        .sort((a, b) => (a.editOrder ?? 999) - (b.editOrder ?? 999));
-    },
-    [projectConfig],
-  );
+  const { project } = useProject();
+  const { vars } = useProjectVars(project, projectConfig.vars);
+  const EDIT_FIELDS = useMemo(() => {
+    const fields = projectConfig.system.fields ?? [];
+    // Фильтруем только редактируемые поля и сортируем по editOrder
+    return fields
+      .filter((f) => f.editable !== false)
+      .sort((a, b) => (a.editOrder ?? 999) - (b.editOrder ?? 999));
+  }, [projectConfig]);
 
   const [mode, setMode] = useState(MODES.VIEW);
   const [localEdit, setLocalEdit] = useState({});
@@ -84,24 +86,33 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
      SAVE
   ========================= */
   const handleSave = async () => {
+    const SPEED_KEY = "leak_speed"; // ← замени на реальный ключ
     if (saving) return;
     setSaving(true);
 
     try {
       const photoPath = await savePhoto();
 
-      // patch только изменённых текстовых полей
       const textPatch = Object.fromEntries(
         dirtyFields.map(({ key }) => [key, localEdit[key]]),
       );
 
-      onSave({
+      const speedChanged = dirtyFields.some(
+        ({ key }) =>
+          key === SPEED_KEY && Number(localEdit[key]) !== Number(leak[key]),
+      );
+
+      const baseData = {
         ...leak,
         ...textPatch,
         photo: photoPath ?? leak.photo,
         updatedAt: Date.now(),
-      });
+      };
 
+      const finalData =
+        speedChanged && vars ? calculations(baseData, vars) : baseData;
+
+      onSave(finalData);
       onClose();
     } catch (e) {
       alert("Ошибка сохранения");
