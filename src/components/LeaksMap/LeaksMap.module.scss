@@ -9,6 +9,19 @@
   height: 100%;
 }
 
+.offlineMessage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  background: #f0f0f0;
+  color: #333;
+  font-size: 18px;
+  text-align: center;
+  padding: 20px;
+}
+
 .fab {
   position: absolute;
   right: 12px;
