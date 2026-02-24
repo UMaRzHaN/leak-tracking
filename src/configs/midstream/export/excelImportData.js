@@ -50,7 +50,7 @@ export const keysOrder = [
   "materials_equipment",
   "note",
   "leak_speed",
-  "leak_speed_kg",
+  "leak_speed_kg_h",
   "pressure",
   "temperature",
   "temperature_K",

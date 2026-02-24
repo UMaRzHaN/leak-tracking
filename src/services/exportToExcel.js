@@ -136,14 +136,13 @@ const exportCSV = async (
 const generateCSV = (prepared, headers, keysOrder) => {
   const escape = (v) =>
     `"${String(v ?? "")
-      .replace(/\//g, "#")
       .replace(/"/g, '""')
       .replace(/\n/g, " ")}"`;
 
   const rows = [];
 
   // headers
-  rows.push(headers.map(escape).join(";"));
+  rows.push(headers.map(escape).join("#"));
 
   // data
   prepared.forEach((r) => {
@@ -156,7 +155,7 @@ const generateCSV = (prepared, headers, keysOrder) => {
       return escape(normalized[k]);
     });
 
-    rows.push(row.join(";"));
+    rows.push(row.join("#"));
   });
 
   return "\uFEFF" + rows.join("\n");
