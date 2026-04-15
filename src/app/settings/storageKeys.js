@@ -6,6 +6,7 @@ export const STORAGE_KEYS = {
      GLOBAL
   ========================= */
   ACTIVE_PROJECT: `${APP_PREFIX}:active_project_${VERSION}`,
+  PROJECT_CONFIG: `${APP_PREFIX}:project_config_${VERSION}`,
   UI: `${APP_PREFIX}:ui_${VERSION}`,
 
   /* =========================

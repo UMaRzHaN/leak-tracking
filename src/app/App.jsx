@@ -9,6 +9,7 @@ import DataBase from "../pages/DataBase";
 import MapPage from "../pages/MapPage";
 import MainPage from "../pages/MainPage";
 import Settings from "../pages/Settings/Settings";
+import ProjectSetupScreen from "../pages/ProjectSetup/ProjectSetupScreen";
 
 import { useProject } from "./settings/ProjectContext";
 import { useProjectData } from "./hooks/useProjectData";
@@ -35,12 +36,12 @@ export default function App() {
   /* =========================
      PROJECT CONTEXT
   ========================= */
-  const { project } = useProject();
+  const { project, projectName, isConfigured, configure } = useProject();
 
   /* =========================
      PROJECT-AWARE DATA
   ========================= */
-  const { data, save, clear } = useProjectData(project);
+  const { data, save, clear } = useProjectData(project ?? "midstream");
 
   /* =========================
      VOICE
@@ -48,21 +49,27 @@ export default function App() {
   const { voiceData, clearVoiceData, startVoiceInput, stopVoiceInput } =
     useVoiceControl();
   const { form, errors, handle, setErrors, setForm, clearForm } = useLeakForm();
+
   /* =========================
      ONE-TIME MIGRATION
   ========================= */
   useEffect(() => {
     const cleaned = cleanupLegacyLeaks();
-
     if (cleaned) {
-      console.log("🧹 Legacy base64 leaks removed");
       clear();
       setPage("");
     }
   }, [clear, setPage]);
 
+  /* =========================
+     FIRST LAUNCH SETUP
+  ========================= */
+  if (!isConfigured) {
+    return <ProjectSetupScreen onComplete={configure} />;
+  }
+
   const hideLayout =
-    page === "add" || page === "settings" || page === "settings";
+    page === "add" || page === "settings";
 
   /* =========================
      RENDER
@@ -75,6 +82,7 @@ export default function App() {
           coords={coords}
           geoError={geoError}
           setPage={setPage}
+          projectName={projectName}
         />
       )}
 

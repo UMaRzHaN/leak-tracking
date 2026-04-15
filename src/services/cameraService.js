@@ -1,30 +1,51 @@
 import { Capacitor } from "@capacitor/core";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 
-/* 📸 Камера / Галерея (MOBILE ONLY) */
+/*
+ * Используем CameraResultType.Base64, чтобы фотографии НЕ сохранялись
+ * в публичную галерею устройства. Данные приходят напрямую в память
+ * и сохраняются в приватное хранилище приложения (Directory.Data).
+ */
+
+async function requestCameraPermission() {
+  const perm = await Camera.requestPermissions({ permissions: ["camera"] });
+  if (perm.camera !== "granted") {
+    throw new Error("Camera permission denied");
+  }
+}
+
+function base64ToBlob(base64, mimeType = "image/jpeg") {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mimeType });
+}
+
+/* 📸 Камера (native) */
 export async function takePhotoFromCamera() {
   if (!Capacitor.isNativePlatform()) {
     throw new Error("Camera is available only on mobile");
   }
 
-  const perm = await Camera.requestPermissions({ permissions: ["camera"] });
-  if (perm.camera !== "granted") {
-    throw new Error("Camera permission denied");
-  }
+  await requestCameraPermission();
 
   const photo = await Camera.getPhoto({
     quality: 80,
-    source: CameraSource.Prompt,
-    resultType: CameraResultType.Uri,
+    source: CameraSource.Camera,
+    resultType: CameraResultType.Base64,
   });
 
+  const blob = base64ToBlob(photo.base64String, `image/${photo.format}`);
+
   return {
-    raw: photo,        // CameraPhoto
-    src: photo.webPath // preview
+    raw: blob,
+    src: `data:image/${photo.format};base64,${photo.base64String}`,
   };
 }
 
-/* 🖼 Галерея (mobile picker) */
+/* 🖼 Галерея — читаем через Base64, не добавляем новый файл в галерею */
 export async function pickPhotoFromGallery() {
   if (!Capacitor.isNativePlatform()) {
     throw new Error("Gallery is available only on mobile");
@@ -33,12 +54,14 @@ export async function pickPhotoFromGallery() {
   const photo = await Camera.getPhoto({
     quality: 70,
     source: CameraSource.Photos,
-    resultType: CameraResultType.Uri,
+    resultType: CameraResultType.Base64,
   });
 
+  const blob = base64ToBlob(photo.base64String, `image/${photo.format}`);
+
   return {
-    raw: photo,
-    src: photo.webPath
+    raw: blob,
+    src: `data:image/${photo.format};base64,${photo.base64String}`,
   };
 }
 
@@ -49,7 +72,7 @@ export async function readPhotoFromFile(file) {
   }
 
   return {
-    raw: file,                         // 🔑 File
-    src: URL.createObjectURL(file),    // preview
+    raw: file,
+    src: URL.createObjectURL(file),
   };
 }

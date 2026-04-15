@@ -3,6 +3,12 @@ import { Capacitor } from "@capacitor/core";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { STORAGE_KEYS } from "../settings/storageKeys";
 
+/*
+ * Данные проекта хранятся в Directory.Data — приватное хранилище приложения.
+ * Это обеспечивает изоляцию данных и исключает случайное удаление
+ * через файловый менеджер или другие приложения.
+ */
+
 /* =========================
    HELPERS — WEB
 ========================= */
@@ -20,28 +26,24 @@ const writeWeb = (key, data) => {
 };
 
 /* =========================
-   HELPERS — MOBILE
+   HELPERS — MOBILE (Directory.Data)
 ========================= */
 const ensureDir = async (filePath) => {
   const dir = filePath.substring(0, filePath.lastIndexOf("/"));
-
   await Filesystem.mkdir({
     path: dir,
-    directory: Directory.Documents,
+    directory: Directory.Data,
     recursive: true,
-  }).catch(() => {
-    // mkdir может падать, если директория уже существует — это нормально
-  });
+  }).catch(() => {});
 };
 
 const readMobile = async (filePath) => {
   try {
     const res = await Filesystem.readFile({
       path: filePath,
-      directory: Directory.Documents,
+      directory: Directory.Data,
       encoding: "utf8",
     });
-
     return JSON.parse(res.data || "[]");
   } catch {
     return [];
@@ -50,10 +52,9 @@ const readMobile = async (filePath) => {
 
 const writeMobile = async (data, filePath) => {
   await ensureDir(filePath);
-
   await Filesystem.writeFile({
     path: filePath,
-    directory: Directory.Documents,
+    directory: Directory.Data,
     data: JSON.stringify(data),
     encoding: "utf8",
   });
@@ -72,9 +73,6 @@ export function useProjectData(projectId) {
 
   const [data, setData] = useState([]);
 
-  /* =========================
-     LOAD ON PROJECT CHANGE
-  ========================= */
   useEffect(() => {
     let cancelled = false;
 
@@ -89,19 +87,12 @@ export function useProjectData(projectId) {
     };
 
     load();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [filePath, storageKey]);
 
-  /* =========================
-     SAVE
-  ========================= */
   const save = useCallback(
     async (next) => {
       setData(() => next);
-
       if (Capacitor.isNativePlatform()) {
         await writeMobile(next, filePath);
       } else {
@@ -111,12 +102,8 @@ export function useProjectData(projectId) {
     [filePath, storageKey],
   );
 
-  /* =========================
-     CLEAR
-  ========================= */
   const clear = useCallback(async () => {
     setData([]);
-
     if (Capacitor.isNativePlatform()) {
       await writeMobile([], filePath);
     } else {
@@ -124,10 +111,5 @@ export function useProjectData(projectId) {
     }
   }, [filePath, storageKey]);
 
-  return {
-    data,
-    setData, // оставляем осознанно, для редких кейсов
-    save,
-    clear,
-  };
+  return { data, setData, save, clear };
 }
