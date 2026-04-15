@@ -2,11 +2,14 @@ import { useEffect, useState, useCallback } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { STORAGE_KEYS } from "../settings/storageKeys";
+import { useProject } from "../settings/ProjectContext";
 
 /*
- * Данные проекта хранятся в Directory.Data — приватное хранилище приложения.
- * Это обеспечивает изоляцию данных и исключает случайное удаление
- * через файловый менеджер или другие приложения.
+ * Данные хранятся в Directory.Data (приватное).
+ * Путь строится из project.id для web-ключа и project.folderName для мобильного пути.
+ *
+ * Мобильная структура:
+ *   LeakReports/{folderName}/data/data.json
  */
 
 /* =========================
@@ -21,12 +24,11 @@ const readWeb = (key) => {
   }
 };
 
-const writeWeb = (key, data) => {
+const writeWeb = (key, data) =>
   localStorage.setItem(key, JSON.stringify(data));
-};
 
 /* =========================
-   HELPERS — MOBILE (Directory.Data)
+   HELPERS — MOBILE
 ========================= */
 const ensureDir = async (filePath) => {
   const dir = filePath.substring(0, filePath.lastIndexOf("/"));
@@ -63,17 +65,29 @@ const writeMobile = async (data, filePath) => {
 /* =========================
    HOOK
 ========================= */
-export function useProjectData(projectId) {
-  if (!projectId) {
-    throw new Error("useProjectData: projectId is required");
-  }
+export function useProjectData() {
+  const { activeProject } = useProject();
 
-  const storageKey = STORAGE_KEYS.PROJECT_DATA(projectId);
-  const filePath = `LeakReports/${projectId}/data/${projectId}.json`;
+  // Пока проект не выбран — работаем с пустым массивом
+  const storageKey = activeProject
+    ? STORAGE_KEYS.PROJECT_DATA(activeProject.id)
+    : null;
+
+  const filePath = activeProject
+    ? `LeakReports/${activeProject.folderName}/data/data.json`
+    : null;
 
   const [data, setData] = useState([]);
 
+  /* =========================
+     LOAD on project change
+  ========================= */
   useEffect(() => {
+    if (!storageKey && !filePath) {
+      setData([]);
+      return;
+    }
+
     let cancelled = false;
 
     const load = async () => {
@@ -81,18 +95,21 @@ export function useProjectData(projectId) {
         ? await readMobile(filePath)
         : readWeb(storageKey);
 
-      if (!cancelled) {
-        setData(Array.isArray(loaded) ? loaded : []);
-      }
+      if (!cancelled) setData(Array.isArray(loaded) ? loaded : []);
     };
 
     load();
     return () => { cancelled = true; };
   }, [filePath, storageKey]);
 
+  /* =========================
+     SAVE
+  ========================= */
   const save = useCallback(
     async (next) => {
       setData(() => next);
+      if (!storageKey && !filePath) return;
+
       if (Capacitor.isNativePlatform()) {
         await writeMobile(next, filePath);
       } else {
@@ -102,8 +119,13 @@ export function useProjectData(projectId) {
     [filePath, storageKey],
   );
 
+  /* =========================
+     CLEAR
+  ========================= */
   const clear = useCallback(async () => {
     setData([]);
+    if (!storageKey && !filePath) return;
+
     if (Capacitor.isNativePlatform()) {
       await writeMobile([], filePath);
     } else {

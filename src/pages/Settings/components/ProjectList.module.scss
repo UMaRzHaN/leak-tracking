@@ -1,0 +1,195 @@
+/* =====================================================
+   PROJECT LIST
+   ===================================================== */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* =====================================================
+   ITEM
+   ===================================================== */
+
+.item {
+  display: flex;
+  align-items: stretch;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f9fafb;
+  overflow: visible;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+
+  &.active {
+    border-color: #0d47a1;
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    box-shadow: 0 4px 14px rgba(13, 71, 161, 0.12);
+  }
+}
+
+/* =====================================================
+   SELECT AREA (left, clickable)
+   ===================================================== */
+
+.selectArea {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+
+.activeIndicator {
+  font-size: 10px;
+  color: #0d47a1;
+  opacity: 0.5;
+  flex-shrink: 0;
+
+  .active & {
+    opacity: 1;
+  }
+}
+
+.icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  .active & {
+    color: #0d47a1;
+  }
+}
+
+.nameInput {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0d47a1;
+  border: none;
+  border-bottom: 2px solid #3b82f6;
+  background: transparent;
+  outline: none;
+  padding: 0;
+  width: 100%;
+}
+
+.type {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.folder {
+  font-size: 11px;
+  color: #9ca3af;
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* =====================================================
+   ACTIONS (right side)
+   ===================================================== */
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px 0 0;
+  flex-shrink: 0;
+}
+
+.actionBtn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #6b7280;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.07);
+    color: #374151;
+  }
+}
+
+.deleteBtn {
+  &:hover {
+    background: #fee2e2;
+    color: #ef4444;
+  }
+}
+
+/* =====================================================
+   TYPE DROPDOWN
+   ===================================================== */
+
+.typeWrapper {
+  position: relative;
+}
+
+.typeDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 200;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  min-width: 160px;
+}
+
+.typeOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease;
+
+  &:hover { background: #f3f4f6; }
+
+  &.typeActive {
+    background: #eff6ff;
+    color: #0d47a1;
+    font-weight: 600;
+  }
+}

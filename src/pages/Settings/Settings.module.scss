@@ -1,180 +1,97 @@
+/* =====================================================
+   SETTINGS PAGE
+   ===================================================== */
+
 .settings {
-  height: 100vh;
+  min-height: 100vh;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  padding: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 .content {
-  padding: 20px;
+  padding: 16px;
   flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 
-  @media (max-width: 640px) {
-    padding: 12px;
-  }
+  @media (max-width: 480px) { padding: 12px; }
 }
 
-.notification {
+/* =====================================================
+   SECTION CARD
+   ===================================================== */
+
+.section {
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.sectionHead {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 20px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.sectionTitle {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #6b7280;
   margin: 0;
-  font-size: 14px;
-  font-weight: 500;
-  animation: slideDown 0.3s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  background: white;
-  border-bottom: 1px solid #f0f0f0;
-  position: fixed;
-  top: var(--app-header);
-  right: 0;
-  left: 0;
-  z-index: 300;
-
-  &.warning {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border-left: 4px solid #f59e0b;
-    color: #92400e;
-  }
-
-  &.info {
-    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-    border-left: 4px solid #3b82f6;
-    color: #0c4a6e;
-  }
-
-  @media (max-width: 640px) {
-    padding: 12px 16px;
-    margin: 0;
-  }
 }
 
-@keyframes slideDown {
-  from {
-    transform: translateY(-15px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-.notificationIcon {
-  font-size: 18px;
-  flex-shrink: 0;
-}
-
-.notificationText {
-  flex: 1;
-}
-
-.notificationClose {
-  background: none;
-  border: none;
-  font-size: 18px;
+.addBtn {
+  padding: 5px 12px;
+  border: 2px solid #0d47a1;
+  border-radius: 8px;
+  background: transparent;
+  color: #0d47a1;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  padding: 0 4px;
-  opacity: 0.6;
-  transition: opacity 0.2s ease;
+  transition: all 0.15s ease;
 
   &:hover {
-    opacity: 1;
+    background: #0d47a1;
+    color: #fff;
   }
+}
+
+.empty {
+  color: #9ca3af;
+  font-size: 14px;
+  padding: 12px 0 4px;
 }
 
 .description {
-  color: #9ca3af;
-  font-style: italic;
-  margin-bottom: 16px !important;
   font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 12px;
 }
 
-.projectsList {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
-  margin-top: 16px;
-
-  @media (max-width: 640px) {
-    grid-template-columns: 1fr;
-    gap: 10px;
-    margin-top: 12px;
-  }
-}
-
-.projectButton {
-  padding: 16px;
+.editVarsBtn {
+  width: 100%;
+  padding: 12px;
   border: 2px solid #e5e7eb;
   border-radius: 10px;
-  background: white;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  text-align: left;
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    opacity: 0;
-    transition: left 0.4s ease;
-    z-index: -1;
-  }
+  text-align: center;
+  transition: all 0.15s ease;
 
   &:hover {
-    border-color: #667eea;
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
-
-    .projectTitle {
-      color: #667eea;
-    }
+    border-color: #0d47a1;
+    color: #0d47a1;
+    background: #eff6ff;
   }
-
-  &.active {
-    border-color: #667eea;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
-
-    .projectTitle {
-      color: white;
-      font-weight: 700;
-    }
-
-    .projectDesc {
-      color: rgba(255, 255, 255, 0.9);
-    }
-  }
-
-  @media (max-width: 640px) {
-    padding: 12px;
-
-    &:hover {
-      transform: translateY(-2px);
-    }
-  }
-}
-
-.projectTitle {
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 6px;
-  font-size: 15px;
-  transition: color 0.3s ease;
-}
-
-.projectDesc {
-  font-size: 12px;
-  color: #9ca3af;
-  line-height: 1.5;
-  transition: color 0.3s ease;
 }

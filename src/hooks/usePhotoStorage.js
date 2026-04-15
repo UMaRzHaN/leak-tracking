@@ -1,14 +1,12 @@
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { useIndexedDB } from "./useIndexedDB";
-import { getProjectMobileDir } from "../constants/storage.constants";
 import { useProject } from "../app/settings/ProjectContext";
 
 /*
- * Фотографии сохраняются в Directory.Data — приватное хранилище приложения,
- * которое НЕ индексируется галереей и НЕ видно пользователю в файловом менеджере.
- * Это исключает случай, когда пользователь удаляет фото из галереи и оно
- * пропадает и из проекта.
+ * Фото хранятся в Directory.Data (приватное) — не видно в галерее.
+ * Мобильная структура:
+ *   LeakReports/{folderName}/photos/photo_{leakId}_{ts}.jpg
  */
 
 /* ================= HELPERS ================= */
@@ -17,33 +15,22 @@ function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
-      const result = reader.result;
-      if (typeof result !== "string") {
-        reject(new Error("FileReader result is not string"));
-        return;
-      }
-      resolve(result.split(",")[1]);
+      const r = reader.result;
+      if (typeof r !== "string") { reject(new Error("FileReader result is not string")); return; }
+      resolve(r.split(",")[1]);
     };
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
 }
 
-async function cleanupOldPhotoVersions(folder, leakId, keepFileName) {
+async function cleanupOldVersions(folder, leakId, keepFileName) {
   try {
-    const { files } = await Filesystem.readdir({
-      path: folder,
-      directory: Directory.Data,
-    });
-
+    const { files } = await Filesystem.readdir({ path: folder, directory: Directory.Data });
     const prefix = `photo_${leakId}_`;
-
     for (const file of files) {
       if (file.name.startsWith(prefix) && file.name !== keepFileName) {
-        await Filesystem.deleteFile({
-          directory: Directory.Data,
-          path: `${folder}/${file.name}`,
-        }).catch(() => {});
+        await Filesystem.deleteFile({ directory: Directory.Data, path: `${folder}/${file.name}` }).catch(() => {});
       }
     }
   } catch {
@@ -54,80 +41,52 @@ async function cleanupOldPhotoVersions(folder, leakId, keepFileName) {
 /* ================= HOOK ================= */
 
 export function usePhotoStorage() {
-  const {
-    ready,
-    savePhoto: saveToIndexedDB,
-    getPhoto: getFromIndexedDB,
-    deletePhoto: deleteFromIndexedDB,
-    listKeys,
-  } = useIndexedDB();
-
-  const { project } = useProject();
-  const baseDir = getProjectMobileDir(project);
-  const PHOTO_FOLDER = `${baseDir}/photos`;
+  const { ready, savePhoto: idbSave, getPhoto: idbGet, deletePhoto: idbDelete, listKeys } = useIndexedDB();
+  const { activeProject } = useProject();
 
   const isNative = Capacitor.isNativePlatform();
+  const PHOTO_FOLDER = activeProject
+    ? `LeakReports/${activeProject.folderName}/photos`
+    : null;
 
   /* ================= SAVE ================= */
 
   async function savePhoto(rawPhoto, leakId) {
     if (!rawPhoto || !leakId) return null;
-
     const version = Date.now();
 
-    /* =================
-       🌐 WEB (IndexedDB)
-    ================= */
+    /* 🌐 WEB — IndexedDB */
     if (!isNative) {
-      if (!ready) return null;
-
-      if (!(rawPhoto instanceof Blob)) return null;
+      if (!ready || !(rawPhoto instanceof Blob)) return null;
 
       const base64 = await fileToBase64(rawPhoto);
       const mime = rawPhoto.type || "image/jpeg";
       const photoId = `photo_${leakId}_${version}`;
-      const photoData = `data:${mime};base64,${base64}`;
-
-      const ok = await saveToIndexedDB(photoId, photoData);
+      const ok = await idbSave(photoId, `data:${mime};base64,${base64}`);
       if (!ok) return null;
 
-      // Удаляем старые версии (WEB)
       if (typeof listKeys === "function") {
         const keys = await listKeys();
         const prefix = `photo_${leakId}_`;
         for (const key of keys) {
-          if (key.startsWith(prefix) && key !== photoId) {
-            await deleteFromIndexedDB(key);
-          }
+          if (key.startsWith(prefix) && key !== photoId) await idbDelete(key);
         }
       }
 
       return `idb://${photoId}`;
     }
 
-    /* =================
-       📱 MOBILE (Directory.Data — приватное)
-    ================= */
-    await Filesystem.mkdir({
-      path: PHOTO_FOLDER,
-      directory: Directory.Data,
-      recursive: true,
-    }).catch(() => {});
+    /* 📱 MOBILE — Directory.Data */
+    if (!PHOTO_FOLDER || !(rawPhoto instanceof Blob)) return null;
+
+    await Filesystem.mkdir({ path: PHOTO_FOLDER, directory: Directory.Data, recursive: true }).catch(() => {});
 
     const fileName = `photo_${leakId}_${version}.jpg`;
     const targetPath = `${PHOTO_FOLDER}/${fileName}`;
 
-    if (!(rawPhoto instanceof Blob)) return null;
-
     const base64 = await fileToBase64(rawPhoto);
-
-    await Filesystem.writeFile({
-      path: targetPath,
-      data: base64,
-      directory: Directory.Data,
-    });
-
-    await cleanupOldPhotoVersions(PHOTO_FOLDER, leakId, fileName);
+    await Filesystem.writeFile({ path: targetPath, data: base64, directory: Directory.Data });
+    await cleanupOldVersions(PHOTO_FOLDER, leakId, fileName);
 
     return `data://${targetPath}`;
   }
@@ -138,20 +97,12 @@ export function usePhotoStorage() {
     if (!path) return;
 
     if (path.startsWith("idb://")) {
-      if (!ready) return;
-      await deleteFromIndexedDB(path.replace("idb://", ""));
+      if (ready) await idbDelete(path.replace("idb://", ""));
       return;
     }
 
     if (isNative && path.startsWith("data://")) {
-      try {
-        await Filesystem.deleteFile({
-          directory: Directory.Data,
-          path: path.replace("data://", ""),
-        });
-      } catch {
-        // файл уже удалён — нормально
-      }
+      await Filesystem.deleteFile({ directory: Directory.Data, path: path.replace("data://", "") }).catch(() => {});
     }
   }
 
@@ -159,14 +110,8 @@ export function usePhotoStorage() {
 
   async function getPhoto(id) {
     if (!ready || !id) return null;
-    return getFromIndexedDB(id);
+    return idbGet(id);
   }
 
-  return {
-    ready,
-    isNative,
-    savePhoto,
-    deletePhoto,
-    getPhoto,
-  };
+  return { ready, isNative, savePhoto, deletePhoto, getPhoto };
 }

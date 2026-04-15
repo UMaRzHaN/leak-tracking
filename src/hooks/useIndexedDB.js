@@ -96,11 +96,25 @@ export function useIndexedDB() {
     });
   };
 
+  const listKeys = async () => {
+    if (!ready || !db) return [];
+
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const store = tx.objectStore(STORE_NAME);
+      const request = store.getAllKeys();
+
+      request.onsuccess = () => resolve(request.result ?? []);
+      request.onerror = () => resolve([]);
+    });
+  };
+
   return {
-    ready,       // 👈 ключевая часть
+    ready,
     savePhoto,
     getPhoto,
     deletePhoto,
     clearAll,
+    listKeys,
   };
 }

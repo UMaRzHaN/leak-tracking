@@ -25,8 +25,8 @@ export default function LeakForm({
   setForm,
 }) {
   const projectConfig = useProjectConfig();
-  const { project } = useProject();
-  const { vars } = useProjectVars(project, projectConfig.vars);
+  const { activeProject } = useProject();
+  const { vars } = useProjectVars(activeProject?.id ?? null, projectConfig.vars);
 
   const STEPS = useMemo(
     () => projectConfig.steps.steps ?? [],

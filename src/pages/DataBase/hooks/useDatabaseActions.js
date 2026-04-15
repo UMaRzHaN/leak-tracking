@@ -1,36 +1,35 @@
 import { Capacitor } from "@capacitor/core";
 import { deletePhotoFromFS } from "../../../services/photoService";
-import { saveProjectData } from "../../../services/saveProjectData";
-import { useProject } from "../../../app/settings/ProjectContext";
 import { useIndexedDB } from "../../../hooks/useIndexedDB";
 
-/* =========================
-   HOOK
-========================= */
+/*
+ * Данные сохраняются через `setData` (= save из useProjectData),
+ * который уже содержит правильную логику записи.
+ * Прямые вызовы saveProjectData убраны — они использовали устаревший путь.
+ */
 export function useDatabaseActions(data, setData) {
-  const { project } = useProject();
   const { ready, deletePhoto: deleteFromIndexedDB } = useIndexedDB();
 
   /* =========================
-     HELPERS
+     PHOTO DELETE
   ========================= */
   const deletePhoto = async (photo) => {
     if (typeof photo !== "string") return;
 
-    // IndexedDB
+    // IndexedDB (web)
     if (photo.startsWith("idb://")) {
-      const photoId = photo.replace("idb://", "");
-
-      if (!ready) {
-        console.warn("IndexedDB not ready, skip photo delete:", photoId);
-        return;
-      }
-
-      await deleteFromIndexedDB(photoId);
+      if (!ready) return;
+      await deleteFromIndexedDB(photo.replace("idb://", ""));
       return;
     }
 
-    // Mobile FS
+    // Private FS (new: data://)
+    if (Capacitor.isNativePlatform() && photo.startsWith("data://")) {
+      await deletePhotoFromFS(photo);
+      return;
+    }
+
+    // Legacy public FS (Documents/)
     if (Capacitor.isNativePlatform() && photo.startsWith("Documents/")) {
       await deletePhotoFromFS(photo);
     }
@@ -43,23 +42,15 @@ export function useDatabaseActions(data, setData) {
     if (confirm && !window.confirm("Удалить запись?")) return;
 
     const row = data.find((r) => r.id === id);
-    if (!row) {
-      console.warn(`[useDatabaseActions] Row not found: ${id}`);
-      return;
-    }
+    if (!row) return;
 
-    try {
-      await deletePhoto(row.photo);
-    } catch (e) {
-      console.warn("Photo delete failed:", e);
-    }
+    try { await deletePhoto(row.photo); } catch {}
 
     const updated = data
       .filter((r) => r.id !== id)
       .map((r, i) => ({ ...r, index: i + 1 }));
 
-    setData(updated);
-    await saveProjectData(project, updated);
+    await setData(updated);
   };
 
   /* =========================
@@ -68,21 +59,15 @@ export function useDatabaseActions(data, setData) {
   const saveLeak = async (updatedLeak) => {
     const updated = data.map((r) => {
       if (r.id !== updatedLeak.id) return r;
-
       return {
         ...r,
         ...updatedLeak,
-        // 🔒 защита от потери фото
         photo: updatedLeak.photo !== undefined ? updatedLeak.photo : r.photo,
       };
     });
 
-    setData(updated);
-    await saveProjectData(project, updated);
+    await setData(updated);
   };
 
-  return {
-    remove,
-    saveLeak,
-  };
+  return { remove, saveLeak };
 }

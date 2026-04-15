@@ -20,8 +20,8 @@ const MODES = {
 
 export default function LeakDetailsSheet({ leak, onClose, onSave }) {
   const projectConfig = useProjectConfig();
-  const { project } = useProject();
-  const { vars } = useProjectVars(project, projectConfig.vars);
+  const { activeProject } = useProject();
+  const { vars } = useProjectVars(activeProject?.id ?? null, projectConfig.vars);
   const EDIT_FIELDS = useMemo(() => {
     const fields = projectConfig.system.fields ?? [];
     // Фильтруем только редактируемые поля и сортируем по editOrder

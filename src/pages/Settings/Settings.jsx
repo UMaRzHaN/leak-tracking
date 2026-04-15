@@ -1,98 +1,110 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useProject } from "../../app/settings/ProjectContext";
 import { useProjectVars } from "../../app/settings/useProjectVars";
 import { PROJECT_META } from "../../configs/projects";
 import SettingsHeader from "./Header/SettingsHeader";
-import SettingsFooter from "./Footer/SettingsFooter";
 import SettingsModal from "../../components/SettingsModal/SettingsModal";
+import Notification from "../../components/Notification/Notification";
+import ProjectList from "./components/ProjectList";
+import AddProjectForm from "./components/AddProjectForm";
 import s from "./Settings.module.scss";
 
 export default function Settings({ setPage, clearForm, clearVoiceData }) {
-  const { project, changeProject } = useProject();
+  const {
+    projects,
+    activeProject,
+    addProject,
+    selectProject,
+    renameProject,
+    changeProjectType,
+    removeProject,
+  } = useProject();
 
-  const activeProject = PROJECT_META[project];
+  const { vars, setVars } = useProjectVars(activeProject?.id ?? null);
 
-  const { vars, setVars } = useProjectVars(project);
-
-  const [modalOpen, setModalOpen] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [addingProject, setAddingProject] = useState(false);
+
+  const notify = useCallback((type, message) => setNotification({ type, message }), []);
 
   /* =========================
-     PROJECTS
+     PROJECT ACTIONS
   ========================= */
-  const projects = useMemo(() => Object.keys(PROJECT_META), []);
-
-  /* =========================
-     HANDLERS
-  ========================= */
-  const handleProjectChange = useCallback(
-    (projectId) => {
-      if (projectId === project) return;
+  const handleSelect = useCallback(
+    (id) => {
+      if (id === activeProject?.id) return;
 
       const ok = window.confirm(
-        "При смене проекта будут использованы другие параметры расчёта. Продолжить?",
+        "Переключить проект? Форма добавления утечки будет сброшена.",
       );
-
       if (!ok) return;
 
-      changeProject(projectId);
-
-      requestAnimationFrame(() => {
-        setPage?.("");
-        clearForm?.();
-        clearVoiceData?.();
-      });
+      selectProject(id);
+      clearForm?.();
+      clearVoiceData?.();
+      notify("info", "Проект переключён");
     },
-    [project, changeProject, setPage, clearVoiceData, clearForm],
+    [activeProject, selectProject, clearForm, clearVoiceData, notify],
   );
 
+  const handleRename = useCallback(
+    (id, name) => {
+      renameProject(id, name);
+      notify("success", "Название сохранено");
+    },
+    [renameProject, notify],
+  );
+
+  const handleTypeChange = useCallback(
+    (id, type) => {
+      changeProjectType(id, type);
+      notify("success", "Тип проекта изменён");
+    },
+    [changeProjectType, notify],
+  );
+
+  const handleRemove = useCallback(
+    (id) => {
+      const target = projects.find((p) => p.id === id);
+      if (!target) return;
+
+      const ok = window.confirm(
+        `Удалить проект «${target.name}»?\n\nДанные в приложении будут скрыты, но файлы на устройстве останутся.`,
+      );
+      if (!ok) return;
+
+      removeProject(id);
+      notify("warning", `Проект «${target.name}» удалён`);
+    },
+    [projects, removeProject, notify],
+  );
+
+  const handleAdd = useCallback(
+    (name, type) => {
+      addProject(name, type);
+      setAddingProject(false);
+      notify("success", `Проект «${name || PROJECT_META[type].title}» создан`);
+    },
+    [addProject, notify],
+  );
+
+  /* =========================
+     VARS MODAL
+  ========================= */
   const handleModalSave = useCallback(
     (nextVars) => {
       setVars(nextVars);
       setModalOpen(false);
+      notify("success", "Параметры расчёта сохранены");
     },
-    [setVars],
+    [setVars, notify],
   );
 
   const handleModalClose = useCallback((discarded) => {
     setModalOpen(false);
-
-    if (discarded) {
-      setNotification({
-        type: "warning",
-        message: "Изменения отменены",
-      });
-    }
-  }, []);
-
-  /* =========================
-     NOTIFICATION AUTO-CLOSE
-  ========================= */
-  useEffect(() => {
-    if (!notification) return;
-
-    const t = setTimeout(() => setNotification(null), 3000);
-    return () => clearTimeout(t);
-  }, [notification]);
-
-  /* =========================
-     GUARD
-  ========================= */
-  if (!activeProject) {
-    return (
-      <div className={s.settings}>
-        <p>⚠️ Неизвестный проект</p>
-      </div>
-    );
-  }
-
-  if (!vars) {
-    return (
-      <div className={s.settings}>
-        <p>⏳ Загрузка параметров…</p>
-      </div>
-    );
-  }
+    if (discarded) notify("warning", "Изменения отменены");
+  }, [notify]);
 
   /* =========================
      RENDER
@@ -101,56 +113,76 @@ export default function Settings({ setPage, clearForm, clearVoiceData }) {
     <div className={s.settings}>
       <SettingsHeader onBack={() => setPage?.("")} />
 
-      {notification && (
-        <div className={`${s.notification} ${s[notification.type]}`}>
-          <span className={s.notificationIcon}>⚠️</span>
-          <span className={s.notificationText}>{notification.message}</span>
-          <button
-            className={s.notificationClose}
-            onClick={() => setNotification(null)}
-          >
-            ✕
-          </button>
-        </div>
-      )}
+      <Notification
+        notification={notification}
+        onClose={() => setNotification(null)}
+      />
 
       <div className={s.content}>
-        <div className={s.settingsSection}>
-          <h2>Выбор проекта</h2>
 
-          <p>
-            Текущий проект: <strong>{activeProject.title}</strong>
-          </p>
-          <p className={s.description}>{activeProject.description}</p>
-
-          <div className={s.projectsList}>
-            {projects.map((projectId) => {
-              const meta = PROJECT_META[projectId];
-              const isActive = project === projectId;
-
-              return (
-                <button
-                  key={projectId}
-                  onClick={() => handleProjectChange(projectId)}
-                  className={`${s.projectButton} ${isActive ? s.active : ""}`}
-                >
-                  <div className={s.projectTitle}>{meta.title}</div>
-                  <div className={s.projectDesc}>{meta.description}</div>
-                </button>
-              );
-            })}
+        {/* ── Список проектов ── */}
+        <section className={s.section}>
+          <div className={s.sectionHead}>
+            <h2 className={s.sectionTitle}>Проекты</h2>
+            {!addingProject && (
+              <button
+                className={s.addBtn}
+                type="button"
+                onClick={() => setAddingProject(true)}
+              >
+                + Добавить
+              </button>
+            )}
           </div>
-        </div>
+
+          {addingProject && (
+            <AddProjectForm
+              onConfirm={handleAdd}
+              onCancel={() => setAddingProject(false)}
+            />
+          )}
+
+          <ProjectList
+            projects={projects}
+            activeId={activeProject?.id}
+            onSelect={handleSelect}
+            onRename={handleRename}
+            onTypeChange={handleTypeChange}
+            onRemove={handleRemove}
+          />
+
+          {projects.length === 0 && !addingProject && (
+            <p className={s.empty}>Нет проектов. Создайте первый.</p>
+          )}
+        </section>
+
+        {/* ── Параметры расчёта ── */}
+        {activeProject && (
+          <section className={s.section}>
+            <h2 className={s.sectionTitle}>Параметры расчёта</h2>
+            <p className={s.description}>
+              Для проекта <strong>{activeProject.name}</strong>
+            </p>
+            <button
+              className={s.editVarsBtn}
+              type="button"
+              onClick={() => setModalOpen(true)}
+            >
+              ⚙ Редактировать параметры
+            </button>
+          </section>
+        )}
+
       </div>
 
-      <SettingsFooter onEditClick={() => setModalOpen(true)} />
-
-      <SettingsModal
-        open={modalOpen}
-        onClose={handleModalClose}
-        variables={vars}
-        onSave={handleModalSave}
-      />
+      {activeProject && vars && (
+        <SettingsModal
+          open={modalOpen}
+          onClose={handleModalClose}
+          variables={vars}
+          onSave={handleModalSave}
+        />
+      )}
     </div>
   );
 }

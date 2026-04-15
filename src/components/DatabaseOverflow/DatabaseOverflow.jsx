@@ -3,14 +3,13 @@ import { exportToExcel } from "../../services/exportToExcel";
 import { useProjectConfig } from "../../app/settings/useProjectConfig";
 import { useProject } from "../../app/settings/ProjectContext";
 import { useProjectVars } from "../../app/settings/useProjectVars";
-import { getProjectMobileDir } from "../../constants/storage.constants";
 import s from "./DatabaseOverflow.module.scss";
 
 export default function DatabaseOverflow({ filteredData, onClearDb }) {
-  const { project } = useProject();
+  const { activeProject } = useProject();
   const projectConfig = useProjectConfig();
-  const { vars } = useProjectVars(project, projectConfig.vars);
-  const mkdir = getProjectMobileDir(project);
+  const { vars } = useProjectVars(activeProject?.id ?? null, projectConfig.vars);
+  const mkdir = activeProject ? `LeakReports/${activeProject.folderName}` : "";
 
   const [open, setOpen] = useState(false);
 

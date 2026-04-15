@@ -36,12 +36,12 @@ export default function App() {
   /* =========================
      PROJECT CONTEXT
   ========================= */
-  const { project, projectName, isConfigured, configure } = useProject();
+  const { isConfigured, configure } = useProject();
 
   /* =========================
      PROJECT-AWARE DATA
   ========================= */
-  const { data, save, clear } = useProjectData(project ?? "midstream");
+  const { data, save, clear } = useProjectData();
 
   /* =========================
      VOICE
@@ -82,7 +82,6 @@ export default function App() {
           coords={coords}
           geoError={geoError}
           setPage={setPage}
-          projectName={projectName}
         />
       )}
 
