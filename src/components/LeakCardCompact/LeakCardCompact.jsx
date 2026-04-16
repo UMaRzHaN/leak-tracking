@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSwipeCard } from "../../hooks/useSwipeCard";
 import { STATUS_META, STATUS_TRANSITIONS } from "../../utils/status";
 import { timeAgo } from "../../utils/timeAgo";
+import { usePhotoSrc } from "../../hooks/usePhotoSrc";
 import PhotoViewer from "../PhotoViewer/PhotoViewer";
 import s from "./LeakCardCompact.module.scss";
 
@@ -48,12 +49,14 @@ export default function LeakCardCompact({
 
   const [viewerOpen, setViewerOpen] = useState(false);
 
+  const photoSrc  = usePhotoSrc(leak.photo ?? null);
+
   const emissions = fmtNum(leak.Emissions_t_CO2eq_year, 2);
   const methane   = fmtNum(leak.Total_Annual_Methane_Loss_m3_y, 0);
 
   const hasChips  = leak.leak_speed != null || leak.pressure != null ||
                     nearbyDist != null || emissions != null || methane != null;
-  const hasPhoto  = Boolean(leak.photo);
+  const hasPhoto  = Boolean(photoSrc);
   const hasFooter = hasChips || hasPhoto;
 
   return (
@@ -142,12 +145,11 @@ export default function LeakCardCompact({
                   onClick={(e) => { e.stopPropagation(); setViewerOpen(true); }}
                 >
                   <img
-                    src={leak.photo}
+                    src={photoSrc}
                     alt=""
                     className={s.photoThumbImg}
                     loading="lazy"
                     draggable={false}
-                    onError={(e) => { e.currentTarget.parentElement.style.display = "none"; }}
                   />
                 </div>
               )}
@@ -157,7 +159,7 @@ export default function LeakCardCompact({
       </div>
 
       {viewerOpen && (
-        <PhotoViewer src={leak.photo} onClose={() => setViewerOpen(false)} />
+        <PhotoViewer src={photoSrc} onClose={() => setViewerOpen(false)} />
       )}
     </>
   );
