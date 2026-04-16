@@ -1,23 +1,41 @@
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
+import { PROJECT_LOCATION_CONFIG } from "../../configs/projectLocation.config";
 
 const FOLDER = "LeakReports";
 
-export async function saveLeaksGeoJSON(leaks, exportLeaksGeoJSON) {
-  const geojson = exportLeaksGeoJSON(leaks);
+export function exportLeaksGeoJSON(leaks, project) {
+  const config = PROJECT_LOCATION_CONFIG[project];
+  return {
+    type: "FeatureCollection",
+    features: leaks.map((l) => ({
+      type: "Feature",
+      geometry: {
+        type: "Point",
+        coordinates: [l.lng, l.lat],
+      },
+      properties: {
+        id: l.id ?? null,
+        [config.secondary]: l[config.secondary] ?? "Без поля",
+        date: l.date ?? null,
+        comment: l.comment ?? null,
+      },
+    })),
+  };
+}
+
+export async function saveLeaksGeoJSON(leaks, exportFn) {
+  const geojson = exportFn(leaks);
   const fileName = `leaks_${Date.now()}.geojson`;
   const data = JSON.stringify(geojson, null, 2);
 
-  // 📱 MOBILE (Android / iOS)
   if (Capacitor.isNativePlatform()) {
-    // 1️⃣ гарантируем папку
     await Filesystem.mkdir({
       path: FOLDER,
       directory: Directory.Documents,
       recursive: true,
-    }).catch(() => {}); // папка уже есть — ок
+    }).catch(() => {});
 
-    // 2️⃣ сохраняем файл В папку
     await Filesystem.writeFile({
       path: `${FOLDER}/${fileName}`,
       data,
@@ -28,22 +46,18 @@ export async function saveLeaksGeoJSON(leaks, exportLeaksGeoJSON) {
     return `${FOLDER}/${fileName}`;
   }
 
-  // 🌐 WEB (Browser)
   downloadFileWeb(data, fileName);
   return fileName;
 }
 
-// ===== WEB helper =====
 function downloadFileWeb(data, fileName) {
   const blob = new Blob([data], { type: "application/geo+json" });
   const url = URL.createObjectURL(blob);
-
   const a = document.createElement("a");
   a.href = url;
   a.download = fileName;
   document.body.appendChild(a);
   a.click();
-
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }

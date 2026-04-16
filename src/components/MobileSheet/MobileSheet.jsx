@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 
 import s from "./MobileSheet.module.scss";
-import { saveLeaksKML } from "../../services/saveLeaksKML";
+import { saveLeaksKML } from "../../services/export/kml";
 import { useProject } from "../../app/settings/ProjectContext";
-import { getProjectMobileDir } from "../../constants/storage.constants";
+import { getProjectMobileDir } from "../../app/settings/storageKeys";
 
 const NO_LABEL = "Не указано";
 

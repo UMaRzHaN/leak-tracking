@@ -1,4 +1,4 @@
-import { NUMBER_WORDS } from "../NUMBER_WORDS";
+import { NUMBER_WORDS } from "./NUMBER_WORDS";
 import { parseNumberFromWords } from "./parseNumberFromWords";
 
 export function normalizeNumberWords(text) {

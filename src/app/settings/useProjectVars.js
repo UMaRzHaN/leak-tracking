@@ -1,17 +1,8 @@
 import { useCallback } from "react";
 import { STORAGE_KEYS } from "./storageKeys";
-import * as variables from "../../data/variables";
+import { VAR_DEFAULTS } from "../../data/variables";
 
-const defaultVars = {
-  equipmentType: variables.equipmentType,
-  uncertainty: variables.uncertainty,
-  gasType: variables.gasType,
-  density: variables.density,
-  percentage_gas_to_flare: variables.percentage_gas_to_flare,
-  percentage_gas_to_utilization: 100 - variables.percentage_gas_to_flare,
-  GWP: variables.GWP,
-  serial_number: variables.serial_number,
-};
+const defaultVars = VAR_DEFAULTS;
 
 /**
  * Параметры расчёта для конкретного проекта.

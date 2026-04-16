@@ -16,11 +16,13 @@ export const EQUIPMENT_TYPES = {
   },
 };
 
-export let gasType = "methane",
-  equipmentType = "GFM 2.0",
-  uncertainty = EQUIPMENT_TYPES["GFM 2.0"].uncertainty,
-  density = GAS_TYPES.methane.density,
-  percentage_gas_to_flare = 100,
-  percentage_gas_to_utilization = 100 - percentage_gas_to_flare,
-  GWP = 28,
-  serial_number = EQUIPMENT_TYPES["GFM 2.0"].serial_number;
+export const VAR_DEFAULTS = Object.freeze({
+  gasType: "methane",
+  equipmentType: "GFM 2.0",
+  uncertainty: EQUIPMENT_TYPES["GFM 2.0"].uncertainty,
+  density: GAS_TYPES.methane.density,
+  percentage_gas_to_flare: 100,
+  percentage_gas_to_utilization: 0,
+  GWP: 28,
+  serial_number: EQUIPMENT_TYPES["GFM 2.0"].serial_number,
+});

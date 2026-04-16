@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import LeakForm from "../components/LeakForm/LeakForm";
 import { usePhotoStorage } from "../hooks/usePhotoStorage";
 import { useFormDraft } from "../hooks/useFormDraft";
-import { toNumber } from "../utils/voice/normalize/toNumber";
+import { toNumber } from "../utils/voice/toNumber";
 import { useProjectData } from "../app/hooks/useProjectData";
 import { findNearbyLeak } from "../utils/geoUtils";
 import { hapticSuccess, hapticWarning } from "../utils/haptics";

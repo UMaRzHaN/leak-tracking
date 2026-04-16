@@ -1,4 +1,4 @@
-import { NUMBER_WORDS } from "../NUMBER_WORDS";
+import { NUMBER_WORDS } from "./NUMBER_WORDS";
 
 export const parseNumberFromWords = (text) => {
   if (!text) return null;

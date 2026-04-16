@@ -1,5 +1,5 @@
 import { useSwipeCard } from "../../hooks/useSwipeCard";
-import { timeAgo } from "../../utils/calculations/timeAgo";
+import { timeAgo } from "../../utils/timeAgo";
 import s from "./RecentLeaks.module.scss";
 
 const leakLevel = (speed = 0) =>

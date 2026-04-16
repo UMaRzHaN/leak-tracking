@@ -1,4 +1,4 @@
-import { PROJECT_LOCATION_CONFIG } from "../../../configs/projectLocation.config";
+import { PROJECT_LOCATION_CONFIG } from "../../configs/projectLocation.config";
 
 export function normalizeVoiceResult(raw, PROJECT) {
   if (!raw) return {};
@@ -8,27 +8,15 @@ export function normalizeVoiceResult(raw, PROJECT) {
 
   const result = { ...raw };
 
-  /**
-   * raw:
-   *  - main      → верхний уровень (УМГ / район)
-   *  - field     → объект проекта (семантический)
-   *  - location  → произвольная локация
-   *
-   * midstream:
-   *  main      → field
-   *  field     → station
-   *  location  → location
-   */
-
   // 1️⃣ main → project.main (field)
   if (raw.main) {
-    result[config.main] = raw.main; // field
+    result[config.main] = raw.main;
     delete result.main;
   }
 
   // 2️⃣ field → project.field (station)
   if (raw.secondary) {
-    result[config.secondary] = raw.secondary; // station
+    result[config.secondary] = raw.secondary;
     delete result.secondary;
   }
 

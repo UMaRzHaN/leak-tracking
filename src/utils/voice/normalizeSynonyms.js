@@ -1,4 +1,4 @@
-import { SYNONYMS } from "../synonyms";
+import { SYNONYMS } from "./synonyms";
 
 export function normalizeSynonyms(data, list) {
   const result = { ...data };

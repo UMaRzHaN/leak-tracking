@@ -1,19 +1,17 @@
-import { PROJECT_LOCATION_CONFIG } from "../configs/projectLocation.config";
+import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
+import { Capacitor } from "@capacitor/core";
+import { PROJECT_LOCATION_CONFIG } from "../../configs/projectLocation.config";
 
 export function exportLeaksKML(leaks, project) {
   const config = PROJECT_LOCATION_CONFIG[project];
 
-  // 1️⃣ группировка по field
   const byField = leaks.reduce((acc, leak) => {
     const field = leak[config.secondary] || "Не определено";
-
     if (!acc[field]) acc[field] = [];
     acc[field].push(leak);
-
     return acc;
   }, {});
 
-  // 2️⃣ генерация Folder'ов
   const folders = Object.entries(byField)
     .map(([field, fieldLeaks]) => {
       const placemarks = fieldLeaks
@@ -46,7 +44,6 @@ export function exportLeaksKML(leaks, project) {
     })
     .join("");
 
-  // 3️⃣ итоговый KML
   return `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
@@ -54,4 +51,44 @@ export function exportLeaksKML(leaks, project) {
     ${folders}
   </Document>
 </kml>`;
+}
+
+export async function saveLeaksKML(leaks, project, mkdir) {
+  const kml = exportLeaksKML(leaks, project);
+  const fileName = `leaks_${Date.now()}.kml`;
+  const MAPS_FOLDER = mkdir + "/maps";
+
+  if (Capacitor.isNativePlatform()) {
+    await Filesystem.mkdir({
+      path: MAPS_FOLDER,
+      directory: Directory.Documents,
+      recursive: true,
+    }).catch(() => {});
+
+    await Filesystem.writeFile({
+      path: `${mkdir}/${fileName}`,
+      data: kml,
+      directory: Directory.Documents,
+      encoding: Encoding.UTF8,
+    });
+
+    return `${mkdir}/${fileName}`;
+  }
+
+  downloadFileWeb(kml, `${mkdir}_${fileName}`);
+  return `${mkdir}_${fileName}`;
+}
+
+function downloadFileWeb(data, fileName) {
+  const blob = new Blob([data], {
+    type: "application/vnd.google-earth.kml+xml",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }

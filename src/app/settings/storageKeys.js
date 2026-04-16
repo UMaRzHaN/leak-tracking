@@ -1,6 +1,11 @@
 const APP_PREFIX = "app";
 const VERSION = "v1";
 
+/** Returns the private filesystem directory path for a project's mobile files. */
+export function getProjectMobileDir(project) {
+  return `projects/${project?.id ?? "unknown"}`;
+}
+
 export const STORAGE_KEYS = {
   /* =========================
      GLOBAL

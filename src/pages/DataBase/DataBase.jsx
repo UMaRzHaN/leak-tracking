@@ -5,7 +5,7 @@ import { STATUS, STATUS_META, STATUS_ORDER } from "../../utils/status";
 import { nextStatus } from "../../utils/status";
 import { hapticSuccess } from "../../utils/haptics";
 import { filterNearbyLeaks } from "../../utils/geoUtils";
-import { exportToExcel } from "../../utils/exportExcel";
+import { exportToExcel } from "../../services/export/excel";
 import { useProjectData } from "../../app/hooks/useProjectData";
 import { useProjectConfig } from "../../app/settings/useProjectConfig";
 import s from "./DataBase.module.scss";

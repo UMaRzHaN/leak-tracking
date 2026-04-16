@@ -1,5 +1,5 @@
 import { capitalizeFirst } from "../normalize/capitalizeFirst";
-import { normalizeStationName } from "./normalize/normalizeStationName";
+import { normalizeStationName } from "./normalizeStationName";
 
 /**
  * ЕДИНЫЙ СПИСОК МАРКЕРОВ
