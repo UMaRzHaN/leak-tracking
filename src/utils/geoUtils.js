@@ -49,9 +49,9 @@ export function filterNearbyLeaks(leaks, lat, lng, radiusM = 500) {
 }
 
 /** Форматирует точность GPS для отображения */
-export function formatAccuracy(accuracyMeters) {
-  if (!accuracyMeters) return null;
-  if (accuracyMeters < 5)  return { text: `±${Math.round(accuracyMeters)} м`, level: "good" };
-  if (accuracyMeters < 20) return { text: `±${Math.round(accuracyMeters)} м`, level: "ok" };
-  return { text: `±${Math.round(accuracyMeters)} м`, level: "poor" };
-}
+// export function formatAccuracy(accuracyMeters) {
+//   if (!accuracyMeters) return null;
+//   if (accuracyMeters < 5)  return { text: `±${Math.round(accuracyMeters)} м`, level: "good" };
+//   if (accuracyMeters < 20) return { text: `±${Math.round(accuracyMeters)} м`, level: "ok" };
+//   return { text: `±${Math.round(accuracyMeters)} м`, level: "poor" };
+// }

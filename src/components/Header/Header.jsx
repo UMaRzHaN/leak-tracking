@@ -1,6 +1,5 @@
 import { useProject } from "../../app/settings/ProjectContext";
 import { PROJECT_META } from "../../configs/projects";
-import { formatAccuracy } from "../../utils/geoUtils";
 import s from "./Header.module.scss";
 
 export default function Header({
@@ -14,7 +13,6 @@ export default function Header({
   const { projectName, project } = useProject();
   const meta        = PROJECT_META[project];
   const displayName = projectName || meta?.title || "Журнал утечек";
-  const acc         = formatAccuracy(coords?.accuracy);
 
   return (
     <header className={s.header}>
