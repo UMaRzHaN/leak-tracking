@@ -5,12 +5,10 @@ import { useFormDraft } from "../hooks/useFormDraft";
 import { useSafeSave } from "../hooks/useSafeSave";
 import { toNumber } from "../utils/voice/toNumber";
 import { useProjectData } from "../app/hooks/useProjectData";
-import { findNearbyLeak } from "../utils/geoUtils";
 import { hapticSuccess, hapticWarning } from "../utils/haptics";
 import { STATUS } from "../utils/status";
 import s from "./AddLeak.module.scss";
 
-const DUPLICATE_RADIUS_M = 50;
 
 export default function AddLeak({
   data,
@@ -63,18 +61,6 @@ export default function AddLeak({
         const id = Date.now();
         const lat = toNumber(coords?.lat);
         const lng = toNumber(coords?.lng);
-
-        /* ── Duplicate detection ── */
-        const nearby = findNearbyLeak(data, lat, lng, DUPLICATE_RADIUS_M);
-        if (nearby) {
-          const ok = window.confirm(
-            `⚠️ Похожая утечка уже есть в ${nearby.distance} м (№ ${nearby.leak.leak_id ?? nearby.leak.index}).\n\nВсё равно добавить?`,
-          );
-          if (!ok) {
-            hapticWarning();
-            return;
-          }
-        }
 
         /* ── Save photo ── */
         let photoPath = null;
