@@ -35,21 +35,33 @@ export default function Header({
         >
           {gpsEnabled ? (
             <>
-              <span className={s.gpsDot} />
-              {geoLoading ? (
-                <span className={s.gpsLabel}>GPS…</span>
-              ) : geoError ? (
-                <span className={s.gpsLabel}>Ошибка</span>
-              ) : coords?.lat ? (
-                <span className={s.gpsLabel}>
-                  {acc?.text ?? "GPS вкл"}
-                </span>
-              ) : (
-                <span className={s.gpsLabel}>Поиск…</span>
+              <div className={s.gpsRow}>
+                <span className={s.gpsDot} />
+                {geoLoading ? (
+                  <span className={s.gpsLabel}>GPS…</span>
+                ) : geoError ? (
+                  <span className={s.gpsLabel}>Ошибка</span>
+                ) : coords?.lat ? (
+                  <span className={s.gpsLabel}>GPS вкл</span>
+                ) : (
+                  <span className={s.gpsLabel}>Поиск…</span>
+                )}
+              </div>
+              {coords?.lat != null && (
+                <div className={s.gpsCoords}>
+                  {coords.lat.toFixed(6)}&nbsp;/&nbsp;{coords.lng.toFixed(6)}
+                </div>
               )}
             </>
           ) : (
-            <span className={s.gpsLabel}>GPS выкл</span>
+            <>
+              <span className={s.gpsLabel}>GPS выкл</span>
+              {coords?.lat != null && (
+                <div className={s.gpsCoords}>
+                  {coords.lat.toFixed(6)}&nbsp;/&nbsp;{coords.lng.toFixed(6)}
+                </div>
+              )}
+            </>
           )}
         </button>
 

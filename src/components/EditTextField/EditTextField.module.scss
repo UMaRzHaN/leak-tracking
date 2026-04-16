@@ -1,104 +1,136 @@
 /* ══════════════════════════════════════════
-   EditTextField — floating label input
-   Used in LeakDetailsSheet EditBlock
+   EditTextField — mobile-first form row
    ══════════════════════════════════════════ */
 
+/* ── Base field: list-row inside a grouped card ── */
 .field {
-  position: relative;
-  /* Extra top margin so the floating label has room to pop up */
-  margin-top: 6px;
-}
-
-/* ── Input / Textarea ── */
-.field input,
-.field textarea {
-  width: 100%;
-  padding: 18px 36px 8px 14px;
-  border-radius: var(--r-lg);
-  border: 1.5px solid var(--c-border);
   background: var(--c-surface);
-  color: var(--c-text);
-  font-size: 15px;
-  font-family: inherit;
-  line-height: 1.4;
-  outline: none;
-  resize: none;
-  transition: border-color var(--t-fast), box-shadow var(--t-fast);
-
-  &::placeholder { color: transparent; } /* hide until label floats */
-}
-
-.field:focus-within input,
-.field:focus-within textarea {
-  border-color: var(--c-blue);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-
-/* ── Input / Textarea wrappers ── */
-.inputWrapper,
-.textareaWrapper {
+  border-bottom: 1px solid var(--c-border);
+  padding: 12px 14px;
   position: relative;
+  transition: background var(--t-fast);
+
+  &:last-child { border-bottom: none; }
+
+  &:focus-within {
+    /* Safe fallback — no color-mix() */
+    background: #eff6ff;
+  }
 }
 
-/* ── Floating label ── */
-.field label {
-  position: absolute;
-  left: 14px;
-  top: 14px;
-  font-size: 15px;
-  color: var(--c-text3);
-  pointer-events: none;
-  background: transparent;
-  padding: 0 2px;
-  transition: all 0.18s ease;
-  transform-origin: left top;
-  line-height: 1;
+/* dark mode safe: override above with token-based value if possible */
+@media (prefers-color-scheme: dark) {
+  .field:focus-within { background: rgba(37, 99, 235, 0.08); }
 }
 
-/* Floated state: when focused OR has value */
-.field:focus-within label,
-.field.hasValue label {
-  top: 6px;
+/* ── Compact: standalone rounded card (params grid / coord pair) ── */
+.compact {
+  border-radius: var(--r-lg);
+  border: 1.5px solid var(--c-border); /* overrides base border-bottom */
+  padding: 12px;
+  box-shadow: var(--shadow-sm);
+
+  &:focus-within {
+    border-color: var(--c-blue);
+    background: #eff6ff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .compact:focus-within { background: rgba(37, 99, 235, 0.08); }
+}
+
+/* ── Label ── */
+.label {
+  display: block;
   font-size: 11px;
   font-weight: 600;
-  color: var(--c-blue);
+  color: var(--c-text3);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  margin-bottom: 5px;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  .field:focus-within & { color: var(--c-blue); }
 }
 
-/* Filled but not focused → label stays up, border green */
-.field.hasValue input:not(:focus),
-.field.hasValue textarea:not(:focus) {
-  border-color: #22c55e;
-  background: #f0fdf4;
+/* ── Input row ── */
+.inputRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-/* ── Numeric input ── */
-.numericInput {
+/* ── Control (input or textarea) ── */
+.control {
+  /* iOS zoom prevention: font-size must be >= 16px */
+  font-size: 16px;
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--c-text);
+  font-family: inherit;
+  line-height: 1.4;
+  padding: 0;
+  resize: none;
+  /* Reset iOS default input styles */
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 0;
+
+  &::placeholder {
+    color: var(--c-text3);
+    opacity: 0.6;
+  }
+}
+
+/* Numeric: monospace weight */
+.numeric {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
 /* ── Clear button ── */
-.clearBtn {
-  position: absolute;
-  top: 12px;
-  right: 10px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
+/* 40×40 tap target; visual circle is 22×22 */
+.clear {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  margin: -8px -6px -8px 0;    /* expand tap area beyond visual bounds */
   border: none;
-  background: var(--c-bg);
-  color: var(--c-text3);
-  font-size: 12px;
-  line-height: 1;
+  background: transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background var(--t-fast);
+}
 
-  &:hover  { background: var(--c-border); color: var(--c-text); }
-  &:active { transform: scale(0.9); }
+/* The ✕ char rendered by JSX lives inside a visual circle */
+.clearInner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--c-border);
+  color: var(--c-text3);
+  font-size: 11px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--t-fast), color var(--t-fast);
+  pointer-events: none;
+
+  .clear:active & {
+    background: var(--c-text3);
+    color: var(--c-bg);
+    transform: scale(0.9);
+  }
 }

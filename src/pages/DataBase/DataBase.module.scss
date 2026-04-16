@@ -52,6 +52,7 @@
 .filters {
   display: flex;
   gap: 6px;
+  // flex-wrap: wrap;
   overflow-x: auto;
   scrollbar-width: none;
   &::-webkit-scrollbar { display: none; }
@@ -85,14 +86,16 @@
 }
 
 .filterCount {
-  background: currentColor;
-  color: var(--c-surface);
+  background: var(--c-text3);
+  color: #fff;
   border-radius: 10px;
   font-size: 10px;
   font-weight: 700;
   padding: 1px 5px;
   line-height: 1.4;
-  opacity: 0.9;
+
+  /* Blue badge when the tab is active */
+  .filterActive & { background: var(--c-blue); }
 }
 
 /* ── Results row ── */

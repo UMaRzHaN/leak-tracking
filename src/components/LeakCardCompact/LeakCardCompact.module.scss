@@ -36,7 +36,10 @@
 .hintIcon { font-size: 16px; line-height: 1; font-weight: 700; }
 .hintText { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
 
-/* ── Card ── */
+/* ══════════════════════════════════════
+   CARD
+   ══════════════════════════════════════ */
+
 .card {
   position: relative;
   z-index: 2;
@@ -50,25 +53,51 @@
   border: 1px solid var(--c-border);
   transition: box-shadow var(--t-normal), transform var(--t-fast);
 
-  /* Left accent bar driven by data-status */
+  /* ── Urgency left stripe ── */
   &::before {
     content: "";
     position: absolute;
     left: 0; top: 0; bottom: 0;
     width: 4px;
     border-radius: var(--r-xl) 0 0 var(--r-xl);
+    z-index: 1;
   }
 
-  &[data-status="open"]::before        { background: var(--c-open); }
-  &[data-status="in_progress"]::before { background: var(--c-progress); }
-  &[data-status="resolved"]::before    { background: var(--c-resolved); }
+  /* fresh  < 24ч  → синяя */
+  &[data-urgency="fresh"]::before {
+    background: var(--c-blue);
+  }
 
-  &:active    { transform: scale(0.99); }
+  /* warning  1–7 дн  → янтарная */
+  &[data-urgency="warning"]::before {
+    background: var(--c-progress);
+  }
+
+  /* danger  > 7 дн  → красная + пульс */
+  &[data-urgency="danger"]::before {
+    background: var(--c-open);
+    animation: urgencyPulse 1.8s ease-in-out infinite;
+  }
+
+  /* resolved  → зелёная (статичная) */
+  &[data-urgency="resolved"]::before {
+    background: var(--c-resolved);
+  }
+
+  &:active     { transform: scale(0.99); }
   &.swipeLeft  { box-shadow: 0 4px 18px rgba(220,38,38,.18); }
   &.swipeRight { box-shadow: 0 4px 18px rgba(37,99,235,.18); }
 }
 
-/* ── Head band ── */
+@keyframes urgencyPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.25; }
+}
+
+/* ══════════════════════════════════════
+   HEAD BAND
+   ══════════════════════════════════════ */
+
 .head {
   display: flex;
   align-items: center;
@@ -111,7 +140,10 @@
   flex-shrink: 0;
 }
 
-/* ── Body ── */
+/* ══════════════════════════════════════
+   BODY
+   ══════════════════════════════════════ */
+
 .body {
   padding: 10px 12px 10px 16px;
   display: flex;
@@ -177,7 +209,10 @@
   margin: 0;
 }
 
-/* ── Footer ── */
+/* ══════════════════════════════════════
+   FOOTER
+   ══════════════════════════════════════ */
+
 .foot {
   display: flex;
   align-items: center;
@@ -206,6 +241,17 @@
   white-space: nowrap;
 }
 
+.chipCalc {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-resolved);
+  background: var(--c-resolved-bg);
+  border: 1px solid var(--c-resolved-border);
+  border-radius: 20px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+
 .chipNear {
   font-size: 11px;
   font-weight: 600;
@@ -217,29 +263,21 @@
   white-space: nowrap;
 }
 
-/* ── Map thumbnail ── */
-.mapThumb {
+/* ── Photo thumbnail ── */
+.photoThumb {
   flex-shrink: 0;
-  width: 68px;
+  width: 64px;
   height: 48px;
   border-radius: var(--r-md);
   overflow: hidden;
-  position: relative;
   border: 1px solid var(--c-border);
-  background: #e5e7eb;
-
-  img { pointer-events: none; }
+  box-shadow: var(--shadow-sm);
 }
 
-.mapPin {
-  position: absolute;
-  left: calc(50% - 5px);
-  top:  calc(50% - 5px);
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #ef4444;
-  border: 2px solid #fff;
-  box-shadow: 0 1px 4px rgba(0,0,0,.45);
+.photoThumbImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
   pointer-events: none;
 }

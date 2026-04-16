@@ -3,7 +3,6 @@ import LeakDetailsSheet from "../components/LeakDetailsSheet/LeakDetailsSheet";
 import LeakCardCompact from "../components/LeakCardCompact/LeakCardCompact";
 import UndoToast from "../components/UndoToast/UndoToast";
 import { useUndoDelete } from "../hooks/useUndoDelete";
-import { useProjectData } from "../app/hooks/useProjectData";
 import { STATUS, STATUS_META } from "../utils/status";
 import { hapticSuccess, hapticWarning } from "../utils/haptics";
 import s from "./MainPage.module.scss";
@@ -14,7 +13,6 @@ const ALL = "all";
 export default function MainPage({ setPage, data, setData }) {
   const [activeLeak, setActiveLeak]   = useState(null);
   const [statusFilter, setStatusFilter] = useState(ALL);
-  const { save } = useProjectData();
 
   /* ── Stats ── */
   const stats = useMemo(() => ({
@@ -45,7 +43,7 @@ export default function MainPage({ setPage, data, setData }) {
       const row = deletedItems[id];
       if (!row) return;
       const next = data.filter((r) => r.id !== id).map((r, i) => ({ ...r, index: i + 1 }));
-      await save(next);
+      await setData(next);
       setDeletedItems((prev) => { const c = { ...prev }; delete c[id]; return c; });
     },
   });
@@ -60,8 +58,7 @@ export default function MainPage({ setPage, data, setData }) {
 
   const handleSaveLeak = async (updated) => {
     const next = data.map((r) => (r.id === updated.id ? updated : r));
-    setData(next);
-    await save(next);
+    await setData(next);
     hapticSuccess();
     setActiveLeak(null);
   };

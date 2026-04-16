@@ -9,6 +9,7 @@ import s from "./LeakForm.module.scss";
 import { useProject } from "../../app/settings/ProjectContext";
 import { useProjectVars } from "../../app/settings/useProjectVars";
 import { calculations } from "../../utils/calculations/calculations";
+import { normalizeNumber } from "../../utils/normalize/normalizeNumber";
 
 export default function LeakForm({
   onAdd,
@@ -95,10 +96,22 @@ export default function LeakForm({
   /* ======================================
      FINAL SAVE (NO COPY LOGIC)
   ====================================== */
+  // Keys of numeric fields (array of objects → Set of strings)
+  const NUMBER_KEYS = useMemo(() => {
+    const raw = projectConfig?.system?.numeric ?? [];
+    return new Set(raw.map((f) => (typeof f === "string" ? f : f.key)));
+  }, [projectConfig]);
+
   const commitSave = (data) => {
     const d = new Date();
 
-    const calculated = vars ? calculations(data, vars) : data;
+    // Final coercion: partial strings like "3." → 3, strings → numbers
+    const coerced = { ...data };
+    NUMBER_KEYS.forEach((key) => {
+      if (coerced[key] !== undefined) coerced[key] = normalizeNumber(coerced[key]);
+    });
+
+    const calculated = vars ? calculations(coerced, vars) : coerced;
 
     onAdd?.({
       ...calculated,

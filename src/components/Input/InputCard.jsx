@@ -1,4 +1,6 @@
 import { useId, useRef } from "react";
+import { parseNumericInput } from "../../utils/normalize/parseNumericInput";
+import { normalizeNumber } from "../../utils/normalize/normalizeNumber";
 import s from "./Input.module.scss";
 
 /**
@@ -21,7 +23,7 @@ export default function InputCard({
 }) {
   const isTextarea = as === "textarea";
   const isNumber   = type === "number";
-  const hasValue   = value != null && String(value).length > 0;
+  const hasValue   = value != null && value !== "" && String(value).length > 0;
 
   const inputId  = useId();
   const inputRef = useRef(null);
@@ -65,7 +67,8 @@ export default function InputCard({
             enterKeyHint="next"
             value={value ?? ""}
             placeholder={placeholder ?? ""}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => onChange(isNumber ? parseNumericInput(e.target.value) : e.target.value)}
+            onBlur={isNumber ? () => { if (value !== "" && value != null) onChange(normalizeNumber(value)); } : undefined}
           />
         )}
 

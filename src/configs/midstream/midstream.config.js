@@ -1,13 +1,6 @@
 import { COPY_FIELDS, FIELDS, NUMBER_FIELDS } from "./data/fields";
-
-import {
-  headers as EXCEL_HEADERS,
-  keysOrder as EXCEL_KEYS_ORDER,
-} from "./export/excelImportData";
-import { SEARCH_FIELDS } from "./data/constants";
-
 import { STEPS } from "./data/steps";
-
+import { SEARCH_FIELDS_HEAD, SEARCH_FIELDS_TAIL } from "../shared/fields";
 import {
   cause,
   description,
@@ -17,77 +10,92 @@ import {
   installation_type,
   actuator_type,
 } from "../../data/dictionaries";
-export const VOICE_MIDSTREAM = {
-  input: "rawVoiceText",
 
-  outputFields: [
-    "field",
-    "station",
-    "location",
-    "object",
-    "component",
-    "leak_id",
-    "video_id",
-    "leak_speed",
-    "pressure",
-    "temperature",
-    "leak_description",
-    "leak_cause",
-    "technological_solution",
-    "repair_recommendation",
-    "materials_equipment",
-    "note",
-    "actuator_type",
-    "connection_type",
-    "installation_type",
-  ],
-  synonymsFields: [
-    "leak_cause",
-    "repair_recommendation",
-    "leak_description",
-    "component",
-    "actuator_type",
-    "connection_type",
-    "installation_type",
-  ],
-};
-export const SEMANTIC_MIDSTREAM = {
-  leak_cause: cause,
-  leak_description: description,
-  technological_solution: solutions,
-  repair_recommendation: recommendations,
-  actuator_type: actuator_type,
-  installation_type: installation_type,
-  connection_type: connection_type,
-};
-export const SYSTEM_MIDSTREAM = {
-  numeric: NUMBER_FIELDS,
-  copyable: COPY_FIELDS,
-  search: SEARCH_FIELDS,
-  lossy: ["rawVoiceText", "note"],
-  fields: FIELDS,
-};
+const SEARCH_FIELDS = [
+  ...SEARCH_FIELDS_HEAD,
+  { key: "field",      label: "УМГ" },
+  { key: "station",    label: "Компрессорная станция" },
+  { key: "location",   label: "Локация" },
+  { key: "leak_cause", label: "Причина утечки" },
+  ...SEARCH_FIELDS_TAIL,
+];
 
-export const EXPORT_MIDSTREAM = {
-  excel: {
-    format: "XLSX",
-    purpose: "table",
-    direction: ["import", "export"],
-    handler: null,
-    headers: EXCEL_HEADERS,
-    keysOrder: EXCEL_KEYS_ORDER,
+const EXCEL_HEADERS = [
+  "№", "Дата обнаружения",
+  "УМГ", "Компрессорная станция", "Локация",
+  "Объект", "Компонент", "Индивидуальный номер утечки", "Номер видео",
+  "Описание утечки", "Причина утечки", "Технологическое решение",
+  "Решение / План устранения", "МТР ремонта (предполагаемый)", "Примечание",
+  "Измеренная скорость утечки, л/мин", "Измеренная скорость утечки, кг/ч",
+  "Давление, атм", "Температура, °C", "Температура, К",
+  "Процент газа на сжигание", "Процент газа на использование",
+  "Общие годовые потери метана CH₄, м³/год", "Годовые потери метана CH₄, т/год",
+  "Выбросы, CO₂-экв, т/год", "Выбросы, кг CO₂, т/год",
+  "Потенциал глобального потепления",
+  "Тип привода", "Тип присоединения", "Тип установки",
+  "Координата X", "Координата Y", "Фото утечки",
+];
+
+const EXCEL_KEYS = [
+  "index", "date",
+  "field", "station", "location",
+  "object", "component", "leak_id", "video_id",
+  "leak_description", "leak_cause", "technological_solution",
+  "repair_recommendation", "materials_equipment", "note",
+  "leak_speed", "leak_speed_kg_h",
+  "pressure", "temperature", "temperature_K",
+  "flareShare", "utilShare",
+  "Total_Annual_Methane_Loss_m3_y", "Total_Annual_Methane_Loss_t_y",
+  "Emissions_t_CO2eq_year", "Emissions_kg_CO2_eq_year",
+  "GWP",
+  "actuator_type", "connection_type", "installation_type",
+  "lat", "lng", "photo",
+];
+
+const MIDSTREAM_CONFIG = Object.freeze({
+  steps: { mode: "manual", steps: STEPS },
+  voice: {
+    input: "rawVoiceText",
+    outputFields: [
+      "field", "station", "location",
+      "object", "component", "leak_id", "video_id",
+      "leak_speed", "pressure", "temperature",
+      "leak_description", "leak_cause",
+      "technological_solution", "repair_recommendation", "materials_equipment", "note",
+      "actuator_type", "connection_type", "installation_type",
+    ],
+    synonymsFields: [
+      "leak_cause", "repair_recommendation", "leak_description",
+      "component", "actuator_type", "connection_type", "installation_type",
+    ],
   },
-};
-export const STEP_MIDSTREAM = {
-  mode: "manual",
-  steps: STEPS,
-};
-export const MIDSTREAM_CONFIG = Object.freeze({
-  steps: STEP_MIDSTREAM,
-  voice: VOICE_MIDSTREAM,
-  semantic: SEMANTIC_MIDSTREAM,
-  system: SYSTEM_MIDSTREAM,
-  export: EXPORT_MIDSTREAM,
+  semantic: {
+    leak_cause:              cause,
+    leak_description:        description,
+    technological_solution:  solutions,
+    repair_recommendation:   recommendations,
+    actuator_type,
+    installation_type,
+    connection_type,
+  },
+  system: {
+    numeric:  NUMBER_FIELDS,
+    copyable: COPY_FIELDS,
+    search:   SEARCH_FIELDS,
+    lossy:    ["rawVoiceText", "note"],
+    fields:   FIELDS,
+    location: {
+      main: "field", secondary: "station", last: "location",
+      main_label: "УМГ", label: "Станция",
+    },
+  },
+  export: {
+    excel: {
+      format: "XLSX", purpose: "table", direction: ["import", "export"], handler: null,
+      headers: EXCEL_HEADERS,
+      keysOrder: EXCEL_KEYS,
+    },
+  },
 });
 
 export default MIDSTREAM_CONFIG;

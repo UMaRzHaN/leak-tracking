@@ -6,9 +6,11 @@ import { useProjectVars } from "../../app/settings/useProjectVars";
 import { calculations } from "../../utils/calculations/calculations";
 import { nextStatus } from "../../utils/status";
 import { timeAgo } from "../../utils/timeAgo";
+import { normalizeNumber } from "../../utils/normalize/normalizeNumber";
 import PhotoBlock from "./components/PhotoBlock";
 import ViewBlock from "./components/ViewBlock";
 import EditBlock from "./components/EditBlock";
+import PhotoViewer from "../PhotoViewer/PhotoViewer";
 import s from "./LeakDetailsSheet.module.scss";
 
 const MODE = { VIEW: "view", EDIT: "edit" };
@@ -30,6 +32,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
   const [activeTab, setActiveTab] = useState(TAB.INFO);
   const [localEdit, setLocalEdit] = useState({});
   const [saving, setSaving]       = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   const prevLeakIdRef = useRef(null);
   const fileInputRef  = useRef(null);
@@ -67,7 +70,14 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
     setSaving(true);
     try {
       const photoPath  = await savePhoto();
-      const textPatch  = Object.fromEntries(dirtyFields.map(({ key }) => [key, localEdit[key]]));
+      // Coerce numeric fields: partial strings ("3.", "-") → proper numbers
+      const numericKeys = new Set(EDIT_FIELDS.filter((f) => f.numeric).map((f) => f.key));
+      const textPatch  = Object.fromEntries(
+        dirtyFields.map(({ key }) => [
+          key,
+          numericKeys.has(key) ? normalizeNumber(localEdit[key]) : localEdit[key],
+        ]),
+      );
       const speedKey   = "leak_speed";
       const speedChanged = dirtyFields.some(
         ({ key }) => key === speedKey && Number(localEdit[key]) !== Number(leak[key]),
@@ -131,6 +141,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
     : [{ id: TAB.INFO, label: "Основное" }, { id: TAB.PARAMS, label: "Параметры" }];
 
   return (
+    <>
     <div className={s.overlay} onClick={handleClose}>
       <div className={s.sheet} onClick={(e) => e.stopPropagation()}>
 
@@ -144,6 +155,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
           identityNum={`№ ${leak.leak_id ?? leak.index ?? "—"}`}
           identityTime={ago ?? leak.date ?? ""}
           onStatusChange={mode === MODE.VIEW ? handleStatusChange : undefined}
+          onView={mode === MODE.VIEW && src ? () => setViewerOpen(true) : undefined}
           onEdit={
             mode === MODE.EDIT
               ? () => (isNative ? changePhoto() : fileInputRef.current?.click())
@@ -215,5 +227,10 @@ export default function LeakDetailsSheet({ leak, onClose, onSave }) {
 
       </div>
     </div>
+
+    {viewerOpen && src && (
+      <PhotoViewer src={src} onClose={() => setViewerOpen(false)} />
+    )}
+    </>
   );
 }

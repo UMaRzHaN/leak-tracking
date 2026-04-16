@@ -7,6 +7,7 @@ import { useProjectData } from "../app/hooks/useProjectData";
 import { findNearbyLeak } from "../utils/geoUtils";
 import { hapticSuccess, hapticWarning } from "../utils/haptics";
 import { STATUS } from "../utils/status";
+import s from "./AddLeak.module.scss";
 
 const DUPLICATE_RADIUS_M = 50;
 
@@ -107,10 +108,10 @@ export default function AddLeak({
     <>
       {/* ── Draft restore prompt ── */}
       {draftPrompt && (
-        <div style={draftBannerStyle}>
-          <span>📋 Есть незаконченная запись</span>
-          <button onClick={handleRestoreDraft} style={draftBtnStyle("#2563eb")}>Восстановить</button>
-          <button onClick={handleDiscardDraft} style={draftBtnStyle("#64748b")}>Удалить</button>
+        <div className={s.draftBanner}>
+          <span className={s.draftBannerText}>📋 Есть незаконченная запись</span>
+          <button className={`${s.draftBtn} ${s.draftBtnRestore}`} onClick={handleRestoreDraft}>Восстановить</button>
+          <button className={`${s.draftBtn} ${s.draftBtnDiscard}`} onClick={handleDiscardDraft}>Удалить</button>
         </div>
       )}
 
@@ -133,32 +134,3 @@ export default function AddLeak({
   );
 }
 
-/* Inline styles for the draft banner (avoids needing a new CSS module) */
-const draftBannerStyle = {
-  position: "fixed",
-  top: "var(--app-header)",
-  left: 0,
-  right: 0,
-  zIndex: 300,
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  padding: "10px 14px",
-  background: "#1e293b",
-  color: "#f1f5f9",
-  fontSize: 13,
-  fontWeight: 500,
-  boxShadow: "0 4px 12px rgba(0,0,0,.2)",
-};
-
-const draftBtnStyle = (bg) => ({
-  padding: "5px 12px",
-  background: bg,
-  color: "#fff",
-  border: "none",
-  borderRadius: 8,
-  fontSize: 12,
-  fontWeight: 600,
-  cursor: "pointer",
-  flexShrink: 0,
-});

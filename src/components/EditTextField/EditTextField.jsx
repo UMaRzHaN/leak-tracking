@@ -1,65 +1,85 @@
 import { useId } from "react";
+import { parseNumericInput } from "../../utils/normalize/parseNumericInput";
+import { normalizeNumber } from "../../utils/normalize/normalizeNumber";
 import s from "./EditTextField.module.scss";
 
+/**
+ * Single editable field for LeakDetailsSheet edit mode.
+ *
+ * Props:
+ *  label     – field label
+ *  value     – controlled value (string | number)
+ *  onChange  – (value) => void
+ *  multiline – textarea instead of input
+ *  numeric   – enables decimal inputMode + number coercion
+ *  compact   – card style (used in params grid and coord pair)
+ */
 export default function EditTextField({
   label,
   value,
   onChange,
-  multiline,
-  numeric = false,
-  type = "text",
+  multiline = false,
+  numeric   = false,
+  compact   = false,
 }) {
   const id = useId();
-  const showClear = value?.length > 0;
+  // 0 is a valid numeric value — never coerce with ||
+  const display = value ?? "";
+  const filled  = display !== "" && display !== null;
+
+  const handleChange = (raw) =>
+    onChange(numeric ? parseNumericInput(raw) : raw);
+
+  // On blur finalise partial states: "3." → 3, "-" → ""
+  const handleBlur = numeric
+    ? () => { if (value !== "" && value != null) onChange(normalizeNumber(value)); }
+    : undefined;
+
+  const rootClass = [
+    s.field,
+    compact && s.compact,
+  ].filter(Boolean).join(" ");
 
   return (
-    <div className={`${s.field} ${value ? s.hasValue : ""}`}>
-      {multiline ? (
-        <div className={s.textareaWrapper}>
+    <div className={rootClass}>
+      <label className={s.label} htmlFor={id}>{label}</label>
+
+      <div className={s.inputRow}>
+        {multiline ? (
           <textarea
             id={id}
-            value={value || ""}
-            onChange={(e) => onChange(e.target.value)}
+            className={s.control}
+            value={display}
+            onChange={(e) => handleChange(e.target.value)}
             rows={3}
           />
-
-          {showClear && (
-            <button
-              type="button"
-              className={s.clearBtn}
-              onClick={() => onChange("")}
-              aria-label="Очистить"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className={s.inputWrapper}>
+        ) : (
           <input
             id={id}
+            className={`${s.control} ${numeric ? s.numeric : ""}`}
             type="text"
             inputMode={numeric ? "decimal" : "text"}
-            className={numeric ? s.numericInput : undefined}
-            value={value || ""}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder=" "
+            value={display}
+            onChange={(e) => handleChange(e.target.value)}
+            onBlur={handleBlur}
+            autoComplete="off"
+            spellCheck={false}
           />
+        )}
 
-          {showClear && (
-            <button
-              type="button"
-              className={s.clearBtn}
-              onClick={() => onChange("")}
-              aria-label="Очистить"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-      )}
-
-      <label htmlFor={id}>{label}</label>
+        {filled && (
+          <button
+            type="button"
+            className={s.clear}
+            tabIndex={-1}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => onChange("")}
+            aria-label="Очистить"
+          >
+            <span className={s.clearInner} aria-hidden>✕</span>
+          </button>
+        )}
+      </div>
     </div>
   );
 }

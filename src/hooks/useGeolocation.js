@@ -28,8 +28,9 @@ export const useGeolocation = (enabled = true) => {
             (pos) => {
               if (stopped) return;
               setCoords({
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude,
+                lat:      pos.coords.latitude,
+                lng:      pos.coords.longitude,
+                accuracy: pos.coords.accuracy,
               });
               setLoading(false);
             },
@@ -66,8 +67,9 @@ export const useGeolocation = (enabled = true) => {
 
             if (pos) {
               setCoords({
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude,
+                lat:      pos.coords.latitude,
+                lng:      pos.coords.longitude,
+                accuracy: pos.coords.accuracy,
               });
               setLoading(false);
             }

@@ -8,22 +8,25 @@ import { hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { filterNearbyLeaks } from "../../utils/geoUtils";
 import { exportToExcel } from "../../utils/exportExcel";
 import { useProjectData } from "../../app/hooks/useProjectData";
+import { useProjectConfig } from "../../app/settings/useProjectConfig";
 import s from "./DataBase.module.scss";
 
 const ALL = "all";
 const NEARBY = "nearby";
 const NEARBY_RADIUS_M = 500;
 
-const EXPORT_HEADERS = ["ID", "Объект", "Компонент", "Местоположение", "Поле", "Статус", "Давление (атм)", "Описание", "Дата"];
-const EXPORT_KEYS    = ["leak_id", "object", "component", "location", "field", "status", "pressure", "leak_description", "created_at"];
+function round2(v) {
+  return v != null && Number.isFinite(Number(v)) ? Math.round(Number(v) * 100) / 100 : v;
+}
 
-function handleExport(data) {
-  const rows = data.map((r) => ({
+function prepareRows(data) {
+  return data.map((r) => ({
     ...r,
-    status: r.status ?? "open",
-    created_at: r.created_at ? new Date(Number(r.created_at)).toLocaleDateString("ru-RU") : "",
+    status:                         r.status ?? "open",
+    date:                           r.date ?? (r.created_at ? new Date(Number(r.created_at)).toLocaleDateString("ru-RU") : ""),
+    Total_Annual_Methane_Loss_m3_y: round2(r.Total_Annual_Methane_Loss_m3_y),
+    Emissions_t_CO2eq_year:         round2(r.Emissions_t_CO2eq_year),
   }));
-  exportToExcel(rows, EXPORT_HEADERS, EXPORT_KEYS, "утечки");
 }
 
 export default function DataBase({ data, setData, coords }) {
@@ -31,6 +34,8 @@ export default function DataBase({ data, setData, coords }) {
   const [search, setSearch]         = useState("");
   const [statusFilter, setFilter]   = useState(ALL);
   const { save } = useProjectData();
+  const projectConfig = useProjectConfig();
+  const { headers: excelHeaders, keysOrder: excelKeys } = projectConfig.export.excel;
 
   const hasGps = Boolean(coords?.lat && coords?.lng);
 
@@ -170,7 +175,7 @@ export default function DataBase({ data, setData, coords }) {
         {data.length > 0 && (
           <button
             className={s.exportBtn}
-            onClick={() => handleExport(displayed)}
+            onClick={() => exportToExcel(prepareRows(displayed), excelHeaders, excelKeys, "утечки")}
             title="Экспорт в Excel"
           >
             📥 XLSX

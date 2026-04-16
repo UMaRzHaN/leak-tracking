@@ -10,14 +10,12 @@
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   align-items: center;
-
   min-height: var(--app-header, 60px);
   padding: 10px 16px;
 
-  background: linear-gradient(135deg, #0d47a1, #1565c0);
-  color: #fff;
-
+  background: linear-gradient(135deg, #0d1f4e 0%, #1a3a7a 100%);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  color: #fff;
 
   @supports (padding-top: env(safe-area-inset-top)) {
     padding-top: calc(10px + env(safe-area-inset-top));
@@ -55,18 +53,19 @@
   align-items: center;
   justify-content: center;
 
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: inherit;
+  border: 1px solid var(--c-text);
   border-radius: 10px;
 
   color: #fff;
   font-size: 18px;
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.1s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.1s ease;
 
   &:active {
     transform: scale(0.92);
-    background: rgba(255, 255, 255, 0.28);
   }
 }
 

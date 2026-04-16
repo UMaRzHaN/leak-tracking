@@ -1,13 +1,6 @@
 import { COPY_FIELDS, FIELDS, NUMBER_FIELDS } from "./data/fields";
-
-import {
-  headers as EXCEL_HEADERS,
-  keysOrder as EXCEL_KEYS_ORDER,
-} from "./export/excelImportData";
-import { SEARCH_FIELDS } from "./data/constants";
-
 import { STEPS } from "./data/steps";
-
+import { SEARCH_FIELDS_HEAD, SEARCH_FIELDS_TAIL } from "../shared/fields";
 import {
   cause,
   description,
@@ -20,79 +13,85 @@ import {
   addresses,
 } from "../../data/dictionaries";
 
-export const VOICE_DOWNSTREAM = {
-  input: "rawVoiceText",
+const SEARCH_FIELDS = [
+  ...SEARCH_FIELDS_HEAD,
+  { key: "district",  label: "Район" },
+  { key: "locality",  label: "Населенный пункт" },
+  { key: "address",   label: "Адрес" },
+  { key: "category",  label: "Категория" },
+  ...SEARCH_FIELDS_TAIL,
+];
 
-  outputFields: [
-    "district",
-    "locality",
-    "address",
+const EXCEL_HEADERS = [
+  "№", "Дата обнаружения",
+  "Район", "Населенный пункт", "Адрес",
+  "Объект", "Категория", "Индивидуальный номер утечки", "Компонент", "Номер видео",
+  "Давление, атм", "Температура, °C", "Температура, К",
+  "Оборудование для замера объёма утечки", "Серийный номер оборудования", "Погрешность",
+  "Измеренная скорость утечки, л/мин", "Описание утечки", "Технологическое решение",
+  "МТР ремонта (предполагаемый)", "Примечание",
+  "Тип привода", "Тип присоединения", "Тип установки",
+  "Координата X", "Координата Y", "Фото утечки",
+];
 
-    "object",
-    "component",
-    "leak_id",
-    "video_id",
-    "leak_speed",
-    "pressure",
-    "temperature",
-    "leak_description",
-    "leak_cause",
-    "technological_solution",
-    "repair_recommendation",
-    "materials_equipment",
-    "note",
-    "actuator_type",
-    "connection_type",
-    "installation_type",
-  ],
-  synonymsFields: [
-    "repair_recommendation",
-    "leak_description",
-    "component",
-    "actuator_type",
-    "connection_type",
-    "installation_type",
-  ],
-};
-export const SEMANTIC_DOWNSTREAM = {
-  leak_cause: cause,
-  leak_description: description,
-  technological_solution: solutions,
-  repair_recommendation: recommendations,
-  actuator_type: actuator_type,
-  installation_type: installation_type,
-  connection_type: connection_type,
-  category: categories_down,
-  address: addresses,
-};
-export const SYSTEM_DOWNSTREAM = {
-  numeric: NUMBER_FIELDS,
-  copyable: COPY_FIELDS,
-  search: SEARCH_FIELDS,
-  lossy: ["rawVoiceText", "note"],
-  fields: FIELDS,
-};
+const EXCEL_KEYS = [
+  "index", "date",
+  "district", "locality", "address",
+  "object", "category", "leak_id", "component", "video_id",
+  "pressure", "temperature", "temperature_K",
+  "equipmentType", "serial_number", "uncertainty",
+  "leak_speed", "leak_description", "technological_solution",
+  "materials_equipment", "note",
+  "actuator_type", "connection_type", "installation_type",
+  "lat", "lng", "photo",
+];
 
-export const EXPORT_DOWNSTREAM = {
-  excel: {
-    format: "XLSX",
-    purpose: "table",
-    direction: ["import", "export"],
-    handler: null,
-    headers: EXCEL_HEADERS,
-    keysOrder: EXCEL_KEYS_ORDER,
+const DOWNSTREAM_CONFIG = Object.freeze({
+  steps: { mode: "manual", steps: STEPS },
+  voice: {
+    input: "rawVoiceText",
+    outputFields: [
+      "district", "locality", "address",
+      "object", "component", "leak_id", "video_id",
+      "leak_speed", "pressure", "temperature",
+      "leak_description", "leak_cause",
+      "technological_solution", "repair_recommendation", "materials_equipment", "note",
+      "actuator_type", "connection_type", "installation_type",
+    ],
+    synonymsFields: [
+      "repair_recommendation", "leak_description",
+      "component", "actuator_type", "connection_type", "installation_type",
+    ],
   },
-};
-export const STEP_DOWNSTREAM = {
-  mode: "manual",
-  steps: STEPS,
-};
-export const DOWNSTREAM_CONFIG = Object.freeze({
-  steps: STEP_DOWNSTREAM,
-  voice: VOICE_DOWNSTREAM,
-  semantic: SEMANTIC_DOWNSTREAM,
-  system: SYSTEM_DOWNSTREAM,
-  export: EXPORT_DOWNSTREAM,
+  semantic: {
+    leak_cause:              cause,
+    leak_description:        description,
+    technological_solution:  solutions,
+    repair_recommendation:   recommendations,
+    actuator_type,
+    installation_type,
+    connection_type,
+    category:                categories_down,
+    address:                 addresses,
+  },
+  system: {
+    numeric:  NUMBER_FIELDS,
+    copyable: COPY_FIELDS,
+    search:   SEARCH_FIELDS,
+    lossy:    ["rawVoiceText", "note"],
+    fields:   FIELDS,
+    location: {
+      main: "district", secondary: "locality", last: "address",
+      main_label: "Район", label: "Населенный пункт",
+    },
+  },
+  export: {
+    excel: {
+      format: "XLSX", purpose: "table", direction: ["import", "export"], handler: null,
+      headers: EXCEL_HEADERS,
+      keysOrder: EXCEL_KEYS,
+    },
+  },
 });
 
 export default DOWNSTREAM_CONFIG;

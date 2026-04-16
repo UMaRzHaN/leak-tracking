@@ -24,7 +24,9 @@ function fmtDate(iso) {
 function splitFields(fields) {
   return {
     text:    fields.filter((f) => !f.numeric && !f.multiline),
-    numeric: fields.filter((f) =>  f.numeric),
+    // coord fields (lat/lng) stay in the info tab, not the params grid
+    numeric: fields.filter((f) =>  f.numeric && !f.coord),
+    coords:  fields.filter((f) =>  f.coord),
     multi:   fields.filter((f) => !f.numeric && f.multiline),
   };
 }
@@ -37,11 +39,11 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
       .sort((a, b) => (a.viewOrder ?? 999) - (b.viewOrder ?? 999));
   }, [projectConfig]);
 
-  const { text, numeric, multi } = useMemo(() => splitFields(fields), [fields]);
+  const { text, numeric, coords, multi } = useMemo(() => splitFields(fields), [fields]);
   const history = Array.isArray(data.history) ? [...data.history].reverse() : [];
 
   if (activeTab === "info") {
-    const infoFields = [...text, ...multi];
+    const infoFields = [...text, ...coords, ...multi];
     const hasAny = infoFields.some((f) => data[f.key] != null && data[f.key] !== "");
     return (
       <div className={s.tabPane}>

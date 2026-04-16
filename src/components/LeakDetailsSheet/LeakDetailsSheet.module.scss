@@ -46,104 +46,88 @@
 }
 
 /* ══════════════════════════════════════════
-   HERO BLOCK (photo + identity overlay)
+   IDENTITY ROW (compact thumbnail header)
    ══════════════════════════════════════════ */
 
-.hero {
-  position: relative;
-  width: 100%;
-  height: 210px;
+.identityRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border);
   flex-shrink: 0;
-  overflow: hidden;
 }
 
-/* ── Actual photo ── */
-.heroImg {
+/* ── Thumbnail ── */
+.thumb {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: var(--shadow-md);
+  background: var(--c-surface2);
+}
+
+.thumbEditable {
+  cursor: pointer;
+
+  &:active { opacity: 0.85; }
+}
+
+.thumbImg {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-/* ── Placeholder (no photo) ── */
-.heroPlaceholder {
+.thumbEmpty {
   width: 100%;
   height: 100%;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
 }
 
-.heroPlaceholderIcon {
-  font-size: 38px;
-  opacity: 0.45;
+.thumbEmptyIcon {
+  font-size: 26px;
+  opacity: 0.4;
   line-height: 1;
 }
 
-.heroPlaceholderText {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--c-text3);
-}
-
-/* ── Gradient overlays ── */
-.heroGradientDark {
+.thumbEditOverlay,
+.thumbViewOverlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    to top,
-    rgba(0, 0, 0, 0.62) 0%,
-    rgba(0, 0, 0, 0.18) 45%,
-    transparent 70%
-  );
-  pointer-events: none;
-}
-
-.heroGradientLight {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.06) 0%, transparent 50%);
-  pointer-events: none;
-}
-
-/* ── Identity overlay (bottom of hero) ── */
-.heroIdentity {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
+  background: rgba(0, 0, 0, 0.38);
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px 14px;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--t-fast);
+
+  .thumbEditable:hover &,
+  .thumbEditable:focus & { opacity: 1; }
 }
 
-.heroIdentityLeft {
+.thumbEditIcon {
+  font-size: 18px;
+  color: #fff;
+}
+
+/* ── Identity text ── */
+.identityInfo {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
 }
 
-/* Light text (on dark photo gradient) */
-.heroNumLight {
-  font-size: 22px;
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
-}
-
-.heroTimeLight {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-}
-
-/* Dark text (on light placeholder gradient) */
-.heroNum {
+.identityNum {
   font-size: 22px;
   font-weight: 800;
   color: var(--c-text);
@@ -151,31 +135,22 @@
   line-height: 1.1;
 }
 
-.heroTime {
+.identityTime {
   font-size: 12px;
   color: var(--c-text3);
+  line-height: 1;
 }
 
-/* ── Edit photo button ── */
-.photoEditBtn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  padding: 6px 13px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  background: rgba(0, 0, 0, 0.45);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
+.identityBadgeRow {
   display: flex;
   align-items: center;
-  gap: 5px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: background var(--t-fast);
-  &:active { background: rgba(0, 0, 0, 0.7); }
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.identityHint {
+  font-size: 10px;
+  color: var(--c-text3);
 }
 
 /* ══════════════════════════════════════════
@@ -232,10 +207,10 @@
 
 /* ── Tab pane (inner wrapper) ── */
 .tabPane {
-  padding: 4px 0 20px;
+  padding: 2px 0 24px;
 
   @supports (padding-bottom: env(safe-area-inset-bottom)) {
-    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
   }
 }
 
@@ -389,14 +364,50 @@
 }
 
 /* ══════════════════════════════════════════
-   EDIT TAB — params grid
+   EDIT TAB — layout helpers
    ══════════════════════════════════════════ */
 
+/* Wrapper that holds a flat list of EditTextField rows */
+.editSection {
+  background: var(--c-surface);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  margin: 12px 14px 0;
+  box-shadow: var(--shadow-sm);
+
+  /* last child inside section loses its separator line */
+  & > :last-child { border-bottom: none; }
+}
+
+/* Coordinate group: label heading + side-by-side pair */
+.coordGroup {
+  margin: 12px 14px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.coordGroupLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-text3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding-left: 2px;
+}
+
+.coordPair {
+  display: grid;
+  grid-template-columns: 1fr ;
+  gap: 8px;
+}
+
+/* Numeric params 2-col grid */
 .editParamsGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  padding: 14px;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  padding: 2px 14px;
 }
 
 /* ══════════════════════════════════════════
