@@ -1,38 +1,115 @@
-.bottomNav {
-  height: var(--app-footer);
+.nav {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-
-  background: #fff;
-  border-top: 1px solid #d1d5db;
+  left: 0; right: 0; bottom: 0;
   z-index: 200;
+  height: var(--app-footer);
+
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+
+  background: var(--c-surface);
+  border-top: 1px solid var(--c-border);
+  box-shadow: 0 -4px 16px rgba(0,0,0,.06);
+
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    padding-bottom: env(safe-area-inset-bottom);
+    height: calc(var(--app-footer) + env(safe-area-inset-bottom));
+  }
 }
-.navItem {
-  background: none;
-  border: none;
-  color: #9aa0a6;
+
+/* ── Regular tab ── */
+.item {
+  flex: 1;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  cursor: pointer;
+  gap: 3px;
+  padding: 8px 4px 6px;
+  background: none;
+  border: none;
+  color: var(--c-text3);
+  transition: color var(--t-fast);
+
+  &.active { color: var(--c-blue); }
 }
 
-.navIcon {
-  font-size: 20px;
+.iconWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon {
+  font-size: 18px;
   line-height: 1;
+  font-style: normal;
 }
 
-.navLabel {
-  font-size: 12px;
+/* ── Open leaks badge ── */
+.badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 10px;
+  background: var(--c-open);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
 }
 
-.active {
-  color: #4da3ff;
+.label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.dot {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--c-blue);
+}
+
+/* ── FAB add button ── */
+.fab {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 8px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: linear-gradient(135deg, var(--c-blue), #1a3ac0);
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, .45);
+
+  transition: transform var(--t-fast), box-shadow var(--t-fast);
+
+  &:active {
+    transform: scale(0.92);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, .35);
+  }
+}
+
+.fabIcon {
+  font-size: 26px;
+  color: #fff;
+  line-height: 1;
+  font-weight: 300;
 }

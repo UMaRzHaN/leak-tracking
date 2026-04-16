@@ -1,362 +1,252 @@
+/* ══════════════════════════════════════════
+   Shared input field styles (InputCard, StepRenderer)
+   ══════════════════════════════════════════ */
+
+/* ── Field wrapper ── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── Label ── */
+.label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.req   { color: var(--c-danger); font-weight: 700; }
+
+.rightSlot {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--c-text3);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+
+/* ── Input wrapper (holds control + clear btn) ── */
+.inputWrap,
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Required ── */
+.isRequired .req { color: var(--c-danger); }
+.required        { color: var(--c-danger); font-weight: 700; }
+
+/* ── Core control (input + textarea) ── */
+.control {
+  width: 100%;
+  padding: 12px 38px 12px 14px;
+  border-radius: var(--r-lg);
+  border: 1.5px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-size: 15px;
+  font-family: inherit;
+  line-height: 1.4;
+  outline: none;
+  resize: none;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast), background var(--t-fast);
+
+  &::placeholder  { color: var(--c-text3); }
+  &:focus         {
+    border-color: var(--c-blue);
+    background: var(--c-surface);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+  }
+}
+
+/* filled state */
+.hasValue .control:not(:focus) {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+/* error state */
+.hasError .control {
+  border-color: var(--c-danger) !important;
+  background: #fef2f2 !important;
+}
+
+/* ── Clear button ── */
+.clearBtn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: var(--c-bg);
+  color: var(--c-text2);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--t-fast);
+
+  &:hover  { background: var(--c-border); }
+  &:active { transform: translateY(-50%) scale(0.9); }
+}
+
+/* ── Error message ── */
+.errorMsg {
+  font-size: 12px;
+  color: var(--c-danger);
+  margin: 0;
+}
+
+/* ══════════════════════════════════════════
+   Step renderer
+   ══════════════════════════════════════════ */
+.stepRenderer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+/* ══════════════════════════════════════════
+   Photo input (used in PhotoInput.jsx)
+   ══════════════════════════════════════════ */
 .photoInput {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
+
 .fieldLabel {
-  display: block;
-  margin-bottom: 6px;
-
-  font-size: 14px;
-  font-weight: 500;
-  color: #111827;
-
-  line-height: 1.4;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
+
 .photoBtn {
   width: 100%;
-  min-height: 44px; // удобный тап-зона
-
+  min-height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-
-  padding: 12px 14px;
-  margin-top: 8px;
-
-  border-radius: 14px;
-  border: 1px solid #2563eb;
-
-  background: #f8fbff;
-  color: #2563eb;
-
+  padding: 14px;
+  border-radius: var(--r-lg);
+  border: 1.5px dashed var(--c-blue);
+  background: var(--c-blue-dim, #eff6ff);
+  color: var(--c-blue);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  transition: all var(--t-fast);
 
-  transition: all 0.15s ease;
-
-  &:active {
-    transform: scale(0.97);
-    background: #e0edff;
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  &:active  { transform: scale(0.97); background: #dbeafe; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
 .photoPreview {
   max-width: 200px;
   max-height: 200px;
   object-fit: cover;
-  border-radius: 10px;
+  border-radius: var(--r-lg);
 }
-.hasError .photoBtn {
-  border-color: #dc2626;
-}
+
+.hasError .photoBtn { border-color: var(--c-danger); color: var(--c-danger); }
 
 .fieldError {
-  margin-top: 6px;
   font-size: 12px;
-  color: #dc2626;
-}
-.inputCard {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-
-  padding: 12px;
-  border-radius: 14px;
-
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+  color: var(--c-danger);
 }
 
-.inputCard:hover {
-  border-color: #c7d2fe;
-}
-
-/* required */
-.isRequired {
-  .required {
-    margin-left: 4px;
-    color: #dc2626;
-    font-weight: 600;
-  }
-}
-
-/* error */
-.hasError {
-  border-color: #dc2626;
-
-  .inputCardInput,
-  .inputCardTextarea {
-    border-color: #dc2626;
-  }
-}
-
-/* header */
-.inputCardHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.inputCardLabel {
-  font-size: 13px;
-  font-weight: 500;
-  color: #111827;
-}
-
-.inputCardSlot {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* inputs */
-.inputCardInput,
-.inputCardTextarea {
-  width: 100%;
-  padding: 10px 12px;
-
-  font-size: 14px;
-  color: #111827;
-
-  background: #f5f7fb;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-
-  outline: none;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-
-  &::placeholder {
-    color: #9ca3af;
-  }
-
-  &:focus {
-    border-color: #2563eb;
-    background: #ffffff;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
-  }
-}
-
-.inputCardTextarea {
-  resize: vertical;
-  padding-right: 40px;
-  min-height: 80px;
-}
-
-/* error text */
-.inputCardError {
-  font-size: 12px;
-  color: #dc2626;
-  margin-top: 2px;
-}
+/* ══════════════════════════════════════════
+   Autocomplete
+   ══════════════════════════════════════════ */
 .formField {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
-
-  padding: 12px;
-  border-radius: 14px;
-
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
 }
 
 .formLabel {
-  font-size: 13px;
-  font-weight: 500;
-  color: #111827;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .formInput {
   width: 100%;
-  padding: 10px 12px;
-
-  font-size: 14px;
-  color: #111827;
-
-  background: #f5f7fb;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-
+  padding: 12px 38px 12px 14px;
+  font-size: 15px;
+  color: var(--c-text);
+  background: var(--c-surface);
+  border-radius: var(--r-lg);
+  border: 1.5px solid var(--c-border);
+  font-family: inherit;
   outline: none;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
 
-  &::placeholder {
-    color: #9ca3af;
-  }
+  &::placeholder { color: var(--c-text3); }
 
   &:focus {
-    background: #ffffff;
-    border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    background: var(--c-surface);
+    border-color: var(--c-blue);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+  }
+
+  &:not(:placeholder-shown):not(:focus) {
+    border-color: #22c55e;
+    background: #f0fdf4;
   }
 }
 
-.hasError {
-  border-color: #dc2626;
-
-  .formInput {
-    border-color: #dc2626;
-  }
+.hasError .formInput {
+  border-color: var(--c-danger) !important;
+  background: #fef2f2 !important;
 }
 
-/* dropdown */
 .autocompleteList {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 4px);
   left: 0;
   right: 0;
-
   z-index: 50;
-  max-height: 80px;
+  max-height: 180px;
   overflow-y: auto;
-
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
 }
 
 .autocompleteItem {
-  padding: 10px 12px;
+  padding: 10px 14px;
   font-size: 14px;
-  color: #111827;
+  color: var(--c-text);
   cursor: pointer;
 
-  &:hover {
-    background: #f1f5ff;
-  }
-
-  &:active {
-    background: #e0e7ff;
-  }
+  &:hover  { background: var(--c-blue-dim); }
+  &:active { background: #dbeafe; }
 }
 
 .formError {
   font-size: 12px;
-  color: #dc2626;
-  margin-top: 2px;
-}
-
-.stepRenderer {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 10px;
-}
-
-/* ===== INPUT WRAPPER ===== */
-.inputWrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-.formTextarea {
-  width: 100%;
-  resize: vertical;
-
-  padding: 10px 40px 10px 12px;
-  border-radius: 12px;
-  border: 1px solid #d1d5db;
-  font-size: 14px;
-  font-family: inherit;
-  line-height: 1.4;
-
-  min-height: unset;
-  height: auto;
-  &:focus {
-    outline: none;
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
-  }
-}
-/* чтобы крестик не наезжал на текст */
-.inputCardInput {
-  padding-right: 36px;
-}
-
-/* ===== CLEAR BUTTON ===== */
-.clearBtn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-
-  border: none;
-  background: transparent;
-  color: #374151;
-
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  transition:
-    background 0.15s ease,
-    transform 0.1s ease;
-
-  &:hover {
-    background: #e7e8e9;
-  }
-
-  &:active {
-    transform: scale(0.9);
-  }
-}
-
-@media (max-width: 480px) {
-  .inputCard,
-  .formField {
-    padding: 10px;
-  }
-
-  .inputCardInput,
-  .inputCardTextarea,
-  .formInput {
-    font-size: 15px;
-  }
-}
-
-.inputCardInput:focus,
-.inputCardTextarea:focus,
-.formInput:focus,
-.formTextarea:focus {
-  background: #ffffff;
-}
-/* ===== FILLED STATE (green) ===== */
-.inputCardInput:not(:placeholder-shown),
-.inputCardTextarea:not(:placeholder-shown),
-.formInput:not(:placeholder-shown),
-.formTextarea:not(:placeholder-shown) {
-  background: #ecfdf5; // светло-зелёный
-  border-color: #22c55e; // зелёная рамка
-}
-.hasError {
-  .inputCardInput,
-  .inputCardTextarea,
-  .formInput,
-  .formTextarea {
-    background: #fef2f2; // светло-красный
-    border-color: #dc2626;
-  }
+  color: var(--c-danger);
+  margin: 0;
 }

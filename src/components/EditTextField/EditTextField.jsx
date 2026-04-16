@@ -6,6 +6,7 @@ export default function EditTextField({
   value,
   onChange,
   multiline,
+  numeric = false,
   type = "text",
 }) {
   const id = useId();
@@ -37,7 +38,9 @@ export default function EditTextField({
         <div className={s.inputWrapper}>
           <input
             id={id}
-            type={type}
+            type="text"
+            inputMode={numeric ? "decimal" : "text"}
+            className={numeric ? s.numericInput : undefined}
             value={value || ""}
             onChange={(e) => onChange(e.target.value)}
             placeholder=" "

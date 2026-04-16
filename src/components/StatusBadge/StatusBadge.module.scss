@@ -1,0 +1,28 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid;
+  border-radius: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.md {
+  font-size: 12px;
+  padding: 3px 9px;
+}
+
+.sm {
+  font-size: 11px;
+  padding: 2px 7px;
+}
+
+.clickable {
+  cursor: pointer;
+  background: none;
+  transition: opacity var(--t-fast), transform var(--t-fast);
+
+  &:hover  { opacity: 0.8; }
+  &:active { transform: scale(0.95); }
+}

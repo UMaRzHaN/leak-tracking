@@ -1,194 +1,488 @@
-/* ===== OVERLAY ===== */
-.detailsOverlay {
+/* ══════════════════════════════════════════
+   LeakDetailsSheet — bottom sheet modal
+   ══════════════════════════════════════════ */
+
+.overlay {
   position: fixed;
   inset: 0;
   z-index: 300;
-
-  background: rgba(0, 0, 0, 0.4);
-
+  background: rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: flex-end;
+  animation: fadeIn 0.18s ease;
 }
 
-/* ===== SHEET ===== */
-.detailsSheet {
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Sheet ── */
+.sheet {
   width: 100%;
-  max-height: 80vh;
-
-  background: #ffffff;
-  border-radius: 20px 20px 0 0;
-
-  padding: 12px 16px 24px;
-
+  max-height: 92dvh;
+  background: var(--c-bg);
+  border-radius: 24px 24px 0 0;
   display: flex;
   flex-direction: column;
-
-  overflow-y: auto;
-
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.22);
+  animation: slideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-/* ===== DRAG HANDLE ===== */
-.detailsHandle {
-  width: 40px;
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* ── Drag handle ── */
+.handle {
+  flex-shrink: 0;
+  width: 36px;
   height: 4px;
   border-radius: 4px;
-  border: 1px solid;
-  margin: 10px auto;
+  background: var(--c-border);
+  margin: 10px auto 6px;
 }
 
-/* ===== TITLE ===== */
-.detailsTitle {
-  text-align: center;
-  font-size: 16px;
-  font-weight: 600;
-  color: #111827;
+/* ══════════════════════════════════════════
+   HERO BLOCK (photo + identity overlay)
+   ══════════════════════════════════════════ */
 
-  margin-bottom: 12px;
+.hero {
+  position: relative;
+  width: 100%;
+  height: 210px;
+  flex-shrink: 0;
+  overflow: hidden;
 }
 
-/* ===== PHOTO ===== */
-.detailsPhotoParent {
-  max-width: 100%;
-  margin: auto;
-  border-radius: 20px;
-  width: max-content;
-  border: 2px dashed #d1d5db;
+/* ── Actual photo ── */
+.heroImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── Placeholder (no photo) ── */
+.heroPlaceholder {
+  width: 100%;
+  height: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  margin-bottom: 16px;
-  padding: 2px;
-}
-
-.detailsPhoto {
-  border-radius: inherit;
-  max-width: 100%;
-  min-height: 180px;
-  max-height: 190px;
-  object-fit: contain;
-}
-
-.photoPlaceholder {
-  border-radius: inherit;
-
-  max-height: 100%;
-  border: 1px dashed #d1d5db;
-  background: #f5f7fb;
-  color: #6b7280;
-  font-size: 14px;
-  padding: 8px;
-}
-
-/* ===== DETAILS LIST ===== */
-.detailsList {
-  display: flex;
-  flex-direction: column;
   gap: 8px;
-  margin-top: 8px;
 }
 
-/* ===== ROW ===== */
-.detailsRow {
+.heroPlaceholderIcon {
+  font-size: 38px;
+  opacity: 0.45;
+  line-height: 1;
+}
+
+.heroPlaceholderText {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--c-text3);
+}
+
+/* ── Gradient overlays ── */
+.heroGradientDark {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.62) 0%,
+    rgba(0, 0, 0, 0.18) 45%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.heroGradientLight {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.06) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* ── Identity overlay (bottom of hero) ── */
+.heroIdentity {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
   display: flex;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 8px;
-
-  padding: 10px 12px;
-  border-radius: 10px;
-
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  gap: 12px;
+  padding: 12px 16px 14px;
 }
 
-.multiline {
-  flex-direction: column;
-}
-
-/* ===== LABEL / VALUE ===== */
-.detailsLabel {
-  font-size: 12px;
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.detailsValue {
-  font-size: 14px;
-  color: #111827;
-  font-weight: 500;
-  word-break: break-word;
-}
-
-/* ===== ACTIONS ===== */
-.detailsActions {
+.heroIdentityLeft {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 10px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
-/* ===== BUTTON ===== */
-.detailsBtn {
-  flex: 1;
-  min-width: 120px;
+/* Light text (on dark photo gradient) */
+.heroNumLight {
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
+}
 
-  padding: 12px;
-  border-radius: 12px;
-  border: none;
+.heroTimeLight {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
 
-  font-size: 14px;
+/* Dark text (on light placeholder gradient) */
+.heroNum {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--c-text);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.heroTime {
+  font-size: 12px;
+  color: var(--c-text3);
+}
+
+/* ── Edit photo button ── */
+.photoEditBtn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 6px 13px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 12px;
   font-weight: 600;
-
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: background var(--t-fast);
+  &:active { background: rgba(0, 0, 0, 0.7); }
+}
 
-  transition: all 0.15s ease;
+/* ══════════════════════════════════════════
+   TAB BAR
+   ══════════════════════════════════════════ */
 
+.tabBar {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--c-bg);
+  border-bottom: 1px solid var(--c-border);
+  flex-shrink: 0;
+}
+
+.tab {
+  flex: 1;
+  padding: 7px 4px;
+  border: none;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--c-text3);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--t-fast);
+  white-space: nowrap;
+
+  &:hover { color: var(--c-text2); background: var(--c-border); }
+}
+
+.tabActive {
+  background: var(--c-surface);
+  color: var(--c-blue);
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ══════════════════════════════════════════
+   TAB CONTENT
+   ══════════════════════════════════════════ */
+
+.tabContent {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: tabFade 0.15s ease;
+}
+
+@keyframes tabFade {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Tab pane (inner wrapper) ── */
+.tabPane {
+  padding: 4px 0 20px;
+
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ══════════════════════════════════════════
+   INFO TAB — field rows
+   ══════════════════════════════════════════ */
+
+.fieldRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface);
+}
+
+.fieldRowMulti {
+  flex-direction: column;
+  gap: 5px;
+  align-items: flex-start;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  color: var(--c-text3);
+  font-weight: 500;
+  flex-shrink: 0;
+  min-width: 88px;
+}
+
+.fieldValue {
+  font-size: 14px;
+  color: var(--c-text);
+  font-weight: 500;
+  text-align: right;
+  word-break: break-word;
+  line-height: 1.45;
+  flex: 1;
+}
+
+.fieldValueMulti {
+  text-align: left;
+  color: var(--c-text2);
+  font-weight: 400;
+  line-height: 1.55;
+  font-size: 13px;
+  width: 100%;
+}
+
+/* ══════════════════════════════════════════
+   PARAMS TAB — card grid
+   ══════════════════════════════════════════ */
+
+.paramsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.paramCard {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: var(--shadow-sm);
+}
+
+.paramLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-text3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1.3;
+}
+
+.paramValue {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--c-blue);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ══════════════════════════════════════════
+   LOG TAB — timeline
+   ══════════════════════════════════════════ */
+
+.logEntry {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.logDotWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  padding-top: 3px;
+}
+
+.logDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--c-blue);
+  border: 2px solid var(--c-bg);
+  box-shadow: 0 0 0 1.5px var(--c-border);
+  flex-shrink: 0;
+}
+
+.logLine {
+  width: 1px;
+  flex: 1;
+  min-height: 16px;
+  background: var(--c-border);
+  margin: 4px 0;
+}
+
+.logBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.logEntry:last-child .logBody { border-bottom: none; }
+
+.logAction {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text);
+  line-height: 1.35;
+}
+
+.logDate {
+  font-size: 11px;
+  color: var(--c-text3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ══════════════════════════════════════════
+   EDIT TAB — params grid
+   ══════════════════════════════════════════ */
+
+.editParamsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 14px;
+}
+
+/* ══════════════════════════════════════════
+   EMPTY STATE (per tab)
+   ══════════════════════════════════════════ */
+
+.tabEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 20px;
+  color: var(--c-text3);
+  font-size: 14px;
+  text-align: center;
+}
+
+.tabEmptyIcon { font-size: 36px; opacity: 0.5; }
+
+/* ══════════════════════════════════════════
+   ACTION BAR
+   ══════════════════════════════════════════ */
+
+.actionBar {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--c-surface);
+  border-top: 1px solid var(--c-border);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.07);
+  flex-shrink: 0;
+
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+}
+
+.btnPrimary {
+  flex: 1;
+  padding: 13px 16px;
+  border: none;
+  border-radius: var(--r-lg);
+  background: var(--c-blue);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
+  transition: all var(--t-fast);
+  &:active   { transform: scale(0.97); }
+  &:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 }
 
-/* primary / edit */
-.edit {
-  background: #2563eb;
-  color: #ffffff;
-
-  &:active {
-    transform: scale(0.97);
-  }
-}
-
-/* secondary / close */
-.close {
-  background: #f5f7fb;
-  color: #374151;
-  border: 1px solid #e5e7eb;
-
-  &:active {
-    background: #e5e7eb;
-  }
-}
-#view {
+.btnGhost {
+  flex: 1;
+  padding: 13px 16px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-lg);
+  background: var(--c-bg);
+  color: var(--c-text2);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
   display: flex;
-  margin-top: 12px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all var(--t-fast);
+  &:active { background: var(--c-border); }
 }
-/* ===== MOBILE SAFE AREA ===== */
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .detailsSheet {
-    padding-bottom: calc(24px + env(safe-area-inset-bottom));
-  }
-}
-.editBlock {
-  display: flex;
-  flex-direction: column;
-  margin-top: 14px;
-}
-.editPhoto {
-  background: forestgreen;
-  color: #ffffff;
 
-  &:active {
-    transform: scale(0.97);
-  }
+.btnIcon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-lg);
+  background: var(--c-bg);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--t-fast);
+  &:active { background: var(--c-border); }
 }

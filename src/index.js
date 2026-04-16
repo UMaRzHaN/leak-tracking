@@ -2,13 +2,16 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './app/App';
 import { ProjectProvider } from './app/settings/ProjectContext';
+import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <ProjectProvider>
-      <App />
-    </ProjectProvider>
+    <ErrorBoundary>
+      <ProjectProvider>
+        <App />
+      </ProjectProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );
 

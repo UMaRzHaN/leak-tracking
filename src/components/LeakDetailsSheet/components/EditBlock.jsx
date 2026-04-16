@@ -1,75 +1,68 @@
-import EditTextField from "../../EditTextField/EditTextField";
-import { useProjectConfig } from "../../../app/settings/useProjectConfig";
 import { useMemo } from "react";
+import EditTextField from "../../EditTextField/EditTextField";
 import s from "../LeakDetailsSheet.module.scss";
 
-export default function EditBlock({
-  localEdit,
-  setLocalEdit,
-  isNative,
-  changePhoto,
-  saving,
-  onSave,
-  onCancel,
-  fileInputRef,
-}) {
-  const projectConfig = useProjectConfig();
+function splitFields(fields) {
+  return {
+    text:    fields.filter((f) => !f.numeric && !f.multiline),
+    numeric: fields.filter((f) =>  f.numeric),
+    multi:   fields.filter((f) => !f.numeric && f.multiline),
+  };
+}
 
-  const EDIT_FIELDS = useMemo(
-    () => {
-      const fields = projectConfig.system.fields ?? [];
-      // Фильтруем только редактируемые поля и сортируем по editOrder
-      return fields
-        .filter(f => f.editable !== false)
-        .sort((a, b) => (a.editOrder ?? 999) - (b.editOrder ?? 999));
-    },
-    [projectConfig],
-  );
-  
-  return (
-    <div className={s.editBlock}>
-      {EDIT_FIELDS.map(({ key, label, multiline }) => (
-        <EditTextField
-          key={key}
-          label={label}
-          multiline={multiline}
-          value={localEdit[key] ?? ""}
-          onChange={(v) => setLocalEdit((prev) => ({ ...prev, [key]: v }))}
-        />
-      ))}
+export default function EditBlock({ localEdit, setLocalEdit, activeTab, projectConfig }) {
+  const fields = useMemo(() => {
+    const all = projectConfig.system.fields ?? [];
+    return all
+      .filter((f) => f.editable !== false)
+      .sort((a, b) => (a.editOrder ?? 999) - (b.editOrder ?? 999));
+  }, [projectConfig]);
 
-      {!isNative && (
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={changePhoto}
-        />
-      )}
+  const { text, numeric, multi } = useMemo(() => splitFields(fields), [fields]);
 
-      <div className={s.detailsActions}>
-        <button
-          className={`${s.detailsBtn} ${s.editPhoto}`}
-          onClick={() =>
-            isNative ? changePhoto() : fileInputRef.current?.click()
-          }
-        >
-          📷 Изменить фото
-        </button>
+  const onChange = (key, val) =>
+    setLocalEdit((prev) => ({ ...prev, [key]: val }));
 
-        <button
-          disabled={saving}
-          className={`${s.detailsBtn} ${s.edit}`}
-          onClick={onSave}
-        >
-          💾 Сохранить
-        </button>
-
-        <button className={`${s.detailsBtn} ${s.close}`} onClick={onCancel}>
-          Отмена
-        </button>
+  if (activeTab === "info") {
+    const infoFields = [...text, ...multi];
+    return (
+      <div className={s.tabPane}>
+        {infoFields.map(({ key, label, multiline }) => (
+          <EditTextField
+            key={key}
+            label={label}
+            multiline={multiline}
+            value={localEdit[key] ?? ""}
+            onChange={(v) => onChange(key, v)}
+          />
+        ))}
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (activeTab === "params") {
+    return (
+      <div className={s.tabPane}>
+        <div className={s.editParamsGrid}>
+          {numeric.map(({ key, label }) => (
+            <EditTextField
+              key={key}
+              label={label}
+              numeric
+              value={localEdit[key] ?? ""}
+              onChange={(v) => onChange(key, v)}
+            />
+          ))}
+        </div>
+        {numeric.length === 0 && (
+          <div className={s.tabEmpty}>
+            <span className={s.tabEmptyIcon}>📊</span>
+            <p>Нет числовых параметров</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return null;
 }

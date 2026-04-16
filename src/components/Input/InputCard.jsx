@@ -1,12 +1,18 @@
 import { useId, useRef } from "react";
 import s from "./Input.module.scss";
 
+/**
+ * A single labelled input field for the leak form.
+ * Props:
+ *  label, value, onChange, type ("text"|"number"), as ("input"|"textarea"),
+ *  error, required, rows, rightSlot
+ */
 export default function InputCard({
   label,
   value,
   onChange,
   placeholder,
-  type = "search",
+  type = "text",
   as = "input",
   error,
   required = false,
@@ -14,24 +20,26 @@ export default function InputCard({
   rows = 3,
 }) {
   const isTextarea = as === "textarea";
-  const showClear = value && String(value).length > 0;
+  const isNumber   = type === "number";
+  const hasValue   = value != null && String(value).length > 0;
 
-  const inputId = useId();
+  const inputId  = useId();
   const inputRef = useRef(null);
-  const isNumber = type === "number";
+
+  const className = [
+    s.field,
+    hasValue  && s.hasValue,
+    required  && s.isRequired,
+    error     && s.hasError,
+  ].filter(Boolean).join(" ");
+
   return (
-    <div
-      className={[s.inputCard, required && s.isRequired, error && s.hasError]
-        .filter(Boolean)
-        .join(" ")}
-    >
-      <div className={s.inputCardHeader}>
-        <label className={s.inputCardLabel} htmlFor={inputId}>
-          {label}
-          {required && <span className={s.required}> *</span>}
-        </label>
-        {rightSlot && <div className={s.inputCardSlot}>{rightSlot}</div>}
-      </div>
+    <div className={className}>
+      <label className={s.label} htmlFor={inputId}>
+        {label}
+        {required && <span className={s.req}> *</span>}
+        {rightSlot && <span className={s.rightSlot}>{rightSlot}</span>}
+      </label>
 
       <div className={s.inputWrapper}>
         {isTextarea ? (
@@ -39,10 +47,10 @@ export default function InputCard({
             data-enter-nav
             ref={inputRef}
             id={inputId}
-            className={s.inputCardTextarea}
+            className={s.control}
             rows={rows}
             value={value ?? ""}
-            placeholder={placeholder || " "}
+            placeholder={placeholder ?? ""}
             onChange={(e) => onChange(e.target.value)}
             enterKeyHint="enter"
           />
@@ -51,33 +59,31 @@ export default function InputCard({
             data-enter-nav
             ref={inputRef}
             id={inputId}
-            className={s.inputCardInput}
-            type={isNumber ? "text" : type}
-            inputMode={isNumber ? "decimal" : undefined}
+            className={s.control}
+            type="text"
+            inputMode={isNumber ? "decimal" : "text"}
             enterKeyHint="next"
             value={value ?? ""}
-            placeholder={placeholder || " "}
+            placeholder={placeholder ?? ""}
             onChange={(e) => onChange(e.target.value)}
           />
         )}
 
-        {showClear && (
+        {hasValue && (
           <button
             type="button"
             className={s.clearBtn}
             tabIndex={-1}
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => {
-              onChange("");
-              inputRef.current?.focus();
-            }}
+            onClick={() => { onChange(""); inputRef.current?.focus(); }}
+            aria-label="Очистить"
           >
             ✕
           </button>
         )}
       </div>
 
-      {error && <div className={s.inputCardError}>{error}</div>}
+      {error && <p className={s.errorMsg}>{error}</p>}
     </div>
   );
 }

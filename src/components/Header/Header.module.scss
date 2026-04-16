@@ -1,70 +1,132 @@
-/* =====================================================
-   APP HEADER
-   ===================================================== */
-
 .header {
   position: sticky;
   top: 0;
   z-index: 120;
-  background: linear-gradient(135deg, #0d47a1, #1565c0);
-  color: #ffffff;
-  padding: 10px 14px 12px;
-  text-align: center;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-  cursor: pointer;
+  min-height: var(--app-header);
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px 12px;
+  background: linear-gradient(135deg, #0d1f4e 0%, #1a3a7a 100%);
+  box-shadow: 0 2px 12px rgba(0,0,0,.28);
 
   @supports (padding-top: env(safe-area-inset-top)) {
     padding-top: calc(10px + env(safe-area-inset-top));
   }
 }
 
-/* =====================================================
-   APP NAME
-   ===================================================== */
-
-.appName {
-  font-size: 13px;
-  font-weight: 500;
-  opacity: 0.75;
-  letter-spacing: 0.03em;
+/* ── Left: project info ── */
+.nameArea {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
 }
 
-/* =====================================================
-   PROJECT ROW
-   ===================================================== */
-
-.projectRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.appLabel {
+  font-size: 10px;
+  font-weight: 400;
+  color: rgba(255,255,255,.5);
+  letter-spacing: 0.04em;
 }
 
 .projectName {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
-  letter-spacing: 0.01em;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 170px;
 }
 
-.projectType {
-  font-size: 11px;
+.typeBadge {
+  font-size: 10px;
   font-weight: 500;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
-  padding: 2px 7px;
-  opacity: 0.9;
+  color: rgba(255,255,255,.7);
+  background: rgba(255,255,255,.12);
+  border-radius: 5px;
+  padding: 2px 6px;
+  margin-top: 1px;
 }
 
-/* =====================================================
-   COORDINATES
-   ===================================================== */
+/* ── Right cluster ── */
+.right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
 
-.coords {
-  font-size: 12px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.75);
-  font-variant-numeric: tabular-nums;
+/* ── GPS toggle pill ── */
+.gpsToggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  border: 1.5px solid rgba(255,255,255,.2);
+  background: rgba(255,255,255,.08);
+  cursor: pointer;
+  transition: all var(--t-fast);
+
+  &:active { transform: scale(0.96); }
+}
+
+.gpsOn {
+  border-color: rgba(110,231,183,.5);
+  background: rgba(5,150,105,.25);
+}
+
+.gpsOff {
+  border-color: rgba(255,255,255,.15);
+  background: rgba(255,255,255,.06);
+  opacity: 0.7;
+}
+
+.gpsDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #6ee7b7;
+  flex-shrink: 0;
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+.gpsLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,.85);
+  white-space: nowrap;
+}
+
+/* ── Settings icon ── */
+.settingsBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255,255,255,.1);
+  color: rgba(255,255,255,.8);
+  font-size: 17px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--t-fast);
+  flex-shrink: 0;
+
+  &:active { background: rgba(255,255,255,.2); }
 }

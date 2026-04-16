@@ -1,45 +1,30 @@
-/* =====================================================
-   PROJECT LIST
-   ===================================================== */
-
 .list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 4px;
+  gap: 0;
 }
-
-/* =====================================================
-   ITEM
-   ===================================================== */
 
 .item {
   display: flex;
   align-items: stretch;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  background: #f9fafb;
-  overflow: visible;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface);
   position: relative;
+  transition: background var(--t-fast);
+
+  &:last-child { border-bottom: none; }
 
   &.active {
-    border-color: #0d47a1;
-    background: linear-gradient(135deg, #eff6ff, #dbeafe);
-    box-shadow: 0 4px 14px rgba(13, 71, 161, 0.12);
+    background: var(--c-blue-dim, #eff6ff);
   }
 }
-
-/* =====================================================
-   SELECT AREA (left, clickable)
-   ===================================================== */
 
 .selectArea {
   flex: 1;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 13px 12px;
+  padding: 13px 12px 13px 16px;
   background: none;
   border: none;
   cursor: pointer;
@@ -49,17 +34,15 @@
 
 .activeIndicator {
   font-size: 10px;
-  color: #0d47a1;
-  opacity: 0.5;
+  color: var(--c-blue);
+  opacity: 0.4;
   flex-shrink: 0;
 
-  .active & {
-    opacity: 1;
-  }
+  .active & { opacity: 1; }
 }
 
 .icon {
-  font-size: 22px;
+  font-size: 20px;
   flex-shrink: 0;
 }
 
@@ -71,24 +54,22 @@
 }
 
 .name {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--c-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 
-  .active & {
-    color: #0d47a1;
-  }
+  .active & { color: var(--c-blue); }
 }
 
 .nameInput {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
-  color: #0d47a1;
+  color: var(--c-blue);
   border: none;
-  border-bottom: 2px solid #3b82f6;
+  border-bottom: 2px solid var(--c-blue);
   background: transparent;
   outline: none;
   padding: 0;
@@ -96,29 +77,25 @@
 }
 
 .type {
-  font-size: 12px;
-  color: #6b7280;
+  font-size: 11px;
+  color: var(--c-text3);
   font-weight: 500;
 }
 
 .folder {
-  font-size: 11px;
-  color: #9ca3af;
+  font-size: 10px;
+  color: var(--c-text3);
   font-family: monospace;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* =====================================================
-   ACTIONS (right side)
-   ===================================================== */
-
 .actions {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 0 8px 0 0;
+  padding: 0 10px 0 4px;
   flex-shrink: 0;
 }
 
@@ -126,70 +103,19 @@
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--r-md);
   background: transparent;
-  color: #6b7280;
+  color: var(--c-text3);
   font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background var(--t-fast), color var(--t-fast);
 
-  &:hover {
-    background: rgba(0, 0, 0, 0.07);
-    color: #374151;
-  }
+  &:hover { background: var(--c-border); color: var(--c-text2); }
 }
 
 .deleteBtn {
-  &:hover {
-    background: #fee2e2;
-    color: #ef4444;
-  }
-}
-
-/* =====================================================
-   TYPE DROPDOWN
-   ===================================================== */
-
-.typeWrapper {
-  position: relative;
-}
-
-.typeDropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 200;
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  overflow: hidden;
-  min-width: 160px;
-}
-
-.typeOption {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 10px 14px;
-  border: none;
-  background: none;
-  font-size: 14px;
-  font-weight: 500;
-  color: #374151;
-  cursor: pointer;
-  text-align: left;
-  transition: background 0.12s ease;
-
-  &:hover { background: #f3f4f6; }
-
-  &.typeActive {
-    background: #eff6ff;
-    color: #0d47a1;
-    font-weight: 600;
-  }
+  &:hover { background: #fee2e2; color: #ef4444; }
 }

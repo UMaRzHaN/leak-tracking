@@ -1,111 +1,104 @@
+/* ══════════════════════════════════════════
+   EditTextField — floating label input
+   Used in LeakDetailsSheet EditBlock
+   ══════════════════════════════════════════ */
+
 .field {
   position: relative;
-  margin-top: 18px;
+  /* Extra top margin so the floating label has room to pop up */
+  margin-top: 6px;
 }
 
-/* =========================
-   INPUT + TEXTAREA
-   ========================= */
-
+/* ── Input / Textarea ── */
 .field input,
 .field textarea {
   width: 100%;
-  padding: 14px 36px 14px 12px; /* справа место под крестик */
-  border-radius: 12px;
-  border: 1px solid #d1d5db;
-
-  font-size: 14px;
-  background: #ffffff;
+  padding: 18px 36px 8px 14px;
+  border-radius: var(--r-lg);
+  border: 1.5px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-size: 15px;
+  font-family: inherit;
+  line-height: 1.4;
   outline: none;
   resize: none;
-}
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
 
-/* =========================
-   FOCUS
-   ========================= */
+  &::placeholder { color: transparent; } /* hide until label floats */
+}
 
 .field:focus-within input,
 .field:focus-within textarea {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+  border-color: var(--c-blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-/* =========================
-   INPUT WRAPPER
-   ========================= */
-
-.inputWrapper {
+/* ── Input / Textarea wrappers ── */
+.inputWrapper,
+.textareaWrapper {
   position: relative;
 }
 
-/* =========================
-   CLEAR BUTTON
-   ========================= */
+/* ── Floating label ── */
+.field label {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  font-size: 15px;
+  color: var(--c-text3);
+  pointer-events: none;
+  background: transparent;
+  padding: 0 2px;
+  transition: all 0.18s ease;
+  transform-origin: left top;
+  line-height: 1;
+}
 
+/* Floated state: when focused OR has value */
+.field:focus-within label,
+.field.hasValue label {
+  top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Filled but not focused → label stays up, border green */
+.field.hasValue input:not(:focus),
+.field.hasValue textarea:not(:focus) {
+  border-color: #22c55e;
+  background: #f0fdf4;
+}
+
+/* ── Numeric input ── */
+.numericInput {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ── Clear button ── */
 .clearBtn {
   position: absolute;
-  top: 10px;
+  top: 12px;
   right: 10px;
-
   width: 22px;
   height: 22px;
   border-radius: 50%;
-
   border: none;
-  background: transparent;
-  color: #374151;
-
-  font-size: 14px;
+  background: var(--c-bg);
+  color: var(--c-text3);
+  font-size: 12px;
   line-height: 1;
   cursor: pointer;
-
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background var(--t-fast);
 
-  transition:
-    background 0.15s ease,
-    transform 0.1s ease;
-
-  &:hover {
-    background: #e7e8e9;
-  }
-
-  &:active {
-    transform: scale(0.9);
-  }
-}
-
-.clearBtn:hover {
-  opacity: 1;
-  background: #d1d5db;
-}
-
-/* =========================
-   LABEL (FLOATING)
-   ========================= */
-
-.field label {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-
-  font-size: 13px;
-  color: #6b7280;
-  pointer-events: none;
-
-  background: #ffffff;
-  padding: 0 6px;
-
-  transition: all 0.2s ease;
-}
-
-/* floating */
-
-.field:focus-within label,
-.field.hasValue label {
-  top: -10px;
-  font-size: 11px;
-  color: #2563eb;
+  &:hover  { background: var(--c-border); color: var(--c-text); }
+  &:active { transform: scale(0.9); }
 }

@@ -1,8 +1,9 @@
 import s from "../index.scss";
-import { useEffect } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer/Footer";
+import OfflineBanner from "../components/OfflineBanner/OfflineBanner";
 
 import AddLeak from "../pages/AddLeak";
 import DataBase from "../pages/DataBase";
@@ -18,6 +19,7 @@ import { useAppState } from "./hooks/useAppState";
 
 import { cleanupLegacyLeaks } from "./migrations/cleanupLegacyLeaks";
 import { useLeakForm } from "../components/LeakForm/hooks/useLeakForm";
+import { STATUS } from "../utils/status";
 
 export default function App() {
   /* =========================
@@ -32,6 +34,21 @@ export default function App() {
     geoError,
     geoLoading,
   } = useAppState();
+
+  /* =========================
+     ONLINE / OFFLINE
+  ========================= */
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const up   = () => setIsOnline(true);
+    const down = () => setIsOnline(false);
+    window.addEventListener("online",  up);
+    window.addEventListener("offline", down);
+    return () => {
+      window.removeEventListener("online",  up);
+      window.removeEventListener("offline", down);
+    };
+  }, []);
 
   /* =========================
      PROJECT CONTEXT
@@ -62,35 +79,44 @@ export default function App() {
   }, [clear, setPage]);
 
   /* =========================
+     OPEN LEAKS COUNT (for Footer badge)
+  ========================= */
+  const openCount = useMemo(
+    () => data.filter((l) => (l.status ?? STATUS.OPEN) === STATUS.OPEN).length,
+    [data],
+  );
+
+  /* =========================
      FIRST LAUNCH SETUP
   ========================= */
   if (!isConfigured) {
     return <ProjectSetupScreen onComplete={configure} />;
   }
 
-  const hideLayout =
-    page === "add" || page === "settings";
+  const hideLayout = page === "add" || page === "settings";
 
   /* =========================
      RENDER
   ========================= */
   return (
     <div className={s.app}>
+      {!isOnline && <OfflineBanner />}
+
       {!hideLayout && (
         <Header
           geoLoading={geoLoading}
           coords={coords}
           geoError={geoError}
           setPage={setPage}
+          gpsEnabled={gpsEnabled}
+          setGpsEnabled={setGpsEnabled}
         />
       )}
 
       <div className={s.pages}>
         {page === "" && (
           <MainPage
-            setGpsEnabled={setGpsEnabled}
             setPage={setPage}
-            gpsEnabled={gpsEnabled}
             data={data}
             setData={save}
           />
@@ -119,8 +145,6 @@ export default function App() {
             data={data}
             setData={save}
             coords={coords}
-            clearDatabase={clear}
-            setPage={setPage}
           />
         )}
 
@@ -131,11 +155,14 @@ export default function App() {
             setPage={setPage}
             clearVoiceData={clearVoiceData}
             clearForm={clearForm}
+            clearDatabase={clear}
           />
         )}
       </div>
 
-      {!hideLayout && <Footer page={page} setPage={setPage} />}
+      {!hideLayout && (
+        <Footer page={page} setPage={setPage} openCount={openCount} />
+      )}
     </div>
   );
 }

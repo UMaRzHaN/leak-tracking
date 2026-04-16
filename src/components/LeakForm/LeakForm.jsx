@@ -214,29 +214,31 @@ export default function LeakForm({
 
         {/* ===== STEP HEADER ===== */}
         <div className={s.stepHeader}>
-          <div className={s.stepText}>
-            Шаг {step} из {STEPS.length}:{" "}
-            <span>{STEPS[step - 1]?.title}</span>
+          <div className={s.stepMeta}>
+            <div>
+              <div className={s.stepLabel}>Шаг {step} из {STEPS.length}</div>
+              <div className={s.stepTitle}>{STEPS[step - 1]?.title}</div>
+            </div>
+            <div className={s.stepDots}>
+              {STEPS.map((_, i) => {
+                const n = i + 1;
+                return (
+                  <div
+                    key={n}
+                    className={[s.stepDot, n < step && s.done, n === step && s.active]
+                      .filter(Boolean).join(" ")}
+                  >
+                    {n}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-
-          <div className={s.stepDots}>
-            {STEPS.map((_, i) => {
-              const n = i + 1;
-              return (
-                <div
-                  key={n}
-                  className={[
-                    s.stepDot,
-                    n < step && s.done,
-                    n === step && s.active,
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                >
-                  {n}
-                </div>
-              );
-            })}
+          <div className={s.progressTrack}>
+            <div
+              className={s.progressFill}
+              style={{ width: `${(step / STEPS.length) * 100}%` }}
+            />
           </div>
         </div>
 

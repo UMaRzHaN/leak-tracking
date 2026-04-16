@@ -4,14 +4,7 @@ import s from "./ProjectList.module.scss";
 
 const PROJECT_ICONS = { upstream: "⛽", midstream: "🔧", downstream: "🏭" };
 
-export default function ProjectList({
-  projects,
-  activeId,
-  onSelect,
-  onRename,
-  onTypeChange,
-  onRemove,
-}) {
+export default function ProjectList({ projects, activeId, onSelect, onRename, onRemove }) {
   return (
     <div className={s.list}>
       {projects.map((p) => (
@@ -21,7 +14,6 @@ export default function ProjectList({
           isActive={p.id === activeId}
           onSelect={() => onSelect(p.id)}
           onRename={(name) => onRename(p.id, name)}
-          onTypeChange={(type) => onTypeChange(p.id, type)}
           onRemove={() => onRemove(p.id)}
         />
       ))}
@@ -29,12 +21,9 @@ export default function ProjectList({
   );
 }
 
-/* ─── Отдельная строка проекта ─── */
-function ProjectItem({ project, isActive, onSelect, onRename, onTypeChange, onRemove }) {
+function ProjectItem({ project, isActive, onSelect, onRename, onRemove }) {
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState(project.name);
-  const [typeOpen, setTypeOpen] = useState(false);
-
   const meta = PROJECT_META[project.type];
 
   const commitRename = () => {
@@ -45,7 +34,6 @@ function ProjectItem({ project, isActive, onSelect, onRename, onTypeChange, onRe
 
   return (
     <div className={`${s.item} ${isActive ? s.active : ""}`}>
-      {/* ── Левая часть: статус + содержимое ── */}
       <button
         className={s.selectArea}
         type="button"
@@ -53,9 +41,7 @@ function ProjectItem({ project, isActive, onSelect, onRename, onTypeChange, onRe
         title={isActive ? "Активный проект" : "Выбрать проект"}
       >
         <span className={s.activeIndicator}>{isActive ? "●" : "○"}</span>
-
         <span className={s.icon}>{PROJECT_ICONS[project.type]}</span>
-
         <div className={s.info}>
           {editing ? (
             <input
@@ -78,9 +64,7 @@ function ProjectItem({ project, isActive, onSelect, onRename, onTypeChange, onRe
         </div>
       </button>
 
-      {/* ── Правая часть: действия ── */}
       <div className={s.actions}>
-        {/* Переименовать */}
         {!editing && (
           <button
             className={s.actionBtn}
@@ -91,35 +75,6 @@ function ProjectItem({ project, isActive, onSelect, onRename, onTypeChange, onRe
             ✏
           </button>
         )}
-
-        {/* Сменить тип */}
-        <div className={s.typeWrapper}>
-          <button
-            className={s.actionBtn}
-            type="button"
-            title="Сменить тип"
-            onClick={() => setTypeOpen((v) => !v)}
-          >
-            ⇄
-          </button>
-
-          {typeOpen && (
-            <div className={s.typeDropdown}>
-              {Object.entries(PROJECT_META).map(([id, m]) => (
-                <button
-                  key={id}
-                  className={`${s.typeOption} ${project.type === id ? s.typeActive : ""}`}
-                  type="button"
-                  onClick={() => { onTypeChange(id); setTypeOpen(false); }}
-                >
-                  {PROJECT_ICONS[id]} {m.title}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Удалить */}
         <button
           className={`${s.actionBtn} ${s.deleteBtn}`}
           type="button"
