@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import LeakCardCompact from "../../components/LeakCardCompact/LeakCardCompact";
 import LeakDetailsSheet from "../../components/LeakDetailsSheet/LeakDetailsSheet";
+import VirtualizedLeakList from "../../components/VirtualizedLeakList/VirtualizedLeakList";
 import { STATUS, STATUS_META, STATUS_ORDER } from "../../utils/status";
 import { nextStatus } from "../../utils/status";
 import { hapticSuccess } from "../../utils/haptics";
@@ -21,17 +22,19 @@ function round2(v) {
 function prepareRows(data) {
   return data.map((r) => ({
     ...r,
-    status:                         r.status ?? "open",
-    date:                           r.date ?? (r.created_at ? new Date(Number(r.created_at)).toLocaleDateString("ru-RU") : ""),
+    status: r.status ?? "open",
+    date:
+      r.date ??
+      (r.created_at ? new Date(Number(r.created_at)).toLocaleDateString("ru-RU") : ""),
     Total_Annual_Methane_Loss_m3_y: round2(r.Total_Annual_Methane_Loss_m3_y),
-    Emissions_t_CO2eq_year:         round2(r.Emissions_t_CO2eq_year),
+    Emissions_t_CO2eq_year: round2(r.Emissions_t_CO2eq_year),
   }));
 }
 
 export default function DataBase({ data, setData, coords }) {
   const [activeLeak, setActiveLeak] = useState(null);
-  const [search, setSearch]         = useState("");
-  const [statusFilter, setFilter]   = useState(ALL);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setFilter] = useState(ALL);
   const { save } = useProjectData();
   const projectConfig = useProjectConfig();
   const { headers: excelHeaders, keysOrder: excelKeys } = projectConfig.export.excel;
@@ -40,11 +43,11 @@ export default function DataBase({ data, setData, coords }) {
 
   /* ── Filter + sort strictly by date desc ── */
   const displayed = useMemo(() => {
-    // Nearby filter uses its own sorted list (by distance)
     if (statusFilter === NEARBY) {
       let list = hasGps
         ? filterNearbyLeaks(data, coords.lat, coords.lng, NEARBY_RADIUS_M)
         : [];
+
       if (search.trim()) {
         const q = search.toLowerCase();
         list = list.filter((l) =>
@@ -72,17 +75,18 @@ export default function DataBase({ data, setData, coords }) {
     return list;
   }, [data, statusFilter, search, hasGps, coords]);
 
-  /* ── Status change via swipe ── */
-  const handleStatusChange = useCallback(async (id) => {
-    const next = data.map((r) =>
-      r.id === id ? { ...r, status: nextStatus(r.status) } : r
-    );
-    setData(next);
-    await save(next);
-    hapticSuccess();
-  }, [data, save, setData]);
+  const handleStatusChange = useCallback(
+    async (id) => {
+      const next = data.map((r) =>
+        r.id === id ? { ...r, status: nextStatus(r.status) } : r
+      );
+      setData(next);
+      await save(next);
+      hapticSuccess();
+    },
+    [data, save, setData]
+  );
 
-  /* ── Save from details ── */
   const handleSave = async (updated) => {
     const next = data.map((r) => (r.id === updated.id ? updated : r));
     setData(next);
@@ -91,17 +95,19 @@ export default function DataBase({ data, setData, coords }) {
     setActiveLeak(null);
   };
 
-  const handleDelete = useCallback(async (id) => {
-    const next = data.filter((r) => r.id !== id);
-    setData(next);
-    await save(next);
-    hapticSuccess();
-    setActiveLeak(null);
-  }, [data, save, setData]);
+  const handleDelete = useCallback(
+    async (id) => {
+      const next = data.filter((r) => r.id !== id);
+      setData(next);
+      await save(next);
+      hapticSuccess();
+      setActiveLeak(null);
+    },
+    [data, save, setData]
+  );
 
   const visible = displayed;
 
-  /* ── Status counts for filter tabs ── */
   const counts = useMemo(() => {
     const c = { all: data.length };
     STATUS_ORDER.forEach((st) => {
@@ -115,8 +121,7 @@ export default function DataBase({ data, setData, coords }) {
 
   return (
     <div className={s.page}>
-
-      {/* ── Search ── */}
+      {/* Search */}
       <div className={s.searchWrap}>
         <span className={s.searchIcon}>🔍</span>
         <input
@@ -126,11 +131,13 @@ export default function DataBase({ data, setData, coords }) {
           onChange={(e) => setSearch(e.target.value)}
         />
         {search && (
-          <button className={s.clearSearch} onClick={() => setSearch("")}>✕</button>
+          <button className={s.clearSearch} onClick={() => setSearch("")}>
+            ✕
+          </button>
         )}
       </div>
 
-      {/* ── Status filter tabs ── */}
+      {/* Filters */}
       <div className={s.filters}>
         <FilterTab id={ALL} label="Все" count={counts.all} active={statusFilter} onSelect={setFilter} />
         {STATUS_ORDER.map((st) => (
@@ -154,10 +161,9 @@ export default function DataBase({ data, setData, coords }) {
             color="var(--c-blue)"
           />
         )}
-
       </div>
 
-      {/* ── Results info + Export ── */}
+      {/* Results */}
       <div className={s.resultsRow}>
         <span className={s.resultsInfo}>
           {visible.length > 0
@@ -177,18 +183,22 @@ export default function DataBase({ data, setData, coords }) {
         )}
       </div>
 
-      {/* ── List ── */}
+      {/* List */}
       <div className={s.list}>
         {visible.length ? (
-          visible.map((leak) => (
-            <LeakCardCompact
-              key={leak.id}
-              leak={leak}
-              onOpenDetails={setActiveLeak}
-              onStatusChange={handleStatusChange}
-              nearbyDist={leak._nearbyDist}
-            />
-          ))
+          <VirtualizedLeakList
+            items={visible}
+            height={650}
+            itemHeight={116}
+            renderItem={(leak) => (
+              <LeakCardCompact
+                leak={leak}
+                onOpenDetails={setActiveLeak}
+                onStatusChange={handleStatusChange}
+                nearbyDist={leak._nearbyDist}
+              />
+            )}
+          />
         ) : (
           <div className={s.empty}>
             <span>📭</span>
@@ -196,8 +206,8 @@ export default function DataBase({ data, setData, coords }) {
               {search
                 ? "Ничего не найдено"
                 : statusFilter === NEARBY
-                ? `Нет утечек в радиусе ${NEARBY_RADIUS_M} м`
-                : "Записей нет"}
+                  ? `Нет утечек в радиусе ${NEARBY_RADIUS_M} м`
+                  : "Записей нет"}
             </p>
           </div>
         )}
@@ -211,7 +221,6 @@ export default function DataBase({ data, setData, coords }) {
           onDelete={handleDelete}
         />
       )}
-
     </div>
   );
 }

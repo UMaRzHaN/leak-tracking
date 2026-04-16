@@ -24,15 +24,16 @@ export default function LeakForm({
   handle,
   setErrors,
   setForm,
+  isSaving,
 }) {
   const projectConfig = useProjectConfig();
   const { activeProject } = useProject();
-  const { vars } = useProjectVars(activeProject?.id ?? null, projectConfig.vars);
-
-  const STEPS = useMemo(
-    () => projectConfig.steps.steps ?? [],
-    [projectConfig],
+  const { vars } = useProjectVars(
+    activeProject?.id ?? null,
+    projectConfig.vars,
   );
+
+  const STEPS = useMemo(() => projectConfig.steps.steps ?? [], [projectConfig]);
 
   /**
    * copyable из конфига приходит как массив объектов
@@ -41,9 +42,7 @@ export default function LeakForm({
    */
   const COPY_KEYS = useMemo(() => {
     const raw = projectConfig.system?.copyable ?? [];
-    return raw.map((f) =>
-      typeof f === "string" ? f : f.key,
-    );
+    return raw.map((f) => (typeof f === "string" ? f : f.key));
   }, [projectConfig]);
 
   const [step, setStep] = useState(1);
@@ -66,9 +65,7 @@ export default function LeakForm({
     setErrors,
   });
 
-  const hasStepData = STEPS[step - 1]?.fields?.some(
-    ({ key }) => form[key],
-  );
+  const hasStepData = STEPS[step - 1]?.fields?.some(({ key }) => form[key]);
 
   /* ======================================
      NAVIGATION
@@ -108,7 +105,8 @@ export default function LeakForm({
     // Final coercion: partial strings like "3." → 3, strings → numbers
     const coerced = { ...data };
     NUMBER_KEYS.forEach((key) => {
-      if (coerced[key] !== undefined) coerced[key] = normalizeNumber(coerced[key]);
+      if (coerced[key] !== undefined)
+        coerced[key] = normalizeNumber(coerced[key]);
     });
 
     const calculated = vars ? calculations(coerced, vars) : coerced;
@@ -149,8 +147,7 @@ export default function LeakForm({
     };
 
     const emptyKeys = COPY_KEYS.filter(
-      (key) =>
-        key !== "photo" && isEmptyValue(finalData[key]),
+      (key) => key !== "photo" && isEmptyValue(finalData[key]),
     );
 
     if (emptyKeys.length === 0) {
@@ -196,20 +193,16 @@ export default function LeakForm({
     if (!voiceData) return;
 
     const currentFields = STEPS[step - 1]?.fields ?? [];
-    const allowedKeys = new Set(
-      currentFields.map((f) => f.key),
-    );
+    const allowedKeys = new Set(currentFields.map((f) => f.key));
 
     setForm((prev) => {
       const updated = { ...prev };
 
-      Object.entries(voiceData).forEach(
-        ([key, value]) => {
-          if (allowedKeys.has(key)) {
-            updated[key] = value;
-          }
-        },
-      );
+      Object.entries(voiceData).forEach(([key, value]) => {
+        if (allowedKeys.has(key)) {
+          updated[key] = value;
+        }
+      });
 
       return updated;
     });
@@ -229,7 +222,9 @@ export default function LeakForm({
         <div className={s.stepHeader}>
           <div className={s.stepMeta}>
             <div>
-              <div className={s.stepLabel}>Шаг {step} из {STEPS.length}</div>
+              <div className={s.stepLabel}>
+                Шаг {step} из {STEPS.length}
+              </div>
               <div className={s.stepTitle}>{STEPS[step - 1]?.title}</div>
             </div>
             <div className={s.stepDots}>
@@ -238,8 +233,13 @@ export default function LeakForm({
                 return (
                   <div
                     key={n}
-                    className={[s.stepDot, n < step && s.done, n === step && s.active]
-                      .filter(Boolean).join(" ")}
+                    className={[
+                      s.stepDot,
+                      n < step && s.done,
+                      n === step && s.active,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
                   >
                     {n}
                   </div>
@@ -278,22 +278,18 @@ export default function LeakForm({
 
                 setForm((prev) => {
                   const updated = { ...prev };
-                  currentStep.fields.forEach(
-                    ({ key, type }) => {
-                      if (type === "photo") delete updated[key];
-                      else updated[key] = "";
-                    },
-                  );
+                  currentStep.fields.forEach(({ key, type }) => {
+                    if (type === "photo") delete updated[key];
+                    else updated[key] = "";
+                  });
                   return updated;
                 });
 
                 setErrors((prev) => {
                   const updated = { ...prev };
-                  currentStep.fields.forEach(
-                    ({ key }) => {
-                      delete updated[key];
-                    },
-                  );
+                  currentStep.fields.forEach(({ key }) => {
+                    delete updated[key];
+                  });
                   return updated;
                 });
               }}
@@ -302,11 +298,7 @@ export default function LeakForm({
             </button>
           )}
 
-          <button
-            className={s.clearAllSteps}
-            type="button"
-            onClick={clearForm}
-          >
+          <button className={s.clearAllSteps} type="button" onClick={clearForm}>
             Очистить все поля 🧹
           </button>
         </div>
@@ -318,6 +310,7 @@ export default function LeakForm({
           save={save}
           step={step}
           stepsLength={STEPS.length}
+          isSaving={isSaving}
         />
       </div>
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import LeakForm from "../components/LeakForm/LeakForm";
 import { usePhotoStorage } from "../hooks/usePhotoStorage";
 import { useFormDraft } from "../hooks/useFormDraft";
+import { useSafeSave } from "../hooks/useSafeSave";
 import { toNumber } from "../utils/voice/toNumber";
 import { useProjectData } from "../app/hooks/useProjectData";
 import { findNearbyLeak } from "../utils/geoUtils";
@@ -29,6 +30,7 @@ export default function AddLeak({
   const { savePhoto, ready: photoReady } = usePhotoStorage();
   const { save } = useProjectData();
   const { saveDraft, loadDraft, clearDraft, hasDraft } = useFormDraft();
+  const { isSaving, run } = useSafeSave();
   const [draftPrompt, setDraftPrompt] = useState(false);
 
   /* ── Offer to restore draft on mount ── */
@@ -56,67 +58,82 @@ export default function AddLeak({
   };
 
   const handleAdd = async (row) => {
-    try {
-      const id = Date.now();
-      const lat = toNumber(coords?.lat);
-      const lng = toNumber(coords?.lng);
+    return run(async () => {
+      try {
+        const id = Date.now();
+        const lat = toNumber(coords?.lat);
+        const lng = toNumber(coords?.lng);
 
-      /* ── Duplicate detection ── */
-      const nearby = findNearbyLeak(data, lat, lng, DUPLICATE_RADIUS_M);
-      if (nearby) {
-        const ok = window.confirm(
-          `⚠️ Похожая утечка уже есть в ${nearby.distance} м (№ ${nearby.leak.leak_id ?? nearby.leak.index}).\n\nВсё равно добавить?`,
-        );
-        if (!ok) { hapticWarning(); return; }
-      }
-
-      /* ── Save photo ── */
-      let photoPath = null;
-      if (row.photo?.raw) {
-        if (photoReady) {
-          photoPath = await savePhoto(row.photo.raw, row.leak_id ?? String(id));
+        /* ── Duplicate detection ── */
+        const nearby = findNearbyLeak(data, lat, lng, DUPLICATE_RADIUS_M);
+        if (nearby) {
+          const ok = window.confirm(
+            `⚠️ Похожая утечка уже есть в ${nearby.distance} м (№ ${nearby.leak.leak_id ?? nearby.leak.index}).\n\nВсё равно добавить?`,
+          );
+          if (!ok) {
+            hapticWarning();
+            return;
+          }
         }
+
+        /* ── Save photo ── */
+        let photoPath = null;
+        if (row.photo?.raw) {
+          if (photoReady) {
+            photoPath = await savePhoto(row.photo.raw, row.leak_id ?? String(id));
+          }
+        }
+
+        const { photo, ...cleanRow } = row;
+
+        const newRow = {
+          id,
+          lat,
+          lng,
+          index: data.length + 1,
+          status: STATUS.OPEN,
+          history: [{ action: "created", date: new Date().toISOString() }],
+          ...cleanRow,
+          photo: photoPath,
+        };
+
+        const updated = [...data, newRow];
+        setData(updated);
+        await save(updated);
+
+        clearDraft();
+        hapticSuccess();
+        setPage("");
+      } catch (err) {
+        console.error("Error adding leak:", err);
+        hapticWarning();
       }
-
-      const { photo, ...cleanRow } = row;
-
-      const newRow = {
-        id,
-        lat,
-        lng,
-        index: data.length + 1,
-        status: STATUS.OPEN,
-        history: [{ action: "created", date: new Date().toISOString() }],
-        ...cleanRow,
-        photo: photoPath,
-      };
-
-      const updated = [...data, newRow];
-      setData(updated);
-      await save(updated);
-
-      clearDraft();
-      hapticSuccess();
-      setPage("");
-    } catch (err) {
-      console.error("Error adding leak:", err);
-      hapticWarning();
-    }
+    });
   };
 
   return (
     <>
-      {/* ── Draft restore prompt ── */}
       {draftPrompt && (
         <div className={s.draftBanner}>
           <span className={s.draftBannerText}>📋 Есть незаконченная запись</span>
-          <button className={`${s.draftBtn} ${s.draftBtnRestore}`} onClick={handleRestoreDraft}>Восстановить</button>
-          <button className={`${s.draftBtn} ${s.draftBtnDiscard}`} onClick={handleDiscardDraft}>Удалить</button>
+          <button
+            className={`${s.draftBtn} ${s.draftBtnRestore}`}
+            onClick={handleRestoreDraft}
+          >
+            Восстановить
+          </button>
+          <button
+            className={`${s.draftBtn} ${s.draftBtnDiscard}`}
+            onClick={handleDiscardDraft}
+          >
+            Удалить
+          </button>
         </div>
       )}
 
       <LeakForm
         onAdd={handleAdd}
+        isSaving={isSaving}
         voiceData={voiceData}
         clearVoiceData={clearVoiceData}
         startVoiceInput={startVoiceInput}
@@ -133,4 +150,3 @@ export default function AddLeak({
     </>
   );
 }
-
