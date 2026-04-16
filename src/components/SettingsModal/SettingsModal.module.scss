@@ -10,39 +10,39 @@
 }
 
 .modal {
-  position: absolute;
+  position: fixed;
+  z-index: 1001;
+  background: white;
+  overflow-y: auto;
+
+  /* Desktop — centered dialog */
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  overflow-y: auto;
-  z-index: 1001;
-  animation: slideUp 0.3s ease;
+  width: 480px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 64px);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  animation: slideUp 0.25s ease;
 
+  /* Mobile — bottom sheet */
   @media (max-width: 640px) {
-    width: calc(100% - 16px);
+    width: 100%;
     max-width: none;
-    max-height: 90vh;
-    border-radius: 16px 16px 0 0;
+    max-height: 92vh;
+    border-radius: 20px 20px 0 0;
     top: auto;
     bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 0;
+    transform: none;
     animation: slideUpMobile 0.3s ease;
   }
 }
 
 @keyframes slideUpMobile {
-  from {
-    transform: translateX(-50%) translateY(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(-50%) translateY(0);
-    opacity: 1;
-  }
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
 }
 
 @keyframes fadeIn {
@@ -55,14 +55,8 @@
 }
 
 @keyframes slideUp {
-  from {
-    transform: translate(-50%, -40%);
-    opacity: 0;
-  }
-  to {
-    transform: translate(-50%, -50%);
-    opacity: 1;
-  }
+  from { transform: translate(-50%, -46%); opacity: 0; }
+  to   { transform: translate(-50%, -50%); opacity: 1; }
 }
 
 .header {

@@ -1,10 +1,9 @@
 import { useState, useMemo, useCallback } from "react";
 import LeakCardCompact from "../../components/LeakCardCompact/LeakCardCompact";
 import LeakDetailsSheet from "../../components/LeakDetailsSheet/LeakDetailsSheet";
-import UndoToast from "../../components/UndoToast/UndoToast";
-import { useUndoDelete } from "../../hooks/useUndoDelete";
 import { STATUS, STATUS_META, STATUS_ORDER } from "../../utils/status";
-import { hapticSuccess, hapticWarning } from "../../utils/haptics";
+import { nextStatus } from "../../utils/status";
+import { hapticSuccess } from "../../utils/haptics";
 import { filterNearbyLeaks } from "../../utils/geoUtils";
 import { exportToExcel } from "../../utils/exportExcel";
 import { useProjectData } from "../../app/hooks/useProjectData";
@@ -73,28 +72,15 @@ export default function DataBase({ data, setData, coords }) {
     return list;
   }, [data, statusFilter, search, hasGps, coords]);
 
-  /* ── Undo delete ── */
-  const [deletedItems, setDeletedItems] = useState({});
-
-  const { pending, schedule, undo } = useUndoDelete({
-    onConfirm: async ({ id }) => {
-      const row = deletedItems[id];
-      if (!row) return;
-      const next = data.filter((r) => r.id !== id).map((r, i) => ({ ...r, index: i + 1 }));
-      await save(next);
-      setDeletedItems((p) => { const c = { ...p }; delete c[id]; return c; });
-    },
-  });
-
-  const handleRemove = useCallback((id) => {
-    const row = data.find((r) => r.id === id);
-    if (!row) return;
-    setDeletedItems((p) => ({ ...p, [id]: row }));
-    hapticWarning();
-    schedule({ id, label: row.leak_id ?? String(row.index) });
-  }, [data, schedule]);
-
-  const handleUndo = () => { undo(); hapticSuccess(); };
+  /* ── Status change via swipe ── */
+  const handleStatusChange = useCallback(async (id) => {
+    const next = data.map((r) =>
+      r.id === id ? { ...r, status: nextStatus(r.status) } : r
+    );
+    setData(next);
+    await save(next);
+    hapticSuccess();
+  }, [data, save, setData]);
 
   /* ── Save from details ── */
   const handleSave = async (updated) => {
@@ -105,7 +91,15 @@ export default function DataBase({ data, setData, coords }) {
     setActiveLeak(null);
   };
 
-  const visible = displayed.filter((l) => !deletedItems[l.id]);
+  const handleDelete = useCallback(async (id) => {
+    const next = data.filter((r) => r.id !== id);
+    setData(next);
+    await save(next);
+    hapticSuccess();
+    setActiveLeak(null);
+  }, [data, save, setData]);
+
+  const visible = displayed;
 
   /* ── Status counts for filter tabs ── */
   const counts = useMemo(() => {
@@ -191,7 +185,7 @@ export default function DataBase({ data, setData, coords }) {
               key={leak.id}
               leak={leak}
               onOpenDetails={setActiveLeak}
-              onRemove={handleRemove}
+              onStatusChange={handleStatusChange}
               nearbyDist={leak._nearbyDist}
             />
           ))
@@ -214,10 +208,10 @@ export default function DataBase({ data, setData, coords }) {
           leak={activeLeak}
           onClose={() => setActiveLeak(null)}
           onSave={handleSave}
+          onDelete={handleDelete}
         />
       )}
 
-      <UndoToast pending={pending} onUndo={handleUndo} />
     </div>
   );
 }

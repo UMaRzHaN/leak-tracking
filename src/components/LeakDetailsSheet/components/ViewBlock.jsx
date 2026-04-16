@@ -43,7 +43,7 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
   const history = Array.isArray(data.history) ? [...data.history].reverse() : [];
 
   if (activeTab === "info") {
-    const infoFields = [...text, ...coords, ...multi];
+    const infoFields = [...text, ...multi];
     const hasAny = infoFields.some((f) => data[f.key] != null && data[f.key] !== "");
     return (
       <div className={s.tabPane}>
@@ -91,6 +91,29 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
           <div className={s.tabEmpty}>
             <span className={s.tabEmptyIcon}>📊</span>
             <p>Параметры не заданы</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (activeTab === "coords") {
+    const hasCoords = coords.some((f) => data[f.key] != null && data[f.key] !== "");
+    return (
+      <div className={s.tabPane}>
+        {hasCoords ? coords.map(({ key, label }) => {
+          const val = data[key];
+          if (val == null || val === "") return null;
+          return (
+            <div key={key} className={s.fieldRow}>
+              <span className={s.fieldLabel}>{label}</span>
+              <span className={s.fieldValue}>{Number(val).toFixed(6)}</span>
+            </div>
+          );
+        }) : (
+          <div className={s.tabEmpty}>
+            <span className={s.tabEmptyIcon}>📍</span>
+            <p>Координаты не заданы</p>
           </div>
         )}
       </div>

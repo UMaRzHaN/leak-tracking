@@ -3,7 +3,7 @@ import s from "./DataBaseList.module.scss";
 
 export default function DataBaseList({
   data,
-  onRemove,
+  onStatusChange,
   onOpenDetails,
   setPage,
 }) {
@@ -34,7 +34,7 @@ export default function DataBaseList({
         <LeakCardCompact
           key={row.id}
           leak={row}
-          onRemove={onRemove}
+          onStatusChange={onStatusChange}
           onOpenDetails={onOpenDetails}
         />
       ))}

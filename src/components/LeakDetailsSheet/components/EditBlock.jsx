@@ -22,9 +22,8 @@ export default function EditBlock({ localEdit, setLocalEdit, activeTab, projectC
      ОСНОВНОЕ TAB — text + coords + multiline
      ══════════════════════════════════════════ */
   if (activeTab === "info") {
-    const hasText   = textFields.length > 0;
-    const hasCoord  = coordFields.length > 0;
-    const hasMulti  = multiFields.length > 0;
+    const hasText  = textFields.length > 0;
+    const hasMulti = multiFields.length > 0;
 
     return (
       <div className={s.tabPane}>
@@ -43,25 +42,6 @@ export default function EditBlock({ localEdit, setLocalEdit, activeTab, projectC
           </div>
         )}
 
-        {/* ── Coordinate pair ── */}
-        {hasCoord && (
-          <div className={s.coordGroup}>
-            <span className={s.coordGroupLabel}>Координаты</span>
-            <div className={s.coordPair}>
-              {coordFields.map(({ key, label }) => (
-                <EditTextField
-                  key={key}
-                  label={label}
-                  value={localEdit[key] ?? ""}
-                  numeric
-                  compact
-                  onChange={(v) => set(key, v)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* ── Multiline fields ── */}
         {hasMulti && (
           <div className={s.editSection}>
@@ -77,10 +57,41 @@ export default function EditBlock({ localEdit, setLocalEdit, activeTab, projectC
           </div>
         )}
 
-        {!hasText && !hasCoord && !hasMulti && (
+        {!hasText && !hasMulti && (
           <div className={s.tabEmpty}>
             <span className={s.tabEmptyIcon}>📋</span>
             <p>Нет полей для редактирования</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  /* ══════════════════════════════════════════
+     КООРДИНАТЫ TAB
+     ══════════════════════════════════════════ */
+  if (activeTab === "coords") {
+    return (
+      <div className={s.tabPane}>
+        {coordFields.length > 0 ? (
+          <div className={s.coordGroup}>
+            <div className={s.coordPair}>
+              {coordFields.map(({ key, label }) => (
+                <EditTextField
+                  key={key}
+                  label={label}
+                  value={localEdit[key] ?? ""}
+                  numeric
+                  compact
+                  onChange={(v) => set(key, v)}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className={s.tabEmpty}>
+            <span className={s.tabEmptyIcon}>📍</span>
+            <p>Нет полей координат</p>
           </div>
         )}
       </div>

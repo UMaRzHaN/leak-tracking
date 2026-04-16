@@ -50,8 +50,8 @@ export const PARAM_FIELDS = [
 ];
 
 export const COORD_FIELDS = [
-  { key: "lat", label: "Широта",  viewable: true, editable: true, numeric: true, coord: true },
-  { key: "lng", label: "Долгота", viewable: true, editable: true, numeric: true, coord: true },
+  { key: "lat", label: "Широта (X)",  viewable: true, editable: true, numeric: true, coord: true },
+  { key: "lng", label: "Долгота (Y)", viewable: true, editable: true, numeric: true, coord: true },
 ];
 
 /**

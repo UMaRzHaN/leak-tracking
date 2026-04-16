@@ -1,17 +1,16 @@
 import { useState, useMemo } from "react";
 import LeakDetailsSheet from "../components/LeakDetailsSheet/LeakDetailsSheet";
 import LeakCardCompact from "../components/LeakCardCompact/LeakCardCompact";
-import UndoToast from "../components/UndoToast/UndoToast";
-import { useUndoDelete } from "../hooks/useUndoDelete";
 import { STATUS, STATUS_META } from "../utils/status";
-import { hapticSuccess, hapticWarning } from "../utils/haptics";
+import { nextStatus } from "../utils/status";
+import { hapticSuccess } from "../utils/haptics";
 import s from "./MainPage.module.scss";
 
 const RECENT_COUNT = 8;
 const ALL = "all";
 
 export default function MainPage({ setPage, data, setData }) {
-  const [activeLeak, setActiveLeak]   = useState(null);
+  const [activeLeak, setActiveLeak]     = useState(null);
   const [statusFilter, setStatusFilter] = useState(ALL);
 
   /* ── Stats ── */
@@ -35,25 +34,13 @@ export default function MainPage({ setPage, data, setData }) {
     return list.slice(0, RECENT_COUNT);
   }, [data, statusFilter]);
 
-  /* ── Undo delete ── */
-  const [deletedItems, setDeletedItems] = useState({});
-
-  const { pending, schedule, undo } = useUndoDelete({
-    onConfirm: async ({ id }) => {
-      const row = deletedItems[id];
-      if (!row) return;
-      const next = data.filter((r) => r.id !== id).map((r, i) => ({ ...r, index: i + 1 }));
-      await setData(next);
-      setDeletedItems((prev) => { const c = { ...prev }; delete c[id]; return c; });
-    },
-  });
-
-  const handleRemove = (id) => {
-    const row = data.find((r) => r.id === id);
-    if (!row) return;
-    setDeletedItems((prev) => ({ ...prev, [id]: row }));
-    hapticWarning();
-    schedule({ id, label: row.leak_id ?? String(row.index) });
+  /* ── Status change via swipe ── */
+  const handleStatusChange = async (id) => {
+    const next = data.map((r) =>
+      r.id === id ? { ...r, status: nextStatus(r.status) } : r
+    );
+    await setData(next);
+    hapticSuccess();
   };
 
   const handleSaveLeak = async (updated) => {
@@ -63,7 +50,12 @@ export default function MainPage({ setPage, data, setData }) {
     setActiveLeak(null);
   };
 
-  const visibleRecent = recent.filter((l) => !deletedItems[l.id]);
+  const handleDeleteLeak = async (id) => {
+    const next = data.filter((r) => r.id !== id);
+    await setData(next);
+    hapticSuccess();
+    setActiveLeak(null);
+  };
 
   return (
     <div className={s.page}>
@@ -125,13 +117,13 @@ export default function MainPage({ setPage, data, setData }) {
           )}
         </div>
 
-        {visibleRecent.length ? (
-          visibleRecent.map((leak) => (
+        {recent.length ? (
+          recent.map((leak) => (
             <LeakCardCompact
               key={leak.id}
               leak={leak}
               onOpenDetails={setActiveLeak}
-              onRemove={handleRemove}
+              onStatusChange={handleStatusChange}
             />
           ))
         ) : (
@@ -144,10 +136,9 @@ export default function MainPage({ setPage, data, setData }) {
           leak={activeLeak}
           onClose={() => setActiveLeak(null)}
           onSave={handleSaveLeak}
+          onDelete={handleDeleteLeak}
         />
       )}
-
-      <UndoToast pending={pending} onUndo={() => { undo(); hapticSuccess(); }} />
     </div>
   );
 }

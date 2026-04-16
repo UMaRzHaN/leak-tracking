@@ -27,10 +27,22 @@
   color: var(--c-blue);
 }
 
+/* Left hint color changes based on the next status */
 .hintLeft {
   right: 0;
-  background: linear-gradient(to left, rgba(220,38,38,.2), transparent);
-  color: #991b1b;
+
+  &[data-next="in_progress"] {
+    background: linear-gradient(to left, rgba(217,119,6,.18), transparent);
+    color: var(--c-progress);
+  }
+  &[data-next="resolved"] {
+    background: linear-gradient(to left, rgba(5,150,105,.18), transparent);
+    color: var(--c-resolved);
+  }
+  &[data-next="open"] {
+    background: linear-gradient(to left, rgba(37,99,235,.18), transparent);
+    color: var(--c-blue);
+  }
 }
 
 .hintIcon { font-size: 16px; line-height: 1; font-weight: 700; }
@@ -85,7 +97,7 @@
   }
 
   &:active     { transform: scale(0.99); }
-  &.swipeLeft  { box-shadow: 0 4px 18px rgba(220,38,38,.18); }
+  &.swipeLeft  { box-shadow: 0 4px 18px rgba(0,0,0,.12); }
   &.swipeRight { box-shadow: 0 4px 18px rgba(37,99,235,.18); }
 }
 

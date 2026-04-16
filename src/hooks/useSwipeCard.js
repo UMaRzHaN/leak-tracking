@@ -1,31 +1,26 @@
 import { useState } from "react";
 import { useSwipeActions } from "./useSwipeActions";
 
-export function useSwipeCard({ onOpenDetails, leak, onRemove }) {
-  const [swipeState, setSwipeState] = useState(null);
+export function useSwipeCard({ onOpenDetails, leak, onStatusChange }) {
+  const [swipeState, setSwipeState]   = useState(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
-  // null | "left" | "right"
 
   const swipe = useSwipeActions({
-    onSwipeMove: (offset) => {
-      setSwipeOffset(offset);
-    },
+    onSwipeMove: (offset) => setSwipeOffset(offset),
 
-    // 👈 справа → налево — УДАЛЕНИЕ
+    // 👈 справа → налево — СМЕНИТЬ СТАТУС
     onSwipeLeft: () => {
       setSwipeState("left");
-
       setTimeout(() => {
-        onRemove?.(leak.id);
+        onStatusChange?.(leak.id);
         setSwipeState(null);
         setSwipeOffset(0);
       }, 200);
     },
 
-    // 👉 слева → направо — DETAILS
+    // 👉 слева → направо — ОТКРЫТЬ ДЕТАЛИ
     onSwipeRight: () => {
       setSwipeState("right");
-
       setTimeout(() => {
         onOpenDetails?.(leak);
         setSwipeState(null);
@@ -45,11 +40,11 @@ export function useSwipeCard({ onOpenDetails, leak, onRemove }) {
     close,
     handlers: {
       onTouchStart: swipe.onTouchStart,
-      onTouchMove: swipe.onTouchMove,
-      onTouchEnd: swipe.onTouchEnd,
-      onMouseDown: swipe.onMouseDown,
-      onMouseMove: swipe.onMouseMove,
-      onMouseUp: swipe.onMouseUp,
+      onTouchMove:  swipe.onTouchMove,
+      onTouchEnd:   swipe.onTouchEnd,
+      onMouseDown:  swipe.onMouseDown,
+      onMouseMove:  swipe.onMouseMove,
+      onMouseUp:    swipe.onMouseUp,
     },
   };
 }
