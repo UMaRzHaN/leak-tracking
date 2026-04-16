@@ -119,3 +119,37 @@
 .deleteBtn {
   &:hover { background: #fee2e2; color: #ef4444; }
 }
+
+.deleteBtnArmed {
+  position: relative;
+  overflow: hidden;
+  width: auto;
+  padding: 0 10px;
+  background: #ef4444;
+  color: #fff;
+  border-radius: var(--r-md);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &:hover { background: #dc2626; }
+
+  & > * { position: relative; z-index: 1; }
+}
+
+.deleteBtnLabel {
+  pointer-events: none;
+}
+
+.deleteBtnProgress {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.2);
+  transform-origin: left center;
+  animation: projectDeleteCountdown 3s linear forwards;
+}
+
+@keyframes projectDeleteCountdown {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}

@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { PROJECT_META } from "../../../configs/projects";
 import s from "./ProjectList.module.scss";
 
 const PROJECT_ICONS = { upstream: "⛽", midstream: "🔧", downstream: "🏭" };
+const DELETE_ARM_MS = 3000;
 
 export default function ProjectList({ projects, activeId, onSelect, onRename, onRemove }) {
   return (
@@ -22,8 +23,10 @@ export default function ProjectList({ projects, activeId, onSelect, onRename, on
 }
 
 function ProjectItem({ project, isActive, onSelect, onRename, onRemove }) {
-  const [editing, setEditing] = useState(false);
-  const [nameInput, setNameInput] = useState(project.name);
+  const [editing, setEditing]         = useState(false);
+  const [nameInput, setNameInput]     = useState(project.name);
+  const [deleteArmed, setDeleteArmed] = useState(false);
+  const timerRef = useRef(null);
   const meta = PROJECT_META[project.type];
 
   const commitRename = () => {
@@ -31,6 +34,21 @@ function ProjectItem({ project, isActive, onSelect, onRename, onRemove }) {
     if (trimmed && trimmed !== project.name) onRename(trimmed);
     setEditing(false);
   };
+
+  const armDelete = () => {
+    setDeleteArmed(true);
+    timerRef.current = setTimeout(() => setDeleteArmed(false), DELETE_ARM_MS);
+  };
+
+  const confirmDelete = () => {
+    clearTimeout(timerRef.current);
+    setDeleteArmed(false);
+    onRemove();
+  };
+
+  // Disarm on edit mode enter or unmount
+  useEffect(() => { if (editing) { clearTimeout(timerRef.current); setDeleteArmed(false); } }, [editing]);
+  useEffect(() => () => clearTimeout(timerRef.current), []);
 
   return (
     <div className={`${s.item} ${isActive ? s.active : ""}`}>
@@ -65,7 +83,7 @@ function ProjectItem({ project, isActive, onSelect, onRename, onRemove }) {
       </button>
 
       <div className={s.actions}>
-        {!editing && (
+        {!editing && !deleteArmed && (
           <button
             className={s.actionBtn}
             type="button"
@@ -75,14 +93,25 @@ function ProjectItem({ project, isActive, onSelect, onRename, onRemove }) {
             ✏
           </button>
         )}
-        <button
-          className={`${s.actionBtn} ${s.deleteBtn}`}
-          type="button"
-          title="Удалить проект"
-          onClick={onRemove}
-        >
-          ✕
-        </button>
+        {deleteArmed ? (
+          <button
+            className={`${s.actionBtn} ${s.deleteBtnArmed}`}
+            type="button"
+            onClick={confirmDelete}
+          >
+            <span className={s.deleteBtnLabel}>Удалить?</span>
+            <span className={s.deleteBtnProgress} />
+          </button>
+        ) : (
+          <button
+            className={`${s.actionBtn} ${s.deleteBtn}`}
+            type="button"
+            title="Удалить проект"
+            onClick={armDelete}
+          >
+            ✕
+          </button>
+        )}
       </div>
     </div>
   );

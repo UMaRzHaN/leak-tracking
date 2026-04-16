@@ -92,6 +92,10 @@ button { font-family: inherit; cursor: pointer; }
   display: flex;
   flex-direction: column;
   padding-bottom: var(--app-footer);
+
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    padding-bottom: calc(var(--app-footer) + env(safe-area-inset-bottom));
+  }
 }
 
 /* =====================================================

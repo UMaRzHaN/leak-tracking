@@ -29,7 +29,7 @@ export default function DataBaseList({
   }
 
   return (
-    <div style={{ paddingBottom: 60 }}>
+    <div>
       {data.map((row) => (
         <LeakCardCompact
           key={row.id}

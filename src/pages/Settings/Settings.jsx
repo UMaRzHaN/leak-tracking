@@ -64,12 +64,6 @@ export default function Settings({ setPage, clearForm, clearVoiceData, clearData
     (id) => {
       const target = projects.find((p) => p.id === id);
       if (!target) return;
-
-      const ok = window.confirm(
-        `Удалить проект «${target.name}»?\n\nДанные в приложении будут скрыты, но файлы на устройстве останутся.`,
-      );
-      if (!ok) return;
-
       removeProject(id);
       notify("warning", `Проект «${target.name}» удалён`);
     },

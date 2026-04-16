@@ -55,18 +55,35 @@ function loadActiveId() {
 }
 
 function saveActiveId(id) {
-  localStorage.setItem(STORAGE_KEYS.ACTIVE_PROJECT_ID, id);
+  if (id == null) {
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_PROJECT_ID);
+  } else {
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_PROJECT_ID, id);
+  }
 }
 
-/** Миграция из старого одиночного формата → список проектов */
+const MIGRATION_DONE_KEY = "app:legacy_migrated_v1";
+
+/** Миграция из старого одиночного формата → список проектов.
+ *  Запускается только один раз: после успешной миграции удаляет legacy-ключ
+ *  и выставляет флаг, чтобы не воскрешать проект при следующей пустой инициализации. */
 function migrateFromLegacy(existingList) {
-  if (existingList.length > 0) return existingList; // уже мигрировано
+  if (existingList.length > 0) return existingList; // уже есть проекты
+
+  // Если миграция уже была выполнена — не трогать
+  if (localStorage.getItem(MIGRATION_DONE_KEY)) return [];
 
   try {
     const raw = localStorage.getItem(STORAGE_KEYS._LEGACY_PROJECT_CONFIG);
-    if (!raw) return [];
+    if (!raw) {
+      localStorage.setItem(MIGRATION_DONE_KEY, "1");
+      return [];
+    }
     const old = JSON.parse(raw); // { type, name, configuredAt }
-    if (!old?.type || !PROJECT_META[old.type]) return [];
+    if (!old?.type || !PROJECT_META[old.type]) {
+      localStorage.setItem(MIGRATION_DONE_KEY, "1");
+      return [];
+    }
 
     const migrated = {
       id: String(old.configuredAt ?? Date.now()),
@@ -76,8 +93,13 @@ function migrateFromLegacy(existingList) {
       createdAt: old.configuredAt ?? Date.now(),
     };
 
+    // Помечаем миграцию как выполненную — legacy-ключ больше не нужен
+    localStorage.setItem(MIGRATION_DONE_KEY, "1");
+    localStorage.removeItem(STORAGE_KEYS._LEGACY_PROJECT_CONFIG);
+
     return [migrated];
   } catch {
+    localStorage.setItem(MIGRATION_DONE_KEY, "1");
     return [];
   }
 }
