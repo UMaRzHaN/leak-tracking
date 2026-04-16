@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 
 export function useMapMode() {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [mode, setMode] = useState("google");
 
   useEffect(() => {
-    const goOnline = () => setIsOnline(true);
-    const goOffline = () => setIsOnline(false);
+    const goOnline = () => setMode("google");
+    const goOffline = () => setMode("offline");
 
     window.addEventListener("online", goOnline);
     window.addEventListener("offline", goOffline);
@@ -16,5 +16,5 @@ export function useMapMode() {
     };
   }, []);
 
-  return isOnline ? "google" : "offline";
+  return { mode, setMode };
 }

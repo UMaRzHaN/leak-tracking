@@ -10,25 +10,21 @@ export default function MapPage({ leaks, coords }) {
   const mapApiRef = useRef(null);
   const offlineMapContainerRef = useRef(null);
 
-  const mapMode = useMapMode();
+  const offlineRef = useRef({
+    map: null,
+    markersLayer: null,
+  });
 
-  /* ======================================================
-     ACTIVE LOCATION (project-aware)
-     ====================================================== */
+  const { mode: mapMode, setMode } = useMapMode();
+
   const {
     leaks: normalizedLeaks,
     locations,
     label: locationLabel,
   } = useActiveLocation(leaks);
 
-  /* ======================================================
-     MAP CENTER (from map idle)
-     ====================================================== */
   const [mapCenter, setMapCenter] = useState(null);
-
-  /* ======================================================
-     ENABLED LOCATIONS
-     ====================================================== */
+  const [open, setOpen] = useState(false);
   const [enabledLocations, setEnabledLocations] = useState({});
 
   useEffect(() => {
@@ -48,13 +44,8 @@ export default function MapPage({ leaks, coords }) {
     }));
   }, []);
 
-  /* ======================================================
-     FILTER + SORT BY DISTANCE
-     ====================================================== */
   const visibleLeaks = useMemo(() => {
-    const filtered = normalizedLeaks.filter(
-      (l) => enabledLocations[l._location],
-    );
+    const filtered = normalizedLeaks.filter((l) => enabledLocations[l._location]);
 
     if (!mapCenter) return filtered;
 
@@ -71,13 +62,13 @@ export default function MapPage({ leaks, coords }) {
       .sort((a, b) => a._distance - b._distance);
   }, [normalizedLeaks, enabledLocations, mapCenter]);
 
-  /* ======================================================
-     OFFLINE MAP MODE
-     ====================================================== */
   useEffect(() => {
     if (mapMode !== "offline") return;
+
     const container = offlineMapContainerRef.current;
     if (!container) return;
+
+    if (offlineRef.current.map) return;
 
     const firstLeak = visibleLeaks.find(
       (l) => Number.isFinite(l.lat) && Number.isFinite(l.lng),
@@ -90,12 +81,12 @@ export default function MapPage({ leaks, coords }) {
           ? [firstLeak.lat, firstLeak.lng]
           : [41.3111, 69.2797];
 
-    const map = createOfflineMap(container, {
+    const { map, markersLayer } = createOfflineMap(container, {
       center,
       zoom: 13,
     });
 
-    addMarkers(map, visibleLeaks);
+    offlineRef.current = { map, markersLayer };
 
     mapApiRef.current = {
       focus: (leak) => {
@@ -106,14 +97,19 @@ export default function MapPage({ leaks, coords }) {
 
     return () => {
       map.remove();
+      offlineRef.current = { map: null, markersLayer: null };
       mapApiRef.current = null;
     };
-  }, [mapMode, visibleLeaks, coords]);
+  }, [mapMode, coords, visibleLeaks]);
 
-  /* ======================================================
-     MOBILE SHEET
-     ====================================================== */
-  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (mapMode !== "offline") return;
+
+    const { markersLayer } = offlineRef.current;
+    if (!markersLayer) return;
+
+    addMarkers(markersLayer, visibleLeaks);
+  }, [visibleLeaks, mapMode]);
 
   return (
     <div className="map-mobile-wrapper">
@@ -129,6 +125,7 @@ export default function MapPage({ leaks, coords }) {
           onSearchClick={() => setOpen(true)}
           onMoveEnd={setMapCenter}
           coords={coords}
+          onError={() => setMode("offline")}
         />
       )}
 

@@ -16,7 +16,9 @@ const NEARBY = "nearby";
 const NEARBY_RADIUS_M = 500;
 
 function round2(v) {
-  return v != null && Number.isFinite(Number(v)) ? Math.round(Number(v) * 100) / 100 : v;
+  return v != null && Number.isFinite(Number(v))
+    ? Math.round(Number(v) * 100) / 100
+    : v;
 }
 
 function prepareRows(data) {
@@ -25,7 +27,9 @@ function prepareRows(data) {
     status: r.status ?? "open",
     date:
       r.date ??
-      (r.created_at ? new Date(Number(r.created_at)).toLocaleDateString("ru-RU") : ""),
+      (r.created_at
+        ? new Date(Number(r.created_at)).toLocaleDateString("ru-RU")
+        : ""),
     Total_Annual_Methane_Loss_m3_y: round2(r.Total_Annual_Methane_Loss_m3_y),
     Emissions_t_CO2eq_year: round2(r.Emissions_t_CO2eq_year),
   }));
@@ -37,22 +41,29 @@ export default function DataBase({ data, setData, coords }) {
   const [statusFilter, setFilter] = useState(ALL);
   const { save } = useProjectData();
   const projectConfig = useProjectConfig();
-  const { headers: excelHeaders, keysOrder: excelKeys } = projectConfig.export.excel;
+  const { headers: excelHeaders, keysOrder: excelKeys } =
+    projectConfig.export.excel;
 
   const hasGps = Boolean(coords?.lat && coords?.lng);
 
   /* ── Filter + sort strictly by date desc ── */
   const displayed = useMemo(() => {
+    // Nearby filter uses its own sorted list (by distance)
     if (statusFilter === NEARBY) {
       let list = hasGps
         ? filterNearbyLeaks(data, coords.lat, coords.lng, NEARBY_RADIUS_M)
         : [];
-
       if (search.trim()) {
         const q = search.toLowerCase();
         list = list.filter((l) =>
-          [l.leak_id, l.object, l.component, l.location, l.field, l.leak_description]
-            .some((v) => v?.toLowerCase().includes(q)),
+          [
+            l.leak_id,
+            l.object,
+            l.component,
+            l.location,
+            l.field,
+            l.leak_description,
+          ].some((v) => v?.toLowerCase().includes(q)),
         );
       }
       return list;
@@ -67,26 +78,34 @@ export default function DataBase({ data, setData, coords }) {
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((l) =>
-        [l.leak_id, l.object, l.component, l.location, l.field, l.leak_description]
-          .some((v) => v?.toLowerCase().includes(q)),
+        [
+          l.leak_id,
+          l.object,
+          l.component,
+          l.location,
+          l.field,
+          l.leak_description,
+        ].some((v) => v?.toLowerCase().includes(q)),
       );
     }
 
     return list;
   }, [data, statusFilter, search, hasGps, coords]);
 
+  /* ── Status change via swipe ── */
   const handleStatusChange = useCallback(
     async (id) => {
       const next = data.map((r) =>
-        r.id === id ? { ...r, status: nextStatus(r.status) } : r
+        r.id === id ? { ...r, status: nextStatus(r.status) } : r,
       );
       setData(next);
       await save(next);
       hapticSuccess();
     },
-    [data, save, setData]
+    [data, save, setData],
   );
 
+  /* ── Save from details ── */
   const handleSave = async (updated) => {
     const next = data.map((r) => (r.id === updated.id ? updated : r));
     setData(next);
@@ -103,11 +122,12 @@ export default function DataBase({ data, setData, coords }) {
       hapticSuccess();
       setActiveLeak(null);
     },
-    [data, save, setData]
+    [data, save, setData],
   );
 
   const visible = displayed;
 
+  /* ── Status counts for filter tabs ── */
   const counts = useMemo(() => {
     const c = { all: data.length };
     STATUS_ORDER.forEach((st) => {
@@ -121,7 +141,7 @@ export default function DataBase({ data, setData, coords }) {
 
   return (
     <div className={s.page}>
-      {/* Search */}
+      {/* ── Search ── */}
       <div className={s.searchWrap}>
         <span className={s.searchIcon}>🔍</span>
         <input
@@ -137,9 +157,15 @@ export default function DataBase({ data, setData, coords }) {
         )}
       </div>
 
-      {/* Filters */}
+      {/* ── Status filter tabs ── */}
       <div className={s.filters}>
-        <FilterTab id={ALL} label="Все" count={counts.all} active={statusFilter} onSelect={setFilter} />
+        <FilterTab
+          id={ALL}
+          label="Все"
+          count={counts.all}
+          active={statusFilter}
+          onSelect={setFilter}
+        />
         {STATUS_ORDER.map((st) => (
           <FilterTab
             key={st}
@@ -163,7 +189,7 @@ export default function DataBase({ data, setData, coords }) {
         )}
       </div>
 
-      {/* Results */}
+      {/* ── Results info + Export ── */}
       <div className={s.resultsRow}>
         <span className={s.resultsInfo}>
           {visible.length > 0
@@ -175,7 +201,14 @@ export default function DataBase({ data, setData, coords }) {
         {data.length > 0 && (
           <button
             className={s.exportBtn}
-            onClick={() => exportToExcel(prepareRows(displayed), excelHeaders, excelKeys, "утечки")}
+            onClick={() =>
+              exportToExcel(
+                prepareRows(displayed),
+                excelHeaders,
+                excelKeys,
+                "утечки",
+              )
+            }
             title="Экспорт в Excel"
           >
             📥 XLSX
@@ -183,15 +216,17 @@ export default function DataBase({ data, setData, coords }) {
         )}
       </div>
 
-      {/* List */}
+      {/* ── List ── */}
       <div className={s.list}>
         {visible.length ? (
           <VirtualizedLeakList
-            items={visible}
+          
+            items={visible ?? []}
             height={650}
-            itemHeight={116}
+            // itemHeight={116}
             renderItem={(leak) => (
               <LeakCardCompact
+                key={leak.id}
                 leak={leak}
                 onOpenDetails={setActiveLeak}
                 onStatusChange={handleStatusChange}
@@ -241,6 +276,7 @@ function FilterTab({ id, label, count, active, onSelect, color }) {
 
 function pluralLeaks(n) {
   if (n % 10 === 1 && n % 100 !== 11) return "запись";
-  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return "записи";
+  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100))
+    return "записи";
   return "записей";
 }

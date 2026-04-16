@@ -1,34 +1,88 @@
 import { useCallback } from "react";
 
 const DRAFT_KEY = "app:form_draft_v1";
+const TTL = 86_400_000; // 24 часа
 
 export function useFormDraft() {
+  /* ======================================================
+     SAVE
+     ====================================================== */
   const saveDraft = useCallback((form, step) => {
     try {
-      // Не сохраняем сырые фото (Blob/File — не сериализуются)
+      if (!form || typeof form !== "object") return;
+
+      // ❗ не сохраняем фото (Blob/File)
       const { photo, ...rest } = form;
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ form: rest, step, savedAt: Date.now() }));
-    } catch {}
+
+      const payload = {
+        form: rest,
+        step,
+        savedAt: Date.now(),
+      };
+
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+    } catch (e) {
+      console.warn("Draft save failed:", e);
+    }
   }, []);
 
+  /* ======================================================
+     LOAD
+     ====================================================== */
   const loadDraft = useCallback(() => {
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       if (!raw) return null;
-      const { form, step, savedAt } = JSON.parse(raw);
-      // Черновик старше 24 часов — не восстанавливаем
-      if (Date.now() - savedAt > 86_400_000) { clearDraft(); return null; }
-      return { form, step };
-    } catch { return null; }
+
+      const parsed = JSON.parse(raw);
+
+      if (!parsed || typeof parsed !== "object") {
+        localStorage.removeItem(DRAFT_KEY);
+        return null;
+      }
+
+      const { form, step, savedAt } = parsed;
+
+      // ❗ TTL проверка
+      if (!savedAt || Date.now() - savedAt > TTL) {
+        localStorage.removeItem(DRAFT_KEY);
+        return null;
+      }
+
+      return { form: form ?? {}, step: step ?? 1 };
+    } catch (e) {
+      console.warn("Draft load failed:", e);
+      localStorage.removeItem(DRAFT_KEY);
+      return null;
+    }
   }, []);
 
+  /* ======================================================
+     CLEAR
+     ====================================================== */
   const clearDraft = useCallback(() => {
-    localStorage.removeItem(DRAFT_KEY);
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch (e) {
+      console.warn("Draft clear failed:", e);
+    }
   }, []);
 
+  /* ======================================================
+     HAS DRAFT
+     ====================================================== */
   const hasDraft = useCallback(() => {
-    return !!localStorage.getItem(DRAFT_KEY);
+    try {
+      return !!localStorage.getItem(DRAFT_KEY);
+    } catch {
+      return false;
+    }
   }, []);
 
-  return { saveDraft, loadDraft, clearDraft, hasDraft };
+  return {
+    saveDraft,
+    loadDraft,
+    clearDraft,
+    hasDraft,
+  };
 }
