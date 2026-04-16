@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { updateMarkers, autoCenterMap } from "../services/mapService";
+import { updateMarkers, autoCenterMap } from "../services/maps/mapService";
 
 export const useLeaksMap = ({
   leaks,

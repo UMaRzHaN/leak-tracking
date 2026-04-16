@@ -3,9 +3,14 @@ import LeaksMap from "../components/LeaksMap/LeaksMap";
 import MobileSheet from "../components/MobileSheet/MobileSheet";
 import { getDistanceMeters } from "../utils/calculations/getDistanceMeters";
 import { useActiveLocation } from "../hooks/useActiveLocation";
+import { useMapMode } from "../hooks/useMapMode";
+import { createOfflineMap, addMarkers } from "../services/maps/offlineMap";
 
 export default function MapPage({ leaks, coords }) {
   const mapApiRef = useRef(null);
+  const offlineMapContainerRef = useRef(null);
+
+  const mapMode = useMapMode();
 
   /* ======================================================
      ACTIVE LOCATION (project-aware)
@@ -26,7 +31,6 @@ export default function MapPage({ leaks, coords }) {
      ====================================================== */
   const [enabledLocations, setEnabledLocations] = useState({});
 
-  // корректная инициализация / дополнение при смене locations
   useEffect(() => {
     setEnabledLocations((prev) => {
       const next = {};
@@ -68,19 +72,65 @@ export default function MapPage({ leaks, coords }) {
   }, [normalizedLeaks, enabledLocations, mapCenter]);
 
   /* ======================================================
+     OFFLINE MAP MODE
+     ====================================================== */
+  useEffect(() => {
+    if (mapMode !== "offline") return;
+    const container = offlineMapContainerRef.current;
+    if (!container) return;
+
+    const firstLeak = visibleLeaks.find(
+      (l) => Number.isFinite(l.lat) && Number.isFinite(l.lng),
+    );
+
+    const center =
+      Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng)
+        ? [coords.lat, coords.lng]
+        : firstLeak
+          ? [firstLeak.lat, firstLeak.lng]
+          : [41.3111, 69.2797];
+
+    const map = createOfflineMap(container, {
+      center,
+      zoom: 13,
+    });
+
+    addMarkers(map, visibleLeaks);
+
+    mapApiRef.current = {
+      focus: (leak) => {
+        if (!Number.isFinite(leak?.lat) || !Number.isFinite(leak?.lng)) return;
+        map.setView([leak.lat, leak.lng], 16, { animate: true });
+      },
+    };
+
+    return () => {
+      map.remove();
+      mapApiRef.current = null;
+    };
+  }, [mapMode, visibleLeaks, coords]);
+
+  /* ======================================================
      MOBILE SHEET
      ====================================================== */
   const [open, setOpen] = useState(false);
 
   return (
     <div className="map-mobile-wrapper">
-      <LeaksMap
-        leaks={visibleLeaks}
-        mapApiRef={mapApiRef}
-        onSearchClick={() => setOpen(true)}
-        onMoveEnd={setMapCenter}
-        coords={coords}
-      />
+      {mapMode === "offline" ? (
+        <div
+          ref={offlineMapContainerRef}
+          style={{ width: "100%", height: "100%" }}
+        />
+      ) : (
+        <LeaksMap
+          leaks={visibleLeaks}
+          mapApiRef={mapApiRef}
+          onSearchClick={() => setOpen(true)}
+          onMoveEnd={setMapCenter}
+          coords={coords}
+        />
+      )}
 
       <MobileSheet
         open={open}
@@ -91,7 +141,7 @@ export default function MapPage({ leaks, coords }) {
         onToggleLocation={toggleLocation}
         onClose={() => setOpen(false)}
         onSelect={(leak) => {
-          mapApiRef.current?.focus(leak);
+          mapApiRef.current?.focus?.(leak);
           setOpen(false);
         }}
       />
