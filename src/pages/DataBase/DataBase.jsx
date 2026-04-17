@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import LeakCardCompact from "../../components/LeakCardCompact/LeakCardCompact";
 import LeakDetailsSheet from "../../components/LeakDetailsSheet/LeakDetailsSheet";
 import VirtualizedLeakList from "../../components/VirtualizedLeakList/VirtualizedLeakList";
+import Notification from "../../components/Notification/Notification";
 import { STATUS, STATUS_META, STATUS_ORDER } from "../../utils/status";
 import { nextStatus } from "../../utils/status";
 import { hapticSuccess } from "../../utils/haptics";
@@ -39,6 +40,8 @@ export default function DataBase({ data, setData, coords }) {
   const [activeLeak, setActiveLeak] = useState(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setFilter] = useState(ALL);
+  const [notification, setNotification] = useState(null);
+
   const { save } = useProjectData();
   const projectConfig = useProjectConfig();
   const { headers: excelHeaders, keysOrder: excelKeys } =
@@ -46,13 +49,17 @@ export default function DataBase({ data, setData, coords }) {
 
   const hasGps = Boolean(coords?.lat && coords?.lng);
 
+  const notify = useCallback((type, message) => {
+    setNotification({ type, message });
+  }, []);
+
   /* ── Filter + sort strictly by date desc ── */
   const displayed = useMemo(() => {
-    // Nearby filter uses its own sorted list (by distance)
     if (statusFilter === NEARBY) {
       let list = hasGps
         ? filterNearbyLeaks(data, coords.lat, coords.lng, NEARBY_RADIUS_M)
         : [];
+
       if (search.trim()) {
         const q = search.toLowerCase();
         list = list.filter((l) =>
@@ -66,6 +73,7 @@ export default function DataBase({ data, setData, coords }) {
           ].some((v) => v?.toLowerCase().includes(q)),
         );
       }
+
       return list;
     }
 
@@ -141,6 +149,11 @@ export default function DataBase({ data, setData, coords }) {
 
   return (
     <div className={s.page}>
+      <Notification
+        notification={notification}
+        onClose={() => setNotification(null)}
+      />
+
       {/* ── Search ── */}
       <div className={s.searchWrap}>
         <span className={s.searchIcon}>🔍</span>
@@ -198,17 +211,24 @@ export default function DataBase({ data, setData, coords }) {
               : `${visible.length} ${pluralLeaks(visible.length)} • дата ↓`
             : null}
         </span>
+
         {data.length > 0 && (
           <button
             className={s.exportBtn}
-            onClick={() =>
-              exportToExcel(
-                prepareRows(displayed),
-                excelHeaders,
-                excelKeys,
-                "утечки",
-              )
-            }
+            onClick={() => {
+              try {
+                exportToExcel(
+                  prepareRows(displayed),
+                  excelHeaders,
+                  excelKeys,
+                  "утечки",
+                );
+                notify("success", "Excel-файл успешно скачан");
+              } catch (e) {
+                console.error(e);
+                notify("error", "Ошибка экспорта Excel");
+              }
+            }}
             title="Экспорт в Excel"
           >
             📥 XLSX
@@ -220,10 +240,8 @@ export default function DataBase({ data, setData, coords }) {
       <div className={s.list}>
         {visible.length ? (
           <VirtualizedLeakList
-          
             items={visible ?? []}
             height={650}
-            // itemHeight={116}
             renderItem={(leak) => (
               <LeakCardCompact
                 key={leak.id}

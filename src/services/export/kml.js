@@ -56,39 +56,51 @@ export function exportLeaksKML(leaks, project) {
 export async function saveLeaksKML(leaks, project, mkdir) {
   const kml = exportLeaksKML(leaks, project);
   const fileName = `leaks_${Date.now()}.kml`;
-  const MAPS_FOLDER = mkdir + "/maps";
+  const folderName = `${mkdir}/maps`;
 
   if (Capacitor.isNativePlatform()) {
     await Filesystem.mkdir({
-      path: MAPS_FOLDER,
+      path: folderName,
       directory: Directory.Documents,
       recursive: true,
     }).catch(() => {});
 
     await Filesystem.writeFile({
-      path: `${mkdir}/${fileName}`,
+      path: `${folderName}/${fileName}`,
       data: kml,
       directory: Directory.Documents,
       encoding: Encoding.UTF8,
     });
 
-    return `${mkdir}/${fileName}`;
+    return {
+      ok: true,
+      fileName,
+      message: "KML-файл успешно экспортирован",
+    };
   }
 
-  downloadFileWeb(kml, `${mkdir}_${fileName}`);
-  return `${mkdir}_${fileName}`;
+  downloadFileWeb(kml, fileName);
+
+  return {
+    ok: true,
+    fileName,
+    message: "KML-файл успешно скачан",
+  };
 }
 
 function downloadFileWeb(data, fileName) {
   const blob = new Blob([data], {
     type: "application/vnd.google-earth.kml+xml",
   });
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = fileName;
+
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+
   URL.revokeObjectURL(url);
 }

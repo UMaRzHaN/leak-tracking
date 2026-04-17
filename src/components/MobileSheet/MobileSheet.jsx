@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 
 import s from "./MobileSheet.module.scss";
+import Notification from "../Notification/Notification";
 import { saveLeaksKML } from "../../services/export/kml";
 import { useProject } from "../../app/settings/ProjectContext";
 import { getProjectMobileDir } from "../../app/settings/storageKeys";
@@ -10,23 +11,23 @@ const NO_LABEL = "Не указано";
 /* =========================
    EXPORT HANDLER
 ========================= */
-async function handleExport(leaks, saveFn) {
+async function handleExport({ leaks, saveFn, onSuccess, onError }) {
   try {
     if (!leaks.length) {
-      alert("Нет данных для экспорта");
+      onError?.("Нет данных для экспорта");
       return;
     }
 
     if (!saveFn) {
-      alert("Экспорт недоступен для этого проекта");
+      onError?.("Экспорт недоступен для этого проекта");
       return;
     }
 
-    const fileName = await saveFn();
-    alert(`Файл создан: ${fileName}`);
+    const result = await saveFn();
+    onSuccess?.(result);
   } catch (e) {
-    alert("Ошибка экспорта");
     console.error(e);
+    onError?.("Ошибка экспорта");
   }
 }
 
@@ -43,10 +44,15 @@ export default function MobileSheet({
   onClose,
   onSelect,
 }) {
-  const project = useProject();
-  const mkdir = getProjectMobileDir(project.project);
+  const { project } = useProject();
+  const mkdir = getProjectMobileDir(project);
 
   const [query, setQuery] = useState("");
+  const [notification, setNotification] = useState(null);
+
+  const notify = useCallback((type, message) => {
+    setNotification({ type, message });
+  }, []);
 
   /* =========================
      SEARCH FILTER
@@ -60,6 +66,11 @@ export default function MobileSheet({
 
   return (
     <>
+      <Notification
+        notification={notification}
+        onClose={() => setNotification(null)}
+      />
+
       {open && (
         <div className={s.overlay} onClick={onClose}>
           <div
@@ -103,9 +114,16 @@ export default function MobileSheet({
               <button
                 className={`${s.exportBtn} ${s.exportKml}`}
                 onClick={() =>
-                  handleExport(filteredLeaks, () =>
-                    saveLeaksKML(filteredLeaks, project.project, mkdir),
-                  )
+                  handleExport({
+                    leaks: filteredLeaks,
+                    saveFn: () => saveLeaksKML(filteredLeaks, project, mkdir),
+                    onSuccess: (result) =>
+                      notify(
+                        "success",
+                        result?.message || "Файл успешно экспортирован",
+                      ),
+                    onError: (message) => notify("error", message),
+                  })
                 }
               >
                 Экспорт карты (KML)
