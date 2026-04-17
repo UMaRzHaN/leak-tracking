@@ -7,7 +7,7 @@ export const STATUS = {
 export const STATUS_META = {
   open:        { label: "Открыта",    short: "Открыта",   color: "var(--c-open)",     bg: "var(--c-open-bg)",     border: "var(--c-open-border)" },
   in_progress: { label: "В работе",   short: "В работе",  color: "var(--c-progress)", bg: "var(--c-progress-bg)", border: "var(--c-progress-border)" },
-  resolved:    { label: "Устранена",  short: "Готово",    color: "var(--c-resolved)", bg: "var(--c-resolved-bg)", border: "var(--c-resolved-border)" },
+  resolved:    { label: "Устранена",  short: "Устранена",    color: "var(--c-resolved)", bg: "var(--c-resolved-bg)", border: "var(--c-resolved-border)" },
 };
 
 export const STATUS_ORDER = [STATUS.OPEN, STATUS.IN_PROGRESS, STATUS.RESOLVED];

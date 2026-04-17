@@ -58,7 +58,7 @@
 .filters {
   display: flex;
   gap: 6px;
-  // flex-wrap: wrap;
+  flex-wrap: wrap;
   overflow-x: auto;
   scrollbar-width: none;
   &::-webkit-scrollbar {
@@ -114,24 +114,155 @@
 /* ── Results row ── */
 .resultsRow {
   display: flex;
+  // grid-template-columns: 1fr 2fr;
   align-items: center;
   justify-content: space-between;
-  min-height: 20px;
-  gap: 8px;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--r-lg);
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
 }
 
+/* левая часть */
 .resultsInfo {
   font-size: 12px;
-  color: var(--c-text3);
-  padding: 0 2px;
+  color: #6B7280;
+  text-wrap: nowrap;
 }
 
-.exportBtn {
-  flex-shrink: 0;
+/* правая часть */
+.resultsActions {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+}
+
+/* режим выделения */
+.resultsActionsSelected {
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--r-lg);
+
+  background: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.18);
+
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+/* счетчик */
+.selectionInfo {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2563EB;
+
+  background: rgba(37, 99, 235, 0.1);
+  border-radius: 999px;
+
+  padding: 4px 10px;
+}
+
+/* базовая кнопка */
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 6px 12px;
+  border-radius: 8px;
+
+  border: 1px solid #E5E7EB;
+  background: #FFFFFF;
+  color: #374151;
+
+  font-size: 12px;
+  font-weight: 500;
+
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #F3F4F6;
+    border-color: #D1D5DB;
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+/* primary кнопка (смена статуса) */
+.statusBtn {
+  background: #2563EB;
+  border-color: #2563EB;
+  color: #FFFFFF;
+
+  &:hover {
+    background: #1D4ED8;
+    border-color: #1D4ED8;
+  }
+}
+
+/* secondary (экспорт) */
+.exportBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 6px 12px;
+  border-radius: 8px;
+
+  border: 1px solid #E5E7EB;
+  background: #FFFFFF;
+  color: #374151;
+
+  font-size: 12px;
+  font-weight: 500;
+
+  cursor: pointer;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #F0FDF4;
+    border-color: #16A34A;
+    color: #16A34A;
+  }
+}
+.resultsActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  width: max-content;
+}
+
+.resultsActionsSelected {
+  justify-content: space-evenly;
+  padding: 8px;
+  border: 1px solid rgba(37,99,235,.14);
+  border-radius: var(--r-lg);
+  background: linear-gradient(180deg, rgba(37,99,235,.06), rgba(255,255,255,1));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+}
+
+.selectionInfo {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-blue);
+  background: rgba(37,99,235,.08);
+  border: 1px solid rgba(37,99,235,.16);
+  border-radius: 999px;
   padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.actionBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
   border: 1.5px solid var(--c-border);
   border-radius: var(--r-md);
   background: var(--c-surface);
@@ -143,14 +274,22 @@
   white-space: nowrap;
 
   &:hover {
-    border-color: #16a34a;
-    color: #16a34a;
-    background: #f0fdf4;
+    border-color: var(--c-blue);
+    color: var(--c-blue);
+    background: var(--c-blue-dim);
   }
+
   &:active {
     transform: scale(0.96);
   }
 }
+
+.statusBtn {
+  border-color: var(--status-border, var(--c-border));
+  color: var(--status-color, var(--c-text2));
+  background: var(--status-bg, var(--c-surface));
+}
+
 
 /* ── List ── */
 .list {

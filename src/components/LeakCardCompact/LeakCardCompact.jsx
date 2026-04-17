@@ -29,6 +29,8 @@ export default function LeakCardCompact({
   onStatusChange,
   onOpenDetails,
   nearbyDist,
+  selected = false,
+  onToggleSelect,
 }) {
   const { swipeState, swipeOffset, close, handlers } = useSwipeCard({
     leak,
@@ -81,16 +83,33 @@ export default function LeakCardCompact({
 
         {/* ── Card ── */}
         <div
-          className={`${s.card} ${goingLeft ? s.swipeLeft : ""} ${goingRight ? s.swipeRight : ""}`}
+          className={`${s.card} ${selected ? s.selected : ""} ${goingLeft ? s.swipeLeft : ""} ${goingRight ? s.swipeRight : ""}`}
           data-urgency={urgency}
+          data-selected={selected ? "true" : "false"}
           style={{
             transform:  `translateX(${swipeOffset}px)`,
             transition: swiping ? "none" : "transform var(--t-spring)",
           }}
           {...handlers}
         >
-          {/* ── Head: status pill + ID + time ── */}
+          {/* ── Head: selection + status + ID + time ── */}
           <div className={s.head} style={{ background: meta.bg }}>
+            {onToggleSelect && (
+              <button
+                type="button"
+                className={`${s.selectToggle} ${selected ? s.selectToggleActive : ""}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleSelect();
+                }}
+                aria-pressed={selected}
+                aria-label={selected ? "Убрать из выбора" : "Выбрать утечку"}
+                title={selected ? "Убрать из выбора" : "Выбрать утечку"}
+              >
+                <span className={s.selectToggleMark}>{selected ? "✓" : ""}</span>
+              </button>
+            )}
+
             <span
               className={s.statusPill}
               style={{ color: meta.color, background: meta.bg, borderColor: meta.border }}

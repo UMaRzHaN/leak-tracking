@@ -23,7 +23,7 @@
 
 .hintRight {
   left: 0;
-  background: linear-gradient(to right, rgba(37,99,235,.2), transparent);
+  background: linear-gradient(to right, rgba(37, 99, 235, 0.2), transparent);
   color: var(--c-blue);
 }
 
@@ -32,21 +32,30 @@
   right: 0;
 
   &[data-next="in_progress"] {
-    background: linear-gradient(to left, rgba(217,119,6,.18), transparent);
+    background: linear-gradient(to left, rgba(217, 119, 6, 0.18), transparent);
     color: var(--c-progress);
   }
   &[data-next="resolved"] {
-    background: linear-gradient(to left, rgba(5,150,105,.18), transparent);
+    background: linear-gradient(to left, rgba(5, 150, 105, 0.18), transparent);
     color: var(--c-resolved);
   }
   &[data-next="open"] {
-    background: linear-gradient(to left, rgba(37,99,235,.18), transparent);
+    background: linear-gradient(to left, rgba(37, 99, 235, 0.18), transparent);
     color: var(--c-blue);
   }
 }
 
-.hintIcon { font-size: 16px; line-height: 1; font-weight: 700; }
-.hintText { font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.hintIcon {
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 700;
+}
+.hintText {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 
 /* ══════════════════════════════════════
    CARD
@@ -63,13 +72,17 @@
   cursor: pointer;
   overflow: hidden;
   border: 1px solid var(--c-border);
-  transition: box-shadow var(--t-normal), transform var(--t-fast);
+  transition:
+    box-shadow var(--t-normal),
+    transform var(--t-fast);
 
   /* ── Urgency left stripe ── */
   &::before {
     content: "";
     position: absolute;
-    left: 0; top: 0; bottom: 0;
+    left: 0;
+    top: 0;
+    bottom: 0;
     width: 4px;
     border-radius: var(--r-xl) 0 0 var(--r-xl);
     z-index: 1;
@@ -96,14 +109,81 @@
     background: var(--c-resolved);
   }
 
-  &:active     { transform: scale(0.99); }
-  &.swipeLeft  { box-shadow: 0 4px 18px rgba(0,0,0,.12); }
-  &.swipeRight { box-shadow: 0 4px 18px rgba(37,99,235,.18); }
+  &:active {
+    transform: scale(0.99);
+  }
+  &.swipeLeft {
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+  }
+  &.swipeRight {
+    box-shadow: 0 4px 18px rgba(37, 99, 235, 0.18);
+  }
+}
+
+.selected {
+  border-color: rgba(37, 99, 235, 0.38);
+  background: linear-gradient(
+    180deg,
+    rgba(37, 99, 235, 0.05),
+    rgba(255, 255, 255, 1) 42%
+  );
+  box-shadow:
+    0 0 0 2px rgba(37, 99, 235, 0.1),
+    var(--shadow-sm);
 }
 
 @keyframes urgencyPulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.25; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.selectToggle {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1px solid #d0d5dd;
+  background: #f9fafb;
+  color: var(--c-blue);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin-right: 2px;
+  cursor: pointer;
+  box-shadow: none;
+  transition:
+    transform var(--t-fast),
+    border-color var(--t-fast),
+    background var(--t-fast),
+    color var(--t-fast),
+    box-shadow var(--t-fast);
+
+  &:hover {
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.08);
+  }
+
+  &:active {
+    transform: scale(0.94);
+  }
+}
+
+.selectToggleActive {
+  border-color: var(--c-blue);
+  background: var(--c-blue);
+  color: #fff;
+}
+
+.selectToggleMark {
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 800;
+  transform: translateY(-0.5px);
 }
 
 /* ══════════════════════════════════════
@@ -114,7 +194,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 12px 8px 16px;
+  padding: 9px 12px 8px 12px;
   border-bottom: 1px solid var(--c-border);
 }
 
@@ -269,7 +349,7 @@
   font-weight: 600;
   color: var(--c-blue);
   background: var(--c-blue-dim);
-  border: 1px solid rgba(37,99,235,.25);
+  border: 1px solid rgba(37, 99, 235, 0.25);
   border-radius: 20px;
   padding: 2px 9px;
   white-space: nowrap;

@@ -3,8 +3,7 @@ import LeakCardCompact from "../../components/LeakCardCompact/LeakCardCompact";
 import LeakDetailsSheet from "../../components/LeakDetailsSheet/LeakDetailsSheet";
 import VirtualizedLeakList from "../../components/VirtualizedLeakList/VirtualizedLeakList";
 import Notification from "../../components/Notification/Notification";
-import { STATUS, STATUS_META, STATUS_ORDER } from "../../utils/status";
-import { nextStatus } from "../../utils/status";
+import { STATUS, STATUS_META, STATUS_ORDER, nextStatus } from "../../utils/status";
 import { hapticSuccess } from "../../utils/haptics";
 import { filterNearbyLeaks } from "../../utils/geoUtils";
 import { exportToExcel } from "../../services/export/excel";
@@ -41,6 +40,7 @@ export default function DataBase({ data, setData, coords }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setFilter] = useState(ALL);
   const [notification, setNotification] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
 
   const { save } = useProjectData();
   const projectConfig = useProjectConfig();
@@ -52,6 +52,41 @@ export default function DataBase({ data, setData, coords }) {
   const notify = useCallback((type, message) => {
     setNotification({ type, message });
   }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const toggleSelected = useCallback((id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+
+  const handleBulkStatusChange = useCallback(
+    async (status) => {
+      if (!selectedIds.size) return;
+
+      const affected = data.filter((item) => selectedIds.has(item.id));
+      const next = data.map((item) =>
+        selectedIds.has(item.id) ? { ...item, status } : item,
+      );
+
+      setData(next);
+      await save(next);
+      hapticSuccess();
+      notify(
+        "success",
+        `Статус изменён у ${affected.length} ${pluralLeaks(affected.length)}`,
+      );
+      clearSelection();
+    },
+    [clearSelection, data, notify, save, selectedIds, setData],
+  );
 
   /* ── Filter + sort strictly by date desc ── */
   const displayed = useMemo(() => {
@@ -100,6 +135,18 @@ export default function DataBase({ data, setData, coords }) {
     return list;
   }, [data, statusFilter, search, hasGps, coords]);
 
+  const selectDisplayed = useCallback(() => {
+    const ids = displayed.map((leak) => leak.id);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.add(id));
+      return next;
+    });
+  }, [displayed]);
+
+  const selectedCount = selectedIds.size;
+  const allDisplayedSelected = displayed.length > 0 && displayed.every((l) => selectedIds.has(l.id));
+
   /* ── Status change via swipe ── */
   const handleStatusChange = useCallback(
     async (id) => {
@@ -129,6 +176,12 @@ export default function DataBase({ data, setData, coords }) {
       await save(next);
       hapticSuccess();
       setActiveLeak(null);
+      setSelectedIds((prev) => {
+        if (!prev.has(id)) return prev;
+        const nextSelected = new Set(prev);
+        nextSelected.delete(id);
+        return nextSelected;
+      });
     },
     [data, save, setData],
   );
@@ -202,7 +255,7 @@ export default function DataBase({ data, setData, coords }) {
         )}
       </div>
 
-      {/* ── Results info + Export ── */}
+      {/* ── Results info + bulk actions + Export ── */}
       <div className={s.resultsRow}>
         <span className={s.resultsInfo}>
           {visible.length > 0
@@ -212,28 +265,66 @@ export default function DataBase({ data, setData, coords }) {
             : null}
         </span>
 
-        {data.length > 0 && (
-          <button
-            className={s.exportBtn}
-            onClick={() => {
-              try {
-                exportToExcel(
-                  prepareRows(displayed),
-                  excelHeaders,
-                  excelKeys,
-                  "утечки",
-                );
-                notify("success", "Excel-файл успешно скачан");
-              } catch (e) {
-                console.error(e);
-                notify("error", "Ошибка экспорта Excel");
-              }
-            }}
-            title="Экспорт в Excel"
-          >
-            📥 XLSX
-          </button>
-        )}
+        <div className={`${s.resultsActions} ${selectedCount > 0 ? s.resultsActionsSelected : ""}`}>
+          {selectedCount > 0 ? (
+            <>
+              <span className={s.selectionInfo}>
+                Выбрано: {selectedCount}
+              </span>
+              <button className={s.actionBtn} onClick={clearSelection}>
+                Снять выбор
+              </button>
+              {STATUS_ORDER.map((status) => (
+                <button
+                  key={status}
+                  className={`${s.actionBtn} ${s.statusBtn}`}
+                  style={{
+                    "--status-color": STATUS_META[status].color,
+                    "--status-bg": STATUS_META[status].bg,
+                    "--status-border": STATUS_META[status].border,
+                  }}
+                  onClick={() => handleBulkStatusChange(status)}
+                >
+                  {STATUS_META[status].short}
+                </button>
+              ))}
+            </>
+          ) : (
+            <>
+              {visible.length > 0 && (
+                <button
+                  className={s.actionBtn}
+                  onClick={allDisplayedSelected ? clearSelection : selectDisplayed}
+                >
+                  {allDisplayedSelected ? "Снять всё" : "Выбрать всё"}
+                </button>
+              )}
+
+              {data.length > 0 && (
+                <button
+                  className={s.exportBtn}
+                  onClick={() => {
+                    try {
+                      exportToExcel(
+                        prepareRows(displayed),
+                        excelHeaders,
+                        excelKeys,
+                        "утечки",
+                      );
+                      notify("success", "Excel-файл успешно скачан");
+                    } catch (e) {
+                      console.error(e);
+                      notify("error", "Ошибка экспорта Excel");
+                    }
+                  }}
+                  title="Экспорт в Excel"
+                >
+                  📥 XLSX
+                </button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* ── List ── */}
@@ -249,6 +340,8 @@ export default function DataBase({ data, setData, coords }) {
                 onOpenDetails={setActiveLeak}
                 onStatusChange={handleStatusChange}
                 nearbyDist={leak._nearbyDist}
+                selected={selectedIds.has(leak.id)}
+                onToggleSelect={() => toggleSelected(leak.id)}
               />
             )}
           />
