@@ -5,10 +5,10 @@ import Header from "../components/Header/Header";
 import Footer from "../components/Footer/Footer";
 import OfflineBanner from "../components/OfflineBanner/OfflineBanner";
 
-import AddLeak from "../pages/AddLeak";
+import AddLeak from "../pages/AddLeak/AddLeak";
 import DataBase from "../pages/DataBase";
-import MapPage from "../pages/MapPage";
-import MainPage from "../pages/MainPage";
+import MapPage from "../pages/MapPage/MapPage";
+import MainPage from "../pages/MainPage/MainPage";
 import Settings from "../pages/Settings/Settings";
 import ProjectSetupScreen from "../pages/ProjectSetup/ProjectSetupScreen";
 

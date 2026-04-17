@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import LeaksMap from "../components/LeaksMap/LeaksMap";
-import MobileSheet from "../components/MobileSheet/MobileSheet";
-import { getDistanceMeters } from "../utils/calculations/getDistanceMeters";
-import { useActiveLocation } from "../hooks/useActiveLocation";
-import { useMapMode } from "../hooks/useMapMode";
-import { createOfflineMap, addMarkers } from "../services/maps/offlineMap";
+import LeaksMap from "../../components/LeaksMap/LeaksMap";
+import MobileSheet from "../../components/MobileSheet/MobileSheet";
+import { getDistanceMeters } from "../../utils/calculations/getDistanceMeters";
+import { useActiveLocation } from "../../hooks/useActiveLocation";
+import { useMapMode } from "../../hooks/useMapMode";
+import { createOfflineMap, addMarkers } from "../../services/maps/offlineMap";
 
 export default function MapPage({ leaks, coords }) {
   const mapApiRef = useRef(null);

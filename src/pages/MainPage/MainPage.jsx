@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react";
-import LeakDetailsSheet from "../components/LeakDetailsSheet/LeakDetailsSheet";
-import LeakCardCompact from "../components/LeakCardCompact/LeakCardCompact";
-import { STATUS, STATUS_META } from "../utils/status";
-import { nextStatus } from "../utils/status";
-import { hapticSuccess } from "../utils/haptics";
+import LeakDetailsSheet from "../../components/LeakDetailsSheet/LeakDetailsSheet";
+import LeakCardCompact from "../../components/LeakCardCompact/LeakCardCompact";
+import { STATUS, STATUS_META } from "../../utils/status";
+import { nextStatus } from "../../utils/status";
+import { hapticSuccess } from "../../utils/haptics";
 import s from "./MainPage.module.scss";
 
 const RECENT_COUNT = 8;
