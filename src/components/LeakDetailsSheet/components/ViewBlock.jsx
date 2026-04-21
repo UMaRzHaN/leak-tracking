@@ -1,4 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { usePhotoSrc } from "../../../hooks/usePhotoSrc";
+import PhotoViewer from "../../PhotoViewer/PhotoViewer";
 import s from "../LeakDetailsSheet.module.scss";
 
 const ACTION_LABELS = {
@@ -7,10 +9,22 @@ const ACTION_LABELS = {
   edited:         "Данные изменены",
 };
 
+const ACTION_ICONS = {
+  created:        "✦",
+  status_changed: "⇄",
+  edited:         "✎",
+};
+
 const STATUS_TO_RU = {
   open:        "Открыта",
   in_progress: "В работе",
   resolved:    "Устранена",
+};
+
+const STATUS_COLORS = {
+  open:        "var(--c-open)",
+  in_progress: "var(--c-progress)",
+  resolved:    "var(--c-resolved)",
 };
 
 function fmtDate(iso) {
@@ -21,6 +35,17 @@ function fmtDate(iso) {
   });
 }
 
+function relativeTime(iso) {
+  if (!iso) return null;
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 0) return null;
+  if (diff < 60_000) return "только что";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} мин назад`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} ч назад`;
+  if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)} дн назад`;
+  return null;
+}
+
 function splitFields(fields) {
   return {
     text:    fields.filter((f) => !f.numeric && !f.multiline),
@@ -29,6 +54,47 @@ function splitFields(fields) {
     coords:  fields.filter((f) =>  f.coord),
     multi:   fields.filter((f) => !f.numeric && f.multiline),
   };
+}
+
+function PhotoComparison({ photoBefore, photoAfter }) {
+  const srcBefore = usePhotoSrc(photoBefore ?? null);
+  const srcAfter  = usePhotoSrc(photoAfter  ?? null);
+  const [viewer, setViewer] = useState(null); // "before" | "after" | null
+
+  if (!srcBefore && !srcAfter) return null;
+
+  return (
+    <>
+      <div className={s.photoCompare}>
+        {[
+          { key: "before", label: "До",    src: srcBefore },
+          { key: "after",  label: "После", src: srcAfter  },
+        ].map(({ key, label, src }) => (
+          <div key={key} className={s.photoCompareSlot}>
+            <span className={s.photoCompareLabel}>{label}</span>
+            {src ? (
+              <button
+                type="button"
+                className={s.photoCompareThumb}
+                onClick={() => setViewer(key)}
+              >
+                <img src={src} alt={label} className={s.photoCompareImg} draggable={false} />
+              </button>
+            ) : (
+              <div className={s.photoComparePlaceholder}>нет фото</div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {viewer === "before" && srcBefore && (
+        <PhotoViewer src={srcBefore} onClose={() => setViewer(null)} />
+      )}
+      {viewer === "after" && srcAfter && (
+        <PhotoViewer src={srcAfter} onClose={() => setViewer(null)} />
+      )}
+    </>
+  );
 }
 
 export default function ViewBlock({ data, activeTab, projectConfig }) {
@@ -45,8 +111,12 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
   if (activeTab === "info") {
     const infoFields = [...text, ...multi];
     const hasAny = infoFields.some((f) => data[f.key] != null && data[f.key] !== "");
+    const hasPhotos = Boolean(data.photo || data.photo_after);
     return (
       <div className={s.tabPane}>
+        {hasPhotos && (
+          <PhotoComparison photoBefore={data.photo} photoAfter={data.photo_after} />
+        )}
         {hasAny ? infoFields.map(({ key, label, multiline }) => {
           const val = data[key];
           if (val == null || val === "") return null;
@@ -123,21 +193,41 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
   if (activeTab === "log") {
     return (
       <div className={s.tabPane}>
-        {history.length > 0 ? history.map((entry, i) => (
-          <div key={i} className={s.logEntry}>
-            <div className={s.logDotWrap}>
-              <span className={s.logDot} />
-              {i < history.length - 1 && <span className={s.logLine} />}
+        {history.length > 0 ? history.map((entry, i) => {
+          const rel = relativeTime(entry.date);
+          const abs = fmtDate(entry.date);
+          const toColor = entry.to ? STATUS_COLORS[entry.to] : null;
+          const icon = ACTION_ICONS[entry.action] ?? "•";
+          return (
+            <div key={i} className={s.logEntry}>
+              <div className={s.logDotWrap}>
+                <span
+                  className={s.logDot}
+                  style={toColor ? { background: toColor, borderColor: toColor } : undefined}
+                >
+                  {icon}
+                </span>
+                {i < history.length - 1 && <span className={s.logLine} />}
+              </div>
+              <div className={s.logBody}>
+                <span className={s.logAction}>
+                  {ACTION_LABELS[entry.action] ?? entry.action}
+                </span>
+                {entry.to && (
+                  <span
+                    className={s.logStatus}
+                    style={toColor ? { color: toColor } : undefined}
+                  >
+                    {STATUS_TO_RU[entry.to] ?? entry.to}
+                  </span>
+                )}
+                <span className={s.logDate}>
+                  {rel ? <>{rel} · <span className={s.logDateAbs}>{abs}</span></> : abs}
+                </span>
+              </div>
             </div>
-            <div className={s.logBody}>
-              <span className={s.logAction}>
-                {ACTION_LABELS[entry.action] ?? entry.action}
-                {entry.to ? ` → ${STATUS_TO_RU[entry.to] ?? entry.to}` : ""}
-              </span>
-              <span className={s.logDate}>{fmtDate(entry.date)}</span>
-            </div>
-          </div>
-        )) : (
+          );
+        }) : (
           <div className={s.tabEmpty}>
             <span className={s.tabEmptyIcon}>🕐</span>
             <p>История пуста</p>

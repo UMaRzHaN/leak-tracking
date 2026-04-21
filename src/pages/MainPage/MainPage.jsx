@@ -1,8 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import LeakDetailsSheet from "../../components/LeakDetailsSheet/LeakDetailsSheet";
 import LeakCardCompact from "../../components/LeakCardCompact/LeakCardCompact";
+import StatusPickerModal from "../../components/StatusPickerModal/StatusPickerModal";
+import ResolveModal from "../../components/ResolveModal/ResolveModal";
 import { STATUS, STATUS_META } from "../../utils/status";
-import { nextStatus } from "../../utils/status";
+import { useProjectData } from "../../app/hooks/useProjectData";
 import { hapticSuccess } from "../../utils/haptics";
 import s from "./MainPage.module.scss";
 
@@ -12,6 +14,10 @@ const ALL = "all";
 export default function MainPage({ setPage, data, setData }) {
   const [activeLeak, setActiveLeak]     = useState(null);
   const [statusFilter, setStatusFilter] = useState(ALL);
+  const [pickerLeak, setPickerLeak]     = useState(null);
+  const [resolveLeak, setResolveLeak]   = useState(null);
+
+  const { save } = useProjectData();
 
   /* ── Stats ── */
   const stats = useMemo(() => ({
@@ -34,14 +40,70 @@ export default function MainPage({ setPage, data, setData }) {
     return list.slice(0, RECENT_COUNT);
   }, [data, statusFilter]);
 
-  /* ── Status change via swipe ── */
-  const handleStatusChange = async (id) => {
-    const next = data.map((r) =>
-      r.id === id ? { ...r, status: nextStatus(r.status) } : r
-    );
-    await setData(next);
-    hapticSuccess();
-  };
+  /* ── Swipe → open status picker ── */
+  const handlePickStatus = useCallback((leak) => setPickerLeak(leak), []);
+
+  const handleStatusSelect = useCallback(
+    async (newStatus) => {
+      const leak = pickerLeak;
+      setPickerLeak(null);
+      if (!leak || newStatus === leak.status) return;
+
+      if (newStatus === STATUS.RESOLVED) {
+        setResolveLeak(leak);
+        return;
+      }
+
+      const next = data.map((r) =>
+        r.id === leak.id
+          ? {
+              ...r,
+              status: newStatus,
+              updatedAt: Date.now(),
+              history: [
+                ...(r.history ?? []),
+                { action: "status_changed", to: newStatus, date: new Date().toISOString() },
+              ],
+            }
+          : r,
+      );
+      setData(next);
+      await save(next);
+      hapticSuccess();
+    },
+    [data, pickerLeak, save, setData],
+  );
+
+  const handleResolveConfirm = useCallback(
+    async ({ photo_after, materials_equipment, note }) => {
+      const leak = resolveLeak;
+      setResolveLeak(null);
+      if (!leak) return;
+
+      const now = new Date().toISOString();
+      const next = data.map((r) =>
+        r.id === leak.id
+          ? {
+              ...r,
+              status: STATUS.RESOLVED,
+              resolvedAt: Date.now(),
+              photo_after: photo_after ?? r.photo_after,
+              materials_equipment: materials_equipment ?? r.materials_equipment,
+              note: note ?? r.note,
+              updatedAt: Date.now(),
+              history: [
+                ...(r.history ?? []),
+                { action: "status_changed", to: STATUS.RESOLVED, date: now },
+              ],
+            }
+          : r,
+      );
+      setData(next);
+      await save(next);
+      hapticSuccess();
+    },
+    [data, resolveLeak, save, setData],
+  );
 
   const handleSaveLeak = async (updated) => {
     const next = data.map((r) => (r.id === updated.id ? updated : r));
@@ -123,7 +185,7 @@ export default function MainPage({ setPage, data, setData }) {
               key={leak.id}
               leak={leak}
               onOpenDetails={setActiveLeak}
-              onStatusChange={handleStatusChange}
+              onPickStatus={handlePickStatus}
             />
           ))
         ) : (
@@ -137,6 +199,22 @@ export default function MainPage({ setPage, data, setData }) {
           onClose={() => setActiveLeak(null)}
           onSave={handleSaveLeak}
           onDelete={handleDeleteLeak}
+        />
+      )}
+
+      {pickerLeak && (
+        <StatusPickerModal
+          current={pickerLeak.status ?? STATUS.OPEN}
+          onSelect={handleStatusSelect}
+          onClose={() => setPickerLeak(null)}
+        />
+      )}
+
+      {resolveLeak && (
+        <ResolveModal
+          leak={resolveLeak}
+          onConfirm={handleResolveConfirm}
+          onClose={() => setResolveLeak(null)}
         />
       )}
     </div>

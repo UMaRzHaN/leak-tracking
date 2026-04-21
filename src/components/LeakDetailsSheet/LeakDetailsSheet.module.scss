@@ -5,7 +5,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 300;
+  z-index: 900;
   background: rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: flex-end;
@@ -205,6 +205,66 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* ── Photo comparison (До / После) ── */
+.photoCompare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border);
+}
+
+.photoCompareSlot {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.photoCompareLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--c-text3);
+  text-align: center;
+}
+
+.photoCompareThumb {
+  display: block;
+  border: none;
+  padding: 0;
+  background: none;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  cursor: pointer;
+  aspect-ratio: 4/3;
+  width: 100%;
+
+  &:active { opacity: 0.85; }
+}
+
+.photoCompareImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: var(--r-md);
+}
+
+.photoComparePlaceholder {
+  aspect-ratio: 4/3;
+  width: 100%;
+  border-radius: var(--r-md);
+  background: var(--c-surface2);
+  border: 1.5px dashed var(--c-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--c-text3);
+}
+
 /* ── Tab pane (inner wrapper) ── */
 .tabPane {
   padding: 2px 0 24px;
@@ -321,13 +381,19 @@
 }
 
 .logDot {
-  width: 9px;
-  height: 9px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: var(--c-blue);
   border: 2px solid var(--c-bg);
   box-shadow: 0 0 0 1.5px var(--c-border);
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: #fff;
+  font-weight: 700;
 }
 
 .logLine {
@@ -357,10 +423,20 @@
   line-height: 1.35;
 }
 
+.logStatus {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-blue);
+}
+
 .logDate {
   font-size: 11px;
   color: var(--c-text3);
   font-variant-numeric: tabular-nums;
+}
+
+.logDateAbs {
+  opacity: 0.7;
 }
 
 /* ══════════════════════════════════════════

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSwipeCard } from "../../hooks/useSwipeCard";
-import { STATUS_META, STATUS_TRANSITIONS } from "../../utils/status";
+import { STATUS_META } from "../../utils/status";
 import { timeAgo } from "../../utils/timeAgo";
 import { usePhotoSrc } from "../../hooks/usePhotoSrc";
 import PhotoViewer from "../PhotoViewer/PhotoViewer";
@@ -26,7 +26,7 @@ function urgencyOf(leakId, status) {
 
 export default function LeakCardCompact({
   leak,
-  onStatusChange,
+  onPickStatus,
   onOpenDetails,
   nearbyDist,
   selected = false,
@@ -35,7 +35,7 @@ export default function LeakCardCompact({
   const { swipeState, swipeOffset, close, handlers } = useSwipeCard({
     leak,
     onOpenDetails,
-    onStatusChange,
+    onPickStatus,
   });
 
   const swiping    = swipeOffset !== 0;
@@ -44,8 +44,6 @@ export default function LeakCardCompact({
 
   const status     = leak.status ?? "open";
   const meta       = STATUS_META[status];
-  const transition = STATUS_TRANSITIONS[status];
-  const nextMeta   = transition ? STATUS_META[transition.next] : null;
   const ago        = timeAgo(leak.id);
   const urgency    = urgencyOf(leak.id, status);
 
@@ -73,11 +71,11 @@ export default function LeakCardCompact({
           </div>
         )}
 
-        {/* ── Swipe hint: left → next status ── */}
-        {goingLeft && transition && (
-          <div className={s.hintLeft} data-next={transition.next}>
-            <span className={s.hintIcon}>{nextMeta?.label ?? "→"}</span>
-            <span className={s.hintText}>{transition.action}</span>
+        {/* ── Swipe hint: left → status picker ── */}
+        {goingLeft && (
+          <div className={s.hintLeft}>
+            <span className={s.hintIcon}>☰</span>
+            <span className={s.hintText}>Статус</span>
           </div>
         )}
 

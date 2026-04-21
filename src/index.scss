@@ -119,3 +119,6 @@ button { font-family: inherit; cursor: pointer; }
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 4px; }
+.leaflet-bottom.leaflet-right{
+  display: none;
+}

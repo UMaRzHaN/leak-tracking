@@ -1,35 +1,9 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 
 import s from "./MobileSheet.module.scss";
 import Notification from "../Notification/Notification";
-import { saveLeaksKML } from "../../services/export/kml";
-import { useProject } from "../../app/settings/ProjectContext";
-import { getProjectMobileDir } from "../../app/settings/storageKeys";
 
 const NO_LABEL = "Не указано";
-
-/* =========================
-   EXPORT HANDLER
-========================= */
-async function handleExport({ leaks, saveFn, onSuccess, onError }) {
-  try {
-    if (!leaks.length) {
-      onError?.("Нет данных для экспорта");
-      return;
-    }
-
-    if (!saveFn) {
-      onError?.("Экспорт недоступен для этого проекта");
-      return;
-    }
-
-    const result = await saveFn();
-    onSuccess?.(result);
-  } catch (e) {
-    console.error(e);
-    onError?.("Ошибка экспорта");
-  }
-}
 
 /* =========================
    COMPONENT
@@ -44,15 +18,8 @@ export default function MobileSheet({
   onClose,
   onSelect,
 }) {
-  const { project } = useProject();
-  const mkdir = getProjectMobileDir(project);
-
   const [query, setQuery] = useState("");
   const [notification, setNotification] = useState(null);
-
-  const notify = useCallback((type, message) => {
-    setNotification({ type, message });
-  }, []);
 
   /* =========================
      SEARCH FILTER
@@ -107,27 +74,6 @@ export default function MobileSheet({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
-            </div>
-
-            {/* ===== EXPORT ===== */}
-            <div className={s.sheetActions}>
-              <button
-                className={`${s.exportBtn} ${s.exportKml}`}
-                onClick={() =>
-                  handleExport({
-                    leaks: filteredLeaks,
-                    saveFn: () => saveLeaksKML(filteredLeaks, project, mkdir),
-                    onSuccess: (result) =>
-                      notify(
-                        "success",
-                        result?.message || "Файл успешно экспортирован",
-                      ),
-                    onError: (message) => notify("error", message),
-                  })
-                }
-              >
-                Экспорт карты (KML)
-              </button>
             </div>
 
             {/* ===== LIST ===== */}

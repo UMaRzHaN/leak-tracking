@@ -34,6 +34,7 @@ const EXCEL_HEADERS = [
   "Потенциал глобального потепления",
   "Тип привода", "Тип присоединения", "Тип установки",
   "Координата X", "Координата Y", "Фото утечки",
+  "Статус", "Фото после ремонта", "Дата устранения",
 ];
 
 const EXCEL_KEYS = [
@@ -50,6 +51,7 @@ const EXCEL_KEYS = [
   "GWP",
   "actuator_type", "connection_type", "installation_type",
   "lat", "lng", "photo",
+  "status", "photo_after", "resolvedAt",
 ];
 
 const MIDSTREAM_CONFIG = Object.freeze({

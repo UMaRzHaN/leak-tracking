@@ -143,6 +143,43 @@
   &:hover { border-color: var(--c-blue); color: var(--c-blue); background: var(--c-blue-dim); }
 }
 
+/* ── Emissions summary ── */
+.emissionsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--c-border);
+}
+
+.emissionsCard {
+  background: var(--c-bg);
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.emissionsVal {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--c-text);
+  line-height: 1.2;
+}
+
+.emissionsUnit {
+  font-size: 10px;
+  color: var(--c-text3);
+  font-weight: 600;
+}
+
+.emissionsLabel {
+  font-size: 10px;
+  color: var(--c-text2);
+  margin-top: 2px;
+}
+
 /* ── Danger zone ── */
 .dangerBody {
   padding: 14px 16px;
@@ -174,4 +211,48 @@
   transition: all var(--t-fast);
   &:hover { background: #fef2f2; }
   &:active { transform: scale(0.97); }
+}
+
+/* ── Map cache ── */
+.cacheBody {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cacheInfo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cacheLabel {
+  font-size: 14px;
+  color: var(--c-text);
+  font-weight: 500;
+}
+
+.cacheSize {
+  font-size: 13px;
+  color: var(--c-text2);
+}
+
+.cacheBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 12px;
+  border-radius: var(--r-lg);
+  border: 1.5px solid var(--c-border);
+  background: transparent;
+  color: var(--c-text2);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t-fast);
+  &:hover { background: var(--c-surface2); }
+  &:active { transform: scale(0.97); }
+  &:disabled { opacity: 0.4; cursor: default; }
 }

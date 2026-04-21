@@ -4,7 +4,7 @@ import { useProjectConfig } from "../../app/settings/useProjectConfig";
 import { useProject } from "../../app/settings/ProjectContext";
 import { useProjectVars } from "../../app/settings/useProjectVars";
 import { calculations } from "../../utils/calculations/calculations";
-import { nextStatus } from "../../utils/status";
+import { nextStatus, STATUS } from "../../utils/status";
 import { timeAgo } from "../../utils/timeAgo";
 import { normalizeNumber } from "../../utils/normalize/normalizeNumber";
 import { hapticWarning } from "../../utils/haptics";
@@ -12,6 +12,7 @@ import PhotoBlock from "./components/PhotoBlock";
 import ViewBlock from "./components/ViewBlock";
 import EditBlock from "./components/EditBlock";
 import PhotoViewer from "../PhotoViewer/PhotoViewer";
+import ResolveModal from "../ResolveModal/ResolveModal";
 import s from "./LeakDetailsSheet.module.scss";
 
 const DELETE_ARM_MS = 3000;
@@ -40,6 +41,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
   const [saving, setSaving] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [deleteArmed, setDeleteArmed] = useState(false);
+  const [resolveOpen, setResolveOpen] = useState(false);
 
   const prevLeakIdRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -81,6 +83,18 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
   /* ── Save ── */
   const handleSave = async () => {
     if (saving) return;
+
+    const lat = Number(localEdit.lat ?? leak.lat);
+    const lng = Number(localEdit.lng ?? leak.lng);
+    if (Number.isFinite(lat) && (lat < -90 || lat > 90)) {
+      alert(`Широта ${lat} вне допустимого диапазона [-90, 90]`);
+      return;
+    }
+    if (Number.isFinite(lng) && (lng < -180 || lng > 180)) {
+      alert(`Долгота ${lng} вне допустимого диапазона [-180, 180]`);
+      return;
+    }
+
     setSaving(true);
     try {
       const photoPath = await savePhoto();
@@ -136,20 +150,38 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     onClose();
   };
 
-  /* ── Status change (instant save) ── */
-  const handleStatusChange = async () => {
+  /* ── Status change (instant save, or open resolve modal) ── */
+  const handleStatusChange = () => {
     const newStatus = nextStatus(leak.status);
+    if (newStatus === STATUS.RESOLVED) {
+      setResolveOpen(true);
+      return;
+    }
     onSave({
       ...leak,
       status: newStatus,
       updatedAt: Date.now(),
       history: [
         ...(leak.history ?? []),
-        {
-          action: "status_changed",
-          to: newStatus,
-          date: new Date().toISOString(),
-        },
+        { action: "status_changed", to: newStatus, date: new Date().toISOString() },
+      ],
+    });
+  };
+
+  const handleResolveConfirm = ({ photo_after, materials_equipment, note }) => {
+    setResolveOpen(false);
+    const now = new Date().toISOString();
+    onSave({
+      ...leak,
+      status: STATUS.RESOLVED,
+      resolvedAt: Date.now(),
+      photo_after: photo_after ?? leak.photo_after,
+      materials_equipment: materials_equipment ?? leak.materials_equipment,
+      note: note ?? leak.note,
+      updatedAt: Date.now(),
+      history: [
+        ...(leak.history ?? []),
+        { action: "status_changed", to: STATUS.RESOLVED, date: now },
       ],
     });
   };
@@ -341,6 +373,14 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
 
       {viewerOpen && src && (
         <PhotoViewer src={src} onClose={() => setViewerOpen(false)} />
+      )}
+
+      {resolveOpen && (
+        <ResolveModal
+          leak={leak}
+          onConfirm={handleResolveConfirm}
+          onClose={() => setResolveOpen(false)}
+        />
       )}
     </>
   );

@@ -11,6 +11,7 @@ export default function Autocomplete({
   placeholder = "",
   required = false,
   onComplete,
+  hint,
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value ?? "");
@@ -117,6 +118,7 @@ export default function Autocomplete({
         </ul>
       )}
 
+      {hint && !error && <p className={s.hint}>{hint}</p>}
       {error && <div className={s.formError}>{error}</div>}
     </div>
   );

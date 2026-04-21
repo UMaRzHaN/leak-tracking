@@ -1,10 +1,11 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { useProject } from "../../app/settings/ProjectContext";
 import { useProjectVars } from "../../app/settings/useProjectVars";
 import { useProjectData } from "../../app/hooks/useProjectData";
 import { PROJECT_META } from "../../configs/projects";
+import { getMapCacheInfo, clearMapCache } from "../../services/maps/tileCache";
 import SettingsHeader from "./Header/SettingsHeader";
 import SettingsModal from "../../components/SettingsModal/SettingsModal";
 import Notification from "../../components/Notification/Notification";
@@ -28,7 +29,12 @@ export default function Settings({ setPage, clearForm, clearVoiceData, clearData
   const [notification, setNotification] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [addingProject, setAddingProject] = useState(false);
+  const [cacheInfo, setCacheInfo] = useState(null);
   const importInputRef = useRef(null);
+
+  useEffect(() => {
+    getMapCacheInfo().then(setCacheInfo);
+  }, []);
 
   const notify = useCallback((type, message) => setNotification({ type, message }), []);
 
@@ -36,7 +42,7 @@ export default function Settings({ setPage, clearForm, clearVoiceData, clearData
      PROJECT ACTIONS
   ========================= */
   const handleSelect = useCallback(
-    (id) => {
+    async (id) => {
       if (id === activeProject?.id) return;
 
       const ok = window.confirm(
@@ -47,7 +53,9 @@ export default function Settings({ setPage, clearForm, clearVoiceData, clearData
       selectProject(id);
       clearForm?.();
       clearVoiceData?.();
-      notify("info", "Проект переключён");
+      await clearMapCache();
+      setCacheInfo({ count: 0, sizeMB: 0 });
+      notify("info", "Проект переключён, кэш карты очищен");
     },
     [activeProject, selectProject, clearForm, clearVoiceData, notify],
   );
@@ -153,6 +161,14 @@ export default function Settings({ setPage, clearForm, clearVoiceData, clearData
     if (discarded) notify("warning", "Изменения отменены");
   }, [notify]);
 
+  const handleClearMapCache = useCallback(async () => {
+    const ok = window.confirm("Очистить кэш карты? Тайлы будут перекачаны при следующем открытии карты.");
+    if (!ok) return;
+    await clearMapCache();
+    setCacheInfo({ count: 0, sizeMB: 0 });
+    notify("success", "Кэш карты очищен");
+  }, [notify]);
+
   const handleClearDatabase = useCallback(() => {
     const ok = window.confirm(
       "Удалить все записи об утечках?\n\nЭто действие необратимо. Фото-файлы сохранятся на устройстве.",
@@ -240,6 +256,41 @@ export default function Settings({ setPage, clearForm, clearVoiceData, clearData
           </section>
         )}
 
+        {/* ── Суммарные потери по проекту ── */}
+        {activeProject && data.length > 0 && (() => {
+          const active = data.filter((l) => l.status !== "resolved");
+          const totalMethane = active.reduce((sum, l) => sum + (Number(l.Total_Annual_Methane_Loss_m3_y) || 0), 0);
+          const totalCO2 = active.reduce((sum, l) => sum + (Number(l.Emissions_t_CO2eq_year) || 0), 0);
+          if (totalMethane === 0 && totalCO2 === 0) return null;
+          const fmt = (n) => n >= 1000
+            ? `${(n / 1000).toLocaleString("ru-RU", { maximumFractionDigits: 1 })} тыс.`
+            : n.toLocaleString("ru-RU", { maximumFractionDigits: 1 });
+          return (
+            <section className={s.section}>
+              <div className={s.sectionHead}>
+                <h2 className={s.sectionTitle}>Потери проекта (открытые)</h2>
+              </div>
+              <div className={s.emissionsGrid}>
+                <div className={s.emissionsCard}>
+                  <span className={s.emissionsVal}>{fmt(totalMethane)}</span>
+                  <span className={s.emissionsUnit}>м³/год</span>
+                  <span className={s.emissionsLabel}>Потери газа</span>
+                </div>
+                <div className={s.emissionsCard}>
+                  <span className={s.emissionsVal}>{fmt(totalCO2)}</span>
+                  <span className={s.emissionsUnit}>т CO₂-экв/год</span>
+                  <span className={s.emissionsLabel}>Выбросы</span>
+                </div>
+                <div className={s.emissionsCard}>
+                  <span className={s.emissionsVal}>{active.length}</span>
+                  <span className={s.emissionsUnit}>записей</span>
+                  <span className={s.emissionsLabel}>Активных утечек</span>
+                </div>
+              </div>
+            </section>
+          );
+        })()}
+
         {/* ── Параметры расчёта ── */}
         {activeProject && (
           <section className={s.section}>
@@ -260,6 +311,35 @@ export default function Settings({ setPage, clearForm, clearVoiceData, clearData
             </div>
           </section>
         )}
+
+        {/* ── Кэш карты ── */}
+        <section className={s.section}>
+          <div className={s.sectionHead}>
+            <h2 className={s.sectionTitle}>Кэш карты</h2>
+          </div>
+          <div className={s.cacheBody}>
+            <div className={s.cacheInfo}>
+              <span className={s.cacheLabel}>Спутниковые тайлы</span>
+              {cacheInfo ? (
+                <span className={s.cacheSize}>
+                  {cacheInfo.count > 0
+                    ? `${cacheInfo.count} тайлов · ~${cacheInfo.sizeMB} МБ`
+                    : "Кэш пуст"}
+                </span>
+              ) : (
+                <span className={s.cacheSize}>Загрузка...</span>
+              )}
+            </div>
+            <button
+              className={s.cacheBtn}
+              type="button"
+              onClick={handleClearMapCache}
+              disabled={!cacheInfo || cacheInfo.count === 0}
+            >
+              🗺 Очистить кэш карты
+            </button>
+          </div>
+        </section>
 
         {/* ── Опасная зона ── */}
         {activeProject && (

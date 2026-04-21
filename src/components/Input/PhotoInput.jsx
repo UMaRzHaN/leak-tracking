@@ -7,7 +7,7 @@ export default function PhotoInput({
   onChange,
   label = "Фото",
   required = false,
-  error,
+  error = false,
 }) {
   const inputRef = useRef(null);
   const aliveRef = useRef(true);
@@ -50,7 +50,7 @@ export default function PhotoInput({
     [pickFromBrowser, onChange],
   );
 
-  const showError = required && !value;
+  const showError = error;
 
   return (
     <div

@@ -1,18 +1,18 @@
 import { useState } from "react";
 import { useSwipeActions } from "./useSwipeActions";
 
-export function useSwipeCard({ onOpenDetails, leak, onStatusChange }) {
+export function useSwipeCard({ onOpenDetails, leak, onPickStatus }) {
   const [swipeState, setSwipeState]   = useState(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
 
   const swipe = useSwipeActions({
     onSwipeMove: (offset) => setSwipeOffset(offset),
 
-    // 👈 справа → налево — СМЕНИТЬ СТАТУС
+    // 👈 справа → налево — открыть выбор статуса
     onSwipeLeft: () => {
       setSwipeState("left");
       setTimeout(() => {
-        onStatusChange?.(leak.id);
+        onPickStatus?.(leak);
         setSwipeState(null);
         setSwipeOffset(0);
       }, 200);

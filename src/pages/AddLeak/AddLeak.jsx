@@ -62,6 +62,17 @@ export default function AddLeak({
         const lat = toNumber(coords?.lat);
         const lng = toNumber(coords?.lng);
 
+        if (Number.isFinite(lat) && (lat < -90 || lat > 90)) {
+          hapticWarning();
+          alert(`Широта ${lat} вне допустимого диапазона [-90, 90]`);
+          return;
+        }
+        if (Number.isFinite(lng) && (lng < -180 || lng > 180)) {
+          hapticWarning();
+          alert(`Долгота ${lng} вне допустимого диапазона [-180, 180]`);
+          return;
+        }
+
         /* ── Save photo ── */
         let photoPath = null;
         if (row.photo?.raw) {

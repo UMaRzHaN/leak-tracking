@@ -20,6 +20,7 @@ export default function InputCard({
   required = false,
   rightSlot,
   rows = 3,
+  hint,
 }) {
   const isTextarea = as === "textarea";
   const isNumber   = type === "number";
@@ -86,6 +87,7 @@ export default function InputCard({
         )}
       </div>
 
+      {hint && !error && <p className={s.hint}>{hint}</p>}
       {error && <p className={s.errorMsg}>{error}</p>}
     </div>
   );

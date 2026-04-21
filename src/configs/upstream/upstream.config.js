@@ -31,6 +31,7 @@ const EXCEL_HEADERS = [
   "МТР ремонта (предполагаемый)", "Примечание",
   "Тип привода", "Тип присоединения", "Тип установки",
   "Координата X", "Координата Y", "Фото утечки",
+  "Статус", "Фото после ремонта", "Дата устранения",
 ];
 
 const EXCEL_KEYS = [
@@ -43,6 +44,7 @@ const EXCEL_KEYS = [
   "materials_equipment", "note",
   "actuator_type", "connection_type", "installation_type",
   "lat", "lng", "photo",
+  "status", "photo_after", "resolvedAt",
 ];
 
 const UPSTREAM_CONFIG = Object.freeze({

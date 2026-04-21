@@ -110,6 +110,14 @@
   margin: 0;
 }
 
+/* ── Hint text ── */
+.hint {
+  font-size: 11px;
+  color: var(--c-text3);
+  margin: 0;
+  line-height: 1.4;
+}
+
 /* ══════════════════════════════════════════
    Step renderer
    ══════════════════════════════════════════ */

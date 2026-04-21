@@ -1,15 +1,23 @@
 import { useState, useMemo, useCallback } from "react";
 import LeakCardCompact from "../../components/LeakCardCompact/LeakCardCompact";
 import LeakDetailsSheet from "../../components/LeakDetailsSheet/LeakDetailsSheet";
+import StatusPickerModal from "../../components/StatusPickerModal/StatusPickerModal";
+import ResolveModal from "../../components/ResolveModal/ResolveModal";
 import VirtualizedLeakList from "../../components/VirtualizedLeakList/VirtualizedLeakList";
 import Notification from "../../components/Notification/Notification";
-import { STATUS, STATUS_META, STATUS_ORDER, nextStatus } from "../../utils/status";
+import { STATUS, STATUS_META, STATUS_ORDER } from "../../utils/status";
 import { hapticSuccess } from "../../utils/haptics";
 import { filterNearbyLeaks } from "../../utils/geoUtils";
 import { exportToExcel } from "../../services/export/excel";
 import { useProjectData } from "../../app/hooks/useProjectData";
 import { useProjectConfig } from "../../app/settings/useProjectConfig";
 import s from "./DataBase.module.scss";
+
+function fmtTs(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  return `${String(d.getDate()).padStart(2,"0")}.${String(d.getMonth()+1).padStart(2,"0")}.${d.getFullYear()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+}
 
 const ALL = "all";
 const NEARBY = "nearby";
@@ -24,7 +32,7 @@ function round2(v) {
 function prepareRows(data) {
   return data.map((r) => ({
     ...r,
-    status: r.status ?? "open",
+    status: STATUS_META[r.status ?? STATUS.OPEN]?.label ?? r.status ?? "",
     date:
       r.date ??
       (r.created_at
@@ -32,6 +40,9 @@ function prepareRows(data) {
         : ""),
     Total_Annual_Methane_Loss_m3_y: round2(r.Total_Annual_Methane_Loss_m3_y),
     Emissions_t_CO2eq_year: round2(r.Emissions_t_CO2eq_year),
+    photo:        r.photo      ? "Есть" : "",
+    photo_after:  r.photo_after ? "Есть" : "",
+    resolvedAt:   fmtTs(r.resolvedAt),
   }));
 }
 
@@ -41,6 +52,9 @@ export default function DataBase({ data, setData, coords }) {
   const [statusFilter, setFilter] = useState(ALL);
   const [notification, setNotification] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [pickerLeak, setPickerLeak] = useState(null);
+  const [resolveLeak, setResolveLeak] = useState(null);
+  const [bulkResolveOpen, setBulkResolveOpen] = useState(false);
 
   const { save } = useProjectData();
   const projectConfig = useProjectConfig();
@@ -71,9 +85,25 @@ export default function DataBase({ data, setData, coords }) {
     async (status) => {
       if (!selectedIds.size) return;
 
+      if (status === STATUS.RESOLVED) {
+        setBulkResolveOpen(true);
+        return;
+      }
+
       const affected = data.filter((item) => selectedIds.has(item.id));
+      const now = new Date().toISOString();
       const next = data.map((item) =>
-        selectedIds.has(item.id) ? { ...item, status } : item,
+        selectedIds.has(item.id)
+          ? {
+              ...item,
+              status,
+              updatedAt: Date.now(),
+              history: [
+                ...(item.history ?? []),
+                { action: "status_changed", to: status, date: now },
+              ],
+            }
+          : item,
       );
 
       setData(next);
@@ -83,6 +113,36 @@ export default function DataBase({ data, setData, coords }) {
         "success",
         `Статус изменён у ${affected.length} ${pluralLeaks(affected.length)}`,
       );
+      clearSelection();
+    },
+    [clearSelection, data, notify, save, selectedIds, setData],
+  );
+
+  const handleBulkResolveConfirm = useCallback(
+    async ({ materials_equipment, note }) => {
+      setBulkResolveOpen(false);
+      const affected = data.filter((item) => selectedIds.has(item.id));
+      const now = new Date().toISOString();
+      const next = data.map((item) =>
+        selectedIds.has(item.id)
+          ? {
+              ...item,
+              status: STATUS.RESOLVED,
+              resolvedAt: Date.now(),
+              ...(materials_equipment != null && { materials_equipment }),
+              ...(note != null && { note }),
+              updatedAt: Date.now(),
+              history: [
+                ...(item.history ?? []),
+                { action: "status_changed", to: STATUS.RESOLVED, date: now },
+              ],
+            }
+          : item,
+      );
+      setData(next);
+      await save(next);
+      hapticSuccess();
+      notify("success", `Устранено ${affected.length} ${pluralLeaks(affected.length)}`);
       clearSelection();
     },
     [clearSelection, data, notify, save, selectedIds, setData],
@@ -147,17 +207,73 @@ export default function DataBase({ data, setData, coords }) {
   const selectedCount = selectedIds.size;
   const allDisplayedSelected = displayed.length > 0 && displayed.every((l) => selectedIds.has(l.id));
 
-  /* ── Status change via swipe ── */
-  const handleStatusChange = useCallback(
-    async (id) => {
+  /* ── Swipe → open status picker ── */
+  const handlePickStatus = useCallback((leak) => {
+    setPickerLeak(leak);
+  }, []);
+
+  /* ── Status picker → apply selected status ── */
+  const handleStatusSelect = useCallback(
+    async (newStatus) => {
+      const leak = pickerLeak;
+      setPickerLeak(null);
+      if (!leak || newStatus === leak.status) return;
+
+      if (newStatus === STATUS.RESOLVED) {
+        setResolveLeak(leak);
+        return;
+      }
+
       const next = data.map((r) =>
-        r.id === id ? { ...r, status: nextStatus(r.status) } : r,
+        r.id === leak.id
+          ? {
+              ...r,
+              status: newStatus,
+              updatedAt: Date.now(),
+              history: [
+                ...(r.history ?? []),
+                { action: "status_changed", to: newStatus, date: new Date().toISOString() },
+              ],
+            }
+          : r,
       );
       setData(next);
       await save(next);
       hapticSuccess();
     },
-    [data, save, setData],
+    [data, pickerLeak, save, setData],
+  );
+
+  /* ── Resolve modal confirm ── */
+  const handleResolveConfirm = useCallback(
+    async ({ photo_after, materials_equipment, note }) => {
+      const leak = resolveLeak;
+      setResolveLeak(null);
+      if (!leak) return;
+
+      const now = new Date().toISOString();
+      const next = data.map((r) =>
+        r.id === leak.id
+          ? {
+              ...r,
+              status: STATUS.RESOLVED,
+              resolvedAt: Date.now(),
+              photo_after: photo_after ?? r.photo_after,
+              materials_equipment: materials_equipment ?? r.materials_equipment,
+              note: note ?? r.note,
+              updatedAt: Date.now(),
+              history: [
+                ...(r.history ?? []),
+                { action: "status_changed", to: STATUS.RESOLVED, date: now },
+              ],
+            }
+          : r,
+      );
+      setData(next);
+      await save(next);
+      hapticSuccess();
+    },
+    [data, resolveLeak, save, setData],
   );
 
   /* ── Save from details ── */
@@ -338,7 +454,7 @@ export default function DataBase({ data, setData, coords }) {
                 key={leak.id}
                 leak={leak}
                 onOpenDetails={setActiveLeak}
-                onStatusChange={handleStatusChange}
+                onPickStatus={handlePickStatus}
                 nearbyDist={leak._nearbyDist}
                 selected={selectedIds.has(leak.id)}
                 onToggleSelect={() => toggleSelected(leak.id)}
@@ -365,6 +481,30 @@ export default function DataBase({ data, setData, coords }) {
           onClose={() => setActiveLeak(null)}
           onSave={handleSave}
           onDelete={handleDelete}
+        />
+      )}
+
+      {pickerLeak && (
+        <StatusPickerModal
+          current={pickerLeak.status ?? STATUS.OPEN}
+          onSelect={handleStatusSelect}
+          onClose={() => setPickerLeak(null)}
+        />
+      )}
+
+      {resolveLeak && (
+        <ResolveModal
+          leak={resolveLeak}
+          onConfirm={handleResolveConfirm}
+          onClose={() => setResolveLeak(null)}
+        />
+      )}
+
+      {bulkResolveOpen && (
+        <ResolveModal
+          bulkCount={selectedIds.size}
+          onConfirm={handleBulkResolveConfirm}
+          onClose={() => setBulkResolveOpen(false)}
         />
       )}
     </div>
