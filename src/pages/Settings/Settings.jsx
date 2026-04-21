@@ -5,8 +5,10 @@ import { useProject } from "../../app/settings/ProjectContext";
 import { useProjectVars } from "../../app/settings/useProjectVars";
 import { useProjectData } from "../../app/hooks/useProjectData";
 import { useTheme } from "../../app/hooks/useTheme";
+import { usePhotoStorage } from "../../hooks/usePhotoStorage";
 import { PROJECT_META } from "../../configs/projects";
 import { getMapCacheInfo, clearMapCache } from "../../services/maps/tileCache";
+import { exportBackupZip, importBackupZip } from "../../services/export/backup";
 import SettingsHeader from "./Header/SettingsHeader";
 import SettingsModal from "../../components/SettingsModal/SettingsModal";
 import Notification from "../../components/Notification/Notification";
@@ -14,7 +16,7 @@ import ProjectList from "./components/ProjectList";
 import AddProjectForm from "./components/AddProjectForm";
 import s from "./Settings.module.scss";
 
-export default function Settings({ setPage, clearForm, clearVoiceData, clearDatabase }) {
+export default function Settings({ setPage, clearForm, clearDatabase }) {
   const {
     projects,
     activeProject,
@@ -26,6 +28,7 @@ export default function Settings({ setPage, clearForm, clearVoiceData, clearData
 
   const { vars, setVars } = useProjectVars(activeProject?.id ?? null);
   const { data, save } = useProjectData();
+  const { getPhoto: idbGetPhoto, savePhoto } = usePhotoStorage();
 
   const { dark, toggle: toggleTheme } = useTheme();
   const [notification, setNotification] = useState(null);
@@ -33,6 +36,7 @@ export default function Settings({ setPage, clearForm, clearVoiceData, clearData
   const [addingProject, setAddingProject] = useState(false);
   const [cacheInfo, setCacheInfo] = useState(null);
   const importInputRef = useRef(null);
+  const importZipRef = useRef(null);
 
   useEffect(() => {
     getMapCacheInfo().then(setCacheInfo);
@@ -54,12 +58,11 @@ export default function Settings({ setPage, clearForm, clearVoiceData, clearData
 
       selectProject(id);
       clearForm?.();
-      clearVoiceData?.();
       await clearMapCache();
       setCacheInfo({ count: 0, sizeMB: 0 });
       notify("info", "Проект переключён, кэш карты очищен");
     },
-    [activeProject, selectProject, clearForm, clearVoiceData, notify],
+    [activeProject, selectProject, clearForm, notify],
   );
 
   const handleRename = useCallback(
@@ -145,6 +148,33 @@ export default function Settings({ setPage, clearForm, clearVoiceData, clearData
     };
     reader.readAsText(file);
   }, [save, notify]);
+
+  const handleExportZip = useCallback(async () => {
+    if (!data.length) { notify("warning", "Нет данных для экспорта"); return; }
+    try {
+      await exportBackupZip(data, idbGetPhoto, activeProject?.folderName ?? "backup");
+      notify("success", `ZIP-архив скачан (${data.length} записей)`);
+    } catch (err) {
+      notify("error", "Ошибка экспорта: " + err.message);
+    }
+  }, [data, idbGetPhoto, activeProject, notify]);
+
+  const handleImportZip = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const restoredLeaks = await importBackupZip(file, savePhoto);
+      const ok = window.confirm(
+        `Импортировать ${restoredLeaks.length} записей с фото?\n\nТекущие данные будут заменены.`,
+      );
+      if (!ok) { e.target.value = ""; return; }
+      await save(restoredLeaks);
+      notify("success", `Импортировано ${restoredLeaks.length} записей`);
+    } catch (err) {
+      notify("error", "Ошибка импорта: " + err.message);
+    }
+    e.target.value = "";
+  }, [savePhoto, save, notify]);
 
   /* =========================
      VARS MODAL
@@ -233,6 +263,21 @@ export default function Settings({ setPage, clearForm, clearVoiceData, clearData
             </div>
             <div className={s.backupBody}>
               <div className={s.backupRow}>
+                <button className={s.backupBtn} type="button" onClick={handleExportZip}>
+                  ⬆ Экспорт ZIP
+                </button>
+                <button
+                  className={`${s.backupBtn} ${s.restore}`}
+                  type="button"
+                  onClick={() => importZipRef.current?.click()}
+                >
+                  ⬇ Импорт ZIP
+                </button>
+              </div>
+              <p className={s.backupHint}>
+                ZIP-архив содержит все записи и фотографии. Рекомендуется для переноса данных между устройствами.
+              </p>
+              <div className={s.backupRow}>
                 <button className={s.backupBtn} type="button" onClick={handleExport}>
                   ⬆ Экспорт JSON
                 </button>
@@ -245,9 +290,16 @@ export default function Settings({ setPage, clearForm, clearVoiceData, clearData
                 </button>
               </div>
               <p className={s.backupHint}>
-                Экспорт сохраняет записи активного проекта в файл. Импорт заменяет текущие данные.
+                JSON — только записи, без фотографий.
               </p>
             </div>
+            <input
+              ref={importZipRef}
+              type="file"
+              accept=".zip,application/zip"
+              style={{ display: "none" }}
+              onChange={handleImportZip}
+            />
             <input
               ref={importInputRef}
               type="file"

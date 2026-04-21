@@ -60,6 +60,7 @@ export default function StepRenderer({
               value={form[f.key]}
               error={errors?.[f.key]}
               onChange={(v) => onChange(f.key, v)}
+              placeholder={f.placeholder}
               hint={f.hint}
             />
           );

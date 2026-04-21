@@ -15,10 +15,6 @@ export default function AddLeak({
   data,
   setData,
   coords,
-  voiceData,
-  clearVoiceData,
-  startVoiceInput,
-  stopVoiceInput,
   setPage,
   form,
   errors,
@@ -133,10 +129,6 @@ export default function AddLeak({
       <LeakForm
         onAdd={handleAdd}
         isSaving={isSaving}
-        voiceData={voiceData}
-        clearVoiceData={clearVoiceData}
-        startVoiceInput={startVoiceInput}
-        stopVoiceInput={stopVoiceInput}
         coords={coords}
         setPage={setPage}
         lastItem={data.at(-1)}

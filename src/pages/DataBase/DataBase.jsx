@@ -9,15 +9,16 @@ import { STATUS, STATUS_META, STATUS_ORDER } from "../../utils/status";
 import { PRIORITY_ORDER, PRIORITY_META } from "../../utils/priority";
 import { hapticSuccess } from "../../utils/haptics";
 import { filterNearbyLeaks } from "../../utils/geoUtils";
-import { exportToExcel } from "../../services/export/excel";
+import { exportToExcelZip } from "../../services/export/excel";
 import { useProjectData } from "../../app/hooks/useProjectData";
 import { useProjectConfig } from "../../app/settings/useProjectConfig";
+import { usePhotoStorage } from "../../hooks/usePhotoStorage";
 import s from "./DataBase.module.scss";
 
 function fmtTs(ts) {
   if (!ts) return "";
   const d = new Date(ts);
-  return `${String(d.getDate()).padStart(2,"0")}.${String(d.getMonth()+1).padStart(2,"0")}.${d.getFullYear()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
 const ALL = "all";
@@ -41,9 +42,9 @@ function prepareRows(data) {
         : ""),
     Total_Annual_Methane_Loss_m3_y: round2(r.Total_Annual_Methane_Loss_m3_y),
     Emissions_t_CO2eq_year: round2(r.Emissions_t_CO2eq_year),
-    photo:        r.photo      ? "Есть" : "",
-    photo_after:  r.photo_after ? "Есть" : "",
-    resolvedAt:   fmtTs(r.resolvedAt),
+    photo: r.photo ? "Есть" : "",
+    photo_after: r.photo_after ? "Есть" : "",
+    resolvedAt: fmtTs(r.resolvedAt),
   }));
 }
 
@@ -63,6 +64,7 @@ export default function DataBase({ data, setData, coords }) {
   const projectConfig = useProjectConfig();
   const { headers: excelHeaders, keysOrder: excelKeys } =
     projectConfig.export.excel;
+  const { getPhoto: idbGetPhoto } = usePhotoStorage();
 
   const hasGps = Boolean(coords?.lat && coords?.lng);
 
@@ -82,7 +84,6 @@ export default function DataBase({ data, setData, coords }) {
       return next;
     });
   }, []);
-
 
   const handleBulkStatusChange = useCallback(
     async (status) => {
@@ -153,7 +154,10 @@ export default function DataBase({ data, setData, coords }) {
       const remaining = resolveQueue.slice(1);
       setResolveQueue(remaining);
       if (remaining.length === 0) {
-        notify("success", `Устранено ${resolveTotal} ${pluralLeaks(resolveTotal)}`);
+        notify(
+          "success",
+          `Устранено ${resolveTotal} ${pluralLeaks(resolveTotal)}`,
+        );
         clearSelection();
         setResolveTotal(0);
       }
@@ -226,7 +230,8 @@ export default function DataBase({ data, setData, coords }) {
   }, [displayed]);
 
   const selectedCount = selectedIds.size;
-  const allDisplayedSelected = displayed.length > 0 && displayed.every((l) => selectedIds.has(l.id));
+  const allDisplayedSelected =
+    displayed.length > 0 && displayed.every((l) => selectedIds.has(l.id));
 
   /* ── Swipe → open status picker ── */
   const handlePickStatus = useCallback((leak) => {
@@ -253,7 +258,11 @@ export default function DataBase({ data, setData, coords }) {
               updatedAt: Date.now(),
               history: [
                 ...(r.history ?? []),
-                { action: "status_changed", to: newStatus, date: new Date().toISOString() },
+                {
+                  action: "status_changed",
+                  to: newStatus,
+                  date: new Date().toISOString(),
+                },
               ],
             }
           : r,
@@ -407,7 +416,11 @@ export default function DataBase({ data, setData, coords }) {
             <button
               key={p}
               className={`${s.priorityTab} ${isActive ? s.priorityTabActive : ""}`}
-              style={isActive ? { borderColor: m.border, color: m.color, background: m.bg } : undefined}
+              style={
+                isActive
+                  ? { borderColor: m.border, color: m.color, background: m.bg }
+                  : undefined
+              }
               onClick={() => setPriorityFilter(isActive ? ALL : p)}
             >
               {m.short}
@@ -426,12 +439,12 @@ export default function DataBase({ data, setData, coords }) {
             : null}
         </span>
 
-        <div className={`${s.resultsActions} ${selectedCount > 0 ? s.resultsActionsSelected : ""}`}>
+        <div
+          className={`${s.resultsActions} ${selectedCount > 0 ? s.resultsActionsSelected : ""}`}
+        >
           {selectedCount > 0 ? (
             <>
-              <span className={s.selectionInfo}>
-                Выбрано: {selectedCount}
-              </span>
+              <span className={s.selectionInfo}>Выбрано: {selectedCount}</span>
               <button className={s.actionBtn} onClick={clearSelection}>
                 Снять выбор
               </button>
@@ -455,7 +468,9 @@ export default function DataBase({ data, setData, coords }) {
               {visible.length > 0 && (
                 <button
                   className={s.actionBtn}
-                  onClick={allDisplayedSelected ? clearSelection : selectDisplayed}
+                  onClick={
+                    allDisplayedSelected ? clearSelection : selectDisplayed
+                  }
                 >
                   {allDisplayedSelected ? "Снять всё" : "Выбрать всё"}
                 </button>
@@ -464,21 +479,23 @@ export default function DataBase({ data, setData, coords }) {
               {data.length > 0 && (
                 <button
                   className={s.exportBtn}
-                  onClick={() => {
+                  onClick={async () => {
                     try {
-                      exportToExcel(
+                      await exportToExcelZip(
+                        displayed,
                         prepareRows(displayed),
                         excelHeaders,
                         excelKeys,
                         "утечки",
+                        idbGetPhoto,
                       );
-                      notify("success", "Excel-файл успешно скачан");
+                      notify("success", "ZIP-архив успешно скачан");
                     } catch (e) {
                       console.error(e);
-                      notify("error", "Ошибка экспорта Excel");
+                      notify("error", "Ошибка экспорта");
                     }
                   }}
-                  title="Экспорт в Excel"
+                  title="Экспорт в Excel + фото (ZIP)"
                 >
                   📥 XLSX
                 </button>
@@ -548,9 +565,15 @@ export default function DataBase({ data, setData, coords }) {
       {resolveQueue.length > 0 && (
         <ResolveModal
           leak={resolveQueue[0]}
-          progress={{ current: resolveTotal - resolveQueue.length + 1, total: resolveTotal }}
+          progress={{
+            current: resolveTotal - resolveQueue.length + 1,
+            total: resolveTotal,
+          }}
           onConfirm={handleSequentialResolveConfirm}
-          onClose={() => { setResolveQueue([]); setResolveTotal(0); }}
+          onClose={() => {
+            setResolveQueue([]);
+            setResolveTotal(0);
+          }}
         />
       )}
     </div>

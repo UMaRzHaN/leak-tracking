@@ -14,7 +14,6 @@ import ProjectSetupScreen from "../pages/ProjectSetup/ProjectSetupScreen";
 
 import { useProject } from "./settings/ProjectContext";
 import { useProjectData } from "./hooks/useProjectData";
-import { useVoiceControl } from "./hooks/useVoiceControl";
 import { useAppState } from "./hooks/useAppState";
 
 import { cleanupLegacyLeaks } from "./migrations/cleanupLegacyLeaks";
@@ -63,8 +62,6 @@ export default function App() {
   /* =========================
      VOICE
   ========================= */
-  const { voiceData, clearVoiceData, startVoiceInput, stopVoiceInput } =
-    useVoiceControl();
   const { form, errors, handle, setErrors, setForm, clearForm } = useLeakForm();
 
   /* =========================
@@ -127,10 +124,6 @@ export default function App() {
             data={data}
             setData={save}
             coords={coords}
-            voiceData={voiceData}
-            clearVoiceData={clearVoiceData}
-            startVoiceInput={startVoiceInput}
-            stopVoiceInput={stopVoiceInput}
             setPage={setPage}
             form={form}
             errors={errors}
@@ -153,7 +146,6 @@ export default function App() {
         {page === "settings" && (
           <Settings
             setPage={setPage}
-            clearVoiceData={clearVoiceData}
             clearForm={clearForm}
             clearDatabase={clear}
           />

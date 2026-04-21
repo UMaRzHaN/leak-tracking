@@ -1,9 +1,11 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import { useStepValidation } from "./hooks/useStepValidation";
 import { useProjectConfig } from "../../app/settings/useProjectConfig";
+import { useVoiceControl } from "../../app/hooks/useVoiceControl";
 import AddLeakHeader from "./Header/AddLeakHeader";
 import AddLeakFooter from "./Footer/AddLeakFooter";
 import ConfirmSheet from "../ConfirmSheet/ConfirmSheet";
+import VoicePreviewSheet from "../VoicePreviewSheet/VoicePreviewSheet";
 import StepRenderer from "../Input/StepRenderer";
 import s from "./LeakForm.module.scss";
 import { useProject } from "../../app/settings/ProjectContext";
@@ -13,11 +15,7 @@ import { normalizeNumber } from "../../utils/normalize/normalizeNumber";
 
 export default function LeakForm({
   onAdd,
-  startVoiceInput,
-  stopVoiceInput,
-  clearVoiceData,
   setPage,
-  voiceData,
   lastItem,
   form,
   errors,
@@ -28,18 +26,10 @@ export default function LeakForm({
 }) {
   const projectConfig = useProjectConfig();
   const { activeProject } = useProject();
-  const { vars } = useProjectVars(
-    activeProject?.id ?? null,
-    projectConfig.vars,
-  );
+  const { vars } = useProjectVars(activeProject?.id ?? null, projectConfig.vars);
 
   const STEPS = useMemo(() => projectConfig.steps.steps ?? [], [projectConfig]);
 
-  /**
-   * copyable из конфига приходит как массив объектов
-   * [{ key: "leak_id", ... }, ...]
-   * → нормализуем в массив строк
-   */
   const COPY_KEYS = useMemo(() => {
     const raw = projectConfig.system?.copyable ?? [];
     return raw.map((f) => (typeof f === "string" ? f : f.key));
@@ -49,164 +39,119 @@ export default function LeakForm({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const pendingKeysRef = useRef([]);
 
-  /**
-   * Автофокус первого поля при смене шага
-   */
-  useEffect(() => {
-    requestAnimationFrame(() => {
-      const first = document.querySelector("[data-enter-nav]");
-      first?.focus();
-    });
-  }, [step]);
-
-  const validateStep = useStepValidation({
-    steps: STEPS,
-    form,
-    setErrors,
-  });
-
-  const hasStepData = STEPS[step - 1]?.fields?.some(({ key }) => form[key]);
-
   /* ======================================
      NAVIGATION
   ====================================== */
-  const nextStep = () => {
+  const validateStep = useStepValidation({ steps: STEPS, form, setErrors });
+
+  const nextStep = useCallback(() => {
     if (!validateStep(step)) return;
     setStep((v) => Math.min(STEPS.length, v + 1));
-  };
+  }, [validateStep, step, STEPS.length]);
 
-  const prevStep = () => {
+  const prevStep = useCallback(() => {
     setStep((v) => Math.max(1, v - 1));
-  };
+  }, []);
 
   /* ======================================
      CLEAR FORM
   ====================================== */
-  const clearForm = () => {
+  const clearForm = useCallback(() => {
     stopVoiceInput?.();
-    clearVoiceData?.();
     setForm({});
     setErrors({});
     setStep(1);
-  };
+  }, [setForm, setErrors]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ======================================
-     FINAL SAVE (NO COPY LOGIC)
+     VOICE CONTROL (step-aware, in-form)
   ====================================== */
-  // Keys of numeric fields (array of objects → Set of strings)
+  const handleVoiceCommand = useCallback(
+    (command) => {
+      if (command === "next") nextStep();
+      else if (command === "back") prevStep();
+      else if (command === "save") save(); // eslint-disable-line no-use-before-define
+      else if (command === "clear") clearForm();
+    },
+    [nextStep, prevStep, clearForm], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const { pendingVoiceData, dismissVoiceData, startVoiceInput, stopVoiceInput } =
+    useVoiceControl({ step, steps: STEPS, onCommand: handleVoiceCommand });
+
+  const handleVoiceConfirm = useCallback(
+    (confirmedData) => {
+      setForm((prev) => ({ ...prev, ...confirmedData }));
+      dismissVoiceData();
+    },
+    [setForm, dismissVoiceData],
+  );
+
+  /* ======================================
+     FINAL SAVE
+  ====================================== */
   const NUMBER_KEYS = useMemo(() => {
     const raw = projectConfig?.system?.numeric ?? [];
     return new Set(raw.map((f) => (typeof f === "string" ? f : f.key)));
   }, [projectConfig]);
 
-  const commitSave = (data) => {
-    const d = new Date();
-
-    // Final coercion: partial strings like "3." → 3, strings → numbers
-    const coerced = { ...data };
-    NUMBER_KEYS.forEach((key) => {
-      if (coerced[key] !== undefined)
-        coerced[key] = normalizeNumber(coerced[key]);
-    });
-
-    const calculated = vars ? calculations(coerced, vars) : coerced;
-
-    onAdd?.({
-      ...calculated,
-      date: `${String(d.getDate()).padStart(2, "0")}.${String(
-        d.getMonth() + 1,
-      ).padStart(2, "0")}.${d.getFullYear()}`,
-      createdAt: new Date(),
-    });
-
-    clearForm();
-    setPage("");
-  };
+  const commitSave = useCallback(
+    (data) => {
+      const d = new Date();
+      const coerced = { ...data };
+      NUMBER_KEYS.forEach((key) => {
+        if (coerced[key] !== undefined) coerced[key] = normalizeNumber(coerced[key]);
+      });
+      const calculated = vars ? calculations(coerced, vars) : coerced;
+      onAdd?.({
+        ...calculated,
+        date: `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`,
+        createdAt: new Date(),
+      });
+      clearForm();
+      setPage("");
+    },
+    [NUMBER_KEYS, vars, onAdd, clearForm, setPage],
+  );
 
   /* ======================================
      SAVE WITH CONFIRM
   ====================================== */
-  const save = () => {
+  // eslint-disable-next-line no-inner-declarations
+  function save() {
     if (!validateStep(step)) return;
+    const finalData = { ...form, photo: form.photo };
 
-    // фото сохраняем как есть
-    const finalData = {
-      ...form,
-      photo: form.photo,
-    };
+    if (!lastItem) { commitSave(finalData); return; }
 
-    if (!lastItem) {
-      commitSave(finalData);
-      return;
-    }
+    const isEmptyValue = (v) =>
+      v === null || v === undefined || (typeof v === "string" && v.trim() === "");
+    const emptyKeys = COPY_KEYS.filter((key) => key !== "photo" && isEmptyValue(finalData[key]));
 
-    const isEmptyValue = (v) => {
-      if (v === null || v === undefined) return true;
-      if (typeof v === "string") return v.trim() === "";
-      return false;
-    };
-
-    const emptyKeys = COPY_KEYS.filter(
-      (key) => key !== "photo" && isEmptyValue(finalData[key]),
-    );
-
-    if (emptyKeys.length === 0) {
-      commitSave(finalData);
-      return;
-    }
+    if (emptyKeys.length === 0) { commitSave(finalData); return; }
 
     pendingKeysRef.current = emptyKeys;
     setConfirmOpen(true);
-  };
+  }
 
   /* ======================================
      CONFIRM HANDLERS
   ====================================== */
   const handleConfirmCopy = () => {
-    const merged = {
-      ...form,
-      photo: form.photo,
-    };
-
+    const merged = { ...form, photo: form.photo };
     pendingKeysRef.current.forEach((key) => {
-      if (lastItem[key] !== undefined) {
-        merged[key] = lastItem[key];
-      }
+      if (lastItem[key] !== undefined) merged[key] = lastItem[key];
     });
-
     setConfirmOpen(false);
     commitSave(merged);
   };
 
   const handleCancelCopy = () => {
     setConfirmOpen(false);
-    commitSave({
-      ...form,
-      photo: form.photo,
-    });
+    commitSave({ ...form, photo: form.photo });
   };
 
-  /* ======================================
-     APPLY VOICE DATA (STEP-AWARE)
-  ====================================== */
-  useEffect(() => {
-    if (!voiceData) return;
-
-    const currentFields = STEPS[step - 1]?.fields ?? [];
-    const allowedKeys = new Set(currentFields.map((f) => f.key));
-
-    setForm((prev) => {
-      const updated = { ...prev };
-
-      Object.entries(voiceData).forEach(([key, value]) => {
-        if (allowedKeys.has(key)) {
-          updated[key] = value;
-        }
-      });
-
-      return updated;
-    });
-  }, [voiceData, step, setForm, STEPS]);
+  const hasStepData = STEPS[step - 1]?.fields?.some(({ key }) => form[key]);
 
   return (
     <>
@@ -222,9 +167,7 @@ export default function LeakForm({
         <div className={s.stepHeader}>
           <div className={s.stepMeta}>
             <div>
-              <div className={s.stepLabel}>
-                Шаг {step} из {STEPS.length}
-              </div>
+              <div className={s.stepLabel}>Шаг {step} из {STEPS.length}</div>
               <div className={s.stepTitle}>{STEPS[step - 1]?.title}</div>
             </div>
             <div className={s.stepDots}>
@@ -233,13 +176,8 @@ export default function LeakForm({
                 return (
                   <div
                     key={n}
-                    className={[
-                      s.stepDot,
-                      n < step && s.done,
-                      n === step && s.active,
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
+                    className={[s.stepDot, n < step && s.done, n === step && s.active]
+                      .filter(Boolean).join(" ")}
                   >
                     {n}
                   </div>
@@ -248,10 +186,7 @@ export default function LeakForm({
             </div>
           </div>
           <div className={s.progressTrack}>
-            <div
-              className={s.progressFill}
-              style={{ width: `${(step / STEPS.length) * 100}%` }}
-            />
+            <div className={s.progressFill} style={{ width: `${(step / STEPS.length) * 100}%` }} />
           </div>
         </div>
 
@@ -275,7 +210,6 @@ export default function LeakForm({
               onClick={() => {
                 const currentStep = STEPS[step - 1];
                 if (!currentStep?.fields) return;
-
                 setForm((prev) => {
                   const updated = { ...prev };
                   currentStep.fields.forEach(({ key, type }) => {
@@ -284,12 +218,9 @@ export default function LeakForm({
                   });
                   return updated;
                 });
-
                 setErrors((prev) => {
                   const updated = { ...prev };
-                  currentStep.fields.forEach(({ key }) => {
-                    delete updated[key];
-                  });
+                  currentStep.fields.forEach(({ key }) => { delete updated[key]; });
                   return updated;
                 });
               }}
@@ -297,7 +228,6 @@ export default function LeakForm({
               Очистить шаг 🧽
             </button>
           )}
-
           <button className={s.clearAllSteps} type="button" onClick={clearForm}>
             Очистить все поля 🧹
           </button>
@@ -314,7 +244,15 @@ export default function LeakForm({
         />
       </div>
 
-      {/* ===== CONFIRM SHEET ===== */}
+      {/* ===== VOICE PREVIEW ===== */}
+      <VoicePreviewSheet
+        pending={pendingVoiceData}
+        steps={STEPS}
+        onConfirm={handleVoiceConfirm}
+        onDismiss={dismissVoiceData}
+      />
+
+      {/* ===== CONFIRM COPY SHEET ===== */}
       <ConfirmSheet
         open={confirmOpen}
         title="Заполнить из предыдущей записи?"

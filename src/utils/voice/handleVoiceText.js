@@ -3,60 +3,55 @@ import { normalizeNumberWords } from "./normalizeNumberWords";
 import { normalizeVoiceResult } from "./normalizeVoiceResult";
 import { normalizeSynonyms } from "./normalizeSynonyms";
 import { parseVoiceText } from "./parseVoiceText";
+import { fuzzyMatchOption } from "./fuzzyMatchOption";
+import { objects, components } from "../../data/dictionaries";
 
-export const handleVoiceText = (arr, text, setVoiceData, project) => {
+/**
+ * Full voice text processing pipeline.
+ *
+ * @param {string[]} arr          — synonym fields from project config
+ * @param {string}   text         — raw recognized text
+ * @param {Function} setVoiceData — state setter that receives parsed result
+ * @param {string}   project      — project type ("upstream"|"midstream"|"downstream")
+ * @param {string|null} dictationKey — key of textarea field in current step (for dictation mode)
+ */
+export const handleVoiceText = (arr, text, setVoiceData, project, dictationKey = null) => {
   const normalizedText = normalizeNumberWords(text);
   const parsed = parseVoiceText(normalizedText);
-  const normalizedresult = normalizeVoiceResult(parsed, project);
+  const data = normalizeSynonyms(normalizeVoiceResult(parsed, project), arr);
 
-  const data = normalizedresult || normalizeSynonyms(normalizedresult, arr);
-
-  if (data.component) {
-    data.component = normalizeBySynonyms(data.component, "component").value;
+  // Dictation mode: no structured fields recognized → put raw text into textarea field
+  if (dictationKey && Object.keys(data).length === 0) {
+    setVoiceData({ [dictationKey]: text });
+    return;
   }
 
+  // Synonym normalization
+  const SYNONYM_FIELDS = [
+    ["component", "component"],
+    ["actuator_type", "actuator_type"],
+    ["connection_type", "connection_type"],
+    ["installation_type", "installation_type"],
+    ["leak_cause", "leak_cause"],
+    ["leak_description", "leak_description"],
+    ["materials_equipment", "component"],
+  ];
+
+  for (const [field, synonymKey] of SYNONYM_FIELDS) {
+    if (data[field]) data[field] = normalizeBySynonyms(data[field], synonymKey).value;
+  }
+
+  // Fuzzy match object against objects dictionary
   if (data.object) {
-    data.object = normalizeBySynonyms(data.object, "component").value;
+    const synonymed = normalizeBySynonyms(data.object, "component").value;
+    const fuzzy = fuzzyMatchOption(data.object, objects);
+    data.object = fuzzy ?? synonymed;
   }
 
-  if (data.actuator_type) {
-    data.actuator_type = normalizeBySynonyms(
-      data.actuator_type,
-      "actuator_type",
-    ).value;
-  }
-
-  if (data.connection_type) {
-    data.connection_type = normalizeBySynonyms(
-      data.connection_type,
-      "connection_type",
-    ).value;
-  }
-
-  if (data.installation_type) {
-    data.installation_type = normalizeBySynonyms(
-      data.installation_type,
-      "installation_type",
-    ).value;
-  }
-
-  // midstream only — но нормализатор сам это обработает
-  if (data.leak_cause) {
-    data.leak_cause = normalizeBySynonyms(data.leak_cause, "leak_cause").value;
-  }
-
-  if (data.leak_description) {
-    data.leak_description = normalizeBySynonyms(
-      data.leak_description,
-      "leak_description",
-    ).value;
-  }
-
-  if (data.materials_equipment) {
-    data.materials_equipment = normalizeBySynonyms(
-      data.materials_equipment,
-      "component",
-    ).value;
+  // Fuzzy match component against components dictionary (fallback after synonyms)
+  if (data.component) {
+    const fuzzy = fuzzyMatchOption(data.component, components);
+    if (fuzzy) data.component = fuzzy;
   }
 
   setVoiceData(data);

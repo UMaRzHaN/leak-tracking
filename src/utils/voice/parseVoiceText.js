@@ -215,7 +215,6 @@ export const parseVoiceText = (text) => {
 
     const rawValue = matches.at(-1)?.groups?.value;
     if (!rawValue) return;
-    console.log(matches);
 
     if (key === "secondary") {
       const normalizedStation = normalizeStationName(rawValue);
