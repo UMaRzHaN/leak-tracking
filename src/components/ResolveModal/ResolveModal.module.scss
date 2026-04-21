@@ -44,11 +44,29 @@
   border-bottom: 1px solid var(--c-border);
 }
 
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
 .title {
   font-size: 16px;
   font-weight: 700;
   color: var(--c-text);
-  margin: 0 0 2px;
+  margin: 0;
+}
+
+.progressBadge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--c-blue);
+  background: var(--c-blue-dim);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 20px;
+  padding: 2px 8px;
+  white-space: nowrap;
 }
 
 .subtitle {

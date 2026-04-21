@@ -8,8 +8,8 @@
   bottom: 0;
 
   padding: 0 16px;
-  background: #ffffff;
-  border-top: 2px solid #e5e7eb;
+  background: var(--c-surface);
+  border-top: 2px solid var(--c-border);
   height: var(--app-footer);
 
   display: flex;
@@ -31,8 +31,8 @@
   font-weight: 600;
   cursor: pointer;
 
-  background: #f5f7fb;
-  color: #374151;
+  background: var(--c-surface2);
+  color: var(--c-text);
 
   transition: all 0.15s ease;
 
@@ -48,6 +48,6 @@
 
 /* PRIMARY BUTTON */
 .footer button:last-child {
-  background: #2563eb;
-  color: #ffffff;
+  background: var(--c-blue);
+  color: #fff;
 }

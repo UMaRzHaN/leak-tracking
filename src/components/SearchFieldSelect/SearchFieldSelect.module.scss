@@ -12,8 +12,9 @@
   justify-content: space-between;
 
   border-radius: 14px;
-  border: 1px solid #e0e6f0;
-  background: #fff;
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-text);
 
   font-size: 14px;
 }
@@ -35,9 +36,10 @@
   left: 0;
   right: 0;
 
-  background: #fff;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
   border-radius: 16px;
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-md);
 
   padding: 6px;
   max-height: 260px;
@@ -53,15 +55,16 @@
   border: none;
   border-radius: 12px;
   background: transparent;
+  color: var(--c-text);
 
   font-size: 14px;
 }
 
 .option:hover {
-  background: #f3f6fb;
+  background: var(--c-surface2);
 }
 
 .active {
-  background: #e0f2fe;
-  color: #0369a1;
+  background: var(--c-blue-dim);
+  color: var(--c-blue);
 }

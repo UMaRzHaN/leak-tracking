@@ -1,5 +1,8 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import { getTileBlobUrl, cacheTile } from "./tileCache";
 import { STATUS_META } from "../../utils/status";
 
@@ -41,19 +44,30 @@ const CachedTileLayer = L.TileLayer.extend({
   },
 });
 
-/* ── Status-coloured marker icon ── */
-function statusIcon(status) {
-  const meta = STATUS_META[status] ?? STATUS_META.open;
+/* ── Marker icon with label tag ── */
+function leakIcon(leak) {
+  const meta = STATUS_META[leak.status] ?? STATUS_META.open;
+  const label = leak.leak_id ?? `#${leak.id}`;
   return L.divIcon({
     className: "",
-    html: `<div style="
-      width:13px;height:13px;border-radius:50%;
-      background:${meta.color};border:2.5px solid #fff;
-      box-shadow:0 1px 5px rgba(0,0,0,0.45);
-    "></div>`,
-    iconSize: [13, 13],
-    iconAnchor: [6, 6],
-    popupAnchor: [0, -10],
+    html: `<div style="display:flex;align-items:center;gap:3px;white-space:nowrap;">
+      <div style="
+        width:11px;height:11px;flex-shrink:0;border-radius:50%;
+        background:${meta.color};border:2px solid #fff;
+        box-shadow:0 1px 5px rgba(0,0,0,0.5);
+      "></div>
+      <div style="
+        background:rgba(15,23,42,0.72);color:#fff;
+        font-size:10px;font-weight:700;line-height:1;
+        padding:2px 5px;border-radius:8px;
+        backdrop-filter:blur(3px);
+        max-width:72px;overflow:hidden;text-overflow:ellipsis;
+        border:1px solid rgba(255,255,255,0.18);
+      ">${label}</div>
+    </div>`,
+    iconSize: null,
+    iconAnchor: [5, 5],
+    popupAnchor: [20, -6],
   });
 }
 
@@ -66,7 +80,27 @@ export function createOfflineMap(container, { center, zoom = 13 }) {
     attribution: '© <a href="https://www.esri.com">Esri</a> — Esri, USGS, NOAA',
   }).addTo(map);
 
-  const markersLayer = L.layerGroup().addTo(map);
+  const markersLayer = L.markerClusterGroup({
+    maxClusterRadius: 48,
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+    iconCreateFunction(cluster) {
+      const count = cluster.getChildCount();
+      return L.divIcon({
+        className: "",
+        html: `<div style="
+          width:34px;height:34px;border-radius:50%;
+          background:#2563eb;border:3px solid #fff;
+          box-shadow:0 2px 8px rgba(0,0,0,0.35);
+          display:flex;align-items:center;justify-content:center;
+          color:#fff;font-size:12px;font-weight:700;
+        ">${count}</div>`,
+        iconSize: [34, 34],
+        iconAnchor: [17, 17],
+      });
+    },
+  }).addTo(map);
 
   /* ── Геолокация пользователя ── */
   let userMarker = null;
@@ -129,10 +163,10 @@ export function addMarkers(markersLayer, leaks = []) {
   leaks.forEach((leak) => {
     if (!Number.isFinite(leak.lat) || !Number.isFinite(leak.lng)) return;
 
-    L.marker([leak.lat, leak.lng], { icon: statusIcon(leak.status) })
+    L.marker([leak.lat, leak.lng], { icon: leakIcon(leak) })
       .addTo(markersLayer)
       .bindPopup(
-        `<b>№ ${leak.leak_id ?? ""}</b><br/>${leak.component ?? ""}<br/>${leak.status ?? ""}`,
+        `<b>№ ${leak.leak_id ?? ""}</b><br/>${leak.component ?? ""}<br/>${(STATUS_META[leak.status] ?? STATUS_META.open).label}`,
       );
   });
 }

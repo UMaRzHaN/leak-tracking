@@ -26,7 +26,7 @@ export function exportLeaksGeoJSON(leaks, project) {
 
 export async function saveLeaksGeoJSON(leaks, exportFn) {
   const geojson = exportFn(leaks);
-  const fileName = `leaks_${Date.now()}.geojson`;
+  const fileName = `leaks_map.geojson`;
   const data = JSON.stringify(geojson, null, 2);
 
   if (Capacitor.isNativePlatform()) {

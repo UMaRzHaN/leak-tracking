@@ -103,10 +103,10 @@
   &:active { transform: scale(0.97); }
 
   &.restore {
-    border-color: #a7f3d0;
-    background: #f0fdf4;
-    color: #059669;
-    &:hover { border-color: #059669; }
+    border-color: var(--c-resolved-border);
+    background: var(--c-resolved-bg);
+    color: var(--c-resolved);
+    &:hover { border-color: var(--c-resolved); }
   }
 }
 
@@ -209,8 +209,65 @@
   font-weight: 600;
   cursor: pointer;
   transition: all var(--t-fast);
-  &:hover { background: #fef2f2; }
+  &:hover { background: var(--c-open-bg); }
   &:active { transform: scale(0.97); }
+}
+
+/* ── Theme toggle ── */
+.themeRow {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.themeInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.themeLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+.themeHint {
+  font-size: 12px;
+  color: var(--c-text3);
+}
+
+.themeToggle {
+  flex-shrink: 0;
+  width: 48px;
+  height: 28px;
+  border-radius: 14px;
+  border: none;
+  background: var(--c-border);
+  padding: 3px;
+  cursor: pointer;
+  transition: background var(--t-fast);
+  position: relative;
+}
+
+.themeToggleDark {
+  background: var(--c-blue);
+}
+
+.themeThumb {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25);
+  transition: transform var(--t-fast);
+
+  .themeToggleDark & {
+    transform: translateX(20px);
+  }
 }
 
 /* ── Map cache ── */

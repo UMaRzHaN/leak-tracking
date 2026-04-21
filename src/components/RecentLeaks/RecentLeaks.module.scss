@@ -2,10 +2,6 @@
   margin: 10px;
 }
 
-/* =========================
-   HEADER
-========================= */
-
 .recentHeader {
   display: flex;
   justify-content: space-between;
@@ -16,33 +12,24 @@
 .title {
   font-size: 16px;
   font-weight: 600;
+  color: var(--c-text);
 }
 
 .viewAll {
   background: none;
   border: none;
-  color: #1e88e5;
+  color: var(--c-blue);
   font-size: 13px;
   cursor: pointer;
 }
-
-/* =========================
-   LIST / SWIPE WRAPPER
-========================= */
 
 .swipeWrapper {
   position: relative;
   overflow: hidden;
   border-radius: 16px;
   margin-bottom: 12px;
-  background: #f9fafb;
+  background: var(--c-surface2);
 }
-
-/* =========================
-   SWIPE ACTION HINTS (BACKGROUND)
-   swipe LEFT  → DETAILS
-   swipe RIGHT → DELETE
-========================= */
 
 .swipeHintLeft,
 .swipeHintRight {
@@ -73,8 +60,6 @@
   }
 }
 
-/* 👉 SWIPE LEFT → DETAILS */
-
 .swipeHintLeft {
   left: 0;
   background: linear-gradient(
@@ -83,10 +68,8 @@
     rgba(59, 130, 246, 0.35),
     transparent
   );
-  color: #ffffff;
+  color: #fff;
 }
-
-/* 👉 SWIPE RIGHT → DELETE */
 
 .swipeHintRight {
   right: 0;
@@ -96,18 +79,14 @@
     rgba(220, 38, 38, 0.35),
     transparent
   );
-  color: #ffffff;
+  color: #fff;
 }
-
-/* =========================
-   CARD
-========================= */
 
 .card {
   position: relative;
   z-index: 2;
 
-  background: #ffffff;
+  background: var(--c-surface);
   border-radius: 16px;
   padding: 14px 14px 14px 12px;
 
@@ -118,22 +97,11 @@
   will-change: transform;
   touch-action: pan-y;
 
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-sm);
 }
 
-/* Swipe emphasis */
-
-.swipedLeft {
-  box-shadow: 6px 6px 20px rgba(220, 38, 38, 0.28);
-}
-
-.swipedRight {
-  box-shadow: -6px 6px 20px rgba(59, 130, 246, 0.28);
-}
-
-/* =========================
-   ICON (LEVEL)
-========================= */
+.swipedLeft  { box-shadow: 6px 6px 20px rgba(220, 38, 38, 0.28); }
+.swipedRight { box-shadow: -6px 6px 20px rgba(59, 130, 246, 0.28); }
 
 .leakIcon {
   width: 12px;
@@ -142,22 +110,10 @@
   border-radius: 50%;
   margin-top: 6px;
 
-  &.low {
-    background: #4caf50;
-  }
-
-  &.medium {
-    background: #ff9800;
-  }
-
-  &.high {
-    background: #f44336;
-  }
+  &.low    { background: var(--c-resolved); }
+  &.medium { background: var(--c-progress); }
+  &.high   { background: var(--c-open); }
 }
-
-/* =========================
-   INFO
-========================= */
 
 .leakInfo {
   flex: 1;
@@ -167,7 +123,7 @@
 .leakTitle {
   font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--c-text);
   margin-bottom: 4px;
 
   white-space: nowrap;
@@ -177,33 +133,23 @@
 
 .leakMeta {
   font-size: 12.5px;
-  color: #6b7280;
+  color: var(--c-text2);
   line-height: 1.35;
 
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
 
-  span {
-    white-space: nowrap;
-  }
+  span { white-space: nowrap; }
 }
-
-/* =========================
-   ARROW
-========================= */
 
 .leakArrow {
   margin-left: 6px;
-  color: #9ca3af;
+  color: var(--c-text3);
   flex-shrink: 0;
   display: flex;
   align-items: center;
 }
-
-/* =========================
-   EMPTY STATE
-========================= */
 
 .emptyRecent {
   margin-top: 20px;
@@ -214,7 +160,7 @@
   gap: 6px;
 
   text-align: center;
-  border: 1px dashed #d1d5db;
+  border: 1px dashed var(--c-border);
   padding: 10px;
   border-radius: 12px;
 }
@@ -222,12 +168,12 @@
 .emptyRecentTitle {
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: var(--c-text);
 }
 
 .emptyRecentHint {
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--c-text3);
   max-width: 260px;
 }
 
@@ -240,11 +186,9 @@
 
   font-size: 14px;
   font-weight: 600;
-  color: #2563eb;
+  color: var(--c-blue);
 
   cursor: pointer;
 
-  &:hover {
-    text-decoration: underline;
-  }
+  &:hover { text-decoration: underline; }
 }

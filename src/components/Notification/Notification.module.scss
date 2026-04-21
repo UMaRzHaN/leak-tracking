@@ -30,27 +30,27 @@
    ===================================================== */
 
 .success {
-  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-  border-left: 4px solid #10b981;
-  color: #065f46;
+  background: var(--c-resolved-bg);
+  border-left: 4px solid var(--c-resolved);
+  color: var(--c-resolved);
 }
 
 .warning {
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
-  border-left: 4px solid #f59e0b;
-  color: #92400e;
+  background: var(--c-progress-bg);
+  border-left: 4px solid var(--c-progress);
+  color: var(--c-progress);
 }
 
 .error {
-  background: linear-gradient(135deg, #fee2e2, #fecaca);
-  border-left: 4px solid #ef4444;
-  color: #7f1d1d;
+  background: var(--c-open-bg);
+  border-left: 4px solid var(--c-open);
+  color: var(--c-open);
 }
 
 .info {
-  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-  border-left: 4px solid #3b82f6;
-  color: #0c4a6e;
+  background: var(--c-blue-dim);
+  border-left: 4px solid var(--c-blue);
+  color: var(--c-blue);
 }
 
 /* =====================================================

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSwipeCard } from "../../hooks/useSwipeCard";
 import { STATUS_META } from "../../utils/status";
+import { PRIORITY_META } from "../../utils/priority";
 import { timeAgo } from "../../utils/timeAgo";
 import { usePhotoSrc } from "../../hooks/usePhotoSrc";
 import PhotoViewer from "../PhotoViewer/PhotoViewer";
@@ -83,6 +84,7 @@ export default function LeakCardCompact({
         <div
           className={`${s.card} ${selected ? s.selected : ""} ${goingLeft ? s.swipeLeft : ""} ${goingRight ? s.swipeRight : ""}`}
           data-urgency={urgency}
+          data-priority={leak.priority ?? "none"}
           data-selected={selected ? "true" : "false"}
           style={{
             transform:  `translateX(${swipeOffset}px)`,
@@ -114,6 +116,18 @@ export default function LeakCardCompact({
             >
               {meta.label}
             </span>
+            {leak.priority && PRIORITY_META[leak.priority] && (
+              <span
+                className={s.priorityPill}
+                style={{
+                  color: PRIORITY_META[leak.priority].color,
+                  background: PRIORITY_META[leak.priority].bg,
+                  borderColor: PRIORITY_META[leak.priority].border,
+                }}
+              >
+                {PRIORITY_META[leak.priority].short}
+              </span>
+            )}
             <span className={s.id}>№ {leak.leak_id ?? leak.index}</span>
             <span className={s.time}>{ago ?? leak.date}</span>
           </div>

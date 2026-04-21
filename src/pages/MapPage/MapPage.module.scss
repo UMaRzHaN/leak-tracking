@@ -30,7 +30,7 @@
 .controlBtn {
   width: 44px;
   height: 44px;
-  background: #fff;
+  background: var(--c-surface);
   border: none;
   display: flex;
   align-items: center;
@@ -38,14 +38,14 @@
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: background 0.12s;
-  color: #374151;
+  color: var(--c-text);
 
   &:not(:last-child) {
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--c-border);
   }
 
   &:active {
-    background: #f3f4f6;
+    background: var(--c-surface2);
     transform: scale(0.95);
   }
 }
@@ -69,7 +69,8 @@
   padding: 6px 12px;
   border-radius: 20px;
   border: none;
-  background: #fff;
+  background: var(--c-surface);
+  color: var(--c-text);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   font-size: 12px;
   cursor: pointer;

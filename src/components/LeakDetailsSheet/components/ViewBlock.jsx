@@ -1,18 +1,21 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { usePhotoSrc } from "../../../hooks/usePhotoSrc";
 import PhotoViewer from "../../PhotoViewer/PhotoViewer";
+import { PRIORITY_ORDER, PRIORITY_META } from "../../../utils/priority";
 import s from "../LeakDetailsSheet.module.scss";
 
 const ACTION_LABELS = {
   created:        "Запись создана",
   status_changed: "Статус изменён",
   edited:         "Данные изменены",
+  comment:        "Комментарий",
 };
 
 const ACTION_ICONS = {
   created:        "✦",
   status_changed: "⇄",
   edited:         "✎",
+  comment:        "💬",
 };
 
 const STATUS_TO_RU = {
@@ -56,6 +59,45 @@ function splitFields(fields) {
   };
 }
 
+function CommentInput({ onSubmit }) {
+  const [text, setText] = useState("");
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  const submit = () => {
+    const t = text.trim();
+    if (!t) return;
+    onSubmit(t);
+    setText("");
+    setOpen(false);
+  };
+
+  if (!open) {
+    return (
+      <button type="button" className={s.addCommentBtn} onClick={() => { setOpen(true); setTimeout(() => ref.current?.focus(), 50); }}>
+        + Добавить комментарий
+      </button>
+    );
+  }
+
+  return (
+    <div className={s.commentInputWrap}>
+      <textarea
+        ref={ref}
+        className={s.commentTextarea}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Введите комментарий..."
+        rows={3}
+      />
+      <div className={s.commentActions}>
+        <button type="button" className={s.commentCancel} onClick={() => { setText(""); setOpen(false); }}>Отмена</button>
+        <button type="button" className={s.commentSubmit} onClick={submit} disabled={!text.trim()}>Сохранить</button>
+      </div>
+    </div>
+  );
+}
+
 function PhotoComparison({ photoBefore, photoAfter }) {
   const srcBefore = usePhotoSrc(photoBefore ?? null);
   const srcAfter  = usePhotoSrc(photoAfter  ?? null);
@@ -97,7 +139,7 @@ function PhotoComparison({ photoBefore, photoAfter }) {
   );
 }
 
-export default function ViewBlock({ data, activeTab, projectConfig }) {
+export default function ViewBlock({ data, activeTab, projectConfig, onAddComment, onPriorityChange }) {
   const fields = useMemo(() => {
     const all = projectConfig.system.fields ?? [];
     return all
@@ -117,6 +159,31 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
         {hasPhotos && (
           <PhotoComparison photoBefore={data.photo} photoAfter={data.photo_after} />
         )}
+
+        {/* ── Приоритет ── */}
+        {onPriorityChange && (
+          <div className={s.priorityRow}>
+            <span className={s.priorityRowLabel}>Приоритет</span>
+            <div className={s.priorityPills}>
+              {PRIORITY_ORDER.map((p) => {
+                const m = PRIORITY_META[p];
+                const active = data.priority === p;
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    className={s.priorityBtn}
+                    style={active ? { background: m.bg, color: m.color, borderColor: m.border } : undefined}
+                    onClick={() => onPriorityChange(active ? null : p)}
+                  >
+                    {m.short}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {hasAny ? infoFields.map(({ key, label, multiline }) => {
           const val = data[key];
           if (val == null || val === "") return null;
@@ -193,6 +260,9 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
   if (activeTab === "log") {
     return (
       <div className={s.tabPane}>
+        {onAddComment && (
+          <CommentInput onSubmit={onAddComment} />
+        )}
         {history.length > 0 ? history.map((entry, i) => {
           const rel = relativeTime(entry.date);
           const abs = fmtDate(entry.date);
@@ -220,6 +290,9 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
                   >
                     {STATUS_TO_RU[entry.to] ?? entry.to}
                   </span>
+                )}
+                {entry.text && (
+                  <span className={s.logCommentText}>{entry.text}</span>
                 )}
                 <span className={s.logDate}>
                   {rel ? <>{rel} · <span className={s.logDateAbs}>{abs}</span></> : abs}

@@ -117,7 +117,7 @@
 }
 
 .deleteBtn {
-  &:hover { background: #fee2e2; color: #ef4444; }
+  &:hover { background: var(--c-open-bg); color: var(--c-open); }
 }
 
 .deleteBtnArmed {
@@ -125,14 +125,14 @@
   overflow: hidden;
   width: auto;
   padding: 0 10px;
-  background: #ef4444;
+  background: var(--c-open);
   color: #fff;
   border-radius: var(--r-md);
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
 
-  &:hover { background: #dc2626; }
+  &:hover { opacity: 0.88; }
 
   & > * { position: relative; z-index: 1; }
 }

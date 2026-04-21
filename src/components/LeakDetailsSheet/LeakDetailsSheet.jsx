@@ -5,6 +5,7 @@ import { useProject } from "../../app/settings/ProjectContext";
 import { useProjectVars } from "../../app/settings/useProjectVars";
 import { calculations } from "../../utils/calculations/calculations";
 import { nextStatus, STATUS } from "../../utils/status";
+import { priorityFromSpeed } from "../../utils/priority";
 import { timeAgo } from "../../utils/timeAgo";
 import { normalizeNumber } from "../../utils/normalize/normalizeNumber";
 import { hapticWarning } from "../../utils/haptics";
@@ -125,7 +126,12 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
           { action: "edited", date: new Date().toISOString() },
         ],
       };
-      onSave(speedChanged && vars ? calculations(base, vars) : base);
+      const withCalc = speedChanged && vars ? calculations(base, vars) : base;
+      // recalculate priority whenever leak_speed changes
+      const withPriority = speedChanged
+        ? { ...withCalc, priority: priorityFromSpeed(localEdit[speedKey]) }
+        : withCalc;
+      onSave(withPriority);
     } catch {
       alert("Ошибка сохранения");
     } finally {
@@ -182,6 +188,23 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
       history: [
         ...(leak.history ?? []),
         { action: "status_changed", to: STATUS.RESOLVED, date: now },
+      ],
+    });
+  };
+
+  /* ── Priority change (instant save) ── */
+  const handlePriorityChange = (priority) => {
+    onSave({ ...leak, priority, updatedAt: Date.now() });
+  };
+
+  /* ── Add comment to history ── */
+  const handleAddComment = (text) => {
+    onSave({
+      ...leak,
+      updatedAt: Date.now(),
+      history: [
+        ...(leak.history ?? []),
+        { action: "comment", text, date: new Date().toISOString() },
       ],
     });
   };
@@ -289,6 +312,8 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
                 data={{ ...leak, ...localEdit }}
                 activeTab={activeTab}
                 projectConfig={projectConfig}
+                onAddComment={handleAddComment}
+                onPriorityChange={handlePriorityChange}
               />
             ) : (
               <EditBlock

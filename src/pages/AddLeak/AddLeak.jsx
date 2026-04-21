@@ -7,6 +7,7 @@ import { toNumber } from "../../utils/voice/toNumber";
 import { useProjectData } from "../../app/hooks/useProjectData";
 import { hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { STATUS } from "../../utils/status";
+import { priorityFromSpeed } from "../../utils/priority";
 import s from "./AddLeak.module.scss";
 
 
@@ -89,6 +90,7 @@ export default function AddLeak({
           lng,
           index: data.length + 1,
           status: STATUS.OPEN,
+          priority: priorityFromSpeed(cleanRow.leak_speed),
           history: [{ action: "created", date: new Date().toISOString() }],
           ...cleanRow,
           photo: photoPath,

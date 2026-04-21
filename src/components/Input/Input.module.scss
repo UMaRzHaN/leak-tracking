@@ -69,14 +69,14 @@
 
 /* filled state */
 .hasValue .control:not(:focus) {
-  border-color: #22c55e;
-  background: #f0fdf4;
+  border-color: var(--c-resolved);
+  background: var(--c-resolved-bg);
 }
 
 /* error state */
 .hasError .control {
   border-color: var(--c-danger) !important;
-  background: #fef2f2 !important;
+  background: var(--c-open-bg) !important;
 }
 
 /* ── Clear button ── */
@@ -162,7 +162,7 @@
   cursor: pointer;
   transition: all var(--t-fast);
 
-  &:active  { transform: scale(0.97); background: #dbeafe; }
+  &:active  { transform: scale(0.97); background: var(--c-blue-dim); }
   &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
@@ -219,14 +219,14 @@
   }
 
   &:not(:placeholder-shown):not(:focus) {
-    border-color: #22c55e;
-    background: #f0fdf4;
+    border-color: var(--c-resolved);
+    background: var(--c-resolved-bg);
   }
 }
 
 .hasError .formInput {
   border-color: var(--c-danger) !important;
-  background: #fef2f2 !important;
+  background: var(--c-open-bg) !important;
 }
 
 .autocompleteList {
@@ -250,7 +250,7 @@
   cursor: pointer;
 
   &:hover  { background: var(--c-blue-dim); }
-  &:active { background: #dbeafe; }
+  &:active { background: var(--c-blue-dim); }
 }
 
 .formError {

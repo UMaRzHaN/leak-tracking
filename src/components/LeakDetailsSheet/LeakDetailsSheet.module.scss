@@ -439,6 +439,119 @@
   opacity: 0.7;
 }
 
+.logCommentText {
+  font-size: 13px;
+  color: var(--c-text);
+  background: var(--c-surface2);
+  border-left: 3px solid var(--c-blue);
+  padding: 6px 10px;
+  border-radius: 0 8px 8px 0;
+  margin: 2px 0;
+  line-height: 1.45;
+}
+
+/* ── Priority row in info tab ── */
+.priorityRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.priorityRowLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.priorityPills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.priorityBtn {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1.5px solid var(--c-border);
+  background: transparent;
+  color: var(--c-text2);
+  cursor: pointer;
+  transition: all 0.12s;
+  &:active { transform: scale(0.95); }
+}
+
+/* ── Comment input ── */
+.addCommentBtn {
+  width: 100%;
+  padding: 10px 16px;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--c-border);
+  font-size: 13px;
+  color: var(--c-blue);
+  font-weight: 500;
+  cursor: pointer;
+  &:active { background: var(--c-surface2); }
+}
+
+.commentInputWrap {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--c-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.commentTextarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-family: inherit;
+  font-size: 14px;
+  resize: none;
+  outline: none;
+  &:focus { border-color: var(--c-blue); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+}
+
+.commentActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.commentCancel {
+  padding: 7px 14px;
+  border-radius: var(--r-md);
+  border: 1.5px solid var(--c-border);
+  background: none;
+  color: var(--c-text2);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.commentSubmit {
+  padding: 7px 14px;
+  border-radius: var(--r-md);
+  border: none;
+  background: var(--c-blue);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  &:disabled { opacity: 0.4; cursor: default; }
+}
+
 /* ══════════════════════════════════════════
    EDIT TAB — layout helpers
    ══════════════════════════════════════════ */
@@ -579,10 +692,10 @@
   flex-shrink: 0;
   width: 48px;
   height: 48px;
-  border: 1.5px solid rgba(239, 68, 68, 0.35);
+  border: 1.5px solid var(--c-open-border);
   border-radius: var(--r-lg);
-  background: rgba(239, 68, 68, 0.07);
-  color: #ef4444;
+  background: var(--c-open-bg);
+  color: var(--c-open);
   font-size: 18px;
   cursor: pointer;
   display: flex;
@@ -591,7 +704,7 @@
   transition: all var(--t-fast);
 
   &:active {
-    background: rgba(239, 68, 68, 0.18);
+    opacity: 0.75;
     transform: scale(0.95);
   }
 }
@@ -602,9 +715,9 @@
   overflow: hidden;
   height: 48px;
   padding: 0 18px;
-  border: 1.5px solid #ef4444;
+  border: 1.5px solid var(--c-open);
   border-radius: var(--r-lg);
-  background: #ef4444;
+  background: var(--c-open);
   color: #fff;
   font-size: 14px;
   font-weight: 700;
@@ -617,7 +730,7 @@
 
   & > span:first-child { position: relative; z-index: 1; }
 
-  &:active { background: #dc2626; }
+  &:active { opacity: 0.88; }
 }
 
 .btnDangerProgress {

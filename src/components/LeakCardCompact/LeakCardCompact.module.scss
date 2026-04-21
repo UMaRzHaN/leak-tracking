@@ -88,25 +88,22 @@
     z-index: 1;
   }
 
-  /* fresh  < 24ч  → синяя */
-  &[data-urgency="fresh"]::before {
-    background: var(--c-blue);
-  }
-
-  /* warning  1–7 дн  → янтарная */
-  &[data-urgency="warning"]::before {
-    background: var(--c-progress);
-  }
-
-  /* danger  > 7 дн  → красная + пульс */
-  &[data-urgency="danger"]::before {
-    background: var(--c-open);
+  /* priority stripe */
+  &[data-priority="critical"]::before {
+    background: #dc2626;
     animation: urgencyPulse 1.8s ease-in-out infinite;
   }
-
-  /* resolved  → зелёная (статичная) */
-  &[data-urgency="resolved"]::before {
-    background: var(--c-resolved);
+  &[data-priority="high"]::before {
+    background: #d97706;
+  }
+  &[data-priority="medium"]::before {
+    background: #2563eb;
+  }
+  &[data-priority="low"]::before {
+    background: #059669;
+  }
+  &[data-priority="none"]::before {
+    background: var(--c-border);
   }
 
   &:active {
@@ -124,8 +121,8 @@
   border-color: rgba(37, 99, 235, 0.38);
   background: linear-gradient(
     180deg,
-    rgba(37, 99, 235, 0.05),
-    rgba(255, 255, 255, 1) 42%
+    rgba(37, 99, 235, 0.07),
+    var(--c-surface) 42%
   );
   box-shadow:
     0 0 0 2px rgba(37, 99, 235, 0.1),
@@ -147,8 +144,8 @@
   width: 18px;
   height: 18px;
   border-radius: 5px;
-  border: 1px solid #d0d5dd;
-  background: #f9fafb;
+  border: 1px solid var(--c-border);
+  background: var(--c-surface2);
   color: var(--c-blue);
   display: inline-flex;
   align-items: center;
@@ -206,6 +203,21 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 2px 8px;
+  border-radius: 20px;
+  border: 1.5px solid;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.priorityPill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
   border-radius: 20px;
   border: 1.5px solid;
   white-space: nowrap;

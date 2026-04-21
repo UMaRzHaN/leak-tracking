@@ -13,7 +13,7 @@
 
 .sheet {
   width: 100%;
-  background: #fff;
+  background: var(--c-surface);
   border-radius: 20px 20px 0 0;
   padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
 
@@ -23,7 +23,7 @@
 .handle {
   width: 36px;
   height: 4px;
-  background: #d1d5db;
+  background: var(--c-border);
   border-radius: 999px;
   margin: 0 auto 14px;
 }
@@ -34,12 +34,13 @@
   line-height: 1.3;
   margin-bottom: 6px;
   text-align: center;
+  color: var(--c-text);
 }
 
 .description {
   font-size: 14px;
   line-height: 1.45;
-  color: #6b7280;
+  color: var(--c-text2);
   margin-bottom: 20px;
   text-align: center;
 }
@@ -65,20 +66,20 @@
 }
 
 .cancel {
-  background: #f3f4f6;
-  color: #111827;
+  background: var(--c-surface2);
+  color: var(--c-text);
 
   &:hover {
-    background: #e5e7eb;
+    background: var(--c-border);
   }
 }
 
 .confirm {
-  background: #2563eb;
+  background: var(--c-blue);
   color: #fff;
 
   &:hover {
-    background: #1d4ed8;
+    opacity: 0.88;
   }
 }
 

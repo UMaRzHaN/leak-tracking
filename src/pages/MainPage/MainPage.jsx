@@ -170,7 +170,7 @@ export default function MainPage({ setPage, data, setData }) {
       <section className={s.section}>
         <div className={s.sectionHead}>
           <h2 className={s.sectionTitle}>
-            {statusFilter === ALL ? "Последние записи" : STATUS_META[statusFilter]?.label}
+            {statusFilter === ALL ? "Последние 8 записей" : STATUS_META[statusFilter]?.label}
           </h2>
           {data.length > RECENT_COUNT && (
             <button className={s.viewAll} onClick={() => setPage("db")}>

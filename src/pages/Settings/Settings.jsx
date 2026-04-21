@@ -4,6 +4,7 @@ import { Directory, Filesystem } from "@capacitor/filesystem";
 import { useProject } from "../../app/settings/ProjectContext";
 import { useProjectVars } from "../../app/settings/useProjectVars";
 import { useProjectData } from "../../app/hooks/useProjectData";
+import { useTheme } from "../../app/hooks/useTheme";
 import { PROJECT_META } from "../../configs/projects";
 import { getMapCacheInfo, clearMapCache } from "../../services/maps/tileCache";
 import SettingsHeader from "./Header/SettingsHeader";
@@ -26,6 +27,7 @@ export default function Settings({ setPage, clearForm, clearVoiceData, clearData
   const { vars, setVars } = useProjectVars(activeProject?.id ?? null);
   const { data, save } = useProjectData();
 
+  const { dark, toggle: toggleTheme } = useTheme();
   const [notification, setNotification] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [addingProject, setAddingProject] = useState(false);
@@ -311,6 +313,27 @@ export default function Settings({ setPage, clearForm, clearVoiceData, clearData
             </div>
           </section>
         )}
+
+        {/* ── Внешний вид ── */}
+        <section className={s.section}>
+          <div className={s.sectionHead}>
+            <h2 className={s.sectionTitle}>Внешний вид</h2>
+          </div>
+          <div className={s.themeRow}>
+            <div className={s.themeInfo}>
+              <span className={s.themeLabel}>{dark ? "Тёмная тема" : "Светлая тема"}</span>
+              <span className={s.themeHint}>{dark ? "Тёмный фон, снижает нагрузку на глаза" : "Светлый фон"}</span>
+            </div>
+            <button
+              className={`${s.themeToggle} ${dark ? s.themeToggleDark : ""}`}
+              type="button"
+              onClick={toggleTheme}
+              aria-label="Переключить тему"
+            >
+              <span className={s.themeThumb} />
+            </button>
+          </div>
+        </section>
 
         {/* ── Кэш карты ── */}
         <section className={s.section}>

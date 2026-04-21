@@ -6,6 +6,7 @@ import ResolveModal from "../../components/ResolveModal/ResolveModal";
 import VirtualizedLeakList from "../../components/VirtualizedLeakList/VirtualizedLeakList";
 import Notification from "../../components/Notification/Notification";
 import { STATUS, STATUS_META, STATUS_ORDER } from "../../utils/status";
+import { PRIORITY_ORDER, PRIORITY_META } from "../../utils/priority";
 import { hapticSuccess } from "../../utils/haptics";
 import { filterNearbyLeaks } from "../../utils/geoUtils";
 import { exportToExcel } from "../../services/export/excel";
@@ -52,9 +53,11 @@ export default function DataBase({ data, setData, coords }) {
   const [statusFilter, setFilter] = useState(ALL);
   const [notification, setNotification] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [priorityFilter, setPriorityFilter] = useState(ALL);
   const [pickerLeak, setPickerLeak] = useState(null);
   const [resolveLeak, setResolveLeak] = useState(null);
-  const [bulkResolveOpen, setBulkResolveOpen] = useState(false);
+  const [resolveQueue, setResolveQueue] = useState([]);
+  const [resolveTotal, setResolveTotal] = useState(0);
 
   const { save } = useProjectData();
   const projectConfig = useProjectConfig();
@@ -86,7 +89,9 @@ export default function DataBase({ data, setData, coords }) {
       if (!selectedIds.size) return;
 
       if (status === STATUS.RESOLVED) {
-        setBulkResolveOpen(true);
+        const affected = data.filter((item) => selectedIds.has(item.id));
+        setResolveQueue(affected);
+        setResolveTotal(affected.length);
         return;
       }
 
@@ -118,17 +123,19 @@ export default function DataBase({ data, setData, coords }) {
     [clearSelection, data, notify, save, selectedIds, setData],
   );
 
-  const handleBulkResolveConfirm = useCallback(
-    async ({ materials_equipment, note }) => {
-      setBulkResolveOpen(false);
-      const affected = data.filter((item) => selectedIds.has(item.id));
+  const handleSequentialResolveConfirm = useCallback(
+    async ({ photo_after, materials_equipment, note }) => {
+      const leak = resolveQueue[0];
+      if (!leak) return;
+
       const now = new Date().toISOString();
       const next = data.map((item) =>
-        selectedIds.has(item.id)
+        item.id === leak.id
           ? {
               ...item,
               status: STATUS.RESOLVED,
               resolvedAt: Date.now(),
+              ...(photo_after != null && { photo_after }),
               ...(materials_equipment != null && { materials_equipment }),
               ...(note != null && { note }),
               updatedAt: Date.now(),
@@ -142,10 +149,16 @@ export default function DataBase({ data, setData, coords }) {
       setData(next);
       await save(next);
       hapticSuccess();
-      notify("success", `Устранено ${affected.length} ${pluralLeaks(affected.length)}`);
-      clearSelection();
+
+      const remaining = resolveQueue.slice(1);
+      setResolveQueue(remaining);
+      if (remaining.length === 0) {
+        notify("success", `Устранено ${resolveTotal} ${pluralLeaks(resolveTotal)}`);
+        clearSelection();
+        setResolveTotal(0);
+      }
     },
-    [clearSelection, data, notify, save, selectedIds, setData],
+    [clearSelection, data, notify, resolveQueue, resolveTotal, save, setData],
   );
 
   /* ── Filter + sort strictly by date desc ── */
@@ -154,6 +167,10 @@ export default function DataBase({ data, setData, coords }) {
       let list = hasGps
         ? filterNearbyLeaks(data, coords.lat, coords.lng, NEARBY_RADIUS_M)
         : [];
+
+      if (priorityFilter !== ALL) {
+        list = list.filter((l) => (l.priority ?? null) === priorityFilter);
+      }
 
       if (search.trim()) {
         const q = search.toLowerCase();
@@ -178,6 +195,10 @@ export default function DataBase({ data, setData, coords }) {
       list = list.filter((l) => (l.status ?? STATUS.OPEN) === statusFilter);
     }
 
+    if (priorityFilter !== ALL) {
+      list = list.filter((l) => (l.priority ?? null) === priorityFilter);
+    }
+
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((l) =>
@@ -193,7 +214,7 @@ export default function DataBase({ data, setData, coords }) {
     }
 
     return list;
-  }, [data, statusFilter, search, hasGps, coords]);
+  }, [data, statusFilter, priorityFilter, search, hasGps, coords]);
 
   const selectDisplayed = useCallback(() => {
     const ids = displayed.map((leak) => leak.id);
@@ -371,6 +392,30 @@ export default function DataBase({ data, setData, coords }) {
         )}
       </div>
 
+      {/* ── Priority filter ── */}
+      <div className={s.priorityFilters}>
+        <button
+          className={`${s.priorityTab} ${priorityFilter === ALL ? s.priorityTabActive : ""}`}
+          onClick={() => setPriorityFilter(ALL)}
+        >
+          Все приоритеты
+        </button>
+        {PRIORITY_ORDER.map((p) => {
+          const m = PRIORITY_META[p];
+          const isActive = priorityFilter === p;
+          return (
+            <button
+              key={p}
+              className={`${s.priorityTab} ${isActive ? s.priorityTabActive : ""}`}
+              style={isActive ? { borderColor: m.border, color: m.color, background: m.bg } : undefined}
+              onClick={() => setPriorityFilter(isActive ? ALL : p)}
+            >
+              {m.short}
+            </button>
+          );
+        })}
+      </div>
+
       {/* ── Results info + bulk actions + Export ── */}
       <div className={s.resultsRow}>
         <span className={s.resultsInfo}>
@@ -500,11 +545,12 @@ export default function DataBase({ data, setData, coords }) {
         />
       )}
 
-      {bulkResolveOpen && (
+      {resolveQueue.length > 0 && (
         <ResolveModal
-          bulkCount={selectedIds.size}
-          onConfirm={handleBulkResolveConfirm}
-          onClose={() => setBulkResolveOpen(false)}
+          leak={resolveQueue[0]}
+          progress={{ current: resolveTotal - resolveQueue.length + 1, total: resolveTotal }}
+          onConfirm={handleSequentialResolveConfirm}
+          onClose={() => { setResolveQueue([]); setResolveTotal(0); }}
         />
       )}
     </div>
