@@ -32,5 +32,9 @@ export function fuzzyMatchOption(input, options) {
     }
   }
 
-  return bestScore > 0 ? best : null;
+  if (bestScore === 0) return null;
+  const parts = best.split("/");
+  const afterSlash = parts[parts.length - 1].trim();
+  const isAbbrev = parts.length > 1 && !/[а-яёa-z]/.test(afterSlash);
+  return isAbbrev ? parts.slice(0, -1).join("/").trim() : best;
 }

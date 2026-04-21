@@ -32,12 +32,14 @@ export default function Autocomplete({
   const showClear = query?.length > 0;
 
   const select = (val) => {
-    setQuery(val);
-    onChange(val);
+    const parts = val.split("/");
+    const afterSlash = parts[parts.length - 1].trim();
+    const isAbbrev = parts.length > 1 && !/[а-яёa-z]/.test(afterSlash);
+    const clean = isAbbrev ? parts.slice(0, -1).join("/").trim() : val;
+    setQuery(clean);
+    onChange(clean);
     setOpen(false);
-
-    // 🔑 единый сигнал "ввод завершён"
-    onComplete?.(inputRef.current);
+    inputRef.current?.focus();
   };
 
   const clear = () => {
