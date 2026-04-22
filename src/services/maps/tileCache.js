@@ -4,8 +4,7 @@ import { Filesystem, Directory } from "@capacitor/filesystem";
 const isNative = Capacitor.isNativePlatform();
 const CACHE_NAME = "map-tiles-v2";
 const TILE_DIR = "map-tiles";
-const ESRI_BASE =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile";
+const ESRI_BASE = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile";
 
 const webSupported = typeof caches !== "undefined";
 
@@ -143,6 +142,36 @@ export async function clearMapCache() {
     return;
   }
   if (webSupported) await caches.delete(CACHE_NAME);
+}
+
+export async function preloadUrls(urls, { onProgress, concurrency = 6 } = {}) {
+  const total = urls.length;
+  if (total === 0) return;
+
+  let done = 0;
+  const webCache = (!isNative && webSupported) ? await caches.open(CACHE_NAME).catch(() => null) : null;
+
+  const downloadOne = async (url) => {
+    if (isNative) {
+      const path = tileFilePath(url);
+      const cached = path ? await nativeExists(path) : false;
+      if (!cached) await nativeWrite(url);
+    } else if (webCache) {
+      const hit = await webCache.match(url).catch(() => null);
+      if (!hit) {
+        try {
+          const response = await fetch(url, { mode: "cors" });
+          if (response.ok) await webCache.put(url, response);
+        } catch { /* skip */ }
+      }
+    }
+    done++;
+    if (done % 5 === 0 || done === total) onProgress?.(done, total);
+  };
+
+  for (let i = 0; i < urls.length; i += concurrency) {
+    await Promise.all(urls.slice(i, i + concurrency).map(downloadOne));
+  }
 }
 
 export async function preloadArea(lat, lng, { minZoom = 13, maxZoom = 16, onProgress } = {}) {

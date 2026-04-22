@@ -6,7 +6,7 @@ import { useActiveLocation } from "../../hooks/useActiveLocation";
 import { useProject } from "../../app/settings/ProjectContext";
 import { getProjectMobileDir } from "../../app/settings/storageKeys";
 import { createOfflineMap, addMarkers } from "../../services/maps/offlineMap";
-import { preloadArea, buildTileUrls } from "../../services/maps/tileCache";
+import { preloadUrls, buildTileUrls } from "../../services/maps/tileCache";
 import { saveLeaksKML } from "../../services/export/kml";
 import { handleExport } from "../../utils/handleExport";
 import s from "./MapPage.module.scss";
@@ -141,26 +141,19 @@ export default function MapPage({ leaks, coords }) {
     });
 
     const run = async () => {
-      const total = unique.reduce(
-        (sum, pt) => sum + buildTileUrls(pt.lat, pt.lng, MIN_ZOOM, MAX_ZOOM).length,
-        0,
-      );
-      setTileProgress({ done: 0, total });
-      let cumDone = 0;
-
+      // Собираем все уникальные тайлы со всех точек одним Set
+      const urlSet = new Set();
       for (const pt of unique) {
-        const ptTotal = buildTileUrls(pt.lat, pt.lng, MIN_ZOOM, MAX_ZOOM).length;
-        await preloadArea(pt.lat, pt.lng, {
-          minZoom: MIN_ZOOM,
-          maxZoom: MAX_ZOOM,
-          onProgress: (done) => {
-            if (done % 5 === 0 || done === ptTotal) {
-              setTileProgress({ done: cumDone + done, total });
-            }
-          },
-        }).catch(() => {});
-        cumDone += ptTotal;
+        for (const url of buildTileUrls(pt.lat, pt.lng, MIN_ZOOM, MAX_ZOOM)) {
+          urlSet.add(url);
+        }
       }
+      const urls = [...urlSet];
+
+      setTileProgress({ done: 0, total: urls.length });
+      await preloadUrls(urls, {
+        onProgress: (done, total) => setTileProgress({ done, total }),
+      }).catch(() => {});
       setTileProgress(null);
     };
 
