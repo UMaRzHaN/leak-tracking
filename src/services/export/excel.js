@@ -1,6 +1,9 @@
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
+import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 import { getPhotoSrc } from "../photoService";
 
 async function resolvePhotoSrc(path, idbGet) {
@@ -164,12 +167,42 @@ export async function exportToExcelZip(
   }
 
   const zipBlob = await zip.generateAsync({ type: "blob" });
+  await downloadBlob(zipBlob, `${fileName}.zip`);
+}
 
-  // Download
-  const url = URL.createObjectURL(zipBlob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${fileName}.zip`;
-  a.click();
-  URL.revokeObjectURL(url);
+async function downloadBlob(blob, fileName) {
+  if (!Capacitor.isNativePlatform()) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+    return;
+  }
+
+  // Native: convert to base64 via FileReader (safe for large files)
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+  await Filesystem.writeFile({
+    path: fileName,
+    data: base64,
+    directory: Directory.Cache,
+  });
+
+  const { uri } = await Filesystem.getUri({
+    path: fileName,
+    directory: Directory.Cache,
+  });
+
+  await Share.share({
+    title: fileName,
+    url: uri,
+    dialogTitle: "Сохранить или отправить файл",
+  });
 }
