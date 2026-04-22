@@ -17,7 +17,7 @@ function tileFilePath(url) {
   return `${TILE_DIR}/${match[1]}/${match[2]}/${match[3]}.jpg`;
 }
 
-function buildTileUrls(lat, lng, minZoom, maxZoom) {
+export function buildTileUrls(lat, lng, minZoom, maxZoom) {
   const urls = [];
   for (let z = minZoom; z <= maxZoom; z++) {
     const n = 2 ** z;
@@ -145,13 +145,14 @@ export async function clearMapCache() {
   if (webSupported) await caches.delete(CACHE_NAME);
 }
 
-export async function preloadArea(lat, lng, { minZoom = 13, maxZoom = 17, onProgress } = {}) {
+export async function preloadArea(lat, lng, { minZoom = 13, maxZoom = 16, onProgress } = {}) {
   const urls = buildTileUrls(lat, lng, minZoom, maxZoom);
   let done = 0;
+  const CONCURRENCY = 6;
 
   const webCache = (!isNative && webSupported) ? await caches.open(CACHE_NAME).catch(() => null) : null;
 
-  for (const url of urls) {
+  const downloadOne = async (url) => {
     if (isNative) {
       const path = tileFilePath(url);
       const cached = path ? await nativeExists(path) : false;
@@ -167,10 +168,12 @@ export async function preloadArea(lat, lng, { minZoom = 13, maxZoom = 17, onProg
         }
       }
     }
-
     done++;
     onProgress?.(done, urls.length);
-    if (done % 20 === 0) await new Promise((r) => setTimeout(r, 50));
+  };
+
+  for (let i = 0; i < urls.length; i += CONCURRENCY) {
+    await Promise.all(urls.slice(i, i + CONCURRENCY).map(downloadOne));
   }
 
   return done;

@@ -6,24 +6,11 @@ import { useActiveLocation } from "../../hooks/useActiveLocation";
 import { useProject } from "../../app/settings/ProjectContext";
 import { getProjectMobileDir } from "../../app/settings/storageKeys";
 import { createOfflineMap, addMarkers } from "../../services/maps/offlineMap";
-import { preloadArea } from "../../services/maps/tileCache";
+import { preloadArea, buildTileUrls } from "../../services/maps/tileCache";
 import { saveLeaksKML } from "../../services/export/kml";
 import { handleExport } from "../../utils/handleExport";
 import s from "./MapPage.module.scss";
 
-function deduplicateByGrid(leaks, zoom) {
-  const n = 2 ** zoom;
-  const seen = new Set();
-  return leaks.filter(({ lat, lng }) => {
-    const tx = Math.floor(((lng + 180) / 360) * n);
-    const latRad = (lat * Math.PI) / 180;
-    const ty = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n);
-    const key = `${tx}:${ty}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
 
 export default function MapPage({ leaks, coords }) {
   const { activeProject } = useProject();
@@ -40,7 +27,7 @@ export default function MapPage({ leaks, coords }) {
   const [open, setOpen] = useState(false);
   const [enabledLocations, setEnabledLocations] = useState({});
   const [notification, setNotification] = useState(null);
-  const [tileProgress, setTileProgress] = useState(null); // { done, total } | null
+  const [tileProgress, setTileProgress] = useState(null);
   const preloadedRef = useRef(false);
 
   const notify = useCallback((type, message) => setNotification({ type, message }), []);
@@ -126,7 +113,8 @@ export default function MapPage({ leaks, coords }) {
     }
   }, [visibleLeaks]);
 
-  /* ── Автоматическая предзагрузка тайлов вокруг утечек ── */
+
+  /* ── Предзагрузка тайлов вокруг утечек (zoom 13–14 только) ── */
   useEffect(() => {
     if (preloadedRef.current) return;
     const valid = visibleLeaks.filter(
@@ -135,13 +123,43 @@ export default function MapPage({ leaks, coords }) {
     if (valid.length === 0) return;
 
     preloadedRef.current = true;
-    const unique = deduplicateByGrid(valid, 14);
+
+    const MIN_ZOOM = 13;
+    const MAX_ZOOM = 14;
+
+    // Дедупликация точек на уровне zoom 14
+    const n = 2 ** MAX_ZOOM;
+    const seen = new Set();
+    const unique = valid.filter(({ lat, lng }) => {
+      const tx = Math.floor(((lng + 180) / 360) * n);
+      const latRad = (lat * Math.PI) / 180;
+      const ty = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n);
+      const key = `${tx}:${ty}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 
     const run = async () => {
-      setTileProgress({ done: 0, total: unique.length });
-      for (let i = 0; i < unique.length; i++) {
-        await preloadArea(unique[i].lat, unique[i].lng).catch(() => {});
-        setTileProgress({ done: i + 1, total: unique.length });
+      const total = unique.reduce(
+        (sum, pt) => sum + buildTileUrls(pt.lat, pt.lng, MIN_ZOOM, MAX_ZOOM).length,
+        0,
+      );
+      setTileProgress({ done: 0, total });
+      let cumDone = 0;
+
+      for (const pt of unique) {
+        const ptTotal = buildTileUrls(pt.lat, pt.lng, MIN_ZOOM, MAX_ZOOM).length;
+        await preloadArea(pt.lat, pt.lng, {
+          minZoom: MIN_ZOOM,
+          maxZoom: MAX_ZOOM,
+          onProgress: (done) => {
+            if (done % 5 === 0 || done === ptTotal) {
+              setTileProgress({ done: cumDone + done, total });
+            }
+          },
+        }).catch(() => {});
+        cumDone += ptTotal;
       }
       setTileProgress(null);
     };
@@ -208,6 +226,7 @@ export default function MapPage({ leaks, coords }) {
           </button>
         </div>
       )}
+
 
       {tileProgress && (
         <div className={s.tileProgress}>
