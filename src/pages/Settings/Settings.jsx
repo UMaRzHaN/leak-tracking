@@ -16,7 +16,7 @@ import ProjectList from "./components/ProjectList";
 import AddProjectForm from "./components/AddProjectForm";
 import s from "./Settings.module.scss";
 
-export default function Settings({ setPage, clearForm, clearDatabase }) {
+export default function Settings({ setPage, prevPage, clearForm, clearDatabase }) {
   const {
     projects,
     activeProject,
@@ -215,7 +215,7 @@ export default function Settings({ setPage, clearForm, clearDatabase }) {
   ========================= */
   return (
     <div className={s.settings}>
-      <SettingsHeader onBack={() => setPage?.("")} />
+      <SettingsHeader onBack={() => setPage?.(prevPage ?? "")} />
 
       <Notification
         notification={notification}

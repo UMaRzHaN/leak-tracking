@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useGeolocation } from "../../hooks/useGeolocation";
 
 export function useAppState() {
-  const [page, setPage] = useState("");
+  const [{ page, prevPage }, setPageState] = useState({ page: "", prevPage: "" });
   const [data, setData] = useState([]);
   const [gpsEnabled, setGpsEnabled] = useState(true);
+
+  const setPage = useCallback((next) => {
+    setPageState(({ page: current }) => ({ page: next, prevPage: current }));
+  }, []);
 
   const {
     coords,
@@ -14,6 +18,7 @@ export function useAppState() {
 
   return {
     page,
+    prevPage,
     setPage,
     data,
     setData,

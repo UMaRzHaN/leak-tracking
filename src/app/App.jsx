@@ -26,6 +26,7 @@ export default function App() {
   ========================= */
   const {
     page,
+    prevPage,
     setPage,
     gpsEnabled,
     setGpsEnabled,
@@ -138,6 +139,7 @@ export default function App() {
         {page === "settings" && (
           <Settings
             setPage={setPage}
+            prevPage={prevPage}
             clearForm={clearForm}
             clearDatabase={clear}
           />
