@@ -25,6 +25,7 @@
 - просмотр и редактирование карточки
 - хранение фото и комментариев
 - ведение статуса устранения
+- групповая смена статуса
 
 ### Сбор данных
 - геолокация через Capacitor
@@ -33,15 +34,19 @@
 - ручное заполнение формы
 
 ### Аналитика и визуализация
-- отображение утечек на карте Google Maps
+- отображение утечек на карте (Leaflet)
 - кластеризация маркеров
 - поиск и фильтрация по базе
 - цветовая и статусная индикация
 
+### Карта
+- интерактивная карта с кластеризацией маркеров
+- поддержка офлайн-карты с кэшированием тайлов
+
 ### Экспорт
-- экспорт в XLSX
-- экспорт в GeoJSON
+- экспорт в XLSX (ExcelJS)
 - экспорт в KML
+- резервная копия данных (JSON-backup)
 
 ---
 
@@ -64,7 +69,7 @@
 ## Экранная структура
 
 - **ProjectSetup** — первичная настройка проекта
-- **MainPage** — главная страница
+- **MainPage** — главная страница с быстрыми действиями и последними записями
 - **AddLeak** — добавление утечки
 - **MapPage** — карта утечек
 - **DataBase** — список и база данных
@@ -109,13 +114,13 @@ LeakReports/{folderName}/data/data.json
 - React 19
 - Create React App
 - Capacitor 8
-- Google Maps JavaScript API
-- @googlemaps/markerclusterer
+- Leaflet + leaflet.markercluster
 - Capacitor Camera
 - Capacitor Geolocation
 - Capacitor Filesystem
-- Capacitor Speech Recognition
-- xlsx / ExcelJS
+- Capacitor Share
+- @capacitor-community/speech-recognition
+- ExcelJS / xlsx
 - Sass
 
 ---
