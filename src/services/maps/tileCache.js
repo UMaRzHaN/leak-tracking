@@ -25,7 +25,7 @@ export function buildTileUrls(lat, lng, minZoom, maxZoom) {
     const cy = Math.floor(
       ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n,
     );
-    const radius = z <= 13 ? 2 : z <= 14 ? 3 : z <= 15 ? 4 : z <= 16 ? 5 : 6;
+    const radius = z <= 13 ? 1 : z <= 14 ? 2 : z <= 15 ? 2 : 3;
     for (let dx = -radius; dx <= radius; dx++) {
       for (let dy = -radius; dy <= radius; dy++) {
         const x = cx + dx;
@@ -164,66 +164,62 @@ export function buildViewportTileUrls(bounds, minZoom, maxZoom) {
   return urls;
 }
 
-export async function preloadUrls(urls, { onProgress, concurrency = 6 } = {}) {
-  const total = urls.length;
-  if (total === 0) return;
+export async function preloadUrls(urls, { onProgress, concurrency = 20 } = {}) {
+  if (urls.length === 0) return;
+
+  const webCache = (!isNative && webSupported) ? await caches.open(CACHE_NAME).catch(() => null) : null;
+
+  // Параллельная проверка кэша — фильтруем уже скачанные без сети
+  let toDownload;
+  if (isNative) {
+    const checks = await Promise.all(
+      urls.map(async (url) => {
+        const path = tileFilePath(url);
+        return (path && await nativeExists(path)) ? null : url;
+      })
+    );
+    toDownload = checks.filter(Boolean);
+  } else if (webCache) {
+    const checks = await Promise.all(
+      urls.map((url) => webCache.match(url).then((r) => r ? null : url).catch(() => url))
+    );
+    toDownload = checks.filter(Boolean);
+  } else {
+    toDownload = urls;
+  }
+
+  const total = toDownload.length;
+  if (total === 0) { onProgress?.(urls.length, urls.length); return; }
 
   let done = 0;
-  const webCache = (!isNative && webSupported) ? await caches.open(CACHE_NAME).catch(() => null) : null;
+
+  const fetchWithTimeout = async (url, ms = 8000) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms);
+    try {
+      return await fetch(url, { mode: "cors", signal: ctrl.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  };
 
   const downloadOne = async (url) => {
     if (isNative) {
-      const path = tileFilePath(url);
-      const cached = path ? await nativeExists(path) : false;
-      if (!cached) await nativeWrite(url);
+      await nativeWrite(url).catch(() => {});
     } else if (webCache) {
       const hit = await webCache.match(url).catch(() => null);
       if (!hit) {
         try {
-          const response = await fetch(url, { mode: "cors" });
+          const response = await fetchWithTimeout(url);
           if (response.ok) await webCache.put(url, response);
-        } catch { /* skip */ }
+        } catch { /* таймаут или сеть — пропускаем */ }
       }
     }
     done++;
-    if (done % 5 === 0 || done === total) onProgress?.(done, total);
+    if (done % 10 === 0 || done === total) onProgress?.(done, total);
   };
 
-  for (let i = 0; i < urls.length; i += concurrency) {
-    await Promise.all(urls.slice(i, i + concurrency).map(downloadOne));
+  for (let i = 0; i < toDownload.length; i += concurrency) {
+    await Promise.all(toDownload.slice(i, i + concurrency).map(downloadOne));
   }
-}
-
-export async function preloadArea(lat, lng, { minZoom = 13, maxZoom = 16, onProgress } = {}) {
-  const urls = buildTileUrls(lat, lng, minZoom, maxZoom);
-  let done = 0;
-  const CONCURRENCY = 6;
-
-  const webCache = (!isNative && webSupported) ? await caches.open(CACHE_NAME).catch(() => null) : null;
-
-  const downloadOne = async (url) => {
-    if (isNative) {
-      const path = tileFilePath(url);
-      const cached = path ? await nativeExists(path) : false;
-      if (!cached) await nativeWrite(url);
-    } else if (webCache) {
-      const hit = await webCache.match(url).catch(() => null);
-      if (!hit) {
-        try {
-          const response = await fetch(url, { mode: "cors" });
-          if (response.ok) await webCache.put(url, response);
-        } catch {
-          // skip failed tile
-        }
-      }
-    }
-    done++;
-    onProgress?.(done, urls.length);
-  };
-
-  for (let i = 0; i < urls.length; i += CONCURRENCY) {
-    await Promise.all(urls.slice(i, i + CONCURRENCY).map(downloadOne));
-  }
-
-  return done;
 }

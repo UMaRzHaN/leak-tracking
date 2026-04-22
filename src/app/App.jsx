@@ -1,9 +1,9 @@
 import s from "../index.scss";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer/Footer";
-import OfflineBanner from "../components/OfflineBanner/OfflineBanner";
+// import OfflineBanner from "../components/OfflineBanner/OfflineBanner";
 
 import AddLeak from "../pages/AddLeak/AddLeak";
 import DataBase from "../pages/DataBase/DataBase";
@@ -37,17 +37,17 @@ export default function App() {
   /* =========================
      ONLINE / OFFLINE
   ========================= */
-  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
-  useEffect(() => {
-    const up   = () => setIsOnline(true);
-    const down = () => setIsOnline(false);
-    window.addEventListener("online",  up);
-    window.addEventListener("offline", down);
-    return () => {
-      window.removeEventListener("online",  up);
-      window.removeEventListener("offline", down);
-    };
-  }, []);
+  // const [isOnline, setIsOnline] = useState(() => navigator.onLine);
+  // useEffect(() => {
+  //   const up   = () => setIsOnline(true);
+  //   const down = () => setIsOnline(false);
+  //   window.addEventListener("online",  up);
+  //   window.addEventListener("offline", down);
+  //   return () => {
+  //     window.removeEventListener("online",  up);
+  //     window.removeEventListener("offline", down);
+  //   };
+  // }, []);
 
   /* =========================
      PROJECT CONTEXT
@@ -97,7 +97,7 @@ export default function App() {
   ========================= */
   return (
     <div className={s.app}>
-      {!isOnline && <OfflineBanner />}
+      {/* {!isOnline && <OfflineBanner />} */}
 
       {!hideLayout && (
         <Header
@@ -112,11 +112,7 @@ export default function App() {
 
       <div className={s.pages}>
         {page === "" && (
-          <MainPage
-            setPage={setPage}
-            data={data}
-            setData={save}
-          />
+          <MainPage setPage={setPage} data={data} setData={save} />
         )}
 
         {page === "add" && (
@@ -134,11 +130,7 @@ export default function App() {
         )}
 
         {page === "db" && (
-          <DataBase
-            data={data}
-            setData={save}
-            coords={coords}
-          />
+          <DataBase data={data} setData={save} coords={coords} />
         )}
 
         {page === "map" && <MapPage leaks={data} coords={coords} />}

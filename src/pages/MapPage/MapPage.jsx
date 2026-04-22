@@ -29,7 +29,6 @@ export default function MapPage({ leaks, coords }) {
   const [notification, setNotification] = useState(null);
   const [tileProgress, setTileProgress] = useState(null);
   const [downloading, setDownloading] = useState(false);
-  const preloadedRef = useRef(false);
 
   const notify = useCallback((type, message) => setNotification({ type, message }), []);
 
@@ -115,21 +114,20 @@ export default function MapPage({ leaks, coords }) {
   }, [visibleLeaks]);
 
 
-  /* ── Предзагрузка тайлов вокруг утечек (zoom 13–14 только) ── */
-  useEffect(() => {
-    if (preloadedRef.current) return;
+  /* ── Скачать тайлы: вокруг всех утечек + текущий viewport ── */
+  const handleDownloadArea = useCallback(async () => {
+    const map = mapRef.current.map;
+    if (!map || downloading) return;
+
+    setDownloading(true);
+
+    const urlSet = new Set();
+
+    // Тайлы вокруг всех видимых утечек (zoom 13–16)
     const valid = visibleLeaks.filter(
       (l) => Number.isFinite(l.lat) && Number.isFinite(l.lng),
     );
-    if (valid.length === 0) return;
-
-    preloadedRef.current = true;
-
-    const MIN_ZOOM = 13;
-    const MAX_ZOOM = 14;
-
-    // Дедупликация точек на уровне zoom 14
-    const n = 2 ** MAX_ZOOM;
+    const n = 2 ** 14;
     const seen = new Set();
     const unique = valid.filter(({ lat, lng }) => {
       const tx = Math.floor(((lng + 180) / 360) * n);
@@ -140,45 +138,25 @@ export default function MapPage({ leaks, coords }) {
       seen.add(key);
       return true;
     });
+    // Zoom 13 только — обзор всех точек (~9 тайлов на точку)
+    for (const pt of unique) {
+      for (const url of buildTileUrls(pt.lat, pt.lng, 13, 13)) urlSet.add(url);
+    }
 
-    const run = async () => {
-      // Собираем все уникальные тайлы со всех точек одним Set
-      const urlSet = new Set();
-      for (const pt of unique) {
-        for (const url of buildTileUrls(pt.lat, pt.lng, MIN_ZOOM, MAX_ZOOM)) {
-          urlSet.add(url);
-        }
-      }
-      const urls = [...urlSet];
-
-      setTileProgress({ done: 0, total: urls.length });
-      await preloadUrls(urls, {
-        onProgress: (done, total) => setTileProgress({ done, total }),
-      }).catch(() => {});
-      setTileProgress(null);
-    };
-
-    run().catch(() => { setTileProgress(null); });
-  }, [visibleLeaks]);
-
-  /* ── Скачать тайлы текущей области ── */
-  const handleDownloadArea = useCallback(async () => {
-    const map = mapRef.current.map;
-    if (!map || downloading) return;
-
+    // Текущий viewport на текущем zoom
     const b = map.getBounds();
     const bounds = { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() };
-    const urls = [...new Set(buildViewportTileUrls(bounds, 13, 16))];
-    if (urls.length === 0) return;
+    const currentZoom = map.getZoom();
+    for (const url of buildViewportTileUrls(bounds, currentZoom, currentZoom)) urlSet.add(url);
 
-    setDownloading(true);
+    const urls = [...urlSet];
     setTileProgress({ done: 0, total: urls.length });
     await preloadUrls(urls, {
       onProgress: (done, total) => setTileProgress({ done, total }),
     }).catch(() => {});
     setTileProgress(null);
     setDownloading(false);
-  }, [downloading]);
+  }, [downloading, visibleLeaks]);
 
   /* ── Экспорт KML ── */
   const handleExportKML = useCallback(() => {

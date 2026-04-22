@@ -1,6 +1,13 @@
 import { useState, useMemo, useEffect } from "react";
 import s from "./VoicePreviewSheet.module.scss";
 
+// Fallback labels for voice-parseable keys that may not exist in every project's steps
+// (e.g. leak_cause is midstream-only, category is absent from midstream)
+const VOICE_KEY_LABELS = {
+  leak_cause: "Причина утечки",
+  category: "Категория",
+};
+
 /**
  * Bottom sheet showing voice-parsed fields before they're applied to the form.
  * User can toggle individual fields on/off, then confirm or dismiss.
@@ -77,7 +84,7 @@ export default function VoicePreviewSheet({ pending, steps, onConfirm, onDismiss
                 onClick={() => toggle(key)}
               >
                 <span className={s.check}>{selected.has(key) ? "✓" : ""}</span>
-                <span className={s.fieldLabel}>{labelMap[key] ?? key}</span>
+                <span className={s.fieldLabel}>{labelMap[key] ?? VOICE_KEY_LABELS[key] ?? key}</span>
                 <span className={s.value}>{formatValue(value)}</span>
               </button>
             ))}
