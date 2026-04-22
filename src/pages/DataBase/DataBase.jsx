@@ -55,6 +55,7 @@ export default function DataBase({ data, setData, coords }) {
   const [notification, setNotification] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [priorityFilter, setPriorityFilter] = useState(ALL);
+  const [sortAsc, setSortAsc] = useState(false);
   const [pickerLeak, setPickerLeak] = useState(null);
   const [resolveLeak, setResolveLeak] = useState(null);
   const [resolveQueue, setResolveQueue] = useState([]);
@@ -193,7 +194,7 @@ export default function DataBase({ data, setData, coords }) {
       return list;
     }
 
-    let list = [...data].sort((a, b) => b.id - a.id);
+    let list = [...data].sort((a, b) => sortAsc ? a.id - b.id : b.id - a.id);
 
     if (statusFilter !== ALL) {
       list = list.filter((l) => (l.status ?? STATUS.OPEN) === statusFilter);
@@ -218,7 +219,7 @@ export default function DataBase({ data, setData, coords }) {
     }
 
     return list;
-  }, [data, statusFilter, priorityFilter, search, hasGps, coords]);
+  }, [data, statusFilter, priorityFilter, search, hasGps, coords, sortAsc]);
 
   const selectDisplayed = useCallback(() => {
     const ids = displayed.map((leak) => leak.id);
@@ -432,11 +433,22 @@ export default function DataBase({ data, setData, coords }) {
       {/* ── Results info + bulk actions + Export ── */}
       <div className={s.resultsRow}>
         <span className={s.resultsInfo}>
-          {visible.length > 0
-            ? statusFilter === NEARBY
-              ? `${visible.length} ${pluralLeaks(visible.length)} • в радиусе ${NEARBY_RADIUS_M} м`
-              : `${visible.length} ${pluralLeaks(visible.length)} • дата ↓`
-            : null}
+          {visible.length > 0 && (
+            <>
+              {`${visible.length} ${pluralLeaks(visible.length)}`}
+              {statusFilter === NEARBY
+                ? ` • в радиусе ${NEARBY_RADIUS_M} м`
+                : (
+                  <button
+                    className={s.sortToggle}
+                    onClick={() => setSortAsc((v) => !v)}
+                    title="Изменить порядок сортировки"
+                  >
+                    {sortAsc ? "дата ↑" : "дата ↓"}
+                  </button>
+                )}
+            </>
+          )}
         </span>
 
         <div

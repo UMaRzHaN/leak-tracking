@@ -144,6 +144,26 @@ export async function clearMapCache() {
   if (webSupported) await caches.delete(CACHE_NAME);
 }
 
+export function buildViewportTileUrls(bounds, minZoom, maxZoom) {
+  const { north, south, east, west } = bounds;
+  const urls = [];
+  for (let z = minZoom; z <= maxZoom; z++) {
+    const n = 2 ** z;
+    const x1 = Math.max(0, Math.floor(((west + 180) / 360) * n));
+    const x2 = Math.min(n - 1, Math.floor(((east + 180) / 360) * n));
+    const latRad1 = (north * Math.PI) / 180;
+    const y1 = Math.max(0, Math.floor(((1 - Math.log(Math.tan(latRad1) + 1 / Math.cos(latRad1)) / Math.PI) / 2) * n));
+    const latRad2 = (south * Math.PI) / 180;
+    const y2 = Math.min(n - 1, Math.floor(((1 - Math.log(Math.tan(latRad2) + 1 / Math.cos(latRad2)) / Math.PI) / 2) * n));
+    for (let x = x1; x <= x2; x++) {
+      for (let y = y1; y <= y2; y++) {
+        urls.push(`${ESRI_BASE}/${z}/${y}/${x}`);
+      }
+    }
+  }
+  return urls;
+}
+
 export async function preloadUrls(urls, { onProgress, concurrency = 6 } = {}) {
   const total = urls.length;
   if (total === 0) return;

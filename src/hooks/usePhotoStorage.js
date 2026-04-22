@@ -2,6 +2,7 @@ import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
 import { useIndexedDB } from "./useIndexedDB";
 import { useProject } from "../app/settings/ProjectContext";
+import { compressImage } from "../utils/compressImage";
 
 /*
  * Фото хранятся в Directory.Data (приватное) — не видно в галерее.
@@ -54,12 +55,13 @@ export function usePhotoStorage() {
   async function savePhoto(rawPhoto, leakId) {
     if (!rawPhoto || !leakId) return null;
     const version = Date.now();
+    const photo = rawPhoto instanceof Blob ? await compressImage(rawPhoto) : rawPhoto;
 
     /* 🌐 WEB — IndexedDB */
     if (!isNative) {
-      if (!ready || !(rawPhoto instanceof Blob)) return null;
+      if (!ready || !(photo instanceof Blob)) return null;
 
-      const base64 = await fileToBase64(rawPhoto);
+      const base64 = await fileToBase64(photo);
       const mime = rawPhoto.type || "image/jpeg";
       const photoId = `photo_${leakId}_${version}`;
       const ok = await idbSave(photoId, `data:${mime};base64,${base64}`);
@@ -77,14 +79,14 @@ export function usePhotoStorage() {
     }
 
     /* 📱 MOBILE — Directory.Data */
-    if (!PHOTO_FOLDER || !(rawPhoto instanceof Blob)) return null;
+    if (!PHOTO_FOLDER || !(photo instanceof Blob)) return null;
 
     await Filesystem.mkdir({ path: PHOTO_FOLDER, directory: Directory.Data, recursive: true }).catch(() => {});
 
     const fileName = `photo_${leakId}_${version}.jpg`;
     const targetPath = `${PHOTO_FOLDER}/${fileName}`;
 
-    const base64 = await fileToBase64(rawPhoto);
+    const base64 = await fileToBase64(photo);
     await Filesystem.writeFile({ path: targetPath, data: base64, directory: Directory.Data });
     await cleanupOldVersions(PHOTO_FOLDER, leakId, fileName);
 

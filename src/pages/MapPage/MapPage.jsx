@@ -6,7 +6,7 @@ import { useActiveLocation } from "../../hooks/useActiveLocation";
 import { useProject } from "../../app/settings/ProjectContext";
 import { getProjectMobileDir } from "../../app/settings/storageKeys";
 import { createOfflineMap, addMarkers } from "../../services/maps/offlineMap";
-import { preloadUrls, buildTileUrls } from "../../services/maps/tileCache";
+import { preloadUrls, buildTileUrls, buildViewportTileUrls } from "../../services/maps/tileCache";
 import { saveLeaksKML } from "../../services/export/kml";
 import { handleExport } from "../../utils/handleExport";
 import s from "./MapPage.module.scss";
@@ -28,6 +28,7 @@ export default function MapPage({ leaks, coords }) {
   const [enabledLocations, setEnabledLocations] = useState({});
   const [notification, setNotification] = useState(null);
   const [tileProgress, setTileProgress] = useState(null);
+  const [downloading, setDownloading] = useState(false);
   const preloadedRef = useRef(false);
 
   const notify = useCallback((type, message) => setNotification({ type, message }), []);
@@ -160,6 +161,25 @@ export default function MapPage({ leaks, coords }) {
     run().catch(() => { setTileProgress(null); });
   }, [visibleLeaks]);
 
+  /* ── Скачать тайлы текущей области ── */
+  const handleDownloadArea = useCallback(async () => {
+    const map = mapRef.current.map;
+    if (!map || downloading) return;
+
+    const b = map.getBounds();
+    const bounds = { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() };
+    const urls = [...new Set(buildViewportTileUrls(bounds, 13, 16))];
+    if (urls.length === 0) return;
+
+    setDownloading(true);
+    setTileProgress({ done: 0, total: urls.length });
+    await preloadUrls(urls, {
+      onProgress: (done, total) => setTileProgress({ done, total }),
+    }).catch(() => {});
+    setTileProgress(null);
+    setDownloading(false);
+  }, [downloading]);
+
   /* ── Экспорт KML ── */
   const handleExportKML = useCallback(() => {
     handleExport({
@@ -203,6 +223,18 @@ export default function MapPage({ leaks, coords }) {
           <svg className={s.controlIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="7"/>
             <line x1="16.5" y1="16.5" x2="22" y2="22"/>
+          </svg>
+        </button>
+        <button
+          type="button"
+          className={`${s.controlBtn} ${downloading ? s.controlBtnActive : ""}`}
+          onClick={handleDownloadArea}
+          disabled={downloading}
+          aria-label="Скачать карту текущей области"
+        >
+          <svg className={s.controlIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2v13M7 11l5 5 5-5"/>
+            <path d="M3 19h18"/>
           </svg>
         </button>
       </div>

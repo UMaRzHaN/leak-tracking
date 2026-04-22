@@ -48,6 +48,16 @@
     background: var(--c-surface2);
     transform: scale(0.95);
   }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.controlBtnActive {
+  background: var(--c-blue-dim);
+  color: var(--c-blue);
 }
 
 .controlIcon {
