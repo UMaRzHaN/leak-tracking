@@ -21,14 +21,6 @@ async function resolveBase64(path, idbGet) {
   return { mime: match[1], base64: match[2], ext: match[1].split("/")[1] || "jpg" };
 }
 
-/**
- * Export all leaks + photos as a ZIP archive.
- * Photos go into photos/ folder; backup.json has paths replaced with "zip:photos/...".
- *
- * @param {object[]} leaks       — raw leak objects
- * @param {Function} idbGet      — (id) => Promise<dataUri|null>  (web IndexedDB)
- * @param {string}   projectName — used for the archive filename
- */
 export async function exportBackupZip(leaks, idbGet, projectName = "backup") {
   const zip = new JSZip();
   const photosFolder = zip.folder("photos");
@@ -61,14 +53,6 @@ export async function exportBackupZip(leaks, idbGet, projectName = "backup") {
   URL.revokeObjectURL(url);
 }
 
-/**
- * Import leaks + photos from a ZIP archive.
- * Restores photos via savePhoto and returns updated leaks array.
- *
- * @param {File}     zipFile    — ZIP file selected by user
- * @param {Function} savePhoto  — (blob: Blob, leakId: string) => Promise<string|null>
- * @returns {Promise<object[]>} — leaks with restored photo paths
- */
 export async function importBackupZip(zipFile, savePhoto) {
   const zip = await JSZip.loadAsync(zipFile);
 
@@ -93,14 +77,13 @@ export async function importBackupZip(zipFile, savePhoto) {
         const base64 = await photoFile.async("base64");
         const ext = relativePath.split(".").pop() || "jpg";
         const mime = ext === "png" ? "image/png" : "image/jpeg";
-        const dataUri = `data:${mime};base64,${base64}`;
 
-        // Convert data URI → Blob → save via hook
         const byteChars = atob(base64);
         const byteArr = new Uint8Array(byteChars.length);
         for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
         const blob = new Blob([byteArr], { type: mime });
 
+        const dataUri = `data:${mime};base64,${base64}`;
         const newPath = await savePhoto(blob, leak.id);
         copy[key] = newPath ?? dataUri;
       }

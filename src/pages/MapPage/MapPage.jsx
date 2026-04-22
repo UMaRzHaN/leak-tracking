@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import MobileSheet from "../../components/MobileSheet/MobileSheet";
 import Notification from "../../components/Notification/Notification";
-import { getDistanceMeters } from "../../utils/calculations/getDistanceMeters";
+import { getDistanceMeters } from "../../utils/geoUtils";
 import { useActiveLocation } from "../../hooks/useActiveLocation";
 import { useProject } from "../../app/settings/ProjectContext";
 import { getProjectMobileDir } from "../../app/settings/storageKeys";
@@ -40,6 +40,7 @@ export default function MapPage({ leaks, coords }) {
   const [open, setOpen] = useState(false);
   const [enabledLocations, setEnabledLocations] = useState({});
   const [notification, setNotification] = useState(null);
+  const [tileProgress, setTileProgress] = useState(null); // { done, total } | null
   const preloadedRef = useRef(false);
 
   const notify = useCallback((type, message) => setNotification({ type, message }), []);
@@ -135,9 +136,17 @@ export default function MapPage({ leaks, coords }) {
 
     preloadedRef.current = true;
     const unique = deduplicateByGrid(valid, 14);
-    unique.forEach(({ lat, lng }) => {
-      preloadArea(lat, lng).catch(() => {});
-    });
+
+    const run = async () => {
+      setTileProgress({ done: 0, total: unique.length });
+      for (let i = 0; i < unique.length; i++) {
+        await preloadArea(unique[i].lat, unique[i].lng).catch(() => {});
+        setTileProgress({ done: i + 1, total: unique.length });
+      }
+      setTileProgress(null);
+    };
+
+    run().catch(() => { setTileProgress(null); });
   }, [visibleLeaks]);
 
   /* ── Экспорт KML ── */
@@ -197,6 +206,18 @@ export default function MapPage({ leaks, coords }) {
           >
             ↗ KML
           </button>
+        </div>
+      )}
+
+      {tileProgress && (
+        <div className={s.tileProgress}>
+          <div
+            className={s.tileProgressBar}
+            style={{ width: `${Math.round((tileProgress.done / tileProgress.total) * 100)}%` }}
+          />
+          <span className={s.tileProgressLabel}>
+            Загрузка карты {Math.round((tileProgress.done / tileProgress.total) * 100)}%
+          </span>
         </div>
       )}
 

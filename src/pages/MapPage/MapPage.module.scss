@@ -65,6 +65,38 @@
   gap: 6px;
 }
 
+.tileProgress {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: 180px;
+  background: var(--c-surface);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tileProgressBar {
+  height: 3px;
+  background: var(--c-accent, #3b82f6);
+  border-radius: 2px;
+  transition: width 0.2s ease;
+  min-width: 4px;
+}
+
+.tileProgressLabel {
+  font-size: 11px;
+  color: var(--c-text-secondary, #888);
+  text-align: center;
+  white-space: nowrap;
+}
+
 .exportBtn {
   padding: 6px 12px;
   border-radius: 20px;

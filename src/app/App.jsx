@@ -6,7 +6,7 @@ import Footer from "../components/Footer/Footer";
 import OfflineBanner from "../components/OfflineBanner/OfflineBanner";
 
 import AddLeak from "../pages/AddLeak/AddLeak";
-import DataBase from "../pages/DataBase";
+import DataBase from "../pages/DataBase/DataBase";
 import MapPage from "../pages/MapPage/MapPage";
 import MainPage from "../pages/MainPage/MainPage";
 import Settings from "../pages/Settings/Settings";

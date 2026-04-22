@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import s from "./VoicePreviewSheet.module.scss";
 
 /**
@@ -31,10 +31,9 @@ export default function VoicePreviewSheet({ pending, steps, onConfirm, onDismiss
 
   const [selected, setSelected] = useState(() => new Set(entries.map(([k]) => k)));
 
-  // Reset selection whenever pending changes
-  useMemo(() => {
+  useEffect(() => {
     setSelected(new Set(entries.map(([k]) => k)));
-  }, [entries]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [entries]);
 
   if (!pending) return null;
 

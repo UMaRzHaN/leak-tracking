@@ -1,15 +1,22 @@
 /** Расстояние между двумя точками в метрах (Haversine) */
 export function distanceMeters(lat1, lng1, lat2, lng2) {
+  const φ1 = Number(lat1);
+  const λ1 = Number(lng1);
+  const φ2 = Number(lat2);
+  const λ2 = Number(lng2);
+  if ([φ1, λ1, φ2, λ2].some((v) => v == null || Number.isNaN(v))) return Infinity;
   const R = 6371000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const toRad = (v) => (v * Math.PI) / 180;
+  const dLat = toRad(φ2 - φ1);
+  const dLng = toRad(λ2 - λ1);
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
+    Math.cos(toRad(φ1)) * Math.cos(toRad(φ2)) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+
+/** Алиас для обратной совместимости */
+export const getDistanceMeters = distanceMeters;
 
 /**
  * Ищет ближайшую утечку ближе threshold метров.
@@ -48,10 +55,3 @@ export function filterNearbyLeaks(leaks, lat, lng, radiusM = 500) {
   return results.sort((a, b) => a._nearbyDist - b._nearbyDist);
 }
 
-/** Форматирует точность GPS для отображения */
-// export function formatAccuracy(accuracyMeters) {
-//   if (!accuracyMeters) return null;
-//   if (accuracyMeters < 5)  return { text: `±${Math.round(accuracyMeters)} м`, level: "good" };
-//   if (accuracyMeters < 20) return { text: `±${Math.round(accuracyMeters)} м`, level: "ok" };
-//   return { text: `±${Math.round(accuracyMeters)} м`, level: "poor" };
-// }

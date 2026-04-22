@@ -14,18 +14,34 @@ const CachedTileLayer = L.TileLayer.extend({
 
     const url = this.getTileUrl(coords);
 
-    getTileBlobUrl(url).then((blobUrl) => {
+    getTileBlobUrl(url).then(async (blobUrl) => {
       if (blobUrl) {
         tile._blobUrl = blobUrl;
         tile.onload = () => done(null, tile);
         tile.onerror = (e) => done(e, tile);
         tile.src = blobUrl;
-      } else {
+        return;
+      }
+
+      // Один fetch — одновременно для отображения и кэширования
+      try {
+        const response = await fetch(url, { mode: "cors" });
+        if (!response.ok) throw new Error("bad status");
+
+        const responseToCache = response.clone();
+        const blob = await response.blob();
+
+        cacheTile(url, responseToCache);
+
+        const objectUrl = URL.createObjectURL(blob);
+        tile._blobUrl = objectUrl;
+        tile.onload = () => done(null, tile);
+        tile.onerror = (e) => done(e, tile);
+        tile.src = objectUrl;
+      } catch {
+        // fetch недоступен (оффлайн, CORS) — загружаем напрямую без кэша
         tile.crossOrigin = "anonymous";
-        tile.onload = () => {
-          cacheTile(url);
-          done(null, tile);
-        };
+        tile.onload = () => done(null, tile);
         tile.onerror = (e) => done(e, tile);
         tile.src = url;
       }
