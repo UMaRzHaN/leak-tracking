@@ -100,7 +100,7 @@ export const parseVoiceText = (text) => {
     {
       key: "secondary",
       regex: new RegExp(
-        `(?:компрессорная станци[я]|станци[я]|место рождени[ея]|месторождени[ея]|населённый пункт|пункт?)\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
+        `(?:компрессорная станци[я]|станци[я]|место рождени[ея]|месторождени[ея]|населённый пункт|пункт)\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
         "g",
       ),
       type: "string",
@@ -224,7 +224,8 @@ export const parseVoiceText = (text) => {
 
     if (type === "number") {
       const n = normalizeRuNumber(rawValue);
-      if (n !== undefined) result[key] = Number(n);
+      const num = Number(n);
+      if (n && !isNaN(num)) result[key] = num;
       return;
     }
 

@@ -1,5 +1,5 @@
 import s from "../index.scss";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer/Footer";
@@ -18,6 +18,7 @@ import { useAppState } from "./hooks/useAppState";
 
 import { cleanupLegacyLeaks } from "./migrations/cleanupLegacyLeaks";
 import { useLeakForm } from "../components/LeakForm/hooks/useLeakForm";
+import { usePhotoStorage } from "../hooks/usePhotoStorage";
 import { STATUS } from "../utils/status";
 
 export default function App() {
@@ -53,7 +54,7 @@ export default function App() {
   /* =========================
      PROJECT CONTEXT
   ========================= */
-  const { isConfigured, configure } = useProject();
+  const { isConfigured, configure, activeProject } = useProject();
 
   /* =========================
      PROJECT-AWARE DATA
@@ -64,6 +65,24 @@ export default function App() {
      VOICE
   ========================= */
   const { form, errors, handle, setErrors, setForm, clearForm } = useLeakForm();
+
+  /* =========================
+     PHOTO GC
+  ========================= */
+  const { gcOrphanedPhotos } = usePhotoStorage();
+  const gcRanRef = useRef(false);
+
+  // Сбрасываем флаг при смене проекта, чтобы GC запустился снова
+  useEffect(() => {
+    gcRanRef.current = false;
+  }, [activeProject?.id]);
+
+  // Запускаем GC один раз после загрузки данных текущего проекта
+  useEffect(() => {
+    if (gcRanRef.current) return;
+    gcRanRef.current = true;
+    gcOrphanedPhotos(data).catch(() => {});
+  }, [data, gcOrphanedPhotos]);
 
   /* =========================
      ONE-TIME MIGRATION

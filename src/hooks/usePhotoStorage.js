@@ -115,5 +115,53 @@ export function usePhotoStorage() {
     return idbGet(id);
   }
 
-  return { ready, isNative, savePhoto, deletePhoto, getPhoto };
+  /* ================= GC ================= */
+
+  /*
+   * Удаляет фото, на которые не ссылается ни одна утечка.
+   * Сценарий: пользователь сфотографировал, не сохранил форму → фото осиротело.
+   * Вызывать один раз после загрузки данных проекта.
+   */
+  async function gcOrphanedPhotos(leaks) {
+    const PHOTO_FIELDS = ["photo", "photo_after"];
+
+    const referenced = new Set();
+    for (const leak of leaks) {
+      for (const field of PHOTO_FIELDS) {
+        if (leak[field]) referenced.add(leak[field]);
+      }
+    }
+
+    if (!isNative) {
+      if (!ready) return;
+      const keys = await listKeys();
+      for (const key of keys) {
+        if (!referenced.has(`idb://${key}`)) {
+          await idbDelete(key);
+        }
+      }
+      return;
+    }
+
+    if (!PHOTO_FOLDER) return;
+    try {
+      const { files } = await Filesystem.readdir({
+        path: PHOTO_FOLDER,
+        directory: Directory.Data,
+      });
+      for (const file of files) {
+        const path = `data://${PHOTO_FOLDER}/${file.name}`;
+        if (!referenced.has(path)) {
+          await Filesystem.deleteFile({
+            directory: Directory.Data,
+            path: `${PHOTO_FOLDER}/${file.name}`,
+          }).catch(() => {});
+        }
+      }
+    } catch {
+      // папка ещё не создана — нормально
+    }
+  }
+
+  return { ready, isNative, savePhoto, deletePhoto, getPhoto, gcOrphanedPhotos };
 }

@@ -51,21 +51,30 @@ export function normalizeBySynonyms(raw, field) {
   // чистка пробелов
   value = value.replace(/\s+/g, " ").trim();
 
-  // финальная капитализация
-  const ABBR = new Set(
-    Object.values(map)
-      .filter(Boolean)
-      .map((v) => v.toLowerCase())
-  );
-
+  // 1️⃣ Первая буква каждого слова заглавная
   value = value
     .split(" ")
     .map((w) => {
-      if (ABBR.has(w)) return w.toUpperCase();
       if (/^\d/.test(w)) return w;
       return w.charAt(0).toUpperCase() + w.slice(1);
     })
     .join(" ");
+
+  // 2️⃣ Восстанавливаем оригинальный регистр канонических значений (от длинных к коротким)
+  // После шага 1 слова уже с заглавной, поэтому ищем без учёта регистра
+  const canonicals = Object.values(map)
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length);
+
+  for (const canon of canonicals) {
+    const canonLc = canon.toLowerCase();
+    const valueLc = value.toLowerCase();
+    const idx = valueLc.indexOf(canonLc);
+    if (idx !== -1) {
+      value = value.slice(0, idx) + canon + value.slice(idx + canonLc.length);
+      break;
+    }
+  }
 
   return {
     value,

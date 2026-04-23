@@ -169,7 +169,11 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
       updatedAt: Date.now(),
       history: [
         ...(leak.history ?? []),
-        { action: "status_changed", to: newStatus, date: new Date().toISOString() },
+        {
+          action: "status_changed",
+          to: newStatus,
+          date: new Date().toISOString(),
+        },
       ],
     });
   };
@@ -349,7 +353,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
                   </button>
                 ))}
               <button className={s.btnPrimary} onClick={handleEdit}>
-                ✏ Редактировать
+                Редактировать
               </button>
               <button className={s.btnGhost} onClick={handleClose}>
                 Закрыть

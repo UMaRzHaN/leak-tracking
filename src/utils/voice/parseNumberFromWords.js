@@ -62,5 +62,6 @@ export const parseNumberFromWords = (text) => {
     total += fraction / fractionDivider;
   }
 
-  return total || null;
+  const foundAny = words.some((w) => NUMBER_WORDS[w] !== undefined);
+  return foundAny ? total : null;
 };

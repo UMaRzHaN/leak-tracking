@@ -8,7 +8,7 @@ import { useTheme } from "../../app/hooks/useTheme";
 import { usePhotoStorage } from "../../hooks/usePhotoStorage";
 import { PROJECT_META } from "../../configs/projects";
 import { getMapCacheInfo, clearMapCache } from "../../services/maps/tileCache";
-import { buildBackupZip, exportBackupZip, importBackupZip } from "../../services/export/backup";
+import { buildBackupZip, importBackupZip } from "../../services/export/backup";
 import SettingsHeader from "./Header/SettingsHeader";
 import SettingsModal from "../../components/SettingsModal/SettingsModal";
 import Notification from "../../components/Notification/Notification";
