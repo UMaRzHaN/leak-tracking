@@ -21,7 +21,7 @@ async function resolveBase64(path, idbGet) {
   return { mime: match[1], base64: match[2], ext: match[1].split("/")[1] || "jpg" };
 }
 
-export async function exportBackupZip(leaks, idbGet, projectName = "backup") {
+export async function buildBackupZip(leaks, idbGet) {
   const zip = new JSZip();
   const photosFolder = zip.folder("photos");
 
@@ -43,8 +43,11 @@ export async function exportBackupZip(leaks, idbGet, projectName = "backup") {
   );
 
   zip.file("backup.json", JSON.stringify(exportedLeaks, null, 2));
+  return zip.generateAsync({ type: "blob" });
+}
 
-  const blob = await zip.generateAsync({ type: "blob" });
+export async function exportBackupZip(leaks, idbGet, projectName = "backup") {
+  const blob = await buildBackupZip(leaks, idbGet);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

@@ -8,7 +8,7 @@ import { useTheme } from "../../app/hooks/useTheme";
 import { usePhotoStorage } from "../../hooks/usePhotoStorage";
 import { PROJECT_META } from "../../configs/projects";
 import { getMapCacheInfo, clearMapCache } from "../../services/maps/tileCache";
-import { exportBackupZip, importBackupZip } from "../../services/export/backup";
+import { buildBackupZip, exportBackupZip, importBackupZip } from "../../services/export/backup";
 import SettingsHeader from "./Header/SettingsHeader";
 import SettingsModal from "../../components/SettingsModal/SettingsModal";
 import Notification from "../../components/Notification/Notification";
@@ -98,19 +98,24 @@ export default function Settings({ setPage, prevPage, clearForm, clearDatabase }
   const handleExport = useCallback(async () => {
     if (!data.length) { notify("warning", "Нет данных для экспорта"); return; }
 
-    const name = activeProject?.folderName ?? "backup";
-    const fileName = `${name}_${Date.now()}.json`;
+    const folder = activeProject?.folderName ?? "backup";
+    const fileName = `${folder}_${Date.now()}.json`;
     const json = JSON.stringify(data, null, 2);
 
     if (Capacitor.isNativePlatform()) {
       try {
+        await Filesystem.mkdir({
+          path: folder,
+          directory: Directory.Documents,
+          recursive: true,
+        }).catch(() => {});
         await Filesystem.writeFile({
-          path: fileName,
+          path: `${folder}/${fileName}`,
           directory: Directory.Documents,
           data: json,
           encoding: "utf8",
         });
-        notify("success", `Сохранено в Документы: ${fileName}`);
+        notify("success", `Сохранено в Документы/${folder}/`);
       } catch (err) {
         notify("error", "Ошибка экспорта: " + err.message);
       }
@@ -151,9 +156,38 @@ export default function Settings({ setPage, prevPage, clearForm, clearDatabase }
 
   const handleExportZip = useCallback(async () => {
     if (!data.length) { notify("warning", "Нет данных для экспорта"); return; }
+    const folder = activeProject?.folderName ?? "backup";
+    const fileName = `${folder}_${Date.now()}.zip`;
     try {
-      await exportBackupZip(data, idbGetPhoto, activeProject?.folderName ?? "backup");
-      notify("success", `ZIP-архив скачан (${data.length} записей)`);
+      const blob = await buildBackupZip(data, idbGetPhoto);
+
+      if (Capacitor.isNativePlatform()) {
+        const reader = new FileReader();
+        const base64 = await new Promise((res, rej) => {
+          reader.onload = () => res(reader.result.split(",")[1]);
+          reader.onerror = rej;
+          reader.readAsDataURL(blob);
+        });
+        await Filesystem.mkdir({
+          path: folder,
+          directory: Directory.Documents,
+          recursive: true,
+        }).catch(() => {});
+        await Filesystem.writeFile({
+          path: `${folder}/${fileName}`,
+          directory: Directory.Documents,
+          data: base64,
+        });
+        notify("success", `ZIP сохранён в Документы/${folder}/`);
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+        notify("success", `ZIP-архив скачан (${data.length} записей)`);
+      }
     } catch (err) {
       notify("error", "Ошибка экспорта: " + err.message);
     }
