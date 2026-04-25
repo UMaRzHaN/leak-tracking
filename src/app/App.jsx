@@ -161,6 +161,7 @@ export default function App() {
             prevPage={prevPage}
             clearForm={clearForm}
             clearDatabase={clear}
+            isFormDirty={Object.values(form).some((v) => v !== null && v !== "" && v !== undefined)}
           />
         )}
       </div>

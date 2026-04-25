@@ -16,7 +16,7 @@ import ProjectList from "./components/ProjectList";
 import AddProjectForm from "./components/AddProjectForm";
 import s from "./Settings.module.scss";
 
-export default function Settings({ setPage, prevPage, clearForm, clearDatabase }) {
+export default function Settings({ setPage, prevPage, clearForm, clearDatabase, isFormDirty }) {
   const {
     projects,
     activeProject,
@@ -51,10 +51,12 @@ export default function Settings({ setPage, prevPage, clearForm, clearDatabase }
     async (id) => {
       if (id === activeProject?.id) return;
 
-      const ok = window.confirm(
-        "Переключить проект? Форма добавления утечки будет сброшена.",
-      );
-      if (!ok) return;
+      if (isFormDirty) {
+        const ok = window.confirm(
+          "Переключить проект? Форма добавления утечки будет сброшена.",
+        );
+        if (!ok) return;
+      }
 
       selectProject(id);
       clearForm?.();
@@ -62,7 +64,7 @@ export default function Settings({ setPage, prevPage, clearForm, clearDatabase }
       setCacheInfo({ count: 0, sizeMB: 0 });
       notify("info", "Проект переключён, кэш карты очищен");
     },
-    [activeProject, selectProject, clearForm, notify],
+    [activeProject, selectProject, clearForm, notify, isFormDirty],
   );
 
   const handleRename = useCallback(
