@@ -16,6 +16,7 @@ export default function AddLeak({
   setData,
   coords,
   setPage,
+  prevPage,
   form,
   errors,
   handle,
@@ -131,6 +132,7 @@ export default function AddLeak({
         isSaving={isSaving}
         coords={coords}
         setPage={setPage}
+        prevPage={prevPage}
         lastItem={data.at(-1)}
         form={form}
         errors={errors}

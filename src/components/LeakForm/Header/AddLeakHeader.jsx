@@ -1,13 +1,13 @@
 import PageHeader from "../../PageHeader/PageHeader";
 import VoiceButton from "../../VoiceButton/VoiceButton";
 
-export default function AddLeakHeader({ setPage, stopVoiceInput, startVoiceInput }) {
+export default function AddLeakHeader({ setPage, prevPage, stopVoiceInput, startVoiceInput }) {
   return (
     <PageHeader
       title="Добавить утечку"
       onBack={() => {
         stopVoiceInput?.();
-        setPage("");
+        setPage(prevPage ?? "");
       }}
       right={
         <VoiceButton

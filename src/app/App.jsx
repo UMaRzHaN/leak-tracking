@@ -141,6 +141,7 @@ export default function App() {
             setData={save}
             coords={coords}
             setPage={setPage}
+            prevPage={prevPage}
             form={form}
             errors={errors}
             handle={handle}

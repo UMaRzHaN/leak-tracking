@@ -16,6 +16,7 @@ import { normalizeNumber } from "../../utils/normalize/normalizeNumber";
 export default function LeakForm({
   onAdd,
   setPage,
+  prevPage,
   lastItem,
   form,
   errors,
@@ -159,6 +160,7 @@ export default function LeakForm({
         {/* ===== HEADER ===== */}
         <AddLeakHeader
           setPage={setPage}
+          prevPage={prevPage}
           stopVoiceInput={stopVoiceInput}
           startVoiceInput={startVoiceInput}
         />

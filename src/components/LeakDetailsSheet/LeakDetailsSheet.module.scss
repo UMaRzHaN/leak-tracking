@@ -812,3 +812,19 @@
   from { transform: scaleX(1); }
   to   { transform: scaleX(0); }
 }
+
+/* ══════════════════════════════════════════
+   DESKTOP — constrain photo sizes only
+   ══════════════════════════════════════════ */
+
+@media (min-width: 640px) {
+  .photoCompareThumb,
+  .photoComparePlaceholder {
+    max-height: 200px;
+  }
+
+  .thumb {
+    width: 80px;
+    height: 80px;
+  }
+}
