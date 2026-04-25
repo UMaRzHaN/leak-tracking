@@ -5,8 +5,9 @@ import StatusPickerModal from "../../components/StatusPickerModal/StatusPickerMo
 import ResolveModal from "../../components/ResolveModal/ResolveModal";
 import VirtualizedLeakList from "../../components/VirtualizedLeakList/VirtualizedLeakList";
 import Notification from "../../components/Notification/Notification";
+import FilterBar from "./FilterBar";
+import ResultsBar from "./ResultsBar";
 import { STATUS, STATUS_META, STATUS_ORDER } from "../../utils/status";
-import { PRIORITY_ORDER, PRIORITY_META } from "../../utils/priority";
 import { hapticSuccess } from "../../utils/haptics";
 import { filterNearbyLeaks } from "../../utils/geoUtils";
 import { exportToExcelZip } from "../../services/export/excel";
@@ -113,14 +114,15 @@ export default function DataBase({ data, setData, coords }) {
           : item,
       );
 
-      setData(next);
-      await save(next);
-      hapticSuccess();
-      notify(
-        "success",
-        `Статус изменён у ${affected.length} ${pluralLeaks(affected.length)}`,
-      );
-      clearSelection();
+      try {
+        setData(next);
+        await save(next);
+        hapticSuccess();
+        notify("success", `Статус изменён у ${affected.length} ${pluralLeaks(affected.length)}`);
+        clearSelection();
+      } catch (err) {
+        notify("error", "Ошибка сохранения: " + err.message);
+      }
     },
     [clearSelection, data, notify, save, selectedIds, setData],
   );
@@ -148,17 +150,20 @@ export default function DataBase({ data, setData, coords }) {
             }
           : item,
       );
-      setData(next);
-      await save(next);
-      hapticSuccess();
+
+      try {
+        setData(next);
+        await save(next);
+        hapticSuccess();
+      } catch (err) {
+        notify("error", "Ошибка сохранения: " + err.message);
+        return;
+      }
 
       const remaining = resolveQueue.slice(1);
       setResolveQueue(remaining);
       if (remaining.length === 0) {
-        notify(
-          "success",
-          `Устранено ${resolveTotal} ${pluralLeaks(resolveTotal)}`,
-        );
+        notify("success", `Устранено ${resolveTotal} ${pluralLeaks(resolveTotal)}`);
         clearSelection();
         setResolveTotal(0);
       }
@@ -259,20 +264,20 @@ export default function DataBase({ data, setData, coords }) {
               updatedAt: Date.now(),
               history: [
                 ...(r.history ?? []),
-                {
-                  action: "status_changed",
-                  to: newStatus,
-                  date: new Date().toISOString(),
-                },
+                { action: "status_changed", to: newStatus, date: new Date().toISOString() },
               ],
             }
           : r,
       );
-      setData(next);
-      await save(next);
-      hapticSuccess();
+      try {
+        setData(next);
+        await save(next);
+        hapticSuccess();
+      } catch (err) {
+        notify("error", "Ошибка сохранения: " + err.message);
+      }
     },
-    [data, pickerLeak, save, setData],
+    [data, notify, pickerLeak, save, setData],
   );
 
   /* ── Resolve modal confirm ── */
@@ -300,37 +305,49 @@ export default function DataBase({ data, setData, coords }) {
             }
           : r,
       );
-      setData(next);
-      await save(next);
-      hapticSuccess();
+      try {
+        setData(next);
+        await save(next);
+        hapticSuccess();
+      } catch (err) {
+        notify("error", "Ошибка сохранения: " + err.message);
+      }
     },
-    [data, resolveLeak, save, setData],
+    [data, notify, resolveLeak, save, setData],
   );
 
   /* ── Save from details ── */
   const handleSave = async (updated) => {
     const next = data.map((r) => (r.id === updated.id ? updated : r));
-    setData(next);
-    await save(next);
-    hapticSuccess();
-    setActiveLeak(null);
+    try {
+      setData(next);
+      await save(next);
+      hapticSuccess();
+      setActiveLeak(null);
+    } catch (err) {
+      notify("error", "Ошибка сохранения: " + err.message);
+    }
   };
 
   const handleDelete = useCallback(
     async (id) => {
       const next = data.filter((r) => r.id !== id);
-      setData(next);
-      await save(next);
-      hapticSuccess();
-      setActiveLeak(null);
-      setSelectedIds((prev) => {
-        if (!prev.has(id)) return prev;
-        const nextSelected = new Set(prev);
-        nextSelected.delete(id);
-        return nextSelected;
-      });
+      try {
+        setData(next);
+        await save(next);
+        hapticSuccess();
+        setActiveLeak(null);
+        setSelectedIds((prev) => {
+          if (!prev.has(id)) return prev;
+          const nextSelected = new Set(prev);
+          nextSelected.delete(id);
+          return nextSelected;
+        });
+      } catch (err) {
+        notify("error", "Ошибка удаления: " + err.message);
+      }
     },
-    [data, save, setData],
+    [data, notify, save, setData],
   );
 
   const visible = displayed;
@@ -354,168 +371,44 @@ export default function DataBase({ data, setData, coords }) {
         onClose={() => setNotification(null)}
       />
 
-      {/* ── Search ── */}
-      <div className={s.searchWrap}>
-        <span className={s.searchIcon}>🔍</span>
-        <input
-          className={s.searchInput}
-          placeholder="Поиск по ID, объекту, описанию…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        {search && (
-          <button className={s.clearSearch} onClick={() => setSearch("")}>
-            ✕
-          </button>
-        )}
-      </div>
+      <FilterBar
+        search={search}
+        setSearch={setSearch}
+        statusFilter={statusFilter}
+        setFilter={setFilter}
+        priorityFilter={priorityFilter}
+        setPriorityFilter={setPriorityFilter}
+        counts={counts}
+        hasGps={hasGps}
+      />
 
-      {/* ── Status filter tabs ── */}
-      <div className={s.filters}>
-        <FilterTab
-          id={ALL}
-          label="Все"
-          count={counts.all}
-          active={statusFilter}
-          onSelect={setFilter}
-        />
-        {STATUS_ORDER.map((st) => (
-          <FilterTab
-            key={st}
-            id={st}
-            label={STATUS_META[st].short}
-            count={counts[st]}
-            active={statusFilter}
-            onSelect={setFilter}
-            color={STATUS_META[st].color}
-          />
-        ))}
-        {hasGps && (
-          <FilterTab
-            id={NEARBY}
-            label="📍 Рядом"
-            count={counts[NEARBY]}
-            active={statusFilter}
-            onSelect={setFilter}
-            color="var(--c-blue)"
-          />
-        )}
-      </div>
-
-      {/* ── Priority filter ── */}
-      <div className={s.priorityFilters}>
-        <button
-          className={`${s.priorityTab} ${priorityFilter === ALL ? s.priorityTabActive : ""}`}
-          onClick={() => setPriorityFilter(ALL)}
-        >
-          Все приоритеты
-        </button>
-        {PRIORITY_ORDER.map((p) => {
-          const m = PRIORITY_META[p];
-          const isActive = priorityFilter === p;
-          return (
-            <button
-              key={p}
-              className={`${s.priorityTab} ${isActive ? s.priorityTabActive : ""}`}
-              style={
-                isActive
-                  ? { borderColor: m.border, color: m.color, background: m.bg }
-                  : undefined
-              }
-              onClick={() => setPriorityFilter(isActive ? ALL : p)}
-            >
-              {m.short}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── Results info + bulk actions + Export ── */}
-      <div className={s.resultsRow}>
-        <span className={s.resultsInfo}>
-          {visible.length > 0 && (
-            <>
-              {`${visible.length} ${pluralLeaks(visible.length)}`}
-              {statusFilter === NEARBY
-                ? ` • в радиусе ${NEARBY_RADIUS_M} м`
-                : (
-                  <button
-                    className={s.sortToggle}
-                    onClick={() => setSortAsc((v) => !v)}
-                    title="Изменить порядок сортировки"
-                  >
-                    {sortAsc ? "дата ↑" : "дата ↓"}
-                  </button>
-                )}
-            </>
-          )}
-        </span>
-
-        <div
-          className={`${s.resultsActions} ${selectedCount > 0 ? s.resultsActionsSelected : ""}`}
-        >
-          {selectedCount > 0 ? (
-            <>
-              <span className={s.selectionInfo}>Выбрано: {selectedCount}</span>
-              <button className={s.actionBtn} onClick={clearSelection}>
-                Снять выбор
-              </button>
-              {STATUS_ORDER.map((status) => (
-                <button
-                  key={status}
-                  className={`${s.actionBtn} ${s.statusBtn}`}
-                  style={{
-                    "--status-color": STATUS_META[status].color,
-                    "--status-bg": STATUS_META[status].bg,
-                    "--status-border": STATUS_META[status].border,
-                  }}
-                  onClick={() => handleBulkStatusChange(status)}
-                >
-                  {STATUS_META[status].short}
-                </button>
-              ))}
-            </>
-          ) : (
-            <>
-              {visible.length > 0 && (
-                <button
-                  className={s.actionBtn}
-                  onClick={
-                    allDisplayedSelected ? clearSelection : selectDisplayed
-                  }
-                >
-                  {allDisplayedSelected ? "Снять всё" : "Выбрать всё"}
-                </button>
-              )}
-
-              {data.length > 0 && (
-                <button
-                  className={s.exportBtn}
-                  onClick={async () => {
-                    try {
-                      await exportToExcelZip(
-                        displayed,
-                        prepareRows(displayed),
-                        excelHeaders,
-                        excelKeys,
-                        "утечки",
-                        idbGetPhoto,
-                      );
-                      notify("success", "ZIP-архив успешно скачан");
-                    } catch (e) {
-                      console.error(e);
-                      notify("error", "Ошибка экспорта");
-                    }
-                  }}
-                  title="Экспорт в Excel + фото (ZIP)"
-                >
-                  📥 XLSX
-                </button>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+      <ResultsBar
+        visibleCount={visible.length}
+        totalCount={data.length}
+        statusFilter={statusFilter}
+        sortAsc={sortAsc}
+        onSortToggle={() => setSortAsc((v) => !v)}
+        selectedCount={selectedCount}
+        allDisplayedSelected={allDisplayedSelected}
+        onClearSelection={clearSelection}
+        onSelectDisplayed={allDisplayedSelected ? clearSelection : selectDisplayed}
+        onBulkStatusChange={handleBulkStatusChange}
+        onExport={async () => {
+          try {
+            await exportToExcelZip(
+              displayed,
+              prepareRows(displayed),
+              excelHeaders,
+              excelKeys,
+              "утечки",
+              idbGetPhoto,
+            );
+            notify("success", "ZIP-архив успешно скачан");
+          } catch (e) {
+            notify("error", "Ошибка экспорта: " + e.message);
+          }
+        }}
+      />
 
       {/* ── List ── */}
       <div className={s.list}>
@@ -592,23 +485,8 @@ export default function DataBase({ data, setData, coords }) {
   );
 }
 
-function FilterTab({ id, label, count, active, onSelect, color }) {
-  const isActive = active === id;
-  return (
-    <button
-      className={`${s.filterTab} ${isActive ? s.filterActive : ""}`}
-      style={isActive && color ? { borderColor: color, color } : undefined}
-      onClick={() => onSelect(id)}
-    >
-      {label}
-      {count > 0 && <span className={s.filterCount}>{count}</span>}
-    </button>
-  );
-}
-
 function pluralLeaks(n) {
   if (n % 10 === 1 && n % 100 !== 11) return "запись";
-  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100))
-    return "записи";
+  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return "записи";
   return "записей";
 }

@@ -3,6 +3,7 @@ import LeakDetailsSheet from "../../components/LeakDetailsSheet/LeakDetailsSheet
 import LeakCardCompact from "../../components/LeakCardCompact/LeakCardCompact";
 import StatusPickerModal from "../../components/StatusPickerModal/StatusPickerModal";
 import ResolveModal from "../../components/ResolveModal/ResolveModal";
+import Notification from "../../components/Notification/Notification";
 import { STATUS, STATUS_META } from "../../utils/status";
 import { useProjectData } from "../../app/hooks/useProjectData";
 import { hapticSuccess } from "../../utils/haptics";
@@ -12,10 +13,13 @@ const RECENT_COUNT = 8;
 const ALL = "all";
 
 export default function MainPage({ setPage, data, setData }) {
-  const [activeLeak, setActiveLeak]     = useState(null);
-  const [statusFilter, setStatusFilter] = useState(ALL);
-  const [pickerLeak, setPickerLeak]     = useState(null);
-  const [resolveLeak, setResolveLeak]   = useState(null);
+  const [activeLeak, setActiveLeak]       = useState(null);
+  const [statusFilter, setStatusFilter]   = useState(ALL);
+  const [pickerLeak, setPickerLeak]       = useState(null);
+  const [resolveLeak, setResolveLeak]     = useState(null);
+  const [notification, setNotification]   = useState(null);
+
+  const notify = useCallback((type, message) => setNotification({ type, message }), []);
 
   const { save } = useProjectData();
 
@@ -67,11 +71,15 @@ export default function MainPage({ setPage, data, setData }) {
             }
           : r,
       );
-      setData(next);
-      await save(next);
-      hapticSuccess();
+      try {
+        setData(next);
+        await save(next);
+        hapticSuccess();
+      } catch (err) {
+        notify("error", "Ошибка сохранения: " + err.message);
+      }
     },
-    [data, pickerLeak, save, setData],
+    [data, notify, pickerLeak, save, setData],
   );
 
   const handleResolveConfirm = useCallback(
@@ -98,29 +106,42 @@ export default function MainPage({ setPage, data, setData }) {
             }
           : r,
       );
-      setData(next);
-      await save(next);
-      hapticSuccess();
+      try {
+        setData(next);
+        await save(next);
+        hapticSuccess();
+      } catch (err) {
+        notify("error", "Ошибка сохранения: " + err.message);
+      }
     },
-    [data, resolveLeak, save, setData],
+    [data, notify, resolveLeak, save, setData],
   );
 
   const handleSaveLeak = async (updated) => {
     const next = data.map((r) => (r.id === updated.id ? updated : r));
-    await setData(next);
-    hapticSuccess();
-    setActiveLeak(null);
+    try {
+      await setData(next);
+      hapticSuccess();
+      setActiveLeak(null);
+    } catch (err) {
+      notify("error", "Ошибка сохранения: " + err.message);
+    }
   };
 
   const handleDeleteLeak = async (id) => {
     const next = data.filter((r) => r.id !== id);
-    await setData(next);
-    hapticSuccess();
-    setActiveLeak(null);
+    try {
+      await setData(next);
+      hapticSuccess();
+      setActiveLeak(null);
+    } catch (err) {
+      notify("error", "Ошибка удаления: " + err.message);
+    }
   };
 
   return (
     <div className={s.page}>
+      <Notification notification={notification} onClose={() => setNotification(null)} />
 
       {/* ── Statistics (clickable filters) ── */}
       <section className={s.statsRow}>

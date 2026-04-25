@@ -4,6 +4,7 @@ import { Directory, Filesystem } from "@capacitor/filesystem";
 import { useProject } from "../../app/settings/ProjectContext";
 import { useProjectVars } from "../../app/settings/useProjectVars";
 import { useProjectData } from "../../app/hooks/useProjectData";
+import { useLeakFormContext } from "../../context/LeakFormContext";
 import { useTheme } from "../../app/hooks/useTheme";
 import { usePhotoStorage } from "../../hooks/usePhotoStorage";
 import { PROJECT_META } from "../../configs/projects";
@@ -16,7 +17,7 @@ import ProjectList from "./components/ProjectList";
 import AddProjectForm from "./components/AddProjectForm";
 import s from "./Settings.module.scss";
 
-export default function Settings({ setPage, prevPage, clearForm, clearDatabase, isFormDirty }) {
+export default function Settings({ setPage, prevPage, clearDatabase }) {
   const {
     projects,
     activeProject,
@@ -25,6 +26,9 @@ export default function Settings({ setPage, prevPage, clearForm, clearDatabase, 
     renameProject,
     removeProject,
   } = useProject();
+
+  const { form, clearForm } = useLeakFormContext();
+  const isFormDirty = Object.values(form).some((v) => v !== null && v !== "" && v !== undefined);
 
   const { vars, setVars } = useProjectVars(activeProject?.id ?? null);
   const { data, save } = useProjectData();

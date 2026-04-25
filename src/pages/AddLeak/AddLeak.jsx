@@ -5,6 +5,7 @@ import { useFormDraft } from "../../hooks/useFormDraft";
 import { useSafeSave } from "../../hooks/useSafeSave";
 import { toNumber } from "../../utils/voice/toNumber";
 import { useProjectData } from "../../app/hooks/useProjectData";
+import { useLeakFormContext } from "../../context/LeakFormContext";
 import { hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { STATUS } from "../../utils/status";
 import { priorityFromSpeed } from "../../utils/priority";
@@ -17,12 +18,8 @@ export default function AddLeak({
   coords,
   setPage,
   prevPage,
-  form,
-  errors,
-  handle,
-  setErrors,
-  setForm,
 }) {
+  const { form, setForm } = useLeakFormContext();
   const { savePhoto, ready: photoReady } = usePhotoStorage();
   const { save } = useProjectData();
   const { saveDraft, loadDraft, clearDraft, hasDraft } = useFormDraft();
@@ -56,7 +53,7 @@ export default function AddLeak({
   const handleAdd = async (row) => {
     return run(async () => {
       try {
-        const id = Date.now();
+        const id = Date.now() * 1000 + Math.floor(Math.random() * 999);
         const lat = toNumber(coords?.lat);
         const lng = toNumber(coords?.lng);
 
@@ -134,11 +131,6 @@ export default function AddLeak({
         setPage={setPage}
         prevPage={prevPage}
         lastItem={data.at(-1)}
-        form={form}
-        errors={errors}
-        handle={handle}
-        setErrors={setErrors}
-        setForm={setForm}
       />
     </>
   );

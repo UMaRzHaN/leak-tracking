@@ -2,6 +2,7 @@ import { useState, useRef, useMemo, useCallback } from "react";
 import { useStepValidation } from "./hooks/useStepValidation";
 import { useProjectConfig } from "../../app/settings/useProjectConfig";
 import { useVoiceControl } from "../../app/hooks/useVoiceControl";
+import { useLeakFormContext } from "../../context/LeakFormContext";
 import AddLeakHeader from "./Header/AddLeakHeader";
 import AddLeakFooter from "./Footer/AddLeakFooter";
 import ConfirmSheet from "../ConfirmSheet/ConfirmSheet";
@@ -18,13 +19,9 @@ export default function LeakForm({
   setPage,
   prevPage,
   lastItem,
-  form,
-  errors,
-  handle,
-  setErrors,
-  setForm,
   isSaving,
 }) {
+  const { form, errors, handle, setErrors, setForm } = useLeakFormContext();
   const projectConfig = useProjectConfig();
   const { activeProject } = useProject();
   const { vars } = useProjectVars(activeProject?.id ?? null, projectConfig.vars);

@@ -85,6 +85,7 @@ export default function MapPage({ leaks, coords }) {
     };
 
     return () => {
+      mapRef.current.map?.off("moveend");
       destroy();
       fittedRef.current = false;
       mapRef.current = { map: null, markersLayer: null, locateMe: null, destroy: null };

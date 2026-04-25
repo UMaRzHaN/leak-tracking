@@ -1,13 +1,11 @@
+import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
 import s from "../index.scss";
-import { useEffect, useMemo, useRef } from "react";
 
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer/Footer";
 // import OfflineBanner from "../components/OfflineBanner/OfflineBanner";
 
 import AddLeak from "../pages/AddLeak/AddLeak";
-import DataBase from "../pages/DataBase/DataBase";
-import MapPage from "../pages/MapPage/MapPage";
 import MainPage from "../pages/MainPage/MainPage";
 import Settings from "../pages/Settings/Settings";
 import ProjectSetupScreen from "../pages/ProjectSetup/ProjectSetupScreen";
@@ -17,9 +15,11 @@ import { useProjectData } from "./hooks/useProjectData";
 import { useAppState } from "./hooks/useAppState";
 
 import { cleanupLegacyLeaks } from "./migrations/cleanupLegacyLeaks";
-import { useLeakForm } from "../components/LeakForm/hooks/useLeakForm";
 import { usePhotoStorage } from "../hooks/usePhotoStorage";
 import { STATUS } from "../utils/status";
+
+const DataBase = lazy(() => import("../pages/DataBase/DataBase"));
+const MapPage  = lazy(() => import("../pages/MapPage/MapPage"));
 
 export default function App() {
   /* =========================
@@ -62,11 +62,6 @@ export default function App() {
   const { data, save, clear } = useProjectData();
 
   /* =========================
-     VOICE
-  ========================= */
-  const { form, errors, handle, setErrors, setForm, clearForm } = useLeakForm();
-
-  /* =========================
      PHOTO GC
   ========================= */
   const { gcOrphanedPhotos } = usePhotoStorage();
@@ -81,7 +76,7 @@ export default function App() {
   useEffect(() => {
     if (gcRanRef.current) return;
     gcRanRef.current = true;
-    gcOrphanedPhotos(data).catch(() => {});
+    gcOrphanedPhotos(data).catch((err) => console.warn("Photo GC error:", err));
   }, [data, gcOrphanedPhotos]);
 
   /* =========================
@@ -142,29 +137,24 @@ export default function App() {
             coords={coords}
             setPage={setPage}
             prevPage={prevPage}
-            form={form}
-            errors={errors}
-            handle={handle}
-            setErrors={setErrors}
-            setForm={setForm}
           />
         )}
-
-        {page === "db" && (
-          <DataBase data={data} setData={save} coords={coords} />
-        )}
-
-        {page === "map" && <MapPage leaks={data} coords={coords} />}
 
         {page === "settings" && (
           <Settings
             setPage={setPage}
             prevPage={prevPage}
-            clearForm={clearForm}
             clearDatabase={clear}
-            isFormDirty={Object.values(form).some((v) => v !== null && v !== "" && v !== undefined)}
           />
         )}
+
+        <Suspense fallback={null}>
+          {page === "db" && (
+            <DataBase data={data} setData={save} coords={coords} />
+          )}
+
+          {page === "map" && <MapPage leaks={data} coords={coords} />}
+        </Suspense>
       </div>
 
       {!hideLayout && (
