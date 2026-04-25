@@ -1,6 +1,9 @@
 import JSZip from "jszip";
 import { getPhotoSrc } from "../photoService";
 import { validateBackup, validateProjectBackupMeta } from "./backupSchema";
+import { STORAGE_KEYS } from "../../app/settings/storageKeys";
+
+const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const PHOTO_KEYS = ["photo", "photo_after"];
 const SUFFIX = { photo: "before", photo_after: "after" };
@@ -133,16 +136,153 @@ export async function peekBackupZip(zipFile) {
   const metaFile = zip.file("project.json");
   if (metaFile) {
     try {
-      const metaText = await metaFile.async("string");
-      const parsedMeta = JSON.parse(metaText);
+      const parsedMeta = JSON.parse(await metaFile.async("string"));
       const metaValidation = validateProjectBackupMeta(parsedMeta);
-      if (metaValidation.ok) meta = metaValidation.data;
+      if (metaValidation.ok) {
+        meta = metaValidation.data;
+      } else if (parsedMeta?.project?.name && parsedMeta?.project?.type) {
+        // Accept partial meta if at least name and type are present
+        meta = parsedMeta;
+      }
     } catch {
       // ignore
     }
   }
 
   return { leaks: validation.data, meta };
+}
+
+/**
+ * Full project import orchestration — single entry point for both
+ * first-run setup (ProjectSetupScreen) and in-app import (Settings).
+ *
+ * ctx shape:
+ *   addProject(name, type)  — creates project + activates it, returns project | null
+ *   savePhotoRef            — React ref; .current = savePhoto(blob, leakId) for the active project
+ *   saveRef                 — React ref; .current = save(leaks) for the active project
+ *   activeProjectIdRef      — React ref; .current = activeProject.id
+ *   photoReadyRef?          — React ref; .current = boolean (IndexedDB ready)
+ *   metaFallback?           — { name?, type? } used when ZIP has no project.json
+ *
+ * Returns { project, leakCount }.
+ */
+export async function importProjectZip(zipFile, ctx) {
+  const {
+    addProject,
+    savePhotoRef,
+    saveRef,
+    activeProjectIdRef,
+    photoReadyRef,
+    metaFallback,
+  } = ctx;
+
+  const zip = await JSZip.loadAsync(zipFile);
+
+  // ── backup.json ────────────────────────────────────────────────────────────
+  const jsonFile = zip.file("backup.json");
+  if (!jsonFile) throw new Error("Файл backup.json не найден в архиве");
+
+  let parsed;
+  try {
+    parsed = JSON.parse(await jsonFile.async("string"));
+  } catch {
+    throw new Error("backup.json содержит невалидный JSON");
+  }
+
+  const validation = validateBackup(parsed);
+  if (!validation.ok) throw new Error(validation.error);
+  const leaks = validation.data;
+
+  // ── project.json ───────────────────────────────────────────────────────────
+  let meta = null;
+  const metaFile = zip.file("project.json");
+  if (metaFile) {
+    try {
+      const parsedMeta = JSON.parse(await metaFile.async("string"));
+      const metaValidation = validateProjectBackupMeta(parsedMeta);
+      if (metaValidation.ok) {
+        meta = metaValidation.data;
+      } else if (parsedMeta?.project?.name && parsedMeta?.project?.type) {
+        meta = parsedMeta;
+      }
+    } catch {
+      // ignore — metaFallback may cover it
+    }
+  }
+
+  const projectName = meta?.project?.name || metaFallback?.name;
+  const projectType = meta?.project?.type || metaFallback?.type;
+  if (!projectName || !projectType) {
+    throw new Error(
+      "Архив не содержит метаданных проекта. Заполните название и тип проекта.",
+    );
+  }
+
+  // ── Create project (also makes it active synchronously in localStorage) ────
+  const newProject = addProject(projectName, projectType);
+  if (!newProject) throw new Error("Не удалось создать проект");
+
+  // ── Wait for React state to propagate into refs ────────────────────────────
+  // useEffect hooks run after render; we need saveRef / savePhotoRef to reflect
+  // the new project before we touch storage.
+  for (let i = 0; i < 60; i++) {
+    if (activeProjectIdRef.current === newProject.id) break;
+    await delay(50);
+  }
+  if (activeProjectIdRef.current !== newProject.id) {
+    throw new Error("Таймаут переключения проекта");
+  }
+
+  // ── Wait for photo storage (IndexedDB) ────────────────────────────────────
+  if (photoReadyRef) {
+    for (let i = 0; i < 60; i++) {
+      if (photoReadyRef.current) break;
+      await delay(50);
+    }
+    if (!photoReadyRef.current) throw new Error("Хранилище фото не готово");
+  }
+
+  // ── Restore calculation vars ───────────────────────────────────────────────
+  if (meta?.vars) {
+    localStorage.setItem(
+      STORAGE_KEYS.PROJECT_VARS(newProject.id),
+      JSON.stringify(meta.vars),
+    );
+  }
+
+  // ── Import photos and remap zip: paths ────────────────────────────────────
+  const restoredLeaks = await Promise.all(
+    leaks.map(async (leak) => {
+      const copy = { ...leak };
+      for (const key of PHOTO_KEYS) {
+        const path = leak[key];
+        if (!path?.startsWith("zip:")) continue;
+
+        const relativePath = path.replace("zip:", "");
+        const photoFile = zip.file(relativePath);
+        if (!photoFile) continue;
+
+        const base64 = await photoFile.async("base64");
+        const ext = relativePath.split(".").pop() || "jpg";
+        const mime = ext === "png" ? "image/png" : "image/jpeg";
+
+        const byteChars = atob(base64);
+        const byteArr = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([byteArr], { type: mime });
+
+        const leakKey = leak.leak_id ?? leak.id;
+        const newPath = await savePhotoRef.current(blob, leakKey);
+        copy[key] = newPath ?? `data:${mime};base64,${base64}`;
+      }
+      return copy;
+    }),
+  );
+
+  // ── Save leaks into the new project ───────────────────────────────────────
+  await saveRef.current(restoredLeaks);
+
+  return { project: newProject, leakCount: restoredLeaks.length };
 }
 
 export async function importBackupZip(zipFile, savePhoto) {

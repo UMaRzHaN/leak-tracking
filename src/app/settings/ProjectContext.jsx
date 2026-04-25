@@ -202,13 +202,26 @@ export function ProjectProvider({ children }) {
     [projects, _setActiveId],
   );
 
-  /** Переименовывает проект (folderName не меняется!) */
+  /** Переименовывает проект и обновляет folderName */
   const renameProject = useCallback(
     (id, name) => {
       const trimmed = name?.trim();
       if (!trimmed) return;
+
+      const newFolder = toFolderName(trimmed);
+      const existingFolders = new Set(
+        projects.filter((p) => p.id !== id).map((p) => p.folderName),
+      );
+      let uniqueFolder = newFolder;
+      let suffix = 2;
+      while (existingFolders.has(uniqueFolder)) {
+        uniqueFolder = `${newFolder}_${suffix++}`;
+      }
+
       _setProjects(
-        projects.map((p) => (p.id === id ? { ...p, name: trimmed } : p)),
+        projects.map((p) =>
+          p.id === id ? { ...p, name: trimmed, folderName: uniqueFolder } : p,
+        ),
       );
     },
     [projects, _setProjects],

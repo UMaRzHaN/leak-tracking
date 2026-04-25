@@ -9,9 +9,8 @@ import { useTheme } from "../../app/hooks/useTheme";
 import { usePhotoStorage } from "../../hooks/usePhotoStorage";
 import { PROJECT_META } from "../../configs/projects";
 import { getMapCacheInfo, clearMapCache } from "../../services/maps/tileCache";
-import { buildProjectBackupZip, importBackupZip, peekBackupZip } from "../../services/export/backup";
+import { buildProjectBackupZip, peekBackupZip } from "../../services/export/backup";
 import { validateBackup } from "../../services/export/backupSchema";
-import { STORAGE_KEYS } from "../../app/settings/storageKeys";
 import SettingsHeader from "./Header/SettingsHeader";
 import SettingsModal from "../../components/SettingsModal/SettingsModal";
 import Notification from "../../components/Notification/Notification";
@@ -19,7 +18,7 @@ import ProjectList from "./components/ProjectList";
 import AddProjectForm from "./components/AddProjectForm";
 import s from "./Settings.module.scss";
 
-export default function Settings({ setPage, prevPage, clearDatabase }) {
+export default function Settings({ setPage, prevPage, clearDatabase, onImportZip }) {
   const {
     projects,
     activeProject,
@@ -34,7 +33,7 @@ export default function Settings({ setPage, prevPage, clearDatabase }) {
 
   const { vars, setVars } = useProjectVars(activeProject?.id ?? null);
   const { data, save } = useProjectData();
-  const { ready: photoReady, getPhoto: idbGetPhoto, savePhoto } = usePhotoStorage();
+  const { getPhoto: idbGetPhoto } = usePhotoStorage();
 
   const { dark, toggle: toggleTheme } = useTheme();
   const [notification, setNotification] = useState(null);
@@ -43,15 +42,6 @@ export default function Settings({ setPage, prevPage, clearDatabase }) {
   const [cacheInfo, setCacheInfo] = useState(null);
   const importInputRef = useRef(null);
   const importZipRef = useRef(null);
-  const savePhotoRef = useRef(savePhoto);
-  const photoReadyRef = useRef(photoReady);
-  const activeProjectIdRef = useRef(activeProject?.id ?? null);
-  const saveRef = useRef(save);
-
-  useEffect(() => { savePhotoRef.current = savePhoto; }, [savePhoto]);
-  useEffect(() => { photoReadyRef.current = photoReady; }, [photoReady]);
-  useEffect(() => { activeProjectIdRef.current = activeProject?.id ?? null; }, [activeProject?.id]);
-  useEffect(() => { saveRef.current = save; }, [save]);
 
   useEffect(() => {
     getMapCacheInfo().then(setCacheInfo);
@@ -230,109 +220,37 @@ export default function Settings({ setPage, prevPage, clearDatabase }) {
 
     try {
       const peek = await peekBackupZip(file);
-      const meta = peek.meta?.project ?? null;
+      let meta = peek.meta?.project;
+      let fallback = null;
 
-      const waitPhotoStorage = async () => {
-        for (let i = 0; i < 60; i++) {
-          if (photoReadyRef.current) return true;
-          // eslint-disable-next-line no-await-in-loop
-          await new Promise((r) => setTimeout(r, 50));
-        }
-        return false;
-      };
-
-      const waitProjectActive = async (projectId) => {
-        for (let i = 0; i < 60; i++) {
-          if (activeProjectIdRef.current === projectId) return true;
-          // eslint-disable-next-line no-await-in-loop
-          await new Promise((r) => setTimeout(r, 50));
-        }
-        return false;
-      };
-
-      if (meta?.name && meta?.type) {
-        const ok = window.confirm(
-          `Импортировать проект «${meta.name}» (${peek.leaks.length} записей)?\n\nБудет создан новый проект.`,
+      if (!meta?.name || !meta?.type) {
+        const defaultName = file.name.replace(/\.zip$/i, "");
+        const name = window.prompt(
+          "Архив не содержит названия проекта.\nВведите название:",
+          defaultName,
         );
-        if (!ok) { e.target.value = ""; return; }
+        if (!name?.trim()) { e.target.value = ""; return; }
 
-        const created = addProject(meta.name, meta.type);
-        if (!created) throw new Error("Не удалось создать проект");
-
-        const switched = await waitProjectActive(created.id);
-        if (!switched) throw new Error("Не удалось переключиться на импортируемый проект");
-
-        if (peek.meta?.vars) {
-          localStorage.setItem(
-            STORAGE_KEYS.PROJECT_VARS(created.id),
-            JSON.stringify(peek.meta.vars),
-          );
-        }
-
-        const readyOk = await waitPhotoStorage();
-        if (!readyOk) throw new Error("Хранилище фото не готово");
-
-        const imported = await importBackupZip(file, savePhotoRef.current);
-        await saveRef.current(imported.leaks);
-
-        notify("success", `Импортирован проект «${created.name}» (${imported.leaks.length} записей)`);
-      } else {
-        // Нет метаданных — предложить выбор
-        const choice = window.confirm(
-          `Импортировать ${peek.leaks.length} записей?\n\n` +
-          "OK = Создать новый проект\n" +
-          "ОТМЕНА = Импортировать в текущий проект\n\n" +
-          "(Текущий проект: " + (activeProject?.name || "не выбран") + ")"
+        const isUpstream = window.confirm(
+          "Выберите тип проекта:\n\nOK — Добыча (upstream)\nОТМЕНА — Транспорт (midstream)",
         );
-
-        if (choice === true) {
-          // Создать новый проект
-          const projectName = prompt("Введите название проекта:", "Импортированные данные");
-          if (!projectName?.trim()) { e.target.value = ""; return; }
-
-          const projectType = window.confirm(
-            "Тип проекта?\n\nOK = Upstream (добыча)\nОТМЕНА = Midstream (транспорт)"
-          ) ? "upstream" : "midstream";
-
-          const created = addProject(projectName.trim(), projectType);
-          if (!created) throw new Error("Не удалось создать проект");
-
-          const switched = await waitProjectActive(created.id);
-          if (!switched) throw new Error("Не удалось переключиться на новый проект");
-
-          const readyOk = await waitPhotoStorage();
-          if (!readyOk) throw new Error("Хранилище фото не готово");
-
-          const imported = await importBackupZip(file, savePhotoRef.current);
-          await saveRef.current(imported.leaks);
-
-          notify("success", `Создан и импортирован проект «${projectName}» (${imported.leaks.length} записей)`);
-        } else if (choice === false) {
-          // Импортировать в текущий проект
-          if (!activeProject) {
-            throw new Error("Выберите проект перед импортом");
-          }
-
-          const ok = window.confirm(
-            `Импортировать ${peek.leaks.length} записей в проект «${activeProject.name}»?\n\nТекущие данные будут заменены.`
-          );
-          if (!ok) { e.target.value = ""; return; }
-
-          const readyOk = await waitPhotoStorage();
-          if (!readyOk) throw new Error("Хранилище фото не готово");
-
-          const imported = await importBackupZip(file, savePhotoRef.current);
-          await saveRef.current(imported.leaks);
-
-          notify("success", `Импортировано ${imported.leaks.length} записей в проект «${activeProject.name}»`);
-        }
+        fallback = { name: name.trim(), type: isUpstream ? "upstream" : "midstream" };
+        meta = fallback;
       }
+
+      const ok = window.confirm(
+        `Импортировать проект «${meta.name}» (${peek.leaks.length} записей)?\n\nБудет создан новый проект.`,
+      );
+      if (!ok) { e.target.value = ""; return; }
+
+      const result = await onImportZip(file, fallback ?? undefined);
+      notify("success", `Импортирован проект «${result.project.name}» (${result.leakCount} записей)`);
     } catch (err) {
       notify("error", "Ошибка импорта: " + err.message);
     }
 
     e.target.value = "";
-  }, [addProject, activeProject, notify]);
+  }, [onImportZip, notify]);
 
   /* =========================
      VARS MODAL

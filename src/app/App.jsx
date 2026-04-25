@@ -13,11 +13,10 @@ import ProjectSetupScreen from "../pages/ProjectSetup/ProjectSetupScreen";
 import { useProject } from "./settings/ProjectContext";
 import { useProjectData } from "./hooks/useProjectData";
 import { useAppState } from "./hooks/useAppState";
-import { STORAGE_KEYS } from "./settings/storageKeys";
 
 import { cleanupLegacyLeaks } from "./migrations/cleanupLegacyLeaks";
 import { usePhotoStorage } from "../hooks/usePhotoStorage";
-import { peekBackupZip, importBackupZip } from "../services/export/backup";
+import { importProjectZip } from "../services/export/backup";
 import { STATUS } from "../utils/status";
 
 const DataBase = lazy(() => import("../pages/DataBase/DataBase"));
@@ -111,45 +110,27 @@ export default function App() {
   );
 
   /* =========================
-     FIRST LAUNCH SETUP — import ZIP
+     IMPORT ZIP — shared context for all entry points
   ========================= */
+  const importCtx = {
+    addProject,
+    savePhotoRef,
+    saveRef,
+    activeProjectIdRef,
+    photoReadyRef,
+  };
+
+  /** First-run (ProjectSetupScreen): supports name/type fallback when ZIP has no project.json */
   const handleSetupImportZip = useCallback(async (file, fallback = {}) => {
-    const peek = await peekBackupZip(file);
-    const meta = peek.meta?.project;
+    await importProjectZip(file, { ...importCtx, metaFallback: fallback });
+  // importCtx values are stable refs — addProject is the only real dep
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addProject]);
 
-    const projectName = meta?.name || fallback.name;
-    const projectType = meta?.type || fallback.type;
-
-    if (!projectName || !projectType) {
-      throw new Error("Архив не содержит метаданных проекта. Заполните название и тип проекта в форме выше.");
-    }
-
-    const created = addProject(projectName, projectType);
-    if (!created) throw new Error("Не удалось создать проект");
-
-    // Ждём, пока React применит новый activeProject (и обновит все ref-ы)
-    for (let i = 0; i < 60; i++) {
-      if (activeProjectIdRef.current === created.id) break;
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((r) => setTimeout(r, 50));
-    }
-    if (activeProjectIdRef.current !== created.id) {
-      throw new Error("Не удалось переключиться на импортируемый проект");
-    }
-
-    for (let i = 0; i < 60; i++) {
-      if (photoReadyRef.current) break;
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((r) => setTimeout(r, 50));
-    }
-    if (!photoReadyRef.current) throw new Error("Хранилище фото не готово");
-
-    const imported = await importBackupZip(file, savePhotoRef.current);
-    await saveRef.current(imported.leaks);
-
-    if (peek.meta?.vars) {
-      localStorage.setItem(STORAGE_KEYS.PROJECT_VARS(created.id), JSON.stringify(peek.meta.vars));
-    }
+  /** In-app import (Settings): always creates a new project, optional fallback for legacy ZIPs */
+  const handleImportZip = useCallback(async (file, fallback) => {
+    return await importProjectZip(file, { ...importCtx, metaFallback: fallback });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addProject]);
 
   if (!isConfigured) {
@@ -196,6 +177,7 @@ export default function App() {
             setPage={setPage}
             prevPage={prevPage}
             clearDatabase={clear}
+            onImportZip={handleImportZip}
           />
         )}
 
