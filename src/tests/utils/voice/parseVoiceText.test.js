@@ -1,4 +1,4 @@
-import { parseVoiceText } from "./parseVoiceText";
+import { parseVoiceText } from "../../../utils/voice/parseVoiceText";
 
 describe("parseVoiceText", () => {
   describe("edge cases", () => {

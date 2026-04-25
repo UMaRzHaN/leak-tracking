@@ -1,4 +1,4 @@
-import { normalizeBySynonyms } from "./normalizeBySynonyms";
+import { normalizeBySynonyms } from "../../../utils/voice/normalizeBySynonyms";
 
 describe("normalizeBySynonyms", () => {
   describe("пустой ввод", () => {

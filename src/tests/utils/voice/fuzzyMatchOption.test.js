@@ -1,4 +1,4 @@
-import { fuzzyMatchOption } from "./fuzzyMatchOption";
+import { fuzzyMatchOption } from "../../../utils/voice/fuzzyMatchOption";
 
 const OPTIONS = [
   "Кран Шаровой",

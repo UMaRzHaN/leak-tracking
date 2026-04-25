@@ -1,4 +1,4 @@
-import { normalizeNumberWords } from "./normalizeNumberWords";
+import { normalizeNumberWords } from "../../../utils/voice/normalizeNumberWords";
 
 describe("normalizeNumberWords", () => {
   describe("пустой ввод", () => {

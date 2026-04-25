@@ -1,4 +1,4 @@
-import { capitalizeFirst } from "./capitalizeFirst";
+import { capitalizeFirst } from "../../../utils/normalize/capitalizeFirst";
 
 describe("capitalizeFirst", () => {
   describe("не строки", () => {

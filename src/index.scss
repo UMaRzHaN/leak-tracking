@@ -127,21 +127,6 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 /* =====================================================
-   EMOJI FIELD ICONS (legacy)
-   ===================================================== */
-.emojis {
-  background-repeat: no-repeat;
-  background-position: 10px center;
-  background-size: 20px 20px;
-  padding-left: 40px;
-}
-#leak_id     { background-image: url(img/tag.png); }
-#video       { background-image: url(img/video.png); }
-#speed       { background-image: url(img/speed.png); }
-#pressure    { background-image: url(img/pressure.png); }
-#temperature { background-image: url(img/temperature.png); }
-
-/* =====================================================
    SCROLLBAR
    ===================================================== */
 ::-webkit-scrollbar { width: 4px; }

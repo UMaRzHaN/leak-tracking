@@ -1,4 +1,4 @@
-import { calculations } from "./calculations";
+import { calculations } from "../../../utils/calculations/calculations";
 
 const BASE_VARS = {
   density: 0.668,

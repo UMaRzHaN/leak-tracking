@@ -1,4 +1,4 @@
-import { normalizeStationName } from "./normalizeStationName";
+import { normalizeStationName } from "../../../utils/voice/normalizeStationName";
 
 describe("normalizeStationName", () => {
   describe("не строки", () => {
