@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef } from "react";
 import "../index.scss";
 
 import Header from "../components/Header/Header";
@@ -13,9 +13,11 @@ import ProjectSetupScreen from "../pages/ProjectSetup/ProjectSetupScreen";
 import { useProject } from "./settings/ProjectContext";
 import { useProjectData } from "./hooks/useProjectData";
 import { useAppState } from "./hooks/useAppState";
+import { STORAGE_KEYS } from "./settings/storageKeys";
 
 import { cleanupLegacyLeaks } from "./migrations/cleanupLegacyLeaks";
 import { usePhotoStorage } from "../hooks/usePhotoStorage";
+import { peekBackupZip, importBackupZip } from "../services/export/backup";
 import { STATUS } from "../utils/status";
 
 const DataBase = lazy(() => import("../pages/DataBase/DataBase"));
@@ -54,7 +56,7 @@ export default function App() {
   /* =========================
      PROJECT CONTEXT
   ========================= */
-  const { isConfigured, configure, activeProject } = useProject();
+  const { isConfigured, configure, addProject, activeProject } = useProject();
 
   /* =========================
      PROJECT-AWARE DATA
@@ -64,7 +66,17 @@ export default function App() {
   /* =========================
      PHOTO GC
   ========================= */
-  const { gcOrphanedPhotos } = usePhotoStorage();
+  const { gcOrphanedPhotos, savePhoto, ready: photoReady } = usePhotoStorage();
+
+  /* Refs для async import-handler — актуальны даже после ре-рендеров */
+  const saveRef = useRef(save);
+  const savePhotoRef = useRef(savePhoto);
+  const photoReadyRef = useRef(photoReady);
+  const activeProjectIdRef = useRef(activeProject?.id ?? null);
+  useEffect(() => { saveRef.current = save; }, [save]);
+  useEffect(() => { savePhotoRef.current = savePhoto; }, [savePhoto]);
+  useEffect(() => { photoReadyRef.current = photoReady; }, [photoReady]);
+  useEffect(() => { activeProjectIdRef.current = activeProject?.id ?? null; }, [activeProject?.id]);
   const gcRanRef = useRef(false);
 
   // Сбрасываем флаг при смене проекта, чтобы GC запустился снова
@@ -99,10 +111,49 @@ export default function App() {
   );
 
   /* =========================
-     FIRST LAUNCH SETUP
+     FIRST LAUNCH SETUP — import ZIP
   ========================= */
+  const handleSetupImportZip = useCallback(async (file, fallback = {}) => {
+    const peek = await peekBackupZip(file);
+    const meta = peek.meta?.project;
+
+    const projectName = meta?.name || fallback.name;
+    const projectType = meta?.type || fallback.type;
+
+    if (!projectName || !projectType) {
+      throw new Error("Архив не содержит метаданных проекта. Заполните название и тип проекта в форме выше.");
+    }
+
+    const created = addProject(projectName, projectType);
+    if (!created) throw new Error("Не удалось создать проект");
+
+    // Ждём, пока React применит новый activeProject (и обновит все ref-ы)
+    for (let i = 0; i < 60; i++) {
+      if (activeProjectIdRef.current === created.id) break;
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    if (activeProjectIdRef.current !== created.id) {
+      throw new Error("Не удалось переключиться на импортируемый проект");
+    }
+
+    for (let i = 0; i < 60; i++) {
+      if (photoReadyRef.current) break;
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    if (!photoReadyRef.current) throw new Error("Хранилище фото не готово");
+
+    const imported = await importBackupZip(file, savePhotoRef.current);
+    await saveRef.current(imported.leaks);
+
+    if (peek.meta?.vars) {
+      localStorage.setItem(STORAGE_KEYS.PROJECT_VARS(created.id), JSON.stringify(peek.meta.vars));
+    }
+  }, [addProject]);
+
   if (!isConfigured) {
-    return <ProjectSetupScreen onComplete={configure} />;
+    return <ProjectSetupScreen onComplete={configure} onImportZip={handleSetupImportZip} />;
   }
 
   const hideLayout = page === "add" || page === "settings";

@@ -19,7 +19,7 @@ export const LeakRecordSchema = z
     lat: z.number().finite().optional().nullable(),
     lng: z.number().finite().optional().nullable(),
     status: z.enum(VALID_STATUSES).optional().default("open"),
-    leak_id: z.string().nullable().optional(),
+    leak_id: z.union([z.string(), z.number()]).nullable().optional(),
     component: z.string().nullable().optional(),
     leak_description: z.string().nullable().optional(),
     photo: PhotoPathSchema,
@@ -28,6 +28,23 @@ export const LeakRecordSchema = z
   .passthrough(); // preserve extra fields (project-specific columns)
 
 export const BackupSchema = z.array(LeakRecordSchema);
+
+const VALID_PROJECT_TYPES = ["upstream", "midstream", "downstream"];
+
+export const ProjectBackupMetaSchema = z
+  .object({
+    schemaVersion: z.number().int().optional(),
+    exportedAt: z.string().optional(),
+    project: z
+      .object({
+        name: z.string().min(1),
+        type: z.enum(VALID_PROJECT_TYPES),
+        folderName: z.string().optional(),
+      })
+      .passthrough(),
+    vars: z.record(z.any()).optional(),
+  })
+  .passthrough();
 
 /**
  * Validates a parsed backup JSON value.
@@ -51,5 +68,24 @@ export function validateBackup(parsed) {
     return { ok: false, error: `Невалидная структура backup: ${issues}` };
   }
 
+  return { ok: true, data: result.data };
+}
+
+/**
+ * Validates a parsed project.json meta value.
+ * Returns { ok: true, data } or { ok: false, error: string }.
+ */
+export function validateProjectBackupMeta(parsed) {
+  const result = ProjectBackupMetaSchema.safeParse(parsed);
+  if (!result.success) {
+    const issues = result.error.issues
+      .slice(0, 3)
+      .map((i) => {
+        const path = i.path.length ? `[${i.path.join(".")}]` : "корень";
+        return `${path}: ${i.message}`;
+      })
+      .join("; ");
+    return { ok: false, error: `Невалидная структура project.json: ${issues}` };
+  }
   return { ok: true, data: result.data };
 }

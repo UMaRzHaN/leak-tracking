@@ -62,6 +62,17 @@ const CachedTileLayer = L.TileLayer.extend({
   _removeTile(key) {
     const tile = this._tiles[key];
     if (tile?.el?._blobUrl) {
+      // Avoid noisy "GET blob:... net::ERR_FILE_NOT_FOUND" during fast unmounts:
+      // clear the <img> src/handlers before revoking the object URL.
+      try {
+        tile.el.onload = null;
+        tile.el.onerror = null;
+        if (typeof tile.el.src === "string" && tile.el.src.startsWith("blob:")) {
+          tile.el.src = "";
+        }
+      } catch {
+        // ignore
+      }
       URL.revokeObjectURL(tile.el._blobUrl);
       tile.el._blobUrl = null;
     }
@@ -125,6 +136,7 @@ function createPopupEl(leak) {
 /* ── Main factory ── */
 export function createOfflineMap(container, { center, zoom = 13 }) {
   const map = L.map(container, { zoomControl: true }).setView(center, zoom);
+  let destroyed = false;
 
   new CachedTileLayer(
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -165,6 +177,7 @@ export function createOfflineMap(container, { center, zoom = 13 }) {
   if (navigator.geolocation) {
     watchId = navigator.geolocation.watchPosition(
       (pos) => {
+        if (destroyed) return;
         const latlng = [pos.coords.latitude, pos.coords.longitude];
         lastLatLng = latlng;
         if (!userMarker) {
@@ -187,11 +200,13 @@ export function createOfflineMap(container, { center, zoom = 13 }) {
   }
 
   const locateMe = () => {
+    if (destroyed) return;
     if (lastLatLng) {
       map.setView(lastLatLng, 17, { animate: true });
     } else if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
+          if (destroyed) return;
           const latlng = [pos.coords.latitude, pos.coords.longitude];
           lastLatLng = latlng;
           map.setView(latlng, 17, { animate: true });
@@ -202,8 +217,27 @@ export function createOfflineMap(container, { center, zoom = 13 }) {
   };
 
   const destroy = () => {
-    if (watchId != null) navigator.geolocation?.clearWatch(watchId);
-    map.remove();
+    if (destroyed) return;
+    destroyed = true;
+
+    try {
+      if (watchId != null) navigator.geolocation?.clearWatch(watchId);
+    } catch {
+      // ignore
+    }
+
+    try {
+      map.off();
+    } catch {
+      // ignore
+    }
+
+    try {
+      map.remove();
+    } catch (err) {
+      // Leaflet sometimes throws during teardown if async tile loads race with unmount.
+      console.warn("Leaflet map destroy error:", err);
+    }
   };
 
   return { map, markersLayer, locateMe, destroy };

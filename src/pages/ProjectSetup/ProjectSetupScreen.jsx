@@ -1,21 +1,40 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { PROJECT_META } from "../../configs/projects";
 import { toFolderName } from "../../app/settings/ProjectContext";
 import s from "./ProjectSetupScreen.module.scss";
 
 const PROJECT_ICONS = { upstream: "⛽", midstream: "🔧", downstream: "🏭" };
 
-export default function ProjectSetupScreen({ onComplete }) {
+export default function ProjectSetupScreen({ onComplete, onImportZip }) {
   const [name, setName] = useState("");
   const [type, setType] = useState("");
   const [error, setError] = useState("");
+  const [importing, setImporting] = useState(false);
+  const fileRef = useRef(null);
 
   const handleSubmit = () => {
     if (!type) { setError("Выберите тип проекта"); return; }
     onComplete(type, name.trim());
   };
 
-  const folderPreview = name.trim() ? toFolderName(name.trim()) : (type ? toFolderName(PROJECT_META[type].title) : "—");
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setImporting(true);
+    setError("");
+    try {
+      await onImportZip(file, { name: name.trim(), type });
+    } catch (err) {
+      setError(err.message ?? "Ошибка импорта");
+      setImporting(false);
+    }
+  };
+
+  const folderPreview = name.trim()
+    ? toFolderName(name.trim())
+    : (type ? toFolderName(PROJECT_META[type].title) : "—");
 
   return (
     <div className={s.screen}>
@@ -68,10 +87,34 @@ export default function ProjectSetupScreen({ onComplete }) {
           className={s.startBtn}
           type="button"
           onClick={handleSubmit}
-          disabled={!type}
+          disabled={!type || importing}
         >
           Начать работу
         </button>
+
+        {onImportZip && (
+          <>
+            <div className={s.orDivider}><span>или</span></div>
+
+            <button
+              className={s.importBtn}
+              type="button"
+              disabled={importing}
+              onClick={() => fileRef.current?.click()}
+            >
+              {importing ? "Импорт…" : "⬇ Импортировать из ZIP"}
+            </button>
+            <p className={s.importHint}>Восстановить проект из резервной копии</p>
+
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".zip,application/zip"
+              style={{ display: "none" }}
+              onChange={handleFileChange}
+            />
+          </>
+        )}
       </div>
     </div>
   );

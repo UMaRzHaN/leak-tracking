@@ -9,8 +9,9 @@ import { useTheme } from "../../app/hooks/useTheme";
 import { usePhotoStorage } from "../../hooks/usePhotoStorage";
 import { PROJECT_META } from "../../configs/projects";
 import { getMapCacheInfo, clearMapCache } from "../../services/maps/tileCache";
-import { buildBackupZip, importBackupZip } from "../../services/export/backup";
+import { buildProjectBackupZip, importBackupZip, peekBackupZip } from "../../services/export/backup";
 import { validateBackup } from "../../services/export/backupSchema";
+import { STORAGE_KEYS } from "../../app/settings/storageKeys";
 import SettingsHeader from "./Header/SettingsHeader";
 import SettingsModal from "../../components/SettingsModal/SettingsModal";
 import Notification from "../../components/Notification/Notification";
@@ -33,7 +34,7 @@ export default function Settings({ setPage, prevPage, clearDatabase }) {
 
   const { vars, setVars } = useProjectVars(activeProject?.id ?? null);
   const { data, save } = useProjectData();
-  const { getPhoto: idbGetPhoto, savePhoto } = usePhotoStorage();
+  const { ready: photoReady, getPhoto: idbGetPhoto, savePhoto } = usePhotoStorage();
 
   const { dark, toggle: toggleTheme } = useTheme();
   const [notification, setNotification] = useState(null);
@@ -42,6 +43,15 @@ export default function Settings({ setPage, prevPage, clearDatabase }) {
   const [cacheInfo, setCacheInfo] = useState(null);
   const importInputRef = useRef(null);
   const importZipRef = useRef(null);
+  const savePhotoRef = useRef(savePhoto);
+  const photoReadyRef = useRef(photoReady);
+  const activeProjectIdRef = useRef(activeProject?.id ?? null);
+  const saveRef = useRef(save);
+
+  useEffect(() => { savePhotoRef.current = savePhoto; }, [savePhoto]);
+  useEffect(() => { photoReadyRef.current = photoReady; }, [photoReady]);
+  useEffect(() => { activeProjectIdRef.current = activeProject?.id ?? null; }, [activeProject?.id]);
+  useEffect(() => { saveRef.current = save; }, [save]);
 
   useEffect(() => {
     getMapCacheInfo().then(setCacheInfo);
@@ -106,7 +116,7 @@ export default function Settings({ setPage, prevPage, clearDatabase }) {
     if (!data.length) { notify("warning", "Нет данных для экспорта"); return; }
 
     const folder = activeProject?.folderName ?? "backup";
-    const fileName = `${folder}_${Date.now()}.json`;
+    const fileName = `${folder}.json`;
     const json = JSON.stringify(data, null, 2);
 
     if (Capacitor.isNativePlatform()) {
@@ -173,9 +183,14 @@ export default function Settings({ setPage, prevPage, clearDatabase }) {
   const handleExportZip = useCallback(async () => {
     if (!data.length) { notify("warning", "Нет данных для экспорта"); return; }
     const folder = activeProject?.folderName ?? "backup";
-    const fileName = `${folder}_${Date.now()}.zip`;
+    const fileName = `${folder}.zip`;
     try {
-      const blob = await buildBackupZip(data, idbGetPhoto);
+      const blob = await buildProjectBackupZip({
+        leaks: data,
+        idbGet: idbGetPhoto,
+        project: activeProject,
+        vars,
+      });
 
       if (Capacitor.isNativePlatform()) {
         const reader = new FileReader();
@@ -207,24 +222,117 @@ export default function Settings({ setPage, prevPage, clearDatabase }) {
     } catch (err) {
       notify("error", "Ошибка экспорта: " + err.message);
     }
-  }, [data, idbGetPhoto, activeProject, notify]);
+  }, [data, idbGetPhoto, activeProject, vars, notify]);
 
   const handleImportZip = useCallback(async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     try {
-      const restoredLeaks = await importBackupZip(file, savePhoto);
-      const ok = window.confirm(
-        `Импортировать ${restoredLeaks.length} записей с фото?\n\nТекущие данные будут заменены.`,
-      );
-      if (!ok) { e.target.value = ""; return; }
-      await save(restoredLeaks);
-      notify("success", `Импортировано ${restoredLeaks.length} записей`);
+      const peek = await peekBackupZip(file);
+      const meta = peek.meta?.project ?? null;
+
+      const waitPhotoStorage = async () => {
+        for (let i = 0; i < 60; i++) {
+          if (photoReadyRef.current) return true;
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        return false;
+      };
+
+      const waitProjectActive = async (projectId) => {
+        for (let i = 0; i < 60; i++) {
+          if (activeProjectIdRef.current === projectId) return true;
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        return false;
+      };
+
+      if (meta?.name && meta?.type) {
+        const ok = window.confirm(
+          `Импортировать проект «${meta.name}» (${peek.leaks.length} записей)?\n\nБудет создан новый проект.`,
+        );
+        if (!ok) { e.target.value = ""; return; }
+
+        const created = addProject(meta.name, meta.type);
+        if (!created) throw new Error("Не удалось создать проект");
+
+        const switched = await waitProjectActive(created.id);
+        if (!switched) throw new Error("Не удалось переключиться на импортируемый проект");
+
+        if (peek.meta?.vars) {
+          localStorage.setItem(
+            STORAGE_KEYS.PROJECT_VARS(created.id),
+            JSON.stringify(peek.meta.vars),
+          );
+        }
+
+        const readyOk = await waitPhotoStorage();
+        if (!readyOk) throw new Error("Хранилище фото не готово");
+
+        const imported = await importBackupZip(file, savePhotoRef.current);
+        await saveRef.current(imported.leaks);
+
+        notify("success", `Импортирован проект «${created.name}» (${imported.leaks.length} записей)`);
+      } else {
+        // Нет метаданных — предложить выбор
+        const choice = window.confirm(
+          `Импортировать ${peek.leaks.length} записей?\n\n` +
+          "OK = Создать новый проект\n" +
+          "ОТМЕНА = Импортировать в текущий проект\n\n" +
+          "(Текущий проект: " + (activeProject?.name || "не выбран") + ")"
+        );
+
+        if (choice === true) {
+          // Создать новый проект
+          const projectName = prompt("Введите название проекта:", "Импортированные данные");
+          if (!projectName?.trim()) { e.target.value = ""; return; }
+
+          const projectType = window.confirm(
+            "Тип проекта?\n\nOK = Upstream (добыча)\nОТМЕНА = Midstream (транспорт)"
+          ) ? "upstream" : "midstream";
+
+          const created = addProject(projectName.trim(), projectType);
+          if (!created) throw new Error("Не удалось создать проект");
+
+          const switched = await waitProjectActive(created.id);
+          if (!switched) throw new Error("Не удалось переключиться на новый проект");
+
+          const readyOk = await waitPhotoStorage();
+          if (!readyOk) throw new Error("Хранилище фото не готово");
+
+          const imported = await importBackupZip(file, savePhotoRef.current);
+          await saveRef.current(imported.leaks);
+
+          notify("success", `Создан и импортирован проект «${projectName}» (${imported.leaks.length} записей)`);
+        } else if (choice === false) {
+          // Импортировать в текущий проект
+          if (!activeProject) {
+            throw new Error("Выберите проект перед импортом");
+          }
+
+          const ok = window.confirm(
+            `Импортировать ${peek.leaks.length} записей в проект «${activeProject.name}»?\n\nТекущие данные будут заменены.`
+          );
+          if (!ok) { e.target.value = ""; return; }
+
+          const readyOk = await waitPhotoStorage();
+          if (!readyOk) throw new Error("Хранилище фото не готово");
+
+          const imported = await importBackupZip(file, savePhotoRef.current);
+          await saveRef.current(imported.leaks);
+
+          notify("success", `Импортировано ${imported.leaks.length} записей в проект «${activeProject.name}»`);
+        }
+      }
     } catch (err) {
       notify("error", "Ошибка импорта: " + err.message);
     }
+
     e.target.value = "";
-  }, [savePhoto, save, notify]);
+  }, [addProject, activeProject, notify]);
 
   /* =========================
      VARS MODAL

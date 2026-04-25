@@ -117,6 +117,8 @@ export default function LeakForm({
   ====================================== */
   // eslint-disable-next-line no-inner-declarations
   function save() {
+    console.log("save");
+    
     if (!validateStep(step)) return;
     const finalData = { ...form, photo: form.photo };
 

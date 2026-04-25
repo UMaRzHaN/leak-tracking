@@ -210,3 +210,55 @@
     cursor: not-allowed;
   }
 }
+
+/* =====================================================
+   IMPORT SECTION
+   ===================================================== */
+
+.orDivider {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 0;
+  color: #9ca3af;
+  font-size: 13px;
+
+  &::before,
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: #e5e7eb;
+  }
+}
+
+.importBtn {
+  width: 100%;
+  padding: 13px 16px;
+  background: transparent;
+  color: #0d47a1;
+  border: 2px solid #0d47a1;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 12px;
+
+  &:hover:not(:disabled) {
+    background: #eff6ff;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.importHint {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 6px 0 0;
+  text-align: center;
+}

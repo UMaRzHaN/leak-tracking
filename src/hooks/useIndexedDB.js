@@ -4,117 +4,186 @@ const DB_NAME = "LeakTrackingDB";
 const STORE_NAME = "photos";
 const DB_VERSION = 1;
 
+/* ── Module-level singleton ──────────────────────────────────────────────
+ * One IDB connection for the entire app lifetime.
+ * Components subscribe/unsubscribe; cleanup NEVER calls db.close().
+ * ─────────────────────────────────────────────────────────────────────── */
+let _db = null;
+let _ready = false;
+let _opening = false;
+const _subscribers = new Set();
+
+function _notify() {
+  for (const fn of _subscribers) fn(_db, _ready);
+}
+
+function _openSingleton() {
+  if (_db || _opening || typeof indexedDB === "undefined") return;
+  _opening = true;
+
+  let request;
+  try {
+    request = indexedDB.open(DB_NAME, DB_VERSION);
+  } catch (err) {
+    console.warn("[useIndexedDB] indexedDB.open threw:", err);
+    _opening = false;
+    return;
+  }
+
+  request.onupgradeneeded = (event) => {
+    const db = event.target.result;
+    if (!db.objectStoreNames.contains(STORE_NAME)) {
+      db.createObjectStore(STORE_NAME, { keyPath: "id" });
+    }
+  };
+
+  request.onsuccess = () => {
+    _db = request.result;
+    _ready = true;
+    _opening = false;
+
+    // If the browser closes the connection unexpectedly, reopen.
+    _db.onclose = () => {
+      _db = null;
+      _ready = false;
+      _opening = false;
+      _notify();
+      _openSingleton();
+    };
+
+    _db.onerror = (event) => {
+      console.error("[useIndexedDB] Unexpected IDB error:", event.target?.error);
+    };
+
+    _notify();
+  };
+
+  request.onerror = () => {
+    console.warn("[useIndexedDB] Failed to open IndexedDB:", request.error);
+    _opening = false;
+    _notify();
+  };
+}
+
+/* ── Hook ────────────────────────────────────────────────────────────── */
+
 export function useIndexedDB() {
-  const [db, setDb] = useState(null);
-  const [ready, setReady] = useState(false);
+  const [db, setDb] = useState(() => _db);
+  const [ready, setReady] = useState(() => _ready);
 
   useEffect(() => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    // Sync with current singleton state immediately in case it opened
+    // between the initial render and this effect.
+    setDb(_db);
+    setReady(_ready);
 
-    request.onerror = () => {
-      console.error("IndexedDB open error:", request.error);
+    const sub = (d, r) => {
+      setDb(d);
+      setReady(r);
     };
+    _subscribers.add(sub);
+    _openSingleton();
 
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
-      }
-    };
-
-    request.onsuccess = () => {
-      setDb(request.result);
-      setReady(true);
-    };
-
+    // Cleanup only removes the subscription — never closes the connection.
     return () => {
-      if (db) {
-        db.close();
-      }
+      _subscribers.delete(sub);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const savePhoto = useCallback(async (id, photoData) => {
-    if (!ready || !db) return false;
-
+    if (!_ready || !_db) return false;
     return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      const store = tx.objectStore(STORE_NAME);
-
-      const request = store.put({
-        id,
-        data: photoData,
-        timestamp: Date.now(),
-      });
-
-      request.onsuccess = () => resolve(true);
-      request.onerror = () => resolve(false);
+      try {
+        const tx = _db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.put({ id, data: photoData, timestamp: Date.now() });
+        req.onsuccess = () => resolve(true);
+        req.onerror = () => {
+          console.error("[useIndexedDB] savePhoto error:", req.error);
+          resolve(false);
+        };
+      } catch (err) {
+        console.error("[useIndexedDB] savePhoto transaction error:", err);
+        resolve(false);
+      }
     });
-  }, [db, ready]);
+  }, []);
 
   const getPhoto = useCallback(async (id) => {
-    if (!ready || !db) return null;
-
+    if (!_ready || !_db) return null;
     return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const store = tx.objectStore(STORE_NAME);
-      const request = store.get(id);
-
-      request.onsuccess = () => {
-        resolve(request.result?.data ?? null);
-      };
-
-      request.onerror = () => resolve(null);
+      try {
+        const tx = _db.transaction(STORE_NAME, "readonly");
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.get(id);
+        req.onsuccess = () => resolve(req.result?.data ?? null);
+        req.onerror = () => {
+          console.error("[useIndexedDB] getPhoto error:", req.error);
+          resolve(null);
+        };
+      } catch (err) {
+        console.error("[useIndexedDB] getPhoto transaction error:", err);
+        resolve(null);
+      }
     });
-  }, [db, ready]);
+  }, []);
 
   const deletePhoto = useCallback(async (id) => {
-    if (!ready || !db) return false;
-
+    if (!_ready || !_db) return false;
     return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      const store = tx.objectStore(STORE_NAME);
-      const request = store.delete(id);
-
-      request.onsuccess = () => resolve(true);
-      request.onerror = () => resolve(false);
+      try {
+        const tx = _db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.delete(id);
+        req.onsuccess = () => resolve(true);
+        req.onerror = () => {
+          console.error("[useIndexedDB] deletePhoto error:", req.error);
+          resolve(false);
+        };
+      } catch (err) {
+        console.error("[useIndexedDB] deletePhoto transaction error:", err);
+        resolve(false);
+      }
     });
-  }, [db, ready]);
+  }, []);
 
   const clearAll = useCallback(async () => {
-    if (!ready || !db) return false;
-
+    if (!_ready || !_db) return false;
     return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      const store = tx.objectStore(STORE_NAME);
-      const request = store.clear();
-
-      request.onsuccess = () => resolve(true);
-      request.onerror = () => resolve(false);
+      try {
+        const tx = _db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.clear();
+        req.onsuccess = () => resolve(true);
+        req.onerror = () => {
+          console.error("[useIndexedDB] clearAll error:", req.error);
+          resolve(false);
+        };
+      } catch (err) {
+        console.error("[useIndexedDB] clearAll transaction error:", err);
+        resolve(false);
+      }
     });
-  }, [db, ready]);
+  }, []);
 
   const listKeys = useCallback(async () => {
-    if (!ready || !db) return [];
-
+    if (!_ready || !_db) return [];
     return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const store = tx.objectStore(STORE_NAME);
-      const request = store.getAllKeys();
-
-      request.onsuccess = () => resolve(request.result ?? []);
-      request.onerror = () => resolve([]);
+      try {
+        const tx = _db.transaction(STORE_NAME, "readonly");
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.getAllKeys();
+        req.onsuccess = () => resolve(req.result ?? []);
+        req.onerror = () => {
+          console.error("[useIndexedDB] listKeys error:", req.error);
+          resolve([]);
+        };
+      } catch (err) {
+        console.error("[useIndexedDB] listKeys transaction error:", err);
+        resolve([]);
+      }
     });
-  }, [db, ready]);
+  }, []);
 
-  return {
-    ready,
-    savePhoto,
-    getPhoto,
-    deletePhoto,
-    clearAll,
-    listKeys,
-  };
+  return { ready, savePhoto, getPhoto, deletePhoto, clearAll, listKeys };
 }

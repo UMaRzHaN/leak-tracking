@@ -60,15 +60,16 @@ export function usePhotoStorage() {
 
     /* 🌐 WEB — IndexedDB (store raw Blob; avoids ~33% base64 overhead) */
     if (!isNative) {
-      if (!ready || !(photo instanceof Blob)) return null;
+      if (!ready || !(photo instanceof Blob) || !activeProject?.id) return null;
 
-      const photoId = `photo_${leakId}_${version}`;
+      // Project-scoped key prevents collisions between projects with same leak_id.
+      const photoId = `photo_${activeProject.id}_${leakId}_${version}`;
       const ok = await idbSave(photoId, photo);
       if (!ok) return null;
 
       if (typeof listKeys === "function") {
         const keys = await listKeys();
-        const prefix = `photo_${leakId}_`;
+        const prefix = `photo_${activeProject.id}_${leakId}_`;
         for (const key of keys) {
           if (key.startsWith(prefix) && key !== photoId) await idbDelete(key);
         }
@@ -90,7 +91,7 @@ export function usePhotoStorage() {
     await cleanupOldVersions(PHOTO_FOLDER, leakId, fileName);
 
     return `data://${targetPath}`;
-  }, [ready, idbSave, idbDelete, listKeys, isNative, PHOTO_FOLDER]);
+  }, [ready, idbSave, idbDelete, listKeys, isNative, PHOTO_FOLDER, activeProject?.id]);
 
   /* ================= DELETE ================= */
 

@@ -1,6 +1,6 @@
 import JSZip from "jszip";
 import { getPhotoSrc } from "../photoService";
-import { validateBackup } from "./backupSchema";
+import { validateBackup, validateProjectBackupMeta } from "./backupSchema";
 
 const PHOTO_KEYS = ["photo", "photo_after"];
 const SUFFIX = { photo: "before", photo_after: "after" };
@@ -60,14 +60,89 @@ export async function buildBackupZip(leaks, idbGet) {
   return zip.generateAsync({ type: "blob" });
 }
 
+function buildProjectMeta({ project, vars } = {}) {
+  if (!project) return null;
+  return {
+    schemaVersion: 2,
+    exportedAt: new Date().toISOString(),
+    project: {
+      name: project.name,
+      type: project.type,
+      folderName: project.folderName,
+    },
+    vars: vars ?? undefined,
+  };
+}
+
+export async function buildProjectBackupZip({ leaks, idbGet, project, vars }) {
+  const zip = new JSZip();
+  const photosFolder = zip.folder("photos");
+
+  const exportedLeaks = await Promise.all(
+    leaks.map(async (leak) => {
+      const copy = { ...leak };
+      for (const key of PHOTO_KEYS) {
+        const path = leak[key];
+        if (!path) continue;
+        const resolved = await resolveBase64(path, idbGet);
+        if (!resolved) continue;
+
+        const fileName = `${leak.id}_${SUFFIX[key]}.${resolved.ext}`;
+        photosFolder.file(fileName, resolved.base64, { base64: true });
+        copy[key] = `zip:photos/${fileName}`;
+      }
+      return copy;
+    }),
+  );
+
+  zip.file("backup.json", JSON.stringify(exportedLeaks, null, 2));
+  const meta = buildProjectMeta({ project, vars });
+  if (meta) zip.file("project.json", JSON.stringify(meta, null, 2));
+
+  return zip.generateAsync({ type: "blob" });
+}
+
 export async function exportBackupZip(leaks, idbGet, projectName = "backup") {
   const blob = await buildBackupZip(leaks, idbGet);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${projectName}_${Date.now()}.zip`;
+  a.download = `${projectName}.zip`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export async function peekBackupZip(zipFile) {
+  const zip = await JSZip.loadAsync(zipFile);
+
+  const jsonFile = zip.file("backup.json");
+  if (!jsonFile) throw new Error("Файл backup.json не найден в архиве");
+
+  const jsonText = await jsonFile.async("string");
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch {
+    throw new Error("backup.json содержит невалидный JSON");
+  }
+
+  const validation = validateBackup(parsed);
+  if (!validation.ok) throw new Error(validation.error);
+
+  let meta = null;
+  const metaFile = zip.file("project.json");
+  if (metaFile) {
+    try {
+      const metaText = await metaFile.async("string");
+      const parsedMeta = JSON.parse(metaText);
+      const metaValidation = validateProjectBackupMeta(parsedMeta);
+      if (metaValidation.ok) meta = metaValidation.data;
+    } catch {
+      // ignore
+    }
+  }
+
+  return { leaks: validation.data, meta };
 }
 
 export async function importBackupZip(zipFile, savePhoto) {
@@ -87,6 +162,20 @@ export async function importBackupZip(zipFile, savePhoto) {
   const validation = validateBackup(parsed);
   if (!validation.ok) throw new Error(validation.error);
   const leaks = validation.data;
+
+  // Optional project meta (project.json)
+  let meta = null;
+  const metaFile = zip.file("project.json");
+  if (metaFile) {
+    try {
+      const metaText = await metaFile.async("string");
+      const parsedMeta = JSON.parse(metaText);
+      const metaValidation = validateProjectBackupMeta(parsedMeta);
+      if (metaValidation.ok) meta = metaValidation.data;
+    } catch {
+      // ignore invalid meta, keep importing leaks
+    }
+  }
 
   const restoredLeaks = await Promise.all(
     leaks.map(async (leak) => {
@@ -109,12 +198,13 @@ export async function importBackupZip(zipFile, savePhoto) {
         const blob = new Blob([byteArr], { type: mime });
 
         const dataUri = `data:${mime};base64,${base64}`;
-        const newPath = await savePhoto(blob, leak.id);
+        const leakKey = leak.leak_id ?? leak.id;
+        const newPath = await savePhoto(blob, leakKey);
         copy[key] = newPath ?? dataUri;
       }
       return copy;
     }),
   );
 
-  return restoredLeaks;
+  return { leaks: restoredLeaks, meta };
 }
