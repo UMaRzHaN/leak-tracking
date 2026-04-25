@@ -27,6 +27,7 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
+    "postinstall": "node -e \"const{rmSync,existsSync}=require('fs');const p='./node_modules/react-scripts/node_modules/sass-loader';existsSync(p)&&rmSync(p,{recursive:true,force:true})\"",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
