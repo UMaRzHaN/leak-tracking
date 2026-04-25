@@ -1,14 +1,16 @@
 import s from "../LeakDetailsSheet.module.scss";
 
-export default function EditPhotoRow({ srcBefore, srcAfter, onEditBefore, onEditAfter }) {
+export default function EditPhotoRow({ srcBefore, srcAfter, onEditBefore, onEditAfter, showAfter = true }) {
   const slots = [
     { key: "before", label: "До",    src: srcBefore, onEdit: onEditBefore },
     { key: "after",  label: "После", src: srcAfter,  onEdit: onEditAfter  },
   ];
 
+  const visibleSlots = showAfter ? slots : slots.filter((slot) => slot.key !== "after");
+
   return (
-    <div className={s.editPhotoRow}>
-      {slots.map(({ key, label, src, onEdit }) => (
+    <div className={`${s.editPhotoRow} ${showAfter ? "" : s.editPhotoRowSingle}`}>
+      {visibleSlots.map(({ key, label, src, onEdit }) => (
         <div key={key} className={s.editPhotoSlot}>
           <span className={s.photoCompareLabel}>{label}</span>
           <button type="button" className={s.editPhotoThumb} onClick={onEdit}>

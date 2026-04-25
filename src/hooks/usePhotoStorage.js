@@ -1,5 +1,6 @@
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Capacitor } from "@capacitor/core";
+import { useCallback } from "react";
 import { useIndexedDB } from "./useIndexedDB";
 import { useProject } from "../app/settings/ProjectContext";
 import { compressImage } from "../utils/compressImage";
@@ -52,19 +53,17 @@ export function usePhotoStorage() {
 
   /* ================= SAVE ================= */
 
-  async function savePhoto(rawPhoto, leakId) {
+  const savePhoto = useCallback(async (rawPhoto, leakId) => {
     if (!rawPhoto || !leakId) return null;
     const version = Date.now();
     const photo = rawPhoto instanceof Blob ? await compressImage(rawPhoto) : rawPhoto;
 
-    /* 🌐 WEB — IndexedDB */
+    /* 🌐 WEB — IndexedDB (store raw Blob; avoids ~33% base64 overhead) */
     if (!isNative) {
       if (!ready || !(photo instanceof Blob)) return null;
 
-      const base64 = await fileToBase64(photo);
-      const mime = rawPhoto.type || "image/jpeg";
       const photoId = `photo_${leakId}_${version}`;
-      const ok = await idbSave(photoId, `data:${mime};base64,${base64}`);
+      const ok = await idbSave(photoId, photo);
       if (!ok) return null;
 
       if (typeof listKeys === "function") {
@@ -78,7 +77,7 @@ export function usePhotoStorage() {
       return `idb://${photoId}`;
     }
 
-    /* 📱 MOBILE — Directory.Data */
+    /* 📱 MOBILE — Directory.Data (Capacitor FS only supports base64 writes) */
     if (!PHOTO_FOLDER || !(photo instanceof Blob)) return null;
 
     await Filesystem.mkdir({ path: PHOTO_FOLDER, directory: Directory.Data, recursive: true }).catch(() => {});
@@ -91,11 +90,11 @@ export function usePhotoStorage() {
     await cleanupOldVersions(PHOTO_FOLDER, leakId, fileName);
 
     return `data://${targetPath}`;
-  }
+  }, [ready, idbSave, idbDelete, listKeys, isNative, PHOTO_FOLDER]);
 
   /* ================= DELETE ================= */
 
-  async function deletePhoto(path) {
+  const deletePhoto = useCallback(async (path) => {
     if (!path) return;
 
     if (path.startsWith("idb://")) {
@@ -106,14 +105,14 @@ export function usePhotoStorage() {
     if (isNative && path.startsWith("data://")) {
       await Filesystem.deleteFile({ directory: Directory.Data, path: path.replace("data://", "") }).catch(() => {});
     }
-  }
+  }, [ready, idbDelete, isNative]);
 
   /* ================= GET ================= */
 
-  async function getPhoto(id) {
+  const getPhoto = useCallback(async (id) => {
     if (!ready || !id) return null;
     return idbGet(id);
-  }
+  }, [ready, idbGet]);
 
   /* ================= GC ================= */
 
@@ -122,7 +121,7 @@ export function usePhotoStorage() {
    * Сценарий: пользователь сфотографировал, не сохранил форму → фото осиротело.
    * Вызывать один раз после загрузки данных проекта.
    */
-  async function gcOrphanedPhotos(leaks) {
+  const gcOrphanedPhotos = useCallback(async (leaks) => {
     const PHOTO_FIELDS = ["photo", "photo_after"];
 
     const referenced = new Set();
@@ -161,7 +160,7 @@ export function usePhotoStorage() {
     } catch {
       // папка ещё не создана — нормально
     }
-  }
+  }, [ready, listKeys, idbDelete, isNative, PHOTO_FOLDER]);
 
   return { ready, isNative, savePhoto, deletePhoto, getPhoto, gcOrphanedPhotos };
 }

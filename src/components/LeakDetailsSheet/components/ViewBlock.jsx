@@ -98,20 +98,22 @@ function CommentInput({ onSubmit }) {
   );
 }
 
-function PhotoComparison({ photoBefore, photoAfter }) {
+function PhotoComparison({ photoBefore, photoAfter, allowAfter = true }) {
   const srcBefore = usePhotoSrc(photoBefore ?? null);
   const srcAfter  = usePhotoSrc(photoAfter  ?? null);
   const [viewer, setViewer] = useState(null); // "before" | "after" | null
 
-  if (!srcBefore && !srcAfter) return null;
+  const hasBefore = Boolean(photoBefore);
+  const hasAfter = allowAfter && Boolean(photoAfter);
+  if (!hasBefore && !hasAfter) return null;
 
   return (
     <>
-      <div className={s.photoCompare}>
+      <div className={`${s.photoCompare} ${allowAfter ? "" : s.photoCompareSingle}`}>
         {[
           { key: "before", label: "До",    src: srcBefore },
           { key: "after",  label: "После", src: srcAfter  },
-        ].map(({ key, label, src }) => (
+        ].filter(({ key }) => allowAfter || key !== "after").map(({ key, label, src }) => (
           <div key={key} className={s.photoCompareSlot}>
             <span className={s.photoCompareLabel}>{label}</span>
             {src ? (
@@ -153,13 +155,8 @@ export default function ViewBlock({ data, activeTab, projectConfig, onAddComment
   if (activeTab === "info") {
     const infoFields = [...text, ...multi];
     const hasAny = infoFields.some((f) => data[f.key] != null && data[f.key] !== "");
-    const hasPhotos = Boolean(data.photo || data.photo_after);
     return (
       <div className={s.tabPane}>
-        {hasPhotos && (
-          <PhotoComparison photoBefore={data.photo} photoAfter={data.photo_after} />
-        )}
-
         {/* ── Приоритет ── */}
         {onPriorityChange && (
           <div className={s.priorityRow}>
@@ -199,6 +196,27 @@ export default function ViewBlock({ data, activeTab, projectConfig, onAddComment
           <div className={s.tabEmpty}>
             <span className={s.tabEmptyIcon}>📋</span>
             <p>Нет данных</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (activeTab === "photo") {
+    const allowAfter = data.status === "resolved";
+    const hasPhotos = Boolean(data.photo) || (allowAfter && Boolean(data.photo_after));
+    return (
+      <div className={s.tabPane}>
+        {hasPhotos ? (
+          <PhotoComparison
+            photoBefore={data.photo}
+            photoAfter={allowAfter ? data.photo_after : null}
+            allowAfter={allowAfter}
+          />
+        ) : (
+          <div className={s.tabEmpty}>
+            <span className={s.tabEmptyIcon}>📷</span>
+            <p>Фото не добавлены</p>
           </div>
         )}
       </div>

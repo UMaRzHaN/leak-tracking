@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { STORAGE_KEYS } from "./storageKeys";
 import { VAR_DEFAULTS } from "../../data/variables";
 
@@ -9,18 +9,17 @@ const defaultVars = VAR_DEFAULTS;
  * @param {string} projectId — project.id (не тип!)
  */
 export function useProjectVars(projectId, defaults = defaultVars) {
-  if (!projectId) {
-    // Нет активного проекта — возвращаем дефолты без сохранения
-    return {
-      vars: defaults,
-      setVars: () => {},
-      resetVars: () => {},
-    };
-  }
+  // ✅ Все hooks вызываются безусловно
+  const storageKey = useMemo(
+    () => (projectId ? STORAGE_KEYS.PROJECT_VARS(projectId) : null),
+    [projectId]
+  );
 
-  const storageKey = STORAGE_KEYS.PROJECT_VARS(projectId);
+  const vars = useMemo(() => {
+    if (!projectId || !storageKey) {
+      return defaults;
+    }
 
-  const vars = (() => {
     try {
       const raw = localStorage.getItem(storageKey);
 
@@ -35,19 +34,22 @@ export function useProjectVars(projectId, defaults = defaultVars) {
     } catch {
       return defaults;
     }
-  })();
+  }, [projectId, storageKey, defaults]);
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const setVars = useCallback(
-    (nextVars) => { localStorage.setItem(storageKey, JSON.stringify(nextVars)); },
-    [storageKey],
+    (nextVars) => {
+      if (storageKey) {
+        localStorage.setItem(storageKey, JSON.stringify(nextVars));
+      }
+    },
+    [storageKey]
   );
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const resetVars = useCallback(
-    () => { localStorage.removeItem(storageKey); },
-    [storageKey],
-  );
+  const resetVars = useCallback(() => {
+    if (storageKey) {
+      localStorage.removeItem(storageKey);
+    }
+  }, [storageKey]);
 
   return { vars, setVars, resetVars };
 }

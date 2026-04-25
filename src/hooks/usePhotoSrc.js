@@ -9,10 +9,19 @@ export function usePhotoSrc(path, version = 0) {
 
   useEffect(() => {
     let alive = true;
+    let blobUrl = null;
+
+    const cleanup = () => {
+      alive = false;
+      if (blobUrl) {
+        URL.revokeObjectURL(blobUrl);
+        blobUrl = null;
+      }
+    };
 
     if (!path) {
       setSrc(null);
-      return;
+      return cleanup;
     }
 
     const withVersion = (url) =>
@@ -23,21 +32,32 @@ export function usePhotoSrc(path, version = 0) {
     ======================= */
     if (!Capacitor.isNativePlatform()) {
       if (path.startsWith("idb://")) {
-        if (!ready) { setSrc(null); return; }
+        if (!ready) { setSrc(null); return cleanup; }
+
         getPhoto(path.replace("idb://", "")).then((data) => {
           if (!alive) return;
-          setSrc(data ? withVersion(data) : null);
+          if (!data) { setSrc(null); return; }
+
+          if (data instanceof Blob) {
+            // New storage: Blob → Object URL (GC'd via cleanup)
+            blobUrl = URL.createObjectURL(data);
+            setSrc(blobUrl);
+          } else {
+            // Legacy storage: data URI string — use directly
+            setSrc(withVersion(data));
+          }
         });
-        return;
+
+        return cleanup;
       }
 
       if (path.startsWith("data:")) {
         setSrc(withVersion(path));
-        return;
+        return cleanup;
       }
 
       setSrc(withVersion(path));
-      return;
+      return cleanup;
     }
 
     /* =======================
@@ -49,7 +69,7 @@ export function usePhotoSrc(path, version = 0) {
       setSrc(result ? withVersion(result) : null);
     });
 
-    return () => { alive = false; };
+    return cleanup;
   }, [path, version, ready, getPhoto]);
 
   return src;

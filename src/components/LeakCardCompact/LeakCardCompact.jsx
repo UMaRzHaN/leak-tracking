@@ -50,8 +50,8 @@ export default function LeakCardCompact({
 
   const [viewerIndex, setViewerIndex] = useState(null);
 
-  const photoSrc      = usePhotoSrc(leak.photo      ?? null);
-  const photoAfterSrc = usePhotoSrc(leak.photo_after ?? null);
+  const photoSrc      = usePhotoSrc(leak.photo ?? null);
+  const photoAfterSrc = usePhotoSrc(status === "resolved" ? (leak.photo_after ?? null) : null);
 
   const emissions = fmtNum(leak.Emissions_t_CO2eq_year, 2);
   const methane   = fmtNum(leak.Total_Annual_Methane_Loss_m3_y, 0);

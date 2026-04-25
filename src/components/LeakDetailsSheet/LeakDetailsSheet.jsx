@@ -14,13 +14,18 @@ import ViewBlock from "./components/ViewBlock";
 import EditBlock from "./components/EditBlock";
 import PhotoViewer from "../PhotoViewer/PhotoViewer";
 import ResolveModal from "../ResolveModal/ResolveModal";
-import EditPhotoRow from "./components/EditPhotoRow";
 import s from "./LeakDetailsSheet.module.scss";
 
 const DELETE_ARM_MS = 3000;
 
 const MODE = { VIEW: "view", EDIT: "edit" };
-const TAB = { INFO: "info", PARAMS: "params", COORDS: "coords", LOG: "log" };
+const TAB = {
+  PHOTO: "photo",
+  INFO: "info",
+  PARAMS: "params",
+  COORDS: "coords",
+  LOG: "log",
+};
 
 export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
   const projectConfig = useProjectConfig();
@@ -88,7 +93,14 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
       resetPhotoAfter();
       prevLeakIdRef.current = leak.leak_id;
     }
-  }, [leak.leak_id, leak.updatedAt, leak, resetPhoto, resetPhotoAfter, EDIT_FIELDS]);
+  }, [
+    leak.leak_id,
+    leak.updatedAt,
+    leak,
+    resetPhoto,
+    resetPhotoAfter,
+    EDIT_FIELDS,
+  ]);
 
   /* ── Dirty tracking ── */
   const dirtyFields = useMemo(
@@ -279,12 +291,14 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     mode === MODE.VIEW
       ? [
           { id: TAB.INFO, label: "Инфо" },
+          { id: TAB.PHOTO, label: "Фото" },
           { id: TAB.PARAMS, label: "Параметры" },
           { id: TAB.COORDS, label: "Координаты" },
           { id: TAB.LOG, label: "Лог" },
         ]
       : [
           { id: TAB.INFO, label: "Основное" },
+          { id: TAB.PHOTO, label: "Фото" },
           { id: TAB.PARAMS, label: "Параметры" },
           { id: TAB.COORDS, label: "Координаты" },
         ];
@@ -298,11 +312,12 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
 
           {/* ── Hero: photo + identity overlay ── */}
           {mode === MODE.EDIT ? (
-            <EditPhotoRow
-              srcBefore={src}
-              srcAfter={srcAfter}
-              onEditBefore={() => isNative ? changePhoto() : fileInputRef.current?.click()}
-              onEditAfter={() => isNative ? changePhotoAfter() : fileInputAfterRef.current?.click()}
+            <PhotoBlock
+              src={null}
+              status={status}
+              identityNum={`№ ${leak.leak_id ?? leak.index ?? "—"}`}
+              identityTime={ago ?? leak.date ?? ""}
+              onStatusChange={handleStatusChange}
             />
           ) : (
             <PhotoBlock
@@ -345,6 +360,17 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
                 setLocalEdit={setLocalEdit}
                 activeTab={activeTab}
                 projectConfig={projectConfig}
+                srcBefore={src}
+                srcAfter={srcAfter}
+                showAfter={status === STATUS.RESOLVED}
+                onEditBefore={() =>
+                  isNative ? changePhoto() : fileInputRef.current?.click()
+                }
+                onEditAfter={() =>
+                  isNative
+                    ? changePhotoAfter()
+                    : fileInputAfterRef.current?.click()
+                }
               />
             )}
           </div>
@@ -383,8 +409,22 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
             <div className={s.actionBar}>
               {!isNative && (
                 <>
-                  <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={changePhoto} />
-                  <input ref={fileInputAfterRef} type="file" accept="image/*" hidden onChange={changePhotoAfter} />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={changePhoto}
+                  />
+                  {status === STATUS.RESOLVED && (
+                    <input
+                      ref={fileInputAfterRef}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={changePhotoAfter}
+                    />
+                  )}
                 </>
               )}
               <button

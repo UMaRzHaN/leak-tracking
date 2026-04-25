@@ -19,7 +19,8 @@ const readWeb = (key) => {
   try {
     const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : [];
-  } catch {
+  } catch (err) {
+    console.error(`[useProjectData] Corrupted localStorage data for key "${key}":`, err);
     return [];
   }
 };
@@ -47,7 +48,11 @@ const readMobile = async (filePath) => {
       encoding: "utf8",
     });
     return JSON.parse(res.data || "[]");
-  } catch {
+  } catch (err) {
+    // "File does not exist" on first launch is expected; anything else is worth logging
+    if (!String(err?.message).toLowerCase().includes("exist")) {
+      console.error(`[useProjectData] Failed to read data file "${filePath}":`, err);
+    }
     return [];
   }
 };
@@ -100,7 +105,7 @@ export function useProjectData() {
 
     load();
     return () => { cancelled = true; };
-  }, [filePath, storageKey]);
+  }, [storageKey, filePath]);
 
   /* =========================
      SAVE

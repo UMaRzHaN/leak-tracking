@@ -17,8 +17,8 @@ export function cleanupLegacyLeaks() {
         });
         return true; // было очищено
       }
-    } catch {
-      /* ignore */
+    } catch (err) {
+      console.warn(`[cleanupLegacyLeaks] Could not parse legacy key "${key}":`, err);
     }
   }
 

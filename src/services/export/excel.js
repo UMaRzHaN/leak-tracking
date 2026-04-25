@@ -6,12 +6,24 @@ import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import { getPhotoSrc } from "../photoService";
 
+/** Converts a Blob to a data URI string for embedding in the Excel export. */
+function blobToDataUri(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(/** @type {string} */ (reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 async function resolvePhotoSrc(path, idbGet) {
   if (!path) return null;
   if (path.startsWith("idb://")) {
     const id = path.replace("idb://", "");
-    const src = idbGet ? await idbGet(id) : null;
-    return src || null;
+    const raw = idbGet ? await idbGet(id) : null;
+    if (!raw) return null;
+    // raw is a Blob (new storage) or a data URI string (legacy storage)
+    return raw instanceof Blob ? blobToDataUri(raw) : raw;
   }
   return getPhotoSrc(path);
 }

@@ -22,22 +22,37 @@
     "leaflet.markercluster": "^1.5.3",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "react-scripts": "^5.0.1",
     "web-vitals": "^2.1.4",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zod": "^4.3.6"
   },
   "scripts": {
-    "postinstall": "node -e \"const{rmSync,existsSync}=require('fs');const p='./node_modules/react-scripts/node_modules/sass-loader';existsSync(p)&&rmSync(p,{recursive:true,force:true})\"",
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "dev": "vite",
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es2022": true,
+      "node": true
+    },
     "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
+      "eslint:recommended"
+    ],
+    "parserOptions": {
+      "ecmaVersion": 2022,
+      "sourceType": "module",
+      "ecmaFeatures": {
+        "jsx": true
+      }
+    },
+    "rules": {
+      "no-unused-vars": "warn",
+      "no-undef": "off"
+    }
   },
   "browserslist": {
     "production": [
@@ -52,7 +67,10 @@
     ]
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^25.0.1",
     "sass": "^1.97.3",
-    "sass-loader": "^16.0.6"
+    "vite": "^6.3.2",
+    "vitest": "^2.1.9"
   }
 }

@@ -75,8 +75,9 @@ export const useGeolocation = (enabled = true) => {
                 setLoading(false);
               }
             };
-          } catch (_) {
-            // Permissions API недоступен в данном браузере — молча игнорируем
+          } catch (err) {
+            // Permissions API not available in this browser — expected on some mobile webviews
+            console.warn("[useGeolocation] Permissions API unavailable:", err);
           }
         }
         return;

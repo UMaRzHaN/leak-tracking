@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 const DB_NAME = "LeakTrackingDB";
 const STORE_NAME = "photos";
@@ -36,7 +36,7 @@ export function useIndexedDB() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const savePhoto = async (id, photoData) => {
+  const savePhoto = useCallback(async (id, photoData) => {
     if (!ready || !db) return false;
 
     return new Promise((resolve) => {
@@ -52,9 +52,9 @@ export function useIndexedDB() {
       request.onsuccess = () => resolve(true);
       request.onerror = () => resolve(false);
     });
-  };
+  }, [db, ready]);
 
-  const getPhoto = async (id) => {
+  const getPhoto = useCallback(async (id) => {
     if (!ready || !db) return null;
 
     return new Promise((resolve) => {
@@ -68,9 +68,9 @@ export function useIndexedDB() {
 
       request.onerror = () => resolve(null);
     });
-  };
+  }, [db, ready]);
 
-  const deletePhoto = async (id) => {
+  const deletePhoto = useCallback(async (id) => {
     if (!ready || !db) return false;
 
     return new Promise((resolve) => {
@@ -81,9 +81,9 @@ export function useIndexedDB() {
       request.onsuccess = () => resolve(true);
       request.onerror = () => resolve(false);
     });
-  };
+  }, [db, ready]);
 
-  const clearAll = async () => {
+  const clearAll = useCallback(async () => {
     if (!ready || !db) return false;
 
     return new Promise((resolve) => {
@@ -94,9 +94,9 @@ export function useIndexedDB() {
       request.onsuccess = () => resolve(true);
       request.onerror = () => resolve(false);
     });
-  };
+  }, [db, ready]);
 
-  const listKeys = async () => {
+  const listKeys = useCallback(async () => {
     if (!ready || !db) return [];
 
     return new Promise((resolve) => {
@@ -107,7 +107,7 @@ export function useIndexedDB() {
       request.onsuccess = () => resolve(request.result ?? []);
       request.onerror = () => resolve([]);
     });
-  };
+  }, [db, ready]);
 
   return {
     ready,

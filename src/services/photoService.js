@@ -31,7 +31,8 @@ export async function getPhotoSrc(path) {
 
     // file.data — base64 строка
     return `data:image/jpeg;base64,${file.data}`;
-  } catch {
+  } catch (err) {
+    console.error(`[photoService] Failed to read photo "${fsPath}":`, err);
     return null;
   }
 }

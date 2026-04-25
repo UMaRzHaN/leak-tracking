@@ -1,8 +1,20 @@
 import { useMemo } from "react";
 import EditTextField from "../../EditTextField/EditTextField";
+import EditPhotoRow from "./EditPhotoRow";
 import s from "../LeakDetailsSheet.module.scss";
 
-export default function EditBlock({ localEdit, setLocalEdit, activeTab, projectConfig }) {
+export default function EditBlock(props) {
+  const {
+    localEdit,
+    setLocalEdit,
+    activeTab,
+    projectConfig,
+    srcBefore,
+    srcAfter,
+    onEditBefore,
+    onEditAfter,
+    showAfter,
+  } = props;
   const allFields = useMemo(() => {
     return (projectConfig.system.fields ?? [])
       .filter((f) => f.editable !== false)
@@ -70,6 +82,31 @@ export default function EditBlock({ localEdit, setLocalEdit, activeTab, projectC
   /* ══════════════════════════════════════════
      КООРДИНАТЫ TAB
      ══════════════════════════════════════════ */
+  if (activeTab === "photo") {
+    return (
+      <div className={s.tabPane}>
+        <EditPhotoRow
+          srcBefore={srcBefore}
+          srcAfter={srcAfter}
+          showAfter={showAfter}
+          onEditBefore={onEditBefore}
+          onEditAfter={onEditAfter}
+        />
+      </div>
+    );
+  }
+
+  if (false && activeTab === "__photo_legacy") {
+    return (
+      <div className={s.tabPane}>
+        <div className={s.tabEmpty}>
+          <span className={s.tabEmptyIcon}>📷</span>
+          <p>Фото редактируются сверху</p>
+        </div>
+      </div>
+    );
+  }
+
   if (activeTab === "coords") {
     return (
       <div className={s.tabPane}>

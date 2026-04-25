@@ -215,6 +215,10 @@
   border-bottom: 1px solid var(--c-border);
 }
 
+.photoCompareSingle {
+  grid-template-columns: 1fr;
+}
+
 .photoCompareSlot {
   display: flex;
   flex-direction: column;
@@ -238,8 +242,8 @@
   border-radius: var(--r-md);
   overflow: hidden;
   cursor: pointer;
-  aspect-ratio: 4/3;
   width: 100%;
+  height: clamp(110px, 22vw, 180px);
 
   &:active { opacity: 0.85; }
 }
@@ -253,7 +257,7 @@
 }
 
 .photoComparePlaceholder {
-  aspect-ratio: 4/3;
+  height: clamp(110px, 22vw, 180px);
   width: 100%;
   border-radius: var(--r-md);
   background: var(--c-surface2);
@@ -276,6 +280,10 @@
   flex-shrink: 0;
 }
 
+.editPhotoRowSingle {
+  grid-template-columns: 1fr;
+}
+
 .editPhotoSlot {
   display: flex;
   flex-direction: column;
@@ -288,7 +296,7 @@
   border: 1.5px dashed var(--c-border);
   border-radius: var(--r-md);
   overflow: hidden;
-  aspect-ratio: 4/3;
+  height: clamp(110px, 22vw, 180px);
   width: 100%;
   background: var(--c-surface2);
   cursor: pointer;

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
-import s from "../index.scss";
+import "../index.scss";
 
 import Header from "../components/Header/Header";
 import Footer from "../components/Footer/Footer";
@@ -111,7 +111,7 @@ export default function App() {
      RENDER
   ========================= */
   return (
-    <div className={s.app}>
+    <div className="app">
       {/* {!isOnline && <OfflineBanner />} */}
 
       {!hideLayout && (
@@ -125,7 +125,7 @@ export default function App() {
         />
       )}
 
-      <div className={s.pages}>
+      <div className="pages">
         {page === "" && (
           <MainPage setPage={setPage} data={data} setData={save} />
         )}

@@ -6,6 +6,15 @@ import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import { getTileBlobUrl, cacheTile } from "./tileCache";
 import { STATUS_META } from "../../utils/status";
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 /* ── Cached tile layer ── */
 const CachedTileLayer = L.TileLayer.extend({
   createTile(coords, done) {
@@ -63,7 +72,8 @@ const CachedTileLayer = L.TileLayer.extend({
 /* ── Marker icon with label tag ── */
 function leakIcon(leak) {
   const meta = STATUS_META[leak.status] ?? STATUS_META.open;
-  const label = leak.leak_id ?? `#${leak.id}`;
+  // escapeHtml prevents XSS from user-supplied leak_id / id
+  const safeLabel = escapeHtml(leak.leak_id ?? `#${leak.id}`);
   return L.divIcon({
     className: "",
     html: `<div style="display:flex;align-items:center;gap:3px;white-space:nowrap;">
@@ -79,12 +89,37 @@ function leakIcon(leak) {
         backdrop-filter:blur(3px);
         max-width:72px;overflow:hidden;text-overflow:ellipsis;
         border:1px solid rgba(255,255,255,0.18);
-      ">${label}</div>
+      ">${safeLabel}</div>
     </div>`,
     iconSize: null,
     iconAnchor: [5, 5],
     popupAnchor: [20, -6],
   });
+}
+
+/* ── Popup DOM element (XSS-safe via textContent) ── */
+function createPopupEl(leak) {
+  const meta = STATUS_META[leak.status] ?? STATUS_META.open;
+  const el = document.createElement("div");
+
+  const title = document.createElement("b");
+  title.textContent = `Бирка № ${leak.leak_id ?? ""}`;
+  el.appendChild(title);
+
+  const fields = [
+    ["Компонент", leak.component],
+    ["Описание утечки", leak.leak_description],
+    ["Статус", meta.label],
+  ];
+
+  for (const [label, value] of fields) {
+    el.appendChild(document.createElement("br"));
+    const span = document.createElement("span");
+    span.textContent = `${label}: ${value ?? ""}`;
+    el.appendChild(span);
+  }
+
+  return el;
 }
 
 /* ── Main factory ── */
@@ -185,8 +220,6 @@ export function addMarkers(markersLayer, leaks = []) {
 
     L.marker([leak.lat, leak.lng], { icon: leakIcon(leak) })
       .addTo(markersLayer)
-      .bindPopup(
-        `<b>Бирка № ${leak.leak_id ?? ""}</b><br/>Компонент: ${leak.component ?? ""}<br/>Описание утечки: ${leak.leak_description ?? ""}<br/>Статус: ${(STATUS_META[leak.status] ?? STATUS_META.open).label}`,
-      );
+      .bindPopup(() => createPopupEl(leak));
   });
 }

@@ -10,6 +10,7 @@ import { usePhotoStorage } from "../../hooks/usePhotoStorage";
 import { PROJECT_META } from "../../configs/projects";
 import { getMapCacheInfo, clearMapCache } from "../../services/maps/tileCache";
 import { buildBackupZip, importBackupZip } from "../../services/export/backup";
+import { validateBackup } from "../../services/export/backupSchema";
 import SettingsHeader from "./Header/SettingsHeader";
 import SettingsModal from "../../components/SettingsModal/SettingsModal";
 import Notification from "../../components/Notification/Notification";
@@ -144,8 +145,17 @@ export default function Settings({ setPage, prevPage, clearDatabase }) {
     const reader = new FileReader();
     reader.onload = async (ev) => {
       try {
-        const parsed = JSON.parse(ev.target.result);
-        if (!Array.isArray(parsed)) throw new Error("Ожидается массив JSON");
+        let rawParsed;
+        try {
+          rawParsed = JSON.parse(ev.target.result);
+        } catch {
+          throw new Error("Файл содержит невалидный JSON");
+        }
+
+        const validation = validateBackup(rawParsed);
+        if (!validation.ok) throw new Error(validation.error);
+
+        const parsed = validation.data;
         const ok = window.confirm(
           `Импортировать ${parsed.length} записей?\n\nТекущие данные будут заменены.`,
         );
