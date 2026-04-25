@@ -78,6 +78,7 @@ export default function StepRenderer({
               onChange={(v) => onChange(f.key, v)}
               required={f.required}
               onComplete={completeFromElement}
+              placeholder={f.placeholder}
               hint={f.hint}
             />
           );
