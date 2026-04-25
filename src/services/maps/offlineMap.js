@@ -91,10 +91,14 @@ function leakIcon(leak) {
 export function createOfflineMap(container, { center, zoom = 13 }) {
   const map = L.map(container, { zoomControl: true }).setView(center, zoom);
 
-  new CachedTileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-    maxZoom: 19,
-    attribution: '© <a href="https://www.esri.com">Esri</a> — Esri, USGS, NOAA',
-  }).addTo(map);
+  new CachedTileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    {
+      maxZoom: 19,
+      attribution:
+        '© <a href="https://www.esri.com">Esri</a> — Esri, USGS, NOAA',
+    },
+  ).addTo(map);
 
   const markersLayer = L.markerClusterGroup({
     maxClusterRadius: 48,
@@ -182,7 +186,7 @@ export function addMarkers(markersLayer, leaks = []) {
     L.marker([leak.lat, leak.lng], { icon: leakIcon(leak) })
       .addTo(markersLayer)
       .bindPopup(
-        `<b>№ ${leak.leak_id ?? ""}</b><br/>${leak.component ?? ""}<br/>${(STATUS_META[leak.status] ?? STATUS_META.open).label}`,
+        `<b>Бирка № ${leak.leak_id ?? ""}</b><br/>Компонент: ${leak.component ?? ""}<br/>Описание утечки: ${leak.leak_description ?? ""}<br/>Статус: ${(STATUS_META[leak.status] ?? STATUS_META.open).label}`,
       );
   });
 }

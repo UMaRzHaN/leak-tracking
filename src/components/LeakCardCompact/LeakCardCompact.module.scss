@@ -367,6 +367,67 @@
   white-space: nowrap;
 }
 
+/* ── Photo stack (До/После для устранённых, горизонтальное наложение) ── */
+.photoStack {
+  position: relative;
+  flex-shrink: 0;
+  width: 80px;
+  height: 50px;
+  cursor: pointer;
+
+  &:active { opacity: 0.82; }
+}
+
+/* Задняя карточка (После) — выглядывает справа */
+.photoStackBack {
+  position: absolute;
+  top: 3px;
+  left: 18px;
+  right: 0;
+  bottom: 3px;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1.5px solid var(--c-border);
+  z-index: 1;
+}
+
+/* Передняя карточка (До) — сверху слева */
+.photoStackFront {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 62px;
+  height: 50px;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1.5px solid var(--c-border);
+  box-shadow: 3px 0 8px rgba(0, 0, 0, 0.2);
+  z-index: 2;
+}
+
+.photoStackImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+.photoStackLabel {
+  position: absolute;
+  bottom: 0;
+  left: 0; right: 0;
+  padding: 2px 0;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.48);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
 /* ── Photo thumbnail ── */
 .photoThumb {
   flex-shrink: 0;

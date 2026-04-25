@@ -1,7 +1,7 @@
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 500;
+  z-index: 1000;
   background: rgba(0, 0, 0, 0.96);
   display: flex;
   flex-direction: column;
@@ -66,6 +66,60 @@
 @keyframes zoomIn {
   from { transform: scale(0.88); opacity: 0; }
   to   { transform: scale(1);    opacity: 1; }
+}
+
+/* ── Nav arrows ── */
+.navBtn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 76px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(20, 20, 20, 0.52);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition:
+    background  0.15s ease,
+    border-color 0.15s ease,
+    transform   0.12s ease;
+  z-index: 2;
+
+  &:hover {
+    background: rgba(50, 50, 50, 0.7);
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+  &:active {
+    transform: translateY(-50%) scale(0.91);
+    background: rgba(80, 80, 80, 0.82);
+  }
+}
+
+.navBtnLeft  { left:  10px; }
+.navBtnRight { right: 10px; }
+
+/* ── Photo label (До / После) ── */
+.photoLabel {
+  position: absolute;
+  bottom: max(48px, calc(env(safe-area-inset-bottom) + 40px));
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.42);
+  padding: 5px 16px;
+  border-radius: 20px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 /* ── Bottom hint ── */

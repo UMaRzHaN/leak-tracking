@@ -14,6 +14,7 @@ import ViewBlock from "./components/ViewBlock";
 import EditBlock from "./components/EditBlock";
 import PhotoViewer from "../PhotoViewer/PhotoViewer";
 import ResolveModal from "../ResolveModal/ResolveModal";
+import EditPhotoRow from "./components/EditPhotoRow";
 import s from "./LeakDetailsSheet.module.scss";
 
 const DELETE_ARM_MS = 3000;
@@ -46,6 +47,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
 
   const prevLeakIdRef = useRef(null);
   const fileInputRef = useRef(null);
+  const fileInputAfterRef = useRef(null);
   const deleteTimerRef = useRef(null);
 
   /* ── Photo ── */
@@ -62,6 +64,19 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     version: leak.updatedAt,
   });
 
+  const afterLeakId = `${leak.leak_id ?? leak.id}_after`;
+  const {
+    src: srcAfter,
+    isDirty: isAfterDirty,
+    changePhoto: changePhotoAfter,
+    savePhoto: savePhotoAfter,
+    resetPhoto: resetPhotoAfter,
+  } = useEditablePhoto({
+    initialPath: leak.photo_after,
+    leakId: afterLeakId,
+    version: leak.updatedAt,
+  });
+
   /* ── Init on leak change ── */
   useEffect(() => {
     if (prevLeakIdRef.current !== leak.leak_id) {
@@ -70,16 +85,17 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
       setMode(MODE.VIEW);
       setActiveTab(TAB.INFO);
       resetPhoto();
+      resetPhotoAfter();
       prevLeakIdRef.current = leak.leak_id;
     }
-  }, [leak.leak_id, leak.updatedAt, leak, resetPhoto, EDIT_FIELDS]);
+  }, [leak.leak_id, leak.updatedAt, leak, resetPhoto, resetPhotoAfter, EDIT_FIELDS]);
 
   /* ── Dirty tracking ── */
   const dirtyFields = useMemo(
     () => EDIT_FIELDS.filter(({ key }) => localEdit[key] !== leak[key]),
     [localEdit, leak, EDIT_FIELDS],
   );
-  const isDirty = isPhotoDirty || dirtyFields.length > 0;
+  const isDirty = isPhotoDirty || isAfterDirty || dirtyFields.length > 0;
 
   /* ── Save ── */
   const handleSave = async () => {
@@ -99,6 +115,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     setSaving(true);
     try {
       const photoPath = await savePhoto();
+      const photoAfterPath = await savePhotoAfter();
       // Coerce numeric fields: partial strings ("3.", "-") → proper numbers
       const numericKeys = new Set(
         EDIT_FIELDS.filter((f) => f.numeric).map((f) => f.key),
@@ -120,6 +137,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
         ...leak,
         ...textPatch,
         photo: photoPath ?? leak.photo,
+        photo_after: photoAfterPath ?? leak.photo_after,
         updatedAt: Date.now(),
         history: [
           ...(leak.history ?? []),
@@ -221,6 +239,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
 
   const handleCancel = () => {
     resetPhoto();
+    resetPhotoAfter();
     setMode(MODE.VIEW);
   };
 
@@ -278,22 +297,23 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
           <div className={s.handle} />
 
           {/* ── Hero: photo + identity overlay ── */}
-          <PhotoBlock
-            src={src}
-            status={status}
-            identityNum={`№ ${leak.leak_id ?? leak.index ?? "—"}`}
-            identityTime={ago ?? leak.date ?? ""}
-            onStatusChange={mode === MODE.VIEW ? handleStatusChange : undefined}
-            onView={
-              mode === MODE.VIEW && src ? () => setViewerOpen(true) : undefined
-            }
-            onEdit={
-              mode === MODE.EDIT
-                ? () =>
-                    isNative ? changePhoto() : fileInputRef.current?.click()
-                : null
-            }
-          />
+          {mode === MODE.EDIT ? (
+            <EditPhotoRow
+              srcBefore={src}
+              srcAfter={srcAfter}
+              onEditBefore={() => isNative ? changePhoto() : fileInputRef.current?.click()}
+              onEditAfter={() => isNative ? changePhotoAfter() : fileInputAfterRef.current?.click()}
+            />
+          ) : (
+            <PhotoBlock
+              src={src}
+              status={status}
+              identityNum={`№ ${leak.leak_id ?? leak.index ?? "—"}`}
+              identityTime={ago ?? leak.date ?? ""}
+              onStatusChange={handleStatusChange}
+              onView={src ? () => setViewerOpen(true) : undefined}
+            />
+          )}
 
           {/* ── Tab bar ── */}
           <div className={s.tabBar}>
@@ -362,24 +382,11 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
           ) : (
             <div className={s.actionBar}>
               {!isNative && (
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={changePhoto}
-                />
+                <>
+                  <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={changePhoto} />
+                  <input ref={fileInputAfterRef} type="file" accept="image/*" hidden onChange={changePhotoAfter} />
+                </>
               )}
-              <button
-                className={s.btnIcon}
-                type="button"
-                onClick={() =>
-                  isNative ? changePhoto() : fileInputRef.current?.click()
-                }
-                title="Фото"
-              >
-                📷
-              </button>
               <button
                 className={s.btnGhost}
                 type="button"

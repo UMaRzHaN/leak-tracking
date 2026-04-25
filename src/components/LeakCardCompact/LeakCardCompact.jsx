@@ -48,17 +48,27 @@ export default function LeakCardCompact({
   const ago        = timeAgo(leak.id);
   const urgency    = urgencyOf(leak.id, status);
 
-  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(null);
 
-  const photoSrc  = usePhotoSrc(leak.photo ?? null);
+  const photoSrc      = usePhotoSrc(leak.photo      ?? null);
+  const photoAfterSrc = usePhotoSrc(leak.photo_after ?? null);
 
   const emissions = fmtNum(leak.Emissions_t_CO2eq_year, 2);
   const methane   = fmtNum(leak.Total_Annual_Methane_Loss_m3_y, 0);
 
+  const comparePairs = [
+    photoSrc      ? { src: photoSrc,      label: "До"    } : null,
+    photoAfterSrc ? { src: photoAfterSrc, label: "После" } : null,
+  ].filter(Boolean);
+
+  const showBook  = status === "resolved" && comparePairs.length === 2;
+  const hasPhoto  = Boolean(photoSrc) || (status === "resolved" && Boolean(photoAfterSrc));
   const hasChips  = leak.leak_speed != null || leak.pressure != null ||
                     nearbyDist != null || emissions != null || methane != null;
-  const hasPhoto  = Boolean(photoSrc);
   const hasFooter = hasChips || hasPhoto;
+
+  const viewerPhotos = showBook ? comparePairs.map((p) => p.src) : [(photoSrc || photoAfterSrc)].filter(Boolean);
+  const viewerLabels = showBook ? comparePairs.map((p) => p.label) : [];
 
   return (
     <>
@@ -170,18 +180,25 @@ export default function LeakCardCompact({
                   <span className={s.chipCalc}>~{emissions} т CO₂</span>
                 )}
               </div>
-              {hasPhoto && (
+              {showBook ? (
+                <div
+                  className={s.photoStack}
+                  onClick={(e) => { e.stopPropagation(); setViewerIndex(0); }}
+                >
+                  <div className={s.photoStackBack}>
+                    <img src={photoAfterSrc} alt="После" className={s.photoStackImg} loading="lazy" draggable={false} />
+                  </div>
+                  <div className={s.photoStackFront}>
+                    <img src={photoSrc} alt="До" className={s.photoStackImg} loading="lazy" draggable={false} />
+                    <span className={s.photoStackLabel}>До</span>
+                  </div>
+                </div>
+              ) : hasPhoto && (
                 <div
                   className={s.photoThumb}
-                  onClick={(e) => { e.stopPropagation(); setViewerOpen(true); }}
+                  onClick={(e) => { e.stopPropagation(); setViewerIndex(0); }}
                 >
-                  <img
-                    src={photoSrc}
-                    alt=""
-                    className={s.photoThumbImg}
-                    loading="lazy"
-                    draggable={false}
-                  />
+                  <img src={photoSrc || photoAfterSrc} alt="" className={s.photoThumbImg} loading="lazy" draggable={false} />
                 </div>
               )}
             </div>
@@ -189,8 +206,13 @@ export default function LeakCardCompact({
         </div>
       </div>
 
-      {viewerOpen && (
-        <PhotoViewer src={photoSrc} onClose={() => setViewerOpen(false)} />
+      {viewerIndex !== null && (
+        <PhotoViewer
+          photos={viewerPhotos}
+          labels={viewerLabels}
+          initialIndex={viewerIndex}
+          onClose={() => setViewerIndex(null)}
+        />
       )}
     </>
   );
