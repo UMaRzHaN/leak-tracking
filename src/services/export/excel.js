@@ -180,7 +180,7 @@ export async function exportToExcelZip(
   }
 
   const zipBlob = await zip.generateAsync({ type: "blob" });
-  await downloadBlob(zipBlob, `${fileName}.zip`, projectFolderName);
+  return downloadBlob(zipBlob, `${fileName}.zip`, projectFolderName);
 }
 
 async function downloadBlob(blob, fileName, projectFolderName = null) {
