@@ -60,7 +60,7 @@ export default function App() {
   /* =========================
      PROJECT-AWARE DATA
   ========================= */
-  const { data, save, clear } = useProjectData();
+  const { data, save, clear, dataLoaded } = useProjectData();
 
   /* =========================
      PHOTO GC
@@ -85,10 +85,11 @@ export default function App() {
 
   // Запускаем GC один раз после загрузки данных текущего проекта
   useEffect(() => {
+    if (!dataLoaded) return;
     if (gcRanRef.current) return;
     gcRanRef.current = true;
     gcOrphanedPhotos(data).catch((err) => console.warn("Photo GC error:", err));
-  }, [data, gcOrphanedPhotos]);
+  }, [data, gcOrphanedPhotos, dataLoaded]);
 
   /* =========================
      ONE-TIME MIGRATION

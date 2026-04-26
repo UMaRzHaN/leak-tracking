@@ -83,24 +83,31 @@ export function useProjectData() {
     : null;
 
   const [data, setData] = useState([]);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   /* =========================
      LOAD on project change
   ========================= */
   useEffect(() => {
+    setDataLoaded(false);
+
     if (!storageKey && !filePath) {
       setData([]);
+      setDataLoaded(true);
       return;
     }
 
     let cancelled = false;
 
     const load = async () => {
-      const loaded = Capacitor.isNativePlatform()
+      const result = Capacitor.isNativePlatform()
         ? await readMobile(filePath)
         : readWeb(storageKey);
 
-      if (!cancelled) setData(Array.isArray(loaded) ? loaded : []);
+      if (!cancelled) {
+        setData(Array.isArray(result) ? result : []);
+        setDataLoaded(true);
+      }
     };
 
     load();
@@ -138,5 +145,5 @@ export function useProjectData() {
     }
   }, [filePath, storageKey]);
 
-  return { data, setData, save, clear };
+  return { data, setData, save, clear, dataLoaded };
 }

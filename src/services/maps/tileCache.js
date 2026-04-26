@@ -99,19 +99,19 @@ async function nativeRead(url) {
 
 async function nativeWrite(url, skipMkdir = false) {
   const path = tileFilePath(url);
-  if (!path || (await nativeExists(path))) return;
+  if (!path || (await nativeExists(path))) return false;
   try {
     const response = await fetchWithTimeout(url);
-    if (!response.ok) return;
+    if (!response.ok) return false;
     const base64 = await blobToBase64(await response.blob());
     if (!skipMkdir) {
       const dir = path.substring(0, path.lastIndexOf("/"));
       await Filesystem.mkdir({ path: dir, directory: Directory.Data, recursive: true }).catch(() => {});
     }
     await Filesystem.writeFile({ path, data: base64, directory: Directory.Data });
-    incrementNativeCount();
+    return true;
   } catch {
-    // network error or quota — ignore
+    return false;
   }
 }
 
@@ -131,7 +131,11 @@ export async function getTileBlobUrl(url) {
 }
 
 export async function cacheTile(url, prefetchedResponse = null) {
-  if (isNative) return nativeWrite(url);
+  if (isNative) {
+    const saved = await nativeWrite(url);
+    if (saved) incrementNativeCount();
+    return;
+  }
   if (!webSupported) return;
   try {
     const cache = await caches.open(CACHE_NAME);
@@ -233,10 +237,12 @@ export async function preloadUrls(urls, { onProgress, concurrency = isNative ? 4
   }
 
   let done = 0;
+  let localSaved = 0;
 
   const downloadOne = async (url) => {
     if (isNative) {
-      await nativeWrite(url, true).catch(() => {});
+      const saved = await nativeWrite(url, true).catch(() => false);
+      if (saved) localSaved++;
     } else if (webCache) {
       const hit = await webCache.match(url).catch(() => null);
       if (!hit) {
@@ -252,5 +258,9 @@ export async function preloadUrls(urls, { onProgress, concurrency = isNative ? 4
 
   for (let i = 0; i < toDownload.length; i += concurrency) {
     await Promise.all(toDownload.slice(i, i + concurrency).map(downloadOne));
+  }
+
+  if (isNative && localSaved > 0) {
+    localStorage.setItem(NATIVE_COUNT_KEY, getNativeCount() + localSaved);
   }
 }
