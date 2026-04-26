@@ -191,7 +191,10 @@ async function downloadBlob(blob, fileName, projectFolderName = null) {
     a.download = fileName;
     a.click();
     URL.revokeObjectURL(url);
-    return;
+    return {
+      ok: true,
+      message: `XLSX с фотографиями экспортирован (${fileName})`,
+    };
   }
 
   // Native: convert to base64 via FileReader (safe for large files)
