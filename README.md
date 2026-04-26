@@ -86,6 +86,43 @@ src/
 
 ---
 
+## 📊 Модель объекта утечки
+
+```ts
+interface LeakRecord {
+  id: number;
+  projectId: string;
+  createdAt: string;
+  updatedAt: string;
+
+  status: 'open' | 'in_progress' | 'resolved';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+
+  location: {
+    lat: number;
+    lng: number;
+    accuracy?: number;
+  };
+
+  component: string;
+  componentTag?: string;
+  leakType: string;
+  leakRate?: number;
+  pressure?: number;
+
+  description?: string;
+  photosBefore: string[];
+  photosAfter?: string[];
+
+  assignedTo?: string;
+  resolvedAt?: string;
+
+  history: LeakHistoryEntry[];
+}
+```
+
+---
+
 ## 📦 Импорт / Экспорт
 
 Проект поддерживает перенос данных между устройствами через ZIP-архив:
@@ -123,6 +160,43 @@ Network Available?
 
 - Все данные хранятся локально на устройстве
 - Нет серверной части / облака / телеметрии
+- Подходит для air-gapped environments
+
+---
+
+## 📱 Сборка и запуск на телефоне
+
+### Android
+
+```bash
+npm run build
+npx cap sync android
+npx cap open android
+```
+
+Далее в Android Studio:
+1. Подключить устройство / эмулятор  
+2. Нажать **Run**  
+3. APK установится на телефон
+
+### iOS
+
+```bash
+npm run build
+npx cap sync ios
+npx cap open ios
+```
+
+Далее открыть проект в Xcode и выполнить build на устройство.
+
+---
+
+## ⚙️ Production Deployment Notes
+
+- Для Android рекомендуется включить ProGuard / R8
+- Для iOS — настроить permissions в Info.plist
+- Перед релизом очистить dev-логирование и mock data
+- Рекомендуется включить versioned migrations для local storage
 
 ---
 
@@ -138,9 +212,73 @@ npx cap sync      # Sync Capacitor
 
 ---
 
-<div align="center">
+## 🧭 Архитектурная диаграмма
 
-Разработано для полевых инженеров и LDAR-команд.
+```mermaid
+flowchart TD
+    UI[React UI / Pages] --> Hooks[Custom Hooks]
+    Hooks --> Context[Project / App Context]
+    Hooks --> Services[Domain Services]
+
+    Services --> Storage[Local Storage / IndexedDB / Filesystem]
+    Services --> Maps[Offline Map Engine]
+    Services --> Export[Export / Import Engine]
+    Services --> Native[Capacitor Native APIs]
+
+    Native --> Camera[Camera]
+    Native --> Geo[Geolocation]
+    Native --> FS[Filesystem]
+    Native --> Speech[Speech Recognition]
+```
+
+---
+
+## 🔄 State Machine: Leak Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Open
+    Open --> InProgress
+    InProgress --> Resolved
+    Resolved --> Reopened
+    Reopened --> InProgress
+```
+
+---
+
+## 🏆 Архитектурные особенности
+
+- **Offline-First Core** — приложение полностью функционально без сети
+- **Project Isolation** — каждый проект хранится в отдельном namespace
+- **Portable Backup System** — перенос проекта одним ZIP-файлом
+- **Extensible Config Architecture** — новые project types добавляются конфигом
+- **Native Device Integration** — Camera / Filesystem / Geolocation / Speech API
+
+---
+
+## 📈 Roadmap
+
+- [ ] Cloud Sync / Optional Backend Mode
+- [ ] Multi-user Collaboration
+- [ ] Advanced Analytics Dashboard
+- [ ] GIS Layer Import / Overlay Support
+- [ ] Enterprise Audit Trail / Signatures
+
+---
+
+## 🤝 Для кого создан проект
+
+- LDAR / Methane Management Teams  
+- Field Inspectors  
+- Compressor Station Operators  
+- Environmental Compliance Engineers  
+- Oil & Gas Asset Integrity Teams
+
+---
+
+<div align=\"center\">
+
+**Industrial-grade leak management platform for field operations.**
 
 </div>
 
