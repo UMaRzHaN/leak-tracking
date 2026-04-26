@@ -121,42 +121,49 @@ export default function MapPage({ leaks, coords }) {
     if (!map || downloading) return;
 
     setDownloading(true);
+    try {
+      const urlSet = new Set();
 
-    const urlSet = new Set();
+      const valid = visibleLeaks.filter(
+        (l) => Number.isFinite(l.lat) && Number.isFinite(l.lng),
+      );
+      const n = 2 ** 14;
+      const seen = new Set();
+      const unique = valid.filter(({ lat, lng }) => {
+        const tx = Math.floor(((lng + 180) / 360) * n);
+        const latRad = (lat * Math.PI) / 180;
+        const ty = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n);
+        const key = `${tx}:${ty}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      for (const pt of unique) {
+        for (const url of buildTileUrls(pt.lat, pt.lng, 13, 13)) urlSet.add(url);
+      }
 
-    // Тайлы вокруг всех видимых утечек (zoom 13–16)
-    const valid = visibleLeaks.filter(
-      (l) => Number.isFinite(l.lat) && Number.isFinite(l.lng),
-    );
-    const n = 2 ** 14;
-    const seen = new Set();
-    const unique = valid.filter(({ lat, lng }) => {
-      const tx = Math.floor(((lng + 180) / 360) * n);
-      const latRad = (lat * Math.PI) / 180;
-      const ty = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n);
-      const key = `${tx}:${ty}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-    // Zoom 13 только — обзор всех точек (~9 тайлов на точку)
-    for (const pt of unique) {
-      for (const url of buildTileUrls(pt.lat, pt.lng, 13, 13)) urlSet.add(url);
+      const b = map.getBounds();
+      const bounds = { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() };
+      const currentZoom = Math.floor(map.getZoom());
+      for (const url of buildViewportTileUrls(bounds, currentZoom, currentZoom)) urlSet.add(url);
+
+      const urls = [...urlSet];
+      if (urls.length === 0) {
+        notify("error", "Нет тайлов для скачивания");
+        return;
+      }
+
+      setTileProgress({ done: 0, total: urls.length, status: null });
+      await preloadUrls(urls, {
+        onProgress: (done, total) => setTileProgress({ done, total, status: null }),
+      });
+      setTileProgress({ done: urls.length, total: urls.length, status: "success" });
+    } catch {
+      setTileProgress({ done: 0, total: 0, status: "error" });
+    } finally {
+      setDownloading(false);
+      setTimeout(() => setTileProgress(null), 2500);
     }
-
-    // Текущий viewport на текущем zoom
-    const b = map.getBounds();
-    const bounds = { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() };
-    const currentZoom = map.getZoom();
-    for (const url of buildViewportTileUrls(bounds, currentZoom, currentZoom)) urlSet.add(url);
-
-    const urls = [...urlSet];
-    setTileProgress({ done: 0, total: urls.length });
-    await preloadUrls(urls, {
-      onProgress: (done, total) => setTileProgress({ done, total }),
-    }).catch(() => {});
-    setTileProgress(null);
-    setDownloading(false);
   }, [downloading, visibleLeaks]);
 
   /* ── Экспорт KML ── */
@@ -233,13 +240,19 @@ export default function MapPage({ leaks, coords }) {
 
 
       {tileProgress && (
-        <div className={s.tileProgress}>
-          <div
-            className={s.tileProgressBar}
-            style={{ width: `${Math.round((tileProgress.done / tileProgress.total) * 100)}%` }}
-          />
+        <div className={`${s.tileProgress} ${tileProgress.status ? s[`tileProgress_${tileProgress.status}`] : ""}`}>
+          {!tileProgress.status && (
+            <div
+              className={s.tileProgressBar}
+              style={{ width: `${Math.round((tileProgress.done / tileProgress.total) * 100)}%` }}
+            />
+          )}
           <span className={s.tileProgressLabel}>
-            Загрузка карты {Math.round((tileProgress.done / tileProgress.total) * 100)}%
+            {tileProgress.status === "success"
+              ? `✓ Сохранено ${tileProgress.total} тайлов`
+              : tileProgress.status === "error"
+              ? "✕ Ошибка скачивания"
+              : `Загрузка ${Math.round((tileProgress.done / tileProgress.total) * 100)}%`}
           </span>
         </div>
       )}

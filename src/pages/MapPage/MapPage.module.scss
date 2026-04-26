@@ -116,6 +116,16 @@
   white-space: nowrap;
 }
 
+.tileProgress_success {
+  background: #16a34a;
+  .tileProgressLabel { color: #fff; font-weight: 600; }
+}
+
+.tileProgress_error {
+  background: #dc2626;
+  .tileProgressLabel { color: #fff; font-weight: 600; }
+}
+
 .exportBtn {
   padding: 6px 12px;
   border-radius: 20px;

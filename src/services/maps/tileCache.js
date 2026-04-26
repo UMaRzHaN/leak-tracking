@@ -38,6 +38,16 @@ export function buildTileUrls(lat, lng, minZoom, maxZoom) {
   return urls;
 }
 
+async function fetchWithTimeout(url, ms = 10000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { mode: "cors", signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -76,15 +86,17 @@ async function nativeRead(url) {
   }
 }
 
-async function nativeWrite(url) {
+async function nativeWrite(url, skipMkdir = false) {
   const path = tileFilePath(url);
   if (!path || (await nativeExists(path))) return;
   try {
-    const response = await fetch(url);
+    const response = await fetchWithTimeout(url);
     if (!response.ok) return;
     const base64 = await blobToBase64(await response.blob());
-    const dir = path.substring(0, path.lastIndexOf("/"));
-    await Filesystem.mkdir({ path: dir, directory: Directory.Data, recursive: true }).catch(() => {});
+    if (!skipMkdir) {
+      const dir = path.substring(0, path.lastIndexOf("/"));
+      await Filesystem.mkdir({ path: dir, directory: Directory.Data, recursive: true }).catch(() => {});
+    }
     await Filesystem.writeFile({ path, data: base64, directory: Directory.Data });
   } catch {
     // network error or quota — ignore
@@ -164,12 +176,12 @@ export function buildViewportTileUrls(bounds, minZoom, maxZoom) {
   return urls;
 }
 
-export async function preloadUrls(urls, { onProgress, concurrency = 20 } = {}) {
+export async function preloadUrls(urls, { onProgress, concurrency = isNative ? 4 : 8 } = {}) {
   if (urls.length === 0) return;
 
   const webCache = (!isNative && webSupported) ? await caches.open(CACHE_NAME).catch(() => null) : null;
 
-  // Параллельная проверка кэша — фильтруем уже скачанные без сети
+  // Фильтруем уже скачанные
   let toDownload;
   if (isNative) {
     const checks = await Promise.all(
@@ -191,21 +203,23 @@ export async function preloadUrls(urls, { onProgress, concurrency = 20 } = {}) {
   const total = toDownload.length;
   if (total === 0) { onProgress?.(urls.length, urls.length); return; }
 
-  let done = 0;
+  // Пре-создаём уникальные директории один раз (только для нативного)
+  if (isNative) {
+    const dirs = new Set(
+      toDownload.map(tileFilePath).filter(Boolean).map((p) => p.substring(0, p.lastIndexOf("/")))
+    );
+    await Promise.all(
+      [...dirs].map((dir) =>
+        Filesystem.mkdir({ path: dir, directory: Directory.Data, recursive: true }).catch(() => {})
+      )
+    );
+  }
 
-  const fetchWithTimeout = async (url, ms = 8000) => {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), ms);
-    try {
-      return await fetch(url, { mode: "cors", signal: ctrl.signal });
-    } finally {
-      clearTimeout(timer);
-    }
-  };
+  let done = 0;
 
   const downloadOne = async (url) => {
     if (isNative) {
-      await nativeWrite(url).catch(() => {});
+      await nativeWrite(url, true).catch(() => {});
     } else if (webCache) {
       const hit = await webCache.match(url).catch(() => null);
       if (!hit) {
@@ -216,7 +230,7 @@ export async function preloadUrls(urls, { onProgress, concurrency = 20 } = {}) {
       }
     }
     done++;
-    if (done % 10 === 0 || done === total) onProgress?.(done, total);
+    if (done % 5 === 0 || done === total) onProgress?.(done, total);
   };
 
   for (let i = 0; i < toDownload.length; i += concurrency) {
