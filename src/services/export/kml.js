@@ -77,7 +77,8 @@ export async function saveLeaksKML(leaks, project, projectFolderName = null) {
     return {
       ok: true,
       fileName,
-      message: "KML-файл успешно экспортирован",
+      path: `${folderName}/${fileName}`,
+      message: `Сохранено в Документы/${folderName}/${fileName}`,
     };
   }
 
@@ -86,6 +87,7 @@ export async function saveLeaksKML(leaks, project, projectFolderName = null) {
   return {
     ok: true,
     fileName,
+    path: fileName,
     message: "KML-файл успешно скачан",
   };
 }

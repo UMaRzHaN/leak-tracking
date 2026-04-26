@@ -217,4 +217,10 @@ async function downloadBlob(blob, fileName, projectFolderName = null) {
     data: base64,
     directory: Directory.Documents,
   });
+
+  return {
+    ok: true,
+    path: `${outputFolder}/${fileName}`,
+    message: `Сохранено в Документы/${outputFolder}/${fileName}`,
+  };
 }

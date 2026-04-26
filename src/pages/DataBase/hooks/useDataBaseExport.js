@@ -36,7 +36,7 @@ export function useDataBaseExport({ displayed, notify }) {
 
   const handleExport = useCallback(async () => {
     try {
-      await exportToExcelZip(
+      const result = await exportToExcelZip(
         displayed,
         prepareRows(displayed),
         excelHeaders,
@@ -45,7 +45,7 @@ export function useDataBaseExport({ displayed, notify }) {
         idbGetPhoto,
         activeProject?.folderName,
       );
-      notify("success", "ZIP-архив успешно скачан");
+      notify("success", result?.message || "ZIP-архив успешно скачан");
     } catch (err) {
       notify("error", "Ошибка экспорта: " + err.message);
     }
