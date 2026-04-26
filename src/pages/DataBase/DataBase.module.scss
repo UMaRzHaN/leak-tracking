@@ -337,9 +337,10 @@
   color: var(--c-text2);
   text-wrap: nowrap;
 
-
-  .resultsRow:has(.resultsActionsSelected) & {
-    flex-direction: column;
+  @media (max-width: 600px) {
+    .resultsRow:has(.resultsActionsSelected) & {
+      flex-direction: column;
+    }
   }
 }
 
@@ -378,7 +379,6 @@
   width: 100%;
   padding: 10px;
   border-radius: var(--r-lg);
-
   background: rgba(59, 130, 246, 0.06);
   border: 1px solid rgba(59, 130, 246, 0.18);
 
@@ -465,14 +465,19 @@
 .resultsActions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.resultsActions div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 6px;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  width: max-content;
 }
 
 .resultsActionsSelected {
-  justify-content: space-evenly;
+  justify-content: center;
   padding: 8px;
   border: 1px solid rgba(37, 99, 235, 0.14);
   border-radius: var(--r-lg);
