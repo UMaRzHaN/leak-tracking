@@ -71,8 +71,22 @@ export async function readPhotoFromFile(file) {
     throw new Error("Expected File from input");
   }
 
+  const src = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        reject(new Error("FileReader result is not string"));
+        return;
+      }
+      resolve(result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
   return {
     raw: file,
-    src: URL.createObjectURL(file),
+    src,
   };
 }

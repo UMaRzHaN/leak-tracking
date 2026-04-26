@@ -53,10 +53,12 @@ export function exportLeaksKML(leaks, project) {
 </kml>`;
 }
 
-export async function saveLeaksKML(leaks, project, mkdir) {
+export async function saveLeaksKML(leaks, project, projectFolderName = null) {
   const kml = exportLeaksKML(leaks, project);
   const fileName = `leaks_map.kml`;
-  const folderName = `${mkdir}/maps`;
+  const folderName = projectFolderName
+    ? `${projectFolderName}/export/map`
+    : "export/map";
 
   if (Capacitor.isNativePlatform()) {
     await Filesystem.mkdir({

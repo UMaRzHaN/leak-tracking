@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import LeakForm from "../../components/LeakForm/LeakForm";
 import { usePhotoStorage } from "../../hooks/usePhotoStorage";
 import { useFormDraft } from "../../hooks/useFormDraft";
@@ -10,6 +10,25 @@ import { hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { STATUS } from "../../utils/status";
 import { priorityFromSpeed } from "../../utils/priority";
 import s from "./AddLeak.module.scss";
+
+function dataUrlToBlob(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== "string" || !dataUrl.startsWith("data:")) {
+    return null;
+  }
+
+  const matches = dataUrl.match(/^data:(.+);base64,(.*)$/);
+  if (!matches) return null;
+
+  const mime = matches[1];
+  const base64 = matches[2];
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  return new Blob([bytes], { type: mime });
+}
 
 
 export default function AddLeak({
@@ -25,6 +44,11 @@ export default function AddLeak({
   const { saveDraft, loadDraft, clearDraft, hasDraft } = useFormDraft();
   const { isSaving, run } = useSafeSave();
   const [draftPrompt, setDraftPrompt] = useState(false);
+  const photoReadyRef = useRef(photoReady);
+
+  useEffect(() => {
+    photoReadyRef.current = photoReady;
+  }, [photoReady]);
 
   /* ── Offer to restore draft on mount ── */
   useEffect(() => {
@@ -50,6 +74,15 @@ export default function AddLeak({
     setDraftPrompt(false);
   };
 
+  const waitForPhotoReady = async (timeoutMs = 2000) => {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      if (photoReadyRef.current) return true;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return photoReadyRef.current;
+  };
+
   const handleAdd = async (row) => {
     return run(async () => {
       try {
@@ -70,10 +103,17 @@ export default function AddLeak({
 
         /* ── Save photo ── */
         let photoPath = null;
-        if (row.photo?.raw) {
-          if (photoReady) {
-            photoPath = await savePhoto(row.photo.raw, row.leak_id ?? String(id));
+        const rawPhoto = row.photo?.raw ?? dataUrlToBlob(row.photo?.src);
+        if (rawPhoto) {
+          if (!photoReadyRef.current) {
+            const ready = await waitForPhotoReady();
+            if (!ready) {
+              hapticWarning();
+              alert("Фото ещё не готово для сохранения. Повторите попытку через секунду.");
+              return;
+            }
           }
+          photoPath = await savePhoto(rawPhoto, row.leak_id ?? String(id));
         }
 
         const { photo, ...cleanRow } = row;

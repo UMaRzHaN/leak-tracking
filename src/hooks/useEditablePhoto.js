@@ -3,6 +3,25 @@ import { useCamera } from "./useCamera";
 import { usePhotoStorage } from "./usePhotoStorage";
 import { usePhotoSrc } from "./usePhotoSrc";
 
+function dataUrlToBlob(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== "string" || !dataUrl.startsWith("data:")) {
+    return null;
+  }
+
+  const matches = dataUrl.match(/^data:(.+);base64,(.*)$/);
+  if (!matches) return null;
+
+  const mime = matches[1];
+  const payload = matches[2];
+  const binary = atob(payload);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  return new Blob([bytes], { type: mime });
+}
+
 export function useEditablePhoto({ initialPath, leakId, version }) {
   const { isNative, takePhoto, pickFromBrowser } = useCamera();
   const { savePhoto: saveToFS, ready: storageReady } = usePhotoStorage();
@@ -46,7 +65,12 @@ export function useEditablePhoto({ initialPath, leakId, version }) {
   /* ===== save ===== */
   const savePhoto = useCallback(async () => {
     // нет черновика → ничего не меняем
-    if (!draftPhoto?.raw || !leakId) {
+    if (!leakId) {
+      return persistedPathRef.current;
+    }
+
+    const rawPhoto = draftPhoto?.raw ?? dataUrlToBlob(draftPhoto?.src);
+    if (!rawPhoto) {
       return persistedPathRef.current;
     }
 
@@ -57,7 +81,7 @@ export function useEditablePhoto({ initialPath, leakId, version }) {
     }
 
     const currentLeakId = leakId;
-    const newPath = await saveToFS(draftPhoto.raw, leakId);
+    const newPath = await saveToFS(rawPhoto, leakId);
 
     // защита от race-condition
     if (activeLeakIdRef.current !== currentLeakId) {

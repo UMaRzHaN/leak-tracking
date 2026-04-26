@@ -3,6 +3,7 @@ import { STATUS, STATUS_META } from "../../../utils/status";
 import { exportToExcelZip } from "../../../services/export/excel";
 import { useProjectConfig } from "../../../app/settings/useProjectConfig";
 import { usePhotoStorage } from "../../../hooks/usePhotoStorage";
+import { useProject } from "../../../app/settings/ProjectContext";
 
 function fmtTs(ts) {
   if (!ts) return "";
@@ -31,6 +32,7 @@ export function useDataBaseExport({ displayed, notify }) {
   const projectConfig = useProjectConfig();
   const { headers: excelHeaders, keysOrder: excelKeys } = projectConfig.export.excel;
   const { getPhoto: idbGetPhoto } = usePhotoStorage();
+  const { activeProject } = useProject();
 
   const handleExport = useCallback(async () => {
     try {
@@ -41,12 +43,13 @@ export function useDataBaseExport({ displayed, notify }) {
         excelKeys,
         "утечки",
         idbGetPhoto,
+        activeProject?.folderName,
       );
       notify("success", "ZIP-архив успешно скачан");
     } catch (err) {
       notify("error", "Ошибка экспорта: " + err.message);
     }
-  }, [displayed, excelHeaders, excelKeys, idbGetPhoto, notify]);
+  }, [displayed, excelHeaders, excelKeys, idbGetPhoto, activeProject?.folderName, notify]);
 
   return { handleExport };
 }

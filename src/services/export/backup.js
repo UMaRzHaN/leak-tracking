@@ -45,15 +45,18 @@ export async function buildBackupZip(leaks, idbGet) {
   const exportedLeaks = await Promise.all(
     leaks.map(async (leak) => {
       const copy = { ...leak };
+      const leakNumber = String(leak.leak_id ?? leak.id).replace(/[\\/]/g, "_");
+      const leakFolder = photosFolder.folder(leakNumber);
+
       for (const key of PHOTO_KEYS) {
         const path = leak[key];
         if (!path) continue;
         const resolved = await resolveBase64(path, idbGet);
         if (!resolved) continue;
 
-        const fileName = `${leak.id}_${SUFFIX[key]}.${resolved.ext}`;
-        photosFolder.file(fileName, resolved.base64, { base64: true });
-        copy[key] = `zip:photos/${fileName}`;
+        const fileName = `${SUFFIX[key]}.${resolved.ext}`;
+        leakFolder.file(fileName, resolved.base64, { base64: true });
+        copy[key] = `zip:photos/${leakNumber}/${fileName}`;
       }
       return copy;
     }),
@@ -84,15 +87,18 @@ export async function buildProjectBackupZip({ leaks, idbGet, project, vars }) {
   const exportedLeaks = await Promise.all(
     leaks.map(async (leak) => {
       const copy = { ...leak };
+      const leakNumber = String(leak.leak_id ?? leak.id).replace(/[\\/]/g, "_");
+      const leakFolder = photosFolder.folder(leakNumber);
+
       for (const key of PHOTO_KEYS) {
         const path = leak[key];
         if (!path) continue;
         const resolved = await resolveBase64(path, idbGet);
         if (!resolved) continue;
 
-        const fileName = `${leak.id}_${SUFFIX[key]}.${resolved.ext}`;
-        photosFolder.file(fileName, resolved.base64, { base64: true });
-        copy[key] = `zip:photos/${fileName}`;
+        const fileName = `${SUFFIX[key]}.${resolved.ext}`;
+        leakFolder.file(fileName, resolved.base64, { base64: true });
+        copy[key] = `zip:photos/${leakNumber}/${fileName}`;
       }
       return copy;
     }),

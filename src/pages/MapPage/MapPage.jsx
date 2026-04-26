@@ -14,7 +14,7 @@ import s from "./MapPage.module.scss";
 
 export default function MapPage({ leaks, coords }) {
   const { activeProject } = useProject();
-  const mkdir = getProjectMobileDir(activeProject);
+  const exportProjectFolder = activeProject?.folderName;
 
   const mapApiRef = useRef(null);
   const containerRef = useRef(null);
@@ -170,12 +170,12 @@ export default function MapPage({ leaks, coords }) {
   const handleExportKML = useCallback(() => {
     handleExport({
       leaks: visibleLeaks,
-      saveFn: () => saveLeaksKML(visibleLeaks, activeProject?.type, mkdir),
+      saveFn: () => saveLeaksKML(visibleLeaks, activeProject?.type, exportProjectFolder),
       onSuccess: (result) =>
         notify("success", result?.message || "KML-файл успешно экспортирован"),
       onError: (message) => notify("error", message),
     });
-  }, [visibleLeaks, activeProject, mkdir, notify]);
+  }, [visibleLeaks, activeProject, exportProjectFolder, notify]);
 
   return (
     <div className={s.mapWrapper}>

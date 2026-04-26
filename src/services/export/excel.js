@@ -3,7 +3,6 @@ import ExcelJS from "exceljs";
 import JSZip from "jszip";
 import { Capacitor } from "@capacitor/core";
 import { Filesystem, Directory } from "@capacitor/filesystem";
-import { Share } from "@capacitor/share";
 import { getPhotoSrc } from "../photoService";
 
 /** Converts a Blob to a data URI string for embedding in the Excel export. */
@@ -72,6 +71,7 @@ export async function exportToExcelZip(
   keysOrder,
   fileName = "утечки",
   idbGet = null,
+  projectFolderName = null,
 ) {
   const PHOTO_KEYS = ["photo", "photo_after"];
   const photoColIndexes = PHOTO_KEYS.map((k) => keysOrder.indexOf(k)).filter(
@@ -95,7 +95,8 @@ export async function exportToExcelZip(
         const ext = match[1].split("/")[1] || "jpg";
         const base64 = match[2];
         const suffix = key === "photo_after" ? "_after" : "";
-        const photoFileName = `photos/leak_${li + 1}${suffix}.${ext}`;
+        const leakName = `leak_${li + 1}`;
+        const photoFileName = `photos/${leakName}/${leakName}${suffix}.${ext}`;
 
         photoEntries.push({ leakIndex: li, key, photoFileName, base64 });
       }
@@ -179,10 +180,10 @@ export async function exportToExcelZip(
   }
 
   const zipBlob = await zip.generateAsync({ type: "blob" });
-  await downloadBlob(zipBlob, `${fileName}.zip`);
+  await downloadBlob(zipBlob, `${fileName}.zip`, projectFolderName);
 }
 
-async function downloadBlob(blob, fileName) {
+async function downloadBlob(blob, fileName, projectFolderName = null) {
   if (!Capacitor.isNativePlatform()) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -201,20 +202,19 @@ async function downloadBlob(blob, fileName) {
     reader.readAsDataURL(blob);
   });
 
+  const outputFolder = projectFolderName
+    ? `${projectFolderName}/export/xlsx`
+    : "export/xlsx";
+
+  await Filesystem.mkdir({
+    path: outputFolder,
+    directory: Directory.Documents,
+    recursive: true,
+  }).catch(() => {});
+
   await Filesystem.writeFile({
-    path: fileName,
+    path: `${outputFolder}/${fileName}`,
     data: base64,
-    directory: Directory.Cache,
-  });
-
-  const { uri } = await Filesystem.getUri({
-    path: fileName,
-    directory: Directory.Cache,
-  });
-
-  await Share.share({
-    title: fileName,
-    url: uri,
-    dialogTitle: "Сохранить или отправить файл",
+    directory: Directory.Documents,
   });
 }

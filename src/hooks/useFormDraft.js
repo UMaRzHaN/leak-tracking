@@ -11,11 +11,14 @@ export function useFormDraft() {
     try {
       if (!form || typeof form !== "object") return;
 
-      // ❗ не сохраняем фото (Blob/File)
       const { photo, ...rest } = form;
+      const photoPayload =
+        photo && typeof photo === "object" && typeof photo.src === "string"
+          ? { photo: { src: photo.src } }
+          : {};
 
       const payload = {
-        form: rest,
+        form: { ...rest, ...photoPayload },
         step,
         savedAt: Date.now(),
       };
