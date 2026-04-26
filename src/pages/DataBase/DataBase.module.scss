@@ -330,12 +330,13 @@
 /* левая часть */
 .resultsInfo {
   display: flex;
+  align-items: center;
   flex-direction: row;
   gap: 6px;
   font-size: 12px;
   color: var(--c-text2);
   text-wrap: nowrap;
-  text-align: center;
+
 
   .resultsRow:has(.resultsActionsSelected) & {
     flex-direction: column;
