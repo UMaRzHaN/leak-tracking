@@ -1,7 +1,18 @@
 import { useState, useRef } from "react";
 import { PROJECT_META } from "../../configs/projects";
 import { toFolderName } from "../../app/settings/ProjectContext";
+import { peekBackupZip } from "../../services/export/backup";
 import s from "./ProjectSetupScreen.module.scss";
+
+const VALID_TYPES = ["upstream", "midstream", "downstream"];
+
+function detectTypeFromString(str) {
+  const lower = str.toLowerCase();
+  if (lower.includes("downstream")) return "downstream";
+  if (lower.includes("midstream")) return "midstream";
+  if (lower.includes("upstream")) return "upstream";
+  return null;
+}
 
 const PROJECT_ICONS = { upstream: "⛽", midstream: "🔧", downstream: "🏭" };
 
@@ -25,7 +36,38 @@ export default function ProjectSetupScreen({ onComplete, onImportZip }) {
     setImporting(true);
     setError("");
     try {
-      await onImportZip(file, { name: name.trim(), type });
+      let resolvedName = name.trim();
+      let resolvedType = type;
+
+      // Уровень 1: project.json внутри ZIP
+      // Уровень 2: детектирование по полям записей (peek.detectedType)
+      // Уровень 3: ключевые слова в имени файла
+      try {
+        const peek = await peekBackupZip(file);
+        const metaProject = peek.meta?.project;
+
+        if (metaProject?.name && !resolvedName) {
+          resolvedName = metaProject.name;
+          setName(resolvedName);
+        }
+        if (!resolvedType) {
+          const fromMeta = metaProject?.type && VALID_TYPES.includes(metaProject.type) ? metaProject.type : null;
+          const detected = fromMeta || peek.detectedType || detectTypeFromString(file.name);
+          if (detected) {
+            resolvedType = detected;
+            setType(detected);
+          }
+        }
+      } catch {
+        // ignore peek errors — importProjectZip will handle them
+      }
+
+      if (!resolvedName) {
+        resolvedName = file.name.replace(/\.zip$/i, "");
+        setName(resolvedName);
+      }
+
+      await onImportZip(file, { name: resolvedName, type: resolvedType });
     } catch (err) {
       setError(err.message ?? "Ошибка импорта");
       setImporting(false);

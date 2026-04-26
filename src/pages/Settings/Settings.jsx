@@ -10,7 +10,6 @@ import { usePhotoStorage } from "../../hooks/usePhotoStorage";
 import { PROJECT_META } from "../../configs/projects";
 import { getMapCacheInfo, clearMapCache } from "../../services/maps/tileCache";
 import { buildProjectBackupZip, peekBackupZip } from "../../services/export/backup";
-import { validateBackup } from "../../services/export/backupSchema";
 import SettingsHeader from "./Header/SettingsHeader";
 import SettingsModal from "../../components/SettingsModal/SettingsModal";
 import Notification from "../../components/Notification/Notification";
@@ -32,7 +31,7 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
   const isFormDirty = Object.values(form).some((v) => v !== null && v !== "" && v !== undefined);
 
   const { vars, setVars } = useProjectVars(activeProject?.id ?? null);
-  const { data, save } = useProjectData();
+  const { data } = useProjectData();
   const { getPhoto: idbGetPhoto } = usePhotoStorage();
 
   const { dark, toggle: toggleTheme } = useTheme();
@@ -40,7 +39,6 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
   const [modalOpen, setModalOpen] = useState(false);
   const [addingProject, setAddingProject] = useState(false);
   const [cacheInfo, setCacheInfo] = useState(null);
-  const importInputRef = useRef(null);
   const importZipRef = useRef(null);
 
   useEffect(() => {
@@ -102,74 +100,6 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
   /* =========================
      BACKUP / RESTORE
   ========================= */
-  const handleExport = useCallback(async () => {
-    if (!data.length) { notify("warning", "Нет данных для экспорта"); return; }
-
-    const folder = activeProject?.folderName ?? "backup";
-    const fileName = `${folder}.json`;
-    const json = JSON.stringify(data, null, 2);
-
-    if (Capacitor.isNativePlatform()) {
-      try {
-        await Filesystem.mkdir({
-          path: folder,
-          directory: Directory.Documents,
-          recursive: true,
-        }).catch(() => {});
-        await Filesystem.writeFile({
-          path: `${folder}/${fileName}`,
-          directory: Directory.Documents,
-          data: json,
-          encoding: "utf8",
-        });
-        notify("success", `Сохранено в Документы/${folder}/`);
-      } catch (err) {
-        notify("error", "Ошибка экспорта: " + err.message);
-      }
-    } else {
-      const blob = new Blob([json], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      a.click();
-      URL.revokeObjectURL(url);
-      notify("success", `Экспортировано ${data.length} записей`);
-    }
-  }, [data, activeProject, notify]);
-
-  const handleImport = useCallback((e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      try {
-        let rawParsed;
-        try {
-          rawParsed = JSON.parse(ev.target.result);
-        } catch {
-          throw new Error("Файл содержит невалидный JSON");
-        }
-
-        const validation = validateBackup(rawParsed);
-        if (!validation.ok) throw new Error(validation.error);
-
-        const parsed = validation.data;
-        const ok = window.confirm(
-          `Импортировать ${parsed.length} записей?\n\nТекущие данные будут заменены.`,
-        );
-        if (!ok) return;
-        await save(parsed);
-        notify("success", `Импортировано ${parsed.length} записей`);
-      } catch (err) {
-        notify("error", "Ошибка импорта: " + err.message);
-      }
-      e.target.value = "";
-    };
-    reader.readAsText(file);
-  }, [save, notify]);
-
   const handleExportZip = useCallback(async () => {
     if (!data.length) { notify("warning", "Нет данных для экспорта"); return; }
     const folder = activeProject?.folderName ?? "backup";
@@ -218,32 +148,46 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const VALID_TYPES = ["upstream", "midstream", "downstream"];
+    const detectTypeFromFileName = (str) => {
+      const lower = str.toLowerCase();
+      if (lower.includes("downstream")) return "downstream";
+      if (lower.includes("midstream")) return "midstream";
+      if (lower.includes("upstream")) return "upstream";
+      return null;
+    };
+
     try {
       const peek = await peekBackupZip(file);
-      let meta = peek.meta?.project;
-      let fallback = null;
+      const metaProject = peek.meta?.project;
 
-      if (!meta?.name || !meta?.type) {
-        const defaultName = file.name.replace(/\.zip$/i, "");
-        const name = window.prompt(
-          "Архив не содержит названия проекта.\nВведите название:",
-          defaultName,
-        );
-        if (!name?.trim()) { e.target.value = ""; return; }
+      // Уровень 1: project.json внутри архива
+      // Уровень 2: детектирование по полям записей
+      // Уровень 3: ключевые слова в имени файла
+      const resolvedName =
+        metaProject?.name ||
+        file.name.replace(/\.zip$/i, "");
 
-        const isUpstream = window.confirm(
-          "Выберите тип проекта:\n\nOK — Добыча (upstream)\nОТМЕНА — Транспорт (midstream)",
-        );
-        fallback = { name: name.trim(), type: isUpstream ? "upstream" : "midstream" };
-        meta = fallback;
+      const resolvedType =
+        (metaProject?.type && VALID_TYPES.includes(metaProject.type) ? metaProject.type : null) ||
+        peek.detectedType ||
+        detectTypeFromFileName(file.name);
+
+      if (!resolvedType) {
+        notify("error", `Не удалось определить тип проекта из файла «${file.name}». Переименуйте файл, добавив в имя upstream / midstream / downstream.`);
+        e.target.value = "";
+        return;
       }
 
+      const typeLabel = { upstream: "Добыча", midstream: "Транспортировка", downstream: "Переработка" }[resolvedType];
+      const source = metaProject?.type ? "project.json" : peek.detectedType ? "данных записей" : "имени файла";
       const ok = window.confirm(
-        `Импортировать проект «${meta.name}» (${peek.leaks.length} записей)?\n\nБудет создан новый проект.`,
+        `Импортировать проект?\n\nНазвание: ${resolvedName}\nТип: ${typeLabel} (${resolvedType})\nЗаписей: ${peek.leaks.length}\nОпределено по: ${source}\n\nБудет создан новый проект.`,
       );
       if (!ok) { e.target.value = ""; return; }
 
-      const result = await onImportZip(file, fallback ?? undefined);
+      const fallback = metaProject ? undefined : { name: resolvedName, type: resolvedType };
+      const result = await onImportZip(file, fallback);
       notify("success", `Импортирован проект «${result.project.name}» (${result.leakCount} записей)`);
     } catch (err) {
       notify("error", "Ошибка импорта: " + err.message);
@@ -353,21 +297,6 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
               <p className={s.backupHint}>
                 ZIP-архив содержит все записи и фотографии. Рекомендуется для переноса данных между устройствами.
               </p>
-              <div className={s.backupRow}>
-                <button className={s.backupBtn} type="button" onClick={handleExport}>
-                  ⬆ Экспорт JSON
-                </button>
-                <button
-                  className={`${s.backupBtn} ${s.restore}`}
-                  type="button"
-                  onClick={() => importInputRef.current?.click()}
-                >
-                  ⬇ Импорт JSON
-                </button>
-              </div>
-              <p className={s.backupHint}>
-                JSON — только записи, без фотографий.
-              </p>
             </div>
             <input
               ref={importZipRef}
@@ -375,13 +304,6 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
               accept=".zip,application/zip"
               style={{ display: "none" }}
               onChange={handleImportZip}
-            />
-            <input
-              ref={importInputRef}
-              type="file"
-              accept=".json,application/json"
-              style={{ display: "none" }}
-              onChange={handleImport}
             />
           </section>
         )}

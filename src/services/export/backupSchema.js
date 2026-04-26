@@ -42,7 +42,7 @@ export const ProjectBackupMetaSchema = z
         folderName: z.string().optional(),
       })
       .passthrough(),
-    vars: z.record(z.any()).optional(),
+    vars: z.record(z.string(), z.unknown()).optional(),
   })
   .passthrough();
 

@@ -141,7 +141,7 @@ function PhotoComparison({ photoBefore, photoAfter, allowAfter = true }) {
   );
 }
 
-export default function ViewBlock({ data, activeTab, projectConfig, onAddComment, onPriorityChange }) {
+export default function ViewBlock({ data, activeTab, projectConfig, onAddComment }) {
   const fields = useMemo(() => {
     const all = projectConfig.system.fields ?? [];
     return all
@@ -157,29 +157,21 @@ export default function ViewBlock({ data, activeTab, projectConfig, onAddComment
     const hasAny = infoFields.some((f) => data[f.key] != null && data[f.key] !== "");
     return (
       <div className={s.tabPane}>
-        {/* ── Приоритет ── */}
-        {onPriorityChange && (
-          <div className={s.priorityRow}>
-            <span className={s.priorityRowLabel}>Приоритет</span>
-            <div className={s.priorityPills}>
-              {PRIORITY_ORDER.map((p) => {
-                const m = PRIORITY_META[p];
-                const active = data.priority === p;
-                return (
-                  <button
-                    key={p}
-                    type="button"
-                    className={s.priorityBtn}
-                    style={active ? { background: m.bg, color: m.color, borderColor: m.border } : undefined}
-                    onClick={() => onPriorityChange(active ? null : p)}
-                  >
-                    {m.short}
-                  </button>
-                );
-              })}
+        {/* ── Приоритет (только отображение) ── */}
+        {data.priority && PRIORITY_META[data.priority] && (() => {
+          const m = PRIORITY_META[data.priority];
+          return (
+            <div className={s.priorityRow}>
+              <span className={s.priorityRowLabel}>Приоритет</span>
+              <span
+                className={s.priorityBtn}
+                style={{ background: m.bg, color: m.color, borderColor: m.border }}
+              >
+                {m.short}
+              </span>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {hasAny ? infoFields.map(({ key, label, multiline }) => {
           const val = data[key];

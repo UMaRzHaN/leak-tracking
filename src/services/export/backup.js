@@ -115,6 +115,26 @@ export async function exportBackupZip(leaks, idbGet, projectName = "backup") {
   URL.revokeObjectURL(url);
 }
 
+/** Maps unique field keys to their project type. */
+const TYPE_SIGNATURES = {
+  midstream:  ["station", "field"],
+  upstream:   ["subdivision", "deposit"],
+  downstream: ["district", "locality", "address"],
+};
+
+/**
+ * Detects project type by looking at unique field keys present in the leak records.
+ * Returns "upstream" | "midstream" | "downstream" | null.
+ */
+export function detectProjectTypeFromLeaks(leaks) {
+  if (!leaks?.length) return null;
+  const keys = new Set(leaks.slice(0, 20).flatMap(Object.keys));
+  for (const [type, fields] of Object.entries(TYPE_SIGNATURES)) {
+    if (fields.some((f) => keys.has(f))) return type;
+  }
+  return null;
+}
+
 export async function peekBackupZip(zipFile) {
   const zip = await JSZip.loadAsync(zipFile);
 
@@ -149,7 +169,11 @@ export async function peekBackupZip(zipFile) {
     }
   }
 
-  return { leaks: validation.data, meta };
+  return {
+    leaks: validation.data,
+    meta,
+    detectedType: detectProjectTypeFromLeaks(validation.data),
+  };
 }
 
 /**

@@ -226,11 +226,6 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     });
   };
 
-  /* ── Priority change (instant save) ── */
-  const handlePriorityChange = (priority) => {
-    onSave({ ...leak, priority, updatedAt: Date.now() });
-  };
-
   /* ── Add comment to history ── */
   const handleAddComment = (text) => {
     onSave({
@@ -352,7 +347,6 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
                 activeTab={activeTab}
                 projectConfig={projectConfig}
                 onAddComment={handleAddComment}
-                onPriorityChange={handlePriorityChange}
               />
             ) : (
               <EditBlock
