@@ -82,10 +82,12 @@
   align-items: center;
   justify-content: center;
 
-  &:hover {
-    border-color: var(--c-blue);
-    color: var(--c-blue);
-    background: var(--c-blue-dim);
+  @media (hover: hover) {
+    &:hover {
+      border-color: var(--c-blue);
+      color: var(--c-blue);
+      background: var(--c-blue-dim);
+    }
   }
 }
 

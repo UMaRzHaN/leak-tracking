@@ -43,7 +43,7 @@ export default function FilterBar({
         </div>
         <button
           className={`${s.filterToggleBtn} ${open ? s.filterToggleBtnOpen : ""}`}
-          onClick={() => setOpen((v) => !v)}
+          onClick={(e) => { setOpen((v) => !v); if (open) e.currentTarget.blur(); }}
           type="button"
         >
           <svg width="18" height="18" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
