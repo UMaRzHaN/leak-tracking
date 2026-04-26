@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import s from "./PhotoViewer.module.scss";
 
 export default function PhotoViewer({ src, photos, labels, initialIndex = 0, onClose }) {
@@ -28,7 +29,7 @@ export default function PhotoViewer({ src, photos, labels, initialIndex = 0, onC
 
   if (!currentSrc) return null;
 
-  return (
+  return createPortal(
     <div className={s.overlay} onClick={onClose} role="dialog" aria-modal="true">
 
       <button className={s.closeBtn} onClick={onClose} aria-label="Закрыть">✕</button>
@@ -76,6 +77,7 @@ export default function PhotoViewer({ src, photos, labels, initialIndex = 0, onC
           ? `${idx + 1} / ${photoList.length} · стрелки или смахивание для навигации`
           : "Нажмите за пределами фото, чтобы закрыть"}
       </p>
-    </div>
+    </div>,
+    document.body
   );
 }
