@@ -46,7 +46,20 @@ export default function FilterBar({
           onClick={() => setOpen((v) => !v)}
           type="button"
         >
-          ⚙{hasActiveFilter && <span className={s.filterBadge} />}
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 16 16"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              fill-rule="evenodd"
+              clip-rule="evenodd"
+              d="M9.969 8.006v7.038L6.03 12.917v-4.91L1.084 1.043h14.003L9.97 8.006z"
+              fill="#768185"
+            ></path>
+          </svg>
+          {hasActiveFilter && <span className={s.filterBadge} />}
         </button>
       </div>
 
