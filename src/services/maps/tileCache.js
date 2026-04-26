@@ -5,8 +5,19 @@ const isNative = Capacitor.isNativePlatform();
 const CACHE_NAME = "map-tiles-v2";
 const TILE_DIR = "map-tiles";
 const ESRI_BASE = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile";
+const NATIVE_COUNT_KEY = "map-tiles-native-count";
 
 const webSupported = typeof caches !== "undefined";
+
+function getNativeCount() {
+  return parseInt(localStorage.getItem(NATIVE_COUNT_KEY) || "0", 10);
+}
+function incrementNativeCount() {
+  localStorage.setItem(NATIVE_COUNT_KEY, getNativeCount() + 1);
+}
+function resetNativeCount() {
+  localStorage.removeItem(NATIVE_COUNT_KEY);
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -98,6 +109,7 @@ async function nativeWrite(url, skipMkdir = false) {
       await Filesystem.mkdir({ path: dir, directory: Directory.Data, recursive: true }).catch(() => {});
     }
     await Filesystem.writeFile({ path, data: base64, directory: Directory.Data });
+    incrementNativeCount();
   } catch {
     // network error or quota — ignore
   }
@@ -132,7 +144,11 @@ export async function cacheTile(url, prefetchedResponse = null) {
 }
 
 export async function getMapCacheInfo() {
-  if (isNative) return { count: 0, sizeMB: 0 }; // подсчёт файлов на FS слишком дорог
+  if (isNative) {
+    const count = getNativeCount();
+    const sizeMB = Math.round((count * 40) / 1024 * 10) / 10;
+    return { count, sizeMB };
+  }
   if (!webSupported) return { count: 0, sizeMB: 0 };
   try {
     const cache = await caches.open(CACHE_NAME);
@@ -151,6 +167,7 @@ export async function clearMapCache() {
     } catch {
       // already empty
     }
+    resetNativeCount();
     return;
   }
   if (webSupported) await caches.delete(CACHE_NAME);
