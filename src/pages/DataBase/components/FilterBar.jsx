@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { STATUS_META, STATUS_ORDER } from "../../utils/status";
-import { PRIORITY_ORDER, PRIORITY_META } from "../../utils/priority";
-import s from "./DataBase.module.scss";
+import { STATUS_META, STATUS_ORDER } from "../../../utils/status";
+import { PRIORITY_ORDER, PRIORITY_META } from "../../../utils/priority";
+import s from "../DataBase.module.scss";
 
 const ALL = "all";
 

@@ -27,6 +27,7 @@ _Работает полностью офлайн, поддерживает му
 | 📦 | **Импорт / Экспорт проектов** | ZIP-бэкап с метаданными проекта и фотографиями |
 | 📊 | **Экспорт отчетов** | XLSX / KML / JSON |
 | 🔄 | **Lifecycle Management** | Open → In Progress → Resolved + история изменений |
+| 🗂️ | **База данных** | Фильтры по статусу, приоритету, GPS-близости; bulk-действия; сортировка |
 | 🌙 | **Темизация** | Поддержка dark / light mode |
 | 📱 | **Android Ready** | Capacitor 8 native build |
 
@@ -129,15 +130,15 @@ interface LeakRecord {
 
 ```text
 Export ZIP
-├── project.json        # Метаданные проекта
-├── leaks.json          # Все записи
-└── photos/             # Все связанные изображения
+├── project.json        # Метаданные проекта (schemaVersion, name, type, vars)
+├── backup.json         # Все записи утечек
+└── photos/             # Связанные изображения (before / after)
 ```
 
 При импорте автоматически:
-- создаётся новый проект;
-- восстанавливаются записи и фото;
-- применяется конфигурация project type;
+- тип проекта определяется из `project.json` или автоматически по полям записей;
+- создаётся новый проект и активируется;
+- восстанавливаются записи, фотографии и переменные расчётов;
 - инициализируется локальное хранилище.
 
 ---
@@ -153,6 +154,18 @@ Network Available?
 ```
 
 Поддерживается кэширование карт для работы в полностью изолированных сетях.
+
+---
+
+## 🗂️ База данных (DataBase)
+
+Страница со списком всех утечек проекта:
+
+- **Поиск** по ID, объекту, описанию
+- **Фильтры**: статус (Open / In Progress / Resolved), приоритет (Low / Medium / High / Critical), GPS-фильтр «Рядом со мной»
+- **Сортировка** по дате (новые / старые)
+- **Bulk-действия**: выбор нескольких записей, массовое изменение статуса, последовательное закрытие с фото
+- **Экспорт** отфильтрованного набора в XLSX / KML / ZIP
 
 ---
 
@@ -220,9 +233,10 @@ flowchart TD
     Hooks --> Context[Project / App Context]
     Hooks --> Services[Domain Services]
 
-    Services --> Storage[Local Storage / IndexedDB / Filesystem]
-    Services --> Maps[Offline Map Engine]
-    Services --> Export[Export / Import Engine]
+    Services --> Storage[localStorage / IndexedDB / Filesystem]
+    Services --> Maps[Offline Map Engine + Tile Cache]
+    Services --> Export[Export Engine: XLSX / KML / ZIP]
+    Services --> Photo[Photo Service + GC]
     Services --> Native[Capacitor Native APIs]
 
     Native --> Camera[Camera]
@@ -237,11 +251,10 @@ flowchart TD
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Open
-    Open --> InProgress
-    InProgress --> Resolved
-    Resolved --> Reopened
-    Reopened --> InProgress
+    [*] --> Open : Зарегистрирована
+    Open --> InProgress : Взять в работу
+    InProgress --> Resolved : Устранено
+    Resolved --> Open : Переоткрыть
 ```
 
 ---

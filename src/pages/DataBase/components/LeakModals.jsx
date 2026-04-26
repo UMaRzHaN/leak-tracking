@@ -1,7 +1,7 @@
-import LeakDetailsSheet from "../../components/LeakDetailsSheet/LeakDetailsSheet";
-import StatusPickerModal from "../../components/StatusPickerModal/StatusPickerModal";
-import ResolveModal from "../../components/ResolveModal/ResolveModal";
-import { STATUS } from "../../utils/status";
+import LeakDetailsSheet from "../../../components/LeakDetailsSheet/LeakDetailsSheet";
+import StatusPickerModal from "../../../components/StatusPickerModal/StatusPickerModal";
+import ResolveModal from "../../../components/ResolveModal/ResolveModal";
+import { STATUS } from "../../../utils/status";
 
 export default function LeakModals({
   activeLeak, onCloseDetails, onSave, onDelete,

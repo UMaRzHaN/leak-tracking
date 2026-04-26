@@ -1,9 +1,9 @@
 import { useState, useCallback } from "react";
 import Notification from "../../components/Notification/Notification";
-import FilterBar from "./FilterBar";
-import ResultsBar from "./ResultsBar";
-import LeakList from "./LeakList";
-import LeakModals from "./LeakModals";
+import FilterBar from "./components/FilterBar";
+import ResultsBar from "./components/ResultsBar";
+import LeakList from "./components/LeakList";
+import LeakModals from "./components/LeakModals";
 import { useDataBaseFilters } from "./hooks/useDataBaseFilters";
 import { useLeakActions } from "./hooks/useLeakActions";
 import { useBulkActions } from "./hooks/useBulkActions";

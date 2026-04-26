@@ -10,7 +10,7 @@ import { usePhotoStorage } from "../../hooks/usePhotoStorage";
 import { PROJECT_META } from "../../configs/projects";
 import { getMapCacheInfo, clearMapCache } from "../../services/maps/tileCache";
 import { buildProjectBackupZip, peekBackupZip } from "../../services/export/backup";
-import SettingsHeader from "./Header/SettingsHeader";
+import PageHeader from "../../components/PageHeader/PageHeader";
 import SettingsModal from "../../components/SettingsModal/SettingsModal";
 import Notification from "../../components/Notification/Notification";
 import ProjectList from "./components/ProjectList";
@@ -235,7 +235,7 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
   ========================= */
   return (
     <div className={s.settings}>
-      <SettingsHeader onBack={() => setPage?.(prevPage ?? "")} />
+      <PageHeader title="Настройки" onBack={() => setPage?.(prevPage ?? "")} />
 
       <Notification
         notification={notification}

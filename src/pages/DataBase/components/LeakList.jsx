@@ -1,7 +1,7 @@
-import VirtualizedLeakList from "../../components/VirtualizedLeakList/VirtualizedLeakList";
-import LeakCardCompact from "../../components/LeakCardCompact/LeakCardCompact";
-import { NEARBY, NEARBY_RADIUS_M } from "./hooks/useDataBaseFilters";
-import s from "./DataBase.module.scss";
+import VirtualizedLeakList from "../../../components/VirtualizedLeakList/VirtualizedLeakList";
+import LeakCardCompact from "../../../components/LeakCardCompact/LeakCardCompact";
+import { NEARBY, NEARBY_RADIUS_M } from "../hooks/useDataBaseFilters";
+import s from "../DataBase.module.scss";
 
 export default function LeakList({ items, search, statusFilter, selectedIds, onOpenDetails, onPickStatus, onToggleSelect }) {
   if (!items.length) {
