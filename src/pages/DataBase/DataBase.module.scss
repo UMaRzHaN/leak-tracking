@@ -110,31 +110,52 @@
 .filtersPanel {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
+  padding: 12px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
 }
 
-/* ── Filters ── */
+.filterSection {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.filterLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--c-text3);
+}
+
+.filterDivider {
+  height: 1px;
+  background: var(--c-border);
+  margin: 0 -2px;
+}
+
+/* ── Status chips ── */
 .filters {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 5px;
   overflow-x: auto;
   scrollbar-width: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
-  align-items: center;
+  &::-webkit-scrollbar { display: none; }
 }
 
 .filterTab {
   flex-shrink: 0;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 6px 12px;
-  border: 1.5px solid var(--c-border);
+  border: 1.5px solid transparent;
   border-radius: 20px;
-  background: var(--c-surface);
+  background: var(--c-bg);
   color: var(--c-text2);
   font-size: 12px;
   font-weight: 500;
@@ -143,70 +164,150 @@
   white-space: nowrap;
 
   &:hover {
-    border-color: var(--c-blue-light);
+    background: var(--c-blue-dim);
     color: var(--c-blue);
   }
 }
 
 .filterActive {
-  background: var(--c-blue-dim);
-  border-color: var(--c-blue) !important;
-  color: var(--c-blue) !important;
-  font-weight: 600;
+  font-weight: 700;
+  border-width: 1.5px;
 }
 
 .filterCount {
-  background: var(--c-text3);
-  color: #fff;
-  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.1);
   font-size: 10px;
   font-weight: 700;
-  padding: 1px 5px;
-  line-height: 1.4;
-
-  /* Blue badge when the tab is active */
-  .filterActive & {
-    background: var(--c-blue);
-  }
+  line-height: 1;
 }
 
-/* ── Priority filters ── */
+/* ── Priority chips ── */
 .priorityFilters {
   display: flex;
   gap: 5px;
   flex-wrap: wrap;
-  align-items: center;
 }
 
 .priorityTab {
   flex-shrink: 0;
-  padding: 4px 10px;
-  border: 1.5px solid var(--c-border);
+  padding: 5px 12px;
+  border: 1.5px solid transparent;
   border-radius: 20px;
-  background: var(--c-surface);
-  color: var(--c-text3);
+  background: var(--c-bg);
+  color: var(--c-text2);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: all var(--t-fast);
   white-space: nowrap;
 
   &:hover {
-    border-color: var(--c-blue-light);
+    background: var(--c-blue-dim);
     color: var(--c-blue);
   }
 }
 
 .priorityTabActive {
   font-weight: 700;
+  border-width: 1.5px;
 }
 
-/* ── Nearby filter ── */
-.nearbyFilter {
+/* ── Nearby toggle ── */
+.nearbyToggle {
+  width: 100%;
   display: flex;
   align-items: center;
-  padding-top: 2px;
-  border-top: 1px solid var(--c-border);
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-bg);
+  color: var(--c-text2);
+  cursor: pointer;
+  transition: all var(--t-fast);
+
+  &:hover {
+    border-color: var(--c-blue-light);
+    color: var(--c-blue);
+    background: var(--c-blue-dim);
+  }
+}
+
+.nearbyToggleActive {
+  border-color: var(--c-blue);
+  color: var(--c-blue);
+  background: var(--c-blue-dim);
+}
+
+.nearbyLeft {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.nearbyIcon {
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.nearbyLabel {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.nearbyCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--c-blue);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.nearbyTrack {
+  flex-shrink: 0;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--c-border);
+  position: relative;
+  transition: background var(--t-fast);
+}
+
+.nearbyTrackOn {
+  background: var(--c-blue);
+}
+
+.nearbyThumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--c-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform var(--t-fast);
+}
+
+.nearbyThumbOn {
+  transform: translateX(16px);
 }
 
 /* ── Results row ── */

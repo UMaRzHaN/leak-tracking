@@ -8,10 +8,10 @@ export const PRIORITY = {
 export const PRIORITY_ORDER = ["critical", "high", "medium", "low"];
 
 export const PRIORITY_META = {
-  critical: { label: "Критичный", short: "Крит", color: "#dc2626", bg: "#fef2f2", border: "#fecaca" },
-  high:     { label: "Высокий",   short: "Выс",  color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
-  medium:   { label: "Средний",   short: "Сред", color: "#2563eb", bg: "#dbeafe", border: "#bfdbfe" },
-  low:      { label: "Низкий",    short: "Низ",  color: "#059669", bg: "#ecfdf5", border: "#a7f3d0" },
+  critical: { label: "Критичный", short: "Крит", color: "var(--c-critical)", bg: "var(--c-critical-bg)", border: "var(--c-critical-border)" },
+  high:     { label: "Высокий",   short: "Выс",  color: "var(--c-high)",     bg: "var(--c-high-bg)",     border: "var(--c-high-border)" },
+  medium:   { label: "Средний",   short: "Сред", color: "var(--c-medium)",   bg: "var(--c-medium-bg)",   border: "var(--c-medium-border)" },
+  low:      { label: "Низкий",    short: "Низ",  color: "var(--c-low)",      bg: "var(--c-low-bg)",      border: "var(--c-low-border)" },
 };
 
 // Thresholds in л/мин
