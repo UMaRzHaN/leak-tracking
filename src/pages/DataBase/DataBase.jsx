@@ -33,6 +33,8 @@ export default function DataBase({ data, setData, coords }) {
         setFilter={filters.setFilter}
         priorityFilter={filters.priorityFilter}
         setPriorityFilter={filters.setPriorityFilter}
+        nearbyFilter={filters.nearbyFilter}
+        setNearbyFilter={filters.setNearbyFilter}
         counts={filters.counts}
         hasGps={filters.hasGps}
       />

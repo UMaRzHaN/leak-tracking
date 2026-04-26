@@ -19,6 +19,7 @@ export function useDataBaseFilters({ data, coords }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setFilter] = useState(ALL);
   const [priorityFilter, setPriorityFilter] = useState(ALL);
+  const [nearbyFilter, setNearbyFilter] = useState(false);
   const [sortAsc, setSortAsc] = useState(false);
 
   const hasGps = Boolean(coords?.lat && coords?.lng);
@@ -42,18 +43,13 @@ export function useDataBaseFilters({ data, coords }) {
         ? list.filter((l) => (l.priority ?? null) === priorityFilter)
         : list;
 
-    if (statusFilter === NEARBY) {
-      const base = hasGps
-        ? filterNearbyLeaks(data, coords.lat, coords.lng, NEARBY_RADIUS_M)
-        : [];
-      return applySearch(applyPriority(base));
-    }
-
     let list = [...data].sort((a, b) => (sortAsc ? a.id - b.id : b.id - a.id));
     if (statusFilter !== ALL)
       list = list.filter((l) => (l.status ?? STATUS.OPEN) === statusFilter);
+    if (nearbyFilter && hasGps)
+      list = filterNearbyLeaks(list, coords.lat, coords.lng, NEARBY_RADIUS_M);
     return applySearch(applyPriority(list));
-  }, [data, statusFilter, priorityFilter, search, hasGps, coords, sortAsc]);
+  }, [data, statusFilter, nearbyFilter, priorityFilter, search, hasGps, coords, sortAsc]);
 
   const counts = useMemo(() => {
     const c = { all: data.length };
@@ -73,6 +69,8 @@ export function useDataBaseFilters({ data, coords }) {
     setFilter,
     priorityFilter,
     setPriorityFilter,
+    nearbyFilter,
+    setNearbyFilter,
     sortAsc,
     toggleSort: () => setSortAsc((v) => !v),
     hasGps,

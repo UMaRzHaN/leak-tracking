@@ -201,6 +201,14 @@
   font-weight: 700;
 }
 
+/* ── Nearby filter ── */
+.nearbyFilter {
+  display: flex;
+  align-items: center;
+  padding-top: 2px;
+  border-top: 1px solid var(--c-border);
+}
+
 /* ── Results row ── */
 .resultsRow {
   display: flex;

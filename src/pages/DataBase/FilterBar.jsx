@@ -4,7 +4,6 @@ import { PRIORITY_ORDER, PRIORITY_META } from "../../utils/priority";
 import s from "./DataBase.module.scss";
 
 const ALL = "all";
-const NEARBY = "nearby";
 
 export default function FilterBar({
   search,
@@ -13,10 +12,12 @@ export default function FilterBar({
   setFilter,
   priorityFilter,
   setPriorityFilter,
+  nearbyFilter,
+  setNearbyFilter,
   counts,
   hasGps,
 }) {
-  const hasActiveFilter = statusFilter !== ALL || priorityFilter !== ALL;
+  const hasActiveFilter = statusFilter !== ALL || priorityFilter !== ALL || nearbyFilter;
   const [open, setOpen] = useState(hasActiveFilter);
 
   useEffect(() => {
@@ -85,16 +86,6 @@ export default function FilterBar({
                 color={STATUS_META[st].color}
               />
             ))}
-            {hasGps && (
-              <FilterTab
-                id={NEARBY}
-                label="📍 Рядом"
-                count={counts[NEARBY]}
-                active={statusFilter}
-                onSelect={setFilter}
-                color="var(--c-blue)"
-              />
-            )}
           </div>
 
           <div className={s.priorityFilters}>
@@ -127,6 +118,19 @@ export default function FilterBar({
               );
             })}
           </div>
+
+          {hasGps && (
+            <div className={s.nearbyFilter}>
+              <button
+                className={`${s.filterTab} ${nearbyFilter ? s.filterActive : ""}`}
+                style={nearbyFilter ? { borderColor: "var(--c-blue)", color: "var(--c-blue)" } : undefined}
+                onClick={() => setNearbyFilter((v) => !v)}
+              >
+                📍 Рядом
+                {counts["nearby"] > 0 && <span className={s.filterCount}>{counts["nearby"]}</span>}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </>
