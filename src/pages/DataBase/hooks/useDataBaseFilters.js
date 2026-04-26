@@ -29,7 +29,11 @@ export function useDataBaseFilters({ data, coords }) {
     const applySearch = (list) =>
       q
         ? list.filter((l) =>
-            SEARCH_KEYS.some((k) => l[k]?.toLowerCase().includes(q)),
+            SEARCH_KEYS.some((k) =>
+              String(l[k] ?? "")
+                .toLowerCase()
+                .includes(q),
+            ),
           )
         : list;
 
