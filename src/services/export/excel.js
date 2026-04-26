@@ -95,8 +95,8 @@ export async function exportToExcelZip(
         const ext = match[1].split("/")[1] || "jpg";
         const base64 = match[2];
         const suffix = key === "photo_after" ? "_after" : "";
-        const leakName = `leak_${li + 1}`;
-        const photoFileName = `photos/${leakName}/${leakName}${suffix}.${ext}`;
+        const leakId = leak.leak_id ?? leak.index ?? (li + 1);
+        const photoFileName = `photos/${leakId}/${leakId}${suffix}.${ext}`;
 
         photoEntries.push({ leakIndex: li, key, photoFileName, base64 });
       }
