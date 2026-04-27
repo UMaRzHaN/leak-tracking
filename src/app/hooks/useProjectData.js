@@ -104,6 +104,7 @@ export function useProjectData() {
 
   const [data, setData] = useState([]);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [dataProjectId, setDataProjectId] = useState(null);
 
   /* =========================
      LOAD on project change
@@ -114,6 +115,7 @@ export function useProjectData() {
     if (!storageKey && !filePath) {
       setData([]);
       setDataLoaded(true);
+      setDataProjectId(activeProject?.id ?? null);
       return;
     }
 
@@ -127,6 +129,7 @@ export function useProjectData() {
       if (!cancelled) {
         setData(Array.isArray(result) ? result : []);
         setDataLoaded(true);
+        setDataProjectId(activeProject?.id ?? null);
       }
     };
 
@@ -165,5 +168,5 @@ export function useProjectData() {
     }
   }, [filePath, storageKey]);
 
-  return { data, setData, save, clear, dataLoaded };
+  return { data, setData, save, clear, dataLoaded, dataProjectId };
 }
