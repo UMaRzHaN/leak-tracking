@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import { smartFilter } from "../../utils/smartFilter";
 import s from "./Input.module.scss";
 
 export default function Autocomplete({
@@ -22,22 +23,16 @@ export default function Autocomplete({
   }, [value]);
 
   const filtered = useMemo(
-    () =>
-      options.filter((o) =>
-        o.toLowerCase().includes(query.toLowerCase()),
-      ),
+    () => smartFilter(query, options),
     [options, query],
   );
 
   const showClear = query?.length > 0;
 
   const select = (val) => {
-    const parts = val.split("/");
-    const afterSlash = parts[parts.length - 1].trim();
-    const isAbbrev = parts.length > 1 && !/[а-яёa-z]/.test(afterSlash);
-    const clean = isAbbrev ? parts.slice(0, -1).join("/").trim() : val;
-    setQuery(clean);
-    onChange(clean);
+    // При выборе из подсказок используем полное значение
+    setQuery(val);
+    onChange(val);
     setOpen(false);
     inputRef.current?.focus();
   };

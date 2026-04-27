@@ -11,6 +11,7 @@ const LEAK_CAUSE_FIELD = {
   key: "leak_cause",
   label: "Причина утечки",
   options: Object.values(cause).flat(),
+  placeholder: "напр. коррозия",
   hint: "Установленная или предполагаемая причина возникновения утечки",
 };
 
