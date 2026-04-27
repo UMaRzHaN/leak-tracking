@@ -116,6 +116,15 @@
   color: var(--c-text3);
   margin: 0;
   line-height: 1.4;
+  max-height: 40px;
+  opacity: 1;
+  overflow: hidden;
+  transition: opacity 0.2s ease, max-height 0.25s ease;
+}
+
+.hintHidden {
+  max-height: 0;
+  opacity: 0;
 }
 
 /* ══════════════════════════════════════════

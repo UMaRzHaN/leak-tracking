@@ -115,7 +115,11 @@ export default function Autocomplete({
         </ul>
       )}
 
-      {hint && !error && <p className={s.hint}>{hint}</p>}
+      {hint && !error && (
+        <p className={[s.hint, showClear && !open && s.hintHidden].filter(Boolean).join(" ")}>
+          {hint}
+        </p>
+      )}
       {error && <div className={s.formError}>{error}</div>}
     </div>
   );
