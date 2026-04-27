@@ -177,7 +177,7 @@ export default function LeakCardCompact({
                   <span className={s.chipCalc}>~{methane} м³/г</span>
                 )}
                 {emissions != null && (
-                  <span className={s.chipCalc}>~{emissions} т CO₂</span>
+                  <span className={s.chipCalc}>~{emissions} т CO₂-экв/год</span>
                 )}
               </div>
               {showBook ? (

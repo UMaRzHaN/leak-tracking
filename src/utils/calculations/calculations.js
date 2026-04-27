@@ -27,7 +27,7 @@ export const calculations = (leak, vars) => {
   /* =========================
      CONSTANTS
   ========================= */
-  const HOURS_PER_YEAR = 8760;
+  const MINUTES_PER_YEAR = 525600; // 365 дней * 24 часа * 60 минут
   const METHANE_DENSITY_STD = 0.7168; // кг/м3 (20°C, 1 атм)
   const KG_TO_TON = 0.001;
 
@@ -40,12 +40,12 @@ export const calculations = (leak, vars) => {
   /* =========================
      MASS FLOW
   ========================= */
-  const leak_speed_kg_h = leak_speed * density;
+  const leak_speed_kg_m = leak_speed * density;
 
   /* =========================
      ANNUAL LOSSES
   ========================= */
-  const Total_Annual_Methane_Loss_m3_y = leak_speed * HOURS_PER_YEAR;
+  const Total_Annual_Methane_Loss_m3_y = (leak_speed * MINUTES_PER_YEAR) / 1000;
 
   const Total_Annual_Methane_Loss_kg_y =
     Total_Annual_Methane_Loss_m3_y * METHANE_DENSITY_STD;
@@ -58,7 +58,7 @@ export const calculations = (leak, vars) => {
   ========================= */
   const weightedGWP = flareShare * GWP + utilShare * (GWP * 0.9); // утилизация эффективнее факела
 
-  const Emissions_t_CO2eq_year = Total_Annual_Methane_Loss_t_y * weightedGWP;
+  const Emissions_t_CO2eq_year = Total_Annual_Methane_Loss_t_y * GWP;
 
   const Emissions_kg_CO2_eq_year = Emissions_t_CO2eq_year * 1000;
 
@@ -80,7 +80,7 @@ export const calculations = (leak, vars) => {
     temperature_K,
 
     // mass & losses
-    leak_speed_kg_h,
+    leak_speed_kg_m,
     Total_Annual_Methane_Loss_m3_y,
     Total_Annual_Methane_Loss_kg_y,
     Total_Annual_Methane_Loss_t_y,

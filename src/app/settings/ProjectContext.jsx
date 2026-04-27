@@ -123,7 +123,8 @@ export function ProjectProvider({ children }) {
     // проверяем, что ID реально существует в списке
     const list = loadProjects();
     const migrated = migrateFromLegacy(list);
-    const allProjects = migrated.length > 0 && list.length === 0 ? migrated : list;
+    const allProjects =
+      migrated.length > 0 && list.length === 0 ? migrated : list;
     if (id && allProjects.some((p) => p.id === id)) return id;
     return allProjects[0]?.id ?? null;
   });
@@ -208,19 +209,14 @@ export function ProjectProvider({ children }) {
       const trimmed = name?.trim();
       if (!trimmed) return;
 
-      const newFolder = toFolderName(trimmed);
-      const existingFolders = new Set(
-        projects.filter((p) => p.id !== id).map((p) => p.folderName),
-      );
-      let uniqueFolder = newFolder;
-      let suffix = 2;
-      while (existingFolders.has(uniqueFolder)) {
-        uniqueFolder = `${newFolder}_${suffix++}`;
-      }
-
       _setProjects(
         projects.map((p) =>
-          p.id === id ? { ...p, name: trimmed, folderName: uniqueFolder } : p,
+          p.id === id
+            ? {
+                ...p,
+                name: trimmed,
+              }
+            : p,
         ),
       );
     },
@@ -231,9 +227,7 @@ export function ProjectProvider({ children }) {
   const changeProjectType = useCallback(
     (id, type) => {
       if (!PROJECT_META[type]) return;
-      _setProjects(
-        projects.map((p) => (p.id === id ? { ...p, type } : p)),
-      );
+      _setProjects(projects.map((p) => (p.id === id ? { ...p, type } : p)));
     },
     [projects, _setProjects],
   );
@@ -306,6 +300,7 @@ export function ProjectProvider({ children }) {
 
 export function useProject() {
   const context = useContext(ProjectContext);
-  if (!context) throw new Error("useProject must be used within ProjectProvider");
+  if (!context)
+    throw new Error("useProject must be used within ProjectProvider");
   return context;
 }
