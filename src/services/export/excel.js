@@ -43,10 +43,16 @@ export async function exportToExcelZip(
     (i) => i !== -1,
   );
 
+  // Sort oldest first (ascending by id) and keep rows in sync
+  const paired = rawLeaks.map((leak, i) => ({ leak, row: rows[i] }));
+  paired.sort((a, b) => (a.leak.id ?? 0) - (b.leak.id ?? 0));
+  const orderedLeaks = paired.map((p) => p.leak);
+  const orderedRows  = paired.map((p) => p.row);
+
   // Resolve all photos: { leakIndex, key, fileName, base64 }
   const photoEntries = [];
   await Promise.all(
-    rawLeaks.map(async (leak, li) => {
+    orderedLeaks.map(async (leak, li) => {
       for (const key of PHOTO_KEYS) {
         const path = leak[key];
         if (!path) continue;
@@ -91,7 +97,7 @@ export async function exportToExcelZip(
   headerRow.height = 30;
 
   // Data rows
-  rows.forEach((row, li) => {
+  orderedRows.forEach((row, li) => {
     const values = keysOrder.map((key, ci) => {
       if (PHOTO_KEYS.includes(key)) {
         const mapKey = `${li}:${key}`;
@@ -128,7 +134,7 @@ export async function exportToExcelZip(
     const maxLen = isPhoto
       ? 14
       : Math.min(
-          Math.max(h.length, ...rows.map((r) => String(r[key] ?? "").length)) + 2,
+          Math.max(h.length, ...orderedRows.map((r) => String(r[key] ?? "").length)) + 2,
           60,
         );
     sheet.getColumn(i + 1).width = maxLen;

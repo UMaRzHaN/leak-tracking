@@ -275,6 +275,9 @@ export async function importProjectZip(zipFile, ctx) {
   const restoredLeaks = await Promise.all(
     leaks.map(async (leak) => {
       const copy = { ...leak };
+      const baseKey = String(leak.leak_id ?? leak.id);
+      const savedPaths = {};
+
       for (const key of PHOTO_KEYS) {
         const path = leak[key];
         if (!path?.startsWith("zip:")) continue;
@@ -292,9 +295,11 @@ export async function importProjectZip(zipFile, ctx) {
         for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
         const blob = new Blob([byteArr], { type: mime });
 
-        const leakKey = leak.leak_id ?? leak.id;
-        const newPath = await savePhotoRef.current(blob, leakKey);
+        const storageKey = key === "photo_after" ? `${baseKey}_after` : baseKey;
+        const excludePaths = Object.values(savedPaths);
+        const newPath = await savePhotoRef.current(blob, storageKey, excludePaths);
         copy[key] = newPath ?? `data:${mime};base64,${base64}`;
+        if (newPath) savedPaths[key] = newPath;
       }
       return copy;
     }),
@@ -341,6 +346,9 @@ export async function importBackupZip(zipFile, savePhoto) {
   const restoredLeaks = await Promise.all(
     leaks.map(async (leak) => {
       const copy = { ...leak };
+      const baseKey = String(leak.leak_id ?? leak.id);
+      const savedPaths = {};
+
       for (const key of PHOTO_KEYS) {
         const path = leak[key];
         if (!path || !path.startsWith("zip:")) continue;
@@ -358,10 +366,11 @@ export async function importBackupZip(zipFile, savePhoto) {
         for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
         const blob = new Blob([byteArr], { type: mime });
 
-        const dataUri = `data:${mime};base64,${base64}`;
-        const leakKey = leak.leak_id ?? leak.id;
-        const newPath = await savePhoto(blob, leakKey);
-        copy[key] = newPath ?? dataUri;
+        const storageKey = key === "photo_after" ? `${baseKey}_after` : baseKey;
+        const excludePaths = Object.values(savedPaths);
+        const newPath = await savePhoto(blob, storageKey, excludePaths);
+        copy[key] = newPath ?? `data:${mime};base64,${base64}`;
+        if (newPath) savedPaths[key] = newPath;
       }
       return copy;
     }),

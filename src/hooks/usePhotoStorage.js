@@ -136,9 +136,11 @@ export function usePhotoStorage() {
     }
 
     if (!isNative) {
-      if (!ready) return;
+      if (!ready || !activeProject?.id) return;
       const keys = await listKeys();
+      const prefix = `photo_${activeProject.id}_`;
       for (const key of keys) {
+        if (!key.startsWith(prefix)) continue;
         if (!referenced.has(`idb://${key}`)) {
           await idbDelete(key);
         }
