@@ -199,9 +199,8 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     const photoUpdate = leak.status === STATUS.RESOLVED
       ? { photo: leak.photo_after ?? leak.photo, photo_after: null }
       : {};
-    if (leak.status === STATUS.RESOLVED && leak.photo_after) {
-      deletePhoto(leak.photo_after).catch(() => {});
-    }
+    // old before-photo is orphaned when photo_after is promoted to photo
+    const orphanedPhoto = (leak.status === STATUS.RESOLVED && leak.photo_after) ? leak.photo : null;
     onSave({
       ...leak,
       ...photoUpdate,
@@ -216,6 +215,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
         },
       ],
     });
+    if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
   };
 
   const handleResolveConfirm = ({ photo_after, materials_equipment, note }) => {
@@ -257,6 +257,8 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
   const handleCancel = () => {
     resetPhoto();
     resetPhotoAfter();
+    const keys = EDIT_FIELDS.map((f) => f.key);
+    setLocalEdit(Object.fromEntries(keys.map((k) => [k, leak[k]])));
     setMode(MODE.VIEW);
   };
 

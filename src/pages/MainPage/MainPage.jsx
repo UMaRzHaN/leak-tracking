@@ -6,6 +6,7 @@ import ResolveModal from "../../components/ResolveModal/ResolveModal";
 import Notification from "../../components/Notification/Notification";
 import { STATUS, STATUS_META } from "../../utils/status";
 import { useProjectData } from "../../app/hooks/useProjectData";
+import { usePhotoStorage } from "../../hooks/usePhotoStorage";
 import { hapticSuccess } from "../../utils/haptics";
 import s from "./MainPage.module.scss";
 
@@ -22,6 +23,7 @@ export default function MainPage({ setPage, data, setData }) {
   const notify = useCallback((type, message) => setNotification({ type, message }), []);
 
   const { save } = useProjectData();
+  const { deletePhoto } = usePhotoStorage();
 
   /* ── Stats ── */
   const stats = useMemo(() => ({
@@ -58,10 +60,12 @@ export default function MainPage({ setPage, data, setData }) {
         return;
       }
 
+      const orphanedPhoto = (leak.status === STATUS.RESOLVED && leak.photo_after) ? leak.photo : null;
       const next = data.map((r) =>
         r.id === leak.id
           ? {
               ...r,
+              ...(r.status === STATUS.RESOLVED ? { photo: r.photo_after ?? r.photo, photo_after: null } : {}),
               status: newStatus,
               updatedAt: Date.now(),
               history: [
@@ -75,11 +79,12 @@ export default function MainPage({ setPage, data, setData }) {
         setData(next);
         await save(next);
         hapticSuccess();
+        if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
       } catch (err) {
         notify("error", "Ошибка сохранения: " + err.message);
       }
     },
-    [data, notify, pickerLeak, save, setData],
+    [data, deletePhoto, notify, pickerLeak, save, setData],
   );
 
   const handleResolveConfirm = useCallback(

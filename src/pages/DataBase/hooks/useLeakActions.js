@@ -20,9 +20,7 @@ export function useLeakActions({ data, setData, save, notify, deletePhoto = () =
         return;
       }
 
-      if (leak.status === STATUS.RESOLVED && leak.photo_after) {
-        deletePhoto(leak.photo_after).catch(() => {});
-      }
+      const orphanedPhoto = (leak.status === STATUS.RESOLVED && leak.photo_after) ? leak.photo : null;
       const next = data.map((r) =>
         r.id === leak.id
           ? {
@@ -38,6 +36,7 @@ export function useLeakActions({ data, setData, save, notify, deletePhoto = () =
         setData(next);
         await save(next);
         hapticSuccess();
+        if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
       } catch (err) {
         notify("error", "Ошибка сохранения: " + err.message);
       }

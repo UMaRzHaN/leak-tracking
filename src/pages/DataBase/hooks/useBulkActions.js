@@ -52,11 +52,9 @@ export function useBulkActions({ data, setData, save, displayed, notify, deleteP
       }
 
       const affected = data.filter((item) => selectedIds.has(item.id));
-      for (const item of affected) {
-        if (item.status === STATUS.RESOLVED && item.photo_after) {
-          deletePhoto(item.photo_after).catch(() => {});
-        }
-      }
+      const orphanedPhotos = affected
+        .filter((item) => item.status === STATUS.RESOLVED && item.photo_after && item.photo)
+        .map((item) => item.photo);
       const now = new Date().toISOString();
       const next = data.map((item) =>
         selectedIds.has(item.id)
@@ -74,6 +72,7 @@ export function useBulkActions({ data, setData, save, displayed, notify, deleteP
         setData(next);
         await save(next);
         hapticSuccess();
+        for (const path of orphanedPhotos) deletePhoto(path).catch(() => {});
         notify("success", `Статус изменён у ${affected.length} ${pluralLeaks(affected.length)}`);
         clearSelection();
       } catch (err) {
