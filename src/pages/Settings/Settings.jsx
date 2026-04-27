@@ -41,7 +41,7 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
   const importZipRef = useRef(null);
 
   useEffect(() => {
-    getMapCacheInfo().then(setCacheInfo);
+    getMapCacheInfo().then(setCacheInfo).catch(() => setCacheInfo({ count: 0, sizeMB: 0 }));
   }, []);
 
   const notify = useCallback((type, message) => setNotification({ type, message }), []);
@@ -189,6 +189,7 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
 
       const fallback = metaProject ? undefined : { name: resolvedName, type: resolvedType };
       const result = await onImportZip(file, fallback);
+      if (!result?.project) throw new Error("Не удалось получить данные проекта из файла");
       notify("success", `Импортирован проект «${result.project.name}» (${result.leakCount} записей)`);
     } catch (err) {
       notify("error", "Ошибка импорта: " + err.message);

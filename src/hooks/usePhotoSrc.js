@@ -46,7 +46,7 @@ export function usePhotoSrc(path, version = 0) {
             // Legacy storage: data URI string — use directly
             setSrc(withVersion(data));
           }
-        });
+        }).catch(() => { if (alive) setSrc(null); });
 
         return cleanup;
       }
@@ -67,7 +67,7 @@ export function usePhotoSrc(path, version = 0) {
     getPhotoSrc(path).then((result) => {
       if (!alive) return;
       setSrc(result ? withVersion(result) : null);
-    });
+    }).catch(() => { if (alive) setSrc(null); });
 
     return cleanup;
   }, [path, version, ready, getPhoto]);
