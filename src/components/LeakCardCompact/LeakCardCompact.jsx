@@ -17,9 +17,9 @@ function fmtNum(n, decimals = 1) {
 }
 
 /* ── Urgency by age (ignored for resolved leaks) ── */
-function urgencyOf(leakId, status) {
+function urgencyOf(createdAt, status) {
   if (status === "resolved") return "resolved";
-  const ms = Date.now() - Number(leakId);
+  const ms = Date.now() - Number(new Date(createdAt));
   if (ms < 86_400_000)         return "fresh";    // < 24 ч  → синяя
   if (ms < 7 * 86_400_000)     return "warning";  // 1–7 дн  → янтарная
   return "danger";                                 // > 7 дн  → красная пульс
@@ -45,8 +45,8 @@ export default function LeakCardCompact({
 
   const status     = leak.status ?? "open";
   const meta       = STATUS_META[status];
-  const ago        = timeAgo(leak.id);
-  const urgency    = urgencyOf(leak.id, status);
+  const ago        = timeAgo(leak.createdAt);
+  const urgency    = urgencyOf(leak.createdAt, status);
 
   const [viewerIndex, setViewerIndex] = useState(null);
 

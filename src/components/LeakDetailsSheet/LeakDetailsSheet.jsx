@@ -85,25 +85,19 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     version: leak.updatedAt,
   });
 
-  /* ── Init on leak change ── */
+  /* ── Init on leak change or external save ── */
   useEffect(() => {
-    if (prevLeakIdRef.current !== leak.leak_id) {
+    const key = `${leak.leak_id}:${leak.updatedAt}`;
+    if (prevLeakIdRef.current !== key) {
       const keys = EDIT_FIELDS.map((f) => f.key);
       setLocalEdit(Object.fromEntries(keys.map((k) => [k, leak[k]])));
       setMode(MODE.VIEW);
       setActiveTab(TAB.INFO);
       resetPhoto();
       resetPhotoAfter();
-      prevLeakIdRef.current = leak.leak_id;
+      prevLeakIdRef.current = key;
     }
-  }, [
-    leak.leak_id,
-    leak.updatedAt,
-    leak,
-    resetPhoto,
-    resetPhotoAfter,
-    EDIT_FIELDS,
-  ]);
+  }, [leak.leak_id, leak.updatedAt, EDIT_FIELDS, resetPhoto, resetPhotoAfter]);
 
   /* ── Dirty tracking ── */
   const dirtyFields = useMemo(
@@ -291,7 +285,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
 
   /* ── Computed for header ── */
   const status = leak.status ?? "open";
-  const ago = timeAgo(leak.id);
+  const ago = timeAgo(leak.createdAt);
 
   /* ── Tabs config ── */
   const TABS =

@@ -95,14 +95,14 @@ export default function StepRenderer({
             />
           );
         }
-        <button
-          type="submit"
-          style={{ position: "absolute", opacity: 0, pointerEvents: "none" }}
-          aria-hidden="true"
-          tabIndex={-1}
-        />;
         return null;
       })}
+      <button
+        type="submit"
+        style={{ position: "absolute", opacity: 0, pointerEvents: "none" }}
+        aria-hidden="true"
+        tabIndex={-1}
+      />
     </form>
   );
 }
