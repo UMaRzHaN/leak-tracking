@@ -13,32 +13,31 @@
   &:last-child { border-bottom: none; }
 
   &:focus-within {
-    /* Safe fallback — no color-mix() */
-    background: #eff6ff;
+    background: var(--c-blue-dim);
   }
 }
 
-/* dark mode safe: override above with token-based value if possible */
-@media (prefers-color-scheme: dark) {
-  .field:focus-within { background: rgba(37, 99, 235, 0.08); }
+[data-theme="dark"] .field {
+  border-bottom-color: #3d5166;
+  &:focus-within { background: rgba(37, 99, 235, 0.12); }
 }
 
 /* ── Compact: standalone rounded card (params grid / coord pair) ── */
 .compact {
   border-radius: var(--r-lg);
-  border: 1.5px solid var(--c-border); /* overrides base border-bottom */
+  border: 1.5px solid var(--c-border);
   padding: 12px;
   box-shadow: var(--shadow-sm);
 
   &:focus-within {
     border-color: var(--c-blue);
-    background: #eff6ff;
+    background: var(--c-blue-dim);
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
   }
 }
 
-@media (prefers-color-scheme: dark) {
-  .compact:focus-within { background: rgba(37, 99, 235, 0.08); }
+[data-theme="dark"] .compact:focus-within {
+  background: rgba(37, 99, 235, 0.12);
 }
 
 /* ── Label ── */
