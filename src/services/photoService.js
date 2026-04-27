@@ -1,5 +1,5 @@
 import { Filesystem, Directory } from "@capacitor/filesystem";
-import { Capacitor } from "@capacitor/core";
+import { isNative } from "../utils/platform";
 
 /*
  * Все фото хранятся в Directory.Data (приватное хранилище приложения).
@@ -12,7 +12,7 @@ import { Capacitor } from "@capacitor/core";
 export async function getPhotoSrc(path) {
   if (!path) return null;
 
-  if (!Capacitor.isNativePlatform()) {
+  if (!isNative) {
     return path;
   }
 
@@ -43,7 +43,7 @@ export async function getPhotoSrc(path) {
 export async function photoExists(path) {
   if (!path) return false;
 
-  if (!Capacitor.isNativePlatform()) {
+  if (!isNative) {
     return typeof path === "string" && path.startsWith("data:image/");
   }
 
@@ -65,7 +65,7 @@ export async function photoExists(path) {
    🗑 DELETE
 ======================= */
 export async function deletePhotoFromFS(path) {
-  if (!path || !Capacitor.isNativePlatform()) return;
+  if (!path || !isNative) return;
 
   const fsPath = path.startsWith("data://")
     ? path.replace("data://", "")

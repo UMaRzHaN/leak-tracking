@@ -3,11 +3,10 @@ import {
   startSpeechRecognition,
   stopSpeechRecognition,
 } from "../services/speechService";
-import { Capacitor } from "@capacitor/core";
+import { isNative } from "../utils/platform";
 
 export const useSpeechRecognition = (onResult) => {
   const listeningRef = useRef(false);
-  const isNative = Capacitor.isNativePlatform();
 
   const start = async () => {
     if (listeningRef.current) return;

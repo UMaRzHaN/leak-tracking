@@ -1,5 +1,5 @@
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
-import { Capacitor } from "@capacitor/core";
+import { isNative } from "../../utils/platform";
 import { PROJECT_LOCATION_CONFIG } from "../../configs/projectLocation.config";
 
 export function exportLeaksKML(leaks, project) {
@@ -60,7 +60,7 @@ export async function saveLeaksKML(leaks, project, projectFolderName = null) {
     ? `${projectFolderName}/export/map`
     : "export/map";
 
-  if (Capacitor.isNativePlatform()) {
+  if (isNative) {
     await Filesystem.mkdir({
       path: folderName,
       directory: Directory.Documents,

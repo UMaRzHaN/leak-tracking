@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Capacitor } from "@capacitor/core";
+import { isNative } from "../utils/platform";
 import { getPhotoSrc } from "../services/photoService";
 import { useIndexedDB } from "./useIndexedDB";
 
@@ -30,7 +30,7 @@ export function usePhotoSrc(path, version = 0) {
     /* =======================
        🌐 WEB
     ======================= */
-    if (!Capacitor.isNativePlatform()) {
+    if (!isNative) {
       if (path.startsWith("idb://")) {
         if (!ready) { setSrc(null); return cleanup; }
 

@@ -1,9 +1,9 @@
-import { Capacitor } from "@capacitor/core";
+import { isNative } from "../utils/platform";
 import { Geolocation } from "@capacitor/geolocation";
 
 export const getCurrentLocation = async () => {
   // 🌐 WEB
-  if (!Capacitor.isNativePlatform()) {
+  if (!isNative) {
     if (!navigator.geolocation) {
       throw new Error("Браузер не поддерживает геолокацию");
     }

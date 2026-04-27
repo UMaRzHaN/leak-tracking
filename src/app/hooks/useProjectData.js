@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
-import { Capacitor } from "@capacitor/core";
+import { isNative } from "../../utils/platform";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { STORAGE_KEYS } from "../settings/storageKeys";
 import { useProject } from "../settings/ProjectContext";
+import { LeakRecordSchema } from "../../services/export/backupSchema";
 
 /*
  * Данные хранятся в Directory.Data (приватное).
@@ -13,12 +14,31 @@ import { useProject } from "../settings/ProjectContext";
  */
 
 /* =========================
+   HELPERS — SHARED
+========================= */
+function filterValidLeaks(arr, source) {
+  if (!Array.isArray(arr)) return [];
+  const valid = [];
+  const invalid = [];
+  for (const item of arr) {
+    const r = LeakRecordSchema.safeParse(item);
+    if (r.success) valid.push(r.data);
+    else invalid.push(item?.id ?? "?");
+  }
+  if (invalid.length) {
+    console.warn(`[useProjectData] ${source}: отброшено ${invalid.length} записей с невалидной схемой (id: ${invalid.join(", ")})`);
+  }
+  return valid;
+}
+
+/* =========================
    HELPERS — WEB
 ========================= */
 const readWeb = (key) => {
   try {
     const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    return filterValidLeaks(JSON.parse(raw), `localStorage[${key}]`);
   } catch (err) {
     console.error(`[useProjectData] Corrupted localStorage data for key "${key}":`, err);
     return [];
@@ -47,7 +67,7 @@ const readMobile = async (filePath) => {
       directory: Directory.Data,
       encoding: "utf8",
     });
-    return JSON.parse(res.data || "[]");
+    return filterValidLeaks(JSON.parse(res.data || "[]"), filePath);
   } catch (err) {
     // "File does not exist" on first launch is expected; anything else is worth logging
     if (!String(err?.message).toLowerCase().includes("exist")) {
@@ -100,7 +120,7 @@ export function useProjectData() {
     let cancelled = false;
 
     const load = async () => {
-      const result = Capacitor.isNativePlatform()
+      const result = isNative
         ? await readMobile(filePath)
         : readWeb(storageKey);
 
@@ -122,7 +142,7 @@ export function useProjectData() {
       setData(() => next);
       if (!storageKey && !filePath) return;
 
-      if (Capacitor.isNativePlatform()) {
+      if (isNative) {
         await writeMobile(next, filePath);
       } else {
         writeWeb(storageKey, next);
@@ -138,7 +158,7 @@ export function useProjectData() {
     setData([]);
     if (!storageKey && !filePath) return;
 
-    if (Capacitor.isNativePlatform()) {
+    if (isNative) {
       await writeMobile([], filePath);
     } else {
       localStorage.removeItem(storageKey);

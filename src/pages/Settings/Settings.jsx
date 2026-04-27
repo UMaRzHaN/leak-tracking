@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Capacitor } from "@capacitor/core";
+import { isNative } from "../../utils/platform";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { useProject } from "../../app/settings/ProjectContext";
 import { useProjectVars } from "../../app/settings/useProjectVars";
@@ -112,7 +112,7 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
         vars,
       });
 
-      if (Capacitor.isNativePlatform()) {
+      if (isNative) {
         const reader = new FileReader();
         const base64 = await new Promise((res, rej) => {
           reader.onload = () => res(reader.result.split(",")[1]);

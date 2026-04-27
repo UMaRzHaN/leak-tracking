@@ -1,4 +1,4 @@
-import { Capacitor } from "@capacitor/core";
+import { isNative } from "../utils/platform";
 import {
   takePhotoFromCamera,
   pickPhotoFromGallery,
@@ -6,7 +6,6 @@ import {
 } from "../services/cameraService";
 
 export const useCamera = () => {
-  const isNative = Capacitor.isNativePlatform();
 
   return {
     isNative,

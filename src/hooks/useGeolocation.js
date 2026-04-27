@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Capacitor } from "@capacitor/core";
+import { isNative } from "../utils/platform";
 import { Geolocation } from "@capacitor/geolocation";
 
 export const useGeolocation = (enabled = true) => {
@@ -50,7 +50,7 @@ export const useGeolocation = (enabled = true) => {
 
     const init = async () => {
       // 🌐 WEB
-      if (!Capacitor.isNativePlatform()) {
+      if (!isNative) {
         if (!navigator.geolocation) {
           setError("Браузер не поддерживает геолокацию");
           setLoading(false);
@@ -121,7 +121,7 @@ export const useGeolocation = (enabled = true) => {
       stopped = true;
       if (permStatus) permStatus.onchange = null;
 
-      if (!Capacitor.isNativePlatform()) {
+      if (!isNative) {
         if (watchId !== null) navigator.geolocation.clearWatch(watchId);
       } else {
         if (watchId !== null) Geolocation.clearWatch({ id: watchId });

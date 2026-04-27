@@ -2,21 +2,12 @@ import JSZip from "jszip";
 import { getPhotoSrc } from "../photoService";
 import { validateBackup, validateProjectBackupMeta } from "./backupSchema";
 import { STORAGE_KEYS } from "../../app/settings/storageKeys";
+import { blobToDataUri } from "../../utils/photoConversion";
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const PHOTO_KEYS = ["photo", "photo_after"];
 const SUFFIX = { photo: "before", photo_after: "after" };
-
-/** Converts a Blob to a data URI string (for backward-compat Blob storage in IDB). */
-function blobToDataUri(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(/** @type {string} */ (reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
 
 async function resolveBase64(path, idbGet) {
   if (!path) return null;

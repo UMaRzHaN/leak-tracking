@@ -1,18 +1,9 @@
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
-import { Capacitor } from "@capacitor/core";
+import { isNative } from "../../utils/platform";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { getPhotoSrc } from "../photoService";
-
-/** Converts a Blob to a data URI string for embedding in the Excel export. */
-function blobToDataUri(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(/** @type {string} */ (reader.result));
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
+import { blobToDataUri } from "../../utils/photoConversion";
 
 async function resolvePhotoSrc(path, idbGet) {
   if (!path) return null;
@@ -158,7 +149,7 @@ export async function exportToExcelZip(
 }
 
 async function downloadBlob(blob, fileName, projectFolderName = null) {
-  if (!Capacitor.isNativePlatform()) {
+  if (!isNative) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

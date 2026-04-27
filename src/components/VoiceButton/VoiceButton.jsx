@@ -1,8 +1,7 @@
-import { Capacitor } from "@capacitor/core";
+import { isNative } from "../../utils/platform";
 import s from "./VoiceButton.module.scss";
 
 export default function VoiceButton({ startVoiceInput, stopVoiceInput }) {
-  const isNative = Capacitor.isNativePlatform();
 
   return (
     <button

@@ -1,5 +1,5 @@
 import { Filesystem, Directory } from "@capacitor/filesystem";
-import { Capacitor } from "@capacitor/core";
+import { isNative } from "../utils/platform";
 import { useCallback } from "react";
 import { useIndexedDB } from "./useIndexedDB";
 import { useProject } from "../app/settings/ProjectContext";
@@ -46,7 +46,6 @@ export function usePhotoStorage() {
   const { ready, savePhoto: idbSave, getPhoto: idbGet, deletePhoto: idbDelete, listKeys } = useIndexedDB();
   const { activeProject } = useProject();
 
-  const isNative = Capacitor.isNativePlatform();
   const PHOTO_FOLDER = activeProject
     ? `LeakReports/${activeProject.folderName}/photos`
     : null;

@@ -9,26 +9,8 @@ import { useLeakFormContext } from "../../context/LeakFormContext";
 import { hapticSuccess, hapticWarning } from "../../utils/haptics";
 import { STATUS } from "../../utils/status";
 import { priorityFromSpeed } from "../../utils/priority";
+import { dataUrlToBlob } from "../../utils/photoConversion";
 import s from "./AddLeak.module.scss";
-
-function dataUrlToBlob(dataUrl) {
-  if (!dataUrl || typeof dataUrl !== "string" || !dataUrl.startsWith("data:")) {
-    return null;
-  }
-
-  const matches = dataUrl.match(/^data:(.+);base64,(.*)$/);
-  if (!matches) return null;
-
-  const mime = matches[1];
-  const base64 = matches[2];
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-
-  return new Blob([bytes], { type: mime });
-}
 
 
 export default function AddLeak({

@@ -2,25 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useCamera } from "./useCamera";
 import { usePhotoStorage } from "./usePhotoStorage";
 import { usePhotoSrc } from "./usePhotoSrc";
-
-function dataUrlToBlob(dataUrl) {
-  if (!dataUrl || typeof dataUrl !== "string" || !dataUrl.startsWith("data:")) {
-    return null;
-  }
-
-  const matches = dataUrl.match(/^data:(.+);base64,(.*)$/);
-  if (!matches) return null;
-
-  const mime = matches[1];
-  const payload = matches[2];
-  const binary = atob(payload);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-
-  return new Blob([bytes], { type: mime });
-}
+import { dataUrlToBlob } from "../utils/photoConversion";
 
 export function useEditablePhoto({ initialPath, leakId, version }) {
   const { isNative, takePhoto, pickFromBrowser } = useCamera();

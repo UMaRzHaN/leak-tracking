@@ -1,4 +1,4 @@
-import { Capacitor } from "@capacitor/core";
+import { isNative } from "../utils/platform";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 
 /*
@@ -25,7 +25,7 @@ function base64ToBlob(base64, mimeType = "image/jpeg") {
 
 /* 📸 Камера (native) */
 export async function takePhotoFromCamera() {
-  if (!Capacitor.isNativePlatform()) {
+  if (!isNative) {
     throw new Error("Camera is available only on mobile");
   }
 
@@ -47,7 +47,7 @@ export async function takePhotoFromCamera() {
 
 /* 🖼 Галерея — читаем через Base64, не добавляем новый файл в галерею */
 export async function pickPhotoFromGallery() {
-  if (!Capacitor.isNativePlatform()) {
+  if (!isNative) {
     throw new Error("Gallery is available only on mobile");
   }
 

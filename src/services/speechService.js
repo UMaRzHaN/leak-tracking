@@ -1,11 +1,11 @@
-import { Capacitor } from "@capacitor/core";
+import { isNative } from "../utils/platform";
 import { SpeechRecognition } from "@capacitor-community/speech-recognition";
 
 let webRecognition = null;
 let webBuffer = "";
 
 export const startSpeechRecognition = async () => {
-  if (Capacitor.isNativePlatform()) {
+  if (isNative) {
     const perm = await SpeechRecognition.requestPermissions();
     if (perm.speechRecognition !== "granted") {
       throw new Error("Нет доступа к микрофону");
@@ -44,7 +44,7 @@ export const startSpeechRecognition = async () => {
 };
 
 export const stopSpeechRecognition = async () => {
-  if (Capacitor.isNativePlatform()) return null;
+  if (isNative) return null;
 
   if (webRecognition) {
     webRecognition.stop();
