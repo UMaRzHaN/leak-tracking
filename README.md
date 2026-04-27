@@ -104,33 +104,25 @@ src/
 ```ts
 interface LeakRecord {
   id: number;
-  projectId: string;
-  createdAt: string;
-  updatedAt: string;
-
+  lat: number;
+  lng: number;
   status: "open" | "in_progress" | "resolved";
-  priority: "low" | "medium" | "high" | "critical";
+  leak_id?: string | number;
+  component?: string;
+  leak_description?: string;
+  photo?: string | null;
+  photo_after?: string | null;
+  priority?: "low" | "medium" | "high" | "critical";
+  updatedAt?: number;
+  resolvedAt?: number;
+  // ... дополнительные поля (project-specific)
+}
 
-  location: {
-    lat: number;
-    lng: number;
-    accuracy?: number;
-  };
-
-  component: string;
-  componentTag?: string;
-  leakType: string;
-  leakRate?: number;
-  pressure?: number;
-
-  description?: string;
-  photosBefore: string[];
-  photosAfter?: string[];
-
-  assignedTo?: string;
-  resolvedAt?: string;
-
-  history: LeakHistoryEntry[];
+interface LeakHistoryEntry {
+  action: "created" | "status_changed" | "edited" | "comment";
+  to?: string;        // для status_changed
+  text?: string;      // для comment
+  date: string;       // ISO date
 }
 ```
 
