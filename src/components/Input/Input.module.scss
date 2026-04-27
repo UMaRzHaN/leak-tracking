@@ -127,6 +127,19 @@
   opacity: 0;
 }
 
+/* ── Decode hint (live best-match preview) ── */
+.decodeHint {
+  font-size: 12px;
+  color: var(--c-blue);
+  margin: 0;
+  line-height: 1.4;
+  max-height: 60px;
+  opacity: 1;
+  overflow: hidden;
+  transition: opacity 0.15s ease, max-height 0.2s ease;
+  font-style: italic;
+}
+
 /* ══════════════════════════════════════════
    Step renderer
    ══════════════════════════════════════════ */
