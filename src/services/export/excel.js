@@ -1,4 +1,3 @@
-import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
 import { Capacitor } from "@capacitor/core";
@@ -25,31 +24,6 @@ async function resolvePhotoSrc(path, idbGet) {
     return raw instanceof Blob ? blobToDataUri(raw) : raw;
   }
   return getPhotoSrc(path);
-}
-
-export function exportToExcel(data, headers, keysOrder, fileName = "export") {
-  const rows = data.map((row) => {
-    const obj = {};
-    keysOrder.forEach((key, i) => {
-      obj[headers[i]] = row[key] ?? "";
-    });
-    return obj;
-  });
-
-  const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
-
-  const colWidths = headers.map((h) => {
-    const maxContent = Math.max(
-      h.length,
-      ...rows.map((r) => String(r[h] ?? "").length),
-    );
-    return { wch: Math.min(maxContent + 2, 60) };
-  });
-  ws["!cols"] = colWidths;
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Утечки");
-  XLSX.writeFile(wb, `${fileName}.xlsx`);
 }
 
 /**

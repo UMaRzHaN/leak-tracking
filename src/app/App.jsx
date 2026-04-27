@@ -16,7 +16,6 @@ import { useAppState } from "./hooks/useAppState";
 
 import { cleanupLegacyLeaks } from "./migrations/cleanupLegacyLeaks";
 import { usePhotoStorage } from "../hooks/usePhotoStorage";
-import { importProjectZip } from "../services/export/backup";
 import { STATUS } from "../utils/status";
 
 const DataBase = lazy(() => import("../pages/DataBase/DataBase"));
@@ -123,6 +122,7 @@ export default function App() {
 
   /** First-run (ProjectSetupScreen): supports name/type fallback when ZIP has no project.json */
   const handleSetupImportZip = useCallback(async (file, fallback = {}) => {
+    const { importProjectZip } = await import("../services/export/backup");
     await importProjectZip(file, { ...importCtx, metaFallback: fallback });
   // importCtx values are stable refs — addProject is the only real dep
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -130,6 +130,7 @@ export default function App() {
 
   /** In-app import (Settings): always creates a new project, optional fallback for legacy ZIPs */
   const handleImportZip = useCallback(async (file, fallback) => {
+    const { importProjectZip } = await import("../services/export/backup");
     return await importProjectZip(file, { ...importCtx, metaFallback: fallback });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addProject]);

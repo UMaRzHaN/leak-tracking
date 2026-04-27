@@ -1,7 +1,6 @@
 import { useState, useRef } from "react";
 import { PROJECT_META } from "../../configs/projects";
 import { toFolderName } from "../../app/settings/ProjectContext";
-import { peekBackupZip } from "../../services/export/backup";
 import s from "./ProjectSetupScreen.module.scss";
 
 const VALID_TYPES = ["upstream", "midstream", "downstream"];
@@ -43,6 +42,7 @@ export default function ProjectSetupScreen({ onComplete, onImportZip }) {
       // Уровень 2: детектирование по полям записей (peek.detectedType)
       // Уровень 3: ключевые слова в имени файла
       try {
+        const { peekBackupZip } = await import("../../services/export/backup");
         const peek = await peekBackupZip(file);
         const metaProject = peek.meta?.project;
 

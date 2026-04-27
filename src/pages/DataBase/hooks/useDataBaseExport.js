@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import { STATUS, STATUS_META } from "../../../utils/status";
-import { exportToExcelZip } from "../../../services/export/excel";
 import { useProjectConfig } from "../../../app/settings/useProjectConfig";
 import { usePhotoStorage } from "../../../hooks/usePhotoStorage";
 import { useProject } from "../../../app/settings/ProjectContext";
@@ -36,6 +35,7 @@ export function useDataBaseExport({ displayed, notify }) {
 
   const handleExport = useCallback(async () => {
     try {
+      const { exportToExcelZip } = await import("../../../services/export/excel");
       const result = await exportToExcelZip(
         displayed,
         prepareRows(displayed),

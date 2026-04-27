@@ -9,7 +9,6 @@ import { useTheme } from "../../app/hooks/useTheme";
 import { usePhotoStorage } from "../../hooks/usePhotoStorage";
 import { PROJECT_META } from "../../configs/projects";
 import { getMapCacheInfo, clearMapCache } from "../../services/maps/tileCache";
-import { buildProjectBackupZip, peekBackupZip } from "../../services/export/backup";
 import PageHeader from "../../components/PageHeader/PageHeader";
 import SettingsModal from "../../components/SettingsModal/SettingsModal";
 import Notification from "../../components/Notification/Notification";
@@ -105,6 +104,7 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
     const folder = activeProject?.folderName ?? "backup";
     const fileName = `${folder}.zip`;
     try {
+      const { buildProjectBackupZip } = await import("../../services/export/backup");
       const blob = await buildProjectBackupZip({
         leaks: data,
         idbGet: idbGetPhoto,
@@ -158,6 +158,7 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
     };
 
     try {
+      const { peekBackupZip } = await import("../../services/export/backup");
       const peek = await peekBackupZip(file);
       const metaProject = peek.meta?.project;
 
