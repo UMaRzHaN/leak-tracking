@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { useId, useRef } from "react";
 import { parseNumericInput } from "../../utils/normalize/parseNumericInput";
 import { normalizeNumber } from "../../utils/normalize/normalizeNumber";
 import s from "./Input.module.scss";
@@ -19,7 +19,6 @@ export default function InputCard({
   const isTextarea = as === "textarea";
   const isNumber   = type === "number";
   const hasValue   = value != null && value !== "" && String(value).length > 0;
-  const [isFocused, setIsFocused] = useState(false);
 
   const inputId  = useId();
   const inputRef = useRef(null);
@@ -50,8 +49,6 @@ export default function InputCard({
             value={value ?? ""}
             placeholder={placeholder ?? ""}
             onChange={(e) => onChange(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
             enterKeyHint="enter"
           />
         ) : (
@@ -66,11 +63,7 @@ export default function InputCard({
             value={value ?? ""}
             placeholder={placeholder ?? ""}
             onChange={(e) => onChange(isNumber ? parseNumericInput(e.target.value) : e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => {
-              setIsFocused(false);
-              if (isNumber && value !== "" && value != null) onChange(normalizeNumber(value));
-            }}
+            onBlur={isNumber ? () => { if (value !== "" && value != null) onChange(normalizeNumber(value)); } : undefined}
           />
         )}
 
@@ -88,11 +81,7 @@ export default function InputCard({
         )}
       </div>
 
-      {hint && !error && (
-        <p className={[s.hint, hasValue && !isFocused && s.hintHidden].filter(Boolean).join(" ")}>
-          {hint}
-        </p>
-      )}
+      {hint && !error && <p className={s.hint}>{hint}</p>}
       {error && <p className={s.errorMsg}>{error}</p>}
     </div>
   );

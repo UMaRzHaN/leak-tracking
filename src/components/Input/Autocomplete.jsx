@@ -29,10 +29,6 @@ export default function Autocomplete({
 
   const showClear = query?.length > 0;
 
-  const topMatch = query ? filtered[0] : null;
-  const showDecode = !!topMatch && topMatch !== query;
-  const decodeLabel = topMatch?.length > 70 ? topMatch.slice(0, 70) + "…" : topMatch;
-
   const select = (val) => {
     // При выборе из подсказок используем полное значение
     setQuery(val);
@@ -119,18 +115,7 @@ export default function Autocomplete({
         </ul>
       )}
 
-      {hint && !error && (
-        <p className={[s.hint, showClear && !open && s.hintHidden].filter(Boolean).join(" ")}>
-          {hint}
-        </p>
-      )}
-
-      {!error && (
-        <p className={[s.decodeHint, !showDecode && s.hintHidden].filter(Boolean).join(" ")}>
-          → {decodeLabel}
-        </p>
-      )}
-
+      {hint && !error && <p className={s.hint}>{hint}</p>}
       {error && <div className={s.formError}>{error}</div>}
     </div>
   );
