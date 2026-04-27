@@ -9,6 +9,7 @@ import { useLeakActions } from "./hooks/useLeakActions";
 import { useBulkActions } from "./hooks/useBulkActions";
 import { useDataBaseExport } from "./hooks/useDataBaseExport";
 import { useProjectData } from "../../app/hooks/useProjectData";
+import { usePhotoStorage } from "../../hooks/usePhotoStorage";
 import s from "./DataBase.module.scss";
 
 export default function DataBase({ data, setData, coords }) {
@@ -16,10 +17,11 @@ export default function DataBase({ data, setData, coords }) {
   const notify = useCallback((type, message) => setNotification({ type, message }), []);
 
   const { save } = useProjectData();
+  const { deletePhoto } = usePhotoStorage();
 
   const filters = useDataBaseFilters({ data, coords });
-  const actions = useLeakActions({ data, setData, save, notify });
-  const bulk    = useBulkActions({ data, setData, save, displayed: filters.displayed, notify });
+  const actions = useLeakActions({ data, setData, save, notify, deletePhoto });
+  const bulk    = useBulkActions({ data, setData, save, displayed: filters.displayed, notify, deletePhoto });
   const { handleExport } = useDataBaseExport({ displayed: filters.displayed, notify });
 
   return (

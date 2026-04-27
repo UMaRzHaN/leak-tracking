@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useEditablePhoto } from "../../hooks/useEditablePhoto";
+import { usePhotoStorage } from "../../hooks/usePhotoStorage";
 import { useProjectConfig } from "../../app/settings/useProjectConfig";
 import { useProject } from "../../app/settings/ProjectContext";
 import { useProjectVars } from "../../app/settings/useProjectVars";
@@ -41,6 +42,8 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
       .filter((f) => f.editable !== false)
       .sort((a, b) => (a.editOrder ?? 999) - (b.editOrder ?? 999));
   }, [projectConfig]);
+
+  const { deletePhoto } = usePhotoStorage();
 
   const [mode, setMode] = useState(MODE.VIEW);
   const [activeTab, setActiveTab] = useState(TAB.INFO);
@@ -193,8 +196,15 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
       setResolveOpen(true);
       return;
     }
+    const photoUpdate = leak.status === STATUS.RESOLVED
+      ? { photo: leak.photo_after ?? leak.photo, photo_after: null }
+      : {};
+    if (leak.status === STATUS.RESOLVED && leak.photo_after) {
+      deletePhoto(leak.photo_after).catch(() => {});
+    }
     onSave({
       ...leak,
+      ...photoUpdate,
       status: newStatus,
       updatedAt: Date.now(),
       history: [

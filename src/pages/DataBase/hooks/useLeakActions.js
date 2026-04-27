@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { STATUS } from "../../../utils/status";
 import { hapticSuccess } from "../../../utils/haptics";
 
-export function useLeakActions({ data, setData, save, notify }) {
+export function useLeakActions({ data, setData, save, notify, deletePhoto = () => Promise.resolve() }) {
   const [activeLeak, setActiveLeak] = useState(null);
   const [pickerLeak, setPickerLeak] = useState(null);
   const [resolveLeak, setResolveLeak] = useState(null);
@@ -20,10 +20,14 @@ export function useLeakActions({ data, setData, save, notify }) {
         return;
       }
 
+      if (leak.status === STATUS.RESOLVED && leak.photo_after) {
+        deletePhoto(leak.photo_after).catch(() => {});
+      }
       const next = data.map((r) =>
         r.id === leak.id
           ? {
               ...r,
+              ...(r.status === STATUS.RESOLVED ? { photo: r.photo_after ?? r.photo, photo_after: null } : {}),
               status: newStatus,
               updatedAt: Date.now(),
               history: [...(r.history ?? []), { action: "status_changed", to: newStatus, date: new Date().toISOString() }],
@@ -38,7 +42,7 @@ export function useLeakActions({ data, setData, save, notify }) {
         notify("error", "Ошибка сохранения: " + err.message);
       }
     },
-    [data, notify, pickerLeak, save, setData],
+    [data, deletePhoto, notify, pickerLeak, save, setData],
   );
 
   const handleResolveConfirm = useCallback(

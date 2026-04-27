@@ -8,7 +8,7 @@ function pluralLeaks(n) {
   return "записей";
 }
 
-export function useBulkActions({ data, setData, save, displayed, notify }) {
+export function useBulkActions({ data, setData, save, displayed, notify, deletePhoto = () => Promise.resolve() }) {
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [resolveQueue, setResolveQueue] = useState([]);
   const [resolveTotal, setResolveTotal] = useState(0);
@@ -52,11 +52,17 @@ export function useBulkActions({ data, setData, save, displayed, notify }) {
       }
 
       const affected = data.filter((item) => selectedIds.has(item.id));
+      for (const item of affected) {
+        if (item.status === STATUS.RESOLVED && item.photo_after) {
+          deletePhoto(item.photo_after).catch(() => {});
+        }
+      }
       const now = new Date().toISOString();
       const next = data.map((item) =>
         selectedIds.has(item.id)
           ? {
               ...item,
+              ...(item.status === STATUS.RESOLVED ? { photo: item.photo_after ?? item.photo, photo_after: null } : {}),
               status,
               updatedAt: Date.now(),
               history: [...(item.history ?? []), { action: "status_changed", to: status, date: now }],
@@ -74,7 +80,7 @@ export function useBulkActions({ data, setData, save, displayed, notify }) {
         notify("error", "Ошибка сохранения: " + err.message);
       }
     },
-    [clearSelection, data, notify, save, selectedIds, setData],
+    [clearSelection, data, deletePhoto, notify, save, selectedIds, setData],
   );
 
   const handleSequentialResolveConfirm = useCallback(
