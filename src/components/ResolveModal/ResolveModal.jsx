@@ -25,6 +25,7 @@ export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
         photo_after = await savePhoto(
           photo.raw,
           `${leak.leak_id ?? String(leak.id)}_after`,
+          leak?.photo ? [leak.photo] : [],
         );
       }
       onConfirm({

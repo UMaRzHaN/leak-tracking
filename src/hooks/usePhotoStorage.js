@@ -26,12 +26,12 @@ function fileToBase64(file) {
   });
 }
 
-async function cleanupOldVersions(folder, leakId, keepFileName) {
+async function cleanupOldVersions(folder, leakId, keepFileName, excludeFileNames = new Set()) {
   try {
     const { files } = await Filesystem.readdir({ path: folder, directory: Directory.Data });
     const prefix = `photo_${leakId}_`;
     for (const file of files) {
-      if (file.name.startsWith(prefix) && file.name !== keepFileName) {
+      if (file.name.startsWith(prefix) && file.name !== keepFileName && !excludeFileNames.has(file.name)) {
         await Filesystem.deleteFile({ directory: Directory.Data, path: `${folder}/${file.name}` }).catch(() => {});
       }
     }
@@ -52,7 +52,7 @@ export function usePhotoStorage() {
 
   /* ================= SAVE ================= */
 
-  const savePhoto = useCallback(async (rawPhoto, leakId) => {
+  const savePhoto = useCallback(async (rawPhoto, leakId, excludePaths = []) => {
     if (!rawPhoto || !leakId) return null;
     const version = Date.now();
     const photo = rawPhoto instanceof Blob ? await compressImage(rawPhoto) : rawPhoto;
@@ -67,10 +67,11 @@ export function usePhotoStorage() {
       if (!ok) return null;
 
       if (typeof listKeys === "function") {
+        const excludeKeys = new Set(excludePaths.map((p) => p?.replace("idb://", "")).filter(Boolean));
         const keys = await listKeys();
         const prefix = `photo_${activeProject.id}_${leakId}_`;
         for (const key of keys) {
-          if (key.startsWith(prefix) && key !== photoId) await idbDelete(key);
+          if (key.startsWith(prefix) && key !== photoId && !excludeKeys.has(key)) await idbDelete(key);
         }
       }
 
@@ -87,7 +88,10 @@ export function usePhotoStorage() {
 
     const base64 = await fileToBase64(photo);
     await Filesystem.writeFile({ path: targetPath, data: base64, directory: Directory.Data });
-    await cleanupOldVersions(PHOTO_FOLDER, leakId, fileName);
+    const excludeFileNames = new Set(
+      excludePaths.map((p) => p?.replace(`data://${PHOTO_FOLDER}/`, "")).filter(Boolean),
+    );
+    await cleanupOldVersions(PHOTO_FOLDER, leakId, fileName, excludeFileNames);
 
     return `data://${targetPath}`;
   }, [ready, idbSave, idbDelete, listKeys, isNative, PHOTO_FOLDER, activeProject?.id]);

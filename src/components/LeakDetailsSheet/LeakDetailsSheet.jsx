@@ -70,6 +70,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     initialPath: leak.photo,
     leakId: leak.leak_id,
     version: leak.updatedAt,
+    excludePaths: leak.photo_after ? [leak.photo_after] : [],
   });
 
   const afterLeakId = `${leak.leak_id ?? leak.id}_after`;
@@ -83,6 +84,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     initialPath: leak.photo_after,
     leakId: afterLeakId,
     version: leak.updatedAt,
+    excludePaths: leak.photo ? [leak.photo] : [],
   });
 
   /* ── Init on leak change or external save ── */

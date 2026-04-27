@@ -4,7 +4,7 @@ import { usePhotoStorage } from "./usePhotoStorage";
 import { usePhotoSrc } from "./usePhotoSrc";
 import { dataUrlToBlob } from "../utils/photoConversion";
 
-export function useEditablePhoto({ initialPath, leakId, version }) {
+export function useEditablePhoto({ initialPath, leakId, version, excludePaths = [] }) {
   const { isNative, takePhoto, pickFromBrowser } = useCamera();
   const { savePhoto: saveToFS, ready: storageReady } = usePhotoStorage();
 
@@ -63,7 +63,7 @@ export function useEditablePhoto({ initialPath, leakId, version }) {
     }
 
     const currentLeakId = leakId;
-    const newPath = await saveToFS(rawPhoto, leakId);
+    const newPath = await saveToFS(rawPhoto, leakId, excludePaths);
 
     // защита от race-condition
     if (activeLeakIdRef.current !== currentLeakId) {
@@ -78,7 +78,7 @@ export function useEditablePhoto({ initialPath, leakId, version }) {
     setDraftPhoto(null);
 
     return newPath;
-  }, [draftPhoto, leakId, saveToFS, storageReady]);
+  }, [draftPhoto, leakId, saveToFS, storageReady, excludePaths]);
 
   /* ===== cancel ===== */
   const resetPhoto = useCallback(() => {
