@@ -14,7 +14,7 @@ import { PROJECT_META } from "../../configs/projects";
      id: string,          // unique ID (timestamp)
      name: string,        // user display name
      type: string,        // "upstream" | "midstream" | "downstream"
-     folderName: string,  // safe for filesystem — set once, never changes
+     folderName: string,  // safe for filesystem — updated on rename
      createdAt: number,
    }
 ===================================================== */
@@ -147,8 +147,16 @@ export function ProjectProvider({ children }) {
   ========================= */
 
   const _setProjects = useCallback((next) => {
-    saveProjects(next);
-    setProjectsState(next);
+    if (typeof next === "function") {
+      setProjectsState((prev) => {
+        const result = next(prev);
+        saveProjects(result);
+        return result;
+      });
+    } else {
+      saveProjects(next);
+      setProjectsState(next);
+    }
   }, []);
 
   const _setActiveId = useCallback((id) => {
@@ -203,24 +211,46 @@ export function ProjectProvider({ children }) {
     [projects, _setActiveId],
   );
 
-  /** Переименовывает проект и обновляет folderName */
+  /**
+   * Переименовывает проект. Обновляет только display name — folderName НЕ меняет.
+   * Возвращает { oldFolderName, newFolderName } для последующего вызова applyFolderRename
+   * после того как вызывающий код завершит переименование папок на файловой системе.
+   */
   const renameProject = useCallback(
     (id, name) => {
       const trimmed = name?.trim();
-      if (!trimmed) return;
+      if (!trimmed) return null;
+
+      const project = projects.find((p) => p.id === id);
+      if (!project) return null;
+
+      const folder = toFolderName(trimmed);
+      const existingFolders = new Set(
+        projects.filter((p) => p.id !== id).map((p) => p.folderName),
+      );
+      let newFolderName = folder;
+      let suffix = 2;
+      while (existingFolders.has(newFolderName)) {
+        newFolderName = `${folder}_${suffix++}`;
+      }
 
       _setProjects(
-        projects.map((p) =>
-          p.id === id
-            ? {
-                ...p,
-                name: trimmed,
-              }
-            : p,
-        ),
+        projects.map((p) => (p.id === id ? { ...p, name: trimmed } : p)),
       );
+
+      return { oldFolderName: project.folderName, newFolderName };
     },
     [projects, _setProjects],
+  );
+
+  /** Применяет новый folderName после завершения переименования папок на FS */
+  const applyFolderRename = useCallback(
+    (id, newFolderName) => {
+      _setProjects((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, folderName: newFolderName } : p)),
+      );
+    },
+    [_setProjects],
   );
 
   /** Меняет тип проекта */
@@ -272,6 +302,7 @@ export function ProjectProvider({ children }) {
       configure,
       selectProject,
       renameProject,
+      applyFolderRename,
       changeProjectType,
       removeProject,
       changeProject,
@@ -287,6 +318,7 @@ export function ProjectProvider({ children }) {
       configure,
       selectProject,
       renameProject,
+      applyFolderRename,
       changeProjectType,
       removeProject,
       changeProject,

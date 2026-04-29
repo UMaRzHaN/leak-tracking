@@ -23,6 +23,7 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
     addProject,
     selectProject,
     renameProject,
+    applyFolderRename,
     removeProject,
   } = useProject();
 
@@ -70,11 +71,64 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
   );
 
   const handleRename = useCallback(
-    (id, name) => {
-      renameProject(id, name);
+    async (id, name) => {
+      // Обновляет только display name. folderName обновится в applyFolderRename
+      // после завершения FS-операций, чтобы useProjectData не читал новый путь раньше времени.
+      const result = renameProject(id, name);
+      if (!result) return;
+      const { oldFolderName, newFolderName } = result;
+
+      if (isNative && oldFolderName !== newFolderName) {
+        await Filesystem.rename({
+          from: `LeakReports/${oldFolderName}`,
+          to: `LeakReports/${newFolderName}`,
+          directory: Directory.Data,
+        }).catch(() => {});
+
+        // Патчим пути к фото в data.json — они содержат folderName в строке пути
+        const dataPath = `LeakReports/${newFolderName}/data/data.json`;
+        const fileResult = await Filesystem.readFile({
+          path: dataPath,
+          directory: Directory.Data,
+          encoding: "utf8",
+        }).catch(() => null);
+
+        if (fileResult) {
+          try {
+            const leaks = JSON.parse(fileResult.data || "[]");
+            const oldPrefix = `data://LeakReports/${oldFolderName}/`;
+            const newPrefix = `data://LeakReports/${newFolderName}/`;
+            const updated = leaks.map((l) => ({
+              ...l,
+              ...(l.photo?.startsWith(oldPrefix) ? { photo: l.photo.replace(oldPrefix, newPrefix) } : {}),
+              ...(l.photo_after?.startsWith(oldPrefix) ? { photo_after: l.photo_after.replace(oldPrefix, newPrefix) } : {}),
+            }));
+            await Filesystem.writeFile({
+              path: dataPath,
+              directory: Directory.Data,
+              data: JSON.stringify(updated),
+              encoding: "utf8",
+            });
+          } catch {
+            // data.json не распарсился — пропускаем, не критично
+          }
+        }
+
+        await Filesystem.rename({
+          from: oldFolderName,
+          to: newFolderName,
+          directory: Directory.Documents,
+        }).catch(() => {});
+      }
+
+      // Теперь обновляем folderName в стейте — useProjectData начнёт читать новый путь
+      if (oldFolderName !== newFolderName) {
+        applyFolderRename(id, newFolderName);
+      }
+
       notify("success", "Название сохранено");
     },
-    [renameProject, notify],
+    [renameProject, applyFolderRename, notify],
   );
 
   const handleRemove = useCallback(

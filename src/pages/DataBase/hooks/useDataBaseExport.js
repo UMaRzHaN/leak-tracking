@@ -7,18 +7,24 @@ import { useProject } from "../../../app/settings/ProjectContext";
 function fmtTs(ts) {
   if (!ts) return "";
   const d = new Date(ts);
-  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
 }
 
 function round2(v) {
-  return v != null && Number.isFinite(Number(v)) ? Math.round(Number(v) * 100) / 100 : v;
+  return v != null && Number.isFinite(Number(v))
+    ? Math.round(Number(v) * 100) / 100
+    : v;
 }
 
 function prepareRows(data) {
   return data.map((r) => ({
     ...r,
     status: STATUS_META[r.status ?? STATUS.OPEN]?.label ?? r.status ?? "",
-    date: r.date ?? (r.created_at ? new Date(Number(r.created_at)).toLocaleDateString("ru-RU") : ""),
+    date:
+      r.date ??
+      (r.created_at
+        ? new Date(Number(r.created_at)).toLocaleDateString("ru-RU")
+        : ""),
     Total_Annual_Methane_Loss_m3_y: round2(r.Total_Annual_Methane_Loss_m3_y),
     Emissions_t_CO2eq_year: round2(r.Emissions_t_CO2eq_year),
     photo: r.photo ? "Есть" : "",
@@ -29,13 +35,15 @@ function prepareRows(data) {
 
 export function useDataBaseExport({ displayed, notify }) {
   const projectConfig = useProjectConfig();
-  const { headers: excelHeaders, keysOrder: excelKeys } = projectConfig.export.excel;
+  const { headers: excelHeaders, keysOrder: excelKeys } =
+    projectConfig.export.excel;
   const { getPhoto: idbGetPhoto } = usePhotoStorage();
   const { activeProject } = useProject();
 
   const handleExport = useCallback(async () => {
     try {
-      const { exportToExcelZip } = await import("../../../services/export/excel");
+      const { exportToExcelZip } =
+        await import("../../../services/export/excel");
       const result = await exportToExcelZip(
         displayed,
         prepareRows(displayed),
@@ -49,7 +57,14 @@ export function useDataBaseExport({ displayed, notify }) {
     } catch (err) {
       notify("error", "Ошибка экспорта: " + err.message);
     }
-  }, [displayed, excelHeaders, excelKeys, idbGetPhoto, activeProject?.folderName, notify]);
+  }, [
+    displayed,
+    excelHeaders,
+    excelKeys,
+    idbGetPhoto,
+    activeProject?.folderName,
+    notify,
+  ]);
 
   return { handleExport };
 }
