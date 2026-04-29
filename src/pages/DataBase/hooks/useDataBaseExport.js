@@ -49,7 +49,7 @@ export function useDataBaseExport({ displayed, notify }) {
         prepareRows(displayed),
         excelHeaders,
         excelKeys,
-        "утечки",
+        "!Database_" + (activeProject?.name || "no_name"),
         idbGetPhoto,
         activeProject?.folderName,
       );
