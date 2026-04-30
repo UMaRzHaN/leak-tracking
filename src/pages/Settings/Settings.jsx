@@ -9,8 +9,11 @@ import { useTheme } from "../../app/hooks/useTheme";
 import { usePhotoStorage } from "../../hooks/usePhotoStorage";
 import { PROJECT_META } from "../../configs/projects";
 import { getMapCacheInfo, clearMapCache } from "../../services/maps/tileCache";
+import { useProjectConfig } from "../../app/settings/useProjectConfig";
+import { useHiddenFields } from "../../app/settings/useHiddenFields";
 import PageHeader from "../../components/PageHeader/PageHeader";
 import SettingsModal from "../../components/SettingsModal/SettingsModal";
+import FieldVisibilityModal from "../../components/FieldVisibilityModal/FieldVisibilityModal";
 import Notification from "../../components/Notification/Notification";
 import ProjectList from "./components/ProjectList";
 import AddProjectForm from "./components/AddProjectForm";
@@ -34,9 +37,13 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
   const { data } = useProjectData();
   const { getPhoto: idbGetPhoto } = usePhotoStorage();
 
+  const projectConfig = useProjectConfig();
+  const { hiddenFields, setHiddenFields } = useHiddenFields(activeProject?.id ?? null);
+
   const { dark, toggle: toggleTheme } = useTheme();
   const [notification, setNotification] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [fieldsModalOpen, setFieldsModalOpen] = useState(false);
   const [addingProject, setAddingProject] = useState(false);
   const [cacheInfo, setCacheInfo] = useState(null);
   const importZipRef = useRef(null);
@@ -420,6 +427,30 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
           </section>
         )}
 
+        {/* ── Настройка полей формы ── */}
+        {activeProject && (
+          <section className={s.section}>
+            <div className={s.sectionHead}>
+              <h2 className={s.sectionTitle}>Поля формы и Excel</h2>
+            </div>
+            <div className={s.calcBody}>
+              <p className={s.description}>
+                Скройте неиспользуемые поля — они исчезнут из формы и столбцов экспорта.
+                {hiddenFields.size > 0 && (
+                  <strong> Скрыто: {hiddenFields.size}.</strong>
+                )}
+              </p>
+              <button
+                className={s.editVarsBtn}
+                type="button"
+                onClick={() => setFieldsModalOpen(true)}
+              >
+                ☰ Настроить поля
+              </button>
+            </div>
+          </section>
+        )}
+
         {/* ── Внешний вид ── */}
         <section className={s.section}>
           <div className={s.sectionHead}>
@@ -495,6 +526,20 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
           onClose={handleModalClose}
           variables={vars}
           onSave={handleModalSave}
+        />
+      )}
+
+      {activeProject && (
+        <FieldVisibilityModal
+          open={fieldsModalOpen}
+          onClose={() => setFieldsModalOpen(false)}
+          config={projectConfig}
+          hiddenFields={hiddenFields}
+          onSave={(next) => {
+            setHiddenFields(next);
+            setFieldsModalOpen(false);
+            notify("success", next.size > 0 ? `Скрыто полей: ${next.size}` : "Все поля активны");
+          }}
         />
       )}
     </div>

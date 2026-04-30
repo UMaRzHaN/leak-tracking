@@ -23,6 +23,7 @@ export const STORAGE_KEYS = {
   ========================= */
   PROJECT_VARS: (projectId) => `${APP_PREFIX}:${projectId}:vars_${VERSION}`,
   PROJECT_DATA: (projectId) => `${APP_PREFIX}:${projectId}:data_${VERSION}`,
+  PROJECT_HIDDEN_FIELDS: (projectId) => `${APP_PREFIX}:${projectId}:hidden_fields_${VERSION}`,
 
   /* =========================
      LEGACY (migration only — не использовать в новом коде)

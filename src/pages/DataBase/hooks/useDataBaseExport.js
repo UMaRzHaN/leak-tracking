@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { STATUS, STATUS_META } from "../../../utils/status";
-import { useProjectConfig } from "../../../app/settings/useProjectConfig";
+import { useEffectiveProjectConfig } from "../../../app/settings/useEffectiveProjectConfig";
 import { usePhotoStorage } from "../../../hooks/usePhotoStorage";
 import { useProject } from "../../../app/settings/ProjectContext";
 
@@ -34,7 +34,7 @@ function prepareRows(data) {
 }
 
 export function useDataBaseExport({ displayed, notify }) {
-  const projectConfig = useProjectConfig();
+  const projectConfig = useEffectiveProjectConfig();
   const { headers: excelHeaders, keysOrder: excelKeys } =
     projectConfig.export.excel;
   const { getPhoto: idbGetPhoto } = usePhotoStorage();

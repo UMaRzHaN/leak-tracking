@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo, useCallback } from "react";
 import { useStepValidation } from "./hooks/useStepValidation";
 import { useProjectConfig } from "../../app/settings/useProjectConfig";
+import { useEffectiveProjectConfig } from "../../app/settings/useEffectiveProjectConfig";
 import { useVoiceControl } from "../../app/hooks/useVoiceControl";
 import { useLeakFormContext } from "../../context/LeakFormContext";
 import AddLeakHeader from "./Header/AddLeakHeader";
@@ -22,16 +23,17 @@ export default function LeakForm({
   isSaving,
 }) {
   const { form, errors, handle, setErrors, setForm } = useLeakFormContext();
-  const projectConfig = useProjectConfig();
+  const rawConfig = useProjectConfig();          // full config — for data processing (numeric, copyable)
+  const projectConfig = useEffectiveProjectConfig(); // filtered config — for display (steps, excel)
   const { activeProject } = useProject();
-  const { vars } = useProjectVars(activeProject?.id ?? null, projectConfig.vars);
+  const { vars } = useProjectVars(activeProject?.id ?? null, rawConfig.vars);
 
   const STEPS = useMemo(() => projectConfig.steps.steps ?? [], [projectConfig]);
 
   const COPY_KEYS = useMemo(() => {
-    const raw = projectConfig.system?.copyable ?? [];
+    const raw = rawConfig.system?.copyable ?? [];
     return raw.map((f) => (typeof f === "string" ? f : f.key));
-  }, [projectConfig]);
+  }, [rawConfig]);
 
   const [step, setStep] = useState(1);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -89,9 +91,9 @@ export default function LeakForm({
      FINAL SAVE
   ====================================== */
   const NUMBER_KEYS = useMemo(() => {
-    const raw = projectConfig?.system?.numeric ?? [];
+    const raw = rawConfig?.system?.numeric ?? [];
     return new Set(raw.map((f) => (typeof f === "string" ? f : f.key)));
-  }, [projectConfig]);
+  }, [rawConfig]);
 
   const commitSave = useCallback(
     (data) => {
