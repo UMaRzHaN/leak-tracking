@@ -1,267 +1,54 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import { isNative } from "../../utils/platform";
-import { Directory, Filesystem } from "@capacitor/filesystem";
-import { useProject } from "../../app/settings/ProjectContext";
+import { useState, useCallback, useEffect } from "react";
 import { useProjectVars } from "../../app/settings/useProjectVars";
 import { useProjectData } from "../../app/hooks/useProjectData";
-import { useLeakFormContext } from "../../context/LeakFormContext";
-import { useTheme } from "../../app/hooks/useTheme";
 import { usePhotoStorage } from "../../hooks/usePhotoStorage";
-import { PROJECT_META } from "../../configs/projects";
-import { getMapCacheInfo, clearMapCache } from "../../services/maps/tileCache";
+import { useTheme } from "../../app/hooks/useTheme";
 import { useProjectConfig } from "../../app/settings/useProjectConfig";
 import { useHiddenFields } from "../../app/settings/useHiddenFields";
+import { getMapCacheInfo, clearMapCache } from "../../services/maps/tileCache";
 import PageHeader from "../../components/PageHeader/PageHeader";
 import SettingsModal from "../../components/SettingsModal/SettingsModal";
 import FieldVisibilityModal from "../../components/FieldVisibilityModal/FieldVisibilityModal";
 import Notification from "../../components/Notification/Notification";
 import ProjectList from "./components/ProjectList";
 import AddProjectForm from "./components/AddProjectForm";
+import EmissionsSummarySection from "./components/EmissionsSummarySection";
+import { useProjectActions } from "./hooks/useProjectActions";
+import { useBackupActions } from "./hooks/useBackupActions";
 import s from "./Settings.module.scss";
 
 export default function Settings({ setPage, prevPage, clearDatabase, onImportZip }) {
-  const {
-    projects,
-    activeProject,
-    addProject,
-    selectProject,
-    renameProject,
-    applyFolderRename,
-    removeProject,
-  } = useProject();
-
-  const { form, clearForm } = useLeakFormContext();
-  const isFormDirty = Object.values(form).some((v) => v !== null && v !== "" && v !== undefined);
-
-  const { vars, setVars } = useProjectVars(activeProject?.id ?? null);
-  const { data } = useProjectData();
-  const { getPhoto: idbGetPhoto } = usePhotoStorage();
-
-  const projectConfig = useProjectConfig();
-  const { hiddenFields, setHiddenFields } = useHiddenFields(activeProject?.id ?? null);
-
-  const { dark, toggle: toggleTheme } = useTheme();
   const [notification, setNotification] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [fieldsModalOpen, setFieldsModalOpen] = useState(false);
   const [addingProject, setAddingProject] = useState(false);
   const [cacheInfo, setCacheInfo] = useState(null);
-  const importZipRef = useRef(null);
+
+  const notify = useCallback((type, message) => setNotification({ type, message }), []);
 
   useEffect(() => {
     getMapCacheInfo().then(setCacheInfo).catch(() => setCacheInfo({ count: 0, sizeMB: 0 }));
   }, []);
 
-  const notify = useCallback((type, message) => setNotification({ type, message }), []);
+  const { projects, activeProject, handleSelect, handleRename, handleRemove, handleAdd } =
+    useProjectActions({ setCacheInfo, notify });
 
-  /* =========================
-     PROJECT ACTIONS
-  ========================= */
-  const handleSelect = useCallback(
-    async (id) => {
-      if (id === activeProject?.id) return;
+  const { vars, setVars } = useProjectVars(activeProject?.id ?? null);
+  const { data } = useProjectData();
+  const { getPhoto: idbGetPhoto } = usePhotoStorage();
+  const projectConfig = useProjectConfig();
+  const { hiddenFields, setHiddenFields } = useHiddenFields(activeProject?.id ?? null);
+  const { dark, toggle: toggleTheme } = useTheme();
 
-      if (isFormDirty) {
-        const ok = window.confirm(
-          "Переключить проект? Форма добавления утечки будет сброшена.",
-        );
-        if (!ok) return;
-      }
+  const { importZipRef, handleExportZip, handleImportZip } = useBackupActions({
+    data,
+    idbGetPhoto,
+    activeProject,
+    vars,
+    onImportZip,
+    notify,
+  });
 
-      selectProject(id);
-      clearForm?.();
-      await clearMapCache();
-      setCacheInfo({ count: 0, sizeMB: 0 });
-      notify("info", "Проект переключён, кэш карты очищен");
-    },
-    [activeProject, selectProject, clearForm, notify, isFormDirty],
-  );
-
-  const handleRename = useCallback(
-    async (id, name) => {
-      // Обновляет только display name. folderName обновится в applyFolderRename
-      // после завершения FS-операций, чтобы useProjectData не читал новый путь раньше времени.
-      const result = renameProject(id, name);
-      if (!result) return;
-      const { oldFolderName, newFolderName } = result;
-
-      if (isNative && oldFolderName !== newFolderName) {
-        await Filesystem.rename({
-          from: `LeakReports/${oldFolderName}`,
-          to: `LeakReports/${newFolderName}`,
-          directory: Directory.Data,
-        }).catch(() => {});
-
-        // Патчим пути к фото в data.json — они содержат folderName в строке пути
-        const dataPath = `LeakReports/${newFolderName}/data/data.json`;
-        const fileResult = await Filesystem.readFile({
-          path: dataPath,
-          directory: Directory.Data,
-          encoding: "utf8",
-        }).catch(() => null);
-
-        if (fileResult) {
-          try {
-            const leaks = JSON.parse(fileResult.data || "[]");
-            const oldPrefix = `data://LeakReports/${oldFolderName}/`;
-            const newPrefix = `data://LeakReports/${newFolderName}/`;
-            const updated = leaks.map((l) => ({
-              ...l,
-              ...(l.photo?.startsWith(oldPrefix) ? { photo: l.photo.replace(oldPrefix, newPrefix) } : {}),
-              ...(l.photo_after?.startsWith(oldPrefix) ? { photo_after: l.photo_after.replace(oldPrefix, newPrefix) } : {}),
-            }));
-            await Filesystem.writeFile({
-              path: dataPath,
-              directory: Directory.Data,
-              data: JSON.stringify(updated),
-              encoding: "utf8",
-            });
-          } catch {
-            // data.json не распарсился — пропускаем, не критично
-          }
-        }
-
-        await Filesystem.rename({
-          from: oldFolderName,
-          to: newFolderName,
-          directory: Directory.Documents,
-        }).catch(() => {});
-      }
-
-      // Теперь обновляем folderName в стейте — useProjectData начнёт читать новый путь
-      if (oldFolderName !== newFolderName) {
-        applyFolderRename(id, newFolderName);
-      }
-
-      notify("success", "Название сохранено");
-    },
-    [renameProject, applyFolderRename, notify],
-  );
-
-  const handleRemove = useCallback(
-    (id) => {
-      const target = projects.find((p) => p.id === id);
-      if (!target) return;
-      removeProject(id);
-      notify("warning", `Проект «${target.name}» удалён`);
-    },
-    [projects, removeProject, notify],
-  );
-
-  const handleAdd = useCallback(
-    (name, type) => {
-      addProject(name, type);
-      setAddingProject(false);
-      notify("success", `Проект «${name || PROJECT_META[type].title}» создан`);
-    },
-    [addProject, notify],
-  );
-
-  /* =========================
-     BACKUP / RESTORE
-  ========================= */
-  const handleExportZip = useCallback(async () => {
-    if (!data.length) { notify("warning", "Нет данных для экспорта"); return; }
-    const folder = activeProject?.folderName ?? "backup";
-    const fileName = `${folder}.zip`;
-    try {
-      const { buildProjectBackupZip } = await import("../../services/export/backup");
-      const blob = await buildProjectBackupZip({
-        leaks: data,
-        idbGet: idbGetPhoto,
-        project: activeProject,
-        vars,
-      });
-
-      if (isNative) {
-        const reader = new FileReader();
-        const base64 = await new Promise((res, rej) => {
-          reader.onload = () => res(reader.result.split(",")[1]);
-          reader.onerror = rej;
-          reader.readAsDataURL(blob);
-        });
-        await Filesystem.mkdir({
-          path: folder,
-          directory: Directory.Documents,
-          recursive: true,
-        }).catch(() => {});
-        await Filesystem.writeFile({
-          path: `${folder}/${fileName}`,
-          directory: Directory.Documents,
-          data: base64,
-        });
-        notify("success", `ZIP сохранён в Документы/${folder}/`);
-      } else {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = fileName;
-        a.click();
-        URL.revokeObjectURL(url);
-        notify("success", `ZIP-архив скачан (${data.length} записей)`);
-      }
-    } catch (err) {
-      notify("error", "Ошибка экспорта: " + err.message);
-    }
-  }, [data, idbGetPhoto, activeProject, vars, notify]);
-
-  const handleImportZip = useCallback(async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const VALID_TYPES = ["upstream", "midstream", "downstream"];
-    const detectTypeFromFileName = (str) => {
-      const lower = str.toLowerCase();
-      if (lower.includes("downstream")) return "downstream";
-      if (lower.includes("midstream")) return "midstream";
-      if (lower.includes("upstream")) return "upstream";
-      return null;
-    };
-
-    try {
-      const { peekBackupZip } = await import("../../services/export/backup");
-      const peek = await peekBackupZip(file);
-      const metaProject = peek.meta?.project;
-
-      // Уровень 1: project.json внутри архива
-      // Уровень 2: детектирование по полям записей
-      // Уровень 3: ключевые слова в имени файла
-      const resolvedName =
-        metaProject?.name ||
-        file.name.replace(/\.zip$/i, "");
-
-      const resolvedType =
-        (metaProject?.type && VALID_TYPES.includes(metaProject.type) ? metaProject.type : null) ||
-        peek.detectedType ||
-        detectTypeFromFileName(file.name);
-
-      if (!resolvedType) {
-        notify("error", `Не удалось определить тип проекта из файла «${file.name}». Переименуйте файл, добавив в имя upstream / midstream / downstream.`);
-        e.target.value = "";
-        return;
-      }
-
-      const typeLabel = { upstream: "Добыча", midstream: "Транспортировка", downstream: "Переработка" }[resolvedType];
-      const source = metaProject?.type ? "project.json" : peek.detectedType ? "данных записей" : "имени файла";
-      const ok = window.confirm(
-        `Импортировать проект?\n\nНазвание: ${resolvedName}\nТип: ${typeLabel} (${resolvedType})\nЗаписей: ${peek.leaks.length}\nОпределено по: ${source}\n\nБудет создан новый проект.`,
-      );
-      if (!ok) { e.target.value = ""; return; }
-
-      const fallback = metaProject ? undefined : { name: resolvedName, type: resolvedType };
-      const result = await onImportZip(file, fallback);
-      if (!result?.project) throw new Error("Не удалось получить данные проекта из файла");
-      notify("success", `Импортирован проект «${result.project.name}» (${result.leakCount} записей)`);
-    } catch (err) {
-      notify("error", "Ошибка импорта: " + err.message);
-    }
-
-    e.target.value = "";
-  }, [onImportZip, notify]);
-
-  /* =========================
-     VARS MODAL
-  ========================= */
   const handleModalSave = useCallback(
     (nextVars) => {
       setVars(nextVars);
@@ -271,10 +58,13 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
     [setVars, notify],
   );
 
-  const handleModalClose = useCallback((discarded) => {
-    setModalOpen(false);
-    if (discarded) notify("warning", "Изменения отменены");
-  }, [notify]);
+  const handleModalClose = useCallback(
+    (discarded) => {
+      setModalOpen(false);
+      if (discarded) notify("warning", "Изменения отменены");
+    },
+    [notify],
+  );
 
   const handleClearMapCache = useCallback(async () => {
     const ok = window.confirm("Очистить кэш карты? Тайлы будут перекачаны при следующем открытии карты.");
@@ -293,17 +83,11 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
     notify("warning", "База данных очищена");
   }, [clearDatabase, notify]);
 
-  /* =========================
-     RENDER
-  ========================= */
   return (
     <div className={s.settings}>
       <PageHeader title="Настройки" onBack={() => setPage?.(prevPage ?? "")} />
 
-      <Notification
-        notification={notification}
-        onClose={() => setNotification(null)}
-      />
+      <Notification notification={notification} onClose={() => setNotification(null)} />
 
       <div className={s.content}>
 
@@ -320,7 +104,7 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
 
           {addingProject && (
             <AddProjectForm
-              onConfirm={handleAdd}
+              onConfirm={(name, type) => { handleAdd(name, type); setAddingProject(false); }}
               onCancel={() => setAddingProject(false)}
             />
           )}
@@ -372,39 +156,7 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
         )}
 
         {/* ── Суммарные потери по проекту ── */}
-        {activeProject && data.length > 0 && (() => {
-          const active = data.filter((l) => l.status !== "resolved");
-          const totalMethane = active.reduce((sum, l) => sum + (Number(l.Total_Annual_Methane_Loss_m3_y) || 0), 0);
-          const totalCO2 = active.reduce((sum, l) => sum + (Number(l.Emissions_t_CO2eq_year) || 0), 0);
-          if (totalMethane === 0 && totalCO2 === 0) return null;
-          const fmt = (n) => n >= 1000
-            ? `${(n / 1000).toLocaleString("ru-RU", { maximumFractionDigits: 1 })} тыс.`
-            : n.toLocaleString("ru-RU", { maximumFractionDigits: 1 });
-          return (
-            <section className={s.section}>
-              <div className={s.sectionHead}>
-                <h2 className={s.sectionTitle}>Потери проекта (открытые)</h2>
-              </div>
-              <div className={s.emissionsGrid}>
-                <div className={s.emissionsCard}>
-                  <span className={s.emissionsVal}>{fmt(totalMethane)}</span>
-                  <span className={s.emissionsUnit}>м³/год</span>
-                  <span className={s.emissionsLabel}>Потери газа</span>
-                </div>
-                <div className={s.emissionsCard}>
-                  <span className={s.emissionsVal}>{fmt(totalCO2)}</span>
-                  <span className={s.emissionsUnit}>т CO₂-экв/год</span>
-                  <span className={s.emissionsLabel}>Выбросы</span>
-                </div>
-                <div className={s.emissionsCard}>
-                  <span className={s.emissionsVal}>{active.length}</span>
-                  <span className={s.emissionsUnit}>записей</span>
-                  <span className={s.emissionsLabel}>Активных утечек</span>
-                </div>
-              </div>
-            </section>
-          );
-        })()}
+        {activeProject && data.length > 0 && <EmissionsSummarySection data={data} />}
 
         {/* ── Параметры расчёта ── */}
         {activeProject && (
@@ -416,11 +168,7 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
               <p className={s.description}>
                 Настройки для проекта <strong>{activeProject.name}</strong>
               </p>
-              <button
-                className={s.editVarsBtn}
-                type="button"
-                onClick={() => setModalOpen(true)}
-              >
+              <button className={s.editVarsBtn} type="button" onClick={() => setModalOpen(true)}>
                 ⚙ Редактировать параметры
               </button>
             </div>
@@ -436,15 +184,9 @@ export default function Settings({ setPage, prevPage, clearDatabase, onImportZip
             <div className={s.calcBody}>
               <p className={s.description}>
                 Скройте неиспользуемые поля — они исчезнут из формы и столбцов экспорта.
-                {hiddenFields.size > 0 && (
-                  <strong> Скрыто: {hiddenFields.size}.</strong>
-                )}
+                {hiddenFields.size > 0 && <strong> Скрыто: {hiddenFields.size}.</strong>}
               </p>
-              <button
-                className={s.editVarsBtn}
-                type="button"
-                onClick={() => setFieldsModalOpen(true)}
-              >
+              <button className={s.editVarsBtn} type="button" onClick={() => setFieldsModalOpen(true)}>
                 ☰ Настроить поля
               </button>
             </div>
