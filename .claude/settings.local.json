@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(cat)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(xargs -I {} grep -l \"memo\\\\|useMemo\\\\|useCallback\" {})",
+      "Bash(npx vite *)",
+      "Bash(xargs wc *)",
+      "Bash(git add *)"
     ]
   }
 }
