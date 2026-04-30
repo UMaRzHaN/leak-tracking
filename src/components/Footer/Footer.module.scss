@@ -1,7 +1,7 @@
 .nav {
   position: fixed;
   left: 0; right: 0; bottom: 0;
-  z-index: 800;
+  z-index: var(--z-nav);
   height: var(--app-footer);
 
   display: flex;
@@ -10,7 +10,7 @@
 
   background: var(--c-surface);
   border-top: 1px solid var(--c-border);
-  box-shadow: 0 -4px 16px rgba(0,0,0,.06);
+  box-shadow: var(--shadow-nav);
 
   @supports (padding-bottom: env(safe-area-inset-bottom)) {
     padding-bottom: env(safe-area-inset-bottom);
@@ -96,8 +96,8 @@
 
   background: linear-gradient(135deg, var(--c-blue), #1a3ac0);
   border: none;
-  border-radius: 16px;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, .45);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-fab);
 
   transition: transform var(--t-fast), box-shadow var(--t-fast);
 

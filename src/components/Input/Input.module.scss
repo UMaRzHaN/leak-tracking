@@ -63,7 +63,7 @@
   &:focus         {
     border-color: var(--c-blue);
     background: var(--c-surface);
-    box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    box-shadow: var(--focus-ring);
   }
 }
 
@@ -215,7 +215,7 @@
   &:focus {
     background: var(--c-surface);
     border-color: var(--c-blue);
-    box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    box-shadow: var(--focus-ring);
   }
 
   &:not(:placeholder-shown):not(:focus) {

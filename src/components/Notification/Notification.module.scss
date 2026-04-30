@@ -7,7 +7,7 @@
   top: var(--app-header, 60px);
   left: 0;
   right: 0;
-  z-index: 950;
+  z-index: var(--z-notification);
 
   display: flex;
   align-items: center;
@@ -16,7 +16,7 @@
   padding: 13px 16px;
   font-size: 14px;
   font-weight: 500;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-md);
   animation: slideDown 0.25s ease;
 }
 

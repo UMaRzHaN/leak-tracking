@@ -23,7 +23,7 @@
 
 .hintRight {
   left: 0;
-  background: linear-gradient(to right, rgba(37, 99, 235, 0.2), transparent);
+  background: linear-gradient(to right, var(--c-blue-overlay), transparent);
   color: var(--c-blue);
 }
 
@@ -32,15 +32,15 @@
   right: 0;
 
   &[data-next="in_progress"] {
-    background: linear-gradient(to left, rgba(217, 119, 6, 0.18), transparent);
+    background: linear-gradient(to left, var(--c-progress-border), transparent);
     color: var(--c-progress);
   }
   &[data-next="resolved"] {
-    background: linear-gradient(to left, rgba(5, 150, 105, 0.18), transparent);
+    background: linear-gradient(to left, var(--c-resolved-border), transparent);
     color: var(--c-resolved);
   }
   &[data-next="open"] {
-    background: linear-gradient(to left, rgba(37, 99, 235, 0.18), transparent);
+    background: linear-gradient(to left, var(--c-blue-overlay), transparent);
     color: var(--c-blue);
   }
 }
@@ -90,17 +90,17 @@
 
   /* priority stripe */
   &[data-priority="critical"]::before {
-    background: #dc2626;
+    background: var(--c-open);
     animation: urgencyPulse 1.8s ease-in-out infinite;
   }
   &[data-priority="high"]::before {
-    background: #d97706;
+    background: var(--c-progress);
   }
   &[data-priority="medium"]::before {
-    background: #2563eb;
+    background: var(--c-blue);
   }
   &[data-priority="low"]::before {
-    background: #059669;
+    background: var(--c-resolved);
   }
   &[data-priority="none"]::before {
     background: var(--c-border);
@@ -203,7 +203,7 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 2px 8px;
-  border-radius: 20px;
+  border-radius: var(--r-pill);
   border: 1.5px solid;
   white-space: nowrap;
   flex-shrink: 0;
@@ -218,7 +218,7 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   padding: 2px 6px;
-  border-radius: 20px;
+  border-radius: var(--r-pill);
   border: 1.5px solid;
   white-space: nowrap;
   flex-shrink: 0;
@@ -340,7 +340,7 @@
   color: var(--c-text2);
   background: var(--c-bg);
   border: 1px solid var(--c-border);
-  border-radius: 20px;
+  border-radius: var(--r-pill);
   padding: 2px 9px;
   white-space: nowrap;
 }
@@ -351,7 +351,7 @@
   color: var(--c-resolved);
   background: var(--c-resolved-bg);
   border: 1px solid var(--c-resolved-border);
-  border-radius: 20px;
+  border-radius: var(--r-pill);
   padding: 2px 9px;
   white-space: nowrap;
 }
@@ -362,7 +362,7 @@
   color: var(--c-blue);
   background: var(--c-blue-dim);
   border: 1px solid rgba(37, 99, 235, 0.25);
-  border-radius: 20px;
+  border-radius: var(--r-pill);
   padding: 2px 9px;
   white-space: nowrap;
 }
