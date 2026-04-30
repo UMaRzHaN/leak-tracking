@@ -1,4 +1,6 @@
-import JSZip from "jszip";
+// Dynamic imports for heavy export libraries - loaded on-demand only
+const getJSZip = () => import("jszip");
+
 import { getPhotoSrc } from "../photoService";
 import { validateBackup, validateProjectBackupMeta } from "./backupSchema";
 import { STORAGE_KEYS } from "../../app/settings/storageKeys";
@@ -30,6 +32,8 @@ async function resolveBase64(path, idbGet) {
 }
 
 export async function buildBackupZip(leaks, idbGet) {
+  // Dynamic import to avoid bundling JSZip in initial load
+  const JSZip = (await getJSZip()).default;
   const zip = new JSZip();
   const photosFolder = zip.folder("photos");
 
@@ -72,6 +76,8 @@ function buildProjectMeta({ project, vars } = {}) {
 }
 
 export async function buildProjectBackupZip({ leaks, idbGet, project, vars }) {
+  // Dynamic import to avoid bundling JSZip in initial load
+  const JSZip = (await getJSZip()).default;
   const zip = new JSZip();
   const photosFolder = zip.folder("photos");
 
@@ -133,6 +139,8 @@ export function detectProjectTypeFromLeaks(leaks) {
 }
 
 export async function peekBackupZip(zipFile) {
+  // Dynamic import to avoid bundling JSZip in initial load
+  const JSZip = (await getJSZip()).default;
   const zip = await JSZip.loadAsync(zipFile);
 
   const jsonFile = zip.file("backup.json");
@@ -197,6 +205,8 @@ export async function importProjectZip(zipFile, ctx) {
     metaFallback,
   } = ctx;
 
+  // Dynamic import to avoid bundling JSZip in initial load
+  const JSZip = (await getJSZip()).default;
   const zip = await JSZip.loadAsync(zipFile);
 
   // ── backup.json ────────────────────────────────────────────────────────────

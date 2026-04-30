@@ -5,11 +5,10 @@ import Header from "../components/Header/Header";
 import Footer from "../components/Footer/Footer";
 // import OfflineBanner from "../components/OfflineBanner/OfflineBanner";
 
-import AddLeak from "../pages/AddLeak/AddLeak";
-import MainPage from "../pages/MainPage/MainPage";
-
 const Settings = lazy(() => import("../pages/Settings/Settings"));
-const ProjectSetupScreen = lazy(() => import("../pages/ProjectSetup/ProjectSetupScreen"));
+const ProjectSetupScreen = lazy(
+  () => import("../pages/ProjectSetup/ProjectSetupScreen"),
+);
 
 import { useProject } from "./settings/ProjectContext";
 import { useProjectData } from "./hooks/useProjectData";
@@ -19,8 +18,10 @@ import { cleanupLegacyLeaks } from "./migrations/cleanupLegacyLeaks";
 import { usePhotoStorage } from "../hooks/usePhotoStorage";
 import { STATUS } from "../utils/status";
 
+const AddLeak = lazy(() => import("../pages/AddLeak/AddLeak"));
+const MainPage = lazy(() => import("../pages/MainPage/MainPage"));
 const DataBase = lazy(() => import("../pages/DataBase/DataBase"));
-const MapPage  = lazy(() => import("../pages/MapPage/MapPage"));
+const MapPage = lazy(() => import("../pages/MapPage/MapPage"));
 
 export default function App() {
   /* =========================
@@ -72,10 +73,18 @@ export default function App() {
   const savePhotoRef = useRef(savePhoto);
   const photoReadyRef = useRef(photoReady);
   const activeProjectIdRef = useRef(activeProject?.id ?? null);
-  useEffect(() => { saveRef.current = save; }, [save]);
-  useEffect(() => { savePhotoRef.current = savePhoto; }, [savePhoto]);
-  useEffect(() => { photoReadyRef.current = photoReady; }, [photoReady]);
-  useEffect(() => { activeProjectIdRef.current = activeProject?.id ?? null; }, [activeProject?.id]);
+  useEffect(() => {
+    saveRef.current = save;
+  }, [save]);
+  useEffect(() => {
+    savePhotoRef.current = savePhoto;
+  }, [savePhoto]);
+  useEffect(() => {
+    photoReadyRef.current = photoReady;
+  }, [photoReady]);
+  useEffect(() => {
+    activeProjectIdRef.current = activeProject?.id ?? null;
+  }, [activeProject?.id]);
   const gcRanRef = useRef(false);
 
   // Сбрасываем флаг при смене проекта, чтобы GC запустился снова
@@ -123,24 +132,36 @@ export default function App() {
   };
 
   /** First-run (ProjectSetupScreen): supports name/type fallback when ZIP has no project.json */
-  const handleSetupImportZip = useCallback(async (file, fallback = {}) => {
-    const { importProjectZip } = await import("../services/export/backup");
-    await importProjectZip(file, { ...importCtx, metaFallback: fallback });
-  // importCtx values are stable refs — addProject is the only real dep
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addProject]);
+  const handleSetupImportZip = useCallback(
+    async (file, fallback = {}) => {
+      const { importProjectZip } = await import("../services/export/backup");
+      await importProjectZip(file, { ...importCtx, metaFallback: fallback });
+      // importCtx values are stable refs — addProject is the only real dep
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [addProject],
+  );
 
   /** In-app import (Settings): always creates a new project, optional fallback for legacy ZIPs */
-  const handleImportZip = useCallback(async (file, fallback) => {
-    const { importProjectZip } = await import("../services/export/backup");
-    return await importProjectZip(file, { ...importCtx, metaFallback: fallback });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addProject]);
+  const handleImportZip = useCallback(
+    async (file, fallback) => {
+      const { importProjectZip } = await import("../services/export/backup");
+      return await importProjectZip(file, {
+        ...importCtx,
+        metaFallback: fallback,
+      });
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [addProject],
+  );
 
   if (!isConfigured) {
     return (
       <Suspense fallback={null}>
-        <ProjectSetupScreen onComplete={configure} onImportZip={handleSetupImportZip} />
+        <ProjectSetupScreen
+          onComplete={configure}
+          onImportZip={handleSetupImportZip}
+        />
       </Suspense>
     );
   }

@@ -23,7 +23,8 @@ export default defineConfig({
             '@capacitor-community/speech-recognition',
           ],
           'vendor-zod': ['zod'],
-          'vendor-export': ['exceljs', 'jszip'],
+          // exceljs & jszip removed - now loaded via dynamic import() on-demand
+          // they will code-split automatically when imported dynamically
         },
       },
     },

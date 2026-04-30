@@ -1,5 +1,7 @@
-import ExcelJS from "exceljs";
-import JSZip from "jszip";
+// Dynamic imports for heavy export libraries - loaded on-demand only
+const getExcelJS = () => import("exceljs");
+const getJSZip = () => import("jszip");
+
 import { isNative } from "../../utils/platform";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { getPhotoSrc } from "../photoService";
@@ -80,7 +82,8 @@ export async function exportToExcelZip(
     photoMap[`${e.leakIndex}:${e.key}`] = e.photoFileName;
   }
 
-  // Build xlsx with ExcelJS
+  // Build xlsx with ExcelJS - dynamic import to avoid bundling
+  const ExcelJS = (await getExcelJS()).default;
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Утечки");
 
@@ -143,7 +146,8 @@ export async function exportToExcelZip(
   // Generate xlsx buffer
   const xlsxBuffer = await workbook.xlsx.writeBuffer();
 
-  // Build ZIP
+  // Build ZIP - dynamic import to avoid bundling
+  const JSZip = (await getJSZip()).default;
   const zip = new JSZip();
   zip.file(`${fileName}.xlsx`, xlsxBuffer);
   for (const e of photoEntries) {
