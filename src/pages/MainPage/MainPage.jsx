@@ -1,148 +1,29 @@
-import { useState, useMemo, useCallback } from "react";
+import { useMainPageActions } from "./hooks/useMainPageActions";
+import StatCard from "./components/StatCard";
+import EmptyState from "./components/EmptyState";
 import LeakDetailsSheet from "../../components/LeakDetailsSheet/LeakDetailsSheet";
 import LeakCardCompact from "../../components/LeakCardCompact/LeakCardCompact";
 import StatusPickerModal from "../../components/StatusPickerModal/StatusPickerModal";
 import ResolveModal from "../../components/ResolveModal/ResolveModal";
 import Notification from "../../components/Notification/Notification";
 import { STATUS, STATUS_META } from "../../utils/status";
-import { useProjectData } from "../../app/hooks/useProjectData";
-import { usePhotoStorage } from "../../hooks/usePhotoStorage";
-import { hapticSuccess } from "../../utils/haptics";
 import s from "./MainPage.module.scss";
 
-const RECENT_COUNT = 8;
-const ALL = "all";
-
 export default function MainPage({ setPage, data, setData }) {
-  const [activeLeak, setActiveLeak]       = useState(null);
-  const [statusFilter, setStatusFilter]   = useState(ALL);
-  const [pickerLeak, setPickerLeak]       = useState(null);
-  const [resolveLeak, setResolveLeak]     = useState(null);
-  const [notification, setNotification]   = useState(null);
-
-  const notify = useCallback((type, message) => setNotification({ type, message }), []);
-
-  const { save } = useProjectData();
-  const { deletePhoto } = usePhotoStorage();
-
-  /* ── Stats ── */
-  const stats = useMemo(() => ({
-    total:      data.length,
-    open:       data.filter((l) => (l.status ?? STATUS.OPEN) === STATUS.OPEN).length,
-    inProgress: data.filter((l) => l.status === STATUS.IN_PROGRESS).length,
-    resolved:   data.filter((l) => l.status === STATUS.RESOLVED).length,
-  }), [data]);
-
-  /* ── Toggle status filter ── */
-  const toggleFilter = (key) =>
-    setStatusFilter((prev) => (prev === key ? ALL : key));
-
-  /* ── Filtered recent: newest first ── */
-  const recent = useMemo(() => {
-    let list = [...data].sort((a, b) => b.id - a.id);
-    if (statusFilter !== ALL) {
-      list = list.filter((l) => (l.status ?? STATUS.OPEN) === statusFilter);
-    }
-    return list.slice(0, RECENT_COUNT);
-  }, [data, statusFilter]);
-
-  /* ── Swipe → open status picker ── */
-  const handlePickStatus = useCallback((leak) => setPickerLeak(leak), []);
-
-  const handleStatusSelect = useCallback(
-    async (newStatus) => {
-      const leak = pickerLeak;
-      setPickerLeak(null);
-      if (!leak || newStatus === leak.status) return;
-
-      if (newStatus === STATUS.RESOLVED) {
-        setResolveLeak(leak);
-        return;
-      }
-
-      const orphanedPhoto = (leak.status === STATUS.RESOLVED && leak.photo_after) ? leak.photo : null;
-      const next = data.map((r) =>
-        r.id === leak.id
-          ? {
-              ...r,
-              ...(r.status === STATUS.RESOLVED ? { photo: r.photo_after ?? r.photo, photo_after: null } : {}),
-              status: newStatus,
-              updatedAt: Date.now(),
-              history: [
-                ...(r.history ?? []),
-                { action: "status_changed", to: newStatus, date: new Date().toISOString() },
-              ],
-            }
-          : r,
-      );
-      try {
-        setData(next);
-        await save(next);
-        hapticSuccess();
-        if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
-      } catch (err) {
-        notify("error", "Ошибка сохранения: " + err.message);
-      }
-    },
-    [data, deletePhoto, notify, pickerLeak, save, setData],
-  );
-
-  const handleResolveConfirm = useCallback(
-    async ({ photo_after, materials_equipment, note }) => {
-      const leak = resolveLeak;
-      setResolveLeak(null);
-      if (!leak) return;
-
-      const now = new Date().toISOString();
-      const next = data.map((r) =>
-        r.id === leak.id
-          ? {
-              ...r,
-              status: STATUS.RESOLVED,
-              resolvedAt: Date.now(),
-              photo_after: photo_after ?? r.photo_after,
-              materials_equipment: materials_equipment ?? r.materials_equipment,
-              note: note ?? r.note,
-              updatedAt: Date.now(),
-              history: [
-                ...(r.history ?? []),
-                { action: "status_changed", to: STATUS.RESOLVED, date: now },
-              ],
-            }
-          : r,
-      );
-      try {
-        setData(next);
-        await save(next);
-        hapticSuccess();
-      } catch (err) {
-        notify("error", "Ошибка сохранения: " + err.message);
-      }
-    },
-    [data, notify, resolveLeak, save, setData],
-  );
-
-  const handleSaveLeak = async (updated) => {
-    const next = data.map((r) => (r.id === updated.id ? updated : r));
-    try {
-      await setData(next);
-      hapticSuccess();
-      setActiveLeak(null);
-    } catch (err) {
-      notify("error", "Ошибка сохранения: " + err.message);
-    }
-  };
-
-  const handleDeleteLeak = async (id) => {
-    const next = data.filter((r) => r.id !== id);
-    try {
-      await setData(next);
-      hapticSuccess();
-      setActiveLeak(null);
-    } catch (err) {
-      notify("error", "Ошибка удаления: " + err.message);
-    }
-  };
+  const {
+    activeLeak, setActiveLeak,
+    statusFilter, setStatusFilter,
+    pickerLeak, setPickerLeak,
+    resolveLeak, setResolveLeak,
+    notification, setNotification,
+    stats, recent, RECENT_COUNT, ALL,
+    toggleFilter,
+    handlePickStatus,
+    handleStatusSelect,
+    handleResolveConfirm,
+    handleSaveLeak,
+    handleDeleteLeak,
+  } = useMainPageActions({ data, setData });
 
   return (
     <div className={s.page}>
@@ -180,7 +61,7 @@ export default function MainPage({ setPage, data, setData }) {
         />
       </section>
 
-      {/* ── Filter label ── */}
+      {/* ── Active filter label ── */}
       {statusFilter !== ALL && (
         <div className={s.filterLabel}>
           <span
@@ -188,7 +69,9 @@ export default function MainPage({ setPage, data, setData }) {
             style={{ background: STATUS_META[statusFilter]?.color }}
           />
           {STATUS_META[statusFilter]?.label} — показаны последние {RECENT_COUNT}
-          <button className={s.filterClear} onClick={() => setStatusFilter(ALL)}>✕</button>
+          <button className={s.filterClear} onClick={() => setStatusFilter(ALL)}>
+            ✕
+          </button>
         </div>
       )}
 
@@ -196,7 +79,9 @@ export default function MainPage({ setPage, data, setData }) {
       <section className={s.section}>
         <div className={s.sectionHead}>
           <h2 className={s.sectionTitle}>
-            {statusFilter === ALL ? "Последние 8 записей" : STATUS_META[statusFilter]?.label}
+            {statusFilter === ALL
+              ? "Последние 8 записей"
+              : STATUS_META[statusFilter]?.label}
           </h2>
           {data.length > RECENT_COUNT && (
             <button className={s.viewAll} onClick={() => setPage("db")}>
@@ -242,36 +127,6 @@ export default function MainPage({ setPage, data, setData }) {
           onConfirm={handleResolveConfirm}
           onClose={() => setResolveLeak(null)}
         />
-      )}
-    </div>
-  );
-}
-
-/* ── StatCard ── */
-function StatCard({ value, label, accent, active, onClick }) {
-  return (
-    <button
-      className={`${s.statCard} ${active ? s.statActive : ""}`}
-      style={{ "--accent": accent }}
-      onClick={onClick}
-    >
-      <span className={s.statVal}>{value}</span>
-      <span className={s.statLabel}>{label}</span>
-      <span className={s.statBar} />
-    </button>
-  );
-}
-
-function EmptyState({ setPage, hasFilter }) {
-  return (
-    <div className={s.empty}>
-      <span className={s.emptyIcon}>{hasFilter ? "🔍" : "📋"}</span>
-      <p className={s.emptyTitle}>{hasFilter ? "Нет записей с таким статусом" : "Записей пока нет"}</p>
-      {!hasFilter && (
-        <>
-          <p className={s.emptyHint}>Добавьте первую утечку через кнопку + внизу</p>
-          <button className={s.emptyBtn} onClick={() => setPage("add")}>+ Добавить утечку</button>
-        </>
       )}
     </div>
   );
