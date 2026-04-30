@@ -19,10 +19,12 @@ export function useEffectiveProjectConfig() {
   return useMemo(() => {
     if (!hiddenFields.size) return config;
 
-    const filteredSteps = config.steps.steps.map((step) => ({
-      ...step,
-      fields: step.fields.filter((f) => !hiddenFields.has(f.key)),
-    }));
+    const filteredSteps = config.steps.steps
+      .map((step) => ({
+        ...step,
+        fields: step.fields.filter((f) => !hiddenFields.has(f.key)),
+      }))
+      .filter((step) => step.fields.length > 0);
 
     const { headers, keysOrder } = config.export.excel;
     const filteredPairs = keysOrder
