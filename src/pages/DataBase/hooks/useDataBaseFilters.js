@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { STATUS, STATUS_ORDER } from "../../../utils/status";
 import { filterNearbyLeaks } from "../../../utils/geoUtils";
 
@@ -16,6 +16,7 @@ const SEARCH_KEYS = [
 ];
 
 export function useDataBaseFilters({ data, coords }) {
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setFilter] = useState(ALL);
   const [priorityFilter, setPriorityFilter] = useState(ALL);
@@ -23,6 +24,11 @@ export function useDataBaseFilters({ data, coords }) {
   const [sortAsc, setSortAsc] = useState(false);
 
   const hasGps = Boolean(coords?.lat && coords?.lng);
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const displayed = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -52,19 +58,26 @@ export function useDataBaseFilters({ data, coords }) {
   }, [data, statusFilter, nearbyFilter, priorityFilter, search, hasGps, coords, sortAsc]);
 
   const counts = useMemo(() => {
-    const c = { all: data.length };
-    STATUS_ORDER.forEach((st) => {
-      c[st] = data.filter((l) => (l.status ?? STATUS.OPEN) === st).length;
-    });
-    c[NEARBY] = hasGps
-      ? filterNearbyLeaks(data, coords.lat, coords.lng, NEARBY_RADIUS_M).length
-      : 0;
+    const c = { all: data.length, [NEARBY]: 0 };
+    STATUS_ORDER.forEach((st) => { c[st] = 0; });
+
+    for (const l of data) {
+      const st = l.status ?? STATUS.OPEN;
+      if (c[st] !== undefined) c[st]++;
+      if (hasGps) {
+        const dlat = l.lat - coords.lat;
+        const dlng = l.lng - coords.lng;
+        // Fast equirectangular approximation sufficient for 500m radius check
+        const approxM = Math.sqrt(dlat * dlat + dlng * dlng) * 111_320;
+        if (approxM <= NEARBY_RADIUS_M) c[NEARBY]++;
+      }
+    }
     return c;
   }, [data, hasGps, coords]);
 
   return {
-    search,
-    setSearch,
+    search: searchInput,
+    setSearch: setSearchInput,
     statusFilter,
     setFilter,
     priorityFilter,

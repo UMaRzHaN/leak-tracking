@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { STATUS_META, STATUS_ORDER } from "../../../utils/status";
 import { PRIORITY_ORDER, PRIORITY_META } from "../../../utils/priority";
 import s from "../DataBase.module.scss";
 
 const ALL = "all";
 
-export default function FilterBar({
+function FilterBar({
   search,
   setSearch,
   statusFilter,
@@ -36,7 +36,7 @@ export default function FilterBar({
             onChange={(e) => setSearch(e.target.value)}
           />
           {search && (
-            <button className={s.clearSearch} onClick={() => setSearch("")}>
+            <button className={s.clearSearch} onClick={() => setSearch("")} type="button">
               ✕
             </button>
           )}
@@ -140,6 +140,8 @@ export default function FilterBar({
     </>
   );
 }
+
+export default memo(FilterBar);
 
 function FilterTab({ id, label, count, active, onSelect, color, bg, border }) {
   const isActive = active === id;

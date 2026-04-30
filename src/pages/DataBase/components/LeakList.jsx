@@ -1,9 +1,24 @@
+import { memo, useCallback } from "react";
 import VirtualizedLeakList from "../../../components/VirtualizedLeakList/VirtualizedLeakList";
 import LeakCardCompact from "../../../components/LeakCardCompact/LeakCardCompact";
 import { NEARBY, NEARBY_RADIUS_M } from "../hooks/useDataBaseFilters";
 import s from "../DataBase.module.scss";
 
-export default function LeakList({ items, search, statusFilter, selectedIds, onOpenDetails, onPickStatus, onToggleSelect }) {
+function LeakList({ items, search, statusFilter, selectedIds, onOpenDetails, onPickStatus, onToggleSelect }) {
+  const renderItem = useCallback(
+    (leak) => (
+      <LeakCardCompact
+        leak={leak}
+        onOpenDetails={onOpenDetails}
+        onPickStatus={onPickStatus}
+        nearbyDist={leak._nearbyDist}
+        selected={selectedIds.has(leak.id)}
+        onToggleSelect={onToggleSelect}
+      />
+    ),
+    [onOpenDetails, onPickStatus, selectedIds, onToggleSelect],
+  );
+
   if (!items.length) {
     return (
       <div className={s.empty}>
@@ -24,18 +39,10 @@ export default function LeakList({ items, search, statusFilter, selectedIds, onO
       <VirtualizedLeakList
         items={items}
         height={650}
-        renderItem={(leak) => (
-          <LeakCardCompact
-            key={leak.id}
-            leak={leak}
-            onOpenDetails={onOpenDetails}
-            onPickStatus={onPickStatus}
-            nearbyDist={leak._nearbyDist}
-            selected={selectedIds.has(leak.id)}
-            onToggleSelect={() => onToggleSelect(leak.id)}
-          />
-        )}
+        renderItem={renderItem}
       />
     </div>
   );
 }
+
+export default memo(LeakList);

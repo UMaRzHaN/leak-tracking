@@ -7,8 +7,9 @@ import Footer from "../components/Footer/Footer";
 
 import AddLeak from "../pages/AddLeak/AddLeak";
 import MainPage from "../pages/MainPage/MainPage";
-import Settings from "../pages/Settings/Settings";
-import ProjectSetupScreen from "../pages/ProjectSetup/ProjectSetupScreen";
+
+const Settings = lazy(() => import("../pages/Settings/Settings"));
+const ProjectSetupScreen = lazy(() => import("../pages/ProjectSetup/ProjectSetupScreen"));
 
 import { useProject } from "./settings/ProjectContext";
 import { useProjectData } from "./hooks/useProjectData";
@@ -137,7 +138,11 @@ export default function App() {
   }, [addProject]);
 
   if (!isConfigured) {
-    return <ProjectSetupScreen onComplete={configure} onImportZip={handleSetupImportZip} />;
+    return (
+      <Suspense fallback={null}>
+        <ProjectSetupScreen onComplete={configure} onImportZip={handleSetupImportZip} />
+      </Suspense>
+    );
   }
 
   const hideLayout = page === "add" || page === "settings";
@@ -175,16 +180,16 @@ export default function App() {
           />
         )}
 
-        {page === "settings" && (
-          <Settings
-            setPage={setPage}
-            prevPage={prevPage}
-            clearDatabase={clear}
-            onImportZip={handleImportZip}
-          />
-        )}
-
         <Suspense fallback={null}>
+          {page === "settings" && (
+            <Settings
+              setPage={setPage}
+              prevPage={prevPage}
+              clearDatabase={clear}
+              onImportZip={handleImportZip}
+            />
+          )}
+
           {page === "db" && (
             <DataBase data={data} setData={save} coords={coords} />
           )}

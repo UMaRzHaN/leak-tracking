@@ -11,7 +11,10 @@ import { migrateFromLegacy } from "./projectMigration";
 
 export { toFolderName };
 
-const ProjectContext = createContext(null);
+// Split into two contexts so action-only consumers don't re-render on data change
+// and data-only consumers don't re-render when stable action callbacks are recreated.
+const ProjectDataContext = createContext(null);
+const ProjectActionsContext = createContext(null);
 
 function initProjects() {
   const list = loadProjects();
@@ -154,14 +157,13 @@ export function ProjectProvider({ children }) {
     [activeId, changeProjectType],
   );
 
-  const value = useMemo(
+  const dataValue = useMemo(
+    () => ({ projects, activeProject, activeId, project, projectName, isConfigured }),
+    [projects, activeProject, activeId, project, projectName, isConfigured],
+  );
+
+  const actionsValue = useMemo(
     () => ({
-      projects,
-      activeProject,
-      activeId,
-      project,
-      projectName,
-      isConfigured,
       addProject,
       configure,
       selectProject,
@@ -171,18 +173,36 @@ export function ProjectProvider({ children }) {
       removeProject,
       changeProject,
     }),
-    [
-      projects, activeProject, activeId, project, projectName, isConfigured,
-      addProject, configure, selectProject, renameProject, applyFolderRename,
-      changeProjectType, removeProject, changeProject,
-    ],
+    [addProject, configure, selectProject, renameProject, applyFolderRename,
+     changeProjectType, removeProject, changeProject],
   );
 
-  return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
+  return (
+    <ProjectDataContext.Provider value={dataValue}>
+      <ProjectActionsContext.Provider value={actionsValue}>
+        {children}
+      </ProjectActionsContext.Provider>
+    </ProjectDataContext.Provider>
+  );
 }
 
+// Backward-compatible hook — merges both contexts, works everywhere useProject() was used.
 export function useProject() {
-  const context = useContext(ProjectContext);
-  if (!context) throw new Error("useProject must be used within ProjectProvider");
-  return context;
+  const data = useContext(ProjectDataContext);
+  const actions = useContext(ProjectActionsContext);
+  if (!data || !actions) throw new Error("useProject must be used within ProjectProvider");
+  return { ...data, ...actions };
+}
+
+// Granular hooks for components that only need one slice.
+export function useProjectData() {
+  const data = useContext(ProjectDataContext);
+  if (!data) throw new Error("useProjectData must be used within ProjectProvider");
+  return data;
+}
+
+export function useProjectActions() {
+  const actions = useContext(ProjectActionsContext);
+  if (!actions) throw new Error("useProjectActions must be used within ProjectProvider");
+  return actions;
 }

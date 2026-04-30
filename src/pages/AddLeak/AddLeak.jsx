@@ -39,9 +39,11 @@ export default function AddLeak({
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ── Autosave draft on every form change ── */
+  /* ── Autosave draft — debounced 1s to avoid thrashing localStorage ── */
   useEffect(() => {
-    if (Object.keys(form).length > 0) saveDraft(form, 1);
+    if (Object.keys(form).length === 0) return;
+    const t = setTimeout(() => saveDraft(form, 1), 1000);
+    return () => clearTimeout(t);
   }, [form, saveDraft]);
 
   /* ── Restore draft ── */

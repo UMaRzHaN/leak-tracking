@@ -15,6 +15,7 @@ export function useMapPage({ leaks, coords }) {
   const containerRef = useRef(null);
   const mapRef = useRef({ map: null, markersLayer: null, locateMe: null, destroy: null });
   const fittedRef = useRef(false);
+  const distanceCacheRef = useRef(new Map());
 
   const { leaks: normalizedLeaks, locations, label: locationLabel } =
     useActiveLocation(leaks);
@@ -43,16 +44,37 @@ export function useMapPage({ leaks, coords }) {
     setEnabledLocations((prev) => ({ ...prev, [location]: !prev[location] }));
   }, []);
 
+  // Stable filtered list used for markers — does NOT depend on mapCenter.
+  // Markers don't need distance sort; separating this prevents full marker
+  // re-draw on every pan (moveend).
+  const filteredLeaks = useMemo(
+    () => normalizedLeaks.filter((l) => enabledLocations[l._location]),
+    [normalizedLeaks, enabledLocations],
+  );
+
+  // Distance-sorted list for the detail panel only.
+  // Uses a cache keyed by leakId + rounded center (~111 m grid) to skip
+  // redundant haversine calls when the user pans back to the same area.
   const visibleLeaks = useMemo(() => {
-    const filtered = normalizedLeaks.filter((l) => enabledLocations[l._location]);
-    if (!mapCenter) return filtered;
-    return filtered
-      .map((l) => ({
-        ...l,
-        _distance: getDistanceMeters(mapCenter.lat, mapCenter.lng, l.lat, l.lng),
-      }))
+    if (!mapCenter) return filteredLeaks;
+
+    const rLat = Math.round(mapCenter.lat * 1000) / 1000;
+    const rLng = Math.round(mapCenter.lng * 1000) / 1000;
+    const cache = distanceCacheRef.current;
+
+    return filteredLeaks
+      .map((l) => {
+        const key = `${l.id}_${rLat}_${rLng}`;
+        let dist = cache.get(key);
+        if (dist === undefined) {
+          dist = getDistanceMeters(mapCenter.lat, mapCenter.lng, l.lat, l.lng);
+          if (cache.size > 2000) cache.delete(cache.keys().next().value);
+          cache.set(key, dist);
+        }
+        return { ...l, _distance: dist };
+      })
       .sort((a, b) => a._distance - b._distance);
-  }, [normalizedLeaks, enabledLocations, mapCenter]);
+  }, [filteredLeaks, mapCenter]);
 
   /* ── Map init ── */
   useEffect(() => {
@@ -94,13 +116,13 @@ export function useMapPage({ leaks, coords }) {
 
   /* ── Update markers + initial fitBounds ── */
   useEffect(() => {
-    addMarkers(mapRef.current.markersLayer, visibleLeaks);
+    addMarkers(mapRef.current.markersLayer, filteredLeaks);
 
     if (fittedRef.current) return;
     const map = mapRef.current.map;
     if (!map) return;
 
-    const valid = visibleLeaks.filter(
+    const valid = filteredLeaks.filter(
       (l) => Number.isFinite(l.lat) && Number.isFinite(l.lng),
     );
     if (valid.length === 0) return;
@@ -115,7 +137,7 @@ export function useMapPage({ leaks, coords }) {
         animate: false,
       });
     }
-  }, [visibleLeaks]);
+  }, [filteredLeaks]);
 
   /* ── Download tiles ── */
   const handleDownloadArea = useCallback(async () => {

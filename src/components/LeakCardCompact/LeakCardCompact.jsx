@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { useSwipeCard } from "../../hooks/useSwipeCard";
 import { STATUS_META } from "../../utils/status";
 import { PRIORITY_META } from "../../utils/priority";
@@ -25,7 +25,7 @@ function urgencyOf(createdAt, status) {
   return "danger";                                 // > 7 дн  → красная пульс
 }
 
-export default function LeakCardCompact({
+function LeakCardCompact({
   leak,
   onPickStatus,
   onOpenDetails,
@@ -110,7 +110,7 @@ export default function LeakCardCompact({
                 className={`${s.selectToggle} ${selected ? s.selectToggleActive : ""}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onToggleSelect();
+                  onToggleSelect(leak.id);
                 }}
                 aria-pressed={selected}
                 aria-label={selected ? "Убрать из выбора" : "Выбрать утечку"}
@@ -217,3 +217,5 @@ export default function LeakCardCompact({
     </>
   );
 }
+
+export default memo(LeakCardCompact);

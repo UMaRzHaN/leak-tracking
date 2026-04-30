@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { useSwipeCard } from "../../hooks/useSwipeCard";
 import { timeAgo } from "../../utils/timeAgo";
 import s from "./RecentLeaks.module.scss";
@@ -5,7 +6,7 @@ import s from "./RecentLeaks.module.scss";
 const leakLevel = (speed = 0) =>
   speed <= 25 ? "low" : speed >= 100 ? "high" : "medium";
 
-export default function RecentLeakItem({ leak, onOpenDetails, onRemove }) {
+function RecentLeakItem({ leak, onOpenDetails, onRemove }) {
   const { swipeState, swipeOffset, close, handlers } = useSwipeCard({
     leak,
     onOpenDetails,
@@ -104,3 +105,5 @@ export default function RecentLeakItem({ leak, onOpenDetails, onRemove }) {
     </div>
   );
 }
+
+export default memo(RecentLeakItem);

@@ -174,30 +174,46 @@ export function createOfflineMap(container, { center, zoom = 13 }) {
   let watchId = null;
   let lastLatLng = null;
 
-  if (navigator.geolocation) {
-    watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        if (destroyed) return;
-        const latlng = [pos.coords.latitude, pos.coords.longitude];
-        lastLatLng = latlng;
-        if (!userMarker) {
-          userMarker = L.circleMarker(latlng, {
-            radius: 7,
-            fillColor: "#1a73e8",
-            color: "#fff",
-            weight: 2.5,
-            fillOpacity: 1,
-          })
-            .addTo(map)
-            .bindPopup("Вы здесь");
-        } else {
-          userMarker.setLatLng(latlng);
-        }
-      },
-      () => {},
-      { enableHighAccuracy: false, maximumAge: 30000, timeout: 10000 },
-    );
-  }
+  const geoOptions = { enableHighAccuracy: false, maximumAge: 30000, timeout: 10000 };
+
+  const onGeoPosition = (pos) => {
+    if (destroyed) return;
+    const latlng = [pos.coords.latitude, pos.coords.longitude];
+    lastLatLng = latlng;
+    if (!userMarker) {
+      userMarker = L.circleMarker(latlng, {
+        radius: 7,
+        fillColor: "#1a73e8",
+        color: "#fff",
+        weight: 2.5,
+        fillOpacity: 1,
+      })
+        .addTo(map)
+        .bindPopup("Вы здесь");
+    } else {
+      userMarker.setLatLng(latlng);
+    }
+  };
+
+  const startGpsWatch = () => {
+    if (watchId != null || destroyed || !navigator.geolocation) return;
+    watchId = navigator.geolocation.watchPosition(onGeoPosition, () => {}, geoOptions);
+  };
+
+  const stopGpsWatch = () => {
+    if (watchId == null) return;
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  };
+
+  const handleVisibilityChange = () => {
+    if (destroyed) return;
+    if (document.hidden) stopGpsWatch();
+    else startGpsWatch();
+  };
+
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  startGpsWatch();
 
   const locateMe = () => {
     if (destroyed) return;
@@ -220,8 +236,10 @@ export function createOfflineMap(container, { center, zoom = 13 }) {
     if (destroyed) return;
     destroyed = true;
 
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+
     try {
-      if (watchId != null) navigator.geolocation?.clearWatch(watchId);
+      stopGpsWatch();
     } catch {
       // ignore
     }
