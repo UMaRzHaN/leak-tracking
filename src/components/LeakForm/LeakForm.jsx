@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { useStepValidation } from "./hooks/useStepValidation";
 import { useProjectConfig } from "../../app/settings/useProjectConfig";
 import { useEffectiveProjectConfig } from "../../app/settings/useEffectiveProjectConfig";
@@ -38,6 +38,11 @@ export default function LeakForm({
   const [step, setStep] = useState(1);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const pendingKeysRef = useRef([]);
+  const topRef = useRef(null);
+
+  useEffect(() => {
+    topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [step]);
 
   /* ======================================
      NAVIGATION
@@ -157,7 +162,7 @@ export default function LeakForm({
 
   return (
     <>
-      <div className={`${s.card} content`}>
+      <div ref={topRef} className={`${s.card} content`}>
         {/* ===== HEADER ===== */}
         <AddLeakHeader
           setPage={setPage}
