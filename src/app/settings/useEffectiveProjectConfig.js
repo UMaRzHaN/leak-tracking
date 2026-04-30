@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useProjectConfig } from "./useProjectConfig";
-import { useProject } from "./ProjectContext";
+import { useProjectData } from "./ProjectContext";
 import { useHiddenFields } from "./useHiddenFields";
 
 /**
@@ -13,7 +13,7 @@ import { useHiddenFields } from "./useHiddenFields";
  */
 export function useEffectiveProjectConfig() {
   const config = useProjectConfig();
-  const { activeProject } = useProject();
+  const { activeProject } = useProjectData();
   const { hiddenFields } = useHiddenFields(activeProject?.id ?? null);
 
   return useMemo(() => {

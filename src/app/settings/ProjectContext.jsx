@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useMemo, useCallback } from "react";
+import { createContext, useContext, useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { PROJECT_META } from "../../configs/projects";
 import {
   toFolderName,
@@ -35,6 +35,15 @@ export function ProjectProvider({ children }) {
     initActiveId(initProjects()),
   );
 
+  // Refs let action callbacks read current state without closing over it.
+  // This makes every action permanently stable (never recreated after mount),
+  // so ProjectActionsContext value never changes and its consumers never
+  // re-render due to project data changes.
+  const projectsRef = useRef(projects);
+  const activeIdRef = useRef(activeId);
+  useEffect(() => { projectsRef.current = projects; }, [projects]);
+  useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
+
   const activeProject = useMemo(
     () => projects.find((p) => p.id === activeId) ?? null,
     [projects, activeId],
@@ -66,9 +75,10 @@ export function ProjectProvider({ children }) {
     (name, type) => {
       if (!type || !PROJECT_META[type]) return null;
 
+      const current = projectsRef.current;
       const id = String(Date.now());
       const folder = toFolderName(name || PROJECT_META[type].title);
-      const existingFolders = new Set(projects.map((p) => p.folderName));
+      const existingFolders = new Set(current.map((p) => p.folderName));
       let uniqueFolder = folder;
       let suffix = 2;
       while (existingFolders.has(uniqueFolder)) {
@@ -83,21 +93,21 @@ export function ProjectProvider({ children }) {
         createdAt: Date.now(),
       };
 
-      _setProjects([...projects, newProject]);
+      _setProjects([...current, newProject]);
       _setActiveId(id);
       return newProject;
     },
-    [projects, _setProjects, _setActiveId],
+    [_setProjects, _setActiveId],
   );
 
   const configure = useCallback((type, name) => addProject(name, type), [addProject]);
 
   const selectProject = useCallback(
     (id) => {
-      if (!projects.some((p) => p.id === id)) return;
+      if (!projectsRef.current.some((p) => p.id === id)) return;
       _setActiveId(id);
     },
-    [projects, _setActiveId],
+    [_setActiveId],
   );
 
   const renameProject = useCallback(
@@ -105,12 +115,13 @@ export function ProjectProvider({ children }) {
       const trimmed = name?.trim();
       if (!trimmed) return null;
 
-      const found = projects.find((p) => p.id === id);
+      const current = projectsRef.current;
+      const found = current.find((p) => p.id === id);
       if (!found) return null;
 
       const folder = toFolderName(trimmed);
       const existingFolders = new Set(
-        projects.filter((p) => p.id !== id).map((p) => p.folderName),
+        current.filter((p) => p.id !== id).map((p) => p.folderName),
       );
       let newFolderName = folder;
       let suffix = 2;
@@ -118,10 +129,10 @@ export function ProjectProvider({ children }) {
         newFolderName = `${folder}_${suffix++}`;
       }
 
-      _setProjects(projects.map((p) => (p.id === id ? { ...p, name: trimmed } : p)));
+      _setProjects(current.map((p) => (p.id === id ? { ...p, name: trimmed } : p)));
       return { oldFolderName: found.folderName, newFolderName };
     },
-    [projects, _setProjects],
+    [_setProjects],
   );
 
   const applyFolderRename = useCallback(
@@ -136,25 +147,27 @@ export function ProjectProvider({ children }) {
   const changeProjectType = useCallback(
     (id, type) => {
       if (!PROJECT_META[type]) return;
-      _setProjects(projects.map((p) => (p.id === id ? { ...p, type } : p)));
+      _setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, type } : p)));
     },
-    [projects, _setProjects],
+    [_setProjects],
   );
 
   const removeProject = useCallback(
     (id) => {
-      const next = projects.filter((p) => p.id !== id);
+      const current = projectsRef.current;
+      const next = current.filter((p) => p.id !== id);
       _setProjects(next);
-      if (activeId === id) _setActiveId(next[0]?.id ?? null);
+      if (activeIdRef.current === id) _setActiveId(next[0]?.id ?? null);
     },
-    [projects, activeId, _setProjects, _setActiveId],
+    [_setProjects, _setActiveId],
   );
 
   const changeProject = useCallback(
     (type) => {
-      if (activeId) changeProjectType(activeId, type);
+      const id = activeIdRef.current;
+      if (id) changeProjectType(id, type);
     },
-    [activeId, changeProjectType],
+    [changeProjectType],
   );
 
   const dataValue = useMemo(

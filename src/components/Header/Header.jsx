@@ -1,4 +1,4 @@
-import { useProject } from "../../app/settings/ProjectContext";
+import { useProjectData } from "../../app/settings/ProjectContext";
 import { PROJECT_META } from "../../configs/projects";
 import s from "./Header.module.scss";
 
@@ -10,7 +10,7 @@ export default function Header({
   gpsEnabled,
   setGpsEnabled,
 }) {
-  const { projectName, project } = useProject();
+  const { projectName, project } = useProjectData();
   const meta        = PROJECT_META[project];
   const displayName = projectName || meta?.title || "Журнал утечек";
 

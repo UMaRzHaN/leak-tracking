@@ -4,7 +4,7 @@ import { useProjectConfig } from "../../app/settings/useProjectConfig";
 import { useEffectiveProjectConfig } from "../../app/settings/useEffectiveProjectConfig";
 import { useVoiceControl } from "../../app/hooks/useVoiceControl";
 import { useLeakFormContext } from "../../context/LeakFormContext";
-import { useProject } from "../../app/settings/ProjectContext";
+import { useProjectData } from "../../app/settings/ProjectContext";
 import { useProjectVars } from "../../app/settings/useProjectVars";
 import { calculations } from "../../utils/calculations/calculations";
 import { normalizeNumber } from "../../utils/normalize/normalizeNumber";
@@ -21,7 +21,7 @@ export default function LeakForm({ onAdd, setPage, prevPage, lastItem, isSaving 
   const { form, errors, handle, setErrors, setForm } = useLeakFormContext();
   const rawConfig = useProjectConfig();
   const projectConfig = useEffectiveProjectConfig();
-  const { activeProject } = useProject();
+  const { activeProject } = useProjectData();
   const { vars } = useProjectVars(activeProject?.id ?? null, rawConfig.vars);
 
   const STEPS = useMemo(() => projectConfig.steps.steps ?? [], [projectConfig]);

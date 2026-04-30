@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getDistanceMeters } from "../../../utils/geoUtils";
 import { useActiveLocation } from "../../../hooks/useActiveLocation";
-import { useProject } from "../../../app/settings/ProjectContext";
+import { useProjectData } from "../../../app/settings/ProjectContext";
 import { createOfflineMap, addMarkers } from "../../../services/maps/offlineMap";
 import { preloadUrls, buildTileUrls, buildViewportTileUrls } from "../../../services/maps/tileCache";
 import { saveLeaksKML } from "../../../services/export/kml";
 import { handleExport } from "../../../utils/handleExport";
 
 export function useMapPage({ leaks, coords }) {
-  const { activeProject } = useProject();
+  const { activeProject } = useProjectData();
   const exportProjectFolder = activeProject?.folderName;
 
   const mapApiRef = useRef(null);

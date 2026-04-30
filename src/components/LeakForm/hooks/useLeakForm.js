@@ -23,23 +23,18 @@ export function useLeakForm() {
       photo: null,
     });
   }, []);
-  const handle = (key, value) => {
-    // parseNumericInput preserves partial states ("3.", "-") during typing
-    // and returns a Number for complete values — no more string leakage
+
+  const handle = useCallback((key, value) => {
     const finalValue = NUMBER_KEYS.has(key)
       ? parseNumericInput(value)
       : value;
 
-    setForm((prev) => ({
-      ...prev,
-      [key]: finalValue,
-    }));
+    setForm((prev) => ({ ...prev, [key]: finalValue }));
+    setErrors((prev) => ({ ...prev, [key]: "" }));
+  }, [NUMBER_KEYS]);
 
-    setErrors((prev) => ({
-      ...prev,
-      [key]: "",
-    }));
-  };
-
-  return { form, setForm, errors, setErrors, handle, clearForm };
+  return useMemo(
+    () => ({ form, setForm, errors, setErrors, handle, clearForm }),
+    [form, errors, handle, clearForm],
+  );
 }

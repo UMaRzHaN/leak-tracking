@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useEditablePhoto } from "../../../hooks/useEditablePhoto";
 import { usePhotoStorage } from "../../../hooks/usePhotoStorage";
 import { useProjectConfig } from "../../../app/settings/useProjectConfig";
-import { useProject } from "../../../app/settings/ProjectContext";
+import { useProjectData } from "../../../app/settings/ProjectContext";
 import { useProjectVars } from "../../../app/settings/useProjectVars";
 import { calculations } from "../../../utils/calculations/calculations";
 import { nextStatus, STATUS } from "../../../utils/status";
@@ -24,7 +24,7 @@ export const TAB = {
 
 export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
   const projectConfig = useProjectConfig();
-  const { activeProject } = useProject();
+  const { activeProject } = useProjectData();
   const { vars } = useProjectVars(activeProject?.id ?? null, projectConfig.vars);
 
   const EDIT_FIELDS = useMemo(() => {

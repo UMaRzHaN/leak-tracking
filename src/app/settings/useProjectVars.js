@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { STORAGE_KEYS } from "./storageKeys";
 import { VAR_DEFAULTS } from "../../data/variables";
 
@@ -9,11 +9,14 @@ const defaultVars = VAR_DEFAULTS;
  * @param {string} projectId — project.id (не тип!)
  */
 export function useProjectVars(projectId, defaults = defaultVars) {
-  // ✅ Все hooks вызываются безусловно
   const storageKey = useMemo(
     () => (projectId ? STORAGE_KEYS.PROJECT_VARS(projectId) : null),
     [projectId]
   );
+
+  // Revision bump mirrors the pattern in useHiddenFields — forces useMemo
+  // to re-read localStorage after setVars/resetVars write to it.
+  const [revision, setRevision] = useState(0);
 
   const vars = useMemo(() => {
     if (!projectId || !storageKey) {
@@ -23,7 +26,6 @@ export function useProjectVars(projectId, defaults = defaultVars) {
     try {
       const raw = localStorage.getItem(storageKey);
 
-      // Пробуем также legacy-ключ (settings) для обратной совместимости
       if (!raw) {
         const legacyKey = STORAGE_KEYS._LEGACY_PROJECT_SETTINGS?.(projectId);
         const legacyRaw = legacyKey ? localStorage.getItem(legacyKey) : null;
@@ -34,13 +36,15 @@ export function useProjectVars(projectId, defaults = defaultVars) {
     } catch {
       return defaults;
     }
-  }, [projectId, storageKey, defaults]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, storageKey, defaults, revision]);
 
   const setVars = useCallback(
     (nextVars) => {
       if (storageKey) {
         localStorage.setItem(storageKey, JSON.stringify(nextVars));
       }
+      setRevision((r) => r + 1);
     },
     [storageKey]
   );
@@ -49,6 +53,7 @@ export function useProjectVars(projectId, defaults = defaultVars) {
     if (storageKey) {
       localStorage.removeItem(storageKey);
     }
+    setRevision((r) => r + 1);
   }, [storageKey]);
 
   return { vars, setVars, resetVars };

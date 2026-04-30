@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { isNative } from "../utils/platform";
-import { useProject } from "../app/settings/ProjectContext";
+import { useProjectData } from "../app/settings/ProjectContext";
 import { PhotoRepository } from "../repositories/PhotoRepository";
 import { idb } from "../repositories/idb";
 
 export function usePhotoStorage() {
-  const { activeProject } = useProject();
+  const { activeProject } = useProjectData();
   const [ready, setReady] = useState(() => idb.getState().ready);
 
   useEffect(() => {

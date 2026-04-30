@@ -3,7 +3,6 @@ import { useGeolocation } from "../../hooks/useGeolocation";
 
 export function useAppState() {
   const [{ page, prevPage }, setPageState] = useState({ page: "", prevPage: "" });
-  const [data, setData] = useState([]);
   const [gpsEnabled, setGpsEnabled] = useState(true);
 
   const setPage = useCallback((next) => {
@@ -20,8 +19,6 @@ export function useAppState() {
     page,
     prevPage,
     setPage,
-    data,
-    setData,
     gpsEnabled,
     setGpsEnabled,
     coords,

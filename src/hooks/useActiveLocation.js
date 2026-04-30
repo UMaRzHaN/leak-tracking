@@ -1,12 +1,12 @@
 // src/hooks/useActiveLocation.js
 import { useMemo } from "react";
-import { useProject } from "../app/settings/ProjectContext";
+import { useProjectData } from "../app/settings/ProjectContext";
 import { PROJECT_LOCATION_CONFIG } from "../configs/projectLocation.config";
 
 const NO_LABEL = "Не указано";
 
 export function useActiveLocation(leaks) {
-  const { project } = useProject();
+  const { project } = useProjectData();
   const config = PROJECT_LOCATION_CONFIG[project];
 
   const secondary = config.secondary;

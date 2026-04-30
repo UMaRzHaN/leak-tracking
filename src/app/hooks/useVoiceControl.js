@@ -3,7 +3,7 @@ import { useSpeechRecognition } from "../../hooks/useSpeechRecognition";
 import { handleVoiceText } from "../../utils/voice/handleVoiceText";
 import { parseVoiceCommand } from "../../utils/voice/parseVoiceCommand";
 import { useProjectConfig } from "../settings/useProjectConfig";
-import { useProject } from "../settings/ProjectContext";
+import { useProjectData } from "../settings/ProjectContext";
 
 /**
  * Voice control hook — now step-aware and with pending confirmation flow.
@@ -15,7 +15,7 @@ import { useProject } from "../settings/ProjectContext";
  */
 export function useVoiceControl({ step = 1, steps = [], onCommand } = {}) {
   const projectConfig = useProjectConfig();
-  const { project } = useProject();
+  const { project } = useProjectData();
   const [pendingVoiceData, setPendingVoiceData] = useState(null);
 
   // Key of textarea field in current step — used for dictation mode

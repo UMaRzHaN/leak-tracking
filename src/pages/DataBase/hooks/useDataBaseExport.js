@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { STATUS, STATUS_META } from "../../../utils/status";
 import { useEffectiveProjectConfig } from "../../../app/settings/useEffectiveProjectConfig";
 import { usePhotoStorage } from "../../../hooks/usePhotoStorage";
-import { useProject } from "../../../app/settings/ProjectContext";
+import { useProjectData } from "../../../app/settings/ProjectContext";
 
 function fmtTs(ts) {
   if (!ts) return "";
@@ -38,7 +38,7 @@ export function useDataBaseExport({ displayed, notify }) {
   const { headers: excelHeaders, keysOrder: excelKeys } =
     projectConfig.export.excel;
   const { getPhoto: idbGetPhoto } = usePhotoStorage();
-  const { activeProject } = useProject();
+  const { activeProject } = useProjectData();
 
   const handleExport = useCallback(async () => {
     try {
