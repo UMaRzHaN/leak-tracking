@@ -16,15 +16,18 @@ const mockIdbSave = vi.fn();
 const mockIdbDelete = vi.fn();
 const mockIdbGet = vi.fn();
 const mockListKeys = vi.fn();
+const mockGetState = vi.fn();
 
-vi.mock("../../hooks/useIndexedDB", () => ({
-  useIndexedDB: () => ({
-    ready: true,
-    savePhoto: mockIdbSave,
-    getPhoto: mockIdbGet,
-    deletePhoto: mockIdbDelete,
+vi.mock("../../repositories/idb", () => ({
+  idb: {
+    getState: mockGetState,
+    subscribe: vi.fn(() => vi.fn()),
+    open: vi.fn(),
+    save: mockIdbSave,
+    remove: mockIdbDelete,
+    get: mockIdbGet,
     listKeys: mockListKeys,
-  }),
+  },
 }));
 
 vi.mock("../../app/settings/ProjectContext", () => ({
@@ -47,6 +50,7 @@ const makeBlob = (type = "image/jpeg") => new Blob(["data"], { type });
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockGetState.mockReturnValue({ ready: true });
   mockIdbSave.mockResolvedValue(true);
   mockIdbDelete.mockResolvedValue(undefined);
   mockIdbGet.mockResolvedValue(null);

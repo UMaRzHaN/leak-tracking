@@ -10,6 +10,9 @@ const BASE_VARS = {
   uncertainty: 0.1,
 };
 
+// leak_speed (м³/ч) × MINUTES_PER_YEAR(525600) / 1000
+const M3_Y = (speed) => (speed * 525600) / 1000;
+
 describe("calculations", () => {
   it("returns leak unchanged when vars is null", () => {
     const leak = { leak_speed: 5 };
@@ -20,36 +23,61 @@ describe("calculations", () => {
     expect(calculations(null, BASE_VARS)).toBeNull();
   });
 
-  it("computes mass flow rate (leak_speed × density)", () => {
+  it("computes mass flow rate kg/min (leak_speed × density)", () => {
     const result = calculations({ leak_speed: 10 }, BASE_VARS);
-    expect(result.leak_speed_kg_h).toBeCloseTo(10 * 0.668);
+    expect(result.leak_speed_kg_m).toBeCloseTo(10 * 0.668);
   });
 
   it("computes annual methane loss in m³/year", () => {
     const result = calculations({ leak_speed: 1 }, BASE_VARS);
-    expect(result.Total_Annual_Methane_Loss_m3_y).toBe(8760);
+    expect(result.Total_Annual_Methane_Loss_m3_y).toBeCloseTo(M3_Y(1));
   });
 
   it("computes annual methane loss in kg/year", () => {
     const result = calculations({ leak_speed: 1 }, BASE_VARS);
-    expect(result.Total_Annual_Methane_Loss_kg_y).toBeCloseTo(8760 * 0.7168);
+    expect(result.Total_Annual_Methane_Loss_kg_y).toBeCloseTo(M3_Y(1) * 0.7168);
   });
 
   it("computes annual methane loss in t/year", () => {
     const result = calculations({ leak_speed: 1 }, BASE_VARS);
-    expect(result.Total_Annual_Methane_Loss_t_y).toBeCloseTo(8760 * 0.7168 * 0.001);
+    expect(result.Total_Annual_Methane_Loss_t_y).toBeCloseTo(M3_Y(1) * 0.7168 * 0.001);
   });
 
-  it("computes CO₂-equivalent emissions in t/year with mixed shares", () => {
-    // weightedGWP = 0.5×28 + 0.5×(28×0.9) = 14 + 12.6 = 26.6
+  it("computes CO₂-equivalent emissions in t/year using GWP (not weighted)", () => {
     const result = calculations({ leak_speed: 1 }, BASE_VARS);
-    const t_y = 8760 * 0.7168 * 0.001;
-    expect(result.Emissions_t_CO2eq_year).toBeCloseTo(t_y * 26.6);
+    const t_y = M3_Y(1) * 0.7168 * 0.001;
+    expect(result.Emissions_t_CO2eq_year).toBeCloseTo(t_y * 28);
   });
 
   it("computes CO₂-equivalent emissions in kg/year", () => {
     const result = calculations({ leak_speed: 1 }, BASE_VARS);
     expect(result.Emissions_kg_CO2_eq_year).toBeCloseTo(result.Emissions_t_CO2eq_year * 1000);
+  });
+
+  it("weightedGWP is computed from shares (50/50)", () => {
+    const result = calculations({ leak_speed: 1 }, BASE_VARS);
+    // 0.5×28 + 0.5×(28×0.9) = 14 + 12.6 = 26.6
+    expect(result.weightedGWP).toBeCloseTo(26.6);
+  });
+
+  it("weightedGWP with 100% flare equals GWP", () => {
+    const vars = { ...BASE_VARS, percentage_gas_to_flare: 100, percentage_gas_to_utilization: 0 };
+    const result = calculations({ leak_speed: 1 }, vars);
+    expect(result.weightedGWP).toBeCloseTo(28);
+  });
+
+  it("weightedGWP with 100% utilization equals GWP × 0.9", () => {
+    const vars = { ...BASE_VARS, percentage_gas_to_flare: 0, percentage_gas_to_utilization: 100 };
+    const result = calculations({ leak_speed: 1 }, vars);
+    expect(result.weightedGWP).toBeCloseTo(28 * 0.9);
+  });
+
+  it("emissions use GWP regardless of flare/util shares", () => {
+    const varsFlare = { ...BASE_VARS, percentage_gas_to_flare: 100, percentage_gas_to_utilization: 0 };
+    const varsUtil  = { ...BASE_VARS, percentage_gas_to_flare: 0,   percentage_gas_to_utilization: 100 };
+    const t_y = M3_Y(1) * 0.7168 * 0.001;
+    expect(calculations({ leak_speed: 1 }, varsFlare).Emissions_t_CO2eq_year).toBeCloseTo(t_y * 28);
+    expect(calculations({ leak_speed: 1 }, varsUtil).Emissions_t_CO2eq_year).toBeCloseTo(t_y * 28);
   });
 
   it("converts temperature to Kelvin", () => {
@@ -71,20 +99,6 @@ describe("calculations", () => {
     const result = calculations({ leak_speed: 0 }, BASE_VARS);
     expect(result.Total_Annual_Methane_Loss_m3_y).toBe(0);
     expect(result.Emissions_t_CO2eq_year).toBe(0);
-  });
-
-  it("100% flare share → weightedGWP equals GWP", () => {
-    const vars = { ...BASE_VARS, percentage_gas_to_flare: 100, percentage_gas_to_utilization: 0 };
-    const result = calculations({ leak_speed: 1 }, vars);
-    const t_y = 8760 * 0.7168 * 0.001;
-    expect(result.Emissions_t_CO2eq_year).toBeCloseTo(t_y * 28);
-  });
-
-  it("100% utilization share → weightedGWP equals GWP × 0.9", () => {
-    const vars = { ...BASE_VARS, percentage_gas_to_flare: 0, percentage_gas_to_utilization: 100 };
-    const result = calculations({ leak_speed: 1 }, vars);
-    const t_y = 8760 * 0.7168 * 0.001;
-    expect(result.Emissions_t_CO2eq_year).toBeCloseTo(t_y * 28 * 0.9);
   });
 
   it("preserves extra leak fields in output", () => {

@@ -92,6 +92,7 @@ export const calculations = (leak, vars) => {
     serial_number,
     uncertainty,
     GWP,
+    weightedGWP,
   };
 };
 export default calculations;
