@@ -39,5 +39,17 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      reportsDirectory: './coverage',
+      exclude: [
+        'src/reportWebVitals.js',
+        'src/index.jsx',
+        'src/app/migrations/**',
+        'scripts/**',
+        'android/**',
+      ],
+    },
   },
 });

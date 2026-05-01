@@ -75,15 +75,94 @@ Testing         Vitest + Testing Library
 
 ```text
 src/
-├── app/                # App state / migrations / project settings
-├── pages/              # Основные экраны приложения
-├── components/         # UI-компоненты и sheets/modals
-├── configs/            # Конфиги upstream/midstream/downstream
-├── hooks/              # Бизнес- и UI-хуки
-├── services/           # Export / Maps / Storage logic
-├── utils/              # Calculations / Voice / Normalize helpers
-└── tests/              # Unit tests
+├── app/
+│   ├── App.jsx
+│   ├── hooks/              # useAppState, useProjectData, useTheme, useVoiceControl
+│   ├── migrations/         # One-time legacy data cleanup
+│   └── project/            # ProjectContext + project storage/migration/keys
+│       └── hooks/          # useProjectConfig, useProjectVars, useHiddenFields, …
+│
+├── components/
+│   ├── layout/             # Header, Footer, PageHeader (structural shells)
+│   └── ui/                 # ConfirmSheet, MobileSheet, Notification, StatusBadge, ErrorBoundary
+│
+├── configs/
+│   ├── index.js            # Barrel → PROJECT_CONFIGS, PROJECT_META
+│   ├── projects.js
+│   ├── projectAdapter.js
+│   ├── projectLocation.config.js
+│   ├── shared/             # Common fields + steps across project types
+│   ├── upstream/           # UPSTREAM_CONFIG + data/fields + data/steps
+│   ├── midstream/
+│   └── downstream/
+│
+├── data/
+│   ├── leak/               # fieldDictionary, statusDictionary, priorityDictionary
+│   └── variables.js
+│
+├── features/               # Domain components — one folder per bounded context
+│   ├── editTextField/
+│   ├── fieldVisibility/    # FieldVisibilityModal
+│   ├── leakDetails/        # LeakDetailsSheet + hooks + sub-components
+│   ├── leakForm/           # LeakForm + LeakFormContext + hooks + Header/Footer
+│   │   └── components/     # ClearActions, StepHeader, InputCard, StepRenderer
+│   ├── leakList/           # VirtualizedLeakList, LeakCardCompact, RecentLeaks
+│   ├── photos/             # PhotoViewer, PhotoInput
+│   ├── resolve/            # ResolveModal
+│   ├── search/             # Autocomplete (+ smartFilter), SearchFieldSelect, QuickActions
+│   ├── settings/           # SettingsModal (UI only; page logic lives in pages/Settings)
+│   ├── status/             # StatusPickerModal
+│   └── voice/              # VoiceButton, VoicePreviewSheet
+│       └── utils/          # numbers, normalization, matching, synonyms, parseVoiceText, …
+│
+├── hooks/                  # Shared hooks used in 2+ features
+│   ├── cameraService.js    # Co-located with sole consumer useCamera
+│   ├── photoService.js
+│   ├── speechService.js
+│   ├── useCamera.js
+│   ├── useEditablePhoto.js
+│   ├── useFormDraft.js
+│   ├── useGeolocation.js
+│   ├── usePhotoStorage.js
+│   └── …
+│
+├── pages/
+│   ├── AddLeak/
+│   ├── DataBase/           # + excel.js + hooks/ + components/
+│   ├── MainPage/
+│   ├── MapPage/            # + offlineMap.js + kml.js + handleExport.js + hooks/
+│   ├── ProjectSetup/
+│   └── Settings/           # + backup.js + hooks/ + components/
+│
+├── repositories/
+│   ├── idb.js              # createIdbStore() factory (IndexedDB)
+│   ├── LeakRepository.js
+│   ├── PhotoRepository.js
+│   ├── backupSchema.js     # Zod schemas for ZIP import/export
+│   └── compressImage.js
+│
+├── services/
+│   └── maps/tileCache.js   # Shared tile-caching logic (3 consumers)
+│
+├── utils/
+│   ├── calculations/       # Emissions & flow-rate calculations
+│   ├── normalize/          # capitalizeFirst, normalizeNumber, parseNumericInput
+│   ├── geoUtils.js
+│   ├── haptics.js
+│   ├── photoConversion.js
+│   ├── platform.js
+│   ├── priority.js
+│   ├── status.js
+│   └── timeAgo.js
+│
+├── index.jsx               # App entry point
+├── index.scss              # Global CSS variables + base styles
+└── reportWebVitals.js
 ```
+
+> **Placement rule (hook / service / util):** co-locate with the single consumer;
+> promote to `src/hooks/` / `src/services/` / `src/utils/` only when used by 2+
+> unrelated features. Consumer count = 0 → delete. See `CONTRIBUTING.md`.
 
 ---
 
