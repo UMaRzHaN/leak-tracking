@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useCamera } from "./useCamera";
 import { usePhotoStorage } from "./usePhotoStorage";
 import { usePhotoSrc } from "./usePhotoSrc";
-import { dataUrlToBlob } from "../utils/photoConversion";
+import { dataUrlToBlob } from "@/utils/photoConversion";
 
 export function useEditablePhoto({ initialPath, leakId, version, excludePaths = [] }) {
   const { isNative, takePhoto, pickFromBrowser } = useCamera();

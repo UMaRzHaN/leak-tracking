@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
-import { STATUS } from "../../../utils/status";
-import { hapticSuccess } from "../../../utils/haptics";
+import { STATUS } from "@/utils/status";
+import { hapticSuccess } from "@/utils/haptics";
 
 export function useLeakActions({ data, setData, save, notify, deletePhoto = () => Promise.resolve() }) {
   const [activeLeak, setActiveLeak] = useState(null);

@@ -1,8 +1,8 @@
 import { useCallback } from "react";
-import { STATUS, STATUS_META } from "../../../utils/status";
-import { useEffectiveProjectConfig } from "../../../app/settings/useEffectiveProjectConfig";
-import { usePhotoStorage } from "../../../hooks/usePhotoStorage";
-import { useProjectData } from "../../../app/settings/ProjectContext";
+import { STATUS, STATUS_META } from "@/utils/status";
+import { useEffectiveProjectConfig } from "@/app/project/hooks/useEffectiveProjectConfig";
+import { usePhotoStorage } from "@/hooks/usePhotoStorage";
+import { useProjectData } from "@/app/project/ProjectContext";
 
 function fmtTs(ts) {
   if (!ts) return "";
@@ -43,7 +43,7 @@ export function useDataBaseExport({ displayed, notify }) {
   const handleExport = useCallback(async () => {
     try {
       const { exportToExcelZip } =
-        await import("../../../services/export/excel");
+        await import("@/pages/DataBase/excel");
       const result = await exportToExcelZip(
         displayed,
         prepareRows(displayed),

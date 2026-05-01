@@ -14,7 +14,7 @@ import {
   actuator_type,
   connection_type,
   installation_type,
-} from "../../data/dictionaries";
+} from "@/data/leak/fieldDictionary";
 
 export function makeDescriptionStep(extraFields = []) {
   return {

@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
-import { STATUS } from "../../../utils/status";
-import { hapticSuccess } from "../../../utils/haptics";
+import { STATUS } from "@/utils/status";
+import { hapticSuccess } from "@/utils/haptics";
 
 function pluralLeaks(n) {
   if (n % 10 === 1 && n % 100 !== 11) return "запись";

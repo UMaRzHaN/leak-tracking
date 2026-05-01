@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import { isNative } from "../../../utils/platform";
+import { isNative } from "@/utils/platform";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 
 const VALID_TYPES = ["upstream", "midstream", "downstream"];
@@ -21,7 +21,7 @@ export function useBackupActions({ data, idbGetPhoto, activeProject, vars, onImp
     const folder = activeProject?.folderName ?? "backup";
     const fileName = `${folder}.zip`;
     try {
-      const { buildProjectBackupZip } = await import("../../../services/export/backup");
+      const { buildProjectBackupZip } = await import("@/pages/Settings/backup");
       const blob = await buildProjectBackupZip({ leaks: data, idbGet: idbGetPhoto, project: activeProject, vars });
 
       if (isNative) {
@@ -53,7 +53,7 @@ export function useBackupActions({ data, idbGetPhoto, activeProject, vars, onImp
     if (!file) return;
 
     try {
-      const { peekBackupZip } = await import("../../../services/export/backup");
+      const { peekBackupZip } = await import("@/pages/Settings/backup");
       const peek = await peekBackupZip(file);
       const metaProject = peek.meta?.project;
 

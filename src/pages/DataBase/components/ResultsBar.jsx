@@ -1,5 +1,5 @@
-import { STATUS_META, STATUS_ORDER } from "../../../utils/status";
-import s from "../DataBase.module.scss";
+import { STATUS_META, STATUS_ORDER } from "@/utils/status";
+import s from "@/pages/DataBase/DataBase.module.scss";
 
 const NEARBY = "nearby";
 const NEARBY_RADIUS_M = 500;

@@ -1,15 +1,15 @@
 import { useEffect, useState, useRef } from "react";
-import LeakForm from "../../components/LeakForm/LeakForm";
-import { usePhotoStorage } from "../../hooks/usePhotoStorage";
-import { useFormDraft } from "../../hooks/useFormDraft";
-import { useSafeSave } from "../../hooks/useSafeSave";
-import { toNumber } from "../../utils/voice/toNumber";
-import { useProjectData } from "../../app/hooks/useProjectData";
-import { useLeakFormContext } from "../../context/LeakFormContext";
-import { hapticSuccess, hapticWarning } from "../../utils/haptics";
-import { STATUS } from "../../utils/status";
-import { priorityFromSpeed } from "../../utils/priority";
-import { dataUrlToBlob } from "../../utils/photoConversion";
+import LeakForm from "@/features/leakForm/LeakForm";
+import { usePhotoStorage } from "@/hooks/usePhotoStorage";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { useSafeSave } from "@/hooks/useSafeSave";
+import { toNumber } from "@/features/voice/utils/numbers";
+import { useProjectData } from "@/app/hooks/useProjectData";
+import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
+import { hapticSuccess, hapticWarning } from "@/utils/haptics";
+import { STATUS } from "@/utils/status";
+import { priorityFromSpeed } from "@/utils/priority";
+import { dataUrlToBlob } from "@/utils/photoConversion";
 import s from "./AddLeak.module.scss";
 
 

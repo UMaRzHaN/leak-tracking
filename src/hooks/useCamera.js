@@ -1,9 +1,9 @@
-import { isNative } from "../utils/platform";
+import { isNative } from "@/utils/platform";
 import {
   takePhotoFromCamera,
   pickPhotoFromGallery,
   readPhotoFromFile,
-} from "../services/cameraService";
+} from "./cameraService";
 
 export const useCamera = () => {
 

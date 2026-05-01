@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { isNative } from "../utils/platform";
-import { getPhotoSrc } from "../services/photoService";
+import { isNative } from "@/utils/platform";
+import { getPhotoSrc } from "./photoService";
 import { useIndexedDB } from "./useIndexedDB";
 
 export function usePhotoSrc(path, version = 0) {

@@ -1,10 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './app/App';
-import { ProjectProvider } from './app/settings/ProjectContext';
-import { LeakFormProvider } from './context/LeakFormContext';
+import { ProjectProvider } from './app/project/ProjectContext';
+import { LeakFormProvider } from './features/leakForm/LeakFormContext';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
-import { reportWebVitals } from './utils/reportWebVitals';
+import { reportWebVitals } from './reportWebVitals';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

@@ -1,10 +1,10 @@
 import { useCallback } from "react";
-import { isNative } from "../../../utils/platform";
+import { isNative } from "@/utils/platform";
 import { Directory, Filesystem } from "@capacitor/filesystem";
-import { useProject } from "../../../app/settings/ProjectContext";
-import { useLeakFormContext } from "../../../context/LeakFormContext";
-import { PROJECT_META } from "../../../configs/projects";
-import { clearMapCache } from "../../../services/maps/tileCache";
+import { useProject } from "@/app/project/ProjectContext";
+import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
+import { PROJECT_META } from "@/configs/projects";
+import { clearMapCache } from "@/services/maps/tileCache";
 
 export function useProjectActions({ setCacheInfo, notify }) {
   const {

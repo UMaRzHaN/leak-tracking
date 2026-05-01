@@ -1,0 +1,115 @@
+.formField {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.formInput {
+  width: 100%;
+  padding: 12px 38px 12px 14px;
+  font-size: 15px;
+  color: var(--c-text);
+  background: var(--c-surface);
+  border-radius: var(--r-lg);
+  border: 1.5px solid var(--c-border);
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+
+  &::placeholder { color: var(--c-text3); }
+
+  &:focus {
+    background: var(--c-surface);
+    border-color: var(--c-blue);
+    box-shadow: var(--focus-ring);
+  }
+
+  &:not(:placeholder-shown):not(:focus) {
+    border-color: var(--c-resolved);
+    background: var(--c-resolved-bg);
+  }
+}
+
+.hasError .formInput {
+  border-color: var(--c-danger) !important;
+  background: var(--c-open-bg) !important;
+}
+
+.autocompleteList {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  max-height: 180px;
+  overflow-y: auto;
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.autocompleteItem {
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--c-text);
+  cursor: pointer;
+
+  &:hover  { background: var(--c-blue-dim); }
+  &:active { background: var(--c-blue-dim); }
+}
+
+.formError {
+  font-size: 12px;
+  color: var(--c-danger);
+  margin: 0;
+}
+
+/* clearBtn shared from InputCard usage - include here too */
+.clearBtn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: var(--c-bg);
+  color: var(--c-text2);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--t-fast);
+
+  &:hover  { background: var(--c-border); }
+  &:active { transform: translateY(-50%) scale(0.9); }
+}
+
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.hint {
+  font-size: 11px;
+  color: var(--c-text3);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.isRequired .req { color: var(--c-danger); }
+.required        { color: var(--c-danger); font-weight: 700; }

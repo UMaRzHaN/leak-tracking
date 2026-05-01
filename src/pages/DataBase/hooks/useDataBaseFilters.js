@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
-import { STATUS, STATUS_ORDER } from "../../../utils/status";
-import { filterNearbyLeaks } from "../../../utils/geoUtils";
+import { STATUS, STATUS_ORDER } from "@/utils/status";
+import { filterNearbyLeaks } from "@/utils/geoUtils";
 
 export const ALL = "all";
 export const NEARBY = "nearby";

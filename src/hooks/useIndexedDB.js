@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { idb } from "../repositories/idb";
+import { idb } from "@/repositories/idb";
 
 export function useIndexedDB() {
   const [ready, setReady] = useState(() => idb.getState().ready);

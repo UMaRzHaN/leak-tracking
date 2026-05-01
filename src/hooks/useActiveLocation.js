@@ -1,7 +1,7 @@
 // src/hooks/useActiveLocation.js
 import { useMemo } from "react";
-import { useProjectData } from "../app/settings/ProjectContext";
-import { PROJECT_LOCATION_CONFIG } from "../configs/projectLocation.config";
+import { useProjectData } from "@/app/project/ProjectContext";
+import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
 
 const NO_LABEL = "Не указано";
 

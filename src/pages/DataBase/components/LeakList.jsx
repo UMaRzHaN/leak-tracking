@@ -1,8 +1,8 @@
 import { memo, useCallback } from "react";
-import VirtualizedLeakList from "../../../components/VirtualizedLeakList/VirtualizedLeakList";
-import LeakCardCompact from "../../../components/LeakCardCompact/LeakCardCompact";
-import { NEARBY, NEARBY_RADIUS_M } from "../hooks/useDataBaseFilters";
-import s from "../DataBase.module.scss";
+import VirtualizedLeakList from "@/features/leakList/VirtualizedLeakList/VirtualizedLeakList";
+import LeakCardCompact from "@/features/leakList/LeakCardCompact/LeakCardCompact";
+import { NEARBY, NEARBY_RADIUS_M } from "@/pages/DataBase/hooks/useDataBaseFilters";
+import s from "@/pages/DataBase/DataBase.module.scss";
 
 function LeakList({ items, search, statusFilter, selectedIds, onOpenDetails, onPickStatus, onToggleSelect }) {
   const renderItem = useCallback(

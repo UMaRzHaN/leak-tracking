@@ -1,4 +1,4 @@
-import s from "../MapPage.module.scss";
+import s from "@/pages/MapPage/MapPage.module.scss";
 
 export default function TileProgress({ progress }) {
   if (!progress) return null;

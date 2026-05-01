@@ -1,8 +1,8 @@
 import { useMapPage } from "./hooks/useMapPage";
 import MapControls from "./components/MapControls";
 import TileProgress from "./components/TileProgress";
-import MobileSheet from "../../components/MobileSheet/MobileSheet";
-import Notification from "../../components/Notification/Notification";
+import MobileSheet from "@/components/ui/MobileSheet/MobileSheet";
+import Notification from "@/components/ui/Notification/Notification";
 import s from "./MapPage.module.scss";
 
 export default function MapPage({ leaks, coords }) {

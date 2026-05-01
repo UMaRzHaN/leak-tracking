@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { PROJECT_META } from "../../../configs/projects";
-import { toFolderName } from "../../../app/settings/ProjectContext";
+import { PROJECT_META } from "@/configs/projects";
+import { toFolderName } from "@/app/project/ProjectContext";
 import s from "./AddProjectForm.module.scss";
 
 const PROJECT_ICONS = { upstream: "⛽", midstream: "🔧", downstream: "🏭" };

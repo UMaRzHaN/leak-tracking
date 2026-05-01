@@ -1,6 +1,6 @@
 import { Filesystem, Directory } from "@capacitor/filesystem";
-import { isNative } from "../utils/platform";
-import { compressImage } from "../utils/compressImage";
+import { isNative } from "@/utils/platform";
+import { compressImage } from "./compressImage";
 import { idb } from "./idb";
 
 const PHOTO_FIELDS = ["photo", "photo_after"];

@@ -3,8 +3,8 @@ import {
   objects,
   components,
   cause,
-} from "../../../data/dictionaries";
-import { makeDescriptionStep, PHOTO_STEP } from "../../shared/steps";
+} from "@/data/leak/fieldDictionary";
+import { makeDescriptionStep, PHOTO_STEP } from "@/configs/shared/steps";
 
 const LEAK_CAUSE_FIELD = {
   type: "autocomplete",

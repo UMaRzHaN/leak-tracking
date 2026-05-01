@@ -6,7 +6,14 @@
       "Bash(xargs -I {} grep -l \"memo\\\\|useMemo\\\\|useCallback\" {})",
       "Bash(npx vite *)",
       "Bash(xargs wc *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git rm *)",
+      "Bash(npx vitest *)",
+      "Bash(grep -rn \"app/settings\\\\|app\\\\\\\\\\\\\\\\settings\" \"c:/Users/asus tuf/Documents/GitHub/leak-tracking/src\" --include=\"*.js\" --include=\"*.jsx\")",
+      "Bash(python3 -c \"print\\('python works'\\)\")",
+      "Bash(node rewrite-imports.mjs)",
+      "Bash(grep -v \"^$\")",
+      "Bash(node fix-paths.mjs)"
     ]
   }
 }

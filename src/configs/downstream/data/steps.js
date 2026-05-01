@@ -3,8 +3,8 @@ import {
   objects,
   components,
   categories_down,
-} from "../../../data/dictionaries";
-import { makeDescriptionStep, PHOTO_STEP } from "../../shared/steps";
+} from "@/data/leak/fieldDictionary";
+import { makeDescriptionStep, PHOTO_STEP } from "@/configs/shared/steps";
 
 export const STEPS = [
   {

@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import Notification from "../../components/Notification/Notification";
+import Notification from "@/components/ui/Notification/Notification";
 import FilterBar from "./components/FilterBar";
 import ResultsBar from "./components/ResultsBar";
 import LeakList from "./components/LeakList";
@@ -8,8 +8,8 @@ import { useDataBaseFilters } from "./hooks/useDataBaseFilters";
 import { useLeakActions } from "./hooks/useLeakActions";
 import { useBulkActions } from "./hooks/useBulkActions";
 import { useDataBaseExport } from "./hooks/useDataBaseExport";
-import { useProjectData } from "../../app/hooks/useProjectData";
-import { usePhotoStorage } from "../../hooks/usePhotoStorage";
+import { useProjectData } from "@/app/hooks/useProjectData";
+import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import s from "./DataBase.module.scss";
 
 export default function DataBase({ data, setData, coords }) {

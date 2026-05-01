@@ -1,27 +1,26 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef } from "react";
 import "../index.scss";
 
-import Header from "../components/Header/Header";
-import Footer from "../components/Footer/Footer";
-// import OfflineBanner from "../components/OfflineBanner/OfflineBanner";
+import Header from "@/components/layout/Header/Header";
+import Footer from "@/components/layout/Footer/Footer";
 
-const Settings = lazy(() => import("../pages/Settings/Settings"));
+const Settings = lazy(() => import("@/pages/Settings/Settings"));
 const ProjectSetupScreen = lazy(
-  () => import("../pages/ProjectSetup/ProjectSetupScreen"),
+  () => import("@/pages/ProjectSetup/ProjectSetupScreen"),
 );
 
-import { useProject } from "./settings/ProjectContext";
+import { useProject } from "./project/ProjectContext";
 import { useProjectData } from "./hooks/useProjectData";
 import { useAppState } from "./hooks/useAppState";
 
 import { cleanupLegacyLeaks } from "./migrations/cleanupLegacyLeaks";
-import { usePhotoStorage } from "../hooks/usePhotoStorage";
-import { STATUS } from "../utils/status";
+import { usePhotoStorage } from "@/hooks/usePhotoStorage";
+import { STATUS } from "@/utils/status";
 
-const AddLeak = lazy(() => import("../pages/AddLeak/AddLeak"));
-const MainPage = lazy(() => import("../pages/MainPage/MainPage"));
-const DataBase = lazy(() => import("../pages/DataBase/DataBase"));
-const MapPage = lazy(() => import("../pages/MapPage/MapPage"));
+const AddLeak = lazy(() => import("@/pages/AddLeak/AddLeak"));
+const MainPage = lazy(() => import("@/pages/MainPage/MainPage"));
+const DataBase = lazy(() => import("@/pages/DataBase/DataBase"));
+const MapPage = lazy(() => import("@/pages/MapPage/MapPage"));
 
 export default function App() {
   /* =========================
@@ -37,21 +36,6 @@ export default function App() {
     geoError,
     geoLoading,
   } = useAppState();
-
-  /* =========================
-     ONLINE / OFFLINE
-  ========================= */
-  // const [isOnline, setIsOnline] = useState(() => navigator.onLine);
-  // useEffect(() => {
-  //   const up   = () => setIsOnline(true);
-  //   const down = () => setIsOnline(false);
-  //   window.addEventListener("online",  up);
-  //   window.addEventListener("offline", down);
-  //   return () => {
-  //     window.removeEventListener("online",  up);
-  //     window.removeEventListener("offline", down);
-  //   };
-  // }, []);
 
   /* =========================
      PROJECT CONTEXT
@@ -134,7 +118,7 @@ export default function App() {
   /** First-run (ProjectSetupScreen): supports name/type fallback when ZIP has no project.json */
   const handleSetupImportZip = useCallback(
     async (file, fallback = {}) => {
-      const { importProjectZip } = await import("../services/export/backup");
+      const { importProjectZip } = await import("@/pages/Settings/backup");
       await importProjectZip(file, { ...importCtx, metaFallback: fallback });
       // importCtx values are stable refs — addProject is the only real dep
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -145,7 +129,7 @@ export default function App() {
   /** In-app import (Settings): always creates a new project, optional fallback for legacy ZIPs */
   const handleImportZip = useCallback(
     async (file, fallback) => {
-      const { importProjectZip } = await import("../services/export/backup");
+      const { importProjectZip } = await import("@/pages/Settings/backup");
       return await importProjectZip(file, {
         ...importCtx,
         metaFallback: fallback,
@@ -173,8 +157,6 @@ export default function App() {
   ========================= */
   return (
     <div className="app">
-      {/* {!isOnline && <OfflineBanner />} */}
-
       {!hideLayout && (
         <Header
           geoLoading={geoLoading}

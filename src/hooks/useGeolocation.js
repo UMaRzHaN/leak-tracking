@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { isNative } from "../utils/platform";
+import { isNative } from "@/utils/platform";
 import { Geolocation } from "@capacitor/geolocation";
 
 export const useGeolocation = (enabled = true) => {

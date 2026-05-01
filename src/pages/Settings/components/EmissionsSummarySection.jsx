@@ -1,4 +1,4 @@
-import s from "../Settings.module.scss";
+import s from "@/pages/Settings/Settings.module.scss";
 
 const fmt = (n) =>
   n >= 1000

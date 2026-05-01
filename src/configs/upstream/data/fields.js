@@ -1,7 +1,7 @@
 import {
   DATE_FIELD, IDENTIFIER_FIELDS, OBJECT_FIELDS, TYPE_FIELDS,
   CATEGORY_FIELD, DESCRIPTION_FIELDS, PARAM_FIELDS, COORD_FIELDS,
-} from "../../shared/fields";
+} from "@/configs/shared/fields";
 
 const LOCATION_FIELDS = [
   { key: "subdivision", label: "Подразделение", viewable: true, editable: true, copyable: true },

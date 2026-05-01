@@ -1,5 +1,5 @@
 import { Filesystem, Directory } from "@capacitor/filesystem";
-import { isNative } from "../../utils/platform";
+import { isNative } from "@/utils/platform";
 const CACHE_NAME = "map-tiles-v2";
 const TILE_DIR = "map-tiles";
 const ESRI_BASE = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile";

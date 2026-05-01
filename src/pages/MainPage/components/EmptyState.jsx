@@ -1,4 +1,4 @@
-import s from "../MainPage.module.scss";
+import s from "@/pages/MainPage/MainPage.module.scss";
 
 export default function EmptyState({ setPage, hasFilter }) {
   return (

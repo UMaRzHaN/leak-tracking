@@ -1,12 +1,12 @@
 import { useMainPageActions } from "./hooks/useMainPageActions";
 import StatCard from "./components/StatCard";
 import EmptyState from "./components/EmptyState";
-import LeakDetailsSheet from "../../components/LeakDetailsSheet/LeakDetailsSheet";
-import LeakCardCompact from "../../components/LeakCardCompact/LeakCardCompact";
-import StatusPickerModal from "../../components/StatusPickerModal/StatusPickerModal";
-import ResolveModal from "../../components/ResolveModal/ResolveModal";
-import Notification from "../../components/Notification/Notification";
-import { STATUS, STATUS_META } from "../../utils/status";
+import LeakDetailsSheet from "@/features/leakDetails/LeakDetailsSheet";
+import LeakCardCompact from "@/features/leakList/LeakCardCompact/LeakCardCompact";
+import StatusPickerModal from "@/features/status/StatusPickerModal/StatusPickerModal";
+import ResolveModal from "@/features/resolve/ResolveModal/ResolveModal";
+import Notification from "@/components/ui/Notification/Notification";
+import { STATUS, STATUS_META } from "@/utils/status";
 import s from "./MainPage.module.scss";
 
 export default function MainPage({ setPage, data, setData }) {

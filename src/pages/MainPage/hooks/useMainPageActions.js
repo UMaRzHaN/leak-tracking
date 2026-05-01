@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback } from "react";
-import { useProjectData } from "../../../app/hooks/useProjectData";
-import { usePhotoStorage } from "../../../hooks/usePhotoStorage";
-import { STATUS } from "../../../utils/status";
-import { hapticSuccess } from "../../../utils/haptics";
+import { useProjectData } from "@/app/hooks/useProjectData";
+import { usePhotoStorage } from "@/hooks/usePhotoStorage";
+import { STATUS } from "@/utils/status";
+import { hapticSuccess } from "@/utils/haptics";
 
 const RECENT_COUNT = 8;
 const ALL = "all";

@@ -1,6 +1,6 @@
 import { COPY_FIELDS, FIELDS, NUMBER_FIELDS } from "./data/fields";
 import { STEPS } from "./data/steps";
-import { SEARCH_FIELDS_HEAD, SEARCH_FIELDS_TAIL } from "../shared/fields";
+import { SEARCH_FIELDS_HEAD, SEARCH_FIELDS_TAIL } from "@/configs/shared/fields";
 import {
   cause,
   description,
@@ -10,7 +10,7 @@ import {
   installation_type,
   actuator_type,
   categories_up,
-} from "../../data/dictionaries";
+} from "@/data/leak/fieldDictionary";
 
 const SEARCH_FIELDS = [
   ...SEARCH_FIELDS_HEAD,

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
-import { useProjectData as useProjectDataCtx } from "../settings/ProjectContext";
-import { LeakRepository } from "../../repositories/LeakRepository";
+import { useProjectData as useProjectDataCtx } from "@/app/project/ProjectContext";
+import { LeakRepository } from "@/repositories/LeakRepository";
 
 export function useProjectData() {
   const { activeProject } = useProjectDataCtx();

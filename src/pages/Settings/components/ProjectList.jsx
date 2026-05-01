@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { PROJECT_META } from "../../../configs/projects";
+import { PROJECT_META } from "@/configs/projects";
 import s from "./ProjectList.module.scss";
 
 const PROJECT_ICONS = { upstream: "⛽", midstream: "🔧", downstream: "🏭" };

@@ -2,8 +2,8 @@ import { useRef } from "react";
 import {
   startSpeechRecognition,
   stopSpeechRecognition,
-} from "../services/speechService";
-import { isNative } from "../utils/platform";
+} from "./speechService";
+import { isNative } from "@/utils/platform";
 
 export const useSpeechRecognition = (onResult) => {
   const listeningRef = useRef(false);

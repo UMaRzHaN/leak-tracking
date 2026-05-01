@@ -1,9 +1,9 @@
 import { useState, useCallback, useMemo } from "react";
-import { useSpeechRecognition } from "../../hooks/useSpeechRecognition";
-import { handleVoiceText } from "../../utils/voice/handleVoiceText";
-import { parseVoiceCommand } from "../../utils/voice/parseVoiceCommand";
-import { useProjectConfig } from "../settings/useProjectConfig";
-import { useProjectData } from "../settings/ProjectContext";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import { handleVoiceText } from "@/features/voice/utils/handleVoiceText";
+import { parseVoiceCommand } from "@/features/voice/utils/parseVoiceCommand";
+import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
+import { useProjectData } from "@/app/project/ProjectContext";
 
 /**
  * Voice control hook — now step-aware and with pending confirmation flow.
