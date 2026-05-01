@@ -12,6 +12,11 @@
   letter-spacing: 0.05em;
 }
 
+.required {
+  color: var(--c-danger);
+  font-weight: 700;
+}
+
 .photoBtn {
   width: 100%;
   min-height: 52px;
