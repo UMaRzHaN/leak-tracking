@@ -22,24 +22,34 @@ export default function EditBlock(props) {
   }, [projectConfig]);
 
   /* ── Field categories ── */
-  const textFields  = useMemo(() => allFields.filter((f) => !f.numeric && !f.multiline),           [allFields]);
-  const coordFields = useMemo(() => allFields.filter((f) =>  f.coord),                             [allFields]);
-  const multiFields = useMemo(() => allFields.filter((f) => !f.numeric && f.multiline),            [allFields]);
-  const paramFields = useMemo(() => allFields.filter((f) =>  f.numeric && !f.coord),               [allFields]);
+  const textFields = useMemo(
+    () => allFields.filter((f) => !f.numeric && !f.multiline),
+    [allFields],
+  );
+  const coordFields = useMemo(
+    () => allFields.filter((f) => f.coord),
+    [allFields],
+  );
+  const multiFields = useMemo(
+    () => allFields.filter((f) => !f.numeric && f.multiline),
+    [allFields],
+  );
+  const paramFields = useMemo(
+    () => allFields.filter((f) => f.numeric && !f.coord),
+    [allFields],
+  );
 
-  const set = (key, val) =>
-    setLocalEdit((prev) => ({ ...prev, [key]: val }));
+  const set = (key, val) => setLocalEdit((prev) => ({ ...prev, [key]: val }));
 
   /* ══════════════════════════════════════════
      ОСНОВНОЕ TAB — text + coords + multiline
      ══════════════════════════════════════════ */
   if (activeTab === "info") {
-    const hasText  = textFields.length > 0;
+    const hasText = textFields.length > 0;
     const hasMulti = multiFields.length > 0;
 
     return (
       <div className={s.tabPane}>
-
         {/* ── Text fields ── */}
         {hasText && (
           <div className={s.editSection}>
@@ -92,17 +102,6 @@ export default function EditBlock(props) {
           onEditBefore={onEditBefore}
           onEditAfter={onEditAfter}
         />
-      </div>
-    );
-  }
-
-  if (false && activeTab === "__photo_legacy") {
-    return (
-      <div className={s.tabPane}>
-        <div className={s.tabEmpty}>
-          <span className={s.tabEmptyIcon}>📷</span>
-          <p>Фото редактируются сверху</p>
-        </div>
       </div>
     );
   }

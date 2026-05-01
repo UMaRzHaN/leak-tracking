@@ -22,6 +22,7 @@ module.exports = {
   rules: {
     'no-unused-vars': 'warn',
     'no-undef': 'off',
+    'react/prop-types': 'off',
     'react-hooks/rules-of-hooks': 'error',
     'react-hooks/exhaustive-deps': 'warn',
   },
