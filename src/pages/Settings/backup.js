@@ -8,6 +8,7 @@ import {
 } from "@/repositories/backupSchema";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { blobToDataUri } from "@/utils/photoConversion";
+import { LeakRepository } from "@/repositories/LeakRepository";
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -174,6 +175,46 @@ export async function peekBackupZip(zipFile) {
   };
 }
 
+async function restorePhotosFromZip(leaks, zip, savePhotoRef) {
+  return Promise.all(
+    leaks.map(async (leak) => {
+      const copy = { ...leak };
+      const baseKey = String(leak.leak_id ?? leak.id);
+      const savedPaths = {};
+
+      for (const key of PHOTO_KEYS) {
+        const path = leak[key];
+        if (!path?.startsWith("zip:")) continue;
+
+        const relativePath = path.replace("zip:", "");
+        const photoFile = zip.file(relativePath);
+        if (!photoFile) continue;
+
+        const base64 = await photoFile.async("base64");
+        const ext = relativePath.split(".").pop() || "jpg";
+        const mime = ext === "png" ? "image/png" : "image/jpeg";
+
+        const byteChars = atob(base64);
+        const byteArr = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++)
+          byteArr[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([byteArr], { type: mime });
+
+        const storageKey = key === "photo_after" ? `${baseKey}_after` : baseKey;
+        const excludePaths = Object.values(savedPaths);
+        const newPath = await savePhotoRef.current(
+          blob,
+          storageKey,
+          excludePaths,
+        );
+        copy[key] = newPath ?? `data:${mime};base64,${base64}`;
+        if (newPath) savedPaths[key] = newPath;
+      }
+      return copy;
+    }),
+  );
+}
+
 /**
  * Full project import orchestration — single entry point for both
  * first-run setup (ProjectSetupScreen) and in-app import (Settings).
@@ -185,6 +226,7 @@ export async function peekBackupZip(zipFile) {
  *   activeProjectIdRef      — React ref; .current = activeProject.id
  *   photoReadyRef?          — React ref; .current = boolean (IndexedDB ready)
  *   metaFallback?           — { name?, type? } used when ZIP has no project.json
+ *   overrideName?           — forces project name regardless of project.json content
  *
  * Returns { project, leakCount }.
  */
@@ -234,7 +276,9 @@ export async function importProjectZip(zipFile, ctx) {
     }
   }
 
-  const projectName = meta?.project?.name || metaFallback?.name;
+  // overrideName takes precedence (used by "Create Copy" to force a new name)
+  const projectName =
+    ctx.overrideName?.trim() || meta?.project?.name || metaFallback?.name;
   const projectType = meta?.project?.type || metaFallback?.type;
   if (!projectName || !projectType) {
     throw new Error(
@@ -275,48 +319,137 @@ export async function importProjectZip(zipFile, ctx) {
   }
 
   // ── Import photos and remap zip: paths ────────────────────────────────────
-  const restoredLeaks = await Promise.all(
-    leaks.map(async (leak) => {
-      const copy = { ...leak };
-      const baseKey = String(leak.leak_id ?? leak.id);
-      const savedPaths = {};
-
-      for (const key of PHOTO_KEYS) {
-        const path = leak[key];
-        if (!path?.startsWith("zip:")) continue;
-
-        const relativePath = path.replace("zip:", "");
-        const photoFile = zip.file(relativePath);
-        if (!photoFile) continue;
-
-        const base64 = await photoFile.async("base64");
-        const ext = relativePath.split(".").pop() || "jpg";
-        const mime = ext === "png" ? "image/png" : "image/jpeg";
-
-        const byteChars = atob(base64);
-        const byteArr = new Uint8Array(byteChars.length);
-        for (let i = 0; i < byteChars.length; i++)
-          byteArr[i] = byteChars.charCodeAt(i);
-        const blob = new Blob([byteArr], { type: mime });
-
-        const storageKey = key === "photo_after" ? `${baseKey}_after` : baseKey;
-        const excludePaths = Object.values(savedPaths);
-        const newPath = await savePhotoRef.current(
-          blob,
-          storageKey,
-          excludePaths,
-        );
-        copy[key] = newPath ?? `data:${mime};base64,${base64}`;
-        if (newPath) savedPaths[key] = newPath;
-      }
-      return copy;
-    }),
-  );
+  const restoredLeaks = await restorePhotosFromZip(leaks, zip, savePhotoRef);
 
   // ── Save leaks into the new project ───────────────────────────────────────
   await saveRef.current(restoredLeaks);
 
   return { project: newProject, leakCount: restoredLeaks.length };
+}
+
+/**
+ * Import a ZIP archive into an already-existing project (overwrite or merge).
+ *
+ * Uses the same ref-based flow as importProjectZip so that saveRef.current
+ * (useProjectData.save) is guaranteed to reflect the target project before any
+ * writes happen — this ensures both IndexedDB/filesystem AND React state are
+ * updated atomically.
+ *
+ * ctx shape:
+ *   overwriteProject(id)   — switches active project (does NOT write data)
+ *   savePhotoRef           — ref to savePhoto; updated after activeProjectId changes
+ *   saveRef                — ref to useProjectData.save; updates storage + React state
+ *   activeProjectIdRef     — ref polled to detect when refs have propagated
+ *   photoReadyRef?         — ref to IDB ready flag
+ *   existingProject        — { id, name, folderName, ... }
+ *
+ * Returns { project, leakCount }.
+ */
+export async function importIntoExistingProject(zipFile, ctx, mode) {
+  const {
+    overwriteProject,
+    savePhotoRef,
+    saveRef,
+    activeProjectIdRef,
+    photoReadyRef,
+    existingProject,
+  } = ctx;
+
+  const { id: existingProjectId, folderName: existingFolderName } =
+    existingProject;
+
+  // ── 1. Parse ZIP first — fail early before touching project state ─────────
+  const JSZip = (await getJSZip()).default;
+  const zip = await JSZip.loadAsync(zipFile);
+
+  const jsonFile = zip.file("backup.json");
+  if (!jsonFile) throw new Error("Файл backup.json не найден в архиве");
+
+  let parsed;
+  try {
+    parsed = JSON.parse(await jsonFile.async("string"));
+  } catch {
+    throw new Error("backup.json содержит невалидный JSON");
+  }
+
+  const validation = validateBackup(parsed);
+  if (!validation.ok) throw new Error(validation.error);
+  const leaks = validation.data;
+
+  // ── 2. Read vars (overwrite only) ─────────────────────────────────────────
+  let vars = null;
+  if (mode === "overwrite") {
+    const metaFile = zip.file("project.json");
+    if (metaFile) {
+      try {
+        const parsedMeta = JSON.parse(await metaFile.async("string"));
+        const metaValidation = validateProjectBackupMeta(parsedMeta);
+        const meta = metaValidation.ok ? metaValidation.data : parsedMeta;
+        vars = meta?.vars ?? null;
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  // ── 3. Switch active project — same pattern as addProject in importProjectZip
+  overwriteProject(existingProjectId);
+  for (let i = 0; i < 60; i++) {
+    if (activeProjectIdRef.current === existingProjectId) break;
+    await delay(50);
+  }
+  if (activeProjectIdRef.current !== existingProjectId) {
+    throw new Error("Таймаут переключения проекта");
+  }
+
+  // ── 4. Wait for IDB (savePhotoRef.current now has correct projectId) ───────
+  if (photoReadyRef) {
+    for (let i = 0; i < 60; i++) {
+      if (photoReadyRef.current) break;
+      await delay(50);
+    }
+    if (!photoReadyRef.current) throw new Error("Хранилище фото не готово");
+  }
+
+  // ── 5-6. Build final leak list + restore photos ───────────────────────────
+  let finalLeaks;
+  let addedCount;
+  if (mode === "merge") {
+    // A: read existing BEFORE any photo work — PhotoRepository.save cleanup
+    //    deletes old keys matching photo_{projectId}_{leakId}_*, so we must
+    //    never call restorePhotosFromZip for leaks that already exist.
+    const existing = await LeakRepository.getAll({
+      projectId: existingProjectId,
+      folderName: existingFolderName,
+    });
+    const existingIds = new Set(existing.map((l) => String(l.id)));
+    // B: filter to new leaks only
+    const incomingNew = leaks.filter((l) => !existingIds.has(String(l.id)));
+    // C: restore photos ONLY for new leaks (existing photos untouched)
+    const restoredNew = await restorePhotosFromZip(
+      incomingNew,
+      zip,
+      savePhotoRef,
+    );
+    // D: combine — existing records carry their original photo paths
+    finalLeaks = [...existing, ...restoredNew];
+    addedCount = restoredNew.length;
+  } else {
+    if (vars) {
+      localStorage.setItem(
+        STORAGE_KEYS.PROJECT_VARS(existingProjectId),
+        JSON.stringify(vars),
+      );
+    }
+    const restoredLeaks = await restorePhotosFromZip(leaks, zip, savePhotoRef);
+    finalLeaks = restoredLeaks;
+    addedCount = restoredLeaks.length;
+  }
+
+  // ── 7. Persist via saveRef — updates BOTH storage AND React state ─────────
+  await saveRef.current(finalLeaks);
+
+  return { project: existingProject, leakCount: addedCount };
 }
 
 export async function importBackupZip(zipFile, savePhoto) {

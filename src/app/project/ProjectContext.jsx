@@ -1,4 +1,12 @@
-import { createContext, useContext, useState, useMemo, useCallback, useEffect, useRef } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import { PROJECT_META } from "@/configs/projects";
 import {
   toFolderName,
@@ -41,8 +49,12 @@ export function ProjectProvider({ children }) {
   // re-render due to project data changes.
   const projectsRef = useRef(projects);
   const activeIdRef = useRef(activeId);
-  useEffect(() => { projectsRef.current = projects; }, [projects]);
-  useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
+  useEffect(() => {
+    projectsRef.current = projects;
+  }, [projects]);
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
 
   const activeProject = useMemo(
     () => projects.find((p) => p.id === activeId) ?? null,
@@ -100,7 +112,10 @@ export function ProjectProvider({ children }) {
     [_setProjects, _setActiveId],
   );
 
-  const configure = useCallback((type, name) => addProject(name, type), [addProject]);
+  const configure = useCallback(
+    (type, name) => addProject(name, type),
+    [addProject],
+  );
 
   const selectProject = useCallback(
     (id) => {
@@ -129,7 +144,9 @@ export function ProjectProvider({ children }) {
         newFolderName = `${folder}_${suffix++}`;
       }
 
-      _setProjects(current.map((p) => (p.id === id ? { ...p, name: trimmed } : p)));
+      _setProjects(
+        current.map((p) => (p.id === id ? { ...p, name: trimmed } : p)),
+      );
       return { oldFolderName: found.folderName, newFolderName };
     },
     [_setProjects],
@@ -138,7 +155,9 @@ export function ProjectProvider({ children }) {
   const applyFolderRename = useCallback(
     (id, newFolderName) => {
       _setProjects((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, folderName: newFolderName } : p)),
+        prev.map((p) =>
+          p.id === id ? { ...p, folderName: newFolderName } : p,
+        ),
       );
     },
     [_setProjects],
@@ -147,7 +166,9 @@ export function ProjectProvider({ children }) {
   const changeProjectType = useCallback(
     (id, type) => {
       if (!PROJECT_META[type]) return;
-      _setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, type } : p)));
+      _setProjects((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, type } : p)),
+      );
     },
     [_setProjects],
   );
@@ -170,8 +191,26 @@ export function ProjectProvider({ children }) {
     [changeProjectType],
   );
 
+  // Switches the active project to `id`. Does NOT write leak data —
+  // callers must use saveRef.current() to update both storage and React state.
+  const overwriteProject = useCallback(
+    (id) => {
+      if (!projectsRef.current.some((p) => p.id === id)) return false;
+      _setActiveId(id);
+      return true;
+    },
+    [_setActiveId],
+  );
+
   const dataValue = useMemo(
-    () => ({ projects, activeProject, activeId, project, projectName, isConfigured }),
+    () => ({
+      projects,
+      activeProject,
+      activeId,
+      project,
+      projectName,
+      isConfigured,
+    }),
     [projects, activeProject, activeId, project, projectName, isConfigured],
   );
 
@@ -185,9 +224,19 @@ export function ProjectProvider({ children }) {
       changeProjectType,
       removeProject,
       changeProject,
+      overwriteProject,
     }),
-    [addProject, configure, selectProject, renameProject, applyFolderRename,
-     changeProjectType, removeProject, changeProject],
+    [
+      addProject,
+      configure,
+      selectProject,
+      renameProject,
+      applyFolderRename,
+      changeProjectType,
+      removeProject,
+      changeProject,
+      overwriteProject,
+    ],
   );
 
   return (
@@ -203,19 +252,22 @@ export function ProjectProvider({ children }) {
 export function useProject() {
   const data = useContext(ProjectDataContext);
   const actions = useContext(ProjectActionsContext);
-  if (!data || !actions) throw new Error("useProject must be used within ProjectProvider");
+  if (!data || !actions)
+    throw new Error("useProject must be used within ProjectProvider");
   return { ...data, ...actions };
 }
 
 // Granular hooks for components that only need one slice.
 export function useProjectData() {
   const data = useContext(ProjectDataContext);
-  if (!data) throw new Error("useProjectData must be used within ProjectProvider");
+  if (!data)
+    throw new Error("useProjectData must be used within ProjectProvider");
   return data;
 }
 
 export function useProjectActions() {
   const actions = useContext(ProjectActionsContext);
-  if (!actions) throw new Error("useProjectActions must be used within ProjectProvider");
+  if (!actions)
+    throw new Error("useProjectActions must be used within ProjectProvider");
   return actions;
 }

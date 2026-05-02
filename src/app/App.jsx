@@ -40,7 +40,13 @@ export default function App() {
   /* =========================
      PROJECT CONTEXT
   ========================= */
-  const { isConfigured, configure, addProject, activeProject } = useProject();
+  const {
+    isConfigured,
+    configure,
+    addProject,
+    activeProject,
+    overwriteProject,
+  } = useProject();
 
   /* =========================
      PROJECT-AWARE DATA
@@ -126,17 +132,35 @@ export default function App() {
     [addProject],
   );
 
-  /** In-app import (Settings): always creates a new project, optional fallback for legacy ZIPs */
+  /** In-app import (Settings): always creates a new project, optional fallback for legacy ZIPs.
+   *  options.overrideName forces the project name regardless of project.json (used for copies). */
   const handleImportZip = useCallback(
-    async (file, fallback) => {
+    async (file, fallback, options = {}) => {
       const { importProjectZip } = await import("@/pages/Settings/backup");
       return await importProjectZip(file, {
         ...importCtx,
         metaFallback: fallback,
+        ...options,
       });
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
     [addProject],
+  );
+
+  /** Import into an already-existing project (overwrite or merge). */
+  const handleImportIntoExisting = useCallback(
+    async (file, existingProject, mode) => {
+      const { importIntoExistingProject } =
+        await import("@/pages/Settings/backup");
+      return await importIntoExistingProject(
+        file,
+        { ...importCtx, overwriteProject, existingProject },
+        mode,
+      );
+      // importCtx contains only stable refs — overwriteProject is the real dep
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [addProject, overwriteProject],
   );
 
   if (!isConfigured) {
@@ -190,6 +214,7 @@ export default function App() {
               prevPage={prevPage}
               clearDatabase={clear}
               onImportZip={handleImportZip}
+              onImportIntoExisting={handleImportIntoExisting}
             />
           )}
 

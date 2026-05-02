@@ -1,8 +1,10 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { isNative } from "@/utils/platform";
 import { Directory, Filesystem } from "@capacitor/filesystem";
+import { LeakRepository } from "@/repositories/LeakRepository";
 
 const VALID_TYPES = ["upstream", "midstream", "downstream"];
+const CONFLICT_CLOSED = { open: false };
 
 function detectTypeFromFileName(str) {
   const lower = str.toLowerCase();
@@ -12,17 +14,35 @@ function detectTypeFromFileName(str) {
   return null;
 }
 
-export function useBackupActions({ data, idbGetPhoto, activeProject, vars, onImportZip, notify }) {
+export function useBackupActions({
+  data,
+  idbGetPhoto,
+  activeProject,
+  vars,
+  onImportZip,
+  onImportIntoExisting,
+  notify,
+  projects,
+}) {
   const importZipRef = useRef(null);
+  const [conflictState, setConflictState] = useState(CONFLICT_CLOSED);
 
   const handleExportZip = useCallback(async () => {
-    if (!data.length) { notify("warning", "Нет данных для экспорта"); return; }
+    if (!data.length) {
+      notify("warning", "Нет данных для экспорта");
+      return;
+    }
 
     const folder = activeProject?.folderName ?? "backup";
     const fileName = `${folder}.zip`;
     try {
       const { buildProjectBackupZip } = await import("@/pages/Settings/backup");
-      const blob = await buildProjectBackupZip({ leaks: data, idbGet: idbGetPhoto, project: activeProject, vars });
+      const blob = await buildProjectBackupZip({
+        leaks: data,
+        idbGet: idbGetPhoto,
+        project: activeProject,
+        vars,
+      });
 
       if (isNative) {
         const reader = new FileReader();
@@ -31,8 +51,16 @@ export function useBackupActions({ data, idbGetPhoto, activeProject, vars, onImp
           reader.onerror = rej;
           reader.readAsDataURL(blob);
         });
-        await Filesystem.mkdir({ path: folder, directory: Directory.Documents, recursive: true }).catch(() => {});
-        await Filesystem.writeFile({ path: `${folder}/${fileName}`, directory: Directory.Documents, data: base64 });
+        await Filesystem.mkdir({
+          path: folder,
+          directory: Directory.Documents,
+          recursive: true,
+        }).catch(() => {});
+        await Filesystem.writeFile({
+          path: `${folder}/${fileName}`,
+          directory: Directory.Documents,
+          data: base64,
+        });
         notify("success", `ZIP сохранён в Документы/${folder}/`);
       } else {
         const url = URL.createObjectURL(blob);
@@ -48,47 +76,158 @@ export function useBackupActions({ data, idbGetPhoto, activeProject, vars, onImp
     }
   }, [data, idbGetPhoto, activeProject, vars, notify]);
 
-  const handleImportZip = useCallback(async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleImportZip = useCallback(
+    async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-    try {
-      const { peekBackupZip } = await import("@/pages/Settings/backup");
-      const peek = await peekBackupZip(file);
-      const metaProject = peek.meta?.project;
+      try {
+        const { peekBackupZip } = await import("@/pages/Settings/backup");
+        const peek = await peekBackupZip(file);
+        const metaProject = peek.meta?.project;
 
-      const resolvedName = metaProject?.name || file.name.replace(/\.zip$/i, "");
-      const resolvedType =
-        (metaProject?.type && VALID_TYPES.includes(metaProject.type) ? metaProject.type : null) ||
-        peek.detectedType ||
-        detectTypeFromFileName(file.name);
+        const resolvedName =
+          metaProject?.name || file.name.replace(/\.zip$/i, "");
+        const resolvedType =
+          (metaProject?.type && VALID_TYPES.includes(metaProject.type)
+            ? metaProject.type
+            : null) ||
+          peek.detectedType ||
+          detectTypeFromFileName(file.name);
 
-      if (!resolvedType) {
-        notify(
-          "error",
-          `Не удалось определить тип проекта из файла «${file.name}». Переименуйте файл, добавив в имя upstream / midstream / downstream.`,
+        if (!resolvedType) {
+          notify(
+            "error",
+            `Не удалось определить тип проекта из файла «${file.name}». Переименуйте файл, добавив в имя upstream / midstream / downstream.`,
+          );
+          e.target.value = "";
+          return;
+        }
+
+        // ── Conflict detection ────────────────────────────────────────────────
+        const existing = projects?.find(
+          (p) =>
+            p.name.trim().toLowerCase() === resolvedName.trim().toLowerCase(),
         );
-        e.target.value = "";
-        return;
+
+        if (existing) {
+          const existingLeaks = await LeakRepository.getAll({
+            projectId: existing.id,
+            folderName: existing.folderName,
+          });
+          setConflictState({
+            open: true,
+            file,
+            resolvedName,
+            resolvedType,
+            fallback: metaProject
+              ? undefined
+              : { name: resolvedName, type: resolvedType },
+            existingProject: { ...existing, leakCount: existingLeaks.length },
+            leakCount: peek.leaks.length,
+          });
+          e.target.value = "";
+          return;
+        }
+
+        // ── No conflict — existing flow ───────────────────────────────────────
+        const typeLabel = {
+          upstream: "Добыча",
+          midstream: "Транспортировка",
+          downstream: "Переработка",
+        }[resolvedType];
+        const source = metaProject?.type
+          ? "project.json"
+          : peek.detectedType
+            ? "данных записей"
+            : "имени файла";
+        const ok = window.confirm(
+          `Импортировать проект?\n\nНазвание: ${resolvedName}\nТип: ${typeLabel} (${resolvedType})\nЗаписей: ${peek.leaks.length}\nОпределено по: ${source}\n\nБудет создан новый проект.`,
+        );
+        if (!ok) {
+          e.target.value = "";
+          return;
+        }
+
+        const fallback = metaProject
+          ? undefined
+          : { name: resolvedName, type: resolvedType };
+        const result = await onImportZip(file, fallback);
+        if (!result?.project)
+          throw new Error("Не удалось получить данные проекта из файла");
+        notify(
+          "success",
+          `Импортирован проект «${result.project.name}» (${result.leakCount} записей)`,
+        );
+      } catch (err) {
+        notify("error", "Ошибка импорта: " + err.message);
       }
 
-      const typeLabel = { upstream: "Добыча", midstream: "Транспортировка", downstream: "Переработка" }[resolvedType];
-      const source = metaProject?.type ? "project.json" : peek.detectedType ? "данных записей" : "имени файла";
-      const ok = window.confirm(
-        `Импортировать проект?\n\nНазвание: ${resolvedName}\nТип: ${typeLabel} (${resolvedType})\nЗаписей: ${peek.leaks.length}\nОпределено по: ${source}\n\nБудет создан новый проект.`,
-      );
-      if (!ok) { e.target.value = ""; return; }
+      e.target.value = "";
+    },
+    [onImportZip, notify, projects],
+  );
 
-      const fallback = metaProject ? undefined : { name: resolvedName, type: resolvedType };
-      const result = await onImportZip(file, fallback);
-      if (!result?.project) throw new Error("Не удалось получить данные проекта из файла");
-      notify("success", `Импортирован проект «${result.project.name}» (${result.leakCount} записей)`);
+  const handleConflictOverwrite = useCallback(async () => {
+    const { file, existingProject } = conflictState;
+    try {
+      const result = await onImportIntoExisting(
+        file,
+        existingProject,
+        "overwrite",
+      );
+      notify(
+        "success",
+        `Проект «${result.project.name}» перезаписан (${result.leakCount} записей)`,
+      );
     } catch (err) {
       notify("error", "Ошибка импорта: " + err.message);
     }
+    setConflictState(CONFLICT_CLOSED);
+  }, [conflictState, onImportIntoExisting, notify]);
 
-    e.target.value = "";
-  }, [onImportZip, notify]);
+  const handleConflictMerge = useCallback(async () => {
+    const { file, existingProject } = conflictState;
+    try {
+      const result = await onImportIntoExisting(file, existingProject, "merge");
+      notify(
+        "success",
+        `Объединено с «${result.project.name}» (добавлено из архива: ${result.leakCount} записей)`,
+      );
+    } catch (err) {
+      notify("error", "Ошибка импорта: " + err.message);
+    }
+    setConflictState(CONFLICT_CLOSED);
+  }, [conflictState, onImportIntoExisting, notify]);
 
-  return { importZipRef, handleExportZip, handleImportZip };
+  const handleConflictCopy = useCallback(async () => {
+    const { file, resolvedName, resolvedType, fallback } = conflictState;
+    const copyName = `${resolvedName} (2)`;
+    try {
+      const result = await onImportZip(
+        file,
+        fallback ?? { name: copyName, type: resolvedType },
+        { overrideName: copyName },
+      );
+      if (!result?.project) throw new Error("Не удалось создать проект");
+      notify(
+        "success",
+        `Создана копия «${result.project.name}» (${result.leakCount} записей)`,
+      );
+    } catch (err) {
+      notify("error", "Ошибка импорта: " + err.message);
+    }
+    setConflictState(CONFLICT_CLOSED);
+  }, [conflictState, onImportZip, notify]);
+
+  return {
+    importZipRef,
+    handleExportZip,
+    handleImportZip,
+    conflictState,
+    setConflictState,
+    handleConflictOverwrite,
+    handleConflictMerge,
+    handleConflictCopy,
+  };
 }

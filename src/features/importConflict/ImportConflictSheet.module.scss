@@ -1,0 +1,114 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: flex-end;
+}
+
+.sheet {
+  width: 100%;
+  background: var(--c-surface);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  animation: slideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.handle {
+  width: 36px;
+  height: 4px;
+  background: var(--c-border);
+  border-radius: 999px;
+  margin: 0 auto 16px;
+}
+
+.icon {
+  font-size: 26px;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 6px;
+  text-align: center;
+  color: var(--c-text);
+}
+
+.description {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--c-text2);
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.counts {
+  display: block;
+  font-size: 12px;
+  color: var(--c-text3);
+  margin-top: 4px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.btn {
+  width: 100%;
+  height: 44px;
+  border-radius: var(--r-md);
+  font-size: 15px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: transform var(--t-fast), background var(--t-fast);
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+.danger {
+  background: var(--c-danger);
+  color: #fff;
+
+  &:hover {
+    opacity: 0.88;
+  }
+}
+
+.neutral {
+  background: var(--c-surface2);
+  color: var(--c-text);
+
+  &:hover {
+    background: var(--c-border);
+  }
+}
+
+.btnCancel {
+  background: transparent;
+  color: var(--c-text2);
+
+  &:hover {
+    background: var(--c-surface2);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
