@@ -85,7 +85,7 @@ export default function MobileSheet({
                   onClick={() => onSelect(leak)}
                 >
                   <span className={s.dot} />
-                  Leak ID {leak.leak_id}
+                  Бирка № {leak.leak_id}
                 </div>
               ))}
             </div>
