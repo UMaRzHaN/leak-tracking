@@ -2,7 +2,10 @@
 const getJSZip = () => import("jszip");
 
 import { getPhotoSrc } from "@/hooks/photoService";
-import { validateBackup, validateProjectBackupMeta } from "@/repositories/backupSchema";
+import {
+  validateBackup,
+  validateProjectBackupMeta,
+} from "@/repositories/backupSchema";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { blobToDataUri } from "@/utils/photoConversion";
 
@@ -28,16 +31,17 @@ async function resolveBase64(path, idbGet) {
   if (!src || !src.startsWith("data:")) return null;
   const match = src.match(/^data:(image\/\w+);base64,(.+)$/);
   if (!match) return null;
-  return { mime: match[1], base64: match[2], ext: match[1].split("/")[1] || "jpg" };
+  return {
+    mime: match[1],
+    base64: match[2],
+    ext: match[1].split("/")[1] || "jpg",
+  };
 }
 
-export async function buildBackupZip(leaks, idbGet) {
-  // Dynamic import to avoid bundling JSZip in initial load
-  const JSZip = (await getJSZip()).default;
-  const zip = new JSZip();
+async function exportLeaksWithPhotos(leaks, zip, idbGet) {
   const photosFolder = zip.folder("photos");
 
-  const exportedLeaks = await Promise.all(
+  return Promise.all(
     leaks.map(async (leak) => {
       const copy = { ...leak };
       const leakNumber = String(leak.leak_id ?? leak.id).replace(/[\\/]/g, "_");
@@ -56,6 +60,14 @@ export async function buildBackupZip(leaks, idbGet) {
       return copy;
     }),
   );
+}
+
+export async function buildBackupZip(leaks, idbGet) {
+  // Dynamic import to avoid bundling JSZip in initial load
+  const JSZip = (await getJSZip()).default;
+  const zip = new JSZip();
+
+  const exportedLeaks = await exportLeaksWithPhotos(leaks, zip, idbGet);
 
   zip.file("backup.json", JSON.stringify(exportedLeaks, null, 2));
   return zip.generateAsync({ type: "blob" });
@@ -79,27 +91,8 @@ export async function buildProjectBackupZip({ leaks, idbGet, project, vars }) {
   // Dynamic import to avoid bundling JSZip in initial load
   const JSZip = (await getJSZip()).default;
   const zip = new JSZip();
-  const photosFolder = zip.folder("photos");
 
-  const exportedLeaks = await Promise.all(
-    leaks.map(async (leak) => {
-      const copy = { ...leak };
-      const leakNumber = String(leak.leak_id ?? leak.id).replace(/[\\/]/g, "_");
-      const leakFolder = photosFolder.folder(leakNumber);
-
-      for (const key of PHOTO_KEYS) {
-        const path = leak[key];
-        if (!path) continue;
-        const resolved = await resolveBase64(path, idbGet);
-        if (!resolved) continue;
-
-        const fileName = `${SUFFIX[key]}.${resolved.ext}`;
-        leakFolder.file(fileName, resolved.base64, { base64: true });
-        copy[key] = `zip:photos/${leakNumber}/${fileName}`;
-      }
-      return copy;
-    }),
-  );
+  const exportedLeaks = await exportLeaksWithPhotos(leaks, zip, idbGet);
 
   zip.file("backup.json", JSON.stringify(exportedLeaks, null, 2));
   const meta = buildProjectMeta({ project, vars });
@@ -120,8 +113,8 @@ export async function exportBackupZip(leaks, idbGet, projectName = "backup") {
 
 /** Maps unique field keys to their project type. */
 const TYPE_SIGNATURES = {
-  midstream:  ["station", "field"],
-  upstream:   ["subdivision", "deposit"],
+  midstream: ["station", "field"],
+  upstream: ["subdivision", "deposit"],
   downstream: ["district", "locality", "address"],
 };
 
@@ -302,12 +295,17 @@ export async function importProjectZip(zipFile, ctx) {
 
         const byteChars = atob(base64);
         const byteArr = new Uint8Array(byteChars.length);
-        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+        for (let i = 0; i < byteChars.length; i++)
+          byteArr[i] = byteChars.charCodeAt(i);
         const blob = new Blob([byteArr], { type: mime });
 
         const storageKey = key === "photo_after" ? `${baseKey}_after` : baseKey;
         const excludePaths = Object.values(savedPaths);
-        const newPath = await savePhotoRef.current(blob, storageKey, excludePaths);
+        const newPath = await savePhotoRef.current(
+          blob,
+          storageKey,
+          excludePaths,
+        );
         copy[key] = newPath ?? `data:${mime};base64,${base64}`;
         if (newPath) savedPaths[key] = newPath;
       }
@@ -373,7 +371,8 @@ export async function importBackupZip(zipFile, savePhoto) {
 
         const byteChars = atob(base64);
         const byteArr = new Uint8Array(byteChars.length);
-        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+        for (let i = 0; i < byteChars.length; i++)
+          byteArr[i] = byteChars.charCodeAt(i);
         const blob = new Blob([byteArr], { type: mime });
 
         const storageKey = key === "photo_after" ? `${baseKey}_after` : baseKey;
