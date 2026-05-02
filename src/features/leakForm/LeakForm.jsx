@@ -17,7 +17,13 @@ import StepHeader from "./components/StepHeader";
 import ClearActions from "./components/ClearActions";
 import s from "./LeakForm.module.scss";
 
-export default function LeakForm({ onAdd, setPage, prevPage, lastItem, isSaving }) {
+export default function LeakForm({
+  onAdd,
+  setPage,
+  prevPage,
+  lastItem,
+  isSaving,
+}) {
   const { form, errors, handle, setErrors, setForm } = useLeakFormContext();
   const rawConfig = useProjectConfig();
   const projectConfig = useEffectiveProjectConfig();
@@ -76,7 +82,9 @@ export default function LeakForm({ onAdd, setPage, prevPage, lastItem, isSaving 
     });
     setErrors((prev) => {
       const updated = { ...prev };
-      currentStep.fields.forEach(({ key }) => { delete updated[key]; });
+      currentStep.fields.forEach(({ key }) => {
+        delete updated[key];
+      });
       return updated;
     });
   }, [STEPS, step, setForm, setErrors]);
@@ -86,14 +94,19 @@ export default function LeakForm({ onAdd, setPage, prevPage, lastItem, isSaving 
     (command) => {
       if (command === "next") nextStep();
       else if (command === "back") prevStep();
-      else if (command === "save") save(); // eslint-disable-line no-use-before-define
+      else if (command === "save")
+        save(); // eslint-disable-line no-use-before-define
       else if (command === "clear") clearForm();
     },
     [nextStep, prevStep, clearForm], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  const { pendingVoiceData, dismissVoiceData, startVoiceInput, stopVoiceInput } =
-    useVoiceControl({ step, steps: STEPS, onCommand: handleVoiceCommand });
+  const {
+    pendingVoiceData,
+    dismissVoiceData,
+    startVoiceInput,
+    stopVoiceInput,
+  } = useVoiceControl({ step, steps: STEPS, onCommand: handleVoiceCommand });
 
   const handleVoiceConfirm = useCallback(
     (confirmedData) => {
@@ -109,7 +122,8 @@ export default function LeakForm({ onAdd, setPage, prevPage, lastItem, isSaving 
       const d = new Date();
       const coerced = { ...data };
       NUMBER_KEYS.forEach((key) => {
-        if (coerced[key] !== undefined) coerced[key] = normalizeNumber(coerced[key]);
+        if (coerced[key] !== undefined)
+          coerced[key] = normalizeNumber(coerced[key]);
       });
       const calculated = vars ? calculations(coerced, vars) : coerced;
       onAdd?.({
@@ -128,13 +142,26 @@ export default function LeakForm({ onAdd, setPage, prevPage, lastItem, isSaving 
     if (!validateStep(step)) return;
     const finalData = { ...form, photo: form.photo };
 
-    if (!lastItem) { commitSave(finalData); return; }
+    if (!lastItem) {
+      commitSave(finalData);
+      return;
+    }
 
     const isEmptyValue = (v) =>
-      v === null || v === undefined || (typeof v === "string" && v.trim() === "");
-    const emptyKeys = COPY_KEYS.filter((key) => key !== "photo" && isEmptyValue(finalData[key]));
+      v === null ||
+      v === undefined ||
+      (typeof v === "string" && v.trim() === "");
+    const emptyKeys = COPY_KEYS.filter((key) => {
+      if (key === "photo") return false;
+      if (!isEmptyValue(finalData[key])) return false;
+      const lastVal = lastItem[key];
+      return lastVal != null && String(lastVal).trim() !== "";
+    });
 
-    if (emptyKeys.length === 0) { commitSave(finalData); return; }
+    if (emptyKeys.length === 0) {
+      commitSave(finalData);
+      return;
+    }
 
     pendingKeysRef.current = emptyKeys;
     setConfirmOpen(true);
@@ -153,6 +180,21 @@ export default function LeakForm({ onAdd, setPage, prevPage, lastItem, isSaving 
     setConfirmOpen(false);
     commitSave({ ...form, photo: form.photo });
   };
+
+  const ghostPlaceholders = useMemo(() => {
+    if (!lastItem) return {};
+    const currentFields = STEPS[step - 1]?.fields ?? [];
+    const result = {};
+    for (const f of currentFields) {
+      if (f.type === "photo") continue;
+      const isEmpty = form[f.key] == null || String(form[f.key]).trim() === "";
+      const lastVal = lastItem[f.key];
+      if (isEmpty && lastVal != null && String(lastVal).trim() !== "") {
+        result[f.key] = String(lastVal);
+      }
+    }
+    return result;
+  }, [lastItem, STEPS, step, COPY_KEYS, form]);
 
   const hasStepData = STEPS[step - 1]?.fields?.some(({ key }) => form[key]);
 
@@ -176,6 +218,7 @@ export default function LeakForm({ onAdd, setPage, prevPage, lastItem, isSaving 
           onChange={handle}
           nextStep={nextStep}
           save={save}
+          ghostPlaceholders={ghostPlaceholders}
         />
 
         <ClearActions
@@ -205,6 +248,7 @@ export default function LeakForm({ onAdd, setPage, prevPage, lastItem, isSaving 
         open={confirmOpen}
         title="Заполнить из предыдущей записи?"
         description="Некоторые поля пустые. Скопировать значения?"
+        confirmLabel="Скопировать"
         onConfirm={handleConfirmCopy}
         onCancel={handleCancelCopy}
       />

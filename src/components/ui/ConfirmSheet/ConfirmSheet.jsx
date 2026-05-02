@@ -6,6 +6,8 @@ export default function ConfirmSheet({
   description,
   onConfirm,
   onCancel,
+  confirmLabel = "Подтвердить",
+  cancelLabel = "Отмена",
 }) {
   if (!open) return null;
 
@@ -19,10 +21,10 @@ export default function ConfirmSheet({
 
         <div className={s.actions}>
           <button className={s.cancel} onClick={onCancel}>
-            Отмена
+            {cancelLabel}
           </button>
           <button className={s.confirm} onClick={onConfirm}>
-            Скопировать
+            {confirmLabel}
           </button>
         </div>
       </div>

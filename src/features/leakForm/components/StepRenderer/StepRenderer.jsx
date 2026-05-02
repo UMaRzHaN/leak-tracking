@@ -12,6 +12,7 @@ export default function StepRenderer({
   onChange,
   nextStep,
   save,
+  ghostPlaceholders,
 }) {
   const isLastStep = step >= steps.length;
   const config = steps[step - 1];
@@ -60,7 +61,7 @@ export default function StepRenderer({
               value={form[f.key]}
               error={errors?.[f.key]}
               onChange={(v) => onChange(f.key, v)}
-              placeholder={f.placeholder}
+              placeholder={ghostPlaceholders?.[f.key] ?? f.placeholder}
               hint={f.hint}
             />
           );
@@ -78,7 +79,7 @@ export default function StepRenderer({
               onChange={(v) => onChange(f.key, v)}
               required={f.required}
               onComplete={completeFromElement}
-              placeholder={f.placeholder}
+              placeholder={ghostPlaceholders?.[f.key] ?? f.placeholder}
               hint={f.hint}
             />
           );
