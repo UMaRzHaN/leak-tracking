@@ -19,7 +19,13 @@
       "Bash(npx husky *)",
       "Bash(npx eslint *)",
       "Bash(node -e ' *)",
-      "Bash(node -e \"console.log\\(require\\('./node_modules/eslint-plugin-react-hooks/package.json'\\).version\\)\")"
+      "Bash(node -e \"console.log\\(require\\('./node_modules/eslint-plugin-react-hooks/package.json'\\).version\\)\")",
+      "WebSearch",
+      "WebFetch(domain:kml4earth.appspot.com)",
+      "WebFetch(domain:developers.google.com)",
+      "WebFetch(domain:earth.google.com)",
+      "WebFetch(domain:maps.google.com)",
+      "WebFetch(domain:sites.google.com)"
     ]
   }
 }

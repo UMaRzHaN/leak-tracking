@@ -2,6 +2,27 @@ import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { isNative } from "@/utils/platform";
 import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
 
+// Colors in RRGGBB format (used in Google Earth icon URL parameter)
+const ICON_COLORS = [
+  "E53935", // Red
+  "43A047", // Green
+  "1E88E5", // Blue
+  "FB8C00", // Orange
+  "8E24AA", // Purple
+  "00ACC1", // Cyan
+  "FFB300", // Amber
+  "D81B60", // Pink
+  "6D4C41", // Brown
+  "00897B", // Teal
+  "3949AB", // Indigo
+  "7CB342", // Lime
+];
+
+// Google Earth tornado icon (ID=1714), color embedded in URL
+function tornadoIconUrl(colorHex) {
+  return `https://earth.google.com/earth/rpc/cc/icon?color=${colorHex}&amp;id=1714&amp;scale=4`;
+}
+
 export function exportLeaksKML(leaks, project) {
   const config = PROJECT_LOCATION_CONFIG[project];
 
@@ -12,35 +33,52 @@ export function exportLeaksKML(leaks, project) {
     return acc;
   }, {});
 
-  const folders = Object.entries(byField)
-    .map(([field, fieldLeaks]) => {
+  const groupNames = Object.keys(byField);
+
+  const styles = groupNames
+    .map((_, index) => {
+      const color = ICON_COLORS[index % ICON_COLORS.length];
+      return `
+    <Style id="style_${index}">
+      <IconStyle>
+        <scale>1.2</scale>
+        <Icon>
+          <href>${tornadoIconUrl(color)}</href>
+        </Icon>
+      </IconStyle>
+    </Style>`;
+    })
+    .join("");
+
+  const folders = groupNames
+    .map((field, groupIndex) => {
+      const fieldLeaks = byField[field];
       const placemarks = fieldLeaks
         .map(
           (l) => `
-          <Placemark>
-            <name>${l.leak_id ?? ""}</name>
-            <description>
-              <![CDATA[
-                <b>${config.main_label}:</b> ${l[config.main] ?? "Не указан"}<br/>
-                <b>${config.label}:</b> ${l[config.secondary] ?? "Не указан"}<br/>
-                <b>Компонент:</b> ${l.component ?? "Не указан"}<br/>
-                <b>Скорость:</b> ${l.leak_speed ?? "Без скорости"}
-              ]]>
-            </description>
-            <Point>
-              <coordinates>${l.lng},${l.lat},0</coordinates>
-            </Point>
-          </Placemark>
-        `,
+      <Placemark>
+        <name>${l.leak_id ?? ""}</name>
+        <styleUrl>#style_${groupIndex}</styleUrl>
+        <description>
+          <![CDATA[
+            <b>${config.main_label}:</b> ${l[config.main] ?? "Не указан"}<br/>
+            <b>${config.label}:</b> ${l[config.secondary] ?? "Не указан"}<br/>
+            <b>Компонент:</b> ${l.component ?? "Не указан"}<br/>
+            <b>Скорость:</b> ${l.leak_speed ?? "Без скорости"}
+          ]]>
+        </description>
+        <Point>
+          <coordinates>${l.lng},${l.lat},0</coordinates>
+        </Point>
+      </Placemark>`,
         )
         .join("");
 
       return `
-        <Folder>
-          <name>${field}</name>
-          ${placemarks}
-        </Folder>
-      `;
+    <Folder>
+      <name>${field}</name>
+      ${placemarks}
+    </Folder>`;
     })
     .join("");
 
@@ -48,6 +86,7 @@ export function exportLeaksKML(leaks, project) {
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
     <name>Leak Reports</name>
+    ${styles}
     ${folders}
   </Document>
 </kml>`;
