@@ -1,7 +1,7 @@
 import { calculations } from "./calculations";
 
 const BASE_VARS = {
-  density: 0.668,
+  density: 0.000716, // кг/л (метан при стандартных условиях), leak_speed в л/мин
   GWP_CH4: 28,
   GWP_CH4_Minus: 25.25,
   percentage_gas_to_flare: 50,
@@ -25,9 +25,19 @@ describe("calculations", () => {
     expect(calculations(null, BASE_VARS)).toBeNull();
   });
 
-  it("computes mass flow rate kg/min (leak_speed × density)", () => {
+  it("returns leak unchanged when Operating_mode is 0 or negative", () => {
+    const leak = { leak_speed: 5 };
+    expect(calculations(leak, { ...BASE_VARS, Operating_mode: 0 })).toEqual(
+      leak,
+    );
+    expect(calculations(leak, { ...BASE_VARS, Operating_mode: -1 })).toEqual(
+      leak,
+    );
+  });
+
+  it("computes mass flow rate kg/min (leak_speed л/мин × density кг/л)", () => {
     const result = calculations({ leak_speed: 10 }, BASE_VARS);
-    expect(result.leak_speed_kg_m).toBeCloseTo(10 * 0.668);
+    expect(result.leak_speed_kg_m).toBeCloseTo(10 * 0.000716);
   });
 
   it("computes annual methane loss in m³/year", () => {

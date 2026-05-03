@@ -5,12 +5,13 @@
  */
 export const calculations = (leak, vars) => {
   if (!leak || !vars) return leak;
+  if (!vars.Operating_mode || vars.Operating_mode <= 0) return leak;
 
   /* =========================
      INPUTS
   ========================= */
   const {
-    leak_speed, // м3/ч
+    leak_speed, // л/мин
     temperature, // °C (опционально)
   } = leak;
 

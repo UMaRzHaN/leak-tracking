@@ -25,7 +25,8 @@
       "WebFetch(domain:developers.google.com)",
       "WebFetch(domain:earth.google.com)",
       "WebFetch(domain:maps.google.com)",
-      "WebFetch(domain:sites.google.com)"
+      "WebFetch(domain:sites.google.com)",
+      "Bash(gh pr *)"
     ]
   }
 }

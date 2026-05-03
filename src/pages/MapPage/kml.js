@@ -23,10 +23,16 @@ function tornadoIconUrl(colorHex) {
   return `https://earth.google.com/earth/rpc/cc/icon?color=${colorHex}&amp;id=1714&amp;scale=4`;
 }
 
+// Prevent premature CDATA close if a field value contains "]]>"
+function cdata(value) {
+  return String(value ?? "").replace(/]]>/g, "]]&gt;");
+}
+
 export function exportLeaksKML(leaks, project) {
   const config = PROJECT_LOCATION_CONFIG[project];
 
   const byField = leaks.reduce((acc, leak) => {
+    if (leak.lat == null || leak.lng == null) return acc;
     const field = leak[config.secondary] || "Не определено";
     if (!acc[field]) acc[field] = [];
     acc[field].push(leak);
@@ -57,14 +63,14 @@ export function exportLeaksKML(leaks, project) {
         .map(
           (l) => `
       <Placemark>
-        <name>${l.leak_id ?? ""}</name>
+        <name>${cdata(l.leak_id)}</name>
         <styleUrl>#style_${groupIndex}</styleUrl>
         <description>
           <![CDATA[
-            <b>${config.main_label}:</b> ${l[config.main] ?? "Не указан"}<br/>
-            <b>${config.label}:</b> ${l[config.secondary] ?? "Не указан"}<br/>
-            <b>Компонент:</b> ${l.component ?? "Не указан"}<br/>
-            <b>Скорость:</b> ${l.leak_speed ?? "Без скорости"}
+            <b>${cdata(config.main_label)}:</b> ${cdata(l[config.main]) || "Не указан"}<br/>
+            <b>${cdata(config.label)}:</b> ${cdata(l[config.secondary]) || "Не указан"}<br/>
+            <b>Компонент:</b> ${cdata(l.component) || "Не указан"}<br/>
+            <b>Скорость:</b> ${l.leak_speed != null ? `${cdata(l.leak_speed)} л/мин` : "Без скорости"}
           ]]>
         </description>
         <Point>
@@ -76,7 +82,7 @@ export function exportLeaksKML(leaks, project) {
 
       return `
     <Folder>
-      <name>${field}</name>
+      <name>${cdata(field)}</name>
       ${placemarks}
     </Folder>`;
     })

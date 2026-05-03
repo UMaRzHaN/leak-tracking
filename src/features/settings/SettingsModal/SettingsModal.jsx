@@ -227,11 +227,14 @@ export default function SettingsModal({
                 const v = e.target.value;
                 if (localVars.equipmentType !== "Розовый мешок") {
                   if (v === "") {
-                    handleChange("serial_number", "");
+                    setLocalVars((prev) => ({ ...prev, serial_number: null }));
                     return;
                   }
                   if (/^\d+$/.test(v)) {
-                    handleChange("serial_number", Number(v));
+                    setLocalVars((prev) => ({
+                      ...prev,
+                      serial_number: Number(v),
+                    }));
                   }
                 }
               }}
@@ -259,7 +262,7 @@ export default function SettingsModal({
                 const v = e.target.value;
                 if (v === "") return;
                 const int = Math.trunc(Number(v));
-                if (Number.isFinite(int) && int >= 1) {
+                if (Number.isFinite(int) && int >= 1 && int <= 365) {
                   setLocalVars((prev) => ({ ...prev, Operating_mode: int }));
                 }
               }}
