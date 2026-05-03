@@ -13,9 +13,8 @@ export default function PhotoInput({
   const aliveRef = useRef(true);
   const inputId = useId();
 
-  const { isNative, takePhoto, pickFromBrowser } = useCamera();
+  const { isNative, takePhoto, pickFromGallery, pickFromBrowser } = useCamera();
 
-  // 🔒 корректная защита от async после unmount
   useEffect(() => {
     aliveRef.current = true;
     return () => {
@@ -23,59 +22,82 @@ export default function PhotoInput({
     };
   }, []);
 
-  const handleClick = useCallback(async () => {
+  const handleCamera = useCallback(async () => {
+    const photo = await takePhoto();
+    if (photo && aliveRef.current) onChange(photo);
+  }, [takePhoto, onChange]);
+
+  const handleGallery = useCallback(async () => {
     if (isNative) {
-      const photo = await takePhoto();
-      if (photo && aliveRef.current) {
-        onChange(photo);
-      }
+      const photo = await pickFromGallery();
+      if (photo && aliveRef.current) onChange(photo);
     } else {
       inputRef.current?.click();
     }
-  }, [isNative, takePhoto, onChange]);
+  }, [isNative, pickFromGallery, onChange]);
 
   const handleFile = useCallback(
     async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
-
       const photo = await pickFromBrowser(file);
-      if (photo && aliveRef.current) {
-        onChange(photo);
-      }
-
-      // 🔄 сброс input, чтобы можно было выбрать тот же файл повторно
+      if (photo && aliveRef.current) onChange(photo);
       e.target.value = "";
     },
     [pickFromBrowser, onChange],
   );
 
-  const showError = error;
+  const hasPhoto = Boolean(value?.src);
+
+  const actionButtons = isNative ? (
+    <>
+      <button type="button" className={s.btn} onClick={handleCamera}>
+        <span className={s.btnIcon}>📷</span>
+        Камера
+      </button>
+      <button type="button" className={s.btn} onClick={handleGallery}>
+        <span className={s.btnIcon}>🖼️</span>
+        Галерея
+      </button>
+    </>
+  ) : (
+    <button
+      type="button"
+      className={`${s.btn} ${s.btnFull}`}
+      onClick={handleGallery}
+    >
+      <span className={s.btnIcon}>📁</span>
+      {hasPhoto ? "Заменить фото" : "Выбрать файл"}
+    </button>
+  );
 
   return (
     <div
-      className={[s.photoInput, showError && s.hasError]
-        .filter(Boolean)
-        .join(" ")}
+      className={[s.photoInput, error && s.hasError].filter(Boolean).join(" ")}
     >
-      {/* LABEL */}
       <div className={s.fieldLabel}>
         {label}
         {required && <span className={s.required}> *</span>}
       </div>
 
-      {/* ACTION BUTTON */}
-      <button
-        type="button"
-        className={s.photoBtn}
-        tabIndex={-1} // ⛔ не участвует в Enter-навигации
-        onClick={handleClick}
-        aria-describedby={inputId}
-      >
-        {isNative ? "📷 Сделать / выбрать фото" : "📁 Выбрать файл"}
-      </button>
+      <div className={s.card}>
+        {hasPhoto ? (
+          <img
+            src={value.src}
+            alt="Выбранное фото"
+            className={s.photoPreview}
+          />
+        ) : (
+          <>
+            <div className={s.cardIcon}>📷</div>
+            <div className={s.cardTitle}>Добавить фото результата</div>
+            <div className={s.cardHint}>Рекомендуется для отчётности</div>
+          </>
+        )}
 
-      {/* HIDDEN FILE INPUT (WEB) */}
+        <div className={s.actions}>{actionButtons}</div>
+      </div>
+
       {!isNative && (
         <input
           id={inputId}
@@ -87,21 +109,7 @@ export default function PhotoInput({
         />
       )}
 
-      {/* PREVIEW */}
-      {value?.src && (
-        <img
-          src={value.src}
-          alt="Выбранное фото"
-          className={s.photoPreview}
-        />
-      )}
-
-      {/* ERROR MESSAGE */}
-      {showError && (
-        <div className={s.fieldError}>
-          Поле «{label}» обязательно
-        </div>
-      )}
+      {error && <div className={s.fieldError}>Поле «{label}» обязательно</div>}
     </div>
   );
 }
