@@ -67,7 +67,10 @@ const CachedTileLayer = L.TileLayer.extend({
       try {
         tile.el.onload = null;
         tile.el.onerror = null;
-        if (typeof tile.el.src === "string" && tile.el.src.startsWith("blob:")) {
+        if (
+          typeof tile.el.src === "string" &&
+          tile.el.src.startsWith("blob:")
+        ) {
           tile.el.src = "";
         }
       } catch {
@@ -174,30 +177,53 @@ export function createOfflineMap(container, { center, zoom = 13 }) {
   let watchId = null;
   let lastLatLng = null;
 
-  const geoOptions = { enableHighAccuracy: false, maximumAge: 30000, timeout: 10000 };
+  const geoOptions = {
+    enableHighAccuracy: true,
+    maximumAge: 5000,
+    timeout: 10000,
+  };
+
+  const buildUserIcon = (heading) => {
+    const hasHeading =
+      heading !== null && heading !== undefined && !isNaN(heading);
+    const arrowSvg = hasHeading
+      ? `<svg style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(${heading}deg);overflow:visible;pointer-events:none" width="14" height="14" viewBox="-7 -7 14 14">
+           <polygon points="0,-20 -5,-9 5,-9" fill="#1a73e8" fill-opacity="0.9" stroke="white" stroke-width="1.2" stroke-linejoin="round"/>
+         </svg>`
+      : "";
+    return L.divIcon({
+      html: `<div style="position:relative;width:14px;height:14px">
+               ${arrowSvg}
+               <div style="width:14px;height:14px;background:#1a73e8;border:2.5px solid white;border-radius:50%;position:absolute;box-shadow:0 1px 4px rgba(0,0,0,.45)"></div>
+             </div>`,
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+      popupAnchor: [0, -12],
+      className: "",
+    });
+  };
 
   const onGeoPosition = (pos) => {
     if (destroyed) return;
     const latlng = [pos.coords.latitude, pos.coords.longitude];
+    const heading = pos.coords.heading;
     lastLatLng = latlng;
     if (!userMarker) {
-      userMarker = L.circleMarker(latlng, {
-        radius: 7,
-        fillColor: "#1a73e8",
-        color: "#fff",
-        weight: 2.5,
-        fillOpacity: 1,
-      })
+      userMarker = L.marker(latlng, { icon: buildUserIcon(heading) })
         .addTo(map)
         .bindPopup("Вы здесь");
     } else {
-      userMarker.setLatLng(latlng);
+      userMarker.setLatLng(latlng).setIcon(buildUserIcon(heading));
     }
   };
 
   const startGpsWatch = () => {
     if (watchId != null || destroyed || !navigator.geolocation) return;
-    watchId = navigator.geolocation.watchPosition(onGeoPosition, () => {}, geoOptions);
+    watchId = navigator.geolocation.watchPosition(
+      onGeoPosition,
+      () => {},
+      geoOptions,
+    );
   };
 
   const stopGpsWatch = () => {

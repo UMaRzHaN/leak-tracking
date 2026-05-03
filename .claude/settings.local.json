@@ -26,7 +26,8 @@
       "WebFetch(domain:earth.google.com)",
       "WebFetch(domain:maps.google.com)",
       "WebFetch(domain:sites.google.com)",
-      "Bash(gh pr *)"
+      "Bash(gh pr *)",
+      "Bash(xargs grep *)"
     ]
   }
 }
