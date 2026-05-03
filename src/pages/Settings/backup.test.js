@@ -175,10 +175,10 @@ describe("validateProjectBackupMeta", () => {
   });
 
   it("принимает метаданные с vars", () => {
-    const withVars = { ...validMeta, vars: { density: 0.7, GWP_CH4: 28 } };
+    const withVars = { ...validMeta, vars: { density: 0.7, GWP: 28 } };
     const result = validateProjectBackupMeta(withVars);
     expect(result.ok).toBe(true);
-    expect(result.data.vars).toEqual({ density: 0.7, GWP_CH4: 28 });
+    expect(result.data.vars).toEqual({ density: 0.7, GWP: 28 });
   });
 
   it("принимает все три допустимых типа", () => {
@@ -235,7 +235,7 @@ describe("buildProjectBackupZip + peekBackupZip — round-trip", () => {
   });
 
   it("сохраняет и восстанавливает vars", async () => {
-    const vars = { density: 0.668, GWP_CH4: 28, percentage_gas_to_flare: 50 };
+    const vars = { density: 0.668, GWP: 28, percentage_gas_to_flare: 50 };
     const blob = await buildProjectBackupZip({
       leaks,
       idbGet: null,
@@ -327,7 +327,7 @@ describe("importProjectZip", () => {
   });
 
   it("восстанавливает vars в localStorage", async () => {
-    const vars = { density: 0.668, GWP_CH4: 28 };
+    const vars = { density: 0.668, GWP: 28 };
     const blob = await buildProjectBackupZip({
       leaks,
       idbGet: null,

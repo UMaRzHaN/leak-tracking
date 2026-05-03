@@ -23,8 +23,8 @@ export const VAR_DEFAULTS = Object.freeze({
   density: GAS_TYPES.methane.density,
   percentage_gas_to_flare: 0,
   percentage_gas_to_utilization: 100,
-  GWP_CH4: 28,
-  GWP_CH4_Minus: 25.25,
+  GWP: 28,
+  GWP_Minus: 25.25,
   Operating_mode: 365,
   serial_number: EQUIPMENT_TYPES["GFM 2.0"].serial_number,
 });

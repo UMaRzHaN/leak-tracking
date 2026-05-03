@@ -18,8 +18,8 @@ export default function SettingsModal({
     gasType: currentVars.gasType,
     density: currentVars.density,
     percentage_gas_to_flare: currentVars.percentage_gas_to_flare,
-    GWP_CH4: currentVars.GWP_CH4,
-    GWP_CH4_Minus: currentVars.GWP_CH4_Minus,
+    GWP: currentVars.GWP,
+    GWP_Minus: currentVars.GWP_Minus,
     serial_number: currentVars.serial_number,
     Operating_mode: currentVars.Operating_mode,
   }));
@@ -38,8 +38,8 @@ export default function SettingsModal({
       gasType: currentVars.gasType,
       density: currentVars.density,
       percentage_gas_to_flare: currentVars.percentage_gas_to_flare,
-      GWP_CH4: currentVars.GWP_CH4,
-      GWP_CH4_Minus: currentVars.GWP_CH4_Minus,
+      GWP: currentVars.GWP,
+      GWP_Minus: currentVars.GWP_Minus,
       serial_number: currentVars.serial_number,
       Operating_mode: currentVars.Operating_mode,
     });
@@ -58,8 +58,8 @@ export default function SettingsModal({
       localVars.density !== currentVars.density ||
       localVars.percentage_gas_to_flare !==
         currentVars.percentage_gas_to_flare ||
-      localVars.GWP_CH4 !== currentVars.GWP_CH4 ||
-      localVars.GWP_CH4_Minus !== currentVars.GWP_CH4_Minus ||
+      localVars.GWP !== currentVars.GWP ||
+      localVars.GWP_Minus !== currentVars.GWP_Minus ||
       localVars.serial_number !== currentVars.serial_number ||
       localVars.Operating_mode !== currentVars.Operating_mode
     );
@@ -292,39 +292,37 @@ export default function SettingsModal({
             <span className={s.current}>Плотность: {localVars.density}</span>
           </div>
 
-          {/* GWP_CH4 */}
+          {/* GWP */}
           <div className={s.paramGroup}>
-            <label htmlFor="GWP_CH4">
-              <span className={s.label}>GWP_CH4</span>
+            <label htmlFor="GWP">
+              <span className={s.label}>GWP</span>
             </label>
             <input
-              id="GWP_CH4"
+              id="GWP"
               type="number"
               min="0"
               step="0.1"
-              value={localVars.GWP_CH4}
-              onChange={(e) => handleChange("GWP_CH4", e.target.value)}
+              value={localVars.GWP}
+              onChange={(e) => handleChange("GWP", e.target.value)}
               className={s.input}
             />
-            <span className={s.current}>Текущее: {localVars.GWP_CH4}</span>
+            <span className={s.current}>Текущее: {localVars.GWP}</span>
           </div>
-          {/* GWP_CH4_Minus */}
+          {/* GWP_Minus */}
           <div className={s.paramGroup}>
-            <label htmlFor="GWP_CH4_Minus">
-              <span className={s.label}>GWP_CH4_Minus</span>
+            <label htmlFor="GWP_Minus">
+              <span className={s.label}>GWP_Minus</span>
             </label>
             <input
-              id="GWP_CH4_Minus"
+              id="GWP_Minus"
               type="number"
               min="0"
               step="0.1"
-              value={localVars.GWP_CH4_Minus}
-              onChange={(e) => handleChange("GWP_CH4_Minus", e.target.value)}
+              value={localVars.GWP_Minus}
+              onChange={(e) => handleChange("GWP_Minus", e.target.value)}
               className={s.input}
             />
-            <span className={s.current}>
-              Текущее: {localVars.GWP_CH4_Minus}
-            </span>
+            <span className={s.current}>Текущее: {localVars.GWP_Minus}</span>
           </div>
         </div>
 

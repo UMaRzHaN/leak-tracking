@@ -2,8 +2,8 @@ import { calculations } from "./calculations";
 
 const BASE_VARS = {
   density: 0.000716, // кг/л (метан при стандартных условиях), leak_speed в л/мин
-  GWP_CH4: 28,
-  GWP_CH4_Minus: 25.25,
+  GWP: 28,
+  GWP_Minus: 25.25,
   percentage_gas_to_flare: 50,
   percentage_gas_to_utilization: 50,
   equipmentType: "valve",
@@ -57,10 +57,10 @@ describe("calculations", () => {
     );
   });
 
-  it("computes CO₂-equivalent emissions in t/year using weightedGWP_CH4", () => {
+  it("computes CO₂-equivalent emissions in t/year using weightedGWP", () => {
     const result = calculations({ leak_speed: 1 }, BASE_VARS);
     const t_y = M3_Y(1) * 0.7168 * 0.001;
-    // 0.5×GWP_CH4_Minus + 0.5×GWP_CH4 = 0.5×25.25 + 0.5×28 = 26.625
+    // 0.5×GWP_Minus + 0.5×GWP = 0.5×25.25 + 0.5×28 = 26.625
     expect(result.Emissions_t_CO2eq_year).toBeCloseTo(t_y * 26.625);
   });
 
@@ -71,33 +71,33 @@ describe("calculations", () => {
     );
   });
 
-  it("weightedGWP_CH4 is computed from shares (50/50)", () => {
+  it("weightedGWP is computed from shares (50/50)", () => {
     const result = calculations({ leak_speed: 1 }, BASE_VARS);
-    // flareShare×GWP_CH4_Minus + utilShare×GWP_CH4 = 0.5×25.25 + 0.5×28 = 26.625
-    expect(result.weightedGWP_CH4).toBeCloseTo(26.625);
+    // flareShare×GWP_Minus + utilShare×GWP = 0.5×25.25 + 0.5×28 = 26.625
+    expect(result.weightedGWP).toBeCloseTo(26.625);
   });
 
-  it("weightedGWP_CH4 with 100% flare equals GWP_CH4_Minus", () => {
+  it("weightedGWP with 100% flare equals GWP_Minus", () => {
     const vars = {
       ...BASE_VARS,
       percentage_gas_to_flare: 100,
       percentage_gas_to_utilization: 0,
     };
     const result = calculations({ leak_speed: 1 }, vars);
-    expect(result.weightedGWP_CH4).toBeCloseTo(25.25);
+    expect(result.weightedGWP).toBeCloseTo(25.25);
   });
 
-  it("weightedGWP_CH4 with 100% utilization equals GWP_CH4", () => {
+  it("weightedGWP with 100% utilization equals GWP", () => {
     const vars = {
       ...BASE_VARS,
       percentage_gas_to_flare: 0,
       percentage_gas_to_utilization: 100,
     };
     const result = calculations({ leak_speed: 1 }, vars);
-    expect(result.weightedGWP_CH4).toBeCloseTo(28);
+    expect(result.weightedGWP).toBeCloseTo(28);
   });
 
-  it("emissions depend on flare/util shares via weightedGWP_CH4", () => {
+  it("emissions depend on flare/util shares via weightedGWP", () => {
     const varsFlare = {
       ...BASE_VARS,
       percentage_gas_to_flare: 100,
@@ -147,12 +147,12 @@ describe("calculations", () => {
     expect(result.status).toBe("open");
   });
 
-  it("passes through equipmentType, serial_number, GWP_CH4, GWP_CH4_Minus, uncertainty, Operating_mode", () => {
+  it("passes through equipmentType, serial_number, GWP, GWP_Minus, uncertainty, Operating_mode", () => {
     const result = calculations({ leak_speed: 1 }, BASE_VARS);
     expect(result.equipmentType).toBe("valve");
     expect(result.serial_number).toBe("SN-001");
-    expect(result.GWP_CH4).toBe(28);
-    expect(result.GWP_CH4_Minus).toBe(25.25);
+    expect(result.GWP).toBe(28);
+    expect(result.GWP_Minus).toBe(25.25);
     expect(result.uncertainty).toBe(0.1);
     expect(result.Operating_mode).toBe(365);
   });

@@ -17,8 +17,8 @@ export const calculations = (leak, vars) => {
 
   const {
     density, // кг/м3
-    GWP_CH4, // GWP_CH4 CH4 (например 28)
-    GWP_CH4_Minus, // GWP_CH4_Minus CH4 (например 25.25)
+    GWP, // GWP (например 28)
+    GWP_Minus, // GWP_Minus (например 25.25)
     percentage_gas_to_flare, // %
     percentage_gas_to_utilization, // %
     equipmentType,
@@ -59,10 +59,9 @@ export const calculations = (leak, vars) => {
   /* =========================
      CO2-EQUIVALENT EMISSIONS
   ========================= */
-  const weightedGWP_CH4 = flareShare * GWP_CH4_Minus + utilShare * GWP_CH4; // утилизация эффективнее факела
+  const weightedGWP = flareShare * GWP_Minus + utilShare * GWP; // утилизация эффективнее факела
 
-  const Emissions_t_CO2eq_year =
-    Total_Annual_Methane_Loss_t_y * weightedGWP_CH4;
+  const Emissions_t_CO2eq_year = Total_Annual_Methane_Loss_t_y * weightedGWP;
 
   const Emissions_kg_CO2_eq_year = Emissions_t_CO2eq_year * 1000;
 
@@ -95,9 +94,9 @@ export const calculations = (leak, vars) => {
     equipmentType,
     serial_number,
     uncertainty,
-    GWP_CH4,
-    GWP_CH4_Minus,
-    weightedGWP_CH4,
+    GWP,
+    GWP_Minus,
+    weightedGWP,
     Operating_mode,
   };
 };

@@ -91,7 +91,7 @@ const EXCEL_KEYS = [
   "Total_Annual_Methane_Loss_t_y",
   "Emissions_t_CO2eq_year",
   "Emissions_kg_CO2_eq_year",
-  "weightedGWP_CH4",
+  "weightedGWP",
   "actuator_type",
   "connection_type",
   "installation_type",
