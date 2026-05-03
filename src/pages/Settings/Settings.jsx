@@ -163,7 +163,78 @@ export default function Settings({
             <p className={s.empty}>Нет проектов. Создайте первый.</p>
           )}
         </section>
-
+        {/* ── Параметры расчёта ── */}
+        {activeProject && (
+          <section className={s.section}>
+            <div className={s.sectionHead}>
+              <h2 className={s.sectionTitle}>Параметры расчёта</h2>
+            </div>
+            <div className={s.calcBody}>
+              <p className={s.description}>
+                Настройки для проекта <strong>{activeProject.name}</strong>
+              </p>
+              <button
+                className={s.editVarsBtn}
+                type="button"
+                onClick={() => setModalOpen(true)}
+              >
+                ⚙ Редактировать параметры
+              </button>
+            </div>
+          </section>
+        )}
+        {/* ── Внешний вид ── */}
+        <section className={s.section}>
+          <div className={s.sectionHead}>
+            <h2 className={s.sectionTitle}>Внешний вид</h2>
+          </div>
+          <div className={s.themeRow}>
+            <div className={s.themeInfo}>
+              <span className={s.themeLabel}>
+                {dark ? "Тёмная тема" : "Светлая тема"}
+              </span>
+              <span className={s.themeHint}>
+                {dark ? "Тёмный фон, снижает нагрузку на глаза" : "Светлый фон"}
+              </span>
+            </div>
+            <button
+              className={`${s.themeToggle} ${dark ? s.themeToggleDark : ""}`}
+              type="button"
+              onClick={toggleTheme}
+              aria-label="Переключить тему"
+            >
+              <span className={s.themeThumb} />
+            </button>
+          </div>
+        </section>
+        {/* ── Суммарные потери по проекту ── */}
+        {activeProject && data.length > 0 && (
+          <EmissionsSummarySection data={data} />
+        )}
+        {/* ── Настройка полей формы ── */}
+        {activeProject && (
+          <section className={s.section}>
+            <div className={s.sectionHead}>
+              <h2 className={s.sectionTitle}>Поля формы и Excel</h2>
+            </div>
+            <div className={s.calcBody}>
+              <p className={s.description}>
+                Скройте неиспользуемые поля — они исчезнут из формы и столбцов
+                экспорта.
+                {hiddenFields.size > 0 && (
+                  <strong> Скрыто: {hiddenFields.size}.</strong>
+                )}
+              </p>
+              <button
+                className={s.editVarsBtn}
+                type="button"
+                onClick={() => setFieldsModalOpen(true)}
+              >
+                ☰ Настроить поля
+              </button>
+            </div>
+          </section>
+        )}
         {/* ── Резервное копирование ── */}
         {activeProject && (
           <section className={s.section}>
@@ -201,82 +272,6 @@ export default function Settings({
             />
           </section>
         )}
-
-        {/* ── Суммарные потери по проекту ── */}
-        {activeProject && data.length > 0 && (
-          <EmissionsSummarySection data={data} />
-        )}
-
-        {/* ── Параметры расчёта ── */}
-        {activeProject && (
-          <section className={s.section}>
-            <div className={s.sectionHead}>
-              <h2 className={s.sectionTitle}>Параметры расчёта</h2>
-            </div>
-            <div className={s.calcBody}>
-              <p className={s.description}>
-                Настройки для проекта <strong>{activeProject.name}</strong>
-              </p>
-              <button
-                className={s.editVarsBtn}
-                type="button"
-                onClick={() => setModalOpen(true)}
-              >
-                ⚙ Редактировать параметры
-              </button>
-            </div>
-          </section>
-        )}
-
-        {/* ── Настройка полей формы ── */}
-        {activeProject && (
-          <section className={s.section}>
-            <div className={s.sectionHead}>
-              <h2 className={s.sectionTitle}>Поля формы и Excel</h2>
-            </div>
-            <div className={s.calcBody}>
-              <p className={s.description}>
-                Скройте неиспользуемые поля — они исчезнут из формы и столбцов
-                экспорта.
-                {hiddenFields.size > 0 && (
-                  <strong> Скрыто: {hiddenFields.size}.</strong>
-                )}
-              </p>
-              <button
-                className={s.editVarsBtn}
-                type="button"
-                onClick={() => setFieldsModalOpen(true)}
-              >
-                ☰ Настроить поля
-              </button>
-            </div>
-          </section>
-        )}
-
-        {/* ── Внешний вид ── */}
-        <section className={s.section}>
-          <div className={s.sectionHead}>
-            <h2 className={s.sectionTitle}>Внешний вид</h2>
-          </div>
-          <div className={s.themeRow}>
-            <div className={s.themeInfo}>
-              <span className={s.themeLabel}>
-                {dark ? "Тёмная тема" : "Светлая тема"}
-              </span>
-              <span className={s.themeHint}>
-                {dark ? "Тёмный фон, снижает нагрузку на глаза" : "Светлый фон"}
-              </span>
-            </div>
-            <button
-              className={`${s.themeToggle} ${dark ? s.themeToggleDark : ""}`}
-              type="button"
-              onClick={toggleTheme}
-              aria-label="Переключить тему"
-            >
-              <span className={s.themeThumb} />
-            </button>
-          </div>
-        </section>
 
         {/* ── Кэш карты ── */}
         <section className={s.section}>
