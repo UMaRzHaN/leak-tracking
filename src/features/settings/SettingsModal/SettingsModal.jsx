@@ -207,7 +207,37 @@ export default function SettingsModal({
               Неопределённость: {localVars.uncertainty * 100}%
             </span>
           </div>
-
+          {/* SERIAL NUMBER */}
+          <div className={s.paramGroup}>
+            <label htmlFor="serial_number">
+              <span className={s.label}>Серийный номер оборудования</span>
+            </label>
+            <input
+              disabled={localVars.equipmentType === "Розовый мешок"}
+              id="serial_number"
+              type="number"
+              min="0"
+              step="1"
+              inputMode="numeric"
+              value={localVars.serial_number ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (localVars.equipmentType !== "Розовый мешок") {
+                  if (v === "") {
+                    handleChange("serial_number", "");
+                    return;
+                  }
+                  if (/^\d+$/.test(v)) {
+                    handleChange("serial_number", Number(v));
+                  }
+                }
+              }}
+              className={s.input}
+            />
+            <span className={s.current}>
+              Текущее: {localVars.serial_number}
+            </span>
+          </div>
           {/* GAS TYPE */}
           <div className={s.paramGroup}>
             <label htmlFor="gasType">
@@ -260,37 +290,6 @@ export default function SettingsModal({
             />
             <span className={s.current}>
               Текущее: {localVars.GWP_CH4_Minus}
-            </span>
-          </div>
-          {/* SERIAL NUMBER */}
-          <div className={s.paramGroup}>
-            <label htmlFor="serial_number">
-              <span className={s.label}>Серийный номер оборудования</span>
-            </label>
-            <input
-              disabled={localVars.equipmentType === "Розовый мешок"}
-              id="serial_number"
-              type="number"
-              min="0"
-              step="1"
-              inputMode="numeric"
-              value={localVars.serial_number ?? ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (localVars.equipmentType !== "Розовый мешок") {
-                  if (v === "") {
-                    handleChange("serial_number", "");
-                    return;
-                  }
-                  if (/^\d+$/.test(v)) {
-                    handleChange("serial_number", Number(v));
-                  }
-                }
-              }}
-              className={s.input}
-            />
-            <span className={s.current}>
-              Текущее: {localVars.serial_number}
             </span>
           </div>
         </div>
