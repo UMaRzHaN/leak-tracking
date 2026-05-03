@@ -27,7 +27,9 @@
       "WebFetch(domain:maps.google.com)",
       "WebFetch(domain:sites.google.com)",
       "Bash(gh pr *)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Skill(update-config)",
+      "Skill(update-config:*)"
     ]
   }
 }

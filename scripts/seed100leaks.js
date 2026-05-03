@@ -135,9 +135,9 @@
 
   const STATUSES = ["open", "open", "open", "in_progress", "in_progress", "resolved"];
 
-  /* ── Координаты (Западный Казахстан) ── */
-  const BASE_LAT = 51.18;
-  const BASE_LNG = 53.35;
+  /* ── Координаты (Ташкент) ── */
+  const BASE_LAT = 41.297147;
+  const BASE_LNG = 69.258685;
 
   /* ══════════════════════════════════════════════
      VARS ПРОЕКТА (src/data/variables.js → VAR_DEFAULTS)
@@ -400,9 +400,16 @@
         ? `Плановый осмотр ${padTwo(date.getDate())}.${padTwo(date.getMonth() + 1)}`
         : "",
 
-      // Координаты
-      lat: parseFloat((BASE_LAT + rndFloat(-0.8, 0.8, 6)).toFixed(6)),
-      lng: parseFloat((BASE_LNG + rndFloat(-1.2, 1.2, 6)).toFixed(6)),
+      // Координаты: ~70% в радиусе 500м, ~30% разбросаны до 5км
+      ...((() => {
+        const near = Math.random() < 0.70;
+        const dLat = near ? rndFloat(-0.0045, 0.0045, 6) : rndFloat(-0.045, 0.045, 6);
+        const dLng = near ? rndFloat(-0.006,  0.006,  6) : rndFloat(-0.06,  0.06,  6);
+        return {
+          lat: parseFloat((BASE_LAT + dLat).toFixed(6)),
+          lng: parseFloat((BASE_LNG + dLng).toFixed(6)),
+        };
+      })()),
 
       // Фото
       photo,
@@ -441,4 +448,51 @@
     console.error("❌ Ошибка записи в localStorage (возможно, превышен лимит):", e.message);
     console.warn("💡 Попробуй уменьшить долю утечек с фото (hasPhoto > 0.20 → 0.50) или качество JPEG (0.62 → 0.40).");
   }
+})();
+(async () => {
+  const Fs = window.Capacitor.Plugins.Filesystem;
+  const FOLDER = "LDAR_PHASE_II";
+  const PHOTO_DIR = `LeakReports/${FOLDER}/photos`;
+  const DATA_PATH = `LeakReports/${FOLDER}/data/data.json`;
+
+  const raw = localStorage.getItem("app:1777821433106:data_v1");
+  if (!raw) { console.error("❌ Данные не найдены"); return; }
+
+  const leaks = JSON.parse(raw);
+
+  // Создаём папки
+  await Fs.mkdir({ path: `LeakReports/${FOLDER}/data`, directory: "DATA", recursive: true }).catch(() => {});
+  await Fs.mkdir({ path: PHOTO_DIR, directory: "DATA", recursive: true }).catch(() => {});
+
+  let photoCount = 0;
+
+  for (const leak of leaks) {
+    const version = leak.created_at || Date.now();
+
+    // Фото до
+    if (leak.photo && leak.photo.startsWith("data:")) {
+      const base64 = leak.photo.split(",")[1];
+      const fileName = `photo_${leak.leak_id}_${version}.jpg`;
+      await Fs.writeFile({ path: `${PHOTO_DIR}/${fileName}`, directory: "DATA", data: base64 }).catch(() => {});
+      leak.photo = `data://${PHOTO_DIR}/${fileName}`;
+      photoCount++;
+    }
+
+    // Фото после ремонта
+    if (leak.photo_after && leak.photo_after.startsWith("data:")) {
+      const base64 = leak.photo_after.split(",")[1];
+      const fileName = `photo_after_${leak.leak_id}_${version}.jpg`;
+      await Fs.writeFile({ path: `${PHOTO_DIR}/${fileName}`, directory: "DATA", data: base64 }).catch(() => {});
+      leak.photo_after = `data://${PHOTO_DIR}/${fileName}`;
+      photoCount++;
+    }
+  }
+
+  console.log(`🖼  Записано фото: ${photoCount}`);
+
+  // Сохраняем data.json с обновлёнными путями
+  await Fs.writeFile({ path: DATA_PATH, directory: "DATA", data: JSON.stringify(leaks), encoding: "utf8" });
+
+  console.log("✅ Готово! Перезагружаю...");
+  location.reload();
 })();
