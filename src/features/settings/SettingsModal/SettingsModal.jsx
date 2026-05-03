@@ -21,6 +21,7 @@ export default function SettingsModal({
     GWP_CH4: currentVars.GWP_CH4,
     GWP_CH4_Minus: currentVars.GWP_CH4_Minus,
     serial_number: currentVars.serial_number,
+    Operating_mode: currentVars.Operating_mode,
   }));
 
   const [showConfirm, setShowConfirm] = useState(false);
@@ -40,6 +41,7 @@ export default function SettingsModal({
       GWP_CH4: currentVars.GWP_CH4,
       GWP_CH4_Minus: currentVars.GWP_CH4_Minus,
       serial_number: currentVars.serial_number,
+      Operating_mode: currentVars.Operating_mode,
     });
 
     setShowConfirm(false);
@@ -58,7 +60,8 @@ export default function SettingsModal({
         currentVars.percentage_gas_to_flare ||
       localVars.GWP_CH4 !== currentVars.GWP_CH4 ||
       localVars.GWP_CH4_Minus !== currentVars.GWP_CH4_Minus ||
-      localVars.serial_number !== currentVars.serial_number
+      localVars.serial_number !== currentVars.serial_number ||
+      localVars.Operating_mode !== currentVars.Operating_mode
     );
   }, [localVars, currentVars]);
 
@@ -144,7 +147,7 @@ export default function SettingsModal({
           {/* FLARE */}
           <div className={s.paramGroup}>
             <label htmlFor="flare">
-              <span className={s.label}>Газ на факелирование</span>
+              <span className={s.label}>Газ на сжигание</span>
               <span className={s.unit}>(%)</span>
             </label>
 
@@ -176,7 +179,7 @@ export default function SettingsModal({
 
             <div className={s.distribution}>
               <span className={s.flare}>
-                Факелирование: {localVars.percentage_gas_to_flare.toFixed(1)}%
+                Сжигание: {localVars.percentage_gas_to_flare.toFixed(1)}%
               </span>
               <span className={s.util}>
                 Утилизация:{" "}
@@ -236,6 +239,34 @@ export default function SettingsModal({
             />
             <span className={s.current}>
               Текущее: {localVars.serial_number}
+            </span>
+          </div>
+          {/* OPERATING MODE */}
+          <div className={s.paramGroup}>
+            <label htmlFor="Operating_mode">
+              <span className={s.label}>Режим работы</span>
+              <span className={s.unit}>(дней за год)</span>
+            </label>
+            <input
+              id="Operating_mode"
+              type="number"
+              min="1"
+              max="365"
+              step="1"
+              inputMode="numeric"
+              value={localVars.Operating_mode ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "") return;
+                const int = Math.trunc(Number(v));
+                if (Number.isFinite(int) && int >= 1) {
+                  setLocalVars((prev) => ({ ...prev, Operating_mode: int }));
+                }
+              }}
+              className={s.input}
+            />
+            <span className={s.current}>
+              Текущее: {localVars.Operating_mode}
             </span>
           </div>
           {/* GAS TYPE */}

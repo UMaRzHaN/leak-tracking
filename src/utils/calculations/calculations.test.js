@@ -9,10 +9,11 @@ const BASE_VARS = {
   equipmentType: "valve",
   serial_number: "SN-001",
   uncertainty: 0.1,
+  Operating_mode: 365,
 };
 
-// leak_speed (м³/ч) × MINUTES_PER_YEAR(525600) / 1000
-const M3_Y = (speed) => (speed * 525600) / 1000;
+// leak_speed (м³/ч) × (1440 мин/сут × Operating_mode дней) / 1000
+const M3_Y = (speed, days = 365) => (speed * 1440 * days) / 1000;
 
 describe("calculations", () => {
   it("returns leak unchanged when vars is null", () => {
@@ -136,13 +137,25 @@ describe("calculations", () => {
     expect(result.status).toBe("open");
   });
 
-  it("passes through equipmentType, serial_number, GWP_CH4, GWP_CH4_Minus, uncertainty", () => {
+  it("passes through equipmentType, serial_number, GWP_CH4, GWP_CH4_Minus, uncertainty, Operating_mode", () => {
     const result = calculations({ leak_speed: 1 }, BASE_VARS);
     expect(result.equipmentType).toBe("valve");
     expect(result.serial_number).toBe("SN-001");
     expect(result.GWP_CH4).toBe(28);
     expect(result.GWP_CH4_Minus).toBe(25.25);
     expect(result.uncertainty).toBe(0.1);
+    expect(result.Operating_mode).toBe(365);
+  });
+
+  it("Operating_mode affects annual methane loss", () => {
+    const vars180 = { ...BASE_VARS, Operating_mode: 180 };
+    const result365 = calculations({ leak_speed: 1 }, BASE_VARS);
+    const result180 = calculations({ leak_speed: 1 }, vars180);
+    expect(result180.Total_Annual_Methane_Loss_m3_y).toBeCloseTo(M3_Y(1, 180));
+    expect(result365.Total_Annual_Methane_Loss_m3_y).toBeCloseTo(M3_Y(1, 365));
+    expect(result180.Total_Annual_Methane_Loss_m3_y).toBeCloseTo(
+      result365.Total_Annual_Methane_Loss_m3_y * (180 / 365),
+    );
   });
 
   it("flareShare and utilShare are fractions (0–1)", () => {

@@ -23,12 +23,13 @@ export const calculations = (leak, vars) => {
     equipmentType,
     serial_number,
     uncertainty,
+    Operating_mode,
   } = vars;
 
   /* =========================
      CONSTANTS
   ========================= */
-  const MINUTES_PER_YEAR = 525600; // 365 дней * 24 часа * 60 минут
+  const MINUTES_PER_YEAR = 1440 * Operating_mode; // дней × минут в сутках
   const METHANE_DENSITY_STD = 0.7168; // кг/м3 (20°C, 1 атм)
   const KG_TO_TON = 0.001;
 
@@ -96,6 +97,7 @@ export const calculations = (leak, vars) => {
     GWP_CH4,
     GWP_CH4_Minus,
     weightedGWP_CH4,
+    Operating_mode,
   };
 };
 export default calculations;
