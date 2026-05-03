@@ -4,22 +4,46 @@ import ViewBlock from "./components/ViewBlock";
 import EditBlock from "./components/EditBlock";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import ResolveModal from "@/features/resolve/ResolveModal/ResolveModal";
+import StatusPickerModal from "@/features/status/StatusPickerModal/StatusPickerModal";
 import s from "./LeakDetailsSheet.module.scss";
 
 export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
   const {
-    mode, activeTab, setActiveTab,
-    localEdit, setLocalEdit,
-    saving, viewerOpen, setViewerOpen,
-    deleteArmed, resolveOpen, setResolveOpen,
-    fileInputRef, fileInputAfterRef,
-    src, srcAfter, isNative,
-    projectConfig, status, ago, TABS, STATUS,
-    handleSave, handleClose, handleStatusChange,
-    handleResolveConfirm, handleAddComment,
-    handleEdit, handleCancel,
-    armDelete, confirmDelete,
-    changePhoto, changePhotoAfter,
+    mode,
+    activeTab,
+    setActiveTab,
+    localEdit,
+    setLocalEdit,
+    saving,
+    viewerOpen,
+    setViewerOpen,
+    deleteArmed,
+    resolveOpen,
+    setResolveOpen,
+    statusPickerOpen,
+    setStatusPickerOpen,
+    fileInputRef,
+    fileInputAfterRef,
+    src,
+    srcAfter,
+    isNative,
+    projectConfig,
+    status,
+    ago,
+    TABS,
+    STATUS,
+    handleSave,
+    handleClose,
+    handleStatusChange,
+    handleStatusSelect,
+    handleResolveConfirm,
+    handleAddComment,
+    handleEdit,
+    handleCancel,
+    armDelete,
+    confirmDelete,
+    changePhoto,
+    changePhotoAfter,
   } = useLeakDetailsSheet({ leak, onClose, onSave, onDelete });
 
   return (
@@ -35,7 +59,9 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
             identityNum={`№ ${leak.leak_id ?? leak.index ?? "—"}`}
             identityTime={ago ?? leak.date ?? ""}
             onStatusChange={handleStatusChange}
-            onView={mode === MODE.VIEW && src ? () => setViewerOpen(true) : undefined}
+            onView={
+              mode === MODE.VIEW && src ? () => setViewerOpen(true) : undefined
+            }
           />
 
           {/* ── Tab bar ── */}
@@ -74,7 +100,9 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
                   isNative ? changePhoto() : fileInputRef.current?.click()
                 }
                 onEditAfter={() =>
-                  isNative ? changePhotoAfter() : fileInputAfterRef.current?.click()
+                  isNative
+                    ? changePhotoAfter()
+                    : fileInputAfterRef.current?.click()
                 }
               />
             )}
@@ -132,7 +160,11 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
                   )}
                 </>
               )}
-              <button className={s.btnGhost} type="button" onClick={handleCancel}>
+              <button
+                className={s.btnGhost}
+                type="button"
+                onClick={handleCancel}
+              >
                 Отмена
               </button>
               <button
@@ -150,6 +182,14 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
 
       {viewerOpen && src && (
         <PhotoViewer src={src} onClose={() => setViewerOpen(false)} />
+      )}
+
+      {statusPickerOpen && (
+        <StatusPickerModal
+          current={status}
+          onSelect={handleStatusSelect}
+          onClose={() => setStatusPickerOpen(false)}
+        />
       )}
 
       {resolveOpen && (

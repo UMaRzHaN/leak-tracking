@@ -5,7 +5,7 @@ import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { calculations } from "@/utils/calculations/calculations";
-import { nextStatus, STATUS } from "@/utils/status";
+import { STATUS } from "@/utils/status";
 import { priorityFromSpeed } from "@/utils/priority";
 import { timeAgo } from "@/utils/timeAgo";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
@@ -25,7 +25,10 @@ export const TAB = {
 export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
   const projectConfig = useProjectConfig();
   const { activeProject } = useProjectData();
-  const { vars } = useProjectVars(activeProject?.id ?? null, projectConfig.vars);
+  const { vars } = useProjectVars(
+    activeProject?.id ?? null,
+    projectConfig.vars,
+  );
 
   const EDIT_FIELDS = useMemo(() => {
     const fields = projectConfig.system.fields ?? [];
@@ -43,6 +46,7 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [resolveOpen, setResolveOpen] = useState(false);
+  const [statusPickerOpen, setStatusPickerOpen] = useState(false);
 
   const prevLeakIdRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -100,7 +104,10 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
   /* ── Unload guard ── */
   useEffect(() => {
     const handler = (e) => {
-      if (isDirty) { e.preventDefault(); e.returnValue = ""; }
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
@@ -136,13 +143,16 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
       const textPatch = Object.fromEntries(
         dirtyFields.map(({ key }) => [
           key,
-          numericKeys.has(key) ? normalizeNumber(localEdit[key]) : localEdit[key],
+          numericKeys.has(key)
+            ? normalizeNumber(localEdit[key])
+            : localEdit[key],
         ]),
       );
 
       const speedKey = "leak_speed";
       const speedChanged = dirtyFields.some(
-        ({ key }) => key === speedKey && Number(localEdit[key]) !== Number(leak[key]),
+        ({ key }) =>
+          key === speedKey && Number(localEdit[key]) !== Number(leak[key]),
       );
 
       const base = {
@@ -169,8 +179,17 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
   };
 
   const handleStatusChange = () => {
-    const newStatus = nextStatus(leak.status);
-    if (newStatus === STATUS.RESOLVED) { setResolveOpen(true); return; }
+    setStatusPickerOpen(true);
+  };
+
+  const handleStatusSelect = (newStatus) => {
+    setStatusPickerOpen(false);
+    if (newStatus === leak.status) return;
+
+    if (newStatus === STATUS.RESOLVED) {
+      setResolveOpen(true);
+      return;
+    }
 
     const photoUpdate =
       leak.status === STATUS.RESOLVED
@@ -186,7 +205,11 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
       updatedAt: Date.now(),
       history: [
         ...(leak.history ?? []),
-        { action: "status_changed", to: newStatus, date: new Date().toISOString() },
+        {
+          action: "status_changed",
+          to: newStatus,
+          date: new Date().toISOString(),
+        },
       ],
     });
     if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
@@ -237,7 +260,10 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
   const armDelete = useCallback(() => {
     hapticWarning();
     setDeleteArmed(true);
-    deleteTimerRef.current = setTimeout(() => setDeleteArmed(false), DELETE_ARM_MS);
+    deleteTimerRef.current = setTimeout(
+      () => setDeleteArmed(false),
+      DELETE_ARM_MS,
+    );
   }, []);
 
   const confirmDelete = useCallback(() => {
@@ -287,6 +313,8 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     deleteArmed,
     resolveOpen,
     setResolveOpen,
+    statusPickerOpen,
+    setStatusPickerOpen,
     fileInputRef,
     fileInputAfterRef,
     src,
@@ -302,6 +330,7 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     handleSave,
     handleClose,
     handleStatusChange,
+    handleStatusSelect,
     handleResolveConfirm,
     handleAddComment,
     handleEdit,

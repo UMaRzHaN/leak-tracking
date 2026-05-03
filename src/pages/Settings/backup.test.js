@@ -97,7 +97,9 @@ describe("detectProjectTypeFromLeaks", () => {
   it("сканирует только первые 20 записей", () => {
     // 25 записей без маркерных полей + 1 с полем на 21-й позиции
     const leaks = Array.from({ length: 25 }, (_, i) =>
-      i === 20 ? makeLeak({ id: `l-${i}`, deposit: "x" }) : makeLeak({ id: `l-${i}` }),
+      i === 20
+        ? makeLeak({ id: `l-${i}`, deposit: "x" })
+        : makeLeak({ id: `l-${i}` }),
     );
     expect(detectProjectTypeFromLeaks(leaks)).toBeNull();
   });
@@ -131,7 +133,9 @@ describe("validateBackup", () => {
   });
 
   it("сохраняет дополнительные поля (passthrough)", () => {
-    const result = validateBackup([makeLeak({ deposit: "Тенгиз", custom_field: 42 })]);
+    const result = validateBackup([
+      makeLeak({ deposit: "Тенгиз", custom_field: 42 }),
+    ]);
     expect(result.ok).toBe(true);
     expect(result.data[0].deposit).toBe("Тенгиз");
     expect(result.data[0].custom_field).toBe(42);
@@ -171,10 +175,10 @@ describe("validateProjectBackupMeta", () => {
   });
 
   it("принимает метаданные с vars", () => {
-    const withVars = { ...validMeta, vars: { density: 0.7, GWP: 28 } };
+    const withVars = { ...validMeta, vars: { density: 0.7, GWP_CH4: 28 } };
     const result = validateProjectBackupMeta(withVars);
     expect(result.ok).toBe(true);
-    expect(result.data.vars).toEqual({ density: 0.7, GWP: 28 });
+    expect(result.data.vars).toEqual({ density: 0.7, GWP_CH4: 28 });
   });
 
   it("принимает все три допустимых типа", () => {
@@ -231,7 +235,7 @@ describe("buildProjectBackupZip + peekBackupZip — round-trip", () => {
   });
 
   it("сохраняет и восстанавливает vars", async () => {
-    const vars = { density: 0.668, GWP: 28, percentage_gas_to_flare: 50 };
+    const vars = { density: 0.668, GWP_CH4: 28, percentage_gas_to_flare: 50 };
     const blob = await buildProjectBackupZip({
       leaks,
       idbGet: null,
@@ -269,7 +273,10 @@ describe("buildProjectBackupZip + peekBackupZip — round-trip", () => {
   it("выбрасывает ошибку если backup.json отсутствует в архиве", async () => {
     const { default: JSZip } = await import("jszip");
     const zip = new JSZip();
-    zip.file("project.json", JSON.stringify({ project: { name: "x", type: "upstream" } }));
+    zip.file(
+      "project.json",
+      JSON.stringify({ project: { name: "x", type: "upstream" } }),
+    );
     const blob = await zip.generateAsync({ type: "blob" });
     await expect(peekBackupZip(blob)).rejects.toThrow("backup.json");
   });
@@ -310,14 +317,17 @@ describe("importProjectZip", () => {
 
     expect(result.project).toBe(UPSTREAM_PROJECT);
     expect(result.leakCount).toBe(leaks.length);
-    expect(ctx.addProject).toHaveBeenCalledWith(UPSTREAM_PROJECT.name, UPSTREAM_PROJECT.type);
+    expect(ctx.addProject).toHaveBeenCalledWith(
+      UPSTREAM_PROJECT.name,
+      UPSTREAM_PROJECT.type,
+    );
     expect(ctx.saveRef.current).toHaveBeenCalledTimes(1);
     const savedLeaks = ctx.saveRef.current.mock.calls[0][0];
     expect(savedLeaks).toHaveLength(leaks.length);
   });
 
   it("восстанавливает vars в localStorage", async () => {
-    const vars = { density: 0.668, GWP: 28 };
+    const vars = { density: 0.668, GWP_CH4: 28 };
     const blob = await buildProjectBackupZip({
       leaks,
       idbGet: null,
@@ -337,7 +347,12 @@ describe("importProjectZip", () => {
     zip.file("backup.json", JSON.stringify(leaks));
     const blob = await zip.generateAsync({ type: "blob" });
 
-    const fallbackProject = { id: "fb-1", name: "Fallback", type: "upstream", folderName: "fallback" };
+    const fallbackProject = {
+      id: "fb-1",
+      name: "Fallback",
+      type: "upstream",
+      folderName: "fallback",
+    };
     const ctx = makeCtx(fallbackProject);
     const result = await importProjectZip(blob, {
       ...ctx,
@@ -351,9 +366,12 @@ describe("importProjectZip", () => {
   it("выбрасывает ошибку если backup.json отсутствует", async () => {
     const { default: JSZip } = await import("jszip");
     const zip = new JSZip();
-    zip.file("project.json", JSON.stringify({
-      project: { name: "x", type: "upstream" },
-    }));
+    zip.file(
+      "project.json",
+      JSON.stringify({
+        project: { name: "x", type: "upstream" },
+      }),
+    );
     const blob = await zip.generateAsync({ type: "blob" });
     const ctx = makeCtx(UPSTREAM_PROJECT);
     await expect(importProjectZip(blob, ctx)).rejects.toThrow("backup.json");
