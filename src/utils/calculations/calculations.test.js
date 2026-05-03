@@ -46,10 +46,11 @@ describe("calculations", () => {
     );
   });
 
-  it("computes CO₂-equivalent emissions in t/year using GWP_CH4 (not weighted)", () => {
+  it("computes CO₂-equivalent emissions in t/year using weightedGWP_CH4", () => {
     const result = calculations({ leak_speed: 1 }, BASE_VARS);
     const t_y = M3_Y(1) * 0.7168 * 0.001;
-    expect(result.Emissions_t_CO2eq_year).toBeCloseTo(t_y * 28);
+    // 0.5×GWP_CH4_Minus + 0.5×GWP_CH4 = 0.5×25.25 + 0.5×28 = 26.625
+    expect(result.Emissions_t_CO2eq_year).toBeCloseTo(t_y * 26.625);
   });
 
   it("computes CO₂-equivalent emissions in kg/year", () => {
@@ -61,31 +62,31 @@ describe("calculations", () => {
 
   it("weightedGWP_CH4 is computed from shares (50/50)", () => {
     const result = calculations({ leak_speed: 1 }, BASE_VARS);
-    // 0.5×28 + 0.5×(28×0.9) = 14 + 12.6 = 26.6
-    expect(result.weightedGWP_CH4).toBeCloseTo(26.6);
+    // flareShare×GWP_CH4_Minus + utilShare×GWP_CH4 = 0.5×25.25 + 0.5×28 = 26.625
+    expect(result.weightedGWP_CH4).toBeCloseTo(26.625);
   });
 
-  it("weightedGWP_CH4 with 100% flare equals GWP_CH4", () => {
+  it("weightedGWP_CH4 with 100% flare equals GWP_CH4_Minus", () => {
     const vars = {
       ...BASE_VARS,
       percentage_gas_to_flare: 100,
       percentage_gas_to_utilization: 0,
     };
     const result = calculations({ leak_speed: 1 }, vars);
-    expect(result.weightedGWP_CH4).toBeCloseTo(28);
+    expect(result.weightedGWP_CH4).toBeCloseTo(25.25);
   });
 
-  it("weightedGWP_CH4 with 100% utilization equals GWP_CH4 × 0.9", () => {
+  it("weightedGWP_CH4 with 100% utilization equals GWP_CH4", () => {
     const vars = {
       ...BASE_VARS,
       percentage_gas_to_flare: 0,
       percentage_gas_to_utilization: 100,
     };
     const result = calculations({ leak_speed: 1 }, vars);
-    expect(result.weightedGWP_CH4).toBeCloseTo(28 * 0.9);
+    expect(result.weightedGWP_CH4).toBeCloseTo(28);
   });
 
-  it("emissions use GWP_CH4 regardless of flare/util shares", () => {
+  it("emissions depend on flare/util shares via weightedGWP_CH4", () => {
     const varsFlare = {
       ...BASE_VARS,
       percentage_gas_to_flare: 100,
@@ -99,7 +100,7 @@ describe("calculations", () => {
     const t_y = M3_Y(1) * 0.7168 * 0.001;
     expect(
       calculations({ leak_speed: 1 }, varsFlare).Emissions_t_CO2eq_year,
-    ).toBeCloseTo(t_y * 28);
+    ).toBeCloseTo(t_y * 25.25);
     expect(
       calculations({ leak_speed: 1 }, varsUtil).Emissions_t_CO2eq_year,
     ).toBeCloseTo(t_y * 28);
@@ -135,11 +136,12 @@ describe("calculations", () => {
     expect(result.status).toBe("open");
   });
 
-  it("passes through equipmentType, serial_number, GWP_CH4, uncertainty", () => {
+  it("passes through equipmentType, serial_number, GWP_CH4, GWP_CH4_Minus, uncertainty", () => {
     const result = calculations({ leak_speed: 1 }, BASE_VARS);
     expect(result.equipmentType).toBe("valve");
     expect(result.serial_number).toBe("SN-001");
     expect(result.GWP_CH4).toBe(28);
+    expect(result.GWP_CH4_Minus).toBe(25.25);
     expect(result.uncertainty).toBe(0.1);
   });
 
