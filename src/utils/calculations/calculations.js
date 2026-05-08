@@ -13,6 +13,7 @@ export const calculations = (leak, vars) => {
   const {
     leak_speed, // л/мин
     temperature, // °C (опционально)
+    pressure, // атм (опционально)
   } = leak;
 
   const {
@@ -21,6 +22,7 @@ export const calculations = (leak, vars) => {
     GWP_Minus, // GWP_Minus (например 25.25)
     percentage_gas_to_flare, // %
     percentage_gas_to_utilization, // %
+    gasPercentage, // %
     equipmentType,
     serial_number,
     uncertainty,
@@ -31,27 +33,33 @@ export const calculations = (leak, vars) => {
      CONSTANTS
   ========================= */
   const MINUTES_PER_YEAR = 1440 * Operating_mode; // дней × минут в сутках
-  const METHANE_DENSITY_STD = 0.7168; // кг/м3 (20°C, 1 атм)
   const KG_TO_TON = 0.001;
 
   /* =========================
      NORMALIZATION
   ========================= */
+  const uncertaintyFactor = (1 - uncertainty) / 100;
   const flareShare = percentage_gas_to_flare / 100;
   const utilShare = percentage_gas_to_utilization / 100;
 
   /* =========================
      MASS FLOW
   ========================= */
-  const leak_speed_kg_m = leak_speed * density;
+  const leak_speed_standard =
+    ((((leak_speed * pressure) / temperature_K) * 273.15) / 0.101325) *
+    (gasPercentage / 100); // нормализуем к стандартным условиям (0°C, 1 атм) и учитываем процент газа в смеси
+  const leak_rate =
+    equipmentType === "Розовый мешок" ? leak_speed_standard : leak_speed;
+  const leak_speed_kg_m = leak_rate * density;
 
   /* =========================
      ANNUAL LOSSES
   ========================= */
-  const Total_Annual_Methane_Loss_m3_y = (leak_speed * MINUTES_PER_YEAR) / 1000;
+  const Total_Annual_Methane_Loss_m3_y =
+    (leak_rate * MINUTES_PER_YEAR * uncertaintyFactor) / 1000;
 
   const Total_Annual_Methane_Loss_kg_y =
-    Total_Annual_Methane_Loss_m3_y * METHANE_DENSITY_STD;
+    Total_Annual_Methane_Loss_m3_y * density;
 
   const Total_Annual_Methane_Loss_t_y =
     Total_Annual_Methane_Loss_kg_y * KG_TO_TON;

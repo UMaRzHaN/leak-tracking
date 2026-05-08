@@ -18,6 +18,7 @@ export default function SettingsModal({
     gasType: currentVars.gasType,
     density: currentVars.density,
     percentage_gas_to_flare: currentVars.percentage_gas_to_flare,
+    gasPercentage: currentVars.gasPercentage,
     GWP: currentVars.GWP,
     GWP_Minus: currentVars.GWP_Minus,
     serial_number: currentVars.serial_number,
@@ -38,6 +39,7 @@ export default function SettingsModal({
       gasType: currentVars.gasType,
       density: currentVars.density,
       percentage_gas_to_flare: currentVars.percentage_gas_to_flare,
+      gasPercentage: currentVars.gasPercentage,
       GWP: currentVars.GWP,
       GWP_Minus: currentVars.GWP_Minus,
       serial_number: currentVars.serial_number,
@@ -58,6 +60,7 @@ export default function SettingsModal({
       localVars.density !== currentVars.density ||
       localVars.percentage_gas_to_flare !==
         currentVars.percentage_gas_to_flare ||
+      localVars.gasPercentage !== currentVars.gasPercentage ||
       localVars.GWP !== currentVars.GWP ||
       localVars.GWP_Minus !== currentVars.GWP_Minus ||
       localVars.serial_number !== currentVars.serial_number ||
@@ -186,6 +189,37 @@ export default function SettingsModal({
                 {(100 - localVars.percentage_gas_to_flare).toFixed(1)}%
               </span>
             </div>
+          </div>
+          {/* GAS PERCENTAGE */}
+          <div className={s.paramGroup}>
+            <label htmlFor="gasPercentage">
+              <span className={s.label}>Содержание газа в смеси</span>
+              <span className={s.unit}>(%)</span>
+            </label>
+            <div className={s.sliderContainer}>
+              <input
+                id="gasPercentage"
+                type="range"
+                min="0"
+                max="100"
+                step="0.1"
+                value={localVars.gasPercentage}
+                onChange={(e) => handleChange("gasPercentage", e.target.value)}
+                className={s.slider}
+              />
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={localVars.gasPercentage}
+                onChange={(e) => handleChange("gasPercentage", e.target.value)}
+                className={s.numberInput}
+              />
+            </div>
+            <span className={s.current}>
+              Текущее: {localVars.gasPercentage.toFixed(1)}%
+            </span>
           </div>
           {/* EQUIPMENT TYPE */}
           <div className={s.paramGroup}>
