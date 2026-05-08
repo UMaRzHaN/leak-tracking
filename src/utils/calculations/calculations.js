@@ -43,6 +43,12 @@ export const calculations = (leak, vars) => {
   const utilShare = percentage_gas_to_utilization / 100;
 
   /* =========================
+     TEMPERATURE
+  ========================= */
+  const temperature_K =
+    typeof temperature === "number" ? temperature + 273.15 : null;
+
+  /* =========================
      MASS FLOW
   ========================= */
   const leak_speed_standard =
@@ -72,12 +78,6 @@ export const calculations = (leak, vars) => {
   const Emissions_t_CO2eq_year = Total_Annual_Methane_Loss_t_y * weightedGWP;
 
   const Emissions_kg_CO2_eq_year = Emissions_t_CO2eq_year * 1000;
-
-  /* =========================
-     TEMPERATURE
-  ========================= */
-  const temperature_K =
-    typeof temperature === "number" ? temperature + 273.15 : null;
 
   /* =========================
      RESULT (NO SIDE EFFECTS)
