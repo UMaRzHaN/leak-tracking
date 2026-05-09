@@ -50,8 +50,6 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     <>
       <div className={s.overlay} onClick={handleClose}>
         <div className={s.sheet} onClick={(e) => e.stopPropagation()}>
-          <div className={s.handle} />
-
           {/* ── Hero photo + identity overlay ── */}
           <PhotoBlock
             src={mode === MODE.EDIT ? null : src}

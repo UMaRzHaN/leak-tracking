@@ -35,122 +35,130 @@
   to   { transform: translateY(0); }
 }
 
-/* ── Drag handle ── */
-.handle {
-  flex-shrink: 0;
+/* ── Drag handle (now inside hero) ── */
+.heroHandle {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
   width: 36px;
   height: 4px;
   border-radius: 4px;
-  background: var(--c-border);
-  margin: 10px auto 6px;
+  background: rgba(255, 255, 255, 0.45);
 }
 
 /* ══════════════════════════════════════════
-   IDENTITY ROW (compact thumbnail header)
+   HERO HEADER (full-width photo background)
    ══════════════════════════════════════════ */
 
-.identityRow {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  background: var(--c-surface);
-  border-bottom: 1px solid var(--c-border);
-  flex-shrink: 0;
-}
-
-/* ── Thumbnail ── */
-.thumb {
-  flex-shrink: 0;
-  width: 72px;
-  height: 72px;
-  border-radius: 16px;
-  overflow: hidden;
+.heroHeader {
   position: relative;
-  box-shadow: var(--shadow-md);
-  background: var(--c-surface2);
+  width: 100%;
+  height: 160px;
+  flex-shrink: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow: hidden;
+  border-bottom: 1px solid var(--c-border);
 }
 
-.thumbEditable {
+.heroHeaderClickable {
   cursor: pointer;
-
-  &:active { opacity: 0.85; }
+  &:active { opacity: 0.9; }
 }
 
-.thumbImg {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.thumbEmpty {
-  width: 100%;
-  height: 100%;
+.heroPlaceholder {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.thumbEmptyIcon {
-  font-size: 26px;
-  opacity: 0.4;
+.heroPlaceholderIcon {
+  font-size: 48px;
+  opacity: 0.25;
   line-height: 1;
 }
 
-.thumbEditOverlay,
-.thumbViewOverlay {
+.heroOverlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.38);
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.10) 0%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+
+/* ── Status badge — top right ── */
+.heroBadgeRow {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -3px -5px;
+    border-radius: 24px;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: -1;
+  }
+}
+
+/* ── Identity — bottom left ── */
+.heroIdentity {
+  position: absolute;
+  bottom: 12px;
+  left: 14px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.heroNum {
+  font-size: 24px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.6);
+}
+
+.heroTime {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+
+/* ── Tap-to-view/edit hint icon ── */
+.heroActionHint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 20px;
   opacity: 0;
   transition: opacity var(--t-fast);
 
-  .thumbEditable:hover &,
-  .thumbEditable:focus & { opacity: 1; }
-}
-
-.thumbEditIcon {
-  font-size: 18px;
-  color: #fff;
-}
-
-/* ── Identity text ── */
-.identityInfo {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.identityNum {
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--c-text);
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-}
-
-.identityTime {
-  font-size: 12px;
-  color: var(--c-text3);
-  line-height: 1;
-}
-
-.identityBadgeRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 2px;
-}
-
-.identityHint {
-  font-size: 10px;
-  color: var(--c-text3);
+  .heroHeaderClickable:hover &,
+  .heroHeaderClickable:focus & { opacity: 1; }
 }
 
 /* ══════════════════════════════════════════

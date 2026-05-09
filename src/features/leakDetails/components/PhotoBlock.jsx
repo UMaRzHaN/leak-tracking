@@ -11,60 +11,56 @@ export default function PhotoBlock({
   identityTime,
   onStatusChange,
 }) {
-  const meta     = STATUS_META[status] ?? STATUS_META.open;
+  const meta = STATUS_META[status] ?? STATUS_META.open;
   const hasPhoto = Boolean(src);
   const clickable = onEdit ?? onView;
 
   return (
-    <div className={s.identityRow}>
-
-      {/* ── Thumbnail ── */}
-      <div
-        className={`${s.thumb} ${clickable ? s.thumbEditable : ""}`}
-        onClick={clickable ?? undefined}
-        role={clickable ? "button" : undefined}
-      >
-        {hasPhoto ? (
-          <img src={src} alt="Фото утечки" className={s.thumbImg} draggable={false} />
-        ) : (
-          <div
-            className={s.thumbEmpty}
-            style={{ background: `linear-gradient(145deg, ${meta.bg} 0%, var(--c-surface2) 100%)` }}
-          >
-            <span className={s.thumbEmptyIcon}>📷</span>
-          </div>
-        )}
-
-        {onEdit && (
-          <div className={s.thumbEditOverlay}>
-            <span className={s.thumbEditIcon}>✏</span>
-          </div>
-        )}
-        {onView && hasPhoto && !onEdit && (
-          <div className={s.thumbViewOverlay}>
-            <span className={s.thumbEditIcon}>🔍</span>
-          </div>
-        )}
-      </div>
-
-      {/* ── Identity info ── */}
-      <div className={s.identityInfo}>
-        <span className={s.identityNum}>{identityNum}</span>
-        {identityTime && (
-          <span className={s.identityTime}>{identityTime}</span>
-        )}
-        <div className={s.identityBadgeRow}>
-          <StatusBadge
-            status={status}
-            size="md"
-            onClick={onStatusChange}
-          />
-          {onStatusChange && (
-            <span className={s.identityHint}>нажмите для смены</span>
-          )}
+    <div
+      className={`${s.heroHeader} ${clickable ? s.heroHeaderClickable : ""}`}
+      onClick={clickable ?? undefined}
+      role={clickable ? "button" : undefined}
+      style={
+        hasPhoto
+          ? { backgroundImage: `url(${src})` }
+          : { background: `linear-gradient(145deg, #1a2035 0%, #0d1321 100%)` }
+      }
+    >
+      {/* ── Camera placeholder when no photo ── */}
+      {!hasPhoto && (
+        <div className={s.heroPlaceholder}>
+          <span className={s.heroPlaceholderIcon}>📷</span>
         </div>
+      )}
+
+      {/* ── Drag handle ── */}
+      <div className={s.heroHandle} />
+
+      {/* ── Dark gradient overlay for text readability ── */}
+      <div className={s.heroOverlay} />
+
+      {/* ── Status badge — top right ── */}
+      <div className={s.heroBadgeRow}>
+        <StatusBadge status={status} size="md" onClick={onStatusChange} />
       </div>
 
+      {/* ── Identity info — bottom left ── */}
+      <div className={s.heroIdentity}>
+        <span className={s.heroNum}>{identityNum}</span>
+        {identityTime && <span className={s.heroTime}>{identityTime}</span>}
+      </div>
+
+      {/* ── Tap-to-view/edit overlay icon ── */}
+      {onEdit && (
+        <div className={s.heroActionHint}>
+          <span>✏</span>
+        </div>
+      )}
+      {onView && hasPhoto && !onEdit && (
+        <div className={s.heroActionHint}>
+          <span>🔍</span>
+        </div>
+      )}
     </div>
   );
 }
