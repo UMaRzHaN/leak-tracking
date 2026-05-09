@@ -13,7 +13,6 @@ import AddLeakFooter from "./Footer/AddLeakFooter";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import VoicePreviewSheet from "@/features/voice/VoicePreviewSheet/VoicePreviewSheet";
 import StepRenderer from "@/features/leakForm/components/StepRenderer/StepRenderer";
-import StepHeader from "./components/StepHeader";
 import ClearActions from "./components/ClearActions";
 import s from "./LeakForm.module.scss";
 
@@ -206,9 +205,9 @@ export default function LeakForm({
           prevPage={prevPage}
           stopVoiceInput={stopVoiceInput}
           startVoiceInput={startVoiceInput}
+          step={step}
+          steps={STEPS}
         />
-
-        <StepHeader step={step} steps={STEPS} />
 
         <StepRenderer
           step={step}

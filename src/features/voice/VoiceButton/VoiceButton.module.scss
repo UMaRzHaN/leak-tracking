@@ -26,3 +26,22 @@
     background: rgba(255, 255, 255, 0.15);
   }
 }
+
+.dark {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-sm, 8px);
+  font-size: 18px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+
+  &[aria-pressed="true"] {
+    background: rgba(255, 255, 255, 0.22);
+    transform: scale(0.92);
+  }
+
+  &:active {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(0.93);
+  }
+}
