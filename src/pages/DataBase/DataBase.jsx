@@ -14,19 +14,44 @@ import s from "./DataBase.module.scss";
 
 export default function DataBase({ data, setData, coords }) {
   const [notification, setNotification] = useState(null);
-  const notify = useCallback((type, message) => setNotification({ type, message }), []);
+  const [bulkPickerOpen, setBulkPickerOpen] = useState(false);
+  const notify = useCallback(
+    (type, message) => setNotification({ type, message }),
+    [],
+  );
 
   const { save } = useProjectData();
   const { deletePhoto } = usePhotoStorage();
 
   const filters = useDataBaseFilters({ data, coords });
   const actions = useLeakActions({ data, setData, save, notify, deletePhoto });
-  const bulk    = useBulkActions({ data, setData, save, displayed: filters.displayed, notify, deletePhoto });
-  const { handleExport } = useDataBaseExport({ displayed: filters.displayed, notify });
+  const bulk = useBulkActions({
+    data,
+    setData,
+    save,
+    displayed: filters.displayed,
+    notify,
+    deletePhoto,
+  });
+  const { handleExport } = useDataBaseExport({
+    displayed: filters.displayed,
+    notify,
+  });
+
+  const handleBulkPickerSelect = useCallback(
+    (status) => {
+      setBulkPickerOpen(false);
+      bulk.handleBulkStatusChange(status);
+    },
+    [bulk],
+  );
 
   return (
     <div className={s.page}>
-      <Notification notification={notification} onClose={() => setNotification(null)} />
+      <Notification
+        notification={notification}
+        onClose={() => setNotification(null)}
+      />
 
       <FilterBar
         search={filters.search}
@@ -50,8 +75,10 @@ export default function DataBase({ data, setData, coords }) {
         selectedCount={bulk.selectedCount}
         allDisplayedSelected={bulk.allDisplayedSelected}
         onClearSelection={bulk.clearSelection}
-        onSelectDisplayed={bulk.allDisplayedSelected ? bulk.clearSelection : bulk.selectDisplayed}
-        onBulkStatusChange={bulk.handleBulkStatusChange}
+        onSelectDisplayed={
+          bulk.allDisplayedSelected ? bulk.clearSelection : bulk.selectDisplayed
+        }
+        onOpenBulkPicker={() => setBulkPickerOpen(true)}
         onExport={handleExport}
       />
 
@@ -69,7 +96,9 @@ export default function DataBase({ data, setData, coords }) {
         activeLeak={actions.activeLeak}
         onCloseDetails={() => actions.setActiveLeak(null)}
         onSave={actions.handleSave}
-        onDelete={(id) => actions.handleDelete(id, { onDeleted: bulk.deselectId })}
+        onDelete={(id) =>
+          actions.handleDelete(id, { onDeleted: bulk.deselectId })
+        }
         pickerLeak={actions.pickerLeak}
         onStatusSelect={actions.handleStatusSelect}
         onClosePicker={() => actions.setPickerLeak(null)}
@@ -80,6 +109,9 @@ export default function DataBase({ data, setData, coords }) {
         resolveTotal={bulk.resolveTotal}
         onSequentialResolveConfirm={bulk.handleSequentialResolveConfirm}
         onCancelBulkResolve={bulk.cancelBulkResolve}
+        bulkPickerOpen={bulkPickerOpen}
+        onBulkStatusSelect={handleBulkPickerSelect}
+        onCloseBulkPicker={() => setBulkPickerOpen(false)}
       />
     </div>
   );

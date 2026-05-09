@@ -4,10 +4,23 @@ import ResolveModal from "@/features/resolve/ResolveModal/ResolveModal";
 import { STATUS } from "@/utils/status";
 
 export default function LeakModals({
-  activeLeak, onCloseDetails, onSave, onDelete,
-  pickerLeak, onStatusSelect, onClosePicker,
-  resolveLeak, onResolveConfirm, onCloseResolve,
-  resolveQueue, resolveTotal, onSequentialResolveConfirm, onCancelBulkResolve,
+  activeLeak,
+  onCloseDetails,
+  onSave,
+  onDelete,
+  pickerLeak,
+  onStatusSelect,
+  onClosePicker,
+  resolveLeak,
+  onResolveConfirm,
+  onCloseResolve,
+  resolveQueue,
+  resolveTotal,
+  onSequentialResolveConfirm,
+  onCancelBulkResolve,
+  bulkPickerOpen,
+  onBulkStatusSelect,
+  onCloseBulkPicker,
 }) {
   return (
     <>
@@ -28,6 +41,14 @@ export default function LeakModals({
         />
       )}
 
+      {bulkPickerOpen && (
+        <StatusPickerModal
+          current={null}
+          onSelect={onBulkStatusSelect}
+          onClose={onCloseBulkPicker}
+        />
+      )}
+
       {resolveLeak && (
         <ResolveModal
           leak={resolveLeak}
@@ -39,7 +60,10 @@ export default function LeakModals({
       {resolveQueue.length > 0 && (
         <ResolveModal
           leak={resolveQueue[0]}
-          progress={{ current: resolveTotal - resolveQueue.length + 1, total: resolveTotal }}
+          progress={{
+            current: resolveTotal - resolveQueue.length + 1,
+            total: resolveTotal,
+          }}
           onConfirm={onSequentialResolveConfirm}
           onClose={onCancelBulkResolve}
         />

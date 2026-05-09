@@ -317,7 +317,6 @@
 /* ── Results row ── */
 .resultsRow {
   display: flex;
-  // grid-template-columns: 1fr 2fr;
   align-items: center;
   justify-content: space-between;
   gap: 5px;
@@ -327,21 +326,13 @@
   border: 1px solid var(--c-border);
 }
 
-/* левая часть */
 .resultsInfo {
   display: flex;
   align-items: center;
-  flex-direction: row;
   gap: 6px;
   font-size: 12px;
   color: var(--c-text2);
-  text-wrap: nowrap;
-
-  @media (max-width: 600px) {
-    .resultsRow:has(.resultsActionsSelected) & {
-      flex-direction: column;
-    }
-  }
+  white-space: nowrap;
 }
 
 .sortToggle {
@@ -367,137 +358,11 @@
   }
 }
 
-/* правая часть */
 .resultsActions {
   display: flex;
   align-items: center;
   gap: 6px;
-}
-
-/* режим выделения */
-.resultsActionsSelected {
-  width: 100%;
-  padding: 10px;
-  border-radius: var(--r-lg);
-  background: rgba(59, 130, 246, 0.06);
-  border: 1px solid var(--c-blue-overlay);
-
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
-/* счетчик */
-.selectionInfo {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--c-blue);
-
-  background: var(--c-blue-dim);
-  border-radius: var(--r-pill);
-
-  padding: 4px 10px;
-}
-
-/* базовая кнопка */
-.actionBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-
-  padding: 6px 12px;
-  border-radius: 8px;
-
-  border: 1px solid var(--c-border);
-  background: var(--c-surface);
-  color: var(--c-text);
-
-  font-size: 12px;
-  font-weight: 500;
-
-  cursor: pointer;
-  transition: all 0.15s ease;
-
-  &:hover {
-    background: var(--c-surface2);
-    border-color: var(--c-text3);
-  }
-
-  &:active {
-    transform: scale(0.97);
-  }
-}
-
-/* primary кнопка (смена статуса) */
-.statusBtn {
-  background: var(--c-blue);
-  border-color: var(--c-blue);
-  color: #fff;
-
-  &:hover {
-    opacity: 0.88;
-  }
-}
-
-/* secondary (экспорт) */
-.exportBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-
-  padding: 6px 12px;
-  border-radius: 8px;
-
-  border: 1px solid var(--c-border);
-  background: var(--c-surface);
-  color: var(--c-text2);
-
-  font-size: 12px;
-  font-weight: 500;
-
-  cursor: pointer;
-  transition: all 0.15s ease;
-
-  &:hover {
-    background: var(--c-resolved-bg);
-    border-color: var(--c-resolved-border);
-    color: var(--c-resolved);
-  }
-}
-.resultsActions {
-  display: flex;
-  align-items: center;
   flex-wrap: wrap;
-}
-
-.resultsActions div {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.resultsActionsSelected {
-  justify-content: center;
-  padding: 8px;
-  border: 1px solid var(--c-blue-overlay);
-  border-radius: var(--r-lg);
-  background: linear-gradient(
-    180deg,
-    var(--c-blue-dim),
-    var(--c-surface)
-  );
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-}
-
-.selectionInfo {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--c-blue);
-  background: var(--c-blue-dim);
-  border: 1px solid var(--c-blue-overlay);
-  border-radius: var(--r-pill);
-  padding: 5px 10px;
-  white-space: nowrap;
 }
 
 .actionBtn {
@@ -521,16 +386,148 @@
     color: var(--c-blue);
     background: var(--c-blue-dim);
   }
-
   &:active {
     transform: scale(0.96);
   }
 }
 
-.statusBtn {
-  border-color: var(--status-border, var(--c-border));
-  color: var(--status-color, var(--c-text2));
-  background: var(--status-bg, var(--c-surface));
+.exportBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  color: var(--c-text2);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t-fast);
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--c-resolved-bg);
+    border-color: var(--c-resolved-border);
+    color: var(--c-resolved);
+  }
+}
+
+/* ── Bulk action bar (fixed bottom) ── */
+.bulkBar {
+  position: fixed;
+  bottom: calc(var(--app-footer, 60px) + 10px);
+  left: 12px;
+  right: 12px;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 8px 10px;
+  background: var(--c-surface2);
+  border: 1px solid var(--c-blue-overlay);
+  border-radius: var(--r-lg);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  z-index: 40;
+
+  animation: bulkBarIn 0.15s ease;
+
+  @supports (bottom: calc(env(safe-area-inset-bottom) + 1px)) {
+    bottom: calc(var(--app-footer, 60px) + 10px + env(safe-area-inset-bottom));
+  }
+}
+
+@keyframes bulkBarIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bulkCheck {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-md);
+  background: var(--c-blue-dim);
+  border: 1.5px solid var(--c-blue-overlay);
+  color: var(--c-blue);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.bulkCount {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bulkBtns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.bulkClearBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 10px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  color: var(--c-text2);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t-fast);
+  white-space: nowrap;
+
+  &:hover {
+    border-color: var(--c-text3);
+    background: var(--c-surface2);
+  }
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+.bulkStatusBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  border: none;
+  border-radius: var(--r-md);
+  background: var(--c-blue);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: opacity var(--t-fast);
+  white-space: nowrap;
+
+  &:hover {
+    opacity: 0.85;
+  }
+  &:active {
+    transform: scale(0.96);
+  }
 }
 
 /* ── List ── */
