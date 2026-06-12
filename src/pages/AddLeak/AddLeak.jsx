@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import LeakForm from "@/features/leakForm/LeakForm";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useFormDraft } from "@/hooks/useFormDraft";
@@ -6,20 +6,15 @@ import { useSafeSave } from "@/hooks/useSafeSave";
 import { toNumber } from "@/features/voice/utils/numbers";
 import { useProjectData } from "@/app/hooks/useProjectData";
 import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import { hapticSuccess, hapticWarning } from "@/utils/haptics";
 import { STATUS } from "@/utils/status";
 import { priorityFromSpeed } from "@/utils/priority";
 import { dataUrlToBlob } from "@/utils/photoConversion";
 import s from "./AddLeak.module.scss";
 
-
-export default function AddLeak({
-  data,
-  setData,
-  coords,
-  setPage,
-  prevPage,
-}) {
+export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
+  const { t } = useLanguage();
   const { form, setForm } = useLeakFormContext();
   const { savePhoto, ready: photoReady } = usePhotoStorage();
   const { save } = useProjectData();
@@ -27,6 +22,33 @@ export default function AddLeak({
   const { isSaving, run } = useSafeSave();
   const [draftPrompt, setDraftPrompt] = useState(false);
   const photoReadyRef = useRef(photoReady);
+
+  const localeTexts = useMemo(
+    () => ({
+      pageTitle: t("addLeak.pageTitle"),
+      stepPrefix: t("addLeak.stepPrefix"),
+      draftBanner: {
+        message: t("addLeak.draftBanner.message"),
+        restore: t("addLeak.draftBanner.restore"),
+        discard: t("addLeak.draftBanner.discard"),
+      },
+      buttons: {
+        prev: t("addLeak.buttons.prev"),
+        next: t("addLeak.buttons.next"),
+        save: t("addLeak.buttons.save"),
+        saving: t("addLeak.buttons.saving"),
+        clearStep: t("addLeak.buttons.clearStep"),
+        clearAll: t("addLeak.buttons.clearAll"),
+      },
+      confirm: {
+        title: t("addLeak.confirm.title"),
+        description: t("addLeak.confirm.description"),
+        confirmLabel: t("addLeak.confirm.confirmLabel"),
+        cancelLabel: t("addLeak.confirm.cancelLabel"),
+      },
+    }),
+    [t],
+  );
 
   useEffect(() => {
     photoReadyRef.current = photoReady;
@@ -76,12 +98,12 @@ export default function AddLeak({
 
         if (Number.isFinite(lat) && (lat < -90 || lat > 90)) {
           hapticWarning();
-          alert(`Широта ${lat} вне допустимого диапазона [-90, 90]`);
+          alert(t("addLeak.validation.lat", { lat }));
           return;
         }
         if (Number.isFinite(lng) && (lng < -180 || lng > 180)) {
           hapticWarning();
-          alert(`Долгота ${lng} вне допустимого диапазона [-180, 180]`);
+          alert(t("addLeak.validation.lng", { lng }));
           return;
         }
 
@@ -93,7 +115,7 @@ export default function AddLeak({
             const ready = await waitForPhotoReady();
             if (!ready) {
               hapticWarning();
-              alert("Фото ещё не готово для сохранения. Повторите попытку через секунду.");
+              alert(t("addLeak.validation.photoReady"));
               return;
             }
           }
@@ -132,18 +154,20 @@ export default function AddLeak({
     <>
       {draftPrompt && (
         <div className={s.draftBanner}>
-          <span className={s.draftBannerText}>📋 Есть незаконченная запись</span>
+          <span className={s.draftBannerText}>
+            {localeTexts.draftBanner.message}
+          </span>
           <button
             className={`${s.draftBtn} ${s.draftBtnRestore}`}
             onClick={handleRestoreDraft}
           >
-            Восстановить
+            {localeTexts.draftBanner.restore}
           </button>
           <button
             className={`${s.draftBtn} ${s.draftBtnDiscard}`}
             onClick={handleDiscardDraft}
           >
-            Удалить
+            {localeTexts.draftBanner.discard}
           </button>
         </div>
       )}

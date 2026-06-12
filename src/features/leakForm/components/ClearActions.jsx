@@ -1,15 +1,22 @@
 import s from "@/features/leakForm/LeakForm.module.scss";
 
-export default function ClearActions({ hasStepData, onClearStep, onClearAll }) {
+export default function ClearActions({
+  hasStepData,
+  onClearStep,
+  onClearAll,
+  localeTexts,
+}) {
+  const buttons = localeTexts?.buttons ?? {};
+
   return (
     <div className={s.clearActions}>
       {hasStepData && (
         <button type="button" className={s.clearStepIcon} onClick={onClearStep}>
-          Очистить шаг 🧽
+          {buttons.clearStep ?? "Clear step 🧽"}
         </button>
       )}
       <button className={s.clearAllSteps} type="button" onClick={onClearAll}>
-        Очистить все поля 🧹
+        {buttons.clearAll ?? "Clear all fields 🧹"}
       </button>
     </div>
   );

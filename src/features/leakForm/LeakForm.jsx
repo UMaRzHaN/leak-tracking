@@ -6,6 +6,7 @@ import { useVoiceControl } from "@/app/hooks/useVoiceControl";
 import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import { calculations } from "@/utils/calculations/calculations";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
 import AddLeakHeader from "./Header/AddLeakHeader";
@@ -16,6 +17,40 @@ import StepRenderer from "@/features/leakForm/components/StepRenderer/StepRender
 import ClearActions from "./components/ClearActions";
 import s from "./LeakForm.module.scss";
 
+const STEP_TITLE_KEYS = {
+  Основное: "basic",
+  "МТР и Описание *": "mtrAndDescription",
+  "Примечание и фото": "noteAndPhoto",
+};
+
+function translateStep(step, t) {
+  return {
+    ...step,
+    title:
+      STEP_TITLE_KEYS[step.title] != null
+        ? t(`addLeak.stepTitles.${STEP_TITLE_KEYS[step.title]}`, {
+            defaultValue: step.title,
+          })
+        : step.title,
+    fields: step.fields.map((field) => ({
+      ...field,
+      label: t(`addLeak.fields.${field.key}.label`, {
+        defaultValue: field.label,
+      }),
+      placeholder: t(`addLeak.fields.${field.key}.placeholder`, {
+        defaultValue: field.placeholder ?? "",
+      }),
+      hint: t(`addLeak.fields.${field.key}.hint`, {
+        defaultValue: field.hint ?? "",
+      }),
+    })),
+  };
+}
+
+function translateSteps(steps, t) {
+  return steps.map((step) => translateStep(step, t));
+}
+
 export default function LeakForm({
   onAdd,
   setPage,
@@ -24,12 +59,37 @@ export default function LeakForm({
   isSaving,
 }) {
   const { form, errors, handle, setErrors, setForm } = useLeakFormContext();
+  const { t, lang } = useLanguage();
   const rawConfig = useProjectConfig();
   const projectConfig = useEffectiveProjectConfig();
   const { activeProject } = useProjectData();
   const { vars } = useProjectVars(activeProject?.id ?? null, rawConfig.vars);
 
+  const localeTexts = useMemo(
+    () => ({
+      pageTitle: t("addLeak.pageTitle"),
+      stepPrefix: t("addLeak.stepPrefix"),
+      buttons: {
+        prev: t("addLeak.buttons.prev"),
+        next: t("addLeak.buttons.next"),
+        save: t("addLeak.buttons.save"),
+        saving: t("addLeak.buttons.saving"),
+      },
+      confirm: {
+        title: t("addLeak.confirm.title"),
+        description: t("addLeak.confirm.description"),
+        confirmLabel: t("addLeak.confirm.confirmLabel"),
+        cancelLabel: t("addLeak.confirm.cancelLabel"),
+      },
+    }),
+    [t],
+  );
+
   const STEPS = useMemo(() => projectConfig.steps.steps ?? [], [projectConfig]);
+  const translatedSteps = useMemo(
+    () => (lang === "en" ? translateSteps(STEPS, t) : STEPS),
+    [STEPS, lang, t],
+  );
 
   const COPY_KEYS = useMemo(() => {
     const raw = rawConfig.system?.copyable ?? [];
@@ -195,7 +255,9 @@ export default function LeakForm({
     return result;
   }, [lastItem, STEPS, step, COPY_KEYS, form]);
 
-  const hasStepData = STEPS[step - 1]?.fields?.some(({ key }) => form[key]);
+  const hasStepData = translatedSteps[step - 1]?.fields?.some(
+    ({ key }) => form[key],
+  );
 
   return (
     <>
@@ -206,12 +268,14 @@ export default function LeakForm({
           stopVoiceInput={stopVoiceInput}
           startVoiceInput={startVoiceInput}
           step={step}
-          steps={STEPS}
+          steps={translatedSteps}
+          title={localeTexts.pageTitle}
+          localeTexts={localeTexts}
         />
 
         <StepRenderer
           step={step}
-          steps={STEPS}
+          steps={translatedSteps}
           form={form}
           errors={errors}
           onChange={handle}
@@ -224,6 +288,7 @@ export default function LeakForm({
           hasStepData={hasStepData}
           onClearStep={handleClearStep}
           onClearAll={clearForm}
+          localeTexts={localeTexts}
         />
 
         <AddLeakFooter
@@ -231,8 +296,9 @@ export default function LeakForm({
           nextStep={nextStep}
           save={save}
           step={step}
-          stepsLength={STEPS.length}
+          stepsLength={translatedSteps.length}
           isSaving={isSaving}
+          localeTexts={localeTexts}
         />
       </div>
 
@@ -245,9 +311,10 @@ export default function LeakForm({
 
       <ConfirmSheet
         open={confirmOpen}
-        title="Заполнить из предыдущей записи?"
-        description="Некоторые поля пустые. Скопировать значения?"
-        confirmLabel="Скопировать"
+        title={localeTexts.confirm.title}
+        description={localeTexts.confirm.description}
+        confirmLabel={localeTexts.confirm.confirmLabel}
+        cancelLabel={localeTexts.confirm.cancelLabel}
         onConfirm={handleConfirmCopy}
         onCancel={handleCancelCopy}
       />

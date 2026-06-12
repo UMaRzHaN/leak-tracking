@@ -5,6 +5,7 @@ import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useTheme } from "@/app/hooks/useTheme";
 import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
 import { useHiddenFields } from "@/app/project/hooks/useHiddenFields";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import { getMapCacheInfo, clearMapCache } from "@/services/maps/tileCache";
 import PageHeader from "@/components/layout/PageHeader/PageHeader";
 import SettingsModal from "@/features/settings/SettingsModal/SettingsModal";
@@ -25,6 +26,7 @@ export default function Settings({
   onImportZip,
   onImportIntoExisting,
 }) {
+  const { lang, t, toggleLanguage } = useLanguage();
   const [notification, setNotification] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [fieldsModalOpen, setFieldsModalOpen] = useState(false);
@@ -118,7 +120,10 @@ export default function Settings({
 
   return (
     <div className={s.settings}>
-      <PageHeader title="Настройки" onBack={() => setPage?.(prevPage ?? "")} />
+      <PageHeader
+        title={t("settings.title")}
+        onBack={() => setPage?.(prevPage ?? "")}
+      />
 
       <Notification
         notification={notification}
@@ -186,15 +191,19 @@ export default function Settings({
         {/* ── Внешний вид ── */}
         <section className={s.section}>
           <div className={s.sectionHead}>
-            <h2 className={s.sectionTitle}>Внешний вид</h2>
+            <h2 className={s.sectionTitle}>{t("settings.appearanceTitle")}</h2>
           </div>
           <div className={s.themeRow}>
             <div className={s.themeInfo}>
               <span className={s.themeLabel}>
-                {dark ? "Тёмная тема" : "Светлая тема"}
+                {dark
+                  ? t("settings.themeLabelDark")
+                  : t("settings.themeLabelLight")}
               </span>
               <span className={s.themeHint}>
-                {dark ? "Тёмный фон, снижает нагрузку на глаза" : "Светлый фон"}
+                {dark
+                  ? t("settings.themeHintDark")
+                  : t("settings.themeHintLight")}
               </span>
             </div>
             <button
@@ -204,6 +213,28 @@ export default function Settings({
               aria-label="Переключить тему"
             >
               <span className={s.themeThumb} />
+            </button>
+          </div>
+          <div className={s.themeRow}>
+            <div className={s.themeInfo}>
+              <span className={s.themeLabel}>
+                {t("settings.languageLabel")}
+              </span>
+              <span className={s.themeHint}>
+                {lang === "ru"
+                  ? t("settings.languageHintRu")
+                  : t("settings.languageHintEn")}
+              </span>
+            </div>
+            <button
+              className={s.languageToggle}
+              type="button"
+              onClick={toggleLanguage}
+              aria-label="Переключить язык"
+            >
+              {lang === "ru"
+                ? t("settings.toggleButtonEn")
+                : t("settings.toggleButtonRu")}
             </button>
           </div>
         </section>

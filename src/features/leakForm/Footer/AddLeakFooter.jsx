@@ -6,8 +6,10 @@ export default function AddLeakFooter({
   save,
   step,
   stepsLength,
-  isSaving, 
+  isSaving,
+  localeTexts,
 }) {
+  const buttons = localeTexts?.buttons ?? {};
   return (
     <div className={s.footer}>
       <button
@@ -15,24 +17,18 @@ export default function AddLeakFooter({
         onClick={prevStep}
         disabled={step === 1 || isSaving}
       >
-        ← Назад
+        {buttons.prev ?? "← Back"}
       </button>
 
       {step < stepsLength ? (
-        <button
-          className={s.nextBtn}
-          onClick={nextStep}
-          disabled={isSaving}
-        >
-          Далее →
+        <button className={s.nextBtn} onClick={nextStep} disabled={isSaving}>
+          {buttons.next ?? "Next →"}
         </button>
       ) : (
-        <button
-          className={s.saveBtn}
-          onClick={save}
-          disabled={isSaving}
-        >
-          {isSaving ? "Сохранение..." : "💾 Сохранить"}
+        <button className={s.saveBtn} onClick={save} disabled={isSaving}>
+          {isSaving
+            ? (buttons.saving ?? "Saving...")
+            : (buttons.save ?? "💾 Save")}
         </button>
       )}
     </div>

@@ -269,7 +269,24 @@
     transform: translateX(20px);
   }
 }
+.languageToggle {
+  min-width: 84px;
+  padding: 10px 14px;
+  border-radius: var(--r-lg);
+  border: 1.5px solid var(--c-border);
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t-fast);
+}
 
+.languageToggle:hover {
+  border-color: var(--c-blue);
+  color: var(--c-blue);
+  background: var(--c-blue-dim);
+}
 /* ── Map cache ── */
 .cacheBody {
   padding: 14px 16px;
