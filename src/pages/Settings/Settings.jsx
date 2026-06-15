@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { useProjectData } from "@/app/hooks/useProjectData";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
@@ -27,6 +27,65 @@ export default function Settings({
   onImportIntoExisting,
 }) {
   const { lang, t, toggleLanguage } = useLanguage();
+  const localeTexts = useMemo(
+    () => ({
+      title: t("settings.title"),
+      appearanceTitle: t("settings.appearanceTitle"),
+      themeLabelLight: t("settings.themeLabelLight"),
+      themeLabelDark: t("settings.themeLabelDark"),
+      themeHintLight: t("settings.themeHintLight"),
+      themeHintDark: t("settings.themeHintDark"),
+
+      languageLabel: t("settings.languageLabel"),
+      languageHintRu: t("settings.languageHintRu"),
+      languageHintEn: t("settings.languageHintEn"),
+      toggleButtonRu: t("settings.toggleButtonRu"),
+      toggleButtonEn: t("settings.toggleButtonEn"),
+
+      projects: t("settings.projects"),
+      addProject: t("settings.addProject"),
+      noProjects: t("settings.noProjects"),
+
+      calculationParameters: t("settings.calculationParameters"),
+      projectSettings: t("settings.projectSettings"),
+      editParameters: t("settings.editParameters"),
+
+      fieldsAndExcel: t("settings.fieldsAndExcel"),
+      fieldsDescription: t("settings.fieldsDescription"),
+      hiddenFields: t("settings.hiddenFields"),
+      configureFields: t("settings.configureFields"),
+
+      backup: t("settings.backup"),
+      exportZip: t("settings.exportZip"),
+      importZip: t("settings.importZip"),
+      backupHint: t("settings.backupHint"),
+
+      mapCache: t("settings.mapCache"),
+      satelliteTiles: t("settings.satelliteTiles"),
+      cacheEmpty: t("settings.cacheEmpty"),
+      loading: t("settings.loading"),
+      clearMapCache: t("settings.clearMapCache"),
+
+      dangerZone: t("settings.dangerZone"),
+      dangerHint: t("settings.dangerHint"),
+      clearDatabase: t("settings.clearDatabase"),
+
+      notifications: {
+        parametersSaved: t("settings.notifications.parametersSaved"),
+        changesCanceled: t("settings.notifications.changesCanceled"),
+        cacheCleared: t("settings.notifications.cacheCleared"),
+        databaseCleared: t("settings.notifications.databaseCleared"),
+        allFieldsActive: t("settings.notifications.allFieldsActive"),
+        hiddenFieldsCount: t("settings.notifications.hiddenFieldsCount"),
+      },
+
+      dialogs: {
+        clearMapCache: t("settings.dialogs.clearMapCache"),
+        clearDatabase: t("settings.dialogs.clearDatabase"),
+      },
+    }),
+    [t],
+  );
   const [notification, setNotification] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [fieldsModalOpen, setFieldsModalOpen] = useState(false);
@@ -121,7 +180,7 @@ export default function Settings({
   return (
     <div className={s.settings}>
       <PageHeader
-        title={t("settings.title")}
+        title={localeTexts.title}
         onBack={() => setPage?.(prevPage ?? "")}
       />
 
@@ -134,14 +193,14 @@ export default function Settings({
         {/* ── Список проектов ── */}
         <section className={s.section}>
           <div className={s.sectionHead}>
-            <h2 className={s.sectionTitle}>Проекты</h2>
+            <h2 className={s.sectionTitle}>{localeTexts.projects}</h2>
             {!addingProject && (
               <button
                 className={s.addBtn}
                 type="button"
                 onClick={() => setAddingProject(true)}
               >
-                + Добавить
+                + {localeTexts.addProject}
               </button>
             )}
           </div>
@@ -165,25 +224,28 @@ export default function Settings({
           />
 
           {projects.length === 0 && !addingProject && (
-            <p className={s.empty}>Нет проектов. Создайте первый.</p>
+            <p className={s.empty}>{localeTexts.noProjects}</p>
           )}
         </section>
         {/* ── Параметры расчёта ── */}
         {activeProject && (
           <section className={s.section}>
             <div className={s.sectionHead}>
-              <h2 className={s.sectionTitle}>Параметры расчёта</h2>
+              <h2 className={s.sectionTitle}>
+                {localeTexts.calculationParameters}
+              </h2>
             </div>
             <div className={s.calcBody}>
               <p className={s.description}>
-                Настройки для проекта <strong>{activeProject.name}</strong>
+                {localeTexts.projectSettings}{" "}
+                <strong>{activeProject.name}</strong>
               </p>
               <button
                 className={s.editVarsBtn}
                 type="button"
                 onClick={() => setModalOpen(true)}
               >
-                ⚙ Редактировать параметры
+                ⚙ {localeTexts.editParameters}
               </button>
             </div>
           </section>
@@ -191,19 +253,17 @@ export default function Settings({
         {/* ── Внешний вид ── */}
         <section className={s.section}>
           <div className={s.sectionHead}>
-            <h2 className={s.sectionTitle}>{t("settings.appearanceTitle")}</h2>
+            <h2 className={s.sectionTitle}>{localeTexts.appearanceTitle}</h2>
           </div>
           <div className={s.themeRow}>
             <div className={s.themeInfo}>
               <span className={s.themeLabel}>
                 {dark
-                  ? t("settings.themeLabelDark")
-                  : t("settings.themeLabelLight")}
+                  ? localeTexts.themeLabelDark
+                  : localeTexts.themeLabelLight}
               </span>
               <span className={s.themeHint}>
-                {dark
-                  ? t("settings.themeHintDark")
-                  : t("settings.themeHintLight")}
+                {dark ? localeTexts.themeHintDark : localeTexts.themeHintLight}
               </span>
             </div>
             <button
@@ -217,13 +277,11 @@ export default function Settings({
           </div>
           <div className={s.themeRow}>
             <div className={s.themeInfo}>
-              <span className={s.themeLabel}>
-                {t("settings.languageLabel")}
-              </span>
+              <span className={s.themeLabel}>{localeTexts.languageLabel}</span>
               <span className={s.themeHint}>
                 {lang === "ru"
-                  ? t("settings.languageHintRu")
-                  : t("settings.languageHintEn")}
+                  ? localeTexts.languageHintRu
+                  : localeTexts.languageHintEn}
               </span>
             </div>
             <button
@@ -233,8 +291,8 @@ export default function Settings({
               aria-label="Переключить язык"
             >
               {lang === "ru"
-                ? t("settings.toggleButtonEn")
-                : t("settings.toggleButtonRu")}
+                ? localeTexts.toggleButtonEn
+                : localeTexts.toggleButtonRu}
             </button>
           </div>
         </section>
@@ -246,12 +304,11 @@ export default function Settings({
         {activeProject && (
           <section className={s.section}>
             <div className={s.sectionHead}>
-              <h2 className={s.sectionTitle}>Поля формы и Excel</h2>
+              <h2 className={s.sectionTitle}>{localeTexts.fieldsAndExcel}</h2>
             </div>
             <div className={s.calcBody}>
               <p className={s.description}>
-                Скройте неиспользуемые поля — они исчезнут из формы и столбцов
-                экспорта.
+                {localeTexts.fieldsDescription}
                 {hiddenFields.size > 0 && (
                   <strong> Скрыто: {hiddenFields.size}.</strong>
                 )}
@@ -261,7 +318,7 @@ export default function Settings({
                 type="button"
                 onClick={() => setFieldsModalOpen(true)}
               >
-                ☰ Настроить поля
+                ☰ {localeTexts.configureFields}
               </button>
             </div>
           </section>
@@ -270,7 +327,7 @@ export default function Settings({
         {activeProject && (
           <section className={s.section}>
             <div className={s.sectionHead}>
-              <h2 className={s.sectionTitle}>Резервная копия</h2>
+              <h2 className={s.sectionTitle}>{localeTexts.backup}</h2>
             </div>
             <div className={s.backupBody}>
               <div className={s.backupRow}>
@@ -279,20 +336,17 @@ export default function Settings({
                   type="button"
                   onClick={handleExportZip}
                 >
-                  ⬆ Экспорт ZIP
+                  ⬆ {localeTexts.exportZip}
                 </button>
                 <button
                   className={`${s.backupBtn} ${s.restore}`}
                   type="button"
                   onClick={() => importZipRef.current?.click()}
                 >
-                  ⬇ Импорт ZIP
+                  ⬇ {localeTexts.importZip}
                 </button>
               </div>
-              <p className={s.backupHint}>
-                ZIP-архив содержит все записи и фотографии. Рекомендуется для
-                переноса данных между устройствами.
-              </p>
+              <p className={s.backupHint}>{localeTexts.backupHint}</p>
             </div>
             <input
               ref={importZipRef}
@@ -307,19 +361,19 @@ export default function Settings({
         {/* ── Кэш карты ── */}
         <section className={s.section}>
           <div className={s.sectionHead}>
-            <h2 className={s.sectionTitle}>Кэш карты</h2>
+            <h2 className={s.sectionTitle}>{localeTexts.mapCache}</h2>
           </div>
           <div className={s.cacheBody}>
             <div className={s.cacheInfo}>
-              <span className={s.cacheLabel}>Спутниковые тайлы</span>
+              <span className={s.cacheLabel}>{localeTexts.satelliteTiles}</span>
               {cacheInfo ? (
                 <span className={s.cacheSize}>
                   {cacheInfo.count > 0
                     ? `${cacheInfo.count} тайлов · ~${cacheInfo.sizeMB} МБ`
-                    : "Кэш пуст"}
+                    : `${localeTexts.cacheEmpty}`}
                 </span>
               ) : (
-                <span className={s.cacheSize}>Загрузка...</span>
+                <span className={s.cacheSize}>{localeTexts.loading}</span>
               )}
             </div>
             <button
@@ -328,7 +382,7 @@ export default function Settings({
               onClick={handleClearMapCache}
               disabled={!cacheInfo || cacheInfo.count === 0}
             >
-              🗺 Очистить кэш карты
+              🗺 {localeTexts.clearMapCache}
             </button>
           </div>
         </section>
@@ -337,19 +391,16 @@ export default function Settings({
         {activeProject && (
           <section className={s.section}>
             <div className={s.sectionHead}>
-              <h2 className={s.sectionTitle}>Опасная зона</h2>
+              <h2 className={s.sectionTitle}>{localeTexts.dangerZone}</h2>
             </div>
             <div className={s.dangerBody}>
-              <p className={s.dangerHint}>
-                Очистка удаляет все записи об утечках активного проекта.
-                Фото-файлы на устройстве сохранятся.
-              </p>
+              <p className={s.dangerHint}>{localeTexts.dangerHint}</p>
               <button
                 className={s.dangerBtn}
                 type="button"
                 onClick={handleClearDatabase}
               >
-                🗑 Очистить базу данных
+                🗑 {localeTexts.clearDatabase}
               </button>
             </div>
           </section>
@@ -387,7 +438,9 @@ export default function Settings({
             setFieldsModalOpen(false);
             notify(
               "success",
-              next.size > 0 ? `Скрыто полей: ${next.size}` : "Все поля активны",
+              next.size > 0
+                ? `Скрыто полей: ${next.size}`
+                : `${localeTexts.allFieldsActive}`,
             );
           }}
         />

@@ -51,6 +51,110 @@ const resources = {
           "Текущий язык интерфейса страницы добавления утечки: English",
         toggleButtonRu: "RU",
         toggleButtonEn: "EN",
+
+        projects: "Проекты",
+        addProject: "Добавить",
+        noProjects: "Нет проектов. Создайте первый.",
+
+        calculationParameters: "Параметры расчёта",
+        projectSettings: "Настройки для проекта",
+        editParameters: "Редактировать параметры",
+
+        fieldsAndExcel: "Поля формы и Excel",
+        fieldsDescription:
+          "Скройте неиспользуемые поля — они исчезнут из формы и столбцов экспорта.",
+        hiddenFields: "Скрыто",
+        configureFields: "Настроить поля",
+
+        backup: "Резервная копия",
+        exportZip: "Экспорт ZIP",
+        importZip: "Импорт ZIP",
+        backupHint:
+          "ZIP-архив содержит все записи и фотографии. Рекомендуется для переноса данных между устройствами.",
+
+        mapCache: "Кэш карты",
+        satelliteTiles: "Спутниковые тайлы",
+        cacheEmpty: "Кэш пуст",
+        loading: "Загрузка...",
+        clearMapCache: "Очистить кэш карты",
+
+        dangerZone: "Опасная зона",
+        dangerHint:
+          "Очистка удаляет все записи об утечках активного проекта. Фото-файлы на устройстве сохранятся.",
+        clearDatabase: "Очистить базу данных",
+
+        notifications: {
+          parametersSaved: "Параметры расчёта сохранены",
+          changesCanceled: "Изменения отменены",
+          cacheCleared: "Кэш карты очищен",
+          databaseCleared: "База данных очищена",
+          allFieldsActive: "Все поля активны",
+          hiddenFieldsCount: "Скрыто полей: {{count}}",
+        },
+
+        dialogs: {
+          clearMapCache:
+            "Очистить кэш карты? Тайлы будут перекачаны при следующем открытии карты.",
+          clearDatabase:
+            "Удалить все записи об утечках?\n\nЭто действие необратимо. Фото-файлы сохранятся на устройстве.",
+        },
+      },
+      emissionsSummary: {
+        title: "Потери проекта (открытые)",
+
+        gasLosses: "Потери газа",
+        emissions: "Выбросы",
+        activeLeaks: "Активных утечек",
+
+        records: "записей",
+        methaneUnit: "м³/год",
+        co2Unit: "т CO₂-экв/год",
+      },
+      fieldVisibility: {
+        title: "Настройка полей",
+        active: "активно",
+
+        searchPlaceholder: "Поиск по названию или ключу...",
+        notFound: "Поля не найдены",
+
+        excelOnly: "Только Excel (расчётные)",
+
+        hidden: "скрыто",
+        required: "обязательное",
+
+        showAll: "Показать все",
+        hideAll: "Скрыть все",
+        hideOthers: "Скрыть остальные",
+
+        systemNote:
+          "Поля «№», «Дата обнаружения», «Статус» и «Дата устранения» системные — всегда включаются в экспорт Excel.",
+
+        cancel: "Отмена",
+        save: "Сохранить",
+      },
+      settingsModal: {
+        title: "Параметры расчёта",
+        gasToFlare: "Газ на сжигание",
+        flare: "Сжигание",
+        utilization: "Утилизация",
+        gasContent: "Содержание газа в смеси",
+        current: "Текущее",
+        equipmentType: "Тип оборудования",
+        uncertainty: "Неопределённость",
+        serialNumber: "Серийный номер оборудования",
+        operatingMode: "Режим работы",
+        operatingModeDays: "дней за год",
+        gasType: "Тип газа",
+        density: "Плотность",
+        cancel: "Отмена",
+        save: "Сохранить",
+
+        confirm: {
+          title: "Отменить изменения?",
+          text: "Вы уверены? Все несохранённые изменения будут потеряны.",
+          continueEditing: "Продолжить редактирование",
+          discardChanges: "Отменить изменения",
+        },
       },
     },
   },
@@ -221,16 +325,122 @@ const resources = {
       },
       settings: {
         title: "Settings",
+
         appearanceTitle: "Appearance",
         themeLabelDark: "Dark theme",
         themeLabelLight: "Light theme",
         themeHintDark: "Dark background is easier on the eyes",
         themeHintLight: "Light background",
+
         languageLabel: "Language",
         languageHintRu: "Current leak entry page language: Russian",
         languageHintEn: "Current leak entry page language: English",
         toggleButtonRu: "RU",
         toggleButtonEn: "EN",
+
+        projects: "Projects",
+        addProject: "Add",
+        noProjects: "No projects yet. Create your first one.",
+
+        calculationParameters: "Calculation Parameters",
+        projectSettings: "Settings for project",
+        editParameters: "Edit Parameters",
+
+        fieldsAndExcel: "Form Fields and Excel",
+        fieldsDescription:
+          "Hide unused fields — they will disappear from the form and export columns.",
+        hiddenFields: "Hidden",
+        configureFields: "Configure Fields",
+
+        backup: "Backup",
+        exportZip: "Export ZIP",
+        importZip: "Import ZIP",
+        backupHint:
+          "The ZIP archive contains all records and photos. Recommended for transferring data between devices.",
+
+        mapCache: "Map Cache",
+        satelliteTiles: "Satellite Tiles",
+        cacheEmpty: "Cache is empty",
+        loading: "Loading...",
+        clearMapCache: "Clear Map Cache",
+
+        dangerZone: "Danger Zone",
+        dangerHint:
+          "Clearing removes all leak records from the active project. Photo files on the device will remain.",
+        clearDatabase: "Clear Database",
+
+        notifications: {
+          parametersSaved: "Calculation parameters saved",
+          changesCanceled: "Changes cancelled",
+          cacheCleared: "Map cache cleared",
+          databaseCleared: "Database cleared",
+          allFieldsActive: "All fields are active",
+          hiddenFieldsCount: "Hidden fields: {{count}}",
+        },
+
+        dialogs: {
+          clearMapCache:
+            "Clear map cache? Tiles will be downloaded again when the map is opened next time.",
+          clearDatabase:
+            "Delete all leak records?\n\nThis action cannot be undone. Photo files will remain on the device.",
+        },
+      },
+      emissionsSummary: {
+        title: "Project Losses (Open)",
+
+        gasLosses: "Gas Losses",
+        emissions: "Emissions",
+        activeLeaks: "Active Leaks",
+
+        records: "records",
+        methaneUnit: "m³/year",
+        co2Unit: "t CO₂e/year",
+      },
+      fieldVisibility: {
+        title: "Field Configuration",
+        active: "active",
+
+        searchPlaceholder: "Search by name or key...",
+        notFound: "No fields found",
+
+        excelOnly: "Excel Only (Calculated)",
+
+        hidden: "hidden",
+        required: "required",
+
+        showAll: "Show All",
+        hideAll: "Hide All",
+        hideOthers: "Hide Others",
+
+        systemNote:
+          'Fields "No.", "Detection Date", "Status" and "Resolution Date" are system fields and are always included in Excel export.',
+
+        cancel: "Cancel",
+        save: "Save",
+      },
+      settingsModal: {
+        title: "Calculation Parameters",
+        gasToFlare: "Gas to flare",
+        flare: "Flaring",
+        utilization: "Utilization",
+        gasContent: "Gas content in mixture",
+        current: "Current",
+        equipmentType: "Equipment type",
+        uncertainty: "Uncertainty",
+        serialNumber: "Equipment serial number",
+        operatingMode: "Operating mode",
+        operatingModeDays: "days per year",
+        gasType: "Gas type",
+        density: "Density",
+        cancel: "Cancel",
+        save: "Save",
+
+        confirm: {
+          title: "Discard changes?",
+          text: "Are you sure? All unsaved changes will be lost.",
+          continueEditing: "Continue editing",
+          discardChanges: "Discard changes",
+        },
       },
     },
   },

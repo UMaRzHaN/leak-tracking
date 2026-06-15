@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import s from "./SettingsModal.module.scss";
 import * as variables from "@/data/variables";
+import { useLanguage } from "@/app/hooks/useLanguage";
 
 export default function SettingsModal({
   open,
@@ -9,6 +10,41 @@ export default function SettingsModal({
   variables: currentVars,
   onSave,
 }) {
+  const { t } = useLanguage();
+  const localeTexts = useMemo(
+    () => ({
+      title: t("settingsModal.title"),
+
+      gasToFlare: t("settingsModal.gasToFlare"),
+      flare: t("settingsModal.flare"),
+      utilization: t("settingsModal.utilization"),
+
+      gasContent: t("settingsModal.gasContent"),
+      current: t("settingsModal.current"),
+
+      equipmentType: t("settingsModal.equipmentType"),
+      uncertainty: t("settingsModal.uncertainty"),
+
+      serialNumber: t("settingsModal.serialNumber"),
+
+      operatingMode: t("settingsModal.operatingMode"),
+      operatingModeDays: t("settingsModal.operatingModeDays"),
+
+      gasType: t("settingsModal.gasType"),
+      density: t("settingsModal.density"),
+
+      cancel: t("settingsModal.cancel"),
+      save: t("settingsModal.save"),
+
+      confirm: {
+        title: t("settingsModal.confirm.title"),
+        text: t("settingsModal.confirm.text"),
+        continueEditing: t("settingsModal.confirm.continueEditing"),
+        discardChanges: t("settingsModal.confirm.discardChanges"),
+      },
+    }),
+    [t],
+  );
   /* =========================
      LOCAL DRAFT STATE
   ========================= */
@@ -139,7 +175,7 @@ export default function SettingsModal({
       {/* ===== MODAL ===== */}
       <div className={s.modal}>
         <div className={s.header}>
-          <h2>Параметры расчёта</h2>
+          <h2>{localeTexts.title}</h2>
           <button className={s.closeBtn} onClick={handleCancel}>
             ✕
           </button>
@@ -150,7 +186,7 @@ export default function SettingsModal({
           {/* FLARE */}
           <div className={s.paramGroup}>
             <label htmlFor="flare">
-              <span className={s.label}>Газ на сжигание</span>
+              <span className={s.label}>{localeTexts.gasToFlare}</span>
               <span className={s.unit}>(%)</span>
             </label>
 
@@ -182,10 +218,11 @@ export default function SettingsModal({
 
             <div className={s.distribution}>
               <span className={s.flare}>
-                Сжигание: {localVars.percentage_gas_to_flare.toFixed(1)}%
+                {localeTexts.flare}:{" "}
+                {localVars.percentage_gas_to_flare.toFixed(1)}%
               </span>
               <span className={s.util}>
-                Утилизация:{" "}
+                {localeTexts.utilization}:{" "}
                 {(100 - localVars.percentage_gas_to_flare).toFixed(1)}%
               </span>
             </div>
@@ -193,7 +230,7 @@ export default function SettingsModal({
           {/* GAS PERCENTAGE */}
           <div className={s.paramGroup}>
             <label htmlFor="gasPercentage">
-              <span className={s.label}>Содержание газа в смеси</span>
+              <span className={s.label}>{localeTexts.gasContent}</span>
               <span className={s.unit}>(%)</span>
             </label>
             <div className={s.sliderContainer}>
@@ -218,13 +255,13 @@ export default function SettingsModal({
               />
             </div>
             <span className={s.current}>
-              Текущее: {localVars.gasPercentage.toFixed(1)}%
+              {localeTexts.current}: {localVars.gasPercentage.toFixed(1)}%
             </span>
           </div>
           {/* EQUIPMENT TYPE */}
           <div className={s.paramGroup}>
             <label htmlFor="equipmentType">
-              <span className={s.label}>Тип оборудования</span>
+              <span className={s.label}>{localeTexts.equipmentType}</span>
             </label>
             <select
               id="equipmentType"
@@ -241,13 +278,13 @@ export default function SettingsModal({
               )}
             </select>
             <span className={s.current}>
-              Неопределённость: {localVars.uncertainty * 100}%
+              {localeTexts.uncertainty}: {localVars.uncertainty * 100}%
             </span>
           </div>
           {/* SERIAL NUMBER */}
           <div className={s.paramGroup}>
             <label htmlFor="serial_number">
-              <span className={s.label}>Серийный номер оборудования</span>
+              <span className={s.label}>{localeTexts.serialNumber}</span>
             </label>
             <input
               disabled={localVars.equipmentType === "Розовый мешок"}
@@ -275,14 +312,14 @@ export default function SettingsModal({
               className={s.input}
             />
             <span className={s.current}>
-              Текущее: {localVars.serial_number}
+              {localeTexts.current}: {localVars.serial_number}
             </span>
           </div>
           {/* OPERATING MODE */}
           <div className={s.paramGroup}>
             <label htmlFor="Operating_mode">
-              <span className={s.label}>Режим работы</span>
-              <span className={s.unit}>(дней за год)</span>
+              <span className={s.label}>{localeTexts.operatingMode}</span>
+              <span className={s.unit}>({localeTexts.operatingModeDays})</span>
             </label>
             <input
               id="Operating_mode"
@@ -303,13 +340,13 @@ export default function SettingsModal({
               className={s.input}
             />
             <span className={s.current}>
-              Текущее: {localVars.Operating_mode}
+              {localeTexts.current}: {localVars.Operating_mode}
             </span>
           </div>
           {/* GAS TYPE */}
           <div className={s.paramGroup}>
             <label htmlFor="gasType">
-              <span className={s.label}>Тип газа</span>
+              <span className={s.label}>{localeTexts.gasType}</span>
             </label>
             <select
               id="gasType"
@@ -323,7 +360,9 @@ export default function SettingsModal({
                 </option>
               ))}
             </select>
-            <span className={s.current}>Плотность: {localVars.density}</span>
+            <span className={s.current}>
+              {localeTexts.current}: {localVars.density}
+            </span>
           </div>
 
           {/* GWP */}
@@ -340,7 +379,9 @@ export default function SettingsModal({
               onChange={(e) => handleChange("GWP", e.target.value)}
               className={s.input}
             />
-            <span className={s.current}>Текущее: {localVars.GWP}</span>
+            <span className={s.current}>
+              {localeTexts.current}: {localVars.GWP}
+            </span>
           </div>
           {/* GWP_Minus */}
           <div className={s.paramGroup}>
@@ -356,7 +397,9 @@ export default function SettingsModal({
               onChange={(e) => handleChange("GWP_Minus", e.target.value)}
               className={s.input}
             />
-            <span className={s.current}>Текущее: {localVars.GWP_Minus}</span>
+            <span className={s.current}>
+              {localeTexts.current}: {localVars.GWP_Minus}
+            </span>
           </div>
         </div>
 

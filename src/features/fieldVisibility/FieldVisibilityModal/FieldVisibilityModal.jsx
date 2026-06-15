@@ -1,13 +1,16 @@
 import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import s from "./FieldVisibilityModal.module.scss";
+import { useLanguage } from "@/app/hooks/useLanguage";
 
 // These keys are managed by the system and can never be hidden
 const SYSTEM_KEYS = new Set(["index", "date", "status", "resolvedAt"]);
 
-function buildGroups(config) {
+function buildGroups(config, localeTexts) {
   const { headers, keysOrder } = config.export.excel;
-  const headerMap = Object.fromEntries(keysOrder.map((k, i) => [k, headers[i]]));
+  const headerMap = Object.fromEntries(
+    keysOrder.map((k, i) => [k, headers[i]]),
+  );
 
   const stepFieldKeys = new Set();
   const stepGroups = config.steps.steps
@@ -26,7 +29,11 @@ function buildGroups(config) {
 
   const groups = [...stepGroups];
   if (excelOnlyFields.length > 0) {
-    groups.push({ title: "Только Excel (расчётные)", isStep: false, fields: excelOnlyFields });
+    groups.push({
+      title: localeTexts.excelOnly,
+      isStep: false,
+      fields: excelOnlyFields,
+    });
   }
   return groups;
 }
@@ -34,28 +41,52 @@ function buildGroups(config) {
 /* =====================================================
    FIELD GROUP
 ===================================================== */
-function FieldGroup({ group, draft, onToggle, onToggleAll, isOpen, onToggleOpen }) {
+function FieldGroup({
+  group,
+  draft,
+  onToggle,
+  onToggleAll,
+  isOpen,
+  onToggleOpen,
+  localeTexts,
+}) {
   const hiddenInGroup = group.fields.filter((f) => draft.has(f.key)).length;
   const allHidden = hiddenInGroup === group.fields.length;
   const allVisible = hiddenInGroup === 0;
 
   return (
     <div className={s.group}>
-      <div className={s.groupHeader} onClick={onToggleOpen} role="button" tabIndex={0}
-        onKeyDown={(e) => e.key === "Enter" && onToggleOpen()}>
+      <div
+        className={s.groupHeader}
+        onClick={onToggleOpen}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === "Enter" && onToggleOpen()}
+      >
         <div className={s.groupLeft}>
-          <span className={`${s.chevron} ${isOpen ? s.chevronOpen : ""}`}>›</span>
+          <span className={`${s.chevron} ${isOpen ? s.chevronOpen : ""}`}>
+            ›
+          </span>
           <span className={s.groupTitle}>{group.title}</span>
           {hiddenInGroup > 0 && (
-            <span className={s.groupBadge}>{hiddenInGroup} скрыто</span>
+            <span className={s.groupBadge}>
+              {hiddenInGroup} {localeTexts.hidden}
+            </span>
           )}
         </div>
         <button
           className={s.groupAction}
           type="button"
-          onClick={(e) => { e.stopPropagation(); onToggleAll(group.fields, !allHidden); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleAll(group.fields, !allHidden);
+          }}
         >
-          {allHidden ? "Показать все" : allVisible ? "Скрыть все" : "Скрыть остальные"}
+          {allHidden
+            ? localeTexts.showAll
+            : allVisible
+              ? localeTexts.hideAll
+              : localeTexts.hideOthers}
         </button>
       </div>
 
@@ -75,7 +106,11 @@ function FieldGroup({ group, draft, onToggle, onToggleAll, isOpen, onToggleOpen 
                 <div className={s.fieldInfo}>
                   <span className={s.fieldLabel}>{field.label}</span>
                   <span className={s.fieldKey}>{field.key}</span>
-                  {field.required && <span className={s.requiredBadge}>обязательное</span>}
+                  {field.required && (
+                    <span className={s.requiredBadge}>
+                      {localeTexts.required}
+                    </span>
+                  )}
                 </div>
                 <div
                   className={`${s.toggle} ${!isHidden ? s.toggleOn : ""}`}
@@ -103,11 +138,39 @@ export default function FieldVisibilityModal({
   hiddenFields,
   onSave,
 }) {
+  const { t } = useLanguage();
+  const localeTexts = useMemo(
+    () => ({
+      title: t("fieldVisibility.title"),
+      active: t("fieldVisibility.active"),
+
+      searchPlaceholder: t("fieldVisibility.searchPlaceholder"),
+      notFound: t("fieldVisibility.notFound"),
+
+      excelOnly: t("fieldVisibility.excelOnly"),
+
+      hidden: t("fieldVisibility.hidden"),
+      required: t("fieldVisibility.required"),
+
+      showAll: t("fieldVisibility.showAll"),
+      hideAll: t("fieldVisibility.hideAll"),
+      hideOthers: t("fieldVisibility.hideOthers"),
+
+      systemNote: t("fieldVisibility.systemNote"),
+
+      cancel: t("fieldVisibility.cancel"),
+      save: t("fieldVisibility.save"),
+    }),
+    [t],
+  );
   const [draft, setDraft] = useState(() => new Set(hiddenFields));
   const [search, setSearch] = useState("");
   const [openGroups, setOpenGroups] = useState(new Set());
 
-  const groups = useMemo(() => buildGroups(config), [config]);
+  const groups = useMemo(
+    () => buildGroups(config, localeTexts),
+    [config, localeTexts],
+  );
 
   // Sync draft + expand all groups on open
   useEffect(() => {
@@ -115,7 +178,7 @@ export default function FieldVisibilityModal({
     setDraft(new Set(hiddenFields));
     setSearch("");
     setOpenGroups(new Set(groups.map((g) => g.title)));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const totalConfigurable = useMemo(
@@ -132,7 +195,9 @@ export default function FieldVisibilityModal({
       .map((g) => ({
         ...g,
         fields: g.fields.filter(
-          (f) => f.label.toLowerCase().includes(q) || f.key.toLowerCase().includes(q),
+          (f) =>
+            f.label.toLowerCase().includes(q) ||
+            f.key.toLowerCase().includes(q),
         ),
       }))
       .filter((g) => g.fields.length > 0);
@@ -181,16 +246,17 @@ export default function FieldVisibilityModal({
     <>
       <div className={s.backdrop} onClick={onClose} />
       <div className={s.modal}>
-
         {/* HEADER */}
         <div className={s.header}>
           <div className={s.headerLeft}>
-            <h2>Настройка полей</h2>
+            <h2>{localeTexts.title}</h2>
             <span className={s.counter}>
-              {visibleCount} / {totalConfigurable} активно
+              {visibleCount} / {totalConfigurable} {localeTexts.active}
             </span>
           </div>
-          <button className={s.closeBtn} type="button" onClick={onClose}>✕</button>
+          <button className={s.closeBtn} type="button" onClick={onClose}>
+            ✕
+          </button>
         </div>
 
         {/* SEARCH */}
@@ -199,12 +265,16 @@ export default function FieldVisibilityModal({
           <input
             className={s.searchInput}
             type="text"
-            placeholder="Поиск по названию или ключу..."
+            placeholder={localeTexts.searchPlaceholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
           {search && (
-            <button className={s.searchClear} type="button" onClick={() => setSearch("")}>
+            <button
+              className={s.searchClear}
+              type="button"
+              onClick={() => setSearch("")}
+            >
               ✕
             </button>
           )}
@@ -222,16 +292,14 @@ export default function FieldVisibilityModal({
                 onToggleAll={toggleAll}
                 isOpen={openGroups.has(group.title)}
                 onToggleOpen={() => toggleAccordion(group.title)}
+                localeTexts={localeTexts}
               />
             ))
           ) : (
-            <p className={s.empty}>Поля не найдены</p>
+            <p className={s.empty}>{localeTexts.notFound}</p>
           )}
 
-          <p className={s.systemNote}>
-            Поля «№», «Дата обнаружения», «Статус» и «Дата устранения» системные — всегда
-            включаются в экспорт Excel.
-          </p>
+          <p className={s.systemNote}>{localeTexts.systemNote}</p>
         </div>
 
         {/* FOOTER */}
@@ -242,11 +310,11 @@ export default function FieldVisibilityModal({
             onClick={() => setDraft(new Set())}
             disabled={draft.size === 0}
           >
-            Показать все
+            {localeTexts.showAll}
           </button>
           <div className={s.footerRight}>
             <button className={s.cancelBtn} type="button" onClick={onClose}>
-              Отмена
+              {localeTexts.cancel}
             </button>
             <button
               className={s.saveBtn}
@@ -254,11 +322,10 @@ export default function FieldVisibilityModal({
               onClick={handleSave}
               disabled={!isDirty}
             >
-              Сохранить
+              {localeTexts.save}
             </button>
           </div>
         </div>
-
       </div>
     </>,
     document.body,
