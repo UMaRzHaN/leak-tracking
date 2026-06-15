@@ -56,6 +56,15 @@ export function useBackupActions({
           directory: Directory.Documents,
           recursive: true,
         }).catch(() => {});
+        try {
+          await Filesystem.deleteFile({
+            path: `${folder}/${fileName}`,
+            directory: Directory.Documents,
+          });
+        } catch (e) {
+          console.log("Old ZIP file not found:", e?.message);
+        }
+
         await Filesystem.writeFile({
           path: `${folder}/${fileName}`,
           directory: Directory.Documents,

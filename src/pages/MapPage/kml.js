@@ -112,6 +112,15 @@ export async function saveLeaksKML(leaks, project, projectFolderName = null) {
       recursive: true,
     }).catch(() => {});
 
+    try {
+      await Filesystem.deleteFile({
+        path: `${folderName}/${fileName}`,
+        directory: Directory.Documents,
+      });
+    } catch (e) {
+      console.log("Old KML file not found:", e?.message);
+    }
+
     await Filesystem.writeFile({
       path: `${folderName}/${fileName}`,
       data: kml,

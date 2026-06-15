@@ -49,7 +49,7 @@ export async function exportToExcelZip(
   const paired = rawLeaks.map((leak, i) => ({ leak, row: rows[i] }));
   paired.sort((a, b) => (a.leak.id ?? 0) - (b.leak.id ?? 0));
   const orderedLeaks = paired.map((p) => p.leak);
-  const orderedRows  = paired.map((p) => p.row);
+  const orderedRows = paired.map((p) => p.row);
 
   // Resolve all photos: { leakIndex, key, fileName, base64 }
   const photoEntries = [];
@@ -68,7 +68,7 @@ export async function exportToExcelZip(
         const ext = match[1].split("/")[1] || "jpg";
         const base64 = match[2];
         const suffix = key === "photo_after" ? "_after" : "";
-        const leakId = leak.leak_id ?? leak.index ?? (li + 1);
+        const leakId = leak.leak_id ?? leak.index ?? li + 1;
         const photoFileName = `photos/${leakId}/${leakId}${suffix}.${ext}`;
 
         photoEntries.push({ leakIndex: li, key, photoFileName, base64 });
@@ -96,7 +96,11 @@ export async function exportToExcelZip(
     pattern: "solid",
     fgColor: { argb: "FFD9E1F2" },
   };
-  headerRow.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+  headerRow.alignment = {
+    vertical: "middle",
+    horizontal: "center",
+    wrapText: true,
+  };
   headerRow.height = 30;
 
   // Data rows
@@ -137,7 +141,10 @@ export async function exportToExcelZip(
     const maxLen = isPhoto
       ? 14
       : Math.min(
-          Math.max(h.length, ...orderedRows.map((r) => String(r[key] ?? "").length)) + 2,
+          Math.max(
+            h.length,
+            ...orderedRows.map((r) => String(r[key] ?? "").length),
+          ) + 2,
           60,
         );
     sheet.getColumn(i + 1).width = maxLen;
@@ -189,6 +196,15 @@ async function downloadBlob(blob, fileName, projectFolderName = null) {
     directory: Directory.Documents,
     recursive: true,
   }).catch(() => {});
+
+  try {
+    await Filesystem.deleteFile({
+      path: `${outputFolder}/${fileName}`,
+      directory: Directory.Documents,
+    });
+  } catch (e) {
+    console.log("Old export file not found:", e?.message);
+  }
 
   await Filesystem.writeFile({
     path: `${outputFolder}/${fileName}`,
