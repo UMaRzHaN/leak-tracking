@@ -8,15 +8,27 @@ import ResolveModal from "@/features/resolve/ResolveModal/ResolveModal";
 import Notification from "@/components/ui/Notification/Notification";
 import { STATUS, STATUS_META } from "@/utils/status";
 import s from "./MainPage.module.scss";
+import { useMemo } from "react";
+import { useLanguage } from "@/app/hooks/useLanguage";
 
 export default function MainPage({ setPage, data, setData }) {
+  const { t } = useLanguage();
+
   const {
-    activeLeak, setActiveLeak,
-    statusFilter, setStatusFilter,
-    pickerLeak, setPickerLeak,
-    resolveLeak, setResolveLeak,
-    notification, setNotification,
-    stats, recent, RECENT_COUNT, ALL,
+    activeLeak,
+    setActiveLeak,
+    statusFilter,
+    setStatusFilter,
+    pickerLeak,
+    setPickerLeak,
+    resolveLeak,
+    setResolveLeak,
+    notification,
+    setNotification,
+    stats,
+    recent,
+    RECENT_COUNT,
+    ALL,
     toggleFilter,
     handlePickStatus,
     handleStatusSelect,
@@ -25,36 +37,62 @@ export default function MainPage({ setPage, data, setData }) {
     handleDeleteLeak,
   } = useMainPageActions({ data, setData });
 
+  const localeTexts = useMemo(
+    () => ({
+      total: t("mainPage.total"),
+      open: t("mainPage.open"),
+      inProgress: t("mainPage.inProgress"),
+      resolved: t("mainPage.resolved"),
+
+      recentRecords: t("mainPage.recentRecords", {
+        count: RECENT_COUNT,
+      }),
+
+      showAll: (count) =>
+        t("mainPage.showAll", {
+          count,
+        }),
+
+      shownRecent: t("mainPage.shownRecent", {
+        count: RECENT_COUNT,
+      }),
+    }),
+    [t, RECENT_COUNT],
+  );
+
   return (
     <div className={s.page}>
-      <Notification notification={notification} onClose={() => setNotification(null)} />
+      <Notification
+        notification={notification}
+        onClose={() => setNotification(null)}
+      />
 
       {/* ── Statistics (clickable filters) ── */}
       <section className={s.statsRow}>
         <StatCard
           value={stats.total}
-          label="Всего"
+          label={localeTexts.total}
           accent="var(--c-blue)"
           active={statusFilter === ALL}
           onClick={() => setStatusFilter(ALL)}
         />
         <StatCard
           value={stats.open}
-          label="Открыто"
+          label={localeTexts.open}
           accent="var(--c-open)"
           active={statusFilter === STATUS.OPEN}
           onClick={() => toggleFilter(STATUS.OPEN)}
         />
         <StatCard
           value={stats.inProgress}
-          label="В работе"
+          label={localeTexts.inProgress}
           accent="var(--c-progress)"
           active={statusFilter === STATUS.IN_PROGRESS}
           onClick={() => toggleFilter(STATUS.IN_PROGRESS)}
         />
         <StatCard
           value={stats.resolved}
-          label="Устранено"
+          label={localeTexts.resolved}
           accent="var(--c-resolved)"
           active={statusFilter === STATUS.RESOLVED}
           onClick={() => toggleFilter(STATUS.RESOLVED)}
@@ -68,8 +106,11 @@ export default function MainPage({ setPage, data, setData }) {
             className={s.filterDot}
             style={{ background: STATUS_META[statusFilter]?.color }}
           />
-          {STATUS_META[statusFilter]?.label} — показаны последние {RECENT_COUNT}
-          <button className={s.filterClear} onClick={() => setStatusFilter(ALL)}>
+          {STATUS_META[statusFilter]?.label} — {localeTexts.shownRecent}
+          <button
+            className={s.filterClear}
+            onClick={() => setStatusFilter(ALL)}
+          >
             ✕
           </button>
         </div>
@@ -80,12 +121,12 @@ export default function MainPage({ setPage, data, setData }) {
         <div className={s.sectionHead}>
           <h2 className={s.sectionTitle}>
             {statusFilter === ALL
-              ? "Последние 8 записей"
+              ? localeTexts.recentRecords
               : STATUS_META[statusFilter]?.label}
           </h2>
           {data.length > RECENT_COUNT && (
             <button className={s.viewAll} onClick={() => setPage("db")}>
-              Все {data.length} →
+              {localeTexts.showAll(data.length)}
             </button>
           )}
         </div>

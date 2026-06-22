@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { PROJECT_META } from "@/configs/projects";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "./Header.module.scss";
 
 export default function Header({
@@ -11,14 +13,32 @@ export default function Header({
   setGpsEnabled,
 }) {
   const { projectName, project } = useProjectData();
-  const meta        = PROJECT_META[project];
-  const displayName = projectName || meta?.title || "Журнал утечек";
+  const meta = PROJECT_META[project];
+  const { t } = useLanguage();
+  const localeTexts = useMemo(
+    () => ({
+      appTitle: t("header.appTitle"),
+      defaultProject: t("header.defaultProject"),
 
+      gpsOnTitle: t("header.gpsOnTitle"),
+      gpsOffTitle: t("header.gpsOffTitle"),
+
+      gps: t("header.gps"),
+      gpsOn: t("header.gpsOn"),
+      gpsOff: t("header.gpsOff"),
+      gpsSearch: t("header.gpsSearch"),
+      gpsError: t("header.gpsError"),
+
+      settings: t("header.settings"),
+    }),
+    [t],
+  );
+  const displayName = projectName || meta?.title || localeTexts.defaultProject;
   return (
     <header className={s.header}>
       {/* ── Left: project info ── */}
       <button className={s.nameArea} onClick={() => setPage("")}>
-        <span className={s.appLabel}>Журнал утечек газа</span>
+        <span className={s.appLabel}>{localeTexts.appTitle}</span>
         <span className={s.projectName}>{displayName}</span>
         {meta && <span className={s.typeBadge}>{meta.title}</span>}
       </button>
@@ -29,20 +49,20 @@ export default function Header({
         <button
           className={`${s.gpsToggle} ${gpsEnabled ? s.gpsOn : s.gpsOff}`}
           onClick={() => setGpsEnabled?.((v) => !v)}
-          title={gpsEnabled ? "GPS включён — нажмите для паузы" : "GPS выключен — нажмите для включения"}
+          title={gpsEnabled ? localeTexts.gpsOnTitle : localeTexts.gpsOffTitle}
         >
           {gpsEnabled ? (
             <>
               <div className={s.gpsRow}>
                 <span className={s.gpsDot} />
                 {geoLoading ? (
-                  <span className={s.gpsLabel}>GPS…</span>
+                  <span className={s.gpsLabel}>{localeTexts.gpsSearch}</span>
                 ) : geoError ? (
-                  <span className={s.gpsLabel}>Ошибка</span>
+                  <span className={s.gpsLabel}>{localeTexts.gpsError}</span>
                 ) : coords?.lat ? (
-                  <span className={s.gpsLabel}>GPS вкл</span>
+                  <span className={s.gpsLabel}>{localeTexts.gpsOn}</span>
                 ) : (
-                  <span className={s.gpsLabel}>Поиск…</span>
+                  <span className={s.gpsLabel}>{localeTexts.gpsOff}</span>
                 )}
               </div>
               {coords?.lat != null && (
@@ -53,7 +73,7 @@ export default function Header({
             </>
           ) : (
             <>
-              <span className={s.gpsLabel}>GPS выкл</span>
+              <span className={s.gpsLabel}>{localeTexts.gpsOff}</span>
               {coords?.lat != null && (
                 <div className={s.gpsCoords}>
                   {coords.lat.toFixed(6)}&nbsp;/&nbsp;{coords.lng.toFixed(6)}
@@ -67,7 +87,7 @@ export default function Header({
         <button
           className={s.settingsBtn}
           onClick={() => setPage("settings")}
-          title="Настройки"
+          title={localeTexts.settings}
         >
           ⚙
         </button>

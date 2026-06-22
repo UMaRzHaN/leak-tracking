@@ -8,6 +8,58 @@ const savedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) || "ru";
 const resources = {
   ru: {
     translation: {
+      header: {
+        appTitle: "Журнал утечек газа",
+        defaultProject: "Журнал утечек",
+        gpsOnTitle: "GPS включён — нажмите для паузы",
+        gpsOffTitle: "GPS выключен — нажмите для включения",
+        gps: "GPS",
+        gpsOn: "GPS вкл",
+        gpsOff: "GPS выкл",
+        gpsSearch: "Поиск…",
+        gpsError: "Ошибка",
+        settings: "Настройки",
+      },
+      projectSetup: {
+        title: "Журнал утечек",
+        subtitle: "Создайте первый проект для начала работы",
+
+        projectName: "Название проекта",
+        projectType: "Тип проекта",
+
+        projectExample: "Например: Тенгиз Q1 2026",
+        deviceFolder: "Папка на устройстве",
+
+        selectProjectType: "Выберите тип проекта",
+
+        start: "Начать работу",
+
+        or: "или",
+
+        import: "Импортировать из ZIP",
+        importing: "Импорт…",
+
+        importHint: "Восстановить проект из резервной копии",
+
+        importError: "Ошибка импорта",
+      },
+      mainPage: {
+        total: "Всего",
+        open: "Открыто",
+        inProgress: "В работе",
+        resolved: "Устранено",
+
+        recentRecords: "Последние {{count}} записей",
+        showAll: "Все {{count}} →",
+
+        shownRecent: "показаны последние {{count}}",
+      },
+      emptyState: {
+        noRecords: "Записей пока нет",
+        noFilteredRecords: "Нет записей с таким статусом",
+        addFirstLeak: "Добавьте первую утечку через кнопку + внизу",
+        addLeak: "+ Добавить утечку",
+      },
       addLeak: {
         pageTitle: "Новая утечка",
         stepPrefix: "Шаг",
@@ -47,9 +99,6 @@ const resources = {
         languageLabel: "Язык",
         languageHintRu:
           "Текущий язык интерфейса страницы добавления утечки: Русский",
-        languageHintEn:
-          "Текущий язык интерфейса страницы добавления утечки: English",
-        toggleButtonRu: "RU",
         toggleButtonEn: "EN",
 
         projects: "Проекты",
@@ -156,10 +205,116 @@ const resources = {
           discardChanges: "Отменить изменения",
         },
       },
+      leakDetails: {
+        priority: "Приоритет",
+
+        actions: {
+          created: "Запись создана",
+          status_changed: "Статус изменён",
+          edited: "Данные изменены",
+          comment: "Комментарий",
+        },
+
+        statuses: {
+          open: "Открыта",
+          in_progress: "В работе",
+          resolved: "Устранена",
+        },
+
+        comment: {
+          add: "Добавить комментарий",
+          placeholder: "Введите комментарий...",
+          cancel: "Отмена",
+          save: "Сохранить",
+        },
+
+        photo: {
+          before: "До",
+          after: "После",
+          noPhoto: "нет фото",
+        },
+
+        empty: {
+          info: "Нет данных",
+          photo: "Фото не добавлены",
+          params: "Параметры не заданы",
+          coords: "Координаты не заданы",
+          history: "История пуста",
+        },
+
+        relativeTime: {
+          justNow: "только что",
+          minutesAgo: "{{count}} мин назад",
+          hoursAgo: "{{count}} ч назад",
+          daysAgo: "{{count}} дн назад",
+        },
+      },
+      footer: {
+        home: "Главная",
+        add: "Добавить",
+        database: "База",
+        map: "Карта",
+        addLeak: "Добавить утечку",
+      },
     },
   },
   en: {
     translation: {
+      header: {
+        appTitle: "Gas Leak Log",
+        defaultProject: "Leak Log",
+
+        gpsOnTitle: "GPS enabled — tap to pause",
+        gpsOffTitle: "GPS disabled — tap to enable",
+
+        gps: "GPS",
+        gpsOn: "GPS on",
+        gpsOff: "GPS off",
+        gpsSearch: "Searching…",
+        gpsError: "Error",
+
+        settings: "Settings",
+      },
+      projectSetup: {
+        title: "Leak Tracking",
+        subtitle: "Create your first project to get started",
+
+        projectName: "Project Name",
+        projectType: "Project Type",
+
+        projectExample: "Example: Tengiz Q1 2026",
+        deviceFolder: "Device folder",
+
+        selectProjectType: "Select project type",
+
+        start: "Start",
+
+        or: "or",
+
+        import: "Import from ZIP",
+        importing: "Importing…",
+
+        importHint: "Restore a project from a backup",
+
+        importError: "Import error",
+      },
+      mainPage: {
+        total: "Total",
+        open: "Open",
+        inProgress: "In Progress",
+        resolved: "Resolved",
+
+        recentRecords: "Last {{count}} records",
+        showAll: "All {{count}} →",
+
+        shownRecent: "showing last {{count}}",
+      },
+      emptyState: {
+        noRecords: "No records yet",
+        noFilteredRecords: "No records with this status",
+        addFirstLeak: "Add your first leak using the + button at the bottom",
+        addLeak: "+ Add Leak",
+      },
       addLeak: {
         pageTitle: "New leak",
         stepPrefix: "Step",
@@ -333,11 +488,8 @@ const resources = {
         themeHintLight: "Light background",
 
         languageLabel: "Language",
-        languageHintRu: "Current leak entry page language: Russian",
         languageHintEn: "Current leak entry page language: English",
         toggleButtonRu: "RU",
-        toggleButtonEn: "EN",
-
         projects: "Projects",
         addProject: "Add",
         noProjects: "No projects yet. Create your first one.",
@@ -441,6 +593,57 @@ const resources = {
           continueEditing: "Continue editing",
           discardChanges: "Discard changes",
         },
+      },
+      leakDetails: {
+        priority: "Priority",
+
+        actions: {
+          created: "Record created",
+          status_changed: "Status changed",
+          edited: "Data updated",
+          comment: "Comment",
+        },
+
+        statuses: {
+          open: "Open",
+          in_progress: "In progress",
+          resolved: "Resolved",
+        },
+
+        comment: {
+          add: "Add comment",
+          placeholder: "Enter a comment...",
+          cancel: "Cancel",
+          save: "Save",
+        },
+
+        photo: {
+          before: "Before",
+          after: "After",
+          noPhoto: "no photo",
+        },
+
+        empty: {
+          info: "No data",
+          photo: "No photos added",
+          params: "No parameters set",
+          coords: "No coordinates set",
+          history: "History is empty",
+        },
+
+        relativeTime: {
+          justNow: "just now",
+          minutesAgo: "{{count}} min ago",
+          hoursAgo: "{{count}} h ago",
+          daysAgo: "{{count}} d ago",
+        },
+      },
+      footer: {
+        home: "Home",
+        add: "Add",
+        database: "Database",
+        map: "Map",
+        addLeak: "Add Leak",
       },
     },
   },

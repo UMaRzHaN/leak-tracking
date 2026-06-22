@@ -1,22 +1,45 @@
+import { useMemo } from "react";
 import s from "./Footer.module.scss";
-
-const NAV = [
-  { key: "",    icon: "⊞", label: "Главная" },
-  { key: "add", icon: "+", label: "Добавить", fab: true },
-  { key: "db",  icon: "☰", label: "База",    badge: true },
-  { key: "map", icon: "◎", label: "Карта" },
-];
+import { useLanguage } from "@/app/hooks/useLanguage";
 
 export default function Footer({ page, setPage, openCount = 0 }) {
+  const { t } = useLanguage();
+  const navItems = useMemo(
+    () => [
+      {
+        key: "",
+        icon: "⊞",
+        label: t("footer.home"),
+      },
+      {
+        key: "add",
+        icon: "+",
+        label: t("footer.add"),
+        fab: true,
+      },
+      {
+        key: "db",
+        icon: "☰",
+        label: t("footer.database"),
+        badge: true,
+      },
+      {
+        key: "map",
+        icon: "◎",
+        label: t("footer.map"),
+      },
+    ],
+    [t],
+  );
   return (
     <footer className={s.nav}>
-      {NAV.map((item) =>
+      {navItems.map((item) =>
         item.fab ? (
           <button
             key="add"
             className={s.fab}
             onClick={() => setPage("add")}
-            aria-label="Добавить утечку"
+            aria-label={t("footer.addLeak")}
           >
             <span className={s.fabIcon}>+</span>
           </button>
@@ -29,7 +52,9 @@ export default function Footer({ page, setPage, openCount = 0 }) {
             <span className={s.iconWrap}>
               <span className={s.icon}>{item.icon}</span>
               {item.badge && openCount > 0 && (
-                <span className={s.badge}>{openCount > 99 ? "99+" : openCount}</span>
+                <span className={s.badge}>
+                  {openCount > 99 ? "99+" : openCount}
+                </span>
               )}
             </span>
             <span className={s.label}>{item.label}</span>
