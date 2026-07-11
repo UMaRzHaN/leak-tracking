@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import s from "./SettingsModal.module.scss";
 import * as variables from "@/data/variables";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { isPinkBagEquipment } from "@/utils/calculations/calculations";
 
 export default function SettingsModal({
   open,
@@ -26,11 +27,30 @@ export default function SettingsModal({
       uncertainty: t("settingsModal.uncertainty"),
 
       serialNumber: t("settingsModal.serialNumber"),
+      equipmentOptions: {
+        gfm20: t("settingsModal.equipmentOptions.gfm20"),
+        gfm30: t("settingsModal.equipmentOptions.gfm30"),
+        pinkBag: t("settingsModal.equipmentOptions.pinkBag"),
+      },
 
       operatingMode: t("settingsModal.operatingMode"),
       operatingModeDays: t("settingsModal.operatingModeDays"),
 
       gasType: t("settingsModal.gasType"),
+      gasOptions: {
+        methane: t("settingsModal.gasOptions.methane", {
+          defaultValue: lang === "ru" ? "Метан (CH₄)" : "Methane (CH₄)",
+        }),
+        ethane: t("settingsModal.gasOptions.ethane", {
+          defaultValue: lang === "ru" ? "Этан (C₂H₆)" : "Ethane (C₂H₆)",
+        }),
+        propane: t("settingsModal.gasOptions.propane", {
+          defaultValue: lang === "ru" ? "Пропан (C₃H₈)" : "Propane (C₃H₈)",
+        }),
+        butane: t("settingsModal.gasOptions.butane", {
+          defaultValue: lang === "ru" ? "Бутан (C₄H₁₀)" : "Butane (C₄H₁₀)",
+        }),
+      },
       density: t("settingsModal.density"),
 
       cancel: t("settingsModal.cancel"),
@@ -43,7 +63,7 @@ export default function SettingsModal({
         discardChanges: t("settingsModal.confirm.discardChanges"),
       },
     }),
-    [t],
+    [t, lang],
   );
   /* =========================
      LOCAL DRAFT STATE
@@ -270,15 +290,15 @@ export default function SettingsModal({
               className={s.select}
             >
               {Object.entries(variables.EQUIPMENT_TYPES).map(
-                ([key, { label }]) => (
+                ([key, { label, labelKey }]) => (
                   <option key={key} value={key}>
-                    {label}
+                    {localeTexts.equipmentOptions[labelKey] ?? label}
                   </option>
                 ),
               )}
             </select>
             <span className={s.current}>
-              {localeTexts.uncertainty}: {localVars.uncertainty * 100}%
+              {localeTexts.uncertainty}: {localVars.uncertainty}%
             </span>
           </div>
           {/* SERIAL NUMBER */}
@@ -287,7 +307,7 @@ export default function SettingsModal({
               <span className={s.label}>{localeTexts.serialNumber}</span>
             </label>
             <input
-              disabled={localVars.equipmentType === "Розовый мешок"}
+              disabled={isPinkBagEquipment(localVars.equipmentType)}
               id="serial_number"
               type="number"
               min="0"
@@ -296,7 +316,7 @@ export default function SettingsModal({
               value={localVars.serial_number ?? ""}
               onChange={(e) => {
                 const v = e.target.value;
-                if (localVars.equipmentType !== "Розовый мешок") {
+                if (!isPinkBagEquipment(localVars.equipmentType)) {
                   if (v === "") {
                     setLocalVars((prev) => ({ ...prev, serial_number: null }));
                     return;
@@ -354,11 +374,13 @@ export default function SettingsModal({
               onChange={(e) => handleChange("gasType", e.target.value)}
               className={s.select}
             >
-              {Object.entries(variables.GAS_TYPES).map(([key, { label }]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
+              {Object.entries(variables.GAS_TYPES).map(
+                ([key, { label, labelKey }]) => (
+                  <option key={key} value={key}>
+                    {localeTexts.gasOptions[labelKey] ?? label}
+                  </option>
+                ),
+              )}
             </select>
             <span className={s.current}>
               {localeTexts.current}: {localVars.density}

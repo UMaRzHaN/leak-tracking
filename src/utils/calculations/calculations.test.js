@@ -1,4 +1,4 @@
-import { calculations } from "./calculations";
+import { calculations, isPinkBagEquipment } from "./calculations";
 
 const BASE_VARS = {
   density: 0.7168, // кг/м³ (метан при стандартных условиях)
@@ -13,8 +13,8 @@ const BASE_VARS = {
   Operating_mode: 365,
 };
 
-// uncertaintyFactor = (1 - uncertainty) / 100
-const UF = (1 - BASE_VARS.uncertainty) / 100;
+// uncertaintyFactor = (100 - uncertainty) / 100
+const UF = (100 - BASE_VARS.uncertainty) / 100;
 
 // Annual volume loss in m³/year: leak_speed (л/мин) × minutes × UF / 1000
 const M3_Y = (speed, days = 365) => (speed * 1440 * days * UF) / 1000;
@@ -200,6 +200,12 @@ describe("calculations", () => {
       const expected = stdSpeed(10, 0.2, 20, 100);
       const result = calculations(LEAK, PINK_VARS);
       expect(result.leak_speed_kg_m).toBeCloseTo(expected * BASE_VARS.density);
+    });
+
+    it("recognizes legacy pink bag equipment names", () => {
+      expect(isPinkBagEquipment("Розовый мешок")).toBe(true);
+      expect(isPinkBagEquipment(" pink bag ")).toBe(true);
+      expect(isPinkBagEquipment("GFM 2.0")).toBe(false);
     });
 
     it("gasPercentage=50 вдвое уменьшает leak_rate относительно gasPercentage=100", () => {

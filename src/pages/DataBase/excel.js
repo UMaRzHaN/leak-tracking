@@ -1,11 +1,9 @@
 const getExcelJS = () => import("exceljs");
 const getJSZip = () => import("jszip");
 
-import { Filesystem, Directory } from "@capacitor/filesystem";
 import { isNative } from "@/utils/platform";
 import { getPhotoSrc } from "@/hooks/photoService";
 import { blobToDataUri } from "@/utils/photoConversion";
-import { logger } from "@/utils/logger";
 
 const PHOTO_KEYS = ["photo", "photo_after"];
 const DEFAULT_EXPORT_DIR = "export/xlsx";
@@ -176,32 +174,12 @@ async function downloadBlob(
     };
   }
 
-  const base64 = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(",")[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-
-  await Filesystem.mkdir({
-    path: outputFolder,
-    directory: Directory.Documents,
-    recursive: true,
-  }).catch(() => {});
-
-  try {
-    await Filesystem.deleteFile({
-      path: `${outputFolder}/${fileName}`,
-      directory: Directory.Documents,
-    });
-  } catch (error) {
-    logger.log("Old export file not found:", error?.message);
-  }
-
-  await Filesystem.writeFile({
-    path: `${outputFolder}/${fileName}`,
-    data: base64,
-    directory: Directory.Documents,
+  const { writePublicFile } = await import("@/services/publicFileWriter");
+  await writePublicFile({
+    folder: outputFolder,
+    fileName,
+    blob,
+    mimeType: blob.type || "application/octet-stream",
   });
 
   return {

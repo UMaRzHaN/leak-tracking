@@ -1,7 +1,5 @@
-import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { isNative } from "@/utils/platform";
 import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
-import { logger } from "@/utils/logger";
 
 const ICON_COLORS = [
   "E53935",
@@ -148,26 +146,12 @@ export async function saveLeaksKML(
     : "export/map";
 
   if (isNative) {
-    await Filesystem.mkdir({
-      path: folderName,
-      directory: Directory.Documents,
-      recursive: true,
-    }).catch(() => {});
-
-    try {
-      await Filesystem.deleteFile({
-        path: `${folderName}/${fileName}`,
-        directory: Directory.Documents,
-      });
-    } catch (error) {
-      logger.log("Old KML file not found:", error?.message);
-    }
-
-    await Filesystem.writeFile({
-      path: `${folderName}/${fileName}`,
-      data: kml,
-      directory: Directory.Documents,
-      encoding: Encoding.UTF8,
+    const { writePublicFile } = await import("@/services/publicFileWriter");
+    await writePublicFile({
+      folder: folderName,
+      fileName,
+      blob: new Blob([kml], { type: "application/vnd.google-earth.kml+xml" }),
+      mimeType: "application/vnd.google-earth.kml+xml",
     });
 
     return {

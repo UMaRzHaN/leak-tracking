@@ -1,9 +1,7 @@
 import { useCallback, useRef, useState } from "react";
-import { Directory, Filesystem } from "@capacitor/filesystem";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { LeakRepository } from "@/repositories/LeakRepository";
 import { isNative } from "@/utils/platform";
-import { logger } from "@/utils/logger";
 
 const VALID_TYPES = ["upstream", "midstream", "downstream"];
 const CONFLICT_CLOSED = { open: false };
@@ -103,32 +101,12 @@ export function useBackupActions({
       });
 
       if (isNative) {
-        const reader = new FileReader();
-        const base64 = await new Promise((resolve, reject) => {
-          reader.onload = () => resolve(reader.result.split(",")[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-
-        await Filesystem.mkdir({
-          path: folder,
-          directory: Directory.Documents,
-          recursive: true,
-        }).catch(() => {});
-
-        try {
-          await Filesystem.deleteFile({
-            path: `${folder}/${fileName}`,
-            directory: Directory.Documents,
-          });
-        } catch (error) {
-          logger.log("Old ZIP file not found:", error?.message);
-        }
-
-        await Filesystem.writeFile({
-          path: `${folder}/${fileName}`,
-          directory: Directory.Documents,
-          data: base64,
+        const { writePublicFile } = await import("@/services/publicFileWriter");
+        await writePublicFile({
+          folder,
+          fileName,
+          blob,
+          mimeType: "application/zip",
         });
 
         notify(

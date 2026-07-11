@@ -2,12 +2,17 @@
 const getJSZip = () => import("jszip");
 
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
+import { VAR_DEFAULTS } from "@/data/variables";
 import { getPhotoSrc } from "@/hooks/photoService";
 import { LeakRepository } from "@/repositories/LeakRepository";
 import {
   validateBackup,
   validateProjectBackupMeta,
 } from "@/repositories/backupSchema";
+import {
+  calculations,
+  isPinkBagEquipment,
+} from "@/utils/calculations/calculations";
 import { blobToDataUri } from "@/utils/photoConversion";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -86,6 +91,39 @@ function buildProjectMeta({ project, vars } = {}) {
   };
 }
 
+function normalizeImportedVars(vars) {
+  if (!vars) return vars;
+
+  const next = { ...vars };
+  const density = Number(next.density);
+  const uncertainty = Number(next.uncertainty);
+
+  if (isPinkBagEquipment(next.equipmentType)) {
+    next.equipmentType = "Розовый мешок";
+  }
+
+  if (Number.isFinite(density) && density > 0 && density < 0.01) {
+    next.density = density * 1000;
+  }
+
+  if (Number.isFinite(uncertainty) && uncertainty > 0 && uncertainty <= 1) {
+    next.uncertainty = uncertainty * 100;
+  }
+
+  return next;
+}
+
+function normalizeProjectMeta(meta) {
+  if (!meta?.vars) return meta;
+  return { ...meta, vars: normalizeImportedVars(meta.vars) };
+}
+
+function recalculateLeaks(leaks, vars) {
+  if (!vars) return leaks;
+  const calcVars = { ...VAR_DEFAULTS, ...vars };
+  return leaks.map((leak) => calculations(leak, calcVars));
+}
+
 function parseBackupValidation(parsed) {
   const validation = validateBackup(parsed);
   if (!validation.ok) throw new Error(validation.error);
@@ -99,9 +137,9 @@ async function parseZipMeta(zip) {
   try {
     const parsedMeta = JSON.parse(await metaFile.async("string"));
     const metaValidation = validateProjectBackupMeta(parsedMeta);
-    if (metaValidation.ok) return metaValidation.data;
+    if (metaValidation.ok) return normalizeProjectMeta(metaValidation.data);
     if (parsedMeta?.project?.name && parsedMeta?.project?.type) {
-      return parsedMeta;
+      return normalizeProjectMeta(parsedMeta);
     }
   } catch {
     // ignore invalid project meta
@@ -298,9 +336,10 @@ export async function importProjectZip(zipFile, ctx) {
     }
 
     const restoredLeaks = await restorePhotosFromZip(leaks, zip, savePhotoRef);
-    await saveRef.current(restoredLeaks);
+    const finalLeaks = recalculateLeaks(restoredLeaks, meta?.vars);
+    await saveRef.current(finalLeaks);
 
-    return { project: newProject, leakCount: restoredLeaks.length };
+    return { project: newProject, leakCount: finalLeaks.length };
   } catch (error) {
     rollbackImportedProject(newProject, removeProject);
     throw error;
@@ -347,7 +386,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
       zip,
       savePhotoRef,
     );
-    finalLeaks = [...existing, ...restoredNew];
+    finalLeaks = [...existing, ...recalculateLeaks(restoredNew, meta?.vars)];
     addedCount = restoredNew.length;
   } else {
     if (vars) {
@@ -358,8 +397,8 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     }
 
     const restoredLeaks = await restorePhotosFromZip(leaks, zip, savePhotoRef);
-    finalLeaks = restoredLeaks;
-    addedCount = restoredLeaks.length;
+    finalLeaks = recalculateLeaks(restoredLeaks, meta?.vars);
+    addedCount = finalLeaks.length;
   }
 
   await saveRef.current(finalLeaks);
@@ -369,5 +408,5 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
 export async function importBackupZip(zipFile, savePhoto) {
   const { zip, leaks, meta } = await parseBackupZip(zipFile);
   const restoredLeaks = await restorePhotosFromZip(leaks, zip, savePhoto);
-  return { leaks: restoredLeaks, meta };
+  return { leaks: recalculateLeaks(restoredLeaks, meta?.vars), meta };
 }
