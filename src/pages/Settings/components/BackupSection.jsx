@@ -17,14 +17,14 @@ export default function BackupSection({
       <div className={s.backupBody}>
         <div className={s.backupRow}>
           <button className={s.backupBtn} type="button" onClick={onExport}>
-            в¬† {localeTexts.exportZip}
+            {localeTexts.exportZip}
           </button>
           <button
             className={`${s.backupBtn} ${s.restore}`}
             type="button"
             onClick={() => importZipRef.current?.click()}
           >
-            в¬‡ {localeTexts.importZip}
+            {localeTexts.importZip}
           </button>
         </div>
         <p className={s.backupHint}>{localeTexts.backupHint}</p>

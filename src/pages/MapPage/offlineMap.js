@@ -139,7 +139,10 @@ function createPopupEl(leak) {
   return el;
 }
 
-export function createOfflineMap(container, { center, zoom = 13 }) {
+export function createOfflineMap(
+  container,
+  { center, zoom = 13, initialUserCoords = null },
+) {
   const map = L.map(container, { zoomControl: true }).setView(center, zoom);
   let destroyed = false;
 
@@ -204,11 +207,7 @@ export function createOfflineMap(container, { center, zoom = 13 }) {
     });
   };
 
-  const onGeoPosition = (pos) => {
-    if (destroyed) return;
-    const latlng = [pos.coords.latitude, pos.coords.longitude];
-    const heading = pos.coords.heading;
-    lastLatLng = latlng;
+  const ensureUserMarker = (latlng, heading = null) => {
     if (!userMarker) {
       userMarker = L.marker(latlng, { icon: buildUserIcon(heading) })
         .addTo(map)
@@ -218,6 +217,24 @@ export function createOfflineMap(container, { center, zoom = 13 }) {
     } else {
       userMarker.setLatLng(latlng).setIcon(buildUserIcon(heading));
     }
+  };
+
+  const initialLatLng =
+    Number.isFinite(initialUserCoords?.lat) &&
+    Number.isFinite(initialUserCoords?.lng)
+      ? [initialUserCoords.lat, initialUserCoords.lng]
+      : null;
+  if (initialLatLng) {
+    lastLatLng = initialLatLng;
+    ensureUserMarker(initialLatLng);
+  }
+
+  const onGeoPosition = (pos) => {
+    if (destroyed) return;
+    const latlng = [pos.coords.latitude, pos.coords.longitude];
+    const heading = pos.coords.heading;
+    lastLatLng = latlng;
+    ensureUserMarker(latlng, heading);
   };
 
   const startGpsWatch = () => {
@@ -254,9 +271,11 @@ export function createOfflineMap(container, { center, zoom = 13 }) {
         : null;
 
     if (lastLatLng) {
+      ensureUserMarker(lastLatLng);
       map.setView(lastLatLng, 17, { animate: true });
     } else if (fallbackLatLng) {
       lastLatLng = fallbackLatLng;
+      ensureUserMarker(fallbackLatLng);
       map.setView(fallbackLatLng, 17, { animate: true });
     } else if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(

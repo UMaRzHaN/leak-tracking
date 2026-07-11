@@ -19,7 +19,7 @@ function getLocationTexts(project, lang) {
       };
     case "downstream":
       return {
-        label: isRu ? "Населенный пункт" : "Locality",
+        label: isRu ? "Населённый пункт" : "Locality",
         mainLabel: isRu ? "Район" : "District",
       };
     default:

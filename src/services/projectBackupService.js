@@ -115,14 +115,13 @@ async function parseBackupZip(zipFile) {
   const zip = await JSZip.loadAsync(zipFile);
 
   const jsonFile = zip.file("backup.json");
-  if (!jsonFile)
-    throw new Error("Р¤Р°Р№Р» backup.json РЅРµ РЅР°Р№РґРµРЅ РІ Р°СЂС…РёРІРµ");
+  if (!jsonFile) throw new Error("Файл backup.json не найден в архиве");
 
   let parsed;
   try {
     parsed = JSON.parse(await jsonFile.async("string"));
   } catch {
-    throw new Error("backup.json СЃРѕРґРµСЂР¶РёС‚ РЅРµРІР°Р»РёРґРЅС‹Р№ JSON");
+    throw new Error("backup.json содержит невалидный JSON");
   }
 
   return {
@@ -194,7 +193,7 @@ async function waitForProjectActivation(activeProjectIdRef, projectId) {
     await delay(50);
   }
 
-  throw new Error("РўР°Р№РјР°СѓС‚ РїРµСЂРµРєР»СЋС‡РµРЅРёСЏ РїСЂРѕРµРєС‚Р°");
+  throw new Error("Таймаут переключения проекта");
 }
 
 async function waitForPhotoStorage(photoReadyRef) {
@@ -205,7 +204,7 @@ async function waitForPhotoStorage(photoReadyRef) {
     await delay(50);
   }
 
-  throw new Error("РҐСЂР°РЅРёР»РёС‰Рµ С„РѕС‚Рѕ РЅРµ РіРѕС‚РѕРІРѕ");
+  throw new Error("Хранилище фото не готово");
 }
 
 export async function buildBackupZip(leaks, idbGet) {
@@ -280,13 +279,12 @@ export async function importProjectZip(zipFile, ctx) {
 
   if (!projectName || !projectType) {
     throw new Error(
-      "РђСЂС…РёРІ РЅРµ СЃРѕРґРµСЂР¶РёС‚ РјРµС‚Р°РґР°РЅРЅС‹С… РїСЂРѕРµРєС‚Р°. Р—Р°РїРѕР»РЅРёС‚Рµ РЅР°Р·РІР°РЅРёРµ Рё С‚РёРї РїСЂРѕРµРєС‚Р°.",
+      "Архив не содержит метаданных проекта. Заполните название и тип проекта.",
     );
   }
 
   const newProject = addProject(projectName, projectType);
-  if (!newProject)
-    throw new Error("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ РїСЂРѕРµРєС‚");
+  if (!newProject) throw new Error("Не удалось создать проект");
 
   try {
     await waitForProjectActivation(activeProjectIdRef, newProject.id);

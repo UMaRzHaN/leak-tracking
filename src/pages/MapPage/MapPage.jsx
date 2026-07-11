@@ -8,8 +8,10 @@ import s from "./MapPage.module.scss";
 export default function MapPage({ leaks, coords }) {
   const {
     containerRef,
-    open, setOpen,
-    notification, setNotification,
+    open,
+    setOpen,
+    notification,
+    setNotification,
     tileProgress,
     downloading,
     visibleLeaks,
@@ -26,7 +28,10 @@ export default function MapPage({ leaks, coords }) {
 
   return (
     <div className={s.mapWrapper}>
-      <Notification notification={notification} onClose={() => setNotification(null)} />
+      <Notification
+        notification={notification}
+        onClose={() => setNotification(null)}
+      />
 
       <div ref={containerRef} className={s.mapCanvas} />
 
@@ -39,7 +44,11 @@ export default function MapPage({ leaks, coords }) {
 
       {activeProject && visibleLeaks.length > 0 && (
         <div className={s.exportGroup}>
-          <button type="button" className={s.exportBtn} onClick={handleExportKML}>
+          <button
+            type="button"
+            className={s.exportBtn}
+            onClick={handleExportKML}
+          >
             ↗ KML
           </button>
         </div>

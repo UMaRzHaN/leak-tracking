@@ -17,7 +17,7 @@ export default function CalculationParametersSection({
           {localeTexts.projectSettings} <strong>{activeProject.name}</strong>
         </p>
         <button className={s.editVarsBtn} type="button" onClick={onEdit}>
-          вљ™ {localeTexts.editParameters}
+          {localeTexts.editParameters}
         </button>
       </div>
     </section>

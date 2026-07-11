@@ -21,13 +21,13 @@ export default function FieldVisibilitySection({
             <strong>
               {" "}
               {lang === "ru"
-                ? `РЎРєСЂС‹С‚Рѕ: ${hiddenFields.size}.`
+                ? `Скрыто: ${hiddenFields.size}.`
                 : `Hidden: ${hiddenFields.size}.`}
             </strong>
           )}
         </p>
         <button className={s.editVarsBtn} type="button" onClick={onConfigure}>
-          в° {localeTexts.configureFields}
+          {localeTexts.configureFields}
         </button>
       </div>
     </section>

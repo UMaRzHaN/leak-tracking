@@ -17,7 +17,7 @@ export const PROJECT_LOCATION_CONFIG = {
     main: "district",
     secondary: "locality",
     last: "address",
-    label: "Населенный пункт",
+    label: "Населённый пункт",
     main_label: "Район",
   },
 };

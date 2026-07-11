@@ -27,9 +27,7 @@ export default function AppearanceSection({
           className={`${s.themeToggle} ${dark ? s.themeToggleDark : ""}`}
           type="button"
           onClick={toggleTheme}
-          aria-label={
-            lang === "ru" ? "РџРµСЂРµРєР»СЋС‡РёС‚СЊ С‚РµРјСѓ" : "Toggle theme"
-          }
+          aria-label={lang === "ru" ? "Переключить тему" : "Toggle theme"}
         >
           <span className={s.themeThumb} />
         </button>
@@ -48,11 +46,7 @@ export default function AppearanceSection({
           className={s.languageToggle}
           type="button"
           onClick={onToggleLanguage}
-          aria-label={
-            lang === "ru"
-              ? "РџРµСЂРµРєР»СЋС‡РёС‚СЊ СЏР·С‹Рє"
-              : "Toggle language"
-          }
+          aria-label={lang === "ru" ? "Переключить язык" : "Toggle language"}
         >
           {lang === "ru"
             ? localeTexts.toggleButtonEn

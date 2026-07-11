@@ -34,6 +34,7 @@ export function useMapPage({ leaks, coords }) {
   const [notification, setNotification] = useState(null);
   const [tileProgress, setTileProgress] = useState(null);
   const [downloading, setDownloading] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
 
   const notify = useCallback(
     (type, message) => setNotification({ type, message }),
@@ -98,6 +99,10 @@ export function useMapPage({ leaks, coords }) {
         Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng)
           ? [coords.lat, coords.lng]
           : [41.3111, 69.2797];
+      const initialUserCoords =
+        Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng)
+          ? { lat: coords.lat, lng: coords.lng }
+          : null;
 
       const mapModule =
         mapModuleRef.current ?? (await import("@/pages/MapPage/offlineMap"));
@@ -108,9 +113,11 @@ export function useMapPage({ leaks, coords }) {
         mapModule.createOfflineMap(container, {
           center: fallbackCenter,
           zoom: 13,
+          initialUserCoords,
         });
 
       mapRef.current = { map, markersLayer, locateMe, destroy };
+      setMapReady(true);
 
       map.on("moveend", () => {
         const center = map.getCenter();
@@ -119,8 +126,9 @@ export function useMapPage({ leaks, coords }) {
 
       mapApiRef.current = {
         focus: (leak) => {
-          if (!Number.isFinite(leak?.lat) || !Number.isFinite(leak?.lng))
+          if (!Number.isFinite(leak?.lat) || !Number.isFinite(leak?.lng)) {
             return;
+          }
           map.setView([leak.lat, leak.lng], 16, { animate: true });
         },
       };
@@ -139,6 +147,7 @@ export function useMapPage({ leaks, coords }) {
         locateMe: null,
         destroy: null,
       };
+      setMapReady(false);
       mapApiRef.current = null;
     };
   }, [coords?.lat, coords?.lng]);
@@ -173,7 +182,7 @@ export function useMapPage({ leaks, coords }) {
         },
       );
     }
-  }, [filteredLeaks]);
+  }, [filteredLeaks, mapReady]);
 
   const handleDownloadArea = useCallback(async () => {
     const map = mapRef.current.map;

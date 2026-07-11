@@ -57,21 +57,21 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
     photoReadyRef.current = photoReady;
   }, [photoReady]);
 
-  /* ── Offer to restore draft on mount ── */
+  /* Offer to restore draft on mount */
   useEffect(() => {
     if (hasDraft() && Object.keys(form).length === 0) {
       setDraftPrompt(true);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ── Autosave draft — debounced 1s to avoid thrashing localStorage ── */
+  /* Autosave draft with a short debounce */
   useEffect(() => {
     if (Object.keys(form).length === 0) return;
     const t = setTimeout(() => saveDraft(form, 1), 1000);
     return () => clearTimeout(t);
   }, [form, saveDraft]);
 
-  /* ── Restore draft ── */
+  /* Restore draft */
   const handleRestoreDraft = () => {
     const draft = loadDraft();
     if (draft?.form) setForm(draft.form);
@@ -116,7 +116,7 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
           return;
         }
 
-        /* ── Save photo ── */
+        /* Save photo */
         let photoPath = null;
         const rawPhoto = row.photo?.raw ?? dataUrlToBlob(row.photo?.src);
         if (rawPhoto) {

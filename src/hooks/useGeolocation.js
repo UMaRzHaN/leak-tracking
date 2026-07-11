@@ -50,7 +50,7 @@ export const useGeolocation = (enabled = true) => {
     };
 
     const init = async () => {
-      // 🌐 WEB
+      // WEB
       if (!isNative) {
         if (!navigator.geolocation) {
           setError("Браузер не поддерживает геолокацию");
@@ -60,8 +60,7 @@ export const useGeolocation = (enabled = true) => {
 
         startWebWatch();
 
-        // Следим за изменением разрешения — когда пользователь разрешает GPS
-        // в настройках браузера, перезапускаем watchPosition без перезагрузки страницы
+        // Follow permission changes so GPS watch can recover without reloading.
         if (navigator.permissions) {
           try {
             permStatus = await navigator.permissions.query({
@@ -79,14 +78,14 @@ export const useGeolocation = (enabled = true) => {
               }
             };
           } catch (err) {
-            // Permissions API not available in this browser — expected on some mobile webviews
+            // Permissions API not available in this browser - expected on some mobile webviews
             logger.warn("[useGeolocation] Permissions API unavailable:", err);
           }
         }
         return;
       }
 
-      // 📱 MOBILE
+      // MOBILE
       try {
         const perm = await Geolocation.requestPermissions();
         if (perm.location !== "granted") {
