@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from "react";
-import { isNative } from "@/utils/platform";
 import { Directory, Filesystem } from "@capacitor/filesystem";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import { LeakRepository } from "@/repositories/LeakRepository";
+import { isNative } from "@/utils/platform";
 
 const VALID_TYPES = ["upstream", "midstream", "downstream"];
 const CONFLICT_CLOSED = { open: false };
@@ -14,6 +15,25 @@ function detectTypeFromFileName(str) {
   return null;
 }
 
+function pluralRecords(count, lang) {
+  if (lang !== "ru") return count === 1 ? "record" : "records";
+  if (count % 10 === 1 && count % 100 !== 11) return "запись";
+  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) {
+    return "записи";
+  }
+  return "записей";
+}
+
+function typeLabel(type, lang) {
+  const labels = {
+    upstream: lang === "ru" ? "Добыча" : "Upstream",
+    midstream: lang === "ru" ? "Транспортировка" : "Midstream",
+    downstream: lang === "ru" ? "Переработка" : "Downstream",
+  };
+
+  return labels[type] ?? type;
+}
+
 export function useBackupActions({
   data,
   idbGetPhoto,
@@ -24,17 +44,22 @@ export function useBackupActions({
   notify,
   projects,
 }) {
+  const { lang } = useLanguage();
   const importZipRef = useRef(null);
   const [conflictState, setConflictState] = useState(CONFLICT_CLOSED);
 
   const handleExportZip = useCallback(async () => {
     if (!data.length) {
-      notify("warning", "Нет данных для экспорта");
+      notify(
+        "warning",
+        lang === "ru" ? "Нет данных для экспорта" : "No data to export",
+      );
       return;
     }
 
     const folder = activeProject?.folderName ?? "backup";
     const fileName = `${folder}.zip`;
+
     try {
       const { buildProjectBackupZip } = await import("@/pages/Settings/backup");
       const blob = await buildProjectBackupZip({
@@ -46,23 +71,25 @@ export function useBackupActions({
 
       if (isNative) {
         const reader = new FileReader();
-        const base64 = await new Promise((res, rej) => {
-          reader.onload = () => res(reader.result.split(",")[1]);
-          reader.onerror = rej;
+        const base64 = await new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result.split(",")[1]);
+          reader.onerror = reject;
           reader.readAsDataURL(blob);
         });
+
         await Filesystem.mkdir({
           path: folder,
           directory: Directory.Documents,
           recursive: true,
         }).catch(() => {});
+
         try {
           await Filesystem.deleteFile({
             path: `${folder}/${fileName}`,
             directory: Directory.Documents,
           });
-        } catch (e) {
-          console.log("Old ZIP file not found:", e?.message);
+        } catch (error) {
+          console.log("Old ZIP file not found:", error?.message);
         }
 
         await Filesystem.writeFile({
@@ -70,24 +97,39 @@ export function useBackupActions({
           directory: Directory.Documents,
           data: base64,
         });
-        notify("success", `ZIP сохранён в Документы/${folder}/`);
+
+        notify(
+          "success",
+          lang === "ru"
+            ? `ZIP сохранён в Документы/${folder}/`
+            : `ZIP saved to Documents/${folder}/`,
+        );
       } else {
         const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = fileName;
-        a.click();
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = fileName;
+        anchor.click();
         URL.revokeObjectURL(url);
-        notify("success", `ZIP-архив скачан (${data.length} записей)`);
+
+        notify(
+          "success",
+          lang === "ru"
+            ? `ZIP-архив скачан (${data.length} ${pluralRecords(data.length, lang)})`
+            : `ZIP archive downloaded (${data.length} ${pluralRecords(data.length, lang)})`,
+        );
       }
-    } catch (err) {
-      notify("error", "Ошибка экспорта: " + err.message);
+    } catch (error) {
+      notify(
+        "error",
+        `${lang === "ru" ? "Ошибка экспорта" : "Export error"}: ${error.message}`,
+      );
     }
-  }, [data, idbGetPhoto, activeProject, vars, notify]);
+  }, [activeProject, data, idbGetPhoto, lang, notify, vars]);
 
   const handleImportZip = useCallback(
-    async (e) => {
-      const file = e.target.files?.[0];
+    async (event) => {
+      const file = event.target.files?.[0];
       if (!file) return;
 
       try {
@@ -107,16 +149,18 @@ export function useBackupActions({
         if (!resolvedType) {
           notify(
             "error",
-            `Не удалось определить тип проекта из файла «${file.name}». Переименуйте файл, добавив в имя upstream / midstream / downstream.`,
+            lang === "ru"
+              ? `Не удалось определить тип проекта из файла «${file.name}». Переименуйте файл, добавив в имя upstream / midstream / downstream.`
+              : `Could not determine the project type from file "${file.name}". Rename the file to include upstream / midstream / downstream.`,
           );
-          e.target.value = "";
+          event.target.value = "";
           return;
         }
 
-        // ── Conflict detection ────────────────────────────────────────────────
         const existing = projects?.find(
-          (p) =>
-            p.name.trim().toLowerCase() === resolvedName.trim().toLowerCase(),
+          (project) =>
+            project.name.trim().toLowerCase() ===
+            resolvedName.trim().toLowerCase(),
         );
 
         if (existing) {
@@ -135,26 +179,34 @@ export function useBackupActions({
             existingProject: { ...existing, leakCount: existingLeaks.length },
             leakCount: peek.leaks.length,
           });
-          e.target.value = "";
+          event.target.value = "";
           return;
         }
 
-        // ── No conflict — existing flow ───────────────────────────────────────
-        const typeLabel = {
-          upstream: "Добыча",
-          midstream: "Транспортировка",
-          downstream: "Переработка",
-        }[resolvedType];
         const source = metaProject?.type
           ? "project.json"
           : peek.detectedType
-            ? "данных записей"
-            : "имени файла";
-        const ok = window.confirm(
-          `Импортировать проект?\n\nНазвание: ${resolvedName}\nТип: ${typeLabel} (${resolvedType})\nЗаписей: ${peek.leaks.length}\nОпределено по: ${source}\n\nБудет создан новый проект.`,
+            ? lang === "ru"
+              ? "данным записей"
+              : "record data"
+            : lang === "ru"
+              ? "имени файла"
+              : "file name";
+
+        const confirmed = window.confirm(
+          lang === "ru"
+            ? `Импортировать проект?\n\nНазвание: ${resolvedName}\nТип: ${typeLabel(
+                resolvedType,
+                lang,
+              )} (${resolvedType})\nЗаписей: ${peek.leaks.length}\nОпределено по: ${source}\n\nБудет создан новый проект.`
+            : `Import project?\n\nName: ${resolvedName}\nType: ${typeLabel(
+                resolvedType,
+                lang,
+              )} (${resolvedType})\nRecords: ${peek.leaks.length}\nDetected from: ${source}\n\nA new project will be created.`,
         );
-        if (!ok) {
-          e.target.value = "";
+
+        if (!confirmed) {
+          event.target.value = "";
           return;
         }
 
@@ -162,23 +214,41 @@ export function useBackupActions({
           ? undefined
           : { name: resolvedName, type: resolvedType };
         const result = await onImportZip(file, fallback);
-        if (!result?.project)
-          throw new Error("Не удалось получить данные проекта из файла");
+        if (!result?.project) {
+          throw new Error(
+            lang === "ru"
+              ? "Не удалось получить данные проекта из файла"
+              : "Could not read project data from file",
+          );
+        }
+
         notify(
           "success",
-          `Импортирован проект «${result.project.name}» (${result.leakCount} записей)`,
+          lang === "ru"
+            ? `Импортирован проект «${result.project.name}» (${result.leakCount} ${pluralRecords(
+                result.leakCount,
+                lang,
+              )})`
+            : `Project "${result.project.name}" imported (${result.leakCount} ${pluralRecords(
+                result.leakCount,
+                lang,
+              )})`,
         );
-      } catch (err) {
-        notify("error", "Ошибка импорта: " + err.message);
+      } catch (error) {
+        notify(
+          "error",
+          `${lang === "ru" ? "Ошибка импорта" : "Import error"}: ${error.message}`,
+        );
       }
 
-      e.target.value = "";
+      event.target.value = "";
     },
-    [onImportZip, notify, projects],
+    [lang, notify, onImportZip, projects],
   );
 
   const handleConflictOverwrite = useCallback(async () => {
     const { file, existingProject } = conflictState;
+
     try {
       const result = await onImportIntoExisting(
         file,
@@ -187,47 +257,92 @@ export function useBackupActions({
       );
       notify(
         "success",
-        `Проект «${result.project.name}» перезаписан (${result.leakCount} записей)`,
+        lang === "ru"
+          ? `Проект «${result.project.name}» перезаписан (${result.leakCount} ${pluralRecords(
+              result.leakCount,
+              lang,
+            )})`
+          : `Project "${result.project.name}" overwritten (${result.leakCount} ${pluralRecords(
+              result.leakCount,
+              lang,
+            )})`,
       );
-    } catch (err) {
-      notify("error", "Ошибка импорта: " + err.message);
+    } catch (error) {
+      notify(
+        "error",
+        `${lang === "ru" ? "Ошибка импорта" : "Import error"}: ${error.message}`,
+      );
     }
+
     setConflictState(CONFLICT_CLOSED);
-  }, [conflictState, onImportIntoExisting, notify]);
+  }, [conflictState, lang, notify, onImportIntoExisting]);
 
   const handleConflictMerge = useCallback(async () => {
     const { file, existingProject } = conflictState;
+
     try {
       const result = await onImportIntoExisting(file, existingProject, "merge");
       notify(
         "success",
-        `Объединено с «${result.project.name}» (добавлено из архива: ${result.leakCount} записей)`,
+        lang === "ru"
+          ? `Объединено с «${result.project.name}» (добавлено из архива: ${result.leakCount} ${pluralRecords(
+              result.leakCount,
+              lang,
+            )})`
+          : `Merged into "${result.project.name}" (added from archive: ${result.leakCount} ${pluralRecords(
+              result.leakCount,
+              lang,
+            )})`,
       );
-    } catch (err) {
-      notify("error", "Ошибка импорта: " + err.message);
+    } catch (error) {
+      notify(
+        "error",
+        `${lang === "ru" ? "Ошибка импорта" : "Import error"}: ${error.message}`,
+      );
     }
+
     setConflictState(CONFLICT_CLOSED);
-  }, [conflictState, onImportIntoExisting, notify]);
+  }, [conflictState, lang, notify, onImportIntoExisting]);
 
   const handleConflictCopy = useCallback(async () => {
     const { file, resolvedName, resolvedType, fallback } = conflictState;
     const copyName = `${resolvedName} (2)`;
+
     try {
       const result = await onImportZip(
         file,
         fallback ?? { name: copyName, type: resolvedType },
         { overrideName: copyName },
       );
-      if (!result?.project) throw new Error("Не удалось создать проект");
+      if (!result?.project) {
+        throw new Error(
+          lang === "ru"
+            ? "Не удалось создать проект"
+            : "Could not create project",
+        );
+      }
+
       notify(
         "success",
-        `Создана копия «${result.project.name}» (${result.leakCount} записей)`,
+        lang === "ru"
+          ? `Создана копия «${result.project.name}» (${result.leakCount} ${pluralRecords(
+              result.leakCount,
+              lang,
+            )})`
+          : `Copy "${result.project.name}" created (${result.leakCount} ${pluralRecords(
+              result.leakCount,
+              lang,
+            )})`,
       );
-    } catch (err) {
-      notify("error", "Ошибка импорта: " + err.message);
+    } catch (error) {
+      notify(
+        "error",
+        `${lang === "ru" ? "Ошибка импорта" : "Import error"}: ${error.message}`,
+      );
     }
+
     setConflictState(CONFLICT_CLOSED);
-  }, [conflictState, onImportZip, notify]);
+  }, [conflictState, lang, notify, onImportZip]);
 
   return {
     importZipRef,

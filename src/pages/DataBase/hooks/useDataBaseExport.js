@@ -1,39 +1,52 @@
 import { useCallback } from "react";
-import { STATUS, STATUS_META } from "@/utils/status";
+import { STATUS, getStatusLabel } from "@/utils/status";
 import { useEffectiveProjectConfig } from "@/app/project/hooks/useEffectiveProjectConfig";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useProjectData } from "@/app/project/ProjectContext";
+import { useLanguage } from "@/app/hooks/useLanguage";
+import { formatDate } from "@/utils/locale";
 
-function fmtTs(ts) {
+function fmtTs(ts, lang) {
   if (!ts) return "";
-  const d = new Date(ts);
-  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
+
+  return formatDate(
+    ts,
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    },
+    lang,
+  );
 }
 
-function round2(v) {
-  return v != null && Number.isFinite(Number(v))
-    ? Math.round(Number(v) * 100) / 100
-    : v;
+function round2(value) {
+  return value != null && Number.isFinite(Number(value))
+    ? Math.round(Number(value) * 100) / 100
+    : value;
 }
 
-function prepareRows(data) {
-  return data.map((r) => ({
-    ...r,
-    status: STATUS_META[r.status ?? STATUS.OPEN]?.label ?? r.status ?? "",
+function prepareRows(data, lang, t) {
+  return data.map((row) => ({
+    ...row,
+    status: getStatusLabel(row.status ?? STATUS.OPEN, t),
     date:
-      r.date ??
-      (r.created_at
-        ? new Date(Number(r.created_at)).toLocaleDateString("ru-RU")
-        : ""),
-    Total_Annual_Methane_Loss_m3_y: round2(r.Total_Annual_Methane_Loss_m3_y),
-    Emissions_t_CO2eq_year: round2(r.Emissions_t_CO2eq_year),
-    photo: r.photo ? "Есть" : "",
-    photo_after: r.photo_after ? "Есть" : "",
-    resolvedAt: fmtTs(r.resolvedAt),
+      row.date ??
+      (row.created_at ? formatDate(Number(row.created_at), {}, lang) : ""),
+    Total_Annual_Methane_Loss_m3_y: round2(row.Total_Annual_Methane_Loss_m3_y),
+    Emissions_t_CO2eq_year: round2(row.Emissions_t_CO2eq_year),
+    photo: row.photo
+      ? t("database.export.hasPhoto", { defaultValue: "Yes" })
+      : "",
+    photo_after: row.photo_after
+      ? t("database.export.hasPhoto", { defaultValue: "Yes" })
+      : "",
+    resolvedAt: fmtTs(row.resolvedAt, lang),
   }));
 }
 
 export function useDataBaseExport({ displayed, notify }) {
+  const { lang, t } = useLanguage();
   const projectConfig = useEffectiveProjectConfig();
   const { headers: excelHeaders, keysOrder: excelKeys } =
     projectConfig.export.excel;
@@ -42,28 +55,43 @@ export function useDataBaseExport({ displayed, notify }) {
 
   const handleExport = useCallback(async () => {
     try {
-      const { exportToExcelZip } =
-        await import("@/pages/DataBase/excel");
+      const { exportToExcelZip } = await import("@/pages/DataBase/excel");
       const result = await exportToExcelZip(
         displayed,
-        prepareRows(displayed),
+        prepareRows(displayed, lang, t),
         excelHeaders,
         excelKeys,
-        "!Database_" + (activeProject?.name || "no_name"),
+        `!Database_${activeProject?.name || "no_name"}`,
         idbGetPhoto,
         activeProject?.folderName,
+        lang,
       );
-      notify("success", result?.message || "ZIP-архив успешно скачан");
+
+      notify(
+        "success",
+        result?.message ||
+          t("database.export.success", {
+            defaultValue: "ZIP archive downloaded successfully",
+          }),
+      );
     } catch (err) {
-      notify("error", "Ошибка экспорта: " + err.message);
+      notify(
+        "error",
+        t("database.export.error", {
+          defaultValue: `Export error: ${err.message}`,
+        }),
+      );
     }
   }, [
+    activeProject?.folderName,
+    activeProject?.name,
     displayed,
     excelHeaders,
     excelKeys,
     idbGetPhoto,
-    activeProject?.folderName,
+    lang,
     notify,
+    t,
   ]);
 
   return { handleExport };

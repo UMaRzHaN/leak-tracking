@@ -1,4 +1,8 @@
+import { useLanguage } from "@/app/hooks/useLanguage";
+
 export function useStepValidation({ steps, form, setErrors }) {
+  const { lang } = useLanguage();
+
   return function validateStep(stepIndex) {
     const step = steps[stepIndex - 1];
     if (!step?.fields) return true;
@@ -11,13 +15,14 @@ export function useStepValidation({ steps, form, setErrors }) {
       if (type === "photo") {
         const photo = form[key];
         if (!photo || !photo.raw || !photo.src) {
-          nextErrors[key] = "Добавьте фото";
+          nextErrors[key] = lang === "ru" ? "Добавьте фото" : "Add a photo";
         }
         return;
       }
 
       if (!form[key]) {
-        nextErrors[key] = "Обязательное поле";
+        nextErrors[key] =
+          lang === "ru" ? "Обязательное поле" : "Required field";
       }
     });
 

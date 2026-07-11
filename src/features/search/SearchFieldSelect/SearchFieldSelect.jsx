@@ -1,23 +1,29 @@
 import { useState, useRef, useEffect } from "react";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "./SearchFieldSelect.module.scss";
 
 export default function SearchFieldSelect({
   value,
   onChange,
   options = [],
-  placeholder = "Выберите поле",
+  placeholder,
 }) {
+  const { lang } = useLanguage();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
+  const fallbackPlaceholder =
+    placeholder || (lang === "ru" ? "Выберите поле" : "Select field");
+
   const currentLabel =
-    options.find((o) => o.key === value)?.label || placeholder;
+    options.find((option) => option.key === value)?.label ||
+    fallbackPlaceholder;
 
   useEffect(() => {
     if (!open) return;
 
-    const close = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
+    const close = (event) => {
+      if (ref.current && !ref.current.contains(event.target)) {
         setOpen(false);
       }
     };
@@ -36,7 +42,7 @@ export default function SearchFieldSelect({
       <button
         type="button"
         className={s.button}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen((value) => !value)}
       >
         <span className={s.label}>{currentLabel}</span>
         <span className={s.arrow}>▾</span>
@@ -44,17 +50,17 @@ export default function SearchFieldSelect({
 
       {open && (
         <div className={s.menu}>
-          {options.map((o) => (
+          {options.map((option) => (
             <button
-              key={o.key}
+              key={option.key}
               type="button"
-              className={`${s.option} ${o.key === value ? s.active : ""}`}
+              className={`${s.option} ${option.key === value ? s.active : ""}`}
               onClick={() => {
-                onChange(o.key);
+                onChange(option.key);
                 setOpen(false);
               }}
             >
-              {o.label}
+              {option.label}
             </button>
           ))}
         </div>

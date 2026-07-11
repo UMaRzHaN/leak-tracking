@@ -1,9 +1,23 @@
 import { useMemo } from "react";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import EditTextField from "@/features/editTextField/EditTextField";
 import EditPhotoRow from "./EditPhotoRow";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
+function translateFieldLabel(key, fallbackLabel, t, lang) {
+  const explicitLabels = {
+    date: lang === "ru" ? "Дата" : "Date",
+    lat: lang === "ru" ? "Широта (X)" : "Latitude (X)",
+    lng: lang === "ru" ? "Долгота (Y)" : "Longitude (Y)",
+  };
+
+  return t(`addLeak.fields.${key}.label`, {
+    defaultValue: explicitLabels[key] ?? fallbackLabel,
+  });
+}
+
 export default function EditBlock(props) {
+  const { lang, t } = useLanguage();
   const {
     localEdit,
     setLocalEdit,
@@ -15,65 +29,63 @@ export default function EditBlock(props) {
     onEditAfter,
     showAfter,
   } = props;
+
   const allFields = useMemo(() => {
     return (projectConfig.system.fields ?? [])
-      .filter((f) => f.editable !== false)
-      .sort((a, b) => (a.editOrder ?? 999) - (b.editOrder ?? 999));
+      .filter((field) => field.editable !== false)
+      .sort(
+        (left, right) => (left.editOrder ?? 999) - (right.editOrder ?? 999),
+      );
   }, [projectConfig]);
 
-  /* ── Field categories ── */
   const textFields = useMemo(
-    () => allFields.filter((f) => !f.numeric && !f.multiline),
+    () => allFields.filter((field) => !field.numeric && !field.multiline),
     [allFields],
   );
   const coordFields = useMemo(
-    () => allFields.filter((f) => f.coord),
+    () => allFields.filter((field) => field.coord),
     [allFields],
   );
   const multiFields = useMemo(
-    () => allFields.filter((f) => !f.numeric && f.multiline),
+    () => allFields.filter((field) => !field.numeric && field.multiline),
     [allFields],
   );
   const paramFields = useMemo(
-    () => allFields.filter((f) => f.numeric && !f.coord),
+    () => allFields.filter((field) => field.numeric && !field.coord),
     [allFields],
   );
 
-  const set = (key, val) => setLocalEdit((prev) => ({ ...prev, [key]: val }));
+  const setField = (key, value) =>
+    setLocalEdit((prev) => ({ ...prev, [key]: value }));
 
-  /* ══════════════════════════════════════════
-     ОСНОВНОЕ TAB — text + coords + multiline
-     ══════════════════════════════════════════ */
   if (activeTab === "info") {
     const hasText = textFields.length > 0;
     const hasMulti = multiFields.length > 0;
 
     return (
       <div className={s.tabPane}>
-        {/* ── Text fields ── */}
         {hasText && (
           <div className={s.editSection}>
             {textFields.map(({ key, label }) => (
               <EditTextField
                 key={key}
-                label={label}
+                label={translateFieldLabel(key, label, t, lang)}
                 value={localEdit[key] ?? ""}
-                onChange={(v) => set(key, v)}
+                onChange={(value) => setField(key, value)}
               />
             ))}
           </div>
         )}
 
-        {/* ── Multiline fields ── */}
         {hasMulti && (
           <div className={s.editSection}>
             {multiFields.map(({ key, label }) => (
               <EditTextField
                 key={key}
-                label={label}
+                label={translateFieldLabel(key, label, t, lang)}
                 multiline
                 value={localEdit[key] ?? ""}
-                onChange={(v) => set(key, v)}
+                onChange={(value) => setField(key, value)}
               />
             ))}
           </div>
@@ -82,16 +94,17 @@ export default function EditBlock(props) {
         {!hasText && !hasMulti && (
           <div className={s.tabEmpty}>
             <span className={s.tabEmptyIcon}>📋</span>
-            <p>Нет полей для редактирования</p>
+            <p>
+              {lang === "ru"
+                ? "Нет полей для редактирования"
+                : "No editable fields"}
+            </p>
           </div>
         )}
       </div>
     );
   }
 
-  /* ══════════════════════════════════════════
-     КООРДИНАТЫ TAB
-     ══════════════════════════════════════════ */
   if (activeTab === "photo") {
     return (
       <div className={s.tabPane}>
@@ -115,11 +128,11 @@ export default function EditBlock(props) {
               {coordFields.map(({ key, label }) => (
                 <EditTextField
                   key={key}
-                  label={label}
+                  label={translateFieldLabel(key, label, t, lang)}
                   value={localEdit[key] ?? ""}
                   numeric
                   compact
-                  onChange={(v) => set(key, v)}
+                  onChange={(value) => setField(key, value)}
                 />
               ))}
             </div>
@@ -127,16 +140,15 @@ export default function EditBlock(props) {
         ) : (
           <div className={s.tabEmpty}>
             <span className={s.tabEmptyIcon}>📍</span>
-            <p>Нет полей координат</p>
+            <p>
+              {lang === "ru" ? "Нет полей координат" : "No coordinate fields"}
+            </p>
           </div>
         )}
       </div>
     );
   }
 
-  /* ══════════════════════════════════════════
-     ПАРАМЕТРЫ TAB — numeric fields grid
-     ══════════════════════════════════════════ */
   if (activeTab === "params") {
     return (
       <div className={s.tabPane}>
@@ -145,18 +157,22 @@ export default function EditBlock(props) {
             {paramFields.map(({ key, label }) => (
               <EditTextField
                 key={key}
-                label={label}
+                label={translateFieldLabel(key, label, t, lang)}
                 numeric
                 compact
                 value={localEdit[key] ?? ""}
-                onChange={(v) => set(key, v)}
+                onChange={(value) => setField(key, value)}
               />
             ))}
           </div>
         ) : (
           <div className={s.tabEmpty}>
             <span className={s.tabEmptyIcon}>📊</span>
-            <p>Нет числовых параметров</p>
+            <p>
+              {lang === "ru"
+                ? "Нет числовых параметров"
+                : "No numeric parameters"}
+            </p>
           </div>
         )}
       </div>

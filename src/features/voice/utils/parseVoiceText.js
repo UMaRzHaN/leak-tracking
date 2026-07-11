@@ -1,46 +1,93 @@
 import { capitalizeFirst } from "@/utils/normalize/capitalizeFirst";
 import { normalizeStationName } from "./normalization";
 
-/**
- * ЕДИНЫЙ СПИСОК МАРКЕРОВ
- * Используется ТОЛЬКО в lookahead
- * НЕ должен иметь захватывающих скобок
- */
-const FIELD_MARKERS =
-  "бирк[аи]?|видео|скорост[ьи]?|давлени[ея]?|температур[аы]?|" +
-  "умг|унг|умк|умгэ|умге|умга|омг|управление|район|подразделение|" +
-  "категори[яи]|" + // 👈 ВОТ ТУТ
-  "компрессорная станци[я]|станци[я]|место рождени[ея]|месторождени[ея]?|" +
-  "локаци[яи]|адрес|" +
-  "привод|тип привода|присоединени[ея]|тип присоединения|установк[аи]|тип установки|" +
-  "объект|компонент[ы]?|" +
-  "описание утечк[и]|причина утечк[и]|" +
-  "технологическ(?:ое|ий) решени(?:е|я)|тех решени(?:е|я)|" +
-  "способ устранени(?:я|й)|метод устранени(?:я|й)|" +
-  "план устранения|мтр ремонта|мтр|примечани[ея]";
+const TOKENS = {
+  leakId: "бирк[аи]?|tag(?:\\s+number)?|tag",
+  videoId: "видео|video",
+  leakSpeed: "скорост[ьи]?|leak\\s+rate|rate|speed",
+  pressure: "давлени[ея]?|pressure",
+  temperature: "температур[аы]?|temperature|temp",
+  category: "категори[яи]|category",
+  main: "умг|унг|умк|умгэ|умге|умга|омг|mgpa|main\\s+gas\\s+pipeline\\s+administration|управление|management|district|район|подразделени[еяю]|subdivision|field",
+  secondary:
+    "компрессорная\\s+станци[яи]|станци[яи]|compressor\\s+station|station|место\\s+рождени[ея]|месторождени[ея]?|deposit|field\\s+deposit|насел[её]нный\\s+пункт|locality|settlement|town|city|пункт",
+  last: "локаци[яи]|location|address|адрес",
+  object: "объект|object",
+  component: "компонент[ы]?|component",
+  leakDescription: "описание\\s+утечки|leak\\s+description|description",
+  leakCause: "причина\\s+утечки|leak\\s+cause|cause",
+  technologicalSolution:
+    "технологическое\\s+решение|тех\\s+решение|technical\\s+solution|solution|способ\\s+устранения|method\\s+of\\s+repair|repair\\s+method",
+  repairRecommendation:
+    "план\\s+устранения|repair\\s+plan|repair\\s+recommendation|recommendation",
+  materialsEquipment:
+    "мтр\\s+ремонта|мтр|materials\\s+and\\s+equipment|materials|equipment",
+  note: "примечани[ея]|note|comment",
+  actuatorType: "тип\\s+привода|привод|actuator\\s+type|actuator",
+  connectionType: "тип\\s+присоединения|присоединени[ея]|connection\\s+type",
+  installationType:
+    "тип\\s+установки|установк[аи]|installation\\s+type|installation",
+};
 
-/* ================= HELPERS ================= */
+const FIELD_MARKERS = [
+  TOKENS.leakId,
+  TOKENS.videoId,
+  TOKENS.leakSpeed,
+  TOKENS.pressure,
+  TOKENS.temperature,
+  TOKENS.category,
+  TOKENS.main,
+  TOKENS.secondary,
+  TOKENS.last,
+  TOKENS.object,
+  TOKENS.component,
+  TOKENS.leakDescription,
+  TOKENS.leakCause,
+  TOKENS.technologicalSolution,
+  TOKENS.repairRecommendation,
+  TOKENS.materialsEquipment,
+  TOKENS.note,
+  TOKENS.actuatorType,
+  TOKENS.connectionType,
+  TOKENS.installationType,
+].join("|");
 
-function normalizeRuNumber(str) {
+function normalizeNumber(str) {
   if (!str) return str;
 
-  let v = str.replace(/\u00A0/g, " ").replace(/\s+/g, "");
+  let value = str.replace(/\u00A0/g, " ").replace(/\s+/g, "");
+  const hasDot = value.includes(".");
+  const hasComma = value.includes(",");
 
-  const hasDot = v.includes(".");
-  const hasComma = v.includes(",");
-
-  if (hasDot && hasComma) return v.replace(/\./g, "").replace(",", ".");
-  if (hasComma) return v.replace(",", ".");
-  return v;
+  if (hasDot && hasComma) return value.replace(/\./g, "").replace(",", ".");
+  if (hasComma) return value.replace(",", ".");
+  return value;
 }
 
-/* ================= PARSER ================= */
+function captureValue(marker) {
+  return new RegExp(
+    `(?:${marker})\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
+    "g",
+  );
+}
 
-/**
- * ОБЩИЙ voice-парсер
- * ❗ НЕ знает про upstream / midstream / downstream
- * ❗ Возвращает ТОЛЬКО абстрактные ключи
- */
+function formatCapturedText(value) {
+  const text = value.trim();
+  if (!text) return text;
+
+  if (/^[a-z0-9\s\-/.(),]+$/i.test(text)) {
+    return text
+      .split(/\s+/)
+      .map((word) => {
+        if (!word || /^\d/.test(word)) return word;
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      })
+      .join(" ");
+  }
+
+  return capitalizeFirst(text);
+}
+
 export const parseVoiceText = (text) => {
   const result = {};
   if (!text) return result;
@@ -48,163 +95,85 @@ export const parseVoiceText = (text) => {
   const normalized = text.toLowerCase();
 
   const patterns = [
-    /* ===== ИДЕНТИФИКАТОРЫ ===== */
     {
       key: "leak_id",
-      regex: /бирк[аи]?\s*(?<value>\d+)/g,
+      regex: new RegExp(`(?:${TOKENS.leakId})\\s*(?<value>\\d+)`, "g"),
       type: "string",
     },
     {
       key: "video_id",
-      regex: /видео\s*(?<value>\d+)/g,
+      regex: new RegExp(`(?:${TOKENS.videoId})\\s*(?<value>\\d+)`, "g"),
       type: "string",
     },
-
-    /* ===== ПАРАМЕТРЫ ===== */
     {
       key: "leak_speed",
-      regex: /скорост[ьи]?\s*(?<value>[\d.,\s]+)/g,
+      regex: new RegExp(
+        `(?:${TOKENS.leakSpeed})\\s*(?<value>[\\d.,\\s]+)`,
+        "g",
+      ),
       type: "number",
     },
     {
       key: "pressure",
-      regex: /давлени[ея]?\s*(?<value>\d+(?:[.,]\d+)?)/g,
+      regex: new RegExp(
+        `(?:${TOKENS.pressure})\\s*(?<value>-?\\d+(?:[.,]\\d+)?)`,
+        "g",
+      ),
       type: "number",
     },
     {
       key: "temperature",
-      regex: /температур[аы]?\s*(?<value>-?\d+(?:[.,]\d+)?)/g,
+      regex: new RegExp(
+        `(?:${TOKENS.temperature})\\s*(?<value>-?\\d+(?:[.,]\\d+)?)`,
+        "g",
+      ),
       type: "number",
     },
-    {
-      key: "category",
-      regex: new RegExp(
-        `(?:категори[яи])\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
-        "g",
-      ),
-      type: "string",
-    },
-    /* ===== СЕМАНТИЧЕСКИЕ ЛОКАЦИИ ===== */
-
-    // 1️⃣ Верхний уровень (УМГ / район / управление)
-    {
-      key: "main",
-      regex: new RegExp(
-        `(?:умг|унг|умк|умгэ|умге|умга|омг|управление|район|подразделени[еяйю])\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
-        "g",
-      ),
-      type: "string",
-    },
-
-    // 2️⃣ Основной объект (станция / месторождение / населённый пункт)
-    {
-      key: "secondary",
-      regex: new RegExp(
-        `(?:компрессорная станци[я]|станци[я]|место рождени[ея]|месторождени[ея]|населённый пункт|пункт)\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
-        "g",
-      ),
-      type: "string",
-    },
-
-    // 3️⃣ Произвольная локация / адрес
-    {
-      key: "last",
-      regex: new RegExp(
-        `(?:локаци[яи]|адрес)\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
-        "g",
-      ),
-      type: "string",
-    },
-
-    /* ===== ОБЪЕКТ ===== */
-    {
-      key: "object",
-      regex: new RegExp(
-        `объект\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
-        "g",
-      ),
-      type: "string",
-    },
-    {
-      key: "component",
-      regex: new RegExp(
-        `компонент[ы]?\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
-        "g",
-      ),
-      type: "string",
-    },
-
-    /* ===== ОПИСАНИЯ ===== */
+    { key: "category", regex: captureValue(TOKENS.category), type: "string" },
+    { key: "main", regex: captureValue(TOKENS.main), type: "string" },
+    { key: "secondary", regex: captureValue(TOKENS.secondary), type: "string" },
+    { key: "last", regex: captureValue(TOKENS.last), type: "string" },
+    { key: "object", regex: captureValue(TOKENS.object), type: "string" },
+    { key: "component", regex: captureValue(TOKENS.component), type: "string" },
     {
       key: "leak_description",
-      regex: new RegExp(
-        `описание утечк[и]\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
-        "g",
-      ),
+      regex: captureValue(TOKENS.leakDescription),
       type: "string",
     },
     {
       key: "leak_cause",
-      regex: new RegExp(
-        `причина утечк[и]\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
-        "g",
-      ),
+      regex: captureValue(TOKENS.leakCause),
       type: "string",
     },
     {
       key: "technological_solution",
-      regex: new RegExp(
-        `(?:технологическ(?:ое|ий) решени(?:е|я)|тех решени(?:е|я)|способ устранени(?:я|й)|метод устранени(?:я|й))\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
-        "g",
-      ),
+      regex: captureValue(TOKENS.technologicalSolution),
       type: "string",
     },
     {
       key: "repair_recommendation",
-      regex: new RegExp(
-        `план устранения\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
-        "g",
-      ),
+      regex: captureValue(TOKENS.repairRecommendation),
       type: "string",
     },
     {
       key: "materials_equipment",
-      regex: new RegExp(
-        `(?:мтр ремонта|мтр)\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
-        "g",
-      ),
+      regex: captureValue(TOKENS.materialsEquipment),
       type: "string",
     },
-    {
-      key: "note",
-      regex: new RegExp(
-        `примечани[ея]\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
-        "g",
-      ),
-      type: "string",
-    },
+    { key: "note", regex: captureValue(TOKENS.note), type: "string" },
     {
       key: "actuator_type",
-      regex: new RegExp(
-        `(?:тип привода|привод)\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
-        "g",
-      ),
+      regex: captureValue(TOKENS.actuatorType),
       type: "string",
     },
     {
       key: "connection_type",
-      regex: new RegExp(
-        `(?:тип присоединения|присоединени[ея])\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
-        "g",
-      ),
+      regex: captureValue(TOKENS.connectionType),
       type: "string",
     },
     {
       key: "installation_type",
-      regex: new RegExp(
-        `(?:тип установки|установк[аи])\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
-        "g",
-      ),
+      regex: captureValue(TOKENS.installationType),
       type: "string",
     },
   ];
@@ -217,19 +186,18 @@ export const parseVoiceText = (text) => {
     if (!rawValue) return;
 
     if (key === "secondary") {
-      const normalizedStation = normalizeStationName(rawValue);
-      result[key] = normalizedStation;
+      result[key] = normalizeStationName(rawValue);
       return;
     }
 
     if (type === "number") {
-      const n = normalizeRuNumber(rawValue);
-      const num = Number(n);
-      if (n && !isNaN(num)) result[key] = num;
+      const value = normalizeNumber(rawValue);
+      const num = Number(value);
+      if (value && !Number.isNaN(num)) result[key] = num;
       return;
     }
 
-    result[key] = capitalizeFirst(rawValue.trim());
+    result[key] = formatCapturedText(rawValue);
   });
 
   return result;

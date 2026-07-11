@@ -4,6 +4,7 @@ import {
   buildProjectBackupZip,
   peekBackupZip,
   importProjectZip,
+  importBackupZip,
 } from "./backup";
 import {
   validateBackup,
@@ -297,6 +298,7 @@ describe("importProjectZip", () => {
         ctx.activeProjectIdRef.current = project.id;
         return project;
       }),
+      removeProject: vi.fn(),
       savePhotoRef: { current: vi.fn().mockResolvedValue(null) },
       saveRef: { current: vi.fn().mockResolvedValue(undefined) },
       activeProjectIdRef: { current: null },
@@ -386,7 +388,45 @@ describe("importProjectZip", () => {
     await expect(importProjectZip(blob, ctx)).rejects.toThrow();
   });
 
+  it("rollback removes created project when save fails", async () => {
+    const vars = { density: 0.668, GWP: 28 };
+    const blob = await buildProjectBackupZip({
+      leaks,
+      idbGet: null,
+      project: UPSTREAM_PROJECT,
+      vars,
+    });
+    const ctx = makeCtx(UPSTREAM_PROJECT);
+    ctx.saveRef.current.mockRejectedValueOnce(new Error("save failed"));
+
+    await expect(importProjectZip(blob, ctx)).rejects.toThrow("save failed");
+    expect(ctx.removeProject).toHaveBeenCalledWith(UPSTREAM_PROJECT.id);
+    expect(
+      localStorage.getItem(`app:${UPSTREAM_PROJECT.id}:vars_v1`),
+    ).toBeNull();
+  });
+
   afterEach(() => {
     localStorage.clear();
+  });
+});
+
+describe("importBackupZip", () => {
+  it("imports zip without JSZip runtime crash", async () => {
+    const leaks = [makeLeak({ id: "zip-1", deposit: "Tengiz" })];
+    const vars = { density: 0.7 };
+    const blob = await buildProjectBackupZip({
+      leaks,
+      idbGet: null,
+      project: UPSTREAM_PROJECT,
+      vars,
+    });
+
+    const savePhoto = vi.fn().mockResolvedValue(null);
+    const result = await importBackupZip(blob, savePhoto);
+
+    expect(result.leaks).toHaveLength(1);
+    expect(result.leaks[0].id).toBe("zip-1");
+    expect(result.meta.project.name).toBe(UPSTREAM_PROJECT.name);
   });
 });

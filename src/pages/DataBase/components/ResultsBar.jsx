@@ -1,12 +1,15 @@
+import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "@/pages/DataBase/DataBase.module.scss";
 
 const NEARBY = "nearby";
 const NEARBY_RADIUS_M = 500;
 
-function pluralLeaks(n) {
-  if (n % 10 === 1 && n % 100 !== 11) return "запись";
-  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100))
+function pluralLeaks(count, lang) {
+  if (lang !== "ru") return count === 1 ? "record" : "records";
+  if (count % 10 === 1 && count % 100 !== 11) return "запись";
+  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) {
     return "записи";
+  }
   return "записей";
 }
 
@@ -23,22 +26,38 @@ export default function ResultsBar({
   onOpenBulkPicker,
   onExport,
 }) {
+  const { lang } = useLanguage();
+
   return (
     <>
       <div className={s.resultsRow}>
         <span className={s.resultsInfo}>
           {visibleCount > 0 && (
             <>
-              {`${visibleCount} ${pluralLeaks(visibleCount)}`}
+              {`${visibleCount} ${pluralLeaks(visibleCount, lang)}`}
               {statusFilter === NEARBY ? (
-                ` • в радиусе ${NEARBY_RADIUS_M} м`
+                lang === "ru" ? (
+                  ` • в радиусе ${NEARBY_RADIUS_M} м`
+                ) : (
+                  ` • within ${NEARBY_RADIUS_M} m`
+                )
               ) : (
                 <button
                   className={s.sortToggle}
                   onClick={onSortToggle}
-                  title="Изменить порядок сортировки"
+                  title={
+                    lang === "ru"
+                      ? "Изменить порядок сортировки"
+                      : "Change sort order"
+                  }
                 >
-                  {sortAsc ? "дата ↑" : "дата ↓"}
+                  {sortAsc
+                    ? lang === "ru"
+                      ? "дата ↑"
+                      : "date ↑"
+                    : lang === "ru"
+                      ? "дата ↓"
+                      : "date ↓"}
                 </button>
               )}
             </>
@@ -48,14 +67,24 @@ export default function ResultsBar({
         <div className={s.resultsActions}>
           {visibleCount > 0 && (
             <button className={s.actionBtn} onClick={onSelectDisplayed}>
-              {allDisplayedSelected ? "Снять всё" : "Выбрать всё"}
+              {allDisplayedSelected
+                ? lang === "ru"
+                  ? "Снять всё"
+                  : "Clear all"
+                : lang === "ru"
+                  ? "Выбрать всё"
+                  : "Select all"}
             </button>
           )}
           {totalCount > 0 && (
             <button
               className={s.exportBtn}
               onClick={onExport}
-              title="Экспорт в Excel + фото (ZIP)"
+              title={
+                lang === "ru"
+                  ? "Экспорт в Excel + фото (ZIP)"
+                  : "Export to Excel + photos (ZIP)"
+              }
             >
               📥 XLSX
             </button>
@@ -67,14 +96,16 @@ export default function ResultsBar({
         <div className={s.bulkBar}>
           <span className={s.bulkCheck}>✓</span>
           <span className={s.bulkCount}>
-            {selectedCount} выбрано из {visibleCount}
+            {lang === "ru"
+              ? `${selectedCount} выбрано из ${visibleCount}`
+              : `${selectedCount} selected of ${visibleCount}`}
           </span>
           <div className={s.bulkBtns}>
             <button className={s.bulkClearBtn} onClick={onClearSelection}>
-              Снять выбор
+              {lang === "ru" ? "Снять выбор" : "Clear selection"}
             </button>
             <button className={s.bulkStatusBtn} onClick={onOpenBulkPicker}>
-              ⇌ СТАТУС
+              {lang === "ru" ? "⇌ СТАТУС" : "⇌ STATUS"}
             </button>
           </div>
         </div>

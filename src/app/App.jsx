@@ -1,12 +1,4 @@
-import {
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef } from "react";
 import "@/index.scss";
 
 import Header from "@/components/layout/Header/Header";
@@ -54,6 +46,7 @@ export default function App() {
     addProject,
     activeProject,
     overwriteProject,
+    removeProject,
   } = useProject();
 
   /* =========================
@@ -121,23 +114,30 @@ export default function App() {
   /* =========================
      IMPORT ZIP — shared context for all entry points
   ========================= */
-  const importCtx = {
-    addProject,
-    savePhotoRef,
-    saveRef,
-    activeProjectIdRef,
-    photoReadyRef,
-  };
+  const stableImportCtx = useMemo(
+    () => ({
+      addProject,
+      removeProject,
+      savePhotoRef,
+      saveRef,
+      activeProjectIdRef,
+      photoReadyRef,
+    }),
+    [addProject, removeProject],
+  );
 
   /** First-run (ProjectSetupScreen): supports name/type fallback when ZIP has no project.json */
   const handleSetupImportZip = useCallback(
     async (file, fallback = {}) => {
       const { importProjectZip } = await import("@/pages/Settings/backup");
-      await importProjectZip(file, { ...importCtx, metaFallback: fallback });
+      await importProjectZip(file, {
+        ...stableImportCtx,
+        metaFallback: fallback,
+      });
       // importCtx values are stable refs — addProject is the only real dep
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [addProject],
+    [stableImportCtx],
   );
 
   /** In-app import (Settings): always creates a new project, optional fallback for legacy ZIPs.
@@ -146,13 +146,13 @@ export default function App() {
     async (file, fallback, options = {}) => {
       const { importProjectZip } = await import("@/pages/Settings/backup");
       return await importProjectZip(file, {
-        ...importCtx,
+        ...stableImportCtx,
         metaFallback: fallback,
         ...options,
       });
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [addProject],
+    [stableImportCtx],
   );
 
   /** Import into an already-existing project (overwrite or merge). */
@@ -162,13 +162,13 @@ export default function App() {
         await import("@/pages/Settings/backup");
       return await importIntoExistingProject(
         file,
-        { ...importCtx, overwriteProject, existingProject },
+        { ...stableImportCtx, overwriteProject, existingProject },
         mode,
       );
       // importCtx contains only stable refs — overwriteProject is the real dep
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [addProject, overwriteProject],
+    [overwriteProject, stableImportCtx],
   );
 
   if (!isConfigured) {

@@ -1,29 +1,40 @@
 import { memo, useState } from "react";
 import { useSwipeCard } from "@/hooks/useSwipeCard";
-import { STATUS_META } from "@/utils/status";
-import { PRIORITY_META } from "@/utils/priority";
+import { getStatusMeta } from "@/utils/status";
+import { getPriorityMeta } from "@/utils/priority";
 import { timeAgo } from "@/utils/timeAgo";
 import { usePhotoSrc } from "@/hooks/usePhotoSrc";
+import { useLanguage } from "@/app/hooks/useLanguage";
+import {
+  formatCompactNumber,
+  formatLeakDate,
+  formatNumber,
+} from "@/utils/locale";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import s from "./LeakCardCompact.module.scss";
 
-/* ── Compact number formatter ── */
-function fmtNum(n, decimals = 1) {
-  if (n == null || !Number.isFinite(Number(n))) return null;
-  const v = Number(n);
-  if (Math.abs(v) >= 1_000_000)
-    return `${(v / 1_000_000).toFixed(decimals)} млн.`;
-  if (Math.abs(v) >= 1_000) return `${(v / 1_000).toFixed(decimals)} тыс.`;
-  return v.toLocaleString("ru-RU", { maximumFractionDigits: decimals });
+function fmtNum(value, decimals = 1, lang) {
+  if (value == null || !Number.isFinite(Number(value))) return null;
+
+  const normalized = Number(value);
+  if (Math.abs(normalized) >= 1_000) {
+    return formatCompactNumber(
+      normalized,
+      { maximumFractionDigits: decimals },
+      lang,
+    );
+  }
+
+  return formatNumber(normalized, { maximumFractionDigits: decimals }, lang);
 }
 
-/* ── Urgency by age (ignored for resolved leaks) ── */
 function urgencyOf(createdAt, status) {
   if (status === "resolved") return "resolved";
+
   const ms = Date.now() - Number(new Date(createdAt));
-  if (ms < 86_400_000) return "fresh"; // < 24 ч  → синяя
-  if (ms < 7 * 86_400_000) return "warning"; // 1–7 дн  → янтарная
-  return "danger"; // > 7 дн  → красная пульс
+  if (ms < 86_400_000) return "fresh";
+  if (ms < 7 * 86_400_000) return "warning";
+  return "danger";
 }
 
 function LeakCardCompact({
@@ -34,6 +45,7 @@ function LeakCardCompact({
   selected = false,
   onToggleSelect,
 }) {
+  const { lang, t } = useLanguage();
   const { swipeState, swipeOffset, close, handlers } = useSwipeCard({
     leak,
     onOpenDetails,
@@ -45,8 +57,12 @@ function LeakCardCompact({
   const goingRight = swipeState === "right" || swipeOffset > 30;
 
   const status = leak.status ?? "open";
-  const meta = STATUS_META[status];
-  const ago = timeAgo(leak.createdAt);
+  const meta = getStatusMeta(status, t);
+  const priorityMeta = leak.priority
+    ? getPriorityMeta(leak.priority, t, lang)
+    : null;
+  const ago = timeAgo(leak.createdAt, lang);
+  const absoluteDate = formatLeakDate(leak.date, {}, lang);
   const urgency = urgencyOf(leak.createdAt, status);
 
   const [viewerIndex, setViewerIndex] = useState(null);
@@ -56,12 +72,14 @@ function LeakCardCompact({
     status === "resolved" ? (leak.photo_after ?? null) : null,
   );
 
-  const emissions = fmtNum(leak.Emissions_t_CO2eq_year, 2);
-  const methane = fmtNum(leak.Total_Annual_Methane_Loss_m3_y, 0);
+  const emissions = fmtNum(leak.Emissions_t_CO2eq_year, 2, lang);
+  const methane = fmtNum(leak.Total_Annual_Methane_Loss_m3_y, 0, lang);
+  const beforeLabel = t("leakDetails.photo.before", { defaultValue: "Before" });
+  const afterLabel = t("leakDetails.photo.after", { defaultValue: "After" });
 
   const comparePairs = [
-    photoSrc ? { src: photoSrc, label: "До" } : null,
-    photoAfterSrc ? { src: photoAfterSrc, label: "После" } : null,
+    photoSrc ? { src: photoSrc, label: beforeLabel } : null,
+    photoAfterSrc ? { src: photoAfterSrc, label: afterLabel } : null,
   ].filter(Boolean);
 
   const showBook = status === "resolved" && comparePairs.length === 2;
@@ -76,32 +94,35 @@ function LeakCardCompact({
   const hasFooter = hasChips || hasPhoto;
 
   const viewerPhotos = showBook
-    ? comparePairs.map((p) => p.src)
+    ? comparePairs.map((pair) => pair.src)
     : [photoSrc || photoAfterSrc].filter(Boolean);
-  const viewerLabels = showBook ? comparePairs.map((p) => p.label) : [];
+  const viewerLabels = showBook ? comparePairs.map((pair) => pair.label) : [];
 
   return (
     <>
       <div className={s.wrapper} onClick={close}>
-        {/* ── Swipe hint: right → open details ── */}
         {goingRight && (
           <div className={s.hintRight}>
             <span className={s.hintIcon}>→</span>
-            <span className={s.hintText}>Открыть</span>
+            <span className={s.hintText}>
+              {t("cards.open", { defaultValue: "Open" })}
+            </span>
           </div>
         )}
 
-        {/* ── Swipe hint: left → status picker ── */}
         {goingLeft && (
           <div className={s.hintLeft}>
             <span className={s.hintIcon}>☰</span>
-            <span className={s.hintText}>Статус</span>
+            <span className={s.hintText}>
+              {t("cards.status", { defaultValue: "Status" })}
+            </span>
           </div>
         )}
 
-        {/* ── Card ── */}
         <div
-          className={`${s.card} ${selected ? s.selected : ""} ${goingLeft ? s.swipeLeft : ""} ${goingRight ? s.swipeRight : ""}`}
+          className={`${s.card} ${selected ? s.selected : ""} ${
+            goingLeft ? s.swipeLeft : ""
+          } ${goingRight ? s.swipeRight : ""}`}
           data-urgency={urgency}
           data-priority={leak.priority ?? "none"}
           data-selected={selected ? "true" : "false"}
@@ -111,19 +132,28 @@ function LeakCardCompact({
           }}
           {...handlers}
         >
-          {/* ── Head: selection + status + ID + time ── */}
           <div className={s.head} style={{ background: meta.bg }}>
             {onToggleSelect && (
               <button
                 type="button"
-                className={`${s.selectToggle} ${selected ? s.selectToggleActive : ""}`}
+                className={`${s.selectToggle} ${
+                  selected ? s.selectToggleActive : ""
+                }`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleSelect(leak.id);
                 }}
                 aria-pressed={selected}
-                aria-label={selected ? "Убрать из выбора" : "Выбрать утечку"}
-                title={selected ? "Убрать из выбора" : "Выбрать утечку"}
+                aria-label={t("cards.selectLeak", {
+                  defaultValue: selected
+                    ? "Remove from selection"
+                    : "Select leak",
+                })}
+                title={t("cards.selectLeak", {
+                  defaultValue: selected
+                    ? "Remove from selection"
+                    : "Select leak",
+                })}
               >
                 <span className={s.selectToggleMark}>
                   {selected ? "✓" : ""}
@@ -141,23 +171,25 @@ function LeakCardCompact({
             >
               {meta.label}
             </span>
-            {leak.priority && PRIORITY_META[leak.priority] && (
+            {priorityMeta && (
               <span
                 className={s.priorityPill}
                 style={{
-                  color: PRIORITY_META[leak.priority].color,
-                  background: PRIORITY_META[leak.priority].bg,
-                  borderColor: PRIORITY_META[leak.priority].border,
+                  color: priorityMeta.color,
+                  background: priorityMeta.bg,
+                  borderColor: priorityMeta.border,
                 }}
               >
-                {PRIORITY_META[leak.priority].short}
+                {priorityMeta.short}
               </span>
             )}
-            <span className={s.id}>№ Б-{leak.leak_id ?? leak.index}</span>
-            <span className={s.time}>{ago ?? leak.date}</span>
+            <span className={s.id}>
+              {lang === "ru" ? "№ Б-" : "№ B-"}
+              {leak.leak_id ?? leak.index}
+            </span>
+            <span className={s.time}>{ago ?? absoluteDate}</span>
           </div>
 
-          {/* ── Body ── */}
           <div className={s.body}>
             {(leak.object || leak.component) && (
               <div className={s.titleBlock}>
@@ -182,21 +214,29 @@ function LeakCardCompact({
             )}
           </div>
 
-          {/* ── Footer: chips + photo thumb ── */}
           {hasFooter && (
             <div className={s.foot}>
               <div className={s.chips}>
                 {nearbyDist != null && (
-                  <span className={s.chipNear}>📍 {nearbyDist} м</span>
+                  <span className={s.chipNear}>
+                    📌 {nearbyDist} {lang === "ru" ? "м" : "m"}
+                  </span>
                 )}
                 {leak.leak_speed != null && (
-                  <span className={s.chip}>{leak.leak_speed} л/мин</span>
+                  <span className={s.chip}>
+                    {leak.leak_speed} {lang === "ru" ? "л/мин" : "L/min"}
+                  </span>
                 )}
                 {methane != null && (
-                  <span className={s.chipCalc}>~{methane} м³/г</span>
+                  <span className={s.chipCalc}>
+                    ~{methane} {lang === "ru" ? "м3/г" : "m3/y"}
+                  </span>
                 )}
                 {emissions != null && (
-                  <span className={s.chipCalc}>~{emissions} т CO₂-экв/год</span>
+                  <span className={s.chipCalc}>
+                    ~{emissions}{" "}
+                    {lang === "ru" ? "т CO2-экв/год" : "t CO2-eq/year"}
+                  </span>
                 )}
               </div>
               {showBook ? (
@@ -210,7 +250,7 @@ function LeakCardCompact({
                   <div className={s.photoStackBack}>
                     <img
                       src={photoAfterSrc}
-                      alt="После"
+                      alt={afterLabel}
                       className={s.photoStackImg}
                       loading="lazy"
                       draggable={false}
@@ -219,12 +259,12 @@ function LeakCardCompact({
                   <div className={s.photoStackFront}>
                     <img
                       src={photoSrc}
-                      alt="До"
+                      alt={beforeLabel}
                       className={s.photoStackImg}
                       loading="lazy"
                       draggable={false}
                     />
-                    <span className={s.photoStackLabel}>До</span>
+                    <span className={s.photoStackLabel}>{beforeLabel}</span>
                   </div>
                 </div>
               ) : (

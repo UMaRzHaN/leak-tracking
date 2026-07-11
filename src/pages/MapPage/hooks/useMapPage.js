@@ -1,24 +1,38 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getDistanceMeters } from "@/utils/geoUtils";
-import { useActiveLocation } from "@/hooks/useActiveLocation";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import { useProjectData } from "@/app/project/ProjectContext";
+import { useActiveLocation } from "@/hooks/useActiveLocation";
+import { getDistanceMeters } from "@/utils/geoUtils";
 import { createOfflineMap, addMarkers } from "@/pages/MapPage/offlineMap";
-import { preloadUrls, buildTileUrls, buildViewportTileUrls } from "@/services/maps/tileCache";
 import { saveLeaksKML } from "@/pages/MapPage/kml";
 import { handleExport } from "@/pages/MapPage/handleExport";
+import {
+  preloadUrls,
+  buildTileUrls,
+  buildViewportTileUrls,
+} from "@/services/maps/tileCache";
 
 export function useMapPage({ leaks, coords }) {
+  const { lang } = useLanguage();
   const { activeProject } = useProjectData();
   const exportProjectFolder = activeProject?.folderName;
 
   const mapApiRef = useRef(null);
   const containerRef = useRef(null);
-  const mapRef = useRef({ map: null, markersLayer: null, locateMe: null, destroy: null });
+  const mapRef = useRef({
+    map: null,
+    markersLayer: null,
+    locateMe: null,
+    destroy: null,
+  });
   const fittedRef = useRef(false);
   const distanceCacheRef = useRef(new Map());
 
-  const { leaks: normalizedLeaks, locations, label: locationLabel } =
-    useActiveLocation(leaks);
+  const {
+    leaks: normalizedLeaks,
+    locations,
+    label: locationLabel,
+  } = useActiveLocation(leaks);
 
   const [mapCenter, setMapCenter] = useState(null);
   const [open, setOpen] = useState(false);
@@ -35,7 +49,9 @@ export function useMapPage({ leaks, coords }) {
   useEffect(() => {
     setEnabledLocations((prev) => {
       const next = {};
-      locations.forEach((loc) => { next[loc] = prev[loc] ?? true; });
+      locations.forEach((location) => {
+        next[location] = prev[location] ?? true;
+      });
       return next;
     });
   }, [locations]);
@@ -44,39 +60,39 @@ export function useMapPage({ leaks, coords }) {
     setEnabledLocations((prev) => ({ ...prev, [location]: !prev[location] }));
   }, []);
 
-  // Stable filtered list used for markers — does NOT depend on mapCenter.
-  // Markers don't need distance sort; separating this prevents full marker
-  // re-draw on every pan (moveend).
   const filteredLeaks = useMemo(
-    () => normalizedLeaks.filter((l) => enabledLocations[l._location]),
+    () => normalizedLeaks.filter((leak) => enabledLocations[leak._location]),
     [normalizedLeaks, enabledLocations],
   );
 
-  // Distance-sorted list for the detail panel only.
-  // Uses a cache keyed by leakId + rounded center (~111 m grid) to skip
-  // redundant haversine calls when the user pans back to the same area.
   const visibleLeaks = useMemo(() => {
     if (!mapCenter) return filteredLeaks;
 
-    const rLat = Math.round(mapCenter.lat * 1000) / 1000;
-    const rLng = Math.round(mapCenter.lng * 1000) / 1000;
+    const roundedLat = Math.round(mapCenter.lat * 1000) / 1000;
+    const roundedLng = Math.round(mapCenter.lng * 1000) / 1000;
     const cache = distanceCacheRef.current;
 
     return filteredLeaks
-      .map((l) => {
-        const key = `${l.id}_${rLat}_${rLng}`;
-        let dist = cache.get(key);
-        if (dist === undefined) {
-          dist = getDistanceMeters(mapCenter.lat, mapCenter.lng, l.lat, l.lng);
+      .map((leak) => {
+        const key = `${leak.id}_${roundedLat}_${roundedLng}`;
+        let distance = cache.get(key);
+
+        if (distance === undefined) {
+          distance = getDistanceMeters(
+            mapCenter.lat,
+            mapCenter.lng,
+            leak.lat,
+            leak.lng,
+          );
           if (cache.size > 2000) cache.delete(cache.keys().next().value);
-          cache.set(key, dist);
+          cache.set(key, distance);
         }
-        return { ...l, _distance: dist };
+
+        return { ...leak, _distance: distance };
       })
-      .sort((a, b) => a._distance - b._distance);
+      .sort((left, right) => left._distance - right._distance);
   }, [filteredLeaks, mapCenter]);
 
-  /* ── Map init ── */
   useEffect(() => {
     const container = containerRef.current;
     if (!container || mapRef.current.map) return;
@@ -86,16 +102,19 @@ export function useMapPage({ leaks, coords }) {
         ? [coords.lat, coords.lng]
         : [41.3111, 69.2797];
 
-    const { map, markersLayer, locateMe, destroy } = createOfflineMap(container, {
-      center: fallbackCenter,
-      zoom: 13,
-    });
+    const { map, markersLayer, locateMe, destroy } = createOfflineMap(
+      container,
+      {
+        center: fallbackCenter,
+        zoom: 13,
+      },
+    );
 
     mapRef.current = { map, markersLayer, locateMe, destroy };
 
     map.on("moveend", () => {
-      const c = map.getCenter();
-      setMapCenter({ lat: c.lat, lng: c.lng });
+      const center = map.getCenter();
+      setMapCenter({ lat: center.lat, lng: center.lng });
     });
 
     mapApiRef.current = {
@@ -109,12 +128,16 @@ export function useMapPage({ leaks, coords }) {
       mapRef.current.map?.off("moveend");
       destroy();
       fittedRef.current = false;
-      mapRef.current = { map: null, markersLayer: null, locateMe: null, destroy: null };
+      mapRef.current = {
+        map: null,
+        markersLayer: null,
+        locateMe: null,
+        destroy: null,
+      };
       mapApiRef.current = null;
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [coords?.lat, coords?.lng]);
 
-  /* ── Update markers + initial fitBounds ── */
   useEffect(() => {
     addMarkers(mapRef.current.markersLayer, filteredLeaks);
 
@@ -122,24 +145,28 @@ export function useMapPage({ leaks, coords }) {
     const map = mapRef.current.map;
     if (!map) return;
 
-    const valid = filteredLeaks.filter(
-      (l) => Number.isFinite(l.lat) && Number.isFinite(l.lng),
+    const validLeaks = filteredLeaks.filter(
+      (leak) => Number.isFinite(leak.lat) && Number.isFinite(leak.lng),
     );
-    if (valid.length === 0) return;
+    if (validLeaks.length === 0) return;
 
     fittedRef.current = true;
-    if (valid.length === 1) {
-      map.setView([valid[0].lat, valid[0].lng], 15, { animate: false });
-    } else {
-      map.fitBounds(valid.map((l) => [l.lat, l.lng]), {
-        padding: [40, 40],
-        maxZoom: 16,
+    if (validLeaks.length === 1) {
+      map.setView([validLeaks[0].lat, validLeaks[0].lng], 15, {
         animate: false,
       });
+    } else {
+      map.fitBounds(
+        validLeaks.map((leak) => [leak.lat, leak.lng]),
+        {
+          padding: [40, 40],
+          maxZoom: 16,
+          animate: false,
+        },
+      );
     }
   }, [filteredLeaks]);
 
-  /* ── Download tiles ── */
   const handleDownloadArea = useCallback(async () => {
     const map = mapRef.current.map;
     if (!map || downloading) return;
@@ -147,74 +174,102 @@ export function useMapPage({ leaks, coords }) {
     setDownloading(true);
     try {
       const urlSet = new Set();
-
-      const valid = visibleLeaks.filter(
-        (l) => Number.isFinite(l.lat) && Number.isFinite(l.lng),
+      const validLeaks = visibleLeaks.filter(
+        (leak) => Number.isFinite(leak.lat) && Number.isFinite(leak.lng),
       );
-      const n = 2 ** 14;
+      const zoomFactor = 2 ** 14;
       const seen = new Set();
-      const unique = valid.filter(({ lat, lng }) => {
-        const tx = Math.floor(((lng + 180) / 360) * n);
+      const uniqueLeaks = validLeaks.filter(({ lat, lng }) => {
+        const tileX = Math.floor(((lng + 180) / 360) * zoomFactor);
         const latRad = (lat * Math.PI) / 180;
-        const ty = Math.floor(
-          ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n,
+        const tileY = Math.floor(
+          ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) /
+            2) *
+            zoomFactor,
         );
-        const key = `${tx}:${ty}`;
+        const key = `${tileX}:${tileY}`;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
       });
 
-      for (const pt of unique) {
-        for (const url of buildTileUrls(pt.lat, pt.lng, 13, 13)) urlSet.add(url);
+      for (const point of uniqueLeaks) {
+        for (const url of buildTileUrls(point.lat, point.lng, 13, 13)) {
+          urlSet.add(url);
+        }
       }
 
-      const b = map.getBounds();
-      const bounds = {
-        north: b.getNorth(),
-        south: b.getSouth(),
-        east: b.getEast(),
-        west: b.getWest(),
-      };
-      const currentZoom = Math.floor(map.getZoom());
-      for (const url of buildViewportTileUrls(bounds, currentZoom, currentZoom)) {
+      const bounds = map.getBounds();
+      for (const url of buildViewportTileUrls(
+        {
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest(),
+        },
+        Math.floor(map.getZoom()),
+        Math.floor(map.getZoom()),
+      )) {
         urlSet.add(url);
       }
 
       const urls = [...urlSet];
-      if (urls.length === 0) { notify("error", "Нет тайлов для скачивания"); return; }
+      if (urls.length === 0) {
+        notify(
+          "error",
+          lang === "ru" ? "Нет тайлов для скачивания" : "No tiles to download",
+        );
+        return;
+      }
 
       setTileProgress({ done: 0, total: urls.length, status: null });
       await preloadUrls(urls, {
-        onProgress: (done, total) => setTileProgress({ done, total, status: null }),
+        onProgress: (done, total) =>
+          setTileProgress({ done, total, status: null }),
       });
-      setTileProgress({ done: urls.length, total: urls.length, status: "success" });
+      setTileProgress({
+        done: urls.length,
+        total: urls.length,
+        status: "success",
+      });
     } catch {
       setTileProgress({ done: 0, total: 0, status: "error" });
     } finally {
       setDownloading(false);
       setTimeout(() => setTileProgress(null), 2500);
     }
-  }, [downloading, visibleLeaks, notify]);
+  }, [downloading, visibleLeaks, notify, lang]);
 
-  /* ── KML export ── */
   const handleExportKML = useCallback(() => {
     handleExport({
       leaks: visibleLeaks,
-      saveFn: () => saveLeaksKML(visibleLeaks, activeProject?.type, exportProjectFolder),
+      saveFn: () =>
+        saveLeaksKML(
+          visibleLeaks,
+          activeProject?.type,
+          exportProjectFolder,
+          lang,
+        ),
       onSuccess: (result) =>
-        notify("success", result?.message || "KML-файл успешно экспортирован"),
+        notify(
+          "success",
+          result?.message ||
+            (lang === "ru"
+              ? "KML-файл успешно экспортирован"
+              : "KML file exported successfully"),
+        ),
       onError: (message) => notify("error", message),
+      lang,
     });
-  }, [visibleLeaks, activeProject, exportProjectFolder, notify]);
+  }, [visibleLeaks, activeProject?.type, exportProjectFolder, notify, lang]);
 
   const focusLeak = useCallback((leak) => {
     mapApiRef.current?.focus?.(leak);
   }, []);
 
   const locateMe = useCallback(() => {
-    mapRef.current.locateMe?.();
-  }, []);
+    mapRef.current.locateMe?.(coords);
+  }, [coords]);
 
   return {
     containerRef,

@@ -1,4 +1,6 @@
-import { useLeakDetailsSheet, MODE, TAB } from "./hooks/useLeakDetailsSheet";
+import { useLanguage } from "@/app/hooks/useLanguage";
+import { formatLeakDate } from "@/utils/locale";
+import { useLeakDetailsSheet, MODE } from "./hooks/useLeakDetailsSheet";
 import PhotoBlock from "./components/PhotoBlock";
 import ViewBlock from "./components/ViewBlock";
 import EditBlock from "./components/EditBlock";
@@ -8,6 +10,8 @@ import StatusPickerModal from "@/features/status/StatusPickerModal/StatusPickerM
 import s from "./LeakDetailsSheet.module.scss";
 
 export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
+  const { lang } = useLanguage();
+  const absoluteDate = formatLeakDate(leak.date, {}, lang);
   const {
     mode,
     activeTab,
@@ -49,34 +53,31 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
   return (
     <>
       <div className={s.overlay} onClick={handleClose}>
-        <div className={s.sheet} onClick={(e) => e.stopPropagation()}>
-          {/* ── Hero photo + identity overlay ── */}
+        <div className={s.sheet} onClick={(event) => event.stopPropagation()}>
           <PhotoBlock
             src={mode === MODE.EDIT ? null : src}
             status={status}
             identityNum={`№ ${leak.leak_id ?? leak.index ?? "—"}`}
-            identityTime={ago ?? leak.date ?? ""}
+            identityTime={ago ?? absoluteDate ?? ""}
             onStatusChange={handleStatusChange}
             onView={
               mode === MODE.VIEW && src ? () => setViewerOpen(true) : undefined
             }
           />
 
-          {/* ── Tab bar ── */}
           <div className={s.tabBar}>
-            {TABS.map((t) => (
+            {TABS.map((tab) => (
               <button
-                key={t.id}
-                className={`${s.tab} ${activeTab === t.id ? s.tabActive : ""}`}
-                onClick={() => setActiveTab(t.id)}
+                key={tab.id}
+                className={`${s.tab} ${activeTab === tab.id ? s.tabActive : ""}`}
+                onClick={() => setActiveTab(tab.id)}
                 type="button"
               >
-                {t.label}
+                {tab.label}
               </button>
             ))}
           </div>
 
-          {/* ── Tab content ── */}
           <div className={s.tabContent} key={`${mode}-${activeTab}`}>
             {mode === MODE.VIEW ? (
               <ViewBlock
@@ -106,7 +107,6 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
             )}
           </div>
 
-          {/* ── Action bar ── */}
           {mode === MODE.VIEW ? (
             <div className={s.actionBar}>
               {onDelete &&
@@ -116,7 +116,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
                     type="button"
                     onClick={confirmDelete}
                   >
-                    <span>Удалить?</span>
+                    <span>{lang === "ru" ? "Удалить?" : "Delete?"}</span>
                     <span className={s.btnDangerProgress} />
                   </button>
                 ) : (
@@ -124,16 +124,16 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
                     className={s.btnDanger}
                     type="button"
                     onClick={armDelete}
-                    title="Удалить утечку"
+                    title={lang === "ru" ? "Удалить утечку" : "Delete leak"}
                   >
                     🗑
                   </button>
                 ))}
               <button className={s.btnPrimary} onClick={handleEdit}>
-                Редактировать
+                {lang === "ru" ? "Редактировать" : "Edit"}
               </button>
               <button className={s.btnGhost} onClick={handleClose}>
-                Закрыть
+                {lang === "ru" ? "Закрыть" : "Close"}
               </button>
             </div>
           ) : (
@@ -163,7 +163,7 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
                 type="button"
                 onClick={handleCancel}
               >
-                Отмена
+                {lang === "ru" ? "Отмена" : "Cancel"}
               </button>
               <button
                 className={s.btnPrimary}
@@ -171,7 +171,13 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
                 disabled={saving}
                 onClick={handleSave}
               >
-                {saving ? "Сохранение…" : "Сохранить"}
+                {saving
+                  ? lang === "ru"
+                    ? "Сохранение..."
+                    : "Saving..."
+                  : lang === "ru"
+                    ? "Сохранить"
+                    : "Save"}
               </button>
             </div>
           )}

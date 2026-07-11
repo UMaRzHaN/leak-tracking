@@ -2,38 +2,61 @@ import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { isNative } from "@/utils/platform";
 import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
 
-// Colors in RRGGBB format (used in Google Earth icon URL parameter)
 const ICON_COLORS = [
-  "E53935", // Red
-  "43A047", // Green
-  "1E88E5", // Blue
-  "FB8C00", // Orange
-  "8E24AA", // Purple
-  "00ACC1", // Cyan
-  "FFB300", // Amber
-  "D81B60", // Pink
-  "6D4C41", // Brown
-  "00897B", // Teal
-  "3949AB", // Indigo
-  "7CB342", // Lime
+  "E53935",
+  "43A047",
+  "1E88E5",
+  "FB8C00",
+  "8E24AA",
+  "00ACC1",
+  "FFB300",
+  "D81B60",
+  "6D4C41",
+  "00897B",
+  "3949AB",
+  "7CB342",
 ];
 
-// Google Earth tornado icon (ID=1714), color embedded in URL
 function tornadoIconUrl(colorHex) {
   return `https://earth.google.com/earth/rpc/cc/icon?color=${colorHex}&amp;id=1714&amp;scale=4`;
 }
 
-// Prevent premature CDATA close if a field value contains "]]>"
 function cdata(value) {
   return String(value ?? "").replace(/]]>/g, "]]&gt;");
 }
 
-export function exportLeaksKML(leaks, project) {
+function getProjectLabels(project, lang) {
+  const isRu = lang === "ru";
+
+  if (project === "midstream") {
+    return {
+      mainLabel: isRu ? "УМГ" : "MGPA",
+      secondaryLabel: isRu ? "Станция" : "Station",
+    };
+  }
+
+  if (project === "upstream") {
+    return {
+      mainLabel: isRu ? "Подразделение" : "Subdivision",
+      secondaryLabel: isRu ? "Месторождение" : "Deposit",
+    };
+  }
+
+  return {
+    mainLabel: isRu ? "Район" : "District",
+    secondaryLabel: isRu ? "Населенный пункт" : "Locality",
+  };
+}
+
+export function exportLeaksKML(leaks, project, lang = "ru") {
   const config = PROJECT_LOCATION_CONFIG[project];
+  const labels = getProjectLabels(project, lang);
+  const notSpecified = lang === "ru" ? "Не указано" : "Not specified";
+  const noRate = lang === "ru" ? "Без скорости" : "No rate";
 
   const byField = leaks.reduce((acc, leak) => {
     if (leak.lat == null || leak.lng == null) return acc;
-    const field = leak[config.secondary] || "Не определено";
+    const field = leak[config.secondary] || notSpecified;
     if (!acc[field]) acc[field] = [];
     acc[field].push(leak);
     return acc;
@@ -61,20 +84,24 @@ export function exportLeaksKML(leaks, project) {
       const fieldLeaks = byField[field];
       const placemarks = fieldLeaks
         .map(
-          (l) => `
+          (leak) => `
       <Placemark>
-        <name>${cdata(l.leak_id)}</name>
+        <name>${cdata(leak.leak_id)}</name>
         <styleUrl>#style_${groupIndex}</styleUrl>
         <description>
           <![CDATA[
-            <b>${cdata(config.main_label)}:</b> ${cdata(l[config.main]) || "Не указан"}<br/>
-            <b>${cdata(config.label)}:</b> ${cdata(l[config.secondary]) || "Не указан"}<br/>
-            <b>Компонент:</b> ${cdata(l.component) || "Не указан"}<br/>
-            <b>Скорость:</b> ${l.leak_speed != null ? `${cdata(l.leak_speed)} л/мин` : "Без скорости"}
+            <b>${cdata(labels.mainLabel)}:</b> ${cdata(leak[config.main]) || notSpecified}<br/>
+            <b>${cdata(labels.secondaryLabel)}:</b> ${cdata(leak[config.secondary]) || notSpecified}<br/>
+            <b>${lang === "ru" ? "Компонент" : "Component"}:</b> ${cdata(leak.component) || notSpecified}<br/>
+            <b>${lang === "ru" ? "Скорость" : "Leak rate"}:</b> ${
+              leak.leak_speed != null
+                ? `${cdata(leak.leak_speed)} ${lang === "ru" ? "л/мин" : "L/min"}`
+                : noRate
+            }
           ]]>
         </description>
         <Point>
-          <coordinates>${l.lng},${l.lat},0</coordinates>
+          <coordinates>${leak.lng},${leak.lat},0</coordinates>
         </Point>
       </Placemark>`,
         )
@@ -91,16 +118,21 @@ export function exportLeaksKML(leaks, project) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>Leak Reports</name>
+    <name>${lang === "ru" ? "Отчет по утечкам" : "Leak Report"}</name>
     ${styles}
     ${folders}
   </Document>
 </kml>`;
 }
 
-export async function saveLeaksKML(leaks, project, projectFolderName = null) {
-  const kml = exportLeaksKML(leaks, project);
-  const fileName = `leaks_map.kml`;
+export async function saveLeaksKML(
+  leaks,
+  project,
+  projectFolderName = null,
+  lang = "ru",
+) {
+  const kml = exportLeaksKML(leaks, project, lang);
+  const fileName = "leaks_map.kml";
   const folderName = projectFolderName
     ? `${projectFolderName}/export/map`
     : "export/map";
@@ -117,8 +149,8 @@ export async function saveLeaksKML(leaks, project, projectFolderName = null) {
         path: `${folderName}/${fileName}`,
         directory: Directory.Documents,
       });
-    } catch (e) {
-      console.log("Old KML file not found:", e?.message);
+    } catch (error) {
+      console.log("Old KML file not found:", error?.message);
     }
 
     await Filesystem.writeFile({
@@ -132,7 +164,10 @@ export async function saveLeaksKML(leaks, project, projectFolderName = null) {
       ok: true,
       fileName,
       path: `${folderName}/${fileName}`,
-      message: `Сохранено в Документы/${folderName}/${fileName}`,
+      message:
+        lang === "ru"
+          ? `Сохранено в Документы/${folderName}/${fileName}`
+          : `Saved to Documents/${folderName}/${fileName}`,
     };
   }
 
@@ -142,7 +177,10 @@ export async function saveLeaksKML(leaks, project, projectFolderName = null) {
     ok: true,
     fileName,
     path: fileName,
-    message: "KML-файл успешно скачан",
+    message:
+      lang === "ru"
+        ? "KML-файл успешно скачан"
+        : "KML file downloaded successfully",
   };
 }
 
@@ -152,13 +190,13 @@ function downloadFileWeb(data, fileName) {
   });
 
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = fileName;
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
 
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
 
   URL.revokeObjectURL(url);
 }

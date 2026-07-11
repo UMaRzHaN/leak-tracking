@@ -1,8 +1,9 @@
 import { useMemo, useState, useRef } from "react";
 import { usePhotoSrc } from "@/hooks/usePhotoSrc";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
-import { PRIORITY_ORDER, PRIORITY_META } from "@/utils/priority";
+import { getPriorityMeta } from "@/utils/priority";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { formatLeakDate } from "@/utils/locale";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
 const ACTION_ICONS = {
@@ -58,6 +59,18 @@ function splitFields(fields) {
     coords: fields.filter((f) => f.coord),
     multi: fields.filter((f) => !f.numeric && f.multiline),
   };
+}
+
+function translateFieldLabel(key, fallbackLabel, t, lang) {
+  const explicitLabels = {
+    date: lang === "ru" ? "Дата" : "Date",
+    lat: lang === "ru" ? "Широта (X)" : "Latitude (X)",
+    lng: lang === "ru" ? "Долгота (Y)" : "Longitude (Y)",
+  };
+
+  return t(`addLeak.fields.${key}.label`, {
+    defaultValue: explicitLabels[key] ?? fallbackLabel,
+  });
 }
 
 function CommentInput({ onSubmit, localeTexts }) {
@@ -253,9 +266,9 @@ export default function ViewBlock({
       <div className={s.tabPane}>
         {/* ── Приоритет (только отображение) ── */}
         {data.priority &&
-          PRIORITY_META[data.priority] &&
+          getPriorityMeta(data.priority, t, lang) &&
           (() => {
-            const m = PRIORITY_META[data.priority];
+            const m = getPriorityMeta(data.priority, t, lang);
             return (
               <div className={s.priorityRow}>
                 <span className={s.priorityRowLabel}>
@@ -284,11 +297,13 @@ export default function ViewBlock({
                 key={key}
                 className={`${s.fieldRow} ${multiline ? s.fieldRowMulti : ""}`}
               >
-                <span className={s.fieldLabel}>{label}</span>
+                <span className={s.fieldLabel}>
+                  {translateFieldLabel(key, label, t, lang)}
+                </span>
                 <span
                   className={`${s.fieldValue} ${multiline ? s.fieldValueMulti : ""}`}
                 >
-                  {String(val)}
+                  {key === "date" ? formatLeakDate(val, {}, lang) : String(val)}
                 </span>
               </div>
             );
@@ -343,7 +358,9 @@ export default function ViewBlock({
                 : num.toLocaleString(lang === "ru" ? "ru-RU" : "en-US");
               return (
                 <div key={key} className={s.paramCard}>
-                  <span className={s.paramLabel}>{label}</span>
+                  <span className={s.paramLabel}>
+                    {translateFieldLabel(key, label, t, lang)}
+                  </span>
                   <span className={s.paramValue}>{display}</span>
                 </div>
               );
@@ -371,7 +388,9 @@ export default function ViewBlock({
             if (val == null || val === "") return null;
             return (
               <div key={key} className={s.fieldRow}>
-                <span className={s.fieldLabel}>{label}</span>
+                <span className={s.fieldLabel}>
+                  {translateFieldLabel(key, label, t, lang)}
+                </span>
                 <span className={s.fieldValue}>{Number(val).toFixed(6)}</span>
               </div>
             );

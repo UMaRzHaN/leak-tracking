@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import { smartFilter } from "./smartFilter";
 import s from "./Autocomplete.module.scss";
 
@@ -14,6 +15,7 @@ export default function Autocomplete({
   onComplete,
   hint,
 }) {
+  const { lang } = useLanguage();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value ?? "");
   const inputRef = useRef(null);
@@ -22,17 +24,13 @@ export default function Autocomplete({
     setQuery(value ?? "");
   }, [value]);
 
-  const filtered = useMemo(
-    () => smartFilter(query, options),
-    [options, query],
-  );
-
+  const filtered = useMemo(() => smartFilter(query, options), [options, query]);
   const showClear = query?.length > 0;
 
-  const select = (val) => {
-    // При выборе из подсказок используем полное значение
-    setQuery(val);
-    onChange(val);
+  const select = (selectedValue) => {
+    setQuery(selectedValue);
+    onChange(selectedValue);
+    onComplete?.(selectedValue);
     setOpen(false);
     inputRef.current?.focus();
   };
@@ -69,19 +67,15 @@ export default function Autocomplete({
           onFocus={() => setOpen(true)}
           onBlur={() => {
             requestAnimationFrame(() => {
-              if (
-                !document.activeElement?.closest(
-                  `.${s.autocompleteList}`,
-                )
-              ) {
+              if (!document.activeElement?.closest(`.${s.autocompleteList}`)) {
                 setOpen(false);
               }
             });
           }}
           onChange={(e) => {
-            const v = e.target.value;
-            setQuery(v);
-            onChange(v);
+            const nextValue = e.target.value;
+            setQuery(nextValue);
+            onChange(nextValue);
             setOpen(true);
           }}
         />
@@ -90,8 +84,8 @@ export default function Autocomplete({
           <button
             type="button"
             className={s.clearBtn}
-            tabIndex={-1}          // ⛔ не участвует в Enter-навигации
-            aria-label="Очистить"
+            tabIndex={-1}
+            aria-label={lang === "ru" ? "Очистить" : "Clear"}
             onMouseDown={(e) => e.preventDefault()}
             onClick={clear}
           >
@@ -102,14 +96,14 @@ export default function Autocomplete({
 
       {open && filtered.length > 0 && (
         <ul className={s.autocompleteList}>
-          {filtered.map((opt, i) => (
+          {filtered.map((option, index) => (
             <li
-              key={i}
+              key={`${option}-${index}`}
               className={s.autocompleteItem}
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => select(opt)}
+              onClick={() => select(option)}
             >
-              {opt}
+              {option}
             </li>
           ))}
         </ul>

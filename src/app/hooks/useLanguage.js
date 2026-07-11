@@ -1,11 +1,12 @@
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { getAppLanguage, getIntlLocale, getSpeechLocale } from "@/utils/locale";
 
 const LANGUAGE_STORAGE_KEY = "app_language";
 
 export function useLanguage() {
   const { i18n, t } = useTranslation();
-  const lang = i18n.resolvedLanguage || i18n.language || "ru";
+  const lang = getAppLanguage(i18n.resolvedLanguage || i18n.language || "ru");
 
   const toggleLanguage = useCallback(() => {
     const next = lang === "ru" ? "en" : "ru";
@@ -24,6 +25,8 @@ export function useLanguage() {
 
   return {
     lang,
+    intlLocale: getIntlLocale(lang),
+    speechLocale: getSpeechLocale(lang),
     toggleLanguage,
     setLanguage,
     t,

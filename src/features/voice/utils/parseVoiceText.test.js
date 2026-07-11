@@ -39,7 +39,9 @@ describe("parseVoiceText", () => {
     });
 
     it("extracts leak_speed with dot decimal", () => {
-      expect(parseVoiceText("скорость 3.14")).toMatchObject({ leak_speed: 3.14 });
+      expect(parseVoiceText("скорость 3.14")).toMatchObject({
+        leak_speed: 3.14,
+      });
     });
 
     it("extracts leak_speed as integer", () => {
@@ -51,11 +53,15 @@ describe("parseVoiceText", () => {
     });
 
     it("extracts positive temperature", () => {
-      expect(parseVoiceText("температура 20")).toMatchObject({ temperature: 20 });
+      expect(parseVoiceText("температура 20")).toMatchObject({
+        temperature: 20,
+      });
     });
 
     it("extracts negative temperature", () => {
-      expect(parseVoiceText("температура -15")).toMatchObject({ temperature: -15 });
+      expect(parseVoiceText("температура -15")).toMatchObject({
+        temperature: -15,
+      });
     });
 
     it("does not set number field when value is NaN (e.g. orphan dot)", () => {
@@ -73,6 +79,16 @@ describe("parseVoiceText", () => {
     it("extracts main (умг)", () => {
       const r = parseVoiceText("умг газпром");
       expect(r.main).toBe("Газпром");
+    });
+
+    it("extracts main from mgpa", () => {
+      const r = parseVoiceText("mgpa mgpa-1");
+      expect(r.main).toBe("Mgpa-1");
+    });
+
+    it("extracts main from full English MGPA phrase", () => {
+      const r = parseVoiceText("main gas pipeline administration mgpa-12");
+      expect(r.main).toBe("Mgpa-12");
     });
 
     it("extracts main (управление)", () => {
@@ -109,6 +125,15 @@ describe("parseVoiceText", () => {
       const r = parseVoiceText("адрес ул ленина 5");
       expect(r.last).toBeDefined();
     });
+
+    it("extracts English location fields", () => {
+      const r = parseVoiceText(
+        "subdivision ngdu-1 deposit tengiz location block 12",
+      );
+      expect(r.main).toBe("Ngdu-1");
+      expect(r.secondary).toBe("Tengiz");
+      expect(r.last).toBe("Block 12");
+    });
   });
 
   describe("объект и компонент", () => {
@@ -125,6 +150,12 @@ describe("parseVoiceText", () => {
     it("extracts category", () => {
       const r = parseVoiceText("категория первая");
       expect(r.category).toBe("Первая");
+    });
+
+    it("extracts English object and component", () => {
+      const r = parseVoiceText("object pipeline component ball valve");
+      expect(r.object).toBe("Pipeline");
+      expect(r.component).toBe("Ball Valve");
     });
   });
 
@@ -162,6 +193,15 @@ describe("parseVoiceText", () => {
     it("extracts materials_equipment (мтр ремонта — longer marker takes precedence)", () => {
       const r = parseVoiceText("мтр ремонта болты м16");
       expect(r.materials_equipment).toBe("Болты м16");
+    });
+
+    it("extracts English text fields", () => {
+      const r = parseVoiceText(
+        "leak description flange connection leak cause corrosion note visible from road",
+      );
+      expect(r.leak_description).toBe("Flange Connection");
+      expect(r.leak_cause).toBe("Corrosion");
+      expect(r.note).toBe("Visible From Road");
     });
   });
 
@@ -208,7 +248,7 @@ describe("parseVoiceText", () => {
 
     it("full realistic utterance parses correctly", () => {
       const r = parseVoiceText(
-        "бирка 123 скорость 5,2 давление 40 станция кс-5 объект кран шаровой"
+        "бирка 123 скорость 5,2 давление 40 станция кс-5 объект кран шаровой",
       );
       expect(r.leak_id).toBe("123");
       expect(r.leak_speed).toBeCloseTo(5.2);

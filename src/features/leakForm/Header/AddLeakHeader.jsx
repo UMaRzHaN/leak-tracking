@@ -17,10 +17,10 @@ export default function AddLeakHeader({
 
   return (
     <PageHeader
-      title={title ?? localeTexts?.pageTitle ?? "Новая утечка"}
+      title={title ?? localeTexts?.pageTitle ?? "New leak"}
       subtitle={
         hasSteps
-          ? `${localeTexts?.stepPrefix ?? "Шаг"} ${step} / ${totalSteps} · ${currentStep?.title ?? ""}`
+          ? `${localeTexts?.stepPrefix ?? "Step"} ${step} / ${totalSteps} · ${currentStep?.title ?? ""}`
           : undefined
       }
       badge={hasSteps ? `${step}/${totalSteps}` : undefined}
@@ -29,13 +29,11 @@ export default function AddLeakHeader({
         setPage(prevPage ?? "");
       }}
       right={
-        <>
-          <VoiceButton
-            startVoiceInput={startVoiceInput}
-            stopVoiceInput={stopVoiceInput}
-            dark
-          />
-        </>
+        <VoiceButton
+          startVoiceInput={startVoiceInput}
+          stopVoiceInput={stopVoiceInput}
+          dark
+        />
       }
     />
   );

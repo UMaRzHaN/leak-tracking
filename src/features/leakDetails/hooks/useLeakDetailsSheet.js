@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import { useEditablePhoto } from "@/hooks/useEditablePhoto";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
@@ -23,6 +24,7 @@ export const TAB = {
 };
 
 export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
+  const { lang } = useLanguage();
   const projectConfig = useProjectConfig();
   const { activeProject } = useProjectData();
   const { vars } = useProjectVars(
@@ -30,15 +32,16 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     projectConfig.vars,
   );
 
-  const EDIT_FIELDS = useMemo(() => {
+  const editFields = useMemo(() => {
     const fields = projectConfig.system.fields ?? [];
     return fields
-      .filter((f) => f.editable !== false)
-      .sort((a, b) => (a.editOrder ?? 999) - (b.editOrder ?? 999));
+      .filter((field) => field.editable !== false)
+      .sort(
+        (left, right) => (left.editOrder ?? 999) - (right.editOrder ?? 999),
+      );
   }, [projectConfig]);
 
   const { deletePhoto } = usePhotoStorage();
-
   const [mode, setMode] = useState(MODE.VIEW);
   const [activeTab, setActiveTab] = useState(TAB.INFO);
   const [localEdit, setLocalEdit] = useState({});
@@ -81,40 +84,50 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     excludePaths: leak.photo ? [leak.photo] : [],
   });
 
-  /* ── Reset on leak change ── */
   useEffect(() => {
     const key = `${leak.leak_id}:${leak.updatedAt}`;
     if (prevLeakIdRef.current !== key) {
-      const keys = EDIT_FIELDS.map((f) => f.key);
-      setLocalEdit(Object.fromEntries(keys.map((k) => [k, leak[k]])));
+      const keys = editFields.map((field) => field.key);
+      setLocalEdit(
+        Object.fromEntries(keys.map((keyName) => [keyName, leak[keyName]])),
+      );
       setMode(MODE.VIEW);
       setActiveTab(TAB.INFO);
       resetPhoto();
       resetPhotoAfter();
       prevLeakIdRef.current = key;
     }
-  }, [leak.leak_id, leak.updatedAt, EDIT_FIELDS, resetPhoto, resetPhotoAfter]);
+  }, [leak, editFields, resetPhoto, resetPhotoAfter]);
 
   const dirtyFields = useMemo(
-    () => EDIT_FIELDS.filter(({ key }) => localEdit[key] !== leak[key]),
-    [localEdit, leak, EDIT_FIELDS],
+    () => editFields.filter(({ key }) => localEdit[key] !== leak[key]),
+    [editFields, localEdit, leak],
   );
   const isDirty = isPhotoDirty || isAfterDirty || dirtyFields.length > 0;
 
-  /* ── Unload guard ── */
   useEffect(() => {
-    const handler = (e) => {
-      if (isDirty) {
-        e.preventDefault();
-        e.returnValue = "";
-      }
+    const handler = (event) => {
+      if (!isDirty) return;
+      event.preventDefault();
+      event.returnValue = "";
     };
+
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
 
   const handleClose = () => {
-    if (isDirty && !window.confirm("Изменения не сохранены. Закрыть?")) return;
+    if (
+      isDirty &&
+      !window.confirm(
+        lang === "ru"
+          ? "Изменения не сохранены. Закрыть?"
+          : "Changes are not saved. Close anyway?",
+      )
+    ) {
+      return;
+    }
+
     onClose();
   };
 
@@ -123,12 +136,22 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
 
     const lat = Number(localEdit.lat ?? leak.lat);
     const lng = Number(localEdit.lng ?? leak.lng);
+
     if (Number.isFinite(lat) && (lat < -90 || lat > 90)) {
-      alert(`Широта ${lat} вне допустимого диапазона [-90, 90]`);
+      alert(
+        lang === "ru"
+          ? `Широта ${lat} вне допустимого диапазона [-90, 90]`
+          : `Latitude ${lat} is outside the allowed range [-90, 90]`,
+      );
       return;
     }
+
     if (Number.isFinite(lng) && (lng < -180 || lng > 180)) {
-      alert(`Долгота ${lng} вне допустимого диапазона [-180, 180]`);
+      alert(
+        lang === "ru"
+          ? `Долгота ${lng} вне допустимого диапазона [-180, 180]`
+          : `Longitude ${lng} is outside the allowed range [-180, 180]`,
+      );
       return;
     }
 
@@ -138,7 +161,7 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
       const photoAfterPath = await savePhotoAfter();
 
       const numericKeys = new Set(
-        EDIT_FIELDS.filter((f) => f.numeric).map((f) => f.key),
+        editFields.filter((field) => field.numeric).map((field) => field.key),
       );
       const textPatch = Object.fromEntries(
         dirtyFields.map(({ key }) => [
@@ -170,17 +193,16 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
       const withPriority = speedChanged
         ? { ...withCalc, priority: priorityFromSpeed(localEdit[speedKey]) }
         : withCalc;
+
       onSave(withPriority);
     } catch {
-      alert("Ошибка сохранения");
+      alert(lang === "ru" ? "Ошибка сохранения" : "Save error");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleStatusChange = () => {
-    setStatusPickerOpen(true);
-  };
+  const handleStatusChange = () => setStatusPickerOpen(true);
 
   const handleStatusSelect = (newStatus) => {
     setStatusPickerOpen(false);
@@ -212,6 +234,7 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
         },
       ],
     });
+
     if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
   };
 
@@ -252,8 +275,8 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
   const handleCancel = () => {
     resetPhoto();
     resetPhotoAfter();
-    const keys = EDIT_FIELDS.map((f) => f.key);
-    setLocalEdit(Object.fromEntries(keys.map((k) => [k, leak[k]])));
+    const keys = editFields.map((field) => field.key);
+    setLocalEdit(Object.fromEntries(keys.map((key) => [key, leak[key]])));
     setMode(MODE.VIEW);
   };
 
@@ -283,22 +306,28 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
   }, [mode, disarmDelete]);
 
   const status = leak.status ?? "open";
-  const ago = timeAgo(leak.createdAt);
+  const ago = timeAgo(leak.createdAt, lang);
 
-  const TABS =
+  const tabs =
     mode === MODE.VIEW
       ? [
-          { id: TAB.INFO, label: "Инфо" },
-          { id: TAB.PHOTO, label: "Фото" },
-          { id: TAB.PARAMS, label: "Параметры" },
-          { id: TAB.COORDS, label: "Координаты" },
-          { id: TAB.LOG, label: "Лог" },
+          { id: TAB.INFO, label: lang === "ru" ? "Инфо" : "Info" },
+          { id: TAB.PHOTO, label: lang === "ru" ? "Фото" : "Photos" },
+          { id: TAB.PARAMS, label: lang === "ru" ? "Параметры" : "Parameters" },
+          {
+            id: TAB.COORDS,
+            label: lang === "ru" ? "Координаты" : "Coordinates",
+          },
+          { id: TAB.LOG, label: lang === "ru" ? "Лог" : "Log" },
         ]
       : [
-          { id: TAB.INFO, label: "Основное" },
-          { id: TAB.PHOTO, label: "Фото" },
-          { id: TAB.PARAMS, label: "Параметры" },
-          { id: TAB.COORDS, label: "Координаты" },
+          { id: TAB.INFO, label: lang === "ru" ? "Основное" : "Main" },
+          { id: TAB.PHOTO, label: lang === "ru" ? "Фото" : "Photos" },
+          { id: TAB.PARAMS, label: lang === "ru" ? "Параметры" : "Parameters" },
+          {
+            id: TAB.COORDS,
+            label: lang === "ru" ? "Координаты" : "Coordinates",
+          },
         ];
 
   return {
@@ -324,7 +353,7 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     projectConfig,
     status,
     ago,
-    TABS,
+    TABS: tabs,
     STATUS,
     MODE,
     handleSave,

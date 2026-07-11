@@ -122,9 +122,6 @@ function extractNumbers(query) {
 }
 
 /** Расширяет аббревиатуру до полного названия */
-function expandAbbreviation(word) {
-  return ABBREV_MAP[normalize(word)] ?? word;
-}
 
 /**
  * Проверяет, содержит ли нормализованный текст опции указанную аббревиатуру

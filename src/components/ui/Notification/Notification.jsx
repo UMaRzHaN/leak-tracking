@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "./Notification.module.scss";
 
 const ICONS = {
@@ -8,19 +9,17 @@ const ICONS = {
   info: "ℹ",
 };
 
-/**
- * Toast-уведомление с автоматическим скрытием.
- *
- * Props:
- *  notification  — { type: "success"|"warning"|"error"|"info", message: string } | null
- *  onClose       — function
- *  autoCloseMs   — number (default 3000), 0 = не закрывать автоматически
- */
-export default function Notification({ notification, onClose, autoCloseMs = 3000 }) {
+export default function Notification({
+  notification,
+  onClose,
+  autoCloseMs = 3000,
+}) {
+  const { lang } = useLanguage();
+
   useEffect(() => {
     if (!notification || autoCloseMs === 0) return;
-    const t = setTimeout(onClose, autoCloseMs);
-    return () => clearTimeout(t);
+    const timer = setTimeout(onClose, autoCloseMs);
+    return () => clearTimeout(timer);
   }, [notification, onClose, autoCloseMs]);
 
   if (!notification) return null;
@@ -31,7 +30,12 @@ export default function Notification({ notification, onClose, autoCloseMs = 3000
     <div className={`${s.notification} ${s[type]}`} role="alert">
       <span className={s.icon}>{ICONS[type] ?? "ℹ"}</span>
       <span className={s.message}>{message}</span>
-      <button className={s.close} type="button" onClick={onClose} aria-label="Закрыть">
+      <button
+        className={s.close}
+        type="button"
+        onClick={onClose}
+        aria-label={lang === "ru" ? "Закрыть" : "Close"}
+      >
         ✕
       </button>
     </div>

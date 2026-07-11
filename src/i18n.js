@@ -249,6 +249,14 @@ const resources = {
           daysAgo: "{{count}} дн назад",
         },
       },
+      voice: {
+        preview: {
+          title: "Распознано голосом",
+          empty: "Ничего не распознано",
+          cancel: "Отмена",
+          apply: "Применить",
+        },
+      },
       footer: {
         home: "Главная",
         add: "Добавить",
@@ -405,9 +413,9 @@ const resources = {
             hint: "Measured leak rate by instrument, L/min",
           },
           field: {
-            label: "UMG",
-            placeholder: "e.g. UMG-1",
-            hint: "Name of the gas transmission management unit",
+            label: "MGPA",
+            placeholder: "e.g. MGPA-1",
+            hint: "Main gas pipeline administration",
           },
           station: {
             label: "Compressor station",
@@ -636,6 +644,14 @@ const resources = {
           minutesAgo: "{{count}} min ago",
           hoursAgo: "{{count}} h ago",
           daysAgo: "{{count}} d ago",
+        },
+      },
+      voice: {
+        preview: {
+          title: "Recognized by voice",
+          empty: "Nothing was recognized",
+          cancel: "Cancel",
+          apply: "Apply",
         },
       },
       footer: {

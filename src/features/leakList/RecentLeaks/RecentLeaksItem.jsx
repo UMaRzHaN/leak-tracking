@@ -1,12 +1,15 @@
 import { memo } from "react";
 import { useSwipeCard } from "@/hooks/useSwipeCard";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import { timeAgo } from "@/utils/timeAgo";
+import { formatNumber } from "@/utils/locale";
 import s from "./RecentLeaks.module.scss";
 
 const leakLevel = (speed = 0) =>
   speed <= 25 ? "low" : speed >= 100 ? "high" : "medium";
 
 function RecentLeakItem({ leak, onOpenDetails, onRemove }) {
+  const { lang } = useLanguage();
   const { swipeState, swipeOffset, close, handlers } = useSwipeCard({
     leak,
     onOpenDetails,
@@ -20,7 +23,6 @@ function RecentLeakItem({ leak, onOpenDetails, onRemove }) {
         if (swipeOffset !== 0) close();
       }}
     >
-      {/* 👉 SWIPE LEFT → DETAILS */}
       {(swipeState === "right" || swipeOffset < -30) && (
         <div className={s.swipeHintRight}>
           <span>🗑</span>
@@ -28,7 +30,6 @@ function RecentLeakItem({ leak, onOpenDetails, onRemove }) {
         </div>
       )}
 
-      {/* 👉 SWIPE RIGHT → DELETE */}
       {(swipeState === "left" || swipeOffset > 30) && onRemove && (
         <div className={s.swipeHintLeft}>
           <span>ℹ️</span>
@@ -36,13 +37,12 @@ function RecentLeakItem({ leak, onOpenDetails, onRemove }) {
         </div>
       )}
 
-      {/* CARD */}
       <div
         className={`${s.card} ${
           swipeState === "right" || swipeOffset > 30
-            ? s.swipedLeft // удаление
+            ? s.swipedLeft
             : swipeState === "left" || swipeOffset < -30
-              ? s.swipedRight // подробнее
+              ? s.swipedRight
               : ""
         }`}
         style={{
@@ -78,14 +78,16 @@ function RecentLeakItem({ leak, onOpenDetails, onRemove }) {
 
             <span>
               {leak.Emissions_t_CO2eq_year
-                ? Math.ceil(leak.Emissions_t_CO2eq_year)
-                    .toLocaleString("ru-RU")
-                    .replace(/\s/g, ".") + " (т CO₂-экв/год)"
+                ? `${formatNumber(
+                    Math.ceil(leak.Emissions_t_CO2eq_year),
+                    {},
+                    lang,
+                  )} (т CO₂-экв/год)`
                 : `Скорость: ${leak.leak_speed}`}
             </span>
             <span>•</span>
 
-            <span>{timeAgo(leak.createdAt)}</span>
+            <span>{timeAgo(leak.createdAt, lang)}</span>
           </div>
         </div>
 

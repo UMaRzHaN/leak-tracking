@@ -215,6 +215,18 @@ async function restorePhotosFromZip(leaks, zip, savePhotoRef) {
   );
 }
 
+function rollbackImportedProject(project, removeProject) {
+  if (!project?.id) return;
+  localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(project.id));
+  if (typeof removeProject === "function") {
+    try {
+      removeProject(project.id);
+    } catch {
+      // ignore rollback cleanup errors
+    }
+  }
+}
+
 /**
  * Full project import orchestration — single entry point for both
  * first-run setup (ProjectSetupScreen) and in-app import (Settings).
@@ -233,6 +245,7 @@ async function restorePhotosFromZip(leaks, zip, savePhotoRef) {
 export async function importProjectZip(zipFile, ctx) {
   const {
     addProject,
+    removeProject,
     savePhotoRef,
     saveRef,
     activeProjectIdRef,
@@ -291,40 +304,45 @@ export async function importProjectZip(zipFile, ctx) {
   if (!newProject) throw new Error("Не удалось создать проект");
 
   // ── Wait for React state to propagate into refs ────────────────────────────
-  // useEffect hooks run after render; we need saveRef / savePhotoRef to reflect
-  // the new project before we touch storage.
-  for (let i = 0; i < 60; i++) {
-    if (activeProjectIdRef.current === newProject.id) break;
-    await delay(50);
-  }
-  if (activeProjectIdRef.current !== newProject.id) {
-    throw new Error("Таймаут переключения проекта");
-  }
-
-  // ── Wait for photo storage (IndexedDB) ────────────────────────────────────
-  if (photoReadyRef) {
+  try {
+    // useEffect hooks run after render; we need saveRef / savePhotoRef to reflect
+    // the new project before we touch storage.
     for (let i = 0; i < 60; i++) {
-      if (photoReadyRef.current) break;
+      if (activeProjectIdRef.current === newProject.id) break;
       await delay(50);
     }
-    if (!photoReadyRef.current) throw new Error("Хранилище фото не готово");
+    if (activeProjectIdRef.current !== newProject.id) {
+      throw new Error("Таймаут переключения проекта");
+    }
+
+    // ── Wait for photo storage (IndexedDB) ────────────────────────────────────
+    if (photoReadyRef) {
+      for (let i = 0; i < 60; i++) {
+        if (photoReadyRef.current) break;
+        await delay(50);
+      }
+      if (!photoReadyRef.current) throw new Error("Хранилище фото не готово");
+    }
+
+    // ── Restore calculation vars ───────────────────────────────────────────────
+    if (meta?.vars) {
+      localStorage.setItem(
+        STORAGE_KEYS.PROJECT_VARS(newProject.id),
+        JSON.stringify(meta.vars),
+      );
+    }
+
+    // ── Import photos and remap zip: paths ────────────────────────────────────
+    const restoredLeaks = await restorePhotosFromZip(leaks, zip, savePhotoRef);
+
+    // ── Save leaks into the new project ───────────────────────────────────────
+    await saveRef.current(restoredLeaks);
+
+    return { project: newProject, leakCount: restoredLeaks.length };
+  } catch (error) {
+    rollbackImportedProject(newProject, removeProject);
+    throw error;
   }
-
-  // ── Restore calculation vars ───────────────────────────────────────────────
-  if (meta?.vars) {
-    localStorage.setItem(
-      STORAGE_KEYS.PROJECT_VARS(newProject.id),
-      JSON.stringify(meta.vars),
-    );
-  }
-
-  // ── Import photos and remap zip: paths ────────────────────────────────────
-  const restoredLeaks = await restorePhotosFromZip(leaks, zip, savePhotoRef);
-
-  // ── Save leaks into the new project ───────────────────────────────────────
-  await saveRef.current(restoredLeaks);
-
-  return { project: newProject, leakCount: restoredLeaks.length };
 }
 
 /**
@@ -453,6 +471,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
 }
 
 export async function importBackupZip(zipFile, savePhoto) {
+  const JSZip = (await getJSZip()).default;
   const zip = await JSZip.loadAsync(zipFile);
 
   const jsonFile = zip.file("backup.json");

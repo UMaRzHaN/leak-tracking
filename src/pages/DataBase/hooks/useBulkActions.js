@@ -1,14 +1,29 @@
 import { useState, useCallback } from "react";
 import { STATUS } from "@/utils/status";
 import { hapticSuccess } from "@/utils/haptics";
+import { useLanguage } from "@/app/hooks/useLanguage";
 
-function pluralLeaks(n) {
+function pluralLeaks(n, lang) {
+  if (lang !== "ru") {
+    return n === 1 ? "record" : "records";
+  }
+
   if (n % 10 === 1 && n % 100 !== 11) return "запись";
-  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return "записи";
+  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) {
+    return "записи";
+  }
   return "записей";
 }
 
-export function useBulkActions({ data, setData, save, displayed, notify, deletePhoto = () => Promise.resolve() }) {
+export function useBulkActions({
+  data,
+  setData,
+  save,
+  displayed,
+  notify,
+  deletePhoto = () => Promise.resolve(),
+}) {
+  const { lang, t } = useLanguage();
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [resolveQueue, setResolveQueue] = useState([]);
   const [resolveTotal, setResolveTotal] = useState(0);
@@ -35,7 +50,7 @@ export function useBulkActions({ data, setData, save, displayed, notify, deleteP
   const selectDisplayed = useCallback(() => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      displayed.forEach((l) => next.add(l.id));
+      displayed.forEach((item) => next.add(item.id));
       return next;
     });
   }, [displayed]);
@@ -53,17 +68,25 @@ export function useBulkActions({ data, setData, save, displayed, notify, deleteP
 
       const affected = data.filter((item) => selectedIds.has(item.id));
       const orphanedPhotos = affected
-        .filter((item) => item.status === STATUS.RESOLVED && item.photo_after && item.photo)
+        .filter(
+          (item) =>
+            item.status === STATUS.RESOLVED && item.photo_after && item.photo,
+        )
         .map((item) => item.photo);
       const now = new Date().toISOString();
       const next = data.map((item) =>
         selectedIds.has(item.id)
           ? {
               ...item,
-              ...(item.status === STATUS.RESOLVED ? { photo: item.photo_after ?? item.photo, photo_after: null } : {}),
+              ...(item.status === STATUS.RESOLVED
+                ? { photo: item.photo_after ?? item.photo, photo_after: null }
+                : {}),
               status,
               updatedAt: Date.now(),
-              history: [...(item.history ?? []), { action: "status_changed", to: status, date: now }],
+              history: [
+                ...(item.history ?? []),
+                { action: "status_changed", to: status, date: now },
+              ],
             }
           : item,
       );
@@ -73,13 +96,36 @@ export function useBulkActions({ data, setData, save, displayed, notify, deleteP
         await save(next);
         hapticSuccess();
         for (const path of orphanedPhotos) deletePhoto(path).catch(() => {});
-        notify("success", `Статус изменён у ${affected.length} ${pluralLeaks(affected.length)}`);
+        notify(
+          "success",
+          t("database.bulk.statusChanged", {
+            defaultValue: `Status changed for ${affected.length} ${pluralLeaks(
+              affected.length,
+              lang,
+            )}`,
+          }),
+        );
         clearSelection();
       } catch (err) {
-        notify("error", "Ошибка сохранения: " + err.message);
+        notify(
+          "error",
+          t("database.bulk.saveError", {
+            defaultValue: `Save error: ${err.message}`,
+          }),
+        );
       }
     },
-    [clearSelection, data, deletePhoto, notify, save, selectedIds, setData],
+    [
+      clearSelection,
+      data,
+      deletePhoto,
+      lang,
+      notify,
+      save,
+      selectedIds,
+      setData,
+      t,
+    ],
   );
 
   const handleSequentialResolveConfirm = useCallback(
@@ -98,7 +144,10 @@ export function useBulkActions({ data, setData, save, displayed, notify, deleteP
               ...(materials_equipment != null && { materials_equipment }),
               ...(note != null && { note }),
               updatedAt: Date.now(),
-              history: [...(item.history ?? []), { action: "status_changed", to: STATUS.RESOLVED, date: now }],
+              history: [
+                ...(item.history ?? []),
+                { action: "status_changed", to: STATUS.RESOLVED, date: now },
+              ],
             }
           : item,
       );
@@ -108,23 +157,47 @@ export function useBulkActions({ data, setData, save, displayed, notify, deleteP
         await save(next);
         hapticSuccess();
       } catch (err) {
-        notify("error", "Ошибка сохранения: " + err.message);
+        notify(
+          "error",
+          t("database.bulk.saveError", {
+            defaultValue: `Save error: ${err.message}`,
+          }),
+        );
         return;
       }
 
       const remaining = resolveQueue.slice(1);
       setResolveQueue(remaining);
       if (remaining.length === 0) {
-        notify("success", `Устранено ${resolveTotal} ${pluralLeaks(resolveTotal)}`);
+        notify(
+          "success",
+          t("database.bulk.resolved", {
+            defaultValue: `Resolved ${resolveTotal} ${pluralLeaks(
+              resolveTotal,
+              lang,
+            )}`,
+          }),
+        );
         clearSelection();
         setResolveTotal(0);
       }
     },
-    [clearSelection, data, notify, resolveQueue, resolveTotal, save, setData],
+    [
+      clearSelection,
+      data,
+      lang,
+      notify,
+      resolveQueue,
+      resolveTotal,
+      save,
+      setData,
+      t,
+    ],
   );
 
   const selectedCount = selectedIds.size;
-  const allDisplayedSelected = displayed.length > 0 && displayed.every((l) => selectedIds.has(l.id));
+  const allDisplayedSelected =
+    displayed.length > 0 && displayed.every((item) => selectedIds.has(item.id));
 
   return {
     selectedIds,
@@ -138,6 +211,9 @@ export function useBulkActions({ data, setData, save, displayed, notify, deleteP
     resolveTotal,
     handleBulkStatusChange,
     handleSequentialResolveConfirm,
-    cancelBulkResolve: () => { setResolveQueue([]); setResolveTotal(0); },
+    cancelBulkResolve: () => {
+      setResolveQueue([]);
+      setResolveTotal(0);
+    },
   };
 }

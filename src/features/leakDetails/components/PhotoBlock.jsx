@@ -1,4 +1,3 @@
-import { STATUS_META } from "@/utils/status";
 import StatusBadge from "@/components/ui/StatusBadge/StatusBadge";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
@@ -11,7 +10,6 @@ export default function PhotoBlock({
   identityTime,
   onStatusChange,
 }) {
-  const meta = STATUS_META[status] ?? STATUS_META.open;
   const hasPhoto = Boolean(src);
   const clickable = onEdit ?? onView;
 

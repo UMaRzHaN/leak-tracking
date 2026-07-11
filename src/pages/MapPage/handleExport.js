@@ -1,19 +1,31 @@
-export async function handleExport({ leaks, saveFn, onSuccess, onError }) {
+export async function handleExport({
+  leaks,
+  saveFn,
+  onSuccess,
+  onError,
+  lang = "ru",
+}) {
   try {
     if (!leaks.length) {
-      onError?.("Нет данных для экспорта");
+      onError?.(
+        lang === "ru" ? "Нет данных для экспорта" : "No data to export",
+      );
       return;
     }
 
     if (!saveFn) {
-      onError?.("Экспорт недоступен для этого проекта");
+      onError?.(
+        lang === "ru"
+          ? "Экспорт недоступен для этого проекта"
+          : "Export is not available for this project",
+      );
       return;
     }
 
     const result = await saveFn();
     onSuccess?.(result);
-  } catch (e) {
-    console.error(e);
-    onError?.("Ошибка экспорта");
+  } catch (error) {
+    console.error(error);
+    onError?.(lang === "ru" ? "Ошибка экспорта" : "Export error");
   }
 }

@@ -35,41 +35,33 @@ export default function Settings({
       themeLabelDark: t("settings.themeLabelDark"),
       themeHintLight: t("settings.themeHintLight"),
       themeHintDark: t("settings.themeHintDark"),
-
       languageLabel: t("settings.languageLabel"),
       languageHintRu: t("settings.languageHintRu"),
       languageHintEn: t("settings.languageHintEn"),
       toggleButtonRu: t("settings.toggleButtonRu"),
       toggleButtonEn: t("settings.toggleButtonEn"),
-
       projects: t("settings.projects"),
       addProject: t("settings.addProject"),
       noProjects: t("settings.noProjects"),
-
       calculationParameters: t("settings.calculationParameters"),
       projectSettings: t("settings.projectSettings"),
       editParameters: t("settings.editParameters"),
-
       fieldsAndExcel: t("settings.fieldsAndExcel"),
       fieldsDescription: t("settings.fieldsDescription"),
       hiddenFields: t("settings.hiddenFields"),
       configureFields: t("settings.configureFields"),
-
       backup: t("settings.backup"),
       exportZip: t("settings.exportZip"),
       importZip: t("settings.importZip"),
       backupHint: t("settings.backupHint"),
-
       mapCache: t("settings.mapCache"),
       satelliteTiles: t("settings.satelliteTiles"),
       cacheEmpty: t("settings.cacheEmpty"),
       loading: t("settings.loading"),
       clearMapCache: t("settings.clearMapCache"),
-
       dangerZone: t("settings.dangerZone"),
       dangerHint: t("settings.dangerHint"),
       clearDatabase: t("settings.clearDatabase"),
-
       notifications: {
         parametersSaved: t("settings.notifications.parametersSaved"),
         changesCanceled: t("settings.notifications.changesCanceled"),
@@ -78,7 +70,6 @@ export default function Settings({
         allFieldsActive: t("settings.notifications.allFieldsActive"),
         hiddenFieldsCount: t("settings.notifications.hiddenFieldsCount"),
       },
-
       dialogs: {
         clearMapCache: t("settings.dialogs.clearMapCache"),
         clearDatabase: t("settings.dialogs.clearDatabase"),
@@ -86,16 +77,16 @@ export default function Settings({
     }),
     [t],
   );
+
   const [notification, setNotification] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [fieldsModalOpen, setFieldsModalOpen] = useState(false);
   const [addingProject, setAddingProject] = useState(false);
   const [cacheInfo, setCacheInfo] = useState(null);
 
-  const notify = useCallback(
-    (type, message) => setNotification({ type, message }),
-    [],
-  );
+  const notify = useCallback((type, message) => {
+    setNotification({ type, message });
+  }, []);
 
   useEffect(() => {
     getMapCacheInfo()
@@ -145,37 +136,43 @@ export default function Settings({
     (nextVars) => {
       setVars(nextVars);
       setModalOpen(false);
-      notify("success", "Параметры расчёта сохранены");
+      notify("success", localeTexts.notifications.parametersSaved);
     },
-    [setVars, notify],
+    [localeTexts.notifications.parametersSaved, notify, setVars],
   );
 
   const handleModalClose = useCallback(
     (discarded) => {
       setModalOpen(false);
-      if (discarded) notify("warning", "Изменения отменены");
+      if (discarded)
+        notify("warning", localeTexts.notifications.changesCanceled);
     },
-    [notify],
+    [localeTexts.notifications.changesCanceled, notify],
   );
 
   const handleClearMapCache = useCallback(async () => {
-    const ok = window.confirm(
-      "Очистить кэш карты? Тайлы будут перекачаны при следующем открытии карты.",
-    );
+    const ok = window.confirm(localeTexts.dialogs.clearMapCache);
     if (!ok) return;
     await clearMapCache();
     setCacheInfo({ count: 0, sizeMB: 0 });
-    notify("success", "Кэш карты очищен");
-  }, [notify]);
+    notify("success", localeTexts.notifications.cacheCleared);
+  }, [
+    localeTexts.dialogs.clearMapCache,
+    localeTexts.notifications.cacheCleared,
+    notify,
+  ]);
 
   const handleClearDatabase = useCallback(() => {
-    const ok = window.confirm(
-      "Удалить все записи об утечках?\n\nЭто действие необратимо. Фото-файлы сохранятся на устройстве.",
-    );
+    const ok = window.confirm(localeTexts.dialogs.clearDatabase);
     if (!ok) return;
     clearDatabase?.();
-    notify("warning", "База данных очищена");
-  }, [clearDatabase, notify]);
+    notify("warning", localeTexts.notifications.databaseCleared);
+  }, [
+    clearDatabase,
+    localeTexts.dialogs.clearDatabase,
+    localeTexts.notifications.databaseCleared,
+    notify,
+  ]);
 
   return (
     <div className={s.settings}>
@@ -190,7 +187,6 @@ export default function Settings({
       />
 
       <div className={s.content}>
-        {/* ── Список проектов ── */}
         <section className={s.section}>
           <div className={s.sectionHead}>
             <h2 className={s.sectionTitle}>{localeTexts.projects}</h2>
@@ -227,7 +223,7 @@ export default function Settings({
             <p className={s.empty}>{localeTexts.noProjects}</p>
           )}
         </section>
-        {/* ── Параметры расчёта ── */}
+
         {activeProject && (
           <section className={s.section}>
             <div className={s.sectionHead}>
@@ -250,7 +246,7 @@ export default function Settings({
             </div>
           </section>
         )}
-        {/* ── Внешний вид ── */}
+
         <section className={s.section}>
           <div className={s.sectionHead}>
             <h2 className={s.sectionTitle}>{localeTexts.appearanceTitle}</h2>
@@ -270,7 +266,7 @@ export default function Settings({
               className={`${s.themeToggle} ${dark ? s.themeToggleDark : ""}`}
               type="button"
               onClick={toggleTheme}
-              aria-label="Переключить тему"
+              aria-label={lang === "ru" ? "Переключить тему" : "Toggle theme"}
             >
               <span className={s.themeThumb} />
             </button>
@@ -288,7 +284,9 @@ export default function Settings({
               className={s.languageToggle}
               type="button"
               onClick={toggleLanguage}
-              aria-label="Переключить язык"
+              aria-label={
+                lang === "ru" ? "Переключить язык" : "Toggle language"
+              }
             >
               {lang === "ru"
                 ? localeTexts.toggleButtonEn
@@ -296,11 +294,11 @@ export default function Settings({
             </button>
           </div>
         </section>
-        {/* ── Суммарные потери по проекту ── */}
+
         {activeProject && data.length > 0 && (
           <EmissionsSummarySection data={data} />
         )}
-        {/* ── Настройка полей формы ── */}
+
         {activeProject && (
           <section className={s.section}>
             <div className={s.sectionHead}>
@@ -310,7 +308,12 @@ export default function Settings({
               <p className={s.description}>
                 {localeTexts.fieldsDescription}
                 {hiddenFields.size > 0 && (
-                  <strong> Скрыто: {hiddenFields.size}.</strong>
+                  <strong>
+                    {" "}
+                    {lang === "ru"
+                      ? `Скрыто: ${hiddenFields.size}.`
+                      : `Hidden: ${hiddenFields.size}.`}
+                  </strong>
                 )}
               </p>
               <button
@@ -323,7 +326,7 @@ export default function Settings({
             </div>
           </section>
         )}
-        {/* ── Резервное копирование ── */}
+
         {activeProject && (
           <section className={s.section}>
             <div className={s.sectionHead}>
@@ -358,7 +361,6 @@ export default function Settings({
           </section>
         )}
 
-        {/* ── Кэш карты ── */}
         <section className={s.section}>
           <div className={s.sectionHead}>
             <h2 className={s.sectionTitle}>{localeTexts.mapCache}</h2>
@@ -369,8 +371,10 @@ export default function Settings({
               {cacheInfo ? (
                 <span className={s.cacheSize}>
                   {cacheInfo.count > 0
-                    ? `${cacheInfo.count} тайлов · ~${cacheInfo.sizeMB} МБ`
-                    : `${localeTexts.cacheEmpty}`}
+                    ? lang === "ru"
+                      ? `${cacheInfo.count} тайлов · ~${cacheInfo.sizeMB} МБ`
+                      : `${cacheInfo.count} tiles · ~${cacheInfo.sizeMB} MB`
+                    : localeTexts.cacheEmpty}
                 </span>
               ) : (
                 <span className={s.cacheSize}>{localeTexts.loading}</span>
@@ -387,7 +391,6 @@ export default function Settings({
           </div>
         </section>
 
-        {/* ── Опасная зона ── */}
         {activeProject && (
           <section className={s.section}>
             <div className={s.sectionHead}>
@@ -439,8 +442,10 @@ export default function Settings({
             notify(
               "success",
               next.size > 0
-                ? `Скрыто полей: ${next.size}`
-                : `${localeTexts.allFieldsActive}`,
+                ? t("settings.notifications.hiddenFieldsCount", {
+                    count: next.size,
+                  })
+                : localeTexts.notifications.allFieldsActive,
             );
           }}
         />

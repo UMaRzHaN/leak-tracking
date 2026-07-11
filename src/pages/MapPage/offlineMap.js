@@ -3,8 +3,9 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import i18n from "@/i18n";
 import { getTileBlobUrl, cacheTile } from "@/services/maps/tileCache";
-import { STATUS_META } from "@/utils/status";
+import { STATUS_META, getStatusMeta } from "@/utils/status";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -15,7 +16,6 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-/* ── Cached tile layer ── */
 const CachedTileLayer = L.TileLayer.extend({
   createTile(coords, done) {
     const tile = document.createElement("img");
@@ -32,7 +32,6 @@ const CachedTileLayer = L.TileLayer.extend({
         return;
       }
 
-      // Один fetch — одновременно для отображения и кэширования
       try {
         const response = await fetch(url, { mode: "cors" });
         if (!response.ok) throw new Error("bad status");
@@ -48,7 +47,6 @@ const CachedTileLayer = L.TileLayer.extend({
         tile.onerror = (e) => done(e, tile);
         tile.src = objectUrl;
       } catch {
-        // fetch недоступен (оффлайн, CORS) — загружаем напрямую без кэша
         tile.crossOrigin = "anonymous";
         tile.onload = () => done(null, tile);
         tile.onerror = (e) => done(e, tile);
@@ -62,8 +60,6 @@ const CachedTileLayer = L.TileLayer.extend({
   _removeTile(key) {
     const tile = this._tiles[key];
     if (tile?.el?._blobUrl) {
-      // Avoid noisy "GET blob:... net::ERR_FILE_NOT_FOUND" during fast unmounts:
-      // clear the <img> src/handlers before revoking the object URL.
       try {
         tile.el.onload = null;
         tile.el.onerror = null;
@@ -83,11 +79,10 @@ const CachedTileLayer = L.TileLayer.extend({
   },
 });
 
-/* ── Marker icon with label tag ── */
 function leakIcon(leak) {
   const meta = STATUS_META[leak.status] ?? STATUS_META.open;
-  // escapeHtml prevents XSS from user-supplied leak_id / id
   const safeLabel = escapeHtml(leak.leak_id ?? `#${leak.id}`);
+
   return L.divIcon({
     className: "",
     html: `<div style="display:flex;align-items:center;gap:3px;white-space:nowrap;">
@@ -111,19 +106,26 @@ function leakIcon(leak) {
   });
 }
 
-/* ── Popup DOM element (XSS-safe via textContent) ── */
 function createPopupEl(leak) {
-  const meta = STATUS_META[leak.status] ?? STATUS_META.open;
+  const meta = getStatusMeta(leak.status);
   const el = document.createElement("div");
 
   const title = document.createElement("b");
-  title.textContent = `Бирка № ${leak.leak_id ?? ""}`;
+  title.textContent = i18n.t("map.popup.tag", {
+    defaultValue: `Tag No. ${leak.leak_id ?? ""}`,
+  });
   el.appendChild(title);
 
   const fields = [
-    ["Компонент", leak.component],
-    ["Описание утечки", leak.leak_description],
-    ["Статус", meta.label],
+    [
+      i18n.t("map.popup.component", { defaultValue: "Component" }),
+      leak.component,
+    ],
+    [
+      i18n.t("map.popup.description", { defaultValue: "Leak description" }),
+      leak.leak_description,
+    ],
+    [i18n.t("map.popup.status", { defaultValue: "Status" }), meta.label],
   ];
 
   for (const [label, value] of fields) {
@@ -136,7 +138,6 @@ function createPopupEl(leak) {
   return el;
 }
 
-/* ── Main factory ── */
 export function createOfflineMap(container, { center, zoom = 13 }) {
   const map = L.map(container, { zoomControl: true }).setView(center, zoom);
   let destroyed = false;
@@ -146,7 +147,7 @@ export function createOfflineMap(container, { center, zoom = 13 }) {
     {
       maxZoom: 19,
       attribution:
-        '© <a href="https://www.esri.com">Esri</a> — Esri, USGS, NOAA',
+        '© <a href="https://www.esri.com">Esri</a> - Esri, USGS, NOAA',
     },
   ).addTo(map);
 
@@ -172,7 +173,6 @@ export function createOfflineMap(container, { center, zoom = 13 }) {
     },
   }).addTo(map);
 
-  /* ── Геолокация пользователя ── */
   let userMarker = null;
   let watchId = null;
   let lastLatLng = null;
@@ -211,7 +211,9 @@ export function createOfflineMap(container, { center, zoom = 13 }) {
     if (!userMarker) {
       userMarker = L.marker(latlng, { icon: buildUserIcon(heading) })
         .addTo(map)
-        .bindPopup("Вы здесь");
+        .bindPopup(
+          i18n.t("map.popup.youAreHere", { defaultValue: "You are here" }),
+        );
     } else {
       userMarker.setLatLng(latlng).setIcon(buildUserIcon(heading));
     }
@@ -241,19 +243,29 @@ export function createOfflineMap(container, { center, zoom = 13 }) {
   document.addEventListener("visibilitychange", handleVisibilityChange);
   startGpsWatch();
 
-  const locateMe = () => {
+  const locateMe = (fallbackCoords = null) => {
     if (destroyed) return;
+
+    const fallbackLatLng =
+      Number.isFinite(fallbackCoords?.lat) &&
+      Number.isFinite(fallbackCoords?.lng)
+        ? [fallbackCoords.lat, fallbackCoords.lng]
+        : null;
+
     if (lastLatLng) {
       map.setView(lastLatLng, 17, { animate: true });
+    } else if (fallbackLatLng) {
+      lastLatLng = fallbackLatLng;
+      map.setView(fallbackLatLng, 17, { animate: true });
     } else if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           if (destroyed) return;
-          const latlng = [pos.coords.latitude, pos.coords.longitude];
-          lastLatLng = latlng;
-          map.setView(latlng, 17, { animate: true });
+          onGeoPosition(pos);
+          map.setView(lastLatLng, 17, { animate: true });
         },
         () => {},
+        geoOptions,
       );
     }
   };
@@ -279,7 +291,6 @@ export function createOfflineMap(container, { center, zoom = 13 }) {
     try {
       map.remove();
     } catch (err) {
-      // Leaflet sometimes throws during teardown if async tile loads race with unmount.
       console.warn("Leaflet map destroy error:", err);
     }
   };
@@ -287,7 +298,6 @@ export function createOfflineMap(container, { center, zoom = 13 }) {
   return { map, markersLayer, locateMe, destroy };
 }
 
-/* ── Обновление маркеров ── */
 export function addMarkers(markersLayer, leaks = []) {
   if (!markersLayer) return;
 

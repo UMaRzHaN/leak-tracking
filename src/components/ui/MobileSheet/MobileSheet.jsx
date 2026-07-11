@@ -1,13 +1,8 @@
 import { useMemo, useState } from "react";
-
-import s from "./MobileSheet.module.scss";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import Notification from "@/components/ui/Notification/Notification";
+import s from "./MobileSheet.module.scss";
 
-const NO_LABEL = "Не указано";
-
-/* =========================
-   COMPONENT
-========================= */
 export default function MobileSheet({
   open,
   leaks,
@@ -18,17 +13,18 @@ export default function MobileSheet({
   onClose,
   onSelect,
 }) {
+  const { lang } = useLanguage();
   const [query, setQuery] = useState("");
   const [notification, setNotification] = useState(null);
+  const noLabel = lang === "ru" ? "Не указано" : "Not specified";
 
-  /* =========================
-     SEARCH FILTER
-  ========================= */
   const filteredLeaks = useMemo(() => {
     if (!query) return leaks;
 
-    const q = query.toLowerCase();
-    return leaks.filter((l) => String(l.leak_id).toLowerCase().includes(q));
+    const normalizedQuery = query.toLowerCase();
+    return leaks.filter((leak) =>
+      String(leak.leak_id).toLowerCase().includes(normalizedQuery),
+    );
   }, [leaks, query]);
 
   return (
@@ -42,16 +38,17 @@ export default function MobileSheet({
         <div className={s.overlay} onClick={onClose}>
           <div
             className={`${s.sheet} ${s.open}`}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
           >
             <div className={s.sheetHandle} />
 
-            {/* ===== LOCATION FILTER ===== */}
             <div className={s.stationList}>
-              <div className={s.stationTitle}>Фильтр по: {locationLabel}</div>
+              <div className={s.stationTitle}>
+                {lang === "ru" ? "Фильтр по:" : "Filter by:"} {locationLabel}
+              </div>
 
-              {locations.map((loc) => {
-                const label = loc || NO_LABEL;
+              {locations.map((location) => {
+                const label = location || noLabel;
 
                 return (
                   <label key={label} className={s.stationItem}>
@@ -66,17 +63,19 @@ export default function MobileSheet({
               })}
             </div>
 
-            {/* ===== SEARCH ===== */}
             <div className={s.sheetSearch}>
               <input
                 type="search"
-                placeholder="Поиск по ID утечки…"
+                placeholder={
+                  lang === "ru"
+                    ? "Поиск по ID утечки..."
+                    : "Search by leak ID..."
+                }
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(event) => setQuery(event.target.value)}
               />
             </div>
 
-            {/* ===== LIST ===== */}
             <div className={s.sheetList}>
               {filteredLeaks.map((leak) => (
                 <div
@@ -85,7 +84,7 @@ export default function MobileSheet({
                   onClick={() => onSelect(leak)}
                 >
                   <span className={s.dot} />
-                  Бирка № {leak.leak_id}
+                  {lang === "ru" ? "Бирка №" : "Tag No."} {leak.leak_id}
                 </div>
               ))}
             </div>

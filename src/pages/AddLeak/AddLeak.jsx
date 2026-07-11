@@ -122,7 +122,8 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
           photoPath = await savePhoto(rawPhoto, row.leak_id ?? String(id));
         }
 
-        const { photo, ...cleanRow } = row;
+        const cleanRow = { ...row };
+        delete cleanRow.photo;
 
         const newRow = {
           id,

@@ -1,13 +1,23 @@
+import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "@/pages/MapPage/MapPage.module.scss";
 
-export default function MapControls({ onLocate, onOpenSheet, onDownload, downloading }) {
+export default function MapControls({
+  onLocate,
+  onOpenSheet,
+  onDownload,
+  downloading,
+}) {
+  const { t } = useLanguage();
+
   return (
     <div className={s.controls}>
       <button
         type="button"
         className={s.controlBtn}
         onClick={onLocate}
-        aria-label="Моё местоположение"
+        aria-label={t("map.controls.myLocation", {
+          defaultValue: "My location",
+        })}
       >
         <svg
           className={s.controlIcon}
@@ -30,7 +40,9 @@ export default function MapControls({ onLocate, onOpenSheet, onDownload, downloa
         type="button"
         className={s.controlBtn}
         onClick={onOpenSheet}
-        aria-label="Поиск утечек"
+        aria-label={t("map.controls.searchLeaks", {
+          defaultValue: "Search leaks",
+        })}
       >
         <svg
           className={s.controlIcon}
@@ -51,7 +63,9 @@ export default function MapControls({ onLocate, onOpenSheet, onDownload, downloa
         className={`${s.controlBtn} ${downloading ? s.controlBtnActive : ""}`}
         onClick={onDownload}
         disabled={downloading}
-        aria-label="Скачать карту текущей области"
+        aria-label={t("map.controls.downloadArea", {
+          defaultValue: "Download current area map",
+        })}
       >
         <svg
           className={s.controlIcon}

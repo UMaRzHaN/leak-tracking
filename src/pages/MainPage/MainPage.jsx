@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useMainPageActions } from "./hooks/useMainPageActions";
 import StatCard from "./components/StatCard";
 import EmptyState from "./components/EmptyState";
@@ -6,10 +7,9 @@ import LeakCardCompact from "@/features/leakList/LeakCardCompact/LeakCardCompact
 import StatusPickerModal from "@/features/status/StatusPickerModal/StatusPickerModal";
 import ResolveModal from "@/features/resolve/ResolveModal/ResolveModal";
 import Notification from "@/components/ui/Notification/Notification";
-import { STATUS, STATUS_META } from "@/utils/status";
-import s from "./MainPage.module.scss";
-import { useMemo } from "react";
+import { STATUS, STATUS_META, getStatusMeta } from "@/utils/status";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import s from "./MainPage.module.scss";
 
 export default function MainPage({ setPage, data, setData }) {
   const { t } = useLanguage();
@@ -43,22 +43,22 @@ export default function MainPage({ setPage, data, setData }) {
       open: t("mainPage.open"),
       inProgress: t("mainPage.inProgress"),
       resolved: t("mainPage.resolved"),
-
       recentRecords: t("mainPage.recentRecords", {
         count: RECENT_COUNT,
       }),
-
       showAll: (count) =>
         t("mainPage.showAll", {
           count,
         }),
-
       shownRecent: t("mainPage.shownRecent", {
         count: RECENT_COUNT,
       }),
     }),
-    [t, RECENT_COUNT],
+    [RECENT_COUNT, t],
   );
+
+  const activeStatusMeta =
+    statusFilter !== ALL ? getStatusMeta(statusFilter, t) : null;
 
   return (
     <div className={s.page}>
@@ -67,7 +67,6 @@ export default function MainPage({ setPage, data, setData }) {
         onClose={() => setNotification(null)}
       />
 
-      {/* ── Statistics (clickable filters) ── */}
       <section className={s.statsRow}>
         <StatCard
           value={stats.total}
@@ -99,14 +98,13 @@ export default function MainPage({ setPage, data, setData }) {
         />
       </section>
 
-      {/* ── Active filter label ── */}
-      {statusFilter !== ALL && (
+      {activeStatusMeta && (
         <div className={s.filterLabel}>
           <span
             className={s.filterDot}
             style={{ background: STATUS_META[statusFilter]?.color }}
           />
-          {STATUS_META[statusFilter]?.label} — {localeTexts.shownRecent}
+          {activeStatusMeta.label} - {localeTexts.shownRecent}
           <button
             className={s.filterClear}
             onClick={() => setStatusFilter(ALL)}
@@ -116,13 +114,12 @@ export default function MainPage({ setPage, data, setData }) {
         </div>
       )}
 
-      {/* ── Recent leaks ── */}
       <section className={s.section}>
         <div className={s.sectionHead}>
           <h2 className={s.sectionTitle}>
             {statusFilter === ALL
               ? localeTexts.recentRecords
-              : STATUS_META[statusFilter]?.label}
+              : activeStatusMeta?.label}
           </h2>
           {data.length > RECENT_COUNT && (
             <button className={s.viewAll} onClick={() => setPage("db")}>

@@ -1,21 +1,41 @@
 import { useState, useRef, useEffect } from "react";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import { PROJECT_META } from "@/configs/projects";
 import s from "./ProjectList.module.scss";
 
 const PROJECT_ICONS = { upstream: "⛽", midstream: "🔧", downstream: "🏭" };
 const DELETE_ARM_MS = 3000;
 
-export default function ProjectList({ projects, activeId, onSelect, onRename, onRemove }) {
+function projectTypeMeta(type, lang) {
+  const meta = PROJECT_META[type];
+  if (!meta) return { title: type };
+
+  const titles = {
+    upstream: lang === "ru" ? "Добыча" : "Upstream",
+    midstream: lang === "ru" ? "Транспортировка" : "Midstream",
+    downstream: lang === "ru" ? "Переработка" : "Downstream",
+  };
+
+  return { ...meta, title: titles[type] ?? meta.title };
+}
+
+export default function ProjectList({
+  projects,
+  activeId,
+  onSelect,
+  onRename,
+  onRemove,
+}) {
   return (
     <div className={s.list}>
-      {projects.map((p) => (
+      {projects.map((project) => (
         <ProjectItem
-          key={p.id}
-          project={p}
-          isActive={p.id === activeId}
-          onSelect={() => onSelect(p.id)}
-          onRename={(name) => onRename(p.id, name)}
-          onRemove={() => onRemove(p.id)}
+          key={project.id}
+          project={project}
+          isActive={project.id === activeId}
+          onSelect={() => onSelect(project.id)}
+          onRename={(name) => onRename(project.id, name)}
+          onRemove={() => onRemove(project.id)}
         />
       ))}
     </div>
@@ -23,11 +43,12 @@ export default function ProjectList({ projects, activeId, onSelect, onRename, on
 }
 
 function ProjectItem({ project, isActive, onSelect, onRename, onRemove }) {
-  const [editing, setEditing]         = useState(false);
-  const [nameInput, setNameInput]     = useState(project.name);
+  const { lang } = useLanguage();
+  const [editing, setEditing] = useState(false);
+  const [nameInput, setNameInput] = useState(project.name);
   const [deleteArmed, setDeleteArmed] = useState(false);
   const timerRef = useRef(null);
-  const meta = PROJECT_META[project.type];
+  const meta = projectTypeMeta(project.type, lang);
 
   const commitRename = () => {
     const trimmed = nameInput.trim();
@@ -46,8 +67,13 @@ function ProjectItem({ project, isActive, onSelect, onRename, onRemove }) {
     onRemove();
   };
 
-  // Disarm on edit mode enter or unmount
-  useEffect(() => { if (editing) { clearTimeout(timerRef.current); setDeleteArmed(false); } }, [editing]);
+  useEffect(() => {
+    if (editing) {
+      clearTimeout(timerRef.current);
+      setDeleteArmed(false);
+    }
+  }, [editing]);
+
   useEffect(() => () => clearTimeout(timerRef.current), []);
 
   return (
@@ -56,7 +82,15 @@ function ProjectItem({ project, isActive, onSelect, onRename, onRemove }) {
         className={s.selectArea}
         type="button"
         onClick={onSelect}
-        title={isActive ? "Активный проект" : "Выбрать проект"}
+        title={
+          isActive
+            ? lang === "ru"
+              ? "Активный проект"
+              : "Active project"
+            : lang === "ru"
+              ? "Выбрать проект"
+              : "Select project"
+        }
       >
         <span className={s.activeIndicator}>{isActive ? "●" : "○"}</span>
         <span className={s.icon}>{PROJECT_ICONS[project.type]}</span>
@@ -69,7 +103,10 @@ function ProjectItem({ project, isActive, onSelect, onRename, onRemove }) {
               onChange={(e) => setNameInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") commitRename();
-                if (e.key === "Escape") { setNameInput(project.name); setEditing(false); }
+                if (e.key === "Escape") {
+                  setNameInput(project.name);
+                  setEditing(false);
+                }
               }}
               onBlur={commitRename}
               onClick={(e) => e.stopPropagation()}
@@ -77,7 +114,7 @@ function ProjectItem({ project, isActive, onSelect, onRename, onRemove }) {
           ) : (
             <span className={s.name}>{project.name}</span>
           )}
-          <span className={s.type}>{meta?.title ?? project.type}</span>
+          <span className={s.type}>{meta.title ?? project.type}</span>
           <span className={s.folder}>📁 {project.folderName}</span>
         </div>
       </button>
@@ -87,8 +124,11 @@ function ProjectItem({ project, isActive, onSelect, onRename, onRemove }) {
           <button
             className={s.actionBtn}
             type="button"
-            title="Переименовать"
-            onClick={() => { setNameInput(project.name); setEditing(true); }}
+            title={lang === "ru" ? "Переименовать" : "Rename"}
+            onClick={() => {
+              setNameInput(project.name);
+              setEditing(true);
+            }}
           >
             ✏
           </button>
@@ -99,14 +139,16 @@ function ProjectItem({ project, isActive, onSelect, onRename, onRemove }) {
             type="button"
             onClick={confirmDelete}
           >
-            <span className={s.deleteBtnLabel}>Удалить?</span>
+            <span className={s.deleteBtnLabel}>
+              {lang === "ru" ? "Удалить?" : "Delete?"}
+            </span>
             <span className={s.deleteBtnProgress} />
           </button>
         ) : (
           <button
             className={`${s.actionBtn} ${s.deleteBtn}`}
             type="button"
-            title="Удалить проект"
+            title={lang === "ru" ? "Удалить проект" : "Delete project"}
             onClick={armDelete}
           >
             ✕

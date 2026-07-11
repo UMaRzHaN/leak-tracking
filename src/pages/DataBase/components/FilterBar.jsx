@@ -1,6 +1,7 @@
 import { useState, useEffect, memo } from "react";
-import { STATUS_META, STATUS_ORDER } from "@/utils/status";
-import { PRIORITY_ORDER, PRIORITY_META } from "@/utils/priority";
+import { STATUS_META, STATUS_ORDER, getStatusMeta } from "@/utils/status";
+import { PRIORITY_ORDER, getPriorityMeta } from "@/utils/priority";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "@/pages/DataBase/DataBase.module.scss";
 
 const ALL = "all";
@@ -17,7 +18,9 @@ function FilterBar({
   counts,
   hasGps,
 }) {
-  const hasActiveFilter = statusFilter !== ALL || priorityFilter !== ALL || nearbyFilter;
+  const { t, lang } = useLanguage();
+  const hasActiveFilter =
+    statusFilter !== ALL || priorityFilter !== ALL || nearbyFilter;
   const [open, setOpen] = useState(hasActiveFilter);
 
   useEffect(() => {
@@ -31,22 +34,40 @@ function FilterBar({
           <span className={s.searchIcon}>🔍</span>
           <input
             className={s.searchInput}
-            placeholder="Поиск по ID, объекту, описанию…"
+            placeholder={
+              lang === "ru"
+                ? "Поиск по ID, объекту, описанию..."
+                : "Search by ID, object, description..."
+            }
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(event) => setSearch(event.target.value)}
           />
           {search && (
-            <button className={s.clearSearch} onClick={() => setSearch("")} type="button">
+            <button
+              className={s.clearSearch}
+              onClick={() => setSearch("")}
+              type="button"
+            >
               ✕
             </button>
           )}
         </div>
         <button
-          className={`${s.filterToggleBtn} ${open ? s.filterToggleBtnOpen : ""}`}
-          onClick={(e) => { setOpen((v) => !v); if (open) e.currentTarget.blur(); }}
+          className={`${s.filterToggleBtn} ${
+            open ? s.filterToggleBtnOpen : ""
+          }`}
+          onClick={(event) => {
+            setOpen((value) => !value);
+            if (open) event.currentTarget.blur();
+          }}
           type="button"
         >
-          <svg width="18" height="18" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 16 16"
+            xmlns="http://www.w3.org/2000/svg"
+          >
             <path
               fillRule="evenodd"
               clipRule="evenodd"
@@ -61,54 +82,83 @@ function FilterBar({
       {open && (
         <div className={s.filtersPanel}>
           <div className={s.filterSection}>
-            <span className={s.filterLabel}>Статус</span>
+            <span className={s.filterLabel}>
+              {lang === "ru" ? "Статус" : "Status"}
+            </span>
             <div className={s.filters}>
               <FilterTab
                 id={ALL}
-                label="Все"
+                label={lang === "ru" ? "Все" : "All"}
                 count={counts.all}
                 active={statusFilter}
                 onSelect={setFilter}
               />
-              {STATUS_ORDER.map((st) => (
-                <FilterTab
-                  key={st}
-                  id={st}
-                  label={STATUS_META[st].short}
-                  count={counts[st]}
-                  active={statusFilter}
-                  onSelect={setFilter}
-                  color={STATUS_META[st].color}
-                  bg={STATUS_META[st].bg}
-                  border={STATUS_META[st].border}
-                />
-              ))}
+              {STATUS_ORDER.map((status) => {
+                const meta = getStatusMeta(status, t);
+
+                return (
+                  <FilterTab
+                    key={status}
+                    id={status}
+                    label={meta.short}
+                    count={counts[status]}
+                    active={statusFilter}
+                    onSelect={setFilter}
+                    color={STATUS_META[status].color}
+                    bg={STATUS_META[status].bg}
+                    border={STATUS_META[status].border}
+                  />
+                );
+              })}
             </div>
           </div>
 
           <div className={s.filterDivider} />
 
           <div className={s.filterSection}>
-            <span className={s.filterLabel}>Приоритет</span>
+            <span className={s.filterLabel}>
+              {lang === "ru" ? "Приоритет" : "Priority"}
+            </span>
             <div className={s.priorityFilters}>
               <button
-                className={`${s.priorityTab} ${priorityFilter === ALL ? s.priorityTabActive : ""}`}
-                style={priorityFilter === ALL ? { color: "var(--c-blue)", background: "var(--c-blue-dim)", borderColor: "var(--c-blue)" } : undefined}
+                className={`${s.priorityTab} ${
+                  priorityFilter === ALL ? s.priorityTabActive : ""
+                }`}
+                style={
+                  priorityFilter === ALL
+                    ? {
+                        color: "var(--c-blue)",
+                        background: "var(--c-blue-dim)",
+                        borderColor: "var(--c-blue)",
+                      }
+                    : undefined
+                }
                 onClick={() => setPriorityFilter(ALL)}
               >
-                Все
+                {lang === "ru" ? "Все" : "All"}
               </button>
-              {PRIORITY_ORDER.map((p) => {
-                const m = PRIORITY_META[p];
-                const isActive = priorityFilter === p;
+              {PRIORITY_ORDER.map((priority) => {
+                const meta = getPriorityMeta(priority, t, lang);
+                const isActive = priorityFilter === priority;
+
                 return (
                   <button
-                    key={p}
-                    className={`${s.priorityTab} ${isActive ? s.priorityTabActive : ""}`}
-                    style={isActive ? { borderColor: m.border, color: m.color, background: m.bg } : undefined}
-                    onClick={() => setPriorityFilter(isActive ? ALL : p)}
+                    key={priority}
+                    className={`${s.priorityTab} ${
+                      isActive ? s.priorityTabActive : ""
+                    }`}
+                    style={
+                      isActive
+                        ? {
+                            borderColor: meta.border,
+                            color: meta.color,
+                            background: meta.bg,
+                          }
+                        : undefined
+                    }
+                    onClick={() => setPriorityFilter(isActive ? ALL : priority)}
                   >
-                    {m.short}
+                    {meta.short}
                   </button>
                 );
               })}
@@ -119,18 +169,30 @@ function FilterBar({
             <>
               <div className={s.filterDivider} />
               <button
-                className={`${s.nearbyToggle} ${nearbyFilter ? s.nearbyToggleActive : ""}`}
-                onClick={() => setNearbyFilter((v) => !v)}
+                className={`${s.nearbyToggle} ${
+                  nearbyFilter ? s.nearbyToggleActive : ""
+                }`}
+                onClick={() => setNearbyFilter((value) => !value)}
               >
                 <span className={s.nearbyLeft}>
-                  <span className={s.nearbyIcon}>📍</span>
-                  <span className={s.nearbyLabel}>Рядом со мной</span>
-                  {counts["nearby"] > 0 && (
-                    <span className={s.nearbyCount}>{counts["nearby"]}</span>
+                  <span className={s.nearbyIcon}>📌</span>
+                  <span className={s.nearbyLabel}>
+                    {lang === "ru" ? "Рядом со мной" : "Near me"}
+                  </span>
+                  {counts.nearby > 0 && (
+                    <span className={s.nearbyCount}>{counts.nearby}</span>
                   )}
                 </span>
-                <span className={`${s.nearbyTrack} ${nearbyFilter ? s.nearbyTrackOn : ""}`}>
-                  <span className={`${s.nearbyThumb} ${nearbyFilter ? s.nearbyThumbOn : ""}`} />
+                <span
+                  className={`${s.nearbyTrack} ${
+                    nearbyFilter ? s.nearbyTrackOn : ""
+                  }`}
+                >
+                  <span
+                    className={`${s.nearbyThumb} ${
+                      nearbyFilter ? s.nearbyThumbOn : ""
+                    }`}
+                  />
                 </span>
               </button>
             </>
@@ -148,7 +210,11 @@ function FilterTab({ id, label, count, active, onSelect, color, bg, border }) {
   const activeStyle = isActive
     ? color
       ? { color, background: bg, borderColor: border }
-      : { color: "var(--c-blue)", background: "var(--c-blue-dim)", borderColor: "var(--c-blue)" }
+      : {
+          color: "var(--c-blue)",
+          background: "var(--c-blue-dim)",
+          borderColor: "var(--c-blue)",
+        }
     : undefined;
 
   return (

@@ -1,10 +1,13 @@
 import { isNative } from "@/utils/platform";
 import { SpeechRecognition } from "@capacitor-community/speech-recognition";
+import { getSpeechLocale } from "@/utils/locale";
 
 let webRecognition = null;
 let webBuffer = "";
 
-export const startSpeechRecognition = async () => {
+export const startSpeechRecognition = async (language) => {
+  const speechLocale = getSpeechLocale(language);
+
   if (isNative) {
     const perm = await SpeechRecognition.requestPermissions();
     if (perm.speechRecognition !== "granted") {
@@ -12,15 +15,14 @@ export const startSpeechRecognition = async () => {
     }
 
     const result = await SpeechRecognition.start({
-      language: "ru-RU",
+      language: speechLocale,
       popup: true,
     });
 
     return result?.matches?.[0] || null;
   }
 
-  const SpeechAPI =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
+  const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (!SpeechAPI) {
     throw new Error("Голосовой ввод не поддерживается");
@@ -28,14 +30,13 @@ export const startSpeechRecognition = async () => {
 
   webBuffer = "";
   webRecognition = new SpeechAPI();
-
-  webRecognition.lang = "ru-RU";
+  webRecognition.lang = speechLocale;
   webRecognition.interimResults = true;
   webRecognition.maxAlternatives = 1;
 
   webRecognition.onresult = (event) => {
     webBuffer = Array.from(event.results)
-      .map((r) => r[0].transcript)
+      .map((result) => result[0].transcript)
       .join(" ");
   };
 

@@ -1,11 +1,8 @@
 import { useRef } from "react";
-import {
-  startSpeechRecognition,
-  stopSpeechRecognition,
-} from "./speechService";
+import { startSpeechRecognition, stopSpeechRecognition } from "./speechService";
 import { isNative } from "@/utils/platform";
 
-export const useSpeechRecognition = (onResult) => {
+export const useSpeechRecognition = (onResult, language) => {
   const listeningRef = useRef(false);
 
   const start = async () => {
@@ -13,16 +10,14 @@ export const useSpeechRecognition = (onResult) => {
     listeningRef.current = true;
 
     try {
-      // 📱 Mobile → сразу возвращает результат
       if (isNative) {
-        const text = await startSpeechRecognition();
+        const text = await startSpeechRecognition(language);
         if (text) onResult(text);
         listeningRef.current = false;
         return;
       }
 
-      // 🌐 Web → просто запускаем распознавание
-      await startSpeechRecognition();
+      await startSpeechRecognition(language);
     } catch (e) {
       console.warn("Speech start failed", e);
       listeningRef.current = false;
@@ -30,7 +25,6 @@ export const useSpeechRecognition = (onResult) => {
   };
 
   const stop = async () => {
-    // 📱 Mobile → stop не используется
     if (isNative) return;
     if (!listeningRef.current) return;
 

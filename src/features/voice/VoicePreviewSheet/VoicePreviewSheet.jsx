@@ -1,45 +1,56 @@
 import { useState, useMemo, useEffect } from "react";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "./VoicePreviewSheet.module.scss";
 
-// Fallback labels for voice-parseable keys that may not exist in every project's steps
-// (e.g. leak_cause is midstream-only, category is absent from midstream)
 const VOICE_KEY_LABELS = {
-  leak_cause: "Причина утечки",
-  category: "Категория",
+  leak_cause: {
+    ru: "Причина утечки",
+    en: "Leak cause",
+  },
+  category: {
+    ru: "Категория",
+    en: "Category",
+  },
 };
 
-/**
- * Bottom sheet showing voice-parsed fields before they're applied to the form.
- * User can toggle individual fields on/off, then confirm or dismiss.
- *
- * @param {object}   pending   — parsed key→value map (null = hidden)
- * @param {object[]} steps     — all form step configs (for label lookup)
- * @param {Function} onConfirm — called with the selected subset of pending
- * @param {Function} onDismiss — called when user cancels
- */
-export default function VoicePreviewSheet({ pending, steps, onConfirm, onDismiss }) {
+function getFieldLabel(key, fallbackLabel, lang, t) {
+  return t(`addLeak.fields.${key}.label`, {
+    defaultValue: VOICE_KEY_LABELS[key]?.[lang] ?? fallbackLabel ?? key,
+  });
+}
+
+export default function VoicePreviewSheet({
+  pending,
+  steps,
+  onConfirm,
+  onDismiss,
+}) {
+  const { lang, t } = useLanguage();
+
   const labelMap = useMemo(() => {
     const map = {};
     steps?.forEach((step) =>
-      step.fields?.forEach((f) => {
-        map[f.key] = f.label;
+      step.fields?.forEach((field) => {
+        map[field.key] = getFieldLabel(field.key, field.label, lang, t);
       }),
     );
     return map;
-  }, [steps]);
+  }, [lang, steps, t]);
 
   const entries = useMemo(
     () =>
       Object.entries(pending ?? {}).filter(
-        ([, v]) => v !== undefined && v !== null && v !== "",
+        ([, value]) => value !== undefined && value !== null && value !== "",
       ),
     [pending],
   );
 
-  const [selected, setSelected] = useState(() => new Set(entries.map(([k]) => k)));
+  const [selected, setSelected] = useState(
+    () => new Set(entries.map(([key]) => key)),
+  );
 
   useEffect(() => {
-    setSelected(new Set(entries.map(([k]) => k)));
+    setSelected(new Set(entries.map(([key]) => key)));
   }, [entries]);
 
   if (!pending) return null;
@@ -55,25 +66,29 @@ export default function VoicePreviewSheet({ pending, steps, onConfirm, onDismiss
 
   const handleConfirm = () => {
     const confirmed = {};
-    entries.forEach(([k, v]) => {
-      if (selected.has(k)) confirmed[k] = v;
+    entries.forEach(([key, value]) => {
+      if (selected.has(key)) confirmed[key] = value;
     });
     onConfirm(confirmed);
-  };
-
-  const formatValue = (v) => {
-    if (typeof v === "number") return String(v);
-    return String(v);
   };
 
   return (
     <div className={s.overlay} onClick={onDismiss}>
       <div className={s.sheet} onClick={(e) => e.stopPropagation()}>
         <div className={s.handle} />
-        <p className={s.title}>Распознано голосом 🎤</p>
+        <p className={s.title}>
+          {t("voice.preview.title", {
+            defaultValue: "Recognized by voice",
+          })}{" "}
+          🎤
+        </p>
 
         {entries.length === 0 ? (
-          <p className={s.empty}>Ничего не распознано</p>
+          <p className={s.empty}>
+            {t("voice.preview.empty", {
+              defaultValue: "Nothing was recognized",
+            })}
+          </p>
         ) : (
           <div className={s.list}>
             {entries.map(([key, value]) => (
@@ -84,8 +99,10 @@ export default function VoicePreviewSheet({ pending, steps, onConfirm, onDismiss
                 onClick={() => toggle(key)}
               >
                 <span className={s.check}>{selected.has(key) ? "✓" : ""}</span>
-                <span className={s.fieldLabel}>{labelMap[key] ?? VOICE_KEY_LABELS[key] ?? key}</span>
-                <span className={s.value}>{formatValue(value)}</span>
+                <span className={s.fieldLabel}>
+                  {labelMap[key] ?? getFieldLabel(key, null, lang, t)}
+                </span>
+                <span className={s.value}>{String(value)}</span>
               </button>
             ))}
           </div>
@@ -93,7 +110,7 @@ export default function VoicePreviewSheet({ pending, steps, onConfirm, onDismiss
 
         <div className={s.actions}>
           <button className={s.cancel} type="button" onClick={onDismiss}>
-            Отменить
+            {t("voice.preview.cancel", { defaultValue: "Cancel" })}
           </button>
           <button
             className={s.confirm}
@@ -101,7 +118,8 @@ export default function VoicePreviewSheet({ pending, steps, onConfirm, onDismiss
             onClick={handleConfirm}
             disabled={selected.size === 0}
           >
-            Применить ({selected.size})
+            {t("voice.preview.apply", { defaultValue: "Apply" })} (
+            {selected.size})
           </button>
         </div>
       </div>

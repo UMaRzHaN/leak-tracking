@@ -35,13 +35,17 @@ function translateStep(step, t) {
     fields: step.fields.map((field) => ({
       ...field,
       label: t(`addLeak.fields.${field.key}.label`, {
-        defaultValue: field.label,
+        defaultValue: field.key === "field" ? "MGPA" : field.label,
       }),
       placeholder: t(`addLeak.fields.${field.key}.placeholder`, {
-        defaultValue: field.placeholder ?? "",
+        defaultValue:
+          field.key === "field" ? "e.g. MGPA-1" : (field.placeholder ?? ""),
       }),
       hint: t(`addLeak.fields.${field.key}.hint`, {
-        defaultValue: field.hint ?? "",
+        defaultValue:
+          field.key === "field"
+            ? "Main gas pipeline administration"
+            : (field.hint ?? ""),
       }),
     })),
   };
@@ -253,7 +257,7 @@ export default function LeakForm({
       }
     }
     return result;
-  }, [lastItem, STEPS, step, COPY_KEYS, form]);
+  }, [lastItem, STEPS, step, form]);
 
   const hasStepData = translatedSteps[step - 1]?.fields?.some(
     ({ key }) => form[key],

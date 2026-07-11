@@ -4,6 +4,8 @@ import { LeakRepository } from "@/repositories/LeakRepository";
 
 export function useProjectData() {
   const { activeProject } = useProjectDataCtx();
+  const activeProjectId = activeProject?.id ?? null;
+  const activeProjectFolderName = activeProject?.folderName ?? null;
 
   const [data, setData] = useState([]);
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -14,7 +16,7 @@ export function useProjectData() {
   useEffect(() => {
     setDataLoaded(false);
 
-    if (!activeProject) {
+    if (!activeProjectId || !activeProjectFolderName) {
       setData([]);
       setDataLoaded(true);
       setDataProjectId(null);
@@ -24,43 +26,48 @@ export function useProjectData() {
     let cancelled = false;
 
     LeakRepository.getAll({
-      projectId: activeProject.id,
-      folderName: activeProject.folderName,
+      projectId: activeProjectId,
+      folderName: activeProjectFolderName,
     }).then((result) => {
       if (!cancelled) {
         setData(result);
         setDataLoaded(true);
-        setDataProjectId(activeProject.id);
+        setDataProjectId(activeProjectId);
       }
     });
 
     return () => {
       cancelled = true;
     };
-  }, [activeProject?.id, activeProject?.folderName]);
+  }, [activeProjectFolderName, activeProjectId]);
 
   const save = useCallback(
     (next) => {
       setData(() => next);
-      if (!activeProject) return Promise.resolve();
-      const projectId = activeProject.id;
-      const folderName = activeProject.folderName;
-      saveQueue.current = saveQueue.current.then(() =>
-        LeakRepository.saveAll(next, { projectId, folderName }),
-      );
-      return saveQueue.current;
+      if (!activeProjectId || !activeProjectFolderName)
+        return Promise.resolve();
+      const nextSave = saveQueue.current
+        .catch(() => undefined)
+        .then(() =>
+          LeakRepository.saveAll(next, {
+            projectId: activeProjectId,
+            folderName: activeProjectFolderName,
+          }),
+        );
+      saveQueue.current = nextSave;
+      return nextSave;
     },
-    [activeProject?.id, activeProject?.folderName],
+    [activeProjectFolderName, activeProjectId],
   );
 
   const clear = useCallback(async () => {
     setData([]);
-    if (!activeProject) return;
+    if (!activeProjectId || !activeProjectFolderName) return;
     await LeakRepository.clear({
-      projectId: activeProject.id,
-      folderName: activeProject.folderName,
+      projectId: activeProjectId,
+      folderName: activeProjectFolderName,
     });
-  }, [activeProject?.id, activeProject?.folderName]);
+  }, [activeProjectFolderName, activeProjectId]);
 
   return { data, setData, save, clear, dataLoaded, dataProjectId };
 }

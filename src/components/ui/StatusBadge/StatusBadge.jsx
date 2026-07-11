@@ -1,14 +1,20 @@
 import { getStatusMeta, STATUS } from "@/utils/status";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "./StatusBadge.module.scss";
 
 /**
  * Props:
- *  status   — "open" | "in_progress" | "resolved"
- *  onClick  — optional, makes it a clickable cycle button
- *  size     — "sm" | "md" (default "md")
+ *  status   - "open" | "in_progress" | "resolved"
+ *  onClick  - optional, makes it a clickable cycle button
+ *  size     - "sm" | "md" (default "md")
  */
-export default function StatusBadge({ status = STATUS.OPEN, onClick, size = "md" }) {
-  const meta = getStatusMeta(status);
+export default function StatusBadge({
+  status = STATUS.OPEN,
+  onClick,
+  size = "md",
+}) {
+  const { t } = useLanguage();
+  const meta = getStatusMeta(status, t);
 
   const style = {
     color: meta.color,
@@ -21,8 +27,13 @@ export default function StatusBadge({ status = STATUS.OPEN, onClick, size = "md"
       <button
         className={`${s.badge} ${s[size]} ${s.clickable}`}
         style={style}
-        onClick={(e) => { e.stopPropagation(); onClick(); }}
-        title="Нажмите, чтобы изменить статус"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick();
+        }}
+        title={t("statusActions.fallback", {
+          defaultValue: "Change status",
+        })}
         type="button"
       >
         {meta.label}
