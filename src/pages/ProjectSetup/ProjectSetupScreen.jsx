@@ -73,7 +73,8 @@ export default function ProjectSetupScreen({ onComplete, onImportZip }) {
       // Уровень 2: детектирование по полям записей (peek.detectedType)
       // Уровень 3: ключевые слова в имени файла
       try {
-        const { peekBackupZip } = await import("@/pages/Settings/backup");
+        const { peekBackupZip } =
+          await import("@/services/projectBackupService");
         const peek = await peekBackupZip(file);
         const metaProject = peek.meta?.project;
 

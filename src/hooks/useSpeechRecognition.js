@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { startSpeechRecognition, stopSpeechRecognition } from "./speechService";
+import { logger } from "@/utils/logger";
 import { isNative } from "@/utils/platform";
 
 export const useSpeechRecognition = (onResult, language) => {
@@ -19,7 +20,7 @@ export const useSpeechRecognition = (onResult, language) => {
 
       await startSpeechRecognition(language);
     } catch (e) {
-      console.warn("Speech start failed", e);
+      logger.warn("Speech start failed", e);
       listeningRef.current = false;
     }
   };
@@ -32,7 +33,7 @@ export const useSpeechRecognition = (onResult, language) => {
       const text = await stopSpeechRecognition();
       if (text) onResult(text);
     } catch (e) {
-      console.warn("Speech stop failed", e);
+      logger.warn("Speech stop failed", e);
     } finally {
       listeningRef.current = false;
     }

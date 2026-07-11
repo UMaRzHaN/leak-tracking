@@ -55,8 +55,8 @@ export function useDataBaseExport({ displayed, notify }) {
 
   const handleExport = useCallback(async () => {
     try {
-      const { exportToExcelZip } = await import("@/pages/DataBase/excel");
-      const result = await exportToExcelZip(
+      const { exportToExcelFile } = await import("@/pages/DataBase/excel");
+      const result = await exportToExcelFile(
         displayed,
         prepareRows(displayed, lang, t),
         excelHeaders,

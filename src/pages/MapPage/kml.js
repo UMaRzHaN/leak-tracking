@@ -1,6 +1,7 @@
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { isNative } from "@/utils/platform";
 import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
+import { logger } from "@/utils/logger";
 
 const ICON_COLORS = [
   "E53935",
@@ -150,7 +151,7 @@ export async function saveLeaksKML(
         directory: Directory.Documents,
       });
     } catch (error) {
-      console.log("Old KML file not found:", error?.message);
+      logger.log("Old KML file not found:", error?.message);
     }
 
     await Filesystem.writeFile({

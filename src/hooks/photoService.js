@@ -1,5 +1,6 @@
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { isNative } from "@/utils/platform";
+import { logger } from "@/utils/logger";
 
 /*
  * Все фото хранятся в Directory.Data (приватное хранилище приложения).
@@ -32,7 +33,7 @@ export async function getPhotoSrc(path) {
     // file.data — base64 строка
     return `data:image/jpeg;base64,${file.data}`;
   } catch (err) {
-    console.error(`[photoService] Failed to read photo "${fsPath}":`, err);
+    logger.error(`[photoService] Failed to read photo "${fsPath}":`, err);
     return null;
   }
 }

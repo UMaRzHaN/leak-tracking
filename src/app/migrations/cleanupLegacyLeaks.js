@@ -1,3 +1,5 @@
+import { logger } from "@/utils/logger";
+
 export function cleanupLegacyLeaks() {
   const keys = Object.keys(localStorage);
 
@@ -18,7 +20,10 @@ export function cleanupLegacyLeaks() {
         return true; // было очищено
       }
     } catch (err) {
-      console.warn(`[cleanupLegacyLeaks] Could not parse legacy key "${key}":`, err);
+      logger.warn(
+        `[cleanupLegacyLeaks] Could not parse legacy key "${key}":`,
+        err,
+      );
     }
   }
 

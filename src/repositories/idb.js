@@ -1,3 +1,5 @@
+import { logger } from "@/utils/logger";
+
 export function createIdbStore(dbName, storeName, version) {
   const DB_NAME = dbName;
   const STORE_NAME = storeName;
@@ -20,7 +22,7 @@ export function createIdbStore(dbName, storeName, version) {
     try {
       request = indexedDB.open(DB_NAME, DB_VERSION);
     } catch (err) {
-      console.warn("[idb] indexedDB.open threw:", err);
+      logger.warn("[idb] indexedDB.open threw:", err);
       _opening = false;
       return;
     }
@@ -46,14 +48,14 @@ export function createIdbStore(dbName, storeName, version) {
       };
 
       _db.onerror = (event) => {
-        console.error("[idb] Unexpected IDB error:", event.target?.error);
+        logger.error("[idb] Unexpected IDB error:", event.target?.error);
       };
 
       _notify();
     };
 
     request.onerror = () => {
-      console.warn("[idb] Failed to open IndexedDB:", request.error);
+      logger.warn("[idb] Failed to open IndexedDB:", request.error);
       _opening = false;
       _notify();
     };
@@ -77,11 +79,11 @@ export function createIdbStore(dbName, storeName, version) {
         const req = store.put({ id, data: photoData, timestamp: Date.now() });
         req.onsuccess = () => resolve(true);
         req.onerror = () => {
-          console.error("[idb] save error:", req.error);
+          logger.error("[idb] save error:", req.error);
           resolve(false);
         };
       } catch (err) {
-        console.error("[idb] save transaction error:", err);
+        logger.error("[idb] save transaction error:", err);
         resolve(false);
       }
     });
@@ -96,11 +98,11 @@ export function createIdbStore(dbName, storeName, version) {
         const req = store.get(id);
         req.onsuccess = () => resolve(req.result?.data ?? null);
         req.onerror = () => {
-          console.error("[idb] get error:", req.error);
+          logger.error("[idb] get error:", req.error);
           resolve(null);
         };
       } catch (err) {
-        console.error("[idb] get transaction error:", err);
+        logger.error("[idb] get transaction error:", err);
         resolve(null);
       }
     });
@@ -115,11 +117,11 @@ export function createIdbStore(dbName, storeName, version) {
         const req = store.delete(id);
         req.onsuccess = () => resolve(true);
         req.onerror = () => {
-          console.error("[idb] remove error:", req.error);
+          logger.error("[idb] remove error:", req.error);
           resolve(false);
         };
       } catch (err) {
-        console.error("[idb] remove transaction error:", err);
+        logger.error("[idb] remove transaction error:", err);
         resolve(false);
       }
     });
@@ -134,11 +136,11 @@ export function createIdbStore(dbName, storeName, version) {
         const req = store.clear();
         req.onsuccess = () => resolve(true);
         req.onerror = () => {
-          console.error("[idb] clear error:", req.error);
+          logger.error("[idb] clear error:", req.error);
           resolve(false);
         };
       } catch (err) {
-        console.error("[idb] clear transaction error:", err);
+        logger.error("[idb] clear transaction error:", err);
         resolve(false);
       }
     });
@@ -153,11 +155,11 @@ export function createIdbStore(dbName, storeName, version) {
         const req = store.getAllKeys();
         req.onsuccess = () => resolve(req.result ?? []);
         req.onerror = () => {
-          console.error("[idb] listKeys error:", req.error);
+          logger.error("[idb] listKeys error:", req.error);
           resolve([]);
         };
       } catch (err) {
-        console.error("[idb] listKeys transaction error:", err);
+        logger.error("[idb] listKeys transaction error:", err);
         resolve([]);
       }
     });

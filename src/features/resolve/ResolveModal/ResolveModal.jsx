@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import PhotoInput from "@/features/photos/PhotoInput/PhotoInput";
+import Notification from "@/components/ui/Notification/Notification";
 import s from "./ResolveModal.module.scss";
 
 export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
@@ -11,6 +12,7 @@ export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
   const [note, setNote] = useState(leak?.note ?? "");
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [notification, setNotification] = useState(null);
 
   const { savePhoto } = usePhotoStorage();
 
@@ -21,6 +23,7 @@ export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
     if (photoMissing) return;
 
     setSaving(true);
+    setNotification(null);
     try {
       let photo_after = leak?.photo_after ?? null;
       if (photo?.raw) {
@@ -36,7 +39,10 @@ export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
         note: note.trim() || undefined,
       });
     } catch {
-      alert(t("resolve.error"));
+      setNotification({
+        type: "error",
+        message: t("resolve.error"),
+      });
     } finally {
       setSaving(false);
     }
@@ -45,6 +51,11 @@ export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
   return (
     <div className={s.overlay} onClick={onClose}>
       <div className={s.sheet} onClick={(e) => e.stopPropagation()}>
+        <Notification
+          notification={notification}
+          onClose={() => setNotification(null)}
+        />
+
         <div className={s.handle} />
 
         <div className={s.header}>

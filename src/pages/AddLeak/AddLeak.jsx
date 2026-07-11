@@ -3,14 +3,16 @@ import LeakForm from "@/features/leakForm/LeakForm";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { useSafeSave } from "@/hooks/useSafeSave";
-import { toNumber } from "@/features/voice/utils/numbers";
 import { useProjectData } from "@/app/hooks/useProjectData";
 import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { hapticSuccess, hapticWarning } from "@/utils/haptics";
+import { logger } from "@/utils/logger";
+import { toNullableNumber } from "@/utils/normalize/toNullableNumber";
 import { STATUS } from "@/utils/status";
 import { priorityFromSpeed } from "@/utils/priority";
 import { dataUrlToBlob } from "@/utils/photoConversion";
+import Notification from "@/components/ui/Notification/Notification";
 import s from "./AddLeak.module.scss";
 
 export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
@@ -21,6 +23,7 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
   const { saveDraft, loadDraft, clearDraft, hasDraft } = useFormDraft();
   const { isSaving, run } = useSafeSave();
   const [draftPrompt, setDraftPrompt] = useState(false);
+  const [notification, setNotification] = useState(null);
   const photoReadyRef = useRef(photoReady);
 
   const localeTexts = useMemo(
@@ -93,17 +96,23 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
     return run(async () => {
       try {
         const id = Date.now() * 1000 + Math.floor(Math.random() * 999);
-        const lat = toNumber(coords?.lat);
-        const lng = toNumber(coords?.lng);
+        const lat = toNullableNumber(coords?.lat);
+        const lng = toNullableNumber(coords?.lng);
 
         if (Number.isFinite(lat) && (lat < -90 || lat > 90)) {
           hapticWarning();
-          alert(t("addLeak.validation.lat", { lat }));
+          setNotification({
+            type: "error",
+            message: t("addLeak.validation.lat", { lat }),
+          });
           return;
         }
         if (Number.isFinite(lng) && (lng < -180 || lng > 180)) {
           hapticWarning();
-          alert(t("addLeak.validation.lng", { lng }));
+          setNotification({
+            type: "error",
+            message: t("addLeak.validation.lng", { lng }),
+          });
           return;
         }
 
@@ -115,7 +124,10 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
             const ready = await waitForPhotoReady();
             if (!ready) {
               hapticWarning();
-              alert(t("addLeak.validation.photoReady"));
+              setNotification({
+                type: "error",
+                message: t("addLeak.validation.photoReady"),
+              });
               return;
             }
           }
@@ -138,6 +150,7 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
         };
 
         const updated = [...data, newRow];
+        setNotification(null);
         setData(updated);
         await save(updated);
 
@@ -145,7 +158,7 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
         hapticSuccess();
         setPage("");
       } catch (err) {
-        console.error("Error adding leak:", err);
+        logger.error("[AddLeak] Error adding leak:", err);
         hapticWarning();
       }
     });
@@ -153,6 +166,11 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
 
   return (
     <>
+      <Notification
+        notification={notification}
+        onClose={() => setNotification(null)}
+      />
+
       {draftPrompt && (
         <div className={s.draftBanner}>
           <span className={s.draftBannerText}>

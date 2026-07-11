@@ -1,5 +1,4 @@
-import i18n from "@/i18n";
-
+export const LANGUAGE_STORAGE_KEY = "app_language";
 const DEFAULT_LANGUAGE = "ru";
 
 const INTL_LOCALES = {
@@ -30,10 +29,12 @@ function normalizeLanguage(language) {
   return candidate && INTL_LOCALES[candidate] ? candidate : DEFAULT_LANGUAGE;
 }
 
+export function readStoredLanguage() {
+  return normalizeLanguage(localStorage.getItem(LANGUAGE_STORAGE_KEY));
+}
+
 export function getAppLanguage(language) {
-  return normalizeLanguage(
-    language ?? i18n.resolvedLanguage ?? i18n.language ?? DEFAULT_LANGUAGE,
-  );
+  return normalizeLanguage(language ?? readStoredLanguage());
 }
 
 export function getIntlLocale(language) {
@@ -131,10 +132,7 @@ export function formatRelativeTime(
 
   const lang = getAppLanguage(language);
   if (abs < 60_000) {
-    return i18n.t("leakDetails.relativeTime.justNow", {
-      lng: lang,
-      defaultValue: RELATIVE_TIME_DEFAULTS[lang].justNow,
-    });
+    return RELATIVE_TIME_DEFAULTS[lang].justNow;
   }
 
   const rtf = new Intl.RelativeTimeFormat(getIntlLocale(lang), {

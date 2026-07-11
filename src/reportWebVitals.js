@@ -1,6 +1,5 @@
 import { getCLS, getFID, getFCP, getLCP, getTTFB } from "web-vitals";
-
-const isDev = import.meta.env.DEV;
+import { logger } from "@/utils/logger";
 
 const RATING_COLOR = {
   good: "#0a0",
@@ -24,13 +23,11 @@ function logToConsole(metric) {
   const entry = formatEntry(metric);
   const color = RATING_COLOR[entry.rating] ?? "#888";
   const ratingSuffix = entry.rating ? ` (${entry.rating})` : "";
-  console.groupCollapsed(
+  logger.log(
     `%c[Web Vitals] ${entry.name}: ${entry.value}${ratingSuffix}`,
     `color: ${color}; font-weight: bold`,
+    { id: entry.id, delta: entry.delta },
   );
-  console.log("id:", entry.id);
-  console.log("delta:", entry.delta);
-  console.groupEnd();
 }
 
 // Extend this to send metrics to your analytics endpoint.
@@ -41,7 +38,7 @@ function sendToEndpoint(metric) {
 }
 
 export function reportWebVitals() {
-  const report = isDev ? logToConsole : sendToEndpoint;
+  const report = import.meta.env.DEV ? logToConsole : sendToEndpoint;
   getCLS(report);
   getFID(report);
   getFCP(report);

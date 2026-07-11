@@ -1,15 +1,22 @@
-import { useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import { useMainPageActions } from "./hooks/useMainPageActions";
 import StatCard from "./components/StatCard";
 import EmptyState from "./components/EmptyState";
-import LeakDetailsSheet from "@/features/leakDetails/LeakDetailsSheet";
 import LeakCardCompact from "@/features/leakList/LeakCardCompact/LeakCardCompact";
-import StatusPickerModal from "@/features/status/StatusPickerModal/StatusPickerModal";
-import ResolveModal from "@/features/resolve/ResolveModal/ResolveModal";
 import Notification from "@/components/ui/Notification/Notification";
 import { STATUS, STATUS_META, getStatusMeta } from "@/utils/status";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "./MainPage.module.scss";
+
+const LeakDetailsSheet = lazy(
+  () => import("@/features/leakDetails/LeakDetailsSheet"),
+);
+const StatusPickerModal = lazy(
+  () => import("@/features/status/StatusPickerModal/StatusPickerModal"),
+);
+const ResolveModal = lazy(
+  () => import("@/features/resolve/ResolveModal/ResolveModal"),
+);
 
 export default function MainPage({ setPage, data, setData }) {
   const { t } = useLanguage();
@@ -142,30 +149,32 @@ export default function MainPage({ setPage, data, setData }) {
         )}
       </section>
 
-      {activeLeak && (
-        <LeakDetailsSheet
-          leak={activeLeak}
-          onClose={() => setActiveLeak(null)}
-          onSave={handleSaveLeak}
-          onDelete={handleDeleteLeak}
-        />
-      )}
+      <Suspense fallback={null}>
+        {activeLeak && (
+          <LeakDetailsSheet
+            leak={activeLeak}
+            onClose={() => setActiveLeak(null)}
+            onSave={handleSaveLeak}
+            onDelete={handleDeleteLeak}
+          />
+        )}
 
-      {pickerLeak && (
-        <StatusPickerModal
-          current={pickerLeak.status ?? STATUS.OPEN}
-          onSelect={handleStatusSelect}
-          onClose={() => setPickerLeak(null)}
-        />
-      )}
+        {pickerLeak && (
+          <StatusPickerModal
+            current={pickerLeak.status ?? STATUS.OPEN}
+            onSelect={handleStatusSelect}
+            onClose={() => setPickerLeak(null)}
+          />
+        )}
 
-      {resolveLeak && (
-        <ResolveModal
-          leak={resolveLeak}
-          onConfirm={handleResolveConfirm}
-          onClose={() => setResolveLeak(null)}
-        />
-      )}
+        {resolveLeak && (
+          <ResolveModal
+            leak={resolveLeak}
+            onConfirm={handleResolveConfirm}
+            onClose={() => setResolveLeak(null)}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

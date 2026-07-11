@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useProjectData as useProjectDataCtx } from "@/app/project/ProjectContext";
 import { LeakRepository } from "@/repositories/LeakRepository";
+import { logger } from "@/utils/logger";
 
 export function useProjectData() {
   const { activeProject } = useProjectDataCtx();
@@ -28,13 +29,20 @@ export function useProjectData() {
     LeakRepository.getAll({
       projectId: activeProjectId,
       folderName: activeProjectFolderName,
-    }).then((result) => {
-      if (!cancelled) {
+    })
+      .then((result) => {
+        if (cancelled) return;
         setData(result);
         setDataLoaded(true);
         setDataProjectId(activeProjectId);
-      }
-    });
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        logger.error("[useProjectData] Failed to load project data:", error);
+        setData([]);
+        setDataLoaded(true);
+        setDataProjectId(activeProjectId);
+      });
 
     return () => {
       cancelled = true;

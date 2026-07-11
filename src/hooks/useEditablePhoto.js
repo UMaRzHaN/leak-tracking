@@ -3,8 +3,14 @@ import { useCamera } from "./useCamera";
 import { usePhotoStorage } from "./usePhotoStorage";
 import { usePhotoSrc } from "./usePhotoSrc";
 import { dataUrlToBlob } from "@/utils/photoConversion";
+import { logger } from "@/utils/logger";
 
-export function useEditablePhoto({ initialPath, leakId, version, excludePaths = [] }) {
+export function useEditablePhoto({
+  initialPath,
+  leakId,
+  version,
+  excludePaths = [],
+}) {
   const { isNative, takePhoto, pickFromBrowser } = useCamera();
   const { savePhoto: saveToFS, ready: storageReady } = usePhotoStorage();
 
@@ -58,7 +64,7 @@ export function useEditablePhoto({ initialPath, leakId, version, excludePaths = 
 
     // хранилище не готово → честно не сохраняем
     if (!storageReady) {
-      console.warn("Photo storage not ready, save skipped");
+      logger.warn("Photo storage not ready, save skipped");
       return persistedPathRef.current;
     }
 

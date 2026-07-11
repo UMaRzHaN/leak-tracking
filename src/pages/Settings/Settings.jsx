@@ -2,21 +2,27 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { useProjectData } from "@/app/hooks/useProjectData";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
-import { useTheme } from "@/app/hooks/useTheme";
 import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
 import { useHiddenFields } from "@/app/project/hooks/useHiddenFields";
-import { useLanguage } from "@/app/hooks/useLanguage";
 import { getMapCacheInfo, clearMapCache } from "@/services/maps/tileCache";
 import PageHeader from "@/components/layout/PageHeader/PageHeader";
 import SettingsModal from "@/features/settings/SettingsModal/SettingsModal";
 import FieldVisibilityModal from "@/features/fieldVisibility/FieldVisibilityModal/FieldVisibilityModal";
 import Notification from "@/components/ui/Notification/Notification";
-import ProjectList from "./components/ProjectList";
-import AddProjectForm from "./components/AddProjectForm";
-import EmissionsSummarySection from "./components/EmissionsSummarySection";
-import { useProjectActions } from "./hooks/useProjectActions";
-import { useBackupActions } from "./hooks/useBackupActions";
+import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import ImportConflictSheet from "@/features/importConflict/ImportConflictSheet";
+import AddProjectForm from "./components/AddProjectForm";
+import AppearanceSection from "./components/AppearanceSection";
+import BackupSection from "./components/BackupSection";
+import CalculationParametersSection from "./components/CalculationParametersSection";
+import DangerZoneSection from "./components/DangerZoneSection";
+import EmissionsSummarySection from "./components/EmissionsSummarySection";
+import FieldVisibilitySection from "./components/FieldVisibilitySection";
+import MapCacheSection from "./components/MapCacheSection";
+import ProjectList from "./components/ProjectList";
+import { useBackupActions } from "./hooks/useBackupActions";
+import { useProjectActions } from "./hooks/useProjectActions";
+import { useSettingsTexts } from "./hooks/useSettingsTexts";
 import s from "./Settings.module.scss";
 
 export default function Settings({
@@ -26,63 +32,13 @@ export default function Settings({
   onImportZip,
   onImportIntoExisting,
 }) {
-  const { lang, t, toggleLanguage } = useLanguage();
-  const localeTexts = useMemo(
-    () => ({
-      title: t("settings.title"),
-      appearanceTitle: t("settings.appearanceTitle"),
-      themeLabelLight: t("settings.themeLabelLight"),
-      themeLabelDark: t("settings.themeLabelDark"),
-      themeHintLight: t("settings.themeHintLight"),
-      themeHintDark: t("settings.themeHintDark"),
-      languageLabel: t("settings.languageLabel"),
-      languageHintRu: t("settings.languageHintRu"),
-      languageHintEn: t("settings.languageHintEn"),
-      toggleButtonRu: t("settings.toggleButtonRu"),
-      toggleButtonEn: t("settings.toggleButtonEn"),
-      projects: t("settings.projects"),
-      addProject: t("settings.addProject"),
-      noProjects: t("settings.noProjects"),
-      calculationParameters: t("settings.calculationParameters"),
-      projectSettings: t("settings.projectSettings"),
-      editParameters: t("settings.editParameters"),
-      fieldsAndExcel: t("settings.fieldsAndExcel"),
-      fieldsDescription: t("settings.fieldsDescription"),
-      hiddenFields: t("settings.hiddenFields"),
-      configureFields: t("settings.configureFields"),
-      backup: t("settings.backup"),
-      exportZip: t("settings.exportZip"),
-      importZip: t("settings.importZip"),
-      backupHint: t("settings.backupHint"),
-      mapCache: t("settings.mapCache"),
-      satelliteTiles: t("settings.satelliteTiles"),
-      cacheEmpty: t("settings.cacheEmpty"),
-      loading: t("settings.loading"),
-      clearMapCache: t("settings.clearMapCache"),
-      dangerZone: t("settings.dangerZone"),
-      dangerHint: t("settings.dangerHint"),
-      clearDatabase: t("settings.clearDatabase"),
-      notifications: {
-        parametersSaved: t("settings.notifications.parametersSaved"),
-        changesCanceled: t("settings.notifications.changesCanceled"),
-        cacheCleared: t("settings.notifications.cacheCleared"),
-        databaseCleared: t("settings.notifications.databaseCleared"),
-        allFieldsActive: t("settings.notifications.allFieldsActive"),
-        hiddenFieldsCount: t("settings.notifications.hiddenFieldsCount"),
-      },
-      dialogs: {
-        clearMapCache: t("settings.dialogs.clearMapCache"),
-        clearDatabase: t("settings.dialogs.clearDatabase"),
-      },
-    }),
-    [t],
-  );
-
+  const { lang, t, toggleLanguage, localeTexts } = useSettingsTexts();
   const [notification, setNotification] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [fieldsModalOpen, setFieldsModalOpen] = useState(false);
   const [addingProject, setAddingProject] = useState(false);
   const [cacheInfo, setCacheInfo] = useState(null);
+  const [settingsConfirmAction, setSettingsConfirmAction] = useState(null);
 
   const notify = useCallback((type, message) => {
     setNotification({ type, message });
@@ -98,6 +54,9 @@ export default function Settings({
     projects,
     activeProject,
     handleSelect,
+    projectSwitchState,
+    confirmProjectSwitch,
+    cancelProjectSwitch,
     handleRename,
     handleRemove,
     handleAdd,
@@ -110,12 +69,14 @@ export default function Settings({
   const { hiddenFields, setHiddenFields } = useHiddenFields(
     activeProject?.id ?? null,
   );
-  const { dark, toggle: toggleTheme } = useTheme();
 
   const {
     importZipRef,
     handleExportZip,
     handleImportZip,
+    importConfirmState,
+    confirmImport,
+    cancelImport,
     conflictState,
     setConflictState,
     handleConflictOverwrite,
@@ -144,34 +105,66 @@ export default function Settings({
   const handleModalClose = useCallback(
     (discarded) => {
       setModalOpen(false);
-      if (discarded)
+      if (discarded) {
         notify("warning", localeTexts.notifications.changesCanceled);
+      }
     },
     [localeTexts.notifications.changesCanceled, notify],
   );
 
-  const handleClearMapCache = useCallback(async () => {
-    const ok = window.confirm(localeTexts.dialogs.clearMapCache);
-    if (!ok) return;
-    await clearMapCache();
-    setCacheInfo({ count: 0, sizeMB: 0 });
-    notify("success", localeTexts.notifications.cacheCleared);
-  }, [
-    localeTexts.dialogs.clearMapCache,
-    localeTexts.notifications.cacheCleared,
-    notify,
-  ]);
+  const handleClearMapCache = useCallback(() => {
+    setSettingsConfirmAction("clearMapCache");
+  }, []);
 
   const handleClearDatabase = useCallback(() => {
-    const ok = window.confirm(localeTexts.dialogs.clearDatabase);
-    if (!ok) return;
-    clearDatabase?.();
-    notify("warning", localeTexts.notifications.databaseCleared);
+    setSettingsConfirmAction("clearDatabase");
+  }, []);
+
+  const handleSettingsConfirm = useCallback(async () => {
+    if (settingsConfirmAction === "clearMapCache") {
+      await clearMapCache();
+      setCacheInfo({ count: 0, sizeMB: 0 });
+      notify("success", localeTexts.notifications.cacheCleared);
+    }
+
+    if (settingsConfirmAction === "clearDatabase") {
+      clearDatabase?.();
+      notify("warning", localeTexts.notifications.databaseCleared);
+    }
+
+    setSettingsConfirmAction(null);
   }, [
     clearDatabase,
-    localeTexts.dialogs.clearDatabase,
+    localeTexts.notifications.cacheCleared,
     localeTexts.notifications.databaseCleared,
     notify,
+    settingsConfirmAction,
+  ]);
+
+  const settingsConfirmTexts = useMemo(() => {
+    if (settingsConfirmAction === "clearMapCache") {
+      return {
+        title: localeTexts.clearMapCache,
+        description: localeTexts.dialogs.clearMapCache,
+        confirmLabel: localeTexts.clearMapCache,
+      };
+    }
+
+    if (settingsConfirmAction === "clearDatabase") {
+      return {
+        title: localeTexts.clearDatabase,
+        description: localeTexts.dialogs.clearDatabase,
+        confirmLabel: localeTexts.clearDatabase,
+      };
+    }
+
+    return null;
+  }, [
+    localeTexts.clearDatabase,
+    localeTexts.clearMapCache,
+    localeTexts.dialogs.clearDatabase,
+    localeTexts.dialogs.clearMapCache,
+    settingsConfirmAction,
   ]);
 
   return (
@@ -224,190 +217,50 @@ export default function Settings({
           )}
         </section>
 
-        {activeProject && (
-          <section className={s.section}>
-            <div className={s.sectionHead}>
-              <h2 className={s.sectionTitle}>
-                {localeTexts.calculationParameters}
-              </h2>
-            </div>
-            <div className={s.calcBody}>
-              <p className={s.description}>
-                {localeTexts.projectSettings}{" "}
-                <strong>{activeProject.name}</strong>
-              </p>
-              <button
-                className={s.editVarsBtn}
-                type="button"
-                onClick={() => setModalOpen(true)}
-              >
-                ⚙ {localeTexts.editParameters}
-              </button>
-            </div>
-          </section>
-        )}
+        <CalculationParametersSection
+          activeProject={activeProject}
+          localeTexts={localeTexts}
+          onEdit={() => setModalOpen(true)}
+        />
 
-        <section className={s.section}>
-          <div className={s.sectionHead}>
-            <h2 className={s.sectionTitle}>{localeTexts.appearanceTitle}</h2>
-          </div>
-          <div className={s.themeRow}>
-            <div className={s.themeInfo}>
-              <span className={s.themeLabel}>
-                {dark
-                  ? localeTexts.themeLabelDark
-                  : localeTexts.themeLabelLight}
-              </span>
-              <span className={s.themeHint}>
-                {dark ? localeTexts.themeHintDark : localeTexts.themeHintLight}
-              </span>
-            </div>
-            <button
-              className={`${s.themeToggle} ${dark ? s.themeToggleDark : ""}`}
-              type="button"
-              onClick={toggleTheme}
-              aria-label={lang === "ru" ? "Переключить тему" : "Toggle theme"}
-            >
-              <span className={s.themeThumb} />
-            </button>
-          </div>
-          <div className={s.themeRow}>
-            <div className={s.themeInfo}>
-              <span className={s.themeLabel}>{localeTexts.languageLabel}</span>
-              <span className={s.themeHint}>
-                {lang === "ru"
-                  ? localeTexts.languageHintRu
-                  : localeTexts.languageHintEn}
-              </span>
-            </div>
-            <button
-              className={s.languageToggle}
-              type="button"
-              onClick={toggleLanguage}
-              aria-label={
-                lang === "ru" ? "Переключить язык" : "Toggle language"
-              }
-            >
-              {lang === "ru"
-                ? localeTexts.toggleButtonEn
-                : localeTexts.toggleButtonRu}
-            </button>
-          </div>
-        </section>
+        <AppearanceSection
+          lang={lang}
+          localeTexts={localeTexts}
+          onToggleLanguage={toggleLanguage}
+        />
 
         {activeProject && data.length > 0 && (
           <EmissionsSummarySection data={data} />
         )}
 
-        {activeProject && (
-          <section className={s.section}>
-            <div className={s.sectionHead}>
-              <h2 className={s.sectionTitle}>{localeTexts.fieldsAndExcel}</h2>
-            </div>
-            <div className={s.calcBody}>
-              <p className={s.description}>
-                {localeTexts.fieldsDescription}
-                {hiddenFields.size > 0 && (
-                  <strong>
-                    {" "}
-                    {lang === "ru"
-                      ? `Скрыто: ${hiddenFields.size}.`
-                      : `Hidden: ${hiddenFields.size}.`}
-                  </strong>
-                )}
-              </p>
-              <button
-                className={s.editVarsBtn}
-                type="button"
-                onClick={() => setFieldsModalOpen(true)}
-              >
-                ☰ {localeTexts.configureFields}
-              </button>
-            </div>
-          </section>
-        )}
+        <FieldVisibilitySection
+          activeProject={activeProject}
+          hiddenFields={hiddenFields}
+          lang={lang}
+          localeTexts={localeTexts}
+          onConfigure={() => setFieldsModalOpen(true)}
+        />
 
-        {activeProject && (
-          <section className={s.section}>
-            <div className={s.sectionHead}>
-              <h2 className={s.sectionTitle}>{localeTexts.backup}</h2>
-            </div>
-            <div className={s.backupBody}>
-              <div className={s.backupRow}>
-                <button
-                  className={s.backupBtn}
-                  type="button"
-                  onClick={handleExportZip}
-                >
-                  ⬆ {localeTexts.exportZip}
-                </button>
-                <button
-                  className={`${s.backupBtn} ${s.restore}`}
-                  type="button"
-                  onClick={() => importZipRef.current?.click()}
-                >
-                  ⬇ {localeTexts.importZip}
-                </button>
-              </div>
-              <p className={s.backupHint}>{localeTexts.backupHint}</p>
-            </div>
-            <input
-              ref={importZipRef}
-              type="file"
-              accept=".zip,application/zip"
-              style={{ display: "none" }}
-              onChange={handleImportZip}
-            />
-          </section>
-        )}
+        <BackupSection
+          activeProject={activeProject}
+          importZipRef={importZipRef}
+          localeTexts={localeTexts}
+          onExport={handleExportZip}
+          onImport={handleImportZip}
+        />
 
-        <section className={s.section}>
-          <div className={s.sectionHead}>
-            <h2 className={s.sectionTitle}>{localeTexts.mapCache}</h2>
-          </div>
-          <div className={s.cacheBody}>
-            <div className={s.cacheInfo}>
-              <span className={s.cacheLabel}>{localeTexts.satelliteTiles}</span>
-              {cacheInfo ? (
-                <span className={s.cacheSize}>
-                  {cacheInfo.count > 0
-                    ? lang === "ru"
-                      ? `${cacheInfo.count} тайлов · ~${cacheInfo.sizeMB} МБ`
-                      : `${cacheInfo.count} tiles · ~${cacheInfo.sizeMB} MB`
-                    : localeTexts.cacheEmpty}
-                </span>
-              ) : (
-                <span className={s.cacheSize}>{localeTexts.loading}</span>
-              )}
-            </div>
-            <button
-              className={s.cacheBtn}
-              type="button"
-              onClick={handleClearMapCache}
-              disabled={!cacheInfo || cacheInfo.count === 0}
-            >
-              🗺 {localeTexts.clearMapCache}
-            </button>
-          </div>
-        </section>
+        <MapCacheSection
+          cacheInfo={cacheInfo}
+          lang={lang}
+          localeTexts={localeTexts}
+          onClear={handleClearMapCache}
+        />
 
-        {activeProject && (
-          <section className={s.section}>
-            <div className={s.sectionHead}>
-              <h2 className={s.sectionTitle}>{localeTexts.dangerZone}</h2>
-            </div>
-            <div className={s.dangerBody}>
-              <p className={s.dangerHint}>{localeTexts.dangerHint}</p>
-              <button
-                className={s.dangerBtn}
-                type="button"
-                onClick={handleClearDatabase}
-              >
-                🗑 {localeTexts.clearDatabase}
-              </button>
-            </div>
-          </section>
-        )}
+        <DangerZoneSection
+          activeProject={activeProject}
+          localeTexts={localeTexts}
+          onClearDatabase={handleClearDatabase}
+        />
       </div>
 
       <ImportConflictSheet
@@ -419,6 +272,36 @@ export default function Settings({
         onMerge={handleConflictMerge}
         onCopy={handleConflictCopy}
         onCancel={() => setConflictState({ open: false })}
+      />
+
+      <ConfirmSheet
+        open={Boolean(settingsConfirmTexts)}
+        title={settingsConfirmTexts?.title}
+        description={settingsConfirmTexts?.description}
+        confirmLabel={settingsConfirmTexts?.confirmLabel}
+        cancelLabel={lang === "ru" ? "Отмена" : "Cancel"}
+        onConfirm={handleSettingsConfirm}
+        onCancel={() => setSettingsConfirmAction(null)}
+      />
+
+      <ConfirmSheet
+        open={projectSwitchState.open}
+        title={projectSwitchState.title}
+        description={projectSwitchState.description}
+        confirmLabel={projectSwitchState.confirmLabel}
+        cancelLabel={projectSwitchState.cancelLabel}
+        onConfirm={confirmProjectSwitch}
+        onCancel={cancelProjectSwitch}
+      />
+
+      <ConfirmSheet
+        open={importConfirmState.open}
+        title={importConfirmState.title}
+        description={importConfirmState.description}
+        confirmLabel={importConfirmState.confirmLabel}
+        cancelLabel={importConfirmState.cancelLabel}
+        onConfirm={confirmImport}
+        onCancel={cancelImport}
       />
 
       {activeProject && vars && (

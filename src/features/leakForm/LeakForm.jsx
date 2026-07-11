@@ -119,7 +119,7 @@ export default function LeakForm({
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [step]);
 
-  /* ── Navigation ── */
+  /* Navigation */
   const validateStep = useStepValidation({ steps: STEPS, form, setErrors });
 
   const nextStep = useCallback(() => {
@@ -129,7 +129,7 @@ export default function LeakForm({
 
   const prevStep = useCallback(() => setStep((v) => Math.max(1, v - 1)), []);
 
-  /* ── Clear ── */
+  /* Clear */
   const clearForm = useCallback(() => {
     stopVoiceInput?.(); // eslint-disable-line no-use-before-define
     setForm({});
@@ -157,7 +157,7 @@ export default function LeakForm({
     });
   }, [STEPS, step, setForm, setErrors]);
 
-  /* ── Voice control ── */
+  /* Voice control */
   const handleVoiceCommand = useCallback(
     (command) => {
       if (command === "next") nextStep();
@@ -184,14 +184,15 @@ export default function LeakForm({
     [setForm, dismissVoiceData],
   );
 
-  /* ── Save ── */
+  /* Save */
   const commitSave = useCallback(
     (data) => {
       const d = new Date();
       const coerced = { ...data };
       NUMBER_KEYS.forEach((key) => {
-        if (coerced[key] !== undefined)
+        if (coerced[key] !== undefined) {
           coerced[key] = normalizeNumber(coerced[key]);
+        }
       });
       const calculated = vars ? calculations(coerced, vars) : coerced;
       onAdd?.({

@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { isNative } from "@/utils/platform";
@@ -6,6 +6,11 @@ import { useProject } from "@/app/project/ProjectContext";
 import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { PROJECT_META } from "@/configs/projects";
 import { clearMapCache } from "@/services/maps/tileCache";
+
+const CLOSED_SWITCH_STATE = {
+  open: false,
+  nextProjectId: null,
+};
 
 export function useProjectActions({ setCacheInfo, notify }) {
   const { lang } = useLanguage();
@@ -20,23 +25,28 @@ export function useProjectActions({ setCacheInfo, notify }) {
   } = useProject();
 
   const { form, clearForm } = useLeakFormContext();
+  const [projectSwitchState, setProjectSwitchState] =
+    useState(CLOSED_SWITCH_STATE);
+
   const isFormDirty = Object.values(form).some(
     (value) => value !== null && value !== "" && value !== undefined,
   );
 
-  const handleSelect = useCallback(
+  const projectSwitchTexts = useMemo(
+    () => ({
+      title: lang === "ru" ? "Переключить проект?" : "Switch project?",
+      description:
+        lang === "ru"
+          ? "Форма добавления утечки будет сброшена."
+          : "The leak entry form will be reset.",
+      confirmLabel: lang === "ru" ? "Переключить" : "Switch",
+      cancelLabel: lang === "ru" ? "Отмена" : "Cancel",
+    }),
+    [lang],
+  );
+
+  const performProjectSwitch = useCallback(
     async (id) => {
-      if (id === activeProject?.id) return;
-
-      if (isFormDirty) {
-        const ok = window.confirm(
-          lang === "ru"
-            ? "Переключить проект? Форма добавления утечки будет сброшена."
-            : "Switch project? The leak entry form will be reset.",
-        );
-        if (!ok) return;
-      }
-
       selectProject(id);
       clearForm?.();
       await clearMapCache();
@@ -48,16 +58,33 @@ export function useProjectActions({ setCacheInfo, notify }) {
           : "Project switched, map cache cleared",
       );
     },
-    [
-      activeProject?.id,
-      clearForm,
-      isFormDirty,
-      lang,
-      notify,
-      selectProject,
-      setCacheInfo,
-    ],
+    [clearForm, lang, notify, selectProject, setCacheInfo],
   );
+
+  const handleSelect = useCallback(
+    async (id) => {
+      if (id === activeProject?.id) return;
+
+      if (isFormDirty) {
+        setProjectSwitchState({ open: true, nextProjectId: id });
+        return;
+      }
+
+      await performProjectSwitch(id);
+    },
+    [activeProject?.id, isFormDirty, performProjectSwitch],
+  );
+
+  const confirmProjectSwitch = useCallback(async () => {
+    if (!projectSwitchState.nextProjectId) return;
+    const nextProjectId = projectSwitchState.nextProjectId;
+    setProjectSwitchState(CLOSED_SWITCH_STATE);
+    await performProjectSwitch(nextProjectId);
+  }, [performProjectSwitch, projectSwitchState.nextProjectId]);
+
+  const cancelProjectSwitch = useCallback(() => {
+    setProjectSwitchState(CLOSED_SWITCH_STATE);
+  }, []);
 
   const handleRename = useCallback(
     async (id, name) => {
@@ -110,7 +137,7 @@ export function useProjectActions({ setCacheInfo, notify }) {
                 encoding: "utf8",
               });
             } catch {
-              // ignore invalid data.json
+              // Ignore invalid data.json contents.
             }
           }
 
@@ -175,6 +202,12 @@ export function useProjectActions({ setCacheInfo, notify }) {
     projects,
     activeProject,
     handleSelect,
+    projectSwitchState: {
+      ...projectSwitchState,
+      ...projectSwitchTexts,
+    },
+    confirmProjectSwitch,
+    cancelProjectSwitch,
     handleRename,
     handleRemove,
     handleAdd,

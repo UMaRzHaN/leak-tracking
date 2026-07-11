@@ -5,6 +5,7 @@ import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import i18n from "@/i18n";
 import { getTileBlobUrl, cacheTile } from "@/services/maps/tileCache";
+import { logger } from "@/utils/logger";
 import { STATUS_META, getStatusMeta } from "@/utils/status";
 
 function escapeHtml(value) {
@@ -291,7 +292,7 @@ export function createOfflineMap(container, { center, zoom = 13 }) {
     try {
       map.remove();
     } catch (err) {
-      console.warn("Leaflet map destroy error:", err);
+      logger.warn("Leaflet map destroy error:", err);
     }
   };
 

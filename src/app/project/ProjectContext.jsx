@@ -36,12 +36,18 @@ function initActiveId(projects) {
   return projects[0]?.id ?? null;
 }
 
-export function ProjectProvider({ children }) {
-  const [projects, setProjectsState] = useState(initProjects);
+function initProjectState() {
+  const projects = initProjects();
+  return {
+    projects,
+    activeId: initActiveId(projects),
+  };
+}
 
-  const [activeId, setActiveIdState] = useState(() =>
-    initActiveId(initProjects()),
-  );
+export function ProjectProvider({ children }) {
+  const [initialState] = useState(initProjectState);
+  const [projects, setProjectsState] = useState(initialState.projects);
+  const [activeId, setActiveIdState] = useState(initialState.activeId);
 
   // Refs let action callbacks read current state without closing over it.
   // This makes every action permanently stable (never recreated after mount),

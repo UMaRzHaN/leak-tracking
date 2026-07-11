@@ -7,6 +7,8 @@ import EditBlock from "./components/EditBlock";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import ResolveModal from "@/features/resolve/ResolveModal/ResolveModal";
 import StatusPickerModal from "@/features/status/StatusPickerModal/StatusPickerModal";
+import Notification from "@/components/ui/Notification/Notification";
+import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import s from "./LeakDetailsSheet.module.scss";
 
 export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
@@ -19,8 +21,11 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     localEdit,
     setLocalEdit,
     saving,
+    notification,
+    setNotification,
     viewerOpen,
     setViewerOpen,
+    closeConfirmOpen,
     deleteArmed,
     resolveOpen,
     setResolveOpen,
@@ -38,6 +43,8 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     STATUS,
     handleSave,
     handleClose,
+    confirmClose,
+    cancelClose,
     handleStatusChange,
     handleStatusSelect,
     handleResolveConfirm,
@@ -52,6 +59,11 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
 
   return (
     <>
+      <Notification
+        notification={notification}
+        onClose={() => setNotification(null)}
+      />
+
       <div className={s.overlay} onClick={handleClose}>
         <div className={s.sheet} onClick={(event) => event.stopPropagation()}>
           <PhotoBlock
@@ -183,6 +195,22 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
           )}
         </div>
       </div>
+
+      <ConfirmSheet
+        open={closeConfirmOpen}
+        title={
+          lang === "ru" ? "Закрыть без сохранения?" : "Close without saving?"
+        }
+        description={
+          lang === "ru"
+            ? "Изменения не сохранены. Они будут потеряны."
+            : "Your unsaved changes will be lost."
+        }
+        confirmLabel={lang === "ru" ? "Закрыть" : "Close"}
+        cancelLabel={lang === "ru" ? "Отмена" : "Cancel"}
+        onConfirm={confirmClose}
+        onCancel={cancelClose}
+      />
 
       {viewerOpen && src && (
         <PhotoViewer src={src} onClose={() => setViewerOpen(false)} />

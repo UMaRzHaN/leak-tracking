@@ -1,57 +1,32 @@
-import { useState, useCallback } from "react";
 import Notification from "@/components/ui/Notification/Notification";
 import FilterBar from "./components/FilterBar";
 import ResultsBar from "./components/ResultsBar";
 import LeakList from "./components/LeakList";
 import LeakModals from "./components/LeakModals";
-import { useDataBaseFilters } from "./hooks/useDataBaseFilters";
-import { useLeakActions } from "./hooks/useLeakActions";
-import { useBulkActions } from "./hooks/useBulkActions";
-import { useDataBaseExport } from "./hooks/useDataBaseExport";
-import { useProjectData } from "@/app/hooks/useProjectData";
-import { usePhotoStorage } from "@/hooks/usePhotoStorage";
+import { useDataBaseController } from "./hooks/useDataBaseController";
 import s from "./DataBase.module.scss";
 
 export default function DataBase({ data, setData, coords }) {
-  const [notification, setNotification] = useState(null);
-  const [bulkPickerOpen, setBulkPickerOpen] = useState(false);
-  const notify = useCallback(
-    (type, message) => setNotification({ type, message }),
-    [],
-  );
-
-  const { save } = useProjectData();
-  const { deletePhoto } = usePhotoStorage();
-
-  const filters = useDataBaseFilters({ data, coords });
-  const actions = useLeakActions({ data, setData, save, notify, deletePhoto });
-  const bulk = useBulkActions({
+  const {
+    notification,
+    clearNotification,
+    bulkPickerOpen,
+    openBulkPicker,
+    closeBulkPicker,
+    handleBulkPickerSelect,
+    filters,
+    actions,
+    bulk,
+    handleExport,
+  } = useDataBaseController({
     data,
     setData,
-    save,
-    displayed: filters.displayed,
-    notify,
-    deletePhoto,
+    coords,
   });
-  const { handleExport } = useDataBaseExport({
-    displayed: filters.displayed,
-    notify,
-  });
-
-  const handleBulkPickerSelect = useCallback(
-    (status) => {
-      setBulkPickerOpen(false);
-      bulk.handleBulkStatusChange(status);
-    },
-    [bulk],
-  );
 
   return (
     <div className={s.page}>
-      <Notification
-        notification={notification}
-        onClose={() => setNotification(null)}
-      />
+      <Notification notification={notification} onClose={clearNotification} />
 
       <FilterBar
         search={filters.search}
@@ -78,7 +53,7 @@ export default function DataBase({ data, setData, coords }) {
         onSelectDisplayed={
           bulk.allDisplayedSelected ? bulk.clearSelection : bulk.selectDisplayed
         }
-        onOpenBulkPicker={() => setBulkPickerOpen(true)}
+        onOpenBulkPicker={openBulkPicker}
         onExport={handleExport}
       />
 
@@ -111,7 +86,7 @@ export default function DataBase({ data, setData, coords }) {
         onCancelBulkResolve={bulk.cancelBulkResolve}
         bulkPickerOpen={bulkPickerOpen}
         onBulkStatusSelect={handleBulkPickerSelect}
-        onCloseBulkPicker={() => setBulkPickerOpen(false)}
+        onCloseBulkPicker={closeBulkPicker}
       />
     </div>
   );

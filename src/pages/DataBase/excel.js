@@ -5,6 +5,18 @@ import { Filesystem, Directory } from "@capacitor/filesystem";
 import { isNative } from "@/utils/platform";
 import { getPhotoSrc } from "@/hooks/photoService";
 import { blobToDataUri } from "@/utils/photoConversion";
+import { logger } from "@/utils/logger";
+
+const PHOTO_KEYS = ["photo", "photo_after"];
+const DEFAULT_EXPORT_DIR = "export/xlsx";
+const EXCEL_MIME =
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+function getExportFolder(projectFolderName) {
+  return projectFolderName
+    ? `${projectFolderName}/${DEFAULT_EXPORT_DIR}`
+    : DEFAULT_EXPORT_DIR;
+}
 
 async function resolvePhotoSrc(path, idbGet) {
   if (!path) return null;
@@ -19,31 +31,12 @@ async function resolvePhotoSrc(path, idbGet) {
   return getPhotoSrc(path);
 }
 
-export async function exportToExcelZip(
-  rawLeaks,
-  rows,
-  headers,
-  keysOrder,
-  fileName = "утечки",
-  idbGet = null,
-  projectFolderName = null,
-  lang = "ru",
-) {
-  const photoKeys = ["photo", "photo_after"];
-  const photoColumnIndexes = photoKeys
-    .map((key) => keysOrder.indexOf(key))
-    .filter((index) => index !== -1);
-
-  const paired = rawLeaks.map((leak, index) => ({ leak, row: rows[index] }));
-  paired.sort((left, right) => (left.leak.id ?? 0) - (right.leak.id ?? 0));
-
-  const orderedLeaks = paired.map((pair) => pair.leak);
-  const orderedRows = paired.map((pair) => pair.row);
-
+async function buildPhotoEntries(orderedLeaks, idbGet) {
   const photoEntries = [];
+
   await Promise.all(
     orderedLeaks.map(async (leak, leakIndex) => {
-      for (const key of photoKeys) {
+      for (const key of PHOTO_KEYS) {
         const path = leak[key];
         if (!path) continue;
 
@@ -64,12 +57,30 @@ export async function exportToExcelZip(
     }),
   );
 
-  const photoMap = {};
-  for (const entry of photoEntries) {
-    photoMap[`${entry.leakIndex}:${entry.key}`] = entry.photoFileName;
-  }
+  return photoEntries;
+}
 
-  const ExcelJS = (await getExcelJS()).default;
+function buildPhotoMap(photoEntries) {
+  return Object.fromEntries(
+    photoEntries.map((entry) => [
+      `${entry.leakIndex}:${entry.key}`,
+      entry.photoFileName,
+    ]),
+  );
+}
+
+function buildWorkbook({
+  orderedRows,
+  headers,
+  keysOrder,
+  photoMap,
+  lang,
+  ExcelJS,
+}) {
+  const photoColumnIndexes = PHOTO_KEYS.map((key) =>
+    keysOrder.indexOf(key),
+  ).filter((index) => index !== -1);
+
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet(lang === "ru" ? "Утечки" : "Leaks");
 
@@ -90,10 +101,10 @@ export async function exportToExcelZip(
 
   orderedRows.forEach((row, leakIndex) => {
     const values = keysOrder.map((key) => {
-      if (photoKeys.includes(key)) {
-        const mapKey = `${leakIndex}:${key}`;
-        if (photoMap[mapKey]) return null;
+      if (PHOTO_KEYS.includes(key) && photoMap[`${leakIndex}:${key}`]) {
+        return null;
       }
+
       return row[key] ?? "";
     });
 
@@ -115,7 +126,7 @@ export async function exportToExcelZip(
       } else {
         cell.value = row[key]
           ? lang === "ru"
-            ? "Есть (нет файла)"
+            ? "Есть (файл не найден)"
             : "Present (file missing)"
           : "";
       }
@@ -124,7 +135,7 @@ export async function exportToExcelZip(
 
   headers.forEach((header, index) => {
     const key = keysOrder[index];
-    const isPhoto = photoKeys.includes(key);
+    const isPhoto = PHOTO_KEYS.includes(key);
     const maxLen = isPhoto
       ? 14
       : Math.min(
@@ -137,24 +148,15 @@ export async function exportToExcelZip(
     sheet.getColumn(index + 1).width = maxLen;
   });
 
-  const xlsxBuffer = await workbook.xlsx.writeBuffer();
-  const JSZip = (await getJSZip()).default;
-  const zip = new JSZip();
-  zip.file(`${fileName}.xlsx`, xlsxBuffer);
-
-  for (const entry of photoEntries) {
-    zip.file(entry.photoFileName, entry.base64, { base64: true });
-  }
-
-  const zipBlob = await zip.generateAsync({ type: "blob" });
-  return downloadBlob(zipBlob, `${fileName}.zip`, projectFolderName, lang);
+  return workbook;
 }
 
 async function downloadBlob(
   blob,
   fileName,
-  projectFolderName = null,
+  outputFolder = DEFAULT_EXPORT_DIR,
   lang = "ru",
+  webMessage = null,
 ) {
   if (!isNative) {
     const url = URL.createObjectURL(blob);
@@ -167,9 +169,10 @@ async function downloadBlob(
     return {
       ok: true,
       message:
-        lang === "ru"
-          ? `XLSX с фотографиями экспортирован (${fileName})`
-          : `XLSX with photos exported (${fileName})`,
+        webMessage ??
+        (lang === "ru"
+          ? `Файл экспортирован (${fileName})`
+          : `File exported (${fileName})`),
     };
   }
 
@@ -179,10 +182,6 @@ async function downloadBlob(
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
-
-  const outputFolder = projectFolderName
-    ? `${projectFolderName}/export/xlsx`
-    : "export/xlsx";
 
   await Filesystem.mkdir({
     path: outputFolder,
@@ -196,7 +195,7 @@ async function downloadBlob(
       directory: Directory.Documents,
     });
   } catch (error) {
-    console.log("Old export file not found:", error?.message);
+    logger.log("Old export file not found:", error?.message);
   }
 
   await Filesystem.writeFile({
@@ -214,3 +213,69 @@ async function downloadBlob(
         : `Saved to Documents/${outputFolder}/${fileName}`,
   };
 }
+
+export async function exportToExcelFile(
+  rawLeaks,
+  rows,
+  headers,
+  keysOrder,
+  fileName = "утечки",
+  idbGet = null,
+  projectFolderName = null,
+  lang = "ru",
+) {
+  const paired = rawLeaks.map((leak, index) => ({ leak, row: rows[index] }));
+  paired.sort((left, right) => (left.leak.id ?? 0) - (right.leak.id ?? 0));
+
+  const orderedLeaks = paired.map((pair) => pair.leak);
+  const orderedRows = paired.map((pair) => pair.row);
+  const photoEntries = await buildPhotoEntries(orderedLeaks, idbGet);
+  const photoMap = buildPhotoMap(photoEntries);
+  const outputFolder = getExportFolder(projectFolderName);
+
+  const ExcelJS = (await getExcelJS()).default;
+  const workbook = buildWorkbook({
+    orderedRows,
+    headers,
+    keysOrder,
+    photoMap,
+    lang,
+    ExcelJS,
+  });
+
+  const xlsxBuffer = await workbook.xlsx.writeBuffer();
+  const xlsxBlob = new Blob([xlsxBuffer], { type: EXCEL_MIME });
+
+  if (photoEntries.length === 0) {
+    return downloadBlob(
+      xlsxBlob,
+      `${fileName}.xlsx`,
+      outputFolder,
+      lang,
+      lang === "ru"
+        ? `XLSX экспортирован (${fileName}.xlsx)`
+        : `XLSX exported (${fileName}.xlsx)`,
+    );
+  }
+
+  const JSZip = (await getJSZip()).default;
+  const zip = new JSZip();
+  zip.file(`${fileName}.xlsx`, xlsxBuffer);
+
+  for (const entry of photoEntries) {
+    zip.file(entry.photoFileName, entry.base64, { base64: true });
+  }
+
+  const zipBlob = await zip.generateAsync({ type: "blob" });
+  return downloadBlob(
+    zipBlob,
+    `${fileName}.zip`,
+    outputFolder,
+    lang,
+    lang === "ru"
+      ? `XLSX с фотографиями экспортирован (${fileName}.zip)`
+      : `XLSX with photos exported (${fileName}.zip)`,
+  );
+}
+
+export const exportToExcelZip = exportToExcelFile;

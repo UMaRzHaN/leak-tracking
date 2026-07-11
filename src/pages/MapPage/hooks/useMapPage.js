@@ -3,14 +3,7 @@ import { useLanguage } from "@/app/hooks/useLanguage";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useActiveLocation } from "@/hooks/useActiveLocation";
 import { getDistanceMeters } from "@/utils/geoUtils";
-import { createOfflineMap, addMarkers } from "@/pages/MapPage/offlineMap";
-import { saveLeaksKML } from "@/pages/MapPage/kml";
 import { handleExport } from "@/pages/MapPage/handleExport";
-import {
-  preloadUrls,
-  buildTileUrls,
-  buildViewportTileUrls,
-} from "@/services/maps/tileCache";
 
 export function useMapPage({ leaks, coords }) {
   const { lang } = useLanguage();
@@ -18,6 +11,7 @@ export function useMapPage({ leaks, coords }) {
   const exportProjectFolder = activeProject?.folderName;
 
   const mapApiRef = useRef(null);
+  const mapModuleRef = useRef(null);
   const containerRef = useRef(null);
   const mapRef = useRef({
     map: null,
@@ -94,39 +88,50 @@ export function useMapPage({ leaks, coords }) {
   }, [filteredLeaks, mapCenter]);
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container || mapRef.current.map) return;
+    let cancelled = false;
 
-    const fallbackCenter =
-      Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng)
-        ? [coords.lat, coords.lng]
-        : [41.3111, 69.2797];
+    async function initMap() {
+      const container = containerRef.current;
+      if (!container || mapRef.current.map) return;
 
-    const { map, markersLayer, locateMe, destroy } = createOfflineMap(
-      container,
-      {
-        center: fallbackCenter,
-        zoom: 13,
-      },
-    );
+      const fallbackCenter =
+        Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng)
+          ? [coords.lat, coords.lng]
+          : [41.3111, 69.2797];
 
-    mapRef.current = { map, markersLayer, locateMe, destroy };
+      const mapModule =
+        mapModuleRef.current ?? (await import("@/pages/MapPage/offlineMap"));
+      mapModuleRef.current = mapModule;
+      if (cancelled) return;
 
-    map.on("moveend", () => {
-      const center = map.getCenter();
-      setMapCenter({ lat: center.lat, lng: center.lng });
-    });
+      const { map, markersLayer, locateMe, destroy } =
+        mapModule.createOfflineMap(container, {
+          center: fallbackCenter,
+          zoom: 13,
+        });
 
-    mapApiRef.current = {
-      focus: (leak) => {
-        if (!Number.isFinite(leak?.lat) || !Number.isFinite(leak?.lng)) return;
-        map.setView([leak.lat, leak.lng], 16, { animate: true });
-      },
-    };
+      mapRef.current = { map, markersLayer, locateMe, destroy };
+
+      map.on("moveend", () => {
+        const center = map.getCenter();
+        setMapCenter({ lat: center.lat, lng: center.lng });
+      });
+
+      mapApiRef.current = {
+        focus: (leak) => {
+          if (!Number.isFinite(leak?.lat) || !Number.isFinite(leak?.lng))
+            return;
+          map.setView([leak.lat, leak.lng], 16, { animate: true });
+        },
+      };
+    }
+
+    initMap();
 
     return () => {
+      cancelled = true;
       mapRef.current.map?.off("moveend");
-      destroy();
+      mapRef.current.destroy?.();
       fittedRef.current = false;
       mapRef.current = {
         map: null,
@@ -139,7 +144,10 @@ export function useMapPage({ leaks, coords }) {
   }, [coords?.lat, coords?.lng]);
 
   useEffect(() => {
-    addMarkers(mapRef.current.markersLayer, filteredLeaks);
+    mapModuleRef.current?.addMarkers?.(
+      mapRef.current.markersLayer,
+      filteredLeaks,
+    );
 
     if (fittedRef.current) return;
     const map = mapRef.current.map;
@@ -173,6 +181,8 @@ export function useMapPage({ leaks, coords }) {
 
     setDownloading(true);
     try {
+      const { preloadUrls, buildTileUrls, buildViewportTileUrls } =
+        await import("@/services/maps/tileCache");
       const urlSet = new Set();
       const validLeaks = visibleLeaks.filter(
         (leak) => Number.isFinite(leak.lat) && Number.isFinite(leak.lng),
@@ -240,8 +250,10 @@ export function useMapPage({ leaks, coords }) {
     }
   }, [downloading, visibleLeaks, notify, lang]);
 
-  const handleExportKML = useCallback(() => {
-    handleExport({
+  const handleExportKML = useCallback(async () => {
+    const { saveLeaksKML } = await import("@/pages/MapPage/kml");
+
+    await handleExport({
       leaks: visibleLeaks,
       saveFn: () =>
         saveLeaksKML(

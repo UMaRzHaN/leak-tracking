@@ -15,6 +15,7 @@ import { useAppState } from "./hooks/useAppState";
 
 import { cleanupLegacyLeaks } from "./migrations/cleanupLegacyLeaks";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
+import { logger } from "@/utils/logger";
 import { STATUS } from "@/utils/status";
 
 const AddLeak = lazy(() => import("@/pages/AddLeak/AddLeak"));
@@ -89,7 +90,7 @@ export default function App() {
     if (dataProjectId !== (activeProject?.id ?? null)) return;
     if (gcRanRef.current) return;
     gcRanRef.current = true;
-    gcOrphanedPhotos(data).catch((err) => console.warn("Photo GC error:", err));
+    gcOrphanedPhotos(data).catch((err) => logger.warn("Photo GC error:", err));
   }, [data, gcOrphanedPhotos, dataLoaded, dataProjectId, activeProject?.id]);
 
   /* =========================
@@ -129,7 +130,8 @@ export default function App() {
   /** First-run (ProjectSetupScreen): supports name/type fallback when ZIP has no project.json */
   const handleSetupImportZip = useCallback(
     async (file, fallback = {}) => {
-      const { importProjectZip } = await import("@/pages/Settings/backup");
+      const { importProjectZip } =
+        await import("@/services/projectBackupService");
       await importProjectZip(file, {
         ...stableImportCtx,
         metaFallback: fallback,
@@ -144,7 +146,8 @@ export default function App() {
    *  options.overrideName forces the project name regardless of project.json (used for copies). */
   const handleImportZip = useCallback(
     async (file, fallback, options = {}) => {
-      const { importProjectZip } = await import("@/pages/Settings/backup");
+      const { importProjectZip } =
+        await import("@/services/projectBackupService");
       return await importProjectZip(file, {
         ...stableImportCtx,
         metaFallback: fallback,
@@ -159,7 +162,7 @@ export default function App() {
   const handleImportIntoExisting = useCallback(
     async (file, existingProject, mode) => {
       const { importIntoExistingProject } =
-        await import("@/pages/Settings/backup");
+        await import("@/services/projectBackupService");
       return await importIntoExistingProject(
         file,
         { ...stableImportCtx, overwriteProject, existingProject },
@@ -201,21 +204,21 @@ export default function App() {
       )}
 
       <div className="pages">
-        {page === "" && (
-          <MainPage setPage={setPage} data={data} setData={save} />
-        )}
-
-        {page === "add" && (
-          <AddLeak
-            data={data}
-            setData={save}
-            coords={coords}
-            setPage={setPage}
-            prevPage={prevPage}
-          />
-        )}
-
         <Suspense fallback={null}>
+          {page === "" && (
+            <MainPage setPage={setPage} data={data} setData={save} />
+          )}
+
+          {page === "add" && (
+            <AddLeak
+              data={data}
+              setData={save}
+              coords={coords}
+              setPage={setPage}
+              prevPage={prevPage}
+            />
+          )}
+
           {page === "settings" && (
             <Settings
               setPage={setPage}

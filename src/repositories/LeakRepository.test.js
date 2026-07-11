@@ -89,6 +89,28 @@ describe("LeakRepository.getAll (web / localStorage)", () => {
     const result = await LeakRepository.getAll(PROJECT);
     expect(result[0].status).toBe("open");
   });
+
+  it("filters out records with unsupported status", async () => {
+    localStorage.setItem(
+      storageKey(PROJECT.projectId),
+      JSON.stringify([{ id: "bad-status", status: "closed" }]),
+    );
+
+    const result = await LeakRepository.getAll(PROJECT);
+    expect(result).toEqual([]);
+  });
+
+  it("filters out records with invalid photo paths", async () => {
+    localStorage.setItem(
+      storageKey(PROJECT.projectId),
+      JSON.stringify([
+        { id: "bad-photo", status: "open", photo: "/tmp/photo.jpg" },
+      ]),
+    );
+
+    const result = await LeakRepository.getAll(PROJECT);
+    expect(result).toEqual([]);
+  });
 });
 
 describe("LeakRepository.saveAll (web / localStorage)", () => {

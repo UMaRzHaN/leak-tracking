@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { logger } from "@/utils/logger";
 
 const DRAFT_KEY = "app:form_draft_v1";
 const TTL = 86_400_000; // 24 часа
@@ -25,7 +26,7 @@ export function useFormDraft() {
 
       localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
     } catch (e) {
-      console.warn("Draft save failed:", e);
+      logger.warn("Draft save failed:", e);
     }
   }, []);
 
@@ -54,7 +55,7 @@ export function useFormDraft() {
 
       return { form: form ?? {}, step: step ?? 1 };
     } catch (e) {
-      console.warn("Draft load failed:", e);
+      logger.warn("Draft load failed:", e);
       localStorage.removeItem(DRAFT_KEY);
       return null;
     }
@@ -67,7 +68,7 @@ export function useFormDraft() {
     try {
       localStorage.removeItem(DRAFT_KEY);
     } catch (e) {
-      console.warn("Draft clear failed:", e);
+      logger.warn("Draft clear failed:", e);
     }
   }, []);
 

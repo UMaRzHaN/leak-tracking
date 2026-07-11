@@ -1,3 +1,5 @@
+import { logger } from "@/utils/logger";
+
 export async function handleExport({
   leaks,
   saveFn,
@@ -25,7 +27,7 @@ export async function handleExport({
     const result = await saveFn();
     onSuccess?.(result);
   } catch (error) {
-    console.error(error);
+    logger.error("[handleExport] Export failed:", error);
     onError?.(lang === "ru" ? "Ошибка экспорта" : "Export error");
   }
 }

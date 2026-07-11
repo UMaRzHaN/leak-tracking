@@ -1,4 +1,4 @@
-import i18n from "@/i18n";
+import { readStoredLanguage } from "@/utils/locale";
 
 export const STATUS = {
   OPEN: "open",
@@ -55,24 +55,20 @@ const STATUS_ACTION_DEFAULTS = {
 };
 
 function getCurrentLanguage() {
-  return (i18n.resolvedLanguage ?? i18n.language ?? "ru").split("-")[0];
-}
-
-function translateOrDefault(t, key, defaultValue) {
-  return (t ?? i18n.t.bind(i18n))(key, { defaultValue });
+  return readStoredLanguage();
 }
 
 export function getStatusLabel(status, t) {
   const lang = getCurrentLanguage();
   const normalized = status ?? STATUS.OPEN;
-
-  return translateOrDefault(
-    t,
-    `leakDetails.statuses.${normalized}`,
+  const fallback =
     STATUS_LABEL_DEFAULTS[lang]?.[normalized] ??
-      STATUS_LABEL_DEFAULTS.ru[normalized] ??
-      normalized,
-  );
+    STATUS_LABEL_DEFAULTS.ru[normalized] ??
+    normalized;
+
+  return t
+    ? t(`leakDetails.statuses.${normalized}`, { defaultValue: fallback })
+    : fallback;
 }
 
 /**
@@ -101,7 +97,9 @@ export function transitionLabel(current, t) {
     STATUS_ACTION_DEFAULTS[lang]?.fallback ??
     STATUS_ACTION_DEFAULTS.ru.fallback;
 
-  return translateOrDefault(t, `statusActions.${normalized}`, fallback);
+  return t
+    ? t(`statusActions.${normalized}`, { defaultValue: fallback })
+    : fallback;
 }
 
 export function getStatusMeta(status, t) {

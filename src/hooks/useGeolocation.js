@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { isNative } from "@/utils/platform";
 import { Geolocation } from "@capacitor/geolocation";
+import { logger } from "@/utils/logger";
 
 export const useGeolocation = (enabled = true) => {
   const [coords, setCoords] = useState({ lat: null, lng: null });
@@ -32,8 +33,8 @@ export const useGeolocation = (enabled = true) => {
         (pos) => {
           if (stopped) return;
           setCoords({
-            lat:      pos.coords.latitude,
-            lng:      pos.coords.longitude,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
             accuracy: pos.coords.accuracy,
           });
           setError(null);
@@ -44,7 +45,7 @@ export const useGeolocation = (enabled = true) => {
           setError(err.message);
           setLoading(false);
         },
-        { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+        { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 },
       );
     };
 
@@ -63,7 +64,9 @@ export const useGeolocation = (enabled = true) => {
         // в настройках браузера, перезапускаем watchPosition без перезагрузки страницы
         if (navigator.permissions) {
           try {
-            permStatus = await navigator.permissions.query({ name: "geolocation" });
+            permStatus = await navigator.permissions.query({
+              name: "geolocation",
+            });
             permStatus.onchange = () => {
               if (stopped) return;
               if (permStatus.state === "granted") {
@@ -77,7 +80,7 @@ export const useGeolocation = (enabled = true) => {
             };
           } catch (err) {
             // Permissions API not available in this browser — expected on some mobile webviews
-            console.warn("[useGeolocation] Permissions API unavailable:", err);
+            logger.warn("[useGeolocation] Permissions API unavailable:", err);
           }
         }
         return;
@@ -101,13 +104,13 @@ export const useGeolocation = (enabled = true) => {
             }
             if (pos) {
               setCoords({
-                lat:      pos.coords.latitude,
-                lng:      pos.coords.longitude,
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
                 accuracy: pos.coords.accuracy,
               });
               setLoading(false);
             }
-          }
+          },
         );
       } catch (e) {
         setError(e.message);

@@ -3,9 +3,11 @@ import { Directory, Filesystem } from "@capacitor/filesystem";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { LeakRepository } from "@/repositories/LeakRepository";
 import { isNative } from "@/utils/platform";
+import { logger } from "@/utils/logger";
 
 const VALID_TYPES = ["upstream", "midstream", "downstream"];
 const CONFLICT_CLOSED = { open: false };
+const IMPORT_CONFIRM_CLOSED = { open: false };
 
 function detectTypeFromFileName(str) {
   const lower = str.toLowerCase();
@@ -47,6 +49,36 @@ export function useBackupActions({
   const { lang } = useLanguage();
   const importZipRef = useRef(null);
   const [conflictState, setConflictState] = useState(CONFLICT_CLOSED);
+  const [importConfirmState, setImportConfirmState] = useState(
+    IMPORT_CONFIRM_CLOSED,
+  );
+
+  const importProject = useCallback(
+    async (file, fallback) => {
+      const result = await onImportZip(file, fallback);
+      if (!result?.project) {
+        throw new Error(
+          lang === "ru"
+            ? "Не удалось получить данные проекта из файла"
+            : "Could not read project data from file",
+        );
+      }
+
+      notify(
+        "success",
+        lang === "ru"
+          ? `Импортирован проект «${result.project.name}» (${result.leakCount} ${pluralRecords(
+              result.leakCount,
+              lang,
+            )})`
+          : `Project "${result.project.name}" imported (${result.leakCount} ${pluralRecords(
+              result.leakCount,
+              lang,
+            )})`,
+      );
+    },
+    [lang, notify, onImportZip],
+  );
 
   const handleExportZip = useCallback(async () => {
     if (!data.length) {
@@ -61,7 +93,8 @@ export function useBackupActions({
     const fileName = `${folder}.zip`;
 
     try {
-      const { buildProjectBackupZip } = await import("@/pages/Settings/backup");
+      const { buildProjectBackupZip } =
+        await import("@/services/projectBackupService");
       const blob = await buildProjectBackupZip({
         leaks: data,
         idbGet: idbGetPhoto,
@@ -89,7 +122,7 @@ export function useBackupActions({
             directory: Directory.Documents,
           });
         } catch (error) {
-          console.log("Old ZIP file not found:", error?.message);
+          logger.log("Old ZIP file not found:", error?.message);
         }
 
         await Filesystem.writeFile({
@@ -133,7 +166,8 @@ export function useBackupActions({
       if (!file) return;
 
       try {
-        const { peekBackupZip } = await import("@/pages/Settings/backup");
+        const { peekBackupZip } =
+          await import("@/services/projectBackupService");
         const peek = await peekBackupZip(file);
         const metaProject = peek.meta?.project;
 
@@ -193,47 +227,26 @@ export function useBackupActions({
               ? "имени файла"
               : "file name";
 
-        const confirmed = window.confirm(
-          lang === "ru"
-            ? `Импортировать проект?\n\nНазвание: ${resolvedName}\nТип: ${typeLabel(
-                resolvedType,
-                lang,
-              )} (${resolvedType})\nЗаписей: ${peek.leaks.length}\nОпределено по: ${source}\n\nБудет создан новый проект.`
-            : `Import project?\n\nName: ${resolvedName}\nType: ${typeLabel(
-                resolvedType,
-                lang,
-              )} (${resolvedType})\nRecords: ${peek.leaks.length}\nDetected from: ${source}\n\nA new project will be created.`,
-        );
-
-        if (!confirmed) {
-          event.target.value = "";
-          return;
-        }
-
-        const fallback = metaProject
-          ? undefined
-          : { name: resolvedName, type: resolvedType };
-        const result = await onImportZip(file, fallback);
-        if (!result?.project) {
-          throw new Error(
+        setImportConfirmState({
+          open: true,
+          file,
+          fallback: metaProject
+            ? undefined
+            : { name: resolvedName, type: resolvedType },
+          title: lang === "ru" ? "Импортировать проект?" : "Import project?",
+          description:
             lang === "ru"
-              ? "Не удалось получить данные проекта из файла"
-              : "Could not read project data from file",
-          );
-        }
-
-        notify(
-          "success",
-          lang === "ru"
-            ? `Импортирован проект «${result.project.name}» (${result.leakCount} ${pluralRecords(
-                result.leakCount,
-                lang,
-              )})`
-            : `Project "${result.project.name}" imported (${result.leakCount} ${pluralRecords(
-                result.leakCount,
-                lang,
-              )})`,
-        );
+              ? `Название: ${resolvedName}\nТип: ${typeLabel(
+                  resolvedType,
+                  lang,
+                )} (${resolvedType})\nЗаписей: ${peek.leaks.length}\nОпределено по: ${source}\n\nБудет создан новый проект.`
+              : `Name: ${resolvedName}\nType: ${typeLabel(
+                  resolvedType,
+                  lang,
+                )} (${resolvedType})\nRecords: ${peek.leaks.length}\nDetected from: ${source}\n\nA new project will be created.`,
+          confirmLabel: lang === "ru" ? "Импортировать" : "Import",
+          cancelLabel: lang === "ru" ? "Отмена" : "Cancel",
+        });
       } catch (error) {
         notify(
           "error",
@@ -243,8 +256,27 @@ export function useBackupActions({
 
       event.target.value = "";
     },
-    [lang, notify, onImportZip, projects],
+    [lang, notify, projects],
   );
+
+  const confirmImport = useCallback(async () => {
+    const { file, fallback } = importConfirmState;
+    if (!file) return;
+    setImportConfirmState(IMPORT_CONFIRM_CLOSED);
+
+    try {
+      await importProject(file, fallback);
+    } catch (error) {
+      notify(
+        "error",
+        `${lang === "ru" ? "Ошибка импорта" : "Import error"}: ${error.message}`,
+      );
+    }
+  }, [importConfirmState, importProject, lang, notify]);
+
+  const cancelImport = useCallback(() => {
+    setImportConfirmState(IMPORT_CONFIRM_CLOSED);
+  }, []);
 
   const handleConflictOverwrite = useCallback(async () => {
     const { file, existingProject } = conflictState;
@@ -348,6 +380,9 @@ export function useBackupActions({
     importZipRef,
     handleExportZip,
     handleImportZip,
+    importConfirmState,
+    confirmImport,
+    cancelImport,
     conflictState,
     setConflictState,
     handleConflictOverwrite,

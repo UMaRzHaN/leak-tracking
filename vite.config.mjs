@@ -10,6 +10,13 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(__dirname, 'src') },
   },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        api: 'modern-compiler',
+      },
+    },
+  },
   plugins: [
     react(),
     visualizer({ filename: 'dist/stats.html', open: false, gzipSize: true }),
@@ -29,7 +36,6 @@ export default defineConfig({
             '@capacitor/share',
             '@capacitor-community/speech-recognition',
           ],
-          'vendor-zod': ['zod'],
           // exceljs & jszip removed - now loaded via dynamic import() on-demand
           // they will code-split automatically when imported dynamically
         },

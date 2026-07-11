@@ -15,9 +15,7 @@ vi.mock("../../hooks/photoService", () => ({
   getPhotoSrc: vi.fn().mockResolvedValue(null),
 }));
 
-/* ─────────────────────────────────────────────
-   Фикстуры
-───────────────────────────────────────────── */
+/* Fixtures */
 const makeLeak = (overrides = {}) => ({
   id: "leak-1",
   lat: 55.0,
@@ -48,9 +46,7 @@ const DOWNSTREAM_PROJECT = {
   folderName: "pererabotka_ufa",
 };
 
-/* ─────────────────────────────────────────────
-   detectProjectTypeFromLeaks
-───────────────────────────────────────────── */
+/* detectProjectTypeFromLeaks */
 describe("detectProjectTypeFromLeaks", () => {
   it("возвращает null для пустого массива", () => {
     expect(detectProjectTypeFromLeaks([])).toBeNull();
@@ -106,9 +102,7 @@ describe("detectProjectTypeFromLeaks", () => {
   });
 });
 
-/* ─────────────────────────────────────────────
-   validateBackup
-───────────────────────────────────────────── */
+/* validateBackup */
 describe("validateBackup", () => {
   it("принимает корректный массив записей", () => {
     const result = validateBackup([makeLeak()]);
@@ -150,9 +144,7 @@ describe("validateBackup", () => {
   });
 });
 
-/* ─────────────────────────────────────────────
-   validateProjectBackupMeta
-───────────────────────────────────────────── */
+/* validateProjectBackupMeta */
 describe("validateProjectBackupMeta", () => {
   const validMeta = {
     schemaVersion: 2,
@@ -190,9 +182,7 @@ describe("validateProjectBackupMeta", () => {
   });
 });
 
-/* ─────────────────────────────────────────────
-   buildProjectBackupZip + peekBackupZip (round-trip)
-───────────────────────────────────────────── */
+/* buildProjectBackupZip + peekBackupZip (round-trip) */
 describe("buildProjectBackupZip + peekBackupZip — round-trip", () => {
   const leaks = [
     makeLeak({ id: "l1", deposit: "Тенгиз", leak_speed: 5 }),
@@ -224,7 +214,7 @@ describe("buildProjectBackupZip + peekBackupZip — round-trip", () => {
     expect(peek.meta.project.type).toBe(UPSTREAM_PROJECT.type);
   });
 
-  it("detectedType совпадает с типом проекта (определяется по полям записей)", async () => {
+  it("detectedType совпадает с типом проекта", async () => {
     const blob = await buildProjectBackupZip({
       leaks,
       idbGet: null,
@@ -283,9 +273,7 @@ describe("buildProjectBackupZip + peekBackupZip — round-trip", () => {
   });
 });
 
-/* ─────────────────────────────────────────────
-   importProjectZip
-───────────────────────────────────────────── */
+/* importProjectZip */
 describe("importProjectZip", () => {
   const leaks = [
     makeLeak({ id: "l1", deposit: "Тенгиз" }),
@@ -388,7 +376,7 @@ describe("importProjectZip", () => {
     await expect(importProjectZip(blob, ctx)).rejects.toThrow();
   });
 
-  it("rollback removes created project when save fails", async () => {
+  it("rollback удаляет созданный проект при ошибке сохранения", async () => {
     const vars = { density: 0.668, GWP: 28 };
     const blob = await buildProjectBackupZip({
       leaks,

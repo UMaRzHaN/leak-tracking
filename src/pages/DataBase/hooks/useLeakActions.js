@@ -2,7 +2,13 @@ import { useState, useCallback } from "react";
 import { STATUS } from "@/utils/status";
 import { hapticSuccess } from "@/utils/haptics";
 
-export function useLeakActions({ data, setData, save, notify, deletePhoto = () => Promise.resolve() }) {
+export function useLeakActions({
+  data,
+  setData,
+  save,
+  notify,
+  deletePhoto = () => Promise.resolve(),
+}) {
   const [activeLeak, setActiveLeak] = useState(null);
   const [pickerLeak, setPickerLeak] = useState(null);
   const [resolveLeak, setResolveLeak] = useState(null);
@@ -20,15 +26,28 @@ export function useLeakActions({ data, setData, save, notify, deletePhoto = () =
         return;
       }
 
-      const orphanedPhoto = (leak.status === STATUS.RESOLVED && leak.photo_after) ? leak.photo : null;
+      const orphanedPhoto =
+        leak.status === STATUS.RESOLVED && leak.photo_after ? leak.photo : null;
       const next = data.map((r) =>
         r.id === leak.id
           ? {
               ...r,
-              ...(r.status === STATUS.RESOLVED ? { photo: r.photo_after ?? r.photo, photo_after: null } : {}),
+              ...(r.status === STATUS.RESOLVED
+                ? {
+                    photo: r.photo_after ?? r.photo,
+                    photo_after: null,
+                  }
+                : {}),
               status: newStatus,
               updatedAt: Date.now(),
-              history: [...(r.history ?? []), { action: "status_changed", to: newStatus, date: new Date().toISOString() }],
+              history: [
+                ...(r.history ?? []),
+                {
+                  action: "status_changed",
+                  to: newStatus,
+                  date: new Date().toISOString(),
+                },
+              ],
             }
           : r,
       );
@@ -61,7 +80,10 @@ export function useLeakActions({ data, setData, save, notify, deletePhoto = () =
               materials_equipment: materials_equipment ?? r.materials_equipment,
               note: note ?? r.note,
               updatedAt: Date.now(),
-              history: [...(r.history ?? []), { action: "status_changed", to: STATUS.RESOLVED, date: now }],
+              history: [
+                ...(r.history ?? []),
+                { action: "status_changed", to: STATUS.RESOLVED, date: now },
+              ],
             }
           : r,
       );
@@ -108,9 +130,12 @@ export function useLeakActions({ data, setData, save, notify, deletePhoto = () =
   );
 
   return {
-    activeLeak, setActiveLeak,
-    pickerLeak, setPickerLeak,
-    resolveLeak, setResolveLeak,
+    activeLeak,
+    setActiveLeak,
+    pickerLeak,
+    setPickerLeak,
+    resolveLeak,
+    setResolveLeak,
     handlePickStatus,
     handleStatusSelect,
     handleResolveConfirm,
