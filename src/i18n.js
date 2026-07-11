@@ -191,6 +191,11 @@ const resources = {
         equipmentType: "Тип оборудования",
         uncertainty: "Неопределённость",
         serialNumber: "Серийный номер оборудования",
+        equipmentOptions: {
+          gfm20: "GFM 2.0",
+          gfm30: "GFM 3.0",
+          pinkBag: "Розовый мешок",
+        },
         operatingMode: "Режим работы",
         operatingModeDays: "дней за год",
         gasType: "Тип газа",
@@ -611,6 +616,11 @@ const resources = {
         equipmentType: "Equipment type",
         uncertainty: "Uncertainty",
         serialNumber: "Equipment serial number",
+        equipmentOptions: {
+          gfm20: "GFM 2.0",
+          gfm30: "GFM 3.0",
+          pinkBag: "Pink bag",
+        },
         operatingMode: "Operating mode",
         operatingModeDays: "days per year",
         gasType: "Gas type",

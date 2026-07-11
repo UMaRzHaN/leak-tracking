@@ -1,0 +1,122 @@
+.successPage {
+  min-height: calc(100vh - var(--app-footer));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 18px 96px;
+  background: var(--c-bg);
+}
+
+.successCard {
+  width: min(100%, 430px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 22px 22px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--c-surface) 94%, white);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.16);
+  text-align: center;
+}
+
+.successIcon {
+  width: 68px;
+  height: 68px;
+  border-radius: 18px;
+  background: var(--c-blue-dim);
+  border: 1px solid var(--c-blue-overlay);
+  position: relative;
+  margin-bottom: 22px;
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: 22px;
+    top: 17px;
+    width: 18px;
+    height: 30px;
+    border: solid var(--c-blue);
+    border-width: 0 4px 4px 0;
+    transform: rotate(45deg);
+  }
+}
+
+.successCard h2 {
+  margin: 0 0 10px;
+  color: var(--c-text);
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.successCard p {
+  margin: 0;
+  max-width: 320px;
+  color: var(--c-text2);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.successChips {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 22px 0 26px;
+}
+
+.successChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--c-surface2);
+  color: var(--c-text2);
+  font-size: 13px;
+
+  strong {
+    min-width: 0;
+    max-width: 170px;
+    color: var(--c-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.successPrimary,
+.successSecondary {
+  width: 100%;
+  min-height: 54px;
+  border: none;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform var(--t-fast),
+    opacity var(--t-fast);
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.successPrimary {
+  background: var(--c-blue);
+  color: #fff;
+  box-shadow: 0 10px 24px var(--c-blue-overlay);
+
+  &:active {
+    background: var(--c-blue-light);
+  }
+}
+
+.successSecondary {
+  margin-top: 12px;
+  background: var(--c-surface2);
+  color: var(--c-text);
+}

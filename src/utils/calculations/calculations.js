@@ -3,6 +3,18 @@
  * leak  – данные утечки (из data)
  * vars  – параметры проекта (из storage_key)
  */
+export function isPinkBagEquipment(equipmentType) {
+  const normalized = String(equipmentType ?? "")
+    .trim()
+    .toLowerCase();
+
+  return (
+    normalized === "розовый мешок" ||
+    normalized === "pink bag" ||
+    normalized === "pinkbag"
+  );
+}
+
 export const calculations = (leak, vars) => {
   if (!leak || !vars) return leak;
   if (!vars.Operating_mode || vars.Operating_mode <= 0) return leak;
@@ -38,7 +50,7 @@ export const calculations = (leak, vars) => {
   /* =========================
      NORMALIZATION
   ========================= */
-  const uncertaintyFactor = (1 - uncertainty) / 100;
+  const uncertaintyFactor = (100 - uncertainty) / 100;
   const flareShare = percentage_gas_to_flare / 100;
   const utilShare = percentage_gas_to_utilization / 100;
 
@@ -54,8 +66,9 @@ export const calculations = (leak, vars) => {
   const leak_speed_standard =
     ((((leak_speed * pressure) / temperature_K) * 273.15) / 0.101325) *
     (gasPercentage / 100); // нормализуем к стандартным условиям (0°C, 1 атм) и учитываем процент газа в смеси
-  const leak_rate =
-    equipmentType === "Розовый мешок" ? leak_speed_standard : leak_speed;
+  const leak_rate = isPinkBagEquipment(equipmentType)
+    ? leak_speed_standard
+    : leak_speed;
   const leak_speed_kg_m = leak_rate * density;
 
   /* =========================

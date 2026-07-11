@@ -12,16 +12,18 @@ import { STATUS } from "@/utils/status";
 import { priorityFromSpeed } from "@/utils/priority";
 import { dataUrlToBlob } from "@/utils/photoConversion";
 import Notification from "@/components/ui/Notification/Notification";
+import AddLeakSuccess from "./components/AddLeakSuccess";
 import s from "./AddLeak.module.scss";
 
 export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { form, setForm } = useLeakFormContext();
   const { savePhoto, ready: photoReady } = usePhotoStorage();
   const { saveDraft, loadDraft, clearDraft, hasDraft } = useFormDraft();
   const { isSaving, run } = useSafeSave();
   const [draftPrompt, setDraftPrompt] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [savedLeak, setSavedLeak] = useState(null);
   const photoReadyRef = useRef(photoReady);
 
   const localeTexts = useMemo(
@@ -47,8 +49,34 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
         confirmLabel: t("addLeak.confirm.confirmLabel"),
         cancelLabel: t("addLeak.confirm.cancelLabel"),
       },
+      success: {
+        title: t("addLeak.success.title", {
+          defaultValue: lang === "ru" ? "Утечка сохранена" : "Leak saved",
+        }),
+        description: t("addLeak.success.description", {
+          defaultValue:
+            lang === "ru"
+              ? "Запись добавлена в журнал и доступна в базе данных."
+              : "The record has been added to the log and is available in the database.",
+        }),
+        newLeak: t("addLeak.success.newLeak", {
+          defaultValue: lang === "ru" ? "Новая утечка" : "New leak",
+        }),
+        home: t("addLeak.success.home", {
+          defaultValue: lang === "ru" ? "На главную" : "Return home",
+        }),
+        tag: t("addLeak.success.tag", {
+          defaultValue: lang === "ru" ? "№" : "Tag",
+        }),
+        component: t("addLeak.success.component", {
+          defaultValue: lang === "ru" ? "Компонент" : "Component",
+        }),
+        leakRate: t("addLeak.success.leakRate", {
+          defaultValue: lang === "ru" ? "Скорость" : "Leak rate",
+        }),
+      },
     }),
-    [t],
+    [t, lang],
   );
 
   useEffect(() => {
@@ -103,7 +131,7 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
             type: "error",
             message: t("addLeak.validation.lat", { lat }),
           });
-          return;
+          return null;
         }
         if (Number.isFinite(lng) && (lng < -180 || lng > 180)) {
           hapticWarning();
@@ -111,7 +139,7 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
             type: "error",
             message: t("addLeak.validation.lng", { lng }),
           });
-          return;
+          return null;
         }
 
         /* Save photo */
@@ -126,7 +154,7 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
                 type: "error",
                 message: t("addLeak.validation.photoReady"),
               });
-              return;
+              return null;
             }
           }
           photoPath = await savePhoto(rawPhoto, row.leak_id ?? String(id));
@@ -153,12 +181,45 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
 
         clearDraft();
         hapticSuccess();
-        setPage("");
+        setSavedLeak(newRow);
+        return newRow;
       } catch (err) {
         logger.error("[AddLeak] Error adding leak:", err);
         hapticWarning();
+        return null;
       }
     });
+  };
+
+  const successChips = useMemo(() => {
+    if (!savedLeak) return [];
+    return [
+      savedLeak.leak_id
+        ? { label: localeTexts.success.tag, value: savedLeak.leak_id }
+        : null,
+      savedLeak.component
+        ? {
+            label: localeTexts.success.component,
+            value: savedLeak.component,
+          }
+        : null,
+      savedLeak.leak_speed != null && savedLeak.leak_speed !== ""
+        ? {
+            label: localeTexts.success.leakRate,
+            value: `${savedLeak.leak_speed} ${t(
+              "addLeak.fields.leak_speed.unit",
+              { defaultValue: lang === "ru" ? "л/мин" : "L/min" },
+            )}`,
+          }
+        : null,
+    ].filter(Boolean);
+  }, [savedLeak, localeTexts, t, lang]);
+
+  const handleNewLeak = () => {
+    setSavedLeak(null);
+    setDraftPrompt(false);
+    setNotification(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -188,14 +249,24 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
         </div>
       )}
 
-      <LeakForm
-        onAdd={handleAdd}
-        isSaving={isSaving}
-        coords={coords}
-        setPage={setPage}
-        prevPage={prevPage}
-        lastItem={data.at(-1)}
-      />
+      {savedLeak ? (
+        <AddLeakSuccess
+          localeTexts={localeTexts.success}
+          chips={successChips}
+          onNewLeak={handleNewLeak}
+          onHome={() => setPage("")}
+        />
+      ) : (
+        <LeakForm
+          onAdd={handleAdd}
+          onSaved={setSavedLeak}
+          isSaving={isSaving}
+          coords={coords}
+          setPage={setPage}
+          prevPage={prevPage}
+          lastItem={data.at(-1)}
+        />
+      )}
     </>
   );
 }

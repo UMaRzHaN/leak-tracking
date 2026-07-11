@@ -62,6 +62,7 @@ function translateSteps(steps, t) {
 
 export default function LeakForm({
   onAdd,
+  onSaved,
   setPage,
   prevPage,
   lastItem,
@@ -186,7 +187,7 @@ export default function LeakForm({
 
   /* Save */
   const commitSave = useCallback(
-    (data) => {
+    async (data) => {
       const d = new Date();
       const coerced = { ...data };
       NUMBER_KEYS.forEach((key) => {
@@ -195,15 +196,16 @@ export default function LeakForm({
         }
       });
       const calculated = vars ? calculations(coerced, vars) : coerced;
-      onAdd?.({
+      const saved = await onAdd?.({
         ...calculated,
         date: `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`,
         createdAt: new Date(),
       });
+      if (!saved) return;
       clearForm();
-      setPage("");
+      onSaved?.(saved);
     },
-    [NUMBER_KEYS, vars, onAdd, clearForm, setPage],
+    [NUMBER_KEYS, vars, onAdd, clearForm, onSaved],
   );
 
   // eslint-disable-next-line no-inner-declarations
@@ -212,7 +214,7 @@ export default function LeakForm({
     const finalData = { ...form, photo: form.photo };
 
     if (!lastItem) {
-      commitSave(finalData);
+      void commitSave(finalData);
       return;
     }
 
@@ -228,7 +230,7 @@ export default function LeakForm({
     });
 
     if (emptyKeys.length === 0) {
-      commitSave(finalData);
+      void commitSave(finalData);
       return;
     }
 
@@ -242,12 +244,12 @@ export default function LeakForm({
       if (lastItem[key] !== undefined) merged[key] = lastItem[key];
     });
     setConfirmOpen(false);
-    commitSave(merged);
+    void commitSave(merged);
   };
 
   const handleCancelCopy = () => {
     setConfirmOpen(false);
-    commitSave({ ...form, photo: form.photo });
+    void commitSave({ ...form, photo: form.photo });
   };
 
   const ghostPlaceholders = useMemo(() => {

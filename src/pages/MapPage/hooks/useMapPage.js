@@ -13,6 +13,8 @@ export function useMapPage({ leaks, coords }) {
   const mapApiRef = useRef(null);
   const mapModuleRef = useRef(null);
   const containerRef = useRef(null);
+  const latestCoordsRef = useRef(coords);
+  const initialCoordsRef = useRef(coords);
   const mapRef = useRef({
     map: null,
     markersLayer: null,
@@ -40,6 +42,10 @@ export function useMapPage({ leaks, coords }) {
     (type, message) => setNotification({ type, message }),
     [],
   );
+
+  useEffect(() => {
+    latestCoordsRef.current = coords;
+  }, [coords]);
 
   useEffect(() => {
     setEnabledLocations((prev) => {
@@ -90,18 +96,23 @@ export function useMapPage({ leaks, coords }) {
 
   useEffect(() => {
     let cancelled = false;
+    let invalidateFrame = null;
+    let invalidateTimeout = null;
 
     async function initMap() {
       const container = containerRef.current;
       if (!container || mapRef.current.map) return;
 
+      const initialCoords = initialCoordsRef.current;
       const fallbackCenter =
-        Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng)
-          ? [coords.lat, coords.lng]
+        Number.isFinite(initialCoords?.lat) &&
+        Number.isFinite(initialCoords?.lng)
+          ? [initialCoords.lat, initialCoords.lng]
           : [41.3111, 69.2797];
       const initialUserCoords =
-        Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng)
-          ? { lat: coords.lat, lng: coords.lng }
+        Number.isFinite(initialCoords?.lat) &&
+        Number.isFinite(initialCoords?.lng)
+          ? { lat: initialCoords.lat, lng: initialCoords.lng }
           : null;
 
       const mapModule =
@@ -118,6 +129,11 @@ export function useMapPage({ leaks, coords }) {
 
       mapRef.current = { map, markersLayer, locateMe, destroy };
       setMapReady(true);
+
+      invalidateFrame = requestAnimationFrame(() => {
+        map.invalidateSize();
+        invalidateTimeout = setTimeout(() => map.invalidateSize(), 250);
+      });
 
       map.on("moveend", () => {
         const center = map.getCenter();
@@ -138,6 +154,8 @@ export function useMapPage({ leaks, coords }) {
 
     return () => {
       cancelled = true;
+      if (invalidateFrame !== null) cancelAnimationFrame(invalidateFrame);
+      if (invalidateTimeout !== null) clearTimeout(invalidateTimeout);
       mapRef.current.map?.off("moveend");
       mapRef.current.destroy?.();
       fittedRef.current = false;
@@ -150,7 +168,7 @@ export function useMapPage({ leaks, coords }) {
       setMapReady(false);
       mapApiRef.current = null;
     };
-  }, [coords?.lat, coords?.lng]);
+  }, []);
 
   useEffect(() => {
     mapModuleRef.current?.addMarkers?.(
@@ -289,8 +307,8 @@ export function useMapPage({ leaks, coords }) {
   }, []);
 
   const locateMe = useCallback(() => {
-    mapRef.current.locateMe?.(coords);
-  }, [coords]);
+    mapRef.current.locateMe?.(latestCoordsRef.current);
+  }, []);
 
   return {
     containerRef,

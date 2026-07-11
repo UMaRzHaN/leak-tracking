@@ -4,6 +4,15 @@
     android:name="android.hardware.camera"
     android:required="false" />
 
+<!-- Storage access for exports written to Directory.Documents. -->
+<uses-permission
+    android:name="android.permission.READ_EXTERNAL_STORAGE"
+    android:maxSdkVersion="32" />
+<uses-permission
+    android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+    android:maxSdkVersion="28" />
+<uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+
 <!--    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>-->
 <!-- 🌐 Интернет -->
 <uses-permission android:name="android.permission.INTERNET" />
@@ -23,6 +32,7 @@
     android:icon="@mipmap/ic_launcher"
     android:roundIcon="@mipmap/ic_launcher_round"
     android:label="@string/app_name"
+    android:requestLegacyExternalStorage="true"
     android:supportsRtl="true"
     android:theme="@style/AppTheme">
 
