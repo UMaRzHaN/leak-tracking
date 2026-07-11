@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import PhotoInput from "@/features/photos/PhotoInput/PhotoInput";
 import s from "./ResolveModal.module.scss";
 
 export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
+  const { t } = useTranslation();
   const [photo, setPhoto] = useState(null);
   const [mtr, setMtr] = useState(leak?.materials_equipment ?? "");
   const [note, setNote] = useState(leak?.note ?? "");
@@ -34,7 +36,7 @@ export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
         note: note.trim() || undefined,
       });
     } catch {
-      alert("Ошибка сохранения");
+      alert(t("resolve.error"));
     } finally {
       setSaving(false);
     }
@@ -47,9 +49,11 @@ export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
 
         <div className={s.header}>
           <div className={s.titleRow}>
-            <h2 className={s.title}>Устранение утечки</h2>
+            <h2 className={s.title}>{t("resolve.title")}</h2>
             {progress && progress.total > 1 && (
-              <span className={s.progressBadge}>{progress.current} / {progress.total}</span>
+              <span className={s.progressBadge}>
+                {progress.current} / {progress.total}
+              </span>
             )}
           </div>
           <p className={s.subtitle}>№ {leak?.leak_id ?? leak?.index ?? "—"}</p>
@@ -59,29 +63,29 @@ export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
           <PhotoInput
             value={photo}
             onChange={setPhoto}
-            label="Фото после устранения"
+            label={t("resolve.photoLabel")}
             required
             error={submitted && photoMissing}
           />
 
           <div className={s.field}>
-            <label className={s.label}>МТР (материалы и оборудование)</label>
+            <label className={s.label}>{t("resolve.materialsLabel")}</label>
             <textarea
               className={s.textarea}
               value={mtr}
               onChange={(e) => setMtr(e.target.value)}
-              placeholder="Перечислите использованные материалы..."
+              placeholder={t("resolve.materialsPlaceholder")}
               rows={3}
             />
           </div>
 
           <div className={s.field}>
-            <label className={s.label}>Примечание</label>
+            <label className={s.label}>{t("resolve.noteLabel")}</label>
             <textarea
               className={s.textarea}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Дополнительные сведения об устранении..."
+              placeholder={t("resolve.notePlaceholder")}
               rows={2}
             />
           </div>
@@ -94,7 +98,7 @@ export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
             type="button"
             disabled={saving}
           >
-            Отмена
+            {t("resolve.cancel")}
           </button>
           <button
             className={s.btnConfirm}
@@ -102,11 +106,14 @@ export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
             type="button"
             disabled={saving}
           >
-            {saving ? "Сохранение..." : photoMissing && submitted ? "Добавьте фото" : "Подтвердить"}
+            {saving
+              ? t("resolve.saving")
+              : photoMissing && submitted
+                ? t("resolve.addPhoto")
+                : t("resolve.confirm")}
           </button>
         </div>
       </div>
     </div>
   );
 }
-

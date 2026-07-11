@@ -3,6 +3,16 @@ import { useLanguage } from "@/app/hooks/useLanguage";
 import { smartFilter } from "./smartFilter";
 import s from "./Autocomplete.module.scss";
 
+function optionValue(option) {
+  return typeof option === "string" ? option : (option?.value ?? "");
+}
+
+function optionLabel(option) {
+  return typeof option === "string"
+    ? option
+    : (option?.label ?? option?.value ?? "");
+}
+
 export default function Autocomplete({
   id,
   label,
@@ -21,14 +31,23 @@ export default function Autocomplete({
   const inputRef = useRef(null);
 
   useEffect(() => {
-    setQuery(value ?? "");
-  }, [value]);
+    if (!value) {
+      setQuery("");
+      return;
+    }
+
+    const exact = options.find((option) => optionValue(option) === value);
+    setQuery(exact ? optionLabel(exact) : value);
+  }, [options, value]);
 
   const filtered = useMemo(() => smartFilter(query, options), [options, query]);
   const showClear = query?.length > 0;
 
-  const select = (selectedValue) => {
-    setQuery(selectedValue);
+  const select = (selectedOption) => {
+    const selectedValue = optionValue(selectedOption);
+    const selectedLabel = optionLabel(selectedOption);
+
+    setQuery(selectedLabel);
     onChange(selectedValue);
     onComplete?.(selectedValue);
     setOpen(false);
@@ -89,7 +108,7 @@ export default function Autocomplete({
             onMouseDown={(e) => e.preventDefault()}
             onClick={clear}
           >
-            ✕
+            ×
           </button>
         )}
       </div>
@@ -98,12 +117,12 @@ export default function Autocomplete({
         <ul className={s.autocompleteList}>
           {filtered.map((option, index) => (
             <li
-              key={`${option}-${index}`}
+              key={`${optionValue(option)}-${index}`}
               className={s.autocompleteItem}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => select(option)}
             >
-              {option}
+              {optionLabel(option)}
             </li>
           ))}
         </ul>

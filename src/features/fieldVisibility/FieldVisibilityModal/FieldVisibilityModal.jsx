@@ -6,7 +6,63 @@ import { useLanguage } from "@/app/hooks/useLanguage";
 // These keys are managed by the system and can never be hidden
 const SYSTEM_KEYS = new Set(["index", "date", "status", "resolvedAt"]);
 
-function buildGroups(config, localeTexts) {
+const STEP_TITLE_KEYS = {
+  Основное: "basic",
+  "МТР и Описание *": "mtrAndDescription",
+  "Примечание и фото": "noteAndPhoto",
+};
+
+function translateFieldLabel(key, fallbackLabel, t, lang) {
+  const explicitLabels = {
+    date: lang === "ru" ? "Дата" : "Date",
+    lat: lang === "ru" ? "Широта (X)" : "Latitude (X)",
+    lng: lang === "ru" ? "Долгота (Y)" : "Longitude (Y)",
+    leak_speed_kg_h:
+      lang === "ru"
+        ? "Измеренная скорость утечки, кг/ч"
+        : "Measured leak rate, kg/h",
+    temperature_K: lang === "ru" ? "Температура, K" : "Temperature, K",
+    flareShare:
+      lang === "ru" ? "Процент газа на сжигание" : "Gas to flare share",
+    utilShare:
+      lang === "ru"
+        ? "Процент газа на использование"
+        : "Gas to utilization share",
+    Operating_mode:
+      lang === "ru" ? "Наработка (дней)" : "Operating mode (days)",
+    Total_Annual_Methane_Loss_m3_y:
+      lang === "ru"
+        ? "Общие годовые потери метана CH4, м3/год"
+        : "Total annual methane loss CH4, m3/year",
+    Total_Annual_Methane_Loss_t_y:
+      lang === "ru"
+        ? "Годовые потери метана CH4, т/год"
+        : "Annual methane loss CH4, t/year",
+    Emissions_t_CO2eq_year:
+      lang === "ru" ? "Выбросы, CO2-экв, т/год" : "Emissions, CO2-eq, t/year",
+    Emissions_kg_CO2_eq_year:
+      lang === "ru" ? "Выбросы, кг CO2, т/год" : "Emissions, kg CO2, t/year",
+    weightedGWP:
+      lang === "ru"
+        ? "Потенциал глобального потепления"
+        : "Global warming potential",
+  };
+
+  return t(`addLeak.fields.${key}.label`, {
+    defaultValue: explicitLabels[key] ?? fallbackLabel,
+  });
+}
+
+function translateStepTitle(title, t) {
+  const key = STEP_TITLE_KEYS[title];
+  if (!key) return title;
+
+  return t(`addLeak.stepTitles.${key}`, {
+    defaultValue: title,
+  });
+}
+
+function buildGroups(config, localeTexts, t, lang) {
   const { headers, keysOrder } = config.export.excel;
   const headerMap = Object.fromEntries(
     keysOrder.map((k, i) => [k, headers[i]]),
@@ -17,15 +73,27 @@ function buildGroups(config, localeTexts) {
     .map((step) => {
       const fields = step.fields
         .filter((f) => !SYSTEM_KEYS.has(f.key))
-        .map((f) => ({ key: f.key, label: f.label, required: !!f.required }));
+        .map((f) => ({
+          key: f.key,
+          label: translateFieldLabel(f.key, f.label, t, lang),
+          required: !!f.required,
+        }));
       fields.forEach((f) => stepFieldKeys.add(f.key));
-      return { title: step.title, isStep: true, fields };
+      return {
+        title: translateStepTitle(step.title, t),
+        isStep: true,
+        fields,
+      };
     })
     .filter((g) => g.fields.length > 0);
 
   const excelOnlyFields = keysOrder
     .filter((k) => !stepFieldKeys.has(k) && !SYSTEM_KEYS.has(k))
-    .map((k) => ({ key: k, label: headerMap[k] ?? k, required: false }));
+    .map((k) => ({
+      key: k,
+      label: translateFieldLabel(k, headerMap[k] ?? k, t, lang),
+      required: false,
+    }));
 
   const groups = [...stepGroups];
   if (excelOnlyFields.length > 0) {
@@ -138,7 +206,7 @@ export default function FieldVisibilityModal({
   hiddenFields,
   onSave,
 }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const localeTexts = useMemo(
     () => ({
       title: t("fieldVisibility.title"),
@@ -168,8 +236,8 @@ export default function FieldVisibilityModal({
   const [openGroups, setOpenGroups] = useState(new Set());
 
   const groups = useMemo(
-    () => buildGroups(config, localeTexts),
-    [config, localeTexts],
+    () => buildGroups(config, localeTexts, t, lang),
+    [config, localeTexts, t, lang],
   );
 
   // Sync draft + expand all groups on open

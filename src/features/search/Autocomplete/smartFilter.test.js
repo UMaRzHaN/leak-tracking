@@ -41,6 +41,40 @@ describe("smartFilter", () => {
       const opts = Array.from({ length: 25 }, (_, i) => `item ${i}`);
       expect(smartFilter(null, opts)).toHaveLength(20);
     });
+
+    it("works with option objects", () => {
+      const opts = [
+        {
+          value: "Кран Шаровой",
+          label: "Ball valve",
+          keywords: ["кран шаровой"],
+        },
+        { value: "Вентиль", label: "Globe valve", keywords: ["вентиль"] },
+      ];
+      expect(smartFilter("ball", opts)[0]).toMatchObject({
+        value: "Кран Шаровой",
+        label: "Ball valve",
+      });
+      expect(smartFilter("кран", opts)[0]).toMatchObject({
+        value: "Кран Шаровой",
+        label: "Ball valve",
+      });
+    });
+
+    it("matches TCU abbreviation in english autocomplete", () => {
+      const opts = [
+        {
+          value: "Турбокомпрессорный Агрегат",
+          label: "Turbocompressor unit",
+          keywords: ["Турбокомпрессорный Агрегат"],
+        },
+      ];
+
+      expect(smartFilter("tcu", opts)[0]).toMatchObject({
+        value: "Турбокомпрессорный Агрегат",
+        label: "Turbocompressor unit",
+      });
+    });
   });
 
   describe("поиск по аббревиатуре + DN/PN (формат XX/XX)", () => {
@@ -48,7 +82,9 @@ describe("smartFilter", () => {
       const result = smartFilter("змс 100/160", MATERIALS);
       expect(result[0]).toContain("DN-100");
       expect(result[0]).toContain("PN-160");
-      expect(result[0].toLowerCase()).toContain("задвижка механическая стальная");
+      expect(result[0].toLowerCase()).toContain(
+        "задвижка механическая стальная",
+      );
     });
 
     it("змс 50/160 → DN-50 PN-160 первой", () => {
@@ -106,7 +142,9 @@ describe("smartFilter", () => {
 
     it("сппк без чисел → все СППК в результатах", () => {
       const result = smartFilter("сппк", MATERIALS);
-      expect(result.every((r) => r.toLowerCase().startsWith("сппк"))).toBe(true);
+      expect(result.every((r) => r.toLowerCase().startsWith("сппк"))).toBe(
+        true,
+      );
     });
   });
 
@@ -122,9 +160,7 @@ describe("smartFilter", () => {
     it("кш → только краны шаровые", () => {
       const result = smartFilter("кш", MATERIALS);
       expect(result.length).toBeGreaterThan(0);
-      result.forEach((r) =>
-        expect(r.toLowerCase()).toContain("кран шаровой"),
-      );
+      result.forEach((r) => expect(r.toLowerCase()).toContain("кран шаровой"));
     });
 
     it("рк → только регулирующие клапаны", () => {

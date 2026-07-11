@@ -9,6 +9,7 @@ import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { calculations } from "@/utils/calculations/calculations";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
+import { localizeAutocompleteOptions } from "@/features/search/Autocomplete/optionTranslations";
 import AddLeakHeader from "./Header/AddLeakHeader";
 import AddLeakFooter from "./Footer/AddLeakFooter";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
@@ -47,6 +48,10 @@ function translateStep(step, t) {
             ? "Main gas pipeline administration"
             : (field.hint ?? ""),
       }),
+      options:
+        field.type === "autocomplete"
+          ? localizeAutocompleteOptions(field.options ?? [], "en")
+          : field.options,
     })),
   };
 }

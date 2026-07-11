@@ -1,4 +1,5 @@
 import { useRef, useId, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useCamera } from "@/hooks/useCamera";
 import s from "./PhotoInput.module.scss";
 
@@ -9,6 +10,7 @@ export default function PhotoInput({
   required = false,
   error = false,
 }) {
+  const { t } = useTranslation();
   const inputRef = useRef(null);
   const aliveRef = useRef(true);
   const inputId = useId();
@@ -53,11 +55,11 @@ export default function PhotoInput({
     <>
       <button type="button" className={s.btn} onClick={handleCamera}>
         <span className={s.btnIcon}>📷</span>
-        Камера
+        {t("photoInput.camera")}
       </button>
       <button type="button" className={s.btn} onClick={handleGallery}>
         <span className={s.btnIcon}>🖼️</span>
-        Галерея
+        {t("photoInput.gallery")}
       </button>
     </>
   ) : (
@@ -67,7 +69,7 @@ export default function PhotoInput({
       onClick={handleGallery}
     >
       <span className={s.btnIcon}>📁</span>
-      {hasPhoto ? "Заменить фото" : "Выбрать файл"}
+      {hasPhoto ? t("photoInput.replace") : t("photoInput.chooseFile")}
     </button>
   );
 
@@ -84,14 +86,14 @@ export default function PhotoInput({
         {hasPhoto ? (
           <img
             src={value.src}
-            alt="Выбранное фото"
+            alt={t("photoInput.selectedAlt")}
             className={s.photoPreview}
           />
         ) : (
           <>
             <div className={s.cardIcon}>📷</div>
-            <div className={s.cardTitle}>Добавить фото результата</div>
-            <div className={s.cardHint}>Рекомендуется для отчётности</div>
+            <div className={s.cardTitle}>{t("photoInput.addResultPhoto")}</div>
+            <div className={s.cardHint}>{t("photoInput.reportingHint")}</div>
           </>
         )}
 
@@ -109,7 +111,11 @@ export default function PhotoInput({
         />
       )}
 
-      {error && <div className={s.fieldError}>Поле «{label}» обязательно</div>}
+      {error && (
+        <div className={s.fieldError}>
+          {t("photoInput.requiredField", { label })}
+        </div>
+      )}
     </div>
   );
 }

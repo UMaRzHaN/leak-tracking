@@ -1,41 +1,70 @@
 /**
- * Умный поиск по словарю с поддержкой аббревиатур и параметров DN/PN.
- *
- * Примеры:
- *  "змс 100/160"   → Задвижка механическая стальная DN-100 PN-160…
- *  "сппк 25/64"    → СППК DN-25 PN-64…
- *  "кш 50/64"      → Кран шаровой DN-50 PN-64…
- *  "кзв 15/160"    → Клапан запорный (вентиль) DN-15 PN-160…
- *  "рк 150/64"     → Регулирующий клапан DN-150 PN-64…
- *  "DN-100 PN-160" → Задвижка механическая стальная DN-100 PN-160…
+ * Smart autocomplete filtering with support for:
+ * - abbreviations
+ * - DN/PN matching
+ * - option objects with separate label/value/keywords
  */
 
-/** Единый словарь аббревиатур — используется везде в этом файле */
 const ABBREV_MAP = {
-  // Задвижки
+  sgv: "задвижка механическая стальная",
+  bfv: "задвижка дисковая",
+  tgv: "задвижка муфтовая",
+
+  bv: "кран шаровой",
+  pv: "кран пробковый",
+  nv: "игольчатый кран",
+
+  cv: "обратный клапан",
+  srv: "сбросной пружинный предохранительный клапан",
+  kz: "клапан запорный",
+  rk: "регулирующий клапан",
+
+  pr: "регулятор давления",
+  gpr: "регулятор давления газа",
+  epu: "электропневматическое управляющее устройство",
+
+  acgu: "аппарат воздушного охлаждения газа",
+  acu: "аппарат воздушного охлаждения",
+  fsb: "блок фильтрсепараторов",
+  fgcu: "блок подготовки топливного газа",
+  gpu: "газоперекачивающий агрегат",
+  tcu: "турбокомпрессорный агрегат",
+  dc: "пылеуловитель",
+  gh: "печь газовая",
+
+  cs: "компрессорная станция",
+  ps: "насосная станция",
+  bcs: "дожимная компрессорная станция",
+  bps: "дожимная насосная станция",
+  lcs: "линейная компрессорная станция",
+  ogpa: "нефтегазодобывающее управление",
+  gpa: "газодобывающее управление",
+  opa: "нефтедобывающее управление",
+  gtf: "установка комплексной подготовки газа",
+  fwko: "установка предварительного сброса воды",
+  otf: "установка подготовки нефти",
+  ggs: "газосборный пункт",
+  ogs: "нефтесборный пункт",
+  mgp: "магистральный газопровод",
+  gds: "газораспределительная станция",
+  gms: "газоизмерительная станция",
+  gprs: "пункт редуцирования газа",
+  ugs: "подземное хранилище газа",
+  fs: "факельное хозяйство",
+
   змс: "задвижка механическая стальная",
-  збс: "задвижка байпасная стальная",
   зд: "задвижка дисковая",
   зму: "задвижка муфтовая",
-
-  // Краны
   кш: "кран шаровой",
   кп: "кран пробковый",
   ик: "игольчатый кран",
-
-  // Клапаны
   ок: "обратный клапан",
   сппк: "сбросной пружинный предохранительный клапан",
-  кзв: "клапан запорный",
   кз: "клапан запорный",
   рк: "регулирующий клапан",
-
-  // Регуляторы / управление
   рд: "регулятор давления",
   рдг: "регулятор давления газа",
   эпуу: "электропневматическое управляющее устройство",
-
-  // Оборудование / агрегаты
   авог: "аппарат воздушного охлаждения газа",
   авод: "аппарат воздушного охлаждения",
   бфс: "блок фильтрсепараторов",
@@ -44,60 +73,52 @@ const ABBREV_MAP = {
   тка: "турбокомпрессорный агрегат",
   пу: "пылеуловитель",
   пг: "печь газовая",
-
-  // Объекты инфраструктуры
   кс: "компрессорная станция",
   нс: "насосная станция",
   дкс: "дожимная компрессорная станция",
   днс: "дожимная насосная станция",
   лкс: "линейная компрессорная станция",
-  гпс: "газоперекачивающая станция",
-  гкс: "газокомпрессорная станция",
-  бкс: "бустерная компрессорная станция",
   нгду: "нефтегазодобывающее управление",
   гду: "газодобывающее управление",
   нду: "нефтедобывающее управление",
-  пднг: "промысел добычи нефти и газа",
-  гп: "газовый промысел",
-  нп: "нефтяной промысел",
-  сп: "скважинная площадка",
   укпг: "установка комплексной подготовки газа",
-  укпн: "установка комплексной подготовки нефти",
   упсв: "установка предварительного сброса воды",
   упн: "установка подготовки нефти",
   гсп: "газосборный пункт",
-  нсп: "нефтесборный пункт",
-  цпс: "центральный пункт сбора",
-  цпп: "центральный пункт подготовки",
   мг: "магистральный газопровод",
-  лпдс: "линейная производственно-диспетчерская станция",
   грс: "газораспределительная станция",
   гис: "газоизмерительная станция",
-  ууг: "узел учета газа",
   прг: "пункт редуцирования газа",
-  грп: "газорегуляторный пункт",
-  гру: "газорегуляторная установка",
   пхг: "подземное хранилище газа",
-  рп: "резервуарный парк",
-  снн: "станция налива нефти и нефтепродуктов",
   фх: "факельное хозяйство",
 };
 
-/** Нормализует строку для поиска */
+function optionValue(option) {
+  return typeof option === "string" ? option : (option?.value ?? "");
+}
+
+function optionLabel(option) {
+  return typeof option === "string"
+    ? option
+    : (option?.label ?? option?.value ?? "");
+}
+
+function optionKeywords(option) {
+  return typeof option === "string" ? [] : (option?.keywords ?? []);
+}
+
 function normalize(str) {
-  return str
+  return String(str ?? "")
     .toLowerCase()
-    .replace(/[‑–—−]/g, "-")
+    .replace(/[‐–—−]/g, "-")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-/** Извлекает числовые параметры DN/PN (или Ду/Ру) из строки */
 function extractNumbers(query) {
   const n = normalize(query);
   const result = { dn: null, pn: null };
 
-  // Формат XX/XX (например 100/160 или ЗМС 100/160)
   const slashMatch = n.match(/(\d{1,3})\/(\d{1,3})/);
   if (slashMatch) {
     result.dn = parseInt(slashMatch[1], 10);
@@ -105,14 +126,12 @@ function extractNumbers(query) {
     return result;
   }
 
-  // Явные префиксы DN/PN или Ду/Ру — не захватывают первое попавшееся число
   const dnExplicit = n.match(/(?:dn|ду)[- ]?(\d{1,3})/);
   const pnExplicit = n.match(/(?:pn|ру)[- ]?(\d{1,3})/);
 
   if (dnExplicit) result.dn = parseInt(dnExplicit[1], 10);
   if (pnExplicit) result.pn = parseInt(pnExplicit[1], 10);
 
-  // Фолбэк: одиночное число без префикса (только для коротких запросов)
   if (!dnExplicit && !pnExplicit) {
     const bare = n.match(/(\d{1,3})/);
     if (bare) result.dn = parseInt(bare[1], 10);
@@ -121,22 +140,14 @@ function extractNumbers(query) {
   return result;
 }
 
-/** Расширяет аббревиатуру до полного названия */
-
-/**
- * Проверяет, содержит ли нормализованный текст опции указанную аббревиатуру
- * (как расширенную форму ИЛИ как сам токен — для случаев типа "СППК DN-20 PN-16").
- */
 function optionMatchesAbbrev(normalizedOption, abbrev, expandedForm) {
   if (normalizedOption.includes(expandedForm)) return true;
-  // Опция содержит аббревиатуру как отдельный токен в начале (напр. "сппк dn-20")
   const token = abbrev + " ";
   return (
     normalizedOption.startsWith(token) || normalizedOption.includes(" " + token)
   );
 }
 
-/** Вычисляет релевантность совпадения (0-100) */
 function calculateRelevance(query, option) {
   const q = normalize(query);
   const o = normalize(option);
@@ -148,7 +159,7 @@ function calculateRelevance(query, option) {
 
   const queryWords = q.split(/[\s/\-_,]+/).filter(Boolean);
   const abbrevWord = queryWords.find(
-    (w) => w.length <= 5 && /^[а-яёa-z]+$/.test(w) && ABBREV_MAP[w],
+    (w) => w.length <= 6 && /^[а-яёa-z]+$/.test(w) && ABBREV_MAP[w],
   );
   const hasAbbreviation = !!abbrevWord;
 
@@ -161,8 +172,9 @@ function calculateRelevance(query, option) {
         nums.pn &&
         optionNums.dn === nums.dn &&
         optionNums.pn === nums.pn
-      )
+      ) {
         return 100;
+      }
       if (nums.dn && optionNums.dn === nums.dn) return 95;
       if (nums.pn && optionNums.pn === nums.pn) return 90;
       return 20;
@@ -176,8 +188,10 @@ function calculateRelevance(query, option) {
       nums.pn &&
       optionNums.dn === nums.dn &&
       optionNums.pn === nums.pn
-    )
+    ) {
       return 100;
+    }
+
     let score = 0;
     if (nums.dn && optionNums.dn === nums.dn) score += 50;
     if (nums.pn && optionNums.pn === nums.pn) score += 50;
@@ -201,12 +215,19 @@ function calculateRelevance(query, option) {
   return 0;
 }
 
-/**
- * Фильтрует и ранжирует опции по строке поиска.
- * @param {string} query
- * @param {string[]} options
- * @param {number} minScore
- */
+function scoreOption(query, option) {
+  const candidates = [
+    optionLabel(option),
+    optionValue(option),
+    ...optionKeywords(option),
+  ].filter(Boolean);
+
+  return candidates.reduce(
+    (best, candidate) => Math.max(best, calculateRelevance(query, candidate)),
+    0,
+  );
+}
+
 export function smartFilter(query, options, minScore = 60) {
   if (!query?.trim()) return options.slice(0, 20);
 
@@ -214,7 +235,6 @@ export function smartFilter(query, options, minScore = 60) {
   const nums = extractNumbers(query);
   const hasNumbers = nums.dn !== null || nums.pn !== null;
 
-  // Ищем аббревиатуру в запросе (наиболее длинную — чтобы "рдг" побеждал "рд")
   let foundAbbrev = null;
   let expandedAbbrev = null;
   for (const abbr of Object.keys(ABBREV_MAP).sort(
@@ -230,8 +250,15 @@ export function smartFilter(query, options, minScore = 60) {
   if (foundAbbrev && hasNumbers) {
     const scored = options
       .map((option) => {
-        const o = normalize(option);
-        const optionNums = extractNumbers(option);
+        const optionText = [
+          optionLabel(option),
+          optionValue(option),
+          ...optionKeywords(option),
+        ]
+          .filter(Boolean)
+          .join(" ");
+        const o = normalize(optionText);
+        const optionNums = extractNumbers(optionValue(option));
         const matches = optionMatchesAbbrev(o, foundAbbrev, expandedAbbrev);
         const dnMatch = nums.dn != null && optionNums.dn === nums.dn;
         const pnMatch = nums.pn != null && optionNums.pn === nums.pn;
@@ -249,16 +276,13 @@ export function smartFilter(query, options, minScore = 60) {
   }
 
   const scored = options
-    .map((option) => ({ option, score: calculateRelevance(query, option) }))
+    .map((option) => ({ option, score: scoreOption(query, option) }))
     .filter((item) => item.score >= minScore)
     .sort((a, b) => b.score - a.score);
 
   return scored.map((item) => item.option);
 }
 
-/**
- * Проверяет, является ли строка точным сокращением для опции.
- */
 export function isAbbreviation(query, option) {
-  return calculateRelevance(query, option) >= 90;
+  return scoreOption(query, option) >= 90;
 }
