@@ -22,7 +22,16 @@ function tornadoIconUrl(colorHex) {
   return `https://earth.google.com/earth/rpc/cc/icon?color=${colorHex}&amp;id=1714&amp;scale=4`;
 }
 
-function cdata(value) {
+function escapeXml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function cdataText(value) {
   return String(value ?? "").replace(/]]>/g, "]]&gt;");
 }
 
@@ -87,16 +96,16 @@ export function exportLeaksKML(leaks, project, lang = "ru") {
         .map(
           (leak) => `
       <Placemark>
-        <name>${cdata(leak.leak_id)}</name>
+        <name>${escapeXml(leak.leak_id)}</name>
         <styleUrl>#style_${groupIndex}</styleUrl>
         <description>
           <![CDATA[
-            <b>${cdata(labels.mainLabel)}:</b> ${cdata(leak[config.main]) || notSpecified}<br/>
-            <b>${cdata(labels.secondaryLabel)}:</b> ${cdata(leak[config.secondary]) || notSpecified}<br/>
-            <b>${lang === "ru" ? "Компонент" : "Component"}:</b> ${cdata(leak.component) || notSpecified}<br/>
+            <b>${cdataText(labels.mainLabel)}:</b> ${cdataText(leak[config.main]) || notSpecified}<br/>
+            <b>${cdataText(labels.secondaryLabel)}:</b> ${cdataText(leak[config.secondary]) || notSpecified}<br/>
+            <b>${lang === "ru" ? "Компонент" : "Component"}:</b> ${cdataText(leak.component) || notSpecified}<br/>
             <b>${lang === "ru" ? "Скорость" : "Leak rate"}:</b> ${
               leak.leak_speed != null
-                ? `${cdata(leak.leak_speed)} ${lang === "ru" ? "л/мин" : "L/min"}`
+                ? `${cdataText(leak.leak_speed)} ${lang === "ru" ? "л/мин" : "L/min"}`
                 : noRate
             }
           ]]>
@@ -110,7 +119,7 @@ export function exportLeaksKML(leaks, project, lang = "ru") {
 
       return `
     <Folder>
-      <name>${cdata(field)}</name>
+      <name>${escapeXml(field)}</name>
       ${placemarks}
     </Folder>`;
     })

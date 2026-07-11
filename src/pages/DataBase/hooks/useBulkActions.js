@@ -18,7 +18,6 @@ function pluralLeaks(n, lang) {
 export function useBulkActions({
   data,
   setData,
-  save,
   displayed,
   notify,
   deletePhoto = () => Promise.resolve(),
@@ -92,8 +91,7 @@ export function useBulkActions({
       );
 
       try {
-        setData(next);
-        await save(next);
+        await setData(next);
         hapticSuccess();
         for (const path of orphanedPhotos) deletePhoto(path).catch(() => {});
         notify(
@@ -115,17 +113,7 @@ export function useBulkActions({
         );
       }
     },
-    [
-      clearSelection,
-      data,
-      deletePhoto,
-      lang,
-      notify,
-      save,
-      selectedIds,
-      setData,
-      t,
-    ],
+    [clearSelection, data, deletePhoto, lang, notify, selectedIds, setData, t],
   );
 
   const handleSequentialResolveConfirm = useCallback(
@@ -153,8 +141,7 @@ export function useBulkActions({
       );
 
       try {
-        setData(next);
-        await save(next);
+        await setData(next);
         hapticSuccess();
       } catch (err) {
         notify(
@@ -189,7 +176,6 @@ export function useBulkActions({
       notify,
       resolveQueue,
       resolveTotal,
-      save,
       setData,
       t,
     ],

@@ -3,7 +3,6 @@ import LeakForm from "@/features/leakForm/LeakForm";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { useSafeSave } from "@/hooks/useSafeSave";
-import { useProjectData } from "@/app/hooks/useProjectData";
 import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { hapticSuccess, hapticWarning } from "@/utils/haptics";
@@ -19,7 +18,6 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
   const { t } = useLanguage();
   const { form, setForm } = useLeakFormContext();
   const { savePhoto, ready: photoReady } = usePhotoStorage();
-  const { save } = useProjectData();
   const { saveDraft, loadDraft, clearDraft, hasDraft } = useFormDraft();
   const { isSaving, run } = useSafeSave();
   const [draftPrompt, setDraftPrompt] = useState(false);
@@ -151,8 +149,7 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
 
         const updated = [...data, newRow];
         setNotification(null);
-        setData(updated);
-        await save(updated);
+        await setData(updated);
 
         clearDraft();
         hapticSuccess();

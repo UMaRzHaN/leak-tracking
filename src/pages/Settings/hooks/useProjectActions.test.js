@@ -21,10 +21,17 @@ vi.mock("@/services/maps/tileCache", () => ({
   clearMapCache: vi.fn(),
 }));
 
+vi.mock("@/repositories/PhotoRepository", () => ({
+  PhotoRepository: {
+    deleteProjectPhotos: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 const languageModule = await import("@/app/hooks/useLanguage");
 const projectModule = await import("@/app/project/ProjectContext");
 const formContextModule = await import("@/features/leakForm/LeakFormContext");
 const tileCacheModule = await import("@/services/maps/tileCache");
+const photoRepositoryModule = await import("@/repositories/PhotoRepository");
 const { useProjectActions } = await import("./useProjectActions");
 
 describe("useProjectActions", () => {
@@ -168,5 +175,35 @@ describe("useProjectActions", () => {
       "success",
       'Project "Upstream" created',
     );
+  });
+
+  it("removes project artifacts before removing a project", async () => {
+    const notify = vi.fn();
+    const removeProject = vi.fn();
+
+    localStorage.setItem("app:p1:data_v1", "[]");
+    localStorage.setItem("app:p1:vars_v1", "{}");
+    localStorage.setItem("app:p1:hidden_fields_v1", "[]");
+
+    projectModule.useProject.mockReturnValue({
+      ...projectModule.useProject(),
+      removeProject,
+    });
+
+    const { result } = renderHook(() =>
+      useProjectActions({ setCacheInfo: vi.fn(), notify }),
+    );
+
+    await act(async () => {
+      await result.current.handleRemove("p1");
+    });
+
+    expect(localStorage.getItem("app:p1:data_v1")).toBeNull();
+    expect(localStorage.getItem("app:p1:vars_v1")).toBeNull();
+    expect(localStorage.getItem("app:p1:hidden_fields_v1")).toBeNull();
+    expect(
+      photoRepositoryModule.PhotoRepository.deleteProjectPhotos,
+    ).toHaveBeenCalledWith("p1");
+    expect(removeProject).toHaveBeenCalledWith("p1");
   });
 });

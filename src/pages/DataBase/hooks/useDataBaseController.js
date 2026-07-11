@@ -1,5 +1,4 @@
 import { useState, useCallback } from "react";
-import { useProjectData } from "@/app/hooks/useProjectData";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useBulkActions } from "./useBulkActions";
 import { useDataBaseExport } from "./useDataBaseExport";
@@ -14,15 +13,13 @@ export function useDataBaseController({ data, setData, coords }) {
     setNotification({ type, message });
   }, []);
 
-  const { save } = useProjectData();
   const { deletePhoto } = usePhotoStorage();
 
   const filters = useDataBaseFilters({ data, coords });
-  const actions = useLeakActions({ data, setData, save, notify, deletePhoto });
+  const actions = useLeakActions({ data, setData, notify, deletePhoto });
   const bulk = useBulkActions({
     data,
     setData,
-    save,
     displayed: filters.displayed,
     notify,
     deletePhoto,

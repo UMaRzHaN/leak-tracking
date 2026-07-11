@@ -5,7 +5,6 @@ import { hapticSuccess } from "@/utils/haptics";
 export function useLeakActions({
   data,
   setData,
-  save,
   notify,
   deletePhoto = () => Promise.resolve(),
 }) {
@@ -52,15 +51,14 @@ export function useLeakActions({
           : r,
       );
       try {
-        setData(next);
-        await save(next);
+        await setData(next);
         hapticSuccess();
         if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
       } catch (err) {
-        notify("error", "Ошибка сохранения: " + err.message);
+        notify("error", `Ошибка сохранения: ${err.message}`);
       }
     },
-    [data, deletePhoto, notify, pickerLeak, save, setData],
+    [data, deletePhoto, notify, pickerLeak, setData],
   );
 
   const handleResolveConfirm = useCallback(
@@ -88,45 +86,46 @@ export function useLeakActions({
           : r,
       );
       try {
-        setData(next);
-        await save(next);
+        await setData(next);
         hapticSuccess();
       } catch (err) {
-        notify("error", "Ошибка сохранения: " + err.message);
+        notify("error", `Ошибка сохранения: ${err.message}`);
       }
     },
-    [data, notify, resolveLeak, save, setData],
+    [data, notify, resolveLeak, setData],
   );
 
   const handleSave = useCallback(
     async (updated) => {
       const next = data.map((r) => (r.id === updated.id ? updated : r));
       try {
-        setData(next);
-        await save(next);
+        await setData(next);
         hapticSuccess();
         setActiveLeak(null);
       } catch (err) {
-        notify("error", "Ошибка сохранения: " + err.message);
+        notify("error", `Ошибка сохранения: ${err.message}`);
       }
     },
-    [data, notify, save, setData],
+    [data, notify, setData],
   );
 
   const handleDelete = useCallback(
     async (id, { onDeleted } = {}) => {
+      const target = data.find((r) => r.id === id);
       const next = data.filter((r) => r.id !== id);
       try {
-        setData(next);
-        await save(next);
+        await setData(next);
         hapticSuccess();
         setActiveLeak(null);
         onDeleted?.(id);
+        if (target?.photo) deletePhoto(target.photo).catch(() => {});
+        if (target?.photo_after)
+          deletePhoto(target.photo_after).catch(() => {});
       } catch (err) {
-        notify("error", "Ошибка удаления: " + err.message);
+        notify("error", `Ошибка удаления: ${err.message}`);
       }
     },
-    [data, notify, save, setData],
+    [data, deletePhoto, notify, setData],
   );
 
   return {

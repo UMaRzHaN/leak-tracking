@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback } from "react";
-import { useProjectData } from "@/app/hooks/useProjectData";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { STATUS } from "@/utils/status";
 import { hapticSuccess } from "@/utils/haptics";
@@ -19,14 +18,13 @@ export function useMainPageActions({ data, setData }) {
     [],
   );
 
-  const { save } = useProjectData();
   const { deletePhoto } = usePhotoStorage();
 
-  /* ── Stats ── */
   const stats = useMemo(
     () => ({
       total: data.length,
-      open: data.filter((l) => (l.status ?? STATUS.OPEN) === STATUS.OPEN).length,
+      open: data.filter((l) => (l.status ?? STATUS.OPEN) === STATUS.OPEN)
+        .length,
       inProgress: data.filter((l) => l.status === STATUS.IN_PROGRESS).length,
       resolved: data.filter((l) => l.status === STATUS.RESOLVED).length,
     }),
@@ -46,7 +44,6 @@ export function useMainPageActions({ data, setData }) {
     return list.slice(0, RECENT_COUNT);
   }, [data, statusFilter]);
 
-  /* ── Status picker ── */
   const handlePickStatus = useCallback((leak) => setPickerLeak(leak), []);
 
   const handleStatusSelect = useCallback(
@@ -74,22 +71,25 @@ export function useMainPageActions({ data, setData }) {
               updatedAt: Date.now(),
               history: [
                 ...(r.history ?? []),
-                { action: "status_changed", to: newStatus, date: new Date().toISOString() },
+                {
+                  action: "status_changed",
+                  to: newStatus,
+                  date: new Date().toISOString(),
+                },
               ],
             }
           : r,
       );
 
       try {
-        setData(next);
-        await save(next);
+        await setData(next);
         hapticSuccess();
         if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
       } catch (err) {
-        notify("error", "Ошибка сохранения: " + err.message);
+        notify("error", `Ошибка сохранения: ${err.message}`);
       }
     },
-    [data, deletePhoto, notify, pickerLeak, save, setData],
+    [data, deletePhoto, notify, pickerLeak, setData],
   );
 
   const handleResolveConfirm = useCallback(
@@ -118,14 +118,13 @@ export function useMainPageActions({ data, setData }) {
       );
 
       try {
-        setData(next);
-        await save(next);
+        await setData(next);
         hapticSuccess();
       } catch (err) {
-        notify("error", "Ошибка сохранения: " + err.message);
+        notify("error", `Ошибка сохранения: ${err.message}`);
       }
     },
-    [data, notify, resolveLeak, save, setData],
+    [data, notify, resolveLeak, setData],
   );
 
   const handleSaveLeak = useCallback(
@@ -136,7 +135,7 @@ export function useMainPageActions({ data, setData }) {
         hapticSuccess();
         setActiveLeak(null);
       } catch (err) {
-        notify("error", "Ошибка сохранения: " + err.message);
+        notify("error", `Ошибка сохранения: ${err.message}`);
       }
     },
     [data, notify, setData],
@@ -144,16 +143,20 @@ export function useMainPageActions({ data, setData }) {
 
   const handleDeleteLeak = useCallback(
     async (id) => {
+      const target = data.find((r) => r.id === id);
       const next = data.filter((r) => r.id !== id);
       try {
         await setData(next);
         hapticSuccess();
         setActiveLeak(null);
+        if (target?.photo) deletePhoto(target.photo).catch(() => {});
+        if (target?.photo_after)
+          deletePhoto(target.photo_after).catch(() => {});
       } catch (err) {
-        notify("error", "Ошибка удаления: " + err.message);
+        notify("error", `Ошибка удаления: ${err.message}`);
       }
     },
-    [data, notify, setData],
+    [data, deletePhoto, notify, setData],
   );
 
   return {
@@ -167,7 +170,6 @@ export function useMainPageActions({ data, setData }) {
     setResolveLeak,
     notification,
     setNotification,
-    notify,
     stats,
     recent,
     RECENT_COUNT,

@@ -25,9 +25,17 @@ function getPhotoFolder(folderName) {
   return `LeakReports/${folderName}/photos`;
 }
 
-async function cleanupOldVersions(folder, leakId, keepFileName, excludeFileNames = new Set()) {
+async function cleanupOldVersions(
+  folder,
+  leakId,
+  keepFileName,
+  excludeFileNames = new Set(),
+) {
   try {
-    const { files } = await Filesystem.readdir({ path: folder, directory: Directory.Data });
+    const { files } = await Filesystem.readdir({
+      path: folder,
+      directory: Directory.Data,
+    });
     const prefix = `photo_${leakId}_`;
     for (const file of files) {
       if (
@@ -54,11 +62,13 @@ export const PhotoRepository = {
   async save(rawPhoto, { projectId, leakId, folderName }, excludePaths = []) {
     if (!rawPhoto || !leakId) return null;
     const version = Date.now();
-    const photo = rawPhoto instanceof Blob ? await compressImage(rawPhoto) : rawPhoto;
+    const photo =
+      rawPhoto instanceof Blob ? await compressImage(rawPhoto) : rawPhoto;
 
     /* WEB — IndexedDB */
     if (!isNative) {
-      if (!idb.getState().ready || !(photo instanceof Blob) || !projectId) return null;
+      if (!idb.getState().ready || !(photo instanceof Blob) || !projectId)
+        return null;
 
       const photoId = `photo_${projectId}_${leakId}_${version}`;
       const ok = await idb.save(photoId, photo);
@@ -70,7 +80,11 @@ export const PhotoRepository = {
       const keys = await idb.listKeys();
       const prefix = `photo_${projectId}_${leakId}_`;
       for (const key of keys) {
-        if (key.startsWith(prefix) && key !== photoId && !excludeKeys.has(key)) {
+        if (
+          key.startsWith(prefix) &&
+          key !== photoId &&
+          !excludeKeys.has(key)
+        ) {
           await idb.remove(key);
         }
       }
@@ -82,16 +96,26 @@ export const PhotoRepository = {
     if (!folderName || !(photo instanceof Blob)) return null;
 
     const folder = getPhotoFolder(folderName);
-    await Filesystem.mkdir({ path: folder, directory: Directory.Data, recursive: true }).catch(() => {});
+    await Filesystem.mkdir({
+      path: folder,
+      directory: Directory.Data,
+      recursive: true,
+    }).catch(() => {});
 
     const fileName = `photo_${leakId}_${version}.jpg`;
     const targetPath = `${folder}/${fileName}`;
 
     const base64 = await fileToBase64(photo);
-    await Filesystem.writeFile({ path: targetPath, data: base64, directory: Directory.Data });
+    await Filesystem.writeFile({
+      path: targetPath,
+      data: base64,
+      directory: Directory.Data,
+    });
 
     const excludeFileNames = new Set(
-      excludePaths.map((p) => p?.replace(`data://${folder}/`, "")).filter(Boolean),
+      excludePaths
+        .map((p) => p?.replace(`data://${folder}/`, ""))
+        .filter(Boolean),
     );
     await cleanupOldVersions(folder, leakId, fileName, excludeFileNames);
 
@@ -123,6 +147,15 @@ export const PhotoRepository = {
     return idb.listKeys();
   },
 
+  async deleteProjectPhotos(projectId) {
+    if (!projectId || isNative || !idb.getState().ready) return;
+    const keys = await idb.listKeys();
+    const prefix = `photo_${projectId}_`;
+    for (const key of keys) {
+      if (key.startsWith(prefix)) await idb.remove(key);
+    }
+  },
+
   /**
    * Delete photos from storage that are not referenced by any leak.
    * Call once after loading project data to clean up orphaned photos.
@@ -149,7 +182,10 @@ export const PhotoRepository = {
     if (!folderName) return;
     const folder = getPhotoFolder(folderName);
     try {
-      const { files } = await Filesystem.readdir({ path: folder, directory: Directory.Data });
+      const { files } = await Filesystem.readdir({
+        path: folder,
+        directory: Directory.Data,
+      });
       for (const file of files) {
         const path = `data://${folder}/${file.name}`;
         if (!referenced.has(path)) {
