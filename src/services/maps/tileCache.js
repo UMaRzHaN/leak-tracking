@@ -2,7 +2,8 @@ import { Filesystem, Directory } from "@capacitor/filesystem";
 import { isNative } from "@/utils/platform";
 const CACHE_NAME = "map-tiles-v2";
 const TILE_DIR = "map-tiles";
-const ESRI_BASE = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile";
+const ESRI_BASE =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile";
 const NATIVE_COUNT_KEY = "map-tiles-native-count";
 
 const webSupported = typeof caches !== "undefined";
@@ -32,7 +33,8 @@ export function buildTileUrls(lat, lng, minZoom, maxZoom) {
     const cx = Math.floor(((lng + 180) / 360) * n);
     const latRad = (lat * Math.PI) / 180;
     const cy = Math.floor(
-      ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n,
+      ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) *
+        n,
     );
     const radius = z <= 13 ? 1 : z <= 14 ? 2 : z <= 15 ? 2 : 3;
     for (let dx = -radius; dx <= radius; dx++) {
@@ -88,7 +90,10 @@ async function nativeRead(url) {
   const path = tileFilePath(url);
   if (!path) return null;
   try {
-    const { data } = await Filesystem.readFile({ path, directory: Directory.Data });
+    const { data } = await Filesystem.readFile({
+      path,
+      directory: Directory.Data,
+    });
     return base64ToObjectUrl(data);
   } catch {
     return null;
@@ -104,9 +109,17 @@ async function nativeWrite(url, skipMkdir = false) {
     const base64 = await blobToBase64(await response.blob());
     if (!skipMkdir) {
       const dir = path.substring(0, path.lastIndexOf("/"));
-      await Filesystem.mkdir({ path: dir, directory: Directory.Data, recursive: true }).catch(() => {});
+      await Filesystem.mkdir({
+        path: dir,
+        directory: Directory.Data,
+        recursive: true,
+      }).catch(() => {});
     }
-    await Filesystem.writeFile({ path, data: base64, directory: Directory.Data });
+    await Filesystem.writeFile({
+      path,
+      data: base64,
+      directory: Directory.Data,
+    });
     return true;
   } catch {
     return false;
@@ -138,7 +151,7 @@ export async function cacheTile(url, prefetchedResponse = null) {
   try {
     const cache = await caches.open(CACHE_NAME);
     if (await cache.match(url)) return;
-    const response = prefetchedResponse ?? await fetch(url, { mode: "cors" });
+    const response = prefetchedResponse ?? (await fetch(url, { mode: "cors" }));
     if (response.ok) await cache.put(url, response);
   } catch {
     // ignore
@@ -148,14 +161,14 @@ export async function cacheTile(url, prefetchedResponse = null) {
 export async function getMapCacheInfo() {
   if (isNative) {
     const count = getNativeCount();
-    const sizeMB = Math.round((count * 40) / 1024 * 10) / 10;
+    const sizeMB = Math.round(((count * 40) / 1024) * 10) / 10;
     return { count, sizeMB };
   }
   if (!webSupported) return { count: 0, sizeMB: 0 };
   try {
     const cache = await caches.open(CACHE_NAME);
     const keys = await cache.keys();
-    const sizeMB = Math.round((keys.length * 40) / 1024 * 10) / 10;
+    const sizeMB = Math.round(((keys.length * 40) / 1024) * 10) / 10;
     return { count: keys.length, sizeMB };
   } catch {
     return { count: 0, sizeMB: 0 };
@@ -165,7 +178,11 @@ export async function getMapCacheInfo() {
 export async function clearMapCache() {
   if (isNative) {
     try {
-      await Filesystem.rmdir({ path: TILE_DIR, directory: Directory.Data, recursive: true });
+      await Filesystem.rmdir({
+        path: TILE_DIR,
+        directory: Directory.Data,
+        recursive: true,
+      });
     } catch {
       // already empty
     }
@@ -183,9 +200,23 @@ export function buildViewportTileUrls(bounds, minZoom, maxZoom) {
     const x1 = Math.max(0, Math.floor(((west + 180) / 360) * n));
     const x2 = Math.min(n - 1, Math.floor(((east + 180) / 360) * n));
     const latRad1 = (north * Math.PI) / 180;
-    const y1 = Math.max(0, Math.floor(((1 - Math.log(Math.tan(latRad1) + 1 / Math.cos(latRad1)) / Math.PI) / 2) * n));
+    const y1 = Math.max(
+      0,
+      Math.floor(
+        ((1 - Math.log(Math.tan(latRad1) + 1 / Math.cos(latRad1)) / Math.PI) /
+          2) *
+          n,
+      ),
+    );
     const latRad2 = (south * Math.PI) / 180;
-    const y2 = Math.min(n - 1, Math.floor(((1 - Math.log(Math.tan(latRad2) + 1 / Math.cos(latRad2)) / Math.PI) / 2) * n));
+    const y2 = Math.min(
+      n - 1,
+      Math.floor(
+        ((1 - Math.log(Math.tan(latRad2) + 1 / Math.cos(latRad2)) / Math.PI) /
+          2) *
+          n,
+      ),
+    );
     for (let x = x1; x <= x2; x++) {
       for (let y = y1; y <= y2; y++) {
         urls.push(`${ESRI_BASE}/${z}/${y}/${x}`);
@@ -195,10 +226,23 @@ export function buildViewportTileUrls(bounds, minZoom, maxZoom) {
   return urls;
 }
 
-export async function preloadUrls(urls, { onProgress, concurrency = isNative ? 4 : 8 } = {}) {
-  if (urls.length === 0) return;
+export async function preloadUrls(
+  urls,
+  { onProgress, concurrency = isNative ? 4 : 8 } = {},
+) {
+  const stats = {
+    requested: urls.length,
+    alreadyCached: 0,
+    saved: 0,
+    failed: 0,
+  };
 
-  const webCache = (!isNative && webSupported) ? await caches.open(CACHE_NAME).catch(() => null) : null;
+  if (urls.length === 0) return stats;
+
+  const webCache =
+    !isNative && webSupported
+      ? await caches.open(CACHE_NAME).catch(() => null)
+      : null;
 
   // Фильтруем уже скачанные
   let toDownload;
@@ -206,13 +250,18 @@ export async function preloadUrls(urls, { onProgress, concurrency = isNative ? 4
     const checks = await Promise.all(
       urls.map(async (url) => {
         const path = tileFilePath(url);
-        return (path && await nativeExists(path)) ? null : url;
-      })
+        return path && (await nativeExists(path)) ? null : url;
+      }),
     );
     toDownload = checks.filter(Boolean);
   } else if (webCache) {
     const checks = await Promise.all(
-      urls.map((url) => webCache.match(url).then((r) => r ? null : url).catch(() => url))
+      urls.map((url) =>
+        webCache
+          .match(url)
+          .then((r) => (r ? null : url))
+          .catch(() => url),
+      ),
     );
     toDownload = checks.filter(Boolean);
   } else {
@@ -220,17 +269,28 @@ export async function preloadUrls(urls, { onProgress, concurrency = isNative ? 4
   }
 
   const total = toDownload.length;
-  if (total === 0) { onProgress?.(urls.length, urls.length); return; }
+  stats.alreadyCached = urls.length - total;
+  if (total === 0) {
+    onProgress?.(urls.length, urls.length, stats);
+    return stats;
+  }
 
   // Пре-создаём уникальные директории один раз (только для нативного)
   if (isNative) {
     const dirs = new Set(
-      toDownload.map(tileFilePath).filter(Boolean).map((p) => p.substring(0, p.lastIndexOf("/")))
+      toDownload
+        .map(tileFilePath)
+        .filter(Boolean)
+        .map((p) => p.substring(0, p.lastIndexOf("/"))),
     );
     await Promise.all(
       [...dirs].map((dir) =>
-        Filesystem.mkdir({ path: dir, directory: Directory.Data, recursive: true }).catch(() => {})
-      )
+        Filesystem.mkdir({
+          path: dir,
+          directory: Directory.Data,
+          recursive: true,
+        }).catch(() => {}),
+      ),
     );
   }
 
@@ -240,25 +300,48 @@ export async function preloadUrls(urls, { onProgress, concurrency = isNative ? 4
   const downloadOne = async (url) => {
     if (isNative) {
       const saved = await nativeWrite(url, true).catch(() => false);
-      if (saved) localSaved++;
+      if (saved) {
+        localSaved++;
+        stats.saved++;
+      } else {
+        stats.failed++;
+      }
     } else if (webCache) {
       const hit = await webCache.match(url).catch(() => null);
-      if (!hit) {
+      if (hit) {
+        stats.alreadyCached++;
+      } else {
         try {
           const response = await fetchWithTimeout(url);
-          if (response.ok) await webCache.put(url, response);
-        } catch { /* таймаут или сеть — пропускаем */ }
+          if (response.ok) {
+            await webCache.put(url, response);
+            stats.saved++;
+          } else {
+            stats.failed++;
+          }
+        } catch {
+          /* таймаут или сеть — пропускаем */
+        }
       }
     }
     done++;
-    if (done % 5 === 0 || done === total) onProgress?.(done, total);
+    if (done % 5 === 0 || done === total) {
+      onProgress?.(stats.alreadyCached + done, urls.length, stats);
+    }
   };
 
   for (let i = 0; i < toDownload.length; i += concurrency) {
     await Promise.all(toDownload.slice(i, i + concurrency).map(downloadOne));
   }
 
+  stats.failed = Math.max(
+    stats.failed,
+    stats.requested - stats.alreadyCached - stats.saved,
+  );
+
   if (isNative && localSaved > 0) {
     localStorage.setItem(NATIVE_COUNT_KEY, getNativeCount() + localSaved);
   }
+
+  return stats;
 }

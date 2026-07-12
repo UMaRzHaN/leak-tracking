@@ -13,7 +13,7 @@ import {
   calculations,
   isPinkBagEquipment,
 } from "@/utils/calculations/calculations";
-import { blobToDataUri } from "@/utils/photoConversion";
+import { blobToDataUri, dataUrlToBlob } from "@/utils/photoConversion";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -200,6 +200,25 @@ export function mergeLeaksByFreshness(existing = [], incoming = []) {
   return { leaks: merged, added, updated, changed: added + updated };
 }
 
+function filterIncomingLeaksForMerge(existing = [], incoming = []) {
+  const existingByIdentity = new Map();
+
+  for (const leak of existing) {
+    const identity = getLeakIdentity(leak);
+    if (identity) existingByIdentity.set(identity, leak);
+  }
+
+  return incoming.filter((leak) => {
+    const identity = getLeakIdentity(leak);
+    if (!identity) return true;
+
+    const current = existingByIdentity.get(identity);
+    if (!current) return true;
+
+    return getLeakFreshness(leak) > getLeakFreshness(current);
+  });
+}
+
 function parseBackupValidation(parsed) {
   const validation = validateBackup(parsed);
   if (!validation.ok) throw new Error(validation.error);
@@ -259,27 +278,37 @@ async function restorePhotosFromZip(leaks, zip, savePhotoRefOrFn) {
 
       for (const key of PHOTO_KEYS) {
         const path = leak[key];
-        if (!path?.startsWith("zip:")) continue;
+        if (!path) continue;
 
-        const relativePath = path.replace("zip:", "");
-        const photoFile = zip.file(relativePath);
-        if (!photoFile) continue;
+        let blob = null;
+        let fallbackPath = path;
 
-        const base64 = await photoFile.async("base64");
-        const ext = relativePath.split(".").pop() || "jpg";
-        const mime = ext === "png" ? "image/png" : "image/jpeg";
+        if (path.startsWith("zip:")) {
+          const relativePath = path.replace("zip:", "");
+          const photoFile = zip.file(relativePath);
+          if (!photoFile) continue;
 
-        const byteChars = atob(base64);
-        const byteArr = new Uint8Array(byteChars.length);
-        for (let i = 0; i < byteChars.length; i++) {
-          byteArr[i] = byteChars.charCodeAt(i);
+          const base64 = await photoFile.async("base64");
+          const ext = relativePath.split(".").pop() || "jpg";
+          const mime = ext === "png" ? "image/png" : "image/jpeg";
+
+          const byteChars = atob(base64);
+          const byteArr = new Uint8Array(byteChars.length);
+          for (let i = 0; i < byteChars.length; i++) {
+            byteArr[i] = byteChars.charCodeAt(i);
+          }
+          blob = new Blob([byteArr], { type: mime });
+          fallbackPath = `data:${mime};base64,${base64}`;
+        } else if (path.startsWith("data:image/")) {
+          blob = dataUrlToBlob(path);
         }
-        const blob = new Blob([byteArr], { type: mime });
+
+        if (!blob) continue;
 
         const storageKey = key === "photo_after" ? `${baseKey}_after` : baseKey;
         const excludePaths = Object.values(savedPaths);
         const newPath = await savePhoto(blob, storageKey, excludePaths);
-        copy[key] = newPath ?? `data:${mime};base64,${base64}`;
+        copy[key] = newPath ?? fallbackPath;
         if (newPath) savedPaths[key] = newPath;
       }
 
@@ -453,8 +482,9 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
       projectId: existingProjectId,
       folderName: existingFolderName,
     });
+    const incomingToApply = filterIncomingLeaksForMerge(existing, leaks);
     const restoredIncoming = await restorePhotosFromZip(
-      leaks,
+      incomingToApply,
       zip,
       savePhotoRef,
     );

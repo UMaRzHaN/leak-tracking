@@ -260,14 +260,16 @@ export function useMapPage({ leaks, coords }) {
       }
 
       setTileProgress({ done: 0, total: urls.length, status: null });
-      await preloadUrls(urls, {
+      const stats = await preloadUrls(urls, {
         onProgress: (done, total) =>
           setTileProgress({ done, total, status: null }),
       });
+      const hasAvailableTiles = stats.saved > 0 || stats.alreadyCached > 0;
       setTileProgress({
         done: urls.length,
         total: urls.length,
-        status: "success",
+        status: hasAvailableTiles ? "success" : "error",
+        stats,
       });
     } catch {
       setTileProgress({ done: 0, total: 0, status: "error" });

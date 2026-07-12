@@ -140,7 +140,7 @@ const resources = {
         satelliteTiles: "Спутниковые тайлы",
         cacheEmpty: "Кэш пуст",
         loading: "Загрузка...",
-        clearMapCache: "Очистить кэш карты",
+        clearMapCache: "Очистить офлайн-кэш карты",
 
         dangerZone: "Опасная зона",
         dangerHint:
@@ -150,7 +150,8 @@ const resources = {
         notifications: {
           parametersSaved: "Параметры расчёта сохранены",
           changesCanceled: "Изменения отменены",
-          cacheCleared: "Кэш карты очищен",
+          cacheCleared:
+            "Офлайн-кэш карты очищен. Уже открытые тайлы могут отображаться до обновления карты.",
           databaseCleared: "База данных очищена",
           allFieldsActive: "Все поля активны",
           hiddenFieldsCount: "Скрыто полей: {{count}}",
@@ -158,7 +159,7 @@ const resources = {
 
         dialogs: {
           clearMapCache:
-            "Очистить кэш карты? Тайлы будут перекачаны при следующем открытии карты.",
+            "Очистить офлайн-кэш карты? Это освободит память устройства. Уже открытые тайлы могут оставаться на экране до обновления карты.",
           clearDatabase:
             "Удалить все записи об утечках?\n\nЭто действие необратимо. Фото-файлы сохранятся на устройстве.",
         },
@@ -586,7 +587,7 @@ const resources = {
         satelliteTiles: "Satellite Tiles",
         cacheEmpty: "Cache is empty",
         loading: "Loading...",
-        clearMapCache: "Clear Map Cache",
+        clearMapCache: "Clear Offline Map Cache",
 
         dangerZone: "Danger Zone",
         dangerHint:
@@ -596,7 +597,8 @@ const resources = {
         notifications: {
           parametersSaved: "Calculation parameters saved",
           changesCanceled: "Changes cancelled",
-          cacheCleared: "Map cache cleared",
+          cacheCleared:
+            "Offline map cache cleared. Already visible tiles may remain until the map refreshes.",
           databaseCleared: "Database cleared",
           allFieldsActive: "All fields are active",
           hiddenFieldsCount: "Hidden fields: {{count}}",
@@ -604,7 +606,7 @@ const resources = {
 
         dialogs: {
           clearMapCache:
-            "Clear map cache? Tiles will be downloaded again when the map is opened next time.",
+            "Clear offline map cache? This frees device storage. Already visible tiles may remain until the map refreshes.",
           clearDatabase:
             "Delete all leak records?\n\nThis action cannot be undone. Photo files will remain on the device.",
         },

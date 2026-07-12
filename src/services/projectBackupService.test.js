@@ -1,9 +1,12 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import {
   buildProjectBackupZip,
+  importBackupZip,
+  importIntoExistingProject,
   importProjectZip,
   mergeLeaksByFreshness,
 } from "./projectBackupService";
+import { LeakRepository } from "@/repositories/LeakRepository";
 
 vi.mock("@/hooks/photoService", () => ({
   getPhotoSrc: vi.fn().mockResolvedValue(null),
@@ -117,6 +120,31 @@ describe("projectBackupService legacy imports", () => {
       (10 * 1440 * 365 * 0.9) / 1000,
     );
   });
+
+  it("restores legacy inline data URI photos through photo storage", async () => {
+    const { default: JSZip } = await import("jszip");
+    const zip = new JSZip();
+    zip.file(
+      "backup.json",
+      JSON.stringify([
+        {
+          id: "legacy-photo",
+          status: "open",
+          photo: "data:image/png;base64,ZmFrZQ==",
+        },
+      ]),
+    );
+    const blob = await zip.generateAsync({ type: "blob" });
+    const savePhoto = vi
+      .fn()
+      .mockResolvedValue("idb://photo_project_legacy-photo_100");
+
+    const result = await importBackupZip(blob, savePhoto);
+
+    expect(savePhoto).toHaveBeenCalledTimes(1);
+    expect(savePhoto.mock.calls[0][1]).toBe("legacy-photo");
+    expect(result.leaks[0].photo).toBe("idb://photo_project_legacy-photo_100");
+  });
 });
 
 describe("mergeLeaksByFreshness", () => {
@@ -193,5 +221,94 @@ describe("mergeLeaksByFreshness", () => {
       status: "in_progress",
       leak_speed: 3,
     });
+  });
+
+  it("keeps missing local photos empty when the archive leak is older", () => {
+    const local = {
+      id: "same-leak",
+      status: "in_progress",
+      photo: null,
+      photo_after: null,
+      updatedAt: Date.parse("2026-03-01T00:00:00.000Z"),
+    };
+    const incoming = {
+      id: "same-leak",
+      status: "open",
+      photo: "idb://photo_project_same-leak_before",
+      photo_after: "idb://photo_project_same-leak_after",
+      updatedAt: Date.parse("2026-02-01T00:00:00.000Z"),
+    };
+
+    const result = mergeLeaksByFreshness([local], [incoming]);
+
+    expect(result.changed).toBe(0);
+    expect(result.leaks[0]).toMatchObject({
+      status: "in_progress",
+      photo: null,
+      photo_after: null,
+    });
+  });
+
+  it("does not replace existing local photos from an older archive leak", () => {
+    const local = {
+      id: "same-leak",
+      photo: "idb://photo_project_same-leak_local",
+      updatedAt: Date.parse("2026-03-01T00:00:00.000Z"),
+    };
+    const incoming = {
+      id: "same-leak",
+      photo: "idb://photo_project_same-leak_archive",
+      updatedAt: Date.parse("2026-02-01T00:00:00.000Z"),
+    };
+
+    const result = mergeLeaksByFreshness([local], [incoming]);
+
+    expect(result.changed).toBe(0);
+    expect(result.leaks[0].photo).toBe("idb://photo_project_same-leak_local");
+  });
+
+  it("does not restore older archive photos during merge into an existing project", async () => {
+    const existingProject = {
+      id: "project-current",
+      folderName: "current",
+      name: "Current",
+      type: "upstream",
+    };
+    const currentLeak = {
+      id: "same-leak",
+      status: "in_progress",
+      photo: "idb://photo_project_same-leak_local",
+      updatedAt: Date.parse("2026-03-01T00:00:00.000Z"),
+    };
+    const archiveLeak = {
+      id: "same-leak",
+      status: "open",
+      photo: "data:image/png;base64,ZmFrZQ==",
+      updatedAt: Date.parse("2026-02-01T00:00:00.000Z"),
+    };
+    const { default: JSZip } = await import("jszip");
+    const zip = new JSZip();
+    zip.file("backup.json", JSON.stringify([archiveLeak]));
+    const blob = await zip.generateAsync({ type: "blob" });
+    const getAllSpy = vi
+      .spyOn(LeakRepository, "getAll")
+      .mockResolvedValue([currentLeak]);
+    const ctx = {
+      overwriteProject: vi.fn((id) => {
+        ctx.activeProjectIdRef.current = id;
+        return true;
+      }),
+      savePhotoRef: { current: vi.fn().mockResolvedValue("idb://archive") },
+      saveRef: { current: vi.fn().mockResolvedValue(undefined) },
+      activeProjectIdRef: { current: null },
+      photoReadyRef: { current: true },
+      existingProject,
+    };
+
+    await importIntoExistingProject(blob, ctx, "merge");
+
+    expect(ctx.savePhotoRef.current).not.toHaveBeenCalled();
+    expect(ctx.saveRef.current).toHaveBeenCalledWith([currentLeak]);
+    getAllSpy.mockRestore();
   });
 });
