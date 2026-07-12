@@ -64,7 +64,8 @@ export const calculations = (leak, vars) => {
      MASS FLOW
   ========================= */
   const leak_speed_standard =
-    ((leak_speed * pressure) / temperature_K) * 273.15 * (gasPercentage / 100); // нормализуем к стандартным условиям (0°C, 1 атм) и учитываем процент газа в смеси
+    ((((leak_speed * pressure) / temperature_K) * 273.15) / 0.101325) *
+    (gasPercentage / 100); // нормализуем к стандартным условиям (0°C, 1 атм) и учитываем процент газа в смеси
   const leak_rate = isPinkBagEquipment(equipmentType)
     ? leak_speed_standard
     : leak_speed;
