@@ -1,11 +1,16 @@
 .mapWrapper {
   --map-control-offset: 18px;
+  --map-top-offset: var(--app-header);
   position: fixed;
   left: 0;
   right: 0;
-  top: var(--app-header);
+  top: var(--map-top-offset);
   bottom: var(--app-footer);
   overflow: hidden;
+
+  @supports (top: env(safe-area-inset-top)) {
+    --map-top-offset: calc(var(--app-header) + env(safe-area-inset-top));
+  }
 }
 
 .mapCanvas {
