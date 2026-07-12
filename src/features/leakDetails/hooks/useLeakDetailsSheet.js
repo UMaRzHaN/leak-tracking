@@ -15,6 +15,8 @@ import { buildLeakHistoryChanges } from "@/utils/historyChanges";
 
 const DELETE_ARM_MS = 3000;
 
+const STATUS_NOTE_FIELDS = [{ key: "materials_equipment" }, { key: "note" }];
+
 export const MODE = { VIEW: "view", EDIT: "edit" };
 export const TAB = {
   PHOTO: "photo",
@@ -63,21 +65,23 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     src,
     isDirty: isPhotoDirty,
     changePhoto,
+    choosePhoto,
     savePhoto,
     resetPhoto,
     isNative,
   } = useEditablePhoto({
     initialPath: leak.photo,
-    leakId: leak.leak_id,
+    leakId: String(leak.id),
     version: leak.updatedAt,
     excludePaths: leak.photo_after ? [leak.photo_after] : [],
   });
 
-  const afterLeakId = `${leak.leak_id ?? leak.id}_after`;
+  const afterLeakId = `${leak.id}_after`;
   const {
     src: srcAfter,
     isDirty: isAfterDirty,
     changePhoto: changePhotoAfter,
+    choosePhoto: choosePhotoAfter,
     savePhoto: savePhotoAfter,
     resetPhoto: resetPhotoAfter,
   } = useEditablePhoto({
@@ -269,7 +273,7 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
   const handleResolveConfirm = ({ photo_after, materials_equipment, note }) => {
     setResolveOpen(false);
     const now = new Date().toISOString();
-    onSave({
+    const after = {
       ...leak,
       status: STATUS.RESOLVED,
       resolvedAt: Date.now(),
@@ -277,9 +281,22 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
       materials_equipment: materials_equipment ?? leak.materials_equipment,
       note: note ?? leak.note,
       updatedAt: Date.now(),
+    };
+    const changes = buildLeakHistoryChanges({
+      before: leak,
+      after,
+      fields: STATUS_NOTE_FIELDS,
+    });
+    onSave({
+      ...after,
       history: [
         ...(leak.history ?? []),
-        { action: "status_changed", to: STATUS.RESOLVED, date: now },
+        {
+          action: "status_changed",
+          to: STATUS.RESOLVED,
+          date: now,
+          ...(changes.length > 0 ? { changes } : {}),
+        },
       ],
     });
   };
@@ -407,6 +424,8 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     armDelete,
     confirmDelete,
     changePhoto,
+    choosePhoto,
     changePhotoAfter,
+    choosePhotoAfter,
   };
 }

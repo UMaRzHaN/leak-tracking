@@ -1,41 +1,44 @@
 /**
- * Coerces a raw input string to a number during live typing.
+ * Coerces a raw input string during live typing.
  *
- * Unlike normalizeNumber (which is for final save), this preserves
- * partial-input states so the user can type decimals freely:
- *   "3."   → "3."   (keep as string — user might type "3.5" next)
- *   "-"    → "-"    (keep — user is starting a negative number)
- *   "3.5"  → 3.5    (complete → return as Number)
- *   ""     → ""
- *   "abc"  → ""
+ * Final normalization is done by normalizeNumber on blur/save. Here we preserve
+ * decimal text like "4,0" and "4.0" so the controlled input does not collapse
+ * back to "4" while the user is still typing.
  */
 export function parseNumericInput(raw) {
   if (raw === "" || raw == null) return "";
 
-  let v = String(raw).trim();
-  const neg = v.startsWith("-");
+  let value = String(raw).trim();
+  const negative = value.startsWith("-");
 
-  // Strip everything except digits, dot and comma
-  v = v.replace(/[^\d.,]/g, "");
+  value = value.replace(/[^\d.,]/g, "");
 
-  // Normalise comma → dot
-  v = v.replace(",", ".");
+  const dotIndex = value.indexOf(".");
+  const commaIndex = value.indexOf(",");
+  const separatorIndexes = [dotIndex, commaIndex].filter((idx) => idx !== -1);
+  const firstSeparator =
+    separatorIndexes.length > 0 ? Math.min(...separatorIndexes) : -1;
 
-  // Drop every extra dot after the first
-  const di = v.indexOf(".");
-  if (di !== -1) {
-    v = v.slice(0, di + 1) + v.slice(di + 1).replace(/\./g, "");
+  if (firstSeparator !== -1) {
+    const separator = value[firstSeparator];
+    value =
+      value.slice(0, firstSeparator + 1) +
+      value.slice(firstSeparator + 1).replace(/[.,]/g, "");
+
+    if (negative) {
+      if (value === "") return "-";
+      value = `-${value}`;
+    }
+
+    const normalized = value.replace(separator, ".");
+    return Number.isFinite(Number(normalized)) ? value : "";
   }
 
-  // Restore minus
-  if (neg) {
-    if (v === "") return "-";   // just a minus → keep partial
-    v = "-" + v;
+  if (negative) {
+    if (value === "") return "-";
+    value = `-${value}`;
   }
 
-  // Trailing dot → keep as partial string so user can continue typing
-  if (v.endsWith(".")) return v;
-
-  const n = Number(v);
-  return Number.isFinite(n) ? n : "";
+  const number = Number(value);
+  return Number.isFinite(number) ? number : "";
 }

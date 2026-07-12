@@ -261,6 +261,13 @@ const resources = {
           noPhoto: "нет фото",
         },
 
+        photoAction: {
+          add: "добавить",
+          camera: "Камера",
+          gallery: "Выбрать из галереи",
+          cancel: "Отмена",
+        },
+
         empty: {
           info: "Нет данных",
           photo: "Фото не добавлены",
@@ -706,6 +713,13 @@ const resources = {
           before: "Before",
           after: "After",
           noPhoto: "no photo",
+        },
+
+        photoAction: {
+          add: "add",
+          camera: "Camera",
+          gallery: "Choose from gallery",
+          cancel: "Cancel",
         },
 
         empty: {

@@ -1,16 +1,11 @@
 .mapWrapper {
-  position: relative;
-  width: 100%;
-  height: calc(100dvh - var(--app-header) - var(--app-footer));
+  --map-control-offset: 18px;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--app-header);
+  bottom: var(--app-footer);
   overflow: hidden;
-
-  @supports (padding-bottom: env(safe-area-inset-bottom)) {
-    height: calc(
-      100dvh - var(--app-header) - var(--app-footer) - env(
-          safe-area-inset-bottom
-        )
-    );
-  }
 }
 
 .mapCanvas {
@@ -21,7 +16,7 @@
 .controls {
   position: absolute;
   right: 12px;
-  bottom: 30px;
+  bottom: var(--map-control-offset);
   z-index: 1000;
 
   display: flex;
@@ -172,7 +167,7 @@
 .exportGroup {
   position: absolute;
   left: 12px;
-  bottom: 30px;
+  bottom: var(--map-control-offset);
   z-index: 1000;
   display: flex;
   flex-direction: column;
@@ -181,7 +176,7 @@
 
 .tileProgress {
   position: absolute;
-  bottom: 18px;
+  bottom: var(--map-control-offset);
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;

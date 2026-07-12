@@ -2,6 +2,9 @@ import { useState, useCallback } from "react";
 import { STATUS } from "@/utils/status";
 import { hapticSuccess } from "@/utils/haptics";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { buildLeakHistoryChanges } from "@/utils/historyChanges";
+
+const STATUS_NOTE_FIELDS = [{ key: "materials_equipment" }, { key: "note" }];
 
 function pluralLeaks(n, lang) {
   if (lang !== "ru") {
@@ -58,14 +61,21 @@ export function useBulkActions({
     async (status) => {
       if (!selectedIds.size) return;
 
+      const affected = data.filter(
+        (item) =>
+          selectedIds.has(item.id) && (item.status ?? STATUS.OPEN) !== status,
+      );
+      if (affected.length === 0) {
+        clearSelection();
+        return;
+      }
+
       if (status === STATUS.RESOLVED) {
-        const affected = data.filter((item) => selectedIds.has(item.id));
         setResolveQueue(affected);
         setResolveTotal(affected.length);
         return;
       }
 
-      const affected = data.filter((item) => selectedIds.has(item.id));
       const orphanedPhotos = affected
         .filter(
           (item) =>
@@ -74,7 +84,7 @@ export function useBulkActions({
         .map((item) => item.photo);
       const now = new Date().toISOString();
       const next = data.map((item) =>
-        selectedIds.has(item.id)
+        selectedIds.has(item.id) && (item.status ?? STATUS.OPEN) !== status
           ? {
               ...item,
               ...(item.status === STATUS.RESOLVED
@@ -124,19 +134,34 @@ export function useBulkActions({
       const now = new Date().toISOString();
       const next = data.map((item) =>
         item.id === leak.id
-          ? {
-              ...item,
-              status: STATUS.RESOLVED,
-              resolvedAt: Date.now(),
-              ...(photo_after != null && { photo_after }),
-              ...(materials_equipment != null && { materials_equipment }),
-              ...(note != null && { note }),
-              updatedAt: Date.now(),
-              history: [
-                ...(item.history ?? []),
-                { action: "status_changed", to: STATUS.RESOLVED, date: now },
-              ],
-            }
+          ? (() => {
+              const after = {
+                ...item,
+                status: STATUS.RESOLVED,
+                resolvedAt: Date.now(),
+                ...(photo_after != null && { photo_after }),
+                ...(materials_equipment != null && { materials_equipment }),
+                ...(note != null && { note }),
+                updatedAt: Date.now(),
+              };
+              const changes = buildLeakHistoryChanges({
+                before: item,
+                after,
+                fields: STATUS_NOTE_FIELDS,
+              });
+              return {
+                ...after,
+                history: [
+                  ...(item.history ?? []),
+                  {
+                    action: "status_changed",
+                    to: STATUS.RESOLVED,
+                    date: now,
+                    ...(changes.length > 0 ? { changes } : {}),
+                  },
+                ],
+              };
+            })()
           : item,
       );
 

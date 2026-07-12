@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import PhotoInput from "@/features/photos/PhotoInput/PhotoInput";
@@ -18,6 +18,14 @@ export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
 
   const photoMissing = !photo?.raw;
 
+  useEffect(() => {
+    setPhoto(null);
+    setMtr(leak?.materials_equipment ?? "");
+    setNote(leak?.note ?? "");
+    setSubmitted(false);
+    setNotification(null);
+  }, [leak?.id, leak?.materials_equipment, leak?.note]);
+
   const handleConfirm = async () => {
     setSubmitted(true);
     if (photoMissing) return;
@@ -29,7 +37,7 @@ export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
       if (photo?.raw) {
         photo_after = await savePhoto(
           photo.raw,
-          `${leak.leak_id ?? String(leak.id)}_after`,
+          `${leak.id}_after`,
           leak?.photo ? [leak.photo] : [],
         );
       }

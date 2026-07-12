@@ -11,7 +11,7 @@ export function useEditablePhoto({
   version,
   excludePaths = [],
 }) {
-  const { isNative, takePhoto, pickFromBrowser } = useCamera();
+  const { isNative, takePhoto, pickFromGallery, pickFromBrowser } = useCamera();
   const { savePhoto: saveToFS, ready: storageReady } = usePhotoStorage();
 
   // src сохранённого фото (из БД / FS)
@@ -32,11 +32,12 @@ export function useEditablePhoto({
 
   /* ===== change photo ===== */
   const changePhoto = useCallback(
-    async (e) => {
+    async (e, source = "camera") => {
       let result;
 
       if (isNative) {
-        result = await takePhoto();
+        result =
+          source === "gallery" ? await pickFromGallery() : await takePhoto();
       } else {
         const file = e?.target?.files?.[0];
         if (!file) return;
@@ -47,7 +48,12 @@ export function useEditablePhoto({
 
       setDraftPhoto(result);
     },
-    [isNative, takePhoto, pickFromBrowser],
+    [isNative, takePhoto, pickFromGallery, pickFromBrowser],
+  );
+
+  const choosePhoto = useCallback(
+    async (e) => changePhoto(e, "gallery"),
+    [changePhoto],
   );
 
   /* ===== save ===== */
@@ -96,6 +102,7 @@ export function useEditablePhoto({
     src: draftPhoto?.src ?? persistedSrc ?? null,
     isDirty: Boolean(draftPhoto?.raw),
     changePhoto,
+    choosePhoto,
     savePhoto,
     resetPhoto,
     isNative,

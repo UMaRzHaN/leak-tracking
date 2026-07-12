@@ -54,7 +54,9 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     armDelete,
     confirmDelete,
     changePhoto,
+    choosePhoto,
     changePhotoAfter,
+    choosePhotoAfter,
   } = useLeakDetailsSheet({ leak, onClose, onSave, onDelete });
 
   return (
@@ -110,11 +112,20 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
                 onEditBefore={() =>
                   isNative ? changePhoto() : fileInputRef.current?.click()
                 }
+                onPickBefore={() =>
+                  isNative ? choosePhoto() : fileInputRef.current?.click()
+                }
                 onEditAfter={() =>
                   isNative
                     ? changePhotoAfter()
                     : fileInputAfterRef.current?.click()
                 }
+                onPickAfter={() =>
+                  isNative
+                    ? choosePhotoAfter()
+                    : fileInputAfterRef.current?.click()
+                }
+                isNative={isNative}
               />
             )}
           </div>

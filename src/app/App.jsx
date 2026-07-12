@@ -233,7 +233,9 @@ export default function App() {
             <DataBase data={data} setData={save} coords={coords} />
           )}
 
-          {page === "map" && <MapPage leaks={data} coords={coords} />}
+          {page === "map" && (
+            <MapPage leaks={data} coords={coords} gpsEnabled={gpsEnabled} />
+          )}
         </Suspense>
       </div>
 

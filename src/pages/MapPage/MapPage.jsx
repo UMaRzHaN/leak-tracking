@@ -5,7 +5,7 @@ import MobileSheet from "@/components/ui/MobileSheet/MobileSheet";
 import Notification from "@/components/ui/Notification/Notification";
 import s from "./MapPage.module.scss";
 
-export default function MapPage({ leaks, coords }) {
+export default function MapPage({ leaks, coords, gpsEnabled = true }) {
   const {
     containerRef,
     open,
@@ -38,7 +38,7 @@ export default function MapPage({ leaks, coords }) {
     handleExportKML,
     focusLeak,
     locateMe,
-  } = useMapPage({ leaks, coords });
+  } = useMapPage({ leaks, coords, gpsEnabled });
 
   return (
     <div className={s.mapWrapper}>

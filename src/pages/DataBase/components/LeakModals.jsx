@@ -51,6 +51,7 @@ export default function LeakModals({
 
       {resolveLeak && (
         <ResolveModal
+          key={resolveLeak.id}
           leak={resolveLeak}
           onConfirm={onResolveConfirm}
           onClose={onCloseResolve}
@@ -59,6 +60,7 @@ export default function LeakModals({
 
       {resolveQueue.length > 0 && (
         <ResolveModal
+          key={resolveQueue[0].id}
           leak={resolveQueue[0]}
           progress={{
             current: resolveTotal - resolveQueue.length + 1,

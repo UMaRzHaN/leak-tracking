@@ -348,6 +348,80 @@
   pointer-events: none;
 }
 
+.photoActionOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.photoActionSheet {
+  width: min(420px, 100%);
+  padding: 10px 12px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-xl) var(--r-xl) var(--r-lg) var(--r-lg);
+  background: var(--c-surface);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.28);
+}
+
+.photoActionHandle {
+  width: 42px;
+  height: 4px;
+  margin: 0 auto 12px;
+  border-radius: 999px;
+  background: var(--c-border);
+}
+
+.photoActionTitle {
+  margin-bottom: 10px;
+  color: var(--c-text2);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.photoActionBtn,
+.photoActionCancel {
+  width: 100%;
+  min-height: 46px;
+  border-radius: var(--r-md);
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.photoActionIcon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.photoActionBtn {
+  margin-bottom: 8px;
+  border: 1px solid var(--c-border);
+  background: var(--c-bg);
+  color: var(--c-text);
+}
+
+.photoActionCancel {
+  margin-top: 6px;
+  border: 1px solid var(--c-border);
+  background: var(--c-surface2);
+  color: var(--c-text2);
+
+  &:active {
+    background: var(--c-border);
+  }
+}
+
 /* ── Tab pane (inner wrapper) ── */
 .tabPane {
   padding: 2px 0 24px;

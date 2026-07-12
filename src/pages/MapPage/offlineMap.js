@@ -108,25 +108,32 @@ function leakIcon(leak) {
 }
 
 function createPopupEl(leak) {
-  const meta = getStatusMeta(leak.status);
+  const lang = i18n.language === "en" ? "en" : "ru";
+  const labels =
+    lang === "ru"
+      ? {
+          tag: "Бирка №",
+          component: "Компонент",
+          description: "Описание утечки",
+          status: "Статус",
+        }
+      : {
+          tag: "Tag No.",
+          component: "Component",
+          description: "Leak description",
+          status: "Status",
+        };
+  const meta = getStatusMeta(leak.status, i18n.t.bind(i18n));
   const el = document.createElement("div");
 
   const title = document.createElement("b");
-  title.textContent = i18n.t("map.popup.tag", {
-    defaultValue: `Tag No. ${leak.leak_id ?? ""}`,
-  });
+  title.textContent = `${labels.tag} ${leak.leak_id ?? ""}`;
   el.appendChild(title);
 
   const fields = [
-    [
-      i18n.t("map.popup.component", { defaultValue: "Component" }),
-      leak.component,
-    ],
-    [
-      i18n.t("map.popup.description", { defaultValue: "Leak description" }),
-      leak.leak_description,
-    ],
-    [i18n.t("map.popup.status", { defaultValue: "Status" }), meta.label],
+    [labels.component, leak.component],
+    [labels.description, leak.leak_description],
+    [labels.status, meta.label],
   ];
 
   for (const [label, value] of fields) {
@@ -277,7 +284,7 @@ const HeatmapLayer = L.Layer.extend({
 
 export function createOfflineMap(
   container,
-  { center, zoom = 13, initialUserCoords = null },
+  { center, zoom = 13, initialUserCoords = null, gpsEnabled = true },
 ) {
   const map = L.map(container, { zoomControl: true }).setView(center, zoom);
   let destroyed = false;
@@ -316,6 +323,7 @@ export function createOfflineMap(
 
   let userMarker = null;
   let watchId = null;
+  let gpsTrackingEnabled = false;
   let lastLatLng = null;
   let lastHeading = null;
 
@@ -349,9 +357,7 @@ export function createOfflineMap(
     if (!userMarker) {
       userMarker = L.marker(latlng, { icon: buildUserIcon(heading) })
         .addTo(map)
-        .bindPopup(
-          i18n.t("map.popup.youAreHere", { defaultValue: "You are here" }),
-        );
+        .bindPopup(i18n.language === "en" ? "You are here" : "Вы здесь");
     } else {
       userMarker.setLatLng(latlng).setIcon(buildUserIcon(heading));
     }
@@ -404,8 +410,36 @@ export function createOfflineMap(
     else startGpsWatch();
   };
 
-  document.addEventListener("visibilitychange", handleVisibilityChange);
-  startGpsWatch();
+  const setGpsTracking = (enabled, fallbackCoords = null) => {
+    if (destroyed) return;
+
+    if (!enabled) {
+      gpsTrackingEnabled = false;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      stopGpsWatch();
+      return;
+    }
+
+    if (!gpsTrackingEnabled) {
+      gpsTrackingEnabled = true;
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+    }
+
+    const fallbackLatLng =
+      Number.isFinite(fallbackCoords?.lat) &&
+      Number.isFinite(fallbackCoords?.lng)
+        ? [fallbackCoords.lat, fallbackCoords.lng]
+        : null;
+
+    if (!lastLatLng && fallbackLatLng) {
+      lastLatLng = fallbackLatLng;
+      ensureUserMarker(fallbackLatLng);
+    }
+
+    if (!document.hidden) startGpsWatch();
+  };
+
+  setGpsTracking(gpsEnabled, initialUserCoords);
 
   const locateMe = (fallbackCoords = null) => {
     if (destroyed) return;
@@ -485,10 +519,10 @@ export function createOfflineMap(
     }
   };
 
-  return { map, markersLayer, locateMe, setHeatmap, destroy };
+  return { map, markersLayer, locateMe, setGpsTracking, setHeatmap, destroy };
 }
 
-export function addMarkers(markersLayer, leaks = []) {
+export function addMarkers(markersLayer, leaks = [], map = null) {
   if (!markersLayer) return;
 
   markersLayer.clearLayers();
@@ -496,8 +530,18 @@ export function addMarkers(markersLayer, leaks = []) {
   leaks.forEach((leak) => {
     if (!Number.isFinite(leak.lat) || !Number.isFinite(leak.lng)) return;
 
-    L.marker([leak.lat, leak.lng], { icon: leakIcon(leak) })
+    const latlng = [leak.lat, leak.lng];
+    L.marker(latlng, { icon: leakIcon(leak) })
+      .on("click", () => {
+        if (!map) return;
+
+        map._suppressLeakClickMoveend = true;
+        map.panTo(latlng, { animate: true });
+        setTimeout(() => {
+          if (map) map._suppressLeakClickMoveend = false;
+        }, 500);
+      })
       .addTo(markersLayer)
-      .bindPopup(() => createPopupEl(leak));
+      .bindPopup(() => createPopupEl(leak), { autoPan: false });
   });
 }

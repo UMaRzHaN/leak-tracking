@@ -26,7 +26,10 @@ export default function EditBlock(props) {
     srcBefore,
     srcAfter,
     onEditBefore,
+    onPickBefore,
     onEditAfter,
+    onPickAfter,
+    isNative,
     showAfter,
   } = props;
 
@@ -113,7 +116,10 @@ export default function EditBlock(props) {
           srcAfter={srcAfter}
           showAfter={showAfter}
           onEditBefore={onEditBefore}
+          onPickBefore={onPickBefore}
           onEditAfter={onEditAfter}
+          onPickAfter={onPickAfter}
+          isNative={isNative}
         />
       </div>
     );

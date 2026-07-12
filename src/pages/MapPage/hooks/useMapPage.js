@@ -8,7 +8,7 @@ import { handleExport } from "@/pages/MapPage/handleExport";
 
 const NEARBY_RADIUS_OPTIONS = [100, 500, 1000];
 
-export function useMapPage({ leaks, coords }) {
+export function useMapPage({ leaks, coords, gpsEnabled = true }) {
   const { lang } = useLanguage();
   const { activeProject } = useProjectData();
   const exportProjectFolder = activeProject?.folderName;
@@ -18,10 +18,12 @@ export function useMapPage({ leaks, coords }) {
   const containerRef = useRef(null);
   const latestCoordsRef = useRef(coords);
   const initialCoordsRef = useRef(coords);
+  const initialGpsEnabledRef = useRef(gpsEnabled);
   const mapRef = useRef({
     map: null,
     markersLayer: null,
     locateMe: null,
+    setGpsTracking: null,
     setHeatmap: null,
     destroy: null,
   });
@@ -172,14 +174,30 @@ export function useMapPage({ leaks, coords }) {
       mapModuleRef.current = mapModule;
       if (cancelled) return;
 
-      const { map, markersLayer, locateMe, setHeatmap, destroy } =
-        mapModule.createOfflineMap(container, {
-          center: fallbackCenter,
-          zoom: 13,
-          initialUserCoords,
-        });
+      const {
+        map,
+        markersLayer,
+        locateMe,
+        setGpsTracking,
+        setHeatmap,
+        destroy,
+      } = mapModule.createOfflineMap(container, {
+        center: fallbackCenter,
+        zoom: 13,
+        initialUserCoords: initialGpsEnabledRef.current
+          ? initialUserCoords
+          : null,
+        gpsEnabled: initialGpsEnabledRef.current,
+      });
 
-      mapRef.current = { map, markersLayer, locateMe, setHeatmap, destroy };
+      mapRef.current = {
+        map,
+        markersLayer,
+        locateMe,
+        setGpsTracking,
+        setHeatmap,
+        destroy,
+      };
       setMapReady(true);
 
       invalidateFrame = requestAnimationFrame(() => {
@@ -188,6 +206,11 @@ export function useMapPage({ leaks, coords }) {
       });
 
       map.on("moveend", () => {
+        if (map._suppressLeakClickMoveend) {
+          map._suppressLeakClickMoveend = false;
+          return;
+        }
+
         const center = map.getCenter();
         setMapCenter({ lat: center.lat, lng: center.lng });
       });
@@ -215,6 +238,7 @@ export function useMapPage({ leaks, coords }) {
         map: null,
         markersLayer: null,
         locateMe: null,
+        setGpsTracking: null,
         setHeatmap: null,
         destroy: null,
       };
@@ -224,9 +248,14 @@ export function useMapPage({ leaks, coords }) {
   }, []);
 
   useEffect(() => {
+    mapRef.current.setGpsTracking?.(gpsEnabled, latestCoordsRef.current);
+  }, [gpsEnabled, mapReady]);
+
+  useEffect(() => {
     mapModuleRef.current?.addMarkers?.(
       mapRef.current.markersLayer,
       visibleLeaks,
+      mapRef.current.map,
     );
 
     if (fittedRef.current) return;

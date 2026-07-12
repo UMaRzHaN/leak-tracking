@@ -19,6 +19,8 @@ const STATUS_COLORS = {
   resolved: "var(--c-resolved)",
 };
 
+const IDENTIFIER_KEYS = new Set(["leak_id", "video_id"]);
+
 function fmtDate(iso, lang) {
   if (!iso) return "";
   return new Date(iso).toLocaleString(lang === "ru" ? "ru-RU" : "en-US", {
@@ -87,6 +89,7 @@ function formatHistoryValue(key, value, kind, lang) {
   if (value == null || value === "") return lang === "ru" ? "пусто" : "empty";
   if (value === "[changed]") return lang === "ru" ? "изменено" : "changed";
   if (key === "date") return formatLeakDate(value, {}, lang);
+  if (IDENTIFIER_KEYS.has(key)) return String(value);
   if (typeof value === "number") {
     return value.toLocaleString(lang === "ru" ? "ru-RU" : "en-US");
   }
@@ -383,9 +386,10 @@ export default function ViewBlock({
               const raw = data[key];
               if (raw == null || raw === "") return null;
               const num = Number(raw);
-              const display = isNaN(num)
-                ? String(raw)
-                : num.toLocaleString(lang === "ru" ? "ru-RU" : "en-US");
+              const display =
+                IDENTIFIER_KEYS.has(key) || isNaN(num)
+                  ? String(raw)
+                  : num.toLocaleString(lang === "ru" ? "ru-RU" : "en-US");
               return (
                 <div key={key} className={s.paramCard}>
                   <span className={s.paramLabel}>

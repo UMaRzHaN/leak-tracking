@@ -1,6 +1,9 @@
 import { useState, useCallback } from "react";
 import { STATUS } from "@/utils/status";
 import { hapticSuccess } from "@/utils/haptics";
+import { buildLeakHistoryChanges } from "@/utils/historyChanges";
+
+const STATUS_NOTE_FIELDS = [{ key: "materials_equipment" }, { key: "note" }];
 
 export function useLeakActions({
   data,
@@ -70,19 +73,35 @@ export function useLeakActions({
       const now = new Date().toISOString();
       const next = data.map((r) =>
         r.id === leak.id
-          ? {
-              ...r,
-              status: STATUS.RESOLVED,
-              resolvedAt: Date.now(),
-              photo_after: photo_after ?? r.photo_after,
-              materials_equipment: materials_equipment ?? r.materials_equipment,
-              note: note ?? r.note,
-              updatedAt: Date.now(),
-              history: [
-                ...(r.history ?? []),
-                { action: "status_changed", to: STATUS.RESOLVED, date: now },
-              ],
-            }
+          ? (() => {
+              const after = {
+                ...r,
+                status: STATUS.RESOLVED,
+                resolvedAt: Date.now(),
+                photo_after: photo_after ?? r.photo_after,
+                materials_equipment:
+                  materials_equipment ?? r.materials_equipment,
+                note: note ?? r.note,
+                updatedAt: Date.now(),
+              };
+              const changes = buildLeakHistoryChanges({
+                before: r,
+                after,
+                fields: STATUS_NOTE_FIELDS,
+              });
+              return {
+                ...after,
+                history: [
+                  ...(r.history ?? []),
+                  {
+                    action: "status_changed",
+                    to: STATUS.RESOLVED,
+                    date: now,
+                    ...(changes.length > 0 ? { changes } : {}),
+                  },
+                ],
+              };
+            })()
           : r,
       );
       try {
