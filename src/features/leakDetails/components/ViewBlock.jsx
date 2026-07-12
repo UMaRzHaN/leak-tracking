@@ -73,6 +73,36 @@ function translateFieldLabel(key, fallbackLabel, t, lang) {
   });
 }
 
+function formatHistoryValue(key, value, kind, lang) {
+  if (kind === "photo") {
+    return value
+      ? lang === "ru"
+        ? "фото есть"
+        : "photo"
+      : lang === "ru"
+        ? "нет фото"
+        : "no photo";
+  }
+
+  if (value == null || value === "") return lang === "ru" ? "пусто" : "empty";
+  if (value === "[changed]") return lang === "ru" ? "изменено" : "changed";
+  if (key === "date") return formatLeakDate(value, {}, lang);
+  if (typeof value === "number") {
+    return value.toLocaleString(lang === "ru" ? "ru-RU" : "en-US");
+  }
+
+  return String(value);
+}
+
+function getHistoryChangeLabel(change, fields, localeTexts, t, lang) {
+  if (change.key === "photo") return localeTexts.photo.before;
+  if (change.key === "photo_after") return localeTexts.photo.after;
+  if (change.key === "priority") return localeTexts.priority;
+
+  const field = fields.find((item) => item.key === change.key);
+  return translateFieldLabel(change.key, field?.label ?? change.key, t, lang);
+}
+
 function CommentInput({ onSubmit, localeTexts }) {
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
@@ -417,6 +447,7 @@ export default function ViewBlock({
             const abs = fmtDate(entry.date, lang);
             const toColor = entry.to ? STATUS_COLORS[entry.to] : null;
             const icon = ACTION_ICONS[entry.action] ?? "•";
+            const changes = Array.isArray(entry.changes) ? entry.changes : [];
             return (
               <div key={i} className={s.logEntry}>
                 <div className={s.logDotWrap}>
@@ -446,6 +477,43 @@ export default function ViewBlock({
                   )}
                   {entry.text && (
                     <span className={s.logCommentText}>{entry.text}</span>
+                  )}
+                  {changes.length > 0 && (
+                    <div className={s.logChanges}>
+                      {changes.map((change, changeIndex) => (
+                        <div
+                          key={`${change.key}-${changeIndex}`}
+                          className={s.logChange}
+                        >
+                          <span className={s.logChangeLabel}>
+                            {getHistoryChangeLabel(
+                              change,
+                              fields,
+                              localeTexts,
+                              t,
+                              lang,
+                            )}
+                          </span>
+                          <span className={s.logChangeValue}>
+                            {formatHistoryValue(
+                              change.key,
+                              change.from,
+                              change.kind,
+                              lang,
+                            )}
+                          </span>
+                          <span className={s.logChangeArrow}>→</span>
+                          <span className={s.logChangeValue}>
+                            {formatHistoryValue(
+                              change.key,
+                              change.to,
+                              change.kind,
+                              lang,
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   )}
                   <span className={s.logDate}>
                     {rel ? (

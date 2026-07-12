@@ -11,6 +11,7 @@ import { priorityFromSpeed } from "@/utils/priority";
 import { timeAgo } from "@/utils/timeAgo";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
 import { hapticWarning } from "@/utils/haptics";
+import { buildLeakHistoryChanges } from "@/utils/historyChanges";
 
 const DELETE_ARM_MS = 3000;
 
@@ -195,15 +196,28 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
         photo: photoPath ?? leak.photo,
         photo_after: photoAfterPath ?? leak.photo_after,
         updatedAt: Date.now(),
-        history: [
-          ...(leak.history ?? []),
-          { action: "edited", date: new Date().toISOString() },
-        ],
       };
       const withCalc = speedChanged && vars ? calculations(base, vars) : base;
-      const withPriority = speedChanged
+      const withoutHistory = speedChanged
         ? { ...withCalc, priority: priorityFromSpeed(localEdit[speedKey]) }
         : withCalc;
+      const changes = buildLeakHistoryChanges({
+        before: leak,
+        after: withoutHistory,
+        fields: dirtyFields,
+        includeKeys: [
+          ...(isPhotoDirty ? ["photo"] : []),
+          ...(isAfterDirty ? ["photo_after"] : []),
+          ...(speedChanged ? ["priority"] : []),
+        ],
+      });
+      const withPriority = {
+        ...withoutHistory,
+        history: [
+          ...(leak.history ?? []),
+          { action: "edited", date: new Date().toISOString(), changes },
+        ],
+      };
 
       onSave(withPriority);
     } catch {

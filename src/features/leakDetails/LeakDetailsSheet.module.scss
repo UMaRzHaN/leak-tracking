@@ -533,6 +533,46 @@
   line-height: 1.45;
 }
 
+.logChanges {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0;
+}
+
+.logChange {
+  display: grid;
+  grid-template-columns: minmax(88px, 0.8fr) minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  background: var(--c-surface2);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.logChangeLabel {
+  min-width: 0;
+  color: var(--c-text2);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.logChangeValue {
+  min-width: 0;
+  color: var(--c-text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.logChangeArrow {
+  color: var(--c-text3);
+  font-weight: 800;
+}
+
 /* ── Priority row in info tab ── */
 .priorityRow {
   display: flex;
