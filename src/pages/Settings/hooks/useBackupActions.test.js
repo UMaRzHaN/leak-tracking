@@ -18,6 +18,7 @@ vi.mock("@/utils/platform", () => ({
 vi.mock("@/services/projectBackupService", () => ({
   peekBackupZip: vi.fn(),
   buildProjectBackupZip: vi.fn(),
+  previewMergeLeaks: vi.fn(),
 }));
 
 const languageModule = await import("@/app/hooks/useLanguage");
@@ -42,6 +43,14 @@ describe("useBackupActions", () => {
         },
       },
       detectedType: "upstream",
+    });
+    servicesModule.previewMergeLeaks.mockReturnValue({
+      added: 1,
+      updated: 0,
+      skipped: 0,
+      archivePhotos: 0,
+      total: 1,
+      changed: 1,
     });
   });
 
@@ -84,6 +93,7 @@ describe("useBackupActions", () => {
     expect(result.current.conflictState.open).toBe(true);
     expect(result.current.conflictState.resolvedName).toBe("Alpha");
     expect(result.current.conflictState.existingProject.leakCount).toBe(2);
+    expect(result.current.conflictState.mergePreview.added).toBe(1);
     expect(event.target.value).toBe("");
     expect(notify).not.toHaveBeenCalledWith(
       "error",

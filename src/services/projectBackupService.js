@@ -200,6 +200,52 @@ export function mergeLeaksByFreshness(existing = [], incoming = []) {
   return { leaks: merged, added, updated, changed: added + updated };
 }
 
+function hasImportablePhoto(leak, key) {
+  const path = leak?.[key];
+  return (
+    typeof path === "string" &&
+    (path.startsWith("zip:") || path.startsWith("data:image/"))
+  );
+}
+
+export function previewMergeLeaks(existing = [], incoming = []) {
+  const existingByIdentity = new Map();
+  const result = {
+    added: 0,
+    updated: 0,
+    skipped: 0,
+    archivePhotos: 0,
+    total: incoming.length,
+  };
+
+  for (const leak of existing) {
+    const identity = getLeakIdentity(leak);
+    if (identity) existingByIdentity.set(identity, leak);
+  }
+
+  for (const leak of incoming) {
+    const identity = getLeakIdentity(leak);
+    const current = identity ? existingByIdentity.get(identity) : null;
+    const applies =
+      !current || getLeakFreshness(leak) > getLeakFreshness(current);
+
+    if (!current) result.added += 1;
+    else if (applies) result.updated += 1;
+    else result.skipped += 1;
+
+    if (applies) {
+      result.archivePhotos += PHOTO_KEYS.filter((key) =>
+        hasImportablePhoto(leak, key),
+      ).length;
+    }
+  }
+
+  return {
+    ...result,
+    changed: result.added + result.updated,
+  };
+}
+
 function filterIncomingLeaksForMerge(existing = [], incoming = []) {
   const existingByIdentity = new Map();
 

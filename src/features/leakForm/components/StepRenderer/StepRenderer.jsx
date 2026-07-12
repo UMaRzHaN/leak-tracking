@@ -93,6 +93,7 @@ export default function StepRenderer({
               value={form.photo}
               onChange={(photo) => onChange("photo", photo)}
               label={f.label}
+              error={errors?.[f.key]}
             />
           );
         }

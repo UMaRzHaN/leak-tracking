@@ -19,6 +19,7 @@ import DangerZoneSection from "./components/DangerZoneSection";
 import EmissionsSummarySection from "./components/EmissionsSummarySection";
 import FieldVisibilitySection from "./components/FieldVisibilitySection";
 import MapCacheSection from "./components/MapCacheSection";
+import ProjectIntegritySection from "./components/ProjectIntegritySection";
 import ProjectList from "./components/ProjectList";
 import { useBackupActions } from "./hooks/useBackupActions";
 import { useProjectActions } from "./hooks/useProjectActions";
@@ -39,6 +40,8 @@ export default function Settings({
   const [addingProject, setAddingProject] = useState(false);
   const [cacheInfo, setCacheInfo] = useState(null);
   const [settingsConfirmAction, setSettingsConfirmAction] = useState(null);
+  const [integrityReport, setIntegrityReport] = useState(null);
+  const [checkingIntegrity, setCheckingIntegrity] = useState(false);
 
   const notify = useCallback((type, message) => {
     setNotification({ type, message });
@@ -119,6 +122,35 @@ export default function Settings({
   const handleClearDatabase = useCallback(() => {
     setSettingsConfirmAction("clearDatabase");
   }, []);
+
+  const handleCheckIntegrity = useCallback(async () => {
+    setCheckingIntegrity(true);
+    try {
+      const { analyzeProjectIntegrity } =
+        await import("@/services/projectIntegrityService");
+      const report = await analyzeProjectIntegrity(data, {
+        idbGetPhoto,
+      });
+      setIntegrityReport(report);
+      notify(
+        report.ok ? "success" : "warning",
+        report.ok
+          ? lang === "ru"
+            ? "Проблем в данных не найдено"
+            : "No data issues found"
+          : lang === "ru"
+            ? `Проверка завершена: ${report.issues} проблем`
+            : `Check complete: ${report.issues} issues`,
+      );
+    } catch (error) {
+      notify(
+        "error",
+        `${lang === "ru" ? "Ошибка проверки" : "Check error"}: ${error.message}`,
+      );
+    } finally {
+      setCheckingIntegrity(false);
+    }
+  }, [data, idbGetPhoto, lang, notify]);
 
   const handleSettingsConfirm = useCallback(async () => {
     if (settingsConfirmAction === "clearMapCache") {
@@ -249,6 +281,14 @@ export default function Settings({
           onImport={handleImportZip}
         />
 
+        <ProjectIntegritySection
+          activeProject={activeProject}
+          lang={lang}
+          report={integrityReport}
+          checking={checkingIntegrity}
+          onCheck={handleCheckIntegrity}
+        />
+
         <MapCacheSection
           cacheInfo={cacheInfo}
           lang={lang}
@@ -268,6 +308,7 @@ export default function Settings({
         projectName={conflictState.resolvedName}
         existingProject={conflictState.existingProject}
         leakCount={conflictState.leakCount}
+        mergePreview={conflictState.mergePreview}
         onOverwrite={handleConflictOverwrite}
         onMerge={handleConflictMerge}
         onCopy={handleConflictCopy}

@@ -37,6 +37,9 @@ export default function DataBase({ data, setData, coords }) {
         setPriorityFilter={filters.setPriorityFilter}
         nearbyFilter={filters.nearbyFilter}
         setNearbyFilter={filters.setNearbyFilter}
+        nearbyRadius={filters.nearbyRadius}
+        setNearbyRadius={filters.setNearbyRadius}
+        nearbyRadiusOptions={filters.nearbyRadiusOptions}
         counts={filters.counts}
         hasGps={filters.hasGps}
       />

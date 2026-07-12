@@ -1,13 +1,56 @@
+import { useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { PRIORITY_ORDER, getPriorityMeta } from "@/utils/priority";
+import { STATUS_ORDER, getStatusMeta } from "@/utils/status";
 import s from "@/pages/MapPage/MapPage.module.scss";
+
+const FILTER_MENU = {
+  STATUS: "status",
+  PRIORITY: "priority",
+  NEARBY: "nearby",
+};
 
 export default function MapControls({
   onLocate,
   onOpenSheet,
   onDownload,
   downloading,
+  nearbyOnly,
+  nearbyRadius,
+  nearbyRadiusOptions,
+  priorityFilters,
+  statusFilters,
+  hasGps,
+  onToggleNearby,
+  onRadiusChange,
+  onPriorityToggle,
+  onPriorityClear,
+  onStatusToggle,
+  onStatusClear,
 }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const [openFilterMenu, setOpenFilterMenu] = useState(null);
+  const statusSet = new Set(statusFilters);
+  const statusActive = statusFilters.length > 0;
+  const prioritySet = new Set(priorityFilters);
+  const priorityActive = priorityFilters.length > 0;
+  const isStatusOpen = openFilterMenu === FILTER_MENU.STATUS;
+  const isPriorityOpen = openFilterMenu === FILTER_MENU.PRIORITY;
+  const isNearbyOpen = openFilterMenu === FILTER_MENU.NEARBY;
+  const formatRadius = (radius) =>
+    radius >= 1000
+      ? `${radius / 1000}${lang === "ru" ? "км" : "km"}`
+      : `${radius}${lang === "ru" ? "м" : "m"}`;
+  const toggleFilterMenu = (menu) =>
+    setOpenFilterMenu((current) => (current === menu ? null : menu));
+  const selectNearbyRadius = (radius) => {
+    onRadiusChange(radius);
+    setOpenFilterMenu(null);
+  };
+  const clearNearby = () => {
+    onToggleNearby(false);
+    setOpenFilterMenu(null);
+  };
 
   return (
     <div className={s.controls}>
@@ -57,6 +100,183 @@ export default function MapControls({
           <line x1="16.5" y1="16.5" x2="22" y2="22" />
         </svg>
       </button>
+
+      <div className={s.filterControlWrap}>
+        <button
+          type="button"
+          className={`${s.controlBtn} ${statusActive ? s.controlBtnActive : ""}`}
+          onClick={() => toggleFilterMenu(FILTER_MENU.STATUS)}
+          aria-expanded={isStatusOpen}
+          aria-label={lang === "ru" ? "Фильтр по статусу" : "Status filter"}
+        >
+          <svg
+            className={s.controlIcon}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M9 6h11" />
+            <path d="M9 12h11" />
+            <path d="M9 18h11" />
+            <path d="M4 6h.01" />
+            <path d="M4 12h.01" />
+            <path d="M4 18h.01" />
+          </svg>
+        </button>
+        <div
+          className={`${s.filterFlyout} ${isStatusOpen ? s.filterFlyoutOpen : ""}`}
+        >
+          <button
+            type="button"
+            className={s.filterOptionBtn}
+            onClick={onStatusClear}
+          >
+            {lang === "ru" ? "Все" : "All"}
+          </button>
+          {STATUS_ORDER.map((status) => {
+            const meta = getStatusMeta(status, t);
+            const isActive = statusSet.has(status);
+
+            return (
+              <button
+                key={status}
+                type="button"
+                className={`${s.filterOptionBtn} ${
+                  isActive ? s.filterOptionBtnActive : ""
+                }`}
+                style={
+                  isActive
+                    ? {
+                        borderColor: meta.border,
+                        color: meta.color,
+                        background: meta.bg,
+                      }
+                    : undefined
+                }
+                onClick={() => onStatusToggle(status)}
+              >
+                {meta.short}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className={s.filterControlWrap}>
+        <button
+          type="button"
+          className={`${s.controlBtn} ${priorityActive ? s.controlBtnActive : ""}`}
+          onClick={() => toggleFilterMenu(FILTER_MENU.PRIORITY)}
+          aria-expanded={isPriorityOpen}
+          aria-label={
+            lang === "ru" ? "Фильтр по приоритету" : "Priority filter"
+          }
+        >
+          <svg
+            className={s.controlIcon}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M3 5h18" />
+            <path d="M7 12h10" />
+            <path d="M10 19h4" />
+          </svg>
+        </button>
+        <div
+          className={`${s.filterFlyout} ${isPriorityOpen ? s.filterFlyoutOpen : ""}`}
+        >
+          <button
+            type="button"
+            className={s.filterOptionBtn}
+            onClick={onPriorityClear}
+          >
+            {lang === "ru" ? "Все" : "All"}
+          </button>
+          {PRIORITY_ORDER.map((priority) => {
+            const meta = getPriorityMeta(priority, t, lang);
+            const isActive = prioritySet.has(priority);
+
+            return (
+              <button
+                key={priority}
+                type="button"
+                className={`${s.filterOptionBtn} ${
+                  isActive ? s.filterOptionBtnActive : ""
+                }`}
+                style={
+                  isActive
+                    ? {
+                        borderColor: meta.border,
+                        color: meta.color,
+                        background: meta.bg,
+                      }
+                    : undefined
+                }
+                onClick={() => onPriorityToggle(priority)}
+              >
+                {meta.short}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {hasGps && (
+        <div className={s.filterControlWrap}>
+          <button
+            type="button"
+            className={`${s.controlBtn} ${nearbyOnly ? s.controlBtnActive : ""}`}
+            onClick={() => toggleFilterMenu(FILTER_MENU.NEARBY)}
+            aria-expanded={isNearbyOpen}
+            aria-label={lang === "ru" ? "Утечки рядом" : "Nearby leaks"}
+          >
+            <svg
+              className={s.controlIcon}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 21s7-4.35 7-11a7 7 0 0 0-14 0c0 6.65 7 11 7 11z" />
+              <circle cx="12" cy="10" r="2" />
+            </svg>
+          </button>
+          <div
+            className={`${s.filterFlyout} ${isNearbyOpen ? s.filterFlyoutOpen : ""}`}
+          >
+            <button
+              type="button"
+              className={s.filterOptionBtn}
+              onClick={clearNearby}
+            >
+              {lang === "ru" ? "\u0412\u0441\u0435" : "All"}
+            </button>
+            {nearbyRadiusOptions.map((radius) => (
+              <button
+                key={radius}
+                type="button"
+                className={`${s.filterOptionBtn} ${
+                  nearbyOnly && nearbyRadius === radius
+                    ? s.filterOptionBtnActive
+                    : ""
+                }`}
+                onClick={() => selectNearbyRadius(radius)}
+              >
+                {formatRadius(radius)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <button
         type="button"

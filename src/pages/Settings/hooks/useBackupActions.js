@@ -144,7 +144,7 @@ export function useBackupActions({
       if (!file) return;
 
       try {
-        const { peekBackupZip } =
+        const { peekBackupZip, previewMergeLeaks } =
           await import("@/services/projectBackupService");
         const peek = await peekBackupZip(file);
         const metaProject = peek.meta?.project;
@@ -180,6 +180,7 @@ export function useBackupActions({
             projectId: existing.id,
             folderName: existing.folderName,
           });
+          const mergePreview = previewMergeLeaks(existingLeaks, peek.leaks);
           setConflictState({
             open: true,
             file,
@@ -190,6 +191,7 @@ export function useBackupActions({
               : { name: resolvedName, type: resolvedType },
             existingProject: { ...existing, leakCount: existingLeaks.length },
             leakCount: peek.leaks.length,
+            mergePreview,
           });
           event.target.value = "";
           return;

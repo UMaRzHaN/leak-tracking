@@ -15,6 +15,9 @@ function FilterBar({
   setPriorityFilter,
   nearbyFilter,
   setNearbyFilter,
+  nearbyRadius,
+  setNearbyRadius,
+  nearbyRadiusOptions,
   counts,
   hasGps,
 }) {
@@ -22,6 +25,10 @@ function FilterBar({
   const hasActiveFilter =
     statusFilter !== ALL || priorityFilter !== ALL || nearbyFilter;
   const [open, setOpen] = useState(hasActiveFilter);
+  const formatRadius = (radius) =>
+    radius >= 1000
+      ? `${radius / 1000} ${lang === "ru" ? "км" : "km"}`
+      : `${radius} ${lang === "ru" ? "м" : "m"}`;
 
   useEffect(() => {
     if (hasActiveFilter) setOpen(true);
@@ -195,6 +202,22 @@ function FilterBar({
                   />
                 </span>
               </button>
+              {nearbyFilter && (
+                <div className={s.nearbyRadiusGroup}>
+                  {nearbyRadiusOptions.map((radius) => (
+                    <button
+                      key={radius}
+                      type="button"
+                      className={`${s.nearbyRadiusBtn} ${
+                        nearbyRadius === radius ? s.nearbyRadiusBtnActive : ""
+                      }`}
+                      onClick={() => setNearbyRadius(radius)}
+                    >
+                      {formatRadius(radius)}
+                    </button>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>

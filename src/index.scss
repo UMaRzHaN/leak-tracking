@@ -7,91 +7,91 @@
   --app-footer: 64px;
 
   /* Colors — Primary */
-  --c-navy:       #0d1f4e;
-  --c-blue:       #2563eb;
+  --c-navy: #0d1f4e;
+  --c-blue: #2563eb;
   --c-blue-light: #3b82f6;
-  --c-blue-dim:   #dbeafe;
+  --c-blue-dim: #dbeafe;
 
   /* Colors — Surface */
-  --c-bg:         #f0f4f8;
-  --c-surface:    #ffffff;
-  --c-surface2:   #f8fafc;
-  --c-border:     #e2e8f0;
+  --c-bg: #f0f4f8;
+  --c-surface: #ffffff;
+  --c-surface2: #f8fafc;
+  --c-border: #e2e8f0;
 
   /* Colors — Text */
-  --c-text:       #0f172a;
-  --c-text2:      #64748b;
-  --c-text3:      #94a3b8;
+  --c-text: #0f172a;
+  --c-text2: #64748b;
+  --c-text3: #94a3b8;
 
   /* Colors — Status */
-  --c-open:          #dc2626;
-  --c-open-bg:       #fef2f2;
-  --c-open-border:   #fecaca;
-  --c-progress:      #d97706;
-  --c-progress-bg:   #fffbeb;
-  --c-progress-border:#fde68a;
-  --c-resolved:      #059669;
-  --c-resolved-bg:   #ecfdf5;
-  --c-resolved-border:#a7f3d0;
+  --c-open: #dc2626;
+  --c-open-bg: #fef2f2;
+  --c-open-border: #fecaca;
+  --c-progress: #d97706;
+  --c-progress-bg: #fffbeb;
+  --c-progress-border: #fde68a;
+  --c-resolved: #059669;
+  --c-resolved-bg: #ecfdf5;
+  --c-resolved-border: #a7f3d0;
 
   /* Colors — Priority */
-  --c-critical:        #dc2626;
-  --c-critical-bg:     #fef2f2;
+  --c-critical: #dc2626;
+  --c-critical-bg: #fef2f2;
   --c-critical-border: #fecaca;
-  --c-high:            #d97706;
-  --c-high-bg:         #fffbeb;
-  --c-high-border:     #fde68a;
-  --c-medium:          #2563eb;
-  --c-medium-bg:       #dbeafe;
-  --c-medium-border:   #bfdbfe;
-  --c-low:             #059669;
-  --c-low-bg:          #ecfdf5;
-  --c-low-border:      #a7f3d0;
+  --c-high: #d97706;
+  --c-high-bg: #fffbeb;
+  --c-high-border: #fde68a;
+  --c-medium: #2563eb;
+  --c-medium-bg: #dbeafe;
+  --c-medium-border: #bfdbfe;
+  --c-low: #059669;
+  --c-low-bg: #ecfdf5;
+  --c-low-border: #a7f3d0;
 
   /* Colors — Danger */
-  --c-danger:     #ef4444;
-  --c-danger-bg:  #fee2e2;
+  --c-danger: #ef4444;
+  --c-danger-bg: #fee2e2;
 
   /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
-  --shadow-md: 0 4px 12px rgba(0,0,0,.10), 0 2px 4px rgba(0,0,0,.06);
-  --shadow-lg: 0 10px 28px rgba(0,0,0,.12), 0 4px 8px rgba(0,0,0,.06);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 28px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
 
   /* Radius */
-  --r-sm:  8px;
-  --r-md:  12px;
-  --r-lg:  16px;
-  --r-xl:  20px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
 
   /* Transitions */
-  --t-fast:   0.15s ease;
+  --t-fast: 0.15s ease;
   --t-normal: 0.25s ease;
   --t-spring: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* Z-indices */
-  --z-nav:          800;
-  --z-sticky:       120;
+  --z-nav: 800;
+  --z-sticky: 120;
   --z-notification: 950;
-  --z-overlay:      900;
-  --z-modal:        1000;
+  --z-overlay: 900;
+  --z-modal: 1000;
 
   /* Shadows — layout */
-  --shadow-nav:    0 -4px 16px rgba(0,0,0,.06);
-  --shadow-header: 0 2px 12px rgba(0,0,0,.28);
-  --shadow-sheet:  0 -8px 32px rgba(0,0,0,.22);
-  --shadow-fab:    0 4px 14px rgba(37,99,235,.45);
+  --shadow-nav: 0 -4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-header: 0 2px 12px rgba(0, 0, 0, 0.28);
+  --shadow-sheet: 0 -8px 32px rgba(0, 0, 0, 0.22);
+  --shadow-fab: 0 4px 14px rgba(37, 99, 235, 0.45);
 
   /* Colors — overlays */
-  --c-overlay:     rgba(0,0,0,.45);
-  --c-overlay-sm:  rgba(0,0,0,.3);
-  --c-blue-overlay: rgba(37,99,235,.18);
+  --c-overlay: rgba(0, 0, 0, 0.45);
+  --c-overlay-sm: rgba(0, 0, 0, 0.3);
+  --c-blue-overlay: rgba(37, 99, 235, 0.18);
 
   /* Focus ring */
-  --focus-ring: 0 0 0 3px rgba(37,99,235,.12);
+  --focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.12);
 
   /* Radius — bottom sheets & pills */
   --r-sheet: 20px 20px 0 0;
-  --r-pill:  999px;
+  --r-pill: 999px;
 
   /* Gradients */
   --gradient-header: linear-gradient(135deg, #0d1f4e 0%, #1a3a7a 100%);
@@ -101,61 +101,70 @@
    DARK THEME
    ===================================================== */
 [data-theme="dark"] {
-  --c-bg:         #0f172a;
-  --c-surface:    #1e293b;
-  --c-surface2:   #162032;
-  --c-border:     #334155;
+  --c-bg: #0f172a;
+  --c-surface: #1e293b;
+  --c-surface2: #162032;
+  --c-border: #334155;
 
-  --c-text:       #cbd5e1;
-  --c-text2:      #8898aa;
-  --c-text3:      #5a6a7e;
+  --c-text: #cbd5e1;
+  --c-text2: #8898aa;
+  --c-text3: #5a6a7e;
 
-  --c-blue-dim:   rgba(37, 99, 235, 0.18);
+  --c-blue-dim: rgba(37, 99, 235, 0.18);
 
-  --c-open-bg:       rgba(220, 38, 38, 0.15);
-  --c-open-border:   rgba(220, 38, 38, 0.35);
-  --c-progress-bg:   rgba(217, 119, 6, 0.15);
+  --c-open-bg: rgba(220, 38, 38, 0.15);
+  --c-open-border: rgba(220, 38, 38, 0.35);
+  --c-progress-bg: rgba(217, 119, 6, 0.15);
   --c-progress-border: rgba(217, 119, 6, 0.35);
-  --c-resolved-bg:   rgba(5, 150, 105, 0.15);
+  --c-resolved-bg: rgba(5, 150, 105, 0.15);
   --c-resolved-border: rgba(5, 150, 105, 0.35);
-  --c-danger-bg:     rgba(239, 68, 68, 0.15);
+  --c-danger-bg: rgba(239, 68, 68, 0.15);
 
-  --c-critical:        #f87171;
-  --c-critical-bg:     rgba(220, 38, 38, 0.15);
+  --c-critical: #f87171;
+  --c-critical-bg: rgba(220, 38, 38, 0.15);
   --c-critical-border: rgba(220, 38, 38, 0.35);
-  --c-high:            #fbbf24;
-  --c-high-bg:         rgba(217, 119, 6, 0.15);
-  --c-high-border:     rgba(217, 119, 6, 0.35);
-  --c-medium:          #60a5fa;
-  --c-medium-bg:       rgba(37, 99, 235, 0.15);
-  --c-medium-border:   rgba(37, 99, 235, 0.35);
-  --c-low:             #34d399;
-  --c-low-bg:          rgba(5, 150, 105, 0.15);
-  --c-low-border:      rgba(5, 150, 105, 0.35);
+  --c-high: #fbbf24;
+  --c-high-bg: rgba(217, 119, 6, 0.15);
+  --c-high-border: rgba(217, 119, 6, 0.35);
+  --c-medium: #60a5fa;
+  --c-medium-bg: rgba(37, 99, 235, 0.15);
+  --c-medium-border: rgba(37, 99, 235, 0.35);
+  --c-low: #34d399;
+  --c-low-bg: rgba(5, 150, 105, 0.15);
+  --c-low-border: rgba(5, 150, 105, 0.35);
 
-  --shadow-sm:     0 1px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.2);
-  --shadow-md:     0 4px 12px rgba(0,0,0,.4), 0 2px 4px rgba(0,0,0,.2);
-  --shadow-lg:     0 10px 28px rgba(0,0,0,.5), 0 4px 8px rgba(0,0,0,.25);
-  --shadow-nav:    0 -4px 16px rgba(0,0,0,.2);
-  --shadow-header: 0 2px 12px rgba(0,0,0,.5);
-  --shadow-sheet:  0 -8px 32px rgba(0,0,0,.5);
-  --shadow-fab:    0 4px 14px rgba(37,99,235,.6);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 10px 28px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.25);
+  --shadow-nav: 0 -4px 16px rgba(0, 0, 0, 0.2);
+  --shadow-header: 0 2px 12px rgba(0, 0, 0, 0.5);
+  --shadow-sheet: 0 -8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-fab: 0 4px 14px rgba(37, 99, 235, 0.6);
 }
 
 /* =====================================================
    RESET
    ===================================================== */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   padding: 0;
   margin: 0;
   -webkit-tap-highlight-color: transparent;
 }
 
-html { height: 100%; }
+html {
+  height: 100%;
+}
 
 body {
-  font-family: system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Arial,
+    sans-serif;
   min-height: 100dvh;
   background: var(--c-bg);
   color: var(--c-text);
@@ -163,7 +172,10 @@ body {
   overscroll-behavior: none;
 }
 
-button { font-family: inherit; cursor: pointer; }
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
 
 /* =====================================================
    LAYOUT
@@ -185,12 +197,29 @@ button { font-family: inherit; cursor: pointer; }
   }
 }
 
+.pagesMap {
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: 0;
+
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    padding-bottom: 0;
+  }
+}
+
 /* =====================================================
    SCROLLBAR
    ===================================================== */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 4px; }
-.leaflet-bottom.leaflet-right{
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--c-border);
+  border-radius: 4px;
+}
+.leaflet-bottom.leaflet-right {
   display: none;
 }

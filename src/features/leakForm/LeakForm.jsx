@@ -123,6 +123,39 @@ export default function LeakForm({
   /* Navigation */
   const validateStep = useStepValidation({ steps: STEPS, form, setErrors });
 
+  const validateAllSteps = useCallback(() => {
+    const nextErrors = {};
+    let firstInvalidStep = null;
+
+    STEPS.forEach((item, index) => {
+      item.fields?.forEach(({ key, required, type }) => {
+        if (!required) return;
+
+        if (type === "photo") {
+          const photo = form[key];
+          if (!photo || !photo.raw || !photo.src) {
+            nextErrors[key] = lang === "ru" ? "Добавьте фото" : "Add a photo";
+            firstInvalidStep ??= index + 1;
+          }
+          return;
+        }
+
+        if (!form[key]) {
+          nextErrors[key] =
+            lang === "ru" ? "Обязательное поле" : "Required field";
+          firstInvalidStep ??= index + 1;
+        }
+      });
+    });
+
+    setErrors(nextErrors);
+    if (firstInvalidStep != null) {
+      setStep(firstInvalidStep);
+      return false;
+    }
+    return true;
+  }, [STEPS, form, lang, setErrors]);
+
   const nextStep = useCallback(() => {
     if (!validateStep(step)) return;
     setStep((v) => Math.min(STEPS.length, v + 1));
@@ -210,7 +243,7 @@ export default function LeakForm({
 
   // eslint-disable-next-line no-inner-declarations
   function save() {
-    if (!validateStep(step)) return;
+    if (!validateAllSteps()) return;
     const finalData = { ...form, photo: form.photo };
 
     if (!lastItem) {

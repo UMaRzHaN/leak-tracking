@@ -19,6 +19,18 @@ export default function MapPage({ leaks, coords }) {
     locationLabel,
     enabledLocations,
     activeProject,
+    nearbyOnly,
+    nearbyRadius,
+    nearbyRadiusOptions,
+    priorityFilters,
+    statusFilters,
+    hasGps,
+    setNearbyOnly,
+    setNearbyRadius,
+    togglePriorityFilter,
+    clearPriorityFilters,
+    toggleStatusFilter,
+    clearStatusFilters,
     toggleLocation,
     handleDownloadArea,
     handleExportKML,
@@ -40,6 +52,25 @@ export default function MapPage({ leaks, coords }) {
         onOpenSheet={() => setOpen(true)}
         onDownload={handleDownloadArea}
         downloading={downloading}
+        nearbyOnly={nearbyOnly}
+        nearbyRadius={nearbyRadius}
+        nearbyRadiusOptions={nearbyRadiusOptions}
+        priorityFilters={priorityFilters}
+        statusFilters={statusFilters}
+        hasGps={hasGps}
+        onToggleNearby={(nextValue) =>
+          setNearbyOnly((value) =>
+            typeof nextValue === "boolean" ? nextValue : !value,
+          )
+        }
+        onRadiusChange={(radius) => {
+          setNearbyRadius(radius);
+          setNearbyOnly(true);
+        }}
+        onPriorityToggle={togglePriorityFilter}
+        onPriorityClear={clearPriorityFilters}
+        onStatusToggle={toggleStatusFilter}
+        onStatusClear={clearStatusFilters}
       />
 
       {activeProject && visibleLeaks.length > 0 && (

@@ -203,7 +203,7 @@ export default function App() {
         />
       )}
 
-      <div className="pages">
+      <div className={`pages ${page === "map" ? "pagesMap" : ""}`}>
         <Suspense fallback={null}>
           {page === "" && (
             <MainPage setPage={setPage} data={data} setData={save} />

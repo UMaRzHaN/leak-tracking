@@ -5,6 +5,7 @@ import { filterNearbyLeaks } from "@/utils/geoUtils";
 export const ALL = "all";
 export const NEARBY = "nearby";
 export const NEARBY_RADIUS_M = 500;
+export const NEARBY_RADIUS_OPTIONS = [100, 500, 1000];
 
 const SEARCH_KEYS = [
   "leak_id",
@@ -21,6 +22,7 @@ export function useDataBaseFilters({ data, coords }) {
   const [statusFilter, setFilter] = useState(ALL);
   const [priorityFilter, setPriorityFilter] = useState(ALL);
   const [nearbyFilter, setNearbyFilter] = useState(false);
+  const [nearbyRadius, setNearbyRadius] = useState(NEARBY_RADIUS_M);
   const [sortAsc, setSortAsc] = useState(false);
 
   const hasGps = Boolean(coords?.lat && coords?.lng);
@@ -53,13 +55,25 @@ export function useDataBaseFilters({ data, coords }) {
     if (statusFilter !== ALL)
       list = list.filter((l) => (l.status ?? STATUS.OPEN) === statusFilter);
     if (nearbyFilter && hasGps)
-      list = filterNearbyLeaks(list, coords.lat, coords.lng, NEARBY_RADIUS_M);
+      list = filterNearbyLeaks(list, coords.lat, coords.lng, nearbyRadius);
     return applySearch(applyPriority(list));
-  }, [data, statusFilter, nearbyFilter, priorityFilter, search, hasGps, coords, sortAsc]);
+  }, [
+    data,
+    statusFilter,
+    nearbyFilter,
+    nearbyRadius,
+    priorityFilter,
+    search,
+    hasGps,
+    coords,
+    sortAsc,
+  ]);
 
   const counts = useMemo(() => {
     const c = { all: data.length, [NEARBY]: 0 };
-    STATUS_ORDER.forEach((st) => { c[st] = 0; });
+    STATUS_ORDER.forEach((st) => {
+      c[st] = 0;
+    });
 
     for (const l of data) {
       const st = l.status ?? STATUS.OPEN;
@@ -67,13 +81,13 @@ export function useDataBaseFilters({ data, coords }) {
       if (hasGps) {
         const dlat = l.lat - coords.lat;
         const dlng = l.lng - coords.lng;
-        // Fast equirectangular approximation sufficient for 500m radius check
+        // Fast equirectangular approximation sufficient for nearby radius checks.
         const approxM = Math.sqrt(dlat * dlat + dlng * dlng) * 111_320;
-        if (approxM <= NEARBY_RADIUS_M) c[NEARBY]++;
+        if (approxM <= nearbyRadius) c[NEARBY]++;
       }
     }
     return c;
-  }, [data, hasGps, coords]);
+  }, [data, hasGps, coords, nearbyRadius]);
 
   return {
     search: searchInput,
@@ -84,6 +98,9 @@ export function useDataBaseFilters({ data, coords }) {
     setPriorityFilter,
     nearbyFilter,
     setNearbyFilter,
+    nearbyRadius,
+    setNearbyRadius,
+    nearbyRadiusOptions: NEARBY_RADIUS_OPTIONS,
     sortAsc,
     toggleSort: () => setSortAsc((v) => !v),
     hasGps,

@@ -15,6 +15,7 @@ export default function ImportConflictSheet({
   projectName,
   existingProject,
   leakCount,
+  mergePreview,
   onOverwrite,
   onMerge,
   onCopy,
@@ -42,6 +43,26 @@ export default function ImportConflictSheet({
             {lang === "ru" ? "в архиве" : "in archive"}
           </span>
         </p>
+        {mergePreview && (
+          <div className={s.preview}>
+            <div className={s.previewItem}>
+              <span>{lang === "ru" ? "Добавится" : "Added"}</span>
+              <strong>{mergePreview.added}</strong>
+            </div>
+            <div className={s.previewItem}>
+              <span>{lang === "ru" ? "Обновится" : "Updated"}</span>
+              <strong>{mergePreview.updated}</strong>
+            </div>
+            <div className={s.previewItem}>
+              <span>{lang === "ru" ? "Пропустится" : "Skipped"}</span>
+              <strong>{mergePreview.skipped}</strong>
+            </div>
+            <div className={s.previewItem}>
+              <span>{lang === "ru" ? "Фото архива" : "Archive photos"}</span>
+              <strong>{mergePreview.archivePhotos}</strong>
+            </div>
+          </div>
+        )}
         <div className={s.actions}>
           <button className={`${s.btn} ${s.danger}`} onClick={onOverwrite}>
             {lang === "ru" ? "Перезаписать" : "Overwrite"}

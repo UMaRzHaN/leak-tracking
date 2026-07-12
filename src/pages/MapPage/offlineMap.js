@@ -139,6 +139,33 @@ function createPopupEl(leak) {
   return el;
 }
 
+function normalizeHeading(value) {
+  const heading = Number(value);
+  if (!Number.isFinite(heading)) return null;
+  return ((heading % 360) + 360) % 360;
+}
+
+function distanceMeters(from, to) {
+  const [lat1, lng1] = from.map((value) => (value * Math.PI) / 180);
+  const [lat2, lng2] = to.map((value) => (value * Math.PI) / 180);
+  const dlat = lat2 - lat1;
+  const dlng = lng2 - lng1;
+  const a =
+    Math.sin(dlat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dlng / 2) ** 2;
+  return 2 * 6371000 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function bearingDegrees(from, to) {
+  const [lat1, lng1] = from.map((value) => (value * Math.PI) / 180);
+  const [lat2, lng2] = to.map((value) => (value * Math.PI) / 180);
+  const y = Math.sin(lng2 - lng1) * Math.cos(lat2);
+  const x =
+    Math.cos(lat1) * Math.sin(lat2) -
+    Math.sin(lat1) * Math.cos(lat2) * Math.cos(lng2 - lng1);
+  return normalizeHeading((Math.atan2(y, x) * 180) / Math.PI);
+}
+
 export function createOfflineMap(
   container,
   { center, zoom = 13, initialUserCoords = null },
@@ -180,6 +207,7 @@ export function createOfflineMap(
   let userMarker = null;
   let watchId = null;
   let lastLatLng = null;
+  let lastHeading = null;
 
   const geoOptions = {
     enableHighAccuracy: true,
@@ -232,9 +260,17 @@ export function createOfflineMap(
   const onGeoPosition = (pos) => {
     if (destroyed) return;
     const latlng = [pos.coords.latitude, pos.coords.longitude];
-    const heading = pos.coords.heading;
+    let heading = normalizeHeading(pos.coords.heading);
+    if (
+      heading == null &&
+      lastLatLng &&
+      distanceMeters(lastLatLng, latlng) > 2
+    ) {
+      heading = bearingDegrees(lastLatLng, latlng);
+    }
+    if (heading != null) lastHeading = heading;
     lastLatLng = latlng;
-    ensureUserMarker(latlng, heading);
+    ensureUserMarker(latlng, heading ?? lastHeading);
   };
 
   const startGpsWatch = () => {

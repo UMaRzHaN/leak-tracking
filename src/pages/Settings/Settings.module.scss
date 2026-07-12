@@ -61,7 +61,10 @@
   font-weight: 600;
   cursor: pointer;
   transition: all var(--t-fast);
-  &:hover { background: var(--c-blue); color: #fff; }
+  &:hover {
+    background: var(--c-blue);
+    color: #fff;
+  }
 }
 
 .empty {
@@ -99,14 +102,22 @@
   font-weight: 600;
   cursor: pointer;
   transition: all var(--t-fast);
-  &:hover { border-color: var(--c-blue); color: var(--c-blue); background: var(--c-blue-dim); }
-  &:active { transform: scale(0.97); }
+  &:hover {
+    border-color: var(--c-blue);
+    color: var(--c-blue);
+    background: var(--c-blue-dim);
+  }
+  &:active {
+    transform: scale(0.97);
+  }
 
   &.restore {
     border-color: var(--c-resolved-border);
     background: var(--c-resolved-bg);
     color: var(--c-resolved);
-    &:hover { border-color: var(--c-resolved); }
+    &:hover {
+      border-color: var(--c-resolved);
+    }
   }
 }
 
@@ -140,7 +151,11 @@
   cursor: pointer;
   text-align: center;
   transition: all var(--t-fast);
-  &:hover { border-color: var(--c-blue); color: var(--c-blue); background: var(--c-blue-dim); }
+  &:hover {
+    border-color: var(--c-blue);
+    color: var(--c-blue);
+    background: var(--c-blue-dim);
+  }
 }
 
 /* ── Emissions summary ── */
@@ -209,8 +224,12 @@
   font-weight: 600;
   cursor: pointer;
   transition: all var(--t-fast);
-  &:hover { background: var(--c-open-bg); }
-  &:active { transform: scale(0.97); }
+  &:hover {
+    background: var(--c-open-bg);
+  }
+  &:active {
+    transform: scale(0.97);
+  }
 }
 
 /* ── Theme toggle ── */
@@ -262,7 +281,7 @@
   height: 22px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,.25);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
   transition: transform var(--t-fast);
 
   .themeToggleDark & {
@@ -326,7 +345,78 @@
   font-weight: 600;
   cursor: pointer;
   transition: all var(--t-fast);
-  &:hover { background: var(--c-surface2); }
-  &:active { transform: scale(0.97); }
-  &:disabled { opacity: 0.4; cursor: default; }
+  &:hover {
+    background: var(--c-surface2);
+  }
+  &:active {
+    transform: scale(0.97);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+
+.sectionHint {
+  margin-top: 4px;
+  color: var(--c-text3);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.integrityReport {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.integrityOk,
+.integrityWarn {
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.integrityOk {
+  color: var(--c-resolved);
+  background: var(--c-resolved-bg);
+  border: 1px solid var(--c-resolved-border);
+}
+
+.integrityWarn {
+  color: var(--c-progress);
+  background: var(--c-progress-bg);
+  border: 1px solid var(--c-progress-border);
+}
+
+.integrityGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.integrityIssue {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-bg);
+  color: var(--c-text2);
+  font-size: 12px;
+
+  strong {
+    color: var(--c-text);
+  }
+
+  small {
+    grid-column: 1 / -1;
+    overflow: hidden;
+    color: var(--c-text3);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }

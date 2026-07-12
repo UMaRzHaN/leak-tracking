@@ -32,6 +32,18 @@
 
 .hasError .card {
   border-color: var(--c-danger);
+  background: var(--c-danger-bg);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.hasError .fieldLabel {
+  color: var(--c-danger);
+}
+
+.hasError .btn {
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+  background: var(--c-danger-bg);
 }
 
 .cardIcon {
@@ -74,7 +86,9 @@
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: background var(--t-fast), border-color var(--t-fast);
+  transition:
+    background var(--t-fast),
+    border-color var(--t-fast);
 
   &:active {
     transform: scale(0.97);

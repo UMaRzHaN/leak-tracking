@@ -3,7 +3,10 @@ import { useLanguage } from "@/app/hooks/useLanguage";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useActiveLocation } from "@/hooks/useActiveLocation";
 import { getDistanceMeters } from "@/utils/geoUtils";
+import { STATUS } from "@/utils/status";
 import { handleExport } from "@/pages/MapPage/handleExport";
+
+const NEARBY_RADIUS_OPTIONS = [100, 500, 1000];
 
 export function useMapPage({ leaks, coords }) {
   const { lang } = useLanguage();
@@ -37,6 +40,10 @@ export function useMapPage({ leaks, coords }) {
   const [tileProgress, setTileProgress] = useState(null);
   const [downloading, setDownloading] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [nearbyOnly, setNearbyOnly] = useState(false);
+  const [nearbyRadius, setNearbyRadius] = useState(500);
+  const [priorityFilters, setPriorityFilters] = useState([]);
+  const [statusFilters, setStatusFilters] = useState([]);
 
   const notify = useCallback(
     (type, message) => setNotification({ type, message }),
@@ -62,18 +69,59 @@ export function useMapPage({ leaks, coords }) {
   }, []);
 
   const filteredLeaks = useMemo(
-    () => normalizedLeaks.filter((leak) => enabledLocations[leak._location]),
-    [normalizedLeaks, enabledLocations],
+    () =>
+      normalizedLeaks.filter(
+        (leak) =>
+          enabledLocations[leak._location] &&
+          (statusFilters.length === 0 ||
+            statusFilters.includes(leak.status ?? STATUS.OPEN)) &&
+          (priorityFilters.length === 0 ||
+            priorityFilters.includes(leak.priority ?? null)),
+      ),
+    [normalizedLeaks, enabledLocations, statusFilters, priorityFilters],
   );
 
+  const togglePriorityFilter = useCallback((priority) => {
+    setPriorityFilters((current) =>
+      current.includes(priority)
+        ? current.filter((item) => item !== priority)
+        : [...current, priority],
+    );
+  }, []);
+
+  const toggleStatusFilter = useCallback((status) => {
+    setStatusFilters((current) =>
+      current.includes(status)
+        ? current.filter((item) => item !== status)
+        : [...current, status],
+    );
+  }, []);
+
   const visibleLeaks = useMemo(() => {
+    const hasGps = Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng);
+
+    if (nearbyOnly && hasGps) {
+      return filteredLeaks
+        .map((leak) => ({
+          ...leak,
+          _distance: getDistanceMeters(
+            coords.lat,
+            coords.lng,
+            leak.lat,
+            leak.lng,
+          ),
+        }))
+        .filter((leak) => leak._distance <= nearbyRadius)
+        .sort((left, right) => left._distance - right._distance);
+    }
+
     if (!mapCenter) return filteredLeaks;
 
     const roundedLat = Math.round(mapCenter.lat * 1000) / 1000;
     const roundedLng = Math.round(mapCenter.lng * 1000) / 1000;
     const cache = distanceCacheRef.current;
 
-    return filteredLeaks
+    const sorted = filteredLeaks
       .map((leak) => {
         const key = `${leak.id}_${roundedLat}_${roundedLng}`;
         let distance = cache.get(key);
@@ -92,7 +140,9 @@ export function useMapPage({ leaks, coords }) {
         return { ...leak, _distance: distance };
       })
       .sort((left, right) => left._distance - right._distance);
-  }, [filteredLeaks, mapCenter]);
+
+    return sorted;
+  }, [filteredLeaks, mapCenter, nearbyOnly, nearbyRadius, coords]);
 
   useEffect(() => {
     let cancelled = false;
@@ -173,14 +223,14 @@ export function useMapPage({ leaks, coords }) {
   useEffect(() => {
     mapModuleRef.current?.addMarkers?.(
       mapRef.current.markersLayer,
-      filteredLeaks,
+      visibleLeaks,
     );
 
     if (fittedRef.current) return;
     const map = mapRef.current.map;
     if (!map) return;
 
-    const validLeaks = filteredLeaks.filter(
+    const validLeaks = visibleLeaks.filter(
       (leak) => Number.isFinite(leak.lat) && Number.isFinite(leak.lng),
     );
     if (validLeaks.length === 0) return;
@@ -200,7 +250,7 @@ export function useMapPage({ leaks, coords }) {
         },
       );
     }
-  }, [filteredLeaks, mapReady]);
+  }, [visibleLeaks, mapReady]);
 
   const handleDownloadArea = useCallback(async () => {
     const map = mapRef.current.map;
@@ -325,6 +375,18 @@ export function useMapPage({ leaks, coords }) {
     locationLabel,
     enabledLocations,
     activeProject,
+    nearbyOnly,
+    nearbyRadius,
+    nearbyRadiusOptions: NEARBY_RADIUS_OPTIONS,
+    priorityFilters,
+    statusFilters,
+    hasGps: Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng),
+    setNearbyOnly,
+    setNearbyRadius,
+    togglePriorityFilter,
+    clearPriorityFilters: () => setPriorityFilters([]),
+    toggleStatusFilter,
+    clearStatusFilters: () => setStatusFilters([]),
     toggleLocation,
     handleDownloadArea,
     handleExportKML,
