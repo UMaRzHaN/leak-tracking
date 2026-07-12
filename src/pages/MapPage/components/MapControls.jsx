@@ -15,6 +15,7 @@ export default function MapControls({
   onOpenSheet,
   onDownload,
   downloading,
+  heatmapEnabled,
   nearbyOnly,
   nearbyRadius,
   nearbyRadiusOptions,
@@ -22,6 +23,7 @@ export default function MapControls({
   statusFilters,
   hasGps,
   onToggleNearby,
+  onToggleHeatmap,
   onRadiusChange,
   onPriorityToggle,
   onPriorityClear,
@@ -98,6 +100,26 @@ export default function MapControls({
         >
           <circle cx="11" cy="11" r="7" />
           <line x1="16.5" y1="16.5" x2="22" y2="22" />
+        </svg>
+      </button>
+
+      <button
+        type="button"
+        className={`${s.controlBtn} ${heatmapEnabled ? s.controlBtnActive : ""}`}
+        onClick={onToggleHeatmap}
+        aria-label={lang === "ru" ? "Тепловая карта" : "Heatmap"}
+      >
+        <svg
+          className={s.controlIcon}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M12 21a7 7 0 0 0 7-7c0-4-4-7-7-11-3 4-7 7-7 11a7 7 0 0 0 7 7z" />
+          <path d="M12 17a3 3 0 0 0 3-3c0-1.7-1.6-3.1-3-5-1.4 1.9-3 3.3-3 5a3 3 0 0 0 3 3z" />
         </svg>
       </button>
 

@@ -166,12 +166,122 @@ function bearingDegrees(from, to) {
   return normalizeHeading((Math.atan2(y, x) * 180) / Math.PI);
 }
 
+const HEAT_PRIORITY_WEIGHT = {
+  critical: 1,
+  high: 0.78,
+  medium: 0.48,
+  low: 0.3,
+};
+
+function heatWeight(leak) {
+  const speed = Number(leak.leak_speed ?? leak.emission_rate);
+  if (Number.isFinite(speed) && speed > 0) {
+    return Math.min(1, Math.max(0.24, Math.log10(speed + 1) / 3));
+  }
+  return HEAT_PRIORITY_WEIGHT[leak.priority] ?? 0.34;
+}
+
+const HeatmapLayer = L.Layer.extend({
+  initialize(options = {}) {
+    L.setOptions(this, options);
+    this._points = [];
+    this._frame = null;
+  },
+
+  onAdd(map) {
+    this._map = map;
+    this._canvas = L.DomUtil.create("canvas", "leaflet-heatmap-layer");
+    this._canvas.style.position = "absolute";
+    this._canvas.style.pointerEvents = "none";
+    this._canvas.style.mixBlendMode = "screen";
+    this._ctx = this._canvas.getContext("2d");
+    map.getPanes().overlayPane.appendChild(this._canvas);
+
+    map.on("move zoom resize", this._scheduleRedraw, this);
+    this._reset();
+  },
+
+  onRemove(map) {
+    map.off("move zoom resize", this._scheduleRedraw, this);
+    if (this._frame != null) cancelAnimationFrame(this._frame);
+    this._canvas?.remove();
+    this._canvas = null;
+    this._ctx = null;
+    this._map = null;
+  },
+
+  setData(points = []) {
+    this._points = points;
+    this._scheduleRedraw();
+  },
+
+  _scheduleRedraw() {
+    if (this._frame != null) return;
+    this._frame = requestAnimationFrame(() => {
+      this._frame = null;
+      this._reset();
+    });
+  },
+
+  _reset() {
+    if (!this._map || !this._canvas || !this._ctx) return;
+    const size = this._map.getSize();
+    const topLeft = this._map.containerPointToLayerPoint([0, 0]);
+
+    L.DomUtil.setPosition(this._canvas, topLeft);
+    this._canvas.width = size.x;
+    this._canvas.height = size.y;
+
+    this._draw();
+  },
+
+  _draw() {
+    const ctx = this._ctx;
+    if (!ctx) return;
+
+    const { width, height } = this._canvas;
+    ctx.clearRect(0, 0, width, height);
+    ctx.globalCompositeOperation = "lighter";
+
+    const radius = this.options.radius ?? 34;
+    const maxOpacity = this.options.maxOpacity ?? 0.58;
+
+    for (const point of this._points) {
+      if (!Number.isFinite(point.lat) || !Number.isFinite(point.lng)) continue;
+
+      const pixel = this._map.latLngToContainerPoint([point.lat, point.lng]);
+      const weight = heatWeight(point);
+      const gradient = ctx.createRadialGradient(
+        pixel.x,
+        pixel.y,
+        0,
+        pixel.x,
+        pixel.y,
+        radius,
+      );
+
+      gradient.addColorStop(0, `rgba(255, 59, 48, ${maxOpacity * weight})`);
+      gradient.addColorStop(0.36, `rgba(255, 149, 0, ${0.34 * weight})`);
+      gradient.addColorStop(0.7, `rgba(255, 230, 0, ${0.16 * weight})`);
+      gradient.addColorStop(1, "rgba(255, 230, 0, 0)");
+
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(pixel.x, pixel.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.globalCompositeOperation = "source-over";
+  },
+});
+
 export function createOfflineMap(
   container,
   { center, zoom = 13, initialUserCoords = null },
 ) {
   const map = L.map(container, { zoomControl: true }).setView(center, zoom);
   let destroyed = false;
+  let heatmapLayer = null;
 
   new CachedTileLayer(
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -326,6 +436,26 @@ export function createOfflineMap(
     }
   };
 
+  const setHeatmap = (points = []) => {
+    if (destroyed) return;
+    const hasPoints = points.some(
+      (point) => Number.isFinite(point.lat) && Number.isFinite(point.lng),
+    );
+
+    if (!hasPoints) {
+      if (heatmapLayer) {
+        map.removeLayer(heatmapLayer);
+        heatmapLayer = null;
+      }
+      return;
+    }
+
+    if (!heatmapLayer) {
+      heatmapLayer = new HeatmapLayer({ radius: 38 }).addTo(map);
+    }
+    heatmapLayer.setData(points);
+  };
+
   const destroy = () => {
     if (destroyed) return;
     destroyed = true;
@@ -339,6 +469,10 @@ export function createOfflineMap(
     }
 
     try {
+      if (heatmapLayer) {
+        map.removeLayer(heatmapLayer);
+        heatmapLayer = null;
+      }
       map.off();
     } catch {
       // ignore
@@ -351,7 +485,7 @@ export function createOfflineMap(
     }
   };
 
-  return { map, markersLayer, locateMe, destroy };
+  return { map, markersLayer, locateMe, setHeatmap, destroy };
 }
 
 export function addMarkers(markersLayer, leaks = []) {

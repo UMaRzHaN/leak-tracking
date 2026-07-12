@@ -22,6 +22,7 @@ export function useMapPage({ leaks, coords }) {
     map: null,
     markersLayer: null,
     locateMe: null,
+    setHeatmap: null,
     destroy: null,
   });
   const fittedRef = useRef(false);
@@ -40,6 +41,7 @@ export function useMapPage({ leaks, coords }) {
   const [tileProgress, setTileProgress] = useState(null);
   const [downloading, setDownloading] = useState(false);
   const [mapReady, setMapReady] = useState(false);
+  const [heatmapEnabled, setHeatmapEnabled] = useState(false);
   const [nearbyOnly, setNearbyOnly] = useState(false);
   const [nearbyRadius, setNearbyRadius] = useState(500);
   const [priorityFilters, setPriorityFilters] = useState([]);
@@ -170,14 +172,14 @@ export function useMapPage({ leaks, coords }) {
       mapModuleRef.current = mapModule;
       if (cancelled) return;
 
-      const { map, markersLayer, locateMe, destroy } =
+      const { map, markersLayer, locateMe, setHeatmap, destroy } =
         mapModule.createOfflineMap(container, {
           center: fallbackCenter,
           zoom: 13,
           initialUserCoords,
         });
 
-      mapRef.current = { map, markersLayer, locateMe, destroy };
+      mapRef.current = { map, markersLayer, locateMe, setHeatmap, destroy };
       setMapReady(true);
 
       invalidateFrame = requestAnimationFrame(() => {
@@ -213,6 +215,7 @@ export function useMapPage({ leaks, coords }) {
         map: null,
         markersLayer: null,
         locateMe: null,
+        setHeatmap: null,
         destroy: null,
       };
       setMapReady(false);
@@ -251,6 +254,10 @@ export function useMapPage({ leaks, coords }) {
       );
     }
   }, [visibleLeaks, mapReady]);
+
+  useEffect(() => {
+    mapRef.current.setHeatmap?.(heatmapEnabled ? visibleLeaks : []);
+  }, [heatmapEnabled, visibleLeaks, mapReady]);
 
   const handleDownloadArea = useCallback(async () => {
     const map = mapRef.current.map;
@@ -375,12 +382,14 @@ export function useMapPage({ leaks, coords }) {
     locationLabel,
     enabledLocations,
     activeProject,
+    heatmapEnabled,
     nearbyOnly,
     nearbyRadius,
     nearbyRadiusOptions: NEARBY_RADIUS_OPTIONS,
     priorityFilters,
     statusFilters,
     hasGps: Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng),
+    setHeatmapEnabled,
     setNearbyOnly,
     setNearbyRadius,
     togglePriorityFilter,

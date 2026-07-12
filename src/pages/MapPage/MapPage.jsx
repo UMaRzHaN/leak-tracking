@@ -19,12 +19,14 @@ export default function MapPage({ leaks, coords }) {
     locationLabel,
     enabledLocations,
     activeProject,
+    heatmapEnabled,
     nearbyOnly,
     nearbyRadius,
     nearbyRadiusOptions,
     priorityFilters,
     statusFilters,
     hasGps,
+    setHeatmapEnabled,
     setNearbyOnly,
     setNearbyRadius,
     togglePriorityFilter,
@@ -55,9 +57,11 @@ export default function MapPage({ leaks, coords }) {
         nearbyOnly={nearbyOnly}
         nearbyRadius={nearbyRadius}
         nearbyRadiusOptions={nearbyRadiusOptions}
+        heatmapEnabled={heatmapEnabled}
         priorityFilters={priorityFilters}
         statusFilters={statusFilters}
         hasGps={hasGps}
+        onToggleHeatmap={() => setHeatmapEnabled((value) => !value)}
         onToggleNearby={(nextValue) =>
           setNearbyOnly((value) =>
             typeof nextValue === "boolean" ? nextValue : !value,
