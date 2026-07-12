@@ -17,7 +17,7 @@ function detectTypeFromString(str) {
 const PROJECT_ICONS = { upstream: "⛽", midstream: "🔧", downstream: "🏭" };
 
 export default function ProjectSetupScreen({ onComplete, onImportZip }) {
-  const { t } = useLanguage();
+  const { t, toggleLanguage } = useLanguage();
   const localeTexts = useMemo(
     () => ({
       title: t("projectSetup.title"),
@@ -41,6 +41,21 @@ export default function ProjectSetupScreen({ onComplete, onImportZip }) {
       importHint: t("projectSetup.importHint"),
 
       importError: t("projectSetup.importError"),
+      languageToggle: t("projectSetup.languageToggle"),
+      projectTypes: {
+        upstream: {
+          title: t("projectSetup.projectTypes.upstream.title"),
+          description: t("projectSetup.projectTypes.upstream.description"),
+        },
+        midstream: {
+          title: t("projectSetup.projectTypes.midstream.title"),
+          description: t("projectSetup.projectTypes.midstream.description"),
+        },
+        downstream: {
+          title: t("projectSetup.projectTypes.downstream.title"),
+          description: t("projectSetup.projectTypes.downstream.description"),
+        },
+      },
     }),
     [t],
   );
@@ -113,12 +128,22 @@ export default function ProjectSetupScreen({ onComplete, onImportZip }) {
   const folderPreview = name.trim()
     ? toFolderName(name.trim())
     : type
-      ? toFolderName(PROJECT_META[type].title)
+      ? toFolderName(
+          localeTexts.projectTypes[type]?.title ?? PROJECT_META[type].title,
+        )
       : "—";
 
   return (
     <div className={s.screen}>
       <div className={s.card}>
+        <button
+          className={s.langBtn}
+          type="button"
+          onClick={toggleLanguage}
+          aria-label={localeTexts.languageToggle}
+        >
+          {localeTexts.languageToggle}
+        </button>
         <div className={s.logo}>📋</div>
         <h1 className={s.title}>{localeTexts.title}</h1>
         <p className={s.subtitle}>{localeTexts.subtitle}</p>
@@ -150,21 +175,26 @@ export default function ProjectSetupScreen({ onComplete, onImportZip }) {
             {localeTexts.projectType} <span className={s.required}>*</span>
           </label>
           <div className={s.typeGrid}>
-            {Object.entries(PROJECT_META).map(([id, meta]) => (
-              <button
-                key={id}
-                type="button"
-                className={`${s.typeBtn} ${type === id ? s.selected : ""}`}
-                onClick={() => {
-                  setType(id);
-                  setError("");
-                }}
-              >
-                <span className={s.typeIcon}>{PROJECT_ICONS[id]}</span>
-                <span className={s.typeName}>{meta.title}</span>
-                <span className={s.typeDesc}>{meta.description}</span>
-              </button>
-            ))}
+            {Object.entries(PROJECT_META).map(([id, meta]) => {
+              const localizedType = localeTexts.projectTypes[id] ?? meta;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className={`${s.typeBtn} ${type === id ? s.selected : ""}`}
+                  onClick={() => {
+                    setType(id);
+                    setError("");
+                  }}
+                >
+                  <span className={s.typeIcon}>{PROJECT_ICONS[id]}</span>
+                  <span className={s.typeName}>{localizedType.title}</span>
+                  <span className={s.typeDesc}>
+                    {localizedType.description}
+                  </span>
+                </button>
+              );
+            })}
           </div>
           {error && <span className={s.error}>{error}</span>}
         </div>

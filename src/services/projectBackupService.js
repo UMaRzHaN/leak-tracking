@@ -124,6 +124,82 @@ function recalculateLeaks(leaks, vars) {
   return leaks.map((leak) => calculations(leak, calcVars));
 }
 
+function parseTime(value) {
+  if (value == null || value === "") return 0;
+  const time = typeof value === "number" ? value : Date.parse(String(value));
+  return Number.isFinite(time) ? time : 0;
+}
+
+function getLeakIdentity(leak) {
+  if (leak?.id != null) return `id:${String(leak.id)}`;
+  if (leak?.leak_id != null) return `tag:${String(leak.leak_id)}`;
+  return null;
+}
+
+function getLeakFreshness(leak) {
+  const historyTimes = Array.isArray(leak?.history)
+    ? leak.history.map((entry) => parseTime(entry?.date))
+    : [];
+  return Math.max(
+    parseTime(leak?.updatedAt),
+    parseTime(leak?.createdAt),
+    parseTime(leak?.resolvedAt),
+    ...historyTimes,
+  );
+}
+
+function isRestoredPhotoPath(path) {
+  return (
+    typeof path === "string" && path.trim() !== "" && !path.startsWith("zip:")
+  );
+}
+
+function mergePhotoFields(existingLeak, incomingLeak) {
+  const next = { ...incomingLeak };
+
+  for (const key of PHOTO_KEYS) {
+    if (
+      !isRestoredPhotoPath(next[key]) &&
+      isRestoredPhotoPath(existingLeak?.[key])
+    ) {
+      next[key] = existingLeak[key];
+    }
+  }
+
+  return next;
+}
+
+export function mergeLeaksByFreshness(existing = [], incoming = []) {
+  const merged = [...existing];
+  const indexByIdentity = new Map();
+  let added = 0;
+  let updated = 0;
+
+  merged.forEach((leak, index) => {
+    const identity = getLeakIdentity(leak);
+    if (identity) indexByIdentity.set(identity, index);
+  });
+
+  for (const leak of incoming) {
+    const identity = getLeakIdentity(leak);
+    const existingIndex = identity ? indexByIdentity.get(identity) : undefined;
+
+    if (existingIndex == null) {
+      merged.push(leak);
+      if (identity) indexByIdentity.set(identity, merged.length - 1);
+      added += 1;
+      continue;
+    }
+
+    if (getLeakFreshness(leak) > getLeakFreshness(merged[existingIndex])) {
+      merged[existingIndex] = mergePhotoFields(merged[existingIndex], leak);
+      updated += 1;
+    }
+  }
+
+  return { leaks: merged, added, updated, changed: added + updated };
+}
+
 function parseBackupValidation(parsed) {
   const validation = validateBackup(parsed);
   if (!validation.ok) throw new Error(validation.error);
@@ -377,17 +453,15 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
       projectId: existingProjectId,
       folderName: existingFolderName,
     });
-    const existingIds = new Set(existing.map((leak) => String(leak.id)));
-    const incomingNew = leaks.filter(
-      (leak) => !existingIds.has(String(leak.id)),
-    );
-    const restoredNew = await restorePhotosFromZip(
-      incomingNew,
+    const restoredIncoming = await restorePhotosFromZip(
+      leaks,
       zip,
       savePhotoRef,
     );
-    finalLeaks = [...existing, ...recalculateLeaks(restoredNew, meta?.vars)];
-    addedCount = restoredNew.length;
+    const recalculatedIncoming = recalculateLeaks(restoredIncoming, meta?.vars);
+    const mergeResult = mergeLeaksByFreshness(existing, recalculatedIncoming);
+    finalLeaks = mergeResult.leaks;
+    addedCount = mergeResult.changed;
   } else {
     if (vars) {
       localStorage.setItem(

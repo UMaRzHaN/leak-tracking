@@ -12,6 +12,7 @@
 }
 
 .card {
+  position: relative;
   background: #ffffff;
   border-radius: 20px;
   padding: 36px 28px;
@@ -26,6 +27,34 @@
   @media (max-width: 480px) {
     padding: 28px 20px;
     border-radius: 16px;
+  }
+}
+
+.langBtn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  min-width: 44px;
+  height: 34px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #0d47a1;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+
+  &:hover {
+    background: #dbeafe;
+    border-color: #93c5fd;
+  }
+
+  &:active {
+    transform: translateY(1px);
   }
 }
 

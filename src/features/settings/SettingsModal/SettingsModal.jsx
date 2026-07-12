@@ -428,14 +428,14 @@ export default function SettingsModal({
         {/* ===== FOOTER ===== */}
         <div className={s.footer}>
           <button className={s.cancelBtn} onClick={handleCancel}>
-            Отмена
+            {localeTexts.cancel}
           </button>
           <button
             className={s.saveBtn}
             onClick={handleSave}
             disabled={!isDirty}
           >
-            Сохранить
+            {localeTexts.save}
           </button>
         </div>
       </div>
@@ -446,19 +446,19 @@ export default function SettingsModal({
           <div className={s.confirmDialog}>
             <div className={s.confirmContent}>
               <span className={s.confirmIcon}>❓</span>
-              <h3>Отменить изменения?</h3>
-              <p>Вы уверены? Все несохранённые изменения будут потеряны.</p>
+              <h3>{localeTexts.confirm.title}</h3>
+              <p>{localeTexts.confirm.text}</p>
             </div>
 
             <div className={s.confirmFooter}>
               <button className={s.confirmKeepBtn} onClick={handleKeepEditing}>
-                Продолжить редактирование
+                {localeTexts.confirm.continueEditing}
               </button>
               <button
                 className={s.confirmDiscardBtn}
                 onClick={handleDiscardChanges}
               >
-                Отменить изменения
+                {localeTexts.confirm.discardChanges}
               </button>
             </div>
           </div>,

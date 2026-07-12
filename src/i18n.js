@@ -42,6 +42,21 @@ const resources = {
         importHint: "Восстановить проект из резервной копии",
 
         importError: "Ошибка импорта",
+        languageToggle: "EN",
+        projectTypes: {
+          upstream: {
+            title: "Upstream",
+            description: "Добыча",
+          },
+          midstream: {
+            title: "Midstream",
+            description: "Транспортировка и хранение",
+          },
+          downstream: {
+            title: "Downstream",
+            description: "Переработка и сбыт",
+          },
+        },
       },
       mainPage: {
         total: "Всего",
@@ -199,6 +214,12 @@ const resources = {
         operatingMode: "Режим работы",
         operatingModeDays: "дней за год",
         gasType: "Тип газа",
+        gasOptions: {
+          methane: "Метан (CH₄)",
+          ethane: "Этан (C₂H₆)",
+          propane: "Пропан (C₃H₈)",
+          butane: "Бутан (C₄H₁₀)",
+        },
         density: "Плотность",
         cancel: "Отмена",
         save: "Сохранить",
@@ -333,6 +354,21 @@ const resources = {
         importHint: "Restore a project from a backup",
 
         importError: "Import error",
+        languageToggle: "RU",
+        projectTypes: {
+          upstream: {
+            title: "Upstream",
+            description: "Production",
+          },
+          midstream: {
+            title: "Midstream",
+            description: "Transportation and storage",
+          },
+          downstream: {
+            title: "Downstream",
+            description: "Processing and sales",
+          },
+        },
       },
       mainPage: {
         total: "Total",
@@ -426,17 +462,17 @@ const resources = {
             hint: "Video recording number from the instrument (OGI)",
           },
           pressure: {
-            label: "Pressure",
+            label: "Pressure, atm",
             placeholder: "e.g. 4.5",
             hint: "Operating pressure in the pipeline, atm",
           },
           temperature: {
-            label: "Temperature",
+            label: "Temperature, °C",
             placeholder: "e.g. 20",
             hint: "Operating medium temperature, °C",
           },
           leak_speed: {
-            label: "Leak rate",
+            label: "Leak rate, L/min",
             placeholder: "e.g. 1.5",
             hint: "Measured leak rate by instrument, L/min",
           },
@@ -624,6 +660,12 @@ const resources = {
         operatingMode: "Operating mode",
         operatingModeDays: "days per year",
         gasType: "Gas type",
+        gasOptions: {
+          methane: "Methane (CH₄)",
+          ethane: "Ethane (C₂H₆)",
+          propane: "Propane (C₃H₈)",
+          butane: "Butane (C₄H₁₀)",
+        },
         density: "Density",
         cancel: "Cancel",
         save: "Save",

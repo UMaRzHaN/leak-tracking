@@ -295,11 +295,11 @@ export function useBackupActions({
       notify(
         "success",
         lang === "ru"
-          ? `Объединено с «${result.project.name}» (добавлено из архива: ${result.leakCount} ${pluralRecords(
+          ? `Объединено с «${result.project.name}» (из архива применено: ${result.leakCount} ${pluralRecords(
               result.leakCount,
               lang,
             )})`
-          : `Merged into "${result.project.name}" (added from archive: ${result.leakCount} ${pluralRecords(
+          : `Merged into "${result.project.name}" (applied from archive: ${result.leakCount} ${pluralRecords(
               result.leakCount,
               lang,
             )})`,

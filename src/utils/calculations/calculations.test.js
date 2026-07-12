@@ -19,11 +19,9 @@ const UF = (100 - BASE_VARS.uncertainty) / 100;
 // Annual volume loss in m³/year: leak_speed (л/мин) × minutes × UF / 1000
 const M3_Y = (speed, days = 365) => (speed * 1440 * days * UF) / 1000;
 
-// leak_speed_standard for "Розовый мешок": normalised to STP (0°C, 0.101325 MPa)
+// leak_speed_standard for "Розовый мешок": normalised to STP (0°C, 1 atm)
 const stdSpeed = (speed, pressure, tempC, gasPercentage) =>
-  ((speed * pressure) / (tempC + 273.15)) *
-  (273.15 / 0.101325) *
-  (gasPercentage / 100);
+  ((speed * pressure) / (tempC + 273.15)) * 273.15 * (gasPercentage / 100);
 
 describe("calculations", () => {
   it("returns leak unchanged when vars is null", () => {
@@ -194,7 +192,7 @@ describe("calculations", () => {
       equipmentType: "Розовый мешок",
       uncertainty: 0.1,
     };
-    const LEAK = { leak_speed: 10, pressure: 0.2, temperature: 20 }; // pressure в МПа
+    const LEAK = { leak_speed: 10, pressure: 0.2, temperature: 20 }; // pressure в атм
 
     it("Розовый мешок: leak_rate вычисляется через stdSpeed с gasPercentage=100", () => {
       const expected = stdSpeed(10, 0.2, 20, 100);

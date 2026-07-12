@@ -184,7 +184,7 @@ function LeakCardCompact({
               </span>
             )}
             <span className={s.id}>
-              {lang === "ru" ? "№ Б-" : "№ B-"}
+              {lang === "ru" ? "№ Б-" : "№ T-"}
               {leak.leak_id ?? leak.index}
             </span>
             <span className={s.time}>{ago ?? absoluteDate}</span>
