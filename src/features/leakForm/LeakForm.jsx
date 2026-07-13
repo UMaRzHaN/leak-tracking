@@ -140,7 +140,11 @@ export default function LeakForm({
           return;
         }
 
-        if (!form[key]) {
+        const value = form[key];
+        const empty =
+          value == null || (typeof value === "string" && value.trim() === "");
+
+        if (empty) {
           nextErrors[key] =
             lang === "ru" ? "Обязательное поле" : "Required field";
           firstInvalidStep ??= index + 1;
@@ -244,6 +248,7 @@ export default function LeakForm({
   // eslint-disable-next-line no-inner-declarations
   function save() {
     if (!validateAllSteps()) return;
+
     const finalData = { ...form, photo: form.photo };
 
     if (!lastItem) {

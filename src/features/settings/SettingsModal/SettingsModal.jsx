@@ -1,9 +1,25 @@
-import { useState, useMemo, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import s from "./SettingsModal.module.scss";
-import * as variables from "@/data/variables";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import CalculationParametersForm from "@/features/calculationParameters/CalculationParametersForm";
 import { isPinkBagEquipment } from "@/utils/calculations/calculations";
+import s from "./SettingsModal.module.scss";
+
+function pickCalcVars(vars) {
+  return {
+    equipmentType: vars.equipmentType,
+    uncertainty: vars.uncertainty,
+    gasType: vars.gasType,
+    density: vars.density,
+    percentage_gas_to_flare: vars.percentage_gas_to_flare,
+    percentage_gas_to_utilization: vars.percentage_gas_to_utilization,
+    gasPercentage: vars.gasPercentage,
+    GWP: vars.GWP,
+    GWP_Minus: vars.GWP_Minus,
+    serial_number: vars.serial_number,
+    Operating_mode: vars.Operating_mode,
+  };
+}
 
 export default function SettingsModal({
   open,
@@ -15,27 +31,25 @@ export default function SettingsModal({
   const localeTexts = useMemo(
     () => ({
       title: t("settingsModal.title"),
-
       gasToFlare: t("settingsModal.gasToFlare"),
       flare: t("settingsModal.flare"),
       utilization: t("settingsModal.utilization"),
-
       gasContent: t("settingsModal.gasContent"),
       current: t("settingsModal.current"),
-
       equipmentType: t("settingsModal.equipmentType"),
       uncertainty: t("settingsModal.uncertainty"),
-
       serialNumber: t("settingsModal.serialNumber"),
+      serialNumberRequired:
+        lang === "ru"
+          ? "Укажите серийный номер оборудования"
+          : "Enter equipment serial number",
       equipmentOptions: {
         gfm20: t("settingsModal.equipmentOptions.gfm20"),
         gfm30: t("settingsModal.equipmentOptions.gfm30"),
         pinkBag: t("settingsModal.equipmentOptions.pinkBag"),
       },
-
       operatingMode: t("settingsModal.operatingMode"),
       operatingModeDays: t("settingsModal.operatingModeDays"),
-
       gasType: t("settingsModal.gasType"),
       gasOptions: {
         methane: t("settingsModal.gasOptions.methane", {
@@ -51,11 +65,8 @@ export default function SettingsModal({
           defaultValue: lang === "ru" ? "Бутан (C₄H₁₀)" : "Butane (C₄H₁₀)",
         }),
       },
-      density: t("settingsModal.density"),
-
       cancel: t("settingsModal.cancel"),
       save: t("settingsModal.save"),
-
       confirm: {
         title: t("settingsModal.confirm.title"),
         text: t("settingsModal.confirm.text"),
@@ -65,96 +76,35 @@ export default function SettingsModal({
     }),
     [t, lang],
   );
-  /* =========================
-     LOCAL DRAFT STATE
-  ========================= */
-  const [localVars, setLocalVars] = useState(() => ({
-    equipmentType: currentVars.equipmentType,
-    uncertainty: currentVars.uncertainty,
-    gasType: currentVars.gasType,
-    density: currentVars.density,
-    percentage_gas_to_flare: currentVars.percentage_gas_to_flare,
-    gasPercentage: currentVars.gasPercentage,
-    GWP: currentVars.GWP,
-    GWP_Minus: currentVars.GWP_Minus,
-    serial_number: currentVars.serial_number,
-    Operating_mode: currentVars.Operating_mode,
-  }));
 
+  const [localVars, setLocalVars] = useState(() => pickCalcVars(currentVars));
   const [showConfirm, setShowConfirm] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
-  /* =========================
-     SYNC ON OPEN / PROJECT CHANGE
-  ========================= */
   useEffect(() => {
     if (!open) return;
-
-    setLocalVars({
-      equipmentType: currentVars.equipmentType,
-      uncertainty: currentVars.uncertainty,
-      gasType: currentVars.gasType,
-      density: currentVars.density,
-      percentage_gas_to_flare: currentVars.percentage_gas_to_flare,
-      gasPercentage: currentVars.gasPercentage,
-      GWP: currentVars.GWP,
-      GWP_Minus: currentVars.GWP_Minus,
-      serial_number: currentVars.serial_number,
-      Operating_mode: currentVars.Operating_mode,
-    });
-
+    setLocalVars(pickCalcVars(currentVars));
     setShowConfirm(false);
+    setSubmitted(false);
   }, [open, currentVars]);
 
-  /* =========================
-     DIRTY CHECK
-  ========================= */
-  const isDirty = useMemo(() => {
-    return (
-      localVars.equipmentType !== currentVars.equipmentType ||
-      localVars.uncertainty !== currentVars.uncertainty ||
-      localVars.gasType !== currentVars.gasType ||
-      localVars.density !== currentVars.density ||
-      localVars.percentage_gas_to_flare !==
-        currentVars.percentage_gas_to_flare ||
-      localVars.gasPercentage !== currentVars.gasPercentage ||
-      localVars.GWP !== currentVars.GWP ||
-      localVars.GWP_Minus !== currentVars.GWP_Minus ||
-      localVars.serial_number !== currentVars.serial_number ||
-      localVars.Operating_mode !== currentVars.Operating_mode
-    );
-  }, [localVars, currentVars]);
-
-  /* =========================
-     HANDLERS
-  ========================= */
-  const handleChange = (key, value) => {
-    setLocalVars((prev) => {
-      const next = { ...prev };
-
-      if (key === "gasType") {
-        const gas = variables.GAS_TYPES[value];
-        if (!gas) return prev;
-
-        next.gasType = value;
-        next.density = gas.density;
-      } else if (key === "equipmentType") {
-        const equipment = variables.EQUIPMENT_TYPES[value];
-        if (!equipment) return prev;
-
-        next.equipmentType = value;
-        next.uncertainty = equipment.uncertainty;
-        next.serial_number = equipment.serial_number;
-      } else {
-        const numValue = Number(value);
-        if (Number.isNaN(numValue)) return prev;
-        next[key] = numValue;
-      }
-
-      return next;
-    });
-  };
+  const isDirty = useMemo(
+    () =>
+      Object.entries(localVars).some(
+        ([key, value]) => value !== currentVars[key],
+      ),
+    [localVars, currentVars],
+  );
 
   const handleSave = () => {
+    setSubmitted(true);
+    if (
+      !isPinkBagEquipment(localVars.equipmentType) &&
+      localVars.serial_number == null
+    ) {
+      return;
+    }
+
     onSave({
       ...currentVars,
       ...localVars,
@@ -162,270 +112,42 @@ export default function SettingsModal({
     });
 
     setShowConfirm(false);
+    setSubmitted(false);
     onClose(false);
   };
 
   const handleCancel = () => {
     if (isDirty) {
       setShowConfirm(true);
-    } else {
-      onClose(false);
+      return;
     }
-  };
-
-  const handleDiscardChanges = () => {
-    setShowConfirm(false);
-    onClose(true);
-  };
-
-  const handleKeepEditing = () => {
-    setShowConfirm(false);
+    onClose(false);
   };
 
   if (!open) return null;
 
-  /* =========================
-     RENDER
-  ========================= */
   return (
     <>
-      {/* ===== BACKDROP ===== */}
       <div className={s.backdrop} onClick={handleCancel} />
 
-      {/* ===== MODAL ===== */}
       <div className={s.modal}>
         <div className={s.header}>
           <h2>{localeTexts.title}</h2>
           <button className={s.closeBtn} onClick={handleCancel}>
-            ✕
+            x
           </button>
         </div>
 
-        {/* ===== CONTENT ===== */}
         <div className={s.content}>
-          {/* FLARE */}
-          <div className={s.paramGroup}>
-            <label htmlFor="flare">
-              <span className={s.label}>{localeTexts.gasToFlare}</span>
-              <span className={s.unit}>(%)</span>
-            </label>
-
-            <div className={s.sliderContainer}>
-              <input
-                id="flare"
-                type="range"
-                min="0"
-                max="100"
-                step="0.1"
-                value={localVars.percentage_gas_to_flare}
-                onChange={(e) =>
-                  handleChange("percentage_gas_to_flare", e.target.value)
-                }
-                className={s.slider}
-              />
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.1"
-                value={localVars.percentage_gas_to_flare}
-                onChange={(e) =>
-                  handleChange("percentage_gas_to_flare", e.target.value)
-                }
-                className={s.numberInput}
-              />
-            </div>
-
-            <div className={s.distribution}>
-              <span className={s.flare}>
-                {localeTexts.flare}:{" "}
-                {localVars.percentage_gas_to_flare.toFixed(1)}%
-              </span>
-              <span className={s.util}>
-                {localeTexts.utilization}:{" "}
-                {(100 - localVars.percentage_gas_to_flare).toFixed(1)}%
-              </span>
-            </div>
-          </div>
-          {/* GAS PERCENTAGE */}
-          <div className={s.paramGroup}>
-            <label htmlFor="gasPercentage">
-              <span className={s.label}>{localeTexts.gasContent}</span>
-              <span className={s.unit}>(%)</span>
-            </label>
-            <div className={s.sliderContainer}>
-              <input
-                id="gasPercentage"
-                type="range"
-                min="0"
-                max="100"
-                step="0.1"
-                value={localVars.gasPercentage}
-                onChange={(e) => handleChange("gasPercentage", e.target.value)}
-                className={s.slider}
-              />
-              <input
-                type="number"
-                min="0"
-                max="100"
-                step="0.1"
-                value={localVars.gasPercentage}
-                onChange={(e) => handleChange("gasPercentage", e.target.value)}
-                className={s.numberInput}
-              />
-            </div>
-            <span className={s.current}>
-              {localeTexts.current}: {localVars.gasPercentage.toFixed(1)}%
-            </span>
-          </div>
-          {/* EQUIPMENT TYPE */}
-          <div className={s.paramGroup}>
-            <label htmlFor="equipmentType">
-              <span className={s.label}>{localeTexts.equipmentType}</span>
-            </label>
-            <select
-              id="equipmentType"
-              value={localVars.equipmentType}
-              onChange={(e) => handleChange("equipmentType", e.target.value)}
-              className={s.select}
-            >
-              {Object.entries(variables.EQUIPMENT_TYPES).map(
-                ([key, { label, labelKey }]) => (
-                  <option key={key} value={key}>
-                    {localeTexts.equipmentOptions[labelKey] ?? label}
-                  </option>
-                ),
-              )}
-            </select>
-            <span className={s.current}>
-              {localeTexts.uncertainty}: {localVars.uncertainty}%
-            </span>
-          </div>
-          {/* SERIAL NUMBER */}
-          <div className={s.paramGroup}>
-            <label htmlFor="serial_number">
-              <span className={s.label}>{localeTexts.serialNumber}</span>
-            </label>
-            <input
-              disabled={isPinkBagEquipment(localVars.equipmentType)}
-              id="serial_number"
-              type="number"
-              min="0"
-              step="1"
-              inputMode="numeric"
-              value={localVars.serial_number ?? ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (!isPinkBagEquipment(localVars.equipmentType)) {
-                  if (v === "") {
-                    setLocalVars((prev) => ({ ...prev, serial_number: null }));
-                    return;
-                  }
-                  if (/^\d+$/.test(v)) {
-                    setLocalVars((prev) => ({
-                      ...prev,
-                      serial_number: Number(v),
-                    }));
-                  }
-                }
-              }}
-              className={s.input}
-            />
-            <span className={s.current}>
-              {localeTexts.current}: {localVars.serial_number}
-            </span>
-          </div>
-          {/* OPERATING MODE */}
-          <div className={s.paramGroup}>
-            <label htmlFor="Operating_mode">
-              <span className={s.label}>{localeTexts.operatingMode}</span>
-              <span className={s.unit}>({localeTexts.operatingModeDays})</span>
-            </label>
-            <input
-              id="Operating_mode"
-              type="number"
-              min="1"
-              max="365"
-              step="1"
-              inputMode="numeric"
-              value={localVars.Operating_mode ?? ""}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === "") return;
-                const int = Math.trunc(Number(v));
-                if (Number.isFinite(int) && int >= 1 && int <= 365) {
-                  setLocalVars((prev) => ({ ...prev, Operating_mode: int }));
-                }
-              }}
-              className={s.input}
-            />
-            <span className={s.current}>
-              {localeTexts.current}: {localVars.Operating_mode}
-            </span>
-          </div>
-          {/* GAS TYPE */}
-          <div className={s.paramGroup}>
-            <label htmlFor="gasType">
-              <span className={s.label}>{localeTexts.gasType}</span>
-            </label>
-            <select
-              id="gasType"
-              value={localVars.gasType}
-              onChange={(e) => handleChange("gasType", e.target.value)}
-              className={s.select}
-            >
-              {Object.entries(variables.GAS_TYPES).map(
-                ([key, { label, labelKey }]) => (
-                  <option key={key} value={key}>
-                    {localeTexts.gasOptions[labelKey] ?? label}
-                  </option>
-                ),
-              )}
-            </select>
-            <span className={s.current}>
-              {localeTexts.current}: {localVars.density}
-            </span>
-          </div>
-
-          {/* GWP */}
-          <div className={s.paramGroup}>
-            <label htmlFor="GWP">
-              <span className={s.label}>GWP</span>
-            </label>
-            <input
-              id="GWP"
-              type="number"
-              min="0"
-              step="0.1"
-              value={localVars.GWP}
-              onChange={(e) => handleChange("GWP", e.target.value)}
-              className={s.input}
-            />
-            <span className={s.current}>
-              {localeTexts.current}: {localVars.GWP}
-            </span>
-          </div>
-          {/* GWP_Minus */}
-          <div className={s.paramGroup}>
-            <label htmlFor="GWP_Minus">
-              <span className={s.label}>GWP_Minus</span>
-            </label>
-            <input
-              id="GWP_Minus"
-              type="number"
-              min="0"
-              step="0.1"
-              value={localVars.GWP_Minus}
-              onChange={(e) => handleChange("GWP_Minus", e.target.value)}
-              className={s.input}
-            />
-            <span className={s.current}>
-              {localeTexts.current}: {localVars.GWP_Minus}
-            </span>
-          </div>
+          <CalculationParametersForm
+            value={localVars}
+            setValue={setLocalVars}
+            texts={localeTexts}
+            submitted={submitted}
+            idPrefix="settings-calc"
+          />
         </div>
 
-        {/* ===== FOOTER ===== */}
         <div className={s.footer}>
           <button className={s.cancelBtn} onClick={handleCancel}>
             {localeTexts.cancel}
@@ -440,23 +162,28 @@ export default function SettingsModal({
         </div>
       </div>
 
-      {/* ===== CONFIRM (PORTAL) ===== */}
       {showConfirm &&
         createPortal(
           <div className={s.confirmDialog}>
             <div className={s.confirmContent}>
-              <span className={s.confirmIcon}>❓</span>
+              <span className={s.confirmIcon}>?</span>
               <h3>{localeTexts.confirm.title}</h3>
               <p>{localeTexts.confirm.text}</p>
             </div>
 
             <div className={s.confirmFooter}>
-              <button className={s.confirmKeepBtn} onClick={handleKeepEditing}>
+              <button
+                className={s.confirmKeepBtn}
+                onClick={() => setShowConfirm(false)}
+              >
                 {localeTexts.confirm.continueEditing}
               </button>
               <button
                 className={s.confirmDiscardBtn}
-                onClick={handleDiscardChanges}
+                onClick={() => {
+                  setShowConfirm(false);
+                  onClose(true);
+                }}
               >
                 {localeTexts.confirm.discardChanges}
               </button>

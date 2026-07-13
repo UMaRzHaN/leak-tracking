@@ -4,6 +4,7 @@ import {
   SEARCH_FIELDS_HEAD,
   SEARCH_FIELDS_TAIL,
 } from "@/configs/shared/fields";
+import { withRequiredExcelFields } from "@/configs/shared/excel";
 import {
   cause,
   description,
@@ -167,8 +168,7 @@ const MIDSTREAM_CONFIG = Object.freeze({
       purpose: "table",
       direction: ["import", "export"],
       handler: null,
-      headers: EXCEL_HEADERS,
-      keysOrder: EXCEL_KEYS,
+      ...withRequiredExcelFields(EXCEL_HEADERS, EXCEL_KEYS),
     },
   },
 });

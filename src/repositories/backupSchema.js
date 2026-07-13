@@ -96,6 +96,14 @@ function validateLeakRecord(record, index) {
     );
   }
 
+  if (!isValidPhotoPath(record.photo_repair)) {
+    pushIssue(
+      issues,
+      [index, "photo_repair"],
+      "Недопустимый формат пути к фото",
+    );
+  }
+
   if (issues.length) {
     return { ok: false, issues };
   }

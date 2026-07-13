@@ -38,7 +38,11 @@ function normalizeLeakRecord(item) {
 
   const status = item.status ?? "open";
   if (!VALID_STATUSES.has(status)) return null;
-  if (!isValidPhotoPath(item.photo) || !isValidPhotoPath(item.photo_after)) {
+  if (
+    !isValidPhotoPath(item.photo) ||
+    !isValidPhotoPath(item.photo_after) ||
+    !isValidPhotoPath(item.photo_repair)
+  ) {
     return null;
   }
 

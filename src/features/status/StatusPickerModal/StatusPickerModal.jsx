@@ -4,6 +4,7 @@ import s from "./StatusPickerModal.module.scss";
 
 export default function StatusPickerModal({ current, onSelect, onClose }) {
   const { t } = useLanguage();
+  const options = STATUS_ORDER.filter((status) => status !== current);
 
   return (
     <div className={s.overlay} onClick={onClose}>
@@ -13,20 +14,18 @@ export default function StatusPickerModal({ current, onSelect, onClose }) {
           {t("statusActions.fallback", { defaultValue: "Change status" })}
         </p>
         <div className={s.options}>
-          {STATUS_ORDER.map((status) => {
+          {options.map((status) => {
             const meta = getStatusMeta(status, t);
-            const isCurrent = status === current;
 
             return (
               <button
                 key={status}
-                className={`${s.option} ${isCurrent ? s.current : ""}`}
+                className={s.option}
                 onClick={() => onSelect(status)}
                 type="button"
               >
                 <span className={s.dot} style={{ background: meta.color }} />
                 <span className={s.label}>{meta.label}</span>
-                {isCurrent && <span className={s.check}>✓</span>}
               </button>
             );
           })}

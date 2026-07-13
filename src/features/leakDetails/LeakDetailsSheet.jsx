@@ -6,12 +6,19 @@ import ViewBlock from "./components/ViewBlock";
 import EditBlock from "./components/EditBlock";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import ResolveModal from "@/features/resolve/ResolveModal/ResolveModal";
+import ReopenLeakModal from "@/features/status/ReopenLeakModal/ReopenLeakModal";
 import StatusPickerModal from "@/features/status/StatusPickerModal/StatusPickerModal";
 import Notification from "@/components/ui/Notification/Notification";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import s from "./LeakDetailsSheet.module.scss";
 
-export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
+export default function LeakDetailsSheet({
+  leak,
+  onClose,
+  onSave,
+  onDelete,
+  userProfile,
+}) {
   const { lang } = useLanguage();
   const absoluteDate = formatLeakDate(leak.date, {}, lang);
   const {
@@ -29,14 +36,21 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     deleteArmed,
     resolveOpen,
     setResolveOpen,
+    repairOpen,
+    setRepairOpen,
+    reopenOpen,
+    setReopenOpen,
     statusPickerOpen,
     setStatusPickerOpen,
     fileInputRef,
     fileInputAfterRef,
+    fileInputRepairRef,
     src,
     srcAfter,
+    srcRepair,
     isNative,
     projectConfig,
+    vars,
     status,
     ago,
     TABS,
@@ -48,6 +62,8 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     handleStatusChange,
     handleStatusSelect,
     handleResolveConfirm,
+    handleRepairConfirm,
+    handleReopenConfirm,
     handleAddComment,
     handleEdit,
     handleCancel,
@@ -57,7 +73,9 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     choosePhoto,
     changePhotoAfter,
     choosePhotoAfter,
-  } = useLeakDetailsSheet({ leak, onClose, onSave, onDelete });
+    changePhotoRepair,
+    choosePhotoRepair,
+  } = useLeakDetailsSheet({ leak, onClose, onSave, onDelete, userProfile });
 
   return (
     <>
@@ -108,7 +126,9 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
                 projectConfig={projectConfig}
                 srcBefore={src}
                 srcAfter={srcAfter}
+                srcRepair={srcRepair}
                 showAfter={status === STATUS.RESOLVED}
+                showRepair={status === STATUS.IN_PROGRESS || Boolean(srcRepair)}
                 onEditBefore={() =>
                   isNative ? changePhoto() : fileInputRef.current?.click()
                 }
@@ -124,6 +144,16 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
                   isNative
                     ? choosePhotoAfter()
                     : fileInputAfterRef.current?.click()
+                }
+                onEditRepair={() =>
+                  isNative
+                    ? changePhotoRepair()
+                    : fileInputRepairRef.current?.click()
+                }
+                onPickRepair={() =>
+                  isNative
+                    ? choosePhotoRepair()
+                    : fileInputRepairRef.current?.click()
                 }
                 isNative={isNative}
               />
@@ -177,6 +207,15 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
                       accept="image/*"
                       hidden
                       onChange={changePhotoAfter}
+                    />
+                  )}
+                  {(status === STATUS.IN_PROGRESS || srcRepair) && (
+                    <input
+                      ref={fileInputRepairRef}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={changePhotoRepair}
                     />
                   )}
                 </>
@@ -240,6 +279,24 @@ export default function LeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
           leak={leak}
           onConfirm={handleResolveConfirm}
           onClose={() => setResolveOpen(false)}
+        />
+      )}
+
+      {repairOpen && (
+        <ResolveModal
+          leak={leak}
+          mode="repair"
+          onConfirm={handleRepairConfirm}
+          onClose={() => setRepairOpen(false)}
+        />
+      )}
+
+      {reopenOpen && (
+        <ReopenLeakModal
+          leak={leak}
+          vars={vars}
+          onConfirm={handleReopenConfirm}
+          onClose={() => setReopenOpen(false)}
         />
       )}
     </>

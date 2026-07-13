@@ -17,8 +17,13 @@ import { blobToDataUri, dataUrlToBlob } from "@/utils/photoConversion";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const PHOTO_KEYS = ["photo", "photo_after"];
-const SUFFIX = { photo: "before", photo_after: "after" };
+const PHOTO_KEYS = ["photo", "photo_after", "photo_repair"];
+const SUFFIX = {
+  photo: "before",
+  photo_after: "after",
+  photo_repair: "repair",
+};
+const MONITORING_PHOTO_KEY = "photo";
 
 /** Maps unique field keys to their project type. */
 const TYPE_SIGNATURES = {
@@ -69,6 +74,29 @@ async function exportLeaksWithPhotos(leaks, zip, idbGet) {
         const fileName = `${SUFFIX[key]}.${resolved.ext}`;
         leakFolder.file(fileName, resolved.base64, { base64: true });
         copy[key] = `zip:photos/${leakNumber}/${fileName}`;
+      }
+
+      if (Array.isArray(copy.monitoringRecords)) {
+        copy.monitoringRecords = await Promise.all(
+          copy.monitoringRecords.map(async (record, index) => {
+            const path = record?.[MONITORING_PHOTO_KEY];
+            if (!path) return record;
+
+            const resolved = await resolveBase64(path, idbGet);
+            if (!resolved) return record;
+
+            const safeRecordId = String(record.id ?? index + 1).replace(
+              /[\\/]/g,
+              "_",
+            );
+            const fileName = `monitoring_${safeRecordId}.${resolved.ext}`;
+            leakFolder.file(fileName, resolved.base64, { base64: true });
+            return {
+              ...record,
+              [MONITORING_PHOTO_KEY]: `zip:photos/${leakNumber}/${fileName}`,
+            };
+          }),
+        );
       }
 
       return copy;
@@ -140,11 +168,15 @@ function getLeakFreshness(leak) {
   const historyTimes = Array.isArray(leak?.history)
     ? leak.history.map((entry) => parseTime(entry?.date))
     : [];
+  const monitoringTimes = Array.isArray(leak?.monitoringRecords)
+    ? leak.monitoringRecords.map((entry) => parseTime(entry?.date))
+    : [];
   return Math.max(
     parseTime(leak?.updatedAt),
     parseTime(leak?.createdAt),
     parseTime(leak?.resolvedAt),
     ...historyTimes,
+    ...monitoringTimes,
   );
 }
 
@@ -351,11 +383,59 @@ async function restorePhotosFromZip(leaks, zip, savePhotoRefOrFn) {
 
         if (!blob) continue;
 
-        const storageKey = key === "photo_after" ? `${baseKey}_after` : baseKey;
+        const storageKey =
+          key === "photo_after"
+            ? `${baseKey}_after`
+            : key === "photo_repair"
+              ? `${baseKey}_repair`
+              : baseKey;
         const excludePaths = Object.values(savedPaths);
         const newPath = await savePhoto(blob, storageKey, excludePaths);
         copy[key] = newPath ?? fallbackPath;
         if (newPath) savedPaths[key] = newPath;
+      }
+
+      if (Array.isArray(copy.monitoringRecords)) {
+        copy.monitoringRecords = await Promise.all(
+          copy.monitoringRecords.map(async (record, index) => {
+            const path = record?.[MONITORING_PHOTO_KEY];
+            if (!path) return record;
+
+            let blob = null;
+            let fallbackPath = path;
+
+            if (path.startsWith("zip:")) {
+              const relativePath = path.replace("zip:", "");
+              const photoFile = zip.file(relativePath);
+              if (!photoFile) return record;
+
+              const base64 = await photoFile.async("base64");
+              const ext = relativePath.split(".").pop() || "jpg";
+              const mime = ext === "png" ? "image/png" : "image/jpeg";
+              const byteChars = atob(base64);
+              const byteArr = new Uint8Array(byteChars.length);
+              for (let i = 0; i < byteChars.length; i++) {
+                byteArr[i] = byteChars.charCodeAt(i);
+              }
+              blob = new Blob([byteArr], { type: mime });
+              fallbackPath = `data:${mime};base64,${base64}`;
+            } else if (path.startsWith("data:image/")) {
+              blob = dataUrlToBlob(path);
+            }
+
+            if (!blob) return record;
+
+            const recordId = String(record.id ?? index + 1);
+            const storageKey = `${baseKey}_monitoring_${recordId}`;
+            const newPath = await savePhoto(blob, storageKey, [
+              ...Object.values(savedPaths),
+            ]);
+            return {
+              ...record,
+              [MONITORING_PHOTO_KEY]: newPath ?? fallbackPath,
+            };
+          }),
+        );
       }
 
       return copy;

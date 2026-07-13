@@ -1,5 +1,6 @@
 import LeakDetailsSheet from "@/features/leakDetails/LeakDetailsSheet";
 import StatusPickerModal from "@/features/status/StatusPickerModal/StatusPickerModal";
+import ReopenLeakModal from "@/features/status/ReopenLeakModal/ReopenLeakModal";
 import ResolveModal from "@/features/resolve/ResolveModal/ResolveModal";
 import { STATUS } from "@/utils/status";
 
@@ -14,13 +15,25 @@ export default function LeakModals({
   resolveLeak,
   onResolveConfirm,
   onCloseResolve,
+  repairLeak,
+  onRepairConfirm,
+  onCloseRepair,
+  reopenLeak,
+  vars,
+  onReopenConfirm,
+  onCloseReopen,
   resolveQueue,
   resolveTotal,
   onSequentialResolveConfirm,
   onCancelBulkResolve,
+  repairQueue,
+  repairTotal,
+  onSequentialRepairConfirm,
+  onCancelBulkRepair,
   bulkPickerOpen,
   onBulkStatusSelect,
   onCloseBulkPicker,
+  userProfile,
 }) {
   return (
     <>
@@ -30,6 +43,7 @@ export default function LeakModals({
           onClose={onCloseDetails}
           onSave={onSave}
           onDelete={onDelete}
+          userProfile={userProfile}
         />
       )}
 
@@ -58,6 +72,26 @@ export default function LeakModals({
         />
       )}
 
+      {repairLeak && (
+        <ResolveModal
+          key={repairLeak.id}
+          leak={repairLeak}
+          mode="repair"
+          onConfirm={onRepairConfirm}
+          onClose={onCloseRepair}
+        />
+      )}
+
+      {reopenLeak && (
+        <ReopenLeakModal
+          key={reopenLeak.id}
+          leak={reopenLeak}
+          vars={vars}
+          onConfirm={onReopenConfirm}
+          onClose={onCloseReopen}
+        />
+      )}
+
       {resolveQueue.length > 0 && (
         <ResolveModal
           key={resolveQueue[0].id}
@@ -68,6 +102,20 @@ export default function LeakModals({
           }}
           onConfirm={onSequentialResolveConfirm}
           onClose={onCancelBulkResolve}
+        />
+      )}
+
+      {repairQueue.length > 0 && (
+        <ResolveModal
+          key={repairQueue[0].id}
+          leak={repairQueue[0]}
+          mode="repair"
+          progress={{
+            current: repairTotal - repairQueue.length + 1,
+            total: repairTotal,
+          }}
+          onConfirm={onSequentialRepairConfirm}
+          onClose={onCancelBulkRepair}
         />
       )}
     </>

@@ -17,8 +17,17 @@ const StatusPickerModal = lazy(
 const ResolveModal = lazy(
   () => import("@/features/resolve/ResolveModal/ResolveModal"),
 );
+const ReopenLeakModal = lazy(
+  () => import("@/features/status/ReopenLeakModal/ReopenLeakModal"),
+);
 
-export default function MainPage({ setPage, data, setData }) {
+export default function MainPage({
+  setPage,
+  data,
+  setData,
+  onMonitorLeak,
+  userProfile,
+}) {
   const { t } = useLanguage();
 
   const {
@@ -30,6 +39,11 @@ export default function MainPage({ setPage, data, setData }) {
     setPickerLeak,
     resolveLeak,
     setResolveLeak,
+    repairLeak,
+    setRepairLeak,
+    reopenLeak,
+    setReopenLeak,
+    vars,
     notification,
     setNotification,
     stats,
@@ -40,9 +54,11 @@ export default function MainPage({ setPage, data, setData }) {
     handlePickStatus,
     handleStatusSelect,
     handleResolveConfirm,
+    handleRepairConfirm,
+    handleReopenConfirm,
     handleSaveLeak,
     handleDeleteLeak,
-  } = useMainPageActions({ data, setData });
+  } = useMainPageActions({ data, setData, userProfile });
 
   const localeTexts = useMemo(
     () => ({
@@ -142,6 +158,7 @@ export default function MainPage({ setPage, data, setData }) {
               leak={leak}
               onOpenDetails={setActiveLeak}
               onPickStatus={handlePickStatus}
+              onMonitor={onMonitorLeak}
             />
           ))
         ) : (
@@ -156,6 +173,7 @@ export default function MainPage({ setPage, data, setData }) {
             onClose={() => setActiveLeak(null)}
             onSave={handleSaveLeak}
             onDelete={handleDeleteLeak}
+            userProfile={userProfile}
           />
         )}
 
@@ -172,6 +190,24 @@ export default function MainPage({ setPage, data, setData }) {
             leak={resolveLeak}
             onConfirm={handleResolveConfirm}
             onClose={() => setResolveLeak(null)}
+          />
+        )}
+
+        {repairLeak && (
+          <ResolveModal
+            leak={repairLeak}
+            mode="repair"
+            onConfirm={handleRepairConfirm}
+            onClose={() => setRepairLeak(null)}
+          />
+        )}
+
+        {reopenLeak && (
+          <ReopenLeakModal
+            leak={reopenLeak}
+            vars={vars}
+            onConfirm={handleReopenConfirm}
+            onClose={() => setReopenLeak(null)}
           />
         )}
       </Suspense>

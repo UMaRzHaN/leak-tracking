@@ -16,21 +16,36 @@ const SEARCH_KEYS = [
   "leak_description",
 ];
 
-export function useDataBaseFilters({ data, coords }) {
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [statusFilter, setFilter] = useState(ALL);
-  const [priorityFilter, setPriorityFilter] = useState(ALL);
-  const [nearbyFilter, setNearbyFilter] = useState(false);
-  const [nearbyRadius, setNearbyRadius] = useState(NEARBY_RADIUS_M);
+export function useDataBaseFilters({ data, coords, sharedFilters = null }) {
+  const [localSearchInput, setLocalSearchInput] = useState("");
+  const [search, setSearch] = useState(() => sharedFilters?.search ?? "");
+  const [localStatusFilter, setLocalStatusFilter] = useState(ALL);
+  const [localPriorityFilter, setLocalPriorityFilter] = useState(ALL);
+  const [localNearbyFilter, setLocalNearbyFilter] = useState(false);
+  const [localNearbyRadius, setLocalNearbyRadius] = useState(NEARBY_RADIUS_M);
   const [sortAsc, setSortAsc] = useState(false);
+
+  const searchInput = sharedFilters?.search ?? localSearchInput;
+  const setSearchInput = sharedFilters?.setSearch ?? setLocalSearchInput;
+  const statusFilter = sharedFilters?.statusFilter ?? localStatusFilter;
+  const setFilter = sharedFilters?.setFilter ?? setLocalStatusFilter;
+  const priorityFilter = sharedFilters?.priorityFilter ?? localPriorityFilter;
+  const setPriorityFilter =
+    sharedFilters?.setPriorityFilter ?? setLocalPriorityFilter;
+  const nearbyFilter = sharedFilters?.nearbyFilter ?? localNearbyFilter;
+  const setNearbyFilter =
+    sharedFilters?.setNearbyFilter ?? setLocalNearbyFilter;
+  const nearbyRadius = sharedFilters?.nearbyRadius ?? localNearbyRadius;
+  const setNearbyRadius =
+    sharedFilters?.setNearbyRadius ?? setLocalNearbyRadius;
 
   const hasGps = Boolean(coords?.lat && coords?.lng);
 
   useEffect(() => {
+    if (searchInput === search) return undefined;
     const t = setTimeout(() => setSearch(searchInput), 300);
     return () => clearTimeout(t);
-  }, [searchInput]);
+  }, [search, searchInput]);
 
   const displayed = useMemo(() => {
     const q = search.trim().toLowerCase();

@@ -4,6 +4,11 @@ import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import { getPriorityMeta } from "@/utils/priority";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { formatLeakDate } from "@/utils/locale";
+import {
+  formatMonitoringDate,
+  getMonitoringRecords,
+  getMonitoringResultLabel,
+} from "@/utils/monitoring";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
 const ACTION_ICONS = {
@@ -11,6 +16,7 @@ const ACTION_ICONS = {
   status_changed: "⇄",
   edited: "✎",
   comment: "💬",
+  monitoring: "M",
 };
 
 const STATUS_COLORS = {
@@ -100,7 +106,11 @@ function formatHistoryValue(key, value, kind, lang) {
 function getHistoryChangeLabel(change, fields, localeTexts, t, lang) {
   if (change.key === "photo") return localeTexts.photo.before;
   if (change.key === "photo_after") return localeTexts.photo.after;
+  if (change.key === "photo_repair") return localeTexts.photo.repair;
   if (change.key === "priority") return localeTexts.priority;
+  if (change.key === "materials_equipment") {
+    return lang === "ru" ? "МТР" : "Materials";
+  }
 
   const field = fields.find((item) => item.key === change.key);
   return translateFieldLabel(change.key, field?.label ?? change.key, t, lang);
@@ -170,58 +180,108 @@ function CommentInput({ onSubmit, localeTexts }) {
 
 function PhotoComparison({
   photoBefore,
+  photoRepair,
   photoAfter,
-  allowAfter = true,
   localeTexts,
 }) {
   const srcBefore = usePhotoSrc(photoBefore ?? null);
+  const srcRepair = usePhotoSrc(photoRepair ?? null);
   const srcAfter = usePhotoSrc(photoAfter ?? null);
-  const [viewer, setViewer] = useState(null); // "before" | "after" | null
+  const [viewer, setViewer] = useState(null); // "before" | "repair" | "after" | null
 
   const hasBefore = Boolean(photoBefore);
-  const hasAfter = allowAfter && Boolean(photoAfter);
-  if (!hasBefore && !hasAfter) return null;
+  const hasRepair = Boolean(photoRepair);
+  const hasAfter = Boolean(photoAfter);
+  if (!hasBefore && !hasRepair && !hasAfter) return null;
+
+  const slots = [
+    { key: "before", label: localeTexts.photo.before, src: srcBefore },
+    { key: "repair", label: localeTexts.photo.repair, src: srcRepair },
+    { key: "after", label: localeTexts.photo.after, src: srcAfter },
+  ].filter(({ key, src }) => key === "before" || Boolean(src));
 
   return (
     <>
       <div
-        className={`${s.photoCompare} ${allowAfter ? "" : s.photoCompareSingle}`}
+        className={`${s.photoCompare} ${slots.length === 1 ? s.photoCompareSingle : ""}`}
       >
-        {[
-          { key: "before", label: localeTexts.photo.before, src: srcBefore },
-          { key: "after", label: localeTexts.photo.after, src: srcAfter },
-        ]
-          .filter(({ key }) => allowAfter || key !== "after")
-          .map(({ key, label, src }) => (
-            <div key={key} className={s.photoCompareSlot}>
-              <span className={s.photoCompareLabel}>{label}</span>
-              {src ? (
-                <button
-                  type="button"
-                  className={s.photoCompareThumb}
-                  onClick={() => setViewer(key)}
-                >
-                  <img
-                    src={src}
-                    alt={label}
-                    className={s.photoCompareImg}
-                    draggable={false}
-                  />
-                </button>
-              ) : (
-                <div className={s.photoComparePlaceholder}>
-                  {localeTexts.photo.noPhoto}
-                </div>
-              )}
-            </div>
-          ))}
+        {slots.map(({ key, label, src }) => (
+          <div key={key} className={s.photoCompareSlot}>
+            <span className={s.photoCompareLabel}>{label}</span>
+            {src ? (
+              <button
+                type="button"
+                className={s.photoCompareThumb}
+                onClick={() => setViewer(key)}
+              >
+                <img
+                  src={src}
+                  alt={label}
+                  className={s.photoCompareImg}
+                  draggable={false}
+                />
+              </button>
+            ) : (
+              <div className={s.photoComparePlaceholder}>
+                {localeTexts.photo.noPhoto}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
       {viewer === "before" && srcBefore && (
         <PhotoViewer src={srcBefore} onClose={() => setViewer(null)} />
       )}
+      {viewer === "repair" && srcRepair && (
+        <PhotoViewer src={srcRepair} onClose={() => setViewer(null)} />
+      )}
       {viewer === "after" && srcAfter && (
         <PhotoViewer src={srcAfter} onClose={() => setViewer(null)} />
+      )}
+    </>
+  );
+}
+
+function MonitoringRecordRow({ record, localeTexts, lang }) {
+  const photoSrc = usePhotoSrc(record.photo ?? null);
+  const [viewerOpen, setViewerOpen] = useState(false);
+
+  return (
+    <>
+      <div className={s.monitoringRecord}>
+        <div className={s.monitoringRecordText}>
+          <span className={s.fieldLabel}>
+            {formatMonitoringDate(record.date, lang)}
+          </span>
+          <span className={s.fieldValue}>
+            {getMonitoringResultLabel(record.result, lang)}
+            {record.monitoredBy ? ` В· ${record.monitoredBy}` : ""}
+            {record.materials_equipment
+              ? ` В· ${record.materials_equipment}`
+              : ""}
+            {record.comment ? ` В· ${record.comment}` : ""}
+          </span>
+        </div>
+
+        {photoSrc && (
+          <button
+            type="button"
+            className={s.monitoringPhotoBtn}
+            onClick={() => setViewerOpen(true)}
+          >
+            <img
+              src={photoSrc}
+              alt={localeTexts.photo.monitoring}
+              className={s.monitoringPhotoImg}
+              draggable={false}
+            />
+          </button>
+        )}
+      </div>
+
+      {viewerOpen && photoSrc && (
+        <PhotoViewer src={photoSrc} onClose={() => setViewerOpen(false)} />
       )}
     </>
   );
@@ -244,6 +304,9 @@ export default function ViewBlock({
         status_changed: t("leakDetails.actions.status_changed"),
         edited: t("leakDetails.actions.edited"),
         comment: t("leakDetails.actions.comment"),
+        monitoring: t("leakDetails.actions.monitoring", {
+          defaultValue: lang === "ru" ? "Мониторинг" : "Monitoring",
+        }),
       },
 
       statuses: {
@@ -261,7 +324,9 @@ export default function ViewBlock({
 
       photo: {
         before: t("leakDetails.photo.before"),
+        repair: lang === "ru" ? "В ремонте" : "Under repair",
         after: t("leakDetails.photo.after"),
+        monitoring: lang === "ru" ? "Фото мониторинга" : "Monitoring photo",
         noPhoto: t("leakDetails.photo.noPhoto"),
       },
 
@@ -271,9 +336,14 @@ export default function ViewBlock({
         params: t("leakDetails.empty.params"),
         coords: t("leakDetails.empty.coords"),
         history: t("leakDetails.empty.history"),
+        monitoring:
+          lang === "ru"
+            ? "Проверки мониторинга пока не добавлены"
+            : "No monitoring checks yet",
       },
+      user: lang === "ru" ? "Пользователь" : "User",
     }),
-    [t],
+    [t, lang],
   );
   const fields = useMemo(() => {
     const all = projectConfig.system.fields ?? [];
@@ -352,16 +422,17 @@ export default function ViewBlock({
   }
 
   if (activeTab === "photo") {
-    const allowAfter = data.status === "resolved";
+    const photoAfter = data.status === "resolved" ? data.photo_after : null;
+    const photoRepair = data.photo_repair;
     const hasPhotos =
-      Boolean(data.photo) || (allowAfter && Boolean(data.photo_after));
+      Boolean(data.photo) || Boolean(photoRepair) || Boolean(photoAfter);
     return (
       <div className={s.tabPane}>
         {hasPhotos ? (
           <PhotoComparison
             photoBefore={data.photo}
-            photoAfter={allowAfter ? data.photo_after : null}
-            allowAfter={allowAfter}
+            photoRepair={photoRepair}
+            photoAfter={photoAfter}
             localeTexts={localeTexts}
           />
         ) : (
@@ -439,6 +510,32 @@ export default function ViewBlock({
     );
   }
 
+  if (activeTab === "monitoring") {
+    const records = getMonitoringRecords(data)
+      .slice()
+      .sort((left, right) => Date.parse(right.date) - Date.parse(left.date));
+
+    return (
+      <div className={s.tabPane}>
+        {records.length > 0 ? (
+          records.map((record) => (
+            <MonitoringRecordRow
+              key={record.id ?? record.date}
+              record={record}
+              localeTexts={localeTexts}
+              lang={lang}
+            />
+          ))
+        ) : (
+          <div className={s.tabEmpty}>
+            <span className={s.tabEmptyIcon}>M</span>
+            <p>{localeTexts.empty.monitoring}</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (activeTab === "log") {
     return (
       <div className={s.tabPane}>
@@ -452,6 +549,8 @@ export default function ViewBlock({
             const toColor = entry.to ? STATUS_COLORS[entry.to] : null;
             const icon = ACTION_ICONS[entry.action] ?? "•";
             const changes = Array.isArray(entry.changes) ? entry.changes : [];
+            const entryUser =
+              entry.user ?? entry.monitoredBy ?? entry.detectedBy ?? null;
             return (
               <div key={i} className={s.logEntry}>
                 <div className={s.logDotWrap}>
@@ -471,6 +570,11 @@ export default function ViewBlock({
                   <span className={s.logAction}>
                     {localeTexts.actions[entry.action] ?? entry.action}
                   </span>
+                  {entryUser && (
+                    <span className={s.logUser}>
+                      {localeTexts.user}: {entryUser}
+                    </span>
+                  )}
                   {entry.to && (
                     <span
                       className={s.logStatus}

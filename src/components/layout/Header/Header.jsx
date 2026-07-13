@@ -11,10 +11,12 @@ export default function Header({
   geoLoading,
   gpsEnabled,
   setGpsEnabled,
+  userProfile,
+  onUserProfileOpen,
 }) {
   const { projectName, project } = useProjectData();
   const meta = PROJECT_META[project];
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const localeTexts = useMemo(
     () => ({
       appTitle: t("header.appTitle"),
@@ -34,6 +36,9 @@ export default function Header({
     [t],
   );
   const displayName = projectName || meta?.title || localeTexts.defaultProject;
+  const userName = userProfile?.name?.trim() ?? "";
+  const userInitial = userName.slice(0, 1).toUpperCase();
+
   return (
     <header className={s.header}>
       {/* ── Left: project info ── */}
@@ -45,6 +50,15 @@ export default function Header({
 
       {/* ── Right: GPS + settings ── */}
       <div className={s.right}>
+        <button
+          className={`${s.userBtn} ${userName ? s.userBtnActive : ""}`}
+          type="button"
+          onClick={onUserProfileOpen}
+          title={userName || (lang === "ru" ? "Пользователь" : "User")}
+        >
+          {userInitial || <span className={s.userIcon} aria-hidden="true" />}
+        </button>
+
         {/* GPS toggle */}
         <button
           className={`${s.gpsToggle} ${gpsEnabled ? s.gpsOn : s.gpsOff}`}

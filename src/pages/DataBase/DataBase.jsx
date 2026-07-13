@@ -6,7 +6,15 @@ import LeakModals from "./components/LeakModals";
 import { useDataBaseController } from "./hooks/useDataBaseController";
 import s from "./DataBase.module.scss";
 
-export default function DataBase({ data, setData, coords }) {
+export default function DataBase({
+  data,
+  setData,
+  coords,
+  sharedFilters,
+  onMonitorLeak,
+  onMonitorLeaks,
+  userProfile,
+}) {
   const {
     notification,
     clearNotification,
@@ -22,6 +30,8 @@ export default function DataBase({ data, setData, coords }) {
     data,
     setData,
     coords,
+    sharedFilters,
+    userProfile,
   });
 
   return (
@@ -57,6 +67,13 @@ export default function DataBase({ data, setData, coords }) {
           bulk.allDisplayedSelected ? bulk.clearSelection : bulk.selectDisplayed
         }
         onOpenBulkPicker={openBulkPicker}
+        onMonitorSelected={() => {
+          const selected = filters.displayed.filter((item) =>
+            bulk.selectedIds.has(item.id),
+          );
+          onMonitorLeaks?.(selected);
+          bulk.clearSelection();
+        }}
         onExport={handleExport}
       />
 
@@ -67,6 +84,7 @@ export default function DataBase({ data, setData, coords }) {
         selectedIds={bulk.selectedIds}
         onOpenDetails={actions.setActiveLeak}
         onPickStatus={actions.handlePickStatus}
+        onMonitor={onMonitorLeak}
         onToggleSelect={bulk.toggleSelected}
       />
 
@@ -83,13 +101,25 @@ export default function DataBase({ data, setData, coords }) {
         resolveLeak={actions.resolveLeak}
         onResolveConfirm={actions.handleResolveConfirm}
         onCloseResolve={() => actions.setResolveLeak(null)}
+        repairLeak={actions.repairLeak}
+        onRepairConfirm={actions.handleRepairConfirm}
+        onCloseRepair={() => actions.setRepairLeak(null)}
+        reopenLeak={actions.reopenLeak}
+        vars={actions.vars}
+        onReopenConfirm={actions.handleReopenConfirm}
+        onCloseReopen={() => actions.setReopenLeak(null)}
         resolveQueue={bulk.resolveQueue}
         resolveTotal={bulk.resolveTotal}
         onSequentialResolveConfirm={bulk.handleSequentialResolveConfirm}
         onCancelBulkResolve={bulk.cancelBulkResolve}
+        repairQueue={bulk.repairQueue}
+        repairTotal={bulk.repairTotal}
+        onSequentialRepairConfirm={bulk.handleSequentialRepairConfirm}
+        onCancelBulkRepair={bulk.cancelBulkRepair}
         bulkPickerOpen={bulkPickerOpen}
         onBulkStatusSelect={handleBulkPickerSelect}
         onCloseBulkPicker={closeBulkPicker}
+        userProfile={userProfile}
       />
     </div>
   );

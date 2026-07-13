@@ -24,6 +24,7 @@ export default function ResultsBar({
   onClearSelection,
   onSelectDisplayed,
   onOpenBulkPicker,
+  onMonitorSelected,
   onExport,
 }) {
   const { lang } = useLanguage();
@@ -103,6 +104,9 @@ export default function ResultsBar({
           <div className={s.bulkBtns}>
             <button className={s.bulkClearBtn} onClick={onClearSelection}>
               {lang === "ru" ? "Снять выбор" : "Clear selection"}
+            </button>
+            <button className={s.bulkMonitorBtn} onClick={onMonitorSelected}>
+              {lang === "ru" ? "Проверить" : "Check"}
             </button>
             <button className={s.bulkStatusBtn} onClick={onOpenBulkPicker}>
               {lang === "ru" ? "⇌ СТАТУС" : "⇌ STATUS"}

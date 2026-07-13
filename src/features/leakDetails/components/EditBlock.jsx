@@ -25,12 +25,16 @@ export default function EditBlock(props) {
     projectConfig,
     srcBefore,
     srcAfter,
+    srcRepair,
     onEditBefore,
     onPickBefore,
     onEditAfter,
     onPickAfter,
+    onEditRepair,
+    onPickRepair,
     isNative,
     showAfter,
+    showRepair,
   } = props;
 
   const allFields = useMemo(() => {
@@ -114,11 +118,15 @@ export default function EditBlock(props) {
         <EditPhotoRow
           srcBefore={srcBefore}
           srcAfter={srcAfter}
+          srcRepair={srcRepair}
           showAfter={showAfter}
+          showRepair={showRepair}
           onEditBefore={onEditBefore}
           onPickBefore={onPickBefore}
           onEditAfter={onEditAfter}
           onPickAfter={onPickAfter}
+          onEditRepair={onEditRepair}
+          onPickRepair={onPickRepair}
           isNative={isNative}
         />
       </div>

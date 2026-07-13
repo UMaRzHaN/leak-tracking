@@ -5,7 +5,13 @@ import { useDataBaseExport } from "./useDataBaseExport";
 import { useDataBaseFilters } from "./useDataBaseFilters";
 import { useLeakActions } from "./useLeakActions";
 
-export function useDataBaseController({ data, setData, coords }) {
+export function useDataBaseController({
+  data,
+  setData,
+  coords,
+  sharedFilters,
+  userProfile,
+}) {
   const [notification, setNotification] = useState(null);
   const [bulkPickerOpen, setBulkPickerOpen] = useState(false);
 
@@ -15,14 +21,21 @@ export function useDataBaseController({ data, setData, coords }) {
 
   const { deletePhoto } = usePhotoStorage();
 
-  const filters = useDataBaseFilters({ data, coords });
-  const actions = useLeakActions({ data, setData, notify, deletePhoto });
+  const filters = useDataBaseFilters({ data, coords, sharedFilters });
+  const actions = useLeakActions({
+    data,
+    setData,
+    notify,
+    deletePhoto,
+    userProfile,
+  });
   const bulk = useBulkActions({
     data,
     setData,
     displayed: filters.displayed,
     notify,
     deletePhoto,
+    userProfile,
   });
   const { handleExport } = useDataBaseExport({
     displayed: filters.displayed,

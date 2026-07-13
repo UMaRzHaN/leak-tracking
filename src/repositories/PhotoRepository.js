@@ -3,7 +3,23 @@ import { isNative } from "@/utils/platform";
 import { compressImage } from "./compressImage";
 import { idb } from "./idb";
 
-const PHOTO_FIELDS = ["photo", "photo_after"];
+const PHOTO_FIELDS = ["photo", "photo_after", "photo_repair"];
+
+function collectReferencedPhotos(leaks = []) {
+  const referenced = new Set();
+  for (const leak of leaks) {
+    for (const field of PHOTO_FIELDS) {
+      if (leak[field]) referenced.add(leak[field]);
+    }
+
+    if (Array.isArray(leak.monitoringRecords)) {
+      for (const record of leak.monitoringRecords) {
+        if (record?.photo) referenced.add(record.photo);
+      }
+    }
+  }
+  return referenced;
+}
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -161,12 +177,7 @@ export const PhotoRepository = {
    * Call once after loading project data to clean up orphaned photos.
    */
   async gcOrphaned(leaks, { projectId, folderName }) {
-    const referenced = new Set();
-    for (const leak of leaks) {
-      for (const field of PHOTO_FIELDS) {
-        if (leak[field]) referenced.add(leak[field]);
-      }
-    }
+    const referenced = collectReferencedPhotos(leaks);
 
     if (!isNative) {
       if (!idb.getState().ready || !projectId) return;

@@ -20,6 +20,19 @@ function fmtTs(ts, lang) {
   );
 }
 
+function getRepairAt(row) {
+  if (row.repairAt) return row.repairAt;
+
+  const repairEntry = [...(row.history ?? [])]
+    .reverse()
+    .find(
+      (entry) =>
+        entry?.action === "status_changed" && entry?.to === STATUS.IN_PROGRESS,
+    );
+
+  return repairEntry?.date ?? null;
+}
+
 function round2(value) {
   return value != null && Number.isFinite(Number(value))
     ? Math.round(Number(value) * 100) / 100
@@ -41,6 +54,10 @@ function prepareRows(data, lang, t) {
     photo_after: row.photo_after
       ? t("database.export.hasPhoto", { defaultValue: "Yes" })
       : "",
+    photo_repair: row.photo_repair
+      ? t("database.export.hasPhoto", { defaultValue: "Yes" })
+      : "",
+    repairAt: fmtTs(getRepairAt(row), lang),
     resolvedAt: fmtTs(row.resolvedAt, lang),
   }));
 }

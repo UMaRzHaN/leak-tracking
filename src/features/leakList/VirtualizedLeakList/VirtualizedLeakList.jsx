@@ -3,6 +3,7 @@ import { useRef, useState, useEffect, useMemo, useCallback } from "react";
 export default function VirtualizedLeakList({
   items = [],
   height = 800,
+  bottomPadding = 0,
   renderItem,
 }) {
   const containerRef = useRef(null);
@@ -85,7 +86,7 @@ export default function VirtualizedLeakList({
       acc += rowHeights[i];
     }
 
-    const totalHeight = acc;
+    const totalHeight = acc + bottomPadding;
     const viewportBottom = scrollTop + height;
     const startBoundary = Math.max(0, scrollTop - overscanPx);
     const endBoundary = viewportBottom + overscanPx;
@@ -118,7 +119,7 @@ export default function VirtualizedLeakList({
       totalHeight,
       visibleItems,
     };
-  }, [items, heights, getKey, scrollTop, height]);
+  }, [items, heights, getKey, scrollTop, height, bottomPadding]);
 
   return (
     <div

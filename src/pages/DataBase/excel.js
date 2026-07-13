@@ -4,11 +4,18 @@ const getJSZip = () => import("jszip");
 import { isNative } from "@/utils/platform";
 import { getPhotoSrc } from "@/hooks/photoService";
 import { blobToDataUri } from "@/utils/photoConversion";
+import {
+  formatMonitoringDate,
+  getMonitoringRecords,
+  getMonitoringResultLabel,
+} from "@/utils/monitoring";
 
-const PHOTO_KEYS = ["photo", "photo_after"];
+const PHOTO_KEYS = ["photo", "photo_after", "photo_repair"];
 const DEFAULT_EXPORT_DIR = "export/xlsx";
 const EXCEL_MIME =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const LEAKS_TABLE_THEME = "TableStyleMedium2";
+const MONITORING_TABLE_THEME = "TableStyleMedium4";
 
 function getExportFolder(projectFolderName) {
   return projectFolderName
@@ -29,7 +36,7 @@ async function resolvePhotoSrc(path, idbGet) {
   return getPhotoSrc(path);
 }
 
-async function buildPhotoEntries(orderedLeaks, idbGet) {
+async function buildLeakPhotoEntries(orderedLeaks, idbGet) {
   const photoEntries = [];
 
   await Promise.all(
@@ -46,11 +53,20 @@ async function buildPhotoEntries(orderedLeaks, idbGet) {
 
         const ext = match[1].split("/")[1] || "jpg";
         const base64 = match[2];
-        const suffix = key === "photo_after" ? "_after" : "";
+        const suffix =
+          key === "photo_after"
+            ? "_after"
+            : key === "photo_repair"
+              ? "_repair"
+              : "";
         const leakId = leak.leak_id ?? leak.index ?? leakIndex + 1;
         const photoFileName = `photos/${leakId}/${leakId}${suffix}.${ext}`;
 
-        photoEntries.push({ leakIndex, key, photoFileName, base64 });
+        photoEntries.push({
+          mapKey: `${leakIndex}:${key}`,
+          photoFileName,
+          base64,
+        });
       }
     }),
   );
@@ -58,16 +74,155 @@ async function buildPhotoEntries(orderedLeaks, idbGet) {
   return photoEntries;
 }
 
+async function buildMonitoringPhotoEntries(orderedLeaks, idbGet) {
+  const photoEntries = [];
+
+  await Promise.all(
+    orderedLeaks.map(async (leak, leakIndex) => {
+      const leakId = leak.leak_id ?? leak.index ?? leakIndex + 1;
+      const records = getMonitoringRecords(leak);
+
+      await Promise.all(
+        records.map(async (record, recordIndex) => {
+          const path = record.photo;
+          if (!path) return;
+
+          const src = await resolvePhotoSrc(path, idbGet);
+          if (!src || !src.startsWith("data:")) return;
+
+          const match = src.match(/^data:(image\/\w+);base64,(.+)$/);
+          if (!match) return;
+
+          const ext = match[1].split("/")[1] || "jpg";
+          const base64 = match[2];
+          const photoFileName = `photos/${leakId}/monitoring/${leakId}_monitoring_${recordIndex + 1}.${ext}`;
+
+          photoEntries.push({
+            mapKey: `monitoring:${leakIndex}:${recordIndex}`,
+            photoFileName,
+            base64,
+          });
+        }),
+      );
+    }),
+  );
+
+  return photoEntries;
+}
+
+async function buildPhotoEntries(orderedLeaks, idbGet) {
+  const [leakPhotos, monitoringPhotos] = await Promise.all([
+    buildLeakPhotoEntries(orderedLeaks, idbGet),
+    buildMonitoringPhotoEntries(orderedLeaks, idbGet),
+  ]);
+
+  return [...leakPhotos, ...monitoringPhotos];
+}
+
 function buildPhotoMap(photoEntries) {
   return Object.fromEntries(
-    photoEntries.map((entry) => [
-      `${entry.leakIndex}:${entry.key}`,
-      entry.photoFileName,
-    ]),
+    photoEntries.map((entry) => [entry.mapKey, entry.photoFileName]),
   );
 }
 
+function toExcelTableName(name) {
+  return String(name)
+    .replace(/[^A-Za-z0-9_]/g, "_")
+    .replace(/^[^A-Za-z_]/, "_")
+    .slice(0, 255);
+}
+
+function getColumnWidth(header, key, rows, { isPhoto = false } = {}) {
+  if (isPhoto) return 18;
+
+  const preferred = {
+    index: 8,
+    leak_id: 12,
+    video_id: 12,
+    status: 16,
+    date: 14,
+    resolvedAt: 14,
+    pressure: 12,
+    temperature: 14,
+    temperature_K: 14,
+    leak_speed: 16,
+    leak_speed_kg_h: 16,
+    lat: 14,
+    lng: 14,
+    detectedBy: 20,
+    monitoredBy: 20,
+    roundNumber: 10,
+    result: 22,
+    materials_equipment: 42,
+    leak_description: 42,
+    technological_solution: 42,
+    note: 34,
+    comment: 42,
+  };
+
+  if (preferred[key]) return preferred[key];
+
+  return Math.min(
+    Math.max(
+      header.length,
+      ...rows.map((row) => String(row[key] ?? "").length),
+    ) + 2,
+    36,
+  );
+}
+
+function addStructuredTable(sheet, { name, headers, rows, theme }) {
+  const tableRows = rows.map((row) => [...row]);
+
+  if (typeof sheet.addTable === "function") {
+    sheet.addTable({
+      name: toExcelTableName(name),
+      ref: "A1",
+      headerRow: true,
+      totalsRow: false,
+      style: {
+        theme,
+        showRowStripes: true,
+      },
+      columns: headers.map((header) => ({
+        name: header,
+        filterButton: true,
+      })),
+      rows: tableRows,
+    });
+  } else {
+    sheet.addRow(headers);
+    tableRows.forEach((row) => sheet.addRow(row));
+  }
+
+  sheet.views = [{ state: "frozen", ySplit: 1 }];
+}
+
+function styleHeaderRow(sheet, fillColor) {
+  const headerRow = sheet.getRow(1);
+  headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+  headerRow.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: fillColor },
+  };
+  headerRow.alignment = {
+    vertical: "middle",
+    horizontal: "center",
+    wrapText: true,
+  };
+  headerRow.height = 34;
+}
+
+function styleBodyRows(sheet, rowCount) {
+  for (let rowIndex = 2; rowIndex <= rowCount + 1; rowIndex += 1) {
+    const row = sheet.getRow(rowIndex);
+    row.alignment = { vertical: "middle", wrapText: true };
+  }
+}
+
 function buildWorkbook({
+  orderedLeaks,
   orderedRows,
   headers,
   keysOrder,
@@ -82,38 +237,31 @@ function buildWorkbook({
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet(lang === "ru" ? "Утечки" : "Leaks");
 
-  sheet.addRow(headers);
-  const headerRow = sheet.getRow(1);
-  headerRow.font = { bold: true };
-  headerRow.fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FFD9E1F2" },
-  };
-  headerRow.alignment = {
-    vertical: "middle",
-    horizontal: "center",
-    wrapText: true,
-  };
-  headerRow.height = 30;
-
-  orderedRows.forEach((row, leakIndex) => {
-    const values = keysOrder.map((key) => {
+  const tableRows = orderedRows.map((row, leakIndex) =>
+    keysOrder.map((key) => {
       if (PHOTO_KEYS.includes(key) && photoMap[`${leakIndex}:${key}`]) {
-        return null;
+        return "";
       }
 
       return row[key] ?? "";
-    });
+    }),
+  );
 
-    const excelRow = sheet.addRow(values);
-    excelRow.alignment = { vertical: "middle", wrapText: true };
+  addStructuredTable(sheet, {
+    name: "Leaks",
+    headers,
+    rows: tableRows,
+    theme: LEAKS_TABLE_THEME,
+  });
+  styleHeaderRow(sheet, "FF1F4E78");
+  styleBodyRows(sheet, orderedRows.length);
 
+  orderedRows.forEach((row, leakIndex) => {
     for (const columnIndex of photoColumnIndexes) {
       const key = keysOrder[columnIndex];
       const mapKey = `${leakIndex}:${key}`;
       const photoFile = photoMap[mapKey];
-      const cell = excelRow.getCell(columnIndex + 1);
+      const cell = sheet.getRow(leakIndex + 2).getCell(columnIndex + 1);
 
       if (photoFile) {
         cell.value = {
@@ -134,19 +282,187 @@ function buildWorkbook({
   headers.forEach((header, index) => {
     const key = keysOrder[index];
     const isPhoto = PHOTO_KEYS.includes(key);
-    const maxLen = isPhoto
-      ? 14
-      : Math.min(
-          Math.max(
-            header.length,
-            ...orderedRows.map((row) => String(row[key] ?? "").length),
-          ) + 2,
-          60,
-        );
-    sheet.getColumn(index + 1).width = maxLen;
+    sheet.getColumn(index + 1).width = getColumnWidth(
+      header,
+      key,
+      orderedRows,
+      {
+        isPhoto,
+      },
+    );
   });
 
+  buildMonitoringSheet(workbook, orderedLeaks, lang, photoMap);
+
   return workbook;
+}
+
+function buildMonitoringRoundLookup(orderedLeaks) {
+  const rounds = new Map();
+
+  orderedLeaks.forEach((leak) => {
+    getMonitoringRecords(leak).forEach((record) => {
+      if (!record.roundId || Number(record.roundNumber) > 0) return;
+
+      const time = Date.parse(record.date);
+      const current = rounds.get(record.roundId);
+      if (!current || time < current.firstTime) {
+        rounds.set(record.roundId, {
+          firstTime: Number.isNaN(time) ? Number.MAX_SAFE_INTEGER : time,
+        });
+      }
+    });
+  });
+
+  return new Map(
+    [...rounds.entries()]
+      .sort((left, right) => left[1].firstTime - right[1].firstTime)
+      .map(([roundId], index) => [roundId, index + 1]),
+  );
+}
+
+function getMonitoringExportRows(orderedLeaks, roundLookup) {
+  const latestByLeakRound = new Map();
+
+  orderedLeaks.forEach((leak, leakIndex) => {
+    getMonitoringRecords(leak).forEach((record, recordIndex) => {
+      const roundNumber =
+        Number(record.roundNumber) > 0
+          ? Number(record.roundNumber)
+          : (roundLookup.get(record.roundId) ?? recordIndex + 1);
+      const row = {
+        index: leak.index ?? leakIndex + 1,
+        leak_id: leak.leak_id ?? "",
+        roundNumber,
+        dateRaw: record.date,
+        monitoredBy: record.monitoredBy ?? "",
+        result: record.result,
+        materials_equipment: record.materials_equipment ?? "",
+        comment: record.comment ?? "",
+        photo: record.photo ?? "",
+        photoMapKey: `monitoring:${leakIndex}:${recordIndex}`,
+      };
+      const roundKey = record.roundId ?? `legacy-${roundNumber}`;
+      const groupKey = `${leak.id ?? leak.leak_id ?? leakIndex}:${roundKey}`;
+      const current = latestByLeakRound.get(groupKey);
+      const currentTime = Date.parse(current?.dateRaw ?? "");
+      const nextTime = Date.parse(row.dateRaw);
+
+      if (
+        !current ||
+        (Number.isNaN(currentTime) ? 0 : currentTime) <= nextTime
+      ) {
+        latestByLeakRound.set(groupKey, row);
+      }
+    });
+  });
+
+  return [...latestByLeakRound.values()].sort((left, right) => {
+    if (left.roundNumber !== right.roundNumber) {
+      return left.roundNumber - right.roundNumber;
+    }
+
+    return (left.index ?? 0) - (right.index ?? 0);
+  });
+}
+
+function buildMonitoringSheet(workbook, orderedLeaks, lang, photoMap) {
+  const roundLookup = buildMonitoringRoundLookup(orderedLeaks);
+  const rows = getMonitoringExportRows(orderedLeaks, roundLookup).map(
+    (row) => ({
+      ...row,
+      date: formatMonitoringDate(row.dateRaw, lang),
+      result: getMonitoringResultLabel(row.result, lang),
+    }),
+  );
+
+  if (rows.length === 0) return;
+
+  const sheet = workbook.addWorksheet(
+    lang === "ru" ? "Мониторинг" : "Monitoring",
+  );
+  const headers =
+    lang === "ru"
+      ? [
+          "№",
+          "Бирка",
+          "Обход",
+          "Дата мониторинга",
+          "Кто мониторил",
+          "Результат",
+          "МТР",
+          "Комментарий",
+        ]
+      : [
+          "No.",
+          "Tag",
+          "Round",
+          "Monitoring date",
+          "Monitored by",
+          "Result",
+          "Materials",
+          "Comment",
+        ];
+  const keys = [
+    "index",
+    "leak_id",
+    "roundNumber",
+    "date",
+    "monitoredBy",
+    "result",
+    "materials_equipment",
+    "comment",
+  ];
+
+  headers.push(lang === "ru" ? "Фото мониторинга" : "Monitoring photo");
+  keys.push("photo");
+
+  const tableRows = rows.map((row) =>
+    keys.map((key) => {
+      if (key === "photo" && photoMap[row.photoMapKey]) return "";
+      return row[key] ?? "";
+    }),
+  );
+
+  addStructuredTable(sheet, {
+    name: "Monitoring",
+    headers,
+    rows: tableRows,
+    theme: MONITORING_TABLE_THEME,
+  });
+  styleHeaderRow(sheet, "FF548235");
+  styleBodyRows(sheet, rows.length);
+
+  rows.forEach((row, rowIndex) => {
+    const photoColumnIndex = keys.indexOf("photo") + 1;
+    const photoFile = photoMap[row.photoMapKey];
+    const photoCell = sheet.getRow(rowIndex + 2).getCell(photoColumnIndex);
+
+    if (photoFile) {
+      photoCell.value = {
+        text: lang === "ru" ? "Открыть фото" : "Open photo",
+        hyperlink: photoFile,
+      };
+      photoCell.font = { color: { argb: "FF1155CC" }, underline: true };
+    } else {
+      photoCell.value = row.photo
+        ? lang === "ru"
+          ? "Есть (файл не найден)"
+          : "Present (file missing)"
+        : "";
+    }
+  });
+
+  keys.forEach((key, index) => {
+    sheet.getColumn(index + 1).width = getColumnWidth(
+      headers[index],
+      key,
+      rows,
+      {
+        isPhoto: key === "photo",
+      },
+    );
+  });
 }
 
 async function downloadBlob(
@@ -213,6 +529,7 @@ export async function exportToExcelFile(
 
   const ExcelJS = (await getExcelJS()).default;
   const workbook = buildWorkbook({
+    orderedLeaks,
     orderedRows,
     headers,
     keysOrder,

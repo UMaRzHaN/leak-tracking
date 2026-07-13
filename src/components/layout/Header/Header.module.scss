@@ -145,3 +145,56 @@
 
   &:active { background: rgba(255,255,255,.2); }
 }
+
+.userBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.08);
+  color: rgba(255,255,255,.88);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 800;
+  transition: background var(--t-fast), transform var(--t-fast), border-color var(--t-fast);
+
+  &:active {
+    transform: scale(0.94);
+  }
+}
+
+.userBtnActive {
+  border-color: rgba(96,165,250,.65);
+  background: rgba(37,99,235,.35);
+}
+
+.userIcon {
+  position: relative;
+  width: 15px;
+  height: 16px;
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    background: currentColor;
+  }
+
+  &::before {
+    top: 1px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+
+  &::after {
+    bottom: 1px;
+    width: 13px;
+    height: 7px;
+    border-radius: 9px 9px 4px 4px;
+  }
+}

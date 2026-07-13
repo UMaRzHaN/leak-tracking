@@ -216,7 +216,7 @@
 /* ── Photo comparison (До / После) ── */
 .photoCompare {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 8px;
   padding: 12px 14px;
   background: var(--c-surface);
@@ -280,7 +280,7 @@
 /* ── Edit photo row (До / После, edit mode) ── */
 .editPhotoRow {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 8px;
   padding: 12px 14px;
   background: var(--c-surface);
@@ -478,6 +478,43 @@
   width: 100%;
 }
 
+.monitoringRecord {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  gap: 12px;
+  align-items: stretch;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface);
+}
+
+.monitoringRecordText {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.monitoringRecordText .fieldValue {
+  text-align: left;
+}
+
+.monitoringPhotoBtn {
+  width: 92px;
+  min-height: 64px;
+  padding: 0;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--c-surface2);
+}
+
+.monitoringPhotoImg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
 /* ══════════════════════════════════════════
    PARAMS TAB — card grid
    ══════════════════════════════════════════ */
@@ -584,6 +621,19 @@
   font-size: 12px;
   font-weight: 700;
   color: var(--c-blue);
+}
+
+.logUser {
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px 8px;
+  border: 1px solid var(--c-border);
+  border-radius: 999px;
+  background: var(--c-surface2);
+  color: var(--c-text2);
+  font-size: 11px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .logDate {

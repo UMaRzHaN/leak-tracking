@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from "react";
+import { useState, memo } from "react";
 import { STATUS_META, STATUS_ORDER, getStatusMeta } from "@/utils/status";
 import { PRIORITY_ORDER, getPriorityMeta } from "@/utils/priority";
 import { useLanguage } from "@/app/hooks/useLanguage";
@@ -24,15 +24,11 @@ function FilterBar({
   const { t, lang } = useLanguage();
   const hasActiveFilter =
     statusFilter !== ALL || priorityFilter !== ALL || nearbyFilter;
-  const [open, setOpen] = useState(hasActiveFilter);
+  const [open, setOpen] = useState(false);
   const formatRadius = (radius) =>
     radius >= 1000
       ? `${radius / 1000} ${lang === "ru" ? "км" : "km"}`
       : `${radius} ${lang === "ru" ? "м" : "m"}`;
-
-  useEffect(() => {
-    if (hasActiveFilter) setOpen(true);
-  }, [hasActiveFilter]);
 
   return (
     <>

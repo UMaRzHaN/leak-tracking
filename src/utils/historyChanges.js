@@ -59,7 +59,7 @@ export function buildLeakHistoryChanges({
   ]);
 
   keys.forEach((key) => {
-    if (key === "photo" || key === "photo_after") {
+    if (key === "photo" || key === "photo_after" || key === "photo_repair") {
       addPhotoChange(changes, before, after, key);
       return;
     }

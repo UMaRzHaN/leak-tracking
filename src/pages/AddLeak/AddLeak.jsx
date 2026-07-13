@@ -11,11 +11,19 @@ import { toNullableNumber } from "@/utils/normalize/toNullableNumber";
 import { STATUS } from "@/utils/status";
 import { priorityFromSpeed } from "@/utils/priority";
 import { dataUrlToBlob } from "@/utils/photoConversion";
+import { isPinkBagEquipment } from "@/utils/calculations/calculations";
 import Notification from "@/components/ui/Notification/Notification";
 import AddLeakSuccess from "./components/AddLeakSuccess";
 import s from "./AddLeak.module.scss";
 
-export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
+export default function AddLeak({
+  data,
+  setData,
+  coords,
+  setPage,
+  prevPage,
+  userProfile,
+}) {
   const { t, lang } = useLanguage();
   const { form, setForm } = useLeakFormContext();
   const { savePhoto, ready: photoReady } = usePhotoStorage();
@@ -83,6 +91,12 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
     photoReadyRef.current = photoReady;
   }, [photoReady]);
 
+  useEffect(() => {
+    const profileName = userProfile?.name?.trim();
+    if (!profileName || form.detectedBy != null) return;
+    setForm((prev) => ({ ...prev, detectedBy: profileName }));
+  }, [form.detectedBy, setForm, userProfile?.name]);
+
   /* Offer to restore draft on mount */
   useEffect(() => {
     if (hasDraft() && Object.keys(form).length === 0) {
@@ -142,6 +156,35 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
           return null;
         }
 
+        const profileName = userProfile?.name?.trim() ?? "";
+        if (!profileName) {
+          hapticWarning();
+          setNotification({
+            type: "error",
+            message:
+              lang === "ru"
+                ? "Заполните имя пользователя в профиле"
+                : "Fill in the user name in the profile",
+          });
+          return null;
+        }
+
+        const serialNumberMissing =
+          row.equipmentType &&
+          !isPinkBagEquipment(row.equipmentType) &&
+          (row.serial_number == null || row.serial_number === "");
+        if (serialNumberMissing) {
+          hapticWarning();
+          setNotification({
+            type: "error",
+            message:
+              lang === "ru"
+                ? "Заполните серийный номер оборудования в параметрах расчета"
+                : "Fill in the equipment serial number in calculation parameters",
+          });
+          return null;
+        }
+
         /* Save photo */
         let photoPath = null;
         const rawPhoto = row.photo?.raw ?? dataUrlToBlob(row.photo?.src);
@@ -162,6 +205,8 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
 
         const cleanRow = { ...row };
         delete cleanRow.photo;
+        cleanRow.detectedBy =
+          String(cleanRow.detectedBy ?? "").trim() || profileName;
 
         const newRow = {
           id,
@@ -170,7 +215,13 @@ export default function AddLeak({ data, setData, coords, setPage, prevPage }) {
           index: data.length + 1,
           status: STATUS.OPEN,
           priority: priorityFromSpeed(cleanRow.leak_speed),
-          history: [{ action: "created", date: new Date().toISOString() }],
+          history: [
+            {
+              action: "created",
+              date: new Date().toISOString(),
+              user: cleanRow.detectedBy || undefined,
+            },
+          ],
           ...cleanRow,
           photo: photoPath,
         };

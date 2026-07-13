@@ -5,8 +5,29 @@ import PhotoInput from "@/features/photos/PhotoInput/PhotoInput";
 import Notification from "@/components/ui/Notification/Notification";
 import s from "./ResolveModal.module.scss";
 
-export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
-  const { t } = useTranslation();
+export default function ResolveModal({
+  leak,
+  progress,
+  mode = "resolved",
+  onConfirm,
+  onClose,
+}) {
+  const { t, i18n } = useTranslation();
+  const isRepair = mode === "repair";
+  const isRu = i18n.language?.startsWith("ru");
+  const labels = isRepair
+    ? {
+        title: isRu ? "Утечка в ремонте" : "Leak under repair",
+        photoLabel: isRu ? "Фото ремонта" : "Repair photo",
+        confirm: isRu ? "Подтвердить" : "Confirm",
+        addPhoto: isRu ? "Добавьте фото" : "Add photo",
+      }
+    : {
+        title: t("resolve.title"),
+        photoLabel: t("resolve.photoLabel"),
+        confirm: t("resolve.confirm"),
+        addPhoto: t("resolve.addPhoto"),
+      };
   const [photo, setPhoto] = useState(null);
   const [mtr, setMtr] = useState(leak?.materials_equipment ?? "");
   const [note, setNote] = useState(leak?.note ?? "");
@@ -33,16 +54,23 @@ export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
     setSaving(true);
     setNotification(null);
     try {
-      let photo_after = leak?.photo_after ?? null;
+      let photoPath = isRepair
+        ? (leak?.photo_repair ?? null)
+        : (leak?.photo_after ?? null);
       if (photo?.raw) {
-        photo_after = await savePhoto(
+        photoPath = await savePhoto(
           photo.raw,
-          `${leak.id}_after`,
-          leak?.photo ? [leak.photo] : [],
+          isRepair ? `${leak.id}_repair` : `${leak.id}_after`,
+          (isRepair
+            ? [leak?.photo, leak?.photo_after]
+            : [leak?.photo, leak?.photo_repair]
+          ).filter(Boolean),
         );
       }
       onConfirm({
-        photo_after,
+        ...(isRepair
+          ? { photo_repair: photoPath }
+          : { photo_after: photoPath }),
         materials_equipment: mtr.trim() || undefined,
         note: note.trim() || undefined,
       });
@@ -68,7 +96,7 @@ export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
 
         <div className={s.header}>
           <div className={s.titleRow}>
-            <h2 className={s.title}>{t("resolve.title")}</h2>
+            <h2 className={s.title}>{labels.title}</h2>
             {progress && progress.total > 1 && (
               <span className={s.progressBadge}>
                 {progress.current} / {progress.total}
@@ -82,7 +110,7 @@ export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
           <PhotoInput
             value={photo}
             onChange={setPhoto}
-            label={t("resolve.photoLabel")}
+            label={labels.photoLabel}
             required
             error={submitted && photoMissing}
           />
@@ -128,8 +156,8 @@ export default function ResolveModal({ leak, progress, onConfirm, onClose }) {
             {saving
               ? t("resolve.saving")
               : photoMissing && submitted
-                ? t("resolve.addPhoto")
-                : t("resolve.confirm")}
+                ? labels.addPhoto
+                : labels.confirm}
           </button>
         </div>
       </div>

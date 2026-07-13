@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useSwipeActions } from "./useSwipeActions";
 
-export function useSwipeCard({ onOpenDetails, leak, onPickStatus }) {
-  const [swipeState, setSwipeState]   = useState(null);
+export function useSwipeCard({ onOpenDetails, leak, onPickStatus, onMonitor }) {
+  const [swipeState, setSwipeState] = useState(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
 
   const swipe = useSwipeActions({
@@ -12,7 +12,7 @@ export function useSwipeCard({ onOpenDetails, leak, onPickStatus }) {
     onSwipeLeft: () => {
       setSwipeState("left");
       setTimeout(() => {
-        onPickStatus?.(leak);
+        (onMonitor ?? onPickStatus)?.(leak);
         setSwipeState(null);
         setSwipeOffset(0);
       }, 200);
@@ -40,11 +40,11 @@ export function useSwipeCard({ onOpenDetails, leak, onPickStatus }) {
     close,
     handlers: {
       onTouchStart: swipe.onTouchStart,
-      onTouchMove:  swipe.onTouchMove,
-      onTouchEnd:   swipe.onTouchEnd,
-      onMouseDown:  swipe.onMouseDown,
-      onMouseMove:  swipe.onMouseMove,
-      onMouseUp:    swipe.onMouseUp,
+      onTouchMove: swipe.onTouchMove,
+      onTouchEnd: swipe.onTouchEnd,
+      onMouseDown: swipe.onMouseDown,
+      onMouseMove: swipe.onMouseMove,
+      onMouseUp: swipe.onMouseUp,
     },
   };
 }

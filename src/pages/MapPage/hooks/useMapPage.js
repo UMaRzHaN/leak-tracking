@@ -5,10 +5,19 @@ import { useActiveLocation } from "@/hooks/useActiveLocation";
 import { getDistanceMeters } from "@/utils/geoUtils";
 import { STATUS } from "@/utils/status";
 import { handleExport } from "@/pages/MapPage/handleExport";
+import {
+  ALL,
+  NEARBY_RADIUS_M,
+} from "@/pages/DataBase/hooks/useDataBaseFilters";
 
 const NEARBY_RADIUS_OPTIONS = [100, 500, 1000];
 
-export function useMapPage({ leaks, coords, gpsEnabled = true }) {
+export function useMapPage({
+  leaks,
+  coords,
+  gpsEnabled = true,
+  sharedFilters = null,
+}) {
   const { lang } = useLanguage();
   const { activeProject } = useProjectData();
   const exportProjectFolder = activeProject?.folderName;
@@ -44,10 +53,23 @@ export function useMapPage({ leaks, coords, gpsEnabled = true }) {
   const [downloading, setDownloading] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [heatmapEnabled, setHeatmapEnabled] = useState(false);
-  const [nearbyOnly, setNearbyOnly] = useState(false);
-  const [nearbyRadius, setNearbyRadius] = useState(500);
-  const [priorityFilters, setPriorityFilters] = useState([]);
-  const [statusFilters, setStatusFilters] = useState([]);
+  const [localNearbyOnly, setLocalNearbyOnly] = useState(false);
+  const [localNearbyRadius, setLocalNearbyRadius] = useState(NEARBY_RADIUS_M);
+  const [localPriorityFilter, setLocalPriorityFilter] = useState(ALL);
+  const [localStatusFilter, setLocalStatusFilter] = useState(ALL);
+
+  const nearbyOnly = sharedFilters?.nearbyFilter ?? localNearbyOnly;
+  const setNearbyOnly = sharedFilters?.setNearbyFilter ?? setLocalNearbyOnly;
+  const nearbyRadius = sharedFilters?.nearbyRadius ?? localNearbyRadius;
+  const setNearbyRadius =
+    sharedFilters?.setNearbyRadius ?? setLocalNearbyRadius;
+  const priorityFilter = sharedFilters?.priorityFilter ?? localPriorityFilter;
+  const setPriorityFilter =
+    sharedFilters?.setPriorityFilter ?? setLocalPriorityFilter;
+  const statusFilter = sharedFilters?.statusFilter ?? localStatusFilter;
+  const setStatusFilter = sharedFilters?.setFilter ?? setLocalStatusFilter;
+  const priorityFilters = priorityFilter === ALL ? [] : [priorityFilter];
+  const statusFilters = statusFilter === ALL ? [] : [statusFilter];
 
   const notify = useCallback(
     (type, message) => setNotification({ type, message }),
@@ -77,29 +99,27 @@ export function useMapPage({ leaks, coords, gpsEnabled = true }) {
       normalizedLeaks.filter(
         (leak) =>
           enabledLocations[leak._location] &&
-          (statusFilters.length === 0 ||
-            statusFilters.includes(leak.status ?? STATUS.OPEN)) &&
-          (priorityFilters.length === 0 ||
-            priorityFilters.includes(leak.priority ?? null)),
+          (statusFilter === ALL ||
+            (leak.status ?? STATUS.OPEN) === statusFilter) &&
+          (priorityFilter === ALL ||
+            (leak.priority ?? null) === priorityFilter),
       ),
-    [normalizedLeaks, enabledLocations, statusFilters, priorityFilters],
+    [normalizedLeaks, enabledLocations, statusFilter, priorityFilter],
   );
 
-  const togglePriorityFilter = useCallback((priority) => {
-    setPriorityFilters((current) =>
-      current.includes(priority)
-        ? current.filter((item) => item !== priority)
-        : [...current, priority],
-    );
-  }, []);
+  const togglePriorityFilter = useCallback(
+    (priority) => {
+      setPriorityFilter((current) => (current === priority ? ALL : priority));
+    },
+    [setPriorityFilter],
+  );
 
-  const toggleStatusFilter = useCallback((status) => {
-    setStatusFilters((current) =>
-      current.includes(status)
-        ? current.filter((item) => item !== status)
-        : [...current, status],
-    );
-  }, []);
+  const toggleStatusFilter = useCallback(
+    (status) => {
+      setStatusFilter((current) => (current === status ? ALL : status));
+    },
+    [setStatusFilter],
+  );
 
   const visibleLeaks = useMemo(() => {
     const hasGps = Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng);
@@ -216,11 +236,11 @@ export function useMapPage({ leaks, coords, gpsEnabled = true }) {
       });
 
       mapApiRef.current = {
-        focus: (leak) => {
+        focus: (leak, zoom = 16) => {
           if (!Number.isFinite(leak?.lat) || !Number.isFinite(leak?.lng)) {
             return;
           }
-          map.setView([leak.lat, leak.lng], 16, { animate: true });
+          map.setView([leak.lat, leak.lng], zoom, { animate: true });
         },
       };
     }
@@ -390,8 +410,8 @@ export function useMapPage({ leaks, coords, gpsEnabled = true }) {
     });
   }, [visibleLeaks, activeProject?.type, exportProjectFolder, notify, lang]);
 
-  const focusLeak = useCallback((leak) => {
-    mapApiRef.current?.focus?.(leak);
+  const focusLeak = useCallback((leak, zoom) => {
+    mapApiRef.current?.focus?.(leak, zoom);
   }, []);
 
   const locateMe = useCallback(() => {
@@ -422,9 +442,9 @@ export function useMapPage({ leaks, coords, gpsEnabled = true }) {
     setNearbyOnly,
     setNearbyRadius,
     togglePriorityFilter,
-    clearPriorityFilters: () => setPriorityFilters([]),
+    clearPriorityFilters: () => setPriorityFilter(ALL),
     toggleStatusFilter,
-    clearStatusFilters: () => setStatusFilters([]),
+    clearStatusFilters: () => setStatusFilter(ALL),
     toggleLocation,
     handleDownloadArea,
     handleExportKML,

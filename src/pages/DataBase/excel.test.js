@@ -57,6 +57,11 @@ const mocks = vi.hoisted(() => {
 
       return this.columns.get(index);
     }
+
+    addTable({ columns = [], rows = [] }) {
+      this.addRow(columns.map((column) => column.name));
+      rows.forEach((row) => this.addRow(row));
+    }
   }
 
   class MockWorkbook {

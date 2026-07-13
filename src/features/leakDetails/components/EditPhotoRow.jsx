@@ -5,14 +5,18 @@ import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 export default function EditPhotoRow({
   srcBefore,
   srcAfter,
+  srcRepair,
   onEditBefore,
   onPickBefore,
   onEditAfter,
   onPickAfter,
+  onEditRepair,
+  onPickRepair,
   isNative = false,
   showAfter = true,
+  showRepair = false,
 }) {
-  const { t } = useLanguage();
+  const { lang, t } = useLanguage();
   const [activeSlot, setActiveSlot] = useState(null);
 
   const slots = [
@@ -24,6 +28,13 @@ export default function EditPhotoRow({
       onGallery: onPickBefore,
     },
     {
+      key: "repair",
+      label: lang === "ru" ? "В ремонте" : "Under repair",
+      src: srcRepair,
+      onCamera: onEditRepair,
+      onGallery: onPickRepair,
+    },
+    {
       key: "after",
       label: t("leakDetails.photo.after", { defaultValue: "После" }),
       src: srcAfter,
@@ -32,9 +43,11 @@ export default function EditPhotoRow({
     },
   ];
 
-  const visibleSlots = showAfter
-    ? slots
-    : slots.filter((slot) => slot.key !== "after");
+  const visibleSlots = slots.filter((slot) => {
+    if (slot.key === "after") return showAfter;
+    if (slot.key === "repair") return showRepair;
+    return true;
+  });
 
   const selectedSlot = visibleSlots.find((slot) => slot.key === activeSlot);
 
@@ -46,7 +59,9 @@ export default function EditPhotoRow({
   return (
     <>
       <div
-        className={`${s.editPhotoRow} ${showAfter ? "" : s.editPhotoRowSingle}`}
+        className={`${s.editPhotoRow} ${
+          visibleSlots.length === 1 ? s.editPhotoRowSingle : ""
+        }`}
       >
         {visibleSlots.map(({ key, label, src }) => (
           <div key={key} className={s.editPhotoSlot}>

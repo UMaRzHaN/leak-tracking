@@ -1,6 +1,16 @@
 import { getPhotoSrc } from "@/hooks/photoService";
 
-const PHOTO_FIELDS = ["photo", "photo_after"];
+const PHOTO_FIELDS = ["photo", "photo_after", "photo_repair"];
+
+function getLeakPhotoRefs(leak) {
+  const refs = PHOTO_FIELDS.map((field) => [field, leak?.[field]]);
+  if (Array.isArray(leak?.monitoringRecords)) {
+    leak.monitoringRecords.forEach((record, index) => {
+      refs.push([`monitoringRecords[${index}].photo`, record?.photo]);
+    });
+  }
+  return refs;
+}
 
 function hasCoords(leak) {
   return (
@@ -52,8 +62,7 @@ export async function analyzeProjectIntegrity(
       missingPhoto.push(label);
     }
 
-    for (const field of PHOTO_FIELDS) {
-      const path = leak?.[field];
+    for (const [field, path] of getLeakPhotoRefs(leak)) {
       if (!path) continue;
       if (!(await photoExists(path, idbGetPhoto))) {
         brokenPhoto.push(`${label}:${field}`);

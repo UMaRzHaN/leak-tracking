@@ -20,7 +20,11 @@ export function useStepValidation({ steps, form, setErrors }) {
         return;
       }
 
-      if (!form[key]) {
+      const value = form[key];
+      const empty =
+        value == null || (typeof value === "string" && value.trim() === "");
+
+      if (empty) {
         nextErrors[key] =
           lang === "ru" ? "Обязательное поле" : "Required field";
       }

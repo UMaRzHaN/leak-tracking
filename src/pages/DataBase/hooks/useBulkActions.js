@@ -24,11 +24,15 @@ export function useBulkActions({
   displayed,
   notify,
   deletePhoto = () => Promise.resolve(),
+  userProfile,
 }) {
   const { lang, t } = useLanguage();
+  const historyUser = userProfile?.name?.trim() || undefined;
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [resolveQueue, setResolveQueue] = useState([]);
   const [resolveTotal, setResolveTotal] = useState(0);
+  const [repairQueue, setRepairQueue] = useState([]);
+  const [repairTotal, setRepairTotal] = useState(0);
 
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
@@ -76,6 +80,12 @@ export function useBulkActions({
         return;
       }
 
+      if (status === STATUS.IN_PROGRESS) {
+        setRepairQueue(affected);
+        setRepairTotal(affected.length);
+        return;
+      }
+
       const orphanedPhotos = affected
         .filter(
           (item) =>
@@ -94,7 +104,12 @@ export function useBulkActions({
               updatedAt: Date.now(),
               history: [
                 ...(item.history ?? []),
-                { action: "status_changed", to: status, date: now },
+                {
+                  action: "status_changed",
+                  to: status,
+                  date: now,
+                  user: historyUser,
+                },
               ],
             }
           : item,
@@ -123,7 +138,17 @@ export function useBulkActions({
         );
       }
     },
-    [clearSelection, data, deletePhoto, lang, notify, selectedIds, setData, t],
+    [
+      clearSelection,
+      data,
+      deletePhoto,
+      historyUser,
+      lang,
+      notify,
+      selectedIds,
+      setData,
+      t,
+    ],
   );
 
   const handleSequentialResolveConfirm = useCallback(
@@ -157,6 +182,7 @@ export function useBulkActions({
                     action: "status_changed",
                     to: STATUS.RESOLVED,
                     date: now,
+                    user: historyUser,
                     ...(changes.length > 0 ? { changes } : {}),
                   },
                 ],
@@ -197,10 +223,103 @@ export function useBulkActions({
     [
       clearSelection,
       data,
+      historyUser,
       lang,
       notify,
       resolveQueue,
       resolveTotal,
+      setData,
+      t,
+    ],
+  );
+
+  const handleSequentialRepairConfirm = useCallback(
+    async ({ photo_repair, materials_equipment, note }) => {
+      const leak = repairQueue[0];
+      if (!leak) return;
+
+      const repairAt = Date.now();
+      const now = new Date(repairAt).toISOString();
+      const orphanedPhoto =
+        leak.status === STATUS.RESOLVED && leak.photo_after ? leak.photo : null;
+      const next = data.map((item) =>
+        item.id === leak.id
+          ? (() => {
+              const after = {
+                ...item,
+                ...(item.status === STATUS.RESOLVED
+                  ? { photo: item.photo_after ?? item.photo, photo_after: null }
+                  : {}),
+                status: STATUS.IN_PROGRESS,
+                resolvedAt: null,
+                repairAt,
+                ...(photo_repair != null && { photo_repair }),
+                ...(materials_equipment != null && { materials_equipment }),
+                ...(note != null && { note }),
+                updatedAt: Date.now(),
+              };
+              const changes = buildLeakHistoryChanges({
+                before: item,
+                after,
+                fields: STATUS_NOTE_FIELDS,
+                includeKeys: ["photo_repair"],
+              });
+              return {
+                ...after,
+                history: [
+                  ...(item.history ?? []),
+                  {
+                    action: "status_changed",
+                    to: STATUS.IN_PROGRESS,
+                    date: now,
+                    user: historyUser,
+                    ...(changes.length > 0 ? { changes } : {}),
+                  },
+                ],
+              };
+            })()
+          : item,
+      );
+
+      try {
+        await setData(next);
+        hapticSuccess();
+        if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
+      } catch (err) {
+        notify(
+          "error",
+          t("database.bulk.saveError", {
+            defaultValue: `Save error: ${err.message}`,
+          }),
+        );
+        return;
+      }
+
+      const remaining = repairQueue.slice(1);
+      setRepairQueue(remaining);
+      if (remaining.length === 0) {
+        notify(
+          "success",
+          t("database.bulk.statusChanged", {
+            defaultValue: `Status changed for ${repairTotal} ${pluralLeaks(
+              repairTotal,
+              lang,
+            )}`,
+          }),
+        );
+        clearSelection();
+        setRepairTotal(0);
+      }
+    },
+    [
+      clearSelection,
+      data,
+      deletePhoto,
+      historyUser,
+      lang,
+      notify,
+      repairQueue,
+      repairTotal,
       setData,
       t,
     ],
@@ -220,11 +339,18 @@ export function useBulkActions({
     selectDisplayed,
     resolveQueue,
     resolveTotal,
+    repairQueue,
+    repairTotal,
     handleBulkStatusChange,
     handleSequentialResolveConfirm,
+    handleSequentialRepairConfirm,
     cancelBulkResolve: () => {
       setResolveQueue([]);
       setResolveTotal(0);
+    },
+    cancelBulkRepair: () => {
+      setRepairQueue([]);
+      setRepairTotal(0);
     },
   };
 }

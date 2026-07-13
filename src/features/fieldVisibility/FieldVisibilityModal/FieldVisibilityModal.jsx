@@ -2,9 +2,10 @@ import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import s from "./FieldVisibilityModal.module.scss";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { PROTECTED_FIELD_KEYS } from "@/configs/shared/protectedFields";
 
 // These keys are managed by the system and can never be hidden
-const SYSTEM_KEYS = new Set(["index", "date", "status", "resolvedAt"]);
+const SYSTEM_KEYS = PROTECTED_FIELD_KEYS;
 
 const STEP_TITLE_KEYS = {
   Основное: "basic",
@@ -15,8 +16,24 @@ const STEP_TITLE_KEYS = {
 function translateFieldLabel(key, fallbackLabel, t, lang) {
   const explicitLabels = {
     date: lang === "ru" ? "Дата" : "Date",
+    detectedBy: lang === "ru" ? "Кто зафиксировал" : "Detected by",
     lat: lang === "ru" ? "Широта (X)" : "Latitude (X)",
     lng: lang === "ru" ? "Долгота (Y)" : "Longitude (Y)",
+    equipmentType:
+      lang === "ru"
+        ? "Оборудование для замера объёма утечки"
+        : "Leak volume measuring equipment",
+    serial_number:
+      lang === "ru" ? "Серийный номер оборудования" : "Equipment serial number",
+    uncertainty: lang === "ru" ? "Погрешность" : "Uncertainty",
+    repairAt: lang === "ru" ? "Дата ремонта" : "Repair date",
+    resolvedAt: lang === "ru" ? "Дата устранения" : "Resolved date",
+    photo: lang === "ru" ? "Фото утечки" : "Leak photo",
+    photo_repair: lang === "ru" ? "Фото в ремонте" : "Repair photo",
+    photo_after: lang === "ru" ? "Фото после ремонта" : "After repair photo",
+    monitoringRecords:
+      lang === "ru" ? "История мониторинга" : "Monitoring history",
+    roundNumber: lang === "ru" ? "Номер обхода" : "Round number",
     leak_speed_kg_h:
       lang === "ru"
         ? "Измеренная скорость утечки, кг/ч"
@@ -104,6 +121,12 @@ function buildGroups(config, localeTexts, t, lang) {
     });
   }
   return groups;
+}
+
+function toConfigurableHiddenSet(hiddenFields) {
+  return new Set(
+    [...hiddenFields].filter((key) => !PROTECTED_FIELD_KEYS.has(key)),
+  );
 }
 
 /* =====================================================
@@ -231,7 +254,9 @@ export default function FieldVisibilityModal({
     }),
     [t],
   );
-  const [draft, setDraft] = useState(() => new Set(hiddenFields));
+  const [draft, setDraft] = useState(() =>
+    toConfigurableHiddenSet(hiddenFields),
+  );
   const [search, setSearch] = useState("");
   const [openGroups, setOpenGroups] = useState(new Set());
 
@@ -239,11 +264,15 @@ export default function FieldVisibilityModal({
     () => buildGroups(config, localeTexts, t, lang),
     [config, localeTexts, t, lang],
   );
+  const configurableHiddenFields = useMemo(
+    () => toConfigurableHiddenSet(hiddenFields),
+    [hiddenFields],
+  );
 
   // Sync draft + expand all groups on open
   useEffect(() => {
     if (!open) return;
-    setDraft(new Set(hiddenFields));
+    setDraft(toConfigurableHiddenSet(hiddenFields));
     setSearch("");
     setOpenGroups(new Set(groups.map((g) => g.title)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -298,10 +327,10 @@ export default function FieldVisibilityModal({
   };
 
   const isDirty = useMemo(() => {
-    if (draft.size !== hiddenFields.size) return true;
-    for (const k of draft) if (!hiddenFields.has(k)) return true;
+    if (draft.size !== configurableHiddenFields.size) return true;
+    for (const k of draft) if (!configurableHiddenFields.has(k)) return true;
     return false;
-  }, [draft, hiddenFields]);
+  }, [configurableHiddenFields, draft]);
 
   const handleSave = () => {
     onSave(draft);

@@ -2,7 +2,7 @@
   position: relative;
   overflow: hidden;
   border-radius: var(--r-xl);
-  margin: 0 0 8px;
+  margin: 0 0 12px;
 }
 
 /* ── Swipe reveal panels ── */
@@ -30,6 +30,8 @@
 /* Left hint color changes based on the next status */
 .hintLeft {
   right: 0;
+  background: linear-gradient(to left, var(--c-progress-border), transparent);
+  color: var(--c-progress);
 
   &[data-next="in_progress"] {
     background: linear-gradient(to left, var(--c-progress-border), transparent);
@@ -378,6 +380,46 @@
   &:active { opacity: 0.82; }
 }
 
+.photoStackTriple {
+  width: 96px;
+}
+
+.photoStackItem {
+  position: absolute;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1.5px solid var(--c-border);
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    z-index: 2;
+    background: var(--photo-accent, var(--c-border));
+  }
+}
+
+.photoStackbefore {
+  --photo-accent: var(--c-blue);
+  border-color: color-mix(in srgb, var(--c-blue) 45%, var(--c-border));
+  box-shadow: 3px 0 8px rgba(37, 99, 235, 0.18);
+}
+
+.photoStackrepair {
+  --photo-accent: var(--c-progress);
+  border-color: var(--c-progress);
+  box-shadow: 2px 0 7px rgba(217, 119, 6, 0.28);
+}
+
+.photoStackafter {
+  --photo-accent: var(--c-resolved);
+  border-color: var(--c-resolved);
+  box-shadow: 0 0 0 1px var(--c-resolved-border);
+}
+
 /* Задняя карточка (После) — выглядывает справа */
 .photoStackBack {
   position: absolute;
@@ -391,6 +433,25 @@
   z-index: 1;
 }
 
+.photoStackTriple .photoStackBack {
+  left: 34px;
+}
+
+.photoStackRepair .photoStackBack,
+.photoStackRepair .photoStackrepair {
+  border-color: var(--c-progress);
+  box-shadow: 0 0 0 1px var(--c-progress-border);
+}
+
+.photoStackMiddle {
+  top: 2px;
+  left: 17px;
+  width: 62px;
+  height: 48px;
+  z-index: 2;
+  box-shadow: 2px 0 7px rgba(0, 0, 0, 0.16);
+}
+
 /* Передняя карточка (До) — сверху слева */
 .photoStackFront {
   position: absolute;
@@ -402,7 +463,7 @@
   overflow: hidden;
   border: 1.5px solid var(--c-border);
   box-shadow: 3px 0 8px rgba(0, 0, 0, 0.2);
-  z-index: 2;
+  z-index: 3;
 }
 
 .photoStackImg {
@@ -426,6 +487,42 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   pointer-events: none;
+}
+
+.photoStackBackLabel {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 2px 1px;
+  text-align: center;
+  font-size: 8px;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.54);
+  text-transform: uppercase;
+  letter-spacing: 0;
+  line-height: 1.1;
+  pointer-events: none;
+}
+
+.photoStackRepair .photoStackBackLabel {
+  background: color-mix(in srgb, var(--c-progress) 72%, rgba(0, 0, 0, 0.5));
+}
+
+.photoStackbefore .photoStackLabel,
+.photoStackbefore .photoStackBackLabel {
+  background: color-mix(in srgb, var(--c-blue) 70%, rgba(0, 0, 0, 0.5));
+}
+
+.photoStackrepair .photoStackLabel,
+.photoStackrepair .photoStackBackLabel {
+  background: color-mix(in srgb, var(--c-progress) 72%, rgba(0, 0, 0, 0.5));
+}
+
+.photoStackafter .photoStackLabel,
+.photoStackafter .photoStackBackLabel {
+  background: color-mix(in srgb, var(--c-resolved) 72%, rgba(0, 0, 0, 0.5));
 }
 
 /* ── Photo thumbnail ── */

@@ -536,7 +536,7 @@ export function addMarkers(markersLayer, leaks = [], map = null) {
         if (!map) return;
 
         map._suppressLeakClickMoveend = true;
-        map.panTo(latlng, { animate: true });
+        map.setView(latlng, Math.max(map.getZoom(), 18), { animate: true });
         setTimeout(() => {
           if (map) map._suppressLeakClickMoveend = false;
         }, 500);

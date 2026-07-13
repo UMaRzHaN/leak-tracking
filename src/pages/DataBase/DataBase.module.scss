@@ -1,9 +1,11 @@
 .page {
-  min-height: 100%;
-  padding: 12px;
+  height: 100%;
+  min-height: 0;
+  padding: 12px 12px 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow: hidden;
 }
 
 /* ── Search ── */
@@ -537,8 +539,32 @@
   }
 }
 
-.bulkStatusBtn {
+.bulkMonitorBtn {
   display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  border: 1.5px solid var(--c-blue-overlay);
+  border-radius: var(--r-md);
+  background: var(--c-blue-dim);
+  color: var(--c-blue);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--t-fast);
+  white-space: nowrap;
+
+  &:hover {
+    border-color: var(--c-blue);
+    background: var(--c-blue-bg, rgba(37, 99, 235, 0.12));
+  }
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+.bulkStatusBtn {
+  display: none;
   align-items: center;
   gap: 5px;
   padding: 7px 14px;
@@ -569,9 +595,6 @@
   display: flex;
   flex-direction: column;
 
-  @supports (padding-bottom: env(safe-area-inset-bottom)) {
-    padding-bottom: calc(var(--app-footer) + env(safe-area-inset-bottom));
-  }
 }
 
 /* ── Empty ── */

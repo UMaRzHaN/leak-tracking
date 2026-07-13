@@ -1,0 +1,243 @@
+.root {
+  width: 100%;
+}
+
+.paramGroup {
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  label {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+}
+
+.label {
+  font-weight: 600;
+  color: var(--c-text);
+  font-size: 14px;
+}
+
+.required {
+  color: var(--c-danger);
+  font-weight: 800;
+}
+
+.unit {
+  font-size: 12px;
+  color: var(--c-text3);
+  font-weight: normal;
+}
+
+.input {
+  padding: 10px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: "Courier New", monospace;
+  background: var(--c-surface2);
+  color: var(--c-text);
+  transition: all 0.2s ease;
+
+  &:focus {
+    outline: none;
+    border-color: var(--c-blue);
+    background: var(--c-surface);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.inputError {
+  border-color: var(--c-danger);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.errorText {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-danger);
+}
+
+.select {
+  padding: 10px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--c-surface2);
+  color: var(--c-text);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  font-family: inherit;
+
+  &:focus {
+    outline: none;
+    border-color: var(--c-blue);
+    background: var(--c-surface);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  option {
+    background: var(--c-surface);
+    color: var(--c-text);
+  }
+}
+
+.current {
+  font-size: 12px;
+  color: var(--c-text3);
+  font-style: italic;
+}
+
+.sliderContainer {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.slider {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(
+    to right,
+    var(--c-resolved-bg) 0%,
+    var(--c-resolved-border) 50%,
+    var(--c-progress-bg) 100%
+  );
+  outline: none;
+  appearance: none;
+
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--c-blue);
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
+    transition: all 0.2s ease;
+  }
+
+  &::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.6);
+  }
+
+  &::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--c-blue);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
+    transition: all 0.2s ease;
+  }
+
+  &::-moz-range-thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.6);
+  }
+}
+
+.numberInput {
+  width: 70px;
+  padding: 8px 10px;
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: "Courier New", monospace;
+  text-align: center;
+  background: var(--c-surface2);
+  color: var(--c-text);
+  transition: all 0.2s ease;
+
+  &:focus {
+    outline: none;
+    border-color: var(--c-blue);
+    background: var(--c-surface);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+}
+
+.distribution {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  background: var(--c-surface2);
+  padding: 10px 12px;
+  border-radius: 6px;
+}
+
+.flare {
+  flex: 1;
+  color: var(--c-open);
+  font-weight: 500;
+}
+
+.util {
+  flex: 1;
+  color: var(--c-resolved);
+  font-weight: 500;
+}
+
+@media (max-width: 640px) {
+  .paramGroup {
+    margin-bottom: 16px;
+
+    label {
+      gap: 6px;
+      margin-bottom: 3px;
+    }
+  }
+
+  .label {
+    font-size: 13px;
+  }
+
+  .unit {
+    font-size: 11px;
+  }
+
+  .input,
+  .select {
+    padding: 9px 10px;
+    font-size: 13px;
+  }
+
+  .current {
+    font-size: 11px;
+  }
+
+  .sliderContainer {
+    gap: 8px;
+  }
+
+  .numberInput {
+    width: 65px;
+    padding: 7px 8px;
+    font-size: 13px;
+  }
+
+  .distribution {
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+
+  .flare,
+  .util {
+    flex: none;
+    width: 100%;
+  }
+}

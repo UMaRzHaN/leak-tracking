@@ -1,8 +1,17 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import "@/index.scss";
 
 import Header from "@/components/layout/Header/Header";
 import Footer from "@/components/layout/Footer/Footer";
+import UserProfileSheet from "@/components/ui/UserProfileSheet/UserProfileSheet";
 
 const Settings = lazy(() => import("@/pages/Settings/Settings"));
 const ProjectSetupScreen = lazy(
@@ -12,16 +21,31 @@ const ProjectSetupScreen = lazy(
 import { useProject } from "./project/ProjectContext";
 import { useProjectData } from "./hooks/useProjectData";
 import { useAppState } from "./hooks/useAppState";
+import { useUserProfile } from "./hooks/useUserProfile";
 
 import { cleanupLegacyLeaks } from "./migrations/cleanupLegacyLeaks";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { logger } from "@/utils/logger";
 import { STATUS } from "@/utils/status";
+import {
+  ALL,
+  NEARBY_RADIUS_M,
+} from "@/pages/DataBase/hooks/useDataBaseFilters";
 
 const AddLeak = lazy(() => import("@/pages/AddLeak/AddLeak"));
 const MainPage = lazy(() => import("@/pages/MainPage/MainPage"));
 const DataBase = lazy(() => import("@/pages/DataBase/DataBase"));
 const MapPage = lazy(() => import("@/pages/MapPage/MapPage"));
+const Monitoring = lazy(() => import("@/pages/Monitoring/Monitoring"));
+
+function AppLoader({ label = "Загрузка данных" }) {
+  return (
+    <div className="appLoader" role="status" aria-live="polite">
+      <span className="appLoaderRing" aria-hidden="true" />
+      <span className="appLoaderText">{label}</span>
+    </div>
+  );
+}
 
 export default function App() {
   /* =========================
@@ -37,6 +61,41 @@ export default function App() {
     geoError,
     geoLoading,
   } = useAppState();
+
+  const [sharedSearch, setSharedSearch] = useState("");
+  const [sharedStatusFilter, setSharedStatusFilter] = useState(ALL);
+  const [sharedPriorityFilter, setSharedPriorityFilter] = useState(ALL);
+  const [sharedNearbyFilter, setSharedNearbyFilter] = useState(false);
+  const [sharedNearbyRadius, setSharedNearbyRadius] = useState(NEARBY_RADIUS_M);
+  const [requestedMonitoringLeakId, setRequestedMonitoringLeakId] =
+    useState(null);
+  const [requestedMonitoringLeakIds, setRequestedMonitoringLeakIds] = useState(
+    [],
+  );
+  const [userProfileOpen, setUserProfileOpen] = useState(false);
+  const { profile: userProfile, setProfile: setUserProfile } = useUserProfile();
+
+  const sharedFilters = useMemo(
+    () => ({
+      search: sharedSearch,
+      setSearch: setSharedSearch,
+      statusFilter: sharedStatusFilter,
+      setFilter: setSharedStatusFilter,
+      priorityFilter: sharedPriorityFilter,
+      setPriorityFilter: setSharedPriorityFilter,
+      nearbyFilter: sharedNearbyFilter,
+      setNearbyFilter: setSharedNearbyFilter,
+      nearbyRadius: sharedNearbyRadius,
+      setNearbyRadius: setSharedNearbyRadius,
+    }),
+    [
+      sharedSearch,
+      sharedStatusFilter,
+      sharedPriorityFilter,
+      sharedNearbyFilter,
+      sharedNearbyRadius,
+    ],
+  );
 
   /* =========================
      PROJECT CONTEXT
@@ -112,6 +171,28 @@ export default function App() {
     [data],
   );
 
+  const requestMonitoring = useCallback(
+    (leak) => {
+      setRequestedMonitoringLeakId(leak?.id ?? null);
+      setRequestedMonitoringLeakIds([]);
+      setPage("monitoring");
+    },
+    [setPage],
+  );
+
+  const requestMonitoringQueue = useCallback(
+    (leaks) => {
+      const ids = Array.isArray(leaks)
+        ? leaks.map((leak) => leak?.id).filter((id) => id != null)
+        : [];
+      if (ids.length === 0) return;
+      setRequestedMonitoringLeakId(null);
+      setRequestedMonitoringLeakIds(ids);
+      setPage("monitoring");
+    },
+    [setPage],
+  );
+
   /* =========================
      IMPORT ZIP — shared context for all entry points
   ========================= */
@@ -176,7 +257,7 @@ export default function App() {
 
   if (!isConfigured) {
     return (
-      <Suspense fallback={null}>
+      <Suspense fallback={<AppLoader />}>
         <ProjectSetupScreen
           onComplete={configure}
           onImportZip={handleSetupImportZip}
@@ -186,12 +267,13 @@ export default function App() {
   }
 
   const hideLayout = page === "add" || page === "settings";
+  const isListPage = page === "db" || page === "monitoring";
 
   /* =========================
      RENDER
   ========================= */
   return (
-    <div className="app">
+    <div className={`app ${isListPage ? "appList" : ""}`}>
       {!hideLayout && (
         <Header
           geoLoading={geoLoading}
@@ -200,26 +282,41 @@ export default function App() {
           setPage={setPage}
           gpsEnabled={gpsEnabled}
           setGpsEnabled={setGpsEnabled}
+          userProfile={userProfile}
+          onUserProfileOpen={() => setUserProfileOpen(true)}
         />
       )}
 
-      <div className={`pages ${page === "map" ? "pagesMap" : ""}`}>
-        <Suspense fallback={null}>
-          {page === "" && (
-            <MainPage setPage={setPage} data={data} setData={save} />
+      <div
+        className={`pages ${page === "map" ? "pagesMap" : ""} ${
+          isListPage ? "pagesList" : ""
+        }`}
+      >
+        <Suspense fallback={<AppLoader />}>
+          {!dataLoaded && <AppLoader />}
+
+          {dataLoaded && page === "" && (
+            <MainPage
+              setPage={setPage}
+              data={data}
+              setData={save}
+              onMonitorLeak={requestMonitoring}
+              userProfile={userProfile}
+            />
           )}
 
-          {page === "add" && (
+          {dataLoaded && page === "add" && (
             <AddLeak
               data={data}
               setData={save}
               coords={coords}
               setPage={setPage}
               prevPage={prevPage}
+              userProfile={userProfile}
             />
           )}
 
-          {page === "settings" && (
+          {dataLoaded && page === "settings" && (
             <Settings
               setPage={setPage}
               prevPage={prevPage}
@@ -229,12 +326,39 @@ export default function App() {
             />
           )}
 
-          {page === "db" && (
-            <DataBase data={data} setData={save} coords={coords} />
+          {dataLoaded && page === "db" && (
+            <DataBase
+              data={data}
+              setData={save}
+              coords={coords}
+              sharedFilters={sharedFilters}
+              onMonitorLeak={requestMonitoring}
+              onMonitorLeaks={requestMonitoringQueue}
+              userProfile={userProfile}
+            />
           )}
 
-          {page === "map" && (
-            <MapPage leaks={data} coords={coords} gpsEnabled={gpsEnabled} />
+          {dataLoaded && page === "monitoring" && (
+            <Monitoring
+              data={data}
+              setData={save}
+              coords={coords}
+              sharedFilters={sharedFilters}
+              requestedLeakId={requestedMonitoringLeakId}
+              requestedLeakIds={requestedMonitoringLeakIds}
+              onRequestedLeakConsumed={() => setRequestedMonitoringLeakId(null)}
+              onRequestedLeaksConsumed={() => setRequestedMonitoringLeakIds([])}
+              userProfile={userProfile}
+            />
+          )}
+
+          {dataLoaded && page === "map" && (
+            <MapPage
+              leaks={data}
+              coords={coords}
+              gpsEnabled={gpsEnabled}
+              sharedFilters={sharedFilters}
+            />
           )}
         </Suspense>
       </div>
@@ -242,6 +366,13 @@ export default function App() {
       {!hideLayout && (
         <Footer page={page} setPage={setPage} openCount={openCount} />
       )}
+
+      <UserProfileSheet
+        open={userProfileOpen}
+        profile={userProfile}
+        onSave={setUserProfile}
+        onClose={() => setUserProfileOpen(false)}
+      />
     </div>
   );
 }

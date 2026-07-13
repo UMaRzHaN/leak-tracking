@@ -10,6 +10,7 @@ import {
   formatLeakDate,
   formatNumber,
 } from "@/utils/locale";
+import { getLastMonitoringRecord } from "@/utils/monitoring";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import s from "./LeakCardCompact.module.scss";
 
@@ -40,16 +41,19 @@ function urgencyOf(createdAt, status) {
 function LeakCardCompact({
   leak,
   onPickStatus,
+  onMonitor,
   onOpenDetails,
   nearbyDist,
   selected = false,
   onToggleSelect,
+  className = "",
 }) {
   const { lang, t } = useLanguage();
   const { swipeState, swipeOffset, close, handlers } = useSwipeCard({
     leak,
     onOpenDetails,
     onPickStatus,
+    onMonitor,
   });
 
   const swiping = swipeOffset !== 0;
@@ -68,23 +72,41 @@ function LeakCardCompact({
   const [viewerIndex, setViewerIndex] = useState(null);
 
   const photoSrc = usePhotoSrc(leak.photo ?? null);
+  const monitoringPhotoSrc = usePhotoSrc(
+    getLastMonitoringRecord(leak)?.photo ?? null,
+  );
   const photoAfterSrc = usePhotoSrc(
     status === "resolved" ? (leak.photo_after ?? null) : null,
+  );
+  const photoRepairSrc = usePhotoSrc(
+    status === "in_progress" || status === "resolved"
+      ? (leak.photo_repair ?? null)
+      : null,
   );
 
   const emissions = fmtNum(leak.Emissions_t_CO2eq_year, 2, lang);
   const methane = fmtNum(leak.Total_Annual_Methane_Loss_m3_y, 0, lang);
   const beforeLabel = t("leakDetails.photo.before", { defaultValue: "Before" });
   const afterLabel = t("leakDetails.photo.after", { defaultValue: "After" });
+  const repairLabel = lang === "ru" ? "В ремонте" : "Under repair";
 
   const comparePairs = [
-    photoSrc ? { src: photoSrc, label: beforeLabel } : null,
-    photoAfterSrc ? { src: photoAfterSrc, label: afterLabel } : null,
+    photoSrc ? { key: "before", src: photoSrc, label: beforeLabel } : null,
+    photoRepairSrc
+      ? { key: "repair", src: photoRepairSrc, label: repairLabel }
+      : null,
+    photoAfterSrc
+      ? { key: "after", src: photoAfterSrc, label: afterLabel }
+      : null,
   ].filter(Boolean);
 
-  const showBook = status === "resolved" && comparePairs.length === 2;
-  const hasPhoto =
-    Boolean(photoSrc) || (status === "resolved" && Boolean(photoAfterSrc));
+  const showBook = comparePairs.length >= 2;
+  const showRepairStack = Boolean(photoRepairSrc) && status === "in_progress";
+  const displayPhotoSrc =
+    !showBook && status === "open" && monitoringPhotoSrc
+      ? monitoringPhotoSrc
+      : photoSrc || photoRepairSrc || photoAfterSrc;
+  const hasPhoto = comparePairs.length > 0 || Boolean(displayPhotoSrc);
   const hasChips =
     leak.leak_speed != null ||
     leak.pressure != null ||
@@ -95,12 +117,12 @@ function LeakCardCompact({
 
   const viewerPhotos = showBook
     ? comparePairs.map((pair) => pair.src)
-    : [photoSrc || photoAfterSrc].filter(Boolean);
+    : [displayPhotoSrc].filter(Boolean);
   const viewerLabels = showBook ? comparePairs.map((pair) => pair.label) : [];
 
   return (
     <>
-      <div className={s.wrapper} onClick={close}>
+      <div className={`${s.wrapper} ${className}`} onClick={close}>
         {goingRight && (
           <div className={s.hintRight}>
             <span className={s.hintIcon}>→</span>
@@ -114,7 +136,11 @@ function LeakCardCompact({
           <div className={s.hintLeft}>
             <span className={s.hintIcon}>☰</span>
             <span className={s.hintText}>
-              {t("cards.status", { defaultValue: "Status" })}
+              {onMonitor
+                ? t("cards.monitoring", {
+                    defaultValue: lang === "ru" ? "Мониторинг" : "Monitoring",
+                  })
+                : t("cards.status", { defaultValue: "Status" })}
             </span>
           </div>
         )}
@@ -241,31 +267,45 @@ function LeakCardCompact({
               </div>
               {showBook ? (
                 <div
-                  className={s.photoStack}
+                  className={`${s.photoStack} ${
+                    comparePairs.length >= 3 ? s.photoStackTriple : ""
+                  } ${showRepairStack ? s.photoStackRepair : ""}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     setViewerIndex(0);
                   }}
                 >
-                  <div className={s.photoStackBack}>
-                    <img
-                      src={photoAfterSrc}
-                      alt={afterLabel}
-                      className={s.photoStackImg}
-                      loading="lazy"
-                      draggable={false}
-                    />
-                  </div>
-                  <div className={s.photoStackFront}>
-                    <img
-                      src={photoSrc}
-                      alt={beforeLabel}
-                      className={s.photoStackImg}
-                      loading="lazy"
-                      draggable={false}
-                    />
-                    <span className={s.photoStackLabel}>{beforeLabel}</span>
-                  </div>
+                  {comparePairs.map((pair, index) => {
+                    const isFront = index === 0;
+                    const isBack = index === comparePairs.length - 1;
+                    return (
+                      <div
+                        key={pair.label}
+                        className={`${s.photoStackItem} ${
+                          isFront
+                            ? s.photoStackFront
+                            : isBack
+                              ? s.photoStackBack
+                              : s.photoStackMiddle
+                        } ${s[`photoStack${pair.key}`] ?? ""}`}
+                      >
+                        <img
+                          src={pair.src}
+                          alt={pair.label}
+                          className={s.photoStackImg}
+                          loading="lazy"
+                          draggable={false}
+                        />
+                        <span
+                          className={
+                            isFront ? s.photoStackLabel : s.photoStackBackLabel
+                          }
+                        >
+                          {pair.label}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 hasPhoto && (
@@ -277,7 +317,7 @@ function LeakCardCompact({
                     }}
                   >
                     <img
-                      src={photoSrc || photoAfterSrc}
+                      src={displayPhotoSrc}
                       alt=""
                       className={s.photoThumbImg}
                       loading="lazy"

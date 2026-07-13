@@ -12,6 +12,7 @@ import { timeAgo } from "@/utils/timeAgo";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
 import { hapticWarning } from "@/utils/haptics";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
+import { buildReopenedLeak } from "@/utils/reopenLeak";
 
 const DELETE_ARM_MS = 3000;
 
@@ -23,11 +24,19 @@ export const TAB = {
   INFO: "info",
   PARAMS: "params",
   COORDS: "coords",
+  MONITORING: "monitoring",
   LOG: "log",
 };
 
-export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
+export function useLeakDetailsSheet({
+  leak,
+  onClose,
+  onSave,
+  onDelete,
+  userProfile,
+}) {
   const { lang } = useLanguage();
+  const historyUser = userProfile?.name?.trim() || undefined;
   const projectConfig = useProjectConfig();
   const { activeProject } = useProjectData();
   const { vars } = useProjectVars(
@@ -54,11 +63,14 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [resolveOpen, setResolveOpen] = useState(false);
+  const [repairOpen, setRepairOpen] = useState(false);
+  const [reopenOpen, setReopenOpen] = useState(false);
   const [statusPickerOpen, setStatusPickerOpen] = useState(false);
 
   const prevLeakIdRef = useRef(null);
   const fileInputRef = useRef(null);
   const fileInputAfterRef = useRef(null);
+  const fileInputRepairRef = useRef(null);
   const deleteTimerRef = useRef(null);
 
   const {
@@ -73,7 +85,7 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     initialPath: leak.photo,
     leakId: String(leak.id),
     version: leak.updatedAt,
-    excludePaths: leak.photo_after ? [leak.photo_after] : [],
+    excludePaths: [leak.photo_after, leak.photo_repair].filter(Boolean),
   });
 
   const afterLeakId = `${leak.id}_after`;
@@ -88,7 +100,22 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     initialPath: leak.photo_after,
     leakId: afterLeakId,
     version: leak.updatedAt,
-    excludePaths: leak.photo ? [leak.photo] : [],
+    excludePaths: [leak.photo, leak.photo_repair].filter(Boolean),
+  });
+
+  const repairLeakId = `${leak.id}_repair`;
+  const {
+    src: srcRepair,
+    isDirty: isRepairDirty,
+    changePhoto: changePhotoRepair,
+    choosePhoto: choosePhotoRepair,
+    savePhoto: savePhotoRepair,
+    resetPhoto: resetPhotoRepair,
+  } = useEditablePhoto({
+    initialPath: leak.photo_repair,
+    leakId: repairLeakId,
+    version: leak.updatedAt,
+    excludePaths: [leak.photo, leak.photo_after].filter(Boolean),
   });
 
   useEffect(() => {
@@ -103,15 +130,17 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
       setCloseConfirmOpen(false);
       resetPhoto();
       resetPhotoAfter();
+      resetPhotoRepair();
       prevLeakIdRef.current = key;
     }
-  }, [leak, editFields, resetPhoto, resetPhotoAfter]);
+  }, [leak, editFields, resetPhoto, resetPhotoAfter, resetPhotoRepair]);
 
   const dirtyFields = useMemo(
     () => editFields.filter(({ key }) => localEdit[key] !== leak[key]),
     [editFields, localEdit, leak],
   );
-  const isDirty = isPhotoDirty || isAfterDirty || dirtyFields.length > 0;
+  const isDirty =
+    isPhotoDirty || isAfterDirty || isRepairDirty || dirtyFields.length > 0;
 
   useEffect(() => {
     const handler = (event) => {
@@ -175,6 +204,7 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     try {
       const photoPath = await savePhoto();
       const photoAfterPath = await savePhotoAfter();
+      const photoRepairPath = await savePhotoRepair();
 
       const numericKeys = new Set(
         editFields.filter((field) => field.numeric).map((field) => field.key),
@@ -199,6 +229,7 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
         ...textPatch,
         photo: photoPath ?? leak.photo,
         photo_after: photoAfterPath ?? leak.photo_after,
+        photo_repair: photoRepairPath ?? leak.photo_repair,
         updatedAt: Date.now(),
       };
       const withCalc = speedChanged && vars ? calculations(base, vars) : base;
@@ -212,6 +243,7 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
         includeKeys: [
           ...(isPhotoDirty ? ["photo"] : []),
           ...(isAfterDirty ? ["photo_after"] : []),
+          ...(isRepairDirty ? ["photo_repair"] : []),
           ...(speedChanged ? ["priority"] : []),
         ],
       });
@@ -219,7 +251,12 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
         ...withoutHistory,
         history: [
           ...(leak.history ?? []),
-          { action: "edited", date: new Date().toISOString(), changes },
+          {
+            action: "edited",
+            date: new Date().toISOString(),
+            user: historyUser,
+            changes,
+          },
         ],
       };
 
@@ -245,6 +282,16 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
       return;
     }
 
+    if (newStatus === STATUS.IN_PROGRESS) {
+      setRepairOpen(true);
+      return;
+    }
+
+    if (newStatus === STATUS.OPEN && leak.status === STATUS.RESOLVED) {
+      setReopenOpen(true);
+      return;
+    }
+
     const photoUpdate =
       leak.status === STATUS.RESOLVED
         ? { photo: leak.photo_after ?? leak.photo, photo_after: null }
@@ -263,6 +310,7 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
           action: "status_changed",
           to: newStatus,
           date: new Date().toISOString(),
+          user: historyUser,
         },
       ],
     });
@@ -286,6 +334,7 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
       before: leak,
       after,
       fields: STATUS_NOTE_FIELDS,
+      includeKeys: ["photo_repair"],
     });
     onSave({
       ...after,
@@ -295,10 +344,60 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
           action: "status_changed",
           to: STATUS.RESOLVED,
           date: now,
+          user: historyUser,
           ...(changes.length > 0 ? { changes } : {}),
         },
       ],
     });
+    if (leak.status === STATUS.RESOLVED && leak.photo_after && leak.photo) {
+      deletePhoto(leak.photo).catch(() => {});
+    }
+  };
+
+  const handleRepairConfirm = ({ photo_repair, materials_equipment, note }) => {
+    setRepairOpen(false);
+    const repairAt = Date.now();
+    const now = new Date(repairAt).toISOString();
+    const after = {
+      ...leak,
+      ...(leak.status === STATUS.RESOLVED
+        ? { photo: leak.photo_after ?? leak.photo, photo_after: null }
+        : {}),
+      status: STATUS.IN_PROGRESS,
+      resolvedAt: null,
+      repairAt,
+      photo_repair: photo_repair ?? leak.photo_repair,
+      materials_equipment: materials_equipment ?? leak.materials_equipment,
+      note: note ?? leak.note,
+      updatedAt: Date.now(),
+    };
+    const changes = buildLeakHistoryChanges({
+      before: leak,
+      after,
+      fields: STATUS_NOTE_FIELDS,
+    });
+    onSave({
+      ...after,
+      history: [
+        ...(leak.history ?? []),
+        {
+          action: "status_changed",
+          to: STATUS.IN_PROGRESS,
+          date: now,
+          user: historyUser,
+          ...(changes.length > 0 ? { changes } : {}),
+        },
+      ],
+    });
+  };
+
+  const handleReopenConfirm = (draft) => {
+    setReopenOpen(false);
+    const next = buildReopenedLeak({ leak, draft, vars, user: historyUser });
+    onSave(next);
+    if (leak.status === STATUS.RESOLVED && leak.photo_after && leak.photo) {
+      deletePhoto(leak.photo).catch(() => {});
+    }
   };
 
   const handleAddComment = (text) => {
@@ -307,7 +406,12 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
       updatedAt: Date.now(),
       history: [
         ...(leak.history ?? []),
-        { action: "comment", text, date: new Date().toISOString() },
+        {
+          action: "comment",
+          text,
+          date: new Date().toISOString(),
+          user: historyUser,
+        },
       ],
     });
   };
@@ -320,6 +424,7 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
   const handleCancel = () => {
     resetPhoto();
     resetPhotoAfter();
+    resetPhotoRepair();
     setCloseConfirmOpen(false);
     const keys = editFields.map((field) => field.key);
     setLocalEdit(Object.fromEntries(keys.map((key) => [key, leak[key]])));
@@ -367,6 +472,10 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
             id: TAB.COORDS,
             label: lang === "ru" ? "Координаты" : "Coordinates",
           },
+          {
+            id: TAB.MONITORING,
+            label: lang === "ru" ? "Мониторинг" : "Monitoring",
+          },
           { id: TAB.LOG, label: lang === "ru" ? "Лог" : "Log" },
         ]
       : [
@@ -397,15 +506,22 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     deleteArmed,
     resolveOpen,
     setResolveOpen,
+    repairOpen,
+    setRepairOpen,
+    reopenOpen,
+    setReopenOpen,
     statusPickerOpen,
     setStatusPickerOpen,
     fileInputRef,
     fileInputAfterRef,
+    fileInputRepairRef,
     src,
     srcAfter,
+    srcRepair,
     isNative,
     isDirty,
     projectConfig,
+    vars,
     status,
     ago,
     TABS: tabs,
@@ -418,6 +534,8 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     handleStatusChange,
     handleStatusSelect,
     handleResolveConfirm,
+    handleRepairConfirm,
+    handleReopenConfirm,
     handleAddComment,
     handleEdit,
     handleCancel,
@@ -427,5 +545,7 @@ export function useLeakDetailsSheet({ leak, onClose, onSave, onDelete }) {
     choosePhoto,
     changePhotoAfter,
     choosePhotoAfter,
+    changePhotoRepair,
+    choosePhotoRepair,
   };
 }
