@@ -259,6 +259,7 @@ function MonitoringSheet({
           onChange={(photo) => onChange({ photo })}
           label={texts.photo}
           required
+          compact
           error={submitted && !draft.photo?.raw}
         />
 

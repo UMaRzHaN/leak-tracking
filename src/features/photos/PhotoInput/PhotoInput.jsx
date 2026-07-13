@@ -9,6 +9,7 @@ export default function PhotoInput({
   label = "Фото",
   required = false,
   error = false,
+  compact = false,
 }) {
   const { t } = useTranslation();
   const inputRef = useRef(null);
@@ -75,7 +76,9 @@ export default function PhotoInput({
 
   return (
     <div
-      className={[s.photoInput, error && s.hasError].filter(Boolean).join(" ")}
+      className={[s.photoInput, compact && s.compact, error && s.hasError]
+        .filter(Boolean)
+        .join(" ")}
     >
       <div className={s.fieldLabel}>
         {label}

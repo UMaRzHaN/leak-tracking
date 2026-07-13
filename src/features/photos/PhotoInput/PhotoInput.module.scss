@@ -119,6 +119,41 @@
 }
 
 /* ── Error ── */
+.compact {
+  gap: 6px;
+
+  .card {
+    gap: 5px;
+    padding: 14px 14px 12px;
+  }
+
+  .cardIcon {
+    font-size: 26px;
+  }
+
+  .cardTitle {
+    font-size: 13px;
+  }
+
+  .cardHint {
+    font-size: 11px;
+    margin-bottom: 2px;
+  }
+
+  .actions {
+    margin-top: 2px;
+  }
+
+  .btn {
+    min-height: 36px;
+    padding: 8px 10px;
+  }
+
+  .photoPreview {
+    max-height: 150px;
+  }
+}
+
 .fieldError {
   font-size: 12px;
   color: var(--c-danger);
