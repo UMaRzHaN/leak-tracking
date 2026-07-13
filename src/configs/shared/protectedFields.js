@@ -3,9 +3,6 @@ export const PROTECTED_FIELD_KEYS = new Set([
   "date",
   "status",
   "resolvedAt",
-  "photo",
-  "photo_after",
-  "photo_repair",
   "monitoringRecords",
   "roundNumber",
 ]);
