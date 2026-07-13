@@ -61,7 +61,7 @@ const resources = {
       mainPage: {
         total: "Всего",
         open: "Открыто",
-        inProgress: "В работе",
+        inProgress: "В ремонте",
         resolved: "Устранено",
 
         recentRecords: "Последние {{count}} записей",
@@ -244,7 +244,7 @@ const resources = {
 
         statuses: {
           open: "Открыта",
-          in_progress: "В работе",
+          in_progress: "В ремонте",
           resolved: "Устранена",
         },
 
@@ -381,7 +381,7 @@ const resources = {
       mainPage: {
         total: "Total",
         open: "Open",
-        inProgress: "In Progress",
+        inProgress: "Under Repair",
         resolved: "Resolved",
 
         recentRecords: "Last {{count}} records",
@@ -698,7 +698,7 @@ const resources = {
 
         statuses: {
           open: "Open",
-          in_progress: "In progress",
+          in_progress: "Under repair",
           resolved: "Resolved",
         },
 

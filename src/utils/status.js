@@ -29,25 +29,25 @@ export const STATUS_ORDER = [STATUS.OPEN, STATUS.IN_PROGRESS, STATUS.RESOLVED];
 const STATUS_LABEL_DEFAULTS = {
   ru: {
     open: "Открыта",
-    in_progress: "В работе",
+    in_progress: "В ремонте",
     resolved: "Устранена",
   },
   en: {
     open: "Open",
-    in_progress: "In progress",
+    in_progress: "Under repair",
     resolved: "Resolved",
   },
 };
 
 const STATUS_ACTION_DEFAULTS = {
   ru: {
-    open: "Взять в работу",
+    open: "Взять в ремонт",
     in_progress: "Устранено",
     resolved: "Переоткрыть",
     fallback: "Изменить статус",
   },
   en: {
-    open: "Start progress",
+    open: "Start repair",
     in_progress: "Mark resolved",
     resolved: "Reopen",
     fallback: "Change status",
