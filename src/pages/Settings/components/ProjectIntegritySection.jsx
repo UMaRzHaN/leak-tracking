@@ -66,6 +66,20 @@ export default function ProjectIntegritySection({
                 values={report.missingPhoto}
               />
               <IssueRow
+                label={lang === "ru" ? "Без фото в ремонте" : "No repair photo"}
+                values={report.missingRepairPhoto ?? []}
+              />
+              <IssueRow
+                label={lang === "ru" ? "Без фото после" : "No after photo"}
+                values={report.missingAfterPhoto ?? []}
+              />
+              <IssueRow
+                label={
+                  lang === "ru" ? "Без фото мониторинга" : "No monitoring photo"
+                }
+                values={report.missingMonitoringPhoto ?? []}
+              />
+              <IssueRow
                 label={lang === "ru" ? "Битые фото" : "Broken photos"}
                 values={report.brokenPhoto}
               />

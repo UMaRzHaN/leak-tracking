@@ -39,6 +39,9 @@ export async function analyzeProjectIntegrity(
   { idbGetPhoto } = {},
 ) {
   const missingPhoto = [];
+  const missingRepairPhoto = [];
+  const missingAfterPhoto = [];
+  const missingMonitoringPhoto = [];
   const brokenPhoto = [];
   const missingCoords = [];
   const duplicateLeakIds = [];
@@ -62,6 +65,22 @@ export async function analyzeProjectIntegrity(
       missingPhoto.push(label);
     }
 
+    if (leak?.status === "in_progress" && !leak?.photo_repair) {
+      missingRepairPhoto.push(label);
+    }
+
+    if (leak?.status === "resolved" && !leak?.photo_after) {
+      missingAfterPhoto.push(label);
+    }
+
+    if (Array.isArray(leak?.monitoringRecords)) {
+      leak.monitoringRecords.forEach((record, index) => {
+        if (!record?.photo) {
+          missingMonitoringPhoto.push(`${label}:monitoringRecords[${index}]`);
+        }
+      });
+    }
+
     for (const [field, path] of getLeakPhotoRefs(leak)) {
       if (!path) continue;
       if (!(await photoExists(path, idbGetPhoto))) {
@@ -72,6 +91,9 @@ export async function analyzeProjectIntegrity(
 
   const issues =
     missingPhoto.length +
+    missingRepairPhoto.length +
+    missingAfterPhoto.length +
+    missingMonitoringPhoto.length +
     brokenPhoto.length +
     missingCoords.length +
     duplicateLeakIds.length;
@@ -80,6 +102,9 @@ export async function analyzeProjectIntegrity(
     total: leaks.length,
     issues,
     missingPhoto,
+    missingRepairPhoto,
+    missingAfterPhoto,
+    missingMonitoringPhoto,
     brokenPhoto,
     missingCoords,
     duplicateLeakIds,
