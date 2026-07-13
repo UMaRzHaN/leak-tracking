@@ -76,13 +76,6 @@ export const STEPS = [
       },
       {
         type: "input",
-        key: "detectedBy",
-        label: "Кто зафиксировал",
-        placeholder: "напр. Иванов И.И.",
-        hint: "Сотрудник, который первично зафиксировал утечку",
-      },
-      {
-        type: "input",
         key: "pressure",
         label: "Давление",
         number: true,
