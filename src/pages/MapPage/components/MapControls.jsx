@@ -15,7 +15,7 @@ export default function MapControls({
   onOpenSheet,
   onDownload,
   downloading,
-  heatmapEnabled,
+  // heatmapEnabled,
   nearbyOnly,
   nearbyRadius,
   nearbyRadiusOptions,
@@ -23,7 +23,7 @@ export default function MapControls({
   statusFilters,
   hasGps,
   onToggleNearby,
-  onToggleHeatmap,
+  // onToggleHeatmap,
   onRadiusChange,
   onPriorityToggle,
   onPriorityClear,
@@ -103,6 +103,7 @@ export default function MapControls({
         </svg>
       </button>
 
+      {/*
       <button
         type="button"
         className={`${s.controlBtn} ${heatmapEnabled ? s.controlBtnActive : ""}`}
@@ -122,6 +123,8 @@ export default function MapControls({
           <path d="M12 17a3 3 0 0 0 3-3c0-1.7-1.6-3.1-3-5-1.4 1.9-3 3.3-3 5a3 3 0 0 0 3 3z" />
         </svg>
       </button>
+
+      */}
 
       <div className={s.filterControlWrap}>
         <button
