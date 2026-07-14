@@ -15,9 +15,19 @@
  * - native Capacitor: пишет data.json и фото в Directory.Data.
  */
 (async function seed100Leaks() {
-  const COUNT = 10000;
+  const COUNT = Number(window.SEED_LEAK_COUNT ?? 100);
   const ROUNDS = 10;
   const CURRENT_ROUND = 10;
+  const BUILD_BATCH_SIZE = 100;
+  const SAVE_BATCH_SIZE = 50;
+  const FULL_PHOTO_LIMIT = 1200;
+  const CARD_PHOTO_POOL_SIZE = Number(
+    window.SEED_CARD_PHOTO_POOL_SIZE ?? (COUNT > FULL_PHOTO_LIMIT ? 120 : 0),
+  );
+  const DETAIL_PHOTO_SAMPLE_EVERY = Number(
+    window.SEED_DETAIL_PHOTO_EVERY = 1  // везде будут фото
+    // ?? (COUNT > FULL_PHOTO_LIMIT ? 10 : 1), // не везде будут
+  );
   const USER_PROFILE_KEY = "leak_tracking:user_profile:v1";
 
   const STORAGE = {
@@ -79,13 +89,24 @@
       }),
     );
 
-    const leaks = buildLeaks({
+    console.log(
+      `Генерирую ${COUNT} утечек. Фото карточек: для каждой записи. Детальные фото/логи: ${
+        DETAIL_PHOTO_SAMPLE_EVERY === 1
+          ? "для каждой записи"
+          : `примерно для каждой ${DETAIL_PHOTO_SAMPLE_EVERY}-й записи`
+      }.`,
+    );
+
+    const cardPhotoPool = buildCardPhotoPool();
+
+    const leaks = await buildLeaks({
       count: COUNT,
       rounds: ROUNDS,
       currentRound: CURRENT_ROUND,
       projectType,
       currentUser,
       vars: DEFAULT_VARS,
+      cardPhotoPool,
     });
 
     try {
@@ -140,13 +161,29 @@
     }
   }
 
-  function buildLeaks({
+  function shouldAttachDetailPhoto(index) {
+    return index % DETAIL_PHOTO_SAMPLE_EVERY === 0;
+  }
+
+  function yieldToBrowser() {
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  function buildCardPhotoPool() {
+    if (CARD_PHOTO_POOL_SIZE <= 0) return null;
+    return Array.from({ length: CARD_PHOTO_POOL_SIZE }, (_, index) =>
+      makePhoto((index * 37) % 360, `ДО ${2400 + index}`, "before"),
+    );
+  }
+
+  async function buildLeaks({
     count,
     rounds,
     currentRound,
     projectType,
     currentUser,
     vars,
+    cardPhotoPool,
   }) {
     const now = Date.now();
     const twoYears = 2 * 365 * 24 * 60 * 60 * 1000;
@@ -213,13 +250,16 @@
             : "",
         lat: rndFloat(BASE_LAT - 0.035, BASE_LAT + 0.035, 6),
         lng: rndFloat(BASE_LNG - 0.045, BASE_LNG + 0.045, 6),
-        photo: makePhoto(hue, `ДО ${leakId}`, "before"),
+        photo: cardPhotoPool
+          ? cardPhotoPool[index % cardPhotoPool.length]
+          : makePhoto(hue, `ДО ${leakId}`, "before"),
         photo_repair:
-          status === "in_progress" || status === "resolved"
+          shouldAttachDetailPhoto(index) &&
+          (status === "in_progress" || status === "resolved")
             ? makePhoto(hue, `РЕМ ${leakId}`, "repair")
             : null,
         photo_after:
-          status === "resolved"
+          shouldAttachDetailPhoto(index) && status === "resolved"
             ? makePhoto(hue, `ПОСЛЕ ${leakId}`, "after")
             : null,
         repairAt,
@@ -233,6 +273,7 @@
         currentRound,
         hue,
         now,
+        includePhoto: shouldAttachDetailPhoto(index),
       });
       syncLatestMonitoringPhoto(leak);
       leak.history = buildHistory({
@@ -243,6 +284,11 @@
       leak.updatedAt = getLatestTimestamp(leak) ?? leak.updatedAt;
 
       leaks.push(leak);
+
+      if ((index + 1) % BUILD_BATCH_SIZE === 0) {
+        console.log(`Сгенерировано ${index + 1}/${count} утечек...`);
+        await yieldToBrowser();
+      }
     }
 
     return leaks.sort((left, right) => right.id - left.id);
@@ -276,7 +322,14 @@
     };
   }
 
-  function buildMonitoringRecords({ leak, rounds, currentRound, hue, now }) {
+  function buildMonitoringRecords({
+    leak,
+    rounds,
+    currentRound,
+    hue,
+    now,
+    includePhoto = true,
+  }) {
     const records = [];
     const maxRounds = Math.min(rounds, rndInt(2, rounds));
 
@@ -310,12 +363,14 @@
           roundNumber: round,
           monitoredBy: pick(USERS),
           result,
-          photo: makePhoto(
-            hue + round * 19 + copy * 73,
-            `МОН ${leak.leak_id} · ${round}.${copy + 1}`,
-            monitoringPhotoMode(result),
-            date,
-          ),
+          photo: includePhoto
+            ? makePhoto(
+                hue + round * 19 + copy * 73,
+                `МОН ${leak.leak_id} · ${round}.${copy + 1}`,
+                monitoringPhotoMode(result),
+                date,
+              )
+            : null,
           materials_equipment:
             result === "still_leaking"
               ? leak.materials_equipment
@@ -451,7 +506,7 @@
 
     await deleteWebProjectPhotos(db, projectId);
 
-    for (const leak of leaks) {
+    for (const [leakIndex, leak] of leaks.entries()) {
       for (const key of ["photo", "photo_repair", "photo_after"]) {
         if (
           typeof leak[key] !== "string" ||
@@ -489,18 +544,34 @@
       }
 
       syncLatestMonitoringPhoto(leak);
+
+      if ((leakIndex + 1) % SAVE_BATCH_SIZE === 0) {
+        console.log(
+          `Фото/ссылки подготовлены ${leakIndex + 1}/${leaks.length}...`,
+        );
+        await yieldToBrowser();
+      }
     }
 
     db.close();
+    await yieldToBrowser();
     await writeWebProjectData({ db: dataDb, projectId, leaks });
     dataDb.close();
-    try {
-      localStorage.setItem(dataKey, JSON.stringify(leaks));
-    } catch (error) {
+    await yieldToBrowser();
+    if (leaks.length <= FULL_PHOTO_LIMIT) {
+      try {
+        localStorage.setItem(dataKey, JSON.stringify(leaks));
+      } catch (error) {
+        localStorage.removeItem(dataKey);
+        console.warn(
+          "localStorage переполнен, база записана только в IndexedDB:",
+          error,
+        );
+      }
+    } else {
       localStorage.removeItem(dataKey);
-      console.warn(
-        "localStorage переполнен, база записана только в IndexedDB:",
-        error,
+      console.log(
+        "Большая тестовая база записана только в IndexedDB, без дубля в localStorage.",
       );
     }
     console.log(`Фото записано в IndexedDB: ${photoCount}`);
@@ -600,8 +671,13 @@
   }
 
   async function dataUrlToBlob(dataUrl) {
+    if (!dataUrlToBlob.cache) dataUrlToBlob.cache = new Map();
+    const cached = dataUrlToBlob.cache.get(dataUrl);
+    if (cached) return cached;
     const response = await fetch(dataUrl);
-    return response.blob();
+    const blob = await response.blob();
+    dataUrlToBlob.cache.set(dataUrl, blob);
+    return blob;
   }
 
   async function saveNativeData({ leaks, folderName }) {
@@ -620,7 +696,7 @@
     }).catch(() => {});
 
     let photoCount = 0;
-    for (const leak of leaks) {
+    for (const [leakIndex, leak] of leaks.entries()) {
       for (const key of ["photo", "photo_repair", "photo_after"]) {
         if (
           typeof leak[key] !== "string" ||
@@ -656,8 +732,16 @@
       }
 
       syncLatestMonitoringPhoto(leak);
+
+      if ((leakIndex + 1) % SAVE_BATCH_SIZE === 0) {
+        console.log(
+          `Фото/ссылки подготовлены ${leakIndex + 1}/${leaks.length}...`,
+        );
+        await yieldToBrowser();
+      }
     }
 
+    await yieldToBrowser();
     await Fs.writeFile({
       path: `${dataDir}/data.json`,
       directory: "DATA",
