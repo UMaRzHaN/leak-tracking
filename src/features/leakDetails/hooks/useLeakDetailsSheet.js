@@ -5,7 +5,14 @@ import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
-import { calculations } from "@/utils/calculations/calculations";
+import { isPinkBagEquipment } from "@/utils/calculations/calculations";
+import {
+  CALCULATION_PARAM_KEYS,
+  CALCULATION_PARAMS_VERSION,
+  buildLeakCalculationParams,
+  calculateLeakWithSnapshot,
+  calculationParamsEqual,
+} from "@/utils/calculationParams";
 import { STATUS } from "@/utils/status";
 import { priorityFromSpeed } from "@/utils/priority";
 import { timeAgo } from "@/utils/timeAgo";
@@ -36,7 +43,7 @@ export function useLeakDetailsSheet({
   userProfile,
 }) {
   const { lang } = useLanguage();
-  const historyUser = userProfile?.name?.trim() || undefined;
+  const historyUser = userProfile?.name?.trim() ?? "";
   const projectConfig = useProjectConfig();
   const { activeProject } = useProjectData();
   const { vars } = useProjectVars(
@@ -57,6 +64,7 @@ export function useLeakDetailsSheet({
   const [mode, setMode] = useState(MODE.VIEW);
   const [activeTab, setActiveTab] = useState(TAB.INFO);
   const [localEdit, setLocalEdit] = useState({});
+  const [localCalcParams, setLocalCalcParams] = useState({});
   const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState(null);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -125,6 +133,7 @@ export function useLeakDetailsSheet({
       setLocalEdit(
         Object.fromEntries(keys.map((keyName) => [keyName, leak[keyName]])),
       );
+      setLocalCalcParams(buildLeakCalculationParams(leak, vars));
       setMode(MODE.VIEW);
       setActiveTab(TAB.INFO);
       setCloseConfirmOpen(false);
@@ -133,14 +142,40 @@ export function useLeakDetailsSheet({
       resetPhotoRepair();
       prevLeakIdRef.current = key;
     }
-  }, [leak, editFields, resetPhoto, resetPhotoAfter, resetPhotoRepair]);
+  }, [leak, editFields, resetPhoto, resetPhotoAfter, resetPhotoRepair, vars]);
+
+  const originalCalcParams = useMemo(
+    () => buildLeakCalculationParams(leak, vars),
+    [leak, vars],
+  );
 
   const dirtyFields = useMemo(
     () => editFields.filter(({ key }) => localEdit[key] !== leak[key]),
     [editFields, localEdit, leak],
   );
+  const calcParamsDirty = !calculationParamsEqual(
+    localCalcParams,
+    originalCalcParams,
+  );
   const isDirty =
-    isPhotoDirty || isAfterDirty || isRepairDirty || dirtyFields.length > 0;
+    isPhotoDirty ||
+    isAfterDirty ||
+    isRepairDirty ||
+    dirtyFields.length > 0 ||
+    calcParamsDirty;
+
+  const requireHistoryUser = useCallback(() => {
+    if (historyUser) return true;
+    hapticWarning();
+    setNotification({
+      type: "error",
+      message:
+        lang === "ru"
+          ? "Заполните имя пользователя в профиле"
+          : "Fill in the user name in the profile",
+    });
+    return false;
+  }, [historyUser, lang]);
 
   useEffect(() => {
     const handler = (event) => {
@@ -173,6 +208,23 @@ export function useLeakDetailsSheet({
 
   const handleSave = async () => {
     if (saving) return;
+
+    if (!requireHistoryUser()) return;
+
+    if (
+      !isPinkBagEquipment(localCalcParams.equipmentType) &&
+      localCalcParams.serial_number == null
+    ) {
+      setActiveTab(TAB.PARAMS);
+      setNotification({
+        type: "error",
+        message:
+          lang === "ru"
+            ? "Укажите серийный номер оборудования"
+            : "Enter the equipment serial number",
+      });
+      return;
+    }
 
     const lat = Number(localEdit.lat ?? leak.lat);
     const lng = Number(localEdit.lng ?? leak.lng);
@@ -219,10 +271,11 @@ export function useLeakDetailsSheet({
       );
 
       const speedKey = "leak_speed";
-      const speedChanged = dirtyFields.some(
-        ({ key }) =>
-          key === speedKey && Number(localEdit[key]) !== Number(leak[key]),
+      const measurementKeys = new Set([speedKey, "pressure", "temperature"]);
+      const measurementChanged = dirtyFields.some(({ key }) =>
+        measurementKeys.has(key),
       );
+      const speedChanged = dirtyFields.some(({ key }) => key === speedKey);
 
       const base = {
         ...leak,
@@ -230,13 +283,18 @@ export function useLeakDetailsSheet({
         photo: photoPath ?? leak.photo,
         photo_after: photoAfterPath ?? leak.photo_after,
         photo_repair: photoRepairPath ?? leak.photo_repair,
+        calculationParams: localCalcParams,
+        calculationVersion: CALCULATION_PARAMS_VERSION,
         updatedAt: Date.now(),
       };
-      const withCalc = speedChanged && vars ? calculations(base, vars) : base;
+      const withCalc =
+        measurementChanged || calcParamsDirty
+          ? calculateLeakWithSnapshot(base, vars, localCalcParams)
+          : base;
       const withoutHistory = speedChanged
-        ? { ...withCalc, priority: priorityFromSpeed(localEdit[speedKey]) }
+        ? { ...withCalc, priority: priorityFromSpeed(withCalc[speedKey]) }
         : withCalc;
-      const changes = buildLeakHistoryChanges({
+      const fieldChanges = buildLeakHistoryChanges({
         before: leak,
         after: withoutHistory,
         fields: dirtyFields,
@@ -247,6 +305,12 @@ export function useLeakDetailsSheet({
           ...(speedChanged ? ["priority"] : []),
         ],
       });
+      const calcChanges = buildLeakHistoryChanges({
+        before: originalCalcParams,
+        after: localCalcParams,
+        fields: CALCULATION_PARAM_KEYS.map((key) => ({ key })),
+      });
+      const changes = [...fieldChanges, ...calcChanges];
       const withPriority = {
         ...withoutHistory,
         history: [
@@ -276,6 +340,8 @@ export function useLeakDetailsSheet({
   const handleStatusSelect = (newStatus) => {
     setStatusPickerOpen(false);
     if (newStatus === leak.status) return;
+
+    if (!requireHistoryUser()) return;
 
     if (newStatus === STATUS.RESOLVED) {
       setResolveOpen(true);
@@ -319,6 +385,7 @@ export function useLeakDetailsSheet({
   };
 
   const handleResolveConfirm = ({ photo_after, materials_equipment, note }) => {
+    if (!requireHistoryUser()) return;
     setResolveOpen(false);
     const now = new Date().toISOString();
     const after = {
@@ -355,6 +422,7 @@ export function useLeakDetailsSheet({
   };
 
   const handleRepairConfirm = ({ photo_repair, materials_equipment, note }) => {
+    if (!requireHistoryUser()) return;
     setRepairOpen(false);
     const repairAt = Date.now();
     const now = new Date(repairAt).toISOString();
@@ -392,28 +460,13 @@ export function useLeakDetailsSheet({
   };
 
   const handleReopenConfirm = (draft) => {
+    if (!requireHistoryUser()) return;
     setReopenOpen(false);
     const next = buildReopenedLeak({ leak, draft, vars, user: historyUser });
     onSave(next);
     if (leak.status === STATUS.RESOLVED && leak.photo_after && leak.photo) {
       deletePhoto(leak.photo).catch(() => {});
     }
-  };
-
-  const handleAddComment = (text) => {
-    onSave({
-      ...leak,
-      updatedAt: Date.now(),
-      history: [
-        ...(leak.history ?? []),
-        {
-          action: "comment",
-          text,
-          date: new Date().toISOString(),
-          user: historyUser,
-        },
-      ],
-    });
   };
 
   const handleEdit = () => {
@@ -428,6 +481,7 @@ export function useLeakDetailsSheet({
     setCloseConfirmOpen(false);
     const keys = editFields.map((field) => field.key);
     setLocalEdit(Object.fromEntries(keys.map((key) => [key, leak[key]])));
+    setLocalCalcParams(buildLeakCalculationParams(leak, vars));
     setMode(MODE.VIEW);
   };
 
@@ -497,6 +551,8 @@ export function useLeakDetailsSheet({
     setActiveTab,
     localEdit,
     setLocalEdit,
+    localCalcParams,
+    setLocalCalcParams,
     saving,
     notification,
     setNotification,
@@ -536,7 +592,6 @@ export function useLeakDetailsSheet({
     handleResolveConfirm,
     handleRepairConfirm,
     handleReopenConfirm,
-    handleAddComment,
     handleEdit,
     handleCancel,
     armDelete,

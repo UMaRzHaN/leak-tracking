@@ -230,6 +230,16 @@ export function validateProjectBackupMeta(parsed) {
         pushIssue(issues, ["monitoringRound", "startedAt"], "Expected string");
       }
       if (
+        parsed.monitoringRound.completedAt !== undefined &&
+        typeof parsed.monitoringRound.completedAt !== "string"
+      ) {
+        pushIssue(
+          issues,
+          ["monitoringRound", "completedAt"],
+          "Expected string",
+        );
+      }
+      if (
         parsed.monitoringRound.number !== undefined &&
         (!Number.isFinite(Number(parsed.monitoringRound.number)) ||
           Number(parsed.monitoringRound.number) <= 0)

@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState } from "react";
 import { usePhotoSrc } from "@/hooks/usePhotoSrc";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import { getPriorityMeta } from "@/utils/priority";
@@ -115,68 +115,6 @@ function getHistoryChangeLabel(change, fields, localeTexts, t, lang) {
   return translateFieldLabel(change.key, field?.label ?? change.key, t, lang);
 }
 
-function CommentInput({ onSubmit, localeTexts }) {
-  const [text, setText] = useState("");
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  const submit = () => {
-    const t = text.trim();
-    if (!t) return;
-    onSubmit(t);
-    setText("");
-    setOpen(false);
-  };
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        className={s.addCommentBtn}
-        onClick={() => {
-          setOpen(true);
-          setTimeout(() => ref.current?.focus(), 50);
-        }}
-      >
-        {localeTexts.comment.add}
-      </button>
-    );
-  }
-
-  return (
-    <div className={s.commentInputWrap}>
-      <textarea
-        ref={ref}
-        className={s.commentTextarea}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder={localeTexts.comment.placeholder}
-        rows={3}
-      />
-      <div className={s.commentActions}>
-        <button
-          type="button"
-          className={s.commentCancel}
-          onClick={() => {
-            setText("");
-            setOpen(false);
-          }}
-        >
-          {localeTexts.comment.cancel}
-        </button>
-        <button
-          type="button"
-          className={s.commentSubmit}
-          onClick={submit}
-          disabled={!text.trim()}
-        >
-          {localeTexts.comment.save}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function PhotoComparison({
   photoBefore,
   photoRepair,
@@ -266,22 +204,27 @@ function MonitoringRecordRow({ record, localeTexts, lang }) {
 
         <div className={s.monitoringRecordContent}>
           <div className={s.monitoringRecordText}>
-            <span className={s.monitoringResultBadge}>
-              <span className={s.monitoringResultDot} />
-              {getMonitoringResultLabel(record.result, lang)}
-            </span>
+            <div className={s.monitoringSummaryRow}>
+              <span className={s.monitoringResultBadge}>
+                <span className={s.monitoringResultDot} />
+                {getMonitoringResultLabel(record.result, lang)}
+              </span>
 
-            {record.monitoredBy && (
-              <div className={s.monitoringMetaRow}>
-                <span>{localeTexts.monitoring.inspector}</span>
-                <strong>{record.monitoredBy}</strong>
-              </div>
-            )}
+              {record.monitoredBy && (
+                <div className={s.monitoringMetaRow}>
+                  <span>{localeTexts.monitoring.inspector}</span>
+                  <strong>{record.monitoredBy}</strong>
+                </div>
+              )}
+            </div>
 
-            {record.materials_equipment && (
+            {(record.materialsChanged || record.materials_equipment) && (
               <div className={s.monitoringDetailBlock}>
                 <span>{localeTexts.monitoring.materials}</span>
-                <p>{record.materials_equipment}</p>
+                <p>
+                  {record.materials_equipment ||
+                    (lang === "ru" ? "Удалено" : "Removed")}
+                </p>
               </div>
             )}
 
@@ -324,12 +267,7 @@ function MonitoringRecordRow({ record, localeTexts, lang }) {
   );
 }
 
-export default function ViewBlock({
-  data,
-  activeTab,
-  projectConfig,
-  onAddComment,
-}) {
+export default function ViewBlock({ data, activeTab, projectConfig }) {
   const { t, lang } = useLanguage();
 
   const localeTexts = useMemo(
@@ -584,9 +522,6 @@ export default function ViewBlock({
   if (activeTab === "log") {
     return (
       <div className={s.tabPane}>
-        {onAddComment && (
-          <CommentInput onSubmit={onAddComment} localeTexts={localeTexts} />
-        )}
         {history.length > 0 ? (
           history.map((entry, i) => {
             const rel = relativeTime(entry.date, lang);

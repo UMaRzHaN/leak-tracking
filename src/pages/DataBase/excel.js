@@ -235,6 +235,14 @@ function addStructuredTable(sheet, { name, headers, rows, theme }) {
   sheet.views = [{ state: "frozen", ySplit: 1 }];
 }
 
+function normalizeExcelCellValue(value) {
+  if (value instanceof Date) {
+    return Number.isFinite(value.getTime()) ? value : "";
+  }
+
+  return value ?? "";
+}
+
 function styleHeaderRow(sheet, fillColor) {
   const headerRow = sheet.getRow(1);
   headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
@@ -284,7 +292,7 @@ async function buildWorkbook({
         return "";
       }
 
-      return row[key] ?? "";
+      return normalizeExcelCellValue(row[key]);
     }),
   );
 
@@ -344,8 +352,94 @@ async function buildWorkbook({
     photoMap,
     monitoringExportMode,
   );
+  await buildHistorySheet(workbook, orderedLeaks, lang);
 
   return workbook;
+}
+
+async function buildHistorySheet(workbook, orderedLeaks, lang) {
+  const fallbackUser = lang === "ru" ? "Не указан" : "Unknown";
+  const getHistoryUser = (entry, leak) =>
+    entry.user ??
+    entry.monitoredBy ??
+    entry.detectedBy ??
+    leak.detectedBy ??
+    leak.monitoredBy ??
+    fallbackUser;
+
+  const rows = orderedLeaks.flatMap((leak, leakIndex) =>
+    (Array.isArray(leak.history) ? leak.history : []).map((entry) => ({
+      index: leak.index ?? leakIndex + 1,
+      leak_id: leak.leak_id ?? "",
+      date: entry.date ?? "",
+      action: entry.action ?? "",
+      user: getHistoryUser(entry, leak),
+      text: entry.text ?? "",
+      to: entry.to ?? "",
+      changes: Array.isArray(entry.changes)
+        ? JSON.stringify(entry.changes)
+        : "",
+    })),
+  );
+
+  if (rows.length === 0) return;
+
+  const sheet = workbook.addWorksheet(
+    lang === "ru" ? "История" : "Leak History",
+  );
+  const headers =
+    lang === "ru"
+      ? [
+          "№",
+          "Бирка",
+          "Дата",
+          "Действие",
+          "Пользователь",
+          "Текст",
+          "Статус",
+          "Изменения JSON",
+        ]
+      : [
+          "No.",
+          "Tag",
+          "Date",
+          "Action",
+          "User",
+          "Text",
+          "Status",
+          "Changes JSON",
+        ];
+  const keys = [
+    "index",
+    "leak_id",
+    "date",
+    "action",
+    "user",
+    "text",
+    "to",
+    "changes",
+  ];
+
+  const tableRows = rows.map((row) =>
+    keys.map((key) => normalizeExcelCellValue(row[key])),
+  );
+
+  addStructuredTable(sheet, {
+    name: "History",
+    headers,
+    rows: tableRows,
+    theme: "TableStyleMedium9",
+  });
+  styleHeaderRow(sheet, "FF8064A2");
+  await styleBodyRows(sheet, rows.length);
+
+  keys.forEach((key, index) => {
+    sheet.getColumn(index + 1).width = getColumnWidth(
+      headers[index],
+      key,
+      rows,
+    );
+  });
 }
 
 function buildMonitoringRoundLookup(orderedLeaks) {
@@ -503,7 +597,7 @@ async function buildMonitoringSheet(
   const tableRows = rows.map((row) =>
     keys.map((key) => {
       if (key === "photo" && photoMap[row.photoMapKey]) return "";
-      return row[key] ?? "";
+      return normalizeExcelCellValue(row[key]);
     }),
   );
 
@@ -653,6 +747,25 @@ export async function exportToExcelFile(
   const JSZip = (await getJSZip()).default;
   const zip = new JSZip();
   zip.file(`${fileName}.xlsx`, xlsxBuffer);
+
+  if (options.project?.type) {
+    zip.file(
+      "excel-project.json",
+      JSON.stringify(
+        {
+          schemaVersion: 1,
+          exportedAt: new Date().toISOString(),
+          project: {
+            name: options.project.name || fileName,
+            type: options.project.type,
+          },
+          config: options.project.type,
+        },
+        null,
+        2,
+      ),
+    );
+  }
 
   for (const [index, entry] of photoEntries.entries()) {
     if (index > 0 && index % EXPORT_YIELD_EVERY === 0) {

@@ -16,8 +16,12 @@ function detectTypeFromString(str) {
 
 const PROJECT_ICONS = { upstream: "⛽", midstream: "🔧", downstream: "🏭" };
 
-export default function ProjectSetupScreen({ onComplete, onImportZip }) {
-  const { t, toggleLanguage } = useLanguage();
+export default function ProjectSetupScreen({
+  onComplete,
+  onImportZip,
+  onImportExcel,
+}) {
+  const { t, toggleLanguage, lang } = useLanguage();
   const localeTexts = useMemo(
     () => ({
       title: t("projectSetup.title"),
@@ -37,6 +41,16 @@ export default function ProjectSetupScreen({ onComplete, onImportZip }) {
 
       import: t("projectSetup.import"),
       importing: t("projectSetup.importing"),
+      importExcel: t("projectSetup.importExcel"),
+      importingExcel: t("projectSetup.importingExcel"),
+      importExcelProgress: t("projectSetup.importExcelProgress"),
+      emptyExcel: t("projectSetup.emptyExcel"),
+      importProgress: t("projectSetup.importProgress", {
+        defaultValue:
+          lang === "ru"
+            ? "Идёт импорт ZIP backup, подождите..."
+            : "ZIP backup import in progress, please wait...",
+      }),
 
       importHint: t("projectSetup.importHint"),
 
@@ -57,13 +71,16 @@ export default function ProjectSetupScreen({ onComplete, onImportZip }) {
         },
       },
     }),
-    [t],
+    [lang, t],
   );
   const [name, setName] = useState("");
   const [type, setType] = useState("");
   const [error, setError] = useState("");
   const [importing, setImporting] = useState(false);
-  const fileRef = useRef(null);
+  const [importingExcel, setImportingExcel] = useState(false);
+  const zipFileRef = useRef(null);
+  const excelFileRef = useRef(null);
+  const isImporting = importing || importingExcel;
 
   const handleSubmit = () => {
     if (!type) {
@@ -122,6 +139,35 @@ export default function ProjectSetupScreen({ onComplete, onImportZip }) {
     } catch (err) {
       setError(err.message ?? localeTexts.importError);
       setImporting(false);
+    }
+  };
+
+  const requestExcelFile = () => {
+    setError("");
+    excelFileRef.current?.click();
+  };
+
+  const handleExcelFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setImportingExcel(true);
+    setError("");
+    try {
+      const resolvedName =
+        name.trim() || file.name.replace(/\.(?:xlsx|zip)$/i, "");
+      if (!name.trim()) setName(resolvedName);
+      await onImportExcel(file, { name: resolvedName, type });
+    } catch (err) {
+      setError(
+        err.code === "MISSING_PROJECT_TYPE"
+          ? localeTexts.selectProjectType
+          : err.code === "EMPTY_EXCEL"
+            ? localeTexts.emptyExcel
+            : (err.message ?? localeTexts.importError),
+      );
+      setImportingExcel(false);
     }
   };
 
@@ -203,33 +249,65 @@ export default function ProjectSetupScreen({ onComplete, onImportZip }) {
           className={s.startBtn}
           type="button"
           onClick={handleSubmit}
-          disabled={!type || importing}
+          disabled={!type || isImporting}
         >
           {localeTexts.start}
         </button>
 
-        {onImportZip && (
+        {(onImportZip || onImportExcel) && (
           <>
             <div className={s.orDivider}>
               <span>{localeTexts.or}</span>
             </div>
 
-            <button
-              className={s.importBtn}
-              type="button"
-              disabled={importing}
-              onClick={() => fileRef.current?.click()}
-            >
-              {importing ? localeTexts.importing : "⬇ " + localeTexts.import}
-            </button>
+            <div className={s.importActions}>
+              {onImportZip && (
+                <button
+                  className={s.importBtn}
+                  type="button"
+                  disabled={isImporting}
+                  onClick={() => zipFileRef.current?.click()}
+                >
+                  {importing
+                    ? localeTexts.importing
+                    : "↓ " + localeTexts.import}
+                </button>
+              )}
+              {onImportExcel && (
+                <button
+                  className={`${s.importBtn} ${s.excelImportBtn}`}
+                  type="button"
+                  disabled={isImporting}
+                  onClick={requestExcelFile}
+                >
+                  {importingExcel
+                    ? localeTexts.importingExcel
+                    : "▦ " + localeTexts.importExcel}
+                </button>
+              )}
+            </div>
+            {isImporting && (
+              <p className={s.importStatus} role="status" aria-live="polite">
+                {importingExcel
+                  ? localeTexts.importExcelProgress
+                  : localeTexts.importProgress}
+              </p>
+            )}
             <p className={s.importHint}>{localeTexts.importHint}</p>
 
             <input
-              ref={fileRef}
+              ref={zipFileRef}
               type="file"
               accept=".zip,application/zip"
               style={{ display: "none" }}
               onChange={handleFileChange}
+            />
+            <input
+              ref={excelFileRef}
+              type="file"
+              accept=".xlsx,.zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip"
+              style={{ display: "none" }}
+              onChange={handleExcelFileChange}
             />
           </>
         )}

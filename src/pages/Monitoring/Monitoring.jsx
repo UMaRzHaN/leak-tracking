@@ -14,6 +14,7 @@ import { dataUrlToBlob } from "@/utils/photoConversion";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
 import { buildReopenedLeak } from "@/utils/reopenLeak";
 import {
+  completeMonitoringRound,
   createMonitoringRound,
   readMonitoringRound,
   saveMonitoringRound,
@@ -48,6 +49,25 @@ const FILTERS = {
   ALL: "all",
 };
 
+function formatRoundPeriod(startedAt, completedAt, lang) {
+  const started = new Date(startedAt);
+  if (!Number.isFinite(started.getTime())) return "";
+  const locale = lang === "ru" ? "ru-RU" : "en-US";
+  const date = started.toLocaleDateString(locale, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const formatTime = (value) =>
+    new Date(value).toLocaleTimeString(locale, {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  return `${date}, ${formatTime(startedAt)}${
+    completedAt ? `–${formatTime(completedAt)}` : ""
+  }`;
+}
+
 const STATUS_TO_MONITORING_RESULT = {
   [STATUS.OPEN]: MONITORING_RESULT.STILL_LEAKING,
   [STATUS.IN_PROGRESS]: MONITORING_RESULT.NEEDS_RECHECK,
@@ -73,7 +93,7 @@ export function getMonitoringPhotoPathsToKeep(leak) {
   ].filter(Boolean);
 }
 
-function buildMonitoringPatch({
+export function buildMonitoringPatch({
   leak,
   draft,
   monitoredBy,
@@ -85,6 +105,9 @@ function buildMonitoringPatch({
   const now = new Date();
   const result = draft.result || MONITORING_RESULT.STILL_LEAKING;
   const materialsEquipment = draft.materials_equipment?.trim() || undefined;
+  const previousMaterialsEquipment =
+    leak.materials_equipment?.trim() || undefined;
+  const materialsChanged = materialsEquipment !== previousMaterialsEquipment;
   const record = {
     id: `${leak.id}-${now.getTime()}`,
     date: now.toISOString(),
@@ -93,7 +116,12 @@ function buildMonitoringPatch({
     monitoredBy: monitoredBy.trim(),
     result,
     photo: photoPath,
-    materials_equipment: materialsEquipment,
+    ...(materialsChanged
+      ? {
+          materials_equipment: materialsEquipment ?? null,
+          materialsChanged: true,
+        }
+      : {}),
     comment: draft.comment?.trim() || undefined,
   };
 
@@ -211,7 +239,7 @@ function MonitoringSheet({
             value={draft.comment}
             onChange={(event) => onChange({ comment: event.target.value })}
             placeholder={texts.commentPlaceholder}
-            rows={4}
+            rows={2}
           />
         </label>
 
@@ -223,7 +251,7 @@ function MonitoringSheet({
               onChange({ materials_equipment: event.target.value })
             }
             placeholder={texts.materialsPlaceholder}
-            rows={3}
+            rows={2}
           />
         </label>
 
@@ -284,7 +312,36 @@ export default function Monitoring({
   const filters = useDataBaseFilters({ data, coords, sharedFilters });
   const monitoringRoundId = monitoringRound?.id ?? null;
   const monitoringRoundNumber = monitoringRound?.number ?? null;
-  const hasActiveMonitoringRound = Boolean(monitoringRoundId);
+  const hasMonitoringRound = Boolean(monitoringRoundId);
+  const isRoundCompleted = Boolean(monitoringRound?.completedAt);
+  const hasActiveMonitoringRound = hasMonitoringRound && !isRoundCompleted;
+
+  const globalRoundSummary = useMemo(() => {
+    const due = hasMonitoringRound
+      ? data.filter((leak) =>
+          isMonitoringDue(leak, monitoringRoundId, monitoringRoundNumber),
+        ).length
+      : data.length;
+    return {
+      total: data.length,
+      due,
+      checked: Math.max(0, data.length - due),
+      open: data.filter((leak) => (leak.status ?? STATUS.OPEN) === STATUS.OPEN)
+        .length,
+      inProgress: data.filter((leak) => leak.status === STATUS.IN_PROGRESS)
+        .length,
+      resolved: data.filter((leak) => leak.status === STATUS.RESOLVED).length,
+    };
+  }, [data, hasMonitoringRound, monitoringRoundId, monitoringRoundNumber]);
+  const allTagsChecked =
+    hasMonitoringRound &&
+    globalRoundSummary.total > 0 &&
+    globalRoundSummary.due === 0;
+  const displayRoundSummary =
+    isRoundCompleted && monitoringRound?.summary
+      ? monitoringRound.summary
+      : globalRoundSummary;
+  const showCompletion = isRoundCompleted || allTagsChecked;
 
   const nextMonitoringRoundNumber = useMemo(() => {
     const maxRecordNumber = data.reduce((max, leak) => {
@@ -349,6 +406,23 @@ export default function Monitoring({
     setSubmitted(false);
     setPendingRoundLeakId(null);
     setRoundConfirmOpen(false);
+  };
+
+  const finishRound = () => {
+    if (!allTagsChecked || isRoundCompleted) return;
+    const completed = completeMonitoringRound(
+      monitoringRound,
+      new Date().toISOString(),
+      globalRoundSummary,
+    );
+    if (!completed) return;
+    saveMonitoringRound(activeProject?.id ?? null, completed);
+    setMonitoringRound(completed);
+    setFilter(FILTERS.CHECKED);
+    setNotification({
+      type: "success",
+      message: lang === "ru" ? "Обход успешно завершён" : "Round completed",
+    });
   };
 
   const showMonitoringSheet = (leak) => {
@@ -432,6 +506,13 @@ export default function Monitoring({
               "Активного обхода нет. Начните мониторинг, чтобы сформировать список к проверке.",
             startRound: "Начать мониторинг",
             newRound: "Новый обход",
+            finishRound: "Завершить обход",
+            roundReady: "Все теги проверены",
+            roundCompleted: "Обход завершён",
+            completed: "Завершён",
+            openResult: "Открыто",
+            repairResult: "В ремонте",
+            resolvedResult: "Устранено",
           }
         : {
             title: "Monitoring",
@@ -461,6 +542,13 @@ export default function Monitoring({
               "No active round. Start monitoring to build the due list.",
             startRound: "Start monitoring",
             newRound: "New round",
+            finishRound: "Complete round",
+            roundReady: "All tags checked",
+            roundCompleted: "Round completed",
+            completed: "Completed",
+            openResult: "Open",
+            repairResult: "In repair",
+            resolvedResult: "Resolved",
           },
     [lang],
   );
@@ -468,16 +556,16 @@ export default function Monitoring({
   const items = useMemo(() => {
     const sorted = [...filters.displayed].sort((left, right) => {
       const leftDue =
-        hasActiveMonitoringRound &&
+        hasMonitoringRound &&
         isMonitoringDue(left, monitoringRoundId, monitoringRoundNumber);
       const rightDue =
-        hasActiveMonitoringRound &&
+        hasMonitoringRound &&
         isMonitoringDue(right, monitoringRoundId, monitoringRoundNumber);
       if (leftDue !== rightDue) return leftDue ? -1 : 1;
       return (right.updatedAt ?? 0) - (left.updatedAt ?? 0);
     });
 
-    if (!hasActiveMonitoringRound) return sorted;
+    if (!hasMonitoringRound) return sorted;
     if (filter === FILTERS.DUE)
       return sorted.filter((leak) =>
         isMonitoringDue(leak, monitoringRoundId, monitoringRoundNumber),
@@ -491,19 +579,19 @@ export default function Monitoring({
   }, [
     filters.displayed,
     filter,
-    hasActiveMonitoringRound,
+    hasMonitoringRound,
     monitoringRoundId,
     monitoringRoundNumber,
   ]);
 
   const counts = useMemo(
     () => ({
-      due: hasActiveMonitoringRound
+      due: hasMonitoringRound
         ? filters.displayed.filter((leak) =>
             isMonitoringDue(leak, monitoringRoundId, monitoringRoundNumber),
           ).length
         : 0,
-      checked: hasActiveMonitoringRound
+      checked: hasMonitoringRound
         ? filters.displayed.filter(
             (leak) =>
               !isMonitoringDue(leak, monitoringRoundId, monitoringRoundNumber),
@@ -513,7 +601,7 @@ export default function Monitoring({
     }),
     [
       filters.displayed,
-      hasActiveMonitoringRound,
+      hasMonitoringRound,
       monitoringRoundId,
       monitoringRoundNumber,
     ],
@@ -876,7 +964,7 @@ export default function Monitoring({
       <ConfirmSheet
         open={roundConfirmOpen}
         title={
-          hasActiveMonitoringRound
+          hasMonitoringRound
             ? lang === "ru"
               ? "Начать новый обход?"
               : "Start a new round?"
@@ -923,33 +1011,94 @@ export default function Monitoring({
 
       <header className={s.header}>
         <div>
-          <h1>{texts.title}</h1>
           {monitoringRound?.startedAt ? (
             <div className={s.roundMeta}>
               <span className={s.roundBadge}>
                 {lang === "ru" ? "Обход" : "Round"} №
                 {monitoringRound.number ?? 1}
               </span>
+              <span className={s.roundSeparator}>·</span>
               <span>
-                {lang === "ru" ? "Начат" : "Started"}:{" "}
-                {formatMonitoringDate(monitoringRound.startedAt, lang)}
+                {formatRoundPeriod(
+                  monitoringRound.startedAt,
+                  monitoringRound.completedAt,
+                  lang,
+                )}
               </span>
             </div>
           ) : (
             <p>{texts.noActiveRound}</p>
           )}
         </div>
-        <button
-          type="button"
-          className={s.newRoundBtn}
-          onClick={() => {
-            setPendingRoundLeakId(null);
-            setRoundConfirmOpen(true);
-          }}
-        >
-          {hasActiveMonitoringRound ? texts.newRound : texts.startRound}
-        </button>
+        {!showCompletion && (
+          <button
+            type="button"
+            className={s.newRoundBtn}
+            onClick={() => {
+              setPendingRoundLeakId(null);
+              setRoundConfirmOpen(true);
+            }}
+          >
+            {hasMonitoringRound ? texts.newRound : texts.startRound}
+          </button>
+        )}
       </header>
+
+      {showCompletion && (
+        <section
+          className={`${s.completionCard} ${
+            isRoundCompleted ? s.completionCardDone : ""
+          }`}
+          aria-live="polite"
+        >
+          <div className={s.completionSummary}>
+            <span className={s.completionIcon} aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="m7.5 12.5 3 3 6-7" />
+              </svg>
+            </span>
+            <div className={s.completionHeading}>
+              <strong>
+                {isRoundCompleted ? texts.roundCompleted : texts.roundReady}
+              </strong>
+              <span>
+                {displayRoundSummary.checked}/{displayRoundSummary.total}
+              </span>
+            </div>
+          </div>
+          <div className={s.completionStats}>
+            <span className={s.completionStat}>
+              <i className={s.statOpen} />
+              <small>{texts.openResult}</small>
+              <strong>{displayRoundSummary.open}</strong>
+            </span>
+            <span className={s.completionStat}>
+              <i className={s.statRepair} />
+              <small>{texts.repairResult}</small>
+              <strong>{displayRoundSummary.inProgress}</strong>
+            </span>
+            <span className={s.completionStat}>
+              <i className={s.statResolved} />
+              <small>{texts.resolvedResult}</small>
+              <strong>{displayRoundSummary.resolved}</strong>
+            </span>
+          </div>
+          <button
+            type="button"
+            className={s.completionAction}
+            onClick={() => {
+              if (isRoundCompleted) {
+                setPendingRoundLeakId(null);
+                setRoundConfirmOpen(true);
+              } else {
+                finishRound();
+              }
+            }}
+          >
+            {isRoundCompleted ? texts.newRound : texts.finishRound}
+          </button>
+        </section>
+      )}
 
       <div className={s.sharedFilterBar}>
         <FilterBar
@@ -979,7 +1128,7 @@ export default function Monitoring({
             key={id}
             type="button"
             className={`${s.filterBtn} ${
-              (hasActiveMonitoringRound ? filter : FILTERS.ALL) === id
+              (hasMonitoringRound ? filter : FILTERS.ALL) === id
                 ? s.filterBtnActive
                 : ""
             }`}

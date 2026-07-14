@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import EditTextField from "@/features/editTextField/EditTextField";
+import SettingsModal from "@/features/settings/SettingsModal/SettingsModal";
 import EditPhotoRow from "./EditPhotoRow";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
@@ -18,9 +19,12 @@ function translateFieldLabel(key, fallbackLabel, t, lang) {
 
 export default function EditBlock(props) {
   const { lang, t } = useLanguage();
+  const [calcSettingsOpen, setCalcSettingsOpen] = useState(false);
   const {
     localEdit,
     setLocalEdit,
+    localCalcParams,
+    setLocalCalcParams,
     activeTab,
     projectConfig,
     srcBefore,
@@ -189,6 +193,29 @@ export default function EditBlock(props) {
             </p>
           </div>
         )}
+
+        <div className={s.calcShortcut}>
+          <div className={s.calcShortcutText}>
+            <strong>
+              {lang === "ru" ? "Параметры расчёта" : "Calculation parameters"}
+            </strong>
+            <span>
+              {lang === "ru"
+                ? "Используются при сохранении этой утечки"
+                : "Used when this leak is saved"}
+            </span>
+          </div>
+          <button type="button" onClick={() => setCalcSettingsOpen(true)}>
+            {lang === "ru" ? "Редактировать параметры" : "Edit parameters"}
+          </button>
+        </div>
+
+        <SettingsModal
+          open={calcSettingsOpen}
+          onClose={() => setCalcSettingsOpen(false)}
+          variables={localCalcParams}
+          onSave={setLocalCalcParams}
+        />
       </div>
     );
   }

@@ -9,17 +9,10 @@
 
 .header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 10px;
-
-  h1 {
-    margin: 0;
-    color: var(--c-text);
-    font-size: 24px;
-    line-height: 1.15;
-  }
+  gap: 10px;
+  margin-bottom: 5px;
 
   p {
     margin: 6px 0 0;
@@ -33,24 +26,21 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 5px;
   color: var(--c-text2);
-  font-size: 13px;
-  line-height: 1.25;
+  font-size: 11px;
+  line-height: 1.2;
 }
 
 .roundBadge {
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
-  padding: 0 10px;
-  border: 1px solid color-mix(in srgb, var(--c-blue) 55%, transparent);
-  border-radius: 999px;
-  background: var(--c-blue-dim);
   color: var(--c-blue);
-  font-size: 12px;
   font-weight: 800;
+}
+
+.roundSeparator {
+  color: var(--c-border);
 }
 
 .newRoundBtn {
@@ -64,6 +54,181 @@
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.completionCard {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 7px 9px 7px 12px;
+  overflow: hidden;
+  border: 1px solid
+    color-mix(in srgb, var(--c-success, #10b981) 36%, var(--c-border));
+  border-radius: var(--r-lg);
+  background: color-mix(
+    in srgb,
+    var(--c-success, #10b981) 7%,
+    var(--c-surface)
+  );
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--c-success, #10b981);
+  }
+}
+
+.completionCardDone {
+  background: color-mix(
+    in srgb,
+    var(--c-success, #10b981) 5%,
+    var(--c-surface)
+  );
+}
+
+.completionSummary {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.completionHeading {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  > strong {
+    color: var(--c-text);
+    font-size: 12px;
+    line-height: 1.25;
+  }
+
+  > span {
+    color: var(--c-text2);
+    font-size: 10px;
+    white-space: nowrap;
+  }
+}
+
+.completionIcon {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--c-success, #10b981);
+  color: #fff;
+  box-shadow: none;
+
+  svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
+.completionStats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.completionStat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+
+  strong {
+    color: var(--c-text);
+    font-size: 11px;
+    line-height: 1.15;
+  }
+
+  small {
+    color: var(--c-text2);
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+  }
+}
+
+.statResolved {
+  background: var(--c-success, #10b981);
+}
+
+.statOpen {
+  background: var(--c-open, #ef4444);
+}
+
+.statRepair {
+  background: var(--c-warning, #f59e0b);
+}
+
+.completionAction {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--c-success, #10b981);
+  border-radius: var(--r-md);
+  background: var(--c-success, #10b981);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: none;
+
+  &:hover {
+    filter: brightness(1.06);
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+}
+
+@media (max-width: 900px) {
+  .completionCard {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .completionStats {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 540px) {
+  .completionCard {
+    gap: 7px 10px;
+    padding: 7px 8px 7px 11px;
+  }
+
+  .completionStats {
+    gap: 8px;
+  }
+
+  .completionAction {
+    grid-column: auto;
+    width: auto;
+  }
 }
 
 .sharedFilterBar {
@@ -100,8 +265,9 @@
 }
 
 .field textarea {
-  min-height: 64px;
-  padding: 10px 12px;
+  min-height: 48px;
+  padding: 7px 10px;
+  line-height: 1.35;
   resize: vertical;
 }
 
@@ -282,7 +448,6 @@
     font-size: 12px;
     line-height: 1.25;
   }
-
 }
 
 .sheetCloseBtn {
@@ -376,6 +541,6 @@
   }
 
   .field textarea {
-    min-height: 54px;
+    min-height: 44px;
   }
 }

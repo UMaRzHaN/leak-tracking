@@ -6,6 +6,18 @@ import s from "@/pages/DataBase/DataBase.module.scss";
 
 const ALL = "all";
 
+function normalizeSelected(value) {
+  if (Array.isArray(value)) return value;
+  return value && value !== ALL ? [value] : [];
+}
+
+function toggleSelected(current, value) {
+  const selected = normalizeSelected(current);
+  return selected.includes(value)
+    ? selected.filter((item) => item !== value)
+    : [...selected, value];
+}
+
 function FilterBar({
   search,
   setSearch,
@@ -22,8 +34,12 @@ function FilterBar({
   hasGps,
 }) {
   const { t, lang } = useLanguage();
+  const selectedStatuses = normalizeSelected(statusFilter);
+  const selectedPriorities = normalizeSelected(priorityFilter);
   const hasActiveFilter =
-    statusFilter !== ALL || priorityFilter !== ALL || nearbyFilter;
+    selectedStatuses.length > 0 ||
+    selectedPriorities.length > 0 ||
+    nearbyFilter;
   const [open, setOpen] = useState(false);
   const formatRadius = (radius) =>
     radius >= 1000
@@ -93,7 +109,7 @@ function FilterBar({
                 id={ALL}
                 label={lang === "ru" ? "Все" : "All"}
                 count={counts.all}
-                active={statusFilter}
+                active={selectedStatuses.length === 0}
                 onSelect={setFilter}
               />
               {STATUS_ORDER.map((status) => {
@@ -105,7 +121,7 @@ function FilterBar({
                     id={status}
                     label={meta.short}
                     count={counts[status]}
-                    active={statusFilter}
+                    active={selectedStatuses.includes(status)}
                     onSelect={setFilter}
                     color={STATUS_META[status].color}
                     bg={STATUS_META[status].bg}
@@ -125,10 +141,10 @@ function FilterBar({
             <div className={s.priorityFilters}>
               <button
                 className={`${s.priorityTab} ${
-                  priorityFilter === ALL ? s.priorityTabActive : ""
+                  selectedPriorities.length === 0 ? s.priorityTabActive : ""
                 }`}
                 style={
-                  priorityFilter === ALL
+                  selectedPriorities.length === 0
                     ? {
                         color: "var(--c-blue)",
                         background: "var(--c-blue-dim)",
@@ -136,13 +152,13 @@ function FilterBar({
                       }
                     : undefined
                 }
-                onClick={() => setPriorityFilter(ALL)}
+                onClick={() => setPriorityFilter([])}
               >
                 {lang === "ru" ? "Все" : "All"}
               </button>
               {PRIORITY_ORDER.map((priority) => {
                 const meta = getPriorityMeta(priority, t, lang);
-                const isActive = priorityFilter === priority;
+                const isActive = selectedPriorities.includes(priority);
 
                 return (
                   <button
@@ -159,7 +175,11 @@ function FilterBar({
                           }
                         : undefined
                     }
-                    onClick={() => setPriorityFilter(isActive ? ALL : priority)}
+                    onClick={() =>
+                      setPriorityFilter((current) =>
+                        toggleSelected(current, priority),
+                      )
+                    }
                   >
                     {meta.short}
                   </button>
@@ -225,7 +245,7 @@ function FilterBar({
 export default memo(FilterBar);
 
 function FilterTab({ id, label, count, active, onSelect, color, bg, border }) {
-  const isActive = active === id;
+  const isActive = active;
   const activeStyle = isActive
     ? color
       ? { color, background: bg, borderColor: border }
@@ -240,7 +260,12 @@ function FilterTab({ id, label, count, active, onSelect, color, bg, border }) {
     <button
       className={`${s.filterTab} ${isActive ? s.filterActive : ""}`}
       style={activeStyle}
-      onClick={() => onSelect(id)}
+      onClick={() =>
+        onSelect((current) => {
+          if (id === ALL) return [];
+          return toggleSelected(current, id);
+        })
+      }
     >
       {label}
       {count > 0 && <span className={s.filterCount}>{count}</span>}

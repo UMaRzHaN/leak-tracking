@@ -9,6 +9,20 @@ export function createMonitoringRound(number = 1) {
   };
 }
 
+export function completeMonitoringRound(
+  round,
+  completedAt = new Date().toISOString(),
+  summary = null,
+) {
+  const normalized = normalizeMonitoringRound(round);
+  if (!normalized) return null;
+  return {
+    ...normalized,
+    completedAt,
+    ...(summary ? { summary: { ...summary } } : {}),
+  };
+}
+
 export function getMonitoringRoundStorageKey(projectId) {
   return projectId
     ? `app:${projectId}:monitoring_round_${MONITORING_ROUND_STORAGE_VERSION}`
@@ -24,11 +38,18 @@ function getLegacyMonitoringRoundStorageKey(projectId) {
 export function normalizeMonitoringRound(round) {
   if (!round?.id || !round?.startedAt) return null;
 
-  return {
+  const normalized = {
     id: round.id,
     number: Number(round.number) > 0 ? Number(round.number) : 1,
     startedAt: round.startedAt,
   };
+  if (typeof round.completedAt === "string" && round.completedAt) {
+    normalized.completedAt = round.completedAt;
+  }
+  if (round.summary && typeof round.summary === "object") {
+    normalized.summary = { ...round.summary };
+  }
+  return normalized;
 }
 
 export function readMonitoringRound(projectId) {

@@ -7,7 +7,7 @@ import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { useLanguage } from "@/app/hooks/useLanguage";
-import { calculations } from "@/utils/calculations/calculations";
+import { calculateLeakWithSnapshot } from "@/utils/calculationParams";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
 import { localizeAutocompleteOptions } from "@/features/search/Autocomplete/optionTranslations";
 import AddLeakHeader from "./Header/AddLeakHeader";
@@ -238,7 +238,9 @@ export default function LeakForm({
           coerced[key] = normalizeNumber(coerced[key]);
         }
       });
-      const calculated = vars ? calculations(coerced, vars) : coerced;
+      const calculated = vars
+        ? calculateLeakWithSnapshot(coerced, vars)
+        : coerced;
       const saved = await onAdd?.({
         ...calculated,
         date: `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`,

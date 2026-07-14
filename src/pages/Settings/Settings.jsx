@@ -1,11 +1,11 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
-import { useProjectData } from "@/app/hooks/useProjectData";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
 import { useHiddenFields } from "@/app/project/hooks/useHiddenFields";
 import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
 import { getMapCacheInfo, clearMapCache } from "@/services/maps/tileCache";
+import { saveMonitoringRound } from "@/utils/monitoringRound";
 import PageHeader from "@/components/layout/PageHeader/PageHeader";
 import FieldVisibilityModal from "@/features/fieldVisibility/FieldVisibilityModal/FieldVisibilityModal";
 import Notification from "@/components/ui/Notification/Notification";
@@ -28,9 +28,12 @@ import s from "./Settings.module.scss";
 export default function Settings({
   setPage,
   prevPage,
+  data = [],
+  setData,
   clearDatabase,
   onImportZip,
   onImportIntoExisting,
+  onCreateExcelCopy,
 }) {
   const { lang, t, toggleLanguage, localeTexts } = useSettingsTexts();
   const [notification, setNotification] = useState(null);
@@ -40,6 +43,12 @@ export default function Settings({
   const [settingsConfirmAction, setSettingsConfirmAction] = useState(null);
   const [integrityReport, setIntegrityReport] = useState(null);
   const [checkingIntegrity, setCheckingIntegrity] = useState(false);
+  const [isImportingExcel, setIsImportingExcel] = useState(false);
+  const [excelImportState, setExcelImportState] = useState({ open: false });
+  const [excelConflictState, setExcelConflictState] = useState({
+    open: false,
+  });
+  const importExcelRef = useRef(null);
 
   const notify = useCallback((type, message, options = {}) => {
     setNotification({ type, message, ...options });
@@ -63,9 +72,15 @@ export default function Settings({
     handleAdd,
   } = useProjectActions({ setCacheInfo, notify });
 
+  const saveExcelMonitoringRound = useCallback(
+    (round) => {
+      if (round) saveMonitoringRound(activeProject?.id, round);
+    },
+    [activeProject?.id],
+  );
+
   const { vars } = useProjectVars(activeProject?.id ?? null);
-  const { data } = useProjectData();
-  const { getPhoto: idbGetPhoto } = usePhotoStorage();
+  const { getPhoto: idbGetPhoto, savePhoto } = usePhotoStorage();
   const projectConfig = useProjectConfig();
   const { hiddenFields, setHiddenFields } = useHiddenFields(
     activeProject?.id ?? null,
@@ -134,6 +149,325 @@ export default function Settings({
       setCheckingIntegrity(false);
     }
   }, [data, idbGetPhoto, lang, notify]);
+
+  const prepareExcelLeaks = useCallback(
+    (leaks, { mode = "append" } = {}) => {
+      const now = Date.now();
+      const existingByTag = new Map(
+        data
+          .filter((leak) => leak?.leak_id != null)
+          .map((leak) => [String(leak.leak_id), leak]),
+      );
+
+      return leaks.map((leak, index) => {
+        const existing =
+          mode === "merge" && leak.leak_id != null
+            ? existingByTag.get(String(leak.leak_id))
+            : null;
+
+        return {
+          ...leak,
+          id: existing?.id ?? now + index,
+          index:
+            mode === "overwrite" || mode === "copy"
+              ? index + 1
+              : (existing?.index ?? data.length + index + 1),
+          importedFromExcel: true,
+          importedAt: now,
+        };
+      });
+    },
+    [data],
+  );
+
+  const handleImportExcel = useCallback(
+    async (event) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file || !activeProject) return;
+
+      setIsImportingExcel(true);
+      notify(
+        "info",
+        lang === "ru"
+          ? "Идёт чтение Excel, подождите..."
+          : "Reading Excel file, please wait...",
+        { autoCloseMs: 0 },
+      );
+
+      try {
+        const { parseExcelImportFile, reconcileExcelImportPhotos } =
+          await import("@/services/excelImportService");
+        const result = await parseExcelImportFile(file, {
+          projectType: activeProject.type,
+        });
+
+        if (!result.leaks.length) {
+          notify(
+            "warning",
+            lang === "ru"
+              ? "В Excel не найдено строк для импорта"
+              : "No importable rows found in Excel",
+          );
+          return;
+        }
+
+        if (data.length > 0) {
+          const { previewMergeLeaks } =
+            await import("@/services/projectBackupService");
+          const prepared = prepareExcelLeaks(result.leaks, {
+            mode: "merge",
+          });
+          const reconciled = await reconcileExcelImportPhotos(
+            data,
+            prepared,
+            idbGetPhoto,
+            { preserveExisting: true },
+          );
+          const preparedForMerge = reconciled.leaks;
+          const mergePreview = previewMergeLeaks(data, preparedForMerge, {
+            source: "excel",
+          });
+          mergePreview.excelPhotos = reconciled.photos;
+          mergePreview.photoStats = reconciled.photos;
+
+          setExcelConflictState({
+            open: true,
+            fileName: file.name,
+            result,
+            preparedForMerge,
+            projectName: activeProject.name,
+            existingProject: { ...activeProject, leakCount: data.length },
+            leakCount: result.leaks.length,
+            mergePreview,
+          });
+        } else {
+          setExcelImportState({
+            open: true,
+            fileName: file.name,
+            result,
+          });
+        }
+
+        notify(
+          "success",
+          lang === "ru"
+            ? `Excel прочитан: ${result.leaks.length} записей, фото: ${result.stats.restoredPhotos ?? 0}`
+            : `Excel parsed: ${result.leaks.length} records, photos: ${result.stats.restoredPhotos ?? 0}`,
+        );
+      } catch (error) {
+        notify(
+          "error",
+          `${lang === "ru" ? "Ошибка импорта Excel" : "Excel import error"}: ${error.message}`,
+        );
+      } finally {
+        setIsImportingExcel(false);
+      }
+    },
+    [activeProject, data, idbGetPhoto, lang, notify, prepareExcelLeaks],
+  );
+
+  const persistPreparedExcelPhotos = useCallback(
+    async (leaks) => {
+      const { persistExcelImportPhotos } =
+        await import("@/services/excelImportService");
+      return persistExcelImportPhotos(leaks, savePhoto);
+    },
+    [savePhoto],
+  );
+
+  const notifyExcelImportProgress = useCallback(() => {
+    notify(
+      "info",
+      lang === "ru"
+        ? "Идёт импорт Excel, подождите..."
+        : "Excel import in progress, please wait...",
+      { autoCloseMs: 0 },
+    );
+  }, [lang, notify]);
+
+  const confirmExcelImport = useCallback(async () => {
+    const leaks = excelImportState.result?.leaks ?? [];
+    if (!leaks.length) {
+      setExcelImportState({ open: false });
+      return;
+    }
+
+    const prepared = prepareExcelLeaks(leaks, {
+      mode: data.length > 0 ? "append" : "overwrite",
+    });
+
+    try {
+      setIsImportingExcel(true);
+      notifyExcelImportProgress();
+      const withPhotos = await persistPreparedExcelPhotos(prepared);
+      await setData?.([...data, ...withPhotos]);
+      saveExcelMonitoringRound(excelImportState.result?.monitoringRound);
+      notify(
+        "success",
+        lang === "ru"
+          ? `Импортировано из Excel: ${withPhotos.length} записей`
+          : `Imported from Excel: ${withPhotos.length} records`,
+      );
+    } catch (error) {
+      notify(
+        "error",
+        `${lang === "ru" ? "Не удалось сохранить импорт" : "Failed to save import"}: ${error.message}`,
+      );
+    } finally {
+      setIsImportingExcel(false);
+      setExcelImportState({ open: false });
+    }
+  }, [
+    data,
+    excelImportState.result?.leaks,
+    excelImportState.result?.monitoringRound,
+    lang,
+    notify,
+    notifyExcelImportProgress,
+    persistPreparedExcelPhotos,
+    prepareExcelLeaks,
+    saveExcelMonitoringRound,
+    setData,
+  ]);
+
+  const cancelExcelImport = useCallback(() => {
+    setExcelImportState({ open: false });
+  }, []);
+
+  const handleExcelConflictOverwrite = useCallback(async () => {
+    const leaks = excelConflictState.result?.leaks ?? [];
+    const prepared = prepareExcelLeaks(leaks, { mode: "overwrite" });
+
+    try {
+      setIsImportingExcel(true);
+      notifyExcelImportProgress();
+      const { reconcileExcelImportPhotos } =
+        await import("@/services/excelImportService");
+      const reconciled = await reconcileExcelImportPhotos(
+        data,
+        prepared,
+        idbGetPhoto,
+      );
+      const withPhotos = await persistPreparedExcelPhotos(reconciled.leaks);
+      await setData?.(withPhotos);
+      saveExcelMonitoringRound(excelConflictState.result?.monitoringRound);
+      notify(
+        "success",
+        lang === "ru"
+          ? `Проект перезаписан из Excel (${withPhotos.length} записей)`
+          : `Project overwritten from Excel (${withPhotos.length} records)`,
+      );
+    } catch (error) {
+      notify(
+        "error",
+        `${lang === "ru" ? "Не удалось сохранить импорт" : "Failed to save import"}: ${error.message}`,
+      );
+    } finally {
+      setIsImportingExcel(false);
+      setExcelConflictState({ open: false });
+    }
+  }, [
+    data,
+    excelConflictState.result?.leaks,
+    excelConflictState.result?.monitoringRound,
+    idbGetPhoto,
+    lang,
+    notify,
+    notifyExcelImportProgress,
+    persistPreparedExcelPhotos,
+    prepareExcelLeaks,
+    saveExcelMonitoringRound,
+    setData,
+  ]);
+
+  const handleExcelConflictMerge = useCallback(async () => {
+    const incoming =
+      excelConflictState.preparedForMerge ??
+      prepareExcelLeaks(excelConflictState.result?.leaks ?? [], {
+        mode: "merge",
+      });
+
+    try {
+      setIsImportingExcel(true);
+      notifyExcelImportProgress();
+      const { mergeLeaksByFreshness } =
+        await import("@/services/projectBackupService");
+      const incomingWithPhotos = await persistPreparedExcelPhotos(incoming);
+      const mergeResult = mergeLeaksByFreshness(data, incomingWithPhotos, {
+        source: "excel",
+      });
+      await setData?.(mergeResult.leaks);
+      saveExcelMonitoringRound(excelConflictState.result?.monitoringRound);
+      notify(
+        "success",
+        lang === "ru"
+          ? `Excel объединён с проектом: применено ${mergeResult.changed} записей`
+          : `Excel merged into project: ${mergeResult.changed} records applied`,
+      );
+    } catch (error) {
+      notify(
+        "error",
+        `${lang === "ru" ? "Не удалось объединить Excel" : "Failed to merge Excel"}: ${error.message}`,
+      );
+    } finally {
+      setIsImportingExcel(false);
+      setExcelConflictState({ open: false });
+    }
+  }, [
+    data,
+    excelConflictState.preparedForMerge,
+    excelConflictState.result?.leaks,
+    excelConflictState.result?.monitoringRound,
+    lang,
+    notify,
+    notifyExcelImportProgress,
+    persistPreparedExcelPhotos,
+    prepareExcelLeaks,
+    saveExcelMonitoringRound,
+    setData,
+  ]);
+
+  const handleExcelConflictCopy = useCallback(async () => {
+    const leaks = excelConflictState.result?.leaks ?? [];
+    const prepared = prepareExcelLeaks(leaks, { mode: "copy" });
+    const copyName = `${activeProject?.name ?? "Excel import"} (Excel)`;
+
+    try {
+      setIsImportingExcel(true);
+      notifyExcelImportProgress();
+      const result = await onCreateExcelCopy?.({
+        name: copyName,
+        type: activeProject?.type,
+        leaks: prepared,
+        monitoringRound: excelConflictState.result?.monitoringRound,
+      });
+      notify(
+        "success",
+        lang === "ru"
+          ? `Создана копия «${result?.project?.name ?? copyName}» (${prepared.length} записей)`
+          : `Copy "${result?.project?.name ?? copyName}" created (${prepared.length} records)`,
+      );
+    } catch (error) {
+      notify(
+        "error",
+        `${lang === "ru" ? "Не удалось создать копию" : "Failed to create copy"}: ${error.message}`,
+      );
+    } finally {
+      setIsImportingExcel(false);
+      setExcelConflictState({ open: false });
+    }
+  }, [
+    activeProject?.name,
+    activeProject?.type,
+    excelConflictState.result?.leaks,
+    excelConflictState.result?.monitoringRound,
+    lang,
+    notify,
+    notifyExcelImportProgress,
+    onCreateExcelCopy,
+    prepareExcelLeaks,
+  ]);
 
   const handleSettingsConfirm = useCallback(async () => {
     if (settingsConfirmAction === "clearMapCache") {
@@ -257,10 +591,13 @@ export default function Settings({
 
         <BackupSection
           activeProject={activeProject}
+          importExcelRef={importExcelRef}
           importZipRef={importZipRef}
           isExporting={isExportingZip}
+          isImportingExcel={isImportingExcel}
           localeTexts={localeTexts}
           onExport={handleExportZip}
+          onImportExcel={handleImportExcel}
           onImport={handleImportZip}
         />
 
@@ -298,6 +635,20 @@ export default function Settings({
         onCancel={() => setConflictState({ open: false })}
       />
 
+      <ImportConflictSheet
+        open={excelConflictState.open}
+        projectName={excelConflictState.projectName}
+        existingProject={excelConflictState.existingProject}
+        leakCount={excelConflictState.leakCount}
+        mergePreview={excelConflictState.mergePreview}
+        sourceLabel={lang === "ru" ? "в Excel" : "in Excel"}
+        photoLabel={lang === "ru" ? "Фото Excel" : "Excel photos"}
+        onOverwrite={handleExcelConflictOverwrite}
+        onMerge={handleExcelConflictMerge}
+        onCopy={handleExcelConflictCopy}
+        onCancel={() => setExcelConflictState({ open: false })}
+      />
+
       <ConfirmSheet
         open={Boolean(settingsConfirmTexts)}
         title={settingsConfirmTexts?.title}
@@ -326,6 +677,22 @@ export default function Settings({
         cancelLabel={importConfirmState.cancelLabel}
         onConfirm={confirmImport}
         onCancel={cancelImport}
+      />
+
+      <ConfirmSheet
+        open={excelImportState.open}
+        title={lang === "ru" ? "Импортировать Excel?" : "Import Excel?"}
+        description={
+          excelImportState.result
+            ? lang === "ru"
+              ? `Файл: ${excelImportState.fileName}. Лист: ${excelImportState.result.sheetName}. Найдено строк: ${excelImportState.result.stats.totalRows}; будет импортировано: ${excelImportState.result.stats.imported}; мониторинг: ${excelImportState.result.stats.monitoringRecords ?? 0}; фото: ${excelImportState.result.stats.restoredPhotos ?? 0}; пропущено: ${excelImportState.result.stats.skipped}.`
+              : `File: ${excelImportState.fileName}. Sheet: ${excelImportState.result.sheetName}. Rows found: ${excelImportState.result.stats.totalRows}; to import: ${excelImportState.result.stats.imported}; monitoring: ${excelImportState.result.stats.monitoringRecords ?? 0}; photos: ${excelImportState.result.stats.restoredPhotos ?? 0}; skipped: ${excelImportState.result.stats.skipped}.`
+            : ""
+        }
+        confirmLabel={lang === "ru" ? "Импортировать" : "Import"}
+        cancelLabel={lang === "ru" ? "Отмена" : "Cancel"}
+        onConfirm={confirmExcelImport}
+        onCancel={cancelExcelImport}
       />
 
       {activeProject && (

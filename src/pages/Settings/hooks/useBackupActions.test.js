@@ -135,12 +135,22 @@ describe("useBackupActions", () => {
     expect(result.current.importConfirmState.open).toBe(true);
     expect(onImportZip).not.toHaveBeenCalled();
     expect(event.target.value).toBe("");
+    expect(notify).toHaveBeenCalledWith(
+      "info",
+      "Reading ZIP backup, please wait...",
+      { autoCloseMs: 0 },
+    );
 
     await act(async () => {
       await result.current.confirmImport();
     });
 
     expect(onImportZip).toHaveBeenCalledWith(file, undefined);
+    expect(notify).toHaveBeenCalledWith(
+      "info",
+      "ZIP backup import in progress, please wait...",
+      { autoCloseMs: 0 },
+    );
     expect(notify).toHaveBeenCalledWith(
       "success",
       'Project "Alpha" imported (1 record)',

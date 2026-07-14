@@ -1,5 +1,8 @@
 import { STATUS } from "@/utils/status";
-import { calculations } from "@/utils/calculations/calculations";
+import {
+  buildLeakCalculationParams,
+  calculateLeakWithSnapshot,
+} from "@/utils/calculationParams";
 import { priorityFromSpeed } from "@/utils/priority";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
@@ -53,12 +56,7 @@ function normalizeCalcVar(key, value) {
 }
 
 export function buildReopenCalcVars({ leak, vars, draft = {} }) {
-  const initial = { ...(vars ?? {}) };
-  REOPEN_CALC_FIELDS.forEach(({ key }) => {
-    if (leak?.[key] !== undefined && leak?.[key] !== null) {
-      initial[key] = leak[key];
-    }
-  });
+  const initial = buildLeakCalculationParams(leak, vars);
 
   const patch = draft.calcVars ?? {};
   const next = { ...initial };
@@ -92,7 +90,7 @@ export function buildReopenedLeak({
     resolvedAt: null,
     updatedAt: now,
   };
-  const recalculated = calculations(base, calcVars);
+  const recalculated = calculateLeakWithSnapshot(base, vars, calcVars);
   const after = {
     ...recalculated,
     priority: priorityFromSpeed(recalculated.leak_speed),

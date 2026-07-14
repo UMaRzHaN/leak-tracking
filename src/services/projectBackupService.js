@@ -9,10 +9,8 @@ import {
   validateBackup,
   validateProjectBackupMeta,
 } from "@/repositories/backupSchema";
-import {
-  calculations,
-  isPinkBagEquipment,
-} from "@/utils/calculations/calculations";
+import { isPinkBagEquipment } from "@/utils/calculations/calculations";
+import { calculateLeakWithSnapshot } from "@/utils/calculationParams";
 import { blobToDataUri, dataUrlToBlob } from "@/utils/photoConversion";
 import {
   getRestoredMonitoringRound,
@@ -181,7 +179,7 @@ function normalizeProjectMeta(meta) {
 function recalculateLeaks(leaks, vars) {
   if (!vars) return leaks;
   const calcVars = { ...VAR_DEFAULTS, ...vars };
-  return leaks.map((leak) => calculations(leak, calcVars));
+  return leaks.map((leak) => calculateLeakWithSnapshot(leak, calcVars));
 }
 
 function parseTime(value) {
@@ -191,8 +189,8 @@ function parseTime(value) {
 }
 
 function getLeakIdentity(leak) {
-  if (leak?.id != null) return `id:${String(leak.id)}`;
   if (leak?.leak_id != null) return `tag:${String(leak.leak_id)}`;
+  if (leak?.id != null) return `id:${String(leak.id)}`;
   return null;
 }
 
@@ -233,11 +231,311 @@ function mergePhotoFields(existingLeak, incomingLeak) {
   return next;
 }
 
-export function mergeLeaksByFreshness(existing = [], incoming = []) {
+const MERGE_IGNORED_FIELD_KEYS = new Set([
+  "id",
+  "index",
+  "createdAt",
+  "updatedAt",
+  "importedAt",
+  "importedFromExcel",
+]);
+
+const MERGE_ARRAY_FIELD_KEYS = new Set(["history", "monitoringRecords"]);
+const EXCEL_DERIVED_FIELD_KEYS = new Set([
+  "temperature_K",
+  "leak_speed_kg_m",
+  "leak_speed_kg_h",
+  "flareShare",
+  "utilShare",
+  "weightedGWP",
+  "Total_Annual_Methane_Loss_m3_y",
+  "Total_Annual_Methane_Loss_kg_y",
+  "Total_Annual_Methane_Loss_t_y",
+  "Emissions_t_CO2eq_year",
+  "Emissions_kg_CO2_eq_year",
+  "priority",
+  "repairAt",
+]);
+const EXCEL_DATE_FIELD_KEYS = new Set(["date", "resolvedAt"]);
+
+function isEmptyMergeValue(value) {
+  return (
+    value == null ||
+    value === "" ||
+    (Array.isArray(value) && value.length === 0)
+  );
+}
+
+function comparableMergeValue(value) {
+  if (isEmptyMergeValue(value)) return "";
+  if (typeof value === "number")
+    return Number.isFinite(value) ? String(value) : "";
+  if (typeof value === "boolean") return String(value);
+  if (value instanceof Date) {
+    return Number.isFinite(value.getTime()) ? value.toISOString() : "";
+  }
+  return String(value).trim();
+}
+
+function comparableExcelDate(value) {
+  if (value == null || value === "") return "";
+  if (value instanceof Date && Number.isFinite(value.getTime())) {
+    return `${value.getFullYear()}-${value.getMonth() + 1}-${value.getDate()}`;
+  }
+  if (typeof value === "number" && value > 100000000000) {
+    return comparableExcelDate(new Date(value));
+  }
+
+  const text = String(value).trim();
+  const dotted = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
+  if (dotted) {
+    const year = dotted[3].length === 2 ? `20${dotted[3]}` : dotted[3];
+    return `${year}-${Number(dotted[2])}-${Number(dotted[1])}`;
+  }
+  const parsed = new Date(text);
+  return Number.isFinite(parsed.getTime()) ? comparableExcelDate(parsed) : text;
+}
+
+function mergeFieldValuesEqual(key, left, right, options = {}) {
+  if (options.source === "excel" && EXCEL_DATE_FIELD_KEYS.has(key)) {
+    return comparableExcelDate(left) === comparableExcelDate(right);
+  }
+  return comparableMergeValue(left) === comparableMergeValue(right);
+}
+
+function serializeMergeHistoryValue(value) {
+  if (isEmptyMergeValue(value)) return null;
+  if (typeof value === "number" || typeof value === "boolean") return value;
+  if (value instanceof Date) {
+    return Number.isFinite(value.getTime()) ? value.toISOString() : null;
+  }
+  if (typeof value === "string") {
+    return value.length > 180 ? `${value.slice(0, 177)}...` : value;
+  }
+  return "[changed]";
+}
+
+function buildMergeHistoryChanges(existingLeak, mergedLeak, options = {}) {
+  const keys = new Set([
+    ...Object.keys(existingLeak ?? {}),
+    ...Object.keys(mergedLeak ?? {}),
+  ]);
+
+  return [...keys]
+    .filter(
+      (key) =>
+        !MERGE_IGNORED_FIELD_KEYS.has(key) &&
+        !MERGE_ARRAY_FIELD_KEYS.has(key) &&
+        !(options.source === "excel" && EXCEL_DERIVED_FIELD_KEYS.has(key)) &&
+        !mergeFieldValuesEqual(
+          key,
+          existingLeak?.[key],
+          mergedLeak?.[key],
+          options,
+        ),
+    )
+    .map((key) => {
+      if (PHOTO_KEYS.includes(key)) {
+        return {
+          key,
+          kind: "photo",
+          from: Boolean(existingLeak?.[key]),
+          to: Boolean(mergedLeak?.[key]),
+        };
+      }
+
+      return {
+        key,
+        from: serializeMergeHistoryValue(existingLeak?.[key]),
+        to: serializeMergeHistoryValue(mergedLeak?.[key]),
+      };
+    });
+}
+
+function getRecordMergeIdentity(record, index, arrayKey) {
+  if (arrayKey === "monitoringRecords" && record?.photo) {
+    return `monitoring-photo:${String(record.photo)}`;
+  }
+  if (arrayKey === "monitoringRecords" && record?.date) {
+    return `monitoring:${getRecordDateIdentity(record.date)}|${String(record?.result ?? "")}`;
+  }
+  if (arrayKey === "history" && record?.date) {
+    return [
+      "history",
+      getRecordDateIdentity(record.date),
+      record?.action ?? "",
+      record?.to ?? "",
+      record?.text ?? "",
+    ]
+      .map(String)
+      .join("|");
+  }
+  if (record?.id != null) return `id:${String(record.id)}`;
+  return `index:${index}`;
+}
+
+function getRecordDateIdentity(value) {
+  const time = parseTime(value);
+  if (time > 0) return String(time);
+  const text = String(value ?? "").trim();
+  const dotted = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
+  if (!dotted) return text;
+  const year = dotted[3].length === 2 ? `20${dotted[3]}` : dotted[3];
+  return `${year}-${Number(dotted[2])}-${Number(dotted[1])}`;
+}
+
+function mergeRecordArray(
+  existingRecords = [],
+  incomingRecords = [],
+  arrayKey,
+) {
+  const merged = [...existingRecords];
+  const indexByIdentity = new Map();
+
+  merged.forEach((record, index) => {
+    indexByIdentity.set(getRecordMergeIdentity(record, index, arrayKey), index);
+  });
+
+  incomingRecords.forEach((record, index) => {
+    const identity = getRecordMergeIdentity(record, index, arrayKey);
+    const existingIndex = indexByIdentity.get(identity);
+
+    if (existingIndex == null) {
+      indexByIdentity.set(identity, merged.length);
+      merged.push(record);
+      return;
+    }
+
+    const current = merged[existingIndex];
+    if (parseTime(record?.date) >= parseTime(current?.date)) {
+      const next = { ...current };
+      for (const [key, value] of Object.entries(record ?? {})) {
+        if (arrayKey === "history" && key === "user") continue;
+        if (arrayKey === "monitoringRecords" && key === "date") continue;
+        if (
+          key === "date" &&
+          getRecordDateIdentity(current?.date) === getRecordDateIdentity(value)
+        ) {
+          continue;
+        }
+        if (!isEmptyMergeValue(value)) next[key] = value;
+      }
+      if (current?.id != null) next.id = current.id;
+      else delete next.id;
+      if (current?.roundId != null) next.roundId = current.roundId;
+      else delete next.roundId;
+      if (current?.roundNumber != null) next.roundNumber = current.roundNumber;
+      else delete next.roundNumber;
+      merged[existingIndex] = next;
+    }
+  });
+
+  return merged.sort(
+    (left, right) => parseTime(left?.date) - parseTime(right?.date),
+  );
+}
+
+function mergeFreshLeakFields(existingLeak, incomingLeak, options = {}) {
+  const next = { ...existingLeak };
+  const historyBeforeMerge = Array.isArray(existingLeak?.history)
+    ? existingLeak.history
+    : [];
+
+  for (const [key, value] of Object.entries(incomingLeak ?? {})) {
+    if (MERGE_IGNORED_FIELD_KEYS.has(key)) continue;
+
+    if (MERGE_ARRAY_FIELD_KEYS.has(key)) {
+      next[key] = mergeRecordArray(
+        Array.isArray(existingLeak?.[key]) ? existingLeak[key] : [],
+        Array.isArray(value) ? value : [],
+        key,
+      );
+      continue;
+    }
+
+    if (!isEmptyMergeValue(value)) {
+      next[key] = value;
+    }
+  }
+
+  next.id = existingLeak?.id ?? incomingLeak?.id;
+  next.index = existingLeak?.index ?? incomingLeak?.index;
+
+  const merged = mergePhotoFields(existingLeak, next);
+
+  if (options.addHistory) {
+    const changes = buildMergeHistoryChanges(existingLeak, merged, options);
+    const mergedHistory = Array.isArray(merged.history)
+      ? merged.history
+      : historyBeforeMerge;
+    const historyChanged =
+      JSON.stringify(historyBeforeMerge) !== JSON.stringify(mergedHistory);
+    const monitoringChanged =
+      JSON.stringify(existingLeak?.monitoringRecords ?? []) !==
+      JSON.stringify(merged.monitoringRecords ?? []);
+
+    if (changes.length > 0 || historyChanged || monitoringChanged) {
+      merged.history = [
+        ...mergedHistory,
+        {
+          action: "edited",
+          date: new Date().toISOString(),
+          text:
+            options.source === "excel"
+              ? "Обновлено при импорте Excel"
+              : "Обновлено при объединении импорта",
+          changes,
+        },
+      ];
+    }
+  }
+
+  return merged;
+}
+
+function getChangedFieldKeys(existingLeak, incomingLeak, options = {}) {
+  const merged = mergeFreshLeakFields(existingLeak, incomingLeak);
+  const keys = new Set([
+    ...Object.keys(existingLeak ?? {}),
+    ...Object.keys(incomingLeak ?? {}),
+  ]);
+
+  return [...keys].filter((key) => {
+    if (MERGE_IGNORED_FIELD_KEYS.has(key)) return false;
+    if (options.source === "excel" && EXCEL_DERIVED_FIELD_KEYS.has(key)) {
+      return false;
+    }
+    if (MERGE_ARRAY_FIELD_KEYS.has(key)) {
+      const normalizeRecords = (records) =>
+        [...(records ?? [])].sort((left, right) => {
+          const timeDifference = parseTime(left?.date) - parseTime(right?.date);
+          if (timeDifference !== 0) return timeDifference;
+          return JSON.stringify(left).localeCompare(JSON.stringify(right));
+        });
+      return (
+        JSON.stringify(normalizeRecords(existingLeak?.[key])) !==
+        JSON.stringify(normalizeRecords(merged?.[key]))
+      );
+    }
+    return !mergeFieldValuesEqual(
+      key,
+      existingLeak?.[key],
+      merged?.[key],
+      options,
+    );
+  });
+}
+
+export function mergeLeaksByFreshness(
+  existing = [],
+  incoming = [],
+  options = {},
+) {
   const merged = [...existing];
   const indexByIdentity = new Map();
   let added = 0;
   let updated = 0;
+  let changedFields = 0;
 
   merged.forEach((leak, index) => {
     const identity = getLeakIdentity(leak);
@@ -255,13 +553,36 @@ export function mergeLeaksByFreshness(existing = [], incoming = []) {
       continue;
     }
 
-    if (getLeakFreshness(leak) > getLeakFreshness(merged[existingIndex])) {
-      merged[existingIndex] = mergePhotoFields(merged[existingIndex], leak);
+    const changedFieldKeys = getChangedFieldKeys(
+      merged[existingIndex],
+      leak,
+      options,
+    );
+    const shouldApply =
+      getLeakFreshness(leak) > getLeakFreshness(merged[existingIndex]) ||
+      (options.source === "excel" && changedFieldKeys.length > 0);
+
+    if (shouldApply) {
+      changedFields += changedFieldKeys.length;
+      merged[existingIndex] = mergeFreshLeakFields(
+        merged[existingIndex],
+        leak,
+        {
+          addHistory: true,
+          source: options.source,
+        },
+      );
       updated += 1;
     }
   }
 
-  return { leaks: merged, added, updated, changed: added + updated };
+  return {
+    leaks: merged,
+    added,
+    updated,
+    changed: added + updated,
+    changedFields,
+  };
 }
 
 function hasImportablePhoto(leak, key) {
@@ -285,13 +606,54 @@ function countImportableArchivePhotos(leak) {
   return mainPhotos + monitoringPhotos;
 }
 
-export function previewMergeLeaks(existing = [], incoming = []) {
+function getArchivePhotoMergeStats(current, incoming, applies) {
+  const stats = { added: 0, replaced: 0, reused: 0 };
+  const classify = (incomingPhoto, existingPhoto) => {
+    if (
+      typeof incomingPhoto !== "string" ||
+      (!incomingPhoto.startsWith("zip:") &&
+        !incomingPhoto.startsWith("data:image/"))
+    ) {
+      return;
+    }
+    if (!applies) {
+      if (existingPhoto) stats.reused += 1;
+      return;
+    }
+    if (existingPhoto) stats.replaced += 1;
+    else stats.added += 1;
+  };
+
+  for (const key of PHOTO_KEYS) {
+    classify(incoming?.[key], current?.[key]);
+  }
+
+  const currentMonitoring = current?.monitoringRecords ?? [];
+  const currentById = new Map(
+    currentMonitoring
+      .filter((record) => record?.id != null)
+      .map((record) => [String(record.id), record]),
+  );
+  for (const [index, record] of (incoming?.monitoringRecords ?? []).entries()) {
+    const existingRecord =
+      (record?.id != null ? currentById.get(String(record.id)) : null) ??
+      currentMonitoring[index];
+    classify(record?.photo, existingRecord?.photo);
+  }
+
+  return stats;
+}
+
+export function previewMergeLeaks(existing = [], incoming = [], options = {}) {
   const existingByIdentity = new Map();
   const result = {
     added: 0,
     updated: 0,
     skipped: 0,
     archivePhotos: 0,
+    changedFields: 0,
+    changedFieldBreakdown: {},
+    photoStats: { added: 0, replaced: 0, reused: 0 },
     total: incoming.length,
   };
 
@@ -303,20 +665,43 @@ export function previewMergeLeaks(existing = [], incoming = []) {
   for (const leak of incoming) {
     const identity = getLeakIdentity(leak);
     const current = identity ? existingByIdentity.get(identity) : null;
+    const changedFieldKeys = current
+      ? getChangedFieldKeys(current, leak, options)
+      : [];
     const applies =
-      !current || getLeakFreshness(leak) > getLeakFreshness(current);
+      !current ||
+      getLeakFreshness(leak) > getLeakFreshness(current) ||
+      (options.source === "excel" && changedFieldKeys.length > 0);
 
     if (!current) result.added += 1;
-    else if (applies) result.updated += 1;
-    else result.skipped += 1;
+    else if (applies) {
+      result.updated += 1;
+      result.changedFields += changedFieldKeys.length;
+      for (const key of changedFieldKeys) {
+        result.changedFieldBreakdown[key] =
+          (result.changedFieldBreakdown[key] ?? 0) + 1;
+      }
+    } else result.skipped += 1;
 
     if (applies) {
       result.archivePhotos += countImportableArchivePhotos(leak);
     }
+    const photoStats = getArchivePhotoMergeStats(current, leak, applies);
+    result.photoStats.added += photoStats.added;
+    result.photoStats.replaced += photoStats.replaced;
+    result.photoStats.reused += photoStats.reused;
   }
 
   return {
     ...result,
+    photoStats: {
+      ...result.photoStats,
+      toSave: result.photoStats.added + result.photoStats.replaced,
+      total:
+        result.photoStats.added +
+        result.photoStats.replaced +
+        result.photoStats.reused,
+    },
     changed: result.added + result.updated,
   };
 }
@@ -652,12 +1037,11 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     vars = meta?.vars ?? null;
   }
 
-  overwriteProject(existingProjectId);
-  await waitForProjectActivation(activeProjectIdRef, existingProjectId);
   await waitForPhotoStorage(photoReadyRef);
 
   let finalLeaks;
   let addedCount;
+  let nextMonitoringRound = null;
 
   if (mode === "merge") {
     const existing = await LeakRepository.getAll({
@@ -675,23 +1059,39 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     finalLeaks = mergeResult.leaks;
     addedCount = mergeResult.changed;
   } else {
+    const restoredLeaks = await restorePhotosFromZip(leaks, zip, savePhotoRef);
+    finalLeaks = recalculateLeaks(restoredLeaks, meta?.vars);
+    addedCount = finalLeaks.length;
+    nextMonitoringRound = getRestoredMonitoringRound(meta, finalLeaks);
+  }
+
+  if (activeProjectIdRef.current === existingProjectId) {
+    await saveRef.current(finalLeaks);
+  } else {
+    await LeakRepository.saveAll(finalLeaks, {
+      projectId: existingProjectId,
+      folderName: existingFolderName,
+    });
+  }
+
+  if (activeProjectIdRef.current !== existingProjectId) {
+    const switched = overwriteProject(existingProjectId);
+    if (!switched) {
+      throw new Error("Не удалось переключиться на перезаписанный проект");
+    }
+    await waitForProjectActivation(activeProjectIdRef, existingProjectId);
+  }
+
+  if (mode === "overwrite") {
     if (vars) {
       localStorage.setItem(
         STORAGE_KEYS.PROJECT_VARS(existingProjectId),
         JSON.stringify(vars),
       );
     }
-
-    const restoredLeaks = await restorePhotosFromZip(leaks, zip, savePhotoRef);
-    finalLeaks = recalculateLeaks(restoredLeaks, meta?.vars);
-    addedCount = finalLeaks.length;
-    saveMonitoringRound(
-      existingProjectId,
-      getRestoredMonitoringRound(meta, finalLeaks),
-    );
+    saveMonitoringRound(existingProjectId, nextMonitoringRound);
   }
 
-  await saveRef.current(finalLeaks);
   return { project: existingProject, leakCount: addedCount };
 }
 

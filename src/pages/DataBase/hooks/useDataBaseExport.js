@@ -10,8 +10,11 @@ import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
 function fmtTs(ts, lang) {
   if (!ts) return "";
 
+  const date = new Date(ts);
+  if (!Number.isFinite(date.getTime())) return "";
+
   return formatDate(
-    ts,
+    date,
     {
       day: "2-digit",
       month: "2-digit",
@@ -98,7 +101,7 @@ export function useDataBaseExport({ displayed, notify }) {
         idbGetPhoto,
         activeProject?.folderName,
         lang,
-        { monitoringExportMode },
+        { monitoringExportMode, project: activeProject },
       );
 
       notify(
@@ -119,8 +122,7 @@ export function useDataBaseExport({ displayed, notify }) {
       setIsExporting(false);
     }
   }, [
-    activeProject?.folderName,
-    activeProject?.name,
+    activeProject,
     displayed,
     excelHeaders,
     excelKeys,

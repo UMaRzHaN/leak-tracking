@@ -34,6 +34,12 @@ export function useSettingsTexts() {
       backup: t("settings.backup"),
       exportZip: t("settings.exportZip"),
       importZip: t("settings.importZip"),
+      importExcel: t("settings.importExcel", {
+        defaultValue: lang === "ru" ? "Импорт Excel" : "Import Excel",
+      }),
+      importExcelLoading: t("settings.importExcelLoading", {
+        defaultValue: lang === "ru" ? "Импорт..." : "Import...",
+      }),
       backupHint: t("settings.backupHint"),
       mapCache: t("settings.mapCache"),
       satelliteTiles: t("settings.satelliteTiles"),
@@ -56,7 +62,7 @@ export function useSettingsTexts() {
         clearDatabase: t("settings.dialogs.clearDatabase"),
       },
     }),
-    [t],
+    [lang, t],
   );
 
   return { lang, t, toggleLanguage, localeTexts };

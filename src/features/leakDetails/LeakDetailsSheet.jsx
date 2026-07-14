@@ -31,6 +31,8 @@ export default function LeakDetailsSheet({
     setActiveTab,
     localEdit,
     setLocalEdit,
+    localCalcParams,
+    setLocalCalcParams,
     saving,
     notification,
     setNotification,
@@ -68,7 +70,6 @@ export default function LeakDetailsSheet({
     handleResolveConfirm,
     handleRepairConfirm,
     handleReopenConfirm,
-    handleAddComment,
     handleEdit,
     handleCancel,
     armDelete,
@@ -135,12 +136,13 @@ export default function LeakDetailsSheet({
                 data={{ ...leak, ...localEdit }}
                 activeTab={activeTab}
                 projectConfig={projectConfig}
-                onAddComment={handleAddComment}
               />
             ) : (
               <EditBlock
                 localEdit={localEdit}
                 setLocalEdit={setLocalEdit}
+                localCalcParams={localCalcParams}
+                setLocalCalcParams={setLocalCalcParams}
                 activeTab={activeTab}
                 projectConfig={projectConfig}
                 srcBefore={src}

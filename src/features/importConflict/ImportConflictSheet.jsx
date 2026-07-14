@@ -16,12 +16,18 @@ export default function ImportConflictSheet({
   existingProject,
   leakCount,
   mergePreview,
+  sourceLabel,
+  photoLabel,
   onOverwrite,
   onMerge,
   onCopy,
   onCancel,
 }) {
   const { lang } = useLanguage();
+  const source = sourceLabel ?? (lang === "ru" ? "в архиве" : "in archive");
+  const photos =
+    photoLabel ?? (lang === "ru" ? "Фото архива" : "Archive photos");
+  const photoStats = mergePreview?.photoStats ?? mergePreview?.excelPhotos;
 
   if (!open) return null;
 
@@ -40,27 +46,93 @@ export default function ImportConflictSheet({
           <span className={s.counts}>
             {existingProject?.leakCount ?? 0}{" "}
             {pluralRecords(existingProject?.leakCount ?? 0, lang)} → {leakCount}{" "}
-            {lang === "ru" ? "в архиве" : "in archive"}
+            {source}
           </span>
         </p>
         {mergePreview && (
-          <div className={s.preview}>
-            <div className={s.previewItem}>
-              <span>{lang === "ru" ? "Добавится" : "Added"}</span>
-              <strong>{mergePreview.added}</strong>
+          <div className={s.previewWrap}>
+            <div className={s.preview}>
+              <div className={s.previewItem}>
+                <span>{lang === "ru" ? "Добавится" : "Added"}</span>
+                <strong>{mergePreview.added}</strong>
+              </div>
+              <div className={s.previewItem}>
+                <span>{lang === "ru" ? "Обновится" : "Updated"}</span>
+                <strong>{mergePreview.updated}</strong>
+              </div>
+              <div className={s.previewItem}>
+                <span>{lang === "ru" ? "Пропустится" : "Skipped"}</span>
+                <strong>{mergePreview.skipped}</strong>
+              </div>
+              {photoStats ? (
+                <>
+                  <div className={s.previewItem}>
+                    <span>{lang === "ru" ? "Фото новых" : "New photos"}</span>
+                    <strong>{photoStats.added}</strong>
+                  </div>
+                  <div className={s.previewItem}>
+                    <span>
+                      {lang === "ru" ? "Фото на замену" : "Replaced photos"}
+                    </span>
+                    <strong>{photoStats.replaced}</strong>
+                  </div>
+                  <div className={s.previewItem}>
+                    <span>
+                      {lang === "ru" ? "Фото уже есть" : "Reused photos"}
+                    </span>
+                    <strong>{photoStats.reused}</strong>
+                  </div>
+                </>
+              ) : (
+                <div className={s.previewItem}>
+                  <span>{photos}</span>
+                  <strong>{mergePreview.archivePhotos}</strong>
+                </div>
+              )}
+              <div className={s.previewItem}>
+                <span>{lang === "ru" ? "Поля" : "Fields"}</span>
+                <strong>{mergePreview.changedFields ?? 0}</strong>
+              </div>
             </div>
-            <div className={s.previewItem}>
-              <span>{lang === "ru" ? "Обновится" : "Updated"}</span>
-              <strong>{mergePreview.updated}</strong>
-            </div>
-            <div className={s.previewItem}>
-              <span>{lang === "ru" ? "Пропустится" : "Skipped"}</span>
-              <strong>{mergePreview.skipped}</strong>
-            </div>
-            <div className={s.previewItem}>
-              <span>{lang === "ru" ? "Фото архива" : "Archive photos"}</span>
-              <strong>{mergePreview.archivePhotos}</strong>
-            </div>
+            {(Object.keys(mergePreview.changedFieldBreakdown ?? {}).length >
+              0 ||
+              Object.keys(photoStats?.replacedByField ?? {}).length > 0) && (
+              <details className={s.diagnostics}>
+                <summary>
+                  {lang === "ru" ? "Что отличается" : "Difference details"}
+                </summary>
+                {Object.entries(mergePreview.changedFieldBreakdown ?? {}).map(
+                  ([key, count]) => (
+                    <span key={`field-${key}`}>
+                      {key}: {count}
+                    </span>
+                  ),
+                )}
+                {Object.entries(photoStats?.replacedByField ?? {}).map(
+                  ([key, count]) => (
+                    <span key={`photo-${key}`}>
+                      {lang === "ru" ? "фото" : "photo"} {key}: {count}
+                    </span>
+                  ),
+                )}
+                {(photoStats?.replacedByReason?.unreadable ?? 0) > 0 && (
+                  <span>
+                    {lang === "ru"
+                      ? "локальное фото не прочитано"
+                      : "local photo could not be read"}
+                    : {photoStats.replacedByReason.unreadable}
+                  </span>
+                )}
+                {(photoStats?.replacedByReason?.different ?? 0) > 0 && (
+                  <span>
+                    {lang === "ru"
+                      ? "содержимое фото отличается"
+                      : "photo content differs"}
+                    : {photoStats.replacedByReason.different}
+                  </span>
+                )}
+              </details>
+            )}
           </div>
         )}
         <div className={s.actions}>

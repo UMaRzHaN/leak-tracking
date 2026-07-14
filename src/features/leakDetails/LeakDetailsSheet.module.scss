@@ -13,8 +13,12 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ── Sheet ── */
@@ -31,8 +35,12 @@
 }
 
 @keyframes slideUp {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 /* ── Drag handle (now inside hero) ── */
@@ -66,7 +74,9 @@
 
 .heroHeaderClickable {
   cursor: pointer;
-  &:active { opacity: 0.9; }
+  &:active {
+    opacity: 0.9;
+  }
 }
 
 .heroPlaceholder {
@@ -88,7 +98,7 @@
   inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(0, 0, 0, 0.10) 0%,
+    rgba(0, 0, 0, 0.1) 0%,
     rgba(0, 0, 0, 0.55) 100%
   );
 }
@@ -129,14 +139,14 @@
   color: #fff;
   letter-spacing: -0.02em;
   line-height: 1.1;
-  text-shadow: 0 1px 6px rgba(0,0,0,0.6);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
 }
 
 .heroTime {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.75);
   line-height: 1;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 
 /* ── Tap-to-view/edit hint icon ── */
@@ -158,7 +168,9 @@
   transition: opacity var(--t-fast);
 
   .heroHeaderClickable:hover &,
-  .heroHeaderClickable:focus & { opacity: 1; }
+  .heroHeaderClickable:focus & {
+    opacity: 1;
+  }
 }
 
 /* ══════════════════════════════════════════
@@ -199,7 +211,10 @@
   white-space: nowrap;
   scroll-snap-align: nearest;
 
-  &:hover { color: var(--c-text2); background: var(--c-border); }
+  &:hover {
+    color: var(--c-text2);
+    background: var(--c-border);
+  }
 }
 
 .tabActive {
@@ -221,8 +236,14 @@
 }
 
 @keyframes tabFade {
-  from { opacity: 0; transform: translateY(4px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ── Photo comparison (До / После) ── */
@@ -265,7 +286,9 @@
   width: 100%;
   height: clamp(110px, 22vw, 180px);
 
-  &:active { opacity: 0.85; }
+  &:active {
+    opacity: 0.85;
+  }
 }
 
 .photoCompareImg {
@@ -322,7 +345,9 @@
   cursor: pointer;
   padding: 0;
 
-  &:active { opacity: 0.82; }
+  &:active {
+    opacity: 0.82;
+  }
 }
 
 .editPhotoEmpty {
@@ -494,7 +519,7 @@
   --monitoring-accent: var(--c-blue);
   --monitoring-accent-bg: var(--c-blue-dim);
   position: relative;
-  margin: 10px 12px;
+  margin: 8px 10px;
   overflow: hidden;
   border: 1px solid var(--c-border);
   border-radius: var(--r-lg);
@@ -518,8 +543,8 @@
 }
 
 .monitoringRecordHeader {
-  min-height: 38px;
-  padding: 10px 12px;
+  min-height: 32px;
+  padding: 7px 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -530,14 +555,14 @@
 
 .monitoringRecordDate {
   color: var(--c-text2);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .monitoringRoundBadge {
   flex-shrink: 0;
-  padding: 3px 8px;
+  padding: 2px 7px;
   border: 1px solid var(--c-border);
   border-radius: var(--r-pill);
   background: var(--c-surface);
@@ -549,7 +574,7 @@
 }
 
 .monitoringRecordContent {
-  padding: 12px;
+  padding: 9px 10px;
 }
 
 .monitoringRecordText {
@@ -557,38 +582,46 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 9px;
+  gap: 6px;
+}
+
+.monitoringSummaryRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .monitoringResultBadge {
   max-width: 100%;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 5px 9px;
+  gap: 6px;
+  padding: 4px 8px;
   border-radius: var(--r-pill);
   background: var(--monitoring-accent-bg);
   color: var(--monitoring-accent);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   line-height: 1.25;
 }
 
 .monitoringResultDot {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 7px;
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
   border-radius: 50%;
   background: currentColor;
 }
 
 .monitoringMetaRow {
-  width: 100%;
+  min-width: 0;
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 12px;
+  justify-content: flex-end;
+  gap: 5px;
+  font-size: 11px;
 
   span {
     color: var(--c-text3);
@@ -605,13 +638,16 @@
 
 .monitoringDetailBlock {
   width: 100%;
-  padding: 9px 10px;
-  border-radius: var(--r-sm);
-  background: var(--c-surface2);
+  padding: 6px 0 0;
+  display: grid;
+  grid-template-columns: minmax(74px, 0.35fr) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  border-top: 1px solid var(--c-border);
 
   > span {
-    display: block;
-    margin-bottom: 3px;
+    display: inline;
+    margin: 0;
     color: var(--c-text3);
     font-size: 10px;
     font-weight: 800;
@@ -621,16 +657,16 @@
 
   p {
     color: var(--c-text2);
-    font-size: 12px;
-    line-height: 1.45;
+    font-size: 11px;
+    line-height: 1.35;
     overflow-wrap: anywhere;
   }
 }
 
 .monitoringPhotoBlock {
   width: 100%;
-  margin-top: 2px;
-  padding-top: 9px;
+  margin-top: 0;
+  padding-top: 7px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -648,8 +684,8 @@
 
 .monitoringPhotoBtn {
   flex-shrink: 0;
-  width: 64px;
-  height: 48px;
+  width: 56px;
+  height: 40px;
   padding: 0;
   border: 1px solid var(--c-border);
   border-radius: var(--r-md);
@@ -657,7 +693,9 @@
   background: var(--c-surface2);
   box-shadow: var(--shadow-sm);
 
-  &:active { opacity: 0.82; }
+  &:active {
+    opacity: 0.82;
+  }
 }
 
 .monitoringPhotoImg {
@@ -760,7 +798,9 @@
   border-bottom: 1px solid var(--c-border);
 }
 
-.logEntry:last-child .logBody { border-bottom: none; }
+.logEntry:last-child .logBody {
+  border-bottom: none;
+}
 
 .logAction {
   font-size: 13px;
@@ -883,72 +923,9 @@
   color: var(--c-text2);
   cursor: pointer;
   transition: all 0.12s;
-  &:active { transform: scale(0.95); }
-}
-
-/* ── Comment input ── */
-.addCommentBtn {
-  width: 100%;
-  padding: 10px 16px;
-  text-align: left;
-  background: none;
-  border: none;
-  border-bottom: 1px solid var(--c-border);
-  font-size: 13px;
-  color: var(--c-blue);
-  font-weight: 500;
-  cursor: pointer;
-  &:active { background: var(--c-surface2); }
-}
-
-.commentInputWrap {
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--c-border);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.commentTextarea {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: var(--r-md);
-  border: 1.5px solid var(--c-border);
-  background: var(--c-surface);
-  color: var(--c-text);
-  font-family: inherit;
-  font-size: 14px;
-  resize: none;
-  outline: none;
-  &:focus { border-color: var(--c-blue); box-shadow: var(--focus-ring); }
-}
-
-.commentActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.commentCancel {
-  padding: 7px 14px;
-  border-radius: var(--r-md);
-  border: 1.5px solid var(--c-border);
-  background: none;
-  color: var(--c-text2);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.commentSubmit {
-  padding: 7px 14px;
-  border-radius: var(--r-md);
-  border: none;
-  background: var(--c-blue);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  &:disabled { opacity: 0.4; cursor: default; }
+  &:active {
+    transform: scale(0.95);
+  }
 }
 
 /* ══════════════════════════════════════════
@@ -964,7 +941,9 @@
   box-shadow: var(--shadow-sm);
 
   /* last child inside section loses its separator line */
-  & > :last-child { border-bottom: none; }
+  & > :last-child {
+    border-bottom: none;
+  }
 }
 
 /* Coordinate group: label heading + side-by-side pair */
@@ -986,7 +965,7 @@
 
 .coordPair {
   display: grid;
-  grid-template-columns: 1fr ;
+  grid-template-columns: 1fr;
   gap: 8px;
 }
 
@@ -996,6 +975,63 @@
   grid-template-columns: 1fr;
   gap: 10px;
   padding: 2px 14px;
+}
+
+.calcShortcut {
+  margin: 12px 14px 0;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+
+  button {
+    flex-shrink: 0;
+    min-height: 34px;
+    padding: 0 12px;
+    border: 1px solid var(--c-blue);
+    border-radius: var(--r-sm);
+    background: var(--c-blue-bg, rgba(37, 99, 235, 0.08));
+    color: var(--c-blue);
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+}
+
+.calcShortcutText {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+
+  strong {
+    color: var(--c-text);
+    font-size: 14px;
+    line-height: 1.2;
+  }
+
+  span {
+    color: var(--c-text3);
+    font-size: 12px;
+    line-height: 1.25;
+  }
+}
+
+@media (max-width: 640px) {
+  .calcShortcut {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    margin: 10px 12px 0;
+    padding: 10px;
+
+    button {
+      width: 100%;
+    }
+  }
 }
 
 /* ══════════════════════════════════════════
@@ -1013,7 +1049,10 @@
   text-align: center;
 }
 
-.tabEmptyIcon { font-size: 36px; opacity: 0.5; }
+.tabEmptyIcon {
+  font-size: 36px;
+  opacity: 0.5;
+}
 
 /* ══════════════════════════════════════════
    ACTION BAR
@@ -1048,8 +1087,14 @@
   justify-content: center;
   gap: 6px;
   transition: all var(--t-fast);
-  &:active   { transform: scale(0.97); }
-  &:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  &:active {
+    transform: scale(0.97);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
 }
 
 .btnGhost {
@@ -1067,7 +1112,9 @@
   justify-content: center;
   gap: 6px;
   transition: all var(--t-fast);
-  &:active { background: var(--c-border); }
+  &:active {
+    background: var(--c-border);
+  }
 }
 
 .btnIcon {
@@ -1083,7 +1130,9 @@
   align-items: center;
   justify-content: center;
   transition: all var(--t-fast);
-  &:active { background: var(--c-border); }
+  &:active {
+    background: var(--c-border);
+  }
 }
 
 /* ── Delete button (two-step) ── */
@@ -1127,9 +1176,14 @@
   gap: 8px;
   transition: background var(--t-fast);
 
-  & > span:first-child { position: relative; z-index: 1; }
+  & > span:first-child {
+    position: relative;
+    z-index: 1;
+  }
 
-  &:active { opacity: 0.88; }
+  &:active {
+    opacity: 0.88;
+  }
 }
 
 .btnDangerProgress {
@@ -1141,8 +1195,12 @@
 }
 
 @keyframes dangerCountdown {
-  from { transform: scaleX(1); }
-  to   { transform: scaleX(0); }
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
 }
 
 /* ══════════════════════════════════════════

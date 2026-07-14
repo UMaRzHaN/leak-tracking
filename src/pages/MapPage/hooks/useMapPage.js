@@ -6,8 +6,8 @@ import { getDistanceMeters } from "@/utils/geoUtils";
 import { STATUS } from "@/utils/status";
 import { handleExport } from "@/pages/MapPage/handleExport";
 import {
-  ALL,
   NEARBY_RADIUS_M,
+  normalizeMultiFilter,
 } from "@/pages/DataBase/hooks/useDataBaseFilters";
 
 const NEARBY_RADIUS_OPTIONS = [100, 500, 1000];
@@ -55,21 +55,23 @@ export function useMapPage({
   const [heatmapEnabled, setHeatmapEnabled] = useState(false);
   const [localNearbyOnly, setLocalNearbyOnly] = useState(false);
   const [localNearbyRadius, setLocalNearbyRadius] = useState(NEARBY_RADIUS_M);
-  const [localPriorityFilter, setLocalPriorityFilter] = useState(ALL);
-  const [localStatusFilter, setLocalStatusFilter] = useState(ALL);
+  const [localPriorityFilter, setLocalPriorityFilter] = useState([]);
+  const [localStatusFilter, setLocalStatusFilter] = useState([]);
 
   const nearbyOnly = sharedFilters?.nearbyFilter ?? localNearbyOnly;
   const setNearbyOnly = sharedFilters?.setNearbyFilter ?? setLocalNearbyOnly;
   const nearbyRadius = sharedFilters?.nearbyRadius ?? localNearbyRadius;
   const setNearbyRadius =
     sharedFilters?.setNearbyRadius ?? setLocalNearbyRadius;
-  const priorityFilter = sharedFilters?.priorityFilter ?? localPriorityFilter;
+  const priorityFilters = normalizeMultiFilter(
+    sharedFilters?.priorityFilter ?? localPriorityFilter,
+  );
   const setPriorityFilter =
     sharedFilters?.setPriorityFilter ?? setLocalPriorityFilter;
-  const statusFilter = sharedFilters?.statusFilter ?? localStatusFilter;
+  const statusFilters = normalizeMultiFilter(
+    sharedFilters?.statusFilter ?? localStatusFilter,
+  );
   const setStatusFilter = sharedFilters?.setFilter ?? setLocalStatusFilter;
-  const priorityFilters = priorityFilter === ALL ? [] : [priorityFilter];
-  const statusFilters = statusFilter === ALL ? [] : [statusFilter];
 
   const notify = useCallback(
     (type, message) => setNotification({ type, message }),
@@ -99,24 +101,34 @@ export function useMapPage({
       normalizedLeaks.filter(
         (leak) =>
           enabledLocations[leak._location] &&
-          (statusFilter === ALL ||
-            (leak.status ?? STATUS.OPEN) === statusFilter) &&
-          (priorityFilter === ALL ||
-            (leak.priority ?? null) === priorityFilter),
+          (statusFilters.length === 0 ||
+            statusFilters.includes(leak.status ?? STATUS.OPEN)) &&
+          (priorityFilters.length === 0 ||
+            priorityFilters.includes(leak.priority ?? null)),
       ),
-    [normalizedLeaks, enabledLocations, statusFilter, priorityFilter],
+    [normalizedLeaks, enabledLocations, statusFilters, priorityFilters],
   );
 
   const togglePriorityFilter = useCallback(
     (priority) => {
-      setPriorityFilter((current) => (current === priority ? ALL : priority));
+      setPriorityFilter((current) => {
+        const values = normalizeMultiFilter(current);
+        return values.includes(priority)
+          ? values.filter((item) => item !== priority)
+          : [...values, priority];
+      });
     },
     [setPriorityFilter],
   );
 
   const toggleStatusFilter = useCallback(
     (status) => {
-      setStatusFilter((current) => (current === status ? ALL : status));
+      setStatusFilter((current) => {
+        const values = normalizeMultiFilter(current);
+        return values.includes(status)
+          ? values.filter((item) => item !== status)
+          : [...values, status];
+      });
     },
     [setStatusFilter],
   );
@@ -442,9 +454,9 @@ export function useMapPage({
     setNearbyOnly,
     setNearbyRadius,
     togglePriorityFilter,
-    clearPriorityFilters: () => setPriorityFilter(ALL),
+    clearPriorityFilters: () => setPriorityFilter([]),
     toggleStatusFilter,
-    clearStatusFilters: () => setStatusFilter(ALL),
+    clearStatusFilters: () => setStatusFilter([]),
     toggleLocation,
     handleDownloadArea,
     handleExportKML,

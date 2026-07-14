@@ -7,6 +7,11 @@ export const NEARBY = "nearby";
 export const NEARBY_RADIUS_M = 500;
 export const NEARBY_RADIUS_OPTIONS = [100, 500, 1000];
 
+export function normalizeMultiFilter(value) {
+  if (Array.isArray(value)) return value.filter((item) => item !== ALL);
+  return value && value !== ALL ? [value] : [];
+}
+
 const SEARCH_KEYS = [
   "leak_id",
   "object",
@@ -19,17 +24,21 @@ const SEARCH_KEYS = [
 export function useDataBaseFilters({ data, coords, sharedFilters = null }) {
   const [localSearchInput, setLocalSearchInput] = useState("");
   const [search, setSearch] = useState(() => sharedFilters?.search ?? "");
-  const [localStatusFilter, setLocalStatusFilter] = useState(ALL);
-  const [localPriorityFilter, setLocalPriorityFilter] = useState(ALL);
+  const [localStatusFilter, setLocalStatusFilter] = useState([]);
+  const [localPriorityFilter, setLocalPriorityFilter] = useState([]);
   const [localNearbyFilter, setLocalNearbyFilter] = useState(false);
   const [localNearbyRadius, setLocalNearbyRadius] = useState(NEARBY_RADIUS_M);
   const [sortAsc, setSortAsc] = useState(false);
 
   const searchInput = sharedFilters?.search ?? localSearchInput;
   const setSearchInput = sharedFilters?.setSearch ?? setLocalSearchInput;
-  const statusFilter = sharedFilters?.statusFilter ?? localStatusFilter;
+  const statusFilter = normalizeMultiFilter(
+    sharedFilters?.statusFilter ?? localStatusFilter,
+  );
   const setFilter = sharedFilters?.setFilter ?? setLocalStatusFilter;
-  const priorityFilter = sharedFilters?.priorityFilter ?? localPriorityFilter;
+  const priorityFilter = normalizeMultiFilter(
+    sharedFilters?.priorityFilter ?? localPriorityFilter,
+  );
   const setPriorityFilter =
     sharedFilters?.setPriorityFilter ?? setLocalPriorityFilter;
   const nearbyFilter = sharedFilters?.nearbyFilter ?? localNearbyFilter;
@@ -62,13 +71,13 @@ export function useDataBaseFilters({ data, coords, sharedFilters = null }) {
         : list;
 
     const applyPriority = (list) =>
-      priorityFilter !== ALL
-        ? list.filter((l) => (l.priority ?? null) === priorityFilter)
+      priorityFilter.length > 0
+        ? list.filter((l) => priorityFilter.includes(l.priority ?? null))
         : list;
 
     let list = [...data].sort((a, b) => (sortAsc ? a.id - b.id : b.id - a.id));
-    if (statusFilter !== ALL)
-      list = list.filter((l) => (l.status ?? STATUS.OPEN) === statusFilter);
+    if (statusFilter.length > 0)
+      list = list.filter((l) => statusFilter.includes(l.status ?? STATUS.OPEN));
     if (nearbyFilter && hasGps)
       list = filterNearbyLeaks(list, coords.lat, coords.lng, nearbyRadius);
     return applySearch(applyPriority(list));

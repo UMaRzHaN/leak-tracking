@@ -52,6 +52,26 @@ export function useBackupActions({
   );
   const [isExportingZip, setIsExportingZip] = useState(false);
 
+  const notifyZipImportProgress = useCallback(() => {
+    notify(
+      "info",
+      lang === "ru"
+        ? "Идёт импорт ZIP backup, подождите..."
+        : "ZIP backup import in progress, please wait...",
+      { autoCloseMs: 0 },
+    );
+  }, [lang, notify]);
+
+  const notifyZipReadProgress = useCallback(() => {
+    notify(
+      "info",
+      lang === "ru"
+        ? "Идёт чтение ZIP backup, подождите..."
+        : "Reading ZIP backup, please wait...",
+      { autoCloseMs: 0 },
+    );
+  }, [lang, notify]);
+
   const importProject = useCallback(
     async (file, fallback) => {
       const result = await onImportZip(file, fallback);
@@ -158,6 +178,7 @@ export function useBackupActions({
       if (!file) return;
 
       try {
+        notifyZipReadProgress();
         const { peekBackupZip, previewMergeLeaks } =
           await import("@/services/projectBackupService");
         const peek = await peekBackupZip(file);
@@ -250,7 +271,7 @@ export function useBackupActions({
 
       event.target.value = "";
     },
-    [lang, notify, projects],
+    [lang, notify, notifyZipReadProgress, projects],
   );
 
   const confirmImport = useCallback(async () => {
@@ -259,6 +280,7 @@ export function useBackupActions({
     setImportConfirmState(IMPORT_CONFIRM_CLOSED);
 
     try {
+      notifyZipImportProgress();
       await importProject(file, fallback);
     } catch (error) {
       notify(
@@ -266,7 +288,13 @@ export function useBackupActions({
         `${lang === "ru" ? "Ошибка импорта" : "Import error"}: ${error.message}`,
       );
     }
-  }, [importConfirmState, importProject, lang, notify]);
+  }, [
+    importConfirmState,
+    importProject,
+    lang,
+    notify,
+    notifyZipImportProgress,
+  ]);
 
   const cancelImport = useCallback(() => {
     setImportConfirmState(IMPORT_CONFIRM_CLOSED);
@@ -276,6 +304,7 @@ export function useBackupActions({
     const { file, existingProject } = conflictState;
 
     try {
+      notifyZipImportProgress();
       const result = await onImportIntoExisting(
         file,
         existingProject,
@@ -301,12 +330,19 @@ export function useBackupActions({
     }
 
     setConflictState(CONFLICT_CLOSED);
-  }, [conflictState, lang, notify, onImportIntoExisting]);
+  }, [
+    conflictState,
+    lang,
+    notify,
+    notifyZipImportProgress,
+    onImportIntoExisting,
+  ]);
 
   const handleConflictMerge = useCallback(async () => {
     const { file, existingProject } = conflictState;
 
     try {
+      notifyZipImportProgress();
       const result = await onImportIntoExisting(file, existingProject, "merge");
       notify(
         "success",
@@ -328,13 +364,20 @@ export function useBackupActions({
     }
 
     setConflictState(CONFLICT_CLOSED);
-  }, [conflictState, lang, notify, onImportIntoExisting]);
+  }, [
+    conflictState,
+    lang,
+    notify,
+    notifyZipImportProgress,
+    onImportIntoExisting,
+  ]);
 
   const handleConflictCopy = useCallback(async () => {
     const { file, resolvedName, resolvedType, fallback } = conflictState;
     const copyName = `${resolvedName} (2)`;
 
     try {
+      notifyZipImportProgress();
       const result = await onImportZip(
         file,
         fallback ?? { name: copyName, type: resolvedType },
@@ -368,7 +411,7 @@ export function useBackupActions({
     }
 
     setConflictState(CONFLICT_CLOSED);
-  }, [conflictState, lang, notify, onImportZip]);
+  }, [conflictState, lang, notify, notifyZipImportProgress, onImportZip]);
 
   return {
     importZipRef,

@@ -2,10 +2,13 @@ import s from "../Settings.module.scss";
 
 export default function BackupSection({
   activeProject,
+  importExcelRef,
   importZipRef,
   isExporting = false,
+  isImportingExcel = false,
   localeTexts,
   onExport,
+  onImportExcel,
   onImport,
 }) {
   if (!activeProject) return null;
@@ -21,7 +24,7 @@ export default function BackupSection({
             className={s.backupBtn}
             type="button"
             onClick={onExport}
-            disabled={isExporting}
+            disabled={isExporting || isImportingExcel}
           >
             {isExporting ? "Экспорт..." : localeTexts.exportZip}
           </button>
@@ -29,9 +32,19 @@ export default function BackupSection({
             className={`${s.backupBtn} ${s.restore}`}
             type="button"
             onClick={() => importZipRef.current?.click()}
-            disabled={isExporting}
+            disabled={isExporting || isImportingExcel}
           >
             {localeTexts.importZip}
+          </button>
+          <button
+            className={`${s.backupBtn} ${s.restore}`}
+            type="button"
+            onClick={() => importExcelRef.current?.click()}
+            disabled={isExporting || isImportingExcel}
+          >
+            {isImportingExcel
+              ? localeTexts.importExcelLoading
+              : localeTexts.importExcel}
           </button>
         </div>
         <p className={s.backupHint}>{localeTexts.backupHint}</p>
@@ -43,6 +56,14 @@ export default function BackupSection({
         accept=".zip,application/zip"
         style={{ display: "none" }}
         onChange={onImport}
+      />
+
+      <input
+        ref={importExcelRef}
+        type="file"
+        accept=".xlsx,.zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip"
+        style={{ display: "none" }}
+        onChange={onImportExcel}
       />
     </section>
   );

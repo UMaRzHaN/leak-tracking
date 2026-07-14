@@ -17,7 +17,10 @@
   letter-spacing: 0.05em;
 }
 
-.req   { color: var(--c-danger); font-weight: 700; }
+.req {
+  color: var(--c-danger);
+  font-weight: 700;
+}
 
 .rightSlot {
   margin-left: auto;
@@ -37,8 +40,13 @@
 }
 
 /* ── Required ── */
-.isRequired .req { color: var(--c-danger); }
-.required        { color: var(--c-danger); font-weight: 700; }
+.isRequired .req {
+  color: var(--c-danger);
+}
+.required {
+  color: var(--c-danger);
+  font-weight: 700;
+}
 
 /* ── Core control (input + textarea) ── */
 .control {
@@ -53,14 +61,24 @@
   line-height: 1.4;
   outline: none;
   resize: none;
-  transition: border-color var(--t-fast), box-shadow var(--t-fast), background var(--t-fast);
+  transition:
+    border-color var(--t-fast),
+    box-shadow var(--t-fast),
+    background var(--t-fast);
 
-  &::placeholder  { color: var(--c-text3); }
-  &:focus         {
+  &::placeholder {
+    color: var(--c-text3);
+  }
+  &:focus {
     border-color: var(--c-blue);
     background: var(--c-surface);
     box-shadow: var(--focus-ring);
   }
+}
+
+textarea.control {
+  min-height: 84px;
+  resize: vertical;
 }
 
 /* filled state */
@@ -95,8 +113,12 @@
   justify-content: center;
   transition: background var(--t-fast);
 
-  &:hover  { background: var(--c-border); }
-  &:active { transform: translateY(-50%) scale(0.9); }
+  &:hover {
+    background: var(--c-border);
+  }
+  &:active {
+    transform: translateY(-50%) scale(0.9);
+  }
 }
 
 /* ── Error message ── */

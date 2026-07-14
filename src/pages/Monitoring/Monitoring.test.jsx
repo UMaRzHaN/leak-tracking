@@ -56,7 +56,10 @@ vi.mock("@/features/photos/PhotoInput/PhotoInput", () => ({
   default: () => null,
 }));
 
-import Monitoring, { getMonitoringPhotoPathsToKeep } from "./Monitoring";
+import Monitoring, {
+  buildMonitoringPatch,
+  getMonitoringPhotoPathsToKeep,
+} from "./Monitoring";
 
 describe("Monitoring round flow", () => {
   beforeEach(() => localStorage.clear());
@@ -77,6 +80,46 @@ describe("Monitoring round flow", () => {
       "idb://after",
       "idb://round-1",
       "idb://round-2",
+    ]);
+  });
+
+  it("stores MTR in a monitoring record only when it changed", () => {
+    const unchanged = buildMonitoringPatch({
+      leak: { id: "leak-1", materials_equipment: "Graphite packing" },
+      draft: {
+        result: "still_leaking",
+        materials_equipment: "Graphite packing",
+      },
+      monitoredBy: "Inspector",
+      lang: "en",
+      roundId: "round-1",
+      roundNumber: 1,
+    });
+    const changed = buildMonitoringPatch({
+      leak: { id: "leak-1", materials_equipment: "Graphite packing" },
+      draft: {
+        result: "still_leaking",
+        materials_equipment: "Seal replaced",
+      },
+      monitoredBy: "Inspector",
+      lang: "en",
+      roundId: "round-1",
+      roundNumber: 1,
+    });
+
+    expect(unchanged.monitoringRecords.at(-1)).not.toHaveProperty(
+      "materials_equipment",
+    );
+    expect(changed.monitoringRecords.at(-1)).toMatchObject({
+      materials_equipment: "Seal replaced",
+      materialsChanged: true,
+    });
+    expect(changed.history.at(-1).changes).toEqual([
+      {
+        key: "materials_equipment",
+        from: "Graphite packing",
+        to: "Seal replaced",
+      },
     ]);
   });
 
@@ -143,5 +186,54 @@ describe("Monitoring round flow", () => {
 
     expect(screen.getByRole("heading", { name: "Check" })).toBeTruthy();
     expect(screen.getByText("№ 1001")).toBeTruthy();
+  });
+
+  it("completes a fully checked round and requires a new round", () => {
+    const round = {
+      id: "round-3",
+      number: 3,
+      startedAt: "2026-07-14T05:00:00.000Z",
+    };
+    localStorage.setItem(
+      "app:project-1:monitoring_round_v2",
+      JSON.stringify(round),
+    );
+    const leak = {
+      id: "leak-1",
+      leak_id: "1001",
+      status: "open",
+      monitoringRecords: [
+        {
+          id: "record-1",
+          roundId: round.id,
+          roundNumber: round.number,
+          date: "2026-07-14T06:00:00.000Z",
+          result: "still_leaking",
+        },
+      ],
+    };
+    render(
+      <Monitoring
+        data={[leak]}
+        setData={vi.fn()}
+        coords={null}
+        sharedFilters={{}}
+        userProfile={{ name: "Inspector" }}
+      />,
+    );
+
+    expect(screen.getByText("All tags checked")).toBeTruthy();
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Complete round" })[0],
+    );
+
+    expect(screen.getAllByText("Round completed").length).toBeGreaterThan(0);
+    expect(
+      JSON.parse(localStorage.getItem("app:project-1:monitoring_round_v2"))
+        .completedAt,
+    ).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Swipe monitoring" }));
+    expect(screen.getByText("Start a new round?")).toBeTruthy();
   });
 });

@@ -27,10 +27,8 @@ import { cleanupLegacyLeaks } from "./migrations/cleanupLegacyLeaks";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { logger } from "@/utils/logger";
 import { STATUS } from "@/utils/status";
-import {
-  ALL,
-  NEARBY_RADIUS_M,
-} from "@/pages/DataBase/hooks/useDataBaseFilters";
+import { saveMonitoringRound } from "@/utils/monitoringRound";
+import { NEARBY_RADIUS_M } from "@/pages/DataBase/hooks/useDataBaseFilters";
 
 const AddLeak = lazy(() => import("@/pages/AddLeak/AddLeak"));
 const MainPage = lazy(() => import("@/pages/MainPage/MainPage"));
@@ -45,6 +43,28 @@ function AppLoader({ label = "Загрузка данных" }) {
       <span className="appLoaderText">{label}</span>
     </div>
   );
+}
+
+function waitForRefValue(ref, expectedValue, timeoutMs = 2000) {
+  const startedAt = Date.now();
+
+  return new Promise((resolve, reject) => {
+    const check = () => {
+      if (ref.current === expectedValue) {
+        resolve();
+        return;
+      }
+
+      if (Date.now() - startedAt > timeoutMs) {
+        reject(new Error("Не удалось дождаться переключения проекта"));
+        return;
+      }
+
+      setTimeout(check, 25);
+    };
+
+    check();
+  });
 }
 
 export default function App() {
@@ -63,8 +83,8 @@ export default function App() {
   } = useAppState();
 
   const [sharedSearch, setSharedSearch] = useState("");
-  const [sharedStatusFilter, setSharedStatusFilter] = useState(ALL);
-  const [sharedPriorityFilter, setSharedPriorityFilter] = useState(ALL);
+  const [sharedStatusFilter, setSharedStatusFilter] = useState([]);
+  const [sharedPriorityFilter, setSharedPriorityFilter] = useState([]);
   const [sharedNearbyFilter, setSharedNearbyFilter] = useState(false);
   const [sharedNearbyRadius, setSharedNearbyRadius] = useState(NEARBY_RADIUS_M);
   const [requestedMonitoringLeakId, setRequestedMonitoringLeakId] =
@@ -255,12 +275,67 @@ export default function App() {
     [overwriteProject, stableImportCtx],
   );
 
+  const handleCreateExcelCopy = useCallback(
+    async ({ name, type, leaks, monitoringRound }) => {
+      const newProject = addProject(name, type);
+      if (!newProject) {
+        throw new Error("Не удалось создать проект");
+      }
+
+      await waitForRefValue(activeProjectIdRef, newProject.id);
+      const { persistExcelImportPhotos } =
+        await import("@/services/excelImportService");
+      const withPhotos = await persistExcelImportPhotos(
+        leaks,
+        savePhotoRef.current,
+      );
+      await saveRef.current(withPhotos);
+      if (monitoringRound) saveMonitoringRound(newProject.id, monitoringRound);
+      return { project: newProject, leakCount: withPhotos.length };
+    },
+    [addProject],
+  );
+
+  const handleSetupImportExcel = useCallback(
+    async (file, { name, type }) => {
+      const { parseExcelImportFile } =
+        await import("@/services/excelImportService");
+      const result = await parseExcelImportFile(file, {
+        projectType: type || "upstream",
+      });
+      if (!result.leaks.length) {
+        const error = new Error("No importable rows found in XLSX");
+        error.code = "EMPTY_EXCEL";
+        throw error;
+      }
+      let resolvedType = result.project?.type || type;
+      if (!resolvedType) {
+        const { detectProjectTypeFromLeaks } =
+          await import("@/services/projectBackupService");
+        resolvedType = detectProjectTypeFromLeaks(result.leaks);
+      }
+      if (!resolvedType) {
+        const error = new Error("Project type is missing");
+        error.code = "MISSING_PROJECT_TYPE";
+        throw error;
+      }
+      return handleCreateExcelCopy({
+        name: result.project?.name || name,
+        type: resolvedType,
+        leaks: result.leaks,
+        monitoringRound: result.monitoringRound,
+      });
+    },
+    [handleCreateExcelCopy],
+  );
+
   if (!isConfigured) {
     return (
       <Suspense fallback={<AppLoader />}>
         <ProjectSetupScreen
           onComplete={configure}
           onImportZip={handleSetupImportZip}
+          onImportExcel={handleSetupImportExcel}
         />
       </Suspense>
     );
@@ -320,9 +395,12 @@ export default function App() {
             <Settings
               setPage={setPage}
               prevPage={prevPage}
+              data={data}
+              setData={save}
               clearDatabase={clear}
               onImportZip={handleImportZip}
               onImportIntoExisting={handleImportIntoExisting}
+              onCreateExcelCopy={handleCreateExcelCopy}
             />
           )}
 

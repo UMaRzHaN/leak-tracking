@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "./Notification.module.scss";
 
@@ -27,7 +28,7 @@ export default function Notification({
 
   const { type = "info", message } = notification;
 
-  return (
+  const toast = (
     <div className={`${s.notification} ${s[type]}`} role="alert">
       <span className={s.icon}>{ICONS[type] ?? "ℹ"}</span>
       <span className={s.message}>{message}</span>
@@ -41,4 +42,8 @@ export default function Notification({
       </button>
     </div>
   );
+
+  return typeof document === "undefined"
+    ? toast
+    : createPortal(toast, document.body);
 }

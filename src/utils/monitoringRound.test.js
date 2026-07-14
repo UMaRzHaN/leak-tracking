@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  completeMonitoringRound,
   getRestoredMonitoringRound,
   readMonitoringRound,
   saveMonitoringRound,
@@ -18,6 +19,26 @@ describe("monitoring round persistence", () => {
     saveMonitoringRound("project-1", round);
 
     expect(readMonitoringRound("project-1")).toEqual(round);
+  });
+
+  it("persists completion time without losing round metadata", () => {
+    const completed = completeMonitoringRound(
+      {
+        id: "round-8",
+        number: 8,
+        startedAt: "2026-07-14T05:00:00.000Z",
+      },
+      "2026-07-14T08:00:00.000Z",
+    );
+
+    saveMonitoringRound("project-1", completed);
+
+    expect(readMonitoringRound("project-1")).toEqual({
+      id: "round-8",
+      number: 8,
+      startedAt: "2026-07-14T05:00:00.000Z",
+      completedAt: "2026-07-14T08:00:00.000Z",
+    });
   });
 
   it("migrates monitoring rounds created by legacy seed scripts", () => {

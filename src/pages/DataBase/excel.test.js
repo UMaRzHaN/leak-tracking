@@ -206,6 +206,9 @@ describe("excel export helpers", () => {
       null,
       null,
       "en",
+      {
+        project: { name: "North Field", type: "midstream" },
+      },
     );
 
     expect(mocks.workbookInstances).toHaveLength(1);
@@ -215,12 +218,34 @@ describe("excel export helpers", () => {
       expect.any(Uint8Array),
     );
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
+      "excel-project.json",
+      expect.stringContaining('"type": "midstream"'),
+    );
+    expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
       "photos/7/7.png",
       "ZmFrZQ==",
       { base64: true },
     );
     expect(mocks.anchorClick).toHaveBeenCalledTimes(1);
     expect(result.message).toBe("XLSX with photos exported (report.zip)");
+  });
+
+  it("replaces invalid Date cell values with blanks before writing xlsx", async () => {
+    const invalidDate = new Date("not-a-date");
+
+    await exportToExcelFile(
+      [{ id: 1, leak_id: 1 }],
+      [{ id: 1, date: invalidDate, resolvedAt: invalidDate }],
+      ["ID", "Date", "Resolved"],
+      ["id", "date", "resolvedAt"],
+      "report",
+      null,
+      null,
+      "en",
+    );
+
+    const sheet = mocks.workbookInstances[0].sheets[0];
+    expect(sheet.rows[1].values).toEqual([1, "", ""]);
   });
 
   it("exports every repeated monitoring record with its own photo link", async () => {
@@ -280,6 +305,54 @@ describe("excel export helpers", () => {
       "ZmFrZQ==",
       { base64: true },
     );
+  });
+
+  it("exports leak history to a dedicated history sheet", async () => {
+    await exportToExcelFile(
+      [
+        {
+          id: 1,
+          leak_id: "TAG-9",
+          detectedBy: "Inspector",
+          history: [
+            {
+              action: "edited",
+              date: "2026-07-14T12:00:00.000Z",
+              changes: [{ key: "leak_speed", from: 10, to: 15 }],
+            },
+          ],
+        },
+      ],
+      [{ id: 1, leak_id: "TAG-9", name: "Leak 1" }],
+      ["ID", "Tag", "Name"],
+      ["id", "leak_id", "name"],
+      "report",
+      null,
+      null,
+      "en",
+    );
+
+    const historySheet = mocks.workbookInstances[0].sheets[1];
+    expect(historySheet.rows[0].values).toEqual([
+      "No.",
+      "Tag",
+      "Date",
+      "Action",
+      "User",
+      "Text",
+      "Status",
+      "Changes JSON",
+    ]);
+    expect(historySheet.rows[1].values).toEqual([
+      1,
+      "TAG-9",
+      "2026-07-14T12:00:00.000Z",
+      "edited",
+      "Inspector",
+      "",
+      "",
+      JSON.stringify([{ key: "leak_speed", from: 10, to: 15 }]),
+    ]);
   });
 
   it("can export only the latest monitoring record per tag and round", async () => {

@@ -38,8 +38,12 @@ const resources = {
 
         import: "Импортировать из ZIP",
         importing: "Импорт…",
+        importExcel: "Импорт Excel",
+        importingExcel: "Импорт Excel…",
+        importExcelProgress: "Идёт чтение Excel-архива, подождите...",
+        emptyExcel: "В Excel не найдено строк для импорта",
 
-        importHint: "Восстановить проект из резервной копии",
+        importHint: "ZIP-бэкап или Excel-архив с фотографиями",
 
         importError: "Ошибка импорта",
         languageToggle: "EN",
@@ -141,8 +145,10 @@ const resources = {
         backup: "Резервная копия",
         exportZip: "Экспорт ZIP",
         importZip: "Импорт ZIP",
+        importExcel: "Импорт Excel",
+        importExcelLoading: "Импорт...",
         backupHint:
-          "ZIP-архив содержит все записи и фотографии. Рекомендуется для переноса данных между устройствами.",
+          "ZIP-архив содержит все записи и фотографии. Excel-импорт добавляет табличные данные без извлечения встроенных фото.",
 
         mapCache: "Кэш карты",
         satelliteTiles: "Спутниковые тайлы",
@@ -258,7 +264,7 @@ const resources = {
         },
 
         comment: {
-          add: "Добавить комментарий",
+          add: "Комментарий",
           placeholder: "Введите комментарий...",
           cancel: "Отмена",
           save: "Сохранить",
@@ -367,8 +373,12 @@ const resources = {
 
         import: "Import from ZIP",
         importing: "Importing…",
+        importExcel: "Import Excel",
+        importingExcel: "Importing Excel…",
+        importExcelProgress: "Reading the Excel archive, please wait...",
+        emptyExcel: "No importable rows found in Excel",
 
-        importHint: "Restore a project from a backup",
+        importHint: "ZIP backup or Excel archive with photos",
 
         importError: "Import error",
         languageToggle: "RU",
@@ -604,8 +614,10 @@ const resources = {
         backup: "Backup",
         exportZip: "Export ZIP",
         importZip: "Import ZIP",
+        importExcel: "Import Excel",
+        importExcelLoading: "Import...",
         backupHint:
-          "The ZIP archive contains all records and photos. Recommended for transferring data between devices.",
+          "The ZIP archive contains all records and photos. Excel import appends table data without extracting embedded photos.",
 
         mapCache: "Map Cache",
         satelliteTiles: "Satellite Tiles",
@@ -721,7 +733,7 @@ const resources = {
         },
 
         comment: {
-          add: "Add comment",
+          add: "Comment",
           placeholder: "Enter a comment...",
           cancel: "Cancel",
           save: "Save",
