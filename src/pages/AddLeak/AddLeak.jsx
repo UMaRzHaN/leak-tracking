@@ -200,7 +200,9 @@ export default function AddLeak({
               return null;
             }
           }
-          photoPath = await savePhoto(rawPhoto, String(id));
+          photoPath = await savePhoto(rawPhoto, String(id), [], {
+            cleanupOldVersions: false,
+          });
         }
 
         const cleanRow = { ...row };

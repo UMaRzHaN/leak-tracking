@@ -61,6 +61,7 @@
   display: flex;
   gap: 8px;
   align-items: center;
+  margin-bottom: 6px;
 }
 
 .searchRow .searchWrap {
@@ -445,6 +446,17 @@
     border-color: var(--c-resolved-border);
     color: var(--c-resolved);
   }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: wait;
+  }
+
+  &:disabled:hover {
+    background: var(--c-surface);
+    border-color: var(--c-border);
+    color: var(--c-text2);
+  }
 }
 
 /* ── Bulk action bar (fixed bottom) ── */
@@ -594,7 +606,6 @@
   overflow: hidden; /* scroll будет внутри VirtualizedLeakList */
   display: flex;
   flex-direction: column;
-
 }
 
 /* ── Empty ── */

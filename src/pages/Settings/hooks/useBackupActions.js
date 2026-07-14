@@ -50,6 +50,7 @@ export function useBackupActions({
   const [importConfirmState, setImportConfirmState] = useState(
     IMPORT_CONFIRM_CLOSED,
   );
+  const [isExportingZip, setIsExportingZip] = useState(false);
 
   const importProject = useCallback(
     async (file, fallback) => {
@@ -79,6 +80,8 @@ export function useBackupActions({
   );
 
   const handleExportZip = useCallback(async () => {
+    if (isExportingZip) return;
+
     if (!data.length) {
       notify(
         "warning",
@@ -91,6 +94,15 @@ export function useBackupActions({
     const fileName = `${folder}.zip`;
 
     try {
+      setIsExportingZip(true);
+      notify(
+        "info",
+        lang === "ru"
+          ? "Идёт экспорт ZIP backup, подождите..."
+          : "ZIP backup export in progress, please wait...",
+        { autoCloseMs: 0 },
+      );
+
       const { buildProjectBackupZip } =
         await import("@/services/projectBackupService");
       const blob = await buildProjectBackupZip({
@@ -135,8 +147,10 @@ export function useBackupActions({
         "error",
         `${lang === "ru" ? "Ошибка экспорта" : "Export error"}: ${error.message}`,
       );
+    } finally {
+      setIsExportingZip(false);
     }
-  }, [activeProject, data, idbGetPhoto, lang, notify, vars]);
+  }, [activeProject, data, idbGetPhoto, isExportingZip, lang, notify, vars]);
 
   const handleImportZip = useCallback(
     async (event) => {
@@ -359,6 +373,7 @@ export function useBackupActions({
   return {
     importZipRef,
     handleExportZip,
+    isExportingZip,
     handleImportZip,
     importConfirmState,
     confirmImport,

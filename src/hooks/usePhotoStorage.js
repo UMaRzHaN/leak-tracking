@@ -6,17 +6,29 @@ import { idb } from "@/repositories/idb";
 
 export function usePhotoStorage() {
   const { activeProject } = useProjectData();
-  const [ready, setReady] = useState(() => idb.getState().ready);
+  const [ready, setReady] = useState(() => isNative || idb.getState().ready);
 
   useEffect(() => {
+    if (isNative) {
+      setReady(true);
+      return undefined;
+    }
+
     setReady(idb.getState().ready);
     const unsub = idb.subscribe((_, r) => setReady(r));
     idb.open();
     return unsub;
   }, []);
 
+  useEffect(() => {
+    if (!isNative || !activeProject?.folderName) return;
+    PhotoRepository.prepare({
+      folderName: activeProject.folderName,
+    }).catch(() => {});
+  }, [activeProject?.folderName]);
+
   const savePhoto = useCallback(
-    async (rawPhoto, leakId, excludePaths = []) => {
+    async (rawPhoto, leakId, excludePaths = [], options = {}) => {
       return PhotoRepository.save(
         rawPhoto,
         {
@@ -25,6 +37,7 @@ export function usePhotoStorage() {
           folderName: activeProject?.folderName,
         },
         excludePaths,
+        options,
       );
     },
     [activeProject?.id, activeProject?.folderName],
@@ -35,10 +48,7 @@ export function usePhotoStorage() {
     [],
   );
 
-  const getPhoto = useCallback(
-    async (id) => PhotoRepository.get(id),
-    [],
-  );
+  const getPhoto = useCallback(async (id) => PhotoRepository.get(id), []);
 
   const gcOrphanedPhotos = useCallback(
     async (leaks) => {
@@ -50,5 +60,12 @@ export function usePhotoStorage() {
     [activeProject?.id, activeProject?.folderName],
   );
 
-  return { ready, isNative, savePhoto, deletePhoto, getPhoto, gcOrphanedPhotos };
+  return {
+    ready,
+    isNative,
+    savePhoto,
+    deletePhoto,
+    getPhoto,
+    gcOrphanedPhotos,
+  };
 }

@@ -4,6 +4,7 @@ import { compressImage } from "./compressImage";
 import { idb } from "./idb";
 
 const PHOTO_FIELDS = ["photo", "photo_after", "photo_repair"];
+const photoFolderPromises = new Map();
 
 function collectReferencedPhotos(leaks = []) {
   const referenced = new Set();
@@ -41,6 +42,27 @@ function getPhotoFolder(folderName) {
   return `LeakReports/${folderName}/photos`;
 }
 
+function ensurePhotoFolder(folderName) {
+  if (!folderName) return Promise.resolve(null);
+
+  const folder = getPhotoFolder(folderName);
+  if (!photoFolderPromises.has(folder)) {
+    const pending = Filesystem.mkdir({
+      path: folder,
+      directory: Directory.Data,
+      recursive: true,
+    })
+      .catch(() => {
+        photoFolderPromises.delete(folder);
+        return folder;
+      })
+      .then(() => folder);
+    photoFolderPromises.set(folder, pending);
+  }
+
+  return photoFolderPromises.get(folder);
+}
+
 async function cleanupOldVersions(
   folder,
   leakId,
@@ -71,11 +93,21 @@ async function cleanupOldVersions(
 }
 
 export const PhotoRepository = {
+  async prepare({ folderName } = {}) {
+    if (!isNative || !folderName) return;
+    await ensurePhotoFolder(folderName);
+  },
+
   /**
    * Save a photo blob for a leak.
    * Returns "idb://{key}" on web, "data://{path}" on mobile, or null on failure.
    */
-  async save(rawPhoto, { projectId, leakId, folderName }, excludePaths = []) {
+  async save(
+    rawPhoto,
+    { projectId, leakId, folderName },
+    excludePaths = [],
+    { cleanupOldVersions: shouldCleanupOldVersions = true } = {},
+  ) {
     if (!rawPhoto || !leakId) return null;
     const version = Date.now();
     const photo =
@@ -89,6 +121,8 @@ export const PhotoRepository = {
       const photoId = `photo_${projectId}_${leakId}_${version}`;
       const ok = await idb.save(photoId, photo);
       if (!ok) return null;
+
+      if (!shouldCleanupOldVersions) return `idb://${photoId}`;
 
       const excludeKeys = new Set(
         excludePaths.map((p) => p?.replace("idb://", "")).filter(Boolean),
@@ -111,12 +145,7 @@ export const PhotoRepository = {
     /* MOBILE — Capacitor Filesystem */
     if (!folderName || !(photo instanceof Blob)) return null;
 
-    const folder = getPhotoFolder(folderName);
-    await Filesystem.mkdir({
-      path: folder,
-      directory: Directory.Data,
-      recursive: true,
-    }).catch(() => {});
+    const folder = await ensurePhotoFolder(folderName);
 
     const fileName = `photo_${leakId}_${version}.jpg`;
     const targetPath = `${folder}/${fileName}`;
@@ -133,7 +162,9 @@ export const PhotoRepository = {
         .map((p) => p?.replace(`data://${folder}/`, ""))
         .filter(Boolean),
     );
-    await cleanupOldVersions(folder, leakId, fileName, excludeFileNames);
+    if (shouldCleanupOldVersions) {
+      await cleanupOldVersions(folder, leakId, fileName, excludeFileNames);
+    }
 
     return `data://${targetPath}`;
   },
@@ -163,8 +194,12 @@ export const PhotoRepository = {
     return idb.listKeys();
   },
 
-  async deleteProjectPhotos(projectId) {
-    if (!projectId || isNative || !idb.getState().ready) return;
+  async deleteProjectPhotos(projectId, folderName) {
+    if (isNative) {
+      if (folderName) photoFolderPromises.delete(getPhotoFolder(folderName));
+      return;
+    }
+    if (!projectId || !idb.getState().ready) return;
     const keys = await idb.listKeys();
     const prefix = `photo_${projectId}_`;
     for (const key of keys) {

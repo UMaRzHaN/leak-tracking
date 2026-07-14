@@ -41,8 +41,8 @@ export default function Settings({
   const [integrityReport, setIntegrityReport] = useState(null);
   const [checkingIntegrity, setCheckingIntegrity] = useState(false);
 
-  const notify = useCallback((type, message) => {
-    setNotification({ type, message });
+  const notify = useCallback((type, message, options = {}) => {
+    setNotification({ type, message, ...options });
   }, []);
 
   useEffect(() => {
@@ -77,6 +77,7 @@ export default function Settings({
   const {
     importZipRef,
     handleExportZip,
+    isExportingZip,
     handleImportZip,
     importConfirmState,
     confirmImport,
@@ -257,6 +258,7 @@ export default function Settings({
         <BackupSection
           activeProject={activeProject}
           importZipRef={importZipRef}
+          isExporting={isExportingZip}
           localeTexts={localeTexts}
           onExport={handleExportZip}
           onImport={handleImportZip}

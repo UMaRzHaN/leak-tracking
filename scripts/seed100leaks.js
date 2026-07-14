@@ -3,7 +3,7 @@
  * Вставить в консоль браузера / WebView DevTools при открытом приложении.
  *
  * Генерирует тестовую базу для активного проекта:
- * - 100 утечек;
+ * - 1000 утечек;
  * - фото до / в ремонте / после;
  * - detectedBy, serial_number, repairAt, resolvedAt;
  * - 2–4 обхода на тег и несколько повторных проверок в одном обходе;
@@ -11,13 +11,13 @@
  * - последнее фото синхронизируется с миниатюрой/шапкой detailed;
  * - данные пригодны для проверки Excel и ZIP с полным журналом фото;
  * - активный обход для страницы мониторинга;
- * - web: пишет в localStorage;
+ * - web: пишет данные в localStorage, фото в IndexedDB;
  * - native Capacitor: пишет data.json и фото в Directory.Data.
  */
 (async function seed100Leaks() {
-  const COUNT = 100;
-  const ROUNDS = 4;
-  const CURRENT_ROUND = 4;
+  const COUNT = 10000;
+  const ROUNDS = 10;
+  const CURRENT_ROUND = 10;
   const USER_PROFILE_KEY = "leak_tracking:user_profile:v1";
 
   const STORAGE = {
@@ -92,7 +92,7 @@
       if (isNative) {
         await saveNativeData({ leaks, folderName });
       } else {
-        localStorage.setItem(dataKey, JSON.stringify(leaks));
+        await saveWebData({ leaks, projectId: activeId, dataKey });
       }
 
       const withBefore = leaks.filter((leak) => leak.photo).length;
@@ -444,6 +444,166 @@
     return "monitoring_open";
   }
 
+  async function saveWebData({ leaks, projectId, dataKey }) {
+    const db = await openSeedPhotoDb();
+    const dataDb = await openSeedDataDb();
+    let photoCount = 0;
+
+    await deleteWebProjectPhotos(db, projectId);
+
+    for (const leak of leaks) {
+      for (const key of ["photo", "photo_repair", "photo_after"]) {
+        if (
+          typeof leak[key] !== "string" ||
+          !leak[key].startsWith("data:image/")
+        ) {
+          continue;
+        }
+        leak[key] = await writeWebPhoto({
+          db,
+          projectId,
+          prefix: key,
+          leakId: leak.leak_id,
+          dataUrl: leak[key],
+        });
+        photoCount += 1;
+      }
+
+      for (const [recordIndex, record] of (
+        leak.monitoringRecords ?? []
+      ).entries()) {
+        if (
+          typeof record.photo !== "string" ||
+          !record.photo.startsWith("data:image/")
+        ) {
+          continue;
+        }
+        record.photo = await writeWebPhoto({
+          db,
+          projectId,
+          prefix: `monitoring_${record.roundNumber}_${recordIndex + 1}`,
+          leakId: leak.leak_id,
+          dataUrl: record.photo,
+        });
+        photoCount += 1;
+      }
+
+      syncLatestMonitoringPhoto(leak);
+    }
+
+    db.close();
+    await writeWebProjectData({ db: dataDb, projectId, leaks });
+    dataDb.close();
+    try {
+      localStorage.setItem(dataKey, JSON.stringify(leaks));
+    } catch (error) {
+      localStorage.removeItem(dataKey);
+      console.warn(
+        "localStorage переполнен, база записана только в IndexedDB:",
+        error,
+      );
+    }
+    console.log(`Фото записано в IndexedDB: ${photoCount}`);
+  }
+
+  function openSeedPhotoDb() {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) {
+        reject(new Error("IndexedDB недоступен"));
+        return;
+      }
+
+      const request = window.indexedDB.open("LeakTrackingDB", 1);
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains("photos")) {
+          db.createObjectStore("photos", { keyPath: "id" });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  function openSeedDataDb() {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) {
+        reject(new Error("IndexedDB недоступен"));
+        return;
+      }
+
+      const request = window.indexedDB.open("LeakTrackingDataDB", 1);
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains("projects")) {
+          db.createObjectStore("projects", { keyPath: "id" });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function writeWebPhoto({ db, projectId, prefix, leakId, dataUrl }) {
+    const id = `photo_${projectId}_${prefix}_${leakId}_${Date.now()}_${Math.floor(
+      Math.random() * 100000,
+    )}`;
+    const data = await dataUrlToBlob(dataUrl);
+
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction("photos", "readwrite");
+      const store = tx.objectStore("photos");
+      const request = store.put({ id, data, timestamp: Date.now() });
+      request.onerror = () => reject(request.error);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+
+    return `idb://${id}`;
+  }
+
+  function deleteWebProjectPhotos(db, projectId) {
+    return new Promise((resolve, reject) => {
+      const prefix = `photo_${projectId}_`;
+      const tx = db.transaction("photos", "readwrite");
+      const store = tx.objectStore("photos");
+      const request = store.openCursor();
+
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) return;
+        if (String(cursor.key).startsWith(prefix)) cursor.delete();
+        cursor.continue();
+      };
+      request.onerror = () => reject(request.error);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  }
+
+  function writeWebProjectData({ db, projectId, leaks }) {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("projects", "readwrite");
+      const store = tx.objectStore("projects");
+      const request = store.put({
+        id: projectId,
+        data: leaks,
+        timestamp: Date.now(),
+      });
+      request.onerror = () => reject(request.error);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  }
+
+  async function dataUrlToBlob(dataUrl) {
+    const response = await fetch(dataUrl);
+    return response.blob();
+  }
+
   async function saveNativeData({ leaks, folderName }) {
     const Fs = window.Capacitor?.Plugins?.Filesystem;
     if (!Fs) throw new Error("Capacitor Filesystem недоступен");
@@ -494,6 +654,8 @@
         });
         photoCount += 1;
       }
+
+      syncLatestMonitoringPhoto(leak);
     }
 
     await Fs.writeFile({

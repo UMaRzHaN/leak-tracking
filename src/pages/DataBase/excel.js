@@ -20,6 +20,17 @@ const EXCEL_MIME =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const LEAKS_TABLE_THEME = "TableStyleMedium2";
 const MONITORING_TABLE_THEME = "TableStyleMedium4";
+const EXPORT_YIELD_EVERY = 40;
+
+function yieldToMainThread() {
+  return new Promise((resolve) => {
+    if (typeof window !== "undefined" && "requestAnimationFrame" in window) {
+      window.requestAnimationFrame(() => resolve());
+      return;
+    }
+    setTimeout(resolve, 0);
+  });
+}
 
 function getExportFolder(projectFolderName) {
   return projectFolderName
@@ -43,37 +54,39 @@ async function resolvePhotoSrc(path, idbGet) {
 async function buildLeakPhotoEntries(orderedLeaks, idbGet) {
   const photoEntries = [];
 
-  await Promise.all(
-    orderedLeaks.map(async (leak, leakIndex) => {
-      for (const key of PHOTO_KEYS) {
-        const path = leak[key];
-        if (!path) continue;
+  for (const [leakIndex, leak] of orderedLeaks.entries()) {
+    if (leakIndex > 0 && leakIndex % EXPORT_YIELD_EVERY === 0) {
+      await yieldToMainThread();
+    }
 
-        const src = await resolvePhotoSrc(path, idbGet);
-        if (!src || !src.startsWith("data:")) continue;
+    for (const key of PHOTO_KEYS) {
+      const path = leak[key];
+      if (!path) continue;
 
-        const match = src.match(/^data:(image\/\w+);base64,(.+)$/);
-        if (!match) continue;
+      const src = await resolvePhotoSrc(path, idbGet);
+      if (!src || !src.startsWith("data:")) continue;
 
-        const ext = match[1].split("/")[1] || "jpg";
-        const base64 = match[2];
-        const suffix =
-          key === "photo_after"
-            ? "_after"
-            : key === "photo_repair"
-              ? "_repair"
-              : "";
-        const leakId = leak.leak_id ?? leak.index ?? leakIndex + 1;
-        const photoFileName = `photos/${leakId}/${leakId}${suffix}.${ext}`;
+      const match = src.match(/^data:(image\/\w+);base64,(.+)$/);
+      if (!match) continue;
 
-        photoEntries.push({
-          mapKey: `${leakIndex}:${key}`,
-          photoFileName,
-          base64,
-        });
-      }
-    }),
-  );
+      const ext = match[1].split("/")[1] || "jpg";
+      const base64 = match[2];
+      const suffix =
+        key === "photo_after"
+          ? "_after"
+          : key === "photo_repair"
+            ? "_repair"
+            : "";
+      const leakId = leak.leak_id ?? leak.index ?? leakIndex + 1;
+      const photoFileName = `photos/${leakId}/${leakId}${suffix}.${ext}`;
+
+      photoEntries.push({
+        mapKey: `${leakIndex}:${key}`,
+        photoFileName,
+        base64,
+      });
+    }
+  }
 
   return photoEntries;
 }
@@ -85,37 +98,37 @@ async function buildMonitoringPhotoEntries(
 ) {
   const photoEntries = [];
 
-  await Promise.all(
-    orderedLeaks.map(async (leak, leakIndex) => {
-      const leakId = leak.leak_id ?? leak.index ?? leakIndex + 1;
-      const records = getMonitoringRecords(leak);
+  for (const [leakIndex, leak] of orderedLeaks.entries()) {
+    if (leakIndex > 0 && leakIndex % EXPORT_YIELD_EVERY === 0) {
+      await yieldToMainThread();
+    }
 
-      await Promise.all(
-        records.map(async (record, recordIndex) => {
-          const mapKey = `monitoring:${leakIndex}:${recordIndex}`;
-          if (includedPhotoKeys && !includedPhotoKeys.has(mapKey)) return;
-          const path = record.photo;
-          if (!path) return;
+    const leakId = leak.leak_id ?? leak.index ?? leakIndex + 1;
+    const records = getMonitoringRecords(leak);
 
-          const src = await resolvePhotoSrc(path, idbGet);
-          if (!src || !src.startsWith("data:")) return;
+    for (const [recordIndex, record] of records.entries()) {
+      const mapKey = `monitoring:${leakIndex}:${recordIndex}`;
+      if (includedPhotoKeys && !includedPhotoKeys.has(mapKey)) continue;
+      const path = record.photo;
+      if (!path) continue;
 
-          const match = src.match(/^data:(image\/\w+);base64,(.+)$/);
-          if (!match) return;
+      const src = await resolvePhotoSrc(path, idbGet);
+      if (!src || !src.startsWith("data:")) continue;
 
-          const ext = match[1].split("/")[1] || "jpg";
-          const base64 = match[2];
-          const photoFileName = `photos/${leakId}/monitoring/${leakId}_monitoring_${recordIndex + 1}.${ext}`;
+      const match = src.match(/^data:(image\/\w+);base64,(.+)$/);
+      if (!match) continue;
 
-          photoEntries.push({
-            mapKey,
-            photoFileName,
-            base64,
-          });
-        }),
-      );
-    }),
-  );
+      const ext = match[1].split("/")[1] || "jpg";
+      const base64 = match[2];
+      const photoFileName = `photos/${leakId}/monitoring/${leakId}_monitoring_${recordIndex + 1}.${ext}`;
+
+      photoEntries.push({
+        mapKey,
+        photoFileName,
+        base64,
+      });
+    }
+  }
 
   return photoEntries;
 }
@@ -238,14 +251,17 @@ function styleHeaderRow(sheet, fillColor) {
   headerRow.height = 34;
 }
 
-function styleBodyRows(sheet, rowCount) {
+async function styleBodyRows(sheet, rowCount) {
   for (let rowIndex = 2; rowIndex <= rowCount + 1; rowIndex += 1) {
+    if (rowIndex > 2 && rowIndex % EXPORT_YIELD_EVERY === 0) {
+      await yieldToMainThread();
+    }
     const row = sheet.getRow(rowIndex);
     row.alignment = { vertical: "middle", wrapText: true };
   }
 }
 
-function buildWorkbook({
+async function buildWorkbook({
   orderedLeaks,
   orderedRows,
   headers,
@@ -279,9 +295,13 @@ function buildWorkbook({
     theme: LEAKS_TABLE_THEME,
   });
   styleHeaderRow(sheet, "FF1F4E78");
-  styleBodyRows(sheet, orderedRows.length);
+  await styleBodyRows(sheet, orderedRows.length);
 
-  orderedRows.forEach((row, leakIndex) => {
+  for (const [leakIndex, row] of orderedRows.entries()) {
+    if (leakIndex > 0 && leakIndex % EXPORT_YIELD_EVERY === 0) {
+      await yieldToMainThread();
+    }
+
     for (const columnIndex of photoColumnIndexes) {
       const key = keysOrder[columnIndex];
       const mapKey = `${leakIndex}:${key}`;
@@ -302,7 +322,7 @@ function buildWorkbook({
           : "";
       }
     }
-  });
+  }
 
   headers.forEach((header, index) => {
     const key = keysOrder[index];
@@ -317,7 +337,7 @@ function buildWorkbook({
     );
   });
 
-  buildMonitoringSheet(
+  await buildMonitoringSheet(
     workbook,
     orderedLeaks,
     lang,
@@ -421,7 +441,7 @@ function getMonitoringExportRows(
   });
 }
 
-function buildMonitoringSheet(
+async function buildMonitoringSheet(
   workbook,
   orderedLeaks,
   lang,
@@ -494,9 +514,13 @@ function buildMonitoringSheet(
     theme: MONITORING_TABLE_THEME,
   });
   styleHeaderRow(sheet, "FF548235");
-  styleBodyRows(sheet, rows.length);
+  await styleBodyRows(sheet, rows.length);
 
-  rows.forEach((row, rowIndex) => {
+  for (const [rowIndex, row] of rows.entries()) {
+    if (rowIndex > 0 && rowIndex % EXPORT_YIELD_EVERY === 0) {
+      await yieldToMainThread();
+    }
+
     const photoColumnIndex = keys.indexOf("photo") + 1;
     const photoFile = photoMap[row.photoMapKey];
     const photoCell = sheet.getRow(rowIndex + 2).getCell(photoColumnIndex);
@@ -514,7 +538,7 @@ function buildMonitoringSheet(
           : "Present (file missing)"
         : "";
     }
-  });
+  }
 
   keys.forEach((key, index) => {
     sheet.getColumn(index + 1).width = getColumnWidth(
@@ -599,7 +623,7 @@ export async function exportToExcelFile(
   const outputFolder = getExportFolder(projectFolderName);
 
   const ExcelJS = (await getExcelJS()).default;
-  const workbook = buildWorkbook({
+  const workbook = await buildWorkbook({
     orderedLeaks,
     orderedRows,
     headers,
@@ -610,6 +634,7 @@ export async function exportToExcelFile(
     monitoringExportMode,
   });
 
+  await yieldToMainThread();
   const xlsxBuffer = await workbook.xlsx.writeBuffer();
   const xlsxBlob = new Blob([xlsxBuffer], { type: EXCEL_MIME });
 
@@ -629,7 +654,10 @@ export async function exportToExcelFile(
   const zip = new JSZip();
   zip.file(`${fileName}.xlsx`, xlsxBuffer);
 
-  for (const entry of photoEntries) {
+  for (const [index, entry] of photoEntries.entries()) {
+    if (index > 0 && index % EXPORT_YIELD_EVERY === 0) {
+      await yieldToMainThread();
+    }
     zip.file(entry.photoFileName, entry.base64, { base64: true });
   }
 

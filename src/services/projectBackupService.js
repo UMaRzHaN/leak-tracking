@@ -22,6 +22,18 @@ import {
 import { normalizeProjectVarsUnits } from "@/utils/projectVars";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const EXPORT_YIELD_EVERY = 25;
+const EXPORT_CONCURRENCY = 8;
+
+function yieldToMainThread() {
+  return new Promise((resolve) => {
+    if (typeof window !== "undefined" && "requestAnimationFrame" in window) {
+      window.requestAnimationFrame(() => resolve());
+      return;
+    }
+    setTimeout(resolve, 0);
+  });
+}
 
 const PHOTO_KEYS = ["photo", "photo_after", "photo_repair"];
 const SUFFIX = {
@@ -64,50 +76,73 @@ async function resolveBase64(path, idbGet) {
 
 async function exportLeaksWithPhotos(leaks, zip, idbGet) {
   const photosFolder = zip.folder("photos");
+  const exported = new Array(leaks.length);
+  let cursor = 0;
 
-  return Promise.all(
-    leaks.map(async (leak) => {
-      const copy = { ...leak };
-      const leakNumber = String(leak.leak_id ?? leak.id).replace(/[\\/]/g, "_");
-      const leakFolder = photosFolder.folder(leakNumber);
+  async function exportOne(leak, index) {
+    const copy = { ...leak };
+    const leakNumber = String(leak.leak_id ?? leak.id).replace(/[\\/]/g, "_");
+    const leakFolder = photosFolder.folder(leakNumber);
 
-      for (const key of PHOTO_KEYS) {
-        const path = leak[key];
-        if (!path) continue;
+    for (const key of PHOTO_KEYS) {
+      const path = leak[key];
+      if (!path) continue;
+      const resolved = await resolveBase64(path, idbGet);
+      if (!resolved) continue;
+
+      const fileName = `${SUFFIX[key]}.${resolved.ext}`;
+      leakFolder.file(fileName, resolved.base64, { base64: true });
+      copy[key] = `zip:photos/${leakNumber}/${fileName}`;
+    }
+
+    if (Array.isArray(copy.monitoringRecords)) {
+      const records = [];
+      for (const [recordIndex, record] of copy.monitoringRecords.entries()) {
+        const path = record?.[MONITORING_PHOTO_KEY];
+        if (!path) {
+          records.push(record);
+          continue;
+        }
+
         const resolved = await resolveBase64(path, idbGet);
-        if (!resolved) continue;
+        if (!resolved) {
+          records.push(record);
+          continue;
+        }
 
-        const fileName = `${SUFFIX[key]}.${resolved.ext}`;
-        leakFolder.file(fileName, resolved.base64, { base64: true });
-        copy[key] = `zip:photos/${leakNumber}/${fileName}`;
-      }
-
-      if (Array.isArray(copy.monitoringRecords)) {
-        copy.monitoringRecords = await Promise.all(
-          copy.monitoringRecords.map(async (record, index) => {
-            const path = record?.[MONITORING_PHOTO_KEY];
-            if (!path) return record;
-
-            const resolved = await resolveBase64(path, idbGet);
-            if (!resolved) return record;
-
-            const safeRecordId = String(record.id ?? index + 1).replace(
-              /[\\/]/g,
-              "_",
-            );
-            const fileName = `monitoring_${safeRecordId}.${resolved.ext}`;
-            leakFolder.file(fileName, resolved.base64, { base64: true });
-            return {
-              ...record,
-              [MONITORING_PHOTO_KEY]: `zip:photos/${leakNumber}/${fileName}`,
-            };
-          }),
+        const safeRecordId = String(record.id ?? recordIndex + 1).replace(
+          /[\\/]/g,
+          "_",
         );
+        const fileName = `monitoring_${safeRecordId}.${resolved.ext}`;
+        leakFolder.file(fileName, resolved.base64, { base64: true });
+        records.push({
+          ...record,
+          [MONITORING_PHOTO_KEY]: `zip:photos/${leakNumber}/${fileName}`,
+        });
       }
+      copy.monitoringRecords = records;
+    }
 
-      return copy;
-    }),
+    exported[index] = copy;
+  }
+
+  async function worker() {
+    while (cursor < leaks.length) {
+      const index = cursor;
+      cursor += 1;
+      if (index > 0 && index % EXPORT_YIELD_EVERY === 0) {
+        await yieldToMainThread();
+      }
+      await exportOne(leaks[index], index);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(EXPORT_CONCURRENCY, leaks.length) }, worker),
   );
+
+  return exported;
 }
 
 function buildProjectMeta({ project, vars, monitoringRound } = {}) {
@@ -490,7 +525,9 @@ export async function buildBackupZip(leaks, idbGet) {
   const zip = new JSZip();
 
   const exportedLeaks = await exportLeaksWithPhotos(leaks, zip, idbGet);
+  await yieldToMainThread();
   zip.file("backup.json", JSON.stringify(exportedLeaks, null, 2));
+  await yieldToMainThread();
   return zip.generateAsync({ type: "blob" });
 }
 
@@ -499,6 +536,7 @@ export async function buildProjectBackupZip({ leaks, idbGet, project, vars }) {
   const zip = new JSZip();
 
   const exportedLeaks = await exportLeaksWithPhotos(leaks, zip, idbGet);
+  await yieldToMainThread();
   zip.file("backup.json", JSON.stringify(exportedLeaks, null, 2));
 
   const meta = buildProjectMeta({
@@ -508,6 +546,7 @@ export async function buildProjectBackupZip({ leaks, idbGet, project, vars }) {
   });
   if (meta) zip.file("project.json", JSON.stringify(meta, null, 2));
 
+  await yieldToMainThread();
   return zip.generateAsync({ type: "blob" });
 }
 

@@ -15,12 +15,13 @@ export default function Notification({
   autoCloseMs = 3000,
 }) {
   const { lang } = useLanguage();
+  const effectiveAutoCloseMs = notification?.autoCloseMs ?? autoCloseMs;
 
   useEffect(() => {
-    if (!notification || autoCloseMs === 0) return;
-    const timer = setTimeout(onClose, autoCloseMs);
+    if (!notification || effectiveAutoCloseMs === 0) return;
+    const timer = setTimeout(onClose, effectiveAutoCloseMs);
     return () => clearTimeout(timer);
-  }, [notification, onClose, autoCloseMs]);
+  }, [notification, onClose, effectiveAutoCloseMs]);
 
   if (!notification) return null;
 

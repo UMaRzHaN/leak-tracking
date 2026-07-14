@@ -111,6 +111,17 @@
     transform: scale(0.97);
   }
 
+  &:disabled {
+    opacity: 0.65;
+    cursor: wait;
+  }
+
+  &:disabled:hover {
+    border-color: var(--c-border);
+    background: var(--c-bg);
+    color: var(--c-text2);
+  }
+
   &.restore {
     border-color: var(--c-resolved-border);
     background: var(--c-resolved-bg);
@@ -172,7 +183,9 @@
   color: var(--c-text);
   text-align: left;
   cursor: pointer;
-  transition: border-color var(--t-fast), background var(--t-fast);
+  transition:
+    border-color var(--t-fast),
+    background var(--t-fast);
 }
 
 .exportModeOptionActive {

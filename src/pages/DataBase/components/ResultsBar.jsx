@@ -26,6 +26,7 @@ export default function ResultsBar({
   onOpenBulkPicker,
   onMonitorSelected,
   onExport,
+  isExporting = false,
 }) {
   const { lang } = useLanguage();
 
@@ -81,13 +82,18 @@ export default function ResultsBar({
             <button
               className={s.exportBtn}
               onClick={onExport}
+              disabled={isExporting}
               title={
                 lang === "ru"
                   ? "Экспорт в Excel + фото (ZIP)"
                   : "Export to Excel + photos (ZIP)"
               }
             >
-              📥 XLSX
+              {isExporting
+                ? lang === "ru"
+                  ? "Экспорт..."
+                  : "Export..."
+                : "📥 XLSX"}
             </button>
           )}
         </div>

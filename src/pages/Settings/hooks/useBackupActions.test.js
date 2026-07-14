@@ -147,4 +147,51 @@ describe("useBackupActions", () => {
     );
     expect(result.current.importConfirmState.open).toBe(false);
   });
+
+  it("shows a persistent notification while exporting zip backup", async () => {
+    const notify = vi.fn();
+    servicesModule.buildProjectBackupZip.mockResolvedValue(
+      new Blob(["zip"], { type: "application/zip" }),
+    );
+
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    URL.createObjectURL = vi.fn(() => "blob:backup");
+    URL.revokeObjectURL = vi.fn();
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+
+    const { result } = renderHook(() =>
+      useBackupActions({
+        data: [{ id: "l1" }],
+        idbGetPhoto: vi.fn(),
+        activeProject: { id: "active-1", folderName: "active" },
+        vars: {},
+        onImportZip: vi.fn(),
+        onImportIntoExisting: vi.fn(),
+        notify,
+        projects: [],
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleExportZip();
+    });
+
+    expect(notify).toHaveBeenCalledWith(
+      "info",
+      "ZIP backup export in progress, please wait...",
+      { autoCloseMs: 0 },
+    );
+    expect(notify).toHaveBeenCalledWith(
+      "success",
+      "ZIP archive downloaded (1 record)",
+    );
+    expect(result.current.isExportingZip).toBe(false);
+
+    URL.createObjectURL = originalCreateObjectURL;
+    URL.revokeObjectURL = originalRevokeObjectURL;
+    click.mockRestore();
+  });
 });

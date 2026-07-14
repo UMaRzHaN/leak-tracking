@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { STATUS, getStatusLabel } from "@/utils/status";
 import { useEffectiveProjectConfig } from "@/app/project/hooks/useEffectiveProjectConfig";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
@@ -65,6 +65,7 @@ function prepareRows(data, lang, t) {
 
 export function useDataBaseExport({ displayed, notify }) {
   const { lang, t } = useLanguage();
+  const [isExporting, setIsExporting] = useState(false);
   const projectConfig = useEffectiveProjectConfig();
   const { headers: excelHeaders, keysOrder: excelKeys } =
     projectConfig.export.excel;
@@ -75,7 +76,18 @@ export function useDataBaseExport({ displayed, notify }) {
   );
 
   const handleExport = useCallback(async () => {
+    if (isExporting) return;
+
     try {
+      setIsExporting(true);
+      notify(
+        "info",
+        lang === "ru"
+          ? "Идёт экспорт, подождите..."
+          : "Export in progress, please wait...",
+        { autoCloseMs: 0 },
+      );
+
       const { exportToExcelFile } = await import("@/pages/DataBase/excel");
       const result = await exportToExcelFile(
         displayed,
@@ -103,6 +115,8 @@ export function useDataBaseExport({ displayed, notify }) {
           defaultValue: `Export error: ${err.message}`,
         }),
       );
+    } finally {
+      setIsExporting(false);
     }
   }, [
     activeProject?.folderName,
@@ -111,11 +125,12 @@ export function useDataBaseExport({ displayed, notify }) {
     excelHeaders,
     excelKeys,
     idbGetPhoto,
+    isExporting,
     lang,
     monitoringExportMode,
     notify,
     t,
   ]);
 
-  return { handleExport };
+  return { handleExport, isExporting };
 }

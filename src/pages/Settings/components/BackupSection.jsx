@@ -3,6 +3,7 @@ import s from "../Settings.module.scss";
 export default function BackupSection({
   activeProject,
   importZipRef,
+  isExporting = false,
   localeTexts,
   onExport,
   onImport,
@@ -16,13 +17,19 @@ export default function BackupSection({
       </div>
       <div className={s.backupBody}>
         <div className={s.backupRow}>
-          <button className={s.backupBtn} type="button" onClick={onExport}>
-            {localeTexts.exportZip}
+          <button
+            className={s.backupBtn}
+            type="button"
+            onClick={onExport}
+            disabled={isExporting}
+          >
+            {isExporting ? "Экспорт..." : localeTexts.exportZip}
           </button>
           <button
             className={`${s.backupBtn} ${s.restore}`}
             type="button"
             onClick={() => importZipRef.current?.click()}
+            disabled={isExporting}
           >
             {localeTexts.importZip}
           </button>

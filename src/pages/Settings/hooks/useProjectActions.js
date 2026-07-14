@@ -7,6 +7,7 @@ import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { PROJECT_META } from "@/configs/projects";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
+import { LeakRepository } from "@/repositories/LeakRepository";
 import { clearMapCache } from "@/services/maps/tileCache";
 
 const CLOSED_SWITCH_STATE = {
@@ -20,7 +21,11 @@ async function deleteProjectArtifacts(project) {
   localStorage.removeItem(STORAGE_KEYS.PROJECT_DATA(project.id));
   localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(project.id));
   localStorage.removeItem(STORAGE_KEYS.PROJECT_HIDDEN_FIELDS(project.id));
-  await PhotoRepository.deleteProjectPhotos(project.id);
+  await LeakRepository.clear({
+    projectId: project.id,
+    folderName: project.folderName,
+  });
+  await PhotoRepository.deleteProjectPhotos(project.id, project.folderName);
 
   if (!isNative || !project.folderName) return;
 

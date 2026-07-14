@@ -15,8 +15,8 @@ export function useDataBaseController({
   const [notification, setNotification] = useState(null);
   const [bulkPickerOpen, setBulkPickerOpen] = useState(false);
 
-  const notify = useCallback((type, message) => {
-    setNotification({ type, message });
+  const notify = useCallback((type, message, options = {}) => {
+    setNotification({ type, message, ...options });
   }, []);
 
   const { deletePhoto } = usePhotoStorage();
@@ -37,7 +37,7 @@ export function useDataBaseController({
     deletePhoto,
     userProfile,
   });
-  const { handleExport } = useDataBaseExport({
+  const { handleExport, isExporting } = useDataBaseExport({
     displayed: filters.displayed,
     notify,
   });
@@ -62,5 +62,6 @@ export function useDataBaseController({
     actions,
     bulk,
     handleExport,
+    isExporting,
   };
 }

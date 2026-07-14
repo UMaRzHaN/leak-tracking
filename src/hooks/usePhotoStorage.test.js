@@ -74,7 +74,9 @@ describe("savePhoto (web path)", () => {
   it("returns null when blob is missing", async () => {
     const { result } = renderHook(() => usePhotoStorage());
     let path;
-    await act(async () => { path = await result.current.savePhoto(null, "leak-1"); });
+    await act(async () => {
+      path = await result.current.savePhoto(null, "leak-1");
+    });
     expect(path).toBeNull();
     expect(mockIdbSave).not.toHaveBeenCalled();
   });
@@ -82,7 +84,9 @@ describe("savePhoto (web path)", () => {
   it("returns null when leakId is missing", async () => {
     const { result } = renderHook(() => usePhotoStorage());
     let path;
-    await act(async () => { path = await result.current.savePhoto(makeBlob(), null); });
+    await act(async () => {
+      path = await result.current.savePhoto(makeBlob(), null);
+    });
     expect(path).toBeNull();
   });
 
@@ -90,7 +94,9 @@ describe("savePhoto (web path)", () => {
     mockIdbSave.mockResolvedValue(false);
     const { result } = renderHook(() => usePhotoStorage());
     let path;
-    await act(async () => { path = await result.current.savePhoto(makeBlob(), "leak-1"); });
+    await act(async () => {
+      path = await result.current.savePhoto(makeBlob(), "leak-1");
+    });
     expect(path).toBeNull();
   });
 
@@ -98,35 +104,60 @@ describe("savePhoto (web path)", () => {
     const oldKey = "photo_proj-1_leak-99_111";
     mockListKeys.mockResolvedValue([oldKey, "photo_other_project_leak-99_222"]);
     const { result } = renderHook(() => usePhotoStorage());
-    await act(async () => { await result.current.savePhoto(makeBlob(), "leak-99"); });
+    await act(async () => {
+      await result.current.savePhoto(makeBlob(), "leak-99");
+    });
     expect(mockIdbDelete).toHaveBeenCalledWith(oldKey);
-    expect(mockIdbDelete).not.toHaveBeenCalledWith("photo_other_project_leak-99_222");
+    expect(mockIdbDelete).not.toHaveBeenCalledWith(
+      "photo_other_project_leak-99_222",
+    );
   });
 
   it("does not delete when no old versions exist", async () => {
     mockListKeys.mockResolvedValue(["photo_proj-1_other-leak_111"]);
     const { result } = renderHook(() => usePhotoStorage());
-    await act(async () => { await result.current.savePhoto(makeBlob(), "leak-7"); });
+    await act(async () => {
+      await result.current.savePhoto(makeBlob(), "leak-7");
+    });
     expect(mockIdbDelete).not.toHaveBeenCalled();
+  });
+
+  it("skips the old-version scan for a new leak", async () => {
+    const { result } = renderHook(() => usePhotoStorage());
+    await act(async () => {
+      await result.current.savePhoto(makeBlob(), "new-leak", [], {
+        cleanupOldVersions: false,
+      });
+    });
+    expect(mockIdbSave).toHaveBeenCalledOnce();
+    expect(mockListKeys).not.toHaveBeenCalled();
   });
 });
 
 describe("deletePhoto (web path)", () => {
   it("deletes idb:// photo by id", async () => {
     const { result } = renderHook(() => usePhotoStorage());
-    await act(async () => { await result.current.deletePhoto("idb://photo_proj-1_leak-1_123"); });
+    await act(async () => {
+      await result.current.deletePhoto("idb://photo_proj-1_leak-1_123");
+    });
     expect(mockIdbDelete).toHaveBeenCalledWith("photo_proj-1_leak-1_123");
   });
 
   it("does nothing for null path", async () => {
     const { result } = renderHook(() => usePhotoStorage());
-    await act(async () => { await result.current.deletePhoto(null); });
+    await act(async () => {
+      await result.current.deletePhoto(null);
+    });
     expect(mockIdbDelete).not.toHaveBeenCalled();
   });
 
   it("ignores data:// paths on web (no native FS)", async () => {
     const { result } = renderHook(() => usePhotoStorage());
-    await act(async () => { await result.current.deletePhoto("data://LeakReports/TestProject/photos/photo_1.jpg"); });
+    await act(async () => {
+      await result.current.deletePhoto(
+        "data://LeakReports/TestProject/photos/photo_1.jpg",
+      );
+    });
     expect(mockIdbDelete).not.toHaveBeenCalled();
   });
 });
@@ -143,7 +174,9 @@ describe("gcOrphanedPhotos (web path)", () => {
       { id: 2, photo: "idb://photo_proj-1_leak-2_222" },
     ];
     const { result } = renderHook(() => usePhotoStorage());
-    await act(async () => { await result.current.gcOrphanedPhotos(leaks); });
+    await act(async () => {
+      await result.current.gcOrphanedPhotos(leaks);
+    });
     expect(mockIdbDelete).toHaveBeenCalledWith("photo_proj-1_orphan_333");
     expect(mockIdbDelete).not.toHaveBeenCalledWith("photo_proj-1_leak-1_111");
     expect(mockIdbDelete).not.toHaveBeenCalledWith("photo_proj-1_leak-2_222");
@@ -153,22 +186,37 @@ describe("gcOrphanedPhotos (web path)", () => {
     mockListKeys.mockResolvedValue(["photo_proj-1_leak-1_111"]);
     const leaks = [{ id: 1, photo: "idb://photo_proj-1_leak-1_111" }];
     const { result } = renderHook(() => usePhotoStorage());
-    await act(async () => { await result.current.gcOrphanedPhotos(leaks); });
+    await act(async () => {
+      await result.current.gcOrphanedPhotos(leaks);
+    });
     expect(mockIdbDelete).not.toHaveBeenCalled();
   });
 
   it("handles photo_after field as well", async () => {
     mockListKeys.mockResolvedValue(["photo_proj-1_leak-1_after_555"]);
-    const leaks = [{ id: 1, photo: null, photo_after: "idb://photo_proj-1_leak-1_after_555" }];
+    const leaks = [
+      {
+        id: 1,
+        photo: null,
+        photo_after: "idb://photo_proj-1_leak-1_after_555",
+      },
+    ];
     const { result } = renderHook(() => usePhotoStorage());
-    await act(async () => { await result.current.gcOrphanedPhotos(leaks); });
+    await act(async () => {
+      await result.current.gcOrphanedPhotos(leaks);
+    });
     expect(mockIdbDelete).not.toHaveBeenCalled();
   });
 
   it("deletes all keys when leaks list is empty", async () => {
-    mockListKeys.mockResolvedValue(["photo_proj-1_leak-1_111", "photo_proj-1_leak-2_222"]);
+    mockListKeys.mockResolvedValue([
+      "photo_proj-1_leak-1_111",
+      "photo_proj-1_leak-2_222",
+    ]);
     const { result } = renderHook(() => usePhotoStorage());
-    await act(async () => { await result.current.gcOrphanedPhotos([]); });
+    await act(async () => {
+      await result.current.gcOrphanedPhotos([]);
+    });
     expect(mockIdbDelete).toHaveBeenCalledTimes(2);
   });
 });

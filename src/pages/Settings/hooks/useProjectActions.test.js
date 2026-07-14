@@ -27,11 +27,18 @@ vi.mock("@/repositories/PhotoRepository", () => ({
   },
 }));
 
+vi.mock("@/repositories/LeakRepository", () => ({
+  LeakRepository: {
+    clear: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 const languageModule = await import("@/app/hooks/useLanguage");
 const projectModule = await import("@/app/project/ProjectContext");
 const formContextModule = await import("@/features/leakForm/LeakFormContext");
 const tileCacheModule = await import("@/services/maps/tileCache");
 const photoRepositoryModule = await import("@/repositories/PhotoRepository");
+const leakRepositoryModule = await import("@/repositories/LeakRepository");
 const { useProjectActions } = await import("./useProjectActions");
 
 describe("useProjectActions", () => {
@@ -201,9 +208,13 @@ describe("useProjectActions", () => {
     expect(localStorage.getItem("app:p1:data_v1")).toBeNull();
     expect(localStorage.getItem("app:p1:vars_v1")).toBeNull();
     expect(localStorage.getItem("app:p1:hidden_fields_v1")).toBeNull();
+    expect(leakRepositoryModule.LeakRepository.clear).toHaveBeenCalledWith({
+      projectId: "p1",
+      folderName: "alpha",
+    });
     expect(
       photoRepositoryModule.PhotoRepository.deleteProjectPhotos,
-    ).toHaveBeenCalledWith("p1");
+    ).toHaveBeenCalledWith("p1", "alpha");
     expect(removeProject).toHaveBeenCalledWith("p1");
   });
 });

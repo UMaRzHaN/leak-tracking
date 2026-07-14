@@ -26,6 +26,7 @@ export default function DataBase({
     actions,
     bulk,
     handleExport,
+    isExporting,
   } = useDataBaseController({
     data,
     setData,
@@ -75,6 +76,7 @@ export default function DataBase({
           bulk.clearSelection();
         }}
         onExport={handleExport}
+        isExporting={isExporting}
       />
 
       <LeakList

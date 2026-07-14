@@ -4,6 +4,11 @@ import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { logger } from "@/utils/logger";
 
 const VALID_STATUSES = new Set(["open", "in_progress", "resolved"]);
+const WEB_DATA_DB = "LeakTrackingDataDB";
+const WEB_DATA_STORE = "projects";
+const WEB_DATA_VERSION = 1;
+
+let webDataDbPromise = null;
 
 function isFiniteNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
@@ -84,6 +89,94 @@ async function ensureDir(filePath) {
   }).catch(() => {});
 }
 
+function openWebDataDb() {
+  if (typeof indexedDB === "undefined") return Promise.resolve(null);
+  if (webDataDbPromise) return webDataDbPromise;
+
+  webDataDbPromise = new Promise((resolve, reject) => {
+    const request = indexedDB.open(WEB_DATA_DB, WEB_DATA_VERSION);
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(WEB_DATA_STORE)) {
+        db.createObjectStore(WEB_DATA_STORE, { keyPath: "id" });
+      }
+    };
+    request.onsuccess = () => {
+      const db = request.result;
+      db.onclose = () => {
+        webDataDbPromise = null;
+      };
+      resolve(db);
+    };
+    request.onerror = () => {
+      webDataDbPromise = null;
+      reject(request.error);
+    };
+  });
+
+  return webDataDbPromise;
+}
+
+async function readWebData(projectId) {
+  const db = await openWebDataDb();
+  if (!db || !projectId) return null;
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(WEB_DATA_STORE, "readonly");
+    const store = tx.objectStore(WEB_DATA_STORE);
+    const request = store.get(projectId);
+    request.onsuccess = () => resolve(request.result?.data ?? null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function writeWebData(projectId, leaks) {
+  const db = await openWebDataDb();
+  if (!db || !projectId) return false;
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(WEB_DATA_STORE, "readwrite");
+    const store = tx.objectStore(WEB_DATA_STORE);
+    const request = store.put({
+      id: projectId,
+      data: leaks,
+      timestamp: Date.now(),
+    });
+    request.onerror = () => reject(request.error);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
+async function deleteWebData(projectId) {
+  const db = await openWebDataDb();
+  if (!db || !projectId) return;
+
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(WEB_DATA_STORE, "readwrite");
+    const store = tx.objectStore(WEB_DATA_STORE);
+    const request = store.delete(projectId);
+    request.onerror = () => reject(request.error);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
+function saveWebDataToLocalStorage(projectId, leaks) {
+  const key = STORAGE_KEYS.PROJECT_DATA(projectId);
+  try {
+    localStorage.setItem(key, JSON.stringify(leaks));
+  } catch (error) {
+    localStorage.removeItem(key);
+    logger.warn(
+      `[LeakRepository] localStorage quota exceeded for "${key}", using IndexedDB only:`,
+      error,
+    );
+  }
+}
+
 export const LeakRepository = {
   async getAll({ projectId, folderName }) {
     if (isNative) {
@@ -103,11 +196,30 @@ export const LeakRepository = {
       }
     }
 
+    const key = STORAGE_KEYS.PROJECT_DATA(projectId);
+
     try {
-      const key = STORAGE_KEYS.PROJECT_DATA(projectId);
+      const indexedData = await readWebData(projectId);
+      if (Array.isArray(indexedData)) {
+        return filterValidLeaks(indexedData, `IndexedDB[${projectId}]`);
+      }
+    } catch (err) {
+      logger.error("[LeakRepository] Failed to read IndexedDB:", err);
+    }
+
+    try {
       const raw = localStorage.getItem(key);
       if (!raw) return [];
-      return filterValidLeaks(JSON.parse(raw), `localStorage[${key}]`);
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        await writeWebData(projectId, parsed).catch((error) => {
+          logger.warn(
+            "[LeakRepository] Failed to migrate to IndexedDB:",
+            error,
+          );
+        });
+      }
+      return filterValidLeaks(parsed, `localStorage[${key}]`);
     } catch (err) {
       logger.error("[LeakRepository] Corrupted localStorage:", err);
       return [];
@@ -126,10 +238,8 @@ export const LeakRepository = {
       });
       return;
     }
-    localStorage.setItem(
-      STORAGE_KEYS.PROJECT_DATA(projectId),
-      JSON.stringify(leaks),
-    );
+    await writeWebData(projectId, leaks);
+    saveWebDataToLocalStorage(projectId, leaks);
   },
 
   async clear({ projectId, folderName }) {
@@ -144,6 +254,7 @@ export const LeakRepository = {
       });
       return;
     }
+    await deleteWebData(projectId);
     localStorage.removeItem(STORAGE_KEYS.PROJECT_DATA(projectId));
   },
 };
