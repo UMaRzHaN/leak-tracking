@@ -22,10 +22,11 @@ _Работает полностью офлайн, поддерживает му
 |     | Функция                       | Описание                                                                |
 | --- | ----------------------------- | ----------------------------------------------------------------------- |
 | 📋  | **Регистрация утечек**        | Многошаговая форма с фото, координатами и расчетами                     |
+| 🔎  | **Повторный мониторинг**      | Обходы, повторные проверки и отдельное фото каждой записи               |
 | 🗺️  | **Офлайн-карта**              | Leaflet с локальным кэшем тайлов и кластеризацией                       |
 | 🎤  | **Голосовой ввод**            | Распознавание речи с fuzzy matching и preview-подтверждением            |
 | 📦  | **Импорт / Экспорт проектов** | ZIP-бэкап с метаданными проекта и фотографиями                          |
-| 📊  | **Экспорт отчетов**           | XLSX / KML / JSON                                                       |
+| 📊  | **Экспорт отчетов**           | XLSX с полной или сокращённой историей / KML / JSON                     |
 | 🔄  | **Lifecycle Management**      | Open → In Progress → Resolved + история изменений                       |
 | 🗂️  | **База данных**               | Фильтры по статусу, приоритету, GPS-близости; bulk-действия; сортировка |
 | 🌙  | **Темизация**                 | Поддержка dark / light mode                                             |
@@ -52,8 +53,7 @@ Styling         SCSS Modules / CSS Variables
 Mobile          Capacitor 8
 Maps            Leaflet + MarkerCluster
 Storage         localStorage / IndexedDB / Filesystem
-Export          ExcelJS / JSZip / XLSX
-Validation      Zod
+Export          ExcelJS / JSZip
 Testing         Vitest + Testing Library
 ```
 
@@ -64,8 +64,7 @@ Testing         Vitest + Testing Library
 | **Core** | React 19.2, React DOM 19.2, Vite 6 |
 | **Mobile** | Capacitor 8 (android, camera, cli, core, filesystem, geolocation, share), speech-recognition |
 | **Maps** | Leaflet 1.9, Leaflet MarkerCluster 1.5 |
-| **Export** | ExcelJS 4.4, JSZip 3.10, XLSX 0.18 |
-| **Validation** | Zod 4.3 |
+| **Export** | ExcelJS 4.4, JSZip 3.10 |
 | **UI** | clsx 2.1 |
 | **Testing** | Vitest, Testing Library (DOM, Jest, React, User Event) |
 
@@ -191,6 +190,8 @@ interface LeakRecord {
   leak_description?: string;
   photo?: string | null;
   photo_after?: string | null;
+  photo_repair?: string | null;
+  monitoringRecords?: MonitoringRecord[];
   priority?: "low" | "medium" | "high" | "critical";
   updatedAt?: number;
   resolvedAt?: number;
@@ -198,10 +199,22 @@ interface LeakRecord {
 }
 
 interface LeakHistoryEntry {
-  action: "created" | "status_changed" | "edited" | "comment";
+  action: "created" | "status_changed" | "edited" | "comment" | "monitoring";
   to?: string;        // для status_changed
   text?: string;      // для comment
   date: string;       // ISO date
+}
+
+interface MonitoringRecord {
+  id: string;
+  date: string;
+  roundId?: string;
+  roundNumber?: number;
+  monitoredBy?: string;
+  result: "still_leaking" | "needs_recheck" | "resolved";
+  photo?: string | null;
+  materials_equipment?: string;
+  comment?: string;
 }
 ```
 
@@ -215,15 +228,36 @@ interface LeakHistoryEntry {
 Export ZIP
 ├── project.json        # Метаданные проекта (schemaVersion, name, type, vars)
 ├── backup.json         # Все записи утечек
-└── photos/             # Связанные изображения (before / after)
+└── photos/             # Исходные, ремонтные, итоговые и мониторинговые фото
 ```
 
 При импорте автоматически:
 
 - тип проекта определяется из `project.json` или автоматически по полям записей;
 - создаётся новый проект и активируется;
-- восстанавливаются записи, фотографии и переменные расчётов;
+- восстанавливаются записи, фотографии, фильтры, переменные расчётов и активный обход мониторинга;
 - инициализируется локальное хранилище.
+
+### Excel и журнал мониторинга
+
+В настройках проекта, в блоке **«Поля формы и Excel»**, можно выбрать режим
+экспорта журнала мониторинга:
+
+- **Полная история** — в Excel попадает каждая проверка, включая повторные записи;
+- **Последняя запись в обходе** — для каждого тега экспортируется только последняя
+  проверка в каждом обходе.
+
+В листе **«Утечки»** предусмотрены отдельные ссылки на исходное фото, фото ремонта
+и итоговое фото. Все фотографии повторных проверок находятся на листе
+**«Мониторинг»**, по одной ссылке на запись. Файлы изображений лежат рядом с XLSX
+в экспортируемом ZIP, поэтому Excel и каталог `photos/` нужно переносить вместе.
+
+### Повторный мониторинг
+
+Каждый обход имеет собственный номер. Повторный свайп уже проверенной карточки
+предлагает начать новый раунд. Каждая проверка хранит свой результат, исполнителя,
+комментарий, материалы и отдельную фотографию. Последнее мониторинговое фото
+показывается в миниатюре карточки и в подробной карточке утечки.
 
 ---
 
@@ -265,17 +299,55 @@ Network Available?
 
 ### Android
 
-```bash
+Для Android-сборки нужен **JDK 21**. Можно использовать JBR, встроенный в Android
+Studio:
+
+```powershell
+$env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"
+$env:Path="$env:JAVA_HOME\bin;$env:Path"
 npm run build
-npm run cap:sync android
+npm run cap:sync
 npx cap open android
 ```
 
-Далее в Android Studio:
+В Android Studio подключите устройство или эмулятор и нажмите **Run**.
 
-1. Подключить устройство / эмулятор
-2. Нажать **Run**
-3. APK установится на телефон
+Для сборки debug APK из PowerShell:
+
+```powershell
+cd android
+.\gradlew.bat assembleDebug
+```
+
+APK будет создан в `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+#### Название приложения
+
+1. Измените `appName` в `capacitor.config.ts`.
+2. Измените `app_name` и `title_activity_main` в
+   `android/app/src/main/res/values/strings.xml`.
+3. Выполните `npm run cap:sync` и пересоберите приложение.
+
+`appId` (`com.leak.tracking`) — это идентификатор пакета, а не видимое название.
+Не меняйте его только ради переименования: после публикации Google Play считает
+другой `appId` другим приложением.
+
+#### Иконка приложения
+
+Подготовьте квадратный PNG, желательно **1024 × 1024 px**, оставив безопасные поля
+вокруг логотипа. Затем в Android Studio:
+
+1. Откройте каталог `android` командой `npx cap open android`.
+2. Нажмите правой кнопкой на `app/src/main/res` → **New → Image Asset**.
+3. Выберите **Launcher Icons (Adaptive and Legacy)**.
+4. Укажите PNG для foreground, цвет или изображение background и имя
+   `ic_launcher`.
+5. Нажмите **Next → Finish** и пересоберите приложение.
+
+Android Studio обновит варианты `mipmap-*` и круглую adaptive-иконку; manifest уже
+ссылается на `@mipmap/ic_launcher` и `@mipmap/ic_launcher_round`. Если после
+переустановки видна старая иконка или подпись, удалите предыдущую версию приложения
+с телефона и установите APK заново. Splash screen настраивается отдельно.
 
 ### iOS
 
@@ -305,7 +377,7 @@ npm run dev       # Development server
 npm run build     # Production build
 npm run preview   # Preview build
 npm test          # Run tests
-npm run cap:sync      # Sync Capacitor
+npm run cap:sync  # Sync Capacitor и Android Gradle patch
 ```
 
 ---
