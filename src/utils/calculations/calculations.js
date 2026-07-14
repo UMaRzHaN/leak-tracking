@@ -68,7 +68,7 @@ export const calculations = (leak, vars) => {
   const leak_rate = isPinkBagEquipment(equipmentType)
     ? leak_speed_standard
     : leak_speed;
-  const leak_speed_kg_m = leak_rate * density;
+  const leak_speed_kg_m = (leak_rate * density) / 1000;
 
   /* =========================
      ANNUAL LOSSES

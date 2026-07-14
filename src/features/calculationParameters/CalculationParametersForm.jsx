@@ -257,7 +257,7 @@ export default function CalculationParametersForm({
           )}
         </select>
         <span className={s.current}>
-          {texts.current}: {formatValue(value.density)}
+          {texts.current}: {formatValue(value.density)} kg/m³
         </span>
       </div>
 

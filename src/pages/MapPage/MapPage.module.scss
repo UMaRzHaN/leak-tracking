@@ -26,6 +26,7 @@
 
   display: flex;
   flex-direction: column;
+  gap: 0;
   border-radius: 12px;
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.18);
 }
@@ -43,10 +44,6 @@
   -webkit-tap-highlight-color: transparent;
   transition: background 0.12s;
   color: var(--c-text);
-
-  &:not(:last-child) {
-    border-bottom: 1px solid var(--c-border);
-  }
 
   &:active {
     background: var(--c-surface2);
@@ -86,14 +83,9 @@
 
 .filterControlWrap {
   position: relative;
-
-  &:not(:last-child) {
-    border-bottom: 1px solid var(--c-border);
-  }
-
-  .controlBtn:not(:last-child) {
-    border-bottom: none;
-  }
+  width: 44px;
+  height: 44px;
+  line-height: 0;
 }
 
 .filterFlyout {
@@ -260,10 +252,6 @@
     background: rgba(15, 23, 42, 0.94);
     color: #dbeafe;
 
-    &:not(:last-child) {
-      border-bottom-color: rgba(148, 163, 184, 0.18);
-    }
-
     &:active {
       background: rgba(30, 41, 59, 0.96);
     }
@@ -271,12 +259,6 @@
 
   .controlBtnActive {
     color: #93c5fd;
-  }
-
-  .filterControlWrap {
-    &:not(:last-child) {
-      border-bottom-color: rgba(148, 163, 184, 0.18);
-    }
   }
 
   .filterFlyout {

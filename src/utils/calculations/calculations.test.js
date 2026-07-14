@@ -43,9 +43,9 @@ describe("calculations", () => {
     );
   });
 
-  it("computes mass flow rate kg/min (leak_rate × density)", () => {
+  it("computes mass flow rate kg/min from L/min and kg/m³", () => {
     const result = calculations({ leak_speed: 10 }, BASE_VARS);
-    expect(result.leak_speed_kg_m).toBeCloseTo(10 * BASE_VARS.density);
+    expect(result.leak_speed_kg_m).toBeCloseTo((10 * BASE_VARS.density) / 1000);
   });
 
   it("computes annual methane loss in m³/year", () => {
@@ -197,7 +197,9 @@ describe("calculations", () => {
     it("Розовый мешок: leak_rate вычисляется через stdSpeed с gasPercentage=100", () => {
       const expected = stdSpeed(10, 0.2, 20, 100);
       const result = calculations(LEAK, PINK_VARS);
-      expect(result.leak_speed_kg_m).toBeCloseTo(expected * BASE_VARS.density);
+      expect(result.leak_speed_kg_m).toBeCloseTo(
+        (expected * BASE_VARS.density) / 1000,
+      );
     });
 
     it("recognizes legacy pink bag equipment names", () => {

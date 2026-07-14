@@ -13,6 +13,11 @@ import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { dataUrlToBlob } from "@/utils/photoConversion";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
 import { buildReopenedLeak } from "@/utils/reopenLeak";
+import {
+  createMonitoringRound,
+  readMonitoringRound,
+  saveMonitoringRound,
+} from "@/utils/monitoringRound";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import LeakCardCompact from "@/features/leakList/LeakCardCompact/LeakCardCompact";
@@ -42,47 +47,6 @@ const FILTERS = {
   CHECKED: "checked",
   ALL: "all",
 };
-
-const MONITORING_ROUND_STORAGE_VERSION = "v2";
-
-function createMonitoringRound(number = 1) {
-  return {
-    id: `round-${Date.now()}`,
-    number,
-    startedAt: new Date().toISOString(),
-  };
-}
-
-function getMonitoringRoundStorageKey(projectId) {
-  return projectId
-    ? `app:${projectId}:monitoring_round_${MONITORING_ROUND_STORAGE_VERSION}`
-    : null;
-}
-
-function readMonitoringRound(projectId) {
-  const key = getMonitoringRoundStorageKey(projectId);
-  if (!key) return null;
-
-  try {
-    const parsed = JSON.parse(localStorage.getItem(key) ?? "null");
-    if (parsed?.id && parsed?.startedAt) {
-      return {
-        ...parsed,
-        number: Number(parsed.number) > 0 ? Number(parsed.number) : 1,
-      };
-    }
-  } catch {
-    // Ignore corrupted local state. A new round starts only by user action.
-  }
-
-  return null;
-}
-
-function saveMonitoringRound(projectId, round) {
-  const key = getMonitoringRoundStorageKey(projectId);
-  if (!key) return;
-  localStorage.setItem(key, JSON.stringify(round));
-}
 
 const STATUS_TO_MONITORING_RESULT = {
   [STATUS.OPEN]: MONITORING_RESULT.STILL_LEAKING,
@@ -303,9 +267,12 @@ export default function Monitoring({
   const [monitorQueueTotal, setMonitorQueueTotal] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [roundConfirmOpen, setRoundConfirmOpen] = useState(false);
+  const [pendingRoundLeakId, setPendingRoundLeakId] = useState(null);
+  const [repeatConfirmLeak, setRepeatConfirmLeak] = useState(null);
   const [notification, setNotification] = useState(null);
   const filters = useDataBaseFilters({ data, coords, sharedFilters });
   const monitoringRoundId = monitoringRound?.id ?? null;
+  const monitoringRoundNumber = monitoringRound?.number ?? null;
   const hasActiveMonitoringRound = Boolean(monitoringRoundId);
 
   const nextMonitoringRoundNumber = useMemo(() => {
@@ -347,28 +314,53 @@ export default function Monitoring({
 
   const startNewRound = () => {
     const next = createMonitoringRound(nextMonitoringRoundNumber);
+    const pendingLeak = data.find((leak) => leak.id === pendingRoundLeakId);
     saveMonitoringRound(activeProject?.id ?? null, next);
     setMonitoringRound(next);
     setFilter(FILTERS.DUE);
-    setMonitorQueueIds([]);
-    setMonitorQueueTotal(0);
-    setMonitorLeak(null);
+    if (pendingLeak) {
+      setDrafts((prev) => ({
+        ...prev,
+        [pendingLeak.id]: {
+          result: getInitialMonitoringResult(pendingLeak),
+          comment: "",
+          materials_equipment: pendingLeak.materials_equipment ?? "",
+          photo: null,
+          ...(prev[pendingLeak.id] ?? {}),
+        },
+      }));
+      setMonitorLeak(pendingLeak);
+    } else {
+      setMonitorQueueIds([]);
+      setMonitorQueueTotal(0);
+      setMonitorLeak(null);
+    }
     setSubmitted(false);
+    setPendingRoundLeakId(null);
     setRoundConfirmOpen(false);
   };
 
-  const openMonitoringSheet = (leak) => {
-    if (!leak) return;
-    if (!hasActiveMonitoringRound) {
-      setRoundConfirmOpen(true);
-      return;
-    }
+  const showMonitoringSheet = (leak) => {
     setSubmitted(false);
     updateDraft(leak.id, {
       result: getInitialMonitoringResult(leak),
       materials_equipment: leak.materials_equipment ?? "",
     });
     setMonitorLeak(leak);
+  };
+
+  const openMonitoringSheet = (leak) => {
+    if (!leak) return;
+    if (!hasActiveMonitoringRound) {
+      setPendingRoundLeakId(leak.id);
+      setRoundConfirmOpen(true);
+      return;
+    }
+    if (!isMonitoringDue(leak, monitoringRoundId, monitoringRoundNumber)) {
+      setRepeatConfirmLeak(leak);
+      return;
+    }
+    showMonitoringSheet(leak);
   };
 
   useEffect(() => {
@@ -465,36 +457,55 @@ export default function Monitoring({
   const items = useMemo(() => {
     const sorted = [...filters.displayed].sort((left, right) => {
       const leftDue =
-        hasActiveMonitoringRound && isMonitoringDue(left, monitoringRoundId);
+        hasActiveMonitoringRound &&
+        isMonitoringDue(left, monitoringRoundId, monitoringRoundNumber);
       const rightDue =
-        hasActiveMonitoringRound && isMonitoringDue(right, monitoringRoundId);
+        hasActiveMonitoringRound &&
+        isMonitoringDue(right, monitoringRoundId, monitoringRoundNumber);
       if (leftDue !== rightDue) return leftDue ? -1 : 1;
       return (right.updatedAt ?? 0) - (left.updatedAt ?? 0);
     });
 
     if (!hasActiveMonitoringRound) return sorted;
     if (filter === FILTERS.DUE)
-      return sorted.filter((leak) => isMonitoringDue(leak, monitoringRoundId));
+      return sorted.filter((leak) =>
+        isMonitoringDue(leak, monitoringRoundId, monitoringRoundNumber),
+      );
     if (filter === FILTERS.CHECKED)
-      return sorted.filter((leak) => !isMonitoringDue(leak, monitoringRoundId));
+      return sorted.filter(
+        (leak) =>
+          !isMonitoringDue(leak, monitoringRoundId, monitoringRoundNumber),
+      );
     return sorted;
-  }, [filters.displayed, filter, hasActiveMonitoringRound, monitoringRoundId]);
+  }, [
+    filters.displayed,
+    filter,
+    hasActiveMonitoringRound,
+    monitoringRoundId,
+    monitoringRoundNumber,
+  ]);
 
   const counts = useMemo(
     () => ({
       due: hasActiveMonitoringRound
         ? filters.displayed.filter((leak) =>
-            isMonitoringDue(leak, monitoringRoundId),
+            isMonitoringDue(leak, monitoringRoundId, monitoringRoundNumber),
           ).length
         : 0,
       checked: hasActiveMonitoringRound
         ? filters.displayed.filter(
-            (leak) => !isMonitoringDue(leak, monitoringRoundId),
+            (leak) =>
+              !isMonitoringDue(leak, monitoringRoundId, monitoringRoundNumber),
           ).length
         : 0,
       all: filters.displayed.length,
     }),
-    [filters.displayed, hasActiveMonitoringRound, monitoringRoundId],
+    [
+      filters.displayed,
+      hasActiveMonitoringRound,
+      monitoringRoundId,
+      monitoringRoundNumber,
+    ],
   );
 
   const updateDraft = (id, patch) => {
@@ -811,7 +822,8 @@ export default function Monitoring({
   const renderMonitoringItem = (leak) => {
     const last = getLastMonitoringRecord(leak);
     const isDue =
-      hasActiveMonitoringRound && isMonitoringDue(leak, monitoringRoundId);
+      hasActiveMonitoringRound &&
+      isMonitoringDue(leak, monitoringRoundId, monitoringRoundNumber);
     return (
       <article className={s.monitoringItem}>
         <LeakCardCompact
@@ -873,7 +885,33 @@ export default function Monitoring({
         confirmLabel={lang === "ru" ? "Начать обход" : "Start round"}
         cancelLabel={lang === "ru" ? "Отмена" : "Cancel"}
         onConfirm={startNewRound}
-        onCancel={() => setRoundConfirmOpen(false)}
+        onCancel={() => {
+          setPendingRoundLeakId(null);
+          setMonitorQueueIds([]);
+          setMonitorQueueTotal(0);
+          setRoundConfirmOpen(false);
+        }}
+      />
+      <ConfirmSheet
+        open={Boolean(repeatConfirmLeak)}
+        title={
+          lang === "ru"
+            ? "Тег уже проверен в этом обходе"
+            : "Tag already checked in this round"
+        }
+        description={
+          lang === "ru"
+            ? "Для этого тега уже сохранён результат мониторинга. Выполнить повторную проверку?"
+            : "A monitoring result has already been saved for this tag. Check it again?"
+        }
+        confirmLabel={lang === "ru" ? "Проверить повторно" : "Check again"}
+        cancelLabel={lang === "ru" ? "Отмена" : "Cancel"}
+        onConfirm={() => {
+          const leak = repeatConfirmLeak;
+          setRepeatConfirmLeak(null);
+          if (leak) showMonitoringSheet(leak);
+        }}
+        onCancel={() => setRepeatConfirmLeak(null)}
       />
 
       <header className={s.header}>
@@ -897,7 +935,10 @@ export default function Monitoring({
         <button
           type="button"
           className={s.newRoundBtn}
-          onClick={() => setRoundConfirmOpen(true)}
+          onClick={() => {
+            setPendingRoundLeakId(null);
+            setRoundConfirmOpen(true);
+          }}
         >
           {hasActiveMonitoringRound ? texts.newRound : texts.startRound}
         </button>

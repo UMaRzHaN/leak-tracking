@@ -48,10 +48,21 @@ export function getLastMonitoringRecord(leak) {
   }, records[0]);
 }
 
-export function isMonitoringDue(leak, roundId = null) {
+export function isMonitoringDue(leak, roundId = null, roundNumber = null) {
   const records = getMonitoringRecords(leak);
-  if (!roundId) return records.length === 0;
-  return !records.some((record) => record.roundId === roundId);
+  const normalizedRoundNumber = Number(roundNumber);
+  const hasRoundNumber =
+    Number.isFinite(normalizedRoundNumber) && normalizedRoundNumber > 0;
+  if (!roundId && !hasRoundNumber) return records.length === 0;
+
+  return !records.some((record) => {
+    if (roundId && record.roundId === roundId) return true;
+    return (
+      !record.roundId &&
+      hasRoundNumber &&
+      Number(record.roundNumber) === normalizedRoundNumber
+    );
+  });
 }
 
 export function formatMonitoringDate(value, lang = "ru") {

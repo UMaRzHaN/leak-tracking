@@ -80,6 +80,32 @@ describe("projectBackupService legacy imports", () => {
     expect(savedLeaks[0].Emissions_t_CO2eq_year).toBeCloseTo(50.10776064);
   });
 
+  it("exports and restores the active monitoring round", async () => {
+    const round = {
+      id: "round-4",
+      number: 4,
+      startedAt: "2026-07-14T05:00:00.000Z",
+    };
+    localStorage.setItem(
+      `app:${PROJECT.id}:monitoring_round_v2`,
+      JSON.stringify(round),
+    );
+    const zip = await buildProjectBackupZip({
+      leaks: [],
+      idbGet: null,
+      project: PROJECT,
+      vars: {},
+    });
+    localStorage.clear();
+    const ctx = makeCtx();
+
+    await importProjectZip(zip, ctx);
+
+    expect(
+      JSON.parse(localStorage.getItem(`app:${PROJECT.id}:monitoring_round_v2`)),
+    ).toEqual(round);
+  });
+
   it("keeps the pink bag calculation method for legacy equipment names", async () => {
     const legacyVars = {
       equipmentType: "pink bag",

@@ -41,18 +41,34 @@
 }
 
 @keyframes slideUpMobile {
-  from { transform: translateY(100%); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { transform: translate(-50%, -46%); opacity: 0; }
-  to   { transform: translate(-50%, -50%); opacity: 1; }
+  from {
+    transform: translate(-50%, -46%);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, -50%);
+    opacity: 1;
+  }
 }
 
 .header {
@@ -87,11 +103,23 @@
   padding: 0;
   width: 32px;
   height: 32px;
+  flex: 0 0 32px;
   display: flex;
   align-items: center;
   justify-content: center;
+  line-height: 0;
   border-radius: 6px;
   transition: all 0.2s ease;
+
+  svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
 
   &:hover {
     background: var(--c-surface2);
@@ -113,8 +141,14 @@
 }
 
 @keyframes slideDown {
-  from { transform: translateY(-10px); opacity: 0; }
-  to   { transform: translateY(0);     opacity: 1; }
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .notificationIcon {
@@ -188,7 +222,9 @@
   background: var(--c-blue);
   color: #fff;
 
-  &:hover { opacity: 0.88; }
+  &:hover {
+    opacity: 0.88;
+  }
 }
 
 .confirmDiscardBtn {
@@ -196,8 +232,12 @@
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.3);
 
-  &:hover { background-color: rgba(255, 255, 255, 0.3); }
-  &:active { background-color: rgba(255, 255, 255, 0.1); }
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+  &:active {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
 }
 
 .content {
@@ -240,16 +280,24 @@
   background: var(--c-border);
   color: var(--c-text);
 
-  &:hover  { opacity: 0.8; }
-  &:active { opacity: 0.6; }
+  &:hover {
+    opacity: 0.8;
+  }
+  &:active {
+    opacity: 0.6;
+  }
 }
 
 .saveBtn {
   background: var(--c-blue);
   color: #fff;
 
-  &:hover:not(:disabled)  { opacity: 0.88; }
-  &:active:not(:disabled) { opacity: 0.75; }
+  &:hover:not(:disabled) {
+    opacity: 0.88;
+  }
+  &:active:not(:disabled) {
+    opacity: 0.75;
+  }
 
   &:disabled {
     background: var(--c-border);

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { VAR_DEFAULTS } from "@/data/variables";
+import { normalizeProjectVarsUnits } from "@/utils/projectVars";
 
 const defaultVars = VAR_DEFAULTS;
 
@@ -11,7 +12,7 @@ const defaultVars = VAR_DEFAULTS;
 export function useProjectVars(projectId, defaults = defaultVars) {
   const storageKey = useMemo(
     () => (projectId ? STORAGE_KEYS.PROJECT_VARS(projectId) : null),
-    [projectId]
+    [projectId],
   );
 
   // Revision bump mirrors the pattern in useHiddenFields — forces useMemo
@@ -29,14 +30,24 @@ export function useProjectVars(projectId, defaults = defaultVars) {
       if (!raw) {
         const legacyKey = STORAGE_KEYS._LEGACY_PROJECT_SETTINGS?.(projectId);
         const legacyRaw = legacyKey ? localStorage.getItem(legacyKey) : null;
-        return legacyRaw ? { ...defaults, ...JSON.parse(legacyRaw) } : defaults;
+        return legacyRaw
+          ? {
+              ...defaults,
+              ...normalizeProjectVarsUnits(JSON.parse(legacyRaw)),
+            }
+          : defaults;
       }
 
-      return { ...defaults, ...JSON.parse(raw) };
+      const stored = JSON.parse(raw);
+      const normalized = normalizeProjectVarsUnits(stored);
+      if (normalized !== stored) {
+        localStorage.setItem(storageKey, JSON.stringify(normalized));
+      }
+      return { ...defaults, ...normalized };
     } catch {
       return defaults;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, storageKey, defaults, revision]);
 
   const setVars = useCallback(
@@ -46,7 +57,7 @@ export function useProjectVars(projectId, defaults = defaultVars) {
       }
       setRevision((r) => r + 1);
     },
-    [storageKey]
+    [storageKey],
   );
 
   const resetVars = useCallback(() => {

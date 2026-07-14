@@ -219,6 +219,30 @@ export function validateProjectBackupMeta(parsed) {
     pushIssue(issues, ["vars"], "Expected object");
   }
 
+  if (parsed.monitoringRound !== undefined) {
+    if (!isPlainObject(parsed.monitoringRound)) {
+      pushIssue(issues, ["monitoringRound"], "Expected object");
+    } else {
+      if (!parsed.monitoringRound.id) {
+        pushIssue(issues, ["monitoringRound", "id"], "Expected non-empty id");
+      }
+      if (typeof parsed.monitoringRound.startedAt !== "string") {
+        pushIssue(issues, ["monitoringRound", "startedAt"], "Expected string");
+      }
+      if (
+        parsed.monitoringRound.number !== undefined &&
+        (!Number.isFinite(Number(parsed.monitoringRound.number)) ||
+          Number(parsed.monitoringRound.number) <= 0)
+      ) {
+        pushIssue(
+          issues,
+          ["monitoringRound", "number"],
+          "Expected positive number",
+        );
+      }
+    }
+  }
+
   if (issues.length) {
     return {
       ok: false,

@@ -22,14 +22,14 @@
     ACTIVE_PROJECT_ID: "app:active_id_v1",
     PROJECT_DATA: (id) => `app:${id}:data_v1`,
     PROJECT_VARS: (id) => `app:${id}:vars_v1`,
-    MONITORING_ROUND: (id) => `app:${id}:monitoring_round_v1`,
+    MONITORING_ROUND: (id) => `app:${id}:monitoring_round_v2`,
   };
 
   const DEFAULT_VARS = {
     gasType: "methane",
     equipmentType: "GFM 2.0",
-    uncertainty: 0.05,
-    density: 0.000716,
+    uncertainty: 5,
+    density: 0.7168,
     percentage_gas_to_flare: 0,
     percentage_gas_to_utilization: 100,
     GWP: 28,
@@ -41,7 +41,9 @@
   async function run() {
     const activeId = localStorage.getItem(STORAGE.ACTIVE_PROJECT_ID);
     if (!activeId) {
-      console.error("Активный проект не найден. Сначала выбери проект в приложении.");
+      console.error(
+        "Активный проект не найден. Сначала выбери проект в приложении.",
+      );
       return;
     }
 
@@ -98,7 +100,9 @@
         0,
       );
 
-      console.log(`Готово: ${leaks.length} утечек записано для проекта ${activeId}.`);
+      console.log(
+        `Готово: ${leaks.length} утечек записано для проекта ${activeId}.`,
+      );
       console.log(
         `Фото до: ${withBefore}; в ремонте: ${withRepair}; после: ${withAfter}; мониторинг: ${monitoringCount}.`,
       );
@@ -118,7 +122,14 @@
     }
   }
 
-  function buildLeaks({ count, rounds, currentRound, projectType, currentUser, vars }) {
+  function buildLeaks({
+    count,
+    rounds,
+    currentRound,
+    projectType,
+    currentUser,
+    vars,
+  }) {
     const now = Date.now();
     const twoYears = 2 * 365 * 24 * 60 * 60 * 1000;
     const leaks = [];
@@ -146,9 +157,7 @@
           ? createdAt + rndInt(2, 30) * DAY
           : null;
       const resolvedAt =
-        status === "resolved"
-          ? repairAt + rndInt(3, 35) * DAY
-          : null;
+        status === "resolved" ? repairAt + rndInt(3, 35) * DAY : null;
 
       const leak = {
         id: createdAt + index,
@@ -192,7 +201,9 @@
             ? makePhoto(hue, `РЕМ ${leakId}`, "repair")
             : null,
         photo_after:
-          status === "resolved" ? makePhoto(hue, `ПОСЛЕ ${leakId}`, "after") : null,
+          status === "resolved"
+            ? makePhoto(hue, `ПОСЛЕ ${leakId}`, "after")
+            : null,
         repairAt,
         resolvedAt,
         ...calcFields({ leak_speed, temperature, vars }),
@@ -255,7 +266,9 @@
 
       const duplicates = round === currentRound && leak.index % 9 === 0 ? 2 : 1;
       for (let copy = 0; copy < duplicates; copy += 1) {
-        const date = new Date(Date.now() - (rounds - round) * 24 * DAY + copy * 2 * HOUR);
+        const date = new Date(
+          Date.now() - (rounds - round) * 24 * DAY + copy * 2 * HOUR,
+        );
         const result =
           copy === duplicates - 1
             ? statusToMonitoringResult(leak.status)
@@ -268,9 +281,15 @@
           roundNumber: round,
           monitoredBy: pick(USERS),
           result,
-          photo: makePhoto(hue + round * 19, `МОН ${leak.leak_id}.${round}`, "monitoring"),
+          photo: makePhoto(
+            hue + round * 19,
+            `МОН ${leak.leak_id}.${round}`,
+            "monitoring",
+          ),
           materials_equipment:
-            result === "still_leaking" ? leak.materials_equipment : pick(MATERIALS),
+            result === "still_leaking"
+              ? leak.materials_equipment
+              : pick(MATERIALS),
           comment:
             copy === duplicates - 1
               ? `Итоговая запись обхода ${round}`
@@ -309,7 +328,9 @@
         to: "resolved",
         date: new Date(leak.resolvedAt).toISOString(),
         user: currentUser,
-        changes: [{ key: "photo_after", before: "", after: "Фото после ремонта" }],
+        changes: [
+          { key: "photo_after", before: "", after: "Фото после ремонта" },
+        ],
       });
     }
 
@@ -328,7 +349,9 @@
       });
     }
 
-    return history.sort((left, right) => Date.parse(left.date) - Date.parse(right.date));
+    return history.sort(
+      (left, right) => Date.parse(left.date) - Date.parse(right.date),
+    );
   }
 
   function getLatestTimestamp(leak) {
@@ -336,7 +359,9 @@
       leak.createdAt,
       leak.repairAt,
       leak.resolvedAt,
-      ...(leak.monitoringRecords ?? []).map((record) => Date.parse(record.date)),
+      ...(leak.monitoringRecords ?? []).map((record) =>
+        Date.parse(record.date),
+      ),
     ].filter((value) => Number.isFinite(Number(value)));
     return values.length ? Math.max(...values.map(Number)) : null;
   }
@@ -363,13 +388,23 @@
 
     const dataDir = `LeakReports/${folderName}/data`;
     const photoDir = `LeakReports/${folderName}/photos`;
-    await Fs.mkdir({ path: dataDir, directory: "DATA", recursive: true }).catch(() => {});
-    await Fs.mkdir({ path: photoDir, directory: "DATA", recursive: true }).catch(() => {});
+    await Fs.mkdir({ path: dataDir, directory: "DATA", recursive: true }).catch(
+      () => {},
+    );
+    await Fs.mkdir({
+      path: photoDir,
+      directory: "DATA",
+      recursive: true,
+    }).catch(() => {});
 
     let photoCount = 0;
     for (const leak of leaks) {
       for (const key of ["photo", "photo_repair", "photo_after"]) {
-        if (typeof leak[key] !== "string" || !leak[key].startsWith("data:image/")) continue;
+        if (
+          typeof leak[key] !== "string" ||
+          !leak[key].startsWith("data:image/")
+        )
+          continue;
         leak[key] = await writeNativePhoto({
           Fs,
           photoDir,
@@ -380,8 +415,14 @@
         photoCount += 1;
       }
 
-      for (const [recordIndex, record] of (leak.monitoringRecords ?? []).entries()) {
-        if (typeof record.photo !== "string" || !record.photo.startsWith("data:image/")) continue;
+      for (const [recordIndex, record] of (
+        leak.monitoringRecords ?? []
+      ).entries()) {
+        if (
+          typeof record.photo !== "string" ||
+          !record.photo.startsWith("data:image/")
+        )
+          continue;
         record.photo = await writeNativePhoto({
           Fs,
           photoDir,
@@ -420,7 +461,11 @@
     canvas.height = height;
     const ctx = canvas.getContext("2d");
     const modeHue =
-      mode === "after" ? (hue + 120) % 360 : mode === "repair" ? (hue + 35) % 360 : hue;
+      mode === "after"
+        ? (hue + 120) % 360
+        : mode === "repair"
+          ? (hue + 35) % 360
+          : hue;
 
     const bg = ctx.createLinearGradient(0, 0, width, height);
     bg.addColorStop(0, `hsl(${modeHue},45%,18%)`);
@@ -466,7 +511,14 @@
     }
 
     if (mode !== "after") {
-      const glow = ctx.createRadialGradient(width / 2, 82, 5, width / 2, 82, 55);
+      const glow = ctx.createRadialGradient(
+        width / 2,
+        82,
+        5,
+        width / 2,
+        82,
+        55,
+      );
       glow.addColorStop(0, "rgba(255,110,0,0.35)");
       glow.addColorStop(1, "rgba(255,110,0,0)");
       ctx.fillStyle = glow;
@@ -486,24 +538,26 @@
 
   function calcFields({ leak_speed, temperature, vars }) {
     const minutesPerYear = 1440 * vars.Operating_mode;
-    const methaneDensityStd = 0.7168;
     const flareShare = vars.percentage_gas_to_flare / 100;
     const utilShare = vars.percentage_gas_to_utilization / 100;
-    const leak_speed_kg_m = round(leak_speed * vars.density, 6);
+    const leak_speed_kg_m = round((leak_speed * vars.density) / 1000, 6);
     const leak_speed_kg_h = round(leak_speed_kg_m * 60, 4);
     const Total_Annual_Methane_Loss_m3_y = round(
       (leak_speed * minutesPerYear) / 1000,
       4,
     );
     const Total_Annual_Methane_Loss_kg_y = round(
-      Total_Annual_Methane_Loss_m3_y * methaneDensityStd,
+      Total_Annual_Methane_Loss_m3_y * vars.density,
       4,
     );
     const Total_Annual_Methane_Loss_t_y = round(
       Total_Annual_Methane_Loss_kg_y / 1000,
       6,
     );
-    const weightedGWP = round(flareShare * vars.GWP_Minus + utilShare * vars.GWP, 4);
+    const weightedGWP = round(
+      flareShare * vars.GWP_Minus + utilShare * vars.GWP,
+      4,
+    );
     const Emissions_t_CO2eq_year = round(
       Total_Annual_Methane_Loss_t_y * weightedGWP,
       6,
@@ -580,28 +634,47 @@
   const BASE_LNG = 69.258685;
 
   const USERS = ["Евгений", "Алексей", "Ирина", "Дмитрий", "Оператор смены"];
-  const SUBDIVISIONS = ["ПУ №1 Карачаганак", "ПУ №2 Жанажол", "ПУ №3 Тенгиз", "ПУ №4 Кашаган"];
+  const SUBDIVISIONS = [
+    "ПУ №1 Карачаганак",
+    "ПУ №2 Жанажол",
+    "ПУ №3 Тенгиз",
+    "ПУ №4 Кашаган",
+  ];
   const DEPOSITS = {
     "ПУ №1 Карачаганак": ["Карачаганакское", "Чинаревское"],
     "ПУ №2 Жанажол": ["Жанажольское", "Кенкиякское"],
     "ПУ №3 Тенгиз": ["Тенгизское", "Королёвское"],
     "ПУ №4 Кашаган": ["Кашаганское", "Каламкас"],
   };
-  const FIELDS = ["Западное УМГ", "Южное УМГ", "Северное УМГ", "Центральное УМГ"];
+  const FIELDS = [
+    "Западное УМГ",
+    "Южное УМГ",
+    "Северное УМГ",
+    "Центральное УМГ",
+  ];
   const STATIONS = {
     "Западное УМГ": ["КС-1", "КС-2"],
     "Южное УМГ": ["КС-3", "КС-4"],
     "Северное УМГ": ["КС-5", "КС-6"],
     "Центральное УМГ": ["КС-7", "КС-8"],
   };
-  const DISTRICTS = ["Алмазарский", "Юнусабадский", "Мирзо-Улугбекский", "Сергелийский"];
+  const DISTRICTS = [
+    "Алмазарский",
+    "Юнусабадский",
+    "Мирзо-Улугбекский",
+    "Сергелийский",
+  ];
   const LOCALITIES = {
     Алмазарский: ["Каракамыш", "Чигатай"],
     Юнусабадский: ["Юнусабад", "Минор"],
     "Мирзо-Улугбекский": ["Дархан", "Буюк Ипак Йули"],
     Сергелийский: ["Сергели", "Куйлюк"],
   };
-  const ADDRESSES = ["ул. Центральная, 12", "пр. Газовиков, 7", "ул. Промышленная, 3"];
+  const ADDRESSES = [
+    "ул. Центральная, 12",
+    "пр. Газовиков, 7",
+    "ул. Промышленная, 3",
+  ];
   const LOCATIONS = [
     "Скважина",
     "Пылеуловитель",
@@ -638,7 +711,12 @@
     "Патрубок",
     "Сварной шов",
   ];
-  const CATEGORIES = ["Compression", "Primary Gas Treatment & Transport", "Processing", "Well"];
+  const CATEGORIES = [
+    "Compression",
+    "Primary Gas Treatment & Transport",
+    "Processing",
+    "Well",
+  ];
   const ACTUATOR_TYPES = [
     "Механический ручной",
     "Гидравлический",
@@ -651,7 +729,11 @@
     "Сварное соединение",
     "Болтовое соединение",
   ];
-  const INSTALLATION_TYPES = ["Наземный", "Подземный (открытое исполнение)", "Подземный (закрытое исполнение)"];
+  const INSTALLATION_TYPES = [
+    "Наземный",
+    "Подземный (открытое исполнение)",
+    "Подземный (закрытое исполнение)",
+  ];
   const DESCRIPTIONS = [
     "Технологическое/Техническое отверстие",
     "Фланцевое соединение",
@@ -677,7 +759,13 @@
     "Замена клапана",
     "Замена уплотнительного материала",
   ];
-  const RECOMMENDATIONS = ["Без остановки", "Замена", "С остановкой", "Демонтаж", "Установка"];
+  const RECOMMENDATIONS = [
+    "Без остановки",
+    "Замена",
+    "С остановкой",
+    "Демонтаж",
+    "Установка",
+  ];
   const MATERIALS = [
     "По результату ревизии (замена прокладки и/или шпилек/гайек)",
     "Герметизирующая смазка и/или замена графитовой набивки",
@@ -687,7 +775,11 @@
     "Кран шаровой DN-50 PN-64 кгс/см² с ручным приводом с ответными фланцами и крепежом",
   ];
   const EQUIPMENT_TYPES = ["GFM 2.0", "GFM 3.0", "Розовый мешок"];
-  const UNCERTAINTY_MAP = { "GFM 2.0": 0.05, "GFM 3.0": 0.05, "Розовый мешок": 0.1 };
+  const UNCERTAINTY_MAP = {
+    "GFM 2.0": 0.05,
+    "GFM 3.0": 0.05,
+    "Розовый мешок": 0.1,
+  };
 
   await run();
 })();

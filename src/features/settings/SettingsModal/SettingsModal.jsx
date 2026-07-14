@@ -133,8 +133,15 @@ export default function SettingsModal({
       <div className={s.modal}>
         <div className={s.header}>
           <h2>{localeTexts.title}</h2>
-          <button className={s.closeBtn} onClick={handleCancel}>
-            x
+          <button
+            type="button"
+            className={s.closeBtn}
+            onClick={handleCancel}
+            aria-label={lang === "ru" ? "Закрыть" : "Close"}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
           </button>
         </div>
 

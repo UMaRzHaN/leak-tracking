@@ -14,6 +14,12 @@ import {
   isPinkBagEquipment,
 } from "@/utils/calculations/calculations";
 import { blobToDataUri, dataUrlToBlob } from "@/utils/photoConversion";
+import {
+  getRestoredMonitoringRound,
+  readMonitoringRound,
+  saveMonitoringRound,
+} from "@/utils/monitoringRound";
+import { normalizeProjectVarsUnits } from "@/utils/projectVars";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -104,11 +110,11 @@ async function exportLeaksWithPhotos(leaks, zip, idbGet) {
   );
 }
 
-function buildProjectMeta({ project, vars } = {}) {
+function buildProjectMeta({ project, vars, monitoringRound } = {}) {
   if (!project) return null;
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     exportedAt: new Date().toISOString(),
     project: {
       name: project.name,
@@ -116,26 +122,17 @@ function buildProjectMeta({ project, vars } = {}) {
       folderName: project.folderName,
     },
     vars: vars ?? undefined,
+    monitoringRound: monitoringRound ?? undefined,
   };
 }
 
 function normalizeImportedVars(vars) {
   if (!vars) return vars;
 
-  const next = { ...vars };
-  const density = Number(next.density);
-  const uncertainty = Number(next.uncertainty);
+  const next = { ...normalizeProjectVarsUnits(vars) };
 
   if (isPinkBagEquipment(next.equipmentType)) {
     next.equipmentType = "Розовый мешок";
-  }
-
-  if (Number.isFinite(density) && density > 0 && density < 0.01) {
-    next.density = density * 1000;
-  }
-
-  if (Number.isFinite(uncertainty) && uncertainty > 0 && uncertainty <= 1) {
-    next.uncertainty = uncertainty * 100;
   }
 
   return next;
@@ -458,6 +455,7 @@ function rollbackImportedProject(project, removeProject) {
   if (!project?.id) return;
 
   localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(project.id));
+  saveMonitoringRound(project.id, null);
   if (typeof removeProject === "function") {
     try {
       removeProject(project.id);
@@ -503,7 +501,11 @@ export async function buildProjectBackupZip({ leaks, idbGet, project, vars }) {
   const exportedLeaks = await exportLeaksWithPhotos(leaks, zip, idbGet);
   zip.file("backup.json", JSON.stringify(exportedLeaks, null, 2));
 
-  const meta = buildProjectMeta({ project, vars });
+  const meta = buildProjectMeta({
+    project,
+    vars,
+    monitoringRound: readMonitoringRound(project?.id),
+  });
   if (meta) zip.file("project.json", JSON.stringify(meta, null, 2));
 
   return zip.generateAsync({ type: "blob" });
@@ -579,6 +581,10 @@ export async function importProjectZip(zipFile, ctx) {
 
     const restoredLeaks = await restorePhotosFromZip(leaks, zip, savePhotoRef);
     const finalLeaks = recalculateLeaks(restoredLeaks, meta?.vars);
+    saveMonitoringRound(
+      newProject.id,
+      getRestoredMonitoringRound(meta, finalLeaks),
+    );
     await saveRef.current(finalLeaks);
 
     return { project: newProject, leakCount: finalLeaks.length };
@@ -640,6 +646,10 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     const restoredLeaks = await restorePhotosFromZip(leaks, zip, savePhotoRef);
     finalLeaks = recalculateLeaks(restoredLeaks, meta?.vars);
     addedCount = finalLeaks.length;
+    saveMonitoringRound(
+      existingProjectId,
+      getRestoredMonitoringRound(meta, finalLeaks),
+    );
   }
 
   await saveRef.current(finalLeaks);
