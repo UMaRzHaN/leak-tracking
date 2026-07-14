@@ -6,7 +6,10 @@
  * - 100 утечек;
  * - фото до / в ремонте / после;
  * - detectedBy, serial_number, repairAt, resolvedAt;
- * - monitoringRecords с roundNumber и несколькими записями в одном обходе;
+ * - 2–4 обхода на тег и несколько повторных проверок в одном обходе;
+ * - уникальное, визуально отличимое фото для каждой записи мониторинга;
+ * - последнее фото синхронизируется с миниатюрой/шапкой detailed;
+ * - данные пригодны для проверки Excel и ZIP с полным журналом фото;
  * - активный обход для страницы мониторинга;
  * - web: пишет в localStorage;
  * - native Capacitor: пишет data.json и фото в Directory.Data.
@@ -99,12 +102,27 @@
         (sum, leak) => sum + (leak.monitoringRecords?.length ?? 0),
         0,
       );
+      const repeatedChecks = leaks.reduce(
+        (sum, leak) =>
+          sum + countRepeatedMonitoringChecks(leak.monitoringRecords ?? []),
+        0,
+      );
+      const monitoringPhotos = leaks.reduce(
+        (sum, leak) =>
+          sum +
+          (leak.monitoringRecords ?? []).filter((record) => record.photo)
+            .length,
+        0,
+      );
 
       console.log(
         `Готово: ${leaks.length} утечек записано для проекта ${activeId}.`,
       );
       console.log(
         `Фото до: ${withBefore}; в ремонте: ${withRepair}; после: ${withAfter}; мониторинг: ${monitoringCount}.`,
+      );
+      console.log(
+        `Фото логов: ${monitoringPhotos}; повторных проверок в одном обходе: ${repeatedChecks}.`,
       );
       console.log("Перезагружаю страницу...");
       location.reload();
@@ -214,7 +232,9 @@
         rounds,
         currentRound,
         hue,
+        now,
       });
+      syncLatestMonitoringPhoto(leak);
       leak.history = buildHistory({
         leak,
         createdIso,
@@ -256,18 +276,27 @@
     };
   }
 
-  function buildMonitoringRecords({ leak, rounds, currentRound, hue }) {
+  function buildMonitoringRecords({ leak, rounds, currentRound, hue, now }) {
     const records = [];
-    const maxRounds = Math.min(rounds, rndInt(0, rounds));
+    const maxRounds = Math.min(rounds, rndInt(2, rounds));
 
     for (let round = 1; round <= maxRounds; round += 1) {
       const shouldSkipCurrent = round === currentRound && Math.random() < 0.35;
       if (shouldSkipCurrent) continue;
 
-      const duplicates = round === currentRound && leak.index % 9 === 0 ? 2 : 1;
+      const duplicates =
+        round === currentRound && leak.index % 7 === 0
+          ? 3
+          : round === currentRound && leak.index % 5 === 0
+            ? 2
+            : round < currentRound && leak.index % 13 === 0
+              ? 2
+              : 1;
       for (let copy = 0; copy < duplicates; copy += 1) {
         const date = new Date(
-          Date.now() - (rounds - round) * 24 * DAY + copy * 2 * HOUR,
+          now -
+            (rounds - round) * 24 * DAY -
+            (duplicates - copy - 1) * 2 * HOUR,
         );
         const result =
           copy === duplicates - 1
@@ -282,9 +311,10 @@
           monitoredBy: pick(USERS),
           result,
           photo: makePhoto(
-            hue + round * 19,
-            `МОН ${leak.leak_id}.${round}`,
-            "monitoring",
+            hue + round * 19 + copy * 73,
+            `МОН ${leak.leak_id} · ${round}.${copy + 1}`,
+            monitoringPhotoMode(result),
+            date,
           ),
           materials_equipment:
             result === "still_leaking"
@@ -292,13 +322,39 @@
               : pick(MATERIALS),
           comment:
             copy === duplicates - 1
-              ? `Итоговая запись обхода ${round}`
-              : `Черновая запись обхода ${round}`,
+              ? `Итоговая запись обхода ${round}, проверка ${copy + 1}`
+              : `Повторная проверка ${copy + 1} в обходе ${round}`,
         });
       }
     }
 
     return records;
+  }
+
+  function syncLatestMonitoringPhoto(leak) {
+    const latest = (leak.monitoringRecords ?? []).reduce((current, record) => {
+      if (!record?.photo) return current;
+      if (!current) return record;
+      return Date.parse(record.date) > Date.parse(current.date)
+        ? record
+        : current;
+    }, null);
+
+    if (!latest) return;
+    if (latest.result === "resolved") leak.photo_after = latest.photo;
+    if (latest.result === "needs_recheck") leak.photo_repair = latest.photo;
+  }
+
+  function countRepeatedMonitoringChecks(records) {
+    const counts = new Map();
+    for (const record of records) {
+      const key = record.roundId ?? `round-${record.roundNumber}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return [...counts.values()].reduce(
+      (sum, count) => sum + Math.max(0, count - 1),
+      0,
+    );
   }
 
   function buildHistory({ leak, createdIso, currentUser }) {
@@ -382,6 +438,12 @@
     );
   }
 
+  function monitoringPhotoMode(result) {
+    if (result === "resolved") return "monitoring_resolved";
+    if (result === "needs_recheck") return "monitoring_repair";
+    return "monitoring_open";
+  }
+
   async function saveNativeData({ leaks, folderName }) {
     const Fs = window.Capacitor?.Plugins?.Filesystem;
     if (!Fs) throw new Error("Capacitor Filesystem недоступен");
@@ -453,7 +515,7 @@
     return `data://${path}`;
   }
 
-  function makePhoto(hue, label, mode) {
+  function makePhoto(hue, label, mode, capturedAt = new Date()) {
     const width = 240;
     const height = 180;
     const canvas = document.createElement("canvas");
@@ -461,9 +523,9 @@
     canvas.height = height;
     const ctx = canvas.getContext("2d");
     const modeHue =
-      mode === "after"
+      mode === "after" || mode === "monitoring_resolved"
         ? (hue + 120) % 360
-        : mode === "repair"
+        : mode === "repair" || mode === "monitoring_repair"
           ? (hue + 35) % 360
           : hue;
 
@@ -494,23 +556,24 @@
       ctx.fill();
     });
 
-    const color =
-      mode === "after"
-        ? "rgba(80,220,90,0.75)"
-        : mode === "repair"
-          ? "rgba(255,165,35,0.85)"
-          : "rgba(255,95,35,0.8)";
+    const isResolvedPhoto = mode === "after" || mode === "monitoring_resolved";
+    const isRepairPhoto = mode === "repair" || mode === "monitoring_repair";
+    const color = isResolvedPhoto
+      ? "rgba(80,220,90,0.75)"
+      : isRepairPhoto
+        ? "rgba(255,165,35,0.85)"
+        : "rgba(255,95,35,0.8)";
     ctx.fillStyle = color;
     for (let i = 0; i < 18; i += 1) {
       const px = 55 + (i % 6) * 22 + Math.sin(i * 1.3) * 8;
-      const py = 55 + Math.sin(i * 2.1) * 20 + (mode === "after" ? 28 : 0);
+      const py = 55 + Math.sin(i * 2.1) * 20 + (isResolvedPhoto ? 28 : 0);
       const r = 2 + Math.abs(Math.sin(i)) * 4;
       ctx.beginPath();
       ctx.arc(px, py, r, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    if (mode !== "after") {
+    if (!isResolvedPhoto) {
       const glow = ctx.createRadialGradient(
         width / 2,
         82,
@@ -530,7 +593,7 @@
     ctx.fillText(label, 8, height - 10);
     ctx.textAlign = "right";
     ctx.font = "9px monospace";
-    ctx.fillText(formatShortDate(new Date()), width - 8, height - 10);
+    ctx.fillText(formatShortDate(capturedAt), width - 8, height - 10);
     ctx.textAlign = "left";
 
     return canvas.toDataURL("image/jpeg", 0.56);

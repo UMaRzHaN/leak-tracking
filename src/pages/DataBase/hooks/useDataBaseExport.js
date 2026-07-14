@@ -5,6 +5,7 @@ import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { formatDate } from "@/utils/locale";
+import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
 
 function fmtTs(ts, lang) {
   if (!ts) return "";
@@ -69,6 +70,9 @@ export function useDataBaseExport({ displayed, notify }) {
     projectConfig.export.excel;
   const { getPhoto: idbGetPhoto } = usePhotoStorage();
   const { activeProject } = useProjectData();
+  const { monitoringExportMode } = useExcelExportMode(
+    activeProject?.id ?? null,
+  );
 
   const handleExport = useCallback(async () => {
     try {
@@ -82,6 +86,7 @@ export function useDataBaseExport({ displayed, notify }) {
         idbGetPhoto,
         activeProject?.folderName,
         lang,
+        { monitoringExportMode },
       );
 
       notify(
@@ -107,6 +112,7 @@ export function useDataBaseExport({ displayed, notify }) {
     excelKeys,
     idbGetPhoto,
     lang,
+    monitoringExportMode,
     notify,
     t,
   ]);

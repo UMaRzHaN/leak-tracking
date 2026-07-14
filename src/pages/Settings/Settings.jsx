@@ -4,9 +4,9 @@ import { useProjectData } from "@/app/hooks/useProjectData";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
 import { useHiddenFields } from "@/app/project/hooks/useHiddenFields";
+import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
 import { getMapCacheInfo, clearMapCache } from "@/services/maps/tileCache";
 import PageHeader from "@/components/layout/PageHeader/PageHeader";
-import SettingsModal from "@/features/settings/SettingsModal/SettingsModal";
 import FieldVisibilityModal from "@/features/fieldVisibility/FieldVisibilityModal/FieldVisibilityModal";
 import Notification from "@/components/ui/Notification/Notification";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
@@ -14,7 +14,6 @@ import ImportConflictSheet from "@/features/importConflict/ImportConflictSheet";
 import AddProjectForm from "./components/AddProjectForm";
 import AppearanceSection from "./components/AppearanceSection";
 import BackupSection from "./components/BackupSection";
-import CalculationParametersSection from "./components/CalculationParametersSection";
 import DangerZoneSection from "./components/DangerZoneSection";
 import EmissionsSummarySection from "./components/EmissionsSummarySection";
 import FieldVisibilitySection from "./components/FieldVisibilitySection";
@@ -35,7 +34,6 @@ export default function Settings({
 }) {
   const { lang, t, toggleLanguage, localeTexts } = useSettingsTexts();
   const [notification, setNotification] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
   const [fieldsModalOpen, setFieldsModalOpen] = useState(false);
   const [addingProject, setAddingProject] = useState(false);
   const [cacheInfo, setCacheInfo] = useState(null);
@@ -65,11 +63,14 @@ export default function Settings({
     handleAdd,
   } = useProjectActions({ setCacheInfo, notify });
 
-  const { vars, setVars } = useProjectVars(activeProject?.id ?? null);
+  const { vars } = useProjectVars(activeProject?.id ?? null);
   const { data } = useProjectData();
   const { getPhoto: idbGetPhoto } = usePhotoStorage();
   const projectConfig = useProjectConfig();
   const { hiddenFields, setHiddenFields } = useHiddenFields(
+    activeProject?.id ?? null,
+  );
+  const { monitoringExportMode, setMonitoringExportMode } = useExcelExportMode(
     activeProject?.id ?? null,
   );
 
@@ -95,25 +96,6 @@ export default function Settings({
     notify,
     projects,
   });
-
-  const handleModalSave = useCallback(
-    (nextVars) => {
-      setVars(nextVars);
-      setModalOpen(false);
-      notify("success", localeTexts.notifications.parametersSaved);
-    },
-    [localeTexts.notifications.parametersSaved, notify, setVars],
-  );
-
-  const handleModalClose = useCallback(
-    (discarded) => {
-      setModalOpen(false);
-      if (discarded) {
-        notify("warning", localeTexts.notifications.changesCanceled);
-      }
-    },
-    [localeTexts.notifications.changesCanceled, notify],
-  );
 
   const handleClearMapCache = useCallback(() => {
     setSettingsConfirmAction("clearMapCache");
@@ -249,12 +231,6 @@ export default function Settings({
           )}
         </section>
 
-        <CalculationParametersSection
-          activeProject={activeProject}
-          localeTexts={localeTexts}
-          onEdit={() => setModalOpen(true)}
-        />
-
         <AppearanceSection
           lang={lang}
           localeTexts={localeTexts}
@@ -270,7 +246,12 @@ export default function Settings({
           hiddenFields={hiddenFields}
           lang={lang}
           localeTexts={localeTexts}
+          exportMode={monitoringExportMode}
           onConfigure={() => setFieldsModalOpen(true)}
+          onExportModeChange={(nextMode) => {
+            setMonitoringExportMode(nextMode);
+            notify("success", localeTexts.notifications.excelExportModeSaved);
+          }}
         />
 
         <BackupSection
@@ -344,15 +325,6 @@ export default function Settings({
         onConfirm={confirmImport}
         onCancel={cancelImport}
       />
-
-      {activeProject && vars && (
-        <SettingsModal
-          open={modalOpen}
-          onClose={handleModalClose}
-          variables={vars}
-          onSave={handleModalSave}
-        />
-      )}
 
       {activeProject && (
         <FieldVisibilityModal

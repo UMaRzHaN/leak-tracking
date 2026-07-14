@@ -223,6 +223,115 @@ describe("excel export helpers", () => {
     expect(result.message).toBe("XLSX with photos exported (report.zip)");
   });
 
+  it("exports every repeated monitoring record with its own photo link", async () => {
+    mocks.getPhotoSrcMock.mockResolvedValue("data:image/png;base64,ZmFrZQ==");
+
+    await exportToExcelFile(
+      [
+        {
+          id: 1,
+          leak_id: 7,
+          monitoringRecords: [
+            {
+              id: "check-1",
+              roundId: "round-4",
+              roundNumber: 4,
+              date: "2026-07-14T10:00:00.000Z",
+              result: "still_leaking",
+              photo: "idb://monitoring-1",
+            },
+            {
+              id: "check-2",
+              roundId: "round-4",
+              roundNumber: 4,
+              date: "2026-07-14T11:00:00.000Z",
+              result: "resolved",
+              photo: "idb://monitoring-2",
+            },
+          ],
+        },
+      ],
+      [{ id: 1, name: "Leak 1" }],
+      ["ID", "Name"],
+      ["id", "name"],
+      "report",
+      vi.fn().mockResolvedValue("data:image/png;base64,ZmFrZQ=="),
+      null,
+      "en",
+    );
+
+    const monitoringSheet = mocks.workbookInstances[0].sheets[1];
+    expect(monitoringSheet.rows).toHaveLength(3);
+    expect(monitoringSheet.getRow(2).getCell(9).value).toEqual({
+      text: "Open photo",
+      hyperlink: "photos/7/monitoring/7_monitoring_1.png",
+    });
+    expect(monitoringSheet.getRow(3).getCell(9).value).toEqual({
+      text: "Open photo",
+      hyperlink: "photos/7/monitoring/7_monitoring_2.png",
+    });
+    expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
+      "photos/7/monitoring/7_monitoring_1.png",
+      "ZmFrZQ==",
+      { base64: true },
+    );
+    expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
+      "photos/7/monitoring/7_monitoring_2.png",
+      "ZmFrZQ==",
+      { base64: true },
+    );
+  });
+
+  it("can export only the latest monitoring record per tag and round", async () => {
+    const records = [
+      {
+        id: "check-1",
+        roundId: "round-4",
+        roundNumber: 4,
+        date: "2026-07-14T10:00:00.000Z",
+        result: "still_leaking",
+        photo: "idb://monitoring-1",
+      },
+      {
+        id: "check-2",
+        roundId: "round-4",
+        roundNumber: 4,
+        date: "2026-07-14T11:00:00.000Z",
+        result: "resolved",
+        photo: "idb://monitoring-2",
+      },
+    ];
+
+    await exportToExcelFile(
+      [{ id: 1, leak_id: 7, monitoringRecords: records }],
+      [{ id: 1, name: "Leak 1" }],
+      ["ID", "Name"],
+      ["id", "name"],
+      "report",
+      vi.fn().mockResolvedValue("data:image/png;base64,ZmFrZQ=="),
+      null,
+      "en",
+      { monitoringExportMode: "latest_per_round" },
+    );
+
+    const monitoringSheet = mocks.workbookInstances[0].sheets[1];
+    expect(monitoringSheet.rows).toHaveLength(2);
+    expect(monitoringSheet.getRow(2).getCell(9).value).toEqual({
+      text: "Open photo",
+      hyperlink: "photos/7/monitoring/7_monitoring_2.png",
+    });
+    expect(mocks.zipInstances[0].file).not.toHaveBeenCalledWith(
+      "photos/7/monitoring/7_monitoring_1.png",
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
+      "photos/7/monitoring/7_monitoring_2.png",
+      "ZmFrZQ==",
+      { base64: true },
+    );
+  });
+
   it("keeps exportToExcelZip as a backwards-compatible alias", () => {
     expect(exportToExcelZip).toBe(exportToExcelFile);
   });

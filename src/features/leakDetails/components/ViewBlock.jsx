@@ -5,7 +5,6 @@ import { getPriorityMeta } from "@/utils/priority";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { formatLeakDate } from "@/utils/locale";
 import {
-  formatMonitoringDate,
   getMonitoringRecords,
   getMonitoringResultLabel,
 } from "@/utils/monitoring";
@@ -246,39 +245,77 @@ function PhotoComparison({
 function MonitoringRecordRow({ record, localeTexts, lang }) {
   const photoSrc = usePhotoSrc(record.photo ?? null);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const roundNumber = Number(record.roundNumber);
 
   return (
     <>
-      <div className={s.monitoringRecord}>
-        <div className={s.monitoringRecordText}>
-          <span className={s.fieldLabel}>
-            {formatMonitoringDate(record.date, lang)}
-          </span>
-          <span className={s.fieldValue}>
-            {getMonitoringResultLabel(record.result, lang)}
-            {record.monitoredBy ? ` В· ${record.monitoredBy}` : ""}
-            {record.materials_equipment
-              ? ` В· ${record.materials_equipment}`
-              : ""}
-            {record.comment ? ` В· ${record.comment}` : ""}
-          </span>
-        </div>
+      <article
+        className={s.monitoringRecord}
+        data-result={record.result ?? "unknown"}
+      >
+        <header className={s.monitoringRecordHeader}>
+          <time className={s.monitoringRecordDate} dateTime={record.date}>
+            {fmtDate(record.date, lang)}
+          </time>
+          {Number.isFinite(roundNumber) && roundNumber > 0 && (
+            <span className={s.monitoringRoundBadge}>
+              {localeTexts.monitoring.round} №{roundNumber}
+            </span>
+          )}
+        </header>
 
-        {photoSrc && (
-          <button
-            type="button"
-            className={s.monitoringPhotoBtn}
-            onClick={() => setViewerOpen(true)}
-          >
-            <img
-              src={photoSrc}
-              alt={localeTexts.photo.monitoring}
-              className={s.monitoringPhotoImg}
-              draggable={false}
-            />
-          </button>
-        )}
-      </div>
+        <div className={s.monitoringRecordContent}>
+          <div className={s.monitoringRecordText}>
+            <span className={s.monitoringResultBadge}>
+              <span className={s.monitoringResultDot} />
+              {getMonitoringResultLabel(record.result, lang)}
+            </span>
+
+            {record.monitoredBy && (
+              <div className={s.monitoringMetaRow}>
+                <span>{localeTexts.monitoring.inspector}</span>
+                <strong>{record.monitoredBy}</strong>
+              </div>
+            )}
+
+            {record.materials_equipment && (
+              <div className={s.monitoringDetailBlock}>
+                <span>{localeTexts.monitoring.materials}</span>
+                <p>{record.materials_equipment}</p>
+              </div>
+            )}
+
+            {record.comment && (
+              <div className={s.monitoringDetailBlock}>
+                <span>{localeTexts.monitoring.comment}</span>
+                <p>{record.comment}</p>
+              </div>
+            )}
+          </div>
+
+          {photoSrc && (
+            <div className={s.monitoringPhotoBlock}>
+              <span className={s.monitoringPhotoTitle}>
+                {localeTexts.monitoring.photo}
+              </span>
+              <button
+                type="button"
+                className={s.monitoringPhotoBtn}
+                onClick={() => setViewerOpen(true)}
+                aria-label={localeTexts.photo.monitoring}
+              >
+                <img
+                  src={photoSrc}
+                  alt={localeTexts.photo.monitoring}
+                  className={s.monitoringPhotoImg}
+                  loading="lazy"
+                  draggable={false}
+                />
+              </button>
+            </div>
+          )}
+        </div>
+      </article>
 
       {viewerOpen && photoSrc && (
         <PhotoViewer src={photoSrc} onClose={() => setViewerOpen(false)} />
@@ -328,6 +365,14 @@ export default function ViewBlock({
         after: t("leakDetails.photo.after"),
         monitoring: lang === "ru" ? "Фото мониторинга" : "Monitoring photo",
         noPhoto: t("leakDetails.photo.noPhoto"),
+      },
+
+      monitoring: {
+        round: lang === "ru" ? "Обход" : "Round",
+        inspector: lang === "ru" ? "Проверил" : "Checked by",
+        materials: lang === "ru" ? "МТР и работы" : "Materials and work",
+        comment: lang === "ru" ? "Комментарий" : "Comment",
+        photo: lang === "ru" ? "Фото обхода" : "Round photo",
       },
 
       empty: {

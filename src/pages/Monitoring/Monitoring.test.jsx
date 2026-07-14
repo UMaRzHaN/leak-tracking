@@ -56,10 +56,29 @@ vi.mock("@/features/photos/PhotoInput/PhotoInput", () => ({
   default: () => null,
 }));
 
-import Monitoring from "./Monitoring";
+import Monitoring, { getMonitoringPhotoPathsToKeep } from "./Monitoring";
 
 describe("Monitoring round flow", () => {
   beforeEach(() => localStorage.clear());
+
+  it("keeps photos from every previous monitoring record", () => {
+    expect(
+      getMonitoringPhotoPathsToKeep({
+        photo: "idb://before",
+        photo_after: "idb://after",
+        monitoringRecords: [
+          { photo: "idb://round-1" },
+          { photo: "idb://round-2" },
+          { photo: null },
+        ],
+      }),
+    ).toEqual([
+      "idb://before",
+      "idb://after",
+      "idb://round-1",
+      "idb://round-2",
+    ]);
+  });
 
   it("opens the requested monitoring modal after starting a round", () => {
     const leak = { id: "leak-1", leak_id: "1001", status: "open" };

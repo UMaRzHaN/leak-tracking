@@ -10,7 +10,7 @@ import {
   formatLeakDate,
   formatNumber,
 } from "@/utils/locale";
-import { getLastMonitoringRecord } from "@/utils/monitoring";
+import { getLatestMonitoringPhotoPath } from "@/utils/monitoring";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import s from "./LeakCardCompact.module.scss";
 
@@ -72,9 +72,7 @@ function LeakCardCompact({
   const [viewerIndex, setViewerIndex] = useState(null);
 
   const photoSrc = usePhotoSrc(leak.photo ?? null);
-  const monitoringPhotoSrc = usePhotoSrc(
-    getLastMonitoringRecord(leak)?.photo ?? null,
-  );
+  const monitoringPhotoSrc = usePhotoSrc(getLatestMonitoringPhotoPath(leak));
   const photoAfterSrc = usePhotoSrc(
     status === "resolved" ? (leak.photo_after ?? null) : null,
   );

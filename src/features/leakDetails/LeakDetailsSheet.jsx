@@ -1,5 +1,8 @@
+import { useEffect, useRef } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { usePhotoSrc } from "@/hooks/usePhotoSrc";
 import { formatLeakDate } from "@/utils/locale";
+import { getLeakDetailsHeroPhotoPath } from "@/utils/monitoring";
 import { useLeakDetailsSheet, MODE } from "./hooks/useLeakDetailsSheet";
 import PhotoBlock from "./components/PhotoBlock";
 import ViewBlock from "./components/ViewBlock";
@@ -20,6 +23,7 @@ export default function LeakDetailsSheet({
   userProfile,
 }) {
   const { lang } = useLanguage();
+  const tabRefs = useRef(new Map());
   const absoluteDate = formatLeakDate(leak.date, {}, lang);
   const {
     mode,
@@ -76,6 +80,15 @@ export default function LeakDetailsSheet({
     changePhotoRepair,
     choosePhotoRepair,
   } = useLeakDetailsSheet({ leak, onClose, onSave, onDelete, userProfile });
+  const heroSrc = usePhotoSrc(getLeakDetailsHeroPhotoPath(leak)) || src;
+
+  useEffect(() => {
+    tabRefs.current.get(activeTab)?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [activeTab]);
 
   return (
     <>
@@ -87,13 +100,15 @@ export default function LeakDetailsSheet({
       <div className={s.overlay} onClick={handleClose}>
         <div className={s.sheet} onClick={(event) => event.stopPropagation()}>
           <PhotoBlock
-            src={mode === MODE.EDIT ? null : src}
+            src={mode === MODE.EDIT ? null : heroSrc}
             status={status}
             identityNum={`№ ${leak.leak_id ?? leak.index ?? "—"}`}
             identityTime={ago ?? absoluteDate ?? ""}
             onStatusChange={handleStatusChange}
             onView={
-              mode === MODE.VIEW && src ? () => setViewerOpen(true) : undefined
+              mode === MODE.VIEW && heroSrc
+                ? () => setViewerOpen(true)
+                : undefined
             }
           />
 
@@ -101,6 +116,10 @@ export default function LeakDetailsSheet({
             {TABS.map((tab) => (
               <button
                 key={tab.id}
+                ref={(node) => {
+                  if (node) tabRefs.current.set(tab.id, node);
+                  else tabRefs.current.delete(tab.id);
+                }}
                 className={`${s.tab} ${activeTab === tab.id ? s.tabActive : ""}`}
                 onClick={() => setActiveTab(tab.id)}
                 type="button"
@@ -262,8 +281,8 @@ export default function LeakDetailsSheet({
         onCancel={cancelClose}
       />
 
-      {viewerOpen && src && (
-        <PhotoViewer src={src} onClose={() => setViewerOpen(false)} />
+      {viewerOpen && heroSrc && (
+        <PhotoViewer src={heroSrc} onClose={() => setViewerOpen(false)} />
       )}
 
       {statusPickerOpen && (

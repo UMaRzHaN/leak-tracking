@@ -130,6 +130,14 @@ const resources = {
         hiddenFields: "Скрыто",
         configureFields: "Настроить поля",
 
+        excelExportMode: "Журнал мониторинга в Excel",
+        excelExportFull: "Полная история",
+        excelExportFullHint:
+          "Экспортировать каждую проверку, включая повторные записи одного обхода.",
+        excelExportLatest: "Последняя запись в обходе",
+        excelExportLatestHint:
+          "Для каждого тега экспортировать только последнюю проверку в каждом обходе.",
+
         backup: "Резервная копия",
         exportZip: "Экспорт ZIP",
         importZip: "Импорт ZIP",
@@ -155,6 +163,7 @@ const resources = {
           databaseCleared: "База данных очищена",
           allFieldsActive: "Все поля активны",
           hiddenFieldsCount: "Скрыто полей: {{count}}",
+          excelExportModeSaved: "Режим Excel-экспорта сохранён",
         },
 
         dialogs: {
@@ -584,6 +593,14 @@ const resources = {
         hiddenFields: "Hidden",
         configureFields: "Configure Fields",
 
+        excelExportMode: "Monitoring Log in Excel",
+        excelExportFull: "Full History",
+        excelExportFullHint:
+          "Export every check, including repeated records from the same round.",
+        excelExportLatest: "Latest Record per Round",
+        excelExportLatestHint:
+          "Export only the latest check for each tag in every round.",
+
         backup: "Backup",
         exportZip: "Export ZIP",
         importZip: "Import ZIP",
@@ -609,6 +626,7 @@ const resources = {
           databaseCleared: "Database cleared",
           allFieldsActive: "All fields are active",
           hiddenFieldsCount: "Hidden fields: {{count}}",
+          excelExportModeSaved: "Excel export mode saved",
         },
 
         dialogs: {

@@ -9,6 +9,10 @@ import {
   getMonitoringRecords,
   getMonitoringResultLabel,
 } from "@/utils/monitoring";
+import {
+  EXCEL_MONITORING_EXPORT_MODE,
+  normalizeExcelMonitoringExportMode,
+} from "@/utils/excelExportMode";
 
 const PHOTO_KEYS = ["photo", "photo_after", "photo_repair"];
 const DEFAULT_EXPORT_DIR = "export/xlsx";
@@ -74,7 +78,11 @@ async function buildLeakPhotoEntries(orderedLeaks, idbGet) {
   return photoEntries;
 }
 
-async function buildMonitoringPhotoEntries(orderedLeaks, idbGet) {
+async function buildMonitoringPhotoEntries(
+  orderedLeaks,
+  idbGet,
+  includedPhotoKeys = null,
+) {
   const photoEntries = [];
 
   await Promise.all(
@@ -84,6 +92,8 @@ async function buildMonitoringPhotoEntries(orderedLeaks, idbGet) {
 
       await Promise.all(
         records.map(async (record, recordIndex) => {
+          const mapKey = `monitoring:${leakIndex}:${recordIndex}`;
+          if (includedPhotoKeys && !includedPhotoKeys.has(mapKey)) return;
           const path = record.photo;
           if (!path) return;
 
@@ -98,7 +108,7 @@ async function buildMonitoringPhotoEntries(orderedLeaks, idbGet) {
           const photoFileName = `photos/${leakId}/monitoring/${leakId}_monitoring_${recordIndex + 1}.${ext}`;
 
           photoEntries.push({
-            mapKey: `monitoring:${leakIndex}:${recordIndex}`,
+            mapKey,
             photoFileName,
             base64,
           });
@@ -110,10 +120,24 @@ async function buildMonitoringPhotoEntries(orderedLeaks, idbGet) {
   return photoEntries;
 }
 
-async function buildPhotoEntries(orderedLeaks, idbGet) {
+async function buildPhotoEntries(orderedLeaks, idbGet, monitoringExportMode) {
+  const includedMonitoringPhotoKeys =
+    monitoringExportMode === EXCEL_MONITORING_EXPORT_MODE.LATEST_PER_ROUND
+      ? new Set(
+          getMonitoringExportRows(
+            orderedLeaks,
+            buildMonitoringRoundLookup(orderedLeaks),
+            monitoringExportMode,
+          ).map((row) => row.photoMapKey),
+        )
+      : null;
   const [leakPhotos, monitoringPhotos] = await Promise.all([
     buildLeakPhotoEntries(orderedLeaks, idbGet),
-    buildMonitoringPhotoEntries(orderedLeaks, idbGet),
+    buildMonitoringPhotoEntries(
+      orderedLeaks,
+      idbGet,
+      includedMonitoringPhotoKeys,
+    ),
   ]);
 
   return [...leakPhotos, ...monitoringPhotos];
@@ -229,6 +253,7 @@ function buildWorkbook({
   photoMap,
   lang,
   ExcelJS,
+  monitoringExportMode,
 }) {
   const photoColumnIndexes = PHOTO_KEYS.map((key) =>
     keysOrder.indexOf(key),
@@ -292,7 +317,13 @@ function buildWorkbook({
     );
   });
 
-  buildMonitoringSheet(workbook, orderedLeaks, lang, photoMap);
+  buildMonitoringSheet(
+    workbook,
+    orderedLeaks,
+    lang,
+    photoMap,
+    monitoringExportMode,
+  );
 
   return workbook;
 }
@@ -321,8 +352,12 @@ function buildMonitoringRoundLookup(orderedLeaks) {
   );
 }
 
-function getMonitoringExportRows(orderedLeaks, roundLookup) {
-  const latestByLeakRound = new Map();
+function getMonitoringExportRows(
+  orderedLeaks,
+  roundLookup,
+  monitoringExportMode = EXCEL_MONITORING_EXPORT_MODE.FULL,
+) {
+  const rows = [];
 
   orderedLeaks.forEach((leak, leakIndex) => {
     getMonitoringRecords(leak).forEach((record, recordIndex) => {
@@ -330,7 +365,8 @@ function getMonitoringExportRows(orderedLeaks, roundLookup) {
         Number(record.roundNumber) > 0
           ? Number(record.roundNumber)
           : (roundLookup.get(record.roundId) ?? recordIndex + 1);
-      const row = {
+      const roundKey = record.roundId ?? `legacy-${roundNumber}`;
+      rows.push({
         index: leak.index ?? leakIndex + 1,
         leak_id: leak.leak_id ?? "",
         roundNumber,
@@ -341,40 +377,67 @@ function getMonitoringExportRows(orderedLeaks, roundLookup) {
         comment: record.comment ?? "",
         photo: record.photo ?? "",
         photoMapKey: `monitoring:${leakIndex}:${recordIndex}`,
-      };
-      const roundKey = record.roundId ?? `legacy-${roundNumber}`;
-      const groupKey = `${leak.id ?? leak.leak_id ?? leakIndex}:${roundKey}`;
-      const current = latestByLeakRound.get(groupKey);
-      const currentTime = Date.parse(current?.dateRaw ?? "");
-      const nextTime = Date.parse(row.dateRaw);
-
-      if (
-        !current ||
-        (Number.isNaN(currentTime) ? 0 : currentTime) <= nextTime
-      ) {
-        latestByLeakRound.set(groupKey, row);
-      }
+        exportGroupKey: `${leak.id ?? leak.leak_id ?? leakIndex}:${roundKey}`,
+      });
     });
   });
 
-  return [...latestByLeakRound.values()].sort((left, right) => {
+  const selectedRows =
+    monitoringExportMode === EXCEL_MONITORING_EXPORT_MODE.LATEST_PER_ROUND
+      ? [
+          ...rows
+            .reduce((latestByGroup, row) => {
+              const current = latestByGroup.get(row.exportGroupKey);
+              const currentTime = Date.parse(current?.dateRaw ?? "");
+              const rowTime = Date.parse(row.dateRaw);
+              if (
+                !current ||
+                (Number.isNaN(currentTime) ? 0 : currentTime) <=
+                  (Number.isNaN(rowTime) ? 0 : rowTime)
+              ) {
+                latestByGroup.set(row.exportGroupKey, row);
+              }
+              return latestByGroup;
+            }, new Map())
+            .values(),
+        ]
+      : rows;
+
+  return selectedRows.sort((left, right) => {
     if (left.roundNumber !== right.roundNumber) {
       return left.roundNumber - right.roundNumber;
     }
 
-    return (left.index ?? 0) - (right.index ?? 0);
+    if ((left.index ?? 0) !== (right.index ?? 0)) {
+      return (left.index ?? 0) - (right.index ?? 0);
+    }
+
+    const leftTime = Date.parse(left.dateRaw);
+    const rightTime = Date.parse(right.dateRaw);
+    return (
+      (Number.isNaN(leftTime) ? 0 : leftTime) -
+      (Number.isNaN(rightTime) ? 0 : rightTime)
+    );
   });
 }
 
-function buildMonitoringSheet(workbook, orderedLeaks, lang, photoMap) {
+function buildMonitoringSheet(
+  workbook,
+  orderedLeaks,
+  lang,
+  photoMap,
+  monitoringExportMode,
+) {
   const roundLookup = buildMonitoringRoundLookup(orderedLeaks);
-  const rows = getMonitoringExportRows(orderedLeaks, roundLookup).map(
-    (row) => ({
-      ...row,
-      date: formatMonitoringDate(row.dateRaw, lang),
-      result: getMonitoringResultLabel(row.result, lang),
-    }),
-  );
+  const rows = getMonitoringExportRows(
+    orderedLeaks,
+    roundLookup,
+    monitoringExportMode,
+  ).map((row) => ({
+    ...row,
+    date: formatMonitoringDate(row.dateRaw, lang),
+    result: getMonitoringResultLabel(row.result, lang),
+  }));
 
   if (rows.length === 0) return;
 
@@ -517,13 +580,21 @@ export async function exportToExcelFile(
   idbGet = null,
   projectFolderName = null,
   lang = "ru",
+  options = {},
 ) {
   const paired = rawLeaks.map((leak, index) => ({ leak, row: rows[index] }));
   paired.sort((left, right) => (left.leak.id ?? 0) - (right.leak.id ?? 0));
 
   const orderedLeaks = paired.map((pair) => pair.leak);
   const orderedRows = paired.map((pair) => pair.row);
-  const photoEntries = await buildPhotoEntries(orderedLeaks, idbGet);
+  const monitoringExportMode = normalizeExcelMonitoringExportMode(
+    options.monitoringExportMode,
+  );
+  const photoEntries = await buildPhotoEntries(
+    orderedLeaks,
+    idbGet,
+    monitoringExportMode,
+  );
   const photoMap = buildPhotoMap(photoEntries);
   const outputFolder = getExportFolder(projectFolderName);
 
@@ -536,6 +607,7 @@ export async function exportToExcelFile(
     photoMap,
     lang,
     ExcelJS,
+    monitoringExportMode,
   });
 
   const xlsxBuffer = await workbook.xlsx.writeBuffer();

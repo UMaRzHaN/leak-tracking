@@ -48,6 +48,23 @@ export function getLastMonitoringRecord(leak) {
   }, records[0]);
 }
 
+export function getLatestMonitoringPhotoPath(leak) {
+  const recordsWithPhoto = getMonitoringRecords(leak).filter(
+    (record) => record.photo,
+  );
+  if (recordsWithPhoto.length === 0) return null;
+
+  return recordsWithPhoto.reduce((latest, record) => {
+    const latestTime = Date.parse(latest.date);
+    const recordTime = Date.parse(record.date);
+    return recordTime > latestTime ? record : latest;
+  }, recordsWithPhoto[0]).photo;
+}
+
+export function getLeakDetailsHeroPhotoPath(leak) {
+  return getLatestMonitoringPhotoPath(leak) ?? leak?.photo ?? null;
+}
+
 export function isMonitoringDue(leak, roundId = null, roundNumber = null) {
   const records = getMonitoringRecords(leak);
   const normalizedRoundNumber = Number(roundNumber);

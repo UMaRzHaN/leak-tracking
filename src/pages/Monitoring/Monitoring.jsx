@@ -62,6 +62,17 @@ function getInitialMonitoringResult(leak) {
   return getCurrentMonitoringResult(leak) ?? MONITORING_RESULT.STILL_LEAKING;
 }
 
+export function getMonitoringPhotoPathsToKeep(leak) {
+  return [
+    leak?.photo,
+    leak?.photo_after,
+    leak?.photo_repair,
+    ...(Array.isArray(leak?.monitoringRecords)
+      ? leak.monitoringRecords.map((record) => record?.photo)
+      : []),
+  ].filter(Boolean);
+}
+
 function buildMonitoringPatch({
   leak,
   draft,
@@ -619,7 +630,7 @@ export default function Monitoring({
     const photoPath = await savePhoto(
       rawPhoto,
       `${leak.id}_monitoring_${Date.now()}`,
-      [leak.photo, leak.photo_after, leak.photo_repair].filter(Boolean),
+      getMonitoringPhotoPathsToKeep(leak),
     );
     await finishMonitoringSave({ leak, draft, photoPath });
   };
@@ -634,11 +645,7 @@ export default function Monitoring({
     const photoPath = await savePhoto(
       rawPhoto,
       `${pending.leak.id}_monitoring_${Date.now()}`,
-      [
-        pending.leak.photo,
-        pending.leak.photo_after,
-        pending.leak.photo_repair,
-      ].filter(Boolean),
+      getMonitoringPhotoPathsToKeep(pending.leak),
     );
     await finishMonitoringSave({
       leak: pending.leak,

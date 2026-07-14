@@ -169,13 +169,24 @@
   display: flex;
   gap: 4px;
   padding: 6px 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
   background: var(--c-bg);
   border-bottom: 1px solid var(--c-border);
   flex-shrink: 0;
+  scroll-padding-inline: 10px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .tab {
-  flex: 1;
+  flex: 1 0 auto;
   padding: 7px 4px;
   border: none;
   border-radius: var(--r-md);
@@ -186,6 +197,7 @@
   cursor: pointer;
   transition: all var(--t-fast);
   white-space: nowrap;
+  scroll-snap-align: nearest;
 
   &:hover { color: var(--c-text2); background: var(--c-border); }
 }
@@ -479,33 +491,173 @@
 }
 
 .monitoringRecord {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 92px;
-  gap: 12px;
-  align-items: stretch;
-  padding: 11px 16px;
-  border-bottom: 1px solid var(--c-border);
+  --monitoring-accent: var(--c-blue);
+  --monitoring-accent-bg: var(--c-blue-dim);
+  position: relative;
+  margin: 10px 12px;
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
   background: var(--c-surface);
+  box-shadow: none;
+
+  &[data-result="still_leaking"] {
+    --monitoring-accent: var(--c-open);
+    --monitoring-accent-bg: var(--c-open-bg);
+  }
+
+  &[data-result="needs_recheck"] {
+    --monitoring-accent: var(--c-progress);
+    --monitoring-accent-bg: var(--c-progress-bg);
+  }
+
+  &[data-result="resolved"] {
+    --monitoring-accent: var(--c-resolved);
+    --monitoring-accent-bg: var(--c-resolved-bg);
+  }
+}
+
+.monitoringRecordHeader {
+  min-height: 38px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface2);
+}
+
+.monitoringRecordDate {
+  color: var(--c-text2);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.monitoringRoundBadge {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-pill);
+  background: var(--c-surface);
+  color: var(--c-text2);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.monitoringRecordContent {
+  padding: 12px;
 }
 
 .monitoringRecordText {
   min-width: 0;
-  display: grid;
-  gap: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
 }
 
-.monitoringRecordText .fieldValue {
-  text-align: left;
+.monitoringResultBadge {
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 9px;
+  border-radius: var(--r-pill);
+  background: var(--monitoring-accent-bg);
+  color: var(--monitoring-accent);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.monitoringResultDot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.monitoringMetaRow {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+
+  span {
+    color: var(--c-text3);
+  }
+
+  strong {
+    min-width: 0;
+    color: var(--c-text);
+    font-weight: 700;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+}
+
+.monitoringDetailBlock {
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: var(--r-sm);
+  background: var(--c-surface2);
+
+  > span {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--c-text3);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  p {
+    color: var(--c-text2);
+    font-size: 12px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+}
+
+.monitoringPhotoBlock {
+  width: 100%;
+  margin-top: 2px;
+  padding-top: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid var(--c-border);
+}
+
+.monitoringPhotoTitle {
+  color: var(--c-text3);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .monitoringPhotoBtn {
-  width: 92px;
-  min-height: 64px;
+  flex-shrink: 0;
+  width: 64px;
+  height: 48px;
   padding: 0;
   border: 1px solid var(--c-border);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   overflow: hidden;
   background: var(--c-surface2);
+  box-shadow: var(--shadow-sm);
+
+  &:active { opacity: 0.82; }
 }
 
 .monitoringPhotoImg {

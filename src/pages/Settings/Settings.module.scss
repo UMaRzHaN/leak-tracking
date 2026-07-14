@@ -139,6 +139,81 @@
   margin: 0 0 12px;
 }
 
+.exportModeOptions {
+  display: grid;
+  gap: 8px;
+}
+
+.exportModeInline {
+  margin-top: 14px;
+  padding-top: 14px;
+  display: grid;
+  gap: 9px;
+  border-top: 1px solid var(--c-border);
+}
+
+.exportModeLabel {
+  color: var(--c-text3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.exportModeOption {
+  width: 100%;
+  padding: 11px 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  background: var(--c-bg);
+  color: var(--c-text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--t-fast), background var(--t-fast);
+}
+
+.exportModeOptionActive {
+  border-color: var(--c-blue);
+  background: var(--c-blue-dim);
+}
+
+.exportModeRadio {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  flex: 0 0 16px;
+  border: 2px solid var(--c-text3);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 3px var(--c-bg);
+}
+
+.exportModeOptionActive .exportModeRadio {
+  border-color: var(--c-blue);
+  background: var(--c-blue);
+  box-shadow: inset 0 0 0 3px var(--c-blue-dim);
+}
+
+.exportModeText {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+
+  strong {
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  small {
+    color: var(--c-text3);
+    font-size: 11px;
+    line-height: 1.4;
+  }
+}
+
 .editVarsBtn {
   width: 100%;
   padding: 12px;

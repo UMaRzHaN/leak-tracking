@@ -17,6 +17,7 @@ import VoicePreviewSheet from "@/features/voice/VoicePreviewSheet/VoicePreviewSh
 import StepRenderer from "@/features/leakForm/components/StepRenderer/StepRenderer";
 import ClearActions from "./components/ClearActions";
 import SettingsModal from "@/features/settings/SettingsModal/SettingsModal";
+import { getCopyPreviousKeys } from "@/features/leakForm/utils/copyPrevious";
 import s from "./LeakForm.module.scss";
 
 const STEP_TITLE_KEYS = {
@@ -108,7 +109,7 @@ export default function LeakForm({
 
   const COPY_KEYS = useMemo(() => {
     const raw = rawConfig.system?.copyable ?? [];
-    return raw.map((f) => (typeof f === "string" ? f : f.key));
+    return getCopyPreviousKeys(raw);
   }, [rawConfig]);
 
   const NUMBER_KEYS = useMemo(() => {
