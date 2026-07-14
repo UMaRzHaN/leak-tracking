@@ -43,7 +43,7 @@ const FILTERS = {
   ALL: "all",
 };
 
-const MONITORING_ROUND_STORAGE_VERSION = "v1";
+const MONITORING_ROUND_STORAGE_VERSION = "v2";
 
 function createMonitoringRound(number = 1) {
   return {
@@ -72,12 +72,10 @@ function readMonitoringRound(projectId) {
       };
     }
   } catch {
-    // Ignore corrupted local state and start a fresh monitoring round.
+    // Ignore corrupted local state. A new round starts only by user action.
   }
 
-  const next = createMonitoringRound();
-  localStorage.setItem(key, JSON.stringify(next));
-  return next;
+  return null;
 }
 
 function saveMonitoringRound(projectId, round) {
@@ -209,7 +207,7 @@ function MonitoringSheet({
               {texts.leakNumber} {leak?.leak_id ?? leak?.index ?? "—"}
             </p>
           </div>
-          <button type="button" onClick={onClose}>
+          <button type="button" className={s.sheetCloseBtn} onClick={onClose}>
             {texts.close}
           </button>
         </div>
@@ -308,6 +306,7 @@ export default function Monitoring({
   const [notification, setNotification] = useState(null);
   const filters = useDataBaseFilters({ data, coords, sharedFilters });
   const monitoringRoundId = monitoringRound?.id ?? null;
+  const hasActiveMonitoringRound = Boolean(monitoringRoundId);
 
   const nextMonitoringRoundNumber = useMemo(() => {
     const maxRecordNumber = data.reduce((max, leak) => {
@@ -360,6 +359,10 @@ export default function Monitoring({
 
   const openMonitoringSheet = (leak) => {
     if (!leak) return;
+    if (!hasActiveMonitoringRound) {
+      setRoundConfirmOpen(true);
+      return;
+    }
     setSubmitted(false);
     updateDraft(leak.id, {
       result: getInitialMonitoringResult(leak),
@@ -419,8 +422,13 @@ export default function Monitoring({
             save: "Сохранить",
             required: "Заполните имя пользователя в профиле",
             photoRequired: "Добавьте фото мониторинга",
+            startRequired: "Сначала начните обход мониторинга",
             saved: "Результат мониторинга сохранен",
             empty: "Нет утечек для выбранного фильтра",
+            noActiveRound:
+              "Активного обхода нет. Начните мониторинг, чтобы сформировать список к проверке.",
+            startRound: "Начать мониторинг",
+            newRound: "Новый обход",
           }
         : {
             title: "Monitoring",
@@ -443,38 +451,50 @@ export default function Monitoring({
             save: "Save",
             required: "Fill in the user name in profile",
             photoRequired: "Add a monitoring photo",
+            startRequired: "Start a monitoring round first",
             saved: "Monitoring result saved",
             empty: "No leaks for the selected filter",
+            noActiveRound:
+              "No active round. Start monitoring to build the due list.",
+            startRound: "Start monitoring",
+            newRound: "New round",
           },
     [lang],
   );
 
   const items = useMemo(() => {
     const sorted = [...filters.displayed].sort((left, right) => {
-      const leftDue = isMonitoringDue(left, monitoringRoundId);
-      const rightDue = isMonitoringDue(right, monitoringRoundId);
+      const leftDue =
+        hasActiveMonitoringRound && isMonitoringDue(left, monitoringRoundId);
+      const rightDue =
+        hasActiveMonitoringRound && isMonitoringDue(right, monitoringRoundId);
       if (leftDue !== rightDue) return leftDue ? -1 : 1;
       return (right.updatedAt ?? 0) - (left.updatedAt ?? 0);
     });
 
+    if (!hasActiveMonitoringRound) return sorted;
     if (filter === FILTERS.DUE)
       return sorted.filter((leak) => isMonitoringDue(leak, monitoringRoundId));
     if (filter === FILTERS.CHECKED)
       return sorted.filter((leak) => !isMonitoringDue(leak, monitoringRoundId));
     return sorted;
-  }, [filters.displayed, filter, monitoringRoundId]);
+  }, [filters.displayed, filter, hasActiveMonitoringRound, monitoringRoundId]);
 
   const counts = useMemo(
     () => ({
-      due: filters.displayed.filter((leak) =>
-        isMonitoringDue(leak, monitoringRoundId),
-      ).length,
-      checked: filters.displayed.filter(
-        (leak) => !isMonitoringDue(leak, monitoringRoundId),
-      ).length,
+      due: hasActiveMonitoringRound
+        ? filters.displayed.filter((leak) =>
+            isMonitoringDue(leak, monitoringRoundId),
+          ).length
+        : 0,
+      checked: hasActiveMonitoringRound
+        ? filters.displayed.filter(
+            (leak) => !isMonitoringDue(leak, monitoringRoundId),
+          ).length
+        : 0,
       all: filters.displayed.length,
     }),
-    [filters.displayed, monitoringRoundId],
+    [filters.displayed, hasActiveMonitoringRound, monitoringRoundId],
   );
 
   const updateDraft = (id, patch) => {
@@ -552,6 +572,12 @@ export default function Monitoring({
 
   const saveRecord = async (leak) => {
     setSubmitted(true);
+
+    if (!hasActiveMonitoringRound) {
+      setNotification({ type: "error", message: texts.startRequired });
+      setRoundConfirmOpen(true);
+      return;
+    }
 
     if (!profileName) {
       setNotification({ type: "error", message: texts.required });
@@ -784,6 +810,8 @@ export default function Monitoring({
 
   const renderMonitoringItem = (leak) => {
     const last = getLastMonitoringRecord(leak);
+    const isDue =
+      hasActiveMonitoringRound && isMonitoringDue(leak, monitoringRoundId);
     return (
       <article className={s.monitoringItem}>
         <LeakCardCompact
@@ -797,11 +825,7 @@ export default function Monitoring({
 
         <div className={s.monitoringBar}>
           <div className={s.monitoringBarText}>
-            <span
-              className={
-                isMonitoringDue(leak, monitoringRoundId) ? s.dueText : s.okText
-              }
-            >
+            <span className={isDue ? s.dueText : s.okText}>
               {last
                 ? `${texts.lastCheck}: ${formatMonitoringDate(last.date, lang)}`
                 : texts.never}
@@ -832,7 +856,15 @@ export default function Monitoring({
       />
       <ConfirmSheet
         open={roundConfirmOpen}
-        title={lang === "ru" ? "Начать новый обход?" : "Start a new round?"}
+        title={
+          hasActiveMonitoringRound
+            ? lang === "ru"
+              ? "Начать новый обход?"
+              : "Start a new round?"
+            : lang === "ru"
+              ? "Начать мониторинг?"
+              : "Start monitoring?"
+        }
         description={
           lang === "ru"
             ? "Список к проверке будет сформирован заново. Уже сохраненные результаты мониторинга останутся в истории утечек."
@@ -847,7 +879,7 @@ export default function Monitoring({
       <header className={s.header}>
         <div>
           <h1>{texts.title}</h1>
-          {monitoringRound?.startedAt && (
+          {monitoringRound?.startedAt ? (
             <div className={s.roundMeta}>
               <span className={s.roundBadge}>
                 {lang === "ru" ? "Обход" : "Round"} №
@@ -858,6 +890,8 @@ export default function Monitoring({
                 {formatMonitoringDate(monitoringRound.startedAt, lang)}
               </span>
             </div>
+          ) : (
+            <p>{texts.noActiveRound}</p>
           )}
         </div>
         <button
@@ -865,7 +899,7 @@ export default function Monitoring({
           className={s.newRoundBtn}
           onClick={() => setRoundConfirmOpen(true)}
         >
-          {lang === "ru" ? "Новый обход" : "New round"}
+          {hasActiveMonitoringRound ? texts.newRound : texts.startRound}
         </button>
       </header>
 
@@ -896,7 +930,11 @@ export default function Monitoring({
           <button
             key={id}
             type="button"
-            className={`${s.filterBtn} ${filter === id ? s.filterBtnActive : ""}`}
+            className={`${s.filterBtn} ${
+              (hasActiveMonitoringRound ? filter : FILTERS.ALL) === id
+                ? s.filterBtnActive
+                : ""
+            }`}
             onClick={() => setFilter(id)}
           >
             <span>{label}</span>

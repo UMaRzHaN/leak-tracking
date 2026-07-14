@@ -240,6 +240,19 @@ function hasImportablePhoto(leak, key) {
   );
 }
 
+function countImportableArchivePhotos(leak) {
+  const mainPhotos = PHOTO_KEYS.filter((key) =>
+    hasImportablePhoto(leak, key),
+  ).length;
+  const monitoringPhotos = Array.isArray(leak?.monitoringRecords)
+    ? leak.monitoringRecords.filter((record) =>
+        hasImportablePhoto(record, MONITORING_PHOTO_KEY),
+      ).length
+    : 0;
+
+  return mainPhotos + monitoringPhotos;
+}
+
 export function previewMergeLeaks(existing = [], incoming = []) {
   const existingByIdentity = new Map();
   const result = {
@@ -266,9 +279,7 @@ export function previewMergeLeaks(existing = [], incoming = []) {
     else result.skipped += 1;
 
     if (applies) {
-      result.archivePhotos += PHOTO_KEYS.filter((key) =>
-        hasImportablePhoto(leak, key),
-      ).length;
+      result.archivePhotos += countImportableArchivePhotos(leak);
     }
   }
 

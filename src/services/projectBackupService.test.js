@@ -5,6 +5,7 @@ import {
   importIntoExistingProject,
   importProjectZip,
   mergeLeaksByFreshness,
+  previewMergeLeaks,
 } from "./projectBackupService";
 import { LeakRepository } from "@/repositories/LeakRepository";
 
@@ -145,6 +146,40 @@ describe("projectBackupService legacy imports", () => {
     expect(savePhoto.mock.calls[0][1]).toBe("legacy-photo");
     expect(result.leaks[0].photo).toBe("idb://photo_project_legacy-photo_100");
   });
+
+  it("exports and restores monitoring photos from a ZIP backup", async () => {
+    const tinyPng = "data:image/png;base64,ZmFrZQ==";
+    const leak = {
+      id: "leak-with-monitoring",
+      leak_id: "1001",
+      status: "open",
+      monitoringRecords: [
+        {
+          id: "round-1",
+          date: "2026-07-14T09:00:00.000Z",
+          photo: tinyPng,
+          result: "still_leaking",
+        },
+      ],
+    };
+    const blob = await buildProjectBackupZip({
+      leaks: [leak],
+      idbGet: null,
+      project: PROJECT,
+      vars: null,
+    });
+    const savePhoto = vi
+      .fn()
+      .mockResolvedValue("idb://photo_project_1001_monitoring_round-1_100");
+
+    const result = await importBackupZip(blob, savePhoto);
+
+    expect(savePhoto).toHaveBeenCalledTimes(1);
+    expect(savePhoto.mock.calls[0][1]).toBe("1001_monitoring_round-1");
+    expect(result.leaks[0].monitoringRecords[0].photo).toBe(
+      "idb://photo_project_1001_monitoring_round-1_100",
+    );
+  });
 });
 
 describe("mergeLeaksByFreshness", () => {
@@ -265,6 +300,24 @@ describe("mergeLeaksByFreshness", () => {
 
     expect(result.changed).toBe(0);
     expect(result.leaks[0].photo).toBe("idb://photo_project_same-leak_local");
+  });
+
+  it("counts monitoring photos in merge preview", () => {
+    const result = previewMergeLeaks(
+      [],
+      [
+        {
+          id: "incoming",
+          photo: "zip:photos/incoming/before.jpg",
+          monitoringRecords: [
+            { id: "m1", photo: "zip:photos/incoming/monitoring_m1.jpg" },
+            { id: "m2", photo: "data:image/png;base64,ZmFrZQ==" },
+          ],
+        },
+      ],
+    );
+
+    expect(result.archivePhotos).toBe(3);
   });
 
   it("does not restore older archive photos during merge into an existing project", async () => {
