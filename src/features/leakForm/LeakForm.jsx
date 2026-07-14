@@ -16,6 +16,7 @@ import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import VoicePreviewSheet from "@/features/voice/VoicePreviewSheet/VoicePreviewSheet";
 import StepRenderer from "@/features/leakForm/components/StepRenderer/StepRenderer";
 import ClearActions from "./components/ClearActions";
+import SettingsModal from "@/features/settings/SettingsModal/SettingsModal";
 import s from "./LeakForm.module.scss";
 
 const STEP_TITLE_KEYS = {
@@ -73,7 +74,11 @@ export default function LeakForm({
   const rawConfig = useProjectConfig();
   const projectConfig = useEffectiveProjectConfig();
   const { activeProject } = useProjectData();
-  const { vars } = useProjectVars(activeProject?.id ?? null, rawConfig.vars);
+  const { vars, setVars } = useProjectVars(
+    activeProject?.id ?? null,
+    rawConfig.vars,
+  );
+  const [calcSettingsOpen, setCalcSettingsOpen] = useState(false);
 
   const localeTexts = useMemo(
     () => ({
@@ -323,6 +328,30 @@ export default function LeakForm({
           localeTexts={localeTexts}
         />
 
+        <div className={s.calcShortcut}>
+          <div className={s.calcShortcutText}>
+            <strong>
+              {t("settings.calculationParameters", {
+                defaultValue:
+                  lang === "ru"
+                    ? "Параметры расчёта"
+                    : "Calculation Parameters",
+              })}
+            </strong>
+            <span>
+              {lang === "ru"
+                ? "Используются при сохранении этой утечки"
+                : "Used when this leak is saved"}
+            </span>
+          </div>
+          <button type="button" onClick={() => setCalcSettingsOpen(true)}>
+            {t("settings.editParameters", {
+              defaultValue:
+                lang === "ru" ? "Редактировать параметры" : "Edit Parameters",
+            })}
+          </button>
+        </div>
+
         <StepRenderer
           step={step}
           steps={translatedSteps}
@@ -367,6 +396,13 @@ export default function LeakForm({
         cancelLabel={localeTexts.confirm.cancelLabel}
         onConfirm={handleConfirmCopy}
         onCancel={handleCancelCopy}
+      />
+
+      <SettingsModal
+        open={calcSettingsOpen}
+        onClose={() => setCalcSettingsOpen(false)}
+        variables={vars}
+        onSave={setVars}
       />
     </>
   );
