@@ -120,6 +120,15 @@ export function validateExcelColumns(headers, keysOrder) {
   }
 }
 
+export function splitExcelColumns(columns) {
+  const headers = columns.map((column) => column.header);
+  const keysOrder = columns.map((column) => column.key);
+
+  validateExcelColumns(headers, keysOrder);
+
+  return { headers, keysOrder };
+}
+
 function harmonizeExcelFields(headers, keysOrder) {
   validateExcelColumns(headers, keysOrder);
 
@@ -152,4 +161,10 @@ export function withRequiredExcelFields(headers, keysOrder) {
   }
 
   return harmonizeExcelFields(nextHeaders, nextKeys);
+}
+
+export function withRequiredExcelColumns(columns) {
+  const { headers, keysOrder } = splitExcelColumns(columns);
+
+  return withRequiredExcelFields(headers, keysOrder);
 }

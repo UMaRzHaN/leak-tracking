@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { PROJECTS } from "@/configs/projects";
-import { validateExcelColumns, withRequiredExcelFields } from "./excel";
+import {
+  splitExcelColumns,
+  validateExcelColumns,
+  withRequiredExcelColumns,
+  withRequiredExcelFields,
+} from "./excel";
 
 describe("excel config helpers", () => {
   it("rejects mismatched headers and keys", () => {
@@ -29,5 +34,19 @@ describe("excel config helpers", () => {
     expect(() => withRequiredExcelFields(["A", "B"], ["date", "date"])).toThrow(
       /duplicate keys: date/,
     );
+  });
+
+  it("derives headers and keys from unified column definitions", () => {
+    const columns = [
+      { key: "date", header: "Date" },
+      { key: "leak_id", header: "Leak ID" },
+    ];
+
+    expect(splitExcelColumns(columns)).toEqual({
+      headers: ["Date", "Leak ID"],
+      keysOrder: ["date", "leak_id"],
+    });
+
+    expect(withRequiredExcelColumns(columns).keysOrder).toContain("time");
   });
 });
