@@ -1,10 +1,11 @@
 import { capitalizeFirst } from "@/utils/normalize/capitalizeFirst";
 import { normalizeStationName } from "./normalization";
+import { normalizeNumberWords } from "./numbers";
 
 const TOKENS = {
   leakId: "бирк[аи]?|tag(?:\\s+number)?|tag",
   videoId: "видео|video",
-  leakSpeed: "скорост[ьи]?|leak\\s+rate|rate|speed",
+  leakSpeed: "скорост[ьи]?\\s+утечки|скорост[ьи]?|leak\\s+rate|rate|speed",
   pressure: "давлени[ея]?|pressure",
   temperature: "температур[аы]?|temperature|temp",
   category: "категори[яи]|category",
@@ -52,6 +53,9 @@ const FIELD_MARKERS = [
   TOKENS.installationType,
 ].join("|");
 
+const FILLER_WORDS =
+  "(?:это|равно|составляет|будет|такой|такая|такое|номер)\\s+";
+
 function normalizeNumber(str) {
   if (!str) return str;
 
@@ -66,7 +70,14 @@ function normalizeNumber(str) {
 
 function captureValue(marker) {
   return new RegExp(
-    `(?:${marker})\\s+(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
+    `(?:${marker})\\s+(?:${FILLER_WORDS})?(?<value>.+?)(?=\\s+(?:${FIELD_MARKERS})|$)`,
+    "g",
+  );
+}
+
+function captureNumber(marker) {
+  return new RegExp(
+    `(?:${marker})\\s*(?:${FILLER_WORDS})?(?<value>-?[\\d.,\\s]+)`,
     "g",
   );
 }
@@ -92,7 +103,7 @@ export const parseVoiceText = (text) => {
   const result = {};
   if (!text) return result;
 
-  const normalized = text.toLowerCase();
+  const normalized = normalizeNumberWords(text).toLowerCase();
 
   const patterns = [
     {
@@ -107,26 +118,17 @@ export const parseVoiceText = (text) => {
     },
     {
       key: "leak_speed",
-      regex: new RegExp(
-        `(?:${TOKENS.leakSpeed})\\s*(?<value>[\\d.,\\s]+)`,
-        "g",
-      ),
+      regex: captureNumber(TOKENS.leakSpeed),
       type: "number",
     },
     {
       key: "pressure",
-      regex: new RegExp(
-        `(?:${TOKENS.pressure})\\s*(?<value>-?\\d+(?:[.,]\\d+)?)`,
-        "g",
-      ),
+      regex: captureNumber(TOKENS.pressure),
       type: "number",
     },
     {
       key: "temperature",
-      regex: new RegExp(
-        `(?:${TOKENS.temperature})\\s*(?<value>-?\\d+(?:[.,]\\d+)?)`,
-        "g",
-      ),
+      regex: captureNumber(TOKENS.temperature),
       type: "number",
     },
     { key: "category", regex: captureValue(TOKENS.category), type: "string" },

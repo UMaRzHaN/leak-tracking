@@ -34,6 +34,24 @@ describe("parseVoiceText", () => {
   });
 
   describe("числовые параметры", () => {
+    it("extracts natural leak speed phrase", () => {
+      expect(parseVoiceText("скорость утечки пять и семь")).toMatchObject({
+        leak_speed: 5.7,
+      });
+    });
+
+    it("extracts pressure with filler word", () => {
+      expect(parseVoiceText("давление равно сорок")).toMatchObject({
+        pressure: 40,
+      });
+    });
+
+    it("extracts temperature with filler word and negative value", () => {
+      expect(parseVoiceText("температура это минус пятнадцать")).toMatchObject({
+        temperature: -15,
+      });
+    });
+
     it("extracts leak_speed with comma decimal", () => {
       expect(parseVoiceText("скорость 5,7")).toMatchObject({ leak_speed: 5.7 });
     });
@@ -137,6 +155,16 @@ describe("parseVoiceText", () => {
   });
 
   describe("объект и компонент", () => {
+    it("extracts object after filler word", () => {
+      const r = parseVoiceText("объект это газопровод");
+      expect(r.object).toBe("Газопровод");
+    });
+
+    it("extracts component after filler word", () => {
+      const r = parseVoiceText("компонент такой фланец");
+      expect(r.component).toBe("Фланец");
+    });
+
     it("extracts object", () => {
       const r = parseVoiceText("объект газопровод");
       expect(r.object).toBe("Газопровод");

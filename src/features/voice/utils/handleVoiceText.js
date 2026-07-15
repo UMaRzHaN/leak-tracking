@@ -3,7 +3,6 @@ import {
   normalizeVoiceResult,
   normalizeSynonyms,
 } from "./normalization";
-import { normalizeNumberWords } from "./numbers";
 import { parseVoiceText } from "./parseVoiceText";
 import { fuzzyMatchOption } from "./matching";
 import { objects, components } from "@/data/leak/fieldDictionary";
@@ -25,8 +24,7 @@ export const handleVoiceText = (
   dictationKey = null,
   allowedFields = [],
 ) => {
-  const normalizedText = normalizeNumberWords(text);
-  const parsed = parseVoiceText(normalizedText);
+  const parsed = parseVoiceText(text);
   const normalizedData = normalizeSynonyms(
     normalizeVoiceResult(parsed, project),
     arr,
