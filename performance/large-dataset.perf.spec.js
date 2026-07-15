@@ -23,6 +23,7 @@ function readRecordCounts() {
 
 function getBudgets(recordCount) {
   const largeDataset = recordCount > 1_000;
+  const megabytes = (value) => Number(value) * 1024 * 1024;
   return {
     coldStartMs: Number(
       process.env.PERF_MAX_COLD_START_MS ?? (largeDataset ? 10_000 : 6_000),
@@ -41,6 +42,15 @@ function getBudgets(recordCount) {
     ),
     excelImportMs: Number(
       process.env.PERF_MAX_EXCEL_IMPORT_MS ?? (largeDataset ? 60_000 : 30_000),
+    ),
+    exportHeapBytes: megabytes(
+      process.env.PERF_MAX_EXPORT_HEAP_MB ?? (largeDataset ? 96 : 48),
+    ),
+    importHeapBytes: megabytes(
+      process.env.PERF_MAX_IMPORT_HEAP_MB ?? (largeDataset ? 320 : 128),
+    ),
+    settledHeapBytes: megabytes(
+      process.env.PERF_MAX_SETTLED_HEAP_MB ?? (largeDataset ? 80 : 48),
     ),
   };
 }
@@ -67,6 +77,29 @@ async function countPersistedStatuses(page, projectId) {
       return counts;
     }, {});
   }, projectId);
+}
+
+async function readUsedJsHeap(page) {
+  return page.evaluate(() => performance.memory?.usedJSHeapSize ?? null);
+}
+
+async function readV8Heap(page) {
+  const session = await page.context().newCDPSession(page);
+  try {
+    const usage = await session.send("Runtime.getHeapUsage");
+    return Math.round(usage.usedSize);
+  } finally {
+    await session.detach();
+  }
+}
+
+async function collectChromiumGarbage(page) {
+  const session = await page.context().newCDPSession(page);
+  try {
+    await session.send("HeapProfiler.collectGarbage");
+  } finally {
+    await session.detach();
+  }
 }
 
 async function seedProject(page, recordCount) {
@@ -224,6 +257,8 @@ for (const recordCount of readRecordCounts()) {
     const excelExportMs = Date.now() - excelExportStartedAt;
     const archiveBytes = (await stat(downloadPath)).size;
     expect(archiveBytes).toBeGreaterThan(0);
+    const heapAfterExportBytes = await readUsedJsHeap(page);
+    const v8HeapAfterExportBytes = await readV8Heap(page);
 
     await page.getByTitle("Settings").click();
     const fileChooserPromise = page.waitForEvent("filechooser");
@@ -246,10 +281,14 @@ for (const recordCount of readRecordCounts()) {
     await expect(
       page.getByText("Changed fields", { exact: true }).locator(".."),
     ).toContainText("0");
+    const heapAfterImportBytes = await readUsedJsHeap(page);
+    const v8HeapAfterImportBytes = await readV8Heap(page);
+    await collectChromiumGarbage(page);
+    const heapAfterGcBytes = await readUsedJsHeap(page);
+    const v8HeapAfterGcBytes = await readV8Heap(page);
 
     const browserStats = await page.evaluate(() => ({
       domNodes: document.getElementsByTagName("*").length,
-      usedJsHeapBytes: performance.memory?.usedJSHeapSize ?? null,
     }));
     const metrics = {
       recordCount,
@@ -261,6 +300,12 @@ for (const recordCount of readRecordCounts()) {
       excelExportMs,
       excelImportMs,
       archiveBytes,
+      heapAfterExportBytes,
+      heapAfterImportBytes,
+      heapAfterGcBytes,
+      v8HeapAfterExportBytes,
+      v8HeapAfterImportBytes,
+      v8HeapAfterGcBytes,
       virtualizedCardCount,
       ...browserStats,
       budgets,
@@ -278,5 +323,8 @@ for (const recordCount of readRecordCounts()) {
     expect(bulkSaveMs).toBeLessThan(budgets.bulkSaveMs);
     expect(excelExportMs).toBeLessThan(budgets.excelExportMs);
     expect(excelImportMs).toBeLessThan(budgets.excelImportMs);
+    expect(v8HeapAfterExportBytes).toBeLessThan(budgets.exportHeapBytes);
+    expect(v8HeapAfterImportBytes).toBeLessThan(budgets.importHeapBytes);
+    expect(v8HeapAfterGcBytes).toBeLessThan(budgets.settledHeapBytes);
   });
 }

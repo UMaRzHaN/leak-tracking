@@ -31,6 +31,9 @@ Default budgets can be overridden with:
 - `PERF_MAX_BULK_SAVE_MS`
 - `PERF_MAX_EXCEL_EXPORT_MS`
 - `PERF_MAX_EXCEL_IMPORT_MS`
+- `PERF_MAX_EXPORT_HEAP_MB`
+- `PERF_MAX_IMPORT_HEAP_MB`
+- `PERF_MAX_SETTLED_HEAP_MB`
 
 The performance suite uses `playwright.performance.config.mjs`; it is not
 included in `npm test` or `npm run test:e2e`.

@@ -38,6 +38,19 @@ function getExportFolder(projectFolderName) {
     : DEFAULT_EXPORT_DIR;
 }
 
+function releaseWorkbook(workbook) {
+  if (
+    typeof workbook?.removeWorksheet !== "function" ||
+    !Array.isArray(workbook.worksheets)
+  ) {
+    return;
+  }
+
+  for (const worksheet of [...workbook.worksheets]) {
+    workbook.removeWorksheet(worksheet.id);
+  }
+}
+
 async function resolvePhotoSrc(path, idbGet) {
   if (!path) return null;
 
@@ -394,6 +407,34 @@ async function buildWorkbook({
   await buildHistorySheet(workbook, orderedLeaks, lang);
 
   return workbook;
+}
+
+export async function buildWorkbookBufferLocally(payload) {
+  const ExcelJS = (await getExcelJS()).default;
+  let workbook = await buildWorkbook({ ...payload, ExcelJS });
+
+  await yieldToMainThread();
+  const buffer = await workbook.xlsx.writeBuffer();
+  releaseWorkbook(workbook);
+  workbook = null;
+  await yieldToMainThread();
+
+  return buffer;
+}
+
+async function createWorkbookBuffer(payload, workerBuilder) {
+  if (typeof workerBuilder === "function") {
+    try {
+      return await workerBuilder(payload);
+    } catch (error) {
+      console.warn(
+        "[excel] Worker export failed; falling back to the main thread:",
+        error,
+      );
+    }
+  }
+
+  return buildWorkbookBufferLocally(payload);
 }
 
 async function buildHistorySheet(workbook, orderedLeaks, lang) {
@@ -762,20 +803,18 @@ export async function exportToExcelFile(
   const photoMap = buildPhotoMap(photoEntries);
   const outputFolder = getExportFolder(projectFolderName);
 
-  const ExcelJS = (await getExcelJS()).default;
-  const workbook = await buildWorkbook({
-    orderedLeaks,
-    orderedRows,
-    headers,
-    keysOrder,
-    photoMap,
-    lang,
-    ExcelJS,
-    monitoringExportMode,
-  });
-
-  await yieldToMainThread();
-  const xlsxBuffer = await workbook.xlsx.writeBuffer();
+  const xlsxBuffer = await createWorkbookBuffer(
+    {
+      orderedLeaks,
+      orderedRows,
+      headers,
+      keysOrder,
+      photoMap,
+      lang,
+      monitoringExportMode,
+    },
+    options.buildWorkbookBuffer,
+  );
   const xlsxBlob = new Blob([xlsxBuffer], { type: EXCEL_MIME });
 
   if (photoEntries.length === 0) {

@@ -91,7 +91,11 @@ export function useDataBaseExport({ displayed, notify }) {
         { autoCloseMs: 0 },
       );
 
-      const { exportToExcelFile } = await import("@/pages/DataBase/excel");
+      const [{ exportToExcelFile }, { buildWorkbookBufferInWorker }] =
+        await Promise.all([
+          import("@/pages/DataBase/excel"),
+          import("@/pages/DataBase/excelExportWorkerClient"),
+        ]);
       const result = await exportToExcelFile(
         displayed,
         prepareRows(displayed, lang, t),
@@ -101,7 +105,11 @@ export function useDataBaseExport({ displayed, notify }) {
         idbGetPhoto,
         activeProject?.folderName,
         lang,
-        { monitoringExportMode, project: activeProject },
+        {
+          monitoringExportMode,
+          project: activeProject,
+          buildWorkbookBuffer: buildWorkbookBufferInWorker,
+        },
       );
 
       notify(
