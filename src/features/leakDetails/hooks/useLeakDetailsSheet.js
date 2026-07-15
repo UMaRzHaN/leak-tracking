@@ -20,10 +20,14 @@ import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
 import { hapticWarning } from "@/utils/haptics";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
 import { buildReopenedLeak } from "@/utils/reopenLeak";
+import {
+  changeLeakStatus,
+  getOrphanedOriginalPhoto,
+  resolveLeakRecord,
+  startLeakRepair,
+} from "@/domain/leakLifecycle";
 
 const DELETE_ARM_MS = 3000;
-
-const STATUS_NOTE_FIELDS = [{ key: "materials_equipment" }, { key: "note" }];
 
 export const MODE = { VIEW: "view", EDIT: "edit" };
 export const TAB = {
@@ -358,28 +362,8 @@ export function useLeakDetailsSheet({
       return;
     }
 
-    const photoUpdate =
-      leak.status === STATUS.RESOLVED
-        ? { photo: leak.photo_after ?? leak.photo, photo_after: null }
-        : {};
-    const orphanedPhoto =
-      leak.status === STATUS.RESOLVED && leak.photo_after ? leak.photo : null;
-
-    onSave({
-      ...leak,
-      ...photoUpdate,
-      status: newStatus,
-      updatedAt: Date.now(),
-      history: [
-        ...(leak.history ?? []),
-        {
-          action: "status_changed",
-          to: newStatus,
-          date: new Date().toISOString(),
-          user: historyUser,
-        },
-      ],
-    });
+    const orphanedPhoto = getOrphanedOriginalPhoto(leak);
+    onSave(changeLeakStatus(leak, newStatus, { user: historyUser }));
 
     if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
   };
@@ -387,76 +371,27 @@ export function useLeakDetailsSheet({
   const handleResolveConfirm = ({ photo_after, materials_equipment, note }) => {
     if (!requireHistoryUser()) return;
     setResolveOpen(false);
-    const now = new Date().toISOString();
-    const after = {
-      ...leak,
-      status: STATUS.RESOLVED,
-      resolvedAt: Date.now(),
-      photo_after: photo_after ?? leak.photo_after,
-      materials_equipment: materials_equipment ?? leak.materials_equipment,
-      note: note ?? leak.note,
-      updatedAt: Date.now(),
-    };
-    const changes = buildLeakHistoryChanges({
-      before: leak,
-      after,
-      fields: STATUS_NOTE_FIELDS,
-      includeKeys: ["photo_repair"],
-    });
-    onSave({
-      ...after,
-      history: [
-        ...(leak.history ?? []),
-        {
-          action: "status_changed",
-          to: STATUS.RESOLVED,
-          date: now,
-          user: historyUser,
-          ...(changes.length > 0 ? { changes } : {}),
-        },
-      ],
-    });
-    if (leak.status === STATUS.RESOLVED && leak.photo_after && leak.photo) {
-      deletePhoto(leak.photo).catch(() => {});
-    }
+    onSave(
+      resolveLeakRecord(
+        leak,
+        { photo_after, materials_equipment, note },
+        { user: historyUser },
+      ),
+    );
   };
 
   const handleRepairConfirm = ({ photo_repair, materials_equipment, note }) => {
     if (!requireHistoryUser()) return;
     setRepairOpen(false);
-    const repairAt = Date.now();
-    const now = new Date(repairAt).toISOString();
-    const after = {
-      ...leak,
-      ...(leak.status === STATUS.RESOLVED
-        ? { photo: leak.photo_after ?? leak.photo, photo_after: null }
-        : {}),
-      status: STATUS.IN_PROGRESS,
-      resolvedAt: null,
-      repairAt,
-      photo_repair: photo_repair ?? leak.photo_repair,
-      materials_equipment: materials_equipment ?? leak.materials_equipment,
-      note: note ?? leak.note,
-      updatedAt: Date.now(),
-    };
-    const changes = buildLeakHistoryChanges({
-      before: leak,
-      after,
-      fields: STATUS_NOTE_FIELDS,
-    });
-    onSave({
-      ...after,
-      history: [
-        ...(leak.history ?? []),
-        {
-          action: "status_changed",
-          to: STATUS.IN_PROGRESS,
-          date: now,
-          user: historyUser,
-          ...(changes.length > 0 ? { changes } : {}),
-        },
-      ],
-    });
+    const orphanedPhoto = getOrphanedOriginalPhoto(leak);
+    onSave(
+      startLeakRepair(
+        leak,
+        { photo_repair, materials_equipment, note },
+        { user: historyUser },
+      ),
+    );
+    if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
   };
 
   const handleReopenConfirm = (draft) => {
@@ -464,9 +399,8 @@ export function useLeakDetailsSheet({
     setReopenOpen(false);
     const next = buildReopenedLeak({ leak, draft, vars, user: historyUser });
     onSave(next);
-    if (leak.status === STATUS.RESOLVED && leak.photo_after && leak.photo) {
-      deletePhoto(leak.photo).catch(() => {});
-    }
+    const orphanedPhoto = getOrphanedOriginalPhoto(leak);
+    if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
   };
 
   const handleEdit = () => {

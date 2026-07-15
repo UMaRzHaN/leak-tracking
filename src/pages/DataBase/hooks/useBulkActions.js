@@ -2,9 +2,12 @@ import { useState, useCallback } from "react";
 import { STATUS } from "@/utils/status";
 import { hapticSuccess } from "@/utils/haptics";
 import { useLanguage } from "@/app/hooks/useLanguage";
-import { buildLeakHistoryChanges } from "@/utils/historyChanges";
-
-const STATUS_NOTE_FIELDS = [{ key: "materials_equipment" }, { key: "note" }];
+import {
+  changeLeakStatus,
+  getOrphanedOriginalPhoto,
+  resolveLeakRecord,
+  startLeakRepair,
+} from "@/domain/leakLifecycle";
 
 function pluralLeaks(n, lang) {
   if (lang !== "ru") {
@@ -87,31 +90,12 @@ export function useBulkActions({
       }
 
       const orphanedPhotos = affected
-        .filter(
-          (item) =>
-            item.status === STATUS.RESOLVED && item.photo_after && item.photo,
-        )
-        .map((item) => item.photo);
-      const now = new Date().toISOString();
+        .map(getOrphanedOriginalPhoto)
+        .filter(Boolean);
+      const now = Date.now();
       const next = data.map((item) =>
         selectedIds.has(item.id) && (item.status ?? STATUS.OPEN) !== status
-          ? {
-              ...item,
-              ...(item.status === STATUS.RESOLVED
-                ? { photo: item.photo_after ?? item.photo, photo_after: null }
-                : {}),
-              status,
-              updatedAt: Date.now(),
-              history: [
-                ...(item.history ?? []),
-                {
-                  action: "status_changed",
-                  to: status,
-                  date: now,
-                  user: historyUser,
-                },
-              ],
-            }
+          ? changeLeakStatus(item, status, { user: historyUser, now })
           : item,
       );
 
@@ -156,38 +140,13 @@ export function useBulkActions({
       const leak = resolveQueue[0];
       if (!leak) return;
 
-      const now = new Date().toISOString();
       const next = data.map((item) =>
         item.id === leak.id
-          ? (() => {
-              const after = {
-                ...item,
-                status: STATUS.RESOLVED,
-                resolvedAt: Date.now(),
-                ...(photo_after != null && { photo_after }),
-                ...(materials_equipment != null && { materials_equipment }),
-                ...(note != null && { note }),
-                updatedAt: Date.now(),
-              };
-              const changes = buildLeakHistoryChanges({
-                before: item,
-                after,
-                fields: STATUS_NOTE_FIELDS,
-              });
-              return {
-                ...after,
-                history: [
-                  ...(item.history ?? []),
-                  {
-                    action: "status_changed",
-                    to: STATUS.RESOLVED,
-                    date: now,
-                    user: historyUser,
-                    ...(changes.length > 0 ? { changes } : {}),
-                  },
-                ],
-              };
-            })()
+          ? resolveLeakRecord(
+              item,
+              { photo_after, materials_equipment, note },
+              { user: historyUser },
+            )
           : item,
       );
 
@@ -238,46 +197,14 @@ export function useBulkActions({
       const leak = repairQueue[0];
       if (!leak) return;
 
-      const repairAt = Date.now();
-      const now = new Date(repairAt).toISOString();
-      const orphanedPhoto =
-        leak.status === STATUS.RESOLVED && leak.photo_after ? leak.photo : null;
+      const orphanedPhoto = getOrphanedOriginalPhoto(leak);
       const next = data.map((item) =>
         item.id === leak.id
-          ? (() => {
-              const after = {
-                ...item,
-                ...(item.status === STATUS.RESOLVED
-                  ? { photo: item.photo_after ?? item.photo, photo_after: null }
-                  : {}),
-                status: STATUS.IN_PROGRESS,
-                resolvedAt: null,
-                repairAt,
-                ...(photo_repair != null && { photo_repair }),
-                ...(materials_equipment != null && { materials_equipment }),
-                ...(note != null && { note }),
-                updatedAt: Date.now(),
-              };
-              const changes = buildLeakHistoryChanges({
-                before: item,
-                after,
-                fields: STATUS_NOTE_FIELDS,
-                includeKeys: ["photo_repair"],
-              });
-              return {
-                ...after,
-                history: [
-                  ...(item.history ?? []),
-                  {
-                    action: "status_changed",
-                    to: STATUS.IN_PROGRESS,
-                    date: now,
-                    user: historyUser,
-                    ...(changes.length > 0 ? { changes } : {}),
-                  },
-                ],
-              };
-            })()
+          ? startLeakRepair(
+              item,
+              { photo_repair, materials_equipment, note },
+              { user: historyUser },
+            )
           : item,
       );
 

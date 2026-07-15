@@ -3,8 +3,8 @@
   "name": "Leak Tracking",
   "icons": [
     {
-      "src": "vema_sa_logo",
-      "sizes": "64x64 32x32 24x24 16x16",
+      "src": "/vema_sa_logo.jpg",
+      "sizes": "any",
       "type": "image/jpg"
     }
   ],

@@ -1,12 +1,16 @@
 import { useState, useCallback } from "react";
 import { STATUS } from "@/utils/status";
 import { hapticSuccess } from "@/utils/haptics";
-import { buildLeakHistoryChanges } from "@/utils/historyChanges";
 import { buildReopenedLeak } from "@/utils/reopenLeak";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
-
-const STATUS_NOTE_FIELDS = [{ key: "materials_equipment" }, { key: "note" }];
+import {
+  changeLeakStatus,
+  collectLeakPhotoPaths,
+  getOrphanedOriginalPhoto,
+  resolveLeakRecord,
+  startLeakRepair,
+} from "@/domain/leakLifecycle";
 
 export function useLeakActions({
   data,
@@ -47,30 +51,10 @@ export function useLeakActions({
         return;
       }
 
-      const orphanedPhoto =
-        leak.status === STATUS.RESOLVED && leak.photo_after ? leak.photo : null;
+      const orphanedPhoto = getOrphanedOriginalPhoto(leak);
       const next = data.map((r) =>
         r.id === leak.id
-          ? {
-              ...r,
-              ...(r.status === STATUS.RESOLVED
-                ? {
-                    photo: r.photo_after ?? r.photo,
-                    photo_after: null,
-                  }
-                : {}),
-              status: newStatus,
-              updatedAt: Date.now(),
-              history: [
-                ...(r.history ?? []),
-                {
-                  action: "status_changed",
-                  to: newStatus,
-                  date: new Date().toISOString(),
-                  user: historyUser,
-                },
-              ],
-            }
+          ? changeLeakStatus(r, newStatus, { user: historyUser })
           : r,
       );
       try {
@@ -90,39 +74,13 @@ export function useLeakActions({
       setResolveLeak(null);
       if (!leak) return;
 
-      const now = new Date().toISOString();
       const next = data.map((r) =>
         r.id === leak.id
-          ? (() => {
-              const after = {
-                ...r,
-                status: STATUS.RESOLVED,
-                resolvedAt: Date.now(),
-                photo_after: photo_after ?? r.photo_after,
-                materials_equipment:
-                  materials_equipment ?? r.materials_equipment,
-                note: note ?? r.note,
-                updatedAt: Date.now(),
-              };
-              const changes = buildLeakHistoryChanges({
-                before: r,
-                after,
-                fields: STATUS_NOTE_FIELDS,
-              });
-              return {
-                ...after,
-                history: [
-                  ...(r.history ?? []),
-                  {
-                    action: "status_changed",
-                    to: STATUS.RESOLVED,
-                    date: now,
-                    user: historyUser,
-                    ...(changes.length > 0 ? { changes } : {}),
-                  },
-                ],
-              };
-            })()
+          ? resolveLeakRecord(
+              r,
+              { photo_after, materials_equipment, note },
+              { user: historyUser },
+            )
           : r,
       );
       try {
@@ -141,50 +99,14 @@ export function useLeakActions({
       setRepairLeak(null);
       if (!leak) return;
 
-      const repairAt = Date.now();
-      const now = new Date(repairAt).toISOString();
-      const orphanedPhoto =
-        leak.status === STATUS.RESOLVED && leak.photo_after ? leak.photo : null;
+      const orphanedPhoto = getOrphanedOriginalPhoto(leak);
       const next = data.map((r) =>
         r.id === leak.id
-          ? (() => {
-              const after = {
-                ...r,
-                ...(r.status === STATUS.RESOLVED
-                  ? {
-                      photo: r.photo_after ?? r.photo,
-                      photo_after: null,
-                    }
-                  : {}),
-                status: STATUS.IN_PROGRESS,
-                resolvedAt: null,
-                repairAt,
-                photo_repair: photo_repair ?? r.photo_repair,
-                materials_equipment:
-                  materials_equipment ?? r.materials_equipment,
-                note: note ?? r.note,
-                updatedAt: Date.now(),
-              };
-              const changes = buildLeakHistoryChanges({
-                before: r,
-                after,
-                fields: STATUS_NOTE_FIELDS,
-                includeKeys: ["photo_repair"],
-              });
-              return {
-                ...after,
-                history: [
-                  ...(r.history ?? []),
-                  {
-                    action: "status_changed",
-                    to: STATUS.IN_PROGRESS,
-                    date: now,
-                    user: historyUser,
-                    ...(changes.length > 0 ? { changes } : {}),
-                  },
-                ],
-              };
-            })()
+          ? startLeakRepair(
+              r,
+              { photo_repair, materials_equipment, note },
+              { user: historyUser },
+            )
           : r,
       );
       try {
@@ -204,8 +126,7 @@ export function useLeakActions({
       setReopenLeak(null);
       if (!leak) return;
 
-      const orphanedPhoto =
-        leak.status === STATUS.RESOLVED && leak.photo_after ? leak.photo : null;
+      const orphanedPhoto = getOrphanedOriginalPhoto(leak);
       const next = data.map((r) =>
         r.id === leak.id
           ? buildReopenedLeak({ leak: r, draft, vars, user: historyUser })
@@ -246,11 +167,9 @@ export function useLeakActions({
         hapticSuccess();
         setActiveLeak(null);
         onDeleted?.(id);
-        if (target?.photo) deletePhoto(target.photo).catch(() => {});
-        if (target?.photo_after)
-          deletePhoto(target.photo_after).catch(() => {});
-        if (target?.photo_repair)
-          deletePhoto(target.photo_repair).catch(() => {});
+        for (const path of collectLeakPhotoPaths(target)) {
+          deletePhoto(path).catch(() => {});
+        }
       } catch (err) {
         notify("error", `Ошибка удаления: ${err.message}`);
       }

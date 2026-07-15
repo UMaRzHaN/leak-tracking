@@ -40,9 +40,13 @@ public class PublicFileWriterPlugin extends Plugin {
         try {
             byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
             String safeFolder = sanitizeRelativePath(folder);
+            String safeFileName = sanitizeFileName(fileName);
+            if (safeFileName.isEmpty()) {
+                throw new Exception("fileName contains no valid characters");
+            }
             String savedPath = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
-                ? writeWithMediaStore(safeFolder, fileName, mimeType, bytes)
-                : writeLegacy(safeFolder, fileName, bytes);
+                ? writeWithMediaStore(safeFolder, safeFileName, mimeType, bytes)
+                : writeLegacy(safeFolder, safeFileName, bytes);
 
             JSObject result = new JSObject();
             result.put("path", savedPath);
@@ -126,5 +130,15 @@ public class PublicFileWriterPlugin extends Plugin {
     private String sanitizeRelativePath(String path) {
         if (path == null) return "";
         return path.replace("\\", "/").replaceAll("^/+", "").replaceAll("/+$", "").replace("..", "");
+    }
+
+    private String sanitizeFileName(String fileName) {
+        if (fileName == null) return "";
+        return fileName
+            .replace("\\", "_")
+            .replace("/", "_")
+            .replace("..", "_")
+            .replaceAll("[\\p{Cntrl}<>:\"|?*]", "_")
+            .trim();
     }
 }

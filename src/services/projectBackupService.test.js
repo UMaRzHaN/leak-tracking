@@ -8,6 +8,7 @@ import {
   previewMergeLeaks,
 } from "./projectBackupService";
 import { LeakRepository } from "@/repositories/LeakRepository";
+import { PhotoRepository } from "@/repositories/PhotoRepository";
 
 vi.mock("@/hooks/photoService", () => ({
   getPhotoSrc: vi.fn().mockResolvedValue(null),
@@ -698,6 +699,67 @@ describe("mergeLeaksByFreshness", () => {
     });
     expect(ctx.overwriteProject).toHaveBeenCalledWith(existingProject.id);
     getAllSpy.mockRestore();
+    saveAllSpy.mockRestore();
+  });
+
+  it("stores restored photos under the target project when it is not active", async () => {
+    const existingProject = {
+      id: "target-project",
+      folderName: "target-folder",
+      name: "Target",
+      type: "upstream",
+    };
+    const incomingLeak = {
+      id: "incoming-with-photo",
+      status: "open",
+      photo: "data:image/png;base64,ZmFrZQ==",
+    };
+    const { default: JSZip } = await import("jszip");
+    const zip = new JSZip();
+    zip.file("backup.json", JSON.stringify([incomingLeak]));
+    const blob = await zip.generateAsync({ type: "blob" });
+    const photoSaveSpy = vi
+      .spyOn(PhotoRepository, "save")
+      .mockResolvedValue("idb://target-photo");
+    const saveAllSpy = vi
+      .spyOn(LeakRepository, "saveAll")
+      .mockResolvedValue(undefined);
+    const ctx = {
+      overwriteProject: vi.fn((id) => {
+        ctx.activeProjectIdRef.current = id;
+        return true;
+      }),
+      savePhotoRef: {
+        current: vi.fn().mockResolvedValue("idb://wrong-active-project"),
+      },
+      saveRef: { current: vi.fn().mockResolvedValue(undefined) },
+      activeProjectIdRef: { current: "other-project" },
+      photoReadyRef: { current: true },
+      existingProject,
+    };
+
+    await importIntoExistingProject(blob, ctx, "overwrite");
+
+    expect(photoSaveSpy).toHaveBeenCalledWith(
+      expect.any(Blob),
+      {
+        projectId: existingProject.id,
+        leakId: incomingLeak.id,
+        folderName: existingProject.folderName,
+      },
+      [],
+      {},
+    );
+    expect(ctx.savePhotoRef.current).not.toHaveBeenCalled();
+    expect(saveAllSpy).toHaveBeenCalledWith(
+      [expect.objectContaining({ photo: "idb://target-photo" })],
+      {
+        projectId: existingProject.id,
+        folderName: existingProject.folderName,
+      },
+    );
+
+    photoSaveSpy.mockRestore();
     saveAllSpy.mockRestore();
   });
 

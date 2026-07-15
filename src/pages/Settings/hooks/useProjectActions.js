@@ -15,6 +15,32 @@ const CLOSED_SWITCH_STATE = {
   nextProjectId: null,
 };
 
+function remapPhotoPath(path, oldPrefix, newPrefix) {
+  return typeof path === "string" && path.startsWith(oldPrefix)
+    ? path.replace(oldPrefix, newPrefix)
+    : path;
+}
+
+export function remapProjectPhotoPaths(leaks, oldFolderName, newFolderName) {
+  const oldPrefix = `data://LeakReports/${oldFolderName}/`;
+  const newPrefix = `data://LeakReports/${newFolderName}/`;
+
+  return leaks.map((leak) => ({
+    ...leak,
+    photo: remapPhotoPath(leak.photo, oldPrefix, newPrefix),
+    photo_after: remapPhotoPath(leak.photo_after, oldPrefix, newPrefix),
+    photo_repair: remapPhotoPath(leak.photo_repair, oldPrefix, newPrefix),
+    ...(Array.isArray(leak.monitoringRecords)
+      ? {
+          monitoringRecords: leak.monitoringRecords.map((record) => ({
+            ...record,
+            photo: remapPhotoPath(record?.photo, oldPrefix, newPrefix),
+          })),
+        }
+      : {}),
+  }));
+}
+
 async function deleteProjectArtifacts(project) {
   if (!project?.id) return;
 
@@ -133,41 +159,32 @@ export function useProjectActions({ setCacheInfo, notify }) {
           .catch(() => false);
 
         if (folderRenameSucceeded) {
-          const dataPath = `LeakReports/${newFolderName}/data/data.json`;
-          const fileResult = await Filesystem.readFile({
-            path: dataPath,
-            directory: Directory.Data,
-            encoding: "utf8",
-          }).catch(() => null);
+          for (const fileName of ["data.json", "data.backup.json"]) {
+            const dataPath = `LeakReports/${newFolderName}/data/${fileName}`;
+            const fileResult = await Filesystem.readFile({
+              path: dataPath,
+              directory: Directory.Data,
+              encoding: "utf8",
+            }).catch(() => null);
 
-          if (fileResult) {
-            try {
-              const leaks = JSON.parse(fileResult.data || "[]");
-              const oldPrefix = `data://LeakReports/${oldFolderName}/`;
-              const newPrefix = `data://LeakReports/${newFolderName}/`;
-              const updated = leaks.map((leak) => ({
-                ...leak,
-                ...(leak.photo?.startsWith(oldPrefix)
-                  ? { photo: leak.photo.replace(oldPrefix, newPrefix) }
-                  : {}),
-                ...(leak.photo_after?.startsWith(oldPrefix)
-                  ? {
-                      photo_after: leak.photo_after.replace(
-                        oldPrefix,
-                        newPrefix,
-                      ),
-                    }
-                  : {}),
-              }));
+            if (fileResult) {
+              try {
+                const leaks = JSON.parse(fileResult.data || "[]");
+                const updated = remapProjectPhotoPaths(
+                  leaks,
+                  oldFolderName,
+                  newFolderName,
+                );
 
-              await Filesystem.writeFile({
-                path: dataPath,
-                directory: Directory.Data,
-                data: JSON.stringify(updated),
-                encoding: "utf8",
-              });
-            } catch {
-              // Ignore invalid data.json contents.
+                await Filesystem.writeFile({
+                  path: dataPath,
+                  directory: Directory.Data,
+                  data: JSON.stringify(updated),
+                  encoding: "utf8",
+                });
+              } catch {
+                // Keep an invalid recovery file untouched for manual recovery.
+              }
             }
           }
 

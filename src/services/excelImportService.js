@@ -5,6 +5,10 @@ import { PROJECTS } from "@/configs/projects";
 import { getPhotoSrc } from "@/hooks/photoService";
 import { priorityFromSpeed } from "@/utils/priority";
 import { inferMonitoringRound } from "@/utils/monitoringRound";
+import {
+  assertArchiveLimits,
+  assertImportFileSize,
+} from "@/utils/importLimits";
 
 const TECHNICAL_KEYS = [
   "index",
@@ -1170,9 +1174,13 @@ function attachHistoryRecords(leaks, recordsByLeakId) {
 }
 
 export async function parseExcelLeaks(file, { projectType = "upstream" } = {}) {
+  assertImportFileSize(file);
   const ExcelJS = (await getExcelJS()).default;
   const workbook = new ExcelJS.Workbook();
   const buffer = await file.arrayBuffer();
+  const JSZip = (await getJSZip()).default;
+  const workbookArchive = await JSZip.loadAsync(buffer);
+  assertArchiveLimits(workbookArchive);
   await workbook.xlsx.load(buffer);
 
   const headerMap = buildHeaderMap(projectType);
@@ -1257,6 +1265,7 @@ export async function parseExcelLeaks(file, { projectType = "upstream" } = {}) {
 }
 
 export async function parseExcelImportFile(file, options = {}) {
+  assertImportFileSize(file);
   if (!isZipFile(file)) {
     const parsed = await parseExcelLeaks(file, options);
     return { ...parsed, project: null };
@@ -1264,6 +1273,7 @@ export async function parseExcelImportFile(file, options = {}) {
 
   const JSZip = (await getJSZip()).default;
   const zip = await JSZip.loadAsync(file);
+  assertArchiveLimits(zip);
   let project = null;
   const projectEntry = zip.file("excel-project.json");
   if (projectEntry) {

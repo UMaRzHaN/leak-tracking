@@ -5,6 +5,7 @@ import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { VAR_DEFAULTS } from "@/data/variables";
 import { getPhotoSrc } from "@/hooks/photoService";
 import { LeakRepository } from "@/repositories/LeakRepository";
+import { PhotoRepository } from "@/repositories/PhotoRepository";
 import {
   validateBackup,
   validateProjectBackupMeta,
@@ -18,6 +19,10 @@ import {
   saveMonitoringRound,
 } from "@/utils/monitoringRound";
 import { normalizeProjectVarsUnits } from "@/utils/projectVars";
+import {
+  assertArchiveLimits,
+  assertImportFileSize,
+} from "@/utils/importLimits";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const EXPORT_YIELD_EVERY = 25;
@@ -750,8 +755,10 @@ async function parseZipMeta(zip) {
 }
 
 async function parseBackupZip(zipFile) {
+  assertImportFileSize(zipFile);
   const JSZip = (await getJSZip()).default;
   const zip = await JSZip.loadAsync(zipFile);
+  assertArchiveLimits(zip);
 
   const jsonFile = zip.file("backup.json");
   if (!jsonFile) throw new Error("Файл backup.json не найден в архиве");
@@ -1021,7 +1028,6 @@ export async function importProjectZip(zipFile, ctx) {
 export async function importIntoExistingProject(zipFile, ctx, mode) {
   const {
     overwriteProject,
-    savePhotoRef,
     saveRef,
     activeProjectIdRef,
     photoReadyRef,
@@ -1039,6 +1045,26 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
 
   await waitForPhotoStorage(photoReadyRef);
 
+  // The selected archive can target a project other than the currently active
+  // one. Using savePhotoRef here would bind restored photos to the active
+  // project's id/folder and make them eligible for deletion by its photo GC.
+  const savePhotoToExistingProject = (
+    rawPhoto,
+    leakId,
+    excludePaths = [],
+    options = {},
+  ) =>
+    PhotoRepository.save(
+      rawPhoto,
+      {
+        projectId: existingProjectId,
+        leakId,
+        folderName: existingFolderName,
+      },
+      excludePaths,
+      options,
+    );
+
   let finalLeaks;
   let addedCount;
   let nextMonitoringRound = null;
@@ -1052,14 +1078,18 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     const restoredIncoming = await restorePhotosFromZip(
       incomingToApply,
       zip,
-      savePhotoRef,
+      savePhotoToExistingProject,
     );
     const recalculatedIncoming = recalculateLeaks(restoredIncoming, meta?.vars);
     const mergeResult = mergeLeaksByFreshness(existing, recalculatedIncoming);
     finalLeaks = mergeResult.leaks;
     addedCount = mergeResult.changed;
   } else {
-    const restoredLeaks = await restorePhotosFromZip(leaks, zip, savePhotoRef);
+    const restoredLeaks = await restorePhotosFromZip(
+      leaks,
+      zip,
+      savePhotoToExistingProject,
+    );
     finalLeaks = recalculateLeaks(restoredLeaks, meta?.vars);
     addedCount = finalLeaks.length;
     nextMonitoringRound = getRestoredMonitoringRound(meta, finalLeaks);

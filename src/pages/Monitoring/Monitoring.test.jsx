@@ -56,10 +56,17 @@ vi.mock("@/features/photos/PhotoInput/PhotoInput", () => ({
   default: () => null,
 }));
 
-import Monitoring, {
+import Monitoring from "./Monitoring";
+import {
+  MONITORING_FILTER,
   buildMonitoringPatch,
+  createMonitoringDraft,
+  getMonitoringCounts,
+  getMonitoringItems,
+  getMonitoringRoundSummary,
   getMonitoringPhotoPathsToKeep,
-} from "./Monitoring";
+  getNextMonitoringRoundNumber,
+} from "./monitoringDomain";
 
 describe("Monitoring round flow", () => {
   beforeEach(() => localStorage.clear());
@@ -84,6 +91,7 @@ describe("Monitoring round flow", () => {
   });
 
   it("stores MTR in a monitoring record only when it changed", () => {
+    const now = new Date("2026-07-15T08:30:00.000Z");
     const unchanged = buildMonitoringPatch({
       leak: { id: "leak-1", materials_equipment: "Graphite packing" },
       draft: {
@@ -94,6 +102,7 @@ describe("Monitoring round flow", () => {
       lang: "en",
       roundId: "round-1",
       roundNumber: 1,
+      now,
     });
     const changed = buildMonitoringPatch({
       leak: { id: "leak-1", materials_equipment: "Graphite packing" },
@@ -105,12 +114,15 @@ describe("Monitoring round flow", () => {
       lang: "en",
       roundId: "round-1",
       roundNumber: 1,
+      now,
     });
 
     expect(unchanged.monitoringRecords.at(-1)).not.toHaveProperty(
       "materials_equipment",
     );
     expect(changed.monitoringRecords.at(-1)).toMatchObject({
+      id: "leak-1-1784104200000",
+      date: "2026-07-15T08:30:00.000Z",
       materials_equipment: "Seal replaced",
       materialsChanged: true,
     });
@@ -121,6 +133,71 @@ describe("Monitoring round flow", () => {
         to: "Seal replaced",
       },
     ]);
+  });
+
+  it("builds a consistent round summary, counts and filtered list", () => {
+    const due = { id: "due", status: "open", updatedAt: 1 };
+    const checked = {
+      id: "checked",
+      status: "resolved",
+      updatedAt: 2,
+      monitoringRecords: [
+        {
+          date: "2026-07-15T08:00:00.000Z",
+          roundId: "round-4",
+          roundNumber: 4,
+        },
+      ],
+    };
+    const leaks = [checked, due];
+
+    expect(getMonitoringRoundSummary(leaks, "round-4", 4)).toEqual({
+      total: 2,
+      due: 1,
+      checked: 1,
+      open: 1,
+      inProgress: 0,
+      resolved: 1,
+    });
+    expect(getMonitoringCounts(leaks, "round-4", 4)).toEqual({
+      due: 1,
+      checked: 1,
+      all: 2,
+    });
+    expect(
+      getMonitoringItems(leaks, MONITORING_FILTER.DUE, "round-4", 4),
+    ).toEqual([due]);
+    expect(
+      getMonitoringItems(leaks, MONITORING_FILTER.ALL, "round-4", 4).map(
+        (leak) => leak.id,
+      ),
+    ).toEqual(["due", "checked"]);
+  });
+
+  it("continues round numbering after the largest stored round", () => {
+    expect(
+      getNextMonitoringRoundNumber(
+        [
+          { monitoringRecords: [{ roundNumber: 7 }] },
+          { monitoringRecords: [{ roundNumber: "invalid" }] },
+        ],
+        4,
+      ),
+    ).toBe(8);
+  });
+
+  it("creates a complete draft while preserving entered values", () => {
+    expect(
+      createMonitoringDraft(
+        { status: "resolved", materials_equipment: "Old seal" },
+        { comment: "Recheck", photo: { src: "preview" } },
+      ),
+    ).toEqual({
+      result: "resolved",
+      comment: "Recheck",
+      materials_equipment: "Old seal",
+      photo: { src: "preview" },
+    });
   });
 
   it("opens the requested monitoring modal after starting a round", () => {

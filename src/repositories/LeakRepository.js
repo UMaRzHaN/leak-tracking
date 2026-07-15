@@ -76,8 +76,90 @@ function filterValidLeaks(arr, source) {
   return valid;
 }
 
-function getMobilePath(folderName) {
-  return `LeakReports/${folderName}/data/data.json`;
+function getMobileRecoveryPaths(folderName) {
+  const dir = `LeakReports/${folderName}/data`;
+  return {
+    main: `${dir}/data.json`,
+    backup: `${dir}/data.backup.json`,
+    temp: `${dir}/data.tmp.json`,
+  };
+}
+
+function isMissingFileError(error) {
+  const message = String(error?.message ?? error).toLowerCase();
+  return message.includes("exist") || message.includes("not found");
+}
+
+async function readNativeArray(path) {
+  const result = await Filesystem.readFile({
+    path,
+    directory: Directory.Data,
+    encoding: "utf8",
+  });
+  const parsed = JSON.parse(result.data || "[]");
+  if (!Array.isArray(parsed)) throw new Error(`Expected array in ${path}`);
+  return parsed;
+}
+
+async function writeNativeArray(folderName, leaks) {
+  const paths = getMobileRecoveryPaths(folderName);
+  const serialized = JSON.stringify(leaks);
+  await ensureDir(paths.temp);
+
+  await Filesystem.writeFile({
+    path: paths.temp,
+    directory: Directory.Data,
+    data: serialized,
+    encoding: "utf8",
+  });
+
+  // Verify the complete temporary file before touching the current dataset.
+  await readNativeArray(paths.temp);
+
+  let previousData = null;
+  try {
+    const current = await readNativeArray(paths.main);
+    previousData = JSON.stringify(current);
+    await Filesystem.writeFile({
+      path: paths.backup,
+      directory: Directory.Data,
+      data: previousData,
+      encoding: "utf8",
+    });
+  } catch (error) {
+    if (!isMissingFileError(error)) {
+      logger.warn(
+        `[LeakRepository] Current data is invalid; preserving existing recovery copy for "${paths.main}":`,
+        error,
+      );
+    }
+  }
+
+  await Filesystem.deleteFile({
+    path: paths.main,
+    directory: Directory.Data,
+  }).catch((error) => {
+    if (!isMissingFileError(error)) throw error;
+  });
+
+  try {
+    await Filesystem.rename({
+      from: paths.temp,
+      to: paths.main,
+      directory: Directory.Data,
+    });
+  } catch (error) {
+    // Keep the project readable even if the final rename fails.
+    if (previousData != null) {
+      await Filesystem.writeFile({
+        path: paths.main,
+        directory: Directory.Data,
+        data: previousData,
+        encoding: "utf8",
+      }).catch(() => {});
+    }
+    throw error;
+  }
 }
 
 async function ensureDir(filePath) {
@@ -180,19 +262,30 @@ function saveWebDataToLocalStorage(projectId, leaks) {
 export const LeakRepository = {
   async getAll({ projectId, folderName }) {
     if (isNative) {
-      const path = getMobilePath(folderName);
+      const { main, backup } = getMobileRecoveryPaths(folderName);
       try {
-        const res = await Filesystem.readFile({
-          path,
-          directory: Directory.Data,
-          encoding: "utf8",
-        });
-        return filterValidLeaks(JSON.parse(res.data || "[]"), path);
-      } catch (err) {
-        if (!String(err?.message).toLowerCase().includes("exist")) {
-          logger.error(`[LeakRepository] Failed to read "${path}":`, err);
+        return filterValidLeaks(await readNativeArray(main), main);
+      } catch (mainError) {
+        try {
+          const recovered = await readNativeArray(backup);
+          logger.warn(
+            `[LeakRepository] Recovered project data from "${backup}" after failing to read "${main}".`,
+            mainError,
+          );
+          return filterValidLeaks(recovered, backup);
+        } catch (backupError) {
+          if (
+            !isMissingFileError(mainError) ||
+            !isMissingFileError(backupError)
+          ) {
+            logger.error(
+              `[LeakRepository] Failed to read both "${main}" and "${backup}":`,
+              mainError,
+              backupError,
+            );
+          }
+          return [];
         }
-        return [];
       }
     }
 
@@ -228,14 +321,7 @@ export const LeakRepository = {
 
   async saveAll(leaks, { projectId, folderName }) {
     if (isNative) {
-      const path = getMobilePath(folderName);
-      await ensureDir(path);
-      await Filesystem.writeFile({
-        path,
-        directory: Directory.Data,
-        data: JSON.stringify(leaks),
-        encoding: "utf8",
-      });
+      await writeNativeArray(folderName, leaks);
       return;
     }
     await writeWebData(projectId, leaks);
@@ -244,14 +330,7 @@ export const LeakRepository = {
 
   async clear({ projectId, folderName }) {
     if (isNative) {
-      const path = getMobilePath(folderName);
-      await ensureDir(path);
-      await Filesystem.writeFile({
-        path,
-        directory: Directory.Data,
-        data: "[]",
-        encoding: "utf8",
-      });
+      await writeNativeArray(folderName, []);
       return;
     }
     await deleteWebData(projectId);
