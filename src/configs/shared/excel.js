@@ -97,7 +97,32 @@ function insertAfter(list, value, after) {
   return next;
 }
 
+export function validateExcelColumns(headers, keysOrder) {
+  if (headers.length !== keysOrder.length) {
+    throw new Error(
+      `Excel config mismatch: ${headers.length} headers for ${keysOrder.length} keys`,
+    );
+  }
+
+  const seen = new Set();
+  const duplicates = keysOrder.filter((key) => {
+    if (!seen.has(key)) {
+      seen.add(key);
+      return false;
+    }
+    return true;
+  });
+
+  if (duplicates.length > 0) {
+    throw new Error(
+      `Excel config has duplicate keys: ${[...new Set(duplicates)].join(", ")}`,
+    );
+  }
+}
+
 function harmonizeExcelFields(headers, keysOrder) {
+  validateExcelColumns(headers, keysOrder);
+
   const headerByKey = new Map(
     keysOrder.map((key, index) => [key, headers[index]]),
   );
@@ -113,6 +138,8 @@ function harmonizeExcelFields(headers, keysOrder) {
 }
 
 export function withRequiredExcelFields(headers, keysOrder) {
+  validateExcelColumns(headers, keysOrder);
+
   let nextHeaders = [...headers];
   let nextKeys = [...keysOrder];
 
