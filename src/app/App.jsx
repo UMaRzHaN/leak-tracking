@@ -127,6 +127,7 @@ export default function App() {
     activeProject,
     overwriteProject,
     removeProject,
+    setProjectSyncId,
   } = useProject();
 
   /* =========================
@@ -220,12 +221,13 @@ export default function App() {
     () => ({
       addProject,
       removeProject,
+      setProjectSyncId,
       savePhotoRef,
       saveRef,
       activeProjectIdRef,
       photoReadyRef,
     }),
-    [addProject, removeProject],
+    [addProject, removeProject, setProjectSyncId],
   );
 
   /** First-run (ProjectSetupScreen): supports name/type fallback when ZIP has no project.json */

@@ -908,4 +908,155 @@ describe("mergeLeaksByFreshness", () => {
     );
     saveAllSpy.mockRestore();
   });
+
+  it("applies sync tombstones, newer project vars, and the latest monitoring round", async () => {
+    const existingProject = {
+      id: "sync-project",
+      folderName: "sync-project",
+      name: "Sync Project",
+      type: "upstream",
+      syncId: "sync-project-1234",
+    };
+    const localLeak = { id: "removed-leak", status: "open", updatedAt: 100 };
+    const { default: JSZip } = await import("jszip");
+    const zip = new JSZip();
+    zip.file("backup.json", JSON.stringify([localLeak]));
+    zip.file(
+      "project.json",
+      JSON.stringify({
+        schemaVersion: 4,
+        project: {
+          name: existingProject.name,
+          type: existingProject.type,
+          folderName: existingProject.folderName,
+          syncId: existingProject.syncId,
+        },
+        vars: { density: 0.8 },
+        monitoringRound: {
+          id: "round-2",
+          number: 2,
+          startedAt: "2026-07-15T10:00:00.000Z",
+        },
+        sync: {
+          version: 1,
+          varsUpdatedAt: 200,
+          deleted: { "id:removed-leak": 200 },
+        },
+      }),
+    );
+    const blob = await zip.generateAsync({ type: "blob" });
+    const getAllSpy = vi
+      .spyOn(LeakRepository, "getAll")
+      .mockResolvedValue([localLeak]);
+    const ctx = {
+      overwriteProject: vi.fn(() => true),
+      setProjectSyncId: vi.fn(),
+      saveRef: { current: vi.fn().mockResolvedValue(undefined) },
+      activeProjectIdRef: { current: existingProject.id },
+      photoReadyRef: { current: true },
+      existingProject,
+    };
+
+    const result = await importIntoExistingProject(blob, ctx, "sync");
+
+    expect(ctx.saveRef.current).toHaveBeenCalledWith([]);
+    expect(result.leakCount).toBe(1);
+    expect(
+      JSON.parse(localStorage.getItem(`app:${existingProject.id}:vars_v1`))
+        .density,
+    ).toBeCloseTo(0.8);
+    expect(
+      JSON.parse(
+        localStorage.getItem(`app:${existingProject.id}:monitoring_round_v2`),
+      ).id,
+    ).toBe("round-2");
+    getAllSpy.mockRestore();
+  });
+
+  it("rejects synchronization between projects with different sync identifiers", async () => {
+    const existingProject = {
+      id: "sync-project",
+      folderName: "sync-project",
+      name: "Sync Project",
+      type: "upstream",
+      syncId: "sync-project-local",
+    };
+    const { default: JSZip } = await import("jszip");
+    const zip = new JSZip();
+    zip.file("backup.json", "[]");
+    zip.file(
+      "project.json",
+      JSON.stringify({
+        schemaVersion: 4,
+        project: {
+          name: existingProject.name,
+          type: existingProject.type,
+          syncId: "sync-project-remote",
+        },
+      }),
+    );
+    const blob = await zip.generateAsync({ type: "blob" });
+
+    await expect(
+      importIntoExistingProject(
+        blob,
+        {
+          existingProject,
+          saveRef: { current: vi.fn() },
+          activeProjectIdRef: { current: existingProject.id },
+          photoReadyRef: { current: true },
+        },
+        "sync",
+      ),
+    ).rejects.toThrow("другой базы данных");
+  });
+
+  it("adopts the host sync identifier for a legacy project after first sync", async () => {
+    const existingProject = {
+      id: "legacy-sync-project",
+      folderName: "legacy-sync-project",
+      name: "Legacy Sync",
+      type: "upstream",
+    };
+    const { default: JSZip } = await import("jszip");
+    const zip = new JSZip();
+    zip.file("backup.json", "[]");
+    zip.file(
+      "project.json",
+      JSON.stringify({
+        schemaVersion: 4,
+        project: {
+          name: existingProject.name,
+          type: existingProject.type,
+          syncId: "host-sync-1234",
+        },
+        sync: { version: 1, deleted: {}, varsUpdatedAt: 0 },
+      }),
+    );
+    const blob = await zip.generateAsync({ type: "blob" });
+    const getAllSpy = vi.spyOn(LeakRepository, "getAll").mockResolvedValue([]);
+    const setProjectSyncId = vi.fn(() => ({
+      ...existingProject,
+      syncId: "host-sync-1234",
+    }));
+
+    const result = await importIntoExistingProject(
+      blob,
+      {
+        existingProject,
+        setProjectSyncId,
+        saveRef: { current: vi.fn().mockResolvedValue(undefined) },
+        activeProjectIdRef: { current: existingProject.id },
+        photoReadyRef: { current: true },
+      },
+      "sync",
+    );
+
+    expect(setProjectSyncId).toHaveBeenCalledWith(
+      existingProject.id,
+      "host-sync-1234",
+    );
+    expect(result.project.syncId).toBe("host-sync-1234");
+    getAllSpy.mockRestore();
+  });
 });

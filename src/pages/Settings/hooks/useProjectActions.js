@@ -50,6 +50,8 @@ async function deleteProjectArtifacts(project) {
   localStorage.removeItem(STORAGE_KEYS.PROJECT_EXCEL_EXPORT_MODE(project.id));
   localStorage.removeItem(STORAGE_KEYS.PROJECT_MONITORING_SETTINGS(project.id));
   localStorage.removeItem(STORAGE_KEYS.PROJECT_PHOTO_REQUIREMENTS(project.id));
+  localStorage.removeItem(STORAGE_KEYS.PROJECT_SYNC_STATE(project.id));
+  localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS_UPDATED_AT(project.id));
   await LeakRepository.clear({
     projectId: project.id,
     folderName: project.folderName,
@@ -81,6 +83,7 @@ export function useProjectActions({ setCacheInfo, notify }) {
     renameProject,
     applyFolderRename,
     removeProject,
+    ensureProjectSyncId,
   } = useProject();
 
   const { form, clearForm } = useLeakFormContext();
@@ -262,5 +265,6 @@ export function useProjectActions({ setCacheInfo, notify }) {
     handleRename,
     handleRemove,
     handleAdd,
+    ensureProjectSyncId,
   };
 }

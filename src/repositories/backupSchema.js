@@ -144,6 +144,13 @@ function validateMetaProject(project) {
     pushIssue(issues, ["project", "folderName"], "Expected string");
   }
 
+  if (
+    project.syncId !== undefined &&
+    (typeof project.syncId !== "string" || project.syncId.trim().length < 8)
+  ) {
+    pushIssue(issues, ["project", "syncId"], "Expected identifier string");
+  }
+
   return issues.length ? { ok: false, issues } : { ok: true };
 }
 
@@ -249,6 +256,42 @@ export function validateProjectBackupMeta(parsed) {
           ["monitoringRound", "number"],
           "Expected positive number",
         );
+      }
+    }
+  }
+
+  if (parsed.sync !== undefined) {
+    if (!isPlainObject(parsed.sync)) {
+      pushIssue(issues, ["sync"], "Expected object");
+    } else {
+      if (
+        parsed.sync.varsUpdatedAt !== undefined &&
+        (!Number.isFinite(Number(parsed.sync.varsUpdatedAt)) ||
+          Number(parsed.sync.varsUpdatedAt) < 0)
+      ) {
+        pushIssue(issues, ["sync", "varsUpdatedAt"], "Expected timestamp");
+      }
+      if (
+        parsed.sync.deleted !== undefined &&
+        !isPlainObject(parsed.sync.deleted)
+      ) {
+        pushIssue(issues, ["sync", "deleted"], "Expected object");
+      } else if (parsed.sync.deleted) {
+        for (const [identity, deletedAt] of Object.entries(
+          parsed.sync.deleted,
+        )) {
+          if (
+            !identity ||
+            !Number.isFinite(Number(deletedAt)) ||
+            Number(deletedAt) <= 0
+          ) {
+            pushIssue(
+              issues,
+              ["sync", "deleted", identity],
+              "Expected positive timestamp",
+            );
+          }
+        }
       }
     }
   }

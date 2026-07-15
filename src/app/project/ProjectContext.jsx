@@ -24,6 +24,13 @@ export { toFolderName };
 const ProjectDataContext = createContext(null);
 const ProjectActionsContext = createContext(null);
 
+function createSyncId() {
+  return (
+    globalThis.crypto?.randomUUID?.() ??
+    `sync-${Date.now()}-${Math.random().toString(36).slice(2, 14)}`
+  );
+}
+
 function initProjects() {
   const list = loadProjects();
   const migrated = migrateFromLegacy(list);
@@ -90,7 +97,7 @@ export function ProjectProvider({ children }) {
   }, []);
 
   const addProject = useCallback(
-    (name, type) => {
+    (name, type, options = {}) => {
       if (!type || !PROJECT_META[type]) return null;
 
       const current = projectsRef.current;
@@ -109,6 +116,10 @@ export function ProjectProvider({ children }) {
         type,
         folderName: uniqueFolder,
         createdAt: Date.now(),
+        syncId:
+          String(options.syncId ?? "")
+            .trim()
+            .toLowerCase() || createSyncId(),
       };
 
       _setProjects([...current, newProject]);
@@ -179,6 +190,38 @@ export function ProjectProvider({ children }) {
     [_setProjects],
   );
 
+  const setProjectSyncId = useCallback(
+    (id, syncId) => {
+      const normalized = String(syncId ?? "")
+        .trim()
+        .toLowerCase();
+      if (!normalized) return null;
+
+      const current = projectsRef.current;
+      const project = current.find((item) => item.id === id);
+      if (!project || (project.syncId && project.syncId !== normalized)) {
+        return null;
+      }
+      if (project.syncId === normalized) return project;
+
+      const updated = { ...project, syncId: normalized };
+      const next = current.map((item) => (item.id === id ? updated : item));
+      projectsRef.current = next;
+      _setProjects(next);
+      return updated;
+    },
+    [_setProjects],
+  );
+
+  const ensureProjectSyncId = useCallback(
+    (id) => {
+      const project = projectsRef.current.find((item) => item.id === id);
+      if (!project) return null;
+      return project.syncId ? project : setProjectSyncId(id, createSyncId());
+    },
+    [setProjectSyncId],
+  );
+
   const removeProject = useCallback(
     (id) => {
       const current = projectsRef.current;
@@ -228,6 +271,8 @@ export function ProjectProvider({ children }) {
       renameProject,
       applyFolderRename,
       changeProjectType,
+      setProjectSyncId,
+      ensureProjectSyncId,
       removeProject,
       changeProject,
       overwriteProject,
@@ -239,6 +284,8 @@ export function ProjectProvider({ children }) {
       renameProject,
       applyFolderRename,
       changeProjectType,
+      setProjectSyncId,
+      ensureProjectSyncId,
       removeProject,
       changeProject,
       overwriteProject,

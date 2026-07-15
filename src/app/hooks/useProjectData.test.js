@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/app/project/ProjectContext", () => ({
@@ -59,6 +59,36 @@ describe("useProjectData", () => {
 
     expect(result.current.data).toHaveLength(1);
     expect(result.current.data[0].id).toBe("l1");
+    expect(result.current.dataProjectId).toBe("proj-1");
+  });
+
+  it("does not let a pending initial read erase data saved by Excel import", async () => {
+    let finishInitialRead;
+    repositoryModule.LeakRepository.getAll.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishInitialRead = resolve;
+      }),
+    );
+    repositoryModule.LeakRepository.saveAll.mockResolvedValueOnce(undefined);
+
+    const { result } = renderHook(() => useProjectData());
+    const imported = [{ id: "excel-1", leak_id: "TAG-1", status: "open" }];
+
+    await act(async () => {
+      await result.current.save(imported);
+    });
+
+    expect(result.current.data).toEqual(imported);
+    expect(result.current.dataLoaded).toBe(true);
+    expect(result.current.dataProjectId).toBe("proj-1");
+
+    await act(async () => {
+      finishInitialRead([]);
+      await Promise.resolve();
+    });
+
+    expect(result.current.data).toEqual(imported);
+    expect(result.current.dataLoaded).toBe(true);
     expect(result.current.dataProjectId).toBe("proj-1");
   });
 });

@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { VAR_DEFAULTS } from "@/data/variables";
 import { normalizeProjectVarsUnits } from "@/utils/projectVars";
+import { markProjectVarsUpdated } from "@/services/projectSyncState";
 
 const defaultVars = VAR_DEFAULTS;
 
@@ -18,6 +19,17 @@ export function useProjectVars(projectId, defaults = defaultVars) {
   // Revision bump mirrors the pattern in useHiddenFields — forces useMemo
   // to re-read localStorage after setVars/resetVars write to it.
   const [revision, setRevision] = useState(0);
+
+  useEffect(() => {
+    const handleExternalUpdate = (event) => {
+      if (event.detail?.projectId === projectId) {
+        setRevision((value) => value + 1);
+      }
+    };
+    window.addEventListener("project-vars-updated", handleExternalUpdate);
+    return () =>
+      window.removeEventListener("project-vars-updated", handleExternalUpdate);
+  }, [projectId]);
 
   const vars = useMemo(() => {
     if (!projectId || !storageKey) {
@@ -54,18 +66,20 @@ export function useProjectVars(projectId, defaults = defaultVars) {
     (nextVars) => {
       if (storageKey) {
         localStorage.setItem(storageKey, JSON.stringify(nextVars));
+        markProjectVarsUpdated(projectId);
       }
       setRevision((r) => r + 1);
     },
-    [storageKey],
+    [projectId, storageKey],
   );
 
   const resetVars = useCallback(() => {
     if (storageKey) {
       localStorage.removeItem(storageKey);
+      markProjectVarsUpdated(projectId);
     }
     setRevision((r) => r + 1);
-  }, [storageKey]);
+  }, [projectId, storageKey]);
 
   return { vars, setVars, resetVars };
 }

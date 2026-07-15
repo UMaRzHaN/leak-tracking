@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./projectMigration", () => ({
@@ -79,5 +79,35 @@ describe("ProjectProvider initialization", () => {
 
     expect(result.current.activeId).toBe("p1");
     expect(result.current.activeProject?.name).toBe("Alpha");
+  });
+
+  it("assigns and persists a sync id to a legacy project on demand", () => {
+    localStorage.setItem(
+      STORAGE_KEYS.PROJECTS_LIST,
+      JSON.stringify([
+        {
+          id: "p1",
+          name: "Alpha",
+          type: "upstream",
+          folderName: "alpha",
+          createdAt: 1,
+        },
+      ]),
+    );
+    const wrapper = ({ children }) => (
+      <ProjectProvider>{children}</ProjectProvider>
+    );
+    const { result } = renderHook(() => useProject(), { wrapper });
+
+    let project;
+    act(() => {
+      project = result.current.ensureProjectSyncId("p1");
+    });
+
+    expect(project.syncId).toBeTruthy();
+    expect(result.current.activeProject.syncId).toBe(project.syncId);
+    expect(
+      JSON.parse(localStorage.getItem(STORAGE_KEYS.PROJECTS_LIST))[0].syncId,
+    ).toBe(project.syncId);
   });
 });

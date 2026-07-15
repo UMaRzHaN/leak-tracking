@@ -20,6 +20,12 @@ import {
 } from "@/utils/monitoringRound";
 import { normalizeProjectVarsUnits } from "@/utils/projectVars";
 import {
+  applyProjectTombstones,
+  mergeProjectSyncStates,
+  readProjectSyncState,
+  writeProjectSyncState,
+} from "@/services/projectSyncState";
+import {
   assertArchiveLimits,
   assertImportFileSize,
 } from "@/utils/importLimits";
@@ -148,19 +154,21 @@ async function exportLeaksWithPhotos(leaks, zip, idbGet) {
   return exported;
 }
 
-function buildProjectMeta({ project, vars, monitoringRound } = {}) {
+function buildProjectMeta({ project, vars, monitoringRound, syncState } = {}) {
   if (!project) return null;
 
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     exportedAt: new Date().toISOString(),
     project: {
       name: project.name,
       type: project.type,
       folderName: project.folderName,
+      syncId: project.syncId,
     },
     vars: vars ?? undefined,
     monitoringRound: monitoringRound ?? undefined,
+    sync: syncState ?? undefined,
   };
 }
 
@@ -179,6 +187,20 @@ function normalizeImportedVars(vars) {
 function normalizeProjectMeta(meta) {
   if (!meta?.vars) return meta;
   return { ...meta, vars: normalizeImportedVars(meta.vars) };
+}
+
+function readStoredProjectVars(projectId) {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.PROJECT_VARS(projectId));
+    return raw ? normalizeImportedVars(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+}
+
+function monitoringRoundFreshness(round) {
+  if (!round) return 0;
+  return Math.max(parseTime(round.completedAt), parseTime(round.startedAt));
 }
 
 function recalculateLeaks(leaks, vars) {
@@ -904,6 +926,8 @@ function rollbackImportedProject(project, removeProject) {
   if (!project?.id) return;
 
   localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(project.id));
+  localStorage.removeItem(STORAGE_KEYS.PROJECT_SYNC_STATE(project.id));
+  localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS_UPDATED_AT(project.id));
   saveMonitoringRound(project.id, null);
   if (typeof removeProject === "function") {
     try {
@@ -957,6 +981,7 @@ export async function buildProjectBackupZip({ leaks, idbGet, project, vars }) {
     project,
     vars,
     monitoringRound: readMonitoringRound(project?.id),
+    syncState: readProjectSyncState(project?.id),
   });
   if (meta) zip.file("project.json", JSON.stringify(meta, null, 2));
 
@@ -1018,7 +1043,11 @@ export async function importProjectZip(zipFile, ctx) {
     );
   }
 
-  const newProject = addProject(projectName, projectType);
+  const newProject = meta?.project?.syncId
+    ? addProject(projectName, projectType, {
+        syncId: meta.project.syncId,
+      })
+    : addProject(projectName, projectType);
   if (!newProject) throw new Error("Не удалось создать проект");
 
   try {
@@ -1031,6 +1060,10 @@ export async function importProjectZip(zipFile, ctx) {
         JSON.stringify(meta.vars),
       );
     }
+    const importedProject = newProject;
+    if (meta?.sync) {
+      writeProjectSyncState(newProject.id, meta.sync, []);
+    }
 
     const restoredLeaks = await restorePhotosFromZip(leaks, zip, savePhotoRef);
     const finalLeaks = recalculateLeaks(restoredLeaks, meta?.vars);
@@ -1040,7 +1073,8 @@ export async function importProjectZip(zipFile, ctx) {
     );
     await saveRef.current(finalLeaks);
 
-    return { project: newProject, leakCount: finalLeaks.length };
+    writeProjectSyncState(newProject.id, meta?.sync, finalLeaks);
+    return { project: importedProject, leakCount: finalLeaks.length };
   } catch (error) {
     rollbackImportedProject(newProject, removeProject);
     throw error;
@@ -1054,11 +1088,46 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     activeProjectIdRef,
     photoReadyRef,
     existingProject,
+    setProjectSyncId,
   } = ctx;
 
   const { id: existingProjectId, folderName: existingFolderName } =
     existingProject;
   const { zip, leaks, meta } = await parseBackupZip(zipFile);
+
+  const isSync = mode === "sync";
+  const isMerge = mode === "merge" || isSync;
+  const incomingSyncId = meta?.project?.syncId?.trim().toLowerCase() || null;
+  const existingSyncId = existingProject.syncId?.trim().toLowerCase() || null;
+  if (
+    isSync &&
+    existingSyncId &&
+    incomingSyncId &&
+    incomingSyncId !== existingSyncId
+  ) {
+    throw new Error("Архив получен из другой базы данных");
+  }
+  if (isSync && !existingSyncId && !incomingSyncId) {
+    throw new Error("Архив не содержит идентификатор синхронизации");
+  }
+  const syncedProject =
+    isSync && !existingSyncId && incomingSyncId
+      ? (setProjectSyncId?.(existingProjectId, incomingSyncId) ?? null)
+      : existingProject;
+  if (isSync && !syncedProject) {
+    throw new Error("Не удалось сохранить идентификатор синхронизации");
+  }
+
+  const localSyncState = readProjectSyncState(existingProjectId);
+  const incomingSyncState = meta?.sync;
+  const mergedSyncState = mergeProjectSyncStates(
+    localSyncState,
+    incomingSyncState,
+  );
+  const shouldApplyIncomingVars =
+    isSync &&
+    meta?.vars &&
+    (incomingSyncState?.varsUpdatedAt ?? 0) > localSyncState.varsUpdatedAt;
 
   let vars = null;
   if (mode === "overwrite") {
@@ -1091,21 +1160,42 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
   let addedCount;
   let nextMonitoringRound = null;
 
-  if (mode === "merge") {
+  if (isMerge) {
     const existing = await LeakRepository.getAll({
       projectId: existingProjectId,
       folderName: existingFolderName,
     });
-    const incomingToApply = filterIncomingLeaksForMerge(existing, leaks);
+    const incomingToApply = filterIncomingLeaksForMerge(
+      existing,
+      isSync ? applyProjectTombstones(leaks, mergedSyncState) : leaks,
+    );
     const restoredIncoming = await restorePhotosFromZip(
       incomingToApply,
       zip,
       savePhotoToExistingProject,
     );
-    const recalculatedIncoming = recalculateLeaks(restoredIncoming, meta?.vars);
+    const effectiveVars = shouldApplyIncomingVars
+      ? meta?.vars
+      : readStoredProjectVars(existingProjectId);
+    const recalculatedIncoming = recalculateLeaks(
+      restoredIncoming,
+      effectiveVars,
+    );
     const mergeResult = mergeLeaksByFreshness(existing, recalculatedIncoming);
-    finalLeaks = mergeResult.leaks;
-    addedCount = mergeResult.changed;
+    finalLeaks = isSync
+      ? applyProjectTombstones(mergeResult.leaks, mergedSyncState)
+      : mergeResult.leaks;
+    addedCount =
+      mergeResult.changed + (mergeResult.leaks.length - finalLeaks.length);
+    if (isSync) {
+      const currentRound = readMonitoringRound(existingProjectId);
+      const incomingRound = getRestoredMonitoringRound(meta, finalLeaks);
+      nextMonitoringRound =
+        monitoringRoundFreshness(incomingRound) >
+        monitoringRoundFreshness(currentRound)
+          ? incomingRound
+          : currentRound;
+    }
   } else {
     const restoredLeaks = await restorePhotosFromZip(
       leaks,
@@ -1121,6 +1211,12 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     await saveRef.current(finalLeaks);
   } else {
     await LeakRepository.saveAll(finalLeaks, {
+      projectId: existingProjectId,
+      folderName: existingFolderName,
+    });
+  }
+  if (isSync) {
+    await PhotoRepository.gcOrphaned(finalLeaks, {
       projectId: existingProjectId,
       folderName: existingFolderName,
     });
@@ -1142,9 +1238,32 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
       );
     }
     saveMonitoringRound(existingProjectId, nextMonitoringRound);
+  } else if (isSync) {
+    if (shouldApplyIncomingVars) {
+      localStorage.setItem(
+        STORAGE_KEYS.PROJECT_VARS(existingProjectId),
+        JSON.stringify(meta.vars),
+      );
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("project-vars-updated", {
+            detail: { projectId: existingProjectId },
+          }),
+        );
+      }
+    }
+    saveMonitoringRound(existingProjectId, nextMonitoringRound);
+    writeProjectSyncState(
+      existingProjectId,
+      mergeProjectSyncStates(
+        readProjectSyncState(existingProjectId),
+        mergedSyncState,
+      ),
+      finalLeaks,
+    );
   }
 
-  return { project: existingProject, leakCount: addedCount };
+  return { project: syncedProject ?? existingProject, leakCount: addedCount };
 }
 
 export async function importBackupZip(zipFile, savePhoto) {

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useProjectData as useProjectDataCtx } from "@/app/project/ProjectContext";
 import { LeakRepository } from "@/repositories/LeakRepository";
+import { recordLeakDeletions } from "@/services/projectSyncState";
 import { logger } from "@/utils/logger";
 
 export function useProjectData() {
@@ -13,12 +14,18 @@ export function useProjectData() {
   const [dataProjectId, setDataProjectId] = useState(null);
 
   const saveQueue = useRef(Promise.resolve());
+  const dataRef = useRef([]);
+  const dataProjectIdRef = useRef(null);
+  const loadGenerationRef = useRef(0);
 
   useEffect(() => {
+    const loadGeneration = ++loadGenerationRef.current;
     setDataLoaded(false);
 
     if (!activeProjectId || !activeProjectFolderName) {
       setData([]);
+      dataRef.current = [];
+      dataProjectIdRef.current = null;
       setDataLoaded(true);
       setDataProjectId(null);
       return;
@@ -31,15 +38,19 @@ export function useProjectData() {
       folderName: activeProjectFolderName,
     })
       .then((result) => {
-        if (cancelled) return;
+        if (cancelled || loadGeneration !== loadGenerationRef.current) return;
         setData(result);
+        dataRef.current = result;
+        dataProjectIdRef.current = activeProjectId;
         setDataLoaded(true);
         setDataProjectId(activeProjectId);
       })
       .catch((error) => {
-        if (cancelled) return;
+        if (cancelled || loadGeneration !== loadGenerationRef.current) return;
         logger.error("[useProjectData] Failed to load project data:", error);
         setData([]);
+        dataRef.current = [];
+        dataProjectIdRef.current = activeProjectId;
         setDataLoaded(true);
         setDataProjectId(activeProjectId);
       });
@@ -51,7 +62,18 @@ export function useProjectData() {
 
   const save = useCallback(
     (next) => {
+      // A save can happen while the initial repository read is still pending
+      // (notably when importing Excel into the first project). Invalidate that
+      // read so its stale empty result cannot replace the imported records.
+      loadGenerationRef.current += 1;
+      const previous =
+        dataProjectIdRef.current === activeProjectId ? dataRef.current : [];
+      recordLeakDeletions(activeProjectId, previous, next);
+      dataRef.current = next;
+      dataProjectIdRef.current = activeProjectId;
       setData(() => next);
+      setDataLoaded(true);
+      setDataProjectId(activeProjectId);
       if (!activeProjectId || !activeProjectFolderName)
         return Promise.resolve();
       const nextSave = saveQueue.current
@@ -69,7 +91,13 @@ export function useProjectData() {
   );
 
   const clear = useCallback(async () => {
+    loadGenerationRef.current += 1;
+    recordLeakDeletions(activeProjectId, dataRef.current, []);
+    dataRef.current = [];
+    dataProjectIdRef.current = activeProjectId;
     setData([]);
+    setDataLoaded(true);
+    setDataProjectId(activeProjectId);
     if (!activeProjectId || !activeProjectFolderName) return;
     await LeakRepository.clear({
       projectId: activeProjectId,

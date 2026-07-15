@@ -19,12 +19,14 @@ import DangerZoneSection from "./components/DangerZoneSection";
 import EmissionsSummarySection from "./components/EmissionsSummarySection";
 import FieldVisibilitySection from "./components/FieldVisibilitySection";
 import MapCacheSection from "./components/MapCacheSection";
+import LocalSyncSection from "./components/LocalSyncSection";
 import PhotoRequirementsSection from "./components/PhotoRequirementsSection";
 import ProjectIntegritySection from "./components/ProjectIntegritySection";
 import ProjectList from "./components/ProjectList";
 import { useBackupActions } from "./hooks/useBackupActions";
 import { useProjectActions } from "./hooks/useProjectActions";
 import { useSettingsTexts } from "./hooks/useSettingsTexts";
+import { useLocalSync } from "./hooks/useLocalSync";
 import s from "./Settings.module.scss";
 
 export default function Settings({
@@ -72,6 +74,7 @@ export default function Settings({
     handleRename,
     handleRemove,
     handleAdd,
+    ensureProjectSyncId,
   } = useProjectActions({ setCacheInfo, notify });
 
   const saveExcelMonitoringRound = useCallback(
@@ -119,6 +122,17 @@ export default function Settings({
     onImportIntoExisting,
     notify,
     projects,
+  });
+
+  const localSync = useLocalSync({
+    activeProject,
+    data,
+    idbGetPhoto,
+    vars,
+    onImportIntoExisting,
+    notify,
+    lang,
+    ensureProjectSyncId,
   });
 
   const handleClearMapCache = useCallback(() => {
@@ -643,6 +657,8 @@ export default function Settings({
           onImportExcel={handleImportExcel}
           onImport={handleImportZip}
         />
+
+        <LocalSyncSection sync={localSync} lang={lang} />
 
         <ProjectIntegritySection
           activeProject={activeProject}
