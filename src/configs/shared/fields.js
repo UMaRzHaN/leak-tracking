@@ -30,9 +30,9 @@ export const IDENTIFIER_FIELDS = [
   {
     key: "detectedBy",
     label: "Кто зафиксировал",
-    viewable: true,
-    editable: true,
-    copyable: true,
+    viewable: false,
+    editable: false,
+    copyable: false,
   },
 ];
 

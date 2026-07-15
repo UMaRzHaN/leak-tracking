@@ -346,36 +346,45 @@ export default function ProjectSetupScreen({
                 <button
                   className={s.importBtn}
                   type="button"
+                  title={localeTexts.import}
+                  data-icon="ZIP"
                   disabled={isImporting}
                   onClick={() => zipFileRef.current?.click()}
                 >
-                  {importing
-                    ? localeTexts.importing
-                    : "↓ " + localeTexts.import}
+                  {importing ? localeTexts.importing : "ZIP"}
+                  <span className={s.importBtnSr}>
+                    {"↓ " + localeTexts.import}
+                  </span>
                 </button>
               )}
               {canImportByQr && (
                 <button
                   className={`${s.importBtn} ${s.qrImportBtn}`}
                   type="button"
+                  title={localeTexts.importQr}
+                  data-icon="QR"
                   disabled={isImporting}
                   onClick={handleQrImport}
                 >
-                  {importingQr
-                    ? localeTexts.importingQr
-                    : "QR " + localeTexts.importQr}
+                  {importingQr ? localeTexts.importingQr : "QR"}
+                  <span className={s.importBtnSr}>
+                    {"QR " + localeTexts.importQr}
+                  </span>
                 </button>
               )}
               {onImportExcel && (
                 <button
                   className={`${s.importBtn} ${s.excelImportBtn}`}
                   type="button"
+                  title={localeTexts.importExcel}
+                  data-icon="XLS"
                   disabled={isImporting}
                   onClick={requestExcelFile}
                 >
-                  {importingExcel
-                    ? localeTexts.importingExcel
-                    : "▦ " + localeTexts.importExcel}
+                  {importingExcel ? localeTexts.importingExcel : "Excel"}
+                  <span className={s.importBtnSr}>
+                    {"▦ " + localeTexts.importExcel}
+                  </span>
                 </button>
               )}
             </div>

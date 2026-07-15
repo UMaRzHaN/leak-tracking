@@ -25,7 +25,7 @@
   gap: 0;
 
   @media (max-width: 480px) {
-    padding: 28px 20px;
+    padding: 24px 20px;
     border-radius: 16px;
   }
 }
@@ -75,7 +75,7 @@
 .subtitle {
   font-size: 14px;
   color: #6b7280;
-  margin: 0 0 28px;
+  margin: 0 0 24px;
   text-align: center;
 }
 
@@ -85,7 +85,7 @@
 
 .field {
   width: 100%;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -152,18 +152,18 @@
 .typeGrid {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .typeBtn {
   display: grid;
-  grid-template-columns: 40px 1fr;
+  grid-template-columns: 36px 1fr;
   grid-template-rows: auto auto;
   align-items: center;
-  column-gap: 12px;
-  padding: 14px 16px;
+  column-gap: 10px;
+  padding: 11px 14px;
   border: 2px solid #e5e7eb;
-  border-radius: 12px;
+  border-radius: 11px;
   background: #f9fafb;
   cursor: pointer;
   text-align: left;
@@ -183,14 +183,14 @@
 
 .typeIcon {
   grid-row: 1 / 3;
-  font-size: 26px;
+  font-size: 23px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .typeName {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: #1f2937;
   line-height: 1.2;
@@ -201,7 +201,7 @@
 }
 
 .typeDesc {
-  font-size: 12px;
+  font-size: 11px;
   color: #6b7280;
   line-height: 1.3;
 }
@@ -212,12 +212,13 @@
 
 .startBtn {
   width: 100%;
-  padding: 16px;
+  min-height: 48px;
+  padding: 12px 16px;
   background: linear-gradient(135deg, #0d47a1, #1565c0);
   color: #fff;
   border: none;
-  border-radius: 12px;
-  font-size: 16px;
+  border-radius: 11px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -249,7 +250,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 16px 0 0;
+  margin: 14px 0 0;
   color: #9ca3af;
   font-size: 13px;
 
@@ -265,22 +266,46 @@
 .importActions {
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
 .importBtn {
   min-width: 0;
-  padding: 13px 16px;
+  min-height: 54px;
+  padding: 7px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   background: transparent;
   color: #0d47a1;
-  border: 2px solid #0d47a1;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 600;
+  border: 1.5px solid #0d47a1;
+  border-radius: 11px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.1;
   cursor: pointer;
+  text-align: center;
   transition: all 0.2s ease;
+
+  &::before {
+    content: attr(data-icon);
+    min-width: 28px;
+    height: 20px;
+    padding: 0 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: currentColor;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
 
   &:hover:not(:disabled) {
     background: #eff6ff;
@@ -290,6 +315,15 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
+}
+
+.importBtnSr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .importHint {
@@ -314,12 +348,6 @@
 
   &:hover:not(:disabled) {
     background: #f5f3ff;
-  }
-}
-
-@media (max-width: 360px) {
-  .importActions {
-    grid-template-columns: 1fr;
   }
 }
 
