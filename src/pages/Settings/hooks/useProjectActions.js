@@ -15,6 +15,12 @@ const CLOSED_SWITCH_STATE = {
   nextProjectId: null,
 };
 
+const CLOSED_SYNC_ID_EDITOR = {
+  open: false,
+  projectId: null,
+  value: "",
+};
+
 function remapPhotoPath(path, oldPrefix, newPrefix) {
   return typeof path === "string" && path.startsWith(oldPrefix)
     ? path.replace(oldPrefix, newPrefix)
@@ -83,12 +89,16 @@ export function useProjectActions({ setCacheInfo, notify }) {
     renameProject,
     applyFolderRename,
     removeProject,
+    replaceProjectSyncId,
     ensureProjectSyncId,
   } = useProject();
 
   const { form, clearForm } = useLeakFormContext();
   const [projectSwitchState, setProjectSwitchState] =
     useState(CLOSED_SWITCH_STATE);
+  const [syncIdEditorState, setSyncIdEditorState] = useState(
+    CLOSED_SYNC_ID_EDITOR,
+  );
 
   const isFormDirty = Object.values(form).some(
     (value) => value !== null && value !== "" && value !== undefined,
@@ -252,6 +262,53 @@ export function useProjectActions({ setCacheInfo, notify }) {
     [addProject, lang, notify],
   );
 
+  const handleChangeSyncId = useCallback((id, currentSyncId) => {
+    setSyncIdEditorState({
+      open: true,
+      projectId: id,
+      value: currentSyncId ?? "",
+    });
+  }, []);
+
+  const updateSyncIdEditorValue = useCallback((value) => {
+    setSyncIdEditorState((state) => ({ ...state, value }));
+  }, []);
+
+  const cancelSyncIdEditor = useCallback(() => {
+    setSyncIdEditorState(CLOSED_SYNC_ID_EDITOR);
+  }, []);
+
+  const confirmSyncIdEditor = useCallback(() => {
+    if (!syncIdEditorState.projectId) return;
+
+    const normalized = syncIdEditorState.value.trim().toLowerCase();
+    if (normalized.length < 8) {
+      notify(
+        "warning",
+        lang === "ru"
+          ? "syncId должен содержать минимум 8 символов"
+          : "syncId must be at least 8 characters",
+      );
+      return;
+    }
+
+    const updated = replaceProjectSyncId(
+      syncIdEditorState.projectId,
+      normalized,
+    );
+    notify(
+      updated ? "success" : "error",
+      updated
+        ? lang === "ru"
+          ? "syncId проекта обновлен"
+          : "Project syncId updated"
+        : lang === "ru"
+          ? "Не удалось обновить syncId проекта"
+          : "Could not update project syncId",
+    );
+    if (updated) setSyncIdEditorState(CLOSED_SYNC_ID_EDITOR);
+  }, [lang, notify, replaceProjectSyncId, syncIdEditorState]);
+
   return {
     projects,
     activeProject,
@@ -265,6 +322,22 @@ export function useProjectActions({ setCacheInfo, notify }) {
     handleRename,
     handleRemove,
     handleAdd,
+    handleChangeSyncId,
+    syncIdEditorState: {
+      ...syncIdEditorState,
+      title:
+        lang === "ru" ? "Изменить syncId проекта" : "Change project syncId",
+      description:
+        lang === "ru"
+          ? "Текущий syncId показан в поле. Его можно скопировать или заменить для теста синхронизации."
+          : "The current syncId is shown in the field. You can copy it or replace it for sync testing.",
+      confirmLabel: lang === "ru" ? "Сохранить" : "Save",
+      cancelLabel: lang === "ru" ? "Отмена" : "Cancel",
+      inputLabel: "syncId",
+    },
+    updateSyncIdEditorValue,
+    confirmSyncIdEditor,
+    cancelSyncIdEditor,
     ensureProjectSyncId,
   };
 }

@@ -6,6 +6,7 @@ vi.mock("@/services/localSyncService", () => ({
   createLocalSyncQrSvg: vi.fn(),
   isLocalSyncAvailable: vi.fn(() => true),
   scanLocalSyncQr: vi.fn(),
+  fetchLocalSyncArchive: vi.fn(),
   startLocalSyncHost: vi.fn(),
   exchangeLocalSyncArchive: vi.fn(),
 }));
@@ -28,6 +29,9 @@ const activeProject = {
 
 function renderSync(overrides = {}) {
   const notify = vi.fn();
+  const onImportZip = vi
+    .fn()
+    .mockResolvedValue({ project: { name: "Imported" }, leakCount: 3 });
   const onImportIntoExisting = vi.fn().mockResolvedValue({ leakCount: 2 });
   const hook = renderHook(() =>
     useLocalSync({
@@ -35,6 +39,7 @@ function renderSync(overrides = {}) {
       data: [{ id: "leak-1" }],
       idbGetPhoto: vi.fn(),
       vars: {},
+      onImportZip,
       onImportIntoExisting,
       notify,
       lang: "ru",
@@ -42,7 +47,7 @@ function renderSync(overrides = {}) {
       ...overrides,
     }),
   );
-  return { ...hook, notify, onImportIntoExisting };
+  return { ...hook, notify, onImportZip, onImportIntoExisting };
 }
 
 describe("useLocalSync", () => {
@@ -202,5 +207,35 @@ describe("useLocalSync", () => {
       }),
     );
     expect(result.current.state.status).toBe("complete");
+  });
+
+  it("scans a QR code and imports the hosted database without sending the local archive", async () => {
+    const incoming = new File(["remote"], "local-sync-import.zip", {
+      type: "application/zip",
+    });
+    const connection = {
+      host: "192.168.43.1",
+      port: "49152",
+      code: "123456",
+      projectKey: "upstream:remote field",
+      syncId: "sync-remote-1234",
+    };
+    syncService.scanLocalSyncQr.mockResolvedValue(connection);
+    syncService.fetchLocalSyncArchive.mockResolvedValue(incoming);
+    const { result, onImportZip, onImportIntoExisting, notify } = renderSync();
+
+    await act(async () => {
+      await result.current.scanAndImport();
+    });
+
+    expect(syncService.scanLocalSyncQr).toHaveBeenCalledWith();
+    expect(syncService.fetchLocalSyncArchive).toHaveBeenCalledWith(connection);
+    expect(onImportZip).toHaveBeenCalledWith(incoming);
+    expect(onImportIntoExisting).not.toHaveBeenCalled();
+    expect(result.current.state.status).toBe("complete");
+    expect(notify).toHaveBeenCalledWith(
+      "success",
+      "База импортирована по QR: «Imported» (3 записей)",
+    );
   });
 });

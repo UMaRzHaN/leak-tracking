@@ -91,6 +91,21 @@
   white-space: nowrap;
 }
 
+.syncId {
+  max-width: 100%;
+  color: var(--c-text3);
+  font-family: monospace;
+  font-size: 10px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+
+  code {
+    color: var(--c-text2);
+    font: inherit;
+  }
+}
+
 .actions {
   display: flex;
   align-items: center;

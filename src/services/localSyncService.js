@@ -147,6 +147,7 @@ export function parseLocalSyncQrPayload(value, expectedIdentity) {
     host: payload.host.trim(),
     port: String(payload.port),
     code: String(payload.code),
+    projectKey: payload.projectKey,
     syncId: payload.syncId,
   };
 }
@@ -327,4 +328,22 @@ export async function exchangeLocalSyncArchive({
     syncId,
   });
   return archiveResultToFile(result);
+}
+
+export async function fetchLocalSyncArchive({
+  host,
+  port,
+  code,
+  projectKey,
+  syncId,
+}) {
+  assertNativeAndroid();
+  const result = await LocalSync.fetchArchive({
+    host: host.trim(),
+    port: Number(port),
+    code: code.trim(),
+    projectKey,
+    syncId,
+  });
+  return archiveResultToFile(result, "local-sync-import.zip");
 }

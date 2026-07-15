@@ -90,6 +90,7 @@ describe("useProjectActions", () => {
       renameProject: vi.fn(),
       applyFolderRename: vi.fn(),
       removeProject: vi.fn(),
+      replaceProjectSyncId: vi.fn(),
     });
     tileCacheModule.clearMapCache.mockResolvedValue(undefined);
   });
@@ -212,6 +213,72 @@ describe("useProjectActions", () => {
       "success",
       'Project "Upstream" created',
     );
+  });
+
+  it("opens the sync id editor and saves its value", () => {
+    const notify = vi.fn();
+    const replaceProjectSyncId = vi.fn().mockReturnValue({
+      id: "p1",
+      syncId: "sync-shared-1234",
+    });
+
+    projectModule.useProject.mockReturnValue({
+      ...projectModule.useProject(),
+      replaceProjectSyncId,
+    });
+
+    const { result } = renderHook(() =>
+      useProjectActions({ setCacheInfo: vi.fn(), notify }),
+    );
+
+    act(() => {
+      result.current.handleChangeSyncId("p1", "old-sync-1234");
+    });
+
+    expect(result.current.syncIdEditorState.open).toBe(true);
+    expect(result.current.syncIdEditorState.value).toBe("old-sync-1234");
+
+    act(() => {
+      result.current.updateSyncIdEditorValue("SYNC-SHARED-1234");
+    });
+    act(() => {
+      result.current.confirmSyncIdEditor();
+    });
+
+    expect(replaceProjectSyncId).toHaveBeenCalledWith("p1", "sync-shared-1234");
+    expect(notify).toHaveBeenCalledWith("success", "Project syncId updated");
+    expect(result.current.syncIdEditorState.open).toBe(false);
+  });
+
+  it("rejects too-short sync id editor input", () => {
+    const notify = vi.fn();
+    const replaceProjectSyncId = vi.fn();
+
+    projectModule.useProject.mockReturnValue({
+      ...projectModule.useProject(),
+      replaceProjectSyncId,
+    });
+
+    const { result } = renderHook(() =>
+      useProjectActions({ setCacheInfo: vi.fn(), notify }),
+    );
+
+    act(() => {
+      result.current.handleChangeSyncId("p1", "old-sync-1234");
+    });
+    act(() => {
+      result.current.updateSyncIdEditorValue("short");
+    });
+    act(() => {
+      result.current.confirmSyncIdEditor();
+    });
+
+    expect(replaceProjectSyncId).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalledWith(
+      "warning",
+      "syncId must be at least 8 characters",
+    );
+    expect(result.current.syncIdEditorState.open).toBe(true);
   });
 
   it("removes project artifacts before removing a project", async () => {

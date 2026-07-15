@@ -1,7 +1,13 @@
-import { useState, useRef, useMemo } from "react";
+import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { PROJECT_META } from "@/configs/projects";
 import { toFolderName } from "@/app/project/ProjectContext";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import {
+  cancelLocalSyncQrScan,
+  fetchLocalSyncArchive,
+  isLocalSyncAvailable,
+  scanLocalSyncQr,
+} from "@/services/localSyncService";
 import s from "./ProjectSetupScreen.module.scss";
 
 const VALID_TYPES = ["upstream", "midstream", "downstream"];
@@ -41,6 +47,24 @@ export default function ProjectSetupScreen({
 
       import: t("projectSetup.import"),
       importing: t("projectSetup.importing"),
+      importQr: t("projectSetup.importQr", {
+        defaultValue: lang === "ru" ? "Импорт по QR" : "Import by QR",
+      }),
+      importingQr: t("projectSetup.importingQr", {
+        defaultValue: lang === "ru" ? "Импорт по QR..." : "Importing by QR...",
+      }),
+      scanQrProgress: t("projectSetup.scanQrProgress", {
+        defaultValue:
+          lang === "ru"
+            ? "Наведите камеру на QR-код синхронизации..."
+            : "Point the camera at the sync QR code...",
+      }),
+      importQrProgress: t("projectSetup.importQrProgress", {
+        defaultValue:
+          lang === "ru"
+            ? "Загрузка базы по QR, подождите..."
+            : "Downloading the database by QR, please wait...",
+      }),
       importExcel: t("projectSetup.importExcel"),
       importingExcel: t("projectSetup.importingExcel"),
       importExcelProgress: t("projectSetup.importExcelProgress"),
@@ -77,10 +101,13 @@ export default function ProjectSetupScreen({
   const [type, setType] = useState("");
   const [error, setError] = useState("");
   const [importing, setImporting] = useState(false);
+  const [importingQr, setImportingQr] = useState(false);
+  const [qrPhase, setQrPhase] = useState("idle");
   const [importingExcel, setImportingExcel] = useState(false);
   const zipFileRef = useRef(null);
   const excelFileRef = useRef(null);
-  const isImporting = importing || importingExcel;
+  const canImportByQr = onImportZip && isLocalSyncAvailable();
+  const isImporting = importing || importingQr || importingExcel;
 
   const handleSubmit = () => {
     if (!type) {
@@ -90,14 +117,8 @@ export default function ProjectSetupScreen({
     onComplete(type, name.trim());
   };
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-
-    setImporting(true);
-    setError("");
-    try {
+  const importZipFile = useCallback(
+    async (file) => {
       let resolvedName = name.trim();
       let resolvedType = type;
 
@@ -136,9 +157,40 @@ export default function ProjectSetupScreen({
       }
 
       await onImportZip(file, { name: resolvedName, type: resolvedType });
+    },
+    [name, onImportZip, type],
+  );
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setImporting(true);
+    setError("");
+    try {
+      await importZipFile(file);
     } catch (err) {
       setError(err.message ?? localeTexts.importError);
       setImporting(false);
+    }
+  };
+
+  const handleQrImport = async () => {
+    setImportingQr(true);
+    setQrPhase("scanning");
+    setError("");
+    try {
+      const connection = await scanLocalSyncQr();
+      setQrPhase("importing");
+      const file = await fetchLocalSyncArchive(connection);
+      await importZipFile(file);
+    } catch (err) {
+      if (err.code !== "QR_SCAN_CANCELLED") {
+        setError(err.message ?? localeTexts.importError);
+      }
+      setImportingQr(false);
+      setQrPhase("idle");
     }
   };
 
@@ -170,6 +222,13 @@ export default function ProjectSetupScreen({
       setImportingExcel(false);
     }
   };
+
+  useEffect(
+    () => () => {
+      Promise.resolve(cancelLocalSyncQrScan()).catch(() => {});
+    },
+    [],
+  );
 
   const folderPreview = name.trim()
     ? toFolderName(name.trim())
@@ -264,6 +323,19 @@ export default function ProjectSetupScreen({
 
         {(onImportZip || onImportExcel) && (
           <>
+            {qrPhase === "scanning" && (
+              <div className={s.qrScannerOverlay}>
+                <p>{localeTexts.scanQrProgress}</p>
+                <button
+                  type="button"
+                  className={s.cancelScanBtn}
+                  onClick={cancelLocalSyncQrScan}
+                >
+                  {lang === "ru" ? "Отмена" : "Cancel"}
+                </button>
+              </div>
+            )}
+
             <div className={s.orDivider}>
               <span>{localeTexts.or}</span>
             </div>
@@ -279,6 +351,18 @@ export default function ProjectSetupScreen({
                   {importing
                     ? localeTexts.importing
                     : "↓ " + localeTexts.import}
+                </button>
+              )}
+              {canImportByQr && (
+                <button
+                  className={`${s.importBtn} ${s.qrImportBtn}`}
+                  type="button"
+                  disabled={isImporting}
+                  onClick={handleQrImport}
+                >
+                  {importingQr
+                    ? localeTexts.importingQr
+                    : "QR " + localeTexts.importQr}
                 </button>
               )}
               {onImportExcel && (
@@ -298,7 +382,11 @@ export default function ProjectSetupScreen({
               <p className={s.importStatus} role="status" aria-live="polite">
                 {importingExcel
                   ? localeTexts.importExcelProgress
-                  : localeTexts.importProgress}
+                  : importingQr
+                    ? qrPhase === "scanning"
+                      ? localeTexts.scanQrProgress
+                      : localeTexts.importQrProgress
+                    : localeTexts.importProgress}
               </p>
             )}
             <p className={s.importHint}>{localeTexts.importHint}</p>

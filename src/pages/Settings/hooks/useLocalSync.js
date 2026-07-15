@@ -3,6 +3,7 @@ import {
   cancelLocalSyncQrScan,
   createLocalSyncQrSvg,
   exchangeLocalSyncArchive,
+  fetchLocalSyncArchive,
   isLocalSyncAvailable,
   scanLocalSyncQr,
   startLocalSyncHost,
@@ -19,6 +20,7 @@ export function useLocalSync({
   data,
   idbGetPhoto,
   vars,
+  onImportZip,
   onImportIntoExisting,
   notify,
   lang,
@@ -172,6 +174,30 @@ export function useLocalSync({
     }
   }, [activeProject, joinHost, lang, notify]);
 
+  const scanAndImport = useCallback(async () => {
+    setState({ status: "scanningImport", session: null });
+    try {
+      const connection = await scanLocalSyncQr();
+      setState({ status: "importing", session: null });
+      const incoming = await fetchLocalSyncArchive(connection);
+      const result = await onImportZip?.(incoming);
+      notify(
+        "success",
+        lang === "ru"
+          ? `База импортирована по QR: «${result?.project?.name ?? "проект"}» (${result?.leakCount ?? 0} записей)`
+          : `Database imported by QR: "${result?.project?.name ?? "project"}" (${result?.leakCount ?? 0} records)`,
+      );
+      setState({ status: "complete", session: null });
+    } catch (error) {
+      setState(IDLE_STATE);
+      if (error.code === "QR_SCAN_CANCELLED") return;
+      notify(
+        "error",
+        `${lang === "ru" ? "Ошибка импорта по QR" : "QR import error"}: ${error.message}`,
+      );
+    }
+  }, [lang, notify, onImportZip]);
+
   const cancelScan = useCallback(() => {
     cancelLocalSyncQrScan();
   }, []);
@@ -192,6 +218,7 @@ export function useLocalSync({
     stopHost,
     joinHost,
     scanAndJoin,
+    scanAndImport,
     cancelScan,
   };
 }

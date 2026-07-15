@@ -110,4 +110,35 @@ describe("ProjectProvider initialization", () => {
       JSON.parse(localStorage.getItem(STORAGE_KEYS.PROJECTS_LIST))[0].syncId,
     ).toBe(project.syncId);
   });
+
+  it("replaces and persists a project sync id for manual testing", () => {
+    localStorage.setItem(
+      STORAGE_KEYS.PROJECTS_LIST,
+      JSON.stringify([
+        {
+          id: "p1",
+          name: "Alpha",
+          type: "upstream",
+          folderName: "alpha",
+          createdAt: 1,
+          syncId: "old-sync-1234",
+        },
+      ]),
+    );
+    const wrapper = ({ children }) => (
+      <ProjectProvider>{children}</ProjectProvider>
+    );
+    const { result } = renderHook(() => useProject(), { wrapper });
+
+    let project;
+    act(() => {
+      project = result.current.replaceProjectSyncId("p1", "NEW-SYNC-5678");
+    });
+
+    expect(project.syncId).toBe("new-sync-5678");
+    expect(result.current.activeProject.syncId).toBe("new-sync-5678");
+    expect(
+      JSON.parse(localStorage.getItem(STORAGE_KEYS.PROJECTS_LIST))[0].syncId,
+    ).toBe("new-sync-5678");
+  });
 });

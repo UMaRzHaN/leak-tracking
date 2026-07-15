@@ -9,11 +9,18 @@ export default function LocalSyncSection({ sync, lang }) {
   if (!sync.available) return null;
 
   const { status, session } = sync.state;
-  const busy = ["preparing", "scanning", "joining", "merging"].includes(status);
+  const busy = [
+    "preparing",
+    "scanning",
+    "scanningImport",
+    "joining",
+    "merging",
+    "importing",
+  ].includes(status);
 
   return (
     <section className={s.section}>
-      {status === "scanning" ? (
+      {status === "scanning" || status === "scanningImport" ? (
         <div className={s.localSyncScannerOverlay} role="dialog">
           <div className={s.localSyncScannerFrame} aria-hidden="true" />
           <p>
@@ -99,6 +106,21 @@ export default function LocalSyncSection({ sync, lang }) {
             : lang === "ru"
               ? "Сканировать QR и синхронизировать"
               : "Scan QR and synchronize"}
+        </button>
+
+        <button
+          type="button"
+          className={`${s.backupBtn} ${s.restore}`}
+          disabled={busy || status === "hosting"}
+          onClick={sync.scanAndImport}
+        >
+          {status === "scanningImport" || status === "importing"
+            ? lang === "ru"
+              ? "Импорт по QR..."
+              : "Importing by QR..."
+            : lang === "ru"
+              ? "Сканировать QR и импортировать базу"
+              : "Scan QR and import database"}
         </button>
 
         <div className={s.localSyncFields}>

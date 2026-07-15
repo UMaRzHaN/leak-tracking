@@ -265,7 +265,7 @@
 .importActions {
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
   margin-top: 12px;
 }
@@ -308,6 +308,15 @@
   }
 }
 
+.qrImportBtn {
+  color: #7c3aed;
+  border-color: #8b5cf6;
+
+  &:hover:not(:disabled) {
+    background: #f5f3ff;
+  }
+}
+
 @media (max-width: 360px) {
   .importActions {
     grid-template-columns: 1fr;
@@ -325,4 +334,43 @@
   font-size: 12px;
   font-weight: 600;
   text-align: center;
+}
+
+:global(body.local-sync-scanner-active) {
+  visibility: hidden;
+  background: transparent;
+}
+
+.qrScannerOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  visibility: visible;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 24px;
+  color: #fff;
+  background: rgb(0 0 0 / 28%);
+
+  p {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: center;
+  }
+}
+
+.cancelScanBtn {
+  min-width: 120px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid rgb(255 255 255 / 70%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 16%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
 }

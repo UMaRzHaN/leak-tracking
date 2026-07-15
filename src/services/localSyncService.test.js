@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => {
       }),
       stopHost: vi.fn().mockResolvedValue({}),
       exchange: vi.fn(),
+      fetchArchive: vi.fn(),
     },
   };
 });
@@ -52,6 +53,7 @@ const {
   parseLocalSyncQrPayload,
   cancelLocalSyncQrScan,
   exchangeLocalSyncArchive,
+  fetchLocalSyncArchive,
   scanLocalSyncQr,
   startLocalSyncHost,
 } = await import("./localSyncService");
@@ -122,6 +124,7 @@ describe("localSyncService", () => {
       host: "192.168.43.1",
       port: "49152",
       code: "123456",
+      projectKey: "upstream:alpha",
       syncId: "sync-alpha-1234",
     });
     expect(() => parseLocalSyncQrPayload(payload, "upstream:beta")).toThrow(
@@ -238,6 +241,41 @@ describe("localSyncService", () => {
 
     expect(mocks.plugin.releaseReceivedArchive).toHaveBeenCalledWith({
       archiveToken: "received-token",
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("fetches a hosted archive for QR import without preparing an outgoing archive", async () => {
+    mocks.plugin.fetchArchive.mockResolvedValue({
+      uri: "file:///cache/import.zip",
+      archiveToken: "import-token",
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        blob: vi.fn().mockResolvedValue(new Blob(["zip"])),
+      }),
+    );
+
+    await fetchLocalSyncArchive({
+      host: "192.168.1.2",
+      port: "49152",
+      code: "123456",
+      projectKey: "upstream:alpha",
+      syncId: "sync-alpha-1234",
+    });
+
+    expect(mocks.plugin.prepareArchive).not.toHaveBeenCalled();
+    expect(mocks.plugin.fetchArchive).toHaveBeenCalledWith({
+      host: "192.168.1.2",
+      port: 49152,
+      code: "123456",
+      projectKey: "upstream:alpha",
+      syncId: "sync-alpha-1234",
+    });
+    expect(mocks.plugin.releaseReceivedArchive).toHaveBeenCalledWith({
+      archiveToken: "import-token",
     });
     vi.unstubAllGlobals();
   });

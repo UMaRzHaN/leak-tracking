@@ -1,6 +1,13 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProjectSetupScreen from "./ProjectSetupScreen";
+
+const localSync = vi.hoisted(() => ({
+  cancelLocalSyncQrScan: vi.fn(),
+  fetchLocalSyncArchive: vi.fn(),
+  isLocalSyncAvailable: vi.fn(() => true),
+  scanLocalSyncQr: vi.fn(),
+}));
 
 vi.mock("@/app/hooks/useLanguage", () => ({
   useLanguage: () => ({
@@ -19,6 +26,12 @@ vi.mock("@/app/hooks/useLanguage", () => ({
         "projectSetup.or": "or",
         "projectSetup.import": "Import from ZIP",
         "projectSetup.importing": "Importing...",
+        "projectSetup.importQr": "Import by QR",
+        "projectSetup.importingQr": "Importing by QR...",
+        "projectSetup.scanQrProgress":
+          "Point the camera at the sync QR code...",
+        "projectSetup.importQrProgress":
+          "Downloading the database by QR, please wait...",
         "projectSetup.importExcel": "Import Excel",
         "projectSetup.importingExcel": "Importing Excel...",
         "projectSetup.importExcelProgress":
@@ -39,6 +52,8 @@ vi.mock("@/app/hooks/useLanguage", () => ({
   }),
 }));
 
+vi.mock("@/services/localSyncService", () => localSync);
+
 vi.mock("@/services/projectBackupService", () => ({
   peekBackupZip: vi.fn().mockResolvedValue({
     leaks: [],
@@ -48,6 +63,11 @@ vi.mock("@/services/projectBackupService", () => ({
 }));
 
 describe("ProjectSetupScreen", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localSync.isLocalSyncAvailable.mockReturnValue(true);
+  });
+
   it("shows an import progress notice while importing zip into an empty app", async () => {
     const onImportZip = vi.fn(() => new Promise(() => {}));
     const { container } = render(
@@ -87,6 +107,43 @@ describe("ProjectSetupScreen", () => {
       expect(onImportExcel).toHaveBeenCalledWith(file, {
         name: "inspection",
         type: "midstream",
+      }),
+    );
+  });
+
+  it("imports a hosted database from a scanned QR code", async () => {
+    const file = new File(["zip"], "local-sync-import.zip", {
+      type: "application/zip",
+    });
+    localSync.scanLocalSyncQr.mockResolvedValueOnce({
+      host: "192.168.1.10",
+      port: "54321",
+      code: "123456",
+      projectKey: "upstream:imported",
+      syncId: "sync-12345678",
+    });
+    localSync.fetchLocalSyncArchive.mockResolvedValueOnce(file);
+    const onImportZip = vi.fn().mockResolvedValue({});
+
+    render(
+      <ProjectSetupScreen onComplete={vi.fn()} onImportZip={onImportZip} />,
+    );
+
+    fireEvent.click(screen.getByText("QR Import by QR"));
+
+    await waitFor(() =>
+      expect(localSync.fetchLocalSyncArchive).toHaveBeenCalledWith({
+        host: "192.168.1.10",
+        port: "54321",
+        code: "123456",
+        projectKey: "upstream:imported",
+        syncId: "sync-12345678",
+      }),
+    );
+    await waitFor(() =>
+      expect(onImportZip).toHaveBeenCalledWith(file, {
+        name: "Imported",
+        type: "upstream",
       }),
     );
   });

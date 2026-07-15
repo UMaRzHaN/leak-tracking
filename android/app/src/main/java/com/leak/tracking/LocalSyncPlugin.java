@@ -40,6 +40,7 @@ import java.util.concurrent.TimeUnit;
 @CapacitorPlugin(name = "LocalSync")
 public class LocalSyncPlugin extends Plugin {
     private static final String MAGIC = "LEAK_TRACKER_SYNC_V2";
+    private static final String IMPORT_MAGIC = "LEAK_TRACKER_SYNC_IMPORT_V1";
     private static final long MAX_ARCHIVE_BYTES = 64L * 1024L * 1024L;
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final int TRANSFER_TIMEOUT_MS = 120_000;
@@ -185,6 +186,30 @@ public class LocalSyncPlugin extends Plugin {
         });
     }
 
+    @PluginMethod
+    public void fetchArchive(PluginCall call) {
+        String host = call.getString("host", "").trim();
+        Integer port = call.getInt("port");
+        String code = call.getString("code", "").trim();
+        String projectKey = normalizeProjectKey(call.getString("projectKey"));
+        String syncId = normalizeSyncId(call.getString("syncId"));
+
+        if (host.isEmpty() || port == null || code.isEmpty() || projectKey.isEmpty() || syncId.isEmpty()) {
+            call.reject("host, port, code, projectKey and syncId are required");
+            return;
+        }
+
+        executor.execute(() -> {
+            try {
+                File received = fetchArchiveFromHost(host, port, code, projectKey, syncId);
+                JSObject result = archiveResult(received);
+                call.resolve(result);
+            } catch (Exception error) {
+                call.reject(readableMessage(error), error);
+            }
+        });
+    }
+
     private void acceptClient(ServerSocket activeServer) {
         try {
             while (!activeServer.isClosed()) {
@@ -228,6 +253,9 @@ public class LocalSyncPlugin extends Plugin {
             DataOutputStream output = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()))
         ) {
             String magic = input.readUTF();
+            if (IMPORT_MAGIC.equals(magic)) {
+                return handleImportClient(input, output);
+            }
             if (!MAGIC.equals(magic)) {
                 rejectPeer(output, "Несовместимая версия приложения на втором телефоне");
                 return false;
@@ -292,6 +320,36 @@ public class LocalSyncPlugin extends Plugin {
         }
     }
 
+    private boolean handleImportClient(DataInputStream input, DataOutputStream output) throws Exception {
+        String code = input.readUTF();
+        String projectKey = normalizeProjectKey(input.readUTF());
+        String syncId = normalizeSyncId(input.readUTF());
+
+        String expectedCode = sessionCode;
+        String expectedProjectKey = hostedProjectKey;
+        String expectedSyncId = hostedSyncId;
+        File outgoing = hostedArchive;
+        if (expectedCode == null || expectedProjectKey == null || expectedSyncId == null || outgoing == null) {
+            rejectPeer(output, "Сеанс синхронизации уже остановлен");
+            return false;
+        }
+        if (!expectedCode.equals(code)) {
+            rejectPeer(output, "Неверный код подключения");
+            return false;
+        }
+        if (!expectedSyncId.equals(syncId) || !expectedProjectKey.equals(projectKey)) {
+            rejectPeer(output, "QR-код содержит данные другого сеанса");
+            return false;
+        }
+
+        output.writeUTF("OK");
+        output.writeLong(outgoing.length());
+        output.writeUTF(sha256(outgoing));
+        sendFile(output, outgoing);
+        output.flush();
+        return false;
+    }
+
     private File exchangeArchives(
         String host,
         int port,
@@ -334,6 +392,52 @@ public class LocalSyncPlugin extends Plugin {
                 assertArchiveSize(incomingSize);
                 String expectedHash = input.readUTF();
                 received = createTempArchive("local-sync-response");
+                receiveFile(input, received, incomingSize);
+                if (!expectedHash.equals(sha256(received))) {
+                    received.delete();
+                    received = null;
+                    throw new Exception("Архив повреждён при передаче");
+                }
+                File result = received;
+                received = null;
+                return result;
+            }
+        } finally {
+            if (received != null) received.delete();
+        }
+    }
+
+    private File fetchArchiveFromHost(
+        String host,
+        int port,
+        String code,
+        String projectKey,
+        String syncId
+    ) throws Exception {
+        File received = null;
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
+            socket.setSoTimeout(TRANSFER_TIMEOUT_MS);
+
+            try (
+                DataInputStream input = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+                DataOutputStream output = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()))
+            ) {
+                output.writeUTF(IMPORT_MAGIC);
+                output.writeUTF(code);
+                output.writeUTF(projectKey);
+                output.writeUTF(syncId);
+                output.flush();
+
+                String status = input.readUTF();
+                if (!"OK".equals(status)) {
+                    throw new Exception(input.readUTF());
+                }
+
+                long incomingSize = input.readLong();
+                assertArchiveSize(incomingSize);
+                String expectedHash = input.readUTF();
+                received = createTempArchive("local-sync-import");
                 receiveFile(input, received, incomingSize);
                 if (!expectedHash.equals(sha256(received))) {
                     received.delete();

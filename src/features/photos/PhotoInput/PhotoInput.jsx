@@ -1,4 +1,4 @@
-import { useRef, useId, useCallback, useEffect } from "react";
+import { useRef, useId, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCamera } from "@/hooks/useCamera";
 import s from "./PhotoInput.module.scss";
@@ -15,6 +15,7 @@ export default function PhotoInput({
   const inputRef = useRef(null);
   const aliveRef = useRef(true);
   const inputId = useId();
+  const [cameraError, setCameraError] = useState("");
 
   const { isNative, takePhoto, pickFromGallery, pickFromBrowser } = useCamera();
 
@@ -26,14 +27,24 @@ export default function PhotoInput({
   }, []);
 
   const handleCamera = useCallback(async () => {
-    const photo = await takePhoto();
-    if (photo && aliveRef.current) onChange(photo);
+    try {
+      setCameraError("");
+      const photo = await takePhoto();
+      if (photo && aliveRef.current) onChange(photo);
+    } catch (error) {
+      setCameraError(error?.message || "Unable to open camera");
+    }
   }, [takePhoto, onChange]);
 
   const handleGallery = useCallback(async () => {
+    setCameraError("");
     if (isNative) {
-      const photo = await pickFromGallery();
-      if (photo && aliveRef.current) onChange(photo);
+      try {
+        const photo = await pickFromGallery();
+        if (photo && aliveRef.current) onChange(photo);
+      } catch (error) {
+        setCameraError(error?.message || "Unable to open gallery");
+      }
     } else {
       inputRef.current?.click();
     }
@@ -43,9 +54,15 @@ export default function PhotoInput({
     async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      const photo = await pickFromBrowser(file);
-      if (photo && aliveRef.current) onChange(photo);
-      e.target.value = "";
+      try {
+        setCameraError("");
+        const photo = await pickFromBrowser(file);
+        if (photo && aliveRef.current) onChange(photo);
+      } catch (error) {
+        setCameraError(error?.message || "Unable to read photo");
+      } finally {
+        e.target.value = "";
+      }
     },
     [pickFromBrowser, onChange],
   );
@@ -113,6 +130,8 @@ export default function PhotoInput({
           onChange={handleFile}
         />
       )}
+
+      {cameraError && <div className={s.fieldError}>{cameraError}</div>}
 
       {error && (
         <div className={s.fieldError}>

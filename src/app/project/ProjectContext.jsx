@@ -213,6 +213,27 @@ export function ProjectProvider({ children }) {
     [_setProjects],
   );
 
+  const replaceProjectSyncId = useCallback(
+    (id, syncId) => {
+      const normalized = String(syncId ?? "")
+        .trim()
+        .toLowerCase();
+      if (normalized.length < 8) return null;
+
+      const current = projectsRef.current;
+      const project = current.find((item) => item.id === id);
+      if (!project) return null;
+      if (project.syncId === normalized) return project;
+
+      const updated = { ...project, syncId: normalized };
+      const next = current.map((item) => (item.id === id ? updated : item));
+      projectsRef.current = next;
+      _setProjects(next);
+      return updated;
+    },
+    [_setProjects],
+  );
+
   const ensureProjectSyncId = useCallback(
     (id) => {
       const project = projectsRef.current.find((item) => item.id === id);
@@ -272,6 +293,7 @@ export function ProjectProvider({ children }) {
       applyFolderRename,
       changeProjectType,
       setProjectSyncId,
+      replaceProjectSyncId,
       ensureProjectSyncId,
       removeProject,
       changeProject,
@@ -285,6 +307,7 @@ export function ProjectProvider({ children }) {
       applyFolderRename,
       changeProjectType,
       setProjectSyncId,
+      replaceProjectSyncId,
       ensureProjectSyncId,
       removeProject,
       changeProject,

@@ -1,6 +1,7 @@
 import { isNative } from "@/utils/platform";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { markPhotoPrepared } from "@/utils/photoPreparation";
+import { dataUrlToBlob } from "@/utils/photoConversion";
 
 /*
  * Используем CameraResultType.Uri, чтобы не передавать полноразмерное фото
@@ -16,6 +17,15 @@ async function requestCameraPermission() {
 }
 
 async function uriPhotoToDraft(photo) {
+  if (photo?.dataUrl) {
+    const blob = dataUrlToBlob(photo.dataUrl);
+    if (!blob) throw new Error("Camera returned an invalid photo");
+    return {
+      raw: markPhotoPrepared(blob),
+      src: photo.dataUrl,
+    };
+  }
+
   if (!photo?.webPath) throw new Error("Camera did not return a photo URI");
   const response = await fetch(photo.webPath);
   if (!response.ok) throw new Error("Unable to read the selected photo");

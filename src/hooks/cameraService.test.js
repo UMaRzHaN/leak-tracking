@@ -8,7 +8,7 @@ const camera = vi.hoisted(() => ({
 vi.mock("@/utils/platform", () => ({ isNative: true }));
 vi.mock("@capacitor/camera", () => ({
   Camera: camera,
-  CameraResultType: { Uri: "uri" },
+  CameraResultType: { DataUrl: "dataUrl", Uri: "uri" },
   CameraSource: { Camera: "camera", Photos: "photos" },
 }));
 
@@ -48,6 +48,18 @@ describe("native camera service", () => {
     expect(result.src).toBe("capacitor://localhost/photo.jpg");
     expect(result.raw).toBeInstanceOf(Blob);
     expect(isPhotoPrepared(result.raw)).toBe(true);
+  });
+
+  it("also accepts a data URL camera result", async () => {
+    camera.getPhoto.mockResolvedValueOnce({
+      dataUrl: "data:image/jpeg;base64,cGhvdG8=",
+      format: "jpeg",
+    });
+
+    const result = await takePhotoFromCamera();
+
+    expect(result.src).toBe("data:image/jpeg;base64,cGhvdG8=");
+    expect(result.raw).toBeInstanceOf(Blob);
   });
 
   it("uses the same URI path for gallery photos", async () => {

@@ -23,6 +23,7 @@ import LocalSyncSection from "./components/LocalSyncSection";
 import PhotoRequirementsSection from "./components/PhotoRequirementsSection";
 import ProjectIntegritySection from "./components/ProjectIntegritySection";
 import ProjectList from "./components/ProjectList";
+import SyncIdEditorSheet from "./components/SyncIdEditorSheet";
 import { useBackupActions } from "./hooks/useBackupActions";
 import { useProjectActions } from "./hooks/useProjectActions";
 import { useSettingsTexts } from "./hooks/useSettingsTexts";
@@ -74,6 +75,11 @@ export default function Settings({
     handleRename,
     handleRemove,
     handleAdd,
+    handleChangeSyncId,
+    syncIdEditorState,
+    updateSyncIdEditorValue,
+    confirmSyncIdEditor,
+    cancelSyncIdEditor,
     ensureProjectSyncId,
   } = useProjectActions({ setCacheInfo, notify });
 
@@ -129,6 +135,7 @@ export default function Settings({
     data,
     idbGetPhoto,
     vars,
+    onImportZip,
     onImportIntoExisting,
     notify,
     lang,
@@ -590,6 +597,7 @@ export default function Settings({
             onSelect={handleSelect}
             onRename={handleRename}
             onRemove={handleRemove}
+            onChangeSyncId={handleChangeSyncId}
           />
 
           {projects.length === 0 && !addingProject && (
@@ -726,6 +734,13 @@ export default function Settings({
         cancelLabel={projectSwitchState.cancelLabel}
         onConfirm={confirmProjectSwitch}
         onCancel={cancelProjectSwitch}
+      />
+
+      <SyncIdEditorSheet
+        state={syncIdEditorState}
+        onChange={updateSyncIdEditorValue}
+        onConfirm={confirmSyncIdEditor}
+        onCancel={cancelSyncIdEditor}
       />
 
       <ConfirmSheet

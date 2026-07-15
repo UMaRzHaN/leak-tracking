@@ -25,6 +25,7 @@ export default function ProjectList({
   onSelect,
   onRename,
   onRemove,
+  onChangeSyncId,
 }) {
   return (
     <div className={s.list}>
@@ -36,13 +37,21 @@ export default function ProjectList({
           onSelect={() => onSelect(project.id)}
           onRename={(name) => onRename(project.id, name)}
           onRemove={() => onRemove(project.id)}
+          onChangeSyncId={() => onChangeSyncId(project.id, project.syncId)}
         />
       ))}
     </div>
   );
 }
 
-function ProjectItem({ project, isActive, onSelect, onRename, onRemove }) {
+function ProjectItem({
+  project,
+  isActive,
+  onSelect,
+  onRename,
+  onRemove,
+  onChangeSyncId,
+}) {
   const { lang } = useLanguage();
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState(project.name);
@@ -115,11 +124,28 @@ function ProjectItem({ project, isActive, onSelect, onRename, onRemove }) {
             <span className={s.name}>{project.name}</span>
           )}
           <span className={s.type}>{meta.title ?? project.type}</span>
+          <span className={s.syncId}>
+            syncId:{" "}
+            <code>
+              {project.syncId ||
+                (lang === "ru" ? "еще не создан" : "not created yet")}
+            </code>
+          </span>
           <span className={s.folder}>📁 {project.folderName}</span>
         </div>
       </button>
 
       <div className={s.actions}>
+        {!editing && !deleteArmed && (
+          <button
+            className={s.actionBtn}
+            type="button"
+            title={lang === "ru" ? "Изменить syncId" : "Change syncId"}
+            onClick={onChangeSyncId}
+          >
+            ID
+          </button>
+        )}
         {!editing && !deleteArmed && (
           <button
             className={s.actionBtn}
