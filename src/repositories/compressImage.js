@@ -1,19 +1,58 @@
-export async function compressImage(blob, { maxWidth = 1280, quality = 0.75 } = {}) {
+export async function compressImage(
+  blob,
+  { maxWidth = 1280, quality = 0.75 } = {},
+) {
   return new Promise((resolve) => {
     const img = new Image();
-    const url = URL.createObjectURL(blob);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const scale = Math.min(1, maxWidth / img.naturalWidth);
-      const w = Math.round(img.naturalWidth * scale);
-      const h = Math.round(img.naturalHeight * scale);
-      const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-      canvas.toBlob((out) => resolve(out ?? blob), "image/jpeg", quality);
+    let url;
+    try {
+      url = URL.createObjectURL(blob);
+    } catch {
+      resolve(blob);
+      return;
+    }
+
+    const cleanup = () => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        // Revoking an already invalid object URL must not block the fallback.
+      }
     };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(blob); };
+    const fallback = () => {
+      cleanup();
+      resolve(blob);
+    };
+
+    img.onload = () => {
+      cleanup();
+      try {
+        if (!img.naturalWidth || !img.naturalHeight) {
+          resolve(blob);
+          return;
+        }
+        const scale = Math.min(1, maxWidth / img.naturalWidth);
+        const width = Math.round(img.naturalWidth * scale);
+        const height = Math.round(img.naturalHeight * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d");
+        if (!context) {
+          resolve(blob);
+          return;
+        }
+        context.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (output) => resolve(output ?? blob),
+          "image/jpeg",
+          quality,
+        );
+      } catch {
+        resolve(blob);
+      }
+    };
+    img.onerror = fallback;
     img.src = url;
   });
 }

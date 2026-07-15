@@ -66,6 +66,10 @@ export function buildReopenCalcVars({ leak, vars, draft = {} }) {
 
   if (next.percentage_gas_to_flare != null) {
     next.percentage_gas_to_utilization = 100 - next.percentage_gas_to_flare;
+  } else if (
+    Object.prototype.hasOwnProperty.call(patch, "percentage_gas_to_flare")
+  ) {
+    next.percentage_gas_to_utilization = null;
   }
 
   return next;
