@@ -324,7 +324,8 @@ export default function ProjectSetupScreen({
         {(onImportZip || onImportExcel) && (
           <>
             {qrPhase === "scanning" && (
-              <div className={s.qrScannerOverlay}>
+              <div className={s.qrScannerOverlay} role="dialog">
+                <div className={s.qrScannerFrame} aria-hidden="true" />
                 <p>{localeTexts.scanQrProgress}</p>
                 <button
                   type="button"
