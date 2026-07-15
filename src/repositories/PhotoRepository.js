@@ -2,6 +2,7 @@ import { Filesystem, Directory } from "@capacitor/filesystem";
 import { isNative } from "@/utils/platform";
 import { compressImage } from "./compressImage";
 import { idb } from "./idb";
+import { isPhotoPrepared } from "@/utils/photoPreparation";
 
 const PHOTO_FIELDS = ["photo", "photo_after", "photo_repair"];
 const photoFolderPromises = new Map();
@@ -111,7 +112,9 @@ export const PhotoRepository = {
     if (!rawPhoto || !leakId) return null;
     const version = Date.now();
     const photo =
-      rawPhoto instanceof Blob ? await compressImage(rawPhoto) : rawPhoto;
+      rawPhoto instanceof Blob && !isPhotoPrepared(rawPhoto)
+        ? await compressImage(rawPhoto)
+        : rawPhoto;
 
     /* WEB — IndexedDB */
     if (!isNative) {

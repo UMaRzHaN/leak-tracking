@@ -1,4 +1,5 @@
 import { calculations } from "@/utils/calculations/calculations";
+import { buildLeakHistoryChanges } from "@/utils/historyChanges";
 
 export const CALCULATION_PARAMS_VERSION = 1;
 
@@ -65,4 +66,39 @@ export function calculateLeakWithSnapshot(
     },
     params,
   );
+}
+
+export function updateLeakCalculationParams(
+  leak,
+  projectVars,
+  calculationParams,
+  { user, now = Date.now() } = {},
+) {
+  const currentParams = buildLeakCalculationParams(leak, projectVars);
+  if (calculationParamsEqual(currentParams, calculationParams)) return leak;
+
+  const recalculated = calculateLeakWithSnapshot(
+    leak,
+    projectVars,
+    calculationParams,
+  );
+  const changes = buildLeakHistoryChanges({
+    before: currentParams,
+    after: calculationParams,
+    fields: CALCULATION_PARAM_KEYS.map((key) => ({ key })),
+  });
+
+  return {
+    ...recalculated,
+    updatedAt: now,
+    history: [
+      ...(leak.history ?? []),
+      {
+        action: "edited",
+        date: new Date(now).toISOString(),
+        user,
+        changes,
+      },
+    ],
+  };
 }

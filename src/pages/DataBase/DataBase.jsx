@@ -1,4 +1,7 @@
+import { useState } from "react";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import Notification from "@/components/ui/Notification/Notification";
+import SettingsModal from "@/features/settings/SettingsModal/SettingsModal";
 import FilterBar from "./components/FilterBar";
 import ResultsBar from "./components/ResultsBar";
 import LeakList from "./components/LeakList";
@@ -15,6 +18,8 @@ export default function DataBase({
   onMonitorLeaks,
   userProfile,
 }) {
+  const { lang } = useLanguage();
+  const [bulkCalculationOpen, setBulkCalculationOpen] = useState(false);
   const {
     notification,
     clearNotification,
@@ -75,6 +80,7 @@ export default function DataBase({
           onMonitorLeaks?.(selected);
           bulk.clearSelection();
         }}
+        onEditBulkCalculation={() => setBulkCalculationOpen(true)}
         onExport={handleExport}
         isExporting={isExporting}
       />
@@ -122,6 +128,21 @@ export default function DataBase({
         onBulkStatusSelect={handleBulkPickerSelect}
         onCloseBulkPicker={closeBulkPicker}
         userProfile={userProfile}
+      />
+
+      <SettingsModal
+        open={bulkCalculationOpen}
+        onClose={() => setBulkCalculationOpen(false)}
+        variables={bulk.bulkCalculationVars}
+        onSave={bulk.handleBulkCalculationSave}
+        title={lang === "ru" ? "Массовый пересчёт" : "Bulk recalculation"}
+        description={
+          lang === "ru"
+            ? `Параметры первой выбранной утечки будут применены к ${bulk.selectedCount} записям.`
+            : `The first selected record's parameters will be applied to ${bulk.selectedCount} records.`
+        }
+        saveLabel={lang === "ru" ? "Применить" : "Apply"}
+        allowUnchangedSave
       />
     </div>
   );

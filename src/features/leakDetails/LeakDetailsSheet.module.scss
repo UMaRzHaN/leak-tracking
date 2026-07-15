@@ -526,6 +526,14 @@
   background: var(--c-surface);
   box-shadow: none;
 
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--monitoring-accent);
+  }
+
   &[data-result="still_leaking"] {
     --monitoring-accent: var(--c-open);
     --monitoring-accent-bg: var(--c-open-bg);
@@ -544,7 +552,7 @@
 
 .monitoringRecordHeader {
   min-height: 32px;
-  padding: 7px 10px;
+  padding: 6px 10px 6px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -554,7 +562,7 @@
 }
 
 .monitoringRecordDate {
-  color: var(--c-text2);
+  color: var(--c-text);
   font-size: 11px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -565,7 +573,8 @@
   padding: 2px 7px;
   border: 1px solid var(--c-border);
   border-radius: var(--r-pill);
-  background: var(--c-surface);
+  background: var(--monitoring-accent-bg);
+  border-color: var(--monitoring-accent);
   color: var(--c-text2);
   font-size: 10px;
   font-weight: 800;
@@ -574,7 +583,7 @@
 }
 
 .monitoringRecordContent {
-  padding: 9px 10px;
+  padding: 8px 10px 9px 12px;
 }
 
 .monitoringRecordText {
@@ -590,6 +599,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -619,8 +629,13 @@
   min-width: 0;
   display: flex;
   align-items: baseline;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 5px;
+  max-width: 100%;
+  padding: 2px 6px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-pill);
+  background: var(--c-surface2);
   font-size: 11px;
 
   span {
@@ -631,24 +646,26 @@
     min-width: 0;
     color: var(--c-text);
     font-weight: 700;
-    text-align: right;
+    text-align: left;
     overflow-wrap: anywhere;
   }
 }
 
 .monitoringDetailBlock {
   width: 100%;
-  padding: 6px 0 0;
+  padding: 6px 8px;
   display: grid;
-  grid-template-columns: minmax(74px, 0.35fr) minmax(0, 1fr);
+  grid-template-columns: minmax(70px, 0.35fr) minmax(0, 1fr);
   align-items: baseline;
-  gap: 8px;
-  border-top: 1px solid var(--c-border);
+  gap: 7px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface2);
 
   > span {
     display: inline;
     margin: 0;
-    color: var(--c-text3);
+    color: var(--monitoring-accent);
     font-size: 10px;
     font-weight: 800;
     letter-spacing: 0.05em;
@@ -656,26 +673,30 @@
   }
 
   p {
-    color: var(--c-text2);
+    margin: 0;
+    color: var(--c-text);
     font-size: 11px;
     line-height: 1.35;
     overflow-wrap: anywhere;
+    white-space: pre-wrap;
   }
 }
 
 .monitoringPhotoBlock {
   width: 100%;
-  margin-top: 0;
-  padding-top: 7px;
+  margin-top: 6px;
+  padding: 5px 7px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  border-top: 1px solid var(--c-border);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface2);
 }
 
 .monitoringPhotoTitle {
-  color: var(--c-text3);
+  color: var(--monitoring-accent);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.05em;
@@ -684,11 +705,11 @@
 
 .monitoringPhotoBtn {
   flex-shrink: 0;
-  width: 56px;
-  height: 40px;
+  width: 64px;
+  height: 44px;
   padding: 0;
   border: 1px solid var(--c-border);
-  border-radius: var(--r-md);
+  border-radius: 9px;
   overflow: hidden;
   background: var(--c-surface2);
   box-shadow: var(--shadow-sm);
@@ -847,6 +868,8 @@
   border-radius: 0 8px 8px 0;
   margin: 2px 0;
   line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .logChanges {
@@ -858,9 +881,13 @@
 
 .logChange {
   display: grid;
-  grid-template-columns: minmax(88px, 0.8fr) minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-areas:
+    "label label label"
+    "before arrow after";
+  align-items: start;
+  column-gap: 8px;
+  row-gap: 5px;
   min-width: 0;
   padding: 6px 8px;
   border: 1px solid var(--c-border);
@@ -871,6 +898,7 @@
 }
 
 .logChangeLabel {
+  grid-area: label;
   min-width: 0;
   color: var(--c-text2);
   font-weight: 700;
@@ -879,12 +907,28 @@
 
 .logChangeValue {
   min-width: 0;
+  padding: 5px 7px;
+  border-radius: 6px;
+  background: var(--c-bg);
   color: var(--c-text);
   font-weight: 600;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.logChangeValueBefore {
+  grid-area: before;
+  color: var(--c-text2);
+}
+
+.logChangeValueAfter {
+  grid-area: after;
+  color: var(--c-blue);
 }
 
 .logChangeArrow {
+  grid-area: arrow;
+  align-self: center;
   color: var(--c-text3);
   font-weight: 800;
 }

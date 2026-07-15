@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/app/hooks/useLanguage", () => ({
@@ -13,8 +13,12 @@ vi.mock("@/app/project/ProjectContext", () => ({
 vi.mock("@/app/project/hooks/useProjectVars", () => ({
   useProjectVars: () => ({ vars: {} }),
 }));
+const photoStorage = vi.hoisted(() => ({
+  deletePhoto: vi.fn(),
+  savePhoto: vi.fn(),
+}));
 vi.mock("@/hooks/usePhotoStorage", () => ({
-  usePhotoStorage: () => ({ deletePhoto: vi.fn(), savePhoto: vi.fn() }),
+  usePhotoStorage: () => photoStorage,
 }));
 vi.mock("@/pages/DataBase/hooks/useDataBaseFilters", () => ({
   useDataBaseFilters: ({ data }) => ({
@@ -57,6 +61,7 @@ vi.mock("@/features/photos/PhotoInput/PhotoInput", () => ({
 }));
 
 import Monitoring from "./Monitoring";
+import { getMonitoringHistoryComment } from "@/utils/monitoring";
 import {
   MONITORING_FILTER,
   buildMonitoringPatch,
@@ -69,7 +74,10 @@ import {
 } from "./monitoringDomain";
 
 describe("Monitoring round flow", () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+  });
 
   it("keeps photos from every previous monitoring record", () => {
     expect(
@@ -133,6 +141,40 @@ describe("Monitoring round flow", () => {
         to: "Seal replaced",
       },
     ]);
+  });
+
+  it("shows a monitoring result once and keeps only the user comment in history", () => {
+    const patch = buildMonitoringPatch({
+      leak: { id: "leak-1", status: "in_progress" },
+      draft: {
+        result: "resolved",
+        comment: "Seal replaced",
+        materials_equipment: "",
+      },
+      monitoredBy: "Inspector",
+      photoPath: "idb://after",
+      roundId: "round-1",
+      roundNumber: 1,
+      now: new Date("2026-07-15T08:30:00.000Z"),
+    });
+
+    expect(patch.history.at(-1)).toMatchObject({
+      action: "monitoring",
+      to: "resolved",
+      text: "Seal replaced",
+    });
+    expect(
+      getMonitoringHistoryComment({
+        action: "monitoring",
+        text: "Утечка устранена Seal replaced",
+      }),
+    ).toBe("Seal replaced");
+    expect(
+      getMonitoringHistoryComment({
+        action: "monitoring",
+        text: "Утечка устранена",
+      }),
+    ).toBe("");
   });
 
   it("builds a consistent round summary, counts and filtered list", () => {
@@ -222,6 +264,33 @@ describe("Monitoring round flow", () => {
     expect(screen.getByText("№ 1001")).toBeTruthy();
   });
 
+  it("saves a monitoring result without a photo when the setting is disabled", async () => {
+    localStorage.setItem(
+      "app:project-1:monitoring_settings_v1",
+      JSON.stringify({ photoRequired: false }),
+    );
+    const setData = vi.fn().mockResolvedValue(undefined);
+    const leak = { id: "leak-1", leak_id: "1001", status: "open" };
+    render(
+      <Monitoring
+        data={[leak]}
+        setData={setData}
+        coords={null}
+        sharedFilters={{}}
+        userProfile={{ name: "Inspector" }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "All tags 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Swipe monitoring" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start round" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(setData).toHaveBeenCalledOnce());
+    expect(photoStorage.savePhoto).not.toHaveBeenCalled();
+    expect(setData.mock.calls[0][0][0].monitoringRecords[0].photo).toBeNull();
+  });
+
   it("asks before monitoring a tag twice in the same round", () => {
     const round = {
       id: "round-2",
@@ -263,6 +332,55 @@ describe("Monitoring round flow", () => {
 
     expect(screen.getByRole("heading", { name: "Check" })).toBeTruthy();
     expect(screen.getByText("№ 1001")).toBeTruthy();
+  });
+
+  it("starts a new round from the already-checked prompt", () => {
+    const round = {
+      id: "round-2",
+      number: 2,
+      startedAt: "2026-07-14T05:00:00.000Z",
+    };
+    localStorage.setItem(
+      "app:project-1:monitoring_round_v2",
+      JSON.stringify(round),
+    );
+    const leak = {
+      id: "leak-1",
+      leak_id: "1001",
+      status: "open",
+      monitoringRecords: [
+        {
+          id: "record-1",
+          roundId: round.id,
+          roundNumber: round.number,
+          date: "2026-07-14T06:00:00.000Z",
+          result: "still_leaking",
+        },
+      ],
+    };
+    render(
+      <Monitoring
+        data={[leak]}
+        setData={vi.fn()}
+        coords={null}
+        sharedFilters={{}}
+        userProfile={{ name: "Inspector" }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "All tags 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Swipe monitoring" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start a new round" }));
+
+    expect(screen.getByText("Start a new round?")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Start round" }));
+
+    const storedRound = JSON.parse(
+      localStorage.getItem("app:project-1:monitoring_round_v2"),
+    );
+    expect(storedRound.number).toBe(3);
+    expect(storedRound.id).not.toBe(round.id);
+    expect(screen.getByRole("heading", { name: "Check" })).toBeTruthy();
   });
 
   it("completes a fully checked round and requires a new round", () => {

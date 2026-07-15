@@ -284,6 +284,57 @@
 }
 
 /* ── Danger zone ── */
+.dangerSection {
+  border-color: color-mix(
+    in srgb,
+    var(--c-danger, #ef4444) 38%,
+    var(--c-border)
+  );
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--c-danger, #ef4444) 7%, var(--c-surface)),
+    var(--c-surface) 62%
+  );
+  box-shadow: var(--shadow-sm);
+
+  .sectionHead {
+    background: color-mix(
+      in srgb,
+      var(--c-danger, #ef4444) 9%,
+      transparent
+    );
+    border-bottom-color: color-mix(
+      in srgb,
+      var(--c-danger, #ef4444) 28%,
+      var(--c-border)
+    );
+  }
+}
+
+.dangerSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--c-danger, #ef4444);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.dangerIcon {
+  width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--c-danger, #ef4444);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+}
+
 .dangerBody {
   padding: 14px 16px;
   display: flex;
@@ -327,6 +378,23 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.photoRequirementsBody {
+  display: flex;
+  flex-direction: column;
+}
+
+.photoRequirementRow {
+  padding: 13px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+
+  & + & {
+    border-top: 1px solid var(--c-border);
+  }
 }
 
 .themeInfo {
@@ -456,7 +524,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 12px;
+  margin: 12px 8px 10px;
 }
 
 .integrityOk,

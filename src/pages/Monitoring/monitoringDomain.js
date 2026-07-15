@@ -1,10 +1,6 @@
 import { collectLeakPhotoPaths } from "@/domain/leakLifecycle";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
-import {
-  MONITORING_RESULT,
-  getMonitoringResultLabel,
-  isMonitoringDue,
-} from "@/utils/monitoring";
+import { MONITORING_RESULT, isMonitoringDue } from "@/utils/monitoring";
 import { STATUS } from "@/utils/status";
 
 export const MONITORING_FILTER = {
@@ -134,7 +130,6 @@ export function buildMonitoringPatch({
   leak,
   draft,
   monitoredBy,
-  lang,
   photoPath,
   roundId,
   roundNumber,
@@ -209,9 +204,7 @@ export function buildMonitoringPatch({
         date: record.date,
         to: nextStatus,
         user: record.monitoredBy || undefined,
-        text: [getMonitoringResultLabel(result, lang), record.comment || ""]
-          .filter(Boolean)
-          .join(" "),
+        ...(record.comment ? { text: record.comment } : {}),
         ...(changes.length > 0 ? { changes } : {}),
       },
     ],

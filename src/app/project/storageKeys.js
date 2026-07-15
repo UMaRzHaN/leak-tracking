@@ -27,6 +27,10 @@ export const STORAGE_KEYS = {
     `${APP_PREFIX}:${projectId}:hidden_fields_${VERSION}`,
   PROJECT_EXCEL_EXPORT_MODE: (projectId) =>
     `${APP_PREFIX}:${projectId}:excel_export_mode_${VERSION}`,
+  PROJECT_MONITORING_SETTINGS: (projectId) =>
+    `${APP_PREFIX}:${projectId}:monitoring_settings_${VERSION}`,
+  PROJECT_PHOTO_REQUIREMENTS: (projectId) =>
+    `${APP_PREFIX}:${projectId}:photo_requirements_${VERSION}`,
 
   /* =========================
      LEGACY (migration only — не использовать в новом коде)

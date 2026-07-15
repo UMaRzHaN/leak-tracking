@@ -26,6 +26,10 @@ export default function SettingsModal({
   onClose,
   variables: currentVars,
   onSave,
+  title,
+  description,
+  saveLabel,
+  allowUnchangedSave = false,
 }) {
   const { t, lang } = useLanguage();
   const localeTexts = useMemo(
@@ -80,12 +84,14 @@ export default function SettingsModal({
   const [localVars, setLocalVars] = useState(() => pickCalcVars(currentVars));
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setLocalVars(pickCalcVars(currentVars));
     setShowConfirm(false);
     setSubmitted(false);
+    setSaving(false);
   }, [open, currentVars]);
 
   const isDirty = useMemo(
@@ -96,7 +102,7 @@ export default function SettingsModal({
     [localVars, currentVars],
   );
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSubmitted(true);
     if (
       !isPinkBagEquipment(localVars.equipmentType) &&
@@ -105,15 +111,20 @@ export default function SettingsModal({
       return;
     }
 
-    onSave({
-      ...currentVars,
-      ...localVars,
-      percentage_gas_to_utilization: 100 - localVars.percentage_gas_to_flare,
-    });
-
-    setShowConfirm(false);
-    setSubmitted(false);
-    onClose(false);
+    setSaving(true);
+    try {
+      const saved = await onSave({
+        ...currentVars,
+        ...localVars,
+        percentage_gas_to_utilization: 100 - localVars.percentage_gas_to_flare,
+      });
+      if (saved === false) return;
+      setShowConfirm(false);
+      setSubmitted(false);
+      onClose(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -132,7 +143,10 @@ export default function SettingsModal({
 
       <div className={s.modal}>
         <div className={s.header}>
-          <h2>{localeTexts.title}</h2>
+          <div className={s.headerText}>
+            <h2>{title ?? localeTexts.title}</h2>
+            {description && <p>{description}</p>}
+          </div>
           <button
             type="button"
             className={s.closeBtn}
@@ -162,9 +176,9 @@ export default function SettingsModal({
           <button
             className={s.saveBtn}
             onClick={handleSave}
-            disabled={!isDirty}
+            disabled={(!isDirty && !allowUnchangedSave) || saving}
           >
-            {localeTexts.save}
+            {saving ? "…" : (saveLabel ?? localeTexts.save)}
           </button>
         </div>
       </div>

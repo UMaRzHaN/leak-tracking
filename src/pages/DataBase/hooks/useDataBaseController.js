@@ -36,6 +36,7 @@ export function useDataBaseController({
     notify,
     deletePhoto,
     userProfile,
+    projectVars: actions.vars,
   });
   const { handleExport, isExporting } = useDataBaseExport({
     displayed: filters.displayed,

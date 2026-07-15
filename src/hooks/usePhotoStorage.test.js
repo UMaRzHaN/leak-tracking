@@ -17,6 +17,7 @@ const mockIdbDelete = vi.fn();
 const mockIdbGet = vi.fn();
 const mockListKeys = vi.fn();
 const mockGetState = vi.fn();
+const mockCompressImage = vi.hoisted(() => vi.fn(async (blob) => blob));
 
 vi.mock("../repositories/idb", () => ({
   idb: {
@@ -40,11 +41,12 @@ vi.mock("../app/project/ProjectContext", () => ({
 }));
 
 vi.mock("../repositories/compressImage", () => ({
-  compressImage: vi.fn(async (blob) => blob),
+  compressImage: mockCompressImage,
 }));
 
 /* ── import after mocks ────────────────────────────────── */
 const { usePhotoStorage } = await import("./usePhotoStorage");
+const { markPhotoPrepared } = await import("../utils/photoPreparation");
 
 /* ── helpers ───────────────────────────────────────────── */
 const makeBlob = (type = "image/jpeg") => new Blob(["data"], { type });
@@ -69,6 +71,17 @@ describe("savePhoto (web path)", () => {
     });
     expect(path).toMatch(/^idb:\/\/photo_proj-1_leak-42_\d+$/);
     expect(mockIdbSave).toHaveBeenCalledOnce();
+    expect(mockCompressImage).toHaveBeenCalledOnce();
+  });
+
+  it("does not recompress a photo already prepared by the native camera", async () => {
+    const { result } = renderHook(() => usePhotoStorage());
+    await act(async () => {
+      await result.current.savePhoto(markPhotoPrepared(makeBlob()), "leak-43");
+    });
+
+    expect(mockIdbSave).toHaveBeenCalledOnce();
+    expect(mockCompressImage).not.toHaveBeenCalled();
   });
 
   it("returns null when blob is missing", async () => {

@@ -607,6 +607,75 @@ describe("mergeLeaksByFreshness", () => {
     expect(result).toMatchObject({ updated: 0, skipped: 1, changedFields: 0 });
   });
 
+  it("ignores legacy created_at differences during Excel re-import", () => {
+    const result = previewMergeLeaks(
+      [
+        {
+          id: "same-leak",
+          leak_id: 7,
+          created_at: "2026-03-16T14:25:00.000Z",
+          status: "open",
+        },
+      ],
+      [
+        {
+          id: "excel-generated-id",
+          leak_id: 7,
+          created_at: "1773671100000",
+          status: "open",
+        },
+      ],
+      { source: "excel" },
+    );
+
+    expect(result).toMatchObject({ updated: 0, skipped: 1, changedFields: 0 });
+  });
+
+  it("matches an exported monitoring row after Excel drops its exact time", () => {
+    const local = {
+      id: "same-leak",
+      leak_id: 7,
+      monitoringRecords: [
+        {
+          id: "local-record",
+          roundId: "round-3",
+          roundNumber: 3,
+          date: "2026-03-16T14:25:31.000Z",
+          monitoredBy: "Inspector",
+          result: "still_leaking",
+          comment: "No change",
+        },
+      ],
+    };
+    const fromOwnExcel = {
+      id: "excel-generated-id",
+      leak_id: 7,
+      monitoringRecords: [
+        {
+          id: "excel-7-round-3-2",
+          roundId: "excel-round-3",
+          roundNumber: 3,
+          date: "2026-03-16T00:00:00.000Z",
+          monitoredBy: "Inspector",
+          result: "still_leaking",
+          materials_equipment: "",
+          comment: "No change",
+        },
+      ],
+    };
+
+    const result = previewMergeLeaks([local], [fromOwnExcel], {
+      source: "excel",
+    });
+
+    expect(result).toMatchObject({
+      updated: 0,
+      skipped: 1,
+      changedFields: 0,
+      changedFieldBreakdown: {},
+    });
+  });
+
   it("ignores regenerated Excel identities for unchanged monitoring records", () => {
     const date = "2026-03-10T00:00:00.000Z";
     const local = {

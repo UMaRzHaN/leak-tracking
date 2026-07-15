@@ -148,7 +148,7 @@ const resources = {
         importExcel: "Импорт Excel",
         importExcelLoading: "Импорт...",
         backupHint:
-          "ZIP-архив содержит все записи и фотографии. Excel-импорт добавляет табличные данные без извлечения встроенных фото.",
+          "Экспорт ZIP создаёт полную резервную копию проекта. Импорт ZIP восстанавливает такую копию. Импорт Excel принимает XLSX или Excel ZIP-архив с таблицами, историей мониторинга и фотографиями.",
 
         mapCache: "Кэш карты",
         satelliteTiles: "Спутниковые тайлы",
@@ -617,7 +617,7 @@ const resources = {
         importExcel: "Import Excel",
         importExcelLoading: "Import...",
         backupHint:
-          "The ZIP archive contains all records and photos. Excel import appends table data without extracting embedded photos.",
+          "Export ZIP creates a complete project backup. Import ZIP restores that backup. Import Excel accepts an XLSX or Excel ZIP archive with tables, monitoring history, and photos.",
 
         mapCache: "Map Cache",
         satelliteTiles: "Satellite Tiles",

@@ -15,6 +15,10 @@ vi.mock("@capacitor/filesystem", () => ({
     writeFile: vi.fn(async ({ path, data }) => {
       fsState.files.set(path, data);
     }),
+    copy: vi.fn(async ({ from, to }) => {
+      if (!fsState.files.has(from)) throw new Error("File does not exist");
+      fsState.files.set(to, fsState.files.get(from));
+    }),
     deleteFile: vi.fn(async ({ path }) => {
       if (!fsState.files.delete(path)) throw new Error("File does not exist");
     }),

@@ -65,6 +65,10 @@
   }
 }
 
+.actionsWithSecondary .secondaryAction {
+  grid-column: 1 / -1;
+}
+
 .cancel {
   background: var(--c-surface2);
   color: var(--c-text);
@@ -80,6 +84,16 @@
 
   &:hover {
     opacity: 0.88;
+  }
+}
+
+.secondaryAction {
+  background: var(--c-blue-dim);
+  color: var(--c-blue);
+  border: 1px solid color-mix(in srgb, var(--c-blue) 32%, transparent) !important;
+
+  &:hover {
+    background: color-mix(in srgb, var(--c-blue) 16%, transparent);
   }
 }
 

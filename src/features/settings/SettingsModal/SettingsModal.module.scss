@@ -94,6 +94,17 @@
   }
 }
 
+.headerText {
+  min-width: 0;
+
+  p {
+    margin: 4px 0 0;
+    color: var(--c-text3);
+    font-size: 12px;
+    line-height: 1.35;
+  }
+}
+
 .closeBtn {
   background: none;
   border: none;

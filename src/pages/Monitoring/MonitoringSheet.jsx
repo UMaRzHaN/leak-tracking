@@ -13,12 +13,14 @@ export default function MonitoringSheet({
   lang,
   progress,
   submitted,
+  saving,
+  photoRequired,
   onChange,
   onSave,
   onClose,
 }) {
   return (
-    <div className={s.sheetOverlay} onClick={onClose}>
+    <div className={s.sheetOverlay} onClick={saving ? undefined : onClose}>
       <div className={s.sheet} onClick={(event) => event.stopPropagation()}>
         <div className={s.sheetHandle} />
         <div className={s.sheetHeader}>
@@ -35,7 +37,12 @@ export default function MonitoringSheet({
               {texts.leakNumber} {leak?.leak_id ?? leak?.index ?? "—"}
             </p>
           </div>
-          <button type="button" className={s.sheetCloseBtn} onClick={onClose}>
+          <button
+            type="button"
+            className={s.sheetCloseBtn}
+            onClick={onClose}
+            disabled={saving}
+          >
             {texts.close}
           </button>
         </div>
@@ -84,13 +91,18 @@ export default function MonitoringSheet({
           value={draft.photo}
           onChange={(photo) => onChange({ photo })}
           label={texts.photo}
-          required
+          required={photoRequired}
           compact
-          error={submitted && !draft.photo?.raw}
+          error={photoRequired && submitted && !draft.photo?.raw}
         />
 
-        <button type="button" className={s.saveBtn} onClick={onSave}>
-          {texts.save}
+        <button
+          type="button"
+          className={s.saveBtn}
+          onClick={onSave}
+          disabled={saving}
+        >
+          {saving ? texts.saving : texts.save}
         </button>
       </div>
     </div>

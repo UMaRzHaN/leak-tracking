@@ -1,10 +1,11 @@
 import { isNative } from "@/utils/platform";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { markPhotoPrepared } from "@/utils/photoPreparation";
 
 /*
- * Используем CameraResultType.Base64, чтобы фотографии НЕ сохранялись
- * в публичную галерею устройства. Данные приходят напрямую в память
- * и сохраняются в приватное хранилище приложения (Directory.Data).
+ * Используем CameraResultType.Uri, чтобы не передавать полноразмерное фото
+ * через Capacitor как Base64. Файл остаётся временным и после выбора
+ * сохраняется в приватное хранилище приложения (Directory.Data).
  */
 
 async function requestCameraPermission() {
@@ -14,13 +15,14 @@ async function requestCameraPermission() {
   }
 }
 
-function base64ToBlob(base64, mimeType = "image/jpeg") {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return new Blob([bytes], { type: mimeType });
+async function uriPhotoToDraft(photo) {
+  if (!photo?.webPath) throw new Error("Camera did not return a photo URI");
+  const response = await fetch(photo.webPath);
+  if (!response.ok) throw new Error("Unable to read the selected photo");
+  return {
+    raw: markPhotoPrepared(await response.blob()),
+    src: photo.webPath,
+  };
 }
 
 /* 📸 Камера (native) */
@@ -33,16 +35,12 @@ export async function takePhotoFromCamera() {
 
   const photo = await Camera.getPhoto({
     quality: 80,
+    width: 1280,
     source: CameraSource.Camera,
-    resultType: CameraResultType.Base64,
+    resultType: CameraResultType.Uri,
   });
 
-  const blob = base64ToBlob(photo.base64String, `image/${photo.format}`);
-
-  return {
-    raw: blob,
-    src: `data:image/${photo.format};base64,${photo.base64String}`,
-  };
+  return uriPhotoToDraft(photo);
 }
 
 /* 🖼 Галерея — читаем через Base64, не добавляем новый файл в галерею */
@@ -53,16 +51,12 @@ export async function pickPhotoFromGallery() {
 
   const photo = await Camera.getPhoto({
     quality: 70,
+    width: 1280,
     source: CameraSource.Photos,
-    resultType: CameraResultType.Base64,
+    resultType: CameraResultType.Uri,
   });
 
-  const blob = base64ToBlob(photo.base64String, `image/${photo.format}`);
-
-  return {
-    raw: blob,
-    src: `data:image/${photo.format};base64,${photo.base64String}`,
-  };
+  return uriPhotoToDraft(photo);
 }
 
 /* 🖥 Browser: File input */

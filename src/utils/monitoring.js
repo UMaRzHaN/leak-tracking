@@ -31,6 +31,22 @@ export function getMonitoringResultLabel(result, lang = "ru") {
   );
 }
 
+const MONITORING_RESULT_PREFIXES = Object.values(RESULT_LABELS)
+  .flatMap((labels) => Object.values(labels))
+  .sort((left, right) => right.length - left.length);
+
+export function getMonitoringHistoryComment(entry) {
+  const text = String(entry?.text ?? "").trim();
+  if (!text || entry?.action !== "monitoring") return text;
+
+  for (const prefix of MONITORING_RESULT_PREFIXES) {
+    if (text === prefix) return "";
+    if (text.startsWith(`${prefix} `)) return text.slice(prefix.length).trim();
+  }
+
+  return text;
+}
+
 export function getMonitoringRecords(leak) {
   return Array.isArray(leak?.monitoringRecords)
     ? leak.monitoringRecords.filter((record) => record && record.date)

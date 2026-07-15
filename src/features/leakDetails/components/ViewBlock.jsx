@@ -5,6 +5,7 @@ import { getPriorityMeta } from "@/utils/priority";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { formatLeakDate } from "@/utils/locale";
 import {
+  getMonitoringHistoryComment,
   getMonitoringRecords,
   getMonitoringResultLabel,
 } from "@/utils/monitoring";
@@ -108,7 +109,7 @@ function getHistoryChangeLabel(change, fields, localeTexts, t, lang) {
   if (change.key === "photo_repair") return localeTexts.photo.repair;
   if (change.key === "priority") return localeTexts.priority;
   if (change.key === "materials_equipment") {
-    return lang === "ru" ? "МТР" : "Materials";
+    return lang === "ru" ? "МТР" : "Materials and equipment";
   }
 
   const field = fields.find((item) => item.key === change.key);
@@ -308,7 +309,7 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
       monitoring: {
         round: lang === "ru" ? "Обход" : "Round",
         inspector: lang === "ru" ? "Проверил" : "Checked by",
-        materials: lang === "ru" ? "МТР и работы" : "Materials and work",
+        materials: lang === "ru" ? "МТР" : "Materials and equipment",
         comment: lang === "ru" ? "Комментарий" : "Comment",
         photo: lang === "ru" ? "Фото обхода" : "Round photo",
       },
@@ -531,6 +532,7 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
             const changes = Array.isArray(entry.changes) ? entry.changes : [];
             const entryUser =
               entry.user ?? entry.monitoredBy ?? entry.detectedBy ?? null;
+            const entryComment = getMonitoringHistoryComment(entry);
             return (
               <div key={i} className={s.logEntry}>
                 <div className={s.logDotWrap}>
@@ -563,8 +565,8 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
                       {localeTexts.statuses[entry.to] ?? entry.to}
                     </span>
                   )}
-                  {entry.text && (
-                    <span className={s.logCommentText}>{entry.text}</span>
+                  {entryComment && (
+                    <span className={s.logCommentText}>{entryComment}</span>
                   )}
                   {changes.length > 0 && (
                     <div className={s.logChanges}>
@@ -582,7 +584,9 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
                               lang,
                             )}
                           </span>
-                          <span className={s.logChangeValue}>
+                          <span
+                            className={`${s.logChangeValue} ${s.logChangeValueBefore}`}
+                          >
                             {formatHistoryValue(
                               change.key,
                               change.from,
@@ -591,7 +595,9 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
                             )}
                           </span>
                           <span className={s.logChangeArrow}>→</span>
-                          <span className={s.logChangeValue}>
+                          <span
+                            className={`${s.logChangeValue} ${s.logChangeValueAfter}`}
+                          >
                             {formatHistoryValue(
                               change.key,
                               change.to,

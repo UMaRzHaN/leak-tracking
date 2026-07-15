@@ -25,6 +25,7 @@ export default function ResultsBar({
   onSelectDisplayed,
   onOpenBulkPicker,
   onMonitorSelected,
+  onEditBulkCalculation,
   onExport,
   isExporting = false,
 }) {
@@ -113,6 +114,20 @@ export default function ResultsBar({
             </button>
             <button className={s.bulkMonitorBtn} onClick={onMonitorSelected}>
               {lang === "ru" ? "Проверить" : "Check"}
+            </button>
+            <button
+              className={s.bulkCalcBtn}
+              onClick={onEditBulkCalculation}
+              title={
+                lang === "ru"
+                  ? "Изменить параметры расчёта для выбранных"
+                  : "Edit calculation parameters for selected records"
+              }
+              aria-label={
+                lang === "ru" ? "Параметры расчёта" : "Calculation parameters"
+              }
+            >
+              ⚙
             </button>
             <button className={s.bulkStatusBtn} onClick={onOpenBulkPicker}>
               {lang === "ru" ? "⇌ СТАТУС" : "⇌ STATUS"}

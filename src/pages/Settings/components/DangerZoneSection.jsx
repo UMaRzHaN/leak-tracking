@@ -8,9 +8,14 @@ export default function DangerZoneSection({
   if (!activeProject) return null;
 
   return (
-    <section className={s.section}>
+    <section className={`${s.section} ${s.dangerSection}`}>
       <div className={s.sectionHead}>
-        <h2 className={s.sectionTitle}>{localeTexts.dangerZone}</h2>
+        <h2 className={s.dangerSectionTitle}>
+          <span className={s.dangerIcon} aria-hidden="true">
+            !
+          </span>
+          {localeTexts.dangerZone}
+        </h2>
       </div>
       <div className={s.dangerBody}>
         <p className={s.dangerHint}>{localeTexts.dangerHint}</p>

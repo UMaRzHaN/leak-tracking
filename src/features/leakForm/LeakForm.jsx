@@ -6,6 +6,7 @@ import { useVoiceControl } from "@/app/hooks/useVoiceControl";
 import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
+import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { calculateLeakWithSnapshot } from "@/utils/calculationParams";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
@@ -75,6 +76,7 @@ export default function LeakForm({
   const rawConfig = useProjectConfig();
   const projectConfig = useEffectiveProjectConfig();
   const { activeProject } = useProjectData();
+  const { leakPhotoRequired } = usePhotoRequirements(activeProject?.id ?? null);
   const { vars, setVars } = useProjectVars(
     activeProject?.id ?? null,
     rawConfig.vars,
@@ -101,7 +103,18 @@ export default function LeakForm({
     [t],
   );
 
-  const STEPS = useMemo(() => projectConfig.steps.steps ?? [], [projectConfig]);
+  const STEPS = useMemo(
+    () =>
+      (projectConfig.steps.steps ?? []).map((item) => ({
+        ...item,
+        fields: item.fields.map((field) =>
+          field.type === "photo" && field.key === "photo"
+            ? { ...field, required: leakPhotoRequired }
+            : field,
+        ),
+      })),
+    [leakPhotoRequired, projectConfig],
+  );
   const translatedSteps = useMemo(
     () => (lang === "en" ? translateSteps(STEPS, t) : STEPS),
     [STEPS, lang, t],

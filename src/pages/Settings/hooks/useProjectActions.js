@@ -47,6 +47,9 @@ async function deleteProjectArtifacts(project) {
   localStorage.removeItem(STORAGE_KEYS.PROJECT_DATA(project.id));
   localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(project.id));
   localStorage.removeItem(STORAGE_KEYS.PROJECT_HIDDEN_FIELDS(project.id));
+  localStorage.removeItem(STORAGE_KEYS.PROJECT_EXCEL_EXPORT_MODE(project.id));
+  localStorage.removeItem(STORAGE_KEYS.PROJECT_MONITORING_SETTINGS(project.id));
+  localStorage.removeItem(STORAGE_KEYS.PROJECT_PHOTO_REQUIREMENTS(project.id));
   await LeakRepository.clear({
     projectId: project.id,
     folderName: project.folderName,

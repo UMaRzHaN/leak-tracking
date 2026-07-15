@@ -54,6 +54,8 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
             old: "Было",
             copy: "Скопировать",
             copyAll: "Скопировать все",
+            measurements: "Новые замеры",
+            emptyKeepsValue: "Пустое поле сохранит прежнее значение",
             calcTitle: "Параметры расчета",
             editCalc: "Изменить параметры",
             equipment: "Тип оборудования",
@@ -78,6 +80,8 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
             old: "Previous",
             copy: "Copy",
             copyAll: "Copy all",
+            measurements: "New measurements",
+            emptyKeepsValue: "An empty field keeps its previous value",
             calcTitle: "Calculation parameters",
             editCalc: "Edit parameters",
             equipment: "Equipment type",
@@ -171,46 +175,65 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
         </div>
 
         <div className={s.body}>
-          {REOPEN_MEASUREMENT_FIELDS.map(({ key, ru, en }) => (
-            <label key={key} className={s.field}>
-              <span className={s.label}>{lang === "ru" ? ru : en}</span>
-              <span className={s.previous}>
-                {texts.old}: {formatValue(leak?.[key])}
-              </span>
-              <div className={s.inputRow}>
-                <input
-                  className={s.input}
-                  inputMode="decimal"
-                  value={draft[key]}
-                  onChange={(event) => setField(key, event.target.value)}
-                  placeholder={texts.placeholder}
-                />
-                <button
-                  type="button"
-                  className={s.copyBtn}
-                  onClick={() => copyField(key)}
-                >
-                  {texts.copy}
-                </button>
+          <section className={s.measurementsSection}>
+            <div className={s.measurementsHeader}>
+              <div>
+                <h3>{texts.measurements}</h3>
+                <p>{texts.emptyKeepsValue}</p>
               </div>
-            </label>
-          ))}
+              <button type="button" className={s.copyAllBtn} onClick={copyAll}>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="8" y="8" width="11" height="11" rx="2" />
+                  <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+                </svg>
+                {texts.copyAll}
+              </button>
+            </div>
 
-          <button type="button" className={s.copyAllBtn} onClick={copyAll}>
-            {texts.copyAll}
-          </button>
+            <div className={s.fields}>
+              {REOPEN_MEASUREMENT_FIELDS.map(({ key, ru, en }) => {
+                const fieldLabel = lang === "ru" ? ru : en;
+                return (
+                  <div key={key} className={s.field}>
+                    <div className={s.fieldHeader}>
+                      <label className={s.label} htmlFor={`reopen-${key}`}>
+                        {fieldLabel}
+                      </label>
+                      <span className={s.previous}>
+                        {texts.old}: <strong>{formatValue(leak?.[key])}</strong>
+                      </span>
+                    </div>
+                    <div className={s.inputRow}>
+                      <input
+                        id={`reopen-${key}`}
+                        className={s.input}
+                        inputMode="decimal"
+                        value={draft[key]}
+                        onChange={(event) => setField(key, event.target.value)}
+                        placeholder={texts.placeholder}
+                      />
+                      <button
+                        type="button"
+                        className={s.copyBtn}
+                        onClick={() => copyField(key)}
+                        aria-label={`${texts.copy}: ${fieldLabel}`}
+                        title={`${texts.copy}: ${fieldLabel}`}
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <rect x="8" y="8" width="11" height="11" rx="2" />
+                          <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
 
           <section className={s.calcSection}>
             <div className={s.calcHeader}>
-              <div>
-                <h3 className={s.calcTitle}>{texts.calcTitle}</h3>
-                <p className={s.calcSummary}>
-                  {formatValue(effectiveCalcVars.equipmentType)} ·{" "}
-                  {formatValue(effectiveCalcVars.serial_number)} ·{" "}
-                  {gasLabel(effectiveCalcVars.gasType)} · GWP{" "}
-                  {formatValue(effectiveCalcVars.GWP)}
-                </p>
-              </div>
+              <h3 className={s.calcTitle}>{texts.calcTitle}</h3>
               <button
                 type="button"
                 className={s.calcToggle}
@@ -218,6 +241,12 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
               >
                 {texts.editCalc}
               </button>
+            </div>
+            <div className={s.calcSummary}>
+              <span>{formatValue(effectiveCalcVars.equipmentType)}</span>
+              <span>№ {formatValue(effectiveCalcVars.serial_number)}</span>
+              <span>{gasLabel(effectiveCalcVars.gasType)}</span>
+              <span>GWP {formatValue(effectiveCalcVars.GWP)}</span>
             </div>
           </section>
         </div>

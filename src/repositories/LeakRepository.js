@@ -113,19 +113,10 @@ async function writeNativeArray(folderName, leaks) {
     encoding: "utf8",
   });
 
-  // Verify the complete temporary file before touching the current dataset.
-  await readNativeArray(paths.temp);
-
-  let previousData = null;
+  let hasPreviousData = false;
   try {
-    const current = await readNativeArray(paths.main);
-    previousData = JSON.stringify(current);
-    await Filesystem.writeFile({
-      path: paths.backup,
-      directory: Directory.Data,
-      data: previousData,
-      encoding: "utf8",
-    });
+    await readNativeArray(paths.main);
+    hasPreviousData = true;
   } catch (error) {
     if (!isMissingFileError(error)) {
       logger.warn(
@@ -133,6 +124,23 @@ async function writeNativeArray(folderName, leaks) {
         error,
       );
     }
+  }
+
+  if (hasPreviousData) {
+    await Filesystem.deleteFile({
+      path: paths.backup,
+      directory: Directory.Data,
+    }).catch((error) => {
+      if (!isMissingFileError(error)) throw error;
+    });
+
+    // Native copy avoids sending and serializing the complete previous JSON
+    // through the JavaScript bridge a second time.
+    await Filesystem.copy({
+      from: paths.main,
+      to: paths.backup,
+      directory: Directory.Data,
+    });
   }
 
   await Filesystem.deleteFile({
@@ -150,12 +158,11 @@ async function writeNativeArray(folderName, leaks) {
     });
   } catch (error) {
     // Keep the project readable even if the final rename fails.
-    if (previousData != null) {
-      await Filesystem.writeFile({
-        path: paths.main,
+    if (hasPreviousData) {
+      await Filesystem.copy({
+        from: paths.backup,
+        to: paths.main,
         directory: Directory.Data,
-        data: previousData,
-        encoding: "utf8",
       }).catch(() => {});
     }
     throw error;

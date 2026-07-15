@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { STATUS } from "@/utils/status";
 import { hapticSuccess } from "@/utils/haptics";
 import { useLanguage } from "@/app/hooks/useLanguage";
@@ -8,6 +8,10 @@ import {
   resolveLeakRecord,
   startLeakRepair,
 } from "@/domain/leakLifecycle";
+import {
+  buildLeakCalculationParams,
+  updateLeakCalculationParams,
+} from "@/utils/calculationParams";
 
 function pluralLeaks(n, lang) {
   if (lang !== "ru") {
@@ -28,6 +32,7 @@ export function useBulkActions({
   notify,
   deletePhoto = () => Promise.resolve(),
   userProfile,
+  projectVars = {},
 }) {
   const { lang, t } = useLanguage();
   const historyUser = userProfile?.name?.trim() || undefined;
@@ -63,6 +68,75 @@ export function useBulkActions({
       return next;
     });
   }, [displayed]);
+
+  const bulkCalculationVars = useMemo(() => {
+    const firstSelected = data.find((item) => selectedIds.has(item.id));
+    return firstSelected
+      ? buildLeakCalculationParams(firstSelected, projectVars)
+      : projectVars;
+  }, [data, projectVars, selectedIds]);
+
+  const handleBulkCalculationSave = useCallback(
+    async (calculationParams) => {
+      if (!selectedIds.size) return;
+
+      const now = Date.now();
+      let changed = 0;
+      const next = data.map((item) => {
+        if (!selectedIds.has(item.id)) return item;
+        const updated = updateLeakCalculationParams(
+          item,
+          projectVars,
+          calculationParams,
+          { user: historyUser, now },
+        );
+        if (updated !== item) changed += 1;
+        return updated;
+      });
+
+      if (changed === 0) {
+        notify(
+          "info",
+          lang === "ru"
+            ? "Выбранные параметры уже применены"
+            : "Selected parameters are already applied",
+        );
+        clearSelection();
+        return true;
+      }
+
+      try {
+        await setData(next);
+        hapticSuccess();
+        notify(
+          "success",
+          lang === "ru"
+            ? `Параметры и расчёты обновлены: ${changed}`
+            : `Parameters and calculations updated: ${changed}`,
+        );
+        clearSelection();
+        return true;
+      } catch (error) {
+        notify(
+          "error",
+          lang === "ru"
+            ? `Не удалось обновить параметры: ${error.message}`
+            : `Failed to update parameters: ${error.message}`,
+        );
+        return false;
+      }
+    },
+    [
+      clearSelection,
+      data,
+      historyUser,
+      lang,
+      notify,
+      projectVars,
+      selectedIds,
+      setData,
+    ],
+  );
 
   const handleBulkStatusChange = useCallback(
     async (status) => {
@@ -264,6 +338,8 @@ export function useBulkActions({
     deselectId,
     toggleSelected,
     selectDisplayed,
+    bulkCalculationVars,
+    handleBulkCalculationSave,
     resolveQueue,
     resolveTotal,
     repairQueue,

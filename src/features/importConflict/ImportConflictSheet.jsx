@@ -10,6 +10,17 @@ function pluralRecords(count, lang) {
   return "записей";
 }
 
+function getChangedFieldLabel(key, lang, t) {
+  const explicit = {
+    monitoringRecords:
+      lang === "ru" ? "История мониторинга" : "Monitoring history",
+    history: lang === "ru" ? "История изменений" : "Change history",
+  };
+  return (
+    explicit[key] ?? t(`addLeak.fields.${key}.label`, { defaultValue: key })
+  );
+}
+
 export default function ImportConflictSheet({
   open,
   projectName,
@@ -23,7 +34,7 @@ export default function ImportConflictSheet({
   onCopy,
   onCancel,
 }) {
-  const { lang } = useLanguage();
+  const { lang, t } = useLanguage();
   const source = sourceLabel ?? (lang === "ru" ? "в архиве" : "in archive");
   const photos =
     photoLabel ?? (lang === "ru" ? "Фото архива" : "Archive photos");
@@ -90,7 +101,9 @@ export default function ImportConflictSheet({
                 </div>
               )}
               <div className={s.previewItem}>
-                <span>{lang === "ru" ? "Поля" : "Fields"}</span>
+                <span>
+                  {lang === "ru" ? "Изменённые поля" : "Changed fields"}
+                </span>
                 <strong>{mergePreview.changedFields ?? 0}</strong>
               </div>
             </div>
@@ -104,7 +117,7 @@ export default function ImportConflictSheet({
                 {Object.entries(mergePreview.changedFieldBreakdown ?? {}).map(
                   ([key, count]) => (
                     <span key={`field-${key}`}>
-                      {key}: {count}
+                      {getChangedFieldLabel(key, lang, t)}: {count}
                     </span>
                   ),
                 )}

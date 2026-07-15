@@ -187,7 +187,9 @@ export default function AddLeak({
 
         /* Save photo */
         let photoPath = null;
-        const rawPhoto = row.photo?.raw ?? dataUrlToBlob(row.photo?.src);
+        const rawPhoto =
+          row.photo?.raw ??
+          (row.photo?.src ? dataUrlToBlob(row.photo.src) : null);
         if (rawPhoto) {
           if (!photoReadyRef.current) {
             const ready = await waitForPhotoReady();

@@ -3,6 +3,7 @@ import { VAR_DEFAULTS } from "@/data/variables";
 import {
   buildLeakCalculationParams,
   calculateLeakWithSnapshot,
+  updateLeakCalculationParams,
 } from "./calculationParams";
 
 describe("calculationParams", () => {
@@ -50,5 +51,44 @@ describe("calculationParams", () => {
     });
 
     expect(recalculated.calculationParams.gasPercentage).toBe(70);
+  });
+
+  it("updates a leak with shared parameters and records the bulk recalculation", () => {
+    const leak = calculateLeakWithSnapshot(
+      {
+        id: "leak-1",
+        leak_speed: 10,
+        pressure: 1,
+        temperature: 20,
+        history: [],
+      },
+      VAR_DEFAULTS,
+    );
+    const nextParams = {
+      ...leak.calculationParams,
+      gasPercentage: 75,
+      percentage_gas_to_flare: 20,
+      percentage_gas_to_utilization: 80,
+    };
+
+    const updated = updateLeakCalculationParams(
+      leak,
+      VAR_DEFAULTS,
+      nextParams,
+      { user: "Inspector", now: 1_784_104_200_000 },
+    );
+
+    expect(updated.calculationParams).toMatchObject(nextParams);
+    expect(updated.updatedAt).toBe(1_784_104_200_000);
+    expect(updated.history.at(-1)).toMatchObject({
+      action: "edited",
+      user: "Inspector",
+    });
+    expect(updated.history.at(-1).changes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "gasPercentage", to: 75 }),
+        expect.objectContaining({ key: "percentage_gas_to_flare", to: 20 }),
+      ]),
+    );
   });
 });

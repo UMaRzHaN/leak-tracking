@@ -13,6 +13,7 @@ import {
 } from "@/utils/monitoringRound";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
+import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import {
   changeLeakStatus,
   collectLeakPhotoPaths,
@@ -73,6 +74,9 @@ export default function Monitoring({
   const { lang } = useLanguage();
   const { activeProject } = useProjectData();
   const { vars } = useProjectVars(activeProject?.id ?? null);
+  const { monitoringPhotoRequired: photoRequired } = usePhotoRequirements(
+    activeProject?.id ?? null,
+  );
   const { deletePhoto, savePhoto } = usePhotoStorage();
   const listRef = useRef(null);
   const profileName = userProfile?.name?.trim() ?? "";
@@ -92,6 +96,7 @@ export default function Monitoring({
   const [monitorQueueIds, setMonitorQueueIds] = useState([]);
   const [monitorQueueTotal, setMonitorQueueTotal] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [roundConfirmOpen, setRoundConfirmOpen] = useState(false);
   const [pendingRoundLeakId, setPendingRoundLeakId] = useState(null);
   const [repeatConfirmLeak, setRepeatConfirmLeak] = useState(null);
@@ -254,12 +259,14 @@ export default function Monitoring({
             comment: "Комментарий",
             commentPlaceholder: "Дополнительные сведения по проверке",
             materials: "МТР (материалы и оборудование)",
-            materialsPlaceholder: "Материалы, оборудование, выполненные работы",
+            materialsPlaceholder: "Материалы и оборудование",
             photo: "Фото мониторинга",
             check: "Проверить",
             leakNumber: "№",
             close: "Закрыть",
             save: "Сохранить",
+            saving: "Сохранение…",
+            saveFailed: "Не удалось сохранить результат мониторинга",
             required: "Заполните имя пользователя в профиле",
             photoRequired: "Добавьте фото мониторинга",
             startRequired: "Сначала начните обход мониторинга",
@@ -290,12 +297,14 @@ export default function Monitoring({
             comment: "Comment",
             commentPlaceholder: "Additional check details",
             materials: "Materials and equipment",
-            materialsPlaceholder: "Materials, equipment, completed work",
+            materialsPlaceholder: "Materials and equipment",
             photo: "Monitoring photo",
             check: "Check",
             leakNumber: "№",
             close: "Close",
             save: "Save",
+            saving: "Saving…",
+            saveFailed: "Failed to save monitoring result",
             required: "Fill in the user name in profile",
             photoRequired: "Add a monitoring photo",
             startRequired: "Start a monitoring round first",
@@ -402,6 +411,7 @@ export default function Monitoring({
   };
 
   const saveRecord = async (leak) => {
+    if (isSaving) return;
     setSubmitted(true);
 
     if (!hasActiveMonitoringRound) {
@@ -422,7 +432,7 @@ export default function Monitoring({
       photo: null,
     };
 
-    if (!draft.photo?.raw) {
+    if (photoRequired && !draft.photo?.raw) {
       setNotification({ type: "error", message: texts.photoRequired });
       return;
     }
@@ -435,33 +445,65 @@ export default function Monitoring({
       return;
     }
 
-    const rawPhoto = draft.photo.raw ?? dataUrlToBlob(draft.photo.src);
-    const photoPath = await savePhoto(
-      rawPhoto,
-      `${leak.id}_monitoring_${Date.now()}`,
-      getMonitoringPhotoPathsToKeep(leak),
-    );
-    await finishMonitoringSave({ leak, draft, photoPath });
+    setIsSaving(true);
+    try {
+      const rawPhoto =
+        draft.photo?.raw ??
+        (draft.photo?.src ? dataUrlToBlob(draft.photo.src) : null);
+      const photoPath = rawPhoto
+        ? await savePhoto(
+            rawPhoto,
+            `${leak.id}_monitoring_${Date.now()}`,
+            getMonitoringPhotoPathsToKeep(leak),
+            { cleanupOldVersions: false },
+          )
+        : null;
+      await finishMonitoringSave({ leak, draft, photoPath });
+    } catch (error) {
+      setNotification({
+        type: "error",
+        message: `${texts.saveFailed}: ${error.message}`,
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleMonitoringReopenConfirm = async (reopenDraft) => {
+    if (isSaving) return;
     const pending = pendingMonitoringReopen;
     setPendingMonitoringReopen(null);
     if (!pending) return;
 
-    const rawPhoto =
-      pending.draft.photo.raw ?? dataUrlToBlob(pending.draft.photo.src);
-    const photoPath = await savePhoto(
-      rawPhoto,
-      `${pending.leak.id}_monitoring_${Date.now()}`,
-      getMonitoringPhotoPathsToKeep(pending.leak),
-    );
-    await finishMonitoringSave({
-      leak: pending.leak,
-      draft: pending.draft,
-      photoPath,
-      reopenDraft,
-    });
+    setIsSaving(true);
+    try {
+      const rawPhoto =
+        pending.draft.photo?.raw ??
+        (pending.draft.photo?.src
+          ? dataUrlToBlob(pending.draft.photo.src)
+          : null);
+      const photoPath = rawPhoto
+        ? await savePhoto(
+            rawPhoto,
+            `${pending.leak.id}_monitoring_${Date.now()}`,
+            getMonitoringPhotoPathsToKeep(pending.leak),
+            { cleanupOldVersions: false },
+          )
+        : null;
+      await finishMonitoringSave({
+        leak: pending.leak,
+        draft: pending.draft,
+        photoPath,
+        reopenDraft,
+      });
+    } catch (error) {
+      setNotification({
+        type: "error",
+        message: `${texts.saveFailed}: ${error.message}`,
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const saveLeak = async (nextLeak) => {
@@ -630,6 +672,15 @@ export default function Monitoring({
         }
         confirmLabel={lang === "ru" ? "Проверить повторно" : "Check again"}
         cancelLabel={lang === "ru" ? "Отмена" : "Cancel"}
+        secondaryActionLabel={
+          lang === "ru" ? "Начать новый обход" : "Start a new round"
+        }
+        onSecondaryAction={() => {
+          const leak = repeatConfirmLeak;
+          setRepeatConfirmLeak(null);
+          setPendingRoundLeakId(leak?.id ?? null);
+          setRoundConfirmOpen(true);
+        }}
         onConfirm={() => {
           const leak = repeatConfirmLeak;
           setRepeatConfirmLeak(null);
@@ -743,6 +794,8 @@ export default function Monitoring({
                 : null
             }
             submitted={submitted}
+            saving={isSaving}
+            photoRequired={photoRequired}
             onChange={(patch) => updateDraft(monitorLeak.id, patch)}
             onSave={() => saveRecord(monitorLeak)}
             onClose={() => {

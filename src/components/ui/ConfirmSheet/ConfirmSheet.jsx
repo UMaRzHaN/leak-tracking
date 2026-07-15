@@ -6,6 +6,8 @@ export default function ConfirmSheet({
   description,
   onConfirm,
   onCancel,
+  secondaryActionLabel,
+  onSecondaryAction,
   confirmLabel = "Подтвердить",
   cancelLabel = "Отмена",
 }) {
@@ -19,13 +21,24 @@ export default function ConfirmSheet({
         <h3 className={s.title}>{title}</h3>
         <p className={s.description}>{description}</p>
 
-        <div className={s.actions}>
-          <button className={s.cancel} onClick={onCancel}>
+        <div
+          className={`${s.actions} ${secondaryActionLabel ? s.actionsWithSecondary : ""}`}
+        >
+          <button type="button" className={s.cancel} onClick={onCancel}>
             {cancelLabel}
           </button>
-          <button className={s.confirm} onClick={onConfirm}>
+          <button type="button" className={s.confirm} onClick={onConfirm}>
             {confirmLabel}
           </button>
+          {secondaryActionLabel && (
+            <button
+              type="button"
+              className={s.secondaryAction}
+              onClick={onSecondaryAction}
+            >
+              {secondaryActionLabel}
+            </button>
+          )}
         </div>
       </div>
     </div>

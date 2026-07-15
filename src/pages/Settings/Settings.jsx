@@ -4,6 +4,7 @@ import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
 import { useHiddenFields } from "@/app/project/hooks/useHiddenFields";
 import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
+import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import { getMapCacheInfo, clearMapCache } from "@/services/maps/tileCache";
 import { saveMonitoringRound } from "@/utils/monitoringRound";
 import PageHeader from "@/components/layout/PageHeader/PageHeader";
@@ -18,6 +19,7 @@ import DangerZoneSection from "./components/DangerZoneSection";
 import EmissionsSummarySection from "./components/EmissionsSummarySection";
 import FieldVisibilitySection from "./components/FieldVisibilitySection";
 import MapCacheSection from "./components/MapCacheSection";
+import PhotoRequirementsSection from "./components/PhotoRequirementsSection";
 import ProjectIntegritySection from "./components/ProjectIntegritySection";
 import ProjectList from "./components/ProjectList";
 import { useBackupActions } from "./hooks/useBackupActions";
@@ -88,6 +90,12 @@ export default function Settings({
   const { monitoringExportMode, setMonitoringExportMode } = useExcelExportMode(
     activeProject?.id ?? null,
   );
+  const {
+    leakPhotoRequired,
+    monitoringPhotoRequired,
+    setLeakPhotoRequired,
+    setMonitoringPhotoRequired,
+  } = usePhotoRequirements(activeProject?.id ?? null);
 
   const {
     importZipRef,
@@ -128,6 +136,8 @@ export default function Settings({
         await import("@/services/projectIntegrityService");
       const report = await analyzeProjectIntegrity(data, {
         idbGetPhoto,
+        leakPhotoRequired,
+        monitoringPhotoRequired,
       });
       setIntegrityReport(report);
       notify(
@@ -148,7 +158,14 @@ export default function Settings({
     } finally {
       setCheckingIntegrity(false);
     }
-  }, [data, idbGetPhoto, lang, notify]);
+  }, [
+    data,
+    idbGetPhoto,
+    lang,
+    leakPhotoRequired,
+    monitoringPhotoRequired,
+    notify,
+  ]);
 
   const prepareExcelLeaks = useCallback(
     (leaks, { mode = "append" } = {}) => {
@@ -586,6 +603,32 @@ export default function Settings({
           onExportModeChange={(nextMode) => {
             setMonitoringExportMode(nextMode);
             notify("success", localeTexts.notifications.excelExportModeSaved);
+          }}
+        />
+
+        <PhotoRequirementsSection
+          activeProject={activeProject}
+          lang={lang}
+          leakPhotoRequired={leakPhotoRequired}
+          monitoringPhotoRequired={monitoringPhotoRequired}
+          onLeakPhotoRequiredChange={(required) => {
+            setLeakPhotoRequired(required);
+            notify(
+              "success",
+              lang === "ru"
+                ? "Требование к фото утечки сохранено"
+                : "Leak photo requirement saved",
+            );
+          }}
+          onMonitoringPhotoRequiredChange={(required) => {
+            setMonitoringPhotoRequired(required);
+            setIntegrityReport(null);
+            notify(
+              "success",
+              lang === "ru"
+                ? "Требование к фото мониторинга сохранено"
+                : "Monitoring photo requirement saved",
+            );
           }}
         />
 

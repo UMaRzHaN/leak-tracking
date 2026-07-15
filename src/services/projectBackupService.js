@@ -239,6 +239,7 @@ function mergePhotoFields(existingLeak, incomingLeak) {
 const MERGE_IGNORED_FIELD_KEYS = new Set([
   "id",
   "index",
+  "created_at",
   "createdAt",
   "updatedAt",
   "importedAt",
@@ -393,6 +394,7 @@ function mergeRecordArray(
   existingRecords = [],
   incomingRecords = [],
   arrayKey,
+  options = {},
 ) {
   const merged = [...existingRecords];
   const indexByIdentity = new Map();
@@ -403,7 +405,25 @@ function mergeRecordArray(
 
   incomingRecords.forEach((record, index) => {
     const identity = getRecordMergeIdentity(record, index, arrayKey);
-    const existingIndex = indexByIdentity.get(identity);
+    let existingIndex = indexByIdentity.get(identity);
+
+    // The exported monitoring sheet intentionally shows a calendar date.
+    // Match that row back to the original record even though its exact time,
+    // internal id and round id are not represented in Excel.
+    if (
+      existingIndex == null &&
+      options.source === "excel" &&
+      arrayKey === "monitoringRecords"
+    ) {
+      existingIndex = merged.findIndex(
+        (current) =>
+          Number(current?.roundNumber) === Number(record?.roundNumber) &&
+          comparableExcelDate(current?.date) ===
+            comparableExcelDate(record?.date) &&
+          String(current?.result ?? "") === String(record?.result ?? ""),
+      );
+      if (existingIndex < 0) existingIndex = undefined;
+    }
 
     if (existingIndex == null) {
       indexByIdentity.set(identity, merged.length);
@@ -454,6 +474,7 @@ function mergeFreshLeakFields(existingLeak, incomingLeak, options = {}) {
         Array.isArray(existingLeak?.[key]) ? existingLeak[key] : [],
         Array.isArray(value) ? value : [],
         key,
+        options,
       );
       continue;
     }
@@ -499,7 +520,7 @@ function mergeFreshLeakFields(existingLeak, incomingLeak, options = {}) {
 }
 
 function getChangedFieldKeys(existingLeak, incomingLeak, options = {}) {
-  const merged = mergeFreshLeakFields(existingLeak, incomingLeak);
+  const merged = mergeFreshLeakFields(existingLeak, incomingLeak, options);
   const keys = new Set([
     ...Object.keys(existingLeak ?? {}),
     ...Object.keys(incomingLeak ?? {}),

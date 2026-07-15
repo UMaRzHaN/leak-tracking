@@ -22,6 +22,21 @@ function getLeakLabel(leak) {
   return String(leak?.leak_id ?? leak?.id ?? "?");
 }
 
+function getLatestMonitoringResult(leak) {
+  const records = Array.isArray(leak?.monitoringRecords)
+    ? leak.monitoringRecords
+    : [];
+  if (!records.length) return null;
+
+  return records.reduce((latest, record) => {
+    const latestTime = Date.parse(latest?.date ?? "");
+    const recordTime = Date.parse(record?.date ?? "");
+    if (!Number.isFinite(recordTime)) return latest ?? record;
+    if (!Number.isFinite(latestTime) || recordTime >= latestTime) return record;
+    return latest;
+  }, null)?.result;
+}
+
 async function photoExists(path, idbGetPhoto) {
   if (!path) return false;
   if (path.startsWith("data:image/")) return true;
@@ -36,7 +51,11 @@ async function photoExists(path, idbGetPhoto) {
 
 export async function analyzeProjectIntegrity(
   leaks = [],
-  { idbGetPhoto } = {},
+  {
+    idbGetPhoto,
+    leakPhotoRequired = true,
+    monitoringPhotoRequired = true,
+  } = {},
 ) {
   const missingPhoto = [];
   const missingRepairPhoto = [];
@@ -49,6 +68,11 @@ export async function analyzeProjectIntegrity(
 
   for (const leak of leaks) {
     const label = getLeakLabel(leak);
+    const latestMonitoringResult = getLatestMonitoringResult(leak);
+    const optionalMonitoringRepairPhoto =
+      !monitoringPhotoRequired && latestMonitoringResult === "needs_recheck";
+    const optionalMonitoringAfterPhoto =
+      !monitoringPhotoRequired && latestMonitoringResult === "resolved";
 
     if (!hasCoords(leak)) missingCoords.push(label);
 
@@ -61,19 +85,27 @@ export async function analyzeProjectIntegrity(
       }
     }
 
-    if (!leak?.photo) {
+    if (leakPhotoRequired && !leak?.photo) {
       missingPhoto.push(label);
     }
 
-    if (leak?.status === "in_progress" && !leak?.photo_repair) {
+    if (
+      leak?.status === "in_progress" &&
+      !leak?.photo_repair &&
+      !optionalMonitoringRepairPhoto
+    ) {
       missingRepairPhoto.push(label);
     }
 
-    if (leak?.status === "resolved" && !leak?.photo_after) {
+    if (
+      leak?.status === "resolved" &&
+      !leak?.photo_after &&
+      !optionalMonitoringAfterPhoto
+    ) {
       missingAfterPhoto.push(label);
     }
 
-    if (Array.isArray(leak?.monitoringRecords)) {
+    if (monitoringPhotoRequired && Array.isArray(leak?.monitoringRecords)) {
       leak.monitoringRecords.forEach((record, index) => {
         if (!record?.photo) {
           missingMonitoringPhoto.push(`${label}:monitoringRecords[${index}]`);
