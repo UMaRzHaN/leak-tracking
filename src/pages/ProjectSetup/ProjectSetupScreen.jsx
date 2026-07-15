@@ -196,8 +196,11 @@ export default function ProjectSetupScreen({
 
         {/* Название проекта */}
         <div className={s.field}>
-          <label className={s.label}>{localeTexts.projectName}</label>
+          <label className={s.label} htmlFor="project-name">
+            {localeTexts.projectName}
+          </label>
           <input
+            id="project-name"
             className={s.input}
             type="text"
             placeholder={localeTexts.projectExample}
@@ -217,16 +220,21 @@ export default function ProjectSetupScreen({
 
         {/* Тип проекта */}
         <div className={s.field}>
-          <label className={s.label}>
+          <span className={s.label} id="project-type-label">
             {localeTexts.projectType} <span className={s.required}>*</span>
-          </label>
-          <div className={s.typeGrid}>
+          </span>
+          <div
+            className={s.typeGrid}
+            role="group"
+            aria-labelledby="project-type-label"
+          >
             {Object.entries(PROJECT_META).map(([id, meta]) => {
               const localizedType = localeTexts.projectTypes[id] ?? meta;
               return (
                 <button
                   key={id}
                   type="button"
+                  aria-pressed={type === id}
                   className={`${s.typeBtn} ${type === id ? s.selected : ""}`}
                   onClick={() => {
                     setType(id);

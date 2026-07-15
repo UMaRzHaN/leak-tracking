@@ -44,6 +44,7 @@ export default function Footer({ page, setPage, openCount = 0 }) {
         item.fab ? (
           <button
             key="add"
+            type="button"
             className={s.fab}
             onClick={() => setPage("add")}
             aria-label={t("footer.addLeak")}
@@ -53,8 +54,11 @@ export default function Footer({ page, setPage, openCount = 0 }) {
         ) : (
           <button
             key={item.key || "home"}
+            type="button"
             className={`${s.item} ${page === item.key ? s.active : ""}`}
             onClick={() => setPage(item.key)}
+            aria-current={page === item.key ? "page" : undefined}
+            aria-label={item.label}
           >
             <span className={s.iconWrap}>
               <span className={s.icon}>{item.icon}</span>
