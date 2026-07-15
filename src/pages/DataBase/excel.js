@@ -178,6 +178,7 @@ function getColumnWidth(header, key, rows, { isPhoto = false } = {}) {
     video_id: 12,
     status: 16,
     date: 14,
+    time: 12,
     resolvedAt: 14,
     pressure: 12,
     temperature: 14,
@@ -241,6 +242,44 @@ function normalizeExcelCellValue(value) {
   }
 
   return value ?? "";
+}
+
+function parseTimestamp(value) {
+  if (value instanceof Date) {
+    return Number.isFinite(value.getTime()) ? value : null;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const date = new Date(value);
+    return Number.isFinite(date.getTime()) ? date : null;
+  }
+
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  const numeric = Number(text);
+  const date = new Date(Number.isFinite(numeric) ? numeric : text);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function formatLeakTime(leak, row) {
+  if (row?.time != null && String(row.time).trim() !== "") {
+    return String(row.time).trim();
+  }
+
+  const date = [
+    leak?.createdAt,
+    leak?.created_at,
+    row?.createdAt,
+    row?.created_at,
+    leak?.date,
+    row?.date,
+  ]
+    .map(parseTimestamp)
+    .find(Boolean);
+  if (!date) return "";
+
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
 function styleHeaderRow(sheet, fillColor) {
@@ -550,6 +589,7 @@ async function buildMonitoringSheet(
   ).map((row) => ({
     ...row,
     date: formatMonitoringDate(row.dateRaw, lang),
+    time: formatLeakTime({ createdAt: row.dateRaw }, null),
     result: getMonitoringResultLabel(row.result, lang),
   }));
 
@@ -565,6 +605,7 @@ async function buildMonitoringSheet(
           "Бирка",
           "Обход",
           "Дата мониторинга",
+          "Время мониторинга",
           "Кто мониторил",
           "Результат",
           "МТР",
@@ -575,6 +616,7 @@ async function buildMonitoringSheet(
           "Tag",
           "Round",
           "Monitoring date",
+          "Monitoring time",
           "Monitored by",
           "Result",
           "Materials",
@@ -585,6 +627,7 @@ async function buildMonitoringSheet(
     "leak_id",
     "roundNumber",
     "date",
+    "time",
     "monitoredBy",
     "result",
     "materials_equipment",
@@ -704,7 +747,10 @@ export async function exportToExcelFile(
   paired.sort((left, right) => (left.leak.id ?? 0) - (right.leak.id ?? 0));
 
   const orderedLeaks = paired.map((pair) => pair.leak);
-  const orderedRows = paired.map((pair) => pair.row);
+  const orderedRows = paired.map(({ leak, row }) => ({
+    ...row,
+    time: formatLeakTime(leak, row),
+  }));
   const monitoringExportMode = normalizeExcelMonitoringExportMode(
     options.monitoringExportMode,
   );

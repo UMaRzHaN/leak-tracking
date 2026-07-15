@@ -17,6 +17,7 @@ const TECHNICAL_KEYS = [
   "createdAt",
   "updatedAt",
   "date",
+  "time",
   "status",
   "leak_id",
   "video_id",
@@ -74,6 +75,7 @@ const TECHNICAL_KEYS = [
 const HEADER_ALIASES = {
   index: ["№", "номер", "n", "no"],
   date: ["дата", "дата обнаружения", "date", "detected date"],
+  time: ["время", "время обнаружения", "time", "detected time"],
   leak_id: [
     "id утечки",
     "ид утечки",
@@ -170,6 +172,7 @@ const MONITORING_HEADER_ALIASES = {
   leak_id: ["бирка", "tag", "leak id", "leak_id", "id утечки"],
   roundNumber: ["обход", "round", "round number"],
   date: ["дата мониторинга", "monitoring date", "date"],
+  time: ["время мониторинга", "monitoring time", "время", "time"],
   monitoredBy: ["кто мониторил", "monitored by", "inspector"],
   result: ["результат", "result"],
   materials_equipment: ["мтр", "materials", "материалы"],
@@ -319,6 +322,55 @@ function formatDate(date) {
   return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()}`;
 }
 
+function parseTimeValue(value) {
+  if (value == null || value === "") return null;
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return {
+      hours: value.getHours(),
+      minutes: value.getMinutes(),
+      seconds: value.getSeconds(),
+    };
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const fraction = ((value % 1) + 1) % 1;
+    const totalSeconds = Math.round(fraction * 24 * 60 * 60) % (24 * 60 * 60);
+    return {
+      hours: Math.floor(totalSeconds / 3600),
+      minutes: Math.floor((totalSeconds % 3600) / 60),
+      seconds: totalSeconds % 60,
+    };
+  }
+
+  const text = String(value).trim();
+  const match = text.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (!match) return null;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  const seconds = Number(match[3] ?? 0);
+  if (hours > 23 || minutes > 59 || seconds > 59) return null;
+  return { hours, minutes, seconds };
+}
+
+function formatTime(value) {
+  const time = parseTimeValue(value);
+  if (!time) return "";
+  const pad = (part) => String(part).padStart(2, "0");
+  return `${pad(time.hours)}:${pad(time.minutes)}:${pad(time.seconds)}`;
+}
+
+function combineDateAndTime(date, timeValue) {
+  if (!date) return null;
+  const time = parseTimeValue(timeValue);
+  if (!time) return date;
+
+  const combined = new Date(date.getTime());
+  combined.setHours(time.hours, time.minutes, time.seconds, 0);
+  return combined;
+}
+
 function parseNumberValue(value) {
   if (value == null || value === "") return null;
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
@@ -438,6 +490,7 @@ function normalizeCellValue(key, value) {
     const date = parseDateValue(value);
     return date ? date.getTime() : parseNumberValue(value);
   }
+  if (key === "time") return formatTime(value);
   if (PHOTO_KEYS.has(key)) {
     const text = String(value ?? "").trim();
     if (text.startsWith("photos/")) return `zip:${text}`;
@@ -468,14 +521,17 @@ function normalizeImportedLeak(row, rowNumber, sequence) {
 
   const now = Date.now();
   const parsedDate = parseDateValue(row.date);
+  const parsedDateTime = combineDateAndTime(parsedDate, row.time);
+  const persistedRow = { ...row };
+  delete persistedRow.time;
   const createdAt =
-    row.createdAt ?? parsedDate?.getTime() ?? now + rowNumber + sequence;
+    row.createdAt ?? parsedDateTime?.getTime() ?? now + rowNumber + sequence;
   const updatedAt =
     row.updatedAt ?? row.resolvedAt ?? row.repairAt ?? createdAt;
   const leakSpeed = parseNumberValue(row.leak_speed);
   const leakId = String(row.leak_id || row.index || `IMP-${rowNumber}`).trim();
   return {
-    ...row,
+    ...persistedRow,
     id: row.id ?? createdAt + sequence,
     created_at: String(row.created_at || createdAt),
     createdAt,
@@ -564,6 +620,7 @@ function normalizeMonitoringCellValue(key, value) {
     const date = parseDateValue(value);
     return date ? date.toISOString() : "";
   }
+  if (key === "time") return formatTime(value);
   if (key === "result") return normalizeMonitoringResult(value);
   if (key === "photo") {
     const text = String(value ?? "").trim();
@@ -602,11 +659,17 @@ function parseMonitoringRecords(sheet) {
     const leakId = String(raw.leak_id ?? "").trim();
     if (!leakId || !raw.date) continue;
 
+    const monitoringDate = combineDateAndTime(
+      parseDateValue(raw.date),
+      raw.time,
+    );
+    if (!monitoringDate) continue;
+
     const roundNumber =
       Number(raw.roundNumber) > 0 ? Number(raw.roundNumber) : 1;
     const record = {
       id: `excel-${leakId}-round-${roundNumber}-${rowNumber}`,
-      date: raw.date,
+      date: monitoringDate.toISOString(),
       roundId: `excel-round-${roundNumber}`,
       roundNumber,
       monitoredBy: raw.monitoredBy || "",

@@ -244,6 +244,7 @@ const MERGE_IGNORED_FIELD_KEYS = new Set([
   "updatedAt",
   "importedAt",
   "importedFromExcel",
+  "time",
 ]);
 
 const MERGE_ARRAY_FIELD_KEYS = new Set(["history", "monitoringRecords"]);

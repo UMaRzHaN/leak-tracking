@@ -1,5 +1,10 @@
 const REQUIRED_EXCEL_FIELDS = [
   {
+    key: "time",
+    header: "Время",
+    after: "date",
+  },
+  {
     key: "detectedBy",
     header: "Кто зафиксировал",
     after: "video_id",
@@ -34,6 +39,7 @@ const REQUIRED_EXCEL_FIELDS = [
 const HARMONIZED_EXCEL_ORDER = [
   "index",
   "date",
+  "time",
   "subdivision",
   "deposit",
   "field",

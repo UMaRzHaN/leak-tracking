@@ -248,6 +248,28 @@ describe("excel export helpers", () => {
     expect(sheet.rows[1].values).toEqual([1, "", ""]);
   });
 
+  it("exports the leak creation time in a separate column", async () => {
+    await exportToExcelFile(
+      [
+        {
+          id: 1,
+          leak_id: 1,
+          createdAt: new Date(2026, 6, 14, 13, 45, 12),
+        },
+      ],
+      [{ date: "14.07.2026" }],
+      ["Date", "Time"],
+      ["date", "time"],
+      "report",
+      null,
+      null,
+      "en",
+    );
+
+    const sheet = mocks.workbookInstances[0].sheets[0];
+    expect(sheet.rows[1].values).toEqual(["14.07.2026", "13:45:12"]);
+  });
+
   it("exports every repeated monitoring record with its own photo link", async () => {
     mocks.getPhotoSrcMock.mockResolvedValue("data:image/png;base64,ZmFrZQ==");
 
@@ -287,11 +309,19 @@ describe("excel export helpers", () => {
 
     const monitoringSheet = mocks.workbookInstances[0].sheets[1];
     expect(monitoringSheet.rows).toHaveLength(3);
-    expect(monitoringSheet.getRow(2).getCell(9).value).toEqual({
+    expect(monitoringSheet.rows[0].values).toContain("Monitoring time");
+    expect(monitoringSheet.rows[1].values[4]).toBe(
+      new Date("2026-07-14T10:00:00.000Z").toLocaleTimeString("en-GB", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+    );
+    expect(monitoringSheet.getRow(2).getCell(10).value).toEqual({
       text: "Open photo",
       hyperlink: "photos/7/monitoring/7_monitoring_1.png",
     });
-    expect(monitoringSheet.getRow(3).getCell(9).value).toEqual({
+    expect(monitoringSheet.getRow(3).getCell(10).value).toEqual({
       text: "Open photo",
       hyperlink: "photos/7/monitoring/7_monitoring_2.png",
     });
@@ -389,7 +419,7 @@ describe("excel export helpers", () => {
 
     const monitoringSheet = mocks.workbookInstances[0].sheets[1];
     expect(monitoringSheet.rows).toHaveLength(2);
-    expect(monitoringSheet.getRow(2).getCell(9).value).toEqual({
+    expect(monitoringSheet.getRow(2).getCell(10).value).toEqual({
       text: "Open photo",
       hyperlink: "photos/7/monitoring/7_monitoring_2.png",
     });

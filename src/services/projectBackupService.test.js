@@ -631,6 +631,36 @@ describe("mergeLeaksByFreshness", () => {
     expect(result).toMatchObject({ updated: 0, skipped: 1, changedFields: 0 });
   });
 
+  it("ignores the technical Excel time column during re-import", () => {
+    const result = previewMergeLeaks(
+      [
+        {
+          id: "same-leak",
+          leak_id: 7,
+          status: "open",
+          createdAt: new Date(2026, 6, 15, 16, 27, 43).getTime(),
+        },
+      ],
+      [
+        {
+          id: "excel-generated-id",
+          leak_id: 7,
+          status: "open",
+          createdAt: new Date(2026, 6, 15, 16, 27, 43).getTime(),
+          time: "16:27:43",
+        },
+      ],
+      { source: "excel" },
+    );
+
+    expect(result).toMatchObject({
+      updated: 0,
+      skipped: 1,
+      changedFields: 0,
+      changedFieldBreakdown: {},
+    });
+  });
+
   it("matches an exported monitoring row after Excel drops its exact time", () => {
     const local = {
       id: "same-leak",

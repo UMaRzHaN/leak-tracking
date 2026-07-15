@@ -76,6 +76,31 @@ describe("parseExcelLeaks", () => {
     ]);
   });
 
+  it("combines separate date and time columns into the creation timestamp", async () => {
+    const blob = await makeWorkbookBlob([
+      ["Бирка", "Дата", "Время", "Статус"],
+      ["T-14", "14.07.2026", "13:45:12", "Открыта"],
+    ]);
+
+    const result = await parseExcelLeaks(blob, { projectType: "upstream" });
+    const createdAt = new Date(result.leaks[0].createdAt);
+
+    expect(result.leaks[0]).toMatchObject({
+      leak_id: "T-14",
+      date: "14.07.2026",
+    });
+    expect(result.leaks[0]).not.toHaveProperty("time");
+    expect([
+      createdAt.getFullYear(),
+      createdAt.getMonth(),
+      createdAt.getDate(),
+      createdAt.getHours(),
+      createdAt.getMinutes(),
+      createdAt.getSeconds(),
+    ]).toEqual([2026, 6, 14, 13, 45, 12]);
+    expect(result.leaks[0].history[0].date).toBe(createdAt.toISOString());
+  });
+
   it("restores app history records from the History sheet", async () => {
     const { default: ExcelJS } = await import("exceljs");
     const workbook = new ExcelJS.Workbook();
@@ -147,6 +172,7 @@ describe("parseExcelLeaks", () => {
       "Бирка",
       "Обход",
       "Дата мониторинга",
+      "Время мониторинга",
       "Кто мониторил",
       "Результат",
       "МТР",
@@ -157,6 +183,7 @@ describe("parseExcelLeaks", () => {
       "TAG-7",
       4,
       "15.07.2026",
+      "16:27:43",
       "Алексей",
       "Утечка в ремонте",
       "Лента ФУМ",
@@ -183,6 +210,15 @@ describe("parseExcelLeaks", () => {
       materials_equipment: "Лента ФУМ",
       comment: "Проверка обхода 4",
     });
+    const monitoringDate = new Date(result.leaks[0].monitoringRecords[0].date);
+    expect([
+      monitoringDate.getFullYear(),
+      monitoringDate.getMonth(),
+      monitoringDate.getDate(),
+      monitoringDate.getHours(),
+      monitoringDate.getMinutes(),
+      monitoringDate.getSeconds(),
+    ]).toEqual([2026, 6, 15, 16, 27, 43]);
   });
 
   it("imports app Excel ZIP photos from worksheet hyperlinks", async () => {
