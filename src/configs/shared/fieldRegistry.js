@@ -26,5 +26,10 @@ export function createFieldSets(fields) {
     EDIT_FIELDS: all.filter((field) => field.editable),
     COPY_FIELDS: all.filter((field) => field.copyable),
     NUMBER_FIELDS: all.filter((field) => field.numeric),
+    VOICE_FIELDS: all.filter((field) => field.voice),
   };
+}
+
+export function getVoiceFieldKeys(fields) {
+  return fields.filter((field) => field.voice).map((field) => field.key);
 }

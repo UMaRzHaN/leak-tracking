@@ -1,4 +1,9 @@
-import { COPY_FIELDS, FIELDS, NUMBER_FIELDS } from "./data/fields";
+import {
+  COPY_FIELDS,
+  FIELDS,
+  NUMBER_FIELDS,
+  VOICE_FIELDS,
+} from "./data/fields";
 import { STEPS } from "./data/steps";
 import {
   SEARCH_FIELDS_HEAD,
@@ -6,7 +11,6 @@ import {
 } from "@/configs/shared/fields";
 import { withRequiredExcelColumns } from "@/configs/shared/excel";
 import {
-  cause,
   description,
   solutions,
   recommendations,
@@ -78,26 +82,7 @@ const DOWNSTREAM_CONFIG = Object.freeze({
   steps: { mode: "manual", steps: STEPS },
   voice: {
     input: "rawVoiceText",
-    outputFields: [
-      "district",
-      "locality",
-      "address",
-      "object",
-      "component",
-      "leak_id",
-      "video_id",
-      "leak_speed",
-      "pressure",
-      "temperature",
-      "leak_description",
-      "technological_solution",
-      "repair_recommendation",
-      "materials_equipment",
-      "note",
-      "actuator_type",
-      "connection_type",
-      "installation_type",
-    ],
+    outputFields: VOICE_FIELDS.map((field) => field.key),
     synonymsFields: [
       "repair_recommendation",
       "leak_description",
@@ -108,7 +93,6 @@ const DOWNSTREAM_CONFIG = Object.freeze({
     ],
   },
   semantic: {
-    leak_cause: cause,
     leak_description: description,
     technological_solution: solutions,
     repair_recommendation: recommendations,

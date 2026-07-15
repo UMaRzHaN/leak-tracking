@@ -34,12 +34,14 @@ export function useVoiceControl({ step = 1, steps = [], onCommand } = {}) {
       }
 
       const synonymsFields = projectConfig?.voice?.synonymsFields ?? [];
+      const outputFields = projectConfig?.voice?.outputFields ?? [];
       handleVoiceText(
         synonymsFields,
         text,
         setPendingVoiceData,
         project,
         dictationKey ?? null,
+        outputFields,
       );
     },
     [dictationKey, lang, onCommand, project, projectConfig],

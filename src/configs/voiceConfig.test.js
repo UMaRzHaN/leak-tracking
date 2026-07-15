@@ -23,6 +23,12 @@ describe("project voice configs", () => {
         expect(fieldKeys.has(key), `${projectType}:${key}`).toBe(true);
       }
 
+      expect(voice.outputFields, projectType).toEqual(
+        projectConfig.system.fields
+          .filter((field) => field.voice)
+          .map((field) => field.key),
+      );
+
       for (const key of voice.synonymsFields) {
         expect(fieldKeys.has(key), `${projectType}:${key}`).toBe(true);
         expect(voice.outputFields).toContain(key);

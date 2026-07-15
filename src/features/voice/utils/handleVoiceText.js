@@ -1,4 +1,8 @@
-import { normalizeBySynonyms, normalizeVoiceResult, normalizeSynonyms } from "./normalization";
+import {
+  normalizeBySynonyms,
+  normalizeVoiceResult,
+  normalizeSynonyms,
+} from "./normalization";
 import { normalizeNumberWords } from "./numbers";
 import { parseVoiceText } from "./parseVoiceText";
 import { fuzzyMatchOption } from "./matching";
@@ -13,10 +17,27 @@ import { objects, components } from "@/data/leak/fieldDictionary";
  * @param {string}   project      — project type ("upstream"|"midstream"|"downstream")
  * @param {string|null} dictationKey — key of textarea field in current step (for dictation mode)
  */
-export const handleVoiceText = (arr, text, setVoiceData, project, dictationKey = null) => {
+export const handleVoiceText = (
+  arr,
+  text,
+  setVoiceData,
+  project,
+  dictationKey = null,
+  allowedFields = [],
+) => {
   const normalizedText = normalizeNumberWords(text);
   const parsed = parseVoiceText(normalizedText);
-  const data = normalizeSynonyms(normalizeVoiceResult(parsed, project), arr);
+  const normalizedData = normalizeSynonyms(
+    normalizeVoiceResult(parsed, project),
+    arr,
+  );
+  const allowed = new Set(allowedFields);
+  const data =
+    allowed.size > 0
+      ? Object.fromEntries(
+          Object.entries(normalizedData).filter(([key]) => allowed.has(key)),
+        )
+      : normalizedData;
 
   // Dictation mode: no structured fields recognized → put raw text into textarea field
   if (dictationKey && Object.keys(data).length === 0) {
@@ -36,7 +57,8 @@ export const handleVoiceText = (arr, text, setVoiceData, project, dictationKey =
   ];
 
   for (const [field, synonymKey] of SYNONYM_FIELDS) {
-    if (data[field]) data[field] = normalizeBySynonyms(data[field], synonymKey).value;
+    if (data[field])
+      data[field] = normalizeBySynonyms(data[field], synonymKey).value;
   }
 
   // Fuzzy match object against objects dictionary

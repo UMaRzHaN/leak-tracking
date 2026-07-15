@@ -1,4 +1,9 @@
-import { COPY_FIELDS, FIELDS, NUMBER_FIELDS } from "./data/fields";
+import {
+  COPY_FIELDS,
+  FIELDS,
+  NUMBER_FIELDS,
+  VOICE_FIELDS,
+} from "./data/fields";
 import { STEPS } from "./data/steps";
 import {
   SEARCH_FIELDS_HEAD,
@@ -74,27 +79,7 @@ const MIDSTREAM_CONFIG = Object.freeze({
   steps: { mode: "manual", steps: STEPS },
   voice: {
     input: "rawVoiceText",
-    outputFields: [
-      "field",
-      "station",
-      "location",
-      "object",
-      "component",
-      "leak_id",
-      "video_id",
-      "leak_speed",
-      "pressure",
-      "temperature",
-      "leak_description",
-      "leak_cause",
-      "technological_solution",
-      "repair_recommendation",
-      "materials_equipment",
-      "note",
-      "actuator_type",
-      "connection_type",
-      "installation_type",
-    ],
+    outputFields: VOICE_FIELDS.map((field) => field.key),
     synonymsFields: [
       "leak_cause",
       "repair_recommendation",

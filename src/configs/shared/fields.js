@@ -2,7 +2,7 @@
  * Shared field definitions used across all project types (upstream / midstream / downstream).
  * Each group is a building block — project configs compose them into their FIELDS array.
  *
- * Property order convention: key, label, viewable, editable, copyable, numeric, multiline, coord
+ * Property order convention: key, label, viewable, editable, copyable, voice, numeric, multiline, coord
  */
 
 export const DATE_FIELD = {
@@ -18,6 +18,7 @@ export const IDENTIFIER_FIELDS = [
     label: "Индивидуальный номер утечки",
     viewable: true,
     editable: true,
+    voice: true,
     numeric: true,
   },
   {
@@ -25,6 +26,7 @@ export const IDENTIFIER_FIELDS = [
     label: "Индивидуальный номер видео",
     viewable: true,
     editable: true,
+    voice: true,
     numeric: true,
   },
   {
@@ -43,6 +45,7 @@ export const OBJECT_FIELDS = [
     viewable: true,
     editable: true,
     copyable: true,
+    voice: true,
   },
   {
     key: "component",
@@ -50,6 +53,7 @@ export const OBJECT_FIELDS = [
     viewable: true,
     editable: true,
     copyable: true,
+    voice: true,
   },
 ];
 
@@ -60,6 +64,7 @@ export const TYPE_FIELDS = [
     viewable: true,
     editable: true,
     copyable: true,
+    voice: true,
     multiline: true,
   },
   {
@@ -68,6 +73,7 @@ export const TYPE_FIELDS = [
     viewable: true,
     editable: true,
     copyable: true,
+    voice: true,
     multiline: true,
   },
   {
@@ -76,6 +82,7 @@ export const TYPE_FIELDS = [
     viewable: true,
     editable: true,
     copyable: true,
+    voice: true,
     multiline: true,
   },
 ];
@@ -87,6 +94,7 @@ export const CATEGORY_FIELD = {
   viewable: true,
   editable: true,
   copyable: true,
+  voice: false,
 };
 
 /** Used by midstream only. */
@@ -96,6 +104,7 @@ export const LEAK_CAUSE_FIELD = {
   viewable: true,
   editable: true,
   copyable: true,
+  voice: true,
   multiline: true,
 };
 
@@ -106,6 +115,7 @@ export const DESCRIPTION_FIELDS = [
     viewable: true,
     editable: true,
     copyable: true,
+    voice: true,
     multiline: true,
   },
   {
@@ -114,6 +124,7 @@ export const DESCRIPTION_FIELDS = [
     viewable: true,
     editable: true,
     copyable: true,
+    voice: true,
     multiline: true,
   },
   {
@@ -122,6 +133,7 @@ export const DESCRIPTION_FIELDS = [
     viewable: true,
     editable: true,
     copyable: true,
+    voice: true,
     multiline: true,
   },
   {
@@ -130,6 +142,7 @@ export const DESCRIPTION_FIELDS = [
     viewable: true,
     editable: true,
     copyable: true,
+    voice: true,
     multiline: true,
   },
   {
@@ -138,6 +151,7 @@ export const DESCRIPTION_FIELDS = [
     viewable: true,
     editable: true,
     copyable: true,
+    voice: true,
     multiline: true,
   },
 ];
@@ -149,6 +163,7 @@ export const PARAM_FIELDS = [
     viewable: true,
     editable: true,
     copyable: true,
+    voice: true,
     numeric: true,
   },
   {
@@ -157,6 +172,7 @@ export const PARAM_FIELDS = [
     viewable: true,
     editable: true,
     copyable: true,
+    voice: true,
     numeric: true,
   },
   {
@@ -165,6 +181,7 @@ export const PARAM_FIELDS = [
     viewable: true,
     editable: true,
     copyable: true,
+    voice: true,
     numeric: true,
   },
 ];

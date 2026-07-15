@@ -4,6 +4,7 @@ import { PROTECTED_FIELD_KEYS } from "./protectedFields";
 import {
   SYSTEM_FIELD_KEYS,
   createFieldSets,
+  getVoiceFieldKeys,
   isSystemFieldKey,
 } from "./fieldRegistry";
 
@@ -15,18 +16,25 @@ describe("fieldRegistry", () => {
   });
 
   it("derives project field groups without changing field flags", () => {
-    const { FIELDS, VIEW_FIELDS, EDIT_FIELDS, COPY_FIELDS, NUMBER_FIELDS } =
-      createFieldSets([
-        { key: "date", viewable: true, editable: false },
-        {
-          key: "leak_speed",
-          viewable: true,
-          editable: true,
-          copyable: true,
-          numeric: true,
-        },
-        { key: "internal", viewable: false, editable: false },
-      ]);
+    const {
+      FIELDS,
+      VIEW_FIELDS,
+      EDIT_FIELDS,
+      COPY_FIELDS,
+      NUMBER_FIELDS,
+      VOICE_FIELDS,
+    } = createFieldSets([
+      { key: "date", viewable: true, editable: false },
+      {
+        key: "leak_speed",
+        viewable: true,
+        editable: true,
+        copyable: true,
+        voice: true,
+        numeric: true,
+      },
+      { key: "internal", viewable: false, editable: false },
+    ]);
 
     const dateField = FIELDS.find((field) => field.key === "date");
     expect(dateField).toMatchObject({ system: true });
@@ -38,5 +46,7 @@ describe("fieldRegistry", () => {
     expect(EDIT_FIELDS.map((field) => field.key)).toEqual(["leak_speed"]);
     expect(COPY_FIELDS.map((field) => field.key)).toEqual(["leak_speed"]);
     expect(NUMBER_FIELDS.map((field) => field.key)).toEqual(["leak_speed"]);
+    expect(VOICE_FIELDS.map((field) => field.key)).toEqual(["leak_speed"]);
+    expect(getVoiceFieldKeys(FIELDS)).toEqual(["leak_speed"]);
   });
 });

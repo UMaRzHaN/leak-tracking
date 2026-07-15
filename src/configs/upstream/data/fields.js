@@ -17,6 +17,7 @@ const LOCATION_FIELDS = [
     viewable: true,
     editable: true,
     copyable: true,
+    voice: true,
   },
   {
     key: "deposit",
@@ -24,6 +25,7 @@ const LOCATION_FIELDS = [
     viewable: true,
     editable: true,
     copyable: true,
+    voice: true,
   },
   {
     key: "location",
@@ -31,6 +33,7 @@ const LOCATION_FIELDS = [
     viewable: true,
     editable: true,
     copyable: true,
+    voice: true,
   },
 ];
 
@@ -46,5 +49,11 @@ const FIELD_DEFINITIONS = [
   ...COORD_FIELDS,
 ];
 
-export const { FIELDS, VIEW_FIELDS, EDIT_FIELDS, COPY_FIELDS, NUMBER_FIELDS } =
-  createFieldSets(FIELD_DEFINITIONS);
+export const {
+  FIELDS,
+  VIEW_FIELDS,
+  EDIT_FIELDS,
+  COPY_FIELDS,
+  NUMBER_FIELDS,
+  VOICE_FIELDS,
+} = createFieldSets(FIELD_DEFINITIONS);
