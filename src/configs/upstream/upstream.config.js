@@ -89,7 +89,6 @@ const UPSTREAM_CONFIG = Object.freeze({
       "pressure",
       "temperature",
       "leak_description",
-      "leak_cause",
       "technological_solution",
       "repair_recommendation",
       "materials_equipment",
