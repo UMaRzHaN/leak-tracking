@@ -28,8 +28,36 @@ describe("parseVoiceText", () => {
       expect(parseVoiceText("бирки 7")).toMatchObject({ leak_id: "7" });
     });
 
+    it('extracts leak_id from "номер бирки N"', () => {
+      expect(parseVoiceText("номер бирки 12")).toMatchObject({
+        leak_id: "12",
+      });
+    });
+
+    it('extracts leak_id from "id утечки N"', () => {
+      expect(parseVoiceText("id утечки 44")).toMatchObject({
+        leak_id: "44",
+      });
+    });
+
+    it('extracts leak_id from "тег N"', () => {
+      expect(parseVoiceText("тег 8")).toMatchObject({ leak_id: "8" });
+    });
+
     it("extracts video_id", () => {
       expect(parseVoiceText("видео 15")).toMatchObject({ video_id: "15" });
+    });
+
+    it('extracts video_id from "номер видео N"', () => {
+      expect(parseVoiceText("номер видео 31")).toMatchObject({
+        video_id: "31",
+      });
+    });
+
+    it('extracts video_id from "video id N"', () => {
+      expect(parseVoiceText("video id 22")).toMatchObject({
+        video_id: "22",
+      });
     });
   });
 
@@ -191,6 +219,16 @@ describe("parseVoiceText", () => {
     it("extracts note", () => {
       const r = parseVoiceText("примечание дополнительная информация");
       expect(r.note).toBe("Дополнительная информация");
+    });
+
+    it("extracts note from заметка", () => {
+      const r = parseVoiceText("заметка проверить повторно");
+      expect(r.note).toBe("Проверить повторно");
+    });
+
+    it("extracts note from комментарий", () => {
+      const r = parseVoiceText("комментарий видно с дороги");
+      expect(r.note).toBe("Видно с дороги");
     });
 
     it("extracts leak_description", () => {

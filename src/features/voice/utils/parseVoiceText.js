@@ -3,8 +3,9 @@ import { normalizeStationName } from "./normalization";
 import { normalizeNumberWords } from "./numbers";
 
 const TOKENS = {
-  leakId: "бирк[аи]?|tag(?:\\s+number)?|tag",
-  videoId: "видео|video",
+  leakId:
+    "номер\\s+бирк[аи]|id\\s+утечки|ид\\s+утечки|номер\\s+утечки|бирк[аи]?|тег|tag(?:\\s+number)?|leak\\s+id|tag",
+  videoId: "номер\\s+видео|id\\s+видео|видео\\s+id|видео|video\\s+id|video",
   leakSpeed: "скорост[ьи]?\\s+утечки|скорост[ьи]?|leak\\s+rate|rate|speed",
   pressure: "давлени[ея]?|pressure",
   temperature: "температур[аы]?|temperature|temp",
@@ -23,7 +24,7 @@ const TOKENS = {
     "план\\s+устранения|repair\\s+plan|repair\\s+recommendation|recommendation",
   materialsEquipment:
     "мтр\\s+ремонта|мтр|materials\\s+and\\s+equipment|materials|equipment",
-  note: "примечани[ея]|note|comment",
+  note: "примечани[ея]|заметк[аи]|комментари[йя]|note|comment",
   actuatorType: "тип\\s+привода|привод|actuator\\s+type|actuator",
   connectionType: "тип\\s+присоединения|присоединени[ея]|connection\\s+type",
   installationType:
