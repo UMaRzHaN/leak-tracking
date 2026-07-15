@@ -2,7 +2,7 @@ import { STORAGE_KEYS } from "./storageKeys";
 
 export function toFolderName(name) {
   return (
-    name
+    String(name ?? "")
       .trim()
       .replace(/[<>:"/\\|?*\0]/g, "")
       .replace(/\s+/g, "_")
