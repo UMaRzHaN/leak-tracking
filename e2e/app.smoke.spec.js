@@ -246,6 +246,33 @@ test("restores project data from a ZIP backup after clearing the database", asyn
   await expect(page.getByText("№ Б-5301", { exact: true })).toBeVisible();
 });
 
+test("rejects a corrupted ZIP backup without changing project data", async ({
+  page,
+}) => {
+  await createProject(page, "Corrupted backup E2E");
+  await setUserProfile(page);
+  await createLeak(page, "5351");
+
+  await page.getByTitle("Настройки").click();
+  const fileChooserPromise = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: "Импорт ZIP" }).click();
+  const fileChooser = await fileChooserPromise;
+  await fileChooser.setFiles({
+    name: "broken-upstream.zip",
+    mimeType: "application/zip",
+    buffer: Buffer.from("this is not a zip archive"),
+  });
+
+  await expect(page.getByRole("alert")).toContainText("Ошибка импорта");
+
+  await page.getByRole("button", { name: "←" }).click();
+  await page.getByRole("button", { name: "База", exact: true }).click();
+  await expect(page.getByText("№ Б-5351", { exact: true })).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByText("№ Б-5351", { exact: true })).toBeVisible();
+});
+
 test("records and completes a monitoring round", async ({ page }) => {
   test.setTimeout(60_000);
   await createProject(page, "Monitoring E2E");
