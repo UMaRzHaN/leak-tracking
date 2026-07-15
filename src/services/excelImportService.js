@@ -1299,8 +1299,11 @@ export async function parseExcelLeaks(file, { projectType = "upstream" } = {}) {
   const history = historySheet
     ? parseHistoryRecords(historySheet)
     : { recordsByLeakId: new Map(), count: 0 };
+  const leaksBeforeHistoryAttach = historySheet
+    ? leaks.map((leak) => ({ ...leak, history: [] }))
+    : leaks;
   const leaksWithMonitoring = attachMonitoringRecords(
-    leaks,
+    leaksBeforeHistoryAttach,
     monitoring.recordsByLeakId,
   );
   const leaksWithHistory = attachHistoryRecords(

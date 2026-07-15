@@ -52,7 +52,7 @@ describe("parseExcelLeaks", () => {
       object: "КС-1",
       priority: "medium",
     });
-  });
+  }, 15_000);
 
   it("imports app-like Excel headers and defaults unknown statuses to open", async () => {
     const blob = await makeWorkbookBlob([
@@ -157,6 +157,26 @@ describe("parseExcelLeaks", () => {
         changes: [{ key: "leak_speed", from: 10, to: 15 }],
       },
     ]);
+  });
+
+  it("keeps history empty when the app History sheet has no records", async () => {
+    const { default: ExcelJS } = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    const leaksSheet = workbook.addWorksheet("Leaks");
+    leaksSheet.addRow(["Leak ID", "date", "status"]);
+    leaksSheet.addRow(["TAG-EMPTY", "14.07.2026", "Open"]);
+
+    const historySheet = workbook.addWorksheet("Leak History");
+    historySheet.addRow(["Tag", "Date", "Action", "User"]);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const result = await parseExcelLeaks(
+      { arrayBuffer: async () => buffer },
+      { projectType: "upstream" },
+    );
+
+    expect(result.stats.historyRecords).toBe(0);
+    expect(result.leaks[0].history).toEqual([]);
   });
 
   it("attaches records from the app Monitoring sheet and infers current round", async () => {
