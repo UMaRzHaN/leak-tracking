@@ -271,6 +271,10 @@
   margin-top: 10px;
 }
 
+.importActionsTwoColumns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .importBtn {
   min-width: 0;
   min-height: 54px;
@@ -291,22 +295,6 @@
   text-align: center;
   transition: all 0.2s ease;
 
-  &::before {
-    content: attr(data-icon);
-    min-width: 28px;
-    height: 20px;
-    padding: 0 5px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    background: #eff6ff;
-    color: currentColor;
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.02em;
-  }
-
   &:hover:not(:disabled) {
     background: #eff6ff;
   }
@@ -314,6 +302,23 @@
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+}
+
+.importIcon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+
+  rect,
+  .importIconFill {
+    fill: currentColor;
+    stroke: none;
   }
 }
 

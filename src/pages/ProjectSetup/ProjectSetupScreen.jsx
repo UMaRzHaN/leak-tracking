@@ -20,6 +20,39 @@ function detectTypeFromString(str) {
   return null;
 }
 
+function ImportIcon({ type }) {
+  if (type === "qr") {
+    return (
+      <svg className={s.importIcon} viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3" y="3" width="6" height="6" rx="1" />
+        <rect x="15" y="3" width="6" height="6" rx="1" />
+        <rect x="3" y="15" width="6" height="6" rx="1" />
+        <path
+          className={s.importIconFill}
+          d="M15 15h2v2h-2zM19 15h2v4h-2zM15 19h4v2h-4zM11 3h2v4h-2zM11 9h4v2h-4zM11 13h2v4h-2z"
+        />
+      </svg>
+    );
+  }
+
+  if (type === "excel") {
+    return (
+      <svg className={s.importIcon} viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 3.5h10l4 4V20.5H5z" />
+        <path d="M15 3.5v4h4M8 11h8M8 14h8M8 17h8M11 10v8" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg className={s.importIcon} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 3.5h10l4 4V20.5H5z" />
+      <path d="M15 3.5v4h4M12 4v2M12 8v2M12 12v2" />
+      <path d="M10.5 16h3v3h-3z" />
+    </svg>
+  );
+}
+
 const PROJECT_ICONS = { upstream: "⛽", midstream: "🔧", downstream: "🏭" };
 
 export default function ProjectSetupScreen({
@@ -341,16 +374,20 @@ export default function ProjectSetupScreen({
               <span>{localeTexts.or}</span>
             </div>
 
-            <div className={s.importActions}>
+            <div
+              className={`${s.importActions} ${
+                canImportByQr ? "" : s.importActionsTwoColumns
+              }`}
+            >
               {onImportZip && (
                 <button
                   className={s.importBtn}
                   type="button"
                   title={localeTexts.import}
-                  data-icon="ZIP"
                   disabled={isImporting}
                   onClick={() => zipFileRef.current?.click()}
                 >
+                  <ImportIcon type="zip" />
                   {importing ? localeTexts.importing : "ZIP"}
                   <span className={s.importBtnSr}>
                     {"↓ " + localeTexts.import}
@@ -362,10 +399,10 @@ export default function ProjectSetupScreen({
                   className={`${s.importBtn} ${s.qrImportBtn}`}
                   type="button"
                   title={localeTexts.importQr}
-                  data-icon="QR"
                   disabled={isImporting}
                   onClick={handleQrImport}
                 >
+                  <ImportIcon type="qr" />
                   {importingQr ? localeTexts.importingQr : "QR"}
                   <span className={s.importBtnSr}>
                     {"QR " + localeTexts.importQr}
@@ -377,10 +414,10 @@ export default function ProjectSetupScreen({
                   className={`${s.importBtn} ${s.excelImportBtn}`}
                   type="button"
                   title={localeTexts.importExcel}
-                  data-icon="XLS"
                   disabled={isImporting}
                   onClick={requestExcelFile}
                 >
+                  <ImportIcon type="excel" />
                   {importingExcel ? localeTexts.importingExcel : "Excel"}
                   <span className={s.importBtnSr}>
                     {"▦ " + localeTexts.importExcel}
