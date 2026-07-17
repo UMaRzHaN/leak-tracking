@@ -209,6 +209,39 @@ describe("useLocalSync", () => {
     expect(result.current.state.status).toBe("complete");
   });
 
+  it("silently returns to idle when QR scanning is cancelled", async () => {
+    const cancelError = new Error("cancelled");
+    cancelError.code = "QR_SCAN_CANCELLED";
+    syncService.scanLocalSyncQr.mockRejectedValue(cancelError);
+    const { result, notify } = renderSync();
+
+    await act(async () => {
+      await result.current.scanAndJoin();
+    });
+
+    expect(result.current.state.status).toBe("idle");
+    expect(syncService.exchangeLocalSyncArchive).not.toHaveBeenCalled();
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("reports QR scan errors before starting the client exchange", async () => {
+    syncService.scanLocalSyncQr.mockRejectedValue(
+      new Error("QR-код относится к другой базе данных"),
+    );
+    const { result, notify } = renderSync();
+
+    await act(async () => {
+      await result.current.scanAndJoin();
+    });
+
+    expect(result.current.state.status).toBe("idle");
+    expect(syncService.exchangeLocalSyncArchive).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalledWith(
+      "error",
+      "Ошибка QR-кода: QR-код относится к другой базе данных",
+    );
+  });
+
   it("scans a QR code and imports the hosted database without sending the local archive", async () => {
     const incoming = new File(["remote"], "local-sync-import.zip", {
       type: "application/zip",
@@ -236,6 +269,47 @@ describe("useLocalSync", () => {
     expect(notify).toHaveBeenCalledWith(
       "success",
       "База импортирована по QR: «Imported» (3 записей)",
+    );
+  });
+
+  it("silently returns to idle when QR import scanning is cancelled", async () => {
+    const cancelError = new Error("cancelled");
+    cancelError.code = "QR_SCAN_CANCELLED";
+    syncService.scanLocalSyncQr.mockRejectedValue(cancelError);
+    const { result, onImportZip, notify } = renderSync();
+
+    await act(async () => {
+      await result.current.scanAndImport();
+    });
+
+    expect(result.current.state.status).toBe("idle");
+    expect(syncService.fetchLocalSyncArchive).not.toHaveBeenCalled();
+    expect(onImportZip).not.toHaveBeenCalled();
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("reports QR import download errors without importing a partial archive", async () => {
+    syncService.scanLocalSyncQr.mockResolvedValue({
+      host: "192.168.43.1",
+      port: "49152",
+      code: "123456",
+      projectKey: "upstream:remote field",
+      syncId: "sync-remote-1234",
+    });
+    syncService.fetchLocalSyncArchive.mockRejectedValue(
+      new Error("Не удалось прочитать полученный архив (404)"),
+    );
+    const { result, onImportZip, notify } = renderSync();
+
+    await act(async () => {
+      await result.current.scanAndImport();
+    });
+
+    expect(result.current.state.status).toBe("idle");
+    expect(onImportZip).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalledWith(
+      "error",
+      "Ошибка импорта по QR: Не удалось прочитать полученный архив (404)",
     );
   });
 });
