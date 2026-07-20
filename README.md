@@ -26,9 +26,14 @@ _Работает полностью офлайн, поддерживает му
 | 🗺️  | **Офлайн-карта**              | Leaflet с локальным кэшем тайлов и кластеризацией                       |
 | 🎤  | **Голосовой ввод**            | Распознавание речи с fuzzy matching и preview-подтверждением            |
 | 📦  | **Импорт / Экспорт проектов** | ZIP-бэкап с метаданными проекта и фотографиями                          |
-| 📊  | **Экспорт отчетов**           | XLSX с полной или сокращённой историей / KML / JSON                     |
+| 🔁  | **Локальная QR-синхронизация** | Обмен ZIP-архивами между Android-устройствами в доверенной локальной сети |
+| 📊  | **Excel / KML / ZIP отчёты**   | XLSX/Excel ZIP с фото, мониторингом и историей / KML / JSON / ZIP       |
+| 🧩  | **Импорт Excel**              | Создание копии проекта или merge/overwrite существующего проекта         |
 | 🔄  | **Lifecycle Management**      | Open → In Progress → Resolved + история изменений                       |
 | 🗂️  | **База данных**               | Фильтры по статусу, приоритету, GPS-близости; bulk-действия; сортировка |
+| ✅  | **Проверка данных**           | Поиск пропущенных фото, битых ссылок, координат и дублей `leak_id`       |
+| ⚙️  | **Настройки проекта**         | Обязательность фото, видимость полей, параметры расчёта, режим Excel     |
+| 🌐  | **RU / EN интерфейс**         | Переключение языка основных пользовательских сценариев                   |
 | 🌙  | **Темизация**                 | Поддержка dark / light mode                                             |
 | 📱  | **Android Ready**             | Capacitor 8 native build                                                |
 
@@ -53,8 +58,9 @@ Styling         SCSS Modules / CSS Variables
 Mobile          Capacitor 8
 Maps            Leaflet + MarkerCluster
 Storage         localStorage / IndexedDB / Filesystem
-Export          ExcelJS / JSZip
-Testing         Vitest + Testing Library
+Export          ExcelJS / JSZip / KML
+i18n            i18next + react-i18next
+Testing         Vitest + Testing Library + Playwright
 ```
 
 ### 📦 Зависимости
@@ -62,11 +68,12 @@ Testing         Vitest + Testing Library
 | Категория | Пакеты |
 |-----------|--------|
 | **Core** | React 19.2, React DOM 19.2, Vite 6 |
-| **Mobile** | Capacitor 8 (android, camera, cli, core, filesystem, geolocation, share), speech-recognition |
+| **Mobile** | Capacitor 8 (android, camera, cli, core, filesystem, geolocation, share), speech-recognition, ML Kit barcode scanning |
 | **Maps** | Leaflet 1.9, Leaflet MarkerCluster 1.5 |
-| **Export** | ExcelJS 4.4, JSZip 3.10 |
+| **Export / QR** | ExcelJS 4.4, JSZip 3.10, QRCode 1.5 |
+| **i18n** | i18next, react-i18next |
 | **UI** | clsx 2.1 |
-| **Testing** | Vitest, Testing Library (DOM, Jest, React, User Event) |
+| **Testing** | Vitest, Testing Library (DOM, Jest, React, User Event), Playwright |
 
 ---
 
@@ -101,7 +108,9 @@ src/
 │
 ├── features/               # Domain components — one folder per bounded context
 │   ├── editTextField/
+│   ├── calculationParameters/ # Shared calculation parameter form
 │   ├── fieldVisibility/    # FieldVisibilityModal
+│   ├── importConflict/     # Merge / overwrite / copy preview sheet
 │   ├── leakDetails/        # LeakDetailsSheet + hooks + sub-components
 │   ├── leakForm/           # LeakForm + LeakFormContext + hooks + Header/Footer
 │   │   └── components/     # ClearActions, StepHeader, InputCard, StepRenderer
@@ -130,6 +139,7 @@ src/
 │   ├── DataBase/           # + excel.js + hooks/ + components/
 │   ├── MainPage/
 │   ├── MapPage/            # + offlineMap.js + kml.js + handleExport.js + hooks/
+│   ├── Monitoring/
 │   ├── ProjectSetup/
 │   └── Settings/           # + backup.js + hooks/ + components/
 │
@@ -137,11 +147,17 @@ src/
 │   ├── idb.js              # createIdbStore() factory (IndexedDB)
 │   ├── LeakRepository.js
 │   ├── PhotoRepository.js
-│   ├── backupSchema.js     # Zod schemas for ZIP import/export
+│   ├── backupSchema.js     # Manual validation for ZIP import/export
 │   └── compressImage.js
 │
 ├── services/
-│   └── maps/tileCache.js   # Shared tile-caching logic (3 consumers)
+│   ├── excelImportService.js
+│   ├── localSyncService.js
+│   ├── projectBackupService.js
+│   ├── projectIntegrityService.js
+│   ├── projectSyncState.js
+│   ├── publicFileWriter.js
+│   └── maps/tileCache.js   # Shared tile-caching logic
 │
 ├── utils/
 │   ├── calculations/       # Emissions & flow-rate calculations
@@ -259,6 +275,45 @@ Export ZIP
 комментарий, материалы и отдельную фотографию. Последнее мониторинговое фото
 показывается в миниатюре карточки и в подробной карточке утечки.
 
+### Локальная QR-синхронизация
+
+На Android доступна синхронизация проекта между устройствами без облака:
+
+```text
+Устройство A
+  ├─ готовит ZIP-архив проекта
+  ├─ показывает QR с host / port / code / syncId
+  └─ принимает архив от второго устройства
+
+Устройство B
+  ├─ сканирует QR
+  ├─ отправляет свой ZIP-архив
+  └─ получает архив устройства A
+```
+
+QR-синхронизация использует тот же формат ZIP-бэкапа и те же проверки, что
+обычный импорт. Для защиты от случайного объединения разных баз используется
+`syncId`; старые проекты без `syncId` получают его при первом запуске
+синхронизации. Также доступен режим **импорта по QR** на первом экране: устройство
+скачивает архив по QR и создаёт проект без отправки локальной базы.
+
+---
+
+## ✅ Проверка данных проекта
+
+В настройках есть блок **«Проверка данных»**. Он анализирует текущий проект и
+показывает:
+
+- записи без исходного фото;
+- записи без фото ремонта / итогового фото;
+- мониторинговые записи без фото;
+- битые ссылки на фотографии;
+- записи без координат;
+- дубли `leak_id`.
+
+Проверка учитывает настройки обязательности фото, поэтому проект может разрешать
+мониторинг или регистрацию без фотографии там, где это включено в настройках.
+
 ---
 
 ## 🗺️ Офлайн-карты
@@ -292,6 +347,7 @@ Network Available?
 - Все данные хранятся локально на устройстве
 - Нет серверной части / облака / телеметрии
 - Подходит для air-gapped environments
+- QR-синхронизацию следует запускать только в доверенной локальной сети
 
 ---
 
@@ -363,21 +419,42 @@ npx cap open ios
 
 ## ⚙️ Production Deployment Notes
 
-- Для Android рекомендуется включить ProGuard / R8
+- Для Android рекомендуется включить ProGuard / R8 перед релизной сборкой
 - Для iOS — настроить permissions в Info.plist
-- Перед релизом очистить dev-логирование и mock data
-- Рекомендуется включить versioned migrations для local storage
+- Перед релизом прогнать `npm run lint`, `npm test`, `npm run test:e2e`,
+  `npm run test:perf` и Android `assembleDebug`
+- Проверить QR-синхронизацию, камеру, GPS, экспорт/импорт ZIP и Excel на
+  реальном Android-устройстве
+- Не хранить тестовые проекты и dev-логи в релизной сборке
 
 ---
 
 ## 📜 Скрипты
 
 ```bash
-npm run dev       # Development server
-npm run build     # Production build
-npm run preview   # Preview build
-npm test          # Run tests
-npm run cap:sync  # Sync Capacitor и Android Gradle patch
+npm run dev          # Development server
+npm run build        # Production build
+npm run preview      # Preview production build
+npm test             # Vitest unit / integration tests
+npm run test:coverage # Vitest with coverage
+npm run test:e2e     # Playwright smoke/e2e tests
+npm run test:perf    # Production build + large dataset performance tests
+npm run lint         # ESLint
+npm run format:check # Prettier check
+npm run cap:sync     # Sync Capacitor и Android Gradle patch
+```
+
+### Performance tests
+
+Производительные сценарии вынесены отдельно в `performance/` и не входят в
+обычный `npm test`. По умолчанию `npm run test:perf` проверяет проекты на 1 000
+и 10 000 записей: cold start, открытие базы, поиск, bulk-save, Excel export /
+import preview, heap usage и количество отрендеренных карточек. Размер набора
+можно задать переменной:
+
+```powershell
+$env:PERF_RECORDS="10000"
+npm run test:perf
 ```
 
 ---
@@ -421,7 +498,11 @@ stateDiagram-v2
 - **Offline-First Core** — приложение полностью функционально без сети
 - **Project Isolation** — каждый проект хранится в отдельном namespace
 - **Portable Backup System** — перенос проекта одним ZIP-файлом
+- **Local QR Sync** — обмен проектами между Android-устройствами без облака
 - **Extensible Config Architecture** — новые project types добавляются конфигом
+- **Project-aware Excel Import** — импорт собственного Excel ZIP с фото,
+  мониторингом и preview конфликтов
+- **Data Integrity Checks** — встроенная проверка полноты и ссылок на фото
 - **Native Device Integration** — Camera / Filesystem / Geolocation / Speech API
 
 ---
@@ -433,6 +514,9 @@ stateDiagram-v2
 - [ ] Advanced Analytics Dashboard
 - [ ] GIS Layer Import / Overlay Support
 - [ ] Enterprise Audit Trail / Signatures
+- [ ] PDF summary reports
+- [ ] Equipment registry / asset history
+- [ ] SLA deadlines and repair acts
 
 ---
 

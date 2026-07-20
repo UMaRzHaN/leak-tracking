@@ -15,7 +15,7 @@ async function createProject(page, name = "E2E Upstream") {
 
   await expect(page.getByText(name, { exact: true })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Добавить утечку" }),
+    page.getByRole("button", { name: "Добавить утечку", exact: true }),
   ).toBeVisible();
 }
 
@@ -35,8 +35,15 @@ async function createLeak(page, leakId = "4242") {
   await expect(page.getByText("Новая утечка", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Редактировать параметры" }).click();
-  await page.getByLabel(/^Серийный номер оборудования/).fill("7001");
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  const paramsModal = page.locator('[class*="_modal_"]').last();
+  await paramsModal.locator('input[type="number"]').first().fill("1");
+  await paramsModal.getByLabel(/^Серийный номер оборудования/).fill(leakId);
+  await expect(
+    paramsModal.getByRole("button", { name: "Сохранить", exact: true }),
+  ).toBeEnabled();
+  await paramsModal
+    .getByRole("button", { name: "Сохранить", exact: true })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Параметры расчёта" }),
   ).toHaveCount(0);
@@ -112,6 +119,10 @@ async function seedMapCache(page, count = 3) {
   }, count);
 }
 
+async function openDatabase(page) {
+  await page.getByRole("contentinfo").getByRole("button").nth(2).click();
+}
+
 test("creates a project and restores it after reload", async ({ page }) => {
   await createProject(page);
 
@@ -129,7 +140,9 @@ test("creates a project and restores it after reload", async ({ page }) => {
 test("opens the main application sections", async ({ page }) => {
   await createProject(page, "Navigation smoke");
 
-  await page.getByRole("button", { name: "Добавить утечку" }).click();
+  await page
+    .getByRole("button", { name: "Добавить утечку", exact: true })
+    .click();
   await expect(page.getByText("Новая утечка", { exact: true })).toBeVisible();
   await expect(page.getByText("Шаг 1 /", { exact: false })).toBeVisible();
 
@@ -296,7 +309,7 @@ test("moves a leak through repair, resolution, and reopening", async ({
   await setUserProfile(page);
   await createLeak(page, "5201");
 
-  await page.getByRole("button", { name: "База", exact: true }).click();
+  await openDatabase(page);
   await openLeakDetails(page);
 
   await chooseDetailsStatus(page, "В ремонте");
@@ -396,7 +409,7 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
   await expect(page.getByRole("alert")).toContainText("перезаписан");
 
   await page.getByRole("button", { name: "←" }).click();
-  await page.getByRole("button", { name: "База", exact: true }).click();
+  await openDatabase(page);
   await expect(page.getByText("№ Б-5301", { exact: true })).toBeVisible();
 
   await openLeakDetails(page);
@@ -434,7 +447,7 @@ test("rejects a corrupted ZIP backup without changing project data", async ({
   await expect(page.getByRole("alert")).toContainText("Ошибка импорта");
 
   await page.getByRole("button", { name: "←" }).click();
-  await page.getByRole("button", { name: "База", exact: true }).click();
+  await openDatabase(page);
   await expect(page.getByText("№ Б-5351", { exact: true })).toBeVisible();
 
   await page.reload();
@@ -479,6 +492,49 @@ test("records and completes a monitoring round", async ({ page }) => {
   await expect(page.getByText("1/1", { exact: true })).toBeVisible();
 });
 
+test("bulk changes selected leaks to repair status", async ({ page }) => {
+  test.setTimeout(90_000);
+  await createProject(page, "Bulk status E2E");
+  await setUserProfile(page);
+  await createLeak(page, "5451");
+  await createLeak(page, "5452");
+
+  await openDatabase(page);
+  await expect(page.getByText("№ Б-5451", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ Б-5452", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Выбрать всё" }).click();
+  await expect(page.getByText("2 выбрано из 2")).toBeVisible();
+
+  await page.getByRole("button", { name: "⇌ СТАТУС" }).click();
+  await page.getByRole("button", { name: "В ремонте", exact: true }).click();
+
+  await expect(
+    page.getByRole("heading", { name: "Утечка в ремонте" }),
+  ).toBeVisible();
+  await expect(page.getByText("1 / 2", { exact: true })).toBeVisible();
+  await attachModalPhoto(page);
+  await page.getByRole("button", { name: "Подтвердить" }).click();
+
+  await expect(page.getByText("2 / 2", { exact: true })).toBeVisible();
+  await attachModalPhoto(page);
+  await page.getByRole("button", { name: "Подтвердить" }).click();
+
+  await expect(page.getByRole("alert")).toContainText("Status changed", {
+    timeout: 10_000,
+  });
+  await expect(page.getByText("2 выбрано из 2")).toHaveCount(0);
+  await expect(
+    page.locator("[data-urgency]").filter({ hasText: "В ремонте" }),
+  ).toHaveCount(2);
+
+  await page.reload();
+  await openDatabase(page);
+  await expect(
+    page.locator("[data-urgency]").filter({ hasText: "В ремонте" }),
+  ).toHaveCount(2);
+});
+
 test("exports and imports an Excel archive as a project copy", async ({
   page,
 }, testInfo) => {
@@ -487,7 +543,7 @@ test("exports and imports an Excel archive as a project copy", async ({
   await setUserProfile(page);
   await createLeak(page, "5501");
 
-  await page.getByRole("button", { name: "База", exact: true }).click();
+  await openDatabase(page);
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "📥 XLSX" }).click();
   const download = await downloadPromise;
@@ -518,6 +574,6 @@ test("exports and imports an Excel archive as a project copy", async ({
   ).toBeVisible();
 
   await page.getByRole("button", { name: "←" }).click();
-  await page.getByRole("button", { name: "База", exact: true }).click();
+  await openDatabase(page);
   await expect(page.getByText("№ Б-5501", { exact: true })).toBeVisible();
 });
