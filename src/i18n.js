@@ -158,7 +158,7 @@ const resources = {
 
         dangerZone: "Опасная зона",
         dangerHint:
-          "Очистка удаляет все записи об утечках активного проекта. Фото-файлы на устройстве сохранятся.",
+          "Очистка удаляет все записи об утечках активного проекта и связанные с ними фото.",
         clearDatabase: "Очистить базу данных",
 
         notifications: {
@@ -627,7 +627,7 @@ const resources = {
 
         dangerZone: "Danger Zone",
         dangerHint:
-          "Clearing removes all leak records from the active project. Photo files on the device will remain.",
+          "Clearing removes all leak records from the active project and their associated photos.",
         clearDatabase: "Clear Database",
 
         notifications: {

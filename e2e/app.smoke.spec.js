@@ -96,6 +96,22 @@ async function attachModalPhoto(page) {
   await expect(page.getByAltText("Выбранное фото")).toBeVisible();
 }
 
+async function seedMapCache(page, count = 3) {
+  await page.evaluate(async (entryCount) => {
+    const cache = await caches.open("map-tiles-v2");
+    await Promise.all(
+      Array.from({ length: entryCount }, (_, index) =>
+        cache.put(
+          `https://tiles.example.test/${index}`,
+          new Response(new Uint8Array(1024), {
+            headers: { "content-type": "image/jpeg" },
+          }),
+        ),
+      ),
+    );
+  }, count);
+}
+
 test("creates a project and restores it after reload", async ({ page }) => {
   await createProject(page);
 
@@ -141,6 +157,119 @@ test("opens the main application sections", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Начать мониторинг" }),
   ).toBeVisible();
+});
+
+test("persists project, calculation, appearance, and export settings", async ({
+  page,
+}) => {
+  await createProject(page, "Settings E2E");
+  await page.getByTitle("Настройки").click();
+
+  await page.getByTitle("Переименовать").click();
+  const projectNameInput = page.locator('input[value="Settings E2E"]');
+  await projectNameInput.fill("Settings persisted E2E");
+  await page.locator('input[value="Settings persisted E2E"]').press("Enter");
+  await expect(page.getByTitle("Активный проект")).toContainText(
+    "Settings persisted E2E",
+  );
+
+  await page.getByRole("button", { name: "Редактировать параметры" }).click();
+  await page.getByLabel(/^Серийный номер оборудования/).fill("8123");
+  await page.getByLabel(/^Режим работы/).fill("180");
+  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Параметры расчёта сохранены",
+  );
+
+  const monitoringPhotoSwitch = page.getByRole("switch", {
+    name: "При мониторинге",
+  });
+  await expect(monitoringPhotoSwitch).toHaveAttribute("aria-checked", "true");
+  await monitoringPhotoSwitch.click();
+  await expect(monitoringPhotoSwitch).toHaveAttribute("aria-checked", "false");
+
+  const latestExportMode = page.getByRole("radio", {
+    name: /Последняя запись в обходе/,
+  });
+  await latestExportMode.click();
+  await expect(latestExportMode).toHaveAttribute("aria-checked", "true");
+
+  await page.getByRole("button", { name: "Переключить тему" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByRole("button", { name: "Переключить язык" }).click();
+  await expect(page.getByText("Settings", { exact: true })).toBeVisible();
+
+  await page.reload();
+  await expect(
+    page.getByText("Settings persisted E2E", { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByTitle("Settings").click();
+  await expect(
+    page.getByRole("switch", { name: "During monitoring" }),
+  ).toHaveAttribute("aria-checked", "false");
+  await expect(
+    page.getByRole("radio", { name: /Latest Record per Round/ }),
+  ).toHaveAttribute("aria-checked", "true");
+
+  await page.getByRole("button", { name: "Edit Parameters" }).click();
+  await expect(page.getByLabel(/^Operating mode/)).toHaveValue("180");
+  await expect(page.getByLabel(/^Equipment serial number/)).toHaveValue("8123");
+});
+
+test("clears a populated offline map cache from settings", async ({ page }) => {
+  await createProject(page, "Map cache settings E2E");
+  await seedMapCache(page);
+  await page.getByTitle("Настройки").click();
+
+  await expect(page.getByText(/3 тайлов/)).toBeVisible();
+  await page
+    .getByRole("button", { name: "Очистить офлайн-кэш карты", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Очистить офлайн-кэш карты", exact: true })
+    .last()
+    .click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Офлайн-кэш карты очищен",
+  );
+  await expect(page.getByText("Кэш пуст", { exact: true })).toBeVisible();
+  await expect(
+    page.evaluate(async () => (await caches.open("map-tiles-v2")).keys()),
+  ).resolves.toHaveLength(0);
+});
+
+test("keeps map cache available when settings cleanup fails", async ({
+  page,
+}) => {
+  await createProject(page, "Map cache failure E2E");
+  await seedMapCache(page, 1);
+  await page.getByTitle("Настройки").click();
+  await expect(page.getByText(/1 тайлов/)).toBeVisible();
+
+  await page.evaluate(() => {
+    caches.delete = async () => {
+      throw new Error("storage is busy");
+    };
+  });
+  await page
+    .getByRole("button", { name: "Очистить офлайн-кэш карты", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Очистить офлайн-кэш карты", exact: true })
+    .last()
+    .click();
+
+  await expect(page.getByRole("alert")).toContainText(
+    "Не удалось выполнить очистку: storage is busy",
+  );
+  await expect(page.getByText(/1 тайлов/)).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: "Очистить офлайн-кэш карты",
+      exact: true,
+    }),
+  ).toBeEnabled();
 });
 
 test("creates a leak with a photo and keeps it after reload", async ({
@@ -209,7 +338,9 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
 
   await page.getByRole("button", { name: "База", exact: true }).click();
   await openLeakDetails(page);
-  await page.getByRole("button", { name: "Редактировать", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Редактировать", exact: true })
+    .click();
   await page
     .getByLabel("Описание утечки", { exact: true })
     .fill("Уточнено в сквозном E2E");
@@ -227,7 +358,9 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
     .fill("Сквозной контроль после редактирования");
   await attachModalPhoto(page);
   await page.getByRole("button", { name: "Сохранить", exact: true }).click();
-  await expect(page.getByText("Все теги проверены", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Все теги проверены", { exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Завершить обход" }).click();
   await expect(page.getByText("Обход завершён", { exact: true })).toBeVisible();
 
