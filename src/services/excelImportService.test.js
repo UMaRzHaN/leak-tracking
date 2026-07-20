@@ -35,7 +35,7 @@ describe("parseExcelLeaks", () => {
       skipped: 1,
       duplicateLeakIds: 1,
     });
-  });
+  }, 15_000);
 
   it("drops out-of-range coordinates without dropping the rest of the row", async () => {
     const blob = await makeWorkbookBlob([

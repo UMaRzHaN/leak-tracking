@@ -48,7 +48,7 @@ export function remapProjectPhotoPaths(leaks, oldFolderName, newFolderName) {
   }));
 }
 
-async function deleteProjectArtifacts(project) {
+export async function deleteProjectArtifacts(project) {
   if (!project?.id) return;
 
   localStorage.removeItem(STORAGE_KEYS.PROJECT_DATA(project.id));
@@ -70,12 +70,6 @@ async function deleteProjectArtifacts(project) {
   await Filesystem.rmdir({
     path: `LeakReports/${project.folderName}`,
     directory: Directory.Data,
-    recursive: true,
-  }).catch(() => {});
-
-  await Filesystem.rmdir({
-    path: project.folderName,
-    directory: Directory.Documents,
     recursive: true,
   }).catch(() => {});
 }
