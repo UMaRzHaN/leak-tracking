@@ -9,10 +9,17 @@ import {
 } from "./fieldRegistry";
 
 describe("fieldRegistry", () => {
-  it("uses system fields as protected fields", () => {
-    expect([...PROTECTED_FIELD_KEYS]).toEqual(SYSTEM_FIELD_KEYS);
+  it("protects system and photo fields from being hidden", () => {
+    expect([...PROTECTED_FIELD_KEYS]).toEqual([
+      ...SYSTEM_FIELD_KEYS,
+      "photo",
+      "photo_repair",
+      "photo_after",
+    ]);
     expect(isSystemFieldKey("detectedBy")).toBe(true);
     expect(isSystemFieldKey("customNote")).toBe(false);
+    expect(PROTECTED_FIELD_KEYS.has("photo")).toBe(true);
+    expect(PROTECTED_FIELD_KEYS.has("customNote")).toBe(false);
   });
 
   it("derives project field groups without changing field flags", () => {
