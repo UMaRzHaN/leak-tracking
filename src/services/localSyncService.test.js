@@ -144,6 +144,97 @@ describe("localSyncService", () => {
     expect(svg).toContain("<svg");
   });
 
+  it("rejects malformed and mismatched QR payloads", () => {
+    expect(() =>
+      parseLocalSyncQrPayload("https://example.test", null),
+    ).toThrow();
+    expect(() =>
+      parseLocalSyncQrPayload("leak-tracker-sync:{broken", null),
+    ).toThrow();
+
+    const invalidConnection = `leak-tracker-sync:${JSON.stringify({
+      version: 1,
+      host: "",
+      port: 70000,
+      code: "12",
+      syncId: "sync-alpha-1234",
+    })}`;
+    expect(() => parseLocalSyncQrPayload(invalidConnection, null)).toThrow();
+
+    const missingSyncId = buildLocalSyncQrPayload({
+      host: "192.168.1.2",
+      port: 49152,
+      code: "123456",
+      projectKey: "upstream:alpha",
+    });
+    expect(() => parseLocalSyncQrPayload(missingSyncId, null)).toThrow();
+
+    const otherDatabase = buildLocalSyncQrPayload({
+      host: "192.168.1.2",
+      port: 49152,
+      code: "123456",
+      projectKey: "upstream:alpha",
+      syncId: "sync-other-1234",
+    });
+    expect(() =>
+      parseLocalSyncQrPayload(otherDatabase, {
+        syncId: "sync-alpha-1234",
+      }),
+    ).toThrow();
+  });
+
+  it("discards an archive that exceeds the native size limit", async () => {
+    mocks.plugin.prepareArchive.mockResolvedValueOnce({
+      token: "too-large-token",
+      maxArchiveBytes: 3,
+    });
+
+    await expect(
+      startLocalSyncHost({
+        archive: new Blob(["four"]),
+        projectKey: "upstream:alpha",
+        syncId: "sync-alpha-1234",
+        onArchive: vi.fn(),
+      }),
+    ).rejects.toThrow();
+
+    expect(mocks.plugin.discardArchive).toHaveBeenCalledWith({
+      token: "too-large-token",
+    });
+    expect(mocks.plugin.startHost).not.toHaveBeenCalled();
+    expect(mocks.remove).toHaveBeenCalledTimes(2);
+  });
+
+  it("discards a partially prepared archive when chunk upload fails", async () => {
+    mocks.plugin.appendArchiveChunk.mockRejectedValueOnce(
+      new Error("chunk failed"),
+    );
+
+    await expect(
+      startLocalSyncHost({
+        archive: new Blob(["archive"]),
+        projectKey: "upstream:alpha",
+        syncId: "sync-alpha-1234",
+        onArchive: vi.fn(),
+      }),
+    ).rejects.toThrow("chunk failed");
+
+    expect(mocks.plugin.discardArchive).toHaveBeenCalledWith({
+      token: "archive-token",
+    });
+    expect(mocks.remove).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports unsupported scanning and denied camera permission", async () => {
+    barcodeMocks.isSupported.mockResolvedValueOnce({ supported: false });
+    await expect(scanLocalSyncQr()).rejects.toThrow();
+    expect(barcodeMocks.requestPermissions).not.toHaveBeenCalled();
+
+    barcodeMocks.requestPermissions.mockResolvedValueOnce({ camera: "denied" });
+    await expect(scanLocalSyncQr()).rejects.toThrow();
+    expect(barcodeMocks.startScan).not.toHaveBeenCalled();
+  });
+
   it("does not reopen the camera when scanning is cancelled during listener setup", async () => {
     let resolveListener;
     const remove = vi.fn().mockResolvedValue(undefined);
@@ -278,5 +369,37 @@ describe("localSyncService", () => {
       archiveToken: "import-token",
     });
     vi.unstubAllGlobals();
+  });
+
+  it("releases a received archive even when reading it fails", async () => {
+    mocks.plugin.fetchArchive.mockResolvedValue({
+      uri: "file:///cache/broken.zip",
+      archiveToken: "broken-token",
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 503 }),
+    );
+
+    await expect(
+      fetchLocalSyncArchive({
+        host: " 192.168.1.2 ",
+        port: "49152",
+        code: " 123456 ",
+        projectKey: "upstream:alpha",
+        syncId: "sync-alpha-1234",
+      }),
+    ).rejects.toThrow("503");
+
+    expect(mocks.plugin.fetchArchive).toHaveBeenCalledWith(
+      expect.objectContaining({
+        host: "192.168.1.2",
+        port: 49152,
+        code: "123456",
+      }),
+    );
+    expect(mocks.plugin.releaseReceivedArchive).toHaveBeenCalledWith({
+      archiveToken: "broken-token",
+    });
   });
 });

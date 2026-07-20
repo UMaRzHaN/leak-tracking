@@ -4,7 +4,11 @@ const MAX_TOMBSTONES = 20_000;
 
 function toTime(value) {
   if (value == null || value === "") return 0;
-  const time = typeof value === "number" ? value : Date.parse(String(value));
+  const numeric = Number(value);
+  const time =
+    typeof value === "number" || Number.isFinite(numeric)
+      ? numeric
+      : Date.parse(String(value));
   return Number.isFinite(time) && time > 0 ? time : 0;
 }
 

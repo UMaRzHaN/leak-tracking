@@ -1,4 +1,10 @@
-import { priorityFromSpeed, PRIORITY } from "./priority";
+import {
+  getPriorityMeta,
+  priorityFromSpeed,
+  PRIORITY,
+  PRIORITY_META,
+  PRIORITY_ORDER,
+} from "./priority";
 
 describe("priorityFromSpeed", () => {
   it("returns CRITICAL for speed >= 100", () => {
@@ -55,5 +61,41 @@ describe("priorityFromSpeed", () => {
   it("boundary: exactly 10 is MEDIUM not LOW", () => {
     expect(priorityFromSpeed(10)).toBe(PRIORITY.MEDIUM);
     expect(priorityFromSpeed(9.9)).toBe(PRIORITY.LOW);
+  });
+});
+
+describe("getPriorityMeta", () => {
+  it("defines severity order and returns English metadata", () => {
+    expect(PRIORITY_ORDER).toEqual(["critical", "high", "medium", "low"]);
+    expect(getPriorityMeta(PRIORITY.CRITICAL, null, "en")).toEqual({
+      ...PRIORITY_META.critical,
+      label: "Critical",
+      short: "Crit",
+    });
+    expect(getPriorityMeta(PRIORITY.MEDIUM, null, "en")).toEqual({
+      ...PRIORITY_META.medium,
+      label: "Medium",
+      short: "Med",
+    });
+  });
+
+  it("uses translated values with stable keys and defaults", () => {
+    const t = vi.fn((key) => `translated:${key}`);
+
+    const result = getPriorityMeta(PRIORITY.HIGH, t, "en");
+
+    expect(result.label).toBe("translated:priority.high.label");
+    expect(result.short).toBe("translated:priority.high.short");
+    expect(t).toHaveBeenNthCalledWith(1, "priority.high.label", {
+      defaultValue: "High",
+    });
+    expect(t).toHaveBeenNthCalledWith(2, "priority.high.short", {
+      defaultValue: "High",
+    });
+  });
+
+  it("returns null for an unknown or missing priority", () => {
+    expect(getPriorityMeta("unknown", null, "en")).toBeNull();
+    expect(getPriorityMeta(null, null, "en")).toBeNull();
   });
 });

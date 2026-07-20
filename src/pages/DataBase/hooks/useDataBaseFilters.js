@@ -48,7 +48,7 @@ export function useDataBaseFilters({ data, coords, sharedFilters = null }) {
   const setNearbyRadius =
     sharedFilters?.setNearbyRadius ?? setLocalNearbyRadius;
 
-  const hasGps = Boolean(coords?.lat && coords?.lng);
+  const hasGps = Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng);
 
   useEffect(() => {
     if (searchInput === search) return undefined;

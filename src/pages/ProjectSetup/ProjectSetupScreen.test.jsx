@@ -62,6 +62,8 @@ vi.mock("@/services/projectBackupService", () => ({
   }),
 }));
 
+const backupService = await import("@/services/projectBackupService");
+
 describe("ProjectSetupScreen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -170,5 +172,135 @@ describe("ProjectSetupScreen", () => {
         type: "",
       }),
     );
+  });
+
+  it("creates the first project with a trimmed name", () => {
+    const onComplete = vi.fn();
+    render(
+      <ProjectSetupScreen onComplete={onComplete} onImportZip={vi.fn()} />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Project Name"), {
+      target: { value: "  Alpha Field  " },
+    });
+    fireEvent.click(screen.getByText("Upstream"));
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+
+    expect(onComplete).toHaveBeenCalledWith("upstream", "Alpha Field");
+  });
+
+  it("submits from Enter after a project type is selected", () => {
+    const onComplete = vi.fn();
+    render(<ProjectSetupScreen onComplete={onComplete} />);
+
+    fireEvent.click(screen.getByText("Downstream"));
+    const input = screen.getByLabelText("Project Name");
+    fireEvent.change(input, { target: { value: "City Network" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onComplete).toHaveBeenCalledWith("downstream", "City Network");
+  });
+
+  it("uses ZIP metadata to populate the import fallback", async () => {
+    backupService.peekBackupZip.mockResolvedValueOnce({
+      leaks: [{ id: "l1" }],
+      meta: { project: { name: "Archive Project", type: "downstream" } },
+      detectedType: null,
+    });
+    const onImportZip = vi.fn().mockResolvedValue({});
+    const { container } = render(
+      <ProjectSetupScreen onComplete={vi.fn()} onImportZip={onImportZip} />,
+    );
+    const file = new File(["zip"], "backup.zip", {
+      type: "application/zip",
+    });
+
+    fireEvent.change(container.querySelector('input[accept^=".zip"]'), {
+      target: { files: [file] },
+    });
+
+    await waitFor(() =>
+      expect(onImportZip).toHaveBeenCalledWith(file, {
+        name: "Archive Project",
+        type: "downstream",
+      }),
+    );
+    expect(screen.getByLabelText("Project Name").value).toBe("Archive Project");
+  });
+
+  it("falls back to the ZIP filename when preview and metadata are unavailable", async () => {
+    backupService.peekBackupZip.mockRejectedValueOnce(new Error("bad preview"));
+    const onImportZip = vi.fn().mockResolvedValue({});
+    const { container } = render(
+      <ProjectSetupScreen onComplete={vi.fn()} onImportZip={onImportZip} />,
+    );
+    const file = new File(["zip"], "midstream_backup.zip", {
+      type: "application/zip",
+    });
+
+    fireEvent.change(container.querySelector('input[accept^=".zip"]'), {
+      target: { files: [file] },
+    });
+
+    await waitFor(() =>
+      expect(onImportZip).toHaveBeenCalledWith(file, {
+        name: "midstream_backup",
+        type: "",
+      }),
+    );
+  });
+
+  it.each([
+    ["MISSING_PROJECT_TYPE", "Select project type"],
+    ["EMPTY_EXCEL", "No importable rows found in Excel"],
+  ])("shows the mapped Excel error for %s", async (code, message) => {
+    const error = Object.assign(new Error("raw import error"), { code });
+    const onImportExcel = vi.fn().mockRejectedValue(error);
+    const { container } = render(
+      <ProjectSetupScreen onComplete={vi.fn()} onImportExcel={onImportExcel} />,
+    );
+    const file = new File(["xlsx"], "inspection.xlsx");
+
+    fireEvent.change(container.querySelector('input[accept^=".xlsx"]'), {
+      target: { files: [file] },
+    });
+
+    expect(await screen.findByText(message)).toBeTruthy();
+  });
+
+  it("silently handles QR cancellation and reports real scanner errors", async () => {
+    const cancelled = Object.assign(new Error("cancelled"), {
+      code: "QR_SCAN_CANCELLED",
+    });
+    localSync.scanLocalSyncQr.mockRejectedValueOnce(cancelled);
+    const { unmount } = render(
+      <ProjectSetupScreen onComplete={vi.fn()} onImportZip={vi.fn()} />,
+    );
+
+    fireEvent.click(screen.getByText("QR Import by QR"));
+    await waitFor(() => expect(localSync.scanLocalSyncQr).toHaveBeenCalled());
+    expect(screen.queryByText("cancelled")).toBeNull();
+    unmount();
+
+    localSync.scanLocalSyncQr.mockRejectedValueOnce(new Error("camera failed"));
+    render(<ProjectSetupScreen onComplete={vi.fn()} onImportZip={vi.fn()} />);
+    fireEvent.click(screen.getByText("QR Import by QR"));
+
+    expect(await screen.findByText("camera failed")).toBeTruthy();
+  });
+
+  it("hides QR import when local sync is unavailable and cleans up on unmount", () => {
+    localSync.isLocalSyncAvailable.mockReturnValue(false);
+    const { unmount } = render(
+      <ProjectSetupScreen
+        onComplete={vi.fn()}
+        onImportZip={vi.fn()}
+        onImportExcel={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("QR Import by QR")).toBeNull();
+    unmount();
+    expect(localSync.cancelLocalSyncQrScan).toHaveBeenCalledOnce();
   });
 });

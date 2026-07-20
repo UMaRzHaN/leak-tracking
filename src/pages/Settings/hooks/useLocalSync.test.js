@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/services/localSyncService", () => ({
@@ -237,5 +237,120 @@ describe("useLocalSync", () => {
       "success",
       "База импортирована по QR: «Imported» (3 записей)",
     );
+  });
+
+  it("returns to idle when a sync id cannot be assigned", async () => {
+    const { result, notify } = renderSync({
+      lang: "en",
+      ensureProjectSyncId: vi.fn(() => null),
+    });
+
+    await act(async () => result.current.startHost());
+
+    expect(syncService.startLocalSyncHost).not.toHaveBeenCalled();
+    expect(result.current.state.status).toBe("idle");
+    expect(notify).toHaveBeenCalledWith(
+      "error",
+      expect.stringContaining("Could not create session"),
+    );
+  });
+
+  it("stops a hosted session explicitly", async () => {
+    const stop = vi.fn().mockResolvedValue(undefined);
+    syncService.startLocalSyncHost.mockResolvedValue({
+      host: "192.168.43.1",
+      port: 49152,
+      code: "123456",
+      stop,
+    });
+    const { result } = renderSync({ lang: "en" });
+
+    await act(async () => result.current.startHost());
+    await act(async () => result.current.stopHost());
+
+    expect(stop).toHaveBeenCalledOnce();
+    expect(result.current.state.status).toBe("idle");
+  });
+
+  it("stops and reports asynchronous host errors", async () => {
+    let reportError;
+    const stop = vi.fn().mockResolvedValue(undefined);
+    syncService.startLocalSyncHost.mockImplementation(async (options) => {
+      reportError = options.onError;
+      return {
+        host: "192.168.43.1",
+        port: 49152,
+        code: "123456",
+        stop,
+      };
+    });
+    const { result, notify } = renderSync({ lang: "en" });
+
+    await act(async () => result.current.startHost());
+    act(() => reportError(new Error("peer disconnected")));
+
+    await waitFor(() => expect(stop).toHaveBeenCalledOnce());
+    expect(result.current.state.status).toBe("idle");
+    expect(notify).toHaveBeenCalledWith(
+      "error",
+      "Local sync error: peer disconnected",
+    );
+  });
+
+  it("reports client exchange failures", async () => {
+    syncService.exchangeLocalSyncArchive.mockRejectedValueOnce(
+      new Error("connection refused"),
+    );
+    const { result, notify } = renderSync({ lang: "en" });
+
+    await act(async () =>
+      result.current.joinHost({
+        host: "192.168.43.1",
+        port: "49152",
+        code: "654321",
+      }),
+    );
+
+    expect(result.current.state.status).toBe("idle");
+    expect(notify).toHaveBeenCalledWith(
+      "error",
+      "Connection error: connection refused",
+    );
+  });
+
+  it("silently handles QR cancellation but reports invalid QR codes", async () => {
+    const cancelled = Object.assign(new Error("cancelled"), {
+      code: "QR_SCAN_CANCELLED",
+    });
+    syncService.scanLocalSyncQr.mockRejectedValueOnce(cancelled);
+    const { result, notify } = renderSync({ lang: "en" });
+
+    await act(async () => result.current.scanAndJoin());
+    expect(notify).not.toHaveBeenCalled();
+    expect(result.current.state.status).toBe("idle");
+
+    syncService.scanLocalSyncQr.mockRejectedValueOnce(new Error("wrong code"));
+    await act(async () => result.current.scanAndJoin());
+    expect(notify).toHaveBeenCalledWith("error", "QR code error: wrong code");
+  });
+
+  it("cancels scanning and cleans up native resources on unmount", async () => {
+    const stop = vi.fn().mockResolvedValue(undefined);
+    syncService.startLocalSyncHost.mockResolvedValue({
+      host: "192.168.43.1",
+      port: 49152,
+      code: "123456",
+      stop,
+    });
+    const { result, unmount } = renderSync({ lang: "en" });
+
+    act(() => result.current.cancelScan());
+    expect(syncService.cancelLocalSyncQrScan).toHaveBeenCalledOnce();
+
+    await act(async () => result.current.startHost());
+    unmount();
+
+    await waitFor(() => expect(stop).toHaveBeenCalledOnce());
+    expect(syncService.cancelLocalSyncQrScan).toHaveBeenCalledTimes(2);
   });
 });

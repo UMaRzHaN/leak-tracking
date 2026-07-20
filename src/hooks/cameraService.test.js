@@ -72,4 +72,37 @@ describe("native camera service", () => {
       resultType: "uri",
     });
   });
+
+  it("does not open the camera when permission is denied", async () => {
+    camera.requestPermissions.mockResolvedValueOnce({ camera: "denied" });
+
+    await expect(takePhotoFromCamera()).rejects.toThrow(
+      "Camera permission denied",
+    );
+    expect(camera.getPhoto).not.toHaveBeenCalled();
+  });
+
+  it("rejects camera results without a readable URI", async () => {
+    camera.getPhoto.mockResolvedValueOnce({ format: "jpeg" });
+
+    await expect(takePhotoFromCamera()).rejects.toThrow(
+      "Camera did not return a photo URI",
+    );
+  });
+
+  it("rejects invalid camera data URLs", async () => {
+    camera.getPhoto.mockResolvedValueOnce({ dataUrl: "not-a-data-url" });
+
+    await expect(takePhotoFromCamera()).rejects.toThrow(
+      "Camera returned an invalid photo",
+    );
+  });
+
+  it("reports an unreadable temporary camera file", async () => {
+    fetch.mockResolvedValueOnce({ ok: false });
+
+    await expect(takePhotoFromCamera()).rejects.toThrow(
+      "Unable to read the selected photo",
+    );
+  });
 });

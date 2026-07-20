@@ -204,4 +204,149 @@ describe("useBackupActions", () => {
     URL.revokeObjectURL = originalRevokeObjectURL;
     click.mockRestore();
   });
+
+  it("warns instead of building an empty backup", async () => {
+    const notify = vi.fn();
+    const { result } = renderHook(() =>
+      useBackupActions({
+        data: [],
+        idbGetPhoto: vi.fn(),
+        activeProject: { id: "active-1", folderName: "active" },
+        vars: {},
+        onImportZip: vi.fn(),
+        onImportIntoExisting: vi.fn(),
+        notify,
+        projects: [],
+      }),
+    );
+
+    await act(async () => result.current.handleExportZip());
+
+    expect(notify).toHaveBeenCalledWith("warning", "No data to export");
+    expect(servicesModule.buildProjectBackupZip).not.toHaveBeenCalled();
+  });
+
+  it("reports backup build failures and always clears exporting state", async () => {
+    const notify = vi.fn();
+    servicesModule.buildProjectBackupZip.mockRejectedValueOnce(
+      new Error("disk full"),
+    );
+    const { result } = renderHook(() =>
+      useBackupActions({
+        data: [{ id: "l1" }],
+        idbGetPhoto: vi.fn(),
+        activeProject: { id: "active-1", folderName: "active" },
+        vars: {},
+        onImportZip: vi.fn(),
+        onImportIntoExisting: vi.fn(),
+        notify,
+        projects: [],
+      }),
+    );
+
+    await act(async () => result.current.handleExportZip());
+
+    expect(notify).toHaveBeenCalledWith("error", "Export error: disk full");
+    expect(result.current.isExportingZip).toBe(false);
+  });
+
+  it("rejects an archive whose project type cannot be determined", async () => {
+    const notify = vi.fn();
+    servicesModule.peekBackupZip.mockResolvedValueOnce({
+      leaks: [],
+      meta: null,
+      detectedType: null,
+    });
+    const event = {
+      target: { files: [{ name: "unknown.zip" }], value: "filled" },
+    };
+    const { result } = renderHook(() =>
+      useBackupActions({
+        data: [],
+        idbGetPhoto: vi.fn(),
+        activeProject: null,
+        vars: {},
+        onImportZip: vi.fn(),
+        onImportIntoExisting: vi.fn(),
+        notify,
+        projects: [],
+      }),
+    );
+
+    await act(async () => result.current.handleImportZip(event));
+
+    expect(notify).toHaveBeenCalledWith(
+      "error",
+      expect.stringContaining("Could not determine the project type"),
+    );
+    expect(result.current.importConfirmState.open).toBe(false);
+    expect(event.target.value).toBe("");
+  });
+
+  it("supports overwrite, merge, and copy conflict resolutions", async () => {
+    const notify = vi.fn();
+    const file = { name: "alpha.zip" };
+    const existingProject = {
+      id: "p1",
+      name: "Alpha",
+      folderName: "alpha",
+    };
+    const onImportIntoExisting = vi.fn().mockResolvedValue({
+      project: existingProject,
+      leakCount: 2,
+    });
+    const onImportZip = vi.fn().mockResolvedValue({
+      project: { id: "p2", name: "Alpha (2)" },
+      leakCount: 2,
+    });
+    const { result } = renderHook(() =>
+      useBackupActions({
+        data: [],
+        idbGetPhoto: vi.fn(),
+        activeProject: existingProject,
+        vars: {},
+        onImportZip,
+        onImportIntoExisting,
+        notify,
+        projects: [existingProject],
+      }),
+    );
+    const conflict = {
+      open: true,
+      file,
+      existingProject,
+      resolvedName: "Alpha",
+      resolvedType: "upstream",
+      fallback: undefined,
+    };
+
+    act(() => result.current.setConflictState(conflict));
+    await act(async () => result.current.handleConflictOverwrite());
+    expect(onImportIntoExisting).toHaveBeenLastCalledWith(
+      file,
+      existingProject,
+      "overwrite",
+    );
+
+    act(() => result.current.setConflictState(conflict));
+    await act(async () => result.current.handleConflictMerge());
+    expect(onImportIntoExisting).toHaveBeenLastCalledWith(
+      file,
+      existingProject,
+      "merge",
+    );
+
+    act(() => result.current.setConflictState(conflict));
+    await act(async () => result.current.handleConflictCopy());
+    expect(onImportZip).toHaveBeenCalledWith(
+      file,
+      { name: "Alpha (2)", type: "upstream" },
+      { overrideName: "Alpha (2)" },
+    );
+    expect(notify).toHaveBeenCalledWith(
+      "success",
+      'Copy "Alpha (2)" created (2 records)',
+    );
+    expect(result.current.conflictState.open).toBe(false);
+  });
 });

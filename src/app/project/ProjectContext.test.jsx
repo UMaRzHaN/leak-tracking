@@ -141,4 +141,205 @@ describe("ProjectProvider initialization", () => {
       JSON.parse(localStorage.getItem(STORAGE_KEYS.PROJECTS_LIST))[0].syncId,
     ).toBe("new-sync-5678");
   });
+
+  it("creates projects with normalized sync ids and unique folder names", () => {
+    localStorage.setItem(
+      STORAGE_KEYS.PROJECTS_LIST,
+      JSON.stringify([
+        {
+          id: "p1",
+          name: "Alpha",
+          type: "upstream",
+          folderName: "Alpha",
+          createdAt: 1,
+        },
+      ]),
+    );
+    const wrapper = ({ children }) => (
+      <ProjectProvider>{children}</ProjectProvider>
+    );
+    const { result } = renderHook(() => useProject(), { wrapper });
+
+    let created;
+    act(() => {
+      created = result.current.addProject(" Alpha ", "midstream", {
+        syncId: " SYNC-ID-123 ",
+      });
+    });
+
+    expect(created).toMatchObject({
+      name: "Alpha",
+      type: "midstream",
+      folderName: "Alpha_2",
+      syncId: "sync-id-123",
+    });
+    expect(result.current.activeId).toBe(created.id);
+    expect(result.current.projects).toHaveLength(2);
+    expect(
+      JSON.parse(localStorage.getItem(STORAGE_KEYS.PROJECTS_LIST)),
+    ).toContainEqual(created);
+    expect(localStorage.getItem(STORAGE_KEYS.ACTIVE_PROJECT_ID)).toBe(
+      created.id,
+    );
+  });
+
+  it("rejects unknown project types without changing state", () => {
+    const wrapper = ({ children }) => (
+      <ProjectProvider>{children}</ProjectProvider>
+    );
+    const { result } = renderHook(() => useProject(), { wrapper });
+
+    let created;
+    act(() => {
+      created = result.current.addProject("Invalid", "unknown");
+    });
+
+    expect(created).toBeNull();
+    expect(result.current.projects).toEqual([]);
+    expect(result.current.isConfigured).toBe(false);
+  });
+
+  it("renames a project in two phases and resolves folder collisions", () => {
+    localStorage.setItem(
+      STORAGE_KEYS.PROJECTS_LIST,
+      JSON.stringify([
+        {
+          id: "p1",
+          name: "Alpha",
+          type: "upstream",
+          folderName: "alpha",
+          createdAt: 1,
+        },
+        {
+          id: "p2",
+          name: "Beta",
+          type: "midstream",
+          folderName: "Beta",
+          createdAt: 2,
+        },
+      ]),
+    );
+    const wrapper = ({ children }) => (
+      <ProjectProvider>{children}</ProjectProvider>
+    );
+    const { result } = renderHook(() => useProject(), { wrapper });
+
+    let rename;
+    act(() => {
+      rename = result.current.renameProject("p1", " Beta ");
+    });
+
+    expect(rename).toEqual({
+      oldFolderName: "alpha",
+      newFolderName: "Beta_2",
+    });
+    expect(result.current.projects[0]).toMatchObject({
+      name: "Beta",
+      folderName: "alpha",
+    });
+
+    act(() => {
+      result.current.applyFolderRename("p1", rename.newFolderName);
+    });
+    expect(result.current.projects[0].folderName).toBe("Beta_2");
+  });
+
+  it("switches projects, changes type, and ignores invalid targets", () => {
+    localStorage.setItem(
+      STORAGE_KEYS.PROJECTS_LIST,
+      JSON.stringify([
+        {
+          id: "p1",
+          name: "Alpha",
+          type: "upstream",
+          folderName: "alpha",
+          createdAt: 1,
+        },
+        {
+          id: "p2",
+          name: "Beta",
+          type: "midstream",
+          folderName: "beta",
+          createdAt: 2,
+        },
+      ]),
+    );
+    const wrapper = ({ children }) => (
+      <ProjectProvider>{children}</ProjectProvider>
+    );
+    const { result } = renderHook(() => useProject(), { wrapper });
+
+    act(() => result.current.selectProject("missing"));
+    expect(result.current.activeId).toBe("p1");
+
+    act(() => result.current.selectProject("p2"));
+    expect(result.current.activeId).toBe("p2");
+
+    act(() => result.current.changeProject("downstream"));
+    expect(result.current.activeProject.type).toBe("downstream");
+
+    act(() => result.current.changeProjectType("p2", "unknown"));
+    expect(result.current.activeProject.type).toBe("downstream");
+    expect(result.current.overwriteProject("missing")).toBe(false);
+  });
+
+  it("removes the active project and activates the first remaining project", () => {
+    localStorage.setItem(
+      STORAGE_KEYS.PROJECTS_LIST,
+      JSON.stringify([
+        {
+          id: "p1",
+          name: "Alpha",
+          type: "upstream",
+          folderName: "alpha",
+          createdAt: 1,
+        },
+        {
+          id: "p2",
+          name: "Beta",
+          type: "midstream",
+          folderName: "beta",
+          createdAt: 2,
+        },
+      ]),
+    );
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_PROJECT_ID, "p2");
+    const wrapper = ({ children }) => (
+      <ProjectProvider>{children}</ProjectProvider>
+    );
+    const { result } = renderHook(() => useProject(), { wrapper });
+
+    act(() => result.current.removeProject("p2"));
+
+    expect(result.current.projects.map((project) => project.id)).toEqual([
+      "p1",
+    ]);
+    expect(result.current.activeId).toBe("p1");
+    expect(localStorage.getItem(STORAGE_KEYS.ACTIVE_PROJECT_ID)).toBe("p1");
+  });
+
+  it("protects an existing sync id from accidental replacement", () => {
+    localStorage.setItem(
+      STORAGE_KEYS.PROJECTS_LIST,
+      JSON.stringify([
+        {
+          id: "p1",
+          name: "Alpha",
+          type: "upstream",
+          folderName: "alpha",
+          createdAt: 1,
+          syncId: "original-sync",
+        },
+      ]),
+    );
+    const wrapper = ({ children }) => (
+      <ProjectProvider>{children}</ProjectProvider>
+    );
+    const { result } = renderHook(() => useProject(), { wrapper });
+
+    expect(result.current.setProjectSyncId("p1", "other-sync")).toBeNull();
+    expect(result.current.replaceProjectSyncId("p1", "short")).toBeNull();
+    expect(result.current.ensureProjectSyncId("missing")).toBeNull();
+    expect(result.current.activeProject.syncId).toBe("original-sync");
+  });
 });

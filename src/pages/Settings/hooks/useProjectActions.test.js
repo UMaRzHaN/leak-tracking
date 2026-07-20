@@ -164,6 +164,33 @@ describe("useProjectActions", () => {
     expect(result.current.projectSwitchState.open).toBe(false);
   });
 
+  it("ignores the active project and can cancel a pending switch", async () => {
+    const selectProject = vi.fn();
+    projectModule.useProject.mockReturnValue({
+      ...projectModule.useProject(),
+      selectProject,
+    });
+    formContextModule.useLeakFormContext.mockReturnValue({
+      form: { component: "Valve" },
+      clearForm: vi.fn(),
+    });
+    const { result } = renderHook(() =>
+      useProjectActions({ setCacheInfo: vi.fn(), notify: vi.fn() }),
+    );
+
+    await act(async () => result.current.handleSelect("p1"));
+    expect(selectProject).not.toHaveBeenCalled();
+
+    await act(async () => result.current.handleSelect("p2"));
+    act(() => result.current.cancelProjectSwitch());
+    expect(result.current.projectSwitchState).toMatchObject({
+      open: false,
+      nextProjectId: null,
+    });
+    await act(async () => result.current.confirmProjectSwitch());
+    expect(selectProject).not.toHaveBeenCalled();
+  });
+
   it("applies folder rename and shows success notification on web", async () => {
     const notify = vi.fn();
     const renameProject = vi.fn().mockReturnValue({
@@ -189,6 +216,25 @@ describe("useProjectActions", () => {
     expect(renameProject).toHaveBeenCalledWith("p1", "Alpha Renamed");
     expect(applyFolderRename).toHaveBeenCalledWith("p1", "alpha_renamed");
     expect(notify).toHaveBeenCalledWith("success", "Name saved");
+  });
+
+  it("does nothing when the project rename is rejected", async () => {
+    const notify = vi.fn();
+    const renameProject = vi.fn().mockReturnValue(null);
+    const applyFolderRename = vi.fn();
+    projectModule.useProject.mockReturnValue({
+      ...projectModule.useProject(),
+      renameProject,
+      applyFolderRename,
+    });
+    const { result } = renderHook(() =>
+      useProjectActions({ setCacheInfo: vi.fn(), notify }),
+    );
+
+    await act(async () => result.current.handleRename("p1", ""));
+
+    expect(applyFolderRename).not.toHaveBeenCalled();
+    expect(notify).not.toHaveBeenCalled();
   });
 
   it("creates project with fallback title in notification when name is empty", () => {
@@ -281,6 +327,35 @@ describe("useProjectActions", () => {
     expect(result.current.syncIdEditorState.open).toBe(true);
   });
 
+  it("keeps the sync id editor open when persistence fails and supports cancel", () => {
+    const notify = vi.fn();
+    const replaceProjectSyncId = vi.fn().mockReturnValue(null);
+    projectModule.useProject.mockReturnValue({
+      ...projectModule.useProject(),
+      replaceProjectSyncId,
+    });
+    const { result } = renderHook(() =>
+      useProjectActions({ setCacheInfo: vi.fn(), notify }),
+    );
+
+    act(() => result.current.handleChangeSyncId("p1", "sync-alpha-1234"));
+    act(() => result.current.confirmSyncIdEditor());
+    expect(notify).toHaveBeenCalledWith(
+      "error",
+      "Could not update project syncId",
+    );
+    expect(result.current.syncIdEditorState.open).toBe(true);
+
+    act(() => result.current.cancelSyncIdEditor());
+    expect(result.current.syncIdEditorState).toMatchObject({
+      open: false,
+      projectId: null,
+      value: "",
+    });
+    act(() => result.current.confirmSyncIdEditor());
+    expect(replaceProjectSyncId).toHaveBeenCalledTimes(1);
+  });
+
   it("removes project artifacts before removing a project", async () => {
     const notify = vi.fn();
     const removeProject = vi.fn();
@@ -313,5 +388,23 @@ describe("useProjectActions", () => {
       photoRepositoryModule.PhotoRepository.deleteProjectPhotos,
     ).toHaveBeenCalledWith("p1", "alpha");
     expect(removeProject).toHaveBeenCalledWith("p1");
+  });
+
+  it("ignores removal of an unknown project", async () => {
+    const notify = vi.fn();
+    const removeProject = vi.fn();
+    projectModule.useProject.mockReturnValue({
+      ...projectModule.useProject(),
+      removeProject,
+    });
+    const { result } = renderHook(() =>
+      useProjectActions({ setCacheInfo: vi.fn(), notify }),
+    );
+
+    await act(async () => result.current.handleRemove("missing"));
+
+    expect(leakRepositoryModule.LeakRepository.clear).not.toHaveBeenCalled();
+    expect(removeProject).not.toHaveBeenCalled();
+    expect(notify).not.toHaveBeenCalled();
   });
 });

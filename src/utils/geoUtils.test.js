@@ -34,8 +34,8 @@ describe("distanceMeters", () => {
 
 describe("findNearbyLeak", () => {
   const leaks = [
-    { id: "a", lat: 55.7510, lng: 37.6120 }, // ~111м от базы
-    { id: "b", lat: 55.7600, lng: 37.6100 }, // ~1км от базы
+    { id: "a", lat: 55.751, lng: 37.612 }, // ~111м от базы
+    { id: "b", lat: 55.76, lng: 37.61 }, // ~1км от базы
     { id: "c", lat: 55.7501, lng: 37.6101 }, // ~10м от базы
   ];
   const baseLat = 55.75;
@@ -54,6 +54,15 @@ describe("findNearbyLeak", () => {
   it("returns null when lat/lng are missing", () => {
     expect(findNearbyLeak(leaks, null, baseLng)).toBeNull();
     expect(findNearbyLeak(leaks, baseLat, null)).toBeNull();
+  });
+
+  it("accepts coordinates on the equator and prime meridian", () => {
+    const result = findNearbyLeak([{ id: "origin", lat: 0, lng: 0 }], 0, 0);
+
+    expect(result).toEqual({
+      leak: { id: "origin", lat: 0, lng: 0 },
+      distance: 0,
+    });
   });
 
   it("skips leaks without coordinates", () => {
@@ -75,9 +84,9 @@ describe("findNearbyLeak", () => {
 
 describe("filterNearbyLeaks", () => {
   const leaks = [
-    { id: "near",   lat: 55.7501, lng: 37.6101 }, // ~10м
-    { id: "medium", lat: 55.7540, lng: 37.6150 }, // ~500м
-    { id: "far",    lat: 55.7700, lng: 37.6300 }, // >2км
+    { id: "near", lat: 55.7501, lng: 37.6101 }, // ~10м
+    { id: "medium", lat: 55.754, lng: 37.615 }, // ~500м
+    { id: "far", lat: 55.77, lng: 37.63 }, // >2км
   ];
   const baseLat = 55.75;
   const baseLng = 37.61;
@@ -92,7 +101,9 @@ describe("filterNearbyLeaks", () => {
   it("sorts by distance ascending", () => {
     const result = filterNearbyLeaks(leaks, baseLat, baseLng, 1000);
     for (let i = 1; i < result.length; i++) {
-      expect(result[i]._nearbyDist).toBeGreaterThanOrEqual(result[i - 1]._nearbyDist);
+      expect(result[i]._nearbyDist).toBeGreaterThanOrEqual(
+        result[i - 1]._nearbyDist,
+      );
     }
   });
 
@@ -107,6 +118,12 @@ describe("filterNearbyLeaks", () => {
   it("returns empty array when lat/lng are missing", () => {
     expect(filterNearbyLeaks(leaks, null, baseLng)).toEqual([]);
     expect(filterNearbyLeaks(leaks, baseLat, null)).toEqual([]);
+  });
+
+  it("includes zero-valued coordinates", () => {
+    expect(filterNearbyLeaks([{ id: "origin", lat: 0, lng: 0 }], 0, 0)).toEqual(
+      [{ id: "origin", lat: 0, lng: 0, _nearbyDist: 0 }],
+    );
   });
 
   it("skips leaks without coordinates", () => {

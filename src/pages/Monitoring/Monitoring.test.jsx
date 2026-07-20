@@ -59,6 +59,13 @@ vi.mock("@/features/leakList/VirtualizedLeakList/VirtualizedLeakList", () => ({
 vi.mock("@/features/photos/PhotoInput/PhotoInput", () => ({
   default: () => null,
 }));
+vi.mock("@/features/status/ReopenLeakModal/ReopenLeakModal", () => ({
+  default: ({ onConfirm }) => (
+    <button type="button" onClick={() => onConfirm({ reason: "reopened" })}>
+      Confirm monitoring reopen
+    </button>
+  ),
+}));
 
 import Monitoring from "./Monitoring";
 import { getMonitoringHistoryComment } from "@/utils/monitoring";
@@ -430,5 +437,172 @@ describe("Monitoring round flow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Swipe monitoring" }));
     expect(screen.getByText("Start a new round?")).toBeTruthy();
+  });
+
+  it("processes a requested queue in order within one monitoring round", async () => {
+    localStorage.setItem(
+      "app:project-1:monitoring_settings_v1",
+      JSON.stringify({ photoRequired: false }),
+    );
+    const setData = vi.fn().mockResolvedValue(undefined);
+    const onRequestedLeaksConsumed = vi.fn();
+    const leaks = [
+      { id: "leak-1", leak_id: "1001", status: "open" },
+      { id: "leak-2", leak_id: "1002", status: "open" },
+    ];
+
+    render(
+      <Monitoring
+        data={leaks}
+        setData={setData}
+        coords={null}
+        sharedFilters={{}}
+        requestedLeakIds={["missing", "leak-1", "leak-2"]}
+        onRequestedLeaksConsumed={onRequestedLeaksConsumed}
+        userProfile={{ name: "Inspector" }}
+      />,
+    );
+
+    expect(onRequestedLeaksConsumed).toHaveBeenCalledOnce();
+    expect(screen.getByText("Start monitoring?")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Start round" }));
+
+    expect(screen.getByText("1 / 2")).toBeTruthy();
+    expect(screen.getByText(/1001/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(setData).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("2 / 2")).toBeTruthy();
+    expect(screen.getByText(/1002/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(setData).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole("heading", { name: "Check" })).toBeNull();
+  });
+
+  it("requires a monitoring photo before writing project data", () => {
+    const setData = vi.fn();
+    const leak = { id: "leak-1", leak_id: "1001", status: "open" };
+    render(
+      <Monitoring
+        data={[leak]}
+        setData={setData}
+        coords={null}
+        sharedFilters={{}}
+        userProfile={{ name: "Inspector" }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "All tags 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Swipe monitoring" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start round" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(screen.getByText("Add a monitoring photo")).toBeTruthy();
+    expect(setData).not.toHaveBeenCalled();
+  });
+
+  it("requires an inspector name before saving", () => {
+    localStorage.setItem(
+      "app:project-1:monitoring_settings_v1",
+      JSON.stringify({ photoRequired: false }),
+    );
+    const setData = vi.fn();
+    const leak = { id: "leak-1", leak_id: "1001", status: "open" };
+    render(
+      <Monitoring
+        data={[leak]}
+        setData={setData}
+        coords={null}
+        sharedFilters={{}}
+        userProfile={{ name: "   " }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "All tags 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Swipe monitoring" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start round" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(screen.getByText("Fill in the user name in profile")).toBeTruthy();
+    expect(setData).not.toHaveBeenCalled();
+  });
+
+  it("reports persistence failures and leaves the monitoring sheet open", async () => {
+    localStorage.setItem(
+      "app:project-1:monitoring_settings_v1",
+      JSON.stringify({ photoRequired: false }),
+    );
+    const setData = vi.fn().mockRejectedValue(new Error("database locked"));
+    const leak = { id: "leak-1", leak_id: "1001", status: "open" };
+    render(
+      <Monitoring
+        data={[leak]}
+        setData={setData}
+        coords={null}
+        sharedFilters={{}}
+        userProfile={{ name: "Inspector" }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "All tags 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Swipe monitoring" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start round" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("Failed to save monitoring result: database locked"),
+      ).toBeTruthy(),
+    );
+    expect(screen.getByRole("heading", { name: "Check" })).toBeTruthy();
+  });
+
+  it("deletes the orphaned original photo after monitoring reopens a resolved leak", async () => {
+    const round = {
+      id: "round-5",
+      number: 5,
+      startedAt: "2026-07-15T05:00:00.000Z",
+    };
+    localStorage.setItem(
+      "app:project-1:monitoring_round_v2",
+      JSON.stringify(round),
+    );
+    localStorage.setItem(
+      "app:project-1:monitoring_settings_v1",
+      JSON.stringify({ photoRequired: false }),
+    );
+    const setData = vi.fn().mockResolvedValue(undefined);
+    const leak = {
+      id: "leak-1",
+      leak_id: "1001",
+      status: "resolved",
+      photo: "idb://original",
+      photo_after: "idb://resolved",
+    };
+    render(
+      <Monitoring
+        data={[leak]}
+        setData={setData}
+        coords={null}
+        sharedFilters={{}}
+        requestedLeakId="leak-1"
+        onRequestedLeakConsumed={vi.fn()}
+        userProfile={{ name: "Inspector" }}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Result"), {
+      target: { value: "still_leaking" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Confirm monitoring reopen" }),
+    );
+
+    await waitFor(() => expect(setData).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(photoStorage.deletePhoto).toHaveBeenCalledWith("idb://original"),
+    );
   });
 });
