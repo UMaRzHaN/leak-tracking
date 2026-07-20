@@ -4,18 +4,44 @@ const CACHE_NAME = "map-tiles-v2";
 const TILE_DIR = "map-tiles";
 const ESRI_BASE =
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile";
+const MAX_MERCATOR_LAT = 85.05112878;
 const NATIVE_COUNT_KEY = "map-tiles-native-count";
 
 const webSupported = typeof caches !== "undefined";
 
 function getNativeCount() {
-  return parseInt(localStorage.getItem(NATIVE_COUNT_KEY) || "0", 10);
+  const count = Number.parseInt(
+    localStorage.getItem(NATIVE_COUNT_KEY) || "0",
+    10,
+  );
+  return Number.isFinite(count) && count > 0 ? count : 0;
 }
 function incrementNativeCount() {
   localStorage.setItem(NATIVE_COUNT_KEY, getNativeCount() + 1);
 }
 function resetNativeCount() {
   localStorage.removeItem(NATIVE_COUNT_KEY);
+}
+
+function clampLatitude(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return Math.max(-MAX_MERCATOR_LAT, Math.min(MAX_MERCATOR_LAT, number));
+}
+
+function normalizeLongitude(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return ((((number + 180) % 360) + 360) % 360) - 180;
+}
+
+function tileY(latitude, tileCount) {
+  const latRad = (latitude * Math.PI) / 180;
+  const value = Math.floor(
+    ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) *
+      tileCount,
+  );
+  return Math.max(0, Math.min(tileCount - 1, value));
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -27,15 +53,14 @@ function tileFilePath(url) {
 }
 
 export function buildTileUrls(lat, lng, minZoom, maxZoom) {
+  const safeLat = clampLatitude(lat);
+  const safeLng = normalizeLongitude(lng);
+  if (safeLat == null || safeLng == null) return [];
   const urls = [];
   for (let z = minZoom; z <= maxZoom; z++) {
     const n = 2 ** z;
-    const cx = Math.floor(((lng + 180) / 360) * n);
-    const latRad = (lat * Math.PI) / 180;
-    const cy = Math.floor(
-      ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) *
-        n,
-    );
+    const cx = Math.floor(((safeLng + 180) / 360) * n);
+    const cy = tileY(safeLat, n);
     const radius = z <= 13 ? 1 : z <= 14 ? 2 : z <= 15 ? 2 : 3;
     for (let dx = -radius; dx <= radius; dx++) {
       for (let dy = -radius; dy <= radius; dy++) {
@@ -194,36 +219,43 @@ export async function clearMapCache() {
 
 export function buildViewportTileUrls(bounds, minZoom, maxZoom) {
   const { north, south, east, west } = bounds;
-  const urls = [];
+  const safeNorth = clampLatitude(north);
+  const safeSouth = clampLatitude(south);
+  const safeEast = Number(east);
+  const safeWest = Number(west);
+  if (
+    safeNorth == null ||
+    safeSouth == null ||
+    !Number.isFinite(safeEast) ||
+    !Number.isFinite(safeWest)
+  ) {
+    return [];
+  }
+  const westBound = Math.max(-180, Math.min(180, safeWest));
+  const eastBound = Math.max(-180, Math.min(180, safeEast));
+  const longitudeRanges =
+    westBound <= eastBound
+      ? [[westBound, eastBound]]
+      : [
+          [westBound, 180],
+          [-180, eastBound],
+        ];
+  const urls = new Set();
   for (let z = minZoom; z <= maxZoom; z++) {
     const n = 2 ** z;
-    const x1 = Math.max(0, Math.floor(((west + 180) / 360) * n));
-    const x2 = Math.min(n - 1, Math.floor(((east + 180) / 360) * n));
-    const latRad1 = (north * Math.PI) / 180;
-    const y1 = Math.max(
-      0,
-      Math.floor(
-        ((1 - Math.log(Math.tan(latRad1) + 1 / Math.cos(latRad1)) / Math.PI) /
-          2) *
-          n,
-      ),
-    );
-    const latRad2 = (south * Math.PI) / 180;
-    const y2 = Math.min(
-      n - 1,
-      Math.floor(
-        ((1 - Math.log(Math.tan(latRad2) + 1 / Math.cos(latRad2)) / Math.PI) /
-          2) *
-          n,
-      ),
-    );
-    for (let x = x1; x <= x2; x++) {
-      for (let y = y1; y <= y2; y++) {
-        urls.push(`${ESRI_BASE}/${z}/${y}/${x}`);
+    const y1 = tileY(Math.max(safeNorth, safeSouth), n);
+    const y2 = tileY(Math.min(safeNorth, safeSouth), n);
+    for (const [rangeWest, rangeEast] of longitudeRanges) {
+      const x1 = Math.max(0, Math.floor(((rangeWest + 180) / 360) * n));
+      const x2 = Math.min(n - 1, Math.floor(((rangeEast + 180) / 360) * n));
+      for (let x = x1; x <= x2; x++) {
+        for (let y = y1; y <= y2; y++) {
+          urls.add(`${ESRI_BASE}/${z}/${y}/${x}`);
+        }
       }
     }
   }
-  return urls;
+  return [...urls];
 }
 
 export async function preloadUrls(

@@ -9,6 +9,7 @@ import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
 import { LeakRepository } from "@/repositories/LeakRepository";
 import { clearMapCache } from "@/services/maps/tileCache";
+import { renameNativeProjectFiles } from "../nativeProjectFiles";
 
 const CLOSED_SWITCH_STATE = {
   open: false,
@@ -164,58 +165,20 @@ export function useProjectActions({ setCacheInfo, notify }) {
       if (!result) return;
       const { oldFolderName, newFolderName } = result;
       let folderRenameSucceeded = true;
+      let folderWasRenamed = false;
 
       if (isNative && oldFolderName !== newFolderName) {
-        folderRenameSucceeded = await Filesystem.rename({
-          from: `LeakReports/${oldFolderName}`,
-          to: `LeakReports/${newFolderName}`,
-          directory: Directory.Data,
-        })
-          .then(() => true)
-          .catch(() => false);
-
-        if (folderRenameSucceeded) {
-          for (const fileName of ["data.json", "data.backup.json"]) {
-            const dataPath = `LeakReports/${newFolderName}/data/${fileName}`;
-            const fileResult = await Filesystem.readFile({
-              path: dataPath,
-              directory: Directory.Data,
-              encoding: "utf8",
-            }).catch(() => null);
-
-            if (fileResult) {
-              try {
-                const leaks = JSON.parse(fileResult.data || "[]");
-                const updated = remapProjectPhotoPaths(
-                  leaks,
-                  oldFolderName,
-                  newFolderName,
-                );
-
-                await Filesystem.writeFile({
-                  path: dataPath,
-                  directory: Directory.Data,
-                  data: JSON.stringify(updated),
-                  encoding: "utf8",
-                });
-              } catch {
-                // Keep an invalid recovery file untouched for manual recovery.
-              }
-            }
-          }
-
-          await Filesystem.rename({
-            from: oldFolderName,
-            to: newFolderName,
-            directory: Directory.Documents,
-          }).catch(() => {});
-        }
+        const renameResult = await renameNativeProjectFiles({
+          oldFolderName,
+          newFolderName,
+          remapLeaks: remapProjectPhotoPaths,
+        });
+        folderWasRenamed = renameResult.folderRenamed;
+        folderRenameSucceeded =
+          renameResult.folderRenamed && renameResult.dataRemapped;
       }
 
-      if (
-        oldFolderName !== newFolderName &&
-        (!isNative || folderRenameSucceeded)
-      ) {
+      if (oldFolderName !== newFolderName && (!isNative || folderWasRenamed)) {
         applyFolderRename(id, newFolderName);
       }
 

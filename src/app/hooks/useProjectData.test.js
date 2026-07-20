@@ -13,12 +13,19 @@ vi.mock("@/repositories/LeakRepository", () => ({
   },
 }));
 
+vi.mock("@/repositories/PhotoRepository", () => ({
+  PhotoRepository: {
+    gcOrphaned: vi.fn(),
+  },
+}));
+
 vi.mock("@/services/projectSyncState", () => ({
   recordLeakDeletions: vi.fn(),
 }));
 
 const projectContextModule = await import("@/app/project/ProjectContext");
 const repositoryModule = await import("@/repositories/LeakRepository");
+const photoRepositoryModule = await import("@/repositories/PhotoRepository");
 const syncStateModule = await import("@/services/projectSyncState");
 const { useProjectData } = await import("./useProjectData");
 
@@ -174,6 +181,12 @@ describe("useProjectData", () => {
       [],
     );
     expect(repositoryModule.LeakRepository.clear).toHaveBeenCalledWith({
+      projectId: "proj-1",
+      folderName: "project_one",
+    });
+    expect(
+      photoRepositoryModule.PhotoRepository.gcOrphaned,
+    ).toHaveBeenCalledWith([], {
       projectId: "proj-1",
       folderName: "project_one",
     });

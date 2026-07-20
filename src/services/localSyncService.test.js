@@ -336,6 +336,25 @@ describe("localSyncService", () => {
     vi.unstubAllGlobals();
   });
 
+  it("discards the outgoing archive when the network exchange fails", async () => {
+    mocks.plugin.exchange.mockRejectedValueOnce(new Error("connection lost"));
+
+    await expect(
+      exchangeLocalSyncArchive({
+        host: "192.168.1.2",
+        port: 49152,
+        code: "123456",
+        archive: new Blob(["outgoing"]),
+        projectKey: "upstream:alpha",
+        syncId: "sync-alpha-1234",
+      }),
+    ).rejects.toThrow("connection lost");
+
+    expect(mocks.plugin.discardArchive).toHaveBeenCalledWith({
+      token: "archive-token",
+    });
+  });
+
   it("fetches a hosted archive for QR import without preparing an outgoing archive", async () => {
     mocks.plugin.fetchArchive.mockResolvedValue({
       uri: "file:///cache/import.zip",

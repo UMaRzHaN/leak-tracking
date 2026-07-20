@@ -153,6 +153,7 @@ export function useLeakActions({
         setActiveLeak(null);
       } catch (err) {
         notify("error", `Ошибка сохранения: ${err.message}`);
+        throw err;
       }
     },
     [data, notify, setData],

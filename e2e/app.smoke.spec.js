@@ -199,13 +199,37 @@ test("moves a leak through repair, resolution, and reopening", async ({
   await expect(page.getByText(/^Открыта$/i).first()).toBeVisible();
 });
 
-test("restores project data from a ZIP backup after clearing the database", async ({
+test("preserves an edited leak and monitoring round through ZIP backup restore", async ({
   page,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(120_000);
   await createProject(page, "Backup restore E2E");
   await setUserProfile(page);
   await createLeak(page, "5301");
+
+  await page.getByRole("button", { name: "База", exact: true }).click();
+  await openLeakDetails(page);
+  await page.getByRole("button", { name: "Редактировать", exact: true }).click();
+  await page
+    .getByLabel("Описание утечки", { exact: true })
+    .fill("Уточнено в сквозном E2E");
+  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await expect(
+    page.getByText("Уточнено в сквозном E2E", { exact: true }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Мониторинг", exact: true }).click();
+  await page.getByRole("button", { name: "Начать мониторинг" }).click();
+  await page.getByRole("button", { name: "Начать обход" }).click();
+  await page.getByRole("button", { name: "Проверить", exact: true }).click();
+  await page
+    .getByLabel("Комментарий", { exact: true })
+    .fill("Сквозной контроль после редактирования");
+  await attachModalPhoto(page);
+  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await expect(page.getByText("Все теги проверены", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Завершить обход" }).click();
+  await expect(page.getByText("Обход завершён", { exact: true })).toBeVisible();
 
   await page.getByTitle("Настройки").click();
   const downloadPromise = page.waitForEvent("download");
@@ -242,8 +266,19 @@ test("restores project data from a ZIP backup after clearing the database", asyn
   await page.getByRole("button", { name: "База", exact: true }).click();
   await expect(page.getByText("№ Б-5301", { exact: true })).toBeVisible();
 
+  await openLeakDetails(page);
+  await expect(
+    page.getByText("Уточнено в сквозном E2E", { exact: true }),
+  ).toHaveCount(2);
+  await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+
+  await page.getByRole("button", { name: "Мониторинг", exact: true }).click();
+  await expect(page.getByText("Обход завершён", { exact: true })).toBeVisible();
+  await expect(page.getByText("1/1", { exact: true })).toBeVisible();
+
   await page.reload();
-  await expect(page.getByText("№ Б-5301", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Мониторинг", exact: true }).click();
+  await expect(page.getByText("Обход завершён", { exact: true })).toBeVisible();
 });
 
 test("rejects a corrupted ZIP backup without changing project data", async ({

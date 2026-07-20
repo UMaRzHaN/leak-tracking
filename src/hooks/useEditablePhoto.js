@@ -75,7 +75,10 @@ export function useEditablePhoto({
     }
 
     const currentLeakId = leakId;
-    const newPath = await saveToFS(rawPhoto, leakId, excludePaths);
+    const pathsToKeep = [persistedPathRef.current, ...excludePaths].filter(
+      Boolean,
+    );
+    const newPath = await saveToFS(rawPhoto, leakId, pathsToKeep);
 
     // защита от race-condition
     if (activeLeakIdRef.current !== currentLeakId) {

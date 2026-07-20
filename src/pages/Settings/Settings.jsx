@@ -28,6 +28,7 @@ import { useBackupActions } from "./hooks/useBackupActions";
 import { useProjectActions } from "./hooks/useProjectActions";
 import { useSettingsTexts } from "./hooks/useSettingsTexts";
 import { useLocalSync } from "./hooks/useLocalSync";
+import { performSettingsCleanup } from "./settingsCleanup";
 import s from "./Settings.module.scss";
 
 export default function Settings({
@@ -508,20 +509,31 @@ export default function Settings({
   ]);
 
   const handleSettingsConfirm = useCallback(async () => {
-    if (settingsConfirmAction === "clearMapCache") {
-      await clearMapCache();
-      setCacheInfo({ count: 0, sizeMB: 0 });
-      notify("success", localeTexts.notifications.cacheCleared);
-    }
+    try {
+      const completedAction = await performSettingsCleanup(
+        settingsConfirmAction,
+        { clearMapCache, clearDatabase },
+      );
 
-    if (settingsConfirmAction === "clearDatabase") {
-      clearDatabase?.();
-      notify("warning", localeTexts.notifications.databaseCleared);
-    }
+      if (completedAction === "clearMapCache") {
+        setCacheInfo({ count: 0, sizeMB: 0 });
+        notify("success", localeTexts.notifications.cacheCleared);
+      }
 
-    setSettingsConfirmAction(null);
+      if (completedAction === "clearDatabase") {
+        notify("warning", localeTexts.notifications.databaseCleared);
+      }
+    } catch (error) {
+      notify(
+        "error",
+        `${lang === "ru" ? "Не удалось выполнить очистку" : "Cleanup failed"}: ${error.message}`,
+      );
+    } finally {
+      setSettingsConfirmAction(null);
+    }
   }, [
     clearDatabase,
+    lang,
     localeTexts.notifications.cacheCleared,
     localeTexts.notifications.databaseCleared,
     notify,

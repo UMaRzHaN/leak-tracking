@@ -296,7 +296,16 @@ function excelSerialToDate(value) {
   return new Date(epoch + Number(value) * 24 * 60 * 60 * 1000);
 }
 
-function parseDateValue(value) {
+function createCalendarDate(year, month, day) {
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+    ? date
+    : null;
+}
+
+function parseDateValue(value, { calendarOnly = false } = {}) {
   if (value == null || value === "") return null;
   if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -310,8 +319,18 @@ function parseDateValue(value) {
   if (dotted) {
     const year =
       dotted[3].length === 2 ? Number(`20${dotted[3]}`) : Number(dotted[3]);
-    const date = new Date(year, Number(dotted[2]) - 1, Number(dotted[1]));
-    return Number.isNaN(date.getTime()) ? null : date;
+    return createCalendarDate(year, Number(dotted[2]), Number(dotted[1]));
+  }
+
+  if (calendarOnly) {
+    const isoDate = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoDate) {
+      return createCalendarDate(
+        Number(isoDate[1]),
+        Number(isoDate[2]),
+        Number(isoDate[3]),
+      );
+    }
   }
 
   const date = new Date(text);
@@ -484,7 +503,7 @@ function normalizeCellValue(key, value) {
   }
   if (NUMERIC_KEYS.has(key)) return parseNumberValue(value);
   if (DATE_KEYS.has(key)) {
-    const date = parseDateValue(value);
+    const date = parseDateValue(value, { calendarOnly: true });
     return date ? formatDate(date) : "";
   }
   if (DATE_TIME_KEYS.has(key)) {
@@ -525,6 +544,22 @@ function normalizeImportedLeak(row, rowNumber, sequence) {
   const parsedDateTime = combineDateAndTime(parsedDate, row.time);
   const persistedRow = { ...row };
   delete persistedRow.time;
+  if (
+    persistedRow.lat != null &&
+    (!Number.isFinite(persistedRow.lat) ||
+      persistedRow.lat < -90 ||
+      persistedRow.lat > 90)
+  ) {
+    delete persistedRow.lat;
+  }
+  if (
+    persistedRow.lng != null &&
+    (!Number.isFinite(persistedRow.lng) ||
+      persistedRow.lng < -180 ||
+      persistedRow.lng > 180)
+  ) {
+    delete persistedRow.lng;
+  }
   const createdAt =
     row.createdAt ?? parsedDateTime?.getTime() ?? now + rowNumber + sequence;
   const updatedAt =
@@ -1262,8 +1297,10 @@ export async function parseExcelLeaks(file, { projectType = "upstream" } = {}) {
   }
 
   const leaks = [];
+  const seenLeakTags = new Set();
   let totalRows = 0;
   let skipped = 0;
+  let duplicateLeakIds = 0;
 
   for (
     let rowNumber = headerRow.rowNumber + 1;
@@ -1286,8 +1323,21 @@ export async function parseExcelLeaks(file, { projectType = "upstream" } = {}) {
     totalRows += 1;
 
     const leak = normalizeImportedLeak(raw, rowNumber, leaks.length + 1);
-    if (leak) leaks.push(leak);
-    else skipped += 1;
+    if (!leak) {
+      skipped += 1;
+      continue;
+    }
+
+    const leakTag = String(leak.leak_id ?? "")
+      .trim()
+      .toLowerCase();
+    if (leakTag && seenLeakTags.has(leakTag)) {
+      skipped += 1;
+      duplicateLeakIds += 1;
+      continue;
+    }
+    if (leakTag) seenLeakTags.add(leakTag);
+    leaks.push(leak);
   }
 
   const monitoringSheet = findMonitoringSheet(workbook);
@@ -1317,6 +1367,7 @@ export async function parseExcelLeaks(file, { projectType = "upstream" } = {}) {
       totalRows,
       imported: leaksWithHistory.length,
       skipped,
+      duplicateLeakIds,
       recognizedColumns: headerRow.columns.length,
       monitoringRecords: monitoring.count,
       historyRecords: history.count,

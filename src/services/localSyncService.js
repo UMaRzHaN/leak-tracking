@@ -319,15 +319,20 @@ export async function exchangeLocalSyncArchive({
 }) {
   assertNativeAndroid();
   const archiveToken = await prepareNativeArchive(archive);
-  const result = await LocalSync.exchange({
-    host: host.trim(),
-    port: Number(port),
-    code: code.trim(),
-    archiveToken,
-    projectKey,
-    syncId,
-  });
-  return archiveResultToFile(result);
+  try {
+    const result = await LocalSync.exchange({
+      host: host.trim(),
+      port: Number(port),
+      code: code.trim(),
+      archiveToken,
+      projectKey,
+      syncId,
+    });
+    return archiveResultToFile(result);
+  } catch (error) {
+    await LocalSync.discardArchive({ token: archiveToken }).catch(() => {});
+    throw error;
+  }
 }
 
 export async function fetchLocalSyncArchive({

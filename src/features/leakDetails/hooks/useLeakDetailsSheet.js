@@ -26,6 +26,7 @@ import {
   resolveLeakRecord,
   startLeakRepair,
 } from "@/domain/leakLifecycle";
+import { persistPhotoReplacements } from "../utils/persistPhotoReplacements";
 
 const DELETE_ARM_MS = 3000;
 
@@ -328,7 +329,16 @@ export function useLeakDetailsSheet({
         ],
       };
 
-      onSave(withPriority);
+      await persistPhotoReplacements({
+        save: onSave,
+        value: withPriority,
+        replacements: [
+          [isPhotoDirty, leak.photo, photoPath],
+          [isAfterDirty, leak.photo_after, photoAfterPath],
+          [isRepairDirty, leak.photo_repair, photoRepairPath],
+        ],
+        deletePhoto,
+      });
     } catch {
       setNotification({
         type: "error",

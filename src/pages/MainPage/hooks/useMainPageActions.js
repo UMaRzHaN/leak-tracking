@@ -188,6 +188,7 @@ export function useMainPageActions({ data, setData, userProfile }) {
         setActiveLeak(null);
       } catch (err) {
         notify("error", `Ошибка сохранения: ${err.message}`);
+        throw err;
       }
     },
     [data, notify, setData],

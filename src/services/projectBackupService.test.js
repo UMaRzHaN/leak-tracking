@@ -210,6 +210,38 @@ describe("projectBackupService legacy imports", () => {
 });
 
 describe("mergeLeaksByFreshness", () => {
+  it("merges independent changes from two devices without dropping either leak", () => {
+    const deviceA = [
+      { id: "one", status: "resolved", updatedAt: 300 },
+      { id: "two", status: "open", updatedAt: 100 },
+    ];
+    const deviceB = [
+      { id: "one", status: "open", updatedAt: 100 },
+      { id: "two", status: "in_progress", updatedAt: 400 },
+    ];
+
+    const result = mergeLeaksByFreshness(deviceA, deviceB);
+
+    expect(result.leaks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "one", status: "resolved" }),
+        expect.objectContaining({ id: "two", status: "in_progress" }),
+      ]),
+    );
+  });
+
+  it("is idempotent when the same sync archive is imported twice", () => {
+    const local = [{ id: "one", status: "open", updatedAt: 100 }];
+    const incoming = [{ id: "one", status: "resolved", updatedAt: 200 }];
+
+    const first = mergeLeaksByFreshness(local, incoming);
+    const second = mergeLeaksByFreshness(first.leaks, incoming);
+
+    expect(first.updated).toBe(1);
+    expect(second.changed).toBe(0);
+    expect(second.leaks).toEqual(first.leaks);
+  });
+
   it("keeps blank leak tags distinct by their internal ids", () => {
     const existing = [
       { id: "one", leak_id: "", status: "open", updatedAt: 100 },

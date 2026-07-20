@@ -19,6 +19,69 @@ async function makeWorkbookBlob(rows) {
 }
 
 describe("parseExcelLeaks", () => {
+  it("skips duplicate tags case-insensitively", async () => {
+    const blob = await makeWorkbookBlob([
+      ["Leak ID", "component"],
+      ["TAG-1", "First valve"],
+      [" tag-1 ", "Duplicate valve"],
+    ]);
+
+    const result = await parseExcelLeaks(blob);
+
+    expect(result.leaks).toHaveLength(1);
+    expect(result.leaks[0].component).toBe("First valve");
+    expect(result.stats).toMatchObject({
+      imported: 1,
+      skipped: 1,
+      duplicateLeakIds: 1,
+    });
+  });
+
+  it("drops out-of-range coordinates without dropping the rest of the row", async () => {
+    const blob = await makeWorkbookBlob([
+      ["Leak ID", "latitude", "longitude", "component"],
+      ["BAD-GPS", 91, -181, "Valve"],
+    ]);
+
+    const result = await parseExcelLeaks(blob);
+
+    expect(result.leaks[0]).toMatchObject({
+      leak_id: "BAD-GPS",
+      component: "Valve",
+    });
+    expect(result.leaks[0]).not.toHaveProperty("lat");
+    expect(result.leaks[0]).not.toHaveProperty("lng");
+  });
+
+  it("rejects impossible dates and preserves ISO calendar dates across timezones", async () => {
+    const blob = await makeWorkbookBlob([
+      ["Leak ID", "date", "component"],
+      ["BAD-DATE", "31.02.2026", "Valve"],
+      ["TZ-DATE", "2026-07-14T23:00:00-05:00", "Flange"],
+    ]);
+
+    const result = await parseExcelLeaks(blob);
+    const invalid = result.leaks.find((leak) => leak.leak_id === "BAD-DATE");
+    const timezone = result.leaks.find((leak) => leak.leak_id === "TZ-DATE");
+
+    expect(invalid.date).not.toBe("03.03.2026");
+    expect(timezone.date).toBe("14.07.2026");
+  });
+
+  it("imports a partially filled meaningful row and skips a status-only row", async () => {
+    const blob = await makeWorkbookBlob([
+      ["Leak ID", "status", "component"],
+      ["", "", "Valve only"],
+      ["", "Resolved", ""],
+    ]);
+
+    const result = await parseExcelLeaks(blob);
+
+    expect(result.leaks).toHaveLength(1);
+    expect(result.leaks[0].component).toBe("Valve only");
+    expect(result.stats.skipped).toBe(1);
+  });
+
   it("imports a legacy sheet with Russian headers after a title row", async () => {
     const blob = await makeWorkbookBlob([
       ["Старый отчёт LDAR"],

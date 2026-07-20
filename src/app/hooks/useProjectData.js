@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useProjectData as useProjectDataCtx } from "@/app/project/ProjectContext";
 import { LeakRepository } from "@/repositories/LeakRepository";
+import { PhotoRepository } from "@/repositories/PhotoRepository";
 import { recordLeakDeletions } from "@/services/projectSyncState";
 import { logger } from "@/utils/logger";
 
@@ -100,6 +101,10 @@ export function useProjectData() {
     setDataProjectId(activeProjectId);
     if (!activeProjectId || !activeProjectFolderName) return;
     await LeakRepository.clear({
+      projectId: activeProjectId,
+      folderName: activeProjectFolderName,
+    });
+    await PhotoRepository.gcOrphaned([], {
       projectId: activeProjectId,
       folderName: activeProjectFolderName,
     });
