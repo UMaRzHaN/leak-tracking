@@ -6,6 +6,7 @@ describe("toNullableNumber", () => {
     expect(toNullableNumber("")).toBeNull();
     expect(toNullableNumber(null)).toBeNull();
     expect(toNullableNumber(undefined)).toBeNull();
+    expect(toNullableNumber("   ")).toBeNull();
   });
 
   it("returns finite numbers unchanged", () => {

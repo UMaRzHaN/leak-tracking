@@ -13,9 +13,12 @@ function getLeakPhotoRefs(leak) {
 }
 
 function hasCoords(leak) {
-  return (
-    Number.isFinite(Number(leak?.lat)) && Number.isFinite(Number(leak?.lng))
-  );
+  const valid = (value) =>
+    (typeof value === "number" && Number.isFinite(value)) ||
+    (typeof value === "string" &&
+      value.trim() !== "" &&
+      Number.isFinite(Number(value)));
+  return valid(leak?.lat) && valid(leak?.lng);
 }
 
 function getLeakLabel(leak) {

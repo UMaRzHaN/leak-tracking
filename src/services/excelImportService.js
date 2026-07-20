@@ -5,6 +5,7 @@ import { PROJECTS } from "@/configs/projects";
 import { getPhotoSrc } from "@/hooks/photoService";
 import { priorityFromSpeed } from "@/utils/priority";
 import { inferMonitoringRound } from "@/utils/monitoringRound";
+import { getLeakSyncIdentity } from "@/services/projectSyncState";
 import {
   assertArchiveLimits,
   assertImportFileSize,
@@ -785,9 +786,7 @@ async function dataUrlToBlob(dataUrl) {
 }
 
 function getLeakIdentity(leak) {
-  if (leak?.leak_id != null) return `tag:${String(leak.leak_id)}`;
-  if (leak?.id != null) return `id:${String(leak.id)}`;
-  return null;
+  return getLeakSyncIdentity(leak);
 }
 
 function normalizeRecordDateIdentity(value) {

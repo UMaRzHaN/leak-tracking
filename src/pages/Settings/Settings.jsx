@@ -193,14 +193,14 @@ export default function Settings({
       const now = Date.now();
       const existingByTag = new Map(
         data
-          .filter((leak) => leak?.leak_id != null)
-          .map((leak) => [String(leak.leak_id), leak]),
+          .map((leak) => [String(leak?.leak_id ?? "").trim(), leak])
+          .filter(([tag]) => tag),
       );
 
       return leaks.map((leak, index) => {
         const existing =
-          mode === "merge" && leak.leak_id != null
-            ? existingByTag.get(String(leak.leak_id))
+          mode === "merge" && String(leak?.leak_id ?? "").trim()
+            ? existingByTag.get(String(leak.leak_id).trim())
             : null;
 
         return {

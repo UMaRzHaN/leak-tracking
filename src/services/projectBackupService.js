@@ -21,6 +21,7 @@ import {
 import { normalizeProjectVarsUnits } from "@/utils/projectVars";
 import {
   applyProjectTombstones,
+  getLeakSyncIdentity,
   mergeProjectSyncStates,
   readProjectSyncState,
   writeProjectSyncState,
@@ -211,14 +212,19 @@ function recalculateLeaks(leaks, vars) {
 
 function parseTime(value) {
   if (value == null || value === "") return 0;
-  const time = typeof value === "number" ? value : Date.parse(String(value));
-  return Number.isFinite(time) ? time : 0;
+  const numeric = Number(value);
+  const time =
+    typeof value === "number" ||
+    (typeof value === "string" &&
+      value.trim() !== "" &&
+      Number.isFinite(numeric))
+      ? numeric
+      : Date.parse(String(value));
+  return Number.isFinite(time) && time > 0 ? time : 0;
 }
 
 function getLeakIdentity(leak) {
-  if (leak?.leak_id != null) return `tag:${String(leak.leak_id)}`;
-  if (leak?.id != null) return `id:${String(leak.id)}`;
-  return null;
+  return getLeakSyncIdentity(leak);
 }
 
 function getLeakFreshness(leak) {

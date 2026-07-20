@@ -10,7 +10,9 @@ beforeEach(() => {
 describe("saveDraft / loadDraft", () => {
   it("saves and loads a draft", () => {
     const { result } = renderHook(() => useFormDraft());
-    act(() => { result.current.saveDraft({ station: "A", leak_speed: 5 }, 2); });
+    act(() => {
+      result.current.saveDraft({ station: "A", leak_speed: 5 }, 2);
+    });
     const draft = result.current.loadDraft();
     expect(draft.form.station).toBe("A");
     expect(draft.form.leak_speed).toBe(5);
@@ -21,7 +23,10 @@ describe("saveDraft / loadDraft", () => {
     const { result } = renderHook(() => useFormDraft());
     act(() => {
       result.current.saveDraft(
-        { station: "B", photo: { raw: new Blob(), src: "data:image/jpeg;base64,abc" } },
+        {
+          station: "B",
+          photo: { raw: new Blob(), src: "data:image/jpeg;base64,abc" },
+        },
         1,
       );
     });
@@ -32,7 +37,9 @@ describe("saveDraft / loadDraft", () => {
 
   it("omits photo entirely when it has no src", () => {
     const { result } = renderHook(() => useFormDraft());
-    act(() => { result.current.saveDraft({ station: "C", photo: { raw: new Blob() } }, 1); });
+    act(() => {
+      result.current.saveDraft({ station: "C", photo: { raw: new Blob() } }, 1);
+    });
     const draft = result.current.loadDraft();
     expect(draft.form.photo).toBeUndefined();
   });
@@ -44,7 +51,9 @@ describe("saveDraft / loadDraft", () => {
 
   it("ignores null/non-object form", () => {
     const { result } = renderHook(() => useFormDraft());
-    act(() => { result.current.saveDraft(null, 1); });
+    act(() => {
+      result.current.saveDraft(null, 1);
+    });
     expect(result.current.loadDraft()).toBeNull();
   });
 });
@@ -57,16 +66,48 @@ describe("hasDraft", () => {
 
   it("returns true after saving", () => {
     const { result } = renderHook(() => useFormDraft());
-    act(() => { result.current.saveDraft({ x: 1 }, 1); });
+    act(() => {
+      result.current.saveDraft({ x: 1 }, 1);
+    });
     expect(result.current.hasDraft()).toBe(true);
+  });
+
+  it("removes expired and corrupted drafts without showing a restore prompt", () => {
+    localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({ form: { x: 1 }, savedAt: Date.now() - 90_000_000 }),
+    );
+    const { result } = renderHook(() => useFormDraft());
+
+    expect(result.current.hasDraft()).toBe(false);
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+
+    localStorage.setItem(DRAFT_KEY, "{broken");
+    expect(result.current.hasDraft()).toBe(false);
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+  });
+
+  it("rejects drafts whose form is not an object", () => {
+    localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({ form: "broken", savedAt: Date.now() }),
+    );
+    const { result } = renderHook(() => useFormDraft());
+
+    expect(result.current.hasDraft()).toBe(false);
+    expect(result.current.loadDraft()).toBeNull();
   });
 });
 
 describe("clearDraft", () => {
   it("removes the draft from localStorage", () => {
     const { result } = renderHook(() => useFormDraft());
-    act(() => { result.current.saveDraft({ x: 1 }, 1); });
-    act(() => { result.current.clearDraft(); });
+    act(() => {
+      result.current.saveDraft({ x: 1 }, 1);
+    });
+    act(() => {
+      result.current.clearDraft();
+    });
     expect(result.current.hasDraft()).toBe(false);
     expect(result.current.loadDraft()).toBeNull();
   });

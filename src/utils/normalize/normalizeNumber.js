@@ -15,6 +15,8 @@ export const normalizeNumber = (raw) => {
   // оставляем только одну точку
   v = v.replace(/(\..*)\./g, "$1");
 
+  if (v === "") return "";
+
   // возвращаем минус, если он был
   if (isNegative && v !== "") {
     v = "-" + v;

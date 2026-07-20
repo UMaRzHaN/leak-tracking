@@ -4,6 +4,39 @@ import { logger } from "@/utils/logger";
 const DRAFT_KEY = "app:form_draft_v1";
 const TTL = 86_400_000; // 24 часа
 
+function removeStoredDraft() {
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // Storage can be unavailable in restricted browser contexts.
+  }
+}
+
+function readValidDraft() {
+  const raw = localStorage.getItem(DRAFT_KEY);
+  if (!raw) return null;
+
+  const parsed = JSON.parse(raw);
+  const savedAt = Number(parsed?.savedAt);
+  const validForm =
+    parsed?.form == null ||
+    (typeof parsed.form === "object" && !Array.isArray(parsed.form));
+  const expired = !Number.isFinite(savedAt) || Date.now() - savedAt > TTL;
+
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    Array.isArray(parsed) ||
+    !validForm ||
+    expired
+  ) {
+    removeStoredDraft();
+    return null;
+  }
+
+  return parsed;
+}
+
 export function useFormDraft() {
   /* ======================================================
      SAVE
@@ -35,28 +68,14 @@ export function useFormDraft() {
      ====================================================== */
   const loadDraft = useCallback(() => {
     try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (!raw) return null;
-
-      const parsed = JSON.parse(raw);
-
-      if (!parsed || typeof parsed !== "object") {
-        localStorage.removeItem(DRAFT_KEY);
-        return null;
-      }
-
-      const { form, step, savedAt } = parsed;
-
-      // ❗ TTL проверка
-      if (!savedAt || Date.now() - savedAt > TTL) {
-        localStorage.removeItem(DRAFT_KEY);
-        return null;
-      }
+      const parsed = readValidDraft();
+      if (!parsed) return null;
+      const { form, step } = parsed;
 
       return { form: form ?? {}, step: step ?? 1 };
     } catch (e) {
       logger.warn("Draft load failed:", e);
-      localStorage.removeItem(DRAFT_KEY);
+      removeStoredDraft();
       return null;
     }
   }, []);
@@ -77,8 +96,9 @@ export function useFormDraft() {
      ====================================================== */
   const hasDraft = useCallback(() => {
     try {
-      return !!localStorage.getItem(DRAFT_KEY);
+      return Boolean(readValidDraft());
     } catch {
+      removeStoredDraft();
       return false;
     }
   }, []);

@@ -25,6 +25,11 @@ describe("distanceMeters", () => {
     expect(distanceMeters(undefined, undefined, 55.75, 37.61)).toBe(Infinity);
   });
 
+  it("rejects whitespace and boolean coordinates", () => {
+    expect(distanceMeters("   ", 0, 0, 0)).toBe(Infinity);
+    expect(distanceMeters(false, 0, 0, 0)).toBe(Infinity);
+  });
+
   it("handles string coordinates (coerces to number)", () => {
     const d = distanceMeters("55.75", "37.61", "55.76", "37.61");
     expect(d).toBeGreaterThan(0);

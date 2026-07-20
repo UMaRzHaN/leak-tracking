@@ -105,4 +105,17 @@ describe("analyzeProjectIntegrity", () => {
     expect(report.missingPhoto).toEqual([]);
     expect(report.ok).toBe(true);
   });
+
+  it("reports null and blank coordinates as missing instead of treating them as zero", async () => {
+    const report = await analyzeProjectIntegrity(
+      [
+        { id: "null", lat: null, lng: null },
+        { id: "blank", lat: "   ", lng: "   " },
+        { id: "origin", lat: 0, lng: 0 },
+      ],
+      { leakPhotoRequired: false, monitoringPhotoRequired: false },
+    );
+
+    expect(report.missingCoords).toEqual(["null", "blank"]);
+  });
 });

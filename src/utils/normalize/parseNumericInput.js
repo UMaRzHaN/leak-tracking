@@ -13,6 +13,8 @@ export function parseNumericInput(raw) {
 
   value = value.replace(/[^\d.,]/g, "");
 
+  if (value === "") return negative ? "-" : "";
+
   const dotIndex = value.indexOf(".");
   const commaIndex = value.indexOf(",");
   const separatorIndexes = [dotIndex, commaIndex].filter((idx) => idx !== -1);

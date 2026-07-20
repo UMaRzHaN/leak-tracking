@@ -16,4 +16,10 @@ describe("parseNumericInput", () => {
     expect(parseNumericInput("40")).toBe(40);
     expect(parseNumericInput("-12")).toBe(-12);
   });
+
+  it("does not turn blank or invalid text into zero", () => {
+    expect(parseNumericInput("   ")).toBe("");
+    expect(parseNumericInput("abc")).toBe("");
+    expect(parseNumericInput("-")).toBe("-");
+  });
 });

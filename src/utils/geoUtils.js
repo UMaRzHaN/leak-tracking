@@ -1,6 +1,11 @@
 /** Расстояние между двумя точками в метрах (Haversine) */
 function isCoordinate(value) {
-  return value != null && value !== "" && Number.isFinite(Number(value));
+  return (
+    (typeof value === "number" && Number.isFinite(value)) ||
+    (typeof value === "string" &&
+      value.trim() !== "" &&
+      Number.isFinite(Number(value)))
+  );
 }
 
 export function distanceMeters(lat1, lng1, lat2, lng2) {

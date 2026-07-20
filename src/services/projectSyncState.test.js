@@ -41,6 +41,12 @@ describe("projectSyncState", () => {
   it("prefers tag identity and falls back to internal id", () => {
     expect(getLeakSyncIdentity({ id: "internal", leak_id: 42 })).toBe("tag:42");
     expect(getLeakSyncIdentity({ id: "internal" })).toBe("id:internal");
+    expect(getLeakSyncIdentity({ id: "internal", leak_id: "   " })).toBe(
+      "id:internal",
+    );
+    expect(getLeakSyncIdentity({ id: "internal", leak_id: " TAG-1 " })).toBe(
+      "tag:TAG-1",
+    );
     expect(getLeakSyncIdentity({})).toBeNull();
     expect(getLeakSyncIdentity(null)).toBeNull();
   });

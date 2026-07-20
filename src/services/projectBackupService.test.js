@@ -210,6 +210,42 @@ describe("projectBackupService legacy imports", () => {
 });
 
 describe("mergeLeaksByFreshness", () => {
+  it("keeps blank leak tags distinct by their internal ids", () => {
+    const existing = [
+      { id: "one", leak_id: "", status: "open", updatedAt: 100 },
+      { id: "two", leak_id: " ", status: "open", updatedAt: 100 },
+    ];
+    const incoming = [
+      { id: "one", leak_id: "", status: "resolved", updatedAt: 200 },
+    ];
+
+    const result = mergeLeaksByFreshness(existing, incoming);
+
+    expect(result.updated).toBe(1);
+    expect(result.leaks.find((leak) => leak.id === "one")?.status).toBe(
+      "resolved",
+    );
+    expect(result.leaks.find((leak) => leak.id === "two")?.status).toBe("open");
+  });
+
+  it("compares timestamp strings as numeric timestamps", () => {
+    const local = {
+      id: "same-leak",
+      status: "open",
+      updatedAt: "1700000000000",
+    };
+    const incoming = {
+      id: "same-leak",
+      status: "resolved",
+      updatedAt: "1800000000000",
+    };
+
+    const result = mergeLeaksByFreshness([local], [incoming]);
+
+    expect(result.updated).toBe(1);
+    expect(result.leaks[0].status).toBe("resolved");
+  });
+
   it("uses the archive leak when its log is newer than the local leak", () => {
     const local = {
       id: "same-leak",

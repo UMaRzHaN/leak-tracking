@@ -13,7 +13,8 @@ function toTime(value) {
 }
 
 export function getLeakSyncIdentity(leak) {
-  if (leak?.leak_id != null) return `tag:${String(leak.leak_id)}`;
+  const leakTag = String(leak?.leak_id ?? "").trim();
+  if (leakTag) return `tag:${leakTag}`;
   if (leak?.id != null) return `id:${String(leak.id)}`;
   return null;
 }
