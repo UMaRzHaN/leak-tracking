@@ -577,8 +577,7 @@ public class LocalSyncPlugin extends Plugin {
     }
 
     private String readableMessage(Exception error) {
-        String message = error.getMessage();
-        return message == null || message.trim().isEmpty() ? error.getClass().getSimpleName() : message;
+        return LocalSyncErrorMessages.readable(error);
     }
 
     private void discardPreparedArchive(String token) {

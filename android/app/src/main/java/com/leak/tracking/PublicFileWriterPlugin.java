@@ -7,14 +7,15 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.system.Os;
 import android.util.Base64;
+import androidx.annotation.RequiresApi;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.OutputStream;
 
 @CapacitorPlugin(name = "PublicFileWriter")
@@ -56,12 +57,11 @@ public class PublicFileWriterPlugin extends Plugin {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     private String writeWithMediaStore(String folder, String fileName, String mimeType, byte[] bytes) throws Exception {
         ContentResolver resolver = getContext().getContentResolver();
         Uri collection = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
         String relativePath = Environment.DIRECTORY_DOCUMENTS + (folder.isEmpty() ? "/" : "/" + folder + "/");
-
-        deleteExistingFile(resolver, collection, relativePath, fileName);
 
         ContentValues values = new ContentValues();
         values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName);
@@ -74,21 +74,45 @@ public class PublicFileWriterPlugin extends Plugin {
             throw new Exception("Unable to create export file");
         }
 
-        try (OutputStream stream = resolver.openOutputStream(item, "w")) {
-            if (stream == null) {
-                throw new Exception("Unable to open export file");
+        boolean published = false;
+        try {
+            try (OutputStream stream = resolver.openOutputStream(item, "w")) {
+                if (stream == null) {
+                    throw new Exception("Unable to open export file");
+                }
+                stream.write(bytes);
+                stream.flush();
             }
-            stream.write(bytes);
+
+            ContentValues done = new ContentValues();
+            done.put(MediaStore.MediaColumns.IS_PENDING, 0);
+            if (resolver.update(item, done, null, null) != 1) {
+                throw new Exception("Unable to publish export file");
+            }
+            published = true;
+
+            // Keep the previous export intact until the replacement is fully
+            // written and visible. A failed write must never destroy the last
+            // usable copy.
+            deleteExistingFile(resolver, collection, relativePath, fileName, item);
+
+            return "Documents/" + (folder.isEmpty() ? "" : folder + "/") + fileName;
+        } finally {
+            if (!published) {
+                try {
+                    resolver.delete(item, null, null);
+                } catch (Exception ignored) {}
+            }
         }
-
-        ContentValues done = new ContentValues();
-        done.put(MediaStore.MediaColumns.IS_PENDING, 0);
-        resolver.update(item, done, null, null);
-
-        return "Documents/" + (folder.isEmpty() ? "" : folder + "/") + fileName;
     }
 
-    private void deleteExistingFile(ContentResolver resolver, Uri collection, String relativePath, String fileName) {
+    private void deleteExistingFile(
+        ContentResolver resolver,
+        Uri collection,
+        String relativePath,
+        String fileName,
+        Uri keepItem
+    ) {
         String[] projection = new String[] { MediaStore.MediaColumns._ID };
         String selection = MediaStore.MediaColumns.DISPLAY_NAME + "=? AND " + MediaStore.MediaColumns.RELATIVE_PATH + "=?";
         String[] args = new String[] { fileName, relativePath };
@@ -100,6 +124,7 @@ public class PublicFileWriterPlugin extends Plugin {
             while (cursor.moveToNext()) {
                 long id = cursor.getLong(idColumn);
                 Uri item = Uri.withAppendedPath(collection, String.valueOf(id));
+                if (item.equals(keepItem)) continue;
                 try {
                     resolver.delete(item, null, null);
                 } catch (SecurityException ignored) {
@@ -120,9 +145,11 @@ public class PublicFileWriterPlugin extends Plugin {
         }
 
         File output = new File(outputDir, fileName);
-        try (FileOutputStream stream = new FileOutputStream(output, false)) {
-            stream.write(bytes);
-        }
+        AtomicFileWriter.replace(
+            output,
+            bytes,
+            (source, target) -> Os.rename(source.getAbsolutePath(), target.getAbsolutePath())
+        );
 
         return output.getAbsolutePath();
     }
