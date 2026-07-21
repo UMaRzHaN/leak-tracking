@@ -24,7 +24,6 @@ export default function DataBase({
     notification,
     clearNotification,
     bulkPickerOpen,
-    openBulkPicker,
     closeBulkPicker,
     handleBulkPickerSelect,
     filters,
@@ -72,7 +71,6 @@ export default function DataBase({
         onSelectDisplayed={
           bulk.allDisplayedSelected ? bulk.clearSelection : bulk.selectDisplayed
         }
-        onOpenBulkPicker={openBulkPicker}
         onMonitorSelected={() => {
           const selected = filters.displayed.filter((item) =>
             bulk.selectedIds.has(item.id),

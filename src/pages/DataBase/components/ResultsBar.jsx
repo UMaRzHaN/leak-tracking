@@ -23,7 +23,6 @@ export default function ResultsBar({
   allDisplayedSelected,
   onClearSelection,
   onSelectDisplayed,
-  onOpenBulkPicker,
   onMonitorSelected,
   onEditBulkCalculation,
   onExport,
@@ -129,9 +128,6 @@ export default function ResultsBar({
             >
               ⚙
             </button>
-            {/* <button className={s.bulkStatusBtn} onClick={onOpenBulkPicker}>
-              {lang === "ru" ? "⇌ СТАТУС" : "⇌ STATUS"}
-            </button> */}
           </div>
         </div>
       )}

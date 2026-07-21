@@ -10,7 +10,6 @@ import { saveMonitoringRound } from "@/utils/monitoringRound";
 import { writeProjectSettings } from "@/app/project/projectSettings";
 import { writeProjectSyncState } from "@/services/projectSyncState";
 import PageHeader from "@/components/layout/PageHeader/PageHeader";
-import SettingsModal from "@/features/settings/SettingsModal/SettingsModal";
 import FieldVisibilityModal from "@/features/fieldVisibility/FieldVisibilityModal/FieldVisibilityModal";
 import Notification from "@/components/ui/Notification/Notification";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
@@ -18,7 +17,6 @@ import ImportConflictSheet from "@/features/importConflict/ImportConflictSheet";
 import AddProjectForm from "./components/AddProjectForm";
 import AppearanceSection from "./components/AppearanceSection";
 import BackupSection from "./components/BackupSection";
-import CalculationParametersSection from "./components/CalculationParametersSection";
 import DangerZoneSection from "./components/DangerZoneSection";
 import EmissionsSummarySection from "./components/EmissionsSummarySection";
 import FieldVisibilitySection from "./components/FieldVisibilitySection";
@@ -48,7 +46,6 @@ export default function Settings({
   const { lang, t, toggleLanguage, localeTexts } = useSettingsTexts();
   const [notification, setNotification] = useState(null);
   const [fieldsModalOpen, setFieldsModalOpen] = useState(false);
-  const [calculationSettingsOpen, setCalculationSettingsOpen] = useState(false);
   const [addingProject, setAddingProject] = useState(false);
   const [cacheInfo, setCacheInfo] = useState(null);
   const [settingsConfirmAction, setSettingsConfirmAction] = useState(null);
@@ -658,12 +655,6 @@ export default function Settings({
           onToggleLanguage={toggleLanguage}
         />
 
-        <CalculationParametersSection
-          activeProject={activeProject}
-          localeTexts={localeTexts}
-          onEdit={() => setCalculationSettingsOpen(true)}
-        />
-
         {activeProject && data.length > 0 && (
           <EmissionsSummarySection data={data} />
         )}
@@ -824,15 +815,6 @@ export default function Settings({
 
       {activeProject && (
         <>
-          <SettingsModal
-            open={calculationSettingsOpen}
-            onClose={() => setCalculationSettingsOpen(false)}
-            variables={vars}
-            onSave={(nextVars) => {
-              setVars(nextVars);
-              notify("success", localeTexts.notifications.parametersSaved);
-            }}
-          />
           <FieldVisibilityModal
             open={fieldsModalOpen}
             onClose={() => setFieldsModalOpen(false)}

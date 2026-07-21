@@ -601,30 +601,6 @@
   }
 }
 
-.bulkStatusBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 7px 14px;
-  border: none;
-  border-radius: var(--r-md);
-  background: var(--c-blue);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  transition: opacity var(--t-fast);
-  white-space: nowrap;
-
-  &:hover {
-    opacity: 0.85;
-  }
-  &:active {
-    transform: scale(0.96);
-  }
-}
-
 /* ── List ── */
 .list {
   flex: 1;
