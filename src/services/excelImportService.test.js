@@ -383,6 +383,65 @@ describe("parseExcelLeaks", () => {
     expect(persisted[0].photo).toBe("idb://main");
     expect(persisted[0].monitoringRecords[0].photo).toBe("idb://monitoring");
   });
+
+  it("restores the exact project snapshot embedded in the xlsx sheet", async () => {
+    const { default: ExcelJS } = await import("exceljs");
+    const { default: JSZip } = await import("jszip");
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Project Backup");
+    const payload = {
+      schemaVersion: 1,
+      project: {
+        name: "Portable project",
+        type: "upstream",
+        syncId: "sync-portable",
+      },
+      vars: { methaneDensity: 0.7 },
+      settings: { hiddenFields: ["note"], updatedAt: 123 },
+      monitoringRound: { id: "round-3", number: 3, startedAt: 100 },
+      sync: { varsUpdatedAt: 500, tombstones: {} },
+      leaks: [
+        {
+          id: 77,
+          leak_id: "P-77",
+          status: "open",
+          component: "Valve",
+          customBackupField: { exact: true },
+          photo: "zip:photos/P-77/P-77.png",
+          history: [{ action: "created", date: "2026-07-20T10:00:00.000Z" }],
+        },
+      ],
+    };
+    sheet.addRow(["LEAK_TRACKER_EXCEL_BACKUP", 1]);
+    sheet.addRow(["Chunk", "Payload"]);
+    sheet.addRow([1, JSON.stringify(payload)]);
+
+    const xlsx = await workbook.xlsx.writeBuffer();
+    const zip = new JSZip();
+    zip.file("portable.xlsx", xlsx);
+    zip.file("photos/P-77/P-77.png", "aGVsbG8=", { base64: true });
+    const archive = await zip.generateAsync({ type: "blob" });
+    Object.defineProperty(archive, "name", { value: "portable.zip" });
+
+    const result = await parseExcelImportFile(archive);
+
+    expect(result.portableArchive).toBe(true);
+    expect(result.project).toMatchObject({
+      name: "Portable project",
+      type: "upstream",
+      syncId: "sync-portable",
+    });
+    expect(result.vars).toEqual({ methaneDensity: 0.7 });
+    expect(result.settings).toEqual({ hiddenFields: ["note"], updatedAt: 123 });
+    expect(result.monitoringRound).toMatchObject({ number: 3 });
+    expect(result.sync).toEqual({ varsUpdatedAt: 500, tombstones: {} });
+    expect(result.leaks[0]).toMatchObject({
+      id: 77,
+      leak_id: "P-77",
+      customBackupField: { exact: true },
+    });
+    expect(result.leaks[0].photo).toMatch(/^data:image\/png;base64,/);
+  });
 });
 
 describe("reconcileExcelImportPhotos", () => {

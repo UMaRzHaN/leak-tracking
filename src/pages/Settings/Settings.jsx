@@ -7,6 +7,8 @@ import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
 import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import { getMapCacheInfo, clearMapCache } from "@/services/maps/tileCache";
 import { saveMonitoringRound } from "@/utils/monitoringRound";
+import { writeProjectSettings } from "@/app/project/projectSettings";
+import { writeProjectSyncState } from "@/services/projectSyncState";
 import PageHeader from "@/components/layout/PageHeader/PageHeader";
 import SettingsModal from "@/features/settings/SettingsModal/SettingsModal";
 import FieldVisibilityModal from "@/features/fieldVisibility/FieldVisibilityModal/FieldVisibilityModal";
@@ -95,6 +97,20 @@ export default function Settings({
   );
 
   const { vars, setVars } = useProjectVars(activeProject?.id ?? null);
+  const applyExcelArchiveMetadata = useCallback(
+    (result, leaks = []) => {
+      if (!result?.portableArchive || !activeProject?.id) return;
+      if (result.vars) setVars(result.vars);
+      if (result.settings) {
+        writeProjectSettings(activeProject.id, result.settings);
+      }
+      saveMonitoringRound(activeProject.id, result.monitoringRound ?? null);
+      if (result.sync) {
+        writeProjectSyncState(activeProject.id, result.sync, leaks);
+      }
+    },
+    [activeProject?.id, setVars],
+  );
   const { getPhoto: idbGetPhoto, savePhoto } = usePhotoStorage();
   const projectConfig = useProjectConfig();
   const { hiddenFields, setHiddenFields } = useHiddenFields(
@@ -244,7 +260,7 @@ export default function Settings({
           projectType: activeProject.type,
         });
 
-        if (!result.leaks.length) {
+        if (!result.leaks.length && !result.portableArchive) {
           notify(
             "warning",
             lang === "ru"
@@ -330,21 +346,27 @@ export default function Settings({
 
   const confirmExcelImport = useCallback(async () => {
     const leaks = excelImportState.result?.leaks ?? [];
-    if (!leaks.length) {
+    if (!leaks.length && !excelImportState.result?.portableArchive) {
       setExcelImportState({ open: false });
       return;
     }
 
-    const prepared = prepareExcelLeaks(leaks, {
-      mode: data.length > 0 ? "append" : "overwrite",
-    });
+    const prepared = excelImportState.result?.portableArchive
+      ? leaks
+      : prepareExcelLeaks(leaks, {
+          mode: data.length > 0 ? "append" : "overwrite",
+        });
 
     try {
       setIsImportingExcel(true);
       notifyExcelImportProgress();
       const withPhotos = await persistPreparedExcelPhotos(prepared);
       await setData?.([...data, ...withPhotos]);
-      saveExcelMonitoringRound(excelImportState.result?.monitoringRound);
+      if (excelImportState.result?.portableArchive) {
+        applyExcelArchiveMetadata(excelImportState.result, withPhotos);
+      } else {
+        saveExcelMonitoringRound(excelImportState.result?.monitoringRound);
+      }
       notify(
         "success",
         lang === "ru"
@@ -361,9 +383,9 @@ export default function Settings({
       setExcelImportState({ open: false });
     }
   }, [
+    applyExcelArchiveMetadata,
     data,
-    excelImportState.result?.leaks,
-    excelImportState.result?.monitoringRound,
+    excelImportState.result,
     lang,
     notify,
     notifyExcelImportProgress,
@@ -379,7 +401,9 @@ export default function Settings({
 
   const handleExcelConflictOverwrite = useCallback(async () => {
     const leaks = excelConflictState.result?.leaks ?? [];
-    const prepared = prepareExcelLeaks(leaks, { mode: "overwrite" });
+    const prepared = excelConflictState.result?.portableArchive
+      ? leaks
+      : prepareExcelLeaks(leaks, { mode: "overwrite" });
 
     try {
       setIsImportingExcel(true);
@@ -393,7 +417,11 @@ export default function Settings({
       );
       const withPhotos = await persistPreparedExcelPhotos(reconciled.leaks);
       await setData?.(withPhotos);
-      saveExcelMonitoringRound(excelConflictState.result?.monitoringRound);
+      if (excelConflictState.result?.portableArchive) {
+        applyExcelArchiveMetadata(excelConflictState.result, withPhotos);
+      } else {
+        saveExcelMonitoringRound(excelConflictState.result?.monitoringRound);
+      }
       notify(
         "success",
         lang === "ru"
@@ -410,9 +438,9 @@ export default function Settings({
       setExcelConflictState({ open: false });
     }
   }, [
+    applyExcelArchiveMetadata,
     data,
-    excelConflictState.result?.leaks,
-    excelConflictState.result?.monitoringRound,
+    excelConflictState.result,
     idbGetPhoto,
     lang,
     notify,
@@ -459,8 +487,7 @@ export default function Settings({
   }, [
     data,
     excelConflictState.preparedForMerge,
-    excelConflictState.result?.leaks,
-    excelConflictState.result?.monitoringRound,
+    excelConflictState.result,
     lang,
     notify,
     notifyExcelImportProgress,
@@ -472,17 +499,23 @@ export default function Settings({
 
   const handleExcelConflictCopy = useCallback(async () => {
     const leaks = excelConflictState.result?.leaks ?? [];
-    const prepared = prepareExcelLeaks(leaks, { mode: "copy" });
-    const copyName = `${activeProject?.name ?? "Excel import"} (Excel)`;
+    const prepared = excelConflictState.result?.portableArchive
+      ? leaks
+      : prepareExcelLeaks(leaks, { mode: "copy" });
+    const copyName = `${excelConflictState.result?.project?.name || activeProject?.name || "Excel import"} (Excel)`;
 
     try {
       setIsImportingExcel(true);
       notifyExcelImportProgress();
       const result = await onCreateExcelCopy?.({
         name: copyName,
-        type: activeProject?.type,
+        type: excelConflictState.result?.project?.type || activeProject?.type,
         leaks: prepared,
         monitoringRound: excelConflictState.result?.monitoringRound,
+        vars: excelConflictState.result?.vars,
+        settings: excelConflictState.result?.settings,
+        syncId: excelConflictState.result?.project?.syncId,
+        sync: excelConflictState.result?.sync,
       });
       notify(
         "success",
@@ -502,8 +535,7 @@ export default function Settings({
   }, [
     activeProject?.name,
     activeProject?.type,
-    excelConflictState.result?.leaks,
-    excelConflictState.result?.monitoringRound,
+    excelConflictState.result,
     lang,
     notify,
     notifyExcelImportProgress,

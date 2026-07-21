@@ -18,7 +18,7 @@
   const COUNT = Number(window.SEED_LEAK_COUNT ?? 10);
   const ROUNDS = 5;
   const CURRENT_ROUND = 5;
-  const BUILD_BATCH_SIZE = 100;
+  const BUILD_BATCH_SIZE = 10;
   const SAVE_BATCH_SIZE = 50;
   const FULL_PHOTO_LIMIT = 1200;
   const CARD_PHOTO_POOL_SIZE = Number(
@@ -1085,9 +1085,9 @@
   ];
   const EQUIPMENT_TYPES = ["GFM 2.0", "GFM 3.0", "Розовый мешок"];
   const UNCERTAINTY_MAP = {
-    "GFM 2.0": 0.05,
-    "GFM 3.0": 0.05,
-    "Розовый мешок": 0.1,
+    "GFM 2.0": 5,
+    "GFM 3.0": 5,
+    "Розовый мешок": 10,
   };
 
   await run();

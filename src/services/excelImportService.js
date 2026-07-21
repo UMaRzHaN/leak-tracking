@@ -6,6 +6,7 @@ import { getPhotoSrc } from "@/hooks/photoService";
 import { priorityFromSpeed } from "@/utils/priority";
 import { inferMonitoringRound } from "@/utils/monitoringRound";
 import { getLeakSyncIdentity } from "@/services/projectSyncState";
+import { validateBackup } from "@/repositories/backupSchema";
 import {
   assertArchiveLimits,
   assertImportFileSize,
@@ -796,6 +797,54 @@ function parseHistoryRecords(sheet) {
   return { recordsByLeakId, count };
 }
 
+function parseEmbeddedBackup(workbook) {
+  const sheet = workbook.getWorksheet("Project Backup");
+  if (!sheet) return null;
+  if (
+    String(getCellDisplayValue(sheet.getRow(1).getCell(1))) !==
+    "LEAK_TRACKER_EXCEL_BACKUP"
+  ) {
+    return null;
+  }
+
+  const chunks = [];
+  for (let rowNumber = 3; rowNumber <= sheet.rowCount; rowNumber += 1) {
+    const row = sheet.getRow(rowNumber);
+    const index = Number(getCellDisplayValue(row.getCell(1)));
+    const chunk = getCellDisplayValue(row.getCell(2));
+    if (Number.isInteger(index) && index > 0 && typeof chunk === "string") {
+      chunks.push({ index, chunk });
+    }
+  }
+  chunks.sort((left, right) => left.index - right.index);
+  if (!chunks.length) throw new Error("Project Backup sheet is empty");
+
+  let payload;
+  try {
+    payload = JSON.parse(chunks.map((entry) => entry.chunk).join(""));
+  } catch {
+    throw new Error("Project Backup sheet contains invalid data");
+  }
+
+  const validation = validateBackup(payload?.leaks);
+  if (!validation.ok) throw new Error(validation.error);
+  const type = payload?.project?.type;
+  const project = ["upstream", "midstream", "downstream"].includes(type)
+    ? {
+        name: String(payload.project.name ?? "").trim(),
+        type,
+        folderName: payload.project.folderName,
+        syncId: payload.project.syncId,
+      }
+    : null;
+
+  return {
+    ...payload,
+    project,
+    leaks: validation.data,
+  };
+}
+
 function isZipFile(file) {
   return (
     /\.zip$/i.test(file?.name ?? "") || String(file?.type ?? "").includes("zip")
@@ -1280,6 +1329,27 @@ export async function parseExcelLeaks(file, { projectType = "upstream" } = {}) {
   assertArchiveLimits(workbookArchive);
   await workbook.xlsx.load(buffer);
 
+  const embeddedBackup = parseEmbeddedBackup(workbook);
+  if (embeddedBackup) {
+    return {
+      leaks: embeddedBackup.leaks,
+      stats: {
+        totalRows: embeddedBackup.leaks.length,
+        imported: embeddedBackup.leaks.length,
+        skipped: 0,
+        exactBackup: true,
+      },
+      columns: [],
+      sheetName: "Project Backup",
+      monitoringRound: embeddedBackup.monitoringRound ?? null,
+      project: embeddedBackup.project,
+      vars: embeddedBackup.vars ?? null,
+      settings: embeddedBackup.settings ?? null,
+      sync: embeddedBackup.sync ?? null,
+      portableArchive: true,
+    };
+  }
+
   const headerMap = buildHeaderMap(projectType);
   const sheet = findLeakSheet(workbook, headerMap);
   if (!sheet) {
@@ -1384,7 +1454,7 @@ export async function parseExcelImportFile(file, options = {}) {
   assertImportFileSize(file);
   if (!isZipFile(file)) {
     const parsed = await parseExcelLeaks(file, options);
-    return { ...parsed, project: null };
+    return { ...parsed, project: parsed.project ?? null };
   }
 
   const JSZip = (await getJSZip()).default;
@@ -1424,5 +1494,5 @@ export async function parseExcelImportFile(file, options = {}) {
   );
 
   const hydrated = await hydrateZipPhotos(parsed, zip);
-  return { ...hydrated, project };
+  return { ...hydrated, project: parsed.project ?? project };
 }

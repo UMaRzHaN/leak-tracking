@@ -16,11 +16,13 @@ import {
 
 const PHOTO_KEYS = ["photo", "photo_after", "photo_repair"];
 const DEFAULT_EXPORT_DIR = "export/xlsx";
-const EXCEL_MIME =
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const LEAKS_TABLE_THEME = "TableStyleMedium2";
 const MONITORING_TABLE_THEME = "TableStyleMedium4";
 const EXPORT_YIELD_EVERY = 40;
+const BACKUP_SHEET_NAME = "Project Backup";
+const BACKUP_MARKER = "LEAK_TRACKER_EXCEL_BACKUP";
+const BACKUP_SCHEMA_VERSION = 1;
+const BACKUP_CHUNK_SIZE = 30_000;
 
 function yieldToMainThread() {
   return new Promise((resolve) => {
@@ -173,6 +175,56 @@ function buildPhotoMap(photoEntries) {
   return Object.fromEntries(
     photoEntries.map((entry) => [entry.mapKey, entry.photoFileName]),
   );
+}
+
+function buildPortableLeaks(leaks, photoMap) {
+  return leaks.map((leak, leakIndex) => {
+    const copy = { ...leak };
+    for (const key of PHOTO_KEYS) {
+      const photoFileName = photoMap[`${leakIndex}:${key}`];
+      if (photoFileName) copy[key] = `zip:${photoFileName}`;
+    }
+
+    if (Array.isArray(copy.monitoringRecords)) {
+      copy.monitoringRecords = copy.monitoringRecords.map(
+        (record, recordIndex) => {
+          const photoFileName =
+            photoMap[`monitoring:${leakIndex}:${recordIndex}`];
+          return photoFileName
+            ? { ...record, photo: `zip:${photoFileName}` }
+            : record;
+        },
+      );
+    }
+
+    return copy;
+  });
+}
+
+function addBackupSheet(workbook, archivePayload, lang) {
+  if (!archivePayload) return;
+
+  const sheet = workbook.addWorksheet(BACKUP_SHEET_NAME);
+  sheet.addRow([
+    BACKUP_MARKER,
+    BACKUP_SCHEMA_VERSION,
+    lang === "ru"
+      ? "Этот лист нужен для полного восстановления проекта в Leak Tracker"
+      : "This sheet is required for a complete Leak Tracker project restore",
+  ]);
+  sheet.addRow(["Chunk", "Payload"]);
+
+  const serialized = JSON.stringify(archivePayload);
+  for (let offset = 0, index = 1; offset < serialized.length; index += 1) {
+    sheet.addRow([index, serialized.slice(offset, offset + BACKUP_CHUNK_SIZE)]);
+    offset += BACKUP_CHUNK_SIZE;
+  }
+
+  sheet.views = [{ state: "frozen", ySplit: 2 }];
+  sheet.getColumn(1).width = 12;
+  sheet.getColumn(2).width = 100;
+  sheet.getColumn(3).width = 70;
+  styleHeaderRow(sheet, "FF7030A0");
 }
 
 function toExcelTableName(name) {
@@ -330,6 +382,7 @@ async function buildWorkbook({
   lang,
   ExcelJS,
   monitoringExportMode,
+  archivePayload,
 }) {
   const photoColumnIndexes = PHOTO_KEYS.map((key) =>
     keysOrder.indexOf(key),
@@ -405,6 +458,7 @@ async function buildWorkbook({
     monitoringExportMode,
   );
   await buildHistorySheet(workbook, orderedLeaks, lang);
+  addBackupSheet(workbook, archivePayload, lang);
 
   return workbook;
 }
@@ -795,12 +849,46 @@ export async function exportToExcelFile(
   const monitoringExportMode = normalizeExcelMonitoringExportMode(
     options.monitoringExportMode,
   );
-  const photoEntries = await buildPhotoEntries(
+  const reportPhotoEntries = await buildPhotoEntries(
     orderedLeaks,
     idbGet,
     monitoringExportMode,
   );
-  const photoMap = buildPhotoMap(photoEntries);
+  const backupLeaks = Array.isArray(options.backupLeaks)
+    ? options.backupLeaks
+    : orderedLeaks;
+  const backupPhotoEntries = await buildPhotoEntries(
+    backupLeaks,
+    idbGet,
+    EXCEL_MONITORING_EXPORT_MODE.FULL,
+  );
+  const photoEntries = [
+    ...new Map(
+      [...reportPhotoEntries, ...backupPhotoEntries].map((entry) => [
+        entry.photoFileName,
+        entry,
+      ]),
+    ).values(),
+  ];
+  const photoMap = buildPhotoMap(reportPhotoEntries);
+  const backupPhotoMap = buildPhotoMap(backupPhotoEntries);
+  const archivePayload = {
+    schemaVersion: BACKUP_SCHEMA_VERSION,
+    exportedAt: new Date().toISOString(),
+    project: options.project
+      ? {
+          name: options.project.name || fileName,
+          type: options.project.type,
+          folderName: options.project.folderName,
+          syncId: options.project.syncId,
+        }
+      : null,
+    vars: options.vars ?? null,
+    settings: options.settings ?? null,
+    monitoringRound: options.monitoringRound ?? null,
+    sync: options.sync ?? null,
+    leaks: buildPortableLeaks(backupLeaks, backupPhotoMap),
+  };
   const outputFolder = getExportFolder(projectFolderName);
 
   const xlsxBuffer = await createWorkbookBuffer(
@@ -812,45 +900,14 @@ export async function exportToExcelFile(
       photoMap,
       lang,
       monitoringExportMode,
+      archivePayload,
     },
     options.buildWorkbookBuffer,
   );
-  const xlsxBlob = new Blob([xlsxBuffer], { type: EXCEL_MIME });
-
-  if (photoEntries.length === 0) {
-    return downloadBlob(
-      xlsxBlob,
-      `${fileName}.xlsx`,
-      outputFolder,
-      lang,
-      lang === "ru"
-        ? `XLSX экспортирован (${fileName}.xlsx)`
-        : `XLSX exported (${fileName}.xlsx)`,
-    );
-  }
 
   const JSZip = (await getJSZip()).default;
   const zip = new JSZip();
   zip.file(`${fileName}.xlsx`, xlsxBuffer);
-
-  if (options.project?.type) {
-    zip.file(
-      "excel-project.json",
-      JSON.stringify(
-        {
-          schemaVersion: 1,
-          exportedAt: new Date().toISOString(),
-          project: {
-            name: options.project.name || fileName,
-            type: options.project.type,
-          },
-          config: options.project.type,
-        },
-        null,
-        2,
-      ),
-    );
-  }
 
   for (const [index, entry] of photoEntries.entries()) {
     if (index > 0 && index % EXPORT_YIELD_EVERY === 0) {
@@ -866,8 +923,8 @@ export async function exportToExcelFile(
     outputFolder,
     lang,
     lang === "ru"
-      ? `XLSX с фотографиями экспортирован (${fileName}.zip)`
-      : `XLSX with photos exported (${fileName}.zip)`,
+      ? `Excel-архив проекта экспортирован (${fileName}.zip)`
+      : `Excel project archive exported (${fileName}.zip)`,
   );
 }
 

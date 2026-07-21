@@ -175,7 +175,7 @@ describe("excel export helpers", () => {
     vi.unstubAllGlobals();
   });
 
-  it("exports plain xlsx and skips zip creation when there are no photos", async () => {
+  it("exports a portable Excel zip even when there are no photos", async () => {
     const result = await exportToExcelFile(
       [{ id: 2, leak_id: 2 }],
       [{ id: 2, name: "Leak 2", photo: "", photo_after: "" }],
@@ -188,10 +188,17 @@ describe("excel export helpers", () => {
     );
 
     expect(mocks.workbookInstances).toHaveLength(1);
-    expect(mocks.zipInstances).toHaveLength(0);
+    expect(mocks.zipInstances).toHaveLength(1);
+    expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
+      "report.xlsx",
+      expect.any(Uint8Array),
+    );
+    const backupSheet = mocks.workbookInstances[0].sheets.at(-1);
+    expect(backupSheet.rows[0].values[0]).toBe("LEAK_TRACKER_EXCEL_BACKUP");
+    expect(backupSheet.rows[2].values[1]).toContain('"leak_id":2');
     expect(mocks.createObjectURL).toHaveBeenCalledTimes(1);
     expect(mocks.anchorClick).toHaveBeenCalledTimes(1);
-    expect(result.message).toBe("XLSX exported (report.xlsx)");
+    expect(result.message).toBe("Excel project archive exported (report.zip)");
   });
 
   it("exports zip with linked photos when photos are present", async () => {
@@ -217,17 +224,19 @@ describe("excel export helpers", () => {
       "report.xlsx",
       expect.any(Uint8Array),
     );
-    expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
+    expect(mocks.zipInstances[0].file).not.toHaveBeenCalledWith(
       "excel-project.json",
-      expect.stringContaining('"type": "midstream"'),
+      expect.anything(),
     );
+    const backupSheet = mocks.workbookInstances[0].sheets.at(-1);
+    expect(backupSheet.rows[2].values[1]).toContain('"type":"midstream"');
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
       "photos/7/7.png",
       "ZmFrZQ==",
       { base64: true },
     );
     expect(mocks.anchorClick).toHaveBeenCalledTimes(1);
-    expect(result.message).toBe("XLSX with photos exported (report.zip)");
+    expect(result.message).toBe("Excel project archive exported (report.zip)");
   });
 
   it("replaces invalid Date cell values with blanks before writing xlsx", async () => {
@@ -423,10 +432,10 @@ describe("excel export helpers", () => {
       text: "Open photo",
       hyperlink: "photos/7/monitoring/7_monitoring_2.png",
     });
-    expect(mocks.zipInstances[0].file).not.toHaveBeenCalledWith(
+    expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
       "photos/7/monitoring/7_monitoring_1.png",
-      expect.anything(),
-      expect.anything(),
+      "ZmFrZQ==",
+      { base64: true },
     );
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
       "photos/7/monitoring/7_monitoring_2.png",

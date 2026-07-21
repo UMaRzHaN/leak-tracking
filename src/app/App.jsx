@@ -29,6 +29,9 @@ import { logger } from "@/utils/logger";
 import { STATUS } from "@/utils/status";
 import { saveMonitoringRound } from "@/utils/monitoringRound";
 import { NEARBY_RADIUS_M } from "@/pages/DataBase/hooks/useDataBaseFilters";
+import { STORAGE_KEYS } from "@/app/project/storageKeys";
+import { writeProjectSettings } from "@/app/project/projectSettings";
+import { writeProjectSyncState } from "@/services/projectSyncState";
 
 const AddLeak = lazy(() => import("@/pages/AddLeak/AddLeak"));
 const MainPage = lazy(() => import("@/pages/MainPage/MainPage"));
@@ -278,13 +281,33 @@ export default function App() {
   );
 
   const handleCreateExcelCopy = useCallback(
-    async ({ name, type, leaks, monitoringRound }) => {
-      const newProject = addProject(name, type);
+    async ({
+      name,
+      type,
+      leaks,
+      monitoringRound,
+      vars,
+      settings,
+      syncId,
+      sync,
+    }) => {
+      const newProject = addProject(
+        name,
+        type,
+        syncId ? { syncId } : undefined,
+      );
       if (!newProject) {
         throw new Error("Не удалось создать проект");
       }
 
       await waitForRefValue(activeProjectIdRef, newProject.id);
+      if (vars) {
+        localStorage.setItem(
+          STORAGE_KEYS.PROJECT_VARS(newProject.id),
+          JSON.stringify(vars),
+        );
+      }
+      if (settings) writeProjectSettings(newProject.id, settings);
       const { persistExcelImportPhotos } =
         await import("@/services/excelImportService");
       const withPhotos = await persistExcelImportPhotos(
@@ -292,6 +315,7 @@ export default function App() {
         savePhotoRef.current,
       );
       await saveRef.current(withPhotos);
+      if (sync) writeProjectSyncState(newProject.id, sync, withPhotos);
       if (monitoringRound) saveMonitoringRound(newProject.id, monitoringRound);
       return { project: newProject, leakCount: withPhotos.length };
     },
@@ -305,7 +329,7 @@ export default function App() {
       const result = await parseExcelImportFile(file, {
         projectType: type || "upstream",
       });
-      if (!result.leaks.length) {
+      if (!result.leaks.length && !result.portableArchive) {
         const error = new Error("No importable rows found in XLSX");
         error.code = "EMPTY_EXCEL";
         throw error;
@@ -326,6 +350,10 @@ export default function App() {
         type: resolvedType,
         leaks: result.leaks,
         monitoringRound: result.monitoringRound,
+        vars: result.vars,
+        settings: result.settings,
+        syncId: result.project?.syncId,
+        sync: result.sync,
       });
     },
     [handleCreateExcelCopy],

@@ -39,6 +39,7 @@ export function useDataBaseController({
     projectVars: actions.vars,
   });
   const { handleExport, isExporting } = useDataBaseExport({
+    data,
     displayed: filters.displayed,
     notify,
   });

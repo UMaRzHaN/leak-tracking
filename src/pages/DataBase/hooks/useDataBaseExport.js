@@ -6,6 +6,10 @@ import { useProjectData } from "@/app/project/ProjectContext";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { formatDate } from "@/utils/locale";
 import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
+import { useProjectVars } from "@/app/project/hooks/useProjectVars";
+import { readProjectSettings } from "@/app/project/projectSettings";
+import { readMonitoringRound } from "@/utils/monitoringRound";
+import { readProjectSyncState } from "@/services/projectSyncState";
 
 function fmtTs(ts, lang) {
   if (!ts) return "";
@@ -66,7 +70,7 @@ function prepareRows(data, lang, t) {
   }));
 }
 
-export function useDataBaseExport({ displayed, notify }) {
+export function useDataBaseExport({ data, displayed, notify }) {
   const { lang, t } = useLanguage();
   const [isExporting, setIsExporting] = useState(false);
   const projectConfig = useEffectiveProjectConfig();
@@ -77,6 +81,7 @@ export function useDataBaseExport({ displayed, notify }) {
   const { monitoringExportMode } = useExcelExportMode(
     activeProject?.id ?? null,
   );
+  const { vars } = useProjectVars(activeProject?.id ?? null);
 
   const handleExport = useCallback(async () => {
     if (isExporting) return;
@@ -108,6 +113,11 @@ export function useDataBaseExport({ displayed, notify }) {
         {
           monitoringExportMode,
           project: activeProject,
+          vars,
+          settings: readProjectSettings(activeProject?.id),
+          monitoringRound: readMonitoringRound(activeProject?.id),
+          sync: readProjectSyncState(activeProject?.id),
+          backupLeaks: data,
           buildWorkbookBuffer: buildWorkbookBufferInWorker,
         },
       );
@@ -131,6 +141,7 @@ export function useDataBaseExport({ displayed, notify }) {
     }
   }, [
     activeProject,
+    data,
     displayed,
     excelHeaders,
     excelKeys,
@@ -140,6 +151,7 @@ export function useDataBaseExport({ displayed, notify }) {
     monitoringExportMode,
     notify,
     t,
+    vars,
   ]);
 
   return { handleExport, isExporting };

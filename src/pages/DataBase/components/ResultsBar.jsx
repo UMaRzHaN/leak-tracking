@@ -129,9 +129,9 @@ export default function ResultsBar({
             >
               ⚙
             </button>
-            <button className={s.bulkStatusBtn} onClick={onOpenBulkPicker}>
+            {/* <button className={s.bulkStatusBtn} onClick={onOpenBulkPicker}>
               {lang === "ru" ? "⇌ СТАТУС" : "⇌ STATUS"}
-            </button>
+            </button> */}
           </div>
         </div>
       )}
