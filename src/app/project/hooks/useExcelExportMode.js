@@ -1,5 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
+import {
+  PROJECT_SETTINGS_UPDATED_EVENT,
+  touchProjectSettings,
+} from "@/app/project/projectSettings";
 import {
   EXCEL_MONITORING_EXPORT_MODE,
   normalizeExcelMonitoringExportMode,
@@ -21,6 +25,24 @@ export function useExcelExportMode(projectId) {
     [projectId],
   );
   const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    if (!projectId || typeof window === "undefined") return undefined;
+    const handleSettingsUpdated = (event) => {
+      if (event.detail?.projectId === projectId) {
+        setRevision((value) => value + 1);
+      }
+    };
+    window.addEventListener(
+      PROJECT_SETTINGS_UPDATED_EVENT,
+      handleSettingsUpdated,
+    );
+    return () =>
+      window.removeEventListener(
+        PROJECT_SETTINGS_UPDATED_EVENT,
+        handleSettingsUpdated,
+      );
+  }, [projectId]);
+
   const monitoringExportMode = useMemo(
     () => readExportMode(storageKey),
     // revision forces a synchronous storage re-read after saving.
@@ -35,9 +57,10 @@ export function useExcelExportMode(projectId) {
         storageKey,
         normalizeExcelMonitoringExportMode(nextMode),
       );
+      touchProjectSettings(projectId);
       setRevision((value) => value + 1);
     },
-    [storageKey],
+    [projectId, storageKey],
   );
 
   return { monitoringExportMode, setMonitoringExportMode };

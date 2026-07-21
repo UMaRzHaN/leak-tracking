@@ -74,6 +74,15 @@ describe("backupSchema project metadata validation", () => {
       exportedAt: "2026-07-20T10:00:00.000Z",
       project: validProject,
       vars: { density: 0.7 },
+      settings: {
+        hiddenFields: ["component"],
+        excelMonitoringExportMode: "latest_per_round",
+        photoRequirements: {
+          leakPhotoRequired: false,
+          monitoringPhotoRequired: true,
+        },
+        updatedAt: 100,
+      },
       monitoringRound: {
         id: "round-2",
         number: "2",
@@ -99,6 +108,26 @@ describe("backupSchema project metadata validation", () => {
     [{ project: validProject, schemaVersion: 1.5 }, "schemaVersion"],
     [{ project: validProject, exportedAt: 100 }, "exportedAt"],
     [{ project: validProject, vars: [] }, "vars"],
+    [{ project: validProject, settings: [] }, "settings"],
+    [
+      { project: validProject, settings: { hiddenFields: [42] } },
+      "hiddenFields",
+    ],
+    [
+      {
+        project: validProject,
+        settings: { excelMonitoringExportMode: "unknown" },
+      },
+      "excelMonitoringExportMode",
+    ],
+    [
+      {
+        project: validProject,
+        settings: { photoRequirements: { leakPhotoRequired: "yes" } },
+      },
+      "leakPhotoRequired",
+    ],
+    [{ project: validProject, settings: { updatedAt: -1 } }, "updatedAt"],
     [{ project: validProject, monitoringRound: [] }, "monitoringRound"],
     [
       {

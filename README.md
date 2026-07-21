@@ -242,7 +242,7 @@ interface MonitoringRecord {
 
 ```text
 Export ZIP
-├── project.json        # Метаданные проекта (schemaVersion, name, type, vars)
+├── project.json        # Метаданные проекта (schemaVersion, name, type, vars, settings)
 ├── backup.json         # Все записи утечек
 └── photos/             # Исходные, ремонтные, итоговые и мониторинговые фото
 ```

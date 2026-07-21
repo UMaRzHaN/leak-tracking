@@ -1,5 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
+import {
+  PROJECT_SETTINGS_UPDATED_EVENT,
+  touchProjectSettings,
+} from "@/app/project/projectSettings";
 
 const DEFAULTS = Object.freeze({
   leakPhotoRequired: true,
@@ -42,6 +46,24 @@ export function usePhotoRequirements(projectId) {
     [projectId],
   );
   const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    if (!projectId || typeof window === "undefined") return undefined;
+    const handleSettingsUpdated = (event) => {
+      if (event.detail?.projectId === projectId) {
+        setRevision((value) => value + 1);
+      }
+    };
+    window.addEventListener(
+      PROJECT_SETTINGS_UPDATED_EVENT,
+      handleSettingsUpdated,
+    );
+    return () =>
+      window.removeEventListener(
+        PROJECT_SETTINGS_UPDATED_EVENT,
+        handleSettingsUpdated,
+      );
+  }, [projectId]);
+
   const settings = useMemo(
     () => normalizeSettings(readJson(keys.current) ?? readJson(keys.legacy)),
     // revision forces a synchronous storage re-read after saving.
@@ -59,9 +81,10 @@ export function usePhotoRequirements(projectId) {
       if (usesDefaults) localStorage.removeItem(keys.current);
       else localStorage.setItem(keys.current, JSON.stringify(normalized));
       if (keys.legacy) localStorage.removeItem(keys.legacy);
+      touchProjectSettings(projectId);
       setRevision((value) => value + 1);
     },
-    [keys],
+    [keys, projectId],
   );
 
   const setLeakPhotoRequired = useCallback(

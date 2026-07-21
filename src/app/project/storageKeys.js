@@ -35,6 +35,8 @@ export const STORAGE_KEYS = {
     `${APP_PREFIX}:${projectId}:sync_state_${VERSION}`,
   PROJECT_VARS_UPDATED_AT: (projectId) =>
     `${APP_PREFIX}:${projectId}:vars_updated_at_${VERSION}`,
+  PROJECT_SETTINGS_UPDATED_AT: (projectId) =>
+    `${APP_PREFIX}:${projectId}:settings_updated_at_${VERSION}`,
 
   /* =========================
      LEGACY (migration only — не использовать в новом коде)

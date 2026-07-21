@@ -363,6 +363,7 @@ describe("useProjectActions", () => {
     localStorage.setItem("app:p1:data_v1", "[]");
     localStorage.setItem("app:p1:vars_v1", "{}");
     localStorage.setItem("app:p1:hidden_fields_v1", "[]");
+    localStorage.setItem("app:p1:settings_updated_at_v1", "100");
 
     projectModule.useProject.mockReturnValue({
       ...projectModule.useProject(),
@@ -380,6 +381,7 @@ describe("useProjectActions", () => {
     expect(localStorage.getItem("app:p1:data_v1")).toBeNull();
     expect(localStorage.getItem("app:p1:vars_v1")).toBeNull();
     expect(localStorage.getItem("app:p1:hidden_fields_v1")).toBeNull();
+    expect(localStorage.getItem("app:p1:settings_updated_at_v1")).toBeNull();
     expect(leakRepositoryModule.LeakRepository.clear).toHaveBeenCalledWith({
       projectId: "p1",
       folderName: "alpha",

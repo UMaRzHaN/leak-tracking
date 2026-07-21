@@ -226,6 +226,67 @@ export function validateProjectBackupMeta(parsed) {
     pushIssue(issues, ["vars"], "Expected object");
   }
 
+  if (parsed.settings !== undefined) {
+    if (!isPlainObject(parsed.settings)) {
+      pushIssue(issues, ["settings"], "Expected object");
+    } else {
+      if (
+        parsed.settings.hiddenFields !== undefined &&
+        (!Array.isArray(parsed.settings.hiddenFields) ||
+          parsed.settings.hiddenFields.some(
+            (key) => typeof key !== "string" || key.length === 0,
+          ))
+      ) {
+        pushIssue(
+          issues,
+          ["settings", "hiddenFields"],
+          "Expected string array",
+        );
+      }
+      if (
+        parsed.settings.excelMonitoringExportMode !== undefined &&
+        !["full", "latest_per_round"].includes(
+          parsed.settings.excelMonitoringExportMode,
+        )
+      ) {
+        pushIssue(
+          issues,
+          ["settings", "excelMonitoringExportMode"],
+          "Invalid Excel monitoring export mode",
+        );
+      }
+      if (parsed.settings.photoRequirements !== undefined) {
+        if (!isPlainObject(parsed.settings.photoRequirements)) {
+          pushIssue(
+            issues,
+            ["settings", "photoRequirements"],
+            "Expected object",
+          );
+        } else {
+          for (const key of ["leakPhotoRequired", "monitoringPhotoRequired"]) {
+            if (
+              parsed.settings.photoRequirements[key] !== undefined &&
+              typeof parsed.settings.photoRequirements[key] !== "boolean"
+            ) {
+              pushIssue(
+                issues,
+                ["settings", "photoRequirements", key],
+                "Expected boolean",
+              );
+            }
+          }
+        }
+      }
+      if (
+        parsed.settings.updatedAt !== undefined &&
+        (!Number.isFinite(Number(parsed.settings.updatedAt)) ||
+          Number(parsed.settings.updatedAt) < 0)
+      ) {
+        pushIssue(issues, ["settings", "updatedAt"], "Expected timestamp");
+      }
+    }
+  }
+
   if (parsed.monitoringRound !== undefined) {
     if (!isPlainObject(parsed.monitoringRound)) {
       pushIssue(issues, ["monitoringRound"], "Expected object");

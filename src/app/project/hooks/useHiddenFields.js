@@ -1,5 +1,9 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
+import {
+  PROJECT_SETTINGS_UPDATED_EVENT,
+  touchProjectSettings,
+} from "@/app/project/projectSettings";
 
 function readFromStorage(key) {
   if (!key) return new Set();
@@ -25,6 +29,24 @@ export function useHiddenFields(projectId) {
   // revision bump forces useMemo to re-read localStorage
   const [revision, setRevision] = useState(0);
 
+  useEffect(() => {
+    if (!projectId || typeof window === "undefined") return undefined;
+    const handleSettingsUpdated = (event) => {
+      if (event.detail?.projectId === projectId) {
+        setRevision((value) => value + 1);
+      }
+    };
+    window.addEventListener(
+      PROJECT_SETTINGS_UPDATED_EVENT,
+      handleSettingsUpdated,
+    );
+    return () =>
+      window.removeEventListener(
+        PROJECT_SETTINGS_UPDATED_EVENT,
+        handleSettingsUpdated,
+      );
+  }, [projectId]);
+
   const hiddenFields = useMemo(
     () => readFromStorage(storageKey),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -40,10 +62,11 @@ export function useHiddenFields(projectId) {
         } else {
           localStorage.setItem(storageKey, JSON.stringify([...set]));
         }
+        touchProjectSettings(projectId);
       }
       setRevision((r) => r + 1);
     },
-    [storageKey],
+    [projectId, storageKey],
   );
 
   return { hiddenFields, setHiddenFields };

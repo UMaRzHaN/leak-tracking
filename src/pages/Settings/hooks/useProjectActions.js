@@ -6,6 +6,7 @@ import { useProject } from "@/app/project/ProjectContext";
 import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { PROJECT_META } from "@/configs/projects";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
+import { clearProjectSettings } from "@/app/project/projectSettings";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
 import { LeakRepository } from "@/repositories/LeakRepository";
 import { clearMapCache } from "@/services/maps/tileCache";
@@ -53,10 +54,7 @@ export async function deleteProjectArtifacts(project) {
 
   localStorage.removeItem(STORAGE_KEYS.PROJECT_DATA(project.id));
   localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(project.id));
-  localStorage.removeItem(STORAGE_KEYS.PROJECT_HIDDEN_FIELDS(project.id));
-  localStorage.removeItem(STORAGE_KEYS.PROJECT_EXCEL_EXPORT_MODE(project.id));
-  localStorage.removeItem(STORAGE_KEYS.PROJECT_MONITORING_SETTINGS(project.id));
-  localStorage.removeItem(STORAGE_KEYS.PROJECT_PHOTO_REQUIREMENTS(project.id));
+  clearProjectSettings(project.id);
   localStorage.removeItem(STORAGE_KEYS.PROJECT_SYNC_STATE(project.id));
   localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS_UPDATED_AT(project.id));
   await LeakRepository.clear({

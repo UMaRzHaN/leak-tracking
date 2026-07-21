@@ -378,6 +378,17 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
   await expect(page.getByText("Обход завершён", { exact: true })).toBeVisible();
 
   await page.getByTitle("Настройки").click();
+  const monitoringPhotoSwitch = page.getByRole("switch", {
+    name: /\u041f\u0440\u0438 \u043c\u043e\u043d\u0438\u0442\u043e\u0440\u0438\u043d\u0433\u0435/,
+  });
+  await monitoringPhotoSwitch.click();
+  await expect(monitoringPhotoSwitch).toHaveAttribute("aria-checked", "false");
+  const latestExportMode = page.getByRole("radio", {
+    name: /\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u044f\u044f \u0437\u0430\u043f\u0438\u0441\u044c \u0432 \u043e\u0431\u0445\u043e\u0434\u0435/,
+  });
+  await latestExportMode.click();
+  await expect(latestExportMode).toHaveAttribute("aria-checked", "true");
+
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Экспорт ZIP" }).click();
   const download = await downloadPromise;
@@ -407,6 +418,17 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
   await page.getByRole("button", { name: "Перезаписать" }).click();
   await expect(page.getByRole("alert")).toContainText("Backup restore E2E");
   await expect(page.getByRole("alert")).toContainText("перезаписан");
+
+  await expect(
+    page.getByRole("switch", {
+      name: /\u041f\u0440\u0438 \u043c\u043e\u043d\u0438\u0442\u043e\u0440\u0438\u043d\u0433\u0435/,
+    }),
+  ).toHaveAttribute("aria-checked", "false");
+  await expect(
+    page.getByRole("radio", {
+      name: /\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u044f\u044f \u0437\u0430\u043f\u0438\u0441\u044c \u0432 \u043e\u0431\u0445\u043e\u0434\u0435/,
+    }),
+  ).toHaveAttribute("aria-checked", "true");
 
   await page.getByRole("button", { name: "←" }).click();
   await openDatabase(page);

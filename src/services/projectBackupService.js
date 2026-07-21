@@ -2,6 +2,13 @@
 const getJSZip = () => import("jszip");
 
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
+import {
+  clearProjectSettings,
+  normalizeProjectSettings,
+  readProjectSettings,
+  shouldApplyIncomingProjectSettings,
+  writeProjectSettings,
+} from "@/app/project/projectSettings";
 import { VAR_DEFAULTS } from "@/data/variables";
 import { getPhotoSrc } from "@/hooks/photoService";
 import { LeakRepository } from "@/repositories/LeakRepository";
@@ -155,11 +162,17 @@ async function exportLeaksWithPhotos(leaks, zip, idbGet) {
   return exported;
 }
 
-function buildProjectMeta({ project, vars, monitoringRound, syncState } = {}) {
+function buildProjectMeta({
+  project,
+  vars,
+  settings,
+  monitoringRound,
+  syncState,
+} = {}) {
   if (!project) return null;
 
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     exportedAt: new Date().toISOString(),
     project: {
       name: project.name,
@@ -168,6 +181,7 @@ function buildProjectMeta({ project, vars, monitoringRound, syncState } = {}) {
       syncId: project.syncId,
     },
     vars: vars ?? undefined,
+    settings: settings ?? undefined,
     monitoringRound: monitoringRound ?? undefined,
     sync: syncState ?? undefined,
   };
@@ -186,8 +200,14 @@ function normalizeImportedVars(vars) {
 }
 
 function normalizeProjectMeta(meta) {
-  if (!meta?.vars) return meta;
-  return { ...meta, vars: normalizeImportedVars(meta.vars) };
+  if (!meta) return meta;
+  return {
+    ...meta,
+    ...(meta.vars ? { vars: normalizeImportedVars(meta.vars) } : {}),
+    ...(meta.settings
+      ? { settings: normalizeProjectSettings(meta.settings) }
+      : {}),
+  };
 }
 
 function readStoredProjectVars(projectId) {
@@ -934,6 +954,7 @@ function rollbackImportedProject(project, removeProject) {
   localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(project.id));
   localStorage.removeItem(STORAGE_KEYS.PROJECT_SYNC_STATE(project.id));
   localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS_UPDATED_AT(project.id));
+  clearProjectSettings(project.id);
   saveMonitoringRound(project.id, null);
   if (typeof removeProject === "function") {
     try {
@@ -986,6 +1007,7 @@ export async function buildProjectBackupZip({ leaks, idbGet, project, vars }) {
   const meta = buildProjectMeta({
     project,
     vars,
+    settings: readProjectSettings(project?.id),
     monitoringRound: readMonitoringRound(project?.id),
     syncState: readProjectSyncState(project?.id),
   });
@@ -1066,6 +1088,9 @@ export async function importProjectZip(zipFile, ctx) {
         JSON.stringify(meta.vars),
       );
     }
+    if (meta?.settings) {
+      writeProjectSettings(newProject.id, meta.settings);
+    }
     const importedProject = newProject;
     if (meta?.sync) {
       writeProjectSyncState(newProject.id, meta.sync, []);
@@ -1134,6 +1159,15 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     isSync &&
     meta?.vars &&
     (incomingSyncState?.varsUpdatedAt ?? 0) > localSyncState.varsUpdatedAt;
+  const localSettings = readProjectSettings(existingProjectId);
+  const incomingSettings = meta?.settings ?? null;
+  const shouldApplyIncomingSettings =
+    incomingSettings &&
+    (mode === "overwrite" ||
+      (mode === "merge" &&
+        incomingSettings.updatedAt > localSettings.updatedAt) ||
+      (isSync &&
+        shouldApplyIncomingProjectSettings(localSettings, incomingSettings)));
 
   let vars = null;
   if (mode === "overwrite") {
@@ -1267,6 +1301,10 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
       ),
       finalLeaks,
     );
+  }
+
+  if (shouldApplyIncomingSettings) {
+    writeProjectSettings(existingProjectId, incomingSettings);
   }
 
   return { project: syncedProject ?? existingProject, leakCount: addedCount };
