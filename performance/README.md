@@ -18,8 +18,7 @@ npm run test:perf
 
 `PERF_RECORDS` accepts comma-separated integers from 1,000 through 10,000.
 The test reports IndexedDB seeding, cold application start, database opening,
-search duration, bulk status persistence, Excel ZIP export, re-import preview,
-archive size, rendered card count, DOM node count, and Chromium heap usage when
+search duration, Excel ZIP export, re-import preview, archive size, rendered card count, DOM node count, and Chromium heap usage when
 available. The round trip must report zero updated records and zero changed
 fields. A JSON metrics attachment is written to the Playwright test results.
 
@@ -35,7 +34,6 @@ Default budgets can be overridden with:
 - `PERF_MAX_COLD_START_MS`
 - `PERF_MAX_DATABASE_OPEN_MS`
 - `PERF_MAX_SEARCH_MS`
-- `PERF_MAX_BULK_SAVE_MS`
 - `PERF_MAX_EXCEL_EXPORT_MS`
 - `PERF_MAX_EXCEL_IMPORT_MS`
 - `PERF_MAX_EXPORT_HEAP_MB`

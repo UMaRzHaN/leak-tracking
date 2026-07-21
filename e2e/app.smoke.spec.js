@@ -172,9 +172,7 @@ test("opens the main application sections", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("persists project, calculation, appearance, and export settings", async ({
-  page,
-}) => {
+test("persists project, appearance, and export settings", async ({ page }) => {
   await createProject(page, "Settings E2E");
   await page.getByTitle("Настройки").click();
 
@@ -186,13 +184,9 @@ test("persists project, calculation, appearance, and export settings", async ({
     "Settings persisted E2E",
   );
 
-  await page.getByRole("button", { name: "Редактировать параметры" }).click();
-  await page.getByLabel(/^Серийный номер оборудования/).fill("8123");
-  await page.getByLabel(/^Режим работы/).fill("180");
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText(
-    "Параметры расчёта сохранены",
-  );
+  await expect(
+    page.getByRole("button", { name: "Редактировать параметры" }),
+  ).toHaveCount(0);
 
   const monitoringPhotoSwitch = page.getByRole("switch", {
     name: "При мониторинге",
@@ -225,9 +219,9 @@ test("persists project, calculation, appearance, and export settings", async ({
     page.getByRole("radio", { name: /Latest Record per Round/ }),
   ).toHaveAttribute("aria-checked", "true");
 
-  await page.getByRole("button", { name: "Edit Parameters" }).click();
-  await expect(page.getByLabel(/^Operating mode/)).toHaveValue("180");
-  await expect(page.getByLabel(/^Equipment serial number/)).toHaveValue("8123");
+  await expect(
+    page.getByRole("button", { name: "Edit Parameters" }),
+  ).toHaveCount(0);
 });
 
 test("clears a populated offline map cache from settings", async ({ page }) => {
@@ -514,9 +508,9 @@ test("records and completes a monitoring round", async ({ page }) => {
   await expect(page.getByText("1/1", { exact: true })).toBeVisible();
 });
 
-test("bulk changes selected leaks to repair status", async ({ page }) => {
+test("keeps the hidden bulk status action unavailable", async ({ page }) => {
   test.setTimeout(90_000);
-  await createProject(page, "Bulk status E2E");
+  await createProject(page, "Bulk status hidden E2E");
   await setUserProfile(page);
   await createLeak(page, "5451");
   await createLeak(page, "5452");
@@ -527,36 +521,14 @@ test("bulk changes selected leaks to repair status", async ({ page }) => {
 
   await page.getByRole("button", { name: "Выбрать всё" }).click();
   await expect(page.getByText("2 выбрано из 2")).toBeVisible();
-
-  await page.getByRole("button", { name: "⇌ СТАТУС" }).click();
-  await page.getByRole("button", { name: "В ремонте", exact: true }).click();
-
+  await expect(page.getByRole("button", { name: "⇌ СТАТУС" })).toHaveCount(0);
   await expect(
-    page.getByRole("heading", { name: "Утечка в ремонте" }),
+    page.getByRole("button", { name: "Параметры расчёта" }),
   ).toBeVisible();
-  await expect(page.getByText("1 / 2", { exact: true })).toBeVisible();
-  await attachModalPhoto(page);
-  await page.getByRole("button", { name: "Подтвердить" }).click();
 
-  await expect(page.getByText("2 / 2", { exact: true })).toBeVisible();
-  await attachModalPhoto(page);
-  await page.getByRole("button", { name: "Подтвердить" }).click();
-
-  await expect(page.getByRole("alert")).toContainText("Status changed", {
-    timeout: 10_000,
-  });
+  await page.getByRole("button", { name: "Снять выбор" }).click();
   await expect(page.getByText("2 выбрано из 2")).toHaveCount(0);
-  await expect(
-    page.locator("[data-urgency]").filter({ hasText: "В ремонте" }),
-  ).toHaveCount(2);
-
-  await page.reload();
-  await openDatabase(page);
-  await expect(
-    page.locator("[data-urgency]").filter({ hasText: "В ремонте" }),
-  ).toHaveCount(2);
 });
-
 test("exports and imports an Excel archive as a project copy", async ({
   page,
 }, testInfo) => {

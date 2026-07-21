@@ -35,9 +35,7 @@ function getBudgets(recordCount) {
     searchMs: Number(
       process.env.PERF_MAX_SEARCH_MS ?? (largeDataset ? 2_500 : 1_500),
     ),
-    bulkSaveMs: Number(
-      process.env.PERF_MAX_BULK_SAVE_MS ?? (largeDataset ? 15_000 : 8_000),
-    ),
+
     excelExportMs: Number(
       process.env.PERF_MAX_EXCEL_EXPORT_MS ?? (largeDataset ? 60_000 : 30_000),
     ),
@@ -54,30 +52,6 @@ function getBudgets(recordCount) {
       process.env.PERF_MAX_SETTLED_HEAP_MB ?? (largeDataset ? 80 : 48),
     ),
   };
-}
-
-async function countPersistedStatuses(page, projectId) {
-  return page.evaluate(async (id) => {
-    const leaks = await new Promise((resolve, reject) => {
-      const request = indexedDB.open("LeakTrackingDataDB", 1);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        const db = request.result;
-        const transaction = db.transaction("projects", "readonly");
-        const getRequest = transaction.objectStore("projects").get(id);
-        getRequest.onsuccess = () => {
-          db.close();
-          resolve(getRequest.result?.data ?? []);
-        };
-        getRequest.onerror = () => reject(getRequest.error);
-      };
-    });
-
-    return leaks.reduce((counts, leak) => {
-      counts[leak.status] = (counts[leak.status] ?? 0) + 1;
-      return counts;
-    }, {});
-  }, projectId);
 }
 
 async function readUsedJsHeap(page) {
@@ -220,7 +194,7 @@ async function seedProject(page, recordCount, { photoCount = 0 } = {}) {
 }
 
 for (const recordCount of readRecordCounts()) {
-  test(`loads, updates, and round-trips ${recordCount.toLocaleString("en-US")} records`, async ({
+  test(`loads and round-trips ${recordCount.toLocaleString("en-US")} records`, async ({
     page,
   }, testInfo) => {
     test.setTimeout(300_000);
@@ -264,36 +238,14 @@ for (const recordCount of readRecordCounts()) {
       page.getByText(`${recordCount} records`, { exact: false }).first(),
     ).toBeVisible();
 
-    await page.getByRole("button", { name: "Select all", exact: true }).click();
-    await expect(
-      page.getByText(`${recordCount} selected of ${recordCount}`, {
-        exact: true,
-      }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: /STATUS$/ }).click();
-
-    const bulkSaveStartedAt = Date.now();
-    await page.getByRole("button", { name: "Open", exact: true }).click();
-    await expect(
-      page.getByText(`${recordCount} selected of ${recordCount}`, {
-        exact: true,
-      }),
-    ).toHaveCount(0, { timeout: budgets.bulkSaveMs + 5_000 });
-    const bulkSaveMs = Date.now() - bulkSaveStartedAt;
-    const persistedStatuses = await countPersistedStatuses(
-      page,
-      `perf-${recordCount}`,
-    );
-    expect(persistedStatuses).toEqual({ open: recordCount });
-
     const downloadPromise = page.waitForEvent("download", {
       timeout: budgets.excelExportMs + 5_000,
     });
     const excelExportStartedAt = Date.now();
     await page.getByRole("button", { name: /XLSX$/ }).click();
     const download = await downloadPromise;
-    const downloadPath = await download.path();
-    if (!downloadPath) throw new Error("Excel export did not produce a file");
+    const downloadPath = testInfo.outputPath(download.suggestedFilename());
+    await download.saveAs(downloadPath);
     const excelExportMs = Date.now() - excelExportStartedAt;
     const archiveBytes = (await stat(downloadPath)).size;
     expect(archiveBytes).toBeGreaterThan(0);
@@ -336,7 +288,6 @@ for (const recordCount of readRecordCounts()) {
       coldStartMs,
       databaseOpenMs,
       searchMs,
-      bulkSaveMs,
       excelExportMs,
       excelImportMs,
       archiveBytes,
@@ -360,7 +311,6 @@ for (const recordCount of readRecordCounts()) {
     expect(coldStartMs).toBeLessThan(budgets.coldStartMs);
     expect(databaseOpenMs).toBeLessThan(budgets.databaseOpenMs);
     expect(searchMs).toBeLessThan(budgets.searchMs);
-    expect(bulkSaveMs).toBeLessThan(budgets.bulkSaveMs);
     expect(excelExportMs).toBeLessThan(budgets.excelExportMs);
     expect(excelImportMs).toBeLessThan(budgets.excelImportMs);
     expect(v8HeapAfterExportBytes).toBeLessThan(budgets.exportHeapBytes);
@@ -392,8 +342,8 @@ test("backs up and reopens 1,000 records with 1,000 photos", async ({
   const exportStartedAt = Date.now();
   await page.getByRole("button", { name: "Export ZIP", exact: true }).click();
   const download = await downloadPromise;
-  const backupPath = await download.path();
-  if (!backupPath) throw new Error("ZIP export did not produce a file");
+  const backupPath = testInfo.outputPath(download.suggestedFilename());
+  await download.saveAs(backupPath);
   const zipExportMs = Date.now() - exportStartedAt;
   const archiveBytes = (await stat(backupPath)).size;
   const archive = await JSZip.loadAsync(await readFile(backupPath));
