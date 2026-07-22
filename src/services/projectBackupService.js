@@ -37,6 +37,7 @@ import {
   assertArchiveLimits,
   assertImportFileSize,
 } from "@/utils/importLimits";
+import { rollbackImportedProject } from "@/services/projectCleanup";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const EXPORT_YIELD_EVERY = 25;
@@ -948,23 +949,6 @@ async function restorePhotosFromZip(leaks, zip, savePhotoRefOrFn) {
   );
 }
 
-function rollbackImportedProject(project, removeProject) {
-  if (!project?.id) return;
-
-  localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(project.id));
-  localStorage.removeItem(STORAGE_KEYS.PROJECT_SYNC_STATE(project.id));
-  localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS_UPDATED_AT(project.id));
-  clearProjectSettings(project.id);
-  saveMonitoringRound(project.id, null);
-  if (typeof removeProject === "function") {
-    try {
-      removeProject(project.id);
-    } catch {
-      // ignore rollback cleanup errors
-    }
-  }
-}
-
 async function waitForProjectActivation(activeProjectIdRef, projectId) {
   for (let i = 0; i < 60; i++) {
     if (activeProjectIdRef.current === projectId) return;
@@ -1107,7 +1091,7 @@ export async function importProjectZip(zipFile, ctx) {
     writeProjectSyncState(newProject.id, meta?.sync, finalLeaks);
     return { project: importedProject, leakCount: finalLeaks.length };
   } catch (error) {
-    rollbackImportedProject(newProject, removeProject);
+    await rollbackImportedProject(newProject, removeProject);
     throw error;
   }
 }
@@ -1161,13 +1145,15 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     (incomingSyncState?.varsUpdatedAt ?? 0) > localSyncState.varsUpdatedAt;
   const localSettings = readProjectSettings(existingProjectId);
   const incomingSettings = meta?.settings ?? null;
+  const hasIncomingSettings = Boolean(incomingSettings);
   const shouldApplyIncomingSettings =
-    incomingSettings &&
-    (mode === "overwrite" ||
-      (mode === "merge" &&
-        incomingSettings.updatedAt > localSettings.updatedAt) ||
-      (isSync &&
-        shouldApplyIncomingProjectSettings(localSettings, incomingSettings)));
+    mode === "overwrite" ||
+    (hasIncomingSettings &&
+      mode === "merge" &&
+      incomingSettings.updatedAt > localSettings.updatedAt) ||
+    (hasIncomingSettings &&
+      isSync &&
+      shouldApplyIncomingProjectSettings(localSettings, incomingSettings));
 
   let vars = null;
   if (mode === "overwrite") {
@@ -1304,7 +1290,11 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
   }
 
   if (shouldApplyIncomingSettings) {
-    writeProjectSettings(existingProjectId, incomingSettings);
+    if (incomingSettings) {
+      writeProjectSettings(existingProjectId, incomingSettings);
+    } else {
+      clearProjectSettings(existingProjectId, { emit: true });
+    }
   }
 
   return { project: syncedProject ?? existingProject, leakCount: addedCount };

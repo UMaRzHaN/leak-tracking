@@ -144,4 +144,16 @@ describe("projectSyncState", () => {
     );
     markProjectVarsUpdated(null, 400);
   });
+
+  it("clears a stale variable timestamp when replacing sync state", () => {
+    writeProjectSyncState("project-1", { varsUpdatedAt: 500 });
+    expect(localStorage.getItem("app:project-1:vars_updated_at_v1")).toBe(
+      "500",
+    );
+
+    writeProjectSyncState("project-1", { varsUpdatedAt: 0 });
+
+    expect(localStorage.getItem("app:project-1:vars_updated_at_v1")).toBeNull();
+    expect(readProjectSyncState("project-1").varsUpdatedAt).toBe(0);
+  });
 });

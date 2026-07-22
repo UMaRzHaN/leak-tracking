@@ -153,6 +153,35 @@ describe("project settings backup and synchronization", () => {
     expect(readProjectSettings(SOURCE_PROJECT.id)).toEqual(SETTINGS);
   });
 
+  it("resets settings when overwriting from a legacy archive", async () => {
+    const zip = new JSZip();
+    zip.file("backup.json", "[]");
+    zip.file(
+      "project.json",
+      JSON.stringify({
+        schemaVersion: 4,
+        project: SOURCE_PROJECT,
+      }),
+    );
+    const archive = await zip.generateAsync({ type: "blob" });
+    writeProjectSettings(SOURCE_PROJECT.id, SETTINGS, { emit: false });
+
+    await importIntoExistingProject(
+      archive,
+      makeExistingContext(),
+      "overwrite",
+    );
+
+    expect(readProjectSettings(SOURCE_PROJECT.id)).toEqual({
+      hiddenFields: [],
+      excelMonitoringExportMode: "full",
+      photoRequirements: {
+        leakPhotoRequired: true,
+        monitoringPhotoRequired: true,
+      },
+      updatedAt: 0,
+    });
+  });
   it("applies newer archived settings during a manual merge", async () => {
     const archive = await makeSettingsArchive(SETTINGS);
     writeProjectSettings(

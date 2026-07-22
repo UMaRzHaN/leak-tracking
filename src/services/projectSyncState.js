@@ -99,6 +99,8 @@ export function writeProjectSyncState(projectId, value, liveLeaks = []) {
       STORAGE_KEYS.PROJECT_VARS_UPDATED_AT(projectId),
       String(normalized.varsUpdatedAt),
     );
+  } else {
+    localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS_UPDATED_AT(projectId));
   }
 }
 

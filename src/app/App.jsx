@@ -32,6 +32,7 @@ import { NEARBY_RADIUS_M } from "@/pages/DataBase/hooks/useDataBaseFilters";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { writeProjectSettings } from "@/app/project/projectSettings";
 import { writeProjectSyncState } from "@/services/projectSyncState";
+import { rollbackImportedProject } from "@/services/projectCleanup";
 
 const AddLeak = lazy(() => import("@/pages/AddLeak/AddLeak"));
 const MainPage = lazy(() => import("@/pages/MainPage/MainPage"));
@@ -300,26 +301,32 @@ export default function App() {
         throw new Error("Не удалось создать проект");
       }
 
-      await waitForRefValue(activeProjectIdRef, newProject.id);
-      if (vars) {
-        localStorage.setItem(
-          STORAGE_KEYS.PROJECT_VARS(newProject.id),
-          JSON.stringify(vars),
+      try {
+        await waitForRefValue(activeProjectIdRef, newProject.id);
+        if (vars) {
+          localStorage.setItem(
+            STORAGE_KEYS.PROJECT_VARS(newProject.id),
+            JSON.stringify(vars),
+          );
+        }
+        if (settings) writeProjectSettings(newProject.id, settings);
+        const { persistExcelImportPhotos } =
+          await import("@/services/excelImportService");
+        const withPhotos = await persistExcelImportPhotos(
+          leaks,
+          savePhotoRef.current,
         );
+        await saveRef.current(withPhotos);
+        if (sync) writeProjectSyncState(newProject.id, sync, withPhotos);
+        if (monitoringRound)
+          saveMonitoringRound(newProject.id, monitoringRound);
+        return { project: newProject, leakCount: withPhotos.length };
+      } catch (error) {
+        await rollbackImportedProject(newProject, removeProject);
+        throw error;
       }
-      if (settings) writeProjectSettings(newProject.id, settings);
-      const { persistExcelImportPhotos } =
-        await import("@/services/excelImportService");
-      const withPhotos = await persistExcelImportPhotos(
-        leaks,
-        savePhotoRef.current,
-      );
-      await saveRef.current(withPhotos);
-      if (sync) writeProjectSyncState(newProject.id, sync, withPhotos);
-      if (monitoringRound) saveMonitoringRound(newProject.id, monitoringRound);
-      return { project: newProject, leakCount: withPhotos.length };
     },
-    [addProject],
+    [addProject, removeProject],
   );
 
   const handleSetupImportExcel = useCallback(
