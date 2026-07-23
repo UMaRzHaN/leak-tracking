@@ -12,9 +12,9 @@ export const MONITORING_RESULT_ORDER = [
 
 const RESULT_LABELS = {
   ru: {
-    still_leaking: "Утечка сохраняется",
-    resolved: "Утечка устранена",
-    needs_recheck: "Утечка в ремонте",
+    still_leaking: "Да",
+    resolved: "Нет",
+    needs_recheck: "В ремонте",
   },
   en: {
     still_leaking: "Still leaking",
@@ -23,6 +23,11 @@ const RESULT_LABELS = {
   },
 };
 
+const LEGACY_MONITORING_RESULT_LABELS = [
+  "Утечка сохраняется",
+  "Утечка устранена",
+  "Утечка в ремонте",
+];
 export function getMonitoringResultLabel(result, lang = "ru") {
   return (
     RESULT_LABELS[lang]?.[result] ??
@@ -33,6 +38,7 @@ export function getMonitoringResultLabel(result, lang = "ru") {
 
 const MONITORING_RESULT_PREFIXES = Object.values(RESULT_LABELS)
   .flatMap((labels) => Object.values(labels))
+  .concat(LEGACY_MONITORING_RESULT_LABELS)
   .sort((left, right) => right.length - left.length);
 
 export function getMonitoringHistoryComment(entry) {

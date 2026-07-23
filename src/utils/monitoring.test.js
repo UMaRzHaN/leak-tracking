@@ -1,10 +1,28 @@
 import { describe, expect, it } from "vitest";
 import {
+  getMonitoringHistoryComment,
+  getMonitoringResultLabel,
   getLatestMonitoringPhotoPath,
   getLeakDetailsHeroPhotoPath,
   isMonitoringDue,
 } from "./monitoring";
 
+describe("monitoring result labels", () => {
+  it("uses concise Russian answers", () => {
+    expect(getMonitoringResultLabel("still_leaking", "ru")).toBe("Да");
+    expect(getMonitoringResultLabel("needs_recheck", "ru")).toBe("В ремонте");
+    expect(getMonitoringResultLabel("resolved", "ru")).toBe("Нет");
+  });
+
+  it("keeps legacy history comments readable", () => {
+    expect(
+      getMonitoringHistoryComment({
+        action: "monitoring",
+        text: "Утечка устранена Замена уплотнения",
+      }),
+    ).toBe("Замена уплотнения");
+  });
+});
 describe("monitoring photo selection", () => {
   const leak = {
     photo: "idb://original",

@@ -20,6 +20,7 @@ export default function MonitoringListItem({
 }) {
   const last = getLastMonitoringRecord(leak);
   const isDue = hasActiveRound && isMonitoringDue(leak, roundId, roundNumber);
+  const displayedUser = last ? last.monitoredBy : leak.detectedBy;
 
   return (
     <article className={s.monitoringItem}>
@@ -42,7 +43,7 @@ export default function MonitoringListItem({
           {last && (
             <strong>{getMonitoringResultLabel(last.result, lang)}</strong>
           )}
-          {leak.detectedBy && <em>{leak.detectedBy}</em>}
+          {displayedUser && <em>{displayedUser}</em>}
         </div>
 
         <button

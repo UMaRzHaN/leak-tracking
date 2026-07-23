@@ -215,22 +215,20 @@ function LeakCardCompact({
           </div>
 
           <div className={s.body}>
-            {(leak.object || leak.component) && (
+            {(leak.location || leak.object) && (
               <div className={s.titleBlock}>
-                {leak.object && (
-                  <span className={s.objectName}>{leak.object}</span>
+                {leak.location && (
+                  <span className={s.objectName}>{leak.location}</span>
                 )}
-                {leak.component && (
-                  <span className={s.component}>{leak.component}</span>
+                {leak.object && (
+                  <span className={s.component}>{leak.object}</span>
                 )}
               </div>
             )}
-            {(leak.location || leak.field) && (
+            {leak.component && (
               <div className={s.locationRow}>
                 <span className={s.locationPin}>◉</span>
-                <span className={s.locationText}>
-                  {[leak.field, leak.location].filter(Boolean).join(" · ")}
-                </span>
+                <span className={s.locationText}>{leak.component}</span>
               </div>
             )}
             {leak.leak_description && (

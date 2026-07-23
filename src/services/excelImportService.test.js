@@ -304,6 +304,34 @@ describe("parseExcelLeaks", () => {
     ]).toEqual([2026, 6, 15, 16, 27, 43]);
   });
 
+  it("imports concise Russian monitoring results exported by the app", async () => {
+    const { default: ExcelJS } = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    const leaksSheet = workbook.addWorksheet("Leaks");
+    leaksSheet.addRow(["Leak ID", "date", "status", "component"]);
+    leaksSheet.addRow(["TAG-YES", "14.07.2026", "Open", "Valve"]);
+    leaksSheet.addRow(["TAG-NO", "14.07.2026", "Resolved", "Flange"]);
+
+    const monitoringSheet = workbook.addWorksheet("Monitoring");
+    monitoringSheet.addRow([
+      "Tag",
+      "Round",
+      "Monitoring date",
+      "Monitored by",
+      "Result",
+    ]);
+    monitoringSheet.addRow(["TAG-YES", 1, "15.07.2026", "Inspector A", "Да"]);
+    monitoringSheet.addRow(["TAG-NO", 1, "15.07.2026", "Inspector B", "Нет"]);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const result = await parseExcelLeaks({ arrayBuffer: async () => buffer });
+    const byTag = new Map(result.leaks.map((leak) => [leak.leak_id, leak]));
+
+    expect(byTag.get("TAG-YES").monitoringRecords[0].result).toBe(
+      "still_leaking",
+    );
+    expect(byTag.get("TAG-NO").monitoringRecords[0].result).toBe("resolved");
+  });
   it("imports app Excel ZIP photos from worksheet hyperlinks", async () => {
     const { default: ExcelJS } = await import("exceljs");
     const { default: JSZip } = await import("jszip");

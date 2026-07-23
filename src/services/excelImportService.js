@@ -433,6 +433,7 @@ function normalizeMonitoringResult(value) {
     [
       "still leaking",
       "still_leaking",
+      "да",
       "утечка сохраняется",
       "сохраняется",
       "open",
@@ -452,7 +453,9 @@ function normalizeMonitoringResult(value) {
     return "needs_recheck";
   }
   if (
-    ["resolved", "утечка устранена", "устранена", "устранено"].includes(text)
+    ["resolved", "нет", "утечка устранена", "устранена", "устранено"].includes(
+      text,
+    )
   ) {
     return "resolved";
   }

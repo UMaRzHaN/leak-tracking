@@ -15,7 +15,7 @@
  * - native Capacitor: пишет data.json и фото в Directory.Data.
  */
 (async function seed100Leaks() {
-  const COUNT = Number(window.SEED_LEAK_COUNT ?? 10);
+  const COUNT = Number(window.SEED_LEAK_COUNT ?? 100);
   const ROUNDS = 5;
   const CURRENT_ROUND = 5;
   const BUILD_BATCH_SIZE = 10;
@@ -486,9 +486,9 @@
   function monitoringLabel(result) {
     return (
       {
-        still_leaking: "Утечка сохраняется",
-        needs_recheck: "Утечка в ремонте",
-        resolved: "Утечка устранена",
+        still_leaking: "Да",
+        needs_recheck: "В ремонте",
+        resolved: "Нет",
       }[result] ?? result
     );
   }

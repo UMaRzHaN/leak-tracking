@@ -254,7 +254,7 @@ export default function Monitoring({
             lastCheck: "Последняя проверка",
             never: "Не проверялась",
             detectedBy: "Зафиксировал",
-            result: "Результат",
+            result: "Утечка есть?",
             currentState: "текущее состояние",
             comment: "Комментарий",
             commentPlaceholder: "Дополнительные сведения по проверке",
