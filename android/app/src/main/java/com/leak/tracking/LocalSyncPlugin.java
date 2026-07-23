@@ -63,6 +63,7 @@ public class LocalSyncPlugin extends Plugin {
     private static final int TRANSFER_TIMEOUT_MS = 120_000;
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int MAX_FAILED_AUTH_ATTEMPTS = 5;
+    private static final String TLS_KEY_ALIAS_PREFIX = "local-sync-";
 
     private final ExecutorService executor = Executors.newCachedThreadPool();
     private final ScheduledExecutorService cleanupExecutor = Executors.newSingleThreadScheduledExecutor();
@@ -489,7 +490,8 @@ public class LocalSyncPlugin extends Plugin {
     }
 
     private TlsHostContext createTlsHostContext() throws Exception {
-        String keyAlias = "local-sync-" + UUID.randomUUID();
+        deleteStaleTlsKeys();
+        String keyAlias = TLS_KEY_ALIAS_PREFIX + UUID.randomUUID();
         long now = System.currentTimeMillis();
         KeyPairGenerator generator = KeyPairGenerator.getInstance(
             KeyProperties.KEY_ALGORITHM_EC,
@@ -613,6 +615,24 @@ public class LocalSyncPlugin extends Plugin {
             keyStore.load(null);
             keyStore.deleteEntry(keyAlias);
         } catch (Exception ignored) {}
+    }
+
+    private void deleteStaleTlsKeys() {
+        String activeKeyAlias = hostKeyAlias;
+        try {
+            KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
+            keyStore.load(null);
+            for (String alias : Collections.list(keyStore.aliases())) {
+                if (
+                    alias.startsWith(TLS_KEY_ALIAS_PREFIX) &&
+                    !alias.equals(activeKeyAlias)
+                ) {
+                    keyStore.deleteEntry(alias);
+                }
+            }
+        } catch (Exception ignored) {
+            // Stale keys are harmless and must not prevent a new sync session.
+        }
     }
 
     private static final class TlsHostContext {
