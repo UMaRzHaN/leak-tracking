@@ -142,6 +142,53 @@ describe("ProjectProvider initialization", () => {
     ).toBe("new-sync-5678");
   });
 
+  it("restores archived project metadata without replacing local identity", () => {
+    localStorage.setItem(
+      STORAGE_KEYS.PROJECTS_LIST,
+      JSON.stringify([
+        {
+          id: "p1",
+          name: "Draft",
+          type: "upstream",
+          folderName: "draft-folder",
+          createdAt: 1,
+          syncId: "local-sync-id",
+        },
+      ]),
+    );
+    const wrapper = ({ children }) => (
+      <ProjectProvider>{children}</ProjectProvider>
+    );
+    const { result } = renderHook(() => useProject(), { wrapper });
+
+    act(() => {
+      result.current.restoreProjectMetadata("p1", {
+        name: "Archive project",
+        type: "midstream",
+        folderName: "archive-folder",
+        syncId: "ARCHIVE-SYNC-ID",
+      });
+    });
+
+    expect(result.current.activeProject).toMatchObject({
+      id: "p1",
+      name: "Archive project",
+      type: "midstream",
+      folderName: "draft-folder",
+      createdAt: 1,
+      syncId: "archive-sync-id",
+    });
+    expect(
+      JSON.parse(localStorage.getItem(STORAGE_KEYS.PROJECTS_LIST))[0],
+    ).toMatchObject({
+      id: "p1",
+      name: "Archive project",
+      type: "midstream",
+      folderName: "draft-folder",
+      syncId: "archive-sync-id",
+    });
+  });
+
   it("creates projects with normalized sync ids and unique folder names", () => {
     localStorage.setItem(
       STORAGE_KEYS.PROJECTS_LIST,

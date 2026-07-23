@@ -392,6 +392,29 @@ describe("useProjectActions", () => {
     expect(removeProject).toHaveBeenCalledWith("p1");
   });
 
+  it("removes a project from the UI even when artifact cleanup fails", async () => {
+    const notify = vi.fn();
+    const removeProject = vi.fn();
+    leakRepositoryModule.LeakRepository.clear.mockRejectedValueOnce(
+      new Error("storage unavailable"),
+    );
+    projectModule.useProject.mockReturnValue({
+      ...projectModule.useProject(),
+      removeProject,
+    });
+    const { result } = renderHook(() =>
+      useProjectActions({ setCacheInfo: vi.fn(), notify }),
+    );
+
+    await act(async () => result.current.handleRemove("p1"));
+
+    expect(removeProject).toHaveBeenCalledWith("p1");
+    expect(notify).toHaveBeenCalledWith(
+      "error",
+      'Project "Alpha" was removed, but some files could not be cleaned up',
+    );
+  });
+
   it("ignores removal of an unknown project", async () => {
     const notify = vi.fn();
     const removeProject = vi.fn();

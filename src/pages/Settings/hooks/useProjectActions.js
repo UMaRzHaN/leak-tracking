@@ -1,16 +1,14 @@
 import { useCallback, useMemo, useState } from "react";
-import { Directory, Filesystem } from "@capacitor/filesystem";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { isNative } from "@/utils/platform";
 import { useProject } from "@/app/project/ProjectContext";
 import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { PROJECT_META } from "@/configs/projects";
-import { STORAGE_KEYS } from "@/app/project/storageKeys";
-import { clearProjectSettings } from "@/app/project/projectSettings";
-import { PhotoRepository } from "@/repositories/PhotoRepository";
-import { LeakRepository } from "@/repositories/LeakRepository";
 import { clearMapCache } from "@/services/maps/tileCache";
+import { deleteProjectArtifacts } from "@/services/projectCleanup";
 import { renameNativeProjectFiles } from "../nativeProjectFiles";
+
+export { deleteProjectArtifacts };
 
 const CLOSED_SWITCH_STATE = {
   open: false,
@@ -49,29 +47,6 @@ export function remapProjectPhotoPaths(leaks, oldFolderName, newFolderName) {
   }));
 }
 
-export async function deleteProjectArtifacts(project) {
-  if (!project?.id) return;
-
-  localStorage.removeItem(STORAGE_KEYS.PROJECT_DATA(project.id));
-  localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(project.id));
-  clearProjectSettings(project.id);
-  localStorage.removeItem(STORAGE_KEYS.PROJECT_SYNC_STATE(project.id));
-  localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS_UPDATED_AT(project.id));
-  await LeakRepository.clear({
-    projectId: project.id,
-    folderName: project.folderName,
-  });
-  await PhotoRepository.deleteProjectPhotos(project.id, project.folderName);
-
-  if (!isNative || !project.folderName) return;
-
-  await Filesystem.rmdir({
-    path: `LeakReports/${project.folderName}`,
-    directory: Directory.Data,
-    recursive: true,
-  }).catch(() => {});
-}
-
 export function useProjectActions({ setCacheInfo, notify }) {
   const { lang } = useLanguage();
   const {
@@ -83,6 +58,7 @@ export function useProjectActions({ setCacheInfo, notify }) {
     applyFolderRename,
     removeProject,
     replaceProjectSyncId,
+    restoreProjectMetadata,
     ensureProjectSyncId,
   } = useProject();
 
@@ -192,13 +168,23 @@ export function useProjectActions({ setCacheInfo, notify }) {
     async (id) => {
       const target = projects.find((project) => project.id === id);
       if (!target) return;
-      await deleteProjectArtifacts(target);
-      removeProject(id);
+      let cleanupComplete = true;
+      try {
+        await deleteProjectArtifacts(target);
+      } catch {
+        cleanupComplete = false;
+      } finally {
+        removeProject(id);
+      }
       notify(
-        "warning",
-        lang === "ru"
-          ? `Проект «${target.name}» удалён`
-          : `Project "${target.name}" deleted`,
+        cleanupComplete ? "warning" : "error",
+        cleanupComplete
+          ? lang === "ru"
+            ? `Проект «${target.name}» удалён`
+            : `Project "${target.name}" deleted`
+          : lang === "ru"
+            ? `Проект «${target.name}» удалён, но некоторые файлы не удалось очистить`
+            : `Project "${target.name}" was removed, but some files could not be cleaned up`,
       );
     },
     [lang, notify, projects, removeProject],
@@ -293,6 +279,7 @@ export function useProjectActions({ setCacheInfo, notify }) {
     updateSyncIdEditorValue,
     confirmSyncIdEditor,
     cancelSyncIdEditor,
+    restoreProjectMetadata,
     ensureProjectSyncId,
   };
 }

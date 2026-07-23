@@ -81,6 +81,34 @@ describe("projectBackupService legacy imports", () => {
     expect(savedLeaks[0].Emissions_t_CO2eq_year).toBeCloseTo(50.10776064);
   });
 
+  it("limits concurrent photo restoration while importing an archive", async () => {
+    const { default: JSZip } = await import("jszip");
+    const zip = new JSZip();
+    const leaks = Array.from({ length: 12 }, (_, index) => ({
+      id: `photo-${index}`,
+      status: "open",
+      photo: "data:image/png;base64,ZmFrZQ==",
+    }));
+    zip.file("backup.json", JSON.stringify(leaks));
+    const blob = await zip.generateAsync({ type: "blob" });
+    let active = 0;
+    let maxActive = 0;
+    const savePhoto = vi.fn(async (_photo, key) => {
+      active += 1;
+      maxActive = Math.max(maxActive, active);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      active -= 1;
+      return `idb://${key}`;
+    });
+
+    const result = await importBackupZip(blob, savePhoto);
+
+    expect(result.leaks).toHaveLength(12);
+    expect(savePhoto).toHaveBeenCalledTimes(12);
+    expect(maxActive).toBeGreaterThan(1);
+    expect(maxActive).toBeLessThanOrEqual(4);
+  });
+
   it("exports and restores the active monitoring round", async () => {
     const round = {
       id: "round-4",
@@ -1125,6 +1153,52 @@ describe("mergeLeaksByFreshness", () => {
       "host-sync-1234",
     );
     expect(result.project.syncId).toBe("host-sync-1234");
+    getAllSpy.mockRestore();
+  });
+
+  it("does not adopt a sync identifier when synchronization fails", async () => {
+    const existingProject = {
+      id: "legacy-sync-failure",
+      folderName: "legacy-sync-failure",
+      name: "Legacy Sync Failure",
+      type: "upstream",
+    };
+    const { default: JSZip } = await import("jszip");
+    const zip = new JSZip();
+    zip.file("backup.json", "[]");
+    zip.file(
+      "project.json",
+      JSON.stringify({
+        schemaVersion: 4,
+        project: {
+          name: existingProject.name,
+          type: existingProject.type,
+          syncId: "host-sync-failure",
+        },
+        sync: { version: 1, deleted: {}, varsUpdatedAt: 0 },
+      }),
+    );
+    const blob = await zip.generateAsync({ type: "blob" });
+    const setProjectSyncId = vi.fn();
+    const getAllSpy = vi.spyOn(LeakRepository, "getAll").mockResolvedValue([]);
+
+    await expect(
+      importIntoExistingProject(
+        blob,
+        {
+          existingProject,
+          setProjectSyncId,
+          saveRef: {
+            current: vi.fn().mockRejectedValue(new Error("save failed")),
+          },
+          activeProjectIdRef: { current: existingProject.id },
+          photoReadyRef: { current: true },
+        },
+        "sync",
+      ),
+    ).rejects.toThrow("save failed");
+
+    expect(setProjectSyncId).not.toHaveBeenCalled();
     getAllSpy.mockRestore();
   });
 });

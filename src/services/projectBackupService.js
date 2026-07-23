@@ -42,6 +42,7 @@ import { rollbackImportedProject } from "@/services/projectCleanup";
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const EXPORT_YIELD_EVERY = 25;
 const EXPORT_CONCURRENCY = 8;
+const IMPORT_CONCURRENCY = 4;
 
 function yieldToMainThread() {
   return new Promise((resolve) => {
@@ -51,6 +52,24 @@ function yieldToMainThread() {
     }
     setTimeout(resolve, 0);
   });
+}
+
+async function mapWithConcurrency(items, concurrency, mapper) {
+  const results = new Array(items.length);
+  let cursor = 0;
+
+  async function worker() {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await mapper(items[index], index);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
+  );
+  return results;
 }
 
 const PHOTO_KEYS = ["photo", "photo_after", "photo_repair"];
@@ -854,15 +873,60 @@ async function restorePhotosFromZip(leaks, zip, savePhotoRefOrFn) {
       ? savePhotoRefOrFn
       : savePhotoRefOrFn?.current;
 
-  return Promise.all(
-    leaks.map(async (leak) => {
-      const copy = { ...leak };
-      const baseKey = String(leak.leak_id ?? leak.id);
-      const savedPaths = {};
+  return mapWithConcurrency(leaks, IMPORT_CONCURRENCY, async (leak) => {
+    const copy = { ...leak };
+    const baseKey = String(leak.leak_id ?? leak.id);
+    const savedPaths = {};
 
-      for (const key of PHOTO_KEYS) {
-        const path = leak[key];
-        if (!path) continue;
+    for (const key of PHOTO_KEYS) {
+      const path = leak[key];
+      if (!path) continue;
+
+      let blob = null;
+      let fallbackPath = path;
+
+      if (path.startsWith("zip:")) {
+        const relativePath = path.replace("zip:", "");
+        const photoFile = zip.file(relativePath);
+        if (!photoFile) continue;
+
+        const base64 = await photoFile.async("base64");
+        const ext = relativePath.split(".").pop() || "jpg";
+        const mime = ext === "png" ? "image/png" : "image/jpeg";
+
+        const byteChars = atob(base64);
+        const byteArr = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) {
+          byteArr[i] = byteChars.charCodeAt(i);
+        }
+        blob = new Blob([byteArr], { type: mime });
+        fallbackPath = `data:${mime};base64,${base64}`;
+      } else if (path.startsWith("data:image/")) {
+        blob = dataUrlToBlob(path);
+      }
+
+      if (!blob) continue;
+
+      const storageKey =
+        key === "photo_after"
+          ? `${baseKey}_after`
+          : key === "photo_repair"
+            ? `${baseKey}_repair`
+            : baseKey;
+      const excludePaths = Object.values(savedPaths);
+      const newPath = await savePhoto(blob, storageKey, excludePaths);
+      copy[key] = newPath ?? fallbackPath;
+      if (newPath) savedPaths[key] = newPath;
+    }
+
+    if (Array.isArray(copy.monitoringRecords)) {
+      const restoredRecords = [];
+      for (const [index, record] of copy.monitoringRecords.entries()) {
+        const path = record?.[MONITORING_PHOTO_KEY];
+        if (!path) {
+          restoredRecords.push(record);
+          continue;
+        }
 
         let blob = null;
         let fallbackPath = path;
@@ -870,12 +934,14 @@ async function restorePhotosFromZip(leaks, zip, savePhotoRefOrFn) {
         if (path.startsWith("zip:")) {
           const relativePath = path.replace("zip:", "");
           const photoFile = zip.file(relativePath);
-          if (!photoFile) continue;
+          if (!photoFile) {
+            restoredRecords.push(record);
+            continue;
+          }
 
           const base64 = await photoFile.async("base64");
           const ext = relativePath.split(".").pop() || "jpg";
           const mime = ext === "png" ? "image/png" : "image/jpeg";
-
           const byteChars = atob(base64);
           const byteArr = new Uint8Array(byteChars.length);
           for (let i = 0; i < byteChars.length; i++) {
@@ -887,66 +953,26 @@ async function restorePhotosFromZip(leaks, zip, savePhotoRefOrFn) {
           blob = dataUrlToBlob(path);
         }
 
-        if (!blob) continue;
+        if (!blob) {
+          restoredRecords.push(record);
+          continue;
+        }
 
-        const storageKey =
-          key === "photo_after"
-            ? `${baseKey}_after`
-            : key === "photo_repair"
-              ? `${baseKey}_repair`
-              : baseKey;
-        const excludePaths = Object.values(savedPaths);
-        const newPath = await savePhoto(blob, storageKey, excludePaths);
-        copy[key] = newPath ?? fallbackPath;
-        if (newPath) savedPaths[key] = newPath;
+        const recordId = String(record.id ?? index + 1);
+        const storageKey = `${baseKey}_monitoring_${recordId}`;
+        const newPath = await savePhoto(blob, storageKey, [
+          ...Object.values(savedPaths),
+        ]);
+        restoredRecords.push({
+          ...record,
+          [MONITORING_PHOTO_KEY]: newPath ?? fallbackPath,
+        });
       }
+      copy.monitoringRecords = restoredRecords;
+    }
 
-      if (Array.isArray(copy.monitoringRecords)) {
-        copy.monitoringRecords = await Promise.all(
-          copy.monitoringRecords.map(async (record, index) => {
-            const path = record?.[MONITORING_PHOTO_KEY];
-            if (!path) return record;
-
-            let blob = null;
-            let fallbackPath = path;
-
-            if (path.startsWith("zip:")) {
-              const relativePath = path.replace("zip:", "");
-              const photoFile = zip.file(relativePath);
-              if (!photoFile) return record;
-
-              const base64 = await photoFile.async("base64");
-              const ext = relativePath.split(".").pop() || "jpg";
-              const mime = ext === "png" ? "image/png" : "image/jpeg";
-              const byteChars = atob(base64);
-              const byteArr = new Uint8Array(byteChars.length);
-              for (let i = 0; i < byteChars.length; i++) {
-                byteArr[i] = byteChars.charCodeAt(i);
-              }
-              blob = new Blob([byteArr], { type: mime });
-              fallbackPath = `data:${mime};base64,${base64}`;
-            } else if (path.startsWith("data:image/")) {
-              blob = dataUrlToBlob(path);
-            }
-
-            if (!blob) return record;
-
-            const recordId = String(record.id ?? index + 1);
-            const storageKey = `${baseKey}_monitoring_${recordId}`;
-            const newPath = await savePhoto(blob, storageKey, [
-              ...Object.values(savedPaths),
-            ]);
-            return {
-              ...record,
-              [MONITORING_PHOTO_KEY]: newPath ?? fallbackPath,
-            };
-          }),
-        );
-      }
-
-      return copy;
-    }),
-  );
+    return copy;
+  });
 }
 
 async function waitForProjectActivation(activeProjectIdRef, projectId) {
@@ -1125,11 +1151,8 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
   if (isSync && !existingSyncId && !incomingSyncId) {
     throw new Error("Архив не содержит идентификатор синхронизации");
   }
-  const syncedProject =
-    isSync && !existingSyncId && incomingSyncId
-      ? (setProjectSyncId?.(existingProjectId, incomingSyncId) ?? null)
-      : existingProject;
-  if (isSync && !syncedProject) {
+  const shouldAdoptSyncId = isSync && !existingSyncId && incomingSyncId;
+  if (shouldAdoptSyncId && typeof setProjectSyncId !== "function") {
     throw new Error("Не удалось сохранить идентификатор синхронизации");
   }
 
@@ -1297,7 +1320,14 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     }
   }
 
-  return { project: syncedProject ?? existingProject, leakCount: addedCount };
+  const syncedProject = shouldAdoptSyncId
+    ? setProjectSyncId(existingProjectId, incomingSyncId)
+    : existingProject;
+  if (!syncedProject) {
+    throw new Error("Не удалось сохранить идентификатор синхронизации");
+  }
+
+  return { project: syncedProject, leakCount: addedCount };
 }
 
 export async function importBackupZip(zipFile, savePhoto) {

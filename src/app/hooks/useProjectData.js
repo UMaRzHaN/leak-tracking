@@ -91,7 +91,7 @@ export function useProjectData() {
     [activeProjectFolderName, activeProjectId],
   );
 
-  const clear = useCallback(async () => {
+  const clear = useCallback(() => {
     loadGenerationRef.current += 1;
     recordLeakDeletions(activeProjectId, dataRef.current, []);
     dataRef.current = [];
@@ -99,15 +99,23 @@ export function useProjectData() {
     setData([]);
     setDataLoaded(true);
     setDataProjectId(activeProjectId);
-    if (!activeProjectId || !activeProjectFolderName) return;
-    await LeakRepository.clear({
-      projectId: activeProjectId,
-      folderName: activeProjectFolderName,
-    });
-    await PhotoRepository.gcOrphaned([], {
-      projectId: activeProjectId,
-      folderName: activeProjectFolderName,
-    });
+    if (!activeProjectId || !activeProjectFolderName) {
+      return Promise.resolve();
+    }
+    const nextClear = saveQueue.current
+      .catch(() => undefined)
+      .then(async () => {
+        await LeakRepository.clear({
+          projectId: activeProjectId,
+          folderName: activeProjectFolderName,
+        });
+        await PhotoRepository.gcOrphaned([], {
+          projectId: activeProjectId,
+          folderName: activeProjectFolderName,
+        });
+      });
+    saveQueue.current = nextClear;
+    return nextClear;
   }, [activeProjectFolderName, activeProjectId]);
 
   return { data, setData, save, clear, dataLoaded, dataProjectId };

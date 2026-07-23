@@ -7,6 +7,7 @@ import i18n from "@/i18n";
 import { getTileBlobUrl, cacheTile } from "@/services/maps/tileCache";
 import { logger } from "@/utils/logger";
 import { STATUS_META, getStatusMeta } from "@/utils/status";
+import { assignTileSource, releaseTileResources } from "./tileLifecycle";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -21,20 +22,23 @@ const CachedTileLayer = L.TileLayer.extend({
   createTile(coords, done) {
     const tile = document.createElement("img");
     tile.alt = "";
+    tile._removed = false;
+    tile._abortController = new AbortController();
 
     const url = this.getTileUrl(coords);
 
     getTileBlobUrl(url).then(async (blobUrl) => {
       if (blobUrl) {
-        tile._blobUrl = blobUrl;
-        tile.onload = () => done(null, tile);
-        tile.onerror = (e) => done(e, tile);
-        tile.src = blobUrl;
+        assignTileSource(tile, blobUrl, done, { blobUrl: true });
         return;
       }
+      if (tile._removed) return;
 
       try {
-        const response = await fetch(url, { mode: "cors" });
+        const response = await fetch(url, {
+          mode: "cors",
+          signal: tile._abortController?.signal,
+        });
         if (!response.ok) throw new Error("bad status");
 
         const responseToCache = response.clone();
@@ -43,15 +47,11 @@ const CachedTileLayer = L.TileLayer.extend({
         cacheTile(url, responseToCache);
 
         const objectUrl = URL.createObjectURL(blob);
-        tile._blobUrl = objectUrl;
-        tile.onload = () => done(null, tile);
-        tile.onerror = (e) => done(e, tile);
-        tile.src = objectUrl;
+        assignTileSource(tile, objectUrl, done, { blobUrl: true });
       } catch {
+        if (tile._removed) return;
         tile.crossOrigin = "anonymous";
-        tile.onload = () => done(null, tile);
-        tile.onerror = (e) => done(e, tile);
-        tile.src = url;
+        assignTileSource(tile, url, done);
       }
     });
 
@@ -60,22 +60,7 @@ const CachedTileLayer = L.TileLayer.extend({
 
   _removeTile(key) {
     const tile = this._tiles[key];
-    if (tile?.el?._blobUrl) {
-      try {
-        tile.el.onload = null;
-        tile.el.onerror = null;
-        if (
-          typeof tile.el.src === "string" &&
-          tile.el.src.startsWith("blob:")
-        ) {
-          tile.el.src = "";
-        }
-      } catch {
-        // ignore
-      }
-      URL.revokeObjectURL(tile.el._blobUrl);
-      tile.el._blobUrl = null;
-    }
+    releaseTileResources(tile?.el);
     L.TileLayer.prototype._removeTile.call(this, key);
   },
 });

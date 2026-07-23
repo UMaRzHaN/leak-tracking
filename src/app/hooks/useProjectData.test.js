@@ -166,6 +166,43 @@ describe("useProjectData", () => {
     expect(result.current.data).toEqual([{ id: "second" }]);
   });
 
+  it("waits for queued saves before clearing the repository", async () => {
+    let finishSave;
+    repositoryModule.LeakRepository.getAll.mockResolvedValueOnce([]);
+    repositoryModule.LeakRepository.saveAll.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishSave = resolve;
+      }),
+    );
+    repositoryModule.LeakRepository.clear.mockResolvedValueOnce(undefined);
+    const { result } = renderHook(() => useProjectData());
+    await waitFor(() => expect(result.current.dataLoaded).toBe(true));
+
+    let savePromise;
+    let clearPromise;
+    act(() => {
+      savePromise = result.current.save([{ id: "pending" }]);
+      clearPromise = result.current.clear();
+    });
+
+    await Promise.resolve();
+    expect(repositoryModule.LeakRepository.clear).not.toHaveBeenCalled();
+
+    finishSave();
+    await act(async () => {
+      await savePromise;
+      await clearPromise;
+    });
+
+    expect(repositoryModule.LeakRepository.clear).toHaveBeenCalledOnce();
+    expect(
+      repositoryModule.LeakRepository.saveAll.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      repositoryModule.LeakRepository.clear.mock.invocationCallOrder[0],
+    );
+    expect(result.current.data).toEqual([]);
+  });
+
   it("records deletions and clears the active project repository", async () => {
     const stored = [{ id: "l1" }, { id: "l2" }];
     repositoryModule.LeakRepository.getAll.mockResolvedValueOnce(stored);

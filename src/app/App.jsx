@@ -196,12 +196,8 @@ export default function App() {
      ONE-TIME MIGRATION
   ========================= */
   useEffect(() => {
-    const cleaned = cleanupLegacyLeaks();
-    if (cleaned) {
-      clear();
-      setPage("");
-    }
-  }, [clear, setPage]);
+    cleanupLegacyLeaks();
+  }, []);
 
   /* =========================
      OPEN LEAKS COUNT (for Footer badge)

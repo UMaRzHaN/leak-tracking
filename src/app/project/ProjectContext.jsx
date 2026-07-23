@@ -234,6 +234,34 @@ export function ProjectProvider({ children }) {
     [_setProjects],
   );
 
+  const restoreProjectMetadata = useCallback(
+    (id, metadata = {}) => {
+      const current = projectsRef.current;
+      const project = current.find((item) => item.id === id);
+      if (!project) return null;
+
+      const name = String(metadata.name ?? "").trim() || project.name;
+      const type = PROJECT_META[metadata.type] ? metadata.type : project.type;
+      const incomingSyncId = String(metadata.syncId ?? "")
+        .trim()
+        .toLowerCase();
+      const syncId =
+        incomingSyncId.length >= 8 ? incomingSyncId : project.syncId;
+      const updated = {
+        ...project,
+        name,
+        type,
+        ...(syncId ? { syncId } : {}),
+      };
+      const next = current.map((item) => (item.id === id ? updated : item));
+
+      projectsRef.current = next;
+      _setProjects(next);
+      return updated;
+    },
+    [_setProjects],
+  );
+
   const ensureProjectSyncId = useCallback(
     (id) => {
       const project = projectsRef.current.find((item) => item.id === id);
@@ -294,6 +322,7 @@ export function ProjectProvider({ children }) {
       changeProjectType,
       setProjectSyncId,
       replaceProjectSyncId,
+      restoreProjectMetadata,
       ensureProjectSyncId,
       removeProject,
       changeProject,
@@ -308,6 +337,7 @@ export function ProjectProvider({ children }) {
       changeProjectType,
       setProjectSyncId,
       replaceProjectSyncId,
+      restoreProjectMetadata,
       ensureProjectSyncId,
       removeProject,
       changeProject,

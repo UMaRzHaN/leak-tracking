@@ -138,6 +138,19 @@ describe("useDataBaseFilters multi-select", () => {
     expect(result.current.counts.resolved).toBe(1);
   });
 
+  it("uses the same geographic distance for nearby counts and filtering", () => {
+    const data = [{ id: 1, lat: 60, lng: 0.008, status: "open" }];
+    const { result } = renderHook(() =>
+      useDataBaseFilters({ data, coords: { lat: 60, lng: 0 } }),
+    );
+
+    act(() => result.current.setNearbyRadius(500));
+    act(() => result.current.setNearbyFilter(true));
+
+    expect(result.current.displayed.map((item) => item.id)).toEqual([1]);
+    expect(result.current.counts.nearby).toBe(result.current.displayed.length);
+  });
+
   it.each(Object.entries(PROJECTS))(
     "uses the configured secondary location field for %s",
     (_projectType, config) => {

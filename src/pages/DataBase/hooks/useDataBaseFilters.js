@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { STATUS, STATUS_ORDER } from "@/utils/status";
-import { filterNearbyLeaks } from "@/utils/geoUtils";
+import { distanceMeters, filterNearbyLeaks } from "@/utils/geoUtils";
 import { ABBREV_MAP } from "@/features/search/Autocomplete/smartFilter";
 import { matchesLeakLocationFilter } from "@/utils/locationFilter";
 
@@ -223,10 +223,23 @@ export function useDataBaseFilters({
     return () => clearTimeout(t);
   }, [search, searchInput]);
 
+  const searchTokens = useMemo(
+    () => normalizeLeakSearchText(search).split(" ").filter(Boolean),
+    [search],
+  );
+  const searchIndex = useMemo(
+    () => new Map(data.map((leak) => [leak, buildLeakSearchText(leak)])),
+    [data],
+  );
+
   const displayed = useMemo(() => {
     const applySearch = (list) =>
-      search.trim()
-        ? list.filter((leak) => matchesLeakSearch(leak, search))
+      searchTokens.length > 0
+        ? list.filter((leak) =>
+            searchTokens.every((token) =>
+              searchIndex.get(leak)?.includes(token),
+            ),
+          )
         : list;
 
     const applyPriority = (list) =>
@@ -252,7 +265,8 @@ export function useDataBaseFilters({
     nearbyRadius,
     priorityFilter,
     locationFilter,
-    search,
+    searchIndex,
+    searchTokens,
     hasGps,
     coords,
     sortAsc,
@@ -268,11 +282,8 @@ export function useDataBaseFilters({
       const st = l.status ?? STATUS.OPEN;
       if (c[st] !== undefined) c[st]++;
       if (hasGps) {
-        const dlat = l.lat - coords.lat;
-        const dlng = l.lng - coords.lng;
-        // Fast equirectangular approximation sufficient for nearby radius checks.
-        const approxM = Math.sqrt(dlat * dlat + dlng * dlng) * 111_320;
-        if (approxM <= nearbyRadius) c[NEARBY]++;
+        const distance = distanceMeters(coords.lat, coords.lng, l.lat, l.lng);
+        if (distance <= nearbyRadius) c[NEARBY]++;
       }
     }
     return c;

@@ -31,6 +31,7 @@ import { useProjectActions } from "./hooks/useProjectActions";
 import { useSettingsTexts } from "./hooks/useSettingsTexts";
 import { useLocalSync } from "./hooks/useLocalSync";
 import { performSettingsCleanup } from "./settingsCleanup";
+import { resolvePortableExcelArchiveRoute } from "./excelArchiveRouting";
 import s from "./Settings.module.scss";
 
 export default function Settings({
@@ -83,6 +84,7 @@ export default function Settings({
     updateSyncIdEditorValue,
     confirmSyncIdEditor,
     cancelSyncIdEditor,
+    restoreProjectMetadata,
     ensureProjectSyncId,
   } = useProjectActions({ setCacheInfo, notify });
 
@@ -96,17 +98,22 @@ export default function Settings({
   const { vars, setVars } = useProjectVars(activeProject?.id ?? null);
   const applyExcelArchiveMetadata = useCallback(
     (result, leaks = []) => {
-      if (!result?.portableArchive || !activeProject?.id) return;
+      if (!result || !activeProject?.id) return;
+      if (result.project) {
+        restoreProjectMetadata(activeProject.id, result.project);
+      }
       if (result.vars) setVars(result.vars);
       if (result.settings) {
         writeProjectSettings(activeProject.id, result.settings);
       }
-      saveMonitoringRound(activeProject.id, result.monitoringRound ?? null);
+      if (result.portableArchive) {
+        saveMonitoringRound(activeProject.id, result.monitoringRound ?? null);
+      }
       if (result.sync) {
         writeProjectSyncState(activeProject.id, result.sync, leaks);
       }
     },
-    [activeProject?.id, setVars],
+    [activeProject?.id, restoreProjectMetadata, setVars],
   );
   const { getPhoto: idbGetPhoto, savePhoto } = usePhotoStorage();
   const projectConfig = useProjectConfig();
@@ -267,6 +274,34 @@ export default function Settings({
           return;
         }
 
+        const archiveRoute = resolvePortableExcelArchiveRoute({
+          result,
+          projects,
+          activeProject,
+        });
+        if (
+          archiveRoute.action === "create" &&
+          typeof onCreateExcelCopy === "function"
+        ) {
+          const created = await onCreateExcelCopy({
+            name: archiveRoute.name,
+            type: result.project.type,
+            leaks: result.leaks,
+            monitoringRound: result.monitoringRound,
+            vars: result.vars,
+            settings: result.settings,
+            syncId: result.project.syncId,
+            sync: result.sync,
+          });
+          notify(
+            "success",
+            lang === "ru"
+              ? `Импортирован проект «${created?.project?.name ?? archiveRoute.name}» (${result.leaks.length} записей)`
+              : `Project "${created?.project?.name ?? archiveRoute.name}" imported (${result.leaks.length} records)`,
+          );
+          return;
+        }
+
         if (data.length > 0) {
           const { previewMergeLeaks } =
             await import("@/services/projectBackupService");
@@ -319,7 +354,16 @@ export default function Settings({
         setIsImportingExcel(false);
       }
     },
-    [activeProject, data, idbGetPhoto, lang, notify, prepareExcelLeaks],
+    [
+      activeProject,
+      data,
+      idbGetPhoto,
+      lang,
+      notify,
+      onCreateExcelCopy,
+      prepareExcelLeaks,
+      projects,
+    ],
   );
 
   const persistPreparedExcelPhotos = useCallback(
@@ -359,9 +403,8 @@ export default function Settings({
       notifyExcelImportProgress();
       const withPhotos = await persistPreparedExcelPhotos(prepared);
       await setData?.([...data, ...withPhotos]);
-      if (excelImportState.result?.portableArchive) {
-        applyExcelArchiveMetadata(excelImportState.result, withPhotos);
-      } else {
+      applyExcelArchiveMetadata(excelImportState.result, withPhotos);
+      if (!excelImportState.result?.portableArchive) {
         saveExcelMonitoringRound(excelImportState.result?.monitoringRound);
       }
       notify(
@@ -414,9 +457,8 @@ export default function Settings({
       );
       const withPhotos = await persistPreparedExcelPhotos(reconciled.leaks);
       await setData?.(withPhotos);
-      if (excelConflictState.result?.portableArchive) {
-        applyExcelArchiveMetadata(excelConflictState.result, withPhotos);
-      } else {
+      applyExcelArchiveMetadata(excelConflictState.result, withPhotos);
+      if (!excelConflictState.result?.portableArchive) {
         saveExcelMonitoringRound(excelConflictState.result?.monitoringRound);
       }
       notify(
