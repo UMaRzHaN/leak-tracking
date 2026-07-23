@@ -29,6 +29,7 @@ import { logger } from "@/utils/logger";
 import { STATUS } from "@/utils/status";
 import { saveMonitoringRound } from "@/utils/monitoringRound";
 import { NEARBY_RADIUS_M } from "@/pages/DataBase/hooks/useDataBaseFilters";
+import { MONITORING_FILTER } from "@/pages/Monitoring/monitoringDomain";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { writeProjectSettings } from "@/app/project/projectSettings";
 import { writeProjectSyncState } from "@/services/projectSyncState";
@@ -91,6 +92,9 @@ export default function App() {
   const [sharedPriorityFilter, setSharedPriorityFilter] = useState([]);
   const [sharedNearbyFilter, setSharedNearbyFilter] = useState(false);
   const [sharedNearbyRadius, setSharedNearbyRadius] = useState(NEARBY_RADIUS_M);
+  const [sharedMonitoringFilter, setSharedMonitoringFilter] = useState(
+    MONITORING_FILTER.DUE,
+  );
   const [requestedMonitoringLeakId, setRequestedMonitoringLeakId] =
     useState(null);
   const [requestedMonitoringLeakIds, setRequestedMonitoringLeakIds] = useState(
@@ -111,6 +115,8 @@ export default function App() {
       setNearbyFilter: setSharedNearbyFilter,
       nearbyRadius: sharedNearbyRadius,
       setNearbyRadius: setSharedNearbyRadius,
+      monitoringFilter: sharedMonitoringFilter,
+      setMonitoringFilter: setSharedMonitoringFilter,
     }),
     [
       sharedSearch,
@@ -118,6 +124,7 @@ export default function App() {
       sharedPriorityFilter,
       sharedNearbyFilter,
       sharedNearbyRadius,
+      sharedMonitoringFilter,
     ],
   );
 

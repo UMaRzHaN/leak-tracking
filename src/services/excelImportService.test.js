@@ -189,6 +189,7 @@ describe("parseExcelLeaks", () => {
     historySheet.addRow([
       "Tag",
       "Date",
+      "Time",
       "Action",
       "User",
       "Text",
@@ -197,7 +198,8 @@ describe("parseExcelLeaks", () => {
     ]);
     historySheet.addRow([
       "TAG-9",
-      "2026-07-14T12:00:00.000Z",
+      "14.07.2026",
+      "12:34:56",
       "edited",
       "",
       "",
@@ -212,14 +214,21 @@ describe("parseExcelLeaks", () => {
     );
 
     expect(result.stats.historyRecords).toBe(1);
-    expect(result.leaks[0].history).toEqual([
-      {
-        action: "edited",
-        date: "2026-07-14T12:00:00.000Z",
-        user: "Inspector",
-        changes: [{ key: "leak_speed", from: 10, to: 15 }],
-      },
-    ]);
+    expect(result.leaks[0].history).toHaveLength(1);
+    expect(result.leaks[0].history[0]).toMatchObject({
+      action: "edited",
+      user: "Inspector",
+      changes: [{ key: "leak_speed", from: 10, to: 15 }],
+    });
+    const importedDate = new Date(result.leaks[0].history[0].date);
+    expect([
+      importedDate.getFullYear(),
+      importedDate.getMonth(),
+      importedDate.getDate(),
+      importedDate.getHours(),
+      importedDate.getMinutes(),
+      importedDate.getSeconds(),
+    ]).toEqual([2026, 6, 14, 12, 34, 56]);
   });
 
   it("keeps history empty when the app History sheet has no records", async () => {
@@ -304,13 +313,15 @@ describe("parseExcelLeaks", () => {
     ]).toEqual([2026, 6, 15, 16, 27, 43]);
   });
 
-  it("imports concise Russian monitoring results exported by the app", async () => {
+  it("imports current states and legacy concise monitoring answers", async () => {
     const { default: ExcelJS } = await import("exceljs");
     const workbook = new ExcelJS.Workbook();
     const leaksSheet = workbook.addWorksheet("Leaks");
     leaksSheet.addRow(["Leak ID", "date", "status", "component"]);
     leaksSheet.addRow(["TAG-YES", "14.07.2026", "Open", "Valve"]);
     leaksSheet.addRow(["TAG-NO", "14.07.2026", "Resolved", "Flange"]);
+    leaksSheet.addRow(["TAG-PRESENT", "14.07.2026", "Open", "Pump"]);
+    leaksSheet.addRow(["TAG-ABSENT", "14.07.2026", "Resolved", "Seal"]);
 
     const monitoringSheet = workbook.addWorksheet("Monitoring");
     monitoringSheet.addRow([
@@ -318,10 +329,24 @@ describe("parseExcelLeaks", () => {
       "Round",
       "Monitoring date",
       "Monitored by",
-      "Result",
+      "Утечка есть",
     ]);
     monitoringSheet.addRow(["TAG-YES", 1, "15.07.2026", "Inspector A", "Да"]);
     monitoringSheet.addRow(["TAG-NO", 1, "15.07.2026", "Inspector B", "Нет"]);
+    monitoringSheet.addRow([
+      "TAG-PRESENT",
+      1,
+      "15.07.2026",
+      "Inspector C",
+      "Утечка есть",
+    ]);
+    monitoringSheet.addRow([
+      "TAG-ABSENT",
+      1,
+      "15.07.2026",
+      "Inspector D",
+      "Утечки нет",
+    ]);
 
     const buffer = await workbook.xlsx.writeBuffer();
     const result = await parseExcelLeaks({ arrayBuffer: async () => buffer });
@@ -331,6 +356,12 @@ describe("parseExcelLeaks", () => {
       "still_leaking",
     );
     expect(byTag.get("TAG-NO").monitoringRecords[0].result).toBe("resolved");
+    expect(byTag.get("TAG-PRESENT").monitoringRecords[0].result).toBe(
+      "still_leaking",
+    );
+    expect(byTag.get("TAG-ABSENT").monitoringRecords[0].result).toBe(
+      "resolved",
+    );
   });
   it("imports app Excel ZIP photos from worksheet hyperlinks", async () => {
     const { default: ExcelJS } = await import("exceljs");

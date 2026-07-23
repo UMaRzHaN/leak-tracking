@@ -1,7 +1,7 @@
 import PhotoInput from "@/features/photos/PhotoInput/PhotoInput";
 import {
   MONITORING_RESULT_ORDER,
-  getMonitoringResultLabel,
+  getMonitoringAnswerLabel,
 } from "@/utils/monitoring";
 import { getCurrentMonitoringResult } from "./monitoringDomain";
 import s from "./Monitoring.module.scss";
@@ -55,7 +55,7 @@ export default function MonitoringSheet({
           >
             {MONITORING_RESULT_ORDER.map((result) => {
               const current = result === getCurrentMonitoringResult(leak);
-              const label = getMonitoringResultLabel(result, lang);
+              const label = getMonitoringAnswerLabel(result, lang);
               return (
                 <option key={result} value={result}>
                   {current ? `${label} (${texts.currentState})` : label}

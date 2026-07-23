@@ -12,21 +12,38 @@ export const MONITORING_RESULT_ORDER = [
 
 const RESULT_LABELS = {
   ru: {
+    still_leaking: "Утечка есть",
+    resolved: "Утечки нет",
+    needs_recheck: "В ремонте",
+  },
+  en: {
+    still_leaking: "Leak present",
+    resolved: "No leak",
+    needs_recheck: "Under repair",
+  },
+};
+
+const MONITORING_ANSWER_LABELS = {
+  ru: {
     still_leaking: "Да",
     resolved: "Нет",
     needs_recheck: "В ремонте",
   },
   en: {
-    still_leaking: "Still leaking",
-    resolved: "Resolved",
-    needs_recheck: "Leak under repair",
+    still_leaking: "Yes",
+    resolved: "No",
+    needs_recheck: "Under repair",
   },
 };
-
 const LEGACY_MONITORING_RESULT_LABELS = [
   "Утечка сохраняется",
   "Утечка устранена",
   "Утечка в ремонте",
+  "Да",
+  "Нет",
+  "Still leaking",
+  "Resolved",
+  "Leak under repair",
 ];
 export function getMonitoringResultLabel(result, lang = "ru") {
   return (
@@ -35,9 +52,21 @@ export function getMonitoringResultLabel(result, lang = "ru") {
     String(result ?? "")
   );
 }
+export function getMonitoringAnswerLabel(result, lang = "ru") {
+  return (
+    MONITORING_ANSWER_LABELS[lang]?.[result] ??
+    MONITORING_ANSWER_LABELS.ru[result] ??
+    getMonitoringResultLabel(result, lang)
+  );
+}
 
 const MONITORING_RESULT_PREFIXES = Object.values(RESULT_LABELS)
   .flatMap((labels) => Object.values(labels))
+  .concat(
+    Object.values(MONITORING_ANSWER_LABELS).flatMap((labels) =>
+      Object.values(labels),
+    ),
+  )
   .concat(LEGACY_MONITORING_RESULT_LABELS)
   .sort((left, right) => right.length - left.length);
 

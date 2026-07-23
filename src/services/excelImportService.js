@@ -176,7 +176,14 @@ const MONITORING_HEADER_ALIASES = {
   date: ["дата мониторинга", "monitoring date", "date"],
   time: ["время мониторинга", "monitoring time", "время", "time"],
   monitoredBy: ["кто мониторил", "monitored by", "inspector"],
-  result: ["результат", "result"],
+  result: [
+    "результат",
+    "result",
+    "утечка есть",
+    "утечка есть?",
+    "leak present",
+    "is there a leak?",
+  ],
   materials_equipment: ["мтр", "materials", "материалы"],
   comment: ["комментарий", "comment"],
   photo: ["фото мониторинга", "monitoring photo", "photo"],
@@ -184,7 +191,8 @@ const MONITORING_HEADER_ALIASES = {
 
 const HISTORY_HEADER_ALIASES = {
   leak_id: ["бирка", "tag", "leak id", "leak_id", "id утечки"],
-  date: ["дата", "date", "время", "time"],
+  date: ["дата", "date"],
+  time: ["время", "time"],
   action: ["действие", "action"],
   user: ["пользователь", "user", "кто", "who"],
   text: ["текст", "text", "комментарий", "comment"],
@@ -433,7 +441,11 @@ function normalizeMonitoringResult(value) {
     [
       "still leaking",
       "still_leaking",
+      "leak present",
+      "yes — leak present",
       "да",
+      "да — утечка есть",
+      "утечка есть",
       "утечка сохраняется",
       "сохраняется",
       "open",
@@ -446,16 +458,27 @@ function normalizeMonitoringResult(value) {
       "needs recheck",
       "needs_recheck",
       "leak under repair",
+      "under repair",
+      "under repair — needs recheck",
       "утечка в ремонте",
+      "в ремонте — требуется повторная проверка",
       "в ремонте",
     ].includes(text)
   ) {
     return "needs_recheck";
   }
   if (
-    ["resolved", "нет", "утечка устранена", "устранена", "устранено"].includes(
-      text,
-    )
+    [
+      "resolved",
+      "no leak",
+      "no — no leak",
+      "нет",
+      "нет — утечки нет",
+      "утечки нет",
+      "утечка устранена",
+      "устранена",
+      "устранено",
+    ].includes(text)
   ) {
     return "resolved";
   }
@@ -732,6 +755,8 @@ function normalizeHistoryCellValue(key, value) {
     const date = parseDateValue(value);
     return date ? date.toISOString() : String(value ?? "").trim();
   }
+  if (key === "time") return formatTime(value);
+
   if (key === "action") return normalizeHistoryAction(value);
   if (key === "changes") {
     if (Array.isArray(value)) return value;
@@ -781,9 +806,12 @@ function parseHistoryRecords(sheet) {
     const leakId = String(raw.leak_id ?? "").trim();
     if (!leakId || !raw.date || !raw.action) continue;
 
+    const historyDate = combineDateAndTime(parseDateValue(raw.date), raw.time);
+    if (!historyDate) continue;
+
     const record = {
       action: raw.action,
-      date: raw.date,
+      date: historyDate.toISOString(),
       ...(raw.user ? { user: raw.user } : {}),
       ...(raw.text ? { text: raw.text } : {}),
       ...(raw.to ? { to: normalizeStatus(raw.to) } : {}),

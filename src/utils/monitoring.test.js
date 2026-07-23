@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getMonitoringAnswerLabel,
   getMonitoringHistoryComment,
   getMonitoringResultLabel,
   getLatestMonitoringPhotoPath,
@@ -8,12 +9,17 @@ import {
 } from "./monitoring";
 
 describe("monitoring result labels", () => {
-  it("uses concise Russian answers", () => {
-    expect(getMonitoringResultLabel("still_leaking", "ru")).toBe("Да");
+  it("uses explicit states outside the answer field", () => {
+    expect(getMonitoringResultLabel("still_leaking", "ru")).toBe("Утечка есть");
     expect(getMonitoringResultLabel("needs_recheck", "ru")).toBe("В ремонте");
-    expect(getMonitoringResultLabel("resolved", "ru")).toBe("Нет");
+    expect(getMonitoringResultLabel("resolved", "ru")).toBe("Утечки нет");
   });
 
+  it("uses concise answers in the monitoring form", () => {
+    expect(getMonitoringAnswerLabel("still_leaking", "ru")).toBe("Да");
+    expect(getMonitoringAnswerLabel("needs_recheck", "ru")).toBe("В ремонте");
+    expect(getMonitoringAnswerLabel("resolved", "ru")).toBe("Нет");
+  });
   it("keeps legacy history comments readable", () => {
     expect(
       getMonitoringHistoryComment({

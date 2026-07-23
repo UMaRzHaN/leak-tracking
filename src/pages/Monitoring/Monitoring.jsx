@@ -84,7 +84,13 @@ export default function Monitoring({
     readMonitoringRound(activeProject?.id ?? null),
   );
   const [listHeight, setListHeight] = useState(420);
-  const [filter, setFilter] = useState(FILTERS.DUE);
+  const [localMonitoringFilter, setLocalMonitoringFilter] = useState(
+    FILTERS.DUE,
+  );
+  const monitoringFilter =
+    sharedFilters?.monitoringFilter ?? localMonitoringFilter;
+  const setMonitoringFilter =
+    sharedFilters?.setMonitoringFilter ?? setLocalMonitoringFilter;
   const [drafts, setDrafts] = useState({});
   const [activeLeak, setActiveLeak] = useState(null);
   const [pickerLeak, setPickerLeak] = useState(null);
@@ -156,7 +162,7 @@ export default function Monitoring({
     const pendingLeak = data.find((leak) => leak.id === pendingRoundLeakId);
     saveMonitoringRound(activeProject?.id ?? null, next);
     setMonitoringRound(next);
-    setFilter(FILTERS.DUE);
+    setMonitoringFilter(FILTERS.DUE);
     if (pendingLeak) {
       setDrafts((prev) => ({
         ...prev,
@@ -186,7 +192,7 @@ export default function Monitoring({
     if (!completed) return;
     saveMonitoringRound(activeProject?.id ?? null, completed);
     setMonitoringRound(completed);
-    setFilter(FILTERS.CHECKED);
+    setMonitoringFilter(FILTERS.CHECKED);
     setNotification({
       type: "success",
       message: lang === "ru" ? "Обход успешно завершён" : "Round completed",
@@ -292,7 +298,7 @@ export default function Monitoring({
             lastCheck: "Last check",
             never: "Never checked",
             detectedBy: "Detected by",
-            result: "Result",
+            result: "Is there a leak?",
             currentState: "current state",
             comment: "Comment",
             commentPlaceholder: "Additional check details",
@@ -328,11 +334,16 @@ export default function Monitoring({
   const items = useMemo(() => {
     return getMonitoringItems(
       filters.displayed,
-      filter,
+      monitoringFilter,
       monitoringRoundId,
       monitoringRoundNumber,
     );
-  }, [filters.displayed, filter, monitoringRoundId, monitoringRoundNumber]);
+  }, [
+    filters.displayed,
+    monitoringFilter,
+    monitoringRoundId,
+    monitoringRoundNumber,
+  ]);
 
   const counts = useMemo(
     () =>
@@ -731,11 +742,14 @@ export default function Monitoring({
             key={id}
             type="button"
             className={`${s.filterBtn} ${
-              (hasMonitoringRound ? filter : FILTERS.ALL) === id
+              (hasMonitoringRound ? monitoringFilter : FILTERS.ALL) === id
                 ? s.filterBtnActive
                 : ""
             }`}
-            onClick={() => setFilter(id)}
+            aria-pressed={
+              (hasMonitoringRound ? monitoringFilter : FILTERS.ALL) === id
+            }
+            onClick={() => setMonitoringFilter(id)}
           >
             <span>{label}</span>
             <strong>{count}</strong>

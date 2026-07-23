@@ -208,31 +208,57 @@ function LeakCardCompact({
               </span>
             )}
             <span className={s.id}>
-              {lang === "ru" ? "№ Б-" : "№ T-"}
+              {lang === "ru" ? "Бирка № " : "Tag № "}
               {leak.leak_id ?? leak.index}
             </span>
             <span className={s.time}>{ago ?? absoluteDate}</span>
           </div>
 
           <div className={s.body}>
-            {(leak.location || leak.object) && (
+            {(leak.location || leak.address) && (
               <div className={s.titleBlock}>
                 {leak.location && (
-                  <span className={s.objectName}>{leak.location}</span>
+                  <span className={s.objectName}>
+                    {leak.location || leak.address}
+                  </span>
                 )}
                 {leak.object && (
                   <span className={s.component}>{leak.object}</span>
                 )}
               </div>
             )}
-            {leak.component && (
-              <div className={s.locationRow}>
-                <span className={s.locationPin}>◉</span>
-                <span className={s.locationText}>{leak.component}</span>
+            {(leak.component || leak.leak_description) && (
+              <div className={s.componentDetails}>
+                {leak.component && (
+                  <div className={s.locationRow}>
+                    <span className={s.locationPin}>◉</span>
+                    <span className={s.locationText}>{leak.component}</span>
+                  </div>
+                )}
+                {leak.leak_description && (
+                  <div
+                    className={`${s.descRow} ${
+                      leak.component ? s.descRowConnected : ""
+                    }`}
+                  >
+                    {leak.component ? (
+                      <span
+                        className={s.descConnector}
+                        data-description-connector="true"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <span
+                        className={s.descStandaloneArrow}
+                        aria-hidden="true"
+                      >
+                        ›
+                      </span>
+                    )}
+                    <p className={s.desc}>{leak.leak_description}</p>
+                  </div>
+                )}
               </div>
-            )}
-            {leak.leak_description && (
-              <p className={s.desc}>{leak.leak_description}</p>
             )}
           </div>
 

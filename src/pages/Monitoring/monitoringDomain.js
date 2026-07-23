@@ -122,6 +122,21 @@ export function getMonitoringCounts(displayed, roundId, roundNumber) {
   return { due, checked: items.length - due, all: items.length };
 }
 
+export function filterLeaksByMonitoring(
+  displayed,
+  filter,
+  roundId,
+  roundNumber,
+) {
+  const items = Array.isArray(displayed) ? displayed : [];
+  if (!roundId || filter === MONITORING_FILTER.ALL) return items;
+
+  const shouldBeDue = filter === MONITORING_FILTER.DUE;
+  return items.filter(
+    (leak) => isMonitoringDue(leak, roundId, roundNumber) === shouldBeDue,
+  );
+}
+
 export function getMonitoringPhotoPathsToKeep(leak) {
   return collectLeakPhotoPaths(leak);
 }

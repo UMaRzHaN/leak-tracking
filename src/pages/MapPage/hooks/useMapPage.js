@@ -5,6 +5,11 @@ import { useActiveLocation } from "@/hooks/useActiveLocation";
 import { getDistanceMeters } from "@/utils/geoUtils";
 import { STATUS } from "@/utils/status";
 import { handleExport } from "@/pages/MapPage/handleExport";
+import { readMonitoringRound } from "@/utils/monitoringRound";
+import {
+  MONITORING_FILTER,
+  filterLeaksByMonitoring,
+} from "@/pages/Monitoring/monitoringDomain";
 import {
   NEARBY_RADIUS_M,
   normalizeMultiFilter,
@@ -57,6 +62,16 @@ export function useMapPage({
   const [localNearbyRadius, setLocalNearbyRadius] = useState(NEARBY_RADIUS_M);
   const [localPriorityFilter, setLocalPriorityFilter] = useState([]);
   const [localStatusFilter, setLocalStatusFilter] = useState([]);
+  const [localMonitoringFilter, setLocalMonitoringFilter] = useState(
+    MONITORING_FILTER.DUE,
+  );
+  const monitoringRound = useMemo(
+    () => readMonitoringRound(activeProject?.id ?? null),
+    [activeProject?.id],
+  );
+  const monitoringRoundId = monitoringRound?.id ?? null;
+  const monitoringRoundNumber = monitoringRound?.number ?? null;
+  const hasMonitoringRound = Boolean(monitoringRoundId);
 
   const nearbyOnly = sharedFilters?.nearbyFilter ?? localNearbyOnly;
   const setNearbyOnly = sharedFilters?.setNearbyFilter ?? setLocalNearbyOnly;
@@ -72,6 +87,10 @@ export function useMapPage({
     sharedFilters?.statusFilter ?? localStatusFilter,
   );
   const setStatusFilter = sharedFilters?.setFilter ?? setLocalStatusFilter;
+  const monitoringFilter =
+    sharedFilters?.monitoringFilter ?? localMonitoringFilter;
+  const setMonitoringFilter =
+    sharedFilters?.setMonitoringFilter ?? setLocalMonitoringFilter;
 
   const notify = useCallback(
     (type, message) => setNotification({ type, message }),
@@ -133,7 +152,7 @@ export function useMapPage({
     [setStatusFilter],
   );
 
-  const visibleLeaks = useMemo(() => {
+  const mapOrderedLeaks = useMemo(() => {
     const hasGps = Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng);
 
     if (nearbyOnly && hasGps) {
@@ -179,6 +198,23 @@ export function useMapPage({
 
     return sorted;
   }, [filteredLeaks, mapCenter, nearbyOnly, nearbyRadius, coords]);
+
+  const visibleLeaks = useMemo(
+    () =>
+      filterLeaksByMonitoring(
+        mapOrderedLeaks,
+        hasMonitoringRound ? monitoringFilter : MONITORING_FILTER.ALL,
+        monitoringRoundId,
+        monitoringRoundNumber,
+      ),
+    [
+      mapOrderedLeaks,
+      hasMonitoringRound,
+      monitoringFilter,
+      monitoringRoundId,
+      monitoringRoundNumber,
+    ],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -439,6 +475,8 @@ export function useMapPage({
     tileProgress,
     downloading,
     visibleLeaks,
+    monitoringFilter,
+    hasMonitoringRound,
     locations,
     locationLabel,
     enabledLocations,
@@ -451,6 +489,7 @@ export function useMapPage({
     statusFilters,
     hasGps: Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng),
     setHeatmapEnabled,
+    setMonitoringFilter,
     setNearbyOnly,
     setNearbyRadius,
     togglePriorityFilter,

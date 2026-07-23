@@ -67,7 +67,9 @@ async function createLeak(page, leakId = "4242") {
     page.getByRole("heading", { name: "Утечка сохранена" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "На главную" }).click();
-  await expect(page.getByText(`№ Б-${leakId}`, { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(`Бирка № ${leakId}`, { exact: true }),
+  ).toBeVisible();
 }
 
 async function openLeakDetails(page, currentStatus = "Открыта") {
@@ -170,6 +172,17 @@ test("opens the main application sections", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Начать мониторинг" }),
   ).toBeVisible();
+
+  const mapButton = page.getByRole("contentinfo").getByRole("button").nth(4);
+  await mapButton.click();
+  await expect(mapButton).toHaveAttribute("aria-current", "page");
+
+  const monitoringMapFilter = page.getByRole("button", {
+    name: "Фильтр по мониторингу",
+  });
+  await expect(monitoringMapFilter).toBeVisible();
+  await monitoringMapFilter.click();
+  await expect(page.getByRole("button", { name: "Все теги" })).toBeVisible();
 });
 
 test("persists project, appearance, and export settings", async ({ page }) => {
@@ -291,7 +304,7 @@ test("creates a leak with a photo and keeps it after reload", async ({
   await expect(
     page.getByText("Leak persistence", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("№ Б-5101", { exact: true })).toBeVisible();
+  await expect(page.getByText("Бирка № 5101", { exact: true })).toBeVisible();
   await expect(page.getByText("1.5 л/мин", { exact: true })).toBeVisible();
   await expect(page.locator("img")).toHaveCount(1);
 });
@@ -426,7 +439,7 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
 
   await page.getByRole("button", { name: "←" }).click();
   await openDatabase(page);
-  await expect(page.getByText("№ Б-5301", { exact: true })).toBeVisible();
+  await expect(page.getByText("Бирка № 5301", { exact: true })).toBeVisible();
 
   await openLeakDetails(page);
   await expect(
@@ -464,10 +477,10 @@ test("rejects a corrupted ZIP backup without changing project data", async ({
 
   await page.getByRole("button", { name: "←" }).click();
   await openDatabase(page);
-  await expect(page.getByText("№ Б-5351", { exact: true })).toBeVisible();
+  await expect(page.getByText("Бирка № 5351", { exact: true })).toBeVisible();
 
   await page.reload();
-  await expect(page.getByText("№ Б-5351", { exact: true })).toBeVisible();
+  await expect(page.getByText("Бирка № 5351", { exact: true })).toBeVisible();
 });
 
 test("records and completes a monitoring round", async ({ page }) => {
@@ -482,6 +495,24 @@ test("records and completes a monitoring round", async ({ page }) => {
     page.getByRole("heading", { name: "Начать мониторинг?" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Начать обход" }).click();
+
+  await page.getByRole("button", { name: "Проверено 0" }).click();
+  const mapButton = page.getByRole("contentinfo").getByRole("button").nth(4);
+  await mapButton.click();
+  const monitoringMapFilter = page.getByRole("button", {
+    name: "Фильтр по мониторингу",
+  });
+  await monitoringMapFilter.click();
+  await expect(page.getByRole("button", { name: "Проверено" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  await page.getByRole("button", { name: "К проверке" }).click();
+  await page.getByRole("button", { name: "Мониторинг", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "К проверке 1" }),
+  ).toHaveAttribute("aria-pressed", "true");
 
   await page.getByRole("button", { name: "Проверить", exact: true }).click();
   await expect(
@@ -516,8 +547,8 @@ test("keeps the hidden bulk status action unavailable", async ({ page }) => {
   await createLeak(page, "5452");
 
   await openDatabase(page);
-  await expect(page.getByText("№ Б-5451", { exact: true })).toBeVisible();
-  await expect(page.getByText("№ Б-5452", { exact: true })).toBeVisible();
+  await expect(page.getByText("Бирка № 5451", { exact: true })).toBeVisible();
+  await expect(page.getByText("Бирка № 5452", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Выбрать всё" }).click();
   await expect(page.getByText("2 выбрано из 2")).toBeVisible();
@@ -569,5 +600,5 @@ test("exports and imports an Excel archive as a project copy", async ({
 
   await page.getByRole("button", { name: "←" }).click();
   await openDatabase(page);
-  await expect(page.getByText("№ Б-5501", { exact: true })).toBeVisible();
+  await expect(page.getByText("Бирка № 5501", { exact: true })).toBeVisible();
 });

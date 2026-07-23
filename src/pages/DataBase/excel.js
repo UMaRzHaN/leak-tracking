@@ -6,8 +6,8 @@ import { getPhotoSrc } from "@/hooks/photoService";
 import { blobToDataUri } from "@/utils/photoConversion";
 import {
   formatMonitoringDate,
+  getMonitoringAnswerLabel,
   getMonitoringRecords,
-  getMonitoringResultLabel,
 } from "@/utils/monitoring";
 import {
   EXCEL_MONITORING_EXPORT_MODE,
@@ -208,25 +208,147 @@ function addBackupSheet(workbook, archivePayload, lang) {
   sheet.addRow([
     BACKUP_MARKER,
     BACKUP_SCHEMA_VERSION,
-    lang === "ru"
-      ? "Этот лист нужен для полного восстановления проекта в Leak Tracker"
-      : "This sheet is required for a complete Leak Tracker project restore",
+    lang === "ru" ? "Резервная копия проекта" : "Project backup",
   ]);
-  sheet.addRow(["Chunk", "Payload"]);
+  sheet.addRow([
+    "Chunk",
+    "Payload",
+    lang === "ru"
+      ? "Сводка предназначена для просмотра. Для восстановления используются скрытые служебные столбцы."
+      : "The summary is for reference. Restore data is stored in hidden system columns.",
+  ]);
 
   const serialized = JSON.stringify(archivePayload);
+  let chunkCount = 0;
   for (let offset = 0, index = 1; offset < serialized.length; index += 1) {
     sheet.addRow([index, serialized.slice(offset, offset + BACKUP_CHUNK_SIZE)]);
     offset += BACKUP_CHUNK_SIZE;
+    chunkCount += 1;
   }
 
-  sheet.views = [{ state: "frozen", ySplit: 2 }];
+  const leaks = Array.isArray(archivePayload.leaks) ? archivePayload.leaks : [];
+  const monitoringCount = leaks.reduce(
+    (total, leak) =>
+      total +
+      (Array.isArray(leak?.monitoringRecords)
+        ? leak.monitoringRecords.length
+        : 0),
+    0,
+  );
+  const historyCount = leaks.reduce(
+    (total, leak) =>
+      total + (Array.isArray(leak?.history) ? leak.history.length : 0),
+    0,
+  );
+  const typeLabels =
+    lang === "ru"
+      ? {
+          upstream: "Добыча (Upstream)",
+          midstream: "Транспортировка (Midstream)",
+          downstream: "Переработка (Downstream)",
+        }
+      : {
+          upstream: "Upstream",
+          midstream: "Midstream",
+          downstream: "Downstream",
+        };
+  const exportedAt = parseTimestamp(archivePayload.exportedAt);
+  const round = archivePayload.monitoringRound;
+  const emptyValue = "—";
+  const summaryRows =
+    lang === "ru"
+      ? [
+          ["Проект", archivePayload.project?.name || emptyValue],
+          [
+            "Тип проекта",
+            typeLabels[archivePayload.project?.type] ||
+              archivePayload.project?.type ||
+              emptyValue,
+          ],
+          [
+            "Экспортировано",
+            exportedAt ? exportedAt.toLocaleString("ru-RU") : emptyValue,
+          ],
+          ["Утечек", leaks.length],
+          ["Проверок мониторинга", monitoringCount],
+          ["Записей истории", historyCount],
+          ["Текущий обход", round?.number ? `№ ${round.number}` : emptyValue],
+          ["Версия резервной копии", BACKUP_SCHEMA_VERSION],
+        ]
+      : [
+          ["Project", archivePayload.project?.name || emptyValue],
+          [
+            "Project type",
+            typeLabels[archivePayload.project?.type] ||
+              archivePayload.project?.type ||
+              emptyValue,
+          ],
+          [
+            "Exported at",
+            exportedAt ? exportedAt.toLocaleString("en-US") : emptyValue,
+          ],
+          ["Leaks", leaks.length],
+          ["Monitoring checks", monitoringCount],
+          ["History records", historyCount],
+          ["Current round", round?.number ? `No. ${round.number}` : emptyValue],
+          ["Backup schema", BACKUP_SCHEMA_VERSION],
+        ];
+
+  const summaryHeaderRow = 4;
+  const requiredRows = summaryHeaderRow + summaryRows.length;
+  for (
+    let rowNumber = 2 + chunkCount;
+    rowNumber < requiredRows;
+    rowNumber += 1
+  ) {
+    sheet.addRow([]);
+  }
+
+  sheet.getRow(summaryHeaderRow).getCell(3).value =
+    lang === "ru" ? "Параметр" : "Field";
+  sheet.getRow(summaryHeaderRow).getCell(4).value =
+    lang === "ru" ? "Значение" : "Value";
+
+  summaryRows.forEach(([label, value], index) => {
+    const row = sheet.getRow(summaryHeaderRow + index + 1);
+    row.getCell(3).value = label;
+    row.getCell(4).value = value;
+    row.getCell(3).font = { bold: true, color: { argb: "FF3F3F3F" } };
+    if (index % 2 === 0) {
+      row.getCell(3).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF3EDF8" },
+      };
+      row.getCell(4).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFF3EDF8" },
+      };
+    }
+  });
+
+  const summaryHeader = sheet.getRow(summaryHeaderRow);
+  summaryHeader.font = { bold: true, color: { argb: "FFFFFFFF" } };
+  summaryHeader.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FF8064A2" },
+  };
+  summaryHeader.alignment = { vertical: "middle", horizontal: "center" };
+  summaryHeader.height = 26;
+
+  sheet.views = [{ state: "frozen", ySplit: summaryHeaderRow }];
   sheet.getColumn(1).width = 12;
   sheet.getColumn(2).width = 100;
-  sheet.getColumn(3).width = 70;
+  sheet.getColumn(1).hidden = true;
+  sheet.getColumn(2).hidden = true;
+  sheet.getColumn(3).width = 30;
+  sheet.getColumn(4).width = 52;
+  sheet.getRow(2).height = 34;
+  sheet.getRow(2).alignment = { vertical: "middle", wrapText: true };
   styleHeaderRow(sheet, "FF7030A0");
 }
-
 function toExcelTableName(name) {
   return String(name)
     .replace(/[^A-Za-z0-9_]/g, "_")
@@ -505,7 +627,8 @@ async function buildHistorySheet(workbook, orderedLeaks, lang) {
     (Array.isArray(leak.history) ? leak.history : []).map((entry) => ({
       index: leak.index ?? leakIndex + 1,
       leak_id: leak.leak_id ?? "",
-      date: entry.date ?? "",
+      date: formatMonitoringDate(entry.date, lang),
+      time: formatLeakTime({ createdAt: entry.date }, null),
       action: entry.action ?? "",
       user: getHistoryUser(entry, leak),
       text: entry.text ?? "",
@@ -527,6 +650,7 @@ async function buildHistorySheet(workbook, orderedLeaks, lang) {
           "№",
           "Бирка",
           "Дата",
+          "Время",
           "Действие",
           "Пользователь",
           "Текст",
@@ -537,6 +661,7 @@ async function buildHistorySheet(workbook, orderedLeaks, lang) {
           "No.",
           "Tag",
           "Date",
+          "Time",
           "Action",
           "User",
           "Text",
@@ -547,6 +672,7 @@ async function buildHistorySheet(workbook, orderedLeaks, lang) {
     "index",
     "leak_id",
     "date",
+    "time",
     "action",
     "user",
     "text",
@@ -685,7 +811,7 @@ async function buildMonitoringSheet(
     ...row,
     date: formatMonitoringDate(row.dateRaw, lang),
     time: formatLeakTime({ createdAt: row.dateRaw }, null),
-    result: getMonitoringResultLabel(row.result, lang),
+    result: getMonitoringAnswerLabel(row.result, lang),
   }));
 
   if (rows.length === 0) return;
@@ -702,7 +828,7 @@ async function buildMonitoringSheet(
           "Дата мониторинга",
           "Время мониторинга",
           "Кто мониторил",
-          "Результат",
+          "Утечка есть",
           "МТР",
           "Комментарий",
         ]
@@ -713,7 +839,7 @@ async function buildMonitoringSheet(
           "Monitoring date",
           "Monitoring time",
           "Monitored by",
-          "Result",
+          "Leak present",
           "Materials",
           "Comment",
         ];

@@ -290,10 +290,12 @@
 }
 
 .locationPin {
-  font-size: 11px;
-  color: var(--c-text3);
+  width: 11px;
   flex-shrink: 0;
+  color: var(--c-text3);
+  font-size: 11px;
   line-height: 1;
+  text-align: center;
 }
 
 .locationText {
@@ -304,7 +306,61 @@
   text-overflow: ellipsis;
 }
 
+.componentDetails {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.descRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.descRowConnected {
+  padding-left: 23px;
+}
+
+.descConnector {
+  position: absolute;
+  top: -14px;
+  left: 5px;
+  width: 13px;
+  height: calc(50% + 14px);
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--c-text3);
+  border-left: 1px solid var(--c-text3);
+  border-bottom-left-radius: 3px;
+  opacity: 0.8;
+}
+
+.descConnector::after {
+  position: absolute;
+  right: -1px;
+  bottom: -3px;
+  width: 5px;
+  height: 5px;
+  border-top: 1px solid var(--c-text3);
+  border-right: 1px solid var(--c-text3);
+  content: "";
+  transform: rotate(45deg);
+}
+
+.descStandaloneArrow {
+  width: 11px;
+  flex-shrink: 0;
+  color: var(--c-text3);
+  font-size: 13px;
+  line-height: 1;
+  text-align: center;
+}
+
 .desc {
+  min-width: 0;
+  flex: 1;
   font-size: 12px;
   color: var(--c-text3);
   line-height: 1.4;
@@ -377,7 +433,9 @@
   height: 50px;
   cursor: pointer;
 
-  &:active { opacity: 0.82; }
+  &:active {
+    opacity: 0.82;
+  }
 }
 
 .photoStackTriple {
@@ -477,7 +535,8 @@
 .photoStackLabel {
   position: absolute;
   bottom: 0;
-  left: 0; right: 0;
+  left: 0;
+  right: 0;
   padding: 2px 0;
   text-align: center;
   font-size: 9px;

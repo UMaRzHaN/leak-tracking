@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { PRIORITY_ORDER, getPriorityMeta } from "@/utils/priority";
 import { STATUS_ORDER, getStatusMeta } from "@/utils/status";
+import { MONITORING_FILTER } from "@/pages/Monitoring/monitoringDomain";
 import s from "@/pages/MapPage/MapPage.module.scss";
 
 const FILTER_MENU = {
   STATUS: "status",
   PRIORITY: "priority",
   NEARBY: "nearby",
+  MONITORING: "monitoring",
 };
 
 export default function MapControls({
@@ -21,6 +23,8 @@ export default function MapControls({
   nearbyRadiusOptions,
   priorityFilters,
   statusFilters,
+  monitoringFilter,
+  hasMonitoringRound,
   hasGps,
   onToggleNearby,
   // onToggleHeatmap,
@@ -29,6 +33,7 @@ export default function MapControls({
   onPriorityClear,
   onStatusToggle,
   onStatusClear,
+  onMonitoringChange,
 }) {
   const { t, lang } = useLanguage();
   const [openFilterMenu, setOpenFilterMenu] = useState(null);
@@ -39,6 +44,16 @@ export default function MapControls({
   const isStatusOpen = openFilterMenu === FILTER_MENU.STATUS;
   const isPriorityOpen = openFilterMenu === FILTER_MENU.PRIORITY;
   const isNearbyOpen = openFilterMenu === FILTER_MENU.NEARBY;
+  const isMonitoringOpen = openFilterMenu === FILTER_MENU.MONITORING;
+  const activeMonitoringFilter = hasMonitoringRound
+    ? monitoringFilter
+    : MONITORING_FILTER.ALL;
+  const monitoringActive =
+    hasMonitoringRound && activeMonitoringFilter !== MONITORING_FILTER.ALL;
+  const monitoringLabels =
+    lang === "ru"
+      ? { due: "К проверке", checked: "Проверено", all: "Все теги" }
+      : { due: "To check", checked: "Checked", all: "All tags" };
   const formatRadius = (radius) =>
     radius >= 1000
       ? `${radius / 1000}${lang === "ru" ? "км" : "km"}`
@@ -102,6 +117,60 @@ export default function MapControls({
           <line x1="16.5" y1="16.5" x2="22" y2="22" />
         </svg>
       </button>
+
+      <div className={s.filterControlWrap}>
+        <button
+          type="button"
+          className={`${s.controlBtn} ${
+            monitoringActive ? s.controlBtnActive : ""
+          }`}
+          onClick={() => toggleFilterMenu(FILTER_MENU.MONITORING)}
+          aria-expanded={isMonitoringOpen}
+          aria-label={
+            lang === "ru" ? "Фильтр по мониторингу" : "Monitoring filter"
+          }
+        >
+          <svg
+            className={s.controlIcon}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="12" r="8" />
+            <path d="m8.5 12 2.2 2.2 4.8-5" />
+          </svg>
+        </button>
+        <div
+          className={`${s.filterFlyout} ${
+            isMonitoringOpen ? s.filterFlyoutOpen : ""
+          }`}
+        >
+          {[
+            [MONITORING_FILTER.ALL, monitoringLabels.all],
+            [MONITORING_FILTER.DUE, monitoringLabels.due],
+            [MONITORING_FILTER.CHECKED, monitoringLabels.checked],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={`${s.filterOptionBtn} ${
+                activeMonitoringFilter === id ? s.filterOptionBtnActive : ""
+              }`}
+              aria-pressed={activeMonitoringFilter === id}
+              onClick={() =>
+                onMonitoringChange(
+                  hasMonitoringRound ? id : MONITORING_FILTER.ALL,
+                )
+              }
+            >
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/*
       <button

@@ -20,6 +20,8 @@ export default function MapPage({
     tileProgress,
     downloading,
     visibleLeaks,
+    monitoringFilter,
+    hasMonitoringRound,
     locations,
     locationLabel,
     enabledLocations,
@@ -32,6 +34,7 @@ export default function MapPage({
     statusFilters,
     hasGps,
     setHeatmapEnabled,
+    setMonitoringFilter,
     setNearbyOnly,
     setNearbyRadius,
     togglePriorityFilter,
@@ -65,6 +68,8 @@ export default function MapPage({
         heatmapEnabled={heatmapEnabled}
         priorityFilters={priorityFilters}
         statusFilters={statusFilters}
+        monitoringFilter={monitoringFilter}
+        hasMonitoringRound={hasMonitoringRound}
         hasGps={hasGps}
         onToggleHeatmap={() => setHeatmapEnabled((value) => !value)}
         onToggleNearby={(nextValue) =>
@@ -80,6 +85,7 @@ export default function MapPage({
         onPriorityClear={clearPriorityFilters}
         onStatusToggle={toggleStatusFilter}
         onStatusClear={clearStatusFilters}
+        onMonitoringChange={setMonitoringFilter}
       />
 
       {activeProject && visibleLeaks.length > 0 && (

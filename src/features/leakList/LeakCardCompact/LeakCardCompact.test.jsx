@@ -63,9 +63,15 @@ describe("LeakCardCompact location hierarchy", () => {
       location: "Compressor room",
       object: "Compressor 1",
       component: "Valve 7",
+      leak_description: "Technical opening",
     });
 
     const bodyText = container.textContent;
+    expect(screen.getByText("Tag № TAG-1")).toBeTruthy();
+    expect(
+      container.querySelector('[data-description-connector="true"]'),
+    ).toBeTruthy();
+    expect(screen.getByText("Technical opening")).toBeTruthy();
     expect(bodyText.indexOf("Compressor room")).toBeLessThan(
       bodyText.indexOf("Compressor 1"),
     );

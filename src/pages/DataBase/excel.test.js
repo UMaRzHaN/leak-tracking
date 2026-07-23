@@ -230,6 +230,15 @@ describe("excel export helpers", () => {
     );
     const backupSheet = mocks.workbookInstances[0].sheets.at(-1);
     expect(backupSheet.rows[2].values[1]).toContain('"type":"midstream"');
+    expect(backupSheet.getColumn(1).hidden).toBe(true);
+    expect(backupSheet.getColumn(2).hidden).toBe(true);
+    expect(backupSheet.rows[0].values[2]).toBe("Project backup");
+    expect(backupSheet.getRow(4).getCell(3).value).toBe("Field");
+    expect(backupSheet.getRow(4).getCell(4).value).toBe("Value");
+    expect(backupSheet.getRow(5).getCell(3).value).toBe("Project");
+    expect(backupSheet.getRow(5).getCell(4).value).toBe("North Field");
+    expect(backupSheet.getRow(8).getCell(3).value).toBe("Leaks");
+    expect(backupSheet.getRow(8).getCell(4).value).toBe(1);
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
       "photos/7/7.png",
       "ZmFrZQ==",
@@ -279,6 +288,49 @@ describe("excel export helpers", () => {
     expect(sheet.rows[1].values).toEqual(["14.07.2026", "13:45:12"]);
   });
 
+  it("exports the Russian leak question with concise monitoring answers", async () => {
+    await exportToExcelFile(
+      [
+        {
+          id: 1,
+          leak_id: "TAG-1",
+          monitoringRecords: [
+            {
+              id: "check-yes",
+              roundNumber: 1,
+              date: "2026-07-14T10:00:00.000Z",
+              result: "still_leaking",
+            },
+            {
+              id: "check-no",
+              roundNumber: 2,
+              date: "2026-07-15T10:00:00.000Z",
+              result: "resolved",
+            },
+            {
+              id: "check-repair",
+              roundNumber: 3,
+              date: "2026-07-16T10:00:00.000Z",
+              result: "needs_recheck",
+            },
+          ],
+        },
+      ],
+      [{ id: 1, name: "Leak 1" }],
+      ["ID", "Name"],
+      ["id", "name"],
+      "report",
+      null,
+      null,
+      "ru",
+    );
+
+    const monitoringSheet = mocks.workbookInstances[0].sheets[1];
+    expect(monitoringSheet.rows[0].values[6]).toBe("Утечка есть");
+    expect(monitoringSheet.rows[1].values[6]).toBe("Да");
+    expect(monitoringSheet.rows[2].values[6]).toBe("Нет");
+    expect(monitoringSheet.rows[3].values[6]).toBe("В ремонте");
+  });
   it("exports every repeated monitoring record with its own photo link", async () => {
     mocks.getPhotoSrcMock.mockResolvedValue("data:image/png;base64,ZmFrZQ==");
 
@@ -372,10 +424,22 @@ describe("excel export helpers", () => {
     );
 
     const historySheet = mocks.workbookInstances[0].sheets[1];
+    const historyDate = new Date("2026-07-14T12:00:00.000Z");
+    const expectedDate = historyDate.toLocaleDateString("en-US", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+    const expectedTime = historyDate.toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
     expect(historySheet.rows[0].values).toEqual([
       "No.",
       "Tag",
       "Date",
+      "Time",
       "Action",
       "User",
       "Text",
@@ -385,7 +449,8 @@ describe("excel export helpers", () => {
     expect(historySheet.rows[1].values).toEqual([
       1,
       "TAG-9",
-      "2026-07-14T12:00:00.000Z",
+      expectedDate,
+      expectedTime,
       "edited",
       "Inspector",
       "",

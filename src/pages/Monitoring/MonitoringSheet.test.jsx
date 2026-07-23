@@ -66,9 +66,7 @@ describe("MonitoringSheet", () => {
 
     expect(screen.getByText("2 / 4")).toBeTruthy();
     expect(screen.getByText(/TAG-7/)).toBeTruthy();
-    expect(
-      screen.getByRole("option", { name: "Still leaking (current)" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Yes (current)" })).toBeTruthy();
   });
 
   it("emits patches for result, comment, materials, and photo", () => {

@@ -73,6 +73,7 @@ import {
   MONITORING_FILTER,
   buildMonitoringPatch,
   createMonitoringDraft,
+  filterLeaksByMonitoring,
   getMonitoringCounts,
   getMonitoringItems,
   getMonitoringRoundSummary,
@@ -217,6 +218,22 @@ describe("Monitoring round flow", () => {
       getMonitoringItems(leaks, MONITORING_FILTER.DUE, "round-4", 4),
     ).toEqual([due]);
     expect(
+      filterLeaksByMonitoring(
+        [checked, due],
+        MONITORING_FILTER.DUE,
+        "round-4",
+        4,
+      ),
+    ).toEqual([due]);
+    expect(
+      filterLeaksByMonitoring(
+        [checked, due],
+        MONITORING_FILTER.CHECKED,
+        "round-4",
+        4,
+      ),
+    ).toEqual([checked]);
+    expect(
       getMonitoringItems(leaks, MONITORING_FILTER.ALL, "round-4", 4).map(
         (leak) => leak.id,
       ),
@@ -269,6 +286,39 @@ describe("Monitoring round flow", () => {
 
     expect(screen.getByRole("heading", { name: "Check" })).toBeTruthy();
     expect(screen.getByText("№ 1001")).toBeTruthy();
+  });
+
+  it("uses the shared monitoring filter and updates it", () => {
+    localStorage.setItem(
+      "app:project-1:monitoring_round_v2",
+      JSON.stringify({
+        id: "round-shared",
+        number: 1,
+        startedAt: "2026-07-23T08:00:00.000Z",
+      }),
+    );
+    const setMonitoringFilter = vi.fn();
+
+    render(
+      <Monitoring
+        data={[]}
+        setData={vi.fn()}
+        coords={null}
+        sharedFilters={{
+          monitoringFilter: MONITORING_FILTER.CHECKED,
+          setMonitoringFilter,
+        }}
+        userProfile={{ name: "Inspector" }}
+      />,
+    );
+
+    expect(
+      screen
+        .getByRole("button", { name: "Checked 0" })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Due 0" }));
+    expect(setMonitoringFilter).toHaveBeenCalledWith(MONITORING_FILTER.DUE);
   });
 
   it("saves a monitoring result without a photo when the setting is disabled", async () => {
@@ -592,7 +642,7 @@ describe("Monitoring round flow", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("Result"), {
+    fireEvent.change(screen.getByLabelText("Is there a leak?"), {
       target: { value: "still_leaking" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
