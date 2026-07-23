@@ -1,5 +1,12 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
+function excelTimeValue(value) {
+  const date = new Date(value);
+  return (
+    (date.getHours() * 3600 + date.getMinutes() * 60 + date.getSeconds()) /
+    86_400
+  );
+}
 const mocks = vi.hoisted(() => {
   const workbookInstances = [];
   const zipInstances = [];
@@ -12,6 +19,7 @@ const mocks = vi.hoisted(() => {
     constructor() {
       this.value = null;
       this.font = null;
+      this.numFmt = null;
     }
   }
 
@@ -285,7 +293,50 @@ describe("excel export helpers", () => {
     );
 
     const sheet = mocks.workbookInstances[0].sheets[0];
-    expect(sheet.rows[1].values).toEqual(["14.07.2026", "13:45:12"]);
+    expect(sheet.rows[1].values).toEqual([
+      new Date(Date.UTC(2026, 6, 14)),
+      excelTimeValue(new Date(2026, 6, 14, 13, 45, 12)),
+    ]);
+    expect(sheet.getColumn(1).numFmt).toBe("dd.mm.yyyy");
+    expect(sheet.getColumn(2).numFmt).toBe("hh:mm:ss");
+  });
+
+  it("exports identifiers, numbers, percentages, and coordinates with semantic formats", async () => {
+    await exportToExcelFile(
+      [{ id: 1, leak_id: "00101" }],
+      [
+        {
+          index: "2",
+          leak_id: "00101",
+          pressure: "12.5",
+          flareShare: "0.5",
+          lat: "47.123456",
+          status: "Open",
+        },
+      ],
+      ["No.", "Tag", "Pressure", "Share", "Latitude", "Status"],
+      ["index", "leak_id", "pressure", "flareShare", "lat", "status"],
+      "report",
+      null,
+      null,
+      "en",
+    );
+
+    const sheet = mocks.workbookInstances[0].sheets[0];
+    expect(sheet.rows[1].values).toEqual([
+      2,
+      "00101",
+      12.5,
+      0.5,
+      47.123456,
+      "Open",
+    ]);
+    expect(sheet.getColumn(1).numFmt).toBe("#,##0");
+    expect(sheet.getColumn(2).numFmt).toBe("@");
+    expect(sheet.getColumn(3).numFmt).toBe("#,##0.00");
+    expect(sheet.getColumn(4).numFmt).toBe("0.0%");
+    expect(sheet.getColumn(5).numFmt).toBe("0.000000");
+    expect(sheet.getColumn(6).numFmt).toBe("@");
   });
 
   it("exports the Russian leak question with concise monitoring answers", async () => {
@@ -371,13 +422,14 @@ describe("excel export helpers", () => {
     const monitoringSheet = mocks.workbookInstances[0].sheets[1];
     expect(monitoringSheet.rows).toHaveLength(3);
     expect(monitoringSheet.rows[0].values).toContain("Monitoring time");
-    expect(monitoringSheet.rows[1].values[4]).toBe(
-      new Date("2026-07-14T10:00:00.000Z").toLocaleTimeString("en-GB", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      }),
+    expect(monitoringSheet.rows[1].values[3]).toEqual(
+      new Date("2026-07-14T10:00:00.000Z"),
     );
+    expect(monitoringSheet.rows[1].values[4]).toBe(
+      excelTimeValue("2026-07-14T10:00:00.000Z"),
+    );
+    expect(monitoringSheet.getColumn(4).numFmt).toBe("dd.mm.yyyy");
+    expect(monitoringSheet.getColumn(5).numFmt).toBe("hh:mm:ss");
     expect(monitoringSheet.getRow(2).getCell(10).value).toEqual({
       text: "Open photo",
       hyperlink: "photos/7/monitoring/7_monitoring_1.png",
@@ -425,16 +477,7 @@ describe("excel export helpers", () => {
 
     const historySheet = mocks.workbookInstances[0].sheets[1];
     const historyDate = new Date("2026-07-14T12:00:00.000Z");
-    const expectedDate = historyDate.toLocaleDateString("en-US", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-    const expectedTime = historyDate.toLocaleTimeString("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
+    const expectedTime = excelTimeValue(historyDate);
     expect(historySheet.rows[0].values).toEqual([
       "No.",
       "Tag",
@@ -449,7 +492,7 @@ describe("excel export helpers", () => {
     expect(historySheet.rows[1].values).toEqual([
       1,
       "TAG-9",
-      expectedDate,
+      historyDate,
       expectedTime,
       "edited",
       "Inspector",
@@ -457,6 +500,8 @@ describe("excel export helpers", () => {
       "",
       JSON.stringify([{ key: "leak_speed", from: 10, to: 15 }]),
     ]);
+    expect(historySheet.getColumn(3).numFmt).toBe("dd.mm.yyyy");
+    expect(historySheet.getColumn(4).numFmt).toBe("hh:mm:ss");
   });
 
   it("can export only the latest monitoring record per tag and round", async () => {
@@ -507,6 +552,58 @@ describe("excel export helpers", () => {
       "ZmFrZQ==",
       { base64: true },
     );
+  });
+
+  it("adds typed current-round progress to the project backup summary", async () => {
+    await exportToExcelFile(
+      [
+        {
+          id: 1,
+          leak_id: "TAG-1",
+          monitoringRecords: [
+            {
+              id: "check-1",
+              roundId: "round-5",
+              roundNumber: 5,
+              date: "2026-07-23T10:00:00.000Z",
+              result: "still_leaking",
+            },
+          ],
+        },
+        { id: 2, leak_id: "TAG-2" },
+      ],
+      [
+        { index: 1, leak_id: "TAG-1" },
+        { index: 2, leak_id: "TAG-2" },
+      ],
+      ["No.", "Tag"],
+      ["index", "leak_id"],
+      "report",
+      null,
+      null,
+      "en",
+      {
+        project: { name: "North Field", type: "upstream" },
+        monitoringRound: {
+          id: "round-5",
+          number: 5,
+          startedAt: "2026-07-23T09:00:00.000Z",
+        },
+      },
+    );
+
+    const backupSheet = mocks.workbookInstances[0].sheets.at(-1);
+    expect(backupSheet.getRow(7).getCell(4).value).toBeInstanceOf(Date);
+    expect(backupSheet.getRow(7).getCell(4).numFmt).toBe("dd.mm.yyyy hh:mm:ss");
+    expect(backupSheet.getRow(11).getCell(4).value).toBe(5);
+    expect(backupSheet.getRow(11).getCell(4).numFmt).toBe('"No. "0');
+    expect(backupSheet.getRow(12).getCell(3).value).toBe(
+      "Checked in current round",
+    );
+    expect(backupSheet.getRow(12).getCell(4).value).toBe(1);
+    expect(backupSheet.getRow(13).getCell(4).value).toBe(2);
+    expect(backupSheet.getRow(14).getCell(4).value).toBe(1);
+    expect(backupSheet.getRow(12).getCell(4).numFmt).toBe("#,##0");
   });
 
   it("keeps exportToExcelZip as a backwards-compatible alias", () => {

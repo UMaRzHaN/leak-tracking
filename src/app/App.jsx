@@ -90,6 +90,7 @@ export default function App() {
   const [sharedSearch, setSharedSearch] = useState("");
   const [sharedStatusFilter, setSharedStatusFilter] = useState([]);
   const [sharedPriorityFilter, setSharedPriorityFilter] = useState([]);
+  const [sharedLocationFilter, setSharedLocationFilter] = useState(null);
   const [sharedNearbyFilter, setSharedNearbyFilter] = useState(false);
   const [sharedNearbyRadius, setSharedNearbyRadius] = useState(NEARBY_RADIUS_M);
   const [sharedMonitoringFilter, setSharedMonitoringFilter] = useState(
@@ -111,6 +112,8 @@ export default function App() {
       setFilter: setSharedStatusFilter,
       priorityFilter: sharedPriorityFilter,
       setPriorityFilter: setSharedPriorityFilter,
+      locationFilter: sharedLocationFilter,
+      setLocationFilter: setSharedLocationFilter,
       nearbyFilter: sharedNearbyFilter,
       setNearbyFilter: setSharedNearbyFilter,
       nearbyRadius: sharedNearbyRadius,
@@ -122,6 +125,7 @@ export default function App() {
       sharedSearch,
       sharedStatusFilter,
       sharedPriorityFilter,
+      sharedLocationFilter,
       sharedNearbyFilter,
       sharedNearbyRadius,
       sharedMonitoringFilter,
@@ -145,6 +149,10 @@ export default function App() {
      PROJECT-AWARE DATA
   ========================= */
   const { data, save, clear, dataLoaded, dataProjectId } = useProjectData();
+
+  useEffect(() => {
+    setSharedLocationFilter(null);
+  }, [activeProject?.id]);
 
   /* =========================
      PHOTO GC

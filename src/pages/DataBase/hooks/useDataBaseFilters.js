@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { STATUS, STATUS_ORDER } from "@/utils/status";
 import { filterNearbyLeaks } from "@/utils/geoUtils";
+import { ABBREV_MAP } from "@/features/search/Autocomplete/smartFilter";
+import { matchesLeakLocationFilter } from "@/utils/locationFilter";
 
 export const ALL = "all";
 export const NEARBY = "nearby";
@@ -13,19 +15,153 @@ export function normalizeMultiFilter(value) {
 }
 
 const SEARCH_KEYS = [
+  "id",
   "leak_id",
-  "object",
-  "component",
-  "location",
+  "video_id",
+  "subdivision",
+  "deposit",
   "field",
+  "station",
+  "district",
+  "locality",
+  "address",
+  "location",
+  "object",
+  "category",
+  "component",
   "leak_description",
+  "leak_cause",
+  "technological_solution",
+  "repair_recommendation",
+  "materials_equipment",
+  "note",
+  "detectedBy",
+  "equipmentType",
+  "serial_number",
 ];
 
-export function useDataBaseFilters({ data, coords, sharedFilters = null }) {
+const MONITORING_SEARCH_KEYS = [
+  "monitoredBy",
+  "comment",
+  "materials_equipment",
+  "result",
+];
+
+const HISTORY_SEARCH_KEYS = ["user", "text", "from", "to"];
+
+export function normalizeLeakSearchText(value) {
+  return String(value ?? "")
+    .replace(/[№#]/g, " ")
+    .normalize("NFKC")
+    .toLocaleLowerCase()
+    .replaceAll("ё", "е")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function collectValues(source, keys) {
+  if (!source || typeof source !== "object") return [];
+  return keys.map((key) => source[key]).filter((value) => value != null);
+}
+
+const ACRONYM_STOP_WORDS = new Set([
+  "и",
+  "в",
+  "во",
+  "на",
+  "по",
+  "для",
+  "с",
+  "со",
+  "за",
+  "из",
+  "к",
+  "of",
+  "the",
+  "and",
+  "for",
+]);
+
+const NORMALIZED_ABBREVIATIONS = Object.entries(ABBREV_MAP).map(
+  ([abbreviation, expanded]) => [
+    normalizeLeakSearchText(abbreviation),
+    normalizeLeakSearchText(expanded),
+  ],
+);
+
+function buildSearchAcronyms(values) {
+  const normalizedValues = values
+    .filter((value) => value != null && String(value).trim())
+    .map(normalizeLeakSearchText);
+  const combined = normalizedValues.join(" ");
+  const acronyms = new Set();
+
+  for (const value of normalizedValues) {
+    const words = value
+      .split(" ")
+      .filter((word) => word && !ACRONYM_STOP_WORDS.has(word));
+    if (words.length >= 2 && words.length <= 8) {
+      acronyms.add(words.map((word) => word[0]).join(""));
+    }
+  }
+
+  for (const [abbreviation, expanded] of NORMALIZED_ABBREVIATIONS) {
+    if (expanded && combined.includes(expanded)) {
+      acronyms.add(abbreviation);
+    }
+  }
+
+  return [...acronyms].join(" ");
+}
+
+export function buildLeakSearchText(leak) {
+  const tag = leak?.leak_id ?? "";
+  const values = [
+    ...collectValues(leak, SEARCH_KEYS),
+    `бирка ${tag}`,
+    `tag ${tag}`,
+    `б ${tag}`,
+    `b ${tag}`,
+    `т ${tag}`,
+    `t ${tag}`,
+  ];
+
+  for (const record of leak?.monitoringRecords ?? []) {
+    values.push(...collectValues(record, MONITORING_SEARCH_KEYS));
+  }
+  for (const entry of leak?.history ?? []) {
+    values.push(...collectValues(entry, HISTORY_SEARCH_KEYS));
+    for (const change of entry?.changes ?? []) {
+      values.push(change?.from, change?.to);
+    }
+  }
+
+  return normalizeLeakSearchText(
+    `${values.join(" ")} ${buildSearchAcronyms(values)}`,
+  );
+}
+
+export function matchesLeakSearch(leak, query) {
+  const normalizedQuery = normalizeLeakSearchText(query);
+  if (!normalizedQuery) return true;
+  const searchText = buildLeakSearchText(leak);
+  return normalizedQuery
+    .split(" ")
+    .every((token) => searchText.includes(token));
+}
+
+export function useDataBaseFilters({
+  data,
+  coords,
+  sharedFilters = null,
+  configuredLocationKey = null,
+}) {
   const [localSearchInput, setLocalSearchInput] = useState("");
   const [search, setSearch] = useState(() => sharedFilters?.search ?? "");
   const [localStatusFilter, setLocalStatusFilter] = useState([]);
   const [localPriorityFilter, setLocalPriorityFilter] = useState([]);
+  const [localLocationFilter, setLocalLocationFilter] = useState(null);
   const [localNearbyFilter, setLocalNearbyFilter] = useState(false);
   const [localNearbyRadius, setLocalNearbyRadius] = useState(NEARBY_RADIUS_M);
   const [sortAsc, setSortAsc] = useState(false);
@@ -41,12 +177,43 @@ export function useDataBaseFilters({ data, coords, sharedFilters = null }) {
   );
   const setPriorityFilter =
     sharedFilters?.setPriorityFilter ?? setLocalPriorityFilter;
+  const hasSharedLocationFilter =
+    typeof sharedFilters?.setLocationFilter === "function";
+  const locationFilter = hasSharedLocationFilter
+    ? (sharedFilters.locationFilter ?? null)
+    : localLocationFilter;
+  const setLocationFilter = hasSharedLocationFilter
+    ? sharedFilters.setLocationFilter
+    : setLocalLocationFilter;
   const nearbyFilter = sharedFilters?.nearbyFilter ?? localNearbyFilter;
   const setNearbyFilter =
     sharedFilters?.setNearbyFilter ?? setLocalNearbyFilter;
   const nearbyRadius = sharedFilters?.nearbyRadius ?? localNearbyRadius;
   const setNearbyRadius =
     sharedFilters?.setNearbyRadius ?? setLocalNearbyRadius;
+
+  const locationKey = useMemo(() => {
+    if (locationFilter?.key) return locationFilter.key;
+    if (configuredLocationKey) return configuredLocationKey;
+    return ["deposit", "station", "locality"].find((key) =>
+      data.some((leak) => String(leak?.[key] ?? "").trim()),
+    );
+  }, [configuredLocationKey, data, locationFilter?.key]);
+
+  const locationOptions = useMemo(() => {
+    if (!locationKey) return [];
+    const values = new Set(
+      data
+        .map((leak) => String(leak?.[locationKey] ?? "").trim())
+        .filter(Boolean),
+    );
+    if (locationFilter?.key === locationKey) {
+      for (const value of locationFilter.values ?? []) {
+        if (String(value).trim()) values.add(String(value).trim());
+      }
+    }
+    return [...values].sort((a, b) => a.localeCompare(b));
+  }, [data, locationFilter, locationKey]);
 
   const hasGps = Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng);
 
@@ -57,17 +224,9 @@ export function useDataBaseFilters({ data, coords, sharedFilters = null }) {
   }, [search, searchInput]);
 
   const displayed = useMemo(() => {
-    const q = search.trim().toLowerCase();
-
     const applySearch = (list) =>
-      q
-        ? list.filter((l) =>
-            SEARCH_KEYS.some((k) =>
-              String(l[k] ?? "")
-                .toLowerCase()
-                .includes(q),
-            ),
-          )
+      search.trim()
+        ? list.filter((leak) => matchesLeakSearch(leak, search))
         : list;
 
     const applyPriority = (list) =>
@@ -75,18 +234,24 @@ export function useDataBaseFilters({ data, coords, sharedFilters = null }) {
         ? list.filter((l) => priorityFilter.includes(l.priority ?? null))
         : list;
 
+    const applyLocation = (list) =>
+      locationFilter
+        ? list.filter((leak) => matchesLeakLocationFilter(leak, locationFilter))
+        : list;
+
     let list = [...data].sort((a, b) => (sortAsc ? a.id - b.id : b.id - a.id));
     if (statusFilter.length > 0)
       list = list.filter((l) => statusFilter.includes(l.status ?? STATUS.OPEN));
     if (nearbyFilter && hasGps)
       list = filterNearbyLeaks(list, coords.lat, coords.lng, nearbyRadius);
-    return applySearch(applyPriority(list));
+    return applySearch(applyPriority(applyLocation(list)));
   }, [
     data,
     statusFilter,
     nearbyFilter,
     nearbyRadius,
     priorityFilter,
+    locationFilter,
     search,
     hasGps,
     coords,
@@ -120,6 +285,10 @@ export function useDataBaseFilters({ data, coords, sharedFilters = null }) {
     setFilter,
     priorityFilter,
     setPriorityFilter,
+    locationFilter,
+    setLocationFilter,
+    locationKey,
+    locationOptions,
     nearbyFilter,
     setNearbyFilter,
     nearbyRadius,

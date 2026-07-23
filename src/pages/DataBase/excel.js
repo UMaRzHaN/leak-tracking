@@ -5,7 +5,6 @@ import { isNative } from "@/utils/platform";
 import { getPhotoSrc } from "@/hooks/photoService";
 import { blobToDataUri } from "@/utils/photoConversion";
 import {
-  formatMonitoringDate,
   getMonitoringAnswerLabel,
   getMonitoringRecords,
 } from "@/utils/monitoring";
@@ -23,6 +22,33 @@ const BACKUP_SHEET_NAME = "Project Backup";
 const BACKUP_MARKER = "LEAK_TRACKER_EXCEL_BACKUP";
 const BACKUP_SCHEMA_VERSION = 1;
 const BACKUP_CHUNK_SIZE = 30_000;
+const EXCEL_DATE_FORMAT = "dd.mm.yyyy";
+const EXCEL_DATE_TIME_FORMAT = "dd.mm.yyyy hh:mm:ss";
+const EXCEL_TIME_FORMAT = "hh:mm:ss";
+const INTEGER_FORMAT = "#,##0";
+const DECIMAL_FORMAT = "#,##0.00";
+const COORDINATE_FORMAT = "0.000000";
+const PERCENT_FORMAT = "0.0%";
+
+const DATE_KEYS = new Set(["date", "repairAt", "resolvedAt"]);
+const TIME_KEYS = new Set(["time"]);
+const INTEGER_KEYS = new Set(["index", "roundNumber", "Operating_mode"]);
+const PERCENT_KEYS = new Set(["flareShare", "utilShare"]);
+const COORDINATE_KEYS = new Set(["lat", "lng"]);
+const DECIMAL_KEYS = new Set([
+  "pressure",
+  "temperature",
+  "temperature_K",
+  "uncertainty",
+  "leak_speed",
+  "leak_speed_kg_h",
+  "weightedGWP",
+  "Total_Annual_Methane_Loss_m3_y",
+  "Total_Annual_Methane_Loss_t_y",
+  "Emissions_t_CO2eq_year",
+  "Emissions_kg_CO2_eq_year",
+]);
+const TEXT_IDENTIFIER_KEYS = new Set(["leak_id", "video_id", "serial_number"]);
 
 function yieldToMainThread() {
   return new Promise((resolve) => {
@@ -254,44 +280,110 @@ function addBackupSheet(workbook, archivePayload, lang) {
         };
   const exportedAt = parseTimestamp(archivePayload.exportedAt);
   const round = archivePayload.monitoringRound;
+  const currentRoundCheckedFromRecords = round
+    ? leaks.filter((leak) =>
+        getMonitoringRecords(leak).some((record) =>
+          record.roundId
+            ? record.roundId === round.id
+            : Number(record.roundNumber) === Number(round.number),
+        ),
+      ).length
+    : null;
+  const summaryTotal = Number(round?.summary?.total);
+  const summaryChecked = Number(round?.summary?.checked);
+  const currentRoundTotal = round
+    ? Number.isFinite(summaryTotal)
+      ? summaryTotal
+      : leaks.length
+    : null;
+  const currentRoundChecked = round
+    ? Number.isFinite(summaryChecked)
+      ? summaryChecked
+      : currentRoundCheckedFromRecords
+    : null;
+  const currentRoundRemaining = round
+    ? Math.max(0, currentRoundTotal - currentRoundChecked)
+    : null;
   const emptyValue = "—";
   const summaryRows =
     lang === "ru"
       ? [
-          ["Проект", archivePayload.project?.name || emptyValue],
+          ["Проект", archivePayload.project?.name || emptyValue, "@"],
           [
             "Тип проекта",
             typeLabels[archivePayload.project?.type] ||
               archivePayload.project?.type ||
               emptyValue,
+            "@",
           ],
           [
             "Экспортировано",
-            exportedAt ? exportedAt.toLocaleString("ru-RU") : emptyValue,
+            exportedAt || emptyValue,
+            exportedAt ? EXCEL_DATE_TIME_FORMAT : "@",
           ],
-          ["Утечек", leaks.length],
-          ["Проверок мониторинга", monitoringCount],
-          ["Записей истории", historyCount],
-          ["Текущий обход", round?.number ? `№ ${round.number}` : emptyValue],
-          ["Версия резервной копии", BACKUP_SCHEMA_VERSION],
+          ["Утечек", leaks.length, INTEGER_FORMAT],
+          ["Проверок мониторинга", monitoringCount, INTEGER_FORMAT],
+          ["Записей истории", historyCount, INTEGER_FORMAT],
+          [
+            "Текущий обход",
+            round?.number ? Number(round.number) : emptyValue,
+            round?.number ? '"№ "0' : "@",
+          ],
+          [
+            "Проверено в текущем обходе",
+            currentRoundChecked ?? emptyValue,
+            currentRoundChecked == null ? "@" : INTEGER_FORMAT,
+          ],
+          [
+            "Всего в текущем обходе",
+            currentRoundTotal ?? emptyValue,
+            currentRoundTotal == null ? "@" : INTEGER_FORMAT,
+          ],
+          [
+            "Осталось проверить",
+            currentRoundRemaining ?? emptyValue,
+            currentRoundRemaining == null ? "@" : INTEGER_FORMAT,
+          ],
+          ["Версия резервной копии", BACKUP_SCHEMA_VERSION, INTEGER_FORMAT],
         ]
       : [
-          ["Project", archivePayload.project?.name || emptyValue],
+          ["Project", archivePayload.project?.name || emptyValue, "@"],
           [
             "Project type",
             typeLabels[archivePayload.project?.type] ||
               archivePayload.project?.type ||
               emptyValue,
+            "@",
           ],
           [
             "Exported at",
-            exportedAt ? exportedAt.toLocaleString("en-US") : emptyValue,
+            exportedAt || emptyValue,
+            exportedAt ? EXCEL_DATE_TIME_FORMAT : "@",
           ],
-          ["Leaks", leaks.length],
-          ["Monitoring checks", monitoringCount],
-          ["History records", historyCount],
-          ["Current round", round?.number ? `No. ${round.number}` : emptyValue],
-          ["Backup schema", BACKUP_SCHEMA_VERSION],
+          ["Leaks", leaks.length, INTEGER_FORMAT],
+          ["Monitoring checks", monitoringCount, INTEGER_FORMAT],
+          ["History records", historyCount, INTEGER_FORMAT],
+          [
+            "Current round",
+            round?.number ? Number(round.number) : emptyValue,
+            round?.number ? '"No. "0' : "@",
+          ],
+          [
+            "Checked in current round",
+            currentRoundChecked ?? emptyValue,
+            currentRoundChecked == null ? "@" : INTEGER_FORMAT,
+          ],
+          [
+            "Total in current round",
+            currentRoundTotal ?? emptyValue,
+            currentRoundTotal == null ? "@" : INTEGER_FORMAT,
+          ],
+          [
+            "Remaining to check",
+            currentRoundRemaining ?? emptyValue,
+            currentRoundRemaining == null ? "@" : INTEGER_FORMAT,
+          ],
+          ["Backup schema", BACKUP_SCHEMA_VERSION, INTEGER_FORMAT],
         ];
 
   const summaryHeaderRow = 4;
@@ -309,10 +401,12 @@ function addBackupSheet(workbook, archivePayload, lang) {
   sheet.getRow(summaryHeaderRow).getCell(4).value =
     lang === "ru" ? "Значение" : "Value";
 
-  summaryRows.forEach(([label, value], index) => {
+  summaryRows.forEach(([label, value, numberFormat], index) => {
     const row = sheet.getRow(summaryHeaderRow + index + 1);
     row.getCell(3).value = label;
     row.getCell(4).value = value;
+    row.getCell(3).numFmt = "@";
+    row.getCell(4).numFmt = numberFormat;
     row.getCell(3).font = { bold: true, color: { argb: "FF3F3F3F" } };
     if (index % 2 === 0) {
       row.getCell(3).fill = {
@@ -443,9 +537,80 @@ function parseTimestamp(value) {
 
   const text = String(value ?? "").trim();
   if (!text) return null;
+
+  const localized = text.match(
+    /^(\d{1,2})[./](\d{1,2})[./](\d{4})(?:[,\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/,
+  );
+  if (localized) {
+    const [, day, month, year, hour = 0, minute = 0, second = 0] = localized;
+    const date = new Date(
+      Date.UTC(
+        Number(year),
+        Number(month) - 1,
+        Number(day),
+        Number(hour),
+        Number(minute),
+        Number(second),
+      ),
+    );
+    return Number.isFinite(date.getTime()) ? date : null;
+  }
+
   const numeric = Number(text);
   const date = new Date(Number.isFinite(numeric) ? numeric : text);
   return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function toExcelTimeValue(value) {
+  if (value instanceof Date && Number.isFinite(value.getTime())) {
+    return (
+      (value.getHours() * 3600 + value.getMinutes() * 60 + value.getSeconds()) /
+      86_400
+    );
+  }
+
+  const match = String(value ?? "")
+    .trim()
+    .match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) return normalizeExcelCellValue(value);
+  const [, hours, minutes, seconds = 0] = match;
+  return (
+    (Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds)) / 86_400
+  );
+}
+
+function getExcelColumnFormat(key) {
+  if (DATE_KEYS.has(key)) return EXCEL_DATE_FORMAT;
+  if (TIME_KEYS.has(key)) return EXCEL_TIME_FORMAT;
+  if (INTEGER_KEYS.has(key)) return INTEGER_FORMAT;
+  if (PERCENT_KEYS.has(key)) return PERCENT_FORMAT;
+  if (COORDINATE_KEYS.has(key)) return COORDINATE_FORMAT;
+  if (DECIMAL_KEYS.has(key)) return DECIMAL_FORMAT;
+  return "@";
+}
+
+function toExcelCellValue(key, value) {
+  if (value == null || value === "") return "";
+  if (DATE_KEYS.has(key))
+    return parseTimestamp(value) ?? normalizeExcelCellValue(value);
+  if (TIME_KEYS.has(key)) return toExcelTimeValue(value);
+  if (
+    INTEGER_KEYS.has(key) ||
+    PERCENT_KEYS.has(key) ||
+    COORDINATE_KEYS.has(key) ||
+    DECIMAL_KEYS.has(key)
+  ) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : normalizeExcelCellValue(value);
+  }
+  if (TEXT_IDENTIFIER_KEYS.has(key)) return String(value);
+  return normalizeExcelCellValue(value);
+}
+
+function applyColumnFormats(sheet, keys) {
+  keys.forEach((key, index) => {
+    sheet.getColumn(index + 1).numFmt = getExcelColumnFormat(key);
+  });
 }
 
 function formatLeakTime(leak, row) {
@@ -519,7 +684,7 @@ async function buildWorkbook({
         return "";
       }
 
-      return normalizeExcelCellValue(row[key]);
+      return toExcelCellValue(key, row[key]);
     }),
   );
 
@@ -558,6 +723,8 @@ async function buildWorkbook({
       }
     }
   }
+
+  applyColumnFormats(sheet, keysOrder);
 
   headers.forEach((header, index) => {
     const key = keysOrder[index];
@@ -627,8 +794,8 @@ async function buildHistorySheet(workbook, orderedLeaks, lang) {
     (Array.isArray(leak.history) ? leak.history : []).map((entry) => ({
       index: leak.index ?? leakIndex + 1,
       leak_id: leak.leak_id ?? "",
-      date: formatMonitoringDate(entry.date, lang),
-      time: formatLeakTime({ createdAt: entry.date }, null),
+      date: parseTimestamp(entry.date) ?? "",
+      time: parseTimestamp(entry.date) ?? "",
       action: entry.action ?? "",
       user: getHistoryUser(entry, leak),
       text: entry.text ?? "",
@@ -681,7 +848,7 @@ async function buildHistorySheet(workbook, orderedLeaks, lang) {
   ];
 
   const tableRows = rows.map((row) =>
-    keys.map((key) => normalizeExcelCellValue(row[key])),
+    keys.map((key) => toExcelCellValue(key, row[key])),
   );
 
   addStructuredTable(sheet, {
@@ -692,6 +859,8 @@ async function buildHistorySheet(workbook, orderedLeaks, lang) {
   });
   styleHeaderRow(sheet, "FF8064A2");
   await styleBodyRows(sheet, rows.length);
+
+  applyColumnFormats(sheet, keys);
 
   keys.forEach((key, index) => {
     sheet.getColumn(index + 1).width = getColumnWidth(
@@ -809,8 +978,8 @@ async function buildMonitoringSheet(
     monitoringExportMode,
   ).map((row) => ({
     ...row,
-    date: formatMonitoringDate(row.dateRaw, lang),
-    time: formatLeakTime({ createdAt: row.dateRaw }, null),
+    date: parseTimestamp(row.dateRaw) ?? "",
+    time: parseTimestamp(row.dateRaw) ?? "",
     result: getMonitoringAnswerLabel(row.result, lang),
   }));
 
@@ -861,7 +1030,7 @@ async function buildMonitoringSheet(
   const tableRows = rows.map((row) =>
     keys.map((key) => {
       if (key === "photo" && photoMap[row.photoMapKey]) return "";
-      return normalizeExcelCellValue(row[key]);
+      return toExcelCellValue(key, row[key]);
     }),
   );
 
@@ -897,6 +1066,8 @@ async function buildMonitoringSheet(
         : "";
     }
   }
+
+  applyColumnFormats(sheet, keys);
 
   keys.forEach((key, index) => {
     sheet.getColumn(index + 1).width = getColumnWidth(

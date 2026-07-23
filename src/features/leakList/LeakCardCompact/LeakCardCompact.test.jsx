@@ -87,6 +87,12 @@ describe("LeakCardCompact location hierarchy", () => {
     expect(screen.queryByText("◉")).toBeNull();
   });
 
+  it("shows downstream address when location is absent", () => {
+    renderCard({ address: "Refinery block 12", object: "Pump 4" });
+
+    expect(screen.getByText("Refinery block 12")).toBeTruthy();
+    expect(screen.getByText("Pump 4")).toBeTruthy();
+  });
   it("shows a standalone component in the component row", () => {
     renderCard({ component: "Valve 7" });
 

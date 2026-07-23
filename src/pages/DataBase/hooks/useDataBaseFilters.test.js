@@ -1,8 +1,12 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { PROJECTS } from "@/configs/projects";
 
 import {
   NEARBY_RADIUS_OPTIONS,
+  buildLeakSearchText,
+  matchesLeakSearch,
+  normalizeLeakSearchText,
   normalizeMultiFilter,
   useDataBaseFilters,
 } from "./useDataBaseFilters";
@@ -80,6 +84,39 @@ describe("useDataBaseFilters multi-select", () => {
     expect(result.current.displayed.map((item) => item.id)).toEqual([1]);
   });
 
+  it("searches tags, card fields, and monitoring details with multiple words", () => {
+    const leak = {
+      id: "leak-5401",
+      leak_id: "5401",
+      address: "Компрессорная станция",
+      subdivision: "Нефтегазодобывающее управление",
+      object: "Установка комплексной подготовки газа",
+      component: "Свечная линия",
+      leak_description: "Технологическое отверстие",
+      detectedBy: "Иван Петров",
+      equipmentType: "GFM 2.0",
+      serial_number: 1042,
+      monitoringRecords: [
+        {
+          monitoredBy: "Алексей Сидоров",
+          comment: "Контроль после ремонта",
+        },
+      ],
+    };
+
+    expect(matchesLeakSearch(leak, "Бирка № 5401")).toBe(true);
+    expect(matchesLeakSearch(leak, "Б-5401")).toBe(true);
+    expect(matchesLeakSearch(leak, "свечная отверстие")).toBe(true);
+    expect(matchesLeakSearch(leak, "алексей ремонт")).toBe(true);
+    expect(matchesLeakSearch(leak, "1042")).toBe(true);
+    expect(matchesLeakSearch(leak, "КС")).toBe(true);
+    expect(matchesLeakSearch(leak, "НГДУ")).toBe(true);
+    expect(matchesLeakSearch(leak, "УКПГ")).toBe(true);
+    expect(matchesLeakSearch(leak, "другая бирка")).toBe(false);
+    expect(buildLeakSearchText(leak)).toContain("компрессорная станция");
+    expect(normalizeLeakSearchText("  Ёлка № 10  ")).toBe("елка 10");
+  });
+
   it("treats zero coordinates as valid GPS and applies nearby radius", () => {
     const data = [
       { id: 1, lat: 0, lng: 0, status: "open" },
@@ -99,6 +136,67 @@ describe("useDataBaseFilters multi-select", () => {
     expect(result.current.counts.nearby).toBe(1);
     expect(result.current.counts.open).toBe(2);
     expect(result.current.counts.resolved).toBe(1);
+  });
+
+  it.each(Object.entries(PROJECTS))(
+    "uses the configured secondary location field for %s",
+    (_projectType, config) => {
+      const data = [
+        {
+          id: 1,
+          deposit: "Deposit A",
+          station: "Station A",
+          locality: "Locality A",
+        },
+        {
+          id: 2,
+          deposit: "Deposit B",
+          station: "Station B",
+          locality: "Locality B",
+        },
+      ];
+      const configuredLocationKey = config.system.location.secondary;
+      const { result } = renderHook(() =>
+        useDataBaseFilters({
+          data,
+          coords: null,
+          configuredLocationKey,
+        }),
+      );
+
+      expect(result.current.locationKey).toBe(configuredLocationKey);
+      expect(result.current.locationOptions).toEqual([
+        data[0][configuredLocationKey],
+        data[1][configuredLocationKey],
+      ]);
+    },
+  );
+  it("applies map location selections with OR in database and monitoring", () => {
+    const setLocationFilter = vi.fn();
+    const data = [
+      { id: 1, deposit: "Кашаганское", status: "open" },
+      { id: 2, deposit: "Каламкас", status: "open" },
+      { id: 3, deposit: "Тенгизское", status: "resolved" },
+    ];
+    const sharedFilters = {
+      locationFilter: {
+        key: "deposit",
+        values: ["Кашаганское", "Тенгизское"],
+      },
+      setLocationFilter,
+    };
+    const { result } = renderHook(() =>
+      useDataBaseFilters({ data, coords: null, sharedFilters }),
+    );
+
+    expect(result.current.displayed.map((item) => item.id)).toEqual([3, 1]);
+    expect(result.current.locationFilter).toEqual(sharedFilters.locationFilter);
+    expect(result.current.locationKey).toBe("deposit");
+    expect(new Set(result.current.locationOptions)).toEqual(
+      new Set(data.map((item) => item.deposit)),
+    );
+    act(() => result.current.setLocationFilter(null));
+    expect(setLocationFilter).toHaveBeenCalledWith(null);
   });
 
   it("uses shared filter state and delegates changes to shared setters", () => {

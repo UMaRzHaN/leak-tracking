@@ -7,6 +7,11 @@ import { STATUS } from "@/utils/status";
 import { handleExport } from "@/pages/MapPage/handleExport";
 import { readMonitoringRound } from "@/utils/monitoringRound";
 import {
+  buildLocationFilterFromEnabled,
+  buildSmartLocationSelection,
+  getEnabledLocations,
+} from "@/utils/locationFilter";
+import {
   MONITORING_FILTER,
   filterLeaksByMonitoring,
 } from "@/pages/Monitoring/monitoringDomain";
@@ -47,12 +52,12 @@ export function useMapPage({
   const {
     leaks: normalizedLeaks,
     locations,
+    secondary: locationKey,
     label: locationLabel,
   } = useActiveLocation(leaks);
 
   const [mapCenter, setMapCenter] = useState(null);
   const [open, setOpen] = useState(false);
-  const [enabledLocations, setEnabledLocations] = useState({});
   const [notification, setNotification] = useState(null);
   const [tileProgress, setTileProgress] = useState(null);
   const [downloading, setDownloading] = useState(false);
@@ -62,6 +67,7 @@ export function useMapPage({
   const [localNearbyRadius, setLocalNearbyRadius] = useState(NEARBY_RADIUS_M);
   const [localPriorityFilter, setLocalPriorityFilter] = useState([]);
   const [localStatusFilter, setLocalStatusFilter] = useState([]);
+  const [localLocationFilter, setLocalLocationFilter] = useState(null);
   const [localMonitoringFilter, setLocalMonitoringFilter] = useState(
     MONITORING_FILTER.DUE,
   );
@@ -91,6 +97,19 @@ export function useMapPage({
     sharedFilters?.monitoringFilter ?? localMonitoringFilter;
   const setMonitoringFilter =
     sharedFilters?.setMonitoringFilter ?? setLocalMonitoringFilter;
+  const sharedSearch = sharedFilters?.search ?? "";
+  const hasSharedLocationFilter =
+    typeof sharedFilters?.setLocationFilter === "function";
+  const locationFilter = hasSharedLocationFilter
+    ? (sharedFilters.locationFilter ?? null)
+    : localLocationFilter;
+  const setLocationFilter = hasSharedLocationFilter
+    ? sharedFilters.setLocationFilter
+    : setLocalLocationFilter;
+  const enabledLocations = useMemo(
+    () => getEnabledLocations(locations, locationKey, locationFilter),
+    [locationFilter, locationKey, locations],
+  );
 
   const notify = useCallback(
     (type, message) => setNotification({ type, message }),
@@ -102,18 +121,34 @@ export function useMapPage({
   }, [coords]);
 
   useEffect(() => {
-    setEnabledLocations((prev) => {
-      const next = {};
-      locations.forEach((location) => {
-        next[location] = prev[location] ?? true;
-      });
-      return next;
-    });
-  }, [locations]);
+    const selection = buildSmartLocationSelection(locations, sharedSearch);
+    if (!selection) return;
+    setLocationFilter(
+      buildLocationFilterFromEnabled(locations, locationKey, selection),
+    );
+  }, [locationKey, locations, setLocationFilter, sharedSearch]);
 
-  const toggleLocation = useCallback((location) => {
-    setEnabledLocations((prev) => ({ ...prev, [location]: !prev[location] }));
-  }, []);
+  const toggleLocation = useCallback(
+    (location) => {
+      setLocationFilter((current) => {
+        const currentEnabled = getEnabledLocations(
+          locations,
+          locationKey,
+          current,
+        );
+        const nextEnabled = {
+          ...currentEnabled,
+          [location]: !currentEnabled[location],
+        };
+        return buildLocationFilterFromEnabled(
+          locations,
+          locationKey,
+          nextEnabled,
+        );
+      });
+    },
+    [locationKey, locations, setLocationFilter],
+  );
 
   const filteredLeaks = useMemo(
     () =>

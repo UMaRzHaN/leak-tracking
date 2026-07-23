@@ -5,7 +5,7 @@
  * - option objects with separate label/value/keywords
  */
 
-const ABBREV_MAP = {
+export const ABBREV_MAP = {
   sgv: "задвижка механическая стальная",
   bfv: "задвижка дисковая",
   tgv: "задвижка муфтовая",

@@ -25,6 +25,11 @@ function FilterBar({
   setFilter,
   priorityFilter,
   setPriorityFilter,
+  locationFilter,
+  setLocationFilter,
+  locationKey,
+  locationLabel,
+  locationOptions = [],
   nearbyFilter,
   setNearbyFilter,
   nearbyRadius,
@@ -39,12 +44,55 @@ function FilterBar({
   const hasActiveFilter =
     selectedStatuses.length > 0 ||
     selectedPriorities.length > 0 ||
+    Boolean(locationFilter) ||
     nearbyFilter;
   const [open, setOpen] = useState(false);
   const formatRadius = (radius) =>
     radius >= 1000
       ? `${radius / 1000} ${lang === "ru" ? "км" : "km"}`
       : `${radius} ${lang === "ru" ? "м" : "m"}`;
+  const locationLabels =
+    lang === "ru"
+      ? {
+          deposit: "Месторождение",
+          station: "Станция",
+          locality: "Населённый пункт",
+        }
+      : {
+          deposit: "Deposit",
+          station: "Station",
+          locality: "Locality",
+        };
+  const effectiveLocationKey = locationFilter?.key ?? locationKey;
+  const locationFilterLabel =
+    (lang === "ru" ? locationLabel : null) ??
+    locationLabels[effectiveLocationKey] ??
+    (lang === "ru" ? "Местоположение" : "Location");
+  const locationValues = Array.isArray(locationFilter?.values)
+    ? locationFilter.values
+    : [];
+  const selectedLocationValues =
+    locationFilter?.key === effectiveLocationKey
+      ? new Set(locationValues)
+      : new Set(locationOptions);
+
+  const toggleLocation = (value) => {
+    if (!effectiveLocationKey) return;
+    setLocationFilter((current) => {
+      const selected =
+        current?.key === effectiveLocationKey
+          ? new Set(current.values ?? [])
+          : new Set(locationOptions);
+
+      if (selected.has(value)) selected.delete(value);
+      else selected.add(value);
+
+      const values = locationOptions.filter((option) => selected.has(option));
+      return values.length === locationOptions.length
+        ? null
+        : { key: effectiveLocationKey, values };
+    });
+  };
 
   return (
     <>
@@ -55,10 +103,13 @@ function FilterBar({
             className={s.searchInput}
             placeholder={
               lang === "ru"
-                ? "Поиск по ID, объекту, описанию..."
-                : "Search by ID, object, description..."
+                ? "Бирка, место, объект, описание, проверяющий..."
+                : "Tag, location, object, description, inspector..."
             }
             value={search}
+            aria-label={lang === "ru" ? "Поиск утечек" : "Search leaks"}
+            autoComplete="off"
+            enterKeyHint="search"
             onChange={(event) => setSearch(event.target.value)}
           />
           {search && (
@@ -66,6 +117,7 @@ function FilterBar({
               className={s.clearSearch}
               onClick={() => setSearch("")}
               type="button"
+              aria-label={lang === "ru" ? "Очистить поиск" : "Clear search"}
             >
               ✕
             </button>
@@ -80,6 +132,7 @@ function FilterBar({
             if (open) event.currentTarget.blur();
           }}
           type="button"
+          aria-label={lang === "ru" ? "Фильтры" : "Filters"}
         >
           <svg
             width="18"
@@ -100,6 +153,42 @@ function FilterBar({
 
       {open && (
         <div className={s.filtersPanel}>
+          {effectiveLocationKey && locationOptions.length > 0 && (
+            <>
+              <div className={s.filterSection}>
+                <span className={s.filterLabel}>{locationFilterLabel}</span>
+                <div className={s.filters}>
+                  {locationOptions.map((value) => {
+                    const checked = selectedLocationValues.has(value);
+                    return (
+                      <button
+                        type="button"
+                        key={value}
+                        className={`${s.filterTab} ${
+                          checked ? s.filterActive : ""
+                        }`}
+                        style={
+                          checked
+                            ? {
+                                color: "var(--c-blue)",
+                                background: "var(--c-blue-dim)",
+                                borderColor: "var(--c-blue)",
+                              }
+                            : undefined
+                        }
+                        aria-pressed={checked}
+                        onClick={() => toggleLocation(value)}
+                      >
+                        {value}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className={s.filterDivider} />
+            </>
+          )}
+
           <div className={s.filterSection}>
             <span className={s.filterLabel}>
               {lang === "ru" ? "Статус" : "Status"}

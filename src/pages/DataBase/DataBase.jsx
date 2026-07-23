@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
 import Notification from "@/components/ui/Notification/Notification";
 import SettingsModal from "@/features/settings/SettingsModal/SettingsModal";
 import FilterBar from "./components/FilterBar";
@@ -19,6 +20,7 @@ export default function DataBase({
   userProfile,
 }) {
   const { lang } = useLanguage();
+  const projectConfig = useProjectConfig();
   const [bulkCalculationOpen, setBulkCalculationOpen] = useState(false);
   const {
     notification,
@@ -36,6 +38,7 @@ export default function DataBase({
     setData,
     coords,
     sharedFilters,
+    configuredLocationKey: projectConfig.system.location.secondary,
     userProfile,
   });
 
@@ -50,6 +53,11 @@ export default function DataBase({
         setFilter={filters.setFilter}
         priorityFilter={filters.priorityFilter}
         setPriorityFilter={filters.setPriorityFilter}
+        locationFilter={filters.locationFilter}
+        setLocationFilter={filters.setLocationFilter}
+        locationKey={filters.locationKey}
+        locationLabel={projectConfig.system.location.label}
+        locationOptions={filters.locationOptions}
         nearbyFilter={filters.nearbyFilter}
         setNearbyFilter={filters.setNearbyFilter}
         nearbyRadius={filters.nearbyRadius}

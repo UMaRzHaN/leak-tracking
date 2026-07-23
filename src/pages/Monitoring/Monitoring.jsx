@@ -13,6 +13,7 @@ import {
 } from "@/utils/monitoringRound";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
+import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
 import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import {
   changeLeakStatus,
@@ -73,6 +74,7 @@ export default function Monitoring({
 }) {
   const { lang } = useLanguage();
   const { activeProject } = useProjectData();
+  const projectConfig = useProjectConfig();
   const { vars } = useProjectVars(activeProject?.id ?? null);
   const { monitoringPhotoRequired: photoRequired } = usePhotoRequirements(
     activeProject?.id ?? null,
@@ -107,7 +109,12 @@ export default function Monitoring({
   const [pendingRoundLeakId, setPendingRoundLeakId] = useState(null);
   const [repeatConfirmLeak, setRepeatConfirmLeak] = useState(null);
   const [notification, setNotification] = useState(null);
-  const filters = useDataBaseFilters({ data, coords, sharedFilters });
+  const filters = useDataBaseFilters({
+    data,
+    coords,
+    sharedFilters,
+    configuredLocationKey: projectConfig.system.location.secondary,
+  });
   const monitoringRoundId = monitoringRound?.id ?? null;
   const monitoringRoundNumber = monitoringRound?.number ?? null;
   const hasMonitoringRound = Boolean(monitoringRoundId);
@@ -278,6 +285,7 @@ export default function Monitoring({
             startRequired: "Сначала начните обход мониторинга",
             saved: "Результат мониторинга сохранен",
             empty: "Нет утечек для выбранного фильтра",
+            searchEmpty: "Ничего не найдено",
             noActiveRound:
               "Активного обхода нет. Начните мониторинг, чтобы сформировать список к проверке.",
             startRound: "Начать мониторинг",
@@ -316,6 +324,7 @@ export default function Monitoring({
             startRequired: "Start a monitoring round first",
             saved: "Monitoring result saved",
             empty: "No leaks for the selected filter",
+            searchEmpty: "Nothing found",
             noActiveRound:
               "No active round. Start monitoring to build the due list.",
             startRound: "Start monitoring",
@@ -722,6 +731,11 @@ export default function Monitoring({
           setFilter={filters.setFilter}
           priorityFilter={filters.priorityFilter}
           setPriorityFilter={filters.setPriorityFilter}
+          locationFilter={filters.locationFilter}
+          setLocationFilter={filters.setLocationFilter}
+          locationKey={filters.locationKey}
+          locationLabel={projectConfig.system.location.label}
+          locationOptions={filters.locationOptions}
           nearbyFilter={filters.nearbyFilter}
           setNearbyFilter={filters.setNearbyFilter}
           nearbyRadius={filters.nearbyRadius}
@@ -759,7 +773,9 @@ export default function Monitoring({
 
       <section ref={listRef} className={s.list}>
         {items.length === 0 ? (
-          <div className={s.empty}>{texts.empty}</div>
+          <div className={s.empty}>
+            {filters.search ? texts.searchEmpty : texts.empty}
+          </div>
         ) : (
           <VirtualizedLeakList
             items={items}

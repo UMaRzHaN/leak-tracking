@@ -263,7 +263,7 @@
   gap: 1px;
 }
 
-.objectName {
+.locationName {
   font-size: 15px;
   font-weight: 700;
   color: var(--c-text);
@@ -274,7 +274,7 @@
   -webkit-box-orient: vertical;
 }
 
-.component {
+.objectName {
   font-size: 12px;
   font-weight: 500;
   color: var(--c-text2);
@@ -283,13 +283,13 @@
   text-overflow: ellipsis;
 }
 
-.locationRow {
+.componentRow {
   display: flex;
   align-items: center;
   gap: 5px;
 }
 
-.locationPin {
+.componentBullet {
   width: 11px;
   flex-shrink: 0;
   color: var(--c-text3);
@@ -298,7 +298,7 @@
   text-align: center;
 }
 
-.locationText {
+.componentName {
   font-size: 12px;
   color: var(--c-text2);
   overflow: hidden;

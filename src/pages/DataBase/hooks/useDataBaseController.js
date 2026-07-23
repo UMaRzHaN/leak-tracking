@@ -10,6 +10,7 @@ export function useDataBaseController({
   setData,
   coords,
   sharedFilters,
+  configuredLocationKey,
   userProfile,
 }) {
   const [notification, setNotification] = useState(null);
@@ -21,7 +22,12 @@ export function useDataBaseController({
 
   const { deletePhoto } = usePhotoStorage();
 
-  const filters = useDataBaseFilters({ data, coords, sharedFilters });
+  const filters = useDataBaseFilters({
+    data,
+    coords,
+    sharedFilters,
+    configuredLocationKey,
+  });
   const actions = useLeakActions({
     data,
     setData,

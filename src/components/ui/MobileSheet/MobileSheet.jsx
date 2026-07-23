@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import Notification from "@/components/ui/Notification/Notification";
 import s from "./MobileSheet.module.scss";
@@ -15,17 +15,19 @@ export default function MobileSheet({
 }) {
   const { lang } = useLanguage();
   const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query);
   const [notification, setNotification] = useState(null);
   const noLabel = lang === "ru" ? "Не указано" : "Not specified";
 
   const filteredLeaks = useMemo(() => {
-    if (!query) return leaks;
-
-    const normalizedQuery = query.toLowerCase();
+    if (!deferredQuery.trim()) return leaks;
+    const normalizedQuery = deferredQuery.trim().toLocaleLowerCase();
     return leaks.filter((leak) =>
-      String(leak.leak_id).toLowerCase().includes(normalizedQuery),
+      String(leak.leak_id ?? "")
+        .toLocaleLowerCase()
+        .includes(normalizedQuery),
     );
-  }, [leaks, query]);
+  }, [deferredQuery, leaks]);
 
   return (
     <>
@@ -68,15 +70,25 @@ export default function MobileSheet({
                 type="search"
                 placeholder={
                   lang === "ru"
-                    ? "Поиск по ID утечки..."
-                    : "Search by leak ID..."
+                    ? "Поиск по номеру бирки..."
+                    : "Search by tag number..."
                 }
                 value={query}
+                aria-label={
+                  lang === "ru"
+                    ? "Поиск по номеру бирки"
+                    : "Search by tag number"
+                }
                 onChange={(event) => setQuery(event.target.value)}
               />
             </div>
 
             <div className={s.sheetList}>
+              {filteredLeaks.length === 0 && (
+                <div className={s.sheetEmpty}>
+                  {lang === "ru" ? "Ничего не найдено" : "Nothing found"}
+                </div>
+              )}
               {filteredLeaks.map((leak) => (
                 <div
                   key={leak.id}
