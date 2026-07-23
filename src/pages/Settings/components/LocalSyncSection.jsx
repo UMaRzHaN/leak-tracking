@@ -49,10 +49,11 @@ function getTexts(lang, status) {
     scanImportLoading: ru ? "Импорт по QR..." : "Importing by QR...",
     manualTitle: ru ? "Ручное подключение" : "Manual connection",
     manualHint: ru
-      ? "Используйте IP, порт и код, если камера недоступна."
-      : "Use IP, port and code if the camera is unavailable.",
+      ? "Используйте IP, порт, код и ключ безопасности, если камера недоступна."
+      : "Use IP, port, code and security key if the camera is unavailable.",
     address: ru ? "Адрес" : "Address",
     code: ru ? "Код" : "Code",
+    securityKey: ru ? "Ключ безопасности" : "Security key",
     port: ru ? "Порт" : "Port",
     connect: ru ? "Подключиться и синхронизировать" : "Connect and synchronize",
     connecting: ru ? "Синхронизация..." : "Synchronizing...",
@@ -61,8 +62,8 @@ function getTexts(lang, status) {
       : "Point the camera at the QR code",
     cancel: ru ? "Отмена" : "Cancel",
     warning: ru
-      ? "Используйте только доверенную локальную сеть. Полученный по QR архив проходит те же проверки, что и ZIP backup."
-      : "Use a trusted local network only. The QR archive goes through the same checks as a ZIP backup.",
+      ? "Соединение зашифровано TLS. При ручном подключении сверьте ключ безопасности с экраном первого телефона."
+      : "The connection is encrypted with TLS. For manual connection, verify the security key against the first phone.",
   };
 }
 
@@ -70,6 +71,7 @@ export default function LocalSyncSection({ sync, lang }) {
   const [host, setHost] = useState("");
   const [port, setPort] = useState("");
   const [code, setCode] = useState("");
+  const [securityKey, setSecurityKey] = useState("");
 
   if (!sync.available) return null;
 
@@ -116,6 +118,10 @@ export default function LocalSyncSection({ sync, lang }) {
                 <strong>{`${session.host}:${session.port}`}</strong>
                 <span>{texts.code}</span>
                 <strong className={s.localSyncCode}>{session.code}</strong>
+                <span>{texts.securityKey}</span>
+                <strong className={s.localSyncCode}>
+                  {session.securityKey}
+                </strong>
                 {session.qrSvg ? (
                   <div
                     className={s.localSyncQr}
@@ -216,6 +222,24 @@ export default function LocalSyncSection({ sync, lang }) {
                 disabled={busy || status === "hosting"}
               />
             </label>
+            <label>
+              <span>{texts.securityKey}</span>
+              <input
+                value={securityKey}
+                onChange={(event) =>
+                  setSecurityKey(
+                    event.target.value
+                      .replace(/[^0-9a-f]/gi, "")
+                      .toUpperCase()
+                      .slice(0, 64),
+                  )
+                }
+                placeholder="A1B2C3D4E5F60708"
+                autoCapitalize="characters"
+                spellCheck={false}
+                disabled={busy || status === "hosting"}
+              />
+            </label>
           </div>
           <button
             type="button"
@@ -225,9 +249,13 @@ export default function LocalSyncSection({ sync, lang }) {
               status === "hosting" ||
               !host.trim() ||
               !port ||
-              code.length !== 6
+              code.length !== 6 ||
+              securityKey.length < 16 ||
+              securityKey.length % 2 !== 0
             }
-            onClick={() => sync.joinHost({ host, port, code })}
+            onClick={() =>
+              sync.joinHost({ host, port, code, fingerprint: securityKey })
+            }
           >
             {status === "joining" || status === "merging"
               ? texts.connecting

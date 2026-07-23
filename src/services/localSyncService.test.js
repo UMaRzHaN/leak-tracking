@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => {
         host: "192.168.43.1",
         port: 49152,
         code: "123456",
+        fingerprint: "A".repeat(64),
       }),
       stopHost: vi.fn().mockResolvedValue({}),
       exchange: vi.fn(),
@@ -72,6 +73,7 @@ describe("localSyncService", () => {
       host: "192.168.43.1",
       port: 49152,
       code: "123456",
+      fingerprint: "A".repeat(64),
     });
     barcodeMocks.addListener.mockResolvedValue({
       remove: vi.fn().mockResolvedValue(undefined),
@@ -111,6 +113,7 @@ describe("localSyncService", () => {
       host: "192.168.43.1",
       port: 49152,
       code: "123456",
+      fingerprint: "A".repeat(64),
       projectKey: "upstream:alpha",
       syncId: "sync-alpha-1234",
     });
@@ -124,6 +127,7 @@ describe("localSyncService", () => {
       host: "192.168.43.1",
       port: "49152",
       code: "123456",
+      fingerprint: "A".repeat(64),
       projectKey: "upstream:alpha",
       syncId: "sync-alpha-1234",
     });
@@ -153,10 +157,11 @@ describe("localSyncService", () => {
     ).toThrow();
 
     const invalidConnection = `leak-tracker-sync:${JSON.stringify({
-      version: 1,
+      version: 3,
       host: "",
       port: 70000,
       code: "12",
+      fingerprint: "A".repeat(64),
       syncId: "sync-alpha-1234",
     })}`;
     expect(() => parseLocalSyncQrPayload(invalidConnection, null)).toThrow();
@@ -165,6 +170,7 @@ describe("localSyncService", () => {
       host: "192.168.1.2",
       port: 49152,
       code: "123456",
+      fingerprint: "A".repeat(64),
       projectKey: "upstream:alpha",
     });
     expect(() => parseLocalSyncQrPayload(missingSyncId, null)).toThrow();
@@ -173,6 +179,7 @@ describe("localSyncService", () => {
       host: "192.168.1.2",
       port: 49152,
       code: "123456",
+      fingerprint: "A".repeat(64),
       projectKey: "upstream:alpha",
       syncId: "sync-other-1234",
     });
@@ -246,10 +253,11 @@ describe("localSyncService", () => {
       parseLocalSyncQrPayload(
         "leak-tracker-sync:" +
           JSON.stringify({
-            version: 1,
+            version: 3,
             host: "192.168.43.1",
             port: 70000,
             code: "123456",
+            fingerprint: "A".repeat(64),
             projectKey: "upstream:alpha",
             syncId: "sync-alpha-1234",
           }),
@@ -259,10 +267,11 @@ describe("localSyncService", () => {
       parseLocalSyncQrPayload(
         "leak-tracker-sync:" +
           JSON.stringify({
-            version: 1,
+            version: 3,
             host: "192.168.43.1",
             port: 49152,
             code: "123456",
+            fingerprint: "A".repeat(64),
             projectKey: "upstream:alpha",
           }),
       ),
@@ -296,6 +305,7 @@ describe("localSyncService", () => {
           host: " 192.168.43.1 ",
           port: 49152,
           code: "123456",
+          fingerprint: "A".repeat(64),
           projectKey: "upstream:alpha",
           syncId: "sync-alpha-1234",
         }),
@@ -306,6 +316,7 @@ describe("localSyncService", () => {
       host: "192.168.43.1",
       port: "49152",
       code: "123456",
+      fingerprint: "A".repeat(64),
       projectKey: "upstream:alpha",
       syncId: "sync-alpha-1234",
     });
@@ -341,6 +352,7 @@ describe("localSyncService", () => {
           host: "192.168.43.1",
           port: 49152,
           code: "123456",
+          fingerprint: "A".repeat(64),
           projectKey: "upstream:alpha",
           syncId: "sync-beta-9999",
         }),
@@ -471,6 +483,7 @@ describe("localSyncService", () => {
       host: "192.168.1.2",
       port: 49152,
       code: "123456",
+      fingerprint: "A".repeat(64),
       archive: new Blob(["outgoing"]),
       projectKey: "upstream:alpha",
       syncId: "sync-alpha-1234",
@@ -490,6 +503,7 @@ describe("localSyncService", () => {
         host: "192.168.1.2",
         port: 49152,
         code: "123456",
+        fingerprint: "A".repeat(64),
         archive: new Blob(["outgoing"]),
         projectKey: "upstream:alpha",
         syncId: "sync-alpha-1234",
@@ -518,6 +532,7 @@ describe("localSyncService", () => {
       host: "192.168.1.2",
       port: "49152",
       code: "123456",
+      fingerprint: "A".repeat(64),
       projectKey: "upstream:alpha",
       syncId: "sync-alpha-1234",
     });
@@ -527,6 +542,7 @@ describe("localSyncService", () => {
       host: "192.168.1.2",
       port: 49152,
       code: "123456",
+      fingerprint: "A".repeat(64),
       projectKey: "upstream:alpha",
       syncId: "sync-alpha-1234",
     });
@@ -551,6 +567,7 @@ describe("localSyncService", () => {
         host: " 192.168.1.2 ",
         port: "49152",
         code: " 123456 ",
+        fingerprint: "A".repeat(64),
         projectKey: "upstream:alpha",
         syncId: "sync-alpha-1234",
       }),
@@ -561,6 +578,7 @@ describe("localSyncService", () => {
         host: "192.168.1.2",
         port: 49152,
         code: "123456",
+        fingerprint: "A".repeat(64),
       }),
     );
     expect(mocks.plugin.releaseReceivedArchive).toHaveBeenCalledWith({

@@ -89,14 +89,16 @@ export function buildLocalSyncQrPayload({
   host,
   port,
   code,
+  fingerprint,
   projectKey,
   syncId,
 }) {
   return `${QR_PREFIX}${JSON.stringify({
-    version: 1,
+    version: 3,
     host,
     port: Number(port),
     code,
+    fingerprint,
     projectKey,
     syncId,
   })}`;
@@ -121,7 +123,16 @@ export function parseLocalSyncQrPayload(value, expectedIdentity) {
   const validCode = /^\d{6}$/.test(String(payload?.code ?? ""));
   const validHost =
     typeof payload?.host === "string" && payload.host.trim().length > 0;
-  if (payload?.version !== 1 || !validHost || !validPort || !validCode) {
+  const validFingerprint = /^[0-9a-f]{64}$/i.test(
+    String(payload?.fingerprint ?? ""),
+  );
+  if (
+    payload?.version !== 3 ||
+    !validHost ||
+    !validPort ||
+    !validCode ||
+    !validFingerprint
+  ) {
     throw new Error("QR-код содержит некорректные параметры подключения");
   }
   const expectedProjectKey =
@@ -147,6 +158,7 @@ export function parseLocalSyncQrPayload(value, expectedIdentity) {
     host: payload.host.trim(),
     port: String(payload.port),
     code: String(payload.code),
+    fingerprint: payload.fingerprint.toUpperCase(),
     projectKey: payload.projectKey,
     syncId: payload.syncId,
   };
@@ -313,6 +325,7 @@ export async function exchangeLocalSyncArchive({
   host,
   port,
   code,
+  fingerprint,
   archive,
   projectKey,
   syncId,
@@ -324,6 +337,7 @@ export async function exchangeLocalSyncArchive({
       host: host.trim(),
       port: Number(port),
       code: code.trim(),
+      fingerprint: fingerprint.replace(/[^0-9a-f]/gi, "").toUpperCase(),
       archiveToken,
       projectKey,
       syncId,
@@ -339,6 +353,7 @@ export async function fetchLocalSyncArchive({
   host,
   port,
   code,
+  fingerprint,
   projectKey,
   syncId,
 }) {
@@ -347,6 +362,7 @@ export async function fetchLocalSyncArchive({
     host: host.trim(),
     port: Number(port),
     code: code.trim(),
+    fingerprint: fingerprint.replace(/[^0-9a-f]/gi, "").toUpperCase(),
     projectKey,
     syncId,
   });

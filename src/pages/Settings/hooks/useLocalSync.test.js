@@ -112,6 +112,7 @@ describe("useLocalSync", () => {
         host: "192.168.43.1",
         port: "49152",
         code: "654321",
+        fingerprint: "A".repeat(64),
       });
     });
 
@@ -120,6 +121,7 @@ describe("useLocalSync", () => {
         host: "192.168.43.1",
         port: "49152",
         code: "654321",
+        fingerprint: "A".repeat(64),
         projectKey: "upstream:alpha field",
       }),
     );
@@ -136,6 +138,7 @@ describe("useLocalSync", () => {
       host: "192.168.43.1",
       port: 49152,
       code: "123456",
+      fingerprint: "A".repeat(64),
       stop: vi.fn().mockResolvedValue(undefined),
     });
     const { result } = renderSync({ data: [] });
@@ -160,6 +163,7 @@ describe("useLocalSync", () => {
         host: "192.168.43.1",
         port: 49152,
         code: "123456",
+        fingerprint: "A".repeat(64),
         stop: vi.fn().mockResolvedValue(undefined),
       };
     });
@@ -187,6 +191,7 @@ describe("useLocalSync", () => {
       host: "192.168.43.1",
       port: "49152",
       code: "123456",
+      fingerprint: "A".repeat(64),
     });
     syncService.exchangeLocalSyncArchive.mockResolvedValue(incoming);
     const { result } = renderSync();
@@ -204,6 +209,7 @@ describe("useLocalSync", () => {
         host: "192.168.43.1",
         port: "49152",
         code: "123456",
+        fingerprint: "A".repeat(64),
       }),
     );
     expect(result.current.state.status).toBe("complete");
@@ -250,6 +256,7 @@ describe("useLocalSync", () => {
       host: "192.168.43.1",
       port: "49152",
       code: "123456",
+      fingerprint: "A".repeat(64),
       projectKey: "upstream:remote field",
       syncId: "sync-remote-1234",
     };
@@ -294,6 +301,7 @@ describe("useLocalSync", () => {
       host: "192.168.43.1",
       port: 49152,
       code: "123456",
+      fingerprint: "A".repeat(64),
       stop,
     });
     const { result } = renderSync({ lang: "en" });
@@ -314,6 +322,7 @@ describe("useLocalSync", () => {
         host: "192.168.43.1",
         port: 49152,
         code: "123456",
+        fingerprint: "A".repeat(64),
         stop,
       };
     });
@@ -341,6 +350,7 @@ describe("useLocalSync", () => {
         host: "192.168.43.1",
         port: "49152",
         code: "654321",
+        fingerprint: "A".repeat(64),
       }),
     );
 
@@ -373,6 +383,7 @@ describe("useLocalSync", () => {
       host: "192.168.43.1",
       port: 49152,
       code: "123456",
+      fingerprint: "A".repeat(64),
       stop,
     });
     const { result, unmount } = renderSync({ lang: "en" });
@@ -408,6 +419,7 @@ describe("useLocalSync", () => {
       host: "192.168.43.1",
       port: "49152",
       code: "123456",
+      fingerprint: "A".repeat(64),
       projectKey: "upstream:remote field",
       syncId: "sync-remote-1234",
     });

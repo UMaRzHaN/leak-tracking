@@ -130,7 +130,7 @@ export function useLocalSync({
   ]);
 
   const joinHost = useCallback(
-    async ({ host, port, code }) => {
+    async ({ host, port, code, fingerprint }) => {
       setState({ status: "joining", session: null });
       try {
         const archive = await buildArchive();
@@ -138,6 +138,7 @@ export function useLocalSync({
           host,
           port,
           code,
+          fingerprint,
           archive,
           projectKey: projectKey(activeProject),
           syncId: activeProject?.syncId ?? "",

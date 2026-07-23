@@ -6,6 +6,8 @@ import android.net.LinkAddress;
 import android.net.LinkProperties;
 import android.net.Network;
 import android.net.Uri;
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyProperties;
 import android.util.Base64;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -26,9 +28,17 @@ import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.math.BigInteger;
+import java.security.KeyPairGenerator;
+import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import java.security.spec.ECGenParameterSpec;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,11 +46,17 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+import javax.security.auth.x500.X500Principal;
 
 @CapacitorPlugin(name = "LocalSync")
 public class LocalSyncPlugin extends Plugin {
-    private static final String MAGIC = "LEAK_TRACKER_SYNC_V2";
-    private static final String IMPORT_MAGIC = "LEAK_TRACKER_SYNC_IMPORT_V1";
+    private static final String MAGIC = "LEAK_TRACKER_SYNC_V3";
+    private static final String IMPORT_MAGIC = "LEAK_TRACKER_SYNC_IMPORT_V3";
     private static final long MAX_ARCHIVE_BYTES = 64L * 1024L * 1024L;
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final int HANDSHAKE_TIMEOUT_MS = 10_000;
@@ -59,6 +75,8 @@ public class LocalSyncPlugin extends Plugin {
     private volatile String hostedProjectKey;
     private volatile String hostedSyncId;
     private volatile String sessionCode;
+    private volatile String hostKeyAlias;
+    private volatile String hostCertificateFingerprint;
     private int failedAuthAttempts;
 
     @PluginMethod
@@ -126,6 +144,7 @@ public class LocalSyncPlugin extends Plugin {
 
         try {
             assertArchiveSize(preparedArchive.length());
+            TlsHostContext tlsHost = createTlsHostContext();
 
             synchronized (sessionLock) {
                 stopHostInternal();
@@ -134,7 +153,9 @@ public class LocalSyncPlugin extends Plugin {
                 hostedSyncId = syncId;
                 sessionCode = String.format(Locale.US, "%06d", RANDOM.nextInt(1_000_000));
                 failedAuthAttempts = 0;
-                serverSocket = new ServerSocket(0);
+                hostKeyAlias = tlsHost.keyAlias;
+                hostCertificateFingerprint = tlsHost.fingerprint;
+                serverSocket = tlsHost.context.getServerSocketFactory().createServerSocket(0);
                 serverSocket.setReuseAddress(true);
             }
 
@@ -145,6 +166,8 @@ public class LocalSyncPlugin extends Plugin {
             result.put("host", findLocalIpv4Address());
             result.put("port", activeServer.getLocalPort());
             result.put("code", sessionCode);
+            result.put("fingerprint", hostCertificateFingerprint);
+            result.put("securityKey", hostCertificateFingerprint.substring(0, 16));
             result.put("maxArchiveBytes", MAX_ARCHIVE_BYTES);
             call.resolve(result);
         } catch (Exception error) {
@@ -165,21 +188,22 @@ public class LocalSyncPlugin extends Plugin {
         String host = call.getString("host", "").trim();
         Integer port = call.getInt("port");
         String code = call.getString("code", "").trim();
+        String fingerprint = normalizeFingerprint(call.getString("fingerprint"));
         String projectKey = normalizeProjectKey(call.getString("projectKey"));
         String syncId = normalizeSyncId(call.getString("syncId"));
         String archiveToken = call.getString("archiveToken", "");
         File outgoing = preparedArchives.remove(archiveToken);
 
-        if (host.isEmpty() || port == null || code.isEmpty() || projectKey.isEmpty() || outgoing == null) {
+        if (host.isEmpty() || port == null || code.isEmpty() || !isValidFingerprint(fingerprint) || projectKey.isEmpty() || outgoing == null) {
             if (outgoing != null) outgoing.delete();
-            call.reject("host, port, code, projectKey and archiveToken are required");
+            call.reject("host, port, code, fingerprint, projectKey and archiveToken are required");
             return;
         }
 
         executor.execute(() -> {
             try {
                 assertArchiveSize(outgoing.length());
-                File received = exchangeArchives(host, port, code, projectKey, syncId, outgoing);
+                File received = exchangeArchives(host, port, code, fingerprint, projectKey, syncId, outgoing);
                 JSObject result = archiveResult(received);
                 call.resolve(result);
             } catch (Exception error) {
@@ -195,17 +219,18 @@ public class LocalSyncPlugin extends Plugin {
         String host = call.getString("host", "").trim();
         Integer port = call.getInt("port");
         String code = call.getString("code", "").trim();
+        String fingerprint = normalizeFingerprint(call.getString("fingerprint"));
         String projectKey = normalizeProjectKey(call.getString("projectKey"));
         String syncId = normalizeSyncId(call.getString("syncId"));
 
-        if (host.isEmpty() || port == null || code.isEmpty() || projectKey.isEmpty() || syncId.isEmpty()) {
-            call.reject("host, port, code, projectKey and syncId are required");
+        if (host.isEmpty() || port == null || code.isEmpty() || !isValidFingerprint(fingerprint) || projectKey.isEmpty() || syncId.isEmpty()) {
+            call.reject("host, port, code, fingerprint, projectKey and syncId are required");
             return;
         }
 
         executor.execute(() -> {
             try {
-                File received = fetchArchiveFromHost(host, port, code, projectKey, syncId);
+                File received = fetchArchiveFromHost(host, port, code, fingerprint, projectKey, syncId);
                 JSObject result = archiveResult(received);
                 call.resolve(result);
             } catch (Exception error) {
@@ -221,6 +246,10 @@ public class LocalSyncPlugin extends Plugin {
                 try {
                     socket = activeServer.accept();
                     socket.setSoTimeout(HANDSHAKE_TIMEOUT_MS);
+                    if (!(socket instanceof SSLSocket)) {
+                        throw new Exception("Local sync requires TLS");
+                    }
+                    ((SSLSocket) socket).startHandshake();
                     synchronized (sessionLock) {
                         if (serverSocket != activeServer) {
                             socket.close();
@@ -231,9 +260,10 @@ public class LocalSyncPlugin extends Plugin {
 
                     if (handleClient(socket)) return;
                 } catch (SocketException error) {
-                    if (!activeServer.isClosed()) notifySyncError(error);
+                    if (socket == null && !activeServer.isClosed()) notifySyncError(error);
                 } catch (Exception error) {
-                    if (!activeServer.isClosed()) notifySyncError(error);
+                    // TLS/authentication failures are isolated to this peer; keep accepting clients.
+                    if (socket == null && !activeServer.isClosed()) notifySyncError(error);
                 } finally {
                     closeSocket(socket);
                     synchronized (sessionLock) {
@@ -361,14 +391,13 @@ public class LocalSyncPlugin extends Plugin {
         String host,
         int port,
         String code,
+        String fingerprint,
         String projectKey,
         String syncId,
         File outgoing
     ) throws Exception {
         File received = null;
-        try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
-            socket.setSoTimeout(TRANSFER_TIMEOUT_MS);
+        try (Socket socket = connectPinnedTls(host, port, fingerprint)) {
 
             try (
                 DataInputStream input = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
@@ -418,13 +447,12 @@ public class LocalSyncPlugin extends Plugin {
         String host,
         int port,
         String code,
+        String fingerprint,
         String projectKey,
         String syncId
     ) throws Exception {
         File received = null;
-        try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
-            socket.setSoTimeout(TRANSFER_TIMEOUT_MS);
+        try (Socket socket = connectPinnedTls(host, port, fingerprint)) {
 
             try (
                 DataInputStream input = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
@@ -457,6 +485,145 @@ public class LocalSyncPlugin extends Plugin {
             }
         } finally {
             if (received != null) received.delete();
+        }
+    }
+
+    private TlsHostContext createTlsHostContext() throws Exception {
+        String keyAlias = "local-sync-" + UUID.randomUUID();
+        long now = System.currentTimeMillis();
+        KeyPairGenerator generator = KeyPairGenerator.getInstance(
+            KeyProperties.KEY_ALGORITHM_EC,
+            "AndroidKeyStore"
+        );
+        generator.initialize(
+            new KeyGenParameterSpec.Builder(
+                keyAlias,
+                KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY
+            )
+                .setAlgorithmParameterSpec(new ECGenParameterSpec("secp256r1"))
+                .setDigests(
+                    KeyProperties.DIGEST_NONE,
+                    KeyProperties.DIGEST_SHA256,
+                    KeyProperties.DIGEST_SHA384,
+                    KeyProperties.DIGEST_SHA512
+                )
+                .setCertificateSubject(new X500Principal("CN=Leak Tracker Local Sync"))
+                .setCertificateSerialNumber(new BigInteger(64, RANDOM))
+                .setCertificateNotBefore(new Date(now - TimeUnit.MINUTES.toMillis(1)))
+                .setCertificateNotAfter(new Date(now + TimeUnit.DAYS.toMillis(1)))
+                .build()
+        );
+        generator.generateKeyPair();
+
+        try {
+            KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
+            keyStore.load(null);
+            X509Certificate certificate = (X509Certificate) keyStore.getCertificate(keyAlias);
+            if (certificate == null) throw new Exception("Could not create TLS certificate");
+
+            KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(
+                KeyManagerFactory.getDefaultAlgorithm()
+            );
+            keyManagerFactory.init(keyStore, null);
+            SSLContext context = SSLContext.getInstance("TLS");
+            context.init(keyManagerFactory.getKeyManagers(), null, RANDOM);
+            return new TlsHostContext(context, keyAlias, sha256(certificate.getEncoded()));
+        } catch (Exception error) {
+            deleteTlsKey(keyAlias);
+            throw error;
+        }
+    }
+
+    private Socket connectPinnedTls(String host, int port, String fingerprint) throws Exception {
+        final byte[] expectedFingerprint = hexToBytes(fingerprint);
+        X509TrustManager trustManager = new X509TrustManager() {
+            @Override
+            public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+                throw new CertificateException("Client certificates are not supported");
+            }
+
+            @Override
+            public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+                if (chain == null || chain.length == 0) {
+                    throw new CertificateException("TLS certificate is missing");
+                }
+                try {
+                    byte[] actual = MessageDigest.getInstance("SHA-256").digest(chain[0].getEncoded());
+                    byte[] actualPrefix = Arrays.copyOf(actual, expectedFingerprint.length);
+                    if (!MessageDigest.isEqual(expectedFingerprint, actualPrefix)) {
+                        throw new CertificateException("Ключ безопасности хоста не совпадает");
+                    }
+                } catch (CertificateException error) {
+                    throw error;
+                } catch (Exception error) {
+                    throw new CertificateException("Could not verify TLS certificate", error);
+                }
+            }
+
+            @Override
+            public X509Certificate[] getAcceptedIssuers() {
+                return new X509Certificate[0];
+            }
+        };
+
+        SSLContext context = SSLContext.getInstance("TLS");
+        context.init(null, new TrustManager[] { trustManager }, RANDOM);
+        SSLSocket socket = (SSLSocket) context.getSocketFactory().createSocket();
+        try {
+            socket.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
+            socket.setSoTimeout(HANDSHAKE_TIMEOUT_MS);
+            socket.startHandshake();
+            socket.setSoTimeout(TRANSFER_TIMEOUT_MS);
+            return socket;
+        } catch (Exception error) {
+            closeSocket(socket);
+            throw error;
+        }
+    }
+
+    private String normalizeFingerprint(String value) {
+        return value == null ? "" : value.replaceAll("[^0-9A-Fa-f]", "").toUpperCase(Locale.ROOT);
+    }
+
+    private boolean isValidFingerprint(String value) {
+        return value.length() >= 16 && value.length() <= 64 && value.length() % 2 == 0;
+    }
+
+    private byte[] hexToBytes(String value) throws Exception {
+        if (!isValidFingerprint(value)) throw new Exception("Invalid TLS certificate fingerprint");
+        byte[] result = new byte[value.length() / 2];
+        for (int index = 0; index < value.length(); index += 2) {
+            result[index / 2] = (byte) Integer.parseInt(value.substring(index, index + 2), 16);
+        }
+        return result;
+    }
+
+    private String sha256(byte[] value) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(value);
+        StringBuilder result = new StringBuilder(hash.length * 2);
+        for (byte item : hash) result.append(String.format(Locale.US, "%02X", item & 0xff));
+        return result.toString();
+    }
+
+    private void deleteTlsKey(String keyAlias) {
+        if (keyAlias == null || keyAlias.isEmpty()) return;
+        try {
+            KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
+            keyStore.load(null);
+            keyStore.deleteEntry(keyAlias);
+        } catch (Exception ignored) {}
+    }
+
+    private static final class TlsHostContext {
+        private final SSLContext context;
+        private final String keyAlias;
+        private final String fingerprint;
+
+        private TlsHostContext(SSLContext context, String keyAlias, String fingerprint) {
+            this.context = context;
+            this.keyAlias = keyAlias;
+            this.fingerprint = fingerprint;
         }
     }
 
@@ -635,6 +802,10 @@ public class LocalSyncPlugin extends Plugin {
             hostedProjectKey = null;
             hostedSyncId = null;
             sessionCode = null;
+            String keyAlias = hostKeyAlias;
+            hostKeyAlias = null;
+            hostCertificateFingerprint = null;
+            deleteTlsKey(keyAlias);
             failedAuthAttempts = 0;
         }
     }
