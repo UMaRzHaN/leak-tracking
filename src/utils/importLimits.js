@@ -1,8 +1,8 @@
 export const IMPORT_LIMITS = Object.freeze({
-  maxFileBytes: 200 * 1024 * 1024,
+  maxFileBytes: 64 * 1024 * 1024,
   maxArchiveEntries: 5000,
-  maxUncompressedBytes: 300 * 1024 * 1024,
-  maxSingleEntryBytes: 100 * 1024 * 1024,
+  maxUncompressedBytes: 96 * 1024 * 1024,
+  maxSingleEntryBytes: 32 * 1024 * 1024,
 });
 
 function formatMegabytes(bytes) {

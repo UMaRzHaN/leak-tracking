@@ -283,6 +283,55 @@ function getLeakFreshness(leak) {
   );
 }
 
+const SYNC_CONFLICT_IGNORED_KEYS = new Set([
+  "id",
+  "index",
+  "photo",
+  "photo_after",
+  "photo_repair",
+]);
+
+function normalizeSyncConflictValue(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map(normalizeSyncConflictValue)
+      .sort((left, right) =>
+        JSON.stringify(left).localeCompare(JSON.stringify(right)),
+      );
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.keys(value)
+        .filter((key) => !SYNC_CONFLICT_IGNORED_KEYS.has(key))
+        .sort()
+        .map((key) => [key, normalizeSyncConflictValue(value[key])]),
+    );
+  }
+  return value;
+}
+
+function getSyncConflictKey(leak) {
+  return JSON.stringify(normalizeSyncConflictValue(leak));
+}
+
+function shouldApplyIncomingLeak(
+  current,
+  incoming,
+  options = {},
+  hasChanges = true,
+) {
+  if (options.source === "excel") return hasChanges;
+  const currentFreshness = getLeakFreshness(current);
+  const incomingFreshness = getLeakFreshness(incoming);
+  if (incomingFreshness !== currentFreshness) {
+    return incomingFreshness > currentFreshness;
+  }
+
+  const currentKey = getSyncConflictKey(current);
+  const incomingKey = getSyncConflictKey(incoming);
+  return incomingKey !== currentKey && incomingKey > currentKey;
+}
+
 function isRestoredPhotoPath(path) {
   return (
     typeof path === "string" && path.trim() !== "" && !path.startsWith("zip:")
@@ -653,9 +702,12 @@ export function mergeLeaksByFreshness(
       leak,
       options,
     );
-    const shouldApply =
-      getLeakFreshness(leak) > getLeakFreshness(merged[existingIndex]) ||
-      (options.source === "excel" && changedFieldKeys.length > 0);
+    const shouldApply = shouldApplyIncomingLeak(
+      merged[existingIndex],
+      leak,
+      options,
+      changedFieldKeys.length > 0,
+    );
 
     if (shouldApply) {
       changedFields += changedFieldKeys.length;
@@ -663,7 +715,7 @@ export function mergeLeaksByFreshness(
         merged[existingIndex],
         leak,
         {
-          addHistory: true,
+          addHistory: options.source !== "sync",
           source: options.source,
         },
       );
@@ -765,8 +817,12 @@ export function previewMergeLeaks(existing = [], incoming = [], options = {}) {
       : [];
     const applies =
       !current ||
-      getLeakFreshness(leak) > getLeakFreshness(current) ||
-      (options.source === "excel" && changedFieldKeys.length > 0);
+      shouldApplyIncomingLeak(
+        current,
+        leak,
+        options,
+        changedFieldKeys.length > 0,
+      );
 
     if (!current) result.added += 1;
     else if (applies) {
@@ -801,7 +857,11 @@ export function previewMergeLeaks(existing = [], incoming = [], options = {}) {
   };
 }
 
-function filterIncomingLeaksForMerge(existing = [], incoming = []) {
+function filterIncomingLeaksForMerge(
+  existing = [],
+  incoming = [],
+  options = {},
+) {
   const existingByIdentity = new Map();
 
   for (const leak of existing) {
@@ -816,7 +876,7 @@ function filterIncomingLeaksForMerge(existing = [], incoming = []) {
     const current = existingByIdentity.get(identity);
     if (!current) return true;
 
-    return getLeakFreshness(leak) > getLeakFreshness(current);
+    return shouldApplyIncomingLeak(current, leak, options);
   });
 }
 
@@ -914,7 +974,9 @@ async function restorePhotosFromZip(leaks, zip, savePhotoRefOrFn) {
             ? `${baseKey}_repair`
             : baseKey;
       const excludePaths = Object.values(savedPaths);
-      const newPath = await savePhoto(blob, storageKey, excludePaths);
+      const newPath = await savePhoto(blob, storageKey, excludePaths, {
+        cleanupOldVersions: false,
+      });
       copy[key] = newPath ?? fallbackPath;
       if (newPath) savedPaths[key] = newPath;
     }
@@ -960,9 +1022,12 @@ async function restorePhotosFromZip(leaks, zip, savePhotoRefOrFn) {
 
         const recordId = String(record.id ?? index + 1);
         const storageKey = `${baseKey}_monitoring_${recordId}`;
-        const newPath = await savePhoto(blob, storageKey, [
-          ...Object.values(savedPaths),
-        ]);
+        const newPath = await savePhoto(
+          blob,
+          storageKey,
+          [...Object.values(savedPaths)],
+          { cleanupOldVersions: false },
+        );
         restoredRecords.push({
           ...record,
           [MONITORING_PHOTO_KEY]: newPath ?? fallbackPath,
@@ -1217,6 +1282,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     const incomingToApply = filterIncomingLeaksForMerge(
       existing,
       isSync ? applyProjectTombstones(leaks, mergedSyncState) : leaks,
+      isSync ? { source: "sync" } : undefined,
     );
     const restoredIncoming = await restorePhotosFromZip(
       incomingToApply,
@@ -1230,7 +1296,11 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
       restoredIncoming,
       effectiveVars,
     );
-    const mergeResult = mergeLeaksByFreshness(existing, recalculatedIncoming);
+    const mergeResult = mergeLeaksByFreshness(
+      existing,
+      recalculatedIncoming,
+      isSync ? { source: "sync" } : undefined,
+    );
     finalLeaks = isSync
       ? applyProjectTombstones(mergeResult.leaks, mergedSyncState)
       : mergeResult.leaks;
@@ -1264,12 +1334,10 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
       folderName: existingFolderName,
     });
   }
-  if (isSync) {
-    await PhotoRepository.gcOrphaned(finalLeaks, {
-      projectId: existingProjectId,
-      folderName: existingFolderName,
-    });
-  }
+  await PhotoRepository.gcOrphaned(finalLeaks, {
+    projectId: existingProjectId,
+    folderName: existingFolderName,
+  });
 
   if (activeProjectIdRef.current !== existingProjectId) {
     const switched = overwriteProject(existingProjectId);

@@ -31,6 +31,13 @@ function createSyncId() {
   );
 }
 
+function createProjectId() {
+  return (
+    globalThis.crypto?.randomUUID?.() ??
+    `project-${Date.now()}-${Math.random().toString(36).slice(2, 14)}`
+  );
+}
+
 function initProjects() {
   const list = loadProjects();
   const migrated = migrateFromLegacy(list);
@@ -79,20 +86,16 @@ export function ProjectProvider({ children }) {
   const isConfigured = activeProject !== null;
 
   const _setProjects = useCallback((next) => {
-    if (typeof next === "function") {
-      setProjectsState((prev) => {
-        const result = next(prev);
-        saveProjects(result);
-        return result;
-      });
-    } else {
-      saveProjects(next);
-      setProjectsState(next);
-    }
+    const result =
+      typeof next === "function" ? next(projectsRef.current) : next;
+    saveProjects(result);
+    projectsRef.current = result;
+    setProjectsState(result);
   }, []);
 
   const _setActiveId = useCallback((id) => {
     saveActiveId(id);
+    activeIdRef.current = id;
     setActiveIdState(id);
   }, []);
 
@@ -101,7 +104,7 @@ export function ProjectProvider({ children }) {
       if (!type || !PROJECT_META[type]) return null;
 
       const current = projectsRef.current;
-      const id = String(Date.now());
+      const id = createProjectId();
       const folder = toFolderName(name || PROJECT_META[type].title);
       const existingFolders = new Set(current.map((p) => p.folderName));
       let uniqueFolder = folder;

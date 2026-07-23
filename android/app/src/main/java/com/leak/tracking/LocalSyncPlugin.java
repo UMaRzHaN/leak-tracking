@@ -43,8 +43,10 @@ public class LocalSyncPlugin extends Plugin {
     private static final String IMPORT_MAGIC = "LEAK_TRACKER_SYNC_IMPORT_V1";
     private static final long MAX_ARCHIVE_BYTES = 64L * 1024L * 1024L;
     private static final int CONNECT_TIMEOUT_MS = 10_000;
+    private static final int HANDSHAKE_TIMEOUT_MS = 10_000;
     private static final int TRANSFER_TIMEOUT_MS = 120_000;
     private static final SecureRandom RANDOM = new SecureRandom();
+    private static final int MAX_FAILED_AUTH_ATTEMPTS = 5;
 
     private final ExecutorService executor = Executors.newCachedThreadPool();
     private final ScheduledExecutorService cleanupExecutor = Executors.newSingleThreadScheduledExecutor();
@@ -57,6 +59,7 @@ public class LocalSyncPlugin extends Plugin {
     private volatile String hostedProjectKey;
     private volatile String hostedSyncId;
     private volatile String sessionCode;
+    private int failedAuthAttempts;
 
     @PluginMethod
     public void prepareArchive(PluginCall call) {
@@ -130,6 +133,7 @@ public class LocalSyncPlugin extends Plugin {
                 hostedProjectKey = projectKey;
                 hostedSyncId = syncId;
                 sessionCode = String.format(Locale.US, "%06d", RANDOM.nextInt(1_000_000));
+                failedAuthAttempts = 0;
                 serverSocket = new ServerSocket(0);
                 serverSocket.setReuseAddress(true);
             }
@@ -216,7 +220,7 @@ public class LocalSyncPlugin extends Plugin {
                 Socket socket = null;
                 try {
                     socket = activeServer.accept();
-                    socket.setSoTimeout(TRANSFER_TIMEOUT_MS);
+                    socket.setSoTimeout(HANDSHAKE_TIMEOUT_MS);
                     synchronized (sessionLock) {
                         if (serverSocket != activeServer) {
                             socket.close();
@@ -275,8 +279,9 @@ public class LocalSyncPlugin extends Plugin {
                 return false;
             }
             if (!expectedCode.equals(code)) {
+                boolean shouldStop = registerFailedAuthAttempt();
                 rejectPeer(output, "Неверный код подключения");
-                return false;
+                return shouldStop;
             }
             if (!syncId.isEmpty()) {
                 if (!expectedSyncId.equals(syncId)) {
@@ -294,6 +299,7 @@ public class LocalSyncPlugin extends Plugin {
                 return false;
             }
 
+            socket.setSoTimeout(TRANSFER_TIMEOUT_MS);
             output.writeUTF("READY");
             output.flush();
 
@@ -334,8 +340,9 @@ public class LocalSyncPlugin extends Plugin {
             return false;
         }
         if (!expectedCode.equals(code)) {
+            boolean shouldStop = registerFailedAuthAttempt();
             rejectPeer(output, "Неверный код подключения");
-            return false;
+            return shouldStop;
         }
         if (!expectedSyncId.equals(syncId) || !expectedProjectKey.equals(projectKey)) {
             rejectPeer(output, "QR-код содержит данные другого сеанса");
@@ -457,6 +464,13 @@ public class LocalSyncPlugin extends Plugin {
         output.writeUTF("ERROR");
         output.writeUTF(message);
         output.flush();
+    }
+
+    private boolean registerFailedAuthAttempt() {
+        synchronized (sessionLock) {
+            failedAuthAttempts += 1;
+            return failedAuthAttempts >= MAX_FAILED_AUTH_ATTEMPTS;
+        }
     }
 
     private void receiveFile(DataInputStream input, File target, long expectedBytes) throws Exception {
@@ -621,6 +635,7 @@ public class LocalSyncPlugin extends Plugin {
             hostedProjectKey = null;
             hostedSyncId = null;
             sessionCode = null;
+            failedAuthAttempts = 0;
         }
     }
 

@@ -77,9 +77,17 @@ export function createIdbStore(dbName, storeName, version) {
         const tx = _db.transaction(STORE_NAME, "readwrite");
         const store = tx.objectStore(STORE_NAME);
         const req = store.put({ id, data: photoData, timestamp: Date.now() });
-        req.onsuccess = () => resolve(true);
+        tx.oncomplete = () => resolve(true);
         req.onerror = () => {
           logger.error("[idb] save error:", req.error);
+          resolve(false);
+        };
+        tx.onerror = () => {
+          logger.error("[idb] save transaction error:", tx.error);
+          resolve(false);
+        };
+        tx.onabort = () => {
+          logger.error("[idb] save transaction aborted:", tx.error);
           resolve(false);
         };
       } catch (err) {
@@ -115,9 +123,17 @@ export function createIdbStore(dbName, storeName, version) {
         const tx = _db.transaction(STORE_NAME, "readwrite");
         const store = tx.objectStore(STORE_NAME);
         const req = store.delete(id);
-        req.onsuccess = () => resolve(true);
+        tx.oncomplete = () => resolve(true);
         req.onerror = () => {
           logger.error("[idb] remove error:", req.error);
+          resolve(false);
+        };
+        tx.onerror = () => {
+          logger.error("[idb] remove transaction error:", tx.error);
+          resolve(false);
+        };
+        tx.onabort = () => {
+          logger.error("[idb] remove transaction aborted:", tx.error);
           resolve(false);
         };
       } catch (err) {
@@ -134,9 +150,17 @@ export function createIdbStore(dbName, storeName, version) {
         const tx = _db.transaction(STORE_NAME, "readwrite");
         const store = tx.objectStore(STORE_NAME);
         const req = store.clear();
-        req.onsuccess = () => resolve(true);
+        tx.oncomplete = () => resolve(true);
         req.onerror = () => {
           logger.error("[idb] clear error:", req.error);
+          resolve(false);
+        };
+        tx.onerror = () => {
+          logger.error("[idb] clear transaction error:", tx.error);
+          resolve(false);
+        };
+        tx.onabort = () => {
+          logger.error("[idb] clear transaction aborted:", tx.error);
           resolve(false);
         };
       } catch (err) {

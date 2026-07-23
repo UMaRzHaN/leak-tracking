@@ -144,4 +144,24 @@ describe("createIdbStore error handling", () => {
       request.error,
     );
   });
+
+  it("does not report a write as successful when its transaction aborts", async () => {
+    const store = createIdbStore("aborted-write", "items", 1);
+    const request = {};
+    const transaction = {
+      error: new Error("quota exceeded"),
+      objectStore: () => ({ put: vi.fn(() => request) }),
+    };
+    const db = { transaction: vi.fn(() => transaction) };
+    openWithDb(store, db);
+
+    const pending = store.save("a", "value");
+    transaction.onabort();
+
+    await expect(pending).resolves.toBe(false);
+    expect(logger.error).toHaveBeenCalledWith(
+      "[idb] save transaction aborted:",
+      transaction.error,
+    );
+  });
 });

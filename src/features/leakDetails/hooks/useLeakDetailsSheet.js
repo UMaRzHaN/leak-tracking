@@ -348,10 +348,19 @@ export function useLeakDetailsSheet({
       setSaving(false);
     }
   };
+  const reportSaveError = () => {
+    setNotification({
+      type: "error",
+      message:
+        lang === "ru"
+          ? "\u041e\u0448\u0438\u0431\u043a\u0430 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u044f"
+          : "Save error",
+    });
+  };
 
   const handleStatusChange = () => setStatusPickerOpen(true);
 
-  const handleStatusSelect = (newStatus) => {
+  const handleStatusSelect = async (newStatus) => {
     setStatusPickerOpen(false);
     if (newStatus === leak.status) return;
 
@@ -373,44 +382,67 @@ export function useLeakDetailsSheet({
     }
 
     const orphanedPhoto = getOrphanedOriginalPhoto(leak);
-    onSave(changeLeakStatus(leak, newStatus, { user: historyUser }));
-
-    if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
+    try {
+      await onSave(changeLeakStatus(leak, newStatus, { user: historyUser }));
+      if (orphanedPhoto) await deletePhoto(orphanedPhoto).catch(() => {});
+    } catch {
+      reportSaveError();
+    }
   };
 
-  const handleResolveConfirm = ({ photo_after, materials_equipment, note }) => {
+  const handleResolveConfirm = async ({
+    photo_after,
+    materials_equipment,
+    note,
+  }) => {
     if (!requireHistoryUser()) return;
-    setResolveOpen(false);
-    onSave(
-      resolveLeakRecord(
-        leak,
-        { photo_after, materials_equipment, note },
-        { user: historyUser },
-      ),
-    );
+    try {
+      await onSave(
+        resolveLeakRecord(
+          leak,
+          { photo_after, materials_equipment, note },
+          { user: historyUser },
+        ),
+      );
+      setResolveOpen(false);
+    } catch {
+      reportSaveError();
+    }
   };
 
-  const handleRepairConfirm = ({ photo_repair, materials_equipment, note }) => {
+  const handleRepairConfirm = async ({
+    photo_repair,
+    materials_equipment,
+    note,
+  }) => {
     if (!requireHistoryUser()) return;
-    setRepairOpen(false);
     const orphanedPhoto = getOrphanedOriginalPhoto(leak);
-    onSave(
-      startLeakRepair(
-        leak,
-        { photo_repair, materials_equipment, note },
-        { user: historyUser },
-      ),
-    );
-    if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
+    try {
+      await onSave(
+        startLeakRepair(
+          leak,
+          { photo_repair, materials_equipment, note },
+          { user: historyUser },
+        ),
+      );
+      setRepairOpen(false);
+      if (orphanedPhoto) await deletePhoto(orphanedPhoto).catch(() => {});
+    } catch {
+      reportSaveError();
+    }
   };
 
-  const handleReopenConfirm = (draft) => {
+  const handleReopenConfirm = async (draft) => {
     if (!requireHistoryUser()) return;
-    setReopenOpen(false);
     const next = buildReopenedLeak({ leak, draft, vars, user: historyUser });
-    onSave(next);
     const orphanedPhoto = getOrphanedOriginalPhoto(leak);
-    if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
+    try {
+      await onSave(next);
+      setReopenOpen(false);
+      if (orphanedPhoto) await deletePhoto(orphanedPhoto).catch(() => {});
+    } catch {
+      reportSaveError();
+    }
   };
 
   const handleEdit = () => {

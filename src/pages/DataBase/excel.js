@@ -48,7 +48,7 @@ const DECIMAL_KEYS = new Set([
   "Emissions_t_CO2eq_year",
   "Emissions_kg_CO2_eq_year",
 ]);
-const TEXT_IDENTIFIER_KEYS = new Set(["leak_id", "video_id", "serial_number"]);
+const TEXT_IDENTIFIER_KEYS = new Set(["video_id", "serial_number"]);
 
 function yieldToMainThread() {
   return new Promise((resolve) => {
@@ -582,6 +582,7 @@ function toExcelTimeValue(value) {
 function getExcelColumnFormat(key) {
   if (DATE_KEYS.has(key)) return EXCEL_DATE_FORMAT;
   if (TIME_KEYS.has(key)) return EXCEL_TIME_FORMAT;
+  if (key === "leak_id") return "General";
   if (INTEGER_KEYS.has(key)) return INTEGER_FORMAT;
   if (PERCENT_KEYS.has(key)) return PERCENT_FORMAT;
   if (COORDINATE_KEYS.has(key)) return COORDINATE_FORMAT;
@@ -604,6 +605,20 @@ function toExcelCellValue(key, value) {
     return Number.isFinite(numeric) ? numeric : normalizeExcelCellValue(value);
   }
   if (TEXT_IDENTIFIER_KEYS.has(key)) return String(value);
+  if (key === "leak_id") {
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? value : "";
+    }
+    const text = String(value).trim();
+    if (
+      /^(?:0|[1-9]\d*)$/.test(text) &&
+      text.length <= 15 &&
+      Number.isSafeInteger(Number(text))
+    ) {
+      return Number(text);
+    }
+    return text;
+  }
   return normalizeExcelCellValue(value);
 }
 

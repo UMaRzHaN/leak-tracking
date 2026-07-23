@@ -7,6 +7,7 @@ const VALID_STATUSES = new Set(["open", "in_progress", "resolved"]);
 const WEB_DATA_DB = "LeakTrackingDataDB";
 const WEB_DATA_STORE = "projects";
 const WEB_DATA_VERSION = 1;
+const PRESERVED_INVALID_RECORDS = Symbol("preservedInvalidLeakRecords");
 
 let webDataDbPromise = null;
 
@@ -62,18 +63,35 @@ function normalizeLeakRecord(item) {
 function filterValidLeaks(arr, source) {
   if (!Array.isArray(arr)) return [];
   const valid = [];
+  const preservedInvalid = [];
   const invalid = [];
   for (const item of arr) {
     const normalized = normalizeLeakRecord(item);
     if (normalized) valid.push(normalized);
-    else invalid.push(item?.id ?? "?");
+    else {
+      invalid.push(item?.id ?? "?");
+      preservedInvalid.push(item);
+    }
   }
   if (invalid.length) {
     logger.warn(
-      `[LeakRepository] ${source}: discarded ${invalid.length} invalid records (id: ${invalid.join(", ")})`,
+      `[LeakRepository] ${source}: hid ${invalid.length} invalid records from the UI and preserved them in storage (id: ${invalid.join(", ")})`,
     );
   }
+  if (preservedInvalid.length) {
+    Object.defineProperty(valid, PRESERVED_INVALID_RECORDS, {
+      value: preservedInvalid,
+      enumerable: false,
+      configurable: false,
+      writable: false,
+    });
+  }
   return valid;
+}
+
+export function getPreservedInvalidLeakRecords(leaks) {
+  const preserved = leaks?.[PRESERVED_INVALID_RECORDS];
+  return Array.isArray(preserved) ? preserved : [];
 }
 
 function getMobileRecoveryPaths(folderName) {

@@ -6,6 +6,19 @@ import { isPhotoPrepared } from "@/utils/photoPreparation";
 
 const PHOTO_FIELDS = ["photo", "photo_after", "photo_repair"];
 const photoFolderPromises = new Map();
+let lastPhotoTimestamp = 0;
+let photoTimestampSequence = 0;
+
+function createPhotoVersion() {
+  const timestamp = Date.now();
+  if (timestamp === lastPhotoTimestamp) {
+    photoTimestampSequence += 1;
+    return `${timestamp}_${photoTimestampSequence}`;
+  }
+  lastPhotoTimestamp = timestamp;
+  photoTimestampSequence = 0;
+  return String(timestamp);
+}
 
 function collectReferencedPhotos(leaks = []) {
   const referenced = new Set();
@@ -110,7 +123,7 @@ export const PhotoRepository = {
     { cleanupOldVersions: shouldCleanupOldVersions = true } = {},
   ) {
     if (!rawPhoto || !leakId) return null;
-    const version = Date.now();
+    const version = createPhotoVersion();
     const photo =
       rawPhoto instanceof Blob && !isPhotoPrepared(rawPhoto)
         ? await compressImage(rawPhoto)

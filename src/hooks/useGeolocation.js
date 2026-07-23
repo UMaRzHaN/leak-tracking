@@ -92,7 +92,7 @@ export const useGeolocation = (enabled = true) => {
           throw new Error("Нет разрешения на геолокацию");
         }
 
-        watchId = await Geolocation.watchPosition(
+        const registeredWatchId = await Geolocation.watchPosition(
           { enableHighAccuracy: true },
           (pos, err) => {
             if (stopped) return;
@@ -111,7 +111,19 @@ export const useGeolocation = (enabled = true) => {
             }
           },
         );
+        if (stopped) {
+          await Geolocation.clearWatch({ id: registeredWatchId }).catch(
+            (error) =>
+              logger.warn(
+                "[useGeolocation] Failed to clear late watch:",
+                error,
+              ),
+          );
+          return;
+        }
+        watchId = registeredWatchId;
       } catch (e) {
+        if (stopped) return;
         setError(e.message);
         setLoading(false);
       }
@@ -126,7 +138,11 @@ export const useGeolocation = (enabled = true) => {
       if (!isNative) {
         if (watchId !== null) navigator.geolocation.clearWatch(watchId);
       } else {
-        if (watchId !== null) Geolocation.clearWatch({ id: watchId });
+        if (watchId !== null) {
+          Geolocation.clearWatch({ id: watchId }).catch((error) =>
+            logger.warn("[useGeolocation] Failed to clear watch:", error),
+          );
+        }
       }
     };
   }, [enabled]);

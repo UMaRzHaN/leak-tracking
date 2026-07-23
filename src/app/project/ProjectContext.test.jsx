@@ -230,6 +230,28 @@ describe("ProjectProvider initialization", () => {
     );
   });
 
+  it("keeps both projects created in the same event turn", () => {
+    const wrapper = ({ children }) => (
+      <ProjectProvider>{children}</ProjectProvider>
+    );
+    const { result } = renderHook(() => useProject(), { wrapper });
+
+    let first;
+    let second;
+    act(() => {
+      first = result.current.addProject("First", "upstream");
+      second = result.current.addProject("Second", "midstream");
+    });
+
+    expect(first.id).not.toBe(second.id);
+    expect(result.current.projects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: first.id, name: "First" }),
+        expect.objectContaining({ id: second.id, name: "Second" }),
+      ]),
+    );
+  });
+
   it("rejects unknown project types without changing state", () => {
     const wrapper = ({ children }) => (
       <ProjectProvider>{children}</ProjectProvider>

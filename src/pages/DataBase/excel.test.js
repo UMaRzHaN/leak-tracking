@@ -303,7 +303,10 @@ describe("excel export helpers", () => {
 
   it("exports identifiers, numbers, percentages, and coordinates with semantic formats", async () => {
     await exportToExcelFile(
-      [{ id: 1, leak_id: "00101" }],
+      [
+        { id: 1, leak_id: "00101" },
+        { id: 2, leak_id: "101" },
+      ],
       [
         {
           index: "2",
@@ -311,6 +314,14 @@ describe("excel export helpers", () => {
           pressure: "12.5",
           flareShare: "0.5",
           lat: "47.123456",
+          status: "Open",
+        },
+        {
+          index: "3",
+          leak_id: "101",
+          pressure: "8",
+          flareShare: "0.25",
+          lat: "48",
           status: "Open",
         },
       ],
@@ -332,7 +343,8 @@ describe("excel export helpers", () => {
       "Open",
     ]);
     expect(sheet.getColumn(1).numFmt).toBe("#,##0");
-    expect(sheet.getColumn(2).numFmt).toBe("@");
+    expect(sheet.rows[2].values[1]).toBe(101);
+    expect(sheet.getColumn(2).numFmt).toBe("General");
     expect(sheet.getColumn(3).numFmt).toBe("#,##0.00");
     expect(sheet.getColumn(4).numFmt).toBe("0.0%");
     expect(sheet.getColumn(5).numFmt).toBe("0.000000");

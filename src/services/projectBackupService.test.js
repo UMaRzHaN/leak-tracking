@@ -270,6 +270,39 @@ describe("mergeLeaksByFreshness", () => {
     expect(second.leaks).toEqual(first.leaks);
   });
 
+  it("converges equal-freshness sync conflicts deterministically", () => {
+    const deviceA = [
+      {
+        id: "local-a",
+        leak_id: "TAG-1",
+        status: "open",
+        component: "Valve",
+      },
+    ];
+    const deviceB = [
+      {
+        id: "local-b",
+        leak_id: "TAG-1",
+        status: "resolved",
+        component: "Flange",
+      },
+    ];
+
+    const onA = mergeLeaksByFreshness(deviceA, deviceB, { source: "sync" });
+    const onB = mergeLeaksByFreshness(deviceB, deviceA, { source: "sync" });
+    const comparable = (leak) => {
+      const copy = { ...leak };
+      delete copy.id;
+      delete copy.index;
+      return copy;
+    };
+
+    expect(comparable(onA.leaks[0])).toEqual(comparable(onB.leaks[0]));
+    expect(onA.changed + onB.changed).toBe(1);
+    expect(onA.leaks[0].history).toBeUndefined();
+    expect(onB.leaks[0].history).toBeUndefined();
+  });
+
   it("keeps blank leak tags distinct by their internal ids", () => {
     const existing = [
       { id: "one", leak_id: "", status: "open", updatedAt: 100 },
@@ -919,6 +952,9 @@ describe("mergeLeaksByFreshness", () => {
     const saveAllSpy = vi
       .spyOn(LeakRepository, "saveAll")
       .mockResolvedValue(undefined);
+    const gcSpy = vi
+      .spyOn(PhotoRepository, "gcOrphaned")
+      .mockResolvedValue(undefined);
     const ctx = {
       overwriteProject: vi.fn((id) => {
         ctx.activeProjectIdRef.current = id;
@@ -943,7 +979,7 @@ describe("mergeLeaksByFreshness", () => {
         folderName: existingProject.folderName,
       },
       [],
-      {},
+      { cleanupOldVersions: false },
     );
     expect(ctx.savePhotoRef.current).not.toHaveBeenCalled();
     expect(saveAllSpy).toHaveBeenCalledWith(
@@ -953,9 +989,17 @@ describe("mergeLeaksByFreshness", () => {
         folderName: existingProject.folderName,
       },
     );
+    expect(gcSpy).toHaveBeenCalledWith(
+      [expect.objectContaining({ photo: "idb://target-photo" })],
+      {
+        projectId: existingProject.id,
+        folderName: existingProject.folderName,
+      },
+    );
 
     photoSaveSpy.mockRestore();
     saveAllSpy.mockRestore();
+    gcSpy.mockRestore();
   });
 
   it("does not switch projects when overwrite save fails", async () => {

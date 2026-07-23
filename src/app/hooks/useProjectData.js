@@ -1,6 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useProjectData as useProjectDataCtx } from "@/app/project/ProjectContext";
-import { LeakRepository } from "@/repositories/LeakRepository";
+import {
+  LeakRepository,
+  getPreservedInvalidLeakRecords,
+} from "@/repositories/LeakRepository";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
 import { recordLeakDeletions } from "@/services/projectSyncState";
 import { logger } from "@/utils/logger";
@@ -13,11 +16,13 @@ export function useProjectData() {
   const [data, setData] = useState([]);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [dataProjectId, setDataProjectId] = useState(null);
+  const [preservedRecords, setPreservedRecords] = useState([]);
 
   const saveQueue = useRef(Promise.resolve());
   const dataRef = useRef([]);
   const dataProjectIdRef = useRef(null);
   const loadGenerationRef = useRef(0);
+  const persistedByProjectRef = useRef(new Map());
 
   useEffect(() => {
     const loadGeneration = ++loadGenerationRef.current;
@@ -29,6 +34,7 @@ export function useProjectData() {
       dataProjectIdRef.current = null;
       setDataLoaded(true);
       setDataProjectId(null);
+      setPreservedRecords([]);
       return;
     }
 
@@ -40,6 +46,12 @@ export function useProjectData() {
     })
       .then((result) => {
         if (cancelled || loadGeneration !== loadGenerationRef.current) return;
+        const preserved = getPreservedInvalidLeakRecords?.(result) ?? [];
+        setPreservedRecords(preserved);
+        persistedByProjectRef.current.set(activeProjectId, [
+          ...result,
+          ...preserved,
+        ]);
         setData(result);
         dataRef.current = result;
         dataProjectIdRef.current = activeProjectId;
@@ -49,6 +61,8 @@ export function useProjectData() {
       .catch((error) => {
         if (cancelled || loadGeneration !== loadGenerationRef.current) return;
         logger.error("[useProjectData] Failed to load project data:", error);
+        setPreservedRecords([]);
+        persistedByProjectRef.current.delete(activeProjectId);
         setData([]);
         dataRef.current = [];
         dataProjectIdRef.current = activeProjectId;
@@ -69,54 +83,121 @@ export function useProjectData() {
       loadGenerationRef.current += 1;
       const previous =
         dataProjectIdRef.current === activeProjectId ? dataRef.current : [];
-      recordLeakDeletions(activeProjectId, previous, next);
+      const projectId = activeProjectId;
+      const folderName = activeProjectFolderName;
+      const preserved =
+        dataProjectIdRef.current === projectId ? preservedRecords : [];
+      const recordsToPersist = [...next, ...preserved];
       dataRef.current = next;
       dataProjectIdRef.current = activeProjectId;
       setData(() => next);
       setDataLoaded(true);
       setDataProjectId(activeProjectId);
-      if (!activeProjectId || !activeProjectFolderName)
-        return Promise.resolve();
+      if (!projectId || !folderName) return Promise.resolve();
       const nextSave = saveQueue.current
         .catch(() => undefined)
-        .then(() =>
-          LeakRepository.saveAll(next, {
-            projectId: activeProjectId,
-            folderName: activeProjectFolderName,
-          }),
-        );
+        .then(async () => {
+          const persistedBefore = persistedByProjectRef.current.get(
+            projectId,
+          ) ?? [...previous, ...preserved];
+          try {
+            await LeakRepository.saveAll(recordsToPersist, {
+              projectId,
+              folderName,
+            });
+          } catch (error) {
+            if (
+              dataProjectIdRef.current === projectId &&
+              dataRef.current === next
+            ) {
+              dataRef.current = previous;
+              setData(previous);
+            }
+            throw error;
+          }
+          persistedByProjectRef.current.set(projectId, recordsToPersist);
+          try {
+            recordLeakDeletions(projectId, persistedBefore, recordsToPersist);
+          } catch (error) {
+            logger.error(
+              "[useProjectData] Data was saved, but sync metadata could not be updated:",
+              error,
+            );
+          }
+        });
       saveQueue.current = nextSave;
       return nextSave;
     },
-    [activeProjectFolderName, activeProjectId],
+    [activeProjectFolderName, activeProjectId, preservedRecords],
   );
 
   const clear = useCallback(() => {
     loadGenerationRef.current += 1;
-    recordLeakDeletions(activeProjectId, dataRef.current, []);
+    const projectId = activeProjectId;
+    const folderName = activeProjectFolderName;
+    const previous = dataRef.current;
+    const previousPreserved = preservedRecords;
     dataRef.current = [];
-    dataProjectIdRef.current = activeProjectId;
+    dataProjectIdRef.current = projectId;
     setData([]);
+    setPreservedRecords([]);
     setDataLoaded(true);
-    setDataProjectId(activeProjectId);
-    if (!activeProjectId || !activeProjectFolderName) {
+    setDataProjectId(projectId);
+    if (!projectId || !folderName) {
       return Promise.resolve();
     }
     const nextClear = saveQueue.current
       .catch(() => undefined)
       .then(async () => {
-        await LeakRepository.clear({
-          projectId: activeProjectId,
-          folderName: activeProjectFolderName,
-        });
-        await PhotoRepository.gcOrphaned([], {
-          projectId: activeProjectId,
-          folderName: activeProjectFolderName,
-        });
+        try {
+          await LeakRepository.clear({ projectId, folderName });
+        } catch (error) {
+          if (
+            dataProjectIdRef.current === projectId &&
+            dataRef.current.length === 0
+          ) {
+            dataRef.current = previous;
+            setData(previous);
+            setPreservedRecords(previousPreserved);
+          }
+          throw error;
+        }
+        const persistedBefore = persistedByProjectRef.current.get(
+          projectId,
+        ) ?? [...previous, ...previousPreserved];
+        persistedByProjectRef.current.set(projectId, []);
+        try {
+          recordLeakDeletions(projectId, persistedBefore, []);
+        } catch (error) {
+          logger.error(
+            "[useProjectData] Data was cleared, but sync metadata could not be updated:",
+            error,
+          );
+        }
+        try {
+          await PhotoRepository.gcOrphaned([], { projectId, folderName });
+        } catch (error) {
+          logger.error(
+            "[useProjectData] Data was cleared, but orphaned photos could not be removed:",
+            error,
+          );
+        }
       });
     saveQueue.current = nextClear;
     return nextClear;
-  }, [activeProjectFolderName, activeProjectId]);
+  }, [activeProjectFolderName, activeProjectId, preservedRecords]);
 
-  return { data, setData, save, clear, dataLoaded, dataProjectId };
+  const dataForPhotoGc = preservedRecords.length
+    ? [...data, ...preservedRecords]
+    : data;
+
+  return {
+    data,
+    setData,
+    dataForPhotoGc,
+    save,
+    clear,
+    dataLoaded,
+    dataProjectId,
+  };
 }

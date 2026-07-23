@@ -6,6 +6,7 @@ vi.mock("@/app/project/ProjectContext", () => ({
 }));
 
 vi.mock("@/repositories/LeakRepository", () => ({
+  getPreservedInvalidLeakRecords: vi.fn(() => []),
   LeakRepository: {
     getAll: vi.fn(),
     saveAll: vi.fn(),
@@ -244,5 +245,82 @@ describe("useProjectData", () => {
     expect(repositoryModule.LeakRepository.saveAll).not.toHaveBeenCalled();
     expect(repositoryModule.LeakRepository.clear).not.toHaveBeenCalled();
     expect(result.current.data).toEqual([]);
+  });
+
+  it("rolls local state back when the latest save fails", async () => {
+    const original = [{ id: "stored" }];
+    repositoryModule.LeakRepository.getAll.mockResolvedValueOnce(original);
+    repositoryModule.LeakRepository.saveAll.mockRejectedValueOnce(
+      new Error("disk full"),
+    );
+    const { result } = renderHook(() => useProjectData());
+    await waitFor(() => expect(result.current.data).toEqual(original));
+
+    let pending;
+    act(() => {
+      pending = result.current.save([{ id: "changed" }]);
+    });
+    expect(result.current.data).toEqual([{ id: "changed" }]);
+    await act(async () => {
+      await expect(pending).rejects.toThrow("disk full");
+    });
+    expect(result.current.data).toEqual(original);
+  });
+
+  it("keeps committed data when sync metadata persistence fails", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const original = [{ id: "stored" }];
+    const changed = [{ id: "changed" }];
+    repositoryModule.LeakRepository.getAll.mockResolvedValueOnce(original);
+    repositoryModule.LeakRepository.saveAll.mockResolvedValueOnce(undefined);
+    syncStateModule.recordLeakDeletions.mockImplementationOnce(() => {
+      throw new Error("localStorage unavailable");
+    });
+    const { result } = renderHook(() => useProjectData());
+    await waitFor(() => expect(result.current.data).toEqual(original));
+
+    await act(async () => result.current.save(changed));
+
+    expect(result.current.data).toEqual(changed);
+    errorSpy.mockRestore();
+  });
+
+  it("keeps data cleared when post-commit cleanup fails", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const original = [{ id: "stored" }];
+    repositoryModule.LeakRepository.getAll.mockResolvedValueOnce(original);
+    repositoryModule.LeakRepository.clear.mockResolvedValueOnce(undefined);
+    syncStateModule.recordLeakDeletions.mockImplementationOnce(() => {
+      throw new Error("localStorage unavailable");
+    });
+    photoRepositoryModule.PhotoRepository.gcOrphaned.mockRejectedValueOnce(
+      new Error("photo cleanup failed"),
+    );
+    const { result } = renderHook(() => useProjectData());
+    await waitFor(() => expect(result.current.data).toEqual(original));
+
+    await act(async () => result.current.clear());
+
+    expect(result.current.data).toEqual([]);
+    errorSpy.mockRestore();
+  });
+
+  it("preserves invalid records in storage and photo GC input", async () => {
+    const visible = [{ id: "valid", status: "open" }];
+    const preserved = [{ id: "future", status: "future-status" }];
+    repositoryModule.LeakRepository.getAll.mockResolvedValueOnce(visible);
+    repositoryModule.getPreservedInvalidLeakRecords.mockReturnValueOnce(
+      preserved,
+    );
+    repositoryModule.LeakRepository.saveAll.mockResolvedValueOnce(undefined);
+    const { result } = renderHook(() => useProjectData());
+    await waitFor(() => expect(result.current.data).toEqual(visible));
+
+    expect(result.current.dataForPhotoGc).toEqual([...visible, ...preserved]);
+    await act(async () => result.current.save(visible));
+    expect(repositoryModule.LeakRepository.saveAll).toHaveBeenCalledWith(
+      [...visible, ...preserved],
+      { projectId: "proj-1", folderName: "project_one" },
+    );
   });
 });

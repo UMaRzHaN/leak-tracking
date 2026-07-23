@@ -148,7 +148,8 @@ export default function App() {
   /* =========================
      PROJECT-AWARE DATA
   ========================= */
-  const { data, save, clear, dataLoaded, dataProjectId } = useProjectData();
+  const { data, dataForPhotoGc, save, clear, dataLoaded, dataProjectId } =
+    useProjectData();
 
   useEffect(() => {
     setSharedLocationFilter(null);
@@ -189,9 +190,16 @@ export default function App() {
     if (dataProjectId !== (activeProject?.id ?? null)) return;
     if (gcRanRef.current) return;
     gcRanRef.current = true;
-    gcOrphanedPhotos(data).catch((err) => logger.warn("Photo GC error:", err));
-  }, [data, gcOrphanedPhotos, dataLoaded, dataProjectId, activeProject?.id]);
-
+    gcOrphanedPhotos(dataForPhotoGc).catch((err) =>
+      logger.warn("Photo GC error:", err),
+    );
+  }, [
+    dataForPhotoGc,
+    gcOrphanedPhotos,
+    dataLoaded,
+    dataProjectId,
+    activeProject?.id,
+  ]);
   /* =========================
      ONE-TIME MIGRATION
   ========================= */

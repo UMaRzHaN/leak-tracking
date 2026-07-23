@@ -1,5 +1,36 @@
 const VALID_STATUSES = new Set(["open", "in_progress", "resolved"]);
 const VALID_PROJECT_TYPES = new Set(["upstream", "midstream", "downstream"]);
+const MAX_BACKUP_RECORDS = 100_000;
+const MAX_COLLECTION_ITEMS = 20_000;
+const MAX_NESTING_DEPTH = 20;
+const MAX_STRING_LENGTH = 1_000_000;
+const MAX_NODES_PER_RECORD = 50_000;
+
+function getComplexityIssue(value, depth = 0, state = { nodes: 0 }) {
+  state.nodes += 1;
+  if (state.nodes > MAX_NODES_PER_RECORD) return "Record is too complex";
+  if (depth > MAX_NESTING_DEPTH) return "Record nesting is too deep";
+  if (typeof value === "string" && value.length > MAX_STRING_LENGTH) {
+    return "String value is too long";
+  }
+  if (Array.isArray(value)) {
+    if (value.length > MAX_COLLECTION_ITEMS) return "Array is too large";
+    for (const item of value) {
+      const issue = getComplexityIssue(item, depth + 1, state);
+      if (issue) return issue;
+    }
+    return null;
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value);
+    if (entries.length > MAX_COLLECTION_ITEMS) return "Object is too large";
+    for (const [, nested] of entries) {
+      const issue = getComplexityIssue(nested, depth + 1, state);
+      if (issue) return issue;
+    }
+  }
+  return null;
+}
 
 function isPlainObject(value) {
   return value != null && typeof value === "object" && !Array.isArray(value);
@@ -30,6 +61,12 @@ function validateLeakRecord(record, index) {
 
   if (!isPlainObject(record)) {
     pushIssue(issues, [index], "Expected object");
+    return { ok: false, issues };
+  }
+
+  const complexityIssue = getComplexityIssue(record);
+  if (complexityIssue) {
+    pushIssue(issues, [index], complexityIssue);
     return { ok: false, issues };
   }
 
@@ -169,6 +206,12 @@ function formatIssues(prefix, issues) {
 export function validateBackup(parsed) {
   if (!Array.isArray(parsed)) {
     return { ok: false, error: "Ожидается массив JSON" };
+  }
+  if (parsed.length > MAX_BACKUP_RECORDS) {
+    return {
+      ok: false,
+      error: `Backup contains more than ${MAX_BACKUP_RECORDS} records`,
+    };
   }
 
   const normalized = [];

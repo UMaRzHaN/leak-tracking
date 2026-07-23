@@ -222,17 +222,13 @@ for (const recordCount of readRecordCounts()) {
     expect(virtualizedCardCount).toBeLessThan(60);
 
     const targetTag = `PERF-${String(recordCount).padStart(5, "0")}`;
+    const searchInput = page.getByRole("textbox", { name: "Search leaks" });
     const searchStartedAt = Date.now();
-    await page
-      .getByPlaceholder("Search by ID, object, description...")
-      .fill(targetTag);
+    await searchInput.fill(targetTag);
     await expect(renderedCards).toHaveCount(1);
     await expect(renderedCards.first()).toContainText(targetTag);
     const searchMs = Date.now() - searchStartedAt;
 
-    const searchInput = page.getByPlaceholder(
-      "Search by ID, object, description...",
-    );
     await searchInput.fill("");
     await expect(
       page.getByText(`${recordCount} records`, { exact: false }).first(),

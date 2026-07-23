@@ -84,6 +84,22 @@ async function fetchWithTimeout(url, ms = 10000) {
   }
 }
 
+async function filterWithConcurrency(items, concurrency, predicate) {
+  const matches = new Array(items.length).fill(false);
+  let nextIndex = 0;
+  const worker = async () => {
+    while (nextIndex < items.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      matches[index] = await predicate(items[index], index);
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
+  );
+  return items.filter((_, index) => matches[index]);
+}
+
 async function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -279,23 +295,17 @@ export async function preloadUrls(
   // Фильтруем уже скачанные
   let toDownload;
   if (isNative) {
-    const checks = await Promise.all(
-      urls.map(async (url) => {
-        const path = tileFilePath(url);
-        return path && (await nativeExists(path)) ? null : url;
-      }),
-    );
-    toDownload = checks.filter(Boolean);
+    toDownload = await filterWithConcurrency(urls, concurrency, async (url) => {
+      const path = tileFilePath(url);
+      return !path || !(await nativeExists(path));
+    });
   } else if (webCache) {
-    const checks = await Promise.all(
-      urls.map((url) =>
-        webCache
-          .match(url)
-          .then((r) => (r ? null : url))
-          .catch(() => url),
-      ),
+    toDownload = await filterWithConcurrency(urls, concurrency, (url) =>
+      webCache
+        .match(url)
+        .then((response) => !response)
+        .catch(() => true),
     );
-    toDownload = checks.filter(Boolean);
   } else {
     toDownload = urls;
   }

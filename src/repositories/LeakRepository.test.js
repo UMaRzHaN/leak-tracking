@@ -17,7 +17,8 @@ vi.mock("@capacitor/filesystem", () => ({
 }));
 
 /* ── Import after mocks ───────────────────────────────────────────────────── */
-const { LeakRepository } = await import("./LeakRepository");
+const { LeakRepository, getPreservedInvalidLeakRecords } =
+  await import("./LeakRepository");
 
 /* ── Fixtures ─────────────────────────────────────────────────────────────── */
 
@@ -75,6 +76,7 @@ describe("LeakRepository.getAll (web / localStorage)", () => {
     const result = await LeakRepository.getAll(PROJECT);
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe("valid-1");
+    expect(getPreservedInvalidLeakRecords(result)).toEqual([invalid]);
   });
 
   it("returns empty array when localStorage contains corrupted JSON", async () => {

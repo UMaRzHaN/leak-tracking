@@ -65,6 +65,16 @@ describe("backupSchema leak validation", () => {
     expect(result.error).toContain("lng");
     expect(result.error).not.toContain("status");
   });
+
+  it("rejects excessively deep arbitrary backup fields", () => {
+    let nested = "leaf";
+    for (let depth = 0; depth < 22; depth += 1) nested = { nested };
+
+    const result = validateBackup([{ id: "deep", extra: nested }]);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("nesting");
+  });
 });
 
 describe("backupSchema project metadata validation", () => {

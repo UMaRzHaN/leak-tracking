@@ -74,11 +74,32 @@ describe("PhotoRepository on web", () => {
       { cleanupOldVersions: false },
     );
 
-    expect(path).toMatch(/^idb:\/\/photo_project_new_\d+$/);
+    expect(path).toMatch(/^idb:\/\/photo_project_new_\d+(?:_\d+)?$/);
     expect(mocks.compressImage).not.toHaveBeenCalled();
     expect(mocks.listKeys).not.toHaveBeenCalled();
   });
 
+  it("uses distinct storage keys for concurrent saves in one millisecond", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(700);
+    const blob = markPhotoPrepared(
+      new Blob(["prepared"], { type: "image/jpeg" }),
+    );
+
+    const [first, second] = await Promise.all([
+      PhotoRepository.save(blob, { projectId: "project", leakId: "same" }, [], {
+        cleanupOldVersions: false,
+      }),
+      PhotoRepository.save(blob, { projectId: "project", leakId: "same" }, [], {
+        cleanupOldVersions: false,
+      }),
+    ]);
+
+    expect(first).not.toBe(second);
+    expect(mocks.save.mock.calls.map(([key]) => key)).toEqual([
+      "photo_project_same_700",
+      "photo_project_same_700_1",
+    ]);
+  });
   it("rejects invalid or unavailable web storage inputs", async () => {
     expect(
       await PhotoRepository.save(null, {
