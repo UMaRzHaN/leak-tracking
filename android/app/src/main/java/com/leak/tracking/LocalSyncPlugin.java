@@ -36,6 +36,7 @@ import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.security.spec.ECGenParameterSpec;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -48,6 +49,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLServerSocket;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
@@ -156,7 +158,11 @@ public class LocalSyncPlugin extends Plugin {
                 failedAuthAttempts = 0;
                 hostKeyAlias = tlsHost.keyAlias;
                 hostCertificateFingerprint = tlsHost.fingerprint;
-                serverSocket = tlsHost.context.getServerSocketFactory().createServerSocket(0);
+                SSLServerSocket tlsServerSocket = (SSLServerSocket) tlsHost.context
+                    .getServerSocketFactory()
+                    .createServerSocket(0);
+                enableModernTls(tlsServerSocket);
+                serverSocket = tlsServerSocket;
                 serverSocket.setReuseAddress(true);
             }
 
@@ -250,6 +256,7 @@ public class LocalSyncPlugin extends Plugin {
                     if (!(socket instanceof SSLSocket)) {
                         throw new Exception("Local sync requires TLS");
                     }
+                    enableModernTls((SSLSocket) socket);
                     ((SSLSocket) socket).startHandshake();
                     synchronized (sessionLock) {
                         if (serverSocket != activeServer) {
@@ -572,6 +579,7 @@ public class LocalSyncPlugin extends Plugin {
         context.init(null, new TrustManager[] { trustManager }, RANDOM);
         SSLSocket socket = (SSLSocket) context.getSocketFactory().createSocket();
         try {
+            enableModernTls(socket);
             socket.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
             socket.setSoTimeout(HANDSHAKE_TIMEOUT_MS);
             socket.startHandshake();
@@ -581,6 +589,27 @@ public class LocalSyncPlugin extends Plugin {
             closeSocket(socket);
             throw error;
         }
+    }
+
+    private void enableModernTls(SSLServerSocket socket) throws Exception {
+        socket.setEnabledProtocols(modernTlsProtocols(socket.getSupportedProtocols()));
+    }
+
+    private void enableModernTls(SSLSocket socket) throws Exception {
+        socket.setEnabledProtocols(modernTlsProtocols(socket.getSupportedProtocols()));
+    }
+
+    private String[] modernTlsProtocols(String[] supportedProtocols) throws Exception {
+        ArrayList<String> enabled = new ArrayList<>();
+        for (String protocol : supportedProtocols) {
+            if ("TLSv1.3".equals(protocol) || "TLSv1.2".equals(protocol)) {
+                enabled.add(protocol);
+            }
+        }
+        if (enabled.isEmpty()) {
+            throw new Exception("This Android version does not support TLS 1.2");
+        }
+        return enabled.toArray(new String[0]);
     }
 
     private String normalizeFingerprint(String value) {
