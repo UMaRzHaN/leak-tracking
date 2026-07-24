@@ -66,8 +66,7 @@ function translateSteps(steps, t) {
 export default function LeakForm({
   onAdd,
   onSaved,
-  setPage,
-  prevPage,
+  onBack,
   lastItem,
   isSaving,
 }) {
@@ -334,8 +333,7 @@ export default function LeakForm({
     <>
       <div ref={topRef} className={`${s.card} content`}>
         <AddLeakHeader
-          setPage={setPage}
-          prevPage={prevPage}
+          onBack={onBack}
           stopVoiceInput={stopVoiceInput}
           startVoiceInput={startVoiceInput}
           step={step}

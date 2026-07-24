@@ -18,15 +18,20 @@ export function useProjectData() {
   const [dataProjectId, setDataProjectId] = useState(null);
   const [preservedRecords, setPreservedRecords] = useState([]);
 
+  const [loadError, setLoadError] = useState(null);
+  const [reloadRevision, setReloadRevision] = useState(0);
   const saveQueue = useRef(Promise.resolve());
   const dataRef = useRef([]);
   const dataProjectIdRef = useRef(null);
   const loadGenerationRef = useRef(0);
   const persistedByProjectRef = useRef(new Map());
+  const loadErrorRef = useRef(null);
 
   useEffect(() => {
     const loadGeneration = ++loadGenerationRef.current;
     setDataLoaded(false);
+    setLoadError(null);
+    loadErrorRef.current = null;
 
     if (!activeProjectId || !activeProjectFolderName) {
       setData([]);
@@ -61,6 +66,8 @@ export function useProjectData() {
       .catch((error) => {
         if (cancelled || loadGeneration !== loadGenerationRef.current) return;
         logger.error("[useProjectData] Failed to load project data:", error);
+        setLoadError(error);
+        loadErrorRef.current = error;
         setPreservedRecords([]);
         persistedByProjectRef.current.delete(activeProjectId);
         setData([]);
@@ -73,10 +80,20 @@ export function useProjectData() {
     return () => {
       cancelled = true;
     };
-  }, [activeProjectFolderName, activeProjectId]);
+  }, [activeProjectFolderName, activeProjectId, reloadRevision]);
 
   const save = useCallback(
     (next) => {
+      if (loadErrorRef.current) {
+        const error = new Error(
+          "Project data is read-only after a load failure",
+          {
+            cause: loadErrorRef.current,
+          },
+        );
+        error.code = "PROJECT_DATA_WRITE_BLOCKED";
+        return Promise.reject(error);
+      }
       // A save can happen while the initial repository read is still pending
       // (notably when importing Excel into the first project). Invalidate that
       // read so its stale empty result cannot replace the imported records.
@@ -132,6 +149,16 @@ export function useProjectData() {
   );
 
   const clear = useCallback(() => {
+    if (loadErrorRef.current) {
+      const error = new Error(
+        "Project data is read-only after a load failure",
+        {
+          cause: loadErrorRef.current,
+        },
+      );
+      error.code = "PROJECT_DATA_WRITE_BLOCKED";
+      return Promise.reject(error);
+    }
     loadGenerationRef.current += 1;
     const projectId = activeProjectId;
     const folderName = activeProjectFolderName;
@@ -187,6 +214,10 @@ export function useProjectData() {
     return nextClear;
   }, [activeProjectFolderName, activeProjectId, preservedRecords]);
 
+  const retryLoad = useCallback(() => {
+    setReloadRevision((value) => value + 1);
+  }, []);
+
   const dataForPhotoGc = preservedRecords.length
     ? [...data, ...preservedRecords]
     : data;
@@ -199,5 +230,8 @@ export function useProjectData() {
     clear,
     dataLoaded,
     dataProjectId,
+    loadError,
+    retryLoad,
+    canWrite: !loadError,
   };
 }

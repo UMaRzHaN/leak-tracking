@@ -11,6 +11,15 @@ const PRESERVED_INVALID_RECORDS = Symbol("preservedInvalidLeakRecords");
 
 let webDataDbPromise = null;
 
+export class ProjectDataReadError extends Error {
+  constructor(message, { cause, source } = {}) {
+    super(message, cause ? { cause } : undefined);
+    this.name = "ProjectDataReadError";
+    this.code = "PROJECT_DATA_READ_FAILED";
+    this.source = source ?? "unknown";
+  }
+}
+
 function isFiniteNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
@@ -299,22 +308,28 @@ export const LeakRepository = {
           );
           return filterValidLeaks(recovered, backup);
         } catch (backupError) {
-          if (
-            !isMissingFileError(mainError) ||
-            !isMissingFileError(backupError)
-          ) {
-            logger.error(
-              `[LeakRepository] Failed to read both "${main}" and "${backup}":`,
-              mainError,
-              backupError,
-            );
-          }
-          return [];
+          const mainMissing = isMissingFileError(mainError);
+          const backupMissing = isMissingFileError(backupError);
+          if (mainMissing && backupMissing) return [];
+
+          logger.error(
+            `[LeakRepository] Failed to read both "${main}" and "${backup}":`,
+            mainError,
+            backupError,
+          );
+          throw new ProjectDataReadError(
+            "Project data and its recovery copy could not be read",
+            {
+              cause: mainMissing ? backupError : mainError,
+              source: "native",
+            },
+          );
         }
       }
     }
 
     const key = STORAGE_KEYS.PROJECT_DATA(projectId);
+    let indexedDbError = null;
 
     try {
       const indexedData = await readWebData(projectId);
@@ -322,25 +337,36 @@ export const LeakRepository = {
         return filterValidLeaks(indexedData, `IndexedDB[${projectId}]`);
       }
     } catch (err) {
+      indexedDbError = err;
       logger.error("[LeakRepository] Failed to read IndexedDB:", err);
     }
 
     try {
       const raw = localStorage.getItem(key);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        await writeWebData(projectId, parsed).catch((error) => {
-          logger.warn(
-            "[LeakRepository] Failed to migrate to IndexedDB:",
-            error,
+      if (!raw) {
+        if (indexedDbError) {
+          throw new ProjectDataReadError(
+            "IndexedDB could not be read and no recovery mirror is available",
+            { cause: indexedDbError, source: "indexeddb" },
           );
-        });
+        }
+        return [];
       }
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        throw new TypeError(`Expected an array in localStorage[${key}]`);
+      }
+      await writeWebData(projectId, parsed).catch((error) => {
+        logger.warn("[LeakRepository] Failed to migrate to IndexedDB:", error);
+      });
       return filterValidLeaks(parsed, `localStorage[${key}]`);
     } catch (err) {
+      if (err instanceof ProjectDataReadError) throw err;
       logger.error("[LeakRepository] Corrupted localStorage:", err);
-      return [];
+      throw new ProjectDataReadError(
+        "The local project data mirror is corrupted",
+        { cause: err, source: "localstorage" },
+      );
     }
   },
 

@@ -21,7 +21,7 @@ export default function AddLeak({
   setData,
   coords,
   setPage,
-  prevPage,
+  onBack,
   userProfile,
 }) {
   const { t, lang } = useLanguage();
@@ -317,8 +317,7 @@ export default function AddLeak({
           onSaved={setSavedLeak}
           isSaving={isSaving}
           coords={coords}
-          setPage={setPage}
-          prevPage={prevPage}
+          onBack={onBack}
           lastItem={data.at(-1)}
         />
       )}

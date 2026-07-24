@@ -41,7 +41,7 @@ describe("useProjectData", () => {
     });
   });
 
-  it("marks data as loaded with empty result when repository read fails", async () => {
+  it("blocks writes and retries when repository read fails", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     repositoryModule.LeakRepository.getAll.mockRejectedValueOnce(
       new Error("read failed"),
@@ -56,6 +56,27 @@ describe("useProjectData", () => {
     expect(result.current.data).toEqual([]);
     expect(result.current.dataProjectId).toBe("proj-1");
 
+    expect(result.current.loadError).toMatchObject({ message: "read failed" });
+    expect(result.current.canWrite).toBe(false);
+
+    await act(async () => {
+      await expect(result.current.save([])).rejects.toMatchObject({
+        code: "PROJECT_DATA_WRITE_BLOCKED",
+      });
+    });
+    expect(repositoryModule.LeakRepository.saveAll).not.toHaveBeenCalled();
+
+    repositoryModule.LeakRepository.getAll.mockResolvedValueOnce([
+      { id: "recovered", status: "open" },
+    ]);
+    act(() => result.current.retryLoad());
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual([
+        { id: "recovered", status: "open" },
+      ]);
+    });
+    expect(result.current.loadError).toBeNull();
     errorSpy.mockRestore();
   });
 

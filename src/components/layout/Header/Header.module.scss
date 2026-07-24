@@ -71,6 +71,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
+  min-height: 44px;
   padding: 5px 10px;
   border-radius: 12px;
   border: 1.5px solid rgba(255, 255, 255, 0.2);
@@ -136,8 +137,8 @@
 
 /* ── Settings icon ── */
 .settingsBtn {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border-radius: 8px;
   border: none;
   background: rgba(255, 255, 255, 0.1);
@@ -156,8 +157,8 @@
 }
 
 .userBtn {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 1.5px solid rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.08);

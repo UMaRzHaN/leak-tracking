@@ -265,3 +265,48 @@ button {
 .leaflet-bottom.leaflet-right {
   display: none;
 }
+
+.dataLoadError {
+  flex: 1;
+  min-height: 320px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  padding: 32px 24px;
+  text-align: center;
+
+  h1 {
+    max-width: 420px;
+    font-size: 22px;
+  }
+
+  p {
+    max-width: 520px;
+    color: var(--c-text2);
+    line-height: 1.5;
+  }
+
+  button {
+    min-height: 44px;
+    padding: 0 20px;
+    border: 0;
+    border-radius: var(--r-md);
+    background: var(--c-blue);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+  }
+}
+
+.dataLoadErrorIcon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--c-open-bg);
+  color: var(--c-open);
+  font-size: 28px;
+  font-weight: 800;
+}

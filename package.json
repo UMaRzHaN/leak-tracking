@@ -27,6 +27,7 @@
     "dev": "vite",
     "start": "vite",
     "build": "vite build",
+    "build:analyze": "vite build --mode analyze",
     "preview": "vite preview",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",

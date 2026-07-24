@@ -79,10 +79,11 @@ describe("LeakRepository.getAll (web / localStorage)", () => {
     expect(getPreservedInvalidLeakRecords(result)).toEqual([invalid]);
   });
 
-  it("returns empty array when localStorage contains corrupted JSON", async () => {
+  it("rejects corrupted localStorage instead of reporting an empty project", async () => {
     localStorage.setItem(storageKey(PROJECT.projectId), "not-json{{");
-    const result = await LeakRepository.getAll(PROJECT);
-    expect(result).toEqual([]);
+    await expect(LeakRepository.getAll(PROJECT)).rejects.toMatchObject({
+      code: "PROJECT_DATA_READ_FAILED",
+    });
   });
 
   it("applies default status='open' for records missing the field", async () => {

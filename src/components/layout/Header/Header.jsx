@@ -55,6 +55,12 @@ export default function Header({
           type="button"
           onClick={onUserProfileOpen}
           title={userName || (lang === "ru" ? "Пользователь" : "User")}
+          aria-label={
+            userName ||
+            (lang === "ru"
+              ? "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c"
+              : "User")
+          }
         >
           {userInitial || <span className={s.userIcon} aria-hidden="true" />}
         </button>
@@ -64,6 +70,9 @@ export default function Header({
           className={`${s.gpsToggle} ${gpsEnabled ? s.gpsOn : s.gpsOff}`}
           onClick={() => setGpsEnabled?.((v) => !v)}
           title={gpsEnabled ? localeTexts.gpsOnTitle : localeTexts.gpsOffTitle}
+          aria-label={
+            gpsEnabled ? localeTexts.gpsOnTitle : localeTexts.gpsOffTitle
+          }
         >
           {gpsEnabled ? (
             <>
@@ -102,6 +111,7 @@ export default function Header({
           className={s.settingsBtn}
           onClick={() => setPage("settings")}
           title={localeTexts.settings}
+          aria-label={localeTexts.settings}
         >
           ⚙
         </button>

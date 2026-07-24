@@ -123,14 +123,16 @@ export default function LocalSyncSection({ sync, lang }) {
                   {session.securityKey}
                 </strong>
                 {session.qrSvg ? (
-                  <div
+                  <img
                     className={s.localSyncQr}
-                    aria-label={
+                    alt={
                       lang === "ru"
                         ? "QR-код подключения"
                         : "Connection QR code"
                     }
-                    dangerouslySetInnerHTML={{ __html: session.qrSvg }}
+                    src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+                      session.qrSvg,
+                    )}`}
                   />
                 ) : null}
                 <button

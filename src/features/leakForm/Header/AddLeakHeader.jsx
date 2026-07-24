@@ -2,8 +2,7 @@ import PageHeader from "@/components/layout/PageHeader/PageHeader";
 import VoiceButton from "@/features/voice/VoiceButton/VoiceButton";
 
 export default function AddLeakHeader({
-  setPage,
-  prevPage,
+  onBack,
   stopVoiceInput,
   startVoiceInput,
   step,
@@ -24,9 +23,10 @@ export default function AddLeakHeader({
           : undefined
       }
       badge={hasSteps ? `${step}/${totalSteps}` : undefined}
+      backLabel={localeTexts?.buttons?.prev}
       onBack={() => {
         stopVoiceInput?.();
-        setPage(prevPage ?? "");
+        onBack?.();
       }}
       right={
         <VoiceButton

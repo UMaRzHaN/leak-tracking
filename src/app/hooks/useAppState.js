@@ -1,15 +1,83 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 
+const NAVIGATION_STATE_KEY = "leakTrackingNavigation";
+const HOME_PAGE = "";
+
+function readNavigationState(state = globalThis.history?.state) {
+  const navigation = state?.[NAVIGATION_STATE_KEY];
+  if (!navigation || typeof navigation.page !== "string") return null;
+  return {
+    page: navigation.page,
+    depth: Number.isInteger(navigation.depth) ? navigation.depth : 0,
+  };
+}
+
+function writeNavigationState(navigation, replace = false) {
+  if (!globalThis.history) return;
+  const state = {
+    ...(globalThis.history.state ?? {}),
+    [NAVIGATION_STATE_KEY]: navigation,
+  };
+  const method = replace ? "replaceState" : "pushState";
+  globalThis.history[method](state, "");
+}
+
 export function useAppState() {
+  const initialNavigationRef = useRef(
+    readNavigationState() ?? { page: HOME_PAGE, depth: 0 },
+  );
+  const navigationRef = useRef(initialNavigationRef.current);
   const [{ page, prevPage }, setPageState] = useState({
-    page: "",
-    prevPage: "",
+    page: initialNavigationRef.current.page,
+    prevPage: HOME_PAGE,
   });
   const [gpsEnabled, setGpsEnabled] = useState(true);
 
-  const setPage = useCallback((next) => {
-    setPageState(({ page: current }) => ({ page: next, prevPage: current }));
+  useEffect(() => {
+    if (!readNavigationState()) {
+      writeNavigationState(navigationRef.current, true);
+    }
+
+    const handlePopState = (event) => {
+      const current = navigationRef.current;
+      const next = readNavigationState(event.state) ?? {
+        page: HOME_PAGE,
+        depth: 0,
+      };
+      navigationRef.current = next;
+      setPageState({ page: next.page, prevPage: current.page });
+    };
+
+    globalThis.addEventListener?.("popstate", handlePopState);
+    return () => globalThis.removeEventListener?.("popstate", handlePopState);
+  }, []);
+
+  const setPage = useCallback((next, { replace = false } = {}) => {
+    const nextPage = typeof next === "string" ? next : HOME_PAGE;
+    const current = navigationRef.current;
+    if (current.page === nextPage) return;
+
+    const navigation = {
+      page: nextPage,
+      depth: replace ? current.depth : current.depth + 1,
+    };
+    writeNavigationState(navigation, replace);
+    navigationRef.current = navigation;
+    setPageState({ page: nextPage, prevPage: current.page });
+  }, []);
+
+  const goBack = useCallback((fallback = HOME_PAGE) => {
+    const current = navigationRef.current;
+    if (current.depth > 0 && globalThis.history) {
+      globalThis.history.back();
+      return;
+    }
+
+    const navigation = { page: fallback, depth: 0 };
+    writeNavigationState(navigation, true);
+    navigationRef.current = navigation;
+    setPageState({ page: fallback, prevPage: current.page });
   }, []);
 
   const {
@@ -22,6 +90,7 @@ export function useAppState() {
     page,
     prevPage,
     setPage,
+    goBack,
     gpsEnabled,
     setGpsEnabled,
     coords,

@@ -7,6 +7,11 @@ import { createHash } from "node:crypto";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 function offlineServiceWorker() {
+  const OPTIONAL_RUNTIME_ASSET = /(?:exceljs|jszip|excelExport\.worker)/i;
+
+  function shouldPrecache(entry) {
+    return !OPTIONAL_RUNTIME_ASSET.test(entry.fileName);
+  }
   return {
     name: "offline-service-worker",
     apply: "build",
@@ -15,12 +20,15 @@ function offlineServiceWorker() {
         "/",
         "/manifest.json",
         "/vema_sa_logo.jpg",
-        ...Object.values(bundle).map((entry) => `/${entry.fileName}`),
+        ...Object.values(bundle)
+          .filter(shouldPrecache)
+          .map((entry) => `/${entry.fileName}`),
       ];
       const uniqueFiles = [...new Set(files)].sort();
       const cacheVersion = createHash("sha256")
         .update(
           Object.values(bundle)
+            .filter(shouldPrecache)
             .map(
               (entry) =>
                 `${entry.fileName}:${String(entry.code ?? entry.source ?? "")}`,
@@ -79,7 +87,7 @@ self.addEventListener("fetch", (event) => {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   resolve: {
     alias: { "@": path.resolve(__dirname, "src") },
   },
@@ -93,8 +101,9 @@ export default defineConfig({
   plugins: [
     react(),
     offlineServiceWorker(),
-    visualizer({ filename: "dist/stats.html", open: false, gzipSize: true }),
-  ],
+    mode === "analyze" &&
+      visualizer({ filename: "dist/stats.html", open: false, gzipSize: true }),
+  ].filter(Boolean),
   build: {
     outDir: "dist",
     chunkSizeWarningLimit: 1000,
@@ -142,4 +151,4 @@ export default defineConfig({
       ],
     },
   },
-});
+}));

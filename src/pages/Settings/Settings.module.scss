@@ -302,13 +302,8 @@
   border-radius: var(--r-md);
   background: #fff;
   box-shadow: 0 8px 24px rgb(15 23 42 / 10%);
-  line-height: 0;
-
-  svg {
-    display: block;
-    width: 100%;
-    height: auto;
-  }
+  display: block;
+  height: auto;
 }
 
 .localSyncFields {

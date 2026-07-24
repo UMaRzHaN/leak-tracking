@@ -152,7 +152,7 @@
 
 .clearStepIcon,
 .clearAllSteps {
-  height: 34px;
+  min-height: 44px;
   padding: 0 12px;
   border-radius: var(--r-md);
   font-size: 13px;
@@ -209,7 +209,7 @@
 
 .calcShortcut button {
   flex-shrink: 0;
-  min-height: 34px;
+  min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--c-blue);
   border-radius: var(--r-sm);

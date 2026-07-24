@@ -22,6 +22,7 @@ import { useProject } from "./project/ProjectContext";
 import { useProjectData } from "./hooks/useProjectData";
 import { useAppState } from "./hooks/useAppState";
 import { useUserProfile } from "./hooks/useUserProfile";
+import { useLanguage } from "./hooks/useLanguage";
 
 import { cleanupLegacyLeaks } from "./migrations/cleanupLegacyLeaks";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
@@ -47,6 +48,32 @@ function AppLoader({ label = "Загрузка данных" }) {
       <span className="appLoaderRing" aria-hidden="true" />
       <span className="appLoaderText">{label}</span>
     </div>
+  );
+}
+
+function ProjectDataLoadError({ lang, onRetry }) {
+  const ru = lang === "ru";
+  return (
+    <section className="dataLoadError" role="alert" aria-live="assertive">
+      <span className="dataLoadErrorIcon" aria-hidden="true">
+        !
+      </span>
+      <h1>
+        {ru
+          ? "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u0440\u043e\u0447\u0438\u0442\u0430\u0442\u044c \u0434\u0430\u043d\u043d\u044b\u0435"
+          : "Data could not be read"}
+      </h1>
+      <p>
+        {ru
+          ? "\u0414\u0430\u043d\u043d\u044b\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430 \u043d\u0435 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u044b. \u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u0445\u0440\u0430\u043d\u0438\u043b\u0438\u0449\u0435 \u0438 \u043f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u0435 \u043f\u043e\u043f\u044b\u0442\u043a\u0443."
+          : "The project is not treated as empty. Writes are blocked to protect existing data. Check storage and try again."}
+      </p>
+      <button type="button" onClick={onRetry}>
+        {ru
+          ? "\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c \u0447\u0442\u0435\u043d\u0438\u0435"
+          : "Retry"}
+      </button>
+    </section>
   );
 }
 
@@ -82,12 +109,14 @@ export default function App() {
     setPage,
     gpsEnabled,
     setGpsEnabled,
+    goBack,
     coords,
     geoError,
     geoLoading,
   } = useAppState();
 
   const [sharedSearch, setSharedSearch] = useState("");
+  const { lang } = useLanguage();
   const [sharedStatusFilter, setSharedStatusFilter] = useState([]);
   const [sharedPriorityFilter, setSharedPriorityFilter] = useState([]);
   const [sharedLocationFilter, setSharedLocationFilter] = useState(null);
@@ -148,8 +177,16 @@ export default function App() {
   /* =========================
      PROJECT-AWARE DATA
   ========================= */
-  const { data, dataForPhotoGc, save, clear, dataLoaded, dataProjectId } =
-    useProjectData();
+  const {
+    data,
+    dataForPhotoGc,
+    save,
+    clear,
+    dataLoaded,
+    dataProjectId,
+    loadError,
+    retryLoad,
+  } = useProjectData();
 
   useEffect(() => {
     setSharedLocationFilter(null);
@@ -188,6 +225,7 @@ export default function App() {
   useEffect(() => {
     if (!dataLoaded) return;
     if (dataProjectId !== (activeProject?.id ?? null)) return;
+    if (loadError) return;
     if (gcRanRef.current) return;
     gcRanRef.current = true;
     gcOrphanedPhotos(dataForPhotoGc).catch((err) =>
@@ -197,6 +235,7 @@ export default function App() {
     dataForPhotoGc,
     gcOrphanedPhotos,
     dataLoaded,
+    loadError,
     dataProjectId,
     activeProject?.id,
   ]);
@@ -426,7 +465,10 @@ export default function App() {
         <Suspense fallback={<AppLoader />}>
           {!dataLoaded && <AppLoader />}
 
-          {dataLoaded && page === "" && (
+          {dataLoaded && loadError && (
+            <ProjectDataLoadError lang={lang} onRetry={retryLoad} />
+          )}
+          {dataLoaded && !loadError && page === "" && (
             <MainPage
               setPage={setPage}
               data={data}
@@ -436,21 +478,21 @@ export default function App() {
             />
           )}
 
-          {dataLoaded && page === "add" && (
+          {dataLoaded && !loadError && page === "add" && (
             <AddLeak
               data={data}
               setData={save}
               coords={coords}
               setPage={setPage}
-              prevPage={prevPage}
+              onBack={() => goBack(prevPage)}
               userProfile={userProfile}
             />
           )}
 
-          {dataLoaded && page === "settings" && (
+          {dataLoaded && !loadError && page === "settings" && (
             <Settings
               setPage={setPage}
-              prevPage={prevPage}
+              onBack={() => goBack(prevPage)}
               data={data}
               setData={save}
               clearDatabase={clear}
@@ -460,7 +502,7 @@ export default function App() {
             />
           )}
 
-          {dataLoaded && page === "db" && (
+          {dataLoaded && !loadError && page === "db" && (
             <DataBase
               data={data}
               setData={save}
@@ -472,7 +514,7 @@ export default function App() {
             />
           )}
 
-          {dataLoaded && page === "monitoring" && (
+          {dataLoaded && !loadError && page === "monitoring" && (
             <Monitoring
               data={data}
               setData={save}
@@ -486,7 +528,7 @@ export default function App() {
             />
           )}
 
-          {dataLoaded && page === "map" && (
+          {dataLoaded && !loadError && page === "map" && (
             <MapPage
               leaks={data}
               coords={coords}

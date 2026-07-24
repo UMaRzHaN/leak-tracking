@@ -36,7 +36,7 @@ import s from "./Settings.module.scss";
 
 export default function Settings({
   setPage,
-  prevPage,
+  onBack,
   data = [],
   setData,
   clearDatabase,
@@ -644,7 +644,8 @@ export default function Settings({
     <div className={s.settings}>
       <PageHeader
         title={localeTexts.title}
-        onBack={() => setPage?.(prevPage ?? "")}
+        onBack={onBack ?? (() => setPage?.(""))}
+        backLabel={lang === "ru" ? "\u041d\u0430\u0437\u0430\u0434" : "Back"}
       />
 
       <Notification

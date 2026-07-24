@@ -10,12 +10,25 @@ import s from "./PageHeader.module.scss";
  *  badge    — string (optional pill in right slot, e.g. "1/3")
  *  right    — ReactNode for right slot
  */
-export default function PageHeader({ title, subtitle, onBack, badge, right }) {
+export default function PageHeader({
+  title,
+  subtitle,
+  onBack,
+  backLabel = "Back",
+  badge,
+  right,
+}) {
   return (
     <header className={s.appBar}>
       <div className={s.left}>
         {onBack && (
-          <button className={s.backButton} type="button" onClick={onBack}>
+          <button
+            className={s.backButton}
+            type="button"
+            onClick={onBack}
+            aria-label={backLabel}
+            title={backLabel}
+          >
             ←
           </button>
         )}
