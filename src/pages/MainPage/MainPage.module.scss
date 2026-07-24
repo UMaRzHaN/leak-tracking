@@ -38,7 +38,9 @@
     background var(--t-fast),
     box-shadow var(--t-fast);
 
-  &:active { transform: scale(0.96); }
+  &:active {
+    transform: scale(0.96);
+  }
 
   &::before {
     content: "";
@@ -55,7 +57,11 @@
 
 .statActive {
   background: color-mix(in srgb, var(--accent) 12%, var(--c-surface));
-  border-color: color-mix(in srgb, var(--accent) 62%, var(--c-border)) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--accent) 62%,
+    var(--c-border)
+  ) !important;
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
@@ -116,7 +122,9 @@
   padding: 0 2px;
   line-height: 1;
   transition: color var(--t-fast);
-  &:hover { color: var(--c-text); }
+  &:hover {
+    color: var(--c-text);
+  }
 }
 
 /* ── GPS toggle ── */
@@ -144,7 +152,11 @@
 }
 
 /* ── Section ── */
-.section { display: flex; flex-direction: column; gap: 0; }
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
 
 .sectionHead {
   display: flex;
@@ -181,9 +193,21 @@
   text-align: center;
 }
 
-.emptyIcon  { font-size: 40px; line-height: 1; }
-.emptyTitle { font-size: 15px; font-weight: 600; color: var(--c-text); }
-.emptyHint  { font-size: 13px; color: var(--c-text2); max-width: 260px; line-height: 1.5; }
+.emptyIcon {
+  font-size: 40px;
+  line-height: 1;
+}
+.emptyTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+.emptyHint {
+  font-size: 13px;
+  color: var(--c-text2);
+  max-width: 260px;
+  line-height: 1.5;
+}
 
 .emptyBtn {
   margin-top: 4px;
@@ -196,5 +220,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: background var(--t-fast);
-  &:hover { background: var(--c-blue-light); }
+  &:hover {
+    background: var(--c-blue-light);
+  }
 }

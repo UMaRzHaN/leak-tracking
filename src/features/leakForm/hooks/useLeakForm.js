@@ -24,14 +24,17 @@ export function useLeakForm() {
     });
   }, []);
 
-  const handle = useCallback((key, value) => {
-    const finalValue = NUMBER_KEYS.has(key)
-      ? parseNumericInput(value)
-      : value;
+  const handle = useCallback(
+    (key, value) => {
+      const finalValue = NUMBER_KEYS.has(key)
+        ? parseNumericInput(value)
+        : value;
 
-    setForm((prev) => ({ ...prev, [key]: finalValue }));
-    setErrors((prev) => ({ ...prev, [key]: "" }));
-  }, [NUMBER_KEYS]);
+      setForm((prev) => ({ ...prev, [key]: finalValue }));
+      setErrors((prev) => ({ ...prev, [key]: "" }));
+    },
+    [NUMBER_KEYS],
+  );
 
   return useMemo(
     () => ({ form, setForm, errors, setErrors, handle, clearForm }),

@@ -4,11 +4,17 @@ import { normalizeStationName } from "./normalization";
 describe("normalizeBySynonyms", () => {
   describe("пустой ввод", () => {
     it("returns { value: null, type: null } for null", () => {
-      expect(normalizeBySynonyms(null, "component")).toEqual({ value: null, type: null });
+      expect(normalizeBySynonyms(null, "component")).toEqual({
+        value: null,
+        type: null,
+      });
     });
 
     it("returns { value: undefined, type: null } for undefined", () => {
-      expect(normalizeBySynonyms(undefined, "component")).toEqual({ value: undefined, type: null });
+      expect(normalizeBySynonyms(undefined, "component")).toEqual({
+        value: undefined,
+        type: null,
+      });
     });
   });
 
@@ -101,7 +107,10 @@ describe("normalizeBySynonyms", () => {
 
   describe("самый длинный паттерн имеет приоритет", () => {
     it("matches full phrase before short phrase", () => {
-      const { value } = normalizeBySynonyms("фланцевое соединение", "connection_type");
+      const { value } = normalizeBySynonyms(
+        "фланцевое соединение",
+        "connection_type",
+      );
       expect(value).toBe("Фланцевое соединение");
     });
   });
@@ -168,7 +177,9 @@ describe("normalizeStationName", () => {
 
   describe("обычный текст", () => {
     it("capitalizes plain words", () => {
-      expect(normalizeStationName("северный газопровод")).toBe("Северный Газопровод");
+      expect(normalizeStationName("северный газопровод")).toBe(
+        "Северный Газопровод",
+      );
     });
 
     it("handles КС in context", () => {

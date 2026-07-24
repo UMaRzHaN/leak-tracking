@@ -2,7 +2,10 @@ import { useState, useCallback } from "react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 
 export function useAppState() {
-  const [{ page, prevPage }, setPageState] = useState({ page: "", prevPage: "" });
+  const [{ page, prevPage }, setPageState] = useState({
+    page: "",
+    prevPage: "",
+  });
   const [gpsEnabled, setGpsEnabled] = useState(true);
 
   const setPage = useCallback((next) => {

@@ -1,6 +1,11 @@
 import { useRef } from "react";
 
-export function useSwipeActions({ onSwipeLeft, onSwipeRight, onSwipeMove, threshold = 60 }) {
+export function useSwipeActions({
+  onSwipeLeft,
+  onSwipeRight,
+  onSwipeMove,
+  threshold = 60,
+}) {
   const startX = useRef(0);
   const startY = useRef(0);
   const isSwiping = useRef(false);

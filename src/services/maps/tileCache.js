@@ -1,9 +1,8 @@
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { isNative } from "@/utils/platform";
+import { buildMapTileUrl } from "@/configs/mapTiles";
 const CACHE_NAME = "map-tiles-v2";
 const TILE_DIR = "map-tiles";
-const ESRI_BASE =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile";
 const MAX_MERCATOR_LAT = 85.05112878;
 const NATIVE_COUNT_KEY = "map-tiles-native-count";
 
@@ -47,7 +46,7 @@ function tileY(latitude, tileCount) {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function tileFilePath(url) {
-  const match = url.match(/\/tile\/(\d+)\/(\d+)\/(\d+)$/);
+  const match = url.match(/\/(\d+)\/(\d+)\/(\d+)(?:\.[a-z0-9]+)?(?:[?#].*)?$/i);
   if (!match) return null;
   return `${TILE_DIR}/${match[1]}/${match[2]}/${match[3]}.jpg`;
 }
@@ -67,7 +66,7 @@ export function buildTileUrls(lat, lng, minZoom, maxZoom) {
         const x = cx + dx;
         const y = cy + dy;
         if (x < 0 || y < 0 || x >= n || y >= n) continue;
-        urls.push(`${ESRI_BASE}/${z}/${y}/${x}`);
+        urls.push(buildMapTileUrl(z, y, x));
       }
     }
   }
@@ -266,7 +265,7 @@ export function buildViewportTileUrls(bounds, minZoom, maxZoom) {
       const x2 = Math.min(n - 1, Math.floor(((rangeEast + 180) / 360) * n));
       for (let x = x1; x <= x2; x++) {
         for (let y = y1; y <= y2; y++) {
-          urls.add(`${ESRI_BASE}/${z}/${y}/${x}`);
+          urls.add(buildMapTileUrl(z, y, x));
         }
       }
     }

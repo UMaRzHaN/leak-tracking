@@ -38,16 +38,32 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 @keyframes slideUp {
-  from { transform: translate(-50%, -46%); opacity: 0; }
-  to   { transform: translate(-50%, -50%); opacity: 1; }
+  from {
+    transform: translate(-50%, -46%);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, -50%);
+    opacity: 1;
+  }
 }
 @keyframes slideUpMobile {
-  from { transform: translateY(100%); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 /* ── Header ── */
@@ -59,7 +75,9 @@
   border-bottom: 1px solid var(--c-border);
   flex-shrink: 0;
 
-  @media (max-width: 640px) { padding: 16px 16px 12px; }
+  @media (max-width: 640px) {
+    padding: 16px 16px 12px;
+  }
 }
 
 .headerLeft {
@@ -99,7 +117,10 @@
   justify-content: center;
   border-radius: 6px;
   transition: all 0.15s;
-  &:hover { background: var(--c-surface2); color: var(--c-text); }
+  &:hover {
+    background: var(--c-surface2);
+    color: var(--c-text);
+  }
 }
 
 /* ── Search ── */
@@ -129,7 +150,9 @@
   outline: none;
   font-family: inherit;
 
-  &::placeholder { color: var(--c-text3); }
+  &::placeholder {
+    color: var(--c-text3);
+  }
 }
 
 .searchClear {
@@ -141,7 +164,9 @@
   padding: 2px 4px;
   border-radius: 4px;
   flex-shrink: 0;
-  &:hover { color: var(--c-text); }
+  &:hover {
+    color: var(--c-text);
+  }
 }
 
 /* ── Body ── */
@@ -174,7 +199,9 @@
 .group {
   border-bottom: 1px solid var(--c-border);
 
-  &:last-of-type { border-bottom: none; }
+  &:last-of-type {
+    border-bottom: none;
+  }
 }
 
 .groupHeader {
@@ -186,7 +213,9 @@
   user-select: none;
   transition: background 0.12s;
 
-  &:hover { background: var(--c-surface2); }
+  &:hover {
+    background: var(--c-surface2);
+  }
 }
 
 .groupLeft {
@@ -248,7 +277,7 @@
   &:hover {
     border-color: var(--c-blue);
     color: var(--c-blue);
-    background: var(--c-blue-dim, rgba(37,99,235,0.07));
+    background: var(--c-blue-dim, rgba(37, 99, 235, 0.07));
   }
 }
 
@@ -268,9 +297,13 @@
   transition: background 0.1s;
   border-top: 1px solid var(--c-border);
 
-  &:hover { background: var(--c-surface2); }
+  &:hover {
+    background: var(--c-surface2);
+  }
 
-  @media (max-width: 640px) { padding: 10px 14px; }
+  @media (max-width: 640px) {
+    padding: 10px 14px;
+  }
 }
 
 .fieldRowHidden {
@@ -292,7 +325,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
 
-  @media (max-width: 640px) { font-size: 13px; }
+  @media (max-width: 640px) {
+    font-size: 13px;
+  }
 }
 
 .fieldKey {
@@ -389,9 +424,14 @@
     border-color: var(--c-blue);
     color: var(--c-blue);
   }
-  &:disabled { opacity: 0.4; cursor: default; }
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
 
-  @media (max-width: 640px) { width: 100%; }
+  @media (max-width: 640px) {
+    width: 100%;
+  }
 }
 
 .cancelBtn,
@@ -414,13 +454,17 @@
 .cancelBtn {
   background: var(--c-border);
   color: var(--c-text);
-  &:hover { opacity: 0.8; }
+  &:hover {
+    opacity: 0.8;
+  }
 }
 
 .saveBtn {
   background: var(--c-blue, #2563eb);
   color: #fff;
-  &:hover:not(:disabled) { opacity: 0.88; }
+  &:hover:not(:disabled) {
+    opacity: 0.88;
+  }
   &:disabled {
     background: var(--c-border);
     color: var(--c-text3);

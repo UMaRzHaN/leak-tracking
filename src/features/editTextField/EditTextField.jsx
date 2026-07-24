@@ -19,30 +19,31 @@ export default function EditTextField({
   value,
   onChange,
   multiline = false,
-  numeric   = false,
-  compact   = false,
+  numeric = false,
+  compact = false,
 }) {
   const id = useId();
   // 0 is a valid numeric value — never coerce with ||
   const display = value ?? "";
-  const filled  = display !== "" && display !== null;
+  const filled = display !== "" && display !== null;
 
   const handleChange = (raw) =>
     onChange(numeric ? parseNumericInput(raw) : raw);
 
   // On blur finalise partial states: "3." → 3, "-" → ""
   const handleBlur = numeric
-    ? () => { if (value !== "" && value != null) onChange(normalizeNumber(value)); }
+    ? () => {
+        if (value !== "" && value != null) onChange(normalizeNumber(value));
+      }
     : undefined;
 
-  const rootClass = [
-    s.field,
-    compact && s.compact,
-  ].filter(Boolean).join(" ");
+  const rootClass = [s.field, compact && s.compact].filter(Boolean).join(" ");
 
   return (
     <div className={rootClass}>
-      <label className={s.label} htmlFor={id}>{label}</label>
+      <label className={s.label} htmlFor={id}>
+        {label}
+      </label>
 
       <div className={s.inputRow}>
         {multiline ? (
@@ -76,7 +77,9 @@ export default function EditTextField({
             onClick={() => onChange("")}
             aria-label="Очистить"
           >
-            <span className={s.clearInner} aria-hidden>✕</span>
+            <span className={s.clearInner} aria-hidden>
+              ✕
+            </span>
           </button>
         )}
       </div>

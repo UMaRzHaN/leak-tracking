@@ -20,7 +20,7 @@
   display: flex;
   align-items: center;
   padding: 0 14px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 .backButton {
@@ -35,7 +35,9 @@
   font-size: 22px;
   cursor: pointer;
   border-radius: 10px;
-  &:active { background: rgba(255,255,255,.15); }
+  &:active {
+    background: rgba(255, 255, 255, 0.15);
+  }
 }
 
 .appBarTitle {
@@ -132,7 +134,7 @@
   background: var(--c-blue);
   border-color: var(--c-blue);
   color: #fff;
-  box-shadow: 0 0 0 3px rgba(37,99,235,.2);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
 }
 
 /* ── Step body ── */
@@ -162,8 +164,13 @@
   transition: all var(--t-fast);
   white-space: nowrap;
 
-  &:hover { border-color: var(--c-blue); color: var(--c-blue); }
-  &:active { transform: scale(0.97); }
+  &:hover {
+    border-color: var(--c-blue);
+    color: var(--c-blue);
+  }
+  &:active {
+    transform: scale(0.97);
+  }
 }
 
 .clearAllSteps {

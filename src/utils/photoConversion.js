@@ -1,6 +1,7 @@
 /** Converts a data URI string to a Blob. Returns null for invalid input. */
 export function dataUrlToBlob(dataUrl) {
-  if (!dataUrl || typeof dataUrl !== "string" || !dataUrl.startsWith("data:")) return null;
+  if (!dataUrl || typeof dataUrl !== "string" || !dataUrl.startsWith("data:"))
+    return null;
   const matches = dataUrl.match(/^data:(.+);base64,(.*)$/);
   if (!matches) return null;
   const mime = matches[1];

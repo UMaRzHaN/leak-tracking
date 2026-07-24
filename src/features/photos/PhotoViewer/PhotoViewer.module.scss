@@ -12,8 +12,12 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ── Close button ── */
@@ -37,8 +41,12 @@
   transition: background var(--t-fast);
   z-index: 1;
 
-  &:hover  { background: rgba(255, 255, 255, 0.25); }
-  &:active { background: rgba(255, 255, 255, 0.35); }
+  &:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+  &:active {
+    background: rgba(255, 255, 255, 0.35);
+  }
 }
 
 /* ── Image wrapper (touch-action: pinch-zoom for native mobile zoom) ── */
@@ -64,8 +72,14 @@
 }
 
 @keyframes zoomIn {
-  from { transform: scale(0.88); opacity: 0; }
-  to   { transform: scale(1);    opacity: 1; }
+  from {
+    transform: scale(0.88);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 /* ── Nav arrows ── */
@@ -85,9 +99,9 @@
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   transition:
-    background  0.15s ease,
+    background 0.15s ease,
     border-color 0.15s ease,
-    transform   0.12s ease;
+    transform 0.12s ease;
   z-index: 2;
 
   &:hover {
@@ -100,8 +114,12 @@
   }
 }
 
-.navBtnLeft  { left:  10px; }
-.navBtnRight { right: 10px; }
+.navBtnLeft {
+  left: 10px;
+}
+.navBtnRight {
+  right: 10px;
+}
 
 /* ── Photo label (До / После) ── */
 .photoLabel {

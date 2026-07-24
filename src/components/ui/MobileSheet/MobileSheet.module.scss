@@ -92,7 +92,9 @@
     font-size: 14px;
     outline: none;
 
-    &::placeholder { color: var(--c-text3); }
+    &::placeholder {
+      color: var(--c-text3);
+    }
 
     &:focus {
       border-color: var(--c-blue);
@@ -138,8 +140,12 @@
 
   transition: background 0.15s ease;
 
-  &:hover  { background: var(--c-surface2); }
-  &:active { background: var(--c-border); }
+  &:hover {
+    background: var(--c-surface2);
+  }
+  &:active {
+    background: var(--c-border);
+  }
 }
 
 /* =========================
@@ -184,19 +190,25 @@
     box-shadow 0.1s ease,
     background 0.15s ease;
 
-  &:active { transform: scale(0.97); }
+  &:active {
+    transform: scale(0.97);
+  }
 }
 
 .exportGeo {
   background: var(--c-blue);
   color: #fff;
 
-  &:hover { opacity: 0.88; }
+  &:hover {
+    opacity: 0.88;
+  }
 }
 
 .exportKml {
   background: var(--c-resolved);
   color: #fff;
 
-  &:hover { opacity: 0.88; }
+  &:hover {
+    opacity: 0.88;
+  }
 }

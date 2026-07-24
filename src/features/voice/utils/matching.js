@@ -5,7 +5,10 @@
  * Returns the matched canonical string, or null if no word overlap found.
  */
 function wordScore(input, candidate) {
-  const iWords = input.toLowerCase().split(/\s+/).filter((w) => w.length >= 2);
+  const iWords = input
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length >= 2);
   const cWords = candidate
     .toLowerCase()
     .split(/[\s/]+/)

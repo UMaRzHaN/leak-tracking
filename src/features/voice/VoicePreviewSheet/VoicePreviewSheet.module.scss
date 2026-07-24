@@ -62,11 +62,15 @@
   border: 1.5px solid var(--c-border);
   background: var(--c-bg);
   cursor: pointer;
-  transition: border-color var(--t-fast), background var(--t-fast);
+  transition:
+    border-color var(--t-fast),
+    background var(--t-fast);
   text-align: left;
   width: 100%;
 
-  &:active { transform: scale(0.98); }
+  &:active {
+    transform: scale(0.98);
+  }
 
   &.checked {
     border-color: var(--c-blue);
@@ -134,8 +138,12 @@
   background: var(--c-surface2);
   color: var(--c-text);
   transition: background var(--t-fast);
-  &:hover { background: var(--c-border); }
-  &:active { transform: scale(0.97); }
+  &:hover {
+    background: var(--c-border);
+  }
+  &:active {
+    transform: scale(0.97);
+  }
 }
 
 .confirm {
@@ -148,12 +156,25 @@
   background: var(--c-blue);
   color: #fff;
   transition: opacity var(--t-fast);
-  &:hover { opacity: 0.88; }
-  &:active { transform: scale(0.97); }
-  &:disabled { opacity: 0.4; cursor: not-allowed; }
+  &:hover {
+    opacity: 0.88;
+  }
+  &:active {
+    transform: scale(0.97);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
 }
 
 @keyframes slideUp {
-  from { transform: translateY(100%); opacity: 0.6; }
-  to   { transform: translateY(0);    opacity: 1; }
+  from {
+    transform: translateY(100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }

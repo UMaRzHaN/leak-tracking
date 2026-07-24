@@ -6,7 +6,6 @@ import {
 } from "./cameraService";
 
 export const useCamera = () => {
-
   return {
     isNative,
 

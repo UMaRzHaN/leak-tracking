@@ -10,9 +10,21 @@
   gap: 12px;
 }
 
-.icon  { font-size: 52px; line-height: 1; }
-.title { font-size: 20px; font-weight: 700; color: var(--c-text); }
-.msg   { font-size: 14px; color: var(--c-text2); max-width: 320px; line-height: 1.5; }
+.icon {
+  font-size: 52px;
+  line-height: 1;
+}
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+.msg {
+  font-size: 14px;
+  color: var(--c-text2);
+  max-width: 320px;
+  line-height: 1.5;
+}
 
 .btn {
   margin-top: 8px;
@@ -25,7 +37,9 @@
   font-weight: 600;
   cursor: pointer;
   transition: background var(--t-fast);
-  &:hover { background: var(--c-blue-light); }
+  &:hover {
+    background: var(--c-blue-light);
+  }
 }
 
 .btnSecondary {
@@ -37,5 +51,7 @@
   color: var(--c-text2);
   cursor: pointer;
   transition: background var(--t-fast);
-  &:hover { background: var(--c-surface); }
+  &:hover {
+    background: var(--c-surface);
+  }
 }

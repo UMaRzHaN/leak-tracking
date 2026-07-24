@@ -12,7 +12,9 @@
   position: relative;
   transition: background var(--t-fast);
 
-  &:last-child { border-bottom: none; }
+  &:last-child {
+    border-bottom: none;
+  }
 
   &.active {
     background: var(--c-blue-dim, #eff6ff);
@@ -38,7 +40,9 @@
   opacity: 0.4;
   flex-shrink: 0;
 
-  .active & { opacity: 1; }
+  .active & {
+    opacity: 1;
+  }
 }
 
 .icon {
@@ -61,7 +65,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 
-  .active & { color: var(--c-blue); }
+  .active & {
+    color: var(--c-blue);
+  }
 }
 
 .nameInput {
@@ -126,13 +132,21 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background var(--t-fast), color var(--t-fast);
+  transition:
+    background var(--t-fast),
+    color var(--t-fast);
 
-  &:hover { background: var(--c-border); color: var(--c-text2); }
+  &:hover {
+    background: var(--c-border);
+    color: var(--c-text2);
+  }
 }
 
 .deleteBtn {
-  &:hover { background: var(--c-open-bg); color: var(--c-open); }
+  &:hover {
+    background: var(--c-open-bg);
+    color: var(--c-open);
+  }
 }
 
 .deleteBtnArmed {
@@ -147,9 +161,14 @@
   font-weight: 700;
   white-space: nowrap;
 
-  &:hover { opacity: 0.88; }
+  &:hover {
+    opacity: 0.88;
+  }
 
-  & > * { position: relative; z-index: 1; }
+  & > * {
+    position: relative;
+    z-index: 1;
+  }
 }
 
 .deleteBtnLabel {
@@ -165,6 +184,10 @@
 }
 
 @keyframes projectDeleteCountdown {
-  from { transform: scaleX(1); }
-  to   { transform: scaleX(0); }
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
 }

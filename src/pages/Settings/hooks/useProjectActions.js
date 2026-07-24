@@ -6,7 +6,6 @@ import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { PROJECT_META } from "@/configs/projects";
 import { clearMapCache } from "@/services/maps/tileCache";
 import { deleteProjectArtifacts } from "@/services/projectCleanup";
-import { renameNativeProjectFiles } from "../nativeProjectFiles";
 
 export { deleteProjectArtifacts };
 
@@ -132,34 +131,15 @@ export function useProjectActions({ setCacheInfo, notify }) {
       const result = renameProject(id, name);
       if (!result) return;
       const { oldFolderName, newFolderName } = result;
-      let folderRenameSucceeded = true;
-      let folderWasRenamed = false;
 
-      if (isNative && oldFolderName !== newFolderName) {
-        const renameResult = await renameNativeProjectFiles({
-          oldFolderName,
-          newFolderName,
-          remapLeaks: remapProjectPhotoPaths,
-        });
-        folderWasRenamed = renameResult.folderRenamed;
-        folderRenameSucceeded =
-          renameResult.folderRenamed && renameResult.dataRemapped;
-      }
-
-      if (oldFolderName !== newFolderName && (!isNative || folderWasRenamed)) {
+      // Native folder names are storage identifiers, not display names. Keep
+      // them immutable so a failed filesystem rename can never detach data or
+      // photo paths from the project. Web storage is keyed by project id, so
+      // updating its cosmetic folder name is safe.
+      if (!isNative && oldFolderName !== newFolderName) {
         applyFolderRename(id, newFolderName);
       }
-
-      notify(
-        folderRenameSucceeded ? "success" : "warning",
-        folderRenameSucceeded
-          ? lang === "ru"
-            ? "Название сохранено"
-            : "Name saved"
-          : lang === "ru"
-            ? "Имя проекта сохранено, но папку на устройстве переименовать не удалось"
-            : "Project name saved, but the device folder could not be renamed",
-      );
+      notify("success", lang === "ru" ? "Название сохранено" : "Name saved");
     },
     [applyFolderRename, lang, notify, renameProject],
   );

@@ -1002,6 +1002,44 @@ describe("mergeLeaksByFreshness", () => {
     gcSpy.mockRestore();
   });
 
+  it("clears stale project vars when an overwrite archive has no vars", async () => {
+    const existingProject = {
+      id: "project-with-stale-vars",
+      folderName: "stale-vars",
+      name: "Stale vars",
+      type: "upstream",
+    };
+    const { default: JSZip } = await import("jszip");
+    const zip = new JSZip();
+    zip.file(
+      "backup.json",
+      JSON.stringify([{ id: "incoming", status: "open" }]),
+    );
+    const blob = await zip.generateAsync({ type: "blob" });
+    localStorage.setItem(
+      `app:${existingProject.id}:vars_v1`,
+      JSON.stringify({ density: 9.9 }),
+    );
+    const getAllSpy = vi.spyOn(LeakRepository, "getAll").mockResolvedValue([]);
+    const gcSpy = vi
+      .spyOn(PhotoRepository, "gcOrphaned")
+      .mockResolvedValue(undefined);
+    const ctx = {
+      overwriteProject: vi.fn(() => true),
+      saveRef: { current: vi.fn().mockResolvedValue(undefined) },
+      activeProjectIdRef: { current: existingProject.id },
+      photoReadyRef: { current: true },
+      existingProject,
+    };
+
+    await importIntoExistingProject(blob, ctx, "overwrite");
+
+    expect(
+      localStorage.getItem(`app:${existingProject.id}:vars_v1`),
+    ).toBeNull();
+    getAllSpy.mockRestore();
+    gcSpy.mockRestore();
+  });
   it("does not switch projects when overwrite save fails", async () => {
     const existingProject = {
       id: "project-current",
@@ -1022,6 +1060,10 @@ describe("mergeLeaksByFreshness", () => {
     const saveAllSpy = vi
       .spyOn(LeakRepository, "saveAll")
       .mockRejectedValue(new Error("save failed"));
+    localStorage.setItem(
+      `app:${existingProject.id}:vars_v1`,
+      JSON.stringify({ density: 9.9 }),
+    );
     const ctx = {
       overwriteProject: vi.fn((id) => {
         ctx.activeProjectIdRef.current = id;
@@ -1039,6 +1081,9 @@ describe("mergeLeaksByFreshness", () => {
     ).rejects.toThrow("save failed");
 
     expect(ctx.overwriteProject).not.toHaveBeenCalled();
+    expect(
+      JSON.parse(localStorage.getItem(`app:${existingProject.id}:vars_v1`)),
+    ).toEqual({ density: 9.9 });
     expect(saveAllSpy).toHaveBeenCalledWith(
       expect.arrayContaining([expect.objectContaining({ id: "incoming" })]),
       {

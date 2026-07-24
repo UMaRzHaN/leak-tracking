@@ -9,8 +9,12 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .sheet {
@@ -25,8 +29,12 @@
 }
 
 @keyframes slideUp {
-  from { transform: translateY(100%); }
-  to   { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 .handle {
@@ -143,7 +151,9 @@
   align-items: center;
   justify-content: center;
 
-  &:disabled { opacity: 0.5; }
+  &:disabled {
+    opacity: 0.5;
+  }
 }
 
 .btnConfirm {
@@ -161,5 +171,8 @@
   align-items: center;
   justify-content: center;
 
-  &:disabled { opacity: 0.6; cursor: default; }
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
 }

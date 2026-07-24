@@ -33,7 +33,7 @@
 .appLabel {
   font-size: 10px;
   font-weight: 400;
-  color: rgba(255,255,255,.5);
+  color: rgba(255, 255, 255, 0.5);
   letter-spacing: 0.04em;
 }
 
@@ -50,8 +50,8 @@
 .typeBadge {
   font-size: 10px;
   font-weight: 500;
-  color: rgba(255,255,255,.7);
-  background: rgba(255,255,255,.12);
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 5px;
   padding: 2px 6px;
   margin-top: 1px;
@@ -73,12 +73,14 @@
   gap: 2px;
   padding: 5px 10px;
   border-radius: 12px;
-  border: 1.5px solid rgba(255,255,255,.2);
-  background: rgba(255,255,255,.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
   cursor: pointer;
   transition: all var(--t-fast);
 
-  &:active { transform: scale(0.96); }
+  &:active {
+    transform: scale(0.96);
+  }
 }
 
 .gpsRow {
@@ -88,13 +90,13 @@
 }
 
 .gpsOn {
-  border-color: rgba(110,231,183,.5);
-  background: rgba(5,150,105,.25);
+  border-color: rgba(110, 231, 183, 0.5);
+  background: rgba(5, 150, 105, 0.25);
 }
 
 .gpsOff {
-  border-color: rgba(255,255,255,.15);
-  background: rgba(255,255,255,.06);
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
   opacity: 0.7;
 }
 
@@ -108,21 +110,26 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.35; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
 }
 
 .gpsLabel {
   font-size: 11px;
   font-weight: 600;
-  color: rgba(255,255,255,.85);
+  color: rgba(255, 255, 255, 0.85);
   white-space: nowrap;
 }
 
 .gpsCoords {
   font-size: 9.5px;
   font-weight: 500;
-  color: rgba(255,255,255,.55);
+  color: rgba(255, 255, 255, 0.55);
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
@@ -133,8 +140,8 @@
   height: 32px;
   border-radius: 8px;
   border: none;
-  background: rgba(255,255,255,.1);
-  color: rgba(255,255,255,.8);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
   font-size: 17px;
   cursor: pointer;
   display: flex;
@@ -143,22 +150,27 @@
   transition: background var(--t-fast);
   flex-shrink: 0;
 
-  &:active { background: rgba(255,255,255,.2); }
+  &:active {
+    background: rgba(255, 255, 255, 0.2);
+  }
 }
 
 .userBtn {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 1.5px solid rgba(255,255,255,.18);
-  background: rgba(255,255,255,.08);
-  color: rgba(255,255,255,.88);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.88);
   display: grid;
   place-items: center;
   flex-shrink: 0;
   font-size: 13px;
   font-weight: 800;
-  transition: background var(--t-fast), transform var(--t-fast), border-color var(--t-fast);
+  transition:
+    background var(--t-fast),
+    transform var(--t-fast),
+    border-color var(--t-fast);
 
   &:active {
     transform: scale(0.94);
@@ -166,8 +178,8 @@
 }
 
 .userBtnActive {
-  border-color: rgba(96,165,250,.65);
-  background: rgba(37,99,235,.35);
+  border-color: rgba(96, 165, 250, 0.65);
+  background: rgba(37, 99, 235, 0.35);
 }
 
 .userIcon {

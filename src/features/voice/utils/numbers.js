@@ -1,57 +1,57 @@
 // ─── NUMBER_WORDS ───────────────────────────────────────────────────────────
 export const NUMBER_WORDS = {
   // 0–9
-  "ноль": 0,
-  "один": 1,
-  "одна": 1,
-  "одно": 1,
-  "два": 2,
-  "две": 2,
-  "три": 3,
-  "четыре": 4,
-  "пять": 5,
-  "шесть": 6,
-  "семь": 7,
-  "восемь": 8,
-  "девять": 9,
+  ноль: 0,
+  один: 1,
+  одна: 1,
+  одно: 1,
+  два: 2,
+  две: 2,
+  три: 3,
+  четыре: 4,
+  пять: 5,
+  шесть: 6,
+  семь: 7,
+  восемь: 8,
+  девять: 9,
 
   // 10–19
-  "десять": 10,
-  "одиннадцать": 11,
-  "двенадцать": 12,
-  "тринадцать": 13,
-  "четырнадцать": 14,
-  "пятнадцать": 15,
-  "шестнадцать": 16,
-  "семнадцать": 17,
-  "восемнадцать": 18,
-  "девятнадцать": 19,
+  десять: 10,
+  одиннадцать: 11,
+  двенадцать: 12,
+  тринадцать: 13,
+  четырнадцать: 14,
+  пятнадцать: 15,
+  шестнадцать: 16,
+  семнадцать: 17,
+  восемнадцать: 18,
+  девятнадцать: 19,
 
   // десятки
-  "двадцать": 20,
-  "тридцать": 30,
-  "сорок": 40,
-  "пятьдесят": 50,
-  "шестьдесят": 60,
-  "семьдесят": 70,
-  "восемьдесят": 80,
-  "девяносто": 90,
+  двадцать: 20,
+  тридцать: 30,
+  сорок: 40,
+  пятьдесят: 50,
+  шестьдесят: 60,
+  семьдесят: 70,
+  восемьдесят: 80,
+  девяносто: 90,
 
   // сотни
-  "сто": 100,
-  "двести": 200,
-  "триста": 300,
-  "четыреста": 400,
-  "пятьсот": 500,
-  "шестьсот": 600,
-  "семьсот": 700,
-  "восемьсот": 800,
-  "девятьсот": 900,
+  сто: 100,
+  двести: 200,
+  триста: 300,
+  четыреста: 400,
+  пятьсот: 500,
+  шестьсот: 600,
+  семьсот: 700,
+  восемьсот: 800,
+  девятьсот: 900,
 
   // тысячи (на будущее)
-  "тысяча": 1000,
-  "тысячи": 1000,
-  "тысяч": 1000,
+  тысяча: 1000,
+  тысячи: 1000,
+  тысяч: 1000,
 };
 
 // ─── toNumber ────────────────────────────────────────────────────────────────
@@ -70,10 +70,7 @@ export const toNumber = (v) => {
 export const parseNumberFromWords = (text) => {
   if (!text) return null;
 
-  const words = text
-    .toLowerCase()
-    .replace(/[,]/g, " ")
-    .split(/\s+/);
+  const words = text.toLowerCase().replace(/[,]/g, " ").split(/\s+/);
 
   let total = 0;
   let current = 0;
@@ -146,16 +143,14 @@ export function normalizeNumberWords(text) {
   result = result.replace(
     /([\wа-яёА-ЯЁ][\wа-яёА-ЯЁ-]*)\s+(на|дробь|x)\s+([\wа-яёА-ЯЁ][\wа-яёА-ЯЁ-]*)(?=\s|$)/g,
     (match, a, _sep, b) => {
-      const left =
-        NUMBER_WORDS[a] !== undefined ? NUMBER_WORDS[a] : a;
-      const right =
-        NUMBER_WORDS[b] !== undefined ? NUMBER_WORDS[b] : b;
+      const left = NUMBER_WORDS[a] !== undefined ? NUMBER_WORDS[a] : a;
+      const right = NUMBER_WORDS[b] !== undefined ? NUMBER_WORDS[b] : b;
 
       if (!Number.isFinite(Number(left)) || !Number.isFinite(Number(right)))
         return match;
 
       return `${left}/${right}`;
-    }
+    },
   );
 
   /* ===== ДЕСЯТИЧНЫЕ: "два и пять", "2 целых 3" ===== */
@@ -163,9 +158,7 @@ export function normalizeNumberWords(text) {
     /([\wа-яёА-ЯЁ][\wа-яёА-ЯЁ-]*)\s+(целых|и|точка)\s+([\wа-яёА-ЯЁ][\wа-яёА-ЯЁ-]*)(?=\s|$)/g,
     (match, intPart, _sep, fracPart) => {
       const a =
-        NUMBER_WORDS[intPart] !== undefined
-          ? NUMBER_WORDS[intPart]
-          : intPart;
+        NUMBER_WORDS[intPart] !== undefined ? NUMBER_WORDS[intPart] : intPart;
       const b =
         NUMBER_WORDS[fracPart] !== undefined
           ? NUMBER_WORDS[fracPart]
@@ -175,7 +168,7 @@ export function normalizeNumberWords(text) {
         return match;
 
       return `${a}.${b}`;
-    }
+    },
   );
 
   /* ===== СЛОВЕСНЫЕ ЧИСЛА ЛЮБОЙ ДЛИНЫ ===== */
@@ -184,7 +177,7 @@ export function normalizeNumberWords(text) {
     (match) => {
       const num = parseNumberFromWords(match);
       return num !== null ? String(num) : match;
-    }
+    },
   );
 
   return result;

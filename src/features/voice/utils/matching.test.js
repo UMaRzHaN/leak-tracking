@@ -33,7 +33,9 @@ describe("fuzzyMatchOption", () => {
     });
 
     it("matches reversed word order", () => {
-      expect(fuzzyMatchOption("пробковый кран", OPTIONS)).toBe("Кран Пробковый");
+      expect(fuzzyMatchOption("пробковый кран", OPTIONS)).toBe(
+        "Кран Пробковый",
+      );
     });
 
     it("matches single shared word", () => {
@@ -51,7 +53,9 @@ describe("fuzzyMatchOption", () => {
 
     it("picks best scoring option among multiple candidates", () => {
       // "обратный клапан" — 2 word matches with "Обратный Клапан", only 1 with others
-      expect(fuzzyMatchOption("обратный клапан", OPTIONS)).toBe("Обратный Клапан");
+      expect(fuzzyMatchOption("обратный клапан", OPTIONS)).toBe(
+        "Обратный Клапан",
+      );
     });
   });
 
@@ -69,7 +73,9 @@ describe("fuzzyMatchOption", () => {
   describe("сокращения после /", () => {
     it("strips all-caps abbreviation after slash", () => {
       // "Компрессорная станция/КС" — "КС" is all-caps abbreviation → stripped
-      expect(fuzzyMatchOption("компрессорная", OPTIONS)).toBe("Компрессорная станция");
+      expect(fuzzyMatchOption("компрессорная", OPTIONS)).toBe(
+        "Компрессорная станция",
+      );
     });
 
     it("does not strip when part after slash contains lowercase cyrillic", () => {

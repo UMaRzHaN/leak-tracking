@@ -2,7 +2,10 @@ import s from "./QuickActions.module.scss";
 export default function QuickActions({ setPage, setGpsEnabled, gpsEnabled }) {
   return (
     <div className={s.quickActions}>
-      <button className={`${s.qaBtn} ${s.primary}`} onClick={() => setPage("add")}>
+      <button
+        className={`${s.qaBtn} ${s.primary}`}
+        onClick={() => setPage("add")}
+      >
         <span className={s.qaIcon}>➕</span>
         <span className={s.qaText}>Добавить утечку</span>
       </button>

@@ -23,9 +23,13 @@
   border: 1.5px solid var(--c-border);
   font-family: inherit;
   outline: none;
-  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+  transition:
+    border-color var(--t-fast),
+    box-shadow var(--t-fast);
 
-  &::placeholder { color: var(--c-text3); }
+  &::placeholder {
+    color: var(--c-text3);
+  }
 
   &:focus {
     background: var(--c-surface);
@@ -64,8 +68,12 @@
   color: var(--c-text);
   cursor: pointer;
 
-  &:hover  { background: var(--c-blue-dim); }
-  &:active { background: var(--c-blue-dim); }
+  &:hover {
+    background: var(--c-blue-dim);
+  }
+  &:active {
+    background: var(--c-blue-dim);
+  }
 }
 
 .formError {
@@ -94,8 +102,12 @@
   justify-content: center;
   transition: background var(--t-fast);
 
-  &:hover  { background: var(--c-border); }
-  &:active { transform: translateY(-50%) scale(0.9); }
+  &:hover {
+    background: var(--c-border);
+  }
+  &:active {
+    transform: translateY(-50%) scale(0.9);
+  }
 }
 
 .inputWrapper {
@@ -111,5 +123,10 @@
   line-height: 1.4;
 }
 
-.isRequired .req { color: var(--c-danger); }
-.required        { color: var(--c-danger); font-weight: 700; }
+.isRequired .req {
+  color: var(--c-danger);
+}
+.required {
+  color: var(--c-danger);
+  font-weight: 700;
+}

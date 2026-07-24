@@ -1,1 +1,1 @@
-export { default } from './downstream.config';
+export { default } from "./downstream.config";

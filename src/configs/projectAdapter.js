@@ -31,13 +31,15 @@ export function getProjectCapabilities(project) {
   const excelKeys = config.export.excel.keysOrder;
 
   return {
-    hasCategory:             fields.some((f) => f.key === "category"),
-    hasLeakCauseField:       fields.some((f) => f.key === "leak_cause"),
+    hasCategory: fields.some((f) => f.key === "category"),
+    hasLeakCauseField: fields.some((f) => f.key === "leak_cause"),
     hasMeasurementEquipment: excelKeys.includes("equipmentType"),
-    hasVoice:                Boolean(config.voice),
-    canExportExcel:          config.export.excel.direction.includes("export"),
-    canImportExcel:          config.export.excel.direction.includes("import"),
-    locationDepth:           [location.main, location.secondary, location.last].filter(Boolean).length,
+    hasVoice: Boolean(config.voice),
+    canExportExcel: config.export.excel.direction.includes("export"),
+    canImportExcel: config.export.excel.direction.includes("import"),
+    locationDepth: [location.main, location.secondary, location.last].filter(
+      Boolean,
+    ).length,
   };
 }
 
@@ -60,21 +62,25 @@ export function getProjectFields(project) {
   const config = resolveConfig(project);
   const { fields, location, search, copyable, numeric } = config.system;
 
-  const locationKeys = new Set([location.main, location.secondary, location.last]);
+  const locationKeys = new Set([
+    location.main,
+    location.secondary,
+    location.last,
+  ]);
 
   return {
-    all:            fields,
-    viewable:       fields.filter((f) => f.viewable),
-    editable:       fields.filter((f) => f.editable),
+    all: fields,
+    viewable: fields.filter((f) => f.viewable),
+    editable: fields.filter((f) => f.editable),
     copyable,
     numeric,
     search,
     location: {
-      main:      location.main,
+      main: location.main,
       secondary: location.secondary,
-      last:      location.last,
+      last: location.last,
       mainLabel: location.main_label,
-      label:     location.label,
+      label: location.label,
     },
     locationFields: fields.filter((f) => locationKeys.has(f.key)),
   };
@@ -96,12 +102,12 @@ export function getProjectValidation(project) {
   const { location, numeric } = config.system;
 
   return {
-    required:    [location.main, location.secondary].filter(Boolean),
+    required: [location.main, location.secondary].filter(Boolean),
     numericKeys: numeric.map((f) => f.key),
     location: {
-      main:      location.main,
+      main: location.main,
       secondary: location.secondary,
-      last:      location.last,
+      last: location.last,
     },
   };
 }
@@ -125,19 +131,19 @@ export function getProjectMapBehavior(project) {
 
   return {
     groupByField: location.secondary,
-    groupLabel:   location.label,
+    groupLabel: location.label,
     locationHierarchy: {
-      main:      location.main,
+      main: location.main,
       secondary: location.secondary,
-      last:      location.last,
+      last: location.last,
       mainLabel: location.main_label,
-      label:     location.label,
+      label: location.label,
     },
     kmlPopupFields: [
-      { key: location.main,      label: location.main_label },
+      { key: location.main, label: location.main_label },
       { key: location.secondary, label: location.label },
-      { key: "component",        label: "Компонент" },
-      { key: "leak_speed",       label: "Скорость утечки, л/мин" },
+      { key: "component", label: "Компонент" },
+      { key: "leak_speed", label: "Скорость утечки, л/мин" },
     ],
     markerPopupFields: [
       location.main,

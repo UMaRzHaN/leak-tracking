@@ -114,7 +114,9 @@
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  transition: background var(--t-fast), transform var(--t-fast);
+  transition:
+    background var(--t-fast),
+    transform var(--t-fast);
 }
 
 .localeSwitchButton:active {

@@ -10,7 +10,9 @@
   position: relative;
   transition: background var(--t-fast);
 
-  &:last-child { border-bottom: none; }
+  &:last-child {
+    border-bottom: none;
+  }
 
   &:focus-within {
     background: var(--c-blue-dim);
@@ -19,7 +21,9 @@
 
 [data-theme="dark"] .field {
   border-bottom-color: #3d5166;
-  &:focus-within { background: rgba(37, 99, 235, 0.12); }
+  &:focus-within {
+    background: rgba(37, 99, 235, 0.12);
+  }
 }
 
 /* ── Compact: standalone rounded card (params grid / coord pair) ── */
@@ -55,7 +59,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
 
-  .field:focus-within & { color: var(--c-blue); }
+  .field:focus-within & {
+    color: var(--c-blue);
+  }
 }
 
 /* ── Input row ── */
@@ -103,7 +109,7 @@
   flex-shrink: 0;
   width: 40px;
   height: 40px;
-  margin: -8px -6px -8px 0;    /* expand tap area beyond visual bounds */
+  margin: -8px -6px -8px 0; /* expand tap area beyond visual bounds */
   border: none;
   background: transparent;
   cursor: pointer;
@@ -124,7 +130,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background var(--t-fast), color var(--t-fast);
+  transition:
+    background var(--t-fast),
+    color var(--t-fast);
   pointer-events: none;
 
   .clear:active & {

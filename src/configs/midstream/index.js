@@ -1,1 +1,1 @@
-export { default } from './midstream.config';
+export { default } from "./midstream.config";

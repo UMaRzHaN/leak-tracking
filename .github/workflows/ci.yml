@@ -25,6 +25,8 @@ jobs:
 
       - name: Run lint
         run: npm run lint
+      - name: Check formatting
+        run: npm run format:check
 
       - name: Run tests with coverage
         run: npm run test:coverage
@@ -87,6 +89,9 @@ jobs:
 
       - name: Run browser smoke tests
         run: npm run test:e2e
+
+      - name: Run production offline smoke test
+        run: npm run test:e2e:offline
 
       - name: Upload Playwright report
         if: failure()

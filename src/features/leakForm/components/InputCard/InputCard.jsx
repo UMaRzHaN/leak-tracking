@@ -17,18 +17,20 @@ export default function InputCard({
   hint,
 }) {
   const isTextarea = as === "textarea";
-  const isNumber   = type === "number";
-  const hasValue   = value != null && value !== "" && String(value).length > 0;
+  const isNumber = type === "number";
+  const hasValue = value != null && value !== "" && String(value).length > 0;
 
-  const inputId  = useId();
+  const inputId = useId();
   const inputRef = useRef(null);
 
   const className = [
     s.field,
-    hasValue  && s.hasValue,
-    required  && s.isRequired,
-    error     && s.hasError,
-  ].filter(Boolean).join(" ");
+    hasValue && s.hasValue,
+    required && s.isRequired,
+    error && s.hasError,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div className={className}>
@@ -62,8 +64,19 @@ export default function InputCard({
             enterKeyHint="next"
             value={value ?? ""}
             placeholder={placeholder ?? ""}
-            onChange={(e) => onChange(isNumber ? parseNumericInput(e.target.value) : e.target.value)}
-            onBlur={isNumber ? () => { if (value !== "" && value != null) onChange(normalizeNumber(value)); } : undefined}
+            onChange={(e) =>
+              onChange(
+                isNumber ? parseNumericInput(e.target.value) : e.target.value,
+              )
+            }
+            onBlur={
+              isNumber
+                ? () => {
+                    if (value !== "" && value != null)
+                      onChange(normalizeNumber(value));
+                  }
+                : undefined
+            }
           />
         )}
 
@@ -73,7 +86,10 @@ export default function InputCard({
             className={s.clearBtn}
             tabIndex={-1}
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => { onChange(""); inputRef.current?.focus(); }}
+            onClick={() => {
+              onChange("");
+              inputRef.current?.focus();
+            }}
             aria-label="Очистить"
           >
             ✕

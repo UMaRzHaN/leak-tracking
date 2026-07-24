@@ -8,6 +8,7 @@ import { getTileBlobUrl, cacheTile } from "@/services/maps/tileCache";
 import { logger } from "@/utils/logger";
 import { STATUS_META, getStatusMeta } from "@/utils/status";
 import { assignTileSource, releaseTileResources } from "./tileLifecycle";
+import { TILE_ATTRIBUTION, TILE_URL_TEMPLATE } from "@/configs/mapTiles";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -275,14 +276,10 @@ export function createOfflineMap(
   let destroyed = false;
   let heatmapLayer = null;
 
-  new CachedTileLayer(
-    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    {
-      maxZoom: 19,
-      attribution:
-        '© <a href="https://www.esri.com">Esri</a> - Esri, USGS, NOAA',
-    },
-  ).addTo(map);
+  new CachedTileLayer(TILE_URL_TEMPLATE, {
+    maxZoom: 19,
+    attribution: TILE_ATTRIBUTION,
+  }).addTo(map);
 
   const markersLayer = L.markerClusterGroup({
     maxClusterRadius: 48,

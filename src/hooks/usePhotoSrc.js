@@ -25,28 +25,40 @@ export function usePhotoSrc(path, version = 0) {
     }
 
     const withVersion = (url) =>
-      url.startsWith("data:") || url.startsWith("blob:") ? url : `${url}?v=${version}`;
+      url.startsWith("data:") || url.startsWith("blob:")
+        ? url
+        : `${url}?v=${version}`;
 
     /* =======================
        🌐 WEB
     ======================= */
     if (!isNative) {
       if (path.startsWith("idb://")) {
-        if (!ready) { setSrc(null); return cleanup; }
+        if (!ready) {
+          setSrc(null);
+          return cleanup;
+        }
 
-        getPhoto(path.replace("idb://", "")).then((data) => {
-          if (!alive) return;
-          if (!data) { setSrc(null); return; }
+        getPhoto(path.replace("idb://", ""))
+          .then((data) => {
+            if (!alive) return;
+            if (!data) {
+              setSrc(null);
+              return;
+            }
 
-          if (data instanceof Blob) {
-            // New storage: Blob → Object URL (GC'd via cleanup)
-            blobUrl = URL.createObjectURL(data);
-            setSrc(blobUrl);
-          } else {
-            // Legacy storage: data URI string — use directly
-            setSrc(withVersion(data));
-          }
-        }).catch(() => { if (alive) setSrc(null); });
+            if (data instanceof Blob) {
+              // New storage: Blob → Object URL (GC'd via cleanup)
+              blobUrl = URL.createObjectURL(data);
+              setSrc(blobUrl);
+            } else {
+              // Legacy storage: data URI string — use directly
+              setSrc(withVersion(data));
+            }
+          })
+          .catch(() => {
+            if (alive) setSrc(null);
+          });
 
         return cleanup;
       }
@@ -64,10 +76,14 @@ export function usePhotoSrc(path, version = 0) {
        📱 NATIVE
        Поддерживаем как новый формат data:// так и старый Documents/
     ======================= */
-    getPhotoSrc(path).then((result) => {
-      if (!alive) return;
-      setSrc(result ? withVersion(result) : null);
-    }).catch(() => { if (alive) setSrc(null); });
+    getPhotoSrc(path)
+      .then((result) => {
+        if (!alive) return;
+        setSrc(result ? withVersion(result) : null);
+      })
+      .catch(() => {
+        if (alive) setSrc(null);
+      });
 
     return cleanup;
   }, [path, version, ready, getPhoto]);

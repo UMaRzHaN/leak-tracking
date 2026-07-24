@@ -52,9 +52,13 @@
   outline: none;
   transition: border-color 0.15s ease;
 
-  &:focus { border-color: #3b82f6; }
+  &:focus {
+    border-color: #3b82f6;
+  }
 
-  &::placeholder { color: #9ca3af; }
+  &::placeholder {
+    color: #9ca3af;
+  }
 }
 
 .hint {
@@ -101,7 +105,10 @@
   font-size: 14px;
   transition: all 0.15s ease;
 
-  &:hover { border-color: #93c5fd; background: #f0f9ff; }
+  &:hover {
+    border-color: #93c5fd;
+    background: #f0f9ff;
+  }
 
   &.selected {
     border-color: #0d47a1;
@@ -114,7 +121,9 @@
   font-weight: 600;
   color: #1f2937;
 
-  .selected & { color: #0d47a1; }
+  .selected & {
+    color: #0d47a1;
+  }
 }
 
 .typeDesc {
@@ -144,7 +153,9 @@
   cursor: pointer;
   transition: background 0.15s;
 
-  &:hover { background: #f3f4f6; }
+  &:hover {
+    background: #f3f4f6;
+  }
 }
 
 .createBtn {
@@ -158,7 +169,12 @@
   cursor: pointer;
   transition: background 0.15s;
 
-  &:hover:not(:disabled) { background: #1565c0; }
+  &:hover:not(:disabled) {
+    background: #1565c0;
+  }
 
-  &:disabled { opacity: 0.45; cursor: not-allowed; }
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
 }

@@ -58,7 +58,9 @@
   font-weight: 500;
   border: none;
   cursor: pointer;
-  transition: transform 0.08s ease, background 0.15s ease;
+  transition:
+    transform 0.08s ease,
+    background 0.15s ease;
 
   &:active {
     transform: scale(0.97);

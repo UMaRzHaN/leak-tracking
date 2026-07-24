@@ -38,6 +38,7 @@ import {
   assertImportFileSize,
 } from "@/utils/importLimits";
 import { rollbackImportedProject } from "@/services/projectCleanup";
+import { logger } from "@/utils/logger";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const EXPORT_YIELD_EVERY = 25;
@@ -1232,6 +1233,10 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     meta?.vars &&
     (incomingSyncState?.varsUpdatedAt ?? 0) > localSyncState.varsUpdatedAt;
   const localSettings = readProjectSettings(existingProjectId);
+  const localMonitoringRound = readMonitoringRound(existingProjectId);
+  const localVarsRaw = localStorage.getItem(
+    STORAGE_KEYS.PROJECT_VARS(existingProjectId),
+  );
   const incomingSettings = meta?.settings ?? null;
   const hasIncomingSettings = Boolean(incomingSettings);
   const shouldApplyIncomingSettings =
@@ -1249,6 +1254,10 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
   }
 
   await waitForPhotoStorage(photoReadyRef);
+  const existing = await LeakRepository.getAll({
+    projectId: existingProjectId,
+    folderName: existingFolderName,
+  });
 
   // The selected archive can target a project other than the currently active
   // one. Using savePhotoRef here would bind restored photos to the active
@@ -1275,10 +1284,6 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
   let nextMonitoringRound = null;
 
   if (isMerge) {
-    const existing = await LeakRepository.getAll({
-      projectId: existingProjectId,
-      folderName: existingFolderName,
-    });
     const incomingToApply = filterIncomingLeaksForMerge(
       existing,
       isSync ? applyProjectTombstones(leaks, mergedSyncState) : leaks,
@@ -1326,68 +1331,109 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     nextMonitoringRound = getRestoredMonitoringRound(meta, finalLeaks);
   }
 
-  if (activeProjectIdRef.current === existingProjectId) {
-    await saveRef.current(finalLeaks);
-  } else {
-    await LeakRepository.saveAll(finalLeaks, {
+  try {
+    // Apply metadata before committing leak data. If the commit fails, restore
+    // the captured project snapshot so the import remains all-or-nothing.
+    if (mode === "overwrite") {
+      if (vars) {
+        localStorage.setItem(
+          STORAGE_KEYS.PROJECT_VARS(existingProjectId),
+          JSON.stringify(vars),
+        );
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(existingProjectId));
+      }
+      saveMonitoringRound(existingProjectId, nextMonitoringRound);
+    } else if (isSync) {
+      if (shouldApplyIncomingVars) {
+        localStorage.setItem(
+          STORAGE_KEYS.PROJECT_VARS(existingProjectId),
+          JSON.stringify(meta.vars),
+        );
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("project-vars-updated", {
+              detail: { projectId: existingProjectId },
+            }),
+          );
+        }
+      }
+      saveMonitoringRound(existingProjectId, nextMonitoringRound);
+      writeProjectSyncState(
+        existingProjectId,
+        mergeProjectSyncStates(
+          readProjectSyncState(existingProjectId),
+          mergedSyncState,
+        ),
+        finalLeaks,
+      );
+    }
+
+    if (shouldApplyIncomingSettings) {
+      if (incomingSettings) {
+        writeProjectSettings(existingProjectId, incomingSettings);
+      } else {
+        clearProjectSettings(existingProjectId, { emit: true });
+      }
+    }
+
+    if (activeProjectIdRef.current === existingProjectId) {
+      await saveRef.current(finalLeaks);
+    } else {
+      await LeakRepository.saveAll(finalLeaks, {
+        projectId: existingProjectId,
+        folderName: existingFolderName,
+      });
+    }
+  } catch (error) {
+    if (localVarsRaw == null) {
+      localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(existingProjectId));
+    } else {
+      localStorage.setItem(
+        STORAGE_KEYS.PROJECT_VARS(existingProjectId),
+        localVarsRaw,
+      );
+    }
+    writeProjectSettings(existingProjectId, localSettings);
+    saveMonitoringRound(existingProjectId, localMonitoringRound);
+    writeProjectSyncState(existingProjectId, localSyncState, existing);
+
+    await PhotoRepository.gcOrphaned(existing, {
       projectId: existingProjectId,
       folderName: existingFolderName,
-    });
+    }).catch(() => {});
+    throw error;
   }
+
+  // Data is committed. Cleanup failure must not turn a successful import into
+  // a false "Import error"; orphan cleanup can be retried later.
   await PhotoRepository.gcOrphaned(finalLeaks, {
     projectId: existingProjectId,
     folderName: existingFolderName,
+  }).catch((error) => {
+    logger.warn(
+      "[projectBackupService] Imported data, but orphaned photos could not be removed:",
+      error,
+    );
   });
-
   if (activeProjectIdRef.current !== existingProjectId) {
     const switched = overwriteProject(existingProjectId);
-    if (!switched) {
-      throw new Error("Не удалось переключиться на перезаписанный проект");
-    }
-    await waitForProjectActivation(activeProjectIdRef, existingProjectId);
-  }
-
-  if (mode === "overwrite") {
-    if (vars) {
-      localStorage.setItem(
-        STORAGE_KEYS.PROJECT_VARS(existingProjectId),
-        JSON.stringify(vars),
-      );
-    }
-    saveMonitoringRound(existingProjectId, nextMonitoringRound);
-  } else if (isSync) {
-    if (shouldApplyIncomingVars) {
-      localStorage.setItem(
-        STORAGE_KEYS.PROJECT_VARS(existingProjectId),
-        JSON.stringify(meta.vars),
-      );
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent("project-vars-updated", {
-            detail: { projectId: existingProjectId },
-          }),
+    if (switched) {
+      await waitForProjectActivation(
+        activeProjectIdRef,
+        existingProjectId,
+      ).catch((error) => {
+        logger.warn(
+          "[projectBackupService] Data was imported, but project activation was not observed:",
+          error,
         );
-      }
-    }
-    saveMonitoringRound(existingProjectId, nextMonitoringRound);
-    writeProjectSyncState(
-      existingProjectId,
-      mergeProjectSyncStates(
-        readProjectSyncState(existingProjectId),
-        mergedSyncState,
-      ),
-      finalLeaks,
-    );
-  }
-
-  if (shouldApplyIncomingSettings) {
-    if (incomingSettings) {
-      writeProjectSettings(existingProjectId, incomingSettings);
+      });
     } else {
-      clearProjectSettings(existingProjectId, { emit: true });
+      logger.warn(
+        "[projectBackupService] Data was imported, but the target project could not be activated.",
+      );
     }
   }
-
   const syncedProject = shouldAdoptSyncId
     ? setProjectSyncId(existingProjectId, incomingSyncId)
     : existingProject;

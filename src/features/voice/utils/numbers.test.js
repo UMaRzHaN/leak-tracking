@@ -11,7 +11,9 @@ describe("normalizeNumberWords", () => {
     });
 
     it("leaves already-numeric text unchanged", () => {
-      expect(normalizeNumberWords("скорость 5 давление 10")).toBe("скорость 5 давление 10");
+      expect(normalizeNumberWords("скорость 5 давление 10")).toBe(
+        "скорость 5 давление 10",
+      );
     });
   });
 
@@ -81,13 +83,17 @@ describe("normalizeNumberWords", () => {
 
   describe("смешанный текст", () => {
     it("converts numbers within mixed text", () => {
-      const result = normalizeNumberWords("скорость два целых семь давление пятнадцать");
+      const result = normalizeNumberWords(
+        "скорость два целых семь давление пятнадцать",
+      );
       expect(result).toContain("2.7");
       expect(result).toContain("15");
     });
 
     it("preserves non-numeric words around numbers", () => {
-      const result = normalizeNumberWords("бирка сто двадцать три станция кс-5");
+      const result = normalizeNumberWords(
+        "бирка сто двадцать три станция кс-5",
+      );
       expect(result).toContain("123");
       expect(result).toContain("станция кс-5");
     });
