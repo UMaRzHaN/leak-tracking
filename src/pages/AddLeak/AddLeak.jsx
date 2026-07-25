@@ -23,11 +23,13 @@ export default function AddLeak({
   setPage,
   onBack,
   userProfile,
+  projectId,
 }) {
   const { t, lang } = useLanguage();
   const { form, setForm } = useLeakFormContext();
   const { savePhoto, ready: photoReady } = usePhotoStorage();
-  const { saveDraft, loadDraft, clearDraft, hasDraft } = useFormDraft();
+  const { saveDraft, loadDraft, clearDraft, hasDraft } =
+    useFormDraft(projectId);
   const { isSaving, run } = useSafeSave();
   const [draftPrompt, setDraftPrompt] = useState(false);
   const [notification, setNotification] = useState(null);

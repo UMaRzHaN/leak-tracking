@@ -5,6 +5,9 @@ const CACHE_NAME = "map-tiles-v2";
 const TILE_DIR = "map-tiles";
 const MAX_MERCATOR_LAT = 85.05112878;
 const NATIVE_COUNT_KEY = "map-tiles-native-count";
+const METADATA_KEY = "map-tiles-metadata-v1";
+export const MAX_TILE_CACHE_ENTRIES = 6_000;
+const TILE_CACHE_EVICTION_TARGET = 5_400;
 
 const webSupported = typeof caches !== "undefined";
 
@@ -20,6 +23,46 @@ function incrementNativeCount() {
 }
 function resetNativeCount() {
   localStorage.removeItem(NATIVE_COUNT_KEY);
+}
+
+function readMetadata() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(METADATA_KEY) ?? "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeMetadata(metadata) {
+  try {
+    localStorage.setItem(METADATA_KEY, JSON.stringify(metadata));
+  } catch {
+    // Cache remains usable when localStorage is unavailable.
+  }
+}
+
+function touchMetadata(key) {
+  const metadata = readMetadata();
+  metadata[key] = Date.now();
+  writeMetadata(metadata);
+}
+
+function removeMetadata(keys) {
+  const metadata = readMetadata();
+  keys.forEach((key) => delete metadata[key]);
+  writeMetadata(metadata);
+}
+
+function oldestKeys(keys, metadata, count) {
+  return [...keys]
+    .sort(
+      (left, right) =>
+        Number(metadata[left] ?? 0) - Number(metadata[right] ?? 0),
+    )
+    .slice(0, count);
 }
 
 function clampLatitude(value) {
@@ -134,6 +177,7 @@ async function nativeRead(url) {
       path,
       directory: Directory.Data,
     });
+    touchMetadata(path);
     return base64ToObjectUrl(data);
   } catch {
     return null;
@@ -160,6 +204,7 @@ async function nativeWrite(url, skipMkdir = false) {
       data: base64,
       directory: Directory.Data,
     });
+    touchMetadata(path);
     return true;
   } catch {
     return false;
@@ -168,6 +213,56 @@ async function nativeWrite(url, skipMkdir = false) {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+async function enforceWebQuota(cache) {
+  let metadata = readMetadata();
+  let requests = null;
+  if (localStorage.getItem(METADATA_KEY) == null) {
+    requests = await cache.keys();
+    metadata = Object.fromEntries(
+      requests.map((request) => [request.url, metadata[request.url] ?? 0]),
+    );
+    writeMetadata(metadata);
+  }
+  if (Object.keys(metadata).length <= MAX_TILE_CACHE_ENTRIES) return;
+
+  requests ??= await cache.keys();
+  const byUrl = new Map(requests.map((request) => [request.url, request]));
+  const victims = oldestKeys(
+    byUrl.keys(),
+    metadata,
+    requests.length - TILE_CACHE_EVICTION_TARGET,
+  );
+  await Promise.all(victims.map((url) => cache.delete(byUrl.get(url))));
+  removeMetadata(victims);
+}
+
+async function enforceNativeQuota() {
+  const count = getNativeCount();
+  if (count <= MAX_TILE_CACHE_ENTRIES) return;
+  const metadata = readMetadata();
+  const paths = Object.keys(metadata);
+  const removeCount = count - TILE_CACHE_EVICTION_TARGET;
+
+  // Legacy caches only stored a count, so their files cannot be evicted safely.
+  if (paths.length < removeCount) {
+    await clearMapCache();
+    return;
+  }
+
+  const victims = oldestKeys(paths, metadata, removeCount);
+  await Promise.all(
+    victims.map((path) =>
+      Filesystem.deleteFile({ path, directory: Directory.Data }).catch(
+        () => {},
+      ),
+    ),
+  );
+  removeMetadata(victims);
+  localStorage.setItem(
+    NATIVE_COUNT_KEY,
+    String(Math.max(0, count - victims.length)),
+  );
+}
 export async function getTileBlobUrl(url) {
   if (isNative) return nativeRead(url);
   if (!webSupported) return null;
@@ -175,6 +270,7 @@ export async function getTileBlobUrl(url) {
     const cache = await caches.open(CACHE_NAME);
     const response = await cache.match(url);
     if (!response) return null;
+    touchMetadata(url);
     return URL.createObjectURL(await response.blob());
   } catch {
     return null;
@@ -184,15 +280,26 @@ export async function getTileBlobUrl(url) {
 export async function cacheTile(url, prefetchedResponse = null) {
   if (isNative) {
     const saved = await nativeWrite(url);
-    if (saved) incrementNativeCount();
+    if (saved) {
+      incrementNativeCount();
+      await enforceNativeQuota();
+    }
     return;
   }
   if (!webSupported) return;
   try {
     const cache = await caches.open(CACHE_NAME);
-    if (await cache.match(url)) return;
+    if (await cache.match(url)) {
+      touchMetadata(url);
+      await enforceWebQuota(cache);
+      return;
+    }
     const response = prefetchedResponse ?? (await fetch(url, { mode: "cors" }));
-    if (response.ok) await cache.put(url, response);
+    if (response.ok) {
+      await cache.put(url, response);
+      touchMetadata(url);
+      await enforceWebQuota(cache);
+    }
   } catch {
     // ignore
   }
@@ -227,9 +334,11 @@ export async function clearMapCache() {
       // already empty
     }
     resetNativeCount();
+    localStorage.removeItem(METADATA_KEY);
     return;
   }
   if (webSupported) await caches.delete(CACHE_NAME);
+  localStorage.removeItem(METADATA_KEY);
 }
 
 export function buildViewportTileUrls(bounds, minZoom, maxZoom) {
@@ -356,6 +465,7 @@ export async function preloadUrls(
           const response = await fetchWithTimeout(url);
           if (response.ok) {
             await webCache.put(url, response);
+            touchMetadata(url);
             stats.saved++;
           } else {
             stats.failed++;
@@ -382,6 +492,9 @@ export async function preloadUrls(
 
   if (isNative && localSaved > 0) {
     localStorage.setItem(NATIVE_COUNT_KEY, getNativeCount() + localSaved);
+    await enforceNativeQuota();
+  } else if (webCache && stats.saved > 0) {
+    await enforceWebQuota(webCache);
   }
 
   return stats;

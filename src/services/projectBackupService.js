@@ -28,7 +28,7 @@ import {
 import { normalizeProjectVarsUnits } from "@/utils/projectVars";
 import {
   applyProjectTombstones,
-  getLeakSyncIdentity,
+  getLeakMergeIdentity,
   mergeProjectSyncStates,
   readProjectSyncState,
   writeProjectSyncState,
@@ -265,7 +265,7 @@ function parseTime(value) {
 }
 
 function getLeakIdentity(leak) {
-  return getLeakSyncIdentity(leak);
+  return getLeakMergeIdentity(leak);
 }
 
 function getLeakFreshness(leak) {

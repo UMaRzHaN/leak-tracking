@@ -3,6 +3,8 @@ import {
   applyProjectTombstones,
   getLeakSyncFreshness,
   getLeakSyncIdentity,
+  getLeakSyncIdentities,
+  getLeakMergeIdentity,
   markProjectVarsUpdated,
   mergeProjectSyncStates,
   normalizeProjectSyncState,
@@ -38,19 +40,35 @@ describe("projectSyncState", () => {
     });
   });
 
-  it("prefers tag identity and falls back to internal id", () => {
-    expect(getLeakSyncIdentity({ id: "internal", leak_id: 42 })).toBe("tag:42");
+  it("prefers internal id and uses the tag only for legacy records", () => {
+    expect(getLeakSyncIdentity({ id: "internal", leak_id: 42 })).toBe(
+      "id:internal",
+    );
     expect(getLeakSyncIdentity({ id: "internal" })).toBe("id:internal");
     expect(getLeakSyncIdentity({ id: "internal", leak_id: "   " })).toBe(
       "id:internal",
     );
-    expect(getLeakSyncIdentity({ id: "internal", leak_id: " TAG-1 " })).toBe(
-      "tag:TAG-1",
-    );
+    expect(getLeakSyncIdentity({ leak_id: " TAG-1 " })).toBe("tag:TAG-1");
     expect(getLeakSyncIdentity({})).toBeNull();
     expect(getLeakSyncIdentity(null)).toBeNull();
+    expect(getLeakMergeIdentity({ id: "internal", leak_id: " TAG-1 " })).toBe(
+      "tag:TAG-1",
+    );
   });
 
+  it("keeps legacy tag tombstones effective for records that now have ids", () => {
+    const leak = { id: "internal", leak_id: "TAG-1", updatedAt: 100 };
+
+    expect(getLeakSyncIdentities(leak)).toEqual(["id:internal", "tag:TAG-1"]);
+    expect(
+      applyProjectTombstones([leak], { deleted: { "tag:TAG-1": 200 } }),
+    ).toEqual([]);
+    expect(
+      applyProjectTombstones([{ ...leak, updatedAt: 250 }], {
+        deleted: { "tag:TAG-1": 200 },
+      }),
+    ).toHaveLength(1);
+  });
   it("uses the freshest lifecycle, history, or monitoring timestamp", () => {
     const leak = {
       createdAt: 100,

@@ -133,6 +133,8 @@ export default function LeakForm({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const pendingKeysRef = useRef([]);
   const topRef = useRef(null);
+  const stopVoiceInputRef = useRef(null);
+  const saveRef = useRef(null);
 
   useEffect(() => {
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -187,11 +189,11 @@ export default function LeakForm({
 
   /* Clear */
   const clearForm = useCallback(() => {
-    stopVoiceInput?.(); // eslint-disable-line no-use-before-define
+    stopVoiceInputRef.current?.();
     setForm({});
     setErrors({});
     setStep(1);
-  }, [setForm, setErrors]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [setForm, setErrors]);
 
   const handleClearStep = useCallback(() => {
     const currentStep = STEPS[step - 1];
@@ -218,11 +220,10 @@ export default function LeakForm({
     (command) => {
       if (command === "next") nextStep();
       else if (command === "back") prevStep();
-      else if (command === "save")
-        save(); // eslint-disable-line no-use-before-define
+      else if (command === "save") saveRef.current?.();
       else if (command === "clear") clearForm();
     },
-    [nextStep, prevStep, clearForm], // eslint-disable-line react-hooks/exhaustive-deps
+    [nextStep, prevStep, clearForm],
   );
 
   const {
@@ -231,6 +232,10 @@ export default function LeakForm({
     startVoiceInput,
     stopVoiceInput,
   } = useVoiceControl({ step, steps: STEPS, onCommand: handleVoiceCommand });
+
+  useEffect(() => {
+    stopVoiceInputRef.current = stopVoiceInput;
+  }, [stopVoiceInput]);
 
   const handleVoiceConfirm = useCallback(
     (confirmedData) => {
@@ -265,7 +270,6 @@ export default function LeakForm({
     [NUMBER_KEYS, vars, onAdd, clearForm, onSaved],
   );
 
-  // eslint-disable-next-line no-inner-declarations
   function save() {
     if (!validateAllSteps()) return;
 
@@ -295,6 +299,10 @@ export default function LeakForm({
     pendingKeysRef.current = emptyKeys;
     setConfirmOpen(true);
   }
+
+  useEffect(() => {
+    saveRef.current = save;
+  }, [save]);
 
   const handleConfirmCopy = () => {
     const merged = { ...form, photo: form.photo };

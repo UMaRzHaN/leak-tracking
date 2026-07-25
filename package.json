@@ -35,12 +35,13 @@
     "test:e2e:offline": "npm run build && playwright test --config=playwright.offline.config.mjs",
     "test:e2e:ui": "playwright test --ui",
     "test:perf": "npm run build && playwright test --config=playwright.performance.config.mjs",
-    "lint": "eslint src e2e performance playwright.config.mjs playwright.offline.config.mjs playwright.performance.config.mjs --ext .js,.jsx,.mjs",
-    "lint:fix": "eslint src --ext .js,.jsx --fix",
+    "lint": "eslint src e2e performance playwright.config.mjs playwright.offline.config.mjs playwright.performance.config.mjs",
+    "lint:fix": "eslint src --fix",
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
     "prepare": "husky",
-    "cap:sync": "npx cap sync && node scripts/patch-gradle.js"
+    "cap:sync": "npx cap sync && node scripts/patch-gradle.js",
+    "check:bundle": "node scripts/check-bundle-budget.mjs"
   },
   "lint-staged": {
     "src/**/*.{js,jsx}": [
@@ -62,6 +63,8 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.0.0",
+    "@eslint-react/eslint-plugin": "^5.18.0",
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.61.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
@@ -69,9 +72,8 @@
     "@testing-library/user-event": "^14.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "@vitest/coverage-v8": "^4.1.10",
-    "eslint": "^8.57.1",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint": "^10.8.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "fake-indexeddb": "^6.2.5",
     "husky": "^9.1.7",
     "jsdom": "^25.0.1",
@@ -84,6 +86,10 @@
     "vitest": "^4.1.10"
   },
   "overrides": {
+    "exceljs": {
+      "archiver": "^8.0.0",
+      "unzipper": "^0.12.5"
+    },
     "uuid": "^11.1.1"
   }
 }

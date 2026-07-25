@@ -316,7 +316,7 @@ public class LocalSyncPlugin extends Plugin {
                 rejectPeer(output, "Сеанс синхронизации уже остановлен");
                 return false;
             }
-            if (!expectedCode.equals(code)) {
+            if (!SyncSecurity.secretsEqual(expectedCode, code)) {
                 boolean shouldStop = registerFailedAuthAttempt();
                 rejectPeer(output, "Неверный код подключения");
                 return shouldStop;
@@ -377,7 +377,7 @@ public class LocalSyncPlugin extends Plugin {
             rejectPeer(output, "Сеанс синхронизации уже остановлен");
             return false;
         }
-        if (!expectedCode.equals(code)) {
+        if (!SyncSecurity.secretsEqual(expectedCode, code)) {
             boolean shouldStop = registerFailedAuthAttempt();
             rejectPeer(output, "Неверный код подключения");
             return shouldStop;

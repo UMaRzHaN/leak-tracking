@@ -1,7 +1,10 @@
 import { renderHook, act } from "@testing-library/react";
 import { useFormDraft } from "./useFormDraft";
 
-const DRAFT_KEY = "app:form_draft_v1";
+const PROJECT_ID = "project-a";
+const DRAFT_KEY = `app:${PROJECT_ID}:form_draft_v2`;
+const renderDraftHook = (projectId = PROJECT_ID) =>
+  renderHook(() => useFormDraft(projectId));
 
 beforeEach(() => {
   localStorage.clear();
@@ -9,7 +12,7 @@ beforeEach(() => {
 
 describe("saveDraft / loadDraft", () => {
   it("saves and loads a draft", () => {
-    const { result } = renderHook(() => useFormDraft());
+    const { result } = renderDraftHook();
     act(() => {
       result.current.saveDraft({ station: "A", leak_speed: 5 }, 2);
     });
@@ -20,7 +23,7 @@ describe("saveDraft / loadDraft", () => {
   });
 
   it("strips photo.raw but keeps photo.src", () => {
-    const { result } = renderHook(() => useFormDraft());
+    const { result } = renderDraftHook();
     act(() => {
       result.current.saveDraft(
         {
@@ -36,7 +39,7 @@ describe("saveDraft / loadDraft", () => {
   });
 
   it("omits photo entirely when it has no src", () => {
-    const { result } = renderHook(() => useFormDraft());
+    const { result } = renderDraftHook();
     act(() => {
       result.current.saveDraft({ station: "C", photo: { raw: new Blob() } }, 1);
     });
@@ -45,12 +48,12 @@ describe("saveDraft / loadDraft", () => {
   });
 
   it("returns null when nothing saved", () => {
-    const { result } = renderHook(() => useFormDraft());
+    const { result } = renderDraftHook();
     expect(result.current.loadDraft()).toBeNull();
   });
 
   it("ignores null/non-object form", () => {
-    const { result } = renderHook(() => useFormDraft());
+    const { result } = renderDraftHook();
     act(() => {
       result.current.saveDraft(null, 1);
     });
@@ -60,12 +63,12 @@ describe("saveDraft / loadDraft", () => {
 
 describe("hasDraft", () => {
   it("returns false when nothing is saved", () => {
-    const { result } = renderHook(() => useFormDraft());
+    const { result } = renderDraftHook();
     expect(result.current.hasDraft()).toBe(false);
   });
 
   it("returns true after saving", () => {
-    const { result } = renderHook(() => useFormDraft());
+    const { result } = renderDraftHook();
     act(() => {
       result.current.saveDraft({ x: 1 }, 1);
     });
@@ -75,9 +78,13 @@ describe("hasDraft", () => {
   it("removes expired and corrupted drafts without showing a restore prompt", () => {
     localStorage.setItem(
       DRAFT_KEY,
-      JSON.stringify({ form: { x: 1 }, savedAt: Date.now() - 90_000_000 }),
+      JSON.stringify({
+        projectId: PROJECT_ID,
+        form: { x: 1 },
+        savedAt: Date.now() - 90_000_000,
+      }),
     );
-    const { result } = renderHook(() => useFormDraft());
+    const { result } = renderDraftHook();
 
     expect(result.current.hasDraft()).toBe(false);
     expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
@@ -90,9 +97,13 @@ describe("hasDraft", () => {
   it("rejects drafts whose form is not an object", () => {
     localStorage.setItem(
       DRAFT_KEY,
-      JSON.stringify({ form: "broken", savedAt: Date.now() }),
+      JSON.stringify({
+        projectId: PROJECT_ID,
+        form: "broken",
+        savedAt: Date.now(),
+      }),
     );
-    const { result } = renderHook(() => useFormDraft());
+    const { result } = renderDraftHook();
 
     expect(result.current.hasDraft()).toBe(false);
     expect(result.current.loadDraft()).toBeNull();
@@ -101,7 +112,7 @@ describe("hasDraft", () => {
 
 describe("clearDraft", () => {
   it("removes the draft from localStorage", () => {
-    const { result } = renderHook(() => useFormDraft());
+    const { result } = renderDraftHook();
     act(() => {
       result.current.saveDraft({ x: 1 }, 1);
     });
@@ -118,11 +129,12 @@ describe("TTL expiry", () => {
     const expired = JSON.stringify({
       form: { station: "X" },
       step: 1,
+      projectId: PROJECT_ID,
       savedAt: Date.now() - 90_000_000, // 25 часов назад
     });
     localStorage.setItem(DRAFT_KEY, expired);
 
-    const { result } = renderHook(() => useFormDraft());
+    const { result } = renderDraftHook();
     expect(result.current.loadDraft()).toBeNull();
     expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
   });
@@ -131,11 +143,12 @@ describe("TTL expiry", () => {
     const fresh = JSON.stringify({
       form: { station: "Y" },
       step: 3,
+      projectId: PROJECT_ID,
       savedAt: Date.now() - 60_000, // 1 минута назад
     });
     localStorage.setItem(DRAFT_KEY, fresh);
 
-    const { result } = renderHook(() => useFormDraft());
+    const { result } = renderDraftHook();
     const draft = result.current.loadDraft();
     expect(draft).not.toBeNull();
     expect(draft.form.station).toBe("Y");
@@ -145,8 +158,79 @@ describe("TTL expiry", () => {
 describe("corrupted storage", () => {
   it("handles invalid JSON gracefully", () => {
     localStorage.setItem(DRAFT_KEY, "not-json{{");
-    const { result } = renderHook(() => useFormDraft());
+    const { result } = renderDraftHook();
     expect(result.current.loadDraft()).toBeNull();
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+  });
+});
+
+describe("project isolation", () => {
+  it("does not expose one project's draft to another project", () => {
+    const { result: projectA } = renderDraftHook("project-a");
+    act(() => projectA.current.saveDraft({ station: "A" }, 2));
+
+    const { result: projectB } = renderDraftHook("project-b");
+    expect(projectB.current.hasDraft()).toBe(false);
+    expect(projectB.current.loadDraft()).toBeNull();
+    expect(projectA.current.loadDraft()?.form.station).toBe("A");
+  });
+
+  it("does not persist a draft until a project is selected", () => {
+    const { result } = renderDraftHook(null);
+    act(() => result.current.saveDraft({ station: "A" }, 1));
+
+    expect(result.current.hasDraft()).toBe(false);
+    expect(result.current.loadDraft()).toBeNull();
+  });
+
+  it("removes the unsafe legacy global draft when saving", () => {
+    localStorage.setItem(
+      "app:form_draft_v1",
+      JSON.stringify({ form: { station: "legacy" }, savedAt: Date.now() }),
+    );
+    const { result } = renderDraftHook();
+
+    act(() => result.current.saveDraft({ station: "current" }, 1));
+
+    expect(localStorage.getItem("app:form_draft_v1")).toBeNull();
+    expect(result.current.loadDraft()?.form.station).toBe("current");
+  });
+});
+describe("legacy draft migration", () => {
+  it("claims a valid v1 draft for the active project", () => {
+    localStorage.setItem(
+      "app:form_draft_v1",
+      JSON.stringify({
+        form: { station: "legacy" },
+        step: 2,
+        savedAt: Date.now(),
+      }),
+    );
+    const { result } = renderDraftHook();
+
+    expect(result.current.hasDraft()).toBe(true);
+    expect(result.current.loadDraft()).toEqual({
+      form: { station: "legacy" },
+      step: 2,
+    });
+    expect(localStorage.getItem("app:form_draft_v1")).toBeNull();
+    expect(JSON.parse(localStorage.getItem(DRAFT_KEY)).projectId).toBe(
+      PROJECT_ID,
+    );
+  });
+
+  it("removes an expired v1 draft without migrating it", () => {
+    localStorage.setItem(
+      "app:form_draft_v1",
+      JSON.stringify({
+        form: { station: "old" },
+        savedAt: Date.now() - 90_000_000,
+      }),
+    );
+    const { result } = renderDraftHook();
+
+    expect(result.current.hasDraft()).toBe(false);
+    expect(localStorage.getItem("app:form_draft_v1")).toBeNull();
     expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
   });
 });

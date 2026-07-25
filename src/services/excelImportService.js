@@ -5,7 +5,7 @@ import { PROJECTS } from "@/configs/projects";
 import { getPhotoSrc } from "@/hooks/photoService";
 import { priorityFromSpeed } from "@/utils/priority";
 import { inferMonitoringRound } from "@/utils/monitoringRound";
-import { getLeakSyncIdentity } from "@/services/projectSyncState";
+import { getLeakMergeIdentity } from "@/services/projectSyncState";
 import { validateBackup } from "@/repositories/backupSchema";
 import {
   assertArchiveLimits,
@@ -901,7 +901,7 @@ async function dataUrlToBlob(dataUrl) {
 }
 
 function getLeakIdentity(leak) {
-  return getLeakSyncIdentity(leak);
+  return getLeakMergeIdentity(leak);
 }
 
 function normalizeRecordDateIdentity(value) {

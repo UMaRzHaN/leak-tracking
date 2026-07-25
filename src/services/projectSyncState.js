@@ -13,10 +13,24 @@ function toTime(value) {
 }
 
 export function getLeakSyncIdentity(leak) {
+  if (leak?.id != null) return `id:${String(leak.id)}`;
   const leakTag = String(leak?.leak_id ?? "").trim();
   if (leakTag) return `tag:${leakTag}`;
-  if (leak?.id != null) return `id:${String(leak.id)}`;
   return null;
+}
+
+export function getLeakSyncIdentities(leak) {
+  const identities = [];
+  if (leak?.id != null) identities.push("id:" + String(leak.id));
+  const leakTag = String(leak?.leak_id ?? "").trim();
+  if (leakTag) identities.push("tag:" + leakTag);
+  return identities;
+}
+
+export function getLeakMergeIdentity(leak) {
+  const leakTag = String(leak?.leak_id ?? "").trim();
+  if (leakTag) return `tag:${leakTag}`;
+  return getLeakSyncIdentity(leak);
 }
 
 export function getLeakSyncFreshness(leak) {
@@ -78,9 +92,12 @@ export function writeProjectSyncState(projectId, value, liveLeaks = []) {
   if (!projectId || typeof localStorage === "undefined") return;
   const state = normalizeProjectSyncState(value);
   const liveFreshness = new Map(
-    liveLeaks
-      .map((leak) => [getLeakSyncIdentity(leak), getLeakSyncFreshness(leak)])
-      .filter(([identity]) => identity),
+    liveLeaks.flatMap((leak) =>
+      getLeakSyncIdentities(leak).map((identity) => [
+        identity,
+        getLeakSyncFreshness(leak),
+      ]),
+    ),
   );
   const deleted = Object.entries(state.deleted)
     .filter(([identity, deletedAt]) => {
@@ -122,9 +139,12 @@ export function mergeProjectSyncStates(...values) {
 export function applyProjectTombstones(leaks, syncState) {
   const deleted = normalizeProjectSyncState(syncState).deleted;
   return leaks.filter((leak) => {
-    const identity = getLeakSyncIdentity(leak);
-    if (!identity || !deleted[identity]) return true;
-    return getLeakSyncFreshness(leak) > deleted[identity];
+    const deletedAt = Math.max(
+      0,
+      ...getLeakSyncIdentities(leak).map((identity) => deleted[identity] ?? 0),
+    );
+    if (!deletedAt) return true;
+    return getLeakSyncFreshness(leak) > deletedAt;
   });
 }
 

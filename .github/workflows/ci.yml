@@ -28,11 +28,59 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
       - name: Run tests with coverage
         run: npm run test:coverage
 
-      - name: Build app
-        run: npm run build
+      - name: Build app and bundle report
+        run: npm run build:analyze
+
+      - name: Enforce bundle performance budget
+        run: npm run check:bundle
+
+      - name: Upload bundle analysis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-analysis
+          path: dist/stats.html
+          retention-days: 14
+
+  performance:
+    runs-on: ubuntu-latest
+    needs: quality
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run performance budgets
+        run: npm run test:perf
+        env:
+          PERF_RECORDS: "1000"
+
+      - name: Upload performance metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results
+          path: test-results/performance/
+          retention-days: 14
 
   android:
     runs-on: ubuntu-latest
@@ -66,6 +114,56 @@ jobs:
       - name: Run Android checks
         working-directory: android
         run: ./gradlew test lintDebug assembleDebug
+      - name: Upload Android security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-security-reports
+          path: |
+            android/app/build/reports/lint-results-debug.html
+            android/app/build/reports/tests/
+          retention-days: 14
+
+  android-instrumentation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and sync Android project
+        run: npm run build && npm run cap:sync
+
+      - name: Run app instrumentation tests on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          script: cd android && ./gradlew :app:connectedDebugAndroidTest
+
+      - name: Upload Android instrumentation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-instrumentation-reports
+          path: android/app/build/reports/androidTests/
+          retention-days: 14
 
   e2e:
     runs-on: ubuntu-latest

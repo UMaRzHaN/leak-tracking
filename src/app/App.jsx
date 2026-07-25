@@ -302,7 +302,6 @@ export default function App() {
         metaFallback: fallback,
       });
       // importCtx values are stable refs — addProject is the only real dep
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     },
     [stableImportCtx],
   );
@@ -318,7 +317,6 @@ export default function App() {
         metaFallback: fallback,
         ...options,
       });
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     },
     [stableImportCtx],
   );
@@ -334,7 +332,6 @@ export default function App() {
         mode,
       );
       // importCtx contains only stable refs — overwriteProject is the real dep
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     },
     [overwriteProject, stableImportCtx],
   );
@@ -486,6 +483,7 @@ export default function App() {
               setPage={setPage}
               onBack={() => goBack(prevPage)}
               userProfile={userProfile}
+              projectId={activeProject?.id}
             />
           )}
 
