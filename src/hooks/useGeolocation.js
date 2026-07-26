@@ -107,6 +107,7 @@ export const useGeolocation = (enabled = true) => {
                 lng: pos.coords.longitude,
                 accuracy: pos.coords.accuracy,
               });
+              setError(null);
               setLoading(false);
             }
           },

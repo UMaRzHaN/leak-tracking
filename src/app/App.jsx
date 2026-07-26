@@ -215,6 +215,7 @@ export default function App() {
     activeProjectIdRef.current = activeProject?.id ?? null;
   }, [activeProject?.id]);
   const gcRanRef = useRef(false);
+  const [isImportingProject, setIsImportingProject] = useState(false);
 
   // Сбрасываем флаг при смене проекта, чтобы GC запустился снова
   useEffect(() => {
@@ -356,6 +357,7 @@ export default function App() {
         throw new Error("Не удалось создать проект");
       }
 
+      setIsImportingProject(true);
       try {
         await waitForRefValue(activeProjectIdRef, newProject.id);
         if (vars) {
@@ -379,6 +381,8 @@ export default function App() {
       } catch (error) {
         await rollbackImportedProject(newProject, removeProject);
         throw error;
+      } finally {
+        setIsImportingProject(false);
       }
     },
     [addProject, removeProject],
@@ -460,12 +464,22 @@ export default function App() {
         }`}
       >
         <Suspense fallback={<AppLoader />}>
-          {!dataLoaded && <AppLoader />}
+          {(!dataLoaded || isImportingProject) && (
+            <AppLoader
+              label={
+                isImportingProject
+                  ? lang === "ru"
+                    ? "Импорт данных, подождите..."
+                    : "Importing data, please wait..."
+                  : undefined
+              }
+            />
+          )}
 
-          {dataLoaded && loadError && (
+          {dataLoaded && !isImportingProject && loadError && (
             <ProjectDataLoadError lang={lang} onRetry={retryLoad} />
           )}
-          {dataLoaded && !loadError && page === "" && (
+          {dataLoaded && !isImportingProject && !loadError && page === "" && (
             <MainPage
               setPage={setPage}
               data={data}
@@ -500,7 +514,7 @@ export default function App() {
             />
           )}
 
-          {dataLoaded && !loadError && page === "db" && (
+          {dataLoaded && !isImportingProject && !loadError && page === "db" && (
             <DataBase
               data={data}
               setData={save}
@@ -512,28 +526,38 @@ export default function App() {
             />
           )}
 
-          {dataLoaded && !loadError && page === "monitoring" && (
-            <Monitoring
-              data={data}
-              setData={save}
-              coords={coords}
-              sharedFilters={sharedFilters}
-              requestedLeakId={requestedMonitoringLeakId}
-              requestedLeakIds={requestedMonitoringLeakIds}
-              onRequestedLeakConsumed={() => setRequestedMonitoringLeakId(null)}
-              onRequestedLeaksConsumed={() => setRequestedMonitoringLeakIds([])}
-              userProfile={userProfile}
-            />
-          )}
+          {dataLoaded &&
+            !isImportingProject &&
+            !loadError &&
+            page === "monitoring" && (
+              <Monitoring
+                data={data}
+                setData={save}
+                coords={coords}
+                sharedFilters={sharedFilters}
+                requestedLeakId={requestedMonitoringLeakId}
+                requestedLeakIds={requestedMonitoringLeakIds}
+                onRequestedLeakConsumed={() =>
+                  setRequestedMonitoringLeakId(null)
+                }
+                onRequestedLeaksConsumed={() =>
+                  setRequestedMonitoringLeakIds([])
+                }
+                userProfile={userProfile}
+              />
+            )}
 
-          {dataLoaded && !loadError && page === "map" && (
-            <MapPage
-              leaks={data}
-              coords={coords}
-              gpsEnabled={gpsEnabled}
-              sharedFilters={sharedFilters}
-            />
-          )}
+          {dataLoaded &&
+            !isImportingProject &&
+            !loadError &&
+            page === "map" && (
+              <MapPage
+                leaks={data}
+                coords={coords}
+                gpsEnabled={gpsEnabled}
+                sharedFilters={sharedFilters}
+              />
+            )}
         </Suspense>
       </div>
 

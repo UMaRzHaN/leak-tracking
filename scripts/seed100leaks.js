@@ -563,7 +563,7 @@
         localStorage.setItem(dataKey, JSON.stringify(leaks));
       } catch (error) {
         localStorage.removeItem(dataKey);
-        console.warn(
+        logger.warn(
           "localStorage переполнен, база записана только в IndexedDB:",
           error,
         );

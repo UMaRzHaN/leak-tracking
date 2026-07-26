@@ -28,7 +28,16 @@ export function useLocalSync({
 }) {
   const [state, setState] = useState(IDLE_STATE);
   const hostSessionRef = useRef(null);
+  const mountedRef = useRef(true);
   const available = useMemo(() => isLocalSyncAvailable(), []);
+
+  // Guards every setState below: once unmounted, in-flight sync/import
+  // callbacks (host archive received, QR scan resolved, etc.) can still
+  // finish their real work, but must stop touching component state.
+  const setStateSafe = useCallback((next) => {
+    if (!mountedRef.current) return;
+    setState(next);
+  }, []);
 
   const buildArchive = useCallback(
     async (project = activeProject) => {
@@ -67,11 +76,11 @@ export function useLocalSync({
     const session = hostSessionRef.current;
     hostSessionRef.current = null;
     if (session) await session.stop();
-    setState(IDLE_STATE);
+    setStateSafe(IDLE_STATE);
   }, []);
 
   const startHost = useCallback(async () => {
-    setState({ status: "preparing", session: null });
+    setStateSafe({ status: "preparing", session: null });
     try {
       const syncProject = ensureProjectSyncId?.(activeProject?.id);
       if (!syncProject?.syncId) {
@@ -86,12 +95,12 @@ export function useLocalSync({
         archive,
         ...identity,
         onArchive: async (file) => {
-          setState((current) => ({ ...current, status: "merging" }));
+          setStateSafe((current) => ({ ...current, status: "merging" }));
           const activeSession = hostSessionRef.current;
           hostSessionRef.current = null;
           try {
             await mergeArchive(file, syncProject);
-            setState({ status: "complete", session: null });
+            setStateSafe({ status: "complete", session: null });
           } finally {
             await activeSession?.stop().catch(() => {});
           }
@@ -104,17 +113,17 @@ export function useLocalSync({
             "error",
             `${lang === "ru" ? "Ошибка локальной синхронизации" : "Local sync error"}: ${error.message}`,
           );
-          setState(IDLE_STATE);
+          setStateSafe(IDLE_STATE);
         },
       });
       hostSessionRef.current = session;
       const qrSvg = await createLocalSyncQrSvg(session, identity);
-      setState({ status: "hosting", session: { ...session, qrSvg } });
+      setStateSafe({ status: "hosting", session: { ...session, qrSvg } });
     } catch (error) {
       const activeSession = hostSessionRef.current;
       hostSessionRef.current = null;
       await activeSession?.stop().catch(() => {});
-      setState(IDLE_STATE);
+      setStateSafe(IDLE_STATE);
       notify(
         "error",
         `${lang === "ru" ? "Не удалось создать сеанс" : "Could not create session"}: ${error.message}`,
@@ -131,7 +140,7 @@ export function useLocalSync({
 
   const joinHost = useCallback(
     async ({ host, port, code, fingerprint }) => {
-      setState({ status: "joining", session: null });
+      setStateSafe({ status: "joining", session: null });
       try {
         const archive = await buildArchive();
         const incoming = await exchangeLocalSyncArchive({
@@ -143,11 +152,11 @@ export function useLocalSync({
           projectKey: projectKey(activeProject),
           syncId: activeProject?.syncId ?? "",
         });
-        setState({ status: "merging", session: null });
+        setStateSafe({ status: "merging", session: null });
         await mergeArchive(incoming);
-        setState({ status: "complete", session: null });
+        setStateSafe({ status: "complete", session: null });
       } catch (error) {
-        setState(IDLE_STATE);
+        setStateSafe(IDLE_STATE);
         notify(
           "error",
           `${lang === "ru" ? "Ошибка подключения" : "Connection error"}: ${error.message}`,
@@ -158,7 +167,7 @@ export function useLocalSync({
   );
 
   const scanAndJoin = useCallback(async () => {
-    setState({ status: "scanning", session: null });
+    setStateSafe({ status: "scanning", session: null });
     try {
       const connection = await scanLocalSyncQr({
         projectKey: projectKey(activeProject),
@@ -166,7 +175,7 @@ export function useLocalSync({
       });
       await joinHost(connection);
     } catch (error) {
-      setState(IDLE_STATE);
+      setStateSafe(IDLE_STATE);
       if (error.code === "QR_SCAN_CANCELLED") return;
       notify(
         "error",
@@ -176,10 +185,10 @@ export function useLocalSync({
   }, [activeProject, joinHost, lang, notify]);
 
   const scanAndImport = useCallback(async () => {
-    setState({ status: "scanningImport", session: null });
+    setStateSafe({ status: "scanningImport", session: null });
     try {
       const connection = await scanLocalSyncQr();
-      setState({ status: "importing", session: null });
+      setStateSafe({ status: "importing", session: null });
       const incoming = await fetchLocalSyncArchive(connection);
       const result = await onImportZip?.(incoming);
       notify(
@@ -188,9 +197,9 @@ export function useLocalSync({
           ? `База импортирована по QR: «${result?.project?.name ?? "проект"}» (${result?.leakCount ?? 0} записей)`
           : `Database imported by QR: "${result?.project?.name ?? "project"}" (${result?.leakCount ?? 0} records)`,
       );
-      setState({ status: "complete", session: null });
+      setStateSafe({ status: "complete", session: null });
     } catch (error) {
-      setState(IDLE_STATE);
+      setStateSafe(IDLE_STATE);
       if (error.code === "QR_SCAN_CANCELLED") return;
       notify(
         "error",
@@ -205,6 +214,7 @@ export function useLocalSync({
 
   useEffect(
     () => () => {
+      mountedRef.current = false;
       Promise.resolve(cancelLocalSyncQrScan()).catch(() => {});
       hostSessionRef.current?.stop().catch(() => {});
       hostSessionRef.current = null;

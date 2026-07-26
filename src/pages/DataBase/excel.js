@@ -810,7 +810,7 @@ async function createWorkbookBuffer(payload, workerBuilder) {
     try {
       return await workerBuilder(payload);
     } catch (error) {
-      console.warn(
+      logger.warn(
         "[excel] Worker export failed; falling back to the main thread:",
         error,
       );
