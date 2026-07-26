@@ -1383,18 +1383,19 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
 
   const validTypes = ["upstream", "midstream", "downstream"];
   const requestedType = validTypes.includes(projectType) ? projectType : null;
-  const candidates = (requestedType ? [requestedType] : validTypes)
+  // Ordinary XLSX files do not contain reliable project metadata. Shared
+  // headers must not be used to guess a type, because a downstream sheet can
+  // otherwise be silently classified as upstream. When no type was supplied,
+  // parse only the common/aliased columns and leave project selection to UI.
+  const candidateTypes = requestedType ? [requestedType] : [null];
+  const candidates = candidateTypes
     .map((type) => {
       const headerMap = buildHeaderMap(type);
       const sheet = findLeakSheet(workbook, headerMap);
       const headerRow = sheet ? findHeaderRow(sheet, headerMap) : null;
       return { type, headerMap, sheet, headerRow };
     })
-    .filter((candidate) => candidate.sheet && candidate.headerRow)
-    .sort(
-      (left, right) =>
-        right.headerRow.columns.length - left.headerRow.columns.length,
-    );
+    .filter((candidate) => candidate.sheet && candidate.headerRow);
 
   const selected = candidates[0];
   if (!selected) {
@@ -1490,7 +1491,7 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
     monitoringSheetName: monitoringSheet?.name ?? "",
     historySheetName: historySheet?.name ?? "",
     monitoringRound,
-    project: { type: resolvedProjectType },
+    project: resolvedProjectType ? { type: resolvedProjectType } : null,
   };
 }
 
@@ -1538,5 +1539,12 @@ export async function parseExcelImportFile(file, options = {}) {
   );
 
   const hydrated = await hydrateZipPhotos(parsed, zip);
-  return { ...hydrated, project: parsed.project ?? project };
+  const mergedProject =
+    project || parsed.project
+      ? {
+          ...project,
+          ...parsed.project,
+        }
+      : null;
+  return { ...hydrated, project: mergedProject };
 }

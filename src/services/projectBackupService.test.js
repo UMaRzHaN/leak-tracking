@@ -37,6 +37,21 @@ function makeCtx(project = PROJECT) {
   return ctx;
 }
 
+function addProjectMeta(zip, project) {
+  zip.file(
+    "project.json",
+    JSON.stringify({
+      schemaVersion: 5,
+      project: {
+        name: project.name,
+        type: project.type,
+        folderName: project.folderName,
+        syncId: project.syncId,
+      },
+    }),
+  );
+}
+
 describe("projectBackupService legacy imports", () => {
   afterEach(() => {
     localStorage.clear();
@@ -1016,6 +1031,7 @@ describe("mergeLeaksByFreshness", () => {
     const { default: JSZip } = await import("jszip");
     const zip = new JSZip();
     zip.file("backup.json", JSON.stringify([archiveLeak]));
+    addProjectMeta(zip, existingProject);
     const blob = await zip.generateAsync({ type: "blob" });
     const getAllSpy = vi
       .spyOn(LeakRepository, "getAll")
@@ -1063,6 +1079,7 @@ describe("mergeLeaksByFreshness", () => {
     const { default: JSZip } = await import("jszip");
     const zip = new JSZip();
     zip.file("backup.json", JSON.stringify([incomingLeak]));
+    addProjectMeta(zip, existingProject);
     const blob = await zip.generateAsync({ type: "blob" });
     const photoSaveSpy = vi
       .spyOn(PhotoRepository, "save")
@@ -1133,6 +1150,7 @@ describe("mergeLeaksByFreshness", () => {
       "backup.json",
       JSON.stringify([{ id: "incoming", status: "open" }]),
     );
+    addProjectMeta(zip, existingProject);
     const blob = await zip.generateAsync({ type: "blob" });
     localStorage.setItem(
       `app:${existingProject.id}:vars_v1`,
@@ -1174,6 +1192,7 @@ describe("mergeLeaksByFreshness", () => {
     const { default: JSZip } = await import("jszip");
     const zip = new JSZip();
     zip.file("backup.json", JSON.stringify([incomingLeak]));
+    addProjectMeta(zip, existingProject);
     const blob = await zip.generateAsync({ type: "blob" });
     const saveAllSpy = vi
       .spyOn(LeakRepository, "saveAll")

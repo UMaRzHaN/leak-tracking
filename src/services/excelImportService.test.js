@@ -37,7 +37,7 @@ describe("parseExcelLeaks", () => {
     });
   }, 60_000);
 
-  it("detects the project type from ordinary XLSX headers when it is not provided", async () => {
+  it("does not guess the project type from ordinary XLSX headers", async () => {
     const blob = await makeWorkbookBlob([
       ["Leak ID", "district", "locality", "component"],
       ["DS-1", "District 1", "Town", "Valve"],
@@ -45,7 +45,7 @@ describe("parseExcelLeaks", () => {
 
     const result = await parseExcelLeaks(blob);
 
-    expect(result.project).toEqual({ type: "downstream" });
+    expect(result.project).toBeNull();
     expect(result.leaks[0]).toMatchObject({
       leak_id: "DS-1",
       district: "District 1",

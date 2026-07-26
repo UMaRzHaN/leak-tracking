@@ -139,7 +139,12 @@ export function useLocalSync({
           const activeSession = hostSessionRef.current;
           hostSessionRef.current = null;
           activeSession?.stop().catch(() => {});
-          notify("error", syncErrorMessage(error, lang));
+          notify(
+            "error",
+            error?.code?.includes("PROJECT_TYPE")
+              ? syncErrorMessage(error, lang)
+              : `${lang === "ru" ? "Ошибка локальной синхронизации" : "Local sync error"}: ${error.message}`,
+          );
           setStateSafe(IDLE_STATE);
         },
       });
