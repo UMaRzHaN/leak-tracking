@@ -1276,6 +1276,93 @@ describe("mergeLeaksByFreshness", () => {
     getAllSpy.mockRestore();
   });
 
+  it.each(["merge", "overwrite", "sync"])(
+    "rejects %s import when the archive project type differs",
+    async (mode) => {
+      const existingProject = {
+        id: "typed-project",
+        folderName: "typed-project",
+        name: "Typed Project",
+        type: "upstream",
+        syncId: "typed-sync-1234",
+      };
+      const { default: JSZip } = await import("jszip");
+      const zip = new JSZip();
+      zip.file("backup.json", "[]");
+      zip.file(
+        "project.json",
+        JSON.stringify({
+          schemaVersion: 4,
+          project: {
+            name: existingProject.name,
+            type: "midstream",
+            syncId: existingProject.syncId,
+          },
+        }),
+      );
+      const blob = await zip.generateAsync({ type: "blob" });
+
+      const importPromise = importIntoExistingProject(
+        blob,
+        {
+          existingProject,
+          saveRef: { current: vi.fn() },
+          activeProjectIdRef: { current: existingProject.id },
+          photoReadyRef: { current: true },
+          overwriteProject: vi.fn(),
+          setProjectSyncId: vi.fn(),
+        },
+        mode,
+      );
+
+      await expect(importPromise).rejects.toMatchObject({
+        code: "PROJECT_TYPE_MISMATCH",
+        incomingProjectType: "midstream",
+        existingProjectType: "upstream",
+      });
+      await expect(importPromise).rejects.toThrow(
+        "Тип импортируемого проекта не соответствует текущему проекту",
+      );
+    },
+  );
+
+  it("rejects import into an existing project when the archive type is missing", async () => {
+    const existingProject = {
+      id: "typed-project",
+      folderName: "typed-project",
+      name: "Typed Project",
+      type: "upstream",
+    };
+    const { default: JSZip } = await import("jszip");
+    const zip = new JSZip();
+    zip.file("backup.json", "[]");
+    zip.file(
+      "project.json",
+      JSON.stringify({
+        schemaVersion: 4,
+        project: { name: existingProject.name },
+      }),
+    );
+    const blob = await zip.generateAsync({ type: "blob" });
+
+    await expect(
+      importIntoExistingProject(
+        blob,
+        {
+          existingProject,
+          saveRef: { current: vi.fn() },
+          activeProjectIdRef: { current: existingProject.id },
+          photoReadyRef: { current: true },
+          overwriteProject: vi.fn(),
+        },
+        "merge",
+      ),
+    ).rejects.toMatchObject({
+      code: "PROJECT_TYPE_MISSING",
+      existingProjectType: "upstream",
+    });
+  });
+
   it("rejects synchronization between projects with different sync identifiers", async () => {
     const existingProject = {
       id: "sync-project",

@@ -229,6 +229,18 @@ button {
   color: var(--c-text2);
 }
 
+.appLoaderOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  min-height: 0;
+  padding: 24px;
+  background: rgba(8, 17, 34, 0.72);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  cursor: wait;
+}
+
 .appLoaderRing {
   width: 32px;
   height: 32px;

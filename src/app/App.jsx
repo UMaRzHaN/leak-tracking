@@ -42,9 +42,14 @@ const DataBase = lazy(() => import("@/pages/DataBase/DataBase"));
 const MapPage = lazy(() => import("@/pages/MapPage/MapPage"));
 const Monitoring = lazy(() => import("@/pages/Monitoring/Monitoring"));
 
-function AppLoader({ label = "Загрузка данных" }) {
+function AppLoader({ label = "Загрузка данных", overlay = false }) {
   return (
-    <div className="appLoader" role="status" aria-live="polite">
+    <div
+      className={`appLoader${overlay ? " appLoaderOverlay" : ""}`}
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
       <span className="appLoaderRing" aria-hidden="true" />
       <span className="appLoaderText">{label}</span>
     </div>
@@ -393,13 +398,8 @@ export default function App() {
       const { parseExcelImportFile } =
         await import("@/services/excelImportService");
       const result = await parseExcelImportFile(file, {
-        projectType: type || undefined,
+        projectType: type || "upstream",
       });
-      if (!type && !result.project?.type) {
-        const error = new Error("Project type is missing");
-        error.code = "MISSING_PROJECT_TYPE";
-        throw error;
-      }
       if (!result.leaks.length && !result.portableArchive) {
         const error = new Error("No importable rows found in XLSX");
         error.code = "EMPTY_EXCEL";
@@ -469,14 +469,15 @@ export default function App() {
         }`}
       >
         <Suspense fallback={<AppLoader />}>
-          {(!dataLoaded || isImportingProject) && (
+          {!dataLoaded && <AppLoader />}
+
+          {isImportingProject && (
             <AppLoader
+              overlay
               label={
-                isImportingProject
-                  ? lang === "ru"
-                    ? "Импорт данных, подождите..."
-                    : "Importing data, please wait..."
-                  : undefined
+                lang === "ru"
+                  ? "Импорт данных, подождите..."
+                  : "Importing data, please wait..."
               }
             />
           )}

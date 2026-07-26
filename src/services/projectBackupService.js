@@ -1383,6 +1383,41 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
 
   const isSync = mode === "sync";
   const isMerge = mode === "merge" || isSync;
+  const incomingProjectType =
+    typeof meta?.project?.type === "string"
+      ? meta.project.type.trim().toLowerCase()
+      : null;
+  const existingProjectType =
+    typeof existingProject.type === "string"
+      ? existingProject.type.trim().toLowerCase()
+      : null;
+
+  if (!incomingProjectType) {
+    const error = new Error(
+      "Не удалось определить тип проекта в импортируемом архиве",
+    );
+    error.code = "PROJECT_TYPE_MISSING";
+    error.existingProjectType = existingProjectType;
+    throw error;
+  }
+
+  if (!existingProjectType) {
+    const error = new Error("Не удалось определить тип текущего проекта");
+    error.code = "CURRENT_PROJECT_TYPE_MISSING";
+    error.incomingProjectType = incomingProjectType;
+    throw error;
+  }
+
+  if (incomingProjectType !== existingProjectType) {
+    const error = new Error(
+      "Тип импортируемого проекта не соответствует текущему проекту",
+    );
+    error.code = "PROJECT_TYPE_MISMATCH";
+    error.incomingProjectType = incomingProjectType;
+    error.existingProjectType = existingProjectType;
+    throw error;
+  }
+
   const incomingSyncId = meta?.project?.syncId?.trim().toLowerCase() || null;
   const existingSyncId = existingProject.syncId?.trim().toLowerCase() || null;
   if (

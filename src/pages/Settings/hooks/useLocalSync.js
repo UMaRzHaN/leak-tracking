@@ -15,6 +15,36 @@ function projectKey(project) {
   return `${project?.type ?? "unknown"}:${project?.name?.trim().toLowerCase() ?? ""}`;
 }
 
+function typeLabel(type, lang) {
+  const labels = {
+    upstream: lang === "ru" ? "Добыча" : "Upstream",
+    midstream: lang === "ru" ? "Транспортировка" : "Midstream",
+    downstream: lang === "ru" ? "Переработка" : "Downstream",
+  };
+  return labels[type] ?? type ?? (lang === "ru" ? "неизвестно" : "unknown");
+}
+
+function syncErrorMessage(error, lang) {
+  if (error?.code === "PROJECT_TYPE_MISMATCH") {
+    const current = typeLabel(error.existingProjectType, lang);
+    const incoming = typeLabel(error.incomingProjectType, lang);
+    return lang === "ru"
+      ? `Нельзя синхронизировать проекты разных типов: текущий — ${current}, полученный — ${incoming}.`
+      : `Projects of different types cannot be synchronized: current — ${current}, received — ${incoming}.`;
+  }
+  if (error?.code === "PROJECT_TYPE_MISSING") {
+    return lang === "ru"
+      ? "Полученный архив не содержит тип проекта. Синхронизация отменена."
+      : "The received archive does not contain a project type. Synchronization was cancelled.";
+  }
+  if (error?.code === "CURRENT_PROJECT_TYPE_MISSING") {
+    return lang === "ru"
+      ? "У текущего проекта не определён тип. Синхронизация отменена."
+      : "The current project has no defined type. Synchronization was cancelled.";
+  }
+  return error.message;
+}
+
 export function useLocalSync({
   activeProject,
   data,
@@ -109,10 +139,7 @@ export function useLocalSync({
           const activeSession = hostSessionRef.current;
           hostSessionRef.current = null;
           activeSession?.stop().catch(() => {});
-          notify(
-            "error",
-            `${lang === "ru" ? "Ошибка локальной синхронизации" : "Local sync error"}: ${error.message}`,
-          );
+          notify("error", syncErrorMessage(error, lang));
           setStateSafe(IDLE_STATE);
         },
       });
@@ -160,7 +187,9 @@ export function useLocalSync({
         setStateSafe(IDLE_STATE);
         notify(
           "error",
-          `${lang === "ru" ? "Ошибка подключения" : "Connection error"}: ${error.message}`,
+          error?.code?.includes("PROJECT_TYPE")
+            ? syncErrorMessage(error, lang)
+            : `${lang === "ru" ? "Ошибка подключения" : "Connection error"}: ${error.message}`,
         );
       }
     },

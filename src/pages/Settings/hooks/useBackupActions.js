@@ -34,6 +34,30 @@ function typeLabel(type, lang) {
   return labels[type] ?? type;
 }
 
+function projectImportErrorMessage(error, lang) {
+  if (error?.code === "PROJECT_TYPE_MISMATCH") {
+    const current = typeLabel(error.existingProjectType, lang);
+    const incoming = typeLabel(error.incomingProjectType, lang);
+    return lang === "ru"
+      ? `Нельзя объединить проекты разных типов: текущий — ${current}, импортируемый — ${incoming}.`
+      : `Projects of different types cannot be combined: current — ${current}, imported — ${incoming}.`;
+  }
+
+  if (error?.code === "PROJECT_TYPE_MISSING") {
+    return lang === "ru"
+      ? "В архиве не указан тип проекта. Импорт в существующий проект отменён."
+      : "The archive does not specify a project type. Import into the existing project was cancelled.";
+  }
+
+  if (error?.code === "CURRENT_PROJECT_TYPE_MISSING") {
+    return lang === "ru"
+      ? "У текущего проекта не определён тип. Импорт отменён."
+      : "The current project has no defined type. Import was cancelled.";
+  }
+
+  return `${lang === "ru" ? "Ошибка импорта" : "Import error"}: ${error.message}`;
+}
+
 export function useBackupActions({
   data,
   idbGetPhoto,
@@ -293,10 +317,7 @@ export function useBackupActions({
       notifyZipImportProgress();
       await importProject(file, fallback);
     } catch (error) {
-      notify(
-        "error",
-        `${lang === "ru" ? "Ошибка импорта" : "Import error"}: ${error.message}`,
-      );
+      notify("error", projectImportErrorMessage(error, lang));
     }
   }, [
     importConfirmState,
@@ -333,10 +354,7 @@ export function useBackupActions({
             )})`,
       );
     } catch (error) {
-      notify(
-        "error",
-        `${lang === "ru" ? "Ошибка импорта" : "Import error"}: ${error.message}`,
-      );
+      notify("error", projectImportErrorMessage(error, lang));
     }
 
     setConflictState(CONFLICT_CLOSED);
@@ -367,10 +385,7 @@ export function useBackupActions({
             )})`,
       );
     } catch (error) {
-      notify(
-        "error",
-        `${lang === "ru" ? "Ошибка импорта" : "Import error"}: ${error.message}`,
-      );
+      notify("error", projectImportErrorMessage(error, lang));
     }
 
     setConflictState(CONFLICT_CLOSED);
@@ -414,10 +429,7 @@ export function useBackupActions({
             )})`,
       );
     } catch (error) {
-      notify(
-        "error",
-        `${lang === "ru" ? "Ошибка импорта" : "Import error"}: ${error.message}`,
-      );
+      notify("error", projectImportErrorMessage(error, lang));
     }
 
     setConflictState(CONFLICT_CLOSED);
