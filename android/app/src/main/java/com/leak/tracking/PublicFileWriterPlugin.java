@@ -16,49 +16,118 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @CapacitorPlugin(name = "PublicFileWriter")
 public class PublicFileWriterPlugin extends Plugin {
+    private static final long MAX_EXPORT_BYTES = 1024L * 1024L * 1024L;
+    private static final int MAX_CHUNK_BYTES = 1024 * 1024;
+    private final ConcurrentHashMap<String, File> preparedExports = new ConcurrentHashMap<>();
+    private final ExecutorService exportExecutor = Executors.newSingleThreadExecutor();
 
     @PluginMethod
-    public void write(PluginCall call) {
-        String folder = call.getString("folder", "");
-        String fileName = call.getString("fileName");
-        String mimeType = call.getString("mimeType", "application/octet-stream");
-        String base64 = call.getString("data");
-
-        if (fileName == null || fileName.trim().isEmpty()) {
-            call.reject("fileName is required");
-            return;
-        }
-
-        if (base64 == null) {
-            call.reject("data is required");
-            return;
-        }
-
+    public void prepare(PluginCall call) {
         try {
-            byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
-            String safeFolder = sanitizeRelativePath(folder);
-            String safeFileName = sanitizeFileName(fileName);
-            if (safeFileName.isEmpty()) {
-                throw new Exception("fileName contains no valid characters");
-            }
-            String savedPath = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
-                ? writeWithMediaStore(safeFolder, safeFileName, mimeType, bytes)
-                : writeLegacy(safeFolder, safeFileName, bytes);
-
+            String token = UUID.randomUUID().toString();
+            File pending = File.createTempFile("public-export-", ".pending", getContext().getCacheDir());
+            preparedExports.put(token, pending);
             JSObject result = new JSObject();
-            result.put("path", savedPath);
+            result.put("token", token);
+            result.put("maxExportBytes", MAX_EXPORT_BYTES);
             call.resolve(result);
         } catch (Exception error) {
             call.reject(error.getMessage(), error);
         }
     }
 
+    @PluginMethod
+    public void appendChunk(PluginCall call) {
+        String token = call.getString("token", "");
+        String chunkBase64 = call.getString("chunkBase64");
+        File pending = preparedExports.get(token);
+        if (pending == null || chunkBase64 == null) {
+            call.reject("Unknown export token or missing chunk");
+            return;
+        }
+        if (chunkBase64.length() > ((MAX_CHUNK_BYTES + 2L) / 3L) * 4L + 4L) {
+            discardPreparedExport(token);
+            call.reject("Export chunk is too large");
+            return;
+        }
+
+        try {
+            byte[] chunk = Base64.decode(chunkBase64, Base64.DEFAULT);
+            if (chunk.length > MAX_CHUNK_BYTES || pending.length() + chunk.length > MAX_EXPORT_BYTES) {
+                throw new Exception("Export exceeds the safety limit");
+            }
+            try (FileOutputStream stream = new FileOutputStream(pending, true)) {
+                stream.write(chunk);
+            }
+            JSObject result = new JSObject();
+            result.put("size", pending.length());
+            call.resolve(result);
+        } catch (Exception error) {
+            discardPreparedExport(token);
+            call.reject(error.getMessage(), error);
+        }
+    }
+
+    @PluginMethod
+    public void discard(PluginCall call) {
+        discardPreparedExport(call.getString("token", ""));
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void commit(PluginCall call) {
+        String token = call.getString("token", "");
+        Long expectedSize = call.getLong("expectedSize");
+        String folder = call.getString("folder", "");
+        String fileName = call.getString("fileName");
+        String mimeType = call.getString("mimeType", "application/octet-stream");
+        File pending = preparedExports.remove(token);
+        if (
+            pending == null ||
+            expectedSize == null ||
+            expectedSize < 0 ||
+            expectedSize > MAX_EXPORT_BYTES ||
+            pending.length() != expectedSize ||
+            fileName == null ||
+            fileName.trim().isEmpty()
+        ) {
+            if (pending != null) pending.delete();
+            call.reject("Unknown export token or missing fileName");
+            return;
+        }
+
+        exportExecutor.execute(() -> {
+            try (InputStream source = new FileInputStream(pending)) {
+                String safeFolder = sanitizeRelativePath(folder);
+                String safeFileName = sanitizeFileName(fileName);
+                if (safeFileName.isEmpty()) throw new Exception("fileName contains no valid characters");
+                String savedPath = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                    ? writeWithMediaStore(safeFolder, safeFileName, mimeType, source)
+                    : writeLegacy(safeFolder, safeFileName, source);
+                JSObject result = new JSObject();
+                result.put("path", savedPath);
+                call.resolve(result);
+            } catch (Exception error) {
+                call.reject(error.getMessage(), error);
+            } finally {
+                pending.delete();
+            }
+        });
+    }
+
     @RequiresApi(Build.VERSION_CODES.Q)
-    private String writeWithMediaStore(String folder, String fileName, String mimeType, byte[] bytes) throws Exception {
+    private String writeWithMediaStore(String folder, String fileName, String mimeType, InputStream source) throws Exception {
         ContentResolver resolver = getContext().getContentResolver();
         Uri collection = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
         String relativePath = Environment.DIRECTORY_DOCUMENTS + (folder.isEmpty() ? "/" : "/" + folder + "/");
@@ -80,7 +149,11 @@ public class PublicFileWriterPlugin extends Plugin {
                 if (stream == null) {
                     throw new Exception("Unable to open export file");
                 }
-                stream.write(bytes);
+                byte[] buffer = new byte[64 * 1024];
+                int read;
+                while ((read = source.read(buffer)) >= 0) {
+                    stream.write(buffer, 0, read);
+                }
                 stream.flush();
             }
 
@@ -137,7 +210,7 @@ public class PublicFileWriterPlugin extends Plugin {
         }
     }
 
-    private String writeLegacy(String folder, String fileName, byte[] bytes) throws Exception {
+    private String writeLegacy(String folder, String fileName, InputStream source) throws Exception {
         File documents = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
         File outputDir = folder.isEmpty() ? documents : new File(documents, folder);
         if (!outputDir.exists() && !outputDir.mkdirs()) {
@@ -147,11 +220,16 @@ public class PublicFileWriterPlugin extends Plugin {
         File output = new File(outputDir, fileName);
         AtomicFileWriter.replace(
             output,
-            bytes,
-            (source, target) -> Os.rename(source.getAbsolutePath(), target.getAbsolutePath())
+            source,
+            (pending, target) -> Os.rename(pending.getAbsolutePath(), target.getAbsolutePath())
         );
 
         return output.getAbsolutePath();
+    }
+
+    private void discardPreparedExport(String token) {
+        File pending = preparedExports.remove(token);
+        if (pending != null) pending.delete();
     }
 
     private String sanitizeRelativePath(String path) {
@@ -167,5 +245,13 @@ public class PublicFileWriterPlugin extends Plugin {
             .replace("..", "_")
             .replaceAll("[\\p{Cntrl}<>:\"|?*]", "_")
             .trim();
+    }
+
+    @Override
+    protected void handleOnDestroy() {
+        for (File pending : preparedExports.values()) pending.delete();
+        preparedExports.clear();
+        exportExecutor.shutdownNow();
+        super.handleOnDestroy();
     }
 }

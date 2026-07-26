@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -65,6 +66,7 @@ public class LocalSyncPlugin extends Plugin {
     private static final int TRANSFER_TIMEOUT_MS = 120_000;
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int MAX_FAILED_AUTH_ATTEMPTS = 5;
+    private static final int MAX_CONCURRENT_HANDSHAKES = 4;
     private static final String TLS_KEY_ALIAS_PREFIX = "local-sync-";
 
     private final ExecutorService executor = Executors.newCachedThreadPool();
@@ -72,15 +74,16 @@ public class LocalSyncPlugin extends Plugin {
     private final ConcurrentHashMap<String, File> preparedArchives = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, File> deliveredArchives = new ConcurrentHashMap<>();
     private final Object sessionLock = new Object();
+    private final SyncConnectionGuard connectionGuard = new SyncConnectionGuard(MAX_CONCURRENT_HANDSHAKES, MAX_FAILED_AUTH_ATTEMPTS);
+    private final Set<Socket> activeClientSockets = ConcurrentHashMap.newKeySet();
     private volatile ServerSocket serverSocket;
-    private volatile Socket activeClientSocket;
     private volatile File hostedArchive;
     private volatile String hostedProjectKey;
     private volatile String hostedSyncId;
     private volatile String sessionCode;
     private volatile String hostKeyAlias;
     private volatile String hostCertificateFingerprint;
-    private int failedAuthAttempts;
+
 
     @PluginMethod
     public void prepareArchive(PluginCall call) {
@@ -155,7 +158,7 @@ public class LocalSyncPlugin extends Plugin {
                 hostedProjectKey = projectKey;
                 hostedSyncId = syncId;
                 sessionCode = String.format(Locale.US, "%06d", RANDOM.nextInt(1_000_000));
-                failedAuthAttempts = 0;
+                connectionGuard.resetFailures();
                 hostKeyAlias = tlsHost.keyAlias;
                 hostCertificateFingerprint = tlsHost.fingerprint;
                 SSLServerSocket tlsServerSocket = (SSLServerSocket) tlsHost.context
@@ -252,31 +255,20 @@ public class LocalSyncPlugin extends Plugin {
                 Socket socket = null;
                 try {
                     socket = activeServer.accept();
-                    socket.setSoTimeout(HANDSHAKE_TIMEOUT_MS);
-                    if (!(socket instanceof SSLSocket)) {
-                        throw new Exception("Local sync requires TLS");
+                    if (!connectionGuard.tryAcquire()) {
+                        closeSocket(socket);
+                        continue;
                     }
-                    enableModernTls((SSLSocket) socket);
-                    ((SSLSocket) socket).startHandshake();
-                    synchronized (sessionLock) {
-                        if (serverSocket != activeServer) {
-                            socket.close();
-                            return;
-                        }
-                        activeClientSocket = socket;
-                    }
-
-                    if (handleClient(socket)) return;
+                    activeClientSockets.add(socket);
+                    Socket acceptedSocket = socket;
+                    executor.execute(() -> handleAcceptedClient(activeServer, acceptedSocket));
+                    socket = null;
                 } catch (SocketException error) {
-                    if (socket == null && !activeServer.isClosed()) notifySyncError(error);
+                    if (!activeServer.isClosed()) notifySyncError(error);
                 } catch (Exception error) {
-                    // TLS/authentication failures are isolated to this peer; keep accepting clients.
-                    if (socket == null && !activeServer.isClosed()) notifySyncError(error);
+                    if (!activeServer.isClosed()) notifySyncError(error);
                 } finally {
                     closeSocket(socket);
-                    synchronized (sessionLock) {
-                        if (activeClientSocket == socket) activeClientSocket = null;
-                    }
                 }
             }
         } finally {
@@ -288,6 +280,39 @@ public class LocalSyncPlugin extends Plugin {
         }
     }
 
+    private void handleAcceptedClient(ServerSocket activeServer, Socket socket) {
+        boolean shouldStop = false;
+        try {
+            socket.setSoTimeout(HANDSHAKE_TIMEOUT_MS);
+            if (!(socket instanceof SSLSocket)) {
+                throw new Exception("Local sync requires TLS");
+            }
+            enableModernTls((SSLSocket) socket);
+            ((SSLSocket) socket).startHandshake();
+            synchronized (sessionLock) {
+                if (serverSocket != activeServer) return;
+            }
+            shouldStop = handleClient(socket);
+        } catch (Exception error) {
+            synchronized (sessionLock) {
+                if (serverSocket == activeServer && !activeServer.isClosed()) {
+                    shouldStop = registerFailedAuthAttempt();
+                }
+            }
+            if (shouldStop) {
+                notifySyncError(new Exception("Too many failed synchronization connections"));
+            }
+        } finally {
+            closeSocket(socket);
+            activeClientSockets.remove(socket);
+            connectionGuard.release();
+            if (shouldStop) {
+                synchronized (sessionLock) {
+                    if (serverSocket == activeServer) stopHostInternal();
+                }
+            }
+        }
+    }
     private boolean handleClient(Socket socket) throws Exception {
         File received = null;
         try (
@@ -684,8 +709,7 @@ public class LocalSyncPlugin extends Plugin {
 
     private boolean registerFailedAuthAttempt() {
         synchronized (sessionLock) {
-            failedAuthAttempts += 1;
-            return failedAuthAttempts >= MAX_FAILED_AUTH_ATTEMPTS;
+            return connectionGuard.registerFailure();
         }
     }
 
@@ -842,9 +866,8 @@ public class LocalSyncPlugin extends Plugin {
                     socket.close();
                 } catch (Exception ignored) {}
             }
-            Socket client = activeClientSocket;
-            activeClientSocket = null;
-            closeSocket(client);
+            for (Socket client : activeClientSockets) closeSocket(client);
+            activeClientSockets.clear();
             File archive = hostedArchive;
             hostedArchive = null;
             if (archive != null) archive.delete();
@@ -855,7 +878,7 @@ public class LocalSyncPlugin extends Plugin {
             hostKeyAlias = null;
             hostCertificateFingerprint = null;
             deleteTlsKey(keyAlias);
-            failedAuthAttempts = 0;
+            connectionGuard.resetFailures();
         }
     }
 

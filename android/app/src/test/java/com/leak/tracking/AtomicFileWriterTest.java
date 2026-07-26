@@ -4,6 +4,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -28,6 +29,27 @@ public class AtomicFileWriterTest {
             (source, destination) ->
                 Files.move(source.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING)
         );
+
+        assertArrayEquals(replacement, Files.readAllBytes(target.toPath()));
+        assertEquals(1, temporaryFolder.getRoot().listFiles().length);
+    }
+
+    @Test
+    public void streamsReplacementWithoutRequiringACompleteByteArray() throws Exception {
+        File target = temporaryFolder.newFile("streamed.zip");
+        byte[] replacement = new byte[256 * 1024];
+        for (int index = 0; index < replacement.length; index++) {
+            replacement[index] = (byte) (index % 251);
+        }
+
+        try (ByteArrayInputStream input = new ByteArrayInputStream(replacement)) {
+            AtomicFileWriter.replace(
+                target,
+                input,
+                (source, destination) ->
+                    Files.move(source.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING)
+            );
+        }
 
         assertArrayEquals(replacement, Files.readAllBytes(target.toPath()));
         assertEquals(1, temporaryFolder.getRoot().listFiles().length);

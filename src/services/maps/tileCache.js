@@ -245,17 +245,22 @@ async function enforceNativeQuota() {
   }
 
   const victims = oldestKeys(paths, metadata, removeCount);
-  await Promise.all(
-    victims.map((path) =>
-      Filesystem.deleteFile({ path, directory: Directory.Data }).catch(
-        () => {},
-      ),
-    ),
-  );
-  removeMetadata(victims);
+  const deleted = (
+    await Promise.all(
+      victims.map(async (path) => {
+        try {
+          await Filesystem.deleteFile({ path, directory: Directory.Data });
+          return path;
+        } catch {
+          return null;
+        }
+      }),
+    )
+  ).filter(Boolean);
+  removeMetadata(deleted);
   localStorage.setItem(
     NATIVE_COUNT_KEY,
-    String(Math.max(0, count - victims.length)),
+    String(Math.max(0, count - deleted.length)),
   );
 }
 export async function getTileBlobUrl(url) {

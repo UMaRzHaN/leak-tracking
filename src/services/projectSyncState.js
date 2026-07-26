@@ -7,6 +7,7 @@ import {
 const SYNC_DB_NAME = "LeakTrackingSyncDB";
 const SYNC_STORE_NAME = "projectStates";
 const syncStateMemory = new Map();
+const syncStateMutationQueues = new Map();
 let syncDbPromise;
 
 function openSyncDb() {
@@ -228,6 +229,7 @@ export async function readProjectSyncStateAsync(projectId) {
 }
 export async function clearProjectSyncState(projectId) {
   if (!projectId) return;
+  await syncStateMutationQueues.get(projectId)?.catch(() => undefined);
   syncStateMemory.delete(projectId);
   if (typeof localStorage !== "undefined") {
     try {
@@ -271,6 +273,29 @@ export function applyProjectTombstones(leaks, syncState) {
   });
 }
 
+function mutateProjectSyncState(projectId, mutation) {
+  if (!projectId) return Promise.resolve();
+  const previous = syncStateMutationQueues.get(projectId) ?? Promise.resolve();
+  const next = previous
+    .catch(() => undefined)
+    .then(async () => {
+      const state = await readProjectSyncStateAsync(projectId);
+      const result = mutation(state);
+      await writeProjectSyncState(
+        projectId,
+        result?.state ?? state,
+        result?.liveLeaks ?? [],
+      );
+    });
+  syncStateMutationQueues.set(projectId, next);
+  const cleanup = () => {
+    if (syncStateMutationQueues.get(projectId) === next) {
+      syncStateMutationQueues.delete(projectId);
+    }
+  };
+  void next.then(cleanup, cleanup);
+  return next;
+}
 export async function recordLeakDeletions(
   projectId,
   previousLeaks,
@@ -279,27 +304,47 @@ export async function recordLeakDeletions(
 ) {
   if (!projectId) return;
   const nextIdentities = new Set(nextLeaks.flatMap(getLeakSyncIdentities));
-  const state = await readProjectSyncStateAsync(projectId);
-  for (const leak of previousLeaks) {
-    const identities = getLeakSyncIdentities(leak);
-    const stillExists = identities.some((identity) =>
-      nextIdentities.has(identity),
-    );
-    if (!stillExists) {
-      for (const identity of identities) {
-        state.deleted[identity] = Math.max(
-          state.deleted[identity] ?? 0,
-          deletedAt,
-        );
+  return mutateProjectSyncState(projectId, (state) => {
+    for (const leak of previousLeaks) {
+      const identities = getLeakSyncIdentities(leak);
+      const stillExists = identities.some((identity) =>
+        nextIdentities.has(identity),
+      );
+      if (!stillExists) {
+        for (const identity of identities) {
+          state.deleted[identity] = Math.max(
+            state.deleted[identity] ?? 0,
+            deletedAt,
+          );
+        }
       }
     }
-  }
-  return writeProjectSyncState(projectId, state, nextLeaks);
+    return { state, liveLeaks: nextLeaks };
+  });
 }
-
 export function markProjectVarsUpdated(projectId, updatedAt = Date.now()) {
-  if (!projectId) return;
-  const state = readProjectSyncState(projectId);
-  state.varsUpdatedAt = Math.max(state.varsUpdatedAt, toTime(updatedAt));
-  return writeProjectSyncState(projectId, state);
+  if (!projectId) return Promise.resolve();
+  const timestamp = toTime(updatedAt);
+  // Keep synchronous readers and the UI current without overwriting the
+  // authoritative IndexedDB state before it has been loaded.
+  if (typeof localStorage !== "undefined" && timestamp > 0) {
+    try {
+      const current = toTime(
+        localStorage.getItem(STORAGE_KEYS.PROJECT_VARS_UPDATED_AT(projectId)),
+      );
+      localStorage.setItem(
+        STORAGE_KEYS.PROJECT_VARS_UPDATED_AT(projectId),
+        String(Math.max(current, timestamp)),
+      );
+    } catch (error) {
+      logger.warn(
+        "[projectSyncState] vars timestamp could not be cached:",
+        error,
+      );
+    }
+  }
+  return mutateProjectSyncState(projectId, (state) => {
+    state.varsUpdatedAt = Math.max(state.varsUpdatedAt, timestamp);
+    return { state };
+  });
 }

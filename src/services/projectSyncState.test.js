@@ -262,9 +262,34 @@ describe("projectSyncState", () => {
     await reloaded.clearProjectSyncState("restart-project");
     delete globalThis.indexedDB;
   });
-  it("marks project variables with monotonically increasing timestamps", () => {
-    markProjectVarsUpdated("project-1", 300);
-    markProjectVarsUpdated("project-1", 200);
+  it("preserves IndexedDB-only tombstones when project variables change after restart", async () => {
+    globalThis.indexedDB = new IDBFactory();
+    vi.resetModules();
+    const initial = await import("./projectSyncState");
+    await initial.writeProjectSyncState("vars-restart-project", {
+      deleted: { "id:durable": 700 },
+    });
+    localStorage.clear();
+
+    vi.resetModules();
+    const reloaded = await import("./projectSyncState");
+    await reloaded.markProjectVarsUpdated("vars-restart-project", 900);
+
+    expect(
+      await reloaded.readProjectSyncStateAsync("vars-restart-project"),
+    ).toEqual({
+      version: 1,
+      deleted: { "id:durable": 700 },
+      varsUpdatedAt: 900,
+    });
+    await reloaded.clearProjectSyncState("vars-restart-project");
+    delete globalThis.indexedDB;
+  });
+
+  it("marks project variables with monotonically increasing timestamps", async () => {
+    const first = markProjectVarsUpdated("project-1", 300);
+    const second = markProjectVarsUpdated("project-1", 200);
+    await Promise.all([first, second]);
 
     expect(readProjectSyncState("project-1").varsUpdatedAt).toBe(300);
     expect(localStorage.getItem("app:project-1:vars_updated_at_v1")).toBe(

@@ -195,9 +195,9 @@ describe("tileCache native storage", () => {
     await cacheTile("https://server/tile/3/2/4.jpg");
 
     expect(filesystem.deleteFile).toHaveBeenCalledTimes(601);
-    expect(localStorage.getItem("map-tiles-native-count")).toBe("5400");
+    expect(localStorage.getItem("map-tiles-native-count")).toBe("5401");
     const remaining = JSON.parse(localStorage.getItem("map-tiles-metadata-v1"));
-    expect(remaining["map-tiles/1/1/0.jpg"]).toBeUndefined();
+    expect(remaining["map-tiles/1/1/0.jpg"]).toBeDefined();
     expect(remaining["map-tiles/3/2/4.jpg"]).toBeDefined();
   });
 });
