@@ -393,8 +393,13 @@ export default function App() {
       const { parseExcelImportFile } =
         await import("@/services/excelImportService");
       const result = await parseExcelImportFile(file, {
-        projectType: type || "upstream",
+        projectType: type || undefined,
       });
+      if (!type && !result.project?.type) {
+        const error = new Error("Project type is missing");
+        error.code = "MISSING_PROJECT_TYPE";
+        throw error;
+      }
       if (!result.leaks.length && !result.portableArchive) {
         const error = new Error("No importable rows found in XLSX");
         error.code = "EMPTY_EXCEL";

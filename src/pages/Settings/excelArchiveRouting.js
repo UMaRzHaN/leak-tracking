@@ -34,7 +34,10 @@ export function resolvePortableExcelArchiveRoute({
   if (!existing) {
     return { action: "create", name: archiveName, archiveProject };
   }
-  if (existing.id === activeProject?.id) {
+  if (
+    existing.id === activeProject?.id &&
+    existing.type === archiveProject.type
+  ) {
     return { action: "current", existing, archiveProject };
   }
   return {

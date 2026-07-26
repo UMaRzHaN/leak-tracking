@@ -37,6 +37,22 @@ describe("parseExcelLeaks", () => {
     });
   }, 60_000);
 
+  it("detects the project type from ordinary XLSX headers when it is not provided", async () => {
+    const blob = await makeWorkbookBlob([
+      ["Leak ID", "district", "locality", "component"],
+      ["DS-1", "District 1", "Town", "Valve"],
+    ]);
+
+    const result = await parseExcelLeaks(blob);
+
+    expect(result.project).toEqual({ type: "downstream" });
+    expect(result.leaks[0]).toMatchObject({
+      leak_id: "DS-1",
+      district: "District 1",
+      locality: "Town",
+    });
+  });
+
   it("drops out-of-range coordinates without dropping the rest of the row", async () => {
     const blob = await makeWorkbookBlob([
       ["Leak ID", "latitude", "longitude", "component"],

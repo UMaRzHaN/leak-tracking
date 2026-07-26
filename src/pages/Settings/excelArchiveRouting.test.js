@@ -25,10 +25,27 @@ describe("portable Excel archive routing", () => {
     expect(
       resolvePortableExcelArchiveRoute({
         result: portableResult,
-        projects: [{ id: "fao", name: " фао " }],
-        activeProject: { id: "fao", name: "ФАО" },
+        projects: [{ id: "fao", name: " фао ", type: "midstream" }],
+        activeProject: { id: "fao", name: "ФАО", type: "midstream" },
       }).action,
     ).toBe("current");
+  });
+
+  it("creates a copy when the active project has the same name but another type", () => {
+    expect(
+      resolvePortableExcelArchiveRoute({
+        result: portableResult,
+        projects: [
+          { id: "fao", name: "ФАО", type: "upstream" },
+          { id: "copy", name: "ФАО (Excel)", type: "midstream" },
+        ],
+        activeProject: { id: "fao", name: "ФАО", type: "upstream" },
+      }),
+    ).toMatchObject({
+      action: "create",
+      name: "ФАО (Excel 2)",
+      archiveProject: { type: "midstream" },
+    });
   });
 
   it("uses a unique copy name when the matching project is not active", () => {

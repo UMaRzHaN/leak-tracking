@@ -1350,7 +1350,7 @@ function attachHistoryRecords(leaks, recordsByLeakId) {
   });
 }
 
-export async function parseExcelLeaks(file, { projectType = "upstream" } = {}) {
+export async function parseExcelLeaks(file, { projectType } = {}) {
   assertImportFileSize(file);
   const ExcelJS = (await getExcelJS()).default;
   const workbook = new ExcelJS.Workbook();
@@ -1381,21 +1381,33 @@ export async function parseExcelLeaks(file, { projectType = "upstream" } = {}) {
     };
   }
 
-  const headerMap = buildHeaderMap(projectType);
-  const sheet = findLeakSheet(workbook, headerMap);
-  if (!sheet) {
+  const validTypes = ["upstream", "midstream", "downstream"];
+  const requestedType = validTypes.includes(projectType) ? projectType : null;
+  const candidates = (requestedType ? [requestedType] : validTypes)
+    .map((type) => {
+      const headerMap = buildHeaderMap(type);
+      const sheet = findLeakSheet(workbook, headerMap);
+      const headerRow = sheet ? findHeaderRow(sheet, headerMap) : null;
+      return { type, headerMap, sheet, headerRow };
+    })
+    .filter((candidate) => candidate.sheet && candidate.headerRow)
+    .sort(
+      (left, right) =>
+        right.headerRow.columns.length - left.headerRow.columns.length,
+    );
+
+  const selected = candidates[0];
+  if (!selected) {
     return {
       leaks: [],
       stats: { totalRows: 0, imported: 0, skipped: 0 },
       columns: [],
       sheetName: "",
+      project: requestedType ? { type: requestedType } : null,
     };
   }
 
-  const headerRow = findHeaderRow(sheet, headerMap);
-  if (!headerRow) {
-    throw new Error("Не удалось найти строку заголовков Excel");
-  }
+  const { type: resolvedProjectType, sheet, headerRow } = selected;
 
   const leaks = [];
   const seenLeakTags = new Set();
@@ -1478,6 +1490,7 @@ export async function parseExcelLeaks(file, { projectType = "upstream" } = {}) {
     monitoringSheetName: monitoringSheet?.name ?? "",
     historySheetName: historySheet?.name ?? "",
     monitoringRound,
+    project: { type: resolvedProjectType },
   };
 }
 
