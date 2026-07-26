@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRenderMetric } from "@/utils/renderMetrics";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
 import Notification from "@/components/ui/Notification/Notification";
@@ -19,6 +20,8 @@ export default function DataBase({
   onMonitorLeaks,
   userProfile,
 }) {
+  useRenderMetric("DataBase");
+
   const { lang } = useLanguage();
   const projectConfig = useProjectConfig();
   const [bulkCalculationOpen, setBulkCalculationOpen] = useState(false);

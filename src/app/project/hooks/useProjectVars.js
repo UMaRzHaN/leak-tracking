@@ -32,6 +32,7 @@ export function useProjectVars(projectId, defaults = defaultVars) {
   }, [projectId]);
 
   const vars = useMemo(() => {
+    void revision;
     if (!projectId || !storageKey) {
       return defaults;
     }
@@ -59,7 +60,6 @@ export function useProjectVars(projectId, defaults = defaultVars) {
     } catch {
       return defaults;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, storageKey, defaults, revision]);
 
   const setVars = useCallback(

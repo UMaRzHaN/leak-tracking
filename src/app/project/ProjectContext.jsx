@@ -1,6 +1,6 @@
 import {
   createContext,
-  useContext,
+  use,
   useState,
   useMemo,
   useCallback,
@@ -59,9 +59,11 @@ function initProjectState() {
 }
 
 export function ProjectProvider({ children }) {
-  const [initialState] = useState(initProjectState);
-  const [projects, setProjectsState] = useState(initialState.projects);
-  const [activeId, setActiveIdState] = useState(initialState.activeId);
+  const initialStateRef = useRef(null);
+  if (initialStateRef.current === null)
+    initialStateRef.current = initProjectState();
+  const [projects, setProjects] = useState(initialStateRef.current.projects);
+  const [activeId, setActiveId] = useState(initialStateRef.current.activeId);
 
   // Refs let action callbacks read current state without closing over it.
   // This makes every action permanently stable (never recreated after mount),
@@ -90,13 +92,13 @@ export function ProjectProvider({ children }) {
       typeof next === "function" ? next(projectsRef.current) : next;
     saveProjects(result);
     projectsRef.current = result;
-    setProjectsState(result);
+    setProjects(result);
   }, []);
 
   const _setActiveId = useCallback((id) => {
     saveActiveId(id);
     activeIdRef.current = id;
-    setActiveIdState(id);
+    setActiveId(id);
   }, []);
 
   const addProject = useCallback(
@@ -349,18 +351,18 @@ export function ProjectProvider({ children }) {
   );
 
   return (
-    <ProjectDataContext.Provider value={dataValue}>
-      <ProjectActionsContext.Provider value={actionsValue}>
+    <ProjectDataContext value={dataValue}>
+      <ProjectActionsContext value={actionsValue}>
         {children}
-      </ProjectActionsContext.Provider>
-    </ProjectDataContext.Provider>
+      </ProjectActionsContext>
+    </ProjectDataContext>
   );
 }
 
 // Backward-compatible hook — merges both contexts, works everywhere useProject() was used.
 export function useProject() {
-  const data = useContext(ProjectDataContext);
-  const actions = useContext(ProjectActionsContext);
+  const data = use(ProjectDataContext);
+  const actions = use(ProjectActionsContext);
   if (!data || !actions)
     throw new Error("useProject must be used within ProjectProvider");
   return { ...data, ...actions };
@@ -368,14 +370,14 @@ export function useProject() {
 
 // Granular hooks for components that only need one slice.
 export function useProjectData() {
-  const data = useContext(ProjectDataContext);
+  const data = use(ProjectDataContext);
   if (!data)
     throw new Error("useProjectData must be used within ProjectProvider");
   return data;
 }
 
 export function useProjectActions() {
-  const actions = useContext(ProjectActionsContext);
+  const actions = use(ProjectActionsContext);
   if (!actions)
     throw new Error("useProjectActions must be used within ProjectProvider");
   return actions;

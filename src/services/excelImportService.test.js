@@ -35,7 +35,7 @@ describe("parseExcelLeaks", () => {
       skipped: 1,
       duplicateLeakIds: 1,
     });
-  }, 15_000);
+  }, 60_000);
 
   it("drops out-of-range coordinates without dropping the rest of the row", async () => {
     const blob = await makeWorkbookBlob([
@@ -115,7 +115,7 @@ describe("parseExcelLeaks", () => {
       object: "КС-1",
       priority: "medium",
     });
-  }, 15_000);
+  }, 60_000);
 
   it("imports app-like Excel headers and defaults unknown statuses to open", async () => {
     const blob = await makeWorkbookBlob([

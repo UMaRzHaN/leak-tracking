@@ -1,4 +1,19 @@
-import { useRef, useState, useEffect, useMemo, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRenderMetric } from "@/utils/renderMetrics";
+
+const ESTIMATED_HEIGHT = 120;
+const OVERSCAN_PX = 300;
+
+function lowerBound(tops, heights, boundary) {
+  let low = 0;
+  let high = tops.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (tops[middle] + heights[middle] < boundary) low = middle + 1;
+    else high = middle;
+  }
+  return low;
+}
 
 export default function VirtualizedLeakList({
   items = [],
@@ -6,124 +21,110 @@ export default function VirtualizedLeakList({
   bottomPadding = 0,
   renderItem,
 }) {
-  const containerRef = useRef(null);
-  const observersRef = useRef(new Map());
+  useRenderMetric("VirtualizedLeakList");
 
+  const observersRef = useRef(new Map());
+  const rowRefsRef = useRef(new Map());
   const [scrollTop, setScrollTop] = useState(0);
   const [heights, setHeights] = useState({});
-
-  const estimatedHeight = 120;
-  const overscanPx = 300;
 
   const getKey = useCallback((item, index) => item.id ?? item._id ?? index, []);
 
   const updateHeight = useCallback((key, nextHeight) => {
     if (!nextHeight || Number.isNaN(nextHeight)) return;
-
-    setHeights((prev) => {
-      const prevHeight = prev[key];
-      if (prevHeight && Math.abs(prevHeight - nextHeight) < 1) return prev;
-      return {
-        ...prev,
-        [key]: nextHeight,
-      };
+    setHeights((previous) => {
+      const previousHeight = previous[key];
+      if (previousHeight && Math.abs(previousHeight - nextHeight) < 1) {
+        return previous;
+      }
+      return { ...previous, [key]: nextHeight };
     });
   }, []);
 
-  const registerRow = useCallback(
-    (key) => (node) => {
-      const prevObserver = observersRef.current.get(key);
-      if (prevObserver) {
-        prevObserver.disconnect();
+  const getRowRef = useCallback(
+    (key) => {
+      const cached = rowRefsRef.current.get(key);
+      if (cached) return cached;
+
+      const callback = (node) => {
+        observersRef.current.get(key)?.disconnect();
         observersRef.current.delete(key);
-      }
+        if (!node) {
+          rowRefsRef.current.delete(key);
+          return;
+        }
 
-      if (!node) return;
-
-      const measure = () => {
-        const rect = node.getBoundingClientRect();
-        updateHeight(key, rect.height);
+        const measure = () =>
+          updateHeight(key, node.getBoundingClientRect().height);
+        measure();
+        if (typeof ResizeObserver !== "undefined") {
+          const observer = new ResizeObserver(measure);
+          observer.observe(node);
+          observersRef.current.set(key, observer);
+        }
       };
-
-      measure();
-
-      if (typeof ResizeObserver !== "undefined") {
-        const ro = new ResizeObserver(() => {
-          measure();
-        });
-        ro.observe(node);
-        observersRef.current.set(key, ro);
-      }
+      rowRefsRef.current.set(key, callback);
+      return callback;
     },
     [updateHeight],
   );
 
   useEffect(() => {
     const observers = observersRef.current;
-
+    const rowRefs = rowRefsRef.current;
     return () => {
-      observers.forEach((ro) => ro.disconnect());
+      observers.forEach((observer) => observer.disconnect());
       observers.clear();
+      rowRefs.clear();
     };
   }, []);
 
-  const onScroll = useCallback((e) => {
-    const next = e.currentTarget.scrollTop;
-    setScrollTop((prev) => (Math.abs(next - prev) > 1 ? next : prev));
+  const onScroll = useCallback((event) => {
+    const next = event.currentTarget.scrollTop;
+    setScrollTop((previous) =>
+      Math.abs(next - previous) > 1 ? next : previous,
+    );
   }, []);
 
-  const layout = useMemo(() => {
-    const rowHeights = items.map((item, index) => {
-      const key = getKey(item, index);
-      return heights[key] ?? estimatedHeight;
-    });
-
-    const tops = [];
-    let acc = 0;
-
-    for (let i = 0; i < rowHeights.length; i++) {
-      tops.push(acc);
-      acc += rowHeights[i];
+  const measurements = useMemo(() => {
+    const rowHeights = new Array(items.length);
+    const tops = new Array(items.length);
+    let total = 0;
+    for (let index = 0; index < items.length; index++) {
+      const key = getKey(items[index], index);
+      tops[index] = total;
+      rowHeights[index] = heights[key] ?? ESTIMATED_HEIGHT;
+      total += rowHeights[index];
     }
+    return { rowHeights, tops, totalHeight: total + bottomPadding };
+  }, [items, heights, getKey, bottomPadding]);
 
-    const totalHeight = acc + bottomPadding;
-    const viewportBottom = scrollTop + height;
-    const startBoundary = Math.max(0, scrollTop - overscanPx);
-    const endBoundary = viewportBottom + overscanPx;
-
-    let startIndex = 0;
-    while (
-      startIndex < items.length &&
-      tops[startIndex] + rowHeights[startIndex] < startBoundary
+  const visibleItems = useMemo(() => {
+    const startBoundary = Math.max(0, scrollTop - OVERSCAN_PX);
+    const endBoundary = scrollTop + height + OVERSCAN_PX;
+    const startIndex = lowerBound(
+      measurements.tops,
+      measurements.rowHeights,
+      startBoundary,
+    );
+    const rows = [];
+    for (
+      let index = startIndex;
+      index < items.length && measurements.tops[index] < endBoundary;
+      index++
     ) {
-      startIndex++;
-    }
-
-    let endIndex = startIndex;
-    while (endIndex < items.length && tops[endIndex] < endBoundary) {
-      endIndex++;
-    }
-
-    const visibleItems = [];
-    for (let i = startIndex; i < endIndex; i++) {
-      visibleItems.push({
-        item: items[i],
-        index: i,
-        top: tops[i],
-        height: rowHeights[i],
-        key: getKey(items[i], i),
+      rows.push({
+        item: items[index],
+        index,
+        top: measurements.tops[index],
+        key: getKey(items[index], index),
       });
     }
-
-    return {
-      totalHeight,
-      visibleItems,
-    };
-  }, [items, heights, getKey, scrollTop, height, bottomPadding]);
+    return rows;
+  }, [items, measurements, getKey, scrollTop, height]);
 
   return (
     <div
-      ref={containerRef}
       onScroll={onScroll}
       style={{
         height,
@@ -132,16 +133,11 @@ export default function VirtualizedLeakList({
         willChange: "transform",
       }}
     >
-      <div
-        style={{
-          height: layout.totalHeight,
-          position: "relative",
-        }}
-      >
-        {layout.visibleItems.map(({ item, index, top, key }) => (
+      <div style={{ height: measurements.totalHeight, position: "relative" }}>
+        {visibleItems.map(({ item, index, top, key }) => (
           <div
             key={key}
-            ref={registerRow(key)}
+            ref={getRowRef(key)}
             style={{
               position: "absolute",
               top,

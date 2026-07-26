@@ -1,4 +1,5 @@
 import { useMapPage } from "./hooks/useMapPage";
+import { useRenderMetric } from "@/utils/renderMetrics";
 import MapControls from "./components/MapControls";
 import TileProgress from "./components/TileProgress";
 import MobileSheet from "@/components/ui/MobileSheet/MobileSheet";
@@ -11,6 +12,8 @@ export default function MapPage({
   gpsEnabled = true,
   sharedFilters,
 }) {
+  useRenderMetric("MapPage");
+
   const {
     containerRef,
     open,

@@ -258,7 +258,7 @@ export default function FieldVisibilityModal({
     toConfigurableHiddenSet(hiddenFields),
   );
   const [search, setSearch] = useState("");
-  const [openGroups, setOpenGroups] = useState(new Set());
+  const [openGroups, setOpenGroups] = useState(() => new Set());
 
   const groups = useMemo(
     () => buildGroups(config, localeTexts, t, lang),
@@ -275,8 +275,7 @@ export default function FieldVisibilityModal({
     setDraft(toConfigurableHiddenSet(hiddenFields));
     setSearch("");
     setOpenGroups(new Set(groups.map((g) => g.title)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [groups, hiddenFields, open]);
 
   const totalConfigurable = useMemo(
     () => groups.reduce((acc, g) => acc + g.fields.length, 0),

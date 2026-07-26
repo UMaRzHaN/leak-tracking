@@ -6,6 +6,7 @@ import {
 } from "@/repositories/LeakRepository";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
 import { recordLeakDeletions } from "@/services/projectSyncState";
+import { stampLeakFieldVersions } from "@/services/leakFieldVersions";
 import { logger } from "@/utils/logger";
 
 export function useProjectData() {
@@ -20,7 +21,7 @@ export function useProjectData() {
 
   const [loadError, setLoadError] = useState(null);
   const [reloadRevision, setReloadRevision] = useState(0);
-  const saveQueue = useRef(Promise.resolve());
+  const saveQueueRef = useRef(Promise.resolve());
   const dataRef = useRef([]);
   const dataProjectIdRef = useRef(null);
   const loadGenerationRef = useRef(0);
@@ -36,9 +37,9 @@ export function useProjectData() {
     if (!activeProjectId || !activeProjectFolderName) {
       setData([]);
       dataRef.current = [];
-      dataProjectIdRef.current = null;
+      dataProjectIdRef.current = activeProjectId;
       setDataLoaded(true);
-      setDataProjectId(null);
+      setDataProjectId(activeProjectId);
       setPreservedRecords([]);
       return;
     }
@@ -104,14 +105,15 @@ export function useProjectData() {
       const folderName = activeProjectFolderName;
       const preserved =
         dataProjectIdRef.current === projectId ? preservedRecords : [];
-      const recordsToPersist = [...next, ...preserved];
-      dataRef.current = next;
+      const versionedNext = stampLeakFieldVersions(previous, next);
+      const recordsToPersist = [...versionedNext, ...preserved];
+      dataRef.current = versionedNext;
       dataProjectIdRef.current = activeProjectId;
-      setData(() => next);
+      setData(() => versionedNext);
       setDataLoaded(true);
       setDataProjectId(activeProjectId);
       if (!projectId || !folderName) return Promise.resolve();
-      const nextSave = saveQueue.current
+      const nextSave = saveQueueRef.current
         .catch(() => undefined)
         .then(async () => {
           const persistedBefore = persistedByProjectRef.current.get(
@@ -125,7 +127,7 @@ export function useProjectData() {
           } catch (error) {
             if (
               dataProjectIdRef.current === projectId &&
-              dataRef.current === next
+              dataRef.current === versionedNext
             ) {
               dataRef.current = previous;
               setData(previous);
@@ -134,7 +136,11 @@ export function useProjectData() {
           }
           persistedByProjectRef.current.set(projectId, recordsToPersist);
           try {
-            recordLeakDeletions(projectId, persistedBefore, recordsToPersist);
+            await recordLeakDeletions(
+              projectId,
+              persistedBefore,
+              recordsToPersist,
+            );
           } catch (error) {
             logger.error(
               "[useProjectData] Data was saved, but sync metadata could not be updated:",
@@ -142,7 +148,7 @@ export function useProjectData() {
             );
           }
         });
-      saveQueue.current = nextSave;
+      saveQueueRef.current = nextSave;
       return nextSave;
     },
     [activeProjectFolderName, activeProjectId, preservedRecords],
@@ -173,7 +179,7 @@ export function useProjectData() {
     if (!projectId || !folderName) {
       return Promise.resolve();
     }
-    const nextClear = saveQueue.current
+    const nextClear = saveQueueRef.current
       .catch(() => undefined)
       .then(async () => {
         try {
@@ -194,7 +200,7 @@ export function useProjectData() {
         ) ?? [...previous, ...previousPreserved];
         persistedByProjectRef.current.set(projectId, []);
         try {
-          recordLeakDeletions(projectId, persistedBefore, []);
+          await recordLeakDeletions(projectId, persistedBefore, []);
         } catch (error) {
           logger.error(
             "[useProjectData] Data was cleared, but sync metadata could not be updated:",
@@ -210,7 +216,7 @@ export function useProjectData() {
           );
         }
       });
-    saveQueue.current = nextClear;
+    saveQueueRef.current = nextClear;
     return nextClear;
   }, [activeProjectFolderName, activeProjectId, preservedRecords]);
 
@@ -228,7 +234,7 @@ export function useProjectData() {
     dataForPhotoGc,
     save,
     clear,
-    dataLoaded,
+    dataLoaded: dataLoaded && dataProjectId === activeProjectId,
     dataProjectId,
     loadError,
     retryLoad,

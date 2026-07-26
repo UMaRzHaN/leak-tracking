@@ -17,7 +17,7 @@ function readProfile() {
 }
 
 export function useUserProfile() {
-  const [profile, setProfileState] = useState(readProfile);
+  const [storedProfile, setStoredProfile] = useState(readProfile);
 
   const setProfile = useCallback((nextProfile) => {
     const next = {
@@ -25,9 +25,9 @@ export function useUserProfile() {
       updatedAt: new Date().toISOString(),
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    setProfileState(next);
+    setStoredProfile(next);
     return next;
   }, []);
 
-  return { profile, setProfile };
+  return { profile: storedProfile, setProfile };
 }

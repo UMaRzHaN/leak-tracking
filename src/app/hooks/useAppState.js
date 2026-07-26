@@ -28,10 +28,11 @@ export function useAppState() {
     readNavigationState() ?? { page: HOME_PAGE, depth: 0 },
   );
   const navigationRef = useRef(initialNavigationRef.current);
-  const [{ page, prevPage }, setPageState] = useState({
+  const [pageState, setPageState] = useState({
     page: initialNavigationRef.current.page,
     prevPage: HOME_PAGE,
   });
+  const { page, prevPage } = pageState;
   const [gpsEnabled, setGpsEnabled] = useState(true);
 
   useEffect(() => {

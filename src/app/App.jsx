@@ -372,7 +372,7 @@ export default function App() {
           savePhotoRef.current,
         );
         await saveRef.current(withPhotos);
-        if (sync) writeProjectSyncState(newProject.id, sync, withPhotos);
+        if (sync) await writeProjectSyncState(newProject.id, sync, withPhotos);
         if (monitoringRound)
           saveMonitoringRound(newProject.id, monitoringRound);
         return { project: newProject, leakCount: withPhotos.length };

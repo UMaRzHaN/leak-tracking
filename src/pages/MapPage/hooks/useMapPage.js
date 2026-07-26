@@ -187,11 +187,27 @@ export function useMapPage({
     [setStatusFilter],
   );
 
-  const mapOrderedLeaks = useMemo(() => {
-    const hasGps = Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng);
+  const monitoringLeaks = useMemo(
+    () =>
+      filterLeaksByMonitoring(
+        filteredLeaks,
+        hasMonitoringRound ? monitoringFilter : MONITORING_FILTER.ALL,
+        monitoringRoundId,
+        monitoringRoundNumber,
+      ),
+    [
+      filteredLeaks,
+      hasMonitoringRound,
+      monitoringFilter,
+      monitoringRoundId,
+      monitoringRoundNumber,
+    ],
+  );
 
+  const visibleLeaks = useMemo(() => {
+    const hasGps = Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng);
     if (nearbyOnly && hasGps) {
-      return filteredLeaks
+      return monitoringLeaks
         .map((leak) => ({
           ...leak,
           _distance: getDistanceMeters(
@@ -205,17 +221,17 @@ export function useMapPage({
         .sort((left, right) => left._distance - right._distance);
     }
 
-    if (!mapCenter) return filteredLeaks;
+    // Marker order is irrelevant. Sort by distance only while the user is
+    // viewing the bottom sheet; this avoids cloning 10,000 records on every pan.
+    if (!open || !mapCenter) return monitoringLeaks;
 
     const roundedLat = Math.round(mapCenter.lat * 1000) / 1000;
     const roundedLng = Math.round(mapCenter.lng * 1000) / 1000;
     const cache = distanceCacheRef.current;
-
-    const sorted = filteredLeaks
+    return monitoringLeaks
       .map((leak) => {
         const key = `${leak.id}_${roundedLat}_${roundedLng}`;
         let distance = cache.get(key);
-
         if (distance === undefined) {
           distance = getDistanceMeters(
             mapCenter.lat,
@@ -223,33 +239,14 @@ export function useMapPage({
             leak.lat,
             leak.lng,
           );
-          if (cache.size > 2000) cache.delete(cache.keys().next().value);
+          if (cache.size > 20_000) cache.delete(cache.keys().next().value);
           cache.set(key, distance);
         }
-
         return { ...leak, _distance: distance };
       })
       .sort((left, right) => left._distance - right._distance);
-
-    return sorted;
-  }, [filteredLeaks, mapCenter, nearbyOnly, nearbyRadius, coords]);
-
-  const visibleLeaks = useMemo(
-    () =>
-      filterLeaksByMonitoring(
-        mapOrderedLeaks,
-        hasMonitoringRound ? monitoringFilter : MONITORING_FILTER.ALL,
-        monitoringRoundId,
-        monitoringRoundNumber,
-      ),
-    [
-      mapOrderedLeaks,
-      hasMonitoringRound,
-      monitoringFilter,
-      monitoringRoundId,
-      monitoringRoundNumber,
-    ],
-  );
+  }, [monitoringLeaks, open, mapCenter, nearbyOnly, nearbyRadius, coords]);
+  const markerLeaks = nearbyOnly ? visibleLeaks : monitoringLeaks;
 
   useEffect(() => {
     let cancelled = false;
@@ -357,7 +354,7 @@ export function useMapPage({
   useEffect(() => {
     mapModuleRef.current?.addMarkers?.(
       mapRef.current.markersLayer,
-      visibleLeaks,
+      markerLeaks,
       mapRef.current.map,
     );
 
@@ -365,7 +362,7 @@ export function useMapPage({
     const map = mapRef.current.map;
     if (!map) return;
 
-    const validLeaks = visibleLeaks.filter(
+    const validLeaks = markerLeaks.filter(
       (leak) => Number.isFinite(leak.lat) && Number.isFinite(leak.lng),
     );
     if (validLeaks.length === 0) return;
@@ -385,11 +382,11 @@ export function useMapPage({
         },
       );
     }
-  }, [visibleLeaks, mapReady]);
+  }, [markerLeaks, mapReady]);
 
   useEffect(() => {
-    mapRef.current.setHeatmap?.(heatmapEnabled ? visibleLeaks : []);
-  }, [heatmapEnabled, visibleLeaks, mapReady]);
+    mapRef.current.setHeatmap?.(heatmapEnabled ? markerLeaks : []);
+  }, [heatmapEnabled, markerLeaks, mapReady]);
 
   const handleDownloadArea = useCallback(async () => {
     const map = mapRef.current.map;
@@ -400,7 +397,7 @@ export function useMapPage({
       const { preloadUrls, buildTileUrls, buildViewportTileUrls } =
         await import("@/services/maps/tileCache");
       const urlSet = new Set();
-      const validLeaks = visibleLeaks.filter(
+      const validLeaks = markerLeaks.filter(
         (leak) => Number.isFinite(leak.lat) && Number.isFinite(leak.lng),
       );
       const zoomFactor = 2 ** 14;
@@ -466,7 +463,7 @@ export function useMapPage({
       setDownloading(false);
       setTimeout(() => setTileProgress(null), 2500);
     }
-  }, [downloading, visibleLeaks, notify, lang]);
+  }, [downloading, markerLeaks, notify, lang]);
 
   const handleExportKML = useCallback(async () => {
     const { saveLeaksKML } = await import("@/pages/MapPage/kml");

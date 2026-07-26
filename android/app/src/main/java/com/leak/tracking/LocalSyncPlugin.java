@@ -59,7 +59,7 @@ import javax.security.auth.x500.X500Principal;
 public class LocalSyncPlugin extends Plugin {
     private static final String MAGIC = "LEAK_TRACKER_SYNC_V3";
     private static final String IMPORT_MAGIC = "LEAK_TRACKER_SYNC_IMPORT_V3";
-    private static final long MAX_ARCHIVE_BYTES = 64L * 1024L * 1024L;
+    private static final long MAX_ARCHIVE_BYTES = 1024L * 1024L * 1024L;
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final int HANDSHAKE_TIMEOUT_MS = 10_000;
     private static final int TRANSFER_TIMEOUT_MS = 120_000;
@@ -617,7 +617,7 @@ public class LocalSyncPlugin extends Plugin {
     }
 
     private boolean isValidFingerprint(String value) {
-        return value.length() >= 16 && value.length() <= 64 && value.length() % 2 == 0;
+        return value.length() == 64;
     }
 
     private byte[] hexToBytes(String value) throws Exception {
@@ -734,7 +734,7 @@ public class LocalSyncPlugin extends Plugin {
 
     private void assertArchiveSizeLimit(long size) throws Exception {
         if (size > MAX_ARCHIVE_BYTES) {
-            throw new Exception("Архив синхронизации больше 64 МБ");
+            throw new Exception("Архив синхронизации больше 1 ГБ");
         }
     }
 

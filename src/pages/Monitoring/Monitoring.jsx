@@ -1,4 +1,13 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRenderMetric } from "@/utils/renderMetrics";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { STATUS } from "@/utils/status";
 import { MONITORING_RESULT, isMonitoringDue } from "@/utils/monitoring";
@@ -72,6 +81,8 @@ export default function Monitoring({
   onRequestedLeaksConsumed,
   userProfile,
 }) {
+  useRenderMetric("Monitoring");
+
   const { lang } = useLanguage();
   const { activeProject } = useProjectData();
   const projectConfig = useProjectConfig();
@@ -206,37 +217,56 @@ export default function Monitoring({
     });
   };
 
-  const showMonitoringSheet = (leak) => {
-    setSubmitted(false);
-    updateDraft(leak.id, {
-      result: getInitialMonitoringResult(leak),
-      materials_equipment: leak.materials_equipment ?? "",
-    });
-    setMonitorLeak(leak);
-  };
+  const updateDraft = useCallback((id, patch) => {
+    setDrafts((previous) => ({
+      ...previous,
+      [id]: createMonitoringDraft(null, {
+        ...(previous[id] ?? {}),
+        ...patch,
+      }),
+    }));
+  }, []);
 
-  const openMonitoringSheet = (leak) => {
-    if (!leak) return;
-    if (!hasActiveMonitoringRound) {
-      setPendingRoundLeakId(leak.id);
-      setRoundConfirmOpen(true);
-      return;
-    }
-    if (!isMonitoringDue(leak, monitoringRoundId, monitoringRoundNumber)) {
-      setRepeatConfirmLeak(leak);
-      return;
-    }
-    showMonitoringSheet(leak);
-  };
+  const showMonitoringSheet = useCallback(
+    (leak) => {
+      setSubmitted(false);
+      updateDraft(leak.id, {
+        result: getInitialMonitoringResult(leak),
+        materials_equipment: leak.materials_equipment ?? "",
+      });
+      setMonitorLeak(leak);
+    },
+    [updateDraft],
+  );
+
+  const openMonitoringSheet = useCallback(
+    (leak) => {
+      if (!leak) return;
+      if (!hasActiveMonitoringRound) {
+        setPendingRoundLeakId(leak.id);
+        setRoundConfirmOpen(true);
+        return;
+      }
+      if (!isMonitoringDue(leak, monitoringRoundId, monitoringRoundNumber)) {
+        setRepeatConfirmLeak(leak);
+        return;
+      }
+      showMonitoringSheet(leak);
+    },
+    [
+      hasActiveMonitoringRound,
+      monitoringRoundId,
+      monitoringRoundNumber,
+      showMonitoringSheet,
+    ],
+  );
 
   useEffect(() => {
     if (requestedLeakId == null) return;
     const leak = data.find((item) => item.id === requestedLeakId);
     if (leak) openMonitoringSheet(leak);
     onRequestedLeakConsumed?.();
-    // openMonitoringSheet intentionally uses current draft state; requested id is one-shot.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, requestedLeakId, onRequestedLeakConsumed]);
+  }, [data, openMonitoringSheet, requestedLeakId, onRequestedLeakConsumed]);
 
   useEffect(() => {
     if (!requestedLeakIds.length) return;
@@ -252,9 +282,7 @@ export default function Monitoring({
     const first = data.find((item) => item.id === ids[0]);
     if (first) openMonitoringSheet(first);
     onRequestedLeaksConsumed?.();
-    // openMonitoringSheet intentionally uses current draft state; requested ids are one-shot.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, requestedLeakIds, onRequestedLeaksConsumed]);
+  }, [data, openMonitoringSheet, requestedLeakIds, onRequestedLeaksConsumed]);
 
   const texts = useMemo(
     () =>
@@ -363,13 +391,6 @@ export default function Monitoring({
       ),
     [filters.displayed, monitoringRoundId, monitoringRoundNumber],
   );
-
-  const updateDraft = (id, patch) => {
-    setDrafts((prev) => ({
-      ...prev,
-      [id]: createMonitoringDraft(null, { ...(prev[id] ?? {}), ...patch }),
-    }));
-  };
 
   const finishMonitoringSave = async ({
     leak,
@@ -646,6 +667,29 @@ export default function Monitoring({
     if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
   };
 
+  const renderMonitoringItem = useCallback(
+    (leak) => (
+      <MonitoringListItem
+        leak={leak}
+        lang={lang}
+        texts={texts}
+        roundId={monitoringRoundId}
+        roundNumber={monitoringRoundNumber}
+        hasActiveRound={hasActiveMonitoringRound}
+        onOpenDetails={setActiveLeak}
+        onPickStatus={setPickerLeak}
+        onMonitor={openMonitoringSheet}
+      />
+    ),
+    [
+      lang,
+      texts,
+      monitoringRoundId,
+      monitoringRoundNumber,
+      hasActiveMonitoringRound,
+      openMonitoringSheet,
+    ],
+  );
   return (
     <div className={`${s.page} content`}>
       <Notification
@@ -781,19 +825,7 @@ export default function Monitoring({
             items={items}
             height={listHeight}
             bottomPadding={88}
-            renderItem={(leak) => (
-              <MonitoringListItem
-                leak={leak}
-                lang={lang}
-                texts={texts}
-                roundId={monitoringRoundId}
-                roundNumber={monitoringRoundNumber}
-                hasActiveRound={hasActiveMonitoringRound}
-                onOpenDetails={setActiveLeak}
-                onPickStatus={setPickerLeak}
-                onMonitor={openMonitoringSheet}
-              />
-            )}
+            renderItem={renderMonitoringItem}
           />
         )}
       </section>

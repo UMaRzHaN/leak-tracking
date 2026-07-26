@@ -1,8 +1,11 @@
 export const IMPORT_LIMITS = Object.freeze({
-  maxFileBytes: 64 * 1024 * 1024,
-  maxArchiveEntries: 5000,
-  maxUncompressedBytes: 96 * 1024 * 1024,
-  maxSingleEntryBytes: 32 * 1024 * 1024,
+  // Imports are parsed inside the WebView. JSZip/ExcelJS retain multiple
+  // in-memory representations, so the native transfer limit is not a safe
+  // browser import limit.
+  maxFileBytes: 256 * 1024 * 1024,
+  maxArchiveEntries: 25_000,
+  maxUncompressedBytes: 384 * 1024 * 1024,
+  maxSingleEntryBytes: 64 * 1024 * 1024,
 });
 
 function formatMegabytes(bytes) {

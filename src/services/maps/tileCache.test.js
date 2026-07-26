@@ -145,7 +145,7 @@ describe("map tile boundaries", () => {
     });
     await expect(cacheTile("tile")).resolves.toBeUndefined();
   });
-  it("evicts least-recently-used web tiles when the quota is exceeded", async () => {
+  it("evicts by real cache size even when metadata undercounts", async () => {
     const requests = Array.from({ length: 6_001 }, (_, index) => ({
       url: `https://tiles/${index}`,
     }));
@@ -155,16 +155,43 @@ describe("map tile boundaries", () => {
     localStorage.setItem(
       "map-tiles-metadata-v1",
       JSON.stringify(
-        Object.fromEntries(requests.map(({ url }, index) => [url, index + 1])),
+        Object.fromEntries(
+          requests.slice(0, 10).map(({ url }, index) => [url, index + 1]),
+        ),
       ),
     );
 
     await cacheTile("https://tiles/new", { ok: true });
 
     expect(cache.delete).toHaveBeenCalledTimes(601);
-    expect(cache.delete).toHaveBeenCalledWith(requests[0]);
+    expect(cache.delete).toHaveBeenCalledWith(requests[10]);
     const metadata = JSON.parse(localStorage.getItem("map-tiles-metadata-v1"));
-    expect(metadata[requests[0].url]).toBeUndefined();
+    expect(metadata[requests[0].url]).toBeDefined();
+    expect(metadata[requests[10].url]).toBeUndefined();
     expect(metadata[requests.at(-1).url]).toBeDefined();
+  });
+  it("reconciles stale metadata before calculating web eviction", async () => {
+    const requests = Array.from({ length: 5_000 }, (_, index) => ({
+      url: "https://tiles/" + index,
+    }));
+    const staleMetadata = Object.fromEntries(
+      Array.from({ length: 6_001 }, (_, index) => [
+        "https://tiles/" + index,
+        index + 1,
+      ]),
+    );
+    cache.keys.mockResolvedValue(requests);
+    cache.match.mockResolvedValue(undefined);
+    localStorage.setItem(
+      "map-tiles-metadata-v1",
+      JSON.stringify(staleMetadata),
+    );
+
+    await cacheTile("https://tiles/new", { ok: true });
+
+    expect(cache.delete).not.toHaveBeenCalled();
+    const metadata = JSON.parse(localStorage.getItem("map-tiles-metadata-v1"));
+    expect(Object.keys(metadata)).toHaveLength(5_000);
+    expect(metadata["https://tiles/6000"]).toBeUndefined();
   });
 });

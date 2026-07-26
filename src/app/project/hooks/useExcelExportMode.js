@@ -43,12 +43,10 @@ export function useExcelExportMode(projectId) {
       );
   }, [projectId]);
 
-  const monitoringExportMode = useMemo(
-    () => readExportMode(storageKey),
-    // revision forces a synchronous storage re-read after saving.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [storageKey, revision],
-  );
+  const monitoringExportMode = useMemo(() => {
+    void revision;
+    return readExportMode(storageKey);
+  }, [storageKey, revision]);
 
   const setMonitoringExportMode = useCallback(
     (nextMode) => {

@@ -215,23 +215,18 @@ async function nativeWrite(url, skipMkdir = false) {
 
 async function enforceWebQuota(cache) {
   let metadata = readMetadata();
-  let requests = null;
-  if (localStorage.getItem(METADATA_KEY) == null) {
-    requests = await cache.keys();
-    metadata = Object.fromEntries(
-      requests.map((request) => [request.url, metadata[request.url] ?? 0]),
-    );
-    writeMetadata(metadata);
-  }
-  if (Object.keys(metadata).length <= MAX_TILE_CACHE_ENTRIES) return;
-
-  requests ??= await cache.keys();
+  // Cache Storage and localStorage are not transactional. Always reconcile
+  // against the actual cache before deciding that no eviction is needed.
+  const requests = await cache.keys();
   const byUrl = new Map(requests.map((request) => [request.url, request]));
-  const victims = oldestKeys(
-    byUrl.keys(),
-    metadata,
-    requests.length - TILE_CACHE_EVICTION_TARGET,
+  metadata = Object.fromEntries(
+    requests.map((request) => [request.url, metadata[request.url] ?? 0]),
   );
+  writeMetadata(metadata);
+
+  if (requests.length <= MAX_TILE_CACHE_ENTRIES) return;
+  const removeCount = Math.max(0, requests.length - TILE_CACHE_EVICTION_TARGET);
+  const victims = oldestKeys(byUrl.keys(), metadata, removeCount);
   await Promise.all(victims.map((url) => cache.delete(byUrl.get(url))));
   removeMetadata(victims);
 }

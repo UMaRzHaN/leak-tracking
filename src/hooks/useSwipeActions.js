@@ -6,30 +6,30 @@ export function useSwipeActions({
   onSwipeMove,
   threshold = 60,
 }) {
-  const startX = useRef(0);
-  const startY = useRef(0);
-  const isSwiping = useRef(false);
-  const isMouse = useRef(false);
+  const startXRef = useRef(0);
+  const startYRef = useRef(0);
+  const isSwipingRef = useRef(false);
+  const isMouseRef = useRef(false);
 
   /* ================= TOUCH ================= */
 
   const onTouchStart = (e) => {
     const t = e.touches[0];
-    startX.current = t.clientX;
-    startY.current = t.clientY;
-    isSwiping.current = true;
-    isMouse.current = false;
+    startXRef.current = t.clientX;
+    startYRef.current = t.clientY;
+    isSwipingRef.current = true;
+    isMouseRef.current = false;
   };
 
   const onTouchMove = (e) => {
-    if (!isSwiping.current || isMouse.current) return;
+    if (!isSwipingRef.current || isMouseRef.current) return;
 
     const t = e.touches[0];
     handleMove(t.clientX, t.clientY);
   };
 
   const onTouchEnd = (e) => {
-    if (!isSwiping.current || isMouse.current) return;
+    if (!isSwipingRef.current || isMouseRef.current) return;
 
     const t = e.changedTouches[0];
     handleEnd(t.clientX);
@@ -38,31 +38,31 @@ export function useSwipeActions({
   /* ================= MOUSE ================= */
 
   const onMouseDown = (e) => {
-    startX.current = e.clientX;
-    startY.current = e.clientY;
-    isSwiping.current = true;
-    isMouse.current = true;
+    startXRef.current = e.clientX;
+    startYRef.current = e.clientY;
+    isSwipingRef.current = true;
+    isMouseRef.current = true;
   };
 
   const onMouseMove = (e) => {
-    if (!isSwiping.current || !isMouse.current) return;
+    if (!isSwipingRef.current || !isMouseRef.current) return;
     handleMove(e.clientX, e.clientY);
   };
 
   const onMouseUp = (e) => {
-    if (!isSwiping.current || !isMouse.current) return;
+    if (!isSwipingRef.current || !isMouseRef.current) return;
     handleEnd(e.clientX);
   };
 
   /* ================= CORE LOGIC ================= */
 
   const handleMove = (x, y) => {
-    const dx = x - startX.current;
-    const dy = y - startY.current;
+    const dx = x - startXRef.current;
+    const dy = y - startYRef.current;
 
     // допускаем вертикальный шум
     if (Math.abs(dy) > Math.abs(dx) * 1.5) {
-      isSwiping.current = false;
+      isSwipingRef.current = false;
       return;
     }
 
@@ -71,7 +71,7 @@ export function useSwipeActions({
   };
 
   const handleEnd = (x) => {
-    const dx = x - startX.current;
+    const dx = x - startXRef.current;
 
     if (dx > threshold) {
       onSwipeRight?.();
@@ -81,7 +81,7 @@ export function useSwipeActions({
 
     // сбрасываем offset после завершения свайпа
     onSwipeMove?.(0);
-    isSwiping.current = false;
+    isSwipingRef.current = false;
   };
 
   return {

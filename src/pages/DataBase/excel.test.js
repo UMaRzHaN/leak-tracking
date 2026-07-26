@@ -207,6 +207,12 @@ describe("excel export helpers", () => {
     expect(mocks.createObjectURL).toHaveBeenCalledTimes(1);
     expect(mocks.anchorClick).toHaveBeenCalledTimes(1);
     expect(result.message).toBe("Excel project archive exported (report.zip)");
+    expect(result.metrics).toEqual({
+      photosMs: expect.any(Number),
+      workbookMs: expect.any(Number),
+      zipMs: expect.any(Number),
+      totalMs: expect.any(Number),
+    });
   });
 
   it("exports zip with linked photos when photos are present", async () => {
@@ -247,6 +253,7 @@ describe("excel export helpers", () => {
     expect(backupSheet.getRow(5).getCell(4).value).toBe("North Field");
     expect(backupSheet.getRow(8).getCell(3).value).toBe("Leaks");
     expect(backupSheet.getRow(8).getCell(4).value).toBe(1);
+    expect(mocks.getPhotoSrcMock).toHaveBeenCalledTimes(1);
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
       "photos/7/7.png",
       "ZmFrZQ==",
@@ -254,6 +261,12 @@ describe("excel export helpers", () => {
     );
     expect(mocks.anchorClick).toHaveBeenCalledTimes(1);
     expect(result.message).toBe("Excel project archive exported (report.zip)");
+    expect(result.metrics).toEqual({
+      photosMs: expect.any(Number),
+      workbookMs: expect.any(Number),
+      zipMs: expect.any(Number),
+      totalMs: expect.any(Number),
+    });
   });
 
   it("replaces invalid Date cell values with blanks before writing xlsx", async () => {
@@ -618,6 +631,37 @@ describe("excel export helpers", () => {
     expect(backupSheet.getRow(12).getCell(4).numFmt).toBe("#,##0");
   });
 
+  it("limits concurrent photo reads while exporting", async () => {
+    let active = 0;
+    let maxActive = 0;
+    mocks.getPhotoSrcMock.mockImplementation(async () => {
+      active += 1;
+      maxActive = Math.max(maxActive, active);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      active -= 1;
+      return "data:image/png;base64,ZmFrZQ==";
+    });
+    const leaks = Array.from({ length: 12 }, (_, index) => ({
+      id: index + 1,
+      leak_id: index + 1,
+      photo: `file://photo-${index}.png`,
+    }));
+
+    await exportToExcelFile(
+      leaks,
+      leaks.map((leak) => ({ id: leak.id, photo: "Yes" })),
+      ["ID", "Photo"],
+      ["id", "photo"],
+      "report",
+      null,
+      null,
+      "en",
+    );
+
+    expect(maxActive).toBeGreaterThan(1);
+    expect(maxActive).toBeLessThanOrEqual(4);
+    expect(mocks.getPhotoSrcMock).toHaveBeenCalledTimes(12);
+  });
   it("keeps exportToExcelZip as a backwards-compatible alias", () => {
     expect(exportToExcelZip).toBe(exportToExcelFile);
   });

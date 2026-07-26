@@ -209,6 +209,7 @@ for (const recordCount of readRecordCounts()) {
     ).toBeVisible({ timeout: budgets.coldStartMs + 5_000 });
     const coldStartMs = Date.now() - coldStartStartedAt;
 
+    await page.evaluate(() => window.__RESET_RENDER_METRICS__?.());
     const databaseStartedAt = Date.now();
     await page.getByRole("button", { name: "Database", exact: true }).click();
     await expect(
@@ -277,6 +278,12 @@ for (const recordCount of readRecordCounts()) {
 
     const browserStats = await page.evaluate(() => ({
       domNodes: document.getElementsByTagName("*").length,
+      renderMetrics: window.__RENDER_METRICS__
+        ? { ...window.__RENDER_METRICS__.counts }
+        : null,
+      excelPhases: window.__EXCEL_EXPORT_METRICS__
+        ? { ...window.__EXCEL_EXPORT_METRICS__ }
+        : null,
     }));
     const metrics = {
       recordCount,
@@ -312,6 +319,13 @@ for (const recordCount of readRecordCounts()) {
     expect(v8HeapAfterExportBytes).toBeLessThan(budgets.exportHeapBytes);
     expect(v8HeapAfterImportBytes).toBeLessThan(budgets.importHeapBytes);
     expect(v8HeapAfterGcBytes).toBeLessThan(budgets.settledHeapBytes);
+    if (browserStats.renderMetrics) {
+      expect(browserStats.renderMetrics.DataBase ?? 0).toBeLessThan(40);
+      expect(browserStats.renderMetrics.VirtualizedLeakList ?? 0).toBeLessThan(
+        100,
+      );
+      expect(browserStats.renderMetrics.LeakCardCompact ?? 0).toBeLessThan(250);
+    }
   });
 }
 

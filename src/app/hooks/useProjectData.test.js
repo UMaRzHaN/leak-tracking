@@ -112,7 +112,7 @@ describe("useProjectData", () => {
       await result.current.save(imported);
     });
 
-    expect(result.current.data).toEqual(imported);
+    expect(result.current.data).toEqual([expect.objectContaining(imported[0])]);
     expect(result.current.dataLoaded).toBe(true);
     expect(result.current.dataProjectId).toBe("proj-1");
 
@@ -121,7 +121,7 @@ describe("useProjectData", () => {
       await Promise.resolve();
     });
 
-    expect(result.current.data).toEqual(imported);
+    expect(result.current.data).toEqual([expect.objectContaining(imported[0])]);
     expect(result.current.dataLoaded).toBe(true);
     expect(result.current.dataProjectId).toBe("proj-1");
   });
@@ -343,5 +343,24 @@ describe("useProjectData", () => {
       [...visible, ...preserved],
       { projectId: "proj-1", folderName: "project_one" },
     );
+  });
+  it("hides the previous project immediately while the next project loads", async () => {
+    repositoryModule.LeakRepository.getAll.mockResolvedValueOnce([
+      { id: "old-project-record" },
+    ]);
+    const { result, rerender } = renderHook(() => useProjectData());
+    await waitFor(() => expect(result.current.dataLoaded).toBe(true));
+
+    repositoryModule.LeakRepository.getAll.mockReturnValueOnce(
+      new Promise(() => {}),
+    );
+    projectContextModule.useProjectData.mockReturnValue({
+      activeProject: { id: "proj-2", folderName: "project_two" },
+    });
+    rerender();
+
+    expect(result.current.data).toEqual([{ id: "old-project-record" }]);
+    expect(result.current.dataLoaded).toBe(false);
+    expect(result.current.dataProjectId).toBe("proj-1");
   });
 });

@@ -13,6 +13,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.FeatureInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.PermissionInfo;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.ByteArrayInputStream;
@@ -69,12 +70,18 @@ public class AndroidSecurityInstrumentedTest {
     }
 
     @Test
-    public void runtimePermissionsCanBeGranted() {
+    public void runtimePermissionsCanBeGranted() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         UiAutomation automation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
         String packageName = context.getPackageName();
 
         for (String permission : RUNTIME_PERMISSIONS) {
+            PermissionInfo info = context.getPackageManager().getPermissionInfo(permission, 0);
+            assertEquals(
+                permission + " must use the Android runtime-permission flow",
+                PermissionInfo.PROTECTION_DANGEROUS,
+                info.protectionLevel & PermissionInfo.PROTECTION_MASK_BASE
+            );
             automation.grantRuntimePermission(packageName, permission);
             assertEquals(
                 permission,
@@ -137,7 +144,7 @@ public class AndroidSecurityInstrumentedTest {
                 receiveFile.invoke(plugin, input, target, 10L);
                 fail("A truncated archive must be rejected");
             } catch (InvocationTargetException error) {
-                assertTrue(error.getCause().getMessage().contains("прервано"));
+                assertTrue(error.getCause().getMessage().contains("\u043F\u0440\u0435\u0440\u0432\u0430\u043D\u043E"));
             }
             assertEquals(3L, target.length());
         } finally {

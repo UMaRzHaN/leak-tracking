@@ -4,14 +4,16 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Activity;
-import android.content.ComponentName;
+import android.content.pm.PackageManager;
 import android.content.Context;
-import android.content.Intent;
 import android.view.View;
+import android.view.accessibility.AccessibilityWindowInfo;
 import android.view.ViewGroup;
 import android.webkit.WebView;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry;
+import androidx.test.runner.lifecycle.Stage;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -26,9 +28,8 @@ public class NativeFileOperationsInstrumentedTest {
     @Test
     public void capacitorFilesystemRenamesAndDeletesProjectWithPhoto() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
-        Intent intent = Intent.makeMainActivity(new ComponentName(context, MainActivity.class));
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        Activity activity = InstrumentationRegistry.getInstrumentation().startActivitySync(intent);
+        launchActivityFromShell(context);
+        Activity activity = waitForActivity();
 
         try {
             WebView webView = waitForWebView(activity);
@@ -47,7 +48,7 @@ public class NativeFileOperationsInstrumentedTest {
             assertTrue(result.getBoolean("oldMissing"));
             assertTrue(result.getBoolean("newMissingAfterDelete"));
         } finally {
-            activity.finish();
+            activity.runOnUiThread(activity::finish);
         }
     }
 
@@ -74,6 +75,40 @@ public class NativeFileOperationsInstrumentedTest {
             "oldMissing:oldMissing,newMissingAfterDelete:newMissing});" +
             "}catch(e){window.__nativeFileScenario=JSON.stringify({ok:false,error:String(e&&e.message||e)});}" +
             "})();'started';";
+    }
+
+    private static void launchActivityFromShell(Context context) throws Exception {
+        String component = context.getPackageName() + "/" + MainActivity.class.getName();
+        try (
+            android.os.ParcelFileDescriptor descriptor = InstrumentationRegistry
+                .getInstrumentation()
+                .getUiAutomation()
+                .executeShellCommand("am start -W -n " + component);
+            java.io.FileInputStream output = new java.io.FileInputStream(
+                descriptor.getFileDescriptor()
+            )
+        ) {
+            byte[] buffer = new byte[1024];
+            while (output.read(buffer) != -1) {
+                // Drain command output so the activity launch completes before polling lifecycle.
+            }
+        }
+    }
+
+    private static Activity waitForActivity() throws Exception {
+        AtomicReference<Activity> found = new AtomicReference<>();
+        long deadline = System.currentTimeMillis() + 20_000;
+        while (System.currentTimeMillis() < deadline) {
+            InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+                for (Activity activity : ActivityLifecycleMonitorRegistry.getInstance()
+                    .getActivitiesInStage(Stage.RESUMED)) {
+                    if (activity instanceof MainActivity) found.set(activity);
+                }
+            });
+            if (found.get() != null) return found.get();
+            Thread.sleep(100);
+        }
+        throw new AssertionError("MainActivity did not reach RESUMED state");
     }
 
     private static WebView waitForWebView(Activity activity) throws Exception {

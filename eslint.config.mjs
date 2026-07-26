@@ -32,6 +32,11 @@ export default defineConfig(
       "@eslint-react/no-array-index-key": "off",
       "@eslint-react/no-missing-key": "off",
       "@eslint-react/no-unnecessary-use-prefix": "off",
+      // Effects in this app intentionally reset local draft/loading state when
+      // the active project, modal, or native storage source changes. The rule
+      // treats those lifecycle resets as unconditional errors and encourages
+      // riskier async deferrals, so it is not part of the project policy.
+      "@eslint-react/set-state-in-effect": "off",
       "react-hooks/exhaustive-deps": "warn",
       "react-hooks/rules-of-hooks": "error",
     },

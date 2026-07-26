@@ -13,29 +13,21 @@ describe("importLimits", () => {
   });
 
   it("rejects archives whose expanded content exceeds the limit", () => {
+    const entryCount =
+      Math.floor(
+        IMPORT_LIMITS.maxUncompressedBytes / IMPORT_LIMITS.maxSingleEntryBytes,
+      ) + 1;
     const zip = {
-      files: {
-        first: {
-          name: "first.bin",
-          dir: false,
-          _data: { uncompressedSize: IMPORT_LIMITS.maxSingleEntryBytes },
-        },
-        second: {
-          name: "second.bin",
-          dir: false,
-          _data: { uncompressedSize: IMPORT_LIMITS.maxSingleEntryBytes },
-        },
-        third: {
-          name: "third.bin",
-          dir: false,
-          _data: { uncompressedSize: IMPORT_LIMITS.maxSingleEntryBytes },
-        },
-        fourth: {
-          name: "fourth.bin",
-          dir: false,
-          _data: { uncompressedSize: 1 },
-        },
-      },
+      files: Object.fromEntries(
+        Array.from({ length: entryCount }, (_, index) => [
+          "entry-" + index,
+          {
+            name: "entry-" + index + ".bin",
+            dir: false,
+            _data: { uncompressedSize: IMPORT_LIMITS.maxSingleEntryBytes },
+          },
+        ]),
+      ),
     };
 
     expect(() => assertArchiveLimits(zip)).toThrow("safety limit");

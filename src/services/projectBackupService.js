@@ -31,6 +31,7 @@ import {
   getLeakMergeIdentity,
   mergeProjectSyncStates,
   readProjectSyncState,
+  readProjectSyncStateAsync,
   writeProjectSyncState,
 } from "@/services/projectSyncState";
 import {
@@ -38,6 +39,12 @@ import {
   assertImportFileSize,
 } from "@/utils/importLimits";
 import { rollbackImportedProject } from "@/services/projectCleanup";
+import {
+  LEAK_FIELD_VERSIONS_KEY,
+  getLeakFieldVersion,
+  isVersionedLeakField,
+  normalizeLeakFieldVersions,
+} from "@/services/leakFieldVersions";
 import { logger } from "@/utils/logger";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -321,7 +328,8 @@ function shouldApplyIncomingLeak(
   options = {},
   hasChanges = true,
 ) {
-  if (options.source === "excel") return hasChanges;
+  if (options.source === "excel" || options.source === "sync")
+    return hasChanges;
   const currentFreshness = getLeakFreshness(current);
   const incomingFreshness = getLeakFreshness(incoming);
   if (incomingFreshness !== currentFreshness) {
@@ -363,6 +371,7 @@ const MERGE_IGNORED_FIELD_KEYS = new Set([
   "importedAt",
   "importedFromExcel",
   "time",
+  LEAK_FIELD_VERSIONS_KEY,
 ]);
 
 const MERGE_ARRAY_FIELD_KEYS = new Set(["history", "monitoringRecords"]);
@@ -579,7 +588,81 @@ function mergeRecordArray(
   );
 }
 
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object, key);
+}
+
+function stableSyncValue(hasValue, value) {
+  if (!hasValue) return "0:deleted";
+  if (value === undefined) return "1:undefined";
+  return `2:${JSON.stringify(normalizeSyncConflictValue(value))}`;
+}
+
+function mergeSyncLeakFields(existingLeak, incomingLeak) {
+  const next = { ...existingLeak };
+  const existingVersions = normalizeLeakFieldVersions(
+    existingLeak?.[LEAK_FIELD_VERSIONS_KEY],
+  );
+  const incomingVersions = normalizeLeakFieldVersions(
+    incomingLeak?.[LEAK_FIELD_VERSIONS_KEY],
+  );
+  const mergedVersions = { ...existingVersions };
+  const keys = new Set([
+    ...Object.keys(existingLeak ?? {}),
+    ...Object.keys(incomingLeak ?? {}),
+    ...Object.keys(existingVersions),
+    ...Object.keys(incomingVersions),
+  ]);
+
+  for (const key of keys) {
+    if (!isVersionedLeakField(key)) continue;
+
+    const incomingHasValue = hasOwn(incomingLeak ?? {}, key);
+    const incomingHasVersion = hasOwn(incomingVersions, key);
+    if (!incomingHasValue && !incomingHasVersion) continue;
+
+    const existingHasValue = hasOwn(existingLeak ?? {}, key);
+    const existingVersion = getLeakFieldVersion(existingLeak, key);
+    const incomingVersion = getLeakFieldVersion(incomingLeak, key);
+    const incomingWins =
+      incomingVersion > existingVersion ||
+      (incomingVersion === existingVersion &&
+        stableSyncValue(incomingHasValue, incomingLeak?.[key]) >
+          stableSyncValue(existingHasValue, existingLeak?.[key]));
+
+    mergedVersions[key] = Math.max(existingVersion, incomingVersion);
+    if (!incomingWins) continue;
+
+    if (incomingHasValue) next[key] = incomingLeak[key];
+    else delete next[key];
+  }
+
+  for (const key of MERGE_ARRAY_FIELD_KEYS) {
+    if (!hasOwn(existingLeak ?? {}, key) && !hasOwn(incomingLeak ?? {}, key)) {
+      continue;
+    }
+    next[key] = mergeRecordArray(
+      Array.isArray(existingLeak?.[key]) ? existingLeak[key] : [],
+      Array.isArray(incomingLeak?.[key]) ? incomingLeak[key] : [],
+      key,
+      { source: "sync" },
+    );
+  }
+
+  next.id = existingLeak?.id ?? incomingLeak?.id;
+  next.index = existingLeak?.index ?? incomingLeak?.index;
+  next.updatedAt = Math.max(
+    parseTime(existingLeak?.updatedAt),
+    parseTime(incomingLeak?.updatedAt),
+  );
+  next[LEAK_FIELD_VERSIONS_KEY] = mergedVersions;
+  return next;
+}
 function mergeFreshLeakFields(existingLeak, incomingLeak, options = {}) {
+  if (options.source === "sync") {
+    return mergeSyncLeakFields(existingLeak, incomingLeak);
+  }
+
   const next = { ...existingLeak };
   const historyBeforeMerge = Array.isArray(existingLeak?.history)
     ? existingLeak.history
@@ -1085,7 +1168,7 @@ export async function buildProjectBackupZip({ leaks, idbGet, project, vars }) {
     vars,
     settings: readProjectSettings(project?.id),
     monitoringRound: readMonitoringRound(project?.id),
-    syncState: readProjectSyncState(project?.id),
+    syncState: await readProjectSyncStateAsync(project?.id),
   });
   if (meta) zip.file("project.json", JSON.stringify(meta, null, 2));
 
@@ -1169,7 +1252,7 @@ export async function importProjectZip(zipFile, ctx) {
     }
     const importedProject = newProject;
     if (meta?.sync) {
-      writeProjectSyncState(newProject.id, meta.sync, []);
+      await writeProjectSyncState(newProject.id, meta.sync, []);
     }
 
     const restoredLeaks = await restorePhotosFromZip(leaks, zip, savePhotoRef);
@@ -1180,7 +1263,7 @@ export async function importProjectZip(zipFile, ctx) {
     );
     await saveRef.current(finalLeaks);
 
-    writeProjectSyncState(newProject.id, meta?.sync, finalLeaks);
+    await writeProjectSyncState(newProject.id, meta?.sync, finalLeaks);
     return { project: importedProject, leakCount: finalLeaks.length };
   } catch (error) {
     await rollbackImportedProject(newProject, removeProject);
@@ -1222,7 +1305,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     throw new Error("Не удалось сохранить идентификатор синхронизации");
   }
 
-  const localSyncState = readProjectSyncState(existingProjectId);
+  const localSyncState = await readProjectSyncStateAsync(existingProjectId);
   const incomingSyncState = meta?.sync;
   const mergedSyncState = mergeProjectSyncStates(
     localSyncState,
@@ -1359,7 +1442,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
         }
       }
       saveMonitoringRound(existingProjectId, nextMonitoringRound);
-      writeProjectSyncState(
+      await writeProjectSyncState(
         existingProjectId,
         mergeProjectSyncStates(
           readProjectSyncState(existingProjectId),
@@ -1396,7 +1479,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     }
     writeProjectSettings(existingProjectId, localSettings);
     saveMonitoringRound(existingProjectId, localMonitoringRound);
-    writeProjectSyncState(existingProjectId, localSyncState, existing);
+    await writeProjectSyncState(existingProjectId, localSyncState, existing);
 
     await PhotoRepository.gcOrphaned(existing, {
       projectId: existingProjectId,

@@ -64,12 +64,10 @@ export function usePhotoRequirements(projectId) {
       );
   }, [projectId]);
 
-  const settings = useMemo(
-    () => normalizeSettings(readJson(keys.current) ?? readJson(keys.legacy)),
-    // revision forces a synchronous storage re-read after saving.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [keys, revision],
-  );
+  const settings = useMemo(() => {
+    void revision;
+    return normalizeSettings(readJson(keys.current) ?? readJson(keys.legacy));
+  }, [keys, revision]);
 
   const save = useCallback(
     (next) => {

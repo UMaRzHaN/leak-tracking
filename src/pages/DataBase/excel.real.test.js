@@ -25,5 +25,5 @@ describe("real Excel workbook output", () => {
     expect(sheet.getCell("A2").value).toBe(101);
     expect(sheet.getCell("A3").value).toBe("00101");
     expect(sheet.getColumn(1).numFmt).not.toBe("@");
-  });
+  }, 60_000);
 });

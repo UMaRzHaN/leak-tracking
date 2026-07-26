@@ -9,7 +9,7 @@ import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { readProjectSettings } from "@/app/project/projectSettings";
 import { readMonitoringRound } from "@/utils/monitoringRound";
-import { readProjectSyncState } from "@/services/projectSyncState";
+import { readProjectSyncStateAsync } from "@/services/projectSyncState";
 
 function fmtTs(ts, lang) {
   if (!ts) return "";
@@ -116,12 +116,15 @@ export function useDataBaseExport({ data, displayed, notify }) {
           vars,
           settings: readProjectSettings(activeProject?.id),
           monitoringRound: readMonitoringRound(activeProject?.id),
-          sync: readProjectSyncState(activeProject?.id),
+          sync: await readProjectSyncStateAsync(activeProject?.id),
           backupLeaks: data,
           buildWorkbookBuffer: buildWorkbookBufferInWorker,
         },
       );
 
+      if (typeof window !== "undefined") {
+        window.__EXCEL_EXPORT_METRICS__ = result?.metrics ?? null;
+      }
       notify(
         "success",
         result?.message ||

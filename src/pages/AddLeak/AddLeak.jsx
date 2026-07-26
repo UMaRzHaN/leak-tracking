@@ -104,7 +104,7 @@ export default function AddLeak({
     if (hasDraft() && Object.keys(form).length === 0) {
       setDraftPrompt(true);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [form, hasDraft]);
 
   /* Autosave draft with a short debounce */
   useEffect(() => {

@@ -1,3 +1,4 @@
+import { useRenderMetric } from "@/utils/renderMetrics";
 import { memo, useState } from "react";
 import { useSwipeCard } from "@/hooks/useSwipeCard";
 import { getStatusMeta } from "@/utils/status";
@@ -48,6 +49,8 @@ function LeakCardCompact({
   onToggleSelect,
   className = "",
 }) {
+  useRenderMetric("LeakCardCompact");
+
   const { lang, t } = useLanguage();
   const { swipeState, swipeOffset, close, handlers } = useSwipeCard({
     leak,

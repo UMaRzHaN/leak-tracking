@@ -270,7 +270,7 @@ export default function LeakForm({
     [NUMBER_KEYS, vars, onAdd, clearForm, onSaved],
   );
 
-  function save() {
+  const save = useCallback(() => {
     if (!validateAllSteps()) return;
 
     const finalData = { ...form, photo: form.photo };
@@ -298,7 +298,7 @@ export default function LeakForm({
 
     pendingKeysRef.current = emptyKeys;
     setConfirmOpen(true);
-  }
+  }, [COPY_KEYS, commitSave, form, lastItem, validateAllSteps]);
 
   useEffect(() => {
     saveRef.current = save;

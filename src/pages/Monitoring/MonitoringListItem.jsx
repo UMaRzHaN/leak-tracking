@@ -1,3 +1,5 @@
+import { memo } from "react";
+import { useRenderMetric } from "@/utils/renderMetrics";
 import LeakCardCompact from "@/features/leakList/LeakCardCompact/LeakCardCompact";
 import {
   formatMonitoringDate,
@@ -7,7 +9,7 @@ import {
 } from "@/utils/monitoring";
 import s from "./Monitoring.module.scss";
 
-export default function MonitoringListItem({
+function MonitoringListItem({
   leak,
   lang,
   texts,
@@ -18,6 +20,8 @@ export default function MonitoringListItem({
   onPickStatus,
   onMonitor,
 }) {
+  useRenderMetric("MonitoringListItem");
+
   const last = getLastMonitoringRecord(leak);
   const isDue = hasActiveRound && isMonitoringDue(leak, roundId, roundNumber);
   const displayedUser = last ? last.monitoredBy : leak.detectedBy;
@@ -57,3 +61,5 @@ export default function MonitoringListItem({
     </article>
   );
 }
+
+export default memo(MonitoringListItem);

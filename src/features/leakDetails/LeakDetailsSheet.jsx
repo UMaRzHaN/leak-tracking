@@ -23,7 +23,7 @@ export default function LeakDetailsSheet({
   userProfile,
 }) {
   const { lang } = useLanguage();
-  const tabRefs = useRef(new Map());
+  const tabRefsRef = useRef(new Map());
   const absoluteDate = formatLeakDate(leak.date, {}, lang);
   const {
     mode,
@@ -84,7 +84,7 @@ export default function LeakDetailsSheet({
   const heroSrc = usePhotoSrc(getLeakDetailsHeroPhotoPath(leak)) || src;
 
   useEffect(() => {
-    tabRefs.current.get(activeTab)?.scrollIntoView({
+    tabRefsRef.current.get(activeTab)?.scrollIntoView({
       behavior: "smooth",
       block: "nearest",
       inline: "center",
@@ -118,8 +118,8 @@ export default function LeakDetailsSheet({
               <button
                 key={tab.id}
                 ref={(node) => {
-                  if (node) tabRefs.current.set(tab.id, node);
-                  else tabRefs.current.delete(tab.id);
+                  if (node) tabRefsRef.current.set(tab.id, node);
+                  else tabRefsRef.current.delete(tab.id);
                 }}
                 className={`${s.tab} ${activeTab === tab.id ? s.tabActive : ""}`}
                 onClick={() => setActiveTab(tab.id)}

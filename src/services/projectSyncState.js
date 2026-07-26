@@ -1,6 +1,69 @@
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
+import { logger } from "@/utils/logger";
+import {
+  LEAK_FIELD_VERSIONS_KEY,
+  normalizeLeakFieldVersions,
+} from "@/services/leakFieldVersions";
+const SYNC_DB_NAME = "LeakTrackingSyncDB";
+const SYNC_STORE_NAME = "projectStates";
+const syncStateMemory = new Map();
+let syncDbPromise;
 
-const MAX_TOMBSTONES = 20_000;
+function openSyncDb() {
+  if (typeof indexedDB === "undefined") return Promise.resolve(null);
+  if (syncDbPromise) return syncDbPromise;
+  syncDbPromise = new Promise((resolve, reject) => {
+    const request = indexedDB.open(SYNC_DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(SYNC_STORE_NAME)) {
+        db.createObjectStore(SYNC_STORE_NAME, { keyPath: "id" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => {
+      syncDbPromise = null;
+      reject(request.error);
+    };
+  });
+  return syncDbPromise;
+}
+
+async function loadDurableSyncState(projectId) {
+  const db = await openSyncDb();
+  if (!db || !projectId) return null;
+  return new Promise((resolve, reject) => {
+    const request = db
+      .transaction(SYNC_STORE_NAME, "readonly")
+      .objectStore(SYNC_STORE_NAME)
+      .get(projectId);
+    request.onsuccess = () => resolve(request.result?.state ?? null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function persistDurableSyncState(projectId, state) {
+  const db = await openSyncDb();
+  if (!db || !projectId) return false;
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(SYNC_STORE_NAME, "readwrite");
+    transaction.objectStore(SYNC_STORE_NAME).put({ id: projectId, state });
+    transaction.oncomplete = () => resolve(true);
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error);
+  });
+}
+async function deleteDurableSyncState(projectId) {
+  const db = await openSyncDb();
+  if (!db || !projectId) return false;
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(SYNC_STORE_NAME, "readwrite");
+    transaction.objectStore(SYNC_STORE_NAME).delete(projectId);
+    transaction.oncomplete = () => resolve(true);
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error);
+  });
+}
 
 function toTime(value) {
   if (value == null || value === "") return 0;
@@ -34,6 +97,9 @@ export function getLeakMergeIdentity(leak) {
 }
 
 export function getLeakSyncFreshness(leak) {
+  const fieldTimes = Object.values(
+    normalizeLeakFieldVersions(leak?.[LEAK_FIELD_VERSIONS_KEY]),
+  );
   const historyTimes = Array.isArray(leak?.history)
     ? leak.history.map((entry) => toTime(entry?.date))
     : [];
@@ -44,6 +110,7 @@ export function getLeakSyncFreshness(leak) {
     toTime(leak?.updatedAt),
     toTime(leak?.createdAt),
     toTime(leak?.resolvedAt),
+    ...fieldTimes,
     ...historyTimes,
     ...monitoringTimes,
   );
@@ -75,7 +142,10 @@ export function readProjectSyncState(projectId) {
       localStorage.getItem(STORAGE_KEYS.PROJECT_SYNC_STATE(projectId)) ??
         "null",
     );
-    const state = normalizeProjectSyncState(stored);
+    const state = mergeProjectSyncStates(
+      normalizeProjectSyncState(stored),
+      syncStateMemory.get(projectId),
+    );
     state.varsUpdatedAt = Math.max(
       state.varsUpdatedAt,
       toTime(
@@ -104,20 +174,69 @@ export function writeProjectSyncState(projectId, value, liveLeaks = []) {
       const liveUpdatedAt = liveFreshness.get(identity);
       return liveUpdatedAt == null || deletedAt >= liveUpdatedAt;
     })
-    .sort((left, right) => right[1] - left[1])
-    .slice(0, MAX_TOMBSTONES);
+    .sort((left, right) => right[1] - left[1]);
   const normalized = { ...state, deleted: Object.fromEntries(deleted) };
-  localStorage.setItem(
-    STORAGE_KEYS.PROJECT_SYNC_STATE(projectId),
-    JSON.stringify(normalized),
-  );
-  if (normalized.varsUpdatedAt > 0) {
+  try {
     localStorage.setItem(
-      STORAGE_KEYS.PROJECT_VARS_UPDATED_AT(projectId),
-      String(normalized.varsUpdatedAt),
+      STORAGE_KEYS.PROJECT_SYNC_STATE(projectId),
+      JSON.stringify(normalized),
     );
-  } else {
+    syncStateMemory.delete(projectId);
+  } catch (error) {
+    syncStateMemory.set(projectId, normalized);
+    logger.warn(
+      "[projectSyncState] localStorage quota exceeded; using IndexedDB:",
+      error,
+    );
+  }
+  const durableWrite = persistDurableSyncState(projectId, normalized).catch(
+    (error) => {
+      logger.error("[projectSyncState] IndexedDB write failed:", error);
+      return false;
+    },
+  );
+  try {
+    if (normalized.varsUpdatedAt > 0) {
+      localStorage.setItem(
+        STORAGE_KEYS.PROJECT_VARS_UPDATED_AT(projectId),
+        String(normalized.varsUpdatedAt),
+      );
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS_UPDATED_AT(projectId));
+    }
+  } catch (error) {
+    logger.warn(
+      "[projectSyncState] vars timestamp could not be cached:",
+      error,
+    );
+  }
+  return durableWrite;
+}
+
+export async function readProjectSyncStateAsync(projectId) {
+  const immediate = readProjectSyncState(projectId);
+  if (!projectId) return immediate;
+  try {
+    const durable = await loadDurableSyncState(projectId);
+    const merged = mergeProjectSyncStates(immediate, durable);
+    syncStateMemory.set(projectId, merged);
+    return merged;
+  } catch (error) {
+    logger.warn("[projectSyncState] IndexedDB read failed:", error);
+    return immediate;
+  }
+}
+export async function clearProjectSyncState(projectId) {
+  if (!projectId) return;
+  syncStateMemory.delete(projectId);
+  if (typeof localStorage !== "undefined") {
+    localStorage.removeItem(STORAGE_KEYS.PROJECT_SYNC_STATE(projectId));
     localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS_UPDATED_AT(projectId));
+  }
+  try {
+    await deleteDurableSyncState(projectId);
+  } catch (error) {
+    logger.warn("[projectSyncState] IndexedDB cleanup failed:", error);
   }
 }
 
@@ -155,25 +274,28 @@ export function recordLeakDeletions(
   deletedAt = Date.now(),
 ) {
   if (!projectId) return;
-  const nextIdentities = new Set(
-    nextLeaks.map(getLeakSyncIdentity).filter(Boolean),
-  );
+  const nextIdentities = new Set(nextLeaks.flatMap(getLeakSyncIdentities));
   const state = readProjectSyncState(projectId);
   for (const leak of previousLeaks) {
-    const identity = getLeakSyncIdentity(leak);
-    if (identity && !nextIdentities.has(identity)) {
-      state.deleted[identity] = Math.max(
-        state.deleted[identity] ?? 0,
-        deletedAt,
-      );
+    const identities = getLeakSyncIdentities(leak);
+    const stillExists = identities.some((identity) =>
+      nextIdentities.has(identity),
+    );
+    if (!stillExists) {
+      for (const identity of identities) {
+        state.deleted[identity] = Math.max(
+          state.deleted[identity] ?? 0,
+          deletedAt,
+        );
+      }
     }
   }
-  writeProjectSyncState(projectId, state, nextLeaks);
+  return writeProjectSyncState(projectId, state, nextLeaks);
 }
 
 export function markProjectVarsUpdated(projectId, updatedAt = Date.now()) {
   if (!projectId) return;
   const state = readProjectSyncState(projectId);
   state.varsUpdatedAt = Math.max(state.varsUpdatedAt, toTime(updatedAt));
-  writeProjectSyncState(projectId, state);
+  return writeProjectSyncState(projectId, state);
 }

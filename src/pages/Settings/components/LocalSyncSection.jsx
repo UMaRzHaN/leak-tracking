@@ -236,7 +236,7 @@ export default function LocalSyncSection({ sync, lang }) {
                       .slice(0, 64),
                   )
                 }
-                placeholder="A1B2C3D4E5F60708"
+                placeholder="64 символа SHA-256"
                 autoCapitalize="characters"
                 spellCheck={false}
                 disabled={busy || status === "hosting"}
@@ -252,8 +252,7 @@ export default function LocalSyncSection({ sync, lang }) {
               !host.trim() ||
               !port ||
               code.length !== 6 ||
-              securityKey.length < 16 ||
-              securityKey.length % 2 !== 0
+              securityKey.length !== 64
             }
             onClick={() =>
               sync.joinHost({ host, port, code, fingerprint: securityKey })

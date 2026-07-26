@@ -47,11 +47,10 @@ export function useHiddenFields(projectId) {
       );
   }, [projectId]);
 
-  const hiddenFields = useMemo(
-    () => readFromStorage(storageKey),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [storageKey, revision],
-  );
+  const hiddenFields = useMemo(() => {
+    void revision;
+    return readFromStorage(storageKey);
+  }, [storageKey, revision]);
 
   const setHiddenFields = useCallback(
     (fields) => {

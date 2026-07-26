@@ -99,6 +99,8 @@ test("loads lazy application routes after the server goes offline", async ({
       (asset) => asset.includes("/MapPage-") && asset.endsWith(".css"),
     ),
   ).toBe(true);
+  expect(cachedAssets.some((asset) => /exceljs/i.test(asset))).toBe(true);
+  expect(cachedAssets.some((asset) => /jszip/i.test(asset))).toBe(true);
 
   await stopServer();
   await page.reload();

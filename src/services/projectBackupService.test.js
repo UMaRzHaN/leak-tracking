@@ -298,11 +298,94 @@ describe("mergeLeaksByFreshness", () => {
     };
 
     expect(comparable(onA.leaks[0])).toEqual(comparable(onB.leaks[0]));
-    expect(onA.changed + onB.changed).toBe(1);
+    expect(onA.changed + onB.changed).toBe(2);
     expect(onA.leaks[0].history).toBeUndefined();
     expect(onB.leaks[0].history).toBeUndefined();
   });
 
+  it("merges concurrent edits to different fields from two devices", () => {
+    const fieldKey = "_fieldUpdatedAt";
+    const deviceA = [
+      {
+        id: "one",
+        status: "resolved",
+        component: "Valve",
+        updatedAt: 300,
+        [fieldKey]: { status: 300, component: 100 },
+      },
+    ];
+    const deviceB = [
+      {
+        id: "one",
+        status: "open",
+        component: "Flange",
+        updatedAt: 400,
+        [fieldKey]: { status: 100, component: 400 },
+      },
+    ];
+
+    const onA = mergeLeaksByFreshness(deviceA, deviceB, { source: "sync" });
+    const onB = mergeLeaksByFreshness(deviceB, deviceA, { source: "sync" });
+
+    expect(onA.leaks[0]).toMatchObject({
+      status: "resolved",
+      component: "Flange",
+    });
+    expect(onB.leaks[0]).toMatchObject({
+      status: "resolved",
+      component: "Flange",
+    });
+    expect(onA.leaks[0][fieldKey]).toMatchObject({
+      status: 300,
+      component: 400,
+    });
+  });
+
+  it("propagates a newer photo deletion without reviving the old file", () => {
+    const local = [
+      {
+        id: "one",
+        photo: "idb://old-photo",
+        updatedAt: 100,
+        _fieldUpdatedAt: { photo: 100 },
+      },
+    ];
+    const incoming = [
+      {
+        id: "one",
+        updatedAt: 200,
+        _fieldUpdatedAt: { photo: 200 },
+      },
+    ];
+
+    const result = mergeLeaksByFreshness(local, incoming, { source: "sync" });
+
+    expect(result.leaks[0].photo).toBeUndefined();
+    expect(result.leaks[0]._fieldUpdatedAt.photo).toBe(200);
+  });
+
+  it("ignores a stale photo deletion", () => {
+    const local = [
+      {
+        id: "one",
+        photo: "idb://new-photo",
+        updatedAt: 200,
+        _fieldUpdatedAt: { photo: 200 },
+      },
+    ];
+    const incoming = [
+      {
+        id: "one",
+        updatedAt: 100,
+        _fieldUpdatedAt: { photo: 100 },
+      },
+    ];
+
+    const result = mergeLeaksByFreshness(local, incoming, { source: "sync" });
+
+    expect(result.changed).toBe(0);
+    expect(result.leaks[0].photo).toBe("idb://new-photo");
+  });
   it("keeps blank leak tags distinct by their internal ids", () => {
     const existing = [
       { id: "one", leak_id: "", status: "open", updatedAt: 100 },

@@ -18,6 +18,7 @@ const DEFAULT_EXPORT_DIR = "export/xlsx";
 const LEAKS_TABLE_THEME = "TableStyleMedium2";
 const MONITORING_TABLE_THEME = "TableStyleMedium4";
 const EXPORT_YIELD_EVERY = 40;
+const PHOTO_READ_CONCURRENCY = 4;
 const BACKUP_SHEET_NAME = "Project Backup";
 const BACKUP_MARKER = "LEAK_TRACKER_EXCEL_BACKUP";
 const BACKUP_SCHEMA_VERSION = 1;
@@ -92,26 +93,61 @@ async function resolvePhotoSrc(path, idbGet) {
   return getPhotoSrc(path);
 }
 
-async function buildLeakPhotoEntries(orderedLeaks, idbGet) {
-  const photoEntries = [];
+async function resolvePhotoCandidates(candidates, idbGet, photoReadCache) {
+  if (candidates.length === 0) return [];
+
+  const entries = new Array(candidates.length);
+  let nextIndex = 0;
+  let completed = 0;
+
+  async function runWorker() {
+    while (nextIndex < candidates.length) {
+      const candidateIndex = nextIndex;
+      nextIndex += 1;
+      const candidate = candidates[candidateIndex];
+      let sourcePromise = photoReadCache.get(candidate.path);
+      if (!sourcePromise) {
+        sourcePromise = resolvePhotoSrc(candidate.path, idbGet);
+        photoReadCache.set(candidate.path, sourcePromise);
+      }
+      const src = await sourcePromise;
+
+      if (src?.startsWith("data:")) {
+        const match = src.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (match) {
+          const ext = match[1].split("/")[1] || "jpg";
+          entries[candidateIndex] = {
+            mapKey: candidate.mapKey,
+            photoFileName: `${candidate.fileNameBase}.${ext}`,
+            base64: match[2],
+          };
+        }
+      }
+
+      completed += 1;
+      if (completed % EXPORT_YIELD_EVERY === 0) {
+        await yieldToMainThread();
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(PHOTO_READ_CONCURRENCY, candidates.length) },
+      () => runWorker(),
+    ),
+  );
+  return entries.filter(Boolean);
+}
+
+async function buildLeakPhotoEntries(orderedLeaks, idbGet, photoReadCache) {
+  const candidates = [];
 
   for (const [leakIndex, leak] of orderedLeaks.entries()) {
-    if (leakIndex > 0 && leakIndex % EXPORT_YIELD_EVERY === 0) {
-      await yieldToMainThread();
-    }
-
     for (const key of PHOTO_KEYS) {
       const path = leak[key];
       if (!path) continue;
 
-      const src = await resolvePhotoSrc(path, idbGet);
-      if (!src || !src.startsWith("data:")) continue;
-
-      const match = src.match(/^data:(image\/\w+);base64,(.+)$/);
-      if (!match) continue;
-
-      const ext = match[1].split("/")[1] || "jpg";
-      const base64 = match[2];
       const suffix =
         key === "photo_after"
           ? "_after"
@@ -119,62 +155,51 @@ async function buildLeakPhotoEntries(orderedLeaks, idbGet) {
             ? "_repair"
             : "";
       const leakId = leak.leak_id ?? leak.index ?? leakIndex + 1;
-      const photoFileName = `photos/${leakId}/${leakId}${suffix}.${ext}`;
-
-      photoEntries.push({
+      candidates.push({
+        path,
         mapKey: `${leakIndex}:${key}`,
-        photoFileName,
-        base64,
+        fileNameBase: `photos/${leakId}/${leakId}${suffix}`,
       });
     }
   }
 
-  return photoEntries;
+  return resolvePhotoCandidates(candidates, idbGet, photoReadCache);
 }
 
 async function buildMonitoringPhotoEntries(
   orderedLeaks,
   idbGet,
   includedPhotoKeys = null,
+  photoReadCache,
 ) {
-  const photoEntries = [];
+  const candidates = [];
 
   for (const [leakIndex, leak] of orderedLeaks.entries()) {
-    if (leakIndex > 0 && leakIndex % EXPORT_YIELD_EVERY === 0) {
-      await yieldToMainThread();
-    }
-
     const leakId = leak.leak_id ?? leak.index ?? leakIndex + 1;
     const records = getMonitoringRecords(leak);
 
     for (const [recordIndex, record] of records.entries()) {
       const mapKey = `monitoring:${leakIndex}:${recordIndex}`;
       if (includedPhotoKeys && !includedPhotoKeys.has(mapKey)) continue;
-      const path = record.photo;
-      if (!path) continue;
+      if (!record.photo) continue;
 
-      const src = await resolvePhotoSrc(path, idbGet);
-      if (!src || !src.startsWith("data:")) continue;
-
-      const match = src.match(/^data:(image\/\w+);base64,(.+)$/);
-      if (!match) continue;
-
-      const ext = match[1].split("/")[1] || "jpg";
-      const base64 = match[2];
-      const photoFileName = `photos/${leakId}/monitoring/${leakId}_monitoring_${recordIndex + 1}.${ext}`;
-
-      photoEntries.push({
+      candidates.push({
+        path: record.photo,
         mapKey,
-        photoFileName,
-        base64,
+        fileNameBase: `photos/${leakId}/monitoring/${leakId}_monitoring_${recordIndex + 1}`,
       });
     }
   }
 
-  return photoEntries;
+  return resolvePhotoCandidates(candidates, idbGet, photoReadCache);
 }
 
-async function buildPhotoEntries(orderedLeaks, idbGet, monitoringExportMode) {
+async function buildPhotoEntries(
+  orderedLeaks,
+  idbGet,
+  monitoringExportMode,
+  photoReadCache,
+) {
   const includedMonitoringPhotoKeys =
     monitoringExportMode === EXCEL_MONITORING_EXPORT_MODE.LATEST_PER_ROUND
       ? new Set(
@@ -186,17 +211,17 @@ async function buildPhotoEntries(orderedLeaks, idbGet, monitoringExportMode) {
         )
       : null;
   const [leakPhotos, monitoringPhotos] = await Promise.all([
-    buildLeakPhotoEntries(orderedLeaks, idbGet),
+    buildLeakPhotoEntries(orderedLeaks, idbGet, photoReadCache),
     buildMonitoringPhotoEntries(
       orderedLeaks,
       idbGet,
       includedMonitoringPhotoKeys,
+      photoReadCache,
     ),
   ]);
 
   return [...leakPhotos, ...monitoringPhotos];
 }
-
 function buildPhotoMap(photoEntries) {
   return Object.fromEntries(
     photoEntries.map((entry) => [entry.mapKey, entry.photoFileName]),
@@ -1150,6 +1175,8 @@ export async function exportToExcelFile(
   lang = "ru",
   options = {},
 ) {
+  const exportStartedAt = performance.now();
+  const phaseMetrics = {};
   const paired = rawLeaks.map((leak, index) => ({ leak, row: rows[index] }));
   paired.sort((left, right) => (left.leak.id ?? 0) - (right.leak.id ?? 0));
 
@@ -1161,10 +1188,13 @@ export async function exportToExcelFile(
   const monitoringExportMode = normalizeExcelMonitoringExportMode(
     options.monitoringExportMode,
   );
+  const photosStartedAt = performance.now();
+  const photoReadCache = new Map();
   const reportPhotoEntries = await buildPhotoEntries(
     orderedLeaks,
     idbGet,
     monitoringExportMode,
+    photoReadCache,
   );
   const backupLeaks = Array.isArray(options.backupLeaks)
     ? options.backupLeaks
@@ -1173,6 +1203,7 @@ export async function exportToExcelFile(
     backupLeaks,
     idbGet,
     EXCEL_MONITORING_EXPORT_MODE.FULL,
+    photoReadCache,
   );
   const photoEntries = [
     ...new Map(
@@ -1182,6 +1213,7 @@ export async function exportToExcelFile(
       ]),
     ).values(),
   ];
+  phaseMetrics.photosMs = performance.now() - photosStartedAt;
   const photoMap = buildPhotoMap(reportPhotoEntries);
   const backupPhotoMap = buildPhotoMap(backupPhotoEntries);
   const archivePayload = {
@@ -1203,6 +1235,7 @@ export async function exportToExcelFile(
   };
   const outputFolder = getExportFolder(projectFolderName);
 
+  const workbookStartedAt = performance.now();
   const xlsxBuffer = await createWorkbookBuffer(
     {
       orderedLeaks,
@@ -1217,6 +1250,8 @@ export async function exportToExcelFile(
     options.buildWorkbookBuffer,
   );
 
+  phaseMetrics.workbookMs = performance.now() - workbookStartedAt;
+  const zipStartedAt = performance.now();
   const JSZip = (await getJSZip()).default;
   const zip = new JSZip();
   zip.file(`${fileName}.xlsx`, xlsxBuffer);
@@ -1229,7 +1264,9 @@ export async function exportToExcelFile(
   }
 
   const zipBlob = await zip.generateAsync({ type: "blob" });
-  return downloadBlob(
+  phaseMetrics.zipMs = performance.now() - zipStartedAt;
+  phaseMetrics.totalMs = performance.now() - exportStartedAt;
+  const result = await downloadBlob(
     zipBlob,
     `${fileName}.zip`,
     outputFolder,
@@ -1238,6 +1275,7 @@ export async function exportToExcelFile(
       ? `Excel-архив проекта экспортирован (${fileName}.zip)`
       : `Excel project archive exported (${fileName}.zip)`,
   );
+  return { ...result, metrics: phaseMetrics };
 }
 
 export const exportToExcelZip = exportToExcelFile;

@@ -3,6 +3,7 @@ import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { clearProjectSettings } from "@/app/project/projectSettings";
 import { LeakRepository } from "@/repositories/LeakRepository";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
+import { clearProjectSyncState } from "@/services/projectSyncState";
 import { isNative } from "@/utils/platform";
 import { saveMonitoringRound } from "@/utils/monitoringRound";
 
@@ -12,8 +13,7 @@ export async function deleteProjectArtifacts(project) {
   localStorage.removeItem(STORAGE_KEYS.PROJECT_DATA(project.id));
   localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(project.id));
   clearProjectSettings(project.id);
-  localStorage.removeItem(STORAGE_KEYS.PROJECT_SYNC_STATE(project.id));
-  localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS_UPDATED_AT(project.id));
+  await clearProjectSyncState(project.id);
   await LeakRepository.clear({
     projectId: project.id,
     folderName: project.folderName,

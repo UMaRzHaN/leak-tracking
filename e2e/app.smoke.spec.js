@@ -51,17 +51,17 @@ async function createLeak(page, leakId = "4242") {
   await page.getByLabel(/^Бирка/).fill(leakId);
   await page.getByLabel(/^Видео/).fill("1042");
   await page.getByLabel(/^Скорость/).fill("1.5");
-  await page.getByRole("button", { name: "Далее ?" }).click();
+  await page.getByRole("button", { name: /^Далее/ }).click();
 
   await expect(page.getByText("Шаг 2 /", { exact: false })).toBeVisible();
-  await page.getByRole("button", { name: "Далее ?" }).click();
+  await page.getByRole("button", { name: /^Далее/ }).click();
 
   await expect(page.getByText("Шаг 3 /", { exact: false })).toBeVisible();
   await page
     .locator('input[type="file"][accept="image/*"]')
     .setInputFiles(PHOTO_FIXTURE);
   await expect(page.getByAltText("Выбранное фото")).toBeVisible();
-  await page.getByRole("button", { name: "?? Сохранить" }).click();
+  await page.getByRole("button", { name: /Сохранить$/ }).click();
 
   await expect(
     page.getByRole("heading", { name: "Утечка сохранена" }),
@@ -135,7 +135,7 @@ test("creates a project and restores it after reload", async ({ page }) => {
     page.getByRole("heading", { name: "Журнал утечек", exact: true }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "Добавить утечку" }),
+    page.getByRole("button", { name: "Добавить утечку", exact: true }),
   ).toBeVisible();
 });
 
@@ -148,7 +148,7 @@ test("opens the main application sections", async ({ page }) => {
   await expect(page.getByText("Новая утечка", { exact: true })).toBeVisible();
   await expect(page.getByText("Шаг 1 /", { exact: false })).toBeVisible();
 
-  await page.goto("/");
+  await page.locator('button[aria-label="← Назад"]').click();
   const databaseButton = page.getByRole("button", {
     name: "База",
     exact: true,
@@ -224,7 +224,6 @@ test("persists project, appearance, and export settings", async ({ page }) => {
     page.getByText("Settings persisted E2E", { exact: true }),
   ).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await page.getByTitle("Settings").click();
   await expect(
     page.getByRole("switch", { name: "During monitoring" }),
   ).toHaveAttribute("aria-checked", "false");
@@ -437,7 +436,7 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
     }),
   ).toHaveAttribute("aria-checked", "true");
 
-  await page.getByRole("button", { name: "?" }).click();
+  await page.getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ }).click();
   await openDatabase(page);
   await expect(page.getByText("Бирка № 5301", { exact: true })).toBeVisible();
 
@@ -475,7 +474,7 @@ test("rejects a corrupted ZIP backup without changing project data", async ({
 
   await expect(page.getByRole("alert")).toContainText("Ошибка импорта");
 
-  await page.getByRole("button", { name: "?" }).click();
+  await page.getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ }).click();
   await openDatabase(page);
   await expect(page.getByText("Бирка № 5351", { exact: true })).toBeVisible();
 
@@ -552,7 +551,7 @@ test("keeps the hidden bulk status action unavailable", async ({ page }) => {
 
   await page.getByRole("button", { name: "Выбрать всё" }).click();
   await expect(page.getByText("2 выбрано из 2")).toBeVisible();
-  await expect(page.getByRole("button", { name: "? СТАТУС" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /СТАТУС$/ })).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Параметры расчёта" }),
   ).toBeVisible();
@@ -570,7 +569,7 @@ test("exports and imports an Excel archive as a project copy", async ({
 
   await openDatabase(page);
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "?? XLSX" }).click();
+  await page.getByRole("button", { name: /XLSX$/ }).click();
   const download = await downloadPromise;
   const excelArchivePath = testInfo.outputPath(download.suggestedFilename());
   await download.saveAs(excelArchivePath);
@@ -598,7 +597,7 @@ test("exports and imports an Excel archive as a project copy", async ({
     page.getByText("Excel roundtrip (Excel)", { exact: true }).first(),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "?" }).click();
+  await page.getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ }).click();
   await openDatabase(page);
   await expect(page.getByText("Бирка № 5501", { exact: true })).toBeVisible();
 });
