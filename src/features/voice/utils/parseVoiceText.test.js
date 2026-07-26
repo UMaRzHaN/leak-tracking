@@ -142,8 +142,8 @@ describe("parseVoiceText", () => {
       expect(r.main).toBe("Северное");
     });
 
-    it("extracts secondary (станция) and normalizes КС", () => {
-      const r = parseVoiceText("станция кс5");
+    it("extracts secondary from compressor station and normalizes КС", () => {
+      const r = parseVoiceText("компрессорная станция кс5");
       expect(r.secondary).toBe("КС-5");
     });
 
@@ -152,9 +152,20 @@ describe("parseVoiceText", () => {
       expect(r.secondary).toBe("Советское");
     });
 
-    it('extracts secondary from "пункт" shorthand (not "пунк")', () => {
-      const r = parseVoiceText("пункт советский");
-      expect(r.secondary).toBe("Советский");
+    it.each([
+      ["месторождение кокдумалак", "Кокдумалак"],
+      ["месторождения кокдумалак", "Кокдумалак"],
+      ["место рождения кокдумалак", "Кокдумалак"],
+      ["место рождение кокдумалак", "Кокдумалак"],
+      ["место рождения газа кокдумалак", "Кокдумалак"],
+      ["газовое месторождение кокдумалак", "Кокдумалак"],
+      ["нефтяное месторождение кокдумалак", "Кокдумалак"],
+      ["компрессорная станция мубарек", "Мубарек"],
+      ["кс мубарек", "Мубарек"],
+      ["gas field kokdumalak", "Kokdumalak"],
+      ["oil field kokdumalak", "Kokdumalak"],
+    ])("extracts secondary from %s", (text, expected) => {
+      expect(parseVoiceText(text)).toMatchObject({ secondary: expected });
     });
 
     it('extracts secondary from full phrase "населённый пункт"', () => {
@@ -179,6 +190,20 @@ describe("parseVoiceText", () => {
       expect(r.main).toBe("Ngdu-1");
       expect(r.secondary).toBe("Tengiz");
       expect(r.last).toBe("Block 12");
+    });
+
+    it("keeps backward-compatible field marker for main", () => {
+      expect(parseVoiceText("field west")).toMatchObject({ main: "West" });
+    });
+
+    it("keeps backward-compatible station marker for secondary", () => {
+      expect(parseVoiceText("station кс-12")).toMatchObject({
+        secondary: "КС-12",
+      });
+    });
+
+    it("extracts district for downstream mapping", () => {
+      expect(parseVoiceText("district north")).toMatchObject({ main: "North" });
     });
   });
 

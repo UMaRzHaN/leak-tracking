@@ -517,6 +517,30 @@ describe("parseExcelLeaks", () => {
     });
     expect(result.leaks[0].photo).toMatch(/^data:image\/png;base64,/);
   });
+
+  it("uses an explicitly supplied project type for an ordinary XLSX", async () => {
+    const blob = await makeWorkbookBlob([
+      ["Leak ID", "district", "component"],
+      ["DS-2", "District 2", "Valve"],
+    ]);
+
+    const result = await parseExcelLeaks(blob, { projectType: "downstream" });
+
+    expect(result.project).toEqual({ type: "downstream" });
+    expect(result.leaks[0]).toMatchObject({ leak_id: "DS-2" });
+  });
+
+  it("ignores an invalid requested project type instead of defaulting to upstream", async () => {
+    const blob = await makeWorkbookBlob([
+      ["Leak ID", "component"],
+      ["GEN-1", "Valve"],
+    ]);
+
+    const result = await parseExcelLeaks(blob, { projectType: "invalid" });
+
+    expect(result.project).toBeNull();
+    expect(result.leaks).toHaveLength(1);
+  });
 });
 
 describe("reconcileExcelImportPhotos", () => {

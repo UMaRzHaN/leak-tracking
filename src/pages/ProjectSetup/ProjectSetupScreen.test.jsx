@@ -228,6 +228,33 @@ describe("ProjectSetupScreen", () => {
     expect(screen.getByLabelText("Project Name").value).toBe("Archive Project");
   });
 
+  it("uses trusted ZIP metadata instead of a previously selected project type", async () => {
+    backupService.peekBackupZip.mockResolvedValueOnce({
+      leaks: [{ id: "l1" }],
+      meta: { project: { name: "Archive Project", type: "downstream" } },
+      detectedType: "downstream",
+    });
+    const onImportZip = vi.fn().mockResolvedValue({});
+    const { container } = render(
+      <ProjectSetupScreen onComplete={vi.fn()} onImportZip={onImportZip} />,
+    );
+
+    fireEvent.click(screen.getByText("Upstream"));
+    const file = new File(["zip"], "backup.zip", {
+      type: "application/zip",
+    });
+    fireEvent.change(container.querySelector('input[accept^=".zip"]'), {
+      target: { files: [file] },
+    });
+
+    await waitFor(() =>
+      expect(onImportZip).toHaveBeenCalledWith(file, {
+        name: "Archive Project",
+        type: "downstream",
+      }),
+    );
+  });
+
   it("falls back to the ZIP filename when preview and metadata are unavailable", async () => {
     backupService.peekBackupZip.mockRejectedValueOnce(new Error("bad preview"));
     const onImportZip = vi.fn().mockResolvedValue({});

@@ -168,17 +168,18 @@ export default function ProjectSetupScreen({
           resolvedName = metaProject.name;
           setName(resolvedName);
         }
-        if (!resolvedType) {
-          const fromMeta =
-            metaProject?.type && VALID_TYPES.includes(metaProject.type)
-              ? metaProject.type
-              : null;
-          const detected =
-            fromMeta || peek.detectedType || detectTypeFromString(file.name);
-          if (detected) {
-            resolvedType = detected;
-            setType(detected);
-          }
+        const fromMeta =
+          metaProject?.type && VALID_TYPES.includes(metaProject.type)
+            ? metaProject.type
+            : null;
+        const detected =
+          fromMeta ||
+          (!resolvedType
+            ? peek.detectedType || detectTypeFromString(file.name)
+            : null);
+        if (detected) {
+          resolvedType = detected;
+          setType(detected);
         }
       } catch {
         // ignore peek errors — importProjectZip will handle them

@@ -4,31 +4,116 @@ import { normalizeNumberWords } from "./numbers";
 
 const TOKENS = {
   leakId:
-    "номер\\s+бирк[аи]|id\\s+утечки|ид\\s+утечки|номер\\s+утечки|бирк[аи]?|тег|tag(?:\\s+number)?|leak\\s+id|tag",
+    "номер\\s+(?:бирки|утечки|тега)|id\\s+утечки|ид\\s+утечки|бирк[аи]?|тег|leak\\s+id|tag(?:\\s+number)?",
+
   videoId: "номер\\s+видео|id\\s+видео|видео\\s+id|видео|video\\s+id|video",
-  leakSpeed: "скорост[ьи]?\\s+утечки|скорост[ьи]?|leak\\s+rate|rate|speed",
-  pressure: "давлени[ея]?|pressure",
-  temperature: "температур[аы]?|temperature|temp",
-  category: "категори[яи]|category",
-  main: "умг|унг|умк|умгэ|умге|умга|омг|mgpa|main\\s+gas\\s+pipeline\\s+administration|управление|management|district|район|подразделени[еяю]|subdivision|field",
-  secondary:
-    "компрессорная\\s+станци[яи]|станци[яи]|compressor\\s+station|station|место\\s+рождени[ея]|месторождени[ея]?|deposit|field\\s+deposit|насел[её]нный\\s+пункт|locality|settlement|town|city|пункт",
-  last: "локаци[яи]|location|address|адрес",
-  object: "объект|object",
-  component: "компонент[ы]?|component",
-  leakDescription: "описание\\s+утечки|leak\\s+description|description",
-  leakCause: "причина\\s+утечки|leak\\s+cause|cause",
-  technologicalSolution:
-    "технологическое\\s+решение|тех\\s+решение|technical\\s+solution|solution|способ\\s+устранения|method\\s+of\\s+repair|repair\\s+method",
-  repairRecommendation:
-    "план\\s+устранения|repair\\s+plan|repair\\s+recommendation|recommendation",
-  materialsEquipment:
-    "мтр\\s+ремонта|мтр|materials\\s+and\\s+equipment|materials|equipment",
-  note: "примечани[ея]|заметк[аи]|комментари[йя]|note|comment",
-  actuatorType: "тип\\s+привода|привод|actuator\\s+type|actuator",
-  connectionType: "тип\\s+присоединения|присоединени[ея]|connection\\s+type",
+
+  leakSpeed:
+    "скорост(?:ь|и)?\\s+утечки|скорость\\s+выброса|расход\\s+утечки|скорост(?:ь|и)?|leak\\s+(?:rate|speed)|rate|speed",
+
+  pressure: "давлени(?:е|я|ю|и)?|pressure",
+  temperature: "температур(?:а|ы|у|е)?|temperature|temp",
+  category: "категори(?:я|и|ю)?|category",
+
+  main: [
+    "умг",
+    "унг",
+    "умк",
+    "умгэ",
+    "умге",
+    "умга",
+    "омг",
+    "мгпа",
+    "mgpa",
+    "main\\s+gas\\s+pipeline\\s+administration",
+    "управлени(?:е|я|ю)",
+    "management",
+    "подразделени(?:е|я|ю)",
+    "subdivision",
+    "district",
+    "район",
+    "field",
+  ].join("|"),
+
+  secondary: [
+    // Put longer phrases first: regex alternation uses the first match.
+    "место\\s+рождени(?:е|я)\\s+газа",
+    "место\\s+рождени(?:е|я)",
+    "месторождени(?:е|я)",
+    "компрессорн(?:ая|ой|ую)\\s+станци(?:я|и|ю)",
+    "compressor\\s+station",
+    "станци(?:я|и|ю)",
+    "кс",
+    "нефтян(?:ое|ого)\\s+месторождени(?:е|я)",
+    "газов(?:ое|ого)\\s+месторождени(?:е|я)",
+    "oil\\s+field",
+    "gas\\s+field",
+    "field\\s+deposit",
+    "deposit",
+    "насел[её]нн(?:ый|ого|ом)\\s+пункт",
+    "locality",
+    "settlement",
+    "station",
+    "town",
+    "city",
+    "пункт",
+  ].join("|"),
+
+  last: [
+    "локаци(?:я|и|ю)",
+    "местоположени(?:е|я)",
+    "адрес(?:а|у|е)?",
+    "location",
+    "address",
+  ].join("|"),
+
+  object: "объект(?:а|е|у|ом)?|object",
+  component: "компонент(?:ы|а|е|у|ом)?|component",
+
+  leakDescription:
+    "описани(?:е|я)\\s+утечки|описать\\s+утечку|leak\\s+description|description",
+
+  leakCause: "причин(?:а|ы|у)\\s+утечки|leak\\s+cause|cause",
+
+  technologicalSolution: [
+    "технологическ(?:ое|ого)\\s+решени(?:е|я)",
+    "техническ(?:ое|ого)\\s+решени(?:е|я)",
+    "тех\\s+решени(?:е|я)",
+    "способ\\s+устранени(?:я|е)",
+    "technical\\s+solution",
+    "method\\s+of\\s+repair",
+    "repair\\s+method",
+    "solution",
+  ].join("|"),
+
+  repairRecommendation: [
+    "план\\s+устранени(?:я|е)",
+    "рекомендаци(?:я|и|ю)\\s+по\\s+ремонту",
+    "repair\\s+plan",
+    "repair\\s+recommendation",
+    "recommendation",
+  ].join("|"),
+
+  materialsEquipment: [
+    "мтр\\s+ремонта",
+    "мтр",
+    "материал(?:ы|ов)",
+    "оборудовани(?:е|я)",
+    "materials\\s+and\\s+equipment",
+    "materials",
+    "equipment",
+  ].join("|"),
+
+  note: "примечани(?:е|я)|заметк(?:а|и|у)|комментари(?:й|я)|note|comment",
+
+  actuatorType:
+    "тип\\s+привода|вид\\s+привода|привод(?:а)?|actuator\\s+type|actuator",
+
+  connectionType:
+    "тип\\s+присоединени(?:я|е)|тип\\s+соединени(?:я|е)|присоединени(?:е|я)|connection\\s+type",
+
   installationType:
-    "тип\\s+установки|установк[аи]|installation\\s+type|installation",
+    "тип\\s+установки|вид\\s+установки|установк(?:а|и|у|е)|installation\\s+type|installation",
 };
 
 const FIELD_MARKERS = [
@@ -104,7 +189,14 @@ export const parseVoiceText = (text) => {
   const result = {};
   if (!text) return result;
 
-  const normalized = normalizeNumberWords(text).toLowerCase();
+  // Speech recognition often splits "месторождение" into "место рождения".
+  // Canonicalize that phrase before number-word normalization so it cannot be
+  // changed or split by another normalization rule.
+  const canonicalText = text.replace(
+    /(^|\s)место\s+рождени(?:е|я)(?:\s+газа)?(?=\s|$)/gi,
+    "$1месторождение",
+  );
+  const normalized = normalizeNumberWords(canonicalText).toLowerCase();
 
   const patterns = [
     {

@@ -413,4 +413,93 @@ describe("useBackupActions", () => {
     );
     expect(result.current.conflictState.open).toBe(false);
   });
+
+  it.each([
+    [
+      "PROJECT_TYPE_MISMATCH",
+      {
+        existingProjectType: "upstream",
+        incomingProjectType: "downstream",
+      },
+      "Projects of different types cannot be combined: current — Upstream, imported — Downstream.",
+    ],
+    [
+      "PROJECT_TYPE_MISSING",
+      {},
+      "The archive does not specify a project type. Import into the existing project was cancelled.",
+    ],
+    [
+      "CURRENT_PROJECT_TYPE_MISSING",
+      {},
+      "The current project has no defined type. Import was cancelled.",
+    ],
+  ])(
+    "shows a dedicated import error for %s",
+    async (code, details, message) => {
+      const notify = vi.fn();
+      const file = { name: "alpha.zip" };
+      const existingProject = {
+        id: "p1",
+        name: "Alpha",
+        folderName: "alpha",
+        type: "upstream",
+      };
+      const error = Object.assign(new Error("generic"), { code, ...details });
+      const onImportIntoExisting = vi.fn().mockRejectedValue(error);
+      const { result } = renderHook(() =>
+        useBackupActions({
+          data: [],
+          idbGetPhoto: vi.fn(),
+          activeProject: existingProject,
+          vars: {},
+          onImportZip: vi.fn(),
+          onImportIntoExisting,
+          notify,
+          projects: [existingProject],
+        }),
+      );
+
+      act(() =>
+        result.current.setConflictState({
+          open: true,
+          file,
+          existingProject,
+          resolvedName: "Alpha",
+          resolvedType: "upstream",
+        }),
+      );
+      await act(async () => result.current.handleConflictMerge());
+
+      expect(notify).toHaveBeenCalledWith("error", message);
+      expect(result.current.conflictState.open).toBe(false);
+    },
+  );
+
+  it("keeps generic import errors prefixed and closes confirmation", async () => {
+    const notify = vi.fn();
+    const onImportZip = vi.fn().mockRejectedValue(new Error("broken archive"));
+    const file = { name: "alpha.zip" };
+    const event = { target: { files: [file], value: "filled" } };
+    const { result } = renderHook(() =>
+      useBackupActions({
+        data: [],
+        idbGetPhoto: vi.fn(),
+        activeProject: null,
+        vars: {},
+        onImportZip,
+        onImportIntoExisting: vi.fn(),
+        notify,
+        projects: [],
+      }),
+    );
+
+    await act(async () => result.current.handleImportZip(event));
+    await act(async () => result.current.confirmImport());
+
+    expect(notify).toHaveBeenCalledWith(
+      "error",
+      "Import error: broken archive",
+    );
+    expect(result.current.importConfirmState.open).toBe(false);
+  });
 });

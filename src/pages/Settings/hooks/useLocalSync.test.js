@@ -439,4 +439,88 @@ describe("useLocalSync", () => {
       "Ошибка импорта по QR: Не удалось прочитать полученный архив (404)",
     );
   });
+
+  it("shows a localized type mismatch instead of a generic connection error", async () => {
+    const mismatch = Object.assign(new Error("mismatch"), {
+      code: "PROJECT_TYPE_MISMATCH",
+      existingProjectType: "upstream",
+      incomingProjectType: "downstream",
+    });
+    syncService.exchangeLocalSyncArchive.mockRejectedValueOnce(mismatch);
+    const { result, notify } = renderSync({ lang: "en" });
+
+    await act(async () =>
+      result.current.joinHost({
+        host: "192.168.43.1",
+        port: "49152",
+        code: "654321",
+        fingerprint: "A".repeat(64),
+      }),
+    );
+
+    expect(result.current.state.status).toBe("idle");
+    expect(notify).toHaveBeenCalledWith(
+      "error",
+      "Projects of different types cannot be synchronized: current — Upstream, received — Downstream.",
+    );
+  });
+
+  it("reports a missing archive project type during hosted synchronization", async () => {
+    let receiveArchive;
+    const stop = vi.fn().mockResolvedValue(undefined);
+    syncService.startLocalSyncHost.mockImplementation(async (options) => {
+      receiveArchive = options.onArchive;
+      return {
+        host: "192.168.43.1",
+        port: 49152,
+        code: "123456",
+        fingerprint: "A".repeat(64),
+        stop,
+      };
+    });
+    const missing = Object.assign(new Error("missing"), {
+      code: "PROJECT_TYPE_MISSING",
+    });
+    const { result, onImportIntoExisting, notify } = renderSync({ lang: "ru" });
+    onImportIntoExisting.mockRejectedValueOnce(missing);
+
+    await act(async () => result.current.startHost());
+    await act(async () => {
+      await expect(
+        receiveArchive(new File(["remote"], "remote.zip")),
+      ).rejects.toMatchObject({ code: "PROJECT_TYPE_MISSING" });
+    });
+
+    expect(stop).toHaveBeenCalledOnce();
+    // onArchive deliberately propagates import failures; the host-level error
+    // callback is responsible for displaying the localized message.
+    const hostCall = syncService.startLocalSyncHost.mock.calls[0][0];
+    act(() => hostCall.onError(missing));
+    expect(notify).toHaveBeenCalledWith(
+      "error",
+      "Полученный архив не содержит тип проекта. Синхронизация отменена.",
+    );
+  });
+
+  it("reports a missing current project type during client synchronization", async () => {
+    const missing = Object.assign(new Error("missing current type"), {
+      code: "CURRENT_PROJECT_TYPE_MISSING",
+    });
+    syncService.exchangeLocalSyncArchive.mockRejectedValueOnce(missing);
+    const { result, notify } = renderSync({ lang: "en" });
+
+    await act(async () =>
+      result.current.joinHost({
+        host: "192.168.43.1",
+        port: "49152",
+        code: "654321",
+        fingerprint: "A".repeat(64),
+      }),
+    );
+
+    expect(notify).toHaveBeenCalledWith(
+      "error",
+      "The current project has no defined type. Synchronization was cancelled.",
+    );
+  });
 });
