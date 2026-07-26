@@ -2,10 +2,32 @@ import {
   normalizeBySynonyms,
   normalizeVoiceResult,
   normalizeSynonyms,
+  parseVoiceEntityDescriptor,
 } from "./normalization";
 import { parseVoiceText } from "./parseVoiceText";
 import { fuzzyMatchOption } from "./matching";
 import { objects, components } from "@/data/leak/fieldDictionary";
+
+const normalizeComponentDisplayCase = (value) => {
+  const words = String(value ?? "")
+    .trim()
+    .split(/\s+/u)
+    .filter(Boolean);
+
+  return words
+    .map((word, index) => {
+      // Keep technical abbreviations such as СППК, DN50 and PN16 intact.
+      if (/^[A-ZА-ЯЁ0-9][A-ZА-ЯЁ0-9./-]*$/u.test(word) && word.length > 1) {
+        return word;
+      }
+
+      const lower = word.toLocaleLowerCase("ru-RU");
+      return index === 0
+        ? lower.charAt(0).toLocaleUpperCase("ru-RU") + lower.slice(1)
+        : lower;
+    })
+    .join(" ");
+};
 
 /**
  * Full voice text processing pipeline.
@@ -45,7 +67,6 @@ export const handleVoiceText = (
 
   // Synonym normalization
   const SYNONYM_FIELDS = [
-    ["component", "component"],
     ["actuator_type", "actuator_type"],
     ["connection_type", "connection_type"],
     ["installation_type", "installation_type"],
@@ -66,10 +87,24 @@ export const handleVoiceText = (
     data.object = fuzzy ?? synonymed;
   }
 
-  // Fuzzy match component against components dictionary (fallback after synonyms)
+  // Fuzzy-match only the component name. Preserve an explicitly spoken
+  // entity number and size instead of replacing the whole descriptor with
+  // the dictionary option (for example, "Кран шаровой №5 50/40").
   if (data.component) {
-    const fuzzy = fuzzyMatchOption(data.component, components);
-    if (fuzzy) data.component = fuzzy;
+    const descriptor = parseVoiceEntityDescriptor(data.component);
+    const synonymedName = normalizeBySynonyms(
+      descriptor.name,
+      "component",
+    ).value;
+    const fuzzy = fuzzyMatchOption(synonymedName, components);
+
+    data.component = [
+      normalizeComponentDisplayCase(fuzzy ?? synonymedName),
+      descriptor.number ? `№${descriptor.number}` : null,
+      descriptor.size,
+    ]
+      .filter(Boolean)
+      .join(" ");
   }
 
   setVoiceData(data);

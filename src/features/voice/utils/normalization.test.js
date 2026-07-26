@@ -236,6 +236,15 @@ describe("expandVoiceAbbreviations", () => {
     );
   });
 
+  it("keeps numbered station abbreviations unchanged", async () => {
+    const { expandVoiceAbbreviations } = await import("./normalization");
+
+    expect(expandVoiceAbbreviations("station кс-12")).toBe("station кс-12");
+    expect(expandVoiceAbbreviations("station кс 12")).toBe("station кс 12");
+    expect(expandVoiceAbbreviations("station cs-5")).toBe("station cs-5");
+    expect(expandVoiceAbbreviations("station cs 5")).toBe("station cs 5");
+  });
+
   it("supports English abbreviations and preserves punctuation", async () => {
     const { expandVoiceAbbreviations } = await import("./normalization");
 
@@ -249,6 +258,30 @@ describe("expandVoiceAbbreviations", () => {
 
     expect(expandVoiceAbbreviations("текстура кшаровой csgo")).toBe(
       "текстура кшаровой csgo",
+    );
+  });
+});
+
+describe("parseVoiceEntityDescriptor", () => {
+  it("keeps entity number and size as separate structured parts", async () => {
+    const { parseVoiceEntityDescriptor } = await import("./normalization");
+
+    expect(parseVoiceEntityDescriptor("кш номер 23 50/20")).toEqual({
+      name: "кран шаровой",
+      number: "23",
+      size: "50/20",
+      value: "кран шаровой №23 50/20",
+    });
+  });
+
+  it("uses the shared abbreviation map for different equipment types", async () => {
+    const { parseVoiceEntityDescriptor } = await import("./normalization");
+
+    expect(parseVoiceEntityDescriptor("змс номер 7 50/20").value).toBe(
+      "задвижка механическая стальная №7 50/20",
+    );
+    expect(parseVoiceEntityDescriptor("кп номер 9 80/40").value).toBe(
+      "кран пробковый №9 80/40",
     );
   });
 });

@@ -115,3 +115,38 @@ describe("normalizeCapturedNumber", () => {
     expect(normalizeCapturedNumber(input)).toBe(expected);
   });
 });
+
+describe("entity number before dimensions", () => {
+  it('keeps "номер двадцать три" separate from "пятьдесят на двадцать"', () => {
+    expect(
+      normalizeNumberWords(
+        "компонент кш номер двадцать три пятьдесят на двадцать",
+      ),
+    ).toBe("компонент кш номер 23 50/20");
+  });
+
+  it("supports English number and dimension words", () => {
+    expect(
+      normalizeNumberWords("component bv number twenty three fifty by twenty"),
+    ).toBe("component bv number 23 50/20");
+  });
+});
+
+describe("ASR-concatenated entity number and size", () => {
+  it.each([
+    [
+      "компонент кран шаровой номер 1050 на 40",
+      "компонент кран шаровой номер 10 50/40",
+    ],
+    ["компонент кш номер 2350 на 20", "компонент кш номер 23 50/20"],
+    ["компонент змс номер 7100 на 50", "компонент змс номер 7 100/50"],
+  ])("splits %s using a standard nominal-size suffix", (input, expected) => {
+    expect(normalizeNumberWords(input)).toBe(expected);
+  });
+
+  it("does not split an unrelated ordinary number", () => {
+    expect(normalizeNumberWords("компонент кран номер 1234")).toBe(
+      "компонент кран номер 1234",
+    );
+  });
+});

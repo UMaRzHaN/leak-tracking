@@ -385,3 +385,191 @@ describe("parseVoiceText abbreviations", () => {
     });
   });
 });
+
+describe("parseVoiceText contextual abbreviation normalization", () => {
+  it("keeps station abbreviations intact until station normalization", () => {
+    expect(parseVoiceText("станция кс номер два")).toMatchObject({
+      secondary: "КС-2",
+    });
+    expect(parseVoiceText("station cs number five")).toMatchObject({
+      secondary: "КС-5",
+    });
+  });
+
+  it("collapses redundant station abbreviation and full name in either order", () => {
+    expect(parseVoiceText("кс компрессорная станция номер два")).toMatchObject({
+      secondary: "КС-2",
+    });
+    expect(parseVoiceText("компрессорная станция кс номер два")).toMatchObject({
+      secondary: "КС-2",
+    });
+  });
+
+  it("expands field abbreviations after parsing and supports universal numbers", () => {
+    expect(parseVoiceText("объект кп номер два")).toMatchObject({
+      object: "Кран пробковый №2",
+    });
+    expect(parseVoiceText("компонент задвижка номер семь")).toMatchObject({
+      component: "Задвижка механическая стальная №7",
+    });
+  });
+
+  it("collapses redundant object abbreviation and full name in either order", () => {
+    expect(parseVoiceText("объект кш кран шаровой номер два")).toMatchObject({
+      object: "Кран шаровой №2",
+    });
+    expect(parseVoiceText("объект кран шаровой кш номер два")).toMatchObject({
+      object: "Кран шаровой №2",
+    });
+  });
+});
+
+describe("parseVoiceText entity numbers and sizes", () => {
+  it("separates an explicit component number from a following size", () => {
+    expect(
+      parseVoiceText("компонент кш номер двадцать три пятьдесят на двадцать"),
+    ).toMatchObject({
+      component: "Кран шаровой №23 50/20",
+    });
+  });
+
+  it("works for other component abbreviations", () => {
+    expect(
+      parseVoiceText("компонент змс номер семь пятьдесят на двадцать"),
+    ).toMatchObject({
+      component: "Задвижка механическая стальная №7 50/20",
+    });
+
+    expect(
+      parseVoiceText("компонент кп номер девять восемьдесят на сорок"),
+    ).toMatchObject({
+      component: "Кран пробковый №9 80/40",
+    });
+
+    expect(
+      parseVoiceText("компонент сппк номер один сто на пятьдесят"),
+    ).toMatchObject({
+      component: "Сбросной пружинный предохранительный клапан №1 100/50",
+    });
+  });
+
+  it("supports the size before the entity number", () => {
+    expect(
+      parseVoiceText("компонент кш пятьдесят на двадцать номер двадцать три"),
+    ).toMatchObject({
+      component: "Кран шаровой №23 50/20",
+    });
+  });
+});
+
+describe("parseVoiceText full component names and speech variants", () => {
+  it("parses a full ball-valve name with a spoken number and size", () => {
+    expect(
+      parseVoiceText(
+        "компонент кран шаровой номер двадцать три пятьдесят на двадцать",
+      ),
+    ).toMatchObject({
+      component: "Кран шаровой №23 50/20",
+    });
+  });
+
+  it("normalizes common ball-valve recognition variants", () => {
+    const phrases = [
+      "компонент шаровой кран номер двадцать три пятьдесят на двадцать",
+      "компонент кран шаровый номер двадцать три пятьдесят на двадцать",
+      "компонент кран шоровой номер двадцать три пятьдесят на двадцать",
+    ];
+
+    for (const phrase of phrases) {
+      expect(parseVoiceText(phrase)).toMatchObject({
+        component: "Кран шаровой №23 50/20",
+      });
+    }
+  });
+
+  it("supports full names and aliases for other component types", () => {
+    expect(
+      parseVoiceText(
+        "компонент задвижка механическая стальная номер семь пятьдесят на двадцать",
+      ),
+    ).toMatchObject({
+      component: "Задвижка механическая стальная №7 50/20",
+    });
+
+    expect(
+      parseVoiceText(
+        "компонент пробковый кран номер девять восемьдесят на сорок",
+      ),
+    ).toMatchObject({
+      component: "Кран пробковый №9 80/40",
+    });
+
+    expect(
+      parseVoiceText(
+        "компонент предохранительный клапан номер один сто на пятьдесят",
+      ),
+    ).toMatchObject({
+      component: "Сбросной пружинный предохранительный клапан №1 100/50",
+    });
+  });
+});
+
+describe("parseVoiceText end-to-end voice component scenarios", () => {
+  const cases = [
+    {
+      phrase: "компонент кш номер двадцать три пятьдесят на двадцать",
+      expected: "Кран шаровой №23 50/20",
+    },
+    {
+      phrase: "компонент кран шаровой номер двадцать три пятьдесят на двадцать",
+      expected: "Кран шаровой №23 50/20",
+    },
+    {
+      phrase: "компонент шаровой кран номер двадцать три пятьдесят на двадцать",
+      expected: "Кран шаровой №23 50/20",
+    },
+    {
+      phrase: "компонент кран шаровый номер двадцать три пятьдесят на двадцать",
+      expected: "Кран шаровой №23 50/20",
+    },
+    {
+      phrase: "компонент кран шоровой номер двадцать три пятьдесят на двадцать",
+      expected: "Кран шаровой №23 50/20",
+    },
+    {
+      phrase: "компонент кран шаровой пятьдесят на двадцать номер двадцать три",
+      expected: "Кран шаровой №23 50/20",
+    },
+    {
+      phrase: "компонент змс номер семь пятьдесят на двадцать",
+      expected: "Задвижка механическая стальная №7 50/20",
+    },
+    {
+      phrase:
+        "компонент задвижка механическая стальная номер семь пятьдесят на двадцать",
+      expected: "Задвижка механическая стальная №7 50/20",
+    },
+    {
+      phrase: "компонент кп номер девять восемьдесят на сорок",
+      expected: "Кран пробковый №9 80/40",
+    },
+    {
+      phrase: "компонент пробковый кран номер девять восемьдесят на сорок",
+      expected: "Кран пробковый №9 80/40",
+    },
+    {
+      phrase: "компонент сппк номер один сто на пятьдесят",
+      expected: "Сбросной пружинный предохранительный клапан №1 100/50",
+    },
+    {
+      phrase: "компонент предохранительный клапан номер один сто на пятьдесят",
+      expected: "Сбросной пружинный предохранительный клапан №1 100/50",
+    },
+  ];
+
+  it.each(cases)('parses "$phrase"', ({ phrase, expected }) => {
+    expect(parseVoiceText(phrase)).toMatchObject({
+      component: expected,
+    });
+  });
+});

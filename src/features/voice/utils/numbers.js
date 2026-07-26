@@ -52,6 +52,35 @@ export const NUMBER_WORDS = {
   тысяча: 1000,
   тысячи: 1000,
   тысяч: 1000,
+  // English 0–19
+  zero: 0,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  thirteen: 13,
+  fourteen: 14,
+  fifteen: 15,
+  sixteen: 16,
+  seventeen: 17,
+  eighteen: 18,
+  nineteen: 19,
+  twenty: 20,
+  thirty: 30,
+  forty: 40,
+  fifty: 50,
+  sixty: 60,
+  seventy: 70,
+  eighty: 80,
+  ninety: 90,
 };
 
 // ─── toNumber ────────────────────────────────────────────────────────────────
@@ -139,9 +168,57 @@ export function normalizeNumberWords(text) {
   /* ===== МИНУС ===== */
   result = result.replace(/минус\s+/g, "-");
 
+  /*
+   * ===== НОМЕР ПЕРЕД РАЗМЕРОМ =====
+   * Protects the entity number from being merged with the first dimension.
+   * Example: "номер двадцать три пятьдесят на двадцать" must become
+   * "номер 23 пятьдесят на двадцать", not "номер 73 на двадцать".
+   */
+  const numberWord =
+    "(?:ноль|один|одна|одно|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать|тринадцать|четырнадцать|пятнадцать|шестнадцать|семнадцать|восемнадцать|девятнадцать|двадцать|тридцать|сорок|пятьдесят|шестьдесят|семьдесят|восемьдесят|девяносто|сто|двести|триста|четыреста|пятьсот|шестьсот|семьсот|восемьсот|девятьсот|тысяча|тысячи|тысяч|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)";
+
+  result = result.replace(
+    new RegExp(
+      `((?:номер|number|no\\.?|№)\\s+)((?:${numberWord}\\s+)+?)(?=${numberWord}\\s+(?:на|дробь|x|х|by)\\s+)`,
+      "giu",
+    ),
+    (match, marker, entityNumberWords) => {
+      const number = parseNumberFromWords(entityNumberWords);
+      return number === null ? match : `${marker}${number} `;
+    },
+  );
+
+  /* ===== ASR СКЛЕИЛ НОМЕР И ПЕРВЫЙ РАЗМЕР =====
+   * Web Speech может распознать "номер 10 50 на 40" как
+   * "номер 1050 на 40". Разделяем слитное число только тогда, когда
+   * его суффикс похож на стандартный номинальный размер.
+   * Example: "номер 1050 на 40" → "номер 10 50 на 40".
+   */
+  const standardNominalSizes = [
+    10, 15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400,
+    500, 600, 700, 800, 900, 1000, 1200, 1400,
+  ];
+
+  result = result.replace(
+    /((?:номер|number|no\.?|№)\s+)(\d{3,})(\s+)(?=(?:на|дробь|x|х|by)\s+\d+)/giu,
+    (match, marker, compact, spacing) => {
+      const size = standardNominalSizes.find((candidate) => {
+        const suffix = String(candidate);
+        return compact.length > suffix.length && compact.endsWith(suffix);
+      });
+
+      if (!size) return match;
+
+      const number = compact.slice(0, -String(size).length);
+      if (!number || Number(number) <= 0) return match;
+
+      return `${marker}${Number(number)} ${size}${spacing}`;
+    },
+  );
+
   /* ===== РАЗМЕРЫ: "50 на 40", "пятьдесят на сорок" → "50/40" ===== */
   result = result.replace(
-    /([\wа-яёА-ЯЁ][\wа-яёА-ЯЁ-]*)\s+(на|дробь|x)\s+([\wа-яёА-ЯЁ][\wа-яёА-ЯЁ-]*)(?=\s|$)/g,
+    /([\wа-яёА-ЯЁ][\wа-яёА-ЯЁ-]*)\s+(на|дробь|x|х|by)\s+([\wа-яёА-ЯЁ][\wа-яёА-ЯЁ-]*)(?=\s|$)/g,
     (match, a, _sep, b) => {
       const left = NUMBER_WORDS[a] !== undefined ? NUMBER_WORDS[a] : a;
       const right = NUMBER_WORDS[b] !== undefined ? NUMBER_WORDS[b] : b;
@@ -173,7 +250,7 @@ export function normalizeNumberWords(text) {
 
   /* ===== СЛОВЕСНЫЕ ЧИСЛА ЛЮБОЙ ДЛИНЫ ===== */
   result = result.replace(
-    /((ноль|один|одна|одно|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать|тринадцать|четырнадцать|пятнадцать|шестнадцать|семнадцать|восемнадцать|девятнадцать|двадцать|тридцать|сорок|пятьдесят|шестьдесят|семьдесят|восемьдесят|девяносто|сто|двести|триста|четыреста|пятьсот|шестьсот|семьсот|восемьсот|девятьсот|тысяча|тысячи|тысяч)(\s+|$))+/gi,
+    /((ноль|один|одна|одно|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать|тринадцать|четырнадцать|пятнадцать|шестнадцать|семнадцать|восемнадцать|девятнадцать|двадцать|тридцать|сорок|пятьдесят|шестьдесят|семьдесят|восемьдесят|девяносто|сто|двести|триста|четыреста|пятьсот|шестьсот|семьсот|восемьсот|девятьсот|тысяча|тысячи|тысяч|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(\s+|$))+/gi,
     (match) => {
       const num = parseNumberFromWords(match);
       return num !== null ? String(num) : match;

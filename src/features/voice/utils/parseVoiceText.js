@@ -6,7 +6,10 @@ import {
   createVoiceValueRegex,
 } from "./matching";
 import {
-  expandVoiceAbbreviations,
+  expandVoiceFieldAbbreviations,
+  normalizeEntityNumber,
+  parseVoiceEntityDescriptor,
+  normalizeRedundantStationAliases,
   normalizeStationName,
   normalizeVoiceRecognitionErrors,
 } from "./normalization";
@@ -51,16 +54,27 @@ function formatValue(type, rawValue) {
     return value && !Number.isNaN(number) ? number : undefined;
   }
 
-  if (type === "station") return normalizeStationName(rawValue);
+  if (type === "station") {
+    const value = expandVoiceFieldAbbreviations(rawValue, {
+      preserveStation: true,
+    });
+    return normalizeStationName(value);
+  }
   if (type === "integerString") return rawValue.trim();
-  return formatCapturedText(rawValue);
+  if (type === "entity") {
+    const { value } = parseVoiceEntityDescriptor(rawValue);
+    return formatCapturedText(value);
+  }
+
+  const value = normalizeEntityNumber(expandVoiceFieldAbbreviations(rawValue));
+  return formatCapturedText(value);
 }
 
 export const parseVoiceText = (text) => {
   if (!text) return {};
 
   const normalized = normalizeNumberWords(
-    expandVoiceAbbreviations(normalizeVoiceRecognitionErrors(text)),
+    normalizeRedundantStationAliases(normalizeVoiceRecognitionErrors(text)),
   ).toLowerCase();
   const result = {};
 

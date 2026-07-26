@@ -234,7 +234,10 @@ export const VOICE_FIELD_CONFIG = {
       "town",
       "city",
       "пункт",
+      "дкс",
+      "dcs",
       "кс",
+      "cs",
     ]),
     type: "station",
   },
@@ -250,11 +253,11 @@ export const VOICE_FIELD_CONFIG = {
   },
   object: {
     markers: "объект(?:а|е|у|ом)?|object",
-    type: "text",
+    type: "entity",
   },
   component: {
     markers: "компонент(?:ы|а|е|у|ом)?|component",
-    type: "text",
+    type: "entity",
   },
   leak_description: {
     markers:

@@ -85,4 +85,35 @@ describe("handleVoiceText", () => {
       note: "leak cause corrosion",
     });
   });
+  it.each([
+    [
+      "компонент кран шаровой номер пять пятьдесят на сорок",
+      "Кран шаровой №5 50/40",
+    ],
+    [
+      "компонент кш номер двадцать три пятьдесят на двадцать",
+      "Кран шаровой №23 50/20",
+    ],
+    [
+      "компонент змс номер семь восемьдесят на сорок",
+      "Задвижка механическая стальная №7 80/40",
+    ],
+    [
+      "компонент кран пробковый номер пять сорок на пятьдесят",
+      "Кран пробковый №5 40/50",
+    ],
+    [
+      "компонент задвижка номер семь сорок на пятьдесят",
+      "Задвижка механическая стальная №7 40/50",
+    ],
+  ])(
+    "preserves the spoken component number and size through the full voice pipeline: %s",
+    (text, component) => {
+      const setVoiceData = vi.fn();
+
+      handleVoiceText([], text, setVoiceData, "midstream", null, ["component"]);
+
+      expect(setVoiceData).toHaveBeenCalledWith({ component });
+    },
+  );
 });
