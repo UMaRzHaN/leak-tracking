@@ -230,8 +230,12 @@ export async function clearProjectSyncState(projectId) {
   if (!projectId) return;
   syncStateMemory.delete(projectId);
   if (typeof localStorage !== "undefined") {
-    localStorage.removeItem(STORAGE_KEYS.PROJECT_SYNC_STATE(projectId));
-    localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS_UPDATED_AT(projectId));
+    try {
+      localStorage.removeItem(STORAGE_KEYS.PROJECT_SYNC_STATE(projectId));
+      localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS_UPDATED_AT(projectId));
+    } catch (error) {
+      logger.warn("[projectSyncState] localStorage cleanup failed:", error);
+    }
   }
   try {
     await deleteDurableSyncState(projectId);
@@ -267,7 +271,7 @@ export function applyProjectTombstones(leaks, syncState) {
   });
 }
 
-export function recordLeakDeletions(
+export async function recordLeakDeletions(
   projectId,
   previousLeaks,
   nextLeaks,
@@ -275,7 +279,7 @@ export function recordLeakDeletions(
 ) {
   if (!projectId) return;
   const nextIdentities = new Set(nextLeaks.flatMap(getLeakSyncIdentities));
-  const state = readProjectSyncState(projectId);
+  const state = await readProjectSyncStateAsync(projectId);
   for (const leak of previousLeaks) {
     const identities = getLeakSyncIdentities(leak);
     const stillExists = identities.some((identity) =>

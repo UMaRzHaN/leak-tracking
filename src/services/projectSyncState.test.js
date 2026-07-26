@@ -19,9 +19,9 @@ import {
 describe("projectSyncState", () => {
   afterEach(() => localStorage.clear());
 
-  it("records deletions and prevents an older snapshot from resurrecting a leak", () => {
+  it("records deletions and prevents an older snapshot from resurrecting a leak", async () => {
     const removed = { id: "leak-1", updatedAt: 100 };
-    recordLeakDeletions("project-1", [removed], [], 200);
+    await recordLeakDeletions("project-1", [removed], [], 200);
 
     const state = readProjectSyncState("project-1");
     expect(state.deleted["id:leak-1"]).toBe(200);
@@ -155,8 +155,8 @@ describe("projectSyncState", () => {
     });
   });
 
-  it("records only identities removed from the next live snapshot", () => {
-    recordLeakDeletions(
+  it("records only identities removed from the next live snapshot", async () => {
+    await recordLeakDeletions(
       "project-1",
       [{ id: "kept", updatedAt: 100 }, { id: "removed", updatedAt: 100 }, {}],
       [{ id: "kept", updatedAt: 150 }],
@@ -166,20 +166,20 @@ describe("projectSyncState", () => {
     expect(readProjectSyncState("project-1").deleted).toEqual({
       "id:removed": 500,
     });
-    recordLeakDeletions(null, [{ id: "ignored" }], [], 600);
+    await recordLeakDeletions(null, [{ id: "ignored" }], [], 600);
   });
 
-  it("records both id and tag tombstones and recognizes a matching tag", () => {
+  it("records both id and tag tombstones and recognizes a matching tag", async () => {
     const previous = { id: "device-a-id", leak_id: "TAG-7", updatedAt: 100 };
 
-    recordLeakDeletions("project-1", [previous], [], 500);
+    await recordLeakDeletions("project-1", [previous], [], 500);
     expect(readProjectSyncState("project-1").deleted).toEqual({
       "id:device-a-id": 500,
       "tag:TAG-7": 500,
     });
 
     localStorage.clear();
-    recordLeakDeletions(
+    await recordLeakDeletions(
       "project-1",
       [previous],
       [{ id: "device-b-id", leak_id: "TAG-7", updatedAt: 200 }],
@@ -229,6 +229,37 @@ describe("projectSyncState", () => {
     expect((await readProjectSyncStateAsync("quota-project")).deleted).toEqual(
       {},
     );
+    delete globalThis.indexedDB;
+  });
+  it("merges durable tombstones before recording a deletion after restart", async () => {
+    globalThis.indexedDB = new IDBFactory();
+    vi.resetModules();
+    const initial = await import("./projectSyncState");
+    await initial.writeProjectSyncState("restart-project", {
+      deleted: { "id:durable": 700 },
+    });
+    localStorage.setItem(
+      "app:restart-project:sync_state_v1",
+      JSON.stringify({ deleted: { "id:stale-cache": 500 } }),
+    );
+
+    vi.resetModules();
+    const reloaded = await import("./projectSyncState");
+    await reloaded.recordLeakDeletions(
+      "restart-project",
+      [{ id: "new-deletion" }],
+      [],
+      900,
+    );
+
+    expect(
+      (await reloaded.readProjectSyncStateAsync("restart-project")).deleted,
+    ).toEqual({
+      "id:durable": 700,
+      "id:stale-cache": 500,
+      "id:new-deletion": 900,
+    });
+    await reloaded.clearProjectSyncState("restart-project");
     delete globalThis.indexedDB;
   });
   it("marks project variables with monotonically increasing timestamps", () => {
