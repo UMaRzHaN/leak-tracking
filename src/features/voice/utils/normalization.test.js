@@ -197,3 +197,58 @@ describe("normalizeStationName", () => {
     });
   });
 });
+
+describe("normalizeVoiceRecognitionErrors", () => {
+  it.each([
+    ["место рождения кокдумалак", "месторождение кокдумалак"],
+    ["место рождение кокдумалак", "месторождение кокдумалак"],
+    ["место рождения газа кокдумалак", "месторождение кокдумалак"],
+  ])("normalizes %s", async (input, expected) => {
+    const { normalizeVoiceRecognitionErrors } = await import("./normalization");
+    expect(normalizeVoiceRecognitionErrors(input)).toBe(expected);
+  });
+
+  it("does not alter unrelated text", async () => {
+    const { normalizeVoiceRecognitionErrors } = await import("./normalization");
+    expect(normalizeVoiceRecognitionErrors("станция кс 5")).toBe(
+      "станция кс 5",
+    );
+  });
+});
+
+describe("expandVoiceAbbreviations", () => {
+  it("expands Russian component abbreviations", async () => {
+    const { expandVoiceAbbreviations } = await import("./normalization");
+
+    expect(expandVoiceAbbreviations("объект кш компонент кп")).toBe(
+      "объект кран шаровой компонент кран пробковый",
+    );
+  });
+
+  it("expands facility abbreviations", async () => {
+    const { expandVoiceAbbreviations } = await import("./normalization");
+
+    expect(expandVoiceAbbreviations("кс мубарек")).toBe(
+      "компрессорная станция мубарек",
+    );
+    expect(expandVoiceAbbreviations("грс чиназ")).toBe(
+      "газораспределительная станция чиназ",
+    );
+  });
+
+  it("supports English abbreviations and preserves punctuation", async () => {
+    const { expandVoiceAbbreviations } = await import("./normalization");
+
+    expect(expandVoiceAbbreviations("object bv, component flange")).toBe(
+      "object кран шаровой, component flange",
+    );
+  });
+
+  it("does not expand abbreviation fragments inside words", async () => {
+    const { expandVoiceAbbreviations } = await import("./normalization");
+
+    expect(expandVoiceAbbreviations("текстура кшаровой csgo")).toBe(
+      "текстура кшаровой csgo",
+    );
+  });
+});

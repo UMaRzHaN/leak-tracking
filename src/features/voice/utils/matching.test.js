@@ -88,3 +88,35 @@ describe("fuzzyMatchOption", () => {
     });
   });
 });
+
+describe("voice parser regex helpers", () => {
+  it("builds field marker lookahead and captures until the next marker", async () => {
+    const { buildVoiceFieldMarkers, createVoiceValueRegex } =
+      await import("./matching");
+    const config = {
+      object: { markers: "object" },
+      component: { markers: "component" },
+    };
+    const markers = buildVoiceFieldMarkers(config);
+    const match = [
+      ..."object ball valve component flange".matchAll(
+        createVoiceValueRegex("object", markers),
+      ),
+    ][0];
+    expect(match.groups.value).toBe("ball valve");
+  });
+
+  it("captures signed localized numbers", async () => {
+    const { createVoiceNumberRegex } = await import("./matching");
+    const match = [
+      ..."pressure -12,5".matchAll(createVoiceNumberRegex("pressure")),
+    ][0];
+    expect(match.groups.value).toBe("-12,5");
+  });
+
+  it("captures integer identifiers as strings", async () => {
+    const { createVoiceIntegerRegex } = await import("./matching");
+    const match = [..."tag 0012".matchAll(createVoiceIntegerRegex("tag"))][0];
+    expect(match.groups.value).toBe("0012");
+  });
+});

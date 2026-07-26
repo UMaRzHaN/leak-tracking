@@ -182,3 +182,18 @@ export function normalizeNumberWords(text) {
 
   return result;
 }
+
+// Converts a captured localized numeric string to the JS decimal notation.
+export function normalizeCapturedNumber(value) {
+  if (!value) return value;
+
+  const compact = String(value)
+    .replace(/\u00a0/g, " ")
+    .replace(/\s+/g, "");
+  const hasDot = compact.includes(".");
+  const hasComma = compact.includes(",");
+
+  if (hasDot && hasComma) return compact.replace(/\./g, "").replace(",", ".");
+  if (hasComma) return compact.replace(",", ".");
+  return compact;
+}

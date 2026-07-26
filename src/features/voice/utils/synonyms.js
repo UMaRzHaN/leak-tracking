@@ -160,3 +160,163 @@ export const SYNONYMS = {
     "с остановкой": "С остановкой",
   },
 };
+
+// Voice parser field markers. Kept here with the other voice dictionaries so
+// marker changes do not require editing the parser implementation.
+const joinVoiceMarkers = (markers) => markers.join("|");
+
+export const VOICE_FIELD_CONFIG = {
+  leak_id: {
+    markers:
+      "номер\\s+(?:бирки|утечки|тега)|id\\s+утечки|ид\\s+утечки|бирк[аи]?|тег|leak\\s+id|tag(?:\\s+number)?",
+    type: "integerString",
+  },
+  video_id: {
+    markers: "номер\\s+видео|id\\s+видео|видео\\s+id|видео|video\\s+id|video",
+    type: "integerString",
+  },
+  leak_speed: {
+    markers:
+      "скорост(?:ь|и)?\\s+утечки|скорость\\s+выброса|расход\\s+утечки|скорост(?:ь|и)?|leak\\s+(?:rate|speed)|rate|speed",
+    type: "number",
+  },
+  pressure: {
+    markers: "давлени(?:е|я|ю|и)?|pressure",
+    type: "number",
+  },
+  temperature: {
+    markers: "температур(?:а|ы|у|е)?|temperature|temp",
+    type: "number",
+  },
+  category: {
+    markers: "категори(?:я|и|ю)?|category",
+    type: "text",
+  },
+  main: {
+    markers: joinVoiceMarkers([
+      "main\\s+gas\\s+pipeline\\s+administration",
+      "управлени(?:е|я|ю)",
+      "подразделени(?:е|я|ю)",
+      "subdivision",
+      "management",
+      "district",
+      "район",
+      "field",
+      "умгэ",
+      "умге",
+      "умга",
+      "умг",
+      "унг",
+      "умк",
+      "омг",
+      "мгпа",
+      "mgpa",
+    ]),
+    type: "text",
+  },
+  secondary: {
+    markers: joinVoiceMarkers([
+      // Long phrases must precede their shorter alternatives.
+      "компрессорн(?:ая|ой|ую)\\s+станци(?:я|и|ю)",
+      "compressor\\s+station",
+      "газов(?:ое|ого)\\s+месторождени(?:е|я)",
+      "нефтян(?:ое|ого)\\s+месторождени(?:е|я)",
+      "насел[её]нн(?:ый|ого|ом)\\s+пункт",
+      "field\\s+deposit",
+      "oil\\s+field",
+      "gas\\s+field",
+      "месторождени(?:е|я)",
+      "станци(?:я|и|ю)",
+      "settlement",
+      "locality",
+      "station",
+      "deposit",
+      "town",
+      "city",
+      "пункт",
+      "кс",
+    ]),
+    type: "station",
+  },
+  last: {
+    markers: joinVoiceMarkers([
+      "местоположени(?:е|я)",
+      "локаци(?:я|и|ю)",
+      "адрес(?:а|у|е)?",
+      "location",
+      "address",
+    ]),
+    type: "text",
+  },
+  object: {
+    markers: "объект(?:а|е|у|ом)?|object",
+    type: "text",
+  },
+  component: {
+    markers: "компонент(?:ы|а|е|у|ом)?|component",
+    type: "text",
+  },
+  leak_description: {
+    markers:
+      "описани(?:е|я)\\s+утечки|описать\\s+утечку|leak\\s+description|description",
+    type: "text",
+  },
+  leak_cause: {
+    markers: "причин(?:а|ы|у)\\s+утечки|leak\\s+cause|cause",
+    type: "text",
+  },
+  technological_solution: {
+    markers: joinVoiceMarkers([
+      "технологическ(?:ое|ого)\\s+решени(?:е|я)",
+      "техническ(?:ое|ого)\\s+решени(?:е|я)",
+      "способ\\s+устранени(?:я|е)",
+      "technical\\s+solution",
+      "method\\s+of\\s+repair",
+      "repair\\s+method",
+      "тех\\s+решени(?:е|я)",
+      "solution",
+    ]),
+    type: "text",
+  },
+  repair_recommendation: {
+    markers: joinVoiceMarkers([
+      "рекомендаци(?:я|и|ю)\\s+по\\s+ремонту",
+      "repair\\s+recommendation",
+      "план\\s+устранени(?:я|е)",
+      "repair\\s+plan",
+      "recommendation",
+    ]),
+    type: "text",
+  },
+  materials_equipment: {
+    markers: joinVoiceMarkers([
+      "materials\\s+and\\s+equipment",
+      "мтр\\s+ремонта",
+      "материал(?:ы|ов)",
+      "оборудовани(?:е|я)",
+      "materials",
+      "equipment",
+      "мтр",
+    ]),
+    type: "text",
+  },
+  note: {
+    markers: "примечани(?:е|я)|заметк(?:а|и|у)|комментари(?:й|я)|note|comment",
+    type: "text",
+  },
+  actuator_type: {
+    markers:
+      "тип\\s+привода|вид\\s+привода|привод(?:а)?|actuator\\s+type|actuator",
+    type: "text",
+  },
+  connection_type: {
+    markers:
+      "тип\\s+присоединени(?:я|е)|тип\\s+соединени(?:я|е)|присоединени(?:е|я)|connection\\s+type",
+    type: "text",
+  },
+  installation_type: {
+    markers:
+      "тип\\s+установки|вид\\s+установки|установк(?:а|и|у|е)|installation\\s+type|installation",
+    type: "text",
+  },
+};

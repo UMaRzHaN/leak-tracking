@@ -41,3 +41,30 @@ export function fuzzyMatchOption(input, options) {
   const isAbbrev = parts.length > 1 && !/[а-яёa-z]/.test(afterSlash);
   return isAbbrev ? parts.slice(0, -1).join("/").trim() : best;
 }
+
+const VOICE_FILLER_WORDS =
+  "(?:это|равно|составляет|будет|такой|такая|такое|номер)\\s+";
+
+export function buildVoiceFieldMarkers(config) {
+  return Object.values(config)
+    .map(({ markers }) => markers)
+    .join("|");
+}
+
+export function createVoiceValueRegex(marker, fieldMarkers) {
+  return new RegExp(
+    `(?:${marker})\\s+(?:${VOICE_FILLER_WORDS})?(?<value>.+?)(?=\\s+(?:${fieldMarkers})|$)`,
+    "gu",
+  );
+}
+
+export function createVoiceNumberRegex(marker) {
+  return new RegExp(
+    `(?:${marker})\\s*(?:${VOICE_FILLER_WORDS})?(?<value>-?[\\d.,\\s]+)`,
+    "gu",
+  );
+}
+
+export function createVoiceIntegerRegex(marker) {
+  return new RegExp(`(?:${marker})\\s*(?<value>\\d+)`, "gu");
+}

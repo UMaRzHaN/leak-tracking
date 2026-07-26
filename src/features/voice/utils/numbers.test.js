@@ -104,3 +104,14 @@ describe("normalizeNumberWords", () => {
     });
   });
 });
+
+describe("normalizeCapturedNumber", () => {
+  it.each([
+    ["1 234,5", "1234.5"],
+    ["1.234,5", "1234.5"],
+    ["-12.5", "-12.5"],
+  ])("normalizes %s", async (input, expected) => {
+    const { normalizeCapturedNumber } = await import("./numbers");
+    expect(normalizeCapturedNumber(input)).toBe(expected);
+  });
+});

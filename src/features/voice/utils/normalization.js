@@ -1,4 +1,5 @@
 import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
+import { ABBREV_MAP } from "@/utils/abbreviations";
 import { SYNONYMS } from "./synonyms";
 
 // ─── normalizeStationName ─────────────────────────────────────────────────────
@@ -67,6 +68,32 @@ function capitalize(str) {
       return w.charAt(0).toUpperCase() + w.slice(1);
     })
     .join(" ");
+}
+
+const ABBREVIATION_ENTRIES = Object.entries(ABBREV_MAP).sort(
+  ([left], [right]) => right.length - left.length,
+);
+
+/**
+ * Expands standalone abbreviations without touching fragments inside words.
+ * Punctuation is preserved: "объект кш, компонент фланец" works as expected.
+ */
+export function expandVoiceAbbreviations(text) {
+  if (typeof text !== "string") return text;
+
+  let result = text;
+
+  for (const [abbreviation, expanded] of ABBREVIATION_ENTRIES) {
+    const safe = escapeRegExp(abbreviation);
+    const pattern = new RegExp(
+      `(^|[^\\p{L}\\p{N}_])${safe}(?=$|[^\\p{L}\\p{N}_])`,
+      "giu",
+    );
+
+    result = result.replace(pattern, (_, prefix) => `${prefix}${expanded}`);
+  }
+
+  return result.replace(/\s+/g, " ").trim();
 }
 
 // ─── normalizeBySynonyms ──────────────────────────────────────────────────────
@@ -191,4 +218,17 @@ export function normalizeSynonyms(data, list) {
   });
 
   return result;
+}
+
+// Canonicalizes common speech-recognition mistakes before field matching.
+export function normalizeVoiceRecognitionErrors(text) {
+  if (typeof text !== "string") return text;
+
+  return text
+    .replace(
+      /(^|\s)место\s+рождени(?:е|я)(?:\s+газа)?(?=\s|$)/giu,
+      "$1месторождение",
+    )
+    .replace(/\s+/g, " ")
+    .trim();
 }

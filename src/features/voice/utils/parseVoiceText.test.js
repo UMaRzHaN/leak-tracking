@@ -349,3 +349,39 @@ describe("parseVoiceText", () => {
     });
   });
 });
+
+describe("parseVoiceText abbreviations", () => {
+  it("parses Russian component abbreviations", () => {
+    expect(parseVoiceText("объект кш компонент фланец")).toMatchObject({
+      object: "Кран шаровой",
+      component: "Фланец",
+    });
+
+    expect(parseVoiceText("объект кп")).toMatchObject({
+      object: "Кран пробковый",
+    });
+  });
+
+  it("parses English component abbreviations", () => {
+    expect(parseVoiceText("object bv component flange")).toMatchObject({
+      object: "Кран шаровой",
+      component: "Flange",
+    });
+  });
+
+  it("parses compressor-station abbreviations", () => {
+    expect(parseVoiceText("кс мубарек")).toMatchObject({
+      secondary: "Мубарек",
+    });
+    expect(parseVoiceText("cs mubarek")).toMatchObject({
+      secondary: "Mubarek",
+    });
+  });
+
+  it("parses an abbreviation next to punctuation", () => {
+    expect(parseVoiceText("объект кш, компонент фланец")).toMatchObject({
+      object: "Кран шаровой,",
+      component: "Фланец",
+    });
+  });
+});
