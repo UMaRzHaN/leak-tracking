@@ -77,7 +77,7 @@ export function useLocalSync({
     hostSessionRef.current = null;
     if (session) await session.stop();
     setStateSafe(IDLE_STATE);
-  }, []);
+  }, [setStateSafe]);
 
   const startHost = useCallback(async () => {
     setStateSafe({ status: "preparing", session: null });
@@ -136,6 +136,7 @@ export function useLocalSync({
     lang,
     mergeArchive,
     notify,
+    setStateSafe,
   ]);
 
   const joinHost = useCallback(
@@ -163,7 +164,7 @@ export function useLocalSync({
         );
       }
     },
-    [activeProject, buildArchive, lang, mergeArchive, notify],
+    [activeProject, buildArchive, lang, mergeArchive, notify, setStateSafe],
   );
 
   const scanAndJoin = useCallback(async () => {
@@ -182,7 +183,7 @@ export function useLocalSync({
         `${lang === "ru" ? "Ошибка QR-кода" : "QR code error"}: ${error.message}`,
       );
     }
-  }, [activeProject, joinHost, lang, notify]);
+  }, [activeProject, joinHost, lang, notify, setStateSafe]);
 
   const scanAndImport = useCallback(async () => {
     setStateSafe({ status: "scanningImport", session: null });
@@ -206,7 +207,7 @@ export function useLocalSync({
         `${lang === "ru" ? "Ошибка импорта по QR" : "QR import error"}: ${error.message}`,
       );
     }
-  }, [lang, notify, onImportZip]);
+  }, [lang, notify, onImportZip, setStateSafe]);
 
   const cancelScan = useCallback(() => {
     cancelLocalSyncQrScan();

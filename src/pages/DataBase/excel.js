@@ -4,6 +4,7 @@ const getJSZip = () => import("jszip");
 import { isNative } from "@/utils/platform";
 import { getPhotoSrc } from "@/hooks/photoService";
 import { blobToDataUri } from "@/utils/photoConversion";
+import { logger } from "@/utils/logger";
 import {
   getMonitoringAnswerLabel,
   getMonitoringRecords,
