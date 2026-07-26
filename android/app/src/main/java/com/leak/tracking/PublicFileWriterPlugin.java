@@ -24,12 +24,14 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 
 @CapacitorPlugin(name = "PublicFileWriter")
 public class PublicFileWriterPlugin extends Plugin {
     private static final long MAX_EXPORT_BYTES = 1024L * 1024L * 1024L;
     private static final int MAX_CHUNK_BYTES = 1024 * 1024;
     private final ConcurrentHashMap<String, File> preparedExports = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Boolean> committingExports = new ConcurrentHashMap<>();
     private final ExecutorService exportExecutor = Executors.newSingleThreadExecutor();
 
     @PluginMethod
@@ -52,7 +54,7 @@ public class PublicFileWriterPlugin extends Plugin {
         String token = call.getString("token", "");
         String chunkBase64 = call.getString("chunkBase64");
         File pending = preparedExports.get(token);
-        if (pending == null || chunkBase64 == null) {
+        if (pending == null || committingExports.containsKey(token) || chunkBase64 == null) {
             call.reject("Unknown export token or missing chunk");
             return;
         }
@@ -92,7 +94,7 @@ public class PublicFileWriterPlugin extends Plugin {
         String folder = call.getString("folder", "");
         String fileName = call.getString("fileName");
         String mimeType = call.getString("mimeType", "application/octet-stream");
-        File pending = preparedExports.remove(token);
+        File pending = preparedExports.get(token);
         if (
             pending == null ||
             expectedSize == null ||
@@ -102,28 +104,41 @@ public class PublicFileWriterPlugin extends Plugin {
             fileName == null ||
             fileName.trim().isEmpty()
         ) {
-            if (pending != null) pending.delete();
+            if (pending != null) {
+                preparedExports.remove(token, pending);
+                pending.delete();
+            }
             call.reject("Unknown export token or missing fileName");
             return;
         }
 
-        exportExecutor.execute(() -> {
-            try (InputStream source = new FileInputStream(pending)) {
-                String safeFolder = sanitizeRelativePath(folder);
-                String safeFileName = sanitizeFileName(fileName);
-                if (safeFileName.isEmpty()) throw new Exception("fileName contains no valid characters");
-                String savedPath = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
-                    ? writeWithMediaStore(safeFolder, safeFileName, mimeType, source)
-                    : writeLegacy(safeFolder, safeFileName, source);
-                JSObject result = new JSObject();
-                result.put("path", savedPath);
-                call.resolve(result);
-            } catch (Exception error) {
-                call.reject(error.getMessage(), error);
-            } finally {
-                pending.delete();
-            }
-        });
+        if (committingExports.putIfAbsent(token, Boolean.TRUE) != null) {
+            call.reject("Export is already being committed");
+            return;
+        }
+
+        try {
+            exportExecutor.execute(() -> {
+                try (InputStream source = new FileInputStream(pending)) {
+                    String safeFolder = sanitizeRelativePath(folder);
+                    String safeFileName = sanitizeFileName(fileName);
+                    if (safeFileName.isEmpty()) throw new Exception("fileName contains no valid characters");
+                    String savedPath = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                        ? writeWithMediaStore(safeFolder, safeFileName, mimeType, source)
+                        : writeLegacy(safeFolder, safeFileName, source);
+                    JSObject result = new JSObject();
+                    result.put("path", savedPath);
+                    call.resolve(result);
+                } catch (Exception error) {
+                    call.reject(error.getMessage(), error);
+                } finally {
+                    finishCommittedExport(token, pending);
+                }
+            });
+        } catch (RejectedExecutionException error) {
+            finishCommittedExport(token, pending);
+            call.reject("Export service is shutting down", error);
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
@@ -228,8 +243,15 @@ public class PublicFileWriterPlugin extends Plugin {
     }
 
     private void discardPreparedExport(String token) {
+        if (committingExports.containsKey(token)) return;
         File pending = preparedExports.remove(token);
         if (pending != null) pending.delete();
+    }
+
+    private void finishCommittedExport(String token, File pending) {
+        committingExports.remove(token);
+        preparedExports.remove(token, pending);
+        pending.delete();
     }
 
     private String sanitizeRelativePath(String path) {
@@ -249,9 +271,10 @@ public class PublicFileWriterPlugin extends Plugin {
 
     @Override
     protected void handleOnDestroy() {
+        exportExecutor.shutdownNow();
         for (File pending : preparedExports.values()) pending.delete();
         preparedExports.clear();
-        exportExecutor.shutdownNow();
+        committingExports.clear();
         super.handleOnDestroy();
     }
 }

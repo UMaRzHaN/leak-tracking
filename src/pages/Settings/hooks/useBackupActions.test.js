@@ -11,13 +11,26 @@ vi.mock("@/repositories/LeakRepository", () => ({
   },
 }));
 
+const platformState = vi.hoisted(() => ({ isNative: false }));
+const nativeWriter = vi.hoisted(() => ({
+  append: vi.fn(),
+  writePublicFileStream: vi.fn(),
+}));
+
 vi.mock("@/utils/platform", () => ({
-  isNative: false,
+  get isNative() {
+    return platformState.isNative;
+  },
+}));
+
+vi.mock("@/services/publicFileWriter", () => ({
+  writePublicFileStream: nativeWriter.writePublicFileStream,
 }));
 
 vi.mock("@/services/projectBackupService", () => ({
   peekBackupZip: vi.fn(),
   buildProjectBackupZip: vi.fn(),
+  streamProjectBackupZip: vi.fn(),
   previewMergeLeaks: vi.fn(),
 }));
 
@@ -29,6 +42,10 @@ const { useBackupActions } = await import("./useBackupActions");
 describe("useBackupActions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    platformState.isNative = false;
+    nativeWriter.writePublicFileStream.mockImplementation(({ produce }) =>
+      produce(nativeWriter.append),
+    );
     languageModule.useLanguage.mockReturnValue({ lang: "en" });
     repositoryModule.LeakRepository.getAll.mockResolvedValue([
       { id: "l1" },
@@ -205,6 +222,53 @@ describe("useBackupActions", () => {
     click.mockRestore();
   });
 
+  it("streams native ZIP export without building a complete Blob", async () => {
+    platformState.isNative = true;
+    servicesModule.streamProjectBackupZip.mockImplementation(
+      async ({ writeChunk }) => writeChunk(new Uint8Array([1, 2, 3])),
+    );
+    const notify = vi.fn();
+    const idbGetPhoto = vi.fn();
+    const project = { id: "active-1", folderName: "active" };
+    const vars = { density: 0.7 };
+
+    const { result } = renderHook(() =>
+      useBackupActions({
+        data: [{ id: "l1", photo: "idb://photo-1" }],
+        idbGetPhoto,
+        activeProject: project,
+        vars,
+        onImportZip: vi.fn(),
+        onImportIntoExisting: vi.fn(),
+        notify,
+        projects: [],
+      }),
+    );
+
+    await act(async () => result.current.handleExportZip());
+
+    expect(servicesModule.buildProjectBackupZip).not.toHaveBeenCalled();
+    expect(servicesModule.streamProjectBackupZip).toHaveBeenCalledWith({
+      leaks: [{ id: "l1", photo: "idb://photo-1" }],
+      idbGet: idbGetPhoto,
+      project,
+      vars,
+      writeChunk: nativeWriter.append,
+    });
+    expect(nativeWriter.append).toHaveBeenCalledWith(new Uint8Array([1, 2, 3]));
+    expect(nativeWriter.writePublicFileStream).toHaveBeenCalledWith(
+      expect.objectContaining({
+        folder: "active",
+        fileName: "active.zip",
+        mimeType: "application/zip",
+        produce: expect.any(Function),
+      }),
+    );
+    expect(notify).toHaveBeenCalledWith(
+      "success",
+      "ZIP saved to Documents/active/",
+    );
+  });
   it("warns instead of building an empty backup", async () => {
     const notify = vi.fn();
     const { result } = renderHook(() =>

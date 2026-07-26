@@ -11,7 +11,8 @@ vi.mock("@capacitor/core", () => ({
   registerPlugin: vi.fn(() => plugin),
 }));
 
-const { writePublicFile } = await import("./publicFileWriter");
+const { writePublicFile, writePublicFileStream } =
+  await import("./publicFileWriter");
 
 describe("publicFileWriter", () => {
   beforeEach(() => {
@@ -53,6 +54,26 @@ describe("publicFileWriter", () => {
     expect(plugin.discard).not.toHaveBeenCalled();
   });
 
+  it("accepts generated chunks without requiring a complete Blob", async () => {
+    await writePublicFileStream({
+      folder: "export",
+      fileName: "stream.zip",
+      mimeType: "application/zip",
+      produce: async (append) => {
+        await append(new Uint8Array(600 * 1024));
+        await append(new Blob(["tail"]));
+      },
+    });
+
+    expect(plugin.appendChunk).toHaveBeenCalledTimes(3);
+    expect(plugin.commit).toHaveBeenCalledWith({
+      token: "export-token",
+      expectedSize: 600 * 1024 + 4,
+      folder: "export",
+      fileName: "stream.zip",
+      mimeType: "application/zip",
+    });
+  });
   it("discards the temporary file when the export exceeds the native limit", async () => {
     plugin.prepare.mockResolvedValue({
       token: "small-limit",

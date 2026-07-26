@@ -119,6 +119,80 @@ async function resolveBase64(path, idbGet) {
   };
 }
 
+async function resolvePhotoBlob(path, idbGet) {
+  if (!path) return null;
+
+  let value = null;
+  if (path.startsWith("idb://")) {
+    const id = path.replace("idb://", "");
+    value = idbGet ? await idbGet(id) : null;
+  } else {
+    value = await getPhotoSrc(path);
+  }
+  if (!value) return null;
+
+  const blob = value instanceof Blob ? value : dataUrlToBlob(value);
+  if (!blob) return null;
+  const mime = blob.type || String(value).match(/^data:([^;]+);base64,/)?.[1];
+  if (!mime?.startsWith("image/")) return null;
+  const rawExt = mime.slice("image/".length).split("+")[0].toLowerCase();
+  return { blob, ext: rawExt === "jpeg" ? "jpg" : rawExt || "jpg" };
+}
+
+async function exportLeaksWithPhotosToStream(leaks, zip, idbGet) {
+  const exported = new Array(leaks.length);
+
+  for (const [index, leak] of leaks.entries()) {
+    if (index > 0 && index % EXPORT_YIELD_EVERY === 0) {
+      await yieldToMainThread();
+    }
+    const copy = { ...leak };
+    const leakNumber = String(leak.leak_id ?? leak.id).replace(/[\\/]/g, "_");
+
+    for (const key of PHOTO_KEYS) {
+      const path = leak[key];
+      if (!path) continue;
+      const resolved = await resolvePhotoBlob(path, idbGet);
+      if (!resolved) continue;
+
+      const fileName = `${SUFFIX[key]}.${resolved.ext}`;
+      const archivePath = `photos/${leakNumber}/${fileName}`;
+      await zip.add(archivePath, resolved.blob);
+      copy[key] = `zip:${archivePath}`;
+    }
+
+    if (Array.isArray(copy.monitoringRecords)) {
+      const records = [];
+      for (const [recordIndex, record] of copy.monitoringRecords.entries()) {
+        const path = record?.[MONITORING_PHOTO_KEY];
+        if (!path) {
+          records.push(record);
+          continue;
+        }
+        const resolved = await resolvePhotoBlob(path, idbGet);
+        if (!resolved) {
+          records.push(record);
+          continue;
+        }
+        const safeRecordId = String(record.id ?? recordIndex + 1).replace(
+          /[\\/]/g,
+          "_",
+        );
+        const fileName = `monitoring_${safeRecordId}.${resolved.ext}`;
+        const archivePath = `photos/${leakNumber}/${fileName}`;
+        await zip.add(archivePath, resolved.blob);
+        records.push({
+          ...record,
+          [MONITORING_PHOTO_KEY]: `zip:${archivePath}`,
+        });
+      }
+      copy.monitoringRecords = records;
+    }
+    exported[index] = copy;
+  }
+
+  return exported;
+}
 async function exportLeaksWithPhotos(leaks, zip, idbGet) {
   const photosFolder = zip.folder("photos");
   const exported = new Array(leaks.length);
@@ -1155,6 +1229,28 @@ export async function buildBackupZip(leaks, idbGet) {
   return zip.generateAsync({ type: "blob" });
 }
 
+export async function streamProjectBackupZip({
+  leaks,
+  idbGet,
+  project,
+  vars,
+  writeChunk,
+}) {
+  const { ZipStoreStreamWriter } = await import("@/services/zipStoreStream");
+  const zip = new ZipStoreStreamWriter(writeChunk);
+  const exportedLeaks = await exportLeaksWithPhotosToStream(leaks, zip, idbGet);
+  await zip.add("backup.json", JSON.stringify(exportedLeaks, null, 2));
+
+  const meta = buildProjectMeta({
+    project,
+    vars,
+    settings: readProjectSettings(project?.id),
+    monitoringRound: readMonitoringRound(project?.id),
+    syncState: await readProjectSyncStateAsync(project?.id),
+  });
+  if (meta) await zip.add("project.json", JSON.stringify(meta, null, 2));
+  return zip.close();
+}
 export async function buildProjectBackupZip({ leaks, idbGet, project, vars }) {
   const JSZip = (await getJSZip()).default;
   const zip = new JSZip();

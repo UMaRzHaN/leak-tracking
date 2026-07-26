@@ -6,6 +6,7 @@ import {
   importProjectZip,
   mergeLeaksByFreshness,
   previewMergeLeaks,
+  streamProjectBackupZip,
 } from "./projectBackupService";
 import { LeakRepository } from "@/repositories/LeakRepository";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
@@ -237,6 +238,40 @@ describe("projectBackupService legacy imports", () => {
   });
 });
 
+describe("streamProjectBackupZip", () => {
+  it("streams real-sized photos into an import-compatible archive", async () => {
+    const { default: JSZip } = await import("jszip");
+    const chunks = [];
+    const photo = new Blob([new Uint8Array(700_000)], { type: "image/jpeg" });
+
+    await streamProjectBackupZip({
+      leaks: [{ id: "streamed", leak_id: "42", photo: "idb://photo-42" }],
+      idbGet: vi.fn().mockResolvedValue(photo),
+      project: PROJECT,
+      vars: {},
+      writeChunk: async (chunk) => chunks.push(chunk.slice()),
+    });
+
+    expect(
+      Math.max(...chunks.map((chunk) => chunk.length)),
+    ).toBeLessThanOrEqual(256 * 1024);
+    const archiveBytes = new Uint8Array(
+      chunks.reduce((sum, chunk) => sum + chunk.length, 0),
+    );
+    let archiveOffset = 0;
+    for (const chunk of chunks) {
+      archiveBytes.set(chunk, archiveOffset);
+      archiveOffset += chunk.length;
+    }
+    const zip = await JSZip.loadAsync(archiveBytes);
+    const backup = JSON.parse(await zip.file("backup.json").async("string"));
+    expect(backup[0].photo).toBe("zip:photos/42/before.jpg");
+    expect(
+      await zip.file("photos/42/before.jpg").async("uint8array"),
+    ).toHaveLength(photo.size);
+    expect(zip.file("project.json")).not.toBeNull();
+  });
+});
 describe("mergeLeaksByFreshness", () => {
   it("merges independent changes from two devices without dropping either leak", () => {
     const deviceA = [

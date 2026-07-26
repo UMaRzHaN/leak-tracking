@@ -123,22 +123,24 @@ export function useBackupActions({
         { autoCloseMs: 0 },
       );
 
-      const { buildProjectBackupZip } =
-        await import("@/services/projectBackupService");
-      const blob = await buildProjectBackupZip({
-        leaks: data,
-        idbGet: idbGetPhoto,
-        project: activeProject,
-        vars,
-      });
-
       if (isNative) {
-        const { writePublicFile } = await import("@/services/publicFileWriter");
-        await writePublicFile({
+        const [{ streamProjectBackupZip }, { writePublicFileStream }] =
+          await Promise.all([
+            import("@/services/projectBackupService"),
+            import("@/services/publicFileWriter"),
+          ]);
+        await writePublicFileStream({
           folder,
           fileName,
-          blob,
           mimeType: "application/zip",
+          produce: (writeChunk) =>
+            streamProjectBackupZip({
+              leaks: data,
+              idbGet: idbGetPhoto,
+              project: activeProject,
+              vars,
+              writeChunk,
+            }),
         });
 
         notify(
@@ -148,6 +150,14 @@ export function useBackupActions({
             : `ZIP saved to Documents/${folder}/`,
         );
       } else {
+        const { buildProjectBackupZip } =
+          await import("@/services/projectBackupService");
+        const blob = await buildProjectBackupZip({
+          leaks: data,
+          idbGet: idbGetPhoto,
+          project: activeProject,
+          vars,
+        });
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement("a");
         anchor.href = url;

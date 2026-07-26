@@ -83,6 +83,7 @@ public class LocalSyncPlugin extends Plugin {
     private volatile String sessionCode;
     private volatile String hostKeyAlias;
     private volatile String hostCertificateFingerprint;
+    private final SyncSessionClaim exchangeClaim = new SyncSessionClaim();
 
 
     @PluginMethod
@@ -294,14 +295,10 @@ public class LocalSyncPlugin extends Plugin {
             }
             shouldStop = handleClient(socket);
         } catch (Exception error) {
-            synchronized (sessionLock) {
-                if (serverSocket == activeServer && !activeServer.isClosed()) {
-                    shouldStop = registerFailedAuthAttempt();
-                }
-            }
-            if (shouldStop) {
-                notifySyncError(new Exception("Too many failed synchronization connections"));
-            }
+            // Authentication failures are counted explicitly where the code is
+            // checked. A transfer timeout or a broken field Wi-Fi connection
+            // must not consume the authentication-attempt budget.
+            if (!activeServer.isClosed()) notifySyncError(error);
         } finally {
             closeSocket(socket);
             activeClientSockets.remove(socket);
@@ -362,28 +359,39 @@ public class LocalSyncPlugin extends Plugin {
                 return false;
             }
 
-            socket.setSoTimeout(TRANSFER_TIMEOUT_MS);
-            output.writeUTF("READY");
-            output.flush();
-
-            received = createTempArchive("local-sync-incoming");
-            receiveFile(input, received, archiveSize);
-            if (!expectedHash.equals(sha256(received))) {
-                received.delete();
-                received = null;
-                rejectPeer(output, "Архив повреждён при передаче");
+            if (!claimExchangeSession(outgoing)) {
+                rejectPeer(output, "Сеанс синхронизации уже используется другим устройством");
                 return false;
             }
 
-            output.writeUTF("OK");
-            output.writeLong(outgoing.length());
-            output.writeUTF(sha256(outgoing));
-            sendFile(output, outgoing);
-            output.flush();
+            boolean completed = false;
+            try {
+                socket.setSoTimeout(TRANSFER_TIMEOUT_MS);
+                output.writeUTF("READY");
+                output.flush();
 
-            notifyListeners("archiveReceived", archiveResult(received));
-            received = null;
-            return true;
+                received = createTempArchive("local-sync-incoming");
+                receiveFile(input, received, archiveSize);
+                if (!expectedHash.equals(sha256(received))) {
+                    received.delete();
+                    received = null;
+                    rejectPeer(output, "Архив повреждён при передаче");
+                    return false;
+                }
+
+                output.writeUTF("OK");
+                output.writeLong(outgoing.length());
+                output.writeUTF(sha256(outgoing));
+                sendFile(output, outgoing);
+                output.flush();
+
+                notifyListeners("archiveReceived", archiveResult(received));
+                received = null;
+                completed = true;
+                return true;
+            } finally {
+                if (!completed) releaseExchangeSession(outgoing);
+            }
         } finally {
             if (received != null) received.delete();
         }
@@ -713,6 +721,16 @@ public class LocalSyncPlugin extends Plugin {
         }
     }
 
+    private boolean claimExchangeSession(File outgoing) {
+        synchronized (sessionLock) {
+            return hostedArchive == outgoing && exchangeClaim.tryClaim(outgoing);
+        }
+    }
+
+    private void releaseExchangeSession(File outgoing) {
+        exchangeClaim.release(outgoing);
+    }
+
     private void receiveFile(DataInputStream input, File target, long expectedBytes) throws Exception {
         byte[] buffer = new byte[32 * 1024];
         long remaining = expectedBytes;
@@ -874,6 +892,7 @@ public class LocalSyncPlugin extends Plugin {
             hostedProjectKey = null;
             hostedSyncId = null;
             sessionCode = null;
+            exchangeClaim.reset();
             String keyAlias = hostKeyAlias;
             hostKeyAlias = null;
             hostCertificateFingerprint = null;
