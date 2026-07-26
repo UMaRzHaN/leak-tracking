@@ -25,6 +25,10 @@ for (const name of assetNames) {
 }
 
 const failures = [];
+const eagerExcelFiles = initialFiles.filter((name) => /exceljs/i.test(name));
+if (eagerExcelFiles.length) {
+  failures.push(`ExcelJS must remain lazy: ${eagerExcelFiles.join(", ")}`);
+}
 const initialRaw = initialFiles.reduce(
   (sum, name) => sum + (sizes.get(name) ?? 0),
   0,

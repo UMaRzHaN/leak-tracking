@@ -130,15 +130,39 @@ export default defineConfig(({ mode }) => ({
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "./coverage",
       thresholds: {
-        statements: 56,
-        branches: 46,
-        functions: 48,
-        lines: 58,
+        statements: 59,
+        branches: 48,
+        functions: 52,
+        lines: 60,
         "src/features/leakForm/**": {
           statements: 50,
           branches: 30,
           functions: 50,
           lines: 55,
+        },
+        "src/pages/MainPage/MainPage.jsx": {
+          statements: 95,
+          branches: 90,
+          functions: 95,
+          lines: 95,
+        },
+        "src/pages/DataBase/DataBase.jsx": {
+          statements: 75,
+          branches: 45,
+          functions: 65,
+          lines: 75,
+        },
+        "src/pages/MapPage/MapPage.jsx": {
+          statements: 95,
+          branches: 75,
+          functions: 95,
+          lines: 95,
+        },
+        "src/pages/Settings/Settings.jsx": {
+          statements: 30,
+          branches: 15,
+          functions: 30,
+          lines: 30,
         },
         "src/pages/AddLeak/**": {
           statements: 40,

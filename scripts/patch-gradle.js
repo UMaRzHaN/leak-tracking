@@ -1,27 +1,39 @@
 #!/usr/bin/env node
 /**
- * Removes the deprecated flatDir block from the Capacitor-generated
- * build.gradle after every `cap sync`. Run via `npm run cap:sync`.
+ * Applies small compatibility fixes that upstream Capacitor plugins have not
+ * released yet. This runs after npm install and after every `cap sync`.
  */
 
 const { readFileSync, writeFileSync } = require("fs");
 const { resolve } = require("path");
 
-const FILE = resolve("android/capacitor-cordova-android-plugins/build.gradle");
+function patchFile(relativePath, transform) {
+  const file = resolve(relativePath);
+  let content;
+  try {
+    content = readFileSync(file, "utf8");
+  } catch {
+    console.log(`[patch-gradle] ${relativePath} is not present; skipped.`);
+    return;
+  }
 
-let content;
-try {
-  content = readFileSync(FILE, "utf8");
-} catch {
-  console.error("[patch-gradle] File not found:", FILE);
-  process.exit(1);
+  const patched = transform(content);
+  if (patched === content) {
+    console.log(`[patch-gradle] ${relativePath} is already compatible.`);
+    return;
+  }
+  writeFileSync(file, patched, "utf8");
+  console.log(`[patch-gradle] Patched ${relativePath}.`);
 }
 
-const patched = content.replace(/\s*flatDir\s*\{[^}]*\}\n?/g, "");
+patchFile("android/capacitor-cordova-android-plugins/build.gradle", (content) =>
+  content.replace(/\s*flatDir\s*\{[^}]*\}\n?/g, ""),
+);
 
-if (patched === content) {
-  console.log("[patch-gradle] flatDir not found — nothing to patch.");
-} else {
-  writeFileSync(FILE, patched, "utf8");
-  console.log("[patch-gradle] Removed flatDir from", FILE);
-}
+patchFile(
+  "node_modules/@capacitor-community/speech-recognition/android/build.gradle",
+  (content) =>
+    content
+      .replace(/^(\s*)namespace\s+(["'][^"']+["'])/m, "$1namespace = $2")
+      .replace(/^(\s*)abortOnError\s+false/m, "$1abortOnError = false"),
+);

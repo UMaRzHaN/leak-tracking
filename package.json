@@ -40,6 +40,7 @@
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
     "prepare": "husky",
+    "postinstall": "node scripts/patch-gradle.js",
     "cap:sync": "npx cap sync && node scripts/patch-gradle.js",
     "check:bundle": "node scripts/check-bundle-budget.mjs"
   },
