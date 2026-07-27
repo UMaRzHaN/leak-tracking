@@ -253,7 +253,14 @@ export function normalizeNumberWords(text) {
     /((ноль|один|одна|одно|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять|одиннадцать|двенадцать|тринадцать|четырнадцать|пятнадцать|шестнадцать|семнадцать|восемнадцать|девятнадцать|двадцать|тридцать|сорок|пятьдесят|шестьдесят|семьдесят|восемьдесят|девяносто|сто|двести|триста|четыреста|пятьсот|шестьсот|семьсот|восемьсот|девятьсот|тысяча|тысячи|тысяч|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(\s+|$))+/gi,
     (match) => {
       const num = parseNumberFromWords(match);
-      return num !== null ? String(num) : match;
+      if (num === null) return match;
+
+      // The regex includes the trailing whitespace in the match. Preserve it
+      // so a spoken number before an already numeric token does not get glued
+      // to that token: "номер пять 20/40" must become "номер 5 20/40",
+      // not "номер 520/40".
+      const trailingWhitespace = match.match(/\s+$/u)?.[0] ?? "";
+      return `${num}${trailingWhitespace}`;
     },
   );
 

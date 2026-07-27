@@ -149,4 +149,10 @@ describe("ASR-concatenated entity number and size", () => {
       "компонент кран номер 1234",
     );
   });
+
+  it("keeps a separator between a spoken entity number and numeric size", () => {
+    expect(normalizeNumberWords("компонент змс номер пять 20 на 40")).toBe(
+      "компонент змс номер 5 20/40",
+    );
+  });
 });
