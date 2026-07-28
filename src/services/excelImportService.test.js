@@ -329,6 +329,180 @@ describe("parseExcelLeaks", () => {
     ]).toEqual([2026, 6, 15, 16, 27, 43]);
   });
 
+  it("infers a blank leak status from the latest monitoring result", async () => {
+    const { default: ExcelJS } = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    const leaksSheet = workbook.addWorksheet("Утечки");
+    leaksSheet.addRow(["Бирка", "Дата", "Статус", "Компонент"]);
+    leaksSheet.addRow(["TAG-RESOLVED", "14.07.2026", "", "Вентиль"]);
+    leaksSheet.addRow(["TAG-RECHECK", "14.07.2026", "", "Фланец"]);
+    leaksSheet.addRow(["TAG-EXPLICIT", "14.07.2026", "Открыта", "Насос"]);
+
+    const monitoringSheet = workbook.addWorksheet("Мониторинг");
+    monitoringSheet.addRow([
+      "Бирка",
+      "Обход",
+      "Дата мониторинга",
+      "Кто мониторил",
+      "Утечка есть",
+      "Комментарий",
+    ]);
+    monitoringSheet.addRow([
+      "TAG-RESOLVED",
+      1,
+      "15.07.2026",
+      "Inspector A",
+      "Да",
+      "Старая проверка",
+    ]);
+    monitoringSheet.addRow([
+      "TAG-RESOLVED",
+      2,
+      "16.07.2026",
+      "Inspector B",
+      "Нет",
+      "Утечка устранена",
+    ]);
+    monitoringSheet.addRow([
+      "TAG-RECHECK",
+      3,
+      "17.07.2026",
+      "Inspector C",
+      "В ремонте",
+      "Требуется повторная проверка",
+    ]);
+    monitoringSheet.addRow([
+      "TAG-EXPLICIT",
+      1,
+      "18.07.2026",
+      "Inspector D",
+      "Нет",
+      "Явный статус не менять",
+    ]);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const result = await parseExcelLeaks(
+      { arrayBuffer: async () => buffer },
+      { projectType: "upstream" },
+    );
+    const byTag = new Map(result.leaks.map((leak) => [leak.leak_id, leak]));
+
+    expect(result.inferredStatusLeakIds).toEqual([
+      "TAG-RESOLVED",
+      "TAG-RECHECK",
+    ]);
+
+    expect(byTag.get("TAG-RESOLVED")).toMatchObject({
+      status: "resolved",
+      resolvedAt: "16.07.2026",
+    });
+    expect(byTag.get("TAG-RECHECK").status).toBe("in_progress");
+    expect(byTag.get("TAG-EXPLICIT").status).toBe("open");
+    expect(byTag.get("TAG-RESOLVED").monitoringRecords).toHaveLength(2);
+    expect(
+      byTag
+        .get("TAG-RESOLVED")
+        .history.filter((record) => record.action === "monitoring"),
+    ).toHaveLength(2);
+    expect(
+      byTag
+        .get("TAG-RECHECK")
+        .history.find((record) => record.action === "monitoring"),
+    ).toMatchObject({ to: "in_progress", user: "Inspector C" });
+  });
+  it("keeps monitoring history when the History sheet is empty", async () => {
+    const { default: ExcelJS } = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    const leaksSheet = workbook.addWorksheet("Leaks");
+    leaksSheet.addRow(["Leak ID", "date", "status", "component"]);
+    leaksSheet.addRow(["TAG-7", "14.07.2026", "Open", "Valve"]);
+
+    const monitoringSheet = workbook.addWorksheet("Monitoring");
+    monitoringSheet.addRow([
+      "Tag",
+      "Round",
+      "Monitoring date",
+      "Monitored by",
+      "Result",
+      "MTR",
+      "Comment",
+    ]);
+    monitoringSheet.addRow([
+      "TAG-7",
+      3,
+      "16.03.2026",
+      "Inspector",
+      "Leak present",
+      "New materials",
+      "Updated comment",
+    ]);
+
+    const historySheet = workbook.addWorksheet("История");
+    historySheet.addRow(["Tag", "Date", "Action"]);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const result = await parseExcelLeaks({ arrayBuffer: async () => buffer });
+
+    expect(result.leaks[0].monitoringRecords).toHaveLength(1);
+    expect(result.leaks[0].history).toEqual([
+      expect.objectContaining({
+        action: "monitoring",
+        to: "open",
+        user: "Inspector",
+        text: "Updated comment",
+      }),
+    ]);
+  });
+  it("does not duplicate a monitoring event already present in History", async () => {
+    const { default: ExcelJS } = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    const leaksSheet = workbook.addWorksheet("Leaks");
+    leaksSheet.addRow(["Leak ID", "date", "status", "component"]);
+    leaksSheet.addRow(["TAG-7", "14.07.2026", "", "Valve"]);
+
+    const monitoringSheet = workbook.addWorksheet("Monitoring");
+    monitoringSheet.addRow([
+      "Tag",
+      "Round",
+      "Monitoring date",
+      "Monitored by",
+      "Result",
+      "Comment",
+    ]);
+    monitoringSheet.addRow([
+      "TAG-7",
+      1,
+      "16.03.2026",
+      "Inspector",
+      "No leak",
+      "Resolved",
+    ]);
+
+    const historySheet = workbook.addWorksheet("Leak History");
+    historySheet.addRow(["Tag", "Date", "Action", "User", "Text", "Status"]);
+    historySheet.addRow([
+      "TAG-7",
+      "16.03.2026",
+      "monitoring",
+      "Inspector",
+      "Resolved",
+      "resolved",
+    ]);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const result = await parseExcelLeaks({ arrayBuffer: async () => buffer });
+
+    expect(result.leaks[0].status).toBe("resolved");
+    expect(result.leaks[0].monitoringRecords).toHaveLength(1);
+    expect(result.leaks[0].history).toEqual([
+      expect.objectContaining({
+        action: "monitoring",
+        to: "resolved",
+        user: "Inspector",
+        text: "Resolved",
+      }),
+    ]);
+  });
   it("imports current states and legacy concise monitoring answers", async () => {
     const { default: ExcelJS } = await import("exceljs");
     const workbook = new ExcelJS.Workbook();
@@ -541,8 +715,74 @@ describe("parseExcelLeaks", () => {
     expect(result.project).toBeNull();
     expect(result.leaks).toHaveLength(1);
   });
+  it("restores whole percent values from formatted Excel cells", async () => {
+    const { default: ExcelJS } = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Leaks");
+    sheet.addRow(["Leak ID", "Gas content, %", "Uncertainty", "component"]);
+    sheet.addRow(["GAS-PERCENT", 0.825, 0.05, "Valve"]);
+    sheet.getColumn(2).numFmt = "0.0%";
+    sheet.getColumn(3).numFmt = "0.0%";
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    const result = await parseExcelLeaks({ arrayBuffer: async () => buffer });
+
+    expect(result.leaks[0]).toMatchObject({
+      gasPercentage: 82.5,
+      uncertainty: 5,
+    });
+  });
+
+  it("imports gasPercentage as a number", async () => {
+    const blob = await makeWorkbookBlob([
+      ["Leak ID", "Gas content, %", "component"],
+      ["GAS-1", "82.5", "Valve"],
+    ]);
+
+    const result = await parseExcelLeaks(blob);
+
+    expect(result.leaks[0]).toMatchObject({
+      leak_id: "GAS-1",
+      gasPercentage: 82.5,
+    });
+  });
 });
 
+it("uses the individual leak number to attach monitoring without a project type", async () => {
+  const { default: ExcelJS } = await import("exceljs");
+  const workbook = new ExcelJS.Workbook();
+  const leaksSheet = workbook.addWorksheet("Утечки");
+  leaksSheet.addRow(["№", "Индивидуальный номер утечки", "Компонент"]);
+  leaksSheet.addRow([1, 4000, "Вентиль"]);
+
+  const monitoringSheet = workbook.addWorksheet("Мониторинг");
+  monitoringSheet.addRow([
+    "№",
+    "Бирка",
+    "Обход",
+    "Дата мониторинга",
+    "Утечка есть",
+    "Комментарий",
+  ]);
+  monitoringSheet.addRow([1, 4000, 1, "10.03.2026", "нет", "Исправлено"]);
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const result = await parseExcelLeaks({ arrayBuffer: async () => buffer });
+
+  expect(result.leaks).toHaveLength(1);
+  expect(result.leaks[0]).toMatchObject({
+    index: 1,
+    leak_id: "4000",
+    monitoringRecords: [
+      expect.objectContaining({
+        roundNumber: 1,
+        result: "resolved",
+        comment: "Исправлено",
+      }),
+    ],
+  });
+  expect(result.stats.monitoringRecords).toBe(1);
+});
 describe("reconcileExcelImportPhotos", () => {
   it("reuses identical stored photos and persists only changed photos", async () => {
     const getStoredPhoto = vi

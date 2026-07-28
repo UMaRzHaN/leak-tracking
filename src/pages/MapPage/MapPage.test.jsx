@@ -28,10 +28,19 @@ vi.mock("./components/TileProgress", () => ({
   default: () => <div>progress</div>,
 }));
 vi.mock("@/components/ui/MobileSheet/MobileSheet", () => ({
-  default: ({ onClose, onSelect, leaks, onToggleLocation }) => (
+  default: ({
+    onClose,
+    onSelect,
+    leaks,
+    onToggleMainLocation,
+    onToggleLocation,
+  }) => (
     <div>
       <button onClick={onClose}>close-sheet</button>
       <button onClick={() => onSelect(leaks[0])}>pick-leak</button>
+      <button onClick={() => onToggleMainLocation("field")}>
+        main-location
+      </button>
       <button onClick={() => onToggleLocation("station")}>location</button>
     </div>
   ),
@@ -51,6 +60,9 @@ function createState() {
     visibleLeaks: [{ id: "leak-1" }],
     monitoringFilter: "all",
     hasMonitoringRound: true,
+    mainLocations: ["field"],
+    mainLocationLabel: "MGPA",
+    enabledMainLocations: { field: true },
     locations: ["station"],
     locationLabel: "Station",
     enabledLocations: ["station"],
@@ -72,6 +84,7 @@ function createState() {
     clearPriorityFilters: vi.fn(),
     toggleStatusFilter: vi.fn(),
     clearStatusFilters: vi.fn(),
+    toggleMainLocation: vi.fn(),
     toggleLocation: vi.fn(),
     handleDownloadArea: vi.fn(),
     handleExportKML: vi.fn(),
@@ -109,6 +122,7 @@ describe("MapPage", () => {
       "KML",
       "close-sheet",
       "pick-leak",
+      "main-location",
       "location",
     ])
       fireEvent.click(screen.getByText(label === "KML" ? /KML/ : label));

@@ -33,6 +33,8 @@ export const STORAGE_KEYS = {
     `${APP_PREFIX}:${projectId}:photo_requirements_${VERSION}`,
   PROJECT_SYNC_STATE: (projectId) =>
     `${APP_PREFIX}:${projectId}:sync_state_${VERSION}`,
+  PROJECT_FILTERS: (projectId) =>
+    `${APP_PREFIX}:${projectId}:filters_${VERSION}`,
   PROJECT_VARS_UPDATED_AT: (projectId) =>
     `${APP_PREFIX}:${projectId}:vars_updated_at_${VERSION}`,
   PROJECT_SETTINGS_UPDATED_AT: (projectId) =>

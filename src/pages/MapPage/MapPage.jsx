@@ -25,6 +25,9 @@ export default function MapPage({
     visibleLeaks,
     monitoringFilter,
     hasMonitoringRound,
+    mainLocations,
+    mainLocationLabel,
+    enabledMainLocations,
     locations,
     locationLabel,
     enabledLocations,
@@ -44,6 +47,7 @@ export default function MapPage({
     clearPriorityFilters,
     toggleStatusFilter,
     clearStatusFilters,
+    toggleMainLocation,
     toggleLocation,
     handleDownloadArea,
     handleExportKML,
@@ -108,6 +112,10 @@ export default function MapPage({
       <MobileSheet
         open={open}
         leaks={visibleLeaks}
+        mainLocations={mainLocations}
+        mainLocationLabel={mainLocationLabel}
+        enabledMainLocations={enabledMainLocations}
+        onToggleMainLocation={toggleMainLocation}
         locations={locations}
         locationLabel={locationLabel}
         enabledLocations={enabledLocations}

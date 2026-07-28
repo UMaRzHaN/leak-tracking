@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,9 +8,13 @@
     <title>Leak Tracking</title>
     <script>
       (function () {
-        var t = localStorage.getItem("app-theme");
-        if (t === "dark")
-          document.documentElement.setAttribute("data-theme", "dark");
+        try {
+          var t = localStorage.getItem("app-theme");
+          if (t === "dark")
+            document.documentElement.setAttribute("data-theme", "dark");
+        } catch (_) {
+          // Storage can be unavailable in restricted browser contexts.
+        }
       })();
     </script>
   </head>

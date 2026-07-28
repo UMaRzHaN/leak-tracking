@@ -32,6 +32,9 @@ describe("VoicePreviewSheet", () => {
       />,
     );
 
+    expect(
+      screen.getByRole("dialog", { name: /Recognized by voice/ }),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Component Flange/ }));
     fireEvent.click(screen.getByRole("button", { name: /Apply \(1\)/ }));
 

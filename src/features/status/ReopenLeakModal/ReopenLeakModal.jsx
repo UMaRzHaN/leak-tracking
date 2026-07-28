@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { useModalDialog } from "@/hooks/useModalDialog";
 import * as variables from "@/data/variables";
 import CalculationParametersForm from "@/features/calculationParameters/CalculationParametersForm";
 import {
@@ -30,6 +31,13 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
   const [submitted, setSubmitted] = useState(false);
   const [calcDraft, setCalcDraft] = useState(() => initialCalcVars);
   const [calcModalDraft, setCalcModalDraft] = useState(() => initialCalcVars);
+  const titleId = useId();
+  const calcTitleId = useId();
+  const dialogRef = useModalDialog({ open: !calcOpen, onClose });
+  const calcDialogRef = useModalDialog({
+    open: calcOpen,
+    onClose: () => setCalcOpen(false),
+  });
 
   const effectiveCalcVars = useMemo(
     () => buildReopenCalcVars({ leak, vars, draft: { calcVars: calcDraft } }),
@@ -134,7 +142,7 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
     setSubmitted(true);
     if (
       !isPinkBagEquipment(modalCalcVars.equipmentType) &&
-      modalCalcVars.serial_number == null
+      String(modalCalcVars.serial_number ?? "").trim() === ""
     ) {
       return;
     }
@@ -154,7 +162,7 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
     setSubmitted(true);
     if (
       !isPinkBagEquipment(effectiveCalcVars.equipmentType) &&
-      effectiveCalcVars.serial_number == null
+      String(effectiveCalcVars.serial_number ?? "").trim() === ""
     ) {
       openCalcModal();
       return;
@@ -167,10 +175,20 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
       className={s.overlay}
       onClick={() => (calcOpen ? setCalcOpen(false) : onClose())}
     >
-      <div className={s.sheet} onClick={(event) => event.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        className={s.sheet}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className={s.handle} />
         <div className={s.header}>
-          <h2 className={s.title}>{texts.title}</h2>
+          <h2 id={titleId} className={s.title}>
+            {texts.title}
+          </h2>
           <p className={s.subtitle}>{texts.subtitle}</p>
         </div>
 
@@ -270,15 +288,21 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
           }}
         >
           <div
+            ref={calcDialogRef}
             className={s.calcModal}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={calcTitleId}
+            tabIndex={-1}
             onClick={(event) => event.stopPropagation()}
           >
             <div className={s.calcModalHeader}>
-              <h3>{texts.calcTitle}</h3>
+              <h3 id={calcTitleId}>{texts.calcTitle}</h3>
               <button
                 type="button"
                 className={s.calcModalClose}
                 onClick={() => setCalcOpen(false)}
+                aria-label={texts.cancel}
               >
                 x
               </button>

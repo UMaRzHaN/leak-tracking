@@ -25,6 +25,11 @@ const REQUIRED_EXCEL_FIELDS = [
     after: "serial_number",
   },
   {
+    key: "gasPercentage",
+    header: "Содержание газа в смеси, %",
+    after: "uncertainty",
+  },
+  {
     key: "photo_repair",
     header: "Фото в ремонте",
     after: "status",
@@ -60,6 +65,7 @@ const HARMONIZED_EXCEL_ORDER = [
   "equipmentType",
   "serial_number",
   "uncertainty",
+  "gasPercentage",
   "leak_speed",
   "leak_speed_kg_h",
   "flareShare",

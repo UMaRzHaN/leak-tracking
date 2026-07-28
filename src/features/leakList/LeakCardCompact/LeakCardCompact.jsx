@@ -1,5 +1,5 @@
 import { useRenderMetric } from "@/utils/renderMetrics";
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { useSwipeCard } from "@/hooks/useSwipeCard";
 import { getStatusMeta } from "@/utils/status";
 import { getPriorityMeta } from "@/utils/priority";
@@ -48,6 +48,8 @@ function LeakCardCompact({
   selected = false,
   onToggleSelect,
   className = "",
+  collapsible = true,
+  defaultExpanded = false,
 }) {
   useRenderMetric("LeakCardCompact");
 
@@ -73,6 +75,15 @@ function LeakCardCompact({
   const urgency = urgencyOf(leak.createdAt, status);
 
   const [viewerIndex, setViewerIndex] = useState(null);
+  const [expanded, setExpanded] = useState(defaultExpanded);
+
+  useEffect(() => {
+    setExpanded(defaultExpanded);
+  }, [defaultExpanded, leak.id]);
+
+  const toggleExpanded = () => {
+    if (collapsible && !swiping) setExpanded((value) => !value);
+  };
 
   const photoSrc = usePhotoSrc(leak.photo ?? null);
   const monitoringPhotoSrc = usePhotoSrc(getLatestMonitoringPhotoPath(leak));
@@ -148,11 +159,12 @@ function LeakCardCompact({
 
         <div
           className={`${s.card} ${selected ? s.selected : ""} ${
-            goingLeft ? s.swipeLeft : ""
-          } ${goingRight ? s.swipeRight : ""}`}
+            collapsible && !expanded ? s.collapsed : ""
+          } ${goingLeft ? s.swipeLeft : ""} ${goingRight ? s.swipeRight : ""}`}
           data-urgency={urgency}
           data-priority={leak.priority ?? "none"}
           data-selected={selected ? "true" : "false"}
+          onClick={toggleExpanded}
           style={{
             transform: `translateX(${swipeOffset}px)`,
             transition: swiping ? "none" : "transform var(--t-spring)",
@@ -215,6 +227,28 @@ function LeakCardCompact({
               {leak.leak_id ?? leak.index}
             </span>
             <span className={s.time}>{ago ?? absoluteDate}</span>
+            {collapsible && (
+              <button
+                type="button"
+                className={s.expandToggle}
+                aria-expanded={expanded}
+                aria-label={
+                  expanded
+                    ? lang === "ru"
+                      ? "Свернуть карточку"
+                      : "Collapse card"
+                    : lang === "ru"
+                      ? "Развернуть карточку"
+                      : "Expand card"
+                }
+                onClick={(event) => {
+                  event.stopPropagation();
+                  toggleExpanded();
+                }}
+              >
+                <span aria-hidden="true">{expanded ? "⌃" : "⌄"}</span>
+              </button>
+            )}
           </div>
 
           <div className={s.body}>

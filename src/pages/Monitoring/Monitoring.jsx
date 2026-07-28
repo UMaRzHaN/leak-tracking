@@ -124,6 +124,7 @@ export default function Monitoring({
     data,
     coords,
     sharedFilters,
+    configuredMainLocationKey: projectConfig.system.location.main,
     configuredLocationKey: projectConfig.system.location.secondary,
   });
   const monitoringRoundId = monitoringRound?.id ?? null;
@@ -426,7 +427,14 @@ export default function Monitoring({
         : item,
     );
 
-    await setData(updated);
+    try {
+      await setData(updated);
+    } catch (error) {
+      if (photoPath) {
+        await deletePhoto(photoPath).catch(() => {});
+      }
+      throw error;
+    }
     if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
     setDrafts((prev) => {
       const next = { ...prev };
@@ -499,6 +507,13 @@ export default function Monitoring({
             { cleanupOldVersions: false },
           )
         : null;
+      if (rawPhoto && !photoPath) {
+        throw new Error(
+          lang === "ru"
+            ? "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0444\u043e\u0442\u043e\u0433\u0440\u0430\u0444\u0438\u044e \u043c\u043e\u043d\u0438\u0442\u043e\u0440\u0438\u043d\u0433\u0430"
+            : "Failed to save the monitoring photo",
+        );
+      }
       await finishMonitoringSave({ leak, draft, photoPath });
     } catch (error) {
       setNotification({
@@ -531,6 +546,13 @@ export default function Monitoring({
             { cleanupOldVersions: false },
           )
         : null;
+      if (rawPhoto && !photoPath) {
+        throw new Error(
+          lang === "ru"
+            ? "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0444\u043e\u0442\u043e\u0433\u0440\u0430\u0444\u0438\u044e \u043c\u043e\u043d\u0438\u0442\u043e\u0440\u0438\u043d\u0433\u0430"
+            : "Failed to save the monitoring photo",
+        );
+      }
       await finishMonitoringSave({
         leak: pending.leak,
         draft: pending.draft,
@@ -606,20 +628,30 @@ export default function Monitoring({
     note,
   }) => {
     const leak = resolveLeak;
-    setResolveLeak(null);
     if (!leak) return;
 
-    await setData(
-      data.map((item) =>
-        item.id === leak.id
-          ? resolveLeakRecord(
-              item,
-              { photo_after, materials_equipment, note },
-              { user: profileName || undefined },
-            )
-          : item,
-      ),
-    );
+    try {
+      await setData(
+        data.map((item) =>
+          item.id === leak.id
+            ? resolveLeakRecord(
+                item,
+                { photo_after, materials_equipment, note },
+                { user: profileName || undefined },
+              )
+            : item,
+        ),
+      );
+      setResolveLeak(null);
+      if (leak.photo_after && leak.photo_after !== photo_after) {
+        deletePhoto(leak.photo_after).catch(() => {});
+      }
+    } catch (error) {
+      if (photo_after && photo_after !== leak.photo_after) {
+        deletePhoto(photo_after).catch(() => {});
+      }
+      throw error;
+    }
   };
 
   const handleRepairConfirm = async ({
@@ -628,27 +660,36 @@ export default function Monitoring({
     note,
   }) => {
     const leak = repairLeak;
-    setRepairLeak(null);
     if (!leak) return;
 
     const orphanedPhoto = getOrphanedOriginalPhoto(leak);
-    await setData(
-      data.map((item) =>
-        item.id === leak.id
-          ? startLeakRepair(
-              item,
-              { photo_repair, materials_equipment, note },
-              { user: profileName || undefined },
-            )
-          : item,
-      ),
-    );
-    if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
+    try {
+      await setData(
+        data.map((item) =>
+          item.id === leak.id
+            ? startLeakRepair(
+                item,
+                { photo_repair, materials_equipment, note },
+                { user: profileName || undefined },
+              )
+            : item,
+        ),
+      );
+      setRepairLeak(null);
+      if (leak.photo_repair && leak.photo_repair !== photo_repair) {
+        deletePhoto(leak.photo_repair).catch(() => {});
+      }
+      if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
+    } catch (error) {
+      if (photo_repair && photo_repair !== leak.photo_repair) {
+        deletePhoto(photo_repair).catch(() => {});
+      }
+      throw error;
+    }
   };
 
   const handleReopenConfirm = async (draft) => {
     const leak = reopenLeak;
-    setReopenLeak(null);
     if (!leak) return;
 
     const orphanedPhoto = getOrphanedOriginalPhoto(leak);
@@ -664,6 +705,7 @@ export default function Monitoring({
           : item,
       ),
     );
+    setReopenLeak(null);
     if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
   };
 
@@ -775,6 +817,11 @@ export default function Monitoring({
           setFilter={filters.setFilter}
           priorityFilter={filters.priorityFilter}
           setPriorityFilter={filters.setPriorityFilter}
+          mainLocationFilter={filters.mainLocationFilter}
+          setMainLocationFilter={filters.setMainLocationFilter}
+          mainLocationKey={filters.mainLocationKey}
+          mainLocationLabel={projectConfig.system.location.main_label}
+          mainLocationOptions={filters.mainLocationOptions}
           locationFilter={filters.locationFilter}
           setLocationFilter={filters.setLocationFilter}
           locationKey={filters.locationKey}

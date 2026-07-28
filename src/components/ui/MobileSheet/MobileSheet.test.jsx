@@ -23,6 +23,10 @@ function sheetProps(overrides = {}) {
   return {
     open: true,
     leaks: [kashaganLeak, tengizLeak],
+    mainLocations: ["North", "South"],
+    mainLocationLabel: "Subdivision",
+    enabledMainLocations: { North: true, South: false },
+    onToggleMainLocation: vi.fn(),
     locations: ["Кашаганское", "Тенгизское"],
     locationLabel: "Deposit",
     enabledLocations: { Кашаганское: true, Тенгизское: false },
@@ -34,6 +38,19 @@ function sheetProps(overrides = {}) {
 }
 
 describe("MobileSheet tag search", () => {
+  it("exposes a keyboard-accessible dialog and selectable leak buttons", () => {
+    const onSelect = vi.fn();
+    const onClose = vi.fn();
+    render(<MobileSheet {...sheetProps({ onSelect, onClose })} />);
+
+    expect(screen.getByRole("dialog", { name: "Map filters" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /1001/ }));
+    expect(onSelect).toHaveBeenCalledWith(kashaganLeak);
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it("searches only by tag number and keeps every location checkbox visible", async () => {
     render(<MobileSheet {...sheetProps()} />);
     const search = screen.getByRole("searchbox", {
@@ -48,6 +65,19 @@ describe("MobileSheet tag search", () => {
     const tengiz = screen.getByRole("checkbox", { name: "Тенгизское" });
     expect(kashagan.checked).toBe(true);
     expect(tengiz.checked).toBe(false);
+  });
+
+  it("shows the configured main location filter", () => {
+    const onToggleMainLocation = vi.fn();
+    render(<MobileSheet {...sheetProps({ onToggleMainLocation })} />);
+
+    const north = screen.getByRole("checkbox", { name: "North" });
+    const south = screen.getByRole("checkbox", { name: "South" });
+    expect(north.checked).toBe(true);
+    expect(south.checked).toBe(false);
+
+    fireEvent.click(south);
+    expect(onToggleMainLocation).toHaveBeenCalledWith("South");
   });
 
   it("does not search leak cards by location or object text", async () => {

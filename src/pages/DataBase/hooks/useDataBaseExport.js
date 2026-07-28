@@ -10,6 +10,7 @@ import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { readProjectSettings } from "@/app/project/projectSettings";
 import { readMonitoringRound } from "@/utils/monitoringRound";
 import { readProjectSyncStateAsync } from "@/services/projectSyncState";
+import { buildLeakCalculationParams } from "@/utils/calculationParams";
 
 function fmtTs(ts, lang) {
   if (!ts) return "";
@@ -47,9 +48,10 @@ function round2(value) {
     : value;
 }
 
-function prepareRows(data, lang, t) {
+export function prepareRows(data, lang, t, projectVars = {}) {
   return data.map((row) => ({
     ...row,
+    gasPercentage: buildLeakCalculationParams(row, projectVars).gasPercentage,
     status: getStatusLabel(row.status ?? STATUS.OPEN, t),
     date:
       row.date ??
@@ -103,7 +105,7 @@ export function useDataBaseExport({ data, displayed, notify }) {
         ]);
       const result = await exportToExcelFile(
         displayed,
-        prepareRows(displayed, lang, t),
+        prepareRows(displayed, lang, t, vars),
         excelHeaders,
         excelKeys,
         `!Database_${activeProject?.name || "no_name"}`,

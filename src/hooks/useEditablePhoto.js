@@ -70,8 +70,8 @@ export function useEditablePhoto({
 
     // хранилище не готово → честно не сохраняем
     if (!storageReady) {
-      logger.warn("Photo storage not ready, save skipped");
-      return persistedPathRef.current;
+      logger.warn("Photo storage not ready, save rejected");
+      throw new Error("Photo storage is not ready");
     }
 
     const currentLeakId = leakId;
@@ -86,7 +86,7 @@ export function useEditablePhoto({
     }
 
     if (!newPath) {
-      return persistedPathRef.current;
+      throw new Error("Photo storage did not return a saved path");
     }
 
     persistedPathRef.current = newPath;

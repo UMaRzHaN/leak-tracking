@@ -3,6 +3,7 @@ import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { STATUS } from "@/utils/status";
 import { hapticSuccess } from "@/utils/haptics";
 import { buildReopenedLeak } from "@/utils/reopenLeak";
+import { compareLeakIds } from "@/utils/leakOrder";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import {
@@ -52,7 +53,7 @@ export function useMainPageActions({ data, setData, userProfile }) {
   );
 
   const recent = useMemo(() => {
-    let list = [...data].sort((a, b) => b.id - a.id);
+    let list = [...data].sort((a, b) => compareLeakIds(b, a));
     if (statusFilter !== ALL) {
       list = list.filter((l) => (l.status ?? STATUS.OPEN) === statusFilter);
     }
@@ -104,7 +105,6 @@ export function useMainPageActions({ data, setData, userProfile }) {
   const handleResolveConfirm = useCallback(
     async ({ photo_after, materials_equipment, note }) => {
       const leak = resolveLeak;
-      setResolveLeak(null);
       if (!leak) return;
 
       const next = data.map((r) =>
@@ -119,18 +119,24 @@ export function useMainPageActions({ data, setData, userProfile }) {
 
       try {
         await setData(next);
+        setResolveLeak(null);
         hapticSuccess();
+        if (leak.photo_after && leak.photo_after !== photo_after) {
+          deletePhoto(leak.photo_after).catch(() => {});
+        }
       } catch (err) {
+        if (photo_after && photo_after !== leak.photo_after) {
+          deletePhoto(photo_after).catch(() => {});
+        }
         notify("error", `Ошибка сохранения: ${err.message}`);
       }
     },
-    [data, historyUser, notify, resolveLeak, setData],
+    [data, deletePhoto, historyUser, notify, resolveLeak, setData],
   );
 
   const handleRepairConfirm = useCallback(
     async ({ photo_repair, materials_equipment, note }) => {
       const leak = repairLeak;
-      setRepairLeak(null);
       if (!leak) return;
 
       const orphanedPhoto = getOrphanedOriginalPhoto(leak);
@@ -146,9 +152,16 @@ export function useMainPageActions({ data, setData, userProfile }) {
 
       try {
         await setData(next);
+        setRepairLeak(null);
         hapticSuccess();
+        if (leak.photo_repair && leak.photo_repair !== photo_repair) {
+          deletePhoto(leak.photo_repair).catch(() => {});
+        }
         if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
       } catch (err) {
+        if (photo_repair && photo_repair !== leak.photo_repair) {
+          deletePhoto(photo_repair).catch(() => {});
+        }
         notify("error", `Ошибка сохранения: ${err.message}`);
       }
     },
@@ -158,7 +171,6 @@ export function useMainPageActions({ data, setData, userProfile }) {
   const handleReopenConfirm = useCallback(
     async (draft) => {
       const leak = reopenLeak;
-      setReopenLeak(null);
       if (!leak) return;
 
       const orphanedPhoto = getOrphanedOriginalPhoto(leak);
@@ -170,6 +182,7 @@ export function useMainPageActions({ data, setData, userProfile }) {
 
       try {
         await setData(next);
+        setReopenLeak(null);
         hapticSuccess();
         if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
       } catch (err) {

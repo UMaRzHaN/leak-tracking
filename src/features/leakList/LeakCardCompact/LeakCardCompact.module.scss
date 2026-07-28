@@ -63,6 +63,10 @@
    CARD
    ══════════════════════════════════════ */
 
+.collapsed .body {
+  display: none;
+}
+
 .card {
   position: relative;
   z-index: 2;
@@ -244,6 +248,29 @@
   color: var(--c-text3);
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.expandToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-pill);
+  color: var(--c-text3);
+  background: transparent;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--c-blue);
+    background: var(--c-blue-dim);
+  }
 }
 
 /* ══════════════════════════════════════

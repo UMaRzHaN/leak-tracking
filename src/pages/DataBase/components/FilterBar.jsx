@@ -25,6 +25,11 @@ function FilterBar({
   setFilter,
   priorityFilter,
   setPriorityFilter,
+  mainLocationFilter,
+  setMainLocationFilter,
+  mainLocationKey,
+  mainLocationLabel,
+  mainLocationOptions = [],
   locationFilter,
   setLocationFilter,
   locationKey,
@@ -39,11 +44,13 @@ function FilterBar({
   hasGps,
 }) {
   const { t, lang } = useLanguage();
+  const noLocationLabel = lang === "ru" ? "Не указано" : "Not specified";
   const selectedStatuses = normalizeSelected(statusFilter);
   const selectedPriorities = normalizeSelected(priorityFilter);
   const hasActiveFilter =
     selectedStatuses.length > 0 ||
     selectedPriorities.length > 0 ||
+    Boolean(mainLocationFilter) ||
     Boolean(locationFilter) ||
     nearbyFilter;
   const [open, setOpen] = useState(false);
@@ -54,15 +61,34 @@ function FilterBar({
   const locationLabels =
     lang === "ru"
       ? {
+          subdivision: "Подразделение",
+          field: "УМГ",
+          district: "Район",
           deposit: "Месторождение",
           station: "Станция",
           locality: "Населённый пункт",
         }
       : {
+          subdivision: "Subdivision",
+          field: "MGPA",
+          district: "District",
           deposit: "Deposit",
           station: "Station",
           locality: "Locality",
         };
+  const effectiveMainLocationKey = mainLocationFilter?.key ?? mainLocationKey;
+  const mainLocationFilterLabel =
+    (lang === "ru" ? mainLocationLabel : null) ??
+    locationLabels[effectiveMainLocationKey] ??
+    (lang === "ru" ? "Подразделение" : "Subdivision");
+  const mainLocationValues = Array.isArray(mainLocationFilter?.values)
+    ? mainLocationFilter.values
+    : [];
+  const selectedMainLocationValues =
+    mainLocationFilter?.key === effectiveMainLocationKey
+      ? new Set(mainLocationValues)
+      : new Set(mainLocationOptions);
+
   const effectiveLocationKey = locationFilter?.key ?? locationKey;
   const locationFilterLabel =
     (lang === "ru" ? locationLabel : null) ??
@@ -75,6 +101,26 @@ function FilterBar({
     locationFilter?.key === effectiveLocationKey
       ? new Set(locationValues)
       : new Set(locationOptions);
+
+  const toggleMainLocation = (value) => {
+    if (!effectiveMainLocationKey) return;
+    setMainLocationFilter((current) => {
+      const selected =
+        current?.key === effectiveMainLocationKey
+          ? new Set(current.values ?? [])
+          : new Set(mainLocationOptions);
+
+      if (selected.has(value)) selected.delete(value);
+      else selected.add(value);
+
+      const values = mainLocationOptions.filter((option) =>
+        selected.has(option),
+      );
+      return values.length === mainLocationOptions.length
+        ? null
+        : { key: effectiveMainLocationKey, values };
+    });
+  };
 
   const toggleLocation = (value) => {
     if (!effectiveLocationKey) return;
@@ -153,6 +199,42 @@ function FilterBar({
 
       {open && (
         <div className={s.filtersPanel}>
+          {effectiveMainLocationKey && mainLocationOptions.length > 0 && (
+            <>
+              <div className={s.filterSection}>
+                <span className={s.filterLabel}>{mainLocationFilterLabel}</span>
+                <div className={s.filters}>
+                  {mainLocationOptions.map((value) => {
+                    const checked = selectedMainLocationValues.has(value);
+                    return (
+                      <button
+                        type="button"
+                        key={value}
+                        className={`${s.filterTab} ${
+                          checked ? s.filterActive : ""
+                        }`}
+                        style={
+                          checked
+                            ? {
+                                color: "var(--c-blue)",
+                                background: "var(--c-blue-dim)",
+                                borderColor: "var(--c-blue)",
+                              }
+                            : undefined
+                        }
+                        aria-pressed={checked}
+                        onClick={() => toggleMainLocation(value)}
+                      >
+                        {value || noLocationLabel}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className={s.filterDivider} />
+            </>
+          )}
+
           {effectiveLocationKey && locationOptions.length > 0 && (
             <>
               <div className={s.filterSection}>
@@ -179,7 +261,7 @@ function FilterBar({
                         aria-pressed={checked}
                         onClick={() => toggleLocation(value)}
                       >
-                        {value}
+                        {value || noLocationLabel}
                       </button>
                     );
                   })}

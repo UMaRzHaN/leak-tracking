@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { useModalDialog } from "@/hooks/useModalDialog";
 import { useTranslation } from "react-i18next";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import PhotoInput from "@/features/photos/PhotoInput/PhotoInput";
@@ -34,6 +35,11 @@ export default function ResolveModal({
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [notification, setNotification] = useState(null);
+  const titleId = useId();
+  const dialogRef = useModalDialog({
+    onClose,
+    closeDisabled: saving,
+  });
 
   const { savePhoto } = usePhotoStorage();
 
@@ -62,12 +68,16 @@ export default function ResolveModal({
           photo.raw,
           isRepair ? `${leak.id}_repair` : `${leak.id}_after`,
           (isRepair
-            ? [leak?.photo, leak?.photo_after]
-            : [leak?.photo, leak?.photo_repair]
+            ? [leak?.photo, leak?.photo_after, leak?.photo_repair]
+            : [leak?.photo, leak?.photo_repair, leak?.photo_after]
           ).filter(Boolean),
+          { cleanupOldVersions: false },
         );
       }
-      onConfirm({
+      if (photo?.raw && !photoPath) {
+        throw new Error("Photo storage did not return a saved path");
+      }
+      await onConfirm({
         ...(isRepair
           ? { photo_repair: photoPath }
           : { photo_after: photoPath }),
@@ -85,8 +95,16 @@ export default function ResolveModal({
   };
 
   return (
-    <div className={s.overlay} onClick={onClose}>
-      <div className={s.sheet} onClick={(e) => e.stopPropagation()}>
+    <div className={s.overlay} onClick={saving ? undefined : onClose}>
+      <div
+        ref={dialogRef}
+        className={s.sheet}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+      >
         <Notification
           notification={notification}
           onClose={() => setNotification(null)}
@@ -96,7 +114,9 @@ export default function ResolveModal({
 
         <div className={s.header}>
           <div className={s.titleRow}>
-            <h2 className={s.title}>{labels.title}</h2>
+            <h2 id={titleId} className={s.title}>
+              {labels.title}
+            </h2>
             {progress && progress.total > 1 && (
               <span className={s.progressBadge}>
                 {progress.current} / {progress.total}

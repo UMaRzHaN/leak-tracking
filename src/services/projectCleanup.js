@@ -1,6 +1,7 @@
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { clearProjectSettings } from "@/app/project/projectSettings";
+import { clearProjectFilters } from "@/app/project/projectFilters";
 import { LeakRepository } from "@/repositories/LeakRepository";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
 import { clearProjectSyncState } from "@/services/projectSyncState";
@@ -12,6 +13,7 @@ export async function deleteProjectArtifacts(project) {
 
   localStorage.removeItem(STORAGE_KEYS.PROJECT_DATA(project.id));
   localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(project.id));
+  clearProjectFilters(project.id);
   clearProjectSettings(project.id);
   await clearProjectSyncState(project.id);
   await LeakRepository.clear({

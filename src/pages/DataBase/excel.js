@@ -1,3 +1,4 @@
+import { compareLeakIds } from "@/utils/leakOrder";
 const getExcelJS = () => import("exceljs");
 const getJSZip = () => import("jszip");
 
@@ -35,13 +36,20 @@ const PERCENT_FORMAT = "0.0%";
 const DATE_KEYS = new Set(["date", "repairAt", "resolvedAt"]);
 const TIME_KEYS = new Set(["time"]);
 const INTEGER_KEYS = new Set(["index", "roundNumber", "Operating_mode"]);
-const PERCENT_KEYS = new Set(["flareShare", "utilShare"]);
+const PERCENT_KEYS = new Set([
+  "flareShare",
+  "utilShare",
+  "gasPercentage",
+  "uncertainty",
+]);
+const WHOLE_PERCENT_KEYS = new Set(["gasPercentage", "uncertainty"]);
 const COORDINATE_KEYS = new Set(["lat", "lng"]);
 const DECIMAL_KEYS = new Set([
   "pressure",
   "temperature",
   "temperature_K",
   "uncertainty",
+  "gasPercentage",
   "leak_speed",
   "leak_speed_kg_h",
   "weightedGWP",
@@ -628,7 +636,8 @@ function toExcelCellValue(key, value) {
     DECIMAL_KEYS.has(key)
   ) {
     const numeric = Number(value);
-    return Number.isFinite(numeric) ? numeric : normalizeExcelCellValue(value);
+    if (!Number.isFinite(numeric)) return normalizeExcelCellValue(value);
+    return WHOLE_PERCENT_KEYS.has(key) ? numeric / 100 : numeric;
   }
   if (TEXT_IDENTIFIER_KEYS.has(key)) return String(value);
   if (key === "leak_id") {
@@ -1179,7 +1188,7 @@ export async function exportToExcelFile(
   const exportStartedAt = performance.now();
   const phaseMetrics = {};
   const paired = rawLeaks.map((leak, index) => ({ leak, row: rows[index] }));
-  paired.sort((left, right) => (left.leak.id ?? 0) - (right.leak.id ?? 0));
+  paired.sort((left, right) => compareLeakIds(left.leak, right.leak));
 
   const orderedLeaks = paired.map((pair) => pair.leak);
   const orderedRows = paired.map(({ leak, row }) => ({

@@ -41,6 +41,7 @@ export default function DataBase({
     setData,
     coords,
     sharedFilters,
+    configuredMainLocationKey: projectConfig.system.location.main,
     configuredLocationKey: projectConfig.system.location.secondary,
     userProfile,
   });
@@ -56,6 +57,11 @@ export default function DataBase({
         setFilter={filters.setFilter}
         priorityFilter={filters.priorityFilter}
         setPriorityFilter={filters.setPriorityFilter}
+        mainLocationFilter={filters.mainLocationFilter}
+        setMainLocationFilter={filters.setMainLocationFilter}
+        mainLocationKey={filters.mainLocationKey}
+        mainLocationLabel={projectConfig.system.location.main_label}
+        mainLocationOptions={filters.mainLocationOptions}
         locationFilter={filters.locationFilter}
         setLocationFilter={filters.setLocationFilter}
         locationKey={filters.locationKey}

@@ -1,3 +1,5 @@
+import { getStorageItem } from "./safeStorage";
+
 export const LANGUAGE_STORAGE_KEY = "app_language";
 const DEFAULT_LANGUAGE = "ru";
 
@@ -30,7 +32,7 @@ function normalizeLanguage(language) {
 }
 
 export function readStoredLanguage() {
-  return normalizeLanguage(localStorage.getItem(LANGUAGE_STORAGE_KEY));
+  return normalizeLanguage(getStorageItem(LANGUAGE_STORAGE_KEY));
 }
 
 export function getAppLanguage(language) {

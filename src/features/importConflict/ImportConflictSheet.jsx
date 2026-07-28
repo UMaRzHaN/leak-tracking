@@ -1,3 +1,5 @@
+import { useId } from "react";
+import { useModalDialog } from "@/hooks/useModalDialog";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "./ImportConflictSheet.module.scss";
 
@@ -35,6 +37,8 @@ export default function ImportConflictSheet({
   onCancel,
 }) {
   const { lang, t } = useLanguage();
+  const titleId = useId();
+  const dialogRef = useModalDialog({ open, onClose: onCancel });
   const source = sourceLabel ?? (lang === "ru" ? "в архиве" : "in archive");
   const photos =
     photoLabel ?? (lang === "ru" ? "Фото архива" : "Archive photos");
@@ -44,10 +48,18 @@ export default function ImportConflictSheet({
 
   return (
     <div className={s.overlay} onClick={onCancel}>
-      <div className={s.sheet} onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        className={s.sheet}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className={s.handle} />
         <div className={s.icon}>⚠️</div>
-        <h3 className={s.title}>
+        <h3 id={titleId} className={s.title}>
           {lang === "ru" ? "Проект уже существует" : "Project already exists"}
         </h3>
         <p className={s.description}>

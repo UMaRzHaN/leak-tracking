@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
+import { useModalDialog } from "@/hooks/useModalDialog";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "./UserProfileSheet.module.scss";
 
 export default function UserProfileSheet({ open, profile, onSave, onClose }) {
   const { lang } = useLanguage();
   const [name, setName] = useState("");
+  const titleId = useId();
+  const dialogRef = useModalDialog({ open, onClose });
 
   useEffect(() => {
     if (!open) return;
@@ -46,13 +49,23 @@ export default function UserProfileSheet({ open, profile, onSave, onClose }) {
 
   return (
     <div className={s.overlay} onClick={onClose}>
-      <div className={s.sheet} onClick={(event) => event.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        className={s.sheet}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className={s.handle} />
 
         <div className={s.header}>
           <div className={s.avatar}>{initial}</div>
           <div>
-            <h2 className={s.title}>{texts.title}</h2>
+            <h2 id={titleId} className={s.title}>
+              {texts.title}
+            </h2>
             <p className={s.subtitle}>{texts.subtitle}</p>
           </div>
         </div>

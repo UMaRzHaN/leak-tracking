@@ -10,6 +10,7 @@ export function useDataBaseController({
   setData,
   coords,
   sharedFilters,
+  configuredMainLocationKey,
   configuredLocationKey,
   userProfile,
 }) {
@@ -26,6 +27,7 @@ export function useDataBaseController({
     data,
     coords,
     sharedFilters,
+    configuredMainLocationKey,
     configuredLocationKey,
   });
   const actions = useLeakActions({

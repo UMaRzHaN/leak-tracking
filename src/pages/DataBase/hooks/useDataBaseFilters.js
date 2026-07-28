@@ -3,6 +3,7 @@ import { STATUS, STATUS_ORDER } from "@/utils/status";
 import { distanceMeters, filterNearbyLeaks } from "@/utils/geoUtils";
 import { ABBREV_MAP } from "@/features/search/Autocomplete/smartFilter";
 import { matchesLeakLocationFilter } from "@/utils/locationFilter";
+import { compareLeakIds } from "@/utils/leakOrder";
 
 export const ALL = "all";
 export const NEARBY = "nearby";
@@ -155,12 +156,14 @@ export function useDataBaseFilters({
   data,
   coords,
   sharedFilters = null,
+  configuredMainLocationKey = null,
   configuredLocationKey = null,
 }) {
   const [localSearchInput, setLocalSearchInput] = useState("");
   const [search, setSearch] = useState(() => sharedFilters?.search ?? "");
   const [localStatusFilter, setLocalStatusFilter] = useState([]);
   const [localPriorityFilter, setLocalPriorityFilter] = useState([]);
+  const [localMainLocationFilter, setLocalMainLocationFilter] = useState(null);
   const [localLocationFilter, setLocalLocationFilter] = useState(null);
   const [localNearbyFilter, setLocalNearbyFilter] = useState(false);
   const [localNearbyRadius, setLocalNearbyRadius] = useState(NEARBY_RADIUS_M);
@@ -177,6 +180,14 @@ export function useDataBaseFilters({
   );
   const setPriorityFilter =
     sharedFilters?.setPriorityFilter ?? setLocalPriorityFilter;
+  const hasSharedMainLocationFilter =
+    typeof sharedFilters?.setMainLocationFilter === "function";
+  const mainLocationFilter = hasSharedMainLocationFilter
+    ? (sharedFilters.mainLocationFilter ?? null)
+    : localMainLocationFilter;
+  const setMainLocationFilter = hasSharedMainLocationFilter
+    ? sharedFilters.setMainLocationFilter
+    : setLocalMainLocationFilter;
   const hasSharedLocationFilter =
     typeof sharedFilters?.setLocationFilter === "function";
   const locationFilter = hasSharedLocationFilter
@@ -193,8 +204,8 @@ export function useDataBaseFilters({
     sharedFilters?.setNearbyRadius ?? setLocalNearbyRadius;
 
   const locationKey = useMemo(() => {
-    if (locationFilter?.key) return locationFilter.key;
     if (configuredLocationKey) return configuredLocationKey;
+    if (locationFilter?.key) return locationFilter.key;
     return ["deposit", "station", "locality"].find((key) =>
       data.some((leak) => String(leak?.[key] ?? "").trim()),
     );
@@ -203,17 +214,33 @@ export function useDataBaseFilters({
   const locationOptions = useMemo(() => {
     if (!locationKey) return [];
     const values = new Set(
-      data
-        .map((leak) => String(leak?.[locationKey] ?? "").trim())
-        .filter(Boolean),
+      data.map((leak) => String(leak?.[locationKey] ?? "").trim()),
     );
     if (locationFilter?.key === locationKey) {
       for (const value of locationFilter.values ?? []) {
-        if (String(value).trim()) values.add(String(value).trim());
+        values.add(String(value).trim());
       }
     }
     return [...values].sort((a, b) => a.localeCompare(b));
   }, [data, locationFilter, locationKey]);
+
+  const mainLocationKey = useMemo(() => {
+    if (configuredMainLocationKey) return configuredMainLocationKey;
+    return mainLocationFilter?.key;
+  }, [configuredMainLocationKey, mainLocationFilter?.key]);
+
+  const mainLocationOptions = useMemo(() => {
+    if (!mainLocationKey) return [];
+    const values = new Set(
+      data.map((leak) => String(leak?.[mainLocationKey] ?? "").trim()),
+    );
+    if (mainLocationFilter?.key === mainLocationKey) {
+      for (const value of mainLocationFilter.values ?? []) {
+        values.add(String(value).trim());
+      }
+    }
+    return [...values].sort((a, b) => a.localeCompare(b));
+  }, [data, mainLocationFilter, mainLocationKey]);
 
   const hasGps = Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng);
 
@@ -248,23 +275,35 @@ export function useDataBaseFilters({
         : list;
 
     const applyLocation = (list) =>
-      locationFilter
+      locationFilter?.key === locationKey
         ? list.filter((leak) => matchesLeakLocationFilter(leak, locationFilter))
         : list;
 
-    let list = [...data].sort((a, b) => (sortAsc ? a.id - b.id : b.id - a.id));
+    const applyMainLocation = (list) =>
+      mainLocationFilter?.key === mainLocationKey
+        ? list.filter((leak) =>
+            matchesLeakLocationFilter(leak, mainLocationFilter),
+          )
+        : list;
+
+    let list = [...data].sort((a, b) =>
+      sortAsc ? compareLeakIds(a, b) : compareLeakIds(b, a),
+    );
     if (statusFilter.length > 0)
       list = list.filter((l) => statusFilter.includes(l.status ?? STATUS.OPEN));
     if (nearbyFilter && hasGps)
       list = filterNearbyLeaks(list, coords.lat, coords.lng, nearbyRadius);
-    return applySearch(applyPriority(applyLocation(list)));
+    return applySearch(applyPriority(applyLocation(applyMainLocation(list))));
   }, [
     data,
     statusFilter,
     nearbyFilter,
     nearbyRadius,
     priorityFilter,
+    mainLocationFilter,
+    mainLocationKey,
     locationFilter,
+    locationKey,
     searchIndex,
     searchTokens,
     hasGps,
@@ -296,6 +335,10 @@ export function useDataBaseFilters({
     setFilter,
     priorityFilter,
     setPriorityFilter,
+    mainLocationFilter,
+    setMainLocationFilter,
+    mainLocationKey,
+    mainLocationOptions,
     locationFilter,
     setLocationFilter,
     locationKey,

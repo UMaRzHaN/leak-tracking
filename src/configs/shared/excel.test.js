@@ -47,6 +47,11 @@ describe("excel config helpers", () => {
       keysOrder: ["date", "leak_id"],
     });
 
-    expect(withRequiredExcelColumns(columns).keysOrder).toContain("time");
+    const result = withRequiredExcelColumns(columns);
+    expect(result.keysOrder).toContain("time");
+    expect(result.keysOrder).toContain("gasPercentage");
+    expect(result.headers[result.keysOrder.indexOf("gasPercentage")]).toBe(
+      "Содержание газа в смеси, %",
+    );
   });
 });

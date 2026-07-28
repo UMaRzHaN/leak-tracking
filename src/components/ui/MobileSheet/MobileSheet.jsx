@@ -1,11 +1,16 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { useModalDialog } from "@/hooks/useModalDialog";
 import Notification from "@/components/ui/Notification/Notification";
 import s from "./MobileSheet.module.scss";
 
 export default function MobileSheet({
   open,
   leaks,
+  mainLocations = [],
+  mainLocationLabel,
+  enabledMainLocations = {},
+  onToggleMainLocation,
   locations,
   locationLabel,
   enabledLocations,
@@ -17,6 +22,7 @@ export default function MobileSheet({
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [notification, setNotification] = useState(null);
+  const dialogRef = useModalDialog({ open, onClose });
   const noLabel = lang === "ru" ? "Не указано" : "Not specified";
 
   const filteredLeaks = useMemo(() => {
@@ -39,10 +45,46 @@ export default function MobileSheet({
       {open && (
         <div className={s.overlay} onClick={onClose}>
           <div
+            ref={dialogRef}
             className={`${s.sheet} ${s.open}`}
+            role="dialog"
+            aria-modal="true"
+            aria-label={
+              lang === "ru"
+                ? "\u0424\u0438\u043b\u044c\u0442\u0440\u044b \u043a\u0430\u0440\u0442\u044b"
+                : "Map filters"
+            }
+            tabIndex={-1}
             onClick={(event) => event.stopPropagation()}
           >
             <div className={s.sheetHandle} />
+
+            {mainLocations.length > 0 && (
+              <div className={s.stationList}>
+                <div className={s.stationTitle}>
+                  {lang === "ru" ? "Фильтр по:" : "Filter by:"}{" "}
+                  {mainLocationLabel}
+                </div>
+
+                {mainLocations.map((location) => {
+                  const label = location || noLabel;
+
+                  return (
+                    <label
+                      key={location || "__empty_main_location__"}
+                      className={s.stationItem}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={enabledMainLocations[location] ?? true}
+                        onChange={() => onToggleMainLocation?.(location)}
+                      />
+                      <span>{label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
 
             <div className={s.stationList}>
               <div className={s.stationTitle}>
@@ -53,11 +95,14 @@ export default function MobileSheet({
                 const label = location || noLabel;
 
                 return (
-                  <label key={label} className={s.stationItem}>
+                  <label
+                    key={location || "__empty_location__"}
+                    className={s.stationItem}
+                  >
                     <input
                       type="checkbox"
-                      checked={enabledLocations[label] ?? true}
-                      onChange={() => onToggleLocation(label)}
+                      checked={enabledLocations[location] ?? true}
+                      onChange={() => onToggleLocation(location)}
                     />
                     <span>{label}</span>
                   </label>
@@ -90,14 +135,15 @@ export default function MobileSheet({
                 </div>
               )}
               {filteredLeaks.map((leak) => (
-                <div
+                <button
                   key={leak.id}
+                  type="button"
                   className={s.sheetItem}
                   onClick={() => onSelect(leak)}
                 >
                   <span className={s.dot} />
                   {lang === "ru" ? "Бирка №" : "Tag No."} {leak.leak_id}
-                </div>
+                </button>
               ))}
             </div>
           </div>

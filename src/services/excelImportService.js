@@ -41,6 +41,7 @@ const TECHNICAL_KEYS = [
   "equipmentType",
   "serial_number",
   "uncertainty",
+  "gasPercentage",
   "leak_speed",
   "leak_speed_kg_m",
   "leak_speed_kg_h",
@@ -82,6 +83,9 @@ const HEADER_ALIASES = {
     "id утечки",
     "ид утечки",
     "номер утечки",
+    "индивидуальный номер утечки",
+    "индивидуальный номер бирки",
+    "individual leak number",
     "бирка",
     "тег",
     "tag",
@@ -113,6 +117,13 @@ const HEADER_ALIASES = {
   ],
   serial_number: ["серийный номер", "serial number", "serial_number"],
   uncertainty: ["погрешность", "uncertainty"],
+  gasPercentage: [
+    "содержание газа в смеси",
+    "содержание газа",
+    "gas content",
+    "gas percentage",
+    "gasPercentage",
+  ],
   leak_speed: [
     "скорость утечки",
     "объем утечки",
@@ -147,6 +158,7 @@ const NUMERIC_KEYS = new Set([
   "temperature",
   "temperature_K",
   "uncertainty",
+  "gasPercentage",
   "leak_speed",
   "leak_speed_kg_m",
   "leak_speed_kg_h",
@@ -165,6 +177,7 @@ const NUMERIC_KEYS = new Set([
   "lng",
 ]);
 
+const WHOLE_PERCENT_KEYS = new Set(["gasPercentage", "uncertainty"]);
 const DATE_KEYS = new Set(["date", "repairAt", "resolvedAt"]);
 const DATE_TIME_KEYS = new Set(["createdAt", "updatedAt"]);
 const PHOTO_KEYS = new Set(["photo", "photo_repair", "photo_after"]);
@@ -205,7 +218,7 @@ function normalizeHeader(value) {
     .trim()
     .toLowerCase()
     .replace(/ё/g, "е")
-    .replace(/[_/\\()[\]{}:;.,'"`№+-]+/g, " ")
+    .replace(/[_/\\()[\]{}:;.,'"`№%+-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -523,12 +536,17 @@ function isValidPhotoPath(value) {
   );
 }
 
-function normalizeCellValue(key, value) {
+function normalizeCellValue(key, value, { percentFormatted = false } = {}) {
   if (key === "status") {
     const text = String(value ?? "").trim();
     return text ? normalizeStatus(text) : "";
   }
-  if (NUMERIC_KEYS.has(key)) return parseNumberValue(value);
+  if (NUMERIC_KEYS.has(key)) {
+    const numeric = parseNumberValue(value);
+    return numeric != null && percentFormatted && WHOLE_PERCENT_KEYS.has(key)
+      ? numeric * 100
+      : numeric;
+  }
   if (DATE_KEYS.has(key)) {
     const date = parseDateValue(value, { calendarOnly: true });
     return date ? formatDate(date) : "";
@@ -1286,43 +1304,86 @@ export async function persistExcelImportPhotos(leaks, savePhoto) {
   );
 }
 
-function attachMonitoringRecords(leaks, recordsByLeakId) {
+function statusFromMonitoringResult(result) {
+  if (result === "resolved") return "resolved";
+  if (result === "needs_recheck") return "in_progress";
+  return "open";
+}
+
+function historyRecordIdentity(record) {
+  return JSON.stringify([
+    Date.parse(record?.date) || String(record?.date ?? ""),
+    record?.action ?? "",
+    record?.to ?? "",
+    record?.text ?? "",
+    record?.changes ?? [],
+  ]);
+}
+
+function mergeHistoryRecords(existingRecords = [], incomingRecords = []) {
+  const byIdentity = new Map();
+  for (const record of [...existingRecords, ...incomingRecords]) {
+    byIdentity.set(historyRecordIdentity(record), record);
+  }
+  return [...byIdentity.values()].sort(
+    (left, right) => Date.parse(left.date) - Date.parse(right.date),
+  );
+}
+
+function attachMonitoringRecords(
+  leaks,
+  recordsByLeakId,
+  { inferStatusForLeakIds = new Set() } = {},
+) {
   if (!recordsByLeakId.size) return leaks;
 
   return leaks.map((leak) => {
-    const records = recordsByLeakId.get(String(leak.leak_id));
+    const leakId = String(leak.leak_id);
+    const records = recordsByLeakId.get(leakId);
     if (!records?.length) return leak;
 
     const monitoringRecords = [
       ...(Array.isArray(leak.monitoringRecords) ? leak.monitoringRecords : []),
       ...records,
-    ].sort((left, right) => Date.parse(left.date) - Date.parse(right.date));
+    ].sort((left, right) => {
+      const dateDifference = Date.parse(left.date) - Date.parse(right.date);
+      if (dateDifference !== 0) return dateDifference;
+      return Number(left.roundNumber ?? 0) - Number(right.roundNumber ?? 0);
+    });
 
     const monitoringHistory = records.map((record) => ({
       action: "monitoring",
       date: record.date,
-      to:
-        record.result === "resolved"
-          ? "resolved"
-          : record.result === "needs_recheck"
-            ? "in_progress"
-            : "open",
+      to: statusFromMonitoringResult(record.result),
       user: record.monitoredBy || "Excel import",
       text: record.comment || "",
     }));
 
-    return {
+    const next = {
       ...leak,
       monitoringRecords,
-      history: [
-        ...(Array.isArray(leak.history) ? leak.history : []),
-        ...monitoringHistory,
-      ].sort((left, right) => Date.parse(left.date) - Date.parse(right.date)),
+      history: mergeHistoryRecords(
+        Array.isArray(leak.history) ? leak.history : [],
+        monitoringHistory,
+      ),
       updatedAt: Math.max(
         Number(leak.updatedAt) || 0,
         ...records.map((record) => Date.parse(record.date) || 0),
       ),
     };
+
+    if (inferStatusForLeakIds.has(leakId)) {
+      const latestMonitoring = monitoringRecords.at(-1);
+      next.status = statusFromMonitoringResult(latestMonitoring?.result);
+      if (next.status === "resolved") {
+        const resolvedDate = parseDateValue(latestMonitoring?.date);
+        if (resolvedDate) next.resolvedAt = formatDate(resolvedDate);
+      } else {
+        delete next.resolvedAt;
+      }
+    }
+
+    return next;
   });
 }
 
@@ -1333,15 +1394,14 @@ function attachHistoryRecords(leaks, recordsByLeakId) {
     const records = recordsByLeakId.get(String(leak.leak_id));
     if (!records?.length) return leak;
     const fallbackUser = leak.detectedBy || leak.monitoredBy || "Не указан";
+    const importedHistory = records.map((record) => ({
+      ...record,
+      user: record.user || fallbackUser,
+    }));
 
     return {
       ...leak,
-      history: [...records]
-        .map((record) => ({
-          ...record,
-          user: record.user || fallbackUser,
-        }))
-        .sort((left, right) => Date.parse(left.date) - Date.parse(right.date)),
+      history: mergeHistoryRecords(leak.history, importedHistory),
       updatedAt: Math.max(
         Number(leak.updatedAt) || 0,
         ...records.map((record) => Date.parse(record.date) || 0),
@@ -1412,6 +1472,7 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
 
   const leaks = [];
   const seenLeakTags = new Set();
+  const explicitStatusLeakIds = new Set();
   let totalRows = 0;
   let skipped = 0;
   let duplicateLeakIds = 0;
@@ -1429,7 +1490,9 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
       const value = PHOTO_KEYS.has(column.key)
         ? getCellPhotoValue(cell)
         : getCellDisplayValue(cell);
-      const normalized = normalizeCellValue(column.key, value);
+      const normalized = normalizeCellValue(column.key, value, {
+        percentFormatted: String(cell.numFmt ?? "").includes("%"),
+      });
       if (normalized != null && normalized !== "") raw[column.key] = normalized;
     }
 
@@ -1451,6 +1514,7 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
       continue;
     }
     if (leakTag) seenLeakTags.add(leakTag);
+    if (raw.status) explicitStatusLeakIds.add(String(leak.leak_id));
     leaks.push(leak);
   }
 
@@ -1465,9 +1529,18 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
   const leaksBeforeHistoryAttach = historySheet
     ? leaks.map((leak) => ({ ...leak, history: [] }))
     : leaks;
+  const inferredStatusLeakIds = leaks
+    .map((leak) => String(leak.leak_id))
+    .filter(
+      (id) =>
+        !explicitStatusLeakIds.has(id) && monitoring.recordsByLeakId.has(id),
+    );
   const leaksWithMonitoring = attachMonitoringRecords(
     leaksBeforeHistoryAttach,
     monitoring.recordsByLeakId,
+    {
+      inferStatusForLeakIds: new Set(inferredStatusLeakIds),
+    },
   );
   const leaksWithHistory = attachHistoryRecords(
     leaksWithMonitoring,
@@ -1491,6 +1564,7 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
     monitoringSheetName: monitoringSheet?.name ?? "",
     historySheetName: historySheet?.name ?? "",
     monitoringRound,
+    inferredStatusLeakIds,
     project: resolvedProjectType ? { type: resolvedProjectType } : null,
   };
 }

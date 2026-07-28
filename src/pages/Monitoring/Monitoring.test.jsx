@@ -57,7 +57,16 @@ vi.mock("@/features/leakList/VirtualizedLeakList/VirtualizedLeakList", () => ({
     )),
 }));
 vi.mock("@/features/photos/PhotoInput/PhotoInput", () => ({
-  default: () => null,
+  default: ({ onChange }) => (
+    <button
+      type="button"
+      onClick={() =>
+        onChange({ raw: new Blob(["photo"], { type: "image/jpeg" }) })
+      }
+    >
+      Attach monitoring photo
+    </button>
+  ),
 }));
 vi.mock("@/features/status/ReopenLeakModal/ReopenLeakModal", () => ({
   default: ({ onConfirm }) => (
@@ -584,6 +593,8 @@ describe("Monitoring round flow", () => {
       JSON.stringify({ photoRequired: false }),
     );
     const setData = vi.fn().mockRejectedValue(new Error("database locked"));
+    photoStorage.savePhoto.mockResolvedValue("idb://monitoring-new");
+    photoStorage.deletePhoto.mockResolvedValue(undefined);
     const leak = { id: "leak-1", leak_id: "1001", status: "open" };
     render(
       <Monitoring
@@ -598,6 +609,9 @@ describe("Monitoring round flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "All tags 1" }));
     fireEvent.click(screen.getByRole("button", { name: "Swipe monitoring" }));
     fireEvent.click(screen.getByRole("button", { name: "Start round" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Attach monitoring photo" }),
+    );
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
@@ -606,6 +620,9 @@ describe("Monitoring round flow", () => {
       ).toBeTruthy(),
     );
     expect(screen.getByRole("heading", { name: "Check" })).toBeTruthy();
+    expect(photoStorage.deletePhoto).toHaveBeenCalledWith(
+      "idb://monitoring-new",
+    );
   });
 
   it("deletes the orphaned original photo after monitoring reopens a resolved leak", async () => {

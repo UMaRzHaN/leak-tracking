@@ -326,6 +326,8 @@ describe("excel export helpers", () => {
           leak_id: "00101",
           pressure: "12.5",
           flareShare: "0.5",
+          gasPercentage: "82.5",
+          uncertainty: "5",
           lat: "47.123456",
           status: "Open",
         },
@@ -334,12 +336,32 @@ describe("excel export helpers", () => {
           leak_id: "101",
           pressure: "8",
           flareShare: "0.25",
+          gasPercentage: "100",
+          uncertainty: "10",
           lat: "48",
           status: "Open",
         },
       ],
-      ["No.", "Tag", "Pressure", "Share", "Latitude", "Status"],
-      ["index", "leak_id", "pressure", "flareShare", "lat", "status"],
+      [
+        "No.",
+        "Tag",
+        "Pressure",
+        "Share",
+        "Gas content",
+        "Uncertainty",
+        "Latitude",
+        "Status",
+      ],
+      [
+        "index",
+        "leak_id",
+        "pressure",
+        "flareShare",
+        "gasPercentage",
+        "uncertainty",
+        "lat",
+        "status",
+      ],
       "report",
       null,
       null,
@@ -352,6 +374,8 @@ describe("excel export helpers", () => {
       "00101",
       12.5,
       0.5,
+      0.825,
+      0.05,
       47.123456,
       "Open",
     ]);
@@ -360,8 +384,10 @@ describe("excel export helpers", () => {
     expect(sheet.getColumn(2).numFmt).toBe("General");
     expect(sheet.getColumn(3).numFmt).toBe("#,##0.00");
     expect(sheet.getColumn(4).numFmt).toBe("0.0%");
-    expect(sheet.getColumn(5).numFmt).toBe("0.000000");
-    expect(sheet.getColumn(6).numFmt).toBe("@");
+    expect(sheet.getColumn(5).numFmt).toBe("0.0%");
+    expect(sheet.getColumn(6).numFmt).toBe("0.0%");
+    expect(sheet.getColumn(7).numFmt).toBe("0.000000");
+    expect(sheet.getColumn(8).numFmt).toBe("@");
   });
 
   it("exports the Russian leak question with concise monitoring answers", async () => {

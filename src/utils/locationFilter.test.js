@@ -4,6 +4,7 @@ import {
   buildSmartLocationSelection,
   getEnabledLocations,
   matchesLeakLocationFilter,
+  normalizeLocationValue,
 } from "./locationFilter";
 
 const locations = [
@@ -73,5 +74,15 @@ describe("location filter synchronization", () => {
     ).toEqual(
       Object.fromEntries(locations.map((location) => [location, false])),
     );
+  });
+  it("keeps empty locations stable across language changes", () => {
+    const filter = { key: "deposit", values: ["Не указано"] };
+
+    expect(normalizeLocationValue("Not specified")).toBe("");
+    expect(getEnabledLocations(["", "A"], "deposit", filter)).toEqual({
+      "": true,
+      A: false,
+    });
+    expect(matchesLeakLocationFilter({ deposit: null }, filter)).toBe(true);
   });
 });

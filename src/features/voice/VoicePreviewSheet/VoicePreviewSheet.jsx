@@ -1,5 +1,6 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useId } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { useModalDialog } from "@/hooks/useModalDialog";
 import s from "./VoicePreviewSheet.module.scss";
 
 const VOICE_KEY_LABELS = {
@@ -26,6 +27,11 @@ export default function VoicePreviewSheet({
   onDismiss,
 }) {
   const { lang, t } = useLanguage();
+  const titleId = useId();
+  const dialogRef = useModalDialog({
+    open: Boolean(pending),
+    onClose: onDismiss,
+  });
 
   const labelMap = useMemo(() => {
     const map = {};
@@ -74,9 +80,17 @@ export default function VoicePreviewSheet({
 
   return (
     <div className={s.overlay} onClick={onDismiss}>
-      <div className={s.sheet} onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        className={s.sheet}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className={s.handle} />
-        <p className={s.title}>
+        <p id={titleId} className={s.title}>
           {t("voice.preview.title", {
             defaultValue: "Recognized by voice",
           })}{" "}

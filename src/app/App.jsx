@@ -32,6 +32,11 @@ import { saveMonitoringRound } from "@/utils/monitoringRound";
 import { NEARBY_RADIUS_M } from "@/pages/DataBase/hooks/useDataBaseFilters";
 import { MONITORING_FILTER } from "@/pages/Monitoring/monitoringDomain";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
+import { PROJECTS } from "@/configs/projects";
+import {
+  readProjectFilters,
+  writeProjectFilters,
+} from "@/app/project/projectFilters";
 import { writeProjectSettings } from "@/app/project/projectSettings";
 import { writeProjectSyncState } from "@/services/projectSyncState";
 import { rollbackImportedProject } from "@/services/projectCleanup";
@@ -42,7 +47,11 @@ const DataBase = lazy(() => import("@/pages/DataBase/DataBase"));
 const MapPage = lazy(() => import("@/pages/MapPage/MapPage"));
 const Monitoring = lazy(() => import("@/pages/Monitoring/Monitoring"));
 
-function AppLoader({ label = "Загрузка данных", overlay = false }) {
+function AppLoader({ label, overlay = false }) {
+  const { lang } = useLanguage();
+  const resolvedLabel =
+    label ?? (lang === "ru" ? "Загрузка данных" : "Loading data");
+
   return (
     <div
       className={`appLoader${overlay ? " appLoaderOverlay" : ""}`}
@@ -51,7 +60,7 @@ function AppLoader({ label = "Загрузка данных", overlay = false })
       aria-busy="true"
     >
       <span className="appLoaderRing" aria-hidden="true" />
-      <span className="appLoaderText">{label}</span>
+      <span className="appLoaderText">{resolvedLabel}</span>
     </div>
   );
 }
@@ -122,8 +131,14 @@ export default function App() {
 
   const [sharedSearch, setSharedSearch] = useState("");
   const { lang } = useLanguage();
+  const importingDataLabel =
+    lang === "ru"
+      ? "Импорт данных, подождите..."
+      : "Importing data, please wait...";
   const [sharedStatusFilter, setSharedStatusFilter] = useState([]);
   const [sharedPriorityFilter, setSharedPriorityFilter] = useState([]);
+  const [sharedMainLocationFilter, setSharedMainLocationFilter] =
+    useState(null);
   const [sharedLocationFilter, setSharedLocationFilter] = useState(null);
   const [sharedNearbyFilter, setSharedNearbyFilter] = useState(false);
   const [sharedNearbyRadius, setSharedNearbyRadius] = useState(NEARBY_RADIUS_M);
@@ -136,6 +151,8 @@ export default function App() {
     [],
   );
   const [userProfileOpen, setUserProfileOpen] = useState(false);
+  const filterPersistenceProjectRef = useRef(null);
+  const skipNextFilterPersistRef = useRef(false);
   const { profile: userProfile, setProfile: setUserProfile } = useUserProfile();
 
   const sharedFilters = useMemo(
@@ -146,6 +163,8 @@ export default function App() {
       setFilter: setSharedStatusFilter,
       priorityFilter: sharedPriorityFilter,
       setPriorityFilter: setSharedPriorityFilter,
+      mainLocationFilter: sharedMainLocationFilter,
+      setMainLocationFilter: setSharedMainLocationFilter,
       locationFilter: sharedLocationFilter,
       setLocationFilter: setSharedLocationFilter,
       nearbyFilter: sharedNearbyFilter,
@@ -159,6 +178,7 @@ export default function App() {
       sharedSearch,
       sharedStatusFilter,
       sharedPriorityFilter,
+      sharedMainLocationFilter,
       sharedLocationFilter,
       sharedNearbyFilter,
       sharedNearbyRadius,
@@ -194,8 +214,60 @@ export default function App() {
   } = useProjectData();
 
   useEffect(() => {
-    setSharedLocationFilter(null);
-  }, [activeProject?.id]);
+    const projectId = activeProject?.id ?? null;
+    filterPersistenceProjectRef.current = projectId;
+    skipNextFilterPersistRef.current = true;
+    const filters = readProjectFilters(projectId);
+    const locationConfig = PROJECTS[activeProject?.type]?.system?.location;
+    const mainLocationFilter =
+      filters.mainLocationFilter?.key === locationConfig?.main
+        ? filters.mainLocationFilter
+        : null;
+    const locationFilter =
+      filters.locationFilter?.key === locationConfig?.secondary
+        ? filters.locationFilter
+        : null;
+
+    setSharedSearch(filters.search);
+    setSharedStatusFilter(filters.statusFilter);
+    setSharedPriorityFilter(filters.priorityFilter);
+    setSharedMainLocationFilter(mainLocationFilter);
+    setSharedLocationFilter(locationFilter);
+    setSharedNearbyFilter(filters.nearbyFilter);
+    setSharedNearbyRadius(filters.nearbyRadius);
+    setSharedMonitoringFilter(filters.monitoringFilter);
+  }, [activeProject?.id, activeProject?.type]);
+
+  useEffect(() => {
+    const projectId = activeProject?.id ?? null;
+    if (!projectId || filterPersistenceProjectRef.current !== projectId) return;
+    if (skipNextFilterPersistRef.current) {
+      skipNextFilterPersistRef.current = false;
+      return;
+    }
+
+    writeProjectFilters(projectId, {
+      search: sharedSearch,
+      statusFilter: sharedStatusFilter,
+      priorityFilter: sharedPriorityFilter,
+      mainLocationFilter: sharedMainLocationFilter,
+      locationFilter: sharedLocationFilter,
+      nearbyFilter: sharedNearbyFilter,
+      nearbyRadius: sharedNearbyRadius,
+      monitoringFilter: sharedMonitoringFilter,
+    });
+  }, [
+    activeProject?.id,
+    activeProject?.type,
+    sharedSearch,
+    sharedStatusFilter,
+    sharedPriorityFilter,
+    sharedMainLocationFilter,
+    sharedLocationFilter,
+    sharedNearbyFilter,
+    sharedNearbyRadius,
+    sharedMonitoringFilter,
+  ]);
 
   /* =========================
      PHOTO GC
@@ -472,14 +544,7 @@ export default function App() {
           {!dataLoaded && <AppLoader />}
 
           {isImportingProject && (
-            <AppLoader
-              overlay
-              label={
-                lang === "ru"
-                  ? "Импорт данных, подождите..."
-                  : "Importing data, please wait..."
-              }
-            />
+            <AppLoader overlay label={importingDataLabel} />
           )}
 
           {dataLoaded && !isImportingProject && loadError && (

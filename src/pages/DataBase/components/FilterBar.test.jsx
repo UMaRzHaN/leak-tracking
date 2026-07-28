@@ -88,4 +88,28 @@ describe("FilterBar shared location filter", () => {
         .getAttribute("aria-pressed"),
     ).toBe("false");
   });
+  it("shows and updates the configured main location filter", () => {
+    const setMainLocationFilter = vi.fn();
+    render(
+      <FilterBar
+        {...props({
+          mainLocationKey: "subdivision",
+          mainLocationLabel: "Subdivision",
+          mainLocationOptions: ["North", "South"],
+          mainLocationFilter: null,
+          setMainLocationFilter,
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(screen.getByText("Subdivision")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "North" }));
+
+    const update = setMainLocationFilter.mock.calls[0][0];
+    expect(update(null)).toEqual({
+      key: "subdivision",
+      values: ["South"],
+    });
+  });
 });

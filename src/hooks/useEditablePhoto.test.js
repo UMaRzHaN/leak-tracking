@@ -52,4 +52,22 @@ describe("useEditablePhoto", () => {
       "idb://after",
     ]);
   });
+
+  it("rejects a failed photo write and keeps the draft dirty", async () => {
+    const raw = new Blob(["new-photo"], { type: "image/jpeg" });
+    mocks.pickFromBrowser.mockResolvedValue({ raw, src: "blob:new" });
+    mocks.savePhoto.mockResolvedValue(null);
+    const { result } = renderHook(() =>
+      useEditablePhoto({ initialPath: "idb://old", leakId: "leak-1" }),
+    );
+
+    await act(async () => {
+      await result.current.changePhoto({ target: { files: [raw] } });
+    });
+
+    await expect(act(async () => result.current.savePhoto())).rejects.toThrow(
+      "Photo storage did not return a saved path",
+    );
+    expect(result.current.isDirty).toBe(true);
+  });
 });

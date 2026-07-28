@@ -134,6 +134,11 @@
   padding: 12px 10px;
   border-radius: var(--r-md);
 
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
   font-size: 14px;
   color: var(--c-text);
   cursor: pointer;

@@ -249,4 +249,83 @@ describe("useDataBaseFilters multi-select", () => {
     expect(setNearbyFilter).toHaveBeenCalledWith(true);
     expect(setNearbyRadius).toHaveBeenCalledWith(500);
   });
+  it.each(Object.entries(PROJECTS))(
+    "uses the configured main location field for %s",
+    (_projectType, config) => {
+      const key = config.system.location.main;
+      const data = [
+        { id: 1, [key]: "Main A" },
+        { id: 2, [key]: "Main B" },
+      ];
+      const { result } = renderHook(() =>
+        useDataBaseFilters({
+          data,
+          coords: null,
+          configuredMainLocationKey: key,
+        }),
+      );
+
+      expect(result.current.mainLocationKey).toBe(key);
+      expect(result.current.mainLocationOptions).toEqual(["Main A", "Main B"]);
+    },
+  );
+
+  it("combines main and secondary location filters", () => {
+    const data = [
+      { id: 1, subdivision: "North", deposit: "A" },
+      { id: 2, subdivision: "North", deposit: "B" },
+      { id: 3, subdivision: "South", deposit: "A" },
+    ];
+    const sharedFilters = {
+      mainLocationFilter: { key: "subdivision", values: ["North"] },
+      setMainLocationFilter: vi.fn(),
+      locationFilter: { key: "deposit", values: ["A"] },
+      setLocationFilter: vi.fn(),
+    };
+    const { result } = renderHook(() =>
+      useDataBaseFilters({ data, coords: null, sharedFilters }),
+    );
+
+    expect(result.current.displayed.map((item) => item.id)).toEqual([1]);
+  });
+  it("uses configured keys instead of incompatible persisted location keys", () => {
+    const data = [
+      { id: 1, field: "West", station: "S1", subdivision: "Old" },
+      { id: 2, field: "East", station: "S2", subdivision: "North" },
+    ];
+    const sharedFilters = {
+      mainLocationFilter: { key: "subdivision", values: ["Old"] },
+      setMainLocationFilter: vi.fn(),
+      locationFilter: { key: "deposit", values: ["Legacy"] },
+      setLocationFilter: vi.fn(),
+    };
+    const { result } = renderHook(() =>
+      useDataBaseFilters({
+        data,
+        coords: null,
+        sharedFilters,
+        configuredMainLocationKey: "field",
+        configuredLocationKey: "station",
+      }),
+    );
+
+    expect(result.current.mainLocationKey).toBe("field");
+    expect(result.current.locationKey).toBe("station");
+    expect(result.current.displayed.map((item) => item.id)).toEqual([2, 1]);
+  });
+
+  it("offers an empty main location as a filter option", () => {
+    const { result } = renderHook(() =>
+      useDataBaseFilters({
+        data: [
+          { id: 1, subdivision: "North" },
+          { id: 2, subdivision: "" },
+        ],
+        coords: null,
+        configuredMainLocationKey: "subdivision",
+      }),
+    );
+
+    expect(result.current.mainLocationOptions).toEqual(["", "North"]);
+  });
 });

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/hooks/useSwipeCard", () => ({
@@ -42,7 +42,7 @@ vi.mock("@/features/photos/PhotoViewer/PhotoViewer", () => ({
 
 import LeakCardCompact from "./LeakCardCompact";
 
-function renderCard(leak) {
+function renderCard(leak, props = {}) {
   return render(
     <LeakCardCompact
       leak={{
@@ -53,6 +53,7 @@ function renderCard(leak) {
         ...leak,
       }}
       onOpenDetails={vi.fn()}
+      {...props}
     />,
   );
 }
@@ -98,5 +99,34 @@ describe("LeakCardCompact location hierarchy", () => {
 
     expect(screen.getByText("Valve 7")).toBeTruthy();
     expect(screen.getByText("◉")).toBeTruthy();
+  });
+
+  it("keeps the header and footer visible while collapsed and expands on click", () => {
+    renderCard({
+      location: "Compressor room",
+      leak_speed: 18.12,
+    });
+
+    expect(screen.getByText(/TAG-1/)).toBeTruthy();
+    expect(screen.getByText(/18.12/)).toBeTruthy();
+    expect(screen.getByText("Compressor room")).toBeTruthy();
+
+    const expandButton = screen.getByRole("button", { name: "Expand card" });
+    const card = expandButton.closest("[data-urgency]");
+    expect(expandButton.getAttribute("aria-expanded")).toBe("false");
+    expect(card.className).toMatch(/collapsed/);
+    fireEvent.click(expandButton);
+
+    expect(card.className).not.toMatch(/collapsed/);
+    expect(screen.getByRole("button", { name: "Collapse card" })).toBeTruthy();
+  });
+  it("does not toggle expansion from the selection control", () => {
+    renderCard({}, { onToggleSelect: vi.fn() });
+
+    const expandButton = screen.getByRole("button", { name: "Expand card" });
+    const selectButton = screen.getByRole("button", { name: "Select leak" });
+    fireEvent.keyDown(selectButton, { key: "Enter" });
+
+    expect(expandButton.getAttribute("aria-expanded")).toBe("false");
   });
 });

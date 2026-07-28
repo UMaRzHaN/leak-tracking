@@ -608,23 +608,50 @@ function mergeRecordArray(
   incomingRecords.forEach((record, index) => {
     const identity = getRecordMergeIdentity(record, index, arrayKey);
     let existingIndex = indexByIdentity.get(identity);
+    let matchedExcelCalendarRow = false;
 
-    // The exported monitoring sheet intentionally shows a calendar date.
-    // Match that row back to the original record even though its exact time,
-    // internal id and round id are not represented in Excel.
-    if (
-      existingIndex == null &&
-      options.source === "excel" &&
-      arrayKey === "monitoringRecords"
-    ) {
-      existingIndex = merged.findIndex(
-        (current) =>
-          Number(current?.roundNumber) === Number(record?.roundNumber) &&
-          comparableExcelDate(current?.date) ===
-            comparableExcelDate(record?.date) &&
-          String(current?.result ?? "") === String(record?.result ?? ""),
-      );
-      if (existingIndex < 0) existingIndex = undefined;
+    // Prefer the exported timestamp when it is available. Date-only workbooks
+    // still need the legacy calendar-day fallback, but a timed record must never
+    // overwrite the first monitoring entry from the same day.
+    if (options.source === "excel" && arrayKey === "monitoringRecords") {
+      const recordTime = parseTime(record?.date);
+      const recordHasTimeOfDay = (() => {
+        const parsed = new Date(record?.date);
+        if (!Number.isFinite(parsed.getTime())) return false;
+        const isLocalMidnight =
+          parsed.getHours() === 0 &&
+          parsed.getMinutes() === 0 &&
+          parsed.getSeconds() === 0 &&
+          parsed.getMilliseconds() === 0;
+        const isUtcMidnight =
+          parsed.getUTCHours() === 0 &&
+          parsed.getUTCMinutes() === 0 &&
+          parsed.getUTCSeconds() === 0 &&
+          parsed.getUTCMilliseconds() === 0;
+        return !isLocalMidnight && !isUtcMidnight;
+      })();
+      const matchesExcelTimestamp = (current) =>
+        (Number(current?.roundNumber) || 1) ===
+          (Number(record?.roundNumber) || 1) &&
+        parseTime(current?.date) === recordTime;
+      const matchesExcelCalendarRow = (current) =>
+        (Number(current?.roundNumber) || 1) ===
+          (Number(record?.roundNumber) || 1) &&
+        comparableExcelDate(current?.date) ===
+          comparableExcelDate(record?.date);
+
+      if (existingIndex != null) {
+        matchedExcelCalendarRow = matchesExcelCalendarRow(
+          merged[existingIndex],
+        );
+      } else {
+        existingIndex = merged.findIndex(matchesExcelTimestamp);
+        if (existingIndex < 0 && !recordHasTimeOfDay) {
+          existingIndex = merged.findIndex(matchesExcelCalendarRow);
+        }
+        matchedExcelCalendarRow = existingIndex >= 0;
+        if (existingIndex < 0) existingIndex = undefined;
+      }
     }
 
     if (existingIndex == null) {
@@ -634,7 +661,10 @@ function mergeRecordArray(
     }
 
     const current = merged[existingIndex];
-    if (parseTime(record?.date) >= parseTime(current?.date)) {
+    if (
+      matchedExcelCalendarRow ||
+      parseTime(record?.date) >= parseTime(current?.date)
+    ) {
       const next = { ...current };
       for (const [key, value] of Object.entries(record ?? {})) {
         if (arrayKey === "history" && key === "user") continue;
@@ -732,6 +762,42 @@ function mergeSyncLeakFields(existingLeak, incomingLeak) {
   next[LEAK_FIELD_VERSIONS_KEY] = mergedVersions;
   return next;
 }
+function getMonitoringDerivedStatus(result) {
+  if (result === "resolved") return "resolved";
+  if (result === "needs_recheck") return "in_progress";
+  return "open";
+}
+
+function applyMonitoringDerivedStatus(leak, options = {}) {
+  if (options.source !== "excel") return leak;
+  const inferredIds = options.inferredStatusLeakIds;
+  const leakId = String(leak?.leak_id ?? "");
+  const shouldInfer =
+    inferredIds instanceof Set
+      ? inferredIds.has(leakId)
+      : Array.isArray(inferredIds) && inferredIds.includes(leakId);
+  if (!shouldInfer) return leak;
+
+  const records = Array.isArray(leak?.monitoringRecords)
+    ? leak.monitoringRecords
+    : [];
+  const latestMonitoring = records.at(-1);
+  if (!latestMonitoring) return leak;
+
+  const next = {
+    ...leak,
+    status: getMonitoringDerivedStatus(latestMonitoring.result),
+  };
+  if (next.status === "resolved") {
+    if (isEmptyMergeValue(next.resolvedAt)) {
+      next.resolvedAt = latestMonitoring.date;
+    }
+  } else {
+    delete next.resolvedAt;
+  }
+  return next;
+}
+
 function mergeFreshLeakFields(existingLeak, incomingLeak, options = {}) {
   if (options.source === "sync") {
     return mergeSyncLeakFields(existingLeak, incomingLeak);
@@ -763,7 +829,8 @@ function mergeFreshLeakFields(existingLeak, incomingLeak, options = {}) {
   next.id = existingLeak?.id ?? incomingLeak?.id;
   next.index = existingLeak?.index ?? incomingLeak?.index;
 
-  const merged = mergePhotoFields(existingLeak, next);
+  let merged = mergePhotoFields(existingLeak, next);
+  merged = applyMonitoringDerivedStatus(merged, options);
 
   if (options.addHistory) {
     const changes = buildMergeHistoryChanges(existingLeak, merged, options);
@@ -873,8 +940,8 @@ export function mergeLeaksByFreshness(
         merged[existingIndex],
         leak,
         {
+          ...options,
           addHistory: options.source !== "sync",
-          source: options.source,
         },
       );
       updated += 1;

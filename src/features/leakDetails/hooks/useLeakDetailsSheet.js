@@ -405,7 +405,13 @@ export function useLeakDetailsSheet({
         ),
       );
       setResolveOpen(false);
+      if (leak.photo_after && leak.photo_after !== photo_after) {
+        await deletePhoto(leak.photo_after).catch(() => {});
+      }
     } catch {
+      if (photo_after && photo_after !== leak.photo_after) {
+        await deletePhoto(photo_after).catch(() => {});
+      }
       reportSaveError();
     }
   };
@@ -426,8 +432,14 @@ export function useLeakDetailsSheet({
         ),
       );
       setRepairOpen(false);
+      if (leak.photo_repair && leak.photo_repair !== photo_repair) {
+        await deletePhoto(leak.photo_repair).catch(() => {});
+      }
       if (orphanedPhoto) await deletePhoto(orphanedPhoto).catch(() => {});
     } catch {
+      if (photo_repair && photo_repair !== leak.photo_repair) {
+        await deletePhoto(photo_repair).catch(() => {});
+      }
       reportSaveError();
     }
   };

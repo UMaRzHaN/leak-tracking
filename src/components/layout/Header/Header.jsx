@@ -38,82 +38,76 @@ export default function Header({
   const displayName = projectName || meta?.title || localeTexts.defaultProject;
   const userName = userProfile?.name?.trim() ?? "";
   const userInitial = userName.slice(0, 1).toUpperCase();
+  const hasCoords =
+    Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng);
+  const gpsStatus = geoLoading
+    ? localeTexts.gpsSearch
+    : geoError
+      ? localeTexts.gpsError
+      : gpsEnabled && hasCoords
+        ? localeTexts.gpsOn
+        : localeTexts.gpsOff;
 
   return (
     <header className={s.header}>
-      {/* ── Left: project info ── */}
-      <button className={s.nameArea} onClick={() => setPage("")}>
-        <span className={s.appLabel}>{localeTexts.appTitle}</span>
-        <span className={s.projectName}>{displayName}</span>
-        {meta && <span className={s.typeBadge}>{meta.title}</span>}
-      </button>
-
-      {/* ── Right: GPS + settings ── */}
-      <div className={s.right}>
+      <div className={s.topRow}>
         <button
-          className={`${s.userBtn} ${userName ? s.userBtnActive : ""}`}
+          className={s.nameArea}
           type="button"
-          onClick={onUserProfileOpen}
-          title={userName || (lang === "ru" ? "Пользователь" : "User")}
-          aria-label={
-            userName ||
-            (lang === "ru"
-              ? "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c"
-              : "User")
-          }
+          onClick={() => setPage("")}
+          title={displayName}
         >
-          {userInitial || <span className={s.userIcon} aria-hidden="true" />}
+          <span className={s.appLabel}>{localeTexts.appTitle}</span>
+          <span className={s.projectName}>{displayName}</span>
         </button>
 
-        {/* GPS toggle */}
+        <div className={s.actions}>
+          <button
+            className={`${s.userBtn} ${userName ? s.userBtnActive : ""}`}
+            type="button"
+            onClick={onUserProfileOpen}
+            title={userName || (lang === "ru" ? "Пользователь" : "User")}
+            aria-label={userName || (lang === "ru" ? "Пользователь" : "User")}
+          >
+            {userInitial || <span className={s.userIcon} aria-hidden="true" />}
+          </button>
+
+          <button
+            className={s.settingsBtn}
+            type="button"
+            onClick={() => setPage("settings")}
+            title={localeTexts.settings}
+            aria-label={localeTexts.settings}
+          >
+            <span aria-hidden="true">⚙</span>
+          </button>
+        </div>
+      </div>
+
+      <div className={s.statusRow}>
+        {meta && <span className={s.typeBadge}>{meta.title}</span>}
+
         <button
           className={`${s.gpsToggle} ${gpsEnabled ? s.gpsOn : s.gpsOff}`}
-          onClick={() => setGpsEnabled?.((v) => !v)}
+          type="button"
+          onClick={() => setGpsEnabled?.((value) => !value)}
           title={gpsEnabled ? localeTexts.gpsOnTitle : localeTexts.gpsOffTitle}
           aria-label={
             gpsEnabled ? localeTexts.gpsOnTitle : localeTexts.gpsOffTitle
           }
         >
-          {gpsEnabled ? (
-            <>
-              <div className={s.gpsRow}>
-                <span className={s.gpsDot} />
-                {geoLoading ? (
-                  <span className={s.gpsLabel}>{localeTexts.gpsSearch}</span>
-                ) : geoError ? (
-                  <span className={s.gpsLabel}>{localeTexts.gpsError}</span>
-                ) : coords?.lat ? (
-                  <span className={s.gpsLabel}>{localeTexts.gpsOn}</span>
-                ) : (
-                  <span className={s.gpsLabel}>{localeTexts.gpsOff}</span>
-                )}
-              </div>
-              {coords?.lat != null && (
-                <div className={s.gpsCoords}>
-                  {coords.lat.toFixed(6)}&nbsp;/&nbsp;{coords.lng.toFixed(6)}
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <span className={s.gpsLabel}>{localeTexts.gpsOff}</span>
-              {coords?.lat != null && (
-                <div className={s.gpsCoords}>
-                  {coords.lat.toFixed(6)}&nbsp;/&nbsp;{coords.lng.toFixed(6)}
-                </div>
-              )}
-            </>
+          <span className={s.gpsSummary}>
+            <span className={s.gpsDot} aria-hidden="true" />
+            <span className={s.gpsLabel}>{gpsStatus}</span>
+          </span>
+          {hasCoords && (
+            <span className={s.gpsCoords}>
+              {coords.lat.toFixed(6)} / {coords.lng.toFixed(6)}
+            </span>
           )}
-        </button>
-
-        {/* Settings */}
-        <button
-          className={s.settingsBtn}
-          onClick={() => setPage("settings")}
-          title={localeTexts.settings}
-          aria-label={localeTexts.settings}
-        >
-          ⚙
+          <span className={s.gpsSwitch} aria-hidden="true">
+            <span className={s.gpsSwitchThumb} />
+          </span>
         </button>
       </div>
     </header>

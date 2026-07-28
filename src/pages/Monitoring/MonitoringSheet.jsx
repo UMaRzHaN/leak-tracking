@@ -1,3 +1,5 @@
+import { useId } from "react";
+import { useModalDialog } from "@/hooks/useModalDialog";
 import PhotoInput from "@/features/photos/PhotoInput/PhotoInput";
 import {
   MONITORING_RESULT_ORDER,
@@ -19,14 +21,28 @@ export default function MonitoringSheet({
   onSave,
   onClose,
 }) {
+  const titleId = useId();
+  const dialogRef = useModalDialog({
+    onClose,
+    closeDisabled: saving,
+  });
+
   return (
     <div className={s.sheetOverlay} onClick={saving ? undefined : onClose}>
-      <div className={s.sheet} onClick={(event) => event.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        className={s.sheet}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className={s.sheetHandle} />
         <div className={s.sheetHeader}>
           <div className={s.sheetTitleBlock}>
             <div className={s.sheetTitleRow}>
-              <h2>{texts.check}</h2>
+              <h2 id={titleId}>{texts.check}</h2>
               {progress && progress.total > 1 && (
                 <span className={s.progressBadge}>
                   {progress.current} / {progress.total}

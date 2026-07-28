@@ -4,11 +4,13 @@ import AddLeak from "./AddLeak";
 
 const mocks = vi.hoisted(() => ({
   initialForm: {},
+  submittedRow: { leak_id: "TAG-1", leak_speed: "2.5" },
   hasDraft: vi.fn(() => false),
   loadDraft: vi.fn(() => null),
   saveDraft: vi.fn(),
   clearDraft: vi.fn(),
   savePhoto: vi.fn(),
+  deletePhoto: vi.fn(),
   hapticSuccess: vi.fn(),
   hapticWarning: vi.fn(),
 }));
@@ -31,7 +33,11 @@ vi.mock("@/hooks/useFormDraft", () => ({
   }),
 }));
 vi.mock("@/hooks/usePhotoStorage", () => ({
-  usePhotoStorage: () => ({ savePhoto: mocks.savePhoto, ready: true }),
+  usePhotoStorage: () => ({
+    savePhoto: mocks.savePhoto,
+    deletePhoto: mocks.deletePhoto,
+    ready: true,
+  }),
 }));
 vi.mock("@/hooks/useSafeSave", () => ({
   useSafeSave: () => ({ isSaving: false, run: (operation) => operation() }),
@@ -61,7 +67,7 @@ vi.mock("@/features/leakForm/LeakForm", () => ({
     <div>
       <button
         onClick={async () => {
-          const saved = await onAdd({ leak_id: "TAG-1", leak_speed: "2.5" });
+          const saved = await onAdd(mocks.submittedRow);
           if (saved) onSaved(saved);
         }}
       >
@@ -88,11 +94,13 @@ function renderAddLeak(overrides = {}) {
 describe("AddLeak orchestration", () => {
   beforeEach(() => {
     mocks.initialForm = {};
+    mocks.submittedRow = { leak_id: "TAG-1", leak_speed: "2.5" };
     mocks.hasDraft.mockReset().mockReturnValue(false);
     mocks.loadDraft.mockReset().mockReturnValue(null);
     mocks.saveDraft.mockReset();
     mocks.clearDraft.mockReset();
     mocks.savePhoto.mockReset().mockResolvedValue("photos/leak.jpg");
+    mocks.deletePhoto.mockReset().mockResolvedValue(undefined);
     mocks.hapticSuccess.mockReset();
     mocks.hapticWarning.mockReset();
     window.scrollTo = vi.fn();
@@ -132,6 +140,53 @@ describe("AddLeak orchestration", () => {
 
     expect(await screen.findByRole("alert")).not.toBeNull();
     expect(props.setData).not.toHaveBeenCalled();
+  });
+
+  it("rejects a duplicate leak tag before saving", async () => {
+    const { props } = renderAddLeak({
+      data: [{ id: "existing", leak_id: " tag-1 " }],
+    });
+    fireEvent.click(screen.getByText("submit-leak"));
+
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "A leak with this tag already exists",
+    );
+    expect(props.setData).not.toHaveBeenCalled();
+    expect(mocks.savePhoto).not.toHaveBeenCalled();
+  });
+
+  it("does not persist a record when its photo cannot be saved", async () => {
+    mocks.submittedRow = {
+      leak_id: "TAG-2",
+      leak_speed: "3",
+      photo: { raw: new Blob(["photo"], { type: "image/jpeg" }) },
+    };
+    mocks.savePhoto.mockResolvedValue(null);
+    const { props } = renderAddLeak();
+    fireEvent.click(screen.getByText("submit-leak"));
+
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "Failed to save the photo",
+    );
+    expect(props.setData).not.toHaveBeenCalled();
+  });
+
+  it("removes a newly saved photo when project persistence fails", async () => {
+    mocks.submittedRow = {
+      leak_id: "TAG-3",
+      leak_speed: "4",
+      photo: { raw: new Blob(["photo"], { type: "image/jpeg" }) },
+    };
+    const setData = vi.fn().mockRejectedValue(new Error("database locked"));
+    renderAddLeak({ setData });
+
+    fireEvent.click(screen.getByText("submit-leak"));
+
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "database locked",
+    );
+    expect(mocks.deletePhoto).toHaveBeenCalledWith("photos/leak.jpg");
+    expect(mocks.clearDraft).not.toHaveBeenCalled();
   });
 
   it("offers and restores an existing project draft", async () => {

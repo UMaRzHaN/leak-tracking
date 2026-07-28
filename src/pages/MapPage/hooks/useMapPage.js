@@ -10,6 +10,7 @@ import {
   buildLocationFilterFromEnabled,
   buildSmartLocationSelection,
   getEnabledLocations,
+  normalizeLocationValue,
 } from "@/utils/locationFilter";
 import {
   MONITORING_FILTER,
@@ -52,6 +53,8 @@ export function useMapPage({
   const {
     leaks: normalizedLeaks,
     locations,
+    main: mainLocationKey,
+    mainLabel: mainLocationLabel,
     secondary: locationKey,
     label: locationLabel,
   } = useActiveLocation(leaks);
@@ -67,6 +70,7 @@ export function useMapPage({
   const [localNearbyRadius, setLocalNearbyRadius] = useState(NEARBY_RADIUS_M);
   const [localPriorityFilter, setLocalPriorityFilter] = useState([]);
   const [localStatusFilter, setLocalStatusFilter] = useState([]);
+  const [localMainLocationFilter, setLocalMainLocationFilter] = useState(null);
   const [localLocationFilter, setLocalLocationFilter] = useState(null);
   const [localMonitoringFilter, setLocalMonitoringFilter] = useState(
     MONITORING_FILTER.DUE,
@@ -106,6 +110,30 @@ export function useMapPage({
   const setLocationFilter = hasSharedLocationFilter
     ? sharedFilters.setLocationFilter
     : setLocalLocationFilter;
+  const hasSharedMainLocationFilter =
+    typeof sharedFilters?.setMainLocationFilter === "function";
+  const mainLocationFilter = hasSharedMainLocationFilter
+    ? (sharedFilters.mainLocationFilter ?? null)
+    : localMainLocationFilter;
+  const setMainLocationFilter = hasSharedMainLocationFilter
+    ? sharedFilters.setMainLocationFilter
+    : setLocalMainLocationFilter;
+  const mainLocations = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          normalizedLeaks.map((leak) =>
+            normalizeLocationValue(leak?.[mainLocationKey]),
+          ),
+        ),
+      ),
+    [mainLocationKey, normalizedLeaks],
+  );
+  const enabledMainLocations = useMemo(
+    () =>
+      getEnabledLocations(mainLocations, mainLocationKey, mainLocationFilter),
+    [mainLocationFilter, mainLocationKey, mainLocations],
+  );
   const enabledLocations = useMemo(
     () => getEnabledLocations(locations, locationKey, locationFilter),
     [locationFilter, locationKey, locations],
@@ -127,6 +155,28 @@ export function useMapPage({
       buildLocationFilterFromEnabled(locations, locationKey, selection),
     );
   }, [locationKey, locations, setLocationFilter, sharedSearch]);
+
+  const toggleMainLocation = useCallback(
+    (location) => {
+      setMainLocationFilter((current) => {
+        const currentEnabled = getEnabledLocations(
+          mainLocations,
+          mainLocationKey,
+          current,
+        );
+        const nextEnabled = {
+          ...currentEnabled,
+          [location]: !currentEnabled[location],
+        };
+        return buildLocationFilterFromEnabled(
+          mainLocations,
+          mainLocationKey,
+          nextEnabled,
+        );
+      });
+    },
+    [mainLocationKey, mainLocations, setMainLocationFilter],
+  );
 
   const toggleLocation = useCallback(
     (location) => {
@@ -155,12 +205,22 @@ export function useMapPage({
       normalizedLeaks.filter(
         (leak) =>
           enabledLocations[leak._location] &&
+          enabledMainLocations[
+            normalizeLocationValue(leak?.[mainLocationKey])
+          ] &&
           (statusFilters.length === 0 ||
             statusFilters.includes(leak.status ?? STATUS.OPEN)) &&
           (priorityFilters.length === 0 ||
             priorityFilters.includes(leak.priority ?? null)),
       ),
-    [normalizedLeaks, enabledLocations, statusFilters, priorityFilters],
+    [
+      normalizedLeaks,
+      enabledLocations,
+      enabledMainLocations,
+      mainLocationKey,
+      statusFilters,
+      priorityFilters,
+    ],
   );
 
   const togglePriorityFilter = useCallback(
@@ -509,6 +569,9 @@ export function useMapPage({
     visibleLeaks,
     monitoringFilter,
     hasMonitoringRound,
+    mainLocations,
+    mainLocationLabel,
+    enabledMainLocations,
     locations,
     locationLabel,
     enabledLocations,
@@ -528,6 +591,7 @@ export function useMapPage({
     clearPriorityFilters: () => setPriorityFilter([]),
     toggleStatusFilter,
     clearStatusFilters: () => setStatusFilter([]),
+    toggleMainLocation,
     toggleLocation,
     handleDownloadArea,
     handleExportKML,

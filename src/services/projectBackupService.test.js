@@ -968,6 +968,233 @@ describe("mergeLeaksByFreshness", () => {
     });
   });
 
+  it("updates the exact timed monitoring row when a round has repeated checks", () => {
+    const local = {
+      id: "same-leak",
+      leak_id: 7,
+      monitoringRecords: [
+        {
+          id: "morning-record",
+          roundNumber: 3,
+          date: "2026-03-16T09:00:00.000Z",
+          result: "still_leaking",
+          comment: "Morning check",
+        },
+        {
+          id: "afternoon-record",
+          roundNumber: 3,
+          date: "2026-03-16T15:00:00.000Z",
+          result: "still_leaking",
+          comment: "Afternoon check",
+        },
+      ],
+    };
+    const fromExcel = {
+      id: "excel-generated-id",
+      leak_id: 7,
+      monitoringRecords: [
+        {
+          id: "excel-record",
+          roundNumber: 3,
+          date: "2026-03-16T15:00:00.000Z",
+          result: "resolved",
+          comment: "Resolved in Excel",
+        },
+      ],
+    };
+
+    const result = mergeLeaksByFreshness([local], [fromExcel], {
+      source: "excel",
+    });
+
+    expect(result.leaks[0].monitoringRecords).toHaveLength(2);
+    expect(result.leaks[0].monitoringRecords[0]).toMatchObject({
+      id: "morning-record",
+      result: "still_leaking",
+      comment: "Morning check",
+    });
+    expect(result.leaks[0].monitoringRecords[1]).toMatchObject({
+      id: "afternoon-record",
+      result: "resolved",
+      comment: "Resolved in Excel",
+    });
+  });
+
+  it("derives a blank Excel status from the latest merged monitoring record", () => {
+    const local = {
+      id: "same-leak",
+      leak_id: 7,
+      status: "resolved",
+      resolvedAt: "20.07.2026",
+      monitoringRecords: [
+        {
+          date: "2026-07-20T10:00:00.000Z",
+          roundNumber: 2,
+          result: "resolved",
+        },
+      ],
+    };
+    const fromExcel = {
+      id: "excel-generated-id",
+      leak_id: 7,
+      status: "open",
+      monitoringRecords: [
+        {
+          date: "2026-07-10T10:00:00.000Z",
+          roundNumber: 1,
+          result: "still_leaking",
+        },
+      ],
+    };
+
+    const result = mergeLeaksByFreshness([local], [fromExcel], {
+      source: "excel",
+      inferredStatusLeakIds: ["7"],
+    });
+
+    expect(result.leaks[0]).toMatchObject({
+      status: "resolved",
+      resolvedAt: "20.07.2026",
+    });
+    expect(result.leaks[0].monitoringRecords).toHaveLength(2);
+    expect(result.leaks[0].monitoringRecords.at(-1).result).toBe("resolved");
+  });
+
+  it("clears resolvedAt when the latest merged monitoring result is open", () => {
+    const local = {
+      id: "same-leak",
+      leak_id: 7,
+      status: "resolved",
+      resolvedAt: "10.07.2026",
+      monitoringRecords: [
+        {
+          date: "2026-07-10T10:00:00.000Z",
+          roundNumber: 1,
+          result: "resolved",
+        },
+      ],
+    };
+    const fromExcel = {
+      id: "excel-generated-id",
+      leak_id: 7,
+      status: "open",
+      monitoringRecords: [
+        {
+          date: "2026-07-20T10:00:00.000Z",
+          roundNumber: 2,
+          result: "still_leaking",
+        },
+      ],
+    };
+
+    const result = mergeLeaksByFreshness([local], [fromExcel], {
+      source: "excel",
+      inferredStatusLeakIds: new Set(["7"]),
+    });
+
+    expect(result.leaks[0].status).toBe("open");
+    expect(result.leaks[0]).not.toHaveProperty("resolvedAt");
+  });
+
+  it("applies edited monitoring fields when Excel lost the exact time", () => {
+    const local = {
+      id: "same-leak",
+      leak_id: 7,
+      monitoringRecords: [
+        {
+          id: "local-record",
+          roundId: "round-3",
+          roundNumber: 3,
+          date: "2026-03-16T14:25:31.000Z",
+          monitoredBy: "Inspector",
+          result: "still_leaking",
+          materials_equipment: "Old materials",
+          comment: "Old comment",
+        },
+      ],
+    };
+    const fromExcel = {
+      id: "excel-generated-id",
+      leak_id: 7,
+      monitoringRecords: [
+        {
+          id: "excel-7-round-3-2",
+          roundId: "excel-round-3",
+          roundNumber: 3,
+          date: "2026-03-16T00:00:00.000Z",
+          monitoredBy: "Updated inspector",
+          result: "resolved",
+          materials_equipment: "New materials",
+          comment: "Updated comment",
+        },
+      ],
+    };
+
+    const result = mergeLeaksByFreshness([local], [fromExcel], {
+      source: "excel",
+    });
+
+    expect(result.updated).toBe(1);
+    expect(result.leaks[0].monitoringRecords).toEqual([
+      expect.objectContaining({
+        id: "local-record",
+        roundId: "round-3",
+        date: "2026-03-16T14:25:31.000Z",
+        monitoredBy: "Updated inspector",
+        result: "resolved",
+        materials_equipment: "New materials",
+        comment: "Updated comment",
+      }),
+    ]);
+  });
+  it("applies edited monitoring fields when a photo identity matches an older Excel date", () => {
+    const local = {
+      id: "same-leak",
+      leak_id: 7,
+      monitoringRecords: [
+        {
+          id: "local-record",
+          roundId: "round-3",
+          roundNumber: 3,
+          date: "2026-03-16T14:25:31.000Z",
+          result: "still_leaking",
+          comment: "Old comment",
+          photo: "idb://monitoring-photo",
+        },
+      ],
+    };
+    const fromExcel = {
+      id: "excel-generated-id",
+      leak_id: 7,
+      monitoringRecords: [
+        {
+          id: "excel-7-round-3-2",
+          roundId: "excel-round-3",
+          roundNumber: 3,
+          date: "2026-03-16T00:00:00.000Z",
+          result: "resolved",
+          comment: "Updated comment",
+          photo: "idb://monitoring-photo",
+        },
+      ],
+    };
+
+    const result = mergeLeaksByFreshness([local], [fromExcel], {
+      source: "excel",
+    });
+
+    expect(result.updated).toBe(1);
+    expect(result.leaks[0].monitoringRecords).toEqual([
+      expect.objectContaining({
+        id: "local-record",
+        roundId: "round-3",
+        date: "2026-03-16T14:25:31.000Z",
+        result: "resolved",
+        comment: "Updated comment",
+        photo: "idb://monitoring-photo",
+      }),
+    ]);
+  });
   it("ignores regenerated Excel identities for unchanged monitoring records", () => {
     const date = "2026-03-10T00:00:00.000Z";
     const local = {

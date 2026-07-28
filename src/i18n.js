@@ -1,9 +1,10 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
+import { getStorageItem } from "@/utils/safeStorage";
 
 const LANGUAGE_STORAGE_KEY = "app_language";
 
-const savedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) || "ru";
+const savedLanguage = getStorageItem(LANGUAGE_STORAGE_KEY, "ru");
 
 const resources = {
   ru: {

@@ -1,8 +1,14 @@
 const EMPTY_LOCATION_LABELS = new Set(["Не указано", "Not specified"]);
 
+export function normalizeLocationValue(value) {
+  if (value == null) return "";
+  const normalized = String(value).trim();
+  return EMPTY_LOCATION_LABELS.has(normalized) ? "" : normalized;
+}
+
 function getFilterValues(filter, locationKey) {
   if (filter?.key !== locationKey || !Array.isArray(filter.values)) return null;
-  return new Set(filter.values.map(String));
+  return new Set(filter.values.map(normalizeLocationValue));
 }
 
 export function buildSmartLocationSelection(locations, search) {
@@ -33,7 +39,7 @@ export function getEnabledLocations(locations, locationKey, filter) {
   return Object.fromEntries(
     locations.map((location) => [
       location,
-      selected ? selected.has(String(location)) : true,
+      selected ? selected.has(normalizeLocationValue(location)) : true,
     ]),
   );
 }
@@ -43,17 +49,15 @@ export function buildLocationFilterFromEnabled(
   locationKey,
   enabledLocations,
 ) {
-  const values = locations.filter((location) => enabledLocations[location]);
+  const values = locations
+    .filter((location) => enabledLocations[location])
+    .map(normalizeLocationValue);
   if (values.length === locations.length) return null;
   return { key: locationKey, values };
 }
 
 export function matchesLeakLocationFilter(leak, filter) {
   if (!filter?.key || !Array.isArray(filter.values)) return true;
-  const selected = new Set(filter.values.map(String));
-  const value = leak?.[filter.key];
-  if (value == null || String(value).trim() === "") {
-    return [...EMPTY_LOCATION_LABELS].some((label) => selected.has(label));
-  }
-  return selected.has(String(value));
+  const selected = new Set(filter.values.map(normalizeLocationValue));
+  return selected.has(normalizeLocationValue(leak?.[filter.key]));
 }

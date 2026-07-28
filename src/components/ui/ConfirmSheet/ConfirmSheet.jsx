@@ -1,3 +1,5 @@
+import { useId } from "react";
+import { useModalDialog } from "@/hooks/useModalDialog";
 import s from "./ConfirmSheet.module.scss";
 
 export default function ConfirmSheet({
@@ -11,14 +13,27 @@ export default function ConfirmSheet({
   confirmLabel = "Подтвердить",
   cancelLabel = "Отмена",
 }) {
+  const titleId = useId();
+  const dialogRef = useModalDialog({ open, onClose: onCancel });
+
   if (!open) return null;
 
   return (
     <div className={s.overlay} onClick={onCancel}>
-      <div className={s.sheet} onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        className={s.sheet}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className={s.handle} />
 
-        <h3 className={s.title}>{title}</h3>
+        <h3 id={titleId} className={s.title}>
+          {title}
+        </h3>
         <p className={s.description}>{description}</p>
 
         <div

@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
+import { getStorageItem, setStorageItem } from "@/utils/safeStorage";
 
 const STORAGE_KEY = "app-theme";
 
 export function useTheme() {
   const [dark, setDark] = useState(
-    () => localStorage.getItem(STORAGE_KEY) === "dark",
+    () => getStorageItem(STORAGE_KEY) === "dark",
   );
 
   useEffect(() => {
@@ -12,7 +13,7 @@ export function useTheme() {
       "data-theme",
       dark ? "dark" : "light",
     );
-    localStorage.setItem(STORAGE_KEY, dark ? "dark" : "light");
+    setStorageItem(STORAGE_KEY, dark ? "dark" : "light");
   }, [dark]);
 
   const toggle = useCallback(() => setDark((d) => !d), []);

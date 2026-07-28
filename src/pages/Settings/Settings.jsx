@@ -317,6 +317,7 @@ export default function Settings({
           const preparedForMerge = reconciled.leaks;
           const mergePreview = previewMergeLeaks(data, preparedForMerge, {
             source: "excel",
+            inferredStatusLeakIds: result.inferredStatusLeakIds,
           });
           mergePreview.excelPhotos = reconciled.photos;
           mergePreview.photoStats = reconciled.photos;
@@ -505,6 +506,7 @@ export default function Settings({
       const incomingWithPhotos = await persistPreparedExcelPhotos(incoming);
       const mergeResult = mergeLeaksByFreshness(data, incomingWithPhotos, {
         source: "excel",
+        inferredStatusLeakIds: excelConflictState.result?.inferredStatusLeakIds,
       });
       await setData?.(mergeResult.leaks);
       saveExcelMonitoringRound(excelConflictState.result?.monitoringRound);
