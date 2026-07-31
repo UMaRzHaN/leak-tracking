@@ -66,6 +66,7 @@ export default function MapPage({
 
       <MapControls
         onLocate={locateMe}
+        gpsEnabled={gpsEnabled}
         onOpenSheet={() => setOpen(true)}
         onDownload={handleDownloadArea}
         downloading={downloading}

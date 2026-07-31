@@ -28,6 +28,7 @@ import java.net.NetworkInterface;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.math.BigInteger;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
@@ -46,7 +47,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -60,17 +62,26 @@ import javax.security.auth.x500.X500Principal;
 public class LocalSyncPlugin extends Plugin {
     private static final String MAGIC = "LEAK_TRACKER_SYNC_V3";
     private static final String IMPORT_MAGIC = "LEAK_TRACKER_SYNC_IMPORT_V3";
-    private static final long MAX_ARCHIVE_BYTES = 1024L * 1024L * 1024L;
+    // Keep this aligned with IMPORT_LIMITS.maxFileBytes in the WebView. The
+    // received archive is exposed to JavaScript after transfer, so accepting a
+    // larger native file would only defer rejection until after materialization.
+    private static final long MAX_ARCHIVE_BYTES = 256L * 1024L * 1024L;
+    private static final int MAX_ARCHIVE_CHUNK_BYTES = 1024 * 1024;
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final int HANDSHAKE_TIMEOUT_MS = 10_000;
+    private static final long CLIENT_TLS_DEADLINE_MS =
+        (long) CONNECT_TIMEOUT_MS + HANDSHAKE_TIMEOUT_MS;
+    private static final int PRE_AUTH_TIMEOUT_MS = 4_000;
+    private static final long MAX_PRE_AUTH_DURATION_MS = 10_000L;
     private static final int TRANSFER_TIMEOUT_MS = 120_000;
+    private static final long MAX_PROTOCOL_DURATION_MS = TimeUnit.MINUTES.toMillis(15);
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int MAX_FAILED_AUTH_ATTEMPTS = 5;
     private static final int MAX_CONCURRENT_HANDSHAKES = 4;
     private static final String TLS_KEY_ALIAS_PREFIX = "local-sync-";
 
     private final ExecutorService executor = Executors.newCachedThreadPool();
-    private final ScheduledExecutorService cleanupExecutor = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledThreadPoolExecutor cleanupExecutor = createCleanupExecutor();
     private final ConcurrentHashMap<String, File> preparedArchives = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, File> deliveredArchives = new ConcurrentHashMap<>();
     private final Object sessionLock = new Object();
@@ -109,9 +120,20 @@ public class LocalSyncPlugin extends Plugin {
             call.reject("Unknown archive token or missing chunk");
             return;
         }
+        if (
+            chunkBase64.length() >
+            ((MAX_ARCHIVE_CHUNK_BYTES + 2L) / 3L) * 4L + 4L
+        ) {
+            discardPreparedArchive(token);
+            call.reject("Archive chunk is too large");
+            return;
+        }
 
         try {
             byte[] chunk = Base64.decode(chunkBase64, Base64.DEFAULT);
+            if (chunk.length > MAX_ARCHIVE_CHUNK_BYTES) {
+                throw new Exception("Archive chunk is too large");
+            }
             assertArchiveSizeLimit(archive.length() + chunk.length);
             try (FileOutputStream stream = new FileOutputStream(archive, true)) {
                 stream.write(chunk);
@@ -205,9 +227,9 @@ public class LocalSyncPlugin extends Plugin {
         String archiveToken = call.getString("archiveToken", "");
         File outgoing = preparedArchives.remove(archiveToken);
 
-        if (host.isEmpty() || port == null || code.isEmpty() || !isValidFingerprint(fingerprint) || projectKey.isEmpty() || outgoing == null) {
+        if (host.isEmpty() || port == null || code.isEmpty() || !isValidFingerprint(fingerprint) || projectKey.isEmpty() || syncId.isEmpty() || outgoing == null) {
             if (outgoing != null) outgoing.delete();
-            call.reject("host, port, code, fingerprint, projectKey and archiveToken are required");
+            call.reject("host, port, code, fingerprint, projectKey, syncId and archiveToken are required");
             return;
         }
 
@@ -256,13 +278,22 @@ public class LocalSyncPlugin extends Plugin {
                 Socket socket = null;
                 try {
                     socket = activeServer.accept();
-                    if (!connectionGuard.tryAcquire()) {
+                    String peerKey = peerKey(socket);
+                    if (!connectionGuard.tryAcquire(peerKey)) {
                         closeSocket(socket);
                         continue;
                     }
                     activeClientSockets.add(socket);
                     Socket acceptedSocket = socket;
-                    executor.execute(() -> handleAcceptedClient(activeServer, acceptedSocket));
+                    try {
+                        executor.execute(() ->
+                            handleAcceptedClient(activeServer, acceptedSocket, peerKey)
+                        );
+                    } catch (RuntimeException error) {
+                        activeClientSockets.remove(socket);
+                        connectionGuard.release(peerKey);
+                        throw error;
+                    }
                     socket = null;
                 } catch (SocketException error) {
                     if (!activeServer.isClosed()) notifySyncError(error);
@@ -281,10 +312,22 @@ public class LocalSyncPlugin extends Plugin {
         }
     }
 
-    private void handleAcceptedClient(ServerSocket activeServer, Socket socket) {
+    private void handleAcceptedClient(
+        ServerSocket activeServer,
+        Socket socket,
+        String peerKey
+    ) {
         boolean shouldStop = false;
+        SyncConnectionDeadline connectionDeadline = createConnectionDeadline(socket);
         try {
-            socket.setSoTimeout(HANDSHAKE_TIMEOUT_MS);
+            // SO_TIMEOUT only limits the idle gap between reads. This absolute
+            // deadline also bounds a TLS/client slowloris that keeps dribbling
+            // bytes often enough to avoid the read timeout.
+            connectionDeadline.startPreAuth();
+            // Unauthenticated LAN peers get a deliberately short deadline.
+            // Once the shared code is verified, handleClient switches to the
+            // normal transfer timeout.
+            socket.setSoTimeout(PRE_AUTH_TIMEOUT_MS);
             if (!(socket instanceof SSLSocket)) {
                 throw new Exception("Local sync requires TLS");
             }
@@ -293,24 +336,39 @@ public class LocalSyncPlugin extends Plugin {
             synchronized (sessionLock) {
                 if (serverSocket != activeServer) return;
             }
-            shouldStop = handleClient(socket);
+            shouldStop = handleClient(socket, peerKey, connectionDeadline);
         } catch (Exception error) {
             // Authentication failures are counted explicitly where the code is
             // checked. A transfer timeout or a broken field Wi-Fi connection
             // must not consume the authentication-attempt budget.
-            if (!activeServer.isClosed()) notifySyncError(error);
+            boolean failedBeforeAuthentication =
+                connectionGuard.registerPreAuthFailure(peerKey);
+            // Random probes and stalled TLS clients are expected on a LAN. Do
+            // not surface them as a fatal sync-session error in the WebView.
+            if (!activeServer.isClosed() && !failedBeforeAuthentication) {
+                notifySyncError(error);
+            }
         } finally {
+            connectionDeadline.cancel();
             closeSocket(socket);
             activeClientSockets.remove(socket);
-            connectionGuard.release();
-            if (shouldStop) {
+            connectionGuard.release(peerKey);
+            // Query the guard again in case writing the ERROR response failed
+            // after the final bad-code attempt. In that case handleClient
+            // cannot return its shouldStop flag, but the session must still
+            // close after the configured authentication budget.
+            if (shouldStop || connectionGuard.isFailureLimitReached()) {
                 synchronized (sessionLock) {
                     if (serverSocket == activeServer) stopHostInternal();
                 }
             }
         }
     }
-    private boolean handleClient(Socket socket) throws Exception {
+    private boolean handleClient(
+        Socket socket,
+        String peerKey,
+        SyncConnectionDeadline connectionDeadline
+    ) throws Exception {
         File received = null;
         try (
             DataInputStream input = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
@@ -318,17 +376,20 @@ public class LocalSyncPlugin extends Plugin {
         ) {
             String magic = input.readUTF();
             if (IMPORT_MAGIC.equals(magic)) {
-                return handleImportClient(input, output);
+                return handleImportClient(
+                    socket,
+                    input,
+                    output,
+                    peerKey,
+                    connectionDeadline
+                );
             }
             if (!MAGIC.equals(magic)) {
+                connectionGuard.registerPreAuthFailure(peerKey);
                 rejectPeer(output, "Несовместимая версия приложения на втором телефоне");
                 return false;
             }
             String code = input.readUTF();
-            String projectKey = normalizeProjectKey(input.readUTF());
-            String syncId = normalizeSyncId(input.readUTF());
-            long archiveSize = input.readLong();
-            String expectedHash = input.readUTF();
 
             String expectedCode = sessionCode;
             String expectedProjectKey = hostedProjectKey;
@@ -340,16 +401,20 @@ public class LocalSyncPlugin extends Plugin {
             }
             if (!SyncSecurity.secretsEqual(expectedCode, code)) {
                 boolean shouldStop = registerFailedAuthAttempt();
+                connectionGuard.registerPreAuthFailure(peerKey);
                 rejectPeer(output, "Неверный код подключения");
                 return shouldStop;
             }
-            if (!syncId.isEmpty()) {
-                if (!expectedSyncId.equals(syncId)) {
-                    rejectPeer(output, "Проекты имеют разное происхождение и не могут быть объединены");
-                    return false;
-                }
-            } else if (!expectedProjectKey.equals(projectKey)) {
-                rejectPeer(output, "На телефонах открыты разные проекты");
+            connectionDeadline.markAuthenticated();
+            connectionGuard.markAuthenticated(peerKey);
+            socket.setSoTimeout(TRANSFER_TIMEOUT_MS);
+
+            String projectKey = normalizeProjectKey(input.readUTF());
+            String syncId = normalizeSyncId(input.readUTF());
+            long archiveSize = input.readLong();
+            String expectedHash = input.readUTF();
+            if (!expectedSyncId.equals(syncId)) {
+                rejectPeer(output, "Проекты имеют разное происхождение и не могут быть объединены");
                 return false;
             }
             try {
@@ -397,10 +462,14 @@ public class LocalSyncPlugin extends Plugin {
         }
     }
 
-    private boolean handleImportClient(DataInputStream input, DataOutputStream output) throws Exception {
+    private boolean handleImportClient(
+        Socket socket,
+        DataInputStream input,
+        DataOutputStream output,
+        String peerKey,
+        SyncConnectionDeadline connectionDeadline
+    ) throws Exception {
         String code = input.readUTF();
-        String projectKey = normalizeProjectKey(input.readUTF());
-        String syncId = normalizeSyncId(input.readUTF());
 
         String expectedCode = sessionCode;
         String expectedProjectKey = hostedProjectKey;
@@ -412,9 +481,16 @@ public class LocalSyncPlugin extends Plugin {
         }
         if (!SyncSecurity.secretsEqual(expectedCode, code)) {
             boolean shouldStop = registerFailedAuthAttempt();
+            connectionGuard.registerPreAuthFailure(peerKey);
             rejectPeer(output, "Неверный код подключения");
             return shouldStop;
         }
+        connectionDeadline.markAuthenticated();
+        connectionGuard.markAuthenticated(peerKey);
+        socket.setSoTimeout(TRANSFER_TIMEOUT_MS);
+
+        String projectKey = normalizeProjectKey(input.readUTF());
+        String syncId = normalizeSyncId(input.readUTF());
         if (!expectedSyncId.equals(syncId) || !expectedProjectKey.equals(projectKey)) {
             rejectPeer(output, "QR-код содержит данные другого сеанса");
             return false;
@@ -438,7 +514,9 @@ public class LocalSyncPlugin extends Plugin {
         File outgoing
     ) throws Exception {
         File received = null;
+        ScheduledFuture<?> protocolDeadline = null;
         try (Socket socket = connectPinnedTls(host, port, fingerprint)) {
+            protocolDeadline = scheduleProtocolDeadline(socket);
 
             try (
                 DataInputStream input = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
@@ -480,6 +558,7 @@ public class LocalSyncPlugin extends Plugin {
                 return result;
             }
         } finally {
+            if (protocolDeadline != null) protocolDeadline.cancel(false);
             if (received != null) received.delete();
         }
     }
@@ -493,7 +572,9 @@ public class LocalSyncPlugin extends Plugin {
         String syncId
     ) throws Exception {
         File received = null;
+        ScheduledFuture<?> protocolDeadline = null;
         try (Socket socket = connectPinnedTls(host, port, fingerprint)) {
+            protocolDeadline = scheduleProtocolDeadline(socket);
 
             try (
                 DataInputStream input = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
@@ -525,6 +606,7 @@ public class LocalSyncPlugin extends Plugin {
                 return result;
             }
         } finally {
+            if (protocolDeadline != null) protocolDeadline.cancel(false);
             if (received != null) received.delete();
         }
     }
@@ -611,15 +693,33 @@ public class LocalSyncPlugin extends Plugin {
         SSLContext context = SSLContext.getInstance("TLS");
         context.init(null, new TrustManager[] { trustManager }, RANDOM);
         SSLSocket socket = (SSLSocket) context.getSocketFactory().createSocket();
+        SyncHandshakeDeadline handshakeDeadline = createHandshakeDeadline(socket);
         try {
+            // Start before connect(): the deadline covers the complete outbound
+            // network setup, not only TLS records after TCP has connected.
+            handshakeDeadline.start();
             enableModernTls(socket);
             socket.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
             socket.setSoTimeout(HANDSHAKE_TIMEOUT_MS);
             socket.startHandshake();
+            if (!handshakeDeadline.complete()) {
+                throw new SocketTimeoutException(
+                    "TLS connect and handshake deadline exceeded"
+                );
+            }
             socket.setSoTimeout(TRANSFER_TIMEOUT_MS);
             return socket;
         } catch (Exception error) {
+            boolean deadlineExpired = handshakeDeadline.didExpire();
+            handshakeDeadline.cancel();
             closeSocket(socket);
+            if (deadlineExpired && !(error instanceof SocketTimeoutException)) {
+                SocketTimeoutException timeout = new SocketTimeoutException(
+                    "TLS connect and handshake deadline exceeded"
+                );
+                timeout.initCause(error);
+                throw timeout;
+            }
             throw error;
         }
     }
@@ -776,7 +876,11 @@ public class LocalSyncPlugin extends Plugin {
 
     private void assertArchiveSizeLimit(long size) throws Exception {
         if (size > MAX_ARCHIVE_BYTES) {
-            throw new Exception("Архив синхронизации больше 1 ГБ");
+            throw new Exception(
+                "Архив синхронизации больше " +
+                (MAX_ARCHIVE_BYTES / (1024L * 1024L)) +
+                " МБ"
+            );
         }
     }
 
@@ -873,6 +977,60 @@ public class LocalSyncPlugin extends Plugin {
         try {
             socket.close();
         } catch (Exception ignored) {}
+    }
+
+    private ScheduledFuture<?> scheduleProtocolDeadline(Socket socket) {
+        return cleanupExecutor.schedule(
+            () -> closeSocket(socket),
+            MAX_PROTOCOL_DURATION_MS,
+            TimeUnit.MILLISECONDS
+        );
+    }
+
+    private SyncHandshakeDeadline createHandshakeDeadline(Socket socket) {
+        return new SyncHandshakeDeadline(
+            (task, delayMillis) -> {
+                ScheduledFuture<?> future = cleanupExecutor.schedule(
+                    task,
+                    delayMillis,
+                    TimeUnit.MILLISECONDS
+                );
+                return () -> future.cancel(false);
+            },
+            System::nanoTime,
+            () -> closeSocket(socket),
+            CLIENT_TLS_DEADLINE_MS
+        );
+    }
+
+    private SyncConnectionDeadline createConnectionDeadline(Socket socket) {
+        return new SyncConnectionDeadline(
+            (task, delayMillis) -> {
+                ScheduledFuture<?> future = cleanupExecutor.schedule(
+                    task,
+                    delayMillis,
+                    TimeUnit.MILLISECONDS
+                );
+                return () -> future.cancel(false);
+            },
+            () -> closeSocket(socket),
+            MAX_PRE_AUTH_DURATION_MS,
+            MAX_PROTOCOL_DURATION_MS
+        );
+    }
+
+    private static ScheduledThreadPoolExecutor createCleanupExecutor() {
+        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
+        // Completed handshakes cancel their pre-auth task. Remove it from the
+        // delay queue immediately so high connection churn cannot retain one
+        // cancelled task per handshake until its original deadline.
+        executor.setRemoveOnCancelPolicy(true);
+        return executor;
+    }
+
+    private String peerKey(Socket socket) {
+        InetAddress address = socket == null ? null : socket.getInetAddress();
+        return address == null ? "unknown" : address.getHostAddress();
     }
 
     private void stopHostInternal() {

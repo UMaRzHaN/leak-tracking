@@ -12,6 +12,7 @@ vi.mock("@/app/hooks/useLanguage", () => ({
 function renderControls(overrides = {}) {
   const props = {
     onLocate: vi.fn(),
+    gpsEnabled: true,
     onOpenSheet: vi.fn(),
     onDownload: vi.fn(),
     downloading: false,
@@ -38,6 +39,15 @@ function renderControls(overrides = {}) {
 }
 
 describe("MapControls monitoring filter", () => {
+  it("does not request a location while GPS is disabled", () => {
+    const props = renderControls({ gpsEnabled: false });
+    const locate = screen.getByRole("button", { name: "My location" });
+
+    expect(locate.disabled).toBe(true);
+    fireEvent.click(locate);
+    expect(props.onLocate).not.toHaveBeenCalled();
+  });
+
   it("opens inside the map controls and selects a monitoring state", () => {
     const props = renderControls();
 

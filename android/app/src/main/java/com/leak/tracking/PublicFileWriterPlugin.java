@@ -120,7 +120,7 @@ public class PublicFileWriterPlugin extends Plugin {
         try {
             exportExecutor.execute(() -> {
                 try (InputStream source = new FileInputStream(pending)) {
-                    String safeFolder = sanitizeRelativePath(folder);
+                    String safeFolder = ExportPathSafety.sanitizeRelativePath(folder);
                     String safeFileName = sanitizeFileName(fileName);
                     if (safeFileName.isEmpty()) throw new Exception("fileName contains no valid characters");
                     String savedPath = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
@@ -227,7 +227,7 @@ public class PublicFileWriterPlugin extends Plugin {
 
     private String writeLegacy(String folder, String fileName, InputStream source) throws Exception {
         File documents = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
-        File outputDir = folder.isEmpty() ? documents : new File(documents, folder);
+        File outputDir = ExportPathSafety.resolveDescendant(documents, folder);
         if (!outputDir.exists() && !outputDir.mkdirs()) {
             throw new Exception("Unable to create export folder");
         }
@@ -252,11 +252,6 @@ public class PublicFileWriterPlugin extends Plugin {
         committingExports.remove(token);
         preparedExports.remove(token, pending);
         pending.delete();
-    }
-
-    private String sanitizeRelativePath(String path) {
-        if (path == null) return "";
-        return path.replace("\\", "/").replaceAll("^/+", "").replaceAll("/+$", "").replace("..", "");
     }
 
     private String sanitizeFileName(String fileName) {

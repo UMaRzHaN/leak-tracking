@@ -40,16 +40,28 @@ function isFiniteNumber(value) {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function isValidPhotoPath(value) {
-  return (
-    value == null ||
-    (typeof value === "string" &&
-      (value.startsWith("idb://") ||
-        value.startsWith("data://") ||
-        value.startsWith("zip:") ||
-        value.startsWith("data:image/") ||
-        value.startsWith("Documents/")))
+function isSafeZipPhotoPath(value) {
+  if (!value.startsWith("zip:")) return false;
+  const relativePath = value.slice("zip:".length);
+  if (!relativePath.startsWith("photos/") || relativePath.includes("\\")) {
+    return false;
+  }
+  const segments = relativePath.split("/");
+  return segments.every(
+    (segment) => segment.length > 0 && segment !== "." && segment !== "..",
   );
+}
+
+export function isValidPortablePhotoPath(value) {
+  if (typeof value !== "string") return false;
+  return (
+    isSafeZipPhotoPath(value) ||
+    /^data:image\/[a-z0-9.+-]+;base64,/i.test(value)
+  );
+}
+
+function isValidPhotoPath(value) {
+  return value == null || isValidPortablePhotoPath(value);
 }
 
 function pushIssue(issues, path, message) {
@@ -141,6 +153,40 @@ function validateLeakRecord(record, index) {
     );
   }
 
+  for (const collectionName of ["monitoringRecords", "history"]) {
+    const collection = record[collectionName];
+    if (collection == null) continue;
+    if (!Array.isArray(collection)) {
+      pushIssue(issues, [index, collectionName], "Expected array");
+      continue;
+    }
+    collection.forEach((item, itemIndex) => {
+      if (!isPlainObject(item)) {
+        pushIssue(
+          issues,
+          [index, collectionName, itemIndex],
+          "Expected object",
+        );
+      }
+    });
+  }
+
+  if (Array.isArray(record.monitoringRecords)) {
+    record.monitoringRecords.forEach((monitoringRecord, monitoringIndex) => {
+      if (
+        isPlainObject(monitoringRecord) &&
+        monitoringRecord.photo != null &&
+        !isValidPortablePhotoPath(monitoringRecord.photo)
+      ) {
+        pushIssue(
+          issues,
+          [index, "monitoringRecords", monitoringIndex, "photo"],
+          "Недопустимый формат пути к фото",
+        );
+      }
+    });
+  }
+
   if (issues.length) {
     return { ok: false, issues };
   }
@@ -162,7 +208,7 @@ function validateMetaProject(project) {
     return { ok: false, issues };
   }
 
-  if (typeof project.name !== "string" || project.name.length === 0) {
+  if (typeof project.name !== "string" || project.name.trim().length === 0) {
     pushIssue(issues, ["project", "name"], "Expected non-empty string");
   }
 
@@ -216,10 +262,21 @@ export function validateBackup(parsed) {
 
   const normalized = [];
   const issues = [];
+  const seenIds = new Set();
 
   parsed.forEach((record, index) => {
     const result = validateLeakRecord(record, index);
     if (result.ok) {
+      const canonicalId = String(result.data.id);
+      if (seenIds.has(canonicalId)) {
+        pushIssue(
+          issues,
+          [index, "id"],
+          `Duplicate canonical leak id "${canonicalId}"`,
+        );
+        return;
+      }
+      seenIds.add(canonicalId);
       normalized.push(result.data);
     } else {
       issues.push(...result.issues);
@@ -234,6 +291,32 @@ export function validateBackup(parsed) {
   }
 
   return { ok: true, data: normalized };
+}
+
+export function validateBackupRecovery(parsed) {
+  if (!Array.isArray(parsed)) {
+    return { ok: false, error: "Ожидается массив recovery-записей" };
+  }
+  if (parsed.length > MAX_BACKUP_RECORDS) {
+    return {
+      ok: false,
+      error: `Recovery payload contains more than ${MAX_BACKUP_RECORDS} records`,
+    };
+  }
+
+  for (const [index, record] of parsed.entries()) {
+    const complexityIssue = getComplexityIssue(record);
+    if (complexityIssue) {
+      return {
+        ok: false,
+        error: formatIssues("Невалидная структура recovery backup", [
+          { path: [index], message: complexityIssue },
+        ]),
+      };
+    }
+  }
+
+  return { ok: true, data: parsed };
 }
 
 export function validateProjectBackupMeta(parsed) {
@@ -368,6 +451,39 @@ export function validateProjectBackupMeta(parsed) {
     if (!isPlainObject(parsed.sync)) {
       pushIssue(issues, ["sync"], "Expected object");
     } else {
+      if (
+        parsed.sync.version !== undefined &&
+        (!Number.isSafeInteger(Number(parsed.sync.version)) ||
+          Number(parsed.sync.version) < 1 ||
+          Number(parsed.sync.version) > 2)
+      ) {
+        pushIssue(issues, ["sync", "version"], "Expected version 1 or 2");
+      }
+      if (
+        parsed.sync.generation !== undefined &&
+        (!Number.isSafeInteger(Number(parsed.sync.generation)) ||
+          Number(parsed.sync.generation) < 0)
+      ) {
+        pushIssue(
+          issues,
+          ["sync", "generation"],
+          "Expected non-negative generation",
+        );
+      }
+      if (
+        parsed.sync.epochId !== undefined &&
+        (typeof parsed.sync.epochId !== "string" ||
+          !/^[a-z0-9][a-z0-9._:-]{5,127}$/i.test(parsed.sync.epochId.trim()))
+      ) {
+        pushIssue(issues, ["sync", "epochId"], "Expected epoch identifier");
+      }
+      if (
+        parsed.sync.compactedAt !== undefined &&
+        (!Number.isFinite(Number(parsed.sync.compactedAt)) ||
+          Number(parsed.sync.compactedAt) < 0)
+      ) {
+        pushIssue(issues, ["sync", "compactedAt"], "Expected timestamp");
+      }
       if (
         parsed.sync.varsUpdatedAt !== undefined &&
         (!Number.isFinite(Number(parsed.sync.varsUpdatedAt)) ||

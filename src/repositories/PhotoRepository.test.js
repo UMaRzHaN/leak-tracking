@@ -28,7 +28,8 @@ vi.mock("@capacitor/filesystem", () => ({
   Directory: { Data: "DATA" },
 }));
 
-const { PhotoRepository } = await import("./PhotoRepository");
+const { PhotoRepository, encodeStorageKeyPart } =
+  await import("./PhotoRepository");
 const { markPhotoPrepared } = await import("@/utils/photoPreparation");
 
 describe("PhotoRepository on web", () => {
@@ -36,6 +37,7 @@ describe("PhotoRepository on web", () => {
     vi.clearAllMocks();
     mocks.getState.mockReturnValue({ ready: true });
     mocks.save.mockResolvedValue(true);
+    mocks.get.mockResolvedValue(null);
     mocks.remove.mockResolvedValue(true);
     mocks.listKeys.mockResolvedValue([]);
   });
@@ -45,6 +47,7 @@ describe("PhotoRepository on web", () => {
     mocks.listKeys.mockResolvedValue([
       "photo_project_leak_100",
       "photo_project_leak_200",
+      "photo_project_leak_monitoring_100",
       "photo_other_leak_100",
     ]);
     const blob = new Blob(["photo"], { type: "image/jpeg" });
@@ -60,6 +63,27 @@ describe("PhotoRepository on web", () => {
     expect(mocks.save).toHaveBeenCalledWith("photo_project_leak_500", blob);
     expect(mocks.remove).toHaveBeenCalledWith("photo_project_leak_100");
     expect(mocks.remove).not.toHaveBeenCalledWith("photo_project_leak_200");
+    expect(mocks.remove).not.toHaveBeenCalledWith(
+      "photo_project_leak_monitoring_100",
+    );
+  });
+
+  it("reuses a content-addressed photo before compression", async () => {
+    const hash = "a".repeat(64);
+    const blob = new Blob(["duplicate"], { type: "image/jpeg" });
+    mocks.get.mockResolvedValue(new Blob(["stored"], { type: "image/jpeg" }));
+
+    const path = await PhotoRepository.save(
+      blob,
+      { projectId: "project", leakId: "duplicate" },
+      [],
+      { contentHash: hash },
+    );
+
+    expect(path).toBe(`idb://photo_project_duplicate_h_${hash}`);
+    expect(mocks.get).toHaveBeenCalledWith(`photo_project_duplicate_h_${hash}`);
+    expect(mocks.compressImage).not.toHaveBeenCalled();
+    expect(mocks.save).not.toHaveBeenCalled();
   });
 
   it("does not recompress a prepared photo or scan when cleanup is disabled", async () => {
@@ -100,6 +124,62 @@ describe("PhotoRepository on web", () => {
       "photo_project_same_700_1",
     ]);
   });
+
+  it("encodes project and leak ids consistently across save, delete, and GC", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(800);
+    const projectId = "../tenant_one";
+    const leakId = "../../victim\\\0_part";
+    const projectPart = encodeStorageKeyPart(projectId);
+    const leakPart = encodeStorageKeyPart(leakId);
+    const photoKey = `photo_${projectPart}_${leakPart}_800`;
+    const orphanKey = `photo_${projectPart}_orphan_700`;
+    const blob = markPhotoPrepared(
+      new Blob(["prepared"], { type: "image/jpeg" }),
+    );
+
+    const path = await PhotoRepository.save(blob, { projectId, leakId }, [], {
+      cleanupOldVersions: false,
+    });
+
+    expect(path).toBe(`idb://${photoKey}`);
+    expect(photoKey).not.toMatch(/[\\/]/);
+    expect(photoKey).not.toContain("\0");
+    expect(photoKey).not.toContain("..");
+    expect(mocks.save).toHaveBeenCalledWith(photoKey, blob);
+
+    await PhotoRepository.delete(path, { projectId });
+    expect(mocks.remove).toHaveBeenCalledWith(photoKey);
+
+    mocks.remove.mockClear();
+    mocks.listKeys.mockResolvedValue([
+      photoKey,
+      orphanKey,
+      "photo_other_1_100",
+    ]);
+    await PhotoRepository.gcOrphaned([{ photo: path }], { projectId });
+    expect(mocks.remove).toHaveBeenCalledOnce();
+    expect(mocks.remove).toHaveBeenCalledWith(orphanKey);
+
+    mocks.remove.mockClear();
+    await PhotoRepository.deleteProjectPhotos(projectId);
+    expect(mocks.remove).toHaveBeenCalledTimes(2);
+    expect(mocks.remove).toHaveBeenCalledWith(photoKey);
+    expect(mocks.remove).toHaveBeenCalledWith(orphanKey);
+  });
+
+  it("allows numeric zero identifiers without producing ambiguous keys", async () => {
+    const blob = markPhotoPrepared(new Blob(["prepared"]));
+
+    const path = await PhotoRepository.save(
+      blob,
+      { projectId: 0, leakId: 0 },
+      [],
+      { cleanupOldVersions: false },
+    );
+
+    expect(path).toMatch(/^idb:\/\/photo_0_0_\d+(?:_\d+)?$/);
+  });
+
   it("rejects invalid or unavailable web storage inputs", async () => {
     expect(
       await PhotoRepository.save(null, {
@@ -130,13 +210,22 @@ describe("PhotoRepository on web", () => {
 
     await expect(PhotoRepository.get("key")).resolves.toBe("stored-photo");
     await expect(PhotoRepository.listKeys()).resolves.toEqual(["a", "b"]);
-    await PhotoRepository.delete("idb://key");
-    expect(mocks.remove).toHaveBeenCalledWith("key");
+    await PhotoRepository.delete("idb://photo_project_key", {
+      projectId: "project",
+    });
+    expect(mocks.remove).toHaveBeenCalledWith("photo_project_key");
+
+    await PhotoRepository.delete("idb://photo_other_key", {
+      projectId: "project",
+    });
+    expect(mocks.remove).not.toHaveBeenCalledWith("photo_other_key");
 
     mocks.getState.mockReturnValue({ ready: false });
     await expect(PhotoRepository.get("key")).resolves.toBeNull();
-    await PhotoRepository.delete("idb://ignored");
-    expect(mocks.remove).not.toHaveBeenCalledWith("ignored");
+    await PhotoRepository.delete("idb://photo_project_ignored", {
+      projectId: "project",
+    });
+    expect(mocks.remove).not.toHaveBeenCalledWith("photo_project_ignored");
   });
 
   it("deletes only photos belonging to the requested project", async () => {

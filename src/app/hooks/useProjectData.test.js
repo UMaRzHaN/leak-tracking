@@ -96,6 +96,27 @@ describe("useProjectData", () => {
     expect(result.current.dataProjectId).toBe("proj-1");
   });
 
+  it("forwards the explicit legacy-storage marker during the initial read", async () => {
+    projectContextModule.useProjectData.mockReturnValue({
+      activeProject: {
+        id: "1234",
+        folderName: "North_Field",
+        legacyStorageType: "upstream",
+      },
+    });
+    repositoryModule.LeakRepository.getAll.mockResolvedValueOnce([]);
+
+    renderHook(() => useProjectData());
+
+    await waitFor(() => {
+      expect(repositoryModule.LeakRepository.getAll).toHaveBeenCalledWith({
+        projectId: "1234",
+        folderName: "North_Field",
+        legacyStorageType: "upstream",
+      });
+    });
+  });
+
   it("does not let a pending initial read erase data saved by Excel import", async () => {
     let finishInitialRead;
     repositoryModule.LeakRepository.getAll.mockReturnValueOnce(
@@ -225,6 +246,35 @@ describe("useProjectData", () => {
     expect(result.current.data).toEqual([]);
   });
 
+  it("does not roll a newer empty save back when an earlier clear fails", async () => {
+    const original = [{ id: "stored" }];
+    repositoryModule.LeakRepository.getAll.mockResolvedValueOnce(original);
+    repositoryModule.LeakRepository.clear.mockRejectedValueOnce(
+      new Error("clear failed"),
+    );
+    repositoryModule.LeakRepository.saveAll.mockResolvedValueOnce(undefined);
+    const { result } = renderHook(() => useProjectData());
+    await waitFor(() => expect(result.current.data).toEqual(original));
+
+    let clearResult;
+    let latestSave;
+    act(() => {
+      clearResult = result.current.clear().catch((error) => error);
+      latestSave = result.current.save([]);
+    });
+
+    await act(async () => {
+      expect(await clearResult).toMatchObject({ message: "clear failed" });
+      await latestSave;
+    });
+
+    expect(result.current.data).toEqual([]);
+    expect(repositoryModule.LeakRepository.saveAll).toHaveBeenCalledWith([], {
+      projectId: "proj-1",
+      folderName: "project_one",
+    });
+  });
+
   it("records deletions and clears the active project repository", async () => {
     const stored = [{ id: "l1" }, { id: "l2" }];
     repositoryModule.LeakRepository.getAll.mockResolvedValueOnce(stored);
@@ -286,6 +336,109 @@ describe("useProjectData", () => {
       await expect(pending).rejects.toThrow("disk full");
     });
     expect(result.current.data).toEqual(original);
+  });
+
+  it("publishes non-optimistic changes only after repository commit", async () => {
+    const original = [{ id: "stored", status: "resolved" }];
+    const changed = [{ id: "stored", status: "open" }];
+    let finishSave;
+    repositoryModule.LeakRepository.getAll.mockResolvedValueOnce(original);
+    repositoryModule.LeakRepository.saveAll.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishSave = resolve;
+      }),
+    );
+    const { result } = renderHook(() => useProjectData());
+    await waitFor(() => expect(result.current.data).toEqual(original));
+
+    let pending;
+    act(() => {
+      pending = result.current.save(changed, { optimistic: false });
+    });
+    expect(result.current.data).toEqual(original);
+
+    finishSave();
+    await act(async () => pending);
+
+    expect(result.current.data).toEqual([
+      expect.objectContaining({ id: "stored", status: "open" }),
+    ]);
+  });
+
+  it("does not publish an older non-optimistic commit over a newer optimistic save", async () => {
+    const original = [{ id: "stored", status: "open" }];
+    const firstChange = [{ id: "stored", status: "in_progress" }];
+    const latestChange = [{ id: "stored", status: "resolved" }];
+    let finishFirstSave;
+    repositoryModule.LeakRepository.getAll.mockResolvedValueOnce(original);
+    repositoryModule.LeakRepository.saveAll
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishFirstSave = resolve;
+        }),
+      )
+      .mockResolvedValueOnce(undefined);
+    const { result } = renderHook(() => useProjectData());
+    await waitFor(() => expect(result.current.data).toEqual(original));
+
+    let firstPending;
+    let latestPending;
+    act(() => {
+      firstPending = result.current.save(firstChange, { optimistic: false });
+      latestPending = result.current.save(latestChange);
+    });
+    expect(result.current.data).toEqual([
+      expect.objectContaining({ id: "stored", status: "resolved" }),
+    ]);
+
+    finishFirstSave();
+    await act(async () => {
+      await firstPending;
+      await latestPending;
+    });
+
+    expect(result.current.data).toEqual([
+      expect.objectContaining({ id: "stored", status: "resolved" }),
+    ]);
+    expect(
+      repositoryModule.LeakRepository.saveAll.mock.calls.at(-1)[0],
+    ).toEqual([expect.objectContaining({ id: "stored", status: "resolved" })]);
+  });
+
+  it("rolls a failed optimistic save back to the latest queued commit", async () => {
+    const original = [{ id: "stored", status: "open" }];
+    const committedChange = [{ id: "stored", status: "in_progress" }];
+    const failedChange = [{ id: "stored", status: "resolved" }];
+    let finishFirstSave;
+    repositoryModule.LeakRepository.getAll.mockResolvedValueOnce(original);
+    repositoryModule.LeakRepository.saveAll
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishFirstSave = resolve;
+        }),
+      )
+      .mockRejectedValueOnce(new Error("second write failed"));
+    const { result } = renderHook(() => useProjectData());
+    await waitFor(() => expect(result.current.data).toEqual(original));
+
+    let committedPending;
+    let failedPending;
+    act(() => {
+      committedPending = result.current.save(committedChange, {
+        optimistic: false,
+      });
+      failedPending = result.current.save(failedChange);
+    });
+
+    finishFirstSave();
+    await act(async () => {
+      await committedPending;
+      await expect(failedPending).rejects.toThrow("second write failed");
+    });
+
+    expect(result.current.data).toEqual([
+      expect.objectContaining({ id: "stored", status: "in_progress" }),
+    ]);
   });
 
   it("keeps committed data when sync metadata persistence fails", async () => {

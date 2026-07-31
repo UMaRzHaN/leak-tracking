@@ -22,11 +22,15 @@ import { buildLeakHistoryChanges } from "@/utils/historyChanges";
 import { buildReopenedLeak } from "@/utils/reopenLeak";
 import {
   changeLeakStatus,
+  deletePhotoIfUnreferenced,
   getOrphanedOriginalPhoto,
   resolveLeakRecord,
   startLeakRepair,
 } from "@/domain/leakLifecycle";
-import { persistPhotoReplacements } from "../utils/persistPhotoReplacements";
+import {
+  cleanupUncommittedPhotoReplacements,
+  persistPhotoReplacements,
+} from "../utils/persistPhotoReplacements";
 
 const DELETE_ARM_MS = 3000;
 
@@ -258,10 +262,13 @@ export function useLeakDetailsSheet({
 
     setSaving(true);
     setNotification(null);
+    let photoPath;
+    let photoAfterPath;
+    let photoRepairPath;
     try {
-      const photoPath = await savePhoto();
-      const photoAfterPath = await savePhotoAfter();
-      const photoRepairPath = await savePhotoRepair();
+      photoPath = await savePhoto();
+      photoAfterPath = await savePhotoAfter();
+      photoRepairPath = await savePhotoRepair();
 
       const numericKeys = new Set(
         editFields.filter((field) => field.numeric).map((field) => field.key),
@@ -339,7 +346,17 @@ export function useLeakDetailsSheet({
         ],
         deletePhoto,
       });
-    } catch {
+    } catch (error) {
+      await cleanupUncommittedPhotoReplacements({
+        value: leak,
+        replacements: [
+          [isPhotoDirty, leak.photo, photoPath],
+          [isAfterDirty, leak.photo_after, photoAfterPath],
+          [isRepairDirty, leak.photo_repair, photoRepairPath],
+        ],
+        deletePhoto,
+      });
+      if (error?.name === "AbortError") return;
       setNotification({
         type: "error",
         message: lang === "ru" ? "Ошибка сохранения" : "Save error",
@@ -383,8 +400,11 @@ export function useLeakDetailsSheet({
 
     const orphanedPhoto = getOrphanedOriginalPhoto(leak);
     try {
-      await onSave(changeLeakStatus(leak, newStatus, { user: historyUser }));
-      if (orphanedPhoto) await deletePhoto(orphanedPhoto).catch(() => {});
+      const next = changeLeakStatus(leak, newStatus, { user: historyUser });
+      await onSave(next);
+      await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
+        () => {},
+      );
     } catch {
       reportSaveError();
     }
@@ -397,16 +417,19 @@ export function useLeakDetailsSheet({
   }) => {
     if (!requireHistoryUser()) return;
     try {
-      await onSave(
-        resolveLeakRecord(
-          leak,
-          { photo_after, materials_equipment, note },
-          { user: historyUser },
-        ),
+      const next = resolveLeakRecord(
+        leak,
+        { photo_after, materials_equipment, note },
+        { user: historyUser },
       );
+      await onSave(next);
       setResolveOpen(false);
       if (leak.photo_after && leak.photo_after !== photo_after) {
-        await deletePhoto(leak.photo_after).catch(() => {});
+        await deletePhotoIfUnreferenced(
+          leak.photo_after,
+          next,
+          deletePhoto,
+        ).catch(() => {});
       }
     } catch {
       if (photo_after && photo_after !== leak.photo_after) {
@@ -424,18 +447,23 @@ export function useLeakDetailsSheet({
     if (!requireHistoryUser()) return;
     const orphanedPhoto = getOrphanedOriginalPhoto(leak);
     try {
-      await onSave(
-        startLeakRepair(
-          leak,
-          { photo_repair, materials_equipment, note },
-          { user: historyUser },
-        ),
+      const next = startLeakRepair(
+        leak,
+        { photo_repair, materials_equipment, note },
+        { user: historyUser },
       );
+      await onSave(next);
       setRepairOpen(false);
       if (leak.photo_repair && leak.photo_repair !== photo_repair) {
-        await deletePhoto(leak.photo_repair).catch(() => {});
+        await deletePhotoIfUnreferenced(
+          leak.photo_repair,
+          next,
+          deletePhoto,
+        ).catch(() => {});
       }
-      if (orphanedPhoto) await deletePhoto(orphanedPhoto).catch(() => {});
+      await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
+        () => {},
+      );
     } catch {
       if (photo_repair && photo_repair !== leak.photo_repair) {
         await deletePhoto(photo_repair).catch(() => {});
@@ -449,9 +477,11 @@ export function useLeakDetailsSheet({
     const next = buildReopenedLeak({ leak, draft, vars, user: historyUser });
     const orphanedPhoto = getOrphanedOriginalPhoto(leak);
     try {
-      await onSave(next);
+      await onSave(next, { optimistic: false });
       setReopenOpen(false);
-      if (orphanedPhoto) await deletePhoto(orphanedPhoto).catch(() => {});
+      await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
+        () => {},
+      );
     } catch {
       reportSaveError();
     }

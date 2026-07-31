@@ -14,6 +14,7 @@ const FILTER_MENU = {
 
 export default function MapControls({
   onLocate,
+  gpsEnabled = true,
   onOpenSheet,
   onDownload,
   downloading,
@@ -75,6 +76,7 @@ export default function MapControls({
         type="button"
         className={s.controlBtn}
         onClick={onLocate}
+        disabled={!gpsEnabled}
         aria-label={t("map.controls.myLocation", {
           defaultValue: "My location",
         })}

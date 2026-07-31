@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   changeLeakStatus,
   collectLeakPhotoPaths,
+  deletePhotoIfUnreferenced,
   getOrphanedOriginalPhoto,
   resolveLeakRecord,
   startLeakRepair,
@@ -95,5 +96,22 @@ describe("leakLifecycle", () => {
       "idb://repair",
       "idb://monitoring",
     ]);
+  });
+
+  it("does not delete a photo still referenced by monitoring history", async () => {
+    const deleted = [];
+    const deletePhoto = async (path) => deleted.push(path);
+    const leak = {
+      photo_after: "idb://new",
+      monitoringRecords: [{ photo: "idb://old" }],
+    };
+
+    await expect(
+      deletePhotoIfUnreferenced("idb://old", leak, deletePhoto),
+    ).resolves.toBe(false);
+    await expect(
+      deletePhotoIfUnreferenced("idb://unused", leak, deletePhoto),
+    ).resolves.toBe(true);
+    expect(deleted).toEqual(["idb://unused"]);
   });
 });

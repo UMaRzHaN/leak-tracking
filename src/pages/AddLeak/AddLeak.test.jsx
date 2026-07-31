@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AddLeak from "./AddLeak";
 
@@ -93,6 +99,7 @@ function renderAddLeak(overrides = {}) {
 
 describe("AddLeak orchestration", () => {
   beforeEach(() => {
+    vi.useRealTimers();
     mocks.initialForm = {};
     mocks.submittedRow = { leak_id: "TAG-1", leak_speed: "2.5" };
     mocks.hasDraft.mockReset().mockReturnValue(false);
@@ -179,6 +186,7 @@ describe("AddLeak orchestration", () => {
     };
     const setData = vi.fn().mockRejectedValue(new Error("database locked"));
     renderAddLeak({ setData });
+    mocks.clearDraft.mockClear();
 
     fireEvent.click(screen.getByText("submit-leak"));
 
@@ -201,6 +209,65 @@ describe("AddLeak orchestration", () => {
     fireEvent.click(restore);
 
     expect(mocks.loadDraft).toHaveBeenCalled();
+    expect(screen.queryByText("addLeak.draftBanner.restore")).toBeNull();
+  });
+
+  it("does not overwrite a stored draft before deciding restoration when defaults are non-empty", async () => {
+    vi.useFakeTimers();
+    mocks.initialForm = { leak_id: "", photo: null };
+    mocks.hasDraft.mockReturnValue(true);
+    mocks.loadDraft.mockReturnValue({
+      form: { station: "Draft station" },
+      step: 2,
+    });
+
+    renderAddLeak();
+
+    expect(screen.getByText("addLeak.draftBanner.restore")).not.toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+    expect(mocks.saveDraft).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText("addLeak.draftBanner.restore"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(mocks.saveDraft).toHaveBeenCalledWith(
+      expect.objectContaining({ station: "Draft station" }),
+      1,
+    );
+  });
+
+  it("does not create a draft from empty defaults and the derived inspector name", async () => {
+    vi.useFakeTimers();
+    mocks.initialForm = { leak_id: "", photo: null };
+    renderAddLeak();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+
+    expect(mocks.saveDraft).not.toHaveBeenCalled();
+    expect(mocks.clearDraft).toHaveBeenCalled();
+  });
+
+  it("removes a stored draft that contains only empty defaults", () => {
+    mocks.initialForm = { leak_id: "", photo: null };
+    mocks.loadDraft.mockReturnValue({
+      form: {
+        leak_id: "",
+        photo: null,
+        detectedBy: "Inspector",
+      },
+      step: 1,
+    });
+
+    renderAddLeak();
+
+    expect(mocks.clearDraft).toHaveBeenCalled();
     expect(screen.queryByText("addLeak.draftBanner.restore")).toBeNull();
   });
 });

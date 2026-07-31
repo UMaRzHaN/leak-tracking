@@ -1,3 +1,24 @@
+import { deletePhotoIfUnreferenced } from "@/domain/leakLifecycle";
+
+export async function cleanupUncommittedPhotoReplacements({
+  value,
+  replacements,
+  deletePhoto,
+}) {
+  const paths = new Set(
+    replacements
+      .filter(
+        ([changed, previousPath, nextPath]) =>
+          changed && nextPath && previousPath !== nextPath,
+      )
+      .map(([, , nextPath]) => nextPath),
+  );
+
+  for (const path of paths) {
+    await deletePhotoIfUnreferenced(path, value, deletePhoto).catch(() => {});
+  }
+}
+
 export async function persistPhotoReplacements({
   save,
   value,
@@ -8,7 +29,9 @@ export async function persistPhotoReplacements({
 
   for (const [changed, previousPath, nextPath] of replacements) {
     if (changed && previousPath && previousPath !== nextPath) {
-      await deletePhoto(previousPath).catch(() => {});
+      await deletePhotoIfUnreferenced(previousPath, value, deletePhoto).catch(
+        () => {},
+      );
     }
   }
 }

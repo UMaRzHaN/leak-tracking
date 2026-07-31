@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { IDBFactory } from "fake-indexeddb";
 import {
+  MAX_PROJECT_TOMBSTONES,
+  TOMBSTONES_AFTER_COMPACTION,
   applyProjectTombstones,
+  assertProjectSyncStateCompatible,
   clearProjectSyncState,
   getLeakSyncFreshness,
   getLeakSyncIdentity,
@@ -55,8 +58,12 @@ describe("projectSyncState", () => {
     expect(getLeakSyncIdentity({})).toBeNull();
     expect(getLeakSyncIdentity(null)).toBeNull();
     expect(getLeakMergeIdentity({ id: "internal", leak_id: " TAG-1 " })).toBe(
-      "tag:TAG-1",
+      "id:internal",
     );
+    expect(getLeakMergeIdentity({ id: "internal", leak_id: "TAG-2" })).toBe(
+      "id:internal",
+    );
+    expect(getLeakMergeIdentity({ leak_id: " TAG-1 " })).toBe("tag:TAG-1");
   });
 
   it("keeps legacy tag tombstones effective for records that now have ids", () => {
@@ -113,7 +120,10 @@ describe("projectSyncState", () => {
         },
       }),
     ).toEqual({
-      version: 1,
+      version: 2,
+      generation: 0,
+      epochId: "legacy",
+      compactedAt: 0,
       varsUpdatedAt: Date.parse("2026-01-01T00:00:00.000Z"),
       deleted: {
         "id:valid": Date.parse("2026-02-01T00:00:00.000Z"),
@@ -125,7 +135,10 @@ describe("projectSyncState", () => {
   it("recovers from corrupted storage and merges the legacy vars timestamp", () => {
     localStorage.setItem("app:project-1:sync_state_v1", "{broken");
     expect(readProjectSyncState("project-1")).toEqual({
-      version: 1,
+      version: 2,
+      generation: 0,
+      epochId: "legacy",
+      compactedAt: 0,
       deleted: {},
       varsUpdatedAt: 0,
     });
@@ -149,7 +162,10 @@ describe("projectSyncState", () => {
         },
       ),
     ).toEqual({
-      version: 1,
+      version: 2,
+      generation: 0,
+      epochId: "legacy",
+      compactedAt: 0,
       varsUpdatedAt: 300,
       deleted: { "id:one": 250, "id:two": 150 },
     });
@@ -188,9 +204,9 @@ describe("projectSyncState", () => {
     expect(readProjectSyncState("project-1").deleted).toEqual({});
   });
 
-  it("does not discard old tombstones after twenty thousand deletions", () => {
+  it("compacts excessive tombstones into a new synchronization epoch", () => {
     const deleted = Object.fromEntries(
-      Array.from({ length: 20_001 }, (_, index) => [
+      Array.from({ length: MAX_PROJECT_TOMBSTONES + 1 }, (_, index) => [
         "id:leak-" + index,
         index + 1,
       ]),
@@ -198,9 +214,32 @@ describe("projectSyncState", () => {
 
     writeProjectSyncState("project-1", { deleted });
 
-    const stored = readProjectSyncState("project-1").deleted;
-    expect(Object.keys(stored)).toHaveLength(20_001);
-    expect(stored["id:leak-0"]).toBe(1);
+    const stored = readProjectSyncState("project-1");
+    expect(Object.keys(stored.deleted)).toHaveLength(
+      TOMBSTONES_AFTER_COMPACTION,
+    );
+    expect(stored.generation).toBe(1);
+    expect(stored.epochId).not.toBe("legacy");
+    expect(stored.compactedAt).toBeGreaterThan(0);
+    expect(stored.deleted[`id:leak-${MAX_PROJECT_TOMBSTONES}`]).toBe(
+      MAX_PROJECT_TOMBSTONES + 1,
+    );
+    expect(stored.deleted["id:leak-0"]).toBeUndefined();
+  });
+
+  it("rejects automatic merge when synchronization epochs differ", () => {
+    expect(() =>
+      assertProjectSyncStateCompatible(
+        { generation: 0, epochId: "legacy" },
+        { generation: 1, epochId: "epoch-device-a" },
+      ),
+    ).toThrow(/История синхронизации/);
+    expect(
+      assertProjectSyncStateCompatible(
+        { generation: 1, epochId: "epoch-device-a" },
+        { generation: 1, epochId: "epoch-device-a" },
+      ),
+    ).toBe(true);
   });
 
   it("falls back to IndexedDB when localStorage quota is exceeded", async () => {
@@ -278,7 +317,10 @@ describe("projectSyncState", () => {
     expect(
       await reloaded.readProjectSyncStateAsync("vars-restart-project"),
     ).toEqual({
-      version: 1,
+      version: 2,
+      generation: 0,
+      epochId: "legacy",
+      compactedAt: 0,
       deleted: { "id:durable": 700 },
       varsUpdatedAt: 900,
     });

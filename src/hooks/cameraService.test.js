@@ -12,7 +12,7 @@ vi.mock("@capacitor/camera", () => ({
   CameraSource: { Camera: "camera", Photos: "photos" },
 }));
 
-const { pickPhotoFromGallery, takePhotoFromCamera } =
+const { MAX_PHOTO_INPUT_BYTES, pickPhotoFromGallery, takePhotoFromCamera } =
   await import("./cameraService");
 const { isPhotoPrepared } = await import("../utils/photoPreparation");
 
@@ -95,6 +95,27 @@ describe("native camera service", () => {
 
     await expect(takePhotoFromCamera()).rejects.toThrow(
       "Camera returned an invalid photo",
+    );
+  });
+
+  it("rejects non-image data URLs and oversized native photos", async () => {
+    camera.getPhoto.mockResolvedValueOnce({
+      dataUrl: "data:text/plain;base64,cGhvdG8=",
+    });
+    await expect(takePhotoFromCamera()).rejects.toThrow(
+      "Camera returned an invalid photo",
+    );
+
+    const oversized = new Blob(["photo"], { type: "image/jpeg" });
+    Object.defineProperty(oversized, "size", {
+      value: MAX_PHOTO_INPUT_BYTES + 1,
+    });
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      blob: vi.fn().mockResolvedValue(oversized),
+    });
+    await expect(takePhotoFromCamera()).rejects.toThrow(
+      "Photo is larger than 32 MB",
     );
   });
 

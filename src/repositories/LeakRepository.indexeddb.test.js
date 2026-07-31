@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { IDBFactory } from "fake-indexeddb";
 
 vi.mock("@/utils/platform", () => ({
@@ -35,8 +35,47 @@ async function loadRepository() {
   return import("./LeakRepository");
 }
 
+async function loadRepositoryWithoutIndexedDb() {
+  vi.resetModules();
+  global.indexedDB = undefined;
+  return import("./LeakRepository");
+}
+
+function failLocalStorageWritesFor(key) {
+  const originalSetItem = Storage.prototype.setItem;
+  return vi
+    .spyOn(Storage.prototype, "setItem")
+    .mockImplementation(function setItem(storageKey, value) {
+      if (storageKey === key) {
+        throw new DOMException("Storage quota exceeded", "QuotaExceededError");
+      }
+      return originalSetItem.call(this, storageKey, value);
+    });
+}
+
+async function overwriteIndexedProjectData(projectId, data) {
+  const db = await new Promise((resolve, reject) => {
+    const request = indexedDB.open("LeakTrackingDataDB", 1);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+
+  await new Promise((resolve, reject) => {
+    const transaction = db.transaction("projects", "readwrite");
+    transaction.objectStore("projects").put({ id: projectId, data });
+    transaction.oncomplete = resolve;
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error);
+  });
+  db.close();
+}
+
 beforeEach(() => {
   localStorage.clear();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("LeakRepository web IndexedDB storage", () => {
@@ -60,5 +99,49 @@ describe("LeakRepository web IndexedDB storage", () => {
     await LeakRepository.clear(PROJECT);
 
     await expect(LeakRepository.getAll(PROJECT)).resolves.toEqual([]);
+  });
+
+  it("rejects malformed IndexedDB data when no recovery mirror exists", async () => {
+    const { LeakRepository } = await loadRepository();
+    await LeakRepository.saveAll([makeLeak("1")], PROJECT);
+    localStorage.removeItem(storageKey(PROJECT.projectId));
+    await overwriteIndexedProjectData(PROJECT.projectId, { not: "an array" });
+
+    await expect(LeakRepository.getAll(PROJECT)).rejects.toMatchObject({
+      code: "PROJECT_DATA_READ_FAILED",
+      source: "indexeddb",
+    });
+  });
+
+  it("keeps the previous mirror when IndexedDB saves but localStorage is full", async () => {
+    const { LeakRepository } = await loadRepository();
+    const key = storageKey(PROJECT.projectId);
+    const previous = [makeLeak("previous")];
+    localStorage.setItem(key, JSON.stringify(previous));
+    failLocalStorageWritesFor(key);
+
+    await expect(
+      LeakRepository.saveAll([makeLeak("current")], PROJECT),
+    ).resolves.toBeUndefined();
+
+    expect(JSON.parse(localStorage.getItem(key))).toEqual(previous);
+    await expect(LeakRepository.getAll(PROJECT)).resolves.toMatchObject([
+      { id: "current" },
+    ]);
+  });
+
+  it("rejects the save and preserves the mirror when both web stores fail", async () => {
+    const { LeakRepository } = await loadRepositoryWithoutIndexedDb();
+    const key = storageKey(PROJECT.projectId);
+    const previous = [makeLeak("previous")];
+    localStorage.setItem(key, JSON.stringify(previous));
+    failLocalStorageWritesFor(key);
+
+    await expect(
+      LeakRepository.saveAll([makeLeak("current")], PROJECT),
+    ).rejects.toMatchObject({
+      code: "PROJECT_DATA_WRITE_FAILED",
+    });
+    expect(JSON.parse(localStorage.getItem(key))).toEqual(previous);
   });
 });

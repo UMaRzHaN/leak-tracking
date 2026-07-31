@@ -264,8 +264,10 @@ export function useMapPage({
     ],
   );
 
+  const hasGps =
+    gpsEnabled && Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng);
+
   const visibleLeaks = useMemo(() => {
-    const hasGps = Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng);
     if (nearbyOnly && hasGps) {
       return monitoringLeaks
         .map((leak) => ({
@@ -305,7 +307,15 @@ export function useMapPage({
         return { ...leak, _distance: distance };
       })
       .sort((left, right) => left._distance - right._distance);
-  }, [monitoringLeaks, open, mapCenter, nearbyOnly, nearbyRadius, coords]);
+  }, [
+    monitoringLeaks,
+    open,
+    mapCenter,
+    nearbyOnly,
+    nearbyRadius,
+    coords,
+    hasGps,
+  ]);
   const markerLeaks = nearbyOnly ? visibleLeaks : monitoringLeaks;
 
   useEffect(() => {
@@ -555,8 +565,9 @@ export function useMapPage({
   }, []);
 
   const locateMe = useCallback(() => {
+    if (!gpsEnabled) return;
     mapRef.current.locateMe?.(latestCoordsRef.current);
-  }, []);
+  }, [gpsEnabled]);
 
   return {
     containerRef,
@@ -582,7 +593,7 @@ export function useMapPage({
     nearbyRadiusOptions: NEARBY_RADIUS_OPTIONS,
     priorityFilters,
     statusFilters,
-    hasGps: Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng),
+    hasGps,
     setHeatmapEnabled,
     setMonitoringFilter,
     setNearbyOnly,

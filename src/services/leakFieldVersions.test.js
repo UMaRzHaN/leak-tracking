@@ -69,4 +69,38 @@ describe("stampLeakFieldVersions", () => {
     expect(versioned.photo).toBeUndefined();
     expect(versioned[LEAK_FIELD_VERSIONS_KEY].photo).toBe(250);
   });
+
+  it("versions monitoring fields independently", () => {
+    const previous = [
+      {
+        id: "one",
+        monitoringRecords: [
+          {
+            id: "m-1",
+            date: "2026-07-01T10:00:00.000Z",
+            result: "still_leaking",
+            comment: "old",
+            updatedAt: 100,
+          },
+        ],
+      },
+    ];
+    const next = [
+      {
+        id: "one",
+        monitoringRecords: [
+          {
+            ...previous[0].monitoringRecords[0],
+            comment: "new",
+          },
+        ],
+      },
+    ];
+
+    const [versioned] = stampLeakFieldVersions(previous, next, 300);
+    expect(versioned.monitoringRecords[0]._fieldUpdatedAt).toMatchObject({
+      result: 100,
+      comment: 300,
+    });
+  });
 });

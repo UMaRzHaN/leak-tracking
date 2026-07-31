@@ -11,10 +11,14 @@ import {
 } from "@/app/project/projectSettings";
 import { VAR_DEFAULTS } from "@/data/variables";
 import { getPhotoSrc } from "@/hooks/photoService";
-import { LeakRepository } from "@/repositories/LeakRepository";
+import {
+  LeakRepository,
+  getPreservedInvalidLeakRecords,
+} from "@/repositories/LeakRepository";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
 import {
   validateBackup,
+  validateBackupRecovery,
   validateProjectBackupMeta,
 } from "@/repositories/backupSchema";
 import { isPinkBagEquipment } from "@/utils/calculations/calculations";
@@ -28,6 +32,8 @@ import {
 import { normalizeProjectVarsUnits } from "@/utils/projectVars";
 import {
   applyProjectTombstones,
+  assertProjectSyncStateCompatible,
+  clearProjectSyncState,
   getLeakMergeIdentity,
   mergeProjectSyncStates,
   readProjectSyncState,
@@ -35,8 +41,10 @@ import {
   writeProjectSyncState,
 } from "@/services/projectSyncState";
 import {
-  assertArchiveLimits,
   assertImportFileSize,
+  IMPORT_LIMITS,
+  preflightZipFile,
+  verifyArchiveLimits,
 } from "@/utils/importLimits";
 import { rollbackImportedProject } from "@/services/projectCleanup";
 import {
@@ -46,11 +54,20 @@ import {
   normalizeLeakFieldVersions,
 } from "@/services/leakFieldVersions";
 import { logger } from "@/utils/logger";
+import { fingerprintBlob } from "@/utils/blobHash";
+import {
+  allocateUniqueLeakArchiveSegments,
+  buildLeakPhotoArchivePath,
+  buildMonitoringPhotoArchivePath,
+  getImageMimeTypeFromExtension,
+  normalizeImageExtension,
+  parseDataImageUri,
+} from "@/services/archivePaths";
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const EXPORT_YIELD_EVERY = 25;
 const EXPORT_CONCURRENCY = 8;
-const IMPORT_CONCURRENCY = 4;
+const IMPORT_CONCURRENCY = 3;
 
 function yieldToMainThread() {
   return new Promise((resolve) => {
@@ -81,12 +98,8 @@ async function mapWithConcurrency(items, concurrency, mapper) {
 }
 
 const PHOTO_KEYS = ["photo", "photo_after", "photo_repair"];
-const SUFFIX = {
-  photo: "before",
-  photo_after: "after",
-  photo_repair: "repair",
-};
 const MONITORING_PHOTO_KEY = "photo";
+const RECOVERY_RECORDS_FILE = "recovery-invalid-records.json";
 
 /** Maps unique field keys to their project type. */
 const TYPE_SIGNATURES = {
@@ -96,7 +109,7 @@ const TYPE_SIGNATURES = {
 };
 
 async function resolveBase64(path, idbGet) {
-  if (!path) return null;
+  if (typeof path !== "string" || !path) return null;
 
   let src = null;
   if (path.startsWith("idb://")) {
@@ -105,27 +118,25 @@ async function resolveBase64(path, idbGet) {
     // raw can be a Blob (new storage) or a data URI string (legacy storage)
     if (!raw) return null;
     src = raw instanceof Blob ? await blobToDataUri(raw) : raw;
+  } else if (path.startsWith("data:image/")) {
+    src = path;
   } else {
     src = await getPhotoSrc(path);
   }
 
   if (!src || !src.startsWith("data:")) return null;
-  const match = src.match(/^data:(image\/\w+);base64,(.+)$/);
-  if (!match) return null;
-  return {
-    mime: match[1],
-    base64: match[2],
-    ext: match[1].split("/")[1] || "jpg",
-  };
+  return parseDataImageUri(src);
 }
 
 async function resolvePhotoBlob(path, idbGet) {
-  if (!path) return null;
+  if (typeof path !== "string" || !path) return null;
 
   let value = null;
   if (path.startsWith("idb://")) {
     const id = path.replace("idb://", "");
     value = idbGet ? await idbGet(id) : null;
+  } else if (path.startsWith("data:image/")) {
+    value = path;
   } else {
     value = await getPhotoSrc(path);
   }
@@ -135,28 +146,49 @@ async function resolvePhotoBlob(path, idbGet) {
   if (!blob) return null;
   const mime = blob.type || String(value).match(/^data:([^;]+);base64,/)?.[1];
   if (!mime?.startsWith("image/")) return null;
-  const rawExt = mime.slice("image/".length).split("+")[0].toLowerCase();
-  return { blob, ext: rawExt === "jpeg" ? "jpg" : rawExt || "jpg" };
+  return { blob, ext: normalizeImageExtension(mime) };
 }
 
-async function exportLeaksWithPhotosToStream(leaks, zip, idbGet) {
+async function exportLeaksWithPhotosToStream(
+  leaks,
+  zip,
+  idbGet,
+  {
+    segmentPrefix = "leak",
+    preserveUnresolvedPhotoPaths = false,
+    leakSegments: providedLeakSegments = null,
+  } = {},
+) {
   const exported = new Array(leaks.length);
+  const leakSegments =
+    providedLeakSegments ??
+    allocateUniqueLeakArchiveSegments(leaks, { prefix: segmentPrefix });
 
   for (const [index, leak] of leaks.entries()) {
     if (index > 0 && index % EXPORT_YIELD_EVERY === 0) {
       await yieldToMainThread();
     }
+    if (!leak || typeof leak !== "object" || Array.isArray(leak)) {
+      exported[index] = leak;
+      continue;
+    }
     const copy = { ...leak };
-    const leakNumber = String(leak.leak_id ?? leak.id).replace(/[\\/]/g, "_");
+    const leakNumber = leakSegments[index];
 
     for (const key of PHOTO_KEYS) {
       const path = leak[key];
-      if (!path) continue;
+      if (path == null) continue;
       const resolved = await resolvePhotoBlob(path, idbGet);
-      if (!resolved) continue;
+      if (!resolved) {
+        if (!preserveUnresolvedPhotoPaths) delete copy[key];
+        continue;
+      }
 
-      const fileName = `${SUFFIX[key]}.${resolved.ext}`;
-      const archivePath = `photos/${leakNumber}/${fileName}`;
+      const archivePath = buildLeakPhotoArchivePath(
+        leakNumber,
+        key,
+        resolved.ext,
+      );
       await zip.add(archivePath, resolved.blob);
       copy[key] = `zip:${archivePath}`;
     }
@@ -165,21 +197,26 @@ async function exportLeaksWithPhotosToStream(leaks, zip, idbGet) {
       const records = [];
       for (const [recordIndex, record] of copy.monitoringRecords.entries()) {
         const path = record?.[MONITORING_PHOTO_KEY];
-        if (!path) {
+        if (path == null) {
           records.push(record);
           continue;
         }
         const resolved = await resolvePhotoBlob(path, idbGet);
         if (!resolved) {
-          records.push(record);
+          if (preserveUnresolvedPhotoPaths) {
+            records.push(record);
+            continue;
+          }
+          const sanitizedRecord = { ...record };
+          delete sanitizedRecord[MONITORING_PHOTO_KEY];
+          records.push(sanitizedRecord);
           continue;
         }
-        const safeRecordId = String(record.id ?? recordIndex + 1).replace(
-          /[\\/]/g,
-          "_",
+        const archivePath = buildMonitoringPhotoArchivePath(
+          leakNumber,
+          recordIndex,
+          resolved.ext,
         );
-        const fileName = `monitoring_${safeRecordId}.${resolved.ext}`;
-        const archivePath = `photos/${leakNumber}/${fileName}`;
         await zip.add(archivePath, resolved.blob);
         records.push({
           ...record,
@@ -193,51 +230,78 @@ async function exportLeaksWithPhotosToStream(leaks, zip, idbGet) {
 
   return exported;
 }
-async function exportLeaksWithPhotos(leaks, zip, idbGet) {
-  const photosFolder = zip.folder("photos");
+async function exportLeaksWithPhotos(
+  leaks,
+  zip,
+  idbGet,
+  {
+    segmentPrefix = "leak",
+    preserveUnresolvedPhotoPaths = false,
+    leakSegments: providedLeakSegments = null,
+  } = {},
+) {
   const exported = new Array(leaks.length);
+  const leakSegments =
+    providedLeakSegments ??
+    allocateUniqueLeakArchiveSegments(leaks, { prefix: segmentPrefix });
   let cursor = 0;
 
   async function exportOne(leak, index) {
+    if (!leak || typeof leak !== "object" || Array.isArray(leak)) {
+      exported[index] = leak;
+      return;
+    }
     const copy = { ...leak };
-    const leakNumber = String(leak.leak_id ?? leak.id).replace(/[\\/]/g, "_");
-    const leakFolder = photosFolder.folder(leakNumber);
+    const leakNumber = leakSegments[index];
 
     for (const key of PHOTO_KEYS) {
       const path = leak[key];
-      if (!path) continue;
+      if (path == null) continue;
       const resolved = await resolveBase64(path, idbGet);
-      if (!resolved) continue;
+      if (!resolved) {
+        if (!preserveUnresolvedPhotoPaths) delete copy[key];
+        continue;
+      }
 
-      const fileName = `${SUFFIX[key]}.${resolved.ext}`;
-      leakFolder.file(fileName, resolved.base64, { base64: true });
-      copy[key] = `zip:photos/${leakNumber}/${fileName}`;
+      const archivePath = buildLeakPhotoArchivePath(
+        leakNumber,
+        key,
+        resolved.ext,
+      );
+      zip.file(archivePath, resolved.base64, { base64: true });
+      copy[key] = `zip:${archivePath}`;
     }
 
     if (Array.isArray(copy.monitoringRecords)) {
       const records = [];
       for (const [recordIndex, record] of copy.monitoringRecords.entries()) {
         const path = record?.[MONITORING_PHOTO_KEY];
-        if (!path) {
+        if (path == null) {
           records.push(record);
           continue;
         }
 
         const resolved = await resolveBase64(path, idbGet);
         if (!resolved) {
-          records.push(record);
+          if (preserveUnresolvedPhotoPaths) {
+            records.push(record);
+            continue;
+          }
+          const sanitizedRecord = { ...record };
+          delete sanitizedRecord[MONITORING_PHOTO_KEY];
+          records.push(sanitizedRecord);
           continue;
         }
 
-        const safeRecordId = String(record.id ?? recordIndex + 1).replace(
-          /[\\/]/g,
-          "_",
+        const archivePath = buildMonitoringPhotoArchivePath(
+          leakNumber,
+          recordIndex,
+          resolved.ext,
         );
-        const fileName = `monitoring_${safeRecordId}.${resolved.ext}`;
-        leakFolder.file(fileName, resolved.base64, { base64: true });
+        zip.file(archivePath, resolved.base64, { base64: true });
         records.push({
           ...record,
-          [MONITORING_PHOTO_KEY]: `zip:photos/${leakNumber}/${fileName}`,
+          [MONITORING_PHOTO_KEY]: `zip:${archivePath}`,
         });
       }
       copy.monitoringRecords = records;
@@ -345,7 +409,11 @@ function parseTime(value) {
   return Number.isFinite(time) && time > 0 ? time : 0;
 }
 
-function getLeakIdentity(leak) {
+function getLeakIdentity(leak, options = {}) {
+  if (options.source !== "sync") {
+    const leakTag = String(leak?.leak_id ?? "").trim();
+    if (leakTag) return `tag:${leakTag}`;
+  }
   return getLeakMergeIdentity(leak);
 }
 
@@ -402,8 +470,17 @@ function shouldApplyIncomingLeak(
   options = {},
   hasChanges = true,
 ) {
-  if (options.source === "excel" || options.source === "sync")
+  if (options.source === "excel" || options.source === "sync") {
     return hasChanges;
+  }
+  if (options.source === "archive") {
+    // Field-version metadata makes archive merge safe at field granularity.
+    // Legacy archives have only a leak-level timestamp, so an older snapshot
+    // must not overwrite newer local values or trigger unnecessary photo restore.
+    if (hasFieldVersionMetadata(current) || hasFieldVersionMetadata(incoming)) {
+      return hasChanges;
+    }
+  }
   const currentFreshness = getLeakFreshness(current);
   const incomingFreshness = getLeakFreshness(incoming);
   if (incomingFreshness !== currentFreshness) {
@@ -561,6 +638,9 @@ function buildMergeHistoryChanges(existingLeak, mergedLeak, options = {}) {
 }
 
 function getRecordMergeIdentity(record, index, arrayKey) {
+  if (arrayKey === "monitoringRecords" && record?.id != null) {
+    return `id:${String(record.id)}`;
+  }
   if (arrayKey === "monitoringRecords" && record?.photo) {
     return `monitoring-photo:${String(record.photo)}`;
   }
@@ -590,6 +670,135 @@ function getRecordDateIdentity(value) {
   if (!dotted) return text;
   const year = dotted[3].length === 2 ? `20${dotted[3]}` : dotted[3];
   return `${year}-${Number(dotted[2])}-${Number(dotted[1])}`;
+}
+
+function recordHasFieldVersions(record) {
+  return (
+    Object.keys(normalizeLeakFieldVersions(record?._fieldUpdatedAt)).length > 0
+  );
+}
+
+function getRecordFieldVersion(record, key) {
+  const versions = normalizeLeakFieldVersions(record?._fieldUpdatedAt);
+  return (
+    versions[key] ??
+    Math.max(parseTime(record?.updatedAt), parseTime(record?.createdAt))
+  );
+}
+
+function isMonitoringMergeField(key) {
+  return !new Set([
+    "id",
+    "roundId",
+    "roundNumber",
+    "updatedAt",
+    "createdAt",
+    "_fieldUpdatedAt",
+  ]).has(key);
+}
+
+function mergeVersionedMonitoringRecord(current, incoming) {
+  const currentVersions = normalizeLeakFieldVersions(current?._fieldUpdatedAt);
+  const incomingVersions = normalizeLeakFieldVersions(
+    incoming?._fieldUpdatedAt,
+  );
+  const next = { ...current };
+  const mergedVersions = { ...currentVersions };
+  const keys = new Set([
+    ...Object.keys(current ?? {}),
+    ...Object.keys(incoming ?? {}),
+    ...Object.keys(currentVersions),
+    ...Object.keys(incomingVersions),
+  ]);
+
+  for (const key of keys) {
+    if (!isMonitoringMergeField(key)) continue;
+    const currentHasValue = hasOwn(current ?? {}, key);
+    const incomingHasValue = hasOwn(incoming ?? {}, key);
+    const currentVersion = getRecordFieldVersion(current, key);
+    const incomingVersion = getRecordFieldVersion(incoming, key);
+    mergedVersions[key] = Math.max(currentVersion, incomingVersion);
+    const incomingWins =
+      incomingVersion > currentVersion ||
+      (incomingVersion === currentVersion &&
+        stableSyncValue(incomingHasValue, incoming?.[key]) >
+          stableSyncValue(currentHasValue, current?.[key]));
+    if (!incomingWins) continue;
+    if (incomingHasValue) next[key] = incoming[key];
+    else delete next[key];
+  }
+
+  next.id = current?.id ?? incoming?.id;
+  if (current?.roundId != null) next.roundId = current.roundId;
+  else if (incoming?.roundId != null) next.roundId = incoming.roundId;
+  if (current?.roundNumber != null) next.roundNumber = current.roundNumber;
+  else if (incoming?.roundNumber != null)
+    next.roundNumber = incoming.roundNumber;
+  next.updatedAt = Math.max(
+    parseTime(current?.updatedAt),
+    parseTime(incoming?.updatedAt),
+  );
+  next._fieldUpdatedAt = mergedVersions;
+  return next;
+}
+
+function mergeMixedMonitoringRecord(current, incoming) {
+  const currentVersioned = recordHasFieldVersions(current);
+  const versioned = currentVersioned ? current : incoming;
+  const legacy = currentVersioned ? incoming : current;
+  const versions = normalizeLeakFieldVersions(versioned?._fieldUpdatedAt);
+  const next = { ...versioned };
+
+  for (const [key, value] of Object.entries(legacy ?? {})) {
+    if (!isMonitoringMergeField(key)) continue;
+    const explicitlyVersioned = hasOwn(versions, key);
+    if (explicitlyVersioned) continue;
+    if (!hasOwn(next, key) || isEmptyMergeValue(next[key])) {
+      if (!isEmptyMergeValue(value)) next[key] = value;
+    }
+  }
+
+  next.id = current?.id ?? incoming?.id;
+  if (current?.roundId != null) next.roundId = current.roundId;
+  if (current?.roundNumber != null) next.roundNumber = current.roundNumber;
+  return next;
+}
+
+function mergeMonitoringRecord(current, incoming) {
+  const currentVersioned = recordHasFieldVersions(current);
+  const incomingVersioned = recordHasFieldVersions(incoming);
+  if (currentVersioned && incomingVersioned) {
+    return mergeVersionedMonitoringRecord(current, incoming);
+  }
+  if (currentVersioned || incomingVersioned) {
+    return mergeMixedMonitoringRecord(current, incoming);
+  }
+
+  const currentTime = Math.max(
+    parseTime(current?.updatedAt),
+    parseTime(current?.date),
+  );
+  const incomingTime = Math.max(
+    parseTime(incoming?.updatedAt),
+    parseTime(incoming?.date),
+  );
+  const preferred = incomingTime > currentTime ? incoming : current;
+  const fallback = preferred === incoming ? current : incoming;
+  const next = { ...fallback };
+  for (const [key, value] of Object.entries(preferred ?? {})) {
+    if (!isEmptyMergeValue(value)) next[key] = value;
+  }
+
+  // Photo repository paths are device-local implementation details. During an
+  // import/sync the incoming photo has already been restored into this device's
+  // storage, so retain that valid restored path even when the logical record
+  // timestamp is equal to the local record timestamp.
+  if (!isEmptyMergeValue(incoming?.photo)) {
+    next.photo = incoming.photo;
+  }
+
+  next.id = current?.id ?? incoming?.id;
+  return next;
 }
 
 function mergeRecordArray(
@@ -661,6 +870,10 @@ function mergeRecordArray(
     }
 
     const current = merged[existingIndex];
+    if (arrayKey === "monitoringRecords" && options.source !== "excel") {
+      merged[existingIndex] = mergeMonitoringRecord(current, record);
+      return;
+    }
     if (
       matchedExcelCalendarRow ||
       parseTime(record?.date) >= parseTime(current?.date)
@@ -702,7 +915,7 @@ function stableSyncValue(hasValue, value) {
   return `2:${JSON.stringify(normalizeSyncConflictValue(value))}`;
 }
 
-function mergeSyncLeakFields(existingLeak, incomingLeak) {
+function mergeVersionedLeakFields(existingLeak, incomingLeak, options = {}) {
   const next = { ...existingLeak };
   const existingVersions = normalizeLeakFieldVersions(
     existingLeak?.[LEAK_FIELD_VERSIONS_KEY],
@@ -749,7 +962,7 @@ function mergeSyncLeakFields(existingLeak, incomingLeak) {
       Array.isArray(existingLeak?.[key]) ? existingLeak[key] : [],
       Array.isArray(incomingLeak?.[key]) ? incomingLeak[key] : [],
       key,
-      { source: "sync" },
+      options,
     );
   }
 
@@ -762,6 +975,44 @@ function mergeSyncLeakFields(existingLeak, incomingLeak) {
   next[LEAK_FIELD_VERSIONS_KEY] = mergedVersions;
   return next;
 }
+
+function mergeMixedFormatLeak(existingLeak, incomingLeak, options = {}) {
+  const existingVersioned = hasFieldVersionMetadata(existingLeak);
+  const versioned = existingVersioned ? existingLeak : incomingLeak;
+  const legacy = existingVersioned ? incomingLeak : existingLeak;
+  const versions = normalizeLeakFieldVersions(
+    versioned?.[LEAK_FIELD_VERSIONS_KEY],
+  );
+  const next = { ...versioned };
+
+  for (const [key, value] of Object.entries(legacy ?? {})) {
+    if (MERGE_IGNORED_FIELD_KEYS.has(key) || MERGE_ARRAY_FIELD_KEYS.has(key))
+      continue;
+    if (hasOwn(versions, key)) continue;
+    if (!hasOwn(next, key) || isEmptyMergeValue(next[key])) {
+      if (!isEmptyMergeValue(value)) next[key] = value;
+    }
+  }
+
+  for (const key of MERGE_ARRAY_FIELD_KEYS) {
+    next[key] = mergeRecordArray(
+      Array.isArray(existingLeak?.[key]) ? existingLeak[key] : [],
+      Array.isArray(incomingLeak?.[key]) ? incomingLeak[key] : [],
+      key,
+      options,
+    );
+  }
+
+  next.id = existingLeak?.id ?? incomingLeak?.id;
+  next.index = existingLeak?.index ?? incomingLeak?.index;
+  next.updatedAt = Math.max(
+    parseTime(existingLeak?.updatedAt),
+    parseTime(incomingLeak?.updatedAt),
+  );
+  next[LEAK_FIELD_VERSIONS_KEY] = versions;
+  return next;
+}
+
 function getMonitoringDerivedStatus(result) {
   if (result === "resolved") return "resolved";
   if (result === "needs_recheck") return "in_progress";
@@ -798,9 +1049,85 @@ function applyMonitoringDerivedStatus(leak, options = {}) {
   return next;
 }
 
+function hasFieldVersionMetadata(leak) {
+  return (
+    Object.keys(normalizeLeakFieldVersions(leak?.[LEAK_FIELD_VERSIONS_KEY]))
+      .length > 0
+  );
+}
+
+function shouldUseVersionedArchiveMerge(
+  existingLeak,
+  incomingLeak,
+  options = {},
+) {
+  if (options.source === "sync") return true;
+  if (options.source !== "archive") return false;
+  return (
+    hasFieldVersionMetadata(existingLeak) &&
+    hasFieldVersionMetadata(incomingLeak)
+  );
+}
+
 function mergeFreshLeakFields(existingLeak, incomingLeak, options = {}) {
-  if (options.source === "sync") {
-    return mergeSyncLeakFields(existingLeak, incomingLeak);
+  const hasMixedFieldVersionFormats =
+    hasFieldVersionMetadata(existingLeak) !==
+    hasFieldVersionMetadata(incomingLeak);
+  if (
+    (options.source === "archive" || options.source === "sync") &&
+    hasMixedFieldVersionFormats
+  ) {
+    const merged = mergeMixedFormatLeak(existingLeak, incomingLeak, options);
+    if (options.addHistory) {
+      const changes = buildMergeHistoryChanges(existingLeak, merged, options);
+      const monitoringChanged =
+        JSON.stringify(existingLeak?.monitoringRecords ?? []) !==
+        JSON.stringify(merged.monitoringRecords ?? []);
+      if (changes.length > 0 || monitoringChanged) {
+        merged.history = [
+          ...(Array.isArray(merged.history) ? merged.history : []),
+          {
+            action: "edited",
+            date: new Date().toISOString(),
+            text: "Обновлено при объединении импорта",
+            changes,
+          },
+        ];
+      }
+    }
+    return merged;
+  }
+
+  if (shouldUseVersionedArchiveMerge(existingLeak, incomingLeak, options)) {
+    const merged = mergeVersionedLeakFields(
+      existingLeak,
+      incomingLeak,
+      options,
+    );
+    if (options.source === "sync") return merged;
+
+    if (options.addHistory) {
+      const changes = buildMergeHistoryChanges(existingLeak, merged, options);
+      const historyChanged =
+        JSON.stringify(existingLeak?.history ?? []) !==
+        JSON.stringify(merged.history ?? []);
+      const monitoringChanged =
+        JSON.stringify(existingLeak?.monitoringRecords ?? []) !==
+        JSON.stringify(merged.monitoringRecords ?? []);
+
+      if (changes.length > 0 || historyChanged || monitoringChanged) {
+        merged.history = [
+          ...(Array.isArray(merged.history) ? merged.history : []),
+          {
+            action: "edited",
+            date: new Date().toISOString(),
+            text: "Обновлено при объединении импорта",
+            changes,
+          },
+        ];
+      }
+    }
+    return merged;
   }
 
   const next = { ...existingLeak };
@@ -907,12 +1234,12 @@ export function mergeLeaksByFreshness(
   let changedFields = 0;
 
   merged.forEach((leak, index) => {
-    const identity = getLeakIdentity(leak);
+    const identity = getLeakIdentity(leak, options);
     if (identity) indexByIdentity.set(identity, index);
   });
 
   for (const leak of incoming) {
-    const identity = getLeakIdentity(leak);
+    const identity = getLeakIdentity(leak, options);
     const existingIndex = identity ? indexByIdentity.get(identity) : undefined;
 
     if (existingIndex == null) {
@@ -1030,12 +1357,12 @@ export function previewMergeLeaks(existing = [], incoming = [], options = {}) {
   };
 
   for (const leak of existing) {
-    const identity = getLeakIdentity(leak);
+    const identity = getLeakIdentity(leak, options);
     if (identity) existingByIdentity.set(identity, leak);
   }
 
   for (const leak of incoming) {
-    const identity = getLeakIdentity(leak);
+    const identity = getLeakIdentity(leak, options);
     const current = identity ? existingByIdentity.get(identity) : null;
     const changedFieldKeys = current
       ? getChangedFieldKeys(current, leak, options)
@@ -1090,12 +1417,12 @@ function filterIncomingLeaksForMerge(
   const existingByIdentity = new Map();
 
   for (const leak of existing) {
-    const identity = getLeakIdentity(leak);
+    const identity = getLeakIdentity(leak, options);
     if (identity) existingByIdentity.set(identity, leak);
   }
 
   return incoming.filter((leak) => {
-    const identity = getLeakIdentity(leak);
+    const identity = getLeakIdentity(leak, options);
     if (!identity) return true;
 
     const current = existingByIdentity.get(identity);
@@ -1111,6 +1438,32 @@ function parseBackupValidation(parsed) {
   return validation.data;
 }
 
+function parseRecoveryValidation(parsed) {
+  const validation = validateBackupRecovery(parsed);
+  if (!validation.ok) throw new Error(validation.error);
+  return validation.data;
+}
+
+function assertArchivePhotoReferences(leaks, zip) {
+  const assertPhoto = (path) => {
+    if (typeof path !== "string" || !path.startsWith("zip:")) return;
+    const relativePath = path.slice("zip:".length);
+    const entry = zip.file(relativePath);
+    if (!entry || entry.dir) {
+      throw new Error(`Файл фото "${relativePath}" не найден в архиве`);
+    }
+  };
+
+  for (const leak of leaks) {
+    for (const key of PHOTO_KEYS) assertPhoto(leak?.[key]);
+    if (Array.isArray(leak?.monitoringRecords)) {
+      for (const record of leak.monitoringRecords) {
+        assertPhoto(record?.[MONITORING_PHOTO_KEY]);
+      }
+    }
+  }
+}
+
 async function parseZipMeta(zip) {
   const metaFile = zip.file("project.json");
   if (!metaFile) return null;
@@ -1119,8 +1472,20 @@ async function parseZipMeta(zip) {
     const parsedMeta = JSON.parse(await metaFile.async("string"));
     const metaValidation = validateProjectBackupMeta(parsedMeta);
     if (metaValidation.ok) return normalizeProjectMeta(metaValidation.data);
-    if (parsedMeta?.project?.name && parsedMeta?.project?.type) {
-      return normalizeProjectMeta(parsedMeta);
+    const legacyProject = parsedMeta?.project;
+    if (
+      typeof legacyProject?.name === "string" &&
+      legacyProject.name.trim() &&
+      Object.hasOwn(TYPE_SIGNATURES, legacyProject.type)
+    ) {
+      // Old project.json variants are still useful for identifying the
+      // project, but none of their unvalidated optional metadata is trusted.
+      return {
+        project: {
+          name: legacyProject.name.trim(),
+          type: legacyProject.type,
+        },
+      };
     }
   } catch {
     // ignore invalid project meta
@@ -1131,9 +1496,10 @@ async function parseZipMeta(zip) {
 
 async function parseBackupZip(zipFile) {
   assertImportFileSize(zipFile);
+  await preflightZipFile(zipFile);
   const JSZip = (await getJSZip()).default;
   const zip = await JSZip.loadAsync(zipFile);
-  assertArchiveLimits(zip);
+  await verifyArchiveLimits(zip);
 
   const jsonFile = zip.file("backup.json");
   if (!jsonFile) throw new Error("Файл backup.json не найден в архиве");
@@ -1145,52 +1511,108 @@ async function parseBackupZip(zipFile) {
     throw new Error("backup.json содержит невалидный JSON");
   }
 
+  const leaks = parseBackupValidation(parsed);
+  assertArchivePhotoReferences(leaks, zip);
+  const recoveryFile = zip.file(RECOVERY_RECORDS_FILE);
+  let recoveryRecords = [];
+  if (recoveryFile) {
+    let parsedRecovery;
+    try {
+      parsedRecovery = JSON.parse(await recoveryFile.async("string"));
+    } catch {
+      throw new Error(`${RECOVERY_RECORDS_FILE} содержит невалидный JSON`);
+    }
+    recoveryRecords = parseRecoveryValidation(parsedRecovery);
+    assertArchivePhotoReferences(recoveryRecords, zip);
+  }
   return {
     zip,
-    leaks: parseBackupValidation(parsed),
+    leaks,
+    recoveryRecords,
     meta: await parseZipMeta(zip),
   };
 }
 
-async function restorePhotosFromZip(leaks, zip, savePhotoRefOrFn) {
+async function restorePhotosFromZip(
+  leaks,
+  zip,
+  savePhotoRefOrFn,
+  { keyPrefix = "" } = {},
+) {
   const savePhoto =
     typeof savePhotoRefOrFn === "function"
       ? savePhotoRefOrFn
       : savePhotoRefOrFn?.current;
 
-  return mapWithConcurrency(leaks, IMPORT_CONCURRENCY, async (leak) => {
+  const archivePhotoSizes = [];
+  const collectSize = (path) => {
+    if (typeof path !== "string" || !path.startsWith("zip:")) return;
+    const entry = zip.file(path.slice("zip:".length));
+    const size = Number(entry?._data?.uncompressedSize);
+    if (Number.isFinite(size) && size > 0) archivePhotoSizes.push(size);
+  };
+  for (const leak of leaks) {
+    for (const key of PHOTO_KEYS) collectSize(leak?.[key]);
+    for (const record of leak?.monitoringRecords ?? []) {
+      collectSize(record?.[MONITORING_PHOTO_KEY]);
+    }
+  }
+  const totalPhotoBytes = archivePhotoSizes.reduce(
+    (total, size) => total + size,
+    0,
+  );
+  const largestPhotoBytes = Math.max(0, ...archivePhotoSizes);
+  const concurrency =
+    largestPhotoBytes > 8 * 1024 * 1024 || totalPhotoBytes > 32 * 1024 * 1024
+      ? 1
+      : totalPhotoBytes > 12 * 1024 * 1024
+        ? 2
+        : IMPORT_CONCURRENCY;
+
+  const preparePhoto = async (path) => {
+    if (path.startsWith("zip:")) {
+      const relativePath = path.slice("zip:".length);
+      const photoFile = zip.file(relativePath);
+      if (!photoFile) return null;
+      const sourceBlob = await photoFile.async("blob");
+      const extension = relativePath.split(".").pop() || "jpg";
+      const mime = getImageMimeTypeFromExtension(extension);
+      const blob =
+        sourceBlob.type === mime
+          ? sourceBlob
+          : new Blob([sourceBlob], { type: mime });
+      return {
+        blob,
+        fallbackPath: null,
+        contentHash: await fingerprintBlob(blob),
+      };
+    }
+    if (path.startsWith("data:image/")) {
+      const blob = dataUrlToBlob(path);
+      if (!blob) return null;
+      return {
+        blob,
+        fallbackPath: path,
+        contentHash: await fingerprintBlob(blob),
+      };
+    }
+    return null;
+  };
+
+  return mapWithConcurrency(leaks, concurrency, async (leak, leakIndex) => {
+    if (!leak || typeof leak !== "object" || Array.isArray(leak)) return leak;
     const copy = { ...leak };
-    const baseKey = String(leak.leak_id ?? leak.id);
+    const baseKey = `${keyPrefix}${String(
+      leak.leak_id ?? leak.id ?? leakIndex + 1,
+    )}`;
     const savedPaths = {};
 
     for (const key of PHOTO_KEYS) {
       const path = leak[key];
-      if (!path) continue;
+      if (typeof path !== "string" || !path) continue;
 
-      let blob = null;
-      let fallbackPath = path;
-
-      if (path.startsWith("zip:")) {
-        const relativePath = path.replace("zip:", "");
-        const photoFile = zip.file(relativePath);
-        if (!photoFile) continue;
-
-        const base64 = await photoFile.async("base64");
-        const ext = relativePath.split(".").pop() || "jpg";
-        const mime = ext === "png" ? "image/png" : "image/jpeg";
-
-        const byteChars = atob(base64);
-        const byteArr = new Uint8Array(byteChars.length);
-        for (let i = 0; i < byteChars.length; i++) {
-          byteArr[i] = byteChars.charCodeAt(i);
-        }
-        blob = new Blob([byteArr], { type: mime });
-        fallbackPath = `data:${mime};base64,${base64}`;
-      } else if (path.startsWith("data:image/")) {
-        blob = dataUrlToBlob(path);
-      }
-
-      if (!blob) continue;
+      const prepared = await preparePhoto(path);
+      if (!prepared) continue;
 
       const storageKey =
         key === "photo_after"
@@ -1199,10 +1621,14 @@ async function restorePhotosFromZip(leaks, zip, savePhotoRefOrFn) {
             ? `${baseKey}_repair`
             : baseKey;
       const excludePaths = Object.values(savedPaths);
-      const newPath = await savePhoto(blob, storageKey, excludePaths, {
+      const newPath = await savePhoto(prepared.blob, storageKey, excludePaths, {
         cleanupOldVersions: false,
+        contentHash: prepared.contentHash,
       });
-      copy[key] = newPath ?? fallbackPath;
+      if (!newPath && path.startsWith("zip:")) {
+        throw new Error(`Не удалось сохранить фотографию ${path}`);
+      }
+      copy[key] = newPath ?? prepared.fallbackPath;
       if (newPath) savedPaths[key] = newPath;
     }
 
@@ -1210,37 +1636,13 @@ async function restorePhotosFromZip(leaks, zip, savePhotoRefOrFn) {
       const restoredRecords = [];
       for (const [index, record] of copy.monitoringRecords.entries()) {
         const path = record?.[MONITORING_PHOTO_KEY];
-        if (!path) {
+        if (typeof path !== "string" || !path) {
           restoredRecords.push(record);
           continue;
         }
 
-        let blob = null;
-        let fallbackPath = path;
-
-        if (path.startsWith("zip:")) {
-          const relativePath = path.replace("zip:", "");
-          const photoFile = zip.file(relativePath);
-          if (!photoFile) {
-            restoredRecords.push(record);
-            continue;
-          }
-
-          const base64 = await photoFile.async("base64");
-          const ext = relativePath.split(".").pop() || "jpg";
-          const mime = ext === "png" ? "image/png" : "image/jpeg";
-          const byteChars = atob(base64);
-          const byteArr = new Uint8Array(byteChars.length);
-          for (let i = 0; i < byteChars.length; i++) {
-            byteArr[i] = byteChars.charCodeAt(i);
-          }
-          blob = new Blob([byteArr], { type: mime });
-          fallbackPath = `data:${mime};base64,${base64}`;
-        } else if (path.startsWith("data:image/")) {
-          blob = dataUrlToBlob(path);
-        }
-
-        if (!blob) {
+        const prepared = await preparePhoto(path);
+        if (!prepared) {
           restoredRecords.push(record);
           continue;
         }
@@ -1248,14 +1650,20 @@ async function restorePhotosFromZip(leaks, zip, savePhotoRefOrFn) {
         const recordId = String(record.id ?? index + 1);
         const storageKey = `${baseKey}_monitoring_${recordId}`;
         const newPath = await savePhoto(
-          blob,
+          prepared.blob,
           storageKey,
           [...Object.values(savedPaths)],
-          { cleanupOldVersions: false },
+          {
+            cleanupOldVersions: false,
+            contentHash: prepared.contentHash,
+          },
         );
+        if (!newPath && path.startsWith("zip:")) {
+          throw new Error(`Не удалось сохранить фотографию ${path}`);
+        }
         restoredRecords.push({
           ...record,
-          [MONITORING_PHOTO_KEY]: newPath ?? fallbackPath,
+          [MONITORING_PHOTO_KEY]: newPath ?? prepared.fallbackPath,
         });
       }
       copy.monitoringRecords = restoredRecords;
@@ -1293,20 +1701,56 @@ export async function buildBackupZip(leaks, idbGet) {
   await yieldToMainThread();
   zip.file("backup.json", JSON.stringify(exportedLeaks, null, 2));
   await yieldToMainThread();
-  return zip.generateAsync({ type: "blob" });
+  const blob = await zip.generateAsync({ type: "blob" });
+  assertImportFileSize(blob);
+  return blob;
 }
 
 export async function streamProjectBackupZip({
   leaks,
+  recoveryRecords = [],
   idbGet,
   project,
   vars,
   writeChunk,
 }) {
   const { ZipStoreStreamWriter } = await import("@/services/zipStoreStream");
-  const zip = new ZipStoreStreamWriter(writeChunk);
-  const exportedLeaks = await exportLeaksWithPhotosToStream(leaks, zip, idbGet);
+  const zip = new ZipStoreStreamWriter(writeChunk, {
+    maxBytes: IMPORT_LIMITS.maxExportBytes,
+  });
+  const validatedRecovery = recoveryRecords.length
+    ? parseRecoveryValidation(recoveryRecords)
+    : [];
+  const leakSegments = allocateUniqueLeakArchiveSegments(leaks);
+  const recoveryLeakSegments = allocateUniqueLeakArchiveSegments(
+    validatedRecovery,
+    { prefix: "recovery", reservedSegments: leakSegments },
+  );
+  const exportedLeaks = await exportLeaksWithPhotosToStream(
+    leaks,
+    zip,
+    idbGet,
+    {
+      leakSegments,
+    },
+  );
   await zip.add("backup.json", JSON.stringify(exportedLeaks, null, 2));
+  if (validatedRecovery.length) {
+    const exportedRecovery = await exportLeaksWithPhotosToStream(
+      validatedRecovery,
+      zip,
+      idbGet,
+      {
+        segmentPrefix: "recovery",
+        preserveUnresolvedPhotoPaths: true,
+        leakSegments: recoveryLeakSegments,
+      },
+    );
+    await zip.add(
+      RECOVERY_RECORDS_FILE,
+      JSON.stringify(exportedRecovery, null, 2),
+    );
+  }
 
   const meta = buildProjectMeta({
     project,
@@ -1318,13 +1762,42 @@ export async function streamProjectBackupZip({
   if (meta) await zip.add("project.json", JSON.stringify(meta, null, 2));
   return zip.close();
 }
-export async function buildProjectBackupZip({ leaks, idbGet, project, vars }) {
+export async function buildProjectBackupZip({
+  leaks,
+  recoveryRecords = [],
+  idbGet,
+  project,
+  vars,
+}) {
   const JSZip = (await getJSZip()).default;
   const zip = new JSZip();
 
-  const exportedLeaks = await exportLeaksWithPhotos(leaks, zip, idbGet);
+  const validatedRecovery = recoveryRecords.length
+    ? parseRecoveryValidation(recoveryRecords)
+    : [];
+  const leakSegments = allocateUniqueLeakArchiveSegments(leaks);
+  const recoveryLeakSegments = allocateUniqueLeakArchiveSegments(
+    validatedRecovery,
+    { prefix: "recovery", reservedSegments: leakSegments },
+  );
+  const exportedLeaks = await exportLeaksWithPhotos(leaks, zip, idbGet, {
+    leakSegments,
+  });
   await yieldToMainThread();
   zip.file("backup.json", JSON.stringify(exportedLeaks, null, 2));
+  if (validatedRecovery.length) {
+    const exportedRecovery = await exportLeaksWithPhotos(
+      validatedRecovery,
+      zip,
+      idbGet,
+      {
+        segmentPrefix: "recovery",
+        preserveUnresolvedPhotoPaths: true,
+        leakSegments: recoveryLeakSegments,
+      },
+    );
+    zip.file(RECOVERY_RECORDS_FILE, JSON.stringify(exportedRecovery, null, 2));
+  }
 
   const meta = buildProjectMeta({
     project,
@@ -1336,7 +1809,9 @@ export async function buildProjectBackupZip({ leaks, idbGet, project, vars }) {
   if (meta) zip.file("project.json", JSON.stringify(meta, null, 2));
 
   await yieldToMainThread();
-  return zip.generateAsync({ type: "blob" });
+  const blob = await zip.generateAsync({ type: "blob" });
+  assertImportFileSize(blob);
+  return blob;
 }
 
 export async function exportBackupZip(leaks, idbGet, projectName = "backup") {
@@ -1346,26 +1821,49 @@ export async function exportBackupZip(leaks, idbGet, projectName = "backup") {
   a.href = url;
   a.download = `${projectName}.zip`;
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 export function detectProjectTypeFromLeaks(leaks) {
   if (!leaks?.length) return null;
 
-  const keys = new Set(leaks.slice(0, 20).flatMap(Object.keys));
-  for (const [type, fields] of Object.entries(TYPE_SIGNATURES)) {
-    if (fields.some((fieldName) => keys.has(fieldName))) return type;
+  // Scan the complete import, but count only meaningful values. A key with an
+  // empty placeholder must not influence detection. Scoring avoids the old
+  // "first matching type wins" behaviour and deliberately returns null when
+  // two project types have the same evidence so the UI can ask the user.
+  const scores = Object.fromEntries(
+    Object.keys(TYPE_SIGNATURES).map((type) => [type, 0]),
+  );
+
+  for (const leak of leaks) {
+    if (!leak || typeof leak !== "object" || Array.isArray(leak)) continue;
+    for (const [type, fields] of Object.entries(TYPE_SIGNATURES)) {
+      for (const fieldName of fields) {
+        const value = leak[fieldName];
+        const meaningful =
+          value != null &&
+          (typeof value !== "string" || value.trim().length > 0);
+        if (meaningful) scores[type] += 1;
+      }
+    }
   }
 
-  return null;
+  const ranked = Object.entries(scores).sort(
+    (left, right) => right[1] - left[1],
+  );
+  const [winner, runnerUp] = ranked;
+  if (!winner || winner[1] <= 0) return null;
+  if (runnerUp && runnerUp[1] === winner[1]) return null;
+  return winner[0];
 }
 
 export async function peekBackupZip(zipFile) {
-  const { leaks, meta } = await parseBackupZip(zipFile);
+  const { leaks, meta, recoveryRecords } = await parseBackupZip(zipFile);
 
   return {
     leaks,
     meta,
+    recoveryRecordCount: recoveryRecords.length,
     detectedType: detectProjectTypeFromLeaks(leaks),
   };
 }
@@ -1379,9 +1877,11 @@ export async function importProjectZip(zipFile, ctx) {
     activeProjectIdRef,
     photoReadyRef,
     metaFallback,
+    overwriteProject,
+    selectProject,
   } = ctx;
 
-  const { zip, leaks, meta } = await parseBackupZip(zipFile);
+  const { zip, leaks, meta, recoveryRecords } = await parseBackupZip(zipFile);
 
   const projectName =
     ctx.overrideName?.trim() || meta?.project?.name || metaFallback?.name;
@@ -1393,6 +1893,7 @@ export async function importProjectZip(zipFile, ctx) {
     );
   }
 
+  const previousProjectId = activeProjectIdRef?.current ?? null;
   const newProject = meta?.project?.syncId
     ? addProject(projectName, projectType, {
         syncId: meta.project.syncId,
@@ -1403,6 +1904,14 @@ export async function importProjectZip(zipFile, ctx) {
   try {
     await waitForProjectActivation(activeProjectIdRef, newProject.id);
     await waitForPhotoStorage(photoReadyRef);
+    const savePhotoToImportedProject = savePhotoRef?.current;
+    const saveImportedProject = saveRef?.current;
+    if (
+      typeof savePhotoToImportedProject !== "function" ||
+      typeof saveImportedProject !== "function"
+    ) {
+      throw new Error("Хранилище импортируемого проекта не готово");
+    }
 
     if (meta?.vars) {
       localStorage.setItem(
@@ -1418,18 +1927,48 @@ export async function importProjectZip(zipFile, ctx) {
       await writeProjectSyncState(newProject.id, meta.sync, []);
     }
 
-    const restoredLeaks = await restorePhotosFromZip(leaks, zip, savePhotoRef);
+    const restoredLeaks = await restorePhotosFromZip(
+      leaks,
+      zip,
+      savePhotoToImportedProject,
+    );
     const finalLeaks = recalculateLeaks(restoredLeaks, meta?.vars);
+    const restoredRecoveryRecords = await restorePhotosFromZip(
+      recoveryRecords,
+      zip,
+      savePhotoToImportedProject,
+      { keyPrefix: "recovery_" },
+    );
     saveMonitoringRound(
       newProject.id,
       getRestoredMonitoringRound(meta, finalLeaks),
     );
-    await saveRef.current(finalLeaks);
+    await saveImportedProject(finalLeaks, {
+      preservedRecords: restoredRecoveryRecords,
+    });
 
     await writeProjectSyncState(newProject.id, meta?.sync, finalLeaks);
     return { project: importedProject, leakCount: finalLeaks.length };
   } catch (error) {
-    await rollbackImportedProject(newProject, removeProject);
+    try {
+      await rollbackImportedProject(newProject, removeProject);
+    } finally {
+      const restoreProject = overwriteProject ?? selectProject;
+      if (
+        previousProjectId &&
+        previousProjectId !== newProject.id &&
+        typeof restoreProject === "function"
+      ) {
+        try {
+          restoreProject(previousProjectId);
+        } catch (restoreError) {
+          logger.warn(
+            "[projectBackupService] Import rollback could not restore the previous active project:",
+            restoreError,
+          );
+        }
+      }
+    }
     throw error;
   }
 }
@@ -1442,6 +1981,8 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     photoReadyRef,
     existingProject,
     setProjectSyncId,
+    replaceProjectSyncId,
+    restoreProjectSnapshot,
   } = ctx;
 
   const { id: existingProjectId, folderName: existingFolderName } =
@@ -1499,12 +2040,22 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     throw new Error("Архив не содержит идентификатор синхронизации");
   }
   const shouldAdoptSyncId = isSync && !existingSyncId && incomingSyncId;
+  const shouldReplaceSyncId =
+    mode === "overwrite" &&
+    Boolean(incomingSyncId) &&
+    incomingSyncId !== existingSyncId;
   if (shouldAdoptSyncId && typeof setProjectSyncId !== "function") {
     throw new Error("Не удалось сохранить идентификатор синхронизации");
+  }
+  if (shouldReplaceSyncId && typeof replaceProjectSyncId !== "function") {
+    throw new Error("Не удалось заменить идентификатор синхронизации");
   }
 
   const localSyncState = await readProjectSyncStateAsync(existingProjectId);
   const incomingSyncState = meta?.sync;
+  if (isSync && incomingSyncState) {
+    assertProjectSyncStateCompatible(localSyncState, incomingSyncState);
+  }
   const mergedSyncState = mergeProjectSyncStates(
     localSyncState,
     incomingSyncState,
@@ -1538,7 +2089,12 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
   const existing = await LeakRepository.getAll({
     projectId: existingProjectId,
     folderName: existingFolderName,
+    ...(existingProject.legacyStorageType
+      ? { legacyStorageType: existingProject.legacyStorageType }
+      : {}),
   });
+  const preservedExisting = getPreservedInvalidLeakRecords(existing);
+  const existingForStorage = [...existing, ...preservedExisting];
 
   // The selected archive can target a project other than the currently active
   // one. Using savePhotoRef here would bind restored photos to the active
@@ -1563,56 +2119,59 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
   let finalLeaks;
   let addedCount;
   let nextMonitoringRound = null;
-
-  if (isMerge) {
-    const incomingToApply = filterIncomingLeaksForMerge(
-      existing,
-      isSync ? applyProjectTombstones(leaks, mergedSyncState) : leaks,
-      isSync ? { source: "sync" } : undefined,
-    );
-    const restoredIncoming = await restorePhotosFromZip(
-      incomingToApply,
-      zip,
-      savePhotoToExistingProject,
-    );
-    const effectiveVars = shouldApplyIncomingVars
-      ? meta?.vars
-      : readStoredProjectVars(existingProjectId);
-    const recalculatedIncoming = recalculateLeaks(
-      restoredIncoming,
-      effectiveVars,
-    );
-    const mergeResult = mergeLeaksByFreshness(
-      existing,
-      recalculatedIncoming,
-      isSync ? { source: "sync" } : undefined,
-    );
-    finalLeaks = isSync
-      ? applyProjectTombstones(mergeResult.leaks, mergedSyncState)
-      : mergeResult.leaks;
-    addedCount =
-      mergeResult.changed + (mergeResult.leaks.length - finalLeaks.length);
-    if (isSync) {
-      const currentRound = readMonitoringRound(existingProjectId);
-      const incomingRound = getRestoredMonitoringRound(meta, finalLeaks);
-      nextMonitoringRound =
-        monitoringRoundFreshness(incomingRound) >
-        monitoringRoundFreshness(currentRound)
-          ? incomingRound
-          : currentRound;
-    }
-  } else {
-    const restoredLeaks = await restorePhotosFromZip(
-      leaks,
-      zip,
-      savePhotoToExistingProject,
-    );
-    finalLeaks = recalculateLeaks(restoredLeaks, meta?.vars);
-    addedCount = finalLeaks.length;
-    nextMonitoringRound = getRestoredMonitoringRound(meta, finalLeaks);
-  }
+  let committedProject = existingProject;
+  let dataCommitAttempted = false;
+  let syncIdMutationAttempted = false;
 
   try {
+    if (isMerge) {
+      const incomingToApply = filterIncomingLeaksForMerge(
+        existing,
+        isSync ? applyProjectTombstones(leaks, mergedSyncState) : leaks,
+        isSync ? { source: "sync" } : { source: "archive" },
+      );
+      const restoredIncoming = await restorePhotosFromZip(
+        incomingToApply,
+        zip,
+        savePhotoToExistingProject,
+      );
+      const effectiveVars = shouldApplyIncomingVars
+        ? meta?.vars
+        : readStoredProjectVars(existingProjectId);
+      const recalculatedIncoming = recalculateLeaks(
+        restoredIncoming,
+        effectiveVars,
+      );
+      const mergeResult = mergeLeaksByFreshness(
+        existing,
+        recalculatedIncoming,
+        isSync ? { source: "sync" } : { source: "archive" },
+      );
+      finalLeaks = isSync
+        ? applyProjectTombstones(mergeResult.leaks, mergedSyncState)
+        : mergeResult.leaks;
+      addedCount =
+        mergeResult.changed + (mergeResult.leaks.length - finalLeaks.length);
+      if (isSync) {
+        const currentRound = readMonitoringRound(existingProjectId);
+        const incomingRound = getRestoredMonitoringRound(meta, finalLeaks);
+        nextMonitoringRound =
+          monitoringRoundFreshness(incomingRound) >
+          monitoringRoundFreshness(currentRound)
+            ? incomingRound
+            : currentRound;
+      }
+    } else {
+      const restoredLeaks = await restorePhotosFromZip(
+        leaks,
+        zip,
+        savePhotoToExistingProject,
+      );
+      finalLeaks = recalculateLeaks(restoredLeaks, meta?.vars);
+      addedCount = finalLeaks.length;
+      nextMonitoringRound = getRestoredMonitoringRound(meta, finalLeaks);
+    }
+
     // Apply metadata before committing leak data. If the commit fails, restore
     // the captured project snapshot so the import remains all-or-nothing.
     if (mode === "overwrite") {
@@ -1625,6 +2184,15 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
         localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(existingProjectId));
       }
       saveMonitoringRound(existingProjectId, nextMonitoringRound);
+      if (incomingSyncState) {
+        await writeProjectSyncState(
+          existingProjectId,
+          incomingSyncState,
+          finalLeaks,
+        );
+      } else {
+        await clearProjectSyncState(existingProjectId);
+      }
     } else if (isSync) {
       if (shouldApplyIncomingVars) {
         localStorage.setItem(
@@ -1658,15 +2226,34 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
       }
     }
 
+    dataCommitAttempted = true;
     if (activeProjectIdRef.current === existingProjectId) {
       await saveRef.current(finalLeaks);
     } else {
-      await LeakRepository.saveAll(finalLeaks, {
+      await LeakRepository.saveAll([...finalLeaks, ...preservedExisting], {
         projectId: existingProjectId,
         folderName: existingFolderName,
       });
     }
+
+    // Keep project metadata in the same transaction boundary as leak data.
+    // If the setter fails (or mutates and then throws), the catch block below
+    // restores both the exact project snapshot and the original leak set.
+    if (shouldAdoptSyncId || shouldReplaceSyncId) {
+      syncIdMutationAttempted = true;
+      committedProject = shouldReplaceSyncId
+        ? replaceProjectSyncId(existingProjectId, incomingSyncId)
+        : setProjectSyncId(existingProjectId, incomingSyncId);
+      if (!committedProject) {
+        throw new Error(
+          shouldReplaceSyncId
+            ? "Не удалось заменить идентификатор синхронизации"
+            : "Не удалось сохранить идентификатор синхронизации",
+        );
+      }
+    }
   } catch (error) {
+    const rollbackErrors = [];
     if (localVarsRaw == null) {
       localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(existingProjectId));
     } else {
@@ -1677,18 +2264,64 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     }
     writeProjectSettings(existingProjectId, localSettings);
     saveMonitoringRound(existingProjectId, localMonitoringRound);
-    await writeProjectSyncState(existingProjectId, localSyncState, existing);
+    await writeProjectSyncState(
+      existingProjectId,
+      localSyncState,
+      existing,
+    ).catch((rollbackError) => rollbackErrors.push(rollbackError));
 
-    await PhotoRepository.gcOrphaned(existing, {
+    if (dataCommitAttempted) {
+      try {
+        if (activeProjectIdRef.current === existingProjectId) {
+          await saveRef.current(existing);
+        } else {
+          await LeakRepository.saveAll(existingForStorage, {
+            projectId: existingProjectId,
+            folderName: existingFolderName,
+          });
+        }
+      } catch (rollbackError) {
+        rollbackErrors.push(rollbackError);
+      }
+    }
+
+    if (syncIdMutationAttempted) {
+      if (typeof restoreProjectSnapshot !== "function") {
+        rollbackErrors.push(
+          new Error("Project metadata rollback is unavailable"),
+        );
+      } else {
+        try {
+          const restored = restoreProjectSnapshot(
+            existingProjectId,
+            existingProject,
+          );
+          if (!restored) {
+            rollbackErrors.push(new Error("Project metadata rollback failed"));
+          }
+        } catch (rollbackError) {
+          rollbackErrors.push(rollbackError);
+        }
+      }
+    }
+
+    await PhotoRepository.gcOrphaned(existingForStorage, {
       projectId: existingProjectId,
       folderName: existingFolderName,
     }).catch(() => {});
+    if (rollbackErrors.length > 0) {
+      error.rollbackErrors = rollbackErrors;
+      logger.error(
+        "[projectBackupService] Import rollback was incomplete:",
+        rollbackErrors,
+      );
+    }
     throw error;
   }
 
   // Data is committed. Cleanup failure must not turn a successful import into
   // a false "Import error"; orphan cleanup can be retried later.
-  await PhotoRepository.gcOrphaned(finalLeaks, {
+  await PhotoRepository.gcOrphaned([...finalLeaks, ...preservedExisting], {
     projectId: existingProjectId,
     folderName: existingFolderName,
   }).catch((error) => {
@@ -1715,14 +2348,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
       );
     }
   }
-  const syncedProject = shouldAdoptSyncId
-    ? setProjectSyncId(existingProjectId, incomingSyncId)
-    : existingProject;
-  if (!syncedProject) {
-    throw new Error("Не удалось сохранить идентификатор синхронизации");
-  }
-
-  return { project: syncedProject, leakCount: addedCount };
+  return { project: committedProject, leakCount: addedCount };
 }
 
 export async function importBackupZip(zipFile, savePhoto) {

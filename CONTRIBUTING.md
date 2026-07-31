@@ -2,21 +2,21 @@
 
 ## Branch naming
 
-| Prefix | Use for |
-|--------|---------|
-| `feature/<name>` | New features |
-| `fix/<name>` | Bug fixes |
-| `chore/<name>` | Tooling, deps, config, refactor |
+| Prefix           | Use for                         |
+| ---------------- | ------------------------------- |
+| `feature/<name>` | New features                    |
+| `fix/<name>`     | Bug fixes                       |
+| `chore/<name>`   | Tooling, deps, config, refactor |
 
 ## Where things live
 
 The placement rules below apply equally to hooks, services, and utils.
 
-| Consumer count | Placement |
-|----------------|-----------|
-| **1** | Move into that consumer's folder (co-locate) |
-| **2+** | Keep in the nearest shared ancestor (`src/hooks/`, `src/utils/`, `src/services/`) |
-| **0** | Verify, then **delete** (dead code) |
+| Consumer count | Placement                                                                         |
+| -------------- | --------------------------------------------------------------------------------- |
+| **1**          | Move into that consumer's folder (co-locate)                                      |
+| **2+**         | Keep in the nearest shared ancestor (`src/hooks/`, `src/utils/`, `src/services/`) |
+| **0**          | Verify, then **delete** (dead code)                                               |
 
 ### Hook placement
 
@@ -97,7 +97,7 @@ src/configs/
    (`steps`, `voice`, `semantic`, `system`, `export`).
 3. Register it in `src/configs/projects.js`:
    ```js
-   import newtype from './newtype/newtype.config';
+   import newtype from "./newtype/newtype.config";
    export const PROJECTS = { upstream, midstream, downstream, newtype };
    ```
 4. Add its metadata to `PROJECT_META` in the same file.

@@ -10,6 +10,11 @@ export const useGeolocation = (enabled = true) => {
 
   useEffect(() => {
     if (!enabled) {
+      // A disabled GPS control must not leave the last fix looking current.
+      // Consumers use these coordinates for new leak records and proximity
+      // filters, so retaining them would silently reuse a stale location.
+      setCoords({ lat: null, lng: null });
+      setError(null);
       setLoading(false);
       return;
     }
@@ -63,9 +68,14 @@ export const useGeolocation = (enabled = true) => {
         // Follow permission changes so GPS watch can recover without reloading.
         if (navigator.permissions) {
           try {
-            permStatus = await navigator.permissions.query({
+            const status = await navigator.permissions.query({
               name: "geolocation",
             });
+            if (stopped) {
+              status.onchange = null;
+              return;
+            }
+            permStatus = status;
             permStatus.onchange = () => {
               if (stopped) return;
               if (permStatus.state === "granted") {
@@ -88,6 +98,7 @@ export const useGeolocation = (enabled = true) => {
       // MOBILE
       try {
         const perm = await Geolocation.requestPermissions();
+        if (stopped) return;
         if (perm.location !== "granted") {
           throw new Error("Нет разрешения на геолокацию");
         }

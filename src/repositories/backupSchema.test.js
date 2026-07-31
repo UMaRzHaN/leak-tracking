@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { validateBackup, validateProjectBackupMeta } from "./backupSchema";
+import {
+  validateBackup,
+  validateBackupRecovery,
+  validateProjectBackupMeta,
+} from "./backupSchema";
 
 const validProject = {
   name: "Alpha",
@@ -9,7 +13,7 @@ const validProject = {
 };
 
 describe("backupSchema leak validation", () => {
-  it("accepts supported IDs, statuses, optional text, and photo paths", () => {
+  it("accepts supported IDs, statuses, optional text, and portable photos", () => {
     const result = validateBackup([
       {
         id: 1,
@@ -19,9 +23,11 @@ describe("backupSchema leak validation", () => {
         status: "resolved",
         component: "Valve",
         leak_description: "Packing",
-        photo: "idb://before",
-        photo_after: "data://after",
-        photo_repair: "Documents/repair.jpg",
+        photo: "zip:photos/one/before.jpg",
+        photo_after: "data:image/jpeg;base64,AA==",
+        monitoringRecords: [
+          { id: "m1", photo: "zip:photos/one/monitoring_m1.jpg" },
+        ],
       },
       {
         id: "two",
@@ -32,6 +38,55 @@ describe("backupSchema leak validation", () => {
 
     expect(result.ok).toBe(true);
     expect(result.data[1].status).toBe("open");
+  });
+
+  it.each([
+    "idb://photo_other_leak_1",
+    "data://LeakReports/Victim/data/data.json",
+    "Documents/repair.jpg",
+    "zip:photos/../backup.json",
+  ])("rejects non-portable or unsafe photo path %s", (photo) => {
+    const result = validateBackup([{ id: "unsafe-photo", photo }]);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("photo");
+  });
+
+  it("validates monitoring photo paths", () => {
+    const result = validateBackup([
+      {
+        id: "unsafe-monitoring-photo",
+        monitoringRecords: [
+          { id: "m1", photo: "data://LeakReports/Victim/data/data.json" },
+        ],
+      },
+    ]);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("monitoringRecords");
+  });
+
+  it.each([
+    [{ id: "x", monitoringRecords: {} }, "monitoringRecords"],
+    [{ id: "x", monitoringRecords: ["poison"] }, "monitoringRecords"],
+    [{ id: "x", history: "poison" }, "history"],
+    [{ id: "x", history: [null] }, "history"],
+  ])("rejects malformed nested record collections %#", (leak, field) => {
+    const result = validateBackup([leak]);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain(field);
+  });
+
+  it("rejects duplicate canonical leak ids, including number/string aliases", () => {
+    const result = validateBackup([
+      { id: 1, status: "open" },
+      { id: "1", status: "resolved" },
+    ]);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("[1.id]");
+    expect(result.error).toContain("Duplicate canonical leak id");
   });
 
   it.each([
@@ -112,6 +167,7 @@ describe("backupSchema project metadata validation", () => {
     [null, "Expected object"],
     [{ project: null }, "project"],
     [{ project: { ...validProject, name: "" } }, "name"],
+    [{ project: { ...validProject, name: "   " } }, "name"],
     [{ project: { ...validProject, folderName: 10 } }, "folderName"],
     [{ project: { ...validProject, syncId: "short" } }, "syncId"],
     [{ project: validProject, schemaVersion: -1 }, "schemaVersion"],
@@ -156,5 +212,30 @@ describe("backupSchema project metadata validation", () => {
 
     expect(result.ok).toBe(false);
     expect(result.error).toContain(expectedPath);
+  });
+});
+
+describe("backupSchema recovery validation", () => {
+  it("preserves records that intentionally fail the normal backup schema", () => {
+    const records = [
+      { id: "duplicate", status: "unsupported" },
+      { id: "duplicate", photo: 42 },
+      "unparseable legacy value",
+    ];
+
+    expect(validateBackupRecovery(records)).toEqual({
+      ok: true,
+      data: records,
+    });
+  });
+
+  it("still enforces complexity limits on recovery data", () => {
+    let nested = "leaf";
+    for (let depth = 0; depth < 22; depth += 1) nested = { nested };
+
+    const result = validateBackupRecovery([nested]);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("nesting");
   });
 });

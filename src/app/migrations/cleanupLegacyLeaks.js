@@ -12,12 +12,9 @@ export function cleanupLegacyLeaks() {
         Array.isArray(data) &&
         data.some((item) => item.photo?.startsWith("data:image"))
       ) {
-        keys.forEach((k) => {
-          if (k.startsWith("leaks_database:")) {
-            localStorage.removeItem(k);
-          }
-        });
-        return true; // было очищено
+        logger.warn(
+          `[cleanupLegacyLeaks] Legacy database "${key}" contains inline photos and was preserved to avoid data loss.`,
+        );
       }
     } catch (err) {
       logger.warn(

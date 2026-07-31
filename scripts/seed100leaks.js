@@ -25,7 +25,7 @@
     window.SEED_CARD_PHOTO_POOL_SIZE ?? (COUNT > FULL_PHOTO_LIMIT ? 120 : 0),
   );
   const DETAIL_PHOTO_SAMPLE_EVERY = Number(
-    window.SEED_DETAIL_PHOTO_EVERY = 1  // везде будут фото
+    (window.SEED_DETAIL_PHOTO_EVERY = 1), // везде будут фото
     // ?? (COUNT > FULL_PHOTO_LIMIT ? 10 : 1), // не везде будут
   );
   const USER_PROFILE_KEY = "leak_tracking:user_profile:v1";

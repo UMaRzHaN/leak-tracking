@@ -212,6 +212,27 @@ describe("localSyncService", () => {
     expect(mocks.remove).toHaveBeenCalledTimes(2);
   });
 
+  it("fails closed when native archive preparation omits its limit", async () => {
+    mocks.plugin.prepareArchive.mockResolvedValueOnce({
+      token: "invalid-limit-token",
+    });
+
+    await expect(
+      startLocalSyncHost({
+        archive: new Blob(["archive"]),
+        projectKey: "upstream:alpha",
+        syncId: "sync-alpha-1234",
+        onArchive: vi.fn(),
+      }),
+    ).rejects.toThrow("invalid archive limit");
+
+    expect(mocks.plugin.discardArchive).toHaveBeenCalledWith({
+      token: "invalid-limit-token",
+    });
+    expect(mocks.plugin.appendArchiveChunk).not.toHaveBeenCalled();
+    expect(mocks.plugin.startHost).not.toHaveBeenCalled();
+  });
+
   it("discards a partially prepared archive when chunk upload fails", async () => {
     mocks.plugin.appendArchiveChunk.mockRejectedValueOnce(
       new Error("chunk failed"),
@@ -469,6 +490,7 @@ describe("localSyncService", () => {
   it("releases the native temporary archive after reading it", async () => {
     mocks.plugin.exchange.mockResolvedValue({
       uri: "file:///cache/incoming.zip",
+      size: 3,
       archiveToken: "received-token",
     });
     vi.stubGlobal(
@@ -518,6 +540,7 @@ describe("localSyncService", () => {
   it("fetches a hosted archive for QR import without preparing an outgoing archive", async () => {
     mocks.plugin.fetchArchive.mockResolvedValue({
       uri: "file:///cache/import.zip",
+      size: 3,
       archiveToken: "import-token",
     });
     vi.stubGlobal(
@@ -552,9 +575,117 @@ describe("localSyncService", () => {
     vi.unstubAllGlobals();
   });
 
+  it("rejects an oversized native archive before fetching it into the WebView", async () => {
+    mocks.plugin.fetchArchive.mockResolvedValue({
+      uri: "file:///cache/oversized.zip",
+      size: 256 * 1024 * 1024 + 1,
+      archiveToken: "oversized-token",
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      fetchLocalSyncArchive({
+        host: "192.168.1.2",
+        port: "49152",
+        code: "123456",
+        fingerprint: "A".repeat(64),
+        projectKey: "upstream:alpha",
+        syncId: "sync-alpha-1234",
+      }),
+    ).rejects.toThrow("too large");
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mocks.plugin.releaseReceivedArchive).toHaveBeenCalledWith({
+      archiveToken: "oversized-token",
+    });
+  });
+
+  it("rejects a native result without a reported size before fetching it", async () => {
+    mocks.plugin.fetchArchive.mockResolvedValue({
+      uri: "file:///cache/missing-size.zip",
+      archiveToken: "missing-size-token",
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      fetchLocalSyncArchive({
+        host: "192.168.1.2",
+        port: "49152",
+        code: "123456",
+        fingerprint: "A".repeat(64),
+        projectKey: "upstream:alpha",
+        syncId: "sync-alpha-1234",
+      }),
+    ).rejects.toThrow("размер");
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mocks.plugin.releaseReceivedArchive).toHaveBeenCalledWith({
+      archiveToken: "missing-size-token",
+    });
+  });
+
+  it("rejects a non-file archive URI before fetching it", async () => {
+    mocks.plugin.fetchArchive.mockResolvedValue({
+      uri: "https://attacker.invalid/archive.zip",
+      size: 3,
+      archiveToken: "remote-uri-token",
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      fetchLocalSyncArchive({
+        host: "192.168.1.2",
+        port: "49152",
+        code: "123456",
+        fingerprint: "A".repeat(64),
+        projectKey: "upstream:alpha",
+        syncId: "sync-alpha-1234",
+      }),
+    ).rejects.toThrow("путь");
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mocks.plugin.releaseReceivedArchive).toHaveBeenCalledWith({
+      archiveToken: "remote-uri-token",
+    });
+  });
+
+  it("rejects a native archive whose fetched size differs from the report", async () => {
+    mocks.plugin.fetchArchive.mockResolvedValue({
+      uri: "file:///cache/mismatched.zip",
+      size: 2,
+      archiveToken: "mismatched-token",
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        blob: vi.fn().mockResolvedValue(new Blob(["zip"])),
+      }),
+    );
+
+    await expect(
+      fetchLocalSyncArchive({
+        host: "192.168.1.2",
+        port: "49152",
+        code: "123456",
+        fingerprint: "A".repeat(64),
+        projectKey: "upstream:alpha",
+        syncId: "sync-alpha-1234",
+      }),
+    ).rejects.toThrow("не совпадает");
+
+    expect(mocks.plugin.releaseReceivedArchive).toHaveBeenCalledWith({
+      archiveToken: "mismatched-token",
+    });
+  });
+
   it("releases a received archive even when reading it fails", async () => {
     mocks.plugin.fetchArchive.mockResolvedValue({
       uri: "file:///cache/broken.zip",
+      size: 3,
       archiveToken: "broken-token",
     });
     vi.stubGlobal(

@@ -50,4 +50,21 @@ describe("ZipStoreStreamWriter", () => {
     await writer.add("safe.txt", "x");
     await expect(writer.add("safe.txt", "y")).rejects.toThrow("Duplicate");
   });
+
+  it("stops before emitting bytes beyond a configured portable limit", async () => {
+    const chunks = [];
+    const writer = new ZipStoreStreamWriter(
+      async (chunk) => {
+        chunks.push(chunk);
+      },
+      { maxBytes: 64 },
+    );
+
+    await expect(writer.add("data.bin", new Uint8Array(64))).rejects.toThrow(
+      "Export archive is larger",
+    );
+    expect(
+      chunks.reduce((sum, chunk) => sum + chunk.length, 0),
+    ).toBeLessThanOrEqual(64);
+  });
 });

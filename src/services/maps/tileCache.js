@@ -1,33 +1,62 @@
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { isNative } from "@/utils/platform";
-import { buildMapTileUrl } from "@/configs/mapTiles";
+import { buildMapTileUrl, TILE_URL_TEMPLATE } from "@/configs/mapTiles";
 const CACHE_NAME = "map-tiles-v2";
-const TILE_DIR = "map-tiles";
+const TILE_ROOT_DIR = "map-tiles";
+const NATIVE_CACHE_FORMAT_VERSION = "v3";
 const MAX_MERCATOR_LAT = 85.05112878;
-const NATIVE_COUNT_KEY = "map-tiles-native-count";
-const METADATA_KEY = "map-tiles-metadata-v1";
+const LEGACY_NATIVE_COUNT_KEY = "map-tiles-native-count";
+const WEB_METADATA_KEY = "map-tiles-metadata-v1";
+const NATIVE_COUNT_PREFIX = "map-tiles-native-count:";
+const NATIVE_METADATA_PREFIX = "map-tiles-native-metadata:";
+const FILESYSTEM_NOT_FOUND_CODE = "OS-PLUG-FILE-0008";
 export const MAX_TILE_CACHE_ENTRIES = 6_000;
 const TILE_CACHE_EVICTION_TARGET = 5_400;
+
+export function buildNativeTileCacheNamespace(tileUrlTemplate) {
+  const value = String(tileUrlTemplate ?? "").trim();
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index++) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `${NATIVE_CACHE_FORMAT_VERSION}-${(hash >>> 0)
+    .toString(16)
+    .padStart(8, "0")}`;
+}
+
+export const NATIVE_TILE_CACHE_NAMESPACE =
+  buildNativeTileCacheNamespace(TILE_URL_TEMPLATE);
+export const NATIVE_TILE_CACHE_DIR = `${TILE_ROOT_DIR}/${NATIVE_TILE_CACHE_NAMESPACE}`;
+export const NATIVE_TILE_CACHE_COUNT_KEY = `${NATIVE_COUNT_PREFIX}${NATIVE_TILE_CACHE_NAMESPACE}`;
+export const NATIVE_TILE_CACHE_METADATA_KEY = `${NATIVE_METADATA_PREFIX}${NATIVE_TILE_CACHE_NAMESPACE}`;
 
 const webSupported = typeof caches !== "undefined";
 
 function getNativeCount() {
   const count = Number.parseInt(
-    localStorage.getItem(NATIVE_COUNT_KEY) || "0",
+    localStorage.getItem(NATIVE_TILE_CACHE_COUNT_KEY) || "0",
     10,
   );
   return Number.isFinite(count) && count > 0 ? count : 0;
 }
 function incrementNativeCount() {
-  localStorage.setItem(NATIVE_COUNT_KEY, getNativeCount() + 1);
+  localStorage.setItem(
+    NATIVE_TILE_CACHE_COUNT_KEY,
+    String(getNativeCount() + 1),
+  );
 }
 function resetNativeCount() {
-  localStorage.removeItem(NATIVE_COUNT_KEY);
+  localStorage.removeItem(NATIVE_TILE_CACHE_COUNT_KEY);
+}
+
+function metadataKey() {
+  return isNative ? NATIVE_TILE_CACHE_METADATA_KEY : WEB_METADATA_KEY;
 }
 
 function readMetadata() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(METADATA_KEY) ?? "{}");
+    const parsed = JSON.parse(localStorage.getItem(metadataKey()) ?? "{}");
     return parsed && typeof parsed === "object" && !Array.isArray(parsed)
       ? parsed
       : {};
@@ -38,7 +67,7 @@ function readMetadata() {
 
 function writeMetadata(metadata) {
   try {
-    localStorage.setItem(METADATA_KEY, JSON.stringify(metadata));
+    localStorage.setItem(metadataKey(), JSON.stringify(metadata));
   } catch {
     // Cache remains usable when localStorage is unavailable.
   }
@@ -91,7 +120,19 @@ function tileY(latitude, tileCount) {
 function tileFilePath(url) {
   const match = url.match(/\/(\d+)\/(\d+)\/(\d+)(?:\.[a-z0-9]+)?(?:[?#].*)?$/i);
   if (!match) return null;
-  return `${TILE_DIR}/${match[1]}/${match[2]}/${match[3]}.jpg`;
+  return `${NATIVE_TILE_CACHE_DIR}/${match[1]}/${match[2]}/${match[3]}.jpg`;
+}
+
+function isNativeTilePath(path) {
+  if (
+    typeof path !== "string" ||
+    !path.startsWith(`${NATIVE_TILE_CACHE_DIR}/`)
+  ) {
+    return false;
+  }
+  return /^\d+\/\d+\/\d+\.jpg$/.test(
+    path.slice(NATIVE_TILE_CACHE_DIR.length + 1),
+  );
 }
 
 export function buildTileUrls(lat, lng, minZoom, maxZoom) {
@@ -234,7 +275,13 @@ async function enforceWebQuota(cache) {
 async function enforceNativeQuota() {
   const count = getNativeCount();
   if (count <= MAX_TILE_CACHE_ENTRIES) return;
-  const metadata = readMetadata();
+  const storedMetadata = readMetadata();
+  const metadata = Object.fromEntries(
+    Object.entries(storedMetadata).filter(([path]) => isNativeTilePath(path)),
+  );
+  if (Object.keys(metadata).length !== Object.keys(storedMetadata).length) {
+    writeMetadata(metadata);
+  }
   const paths = Object.keys(metadata);
   const removeCount = count - TILE_CACHE_EVICTION_TARGET;
 
@@ -259,7 +306,7 @@ async function enforceNativeQuota() {
   ).filter(Boolean);
   removeMetadata(deleted);
   localStorage.setItem(
-    NATIVE_COUNT_KEY,
+    NATIVE_TILE_CACHE_COUNT_KEY,
     String(Math.max(0, count - deleted.length)),
   );
 }
@@ -326,19 +373,31 @@ export async function clearMapCache() {
   if (isNative) {
     try {
       await Filesystem.rmdir({
-        path: TILE_DIR,
+        path: TILE_ROOT_DIR,
         directory: Directory.Data,
         recursive: true,
       });
-    } catch {
-      // already empty
+    } catch (error) {
+      // Capacitor Filesystem v8 exposes a stable not-found code. Any other
+      // failure must preserve count/LRU metadata and be surfaced to the caller.
+      if (error?.code !== FILESYSTEM_NOT_FOUND_CODE) throw error;
     }
     resetNativeCount();
-    localStorage.removeItem(METADATA_KEY);
+    for (let index = localStorage.length - 1; index >= 0; index--) {
+      const key = localStorage.key(index);
+      if (
+        key === LEGACY_NATIVE_COUNT_KEY ||
+        key === WEB_METADATA_KEY ||
+        key?.startsWith(NATIVE_COUNT_PREFIX) ||
+        key?.startsWith(NATIVE_METADATA_PREFIX)
+      ) {
+        localStorage.removeItem(key);
+      }
+    }
     return;
   }
   if (webSupported) await caches.delete(CACHE_NAME);
-  localStorage.removeItem(METADATA_KEY);
+  localStorage.removeItem(WEB_METADATA_KEY);
 }
 
 export function buildViewportTileUrls(bounds, minZoom, maxZoom) {
@@ -491,7 +550,10 @@ export async function preloadUrls(
   );
 
   if (isNative && localSaved > 0) {
-    localStorage.setItem(NATIVE_COUNT_KEY, getNativeCount() + localSaved);
+    localStorage.setItem(
+      NATIVE_TILE_CACHE_COUNT_KEY,
+      String(getNativeCount() + localSaved),
+    );
     await enforceNativeQuota();
   } else if (webCache && stats.saved > 0) {
     await enforceWebQuota(webCache);

@@ -115,3 +115,15 @@ export function collectLeakPhotoPaths(leak) {
   }
   return [...paths];
 }
+
+export function isPhotoReferenced(path, leaks) {
+  if (!path) return false;
+  const records = Array.isArray(leaks) ? leaks : [leaks];
+  return records.some((leak) => collectLeakPhotoPaths(leak).includes(path));
+}
+
+export async function deletePhotoIfUnreferenced(path, leaks, deletePhoto) {
+  if (!path || isPhotoReferenced(path, leaks)) return false;
+  await deletePhoto(path);
+  return true;
+}

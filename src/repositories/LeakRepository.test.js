@@ -114,6 +114,23 @@ describe("LeakRepository.getAll (web / localStorage)", () => {
     const result = await LeakRepository.getAll(PROJECT);
     expect(result).toEqual([]);
   });
+
+  it("shows only the first canonical id and preserves duplicate records", async () => {
+    const duplicate = { id: "1", status: "resolved" };
+    localStorage.setItem(
+      storageKey(PROJECT.projectId),
+      JSON.stringify([
+        { id: 1, status: "open" },
+        duplicate,
+        { id: "unique", status: "open" },
+      ]),
+    );
+
+    const result = await LeakRepository.getAll(PROJECT);
+
+    expect(result.map((leak) => leak.id)).toEqual([1, "unique"]);
+    expect(getPreservedInvalidLeakRecords(result)).toEqual([duplicate]);
+  });
 });
 
 describe("LeakRepository.saveAll (web / localStorage)", () => {

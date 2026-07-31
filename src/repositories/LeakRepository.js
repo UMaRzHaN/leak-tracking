@@ -1,6 +1,7 @@
 import { isNative } from "@/utils/platform";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
+import { PROJECT_META } from "@/configs/projects";
 import { logger } from "@/utils/logger";
 
 const VALID_STATUSES = new Set(["open", "in_progress", "resolved"]);
@@ -17,6 +18,14 @@ export class ProjectDataReadError extends Error {
     this.name = "ProjectDataReadError";
     this.code = "PROJECT_DATA_READ_FAILED";
     this.source = source ?? "unknown";
+  }
+}
+
+export class ProjectDataWriteError extends Error {
+  constructor(message, { cause } = {}) {
+    super(message, cause ? { cause } : undefined);
+    this.name = "ProjectDataWriteError";
+    this.code = "PROJECT_DATA_WRITE_FAILED";
   }
 }
 
@@ -74,10 +83,14 @@ function filterValidLeaks(arr, source) {
   const valid = [];
   const preservedInvalid = [];
   const invalid = [];
+  const seenIds = new Set();
   for (const item of arr) {
     const normalized = normalizeLeakRecord(item);
-    if (normalized) valid.push(normalized);
-    else {
+    const canonicalId = normalized ? String(normalized.id) : null;
+    if (normalized && !seenIds.has(canonicalId)) {
+      seenIds.add(canonicalId);
+      valid.push(normalized);
+    } else {
       invalid.push(item?.id ?? "?");
       preservedInvalid.push(item);
     }
@@ -117,15 +130,78 @@ function isMissingFileError(error) {
   return message.includes("exist") || message.includes("not found");
 }
 
-async function readNativeArray(path) {
+async function readNativeArray(path, directory = Directory.Data) {
   const result = await Filesystem.readFile({
     path,
-    directory: Directory.Data,
+    directory,
     encoding: "utf8",
   });
   const parsed = JSON.parse(result.data || "[]");
   if (!Array.isArray(parsed)) throw new Error(`Expected array in ${path}`);
   return parsed;
+}
+
+function getLegacyNativeCandidates(legacyStorageType) {
+  if (!PROJECT_META[legacyStorageType]) return [];
+  const dataDirectory = `LeakReports/${legacyStorageType}/data`;
+  return [
+    {
+      path: `${dataDirectory}/data.json`,
+      directory: Directory.Data,
+    },
+    {
+      path: `${dataDirectory}/${legacyStorageType}.json`,
+      directory: Directory.Data,
+    },
+    {
+      path: `${dataDirectory}/data.json`,
+      directory: Directory.Documents,
+    },
+    {
+      path: `${dataDirectory}/${legacyStorageType}.json`,
+      directory: Directory.Documents,
+    },
+  ];
+}
+
+async function recoverLegacyNativeArray(
+  folderName,
+  legacyStorageType,
+  currentMainPath,
+) {
+  const candidates = getLegacyNativeCandidates(legacyStorageType);
+  for (const candidate of candidates) {
+    if (
+      candidate.path === currentMainPath &&
+      candidate.directory === Directory.Data
+    ) {
+      continue;
+    }
+
+    let legacyData;
+    try {
+      legacyData = await readNativeArray(candidate.path, candidate.directory);
+    } catch (error) {
+      if (isMissingFileError(error)) continue;
+      throw new ProjectDataReadError(
+        `Legacy project data could not be read from "${candidate.path}"`,
+        { cause: error, source: "native-legacy" },
+      );
+    }
+
+    try {
+      // Persist the exact legacy array through the same crash-safe writer used
+      // by normal saves. The source file is deliberately left untouched.
+      await writeNativeArray(folderName, legacyData);
+    } catch (error) {
+      logger.warn(
+        `[LeakRepository] Read legacy data from "${candidate.path}", but could not copy it to current storage:`,
+        error,
+      );
+    }
+    return { data: legacyData, source: candidate.path };
+  }
+  return null;
 }
 
 async function writeNativeArray(folderName, leaks) {
@@ -284,17 +360,18 @@ function saveWebDataToLocalStorage(projectId, leaks) {
   const key = STORAGE_KEYS.PROJECT_DATA(projectId);
   try {
     localStorage.setItem(key, JSON.stringify(leaks));
+    return true;
   } catch (error) {
-    localStorage.removeItem(key);
     logger.warn(
-      `[LeakRepository] localStorage quota exceeded for "${key}", using IndexedDB only:`,
+      `[LeakRepository] Could not update the localStorage mirror for "${key}":`,
       error,
     );
+    return false;
   }
 }
 
 export const LeakRepository = {
-  async getAll({ projectId, folderName }) {
+  async getAll({ projectId, folderName, legacyStorageType }) {
     if (isNative) {
       const { main, backup } = getMobileRecoveryPaths(folderName);
       try {
@@ -310,7 +387,18 @@ export const LeakRepository = {
         } catch (backupError) {
           const mainMissing = isMissingFileError(mainError);
           const backupMissing = isMissingFileError(backupError);
-          if (mainMissing && backupMissing) return [];
+          if (mainMissing && backupMissing) {
+            const recovered = await recoverLegacyNativeArray(
+              folderName,
+              legacyStorageType,
+              main,
+            );
+            if (!recovered) return [];
+            logger.warn(
+              `[LeakRepository] Migrated legacy native data from "${recovered.source}" without deleting the source file.`,
+            );
+            return filterValidLeaks(recovered.data, recovered.source);
+          }
 
           logger.error(
             `[LeakRepository] Failed to read both "${main}" and "${backup}":`,
@@ -335,6 +423,9 @@ export const LeakRepository = {
       const indexedData = await readWebData(projectId);
       if (Array.isArray(indexedData)) {
         return filterValidLeaks(indexedData, `IndexedDB[${projectId}]`);
+      }
+      if (indexedData != null) {
+        throw new TypeError(`Expected an array in IndexedDB[${projectId}]`);
       }
     } catch (err) {
       indexedDbError = err;
@@ -375,8 +466,26 @@ export const LeakRepository = {
       await writeNativeArray(folderName, leaks);
       return;
     }
-    await writeWebData(projectId, leaks);
-    saveWebDataToLocalStorage(projectId, leaks);
+
+    let indexedDbSaved = false;
+    let indexedDbError = null;
+    try {
+      indexedDbSaved = await writeWebData(projectId, leaks);
+    } catch (error) {
+      indexedDbError = error;
+      logger.warn(
+        `[LeakRepository] Could not save project "${projectId}" to IndexedDB:`,
+        error,
+      );
+    }
+
+    const localStorageSaved = saveWebDataToLocalStorage(projectId, leaks);
+    if (!indexedDbSaved && !localStorageSaved) {
+      throw new ProjectDataWriteError(
+        "Project data could not be saved to IndexedDB or localStorage",
+        { cause: indexedDbError },
+      );
+    }
   },
 
   async clear({ projectId, folderName }) {

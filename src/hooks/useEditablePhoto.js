@@ -12,13 +12,18 @@ export function useEditablePhoto({
   excludePaths = [],
 }) {
   const { isNative, takePhoto, pickFromGallery, pickFromBrowser } = useCamera();
-  const { savePhoto: saveToFS, ready: storageReady } = usePhotoStorage();
+  const {
+    savePhoto: saveToFS,
+    deletePhoto,
+    ready: storageReady,
+  } = usePhotoStorage();
 
   // src сохранённого фото (из БД / FS)
   const persistedSrc = usePhotoSrc(initialPath, version);
 
   const persistedPathRef = useRef(initialPath);
   const activeLeakIdRef = useRef(leakId);
+  const mountedRef = useRef(true);
 
   // черновик фото { raw, src }
   const [draftPhoto, setDraftPhoto] = useState(null);
@@ -29,6 +34,13 @@ export function useEditablePhoto({
     persistedPathRef.current = initialPath;
     setDraftPhoto(null);
   }, [initialPath, leakId]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   /* ===== change photo ===== */
   const changePhoto = useCallback(
@@ -81,19 +93,29 @@ export function useEditablePhoto({
     const newPath = await saveToFS(rawPhoto, leakId, pathsToKeep);
 
     // защита от race-condition
-    if (activeLeakIdRef.current !== currentLeakId) {
-      return persistedPathRef.current;
+    if (!mountedRef.current || activeLeakIdRef.current !== currentLeakId) {
+      if (newPath) {
+        try {
+          await deletePhoto(newPath);
+        } catch {
+          // The record was not committed; a later project GC can retry cleanup.
+        }
+      }
+      const error = new Error("Photo save was cancelled");
+      error.name = "AbortError";
+      throw error;
     }
 
     if (!newPath) {
       throw new Error("Photo storage did not return a saved path");
     }
 
-    persistedPathRef.current = newPath;
-    setDraftPhoto(null);
-
+    // The caller still has to commit this path to the leak record. Keep the
+    // original path and draft until initialPath changes after that commit; if
+    // the DB write fails, a retry must create a fresh file instead of reusing
+    // the uncommitted path that the caller has already cleaned up.
     return newPath;
-  }, [draftPhoto, leakId, saveToFS, storageReady, excludePaths]);
+  }, [deletePhoto, draftPhoto, excludePaths, leakId, saveToFS, storageReady]);
 
   /* ===== cancel ===== */
   const resetPhoto = useCallback(() => {

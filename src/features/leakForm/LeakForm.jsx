@@ -19,6 +19,7 @@ import StepRenderer from "@/features/leakForm/components/StepRenderer/StepRender
 import ClearActions from "./components/ClearActions";
 import SettingsModal from "@/features/settings/SettingsModal/SettingsModal";
 import { getCopyPreviousKeys } from "@/features/leakForm/utils/copyPrevious";
+import { dataUrlToBlob } from "@/utils/photoConversion";
 import s from "./LeakForm.module.scss";
 
 const STEP_TITLE_KEYS = {
@@ -61,6 +62,18 @@ function translateStep(step, t) {
 
 function translateSteps(steps, t) {
   return steps.map((step) => translateStep(step, t));
+}
+
+function hasRestorablePhoto(photo) {
+  if (!photo?.src) return false;
+  if (photo.raw) return true;
+  try {
+    return Boolean(
+      dataUrlToBlob(photo.src)?.type?.toLowerCase().startsWith("image/"),
+    );
+  } catch {
+    return false;
+  }
 }
 
 export default function LeakForm({
@@ -153,7 +166,7 @@ export default function LeakForm({
 
         if (type === "photo") {
           const photo = form[key];
-          if (!photo || !photo.raw || !photo.src) {
+          if (!hasRestorablePhoto(photo)) {
             nextErrors[key] = lang === "ru" ? "Добавьте фото" : "Add a photo";
             firstInvalidStep ??= index + 1;
           }

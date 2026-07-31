@@ -105,20 +105,26 @@ export default function VoicePreviewSheet({
           </p>
         ) : (
           <div className={s.list}>
-            {entries.map(([key, value]) => (
-              <button
-                key={key}
-                type="button"
-                className={`${s.row} ${selected.has(key) ? s.checked : ""}`}
-                onClick={() => toggle(key)}
-              >
-                <span className={s.check}>{selected.has(key) ? "✓" : ""}</span>
-                <span className={s.fieldLabel}>
-                  {labelMap[key] ?? getFieldLabel(key, null, lang, t)}
-                </span>
-                <span className={s.value}>{String(value)}</span>
-              </button>
-            ))}
+            {entries.map(([key, value]) => {
+              const fieldLabel =
+                labelMap[key] ?? getFieldLabel(key, null, lang, t);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className={`${s.row} ${selected.has(key) ? s.checked : ""}`}
+                  aria-label={`${fieldLabel} ${String(value)}`}
+                  aria-pressed={selected.has(key)}
+                  onClick={() => toggle(key)}
+                >
+                  <span className={s.check}>
+                    {selected.has(key) ? "✓" : ""}
+                  </span>
+                  <span className={s.fieldLabel}>{fieldLabel}</span>
+                  <span className={s.value}>{String(value)}</span>
+                </button>
+              );
+            })}
           </div>
         )}
 

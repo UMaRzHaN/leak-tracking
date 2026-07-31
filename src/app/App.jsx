@@ -9,13 +9,14 @@ import {
 } from "react";
 import "@/index.scss";
 
-import Header from "@/components/layout/Header/Header";
-import Footer from "@/components/layout/Footer/Footer";
-import UserProfileSheet from "@/components/ui/UserProfileSheet/UserProfileSheet";
-
+const Header = lazy(() => import("@/components/layout/Header/Header"));
+const Footer = lazy(() => import("@/components/layout/Footer/Footer"));
 const Settings = lazy(() => import("@/pages/Settings/Settings"));
 const ProjectSetupScreen = lazy(
   () => import("@/pages/ProjectSetup/ProjectSetupScreen"),
+);
+const UserProfileSheet = lazy(
+  () => import("@/components/ui/UserProfileSheet/UserProfileSheet"),
 );
 
 import { useProject } from "./project/ProjectContext";
@@ -24,7 +25,6 @@ import { useAppState } from "./hooks/useAppState";
 import { useUserProfile } from "./hooks/useUserProfile";
 import { useLanguage } from "./hooks/useLanguage";
 
-import { cleanupLegacyLeaks } from "./migrations/cleanupLegacyLeaks";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { logger } from "@/utils/logger";
 import { STATUS } from "@/utils/status";
@@ -40,6 +40,8 @@ import {
 import { writeProjectSettings } from "@/app/project/projectSettings";
 import { writeProjectSyncState } from "@/services/projectSyncState";
 import { rollbackImportedProject } from "@/services/projectCleanup";
+import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
+import { useModalDialog } from "@/hooks/useModalDialog";
 
 const AddLeak = lazy(() => import("@/pages/AddLeak/AddLeak"));
 const MainPage = lazy(() => import("@/pages/MainPage/MainPage"));
@@ -51,13 +53,21 @@ function AppLoader({ label, overlay = false }) {
   const { lang } = useLanguage();
   const resolvedLabel =
     label ?? (lang === "ru" ? "Загрузка данных" : "Loading data");
+  const dialogRef = useModalDialog({
+    open: overlay,
+    closeDisabled: true,
+  });
 
   return (
     <div
+      ref={overlay ? dialogRef : undefined}
       className={`appLoader${overlay ? " appLoaderOverlay" : ""}`}
-      role="status"
+      role={overlay ? "dialog" : "status"}
+      aria-modal={overlay || undefined}
+      aria-label={overlay ? resolvedLabel : undefined}
       aria-live="polite"
       aria-busy="true"
+      tabIndex={overlay ? -1 : undefined}
     >
       <span className="appLoaderRing" aria-hidden="true" />
       <span className="appLoaderText">{resolvedLabel}</span>
@@ -197,7 +207,10 @@ export default function App() {
     overwriteProject,
     removeProject,
     setProjectSyncId,
+    replaceProjectSyncId,
+    restoreProjectSnapshot,
   } = useProject();
+  const { clearForm } = useLeakFormContext();
 
   /* =========================
      PROJECT-AWARE DATA
@@ -293,6 +306,22 @@ export default function App() {
   }, [activeProject?.id]);
   const gcRanRef = useRef(false);
   const [isImportingProject, setIsImportingProject] = useState(false);
+  const importOperationCountRef = useRef(0);
+  const runWithImportOverlay = useCallback(async (operation) => {
+    importOperationCountRef.current += 1;
+    setIsImportingProject(true);
+    try {
+      return await operation();
+    } finally {
+      importOperationCountRef.current = Math.max(
+        0,
+        importOperationCountRef.current - 1,
+      );
+      if (importOperationCountRef.current === 0) {
+        setIsImportingProject(false);
+      }
+    }
+  }, []);
 
   // Сбрасываем флаг при смене проекта, чтобы GC запустился снова
   useEffect(() => {
@@ -317,13 +346,6 @@ export default function App() {
     dataProjectId,
     activeProject?.id,
   ]);
-  /* =========================
-     ONE-TIME MIGRATION
-  ========================= */
-  useEffect(() => {
-    cleanupLegacyLeaks();
-  }, []);
-
   /* =========================
      OPEN LEAKS COUNT (for Footer badge)
   ========================= */
@@ -361,13 +383,23 @@ export default function App() {
     () => ({
       addProject,
       removeProject,
+      overwriteProject,
       setProjectSyncId,
+      replaceProjectSyncId,
+      restoreProjectSnapshot,
       savePhotoRef,
       saveRef,
       activeProjectIdRef,
       photoReadyRef,
     }),
-    [addProject, removeProject, setProjectSyncId],
+    [
+      addProject,
+      overwriteProject,
+      removeProject,
+      replaceProjectSyncId,
+      restoreProjectSnapshot,
+      setProjectSyncId,
+    ],
   );
 
   /** First-run (ProjectSetupScreen): supports name/type fallback when ZIP has no project.json */
@@ -387,82 +419,102 @@ export default function App() {
   /** In-app import (Settings): always creates a new project, optional fallback for legacy ZIPs.
    *  options.overrideName forces the project name regardless of project.json (used for copies). */
   const handleImportZip = useCallback(
-    async (file, fallback, options = {}) => {
-      const { importProjectZip } =
-        await import("@/services/projectBackupService");
-      return await importProjectZip(file, {
-        ...stableImportCtx,
-        metaFallback: fallback,
-        ...options,
-      });
-    },
-    [stableImportCtx],
+    (file, fallback, options = {}) =>
+      runWithImportOverlay(async () => {
+        const { importProjectZip } =
+          await import("@/services/projectBackupService");
+        const result = await importProjectZip(file, {
+          ...stableImportCtx,
+          metaFallback: fallback,
+          ...options,
+        });
+        clearForm();
+        return result;
+      }),
+    [clearForm, runWithImportOverlay, stableImportCtx],
   );
 
   /** Import into an already-existing project (overwrite or merge). */
   const handleImportIntoExisting = useCallback(
-    async (file, existingProject, mode) => {
-      const { importIntoExistingProject } =
-        await import("@/services/projectBackupService");
-      return await importIntoExistingProject(
-        file,
-        { ...stableImportCtx, overwriteProject, existingProject },
-        mode,
-      );
-      // importCtx contains only stable refs — overwriteProject is the real dep
-    },
-    [overwriteProject, stableImportCtx],
+    (file, existingProject, mode) =>
+      runWithImportOverlay(async () => {
+        const previousProjectId = activeProjectIdRef.current;
+        const { importIntoExistingProject } =
+          await import("@/services/projectBackupService");
+        const result = await importIntoExistingProject(
+          file,
+          { ...stableImportCtx, overwriteProject, existingProject },
+          mode,
+        );
+        if (existingProject?.id && existingProject.id !== previousProjectId) {
+          clearForm();
+        }
+        return result;
+      }),
+    [clearForm, overwriteProject, runWithImportOverlay, stableImportCtx],
   );
 
   const handleCreateExcelCopy = useCallback(
-    async ({
-      name,
-      type,
-      leaks,
-      monitoringRound,
-      vars,
-      settings,
-      syncId,
-      sync,
-    }) => {
-      const newProject = addProject(
-        name,
-        type,
-        syncId ? { syncId } : undefined,
-      );
-      if (!newProject) {
-        throw new Error("Не удалось создать проект");
-      }
-
-      setIsImportingProject(true);
-      try {
-        await waitForRefValue(activeProjectIdRef, newProject.id);
-        if (vars) {
-          localStorage.setItem(
-            STORAGE_KEYS.PROJECT_VARS(newProject.id),
-            JSON.stringify(vars),
-          );
-        }
-        if (settings) writeProjectSettings(newProject.id, settings);
-        const { persistExcelImportPhotos } =
-          await import("@/services/excelImportService");
-        const withPhotos = await persistExcelImportPhotos(
+    (payload) =>
+      runWithImportOverlay(async () => {
+        const {
+          name,
+          type,
           leaks,
-          savePhotoRef.current,
+          monitoringRound,
+          vars,
+          settings,
+          syncId,
+          sync,
+        } = payload;
+        const previousProjectId = activeProjectIdRef.current;
+        const newProject = addProject(
+          name,
+          type,
+          syncId ? { syncId } : undefined,
         );
-        await saveRef.current(withPhotos);
-        if (sync) await writeProjectSyncState(newProject.id, sync, withPhotos);
-        if (monitoringRound)
-          saveMonitoringRound(newProject.id, monitoringRound);
-        return { project: newProject, leakCount: withPhotos.length };
-      } catch (error) {
-        await rollbackImportedProject(newProject, removeProject);
-        throw error;
-      } finally {
-        setIsImportingProject(false);
-      }
-    },
-    [addProject, removeProject],
+        if (!newProject) {
+          throw new Error("Не удалось создать проект");
+        }
+
+        try {
+          await waitForRefValue(activeProjectIdRef, newProject.id);
+          if (vars) {
+            localStorage.setItem(
+              STORAGE_KEYS.PROJECT_VARS(newProject.id),
+              JSON.stringify(vars),
+            );
+          }
+          if (settings) writeProjectSettings(newProject.id, settings);
+          const { persistExcelImportPhotos } =
+            await import("@/services/excelImportService");
+          const withPhotos = await persistExcelImportPhotos(
+            leaks,
+            savePhotoRef.current,
+          );
+          await saveRef.current(withPhotos);
+          if (sync)
+            await writeProjectSyncState(newProject.id, sync, withPhotos);
+          if (monitoringRound)
+            saveMonitoringRound(newProject.id, monitoringRound);
+          clearForm();
+          return { project: newProject, leakCount: withPhotos.length };
+        } catch (error) {
+          try {
+            await rollbackImportedProject(newProject, removeProject);
+          } finally {
+            if (previousProjectId) overwriteProject(previousProjectId);
+          }
+          throw error;
+        }
+      }),
+    [
+      addProject,
+      clearForm,
+      overwriteProject,
+      removeProject,
+      runWithImportOverlay,
+    ],
   );
 
   const handleSetupImportExcel = useCallback(
@@ -470,7 +522,10 @@ export default function App() {
       const { parseExcelImportFile } =
         await import("@/services/excelImportService");
       const result = await parseExcelImportFile(file, {
-        projectType: type || "upstream",
+        // Do not invent an upstream project type on the first-run screen.
+        // Ordinary XLSX files are parsed with their common columns first and
+        // the resulting leak fields are then used for type detection below.
+        projectType: type || undefined,
       });
       if (!result.leaks.length && !result.portableArchive) {
         const error = new Error("No importable rows found in XLSX");
@@ -523,16 +578,18 @@ export default function App() {
   return (
     <div className={`app ${isListPage ? "appList" : ""}`}>
       {!hideLayout && (
-        <Header
-          geoLoading={geoLoading}
-          coords={coords}
-          geoError={geoError}
-          setPage={setPage}
-          gpsEnabled={gpsEnabled}
-          setGpsEnabled={setGpsEnabled}
-          userProfile={userProfile}
-          onUserProfileOpen={() => setUserProfileOpen(true)}
-        />
+        <Suspense fallback={null}>
+          <Header
+            geoLoading={geoLoading}
+            coords={coords}
+            geoError={geoError}
+            setPage={setPage}
+            gpsEnabled={gpsEnabled}
+            setGpsEnabled={setGpsEnabled}
+            userProfile={userProfile}
+            onUserProfileOpen={() => setUserProfileOpen(true)}
+          />
+        </Suspense>
       )}
 
       <div
@@ -633,15 +690,21 @@ export default function App() {
       </div>
 
       {!hideLayout && (
-        <Footer page={page} setPage={setPage} openCount={openCount} />
+        <Suspense fallback={null}>
+          <Footer page={page} setPage={setPage} openCount={openCount} />
+        </Suspense>
       )}
 
-      <UserProfileSheet
-        open={userProfileOpen}
-        profile={userProfile}
-        onSave={setUserProfile}
-        onClose={() => setUserProfileOpen(false)}
-      />
+      {userProfileOpen && (
+        <Suspense fallback={null}>
+          <UserProfileSheet
+            open
+            profile={userProfile}
+            onSave={setUserProfile}
+            onClose={() => setUserProfileOpen(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

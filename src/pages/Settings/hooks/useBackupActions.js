@@ -187,7 +187,7 @@ export function useBackupActions({
         anchor.href = url;
         anchor.download = fileName;
         anchor.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
 
         notify(
           "success",
@@ -248,6 +248,9 @@ export function useBackupActions({
           const existingLeaks = await LeakRepository.getAll({
             projectId: existing.id,
             folderName: existing.folderName,
+            ...(existing.legacyStorageType
+              ? { legacyStorageType: existing.legacyStorageType }
+              : {}),
           });
           const mergePreview = previewMergeLeaks(existingLeaks, peek.leaks);
           setConflictState({

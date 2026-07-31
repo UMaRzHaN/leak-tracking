@@ -27,6 +27,7 @@ import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import {
   changeLeakStatus,
   collectLeakPhotoPaths,
+  deletePhotoIfUnreferenced,
   getOrphanedOriginalPhoto,
   resolveLeakRecord,
   startLeakRepair,
@@ -428,14 +429,16 @@ export default function Monitoring({
     );
 
     try {
-      await setData(updated);
+      await setData(updated, reopenDraft ? { optimistic: false } : undefined);
     } catch (error) {
       if (photoPath) {
         await deletePhoto(photoPath).catch(() => {});
       }
       throw error;
     }
-    if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
+    await deletePhotoIfUnreferenced(orphanedPhoto, updated, deletePhoto).catch(
+      () => {},
+    );
     setDrafts((prev) => {
       const next = { ...prev };
       delete next[leak.id];
@@ -569,9 +572,10 @@ export default function Monitoring({
     }
   };
 
-  const saveLeak = async (nextLeak) => {
+  const saveLeak = async (nextLeak, options) => {
     await setData(
       data.map((item) => (item.id === nextLeak.id ? nextLeak : item)),
+      options,
     );
     setActiveLeak((current) =>
       current?.id === nextLeak.id ? nextLeak : current,
@@ -609,17 +613,18 @@ export default function Monitoring({
 
     const orphanedPhoto = getOrphanedOriginalPhoto(leak);
 
-    await setData(
-      data.map((item) =>
-        item.id === leak.id
-          ? changeLeakStatus(item, newStatus, {
-              user: profileName || undefined,
-            })
-          : item,
-      ),
+    const next = data.map((item) =>
+      item.id === leak.id
+        ? changeLeakStatus(item, newStatus, {
+            user: profileName || undefined,
+          })
+        : item,
     );
+    await setData(next);
 
-    if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
+    await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
+      () => {},
+    );
   };
 
   const handleResolveConfirm = async ({
@@ -631,20 +636,23 @@ export default function Monitoring({
     if (!leak) return;
 
     try {
-      await setData(
-        data.map((item) =>
-          item.id === leak.id
-            ? resolveLeakRecord(
-                item,
-                { photo_after, materials_equipment, note },
-                { user: profileName || undefined },
-              )
-            : item,
-        ),
+      const next = data.map((item) =>
+        item.id === leak.id
+          ? resolveLeakRecord(
+              item,
+              { photo_after, materials_equipment, note },
+              { user: profileName || undefined },
+            )
+          : item,
       );
+      await setData(next);
       setResolveLeak(null);
       if (leak.photo_after && leak.photo_after !== photo_after) {
-        deletePhoto(leak.photo_after).catch(() => {});
+        await deletePhotoIfUnreferenced(
+          leak.photo_after,
+          next,
+          deletePhoto,
+        ).catch(() => {});
       }
     } catch (error) {
       if (photo_after && photo_after !== leak.photo_after) {
@@ -664,22 +672,27 @@ export default function Monitoring({
 
     const orphanedPhoto = getOrphanedOriginalPhoto(leak);
     try {
-      await setData(
-        data.map((item) =>
-          item.id === leak.id
-            ? startLeakRepair(
-                item,
-                { photo_repair, materials_equipment, note },
-                { user: profileName || undefined },
-              )
-            : item,
-        ),
+      const next = data.map((item) =>
+        item.id === leak.id
+          ? startLeakRepair(
+              item,
+              { photo_repair, materials_equipment, note },
+              { user: profileName || undefined },
+            )
+          : item,
       );
+      await setData(next);
       setRepairLeak(null);
       if (leak.photo_repair && leak.photo_repair !== photo_repair) {
-        deletePhoto(leak.photo_repair).catch(() => {});
+        await deletePhotoIfUnreferenced(
+          leak.photo_repair,
+          next,
+          deletePhoto,
+        ).catch(() => {});
       }
-      if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
+      await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
+        () => {},
+      );
     } catch (error) {
       if (photo_repair && photo_repair !== leak.photo_repair) {
         deletePhoto(photo_repair).catch(() => {});
@@ -693,20 +706,21 @@ export default function Monitoring({
     if (!leak) return;
 
     const orphanedPhoto = getOrphanedOriginalPhoto(leak);
-    await setData(
-      data.map((item) =>
-        item.id === leak.id
-          ? buildReopenedLeak({
-              leak: item,
-              draft,
-              vars,
-              user: profileName || undefined,
-            })
-          : item,
-      ),
+    const next = data.map((item) =>
+      item.id === leak.id
+        ? buildReopenedLeak({
+            leak: item,
+            draft,
+            vars,
+            user: profileName || undefined,
+          })
+        : item,
     );
+    await setData(next, { optimistic: false });
     setReopenLeak(null);
-    if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
+    await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
+      () => {},
+    );
   };
 
   const renderMonitoringItem = useCallback(
@@ -851,6 +865,7 @@ export default function Monitoring({
                 ? s.filterBtnActive
                 : ""
             }`}
+            aria-label={`${label} ${count}`}
             aria-pressed={
               (hasMonitoringRound ? monitoringFilter : FILTERS.ALL) === id
             }

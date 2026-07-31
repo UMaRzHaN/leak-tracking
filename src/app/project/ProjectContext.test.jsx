@@ -17,6 +17,7 @@ vi.mock("./projectStorage", async () => {
 const { ProjectProvider, useProject } = await import("./ProjectContext");
 const { STORAGE_KEYS } = await import("./storageKeys");
 const storageModule = await import("./projectStorage");
+const migrationModule = await import("./projectMigration");
 
 describe("ProjectProvider initialization", () => {
   beforeEach(() => {
@@ -47,6 +48,30 @@ describe("ProjectProvider initialization", () => {
     expect(result.current.projects).toHaveLength(1);
     expect(storageModule.loadProjects).toHaveBeenCalledTimes(1);
     expect(storageModule.loadActiveId).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses metadata repaired for an already migrated project immediately", () => {
+    const stored = {
+      id: "1234",
+      name: "Alpha",
+      type: "upstream",
+      folderName: "Alpha",
+      createdAt: 1234,
+    };
+    localStorage.setItem(STORAGE_KEYS.PROJECTS_LIST, JSON.stringify([stored]));
+    migrationModule.migrateFromLegacy.mockReturnValueOnce([
+      { ...stored, legacyStorageType: "upstream" },
+    ]);
+
+    const wrapper = ({ children }) => (
+      <ProjectProvider>{children}</ProjectProvider>
+    );
+    const { result } = renderHook(() => useProject(), { wrapper });
+
+    expect(result.current.activeProject).toMatchObject({
+      id: "1234",
+      legacyStorageType: "upstream",
+    });
   });
 
   it("falls back to the first project when stored active id is invalid", () => {
@@ -142,6 +167,66 @@ describe("ProjectProvider initialization", () => {
     ).toBe("new-sync-5678");
   });
 
+  it("restores an exact project snapshot during transaction rollback", () => {
+    const original = {
+      id: "p1",
+      name: "Alpha",
+      type: "upstream",
+      folderName: "alpha",
+      createdAt: 1,
+    };
+    localStorage.setItem(
+      STORAGE_KEYS.PROJECTS_LIST,
+      JSON.stringify([original]),
+    );
+    const wrapper = ({ children }) => (
+      <ProjectProvider>{children}</ProjectProvider>
+    );
+    const { result } = renderHook(() => useProject(), { wrapper });
+
+    act(() => {
+      result.current.setProjectSyncId("p1", "temporary-sync-1234");
+      result.current.restoreProjectSnapshot("p1", original);
+    });
+
+    expect(result.current.activeProject).toEqual(original);
+    expect(
+      JSON.parse(localStorage.getItem(STORAGE_KEYS.PROJECTS_LIST)),
+    ).toEqual([original]);
+  });
+
+  it("drops the native legacy marker when the project type changes", () => {
+    localStorage.setItem(
+      STORAGE_KEYS.PROJECTS_LIST,
+      JSON.stringify([
+        {
+          id: "1234",
+          name: "Legacy",
+          type: "upstream",
+          folderName: "upstream",
+          createdAt: 1234,
+          legacyStorageType: "upstream",
+        },
+      ]),
+    );
+    const wrapper = ({ children }) => (
+      <ProjectProvider>{children}</ProjectProvider>
+    );
+    const { result } = renderHook(() => useProject(), { wrapper });
+
+    act(() => result.current.changeProjectType("1234", "midstream"));
+
+    expect(result.current.activeProject).toMatchObject({
+      type: "midstream",
+    });
+    expect(result.current.activeProject).not.toHaveProperty(
+      "legacyStorageType",
+    );
+    expect(
+      JSON.parse(localStorage.getItem(STORAGE_KEYS.PROJECTS_LIST))[0],
+    ).not.toHaveProperty("legacyStorageType");
+  });
+
   it("restores archived project metadata without replacing local identity", () => {
     localStorage.setItem(
       STORAGE_KEYS.PROJECTS_LIST,
@@ -228,6 +313,35 @@ describe("ProjectProvider initialization", () => {
     expect(localStorage.getItem(STORAGE_KEYS.ACTIVE_PROJECT_ID)).toBe(
       created.id,
     );
+  });
+
+  it("caps suffixed duplicate folder names at the storage segment limit", () => {
+    const name = "A".repeat(80);
+    const base = name.slice(0, 50);
+    localStorage.setItem(
+      STORAGE_KEYS.PROJECTS_LIST,
+      JSON.stringify([
+        {
+          id: "p1",
+          name,
+          type: "upstream",
+          folderName: base,
+          createdAt: 1,
+        },
+      ]),
+    );
+    const wrapper = ({ children }) => (
+      <ProjectProvider>{children}</ProjectProvider>
+    );
+    const { result } = renderHook(() => useProject(), { wrapper });
+
+    let created;
+    act(() => {
+      created = result.current.addProject(name, "midstream");
+    });
+
+    expect(created.folderName).toHaveLength(50);
+    expect(created.folderName).toMatch(/_2$/);
   });
 
   it("keeps both projects created in the same event turn", () => {

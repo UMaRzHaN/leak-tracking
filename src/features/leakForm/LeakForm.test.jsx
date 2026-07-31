@@ -199,6 +199,24 @@ describe("LeakForm", () => {
     expect(screen.getByTestId("form").textContent).toContain("{}");
   });
 
+  it("accepts a restorable data URL photo loaded from a draft", async () => {
+    const onAdd = vi.fn().mockResolvedValue({ id: "saved-from-draft" });
+    mocks.photoRequired = true;
+    mocks.initialForm = {
+      leak_speed: "3",
+      station: "A",
+      photo: { src: "data:image/jpeg;base64,YQ==" },
+    };
+    render(<LeakForm onAdd={onAdd} />);
+
+    fireEvent.click(screen.getByText("save"));
+
+    await waitFor(() => expect(onAdd).toHaveBeenCalledOnce());
+    expect(screen.getByTestId("errors").textContent).not.toContain(
+      '"photo":"Add a photo"',
+    );
+  });
+
   it("opens and closes calculation settings", () => {
     render(<LeakForm />);
     fireEvent.click(screen.getByText("Edit Parameters"));

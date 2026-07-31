@@ -19,9 +19,13 @@ vi.mock("@capacitor/filesystem", () => ({
 
 const {
   cacheTile,
+  buildNativeTileCacheNamespace,
   clearMapCache,
   getMapCacheInfo,
   getTileBlobUrl,
+  NATIVE_TILE_CACHE_COUNT_KEY,
+  NATIVE_TILE_CACHE_DIR,
+  NATIVE_TILE_CACHE_METADATA_KEY,
   preloadUrls,
 } = await import("./tileCache");
 
@@ -38,11 +42,21 @@ describe("tileCache native storage", () => {
   });
 
   it("recovers from a corrupted or negative cached tile count", async () => {
-    localStorage.setItem("map-tiles-native-count", "broken");
+    localStorage.setItem(NATIVE_TILE_CACHE_COUNT_KEY, "broken");
     await expect(getMapCacheInfo()).resolves.toEqual({ count: 0, sizeMB: 0 });
 
-    localStorage.setItem("map-tiles-native-count", "-5");
+    localStorage.setItem(NATIVE_TILE_CACHE_COUNT_KEY, "-5");
     await expect(getMapCacheInfo()).resolves.toEqual({ count: 0, sizeMB: 0 });
+  });
+
+  it("namespaces native tiles by cache format and provider template", () => {
+    expect(NATIVE_TILE_CACHE_DIR).toMatch(/^map-tiles\/v3-[0-9a-f]{8}$/);
+    expect(
+      buildNativeTileCacheNamespace("https://provider-a/{z}/{y}/{x}"),
+    ).not.toBe(buildNativeTileCacheNamespace("https://provider-b/{z}/{y}/{x}"));
+    expect(
+      buildNativeTileCacheNamespace("https://provider-a/{z}/{y}/{x}"),
+    ).toBe(buildNativeTileCacheNamespace("https://provider-a/{z}/{y}/{x}"));
   });
 
   it("reads a native tile and rejects malformed paths or read failures", async () => {
@@ -52,7 +66,7 @@ describe("tileCache native storage", () => {
       "blob:native-tile",
     );
     expect(filesystem.readFile).toHaveBeenCalledWith({
-      path: "map-tiles/3/2/1.jpg",
+      path: `${NATIVE_TILE_CACHE_DIR}/3/2/1.jpg`,
       directory: "DATA",
     });
 
@@ -75,13 +89,13 @@ describe("tileCache native storage", () => {
     await cacheTile("https://server/tile/3/2/1.jpg");
 
     expect(filesystem.mkdir).toHaveBeenCalledWith({
-      path: "map-tiles/3/2",
+      path: `${NATIVE_TILE_CACHE_DIR}/3/2`,
       directory: "DATA",
       recursive: true,
     });
     expect(filesystem.writeFile).toHaveBeenCalledWith(
       expect.objectContaining({
-        path: "map-tiles/3/2/1.jpg",
+        path: `${NATIVE_TILE_CACHE_DIR}/3/2/1.jpg`,
         directory: "DATA",
       }),
     );
@@ -133,13 +147,17 @@ describe("tileCache native storage", () => {
       failed: 1,
     });
     expect(filesystem.mkdir).toHaveBeenCalledTimes(1);
-    expect(localStorage.getItem("map-tiles-native-count")).toBe("1");
+    expect(localStorage.getItem(NATIVE_TILE_CACHE_COUNT_KEY)).toBe("1");
     expect(onProgress).toHaveBeenLastCalledWith(3, 3, stats);
   });
 
   it("clears files and metadata even when the directory is absent", async () => {
-    localStorage.setItem("map-tiles-native-count", "4");
-    filesystem.rmdir.mockRejectedValue(new Error("missing"));
+    localStorage.setItem(NATIVE_TILE_CACHE_COUNT_KEY, "4");
+    localStorage.setItem(NATIVE_TILE_CACHE_METADATA_KEY, "{}");
+    localStorage.setItem("map-tiles-native-count", "9");
+    const missingError = new Error("missing");
+    missingError.code = "OS-PLUG-FILE-0008";
+    filesystem.rmdir.mockRejectedValue(missingError);
 
     await expect(clearMapCache()).resolves.toBeUndefined();
 
@@ -148,10 +166,26 @@ describe("tileCache native storage", () => {
       directory: "DATA",
       recursive: true,
     });
+    expect(localStorage.getItem(NATIVE_TILE_CACHE_COUNT_KEY)).toBeNull();
+    expect(localStorage.getItem(NATIVE_TILE_CACHE_METADATA_KEY)).toBeNull();
     expect(localStorage.getItem("map-tiles-native-count")).toBeNull();
   });
+
+  it("preserves native metadata when an existing cache cannot be deleted", async () => {
+    localStorage.setItem(NATIVE_TILE_CACHE_COUNT_KEY, "4");
+    localStorage.setItem(NATIVE_TILE_CACHE_METADATA_KEY, '{"tile":1}');
+    filesystem.rmdir.mockRejectedValue(new Error("permission denied"));
+
+    await expect(clearMapCache()).rejects.toThrow("permission denied");
+
+    expect(localStorage.getItem(NATIVE_TILE_CACHE_COUNT_KEY)).toBe("4");
+    expect(localStorage.getItem(NATIVE_TILE_CACHE_METADATA_KEY)).toBe(
+      '{"tile":1}',
+    );
+  });
+
   it("clears an over-limit legacy native cache that has no LRU index", async () => {
-    localStorage.setItem("map-tiles-native-count", "6000");
+    localStorage.setItem(NATIVE_TILE_CACHE_COUNT_KEY, "6000");
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -167,18 +201,22 @@ describe("tileCache native storage", () => {
       directory: "DATA",
       recursive: true,
     });
-    expect(localStorage.getItem("map-tiles-native-count")).toBeNull();
-    expect(localStorage.getItem("map-tiles-metadata-v1")).toBeNull();
+    expect(localStorage.getItem(NATIVE_TILE_CACHE_COUNT_KEY)).toBeNull();
+    expect(localStorage.getItem(NATIVE_TILE_CACHE_METADATA_KEY)).toBeNull();
   });
   it("evicts least-recently-used indexed native tiles", async () => {
     const metadata = Object.fromEntries(
       Array.from({ length: 6_001 }, (_, index) => [
-        `map-tiles/1/1/${index}.jpg`,
+        `${NATIVE_TILE_CACHE_DIR}/1/1/${index}.jpg`,
         index + 1,
       ]),
     );
-    localStorage.setItem("map-tiles-native-count", "6000");
-    localStorage.setItem("map-tiles-metadata-v1", JSON.stringify(metadata));
+    metadata["../project-data.json"] = -1;
+    localStorage.setItem(NATIVE_TILE_CACHE_COUNT_KEY, "6000");
+    localStorage.setItem(
+      NATIVE_TILE_CACHE_METADATA_KEY,
+      JSON.stringify(metadata),
+    );
     filesystem.deleteFile.mockImplementation(({ path }) =>
       path.endsWith("/0.jpg")
         ? Promise.reject(new Error("already removed"))
@@ -195,9 +233,16 @@ describe("tileCache native storage", () => {
     await cacheTile("https://server/tile/3/2/4.jpg");
 
     expect(filesystem.deleteFile).toHaveBeenCalledTimes(601);
-    expect(localStorage.getItem("map-tiles-native-count")).toBe("5401");
-    const remaining = JSON.parse(localStorage.getItem("map-tiles-metadata-v1"));
-    expect(remaining["map-tiles/1/1/0.jpg"]).toBeDefined();
-    expect(remaining["map-tiles/3/2/4.jpg"]).toBeDefined();
+    expect(filesystem.deleteFile).not.toHaveBeenCalledWith({
+      path: "../project-data.json",
+      directory: "DATA",
+    });
+    expect(localStorage.getItem(NATIVE_TILE_CACHE_COUNT_KEY)).toBe("5401");
+    const remaining = JSON.parse(
+      localStorage.getItem(NATIVE_TILE_CACHE_METADATA_KEY),
+    );
+    expect(remaining["../project-data.json"]).toBeUndefined();
+    expect(remaining[`${NATIVE_TILE_CACHE_DIR}/1/1/0.jpg`]).toBeDefined();
+    expect(remaining[`${NATIVE_TILE_CACHE_DIR}/3/2/4.jpg`]).toBeDefined();
   });
 });

@@ -34,6 +34,24 @@ import { performSettingsCleanup } from "./settingsCleanup";
 import { resolvePortableExcelArchiveRoute } from "./excelArchiveRouting";
 import s from "./Settings.module.scss";
 
+function formatExcelValidationSummary(result, lang) {
+  const count = result?.stats?.validationWarningCount ?? 0;
+  if (!count) return "";
+  const examples = (result.stats.validationWarnings ?? [])
+    .slice(0, 3)
+    .map((warning) =>
+      lang === "ru"
+        ? `${warning.sheet}, строка ${warning.row}, ${warning.column}: ${warning.message}`
+        : `${warning.sheet}, row ${warning.row}, ${warning.column}: ${warning.message}`,
+    )
+    .join("; ");
+  const prefix =
+    lang === "ru"
+      ? ` Предупреждения валидации: ${count}.`
+      : ` Validation warnings: ${count}.`;
+  return examples ? `${prefix} ${examples}` : prefix;
+}
+
 export default function Settings({
   setPage,
   onBack,
@@ -848,8 +866,8 @@ export default function Settings({
         description={
           excelImportState.result
             ? lang === "ru"
-              ? `Файл: ${excelImportState.fileName}. Лист: ${excelImportState.result.sheetName}. Найдено строк: ${excelImportState.result.stats.totalRows}; будет импортировано: ${excelImportState.result.stats.imported}; мониторинг: ${excelImportState.result.stats.monitoringRecords ?? 0}; фото: ${excelImportState.result.stats.restoredPhotos ?? 0}; пропущено: ${excelImportState.result.stats.skipped}.`
-              : `File: ${excelImportState.fileName}. Sheet: ${excelImportState.result.sheetName}. Rows found: ${excelImportState.result.stats.totalRows}; to import: ${excelImportState.result.stats.imported}; monitoring: ${excelImportState.result.stats.monitoringRecords ?? 0}; photos: ${excelImportState.result.stats.restoredPhotos ?? 0}; skipped: ${excelImportState.result.stats.skipped}.`
+              ? `Файл: ${excelImportState.fileName}. Лист: ${excelImportState.result.sheetName}. Найдено строк: ${excelImportState.result.stats.totalRows}; будет импортировано: ${excelImportState.result.stats.imported}; мониторинг: ${excelImportState.result.stats.monitoringRecords ?? 0}; фото: ${excelImportState.result.stats.restoredPhotos ?? 0}; пропущено: ${excelImportState.result.stats.skipped}.${formatExcelValidationSummary(excelImportState.result, lang)}`
+              : `File: ${excelImportState.fileName}. Sheet: ${excelImportState.result.sheetName}. Rows found: ${excelImportState.result.stats.totalRows}; to import: ${excelImportState.result.stats.imported}; monitoring: ${excelImportState.result.stats.monitoringRecords ?? 0}; photos: ${excelImportState.result.stats.restoredPhotos ?? 0}; skipped: ${excelImportState.result.stats.skipped}.${formatExcelValidationSummary(excelImportState.result, lang)}`
             : ""
         }
         confirmLabel={lang === "ru" ? "Импортировать" : "Import"}

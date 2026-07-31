@@ -12,8 +12,12 @@ vi.mock("@capacitor/camera", () => ({
   CameraSource: { Camera: "camera", Photos: "photos" },
 }));
 
-const { pickPhotoFromGallery, readPhotoFromFile, takePhotoFromCamera } =
-  await import("./cameraService");
+const {
+  MAX_PHOTO_INPUT_BYTES,
+  pickPhotoFromGallery,
+  readPhotoFromFile,
+  takePhotoFromCamera,
+} = await import("./cameraService");
 
 describe("browser camera service", () => {
   it("rejects native camera and gallery entry points", async () => {
@@ -38,6 +42,24 @@ describe("browser camera service", () => {
   it("rejects values that did not come from a file input", async () => {
     await expect(readPhotoFromFile(new Blob(["photo"]))).rejects.toThrow(
       "Expected File from input",
+    );
+  });
+
+  it("rejects non-image and oversized browser files before reading them", async () => {
+    await expect(
+      readPhotoFromFile(
+        new File(["not a photo"], "notes.txt", { type: "text/plain" }),
+      ),
+    ).rejects.toThrow("Selected file is not an image");
+
+    const oversized = new File(["photo"], "photo.jpg", {
+      type: "image/jpeg",
+    });
+    Object.defineProperty(oversized, "size", {
+      value: MAX_PHOTO_INPUT_BYTES + 1,
+    });
+    await expect(readPhotoFromFile(oversized)).rejects.toThrow(
+      "Photo is larger than 32 MB",
     );
   });
 });

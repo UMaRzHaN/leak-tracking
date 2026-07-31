@@ -12,7 +12,7 @@ vi.mock("@/services/localSyncService", () => ({
 }));
 
 vi.mock("@/services/projectBackupService", () => ({
-  buildProjectBackupZip: vi.fn(),
+  streamProjectBackupZip: vi.fn(),
 }));
 
 const syncService = await import("@/services/localSyncService");
@@ -33,28 +33,43 @@ function renderSync(overrides = {}) {
     .fn()
     .mockResolvedValue({ project: { name: "Imported" }, leakCount: 3 });
   const onImportIntoExisting = vi.fn().mockResolvedValue({ leakCount: 2 });
-  const hook = renderHook(() =>
-    useLocalSync({
-      activeProject,
-      data: [{ id: "leak-1" }],
-      idbGetPhoto: vi.fn(),
-      vars: {},
-      onImportZip,
-      onImportIntoExisting,
-      notify,
-      lang: "ru",
-      ensureProjectSyncId: vi.fn(() => activeProject),
-      ...overrides,
-    }),
+  const baseProps = {
+    activeProject,
+    data: [{ id: "leak-1" }],
+    idbGetPhoto: vi.fn(),
+    vars: {},
+    onImportZip,
+    onImportIntoExisting,
+    notify,
+    lang: "ru",
+    ensureProjectSyncId: vi.fn(() => activeProject),
+  };
+  const hook = renderHook(
+    (currentOverrides) =>
+      useLocalSync({
+        ...baseProps,
+        ...currentOverrides,
+      }),
+    { initialProps: overrides },
   );
-  return { ...hook, notify, onImportZip, onImportIntoExisting };
+  return {
+    ...hook,
+    rerender: (nextOverrides = {}) =>
+      hook.rerender({ ...overrides, ...nextOverrides }),
+    notify,
+    onImportZip,
+    onImportIntoExisting,
+  };
 }
 
 describe("useLocalSync", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    backupService.buildProjectBackupZip.mockResolvedValue(
-      new Blob(["local"], { type: "application/zip" }),
+    backupService.streamProjectBackupZip.mockImplementation(
+      async ({ writeChunk }) => {
+        await writeChunk(new Uint8Array([1, 2, 3]));
+        return 3;
+      },
     );
     syncService.createLocalSyncQrSvg.mockResolvedValue("<svg />");
   });
@@ -77,7 +92,10 @@ describe("useLocalSync", () => {
       session: { host: "192.168.43.1", port: 49152, code: "123456" },
     });
     expect(syncService.startLocalSyncHost).toHaveBeenCalledWith(
-      expect.objectContaining({ projectKey: "upstream:alpha field" }),
+      expect.objectContaining({
+        projectKey: "upstream:alpha field",
+        produceArchive: expect.any(Function),
+      }),
     );
 
     const incoming = new File(["remote"], "local-sync.zip", {
@@ -123,6 +141,7 @@ describe("useLocalSync", () => {
         code: "654321",
         fingerprint: "A".repeat(64),
         projectKey: "upstream:alpha field",
+        produceArchive: expect.any(Function),
       }),
     );
     expect(onImportIntoExisting).toHaveBeenCalledWith(
@@ -147,8 +166,11 @@ describe("useLocalSync", () => {
       await result.current.startHost();
     });
 
-    expect(backupService.buildProjectBackupZip).toHaveBeenCalledWith(
-      expect.objectContaining({ leaks: [] }),
+    const options = syncService.startLocalSyncHost.mock.calls[0][0];
+    expect(options.produceArchive).toEqual(expect.any(Function));
+    await options.produceArchive(vi.fn().mockResolvedValue(undefined));
+    expect(backupService.streamProjectBackupZip).toHaveBeenCalledWith(
+      expect.objectContaining({ leaks: [], writeChunk: expect.any(Function) }),
     );
     expect(result.current.state.status).toBe("hosting");
   });
@@ -211,6 +233,43 @@ describe("useLocalSync", () => {
         code: "123456",
         fingerprint: "A".repeat(64),
       }),
+    );
+    expect(result.current.state.status).toBe("complete");
+  });
+
+  it("uses the QR sync id as the wire identity for a legacy client", async () => {
+    const legacyProject = { ...activeProject, syncId: undefined };
+    const connection = {
+      host: "192.168.43.1",
+      port: "49152",
+      code: "123456",
+      fingerprint: "A".repeat(64),
+      projectKey: "upstream:alpha field",
+      syncId: "host-sync-1234",
+    };
+    const incoming = new File(["remote"], "local-sync.zip", {
+      type: "application/zip",
+    });
+    syncService.scanLocalSyncQr.mockResolvedValue(connection);
+    syncService.exchangeLocalSyncArchive.mockResolvedValue(incoming);
+    const { result, onImportIntoExisting } = renderSync({
+      activeProject: legacyProject,
+    });
+
+    await act(async () => {
+      await result.current.scanAndJoin();
+    });
+
+    expect(syncService.exchangeLocalSyncArchive).toHaveBeenCalledWith(
+      expect.objectContaining({
+        syncId: connection.syncId,
+        projectKey: "upstream:alpha field",
+      }),
+    );
+    expect(onImportIntoExisting).toHaveBeenCalledWith(
+      incoming,
+      legacyProject,
+      "sync",
     );
     expect(result.current.state.status).toBe("complete");
   });
@@ -396,6 +455,86 @@ describe("useLocalSync", () => {
 
     await waitFor(() => expect(stop).toHaveBeenCalledOnce());
     expect(syncService.cancelLocalSyncQrScan).toHaveBeenCalledTimes(2);
+  });
+
+  it("stops a hosted session and ignores its late archive after switching projects", async () => {
+    let receiveArchive;
+    const stop = vi.fn().mockResolvedValue(undefined);
+    syncService.startLocalSyncHost.mockImplementation(async (options) => {
+      receiveArchive = options.onArchive;
+      return {
+        host: "192.168.43.1",
+        port: 49152,
+        code: "123456",
+        fingerprint: "A".repeat(64),
+        stop,
+      };
+    });
+    const { result, rerender, onImportIntoExisting } = renderSync();
+
+    await act(async () => result.current.startHost());
+    rerender({
+      activeProject: {
+        ...activeProject,
+        id: "project-2",
+        name: "Beta Field",
+        folderName: "beta-field",
+        syncId: "sync-beta-1234",
+      },
+    });
+
+    await waitFor(() => expect(stop).toHaveBeenCalledOnce());
+    expect(result.current.state.status).toBe("idle");
+
+    await act(async () => {
+      await receiveArchive(new File(["late"], "late.zip"));
+    });
+
+    expect(onImportIntoExisting).not.toHaveBeenCalled();
+    expect(result.current.state.status).toBe("idle");
+  });
+
+  it("does not merge a client response that arrives after switching projects", async () => {
+    let resolveExchange;
+    syncService.exchangeLocalSyncArchive.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveExchange = resolve;
+        }),
+    );
+    const { result, rerender, onImportIntoExisting } = renderSync();
+    let joining;
+
+    act(() => {
+      joining = result.current.joinHost({
+        host: "192.168.43.1",
+        port: "49152",
+        code: "654321",
+        fingerprint: "A".repeat(64),
+      });
+    });
+    await waitFor(() =>
+      expect(syncService.exchangeLocalSyncArchive).toHaveBeenCalledOnce(),
+    );
+
+    rerender({
+      activeProject: {
+        ...activeProject,
+        id: "project-2",
+        name: "Beta Field",
+        folderName: "beta-field",
+        syncId: "sync-beta-1234",
+      },
+    });
+    expect(result.current.state.status).toBe("idle");
+
+    await act(async () => {
+      resolveExchange(new File(["late"], "late-response.zip"));
+      await joining;
+    });
+
+    expect(onImportIntoExisting).not.toHaveBeenCalled();
+    expect(result.current.state.status).toBe("idle");
   });
 
   it("silently returns to idle when QR import scanning is cancelled", async () => {

@@ -8,6 +8,7 @@ import {
   REOPEN_MEASUREMENT_FIELDS,
 } from "@/utils/reopenLeak";
 import { isPinkBagEquipment } from "@/utils/calculations/calculations";
+import Notification from "@/components/ui/Notification/Notification";
 import s from "./ReopenLeakModal.module.scss";
 
 function formatValue(value) {
@@ -31,9 +32,18 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
   const [submitted, setSubmitted] = useState(false);
   const [calcDraft, setCalcDraft] = useState(() => initialCalcVars);
   const [calcModalDraft, setCalcModalDraft] = useState(() => initialCalcVars);
+  const [saving, setSaving] = useState(false);
+  const [notification, setNotification] = useState(null);
   const titleId = useId();
   const calcTitleId = useId();
-  const dialogRef = useModalDialog({ open: !calcOpen, onClose });
+  const handleClose = () => {
+    if (!saving) onClose();
+  };
+  const dialogRef = useModalDialog({
+    open: !calcOpen,
+    onClose: handleClose,
+    closeDisabled: saving,
+  });
   const calcDialogRef = useModalDialog({
     open: calcOpen,
     onClose: () => setCalcOpen(false),
@@ -79,8 +89,10 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
             serialRequired: "Укажите серийный номер оборудования",
             cancel: "Отмена",
             save: "Сохранить",
+            saving: "Сохранение…",
             confirm: "Открыть",
             placeholder: "Новое значение",
+            saveError: "Не удалось повторно открыть утечку",
           }
         : {
             title: "Reopen leak",
@@ -105,8 +117,10 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
             serialRequired: "Enter equipment serial number",
             cancel: "Cancel",
             save: "Save",
+            saving: "Saving…",
             confirm: "Open",
             placeholder: "New value",
+            saveError: "Failed to reopen leak",
           },
     [lang, leak?.index, leak?.leak_id],
   );
@@ -158,7 +172,8 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
       ),
     );
 
-  const confirm = () => {
+  const confirm = async () => {
+    if (saving) return;
     setSubmitted(true);
     if (
       !isPinkBagEquipment(effectiveCalcVars.equipmentType) &&
@@ -167,13 +182,29 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
       openCalcModal();
       return;
     }
-    onConfirm({ ...draft, calcVars: effectiveCalcVars });
+
+    setSaving(true);
+    setNotification(null);
+    try {
+      await onConfirm({ ...draft, calcVars: effectiveCalcVars });
+    } catch {
+      setNotification({
+        type: "error",
+        message: texts.saveError,
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div
       className={s.overlay}
-      onClick={() => (calcOpen ? setCalcOpen(false) : onClose())}
+      onClick={() => {
+        if (saving) return;
+        if (calcOpen) setCalcOpen(false);
+        else onClose();
+      }}
     >
       <div
         ref={dialogRef}
@@ -181,9 +212,15 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-busy={saving}
         tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
       >
+        <Notification
+          notification={notification}
+          onClose={() => setNotification(null)}
+        />
+
         <div className={s.handle} />
         <div className={s.header}>
           <h2 id={titleId} className={s.title}>
@@ -256,6 +293,7 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
                 type="button"
                 className={s.calcToggle}
                 onClick={openCalcModal}
+                disabled={saving}
               >
                 {texts.editCalc}
               </button>
@@ -270,11 +308,21 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
         </div>
 
         <div className={s.footer}>
-          <button type="button" className={s.btnCancel} onClick={onClose}>
+          <button
+            type="button"
+            className={s.btnCancel}
+            onClick={handleClose}
+            disabled={saving}
+          >
             {texts.cancel}
           </button>
-          <button type="button" className={s.btnConfirm} onClick={confirm}>
-            {texts.confirm}
+          <button
+            type="button"
+            className={s.btnConfirm}
+            onClick={confirm}
+            disabled={saving}
+          >
+            {saving ? texts.saving : texts.confirm}
           </button>
         </div>
       </div>

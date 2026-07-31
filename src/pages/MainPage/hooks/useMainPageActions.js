@@ -9,6 +9,7 @@ import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import {
   changeLeakStatus,
   collectLeakPhotoPaths,
+  deletePhotoIfUnreferenced,
   getOrphanedOriginalPhoto,
   resolveLeakRecord,
   startLeakRepair,
@@ -94,7 +95,9 @@ export function useMainPageActions({ data, setData, userProfile }) {
       try {
         await setData(next);
         hapticSuccess();
-        if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
+        await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
+          () => {},
+        );
       } catch (err) {
         notify("error", `Ошибка сохранения: ${err.message}`);
       }
@@ -122,7 +125,11 @@ export function useMainPageActions({ data, setData, userProfile }) {
         setResolveLeak(null);
         hapticSuccess();
         if (leak.photo_after && leak.photo_after !== photo_after) {
-          deletePhoto(leak.photo_after).catch(() => {});
+          await deletePhotoIfUnreferenced(
+            leak.photo_after,
+            next,
+            deletePhoto,
+          ).catch(() => {});
         }
       } catch (err) {
         if (photo_after && photo_after !== leak.photo_after) {
@@ -155,9 +162,15 @@ export function useMainPageActions({ data, setData, userProfile }) {
         setRepairLeak(null);
         hapticSuccess();
         if (leak.photo_repair && leak.photo_repair !== photo_repair) {
-          deletePhoto(leak.photo_repair).catch(() => {});
+          await deletePhotoIfUnreferenced(
+            leak.photo_repair,
+            next,
+            deletePhoto,
+          ).catch(() => {});
         }
-        if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
+        await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
+          () => {},
+        );
       } catch (err) {
         if (photo_repair && photo_repair !== leak.photo_repair) {
           deletePhoto(photo_repair).catch(() => {});
@@ -181,10 +194,12 @@ export function useMainPageActions({ data, setData, userProfile }) {
       );
 
       try {
-        await setData(next);
+        await setData(next, { optimistic: false });
         setReopenLeak(null);
         hapticSuccess();
-        if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
+        await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
+          () => {},
+        );
       } catch (err) {
         notify("error", `Ошибка сохранения: ${err.message}`);
       }
@@ -193,10 +208,10 @@ export function useMainPageActions({ data, setData, userProfile }) {
   );
 
   const handleSaveLeak = useCallback(
-    async (updated) => {
+    async (updated, options) => {
       const next = data.map((r) => (r.id === updated.id ? updated : r));
       try {
-        await setData(next);
+        await setData(next, options);
         hapticSuccess();
         setActiveLeak(null);
       } catch (err) {

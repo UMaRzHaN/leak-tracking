@@ -4,6 +4,7 @@ import { hapticSuccess } from "@/utils/haptics";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import {
   changeLeakStatus,
+  deletePhotoIfUnreferenced,
   getOrphanedOriginalPhoto,
   resolveLeakRecord,
   startLeakRepair,
@@ -176,7 +177,11 @@ export function useBulkActions({
       try {
         await setData(next);
         hapticSuccess();
-        for (const path of orphanedPhotos) deletePhoto(path).catch(() => {});
+        for (const path of orphanedPhotos) {
+          await deletePhotoIfUnreferenced(path, next, deletePhoto).catch(
+            () => {},
+          );
+        }
         notify(
           "success",
           t("database.bulk.statusChanged", {
@@ -227,7 +232,17 @@ export function useBulkActions({
       try {
         await setData(next);
         hapticSuccess();
+        if (leak.photo_after && leak.photo_after !== photo_after) {
+          await deletePhotoIfUnreferenced(
+            leak.photo_after,
+            next,
+            deletePhoto,
+          ).catch(() => {});
+        }
       } catch (err) {
+        if (photo_after && photo_after !== leak.photo_after) {
+          await deletePhoto(photo_after).catch(() => {});
+        }
         notify(
           "error",
           t("database.bulk.saveError", {
@@ -256,6 +271,7 @@ export function useBulkActions({
     [
       clearSelection,
       data,
+      deletePhoto,
       historyUser,
       lang,
       notify,
@@ -285,8 +301,20 @@ export function useBulkActions({
       try {
         await setData(next);
         hapticSuccess();
-        if (orphanedPhoto) deletePhoto(orphanedPhoto).catch(() => {});
+        if (leak.photo_repair && leak.photo_repair !== photo_repair) {
+          await deletePhotoIfUnreferenced(
+            leak.photo_repair,
+            next,
+            deletePhoto,
+          ).catch(() => {});
+        }
+        await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
+          () => {},
+        );
       } catch (err) {
+        if (photo_repair && photo_repair !== leak.photo_repair) {
+          await deletePhoto(photo_repair).catch(() => {});
+        }
         notify(
           "error",
           t("database.bulk.saveError", {

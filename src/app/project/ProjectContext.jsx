@@ -9,11 +9,12 @@ import {
 } from "react";
 import { PROJECT_META } from "@/configs/projects";
 import {
-  toFolderName,
   loadProjects,
   saveProjects,
   loadActiveId,
   saveActiveId,
+  toFolderName,
+  toUniqueFolderName,
 } from "./projectStorage";
 import { migrateFromLegacy } from "./projectMigration";
 
@@ -38,10 +39,17 @@ function createProjectId() {
   );
 }
 
+function withProjectType(project, type) {
+  if (project.type === type) return project;
+  const withoutLegacyMarker = { ...project };
+  delete withoutLegacyMarker.legacyStorageType;
+  return { ...withoutLegacyMarker, type };
+}
+
 function initProjects() {
   const list = loadProjects();
   const migrated = migrateFromLegacy(list);
-  return migrated.length > 0 && list.length === 0 ? migrated : list;
+  return migrated.length > 0 ? migrated : list;
 }
 
 function initActiveId(projects) {
@@ -107,13 +115,11 @@ export function ProjectProvider({ children }) {
 
       const current = projectsRef.current;
       const id = createProjectId();
-      const folder = toFolderName(name || PROJECT_META[type].title);
       const existingFolders = new Set(current.map((p) => p.folderName));
-      let uniqueFolder = folder;
-      let suffix = 2;
-      while (existingFolders.has(uniqueFolder)) {
-        uniqueFolder = `${folder}_${suffix++}`;
-      }
+      const uniqueFolder = toUniqueFolderName(
+        name || PROJECT_META[type].title,
+        existingFolders,
+      );
 
       const newProject = {
         id,
@@ -156,15 +162,10 @@ export function ProjectProvider({ children }) {
       const found = current.find((p) => p.id === id);
       if (!found) return null;
 
-      const folder = toFolderName(trimmed);
       const existingFolders = new Set(
         current.filter((p) => p.id !== id).map((p) => p.folderName),
       );
-      let newFolderName = folder;
-      let suffix = 2;
-      while (existingFolders.has(newFolderName)) {
-        newFolderName = `${folder}_${suffix++}`;
-      }
+      const newFolderName = toUniqueFolderName(trimmed, existingFolders);
 
       _setProjects(
         current.map((p) => (p.id === id ? { ...p, name: trimmed } : p)),
@@ -189,7 +190,7 @@ export function ProjectProvider({ children }) {
     (id, type) => {
       if (!PROJECT_META[type]) return;
       _setProjects((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, type } : p)),
+        prev.map((p) => (p.id === id ? withProjectType(p, type) : p)),
       );
     },
     [_setProjects],
@@ -253,9 +254,8 @@ export function ProjectProvider({ children }) {
       const syncId =
         incomingSyncId.length >= 8 ? incomingSyncId : project.syncId;
       const updated = {
-        ...project,
+        ...withProjectType(project, type),
         name,
-        type,
         ...(syncId ? { syncId } : {}),
       };
       const next = current.map((item) => (item.id === id ? updated : item));
@@ -263,6 +263,26 @@ export function ProjectProvider({ children }) {
       projectsRef.current = next;
       _setProjects(next);
       return updated;
+    },
+    [_setProjects],
+  );
+
+  const restoreProjectSnapshot = useCallback(
+    (id, snapshot) => {
+      if (
+        !snapshot ||
+        typeof snapshot !== "object" ||
+        Array.isArray(snapshot) ||
+        snapshot.id !== id
+      ) {
+        return null;
+      }
+
+      const current = projectsRef.current;
+      if (!current.some((item) => item.id === id)) return null;
+      const restored = { ...snapshot };
+      _setProjects(current.map((item) => (item.id === id ? restored : item)));
+      return restored;
     },
     [_setProjects],
   );
@@ -276,15 +296,37 @@ export function ProjectProvider({ children }) {
     [setProjectSyncId],
   );
 
-  const removeProject = useCallback(
-    (id) => {
-      const current = projectsRef.current;
-      const next = current.filter((p) => p.id !== id);
-      _setProjects(next);
-      if (activeIdRef.current === id) _setActiveId(next[0]?.id ?? null);
-    },
-    [_setProjects, _setActiveId],
-  );
+  const removeProject = useCallback((id) => {
+    const current = projectsRef.current;
+    const next = current.filter((p) => p.id !== id);
+    if (next.length === current.length) return false;
+
+    const previousActiveId = activeIdRef.current;
+    const nextActiveId =
+      previousActiveId === id ? (next[0]?.id ?? null) : previousActiveId;
+    try {
+      saveProjects(next);
+      if (nextActiveId !== previousActiveId) saveActiveId(nextActiveId);
+    } catch (error) {
+      // localStorage has no transaction support. Restore the project list
+      // before exposing any state change if the active-id write failed.
+      try {
+        saveProjects(current);
+        saveActiveId(previousActiveId);
+      } catch {
+        // Best effort: the original project data is still untouched.
+      }
+      throw error;
+    }
+
+    projectsRef.current = next;
+    setProjects(next);
+    if (nextActiveId !== previousActiveId) {
+      activeIdRef.current = nextActiveId;
+      setActiveId(nextActiveId);
+    }
+    return true;
+  }, []);
 
   const changeProject = useCallback(
     (type) => {
@@ -328,6 +370,7 @@ export function ProjectProvider({ children }) {
       setProjectSyncId,
       replaceProjectSyncId,
       restoreProjectMetadata,
+      restoreProjectSnapshot,
       ensureProjectSyncId,
       removeProject,
       changeProject,
@@ -343,6 +386,7 @@ export function ProjectProvider({ children }) {
       setProjectSyncId,
       replaceProjectSyncId,
       restoreProjectMetadata,
+      restoreProjectSnapshot,
       ensureProjectSyncId,
       removeProject,
       changeProject,

@@ -1,4 +1,10 @@
 import { compareLeakIds } from "@/utils/leakOrder";
+import {
+  allocateUniqueLeakArchiveSegments,
+  buildLeakPhotoArchivePath,
+  buildMonitoringPhotoArchivePath,
+  parseDataImageUri,
+} from "@/services/archivePaths";
 const getExcelJS = () => import("exceljs");
 const getJSZip = () => import("jszip");
 
@@ -122,13 +128,14 @@ async function resolvePhotoCandidates(candidates, idbGet, photoReadCache) {
       const src = await sourcePromise;
 
       if (src?.startsWith("data:")) {
-        const match = src.match(/^data:(image\/\w+);base64,(.+)$/);
-        if (match) {
-          const ext = match[1].split("/")[1] || "jpg";
+        const parsed = parseDataImageUri(src);
+        if (parsed) {
           entries[candidateIndex] = {
             mapKey: candidate.mapKey,
-            photoFileName: `${candidate.fileNameBase}.${ext}`,
-            base64: match[2],
+            logicalKey: candidate.logicalKey,
+            sourcePath: candidate.path,
+            photoFileName: candidate.buildArchivePath(parsed.ext),
+            base64: parsed.base64,
           };
         }
       }
@@ -149,7 +156,33 @@ async function resolvePhotoCandidates(candidates, idbGet, photoReadCache) {
   return entries.filter(Boolean);
 }
 
-async function buildLeakPhotoEntries(orderedLeaks, idbGet, photoReadCache) {
+function getLeakPhotoIdentity(leak, leakIndex, photoKey) {
+  const leakIdentity =
+    leak?.id != null && String(leak.id).trim()
+      ? `id:${String(leak.id)}`
+      : `tag:${String(leak?.leak_id ?? "").trim() || `index:${leakIndex}`}`;
+  return `${leakIdentity}:field:${photoKey}`;
+}
+
+function getMonitoringPhotoIdentity(leak, leakIndex, record, recordIndex) {
+  const leakIdentity =
+    leak?.id != null && String(leak.id).trim()
+      ? `id:${String(leak.id)}`
+      : `tag:${String(leak?.leak_id ?? "").trim() || `index:${leakIndex}`}`;
+  const recordIdentity =
+    record?.id != null && String(record.id).trim()
+      ? `id:${String(record.id)}`
+      : `index:${recordIndex}`;
+  return `${leakIdentity}:monitoring:${recordIdentity}`;
+}
+
+async function buildLeakPhotoEntries(
+  orderedLeaks,
+  leakSegments,
+  idbGet,
+  photoReadCache,
+  archiveRoot = "photos",
+) {
   const candidates = [];
 
   for (const [leakIndex, leak] of orderedLeaks.entries()) {
@@ -157,17 +190,21 @@ async function buildLeakPhotoEntries(orderedLeaks, idbGet, photoReadCache) {
       const path = leak[key];
       if (!path) continue;
 
-      const suffix =
-        key === "photo_after"
-          ? "_after"
-          : key === "photo_repair"
-            ? "_repair"
-            : "";
-      const leakId = leak.leak_id ?? leak.index ?? leakIndex + 1;
+      const leakSegment = leakSegments[leakIndex];
       candidates.push({
         path,
         mapKey: `${leakIndex}:${key}`,
-        fileNameBase: `photos/${leakId}/${leakId}${suffix}`,
+        logicalKey: getLeakPhotoIdentity(leak, leakIndex, key),
+        buildArchivePath: (extension) => {
+          const backupPath = buildLeakPhotoArchivePath(
+            leakSegment,
+            key,
+            extension,
+          );
+          return archiveRoot === "photos"
+            ? backupPath
+            : `${archiveRoot}/${backupPath.slice("photos/".length)}`;
+        },
       });
     }
   }
@@ -177,14 +214,16 @@ async function buildLeakPhotoEntries(orderedLeaks, idbGet, photoReadCache) {
 
 async function buildMonitoringPhotoEntries(
   orderedLeaks,
+  leakSegments,
   idbGet,
   includedPhotoKeys = null,
   photoReadCache,
+  archiveRoot = "photos",
 ) {
   const candidates = [];
 
   for (const [leakIndex, leak] of orderedLeaks.entries()) {
-    const leakId = leak.leak_id ?? leak.index ?? leakIndex + 1;
+    const leakSegment = leakSegments[leakIndex];
     const records = getMonitoringRecords(leak);
 
     for (const [recordIndex, record] of records.entries()) {
@@ -195,7 +234,22 @@ async function buildMonitoringPhotoEntries(
       candidates.push({
         path: record.photo,
         mapKey,
-        fileNameBase: `photos/${leakId}/monitoring/${leakId}_monitoring_${recordIndex + 1}`,
+        logicalKey: getMonitoringPhotoIdentity(
+          leak,
+          leakIndex,
+          record,
+          recordIndex,
+        ),
+        buildArchivePath: (extension) => {
+          const backupPath = buildMonitoringPhotoArchivePath(
+            leakSegment,
+            recordIndex,
+            extension,
+          );
+          return archiveRoot === "photos"
+            ? backupPath
+            : `${archiveRoot}/${backupPath.slice("photos/".length)}`;
+        },
       });
     }
   }
@@ -208,7 +262,9 @@ async function buildPhotoEntries(
   idbGet,
   monitoringExportMode,
   photoReadCache,
+  archiveRoot = "photos",
 ) {
+  const leakSegments = allocateUniqueLeakArchiveSegments(orderedLeaks);
   const includedMonitoringPhotoKeys =
     monitoringExportMode === EXCEL_MONITORING_EXPORT_MODE.LATEST_PER_ROUND
       ? new Set(
@@ -220,12 +276,20 @@ async function buildPhotoEntries(
         )
       : null;
   const [leakPhotos, monitoringPhotos] = await Promise.all([
-    buildLeakPhotoEntries(orderedLeaks, idbGet, photoReadCache),
+    buildLeakPhotoEntries(
+      orderedLeaks,
+      leakSegments,
+      idbGet,
+      photoReadCache,
+      archiveRoot,
+    ),
     buildMonitoringPhotoEntries(
       orderedLeaks,
+      leakSegments,
       idbGet,
       includedMonitoringPhotoKeys,
       photoReadCache,
+      archiveRoot,
     ),
   ]);
 
@@ -242,7 +306,14 @@ function buildPortableLeaks(leaks, photoMap) {
     const copy = { ...leak };
     for (const key of PHOTO_KEYS) {
       const photoFileName = photoMap[`${leakIndex}:${key}`];
-      if (photoFileName) copy[key] = `zip:${photoFileName}`;
+      if (photoFileName) {
+        copy[key] = `zip:${photoFileName}`;
+      } else if (
+        copy[key] != null &&
+        !String(copy[key]).startsWith("data:image/")
+      ) {
+        delete copy[key];
+      }
     }
 
     if (Array.isArray(copy.monitoringRecords)) {
@@ -250,9 +321,18 @@ function buildPortableLeaks(leaks, photoMap) {
         (record, recordIndex) => {
           const photoFileName =
             photoMap[`monitoring:${leakIndex}:${recordIndex}`];
-          return photoFileName
-            ? { ...record, photo: `zip:${photoFileName}` }
-            : record;
+          if (photoFileName) {
+            return { ...record, photo: `zip:${photoFileName}` };
+          }
+          if (
+            record?.photo == null ||
+            String(record.photo).startsWith("data:image/")
+          ) {
+            return record;
+          }
+          const sanitizedRecord = { ...record };
+          delete sanitizedRecord.photo;
+          return sanitizedRecord;
         },
       );
     }
@@ -1144,7 +1224,7 @@ async function downloadBlob(
     anchor.href = url;
     anchor.download = fileName;
     anchor.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
 
     return {
       ok: true,
@@ -1205,6 +1285,7 @@ export async function exportToExcelFile(
     idbGet,
     monitoringExportMode,
     photoReadCache,
+    "photos/report",
   );
   const backupLeaks = Array.isArray(options.backupLeaks)
     ? options.backupLeaks
@@ -1215,16 +1296,23 @@ export async function exportToExcelFile(
     EXCEL_MONITORING_EXPORT_MODE.FULL,
     photoReadCache,
   );
+  const backupPhotoPathByLogicalKey = new Map(
+    backupPhotoEntries.map((entry) => [entry.logicalKey, entry.photoFileName]),
+  );
+  const resolvedReportPhotoEntries = reportPhotoEntries.map((entry) => {
+    const backupPath = backupPhotoPathByLogicalKey.get(entry.logicalKey);
+    return backupPath ? { ...entry, photoFileName: backupPath } : entry;
+  });
   const photoEntries = [
     ...new Map(
-      [...reportPhotoEntries, ...backupPhotoEntries].map((entry) => [
+      [...resolvedReportPhotoEntries, ...backupPhotoEntries].map((entry) => [
         entry.photoFileName,
         entry,
       ]),
     ).values(),
   ];
   phaseMetrics.photosMs = performance.now() - photosStartedAt;
-  const photoMap = buildPhotoMap(reportPhotoEntries);
+  const photoMap = buildPhotoMap(resolvedReportPhotoEntries);
   const backupPhotoMap = buildPhotoMap(backupPhotoEntries);
   const archivePayload = {
     schemaVersion: BACKUP_SCHEMA_VERSION,

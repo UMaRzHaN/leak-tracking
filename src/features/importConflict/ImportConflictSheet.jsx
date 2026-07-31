@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useModalDialog } from "@/hooks/useModalDialog";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "./ImportConflictSheet.module.scss";
@@ -35,34 +35,69 @@ export default function ImportConflictSheet({
   onMerge,
   onCopy,
   onCancel,
+  onActionError,
 }) {
   const { lang, t } = useLanguage();
   const titleId = useId();
-  const dialogRef = useModalDialog({ open, onClose: onCancel });
+  const descriptionId = useId();
+  const [pending, setPending] = useState(false);
+  const pendingRef = useRef(false);
+  const handleCancel = () => {
+    if (!pendingRef.current) onCancel?.();
+  };
+  const dialogRef = useModalDialog({
+    open,
+    onClose: handleCancel,
+    closeDisabled: pending,
+  });
   const source = sourceLabel ?? (lang === "ru" ? "в архиве" : "in archive");
   const photos =
     photoLabel ?? (lang === "ru" ? "Фото архива" : "Archive photos");
   const photoStats = mergePreview?.photoStats ?? mergePreview?.excelPhotos;
 
+  useEffect(() => {
+    if (open) return;
+    pendingRef.current = false;
+    setPending(false);
+  }, [open]);
+
+  const runAction = async (action) => {
+    if (pendingRef.current || typeof action !== "function") return;
+    pendingRef.current = true;
+    setPending(true);
+    try {
+      await action();
+    } catch (error) {
+      onActionError?.(error);
+    } finally {
+      pendingRef.current = false;
+      setPending(false);
+    }
+  };
+
   if (!open) return null;
 
   return (
-    <div className={s.overlay} onClick={onCancel}>
+    <div className={s.overlay} onClick={handleCancel}>
       <div
         ref={dialogRef}
         className={s.sheet}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        aria-busy={pending}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
         <div className={s.handle} />
-        <div className={s.icon}>⚠️</div>
+        <div className={s.icon} aria-hidden="true">
+          ⚠️
+        </div>
         <h3 id={titleId} className={s.title}>
           {lang === "ru" ? "Проект уже существует" : "Project already exists"}
         </h3>
-        <p className={s.description}>
+        <p id={descriptionId} className={s.description}>
           {lang === "ru"
             ? `«${projectName}» уже есть в приложении`
             : `"${projectName}" already exists in the app`}
@@ -161,16 +196,36 @@ export default function ImportConflictSheet({
           </div>
         )}
         <div className={s.actions}>
-          <button className={`${s.btn} ${s.danger}`} onClick={onOverwrite}>
+          <button
+            type="button"
+            className={`${s.btn} ${s.danger}`}
+            onClick={() => runAction(onOverwrite)}
+            disabled={pending}
+          >
             {lang === "ru" ? "Перезаписать" : "Overwrite"}
           </button>
-          <button className={`${s.btn} ${s.neutral}`} onClick={onMerge}>
+          <button
+            type="button"
+            className={`${s.btn} ${s.neutral}`}
+            onClick={() => runAction(onMerge)}
+            disabled={pending}
+          >
             {lang === "ru" ? "Объединить" : "Merge"}
           </button>
-          <button className={`${s.btn} ${s.neutral}`} onClick={onCopy}>
+          <button
+            type="button"
+            className={`${s.btn} ${s.neutral}`}
+            onClick={() => runAction(onCopy)}
+            disabled={pending}
+          >
             {lang === "ru" ? "Создать копию" : "Create copy"}
           </button>
-          <button className={`${s.btn} ${s.btnCancel}`} onClick={onCancel}>
+          <button
+            type="button"
+            className={`${s.btn} ${s.btnCancel}`}
+            onClick={handleCancel}
+            disabled={pending}
+          >
             {lang === "ru" ? "Отмена" : "Cancel"}
           </button>
         </div>

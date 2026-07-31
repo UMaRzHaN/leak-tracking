@@ -58,4 +58,20 @@ describe("Header", () => {
     expect(onUserProfileOpen).toHaveBeenCalledOnce();
     expect(setGpsEnabled).toHaveBeenCalledOnce();
   });
+
+  it("does not display stale coordinates while GPS is disabled", () => {
+    render(
+      <Header
+        setPage={vi.fn()}
+        coords={{ lat: 41.3, lng: 69.2 }}
+        gpsEnabled={false}
+        setGpsEnabled={vi.fn()}
+        userProfile={{ name: "Inspector" }}
+        onUserProfileOpen={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("41.300000 / 69.200000")).toBeNull();
+    expect(screen.getByText("GPS выкл")).toBeTruthy();
+  });
 });

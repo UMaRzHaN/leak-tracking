@@ -1,3 +1,9 @@
+import {
+  nextSyncTimestamp,
+  observeSyncTimestamp,
+  sanitizeSyncTimestamp,
+} from "@/services/syncClock";
+
 export const LEAK_FIELD_VERSIONS_KEY = "_fieldUpdatedAt";
 
 const EXCLUDED_KEYS = new Set([
@@ -11,22 +17,12 @@ const EXCLUDED_KEYS = new Set([
   "time",
   "history",
   "monitoringRecords",
+  "monitoringTombstones",
   LEAK_FIELD_VERSIONS_KEY,
 ]);
 
 function toTimestamp(value) {
-  if (value == null || value === "") return 0;
-  const numeric = Number(value);
-  if (
-    typeof value === "number" ||
-    (typeof value === "string" &&
-      value.trim() !== "" &&
-      Number.isFinite(numeric))
-  ) {
-    return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
-  }
-  const parsed = Date.parse(String(value));
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  return observeSyncTimestamp(sanitizeSyncTimestamp(value));
 }
 
 function fallbackVersion(leak) {
@@ -68,11 +64,85 @@ export function getLeakFieldVersion(leak, key) {
   return versions[key] ?? fallbackVersion(leak);
 }
 
-export function stampLeakFieldVersions(
-  previousLeaks,
-  nextLeaks,
-  now = Date.now(),
-) {
+function monitoringIdentity(record) {
+  if (record?.id != null) return `id:${String(record.id)}`;
+  if (record?.roundId != null) return `round:${String(record.roundId)}`;
+  const date = String(record?.date ?? "").trim();
+  const round = String(record?.roundNumber ?? "").trim();
+  return date || round ? `date:${date}|round:${round}` : null;
+}
+
+function isMonitoringVersionedField(key) {
+  return !new Set([
+    "id",
+    "roundId",
+    "updatedAt",
+    "createdAt",
+    "_fieldUpdatedAt",
+  ]).has(key);
+}
+
+function stampMonitoringRecord(previousRecord, nextRecord, now) {
+  const previousVersions = normalizeLeakFieldVersions(
+    previousRecord?._fieldUpdatedAt,
+  );
+  const incomingVersions = normalizeLeakFieldVersions(
+    nextRecord?._fieldUpdatedAt,
+  );
+  const versions = { ...previousVersions, ...incomingVersions };
+  const keys = new Set([
+    ...Object.keys(previousRecord ?? {}),
+    ...Object.keys(nextRecord ?? {}),
+  ]);
+  const previousFallback = fallbackVersion(previousRecord);
+  const initialVersion = Math.max(fallbackVersion(nextRecord), now);
+
+  for (const key of keys) {
+    if (!isMonitoringVersionedField(key)) continue;
+    if (!previousRecord) {
+      versions[key] = incomingVersions[key] ?? initialVersion;
+      continue;
+    }
+    const previousVersion = previousVersions[key] ?? previousFallback;
+    if (valuesEqual(previousRecord[key], nextRecord[key])) {
+      versions[key] = Math.max(previousVersion, incomingVersions[key] ?? 0);
+      continue;
+    }
+    const incomingVersion = incomingVersions[key] ?? 0;
+    versions[key] =
+      incomingVersion > previousVersion
+        ? incomingVersion
+        : Math.max(now, previousVersion + 1);
+  }
+
+  const normalizedVersions = normalizeLeakFieldVersions(versions);
+  return {
+    ...nextRecord,
+    updatedAt: Math.max(fallbackVersion(nextRecord), now),
+    ...(Object.keys(normalizedVersions).length > 0
+      ? { _fieldUpdatedAt: normalizedVersions }
+      : {}),
+  };
+}
+
+function stampMonitoringRecords(previousRecords, nextRecords, now) {
+  const previousByIdentity = new Map(
+    (previousRecords ?? [])
+      .map((record) => [monitoringIdentity(record), record])
+      .filter(([key]) => key),
+  );
+  return (nextRecords ?? []).map((record) =>
+    stampMonitoringRecord(
+      previousByIdentity.get(monitoringIdentity(record)),
+      record,
+      now,
+    ),
+  );
+}
+
+export function stampLeakFieldVersions(previousLeaks, nextLeaks, now) {
+  const effectiveNow =
+    now == null ? nextSyncTimestamp() : sanitizeSyncTimestamp(now);
   const previousByIdentity = new Map(
     (previousLeaks ?? [])
       .map((leak) => [identity(leak), leak])
@@ -81,6 +151,11 @@ export function stampLeakFieldVersions(
 
   return (nextLeaks ?? []).map((nextLeak) => {
     const previousLeak = previousByIdentity.get(identity(nextLeak));
+    const stampedMonitoringRecords = stampMonitoringRecords(
+      previousLeak?.monitoringRecords,
+      nextLeak?.monitoringRecords,
+      effectiveNow,
+    );
     const previousVersions = normalizeLeakFieldVersions(
       previousLeak?.[LEAK_FIELD_VERSIONS_KEY],
     );
@@ -93,7 +168,7 @@ export function stampLeakFieldVersions(
       ...Object.keys(nextLeak ?? {}),
     ]);
     const previousFallback = fallbackVersion(previousLeak);
-    const initialVersion = fallbackVersion(nextLeak) || now;
+    const initialVersion = Math.max(fallbackVersion(nextLeak), effectiveNow);
 
     for (const key of keys) {
       if (!isVersionedLeakField(key)) continue;
@@ -113,14 +188,17 @@ export function stampLeakFieldVersions(
       versions[key] =
         incomingVersion > previousVersion
           ? incomingVersion
-          : Math.max(now, previousVersion + 1);
+          : Math.max(effectiveNow, previousVersion + 1);
     }
 
     const normalizedVersions = normalizeLeakFieldVersions(versions);
-    if (Object.keys(normalizedVersions).length === 0) return nextLeak;
+    const nextWithMonitoring = Array.isArray(nextLeak?.monitoringRecords)
+      ? { ...nextLeak, monitoringRecords: stampedMonitoringRecords }
+      : nextLeak;
+    if (Object.keys(normalizedVersions).length === 0) return nextWithMonitoring;
 
     return {
-      ...nextLeak,
+      ...nextWithMonitoring,
       [LEAK_FIELD_VERSIONS_KEY]: normalizedVersions,
     };
   });

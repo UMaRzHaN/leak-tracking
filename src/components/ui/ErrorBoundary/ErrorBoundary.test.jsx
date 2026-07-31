@@ -19,6 +19,13 @@ function Crashy({ shouldThrow }) {
   return <div>safe content</div>;
 }
 
+function ProjectStorageCrash() {
+  const error = new Error("corrupted");
+  error.code = "PROJECT_LIST_READ_FAILED";
+  error.recoveryValue = "{broken";
+  throw error;
+}
+
 describe("ErrorBoundary", () => {
   let consoleErrorSpy;
 
@@ -66,5 +73,26 @@ describe("ErrorBoundary", () => {
     fireEvent.click(retryButton);
 
     expect(screen.getByText("safe content")).toBeTruthy();
+  });
+
+  it("offers a non-looping recovery flow for a corrupted project list", () => {
+    render(
+      <ErrorBoundary>
+        <ProjectStorageCrash />
+      </ErrorBoundary>,
+    );
+
+    expect(screen.getByText("Повреждён список проектов")).toBeTruthy();
+    expect(
+      screen.getByRole("button", {
+        name: "Скачать данные для восстановления",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", {
+        name: "Сохранить копию и сбросить список",
+      }),
+    ).toBeTruthy();
+    expect(screen.queryByText("Попробовать снова")).toBeNull();
   });
 });

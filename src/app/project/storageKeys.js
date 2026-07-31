@@ -16,6 +16,7 @@ export const STORAGE_KEYS = {
      MULTI-PROJECT (новая схема)
   ========================= */
   PROJECTS_LIST: `${APP_PREFIX}:projects_${VERSION}`,
+  PROJECTS_LIST_RECOVERY: `${APP_PREFIX}:projects_recovery_${VERSION}`,
   ACTIVE_PROJECT_ID: `${APP_PREFIX}:active_id_${VERSION}`,
 
   /* =========================

@@ -91,14 +91,31 @@ describe("detectProjectTypeFromLeaks", () => {
     expect(detectProjectTypeFromLeaks(leaks)).toBe("downstream");
   });
 
-  it("сканирует только первые 20 записей", () => {
-    // 25 записей без маркерных полей + 1 с полем на 21-й позиции
+  it("сканирует весь импорт, а не только первые 20 записей", () => {
+    // Маркерное поле находится после двадцатой позиции.
     const leaks = Array.from({ length: 25 }, (_, i) =>
       i === 20
         ? makeLeak({ id: `l-${i}`, deposit: "x" })
         : makeLeak({ id: `l-${i}` }),
     );
-    expect(detectProjectTypeFromLeaks(leaks)).toBeNull();
+    expect(detectProjectTypeFromLeaks(leaks)).toBe("upstream");
+  });
+
+  it("возвращает null при одинаково сильных признаках разных типов", () => {
+    expect(
+      detectProjectTypeFromLeaks([
+        makeLeak({ station: "КС-1" }),
+        makeLeak({ deposit: "Тенгиз" }),
+      ]),
+    ).toBeNull();
+  });
+
+  it("игнорирует пустые маркерные поля", () => {
+    expect(
+      detectProjectTypeFromLeaks([
+        makeLeak({ station: "   ", district: "Ленинский" }),
+      ]),
+    ).toBe("downstream");
   });
 });
 
@@ -314,6 +331,36 @@ describe("importProjectZip", () => {
     expect(ctx.saveRef.current).toHaveBeenCalledTimes(1);
     const savedLeaks = ctx.saveRef.current.mock.calls[0][0];
     expect(savedLeaks).toHaveLength(leaks.length);
+  });
+
+  it("keeps ZIP writes bound to the imported project after an active-project switch", async () => {
+    const blob = await buildProjectBackupZip({
+      leaks: [
+        makeLeak({
+          id: "with-photo",
+          photo: "data:image/png;base64,ZmFrZQ==",
+        }),
+      ],
+      idbGet: null,
+      project: UPSTREAM_PROJECT,
+      vars: null,
+    });
+    const ctx = makeCtx(UPSTREAM_PROJECT);
+    const importedProjectSave = ctx.saveRef.current;
+    const otherProjectSave = vi.fn();
+    const otherProjectPhotoSave = vi.fn();
+    ctx.savePhotoRef.current.mockImplementationOnce(async () => {
+      ctx.activeProjectIdRef.current = "other-project";
+      ctx.saveRef.current = otherProjectSave;
+      ctx.savePhotoRef.current = otherProjectPhotoSave;
+      return "idb://photo_imported_with-photo_1";
+    });
+
+    await importProjectZip(blob, ctx);
+
+    expect(importedProjectSave).toHaveBeenCalledOnce();
+    expect(otherProjectSave).not.toHaveBeenCalled();
+    expect(otherProjectPhotoSave).not.toHaveBeenCalled();
   });
 
   it("восстанавливает vars в localStorage", async () => {

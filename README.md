@@ -19,27 +19,29 @@ _Работает полностью офлайн, поддерживает му
 
 ## ✨ Возможности
 
-|     | Функция                       | Описание                                                                |
-| --- | ----------------------------- | ----------------------------------------------------------------------- |
-| 📋  | **Регистрация утечек**        | Многошаговая форма с фото, координатами и расчетами                     |
-| 🔎  | **Повторный мониторинг**      | Обходы, повторные проверки и отдельное фото каждой записи               |
-| 🗺️  | **Офлайн-карта**              | Leaflet с локальным кэшем тайлов и кластеризацией                       |
-| 🎤  | **Голосовой ввод**            | Распознавание речи с fuzzy matching и preview-подтверждением            |
-| 📦  | **Импорт / Экспорт проектов** | ZIP-бэкап с метаданными проекта и фотографиями                          |
+|     | Функция                        | Описание                                                                  |
+| --- | ------------------------------ | ------------------------------------------------------------------------- |
+| 📋  | **Регистрация утечек**         | Многошаговая форма с фото, координатами и расчетами                       |
+| 🔎  | **Повторный мониторинг**       | Обходы, повторные проверки и отдельное фото каждой записи                 |
+| 🗺️  | **Офлайн-карта**               | Leaflet с локальным кэшем тайлов и кластеризацией                         |
+| 🎤  | **Голосовой ввод**             | Распознавание речи с fuzzy matching и preview-подтверждением              |
+| 📦  | **Импорт / Экспорт проектов**  | ZIP-бэкап с метаданными проекта и фотографиями                            |
 | 🔁  | **Локальная QR-синхронизация** | Обмен ZIP-архивами между Android-устройствами в доверенной локальной сети |
-| 📊  | **Excel / KML / ZIP отчёты**   | XLSX/Excel ZIP с фото, мониторингом и историей / KML / JSON / ZIP       |
-| 🧩  | **Импорт Excel**              | Создание копии проекта или merge/overwrite существующего проекта         |
-| 🔄  | **Lifecycle Management**      | Open → In Progress → Resolved + история изменений                       |
-| 🗂️  | **База данных**               | Фильтры по статусу, приоритету, GPS-близости; bulk-действия; сортировка |
-| ✅  | **Проверка данных**           | Поиск пропущенных фото, битых ссылок, координат и дублей `leak_id`       |
-| ⚙️  | **Настройки проекта**         | Обязательность фото, видимость полей, параметры расчёта, режим Excel     |
-| 🌐  | **RU / EN интерфейс**         | Переключение языка основных пользовательских сценариев                   |
-| 🌙  | **Темизация**                 | Поддержка dark / light mode                                             |
-| 📱  | **Android Ready**             | Capacitor 8 native build                                                |
+| 📊  | **Excel / KML / ZIP отчёты**   | XLSX/Excel ZIP с фото, мониторингом и историей / KML / JSON / ZIP         |
+| 🧩  | **Импорт Excel**               | Создание копии проекта или merge/overwrite существующего проекта          |
+| 🔄  | **Lifecycle Management**       | Open → In Progress → Resolved + история изменений                         |
+| 🗂️  | **База данных**                | Фильтры по статусу, приоритету, GPS-близости; bulk-действия; сортировка   |
+| ✅  | **Проверка данных**            | Поиск пропущенных фото, битых ссылок, координат и дублей `leak_id`        |
+| ⚙️  | **Настройки проекта**          | Обязательность фото, видимость полей, параметры расчёта, режим Excel      |
+| 🌐  | **RU / EN интерфейс**          | Переключение языка основных пользовательских сценариев                    |
+| 🌙  | **Темизация**                  | Поддержка dark / light mode                                               |
+| 📱  | **Android Ready**              | Capacitor 8 native build                                                  |
 
 ---
 
 ## 🚀 Быстрый старт
+
+Требуется Node.js 22 или новее (это минимальная версия для Capacitor CLI 8).
 
 ```bash
 git clone <repo>
@@ -65,15 +67,15 @@ Testing         Vitest + Testing Library + Playwright
 
 ### 📦 Зависимости
 
-| Категория | Пакеты |
-|-----------|--------|
-| **Core** | React 19.2, React DOM 19.2, Vite 6 |
-| **Mobile** | Capacitor 8 (android, camera, cli, core, filesystem, geolocation, share), speech-recognition, ML Kit barcode scanning |
-| **Maps** | Leaflet 1.9, Leaflet MarkerCluster 1.5 |
-| **Export / QR** | ExcelJS 4.4, JSZip 3.10, QRCode 1.5 |
-| **i18n** | i18next, react-i18next |
-| **UI** | clsx 2.1 |
-| **Testing** | Vitest, Testing Library (DOM, Jest, React, User Event), Playwright |
+| Категория       | Пакеты                                                                                                                |
+| --------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Core**        | React 19.2, React DOM 19.2, Vite 6                                                                                    |
+| **Mobile**      | Capacitor 8 (android, camera, cli, core, filesystem, geolocation, share), speech-recognition, ML Kit barcode scanning |
+| **Maps**        | Leaflet 1.9, Leaflet MarkerCluster 1.5                                                                                |
+| **Export / QR** | ExcelJS 4.4, JSZip 3.10, QRCode 1.5                                                                                   |
+| **i18n**        | i18next, react-i18next                                                                                                |
+| **UI**          | clsx 2.1                                                                                                              |
+| **Testing**     | Vitest, Testing Library (DOM, Jest, React, User Event), Playwright                                                    |
 
 ---
 
@@ -216,9 +218,9 @@ interface LeakRecord {
 
 interface LeakHistoryEntry {
   action: "created" | "status_changed" | "edited" | "comment" | "monitoring";
-  to?: string;        // для status_changed
-  text?: string;      // для comment
-  date: string;       // ISO date
+  to?: string; // для status_changed
+  text?: string; // для comment
+  date: string; // ISO date
 }
 
 interface MonitoringRecord {
@@ -296,6 +298,12 @@ QR-синхронизация использует тот же формат ZIP-
 `syncId`; старые проекты без `syncId` получают его при первом запуске
 синхронизации. Также доступен режим **импорта по QR** на первом экране: устройство
 скачивает архив по QR и создаёт проект без отправки локальной базы.
+
+История удалений автоматически уплотняется при большом количестве записей. При
+этом создаётся новая синхронизационная эпоха. Если давно не подключавшееся
+устройство содержит старую эпоху, автоматическое объединение блокируется, чтобы
+не восстановить уже удалённые утечки. В таком случае необходимо экспортировать
+полный ZIP с актуального устройства и заменить проект на втором устройстве.
 
 ---
 
@@ -419,10 +427,10 @@ npx cap open ios
 
 ## ⚙️ Production Deployment Notes
 
-- Для Android рекомендуется включить ProGuard / R8 перед релизной сборкой
+- Release-сборка Android использует R8, shrinking ресурсов и проектные ProGuard-правила
 - Для iOS — настроить permissions в Info.plist
 - Перед релизом прогнать `npm run lint`, `npm test`, `npm run test:e2e`,
-  `npm run test:perf` и Android `assembleDebug`
+  `npm run test:perf`, `npm run android:release` и проверку APK на реальном устройстве
 - Проверить QR-синхронизацию, камеру, GPS, экспорт/импорт ZIP и Excel на
   реальном Android-устройстве
 - Не хранить тестовые проекты и dev-логи в релизной сборке
@@ -442,7 +450,22 @@ npm run test:perf    # Production build + large dataset performance tests
 npm run lint         # ESLint
 npm run format:check # Prettier check
 npm run cap:sync     # Sync Capacitor и Android Gradle patch
+npm run verify:release # Полный web release-gate
+npm run android:release # Release APK с R8 и lintRelease
 ```
+
+Для подписанной Android release-сборки должны быть заданы переменные окружения:
+
+```text
+ANDROID_KEYSTORE_PATH
+ANDROID_KEYSTORE_PASSWORD
+ANDROID_KEY_ALIAS
+ANDROID_KEY_PASSWORD
+```
+
+`npm run android:release` завершается ошибкой до сборки, если keystore или одна
+из обязательных переменных отсутствует. CI может продолжать собирать
+неподписанный `assembleRelease` напрямую только как проверочный артефакт.
 
 ### Performance tests
 

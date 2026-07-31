@@ -365,7 +365,7 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
     .fill("Уточнено в сквозном E2E");
   await page.getByRole("button", { name: "Сохранить", exact: true }).click();
   await expect(
-    page.getByText("Уточнено в сквозном E2E", { exact: true }),
+    page.getByText("Уточнено в сквозном E2E", { exact: true }).first(),
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Мониторинг", exact: true }).click();

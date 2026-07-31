@@ -10,6 +10,33 @@ import { logger } from "@/utils/logger";
 /* =======================
    🖼 SRC
 ======================= */
+function parseNativePhotoPath(path) {
+  if (typeof path !== "string") return null;
+
+  const isDataPath = path.startsWith("data://");
+  const prefix = isDataPath ? "data://" : "Documents/";
+  if (!path.startsWith(prefix)) return null;
+
+  const fsPath = path.slice(prefix.length);
+  const segments = fsPath.split("/");
+  if (
+    !fsPath.startsWith("LeakReports/") ||
+    fsPath.includes("\\") ||
+    [...fsPath].some((character) => {
+      const codePoint = character.codePointAt(0);
+      return codePoint <= 31 || codePoint === 127;
+    }) ||
+    segments.some((segment) => !segment || segment === "." || segment === "..")
+  ) {
+    return null;
+  }
+
+  return {
+    fsPath,
+    dir: isDataPath ? Directory.Data : Directory.Documents,
+  };
+}
+
 export async function getPhotoSrc(path) {
   if (!path) return null;
 
@@ -17,23 +44,22 @@ export async function getPhotoSrc(path) {
     return path;
   }
 
-  // Нативный путь: data://LeakReports/...
-  const fsPath = path.startsWith("data://")
-    ? path.replace("data://", "")
-    : path.replace(/^Documents\//, ""); // обратная совместимость со старыми путями
-
-  const dir = path.startsWith("data://") ? Directory.Data : Directory.Documents;
+  const nativePath = parseNativePhotoPath(path);
+  if (!nativePath) return null;
 
   try {
     const file = await Filesystem.readFile({
-      path: fsPath,
-      directory: dir,
+      path: nativePath.fsPath,
+      directory: nativePath.dir,
     });
 
     // file.data — base64 строка
     return `data:image/jpeg;base64,${file.data}`;
   } catch (err) {
-    logger.error(`[photoService] Failed to read photo "${fsPath}":`, err);
+    logger.error(
+      `[photoService] Failed to read photo "${nativePath.fsPath}":`,
+      err,
+    );
     return null;
   }
 }
@@ -48,14 +74,14 @@ export async function photoExists(path) {
     return typeof path === "string" && path.startsWith("data:image/");
   }
 
-  const fsPath = path.startsWith("data://")
-    ? path.replace("data://", "")
-    : path.replace(/^Documents\//, "");
-
-  const dir = path.startsWith("data://") ? Directory.Data : Directory.Documents;
+  const nativePath = parseNativePhotoPath(path);
+  if (!nativePath) return false;
 
   try {
-    await Filesystem.stat({ directory: dir, path: fsPath });
+    await Filesystem.stat({
+      directory: nativePath.dir,
+      path: nativePath.fsPath,
+    });
     return true;
   } catch {
     return false;
@@ -68,14 +94,14 @@ export async function photoExists(path) {
 export async function deletePhotoFromFS(path) {
   if (!path || !isNative) return;
 
-  const fsPath = path.startsWith("data://")
-    ? path.replace("data://", "")
-    : path.replace(/^Documents\//, "");
-
-  const dir = path.startsWith("data://") ? Directory.Data : Directory.Documents;
+  const nativePath = parseNativePhotoPath(path);
+  if (!nativePath) return;
 
   try {
-    await Filesystem.deleteFile({ directory: dir, path: fsPath });
+    await Filesystem.deleteFile({
+      directory: nativePath.dir,
+      path: nativePath.fsPath,
+    });
   } catch {
     // файл уже удалён — нормально
   }

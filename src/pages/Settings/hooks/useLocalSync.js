@@ -25,6 +25,11 @@ function typeLabel(type, lang) {
 }
 
 function syncErrorMessage(error, lang) {
+  if (error?.code === "SYNC_EPOCH_MISMATCH") {
+    return lang === "ru"
+      ? "На одном из устройств была очищена старая история удалений. Автоматическое объединение остановлено, чтобы не восстановить удалённые записи. Создайте полный ZIP на актуальном устройстве и замените проект на втором устройстве."
+      : "Old deletion history was compacted on one device. Automatic merge was stopped to prevent deleted records from being restored. Export a full ZIP from the current device and replace the project on the other device.";
+  }
   if (error?.code === "PROJECT_TYPE_MISMATCH") {
     const current = typeLabel(error.existingProjectType, lang);
     const incoming = typeLabel(error.incomingProjectType, lang);
@@ -45,6 +50,13 @@ function syncErrorMessage(error, lang) {
   return error.message;
 }
 
+function isStructuredSyncError(error) {
+  return (
+    error?.code === "SYNC_EPOCH_MISMATCH" ||
+    error?.code?.includes("PROJECT_TYPE")
+  );
+}
+
 export function useLocalSync({
   activeProject,
   data,
@@ -59,6 +71,11 @@ export function useLocalSync({
   const [state, setState] = useState(IDLE_STATE);
   const hostSessionRef = useRef(null);
   const mountedRef = useRef(true);
+  const operationGenerationRef = useRef(0);
+  const activeProjectId = activeProject?.id ?? null;
+  const activeProjectIdRef = useRef(activeProjectId);
+  const observedProjectIdRef = useRef(activeProjectId);
+  activeProjectIdRef.current = activeProjectId;
   const available = useMemo(() => isLocalSyncAvailable(), []);
 
   // Guards every setState below: once unmounted, in-flight sync/import
@@ -69,20 +86,37 @@ export function useLocalSync({
     setState(next);
   }, []);
 
-  const buildArchive = useCallback(
-    async (project = activeProject) => {
+  const beginProjectOperation = useCallback(() => {
+    operationGenerationRef.current += 1;
+    return {
+      generation: operationGenerationRef.current,
+      projectId: activeProjectIdRef.current,
+    };
+  }, []);
+
+  const isProjectOperationCurrent = useCallback(
+    (operation) =>
+      mountedRef.current &&
+      operationGenerationRef.current === operation?.generation &&
+      activeProjectIdRef.current === operation?.projectId,
+    [],
+  );
+
+  const streamArchive = useCallback(
+    async (writeChunk, project = activeProject) => {
       if (!project) {
         throw new Error(
           lang === "ru" ? "Проект не выбран" : "No project selected",
         );
       }
-      const { buildProjectBackupZip } =
+      const { streamProjectBackupZip } =
         await import("@/services/projectBackupService");
-      return buildProjectBackupZip({
+      return streamProjectBackupZip({
         leaks: data,
         idbGet: idbGetPhoto,
         project,
         vars,
+        writeChunk,
       });
     },
     [activeProject, data, idbGetPhoto, lang, vars],
@@ -110,6 +144,7 @@ export function useLocalSync({
   }, [setStateSafe]);
 
   const startHost = useCallback(async () => {
+    const operation = beginProjectOperation();
     setStateSafe({ status: "preparing", session: null });
     try {
       const syncProject = ensureProjectSyncId?.(activeProject?.id);
@@ -120,38 +155,54 @@ export function useLocalSync({
         projectKey: projectKey(syncProject),
         syncId: syncProject.syncId,
       };
-      const archive = await buildArchive(syncProject);
       const session = await startLocalSyncHost({
-        archive,
+        produceArchive: (writeChunk) => streamArchive(writeChunk, syncProject),
         ...identity,
         onArchive: async (file) => {
+          if (!isProjectOperationCurrent(operation)) return;
           setStateSafe((current) => ({ ...current, status: "merging" }));
           const activeSession = hostSessionRef.current;
           hostSessionRef.current = null;
           try {
+            if (!isProjectOperationCurrent(operation)) return;
             await mergeArchive(file, syncProject);
-            setStateSafe({ status: "complete", session: null });
+            if (isProjectOperationCurrent(operation)) {
+              setStateSafe({ status: "complete", session: null });
+            }
           } finally {
             await activeSession?.stop().catch(() => {});
           }
         },
         onError: (error) => {
+          if (!isProjectOperationCurrent(operation)) return;
           const activeSession = hostSessionRef.current;
           hostSessionRef.current = null;
           activeSession?.stop().catch(() => {});
           notify(
             "error",
-            error?.code?.includes("PROJECT_TYPE")
+            isStructuredSyncError(error)
               ? syncErrorMessage(error, lang)
               : `${lang === "ru" ? "Ошибка локальной синхронизации" : "Local sync error"}: ${error.message}`,
           );
           setStateSafe(IDLE_STATE);
         },
       });
+      if (!isProjectOperationCurrent(operation)) {
+        await session.stop().catch(() => {});
+        return;
+      }
       hostSessionRef.current = session;
       const qrSvg = await createLocalSyncQrSvg(session, identity);
+      if (!isProjectOperationCurrent(operation)) {
+        if (hostSessionRef.current === session) {
+          hostSessionRef.current = null;
+          await session.stop().catch(() => {});
+        }
+        return;
+      }
       setStateSafe({ status: "hosting", session: { ...session, qrSvg } });
     } catch (error) {
+      if (!isProjectOperationCurrent(operation)) return;
       const activeSession = hostSessionRef.current;
       hostSessionRef.current = null;
       await activeSession?.stop().catch(() => {});
@@ -163,8 +214,10 @@ export function useLocalSync({
     }
   }, [
     activeProject,
-    buildArchive,
+    beginProjectOperation,
+    streamArchive,
     ensureProjectSyncId,
+    isProjectOperationCurrent,
     lang,
     mergeArchive,
     notify,
@@ -172,44 +225,64 @@ export function useLocalSync({
   ]);
 
   const joinHost = useCallback(
-    async ({ host, port, code, fingerprint }) => {
+    async (
+      { host, port, code, fingerprint, syncId: connectionSyncId },
+      existingOperation,
+    ) => {
+      const operation = existingOperation ?? beginProjectOperation();
+      if (!isProjectOperationCurrent(operation)) return;
       setStateSafe({ status: "joining", session: null });
       try {
-        const archive = await buildArchive();
         const incoming = await exchangeLocalSyncArchive({
           host,
           port,
           code,
           fingerprint,
-          archive,
+          produceArchive: (writeChunk) => streamArchive(writeChunk),
           projectKey: projectKey(activeProject),
-          syncId: activeProject?.syncId ?? "",
+          syncId: activeProject?.syncId ?? connectionSyncId ?? "",
         });
+        if (!isProjectOperationCurrent(operation)) return;
         setStateSafe({ status: "merging", session: null });
         await mergeArchive(incoming);
-        setStateSafe({ status: "complete", session: null });
+        if (isProjectOperationCurrent(operation)) {
+          setStateSafe({ status: "complete", session: null });
+        }
       } catch (error) {
+        if (!isProjectOperationCurrent(operation)) return;
         setStateSafe(IDLE_STATE);
         notify(
           "error",
-          error?.code?.includes("PROJECT_TYPE")
+          isStructuredSyncError(error)
             ? syncErrorMessage(error, lang)
             : `${lang === "ru" ? "Ошибка подключения" : "Connection error"}: ${error.message}`,
         );
       }
     },
-    [activeProject, buildArchive, lang, mergeArchive, notify, setStateSafe],
+    [
+      activeProject,
+      beginProjectOperation,
+      streamArchive,
+      isProjectOperationCurrent,
+      lang,
+      mergeArchive,
+      notify,
+      setStateSafe,
+    ],
   );
 
   const scanAndJoin = useCallback(async () => {
+    const operation = beginProjectOperation();
     setStateSafe({ status: "scanning", session: null });
     try {
       const connection = await scanLocalSyncQr({
         projectKey: projectKey(activeProject),
         syncId: activeProject?.syncId,
       });
-      await joinHost(connection);
+      if (!isProjectOperationCurrent(operation)) return;
+      await joinHost(connection, operation);
     } catch (error) {
+      if (!isProjectOperationCurrent(operation)) return;
       setStateSafe(IDLE_STATE);
       if (error.code === "QR_SCAN_CANCELLED") return;
       notify(
@@ -217,14 +290,25 @@ export function useLocalSync({
         `${lang === "ru" ? "Ошибка QR-кода" : "QR code error"}: ${error.message}`,
       );
     }
-  }, [activeProject, joinHost, lang, notify, setStateSafe]);
+  }, [
+    activeProject,
+    beginProjectOperation,
+    isProjectOperationCurrent,
+    joinHost,
+    lang,
+    notify,
+    setStateSafe,
+  ]);
 
   const scanAndImport = useCallback(async () => {
+    const operation = beginProjectOperation();
     setStateSafe({ status: "scanningImport", session: null });
     try {
       const connection = await scanLocalSyncQr();
+      if (!isProjectOperationCurrent(operation)) return;
       setStateSafe({ status: "importing", session: null });
       const incoming = await fetchLocalSyncArchive(connection);
+      if (!isProjectOperationCurrent(operation)) return;
       const result = await onImportZip?.(incoming);
       notify(
         "success",
@@ -234,6 +318,7 @@ export function useLocalSync({
       );
       setStateSafe({ status: "complete", session: null });
     } catch (error) {
+      if (!isProjectOperationCurrent(operation)) return;
       setStateSafe(IDLE_STATE);
       if (error.code === "QR_SCAN_CANCELLED") return;
       notify(
@@ -241,21 +326,40 @@ export function useLocalSync({
         `${lang === "ru" ? "Ошибка импорта по QR" : "QR import error"}: ${error.message}`,
       );
     }
-  }, [lang, notify, onImportZip, setStateSafe]);
+  }, [
+    beginProjectOperation,
+    isProjectOperationCurrent,
+    lang,
+    notify,
+    onImportZip,
+    setStateSafe,
+  ]);
 
   const cancelScan = useCallback(() => {
     cancelLocalSyncQrScan();
   }, []);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
       mountedRef.current = false;
+      operationGenerationRef.current += 1;
       Promise.resolve(cancelLocalSyncQrScan()).catch(() => {});
       hostSessionRef.current?.stop().catch(() => {});
       hostSessionRef.current = null;
-    },
-    [],
-  );
+    };
+  }, []);
+
+  useEffect(() => {
+    if (observedProjectIdRef.current === activeProjectId) return;
+    observedProjectIdRef.current = activeProjectId;
+    operationGenerationRef.current += 1;
+    const activeSession = hostSessionRef.current;
+    hostSessionRef.current = null;
+    Promise.resolve(cancelLocalSyncQrScan()).catch(() => {});
+    activeSession?.stop().catch(() => {});
+    setStateSafe(IDLE_STATE);
+  }, [activeProjectId, setStateSafe]);
 
   return {
     available,

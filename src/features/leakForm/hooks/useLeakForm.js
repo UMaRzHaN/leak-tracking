@@ -22,6 +22,7 @@ export function useLeakForm() {
       leak_id: "",
       photo: null,
     });
+    setErrors({});
   }, []);
 
   const handle = useCallback(

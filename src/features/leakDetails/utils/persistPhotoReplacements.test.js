@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { persistPhotoReplacements } from "./persistPhotoReplacements";
+import {
+  cleanupUncommittedPhotoReplacements,
+  persistPhotoReplacements,
+} from "./persistPhotoReplacements";
 
 describe("persistPhotoReplacements", () => {
   it("deletes replaced photos only after the record is saved", async () => {
@@ -28,6 +31,55 @@ describe("persistPhotoReplacements", () => {
         deletePhoto,
       }),
     ).rejects.toThrow("database failed");
+    expect(deletePhoto).not.toHaveBeenCalled();
+  });
+
+  it("keeps a replaced photo referenced by monitoring history", async () => {
+    const deletePhoto = vi.fn();
+
+    await persistPhotoReplacements({
+      save: vi.fn(),
+      value: {
+        id: 1,
+        photo_after: "idb://new",
+        monitoringRecords: [{ photo: "idb://old" }],
+      },
+      replacements: [[true, "idb://old", "idb://new"]],
+      deletePhoto,
+    });
+
+    expect(deletePhoto).not.toHaveBeenCalled();
+  });
+
+  it("deletes newly written photos when the record was not committed", async () => {
+    const deletePhoto = vi.fn();
+
+    await cleanupUncommittedPhotoReplacements({
+      value: { id: 1, photo: "idb://old" },
+      replacements: [
+        [true, "idb://old", "idb://new"],
+        [true, null, "idb://new"],
+      ],
+      deletePhoto,
+    });
+
+    expect(deletePhoto).toHaveBeenCalledOnce();
+    expect(deletePhoto).toHaveBeenCalledWith("idb://new");
+  });
+
+  it("keeps an uncommitted path that the original record still references", async () => {
+    const deletePhoto = vi.fn();
+
+    await cleanupUncommittedPhotoReplacements({
+      value: {
+        id: 1,
+        photo: "idb://old",
+        monitoringRecords: [{ photo: "idb://shared" }],
+      },
+      replacements: [[true, "idb://old", "idb://shared"]],
+      deletePhoto,
+    });
+
     expect(deletePhoto).not.toHaveBeenCalled();
   });
 });

@@ -7,6 +7,16 @@ function excelTimeValue(value) {
     86_400
   );
 }
+
+function readEmbeddedBackup(sheet) {
+  const serialized = sheet.rows
+    .filter((row) => Number.isInteger(row.values[0]))
+    .sort((left, right) => left.values[0] - right.values[0])
+    .map((row) => row.values[1])
+    .join("");
+  return JSON.parse(serialized);
+}
+
 const mocks = vi.hoisted(() => {
   const workbookInstances = [];
   const zipInstances = [];
@@ -219,7 +229,13 @@ describe("excel export helpers", () => {
     mocks.getPhotoSrcMock.mockResolvedValue("data:image/png;base64,ZmFrZQ==");
 
     const result = await exportToExcelFile(
-      [{ id: 1, leak_id: 7, photo: "file://photo.png" }],
+      [
+        {
+          id: 1,
+          leak_id: "../victim\\tag",
+          photo: "file://photo.png",
+        },
+      ],
       [{ id: 1, name: "Leak 1", photo: "Yes", photo_after: "" }],
       ["ID", "Name", "Photo", "After"],
       ["id", "name", "photo", "photo_after"],
@@ -255,9 +271,17 @@ describe("excel export helpers", () => {
     expect(backupSheet.getRow(8).getCell(4).value).toBe(1);
     expect(mocks.getPhotoSrcMock).toHaveBeenCalledTimes(1);
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
-      "photos/7/7.png",
+      "photos/-victim-tag/before.png",
       "ZmFrZQ==",
       { base64: true },
+    );
+    expect(
+      mocks.zipInstances[0].file.mock.calls.map(([name]) => name),
+    ).not.toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(".."),
+        expect.stringContaining("\\"),
+      ]),
     );
     expect(mocks.anchorClick).toHaveBeenCalledTimes(1);
     expect(result.message).toBe("Excel project archive exported (report.zip)");
@@ -267,6 +291,178 @@ describe("excel export helpers", () => {
       zipMs: expect.any(Number),
       totalMs: expect.any(Number),
     });
+  });
+
+  it("keeps colliding leak ids and a shared source photo isolated", async () => {
+    mocks.getPhotoSrcMock.mockResolvedValue("data:image/png;base64,c2hhcmVk");
+    const leaks = [
+      { id: "first", leak_id: "A/B", photo: "file://shared.png" },
+      { id: "second", leak_id: "A\\B", photo: "file://shared.png" },
+    ];
+
+    await exportToExcelFile(
+      leaks,
+      [
+        { id: "first", name: "First", photo: "Yes" },
+        { id: "second", name: "Second", photo: "Yes" },
+      ],
+      ["ID", "Name", "Photo"],
+      ["id", "name", "photo"],
+      "report",
+      null,
+      null,
+      "en",
+      { backupLeaks: leaks },
+    );
+
+    const archive = mocks.zipInstances[0];
+    expect(archive.file).toHaveBeenCalledWith(
+      "photos/A-B/before.png",
+      "c2hhcmVk",
+      { base64: true },
+    );
+    expect(archive.file).toHaveBeenCalledWith(
+      "photos/A-B~second/before.png",
+      "c2hhcmVk",
+      { base64: true },
+    );
+    expect(mocks.getPhotoSrcMock).toHaveBeenCalledTimes(1);
+
+    const leakSheet = mocks.workbookInstances[0].sheets[0];
+    expect(leakSheet.getRow(2).getCell(3).value).toEqual({
+      text: "Open photo",
+      hyperlink: "photos/A-B/before.png",
+    });
+    expect(leakSheet.getRow(3).getCell(3).value).toEqual({
+      text: "Open photo",
+      hyperlink: "photos/A-B~second/before.png",
+    });
+
+    const payload = readEmbeddedBackup(
+      mocks.workbookInstances[0].sheets.at(-1),
+    );
+    expect(payload.leaks.map((leak) => leak.photo)).toEqual([
+      "zip:photos/A-B/before.png",
+      "zip:photos/A-B~second/before.png",
+    ]);
+  });
+
+  it("maps a filtered report to the matching full-backup photo entries", async () => {
+    mocks.getPhotoSrcMock.mockImplementation(async (path) =>
+      path.includes("visible")
+        ? "data:image/png;base64,dmlzaWJsZQ=="
+        : "data:image/png;base64,aGlkZGVu",
+    );
+    const visible = {
+      id: "visible",
+      leak_id: "VISIBLE",
+      photo: "file://visible.png",
+      monitoringRecords: [
+        {
+          id: "visible-check",
+          roundId: "round-1",
+          roundNumber: 1,
+          date: "2026-07-14T10:00:00.000Z",
+          result: "still_leaking",
+          photo: "file://visible-monitor.png",
+        },
+      ],
+    };
+    const hidden = {
+      id: "hidden",
+      leak_id: "HIDDEN",
+      photo: "file://hidden.png",
+      monitoringRecords: [
+        {
+          id: "hidden-check",
+          roundId: "round-1",
+          roundNumber: 1,
+          date: "2026-07-14T10:00:00.000Z",
+          result: "still_leaking",
+          photo: "file://hidden-monitor.png",
+        },
+      ],
+    };
+
+    await exportToExcelFile(
+      [visible],
+      [{ id: "visible", name: "Visible", photo: "Yes" }],
+      ["ID", "Name", "Photo"],
+      ["id", "name", "photo"],
+      "report",
+      null,
+      null,
+      "en",
+      { backupLeaks: [hidden, visible] },
+    );
+
+    const archive = mocks.zipInstances[0];
+    expect(archive.file).toHaveBeenCalledWith(
+      "photos/VISIBLE/before.png",
+      "dmlzaWJsZQ==",
+      { base64: true },
+    );
+    expect(archive.file).toHaveBeenCalledWith(
+      "photos/HIDDEN/before.png",
+      "aGlkZGVu",
+      { base64: true },
+    );
+    expect(archive.file).toHaveBeenCalledWith(
+      "photos/VISIBLE/monitoring/record-1.png",
+      "dmlzaWJsZQ==",
+      { base64: true },
+    );
+    expect(archive.file).toHaveBeenCalledWith(
+      "photos/HIDDEN/monitoring/record-1.png",
+      "aGlkZGVu",
+      { base64: true },
+    );
+    const payload = readEmbeddedBackup(
+      mocks.workbookInstances[0].sheets.at(-1),
+    );
+    expect(payload.leaks.map((leak) => leak.photo)).toEqual([
+      "zip:photos/HIDDEN/before.png",
+      "zip:photos/VISIBLE/before.png",
+    ]);
+    expect(
+      payload.leaks.map((leak) => leak.monitoringRecords[0].photo),
+    ).toEqual([
+      "zip:photos/HIDDEN/monitoring/record-1.png",
+      "zip:photos/VISIBLE/monitoring/record-1.png",
+    ]);
+  });
+
+  it("omits unreadable local photo references from the embedded backup", async () => {
+    mocks.getPhotoSrcMock.mockResolvedValue(null);
+    const getStoredPhoto = vi.fn().mockResolvedValue(null);
+
+    await exportToExcelFile(
+      [
+        {
+          id: "missing",
+          leak_id: "MISSING",
+          photo: "idb://missing-before",
+          photo_after: "data://missing-after",
+          monitoringRecords: [
+            { id: "check", photo: "data://missing-monitoring" },
+          ],
+        },
+      ],
+      [{ id: "missing", name: "Missing", photo: "Yes" }],
+      ["ID", "Name", "Photo"],
+      ["id", "name", "photo"],
+      "report",
+      getStoredPhoto,
+      null,
+      "en",
+    );
+
+    const [leak] = readEmbeddedBackup(
+      mocks.workbookInstances[0].sheets.at(-1),
+    ).leaks;
+    expect(leak).not.toHaveProperty("photo");
+    expect(leak).not.toHaveProperty("photo_after");
+    expect(leak.monitoringRecords[0]).not.toHaveProperty("photo");
   });
 
   it("replaces invalid Date cell values with blanks before writing xlsx", async () => {
@@ -483,19 +679,19 @@ describe("excel export helpers", () => {
     expect(monitoringSheet.getColumn(5).numFmt).toBe("hh:mm:ss");
     expect(monitoringSheet.getRow(2).getCell(10).value).toEqual({
       text: "Open photo",
-      hyperlink: "photos/7/monitoring/7_monitoring_1.png",
+      hyperlink: "photos/7/monitoring/record-1.png",
     });
     expect(monitoringSheet.getRow(3).getCell(10).value).toEqual({
       text: "Open photo",
-      hyperlink: "photos/7/monitoring/7_monitoring_2.png",
+      hyperlink: "photos/7/monitoring/record-2.png",
     });
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
-      "photos/7/monitoring/7_monitoring_1.png",
+      "photos/7/monitoring/record-1.png",
       "ZmFrZQ==",
       { base64: true },
     );
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
-      "photos/7/monitoring/7_monitoring_2.png",
+      "photos/7/monitoring/record-2.png",
       "ZmFrZQ==",
       { base64: true },
     );
@@ -591,15 +787,15 @@ describe("excel export helpers", () => {
     expect(monitoringSheet.rows).toHaveLength(2);
     expect(monitoringSheet.getRow(2).getCell(10).value).toEqual({
       text: "Open photo",
-      hyperlink: "photos/7/monitoring/7_monitoring_2.png",
+      hyperlink: "photos/7/monitoring/record-2.png",
     });
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
-      "photos/7/monitoring/7_monitoring_1.png",
+      "photos/7/monitoring/record-1.png",
       "ZmFrZQ==",
       { base64: true },
     );
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
-      "photos/7/monitoring/7_monitoring_2.png",
+      "photos/7/monitoring/record-2.png",
       "ZmFrZQ==",
       { base64: true },
     );

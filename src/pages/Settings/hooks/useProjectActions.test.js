@@ -164,6 +164,108 @@ describe("useProjectActions", () => {
     expect(result.current.projectSwitchState.open).toBe(false);
   });
 
+  it("guards project creation when the form is dirty and clears it after confirmation", async () => {
+    const notify = vi.fn();
+    const setCacheInfo = vi.fn();
+    const addProject = vi.fn();
+    const clearForm = vi.fn();
+
+    projectModule.useProject.mockReturnValue({
+      ...projectModule.useProject(),
+      addProject,
+    });
+    formContextModule.useLeakFormContext.mockReturnValue({
+      form: { component: "Valve" },
+      clearForm,
+    });
+
+    const { result } = renderHook(() =>
+      useProjectActions({ setCacheInfo, notify }),
+    );
+
+    await act(async () => {
+      await result.current.handleAdd("Gamma", "upstream");
+    });
+
+    expect(addProject).not.toHaveBeenCalled();
+    expect(clearForm).not.toHaveBeenCalled();
+    expect(result.current.projectSwitchState.open).toBe(true);
+
+    await act(async () => {
+      await result.current.confirmProjectSwitch();
+    });
+
+    expect(addProject).toHaveBeenCalledWith("Gamma", "upstream");
+    expect(clearForm).toHaveBeenCalledOnce();
+    expect(tileCacheModule.clearMapCache).toHaveBeenCalledOnce();
+    expect(setCacheInfo).toHaveBeenCalledWith({ count: 0, sizeMB: 0 });
+  });
+
+  it("does not treat empty defaults and the derived inspector name as a dirty form", async () => {
+    const addProject = vi.fn();
+    const clearForm = vi.fn();
+    projectModule.useProject.mockReturnValue({
+      ...projectModule.useProject(),
+      addProject,
+    });
+    formContextModule.useLeakFormContext.mockReturnValue({
+      form: {
+        leak_id: "",
+        photo: null,
+        detectedBy: "Inspector",
+      },
+      clearForm,
+    });
+
+    const { result } = renderHook(() =>
+      useProjectActions({ setCacheInfo: vi.fn(), notify: vi.fn() }),
+    );
+
+    await act(async () => {
+      await result.current.handleAdd("Gamma", "upstream");
+    });
+
+    expect(result.current.projectSwitchState.open).toBe(false);
+    expect(addProject).toHaveBeenCalledWith("Gamma", "upstream");
+    expect(clearForm).toHaveBeenCalledOnce();
+  });
+
+  it("guards removal of the active project and clears the form after confirmation", async () => {
+    const notify = vi.fn();
+    const removeProject = vi.fn();
+    const clearForm = vi.fn();
+
+    projectModule.useProject.mockReturnValue({
+      ...projectModule.useProject(),
+      removeProject,
+    });
+    formContextModule.useLeakFormContext.mockReturnValue({
+      form: { component: "Valve" },
+      clearForm,
+    });
+
+    const { result } = renderHook(() =>
+      useProjectActions({ setCacheInfo: vi.fn(), notify }),
+    );
+
+    await act(async () => {
+      await result.current.handleRemove("p1");
+    });
+
+    expect(removeProject).not.toHaveBeenCalled();
+    expect(leakRepositoryModule.LeakRepository.clear).not.toHaveBeenCalled();
+    expect(clearForm).not.toHaveBeenCalled();
+    expect(result.current.projectSwitchState.open).toBe(true);
+
+    await act(async () => {
+      await result.current.confirmProjectSwitch();
+    });
+
+    expect(removeProject).toHaveBeenCalledWith("p1");
+    expect(clearForm).toHaveBeenCalledOnce();
+    expect(tileCacheModule.clearMapCache).toHaveBeenCalledOnce();
+  });
+
   it("ignores the active project and can cancel a pending switch", async () => {
     const selectProject = vi.fn();
     projectModule.useProject.mockReturnValue({
@@ -237,7 +339,7 @@ describe("useProjectActions", () => {
     expect(notify).not.toHaveBeenCalled();
   });
 
-  it("creates project with fallback title in notification when name is empty", () => {
+  it("creates project with fallback title in notification when name is empty", async () => {
     const notify = vi.fn();
     const addProject = vi.fn();
 
@@ -250,8 +352,8 @@ describe("useProjectActions", () => {
       useProjectActions({ setCacheInfo: vi.fn(), notify }),
     );
 
-    act(() => {
-      result.current.handleAdd("", "upstream");
+    await act(async () => {
+      await result.current.handleAdd("", "upstream");
     });
 
     expect(addProject).toHaveBeenCalledWith("", "upstream");
@@ -413,6 +515,43 @@ describe("useProjectActions", () => {
       "error",
       'Project "Alpha" was removed, but some files could not be cleaned up',
     );
+  });
+
+  it("ignores a duplicate removal while cleanup is still pending", async () => {
+    let finishCleanup;
+    leakRepositoryModule.LeakRepository.clear.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishCleanup = resolve;
+        }),
+    );
+    const removeProject = vi.fn();
+    projectModule.useProject.mockReturnValue({
+      ...projectModule.useProject(),
+      removeProject,
+    });
+    const { result } = renderHook(() =>
+      useProjectActions({ setCacheInfo: vi.fn(), notify: vi.fn() }),
+    );
+
+    let firstRemoval;
+    act(() => {
+      firstRemoval = result.current.handleRemove("p2");
+    });
+    await act(async () => {});
+
+    await act(async () => {
+      await result.current.handleRemove("p2");
+    });
+    expect(leakRepositoryModule.LeakRepository.clear).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      finishCleanup();
+      await firstRemoval;
+    });
+
+    expect(removeProject).toHaveBeenCalledOnce();
+    expect(removeProject).toHaveBeenCalledWith("p2");
   });
 
   it("ignores removal of an unknown project", async () => {

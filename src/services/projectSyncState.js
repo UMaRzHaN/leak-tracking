@@ -1,11 +1,19 @@
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { logger } from "@/utils/logger";
 import {
+  nextSyncTimestamp,
+  observeSyncTimestamp,
+  sanitizeSyncTimestamp,
+} from "@/services/syncClock";
+import {
   LEAK_FIELD_VERSIONS_KEY,
   normalizeLeakFieldVersions,
 } from "@/services/leakFieldVersions";
 const SYNC_DB_NAME = "LeakTrackingSyncDB";
 const SYNC_STORE_NAME = "projectStates";
+export const MAX_PROJECT_TOMBSTONES = 10_000;
+export const TOMBSTONES_AFTER_COMPACTION = 5_000;
+const LEGACY_SYNC_EPOCH = "legacy";
 const syncStateMemory = new Map();
 const syncStateMutationQueues = new Map();
 let syncDbPromise;
@@ -67,13 +75,43 @@ async function deleteDurableSyncState(projectId) {
 }
 
 function toTime(value) {
-  if (value == null || value === "") return 0;
-  const numeric = Number(value);
-  const time =
-    typeof value === "number" || Number.isFinite(numeric)
-      ? numeric
-      : Date.parse(String(value));
-  return Number.isFinite(time) && time > 0 ? time : 0;
+  return observeSyncTimestamp(sanitizeSyncTimestamp(value));
+}
+
+function toGeneration(value) {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function normalizeEpochId(value, generation) {
+  if (generation === 0) return LEGACY_SYNC_EPOCH;
+  const normalized = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  return /^[a-z0-9][a-z0-9._:-]{7,127}$/.test(normalized)
+    ? normalized
+    : `${LEGACY_SYNC_EPOCH}-${generation}`;
+}
+
+function createCompactionEpochId(state, droppedEntries) {
+  const hashes = [2166136261, 2246822519, 3266489917, 668265263];
+  const update = (text) => {
+    for (let index = 0; index < text.length; index += 1) {
+      const code = text.charCodeAt(index);
+      hashes[0] = Math.imul(hashes[0] ^ code, 16777619);
+      hashes[1] = Math.imul(hashes[1] ^ code, 2246822519);
+      hashes[2] = Math.imul(hashes[2] ^ code, 3266489917);
+      hashes[3] = Math.imul(hashes[3] ^ code, 668265263);
+    }
+  };
+  update(`${state.generation}|${state.epochId}|`);
+  for (const [identity, deletedAt] of droppedEntries) {
+    update(`${identity}:${deletedAt}|`);
+  }
+  const digest = hashes
+    .map((value) => (value >>> 0).toString(16).padStart(8, "0"))
+    .join("");
+  return `epoch-${state.generation + 1}-${digest}`;
 }
 
 export function getLeakSyncIdentity(leak) {
@@ -92,8 +130,6 @@ export function getLeakSyncIdentities(leak) {
 }
 
 export function getLeakMergeIdentity(leak) {
-  const leakTag = String(leak?.leak_id ?? "").trim();
-  if (leakTag) return `tag:${leakTag}`;
   return getLeakSyncIdentity(leak);
 }
 
@@ -127,10 +163,52 @@ function normalizeDeleted(value) {
 }
 
 export function normalizeProjectSyncState(value) {
+  const generation = toGeneration(value?.generation);
   return {
-    version: 1,
+    version: 2,
+    generation,
+    epochId: normalizeEpochId(value?.epochId, generation),
+    compactedAt: toTime(value?.compactedAt),
     deleted: normalizeDeleted(value?.deleted),
     varsUpdatedAt: toTime(value?.varsUpdatedAt),
+  };
+}
+
+export function assertProjectSyncStateCompatible(localValue, incomingValue) {
+  const local = normalizeProjectSyncState(localValue);
+  const incoming = normalizeProjectSyncState(incomingValue);
+  if (
+    local.generation === incoming.generation &&
+    local.epochId === incoming.epochId
+  ) {
+    return true;
+  }
+
+  const error = new Error(
+    "История синхронизации устройств разошлась после очистки удалённых записей. Выполните полную передачу проекта с актуального устройства.",
+  );
+  error.code = "SYNC_EPOCH_MISMATCH";
+  error.localGeneration = local.generation;
+  error.incomingGeneration = incoming.generation;
+  error.localEpochId = local.epochId;
+  error.incomingEpochId = incoming.epochId;
+  throw error;
+}
+
+function compactDeletedState(state, deletedEntries) {
+  if (deletedEntries.length <= MAX_PROJECT_TOMBSTONES) {
+    return { ...state, deleted: Object.fromEntries(deletedEntries) };
+  }
+
+  const retained = deletedEntries.slice(0, TOMBSTONES_AFTER_COMPACTION);
+  const dropped = deletedEntries.slice(TOMBSTONES_AFTER_COMPACTION);
+  const newestDroppedAt = dropped[0]?.[1] ?? 0;
+  return {
+    ...state,
+    generation: state.generation + 1,
+    epochId: createCompactionEpochId(state, dropped),
+    compactedAt: Math.max(state.compactedAt, newestDroppedAt),
+    deleted: Object.fromEntries(retained),
   };
 }
 
@@ -175,8 +253,19 @@ export function writeProjectSyncState(projectId, value, liveLeaks = []) {
       const liveUpdatedAt = liveFreshness.get(identity);
       return liveUpdatedAt == null || deletedAt >= liveUpdatedAt;
     })
-    .sort((left, right) => right[1] - left[1]);
-  const normalized = { ...state, deleted: Object.fromEntries(deleted) };
+    .sort(
+      (left, right) =>
+        right[1] - left[1] ||
+        (String(left[0]) < String(right[0])
+          ? -1
+          : String(left[0]) > String(right[0])
+            ? 1
+            : 0),
+    );
+  // Compaction keeps the newest tombstones and advances a deterministic sync
+  // generation. Devices with different generations are rejected before merge
+  // instead of risking resurrection or accidental deletion of records.
+  const normalized = compactDeletedState(state, deleted);
   try {
     localStorage.setItem(
       STORAGE_KEYS.PROJECT_SYNC_STATE(projectId),
@@ -247,10 +336,29 @@ export async function clearProjectSyncState(projectId) {
 }
 
 export function mergeProjectSyncStates(...values) {
-  const merged = normalizeProjectSyncState();
-  for (const value of values) {
-    const state = normalizeProjectSyncState(value);
+  const states = values.map(normalizeProjectSyncState);
+  const highestGeneration = Math.max(
+    0,
+    ...states.map((state) => state.generation),
+  );
+  const candidates = states.filter(
+    (state) => state.generation === highestGeneration,
+  );
+  const selectedEpochId =
+    candidates
+      .map((state) => state.epochId)
+      .sort()
+      .at(-1) ?? LEGACY_SYNC_EPOCH;
+  const compatible = candidates.filter(
+    (state) => state.epochId === selectedEpochId,
+  );
+  const merged = normalizeProjectSyncState({
+    generation: highestGeneration,
+    epochId: selectedEpochId,
+  });
+  for (const state of compatible) {
     merged.varsUpdatedAt = Math.max(merged.varsUpdatedAt, state.varsUpdatedAt);
+    merged.compactedAt = Math.max(merged.compactedAt, state.compactedAt);
     for (const [identity, deletedAt] of Object.entries(state.deleted)) {
       merged.deleted[identity] = Math.max(
         merged.deleted[identity] ?? 0,
@@ -300,9 +408,11 @@ export async function recordLeakDeletions(
   projectId,
   previousLeaks,
   nextLeaks,
-  deletedAt = Date.now(),
+  deletedAt,
 ) {
   if (!projectId) return;
+  const effectiveDeletedAt =
+    deletedAt == null ? nextSyncTimestamp() : sanitizeSyncTimestamp(deletedAt);
   const nextIdentities = new Set(nextLeaks.flatMap(getLeakSyncIdentities));
   return mutateProjectSyncState(projectId, (state) => {
     for (const leak of previousLeaks) {
@@ -314,7 +424,7 @@ export async function recordLeakDeletions(
         for (const identity of identities) {
           state.deleted[identity] = Math.max(
             state.deleted[identity] ?? 0,
-            deletedAt,
+            effectiveDeletedAt,
           );
         }
       }
@@ -322,9 +432,10 @@ export async function recordLeakDeletions(
     return { state, liveLeaks: nextLeaks };
   });
 }
-export function markProjectVarsUpdated(projectId, updatedAt = Date.now()) {
+export function markProjectVarsUpdated(projectId, updatedAt) {
   if (!projectId) return Promise.resolve();
-  const timestamp = toTime(updatedAt);
+  const timestamp =
+    updatedAt == null ? nextSyncTimestamp() : sanitizeSyncTimestamp(updatedAt);
   // Keep synchronous readers and the UI current without overwriting the
   // authoritative IndexedDB state before it has been loaded.
   if (typeof localStorage !== "undefined" && timestamp > 0) {

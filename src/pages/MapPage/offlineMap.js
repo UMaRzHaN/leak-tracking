@@ -399,6 +399,12 @@ export function createOfflineMap(
       gpsTrackingEnabled = false;
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       stopGpsWatch();
+      if (userMarker) {
+        map.removeLayer(userMarker);
+        userMarker = null;
+      }
+      lastLatLng = null;
+      lastHeading = null;
       return;
     }
 

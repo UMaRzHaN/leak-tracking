@@ -3,13 +3,34 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 
 const NAVIGATION_STATE_KEY = "leakTrackingNavigation";
 const HOME_PAGE = "";
+const APP_PAGES = new Set([
+  HOME_PAGE,
+  "add",
+  "db",
+  "map",
+  "monitoring",
+  "settings",
+]);
+
+function normalizePage(value) {
+  return typeof value === "string" && APP_PAGES.has(value) ? value : HOME_PAGE;
+}
 
 function readNavigationState(state = globalThis.history?.state) {
   const navigation = state?.[NAVIGATION_STATE_KEY];
-  if (!navigation || typeof navigation.page !== "string") return null;
+  if (
+    !navigation ||
+    typeof navigation.page !== "string" ||
+    !APP_PAGES.has(navigation.page)
+  ) {
+    return null;
+  }
   return {
     page: navigation.page,
-    depth: Number.isInteger(navigation.depth) ? navigation.depth : 0,
+    depth:
+      Number.isInteger(navigation.depth) && navigation.depth >= 0
+        ? navigation.depth
+        : 0,
   };
 }
 
@@ -55,7 +76,7 @@ export function useAppState() {
   }, []);
 
   const setPage = useCallback((next, { replace = false } = {}) => {
-    const nextPage = typeof next === "string" ? next : HOME_PAGE;
+    const nextPage = normalizePage(next);
     const current = navigationRef.current;
     if (current.page === nextPage) return;
 
@@ -75,10 +96,10 @@ export function useAppState() {
       return;
     }
 
-    const navigation = { page: fallback, depth: 0 };
+    const navigation = { page: normalizePage(fallback), depth: 0 };
     writeNavigationState(navigation, true);
     navigationRef.current = navigation;
-    setPageState({ page: fallback, prevPage: current.page });
+    setPageState({ page: navigation.page, prevPage: current.page });
   }, []);
 
   const {

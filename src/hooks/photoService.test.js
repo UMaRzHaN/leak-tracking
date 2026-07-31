@@ -60,8 +60,12 @@ describe("photoService", () => {
     filesystem.readFile.mockRejectedValue(new Error("missing"));
     filesystem.stat.mockRejectedValue(new Error("missing"));
 
-    expect(await getPhotoSrc("data://missing.jpg")).toBeNull();
-    expect(await photoExists("data://missing.jpg")).toBe(false);
+    expect(
+      await getPhotoSrc("data://LeakReports/missing/photos/missing.jpg"),
+    ).toBeNull();
+    expect(
+      await photoExists("data://LeakReports/missing/photos/missing.jpg"),
+    ).toBe(false);
     expect(logger.error).toHaveBeenCalledOnce();
   });
 
@@ -70,15 +74,35 @@ describe("photoService", () => {
     filesystem.stat.mockResolvedValue({ type: "file" });
     filesystem.deleteFile.mockResolvedValue(undefined);
 
-    expect(await photoExists("data://folder/photo.jpg")).toBe(true);
-    await deletePhotoFromFS("data://folder/photo.jpg");
+    expect(
+      await photoExists("data://LeakReports/folder/photos/photo.jpg"),
+    ).toBe(true);
+    await deletePhotoFromFS("data://LeakReports/folder/photos/photo.jpg");
     expect(filesystem.stat).toHaveBeenCalledWith({
-      path: "folder/photo.jpg",
+      path: "LeakReports/folder/photos/photo.jpg",
       directory: "DATA",
     });
     expect(filesystem.deleteFile).toHaveBeenCalledWith({
-      path: "folder/photo.jpg",
+      path: "LeakReports/folder/photos/photo.jpg",
       directory: "DATA",
     });
+  });
+
+  it("rejects native paths outside the photo storage root", async () => {
+    platform.isNative = true;
+
+    expect(
+      await getPhotoSrc(
+        "data://LeakReports/project/photos/../../../private/data.json",
+      ),
+    ).toBeNull();
+    expect(await photoExists("Documents/../private/photo.jpg")).toBe(false);
+    await deletePhotoFromFS(
+      "Documents/LeakReports/project/photos/../../data/data.json",
+    );
+
+    expect(filesystem.readFile).not.toHaveBeenCalled();
+    expect(filesystem.stat).not.toHaveBeenCalled();
+    expect(filesystem.deleteFile).not.toHaveBeenCalled();
   });
 });

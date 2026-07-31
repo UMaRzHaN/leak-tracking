@@ -24,8 +24,11 @@ for (const name of assetNames) {
   sizes.set(`assets/${name}`, (await stat(filePath)).size);
 }
 
+const isExcelChunk = (name) =>
+  /(?:^|[-_.])(?:vendor-)?excel(?:js)?(?:[-_.]|$)/i.test(name);
+
 const failures = [];
-const eagerExcelFiles = initialFiles.filter((name) => /exceljs/i.test(name));
+const eagerExcelFiles = initialFiles.filter(isExcelChunk);
 if (eagerExcelFiles.length) {
   failures.push(`ExcelJS must remain lazy: ${eagerExcelFiles.join(", ")}`);
 }
@@ -50,7 +53,7 @@ if (totalJs > budgets.totalJsBytes)
   failures.push(`total JS ${totalJs} > ${budgets.totalJsBytes}`);
 for (const name of jsNames) {
   const size = sizes.get(`assets/${name}`);
-  const limit = /exceljs/i.test(name)
+  const limit = isExcelChunk(name)
     ? budgets.excelChunkBytes
     : budgets.nonExcelChunkBytes;
   if (size > limit) failures.push(`${name} ${size} > ${limit}`);

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { isNative } from "@/utils/platform";
 import { useProject } from "@/app/project/ProjectContext";
@@ -6,12 +6,14 @@ import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { PROJECT_META } from "@/configs/projects";
 import { clearMapCache } from "@/services/maps/tileCache";
 import { deleteProjectArtifacts } from "@/services/projectCleanup";
+import { isLeakFormDirty } from "@/features/leakForm/utils/isLeakFormDirty";
 
 export { deleteProjectArtifacts };
 
 const CLOSED_SWITCH_STATE = {
   open: false,
   nextProjectId: null,
+  pendingAction: null,
 };
 
 const CLOSED_SYNC_ID_EDITOR = {
@@ -67,10 +69,9 @@ export function useProjectActions({ setCacheInfo, notify }) {
   const [syncIdEditorState, setSyncIdEditorState] = useState(
     CLOSED_SYNC_ID_EDITOR,
   );
+  const removingProjectIdsRef = useRef(new Set());
 
-  const isFormDirty = Object.values(form).some(
-    (value) => value !== null && value !== "" && value !== undefined,
-  );
+  const isFormDirty = isLeakFormDirty(form);
 
   const projectSwitchTexts = useMemo(
     () => ({
@@ -85,12 +86,16 @@ export function useProjectActions({ setCacheInfo, notify }) {
     [lang],
   );
 
+  const clearProjectScopedState = useCallback(async () => {
+    clearForm?.();
+    await clearMapCache();
+    setCacheInfo({ count: 0, sizeMB: 0 });
+  }, [clearForm, setCacheInfo]);
+
   const performProjectSwitch = useCallback(
     async (id) => {
       selectProject(id);
-      clearForm?.();
-      await clearMapCache();
-      setCacheInfo({ count: 0, sizeMB: 0 });
+      await clearProjectScopedState();
       notify(
         "info",
         lang === "ru"
@@ -98,7 +103,7 @@ export function useProjectActions({ setCacheInfo, notify }) {
           : "Project switched, map cache cleared",
       );
     },
-    [clearForm, lang, notify, selectProject, setCacheInfo],
+    [clearProjectScopedState, lang, notify, selectProject],
   );
 
   const handleSelect = useCallback(
@@ -106,7 +111,11 @@ export function useProjectActions({ setCacheInfo, notify }) {
       if (id === activeProject?.id) return;
 
       if (isFormDirty) {
-        setProjectSwitchState({ open: true, nextProjectId: id });
+        setProjectSwitchState({
+          open: true,
+          nextProjectId: id,
+          pendingAction: { type: "select", id },
+        });
         return;
       }
 
@@ -114,13 +123,6 @@ export function useProjectActions({ setCacheInfo, notify }) {
     },
     [activeProject?.id, isFormDirty, performProjectSwitch],
   );
-
-  const confirmProjectSwitch = useCallback(async () => {
-    if (!projectSwitchState.nextProjectId) return;
-    const nextProjectId = projectSwitchState.nextProjectId;
-    setProjectSwitchState(CLOSED_SWITCH_STATE);
-    await performProjectSwitch(nextProjectId);
-  }, [performProjectSwitch, projectSwitchState.nextProjectId]);
 
   const cancelProjectSwitch = useCallback(() => {
     setProjectSwitchState(CLOSED_SWITCH_STATE);
@@ -144,35 +146,85 @@ export function useProjectActions({ setCacheInfo, notify }) {
     [applyFolderRename, lang, notify, renameProject],
   );
 
+  const performProjectRemove = useCallback(
+    async (id) => {
+      const target = projects.find((project) => project.id === id);
+      if (!target || removingProjectIdsRef.current.has(id)) return;
+      removingProjectIdsRef.current.add(id);
+      const removesActiveProject = target.id === activeProject?.id;
+      let cleanupComplete = true;
+      try {
+        // Remove the project metadata first. If this persistence step fails,
+        // its data and photos must remain untouched and recoverable.
+        try {
+          removeProject(id);
+        } catch (error) {
+          notify(
+            "error",
+            lang === "ru"
+              ? `Не удалось удалить проект «${target.name}»: ${error.message}`
+              : `Could not remove project "${target.name}": ${error.message}`,
+          );
+          return;
+        }
+
+        try {
+          await deleteProjectArtifacts(target);
+        } catch {
+          cleanupComplete = false;
+        }
+        if (removesActiveProject) {
+          try {
+            await clearProjectScopedState();
+          } catch {
+            cleanupComplete = false;
+          }
+        }
+        notify(
+          cleanupComplete ? "warning" : "error",
+          cleanupComplete
+            ? lang === "ru"
+              ? `Проект «${target.name}» удалён`
+              : `Project "${target.name}" deleted`
+            : lang === "ru"
+              ? `Проект «${target.name}» удалён, но некоторые файлы не удалось очистить`
+              : `Project "${target.name}" was removed, but some files could not be cleaned up`,
+        );
+      } finally {
+        removingProjectIdsRef.current.delete(id);
+      }
+    },
+    [
+      activeProject?.id,
+      clearProjectScopedState,
+      lang,
+      notify,
+      projects,
+      removeProject,
+    ],
+  );
+
   const handleRemove = useCallback(
     async (id) => {
       const target = projects.find((project) => project.id === id);
       if (!target) return;
-      let cleanupComplete = true;
-      try {
-        await deleteProjectArtifacts(target);
-      } catch {
-        cleanupComplete = false;
-      } finally {
-        removeProject(id);
+      if (target.id === activeProject?.id && isFormDirty) {
+        setProjectSwitchState({
+          open: true,
+          nextProjectId: null,
+          pendingAction: { type: "remove", id },
+        });
+        return;
       }
-      notify(
-        cleanupComplete ? "warning" : "error",
-        cleanupComplete
-          ? lang === "ru"
-            ? `Проект «${target.name}» удалён`
-            : `Project "${target.name}" deleted`
-          : lang === "ru"
-            ? `Проект «${target.name}» удалён, но некоторые файлы не удалось очистить`
-            : `Project "${target.name}" was removed, but some files could not be cleaned up`,
-      );
+      await performProjectRemove(id);
     },
-    [lang, notify, projects, removeProject],
+    [activeProject?.id, isFormDirty, performProjectRemove, projects],
   );
 
-  const handleAdd = useCallback(
-    (name, type) => {
+  const performProjectAdd = useCallback(
+    async (name, type) => {
       addProject(name, type);
+      await clearProjectScopedState();
       notify(
         "success",
         lang === "ru"
@@ -180,8 +232,53 @@ export function useProjectActions({ setCacheInfo, notify }) {
           : `Project "${name || PROJECT_META[type].title}" created`,
       );
     },
-    [addProject, lang, notify],
+    [addProject, clearProjectScopedState, lang, notify],
   );
+
+  const handleAdd = useCallback(
+    async (name, type) => {
+      if (isFormDirty) {
+        setProjectSwitchState({
+          open: true,
+          nextProjectId: null,
+          pendingAction: { type: "add", name, projectType: type },
+        });
+        return;
+      }
+      await performProjectAdd(name, type);
+    },
+    [isFormDirty, performProjectAdd],
+  );
+
+  const confirmProjectSwitch = useCallback(async () => {
+    const pendingAction = projectSwitchState.pendingAction;
+    if (!pendingAction) return;
+    try {
+      if (pendingAction.type === "select") {
+        await performProjectSwitch(pendingAction.id);
+      } else if (pendingAction.type === "add") {
+        await performProjectAdd(pendingAction.name, pendingAction.projectType);
+      } else if (pendingAction.type === "remove") {
+        await performProjectRemove(pendingAction.id);
+      }
+    } catch (error) {
+      notify(
+        "error",
+        lang === "ru"
+          ? `Не удалось переключить проект: ${error.message}`
+          : `Could not switch project: ${error.message}`,
+      );
+    } finally {
+      setProjectSwitchState(CLOSED_SWITCH_STATE);
+    }
+  }, [
+    lang,
+    notify,
+    performProjectAdd,
+    performProjectRemove,
+    performProjectSwitch,
+    projectSwitchState.pendingAction,
+  ]);
 
   const handleChangeSyncId = useCallback((id, currentSyncId) => {
     setSyncIdEditorState({

@@ -5,7 +5,10 @@ vi.mock("@/utils/platform", () => ({ isNative: false }));
 const { exportLeaksKML, saveLeaksKML } = await import("./kml");
 
 describe("KML web export", () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
 
   it("skips records without coordinates and groups unspecified locations", () => {
     const kml = exportLeaksKML(
@@ -27,6 +30,7 @@ describe("KML web export", () => {
 
   describe("saveLeaksKML", () => {
     beforeEach(() => {
+      vi.useFakeTimers();
       vi.stubGlobal("URL", {
         createObjectURL: vi.fn(() => "blob:kml"),
         revokeObjectURL: vi.fn(),
@@ -52,6 +56,8 @@ describe("KML web export", () => {
         message: "KML file downloaded successfully",
       });
       expect(URL.createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
+      expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(60_000);
       expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:kml");
       expect(click).toHaveBeenCalledOnce();
       click.mockRestore();

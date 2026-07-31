@@ -5,11 +5,18 @@ import { PROJECTS } from "@/configs/projects";
 import { getPhotoSrc } from "@/hooks/photoService";
 import { priorityFromSpeed } from "@/utils/priority";
 import { inferMonitoringRound } from "@/utils/monitoringRound";
+import { fingerprintBlob } from "@/utils/blobHash";
 import { getLeakMergeIdentity } from "@/services/projectSyncState";
-import { validateBackup } from "@/repositories/backupSchema";
+import { getImageMimeTypeFromExtension } from "@/services/archivePaths";
 import {
-  assertArchiveLimits,
+  isValidPortablePhotoPath,
+  validateBackup,
+  validateProjectBackupMeta,
+} from "@/repositories/backupSchema";
+import {
   assertImportFileSize,
+  preflightZipFile,
+  verifyArchiveLimits,
 } from "@/utils/importLimits";
 
 const TECHNICAL_KEYS = [
@@ -422,6 +429,89 @@ function parseNumberValue(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+const STATUS_VALUES = new Set([
+  "open",
+  "открыта",
+  "открыто",
+  "активна",
+  "новая",
+  "in progress",
+  "in_progress",
+  "в ремонте",
+  "ремонт",
+  "на ремонте",
+  "resolved",
+  "устранена",
+  "устранено",
+  "закрыта",
+  "закрыто",
+]);
+
+const MONITORING_RESULT_VALUES = new Set([
+  "still leaking",
+  "still_leaking",
+  "leak present",
+  "yes — leak present",
+  "да",
+  "да — утечка есть",
+  "утечка есть",
+  "утечка сохраняется",
+  "сохраняется",
+  "open",
+  "needs recheck",
+  "needs_recheck",
+  "leak under repair",
+  "under repair",
+  "under repair — needs recheck",
+  "утечка в ремонте",
+  "в ремонте — требуется повторная проверка",
+  "в ремонте",
+  "resolved",
+  "no leak",
+  "no — no leak",
+  "нет",
+  "нет — утечки нет",
+  "утечки нет",
+  "утечка устранена",
+  "устранена",
+  "устранено",
+]);
+
+function isRecognizedStatus(value) {
+  const text = normalizeHeader(value);
+  return !text || STATUS_VALUES.has(text);
+}
+
+function isRecognizedMonitoringResult(value) {
+  const text = normalizeHeader(value);
+  return !text || MONITORING_RESULT_VALUES.has(text);
+}
+
+function createValidationCollector() {
+  const warnings = [];
+  let count = 0;
+  return {
+    add(sheet, row, column, value, message) {
+      count += 1;
+      if (warnings.length < 200) {
+        warnings.push({
+          sheet,
+          row,
+          column,
+          value: String(value ?? "").slice(0, 200),
+          message,
+        });
+      }
+    },
+    get count() {
+      return count;
+    },
+    get warnings() {
+      return warnings;
+    },
+  };
+}
+
 function normalizeStatus(value) {
   const text = normalizeHeader(value);
   if (!text) return "open";
@@ -525,14 +615,8 @@ function normalizeHistoryAction(value) {
 }
 
 function isValidPhotoPath(value) {
-  return (
-    typeof value === "string" &&
-    (value.startsWith("idb://") ||
-      value.startsWith("data://") ||
-      value.startsWith("zip:") ||
-      value.startsWith("photos/") ||
-      value.startsWith("data:image/") ||
-      value.startsWith("Documents/"))
+  return isValidPortablePhotoPath(
+    value.startsWith("photos/") ? `zip:${value}` : value,
   );
 }
 
@@ -711,7 +795,7 @@ function normalizeMonitoringCellValue(key, value) {
   return String(value ?? "").trim();
 }
 
-function parseMonitoringRecords(sheet) {
+function parseMonitoringRecords(sheet, validation) {
   const headerMap = buildMonitoringHeaderMap();
   const headerRow = findHeaderRow(sheet, headerMap);
   if (!headerRow) return { recordsByLeakId: new Map(), count: 0 };
@@ -733,18 +817,49 @@ function parseMonitoringRecords(sheet) {
         column.key === "photo"
           ? getCellPhotoValue(cell)
           : getCellDisplayValue(cell);
+      if (
+        column.key === "result" &&
+        String(value ?? "").trim() &&
+        !isRecognizedMonitoringResult(value)
+      ) {
+        validation?.add(
+          sheet.name,
+          rowNumber,
+          column.header,
+          value,
+          "Неизвестный результат мониторинга; использовано значение still_leaking",
+        );
+      }
       const normalized = normalizeMonitoringCellValue(column.key, value);
       if (normalized != null && normalized !== "") raw[column.key] = normalized;
     }
 
     const leakId = String(raw.leak_id ?? "").trim();
-    if (!leakId || !raw.date) continue;
+    if (!leakId || !raw.date) {
+      validation?.add(
+        sheet.name,
+        rowNumber,
+        !leakId ? "leak_id" : "date",
+        !leakId ? raw.leak_id : raw.date,
+        "Строка мониторинга пропущена: отсутствует идентификатор утечки или дата",
+      );
+      continue;
+    }
 
     const monitoringDate = combineDateAndTime(
       parseDateValue(raw.date),
       raw.time,
     );
-    if (!monitoringDate) continue;
+    if (!monitoringDate) {
+      validation?.add(
+        sheet.name,
+        rowNumber,
+        "date",
+        raw.date,
+        "Строка мониторинга пропущена: некорректная дата",
+      );
+      continue;
+    }
 
     const roundNumber =
       Number(raw.roundNumber) > 0 ? Number(raw.roundNumber) : 1;
@@ -877,18 +992,40 @@ function parseEmbeddedBackup(workbook) {
 
   const validation = validateBackup(payload?.leaks);
   if (!validation.ok) throw new Error(validation.error);
-  const type = payload?.project?.type;
-  const project = ["upstream", "midstream", "downstream"].includes(type)
+  const hasProjectMetadata = payload?.project != null;
+  const metadataInput = {
+    ...(payload.schemaVersion != null
+      ? { schemaVersion: payload.schemaVersion }
+      : {}),
+    ...(payload.exportedAt != null ? { exportedAt: payload.exportedAt } : {}),
+    project: hasProjectMetadata
+      ? payload.project
+      : { name: "Embedded Excel backup", type: "upstream" },
+    ...(payload.vars != null ? { vars: payload.vars } : {}),
+    ...(payload.settings != null ? { settings: payload.settings } : {}),
+    ...(payload.monitoringRound != null
+      ? { monitoringRound: payload.monitoringRound }
+      : {}),
+    ...(payload.sync != null ? { sync: payload.sync } : {}),
+  };
+  const metadataValidation = validateProjectBackupMeta(metadataInput);
+  if (!metadataValidation.ok) {
+    throw new Error(metadataValidation.error);
+  }
+  const metadata = metadataValidation.data;
+  const project = hasProjectMetadata
     ? {
-        name: String(payload.project.name ?? "").trim(),
-        type,
-        folderName: payload.project.folderName,
-        syncId: payload.project.syncId,
+        ...metadata.project,
+        name: metadata.project.name.trim(),
+        ...(metadata.project.syncId
+          ? { syncId: metadata.project.syncId.trim() }
+          : {}),
       }
     : null;
 
   return {
     ...payload,
+    ...(metadata ?? {}),
     project,
     leaks: validation.data,
   };
@@ -901,10 +1038,8 @@ function isZipFile(file) {
 }
 
 function getMimeFromPath(path) {
-  const ext = String(path).split(".").pop()?.toLowerCase();
-  if (ext === "png") return "image/png";
-  if (ext === "webp") return "image/webp";
-  return "image/jpeg";
+  const extension = String(path).split(".").pop();
+  return getImageMimeTypeFromExtension(extension);
 }
 
 async function dataUrlToBlob(dataUrl) {
@@ -919,6 +1054,8 @@ async function dataUrlToBlob(dataUrl) {
 }
 
 function getLeakIdentity(leak) {
+  const leakTag = String(leak?.leak_id ?? "").trim();
+  if (leakTag) return `tag:${leakTag}`;
   return getLeakMergeIdentity(leak);
 }
 
@@ -994,25 +1131,6 @@ function readBlobBytes(blob) {
   });
 }
 
-async function fingerprintBlob(blob) {
-  if (!(blob instanceof Blob)) return null;
-  const buffer = await readBlobBytes(blob);
-  if (globalThis.crypto?.subtle) {
-    const digest = await globalThis.crypto.subtle.digest("SHA-256", buffer);
-    return [...new Uint8Array(digest)]
-      .map((value) => value.toString(16).padStart(2, "0"))
-      .join("");
-  }
-
-  let first = 2166136261;
-  let second = 2246822519;
-  for (const value of new Uint8Array(buffer)) {
-    first = Math.imul(first ^ value, 16777619);
-    second = Math.imul(second ^ value, 3266489917);
-  }
-  return `${blob.size}:${first >>> 0}:${second >>> 0}`;
-}
-
 async function buildReusablePhotoMap(existingLeaks, getStoredPhoto) {
   const paths = new Set();
   for (const leak of existingLeaks ?? []) {
@@ -1057,9 +1175,11 @@ async function reconcilePhotoValue(
   reusablePhotos,
   preserveExisting,
 ) {
-  if (!String(incomingPath ?? "").startsWith("data:image/")) {
-    return incomingPath;
-  }
+  const incomingIsBlob = incomingPath instanceof Blob;
+  const incomingIsDataUrl = String(incomingPath ?? "").startsWith(
+    "data:image/",
+  );
+  if (!incomingIsBlob && !incomingIsDataUrl) return incomingPath;
 
   if (preserveExisting && existingPath) {
     stats.reused += 1;
@@ -1067,7 +1187,9 @@ async function reconcilePhotoValue(
   }
 
   try {
-    const incomingBlob = await dataUrlToBlob(incomingPath);
+    const incomingBlob = incomingIsBlob
+      ? incomingPath
+      : await dataUrlToBlob(incomingPath);
     const fingerprint = await fingerprintBlob(incomingBlob);
     const reusablePath = fingerprint ? reusablePhotos.get(fingerprint) : null;
     if (reusablePath) {
@@ -1195,27 +1317,31 @@ export async function reconcileExcelImportPhotos(
   };
 }
 
-async function zipPhotoToDataUrl(zip, path) {
+async function zipPhotoToBlob(zip, path) {
   const relativePath = path.replace(/^zip:/, "");
   const file = zip.file(relativePath);
   if (!file) return null;
-  const base64 = await file.async("base64");
+  const blob = await file.async("blob");
   const mime = getMimeFromPath(relativePath);
-  return `data:${mime};base64,${base64}`;
+  return blob.type === mime ? blob : new Blob([blob], { type: mime });
 }
 
 async function hydrateZipPhotos(result, zip) {
   let restoredPhotos = 0;
+  let missingPhotos = 0;
   const leaks = await Promise.all(
     result.leaks.map(async (leak) => {
       const copy = { ...leak };
 
       for (const key of PHOTO_KEYS) {
         if (!String(copy[key] ?? "").startsWith("zip:")) continue;
-        const dataUrl = await zipPhotoToDataUrl(zip, copy[key]);
-        if (dataUrl) {
-          copy[key] = dataUrl;
+        const photoBlob = await zipPhotoToBlob(zip, copy[key]);
+        if (photoBlob) {
+          copy[key] = photoBlob;
           restoredPhotos += 1;
+        } else {
+          delete copy[key];
+          missingPhotos += 1;
         }
       }
 
@@ -1223,10 +1349,15 @@ async function hydrateZipPhotos(result, zip) {
         copy.monitoringRecords = await Promise.all(
           copy.monitoringRecords.map(async (record) => {
             if (!String(record?.photo ?? "").startsWith("zip:")) return record;
-            const dataUrl = await zipPhotoToDataUrl(zip, record.photo);
-            if (!dataUrl) return record;
+            const photoBlob = await zipPhotoToBlob(zip, record.photo);
+            if (!photoBlob) {
+              const sanitizedRecord = { ...record };
+              delete sanitizedRecord.photo;
+              missingPhotos += 1;
+              return sanitizedRecord;
+            }
             restoredPhotos += 1;
-            return { ...record, photo: dataUrl };
+            return { ...record, photo: photoBlob };
           }),
         );
       }
@@ -1241,6 +1372,7 @@ async function hydrateZipPhotos(result, zip) {
     stats: {
       ...result.stats,
       restoredPhotos,
+      missingPhotos,
     },
   };
 }
@@ -1251,10 +1383,15 @@ async function persistPhotoValue(
   storageKey,
   excludePaths = [],
 ) {
-  if (!String(value ?? "").startsWith("data:image/")) return value;
-  const blob = await dataUrlToBlob(value);
+  const isBlob = value instanceof Blob;
+  const isDataUrl = String(value ?? "").startsWith("data:image/");
+  if (!isBlob && !isDataUrl) return value;
+  const blob = isBlob ? value : await dataUrlToBlob(value);
+  if (!(blob instanceof Blob)) return value;
+  const contentHash = await fingerprintBlob(blob);
   const saved = await savePhoto(blob, storageKey, excludePaths, {
     cleanupOldVersions: false,
+    contentHash,
   });
   return saved ?? value;
 }
@@ -1279,7 +1416,7 @@ export async function persistExcelImportPhotos(leaks, savePhoto) {
           copy[key],
           savePhoto,
           `${baseKey}${suffix}`,
-          savedPaths,
+          [...savedPaths],
         );
         copy[key] = next;
         if (next && next !== leak[key]) savedPaths.push(next);
@@ -1293,7 +1430,7 @@ export async function persistExcelImportPhotos(leaks, savePhoto) {
               record.photo,
               savePhoto,
               `${baseKey}_monitoring_${record.id ?? index + 1}`,
-              savedPaths,
+              [...savedPaths],
             ),
           })),
         );
@@ -1412,12 +1549,13 @@ function attachHistoryRecords(leaks, recordsByLeakId) {
 
 export async function parseExcelLeaks(file, { projectType } = {}) {
   assertImportFileSize(file);
+  await preflightZipFile(file);
   const ExcelJS = (await getExcelJS()).default;
   const workbook = new ExcelJS.Workbook();
   const buffer = await file.arrayBuffer();
   const JSZip = (await getJSZip()).default;
   const workbookArchive = await JSZip.loadAsync(buffer);
-  assertArchiveLimits(workbookArchive);
+  await verifyArchiveLimits(workbookArchive);
   await workbook.xlsx.load(buffer);
 
   const embeddedBackup = parseEmbeddedBackup(workbook);
@@ -1429,6 +1567,8 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
         imported: embeddedBackup.leaks.length,
         skipped: 0,
         exactBackup: true,
+        validationWarnings: [],
+        validationWarningCount: 0,
       },
       columns: [],
       sheetName: "Project Backup",
@@ -1461,7 +1601,13 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
   if (!selected) {
     return {
       leaks: [],
-      stats: { totalRows: 0, imported: 0, skipped: 0 },
+      stats: {
+        totalRows: 0,
+        imported: 0,
+        skipped: 0,
+        validationWarnings: [],
+        validationWarningCount: 0,
+      },
       columns: [],
       sheetName: "",
       project: requestedType ? { type: requestedType } : null,
@@ -1476,6 +1622,7 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
   let totalRows = 0;
   let skipped = 0;
   let duplicateLeakIds = 0;
+  const validation = createValidationCollector();
 
   for (
     let rowNumber = headerRow.rowNumber + 1;
@@ -1490,6 +1637,50 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
       const value = PHOTO_KEYS.has(column.key)
         ? getCellPhotoValue(cell)
         : getCellDisplayValue(cell);
+      if (
+        column.key === "status" &&
+        String(value ?? "").trim() &&
+        !isRecognizedStatus(value)
+      ) {
+        validation.add(
+          sheet.name,
+          rowNumber,
+          column.header,
+          value,
+          "Неизвестный статус; использовано значение open",
+        );
+      }
+      if (["lat", "lng"].includes(column.key) && String(value ?? "").trim()) {
+        const coordinate = parseNumberValue(value);
+        const validRange =
+          column.key === "lat"
+            ? coordinate != null && coordinate >= -90 && coordinate <= 90
+            : coordinate != null && coordinate >= -180 && coordinate <= 180;
+        if (!validRange) {
+          validation.add(
+            sheet.name,
+            rowNumber,
+            column.header,
+            value,
+            "Некорректная координата; значение не импортировано",
+          );
+        }
+      }
+      if (
+        PHOTO_KEYS.has(column.key) &&
+        String(value ?? "").trim() &&
+        !isValidPhotoPath(
+          String(value).startsWith("photos/") ? `zip:${value}` : String(value),
+        )
+      ) {
+        validation.add(
+          sheet.name,
+          rowNumber,
+          column.header,
+          value,
+          "Некорректный путь к фотографии; значение не импортировано",
+        );
+      }
       const normalized = normalizeCellValue(column.key, value, {
         percentFormatted: String(cell.numFmt ?? "").includes("%"),
       });
@@ -1502,6 +1693,13 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
     const leak = normalizeImportedLeak(raw, rowNumber, leaks.length + 1);
     if (!leak) {
       skipped += 1;
+      validation.add(
+        sheet.name,
+        rowNumber,
+        "row",
+        "",
+        "Строка пропущена: нет импортируемых данных",
+      );
       continue;
     }
 
@@ -1511,6 +1709,13 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
     if (leakTag && seenLeakTags.has(leakTag)) {
       skipped += 1;
       duplicateLeakIds += 1;
+      validation.add(
+        sheet.name,
+        rowNumber,
+        "leak_id",
+        leak.leak_id,
+        "Дубликат идентификатора утечки; строка пропущена",
+      );
       continue;
     }
     if (leakTag) seenLeakTags.add(leakTag);
@@ -1520,7 +1725,7 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
 
   const monitoringSheet = findMonitoringSheet(workbook);
   const monitoring = monitoringSheet
-    ? parseMonitoringRecords(monitoringSheet)
+    ? parseMonitoringRecords(monitoringSheet, validation)
     : { recordsByLeakId: new Map(), count: 0 };
   const historySheet = findHistorySheet(workbook);
   const history = historySheet
@@ -1558,6 +1763,8 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
       recognizedColumns: headerRow.columns.length,
       monitoringRecords: monitoring.count,
       historyRecords: history.count,
+      validationWarnings: validation.warnings,
+      validationWarningCount: validation.count,
     },
     columns: headerRow.columns,
     sheetName: sheet.name,
@@ -1576,9 +1783,10 @@ export async function parseExcelImportFile(file, options = {}) {
     return { ...parsed, project: parsed.project ?? null };
   }
 
+  await preflightZipFile(file);
   const JSZip = (await getJSZip()).default;
   const zip = await JSZip.loadAsync(file);
-  assertArchiveLimits(zip);
+  await verifyArchiveLimits(zip);
   let project = null;
   const projectEntry = zip.file("excel-project.json");
   if (projectEntry) {
@@ -1608,7 +1816,11 @@ export async function parseExcelImportFile(file, options = {}) {
 
   const buffer = await xlsxEntry.async("arraybuffer");
   const parsed = await parseExcelLeaks(
-    { name: xlsxEntry.name, arrayBuffer: async () => buffer },
+    {
+      name: xlsxEntry.name,
+      size: buffer.byteLength,
+      arrayBuffer: async () => buffer,
+    },
     { ...options, projectType: project?.type || options.projectType },
   );
 

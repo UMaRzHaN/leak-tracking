@@ -39,7 +39,7 @@ export default function Header({
   const userName = userProfile?.name?.trim() ?? "";
   const userInitial = userName.slice(0, 1).toUpperCase();
   const hasCoords =
-    Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng);
+    gpsEnabled && Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng);
   const gpsStatus = geoLoading
     ? localeTexts.gpsSearch
     : geoError

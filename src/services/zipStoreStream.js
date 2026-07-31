@@ -85,11 +85,19 @@ function asChunks(value) {
 }
 
 export class ZipStoreStreamWriter {
-  constructor(writeChunk) {
+  constructor(writeChunk, { maxBytes = MAX_UINT32 } = {}) {
     if (typeof writeChunk !== "function") {
       throw new TypeError("writeChunk must be a function");
     }
+    if (
+      !Number.isSafeInteger(maxBytes) ||
+      maxBytes <= 0 ||
+      maxBytes > MAX_UINT32
+    ) {
+      throw new TypeError("maxBytes must be a positive ZIP32 byte limit");
+    }
     this.writeChunk = writeChunk;
+    this.maxBytes = maxBytes;
     this.offset = 0;
     this.entries = [];
     this.names = new Set();
@@ -98,6 +106,13 @@ export class ZipStoreStreamWriter {
 
   async emit(bytes) {
     if (!(bytes instanceof Uint8Array) || bytes.length === 0) return;
+    if (this.offset + bytes.length > this.maxBytes) {
+      throw new Error(
+        `Export archive is larger than ${Math.floor(
+          this.maxBytes / 1024 / 1024,
+        )} MB`,
+      );
+    }
     if (this.offset + bytes.length > MAX_UINT32) {
       throw new Error("ZIP64 archives are not supported");
     }

@@ -44,8 +44,12 @@ export function usePhotoStorage() {
   );
 
   const deletePhoto = useCallback(
-    async (path) => PhotoRepository.delete(path),
-    [],
+    async (path) =>
+      PhotoRepository.delete(path, {
+        projectId: activeProject?.id,
+        folderName: activeProject?.folderName,
+      }),
+    [activeProject?.folderName, activeProject?.id],
   );
 
   const getPhoto = useCallback(async (id) => PhotoRepository.get(id), []);

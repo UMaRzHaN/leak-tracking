@@ -9,6 +9,18 @@ const photoFolderPromises = new Map();
 let lastPhotoTimestamp = 0;
 let photoTimestampSequence = 0;
 
+export function encodeStorageKeyPart(value) {
+  const text = String(value ?? "");
+  const wellFormed =
+    typeof text.toWellFormed === "function"
+      ? text.toWellFormed()
+      : text.replace(/[\uD800-\uDFFF]/g, "\uFFFD");
+  return encodeURIComponent(wellFormed).replace(
+    /[_.]/g,
+    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+}
+
 function createPhotoVersion() {
   const timestamp = Date.now();
   if (timestamp === lastPhotoTimestamp) {
@@ -56,6 +68,55 @@ function getPhotoFolder(folderName) {
   return `LeakReports/${folderName}/photos`;
 }
 
+function isDirectPhotoVersion(value, prefix, { extension = false } = {}) {
+  if (!String(value).startsWith(prefix)) return false;
+  const suffix = String(value).slice(prefix.length);
+  return (
+    extension
+      ? /^(?:\d+(?:_\d+)?|h_[a-f0-9]{24,64})\.jpg$/
+      : /^(?:\d+(?:_\d+)?|h_[a-f0-9]{24,64})$/
+  ).test(suffix);
+}
+
+function normalizeContentHash(value) {
+  const normalized = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  return /^[a-f0-9]{24,64}$/.test(normalized) ? normalized : null;
+}
+
+function getScopedWebPhotoKey(path, projectId) {
+  if (
+    projectId == null ||
+    String(projectId).length === 0 ||
+    !String(path).startsWith("idb://")
+  ) {
+    return null;
+  }
+  const key = String(path).slice("idb://".length);
+  const projectPart = encodeStorageKeyPart(projectId);
+  return key.startsWith(`photo_${projectPart}_`) ? key : null;
+}
+
+function getScopedNativePhotoPath(path, folderName) {
+  if (!folderName || !String(path).startsWith("data://")) return null;
+  const value = String(path).slice("data://".length);
+  const prefix = `${getPhotoFolder(folderName)}/`;
+  if (!value.startsWith(prefix)) return null;
+
+  const fileName = value.slice(prefix.length);
+  if (
+    !fileName ||
+    fileName.includes("/") ||
+    fileName.includes("\\") ||
+    !fileName.startsWith("photo_") ||
+    !/\.jpg$/i.test(fileName)
+  ) {
+    return null;
+  }
+  return value;
+}
+
 function ensurePhotoFolder(folderName) {
   if (!folderName) return Promise.resolve(null);
 
@@ -79,7 +140,7 @@ function ensurePhotoFolder(folderName) {
 
 async function cleanupOldVersions(
   folder,
-  leakId,
+  leakPart,
   keepFileName,
   excludeFileNames = new Set(),
 ) {
@@ -88,10 +149,10 @@ async function cleanupOldVersions(
       path: folder,
       directory: Directory.Data,
     });
-    const prefix = `photo_${leakId}_`;
+    const prefix = `photo_${leakPart}_`;
     for (const file of files) {
       if (
-        file.name.startsWith(prefix) &&
+        isDirectPhotoVersion(file.name, prefix, { extension: true }) &&
         file.name !== keepFileName &&
         !excludeFileNames.has(file.name)
       ) {
@@ -120,21 +181,38 @@ export const PhotoRepository = {
     rawPhoto,
     { projectId, leakId, folderName },
     excludePaths = [],
-    { cleanupOldVersions: shouldCleanupOldVersions = true } = {},
+    {
+      cleanupOldVersions: shouldCleanupOldVersions = true,
+      contentHash: rawContentHash = null,
+    } = {},
   ) {
-    if (!rawPhoto || !leakId) return null;
-    const version = createPhotoVersion();
-    const photo =
-      rawPhoto instanceof Blob && !isPhotoPrepared(rawPhoto)
-        ? await compressImage(rawPhoto)
-        : rawPhoto;
+    if (!rawPhoto || leakId == null || String(leakId).length === 0) return null;
+    const contentHash = normalizeContentHash(rawContentHash);
+    const version = contentHash ? `h_${contentHash}` : createPhotoVersion();
+    const leakPart = encodeStorageKeyPart(leakId);
 
     /* WEB — IndexedDB */
     if (!isNative) {
-      if (!idb.getState().ready || !(photo instanceof Blob) || !projectId)
+      if (
+        !idb.getState().ready ||
+        projectId == null ||
+        String(projectId).length === 0
+      )
         return null;
 
-      const photoId = `photo_${projectId}_${leakId}_${version}`;
+      const projectPart = encodeStorageKeyPart(projectId);
+      const photoId = `photo_${projectPart}_${leakPart}_${version}`;
+      // Content-addressed imports can return the existing object before image
+      // compression, avoiding a large temporary canvas/blob allocation.
+      if (contentHash && (await idb.get(photoId))) {
+        return `idb://${photoId}`;
+      }
+      const photo =
+        rawPhoto instanceof Blob && !isPhotoPrepared(rawPhoto)
+          ? await compressImage(rawPhoto)
+          : rawPhoto;
+      if (!(photo instanceof Blob)) return null;
+
       const ok = await idb.save(photoId, photo);
       if (!ok) return null;
 
@@ -144,10 +222,10 @@ export const PhotoRepository = {
         excludePaths.map((p) => p?.replace("idb://", "")).filter(Boolean),
       );
       const keys = await idb.listKeys();
-      const prefix = `photo_${projectId}_${leakId}_`;
+      const prefix = `photo_${projectPart}_${leakPart}_`;
       for (const key of keys) {
         if (
-          key.startsWith(prefix) &&
+          isDirectPhotoVersion(key, prefix) &&
           key !== photoId &&
           !excludeKeys.has(key)
         ) {
@@ -159,12 +237,27 @@ export const PhotoRepository = {
     }
 
     /* MOBILE — Capacitor Filesystem */
-    if (!folderName || !(photo instanceof Blob)) return null;
+    if (!folderName) return null;
 
     const folder = await ensurePhotoFolder(folderName);
 
-    const fileName = `photo_${leakId}_${version}.jpg`;
+    const fileName = `photo_${leakPart}_${version}.jpg`;
     const targetPath = `${folder}/${fileName}`;
+
+    if (contentHash) {
+      try {
+        await Filesystem.stat({ path: targetPath, directory: Directory.Data });
+        return `data://${targetPath}`;
+      } catch {
+        // The content-addressed file does not exist yet.
+      }
+    }
+
+    const photo =
+      rawPhoto instanceof Blob && !isPhotoPrepared(rawPhoto)
+        ? await compressImage(rawPhoto)
+        : rawPhoto;
+    if (!(photo instanceof Blob)) return null;
 
     const base64 = await fileToBase64(photo);
     await Filesystem.writeFile({
@@ -179,26 +272,33 @@ export const PhotoRepository = {
         .filter(Boolean),
     );
     if (shouldCleanupOldVersions) {
-      await cleanupOldVersions(folder, leakId, fileName, excludeFileNames);
+      await cleanupOldVersions(folder, leakPart, fileName, excludeFileNames);
     }
 
     return `data://${targetPath}`;
   },
 
-  async delete(path) {
-    if (!path) return;
+  async delete(path, { projectId, folderName } = {}) {
+    if (!path) return false;
 
     if (path.startsWith("idb://")) {
-      if (idb.getState().ready) await idb.remove(path.replace("idb://", ""));
-      return;
+      const key = getScopedWebPhotoKey(path, projectId);
+      if (!key || !idb.getState().ready) return false;
+      await idb.remove(key);
+      return true;
     }
 
     if (isNative && path.startsWith("data://")) {
+      const scopedPath = getScopedNativePhotoPath(path, folderName);
+      if (!scopedPath) return false;
       await Filesystem.deleteFile({
         directory: Directory.Data,
-        path: path.replace("data://", ""),
+        path: scopedPath,
       }).catch(() => {});
+      return true;
     }
+
+    return false;
   },
 
   async get(idbKey) {
@@ -215,9 +315,15 @@ export const PhotoRepository = {
       if (folderName) photoFolderPromises.delete(getPhotoFolder(folderName));
       return;
     }
-    if (!projectId || !idb.getState().ready) return;
+    if (
+      projectId == null ||
+      String(projectId).length === 0 ||
+      !idb.getState().ready
+    ) {
+      return;
+    }
     const keys = await idb.listKeys();
-    const prefix = `photo_${projectId}_`;
+    const prefix = `photo_${encodeStorageKeyPart(projectId)}_`;
     for (const key of keys) {
       if (key.startsWith(prefix)) await idb.remove(key);
     }
@@ -231,9 +337,15 @@ export const PhotoRepository = {
     const referenced = collectReferencedPhotos(leaks);
 
     if (!isNative) {
-      if (!idb.getState().ready || !projectId) return;
+      if (
+        !idb.getState().ready ||
+        projectId == null ||
+        String(projectId).length === 0
+      ) {
+        return;
+      }
       const keys = await idb.listKeys();
-      const prefix = `photo_${projectId}_`;
+      const prefix = `photo_${encodeStorageKeyPart(projectId)}_`;
       for (const key of keys) {
         if (!key.startsWith(prefix)) continue;
         if (!referenced.has(`idb://${key}`)) await idb.remove(key);

@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   readdir: vi.fn(),
   writeFile: vi.fn(),
   deleteFile: vi.fn(),
+  stat: vi.fn(),
 }));
 
 vi.mock("@/utils/platform", () => ({ isNative: true }));
@@ -27,11 +28,13 @@ vi.mock("@capacitor/filesystem", () => ({
     readdir: mocks.readdir,
     writeFile: mocks.writeFile,
     deleteFile: mocks.deleteFile,
+    stat: mocks.stat,
   },
   Directory: { Data: "DATA" },
 }));
 
-const { PhotoRepository } = await import("./PhotoRepository");
+const { PhotoRepository, encodeStorageKeyPart } =
+  await import("./PhotoRepository");
 
 describe("PhotoRepository on Android", () => {
   beforeEach(() => {
@@ -40,6 +43,7 @@ describe("PhotoRepository on Android", () => {
     mocks.readdir.mockResolvedValue({ files: [] });
     mocks.writeFile.mockResolvedValue(undefined);
     mocks.deleteFile.mockResolvedValue(undefined);
+    mocks.stat.mockRejectedValue(new Error("not found"));
   });
 
   it("prepares each project folder once", async () => {
@@ -60,6 +64,7 @@ describe("PhotoRepository on Android", () => {
       files: [
         { name: "photo_leak_100.jpg" },
         { name: "photo_leak_200.jpg" },
+        { name: "photo_leak_monitoring_100.jpg" },
         { name: "photo_other_100.jpg" },
       ],
     });
@@ -85,6 +90,62 @@ describe("PhotoRepository on Android", () => {
       directory: "DATA",
       path: "LeakReports/native_save/photos/photo_leak_100.jpg",
     });
+    expect(mocks.deleteFile).not.toHaveBeenCalledWith({
+      directory: "DATA",
+      path: "LeakReports/native_save/photos/photo_leak_monitoring_100.jpg",
+    });
+  });
+
+  it("reuses a native content-addressed photo before compression", async () => {
+    const hash = "b".repeat(64);
+    const blob = new Blob(["duplicate"], { type: "image/jpeg" });
+    mocks.stat.mockResolvedValue({ type: "file", size: 10 });
+
+    const path = await PhotoRepository.save(
+      blob,
+      { leakId: "duplicate", folderName: "native_hash" },
+      [],
+      { contentHash: hash },
+    );
+
+    expect(path).toBe(
+      `data://LeakReports/native_hash/photos/photo_duplicate_h_${hash}.jpg`,
+    );
+    expect(mocks.stat).toHaveBeenCalledWith({
+      path: `LeakReports/native_hash/photos/photo_duplicate_h_${hash}.jpg`,
+      directory: "DATA",
+    });
+    expect(mocks.compressImage).not.toHaveBeenCalled();
+    expect(mocks.writeFile).not.toHaveBeenCalled();
+  });
+
+  it("keeps imported leak ids inside the native photo filename", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(800);
+    const leakId = "../../victim\\\0_monitoring_part";
+    const leakPart = encodeStorageKeyPart(leakId);
+    const oldFileName = `photo_${leakPart}_700.jpg`;
+    const nextFileName = `photo_${leakPart}_800.jpg`;
+    mocks.readdir.mockResolvedValue({ files: [{ name: oldFileName }] });
+    const blob = new Blob(["native-photo"], { type: "image/jpeg" });
+
+    const path = await PhotoRepository.save(blob, {
+      leakId,
+      folderName: "native_safe",
+    });
+
+    expect(path).toBe(`data://LeakReports/native_safe/photos/${nextFileName}`);
+    expect(nextFileName).not.toMatch(/[\\/]/);
+    expect(nextFileName).not.toContain("\0");
+    expect(nextFileName).not.toContain("..");
+    expect(mocks.writeFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: `LeakReports/native_safe/photos/${nextFileName}`,
+      }),
+    );
+    expect(mocks.deleteFile).toHaveBeenCalledWith({
+      directory: "DATA",
+      path: `LeakReports/native_safe/photos/${oldFileName}`,
+    });
   });
 
   it("returns null for native saves without a folder or Blob", async () => {
@@ -109,11 +170,20 @@ describe("PhotoRepository on Android", () => {
     await expect(
       PhotoRepository.delete(
         "data://LeakReports/native_delete/photos/photo_1.jpg",
+        { folderName: "native_delete" },
       ),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe(true);
     expect(mocks.deleteFile).toHaveBeenCalledWith({
       directory: "DATA",
       path: "LeakReports/native_delete/photos/photo_1.jpg",
+    });
+
+    await PhotoRepository.delete("data://LeakReports/victim/data/data.json", {
+      folderName: "native_delete",
+    });
+    expect(mocks.deleteFile).not.toHaveBeenCalledWith({
+      directory: "DATA",
+      path: "LeakReports/victim/data/data.json",
     });
   });
 

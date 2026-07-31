@@ -3,6 +3,15 @@ import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { markPhotoPrepared } from "@/utils/photoPreparation";
 import { dataUrlToBlob } from "@/utils/photoConversion";
 
+export const MAX_PHOTO_INPUT_BYTES = 32 * 1024 * 1024;
+
+function assertPhotoSize(blob) {
+  if (blob.size > MAX_PHOTO_INPUT_BYTES) {
+    throw new Error("Photo is larger than 32 MB");
+  }
+  return blob;
+}
+
 /*
  * Используем CameraResultType.Uri, чтобы не передавать полноразмерное фото
  * через Capacitor как Base64. Файл остаётся временным и после выбора
@@ -19,9 +28,11 @@ async function requestCameraPermission() {
 async function uriPhotoToDraft(photo) {
   if (photo?.dataUrl) {
     const blob = dataUrlToBlob(photo.dataUrl);
-    if (!blob) throw new Error("Camera returned an invalid photo");
+    if (!blob?.type?.toLowerCase().startsWith("image/")) {
+      throw new Error("Camera returned an invalid photo");
+    }
     return {
-      raw: markPhotoPrepared(blob),
+      raw: markPhotoPrepared(assertPhotoSize(blob)),
       src: photo.dataUrl,
     };
   }
@@ -29,8 +40,9 @@ async function uriPhotoToDraft(photo) {
   if (!photo?.webPath) throw new Error("Camera did not return a photo URI");
   const response = await fetch(photo.webPath);
   if (!response.ok) throw new Error("Unable to read the selected photo");
+  const blob = assertPhotoSize(await response.blob());
   return {
-    raw: markPhotoPrepared(await response.blob()),
+    raw: markPhotoPrepared(blob),
     src: photo.webPath,
   };
 }
@@ -74,6 +86,10 @@ export async function readPhotoFromFile(file) {
   if (!(file instanceof File)) {
     throw new Error("Expected File from input");
   }
+  if (file.type && !file.type.toLowerCase().startsWith("image/")) {
+    throw new Error("Selected file is not an image");
+  }
+  assertPhotoSize(file);
 
   const src = await new Promise((resolve, reject) => {
     const reader = new FileReader();

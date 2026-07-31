@@ -53,4 +53,26 @@ describe("useAppState navigation history", () => {
     expect(back).toHaveBeenCalledOnce();
     back.mockRestore();
   });
+
+  it("falls back to home for stale or unsupported navigation pages", () => {
+    window.history.replaceState(
+      {
+        leakTrackingNavigation: {
+          page: "removed-page",
+          depth: 42,
+        },
+      },
+      "",
+    );
+    const { result } = renderHook(() => useAppState());
+
+    expect(result.current.page).toBe("");
+    expect(window.history.state.leakTrackingNavigation).toEqual({
+      page: "",
+      depth: 0,
+    });
+
+    act(() => result.current.setPage("also-unsupported"));
+    expect(result.current.page).toBe("");
+  });
 });

@@ -67,6 +67,31 @@ describe("parseExcelLeaks", () => {
     });
     expect(result.leaks[0]).not.toHaveProperty("lat");
     expect(result.leaks[0]).not.toHaveProperty("lng");
+    expect(result.stats.validationWarningCount).toBe(2);
+    expect(result.stats.validationWarnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          row: 2,
+          message: expect.stringContaining("координата"),
+        }),
+      ]),
+    );
+  });
+
+  it("reports unknown statuses instead of silently coercing them", async () => {
+    const blob = await makeWorkbookBlob([
+      ["Leak ID", "status", "component"],
+      ["UNKNOWN-STATUS", "Waiting for vendor", "Valve"],
+    ]);
+
+    const result = await parseExcelLeaks(blob);
+
+    expect(result.leaks[0].status).toBe("open");
+    expect(result.stats.validationWarningCount).toBe(1);
+    expect(result.stats.validationWarnings[0]).toMatchObject({
+      row: 2,
+      value: "Waiting for vendor",
+    });
   });
 
   it("rejects impossible dates and preserves ISO calendar dates across timezones", async () => {
@@ -617,10 +642,10 @@ describe("parseExcelLeaks", () => {
       name: "Archive project",
       type: "midstream",
     });
-    expect(result.leaks[0].photo).toMatch(/^data:image\/jpeg;base64,/);
-    expect(result.leaks[0].monitoringRecords[0].photo).toMatch(
-      /^data:image\/jpeg;base64,/,
-    );
+    expect(result.leaks[0].photo).toBeInstanceOf(Blob);
+    expect(result.leaks[0].photo.type).toBe("image/jpeg");
+    expect(result.leaks[0].monitoringRecords[0].photo).toBeInstanceOf(Blob);
+    expect(result.leaks[0].monitoringRecords[0].photo.type).toBe("image/jpeg");
 
     const savePhoto = vi
       .fn()
@@ -629,6 +654,16 @@ describe("parseExcelLeaks", () => {
     const persisted = await persistExcelImportPhotos(result.leaks, savePhoto);
 
     expect(savePhoto).toHaveBeenCalledTimes(2);
+    expect(savePhoto).toHaveBeenNthCalledWith(
+      1,
+      expect.any(Blob),
+      "TAG-9",
+      [],
+      expect.objectContaining({
+        cleanupOldVersions: false,
+        contentHash: expect.stringMatching(/^[a-f0-9]{24,64}$/),
+      }),
+    );
     expect(persisted[0].photo).toBe("idb://main");
     expect(persisted[0].monitoringRecords[0].photo).toBe("idb://monitoring");
   });
@@ -641,13 +676,17 @@ describe("parseExcelLeaks", () => {
     const payload = {
       schemaVersion: 1,
       project: {
-        name: "Portable project",
+        name: " Portable project ",
         type: "upstream",
-        syncId: "sync-portable",
+        syncId: " sync-portable ",
       },
       vars: { methaneDensity: 0.7 },
       settings: { hiddenFields: ["note"], updatedAt: 123 },
-      monitoringRound: { id: "round-3", number: 3, startedAt: 100 },
+      monitoringRound: {
+        id: "round-3",
+        number: 3,
+        startedAt: "2026-07-20T09:00:00.000Z",
+      },
       sync: { varsUpdatedAt: 500, tombstones: {} },
       leaks: [
         {
@@ -657,6 +696,14 @@ describe("parseExcelLeaks", () => {
           component: "Valve",
           customBackupField: { exact: true },
           photo: "zip:photos/P-77/P-77.png",
+          photo_after: "zip:photos/P-77/missing-after.png",
+          monitoringRecords: [
+            {
+              id: "m1",
+              date: "2026-07-21T10:00:00.000Z",
+              photo: "zip:photos/P-77/missing-monitoring.png",
+            },
+          ],
           history: [{ action: "created", date: "2026-07-20T10:00:00.000Z" }],
         },
       ],
@@ -689,7 +736,39 @@ describe("parseExcelLeaks", () => {
       leak_id: "P-77",
       customBackupField: { exact: true },
     });
-    expect(result.leaks[0].photo).toMatch(/^data:image\/png;base64,/);
+    expect(result.leaks[0].photo).toBeInstanceOf(Blob);
+    expect(result.leaks[0].photo.type).toBe("image/png");
+    expect(result.leaks[0]).not.toHaveProperty("photo_after");
+    expect(result.leaks[0].monitoringRecords[0]).not.toHaveProperty("photo");
+    expect(result.stats).toMatchObject({
+      restoredPhotos: 1,
+      missingPhotos: 2,
+    });
+  });
+
+  it("rejects malformed metadata embedded in an exact Excel backup", async () => {
+    const { default: ExcelJS } = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Project Backup");
+    const payload = {
+      schemaVersion: 1,
+      project: {
+        name: "Portable project",
+        type: "upstream",
+        syncId: "short",
+      },
+      vars: [],
+      settings: { hiddenFields: [42] },
+      leaks: [{ id: "safe-leak", status: "open" }],
+    };
+    sheet.addRow(["LEAK_TRACKER_EXCEL_BACKUP", 1]);
+    sheet.addRow(["Chunk", "Payload"]);
+    sheet.addRow([1, JSON.stringify(payload)]);
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    await expect(
+      parseExcelLeaks({ arrayBuffer: async () => buffer }),
+    ).rejects.toThrow(/syncId.*vars.*hiddenFields/);
   });
 
   it("uses an explicitly supplied project type for an ordinary XLSX", async () => {

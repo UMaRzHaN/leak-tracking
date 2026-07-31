@@ -12,6 +12,7 @@ import { STATUS } from "@/utils/status";
 import { priorityFromSpeed } from "@/utils/priority";
 import { dataUrlToBlob } from "@/utils/photoConversion";
 import { isPinkBagEquipment } from "@/utils/calculations/calculations";
+import { isLeakFormDirty } from "@/features/leakForm/utils/isLeakFormDirty";
 import Notification from "@/components/ui/Notification/Notification";
 import AddLeakSuccess from "./components/AddLeakSuccess";
 import s from "./AddLeak.module.scss";
@@ -28,13 +29,14 @@ export default function AddLeak({
   const { t, lang } = useLanguage();
   const { form, setForm } = useLeakFormContext();
   const { deletePhoto, savePhoto, ready: photoReady } = usePhotoStorage();
-  const { saveDraft, loadDraft, clearDraft, hasDraft } =
-    useFormDraft(projectId);
+  const { saveDraft, loadDraft, clearDraft } = useFormDraft(projectId);
   const { isSaving, run } = useSafeSave();
   const [draftPrompt, setDraftPrompt] = useState(false);
+  const [draftReadyProjectId, setDraftReadyProjectId] = useState(null);
   const [notification, setNotification] = useState(null);
   const [savedLeak, setSavedLeak] = useState(null);
   const photoReadyRef = useRef(photoReady);
+  const normalizedProjectId = String(projectId ?? "");
 
   const localeTexts = useMemo(
     () => ({
@@ -101,28 +103,45 @@ export default function AddLeak({
 
   /* Offer to restore draft on mount */
   useEffect(() => {
-    if (hasDraft() && Object.keys(form).length === 0) {
-      setDraftPrompt(true);
-    }
-  }, [form, hasDraft]);
+    const storedDraft = loadDraft();
+    const draftExists = isLeakFormDirty(storedDraft?.form);
+    if (storedDraft && !draftExists) clearDraft();
+    setDraftPrompt(draftExists);
+    setDraftReadyProjectId(draftExists ? null : normalizedProjectId);
+  }, [clearDraft, loadDraft, normalizedProjectId]);
 
   /* Autosave draft with a short debounce */
   useEffect(() => {
-    if (Object.keys(form).length === 0) return;
+    if (draftPrompt || draftReadyProjectId !== normalizedProjectId) {
+      return;
+    }
+    if (!isLeakFormDirty(form)) {
+      clearDraft();
+      return;
+    }
     const t = setTimeout(() => saveDraft(form, 1), 1000);
     return () => clearTimeout(t);
-  }, [form, saveDraft]);
+  }, [
+    clearDraft,
+    draftPrompt,
+    draftReadyProjectId,
+    form,
+    normalizedProjectId,
+    saveDraft,
+  ]);
 
   /* Restore draft */
   const handleRestoreDraft = () => {
     const draft = loadDraft();
     if (draft?.form) setForm(draft.form);
     setDraftPrompt(false);
+    setDraftReadyProjectId(normalizedProjectId);
   };
 
   const handleDiscardDraft = () => {
     clearDraft();
     setDraftPrompt(false);
+    setDraftReadyProjectId(normalizedProjectId);
   };
 
   const waitForPhotoReady = async (timeoutMs = 2000) => {

@@ -1,4 +1,5 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
+import { assertImportFileSize, IMPORT_LIMITS } from "@/utils/importLimits";
 
 const LocalSync = registerPlugin("LocalSync");
 const ARCHIVE_CHUNK_BYTES = 512 * 1024;
@@ -38,21 +39,69 @@ function blobChunkToBase64(blob) {
   });
 }
 
-async function prepareNativeArchive(blob) {
-  const { token, maxArchiveBytes } = await LocalSync.prepareArchive();
-  if (blob.size > maxArchiveBytes) {
-    await LocalSync.discardArchive({ token });
-    throw new Error(
-      `Архив синхронизации больше ${Math.floor(maxArchiveBytes / 1024 / 1024)} МБ`,
-    );
+function toBlob(value) {
+  if (value instanceof Blob) return value;
+  if (value instanceof Uint8Array) {
+    return new Blob([
+      value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength),
+    ]);
+  }
+  if (value instanceof ArrayBuffer) return new Blob([value]);
+  throw new TypeError(
+    "Archive chunk must be a Blob, Uint8Array or ArrayBuffer",
+  );
+}
+
+async function prepareNativeArchive({ archive, produceArchive }) {
+  if (!(archive instanceof Blob) && typeof produceArchive !== "function") {
+    throw new TypeError("archive or produceArchive is required");
+  }
+  const prepared = await LocalSync.prepareArchive();
+  const token = prepared?.token;
+  const nativeLimit = Number(prepared?.maxArchiveBytes);
+  if (
+    typeof token !== "string" ||
+    token.length === 0 ||
+    !Number.isSafeInteger(nativeLimit) ||
+    nativeLimit <= 0
+  ) {
+    if (typeof token === "string" && token) {
+      await LocalSync.discardArchive({ token }).catch(() => {});
+    }
+    throw new Error("Native sync returned an invalid archive limit");
   }
 
+  const maxArchiveBytes = Math.min(nativeLimit, IMPORT_LIMITS.maxFileBytes);
+  let writtenBytes = 0;
   try {
-    for (let offset = 0; offset < blob.size; offset += ARCHIVE_CHUNK_BYTES) {
-      const chunk = blob.slice(offset, offset + ARCHIVE_CHUNK_BYTES);
-      const chunkBase64 = await blobChunkToBase64(chunk);
-      await LocalSync.appendArchiveChunk({ token, chunkBase64 });
+    const append = async (value) => {
+      const blob = toBlob(value);
+      for (let offset = 0; offset < blob.size; offset += ARCHIVE_CHUNK_BYTES) {
+        const chunk = blob.slice(offset, offset + ARCHIVE_CHUNK_BYTES);
+        if (writtenBytes + chunk.size > maxArchiveBytes) {
+          throw new Error(
+            `Архив синхронизации больше ${Math.floor(maxArchiveBytes / 1024 / 1024)} МБ`,
+          );
+        }
+        const chunkBase64 = await blobChunkToBase64(chunk);
+        await LocalSync.appendArchiveChunk({ token, chunkBase64 });
+        writtenBytes += chunk.size;
+      }
+    };
+
+    if (typeof produceArchive === "function") {
+      const reportedSize = await produceArchive(append, maxArchiveBytes);
+      if (
+        reportedSize != null &&
+        (!Number.isSafeInteger(reportedSize) || reportedSize !== writtenBytes)
+      ) {
+        throw new Error("Размер подготовленного архива не совпадает");
+      }
+    } else {
+      await append(archive);
     }
+
+    if (writtenBytes <= 0) throw new Error("Архив синхронизации пуст");
     return token;
   } catch (error) {
     await LocalSync.discardArchive({ token }).catch(() => {});
@@ -60,11 +109,22 @@ async function prepareNativeArchive(blob) {
   }
 }
 
-async function archiveResultToFile(
-  { uri, archiveToken },
-  fileName = "local-sync.zip",
-) {
+async function archiveResultToFile(result, fileName = "local-sync.zip") {
+  const { uri, archiveToken, size } = result ?? {};
   try {
+    const reportedSize = Number(size);
+    if (!Number.isSafeInteger(reportedSize) || reportedSize <= 0) {
+      throw new Error("Получен некорректный размер архива");
+    }
+    assertImportFileSize({ size: reportedSize });
+
+    if (typeof uri !== "string" || !uri.startsWith("file://")) {
+      throw new Error("Получен некорректный путь к архиву");
+    }
+    if (typeof archiveToken !== "string" || archiveToken.length === 0) {
+      throw new Error("Получен архив без токена очистки");
+    }
+
     const localUrl = Capacitor.convertFileSrc(uri);
     const response = await fetch(localUrl);
     if (!response.ok) {
@@ -73,9 +133,13 @@ async function archiveResultToFile(
       );
     }
     const blob = await response.blob();
+    assertImportFileSize(blob);
+    if (blob.size !== reportedSize) {
+      throw new Error("Размер полученного архива не совпадает с заявленным");
+    }
     return new File([blob], fileName, { type: "application/zip" });
   } finally {
-    if (archiveToken) {
+    if (typeof archiveToken === "string" && archiveToken) {
       await LocalSync.releaseReceivedArchive({ archiveToken }).catch(() => {});
     }
   }
@@ -84,6 +148,8 @@ async function archiveResultToFile(
 export function isLocalSyncAvailable() {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 }
+
+export const LOCAL_SYNC_MAX_ARCHIVE_BYTES = IMPORT_LIMITS.maxFileBytes;
 
 export function buildLocalSyncQrPayload({
   host,
@@ -275,6 +341,7 @@ export async function cancelLocalSyncQrScan() {
 
 export async function startLocalSyncHost({
   archive,
+  produceArchive,
   projectKey,
   syncId,
   onArchive,
@@ -300,7 +367,10 @@ export async function startLocalSyncHost({
   );
 
   try {
-    const archiveToken = await prepareNativeArchive(archive);
+    const archiveToken = await prepareNativeArchive({
+      archive,
+      produceArchive,
+    });
     const session = await LocalSync.startHost({
       archiveToken,
       projectKey,
@@ -327,11 +397,15 @@ export async function exchangeLocalSyncArchive({
   code,
   fingerprint,
   archive,
+  produceArchive,
   projectKey,
   syncId,
 }) {
   assertNativeAndroid();
-  const archiveToken = await prepareNativeArchive(archive);
+  const archiveToken = await prepareNativeArchive({
+    archive,
+    produceArchive,
+  });
   try {
     const result = await LocalSync.exchange({
       host: host.trim(),

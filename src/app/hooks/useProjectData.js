@@ -13,6 +13,8 @@ export function useProjectData() {
   const { activeProject } = useProjectDataCtx();
   const activeProjectId = activeProject?.id ?? null;
   const activeProjectFolderName = activeProject?.folderName ?? null;
+  const activeProjectLegacyStorageType =
+    activeProject?.legacyStorageType ?? null;
 
   const [data, setData] = useState([]);
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -26,7 +28,11 @@ export function useProjectData() {
   const dataProjectIdRef = useRef(null);
   const loadGenerationRef = useRef(0);
   const persistedByProjectRef = useRef(new Map());
+  const committedDataByProjectRef = useRef(new Map());
+  const writeGenerationByProjectRef = useRef(new Map());
   const loadErrorRef = useRef(null);
+  const activeProjectIdRef = useRef(activeProjectId);
+  activeProjectIdRef.current = activeProjectId;
 
   useEffect(() => {
     const loadGeneration = ++loadGenerationRef.current;
@@ -49,6 +55,9 @@ export function useProjectData() {
     LeakRepository.getAll({
       projectId: activeProjectId,
       folderName: activeProjectFolderName,
+      ...(activeProjectLegacyStorageType
+        ? { legacyStorageType: activeProjectLegacyStorageType }
+        : {}),
     })
       .then((result) => {
         if (cancelled || loadGeneration !== loadGenerationRef.current) return;
@@ -58,6 +67,7 @@ export function useProjectData() {
           ...result,
           ...preserved,
         ]);
+        committedDataByProjectRef.current.set(activeProjectId, result);
         setData(result);
         dataRef.current = result;
         dataProjectIdRef.current = activeProjectId;
@@ -71,6 +81,7 @@ export function useProjectData() {
         loadErrorRef.current = error;
         setPreservedRecords([]);
         persistedByProjectRef.current.delete(activeProjectId);
+        committedDataByProjectRef.current.delete(activeProjectId);
         setData([]);
         dataRef.current = [];
         dataProjectIdRef.current = activeProjectId;
@@ -81,10 +92,15 @@ export function useProjectData() {
     return () => {
       cancelled = true;
     };
-  }, [activeProjectFolderName, activeProjectId, reloadRevision]);
+  }, [
+    activeProjectFolderName,
+    activeProjectId,
+    activeProjectLegacyStorageType,
+    reloadRevision,
+  ]);
 
   const save = useCallback(
-    (next) => {
+    (next, { optimistic = true } = {}) => {
       if (loadErrorRef.current) {
         const error = new Error(
           "Project data is read-only after a load failure",
@@ -103,16 +119,28 @@ export function useProjectData() {
         dataProjectIdRef.current === activeProjectId ? dataRef.current : [];
       const projectId = activeProjectId;
       const folderName = activeProjectFolderName;
+      const writeGeneration = projectId
+        ? (writeGenerationByProjectRef.current.get(projectId) ?? 0) + 1
+        : 0;
+      if (projectId) {
+        writeGenerationByProjectRef.current.set(projectId, writeGeneration);
+      }
       const preserved =
         dataProjectIdRef.current === projectId ? preservedRecords : [];
       const versionedNext = stampLeakFieldVersions(previous, next);
       const recordsToPersist = [...versionedNext, ...preserved];
-      dataRef.current = versionedNext;
-      dataProjectIdRef.current = activeProjectId;
-      setData(() => versionedNext);
-      setDataLoaded(true);
-      setDataProjectId(activeProjectId);
-      if (!projectId || !folderName) return Promise.resolve();
+      const publishLocalState = () => {
+        dataRef.current = versionedNext;
+        dataProjectIdRef.current = projectId;
+        setData(() => versionedNext);
+        setDataLoaded(true);
+        setDataProjectId(projectId);
+      };
+      if (optimistic) publishLocalState();
+      if (!projectId || !folderName) {
+        if (!optimistic) publishLocalState();
+        return Promise.resolve();
+      }
       const nextSave = saveQueueRef.current
         .catch(() => undefined)
         .then(async () => {
@@ -126,15 +154,27 @@ export function useProjectData() {
             });
           } catch (error) {
             if (
+              optimistic &&
               dataProjectIdRef.current === projectId &&
               dataRef.current === versionedNext
             ) {
-              dataRef.current = previous;
-              setData(previous);
+              const committed =
+                committedDataByProjectRef.current.get(projectId) ?? previous;
+              dataRef.current = committed;
+              setData(committed);
             }
             throw error;
           }
           persistedByProjectRef.current.set(projectId, recordsToPersist);
+          committedDataByProjectRef.current.set(projectId, versionedNext);
+          if (
+            !optimistic &&
+            activeProjectIdRef.current === projectId &&
+            writeGenerationByProjectRef.current.get(projectId) ===
+              writeGeneration
+          ) {
+            publishLocalState();
+          }
           try {
             await recordLeakDeletions(
               projectId,
@@ -168,11 +208,18 @@ export function useProjectData() {
     loadGenerationRef.current += 1;
     const projectId = activeProjectId;
     const folderName = activeProjectFolderName;
+    const writeGeneration = projectId
+      ? (writeGenerationByProjectRef.current.get(projectId) ?? 0) + 1
+      : 0;
+    if (projectId) {
+      writeGenerationByProjectRef.current.set(projectId, writeGeneration);
+    }
     const previous = dataRef.current;
     const previousPreserved = preservedRecords;
-    dataRef.current = [];
+    const clearedData = [];
+    dataRef.current = clearedData;
     dataProjectIdRef.current = projectId;
-    setData([]);
+    setData(clearedData);
     setPreservedRecords([]);
     setDataLoaded(true);
     setDataProjectId(projectId);
@@ -187,10 +234,14 @@ export function useProjectData() {
         } catch (error) {
           if (
             dataProjectIdRef.current === projectId &&
-            dataRef.current.length === 0
+            dataRef.current === clearedData &&
+            writeGenerationByProjectRef.current.get(projectId) ===
+              writeGeneration
           ) {
-            dataRef.current = previous;
-            setData(previous);
+            const committed =
+              committedDataByProjectRef.current.get(projectId) ?? previous;
+            dataRef.current = committed;
+            setData(committed);
             setPreservedRecords(previousPreserved);
           }
           throw error;
@@ -199,6 +250,7 @@ export function useProjectData() {
           projectId,
         ) ?? [...previous, ...previousPreserved];
         persistedByProjectRef.current.set(projectId, []);
+        committedDataByProjectRef.current.set(projectId, []);
         try {
           await recordLeakDeletions(projectId, persistedBefore, []);
         } catch (error) {

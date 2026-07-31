@@ -31,7 +31,7 @@ describe("useLeakForm", () => {
     act(() => result.current.clearForm());
 
     expect(result.current.form).toEqual({ leak_id: "", photo: null });
-    expect(result.current.errors).toEqual({ leak_id: "required" });
+    expect(result.current.errors).toEqual({});
   });
 
   it("normalizes configured numeric fields and clears their errors", () => {

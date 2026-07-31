@@ -192,5 +192,5 @@ function downloadFileWeb(data, fileName) {
   anchor.click();
   document.body.removeChild(anchor);
 
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
