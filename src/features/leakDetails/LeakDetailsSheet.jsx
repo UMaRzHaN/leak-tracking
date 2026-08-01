@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { usePhotoSrc } from "@/hooks/usePhotoSrc";
 import { formatLeakDate } from "@/utils/locale";
@@ -13,6 +13,7 @@ import ReopenLeakModal from "@/features/status/ReopenLeakModal/ReopenLeakModal";
 import StatusPickerModal from "@/features/status/StatusPickerModal/StatusPickerModal";
 import Notification from "@/components/ui/Notification/Notification";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
+import { useModalDialog } from "@/hooks/useModalDialog";
 import s from "./LeakDetailsSheet.module.scss";
 
 export default function LeakDetailsSheet({
@@ -23,6 +24,7 @@ export default function LeakDetailsSheet({
   userProfile,
 }) {
   const { lang } = useLanguage();
+  const titleId = useId();
   const tabRefsRef = useRef(new Map());
   const absoluteDate = formatLeakDate(leak.date, {}, lang);
   const {
@@ -82,6 +84,10 @@ export default function LeakDetailsSheet({
     choosePhotoRepair,
   } = useLeakDetailsSheet({ leak, onClose, onSave, onDelete, userProfile });
   const heroSrc = usePhotoSrc(getLeakDetailsHeroPhotoPath(leak)) || src;
+  const dialogRef = useModalDialog({
+    onClose: handleClose,
+    closeDisabled: saving,
+  });
 
   useEffect(() => {
     tabRefsRef.current.get(activeTab)?.scrollIntoView({
@@ -99,7 +105,18 @@ export default function LeakDetailsSheet({
       />
 
       <div className={s.overlay} onClick={handleClose}>
-        <div className={s.sheet} onClick={(event) => event.stopPropagation()}>
+        <div
+          ref={dialogRef}
+          className={s.sheet}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          tabIndex={-1}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <h2 id={titleId} className={s.visuallyHidden}>
+            {lang === "ru" ? "Детали утечки" : "Leak details"}
+          </h2>
           <PhotoBlock
             src={mode === MODE.EDIT ? null : heroSrc}
             status={status}

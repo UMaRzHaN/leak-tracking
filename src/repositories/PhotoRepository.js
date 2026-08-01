@@ -9,6 +9,10 @@ const photoFolderPromises = new Map();
 let lastPhotoTimestamp = 0;
 let photoTimestampSequence = 0;
 
+const getStoredPhoto = (...args) => (idb.getStrict ?? idb.get)(...args);
+const listStoredPhotoKeys = (...args) =>
+  (idb.listKeysStrict ?? idb.listKeys)(...args);
+
 export function encodeStorageKeyPart(value) {
   const text = String(value ?? "");
   const wellFormed =
@@ -127,9 +131,9 @@ function ensurePhotoFolder(folderName) {
       directory: Directory.Data,
       recursive: true,
     })
-      .catch(() => {
+      .catch((error) => {
         photoFolderPromises.delete(folder);
-        return folder;
+        throw error;
       })
       .then(() => folder);
     photoFolderPromises.set(folder, pending);
@@ -205,7 +209,7 @@ export const PhotoRepository = {
       const photoId = `photo_${projectPart}_${leakPart}_${version}`;
       // Content-addressed imports can return the existing object before image
       // compression, avoiding a large temporary canvas/blob allocation.
-      if (contentHash && (await idb.get(photoId))) {
+      if (contentHash && (await getStoredPhoto(photoId))) {
         const path = `idb://${photoId}`;
         return returnMetadata ? { path, created: false } : path;
       }
@@ -226,7 +230,7 @@ export const PhotoRepository = {
       const excludeKeys = new Set(
         excludePaths.map((p) => p?.replace("idb://", "")).filter(Boolean),
       );
-      const keys = await idb.listKeys();
+      const keys = await listStoredPhotoKeys();
       const prefix = `photo_${projectPart}_${leakPart}_`;
       for (const key of keys) {
         if (
@@ -292,8 +296,7 @@ export const PhotoRepository = {
     if (path.startsWith("idb://")) {
       const key = getScopedWebPhotoKey(path, projectId);
       if (!key || !idb.getState().ready) return false;
-      await idb.remove(key);
-      return true;
+      return idb.remove(key);
     }
 
     if (isNative && path.startsWith("data://")) {
@@ -311,11 +314,11 @@ export const PhotoRepository = {
 
   async get(idbKey) {
     if (!idb.getState().ready || !idbKey) return null;
-    return idb.get(idbKey);
+    return getStoredPhoto(idbKey);
   },
 
   async listKeys() {
-    return idb.listKeys();
+    return listStoredPhotoKeys();
   },
 
   async deleteProjectPhotos(projectId, folderName) {
@@ -330,10 +333,21 @@ export const PhotoRepository = {
     ) {
       return;
     }
-    const keys = await idb.listKeys();
+    const keys = await listStoredPhotoKeys();
     const prefix = `photo_${encodeStorageKeyPart(projectId)}_`;
+    const failedKeys = [];
     for (const key of keys) {
-      if (key.startsWith(prefix)) await idb.remove(key);
+      if (key.startsWith(prefix) && (await idb.remove(key)) === false) {
+        failedKeys.push(key);
+      }
+    }
+    if (failedKeys.length) {
+      const error = new Error(
+        `Could not delete ${failedKeys.length} project photo(s)`,
+      );
+      error.code = "PHOTO_DELETE_FAILED";
+      error.failedKeys = failedKeys;
+      throw error;
     }
   },
 
@@ -352,11 +366,25 @@ export const PhotoRepository = {
       ) {
         return;
       }
-      const keys = await idb.listKeys();
+      const keys = await listStoredPhotoKeys();
       const prefix = `photo_${encodeStorageKeyPart(projectId)}_`;
+      const failedKeys = [];
       for (const key of keys) {
         if (!key.startsWith(prefix)) continue;
-        if (!referenced.has(`idb://${key}`)) await idb.remove(key);
+        if (
+          !referenced.has(`idb://${key}`) &&
+          (await idb.remove(key)) === false
+        ) {
+          failedKeys.push(key);
+        }
+      }
+      if (failedKeys.length) {
+        const error = new Error(
+          `Could not delete ${failedKeys.length} orphaned photo(s)`,
+        );
+        error.code = "PHOTO_DELETE_FAILED";
+        error.failedKeys = failedKeys;
+        throw error;
       }
       return;
     }

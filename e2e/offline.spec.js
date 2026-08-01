@@ -100,8 +100,8 @@ test("loads lazy application routes after the server goes offline", async ({
       (asset) => asset.includes("/MapPage-") && asset.endsWith(".css"),
     ),
   ).toBe(true);
-  expect(cachedAssets.some((asset) => /exceljs/i.test(asset))).toBe(true);
-  expect(cachedAssets.some((asset) => /jszip/i.test(asset))).toBe(true);
+  expect(cachedAssets.some((asset) => /exceljs/i.test(asset))).toBe(false);
+  expect(cachedAssets.some((asset) => /jszip/i.test(asset))).toBe(false);
   expect(cachedAssets).toEqual(
     expect.arrayContaining([
       "/manifest.json",
@@ -110,25 +110,31 @@ test("loads lazy application routes after the server goes offline", async ({
     ]),
   );
 
+  const serviceWorkerSource = await page.evaluate(async () =>
+    (await fetch("/sw.js")).text(),
+  );
+  expect(serviceWorkerSource).toContain("ACTIVATE_UPDATE");
+  expect(serviceWorkerSource).not.toContain(".then(() => self.skipWaiting())");
+
   const manifest = await page.evaluate(async () => {
     const response = await fetch("/manifest.json");
     return response.json();
   });
   expect(manifest).toMatchObject({
-    id: "/",
-    start_url: "/",
-    scope: "/",
+    id: ".",
+    start_url: ".",
+    scope: ".",
     display: "standalone",
   });
   expect(manifest.icons).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
-        src: "/icons/icon-192.png",
+        src: "icons/icon-192.png",
         sizes: "192x192",
         type: "image/png",
       }),
       expect.objectContaining({
-        src: "/icons/icon-512.png",
+        src: "icons/icon-512.png",
         sizes: "512x512",
         type: "image/png",
       }),
@@ -154,8 +160,8 @@ test("loads lazy application routes after the server goes offline", async ({
   }, manifest.icons);
   expect(iconDimensions).toEqual(
     expect.arrayContaining([
-      { src: "/icons/icon-192.png", width: 192, height: 192 },
-      { src: "/icons/icon-512.png", width: 512, height: 512 },
+      { src: "icons/icon-192.png", width: 192, height: 192 },
+      { src: "icons/icon-512.png", width: 512, height: 512 },
     ]),
   );
 

@@ -229,14 +229,14 @@ describe("useMapPage", () => {
 
     await act(() => current.handleDownloadArea());
     expect(serviceMocks.preloadUrls).toHaveBeenCalledWith(
-      ["tile:leak", "tile:viewport"],
+      ["tile:viewport"],
       expect.objectContaining({ onProgress: expect.any(Function) }),
     );
     expect(current.tileProgress).toMatchObject({
-      done: 2,
-      total: 2,
+      done: 1,
+      total: 1,
       status: "success",
-      stats: { saved: 2, failed: 0 },
+      stats: { saved: 1, failed: 0 },
     });
 
     await act(() => current.handleExportKML());
@@ -260,5 +260,39 @@ describe("useMapPage", () => {
     });
     act(() => current.locateMe());
     expect(mapMocks.locateMe).toHaveBeenCalledWith({ lat: 41, lng: 69 });
+  });
+
+  it("lets the user cancel an in-progress offline map download", async () => {
+    serviceMocks.preloadUrls.mockImplementationOnce(
+      (_urls, { signal, onProgress }) =>
+        new Promise((resolve, reject) => {
+          onProgress(1, 2);
+          signal.addEventListener("abort", () => reject(signal.reason), {
+            once: true,
+          });
+        }),
+    );
+    let current;
+    function Harness() {
+      current = useMapPage({ leaks, coords: { lat: 41, lng: 69 } });
+      return <div ref={current.containerRef} />;
+    }
+
+    render(<Harness />);
+    await waitFor(() => expect(mapMocks.createOfflineMap).toHaveBeenCalled());
+    let download;
+    act(() => {
+      download = current.handleDownloadArea();
+    });
+    await waitFor(() => expect(current.downloading).toBe(true));
+    act(() => current.cancelDownload());
+    await act(async () => download);
+
+    expect(current.downloading).toBe(false);
+    expect(current.tileProgress).toMatchObject({
+      done: 1,
+      total: 2,
+      status: "cancelled",
+    });
   });
 });

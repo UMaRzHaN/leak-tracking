@@ -36,6 +36,8 @@ export default function ResolveModal({
   const [submitted, setSubmitted] = useState(false);
   const [notification, setNotification] = useState(null);
   const titleId = useId();
+  const materialsId = useId();
+  const noteId = useId();
   const dialogRef = useModalDialog({
     onClose,
     closeDisabled: saving,
@@ -136,8 +138,11 @@ export default function ResolveModal({
           />
 
           <div className={s.field}>
-            <label className={s.label}>{t("resolve.materialsLabel")}</label>
+            <label className={s.label} htmlFor={materialsId}>
+              {t("resolve.materialsLabel")}
+            </label>
             <textarea
+              id={materialsId}
               className={s.textarea}
               value={mtr}
               onChange={(e) => setMtr(e.target.value)}
@@ -147,8 +152,11 @@ export default function ResolveModal({
           </div>
 
           <div className={s.field}>
-            <label className={s.label}>{t("resolve.noteLabel")}</label>
+            <label className={s.label} htmlFor={noteId}>
+              {t("resolve.noteLabel")}
+            </label>
             <textarea
+              id={noteId}
               className={s.textarea}
               value={note}
               onChange={(e) => setNote(e.target.value)}

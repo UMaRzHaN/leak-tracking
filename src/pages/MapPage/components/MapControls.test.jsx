@@ -15,6 +15,7 @@ function renderControls(overrides = {}) {
     gpsEnabled: true,
     onOpenSheet: vi.fn(),
     onDownload: vi.fn(),
+    onCancelDownload: vi.fn(),
     downloading: false,
     nearbyOnly: false,
     nearbyRadius: 100,
@@ -46,6 +47,16 @@ describe("MapControls monitoring filter", () => {
     expect(locate.disabled).toBe(true);
     fireEvent.click(locate);
     expect(props.onLocate).not.toHaveBeenCalled();
+  });
+
+  it("turns the active download control into a cancel action", () => {
+    const props = renderControls({ downloading: true });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Отменить скачивание карты" }),
+    );
+    expect(props.onCancelDownload).toHaveBeenCalledOnce();
+    expect(props.onDownload).not.toHaveBeenCalled();
   });
 
   it("opens inside the map controls and selects a monitoring state", () => {

@@ -2,6 +2,8 @@ def releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
 def releaseKeystorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
 def releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
 def releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+def configuredVersionCode = System.getenv("ANDROID_VERSION_CODE")
+def configuredVersionName = System.getenv("ANDROID_VERSION_NAME")
 def hasReleaseSigning = [
     releaseKeystorePath,
     releaseKeystorePassword,
@@ -18,8 +20,8 @@ android {
         applicationId "com.leak.tracking"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0.0"
+        versionCode configuredVersionCode ? configuredVersionCode.toInteger() : 1
+        versionName configuredVersionName ?: "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

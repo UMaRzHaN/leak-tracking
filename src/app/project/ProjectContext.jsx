@@ -109,36 +109,52 @@ export function ProjectProvider({ children }) {
     setActiveId(id);
   }, []);
 
-  const addProject = useCallback(
-    (name, type, options = {}) => {
-      if (!type || !PROJECT_META[type]) return null;
+  const addProject = useCallback((name, type, options = {}) => {
+    if (!type || !PROJECT_META[type]) return null;
 
-      const current = projectsRef.current;
-      const id = createProjectId();
-      const existingFolders = new Set(current.map((p) => p.folderName));
-      const uniqueFolder = toUniqueFolderName(
-        name || PROJECT_META[type].title,
-        existingFolders,
-      );
+    const current = projectsRef.current;
+    const id = createProjectId();
+    const existingFolders = new Set(current.map((p) => p.folderName));
+    const uniqueFolder = toUniqueFolderName(
+      name || PROJECT_META[type].title,
+      existingFolders,
+    );
 
-      const newProject = {
-        id,
-        name: name?.trim() || PROJECT_META[type].title,
-        type,
-        folderName: uniqueFolder,
-        createdAt: Date.now(),
-        syncId:
-          String(options.syncId ?? "")
-            .trim()
-            .toLowerCase() || createSyncId(),
-      };
+    const newProject = {
+      id,
+      name: name?.trim() || PROJECT_META[type].title,
+      type,
+      folderName: uniqueFolder,
+      createdAt: Date.now(),
+      syncId:
+        String(options.syncId ?? "")
+          .trim()
+          .toLowerCase() || createSyncId(),
+    };
 
-      _setProjects([...current, newProject]);
-      _setActiveId(id);
-      return newProject;
-    },
-    [_setProjects, _setActiveId],
-  );
+    const nextProjects = [...current, newProject];
+    const previousActiveId = activeIdRef.current;
+    try {
+      saveProjects(nextProjects);
+      saveActiveId(id);
+    } catch (error) {
+      // Project metadata and active identity form one logical commit. Restore
+      // both persisted values before exposing the failed project to callers.
+      try {
+        saveProjects(current);
+        saveActiveId(previousActiveId);
+      } catch {
+        // Best effort: preserve the original error and keep React state intact.
+      }
+      throw error;
+    }
+
+    projectsRef.current = nextProjects;
+    activeIdRef.current = id;
+    setProjects(nextProjects);
+    setActiveId(id);
+    return newProject;
+  }, []);
 
   const configure = useCallback(
     (type, name) => addProject(name, type),

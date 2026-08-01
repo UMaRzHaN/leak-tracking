@@ -13,10 +13,11 @@ export async function deleteProjectArtifacts(project) {
 
   localStorage.removeItem(STORAGE_KEYS.PROJECT_DATA(project.id));
   localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(project.id));
+  localStorage.removeItem(STORAGE_KEYS.PROJECT_IMPORT_OPERATION(project.id));
   clearProjectFilters(project.id);
   clearProjectSettings(project.id);
   await clearProjectSyncState(project.id);
-  await LeakRepository.clear({
+  await (LeakRepository.purge ?? LeakRepository.clear)({
     projectId: project.id,
     folderName: project.folderName,
   });
@@ -32,19 +33,29 @@ export async function deleteProjectArtifacts(project) {
 }
 
 export async function rollbackImportedProject(project, removeProject) {
-  if (!project?.id) return;
+  if (!project?.id) return { metadataRemoved: false, cleanupComplete: true };
+  if (typeof removeProject !== "function") {
+    throw new TypeError("A project metadata remover is required for rollback");
+  }
 
-  saveMonitoringRound(project.id, null);
+  // Metadata is the reachability boundary. Never destroy the only recoverable
+  // artifacts while the project can still remain visible after a failed write.
+  const removed = removeProject(project.id);
+  if (removed === false) {
+    throw new Error(`Could not remove imported project "${project.id}"`);
+  }
+
+  let cleanupError = null;
   try {
+    saveMonitoringRound(project.id, null);
     await deleteProjectArtifacts(project);
-  } catch {
-    // Continue removing the project from the UI even if storage cleanup fails.
+  } catch (error) {
+    cleanupError = error;
   }
-  if (typeof removeProject === "function") {
-    try {
-      removeProject(project.id);
-    } catch {
-      // Ignore rollback cleanup errors.
-    }
-  }
+
+  return {
+    metadataRemoved: true,
+    cleanupComplete: cleanupError === null,
+    cleanupError,
+  };
 }

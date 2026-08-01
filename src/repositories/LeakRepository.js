@@ -8,9 +8,11 @@ const VALID_STATUSES = new Set(["open", "in_progress", "resolved"]);
 const WEB_DATA_DB = "LeakTrackingDataDB";
 const WEB_DATA_STORE = "projects";
 const WEB_DATA_VERSION = 1;
+const WEB_ENVELOPE_VERSION = 1;
 const PRESERVED_INVALID_RECORDS = Symbol("preservedInvalidLeakRecords");
 
 let webDataDbPromise = null;
+let lastIssuedWebRevision = 0;
 
 export class ProjectDataReadError extends Error {
   constructor(message, { cause, source } = {}) {
@@ -317,12 +319,12 @@ async function readWebData(projectId) {
     const tx = db.transaction(WEB_DATA_STORE, "readonly");
     const store = tx.objectStore(WEB_DATA_STORE);
     const request = store.get(projectId);
-    request.onsuccess = () => resolve(request.result?.data ?? null);
+    request.onsuccess = () => resolve(request.result ?? null);
     request.onerror = () => reject(request.error);
   });
 }
 
-async function writeWebData(projectId, leaks) {
+async function writeWebData(projectId, envelope) {
   const db = await openWebDataDb();
   if (!db || !projectId) return false;
 
@@ -331,8 +333,7 @@ async function writeWebData(projectId, leaks) {
     const store = tx.objectStore(WEB_DATA_STORE);
     const request = store.put({
       id: projectId,
-      data: leaks,
-      timestamp: Date.now(),
+      ...envelope,
     });
     request.onerror = () => reject(request.error);
     tx.oncomplete = () => resolve(true);
@@ -343,23 +344,125 @@ async function writeWebData(projectId, leaks) {
 
 async function deleteWebData(projectId) {
   const db = await openWebDataDb();
-  if (!db || !projectId) return;
-
-  await new Promise((resolve, reject) => {
+  if (!db || !projectId) return false;
+  return new Promise((resolve, reject) => {
     const tx = db.transaction(WEB_DATA_STORE, "readwrite");
-    const store = tx.objectStore(WEB_DATA_STORE);
-    const request = store.delete(projectId);
+    const request = tx.objectStore(WEB_DATA_STORE).delete(projectId);
     request.onerror = () => reject(request.error);
-    tx.oncomplete = resolve;
+    tx.oncomplete = () => resolve(true);
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error);
   });
 }
 
-function saveWebDataToLocalStorage(projectId, leaks) {
+function checksumWebPayload(data, deleted) {
+  const value = JSON.stringify({ deleted: Boolean(deleted), data });
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function normalizeWebEnvelope(value, source) {
+  if (value == null) return null;
+
+  // Backward compatibility for data written before mirrored revisions existed.
+  if (Array.isArray(value)) {
+    return {
+      version: 0,
+      revision: 0,
+      updatedAt: 0,
+      deleted: false,
+      checksum: checksumWebPayload(value, false),
+      data: value,
+    };
+  }
+
+  const deleted = value.deleted === true;
+  const data = deleted && value.data == null ? [] : value.data;
+  if (!Array.isArray(data)) {
+    throw new TypeError(`Expected a data array in ${source}`);
+  }
+
+  const revision = Number(value.revision ?? value.timestamp ?? 0);
+  const updatedAt = Number(value.updatedAt ?? value.timestamp ?? 0);
+  if (!Number.isSafeInteger(revision) || revision < 0) {
+    throw new TypeError(`Invalid revision in ${source}`);
+  }
+  if (!Number.isFinite(updatedAt) || updatedAt < 0) {
+    throw new TypeError(`Invalid updatedAt in ${source}`);
+  }
+
+  const expectedChecksum = checksumWebPayload(data, deleted);
+  if (value.checksum != null && value.checksum !== expectedChecksum) {
+    throw new TypeError(`Checksum mismatch in ${source}`);
+  }
+
+  return {
+    version: Number(value.version ?? 0),
+    revision,
+    updatedAt,
+    deleted,
+    checksum: expectedChecksum,
+    data,
+  };
+}
+
+function readWebDataFromLocalStorage(projectId) {
+  const key = STORAGE_KEYS.PROJECT_DATA(projectId);
+  const raw = localStorage.getItem(key);
+  if (!raw) return null;
+  return normalizeWebEnvelope(JSON.parse(raw), `localStorage[${key}]`);
+}
+
+function nextWebRevision(envelopes = []) {
+  const knownRevision = envelopes.reduce(
+    (maximum, envelope) => Math.max(maximum, envelope?.revision ?? 0),
+    0,
+  );
+  const clockRevision = Date.now() * 1000;
+  lastIssuedWebRevision = Math.max(
+    clockRevision,
+    knownRevision + 1,
+    lastIssuedWebRevision + 1,
+  );
+  return lastIssuedWebRevision;
+}
+
+function createWebEnvelope(data, { deleted = false, previous = [] } = {}) {
+  const revision = nextWebRevision(previous);
+  const updatedAt = Date.now();
+  return {
+    version: WEB_ENVELOPE_VERSION,
+    revision,
+    updatedAt,
+    deleted,
+    checksum: checksumWebPayload(data, deleted),
+    data,
+  };
+}
+
+function compareWebEnvelopes(left, right) {
+  if (left.revision !== right.revision) return left.revision - right.revision;
+  if (left.updatedAt !== right.updatedAt)
+    return left.updatedAt - right.updatedAt;
+  return 0;
+}
+
+function sameWebEnvelope(left, right) {
+  return (
+    left?.revision === right?.revision &&
+    left?.deleted === right?.deleted &&
+    left?.checksum === right?.checksum
+  );
+}
+
+function saveWebDataToLocalStorage(projectId, envelope) {
   const key = STORAGE_KEYS.PROJECT_DATA(projectId);
   try {
-    localStorage.setItem(key, JSON.stringify(leaks));
+    localStorage.setItem(key, JSON.stringify(envelope));
     return true;
   } catch (error) {
     logger.warn(
@@ -416,49 +519,59 @@ export const LeakRepository = {
       }
     }
 
-    const key = STORAGE_KEYS.PROJECT_DATA(projectId);
+    let indexedEnvelope = null;
+    let localEnvelope = null;
     let indexedDbError = null;
+    let localStorageError = null;
 
     try {
-      const indexedData = await readWebData(projectId);
-      if (Array.isArray(indexedData)) {
-        return filterValidLeaks(indexedData, `IndexedDB[${projectId}]`);
-      }
-      if (indexedData != null) {
-        throw new TypeError(`Expected an array in IndexedDB[${projectId}]`);
-      }
-    } catch (err) {
-      indexedDbError = err;
-      logger.error("[LeakRepository] Failed to read IndexedDB:", err);
-    }
-
-    try {
-      const raw = localStorage.getItem(key);
-      if (!raw) {
-        if (indexedDbError) {
-          throw new ProjectDataReadError(
-            "IndexedDB could not be read and no recovery mirror is available",
-            { cause: indexedDbError, source: "indexeddb" },
-          );
-        }
-        return [];
-      }
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) {
-        throw new TypeError(`Expected an array in localStorage[${key}]`);
-      }
-      await writeWebData(projectId, parsed).catch((error) => {
-        logger.warn("[LeakRepository] Failed to migrate to IndexedDB:", error);
-      });
-      return filterValidLeaks(parsed, `localStorage[${key}]`);
-    } catch (err) {
-      if (err instanceof ProjectDataReadError) throw err;
-      logger.error("[LeakRepository] Corrupted localStorage:", err);
-      throw new ProjectDataReadError(
-        "The local project data mirror is corrupted",
-        { cause: err, source: "localstorage" },
+      indexedEnvelope = normalizeWebEnvelope(
+        await readWebData(projectId),
+        `IndexedDB[${projectId}]`,
       );
+    } catch (error) {
+      indexedDbError = error;
+      logger.error("[LeakRepository] Failed to read IndexedDB:", error);
     }
+
+    try {
+      localEnvelope = readWebDataFromLocalStorage(projectId);
+    } catch (error) {
+      localStorageError = error;
+      logger.error("[LeakRepository] Corrupted localStorage:", error);
+    }
+
+    const available = [indexedEnvelope, localEnvelope].filter(Boolean);
+    if (available.length === 0) {
+      if (indexedDbError || localStorageError) {
+        const source = indexedDbError ? "indexeddb" : "localstorage";
+        throw new ProjectDataReadError(
+          "No valid project data copy is available",
+          { cause: indexedDbError ?? localStorageError, source },
+        );
+      }
+      return [];
+    }
+
+    const selected = available.reduce((latest, candidate) =>
+      compareWebEnvelopes(candidate, latest) > 0 ? candidate : latest,
+    );
+
+    // Repair only stores that were read successfully. A transient read error
+    // must never cause an older fallback copy to overwrite an unknown version.
+    if (!indexedDbError && !sameWebEnvelope(indexedEnvelope, selected)) {
+      await writeWebData(projectId, selected).catch((error) => {
+        logger.warn("[LeakRepository] Failed to repair IndexedDB:", error);
+      });
+    }
+    if (!localStorageError && !sameWebEnvelope(localEnvelope, selected)) {
+      saveWebDataToLocalStorage(projectId, selected);
+    }
+
+    if (selected.deleted) return [];
+    const selectedSource =
+      selected === indexedEnvelope ? "IndexedDB" : "localStorage";
+    return filterValidLeaks(selected.data, `${selectedSource}[${projectId}]`);
   },
 
   async saveAll(leaks, { projectId, folderName }) {
@@ -469,8 +582,26 @@ export const LeakRepository = {
 
     let indexedDbSaved = false;
     let indexedDbError = null;
+    let indexedEnvelope = null;
+    let localEnvelope = null;
     try {
-      indexedDbSaved = await writeWebData(projectId, leaks);
+      indexedEnvelope = normalizeWebEnvelope(
+        await readWebData(projectId),
+        `IndexedDB[${projectId}]`,
+      );
+    } catch {
+      // A new clock-based revision remains newer in normal operation.
+    }
+    try {
+      localEnvelope = readWebDataFromLocalStorage(projectId);
+    } catch {
+      // The valid destination will replace a corrupted mirror.
+    }
+    const envelope = createWebEnvelope(leaks, {
+      previous: [indexedEnvelope, localEnvelope],
+    });
+    try {
+      indexedDbSaved = await writeWebData(projectId, envelope);
     } catch (error) {
       indexedDbError = error;
       logger.warn(
@@ -479,7 +610,7 @@ export const LeakRepository = {
       );
     }
 
-    const localStorageSaved = saveWebDataToLocalStorage(projectId, leaks);
+    const localStorageSaved = saveWebDataToLocalStorage(projectId, envelope);
     if (!indexedDbSaved && !localStorageSaved) {
       throw new ProjectDataWriteError(
         "Project data could not be saved to IndexedDB or localStorage",
@@ -493,7 +624,65 @@ export const LeakRepository = {
       await writeNativeArray(folderName, []);
       return;
     }
-    await deleteWebData(projectId);
-    localStorage.removeItem(STORAGE_KEYS.PROJECT_DATA(projectId));
+    let indexedEnvelope = null;
+    let localEnvelope = null;
+    try {
+      indexedEnvelope = normalizeWebEnvelope(
+        await readWebData(projectId),
+        `IndexedDB[${projectId}]`,
+      );
+    } catch {
+      // Continue with a newer tombstone so a stale mirror cannot resurrect data.
+    }
+    try {
+      localEnvelope = readWebDataFromLocalStorage(projectId);
+    } catch {
+      // Continue and replace the corrupted mirror if possible.
+    }
+    const tombstone = createWebEnvelope([], {
+      deleted: true,
+      previous: [indexedEnvelope, localEnvelope],
+    });
+    let indexedDbSaved = false;
+    let indexedDbError = null;
+    try {
+      indexedDbSaved = await writeWebData(projectId, tombstone);
+    } catch (error) {
+      indexedDbError = error;
+    }
+    const localStorageSaved = saveWebDataToLocalStorage(projectId, tombstone);
+    if (!indexedDbSaved && !localStorageSaved) {
+      throw new ProjectDataWriteError(
+        "Project deletion could not be persisted",
+        {
+          cause: indexedDbError,
+        },
+      );
+    }
+  },
+
+  async purge({ projectId, folderName }) {
+    if (isNative) {
+      await writeNativeArray(folderName, []);
+      return;
+    }
+
+    let indexedDbError = null;
+    try {
+      await deleteWebData(projectId);
+    } catch (error) {
+      indexedDbError = error;
+    }
+    let localStorageError = null;
+    try {
+      localStorage.removeItem(STORAGE_KEYS.PROJECT_DATA(projectId));
+    } catch (error) {
+      localStorageError = error;
+    }
+    if (indexedDbError || localStorageError) {
+      throw new ProjectDataWriteError("Project data could not be purged", {
+        cause: indexedDbError ?? localStorageError,
+      });
+    }
   },
 };

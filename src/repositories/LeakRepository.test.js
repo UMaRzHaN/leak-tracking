@@ -36,6 +36,11 @@ function storageKey(projectId) {
   return `app:${projectId}:data_v1`;
 }
 
+function storedLeaks(projectId) {
+  const parsed = JSON.parse(localStorage.getItem(storageKey(projectId)));
+  return Array.isArray(parsed) ? parsed : parsed.data;
+}
+
 /* ── Setup ────────────────────────────────────────────────────────────────── */
 
 beforeEach(() => {
@@ -138,9 +143,8 @@ describe("LeakRepository.saveAll (web / localStorage)", () => {
     const leaks = [makeLeak({ id: "s1" })];
     await LeakRepository.saveAll(leaks, PROJECT);
 
-    const raw = localStorage.getItem(storageKey(PROJECT.projectId));
-    expect(JSON.parse(raw)).toHaveLength(1);
-    expect(JSON.parse(raw)[0].id).toBe("s1");
+    expect(storedLeaks(PROJECT.projectId)).toHaveLength(1);
+    expect(storedLeaks(PROJECT.projectId)[0].id).toBe("s1");
   });
 
   it("overwrites a previous saveAll call (full replace, not merge)", async () => {

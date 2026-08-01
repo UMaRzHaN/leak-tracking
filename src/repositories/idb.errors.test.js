@@ -117,7 +117,19 @@ describe("createIdbStore error handling", () => {
     await expect(store.remove("a")).resolves.toBe(false);
     await expect(store.clear()).resolves.toBe(false);
     await expect(store.listKeys()).resolves.toEqual([]);
+    await expect(store.getStrict("a")).rejects.toThrow("transaction failed");
+    await expect(store.listKeysStrict()).rejects.toThrow("transaction failed");
     expect(logger.error).toHaveBeenCalledTimes(5);
+  });
+
+  it("offers strict reads that distinguish storage failure from missing data", async () => {
+    const store = createIdbStore("strict-errors", "items", 1);
+    await expect(store.getStrict("a")).rejects.toMatchObject({
+      code: "IDB_NOT_READY",
+    });
+    await expect(store.listKeysStrict()).rejects.toMatchObject({
+      code: "IDB_NOT_READY",
+    });
   });
 
   it.each([

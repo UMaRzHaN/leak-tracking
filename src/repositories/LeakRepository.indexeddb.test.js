@@ -70,6 +70,10 @@ async function overwriteIndexedProjectData(projectId, data) {
   db.close();
 }
 
+function readLocalEnvelope(projectId) {
+  return JSON.parse(localStorage.getItem(storageKey(projectId)));
+}
+
 beforeEach(() => {
   localStorage.clear();
 });
@@ -101,6 +105,16 @@ describe("LeakRepository web IndexedDB storage", () => {
     await expect(LeakRepository.getAll(PROJECT)).resolves.toEqual([]);
   });
 
+  it("purges both web copies after project metadata is removed", async () => {
+    const { LeakRepository } = await loadRepository();
+    await LeakRepository.saveAll([makeLeak("1")], PROJECT);
+
+    await LeakRepository.purge(PROJECT);
+
+    expect(localStorage.getItem(storageKey(PROJECT.projectId))).toBeNull();
+    await expect(LeakRepository.getAll(PROJECT)).resolves.toEqual([]);
+  });
+
   it("rejects malformed IndexedDB data when no recovery mirror exists", async () => {
     const { LeakRepository } = await loadRepository();
     await LeakRepository.saveAll([makeLeak("1")], PROJECT);
@@ -128,6 +142,56 @@ describe("LeakRepository web IndexedDB storage", () => {
     await expect(LeakRepository.getAll(PROJECT)).resolves.toMatchObject([
       { id: "current" },
     ]);
+  });
+
+  it("selects a newer localStorage revision and repairs stale IndexedDB", async () => {
+    const { LeakRepository } = await loadRepository();
+    await LeakRepository.saveAll([makeLeak("previous")], PROJECT);
+    const previous = readLocalEnvelope(PROJECT.projectId);
+    const current = [makeLeak("current")];
+    localStorage.setItem(
+      storageKey(PROJECT.projectId),
+      JSON.stringify({
+        version: 1,
+        revision: previous.revision + 1,
+        updatedAt: previous.updatedAt + 1,
+        deleted: false,
+        data: current,
+      }),
+    );
+
+    await expect(LeakRepository.getAll(PROJECT)).resolves.toMatchObject([
+      { id: "current" },
+    ]);
+    localStorage.removeItem(storageKey(PROJECT.projectId));
+    await expect(LeakRepository.getAll(PROJECT)).resolves.toMatchObject([
+      { id: "current" },
+    ]);
+  });
+
+  it("keeps a newer IndexedDB revision when the local mirror is stale", async () => {
+    const { LeakRepository } = await loadRepository();
+    await LeakRepository.saveAll([makeLeak("previous")], PROJECT);
+    const stale = readLocalEnvelope(PROJECT.projectId);
+    await LeakRepository.saveAll([makeLeak("current")], PROJECT);
+    localStorage.setItem(storageKey(PROJECT.projectId), JSON.stringify(stale));
+
+    await expect(LeakRepository.getAll(PROJECT)).resolves.toMatchObject([
+      { id: "current" },
+    ]);
+    expect(readLocalEnvelope(PROJECT.projectId).data).toMatchObject([
+      { id: "current" },
+    ]);
+  });
+
+  it("uses a newer IndexedDB tombstone when the local mirror cannot be updated", async () => {
+    const { LeakRepository } = await loadRepository();
+    const key = storageKey(PROJECT.projectId);
+    await LeakRepository.saveAll([makeLeak("previous")], PROJECT);
+    failLocalStorageWritesFor(key);
+
+    await expect(LeakRepository.clear(PROJECT)).resolves.toBeUndefined();
+    await expect(LeakRepository.getAll(PROJECT)).resolves.toEqual([]);
   });
 
   it("rejects the save and preserves the mirror when both web stores fail", async () => {

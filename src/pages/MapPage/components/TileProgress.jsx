@@ -49,9 +49,13 @@ export default function TileProgress({ progress }) {
           : lang === "ru"
             ? "✕ Ошибка скачивания"
             : "✕ Download failed"
-        : lang === "ru"
-          ? `Загрузка ${percent}%`
-          : `Downloading ${percent}%`;
+        : progress.status === "cancelled"
+          ? lang === "ru"
+            ? `Отменено — сохранено ${progress.done} из ${progress.total}`
+            : `Cancelled — saved ${progress.done} of ${progress.total}`
+          : lang === "ru"
+            ? `Загрузка ${percent}%`
+            : `Downloading ${percent}%`;
 
   return (
     <div

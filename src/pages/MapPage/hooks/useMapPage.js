@@ -224,8 +224,8 @@ export function useMapPage({
     mapRef.current.setHeatmap?.(heatmapEnabled ? markerLeaks : []);
   }, [heatmapEnabled, markerLeaks, mapReady]);
 
-  const { tileProgress, downloading, handleDownloadArea } =
-    useOfflineMapActions({ mapRef, markerLeaks, notify, lang });
+  const { tileProgress, downloading, handleDownloadArea, cancelDownload } =
+    useOfflineMapActions({ mapRef, notify, lang });
   const { handleExportKML } = useMapExport({
     visibleLeaks,
     projectType: activeProject?.type,
@@ -270,6 +270,7 @@ export function useMapPage({
     toggleMainLocation,
     toggleLocation,
     handleDownloadArea,
+    cancelDownload,
     handleExportKML,
     focusLeak,
     locateMe,

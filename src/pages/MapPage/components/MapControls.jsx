@@ -17,6 +17,7 @@ export default function MapControls({
   gpsEnabled = true,
   onOpenSheet,
   onDownload,
+  onCancelDownload,
   downloading,
   // heatmapEnabled,
   nearbyOnly,
@@ -377,11 +378,16 @@ export default function MapControls({
       <button
         type="button"
         className={`${s.controlBtn} ${downloading ? s.controlBtnActive : ""}`}
-        onClick={onDownload}
-        disabled={downloading}
-        aria-label={t("map.controls.downloadArea", {
-          defaultValue: "Download current area map",
-        })}
+        onClick={downloading ? onCancelDownload : onDownload}
+        aria-label={
+          downloading
+            ? lang === "ru"
+              ? "Отменить скачивание карты"
+              : "Cancel map download"
+            : t("map.controls.downloadArea", {
+                defaultValue: "Download current area map",
+              })
+        }
       >
         <svg
           className={s.controlIcon}
@@ -392,8 +398,14 @@ export default function MapControls({
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <path d="M12 2v13M7 11l5 5 5-5" />
-          <path d="M3 19h18" />
+          {downloading ? (
+            <path d="M7 7h10v10H7z" />
+          ) : (
+            <>
+              <path d="M12 2v13M7 11l5 5 5-5" />
+              <path d="M3 19h18" />
+            </>
+          )}
         </svg>
       </button>
     </div>

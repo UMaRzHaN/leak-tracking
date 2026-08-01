@@ -42,13 +42,15 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write . --ignore-unknown",
     "format:check": "prettier --check . --ignore-unknown",
+    "typecheck": "tsc -p tsconfig.check.json",
     "prepare": "husky",
     "postinstall": "node scripts/patch-gradle.js",
     "deps:refresh-lock": "npm install --package-lock-only --ignore-scripts",
     "check:install-scripts": "npm approve-scripts --allow-scripts-pending",
     "cap:sync": "npx cap sync && node scripts/patch-gradle.js",
     "check:bundle": "node scripts/check-bundle-budget.mjs",
-    "verify:release": "npm run lint && npm run format:check && npm run test:coverage && npm run build:analyze && npm run check:bundle",
+    "pack:source": "node scripts/pack-source.mjs --verify",
+    "verify:release": "npm run lint && npm run format:check && npm run typecheck && npm run test:coverage && npm run build:analyze && npm run check:bundle",
     "android:release": "node scripts/verify-android-signing.mjs && npm run build && npm run cap:sync && cd android && ./gradlew test lintRelease assembleRelease"
   },
   "lint-staged": {

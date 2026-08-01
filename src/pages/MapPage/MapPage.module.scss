@@ -218,6 +218,14 @@
   }
 }
 
+.tileProgress_cancelled {
+  background: #64748b;
+  .tileProgressLabel {
+    color: #fff;
+    font-weight: 600;
+  }
+}
+
 .exportBtn {
   padding: 6px 12px;
   border-radius: 20px;

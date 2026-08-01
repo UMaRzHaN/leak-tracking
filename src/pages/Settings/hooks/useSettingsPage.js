@@ -20,6 +20,7 @@ import {
 } from "@/services/projectSyncState";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { runExcelImportTransaction } from "@/services/excelImportTransaction";
+import { readImportOperation } from "@/services/importOperationJournal";
 import { useBackupActions } from "./useBackupActions";
 import { useProjectActions } from "./useProjectActions";
 import { useSettingsTexts } from "./useSettingsTexts";
@@ -79,6 +80,18 @@ export function useSettingsPage({
     restoreProjectSnapshot,
     ensureProjectSyncId,
   } = useProjectActions({ setCacheInfo, notify });
+
+  useEffect(() => {
+    const interrupted = readImportOperation(activeProject?.id);
+    if (!interrupted) return;
+    notify(
+      "error",
+      lang === "ru"
+        ? "Обнаружен прерванный импорт. Проверьте данные проекта и повторите импорт из исходного файла."
+        : "An interrupted import was detected. Verify the project data and retry from the source file.",
+      { autoCloseMs: 0 },
+    );
+  }, [activeProject?.id, lang, notify]);
 
   const saveExcelMonitoringRound = useCallback(
     (round) => {
@@ -430,6 +443,7 @@ export function useSettingsPage({
       notifyExcelImportProgress();
       const snapshot = await captureExcelImportSnapshot();
       const withPhotos = await runExcelImportTransaction({
+        projectId: activeProject?.id,
         persistPhotos: () => persistPreparedExcelPhotos(prepared),
         commit: async (persisted) => {
           await setData?.([...data, ...persisted]);
@@ -460,6 +474,7 @@ export function useSettingsPage({
       setExcelImportState({ open: false });
     }
   }, [
+    activeProject?.id,
     applyExcelArchiveMetadata,
     captureExcelImportSnapshot,
     data,
@@ -497,6 +512,7 @@ export function useSettingsPage({
       );
       const snapshot = await captureExcelImportSnapshot();
       const withPhotos = await runExcelImportTransaction({
+        projectId: activeProject?.id,
         persistPhotos: () => persistPreparedExcelPhotos(reconciled.leaks),
         commit: async (persisted) => {
           await setData?.(persisted);
@@ -529,6 +545,7 @@ export function useSettingsPage({
       setExcelConflictState({ open: false });
     }
   }, [
+    activeProject?.id,
     applyExcelArchiveMetadata,
     captureExcelImportSnapshot,
     data,
@@ -560,6 +577,7 @@ export function useSettingsPage({
       const snapshot = await captureExcelImportSnapshot();
       let mergeResult;
       await runExcelImportTransaction({
+        projectId: activeProject?.id,
         persistPhotos: () => persistPreparedExcelPhotos(incoming),
         commit: async (incomingWithPhotos) => {
           mergeResult = mergeLeaksByFreshness(data, incomingWithPhotos, {
@@ -592,6 +610,7 @@ export function useSettingsPage({
       setExcelConflictState({ open: false });
     }
   }, [
+    activeProject?.id,
     captureExcelImportSnapshot,
     data,
     deletePhoto,

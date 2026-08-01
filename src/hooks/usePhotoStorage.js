@@ -6,11 +6,13 @@ import { idb } from "@/repositories/idb";
 
 export function usePhotoStorage() {
   const { activeProject } = useProjectData();
-  const [ready, setReady] = useState(() => isNative || idb.getState().ready);
+  const [ready, setReady] = useState(() =>
+    isNative ? !activeProject?.folderName : idb.getState().ready,
+  );
+  const [storageError, setStorageError] = useState(null);
 
   useEffect(() => {
     if (isNative) {
-      setReady(true);
       return undefined;
     }
 
@@ -21,10 +23,29 @@ export function usePhotoStorage() {
   }, []);
 
   useEffect(() => {
-    if (!isNative || !activeProject?.folderName) return;
-    PhotoRepository.prepare({
-      folderName: activeProject.folderName,
-    }).catch(() => {});
+    if (!isNative) return undefined;
+    if (!activeProject?.folderName) {
+      setStorageError(null);
+      setReady(true);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setReady(false);
+    setStorageError(null);
+    PhotoRepository.prepare({ folderName: activeProject.folderName })
+      .then(() => {
+        if (!cancelled) setReady(true);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setStorageError(error);
+          setReady(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [activeProject?.folderName]);
 
   const savePhoto = useCallback(
@@ -66,6 +87,8 @@ export function usePhotoStorage() {
 
   return {
     ready,
+    status: storageError ? "error" : ready ? "ready" : "initializing",
+    storageError,
     isNative,
     savePhoto,
     deletePhoto,

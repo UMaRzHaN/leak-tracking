@@ -40,13 +40,28 @@ describe("usePhotoStorage on Android", () => {
     prepare.mockResolvedValue(undefined);
   });
 
-  it("is ready immediately and prewarms the project photo folder", async () => {
+  it("becomes ready only after the project photo folder is available", async () => {
     const { result } = renderHook(() => usePhotoStorage());
 
-    expect(result.current.ready).toBe(true);
+    expect(result.current.ready).toBe(false);
+    expect(result.current.status).toBe("initializing");
     expect(idbOpen).not.toHaveBeenCalled();
     await waitFor(() => {
       expect(prepare).toHaveBeenCalledWith({ folderName: "project_one" });
+      expect(result.current.ready).toBe(true);
+      expect(result.current.status).toBe("ready");
+    });
+  });
+
+  it("exposes native folder preparation failures", async () => {
+    const error = new Error("filesystem unavailable");
+    prepare.mockRejectedValueOnce(error);
+    const { result } = renderHook(() => usePhotoStorage());
+
+    await waitFor(() => {
+      expect(result.current.ready).toBe(false);
+      expect(result.current.status).toBe("error");
+      expect(result.current.storageError).toBe(error);
     });
   });
 });

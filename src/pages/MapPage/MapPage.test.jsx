@@ -13,6 +13,7 @@ vi.mock("./components/MapControls", () => ({
       <button onClick={props.onLocate}>locate</button>
       <button onClick={props.onOpenSheet}>open-sheet</button>
       <button onClick={props.onDownload}>download</button>
+      <button onClick={props.onCancelDownload}>cancel-download</button>
       <button onClick={props.onToggleHeatmap}>heatmap</button>
       <button onClick={() => props.onToggleNearby(true)}>nearby</button>
       <button onClick={() => props.onRadiusChange(500)}>radius</button>
@@ -87,6 +88,7 @@ function createState() {
     toggleMainLocation: vi.fn(),
     toggleLocation: vi.fn(),
     handleDownloadArea: vi.fn(),
+    cancelDownload: vi.fn(),
     handleExportKML: vi.fn(),
     focusLeak: vi.fn(),
     locateMe: vi.fn(),
@@ -111,6 +113,7 @@ describe("MapPage", () => {
       "locate",
       "open-sheet",
       "download",
+      "cancel-download",
       "heatmap",
       "nearby",
       "radius",

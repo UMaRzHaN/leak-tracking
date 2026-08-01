@@ -421,7 +421,17 @@ export function useAppBootstrap() {
           return { project: newProject, leakCount: withPhotos.length };
         } catch (error) {
           try {
-            await rollbackImportedProject(newProject, removeProject);
+            try {
+              const rollback = await rollbackImportedProject(
+                newProject,
+                removeProject,
+              );
+              if (!rollback.cleanupComplete) {
+                error.rollbackCleanupError = rollback.cleanupError;
+              }
+            } catch (rollbackError) {
+              error.rollbackError = rollbackError;
+            }
           } finally {
             if (previousProjectId) overwriteProject(previousProjectId);
           }

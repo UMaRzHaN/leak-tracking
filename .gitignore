@@ -15,9 +15,11 @@
 # production
 /build
 /dist
+/.artifacts
 
 # misc
 .DS_Store
+/android/.idea/
 .env
 .env.local
 .env.*.local

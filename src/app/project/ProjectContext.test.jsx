@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./projectMigration", () => ({
   migrateFromLegacy: vi.fn((projects) => projects),
@@ -23,6 +23,10 @@ describe("ProjectProvider initialization", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("reads projects from storage only once during initial mount", () => {
@@ -312,6 +316,47 @@ describe("ProjectProvider initialization", () => {
     ).toContainEqual(created);
     expect(localStorage.getItem(STORAGE_KEYS.ACTIVE_PROJECT_ID)).toBe(
       created.id,
+    );
+  });
+
+  it("rolls back project metadata when persisting the active id fails", () => {
+    const original = {
+      id: "p1",
+      name: "Alpha",
+      type: "upstream",
+      folderName: "Alpha",
+      createdAt: 1,
+    };
+    localStorage.setItem(
+      STORAGE_KEYS.PROJECTS_LIST,
+      JSON.stringify([original]),
+    );
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_PROJECT_ID, original.id);
+    const originalSetItem = Storage.prototype.setItem;
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(
+      function setItem(key, value) {
+        if (key === STORAGE_KEYS.ACTIVE_PROJECT_ID && value !== original.id) {
+          throw new DOMException("Storage unavailable", "QuotaExceededError");
+        }
+        return originalSetItem.call(this, key, value);
+      },
+    );
+
+    const wrapper = ({ children }) => (
+      <ProjectProvider>{children}</ProjectProvider>
+    );
+    const { result } = renderHook(() => useProject(), { wrapper });
+    expect(() => {
+      act(() => result.current.addProject("Broken", "midstream"));
+    }).toThrow("Storage unavailable");
+
+    expect(result.current.projects).toEqual([original]);
+    expect(result.current.activeId).toBe(original.id);
+    expect(
+      JSON.parse(localStorage.getItem(STORAGE_KEYS.PROJECTS_LIST)),
+    ).toEqual([original]);
+    expect(localStorage.getItem(STORAGE_KEYS.ACTIVE_PROJECT_ID)).toBe(
+      original.id,
     );
   });
 

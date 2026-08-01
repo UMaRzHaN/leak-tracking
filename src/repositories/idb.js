@@ -116,6 +116,27 @@ export function createIdbStore(dbName, storeName, version) {
     });
   }
 
+  async function getStrict(id) {
+    if (!_ready || !_db) {
+      const error = new Error("IndexedDB store is not ready");
+      error.code = "IDB_NOT_READY";
+      throw error;
+    }
+    return new Promise((resolve, reject) => {
+      try {
+        const tx = _db.transaction(STORE_NAME, "readonly");
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.get(id);
+        req.onsuccess = () => resolve(req.result?.data ?? null);
+        req.onerror = () => reject(req.error ?? tx.error);
+        tx.onabort = () =>
+          reject(tx.error ?? new Error("IndexedDB read aborted"));
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
   async function remove(id) {
     if (!_ready || !_db) return false;
     return new Promise((resolve) => {
@@ -189,7 +210,39 @@ export function createIdbStore(dbName, storeName, version) {
     });
   }
 
-  return { open, subscribe, getState, save, get, remove, clear, listKeys };
+  async function listKeysStrict() {
+    if (!_ready || !_db) {
+      const error = new Error("IndexedDB store is not ready");
+      error.code = "IDB_NOT_READY";
+      throw error;
+    }
+    return new Promise((resolve, reject) => {
+      try {
+        const tx = _db.transaction(STORE_NAME, "readonly");
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.getAllKeys();
+        req.onsuccess = () => resolve(req.result ?? []);
+        req.onerror = () => reject(req.error ?? tx.error);
+        tx.onabort = () =>
+          reject(tx.error ?? new Error("IndexedDB key listing aborted"));
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  return {
+    open,
+    subscribe,
+    getState,
+    save,
+    get,
+    getStrict,
+    remove,
+    clear,
+    listKeys,
+    listKeysStrict,
+  };
 }
 
 // Keep backward-compatible named export for existing consumers

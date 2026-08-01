@@ -40,6 +40,8 @@ export const STORAGE_KEYS = {
     `${APP_PREFIX}:${projectId}:vars_updated_at_${VERSION}`,
   PROJECT_SETTINGS_UPDATED_AT: (projectId) =>
     `${APP_PREFIX}:${projectId}:settings_updated_at_${VERSION}`,
+  PROJECT_IMPORT_OPERATION: (projectId) =>
+    `${APP_PREFIX}:${projectId}:import_operation_${VERSION}`,
 
   /* =========================
      LEGACY (migration only — не использовать в новом коде)

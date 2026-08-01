@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
+import { useModalDialog } from "@/hooks/useModalDialog";
 import s from "./SyncIdEditorSheet.module.scss";
 
 export default function SyncIdEditorSheet({
@@ -8,6 +9,8 @@ export default function SyncIdEditorSheet({
   onCancel,
 }) {
   const inputRef = useRef(null);
+  const titleId = useId();
+  const dialogRef = useModalDialog({ open: state.open, onClose: onCancel });
 
   useEffect(() => {
     if (!state.open) return;
@@ -22,9 +25,19 @@ export default function SyncIdEditorSheet({
 
   return (
     <div className={s.overlay} onClick={onCancel}>
-      <div className={s.sheet} onClick={(event) => event.stopPropagation()}>
+      <div
+        ref={dialogRef}
+        className={s.sheet}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className={s.handle} />
-        <h3 className={s.title}>{state.title}</h3>
+        <h3 id={titleId} className={s.title}>
+          {state.title}
+        </h3>
         <p className={s.description}>{state.description}</p>
 
         <label className={s.field}>
@@ -38,7 +51,6 @@ export default function SyncIdEditorSheet({
             spellCheck={false}
             onKeyDown={(event) => {
               if (event.key === "Enter") onConfirm();
-              if (event.key === "Escape") onCancel();
             }}
           />
         </label>

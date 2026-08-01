@@ -15,15 +15,45 @@ const PUBLIC_PRECACHE_FILES = [
   "icons/icon-512.png",
 ];
 
+function shouldPrecacheBundleEntry(entry) {
+  const name = entry.fileName.toLowerCase();
+  // Spreadsheet import/export is an optional, user-initiated workflow. Keeping
+  // its duplicated main/worker dependency graphs out of the install transaction
+  // cuts the mandatory PWA download by roughly two megabytes. Once requested,
+  // the existing runtime cache still makes those assets available offline.
+  return !/(?:excel|vendor-zip|jszip)/.test(name);
+}
+
+function cspStylePolicy(mode) {
+  return {
+    name: "csp-style-policy",
+    transformIndexHtml(html) {
+      // Vite injects component styles as inline <style> elements only in dev.
+      // Production keeps the stricter external-stylesheet policy.
+      return html.replace(
+        "__VITE_DEV_STYLE__",
+        mode === "development" ? "'unsafe-inline'" : "",
+      );
+    },
+  };
+}
+
 function offlineServiceWorker() {
+  let basePath = "/";
   return {
     name: "offline-service-worker",
     apply: "build",
+    configResolved(config) {
+      basePath = config.base.startsWith("/") ? config.base : "/";
+      if (!basePath.endsWith("/")) basePath += "/";
+    },
     generateBundle(_options, bundle) {
       const files = [
-        "/",
-        ...PUBLIC_PRECACHE_FILES.map((fileName) => `/${fileName}`),
-        ...Object.values(bundle).map((entry) => `/${entry.fileName}`),
+        basePath,
+        ...PUBLIC_PRECACHE_FILES.map((fileName) => `${basePath}${fileName}`),
+        ...Object.values(bundle)
+          .filter(shouldPrecacheBundleEntry)
+          .map((entry) => `${basePath}${entry.fileName}`),
       ];
       const uniqueFiles = [...new Set(files)].sort();
       const versionHash = createHash("sha256");
@@ -40,6 +70,7 @@ function offlineServiceWorker() {
       const cacheVersion = versionHash.digest("hex").slice(0, 16);
       const source = `const PRECACHE_NAME = "leak-tracking-precache-${cacheVersion}";
 const RUNTIME_NAME = "leak-tracking-runtime-${cacheVersion}";
+const APP_SHELL = ${JSON.stringify(basePath)};
 const PRECACHE = ${JSON.stringify(uniqueFiles)};
 const MAX_RUNTIME_ENTRIES = 150;
 const MAX_RUNTIME_AGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -106,9 +137,14 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(PRECACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE))
-      .then(() => self.skipWaiting()),
+      .then((cache) => cache.addAll(PRECACHE)),
   );
+});
+self.addEventListener("message", (event) => {
+  // Activation is opt-in so an old, open document never loses the hashed lazy
+  // chunks it was built against. The UI may send this only immediately before
+  // a controlled reload.
+  if (event.data?.type === "ACTIVATE_UPDATE") self.skipWaiting();
 });
 self.addEventListener("activate", (event) => {
   event.waitUntil(
@@ -136,7 +172,7 @@ self.addEventListener("fetch", (event) => {
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request).catch(async () =>
-        (await matchCache(PRECACHE_NAME, "/")) || Response.error(),
+        (await matchCache(PRECACHE_NAME, APP_SHELL)) || Response.error(),
       ),
     );
     return;
@@ -166,6 +202,7 @@ self.addEventListener("fetch", (event) => {
 }
 
 export default defineConfig(({ mode }) => ({
+  base: process.env.VITE_BASE_PATH || "/",
   resolve: {
     alias: { "@": path.resolve(__dirname, "src") },
   },
@@ -177,6 +214,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   plugins: [
+    cspStylePolicy(mode),
     react(),
     offlineServiceWorker(),
     mode === "analyze" &&
@@ -249,6 +287,48 @@ export default defineConfig(({ mode }) => ({
           branches: 15,
           functions: 30,
           lines: 30,
+        },
+        "src/pages/Settings/hooks/useSettingsPage.js": {
+          statements: 29,
+          branches: 8,
+          functions: 22,
+          lines: 29,
+        },
+        "src/app/project/ProjectContext.jsx": {
+          statements: 87,
+          branches: 69,
+          functions: 94,
+          lines: 90,
+        },
+        "src/repositories/LeakRepository.js": {
+          statements: 87,
+          branches: 82,
+          functions: 78,
+          lines: 91,
+        },
+        "src/repositories/PhotoRepository.js": {
+          statements: 90,
+          branches: 88,
+          functions: 89,
+          lines: 92,
+        },
+        "src/services/projectCleanup.js": {
+          statements: 84,
+          branches: 71,
+          functions: 66,
+          lines: 91,
+        },
+        "src/services/excelImportTransaction.js": {
+          statements: 100,
+          branches: 82,
+          functions: 100,
+          lines: 100,
+        },
+        "src/pages/MapPage/hooks/useOfflineMapActions.js": {
+          statements: 85,
+          branches: 60,
+          functions: 77,
+          lines: 91,
         },
         "src/pages/AddLeak/**": {
           statements: 40,

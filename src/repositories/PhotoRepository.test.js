@@ -228,6 +228,31 @@ describe("PhotoRepository on web", () => {
     expect(mocks.remove).not.toHaveBeenCalledWith("photo_project_ignored");
   });
 
+  it("reports an IndexedDB deletion failure to rollback callers", async () => {
+    mocks.remove.mockResolvedValueOnce(false);
+
+    await expect(
+      PhotoRepository.delete("idb://photo_project_key", {
+        projectId: "project",
+      }),
+    ).resolves.toBe(false);
+  });
+
+  it("rejects bulk deletion when any project photo remains", async () => {
+    mocks.listKeys.mockResolvedValue([
+      "photo_project_1_100",
+      "photo_project_2_200",
+    ]);
+    mocks.remove.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+    await expect(
+      PhotoRepository.deleteProjectPhotos("project"),
+    ).rejects.toMatchObject({
+      code: "PHOTO_DELETE_FAILED",
+      failedKeys: ["photo_project_2_200"],
+    });
+  });
+
   it("deletes only photos belonging to the requested project", async () => {
     mocks.listKeys.mockResolvedValue([
       "photo_project_1_100",

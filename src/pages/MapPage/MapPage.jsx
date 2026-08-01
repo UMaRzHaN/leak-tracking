@@ -50,6 +50,7 @@ export default function MapPage({
     toggleMainLocation,
     toggleLocation,
     handleDownloadArea,
+    cancelDownload,
     handleExportKML,
     focusLeak,
     locateMe,
@@ -69,6 +70,7 @@ export default function MapPage({
         gpsEnabled={gpsEnabled}
         onOpenSheet={() => setOpen(true)}
         onDownload={handleDownloadArea}
+        onCancelDownload={cancelDownload}
         downloading={downloading}
         nearbyOnly={nearbyOnly}
         nearbyRadius={nearbyRadius}

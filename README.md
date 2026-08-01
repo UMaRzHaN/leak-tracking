@@ -440,6 +440,11 @@ npx cap open ios
 - Проверить QR-синхронизацию, камеру, GPS, экспорт/импорт ZIP и Excel на
   реальном Android-устройстве
 - Не хранить тестовые проекты и dev-логи в релизной сборке
+- Для объектов с чувствительными координатами задавать `VITE_TILE_URL` на
+  одобренный или собственный tile server: координаты запросов тайлов раскрывают
+  просматриваемую область внешнему провайдеру
+- Для публикации в подпапке задавать `VITE_BASE_PATH`, например
+  `/leak-tracking/`; manifest и service worker используют тот же scope
 
 ---
 
@@ -455,9 +460,11 @@ npm run test:e2e     # Playwright smoke/e2e tests
 npm run test:perf    # Production build + large dataset performance tests
 npm run lint         # ESLint
 npm run format:check # Prettier check
+npm run typecheck    # TypeScript contracts gate
 npm run cap:sync     # Sync Capacitor и Android Gradle patch
 npm run verify:release # Полный web release-gate
 npm run android:release # Release APK с R8 и lintRelease
+npm run pack:source  # Чистый source ZIP + проверка через npm ci и lint
 ```
 
 Для подписанной Android release-сборки должны быть заданы переменные окружения:
