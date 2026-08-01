@@ -178,6 +178,40 @@ describe("tileCache native storage", () => {
     expect(metadata[`${NATIVE_TILE_CACHE_DIR}/3/2/8.jpg`]).toBeTypeOf("number");
   });
 
+  it("enforces the native quota after a cancelled write", async () => {
+    const controller = new AbortController();
+    const metadata = Object.fromEntries(
+      Array.from({ length: 6_000 }, (_, index) => [
+        `${NATIVE_TILE_CACHE_DIR}/1/1/${index}.jpg`,
+        index + 1,
+      ]),
+    );
+    localStorage.setItem(NATIVE_TILE_CACHE_COUNT_KEY, "6000");
+    localStorage.setItem(
+      NATIVE_TILE_CACHE_METADATA_KEY,
+      JSON.stringify(metadata),
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(["tile"])),
+      }),
+    );
+    filesystem.writeFile.mockImplementation(async () => {
+      controller.abort();
+    });
+
+    await expect(
+      preloadUrls(["https://server/tile/3/2/8.jpg"], {
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+
+    expect(filesystem.deleteFile).toHaveBeenCalledTimes(601);
+    expect(localStorage.getItem(NATIVE_TILE_CACHE_COUNT_KEY)).toBe("5400");
+  });
+
   it("clears files and metadata even when the directory is absent", async () => {
     localStorage.setItem(NATIVE_TILE_CACHE_COUNT_KEY, "4");
     localStorage.setItem(NATIVE_TILE_CACHE_METADATA_KEY, "{}");

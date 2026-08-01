@@ -87,14 +87,14 @@ export function useSettingsPage({
     [activeProject?.id],
   );
 
-  const { vars, setVars } = useProjectVars(activeProject?.id ?? null);
+  const { vars, setVarsAsync } = useProjectVars(activeProject?.id ?? null);
   const applyExcelArchiveMetadata = useCallback(
     async (result, leaks = []) => {
       if (!result || !activeProject?.id) return;
       if (result.project) {
         restoreProjectMetadata(activeProject.id, result.project);
       }
-      if (result.vars) setVars(result.vars);
+      if (result.vars) await setVarsAsync(result.vars);
       if (result.settings) {
         writeProjectSettings(activeProject.id, result.settings);
       }
@@ -105,7 +105,7 @@ export function useSettingsPage({
         await writeProjectSyncState(activeProject.id, result.sync, leaks);
       }
     },
-    [activeProject?.id, restoreProjectMetadata, setVars],
+    [activeProject?.id, restoreProjectMetadata, setVarsAsync],
   );
 
   const captureExcelImportSnapshot = useCallback(async () => {
@@ -453,7 +453,7 @@ export function useSettingsPage({
     } catch (error) {
       notify(
         "error",
-        `${lang === "ru" ? "Не удалось сохранить импорт" : "Failed to save import"}: ${error.message}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}`,
+        `${lang === "ru" ? "Не удалось сохранить импорт" : "Failed to save import"}: ${error.message}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}${error.photoRollbackErrors?.length ? `; photo rollback: ${error.photoRollbackErrors.length}` : ""}`,
       );
     } finally {
       setIsImportingExcel(false);
@@ -522,7 +522,7 @@ export function useSettingsPage({
     } catch (error) {
       notify(
         "error",
-        `${lang === "ru" ? "Не удалось сохранить импорт" : "Failed to save import"}: ${error.message}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}`,
+        `${lang === "ru" ? "Не удалось сохранить импорт" : "Failed to save import"}: ${error.message}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}${error.photoRollbackErrors?.length ? `; photo rollback: ${error.photoRollbackErrors.length}` : ""}`,
       );
     } finally {
       setIsImportingExcel(false);
@@ -585,7 +585,7 @@ export function useSettingsPage({
     } catch (error) {
       notify(
         "error",
-        `${lang === "ru" ? "Не удалось объединить Excel" : "Failed to merge Excel"}: ${error.message}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}`,
+        `${lang === "ru" ? "Не удалось объединить Excel" : "Failed to merge Excel"}: ${error.message}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}${error.photoRollbackErrors?.length ? `; photo rollback: ${error.photoRollbackErrors.length}` : ""}`,
       );
     } finally {
       setIsImportingExcel(false);

@@ -31,7 +31,9 @@ export async function runExcelImportTransaction({
       const results = await Promise.allSettled(
         [...new Set(createdPaths)].map((path) => deletePhoto(path)),
       );
-      const failed = results.filter((result) => result.status === "rejected");
+      const failed = results.filter(
+        (result) => result.status === "rejected" || result.value !== true,
+      );
       if (failed.length) error.photoRollbackErrors = failed;
     }
     throw error;

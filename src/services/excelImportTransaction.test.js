@@ -3,7 +3,7 @@ import { runExcelImportTransaction } from "./excelImportTransaction";
 
 describe("runExcelImportTransaction", () => {
   it("deletes newly created photos after state rollback succeeds", async () => {
-    const deletePhoto = vi.fn().mockResolvedValue(undefined);
+    const deletePhoto = vi.fn().mockResolvedValue(true);
     const rollbackState = vi.fn().mockResolvedValue(undefined);
     const error = new Error("commit failed");
 
@@ -52,7 +52,7 @@ describe("runExcelImportTransaction", () => {
       createdPhotoPaths: ["idb://first"],
     });
     const rollbackState = vi.fn();
-    const deletePhoto = vi.fn().mockResolvedValue(undefined);
+    const deletePhoto = vi.fn().mockResolvedValue(true);
 
     await expect(
       runExcelImportTransaction({
@@ -65,5 +65,22 @@ describe("runExcelImportTransaction", () => {
 
     expect(rollbackState).not.toHaveBeenCalled();
     expect(deletePhoto).toHaveBeenCalledWith("idb://first");
+  });
+
+  it("reports a fulfilled false photo deletion as rollback failure", async () => {
+    const error = Object.assign(new Error("photo failed"), {
+      createdPhotoPaths: ["idb://first"],
+    });
+
+    await expect(
+      runExcelImportTransaction({
+        persistPhotos: vi.fn().mockRejectedValue(error),
+        commit: vi.fn(),
+        rollbackState: vi.fn(),
+        deletePhoto: vi.fn().mockResolvedValue(false),
+      }),
+    ).rejects.toMatchObject({
+      photoRollbackErrors: [expect.objectContaining({ status: "fulfilled" })],
+    });
   });
 });

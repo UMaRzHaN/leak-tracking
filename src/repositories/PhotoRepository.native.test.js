@@ -164,7 +164,7 @@ describe("PhotoRepository on Android", () => {
     expect(mocks.writeFile).not.toHaveBeenCalled();
   });
 
-  it("deletes data paths and absorbs filesystem deletion errors", async () => {
+  it("deletes scoped data paths and surfaces filesystem deletion errors", async () => {
     mocks.deleteFile.mockRejectedValueOnce(new Error("missing"));
 
     await expect(
@@ -172,7 +172,7 @@ describe("PhotoRepository on Android", () => {
         "data://LeakReports/native_delete/photos/photo_1.jpg",
         { folderName: "native_delete" },
       ),
-    ).resolves.toBe(true);
+    ).rejects.toThrow("missing");
     expect(mocks.deleteFile).toHaveBeenCalledWith({
       directory: "DATA",
       path: "LeakReports/native_delete/photos/photo_1.jpg",

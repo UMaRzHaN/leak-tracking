@@ -561,10 +561,20 @@ export async function preloadUrls(
     }
   };
 
-  for (let i = 0; i < toDownload.length; i += concurrency) {
-    throwIfAborted(signal);
-    await Promise.all(toDownload.slice(i, i + concurrency).map(downloadOne));
-    throwIfAborted(signal);
+  try {
+    for (let i = 0; i < toDownload.length; i += concurrency) {
+      throwIfAborted(signal);
+      const results = await Promise.allSettled(
+        toDownload.slice(i, i + concurrency).map(downloadOne),
+      );
+      const rejected = results.find((result) => result.status === "rejected");
+      if (rejected) throw rejected.reason;
+      throwIfAborted(signal);
+    }
+  } finally {
+    // A cancelled native batch may already have written tiles. Reconcile the
+    // hard limit after all workers in that batch settle, even on abort.
+    if (isNative && localSaved > 0) await enforceNativeQuota();
   }
 
   stats.failed = Math.max(
@@ -572,10 +582,7 @@ export async function preloadUrls(
     stats.requested - stats.alreadyCached - stats.saved,
   );
 
-  if (isNative && localSaved > 0) {
-    throwIfAborted(signal);
-    await enforceNativeQuota();
-  } else if (webCache && stats.saved > 0) {
+  if (webCache && stats.saved > 0) {
     throwIfAborted(signal);
     await enforceWebQuota(webCache);
   }

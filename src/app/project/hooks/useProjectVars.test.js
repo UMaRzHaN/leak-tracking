@@ -82,6 +82,29 @@ describe("useProjectVars", () => {
     expect(mocks.markProjectVarsUpdated).toHaveBeenCalledTimes(2);
   });
 
+  it("returns the synchronization promise to transactional callers", async () => {
+    let finishSync;
+    mocks.markProjectVarsUpdated.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishSync = resolve;
+      }),
+    );
+    const { result } = renderHook(() => useProjectVars("project-1", defaults));
+
+    let settled = false;
+    const pending = result.current
+      .setVarsAsync({ ...defaults, pressure: 12 })
+      .then(() => {
+        settled = true;
+      });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    finishSync();
+    await pending;
+    expect(settled).toBe(true);
+  });
+
   it("refreshes only for an external update of the active project", () => {
     localStorage.setItem(
       "app:project-1:vars_v1",

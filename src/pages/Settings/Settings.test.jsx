@@ -24,7 +24,7 @@ vi.mock("@/services/maps/tileCache", () => ({
   clearMapCache: mocks.clearMapCache,
 }));
 vi.mock("@/app/project/hooks/useProjectVars", () => ({
-  useProjectVars: () => ({ vars: {}, setVars: mocks.setVars }),
+  useProjectVars: () => ({ vars: {}, setVarsAsync: mocks.setVars }),
 }));
 vi.mock("@/hooks/usePhotoStorage", () => ({
   usePhotoStorage: () => ({ getPhoto: vi.fn(), savePhoto: vi.fn() }),

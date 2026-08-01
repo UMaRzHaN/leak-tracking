@@ -302,7 +302,7 @@ export const PhotoRepository = {
       await Filesystem.deleteFile({
         directory: Directory.Data,
         path: scopedPath,
-      }).catch(() => {});
+      });
       return true;
     }
 

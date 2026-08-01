@@ -62,24 +62,39 @@ export function useProjectVars(projectId, defaults = defaultVars) {
     }
   }, [projectId, storageKey, defaults, revision]);
 
-  const setVars = useCallback(
+  const setVarsAsync = useCallback(
     (nextVars) => {
+      let syncUpdate = Promise.resolve();
       if (storageKey) {
         localStorage.setItem(storageKey, JSON.stringify(nextVars));
-        markProjectVarsUpdated(projectId);
+        syncUpdate = Promise.resolve(markProjectVarsUpdated(projectId));
       }
       setRevision((r) => r + 1);
+      return syncUpdate;
     },
     [projectId, storageKey],
   );
 
-  const resetVars = useCallback(() => {
+  const setVars = useCallback(
+    (nextVars) => {
+      void setVarsAsync(nextVars);
+    },
+    [setVarsAsync],
+  );
+
+  const resetVarsAsync = useCallback(() => {
+    let syncUpdate = Promise.resolve();
     if (storageKey) {
       localStorage.removeItem(storageKey);
-      markProjectVarsUpdated(projectId);
+      syncUpdate = Promise.resolve(markProjectVarsUpdated(projectId));
     }
     setRevision((r) => r + 1);
+    return syncUpdate;
   }, [projectId, storageKey]);
 
-  return { vars, setVars, resetVars };
+  const resetVars = useCallback(() => {
+    void resetVarsAsync();
+  }, [resetVarsAsync]);
+
+  return { vars, setVars, setVarsAsync, resetVars, resetVarsAsync };
 }
