@@ -1,27 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { useOfflineMapActions } from "./useOfflineMapActions";
+import { useMapFilters } from "./useMapFilters";
+import { useMapSelection } from "./useMapSelection";
+import { useMapExport } from "./useMapExport";
 import { useProjectData } from "@/app/project/ProjectContext";
-import { useActiveLocation } from "@/hooks/useActiveLocation";
-import { getDistanceMeters } from "@/utils/geoUtils";
-import { STATUS } from "@/utils/status";
-import { handleExport } from "@/pages/MapPage/handleExport";
-import { readMonitoringRound } from "@/utils/monitoringRound";
-import {
-  buildLocationFilterFromEnabled,
-  buildSmartLocationSelection,
-  getEnabledLocations,
-  normalizeLocationValue,
-} from "@/utils/locationFilter";
-import {
-  MONITORING_FILTER,
-  filterLeaksByMonitoring,
-} from "@/pages/Monitoring/monitoringDomain";
-import {
-  NEARBY_RADIUS_M,
-  normalizeMultiFilter,
-} from "@/pages/DataBase/hooks/useDataBaseFilters";
-
-const NEARBY_RADIUS_OPTIONS = [100, 500, 1000];
 
 export function useMapPage({
   leaks,
@@ -33,10 +16,8 @@ export function useMapPage({
   const { activeProject } = useProjectData();
   const exportProjectFolder = activeProject?.folderName;
 
-  const mapApiRef = useRef(null);
   const mapModuleRef = useRef(null);
   const containerRef = useRef(null);
-  const latestCoordsRef = useRef(coords);
   const initialCoordsRef = useRef(coords);
   const initialGpsEnabledRef = useRef(gpsEnabled);
   const mapRef = useRef({
@@ -47,276 +28,61 @@ export function useMapPage({
     setHeatmap: null,
     destroy: null,
   });
-  const fittedRef = useRef(false);
-  const distanceCacheRef = useRef(new Map());
-
   const {
-    leaks: normalizedLeaks,
-    locations,
-    main: mainLocationKey,
-    mainLabel: mainLocationLabel,
-    secondary: locationKey,
-    label: locationLabel,
-  } = useActiveLocation(leaks);
+    mapApiRef,
+    latestCoordsRef,
+    mapCenter,
+    setMapCenter,
+    open,
+    setOpen,
+    focusLeak,
+    locateMe,
+  } = useMapSelection({ coords, gpsEnabled, mapRef });
+  const fittedRef = useRef(false);
 
-  const [mapCenter, setMapCenter] = useState(null);
-  const [open, setOpen] = useState(false);
   const [notification, setNotification] = useState(null);
-  const [tileProgress, setTileProgress] = useState(null);
-  const [downloading, setDownloading] = useState(false);
   const [mapReady, setMapReady] = useState(false);
   const [heatmapEnabled, setHeatmapEnabled] = useState(false);
-  const [localNearbyOnly, setLocalNearbyOnly] = useState(false);
-  const [localNearbyRadius, setLocalNearbyRadius] = useState(NEARBY_RADIUS_M);
-  const [localPriorityFilter, setLocalPriorityFilter] = useState([]);
-  const [localStatusFilter, setLocalStatusFilter] = useState([]);
-  const [localMainLocationFilter, setLocalMainLocationFilter] = useState(null);
-  const [localLocationFilter, setLocalLocationFilter] = useState(null);
-  const [localMonitoringFilter, setLocalMonitoringFilter] = useState(
-    MONITORING_FILTER.DUE,
-  );
-  const monitoringRound = useMemo(
-    () => readMonitoringRound(activeProject?.id ?? null),
-    [activeProject?.id],
-  );
-  const monitoringRoundId = monitoringRound?.id ?? null;
-  const monitoringRoundNumber = monitoringRound?.number ?? null;
-  const hasMonitoringRound = Boolean(monitoringRoundId);
-
-  const nearbyOnly = sharedFilters?.nearbyFilter ?? localNearbyOnly;
-  const setNearbyOnly = sharedFilters?.setNearbyFilter ?? setLocalNearbyOnly;
-  const nearbyRadius = sharedFilters?.nearbyRadius ?? localNearbyRadius;
-  const setNearbyRadius =
-    sharedFilters?.setNearbyRadius ?? setLocalNearbyRadius;
-  const priorityFilters = normalizeMultiFilter(
-    sharedFilters?.priorityFilter ?? localPriorityFilter,
-  );
-  const setPriorityFilter =
-    sharedFilters?.setPriorityFilter ?? setLocalPriorityFilter;
-  const statusFilters = normalizeMultiFilter(
-    sharedFilters?.statusFilter ?? localStatusFilter,
-  );
-  const setStatusFilter = sharedFilters?.setFilter ?? setLocalStatusFilter;
-  const monitoringFilter =
-    sharedFilters?.monitoringFilter ?? localMonitoringFilter;
-  const setMonitoringFilter =
-    sharedFilters?.setMonitoringFilter ?? setLocalMonitoringFilter;
-  const sharedSearch = sharedFilters?.search ?? "";
-  const hasSharedLocationFilter =
-    typeof sharedFilters?.setLocationFilter === "function";
-  const locationFilter = hasSharedLocationFilter
-    ? (sharedFilters.locationFilter ?? null)
-    : localLocationFilter;
-  const setLocationFilter = hasSharedLocationFilter
-    ? sharedFilters.setLocationFilter
-    : setLocalLocationFilter;
-  const hasSharedMainLocationFilter =
-    typeof sharedFilters?.setMainLocationFilter === "function";
-  const mainLocationFilter = hasSharedMainLocationFilter
-    ? (sharedFilters.mainLocationFilter ?? null)
-    : localMainLocationFilter;
-  const setMainLocationFilter = hasSharedMainLocationFilter
-    ? sharedFilters.setMainLocationFilter
-    : setLocalMainLocationFilter;
-  const mainLocations = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          normalizedLeaks.map((leak) =>
-            normalizeLocationValue(leak?.[mainLocationKey]),
-          ),
-        ),
-      ),
-    [mainLocationKey, normalizedLeaks],
-  );
-  const enabledMainLocations = useMemo(
-    () =>
-      getEnabledLocations(mainLocations, mainLocationKey, mainLocationFilter),
-    [mainLocationFilter, mainLocationKey, mainLocations],
-  );
-  const enabledLocations = useMemo(
-    () => getEnabledLocations(locations, locationKey, locationFilter),
-    [locationFilter, locationKey, locations],
-  );
+  const {
+    visibleLeaks,
+    markerLeaks,
+    monitoringFilter,
+    hasMonitoringRound,
+    mainLocations,
+    mainLocationLabel,
+    enabledMainLocations,
+    locations,
+    locationLabel,
+    enabledLocations,
+    nearbyOnly,
+    nearbyRadius,
+    nearbyRadiusOptions,
+    priorityFilters,
+    statusFilters,
+    hasGps,
+    setMonitoringFilter,
+    setNearbyOnly,
+    setNearbyRadius,
+    togglePriorityFilter,
+    clearPriorityFilters,
+    toggleStatusFilter,
+    clearStatusFilters,
+    toggleMainLocation,
+    toggleLocation,
+  } = useMapFilters({
+    leaks,
+    coords,
+    gpsEnabled,
+    sharedFilters,
+    activeProjectId: activeProject?.id ?? null,
+    open,
+    mapCenter,
+  });
 
   const notify = useCallback(
     (type, message) => setNotification({ type, message }),
     [],
   );
-
-  useEffect(() => {
-    latestCoordsRef.current = coords;
-  }, [coords]);
-
-  useEffect(() => {
-    const selection = buildSmartLocationSelection(locations, sharedSearch);
-    if (!selection) return;
-    setLocationFilter(
-      buildLocationFilterFromEnabled(locations, locationKey, selection),
-    );
-  }, [locationKey, locations, setLocationFilter, sharedSearch]);
-
-  const toggleMainLocation = useCallback(
-    (location) => {
-      setMainLocationFilter((current) => {
-        const currentEnabled = getEnabledLocations(
-          mainLocations,
-          mainLocationKey,
-          current,
-        );
-        const nextEnabled = {
-          ...currentEnabled,
-          [location]: !currentEnabled[location],
-        };
-        return buildLocationFilterFromEnabled(
-          mainLocations,
-          mainLocationKey,
-          nextEnabled,
-        );
-      });
-    },
-    [mainLocationKey, mainLocations, setMainLocationFilter],
-  );
-
-  const toggleLocation = useCallback(
-    (location) => {
-      setLocationFilter((current) => {
-        const currentEnabled = getEnabledLocations(
-          locations,
-          locationKey,
-          current,
-        );
-        const nextEnabled = {
-          ...currentEnabled,
-          [location]: !currentEnabled[location],
-        };
-        return buildLocationFilterFromEnabled(
-          locations,
-          locationKey,
-          nextEnabled,
-        );
-      });
-    },
-    [locationKey, locations, setLocationFilter],
-  );
-
-  const filteredLeaks = useMemo(
-    () =>
-      normalizedLeaks.filter(
-        (leak) =>
-          enabledLocations[leak._location] &&
-          enabledMainLocations[
-            normalizeLocationValue(leak?.[mainLocationKey])
-          ] &&
-          (statusFilters.length === 0 ||
-            statusFilters.includes(leak.status ?? STATUS.OPEN)) &&
-          (priorityFilters.length === 0 ||
-            priorityFilters.includes(leak.priority ?? null)),
-      ),
-    [
-      normalizedLeaks,
-      enabledLocations,
-      enabledMainLocations,
-      mainLocationKey,
-      statusFilters,
-      priorityFilters,
-    ],
-  );
-
-  const togglePriorityFilter = useCallback(
-    (priority) => {
-      setPriorityFilter((current) => {
-        const values = normalizeMultiFilter(current);
-        return values.includes(priority)
-          ? values.filter((item) => item !== priority)
-          : [...values, priority];
-      });
-    },
-    [setPriorityFilter],
-  );
-
-  const toggleStatusFilter = useCallback(
-    (status) => {
-      setStatusFilter((current) => {
-        const values = normalizeMultiFilter(current);
-        return values.includes(status)
-          ? values.filter((item) => item !== status)
-          : [...values, status];
-      });
-    },
-    [setStatusFilter],
-  );
-
-  const monitoringLeaks = useMemo(
-    () =>
-      filterLeaksByMonitoring(
-        filteredLeaks,
-        hasMonitoringRound ? monitoringFilter : MONITORING_FILTER.ALL,
-        monitoringRoundId,
-        monitoringRoundNumber,
-      ),
-    [
-      filteredLeaks,
-      hasMonitoringRound,
-      monitoringFilter,
-      monitoringRoundId,
-      monitoringRoundNumber,
-    ],
-  );
-
-  const hasGps =
-    gpsEnabled && Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng);
-
-  const visibleLeaks = useMemo(() => {
-    if (nearbyOnly && hasGps) {
-      return monitoringLeaks
-        .map((leak) => ({
-          ...leak,
-          _distance: getDistanceMeters(
-            coords.lat,
-            coords.lng,
-            leak.lat,
-            leak.lng,
-          ),
-        }))
-        .filter((leak) => leak._distance <= nearbyRadius)
-        .sort((left, right) => left._distance - right._distance);
-    }
-
-    // Marker order is irrelevant. Sort by distance only while the user is
-    // viewing the bottom sheet; this avoids cloning 10,000 records on every pan.
-    if (!open || !mapCenter) return monitoringLeaks;
-
-    const roundedLat = Math.round(mapCenter.lat * 1000) / 1000;
-    const roundedLng = Math.round(mapCenter.lng * 1000) / 1000;
-    const cache = distanceCacheRef.current;
-    return monitoringLeaks
-      .map((leak) => {
-        const key = `${leak.id}_${roundedLat}_${roundedLng}`;
-        let distance = cache.get(key);
-        if (distance === undefined) {
-          distance = getDistanceMeters(
-            mapCenter.lat,
-            mapCenter.lng,
-            leak.lat,
-            leak.lng,
-          );
-          if (cache.size > 20_000) cache.delete(cache.keys().next().value);
-          cache.set(key, distance);
-        }
-        return { ...leak, _distance: distance };
-      })
-      .sort((left, right) => left._distance - right._distance);
-  }, [
-    monitoringLeaks,
-    open,
-    mapCenter,
-    nearbyOnly,
-    nearbyRadius,
-    coords,
-    hasGps,
-  ]);
-  const markerLeaks = nearbyOnly ? visibleLeaks : monitoringLeaks;
 
   useEffect(() => {
     let cancelled = false;
@@ -415,11 +181,11 @@ export function useMapPage({
       setMapReady(false);
       mapApiRef.current = null;
     };
-  }, []);
+  }, [mapApiRef, setMapCenter]);
 
   useEffect(() => {
     mapRef.current.setGpsTracking?.(gpsEnabled, latestCoordsRef.current);
-  }, [gpsEnabled, mapReady]);
+  }, [gpsEnabled, latestCoordsRef, mapReady]);
 
   useEffect(() => {
     mapModuleRef.current?.addMarkers?.(
@@ -458,116 +224,15 @@ export function useMapPage({
     mapRef.current.setHeatmap?.(heatmapEnabled ? markerLeaks : []);
   }, [heatmapEnabled, markerLeaks, mapReady]);
 
-  const handleDownloadArea = useCallback(async () => {
-    const map = mapRef.current.map;
-    if (!map || downloading) return;
-
-    setDownloading(true);
-    try {
-      const { preloadUrls, buildTileUrls, buildViewportTileUrls } =
-        await import("@/services/maps/tileCache");
-      const urlSet = new Set();
-      const validLeaks = markerLeaks.filter(
-        (leak) => Number.isFinite(leak.lat) && Number.isFinite(leak.lng),
-      );
-      const zoomFactor = 2 ** 14;
-      const seen = new Set();
-      const uniqueLeaks = validLeaks.filter(({ lat, lng }) => {
-        const tileX = Math.floor(((lng + 180) / 360) * zoomFactor);
-        const latRad = (lat * Math.PI) / 180;
-        const tileY = Math.floor(
-          ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) /
-            2) *
-            zoomFactor,
-        );
-        const key = `${tileX}:${tileY}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-
-      for (const point of uniqueLeaks) {
-        for (const url of buildTileUrls(point.lat, point.lng, 13, 13)) {
-          urlSet.add(url);
-        }
-      }
-
-      const bounds = map.getBounds();
-      for (const url of buildViewportTileUrls(
-        {
-          north: bounds.getNorth(),
-          south: bounds.getSouth(),
-          east: bounds.getEast(),
-          west: bounds.getWest(),
-        },
-        Math.floor(map.getZoom()),
-        Math.floor(map.getZoom()),
-      )) {
-        urlSet.add(url);
-      }
-
-      const urls = [...urlSet];
-      if (urls.length === 0) {
-        notify(
-          "error",
-          lang === "ru" ? "Нет тайлов для скачивания" : "No tiles to download",
-        );
-        return;
-      }
-
-      setTileProgress({ done: 0, total: urls.length, status: null });
-      const stats = await preloadUrls(urls, {
-        onProgress: (done, total) =>
-          setTileProgress({ done, total, status: null }),
-      });
-      const hasAvailableTiles = stats.saved > 0 || stats.alreadyCached > 0;
-      setTileProgress({
-        done: urls.length,
-        total: urls.length,
-        status: hasAvailableTiles ? "success" : "error",
-        stats,
-      });
-    } catch {
-      setTileProgress({ done: 0, total: 0, status: "error" });
-    } finally {
-      setDownloading(false);
-      setTimeout(() => setTileProgress(null), 2500);
-    }
-  }, [downloading, markerLeaks, notify, lang]);
-
-  const handleExportKML = useCallback(async () => {
-    const { saveLeaksKML } = await import("@/pages/MapPage/kml");
-
-    await handleExport({
-      leaks: visibleLeaks,
-      saveFn: () =>
-        saveLeaksKML(
-          visibleLeaks,
-          activeProject?.type,
-          exportProjectFolder,
-          lang,
-        ),
-      onSuccess: (result) =>
-        notify(
-          "success",
-          result?.message ||
-            (lang === "ru"
-              ? "KML-файл успешно экспортирован"
-              : "KML file exported successfully"),
-        ),
-      onError: (message) => notify("error", message),
-      lang,
-    });
-  }, [visibleLeaks, activeProject?.type, exportProjectFolder, notify, lang]);
-
-  const focusLeak = useCallback((leak, zoom) => {
-    mapApiRef.current?.focus?.(leak, zoom);
-  }, []);
-
-  const locateMe = useCallback(() => {
-    if (!gpsEnabled) return;
-    mapRef.current.locateMe?.(latestCoordsRef.current);
-  }, [gpsEnabled]);
+  const { tileProgress, downloading, handleDownloadArea } =
+    useOfflineMapActions({ mapRef, markerLeaks, notify, lang });
+  const { handleExportKML } = useMapExport({
+    visibleLeaks,
+    projectType: activeProject?.type,
+    projectFolder: exportProjectFolder,
+    notify,
+    lang,
+  });
 
   return {
     containerRef,
@@ -590,7 +255,7 @@ export function useMapPage({
     heatmapEnabled,
     nearbyOnly,
     nearbyRadius,
-    nearbyRadiusOptions: NEARBY_RADIUS_OPTIONS,
+    nearbyRadiusOptions,
     priorityFilters,
     statusFilters,
     hasGps,
@@ -599,9 +264,9 @@ export function useMapPage({
     setNearbyOnly,
     setNearbyRadius,
     togglePriorityFilter,
-    clearPriorityFilters: () => setPriorityFilter([]),
+    clearPriorityFilters,
     toggleStatusFilter,
-    clearStatusFilters: () => setStatusFilter([]),
+    clearStatusFilters,
     toggleMainLocation,
     toggleLocation,
     handleDownloadArea,
