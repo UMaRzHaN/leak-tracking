@@ -1,14 +1,28 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function useOfflineMapActions({ mapRef, markerLeaks, notify, lang }) {
   const [tileProgress, setTileProgress] = useState(null);
   const [downloading, setDownloading] = useState(false);
+  const abortControllerRef = useRef(null);
+  const progressTimerRef = useRef(null);
+
+  useEffect(
+    () => () => {
+      abortControllerRef.current?.abort();
+      clearTimeout(progressTimerRef.current);
+    },
+    [],
+  );
 
   const handleDownloadArea = useCallback(async () => {
     const map = mapRef.current.map;
     if (!map || downloading) return;
 
     setDownloading(true);
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    clearTimeout(progressTimerRef.current);
     try {
       const { preloadUrls, buildTileUrls, buildViewportTileUrls } =
         await import("@/services/maps/tileCache");
@@ -63,9 +77,12 @@ export function useOfflineMapActions({ mapRef, markerLeaks, notify, lang }) {
 
       setTileProgress({ done: 0, total: urls.length, status: null });
       const stats = await preloadUrls(urls, {
+        signal: controller.signal,
         onProgress: (done, total) =>
+          !controller.signal.aborted &&
           setTileProgress({ done, total, status: null }),
       });
+      if (controller.signal.aborted) return;
       const hasAvailableTiles = stats.saved > 0 || stats.alreadyCached > 0;
       setTileProgress({
         done: urls.length,
@@ -74,10 +91,20 @@ export function useOfflineMapActions({ mapRef, markerLeaks, notify, lang }) {
         stats,
       });
     } catch {
+      if (controller.signal.aborted) return;
       setTileProgress({ done: 0, total: 0, status: "error" });
     } finally {
-      setDownloading(false);
-      setTimeout(() => setTileProgress(null), 2500);
+      if (
+        abortControllerRef.current === controller &&
+        !controller.signal.aborted
+      ) {
+        abortControllerRef.current = null;
+        setDownloading(false);
+        progressTimerRef.current = setTimeout(
+          () => setTileProgress(null),
+          2500,
+        );
+      }
     }
   }, [downloading, markerLeaks, notify, lang, mapRef]);
 

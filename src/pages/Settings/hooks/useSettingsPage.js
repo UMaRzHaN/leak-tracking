@@ -95,7 +95,7 @@ export function useSettingsPage({
     },
     [activeProject?.id, restoreProjectMetadata, setVars],
   );
-  const { getPhoto: idbGetPhoto, savePhoto } = usePhotoStorage();
+  const { getPhoto: idbGetPhoto, savePhoto, deletePhoto } = usePhotoStorage();
   const projectConfig = useProjectConfig();
   const { hiddenFields, setHiddenFields } = useHiddenFields(
     activeProject?.id ?? null,
@@ -351,9 +351,20 @@ export function useSettingsPage({
     async (leaks) => {
       const { persistExcelImportPhotos } =
         await import("@/services/excelImportService");
-      return persistExcelImportPhotos(leaks, savePhoto);
+      return persistExcelImportPhotos(leaks, savePhoto, {
+        returnTransaction: true,
+      });
     },
     [savePhoto],
+  );
+
+  const rollbackPreparedExcelPhotos = useCallback(
+    async (paths) => {
+      const { rollbackExcelImportPhotos } =
+        await import("@/services/excelImportService");
+      await rollbackExcelImportPhotos(paths, deletePhoto);
+    },
+    [deletePhoto],
   );
 
   const notifyExcelImportProgress = useCallback(() => {
@@ -379,10 +390,12 @@ export function useSettingsPage({
           mode: data.length > 0 ? "append" : "overwrite",
         });
 
+    let photoTransaction;
     try {
       setIsImportingExcel(true);
       notifyExcelImportProgress();
-      const withPhotos = await persistPreparedExcelPhotos(prepared);
+      photoTransaction = await persistPreparedExcelPhotos(prepared);
+      const withPhotos = photoTransaction.leaks;
       await setData?.([...data, ...withPhotos]);
       applyExcelArchiveMetadata(excelImportState.result, withPhotos);
       if (!excelImportState.result?.portableArchive) {
@@ -395,6 +408,10 @@ export function useSettingsPage({
           : `Imported from Excel: ${withPhotos.length} records`,
       );
     } catch (error) {
+      await Promise.resolve(setData?.(data)).catch(() => {});
+      await rollbackPreparedExcelPhotos(
+        photoTransaction?.createdPaths ?? error.createdPhotoPaths ?? [],
+      );
       notify(
         "error",
         `${lang === "ru" ? "Не удалось сохранить импорт" : "Failed to save import"}: ${error.message}`,
@@ -412,6 +429,7 @@ export function useSettingsPage({
     notifyExcelImportProgress,
     persistPreparedExcelPhotos,
     prepareExcelLeaks,
+    rollbackPreparedExcelPhotos,
     saveExcelMonitoringRound,
     setData,
   ]);
@@ -426,6 +444,7 @@ export function useSettingsPage({
       ? leaks
       : prepareExcelLeaks(leaks, { mode: "overwrite" });
 
+    let photoTransaction;
     try {
       setIsImportingExcel(true);
       notifyExcelImportProgress();
@@ -436,7 +455,8 @@ export function useSettingsPage({
         prepared,
         idbGetPhoto,
       );
-      const withPhotos = await persistPreparedExcelPhotos(reconciled.leaks);
+      photoTransaction = await persistPreparedExcelPhotos(reconciled.leaks);
+      const withPhotos = photoTransaction.leaks;
       await setData?.(withPhotos);
       applyExcelArchiveMetadata(excelConflictState.result, withPhotos);
       if (!excelConflictState.result?.portableArchive) {
@@ -449,6 +469,10 @@ export function useSettingsPage({
           : `Project overwritten from Excel (${withPhotos.length} records)`,
       );
     } catch (error) {
+      await Promise.resolve(setData?.(data)).catch(() => {});
+      await rollbackPreparedExcelPhotos(
+        photoTransaction?.createdPaths ?? error.createdPhotoPaths ?? [],
+      );
       notify(
         "error",
         `${lang === "ru" ? "Не удалось сохранить импорт" : "Failed to save import"}: ${error.message}`,
@@ -467,6 +491,7 @@ export function useSettingsPage({
     notifyExcelImportProgress,
     persistPreparedExcelPhotos,
     prepareExcelLeaks,
+    rollbackPreparedExcelPhotos,
     saveExcelMonitoringRound,
     setData,
   ]);
@@ -478,12 +503,14 @@ export function useSettingsPage({
         mode: "merge",
       });
 
+    let photoTransaction;
     try {
       setIsImportingExcel(true);
       notifyExcelImportProgress();
       const { mergeLeaksByFreshness } =
         await import("@/services/projectBackupService");
-      const incomingWithPhotos = await persistPreparedExcelPhotos(incoming);
+      photoTransaction = await persistPreparedExcelPhotos(incoming);
+      const incomingWithPhotos = photoTransaction.leaks;
       const mergeResult = mergeLeaksByFreshness(data, incomingWithPhotos, {
         source: "excel",
         inferredStatusLeakIds: excelConflictState.result?.inferredStatusLeakIds,
@@ -497,6 +524,10 @@ export function useSettingsPage({
           : `Excel merged into project: ${mergeResult.changed} records applied`,
       );
     } catch (error) {
+      await Promise.resolve(setData?.(data)).catch(() => {});
+      await rollbackPreparedExcelPhotos(
+        photoTransaction?.createdPaths ?? error.createdPhotoPaths ?? [],
+      );
       notify(
         "error",
         `${lang === "ru" ? "Не удалось объединить Excel" : "Failed to merge Excel"}: ${error.message}`,
@@ -514,6 +545,7 @@ export function useSettingsPage({
     notifyExcelImportProgress,
     persistPreparedExcelPhotos,
     prepareExcelLeaks,
+    rollbackPreparedExcelPhotos,
     saveExcelMonitoringRound,
     setData,
   ]);

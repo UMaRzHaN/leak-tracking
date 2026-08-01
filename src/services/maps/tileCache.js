@@ -157,13 +157,22 @@ export function buildTileUrls(lat, lng, minZoom, maxZoom) {
   return urls;
 }
 
-async function fetchWithTimeout(url, ms = 10000) {
+function throwIfAborted(signal) {
+  if (signal?.aborted)
+    throw signal.reason ?? new DOMException("Aborted", "AbortError");
+}
+
+async function fetchWithTimeout(url, ms = 10000, signal) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
+  const abort = () => ctrl.abort(signal?.reason);
+  signal?.addEventListener("abort", abort, { once: true });
   try {
+    throwIfAborted(signal);
     return await fetch(url, { mode: "cors", signal: ctrl.signal });
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
   }
 }
 
@@ -225,13 +234,15 @@ async function nativeRead(url) {
   }
 }
 
-async function nativeWrite(url, skipMkdir = false) {
+async function nativeWrite(url, skipMkdir = false, signal) {
   const path = tileFilePath(url);
   if (!path || (await nativeExists(path))) return false;
   try {
-    const response = await fetchWithTimeout(url);
+    throwIfAborted(signal);
+    const response = await fetchWithTimeout(url, 10000, signal);
     if (!response.ok) return false;
     const base64 = await blobToBase64(await response.blob());
+    throwIfAborted(signal);
     if (!skipMkdir) {
       const dir = path.substring(0, path.lastIndexOf("/"));
       await Filesystem.mkdir({
@@ -245,6 +256,7 @@ async function nativeWrite(url, skipMkdir = false) {
       data: base64,
       directory: Directory.Data,
     });
+    throwIfAborted(signal);
     touchMetadata(path);
     return true;
   } catch {
@@ -443,7 +455,7 @@ export function buildViewportTileUrls(bounds, minZoom, maxZoom) {
 
 export async function preloadUrls(
   urls,
-  { onProgress, concurrency = isNative ? 4 : 8 } = {},
+  { onProgress, concurrency = isNative ? 4 : 8, signal } = {},
 ) {
   const stats = {
     requested: urls.length,
@@ -452,6 +464,7 @@ export async function preloadUrls(
     failed: 0,
   };
 
+  throwIfAborted(signal);
   if (urls.length === 0) return stats;
 
   const webCache =
@@ -507,8 +520,12 @@ export async function preloadUrls(
   let localSaved = 0;
 
   const downloadOne = async (url) => {
+    throwIfAborted(signal);
     if (isNative) {
-      const saved = await nativeWrite(url, true).catch(() => false);
+      const saved = await nativeWrite(url, true, signal).catch((error) => {
+        if (signal?.aborted) throw error;
+        return false;
+      });
       if (saved) {
         localSaved++;
         stats.saved++;
@@ -521,15 +538,18 @@ export async function preloadUrls(
         stats.alreadyCached++;
       } else {
         try {
-          const response = await fetchWithTimeout(url);
+          const response = await fetchWithTimeout(url, 10000, signal);
+          throwIfAborted(signal);
           if (response.ok) {
+            throwIfAborted(signal);
             await webCache.put(url, response);
             touchMetadata(url);
             stats.saved++;
           } else {
             stats.failed++;
           }
-        } catch {
+        } catch (error) {
+          if (signal?.aborted) throw error;
           /* таймаут или сеть — пропускаем */
         }
       }
@@ -541,7 +561,9 @@ export async function preloadUrls(
   };
 
   for (let i = 0; i < toDownload.length; i += concurrency) {
+    throwIfAborted(signal);
     await Promise.all(toDownload.slice(i, i + concurrency).map(downloadOne));
+    throwIfAborted(signal);
   }
 
   stats.failed = Math.max(
@@ -550,12 +572,14 @@ export async function preloadUrls(
   );
 
   if (isNative && localSaved > 0) {
+    throwIfAborted(signal);
     localStorage.setItem(
       NATIVE_TILE_CACHE_COUNT_KEY,
       String(getNativeCount() + localSaved),
     );
     await enforceNativeQuota();
   } else if (webCache && stats.saved > 0) {
+    throwIfAborted(signal);
     await enforceWebQuota(webCache);
   }
 

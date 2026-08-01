@@ -361,15 +361,30 @@ async function persistPhotoValue(
   const saved = await savePhoto(blob, storageKey, excludePaths, {
     cleanupOldVersions: false,
     contentHash,
+    returnMetadata: true,
   });
-  return saved ?? value;
+  const result =
+    typeof saved === "string" ? { path: saved, created: true } : saved;
+  if (!result?.path) {
+    throw new Error(`Failed to persist imported photo (${storageKey})`);
+  }
+  return result;
 }
 
-export async function persistExcelImportPhotos(leaks, savePhoto) {
-  if (typeof savePhoto !== "function") return leaks;
+export async function persistExcelImportPhotos(
+  leaks,
+  savePhoto,
+  { returnTransaction = false } = {},
+) {
+  if (typeof savePhoto !== "function") {
+    return returnTransaction ? { leaks, createdPaths: [] } : leaks;
+  }
 
-  return Promise.all(
-    leaks.map(async (leak) => {
+  const createdPaths = [];
+
+  const persistedLeaks = [];
+  try {
+    for (const leak of leaks) {
       const copy = { ...leak };
       const baseKey = String(leak.leak_id ?? leak.id);
       const savedPaths = [];
@@ -381,31 +396,48 @@ export async function persistExcelImportPhotos(leaks, savePhoto) {
             : key === "photo_repair"
               ? "_repair"
               : "";
-        const next = await persistPhotoValue(
+        const result = await persistPhotoValue(
           copy[key],
           savePhoto,
           `${baseKey}${suffix}`,
           [...savedPaths],
         );
-        copy[key] = next;
-        if (next && next !== leak[key]) savedPaths.push(next);
+        copy[key] = result?.path ?? result;
+        if (result?.created) createdPaths.push(result.path);
+        if (copy[key] && copy[key] !== leak[key]) savedPaths.push(copy[key]);
       }
 
       if (Array.isArray(copy.monitoringRecords)) {
-        copy.monitoringRecords = await Promise.all(
-          copy.monitoringRecords.map(async (record, index) => ({
+        copy.monitoringRecords = [];
+        for (const [index, record] of leak.monitoringRecords.entries()) {
+          const result = await persistPhotoValue(
+            record.photo,
+            savePhoto,
+            `${baseKey}_monitoring_${record.id ?? index + 1}`,
+            [...savedPaths],
+          );
+          if (result?.created) createdPaths.push(result.path);
+          copy.monitoringRecords.push({
             ...record,
-            photo: await persistPhotoValue(
-              record.photo,
-              savePhoto,
-              `${baseKey}_monitoring_${record.id ?? index + 1}`,
-              [...savedPaths],
-            ),
-          })),
-        );
+            photo: result?.path ?? result,
+          });
+        }
       }
 
-      return copy;
-    }),
+      persistedLeaks.push(copy);
+    }
+  } catch (error) {
+    error.createdPhotoPaths = [...createdPaths];
+    throw error;
+  }
+  return returnTransaction
+    ? { leaks: persistedLeaks, createdPaths }
+    : persistedLeaks;
+}
+
+export async function rollbackExcelImportPhotos(paths, deletePhoto) {
+  if (typeof deletePhoto !== "function") return;
+  await Promise.allSettled(
+    [...new Set(paths)].map((path) => deletePhoto(path)),
   );
 }

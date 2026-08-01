@@ -668,6 +668,41 @@ describe("parseExcelLeaks", () => {
     expect(persisted[0].monitoringRecords[0].photo).toBe("idb://monitoring");
   });
 
+  it("rejects null photo saves and exposes only newly created paths for rollback", async () => {
+    const firstPhoto = new Blob(["first"], { type: "image/jpeg" });
+    const secondPhoto = new Blob(["second"], { type: "image/jpeg" });
+    const savePhoto = vi
+      .fn()
+      .mockResolvedValueOnce({ path: "idb://created", created: true })
+      .mockResolvedValueOnce(null);
+
+    await expect(
+      persistExcelImportPhotos(
+        [{ id: 1, photo: firstPhoto, photo_repair: secondPhoto }],
+        savePhoto,
+        { returnTransaction: true },
+      ),
+    ).rejects.toMatchObject({
+      createdPhotoPaths: ["idb://created"],
+    });
+  });
+
+  it("does not mark a reused content-addressed photo as newly created", async () => {
+    const transaction = await persistExcelImportPhotos(
+      [{ id: 1, photo: new Blob(["same"], { type: "image/jpeg" }) }],
+      vi.fn().mockResolvedValue({
+        path: "idb://existing",
+        created: false,
+      }),
+      { returnTransaction: true },
+    );
+
+    expect(transaction).toEqual({
+      leaks: [expect.objectContaining({ photo: "idb://existing" })],
+      createdPaths: [],
+    });
+  });
+
   it("restores the exact project snapshot embedded in the xlsx sheet", async () => {
     const { default: ExcelJS } = await import("exceljs");
     const { default: JSZip } = await import("jszip");

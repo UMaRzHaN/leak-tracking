@@ -135,6 +135,27 @@ describe("map tile boundaries", () => {
     expect(onProgress).toHaveBeenLastCalledWith(3, 3, stats);
   });
 
+  it("does not start another download batch after abort", async () => {
+    const controller = new AbortController();
+    cache.match.mockResolvedValue(undefined);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        controller.abort();
+        return { ok: true };
+      }),
+    );
+
+    await expect(
+      preloadUrls(["one", "two"], {
+        concurrency: 1,
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(cache.put).not.toHaveBeenCalled();
+  });
+
   it("returns safe defaults when Cache API calls fail", async () => {
     cachesMock.open.mockRejectedValue(new Error("cache unavailable"));
 

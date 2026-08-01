@@ -32,7 +32,8 @@ export function useLeakDetailsForm({
   }, [editFields, leak, vars]);
 
   useEffect(() => {
-    const revision = `${leak.leak_id}:${leak.updatedAt}`;
+    const identity = leak.id ?? leak.leak_id ?? leak.index ?? "";
+    const revision = `${identity}:${leak.leak_id ?? ""}:${leak.updatedAt ?? ""}`;
     if (previousRevisionRef.current === revision) return;
     resetDraft();
     resetPhoto();

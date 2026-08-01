@@ -184,6 +184,7 @@ export const PhotoRepository = {
     {
       cleanupOldVersions: shouldCleanupOldVersions = true,
       contentHash: rawContentHash = null,
+      returnMetadata = false,
     } = {},
   ) {
     if (!rawPhoto || leakId == null || String(leakId).length === 0) return null;
@@ -205,7 +206,8 @@ export const PhotoRepository = {
       // Content-addressed imports can return the existing object before image
       // compression, avoiding a large temporary canvas/blob allocation.
       if (contentHash && (await idb.get(photoId))) {
-        return `idb://${photoId}`;
+        const path = `idb://${photoId}`;
+        return returnMetadata ? { path, created: false } : path;
       }
       const photo =
         rawPhoto instanceof Blob && !isPhotoPrepared(rawPhoto)
@@ -216,7 +218,10 @@ export const PhotoRepository = {
       const ok = await idb.save(photoId, photo);
       if (!ok) return null;
 
-      if (!shouldCleanupOldVersions) return `idb://${photoId}`;
+      if (!shouldCleanupOldVersions) {
+        const path = `idb://${photoId}`;
+        return returnMetadata ? { path, created: true } : path;
+      }
 
       const excludeKeys = new Set(
         excludePaths.map((p) => p?.replace("idb://", "")).filter(Boolean),
@@ -233,7 +238,8 @@ export const PhotoRepository = {
         }
       }
 
-      return `idb://${photoId}`;
+      const path = `idb://${photoId}`;
+      return returnMetadata ? { path, created: true } : path;
     }
 
     /* MOBILE — Capacitor Filesystem */
@@ -247,7 +253,8 @@ export const PhotoRepository = {
     if (contentHash) {
       try {
         await Filesystem.stat({ path: targetPath, directory: Directory.Data });
-        return `data://${targetPath}`;
+        const path = `data://${targetPath}`;
+        return returnMetadata ? { path, created: false } : path;
       } catch {
         // The content-addressed file does not exist yet.
       }
@@ -275,7 +282,8 @@ export const PhotoRepository = {
       await cleanupOldVersions(folder, leakPart, fileName, excludeFileNames);
     }
 
-    return `data://${targetPath}`;
+    const path = `data://${targetPath}`;
+    return returnMetadata ? { path, created: true } : path;
   },
 
   async delete(path, { projectId, folderName } = {}) {
