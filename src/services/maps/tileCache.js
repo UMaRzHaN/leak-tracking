@@ -256,10 +256,10 @@ async function nativeWrite(url, skipMkdir = false, signal) {
       data: base64,
       directory: Directory.Data,
     });
-    throwIfAborted(signal);
     touchMetadata(path);
     return true;
-  } catch {
+  } catch (error) {
+    if (signal?.aborted) throw error;
     return false;
   }
 }
@@ -527,6 +527,7 @@ export async function preloadUrls(
         return false;
       });
       if (saved) {
+        incrementNativeCount();
         localSaved++;
         stats.saved++;
       } else {
@@ -573,10 +574,6 @@ export async function preloadUrls(
 
   if (isNative && localSaved > 0) {
     throwIfAborted(signal);
-    localStorage.setItem(
-      NATIVE_TILE_CACHE_COUNT_KEY,
-      String(getNativeCount() + localSaved),
-    );
     await enforceNativeQuota();
   } else if (webCache && stats.saved > 0) {
     throwIfAborted(signal);

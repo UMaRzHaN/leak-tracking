@@ -151,6 +151,33 @@ describe("tileCache native storage", () => {
     expect(onProgress).toHaveBeenLastCalledWith(3, 3, stats);
   });
 
+  it("accounts for a tile written immediately before cancellation", async () => {
+    const controller = new AbortController();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(["tile"])),
+      }),
+    );
+    filesystem.writeFile.mockImplementation(async () => {
+      controller.abort();
+    });
+
+    await expect(
+      preloadUrls(["https://server/tile/3/2/8.jpg"], {
+        concurrency: 1,
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+
+    expect(localStorage.getItem(NATIVE_TILE_CACHE_COUNT_KEY)).toBe("1");
+    const metadata = JSON.parse(
+      localStorage.getItem(NATIVE_TILE_CACHE_METADATA_KEY),
+    );
+    expect(metadata[`${NATIVE_TILE_CACHE_DIR}/3/2/8.jpg`]).toBeTypeOf("number");
+  });
+
   it("clears files and metadata even when the directory is absent", async () => {
     localStorage.setItem(NATIVE_TILE_CACHE_COUNT_KEY, "4");
     localStorage.setItem(NATIVE_TILE_CACHE_METADATA_KEY, "{}");

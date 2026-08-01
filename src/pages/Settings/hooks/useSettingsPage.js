@@ -6,9 +6,20 @@ import { useHiddenFields } from "@/app/project/hooks/useHiddenFields";
 import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
 import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import { getMapCacheInfo, clearMapCache } from "@/services/maps/tileCache";
-import { saveMonitoringRound } from "@/utils/monitoringRound";
-import { writeProjectSettings } from "@/app/project/projectSettings";
-import { writeProjectSyncState } from "@/services/projectSyncState";
+import {
+  readMonitoringRound,
+  saveMonitoringRound,
+} from "@/utils/monitoringRound";
+import {
+  readProjectSettings,
+  writeProjectSettings,
+} from "@/app/project/projectSettings";
+import {
+  readProjectSyncStateAsync,
+  writeProjectSyncState,
+} from "@/services/projectSyncState";
+import { STORAGE_KEYS } from "@/app/project/storageKeys";
+import { runExcelImportTransaction } from "@/services/excelImportTransaction";
 import { useBackupActions } from "./useBackupActions";
 import { useProjectActions } from "./useProjectActions";
 import { useSettingsTexts } from "./useSettingsTexts";
@@ -65,6 +76,7 @@ export function useSettingsPage({
     confirmSyncIdEditor,
     cancelSyncIdEditor,
     restoreProjectMetadata,
+    restoreProjectSnapshot,
     ensureProjectSyncId,
   } = useProjectActions({ setCacheInfo, notify });
 
@@ -77,7 +89,7 @@ export function useSettingsPage({
 
   const { vars, setVars } = useProjectVars(activeProject?.id ?? null);
   const applyExcelArchiveMetadata = useCallback(
-    (result, leaks = []) => {
+    async (result, leaks = []) => {
       if (!result || !activeProject?.id) return;
       if (result.project) {
         restoreProjectMetadata(activeProject.id, result.project);
@@ -90,10 +102,42 @@ export function useSettingsPage({
         saveMonitoringRound(activeProject.id, result.monitoringRound ?? null);
       }
       if (result.sync) {
-        writeProjectSyncState(activeProject.id, result.sync, leaks);
+        await writeProjectSyncState(activeProject.id, result.sync, leaks);
       }
     },
     [activeProject?.id, restoreProjectMetadata, setVars],
+  );
+
+  const captureExcelImportSnapshot = useCallback(async () => {
+    const projectId = activeProject?.id;
+    if (!projectId) return null;
+    return {
+      project: { ...activeProject },
+      varsRaw: localStorage.getItem(STORAGE_KEYS.PROJECT_VARS(projectId)),
+      settings: readProjectSettings(projectId),
+      monitoringRound: readMonitoringRound(projectId),
+      sync: await readProjectSyncStateAsync(projectId),
+    };
+  }, [activeProject]);
+
+  const restoreExcelImportSnapshot = useCallback(
+    async (snapshot) => {
+      const projectId = snapshot?.project?.id;
+      if (!projectId) return;
+      if (!restoreProjectSnapshot(projectId, snapshot.project)) {
+        throw new Error("Failed to restore project metadata");
+      }
+      const varsKey = STORAGE_KEYS.PROJECT_VARS(projectId);
+      if (snapshot.varsRaw == null) localStorage.removeItem(varsKey);
+      else localStorage.setItem(varsKey, snapshot.varsRaw);
+      window.dispatchEvent(
+        new CustomEvent("project-vars-updated", { detail: { projectId } }),
+      );
+      writeProjectSettings(projectId, snapshot.settings);
+      saveMonitoringRound(projectId, snapshot.monitoringRound);
+      await writeProjectSyncState(projectId, snapshot.sync, data);
+    },
+    [data, restoreProjectSnapshot],
   );
   const { getPhoto: idbGetPhoto, savePhoto, deletePhoto } = usePhotoStorage();
   const projectConfig = useProjectConfig();
@@ -358,15 +402,6 @@ export function useSettingsPage({
     [savePhoto],
   );
 
-  const rollbackPreparedExcelPhotos = useCallback(
-    async (paths) => {
-      const { rollbackExcelImportPhotos } =
-        await import("@/services/excelImportService");
-      await rollbackExcelImportPhotos(paths, deletePhoto);
-    },
-    [deletePhoto],
-  );
-
   const notifyExcelImportProgress = useCallback(() => {
     notify(
       "info",
@@ -390,17 +425,25 @@ export function useSettingsPage({
           mode: data.length > 0 ? "append" : "overwrite",
         });
 
-    let photoTransaction;
     try {
       setIsImportingExcel(true);
       notifyExcelImportProgress();
-      photoTransaction = await persistPreparedExcelPhotos(prepared);
-      const withPhotos = photoTransaction.leaks;
-      await setData?.([...data, ...withPhotos]);
-      applyExcelArchiveMetadata(excelImportState.result, withPhotos);
-      if (!excelImportState.result?.portableArchive) {
-        saveExcelMonitoringRound(excelImportState.result?.monitoringRound);
-      }
+      const snapshot = await captureExcelImportSnapshot();
+      const withPhotos = await runExcelImportTransaction({
+        persistPhotos: () => persistPreparedExcelPhotos(prepared),
+        commit: async (persisted) => {
+          await setData?.([...data, ...persisted]);
+          await applyExcelArchiveMetadata(excelImportState.result, persisted);
+          if (!excelImportState.result?.portableArchive) {
+            saveExcelMonitoringRound(excelImportState.result?.monitoringRound);
+          }
+        },
+        rollbackState: async () => {
+          await setData?.(data);
+          await restoreExcelImportSnapshot(snapshot);
+        },
+        deletePhoto,
+      });
       notify(
         "success",
         lang === "ru"
@@ -408,13 +451,9 @@ export function useSettingsPage({
           : `Imported from Excel: ${withPhotos.length} records`,
       );
     } catch (error) {
-      await Promise.resolve(setData?.(data)).catch(() => {});
-      await rollbackPreparedExcelPhotos(
-        photoTransaction?.createdPaths ?? error.createdPhotoPaths ?? [],
-      );
       notify(
         "error",
-        `${lang === "ru" ? "Не удалось сохранить импорт" : "Failed to save import"}: ${error.message}`,
+        `${lang === "ru" ? "Не удалось сохранить импорт" : "Failed to save import"}: ${error.message}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}`,
       );
     } finally {
       setIsImportingExcel(false);
@@ -422,14 +461,16 @@ export function useSettingsPage({
     }
   }, [
     applyExcelArchiveMetadata,
+    captureExcelImportSnapshot,
     data,
+    deletePhoto,
     excelImportState.result,
     lang,
     notify,
     notifyExcelImportProgress,
     persistPreparedExcelPhotos,
     prepareExcelLeaks,
-    rollbackPreparedExcelPhotos,
+    restoreExcelImportSnapshot,
     saveExcelMonitoringRound,
     setData,
   ]);
@@ -444,7 +485,6 @@ export function useSettingsPage({
       ? leaks
       : prepareExcelLeaks(leaks, { mode: "overwrite" });
 
-    let photoTransaction;
     try {
       setIsImportingExcel(true);
       notifyExcelImportProgress();
@@ -455,13 +495,24 @@ export function useSettingsPage({
         prepared,
         idbGetPhoto,
       );
-      photoTransaction = await persistPreparedExcelPhotos(reconciled.leaks);
-      const withPhotos = photoTransaction.leaks;
-      await setData?.(withPhotos);
-      applyExcelArchiveMetadata(excelConflictState.result, withPhotos);
-      if (!excelConflictState.result?.portableArchive) {
-        saveExcelMonitoringRound(excelConflictState.result?.monitoringRound);
-      }
+      const snapshot = await captureExcelImportSnapshot();
+      const withPhotos = await runExcelImportTransaction({
+        persistPhotos: () => persistPreparedExcelPhotos(reconciled.leaks),
+        commit: async (persisted) => {
+          await setData?.(persisted);
+          await applyExcelArchiveMetadata(excelConflictState.result, persisted);
+          if (!excelConflictState.result?.portableArchive) {
+            saveExcelMonitoringRound(
+              excelConflictState.result?.monitoringRound,
+            );
+          }
+        },
+        rollbackState: async () => {
+          await setData?.(data);
+          await restoreExcelImportSnapshot(snapshot);
+        },
+        deletePhoto,
+      });
       notify(
         "success",
         lang === "ru"
@@ -469,13 +520,9 @@ export function useSettingsPage({
           : `Project overwritten from Excel (${withPhotos.length} records)`,
       );
     } catch (error) {
-      await Promise.resolve(setData?.(data)).catch(() => {});
-      await rollbackPreparedExcelPhotos(
-        photoTransaction?.createdPaths ?? error.createdPhotoPaths ?? [],
-      );
       notify(
         "error",
-        `${lang === "ru" ? "Не удалось сохранить импорт" : "Failed to save import"}: ${error.message}`,
+        `${lang === "ru" ? "Не удалось сохранить импорт" : "Failed to save import"}: ${error.message}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}`,
       );
     } finally {
       setIsImportingExcel(false);
@@ -483,7 +530,9 @@ export function useSettingsPage({
     }
   }, [
     applyExcelArchiveMetadata,
+    captureExcelImportSnapshot,
     data,
+    deletePhoto,
     excelConflictState.result,
     idbGetPhoto,
     lang,
@@ -491,7 +540,7 @@ export function useSettingsPage({
     notifyExcelImportProgress,
     persistPreparedExcelPhotos,
     prepareExcelLeaks,
-    rollbackPreparedExcelPhotos,
+    restoreExcelImportSnapshot,
     saveExcelMonitoringRound,
     setData,
   ]);
@@ -503,20 +552,30 @@ export function useSettingsPage({
         mode: "merge",
       });
 
-    let photoTransaction;
     try {
       setIsImportingExcel(true);
       notifyExcelImportProgress();
       const { mergeLeaksByFreshness } =
         await import("@/services/projectBackupService");
-      photoTransaction = await persistPreparedExcelPhotos(incoming);
-      const incomingWithPhotos = photoTransaction.leaks;
-      const mergeResult = mergeLeaksByFreshness(data, incomingWithPhotos, {
-        source: "excel",
-        inferredStatusLeakIds: excelConflictState.result?.inferredStatusLeakIds,
+      const snapshot = await captureExcelImportSnapshot();
+      let mergeResult;
+      await runExcelImportTransaction({
+        persistPhotos: () => persistPreparedExcelPhotos(incoming),
+        commit: async (incomingWithPhotos) => {
+          mergeResult = mergeLeaksByFreshness(data, incomingWithPhotos, {
+            source: "excel",
+            inferredStatusLeakIds:
+              excelConflictState.result?.inferredStatusLeakIds,
+          });
+          await setData?.(mergeResult.leaks);
+          saveExcelMonitoringRound(excelConflictState.result?.monitoringRound);
+        },
+        rollbackState: async () => {
+          await setData?.(data);
+          await restoreExcelImportSnapshot(snapshot);
+        },
+        deletePhoto,
       });
-      await setData?.(mergeResult.leaks);
-      saveExcelMonitoringRound(excelConflictState.result?.monitoringRound);
       notify(
         "success",
         lang === "ru"
@@ -524,20 +583,18 @@ export function useSettingsPage({
           : `Excel merged into project: ${mergeResult.changed} records applied`,
       );
     } catch (error) {
-      await Promise.resolve(setData?.(data)).catch(() => {});
-      await rollbackPreparedExcelPhotos(
-        photoTransaction?.createdPaths ?? error.createdPhotoPaths ?? [],
-      );
       notify(
         "error",
-        `${lang === "ru" ? "Не удалось объединить Excel" : "Failed to merge Excel"}: ${error.message}`,
+        `${lang === "ru" ? "Не удалось объединить Excel" : "Failed to merge Excel"}: ${error.message}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}`,
       );
     } finally {
       setIsImportingExcel(false);
       setExcelConflictState({ open: false });
     }
   }, [
+    captureExcelImportSnapshot,
     data,
+    deletePhoto,
     excelConflictState.preparedForMerge,
     excelConflictState.result,
     lang,
@@ -545,7 +602,7 @@ export function useSettingsPage({
     notifyExcelImportProgress,
     persistPreparedExcelPhotos,
     prepareExcelLeaks,
-    rollbackPreparedExcelPhotos,
+    restoreExcelImportSnapshot,
     saveExcelMonitoringRound,
     setData,
   ]);

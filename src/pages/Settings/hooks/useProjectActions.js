@@ -60,6 +60,7 @@ export function useProjectActions({ setCacheInfo, notify }) {
     removeProject,
     replaceProjectSyncId,
     restoreProjectMetadata,
+    restoreProjectSnapshot,
     ensureProjectSyncId,
   } = useProject();
 
@@ -357,6 +358,7 @@ export function useProjectActions({ setCacheInfo, notify }) {
     confirmSyncIdEditor,
     cancelSyncIdEditor,
     restoreProjectMetadata,
+    restoreProjectSnapshot,
     ensureProjectSyncId,
   };
 }
