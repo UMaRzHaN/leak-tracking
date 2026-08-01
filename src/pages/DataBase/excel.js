@@ -5,7 +5,6 @@ const getJSZip = () => import("jszip");
 
 import { isNative } from "@/utils/platform";
 import { logger } from "@/utils/logger";
-import { getMonitoringAnswerLabel } from "@/utils/monitoring";
 import {
   EXCEL_MONITORING_EXPORT_MODE,
   normalizeExcelMonitoringExportMode,
@@ -24,28 +23,27 @@ import {
 import {
   applyColumnFormats,
   formatLeakTime,
-  parseTimestamp,
   toExcelCellValue,
 } from "@/services/excelExport/cellValues";
 import {
   buildMonitoringRoundLookup,
   getMonitoringExportRows,
 } from "@/services/excelExport/monitoringRows";
+import {
+  buildHistorySheet,
+  buildMonitoringSheet,
+} from "@/services/excelExport/auxiliarySheets";
+import {
+  addStructuredTable,
+  getColumnWidth,
+  styleBodyRows,
+  styleHeaderRow,
+  yieldToMainThread,
+} from "@/services/excelExport/sheetLayout";
 
 const DEFAULT_EXPORT_DIR = "export/xlsx";
 const LEAKS_TABLE_THEME = "TableStyleMedium2";
-const MONITORING_TABLE_THEME = "TableStyleMedium4";
 const EXPORT_YIELD_EVERY = 40;
-
-function yieldToMainThread() {
-  return new Promise((resolve) => {
-    if (typeof window !== "undefined" && "requestAnimationFrame" in window) {
-      window.requestAnimationFrame(() => resolve());
-      return;
-    }
-    setTimeout(resolve, 0);
-  });
-}
 
 function getExportFolder(projectFolderName) {
   return projectFolderName
@@ -104,106 +102,6 @@ async function buildPhotoEntries(
 
   return [...leakPhotos, ...monitoringPhotos];
 }
-function toExcelTableName(name) {
-  return String(name)
-    .replace(/[^A-Za-z0-9_]/g, "_")
-    .replace(/^[^A-Za-z_]/, "_")
-    .slice(0, 255);
-}
-
-function getColumnWidth(header, key, rows, { isPhoto = false } = {}) {
-  if (isPhoto) return 18;
-
-  const preferred = {
-    index: 8,
-    leak_id: 12,
-    video_id: 12,
-    status: 16,
-    date: 14,
-    time: 12,
-    resolvedAt: 14,
-    pressure: 12,
-    temperature: 14,
-    temperature_K: 14,
-    leak_speed: 16,
-    leak_speed_kg_h: 16,
-    lat: 14,
-    lng: 14,
-    detectedBy: 20,
-    monitoredBy: 20,
-    roundNumber: 10,
-    result: 22,
-    materials_equipment: 42,
-    leak_description: 42,
-    technological_solution: 42,
-    note: 34,
-    comment: 42,
-  };
-
-  if (preferred[key]) return preferred[key];
-
-  return Math.min(
-    Math.max(
-      header.length,
-      ...rows.map((row) => String(row[key] ?? "").length),
-    ) + 2,
-    36,
-  );
-}
-
-function addStructuredTable(sheet, { name, headers, rows, theme }) {
-  const tableRows = rows.map((row) => [...row]);
-
-  if (typeof sheet.addTable === "function") {
-    sheet.addTable({
-      name: toExcelTableName(name),
-      ref: "A1",
-      headerRow: true,
-      totalsRow: false,
-      style: {
-        theme,
-        showRowStripes: true,
-      },
-      columns: headers.map((header) => ({
-        name: header,
-        filterButton: true,
-      })),
-      rows: tableRows,
-    });
-  } else {
-    sheet.addRow(headers);
-    tableRows.forEach((row) => sheet.addRow(row));
-  }
-
-  sheet.views = [{ state: "frozen", ySplit: 1 }];
-}
-
-function styleHeaderRow(sheet, fillColor) {
-  const headerRow = sheet.getRow(1);
-  headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
-  headerRow.fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: fillColor },
-  };
-  headerRow.alignment = {
-    vertical: "middle",
-    horizontal: "center",
-    wrapText: true,
-  };
-  headerRow.height = 34;
-}
-
-async function styleBodyRows(sheet, rowCount) {
-  for (let rowIndex = 2; rowIndex <= rowCount + 1; rowIndex += 1) {
-    if (rowIndex > 2 && rowIndex % EXPORT_YIELD_EVERY === 0) {
-      await yieldToMainThread();
-    }
-    const row = sheet.getRow(rowIndex);
-    row.alignment = { vertical: "middle", wrapText: true };
-  }
-}
-
 async function buildWorkbook({
   orderedLeaks,
   orderedRows,
@@ -322,214 +220,6 @@ async function createWorkbookBuffer(payload, workerBuilder) {
   }
 
   return buildWorkbookBufferLocally(payload);
-}
-
-async function buildHistorySheet(workbook, orderedLeaks, lang) {
-  const fallbackUser = lang === "ru" ? "Не указан" : "Unknown";
-  const getHistoryUser = (entry, leak) =>
-    entry.user ??
-    entry.monitoredBy ??
-    entry.detectedBy ??
-    leak.detectedBy ??
-    leak.monitoredBy ??
-    fallbackUser;
-
-  const rows = orderedLeaks.flatMap((leak, leakIndex) =>
-    (Array.isArray(leak.history) ? leak.history : []).map((entry) => ({
-      index: leak.index ?? leakIndex + 1,
-      leak_id: leak.leak_id ?? "",
-      date: parseTimestamp(entry.date) ?? "",
-      time: parseTimestamp(entry.date) ?? "",
-      action: entry.action ?? "",
-      user: getHistoryUser(entry, leak),
-      text: entry.text ?? "",
-      to: entry.to ?? "",
-      changes: Array.isArray(entry.changes)
-        ? JSON.stringify(entry.changes)
-        : "",
-    })),
-  );
-
-  if (rows.length === 0) return;
-
-  const sheet = workbook.addWorksheet(
-    lang === "ru" ? "История" : "Leak History",
-  );
-  const headers =
-    lang === "ru"
-      ? [
-          "№",
-          "Бирка",
-          "Дата",
-          "Время",
-          "Действие",
-          "Пользователь",
-          "Текст",
-          "Статус",
-          "Изменения JSON",
-        ]
-      : [
-          "No.",
-          "Tag",
-          "Date",
-          "Time",
-          "Action",
-          "User",
-          "Text",
-          "Status",
-          "Changes JSON",
-        ];
-  const keys = [
-    "index",
-    "leak_id",
-    "date",
-    "time",
-    "action",
-    "user",
-    "text",
-    "to",
-    "changes",
-  ];
-
-  const tableRows = rows.map((row) =>
-    keys.map((key) => toExcelCellValue(key, row[key])),
-  );
-
-  addStructuredTable(sheet, {
-    name: "History",
-    headers,
-    rows: tableRows,
-    theme: "TableStyleMedium9",
-  });
-  styleHeaderRow(sheet, "FF8064A2");
-  await styleBodyRows(sheet, rows.length);
-
-  applyColumnFormats(sheet, keys);
-
-  keys.forEach((key, index) => {
-    sheet.getColumn(index + 1).width = getColumnWidth(
-      headers[index],
-      key,
-      rows,
-    );
-  });
-}
-
-async function buildMonitoringSheet(
-  workbook,
-  orderedLeaks,
-  lang,
-  photoMap,
-  monitoringExportMode,
-) {
-  const roundLookup = buildMonitoringRoundLookup(orderedLeaks);
-  const rows = getMonitoringExportRows(
-    orderedLeaks,
-    roundLookup,
-    monitoringExportMode,
-  ).map((row) => ({
-    ...row,
-    date: parseTimestamp(row.dateRaw) ?? "",
-    time: parseTimestamp(row.dateRaw) ?? "",
-    result: getMonitoringAnswerLabel(row.result, lang),
-  }));
-
-  if (rows.length === 0) return;
-
-  const sheet = workbook.addWorksheet(
-    lang === "ru" ? "Мониторинг" : "Monitoring",
-  );
-  const headers =
-    lang === "ru"
-      ? [
-          "№",
-          "Бирка",
-          "Обход",
-          "Дата мониторинга",
-          "Время мониторинга",
-          "Кто мониторил",
-          "Утечка есть",
-          "МТР",
-          "Комментарий",
-        ]
-      : [
-          "No.",
-          "Tag",
-          "Round",
-          "Monitoring date",
-          "Monitoring time",
-          "Monitored by",
-          "Leak present",
-          "Materials",
-          "Comment",
-        ];
-  const keys = [
-    "index",
-    "leak_id",
-    "roundNumber",
-    "date",
-    "time",
-    "monitoredBy",
-    "result",
-    "materials_equipment",
-    "comment",
-  ];
-
-  headers.push(lang === "ru" ? "Фото мониторинга" : "Monitoring photo");
-  keys.push("photo");
-
-  const tableRows = rows.map((row) =>
-    keys.map((key) => {
-      if (key === "photo" && photoMap[row.photoMapKey]) return "";
-      return toExcelCellValue(key, row[key]);
-    }),
-  );
-
-  addStructuredTable(sheet, {
-    name: "Monitoring",
-    headers,
-    rows: tableRows,
-    theme: MONITORING_TABLE_THEME,
-  });
-  styleHeaderRow(sheet, "FF548235");
-  await styleBodyRows(sheet, rows.length);
-
-  for (const [rowIndex, row] of rows.entries()) {
-    if (rowIndex > 0 && rowIndex % EXPORT_YIELD_EVERY === 0) {
-      await yieldToMainThread();
-    }
-
-    const photoColumnIndex = keys.indexOf("photo") + 1;
-    const photoFile = photoMap[row.photoMapKey];
-    const photoCell = sheet.getRow(rowIndex + 2).getCell(photoColumnIndex);
-
-    if (photoFile) {
-      photoCell.value = {
-        text: lang === "ru" ? "Открыть фото" : "Open photo",
-        hyperlink: photoFile,
-      };
-      photoCell.font = { color: { argb: "FF1155CC" }, underline: true };
-    } else {
-      photoCell.value = row.photo
-        ? lang === "ru"
-          ? "Есть (файл не найден)"
-          : "Present (file missing)"
-        : "";
-    }
-  }
-
-  applyColumnFormats(sheet, keys);
-
-  keys.forEach((key, index) => {
-    sheet.getColumn(index + 1).width = getColumnWidth(
-      headers[index],
-      key,
-      rows,
-      {
-        isPhoto: key === "photo",
-      },
-    );
-  });
 }
 
 async function downloadBlob(
