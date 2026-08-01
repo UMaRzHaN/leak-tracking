@@ -24,44 +24,17 @@ import {
   addBackupSheet,
   BACKUP_SCHEMA_VERSION,
 } from "@/services/excelExport/backupSheet";
+import {
+  applyColumnFormats,
+  formatLeakTime,
+  parseTimestamp,
+  toExcelCellValue,
+} from "@/services/excelExport/cellValues";
 
 const DEFAULT_EXPORT_DIR = "export/xlsx";
 const LEAKS_TABLE_THEME = "TableStyleMedium2";
 const MONITORING_TABLE_THEME = "TableStyleMedium4";
 const EXPORT_YIELD_EVERY = 40;
-const EXCEL_DATE_FORMAT = "dd.mm.yyyy";
-const EXCEL_TIME_FORMAT = "hh:mm:ss";
-const INTEGER_FORMAT = "#,##0";
-const DECIMAL_FORMAT = "#,##0.00";
-const COORDINATE_FORMAT = "0.000000";
-const PERCENT_FORMAT = "0.0%";
-
-const DATE_KEYS = new Set(["date", "repairAt", "resolvedAt"]);
-const TIME_KEYS = new Set(["time"]);
-const INTEGER_KEYS = new Set(["index", "roundNumber", "Operating_mode"]);
-const PERCENT_KEYS = new Set([
-  "flareShare",
-  "utilShare",
-  "gasPercentage",
-  "uncertainty",
-]);
-const WHOLE_PERCENT_KEYS = new Set(["gasPercentage", "uncertainty"]);
-const COORDINATE_KEYS = new Set(["lat", "lng"]);
-const DECIMAL_KEYS = new Set([
-  "pressure",
-  "temperature",
-  "temperature_K",
-  "uncertainty",
-  "gasPercentage",
-  "leak_speed",
-  "leak_speed_kg_h",
-  "weightedGWP",
-  "Total_Annual_Methane_Loss_m3_y",
-  "Total_Annual_Methane_Loss_t_y",
-  "Emissions_t_CO2eq_year",
-  "Emissions_kg_CO2_eq_year",
-]);
-const TEXT_IDENTIFIER_KEYS = new Set(["video_id", "serial_number"]);
 
 function yieldToMainThread() {
   return new Promise((resolve) => {
@@ -202,139 +175,6 @@ function addStructuredTable(sheet, { name, headers, rows, theme }) {
   }
 
   sheet.views = [{ state: "frozen", ySplit: 1 }];
-}
-
-function normalizeExcelCellValue(value) {
-  if (value instanceof Date) {
-    return Number.isFinite(value.getTime()) ? value : "";
-  }
-
-  return value ?? "";
-}
-
-function parseTimestamp(value) {
-  if (value instanceof Date) {
-    return Number.isFinite(value.getTime()) ? value : null;
-  }
-
-  if (typeof value === "number" && Number.isFinite(value)) {
-    const date = new Date(value);
-    return Number.isFinite(date.getTime()) ? date : null;
-  }
-
-  const text = String(value ?? "").trim();
-  if (!text) return null;
-
-  const localized = text.match(
-    /^(\d{1,2})[./](\d{1,2})[./](\d{4})(?:[,\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/,
-  );
-  if (localized) {
-    const [, day, month, year, hour = 0, minute = 0, second = 0] = localized;
-    const date = new Date(
-      Date.UTC(
-        Number(year),
-        Number(month) - 1,
-        Number(day),
-        Number(hour),
-        Number(minute),
-        Number(second),
-      ),
-    );
-    return Number.isFinite(date.getTime()) ? date : null;
-  }
-
-  const numeric = Number(text);
-  const date = new Date(Number.isFinite(numeric) ? numeric : text);
-  return Number.isFinite(date.getTime()) ? date : null;
-}
-
-function toExcelTimeValue(value) {
-  if (value instanceof Date && Number.isFinite(value.getTime())) {
-    return (
-      (value.getHours() * 3600 + value.getMinutes() * 60 + value.getSeconds()) /
-      86_400
-    );
-  }
-
-  const match = String(value ?? "")
-    .trim()
-    .match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
-  if (!match) return normalizeExcelCellValue(value);
-  const [, hours, minutes, seconds = 0] = match;
-  return (
-    (Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds)) / 86_400
-  );
-}
-
-function getExcelColumnFormat(key) {
-  if (DATE_KEYS.has(key)) return EXCEL_DATE_FORMAT;
-  if (TIME_KEYS.has(key)) return EXCEL_TIME_FORMAT;
-  if (key === "leak_id") return "General";
-  if (INTEGER_KEYS.has(key)) return INTEGER_FORMAT;
-  if (PERCENT_KEYS.has(key)) return PERCENT_FORMAT;
-  if (COORDINATE_KEYS.has(key)) return COORDINATE_FORMAT;
-  if (DECIMAL_KEYS.has(key)) return DECIMAL_FORMAT;
-  return "@";
-}
-
-function toExcelCellValue(key, value) {
-  if (value == null || value === "") return "";
-  if (DATE_KEYS.has(key))
-    return parseTimestamp(value) ?? normalizeExcelCellValue(value);
-  if (TIME_KEYS.has(key)) return toExcelTimeValue(value);
-  if (
-    INTEGER_KEYS.has(key) ||
-    PERCENT_KEYS.has(key) ||
-    COORDINATE_KEYS.has(key) ||
-    DECIMAL_KEYS.has(key)
-  ) {
-    const numeric = Number(value);
-    if (!Number.isFinite(numeric)) return normalizeExcelCellValue(value);
-    return WHOLE_PERCENT_KEYS.has(key) ? numeric / 100 : numeric;
-  }
-  if (TEXT_IDENTIFIER_KEYS.has(key)) return String(value);
-  if (key === "leak_id") {
-    if (typeof value === "number") {
-      return Number.isFinite(value) ? value : "";
-    }
-    const text = String(value).trim();
-    if (
-      /^(?:0|[1-9]\d*)$/.test(text) &&
-      text.length <= 15 &&
-      Number.isSafeInteger(Number(text))
-    ) {
-      return Number(text);
-    }
-    return text;
-  }
-  return normalizeExcelCellValue(value);
-}
-
-function applyColumnFormats(sheet, keys) {
-  keys.forEach((key, index) => {
-    sheet.getColumn(index + 1).numFmt = getExcelColumnFormat(key);
-  });
-}
-
-function formatLeakTime(leak, row) {
-  if (row?.time != null && String(row.time).trim() !== "") {
-    return String(row.time).trim();
-  }
-
-  const date = [
-    leak?.createdAt,
-    leak?.created_at,
-    row?.createdAt,
-    row?.created_at,
-    leak?.date,
-    row?.date,
-  ]
-    .map(parseTimestamp)
-    .find(Boolean);
-  if (!date) return "";
-
-  const pad = (value) => String(value).padStart(2, "0");
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
 function styleHeaderRow(sheet, fillColor) {
