@@ -37,6 +37,25 @@ function getTexts(lang, status) {
     hostIdle: ru ? "Показать QR" : "Show QR",
     hostPreparing: ru ? "Подготовка архива..." : "Preparing archive...",
     stop: ru ? "Остановить сеанс" : "Stop session",
+    expiresIn: ru ? "Истекает через" : "Expires in",
+    transferred: ru ? "Передано устройствам" : "Transferred to devices",
+    sessionId: ru ? "ID сеанса" : "Session ID",
+    multiDevice: ru
+      ? "Разрешить импорт на несколько устройств"
+      : "Allow imports to multiple devices",
+    multiDeviceHint: ru
+      ? "По умолчанию QR закрывается после первой успешной передачи."
+      : "By default, the QR closes after the first successful transfer.",
+    approvalTitle: ru ? "Разрешить передачу?" : "Allow transfer?",
+    approvalSync: ru
+      ? "Второе устройство запрашивает двустороннюю синхронизацию."
+      : "The second device requests two-way synchronization.",
+    approvalImport: ru
+      ? "Второе устройство запрашивает копию базы."
+      : "The second device requests a copy of the database.",
+    peerAddress: ru ? "Устройство" : "Device",
+    approve: ru ? "Разрешить" : "Allow",
+    reject: ru ? "Отклонить" : "Reject",
     peerTitle: ru ? "Второй телефон" : "Second phone",
     peerHint: ru
       ? "Сканируйте QR, чтобы синхронизировать текущий проект или импортировать базу как новый проект."
@@ -49,8 +68,8 @@ function getTexts(lang, status) {
     scanImportLoading: ru ? "Импорт по QR..." : "Importing by QR...",
     manualTitle: ru ? "Ручное подключение" : "Manual connection",
     manualHint: ru
-      ? "Используйте IP, порт, код и ключ безопасности, если камера недоступна."
-      : "Use IP, port, code and security key if the camera is unavailable.",
+      ? "Используйте IP, порт, код, ключ безопасности и ID сеанса, если камера недоступна."
+      : "Use IP, port, code, security key and session ID if the camera is unavailable.",
     address: ru ? "Адрес" : "Address",
     code: ru ? "Код" : "Code",
     securityKey: ru ? "Ключ безопасности" : "Security key",
@@ -72,6 +91,7 @@ export default function LocalSyncSection({ sync, lang }) {
   const [port, setPort] = useState("");
   const [code, setCode] = useState("");
   const [securityKey, setSecurityKey] = useState("");
+  const [sessionId, setSessionId] = useState("");
 
   if (!sync.available) return null;
 
@@ -79,11 +99,17 @@ export default function LocalSyncSection({ sync, lang }) {
   const busy = SYNC_BUSY_STATUSES.has(status);
   const texts = getTexts(lang, status);
   const isScanning = status === "scanning" || status === "scanningImport";
+  const remainingSeconds = session?.remainingSeconds ?? 0;
+  const remainingTime = `${String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:${String(remainingSeconds % 60).padStart(2, "0")}`;
 
   return (
     <section className={`${s.section} ${s.localSyncSection}`}>
       {isScanning ? (
-        <div className={s.localSyncScannerOverlay} role="dialog">
+        <div
+          className={s.localSyncScannerOverlay}
+          role="dialog"
+          aria-label={texts.overlay}
+        >
           <div className={s.localSyncScannerFrame} aria-hidden="true" />
           <p>{texts.overlay}</p>
           <button
@@ -93,6 +119,43 @@ export default function LocalSyncSection({ sync, lang }) {
           >
             {texts.cancel}
           </button>
+        </div>
+      ) : null}
+
+      {sync.approvalRequest ? (
+        <div
+          className={s.localSyncApprovalOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-label={texts.approvalTitle}
+        >
+          <div className={s.localSyncApprovalCard}>
+            <strong>{texts.approvalTitle}</strong>
+            <p>
+              {sync.approvalRequest.mode === "sync"
+                ? texts.approvalSync
+                : texts.approvalImport}
+            </p>
+            <span>
+              {texts.peerAddress}: {sync.approvalRequest.peerAddress || "—"}
+            </span>
+            <div className={s.localSyncApprovalActions}>
+              <button
+                type="button"
+                className={s.backupBtn}
+                onClick={sync.rejectPeer}
+              >
+                {texts.reject}
+              </button>
+              <button
+                type="button"
+                className={s.localSyncPrimaryBtn}
+                onClick={sync.approvePeer}
+              >
+                {texts.approve}
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -114,13 +177,21 @@ export default function LocalSyncSection({ sync, lang }) {
 
             {status === "hosting" && session ? (
               <div className={s.localSyncSession}>
+                <span>{texts.expiresIn}</span>
+                <strong className={s.localSyncTimer}>{remainingTime}</strong>
+                <span>{texts.transferred}</span>
+                <strong>{session.transferCount ?? 0}</strong>
                 <span>{texts.address}</span>
                 <strong>{`${session.host}:${session.port}`}</strong>
                 <span>{texts.code}</span>
                 <strong className={s.localSyncCode}>{session.code}</strong>
                 <span>{texts.securityKey}</span>
-                <strong className={s.localSyncCode}>
-                  {session.securityKey}
+                <strong className={s.localSyncFingerprint}>
+                  {session.fingerprint}
+                </strong>
+                <span>{texts.sessionId}</span>
+                <strong className={s.localSyncSessionId}>
+                  {session.sessionId}
                 </strong>
                 {session.qrSvg ? (
                   <img
@@ -144,14 +215,32 @@ export default function LocalSyncSection({ sync, lang }) {
                 </button>
               </div>
             ) : (
-              <button
-                type="button"
-                className={s.localSyncPrimaryBtn}
-                onClick={sync.startHost}
-                disabled={busy}
-              >
-                {status === "preparing" ? texts.hostPreparing : texts.hostIdle}
-              </button>
+              <div className={s.localSyncHostOptions}>
+                <label className={s.localSyncToggle}>
+                  <input
+                    type="checkbox"
+                    checked={sync.allowMultipleImports}
+                    onChange={(event) =>
+                      sync.setAllowMultipleImports(event.target.checked)
+                    }
+                    disabled={busy}
+                  />
+                  <span>
+                    <strong>{texts.multiDevice}</strong>
+                    <small>{texts.multiDeviceHint}</small>
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  className={s.localSyncPrimaryBtn}
+                  onClick={sync.startHost}
+                  disabled={busy}
+                >
+                  {status === "preparing"
+                    ? texts.hostPreparing
+                    : texts.hostIdle}
+                </button>
+              </div>
             )}
           </div>
 
@@ -242,6 +331,24 @@ export default function LocalSyncSection({ sync, lang }) {
                 disabled={busy || status === "hosting"}
               />
             </label>
+            <label className={s.localSyncWideField}>
+              <span>{texts.sessionId}</span>
+              <input
+                value={sessionId}
+                onChange={(event) =>
+                  setSessionId(
+                    event.target.value
+                      .replace(/[^0-9a-f-]/gi, "")
+                      .toLowerCase()
+                      .slice(0, 36),
+                  )
+                }
+                placeholder="00000000-0000-0000-0000-000000000000"
+                autoCapitalize="none"
+                spellCheck={false}
+                disabled={busy || status === "hosting"}
+              />
+            </label>
           </div>
           <button
             type="button"
@@ -252,10 +359,17 @@ export default function LocalSyncSection({ sync, lang }) {
               !host.trim() ||
               !port ||
               code.length !== 6 ||
-              securityKey.length !== 64
+              securityKey.length !== 64 ||
+              sessionId.length !== 36
             }
             onClick={() =>
-              sync.joinHost({ host, port, code, fingerprint: securityKey })
+              sync.joinHost({
+                host,
+                port,
+                code,
+                fingerprint: securityKey,
+                sessionId,
+              })
             }
           >
             {status === "joining" || status === "merging"

@@ -69,7 +69,11 @@ export function useLocalSync({
   ensureProjectSyncId,
 }) {
   const [state, setState] = useState(IDLE_STATE);
+  const [allowMultipleImports, setAllowMultipleImports] = useState(false);
+  const [approvalRequest, setApprovalRequest] = useState(null);
   const hostSessionRef = useRef(null);
+  const approvalResolverRef = useRef(null);
+  const approvalTimeoutRef = useRef(null);
   const mountedRef = useRef(true);
   const operationGenerationRef = useRef(0);
   const activeProjectId = activeProject?.id ?? null;
@@ -137,6 +141,13 @@ export function useLocalSync({
   );
 
   const stopHost = useCallback(async () => {
+    if (approvalTimeoutRef.current) {
+      window.clearTimeout(approvalTimeoutRef.current);
+      approvalTimeoutRef.current = null;
+    }
+    approvalResolverRef.current?.(false);
+    approvalResolverRef.current = null;
+    setApprovalRequest(null);
     const session = hostSessionRef.current;
     hostSessionRef.current = null;
     if (session) await session.stop();
@@ -158,6 +169,66 @@ export function useLocalSync({
       const session = await startLocalSyncHost({
         produceArchive: (writeChunk) => streamArchive(writeChunk, syncProject),
         ...identity,
+        allowMultipleImports,
+        onApprovalRequest: (request) =>
+          new Promise((resolve) => {
+            if (!isProjectOperationCurrent(operation)) {
+              resolve(false);
+              return;
+            }
+            if (approvalTimeoutRef.current) {
+              window.clearTimeout(approvalTimeoutRef.current);
+            }
+            approvalResolverRef.current?.(false);
+            approvalResolverRef.current = resolve;
+            setApprovalRequest(request);
+            approvalTimeoutRef.current = window.setTimeout(() => {
+              approvalTimeoutRef.current = null;
+              approvalResolverRef.current = null;
+              setApprovalRequest(null);
+              resolve(false);
+            }, 25_000);
+          }),
+        onSessionUpdate: (update) => {
+          if (!isProjectOperationCurrent(operation)) return;
+          setStateSafe((current) =>
+            current.status === "hosting" && current.session
+              ? {
+                  ...current,
+                  session: { ...current.session, ...update },
+                }
+              : current,
+          );
+        },
+        onSessionEnded: ({ reason, transferCount }) => {
+          if (!isProjectOperationCurrent(operation)) return;
+          if (approvalTimeoutRef.current) {
+            window.clearTimeout(approvalTimeoutRef.current);
+            approvalTimeoutRef.current = null;
+          }
+          approvalResolverRef.current?.(false);
+          approvalResolverRef.current = null;
+          setApprovalRequest(null);
+          const activeSession = hostSessionRef.current;
+          hostSessionRef.current = null;
+          activeSession?.stop().catch(() => {});
+          setStateSafe(IDLE_STATE);
+          if (reason === "expired") {
+            notify(
+              "info",
+              lang === "ru"
+                ? "Срок действия QR-кода истёк"
+                : "The QR code has expired",
+            );
+          } else if (reason === "completed") {
+            notify(
+              "success",
+              lang === "ru"
+                ? `Передача завершена. Устройств: ${transferCount ?? 1}`
+                : `Transfer complete. Devices: ${transferCount ?? 1}`,
+            );
+          }
+        },
         onArchive: async (file) => {
           if (!isProjectOperationCurrent(operation)) return;
           setStateSafe((current) => ({ ...current, status: "merging" }));
@@ -214,6 +285,7 @@ export function useLocalSync({
     }
   }, [
     activeProject,
+    allowMultipleImports,
     beginProjectOperation,
     streamArchive,
     ensureProjectSyncId,
@@ -226,7 +298,7 @@ export function useLocalSync({
 
   const joinHost = useCallback(
     async (
-      { host, port, code, fingerprint, syncId: connectionSyncId },
+      { host, port, code, fingerprint, syncId: connectionSyncId, sessionId },
       existingOperation,
     ) => {
       const operation = existingOperation ?? beginProjectOperation();
@@ -241,6 +313,7 @@ export function useLocalSync({
           produceArchive: (writeChunk) => streamArchive(writeChunk),
           projectKey: projectKey(activeProject),
           syncId: activeProject?.syncId ?? connectionSyncId ?? "",
+          sessionId,
         });
         if (!isProjectOperationCurrent(operation)) return;
         setStateSafe({ status: "merging", session: null });
@@ -339,11 +412,60 @@ export function useLocalSync({
     cancelLocalSyncQrScan();
   }, []);
 
+  const resolveApproval = useCallback((approved) => {
+    if (approvalTimeoutRef.current) {
+      window.clearTimeout(approvalTimeoutRef.current);
+      approvalTimeoutRef.current = null;
+    }
+    const resolve = approvalResolverRef.current;
+    approvalResolverRef.current = null;
+    setApprovalRequest(null);
+    resolve?.(approved);
+  }, []);
+
+  const approvePeer = useCallback(
+    () => resolveApproval(true),
+    [resolveApproval],
+  );
+  const rejectPeer = useCallback(
+    () => resolveApproval(false),
+    [resolveApproval],
+  );
+
+  useEffect(() => {
+    if (state.status !== "hosting" || !state.session?.expiresAt)
+      return undefined;
+    const updateRemaining = () => {
+      setStateSafe((current) => {
+        if (current.status !== "hosting" || !current.session?.expiresAt) {
+          return current;
+        }
+        const remainingSeconds = Math.max(
+          0,
+          Math.ceil((current.session.expiresAt - Date.now()) / 1000),
+        );
+        return {
+          ...current,
+          session: { ...current.session, remainingSeconds },
+        };
+      });
+    };
+    updateRemaining();
+    const timer = window.setInterval(updateRemaining, 1000);
+    return () => window.clearInterval(timer);
+  }, [setStateSafe, state.session?.expiresAt, state.status]);
+
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
       operationGenerationRef.current += 1;
+      approvalResolverRef.current?.(false);
+      approvalResolverRef.current = null;
+      if (approvalTimeoutRef.current) {
+        window.clearTimeout(approvalTimeoutRef.current);
+        approvalTimeoutRef.current = null;
+      }
       Promise.resolve(cancelLocalSyncQrScan()).catch(() => {});
       hostSessionRef.current?.stop().catch(() => {});
       hostSessionRef.current = null;
@@ -354,6 +476,13 @@ export function useLocalSync({
     if (observedProjectIdRef.current === activeProjectId) return;
     observedProjectIdRef.current = activeProjectId;
     operationGenerationRef.current += 1;
+    approvalResolverRef.current?.(false);
+    approvalResolverRef.current = null;
+    if (approvalTimeoutRef.current) {
+      window.clearTimeout(approvalTimeoutRef.current);
+      approvalTimeoutRef.current = null;
+    }
+    setApprovalRequest(null);
     const activeSession = hostSessionRef.current;
     hostSessionRef.current = null;
     Promise.resolve(cancelLocalSyncQrScan()).catch(() => {});
@@ -370,5 +499,10 @@ export function useLocalSync({
     scanAndJoin,
     scanAndImport,
     cancelScan,
+    allowMultipleImports,
+    setAllowMultipleImports,
+    approvalRequest,
+    approvePeer,
+    rejectPeer,
   };
 }

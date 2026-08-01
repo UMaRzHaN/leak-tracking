@@ -4,6 +4,8 @@ import { assertImportFileSize, IMPORT_LIMITS } from "@/utils/importLimits";
 const LocalSync = registerPlugin("LocalSync");
 const ARCHIVE_CHUNK_BYTES = 512 * 1024;
 const QR_PREFIX = "leak-tracker-sync:";
+const QR_VERSION = 4;
+export const LOCAL_SYNC_SESSION_DURATION_MS = 3 * 60 * 1000;
 let activeQrScanCancel = null;
 let qrScanGeneration = 0;
 
@@ -19,6 +21,20 @@ function assertNativeAndroid() {
       "Локальная синхронизация доступна только в Android-приложении",
     );
   }
+}
+
+function normalizeSessionId(value) {
+  const sessionId = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      sessionId,
+    )
+  ) {
+    throw new Error("Некорректный идентификатор QR-сеанса");
+  }
+  return sessionId;
 }
 
 function blobChunkToBase64(blob) {
@@ -158,15 +174,19 @@ export function buildLocalSyncQrPayload({
   fingerprint,
   projectKey,
   syncId,
+  sessionId,
+  expiresAt,
 }) {
   return `${QR_PREFIX}${JSON.stringify({
-    version: 3,
+    version: QR_VERSION,
     host,
     port: Number(port),
     code,
     fingerprint,
     projectKey,
     syncId,
+    sessionId,
+    expiresAt: Number(expiresAt),
   })}`;
 }
 
@@ -182,6 +202,10 @@ export function parseLocalSyncQrPayload(value, expectedIdentity) {
     throw new Error("QR-код синхронизации повреждён");
   }
 
+  if (payload?.version !== QR_VERSION) {
+    throw new Error("QR-код создан в несовместимой версии приложения");
+  }
+
   const validPort =
     Number.isInteger(payload?.port) &&
     payload.port > 0 &&
@@ -192,12 +216,20 @@ export function parseLocalSyncQrPayload(value, expectedIdentity) {
   const validFingerprint = /^[0-9a-f]{64}$/i.test(
     String(payload?.fingerprint ?? ""),
   );
+  const validSessionId =
+    typeof payload?.sessionId === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      payload.sessionId,
+    );
+  const validExpiresAt =
+    Number.isSafeInteger(payload?.expiresAt) && payload.expiresAt > 0;
   if (
-    payload?.version !== 3 ||
     !validHost ||
     !validPort ||
     !validCode ||
-    !validFingerprint
+    !validFingerprint ||
+    !validSessionId ||
+    !validExpiresAt
   ) {
     throw new Error("QR-код содержит некорректные параметры подключения");
   }
@@ -227,6 +259,8 @@ export function parseLocalSyncQrPayload(value, expectedIdentity) {
     fingerprint: payload.fingerprint.toUpperCase(),
     projectKey: payload.projectKey,
     syncId: payload.syncId,
+    sessionId: payload.sessionId,
+    expiresAt: payload.expiresAt,
   };
 }
 
@@ -344,29 +378,57 @@ export async function startLocalSyncHost({
   produceArchive,
   projectKey,
   syncId,
+  allowMultipleImports = false,
   onArchive,
   onError,
+  onApprovalRequest,
+  onSessionUpdate,
+  onSessionEnded,
 }) {
   assertNativeAndroid();
-  const archiveListener = await LocalSync.addListener(
-    "archiveReceived",
-    async (archiveResult) => {
+  const listeners = [];
+  const addListener = async (eventName, callback) => {
+    const listener = await LocalSync.addListener(eventName, callback);
+    listeners.push(listener);
+    return listener;
+  };
+  const removeListeners = async () => {
+    await Promise.all(
+      listeners.map((listener) => listener.remove().catch(() => {})),
+    );
+  };
+
+  try {
+    await addListener("archiveReceived", async (archiveResult) => {
       try {
         const file = await archiveResultToFile(archiveResult);
         await onArchive(file);
       } catch (error) {
         onError?.(error);
       }
-    },
-  );
-  const errorListener = await LocalSync.addListener(
-    "syncError",
-    ({ message }) => {
+    });
+    await addListener("syncError", ({ message }) => {
       onError?.(new Error(message));
-    },
-  );
+    });
+    await addListener("peerApprovalRequested", async (request) => {
+      let approved = false;
+      try {
+        approved = Boolean(await onApprovalRequest?.(request));
+      } catch {
+        approved = false;
+      }
+      await LocalSync.resolvePeerApproval({
+        requestId: request.requestId,
+        approved,
+      }).catch(() => {});
+    });
+    await addListener("hostSessionUpdated", (session) => {
+      onSessionUpdate?.(session);
+    });
+    await addListener("hostSessionEnded", (event) => {
+      onSessionEnded?.(event);
+    });
 
-  try {
     const archiveToken = await prepareNativeArchive({
       archive,
       produceArchive,
@@ -375,18 +437,18 @@ export async function startLocalSyncHost({
       archiveToken,
       projectKey,
       syncId,
+      allowMultipleImports,
+      sessionDurationMs: LOCAL_SYNC_SESSION_DURATION_MS,
     });
     return {
       ...session,
       async stop() {
         await LocalSync.stopHost();
-        await archiveListener.remove();
-        await errorListener.remove();
+        await removeListeners();
       },
     };
   } catch (error) {
-    await archiveListener.remove();
-    await errorListener.remove();
+    await removeListeners();
     throw error;
   }
 }
@@ -400,6 +462,7 @@ export async function exchangeLocalSyncArchive({
   produceArchive,
   projectKey,
   syncId,
+  sessionId,
 }) {
   assertNativeAndroid();
   const archiveToken = await prepareNativeArchive({
@@ -415,6 +478,7 @@ export async function exchangeLocalSyncArchive({
       archiveToken,
       projectKey,
       syncId,
+      sessionId: normalizeSessionId(sessionId),
     });
     return archiveResultToFile(result);
   } catch (error) {
@@ -430,6 +494,7 @@ export async function fetchLocalSyncArchive({
   fingerprint,
   projectKey,
   syncId,
+  sessionId,
 }) {
   assertNativeAndroid();
   const result = await LocalSync.fetchArchive({
@@ -439,6 +504,7 @@ export async function fetchLocalSyncArchive({
     fingerprint: fingerprint.replace(/[^0-9a-f]/gi, "").toUpperCase(),
     projectKey,
     syncId,
+    sessionId: normalizeSessionId(sessionId),
   });
   return archiveResultToFile(result, "local-sync-import.zip");
 }

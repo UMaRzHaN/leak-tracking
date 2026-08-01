@@ -266,6 +266,41 @@
   gap: 8px;
 }
 
+.localSyncHostOptions {
+  display: grid;
+  gap: 10px;
+}
+
+.localSyncToggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+
+  input {
+    margin-top: 2px;
+  }
+
+  span {
+    display: grid;
+    gap: 2px;
+  }
+
+  strong {
+    color: var(--c-text1);
+    font-size: 12px;
+  }
+
+  small {
+    color: var(--c-text3);
+    font-size: 10px;
+    line-height: 1.35;
+  }
+}
+
 .localSyncSession {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -291,6 +326,23 @@
 .localSyncCode {
   font-size: 22px;
   letter-spacing: 0.16em;
+}
+
+.localSyncTimer {
+  color: var(--c-blue) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.localSyncSessionId {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.localSyncFingerprint {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: 0.015em;
 }
 
 .localSyncQr {
@@ -333,6 +385,10 @@
     color: var(--c-text1);
     font-size: 13px;
   }
+}
+
+.localSyncWideField {
+  grid-column: 1 / -1;
 }
 
 .localSyncWarning {
@@ -387,6 +443,53 @@
   border: 3px solid #fff;
   border-radius: 18px;
   box-shadow: 0 0 0 9999px rgb(0 0 0 / 22%);
+}
+
+.localSyncApprovalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(15 23 42 / 48%);
+  backdrop-filter: blur(4px);
+}
+
+.localSyncApprovalCard {
+  width: min(360px, 100%);
+  padding: 18px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-xl);
+  background: var(--c-surface);
+  box-shadow: 0 22px 60px rgb(15 23 42 / 28%);
+
+  > strong {
+    color: var(--c-text1);
+    font-size: 17px;
+  }
+
+  p {
+    margin: 0;
+    color: var(--c-text2);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  > span {
+    color: var(--c-text3);
+    font-size: 11px;
+    overflow-wrap: anywhere;
+  }
+}
+
+.localSyncApprovalActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
 }
 
 @media (max-width: 420px) {

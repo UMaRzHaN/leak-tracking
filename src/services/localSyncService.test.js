@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const QR_SESSION = {
+  sessionId: "11111111-1111-4111-8111-111111111111",
+  expiresAt: 4_102_444_800_000,
+};
+
 const mocks = vi.hoisted(() => {
   const remove = vi.fn().mockResolvedValue(undefined);
   return {
@@ -18,8 +23,12 @@ const mocks = vi.hoisted(() => {
         port: 49152,
         code: "123456",
         fingerprint: "A".repeat(64),
+        sessionId: "11111111-1111-4111-8111-111111111111",
+        expiresAt: 4_102_444_800_000,
+        transferCount: 0,
       }),
       stopHost: vi.fn().mockResolvedValue({}),
+      resolvePeerApproval: vi.fn().mockResolvedValue({}),
       exchange: vi.fn(),
       fetchArchive: vi.fn(),
     },
@@ -74,6 +83,8 @@ describe("localSyncService", () => {
       port: 49152,
       code: "123456",
       fingerprint: "A".repeat(64),
+      ...QR_SESSION,
+      transferCount: 0,
     });
     barcodeMocks.addListener.mockResolvedValue({
       remove: vi.fn().mockResolvedValue(undefined),
@@ -101,15 +112,73 @@ describe("localSyncService", () => {
       archiveToken: "archive-token",
       projectKey: "upstream:alpha",
       syncId: "sync-alpha-1234",
+      allowMultipleImports: false,
+      sessionDurationMs: 180000,
     });
 
     await session.stop();
     expect(mocks.plugin.stopHost).toHaveBeenCalledOnce();
-    expect(mocks.remove).toHaveBeenCalledTimes(2);
+    expect(mocks.remove).toHaveBeenCalledTimes(5);
+  });
+
+  it("resolves native peer approval requests and forwards session events", async () => {
+    const callbacks = new Map();
+    const removers = [];
+    mocks.plugin.addListener.mockImplementation(async (eventName, callback) => {
+      callbacks.set(eventName, callback);
+      const remove = vi.fn().mockResolvedValue(undefined);
+      removers.push(remove);
+      return { remove };
+    });
+    const onApprovalRequest = vi.fn().mockResolvedValue(true);
+    const onSessionUpdate = vi.fn();
+    const onSessionEnded = vi.fn();
+
+    const session = await startLocalSyncHost({
+      archive: new Blob(["archive"]),
+      projectKey: "upstream:alpha",
+      syncId: "sync-alpha-1234",
+      allowMultipleImports: true,
+      onArchive: vi.fn(),
+      onApprovalRequest,
+      onSessionUpdate,
+      onSessionEnded,
+    });
+
+    const approval = {
+      requestId: "request-1",
+      mode: "import",
+      peerAddress: "192.168.43.22",
+    };
+    await callbacks.get("peerApprovalRequested")(approval);
+    callbacks.get("hostSessionUpdated")({ transferCount: 1 });
+    callbacks.get("hostSessionEnded")({
+      reason: "completed",
+      transferCount: 1,
+    });
+
+    expect(onApprovalRequest).toHaveBeenCalledWith(approval);
+    expect(mocks.plugin.resolvePeerApproval).toHaveBeenCalledWith({
+      requestId: "request-1",
+      approved: true,
+    });
+    expect(onSessionUpdate).toHaveBeenCalledWith({ transferCount: 1 });
+    expect(onSessionEnded).toHaveBeenCalledWith({
+      reason: "completed",
+      transferCount: 1,
+    });
+    expect(mocks.plugin.startHost).toHaveBeenCalledWith(
+      expect.objectContaining({ allowMultipleImports: true }),
+    );
+
+    await session.stop();
+    expect(removers).toHaveLength(5);
+    removers.forEach((remove) => expect(remove).toHaveBeenCalledOnce());
   });
 
   it("round-trips a local session through its QR payload", async () => {
     const payload = buildLocalSyncQrPayload({
+      ...QR_SESSION,
       host: "192.168.43.1",
       port: 49152,
       code: "123456",
@@ -130,6 +199,7 @@ describe("localSyncService", () => {
       fingerprint: "A".repeat(64),
       projectKey: "upstream:alpha",
       syncId: "sync-alpha-1234",
+      ...QR_SESSION,
     });
     expect(() => parseLocalSyncQrPayload(payload, "upstream:beta")).toThrow(
       "QR-код создан для другого проекта",
@@ -142,7 +212,13 @@ describe("localSyncService", () => {
     ).toMatchObject({ syncId: "sync-alpha-1234" });
 
     const svg = await createLocalSyncQrSvg(
-      { host: "192.168.43.1", port: 49152, code: "123456" },
+      {
+        host: "192.168.43.1",
+        port: 49152,
+        code: "123456",
+        fingerprint: "A".repeat(64),
+        ...QR_SESSION,
+      },
       { projectKey: "upstream:alpha", syncId: "sync-alpha-1234" },
     );
     expect(svg).toContain("<svg");
@@ -157,7 +233,8 @@ describe("localSyncService", () => {
     ).toThrow();
 
     const invalidConnection = `leak-tracker-sync:${JSON.stringify({
-      version: 3,
+      version: 4,
+      ...QR_SESSION,
       host: "",
       port: 70000,
       code: "12",
@@ -167,6 +244,7 @@ describe("localSyncService", () => {
     expect(() => parseLocalSyncQrPayload(invalidConnection, null)).toThrow();
 
     const missingSyncId = buildLocalSyncQrPayload({
+      ...QR_SESSION,
       host: "192.168.1.2",
       port: 49152,
       code: "123456",
@@ -176,6 +254,7 @@ describe("localSyncService", () => {
     expect(() => parseLocalSyncQrPayload(missingSyncId, null)).toThrow();
 
     const otherDatabase = buildLocalSyncQrPayload({
+      ...QR_SESSION,
       host: "192.168.1.2",
       port: 49152,
       code: "123456",
@@ -209,7 +288,7 @@ describe("localSyncService", () => {
       token: "too-large-token",
     });
     expect(mocks.plugin.startHost).not.toHaveBeenCalled();
-    expect(mocks.remove).toHaveBeenCalledTimes(2);
+    expect(mocks.remove).toHaveBeenCalledTimes(5);
   });
 
   it("fails closed when native archive preparation omits its limit", async () => {
@@ -250,7 +329,7 @@ describe("localSyncService", () => {
     expect(mocks.plugin.discardArchive).toHaveBeenCalledWith({
       token: "archive-token",
     });
-    expect(mocks.remove).toHaveBeenCalledTimes(2);
+    expect(mocks.remove).toHaveBeenCalledTimes(5);
   });
 
   it("reports unsupported scanning and denied camera permission", async () => {
@@ -274,7 +353,8 @@ describe("localSyncService", () => {
       parseLocalSyncQrPayload(
         "leak-tracker-sync:" +
           JSON.stringify({
-            version: 3,
+            version: 4,
+            ...QR_SESSION,
             host: "192.168.43.1",
             port: 70000,
             code: "123456",
@@ -288,7 +368,8 @@ describe("localSyncService", () => {
       parseLocalSyncQrPayload(
         "leak-tracker-sync:" +
           JSON.stringify({
-            version: 3,
+            version: 4,
+            ...QR_SESSION,
             host: "192.168.43.1",
             port: 49152,
             code: "123456",
@@ -323,6 +404,7 @@ describe("localSyncService", () => {
     barcodeCallback({
       barcode: {
         rawValue: buildLocalSyncQrPayload({
+          ...QR_SESSION,
           host: " 192.168.43.1 ",
           port: 49152,
           code: "123456",
@@ -340,6 +422,7 @@ describe("localSyncService", () => {
       fingerprint: "A".repeat(64),
       projectKey: "upstream:alpha",
       syncId: "sync-alpha-1234",
+      ...QR_SESSION,
     });
     expect(barcodeRemove).toHaveBeenCalledOnce();
     expect(errorRemove).toHaveBeenCalledOnce();
@@ -370,6 +453,7 @@ describe("localSyncService", () => {
     barcodeCallback({
       barcode: {
         rawValue: buildLocalSyncQrPayload({
+          ...QR_SESSION,
           host: "192.168.43.1",
           port: 49152,
           code: "123456",
@@ -487,6 +571,26 @@ describe("localSyncService", () => {
     expect(barcodeMocks.startScan).not.toHaveBeenCalled();
   });
 
+  it("rejects client transfers without a valid session id", async () => {
+    await expect(
+      exchangeLocalSyncArchive({
+        host: "192.168.1.2",
+        port: 49152,
+        code: "123456",
+        fingerprint: "A".repeat(64),
+        archive: new Blob(["outgoing"]),
+        projectKey: "upstream:alpha",
+        syncId: "sync-alpha-1234",
+        sessionId: "invalid",
+      }),
+    ).rejects.toThrow("идентификатор QR-сеанса");
+
+    expect(mocks.plugin.exchange).not.toHaveBeenCalled();
+    expect(mocks.plugin.discardArchive).toHaveBeenCalledWith({
+      token: "archive-token",
+    });
+  });
+
   it("releases the native temporary archive after reading it", async () => {
     mocks.plugin.exchange.mockResolvedValue({
       uri: "file:///cache/incoming.zip",
@@ -509,6 +613,7 @@ describe("localSyncService", () => {
       archive: new Blob(["outgoing"]),
       projectKey: "upstream:alpha",
       syncId: "sync-alpha-1234",
+      sessionId: QR_SESSION.sessionId,
     });
 
     expect(mocks.plugin.releaseReceivedArchive).toHaveBeenCalledWith({
@@ -529,6 +634,7 @@ describe("localSyncService", () => {
         archive: new Blob(["outgoing"]),
         projectKey: "upstream:alpha",
         syncId: "sync-alpha-1234",
+        sessionId: QR_SESSION.sessionId,
       }),
     ).rejects.toThrow("connection lost");
 
@@ -558,6 +664,7 @@ describe("localSyncService", () => {
       fingerprint: "A".repeat(64),
       projectKey: "upstream:alpha",
       syncId: "sync-alpha-1234",
+      sessionId: QR_SESSION.sessionId,
     });
 
     expect(mocks.plugin.prepareArchive).not.toHaveBeenCalled();
@@ -568,6 +675,7 @@ describe("localSyncService", () => {
       fingerprint: "A".repeat(64),
       projectKey: "upstream:alpha",
       syncId: "sync-alpha-1234",
+      sessionId: QR_SESSION.sessionId,
     });
     expect(mocks.plugin.releaseReceivedArchive).toHaveBeenCalledWith({
       archiveToken: "import-token",
@@ -592,6 +700,7 @@ describe("localSyncService", () => {
         fingerprint: "A".repeat(64),
         projectKey: "upstream:alpha",
         syncId: "sync-alpha-1234",
+        sessionId: QR_SESSION.sessionId,
       }),
     ).rejects.toThrow("too large");
 
@@ -617,6 +726,7 @@ describe("localSyncService", () => {
         fingerprint: "A".repeat(64),
         projectKey: "upstream:alpha",
         syncId: "sync-alpha-1234",
+        sessionId: QR_SESSION.sessionId,
       }),
     ).rejects.toThrow("размер");
 
@@ -643,6 +753,7 @@ describe("localSyncService", () => {
         fingerprint: "A".repeat(64),
         projectKey: "upstream:alpha",
         syncId: "sync-alpha-1234",
+        sessionId: QR_SESSION.sessionId,
       }),
     ).rejects.toThrow("путь");
 
@@ -674,6 +785,7 @@ describe("localSyncService", () => {
         fingerprint: "A".repeat(64),
         projectKey: "upstream:alpha",
         syncId: "sync-alpha-1234",
+        sessionId: QR_SESSION.sessionId,
       }),
     ).rejects.toThrow("не совпадает");
 
@@ -701,6 +813,7 @@ describe("localSyncService", () => {
         fingerprint: "A".repeat(64),
         projectKey: "upstream:alpha",
         syncId: "sync-alpha-1234",
+        sessionId: QR_SESSION.sessionId,
       }),
     ).rejects.toThrow("503");
 

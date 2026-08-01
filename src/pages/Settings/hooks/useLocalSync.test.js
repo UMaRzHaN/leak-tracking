@@ -19,6 +19,11 @@ const syncService = await import("@/services/localSyncService");
 const backupService = await import("@/services/projectBackupService");
 const { useLocalSync } = await import("./useLocalSync");
 
+const QR_SESSION = {
+  sessionId: "11111111-1111-4111-8111-111111111111",
+  expiresAt: 4_102_444_800_000,
+};
+
 const activeProject = {
   id: "project-1",
   name: "Alpha Field",
@@ -131,6 +136,7 @@ describe("useLocalSync", () => {
         port: "49152",
         code: "654321",
         fingerprint: "A".repeat(64),
+        sessionId: QR_SESSION.sessionId,
       });
     });
 
@@ -140,6 +146,7 @@ describe("useLocalSync", () => {
         port: "49152",
         code: "654321",
         fingerprint: "A".repeat(64),
+        sessionId: QR_SESSION.sessionId,
         projectKey: "upstream:alpha field",
         produceArchive: expect.any(Function),
       }),
@@ -150,6 +157,130 @@ describe("useLocalSync", () => {
       "sync",
     );
     expect(result.current.state.status).toBe("complete");
+  });
+
+  it("passes the multi-device setting to the native host", async () => {
+    const stop = vi.fn().mockResolvedValue(undefined);
+    syncService.startLocalSyncHost.mockResolvedValue({
+      host: "192.168.43.1",
+      port: 49152,
+      code: "123456",
+      fingerprint: "A".repeat(64),
+      ...QR_SESSION,
+      transferCount: 0,
+      stop,
+    });
+    const { result } = renderSync();
+
+    act(() => result.current.setAllowMultipleImports(true));
+    await act(async () => result.current.startHost());
+
+    expect(syncService.startLocalSyncHost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowMultipleImports: true,
+        onApprovalRequest: expect.any(Function),
+        onSessionUpdate: expect.any(Function),
+        onSessionEnded: expect.any(Function),
+      }),
+    );
+    expect(result.current.allowMultipleImports).toBe(true);
+  });
+
+  it("asks the source user to approve a peer before transfer", async () => {
+    let hostOptions;
+    syncService.startLocalSyncHost.mockImplementation(async (options) => {
+      hostOptions = options;
+      return {
+        host: "192.168.43.1",
+        port: 49152,
+        code: "123456",
+        fingerprint: "A".repeat(64),
+        ...QR_SESSION,
+        transferCount: 0,
+        stop: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    const { result } = renderSync();
+    await act(async () => result.current.startHost());
+
+    let decision;
+    act(() => {
+      decision = hostOptions.onApprovalRequest({
+        requestId: "approval-1",
+        mode: "import",
+        peerAddress: "192.168.43.22",
+      });
+    });
+    await waitFor(() =>
+      expect(result.current.approvalRequest).toMatchObject({
+        requestId: "approval-1",
+        mode: "import",
+      }),
+    );
+
+    act(() => result.current.approvePeer());
+    await expect(decision).resolves.toBe(true);
+    expect(result.current.approvalRequest).toBeNull();
+  });
+
+  it("can reject a peer approval request", async () => {
+    let hostOptions;
+    syncService.startLocalSyncHost.mockImplementation(async (options) => {
+      hostOptions = options;
+      return {
+        host: "192.168.43.1",
+        port: 49152,
+        code: "123456",
+        fingerprint: "A".repeat(64),
+        ...QR_SESSION,
+        transferCount: 0,
+        stop: vi.fn().mockResolvedValue(undefined),
+      };
+    });
+    const { result } = renderSync();
+    await act(async () => result.current.startHost());
+
+    let decision;
+    act(() => {
+      decision = hostOptions.onApprovalRequest({
+        requestId: "approval-2",
+        mode: "sync",
+        peerAddress: "192.168.43.23",
+      });
+    });
+    await waitFor(() => expect(result.current.approvalRequest).not.toBeNull());
+
+    act(() => result.current.rejectPeer());
+    await expect(decision).resolves.toBe(false);
+  });
+
+  it("updates transfer statistics and closes an expired host session", async () => {
+    let hostOptions;
+    const stop = vi.fn().mockResolvedValue(undefined);
+    syncService.startLocalSyncHost.mockImplementation(async (options) => {
+      hostOptions = options;
+      return {
+        host: "192.168.43.1",
+        port: 49152,
+        code: "123456",
+        fingerprint: "A".repeat(64),
+        ...QR_SESSION,
+        transferCount: 0,
+        stop,
+      };
+    });
+    const { result, notify } = renderSync();
+    await act(async () => result.current.startHost());
+
+    act(() => hostOptions.onSessionUpdate({ transferCount: 2 }));
+    expect(result.current.state.session.transferCount).toBe(2);
+
+    act(() =>
+      hostOptions.onSessionEnded({ reason: "expired", transferCount: 2 }),
+    );
+    await waitFor(() => expect(result.current.state.status).toBe("idle"));
+    expect(stop).toHaveBeenCalledOnce();
+    expect(notify).toHaveBeenCalledWith("info", "Срок действия QR-кода истёк");
   });
 
   it("allows an empty matching project to receive its first sync", async () => {
@@ -214,6 +345,7 @@ describe("useLocalSync", () => {
       port: "49152",
       code: "123456",
       fingerprint: "A".repeat(64),
+      ...QR_SESSION,
     });
     syncService.exchangeLocalSyncArchive.mockResolvedValue(incoming);
     const { result } = renderSync();
@@ -244,6 +376,7 @@ describe("useLocalSync", () => {
       port: "49152",
       code: "123456",
       fingerprint: "A".repeat(64),
+      ...QR_SESSION,
       projectKey: "upstream:alpha field",
       syncId: "host-sync-1234",
     };
@@ -316,6 +449,7 @@ describe("useLocalSync", () => {
       port: "49152",
       code: "123456",
       fingerprint: "A".repeat(64),
+      ...QR_SESSION,
       projectKey: "upstream:remote field",
       syncId: "sync-remote-1234",
     };
@@ -559,6 +693,7 @@ describe("useLocalSync", () => {
       port: "49152",
       code: "123456",
       fingerprint: "A".repeat(64),
+      ...QR_SESSION,
       projectKey: "upstream:remote field",
       syncId: "sync-remote-1234",
     });

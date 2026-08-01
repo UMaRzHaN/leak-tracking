@@ -45,6 +45,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledFuture;
@@ -60,8 +61,8 @@ import javax.security.auth.x500.X500Principal;
 
 @CapacitorPlugin(name = "LocalSync")
 public class LocalSyncPlugin extends Plugin {
-    private static final String MAGIC = "LEAK_TRACKER_SYNC_V3";
-    private static final String IMPORT_MAGIC = "LEAK_TRACKER_SYNC_IMPORT_V3";
+    private static final String MAGIC = "LEAK_TRACKER_SYNC_V4";
+    private static final String IMPORT_MAGIC = "LEAK_TRACKER_SYNC_IMPORT_V4";
     // Keep this aligned with IMPORT_LIMITS.maxFileBytes in the WebView. The
     // received archive is exposed to JavaScript after transfer, so accepting a
     // larger native file would only defer rejection until after materialization.
@@ -79,11 +80,16 @@ public class LocalSyncPlugin extends Plugin {
     private static final int MAX_FAILED_AUTH_ATTEMPTS = 5;
     private static final int MAX_CONCURRENT_HANDSHAKES = 4;
     private static final String TLS_KEY_ALIAS_PREFIX = "local-sync-";
+    private static final long DEFAULT_SESSION_DURATION_MS = TimeUnit.MINUTES.toMillis(3);
+    private static final long MIN_SESSION_DURATION_MS = TimeUnit.MINUTES.toMillis(1);
+    private static final long MAX_SESSION_DURATION_MS = TimeUnit.MINUTES.toMillis(5);
+    private static final long PEER_APPROVAL_TIMEOUT_MS = TimeUnit.SECONDS.toMillis(30);
 
     private final ExecutorService executor = Executors.newCachedThreadPool();
     private final ScheduledThreadPoolExecutor cleanupExecutor = createCleanupExecutor();
     private final ConcurrentHashMap<String, File> preparedArchives = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, File> deliveredArchives = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, PendingApproval> pendingApprovals = new ConcurrentHashMap<>();
     private final Object sessionLock = new Object();
     private final SyncConnectionGuard connectionGuard = new SyncConnectionGuard(MAX_CONCURRENT_HANDSHAKES, MAX_FAILED_AUTH_ATTEMPTS);
     private final Set<Socket> activeClientSockets = ConcurrentHashMap.newKeySet();
@@ -94,6 +100,11 @@ public class LocalSyncPlugin extends Plugin {
     private volatile String sessionCode;
     private volatile String hostKeyAlias;
     private volatile String hostCertificateFingerprint;
+    private volatile String hostSessionId;
+    private volatile long hostSessionExpiresAt;
+    private volatile boolean hostAllowsMultipleImports;
+    private volatile int hostCompletedTransfers;
+    private volatile ScheduledFuture<?> hostExpiryTask;
     private final SyncSessionClaim exchangeClaim = new SyncSessionClaim();
 
 
@@ -164,6 +175,11 @@ public class LocalSyncPlugin extends Plugin {
         String archiveToken = call.getString("archiveToken", "");
         String projectKey = normalizeProjectKey(call.getString("projectKey"));
         String syncId = normalizeSyncId(call.getString("syncId"));
+        boolean allowMultipleImports = Boolean.TRUE.equals(
+            call.getBoolean("allowMultipleImports", false)
+        );
+        Long requestedDuration = call.getLong("sessionDurationMs");
+        long sessionDurationMs = clampSessionDuration(requestedDuration);
         File preparedArchive = preparedArchives.remove(archiveToken);
         if (preparedArchive == null || projectKey.isEmpty() || syncId.isEmpty()) {
             if (preparedArchive != null) preparedArchive.delete();
@@ -181,6 +197,10 @@ public class LocalSyncPlugin extends Plugin {
                 hostedProjectKey = projectKey;
                 hostedSyncId = syncId;
                 sessionCode = String.format(Locale.US, "%06d", RANDOM.nextInt(1_000_000));
+                hostSessionId = UUID.randomUUID().toString();
+                hostSessionExpiresAt = System.currentTimeMillis() + sessionDurationMs;
+                hostAllowsMultipleImports = allowMultipleImports;
+                hostCompletedTransfers = 0;
                 connectionGuard.resetFailures();
                 hostKeyAlias = tlsHost.keyAlias;
                 hostCertificateFingerprint = tlsHost.fingerprint;
@@ -190,6 +210,7 @@ public class LocalSyncPlugin extends Plugin {
                 enableModernTls(tlsServerSocket);
                 serverSocket = tlsServerSocket;
                 serverSocket.setReuseAddress(true);
+                scheduleHostExpiry(tlsServerSocket, hostSessionId, sessionDurationMs);
             }
 
             ServerSocket activeServer = serverSocket;
@@ -202,6 +223,10 @@ public class LocalSyncPlugin extends Plugin {
             result.put("fingerprint", hostCertificateFingerprint);
             result.put("securityKey", hostCertificateFingerprint.substring(0, 16));
             result.put("maxArchiveBytes", MAX_ARCHIVE_BYTES);
+            result.put("sessionId", hostSessionId);
+            result.put("expiresAt", hostSessionExpiresAt);
+            result.put("allowMultipleImports", hostAllowsMultipleImports);
+            result.put("transferCount", hostCompletedTransfers);
             call.resolve(result);
         } catch (Exception error) {
             preparedArchive.delete();
@@ -217,6 +242,19 @@ public class LocalSyncPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void resolvePeerApproval(PluginCall call) {
+        String requestId = call.getString("requestId", "");
+        boolean approved = Boolean.TRUE.equals(call.getBoolean("approved", false));
+        PendingApproval approval = pendingApprovals.remove(requestId);
+        if (approval == null) {
+            call.reject("Unknown or expired approval request");
+            return;
+        }
+        approval.resolve(approved);
+        call.resolve();
+    }
+
+    @PluginMethod
     public void exchange(PluginCall call) {
         String host = call.getString("host", "").trim();
         Integer port = call.getInt("port");
@@ -224,19 +262,20 @@ public class LocalSyncPlugin extends Plugin {
         String fingerprint = normalizeFingerprint(call.getString("fingerprint"));
         String projectKey = normalizeProjectKey(call.getString("projectKey"));
         String syncId = normalizeSyncId(call.getString("syncId"));
+        String sessionId = normalizeSessionId(call.getString("sessionId"));
         String archiveToken = call.getString("archiveToken", "");
         File outgoing = preparedArchives.remove(archiveToken);
 
-        if (host.isEmpty() || port == null || code.isEmpty() || !isValidFingerprint(fingerprint) || projectKey.isEmpty() || syncId.isEmpty() || outgoing == null) {
+        if (host.isEmpty() || port == null || code.isEmpty() || !isValidFingerprint(fingerprint) || projectKey.isEmpty() || syncId.isEmpty() || sessionId.isEmpty() || outgoing == null) {
             if (outgoing != null) outgoing.delete();
-            call.reject("host, port, code, fingerprint, projectKey, syncId and archiveToken are required");
+            call.reject("host, port, code, fingerprint, projectKey, syncId, sessionId and archiveToken are required");
             return;
         }
 
         executor.execute(() -> {
             try {
                 assertArchiveSize(outgoing.length());
-                File received = exchangeArchives(host, port, code, fingerprint, projectKey, syncId, outgoing);
+                File received = exchangeArchives(host, port, code, fingerprint, projectKey, syncId, sessionId, outgoing);
                 JSObject result = archiveResult(received);
                 call.resolve(result);
             } catch (Exception error) {
@@ -255,15 +294,16 @@ public class LocalSyncPlugin extends Plugin {
         String fingerprint = normalizeFingerprint(call.getString("fingerprint"));
         String projectKey = normalizeProjectKey(call.getString("projectKey"));
         String syncId = normalizeSyncId(call.getString("syncId"));
+        String sessionId = normalizeSessionId(call.getString("sessionId"));
 
-        if (host.isEmpty() || port == null || code.isEmpty() || !isValidFingerprint(fingerprint) || projectKey.isEmpty() || syncId.isEmpty()) {
-            call.reject("host, port, code, fingerprint, projectKey and syncId are required");
+        if (host.isEmpty() || port == null || code.isEmpty() || !isValidFingerprint(fingerprint) || projectKey.isEmpty() || syncId.isEmpty() || sessionId.isEmpty()) {
+            call.reject("host, port, code, fingerprint, projectKey, syncId and sessionId are required");
             return;
         }
 
         executor.execute(() -> {
             try {
-                File received = fetchArchiveFromHost(host, port, code, fingerprint, projectKey, syncId);
+                File received = fetchArchiveFromHost(host, port, code, fingerprint, projectKey, syncId, sessionId);
                 JSObject result = archiveResult(received);
                 call.resolve(result);
             } catch (Exception error) {
@@ -317,7 +357,7 @@ public class LocalSyncPlugin extends Plugin {
         Socket socket,
         String peerKey
     ) {
-        boolean shouldStop = false;
+        ClientOutcome outcome = ClientOutcome.CONTINUE;
         SyncConnectionDeadline connectionDeadline = createConnectionDeadline(socket);
         try {
             // SO_TIMEOUT only limits the idle gap between reads. This absolute
@@ -336,7 +376,7 @@ public class LocalSyncPlugin extends Plugin {
             synchronized (sessionLock) {
                 if (serverSocket != activeServer) return;
             }
-            shouldStop = handleClient(socket, peerKey, connectionDeadline);
+            outcome = handleClient(socket, peerKey, connectionDeadline);
         } catch (Exception error) {
             // Authentication failures are counted explicitly where the code is
             // checked. A transfer timeout or a broken field Wi-Fi connection
@@ -357,14 +397,21 @@ public class LocalSyncPlugin extends Plugin {
             // after the final bad-code attempt. In that case handleClient
             // cannot return its shouldStop flag, but the session must still
             // close after the configured authentication budget.
-            if (shouldStop || connectionGuard.isFailureLimitReached()) {
+            boolean stopped = false;
+            if (outcome.shouldStop || connectionGuard.isFailureLimitReached()) {
                 synchronized (sessionLock) {
-                    if (serverSocket == activeServer) stopHostInternal();
+                    if (serverSocket == activeServer) {
+                        stopHostInternal();
+                        stopped = true;
+                    }
                 }
+            }
+            if (stopped && outcome.endReason != null) {
+                notifyHostSessionEnded(outcome.endReason, outcome.transferCount);
             }
         }
     }
-    private boolean handleClient(
+    private ClientOutcome handleClient(
         Socket socket,
         String peerKey,
         SyncConnectionDeadline connectionDeadline
@@ -387,23 +434,28 @@ public class LocalSyncPlugin extends Plugin {
             if (!MAGIC.equals(magic)) {
                 connectionGuard.registerPreAuthFailure(peerKey);
                 rejectPeer(output, "Несовместимая версия приложения на втором телефоне");
-                return false;
+                return ClientOutcome.CONTINUE;
             }
             String code = input.readUTF();
 
             String expectedCode = sessionCode;
             String expectedProjectKey = hostedProjectKey;
             String expectedSyncId = hostedSyncId;
+            String expectedSessionId = hostSessionId;
             File outgoing = hostedArchive;
-            if (expectedCode == null || expectedProjectKey == null || expectedSyncId == null || outgoing == null) {
+            if (isHostSessionExpired()) {
+                rejectPeer(output, "Срок действия QR-кода истёк");
+                return ClientOutcome.CONTINUE;
+            }
+            if (expectedCode == null || expectedProjectKey == null || expectedSyncId == null || expectedSessionId == null || outgoing == null) {
                 rejectPeer(output, "Сеанс синхронизации уже остановлен");
-                return false;
+                return ClientOutcome.CONTINUE;
             }
             if (!SyncSecurity.secretsEqual(expectedCode, code)) {
                 boolean shouldStop = registerFailedAuthAttempt();
                 connectionGuard.registerPreAuthFailure(peerKey);
                 rejectPeer(output, "Неверный код подключения");
-                return shouldStop;
+                return shouldStop ? ClientOutcome.STOP : ClientOutcome.CONTINUE;
             }
             connectionDeadline.markAuthenticated();
             connectionGuard.markAuthenticated(peerKey);
@@ -411,26 +463,35 @@ public class LocalSyncPlugin extends Plugin {
 
             String projectKey = normalizeProjectKey(input.readUTF());
             String syncId = normalizeSyncId(input.readUTF());
+            String sessionId = normalizeSessionId(input.readUTF());
             long archiveSize = input.readLong();
             String expectedHash = input.readUTF();
             if (!expectedSyncId.equals(syncId)) {
                 rejectPeer(output, "Проекты имеют разное происхождение и не могут быть объединены");
-                return false;
+                return ClientOutcome.CONTINUE;
+            }
+            if (!expectedSessionId.equals(sessionId)) {
+                rejectPeer(output, "QR-код относится к завершённому сеансу");
+                return ClientOutcome.CONTINUE;
             }
             try {
                 assertArchiveSize(archiveSize);
             } catch (Exception error) {
                 rejectPeer(output, readableMessage(error));
-                return false;
+                return ClientOutcome.CONTINUE;
             }
 
             if (!claimExchangeSession(outgoing)) {
                 rejectPeer(output, "Сеанс синхронизации уже используется другим устройством");
-                return false;
+                return ClientOutcome.CONTINUE;
             }
 
             boolean completed = false;
             try {
+                if (!requestPeerApproval("sync", peerKey, expectedSessionId)) {
+                    rejectPeer(output, "Передача не подтверждена на первом устройстве");
+                    return ClientOutcome.CONTINUE;
+                }
                 socket.setSoTimeout(TRANSFER_TIMEOUT_MS);
                 output.writeUTF("READY");
                 output.flush();
@@ -441,7 +502,7 @@ public class LocalSyncPlugin extends Plugin {
                     received.delete();
                     received = null;
                     rejectPeer(output, "Архив повреждён при передаче");
-                    return false;
+                    return ClientOutcome.CONTINUE;
                 }
 
                 output.writeUTF("OK");
@@ -450,10 +511,11 @@ public class LocalSyncPlugin extends Plugin {
                 sendFile(output, outgoing);
                 output.flush();
 
+                recordCompletedTransfer("sync");
                 notifyListeners("archiveReceived", archiveResult(received));
                 received = null;
                 completed = true;
-                return true;
+                return ClientOutcome.STOP;
             } finally {
                 if (!completed) releaseExchangeSession(outgoing);
             }
@@ -462,7 +524,7 @@ public class LocalSyncPlugin extends Plugin {
         }
     }
 
-    private boolean handleImportClient(
+    private ClientOutcome handleImportClient(
         Socket socket,
         DataInputStream input,
         DataOutputStream output,
@@ -474,16 +536,21 @@ public class LocalSyncPlugin extends Plugin {
         String expectedCode = sessionCode;
         String expectedProjectKey = hostedProjectKey;
         String expectedSyncId = hostedSyncId;
+        String expectedSessionId = hostSessionId;
         File outgoing = hostedArchive;
-        if (expectedCode == null || expectedProjectKey == null || expectedSyncId == null || outgoing == null) {
+        if (isHostSessionExpired()) {
+            rejectPeer(output, "Срок действия QR-кода истёк");
+            return ClientOutcome.CONTINUE;
+        }
+        if (expectedCode == null || expectedProjectKey == null || expectedSyncId == null || expectedSessionId == null || outgoing == null) {
             rejectPeer(output, "Сеанс синхронизации уже остановлен");
-            return false;
+            return ClientOutcome.CONTINUE;
         }
         if (!SyncSecurity.secretsEqual(expectedCode, code)) {
             boolean shouldStop = registerFailedAuthAttempt();
             connectionGuard.registerPreAuthFailure(peerKey);
             rejectPeer(output, "Неверный код подключения");
-            return shouldStop;
+            return shouldStop ? ClientOutcome.STOP : ClientOutcome.CONTINUE;
         }
         connectionDeadline.markAuthenticated();
         connectionGuard.markAuthenticated(peerKey);
@@ -491,17 +558,42 @@ public class LocalSyncPlugin extends Plugin {
 
         String projectKey = normalizeProjectKey(input.readUTF());
         String syncId = normalizeSyncId(input.readUTF());
+        String sessionId = normalizeSessionId(input.readUTF());
         if (!expectedSyncId.equals(syncId) || !expectedProjectKey.equals(projectKey)) {
             rejectPeer(output, "QR-код содержит данные другого сеанса");
-            return false;
+            return ClientOutcome.CONTINUE;
         }
+        if (!expectedSessionId.equals(sessionId)) {
+            rejectPeer(output, "QR-код относится к завершённому сеансу");
+            return ClientOutcome.CONTINUE;
+        }
+        if (!claimExchangeSession(outgoing)) {
+            rejectPeer(output, "Сеанс передачи уже используется другим устройством");
+            return ClientOutcome.CONTINUE;
+        }
+        boolean completed = false;
+        try {
+            if (!requestPeerApproval("import", peerKey, expectedSessionId)) {
+                rejectPeer(output, "Передача не подтверждена на первом устройстве");
+                return ClientOutcome.CONTINUE;
+            }
 
-        output.writeUTF("OK");
-        output.writeLong(outgoing.length());
-        output.writeUTF(sha256(outgoing));
-        sendFile(output, outgoing);
-        output.flush();
-        return false;
+            output.writeUTF("OK");
+            output.writeLong(outgoing.length());
+            output.writeUTF(sha256(outgoing));
+            sendFile(output, outgoing);
+            output.flush();
+            int transferCount = recordCompletedTransfer("import");
+            boolean shouldStop = !hostAllowsMultipleImports;
+            completed = true;
+            return shouldStop
+                ? ClientOutcome.completedImport(transferCount)
+                : ClientOutcome.CONTINUE;
+        } finally {
+            if (!completed || hostAllowsMultipleImports) {
+                releaseExchangeSession(outgoing);
+            }
+        }
     }
 
     private File exchangeArchives(
@@ -511,6 +603,7 @@ public class LocalSyncPlugin extends Plugin {
         String fingerprint,
         String projectKey,
         String syncId,
+        String sessionId,
         File outgoing
     ) throws Exception {
         File received = null;
@@ -526,6 +619,7 @@ public class LocalSyncPlugin extends Plugin {
                 output.writeUTF(code);
                 output.writeUTF(projectKey);
                 output.writeUTF(syncId);
+                output.writeUTF(sessionId);
                 output.writeLong(outgoing.length());
                 output.writeUTF(sha256(outgoing));
                 output.flush();
@@ -569,7 +663,8 @@ public class LocalSyncPlugin extends Plugin {
         String code,
         String fingerprint,
         String projectKey,
-        String syncId
+        String syncId,
+        String sessionId
     ) throws Exception {
         File received = null;
         ScheduledFuture<?> protocolDeadline = null;
@@ -584,6 +679,7 @@ public class LocalSyncPlugin extends Plugin {
                 output.writeUTF(code);
                 output.writeUTF(projectKey);
                 output.writeUTF(syncId);
+                output.writeUTF(sessionId);
                 output.flush();
 
                 String status = input.readUTF();
@@ -952,6 +1048,97 @@ public class LocalSyncPlugin extends Plugin {
         return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 
+    private String normalizeSessionId(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private long clampSessionDuration(Long requestedDuration) {
+        long value = requestedDuration == null
+            ? DEFAULT_SESSION_DURATION_MS
+            : requestedDuration;
+        return Math.max(MIN_SESSION_DURATION_MS, Math.min(MAX_SESSION_DURATION_MS, value));
+    }
+
+    private void scheduleHostExpiry(
+        ServerSocket expectedServer,
+        String expectedSessionId,
+        long durationMs
+    ) {
+        ScheduledFuture<?> previous = hostExpiryTask;
+        if (previous != null) previous.cancel(false);
+        hostExpiryTask = cleanupExecutor.schedule(
+            () -> {
+                int transferCount = 0;
+                boolean expired = false;
+                synchronized (sessionLock) {
+                    if (
+                        serverSocket == expectedServer &&
+                        expectedSessionId.equals(hostSessionId)
+                    ) {
+                        transferCount = hostCompletedTransfers;
+                        stopHostInternal();
+                        expired = true;
+                    }
+                }
+                if (expired) notifyHostSessionEnded("expired", transferCount);
+            },
+            durationMs,
+            TimeUnit.MILLISECONDS
+        );
+    }
+
+    private boolean isHostSessionExpired() {
+        long expiresAt = hostSessionExpiresAt;
+        return expiresAt <= 0 || System.currentTimeMillis() >= expiresAt;
+    }
+
+    private boolean requestPeerApproval(
+        String mode,
+        String peerAddress,
+        String expectedSessionId
+    ) throws InterruptedException {
+        if (isHostSessionExpired() || !expectedSessionId.equals(hostSessionId)) {
+            return false;
+        }
+        String requestId = UUID.randomUUID().toString();
+        PendingApproval approval = new PendingApproval();
+        pendingApprovals.put(requestId, approval);
+
+        JSObject payload = new JSObject();
+        payload.put("requestId", requestId);
+        payload.put("mode", mode);
+        payload.put("peerAddress", peerAddress);
+        payload.put("sessionId", expectedSessionId);
+        payload.put("expiresAt", hostSessionExpiresAt);
+        notifyListeners("peerApprovalRequested", payload);
+
+        boolean resolved = approval.await(PEER_APPROVAL_TIMEOUT_MS);
+        pendingApprovals.remove(requestId, approval);
+        return resolved && approval.isApproved();
+    }
+
+    private int recordCompletedTransfer(String mode) {
+        int transferCount;
+        synchronized (sessionLock) {
+            hostCompletedTransfers += 1;
+            transferCount = hostCompletedTransfers;
+        }
+        JSObject payload = new JSObject();
+        payload.put("transferCount", transferCount);
+        payload.put("mode", mode);
+        payload.put("expiresAt", hostSessionExpiresAt);
+        payload.put("allowMultipleImports", hostAllowsMultipleImports);
+        notifyListeners("hostSessionUpdated", payload);
+        return transferCount;
+    }
+
+    private void notifyHostSessionEnded(String reason, int transferCount) {
+        JSObject payload = new JSObject();
+        payload.put("reason", reason);
+        payload.put("transferCount", transferCount);
+        notifyListeners("hostSessionEnded", payload);
+    }
+
     private String readableMessage(Exception error) {
         return LocalSyncErrorMessages.readable(error);
     }
@@ -1035,6 +1222,9 @@ public class LocalSyncPlugin extends Plugin {
 
     private void stopHostInternal() {
         synchronized (sessionLock) {
+            ScheduledFuture<?> expiryTask = hostExpiryTask;
+            hostExpiryTask = null;
+            if (expiryTask != null) expiryTask.cancel(false);
             ServerSocket socket = serverSocket;
             serverSocket = null;
             if (socket != null) {
@@ -1050,12 +1240,57 @@ public class LocalSyncPlugin extends Plugin {
             hostedProjectKey = null;
             hostedSyncId = null;
             sessionCode = null;
+            hostSessionId = null;
+            hostSessionExpiresAt = 0;
+            hostAllowsMultipleImports = false;
+            hostCompletedTransfers = 0;
+            for (PendingApproval approval : pendingApprovals.values()) {
+                approval.resolve(false);
+            }
+            pendingApprovals.clear();
             exchangeClaim.reset();
             String keyAlias = hostKeyAlias;
             hostKeyAlias = null;
             hostCertificateFingerprint = null;
             deleteTlsKey(keyAlias);
             connectionGuard.resetFailures();
+        }
+    }
+
+    private static final class ClientOutcome {
+        private static final ClientOutcome CONTINUE = new ClientOutcome(false, null, 0);
+        private static final ClientOutcome STOP = new ClientOutcome(true, null, 0);
+
+        private final boolean shouldStop;
+        private final String endReason;
+        private final int transferCount;
+
+        private ClientOutcome(boolean shouldStop, String endReason, int transferCount) {
+            this.shouldStop = shouldStop;
+            this.endReason = endReason;
+            this.transferCount = transferCount;
+        }
+
+        private static ClientOutcome completedImport(int transferCount) {
+            return new ClientOutcome(true, "completed", transferCount);
+        }
+    }
+
+    private static final class PendingApproval {
+        private final CountDownLatch latch = new CountDownLatch(1);
+        private volatile boolean approved;
+
+        private void resolve(boolean value) {
+            approved = value;
+            latch.countDown();
+        }
+
+        private boolean await(long timeoutMs) throws InterruptedException {
+            return latch.await(timeoutMs, TimeUnit.MILLISECONDS);
+        }
+
+        private boolean isApproved() {
+            return approved;
         }
     }
 
