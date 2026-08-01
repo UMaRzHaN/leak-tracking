@@ -1,10 +1,4 @@
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -424,9 +418,7 @@ describe("Monitoring round flow", () => {
     await user.click(screen.getByRole("button", { name: "Swipe monitoring" }));
     expect(screen.getByText("Tag already checked in this round")).toBeTruthy();
 
-    await act(async () => {
-      await user.click(screen.getByRole("button", { name: "Check again" }));
-    });
+    await user.click(screen.getByRole("button", { name: "Check again" }));
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Check" })).toBeTruthy();
@@ -471,18 +463,12 @@ describe("Monitoring round flow", () => {
 
     await user.click(screen.getByRole("button", { name: "All tags 1" }));
     await user.click(screen.getByRole("button", { name: "Swipe monitoring" }));
-    await act(async () => {
-      await user.click(
-        screen.getByRole("button", { name: "Start a new round" }),
-      );
-    });
+    await user.click(screen.getByRole("button", { name: "Start a new round" }));
 
     await waitFor(() => {
       expect(screen.getByText("Start a new round?")).toBeTruthy();
     });
-    await act(async () => {
-      await user.click(screen.getByRole("button", { name: "Start round" }));
-    });
+    await user.click(screen.getByRole("button", { name: "Start round" }));
 
     await waitFor(() => {
       const storedRound = JSON.parse(

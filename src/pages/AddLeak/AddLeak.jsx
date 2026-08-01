@@ -13,6 +13,7 @@ import { priorityFromSpeed } from "@/utils/priority";
 import { dataUrlToBlob } from "@/utils/photoConversion";
 import { isPinkBagEquipment } from "@/utils/calculations/calculations";
 import { isLeakFormDirty } from "@/features/leakForm/utils/isLeakFormDirty";
+import { createRecordId } from "@/utils/createRecordId";
 import Notification from "@/components/ui/Notification/Notification";
 import AddLeakSuccess from "./components/AddLeakSuccess";
 import s from "./AddLeak.module.scss";
@@ -156,7 +157,7 @@ export default function AddLeak({
   const handleAdd = async (row) => {
     return run(async () => {
       try {
-        const id = Date.now() * 1000 + Math.floor(Math.random() * 999);
+        const id = createRecordId();
         const lat = toNullableNumber(coords?.lat);
         const lng = toNullableNumber(coords?.lng);
 
