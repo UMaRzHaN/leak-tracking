@@ -1,36 +1,15 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
-import { useEditablePhoto } from "@/hooks/useEditablePhoto";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
+import { useLeakPhotoActions } from "./useLeakPhotoActions";
+import { useLeakDetailsForm } from "./useLeakDetailsForm";
+import { useLeakDetailsPersistence } from "./useLeakDetailsPersistence";
 import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
-import { isPinkBagEquipment } from "@/utils/calculations/calculations";
-import {
-  CALCULATION_PARAM_KEYS,
-  CALCULATION_PARAMS_VERSION,
-  buildLeakCalculationParams,
-  calculateLeakWithSnapshot,
-  calculationParamsEqual,
-} from "@/utils/calculationParams";
 import { STATUS } from "@/utils/status";
-import { priorityFromSpeed } from "@/utils/priority";
 import { timeAgo } from "@/utils/timeAgo";
-import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
 import { hapticWarning } from "@/utils/haptics";
-import { buildLeakHistoryChanges } from "@/utils/historyChanges";
-import { buildReopenedLeak } from "@/utils/reopenLeak";
-import {
-  changeLeakStatus,
-  deletePhotoIfUnreferenced,
-  getOrphanedOriginalPhoto,
-  resolveLeakRecord,
-  startLeakRepair,
-} from "@/domain/leakLifecycle";
-import {
-  cleanupUncommittedPhotoReplacements,
-  persistPhotoReplacements,
-} from "../utils/persistPhotoReplacements";
 
 const DELETE_ARM_MS = 3000;
 
@@ -72,9 +51,6 @@ export function useLeakDetailsSheet({
   const { deletePhoto } = usePhotoStorage();
   const [mode, setMode] = useState(MODE.VIEW);
   const [activeTab, setActiveTab] = useState(TAB.INFO);
-  const [localEdit, setLocalEdit] = useState({});
-  const [localCalcParams, setLocalCalcParams] = useState({});
-  const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState(null);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
@@ -84,94 +60,60 @@ export function useLeakDetailsSheet({
   const [reopenOpen, setReopenOpen] = useState(false);
   const [statusPickerOpen, setStatusPickerOpen] = useState(false);
 
-  const prevLeakIdRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const fileInputAfterRef = useRef(null);
-  const fileInputRepairRef = useRef(null);
   const deleteTimerRef = useRef(null);
-
   const {
+    fileInputRef,
+    fileInputAfterRef,
+    fileInputRepairRef,
     src,
-    isDirty: isPhotoDirty,
+    srcAfter,
+    srcRepair,
+    isNative,
+    isPhotoDirty,
+    isAfterDirty,
+    isRepairDirty,
     changePhoto,
     choosePhoto,
     savePhoto,
     resetPhoto,
-    isNative,
-  } = useEditablePhoto({
-    initialPath: leak.photo,
-    leakId: String(leak.id),
-    version: leak.updatedAt,
-    excludePaths: [leak.photo_after, leak.photo_repair].filter(Boolean),
-  });
+    changePhotoAfter,
+    choosePhotoAfter,
+    savePhotoAfter,
+    resetPhotoAfter,
+    changePhotoRepair,
+    choosePhotoRepair,
+    savePhotoRepair,
+    resetPhotoRepair,
+  } = useLeakPhotoActions(leak);
 
-  const afterLeakId = `${leak.id}_after`;
   const {
-    src: srcAfter,
-    isDirty: isAfterDirty,
-    changePhoto: changePhotoAfter,
-    choosePhoto: choosePhotoAfter,
-    savePhoto: savePhotoAfter,
-    resetPhoto: resetPhotoAfter,
-  } = useEditablePhoto({
-    initialPath: leak.photo_after,
-    leakId: afterLeakId,
-    version: leak.updatedAt,
-    excludePaths: [leak.photo, leak.photo_repair].filter(Boolean),
-  });
-
-  const repairLeakId = `${leak.id}_repair`;
-  const {
-    src: srcRepair,
-    isDirty: isRepairDirty,
-    changePhoto: changePhotoRepair,
-    choosePhoto: choosePhotoRepair,
-    savePhoto: savePhotoRepair,
-    resetPhoto: resetPhotoRepair,
-  } = useEditablePhoto({
-    initialPath: leak.photo_repair,
-    leakId: repairLeakId,
-    version: leak.updatedAt,
-    excludePaths: [leak.photo, leak.photo_after].filter(Boolean),
-  });
-
-  useEffect(() => {
-    const key = `${leak.leak_id}:${leak.updatedAt}`;
-    if (prevLeakIdRef.current !== key) {
-      const keys = editFields.map((field) => field.key);
-      setLocalEdit(
-        Object.fromEntries(keys.map((keyName) => [keyName, leak[keyName]])),
-      );
-      setLocalCalcParams(buildLeakCalculationParams(leak, vars));
+    localEdit,
+    setLocalEdit,
+    localCalcParams,
+    setLocalCalcParams,
+    originalCalcParams,
+    dirtyFields,
+    calcParamsDirty,
+    isDirty,
+    resetDraft,
+  } = useLeakDetailsForm({
+    leak,
+    editFields,
+    vars,
+    photoActions: {
+      isPhotoDirty,
+      isAfterDirty,
+      isRepairDirty,
+      resetPhoto,
+      resetPhotoAfter,
+      resetPhotoRepair,
+    },
+    onLeakChange: useCallback(() => {
       setMode(MODE.VIEW);
       setActiveTab(TAB.INFO);
       setCloseConfirmOpen(false);
-      resetPhoto();
-      resetPhotoAfter();
-      resetPhotoRepair();
-      prevLeakIdRef.current = key;
-    }
-  }, [leak, editFields, resetPhoto, resetPhotoAfter, resetPhotoRepair, vars]);
-
-  const originalCalcParams = useMemo(
-    () => buildLeakCalculationParams(leak, vars),
-    [leak, vars],
-  );
-
-  const dirtyFields = useMemo(
-    () => editFields.filter(({ key }) => localEdit[key] !== leak[key]),
-    [editFields, localEdit, leak],
-  );
-  const calcParamsDirty = !calculationParamsEqual(
-    localCalcParams,
-    originalCalcParams,
-  );
-  const isDirty =
-    isPhotoDirty ||
-    isAfterDirty ||
-    isRepairDirty ||
-    dirtyFields.length > 0 ||
-    calcParamsDirty;
+    }, []),
+  });
 
   const requireHistoryUser = useCallback(() => {
     if (historyUser) return true;
@@ -215,277 +157,42 @@ export function useLeakDetailsSheet({
     setCloseConfirmOpen(false);
   }, []);
 
-  const handleSave = async () => {
-    if (saving) return;
-
-    if (!requireHistoryUser()) return;
-
-    if (
-      !isPinkBagEquipment(localCalcParams.equipmentType) &&
-      localCalcParams.serial_number == null
-    ) {
-      setActiveTab(TAB.PARAMS);
-      setNotification({
-        type: "error",
-        message:
-          lang === "ru"
-            ? "Укажите серийный номер оборудования"
-            : "Enter the equipment serial number",
-      });
-      return;
-    }
-
-    const lat = Number(localEdit.lat ?? leak.lat);
-    const lng = Number(localEdit.lng ?? leak.lng);
-
-    if (Number.isFinite(lat) && (lat < -90 || lat > 90)) {
-      setNotification({
-        type: "error",
-        message:
-          lang === "ru"
-            ? `Широта ${lat} вне допустимого диапазона [-90, 90]`
-            : `Latitude ${lat} is outside the allowed range [-90, 90]`,
-      });
-      return;
-    }
-
-    if (Number.isFinite(lng) && (lng < -180 || lng > 180)) {
-      setNotification({
-        type: "error",
-        message:
-          lang === "ru"
-            ? `Долгота ${lng} вне допустимого диапазона [-180, 180]`
-            : `Longitude ${lng} is outside the allowed range [-180, 180]`,
-      });
-      return;
-    }
-
-    setSaving(true);
-    setNotification(null);
-    let photoPath;
-    let photoAfterPath;
-    let photoRepairPath;
-    try {
-      photoPath = await savePhoto();
-      photoAfterPath = await savePhotoAfter();
-      photoRepairPath = await savePhotoRepair();
-
-      const numericKeys = new Set(
-        editFields.filter((field) => field.numeric).map((field) => field.key),
-      );
-      const textPatch = Object.fromEntries(
-        dirtyFields.map(({ key }) => [
-          key,
-          numericKeys.has(key)
-            ? normalizeNumber(localEdit[key])
-            : localEdit[key],
-        ]),
-      );
-
-      const speedKey = "leak_speed";
-      const measurementKeys = new Set([speedKey, "pressure", "temperature"]);
-      const measurementChanged = dirtyFields.some(({ key }) =>
-        measurementKeys.has(key),
-      );
-      const speedChanged = dirtyFields.some(({ key }) => key === speedKey);
-
-      const base = {
-        ...leak,
-        ...textPatch,
-        photo: photoPath ?? leak.photo,
-        photo_after: photoAfterPath ?? leak.photo_after,
-        photo_repair: photoRepairPath ?? leak.photo_repair,
-        calculationParams: localCalcParams,
-        calculationVersion: CALCULATION_PARAMS_VERSION,
-        updatedAt: Date.now(),
-      };
-      const withCalc =
-        measurementChanged || calcParamsDirty
-          ? calculateLeakWithSnapshot(base, vars, localCalcParams)
-          : base;
-      const withoutHistory = speedChanged
-        ? { ...withCalc, priority: priorityFromSpeed(withCalc[speedKey]) }
-        : withCalc;
-      const fieldChanges = buildLeakHistoryChanges({
-        before: leak,
-        after: withoutHistory,
-        fields: dirtyFields,
-        includeKeys: [
-          ...(isPhotoDirty ? ["photo"] : []),
-          ...(isAfterDirty ? ["photo_after"] : []),
-          ...(isRepairDirty ? ["photo_repair"] : []),
-          ...(speedChanged ? ["priority"] : []),
-        ],
-      });
-      const calcChanges = buildLeakHistoryChanges({
-        before: originalCalcParams,
-        after: localCalcParams,
-        fields: CALCULATION_PARAM_KEYS.map((key) => ({ key })),
-      });
-      const changes = [...fieldChanges, ...calcChanges];
-      const withPriority = {
-        ...withoutHistory,
-        history: [
-          ...(leak.history ?? []),
-          {
-            action: "edited",
-            date: new Date().toISOString(),
-            user: historyUser,
-            changes,
-          },
-        ],
-      };
-
-      await persistPhotoReplacements({
-        save: onSave,
-        value: withPriority,
-        replacements: [
-          [isPhotoDirty, leak.photo, photoPath],
-          [isAfterDirty, leak.photo_after, photoAfterPath],
-          [isRepairDirty, leak.photo_repair, photoRepairPath],
-        ],
-        deletePhoto,
-      });
-    } catch (error) {
-      await cleanupUncommittedPhotoReplacements({
-        value: leak,
-        replacements: [
-          [isPhotoDirty, leak.photo, photoPath],
-          [isAfterDirty, leak.photo_after, photoAfterPath],
-          [isRepairDirty, leak.photo_repair, photoRepairPath],
-        ],
-        deletePhoto,
-      });
-      if (error?.name === "AbortError") return;
-      setNotification({
-        type: "error",
-        message: lang === "ru" ? "Ошибка сохранения" : "Save error",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-  const reportSaveError = () => {
-    setNotification({
-      type: "error",
-      message:
-        lang === "ru"
-          ? "\u041e\u0448\u0438\u0431\u043a\u0430 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u044f"
-          : "Save error",
-    });
-  };
-
-  const handleStatusChange = () => setStatusPickerOpen(true);
-
-  const handleStatusSelect = async (newStatus) => {
-    setStatusPickerOpen(false);
-    if (newStatus === leak.status) return;
-
-    if (!requireHistoryUser()) return;
-
-    if (newStatus === STATUS.RESOLVED) {
-      setResolveOpen(true);
-      return;
-    }
-
-    if (newStatus === STATUS.IN_PROGRESS) {
-      setRepairOpen(true);
-      return;
-    }
-
-    if (newStatus === STATUS.OPEN && leak.status === STATUS.RESOLVED) {
-      setReopenOpen(true);
-      return;
-    }
-
-    const orphanedPhoto = getOrphanedOriginalPhoto(leak);
-    try {
-      const next = changeLeakStatus(leak, newStatus, { user: historyUser });
-      await onSave(next);
-      await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-        () => {},
-      );
-    } catch {
-      reportSaveError();
-    }
-  };
-
-  const handleResolveConfirm = async ({
-    photo_after,
-    materials_equipment,
-    note,
-  }) => {
-    if (!requireHistoryUser()) return;
-    try {
-      const next = resolveLeakRecord(
-        leak,
-        { photo_after, materials_equipment, note },
-        { user: historyUser },
-      );
-      await onSave(next);
-      setResolveOpen(false);
-      if (leak.photo_after && leak.photo_after !== photo_after) {
-        await deletePhotoIfUnreferenced(
-          leak.photo_after,
-          next,
-          deletePhoto,
-        ).catch(() => {});
-      }
-    } catch {
-      if (photo_after && photo_after !== leak.photo_after) {
-        await deletePhoto(photo_after).catch(() => {});
-      }
-      reportSaveError();
-    }
-  };
-
-  const handleRepairConfirm = async ({
-    photo_repair,
-    materials_equipment,
-    note,
-  }) => {
-    if (!requireHistoryUser()) return;
-    const orphanedPhoto = getOrphanedOriginalPhoto(leak);
-    try {
-      const next = startLeakRepair(
-        leak,
-        { photo_repair, materials_equipment, note },
-        { user: historyUser },
-      );
-      await onSave(next);
-      setRepairOpen(false);
-      if (leak.photo_repair && leak.photo_repair !== photo_repair) {
-        await deletePhotoIfUnreferenced(
-          leak.photo_repair,
-          next,
-          deletePhoto,
-        ).catch(() => {});
-      }
-      await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-        () => {},
-      );
-    } catch {
-      if (photo_repair && photo_repair !== leak.photo_repair) {
-        await deletePhoto(photo_repair).catch(() => {});
-      }
-      reportSaveError();
-    }
-  };
-
-  const handleReopenConfirm = async (draft) => {
-    if (!requireHistoryUser()) return;
-    const next = buildReopenedLeak({ leak, draft, vars, user: historyUser });
-    const orphanedPhoto = getOrphanedOriginalPhoto(leak);
-    try {
-      await onSave(next, { optimistic: false });
-      setReopenOpen(false);
-      await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-        () => {},
-      );
-    } catch {
-      reportSaveError();
-    }
-  };
+  const {
+    saving,
+    handleSave,
+    handleStatusChange,
+    handleStatusSelect,
+    handleResolveConfirm,
+    handleRepairConfirm,
+    handleReopenConfirm,
+  } = useLeakDetailsPersistence({
+    leak,
+    onSave,
+    deletePhoto,
+    lang,
+    historyUser,
+    vars,
+    editFields,
+    localEdit,
+    localCalcParams,
+    dirtyFields,
+    calcParamsDirty,
+    originalCalcParams,
+    isPhotoDirty,
+    isAfterDirty,
+    isRepairDirty,
+    savePhoto,
+    savePhotoAfter,
+    savePhotoRepair,
+    setNotification,
+    setActiveTab,
+    requireHistoryUser,
+    setStatusPickerOpen,
+    setResolveOpen,
+    setRepairOpen,
+    setReopenOpen,
+    paramsTab: TAB.PARAMS,
+  });
 
   const handleEdit = () => {
     if (activeTab === TAB.LOG) setActiveTab(TAB.INFO);
@@ -497,9 +204,7 @@ export function useLeakDetailsSheet({
     resetPhotoAfter();
     resetPhotoRepair();
     setCloseConfirmOpen(false);
-    const keys = editFields.map((field) => field.key);
-    setLocalEdit(Object.fromEntries(keys.map((key) => [key, leak[key]])));
-    setLocalCalcParams(buildLeakCalculationParams(leak, vars));
+    resetDraft();
     setMode(MODE.VIEW);
   };
 
