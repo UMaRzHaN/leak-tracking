@@ -64,7 +64,7 @@ const EXCEL_COLUMNS = [
     header: "Годовые потери метана CH₄, т/год",
   },
   { key: "Emissions_t_CO2eq_year", header: "Выбросы, CO₂-экв, т/год" },
-  { key: "Emissions_kg_CO2_eq_year", header: "Выбросы, кг CO₂, т/год" },
+  { key: "Emissions_kg_CO2_eq_year", header: "Выбросы, CO₂, кг/год" },
   { key: "weightedGWP", header: "Потенциал глобального потепления" },
   { key: "actuator_type", header: "Тип привода" },
   { key: "connection_type", header: "Тип присоединения" },
