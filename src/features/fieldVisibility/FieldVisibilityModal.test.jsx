@@ -3,29 +3,32 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import FieldVisibilityModal from "./FieldVisibilityModal";
 
-vi.mock("@/app/hooks/useLanguage", () => ({
-  useLanguage: () => ({
-    lang: "en",
-    t: (key, options) =>
-      ({
-        "fieldVisibility.title": "Visible fields",
-        "fieldVisibility.active": "active",
-        "fieldVisibility.searchPlaceholder": "Search fields",
-        "fieldVisibility.notFound": "Nothing found",
-        "fieldVisibility.excelOnly": "Excel only",
-        "fieldVisibility.hidden": "hidden",
-        "fieldVisibility.required": "required",
-        "fieldVisibility.showAll": "Show all",
-        "fieldVisibility.hideAll": "Hide all",
-        "fieldVisibility.hideOthers": "Hide others",
-        "fieldVisibility.systemNote": "System fields cannot be hidden",
-        "fieldVisibility.cancel": "Cancel",
-        "fieldVisibility.save": "Save",
-      })[key] ??
-      options?.defaultValue ??
-      key,
-  }),
-}));
+vi.mock("@/app/hooks/useLanguage", () => {
+  const translations = {
+    "fieldVisibility.title": "Visible fields",
+    "fieldVisibility.active": "active",
+    "fieldVisibility.searchPlaceholder": "Search fields",
+    "fieldVisibility.notFound": "Nothing found",
+    "fieldVisibility.excelOnly": "Excel only",
+    "fieldVisibility.hidden": "hidden",
+    "fieldVisibility.required": "required",
+    "fieldVisibility.showAll": "Show all",
+    "fieldVisibility.hideAll": "Hide all",
+    "fieldVisibility.hideOthers": "Hide others",
+    "fieldVisibility.systemNote": "System fields cannot be hidden",
+    "fieldVisibility.cancel": "Cancel",
+    "fieldVisibility.save": "Save",
+  };
+
+  const t = (key, options) => translations[key] ?? options?.defaultValue ?? key;
+
+  return {
+    useLanguage: () => ({
+      lang: "en",
+      t,
+    }),
+  };
+});
 
 const config = {
   export: {
