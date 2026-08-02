@@ -189,6 +189,9 @@ export function buildMonitoringPatch({
           status: nextStatus,
           resolvedAt: null,
           photo_after: null,
+          ...(nextStatus === STATUS.OPEN
+            ? { photo: photoPath ?? leak.photo }
+            : {}),
           ...(nextStatus === STATUS.IN_PROGRESS
             ? {
                 repairAt: now.getTime(),

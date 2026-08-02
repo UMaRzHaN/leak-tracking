@@ -161,6 +161,28 @@ describe("Monitoring round flow", () => {
     ]);
   });
 
+  it("uses the latest still-leaking monitoring photo as the current leak photo", () => {
+    const patch = buildMonitoringPatch({
+      leak: {
+        id: "leak-1",
+        status: "open",
+        photo: "idb://previous-current",
+      },
+      draft: { result: "still_leaking", materials_equipment: "" },
+      monitoredBy: "Inspector",
+      photoPath: "idb://monitoring-latest",
+      roundId: "round-2",
+      roundNumber: 2,
+      now: new Date("2026-07-16T08:30:00.000Z"),
+    });
+
+    expect(patch.photo).toBe("idb://monitoring-latest");
+    expect(patch.photo_after).toBeNull();
+    expect(patch.monitoringRecords.at(-1).photo).toBe(
+      "idb://monitoring-latest",
+    );
+  });
+
   it("shows a monitoring result once and keeps only the user comment in history", () => {
     const patch = buildMonitoringPatch({
       leak: { id: "leak-1", status: "in_progress" },
@@ -674,6 +696,74 @@ describe("Monitoring round flow", () => {
     expect(photoStorage.deletePhoto).toHaveBeenCalledWith(
       "idb://monitoring-new",
     );
+  });
+
+  it("uses a new monitoring photo when reopening a resolved leak", async () => {
+    const round = {
+      id: "round-5-photo",
+      number: 5,
+      startedAt: "2026-07-15T05:00:00.000Z",
+    };
+    localStorage.setItem(
+      "app:project-1:monitoring_round_v2",
+      JSON.stringify(round),
+    );
+    localStorage.setItem(
+      "app:project-1:monitoring_settings_v1",
+      JSON.stringify({ photoRequired: false }),
+    );
+    photoStorage.savePhoto.mockResolvedValue("idb://monitoring-new");
+    photoStorage.deletePhoto.mockResolvedValue(undefined);
+    const setData = vi.fn().mockResolvedValue(undefined);
+    const leak = {
+      id: "leak-1",
+      leak_id: "1001",
+      status: "resolved",
+      photo: "idb://original",
+      photo_after: "idb://resolved",
+      monitoringRecords: [
+        {
+          id: "resolved-record",
+          date: "2026-07-14T06:00:00.000Z",
+          result: "resolved",
+          photo: "idb://resolved",
+        },
+      ],
+    };
+    render(
+      <Monitoring
+        data={[leak]}
+        setData={setData}
+        coords={null}
+        sharedFilters={{}}
+        requestedLeakId="leak-1"
+        onRequestedLeakConsumed={vi.fn()}
+        userProfile={{ name: "Inspector" }}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Is there a leak?"), {
+      target: { value: "still_leaking" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Attach monitoring photo" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Confirm monitoring reopen" }),
+    );
+
+    await waitFor(() => expect(setData).toHaveBeenCalledOnce());
+    const savedLeak = setData.mock.calls[0][0][0];
+    expect(savedLeak.photo).toBe("idb://monitoring-new");
+    expect(savedLeak.photo_after).toBeNull();
+    expect(savedLeak.monitoringRecords.at(-1).photo).toBe(
+      "idb://monitoring-new",
+    );
+    await waitFor(() =>
+      expect(photoStorage.deletePhoto).toHaveBeenCalledWith("idb://original"),
+    );
+    expect(photoStorage.deletePhoto).not.toHaveBeenCalledWith("idb://resolved");
   });
 
   it("deletes the orphaned original photo after monitoring reopens a resolved leak", async () => {

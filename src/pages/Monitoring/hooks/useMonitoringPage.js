@@ -368,10 +368,16 @@ export function useMonitoringPage({
     photoPath,
     reopenDraft = null,
   }) => {
-    const orphanedPhoto =
-      reopenDraft && leak.status === STATUS.RESOLVED && leak.photo_after
-        ? leak.photo
-        : null;
+    const displacedPhotoPaths = new Set();
+    if (reopenDraft && leak.status === STATUS.RESOLVED && leak.photo_after) {
+      displacedPhotoPaths.add(leak.photo);
+    }
+    if (draft.result === MONITORING_RESULT.STILL_LEAKING && photoPath) {
+      displacedPhotoPaths.add(leak.photo);
+      if (leak.status === STATUS.RESOLVED) {
+        displacedPhotoPaths.add(leak.photo_after);
+      }
+    }
     const updated = data.map((item) =>
       item.id === leak.id
         ? (() => {
@@ -403,9 +409,13 @@ export function useMonitoringPage({
       }
       throw error;
     }
-    await deletePhotoIfUnreferenced(orphanedPhoto, updated, deletePhoto).catch(
-      () => {},
-    );
+    for (const displacedPath of displacedPhotoPaths) {
+      await deletePhotoIfUnreferenced(
+        displacedPath,
+        updated,
+        deletePhoto,
+      ).catch(() => {});
+    }
     setDrafts((prev) => {
       const next = { ...prev };
       delete next[leak.id];
