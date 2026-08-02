@@ -92,11 +92,14 @@ describe("useProjectVars", () => {
     const { result } = renderHook(() => useProjectVars("project-1", defaults));
 
     let settled = false;
-    const pending = result.current
-      .setVarsAsync({ ...defaults, pressure: 12 })
-      .then(() => {
-        settled = true;
-      });
+    let pending;
+    act(() => {
+      pending = result.current
+        .setVarsAsync({ ...defaults, pressure: 12 })
+        .then(() => {
+          settled = true;
+        });
+    });
     await Promise.resolve();
     expect(settled).toBe(false);
 
