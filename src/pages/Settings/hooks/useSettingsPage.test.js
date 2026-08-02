@@ -1,0 +1,438 @@
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useSettingsPage } from "./useSettingsPage";
+
+const mocks = vi.hoisted(() => ({
+  activeProject: { id: "project-1", name: "Alpha", type: "upstream" },
+  projects: [{ id: "project-1", name: "Alpha", type: "upstream" }],
+  getMapCacheInfo: vi.fn(),
+  clearMapCache: vi.fn(),
+  readImportOperation: vi.fn(),
+  performSettingsCleanup: vi.fn(),
+  parseExcelImportFile: vi.fn(),
+  reconcileExcelImportPhotos: vi.fn(),
+  persistExcelImportPhotos: vi.fn(),
+  previewMergeLeaks: vi.fn(),
+  mergeLeaksByFreshness: vi.fn(),
+  runExcelImportTransaction: vi.fn(),
+  getExcelImportTransactionWarning: vi.fn(),
+  resolvePortableExcelArchiveRoute: vi.fn(),
+  analyzeProjectIntegrity: vi.fn(),
+  setVarsAsync: vi.fn(),
+  restoreProjectMetadata: vi.fn(),
+  restoreProjectSnapshot: vi.fn(),
+  writeProjectSettings: vi.fn(),
+  readProjectSettings: vi.fn(),
+  readMonitoringRound: vi.fn(),
+  saveMonitoringRound: vi.fn(),
+  readProjectSyncStateAsync: vi.fn(),
+  writeProjectSyncState: vi.fn(),
+  savePhoto: vi.fn(),
+  deletePhoto: vi.fn(),
+  getPhoto: vi.fn(),
+}));
+
+vi.mock("@/services/maps/tileCache", () => ({
+  getMapCacheInfo: mocks.getMapCacheInfo,
+  clearMapCache: mocks.clearMapCache,
+}));
+vi.mock("@/services/importOperationJournal", () => ({
+  readImportOperation: mocks.readImportOperation,
+}));
+vi.mock("../settingsCleanup", () => ({
+  performSettingsCleanup: mocks.performSettingsCleanup,
+}));
+vi.mock("../excelArchiveRouting", () => ({
+  resolvePortableExcelArchiveRoute: mocks.resolvePortableExcelArchiveRoute,
+}));
+vi.mock("@/services/excelImportService", () => ({
+  parseExcelImportFile: mocks.parseExcelImportFile,
+  reconcileExcelImportPhotos: mocks.reconcileExcelImportPhotos,
+  persistExcelImportPhotos: mocks.persistExcelImportPhotos,
+}));
+vi.mock("@/services/projectBackupService", () => ({
+  previewMergeLeaks: mocks.previewMergeLeaks,
+  mergeLeaksByFreshness: mocks.mergeLeaksByFreshness,
+}));
+vi.mock("@/services/projectIntegrityService", () => ({
+  analyzeProjectIntegrity: mocks.analyzeProjectIntegrity,
+}));
+vi.mock("@/services/excelImportTransaction", () => ({
+  runExcelImportTransaction: mocks.runExcelImportTransaction,
+  getExcelImportTransactionWarning: mocks.getExcelImportTransactionWarning,
+}));
+vi.mock("@/utils/monitoringRound", () => ({
+  readMonitoringRound: mocks.readMonitoringRound,
+  saveMonitoringRound: mocks.saveMonitoringRound,
+}));
+vi.mock("@/app/project/projectSettings", () => ({
+  readProjectSettings: mocks.readProjectSettings,
+  writeProjectSettings: mocks.writeProjectSettings,
+}));
+vi.mock("@/services/projectSyncState", () => ({
+  readProjectSyncStateAsync: mocks.readProjectSyncStateAsync,
+  writeProjectSyncState: mocks.writeProjectSyncState,
+}));
+vi.mock("@/app/project/storageKeys", () => ({
+  STORAGE_KEYS: { PROJECT_VARS: (id) => `vars:${id}` },
+}));
+vi.mock("@/app/project/hooks/useProjectVars", () => ({
+  useProjectVars: () => ({
+    vars: { density: 0.7 },
+    setVarsAsync: mocks.setVarsAsync,
+  }),
+}));
+vi.mock("@/hooks/usePhotoStorage", () => ({
+  usePhotoStorage: () => ({
+    getPhoto: mocks.getPhoto,
+    savePhoto: mocks.savePhoto,
+    deletePhoto: mocks.deletePhoto,
+  }),
+}));
+vi.mock("@/app/project/hooks/useProjectConfig", () => ({
+  useProjectConfig: () => ({ fields: [] }),
+}));
+vi.mock("@/app/project/hooks/useHiddenFields", () => ({
+  useHiddenFields: () => ({ hiddenFields: [], setHiddenFields: vi.fn() }),
+}));
+vi.mock("@/app/project/hooks/useExcelExportMode", () => ({
+  useExcelExportMode: () => ({
+    monitoringExportMode: "all",
+    setMonitoringExportMode: vi.fn(),
+  }),
+}));
+vi.mock("@/app/project/hooks/usePhotoRequirements", () => ({
+  usePhotoRequirements: () => ({
+    leakPhotoRequired: false,
+    monitoringPhotoRequired: false,
+    setLeakPhotoRequired: vi.fn(),
+    setMonitoringPhotoRequired: vi.fn(),
+  }),
+}));
+vi.mock("./useSettingsTexts", () => ({
+  useSettingsTexts: () => ({
+    lang: "ru",
+    t: (value) => value,
+    toggleLanguage: vi.fn(),
+    localeTexts: {
+      clearMapCache: "Очистить карту",
+      clearDatabase: "Очистить базу",
+      dialogs: {
+        clearMapCache: "Удалить кэш карты?",
+        clearDatabase: "Удалить базу?",
+      },
+      notifications: {
+        cacheCleared: "Кэш очищен",
+        databaseCleared: "База очищена",
+      },
+    },
+  }),
+}));
+vi.mock("./useProjectActions", () => ({
+  useProjectActions: () => ({
+    projects: mocks.projects,
+    activeProject: mocks.activeProject,
+    handleSelect: vi.fn(),
+    projectSwitchState: null,
+    confirmProjectSwitch: vi.fn(),
+    cancelProjectSwitch: vi.fn(),
+    handleRename: vi.fn(),
+    handleRemove: vi.fn(),
+    handleAdd: vi.fn(),
+    handleChangeSyncId: vi.fn(),
+    syncIdEditorState: null,
+    updateSyncIdEditorValue: vi.fn(),
+    confirmSyncIdEditor: vi.fn(),
+    cancelSyncIdEditor: vi.fn(),
+    restoreProjectMetadata: mocks.restoreProjectMetadata,
+    restoreProjectSnapshot: mocks.restoreProjectSnapshot,
+    ensureProjectSyncId: vi.fn(),
+  }),
+}));
+vi.mock("./useBackupActions", () => ({
+  useBackupActions: () => ({
+    importZipRef: { current: null },
+    handleExportZip: vi.fn(),
+    isExportingZip: false,
+    handleImportZip: vi.fn(),
+    importConfirmState: null,
+    confirmImport: vi.fn(),
+    cancelImport: vi.fn(),
+    conflictState: null,
+    setConflictState: vi.fn(),
+    handleConflictOverwrite: vi.fn(),
+    handleConflictMerge: vi.fn(),
+    handleConflictCopy: vi.fn(),
+  }),
+}));
+vi.mock("./useLocalSync", () => ({
+  useLocalSync: () => ({ state: "idle" }),
+}));
+
+function excelResult(overrides = {}) {
+  return {
+    leaks: [{ id: "incoming", leak_id: "TAG-2" }],
+    stats: { restoredPhotos: 0 },
+    portableArchive: false,
+    project: { name: "Imported", type: "upstream", syncId: "sync-imported-1" },
+    ...overrides,
+  };
+}
+
+function fileEvent(file = new File(["data"], "leaks.xlsx")) {
+  return { target: { files: file ? [file] : [], value: "selected" } };
+}
+
+function renderSettings(props = {}) {
+  const defaults = {
+    data: [],
+    setData: vi.fn(),
+    clearDatabase: vi.fn(),
+    onImportZip: vi.fn(),
+    onImportIntoExisting: vi.fn(),
+    onCreateExcelCopy: vi.fn(),
+  };
+  const merged = { ...defaults, ...props };
+  return { ...renderHook(() => useSettingsPage(merged)), props: merged };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  localStorage.clear();
+  mocks.activeProject = { id: "project-1", name: "Alpha", type: "upstream" };
+  mocks.projects = [{ id: "project-1", name: "Alpha", type: "upstream" }];
+  mocks.getMapCacheInfo.mockResolvedValue({ count: 3, sizeMB: 1.5 });
+  mocks.readImportOperation.mockReturnValue(null);
+  mocks.resolvePortableExcelArchiveRoute.mockReturnValue({ action: "current" });
+  mocks.reconcileExcelImportPhotos.mockImplementation(
+    async (_current, leaks) => ({
+      leaks,
+      photos: { restored: 0 },
+    }),
+  );
+  mocks.persistExcelImportPhotos.mockImplementation(async (leaks) => ({
+    leaks,
+    createdPaths: [],
+  }));
+  mocks.runExcelImportTransaction.mockImplementation(
+    async ({ persistPhotos, commit }) => {
+      const transaction = await persistPhotos();
+      const leaks = transaction?.leaks ?? transaction;
+      await commit(leaks);
+      return leaks;
+    },
+  );
+  mocks.getExcelImportTransactionWarning.mockReturnValue("");
+  mocks.restoreProjectSnapshot.mockReturnValue(true);
+  mocks.readProjectSettings.mockReturnValue({ hiddenFields: [] });
+  mocks.readMonitoringRound.mockReturnValue(null);
+  mocks.readProjectSyncStateAsync.mockResolvedValue({ deleted: {} });
+  mocks.previewMergeLeaks.mockReturnValue({ changed: 1 });
+  mocks.mergeLeaksByFreshness.mockReturnValue({
+    leaks: [{ id: "merged", leak_id: "TAG-2" }],
+    changed: 1,
+  });
+});
+
+describe("useSettingsPage orchestration", () => {
+  it("loads cache info and surfaces an interrupted import", async () => {
+    mocks.readImportOperation.mockReturnValue({ stage: "commit" });
+    const { result } = renderSettings();
+
+    await waitFor(() =>
+      expect(result.current.cacheInfo).toEqual({ count: 3, sizeMB: 1.5 }),
+    );
+    expect(result.current.notification).toMatchObject({
+      type: "error",
+      autoCloseMs: 0,
+    });
+  });
+
+  it("handles map and database cleanup confirmations", async () => {
+    mocks.performSettingsCleanup.mockResolvedValueOnce("clearMapCache");
+    const { result } = renderSettings();
+
+    act(() => result.current.handleClearMapCache());
+    expect(result.current.settingsConfirmTexts?.title).toBe("Очистить карту");
+    await act(async () => result.current.handleSettingsConfirm());
+    expect(result.current.cacheInfo).toEqual({ count: 0, sizeMB: 0 });
+    expect(result.current.notification).toMatchObject({
+      type: "success",
+      message: "Кэш очищен",
+    });
+
+    mocks.performSettingsCleanup.mockResolvedValueOnce("clearDatabase");
+    act(() => result.current.handleClearDatabase());
+    expect(result.current.settingsConfirmTexts?.title).toBe("Очистить базу");
+    await act(async () => result.current.handleSettingsConfirm());
+    expect(result.current.notification).toMatchObject({
+      type: "warning",
+      message: "База очищена",
+    });
+  });
+
+  it("reports cleanup and integrity failures without leaving busy state", async () => {
+    mocks.performSettingsCleanup.mockRejectedValueOnce(
+      new Error("cleanup failed"),
+    );
+    mocks.analyzeProjectIntegrity.mockRejectedValueOnce(new Error("broken"));
+    const { result } = renderSettings();
+
+    act(() => result.current.handleClearMapCache());
+    await act(async () => result.current.handleSettingsConfirm());
+    expect(result.current.notification.message).toContain("cleanup failed");
+
+    await act(async () => result.current.handleCheckIntegrity());
+    expect(result.current.checkingIntegrity).toBe(false);
+    expect(result.current.notification.message).toContain("broken");
+  });
+
+  it("checks project integrity successfully", async () => {
+    mocks.analyzeProjectIntegrity.mockResolvedValueOnce({
+      ok: false,
+      issues: 2,
+    });
+    const { result } = renderSettings({ data: [{ id: 1 }] });
+
+    await act(async () => result.current.handleCheckIntegrity());
+
+    expect(result.current.integrityReport).toEqual({ ok: false, issues: 2 });
+    expect(result.current.notification).toMatchObject({ type: "warning" });
+  });
+
+  it("parses an Excel file and confirms a transactional import", async () => {
+    const parsed = excelResult();
+    mocks.parseExcelImportFile.mockResolvedValueOnce(parsed);
+    const { result, props } = renderSettings();
+    const event = fileEvent();
+
+    await act(async () => result.current.handleImportExcel(event));
+    expect(event.target.value).toBe("");
+    expect(result.current.excelImportState).toMatchObject({
+      open: true,
+      fileName: "leaks.xlsx",
+    });
+
+    await act(async () => result.current.confirmExcelImport());
+
+    expect(mocks.runExcelImportTransaction).toHaveBeenCalledTimes(1);
+    expect(props.setData).toHaveBeenCalledWith([
+      expect.objectContaining({ leak_id: "TAG-2", importedFromExcel: true }),
+    ]);
+    expect(result.current.excelImportState).toEqual({ open: false });
+    expect(result.current.notification).toMatchObject({ type: "success" });
+  });
+
+  it("does not open confirmation for an empty workbook", async () => {
+    mocks.parseExcelImportFile.mockResolvedValueOnce(
+      excelResult({ leaks: [] }),
+    );
+    const { result } = renderSettings();
+
+    await act(async () => result.current.handleImportExcel(fileEvent()));
+
+    expect(result.current.excelImportState).toEqual({ open: false });
+    expect(result.current.notification).toMatchObject({ type: "warning" });
+  });
+
+  it("creates a project directly for a routed portable archive", async () => {
+    const parsed = excelResult({ portableArchive: true });
+    mocks.parseExcelImportFile.mockResolvedValueOnce(parsed);
+    mocks.resolvePortableExcelArchiveRoute.mockReturnValueOnce({
+      action: "create",
+      name: "Imported archive",
+    });
+    const onCreateExcelCopy = vi.fn().mockResolvedValue({
+      project: { name: "Imported archive" },
+    });
+    const { result } = renderSettings({ onCreateExcelCopy });
+
+    await act(async () => result.current.handleImportExcel(fileEvent()));
+
+    expect(onCreateExcelCopy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Imported archive",
+        leaks: parsed.leaks,
+      }),
+    );
+    expect(result.current.notification).toMatchObject({ type: "success" });
+  });
+
+  it("opens conflict preview and performs overwrite, merge, and copy", async () => {
+    const parsed = excelResult();
+    mocks.parseExcelImportFile.mockResolvedValue(parsed);
+    const data = [{ id: "old", leak_id: "TAG-1", index: 1 }];
+    const onCreateExcelCopy = vi
+      .fn()
+      .mockResolvedValue({ project: { name: "Alpha (Excel)" } });
+    const { result, props } = renderSettings({ data, onCreateExcelCopy });
+
+    await act(async () => result.current.handleImportExcel(fileEvent()));
+    expect(result.current.excelConflictState).toMatchObject({
+      open: true,
+      leakCount: 1,
+    });
+
+    await act(async () => result.current.handleExcelConflictOverwrite());
+    expect(props.setData).toHaveBeenCalledWith([
+      expect.objectContaining({ leak_id: "TAG-2", index: 1 }),
+    ]);
+
+    act(() =>
+      result.current.setExcelConflictState({
+        open: true,
+        result: parsed,
+        preparedForMerge: parsed.leaks,
+      }),
+    );
+    await act(async () => result.current.handleExcelConflictMerge());
+    expect(mocks.mergeLeaksByFreshness).toHaveBeenCalled();
+    expect(props.setData).toHaveBeenCalledWith([
+      { id: "merged", leak_id: "TAG-2" },
+    ]);
+
+    act(() =>
+      result.current.setExcelConflictState({ open: true, result: parsed }),
+    );
+    await act(async () => result.current.handleExcelConflictCopy());
+    expect(onCreateExcelCopy).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Imported (Excel)", type: "upstream" }),
+    );
+  });
+
+  it("reports parse and transactional errors and closes dialogs", async () => {
+    mocks.parseExcelImportFile.mockRejectedValueOnce(new Error("bad workbook"));
+    const { result } = renderSettings();
+
+    await act(async () => result.current.handleImportExcel(fileEvent()));
+    expect(result.current.notification.message).toContain("bad workbook");
+    expect(result.current.isImportingExcel).toBe(false);
+
+    act(() =>
+      result.current.setExcelConflictState({
+        open: true,
+        result: excelResult(),
+      }),
+    );
+    mocks.runExcelImportTransaction.mockRejectedValueOnce(
+      Object.assign(new Error("save failed"), {
+        rollbackError: new Error("rollback failed"),
+        photoRollbackErrors: [new Error("photo")],
+      }),
+    );
+    await act(async () => result.current.handleExcelConflictOverwrite());
+    expect(result.current.notification.message).toContain("save failed");
+    expect(result.current.notification.message).toContain("rollback failed");
+    expect(result.current.excelConflictState).toEqual({ open: false });
+  });
+
+  it("cancels an Excel confirmation and ignores missing files", async () => {
+    const { result } = renderSettings();
+    await act(async () => result.current.handleImportExcel(fileEvent(null)));
+    expect(mocks.parseExcelImportFile).not.toHaveBeenCalled();
+
+    act(() => result.current.setExcelConflictState({ open: true }));
+    act(() => result.current.cancelExcelImport());
+    expect(result.current.excelImportState).toEqual({ open: false });
+  });
+});

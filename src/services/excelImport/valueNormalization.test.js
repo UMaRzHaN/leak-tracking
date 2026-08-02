@@ -40,10 +40,10 @@ describe("Excel import value normalization", () => {
     expect(isRecognizedMonitoringResult("unknown")).toBe(false);
   });
 
-  it("normalizes known history actions and preserves custom ones", () => {
+  it("normalizes known history actions and safely falls back for unknown ones", () => {
     expect(normalizeHistoryAction("Запись создана")).toBe("created");
     expect(normalizeHistoryAction("Статус изменён")).toBe("status_changed");
-    expect(normalizeHistoryAction("Custom action")).toBe("Custom action");
+    expect(normalizeHistoryAction("Custom action")).toBe("edited");
     expect(normalizeHistoryAction("")).toBe("edited");
   });
 

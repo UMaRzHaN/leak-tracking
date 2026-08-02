@@ -48,6 +48,55 @@ describe("calculations", () => {
     );
   });
 
+  it("normalizes numeric strings for Pink Bag calculations", () => {
+    const vars = {
+      ...BASE_VARS,
+      equipmentType: "Pink Bag",
+      density: "0,7168",
+      GWP: "28",
+      GWP_Minus: "25,25",
+      percentage_gas_to_flare: "50",
+      percentage_gas_to_utilization: "50",
+      gasPercentage: "100",
+      uncertainty: "0,1",
+      Operating_mode: "365",
+    };
+    const numeric = calculations(
+      { leak_speed: 10, pressure: 1, temperature: 20 },
+      { ...BASE_VARS, equipmentType: "Pink Bag" },
+    );
+    const stringValues = calculations(
+      { leak_speed: "10", pressure: "1", temperature: "20" },
+      vars,
+    );
+
+    expect(stringValues.temperature_K).toBeCloseTo(293.15);
+    expect(stringValues.Total_Annual_Methane_Loss_m3_y).toBeCloseTo(
+      numeric.Total_Annual_Methane_Loss_m3_y,
+    );
+    expect(stringValues.Emissions_t_CO2eq_year).toBeCloseTo(
+      numeric.Emissions_t_CO2eq_year,
+    );
+    expect(
+      Object.values(stringValues)
+        .filter((value) => typeof value === "number")
+        .every(Number.isFinite),
+    ).toBe(true);
+  });
+
+  it("normalizes decimal-comma measurement strings", () => {
+    const result = calculations(
+      { leak_speed: "10,5", pressure: "1,2", temperature: "20,5" },
+      { ...BASE_VARS, equipmentType: "Розовый мешок" },
+    );
+
+    expect(result.leak_speed).toBe(10.5);
+    expect(result.pressure).toBe(1.2);
+    expect(result.temperature).toBe(20.5);
+    expect(result.temperature_K).toBeCloseTo(293.65);
+    expect(Number.isFinite(result.Total_Annual_Methane_Loss_m3_y)).toBe(true);
+  });
+
   it("does not emit derived NaN/Infinity values for invalid inputs", () => {
     const negative = { leak_speed: -1 };
     const invalidPink = { leak_speed: 1, pressure: 0, temperature: -273.15 };

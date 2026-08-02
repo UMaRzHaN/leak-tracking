@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import { visualizer } from "rollup-plugin-visualizer";
 import { fileURLToPath } from "url";
@@ -15,16 +15,79 @@ const PUBLIC_PRECACHE_FILES = [
   "icons/icon-512.png",
 ];
 
-function cspStylePolicy(mode) {
+const DEFAULT_TILE_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile";
+
+function getHttpOrigin(value) {
+  try {
+    const origin = new URL(value).origin;
+    return /^https?:\/\//.test(origin) ? origin : null;
+  } catch {
+    return null;
+  }
+}
+
+function envFlag(value) {
+  return (
+    String(value ?? "")
+      .trim()
+      .toLowerCase() === "true"
+  );
+}
+
+function validateTileDeployment(mode, env) {
+  if (mode === "development") return;
+  const offlineOnly = envFlag(env.VITE_OFFLINE_MAP_ONLY);
+  const requirePrivateProvider = envFlag(
+    env.VITE_REQUIRE_PRIVATE_TILE_PROVIDER,
+  );
+  const tileUrl = String(env.VITE_TILE_URL || DEFAULT_TILE_URL).trim();
+  if (!offlineOnly && !getHttpOrigin(tileUrl)) {
+    throw new Error(
+      "VITE_TILE_URL must be an absolute HTTP(S) URL or VITE_OFFLINE_MAP_ONLY=true",
+    );
+  }
+  if (
+    requirePrivateProvider &&
+    !offlineOnly &&
+    tileUrl.replace(/\/+$/, "") === DEFAULT_TILE_URL
+  ) {
+    throw new Error(
+      "Protected deployment requires a private VITE_TILE_URL or VITE_OFFLINE_MAP_ONLY=true",
+    );
+  }
+}
+
+function cspPolicy(mode, env) {
+  const offlineOnly = envFlag(env.VITE_OFFLINE_MAP_ONLY);
+  const tileOrigin = offlineOnly
+    ? null
+    : getHttpOrigin(env.VITE_TILE_URL || DEFAULT_TILE_URL);
+  const productionImgSources = ["'self'", "data:", "blob:", tileOrigin]
+    .filter(Boolean)
+    .join(" ");
+  const productionConnectSources = ["'self'", "data:", "blob:", tileOrigin]
+    .filter(Boolean)
+    .join(" ");
+
   return {
-    name: "csp-style-policy",
+    name: "csp-policy",
     transformIndexHtml(html) {
-      // Vite injects component styles as inline <style> elements only in dev.
-      // Production keeps the stricter external-stylesheet policy.
-      return html.replace(
-        "__VITE_DEV_STYLE__",
-        mode === "development" ? "'unsafe-inline'" : "",
-      );
+      const development = mode === "development";
+      return html
+        .replace("__VITE_DEV_STYLE__", development ? "'unsafe-inline'" : "")
+        .replace(
+          "__VITE_CSP_IMG__",
+          development
+            ? "'self' data: blob: http: https:"
+            : productionImgSources,
+        )
+        .replace(
+          "__VITE_CSP_CONNECT__",
+          development
+            ? "'self' data: blob: http: https: ws: wss:"
+            : productionConnectSources,
+        );
     },
   };
 }
@@ -190,162 +253,170 @@ self.addEventListener("fetch", (event) => {
   };
 }
 
-export default defineConfig(({ mode }) => ({
-  base: process.env.VITE_BASE_PATH || "/",
-  resolve: {
-    alias: { "@": path.resolve(__dirname, "src") },
-  },
-  css: {
-    preprocessorOptions: {
-      scss: {
-        api: "modern-compiler",
-      },
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  validateTileDeployment(mode, env);
+  return {
+    base: env.VITE_BASE_PATH || "/",
+    resolve: {
+      alias: { "@": path.resolve(__dirname, "src") },
     },
-  },
-  plugins: [
-    cspStylePolicy(mode),
-    react(),
-    offlineServiceWorker(),
-    mode === "analyze" &&
-      visualizer({ filename: "dist/stats.html", open: false, gzipSize: true }),
-  ].filter(Boolean),
-  build: {
-    outDir: "dist",
-    chunkSizeWarningLimit: 1000,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          "vendor-react": ["react", "react-dom"],
-          "vendor-capacitor": [
-            "@capacitor/core",
-            "@capacitor/filesystem",
-            "@capacitor/camera",
-            "@capacitor/geolocation",
-            "@capacitor/share",
-            "@capacitor-community/speech-recognition",
-          ],
-          "vendor-excel": ["exceljs"],
-          "vendor-zip": ["jszip"],
+    css: {
+      preprocessorOptions: {
+        scss: {
+          api: "modern-compiler",
         },
       },
     },
-  },
-  worker: {
-    format: "es",
-  },
-  test: {
-    globals: true,
-    environment: "jsdom",
-    include: ["src/**/*.{test,spec}.{js,jsx}"],
-    coverage: {
-      provider: "v8",
-      include: ["src/**/*.{js,jsx}"],
-      reporter: ["text", "html", "lcov"],
-      reportsDirectory: "./coverage",
-      thresholds: {
-        statements: 65,
-        branches: 50,
-        functions: 55,
-        lines: 66,
-        "src/features/leakForm/**": {
-          statements: 50,
-          branches: 30,
-          functions: 50,
-          lines: 55,
-        },
-        "src/pages/MainPage/MainPage.jsx": {
-          statements: 95,
-          branches: 90,
-          functions: 95,
-          lines: 95,
-        },
-        "src/pages/DataBase/DataBase.jsx": {
-          statements: 75,
-          branches: 45,
-          functions: 65,
-          lines: 75,
-        },
-        "src/pages/MapPage/MapPage.jsx": {
-          statements: 95,
-          branches: 75,
-          functions: 95,
-          lines: 95,
-        },
-        "src/pages/Settings/Settings.jsx": {
-          statements: 30,
-          branches: 15,
-          functions: 30,
-          lines: 30,
-        },
-        "src/pages/Settings/hooks/useSettingsPage.js": {
-          statements: 29,
-          branches: 8,
-          functions: 22,
-          lines: 29,
-        },
-        "src/app/project/ProjectContext.jsx": {
-          statements: 87,
-          branches: 69,
-          functions: 94,
-          lines: 90,
-        },
-        "src/repositories/LeakRepository.js": {
-          statements: 87,
-          branches: 82,
-          functions: 78,
-          lines: 91,
-        },
-        "src/repositories/PhotoRepository.js": {
-          statements: 90,
-          branches: 88,
-          functions: 89,
-          lines: 92,
-        },
-        "src/services/projectCleanup.js": {
-          statements: 84,
-          branches: 71,
-          functions: 66,
-          lines: 91,
-        },
-        "src/services/excelImportTransaction.js": {
-          statements: 100,
-          branches: 82,
-          functions: 100,
-          lines: 100,
-        },
-        "src/pages/MapPage/hooks/useOfflineMapActions.js": {
-          statements: 85,
-          branches: 60,
-          functions: 77,
-          lines: 91,
-        },
-        "src/pages/AddLeak/**": {
-          statements: 40,
-          branches: 30,
-          functions: 40,
-          lines: 45,
-        },
-        "src/services/maps/tileCache.js": {
-          statements: 90,
-          branches: 80,
-          functions: 80,
-          lines: 95,
-        },
-        "src/pages/Monitoring/**": {
-          statements: 70,
-          branches: 60,
-          functions: 60,
-          lines: 75,
+    plugins: [
+      cspPolicy(mode, env),
+      react(),
+      offlineServiceWorker(),
+      mode === "analyze" &&
+        visualizer({
+          filename: "dist/stats.html",
+          open: false,
+          gzipSize: true,
+        }),
+    ].filter(Boolean),
+    build: {
+      outDir: "dist",
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            "vendor-react": ["react", "react-dom"],
+            "vendor-capacitor": [
+              "@capacitor/core",
+              "@capacitor/filesystem",
+              "@capacitor/camera",
+              "@capacitor/geolocation",
+              "@capacitor/share",
+              "@capacitor-community/speech-recognition",
+            ],
+            "vendor-excel": ["exceljs"],
+            "vendor-zip": ["jszip"],
+          },
         },
       },
-      exclude: [
-        "src/**/*.{test,spec}.{js,jsx}",
-        "src/reportWebVitals.js",
-        "src/index.jsx",
-        "src/app/migrations/**",
-        "scripts/**",
-        "android/**",
-      ],
     },
-  },
-}));
+    worker: {
+      format: "es",
+    },
+    test: {
+      globals: true,
+      environment: "jsdom",
+      include: ["src/**/*.{test,spec}.{js,jsx}"],
+      coverage: {
+        provider: "v8",
+        include: ["src/**/*.{js,jsx}"],
+        reporter: ["text", "html", "lcov", "json-summary"],
+        reportsDirectory: "./coverage",
+        thresholds: {
+          statements: 65,
+          branches: 50,
+          functions: 55,
+          lines: 66,
+          "src/features/leakForm/**": {
+            statements: 50,
+            branches: 30,
+            functions: 50,
+            lines: 55,
+          },
+          "src/pages/MainPage/MainPage.jsx": {
+            statements: 95,
+            branches: 90,
+            functions: 95,
+            lines: 95,
+          },
+          "src/pages/DataBase/DataBase.jsx": {
+            statements: 75,
+            branches: 45,
+            functions: 65,
+            lines: 75,
+          },
+          "src/pages/MapPage/MapPage.jsx": {
+            statements: 95,
+            branches: 75,
+            functions: 95,
+            lines: 95,
+          },
+          "src/pages/Settings/Settings.jsx": {
+            statements: 30,
+            branches: 15,
+            functions: 30,
+            lines: 30,
+          },
+          "src/pages/Settings/hooks/useSettingsPage.js": {
+            statements: 45,
+            branches: 25,
+            functions: 40,
+            lines: 45,
+          },
+          "src/app/project/ProjectContext.jsx": {
+            statements: 87,
+            branches: 69,
+            functions: 94,
+            lines: 90,
+          },
+          "src/repositories/LeakRepository.js": {
+            statements: 87,
+            branches: 82,
+            functions: 78,
+            lines: 91,
+          },
+          "src/repositories/PhotoRepository.js": {
+            statements: 90,
+            branches: 88,
+            functions: 89,
+            lines: 92,
+          },
+          "src/services/projectCleanup.js": {
+            statements: 84,
+            branches: 71,
+            functions: 66,
+            lines: 91,
+          },
+          "src/services/excelImportTransaction.js": {
+            statements: 100,
+            branches: 82,
+            functions: 100,
+            lines: 100,
+          },
+          "src/pages/MapPage/hooks/useOfflineMapActions.js": {
+            statements: 85,
+            branches: 60,
+            functions: 77,
+            lines: 91,
+          },
+          "src/pages/AddLeak/**": {
+            statements: 40,
+            branches: 30,
+            functions: 40,
+            lines: 45,
+          },
+          "src/services/maps/tileCache.js": {
+            statements: 90,
+            branches: 80,
+            functions: 80,
+            lines: 95,
+          },
+          "src/pages/Monitoring/**": {
+            statements: 70,
+            branches: 60,
+            functions: 60,
+            lines: 75,
+          },
+        },
+        exclude: [
+          "src/**/*.{test,spec}.{js,jsx}",
+          "src/reportWebVitals.js",
+          "src/index.jsx",
+          "src/app/migrations/**",
+          "scripts/**",
+          "android/**",
+        ],
+      },
+    },
+  };
+});

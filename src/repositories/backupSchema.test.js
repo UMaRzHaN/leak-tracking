@@ -88,6 +88,94 @@ describe("backupSchema leak validation", () => {
   });
 
   it.each([
+    [{ id: "x", history: [{ user: { name: "Inspector" } }] }, "history.0.user"],
+    [{ id: "x", history: [{ action: "edited", date: {} }] }, "history.0.date"],
+    [
+      {
+        id: "x",
+        history: [{ action: "edited", changes: [{ key: "x", to: {} }] }],
+      },
+      "changes.0.to",
+    ],
+    [
+      { id: "x", monitoringRecords: [{ monitoredBy: { name: "Inspector" } }] },
+      "monitoringRecords.0.monitoredBy",
+    ],
+    [
+      { id: "x", monitoringRecords: [{ comment: { text: "x" } }] },
+      "monitoringRecords.0.comment",
+    ],
+    [
+      { id: "x", monitoringRecords: [{ result: "unknown" }] },
+      "monitoringRecords.0.result",
+    ],
+  ])("rejects malformed nested UI values %#", (leak, expectedPath) => {
+    const result = validateBackup([leak]);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain(expectedPath);
+  });
+
+  it.each([
+    "99.99.2026 garbage",
+    "31.02.2026",
+    "2026-02-31",
+    "2026-08-02T25:00:00Z",
+    "2026-08-02T10:00:00+14:30",
+    "2026-08-02T10:00:00+23:00",
+  ])("rejects invalid calendar date %s", (date) => {
+    const result = validateBackup([
+      { id: "invalid-date", history: [{ action: "edited", date }] },
+    ]);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("history.0.date");
+  });
+
+  it("rejects unknown history action", () => {
+    const result = validateBackup([
+      {
+        id: "invalid-action",
+        history: [{ action: "arbitrary_action", date: "02.08.2026" }],
+      },
+    ]);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("history.0.action");
+  });
+
+  it("accepts supported legacy and current nested records", () => {
+    const result = validateBackup([
+      {
+        id: "x",
+        history: [
+          {
+            action: "edited",
+            date: "2026-08-02T10:00:00.000Z",
+            user: "Inspector",
+            text: "Checked",
+            changes: [{ key: "pressure", from: "1", to: 2 }],
+          },
+        ],
+        monitoringRecords: [
+          {
+            id: "m1",
+            date: "02.08.2026",
+            roundNumber: "2",
+            monitoredBy: "Inspector",
+            result: "resolved",
+            comment: "No leak",
+            materials_equipment: "Seal",
+            materialsChanged: true,
+          },
+        ],
+      },
+    ]);
+
+    expect(result.ok).toBe(true);
+  });
+
+  it.each([
     [{ id: "x", monitoringRecords: {} }, "monitoringRecords"],
     [{ id: "x", monitoringRecords: ["poison"] }, "monitoringRecords"],
     [{ id: "x", history: "poison" }, "history"],

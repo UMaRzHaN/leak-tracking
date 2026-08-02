@@ -1,0 +1,14 @@
+{
+  "description": "Line-count ratchet for large orchestration modules. Ceilings may only decrease as modules are split.",
+  "files": {
+    "src/pages/Settings/hooks/useSettingsPage.js": 829,
+    "src/repositories/LeakRepository.js": 817,
+    "src/pages/Monitoring/hooks/useMonitoringPage.js": 784,
+    "src/services/maps/tileCache.js": 610,
+    "src/services/projectBackup/backupImport.js": 546,
+    "src/app/hooks/useAppBootstrap.js": 539,
+    "src/repositories/backupSchema.js": 670,
+    "src/services/projectSyncState.js": 515,
+    "src/services/localSyncService.js": 508
+  }
+}

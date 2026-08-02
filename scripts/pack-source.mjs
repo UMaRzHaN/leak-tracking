@@ -38,10 +38,18 @@ if (verify) {
       cwd: verificationDir,
       stdio: "inherit",
     });
-    execFileSync("npm", ["run", "lint"], {
-      cwd: verificationDir,
-      stdio: "inherit",
-    });
+    for (const script of [
+      "lint",
+      "format:check",
+      "typecheck",
+      "test",
+      "build",
+    ]) {
+      execFileSync("npm", ["run", script], {
+        cwd: verificationDir,
+        stdio: "inherit",
+      });
+    }
   } finally {
     rmSync(verificationDir, { recursive: true, force: true });
   }

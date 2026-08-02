@@ -8,7 +8,11 @@ import { getTileBlobUrl, cacheTile } from "@/services/maps/tileCache";
 import { logger } from "@/utils/logger";
 import { STATUS_META, getStatusMeta } from "@/utils/status";
 import { assignTileSource, releaseTileResources } from "./tileLifecycle";
-import { TILE_ATTRIBUTION, TILE_URL_TEMPLATE } from "@/configs/mapTiles";
+import {
+  OFFLINE_MAP_ONLY,
+  TILE_ATTRIBUTION,
+  TILE_URL_TEMPLATE,
+} from "@/configs/mapTiles";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -34,6 +38,14 @@ const CachedTileLayer = L.TileLayer.extend({
         return;
       }
       if (tile._removed) return;
+      if (OFFLINE_MAP_ONLY) {
+        assignTileSource(
+          tile,
+          "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
+          done,
+        );
+        return;
+      }
 
       try {
         const response = await fetch(url, {

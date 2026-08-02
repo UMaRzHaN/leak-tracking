@@ -1,0 +1,17 @@
+{
+  "description": "Minimums may only increase. Current Settings orchestration floor is enforced by direct hook tests; long-term target remains 70% lines and 60% branches.",
+  "files": {
+    "src/pages/Settings/hooks/useSettingsPage.js": {
+      "statements": 45,
+      "branches": 25,
+      "functions": 40,
+      "lines": 45
+    },
+    "src/pages/Settings/Settings.jsx": {
+      "statements": 30,
+      "branches": 15,
+      "functions": 30,
+      "lines": 30
+    }
+  }
+}

@@ -25,24 +25,70 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 @CapacitorPlugin(name = "PublicFileWriter")
 public class PublicFileWriterPlugin extends Plugin {
     private static final long MAX_EXPORT_BYTES = 1024L * 1024L * 1024L;
     private static final int MAX_CHUNK_BYTES = 1024 * 1024;
+    private static final int MAX_PREPARED_EXPORTS = 3;
+    private static final long MAX_PREPARED_EXPORT_BYTES = MAX_EXPORT_BYTES;
+    private static final long PREPARED_EXPORT_TTL_MS = TimeUnit.MINUTES.toMillis(15);
     private final ConcurrentHashMap<String, File> preparedExports = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Boolean> committingExports = new ConcurrentHashMap<>();
+    private final Object preparedExportLock = new Object();
     private final ExecutorService exportExecutor = Executors.newSingleThreadExecutor();
+    private final ScheduledThreadPoolExecutor cleanupExecutor = createCleanupExecutor();
+
+    @Override
+    public void load() {
+        cleanupOrphanedExportFiles();
+        cleanupExecutor.scheduleAtFixedRate(
+            this::cleanupExpiredPreparedExports,
+            1,
+            1,
+            TimeUnit.MINUTES
+        );
+    }
 
     @PluginMethod
     public void prepare(PluginCall call) {
         try {
-            String token = UUID.randomUUID().toString();
-            File pending = File.createTempFile("public-export-", ".pending", getContext().getCacheDir());
-            preparedExports.put(token, pending);
+            String token;
+            synchronized (preparedExportLock) {
+                cleanupExpiredPreparedExportsLocked();
+                if (
+                    !TempFilePolicy.hasSessionCapacity(
+                        preparedExports.size(),
+                        MAX_PREPARED_EXPORTS
+                    )
+                ) {
+                    throw new Exception("Too many prepared exports are active");
+                }
+                if (
+                    TempFilePolicy.wouldExceedAggregate(
+                        preparedExports.values(),
+                        1L,
+                        MAX_PREPARED_EXPORT_BYTES
+                    )
+                ) {
+                    throw new Exception("Prepared export storage quota is exhausted");
+                }
+                token = UUID.randomUUID().toString();
+                File pending = File.createTempFile(
+                    "public-export-",
+                    ".pending",
+                    getContext().getCacheDir()
+                );
+                TempFilePolicy.touch(pending, System.currentTimeMillis());
+                preparedExports.put(token, pending);
+            }
             JSObject result = new JSObject();
             result.put("token", token);
             result.put("maxExportBytes", MAX_EXPORT_BYTES);
+            result.put("maxPreparedExports", MAX_PREPARED_EXPORTS);
+            result.put("preparedExportTtlMs", PREPARED_EXPORT_TTL_MS);
             call.resolve(result);
         } catch (Exception error) {
             call.reject(error.getMessage(), error);
@@ -66,14 +112,40 @@ public class PublicFileWriterPlugin extends Plugin {
 
         try {
             byte[] chunk = Base64.decode(chunkBase64, Base64.DEFAULT);
-            if (chunk.length > MAX_CHUNK_BYTES || pending.length() + chunk.length > MAX_EXPORT_BYTES) {
-                throw new Exception("Export exceeds the safety limit");
-            }
-            try (FileOutputStream stream = new FileOutputStream(pending, true)) {
-                stream.write(chunk);
+            long size;
+            synchronized (preparedExportLock) {
+                if (
+                    TempFilePolicy.isExpired(
+                        pending,
+                        System.currentTimeMillis(),
+                        PREPARED_EXPORT_TTL_MS
+                    )
+                ) {
+                    throw new Exception("Export token has expired");
+                }
+                if (
+                    chunk.length > MAX_CHUNK_BYTES ||
+                    TempFilePolicy.wouldExceedFile(
+                        pending,
+                        chunk.length,
+                        MAX_EXPORT_BYTES
+                    ) ||
+                    TempFilePolicy.wouldExceedAggregate(
+                        preparedExports.values(),
+                        chunk.length,
+                        MAX_PREPARED_EXPORT_BYTES
+                    )
+                ) {
+                    throw new Exception("Export exceeds the safety limit");
+                }
+                try (FileOutputStream stream = new FileOutputStream(pending, true)) {
+                    stream.write(chunk);
+                }
+                TempFilePolicy.touch(pending, System.currentTimeMillis());
+                size = pending.length();
             }
             JSObject result = new JSObject();
-            result.put("size", pending.length());
+            result.put("size", size);
             call.resolve(result);
         } catch (Exception error) {
             discardPreparedExport(token);
@@ -94,27 +166,37 @@ public class PublicFileWriterPlugin extends Plugin {
         String folder = call.getString("folder", "");
         String fileName = call.getString("fileName");
         String mimeType = call.getString("mimeType", "application/octet-stream");
-        File pending = preparedExports.get(token);
-        if (
-            pending == null ||
-            expectedSize == null ||
-            expectedSize < 0 ||
-            expectedSize > MAX_EXPORT_BYTES ||
-            pending.length() != expectedSize ||
-            fileName == null ||
-            fileName.trim().isEmpty()
-        ) {
-            if (pending != null) {
-                preparedExports.remove(token, pending);
-                pending.delete();
+        File pending;
+        synchronized (preparedExportLock) {
+            cleanupExpiredPreparedExportsLocked();
+            pending = preparedExports.get(token);
+            if (
+                pending == null ||
+                TempFilePolicy.isExpired(
+                    pending,
+                    System.currentTimeMillis(),
+                    PREPARED_EXPORT_TTL_MS
+                ) ||
+                expectedSize == null ||
+                expectedSize < 0 ||
+                expectedSize > MAX_EXPORT_BYTES ||
+                pending.length() != expectedSize ||
+                fileName == null ||
+                fileName.trim().isEmpty()
+            ) {
+                if (pending != null) {
+                    preparedExports.remove(token, pending);
+                    pending.delete();
+                }
+                call.reject("Unknown export token or missing fileName");
+                return;
             }
-            call.reject("Unknown export token or missing fileName");
-            return;
-        }
 
-        if (committingExports.putIfAbsent(token, Boolean.TRUE) != null) {
-            call.reject("Export is already being committed");
-            return;
+            if (committingExports.putIfAbsent(token, Boolean.TRUE) != null) {
+                call.reject("Export is already being committed");
+                return;
+            }
+            TempFilePolicy.touch(pending, System.currentTimeMillis());
         }
 
         try {
@@ -254,6 +336,44 @@ public class PublicFileWriterPlugin extends Plugin {
         pending.delete();
     }
 
+    private static ScheduledThreadPoolExecutor createCleanupExecutor() {
+        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
+        executor.setRemoveOnCancelPolicy(true);
+        return executor;
+    }
+
+    private void cleanupOrphanedExportFiles() {
+        TempFilePolicy.sweepExpired(
+            getContext().getCacheDir(),
+            "public-export-",
+            ".pending",
+            System.currentTimeMillis(),
+            PREPARED_EXPORT_TTL_MS
+        );
+    }
+
+    private void cleanupExpiredPreparedExports() {
+        synchronized (preparedExportLock) {
+            cleanupExpiredPreparedExportsLocked();
+        }
+        cleanupOrphanedExportFiles();
+    }
+
+    private void cleanupExpiredPreparedExportsLocked() {
+        long now = System.currentTimeMillis();
+        for (java.util.Map.Entry<String, File> entry : preparedExports.entrySet()) {
+            String token = entry.getKey();
+            File pending = entry.getValue();
+            if (
+                !committingExports.containsKey(token) &&
+                TempFilePolicy.isExpired(pending, now, PREPARED_EXPORT_TTL_MS) &&
+                preparedExports.remove(token, pending)
+            ) {
+                pending.delete();
+            }
+        }
+    }
+
     private String sanitizeFileName(String fileName) {
         if (fileName == null) return "";
         return fileName
@@ -267,6 +387,7 @@ public class PublicFileWriterPlugin extends Plugin {
     @Override
     protected void handleOnDestroy() {
         exportExecutor.shutdownNow();
+        cleanupExecutor.shutdownNow();
         for (File pending : preparedExports.values()) pending.delete();
         preparedExports.clear();
         committingExports.clear();

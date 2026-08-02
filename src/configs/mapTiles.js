@@ -7,9 +7,28 @@ function trimTrailingSlashes(value) {
   return value.replace(/\/+$/, "");
 }
 
+export const OFFLINE_MAP_ONLY =
+  String(import.meta.env.VITE_OFFLINE_MAP_ONLY ?? "").toLowerCase() === "true";
+
+export const PRIVATE_TILE_PROVIDER_REQUIRED =
+  String(
+    import.meta.env.VITE_REQUIRE_PRIVATE_TILE_PROVIDER ?? "",
+  ).toLowerCase() === "true";
+
 export const TILE_URL_BASE = trimTrailingSlashes(
   String(import.meta.env.VITE_TILE_URL || DEFAULT_TILE_URL).trim(),
 );
+
+export const IS_DEFAULT_TILE_PROVIDER =
+  TILE_URL_BASE === trimTrailingSlashes(DEFAULT_TILE_URL);
+
+export const TILE_PROVIDER_ORIGIN = (() => {
+  try {
+    return new URL(TILE_URL_BASE).origin;
+  } catch {
+    return "";
+  }
+})();
 
 export const TILE_URL_TEMPLATE = TILE_URL_BASE.includes("{z}")
   ? TILE_URL_BASE

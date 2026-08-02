@@ -1,6 +1,10 @@
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { isNative } from "@/utils/platform";
-import { buildMapTileUrl, TILE_URL_TEMPLATE } from "@/configs/mapTiles";
+import {
+  buildMapTileUrl,
+  OFFLINE_MAP_ONLY,
+  TILE_URL_TEMPLATE,
+} from "@/configs/mapTiles";
 const CACHE_NAME = "map-tiles-v2";
 const TILE_ROOT_DIR = "map-tiles";
 const NATIVE_CACHE_FORMAT_VERSION = "v3";
@@ -467,6 +471,11 @@ export async function preloadUrls(
 
   throwIfAborted(signal);
   if (urls.length === 0) return stats;
+  if (OFFLINE_MAP_ONLY) {
+    throw new Error(
+      "External tile downloads are disabled by VITE_OFFLINE_MAP_ONLY",
+    );
+  }
 
   const webCache =
     !isNative && webSupported

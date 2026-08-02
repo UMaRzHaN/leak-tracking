@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Component, useState } from "react";
 import { usePhotoSrc } from "@/hooks/usePhotoSrc";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import {
@@ -14,7 +14,48 @@ import {
   getHistoryChangeLabel,
   relativeTime,
 } from "./viewBlockUtils";
+import { logger } from "@/utils/logger";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
+
+function displayText(value) {
+  if (value == null) return "";
+  if (["string", "number", "boolean"].includes(typeof value)) {
+    return String(value);
+  }
+  return "";
+}
+
+class HistoryErrorBoundary extends Component {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, info) {
+    logger.error("[LeakHistorySection]", error, info);
+  }
+
+  componentDidUpdate(previousProps) {
+    if (this.state.hasError && previousProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  render() {
+    if (!this.state.hasError) return this.props.children;
+    return (
+      <div className={s.tabEmpty} role="alert">
+        <span className={s.tabEmptyIcon}>!</span>
+        <p>
+          {this.props.lang === "ru"
+            ? "История записи повреждена и не может быть показана"
+            : "This record history is damaged and cannot be displayed"}
+        </p>
+      </div>
+    );
+  }
+}
 
 function MonitoringRecordRow({ record, localeTexts, lang }) {
   const photoSrc = usePhotoSrc(record.photo ?? null);
@@ -50,7 +91,7 @@ function MonitoringRecordRow({ record, localeTexts, lang }) {
               {record.monitoredBy && (
                 <div className={s.monitoringMetaRow}>
                   <span>{localeTexts.monitoring.inspector}</span>
-                  <strong>{record.monitoredBy}</strong>
+                  <strong>{displayText(record.monitoredBy)}</strong>
                 </div>
               )}
             </div>
@@ -59,7 +100,7 @@ function MonitoringRecordRow({ record, localeTexts, lang }) {
               <div className={s.monitoringDetailBlock}>
                 <span>{localeTexts.monitoring.materials}</span>
                 <p>
-                  {record.materials_equipment ||
+                  {displayText(record.materials_equipment) ||
                     (lang === "ru" ? "Удалено" : "Removed")}
                 </p>
               </div>
@@ -68,7 +109,7 @@ function MonitoringRecordRow({ record, localeTexts, lang }) {
             {record.comment && (
               <div className={s.monitoringDetailBlock}>
                 <span>{localeTexts.monitoring.comment}</span>
-                <p>{record.comment}</p>
+                <p>{displayText(record.comment)}</p>
               </div>
             )}
           </div>
@@ -166,11 +207,14 @@ function ChangeHistory({ data, fields, localeTexts, t, lang }) {
         history.map((entry, index) => {
           const relative = relativeTime(entry.date, lang);
           const absolute = fmtDate(entry.date, lang);
-          const statusColor = entry.to ? STATUS_COLORS[entry.to] : null;
-          const icon = ACTION_ICONS[entry.action] ?? "•";
+          const action = displayText(entry.action);
+          const targetStatus = displayText(entry.to);
+          const statusColor = targetStatus ? STATUS_COLORS[targetStatus] : null;
+          const icon = ACTION_ICONS[action] ?? "•";
           const changes = Array.isArray(entry.changes) ? entry.changes : [];
-          const user =
-            entry.user ?? entry.monitoredBy ?? entry.detectedBy ?? null;
+          const user = displayText(
+            entry.user ?? entry.monitoredBy ?? entry.detectedBy,
+          );
           const comment = getMonitoringHistoryComment(entry);
           return (
             <div key={index} className={s.logEntry}>
@@ -189,19 +233,19 @@ function ChangeHistory({ data, fields, localeTexts, t, lang }) {
               </div>
               <div className={s.logBody}>
                 <span className={s.logAction}>
-                  {localeTexts.actions[entry.action] ?? entry.action}
+                  {localeTexts.actions[action] ?? action}
                 </span>
                 {user && (
                   <span className={s.logUser}>
                     {localeTexts.user}: {user}
                   </span>
                 )}
-                {entry.to && (
+                {targetStatus && (
                   <span
                     className={s.logStatus}
                     style={statusColor ? { color: statusColor } : undefined}
                   >
-                    {localeTexts.statuses[entry.to] ?? entry.to}
+                    {localeTexts.statuses[targetStatus] ?? targetStatus}
                   </span>
                 )}
                 {comment && <span className={s.logCommentText}>{comment}</span>}
@@ -278,18 +322,20 @@ export default function LeakHistorySection({
   t,
   lang,
 }) {
-  if (activeTab === "monitoring") {
-    return (
-      <MonitoringHistory data={data} localeTexts={localeTexts} lang={lang} />
-    );
-  }
+  const resetKey = `${data?.id ?? "unknown"}:${activeTab}`;
   return (
-    <ChangeHistory
-      data={data}
-      fields={fields}
-      localeTexts={localeTexts}
-      t={t}
-      lang={lang}
-    />
+    <HistoryErrorBoundary resetKey={resetKey} lang={lang}>
+      {activeTab === "monitoring" ? (
+        <MonitoringHistory data={data} localeTexts={localeTexts} lang={lang} />
+      ) : (
+        <ChangeHistory
+          data={data}
+          fields={fields}
+          localeTexts={localeTexts}
+          t={t}
+          lang={lang}
+        />
+      )}
+    </HistoryErrorBoundary>
   );
 }

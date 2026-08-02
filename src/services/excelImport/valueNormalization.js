@@ -150,7 +150,7 @@ export function normalizeMonitoringResult(value) {
 
 export function normalizeHistoryAction(value) {
   const normalized = HISTORY_ACTION_BY_VALUE.get(normalizeHeader(value));
-  return normalized ?? (String(value ?? "").trim() || "edited");
+  return normalized ?? "edited";
 }
 
 export function isValidPhotoPath(value) {

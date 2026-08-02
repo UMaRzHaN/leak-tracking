@@ -50,8 +50,19 @@
     "cap:sync": "npx cap sync && node scripts/patch-gradle.js",
     "check:bundle": "node scripts/check-bundle-budget.mjs",
     "pack:source": "node scripts/pack-source.mjs --verify",
-    "verify:release": "npm run lint && npm run format:check && npm run typecheck && npm run test:coverage && npm run build:analyze && npm run check:bundle",
-    "android:release": "node scripts/verify-android-signing.mjs && npm run build && npm run cap:sync && cd android && ./gradlew test lintRelease assembleRelease"
+    "verify:release": "npm run check:clean && npm run lint && npm run format:check && npm run typecheck && npm run check:maintainability && npm run test:coverage && npm run check:coverage-ratchet && npm run build:analyze && npm run check:bundle && npm run check:licenses && npm run generate:sbom && npm run release:evidence:web && npm run artifacts:checksums",
+    "android:release": "npm run check:clean && node scripts/verify-android-signing.mjs && npm run build && npm run cap:sync && npm run check:clean && cd android && ./gradlew test lintRelease assembleRelease && cd .. && npm run release:evidence:android && npm run artifacts:checksums",
+    "test:e2e:cross-browser": "playwright test --config=playwright.cross-browser.config.mjs",
+    "check:coverage-ratchet": "node scripts/check-coverage-ratchet.mjs",
+    "generate:sbom": "node scripts/generate-sbom.mjs",
+    "release:evidence:web": "node scripts/write-release-verification.mjs --scope=web",
+    "release:evidence:android": "node scripts/write-release-verification.mjs --scope=android",
+    "release:evidence:e2e": "node scripts/write-release-verification.mjs --scope=e2e",
+    "check:licenses": "node scripts/check-license-policy.mjs",
+    "check:maintainability": "node scripts/check-maintainability-budget.mjs",
+    "check:clean": "node scripts/check-clean-worktree.mjs",
+    "artifacts:checksums": "node scripts/write-artifact-checksums.mjs",
+    "release:evidence:source": "node scripts/write-release-verification.mjs --scope=source"
   },
   "lint-staged": {
     "src/**/*.{js,jsx}": [

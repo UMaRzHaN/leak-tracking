@@ -82,97 +82,101 @@ export const calculations = (leak, vars) => {
   }
 
   /* =========================
-     INPUTS
+     NORMALIZED INPUTS
   ========================= */
-  const {
-    leak_speed, // л/мин
-    temperature, // °C (опционально)
-    pressure, // атм (опционально)
-  } = leak;
+  const leakSpeed = toFiniteNumber(leak.leak_speed);
+  const temperature = toFiniteNumber(leak.temperature);
+  const pressure = toFiniteNumber(leak.pressure);
+  const density = toFiniteNumber(vars.density);
+  const GWP = toFiniteNumber(vars.GWP);
+  const GWP_Minus = toFiniteNumber(vars.GWP_Minus);
+  const percentageGasToFlare = toFiniteNumber(vars.percentage_gas_to_flare);
+  const percentageGasToUtilization = toFiniteNumber(
+    vars.percentage_gas_to_utilization,
+  );
+  const gasPercentage = toFiniteNumber(vars.gasPercentage);
+  const uncertainty = toFiniteNumber(vars.uncertainty);
+  const operatingMode = toFiniteNumber(vars.Operating_mode);
+  const { equipmentType, serial_number } = vars;
 
-  const {
-    density, // кг/м3
-    GWP, // GWP (например 28)
-    GWP_Minus, // GWP_Minus (например 25.25)
-    percentage_gas_to_flare, // %
-    percentage_gas_to_utilization, // %
-    gasPercentage, // %
-    equipmentType,
-    serial_number,
-    uncertainty,
-    Operating_mode,
-  } = vars;
+  if (
+    leakSpeed == null ||
+    density == null ||
+    GWP == null ||
+    GWP_Minus == null ||
+    percentageGasToFlare == null ||
+    percentageGasToUtilization == null ||
+    gasPercentage == null ||
+    uncertainty == null ||
+    operatingMode == null
+  ) {
+    return leak;
+  }
 
   /* =========================
      CONSTANTS
   ========================= */
-  const MINUTES_PER_YEAR = 1440 * Operating_mode; // дней × минут в сутках
-  const KG_TO_TON = 0.001;
+  const minutesPerYear = 1440 * operatingMode;
+  const kgToTon = 0.001;
 
   /* =========================
      NORMALIZATION
   ========================= */
   const uncertaintyFactor = (100 - uncertainty) / 100;
-  const flareShare = percentage_gas_to_flare / 100;
-  const utilShare = percentage_gas_to_utilization / 100;
+  const flareShare = percentageGasToFlare / 100;
+  const utilShare = percentageGasToUtilization / 100;
+  const temperature_K = temperature == null ? null : temperature + 273.15;
 
-  /* =========================
-     TEMPERATURE
-  ========================= */
-  const temperature_K =
-    typeof temperature === "number" ? temperature + 273.15 : null;
+  let leakRate = leakSpeed;
+  if (isPinkBagEquipment(equipmentType)) {
+    if (pressure == null || temperature_K == null || temperature_K <= 0) {
+      return leak;
+    }
+    leakRate =
+      ((leakSpeed * pressure) / temperature_K) * 273.15 * (gasPercentage / 100);
+  }
 
-  /* =========================
-     MASS FLOW
-  ========================= */
-  const leak_speed_standard =
-    ((leak_speed * pressure) / temperature_K) * 273.15 * (gasPercentage / 100); // нормализуем к стандартным условиям (0°C, 1 атм) и учитываем процент газа в смеси
-  const leak_rate = isPinkBagEquipment(equipmentType)
-    ? leak_speed_standard
-    : leak_speed;
-  const leak_speed_kg_m = (leak_rate * density) / 1000;
+  const leak_speed_kg_m = (leakRate * density) / 1000;
   const leak_speed_kg_h = leak_speed_kg_m * 60;
-
-  /* =========================
-     ANNUAL LOSSES
-  ========================= */
   const Total_Annual_Methane_Loss_m3_y =
-    (leak_rate * MINUTES_PER_YEAR * uncertaintyFactor) / 1000;
-
+    (leakRate * minutesPerYear * uncertaintyFactor) / 1000;
   const Total_Annual_Methane_Loss_kg_y =
     Total_Annual_Methane_Loss_m3_y * density;
-
   const Total_Annual_Methane_Loss_t_y =
-    Total_Annual_Methane_Loss_kg_y * KG_TO_TON;
-
-  /* =========================
-     CO2-EQUIVALENT EMISSIONS
-  ========================= */
-  const weightedGWP = flareShare * GWP_Minus + utilShare * GWP; // утилизация эффективнее факела
-
+    Total_Annual_Methane_Loss_kg_y * kgToTon;
+  const weightedGWP = flareShare * GWP_Minus + utilShare * GWP;
   const Emissions_t_CO2eq_year = Total_Annual_Methane_Loss_t_y * weightedGWP;
-
   const Emissions_kg_CO2_eq_year = Emissions_t_CO2eq_year * 1000;
 
-  /* =========================
-     RESULT (NO SIDE EFFECTS)
-  ========================= */
-  return {
-    ...leak,
-
-    // normalized
+  const derivedValues = [
     flareShare,
     utilShare,
-    temperature_K,
-
-    // mass & losses
+    ...(temperature_K == null ? [] : [temperature_K]),
+    leakRate,
     leak_speed_kg_m,
     leak_speed_kg_h,
     Total_Annual_Methane_Loss_m3_y,
     Total_Annual_Methane_Loss_kg_y,
     Total_Annual_Methane_Loss_t_y,
+    weightedGWP,
+    Emissions_t_CO2eq_year,
+    Emissions_kg_CO2_eq_year,
+  ];
+  if (!derivedValues.every(Number.isFinite)) return leak;
 
-    // emissions
+  return {
+    ...leak,
+    leak_speed: leakSpeed,
+    ...(temperature == null ? {} : { temperature }),
+    ...(pressure == null ? {} : { pressure }),
+    flareShare,
+    utilShare,
+    temperature_K,
+    leak_speed_kg_m,
+    leak_speed_kg_h,
+    Total_Annual_Methane_Loss_m3_y,
+    Total_Annual_Methane_Loss_kg_y,
+    Total_Annual_Methane_Loss_t_y,
     Emissions_t_CO2eq_year,
     Emissions_kg_CO2_eq_year,
     equipmentType,
@@ -181,7 +185,8 @@ export const calculations = (leak, vars) => {
     GWP,
     GWP_Minus,
     weightedGWP,
-    Operating_mode,
+    Operating_mode: operatingMode,
   };
 };
+
 export default calculations;

@@ -1,4 +1,8 @@
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
+import {
+  validateHistoryEntry,
+  validateMonitoringRecord,
+} from "./backupNestedValidators";
 
 const VALID_STATUSES = new Set(["open", "in_progress", "resolved"]);
 const VALID_PROJECT_TYPES = new Set(["upstream", "midstream", "downstream"]);
@@ -151,40 +155,29 @@ function validateLeakRecord(record, index) {
     );
   }
 
-  for (const collectionName of ["monitoringRecords", "history"]) {
-    const collection = record[collectionName];
-    if (collection == null) continue;
-    if (!Array.isArray(collection)) {
-      pushIssue(issues, [index, collectionName], "Expected array");
-      continue;
-    }
-    collection.forEach((item, itemIndex) => {
-      if (!isPlainObject(item)) {
-        pushIssue(
+  if (record.monitoringRecords != null) {
+    if (!Array.isArray(record.monitoringRecords)) {
+      pushIssue(issues, [index, "monitoringRecords"], "Expected array");
+    } else {
+      record.monitoringRecords.forEach((monitoringRecord, monitoringIndex) =>
+        validateMonitoringRecord(
+          monitoringRecord,
+          [index, "monitoringRecords", monitoringIndex],
           issues,
-          [index, collectionName, itemIndex],
-          "Expected object",
-        );
-      }
-    });
+          isValidPortablePhotoPath,
+        ),
+      );
+    }
   }
 
-  if (Array.isArray(record.monitoringRecords)) {
-    record.monitoringRecords.forEach((monitoringRecord, monitoringIndex) => {
-      if (!isPlainObject(monitoringRecord)) return;
-      for (const field of ["photo", "previousPhoto"]) {
-        if (
-          monitoringRecord[field] != null &&
-          !isValidPortablePhotoPath(monitoringRecord[field])
-        ) {
-          pushIssue(
-            issues,
-            [index, "monitoringRecords", monitoringIndex, field],
-            "Недопустимый формат пути к фото",
-          );
-        }
-      }
-    });
+  if (record.history != null) {
+    if (!Array.isArray(record.history)) {
+      pushIssue(issues, [index, "history"], "Expected array");
+    } else {
+      record.history.forEach((entry, entryIndex) =>
+        validateHistoryEntry(entry, [index, "history", entryIndex], issues),
+      );
+    }
   }
 
   if (issues.length) {
