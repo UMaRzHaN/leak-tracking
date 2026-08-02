@@ -214,20 +214,17 @@ vi.mock("./components/DangerZoneSection", () => ({
     <button onClick={onClearDatabase}>danger-clear</button>
   ),
 }));
-vi.mock(
-  "@/features/fieldVisibility/FieldVisibilityModal/FieldVisibilityModal",
-  () => ({
-    default: ({ open, onSave, onClose }) =>
-      open ? (
-        <div>
-          <button onClick={() => onSave(new Set(["pressure"]))}>
-            save-fields
-          </button>
-          <button onClick={onClose}>close-fields</button>
-        </div>
-      ) : null,
-  }),
-);
+vi.mock("@/features/fieldVisibility/FieldVisibilityModal", () => ({
+  default: ({ open, onSave, onClose }) =>
+    open ? (
+      <div>
+        <button onClick={() => onSave(new Set(["pressure"]))}>
+          save-fields
+        </button>
+        <button onClick={onClose}>close-fields</button>
+      </div>
+    ) : null,
+}));
 vi.mock("@/features/importConflict/ImportConflictSheet", () => ({
   default: () => null,
 }));

@@ -1,5 +1,5 @@
 import PageHeader from "@/components/layout/PageHeader/PageHeader";
-import FieldVisibilityModal from "@/features/fieldVisibility/FieldVisibilityModal/FieldVisibilityModal";
+import FieldVisibilityModal from "@/features/fieldVisibility/FieldVisibilityModal";
 import Notification from "@/components/ui/Notification/Notification";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import AddProjectForm from "./components/AddProjectForm";
