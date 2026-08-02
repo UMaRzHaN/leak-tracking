@@ -435,4 +435,155 @@ describe("useSettingsPage orchestration", () => {
     act(() => result.current.cancelExcelImport());
     expect(result.current.excelImportState).toEqual({ open: false });
   });
+
+  it("falls back to an empty cache summary when cache inspection fails", async () => {
+    mocks.getMapCacheInfo.mockRejectedValueOnce(new Error("cache unavailable"));
+
+    const { result } = renderSettings();
+
+    await waitFor(() =>
+      expect(result.current.cacheInfo).toEqual({ count: 0, sizeMB: 0 }),
+    );
+  });
+
+  it("applies portable archive metadata during a confirmed import", async () => {
+    const parsed = excelResult({
+      portableArchive: true,
+      vars: { density: 0.9 },
+      settings: { hiddenFields: ["pressure"] },
+      monitoringRound: { id: "round-2" },
+      sync: { deleted: { "TAG-1": 10 } },
+    });
+    mocks.parseExcelImportFile.mockResolvedValueOnce(parsed);
+    const { result, props } = renderSettings();
+
+    await act(async () => result.current.handleImportExcel(fileEvent()));
+    await act(async () => result.current.confirmExcelImport());
+
+    expect(mocks.restoreProjectMetadata).toHaveBeenCalledWith(
+      "project-1",
+      parsed.project,
+    );
+    expect(mocks.setVarsAsync).toHaveBeenCalledWith(parsed.vars);
+    expect(mocks.writeProjectSettings).toHaveBeenCalledWith(
+      "project-1",
+      parsed.settings,
+    );
+    expect(mocks.saveMonitoringRound).toHaveBeenCalledWith(
+      "project-1",
+      parsed.monitoringRound,
+    );
+    expect(mocks.writeProjectSyncState).toHaveBeenCalledWith(
+      "project-1",
+      parsed.sync,
+      expect.any(Array),
+    );
+    expect(props.setData).toHaveBeenCalled();
+  });
+
+  it("restores the captured project state when an import commit fails", async () => {
+    const parsed = excelResult({
+      vars: { density: 0.95 },
+      settings: { hiddenFields: ["temperature"] },
+      sync: { deleted: { stale: 5 } },
+    });
+    mocks.parseExcelImportFile.mockResolvedValueOnce(parsed);
+    localStorage.setItem("vars:project-1", JSON.stringify({ density: 0.7 }));
+    mocks.readProjectSettings.mockReturnValueOnce({ hiddenFields: ["old"] });
+    mocks.readMonitoringRound.mockReturnValueOnce({ id: "round-old" });
+    mocks.readProjectSyncStateAsync.mockResolvedValueOnce({
+      deleted: { old: 1 },
+    });
+    const original = [{ id: "old", leak_id: "TAG-1" }];
+    const setData = vi.fn();
+    mocks.runExcelImportTransaction.mockImplementationOnce(
+      async ({ persistPhotos, commit, rollbackState }) => {
+        const transaction = await persistPhotos();
+        const leaks = transaction?.leaks ?? transaction;
+        try {
+          await commit(leaks);
+          throw new Error("commit failed");
+        } catch (error) {
+          await rollbackState();
+          throw error;
+        }
+      },
+    );
+    const { result } = renderSettings({ data: original, setData });
+
+    await act(async () => result.current.handleImportExcel(fileEvent()));
+    await act(async () => result.current.handleExcelConflictOverwrite());
+
+    expect(setData).toHaveBeenLastCalledWith(original);
+    expect(mocks.restoreProjectSnapshot).toHaveBeenCalledWith(
+      "project-1",
+      expect.objectContaining({ id: "project-1", name: "Alpha" }),
+    );
+    expect(localStorage.getItem("vars:project-1")).toBe(
+      JSON.stringify({ density: 0.7 }),
+    );
+    expect(mocks.writeProjectSettings).toHaveBeenLastCalledWith("project-1", {
+      hiddenFields: ["old"],
+    });
+    expect(mocks.saveMonitoringRound).toHaveBeenLastCalledWith("project-1", {
+      id: "round-old",
+    });
+    expect(mocks.writeProjectSyncState).toHaveBeenLastCalledWith(
+      "project-1",
+      { deleted: { old: 1 } },
+      original,
+    );
+    expect(result.current.notification.message).toContain("commit failed");
+    expect(result.current.isImportingExcel).toBe(false);
+  });
+
+  it("shows a warning when the transaction journal cannot be cleared", async () => {
+    mocks.parseExcelImportFile.mockResolvedValueOnce(excelResult());
+    mocks.getExcelImportTransactionWarning.mockReturnValueOnce(
+      "journal cleanup failed",
+    );
+    const { result } = renderSettings();
+
+    await act(async () => result.current.handleImportExcel(fileEvent()));
+    await act(async () => result.current.confirmExcelImport());
+
+    expect(result.current.notification).toMatchObject({ type: "warning" });
+    expect(result.current.notification.message).toContain(
+      "журнал операции не удалось очистить",
+    );
+  });
+
+  it("closes merge and copy conflicts after failures", async () => {
+    const parsed = excelResult();
+    const onCreateExcelCopy = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("copy failed"));
+    const { result } = renderSettings({
+      data: [{ id: "old", leak_id: "TAG-1" }],
+      onCreateExcelCopy,
+    });
+
+    act(() =>
+      result.current.setExcelConflictState({
+        open: true,
+        result: parsed,
+        preparedForMerge: parsed.leaks,
+      }),
+    );
+    mocks.runExcelImportTransaction.mockRejectedValueOnce(
+      new Error("merge failed"),
+    );
+    await act(async () => result.current.handleExcelConflictMerge());
+    expect(result.current.notification.message).toContain("merge failed");
+    expect(result.current.excelConflictState).toEqual({ open: false });
+    expect(result.current.isImportingExcel).toBe(false);
+
+    act(() =>
+      result.current.setExcelConflictState({ open: true, result: parsed }),
+    );
+    await act(async () => result.current.handleExcelConflictCopy());
+    expect(result.current.notification.message).toContain("copy failed");
+    expect(result.current.excelConflictState).toEqual({ open: false });
+    expect(result.current.isImportingExcel).toBe(false);
+  });
 });
