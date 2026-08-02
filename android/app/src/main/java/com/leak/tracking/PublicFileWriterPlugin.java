@@ -343,13 +343,16 @@ public class PublicFileWriterPlugin extends Plugin {
     }
 
     private void cleanupOrphanedExportFiles() {
-        TempFilePolicy.sweepExpired(
-            getContext().getCacheDir(),
-            "public-export-",
-            ".pending",
-            System.currentTimeMillis(),
-            PREPARED_EXPORT_TTL_MS
-        );
+        synchronized (preparedExportLock) {
+            TempFilePolicy.sweepExpired(
+                getContext().getCacheDir(),
+                "public-export-",
+                ".pending",
+                System.currentTimeMillis(),
+                PREPARED_EXPORT_TTL_MS,
+                preparedExports.values()
+            );
+        }
     }
 
     private void cleanupExpiredPreparedExports() {

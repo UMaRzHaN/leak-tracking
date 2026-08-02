@@ -2,6 +2,9 @@ package com.leak.tracking;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 final class TempFilePolicy {
     private TempFilePolicy() {}
@@ -58,7 +61,28 @@ final class TempFilePolicy {
         long nowMs,
         long ttlMs
     ) {
+        return sweepExpired(
+            directory,
+            prefix,
+            suffix,
+            nowMs,
+            ttlMs,
+            Collections.emptySet()
+        );
+    }
+
+    static int sweepExpired(
+        File directory,
+        String prefix,
+        String suffix,
+        long nowMs,
+        long ttlMs,
+        Collection<File> protectedFiles
+    ) {
         if (directory == null || !directory.isDirectory()) return 0;
+        Set<File> protectedSet = protectedFiles == null
+            ? Collections.emptySet()
+            : new HashSet<>(protectedFiles);
         File[] candidates = directory.listFiles(file -> {
             String name = file.getName();
             return file.isFile() && name.startsWith(prefix) && name.endsWith(suffix);
@@ -67,7 +91,13 @@ final class TempFilePolicy {
 
         int deleted = 0;
         for (File file : candidates) {
-            if (isExpired(file, nowMs, ttlMs) && file.delete()) deleted += 1;
+            if (
+                !protectedSet.contains(file) &&
+                isExpired(file, nowMs, ttlMs) &&
+                file.delete()
+            ) {
+                deleted += 1;
+            }
         }
         return deleted;
     }

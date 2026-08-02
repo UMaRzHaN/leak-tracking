@@ -33,7 +33,7 @@ const props = {
 
 describe("LeakHistorySection", () => {
   it("does not crash when legacy local history contains object values", () => {
-    render(
+    const { container } = render(
       <LeakHistorySection
         {...props}
         activeTab="history"
@@ -52,11 +52,12 @@ describe("LeakHistorySection", () => {
     );
 
     expect(screen.getByText("Edited")).toBeInTheDocument();
-    expect(screen.queryByText(/Objects are not valid/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(container).not.toHaveTextContent("[object Object]");
   });
 
   it("does not render object monitoring values as React children", () => {
-    render(
+    const { container } = render(
       <LeakHistorySection
         {...props}
         activeTab="monitoring"
@@ -79,5 +80,7 @@ describe("LeakHistorySection", () => {
 
     expect(screen.getByText("Inspector")).toBeInTheDocument();
     expect(screen.getByText("Comment")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(container).not.toHaveTextContent("[object Object]");
   });
 });

@@ -70,6 +70,10 @@ public class LocalSyncPlugin extends Plugin {
     // received archive is exposed to JavaScript after transfer, so accepting a
     // larger native file would only defer rejection until after materialization.
     private static final long MAX_ARCHIVE_BYTES = 256L * 1024L * 1024L;
+    // A full exchange temporarily needs both the outgoing and incoming archive.
+    // Keep one explicit process-wide quota across prepared, hosted, active and
+    // delivered sync files instead of applying independent per-map limits.
+    private static final long MAX_TEMP_ARCHIVE_BYTES = MAX_ARCHIVE_BYTES * 2L;
     private static final int MAX_ARCHIVE_CHUNK_BYTES = 1024 * 1024;
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final int HANDSHAKE_TIMEOUT_MS = 10_000;
@@ -98,9 +102,11 @@ public class LocalSyncPlugin extends Plugin {
     private final ScheduledThreadPoolExecutor cleanupExecutor = createCleanupExecutor();
     private final ConcurrentHashMap<String, File> preparedArchives = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, File> deliveredArchives = new ConcurrentHashMap<>();
+    private final Set<File> activeArchives = ConcurrentHashMap.newKeySet();
     private final ConcurrentHashMap<String, PendingApproval> pendingApprovals = new ConcurrentHashMap<>();
     private final Object sessionLock = new Object();
     private final Object archiveLock = new Object();
+    private long reservedArchiveBytes;
     private final Semaphore outboundTransfers = new Semaphore(MAX_OUTBOUND_TRANSFERS, true);
     private final SyncConnectionGuard connectionGuard = new SyncConnectionGuard(MAX_CONCURRENT_HANDSHAKES, MAX_FAILED_AUTH_ATTEMPTS);
     private final Set<Socket> activeClientSockets = ConcurrentHashMap.newKeySet();
@@ -145,13 +151,9 @@ public class LocalSyncPlugin extends Plugin {
                     throw new Exception("Too many prepared sync archives are active");
                 }
                 if (
-                    TempFilePolicy.wouldExceedAggregate(
-                        preparedArchives.values(),
-                        1L,
-                        MAX_ARCHIVE_BYTES
-                    )
+                    wouldExceedTemporaryArchiveQuotaLocked(1L)
                 ) {
-                    throw new Exception("Prepared sync archive quota is exhausted");
+                    throw new Exception("Temporary sync archive quota is exhausted");
                 }
                 token = UUID.randomUUID().toString();
                 File archive = createTempArchive("local-sync-outgoing");
@@ -161,6 +163,7 @@ public class LocalSyncPlugin extends Plugin {
             JSObject result = new JSObject();
             result.put("token", token);
             result.put("maxArchiveBytes", MAX_ARCHIVE_BYTES);
+            result.put("maxTemporaryArchiveBytes", MAX_TEMP_ARCHIVE_BYTES);
             result.put("maxPreparedArchives", MAX_PREPARED_ARCHIVES);
             result.put("preparedArchiveTtlMs", PREPARED_ARCHIVE_TTL_MS);
             call.resolve(result);
@@ -209,11 +212,7 @@ public class LocalSyncPlugin extends Plugin {
                         chunk.length,
                         MAX_ARCHIVE_BYTES
                     ) ||
-                    TempFilePolicy.wouldExceedAggregate(
-                        preparedArchives.values(),
-                        chunk.length,
-                        MAX_ARCHIVE_BYTES
-                    )
+                    wouldExceedTemporaryArchiveQuotaLocked(chunk.length)
                 ) {
                     throw new Exception("Archive exceeds the safety limit");
                 }
@@ -254,7 +253,12 @@ public class LocalSyncPlugin extends Plugin {
         );
         Long requestedDuration = call.getLong("sessionDurationMs");
         long sessionDurationMs = clampSessionDuration(requestedDuration);
-        File preparedArchive = preparedArchives.remove(archiveToken);
+        File preparedArchive;
+        synchronized (archiveLock) {
+            cleanupExpiredArchiveSessionsLocked();
+            preparedArchive = preparedArchives.remove(archiveToken);
+            if (preparedArchive != null) activeArchives.add(preparedArchive);
+        }
         if (
             preparedArchive == null ||
             TempFilePolicy.isExpired(
@@ -265,7 +269,12 @@ public class LocalSyncPlugin extends Plugin {
             projectKey.isEmpty() ||
             syncId.isEmpty()
         ) {
-            if (preparedArchive != null) preparedArchive.delete();
+            if (preparedArchive != null) {
+                synchronized (archiveLock) {
+                    activeArchives.remove(preparedArchive);
+                }
+                preparedArchive.delete();
+            }
             call.reject("archiveToken, projectKey and syncId are required");
             return;
         }
@@ -296,6 +305,9 @@ public class LocalSyncPlugin extends Plugin {
                 serverSocket.setReuseAddress(true);
                 scheduleHostExpiry(tlsServerSocket, hostSessionId, sessionDurationMs);
             }
+            synchronized (archiveLock) {
+                activeArchives.remove(preparedArchive);
+            }
 
             ServerSocket activeServer = serverSocket;
             try {
@@ -312,12 +324,16 @@ public class LocalSyncPlugin extends Plugin {
             result.put("fingerprint", hostCertificateFingerprint);
             result.put("securityKey", hostCertificateFingerprint.substring(0, 16));
             result.put("maxArchiveBytes", MAX_ARCHIVE_BYTES);
+            result.put("maxTemporaryArchiveBytes", MAX_TEMP_ARCHIVE_BYTES);
             result.put("sessionId", hostSessionId);
             result.put("expiresAt", hostSessionExpiresAt);
             result.put("allowMultipleImports", hostAllowsMultipleImports);
             result.put("transferCount", hostCompletedTransfers);
             call.resolve(result);
         } catch (Exception error) {
+            synchronized (archiveLock) {
+                activeArchives.remove(preparedArchive);
+            }
             preparedArchive.delete();
             stopHostInternal();
             call.reject(readableMessage(error), error);
@@ -353,7 +369,12 @@ public class LocalSyncPlugin extends Plugin {
         String syncId = normalizeSyncId(call.getString("syncId"));
         String sessionId = normalizeSessionId(call.getString("sessionId"));
         String archiveToken = call.getString("archiveToken", "");
-        File outgoing = preparedArchives.remove(archiveToken);
+        File outgoing;
+        synchronized (archiveLock) {
+            cleanupExpiredArchiveSessionsLocked();
+            outgoing = preparedArchives.remove(archiveToken);
+            if (outgoing != null) activeArchives.add(outgoing);
+        }
 
         if (
             host.isEmpty() ||
@@ -370,12 +391,20 @@ public class LocalSyncPlugin extends Plugin {
                 PREPARED_ARCHIVE_TTL_MS
             )
         ) {
-            if (outgoing != null) outgoing.delete();
+            if (outgoing != null) {
+                synchronized (archiveLock) {
+                    activeArchives.remove(outgoing);
+                }
+                outgoing.delete();
+            }
             call.reject("host, port, code, fingerprint, projectKey, syncId, sessionId and archiveToken are required");
             return;
         }
 
         if (!outboundTransfers.tryAcquire()) {
+            synchronized (archiveLock) {
+                activeArchives.remove(outgoing);
+            }
             outgoing.delete();
             call.reject("Too many outgoing sync operations are active");
             return;
@@ -391,11 +420,17 @@ public class LocalSyncPlugin extends Plugin {
                 } catch (Exception error) {
                     call.reject(readableMessage(error), error);
                 } finally {
+                    synchronized (archiveLock) {
+                        activeArchives.remove(outgoing);
+                    }
                     outgoing.delete();
                     outboundTransfers.release();
                 }
             });
         } catch (RejectedExecutionException error) {
+            synchronized (archiveLock) {
+                activeArchives.remove(outgoing);
+            }
             outgoing.delete();
             outboundTransfers.release();
             call.reject("Local sync service is busy", error);
@@ -620,14 +655,28 @@ public class LocalSyncPlugin extends Plugin {
                     rejectPeer(output, "Передача не подтверждена на первом устройстве");
                     return ClientOutcome.CONTINUE;
                 }
+                try {
+                    reserveTemporaryArchiveBytes(archiveSize);
+                } catch (Exception error) {
+                    rejectPeer(output, readableMessage(error));
+                    return ClientOutcome.CONTINUE;
+                }
+                boolean reservationPending = true;
                 socket.setSoTimeout(TRANSFER_TIMEOUT_MS);
-                output.writeUTF("READY");
-                output.flush();
-
-                received = createTempArchive("local-sync-incoming");
-                receiveFile(input, received, archiveSize);
+                try {
+                    output.writeUTF("READY");
+                    output.flush();
+                    reservationPending = false;
+                    received = receiveReservedTemporaryArchive(
+                        input,
+                        "local-sync-incoming",
+                        archiveSize
+                    );
+                } finally {
+                    if (reservationPending) releaseTemporaryArchiveBytes(archiveSize);
+                }
                 if (!expectedHash.equals(sha256(received))) {
-                    received.delete();
+                    discardActiveArchive(received);
                     received = null;
                     rejectPeer(output, "Архив повреждён при передаче");
                     return ClientOutcome.CONTINUE;
@@ -648,7 +697,7 @@ public class LocalSyncPlugin extends Plugin {
                 if (!completed) releaseExchangeSession(outgoing);
             }
         } finally {
-            if (received != null) received.delete();
+            if (received != null) discardActiveArchive(received);
         }
     }
 
@@ -768,10 +817,13 @@ public class LocalSyncPlugin extends Plugin {
                 long incomingSize = input.readLong();
                 assertArchiveSize(incomingSize);
                 String expectedHash = input.readUTF();
-                received = createTempArchive("local-sync-response");
-                receiveFile(input, received, incomingSize);
+                received = receiveTemporaryArchive(
+                    input,
+                    "local-sync-response",
+                    incomingSize
+                );
                 if (!expectedHash.equals(sha256(received))) {
-                    received.delete();
+                    discardActiveArchive(received);
                     received = null;
                     throw new Exception("Архив повреждён при передаче");
                 }
@@ -781,7 +833,7 @@ public class LocalSyncPlugin extends Plugin {
             }
         } finally {
             if (protocolDeadline != null) protocolDeadline.cancel(false);
-            if (received != null) received.delete();
+            if (received != null) discardActiveArchive(received);
         }
     }
 
@@ -818,10 +870,13 @@ public class LocalSyncPlugin extends Plugin {
                 long incomingSize = input.readLong();
                 assertArchiveSize(incomingSize);
                 String expectedHash = input.readUTF();
-                received = createTempArchive("local-sync-import");
-                receiveFile(input, received, incomingSize);
+                received = receiveTemporaryArchive(
+                    input,
+                    "local-sync-import",
+                    incomingSize
+                );
                 if (!expectedHash.equals(sha256(received))) {
-                    received.delete();
+                    discardActiveArchive(received);
                     received = null;
                     throw new Exception("Архив повреждён при передаче");
                 }
@@ -831,7 +886,7 @@ public class LocalSyncPlugin extends Plugin {
             }
         } finally {
             if (protocolDeadline != null) protocolDeadline.cancel(false);
-            if (received != null) received.delete();
+            if (received != null) discardActiveArchive(received);
         }
     }
 
@@ -1072,6 +1127,37 @@ public class LocalSyncPlugin extends Plugin {
         }
     }
 
+    private File receiveTemporaryArchive(
+        DataInputStream input,
+        String prefix,
+        long expectedBytes
+    ) throws Exception {
+        reserveTemporaryArchiveBytes(expectedBytes);
+        return receiveReservedTemporaryArchive(input, prefix, expectedBytes);
+    }
+
+    private File receiveReservedTemporaryArchive(
+        DataInputStream input,
+        String prefix,
+        long expectedBytes
+    ) throws Exception {
+        File target = null;
+        try {
+            target = createTempArchive(prefix);
+            synchronized (archiveLock) {
+                activeArchives.add(target);
+            }
+            receiveFile(input, target, expectedBytes);
+            TempFilePolicy.touch(target, System.currentTimeMillis());
+            return target;
+        } catch (Exception error) {
+            discardActiveArchive(target);
+            throw error;
+        } finally {
+            releaseTemporaryArchiveBytes(expectedBytes);
+        }
+    }
+
     private void sendFile(DataOutputStream output, File source) throws Exception {
         byte[] buffer = new byte[32 * 1024];
         try (FileInputStream stream = new FileInputStream(source)) {
@@ -1086,25 +1172,49 @@ public class LocalSyncPlugin extends Plugin {
         return File.createTempFile(prefix + "-", ".zip", getContext().getCacheDir());
     }
 
+    private void reserveTemporaryArchiveBytes(long bytes) throws Exception {
+        synchronized (archiveLock) {
+            cleanupExpiredArchiveSessionsLocked();
+            cleanupOrphanedArchiveFilesLocked();
+            if (wouldExceedTemporaryArchiveQuotaLocked(bytes)) {
+                throw new Exception("Temporary sync archive quota is exhausted");
+            }
+            reservedArchiveBytes += bytes;
+        }
+    }
+
+    private void releaseTemporaryArchiveBytes(long bytes) {
+        synchronized (archiveLock) {
+            reservedArchiveBytes = Math.max(0L, reservedArchiveBytes - bytes);
+        }
+    }
+
+    private void discardActiveArchive(File archive) {
+        if (archive == null) return;
+        synchronized (archiveLock) {
+            activeArchives.remove(archive);
+        }
+        archive.delete();
+    }
+
     private JSObject archiveResult(File file) throws Exception {
         String token;
         synchronized (archiveLock) {
             cleanupExpiredArchiveSessionsLocked();
             if (deliveredArchives.size() >= MAX_DELIVERED_ARCHIVES) {
+                activeArchives.remove(file);
                 file.delete();
                 throw new Exception("Too many received sync archives are awaiting release");
             }
-            if (
-                TempFilePolicy.aggregateSize(deliveredArchives.values()) +
-                file.length() >
-                MAX_ARCHIVE_BYTES
-            ) {
+            if (wouldExceedTemporaryArchiveQuotaLocked(0L)) {
+                activeArchives.remove(file);
                 file.delete();
-                throw new Exception("Received sync archive quota is exhausted");
+                throw new Exception("Temporary sync archive quota is exhausted");
             }
             token = UUID.randomUUID().toString();
             TempFilePolicy.touch(file, System.currentTimeMillis());
             deliveredArchives.put(token, file);
+            activeArchives.remove(file);
         }
         cleanupExecutor.schedule(
             () -> discardDeliveredArchive(token),
@@ -1115,6 +1225,7 @@ public class LocalSyncPlugin extends Plugin {
         result.put("uri", Uri.fromFile(file).toString());
         result.put("size", file.length());
         result.put("archiveToken", token);
+        result.put("maxTemporaryArchiveBytes", MAX_TEMP_ARCHIVE_BYTES);
         return result;
     }
 
@@ -1297,12 +1408,18 @@ public class LocalSyncPlugin extends Plugin {
     }
 
     private void discardPreparedArchive(String token) {
-        File archive = preparedArchives.remove(token);
+        File archive;
+        synchronized (archiveLock) {
+            archive = preparedArchives.remove(token);
+        }
         if (archive != null) archive.delete();
     }
 
     private void discardDeliveredArchive(String token) {
-        File archive = deliveredArchives.remove(token);
+        File archive;
+        synchronized (archiveLock) {
+            archive = deliveredArchives.remove(token);
+        }
         if (archive != null) archive.delete();
     }
 
@@ -1381,9 +1498,56 @@ public class LocalSyncPlugin extends Plugin {
         );
     }
 
+    private ArrayList<File> temporaryArchiveFilesOnDisk() {
+        ArrayList<File> files = new ArrayList<>();
+        File cacheDir = getContext().getCacheDir();
+        File[] candidates = cacheDir.listFiles(file ->
+            file.isFile() && isTemporaryArchiveName(file.getName())
+        );
+        if (candidates != null) Collections.addAll(files, candidates);
+        return files;
+    }
+
+    private boolean isTemporaryArchiveName(String name) {
+        if (name == null || !name.endsWith(".zip")) return false;
+        return (
+            name.startsWith("local-sync-outgoing-") ||
+            name.startsWith("local-sync-incoming-") ||
+            name.startsWith("local-sync-response-") ||
+            name.startsWith("local-sync-import-")
+        );
+    }
+
+    private boolean wouldExceedTemporaryArchiveQuotaLocked(long additionalBytes) {
+        if (additionalBytes < 0L || reservedArchiveBytes < 0L) return true;
+        if (Long.MAX_VALUE - reservedArchiveBytes < additionalBytes) return true;
+        return TempFilePolicy.wouldExceedAggregate(
+            temporaryArchiveFilesOnDisk(),
+            reservedArchiveBytes + additionalBytes,
+            MAX_TEMP_ARCHIVE_BYTES
+        );
+    }
+
+    private ArrayList<File> protectedTemporaryArchivesLocked() {
+        ArrayList<File> files = new ArrayList<>();
+        files.addAll(preparedArchives.values());
+        files.addAll(deliveredArchives.values());
+        files.addAll(activeArchives);
+        File currentHostedArchive = hostedArchive;
+        if (currentHostedArchive != null) files.add(currentHostedArchive);
+        return files;
+    }
+
     private void cleanupOrphanedArchiveFiles() {
+        synchronized (archiveLock) {
+            cleanupOrphanedArchiveFilesLocked();
+        }
+    }
+
+    private void cleanupOrphanedArchiveFilesLocked() {
         long now = System.currentTimeMillis();
         File cacheDir = getContext().getCacheDir();
+        ArrayList<File> protectedFiles = protectedTemporaryArchivesLocked();
         for (String prefix : new String[] {
             "local-sync-outgoing-",
             "local-sync-incoming-",
@@ -1395,7 +1559,8 @@ public class LocalSyncPlugin extends Plugin {
                 prefix,
                 ".zip",
                 now,
-                PREPARED_ARCHIVE_TTL_MS
+                PREPARED_ARCHIVE_TTL_MS,
+                protectedFiles
             );
         }
     }
@@ -1403,6 +1568,7 @@ public class LocalSyncPlugin extends Plugin {
     private void cleanupExpiredArchiveSessions() {
         synchronized (archiveLock) {
             cleanupExpiredArchiveSessionsLocked();
+            cleanupOrphanedArchiveFilesLocked();
         }
     }
 
@@ -1522,6 +1688,11 @@ public class LocalSyncPlugin extends Plugin {
         preparedArchives.clear();
         for (File archive : deliveredArchives.values()) archive.delete();
         deliveredArchives.clear();
+        for (File archive : activeArchives) archive.delete();
+        activeArchives.clear();
+        synchronized (archiveLock) {
+            reservedArchiveBytes = 0L;
+        }
         acceptExecutor.shutdownNow();
         executor.shutdownNow();
         cleanupExecutor.shutdownNow();

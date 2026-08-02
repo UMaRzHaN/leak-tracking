@@ -120,4 +120,33 @@ public class TempFilePolicyTest {
         assertTrue(current.exists());
         assertTrue(unrelated.exists());
     }
+
+    @Test
+    public void sweepExpiredKeepsProtectedActiveFiles() throws Exception {
+        File directory = Files.createTempDirectory("temp-policy").toFile();
+        long now = System.currentTimeMillis();
+        File protectedFile = new File(
+            directory,
+            "public-export-active.pending"
+        );
+        File orphan = new File(directory, "public-export-orphan.pending");
+        assertTrue(protectedFile.createNewFile());
+        assertTrue(orphan.createNewFile());
+        protectedFile.setLastModified(now - 20_000L);
+        orphan.setLastModified(now - 20_000L);
+
+        assertEquals(
+            1,
+            TempFilePolicy.sweepExpired(
+                directory,
+                "public-export-",
+                ".pending",
+                now,
+                10_000L,
+                Arrays.asList(new File(directory, protectedFile.getName()))
+            )
+        );
+        assertTrue(protectedFile.exists());
+        assertFalse(orphan.exists());
+    }
 }

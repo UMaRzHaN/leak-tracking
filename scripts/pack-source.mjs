@@ -26,6 +26,40 @@ execFileSync(
   { stdio: "inherit" },
 );
 
+const archiveEntries = execFileSync("unzip", ["-Z1", outputPath], {
+  encoding: "utf8",
+})
+  .split("\n")
+  .map((entry) => entry.trim())
+  .filter(Boolean);
+const forbiddenArchiveEntries = archiveEntries.filter((entry) =>
+  [
+    "node_modules/",
+    ".git/",
+    "design/",
+    "outputs/",
+    "dist/",
+    "coverage/",
+    ".artifacts/",
+    "playwright-report/",
+    "test-results/",
+    "__MACOSX/",
+  ].some((prefix) => entry.startsWith(prefix)),
+);
+const macMetadataEntries = archiveEntries.filter(
+  (entry) => entry === ".DS_Store" || entry.endsWith("/.DS_Store"),
+);
+if (forbiddenArchiveEntries.length > 0 || macMetadataEntries.length > 0) {
+  throw new Error(
+    `Source archive contains forbidden entries: ${[
+      ...forbiddenArchiveEntries,
+      ...macMetadataEntries,
+    ]
+      .slice(0, 20)
+      .join(", ")}`,
+  );
+}
+
 if (verify) {
   const verificationDir = mkdtempSync(
     path.join(tmpdir(), "leak-tracking-source-verify-"),

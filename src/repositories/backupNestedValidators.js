@@ -69,7 +69,11 @@ function hasValidTimezoneOffset(value) {
   const [, , hours, minutes] = offset;
   const offsetHours = Number(hours);
   const offsetMinutes = Number(minutes);
-  return offsetHours < 14 || (offsetHours === 14 && offsetMinutes === 0);
+  return (
+    offsetMinutes >= 0 &&
+    offsetMinutes <= 59 &&
+    (offsetHours < 14 || (offsetHours === 14 && offsetMinutes === 0))
+  );
 }
 
 export function isValidBackupDate(value) {

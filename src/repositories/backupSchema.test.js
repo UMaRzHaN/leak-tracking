@@ -132,6 +132,20 @@ describe("backupSchema leak validation", () => {
     expect(result.error).toContain("history.0.date");
   });
 
+  it.each([
+    "2026-08-02T10:00:00+13:99",
+    "02.08.2026 10:00+13:99",
+    "2026-08-02T10:00:00+14:01",
+    "02.08.2026 10:00-14:30",
+  ])("rejects invalid timezone offset %s", (date) => {
+    const result = validateBackup([
+      { id: "leak-1", history: [{ action: "edited", date }] },
+    ]);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("history.0.date");
+  });
+
   it("rejects unknown history action", () => {
     const result = validateBackup([
       {
