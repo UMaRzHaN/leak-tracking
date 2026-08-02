@@ -72,7 +72,7 @@ export function prepareRows(data, lang, t, projectVars = {}) {
   }));
 }
 
-export function useDataBaseExport({ data, displayed, notify }) {
+export function useDataBaseExport({ displayed, notify }) {
   const { lang, t } = useLanguage();
   const [isExporting, setIsExporting] = useState(false);
   const projectConfig = useEffectiveProjectConfig();
@@ -119,7 +119,9 @@ export function useDataBaseExport({ data, displayed, notify }) {
           settings: readProjectSettings(activeProject?.id),
           monitoringRound: readMonitoringRound(activeProject?.id),
           sync: await readProjectSyncStateAsync(activeProject?.id),
-          backupLeaks: data,
+          // A filtered export must be self-contained without silently
+          // including records (and photos) hidden by the current filters.
+          backupLeaks: displayed,
           buildWorkbookBuffer: buildWorkbookBufferInWorker,
         },
       );
@@ -146,7 +148,6 @@ export function useDataBaseExport({ data, displayed, notify }) {
     }
   }, [
     activeProject,
-    data,
     displayed,
     excelHeaders,
     excelKeys,

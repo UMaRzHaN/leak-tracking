@@ -85,7 +85,12 @@ export default function UserProfileSheet({ open, profile, onSave, onClose }) {
           <button type="button" className={s.cancel} onClick={onClose}>
             {texts.cancel}
           </button>
-          <button type="button" className={s.save} onClick={handleSave}>
+          <button
+            type="button"
+            className={s.save}
+            onClick={handleSave}
+            disabled={!trimmedName}
+          >
             {texts.save}
           </button>
         </div>

@@ -12,7 +12,7 @@ export default function InputCard({
   as = "input",
   error,
   required = false,
-  rightSlot,
+  rightSlot = null,
   rows = 3,
   hint,
 }) {

@@ -279,21 +279,18 @@ function isHistorySheet(sheet) {
 }
 
 export function findLeakSheet(workbook, headerMap) {
-  return (
-    workbook.worksheets.find(
-      (sheet) =>
-        sheet.rowCount > 0 &&
-        !isMonitoringSheet(sheet) &&
-        !isHistorySheet(sheet),
-    ) ??
-    workbook.worksheets.find((sheet) => {
-      if (!sheet.rowCount) return false;
-      const header = findHeaderRow(sheet, headerMap);
-      return Boolean(
-        header?.columns.some((column) => column.key === "leak_id"),
-      );
-    })
-  );
+  let best = null;
+  for (const sheet of workbook.worksheets) {
+    if (!sheet.rowCount || isMonitoringSheet(sheet) || isHistorySheet(sheet)) {
+      continue;
+    }
+    const header = findHeaderRow(sheet, headerMap);
+    if (!header?.columns.some((column) => column.key === "leak_id")) continue;
+    if (!best || header.recognized > best.header.recognized) {
+      best = { sheet, header };
+    }
+  }
+  return best?.sheet;
 }
 
 export function findMonitoringSheet(workbook) {

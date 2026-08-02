@@ -7,6 +7,7 @@ import {
   parseDateValue,
 } from "./cellDates";
 import { normalizeHeader } from "./workbookSchema";
+import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 
 const NUMERIC_KEYS = new Set([
   "index",
@@ -45,73 +46,78 @@ export function isPhotoCellKey(key) {
   return PHOTO_KEYS.has(key);
 }
 
-const STATUS_BY_VALUE = new Map([
-  ...["open", "открыта", "открыто", "активна", "новая"].map((value) => [
-    value,
-    "open",
+const STATUS_BY_VALUE = new Map(
+  /** @type {[string, string][]} */ ([
+    ...["open", "открыта", "открыто", "активна", "новая"].map((value) => [
+      value,
+      "open",
+    ]),
+    ...["in progress", "in_progress", "в ремонте", "ремонт", "на ремонте"].map(
+      (value) => [value, "in_progress"],
+    ),
+    ...["resolved", "устранена", "устранено", "закрыта", "закрыто"].map(
+      (value) => [value, "resolved"],
+    ),
   ]),
-  ...["in progress", "in_progress", "в ремонте", "ремонт", "на ремонте"].map(
-    (value) => [value, "in_progress"],
-  ),
-  ...["resolved", "устранена", "устранено", "закрыта", "закрыто"].map(
-    (value) => [value, "resolved"],
-  ),
-]);
+);
 
-const MONITORING_RESULT_BY_VALUE = new Map([
-  ...[
-    "still leaking",
-    "still_leaking",
-    "leak present",
-    "yes — leak present",
-    "да",
-    "да — утечка есть",
-    "утечка есть",
-    "утечка сохраняется",
-    "сохраняется",
-    "open",
-  ].map((value) => [value, "still_leaking"]),
-  ...[
-    "needs recheck",
-    "needs_recheck",
-    "leak under repair",
-    "under repair",
-    "under repair — needs recheck",
-    "утечка в ремонте",
-    "в ремонте — требуется повторная проверка",
-    "в ремонте",
-  ].map((value) => [value, "needs_recheck"]),
-  ...[
-    "resolved",
-    "no leak",
-    "no — no leak",
-    "нет",
-    "нет — утечки нет",
-    "утечки нет",
-    "утечка устранена",
-    "устранена",
-    "устранено",
-  ].map((value) => [value, "resolved"]),
-]);
+const MONITORING_RESULT_BY_VALUE = new Map(
+  /** @type {[string, string][]} */ ([
+    ...[
+      "still leaking",
+      "still_leaking",
+      "leak present",
+      "yes — leak present",
+      "да",
+      "да — утечка есть",
+      "утечка есть",
+      "утечка сохраняется",
+      "сохраняется",
+      "open",
+    ].map((value) => [value, "still_leaking"]),
+    ...[
+      "needs recheck",
+      "needs_recheck",
+      "leak under repair",
+      "under repair",
+      "under repair — needs recheck",
+      "утечка в ремонте",
+      "в ремонте — требуется повторная проверка",
+      "в ремонте",
+    ].map((value) => [value, "needs_recheck"]),
+    ...[
+      "resolved",
+      "no leak",
+      "no — no leak",
+      "нет",
+      "нет — утечки нет",
+      "утечки нет",
+      "утечка устранена",
+      "устранена",
+      "устранено",
+    ].map((value) => [value, "resolved"]),
+  ]),
+);
 
-const HISTORY_ACTION_BY_VALUE = new Map([
-  ...["created", "запись создана", "создано", "создана"].map((value) => [
-    value,
-    "created",
+const HISTORY_ACTION_BY_VALUE = new Map(
+  /** @type {[string, string][]} */ ([
+    ...["created", "запись создана", "создано", "создана"].map((value) => [
+      value,
+      "created",
+    ]),
+    ...["edited", "data updated", "данные изменены", "изменено"].map(
+      (value) => [value, "edited"],
+    ),
+    ...[
+      "status_changed",
+      "status changed",
+      "статус изменен",
+      "статус изменён",
+    ].map((value) => [value, "status_changed"]),
+    ...["comment", "комментарий"].map((value) => [value, "comment"]),
+    ...["monitoring", "мониторинг"].map((value) => [value, "monitoring"]),
   ]),
-  ...["edited", "data updated", "данные изменены", "изменено"].map((value) => [
-    value,
-    "edited",
-  ]),
-  ...[
-    "status_changed",
-    "status changed",
-    "статус изменен",
-    "статус изменён",
-  ].map((value) => [value, "status_changed"]),
-  ...["comment", "комментарий"].map((value) => [value, "comment"]),
-  ...["monitoring", "мониторинг"].map((value) => [value, "monitoring"]),
-]);
+);
 
 export function parseNumberValue(value) {
   if (value == null || value === "") return null;
@@ -206,20 +212,10 @@ export function normalizeImportedLeak(row, rowNumber, sequence) {
   const parsedDateTime = combineDateAndTime(parsedDate, row.time);
   const persistedRow = { ...row };
   delete persistedRow.time;
-  if (
-    persistedRow.lat != null &&
-    (!Number.isFinite(persistedRow.lat) ||
-      persistedRow.lat < -90 ||
-      persistedRow.lat > 90)
-  ) {
+  if (persistedRow.lat != null && !isValidLatitude(persistedRow.lat)) {
     delete persistedRow.lat;
   }
-  if (
-    persistedRow.lng != null &&
-    (!Number.isFinite(persistedRow.lng) ||
-      persistedRow.lng < -180 ||
-      persistedRow.lng > 180)
-  ) {
+  if (persistedRow.lng != null && !isValidLongitude(persistedRow.lng)) {
     delete persistedRow.lng;
   }
   const createdAt =

@@ -1,7 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
-import { runExcelImportTransaction } from "./excelImportTransaction";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  getExcelImportTransactionWarning,
+  runExcelImportTransaction,
+} from "./excelImportTransaction";
 
 describe("runExcelImportTransaction", () => {
+  afterEach(() => vi.restoreAllMocks());
+
   it("persists and clears a recoverable operation journal on success", async () => {
     localStorage.clear();
     const projectId = "journal-project";
@@ -134,5 +139,125 @@ describe("runExcelImportTransaction", () => {
     ).rejects.toMatchObject({
       photoRollbackErrors: [expect.objectContaining({ status: "fulfilled" })],
     });
+  });
+
+  it("fails before mutations when the journal cannot be created", async () => {
+    const journalError = new DOMException(
+      "quota exceeded",
+      "QuotaExceededError",
+    );
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw journalError;
+    });
+    const persistPhotos = vi.fn();
+    const commit = vi.fn();
+
+    await expect(
+      runExcelImportTransaction({
+        projectId: "quota-project",
+        persistPhotos,
+        commit,
+        rollbackState: vi.fn(),
+        deletePhoto: vi.fn(),
+      }),
+    ).rejects.toBe(journalError);
+    expect(persistPhotos).not.toHaveBeenCalled();
+    expect(commit).not.toHaveBeenCalled();
+  });
+
+  it("deletes prepared photos and skips commit when the committing journal write fails", async () => {
+    const originalSetItem = Storage.prototype.setItem;
+    let writes = 0;
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (
+      ...args
+    ) {
+      writes += 1;
+      if (writes >= 2) throw new DOMException("blocked", "SecurityError");
+      return originalSetItem.apply(this, args);
+    });
+    const commit = vi.fn();
+    const deletePhoto = vi.fn().mockResolvedValue(true);
+
+    await expect(
+      runExcelImportTransaction({
+        projectId: "blocked-project",
+        persistPhotos: vi.fn().mockResolvedValue({
+          leaks: [{ id: 1 }],
+          createdPaths: ["idb://prepared"],
+        }),
+        commit,
+        rollbackState: vi.fn(),
+        deletePhoto,
+      }),
+    ).rejects.toMatchObject({
+      importCode: "IMPORT_JOURNAL_WRITE_FAILED",
+      createdPhotoPaths: ["idb://prepared"],
+    });
+    expect(commit).not.toHaveBeenCalled();
+    expect(deletePhoto).toHaveBeenCalledWith("idb://prepared");
+  });
+
+  it("does not let a rolling-back journal error replace the commit error", async () => {
+    const originalSetItem = Storage.prototype.setItem;
+    let writes = 0;
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (
+      ...args
+    ) {
+      writes += 1;
+      if (writes === 3) throw new DOMException("blocked", "SecurityError");
+      return originalSetItem.apply(this, args);
+    });
+    const rootError = new Error("commit failed");
+    const rollbackState = vi.fn().mockResolvedValue(undefined);
+    const deletePhoto = vi.fn().mockResolvedValue(true);
+
+    await expect(
+      runExcelImportTransaction({
+        projectId: "rollback-journal-project",
+        persistPhotos: vi.fn().mockResolvedValue({
+          leaks: [{ id: 1 }],
+          createdPaths: ["idb://new"],
+        }),
+        commit: vi.fn().mockRejectedValue(rootError),
+        rollbackState,
+        deletePhoto,
+      }),
+    ).rejects.toBe(rootError);
+    expect(rootError.journalRollbackError).toMatchObject({
+      name: "SecurityError",
+    });
+    expect(rollbackState).toHaveBeenCalledOnce();
+    expect(deletePhoto).toHaveBeenCalledWith("idb://new");
+  });
+
+  it("keeps a successful commit and exposes a warning when journal completion fails", async () => {
+    const completionError = new DOMException("blocked", "SecurityError");
+    vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+      throw completionError;
+    });
+    const leaks = [{ id: 1 }];
+    const commit = vi.fn().mockResolvedValue(undefined);
+    const rollbackState = vi.fn();
+
+    const result = await runExcelImportTransaction({
+      projectId: "completion-project",
+      persistPhotos: vi.fn().mockResolvedValue({ leaks, createdPaths: [] }),
+      commit,
+      rollbackState,
+      deletePhoto: vi.fn(),
+    });
+
+    expect(result).toBe(leaks);
+    expect(commit).toHaveBeenCalledOnce();
+    expect(rollbackState).not.toHaveBeenCalled();
+    expect(getExcelImportTransactionWarning(result)).toMatchObject({
+      code: "IMPORT_JOURNAL_COMPLETION_FAILED",
+      error: completionError,
+    });
+    expect(
+      JSON.parse(
+        localStorage.getItem("app:completion-project:import_operation_v1"),
+      ),
+    ).toMatchObject({ phase: "committing" });
   });
 });

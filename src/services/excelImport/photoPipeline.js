@@ -298,42 +298,56 @@ async function zipPhotoToBlob(zip, path) {
 export async function hydrateZipPhotos(result, zip) {
   let restoredPhotos = 0;
   let missingPhotos = 0;
-  const leaks = await Promise.all(
-    result.leaks.map(async (leak) => {
-      const copy = { ...leak };
+  let photoReferences = 0;
+  const photoCache = new Map();
+  const readPhoto = (path) => {
+    const key = String(path).replace(/^zip:/, "");
+    if (!photoCache.has(key)) {
+      photoCache.set(key, zipPhotoToBlob(zip, `zip:${key}`));
+    }
+    return photoCache.get(key);
+  };
+  const leaks = [];
 
-      for (const key of PHOTO_KEYS) {
-        if (!String(copy[key] ?? "").startsWith("zip:")) continue;
-        const photoBlob = await zipPhotoToBlob(zip, copy[key]);
-        if (photoBlob) {
-          copy[key] = photoBlob;
-          restoredPhotos += 1;
-        } else {
-          delete copy[key];
-          missingPhotos += 1;
+  for (const leak of result.leaks) {
+    const copy = { ...leak };
+
+    for (const key of PHOTO_KEYS) {
+      if (!String(copy[key] ?? "").startsWith("zip:")) continue;
+      photoReferences += 1;
+      const photoBlob = await readPhoto(copy[key]);
+      if (photoBlob) {
+        copy[key] = photoBlob;
+        restoredPhotos += 1;
+      } else {
+        delete copy[key];
+        missingPhotos += 1;
+      }
+    }
+
+    if (Array.isArray(copy.monitoringRecords)) {
+      copy.monitoringRecords = [];
+      for (const record of leak.monitoringRecords) {
+        if (!String(record?.photo ?? "").startsWith("zip:")) {
+          copy.monitoringRecords.push(record);
+          continue;
         }
+        photoReferences += 1;
+        const photoBlob = await readPhoto(record.photo);
+        if (!photoBlob) {
+          const sanitizedRecord = { ...record };
+          delete sanitizedRecord.photo;
+          missingPhotos += 1;
+          copy.monitoringRecords.push(sanitizedRecord);
+          continue;
+        }
+        restoredPhotos += 1;
+        copy.monitoringRecords.push({ ...record, photo: photoBlob });
       }
+    }
 
-      if (Array.isArray(copy.monitoringRecords)) {
-        copy.monitoringRecords = await Promise.all(
-          copy.monitoringRecords.map(async (record) => {
-            if (!String(record?.photo ?? "").startsWith("zip:")) return record;
-            const photoBlob = await zipPhotoToBlob(zip, record.photo);
-            if (!photoBlob) {
-              const sanitizedRecord = { ...record };
-              delete sanitizedRecord.photo;
-              missingPhotos += 1;
-              return sanitizedRecord;
-            }
-            restoredPhotos += 1;
-            return { ...record, photo: photoBlob };
-          }),
-        );
-      }
-
-      return copy;
-    }),
-  );
+    leaks.push(copy);
+  }
 
   return {
     ...result,
@@ -342,6 +356,8 @@ export async function hydrateZipPhotos(result, zip) {
       ...result.stats,
       restoredPhotos,
       missingPhotos,
+      uniquePhotoEntriesRead: photoCache.size,
+      photoReferences,
     },
   };
 }

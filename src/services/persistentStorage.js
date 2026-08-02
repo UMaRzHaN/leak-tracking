@@ -1,0 +1,23 @@
+let persistenceRequest = null;
+
+export async function requestPersistentStorage() {
+  const storage = globalThis.navigator?.storage;
+  if (!storage?.persist) {
+    return { supported: false, persisted: false };
+  }
+  if (!persistenceRequest) {
+    persistenceRequest = Promise.resolve(storage.persist()).then(Boolean);
+  }
+  const persisted = await persistenceRequest;
+  let estimate = null;
+  try {
+    estimate = storage.estimate ? await storage.estimate() : null;
+  } catch {
+    // Persistence status remains useful even if quota estimation is blocked.
+  }
+  return { supported: true, persisted, estimate };
+}
+
+export function resetPersistentStorageRequestForTests() {
+  persistenceRequest = null;
+}

@@ -3,10 +3,11 @@ import { buildWorkbookBufferLocally } from "./excel";
 function toTransferableArrayBuffer(value) {
   if (value instanceof ArrayBuffer) return value;
   if (ArrayBuffer.isView(value)) {
-    return value.buffer.slice(
+    return new Uint8Array(
+      /** @type {ArrayBuffer} */ (value.buffer),
       value.byteOffset,
-      value.byteOffset + value.byteLength,
-    );
+      value.byteLength,
+    ).slice().buffer;
   }
   throw new Error("ExcelJS returned an unsupported buffer type");
 }
@@ -15,9 +16,9 @@ globalThis.onmessage = async (event) => {
   try {
     const output = await buildWorkbookBufferLocally(event.data);
     const buffer = toTransferableArrayBuffer(output);
-    globalThis.postMessage({ ok: true, buffer }, [buffer]);
+    /** @type {any} */ (globalThis).postMessage({ ok: true, buffer }, [buffer]);
   } catch (error) {
-    globalThis.postMessage({
+    /** @type {any} */ (globalThis).postMessage({
       ok: false,
       error: String(error?.message ?? error),
     });

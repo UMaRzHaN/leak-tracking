@@ -15,9 +15,71 @@ export function isPinkBagEquipment(equipmentType) {
   );
 }
 
+function toFiniteNumber(value) {
+  if (value === "" || value == null) return null;
+  const normalized =
+    typeof value === "string" ? value.trim().replace(",", ".") : value;
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : null;
+}
+
+/**
+ * Returns field-level validation codes for measurements entered on the leak
+ * form. Pink Bag measurements need pressure and an absolute temperature above
+ * zero because both values are divisors/multipliers in the STP conversion.
+ */
+export function getLeakCalculationFieldErrors(leak = {}, vars = {}) {
+  const errors = {};
+  const leakSpeed = toFiniteNumber(leak.leak_speed);
+
+  if (leak.leak_speed != null && leak.leak_speed !== "" && leakSpeed == null) {
+    errors.leak_speed = "finite";
+  } else if (leakSpeed != null && leakSpeed < 0) {
+    errors.leak_speed = "non_negative";
+  }
+
+  if (isPinkBagEquipment(vars?.equipmentType)) {
+    const pressure = toFiniteNumber(leak.pressure);
+    const temperature = toFiniteNumber(leak.temperature);
+    if (pressure == null || pressure <= 0) errors.pressure = "positive";
+    if (temperature == null || temperature <= -273.15) {
+      errors.temperature = "above_absolute_zero";
+    }
+  }
+
+  return errors;
+}
+
+export function hasValidCalculationParameters(vars = {}) {
+  const inRange = (value, min, max) => {
+    const number = toFiniteNumber(value);
+    return number != null && number >= min && number <= max;
+  };
+  const nonNegative = (value) => {
+    const number = toFiniteNumber(value);
+    return number != null && number >= 0;
+  };
+
+  return (
+    toFiniteNumber(vars.density) > 0 &&
+    nonNegative(vars.GWP) &&
+    nonNegative(vars.GWP_Minus) &&
+    inRange(vars.percentage_gas_to_flare, 0, 100) &&
+    inRange(vars.percentage_gas_to_utilization, 0, 100) &&
+    inRange(vars.gasPercentage, 0, 100) &&
+    inRange(vars.uncertainty, 0, 100) &&
+    inRange(vars.Operating_mode, 1, 365)
+  );
+}
+
 export const calculations = (leak, vars) => {
   if (!leak || !vars) return leak;
-  if (!vars.Operating_mode || vars.Operating_mode <= 0) return leak;
+  if (
+    !hasValidCalculationParameters(vars) ||
+    Object.keys(getLeakCalculationFieldErrors(leak, vars)).length > 0
+  ) {
+    return leak;
+  }
 
   /* =========================
      INPUTS
@@ -69,6 +131,7 @@ export const calculations = (leak, vars) => {
     ? leak_speed_standard
     : leak_speed;
   const leak_speed_kg_m = (leak_rate * density) / 1000;
+  const leak_speed_kg_h = leak_speed_kg_m * 60;
 
   /* =========================
      ANNUAL LOSSES
@@ -104,6 +167,7 @@ export const calculations = (leak, vars) => {
 
     // mass & losses
     leak_speed_kg_m,
+    leak_speed_kg_h,
     Total_Annual_Methane_Loss_m3_y,
     Total_Annual_Methane_Loss_kg_y,
     Total_Annual_Methane_Loss_t_y,

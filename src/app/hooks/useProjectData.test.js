@@ -6,7 +6,9 @@ vi.mock("@/app/project/ProjectContext", () => ({
 }));
 
 vi.mock("@/repositories/LeakRepository", () => ({
+  getEmbeddedProjectSyncState: vi.fn(() => null),
   getPreservedInvalidLeakRecords: vi.fn(() => []),
+  getProjectDataReadWarning: vi.fn(() => null),
   LeakRepository: {
     getAll: vi.fn(),
     saveAll: vi.fn(),
@@ -21,7 +23,11 @@ vi.mock("@/repositories/PhotoRepository", () => ({
 }));
 
 vi.mock("@/services/projectSyncState", () => ({
-  recordLeakDeletions: vi.fn(),
+  commitLeakDataMutation: vi.fn(
+    async (_projectId, _previous, _next, persistData) =>
+      persistData({ version: 2, deleted: {} }),
+  ),
+  restoreEmbeddedProjectSyncState: vi.fn(),
 }));
 
 const projectContextModule = await import("@/app/project/ProjectContext");
@@ -78,6 +84,25 @@ describe("useProjectData", () => {
     });
     expect(result.current.loadError).toBeNull();
     errorSpy.mockRestore();
+  });
+
+  it("loads a single valid mirror read-only when the other web store fails", async () => {
+    const recovered = [{ id: "recovered", status: "open" }];
+    const warning = Object.assign(new Error("IndexedDB failed"), {
+      code: "PROJECT_DATA_DEGRADED",
+    });
+    repositoryModule.LeakRepository.getAll.mockResolvedValueOnce(recovered);
+    repositoryModule.getProjectDataReadWarning.mockReturnValueOnce(warning);
+
+    const { result } = renderHook(() => useProjectData());
+    await waitFor(() => expect(result.current.dataLoaded).toBe(true));
+
+    expect(result.current.data).toEqual(recovered);
+    expect(result.current.loadError).toBe(warning);
+    expect(result.current.canWrite).toBe(false);
+    await expect(result.current.save(recovered)).rejects.toMatchObject({
+      code: "PROJECT_DATA_WRITE_BLOCKED",
+    });
   });
 
   it("loads repository data for the active project", async () => {
@@ -272,6 +297,7 @@ describe("useProjectData", () => {
     expect(repositoryModule.LeakRepository.saveAll).toHaveBeenCalledWith([], {
       projectId: "proj-1",
       folderName: "project_one",
+      syncState: { version: 2, deleted: {} },
     });
   });
 
@@ -284,14 +310,16 @@ describe("useProjectData", () => {
 
     await act(async () => result.current.clear());
 
-    expect(syncStateModule.recordLeakDeletions).toHaveBeenCalledWith(
+    expect(syncStateModule.commitLeakDataMutation).toHaveBeenCalledWith(
       "proj-1",
       stored,
       [],
+      expect.any(Function),
     );
     expect(repositoryModule.LeakRepository.clear).toHaveBeenCalledWith({
       projectId: "proj-1",
       folderName: "project_one",
+      syncState: { version: 2, deleted: {} },
     });
     expect(
       photoRepositoryModule.PhotoRepository.gcOrphaned,
@@ -441,22 +469,23 @@ describe("useProjectData", () => {
     ]);
   });
 
-  it("keeps committed data when sync metadata persistence fails", async () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  it("commits data through the atomic sync mutation", async () => {
     const original = [{ id: "stored" }];
     const changed = [{ id: "changed" }];
     repositoryModule.LeakRepository.getAll.mockResolvedValueOnce(original);
     repositoryModule.LeakRepository.saveAll.mockResolvedValueOnce(undefined);
-    syncStateModule.recordLeakDeletions.mockImplementationOnce(() => {
-      throw new Error("localStorage unavailable");
-    });
     const { result } = renderHook(() => useProjectData());
     await waitFor(() => expect(result.current.data).toEqual(original));
 
     await act(async () => result.current.save(changed));
 
     expect(result.current.data).toEqual(changed);
-    errorSpy.mockRestore();
+    expect(syncStateModule.commitLeakDataMutation).toHaveBeenCalledWith(
+      "proj-1",
+      original,
+      expect.arrayContaining([expect.objectContaining(changed[0])]),
+      expect.any(Function),
+    );
   });
 
   it("keeps data cleared when post-commit cleanup fails", async () => {
@@ -464,9 +493,6 @@ describe("useProjectData", () => {
     const original = [{ id: "stored" }];
     repositoryModule.LeakRepository.getAll.mockResolvedValueOnce(original);
     repositoryModule.LeakRepository.clear.mockResolvedValueOnce(undefined);
-    syncStateModule.recordLeakDeletions.mockImplementationOnce(() => {
-      throw new Error("localStorage unavailable");
-    });
     photoRepositoryModule.PhotoRepository.gcOrphaned.mockRejectedValueOnce(
       new Error("photo cleanup failed"),
     );
@@ -494,8 +520,67 @@ describe("useProjectData", () => {
     await act(async () => result.current.save(visible));
     expect(repositoryModule.LeakRepository.saveAll).toHaveBeenCalledWith(
       [...visible, ...preserved],
-      { projectId: "proj-1", folderName: "project_one" },
+      {
+        projectId: "proj-1",
+        folderName: "project_one",
+        syncState: { version: 2, deleted: {} },
+      },
     );
+  });
+
+  it("persists recovery records supplied by a new-project backup restore", async () => {
+    const visible = [{ id: "valid", status: "open" }];
+    const recovered = [{ id: "future", status: "future-status" }];
+    repositoryModule.LeakRepository.getAll.mockResolvedValueOnce([]);
+    repositoryModule.LeakRepository.saveAll.mockResolvedValueOnce(undefined);
+    const { result } = renderHook(() => useProjectData());
+    await waitFor(() => expect(result.current.dataLoaded).toBe(true));
+
+    await act(async () =>
+      result.current.save(visible, { preservedRecords: recovered }),
+    );
+
+    expect(repositoryModule.LeakRepository.saveAll).toHaveBeenCalledWith(
+      [expect.objectContaining(visible[0]), ...recovered],
+      {
+        projectId: "proj-1",
+        folderName: "project_one",
+        syncState: { version: 2, deleted: {} },
+      },
+    );
+    expect(result.current.dataForPhotoGc).toEqual([
+      expect.objectContaining(visible[0]),
+      ...recovered,
+    ]);
+  });
+
+  it("does not let a stale project save invalidate the active project load", async () => {
+    let finishSecondProjectRead;
+    repositoryModule.LeakRepository.getAll
+      .mockResolvedValueOnce([{ id: "project-1-leak" }])
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishSecondProjectRead = resolve;
+        }),
+      );
+    repositoryModule.LeakRepository.saveAll.mockResolvedValueOnce(undefined);
+    const { result, rerender } = renderHook(() => useProjectData());
+    await waitFor(() => expect(result.current.dataProjectId).toBe("proj-1"));
+    const saveProjectOne = result.current.save;
+
+    projectContextModule.useProjectData.mockReturnValue({
+      activeProject: { id: "proj-2", folderName: "project_two" },
+    });
+    rerender();
+
+    const staleSave = saveProjectOne([{ id: "project-1-updated" }]);
+    await act(async () => {
+      finishSecondProjectRead([{ id: "project-2-leak" }]);
+      await staleSave;
+    });
+
+    await waitFor(() => expect(result.current.dataProjectId).toBe("proj-2"));
+    expect(result.current.data).toEqual([{ id: "project-2-leak" }]);
   });
   it("hides the previous project immediately while the next project loads", async () => {
     repositoryModule.LeakRepository.getAll.mockResolvedValueOnce([

@@ -1,5 +1,8 @@
 import { compareLeakIds } from "@/utils/leakOrder";
-import { allocateUniqueLeakArchiveSegments } from "@/services/archivePaths";
+import {
+  allocateUniqueLeakArchiveSegments,
+  sanitizePortableArchiveSegment,
+} from "@/services/archivePaths";
 const getExcelJS = () => import("exceljs");
 const getJSZip = () => import("jszip");
 
@@ -276,6 +279,7 @@ export async function exportToExcelFile(
   lang = "ru",
   options = {},
 ) {
+  const safeFileName = sanitizePortableArchiveSegment(fileName) || "report";
   const exportStartedAt = performance.now();
   const phaseMetrics = {};
   const paired = rawLeaks.map((leak, index) => ({ leak, row: rows[index] }));
@@ -363,7 +367,7 @@ export async function exportToExcelFile(
   const zipStartedAt = performance.now();
   const JSZip = (await getJSZip()).default;
   const zip = new JSZip();
-  zip.file(`${fileName}.xlsx`, xlsxBuffer);
+  zip.file(`${safeFileName}.xlsx`, xlsxBuffer);
 
   for (const [index, entry] of photoEntries.entries()) {
     if (index > 0 && index % EXPORT_YIELD_EVERY === 0) {
@@ -377,12 +381,12 @@ export async function exportToExcelFile(
   phaseMetrics.totalMs = performance.now() - exportStartedAt;
   const result = await downloadBlob(
     zipBlob,
-    `${fileName}.zip`,
+    `${safeFileName}.zip`,
     outputFolder,
     lang,
     lang === "ru"
-      ? `Excel-архив проекта экспортирован (${fileName}.zip)`
-      : `Excel project archive exported (${fileName}.zip)`,
+      ? `Excel-архив проекта экспортирован (${safeFileName}.zip)`
+      : `Excel project archive exported (${safeFileName}.zip)`,
   );
   return { ...result, metrics: phaseMetrics };
 }

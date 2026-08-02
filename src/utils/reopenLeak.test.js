@@ -83,4 +83,14 @@ describe("reopenLeak", () => {
       user: "Inspector",
     });
   });
+
+  it("rejects reopening without a history user", () => {
+    expect(() =>
+      buildReopenedLeak({
+        leak: { status: STATUS.RESOLVED },
+        draft: {},
+        vars: {},
+      }),
+    ).toThrowError(expect.objectContaining({ code: "HISTORY_USER_REQUIRED" }));
+  });
 });

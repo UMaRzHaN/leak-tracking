@@ -474,11 +474,17 @@ ANDROID_KEYSTORE_PATH
 ANDROID_KEYSTORE_PASSWORD
 ANDROID_KEY_ALIAS
 ANDROID_KEY_PASSWORD
+ANDROID_VERSION_CODE
+ANDROID_VERSION_NAME
 ```
 
 `npm run android:release` завершается ошибкой до сборки, если keystore или одна
-из обязательных переменных отсутствует. CI может продолжать собирать
-неподписанный `assembleRelease` напрямую только как проверочный артефакт.
+из обязательных переменных отсутствует. `ANDROID_VERSION_CODE` должен быть
+положительным целым числом (и увеличиваться при каждой публикации), а
+`ANDROID_VERSION_NAME` — явной версией релиза, например `1.4.0`. Любая Gradle
+задача с `Release` также отклоняет отсутствующую или некорректную версию. CI
+может продолжать собирать неподписанный `assembleRelease` напрямую только как
+проверочный артефакт, но тоже обязан передать обе переменные версии.
 
 ### Performance tests
 

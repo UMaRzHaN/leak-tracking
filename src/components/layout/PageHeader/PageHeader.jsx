@@ -12,11 +12,11 @@ import s from "./PageHeader.module.scss";
  */
 export default function PageHeader({
   title,
-  subtitle,
+  subtitle = null,
   onBack,
   backLabel = "Back",
-  badge,
-  right,
+  badge = null,
+  right = null,
 }) {
   return (
     <header className={s.appBar}>

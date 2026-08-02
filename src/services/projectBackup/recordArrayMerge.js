@@ -19,6 +19,8 @@ function getRecordMergeIdentity(record, index, arrayKey) {
       record?.action ?? "",
       record?.to ?? "",
       record?.text ?? "",
+      record?.user ?? "",
+      JSON.stringify(record?.changes ?? []),
     ]
       .map(String)
       .join("|");

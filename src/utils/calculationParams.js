@@ -68,6 +68,7 @@ export function calculateLeakWithSnapshot(
   );
 }
 
+/** @param {any} leak @param {any} projectVars @param {any} calculationParams @param {{user?: any, now?: number}} [options] */
 export function updateLeakCalculationParams(
   leak,
   projectVars,

@@ -32,14 +32,12 @@ export default function MapPage({
     locationLabel,
     enabledLocations,
     activeProject,
-    heatmapEnabled,
     nearbyOnly,
     nearbyRadius,
     nearbyRadiusOptions,
     priorityFilters,
     statusFilters,
     hasGps,
-    setHeatmapEnabled,
     setMonitoringFilter,
     setNearbyOnly,
     setNearbyRadius,
@@ -75,13 +73,11 @@ export default function MapPage({
         nearbyOnly={nearbyOnly}
         nearbyRadius={nearbyRadius}
         nearbyRadiusOptions={nearbyRadiusOptions}
-        heatmapEnabled={heatmapEnabled}
         priorityFilters={priorityFilters}
         statusFilters={statusFilters}
         monitoringFilter={monitoringFilter}
         hasMonitoringRound={hasMonitoringRound}
         hasGps={hasGps}
-        onToggleHeatmap={() => setHeatmapEnabled((value) => !value)}
         onToggleNearby={(nextValue) =>
           setNearbyOnly((value) =>
             typeof nextValue === "boolean" ? nextValue : !value,

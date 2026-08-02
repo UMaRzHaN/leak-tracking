@@ -2,10 +2,15 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useProjectData as useProjectDataCtx } from "@/app/project/ProjectContext";
 import {
   LeakRepository,
+  getEmbeddedProjectSyncState,
   getPreservedInvalidLeakRecords,
+  getProjectDataReadWarning,
 } from "@/repositories/LeakRepository";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
-import { recordLeakDeletions } from "@/services/projectSyncState";
+import {
+  commitLeakDataMutation,
+  restoreEmbeddedProjectSyncState,
+} from "@/services/projectSyncState";
 import { stampLeakFieldVersions } from "@/services/leakFieldVersions";
 import { logger } from "@/utils/logger";
 
@@ -29,6 +34,7 @@ export function useProjectData() {
   const loadGenerationRef = useRef(0);
   const persistedByProjectRef = useRef(new Map());
   const committedDataByProjectRef = useRef(new Map());
+  const committedPreservedByProjectRef = useRef(new Map());
   const writeGenerationByProjectRef = useRef(new Map());
   const loadErrorRef = useRef(null);
   const activeProjectIdRef = useRef(activeProjectId);
@@ -59,15 +65,25 @@ export function useProjectData() {
         ? { legacyStorageType: activeProjectLegacyStorageType }
         : {}),
     })
-      .then((result) => {
+      .then(async (result) => {
         if (cancelled || loadGeneration !== loadGenerationRef.current) return;
         const preserved = getPreservedInvalidLeakRecords?.(result) ?? [];
+        const readWarning = getProjectDataReadWarning?.(result) ?? null;
+        await restoreEmbeddedProjectSyncState(
+          activeProjectId,
+          getEmbeddedProjectSyncState?.(result),
+          [...result, ...preserved],
+        );
+        if (cancelled || loadGeneration !== loadGenerationRef.current) return;
         setPreservedRecords(preserved);
+        setLoadError(readWarning);
+        loadErrorRef.current = readWarning;
         persistedByProjectRef.current.set(activeProjectId, [
           ...result,
           ...preserved,
         ]);
         committedDataByProjectRef.current.set(activeProjectId, result);
+        committedPreservedByProjectRef.current.set(activeProjectId, preserved);
         setData(result);
         dataRef.current = result;
         dataProjectIdRef.current = activeProjectId;
@@ -82,6 +98,7 @@ export function useProjectData() {
         setPreservedRecords([]);
         persistedByProjectRef.current.delete(activeProjectId);
         committedDataByProjectRef.current.delete(activeProjectId);
+        committedPreservedByProjectRef.current.delete(activeProjectId);
         setData([]);
         dataRef.current = [];
         dataProjectIdRef.current = activeProjectId;
@@ -100,8 +117,18 @@ export function useProjectData() {
   ]);
 
   const save = useCallback(
-    (next, { optimistic = true } = {}) => {
-      if (loadErrorRef.current) {
+    /**
+     * @param {any[]} next
+     * @param {{optimistic?: boolean, preservedRecords?: any[]}} [options]
+     */
+    (
+      next,
+      { optimistic = true, preservedRecords: requestedPreserved } = {},
+    ) => {
+      const projectId = activeProjectId;
+      const folderName = activeProjectFolderName;
+      const isActiveProject = () => activeProjectIdRef.current === projectId;
+      if (isActiveProject() && loadErrorRef.current) {
         const error = new Error(
           "Project data is read-only after a load failure",
           {
@@ -114,25 +141,33 @@ export function useProjectData() {
       // A save can happen while the initial repository read is still pending
       // (notably when importing Excel into the first project). Invalidate that
       // read so its stale empty result cannot replace the imported records.
-      loadGenerationRef.current += 1;
+      if (isActiveProject()) loadGenerationRef.current += 1;
       const previous =
-        dataProjectIdRef.current === activeProjectId ? dataRef.current : [];
-      const projectId = activeProjectId;
-      const folderName = activeProjectFolderName;
+        dataProjectIdRef.current === projectId
+          ? dataRef.current
+          : (committedDataByProjectRef.current.get(projectId) ?? []);
       const writeGeneration = projectId
         ? (writeGenerationByProjectRef.current.get(projectId) ?? 0) + 1
         : 0;
       if (projectId) {
         writeGenerationByProjectRef.current.set(projectId, writeGeneration);
       }
-      const preserved =
-        dataProjectIdRef.current === projectId ? preservedRecords : [];
+      const previousPreserved =
+        dataProjectIdRef.current === projectId
+          ? preservedRecords
+          : (committedPreservedByProjectRef.current.get(projectId) ?? []);
+      const hasRequestedPreserved = Array.isArray(requestedPreserved);
+      const nextPreserved = hasRequestedPreserved
+        ? requestedPreserved
+        : previousPreserved;
       const versionedNext = stampLeakFieldVersions(previous, next);
-      const recordsToPersist = [...versionedNext, ...preserved];
+      const recordsToPersist = [...versionedNext, ...nextPreserved];
       const publishLocalState = () => {
+        if (!isActiveProject()) return;
         dataRef.current = versionedNext;
         dataProjectIdRef.current = projectId;
         setData(() => versionedNext);
+        setPreservedRecords(nextPreserved);
         setDataLoaded(true);
         setDataProjectId(projectId);
       };
@@ -146,12 +181,19 @@ export function useProjectData() {
         .then(async () => {
           const persistedBefore = persistedByProjectRef.current.get(
             projectId,
-          ) ?? [...previous, ...preserved];
+          ) ?? [...previous, ...previousPreserved];
           try {
-            await LeakRepository.saveAll(recordsToPersist, {
+            await commitLeakDataMutation(
               projectId,
-              folderName,
-            });
+              persistedBefore,
+              recordsToPersist,
+              (syncState) =>
+                LeakRepository.saveAll(recordsToPersist, {
+                  projectId,
+                  folderName,
+                  syncState,
+                }),
+            );
           } catch (error) {
             if (
               optimistic &&
@@ -162,30 +204,23 @@ export function useProjectData() {
                 committedDataByProjectRef.current.get(projectId) ?? previous;
               dataRef.current = committed;
               setData(committed);
+              setPreservedRecords(
+                committedPreservedByProjectRef.current.get(projectId) ??
+                  previousPreserved,
+              );
             }
             throw error;
           }
           persistedByProjectRef.current.set(projectId, recordsToPersist);
           committedDataByProjectRef.current.set(projectId, versionedNext);
+          committedPreservedByProjectRef.current.set(projectId, nextPreserved);
           if (
             !optimistic &&
-            activeProjectIdRef.current === projectId &&
+            isActiveProject() &&
             writeGenerationByProjectRef.current.get(projectId) ===
               writeGeneration
           ) {
             publishLocalState();
-          }
-          try {
-            await recordLeakDeletions(
-              projectId,
-              persistedBefore,
-              recordsToPersist,
-            );
-          } catch (error) {
-            logger.error(
-              "[useProjectData] Data was saved, but sync metadata could not be updated:",
-              error,
-            );
           }
         });
       saveQueueRef.current = nextSave;
@@ -195,7 +230,10 @@ export function useProjectData() {
   );
 
   const clear = useCallback(() => {
-    if (loadErrorRef.current) {
+    const projectId = activeProjectId;
+    const folderName = activeProjectFolderName;
+    const isActiveProject = () => activeProjectIdRef.current === projectId;
+    if (isActiveProject() && loadErrorRef.current) {
       const error = new Error(
         "Project data is read-only after a load failure",
         {
@@ -205,24 +243,32 @@ export function useProjectData() {
       error.code = "PROJECT_DATA_WRITE_BLOCKED";
       return Promise.reject(error);
     }
-    loadGenerationRef.current += 1;
-    const projectId = activeProjectId;
-    const folderName = activeProjectFolderName;
+    if (isActiveProject()) {
+      loadGenerationRef.current += 1;
+    }
     const writeGeneration = projectId
       ? (writeGenerationByProjectRef.current.get(projectId) ?? 0) + 1
       : 0;
     if (projectId) {
       writeGenerationByProjectRef.current.set(projectId, writeGeneration);
     }
-    const previous = dataRef.current;
-    const previousPreserved = preservedRecords;
+    const previous =
+      dataProjectIdRef.current === projectId
+        ? dataRef.current
+        : (committedDataByProjectRef.current.get(projectId) ?? []);
+    const previousPreserved =
+      dataProjectIdRef.current === projectId
+        ? preservedRecords
+        : (committedPreservedByProjectRef.current.get(projectId) ?? []);
     const clearedData = [];
-    dataRef.current = clearedData;
-    dataProjectIdRef.current = projectId;
-    setData(clearedData);
-    setPreservedRecords([]);
-    setDataLoaded(true);
-    setDataProjectId(projectId);
+    if (isActiveProject()) {
+      dataRef.current = clearedData;
+      dataProjectIdRef.current = projectId;
+      setData(clearedData);
+      setPreservedRecords([]);
+      setDataLoaded(true);
+      setDataProjectId(projectId);
+    }
     if (!projectId || !folderName) {
       return Promise.resolve();
     }
@@ -230,7 +276,16 @@ export function useProjectData() {
       .catch(() => undefined)
       .then(async () => {
         try {
-          await LeakRepository.clear({ projectId, folderName });
+          const persistedBefore = persistedByProjectRef.current.get(
+            projectId,
+          ) ?? [...previous, ...previousPreserved];
+          await commitLeakDataMutation(
+            projectId,
+            persistedBefore,
+            [],
+            (syncState) =>
+              LeakRepository.clear({ projectId, folderName, syncState }),
+          );
         } catch (error) {
           if (
             dataProjectIdRef.current === projectId &&
@@ -246,19 +301,9 @@ export function useProjectData() {
           }
           throw error;
         }
-        const persistedBefore = persistedByProjectRef.current.get(
-          projectId,
-        ) ?? [...previous, ...previousPreserved];
         persistedByProjectRef.current.set(projectId, []);
         committedDataByProjectRef.current.set(projectId, []);
-        try {
-          await recordLeakDeletions(projectId, persistedBefore, []);
-        } catch (error) {
-          logger.error(
-            "[useProjectData] Data was cleared, but sync metadata could not be updated:",
-            error,
-          );
-        }
+        committedPreservedByProjectRef.current.set(projectId, []);
         try {
           await PhotoRepository.gcOrphaned([], { projectId, folderName });
         } catch (error) {

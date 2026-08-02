@@ -23,6 +23,19 @@ function DialogFixture({ onClose }) {
   );
 }
 
+function NestedDialogFixture({ onParentClose, onChildClose }) {
+  const parentRef = useModalDialog({ onClose: onParentClose });
+  const childRef = useModalDialog({ onClose: onChildClose });
+  return (
+    <div ref={parentRef} role="dialog" aria-label="parent" tabIndex={-1}>
+      <button>parent action</button>
+      <div ref={childRef} role="dialog" aria-label="child" tabIndex={-1}>
+        <button>child action</button>
+      </div>
+    </div>
+  );
+}
+
 describe("useModalDialog", () => {
   it("focuses the dialog, traps Tab, closes on Escape and restores focus", async () => {
     const onClose = vi.fn();
@@ -41,5 +54,21 @@ describe("useModalDialog", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onClose).toHaveBeenCalledOnce();
     expect(document.activeElement).toBe(opener);
+  });
+
+  it("routes Escape only to the topmost nested dialog", () => {
+    const onParentClose = vi.fn();
+    const onChildClose = vi.fn();
+    render(
+      <NestedDialogFixture
+        onParentClose={onParentClose}
+        onChildClose={onChildClose}
+      />,
+    );
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(onChildClose).toHaveBeenCalledOnce();
+    expect(onParentClose).not.toHaveBeenCalled();
   });
 });

@@ -13,7 +13,6 @@ function RecentLeakItem({ leak, onOpenDetails, onRemove }) {
   const { swipeState, swipeOffset, close, handlers } = useSwipeCard({
     leak,
     onOpenDetails,
-    onRemove,
   });
 
   return (

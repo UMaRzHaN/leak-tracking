@@ -220,7 +220,10 @@ describe("useLeakDetailsSheet", () => {
     const order = [];
     const onSave = vi.fn(async () => order.push("saved"));
     mocks.deletePhoto.mockImplementation(async () => order.push("deleted"));
-    const { result } = renderDetails({ onSave });
+    const { result } = renderDetails({
+      onSave,
+      leak: { ...leak, status: "in_progress" },
+    });
 
     await act(() =>
       result.current.handleResolveConfirm({

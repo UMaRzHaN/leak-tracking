@@ -42,7 +42,8 @@ export default function StepRenderer({
       }}
       onKeyDownCapture={(e) => {
         if (e.key !== "Enter") return;
-        if (e.target.tagName === "TEXTAREA") return;
+        if (/** @type {HTMLElement} */ (e.target).tagName === "TEXTAREA")
+          return;
 
         e.preventDefault();
         handleSubmit(e.currentTarget, e.target);

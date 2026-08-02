@@ -15,15 +15,6 @@ const PUBLIC_PRECACHE_FILES = [
   "icons/icon-512.png",
 ];
 
-function shouldPrecacheBundleEntry(entry) {
-  const name = entry.fileName.toLowerCase();
-  // Spreadsheet import/export is an optional, user-initiated workflow. Keeping
-  // its duplicated main/worker dependency graphs out of the install transaction
-  // cuts the mandatory PWA download by roughly two megabytes. Once requested,
-  // the existing runtime cache still makes those assets available offline.
-  return !/(?:excel|vendor-zip|jszip)/.test(name);
-}
-
 function cspStylePolicy(mode) {
   return {
     name: "csp-style-policy",
@@ -51,9 +42,7 @@ function offlineServiceWorker() {
       const files = [
         basePath,
         ...PUBLIC_PRECACHE_FILES.map((fileName) => `${basePath}${fileName}`),
-        ...Object.values(bundle)
-          .filter(shouldPrecacheBundleEntry)
-          .map((entry) => `${basePath}${entry.fileName}`),
+        ...Object.values(bundle).map((entry) => `${basePath}${entry.fileName}`),
       ];
       const uniqueFiles = [...new Set(files)].sort();
       const versionHash = createHash("sha256");

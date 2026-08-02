@@ -537,6 +537,27 @@ describe("streamProjectBackupZip", () => {
   });
 });
 describe("mergeLeaksByFreshness", () => {
+  it("matches archive leak tags case-insensitively", () => {
+    const result = mergeLeaksByFreshness(
+      [{ id: "local", leak_id: " TAG-1 ", status: "open", updatedAt: 1 }],
+      [
+        {
+          id: "archive",
+          leak_id: "tag-1",
+          status: "resolved",
+          updatedAt: 2,
+        },
+      ],
+      { source: "archive" },
+    );
+
+    expect(result.leaks).toHaveLength(1);
+    expect(result.leaks[0]).toMatchObject({
+      id: "local",
+      status: "resolved",
+    });
+  });
+
   it("merges independent changes from two devices without dropping either leak", () => {
     const deviceA = [
       { id: "one", status: "resolved", updatedAt: 300 },

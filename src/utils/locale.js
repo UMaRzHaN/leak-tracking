@@ -116,6 +116,7 @@ export function formatLeakDate(value, options = {}, language) {
   );
 }
 
+/** @param {any} value @param {{language?: string, maxDays?: number, now?: number}} [options] */
 export function formatRelativeTime(
   value,
   { language, maxDays = 7, now = Date.now() } = {},

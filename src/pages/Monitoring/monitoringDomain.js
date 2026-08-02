@@ -188,6 +188,7 @@ export function buildMonitoringPatch({
       : {
           status: nextStatus,
           resolvedAt: null,
+          photo_after: null,
           ...(nextStatus === STATUS.IN_PROGRESS
             ? {
                 repairAt: now.getTime(),

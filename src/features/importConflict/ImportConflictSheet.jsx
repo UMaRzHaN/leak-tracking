@@ -29,13 +29,13 @@ export default function ImportConflictSheet({
   existingProject,
   leakCount,
   mergePreview,
-  sourceLabel,
-  photoLabel,
+  sourceLabel = null,
+  photoLabel = null,
   onOverwrite,
   onMerge,
   onCopy,
   onCancel,
-  onActionError,
+  onActionError = null,
 }) {
   const { lang, t } = useLanguage();
   const titleId = useId();

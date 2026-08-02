@@ -1,4 +1,4 @@
-import { Directory, Filesystem } from "@capacitor/filesystem";
+import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 
 const DATA_FILES = ["data.json", "data.backup.json"];
 
@@ -27,17 +27,22 @@ export async function renameNativeProjectFiles({
       const result = await Filesystem.readFile({
         path,
         directory: Directory.Data,
-        encoding: "utf8",
+        encoding: Encoding.UTF8,
       }).catch(() => null);
       if (!result) continue;
 
-      const leaks = JSON.parse(result.data || "[]");
+      const original = String(result.data || "[]");
+      const parsed = JSON.parse(original);
+      const leaks = Array.isArray(parsed) ? parsed : parsed?.data;
       if (!Array.isArray(leaks)) continue;
+      const remappedLeaks = remapLeaks(leaks, oldFolderName, newFolderName);
       snapshots.push({
         fileName,
-        original: result.data || "[]",
+        original,
         updated: JSON.stringify(
-          remapLeaks(leaks, oldFolderName, newFolderName),
+          Array.isArray(parsed)
+            ? remappedLeaks
+            : { ...parsed, data: remappedLeaks },
         ),
       });
     }
@@ -47,7 +52,7 @@ export async function renameNativeProjectFiles({
         path: `${newRoot}/data/${snapshot.fileName}`,
         directory: Directory.Data,
         data: snapshot.updated,
-        encoding: "utf8",
+        encoding: Encoding.UTF8,
       });
     }
   } catch {
@@ -65,7 +70,7 @@ export async function renameNativeProjectFiles({
           path: `${oldRoot}/data/${snapshot.fileName}`,
           directory: Directory.Data,
           data: snapshot.original,
-          encoding: "utf8",
+          encoding: Encoding.UTF8,
         }).catch(() => {});
       }
     }

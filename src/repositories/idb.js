@@ -28,7 +28,7 @@ export function createIdbStore(dbName, storeName, version) {
     }
 
     request.onupgradeneeded = (event) => {
-      const db = event.target.result;
+      const db = /** @type {IDBOpenDBRequest} */ (event.target).result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: "id" });
       }
@@ -48,7 +48,10 @@ export function createIdbStore(dbName, storeName, version) {
       };
 
       _db.onerror = (event) => {
-        logger.error("[idb] Unexpected IDB error:", event.target?.error);
+        logger.error(
+          "[idb] Unexpected IDB error:",
+          /** @type {any} */ (event.target)?.error,
+        );
       };
 
       _notify();

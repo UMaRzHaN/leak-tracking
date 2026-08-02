@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 
 const NAVIGATION_STATE_KEY = "leakTrackingNavigation";
+const GPS_ENABLED_KEY = "app:gps_enabled_v1";
 const HOME_PAGE = "";
 const APP_PAGES = new Set([
   HOME_PAGE,
@@ -44,6 +45,14 @@ function writeNavigationState(navigation, replace = false) {
   globalThis.history[method](state, "");
 }
 
+function readGpsPreference() {
+  try {
+    return localStorage.getItem(GPS_ENABLED_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
 export function useAppState() {
   const initialNavigationRef = useRef(
     readNavigationState() ?? { page: HOME_PAGE, depth: 0 },
@@ -54,7 +63,19 @@ export function useAppState() {
     prevPage: HOME_PAGE,
   });
   const { page, prevPage } = pageState;
-  const [gpsEnabled, setGpsEnabled] = useState(true);
+  const [gpsEnabled, setGpsEnabled] = useState(readGpsPreference);
+  const updateGpsEnabled = useCallback((next) => {
+    setGpsEnabled((current) => {
+      const resolved = typeof next === "function" ? next(current) : next;
+      const enabled = resolved === true;
+      try {
+        localStorage.setItem(GPS_ENABLED_KEY, String(enabled));
+      } catch {
+        // The in-memory opt-in remains usable when browser storage is blocked.
+      }
+      return enabled;
+    });
+  }, []);
 
   useEffect(() => {
     if (!readNavigationState()) {
@@ -114,7 +135,7 @@ export function useAppState() {
     setPage,
     goBack,
     gpsEnabled,
-    setGpsEnabled,
+    setGpsEnabled: updateGpsEnabled,
     coords,
     geoError,
     geoLoading,

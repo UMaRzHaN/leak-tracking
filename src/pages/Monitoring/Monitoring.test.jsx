@@ -195,6 +195,26 @@ describe("Monitoring round flow", () => {
     ).toBe("");
   });
 
+  it("clears a stale after-photo when a resolved leak needs recheck", () => {
+    const patch = buildMonitoringPatch({
+      leak: {
+        id: "leak-1",
+        status: "resolved",
+        photo_after: "idb://old-after",
+      },
+      draft: { result: "needs_recheck", materials_equipment: "" },
+      monitoredBy: "Inspector",
+      photoPath: "idb://recheck",
+      roundId: "round-2",
+      roundNumber: 2,
+      now: new Date("2026-07-16T08:30:00.000Z"),
+    });
+
+    expect(patch.status).toBe("in_progress");
+    expect(patch.photo_after).toBeNull();
+    expect(patch.photo_repair).toBe("idb://recheck");
+  });
+
   it("builds a consistent round summary, counts and filtered list", () => {
     const due = { id: "due", status: "open", updatedAt: 1 };
     const checked = {

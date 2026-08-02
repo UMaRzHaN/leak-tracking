@@ -1,3 +1,5 @@
+import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
+
 const VALID_STATUSES = new Set(["open", "in_progress", "resolved"]);
 const VALID_PROJECT_TYPES = new Set(["upstream", "midstream", "downstream"]);
 const MAX_BACKUP_RECORDS = 100_000;
@@ -34,10 +36,6 @@ function getComplexityIssue(value, depth = 0, state = { nodes: 0 }) {
 
 function isPlainObject(value) {
   return value != null && typeof value === "object" && !Array.isArray(value);
-}
-
-function isFiniteNumber(value) {
-  return typeof value === "number" && Number.isFinite(value);
 }
 
 function isSafeZipPhotoPath(value) {
@@ -92,12 +90,12 @@ function validateLeakRecord(record, index) {
     );
   }
 
-  if (record.lat != null && !isFiniteNumber(record.lat)) {
-    pushIssue(issues, [index, "lat"], "Expected finite number");
+  if (record.lat != null && !isValidLatitude(record.lat)) {
+    pushIssue(issues, [index, "lat"], "Expected latitude from -90 to 90");
   }
 
-  if (record.lng != null && !isFiniteNumber(record.lng)) {
-    pushIssue(issues, [index, "lng"], "Expected finite number");
+  if (record.lng != null && !isValidLongitude(record.lng)) {
+    pushIssue(issues, [index, "lng"], "Expected longitude from -180 to 180");
   }
 
   if (record.status !== undefined && !VALID_STATUSES.has(record.status)) {

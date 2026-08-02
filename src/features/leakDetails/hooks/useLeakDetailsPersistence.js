@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { isPinkBagEquipment } from "@/utils/calculations/calculations";
+import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import {
   CALCULATION_PARAM_KEYS,
   CALCULATION_PARAMS_VERSION,
@@ -75,7 +76,7 @@ export function useLeakDetailsPersistence({
     const lat = Number(localEdit.lat ?? leak.lat);
     const lng = Number(localEdit.lng ?? leak.lng);
 
-    if (Number.isFinite(lat) && (lat < -90 || lat > 90)) {
+    if (Number.isFinite(lat) && !isValidLatitude(lat)) {
       setNotification({
         type: "error",
         message:
@@ -86,7 +87,7 @@ export function useLeakDetailsPersistence({
       return;
     }
 
-    if (Number.isFinite(lng) && (lng < -180 || lng > 180)) {
+    if (Number.isFinite(lng) && !isValidLongitude(lng)) {
       setNotification({
         type: "error",
         message:

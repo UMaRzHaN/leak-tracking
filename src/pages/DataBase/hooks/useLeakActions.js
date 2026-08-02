@@ -6,18 +6,21 @@ import { useProjectData } from "@/app/project/ProjectContext";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import {
   changeLeakStatus,
-  collectLeakPhotoPaths,
+  deleteLeakPhotosIfUnreferenced,
   deletePhotoIfUnreferenced,
   getOrphanedOriginalPhoto,
   resolveLeakRecord,
   startLeakRepair,
 } from "@/domain/leakLifecycle";
 
+/** @type {(path: string) => Promise<void>} */
+const noopDeletePhoto = async () => {};
+
 export function useLeakActions({
   data,
   setData,
   notify,
-  deletePhoto = () => Promise.resolve(),
+  deletePhoto = noopDeletePhoto,
   userProfile,
 }) {
   const [activeLeak, setActiveLeak] = useState(null);
@@ -28,14 +31,26 @@ export function useLeakActions({
   const { activeProject } = useProjectData();
   const { vars } = useProjectVars(activeProject?.id ?? null);
   const historyUser = userProfile?.name?.trim() || undefined;
+  const requireHistoryUser = useCallback(() => {
+    if (historyUser) return true;
+    notify("error", "Заполните имя пользователя в профиле");
+    return false;
+  }, [historyUser, notify]);
 
-  const handlePickStatus = useCallback((leak) => setPickerLeak(leak), []);
+  const handlePickStatus = useCallback(
+    (leak) => {
+      if (!requireHistoryUser()) return;
+      setPickerLeak(leak);
+    },
+    [requireHistoryUser],
+  );
 
   const handleStatusSelect = useCallback(
     async (newStatus) => {
       const leak = pickerLeak;
       setPickerLeak(null);
       if (!leak || newStatus === leak.status) return;
+      if (!requireHistoryUser()) return;
 
       if (newStatus === STATUS.RESOLVED) {
         setResolveLeak(leak);
@@ -68,13 +83,22 @@ export function useLeakActions({
         notify("error", `Ошибка сохранения: ${err.message}`);
       }
     },
-    [data, deletePhoto, historyUser, notify, pickerLeak, setData],
+    [
+      data,
+      deletePhoto,
+      historyUser,
+      notify,
+      pickerLeak,
+      requireHistoryUser,
+      setData,
+    ],
   );
 
   const handleResolveConfirm = useCallback(
     async ({ photo_after, materials_equipment, note }) => {
       const leak = resolveLeak;
       if (!leak) return;
+      if (!requireHistoryUser()) return;
 
       const next = data.map((r) =>
         r.id === leak.id
@@ -103,13 +127,22 @@ export function useLeakActions({
         notify("error", `Ошибка сохранения: ${err.message}`);
       }
     },
-    [data, deletePhoto, historyUser, notify, resolveLeak, setData],
+    [
+      data,
+      deletePhoto,
+      historyUser,
+      notify,
+      requireHistoryUser,
+      resolveLeak,
+      setData,
+    ],
   );
 
   const handleRepairConfirm = useCallback(
     async ({ photo_repair, materials_equipment, note }) => {
       const leak = repairLeak;
       if (!leak) return;
+      if (!requireHistoryUser()) return;
 
       const orphanedPhoto = getOrphanedOriginalPhoto(leak);
       const next = data.map((r) =>
@@ -142,13 +175,22 @@ export function useLeakActions({
         notify("error", `Ошибка сохранения: ${err.message}`);
       }
     },
-    [data, deletePhoto, historyUser, notify, repairLeak, setData],
+    [
+      data,
+      deletePhoto,
+      historyUser,
+      notify,
+      repairLeak,
+      requireHistoryUser,
+      setData,
+    ],
   );
 
   const handleReopenConfirm = useCallback(
     async (draft) => {
       const leak = reopenLeak;
       if (!leak) return;
+      if (!requireHistoryUser()) return;
 
       const orphanedPhoto = getOrphanedOriginalPhoto(leak);
       const next = data.map((r) =>
@@ -168,7 +210,16 @@ export function useLeakActions({
         notify("error", `Ошибка сохранения: ${err.message}`);
       }
     },
-    [data, deletePhoto, historyUser, notify, reopenLeak, setData, vars],
+    [
+      data,
+      deletePhoto,
+      historyUser,
+      notify,
+      reopenLeak,
+      requireHistoryUser,
+      setData,
+      vars,
+    ],
   );
 
   const handleSave = useCallback(
@@ -187,7 +238,8 @@ export function useLeakActions({
   );
 
   const handleDelete = useCallback(
-    async (id, { onDeleted } = {}) => {
+    async (id, options = {}) => {
+      const { onDeleted } = /** @type {{onDeleted?: Function}} */ (options);
       const target = data.find((r) => r.id === id);
       const next = data.filter((r) => r.id !== id);
       try {
@@ -195,9 +247,9 @@ export function useLeakActions({
         hapticSuccess();
         setActiveLeak(null);
         onDeleted?.(id);
-        for (const path of collectLeakPhotoPaths(target)) {
-          deletePhoto(path).catch(() => {});
-        }
+        await deleteLeakPhotosIfUnreferenced(target, next, deletePhoto).catch(
+          () => {},
+        );
       } catch (err) {
         notify("error", `Ошибка удаления: ${err.message}`);
       }

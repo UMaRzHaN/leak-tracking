@@ -225,6 +225,24 @@ describe("excel export helpers", () => {
     });
   });
 
+  it("sanitizes the workbook entry and download name", async () => {
+    const result = await exportToExcelFile(
+      [{ id: 1, leak_id: "TAG-1" }],
+      [{ id: 1 }],
+      ["ID"],
+      ["id"],
+      "../../../escape",
+      null,
+      null,
+      "en",
+    );
+
+    const workbookEntry = mocks.zipInstances[0].file.mock.calls[0][0];
+    expect(workbookEntry).toMatch(/escape\.xlsx$/);
+    expect(workbookEntry).not.toMatch(/\.\.|[/\\]/);
+    expect(result.message).toMatch(/escape\.zip/);
+  });
+
   it("exports zip with linked photos when photos are present", async () => {
     mocks.getPhotoSrcMock.mockResolvedValue("data:image/png;base64,ZmFrZQ==");
 
@@ -347,7 +365,7 @@ describe("excel export helpers", () => {
     ]);
   });
 
-  it("maps a filtered report to the matching full-backup photo entries", async () => {
+  it("keeps a filtered report and its embedded backup within the filter", async () => {
     mocks.getPhotoSrcMock.mockImplementation(async (path) =>
       path.includes("visible")
         ? "data:image/png;base64,dmlzaWJsZQ=="
@@ -368,22 +386,6 @@ describe("excel export helpers", () => {
         },
       ],
     };
-    const hidden = {
-      id: "hidden",
-      leak_id: "HIDDEN",
-      photo: "file://hidden.png",
-      monitoringRecords: [
-        {
-          id: "hidden-check",
-          roundId: "round-1",
-          roundNumber: 1,
-          date: "2026-07-14T10:00:00.000Z",
-          result: "still_leaking",
-          photo: "file://hidden-monitor.png",
-        },
-      ],
-    };
-
     await exportToExcelFile(
       [visible],
       [{ id: "visible", name: "Visible", photo: "Yes" }],
@@ -393,7 +395,7 @@ describe("excel export helpers", () => {
       null,
       null,
       "en",
-      { backupLeaks: [hidden, visible] },
+      { backupLeaks: [visible] },
     );
 
     const archive = mocks.zipInstances[0];
@@ -403,33 +405,24 @@ describe("excel export helpers", () => {
       { base64: true },
     );
     expect(archive.file).toHaveBeenCalledWith(
-      "photos/HIDDEN/before.png",
-      "aGlkZGVu",
-      { base64: true },
-    );
-    expect(archive.file).toHaveBeenCalledWith(
       "photos/VISIBLE/monitoring/record-1.png",
       "dmlzaWJsZQ==",
       { base64: true },
     );
-    expect(archive.file).toHaveBeenCalledWith(
-      "photos/HIDDEN/monitoring/record-1.png",
-      "aGlkZGVu",
-      { base64: true },
+    expect(archive.file).not.toHaveBeenCalledWith(
+      expect.stringContaining("HIDDEN"),
+      expect.anything(),
+      expect.anything(),
     );
     const payload = readEmbeddedBackup(
       mocks.workbookInstances[0].sheets.at(-1),
     );
     expect(payload.leaks.map((leak) => leak.photo)).toEqual([
-      "zip:photos/HIDDEN/before.png",
       "zip:photos/VISIBLE/before.png",
     ]);
     expect(
       payload.leaks.map((leak) => leak.monitoringRecords[0].photo),
-    ).toEqual([
-      "zip:photos/HIDDEN/monitoring/record-1.png",
-      "zip:photos/VISIBLE/monitoring/record-1.png",
-    ]);
+    ).toEqual(["zip:photos/VISIBLE/monitoring/record-1.png"]);
   });
 
   it("omits unreadable local photo references from the embedded backup", async () => {

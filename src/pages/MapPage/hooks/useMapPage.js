@@ -30,7 +30,6 @@ export function useMapPage({
   });
   const {
     mapApiRef,
-    latestCoordsRef,
     mapCenter,
     setMapCenter,
     open,
@@ -184,8 +183,8 @@ export function useMapPage({
   }, [mapApiRef, setMapCenter]);
 
   useEffect(() => {
-    mapRef.current.setGpsTracking?.(gpsEnabled, latestCoordsRef.current);
-  }, [gpsEnabled, latestCoordsRef, mapReady]);
+    mapRef.current.setGpsTracking?.(gpsEnabled, coords);
+  }, [coords, gpsEnabled, mapReady]);
 
   useEffect(() => {
     mapModuleRef.current?.addMarkers?.(

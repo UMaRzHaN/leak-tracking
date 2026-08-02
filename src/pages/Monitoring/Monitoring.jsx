@@ -22,6 +22,7 @@ export default function Monitoring(props) {
     filters,
     finishRound,
     handleMonitoringReopenConfirm,
+    handlePickStatus,
     handleReopenConfirm,
     handleRepairConfirm,
     handleResolveConfirm,
@@ -108,7 +109,7 @@ export default function Monitoring(props) {
         monitoringRoundNumber={monitoringRoundNumber}
         onMonitor={openMonitoringSheet}
         onOpenDetails={setActiveLeak}
-        onPickStatus={setPickerLeak}
+        onPickStatus={handlePickStatus}
         projectConfig={projectConfig}
         setMonitoringFilter={setMonitoringFilter}
         texts={texts}

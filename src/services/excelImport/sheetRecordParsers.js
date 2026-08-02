@@ -12,6 +12,7 @@ import {
   normalizeMonitoringCellValue,
   normalizeStatus,
 } from "./valueNormalization";
+import { normalizeLeakTag } from "@/utils/leakIdentity";
 
 export function parseMonitoringRecords(sheet, validation) {
   const headerMap = buildMonitoringHeaderMap();
@@ -53,7 +54,8 @@ export function parseMonitoringRecords(sheet, validation) {
     }
 
     const leakId = String(raw.leak_id ?? "").trim();
-    if (!leakId || !raw.date) {
+    const leakKey = normalizeLeakTag(leakId);
+    if (!leakKey || !raw.date) {
       validation?.add(
         sheet.name,
         rowNumber,
@@ -93,8 +95,8 @@ export function parseMonitoringRecords(sheet, validation) {
       ...(raw.photo ? { photo: raw.photo } : {}),
     };
 
-    if (!recordsByLeakId.has(leakId)) recordsByLeakId.set(leakId, []);
-    recordsByLeakId.get(leakId).push(record);
+    if (!recordsByLeakId.has(leakKey)) recordsByLeakId.set(leakKey, []);
+    recordsByLeakId.get(leakKey).push(record);
     count += 1;
   }
 
@@ -155,7 +157,8 @@ export function parseHistoryRecords(sheet) {
     }
 
     const leakId = String(raw.leak_id ?? "").trim();
-    if (!leakId || !raw.date || !raw.action) continue;
+    const leakKey = normalizeLeakTag(leakId);
+    if (!leakKey || !raw.date || !raw.action) continue;
 
     const historyDate = combineDateAndTime(parseDateValue(raw.date), raw.time);
     if (!historyDate) continue;
@@ -171,8 +174,8 @@ export function parseHistoryRecords(sheet) {
         : {}),
     };
 
-    if (!recordsByLeakId.has(leakId)) recordsByLeakId.set(leakId, []);
-    recordsByLeakId.get(leakId).push(record);
+    if (!recordsByLeakId.has(leakKey)) recordsByLeakId.set(leakKey, []);
+    recordsByLeakId.get(leakKey).push(record);
     count += 1;
   }
 

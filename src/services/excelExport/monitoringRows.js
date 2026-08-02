@@ -25,6 +25,7 @@ export function buildMonitoringRoundLookup(orderedLeaks) {
   );
 }
 
+/** @param {any[]} orderedLeaks @param {Map<any, any>} roundLookup @param {string} [monitoringExportMode] */
 export function getMonitoringExportRows(
   orderedLeaks,
   roundLookup,

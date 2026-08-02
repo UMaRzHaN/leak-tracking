@@ -16,9 +16,7 @@ function blobChunkToBase64(blob) {
 function toBlob(value) {
   if (value instanceof Blob) return value;
   if (value instanceof Uint8Array) {
-    return new Blob([
-      value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength),
-    ]);
+    return new Blob([value.slice().buffer]);
   }
   if (value instanceof ArrayBuffer) return new Blob([value]);
   throw new TypeError("Export chunk must be a Blob, Uint8Array or ArrayBuffer");

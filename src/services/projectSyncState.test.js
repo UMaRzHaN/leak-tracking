@@ -6,6 +6,7 @@ import {
   applyProjectTombstones,
   assertProjectSyncStateCompatible,
   clearProjectSyncState,
+  commitLeakDataMutation,
   getLeakSyncFreshness,
   getLeakSyncIdentity,
   getLeakSyncIdentities,
@@ -16,6 +17,7 @@ import {
   readProjectSyncState,
   readProjectSyncStateAsync,
   recordLeakDeletions,
+  restoreEmbeddedProjectSyncState,
   writeProjectSyncState,
 } from "./projectSyncState";
 
@@ -183,6 +185,43 @@ describe("projectSyncState", () => {
       "id:removed": 500,
     });
     await recordLeakDeletions(null, [{ id: "ignored" }], [], 600);
+  });
+
+  it("embeds tombstones in project data before publishing the sync mirror", async () => {
+    const removed = { id: "removed", leak_id: "TAG-1", updatedAt: 100 };
+    const persistData = vi.fn(async (embeddedState) => {
+      expect(embeddedState.deleted).toEqual({
+        "id:removed": 500,
+        "tag:TAG-1": 500,
+      });
+      expect(readProjectSyncState("atomic-project").deleted).toEqual({});
+    });
+
+    await commitLeakDataMutation(
+      "atomic-project",
+      [removed],
+      [],
+      persistData,
+      500,
+    );
+
+    expect(persistData).toHaveBeenCalledOnce();
+    expect(readProjectSyncState("atomic-project").deleted).toEqual({
+      "id:removed": 500,
+      "tag:TAG-1": 500,
+    });
+  });
+
+  it("restores a sync mirror from the state committed with project data", async () => {
+    await restoreEmbeddedProjectSyncState(
+      "recovered-project",
+      { deleted: { "id:removed": 700 } },
+      [],
+    );
+
+    expect(readProjectSyncState("recovered-project").deleted).toEqual({
+      "id:removed": 700,
+    });
   });
 
   it("records both id and tag tombstones and recognizes a matching tag", async () => {

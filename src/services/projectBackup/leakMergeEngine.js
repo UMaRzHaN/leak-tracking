@@ -16,10 +16,11 @@ import {
 } from "./mergeValues";
 import { hasOwn, mergeRecordArray } from "./recordArrayMerge";
 import { parseTime } from "./projectMeta";
+import { normalizeLeakTag } from "@/utils/leakIdentity";
 
 export function getLeakIdentity(leak, options = {}) {
   if (options.source !== "sync") {
-    const leakTag = String(leak?.leak_id ?? "").trim();
+    const leakTag = normalizeLeakTag(leak?.leak_id);
     if (leakTag) return `tag:${leakTag}`;
   }
   return getLeakMergeIdentity(leak);
@@ -234,7 +235,7 @@ function getMonitoringDerivedStatus(result) {
 function applyMonitoringDerivedStatus(leak, options = {}) {
   if (options.source !== "excel") return leak;
   const inferredIds = options.inferredStatusLeakIds;
-  const leakId = String(leak?.leak_id ?? "");
+  const leakId = normalizeLeakTag(leak?.leak_id);
   const shouldInfer =
     inferredIds instanceof Set
       ? inferredIds.has(leakId)

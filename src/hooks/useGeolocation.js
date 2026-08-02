@@ -4,7 +4,12 @@ import { Geolocation } from "@capacitor/geolocation";
 import { logger } from "@/utils/logger";
 
 export const useGeolocation = (enabled = true) => {
-  const [coords, setCoords] = useState({ lat: null, lng: null });
+  const [coords, setCoords] = useState(
+    /** @type {{lat: number | null, lng: number | null, accuracy?: number, heading?: number | null}} */ ({
+      lat: null,
+      lng: null,
+    }),
+  );
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 

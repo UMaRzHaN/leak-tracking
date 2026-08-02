@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   changeLeakStatus,
   collectLeakPhotoPaths,
+  deleteLeakPhotosIfUnreferenced,
   deletePhotoIfUnreferenced,
   getOrphanedOriginalPhoto,
   resolveLeakRecord,
@@ -13,7 +14,7 @@ const NOW = Date.parse("2026-07-15T08:00:00.000Z");
 describe("leakLifecycle", () => {
   it("resolves a leak with one consistent timestamp and auditable changes", () => {
     const updated = resolveLeakRecord(
-      { id: 1, status: "open", note: "old", history: [] },
+      { id: 1, status: "in_progress", note: "old", history: [] },
       { photo_after: "idb://after", note: "fixed" },
       { user: "Operator", now: NOW },
     );
@@ -36,21 +37,21 @@ describe("leakLifecycle", () => {
     );
   });
 
-  it("moves the after photo to the primary slot when repair restarts", () => {
+  it("starts repair from open and clears stale resolved state", () => {
     const updated = startLeakRepair(
       {
         id: 1,
-        status: "resolved",
+        status: "open",
         photo: "idb://before",
         photo_after: "idb://after",
       },
       { photo_repair: "idb://repair" },
-      { now: NOW },
+      { user: "Operator", now: NOW },
     );
 
     expect(updated).toMatchObject({
       status: "in_progress",
-      photo: "idb://after",
+      photo: "idb://before",
       photo_after: null,
       photo_repair: "idb://repair",
       repairAt: NOW,
@@ -60,6 +61,19 @@ describe("leakLifecycle", () => {
       expect.arrayContaining([
         expect.objectContaining({ key: "photo_repair" }),
       ]),
+    );
+  });
+
+  it("rejects status skips inside the domain API", () => {
+    expect(() =>
+      resolveLeakRecord({ id: 1, status: "open" }, {}, { now: NOW }),
+    ).toThrowError(
+      expect.objectContaining({ code: "INVALID_LEAK_STATUS_TRANSITION" }),
+    );
+    expect(() =>
+      startLeakRepair({ id: 1, status: "resolved" }, {}, { now: NOW }),
+    ).toThrowError(
+      expect.objectContaining({ code: "INVALID_LEAK_STATUS_TRANSITION" }),
     );
   });
 
@@ -77,7 +91,7 @@ describe("leakLifecycle", () => {
     const updated = changeLeakStatus(
       { id: 1, status: "open", history: [] },
       "in_progress",
-      { now: NOW },
+      { user: "Operator", now: NOW },
     );
     expect(updated.updatedAt).toBe(NOW);
     expect(
@@ -113,5 +127,40 @@ describe("leakLifecycle", () => {
       deletePhotoIfUnreferenced("idb://unused", leak, deletePhoto),
     ).resolves.toBe(true);
     expect(deleted).toEqual(["idb://unused"]);
+  });
+
+  it.each([
+    [
+      "status change",
+      () => changeLeakStatus({ status: "open" }, "in_progress"),
+    ],
+    [
+      "resolve",
+      () => resolveLeakRecord({ status: "in_progress" }, {}, { now: NOW }),
+    ],
+    ["repair", () => startLeakRepair({ status: "open" }, {}, { now: NOW })],
+  ])("requires a history user for %s", (_label, action) => {
+    expect(action).toThrowError(
+      expect.objectContaining({ code: "HISTORY_USER_REQUIRED" }),
+    );
+  });
+
+  it("deletes only photo paths no longer referenced by other leaks", async () => {
+    const deletePhoto = vi.fn().mockResolvedValue(undefined);
+    const removed = {
+      photo: "idb://shared",
+      photo_after: "idb://unique",
+      monitoringRecords: [{ photo: "idb://monitoring-shared" }],
+    };
+    const remaining = [
+      { photo_repair: "idb://shared" },
+      { monitoringRecords: [{ photo: "idb://monitoring-shared" }] },
+    ];
+
+    await expect(
+      deleteLeakPhotosIfUnreferenced(removed, remaining, deletePhoto),
+    ).resolves.toEqual(["idb://unique"]);
+    expect(deletePhoto).toHaveBeenCalledOnce();
+    expect(deletePhoto).toHaveBeenCalledWith("idb://unique");
   });
 });

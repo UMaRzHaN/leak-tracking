@@ -98,6 +98,27 @@ describe("Excel import record merging", () => {
     expect(result).not.toHaveProperty("resolvedAt");
   });
 
+  it("joins monitoring and history rows to leak tags case-insensitively", () => {
+    const monitoringDate = "2026-02-01T00:00:00.000Z";
+    const [withMonitoring] = attachMonitoringRecords(
+      [{ leak_id: " Tag-Case ", status: "open" }],
+      new Map([["TAG-CASE", [{ date: monitoringDate, result: "resolved" }]]]),
+      { inferStatusForLeakIds: new Set(["tag-case"]) },
+    );
+    const [withHistory] = attachHistoryRecords(
+      [withMonitoring],
+      new Map([
+        ["tAg-CaSe", [{ action: "created", date: "2026-01-01T00:00:00.000Z" }]],
+      ]),
+    );
+
+    expect(withHistory.monitoringRecords).toHaveLength(1);
+    expect(withHistory.status).toBe("resolved");
+    expect(withHistory.history).toEqual(
+      expect.arrayContaining([expect.objectContaining({ action: "created" })]),
+    );
+  });
+
   it("deduplicates and sorts history while filling the fallback user", () => {
     const duplicate = {
       action: "status",
@@ -110,7 +131,7 @@ describe("Excel import record merging", () => {
         leak_id: "L-1",
         detectedBy: "Detector",
         updatedAt: 1,
-        history: [{ ...duplicate, user: "Old user" }],
+        history: [{ ...duplicate, user: "Detector" }],
       },
     ];
     const records = [
@@ -140,5 +161,21 @@ describe("Excel import record merging", () => {
     expect(attachMonitoringRecords(leaks, new Map())).toBe(leaks);
     expect(attachHistoryRecords(leaks, new Map())).toBe(leaks);
     expect(mergeHistoryRecords([], [])).toEqual([]);
+  });
+
+  it("keeps otherwise identical audit events from different users", () => {
+    const base = {
+      action: "status_changed",
+      date: "2026-02-01T00:00:00.000Z",
+      to: "resolved",
+      text: "Done",
+    };
+
+    expect(
+      mergeHistoryRecords(
+        [{ ...base, user: "Inspector A" }],
+        [{ ...base, user: "Inspector B" }],
+      ),
+    ).toHaveLength(2);
   });
 });

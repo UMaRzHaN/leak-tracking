@@ -8,11 +8,11 @@ export default function ConfirmSheet({
   description,
   onConfirm,
   onCancel,
-  secondaryActionLabel,
-  onSecondaryAction,
+  secondaryActionLabel = null,
+  onSecondaryAction = null,
   confirmLabel = "Подтвердить",
   cancelLabel = "Отмена",
-  onActionError,
+  onActionError = null,
 }) {
   const titleId = useId();
   const descriptionId = useId();

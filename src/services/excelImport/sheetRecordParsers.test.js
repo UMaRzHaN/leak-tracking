@@ -65,7 +65,7 @@ describe("Excel monitoring and history sheet parsers", () => {
     ]);
 
     const result = parseMonitoringRecords(sheet);
-    const record = result.recordsByLeakId.get("TAG-1")[0];
+    const record = result.recordsByLeakId.get("tag-1")[0];
     const date = new Date(record.date);
 
     expect(result.count).toBe(1);
@@ -96,7 +96,7 @@ describe("Excel monitoring and history sheet parsers", () => {
     const result = parseMonitoringRecords(sheet, validation);
 
     expect(result.count).toBe(1);
-    expect(result.recordsByLeakId.get("TAG-1")[0].result).toBe("still_leaking");
+    expect(result.recordsByLeakId.get("tag-1")[0].result).toBe("still_leaking");
     expect(validation.warnings).toHaveLength(2);
     expect(validation.warnings[0][4]).toContain("Неизвестный результат");
     expect(validation.warnings[1][4]).toContain("Строка мониторинга пропущена");
@@ -128,7 +128,7 @@ describe("Excel monitoring and history sheet parsers", () => {
     ]);
 
     const result = parseHistoryRecords(sheet);
-    const record = result.recordsByLeakId.get("TAG-1")[0];
+    const record = result.recordsByLeakId.get("tag-1")[0];
     const date = new Date(record.date);
 
     expect(result.count).toBe(1);

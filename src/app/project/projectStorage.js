@@ -66,6 +66,7 @@ function isSafeStoredFolderName(value) {
 }
 
 export class ProjectStorageReadError extends Error {
+  /** @param {string} message @param {any} [options] */
   constructor(message, { cause, recoveryValue } = {}) {
     super(message, cause ? { cause } : undefined);
     this.name = "ProjectStorageReadError";

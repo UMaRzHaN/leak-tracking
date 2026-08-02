@@ -18,7 +18,7 @@ import { dataUrlToBlob } from "@/utils/photoConversion";
 import { buildReopenedLeak } from "@/utils/reopenLeak";
 import {
   changeLeakStatus,
-  collectLeakPhotoPaths,
+  deleteLeakPhotosIfUnreferenced,
   deletePhotoIfUnreferenced,
   getOrphanedOriginalPhoto,
   resolveLeakRecord,
@@ -332,6 +332,11 @@ export function useMonitoringPage({
           },
     [lang],
   );
+  const requireHistoryUser = useCallback(() => {
+    if (profileName) return true;
+    setNotification({ type: "error", message: texts.required });
+    return false;
+  }, [profileName, texts.required]);
 
   const items = useMemo(() => {
     return getMonitoringItems(
@@ -361,7 +366,7 @@ export function useMonitoringPage({
     leak,
     draft,
     photoPath,
-    reopenDraft,
+    reopenDraft = null,
   }) => {
     const orphanedPhoto =
       reopenDraft && leak.status === STATUS.RESOLVED && leak.photo_after
@@ -375,14 +380,13 @@ export function useMonitoringPage({
                   leak: item,
                   draft: reopenDraft,
                   vars,
-                  user: profileName || undefined,
+                  user: profileName,
                 })
               : item;
             return buildMonitoringPatch({
               leak: source,
               draft,
               monitoredBy: profileName,
-              lang,
               photoPath,
               roundId: monitoringRoundId,
               roundNumber: monitoringRound?.number ?? 1,
@@ -493,6 +497,7 @@ export function useMonitoringPage({
 
   const handleMonitoringReopenConfirm = async (reopenDraft) => {
     if (isSaving) return;
+    if (!requireHistoryUser()) return;
     const pending = pendingMonitoringReopen;
     setPendingMonitoringReopen(null);
     if (!pending) return;
@@ -547,17 +552,24 @@ export function useMonitoringPage({
 
   const deleteLeak = async (id) => {
     const target = data.find((item) => item.id === id);
-    await setData(data.filter((item) => item.id !== id));
+    const next = data.filter((item) => item.id !== id);
+    await setData(next);
     setActiveLeak(null);
-    for (const path of collectLeakPhotoPaths(target)) {
-      deletePhoto(path).catch(() => {});
-    }
+    await deleteLeakPhotosIfUnreferenced(target, next, deletePhoto).catch(
+      () => {},
+    );
+  };
+
+  const handlePickStatus = (leak) => {
+    if (!requireHistoryUser()) return;
+    setPickerLeak(leak);
   };
 
   const handleStatusSelect = async (newStatus) => {
     const leak = pickerLeak;
     setPickerLeak(null);
     if (!leak || newStatus === leak.status) return;
+    if (!requireHistoryUser()) return;
 
     if (newStatus === STATUS.RESOLVED) {
       setResolveLeak(leak);
@@ -579,7 +591,7 @@ export function useMonitoringPage({
     const next = data.map((item) =>
       item.id === leak.id
         ? changeLeakStatus(item, newStatus, {
-            user: profileName || undefined,
+            user: profileName,
           })
         : item,
     );
@@ -597,6 +609,7 @@ export function useMonitoringPage({
   }) => {
     const leak = resolveLeak;
     if (!leak) return;
+    if (!requireHistoryUser()) return;
 
     try {
       const next = data.map((item) =>
@@ -604,7 +617,7 @@ export function useMonitoringPage({
           ? resolveLeakRecord(
               item,
               { photo_after, materials_equipment, note },
-              { user: profileName || undefined },
+              { user: profileName },
             )
           : item,
       );
@@ -632,6 +645,7 @@ export function useMonitoringPage({
   }) => {
     const leak = repairLeak;
     if (!leak) return;
+    if (!requireHistoryUser()) return;
 
     const orphanedPhoto = getOrphanedOriginalPhoto(leak);
     try {
@@ -640,7 +654,7 @@ export function useMonitoringPage({
           ? startLeakRepair(
               item,
               { photo_repair, materials_equipment, note },
-              { user: profileName || undefined },
+              { user: profileName },
             )
           : item,
       );
@@ -667,6 +681,7 @@ export function useMonitoringPage({
   const handleReopenConfirm = async (draft) => {
     const leak = reopenLeak;
     if (!leak) return;
+    if (!requireHistoryUser()) return;
 
     const orphanedPhoto = getOrphanedOriginalPhoto(leak);
     const next = data.map((item) =>
@@ -675,7 +690,7 @@ export function useMonitoringPage({
             leak: item,
             draft,
             vars,
-            user: profileName || undefined,
+            user: profileName,
           })
         : item,
     );
@@ -695,6 +710,7 @@ export function useMonitoringPage({
     filters,
     finishRound,
     handleMonitoringReopenConfirm,
+    handlePickStatus,
     handleReopenConfirm,
     handleRepairConfirm,
     handleResolveConfirm,

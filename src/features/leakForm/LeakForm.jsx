@@ -9,6 +9,7 @@ import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { calculateLeakWithSnapshot } from "@/utils/calculationParams";
+import { getLeakCalculationFieldErrors } from "@/utils/calculations/calculations";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
 import { localizeAutocompleteOptions } from "@/features/search/Autocomplete/optionTranslations";
 import AddLeakHeader from "./Header/AddLeakHeader";
@@ -154,7 +155,12 @@ export default function LeakForm({
   }, [step]);
 
   /* Navigation */
-  const validateStep = useStepValidation({ steps: STEPS, form, setErrors });
+  const validateStep = useStepValidation({
+    steps: STEPS,
+    form,
+    setErrors,
+    calculationVars: vars,
+  });
 
   const validateAllSteps = useCallback(() => {
     const nextErrors = {};
@@ -185,13 +191,38 @@ export default function LeakForm({
       });
     });
 
+    const calculationMessages = {
+      finite:
+        lang === "ru" ? "Введите корректное число" : "Enter a valid number",
+      non_negative:
+        lang === "ru"
+          ? "Значение не может быть отрицательным"
+          : "Value cannot be negative",
+      positive:
+        lang === "ru"
+          ? "Для розового мешка укажите значение больше нуля"
+          : "Enter a value above zero for Pink Bag",
+      above_absolute_zero:
+        lang === "ru"
+          ? "Температура должна быть выше −273,15 °C"
+          : "Temperature must be above −273.15 °C",
+    };
+    const calculationErrors = getLeakCalculationFieldErrors(form, vars);
+    Object.entries(calculationErrors).forEach(([key, code]) => {
+      nextErrors[key] = calculationMessages[code];
+      const invalidStep = STEPS.findIndex((item) =>
+        item.fields?.some((field) => field.key === key),
+      );
+      if (invalidStep >= 0) firstInvalidStep ??= invalidStep + 1;
+    });
+
     setErrors(nextErrors);
     if (firstInvalidStep != null) {
       setStep(firstInvalidStep);
       return false;
     }
     return true;
-  }, [STEPS, form, lang, setErrors]);
+  }, [STEPS, form, lang, setErrors, vars]);
 
   const nextStep = useCallback(() => {
     if (!validateStep(step)) return;

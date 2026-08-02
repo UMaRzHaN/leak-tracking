@@ -158,7 +158,7 @@ function normalizeDeleted(value) {
   return Object.fromEntries(
     Object.entries(value)
       .map(([identity, deletedAt]) => [identity, toTime(deletedAt)])
-      .filter(([identity, deletedAt]) => identity && deletedAt > 0),
+      .filter(([identity, deletedAt]) => identity && Number(deletedAt) > 0),
   );
 }
 
@@ -387,8 +387,13 @@ function mutateProjectSyncState(projectId, mutation) {
   const next = previous
     .catch(() => undefined)
     .then(async () => {
-      const state = await readProjectSyncStateAsync(projectId);
-      const result = mutation(state);
+      // Mutations operate on an isolated copy. readProjectSyncStateAsync also
+      // caches its result for synchronous readers, so mutating that object in
+      // place would publish uncommitted tombstones before project data lands.
+      const state = normalizeProjectSyncState(
+        await readProjectSyncStateAsync(projectId),
+      );
+      const result = await mutation(state);
       await writeProjectSyncState(
         projectId,
         result?.state ?? state,
@@ -431,6 +436,55 @@ export async function recordLeakDeletions(
     }
     return { state, liveLeaks: nextLeaks };
   });
+}
+
+function applyLeakDeletions(state, previousLeaks, nextLeaks, deletedAt) {
+  const nextIdentities = new Set(nextLeaks.flatMap(getLeakSyncIdentities));
+  for (const leak of previousLeaks) {
+    const identities = getLeakSyncIdentities(leak);
+    const stillExists = identities.some((identity) =>
+      nextIdentities.has(identity),
+    );
+    if (!stillExists) {
+      for (const identity of identities) {
+        state.deleted[identity] = Math.max(
+          state.deleted[identity] ?? 0,
+          deletedAt,
+        );
+      }
+    }
+  }
+  return state;
+}
+
+export function commitLeakDataMutation(
+  projectId,
+  previousLeaks,
+  nextLeaks,
+  persistData,
+  deletedAt,
+) {
+  if (!projectId) return Promise.resolve();
+  const effectiveDeletedAt =
+    deletedAt == null ? nextSyncTimestamp() : sanitizeSyncTimestamp(deletedAt);
+  return mutateProjectSyncState(projectId, async (state) => {
+    applyLeakDeletions(state, previousLeaks, nextLeaks, effectiveDeletedAt);
+    const embeddedState = normalizeProjectSyncState(state);
+    await persistData(embeddedState);
+    return { state: embeddedState, liveLeaks: nextLeaks };
+  });
+}
+
+export function restoreEmbeddedProjectSyncState(
+  projectId,
+  embeddedState,
+  liveLeaks = [],
+) {
+  if (!projectId || embeddedState == null) return Promise.resolve();
+  return mutateProjectSyncState(projectId, (state) => ({
+    state: mergeProjectSyncStates(state, embeddedState),
+    liveLeaks,
+  }));
 }
 export function markProjectVarsUpdated(projectId, updatedAt) {
   if (!projectId) return Promise.resolve();

@@ -111,11 +111,24 @@ describe("analyzeProjectIntegrity", () => {
       [
         { id: "null", lat: null, lng: null },
         { id: "blank", lat: "   ", lng: "   " },
+        { id: "range", lat: 91, lng: 0 },
         { id: "origin", lat: 0, lng: 0 },
       ],
       { leakPhotoRequired: false, monitoringPhotoRequired: false },
     );
 
-    expect(report.missingCoords).toEqual(["null", "blank"]);
+    expect(report.missingCoords).toEqual(["null", "blank", "range"]);
+  });
+
+  it("detects duplicate leak tags case-insensitively", async () => {
+    const report = await analyzeProjectIntegrity(
+      [
+        { id: "one", leak_id: " TAG-1 ", status: "open" },
+        { id: "two", leak_id: "tag-1", status: "open" },
+      ],
+      { leakPhotoRequired: false, monitoringPhotoRequired: false },
+    );
+
+    expect(report.duplicateLeakIds).toEqual(["tag-1"]);
   });
 });

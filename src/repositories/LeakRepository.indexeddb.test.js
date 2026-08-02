@@ -6,6 +6,7 @@ vi.mock("@/utils/platform", () => ({
 }));
 
 vi.mock("@capacitor/filesystem", () => ({
+  Encoding: { UTF8: "utf8" },
   Filesystem: {
     readFile: vi.fn(),
     writeFile: vi.fn(),
@@ -53,7 +54,7 @@ function failLocalStorageWritesFor(key) {
     });
 }
 
-async function overwriteIndexedProjectData(projectId, data) {
+async function overwriteIndexedProjectData(projectId, data, extra = {}) {
   const db = await new Promise((resolve, reject) => {
     const request = indexedDB.open("LeakTrackingDataDB", 1);
     request.onsuccess = () => resolve(request.result);
@@ -62,7 +63,7 @@ async function overwriteIndexedProjectData(projectId, data) {
 
   await new Promise((resolve, reject) => {
     const transaction = db.transaction("projects", "readwrite");
-    transaction.objectStore("projects").put({ id: projectId, data });
+    transaction.objectStore("projects").put({ id: projectId, data, ...extra });
     transaction.oncomplete = resolve;
     transaction.onerror = () => reject(transaction.error);
     transaction.onabort = () => reject(transaction.error);
@@ -95,6 +96,27 @@ describe("LeakRepository web IndexedDB storage", () => {
     expect(result.map((leak) => leak.id)).toEqual(["1", "2"]);
   });
 
+  it("commits and recovers sync state with the same web data envelope", async () => {
+    const { LeakRepository, getEmbeddedProjectSyncState } =
+      await loadRepository();
+    const syncState = {
+      version: 2,
+      generation: 0,
+      epochId: "legacy",
+      deleted: { "id:removed": 700 },
+    };
+
+    await LeakRepository.saveAll([makeLeak("current")], {
+      ...PROJECT,
+      syncState,
+    });
+    localStorage.removeItem(storageKey(PROJECT.projectId));
+
+    const result = await LeakRepository.getAll(PROJECT);
+    expect(result).toMatchObject([{ id: "current" }]);
+    expect(getEmbeddedProjectSyncState(result)).toEqual(syncState);
+  });
+
   it("clears IndexedDB project data", async () => {
     const { LeakRepository } = await loadRepository();
 
@@ -125,6 +147,47 @@ describe("LeakRepository web IndexedDB storage", () => {
       code: "PROJECT_DATA_READ_FAILED",
       source: "indexeddb",
     });
+  });
+
+  it("loads a valid mirror as degraded read-only data when IndexedDB is malformed", async () => {
+    const { LeakRepository, getProjectDataReadWarning } =
+      await loadRepository();
+    await LeakRepository.saveAll([makeLeak("recoverable")], PROJECT);
+    await overwriteIndexedProjectData(PROJECT.projectId, { not: "an array" });
+
+    const result = await LeakRepository.getAll(PROJECT);
+
+    expect(result).toMatchObject([{ id: "recoverable" }]);
+    expect(getProjectDataReadWarning(result)).toMatchObject({
+      code: "PROJECT_DATA_DEGRADED",
+      source: "indexeddb",
+    });
+  });
+
+  it("does not guess between differing legacy web copies", async () => {
+    const { LeakRepository } = await loadRepository();
+    const indexedLegacy = [makeLeak("indexed-old")];
+    const localLegacy = [makeLeak("local-new")];
+    await LeakRepository.getAll(PROJECT);
+    await overwriteIndexedProjectData(PROJECT.projectId, indexedLegacy, {
+      timestamp: 100,
+    });
+    localStorage.setItem(
+      storageKey(PROJECT.projectId),
+      JSON.stringify(localLegacy),
+    );
+
+    await expect(LeakRepository.getAll(PROJECT)).rejects.toMatchObject({
+      code: "PROJECT_DATA_CONFLICT",
+      source: "web-mirrors",
+      recoveryData: {
+        indexedDB: indexedLegacy,
+        localStorage: localLegacy,
+      },
+    });
+    expect(
+      JSON.parse(localStorage.getItem(storageKey(PROJECT.projectId))),
+    ).toEqual(localLegacy);
   });
 
   it("keeps the previous mirror when IndexedDB saves but localStorage is full", async () => {

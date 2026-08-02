@@ -1,5 +1,9 @@
 import { PROJECTS } from "./projects";
 
+/** @typedef {Record<string, any>} Field */
+/** @typedef {Record<string, any>} SearchField */
+/** @typedef {Record<string, any>} LocationMeta */
+
 /**
  * Resolves the raw config object for a project.
  * Accepts a project object ({ type, ... }) or a bare type string.

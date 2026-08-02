@@ -5,6 +5,7 @@ const fsState = vi.hoisted(() => ({ files: new Map(), failRename: false }));
 vi.mock("@/utils/platform", () => ({ isNative: true }));
 
 vi.mock("@capacitor/filesystem", () => ({
+  Encoding: { UTF8: "utf8" },
   Directory: { Data: "DATA", Documents: "DOCUMENTS" },
   Filesystem: {
     mkdir: vi.fn().mockResolvedValue(undefined),
@@ -40,7 +41,8 @@ vi.mock("@capacitor/filesystem", () => ({
   },
 }));
 
-const { LeakRepository } = await import("./LeakRepository");
+const { LeakRepository, getEmbeddedProjectSyncState } =
+  await import("./LeakRepository");
 
 const project = { projectId: "p1", folderName: "alpha" };
 const mainPath = "LeakReports/alpha/data/data.json";
@@ -63,6 +65,28 @@ describe("LeakRepository native recovery", () => {
     await expect(LeakRepository.getAll(project)).resolves.toEqual([
       expect.objectContaining({ id: "old" }),
     ]);
+  });
+
+  it("commits and recovers sync state with the same native data file", async () => {
+    const syncState = {
+      version: 2,
+      generation: 0,
+      epochId: "legacy",
+      deleted: { "id:removed": 700 },
+    };
+    await LeakRepository.saveAll([{ id: "current", status: "open" }], {
+      ...project,
+      syncState,
+    });
+
+    expect(JSON.parse(fsState.files.get(mainPath))).toEqual({
+      version: 2,
+      data: [{ id: "current", status: "open" }],
+      syncState,
+    });
+    const result = await LeakRepository.getAll(project);
+    expect(result).toEqual([expect.objectContaining({ id: "current" })]);
+    expect(getEmbeddedProjectSyncState(result)).toEqual(syncState);
   });
 
   it("restores the current dataset if the final rename fails", async () => {

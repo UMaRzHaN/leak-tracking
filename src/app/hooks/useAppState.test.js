@@ -10,6 +10,20 @@ const { useAppState } = await import("./useAppState");
 describe("useAppState navigation history", () => {
   beforeEach(() => {
     window.history.replaceState(null, "");
+    localStorage.clear();
+  });
+
+  it("keeps GPS off until the user opts in and persists that choice", () => {
+    const { result, unmount } = renderHook(() => useAppState());
+    expect(result.current.gpsEnabled).toBe(false);
+
+    act(() => result.current.setGpsEnabled(true));
+    expect(result.current.gpsEnabled).toBe(true);
+    expect(localStorage.getItem("app:gps_enabled_v1")).toBe("true");
+
+    unmount();
+    const restored = renderHook(() => useAppState());
+    expect(restored.result.current.gpsEnabled).toBe(true);
   });
 
   it("pushes page navigation into browser history", () => {

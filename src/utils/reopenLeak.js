@@ -6,6 +6,7 @@ import {
 import { priorityFromSpeed } from "@/utils/priority";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
+import { requireHistoryUser } from "@/utils/historyUser";
 
 export const REOPEN_CALC_FIELDS = [
   { key: "equipmentType", ru: "Тип оборудования", en: "Equipment type" },
@@ -55,11 +56,16 @@ function normalizeCalcVar(key, value) {
   return normalized === "" ? null : normalized;
 }
 
-export function buildReopenCalcVars({ leak, vars, draft = {} }) {
+/** @returns {Record<string, any>} */
+export function buildReopenCalcVars({
+  leak,
+  vars,
+  draft = /** @type {Record<string, any>} */ ({}),
+}) {
   const initial = buildLeakCalculationParams(leak, vars);
 
   const patch = draft.calcVars ?? {};
-  const next = { ...initial };
+  const next = /** @type {Record<string, any>} */ ({ ...initial });
   Object.entries(patch).forEach(([key, value]) => {
     next[key] = normalizeCalcVar(key, value);
   });
@@ -119,7 +125,7 @@ export function buildReopenedLeak({
         action: "status_changed",
         to: STATUS.OPEN,
         date: new Date(now).toISOString(),
-        user,
+        user: requireHistoryUser(user),
         ...(changes.length + calcChanges.length > 0
           ? { changes: [...changes, ...calcChanges] }
           : {}),

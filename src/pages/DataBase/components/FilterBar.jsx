@@ -415,7 +415,16 @@ function FilterBar({
 
 export default memo(FilterBar);
 
-function FilterTab({ id, label, count, active, onSelect, color, bg, border }) {
+function FilterTab({
+  id,
+  label,
+  count,
+  active,
+  onSelect,
+  color = null,
+  bg = null,
+  border = null,
+}) {
   const isActive = active;
   const activeStyle = isActive
     ? color

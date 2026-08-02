@@ -30,6 +30,8 @@ import {
   normalizeImportedLeak,
   parseNumberValue,
 } from "@/services/excelImport/valueNormalization";
+import { normalizeLeakTag } from "@/utils/leakIdentity";
+import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import {
   parseHistoryRecords,
   parseMonitoringRecords,
@@ -67,6 +69,7 @@ function createValidationCollector() {
   };
 }
 
+/** @param {{name?: string, size: number, arrayBuffer: () => Promise<ArrayBuffer>}} file @param {{projectType?: string}} [options] */
 export async function parseExcelLeaks(file, { projectType } = {}) {
   assertImportFileSize(file);
   await preflightZipFile(file);
@@ -174,8 +177,8 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
         const coordinate = parseNumberValue(value);
         const validRange =
           column.key === "lat"
-            ? coordinate != null && coordinate >= -90 && coordinate <= 90
-            : coordinate != null && coordinate >= -180 && coordinate <= 180;
+            ? isValidLatitude(coordinate)
+            : isValidLongitude(coordinate);
         if (!validRange) {
           validation.add(
             sheet.name,
@@ -223,9 +226,7 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
       continue;
     }
 
-    const leakTag = String(leak.leak_id ?? "")
-      .trim()
-      .toLowerCase();
+    const leakTag = normalizeLeakTag(leak.leak_id);
     if (leakTag && seenLeakTags.has(leakTag)) {
       skipped += 1;
       duplicateLeakIds += 1;
@@ -239,7 +240,7 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
       continue;
     }
     if (leakTag) seenLeakTags.add(leakTag);
-    if (raw.status) explicitStatusLeakIds.add(String(leak.leak_id));
+    if (raw.status) explicitStatusLeakIds.add(leakTag);
     leaks.push(leak);
   }
 
@@ -255,11 +256,15 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
     ? leaks.map((leak) => ({ ...leak, history: [] }))
     : leaks;
   const inferredStatusLeakIds = leaks
-    .map((leak) => String(leak.leak_id))
-    .filter(
-      (id) =>
-        !explicitStatusLeakIds.has(id) && monitoring.recordsByLeakId.has(id),
-    );
+    .filter((leak) => {
+      const leakKey = normalizeLeakTag(leak.leak_id);
+      return (
+        leakKey &&
+        !explicitStatusLeakIds.has(leakKey) &&
+        monitoring.recordsByLeakId.has(leakKey)
+      );
+    })
+    .map((leak) => String(leak.leak_id));
   const leaksWithMonitoring = attachMonitoringRecords(
     leaksBeforeHistoryAttach,
     monitoring.recordsByLeakId,

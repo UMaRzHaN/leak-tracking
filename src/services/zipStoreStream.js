@@ -61,7 +61,8 @@ function readBlobBytes(blob) {
   }
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(new Uint8Array(reader.result));
+    reader.onload = () =>
+      resolve(new Uint8Array(/** @type {ArrayBuffer} */ (reader.result)));
     reader.onerror = () =>
       reject(reader.error ?? new Error("Blob read failed"));
     reader.readAsArrayBuffer(blob);

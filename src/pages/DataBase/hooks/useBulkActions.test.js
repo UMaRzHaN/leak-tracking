@@ -31,12 +31,18 @@ const modes = [
   },
 ];
 
-function renderBulkActions({ setData, deletePhoto, photoKey, oldPath }) {
+function renderBulkActions({
+  setData,
+  deletePhoto,
+  photoKey,
+  oldPath,
+  status,
+}) {
   const data = [
     {
       id: "leak-1",
       leak_id: "1001",
-      status: STATUS.OPEN,
+      status,
       [photoKey]: oldPath,
     },
   ];
@@ -65,6 +71,8 @@ describe.each(modes)("bulk sequential $label photo lifecycle", (mode) => {
       deletePhoto,
       photoKey: mode.photoKey,
       oldPath,
+      status:
+        mode.status === STATUS.RESOLVED ? STATUS.IN_PROGRESS : STATUS.OPEN,
     });
 
     act(() => result.current.toggleSelected("leak-1"));
@@ -96,6 +104,8 @@ describe.each(modes)("bulk sequential $label photo lifecycle", (mode) => {
       deletePhoto,
       photoKey: mode.photoKey,
       oldPath,
+      status:
+        mode.status === STATUS.RESOLVED ? STATUS.IN_PROGRESS : STATUS.OPEN,
     });
 
     act(() => result.current.toggleSelected("leak-1"));

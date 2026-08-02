@@ -8,7 +8,9 @@ export function useIndexedDB() {
     setReady(idb.getState().ready);
     const unsub = idb.subscribe((_, r) => setReady(r));
     idb.open();
-    return unsub;
+    return () => {
+      unsub();
+    };
   }, []);
 
   const savePhoto = useCallback((id, photoData) => idb.save(id, photoData), []);

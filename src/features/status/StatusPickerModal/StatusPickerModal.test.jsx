@@ -19,4 +19,14 @@ describe("StatusPickerModal", () => {
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onClose).toHaveBeenCalledOnce();
   });
+
+  it("offers only the next strict lifecycle transition", () => {
+    render(
+      <StatusPickerModal current="open" onSelect={vi.fn()} onClose={vi.fn()} />,
+    );
+
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    expect(screen.getByText("В ремонте")).toBeTruthy();
+    expect(screen.queryByText("Устранена")).toBeNull();
+  });
 });

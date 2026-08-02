@@ -9,7 +9,7 @@ const DataBase = lazy(() => import("@/pages/DataBase/DataBase"));
 const MapPage = lazy(() => import("@/pages/MapPage/MapPage"));
 const Monitoring = lazy(() => import("@/pages/Monitoring/Monitoring"));
 
-export function AppLoader({ label, overlay = false }) {
+export function AppLoader({ label = null, overlay = false }) {
   const { lang } = useLanguage();
   const resolvedLabel =
     label ?? (lang === "ru" ? "Загрузка данных" : "Loading data");
@@ -35,8 +35,21 @@ export function AppLoader({ label, overlay = false }) {
   );
 }
 
-function ProjectDataLoadError({ lang, onRetry }) {
+function downloadRecoveryData(data, fileName) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+function ProjectDataLoadError({ lang, onRetry, error, data, projectName }) {
   const ru = lang === "ru";
+  const recoveryData = error?.recoveryData ?? (data?.length ? data : null);
   return (
     <section className="dataLoadError" role="alert" aria-live="assertive">
       <span className="dataLoadErrorIcon" aria-hidden="true">
@@ -57,6 +70,19 @@ function ProjectDataLoadError({ lang, onRetry }) {
           ? "\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c \u0447\u0442\u0435\u043d\u0438\u0435"
           : "Retry"}
       </button>
+      {recoveryData && (
+        <button
+          type="button"
+          onClick={() =>
+            downloadRecoveryData(
+              recoveryData,
+              `${projectName || "project"}-recovery.json`,
+            )
+          }
+        >
+          {ru ? "Скачать данные для восстановления" : "Download recovery data"}
+        </button>
+      )}
     </section>
   );
 }
@@ -104,7 +130,13 @@ export default function AppRoutes({
         {isImportingProject && <AppLoader overlay label={importingDataLabel} />}
 
         {dataLoaded && !isImportingProject && loadError && (
-          <ProjectDataLoadError lang={lang} onRetry={retryLoad} />
+          <ProjectDataLoadError
+            lang={lang}
+            onRetry={retryLoad}
+            error={loadError}
+            data={data}
+            projectName={activeProject?.name}
+          />
         )}
         {dataLoaded && !isImportingProject && !loadError && page === "" && (
           <MainPage

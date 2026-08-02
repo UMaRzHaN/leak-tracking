@@ -3,7 +3,7 @@ import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
 export default function PhotoBlock({
   src,
-  onEdit,
+  onEdit = null,
   onView,
   status = "open",
   identityNum,

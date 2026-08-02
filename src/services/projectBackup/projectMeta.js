@@ -5,6 +5,7 @@ import { isPinkBagEquipment } from "@/utils/calculations/calculations";
 import { calculateLeakWithSnapshot } from "@/utils/calculationParams";
 import { normalizeProjectVarsUnits } from "@/utils/projectVars";
 
+/** @param {Record<string, any>} [options] */
 export function buildProjectMeta({
   project,
   vars,

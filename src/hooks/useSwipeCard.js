@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { useSwipeActions } from "./useSwipeActions";
 
-export function useSwipeCard({ onOpenDetails, leak, onPickStatus, onMonitor }) {
+export function useSwipeCard({
+  onOpenDetails,
+  leak,
+  onPickStatus = null,
+  onMonitor = null,
+}) {
   const [swipeState, setSwipeState] = useState(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
 

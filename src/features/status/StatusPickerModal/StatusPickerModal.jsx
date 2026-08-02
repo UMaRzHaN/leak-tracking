@@ -1,12 +1,12 @@
 import { useId } from "react";
-import { STATUS_ORDER, getStatusMeta } from "@/utils/status";
+import { getStatusMeta, nextStatus } from "@/utils/status";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useModalDialog } from "@/hooks/useModalDialog";
 import s from "./StatusPickerModal.module.scss";
 
 export default function StatusPickerModal({ current, onSelect, onClose }) {
   const { t } = useLanguage();
-  const options = STATUS_ORDER.filter((status) => status !== current);
+  const options = [nextStatus(current)];
   const titleId = useId();
   const dialogRef = useModalDialog({ onClose });
 

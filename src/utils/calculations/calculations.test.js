@@ -1,4 +1,9 @@
-import { calculations, isPinkBagEquipment } from "./calculations";
+import {
+  calculations,
+  getLeakCalculationFieldErrors,
+  hasValidCalculationParameters,
+  isPinkBagEquipment,
+} from "./calculations";
 
 const BASE_VARS = {
   density: 0.7168, // кг/м³ (метан при стандартных условиях)
@@ -43,9 +48,52 @@ describe("calculations", () => {
     );
   });
 
+  it("does not emit derived NaN/Infinity values for invalid inputs", () => {
+    const negative = { leak_speed: -1 };
+    const invalidPink = { leak_speed: 1, pressure: 0, temperature: -273.15 };
+
+    expect(calculations(negative, BASE_VARS)).toEqual(negative);
+    expect(
+      calculations(invalidPink, {
+        ...BASE_VARS,
+        equipmentType: "Pink Bag",
+      }),
+    ).toEqual(invalidPink);
+  });
+
+  it("reports measurement fields that would make Pink Bag calculations invalid", () => {
+    expect(
+      getLeakCalculationFieldErrors(
+        { leak_speed: -1, pressure: 0, temperature: -273.15 },
+        { equipmentType: "Pink Bag" },
+      ),
+    ).toEqual({
+      leak_speed: "non_negative",
+      pressure: "positive",
+      temperature: "above_absolute_zero",
+    });
+  });
+
+  it("rejects out-of-range project calculation parameters", () => {
+    expect(hasValidCalculationParameters(BASE_VARS)).toBe(true);
+    expect(
+      hasValidCalculationParameters({ ...BASE_VARS, gasPercentage: 101 }),
+    ).toBe(false);
+    expect(hasValidCalculationParameters({ ...BASE_VARS, density: 0 })).toBe(
+      false,
+    );
+  });
+
   it("computes mass flow rate kg/min from L/min and kg/m³", () => {
     const result = calculations({ leak_speed: 10 }, BASE_VARS);
     expect(result.leak_speed_kg_m).toBeCloseTo((10 * BASE_VARS.density) / 1000);
+  });
+
+  it("computes mass flow rate kg/hour for exports and reports", () => {
+    const result = calculations({ leak_speed: 10 }, BASE_VARS);
+    expect(result.leak_speed_kg_h).toBeCloseTo(
+      ((10 * BASE_VARS.density) / 1000) * 60,
+    );
   });
 
   it("computes annual methane loss in m³/year", () => {

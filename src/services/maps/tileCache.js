@@ -195,7 +195,7 @@ async function filterWithConcurrency(items, concurrency, predicate) {
 async function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(",")[1]);
+    reader.onload = () => resolve(String(reader.result).split(",")[1]);
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
@@ -453,6 +453,7 @@ export function buildViewportTileUrls(bounds, minZoom, maxZoom) {
   return [...urls];
 }
 
+/** @param {string[]} urls @param {{onProgress?: Function, concurrency?: number, signal?: AbortSignal}} [options] */
 export async function preloadUrls(
   urls,
   { onProgress, concurrency = isNative ? 4 : 8, signal } = {},

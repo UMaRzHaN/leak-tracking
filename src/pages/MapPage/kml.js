@@ -1,5 +1,6 @@
 import { isNative } from "@/utils/platform";
 import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
+import { hasValidCoordinates } from "@/utils/coordinates";
 
 const ICON_COLORS = [
   "E53935",
@@ -33,6 +34,19 @@ function cdataText(value) {
   return String(value ?? "").replace(/]]>/g, "]]&gt;");
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function safeDescriptionText(value) {
+  return cdataText(escapeHtml(value));
+}
+
 function getProjectLabels(project, lang) {
   const isRu = lang === "ru";
 
@@ -62,15 +76,15 @@ export function exportLeaksKML(leaks, project, lang = "ru") {
   const notSpecified = lang === "ru" ? "Не указано" : "Not specified";
   const noRate = lang === "ru" ? "Без скорости" : "No rate";
 
-  const byField = leaks.reduce((acc, leak) => {
-    if (leak.lat == null || leak.lng == null) return acc;
+  const byField = new Map();
+  leaks.forEach((leak) => {
+    if (!hasValidCoordinates(leak)) return;
     const field = leak[config.secondary] || notSpecified;
-    if (!acc[field]) acc[field] = [];
-    acc[field].push(leak);
-    return acc;
-  }, {});
+    if (!byField.has(field)) byField.set(field, []);
+    byField.get(field).push(leak);
+  });
 
-  const groupNames = Object.keys(byField);
+  const groupNames = [...byField.keys()];
 
   const styles = groupNames
     .map((_, index) => {
@@ -89,7 +103,7 @@ export function exportLeaksKML(leaks, project, lang = "ru") {
 
   const folders = groupNames
     .map((field, groupIndex) => {
-      const fieldLeaks = byField[field];
+      const fieldLeaks = byField.get(field);
       const placemarks = fieldLeaks
         .map(
           (leak) => `
@@ -98,12 +112,12 @@ export function exportLeaksKML(leaks, project, lang = "ru") {
         <styleUrl>#style_${groupIndex}</styleUrl>
         <description>
           <![CDATA[
-            <b>${cdataText(labels.mainLabel)}:</b> ${cdataText(leak[config.main]) || notSpecified}<br/>
-            <b>${cdataText(labels.secondaryLabel)}:</b> ${cdataText(leak[config.secondary]) || notSpecified}<br/>
-            <b>${lang === "ru" ? "Компонент" : "Component"}:</b> ${cdataText(leak.component) || notSpecified}<br/>
+            <b>${safeDescriptionText(labels.mainLabel)}:</b> ${safeDescriptionText(leak[config.main]) || notSpecified}<br/>
+            <b>${safeDescriptionText(labels.secondaryLabel)}:</b> ${safeDescriptionText(leak[config.secondary]) || notSpecified}<br/>
+            <b>${lang === "ru" ? "Компонент" : "Component"}:</b> ${safeDescriptionText(leak.component) || notSpecified}<br/>
             <b>${lang === "ru" ? "Скорость" : "Leak rate"}:</b> ${
               leak.leak_speed != null
-                ? `${cdataText(leak.leak_speed)} ${lang === "ru" ? "л/мин" : "L/min"}`
+                ? `${safeDescriptionText(leak.leak_speed)} ${lang === "ru" ? "л/мин" : "L/min"}`
                 : noRate
             }
           ]]>

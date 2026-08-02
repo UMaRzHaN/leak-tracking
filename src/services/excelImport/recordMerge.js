@@ -1,4 +1,5 @@
 import { formatDate, parseDateValue } from "./cellDates";
+import { normalizeLeakTag } from "@/utils/leakIdentity";
 
 function statusFromMonitoringResult(result) {
   if (result === "resolved") return "resolved";
@@ -12,8 +13,23 @@ function historyRecordIdentity(record) {
     record?.action ?? "",
     record?.to ?? "",
     record?.text ?? "",
+    record?.user ?? "",
     record?.changes ?? [],
   ]);
+}
+
+function normalizeRecordMap(recordsByLeakId) {
+  const normalized = new Map();
+  for (const [leakId, records] of recordsByLeakId ?? []) {
+    const key = normalizeLeakTag(leakId);
+    if (!key) continue;
+    normalized.set(key, [...(normalized.get(key) ?? []), ...(records ?? [])]);
+  }
+  return normalized;
+}
+
+function normalizeLeakTagSet(values) {
+  return new Set([...(values ?? [])].map(normalizeLeakTag).filter(Boolean));
 }
 
 export function mergeHistoryRecords(
@@ -35,10 +51,12 @@ export function attachMonitoringRecords(
   { inferStatusForLeakIds = new Set() } = {},
 ) {
   if (!recordsByLeakId.size) return leaks;
+  const normalizedRecords = normalizeRecordMap(recordsByLeakId);
+  const normalizedInferredIds = normalizeLeakTagSet(inferStatusForLeakIds);
 
   return leaks.map((leak) => {
-    const leakId = String(leak.leak_id);
-    const records = recordsByLeakId.get(leakId);
+    const leakId = normalizeLeakTag(leak.leak_id);
+    const records = normalizedRecords.get(leakId);
     if (!records?.length) return leak;
 
     const monitoringRecords = [
@@ -71,7 +89,7 @@ export function attachMonitoringRecords(
       ),
     };
 
-    if (inferStatusForLeakIds.has(leakId)) {
+    if (normalizedInferredIds.has(leakId)) {
       const latestMonitoring = monitoringRecords.at(-1);
       next.status = statusFromMonitoringResult(latestMonitoring?.result);
       if (next.status === "resolved") {
@@ -88,9 +106,10 @@ export function attachMonitoringRecords(
 
 export function attachHistoryRecords(leaks, recordsByLeakId) {
   if (!recordsByLeakId.size) return leaks;
+  const normalizedRecords = normalizeRecordMap(recordsByLeakId);
 
   return leaks.map((leak) => {
-    const records = recordsByLeakId.get(String(leak.leak_id));
+    const records = normalizedRecords.get(normalizeLeakTag(leak.leak_id));
     if (!records?.length) return leak;
     const fallbackUser = leak.detectedBy || leak.monitoredBy || "Не указан";
     const importedHistory = records.map((record) => ({

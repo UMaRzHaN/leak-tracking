@@ -1,4 +1,6 @@
 import { getPhotoSrc } from "@/hooks/photoService";
+import { normalizeLeakTag } from "@/utils/leakIdentity";
+import { hasValidCoordinates } from "@/utils/coordinates";
 
 const PHOTO_FIELDS = ["photo", "photo_after", "photo_repair"];
 
@@ -10,15 +12,6 @@ function getLeakPhotoRefs(leak) {
     });
   }
   return refs;
-}
-
-function hasCoords(leak) {
-  const valid = (value) =>
-    (typeof value === "number" && Number.isFinite(value)) ||
-    (typeof value === "string" &&
-      value.trim() !== "" &&
-      Number.isFinite(Number(value)));
-  return valid(leak?.lat) && valid(leak?.lng);
 }
 
 function getLeakLabel(leak) {
@@ -52,6 +45,7 @@ async function photoExists(path, idbGetPhoto) {
   return Boolean(await getPhotoSrc(path));
 }
 
+/** @param {any[]} [leaks] @param {{idbGetPhoto?: Function, leakPhotoRequired?: boolean, monitoringPhotoRequired?: boolean}} [options] */
 export async function analyzeProjectIntegrity(
   leaks = [],
   {
@@ -77,9 +71,9 @@ export async function analyzeProjectIntegrity(
     const optionalMonitoringAfterPhoto =
       !monitoringPhotoRequired && latestMonitoringResult === "resolved";
 
-    if (!hasCoords(leak)) missingCoords.push(label);
+    if (!hasValidCoordinates(leak)) missingCoords.push(label);
 
-    const leakTag = leak?.leak_id == null ? "" : String(leak.leak_id).trim();
+    const leakTag = normalizeLeakTag(leak?.leak_id);
     if (leakTag) {
       if (seenLeakIds.has(leakTag)) {
         duplicateLeakIds.push(leakTag);

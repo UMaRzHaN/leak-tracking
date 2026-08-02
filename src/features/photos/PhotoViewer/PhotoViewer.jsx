@@ -3,9 +3,9 @@ import { createPortal } from "react-dom";
 import s from "./PhotoViewer.module.scss";
 
 export default function PhotoViewer({
-  src,
-  photos,
-  labels,
+  src = null,
+  photos = null,
+  labels = null,
   initialIndex = 0,
   onClose,
 }) {

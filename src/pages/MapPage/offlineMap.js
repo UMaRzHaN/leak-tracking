@@ -276,7 +276,7 @@ export function createOfflineMap(
   let destroyed = false;
   let heatmapLayer = null;
 
-  new CachedTileLayer(TILE_URL_TEMPLATE, {
+  new /** @type {any} */ (CachedTileLayer)(TILE_URL_TEMPLATE, {
     maxZoom: 19,
     attribution: TILE_ATTRIBUTION,
   }).addTo(map);
@@ -304,16 +304,9 @@ export function createOfflineMap(
   }).addTo(map);
 
   let userMarker = null;
-  let watchId = null;
   let gpsTrackingEnabled = false;
   let lastLatLng = null;
   let lastHeading = null;
-
-  const geoOptions = {
-    enableHighAccuracy: true,
-    maximumAge: 5000,
-    timeout: 10000,
-  };
 
   const buildUserIcon = (heading) => {
     const hasHeading =
@@ -355,10 +348,17 @@ export function createOfflineMap(
     ensureUserMarker(initialLatLng);
   }
 
-  const onGeoPosition = (pos) => {
-    if (destroyed) return;
-    const latlng = [pos.coords.latitude, pos.coords.longitude];
-    let heading = normalizeHeading(pos.coords.heading);
+  const updateUserPosition = (coords) => {
+    if (
+      destroyed ||
+      !gpsTrackingEnabled ||
+      !Number.isFinite(coords?.lat) ||
+      !Number.isFinite(coords?.lng)
+    ) {
+      return;
+    }
+    const latlng = [coords.lat, coords.lng];
+    let heading = normalizeHeading(coords.heading);
     if (
       heading == null &&
       lastLatLng &&
@@ -371,34 +371,11 @@ export function createOfflineMap(
     ensureUserMarker(latlng, heading ?? lastHeading);
   };
 
-  const startGpsWatch = () => {
-    if (watchId != null || destroyed || !navigator.geolocation) return;
-    watchId = navigator.geolocation.watchPosition(
-      onGeoPosition,
-      () => {},
-      geoOptions,
-    );
-  };
-
-  const stopGpsWatch = () => {
-    if (watchId == null) return;
-    navigator.geolocation.clearWatch(watchId);
-    watchId = null;
-  };
-
-  const handleVisibilityChange = () => {
-    if (destroyed) return;
-    if (document.hidden) stopGpsWatch();
-    else startGpsWatch();
-  };
-
   const setGpsTracking = (enabled, fallbackCoords = null) => {
     if (destroyed) return;
 
     if (!enabled) {
       gpsTrackingEnabled = false;
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      stopGpsWatch();
       if (userMarker) {
         map.removeLayer(userMarker);
         userMarker = null;
@@ -408,23 +385,8 @@ export function createOfflineMap(
       return;
     }
 
-    if (!gpsTrackingEnabled) {
-      gpsTrackingEnabled = true;
-      document.addEventListener("visibilitychange", handleVisibilityChange);
-    }
-
-    const fallbackLatLng =
-      Number.isFinite(fallbackCoords?.lat) &&
-      Number.isFinite(fallbackCoords?.lng)
-        ? [fallbackCoords.lat, fallbackCoords.lng]
-        : null;
-
-    if (!lastLatLng && fallbackLatLng) {
-      lastLatLng = fallbackLatLng;
-      ensureUserMarker(fallbackLatLng);
-    }
-
-    if (!document.hidden) startGpsWatch();
+    gpsTrackingEnabled = true;
+    updateUserPosition(fallbackCoords);
   };
 
   setGpsTracking(gpsEnabled, initialUserCoords);
@@ -435,7 +397,10 @@ export function createOfflineMap(
     const fallbackLatLng =
       Number.isFinite(fallbackCoords?.lat) &&
       Number.isFinite(fallbackCoords?.lng)
-        ? [fallbackCoords.lat, fallbackCoords.lng]
+        ? /** @type {[number, number]} */ ([
+            fallbackCoords.lat,
+            fallbackCoords.lng,
+          ])
         : null;
 
     if (lastLatLng) {
@@ -445,16 +410,6 @@ export function createOfflineMap(
       lastLatLng = fallbackLatLng;
       ensureUserMarker(fallbackLatLng);
       map.setView(fallbackLatLng, 17, { animate: true });
-    } else if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          if (destroyed) return;
-          onGeoPosition(pos);
-          map.setView(lastLatLng, 17, { animate: true });
-        },
-        () => {},
-        geoOptions,
-      );
     }
   };
 
@@ -473,7 +428,9 @@ export function createOfflineMap(
     }
 
     if (!heatmapLayer) {
-      heatmapLayer = new HeatmapLayer({ radius: 38 }).addTo(map);
+      heatmapLayer = new /** @type {any} */ (HeatmapLayer)({
+        radius: 38,
+      }).addTo(map);
     }
     heatmapLayer.setData(points);
   };
@@ -481,14 +438,6 @@ export function createOfflineMap(
   const destroy = () => {
     if (destroyed) return;
     destroyed = true;
-
-    document.removeEventListener("visibilitychange", handleVisibilityChange);
-
-    try {
-      stopGpsWatch();
-    } catch {
-      // ignore
-    }
 
     try {
       if (heatmapLayer) {
@@ -518,7 +467,7 @@ export function addMarkers(markersLayer, leaks = [], map = null) {
   leaks.forEach((leak) => {
     if (!Number.isFinite(leak.lat) || !Number.isFinite(leak.lng)) return;
 
-    const latlng = [leak.lat, leak.lng];
+    const latlng = /** @type {[number, number]} */ ([leak.lat, leak.lng]);
     L.marker(latlng, { icon: leakIcon(leak) })
       .on("click", () => {
         if (!map) return;

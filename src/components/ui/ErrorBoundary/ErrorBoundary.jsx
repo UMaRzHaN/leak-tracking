@@ -35,6 +35,18 @@ export default class ErrorBoundary extends Component {
     window.location.reload();
   };
 
+  downloadDiagnostics = () => {
+    const payload = logger.exportDiagnostics?.() ?? "{}";
+    const url = URL.createObjectURL(
+      new Blob([payload], { type: "application/json;charset=utf-8" }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "leak-tracking-diagnostics.json";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  };
+
   render() {
     if (!this.state.hasError) return this.props.children;
 
@@ -77,6 +89,9 @@ export default class ErrorBoundary extends Component {
           onClick={() => window.location.reload()}
         >
           Перезагрузить приложение
+        </button>
+        <button className={s.btnSecondary} onClick={this.downloadDiagnostics}>
+          Скачать диагностику
         </button>
       </div>
     );

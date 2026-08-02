@@ -139,7 +139,7 @@ describe("offline map adapter", () => {
     });
   });
 
-  it("starts and stops GPS tracking and releases map resources", () => {
+  it("renders shared GPS coordinates without starting a second watcher", () => {
     const container = document.createElement("div");
     const adapter = createOfflineMap(container, {
       center: [41, 69],
@@ -149,7 +149,7 @@ describe("offline map adapter", () => {
     });
 
     expect(leaflet.map.setView).toHaveBeenCalledWith([41, 69], 13);
-    expect(geolocation.watchPosition).toHaveBeenCalledOnce();
+    expect(geolocation.watchPosition).not.toHaveBeenCalled();
     expect(leaflet.markers[0].latlng).toEqual([41.1, 69.1]);
 
     adapter.locateMe();
@@ -158,17 +158,16 @@ describe("offline map adapter", () => {
     });
 
     adapter.setGpsTracking(false);
-    expect(geolocation.clearWatch).toHaveBeenCalledWith(7);
     expect(leaflet.map.removeLayer).toHaveBeenCalledWith(leaflet.markers[0]);
 
     adapter.setGpsTracking(true, { lat: 42, lng: 70 });
-    expect(geolocation.watchPosition).toHaveBeenCalledTimes(2);
+    expect(geolocation.watchPosition).not.toHaveBeenCalled();
     expect(leaflet.markers.at(-1).latlng).toEqual([42, 70]);
 
     adapter.destroy();
     expect(leaflet.map.off).toHaveBeenCalled();
     expect(leaflet.map.remove).toHaveBeenCalledOnce();
-    expect(geolocation.clearWatch).toHaveBeenCalledTimes(2);
+    expect(geolocation.clearWatch).not.toHaveBeenCalled();
   });
 
   it("renders escaped marker labels and safe popup text", () => {
@@ -209,45 +208,30 @@ describe("offline map adapter", () => {
     });
   });
 
-  it("uses a one-shot GPS fix and pauses continuous tracking while hidden", () => {
+  it("updates the marker from shared GPS fixes", () => {
     const adapter = createOfflineMap(document.createElement("div"), {
       center: [41, 69],
       gpsEnabled: false,
     });
 
     adapter.locateMe();
-    expect(geolocation.getCurrentPosition).toHaveBeenCalledOnce();
-    const oneShotSuccess = geolocation.getCurrentPosition.mock.calls[0][0];
-    oneShotSuccess({
-      coords: { latitude: 41.5, longitude: 69.5, heading: 370 },
-    });
-    expect(leaflet.markers.at(-1).latlng).toEqual([41.5, 69.5]);
-    expect(leaflet.map.setView).toHaveBeenLastCalledWith([41.5, 69.5], 17, {
-      animate: true,
-    });
+    expect(geolocation.getCurrentPosition).not.toHaveBeenCalled();
 
-    adapter.setGpsTracking(true);
-    const watchSuccess = geolocation.watchPosition.mock.calls[0][0];
-    watchSuccess({
-      coords: { latitude: 41.5001, longitude: 69.5001, heading: null },
+    adapter.setGpsTracking(true, {
+      lat: 41.5001,
+      lng: 69.5001,
+      heading: null,
+    });
+    expect(leaflet.markers.at(-1).latlng).toEqual([41.5001, 69.5001]);
+    adapter.setGpsTracking(true, {
+      lat: 41.5002,
+      lng: 69.5002,
+      heading: null,
     });
     expect(leaflet.markers.at(-1).setLatLng).toHaveBeenCalledWith([
-      41.5001, 69.5001,
+      41.5002, 69.5002,
     ]);
-
-    Object.defineProperty(document, "hidden", {
-      configurable: true,
-      value: true,
-    });
-    document.dispatchEvent(new CustomEvent("visibilitychange"));
-    expect(geolocation.clearWatch).toHaveBeenCalledWith(7);
-
-    Object.defineProperty(document, "hidden", {
-      configurable: true,
-      value: false,
-    });
-    document.dispatchEvent(new CustomEvent("visibilitychange"));
-    expect(geolocation.watchPosition).toHaveBeenCalledTimes(2);
+    expect(geolocation.watchPosition).not.toHaveBeenCalled();
 
     adapter.destroy();
   });

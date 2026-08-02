@@ -9,9 +9,8 @@ const photoFolderPromises = new Map();
 let lastPhotoTimestamp = 0;
 let photoTimestampSequence = 0;
 
-const getStoredPhoto = (...args) => (idb.getStrict ?? idb.get)(...args);
-const listStoredPhotoKeys = (...args) =>
-  (idb.listKeysStrict ?? idb.listKeys)(...args);
+const getStoredPhoto = (key) => (idb.getStrict ?? idb.get)(key);
+const listStoredPhotoKeys = () => (idb.listKeysStrict ?? idb.listKeys)();
 
 export function encodeStorageKeyPart(value) {
   const text = String(value ?? "");
@@ -172,6 +171,7 @@ async function cleanupOldVersions(
 }
 
 export const PhotoRepository = {
+  /** @param {{folderName?: string}} [options] */
   async prepare({ folderName } = {}) {
     if (!isNative || !folderName) return;
     await ensurePhotoFolder(folderName);
@@ -290,6 +290,7 @@ export const PhotoRepository = {
     return returnMetadata ? { path, created: true } : path;
   },
 
+  /** @param {string} path @param {{projectId?: string, folderName?: string}} [options] */
   async delete(path, { projectId, folderName } = {}) {
     if (!path) return false;
 

@@ -55,7 +55,10 @@ export function normalizeLeakFieldVersions(value) {
   return Object.fromEntries(
     Object.entries(value)
       .map(([key, timestamp]) => [key, toTimestamp(timestamp)])
-      .filter(([key, timestamp]) => isVersionedLeakField(key) && timestamp > 0),
+      .filter(
+        ([key, timestamp]) =>
+          isVersionedLeakField(key) && Number(timestamp) > 0,
+      ),
   );
 }
 

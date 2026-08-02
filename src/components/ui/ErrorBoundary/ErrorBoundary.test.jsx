@@ -46,7 +46,7 @@ describe("ErrorBoundary", () => {
     );
 
     expect(screen.getByText("boom")).toBeTruthy();
-    expect(screen.getAllByRole("button")).toHaveLength(2);
+    expect(screen.getAllByRole("button")).toHaveLength(3);
     expect(logger.error).toHaveBeenCalledWith(
       "[ErrorBoundary]",
       expect.any(Error),

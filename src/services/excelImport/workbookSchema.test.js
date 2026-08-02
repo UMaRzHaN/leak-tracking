@@ -109,6 +109,18 @@ describe("Excel workbook schema discovery", () => {
     expect(findHistorySheet(workbook)).toBe(history);
   });
 
+  it("skips a non-data cover sheet before the actual leak table", () => {
+    const cover = makeSheet("README", [["Leak tracking report", "v1"]]);
+    const leaks = makeSheet("Data", [
+      ["Leak ID", "Detection date", "Status"],
+      ["TAG-1", "01.08.2026", "Open"],
+    ]);
+
+    expect(
+      findLeakSheet({ worksheets: [cover, leaks] }, buildHeaderMap("upstream")),
+    ).toBe(leaks);
+  });
+
   it("recognizes monitoring and history sheets by their columns", () => {
     const monitoring = makeSheet("Round data", [
       ["Leak ID", "Round number", "Monitoring date"],

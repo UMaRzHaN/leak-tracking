@@ -1,8 +1,10 @@
 import { isNative } from "@/utils/platform";
-import { Directory, Filesystem } from "@capacitor/filesystem";
+import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { PROJECT_META } from "@/configs/projects";
 import { logger } from "@/utils/logger";
+import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
+import { requestPersistentStorage } from "@/services/persistentStorage";
 
 const VALID_STATUSES = new Set(["open", "in_progress", "resolved"]);
 const WEB_DATA_DB = "LeakTrackingDataDB";
@@ -10,20 +12,26 @@ const WEB_DATA_STORE = "projects";
 const WEB_DATA_VERSION = 1;
 const WEB_ENVELOPE_VERSION = 1;
 const PRESERVED_INVALID_RECORDS = Symbol("preservedInvalidLeakRecords");
+const WEB_READ_WARNING = Symbol("webProjectDataReadWarning");
+const LEGACY_WEB_ENVELOPE = Symbol("legacyWebEnvelope");
+const EMBEDDED_SYNC_STATE = Symbol("embeddedProjectSyncState");
 
 let webDataDbPromise = null;
 let lastIssuedWebRevision = 0;
 
 export class ProjectDataReadError extends Error {
-  constructor(message, { cause, source } = {}) {
+  /** @param {string} message @param {any} [options] */
+  constructor(message, { cause, source, code, recoveryData } = {}) {
     super(message, cause ? { cause } : undefined);
     this.name = "ProjectDataReadError";
-    this.code = "PROJECT_DATA_READ_FAILED";
+    this.code = code ?? "PROJECT_DATA_READ_FAILED";
     this.source = source ?? "unknown";
+    if (recoveryData !== undefined) this.recoveryData = recoveryData;
   }
 }
 
 export class ProjectDataWriteError extends Error {
+  /** @param {string} message @param {any} [options] */
   constructor(message, { cause } = {}) {
     super(message, cause ? { cause } : undefined);
     this.name = "ProjectDataWriteError";
@@ -61,6 +69,8 @@ function normalizeLeakRecord(item) {
   const lng = normalizeOptionalNumber(item.lng);
   if (item.lat != null && lat === undefined) return null;
   if (item.lng != null && lng === undefined) return null;
+  if (lat != null && !isValidLatitude(lat)) return null;
+  if (lng != null && !isValidLongitude(lng)) return null;
 
   const status = item.status ?? "open";
   if (!VALID_STATUSES.has(status)) return null;
@@ -118,6 +128,10 @@ export function getPreservedInvalidLeakRecords(leaks) {
   return Array.isArray(preserved) ? preserved : [];
 }
 
+export function getProjectDataReadWarning(leaks) {
+  return leaks?.[WEB_READ_WARNING] ?? null;
+}
+
 function getMobileRecoveryPaths(folderName) {
   const dir = `LeakReports/${folderName}/data`;
   return {
@@ -132,15 +146,33 @@ function isMissingFileError(error) {
   return message.includes("exist") || message.includes("not found");
 }
 
-async function readNativeArray(path, directory = Directory.Data) {
+function normalizeNativeProjectState(value, path) {
+  if (Array.isArray(value)) return { data: value, syncState: null };
+  if (
+    value &&
+    typeof value === "object" &&
+    value.version === 2 &&
+    Array.isArray(value.data)
+  ) {
+    return { data: value.data, syncState: value.syncState ?? null };
+  }
+  throw new TypeError(`Expected project data in ${path}`);
+}
+
+async function readNativeProjectState(path, directory = Directory.Data) {
   const result = await Filesystem.readFile({
     path,
     directory,
-    encoding: "utf8",
+    encoding: Encoding.UTF8,
   });
-  const parsed = JSON.parse(result.data || "[]");
-  if (!Array.isArray(parsed)) throw new Error(`Expected array in ${path}`);
-  return parsed;
+  return normalizeNativeProjectState(
+    JSON.parse(String(result.data || "[]")),
+    path,
+  );
+}
+
+async function readNativeArray(path, directory = Directory.Data) {
+  return (await readNativeProjectState(path, directory)).data;
 }
 
 function getLegacyNativeCandidates(legacyStorageType) {
@@ -206,16 +238,18 @@ async function recoverLegacyNativeArray(
   return null;
 }
 
-async function writeNativeArray(folderName, leaks) {
+async function writeNativeArray(folderName, leaks, syncState = null) {
   const paths = getMobileRecoveryPaths(folderName);
-  const serialized = JSON.stringify(leaks);
+  const serialized = JSON.stringify(
+    syncState == null ? leaks : { version: 2, data: leaks, syncState },
+  );
   await ensureDir(paths.temp);
 
   await Filesystem.writeFile({
     path: paths.temp,
     directory: Directory.Data,
     data: serialized,
-    encoding: "utf8",
+    encoding: Encoding.UTF8,
   });
 
   let hasPreviousData = false;
@@ -289,8 +323,8 @@ function openWebDataDb() {
 
   webDataDbPromise = new Promise((resolve, reject) => {
     const request = indexedDB.open(WEB_DATA_DB, WEB_DATA_VERSION);
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
+    request.onupgradeneeded = () => {
+      const db = request.result;
       if (!db.objectStoreNames.contains(WEB_DATA_STORE)) {
         db.createObjectStore(WEB_DATA_STORE, { keyPath: "id" });
       }
@@ -355,8 +389,12 @@ async function deleteWebData(projectId) {
   });
 }
 
-function checksumWebPayload(data, deleted) {
-  const value = JSON.stringify({ deleted: Boolean(deleted), data });
+function checksumWebPayload(data, deleted, syncState = null) {
+  const value = JSON.stringify({
+    deleted: Boolean(deleted),
+    data,
+    ...(syncState == null ? {} : { syncState }),
+  });
   let hash = 0x811c9dc5;
   for (let index = 0; index < value.length; index += 1) {
     hash ^= value.charCodeAt(index);
@@ -370,18 +408,24 @@ function normalizeWebEnvelope(value, source) {
 
   // Backward compatibility for data written before mirrored revisions existed.
   if (Array.isArray(value)) {
-    return {
+    const envelope = {
       version: 0,
       revision: 0,
       updatedAt: 0,
       deleted: false,
       checksum: checksumWebPayload(value, false),
       data: value,
+      syncState: null,
     };
+    Object.defineProperty(envelope, LEGACY_WEB_ENVELOPE, {
+      value: true,
+    });
+    return envelope;
   }
 
   const deleted = value.deleted === true;
   const data = deleted && value.data == null ? [] : value.data;
+  const syncState = value.syncState ?? null;
   if (!Array.isArray(data)) {
     throw new TypeError(`Expected a data array in ${source}`);
   }
@@ -395,19 +439,24 @@ function normalizeWebEnvelope(value, source) {
     throw new TypeError(`Invalid updatedAt in ${source}`);
   }
 
-  const expectedChecksum = checksumWebPayload(data, deleted);
+  const expectedChecksum = checksumWebPayload(data, deleted, syncState);
   if (value.checksum != null && value.checksum !== expectedChecksum) {
     throw new TypeError(`Checksum mismatch in ${source}`);
   }
 
-  return {
+  const envelope = {
     version: Number(value.version ?? 0),
     revision,
     updatedAt,
     deleted,
     checksum: expectedChecksum,
     data,
+    syncState,
   };
+  if (value.version == null && value.revision == null) {
+    Object.defineProperty(envelope, LEGACY_WEB_ENVELOPE, { value: true });
+  }
+  return envelope;
 }
 
 function readWebDataFromLocalStorage(projectId) {
@@ -431,7 +480,10 @@ function nextWebRevision(envelopes = []) {
   return lastIssuedWebRevision;
 }
 
-function createWebEnvelope(data, { deleted = false, previous = [] } = {}) {
+function createWebEnvelope(
+  data,
+  { deleted = false, previous = [], syncState = null } = {},
+) {
   const revision = nextWebRevision(previous);
   const updatedAt = Date.now();
   return {
@@ -439,8 +491,9 @@ function createWebEnvelope(data, { deleted = false, previous = [] } = {}) {
     revision,
     updatedAt,
     deleted,
-    checksum: checksumWebPayload(data, deleted),
+    checksum: checksumWebPayload(data, deleted, syncState),
     data,
+    ...(syncState == null ? {} : { syncState }),
   };
 }
 
@@ -473,20 +526,41 @@ function saveWebDataToLocalStorage(projectId, envelope) {
   }
 }
 
+function attachEmbeddedSyncState(leaks, syncState) {
+  if (syncState != null) {
+    Object.defineProperty(leaks, EMBEDDED_SYNC_STATE, {
+      value: syncState,
+      enumerable: false,
+    });
+  }
+  return leaks;
+}
+
+export function getEmbeddedProjectSyncState(leaks) {
+  return leaks?.[EMBEDDED_SYNC_STATE] ?? null;
+}
+
 export const LeakRepository = {
-  async getAll({ projectId, folderName, legacyStorageType }) {
+  async getAll({ projectId, folderName, legacyStorageType = null }) {
     if (isNative) {
       const { main, backup } = getMobileRecoveryPaths(folderName);
       try {
-        return filterValidLeaks(await readNativeArray(main), main);
+        const state = await readNativeProjectState(main);
+        return attachEmbeddedSyncState(
+          filterValidLeaks(state.data, main),
+          state.syncState,
+        );
       } catch (mainError) {
         try {
-          const recovered = await readNativeArray(backup);
+          const recovered = await readNativeProjectState(backup);
           logger.warn(
             `[LeakRepository] Recovered project data from "${backup}" after failing to read "${main}".`,
             mainError,
           );
-          return filterValidLeaks(recovered, backup);
+          return attachEmbeddedSyncState(
+            filterValidLeaks(recovered.data, backup),
+            recovered.syncState,
+          );
         } catch (backupError) {
           const mainMissing = isMissingFileError(mainError);
           const backupMissing = isMissingFileError(backupError);
@@ -553,6 +627,24 @@ export const LeakRepository = {
       return [];
     }
 
+    if (
+      indexedEnvelope?.[LEGACY_WEB_ENVELOPE] &&
+      localEnvelope?.[LEGACY_WEB_ENVELOPE] &&
+      indexedEnvelope.checksum !== localEnvelope.checksum
+    ) {
+      throw new ProjectDataReadError(
+        "Legacy IndexedDB and localStorage copies differ and cannot be ordered safely",
+        {
+          source: "web-mirrors",
+          code: "PROJECT_DATA_CONFLICT",
+          recoveryData: {
+            indexedDB: indexedEnvelope.data,
+            localStorage: localEnvelope.data,
+          },
+        },
+      );
+    }
+
     const selected = available.reduce((latest, candidate) =>
       compareWebEnvelopes(candidate, latest) > 0 ? candidate : latest,
     );
@@ -568,15 +660,44 @@ export const LeakRepository = {
       saveWebDataToLocalStorage(projectId, selected);
     }
 
-    if (selected.deleted) return [];
+    const readWarning =
+      indexedDbError || localStorageError
+        ? new ProjectDataReadError(
+            "Project data was loaded from only one web storage copy",
+            {
+              cause: indexedDbError ?? localStorageError,
+              source: indexedDbError ? "indexeddb" : "localstorage",
+              code: "PROJECT_DATA_DEGRADED",
+              recoveryData: selected.data,
+            },
+          )
+        : null;
+    if (selected.deleted) {
+      const empty = [];
+      attachEmbeddedSyncState(empty, selected.syncState);
+      if (readWarning) {
+        Object.defineProperty(empty, WEB_READ_WARNING, {
+          value: readWarning,
+        });
+      }
+      return empty;
+    }
     const selectedSource =
       selected === indexedEnvelope ? "IndexedDB" : "localStorage";
-    return filterValidLeaks(selected.data, `${selectedSource}[${projectId}]`);
+    const result = filterValidLeaks(
+      selected.data,
+      `${selectedSource}[${projectId}]`,
+    );
+    attachEmbeddedSyncState(result, selected.syncState);
+    if (readWarning) {
+      Object.defineProperty(result, WEB_READ_WARNING, { value: readWarning });
+    }
+    return result;
   },
 
-  async saveAll(leaks, { projectId, folderName }) {
+  async saveAll(leaks, { projectId, folderName, syncState = null }) {
     if (isNative) {
-      await writeNativeArray(folderName, leaks);
+      await writeNativeArray(folderName, leaks, syncState);
       return;
     }
 
@@ -599,6 +720,7 @@ export const LeakRepository = {
     }
     const envelope = createWebEnvelope(leaks, {
       previous: [indexedEnvelope, localEnvelope],
+      syncState,
     });
     try {
       indexedDbSaved = await writeWebData(projectId, envelope);
@@ -617,11 +739,17 @@ export const LeakRepository = {
         { cause: indexedDbError },
       );
     }
+    requestPersistentStorage().catch((error) => {
+      logger.warn(
+        "[LeakRepository] Persistent web storage was not granted:",
+        error,
+      );
+    });
   },
 
-  async clear({ projectId, folderName }) {
+  async clear({ projectId, folderName, syncState = null }) {
     if (isNative) {
-      await writeNativeArray(folderName, []);
+      await writeNativeArray(folderName, [], syncState);
       return;
     }
     let indexedEnvelope = null;
@@ -642,6 +770,7 @@ export const LeakRepository = {
     const tombstone = createWebEnvelope([], {
       deleted: true,
       previous: [indexedEnvelope, localEnvelope],
+      syncState,
     });
     let indexedDbSaved = false;
     let indexedDbError = null;

@@ -14,6 +14,9 @@ import {
   updateLeakCalculationParams,
 } from "@/utils/calculationParams";
 
+/** @type {(path: string) => Promise<void>} */
+const noopDeletePhoto = async () => {};
+
 function pluralLeaks(n, lang) {
   if (lang !== "ru") {
     return n === 1 ? "record" : "records";
@@ -31,7 +34,7 @@ export function useBulkActions({
   setData,
   displayed,
   notify,
-  deletePhoto = () => Promise.resolve(),
+  deletePhoto = noopDeletePhoto,
   userProfile,
   projectVars = {},
 }) {
@@ -42,6 +45,16 @@ export function useBulkActions({
   const [resolveTotal, setResolveTotal] = useState(0);
   const [repairQueue, setRepairQueue] = useState([]);
   const [repairTotal, setRepairTotal] = useState(0);
+  const requireHistoryUser = useCallback(() => {
+    if (historyUser) return true;
+    notify(
+      "error",
+      lang === "ru"
+        ? "Заполните имя пользователя в профиле"
+        : "Fill in the user name in the profile",
+    );
+    return false;
+  }, [historyUser, lang, notify]);
 
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
@@ -80,6 +93,7 @@ export function useBulkActions({
   const handleBulkCalculationSave = useCallback(
     async (calculationParams) => {
       if (!selectedIds.size) return;
+      if (!requireHistoryUser()) return false;
 
       const now = Date.now();
       let changed = 0;
@@ -134,6 +148,7 @@ export function useBulkActions({
       lang,
       notify,
       projectVars,
+      requireHistoryUser,
       selectedIds,
       setData,
     ],
@@ -142,6 +157,7 @@ export function useBulkActions({
   const handleBulkStatusChange = useCallback(
     async (status) => {
       if (!selectedIds.size) return;
+      if (!requireHistoryUser()) return;
 
       const affected = data.filter(
         (item) =>
@@ -208,6 +224,7 @@ export function useBulkActions({
       historyUser,
       lang,
       notify,
+      requireHistoryUser,
       selectedIds,
       setData,
       t,
@@ -218,6 +235,7 @@ export function useBulkActions({
     async ({ photo_after, materials_equipment, note }) => {
       const leak = resolveQueue[0];
       if (!leak) return;
+      if (!requireHistoryUser()) return;
 
       const next = data.map((item) =>
         item.id === leak.id
@@ -275,6 +293,7 @@ export function useBulkActions({
       historyUser,
       lang,
       notify,
+      requireHistoryUser,
       resolveQueue,
       resolveTotal,
       setData,
@@ -286,6 +305,7 @@ export function useBulkActions({
     async ({ photo_repair, materials_equipment, note }) => {
       const leak = repairQueue[0];
       if (!leak) return;
+      if (!requireHistoryUser()) return;
 
       const orphanedPhoto = getOrphanedOriginalPhoto(leak);
       const next = data.map((item) =>
@@ -347,6 +367,7 @@ export function useBulkActions({
       historyUser,
       lang,
       notify,
+      requireHistoryUser,
       repairQueue,
       repairTotal,
       setData,

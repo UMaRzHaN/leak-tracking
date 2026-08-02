@@ -19,7 +19,10 @@ import {
   writeProjectSyncState,
 } from "@/services/projectSyncState";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
-import { runExcelImportTransaction } from "@/services/excelImportTransaction";
+import {
+  getExcelImportTransactionWarning,
+  runExcelImportTransaction,
+} from "@/services/excelImportTransaction";
 import { readImportOperation } from "@/services/importOperationJournal";
 import { useBackupActions } from "./useBackupActions";
 import { useProjectActions } from "./useProjectActions";
@@ -45,10 +48,12 @@ export function useSettingsPage({
   const [integrityReport, setIntegrityReport] = useState(null);
   const [checkingIntegrity, setCheckingIntegrity] = useState(false);
   const [isImportingExcel, setIsImportingExcel] = useState(false);
-  const [excelImportState, setExcelImportState] = useState({ open: false });
-  const [excelConflictState, setExcelConflictState] = useState({
-    open: false,
-  });
+  const [excelImportState, setExcelImportState] = useState(
+    /** @type {any} */ ({ open: false }),
+  );
+  const [excelConflictState, setExcelConflictState] = useState(
+    /** @type {any} */ ({ open: false }),
+  );
   const importExcelRef = useRef(null);
 
   const notify = useCallback((type, message, options = {}) => {
@@ -253,9 +258,11 @@ export function useSettingsPage({
     (leaks, { mode = "append" } = {}) => {
       const now = Date.now();
       const existingByTag = new Map(
-        data
-          .map((leak) => [String(leak?.leak_id ?? "").trim(), leak])
-          .filter(([tag]) => tag),
+        /** @type {[string, any][]} */ (
+          data
+            .map((leak) => [String(leak?.leak_id ?? "").trim(), leak])
+            .filter(([tag]) => Boolean(tag))
+        ),
       );
 
       return leaks.map((leak, index) => {
@@ -352,10 +359,12 @@ export function useSettingsPage({
             { preserveExisting: true },
           );
           const preparedForMerge = reconciled.leaks;
-          const mergePreview = previewMergeLeaks(data, preparedForMerge, {
-            source: "excel",
-            inferredStatusLeakIds: result.inferredStatusLeakIds,
-          });
+          const mergePreview = /** @type {any} */ (
+            previewMergeLeaks(data, preparedForMerge, {
+              source: "excel",
+              inferredStatusLeakIds: result.inferredStatusLeakIds,
+            })
+          );
           mergePreview.excelPhotos = reconciled.photos;
           mergePreview.photoStats = reconciled.photos;
 
@@ -458,11 +467,16 @@ export function useSettingsPage({
         },
         deletePhoto,
       });
+      const transactionWarning = getExcelImportTransactionWarning(withPhotos);
       notify(
-        "success",
-        lang === "ru"
-          ? `Импортировано из Excel: ${withPhotos.length} записей`
-          : `Imported from Excel: ${withPhotos.length} records`,
+        transactionWarning ? "warning" : "success",
+        transactionWarning
+          ? lang === "ru"
+            ? `Импортировано ${withPhotos.length} записей, но журнал операции не удалось очистить. Не повторяйте импорт и перезапустите приложение для проверки восстановления.`
+            : `Imported ${withPhotos.length} records, but the operation journal could not be cleared. Do not repeat the import; restart the app to verify recovery.`
+          : lang === "ru"
+            ? `Импортировано из Excel: ${withPhotos.length} записей`
+            : `Imported from Excel: ${withPhotos.length} records`,
       );
     } catch (error) {
       notify(
@@ -529,11 +543,16 @@ export function useSettingsPage({
         },
         deletePhoto,
       });
+      const transactionWarning = getExcelImportTransactionWarning(withPhotos);
       notify(
-        "success",
-        lang === "ru"
-          ? `Проект перезаписан из Excel (${withPhotos.length} записей)`
-          : `Project overwritten from Excel (${withPhotos.length} records)`,
+        transactionWarning ? "warning" : "success",
+        transactionWarning
+          ? lang === "ru"
+            ? `Проект перезаписан (${withPhotos.length} записей), но журнал операции не удалось очистить. Перезапустите приложение для проверки восстановления.`
+            : `Project overwritten (${withPhotos.length} records), but the operation journal could not be cleared. Restart the app to verify recovery.`
+          : lang === "ru"
+            ? `Проект перезаписан из Excel (${withPhotos.length} записей)`
+            : `Project overwritten from Excel (${withPhotos.length} records)`,
       );
     } catch (error) {
       notify(
@@ -576,7 +595,7 @@ export function useSettingsPage({
         await import("@/services/projectBackupService");
       const snapshot = await captureExcelImportSnapshot();
       let mergeResult;
-      await runExcelImportTransaction({
+      const importedLeaks = await runExcelImportTransaction({
         projectId: activeProject?.id,
         persistPhotos: () => persistPreparedExcelPhotos(incoming),
         commit: async (incomingWithPhotos) => {
@@ -594,11 +613,18 @@ export function useSettingsPage({
         },
         deletePhoto,
       });
+      const transactionWarning =
+        getExcelImportTransactionWarning(importedLeaks);
+      const appliedCount = /** @type {any} */ (mergeResult)?.changed ?? 0;
       notify(
-        "success",
-        lang === "ru"
-          ? `Excel объединён с проектом: применено ${mergeResult.changed} записей`
-          : `Excel merged into project: ${mergeResult.changed} records applied`,
+        transactionWarning ? "warning" : "success",
+        transactionWarning
+          ? lang === "ru"
+            ? `Excel объединён с проектом, но журнал операции не удалось очистить. Перезапустите приложение для проверки восстановления.`
+            : `Excel was merged, but the operation journal could not be cleared. Restart the app to verify recovery.`
+          : lang === "ru"
+            ? `Excel объединён с проектом: применено ${appliedCount} записей`
+            : `Excel merged into project: ${appliedCount} records applied`,
       );
     } catch (error) {
       notify(

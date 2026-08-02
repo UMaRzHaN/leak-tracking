@@ -8,7 +8,7 @@ import s from "./ResolveModal.module.scss";
 
 export default function ResolveModal({
   leak,
-  progress,
+  progress = null,
   mode = "resolved",
   onConfirm,
   onClose,

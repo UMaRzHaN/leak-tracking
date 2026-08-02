@@ -58,9 +58,7 @@ function blobChunkToBase64(blob) {
 function toBlob(value) {
   if (value instanceof Blob) return value;
   if (value instanceof Uint8Array) {
-    return new Blob([
-      value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength),
-    ]);
+    return new Blob([value.slice().buffer]);
   }
   if (value instanceof ArrayBuffer) return new Blob([value]);
   throw new TypeError(
@@ -313,6 +311,7 @@ export async function scanLocalSyncQr(expectedIdentity) {
       await errorListener?.remove().catch(() => {});
       await BarcodeScanner.stopScan().catch(() => {});
     };
+    /** @param {Function} callback @param {any} value */
     const finish = async (callback, value) => {
       if (finished) return;
       finished = true;
@@ -326,22 +325,21 @@ export async function scanLocalSyncQr(expectedIdentity) {
 
     const startScanner = async () => {
       try {
-        const nextBarcodeListener = await BarcodeScanner.addListener(
-          "barcodeScanned",
-          (event) => {
-            const barcode = event.barcode ?? event.barcodes?.[0];
-            const value = barcode?.rawValue ?? barcode?.displayValue;
-            if (!value) return;
-            try {
-              void finish(
-                resolve,
-                parseLocalSyncQrPayload(value, expectedIdentity),
-              );
-            } catch (error) {
-              void finish(reject, error);
-            }
-          },
-        );
+        const nextBarcodeListener = await /** @type {any} */ (
+          BarcodeScanner
+        ).addListener("barcodeScanned", (event) => {
+          const barcode = event.barcode ?? event.barcodes?.[0];
+          const value = barcode?.rawValue ?? barcode?.displayValue;
+          if (!value) return;
+          try {
+            void finish(
+              resolve,
+              parseLocalSyncQrPayload(value, expectedIdentity),
+            );
+          } catch (error) {
+            void finish(reject, error);
+          }
+        });
         if (finished) {
           await nextBarcodeListener.remove().catch(() => {});
           return;
@@ -374,7 +372,7 @@ export async function cancelLocalSyncQrScan() {
 }
 
 export async function startLocalSyncHost({
-  archive,
+  archive = null,
   produceArchive,
   projectKey,
   syncId,
@@ -458,7 +456,7 @@ export async function exchangeLocalSyncArchive({
   port,
   code,
   fingerprint,
-  archive,
+  archive = null,
   produceArchive,
   projectKey,
   syncId,

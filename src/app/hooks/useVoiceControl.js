@@ -10,9 +10,9 @@ import { useLanguage } from "@/app/hooks/useLanguage";
  * Voice control hook with step-aware parsing and pending confirmation flow.
  *
  * @param {object} options
- * @param {number} options.step
- * @param {object[]} options.steps
- * @param {Function} options.onCommand
+ * @param {number} [options.step]
+ * @param {object[]} [options.steps]
+ * @param {Function} [options.onCommand]
  */
 export function useVoiceControl({ step = 1, steps = [], onCommand } = {}) {
   const projectConfig = useProjectConfig();

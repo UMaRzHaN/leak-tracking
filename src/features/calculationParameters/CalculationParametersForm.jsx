@@ -54,6 +54,14 @@ export default function CalculationParametersForm({
       const number = toNumber(nextValue);
       if (number == null) return prev;
 
+      if (
+        (key === "percentage_gas_to_flare" || key === "gasPercentage") &&
+        (number < 0 || number > 100)
+      ) {
+        return prev;
+      }
+      if ((key === "GWP" || key === "GWP_Minus") && number < 0) return prev;
+
       next[key] = number;
       if (key === "percentage_gas_to_flare") {
         next.percentage_gas_to_utilization = 100 - number;

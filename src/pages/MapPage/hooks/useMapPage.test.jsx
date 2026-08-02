@@ -212,6 +212,14 @@ describe("useMapPage", () => {
     act(() => current.locateMe());
     expect(mapMocks.locateMe).not.toHaveBeenCalled();
 
+    view.rerender(<Harness gpsEnabled />);
+    await waitFor(() =>
+      expect(mapMocks.setGpsTracking).toHaveBeenLastCalledWith(true, {
+        lat: 41,
+        lng: 69,
+      }),
+    );
+
     view.unmount();
     expect(mapMocks.mapOff).toHaveBeenCalledWith("moveend");
     expect(mapMocks.destroy).toHaveBeenCalledOnce();

@@ -6,6 +6,7 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock("@capacitor/filesystem", () => ({
+  Encoding: { UTF8: "utf8" },
   Directory: { Data: "DATA", Documents: "DOCUMENTS" },
   Filesystem: {
     rename: vi.fn(async ({ from, to, directory }) => {
@@ -65,6 +66,30 @@ describe("renameNativeProjectFiles", () => {
       state.files.get("LeakReports/new_name/data/data.json"),
     );
     expect(stored[0].photo).toContain("/new_name/");
+  });
+
+  it("preserves embedded sync state in versioned project payloads", async () => {
+    const syncState = { version: 2, deleted: { "id:removed": 700 } };
+    state.files.set(
+      "LeakReports/old_name/data/data.json",
+      JSON.stringify({
+        version: 2,
+        data: [{ id: 1, photo: "data://LeakReports/old_name/photos/a.jpg" }],
+        syncState,
+      }),
+    );
+
+    await renameNativeProjectFiles({
+      oldFolderName: "old_name",
+      newFolderName: "new_name",
+      remapLeaks,
+    });
+
+    const stored = JSON.parse(
+      state.files.get("LeakReports/new_name/data/data.json"),
+    );
+    expect(stored.data[0].photo).toContain("/new_name/");
+    expect(stored.syncState).toEqual(syncState);
   });
 
   it("rolls the folder and file contents back when remapping cannot be written", async () => {

@@ -4,8 +4,8 @@ import { LeakRepository } from "@/repositories/LeakRepository";
 import { isNative } from "@/utils/platform";
 
 const VALID_TYPES = ["upstream", "midstream", "downstream"];
-const CONFLICT_CLOSED = { open: false };
-const IMPORT_CONFIRM_CLOSED = { open: false };
+const CONFLICT_CLOSED = /** @type {any} */ ({ open: false });
+const IMPORT_CONFIRM_CLOSED = /** @type {any} */ ({ open: false });
 
 function detectTypeFromFileName(str) {
   const lower = str.toLowerCase();

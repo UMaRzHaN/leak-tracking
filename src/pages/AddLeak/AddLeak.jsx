@@ -12,6 +12,8 @@ import { STATUS } from "@/utils/status";
 import { priorityFromSpeed } from "@/utils/priority";
 import { dataUrlToBlob } from "@/utils/photoConversion";
 import { isPinkBagEquipment } from "@/utils/calculations/calculations";
+import { normalizeLeakTag } from "@/utils/leakIdentity";
+import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import { isLeakFormDirty } from "@/features/leakForm/utils/isLeakFormDirty";
 import { createRecordId } from "@/utils/createRecordId";
 import Notification from "@/components/ui/Notification/Notification";
@@ -161,7 +163,7 @@ export default function AddLeak({
         const lat = toNullableNumber(coords?.lat);
         const lng = toNullableNumber(coords?.lng);
 
-        if (Number.isFinite(lat) && (lat < -90 || lat > 90)) {
+        if (lat != null && !isValidLatitude(lat)) {
           hapticWarning();
           setNotification({
             type: "error",
@@ -169,11 +171,17 @@ export default function AddLeak({
           });
           return null;
         }
-        if (Number.isFinite(lng) && (lng < -180 || lng > 180)) {
+        if (lng != null && !isValidLongitude(lng)) {
           hapticWarning();
           setNotification({
             type: "error",
-            message: t("addLeak.validation.lng", { lng }),
+            message: t(
+              "addLeak.validation.lng",
+              /** @type {any} */ ({
+                lng,
+                defaultValue: `Invalid longitude: ${lng}`,
+              }),
+            ),
           });
           return null;
         }
@@ -207,16 +215,11 @@ export default function AddLeak({
           return null;
         }
 
-        const normalizedLeakTag = String(row.leak_id ?? "")
-          .trim()
-          .toLocaleLowerCase();
+        const normalizedLeakTag = normalizeLeakTag(row.leak_id);
         if (
           normalizedLeakTag &&
           data.some(
-            (leak) =>
-              String(leak.leak_id ?? "")
-                .trim()
-                .toLocaleLowerCase() === normalizedLeakTag,
+            (leak) => normalizeLeakTag(leak.leak_id) === normalizedLeakTag,
           )
         ) {
           hapticWarning();
@@ -383,7 +386,6 @@ export default function AddLeak({
           onAdd={handleAdd}
           onSaved={setSavedLeak}
           isSaving={isSaving}
-          coords={coords}
           onBack={onBack}
           lastItem={data.at(-1)}
         />

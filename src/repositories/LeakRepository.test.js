@@ -8,6 +8,7 @@ vi.mock("@/utils/platform", () => ({
 }));
 
 vi.mock("@capacitor/filesystem", () => ({
+  Encoding: { UTF8: "utf8" },
   Filesystem: {
     readFile: vi.fn(),
     writeFile: vi.fn(),
@@ -118,6 +119,18 @@ describe("LeakRepository.getAll (web / localStorage)", () => {
 
     const result = await LeakRepository.getAll(PROJECT);
     expect(result).toEqual([]);
+  });
+
+  it("hides and preserves records with out-of-range coordinates", async () => {
+    const invalid = { id: "bad-coords", status: "open", lat: 999, lng: 20 };
+    localStorage.setItem(
+      storageKey(PROJECT.projectId),
+      JSON.stringify([invalid]),
+    );
+
+    const result = await LeakRepository.getAll(PROJECT);
+    expect(result).toEqual([]);
+    expect(getPreservedInvalidLeakRecords(result)).toEqual([invalid]);
   });
 
   it("shows only the first canonical id and preserves duplicate records", async () => {

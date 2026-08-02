@@ -1,11 +1,23 @@
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
-import { STATUS } from "@/utils/status";
+import { requireHistoryUser } from "@/utils/historyUser";
+import { STATUS, nextStatus } from "@/utils/status";
 
 const STATUS_NOTE_FIELDS = [{ key: "materials_equipment" }, { key: "note" }];
 
 function lifecycleTime(now) {
   const timestamp = typeof now === "number" ? now : Date.now();
   return { timestamp, iso: new Date(timestamp).toISOString() };
+}
+
+function assertStatusTransition(leak, targetStatus) {
+  const currentStatus = leak?.status ?? STATUS.OPEN;
+  const expectedStatus = nextStatus(currentStatus);
+  if (targetStatus === expectedStatus) return;
+  const error = new Error(
+    `Invalid leak status transition: ${currentStatus} -> ${targetStatus}`,
+  );
+  error.code = "INVALID_LEAK_STATUS_TRANSITION";
+  throw error;
 }
 
 function withStatusHistory(before, after, { to, user, iso, changes = [] }) {
@@ -17,7 +29,7 @@ function withStatusHistory(before, after, { to, user, iso, changes = [] }) {
         action: "status_changed",
         to,
         date: iso,
-        user,
+        user: requireHistoryUser(user),
         ...(changes.length > 0 ? { changes } : {}),
       },
     ],
@@ -36,7 +48,9 @@ export function getOrphanedOriginalPhoto(leak) {
   return leak.photo;
 }
 
+/** @param {any} leak @param {any} status @param {{user?: any, now?: number}} [options] */
 export function changeLeakStatus(leak, status, { user, now } = {}) {
+  assertStatusTransition(leak, status);
   const { timestamp, iso } = lifecycleTime(now);
   const after = {
     ...leak,
@@ -50,7 +64,9 @@ export function changeLeakStatus(leak, status, { user, now } = {}) {
   return withStatusHistory(leak, after, { to: status, user, iso });
 }
 
+/** @param {any} leak @param {any} [draft] @param {{user?: any, now?: number}} [options] */
 export function resolveLeakRecord(leak, draft = {}, { user, now } = {}) {
+  assertStatusTransition(leak, STATUS.RESOLVED);
   const { timestamp, iso } = lifecycleTime(now);
   const after = {
     ...leak,
@@ -76,13 +92,13 @@ export function resolveLeakRecord(leak, draft = {}, { user, now } = {}) {
   });
 }
 
+/** @param {any} leak @param {any} [draft] @param {{user?: any, now?: number}} [options] */
 export function startLeakRepair(leak, draft = {}, { user, now } = {}) {
+  assertStatusTransition(leak, STATUS.IN_PROGRESS);
   const { timestamp, iso } = lifecycleTime(now);
   const after = {
     ...leak,
-    ...(leak.status === STATUS.RESOLVED
-      ? { photo: leak.photo_after ?? leak.photo, photo_after: null }
-      : {}),
+    photo_after: null,
     status: STATUS.IN_PROGRESS,
     resolvedAt: null,
     repairAt: timestamp,
@@ -126,4 +142,13 @@ export async function deletePhotoIfUnreferenced(path, leaks, deletePhoto) {
   if (!path || isPhotoReferenced(path, leaks)) return false;
   await deletePhoto(path);
   return true;
+}
+export async function deleteLeakPhotosIfUnreferenced(leak, leaks, deletePhoto) {
+  const deleted = [];
+  for (const path of collectLeakPhotoPaths(leak)) {
+    if (await deletePhotoIfUnreferenced(path, leaks, deletePhoto)) {
+      deleted.push(path);
+    }
+  }
+  return deleted;
 }
