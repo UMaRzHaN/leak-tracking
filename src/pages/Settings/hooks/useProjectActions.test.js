@@ -52,7 +52,11 @@ describe("remapProjectPhotoPaths", () => {
         photo_after: `${oldBase}after.jpg`,
         photo_repair: `${oldBase}repair.jpg`,
         monitoringRecords: [
-          { id: "m1", photo: `${oldBase}monitoring.jpg` },
+          {
+            id: "m1",
+            photo: `${oldBase}monitoring.jpg`,
+            previousPhoto: `${oldBase}monitoring-before.jpg`,
+          },
           { id: "m2", photo: "idb://unchanged" },
         ],
       },
@@ -64,6 +68,9 @@ describe("remapProjectPhotoPaths", () => {
     expect(updated.photo_after).toContain("LeakReports/alpha_renamed/photos/");
     expect(updated.photo_repair).toContain("LeakReports/alpha_renamed/photos/");
     expect(updated.monitoringRecords[0].photo).toContain(
+      "LeakReports/alpha_renamed/photos/",
+    );
+    expect(updated.monitoringRecords[0].previousPhoto).toContain(
       "LeakReports/alpha_renamed/photos/",
     );
     expect(updated.monitoringRecords[1].photo).toBe("idb://unchanged");

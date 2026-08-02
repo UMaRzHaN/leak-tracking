@@ -50,7 +50,9 @@ export function getMonitoringExportRows(
         materials_equipment: record.materials_equipment ?? "",
         comment: record.comment ?? "",
         photo: record.photo ?? "",
+        previousPhoto: record.previousPhoto ?? "",
         photoMapKey: `monitoring:${leakIndex}:${recordIndex}`,
+        previousPhotoMapKey: `monitoring:${leakIndex}:${recordIndex}:previousPhoto`,
         exportGroupKey: `${leak.id ?? leak.leak_id ?? leakIndex}:${roundKey}`,
       });
     });

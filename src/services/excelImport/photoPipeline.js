@@ -2,8 +2,12 @@ import { getPhotoSrc } from "@/hooks/photoService";
 import { fingerprintBlob } from "@/utils/blobHash";
 import { getLeakMergeIdentity } from "@/services/projectSyncState";
 import { getImageMimeTypeFromExtension } from "@/services/archivePaths";
+import {
+  LEAK_PHOTO_FIELDS,
+  MONITORING_PHOTO_FIELDS,
+} from "@/utils/photoFields";
 
-const PHOTO_KEYS = new Set(["photo", "photo_repair", "photo_after"]);
+const PHOTO_KEYS = new Set(LEAK_PHOTO_FIELDS);
 
 export function isZipFile(file) {
   return (
@@ -112,7 +116,9 @@ async function buildReusablePhotoMap(existingLeaks, getStoredPhoto) {
       if (leak?.[key]) paths.add(leak[key]);
     }
     for (const record of leak?.monitoringRecords ?? []) {
-      if (record?.photo) paths.add(record.photo);
+      for (const field of MONITORING_PHOTO_FIELDS) {
+        if (record?.[field]) paths.add(record[field]);
+      }
     }
   }
 
@@ -256,18 +262,19 @@ export async function reconcileExcelImportPhotos(
                 ? recordAtSamePosition
                 : (currentRecords.get(getMonitoringIdentity(record, index)) ??
                   recordAtSamePosition);
-            return {
-              ...record,
-              photo: await reconcilePhotoValue(
-                record?.photo,
-                currentRecord?.photo,
+            const recordCopy = { ...record };
+            for (const field of MONITORING_PHOTO_FIELDS) {
+              recordCopy[field] = await reconcilePhotoValue(
+                record?.[field],
+                currentRecord?.[field],
                 getStoredPhoto,
                 stats,
-                "monitoring.photo",
+                `monitoring.${field}`,
                 reusablePhotos,
                 preserveExisting,
-              ),
-            };
+              );
+            }
+            return recordCopy;
           }),
         );
       }
@@ -328,21 +335,20 @@ export async function hydrateZipPhotos(result, zip) {
     if (Array.isArray(copy.monitoringRecords)) {
       copy.monitoringRecords = [];
       for (const record of leak.monitoringRecords) {
-        if (!String(record?.photo ?? "").startsWith("zip:")) {
-          copy.monitoringRecords.push(record);
-          continue;
+        const recordCopy = { ...record };
+        for (const field of MONITORING_PHOTO_FIELDS) {
+          if (!String(record?.[field] ?? "").startsWith("zip:")) continue;
+          photoReferences += 1;
+          const photoBlob = await readPhoto(record[field]);
+          if (!photoBlob) {
+            delete recordCopy[field];
+            missingPhotos += 1;
+            continue;
+          }
+          restoredPhotos += 1;
+          recordCopy[field] = photoBlob;
         }
-        photoReferences += 1;
-        const photoBlob = await readPhoto(record.photo);
-        if (!photoBlob) {
-          const sanitizedRecord = { ...record };
-          delete sanitizedRecord.photo;
-          missingPhotos += 1;
-          copy.monitoringRecords.push(sanitizedRecord);
-          continue;
-        }
-        restoredPhotos += 1;
-        copy.monitoringRecords.push({ ...record, photo: photoBlob });
+        copy.monitoringRecords.push(recordCopy);
       }
     }
 
@@ -426,17 +432,22 @@ export async function persistExcelImportPhotos(
       if (Array.isArray(copy.monitoringRecords)) {
         copy.monitoringRecords = [];
         for (const [index, record] of leak.monitoringRecords.entries()) {
-          const result = await persistPhotoValue(
-            record.photo,
-            savePhoto,
-            `${baseKey}_monitoring_${record.id ?? index + 1}`,
-            [...savedPaths],
-          );
-          if (result?.created) createdPaths.push(result.path);
-          copy.monitoringRecords.push({
-            ...record,
-            photo: result?.path ?? result,
-          });
+          const recordCopy = { ...record };
+          for (const field of MONITORING_PHOTO_FIELDS) {
+            const suffix = field === "photo" ? "" : `_${field}`;
+            const result = await persistPhotoValue(
+              record?.[field],
+              savePhoto,
+              `${baseKey}_monitoring_${record.id ?? index + 1}${suffix}`,
+              [...savedPaths],
+            );
+            if (result?.created) createdPaths.push(result.path);
+            recordCopy[field] = result?.path ?? result;
+            if (recordCopy[field] && recordCopy[field] !== record?.[field]) {
+              savedPaths.push(recordCopy[field]);
+            }
+          }
+          copy.monitoringRecords.push(recordCopy);
         }
       }
 

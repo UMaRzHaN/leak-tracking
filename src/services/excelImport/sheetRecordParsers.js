@@ -33,7 +33,7 @@ export function parseMonitoringRecords(sheet, validation) {
     for (const column of headerRow.columns) {
       const cell = row.getCell(column.columnNumber);
       const value =
-        column.key === "photo"
+        column.key === "photo" || column.key === "previousPhoto"
           ? getCellPhotoValue(cell)
           : getCellDisplayValue(cell);
       if (
@@ -93,6 +93,7 @@ export function parseMonitoringRecords(sheet, validation) {
       materials_equipment: raw.materials_equipment || "",
       comment: raw.comment || "",
       ...(raw.photo ? { photo: raw.photo } : {}),
+      ...(raw.previousPhoto ? { previousPhoto: raw.previousPhoto } : {}),
     };
 
     if (!recordsByLeakId.has(leakKey)) recordsByLeakId.set(leakKey, []);

@@ -15,6 +15,7 @@ export interface MonitoringRecord {
   id: string | number;
   date?: string;
   photo?: string | null;
+  previousPhoto?: string | null;
   [field: string]: unknown;
 }
 

@@ -25,6 +25,7 @@ export const TAB = {
 
 export function useLeakDetailsSheet({
   leak,
+  allLeaks,
   onClose,
   onSave,
   onDelete,
@@ -167,6 +168,7 @@ export function useLeakDetailsSheet({
     handleReopenConfirm,
   } = useLeakDetailsPersistence({
     leak,
+    allLeaks,
     onSave,
     deletePhoto,
     lang,

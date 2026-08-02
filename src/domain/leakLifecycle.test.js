@@ -100,7 +100,10 @@ describe("leakLifecycle", () => {
         photo_after: "idb://after",
         photo_repair: "idb://repair",
         monitoringRecords: [
-          { photo: "idb://monitoring" },
+          {
+            photo: "idb://monitoring",
+            previousPhoto: "idb://previous-monitoring",
+          },
           { photo: "idb://before" },
         ],
       }),
@@ -109,6 +112,7 @@ describe("leakLifecycle", () => {
       "idb://after",
       "idb://repair",
       "idb://monitoring",
+      "idb://previous-monitoring",
     ]);
   });
 
@@ -117,7 +121,7 @@ describe("leakLifecycle", () => {
     const deletePhoto = async (path) => deleted.push(path);
     const leak = {
       photo_after: "idb://new",
-      monitoringRecords: [{ photo: "idb://old" }],
+      monitoringRecords: [{ previousPhoto: "idb://old" }],
     };
 
     await expect(
@@ -150,11 +154,23 @@ describe("leakLifecycle", () => {
     const removed = {
       photo: "idb://shared",
       photo_after: "idb://unique",
-      monitoringRecords: [{ photo: "idb://monitoring-shared" }],
+      monitoringRecords: [
+        {
+          photo: "idb://monitoring-shared",
+          previousPhoto: "idb://previous-shared",
+        },
+      ],
     };
     const remaining = [
       { photo_repair: "idb://shared" },
-      { monitoringRecords: [{ photo: "idb://monitoring-shared" }] },
+      {
+        monitoringRecords: [
+          {
+            photo: "idb://monitoring-shared",
+            previousPhoto: "idb://previous-shared",
+          },
+        ],
+      },
     ];
 
     await expect(

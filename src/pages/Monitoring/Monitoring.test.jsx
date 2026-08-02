@@ -181,6 +181,9 @@ describe("Monitoring round flow", () => {
     expect(patch.monitoringRecords.at(-1).photo).toBe(
       "idb://monitoring-latest",
     );
+    expect(patch.monitoringRecords.at(-1).previousPhoto).toBe(
+      "idb://previous-current",
+    );
   });
 
   it("shows a monitoring result once and keeps only the user comment in history", () => {
@@ -759,6 +762,9 @@ describe("Monitoring round flow", () => {
     expect(savedLeak.photo_after).toBeNull();
     expect(savedLeak.monitoringRecords.at(-1).photo).toBe(
       "idb://monitoring-new",
+    );
+    expect(savedLeak.monitoringRecords.at(-1).previousPhoto).toBe(
+      "idb://resolved",
     );
     await waitFor(() =>
       expect(photoStorage.deletePhoto).toHaveBeenCalledWith("idb://original"),

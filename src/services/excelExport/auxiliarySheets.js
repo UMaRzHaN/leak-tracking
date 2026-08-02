@@ -174,10 +174,15 @@ export async function buildMonitoringSheet(
 
   headers.push(lang === "ru" ? "Фото мониторинга" : "Monitoring photo");
   keys.push("photo");
+  headers.push(lang === "ru" ? "Предыдущее фото" : "Previous photo");
+  keys.push("previousPhoto");
 
   const tableRows = rows.map((row) =>
     keys.map((key) => {
       if (key === "photo" && photoMap[row.photoMapKey]) return "";
+      if (key === "previousPhoto" && photoMap[row.previousPhotoMapKey]) {
+        return "";
+      }
       return toExcelCellValue(key, row[key]);
     }),
   );
@@ -196,22 +201,27 @@ export async function buildMonitoringSheet(
       await yieldToMainThread();
     }
 
-    const photoColumnIndex = keys.indexOf("photo") + 1;
-    const photoFile = photoMap[row.photoMapKey];
-    const photoCell = sheet.getRow(rowIndex + 2).getCell(photoColumnIndex);
+    for (const [key, mapKey] of [
+      ["photo", row.photoMapKey],
+      ["previousPhoto", row.previousPhotoMapKey],
+    ]) {
+      const photoColumnIndex = keys.indexOf(key) + 1;
+      const photoFile = photoMap[mapKey];
+      const photoCell = sheet.getRow(rowIndex + 2).getCell(photoColumnIndex);
 
-    if (photoFile) {
-      photoCell.value = {
-        text: lang === "ru" ? "Открыть фото" : "Open photo",
-        hyperlink: photoFile,
-      };
-      photoCell.font = { color: { argb: "FF1155CC" }, underline: true };
-    } else {
-      photoCell.value = row.photo
-        ? lang === "ru"
-          ? "Есть (файл не найден)"
-          : "Present (file missing)"
-        : "";
+      if (photoFile) {
+        photoCell.value = {
+          text: lang === "ru" ? "Открыть фото" : "Open photo",
+          hyperlink: photoFile,
+        };
+        photoCell.font = { color: { argb: "FF1155CC" }, underline: true };
+      } else {
+        photoCell.value = row[key]
+          ? lang === "ru"
+            ? "Есть (файл не найден)"
+            : "Present (file missing)"
+          : "";
+      }
     }
   }
 
@@ -222,7 +232,7 @@ export async function buildMonitoringSheet(
       headers[index],
       key,
       rows,
-      { isPhoto: key === "photo" },
+      { isPhoto: key === "photo" || key === "previousPhoto" },
     );
   });
 }

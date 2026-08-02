@@ -141,6 +141,16 @@ export function getMonitoringPhotoPathsToKeep(leak) {
   return collectLeakPhotoPaths(leak);
 }
 
+function getCurrentLeakPhoto(leak) {
+  if (leak?.status === STATUS.RESOLVED) {
+    return leak.photo_after ?? leak.photo ?? null;
+  }
+  if (leak?.status === STATUS.IN_PROGRESS) {
+    return leak.photo_repair ?? leak.photo ?? null;
+  }
+  return leak?.photo ?? null;
+}
+
 export function buildMonitoringPatch({
   leak,
   draft,
@@ -155,6 +165,7 @@ export function buildMonitoringPatch({
   const previousMaterialsEquipment =
     leak.materials_equipment?.trim() || undefined;
   const materialsChanged = materialsEquipment !== previousMaterialsEquipment;
+  const previousPhoto = getCurrentLeakPhoto(leak);
   const record = {
     id: `${leak.id}-${now.getTime()}`,
     date: now.toISOString(),
@@ -163,6 +174,9 @@ export function buildMonitoringPatch({
     monitoredBy: monitoredBy.trim(),
     result,
     photo: photoPath,
+    ...(photoPath && previousPhoto && photoPath !== previousPhoto
+      ? { previousPhoto }
+      : {}),
     ...(materialsChanged
       ? {
           materials_equipment: materialsEquipment ?? null,

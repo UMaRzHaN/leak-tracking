@@ -117,6 +117,7 @@ export default function Monitoring(props) {
 
       <MonitoringDialogs
         activeLeak={activeLeak}
+        allLeaks={props.data}
         drafts={drafts}
         hasMonitoringRound={hasMonitoringRound}
         isSaving={isSaving}

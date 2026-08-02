@@ -1,5 +1,11 @@
-export const PHOTO_KEYS = ["photo", "photo_after", "photo_repair"];
-export const MONITORING_PHOTO_KEY = "photo";
+import {
+  LEAK_PHOTO_FIELDS,
+  MONITORING_PHOTO_FIELDS,
+} from "@/utils/photoFields";
+
+export const PHOTO_KEYS = LEAK_PHOTO_FIELDS;
+export const MONITORING_PHOTO_KEYS = MONITORING_PHOTO_FIELDS;
+export const MONITORING_PHOTO_KEY = MONITORING_PHOTO_FIELDS[0];
 export const RECOVERY_RECORDS_FILE = "recovery-invalid-records.json";
 
 export const TYPE_SIGNATURES = {

@@ -113,6 +113,7 @@ export default function DataBase({
 
       <LeakModals
         activeLeak={actions.activeLeak}
+        allLeaks={data}
         onCloseDetails={() => actions.setActiveLeak(null)}
         onSave={actions.handleSave}
         onDelete={(id) =>

@@ -1,3 +1,4 @@
+import { MONITORING_PHOTO_FIELDS } from "@/utils/photoFields";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
 import { requireHistoryUser } from "@/utils/historyUser";
 import { STATUS, nextStatus } from "@/utils/status";
@@ -127,7 +128,9 @@ export function collectLeakPhotoPaths(leak) {
     [leak?.photo, leak?.photo_after, leak?.photo_repair].filter(Boolean),
   );
   for (const record of leak?.monitoringRecords ?? []) {
-    if (record?.photo) paths.add(record.photo);
+    for (const field of MONITORING_PHOTO_FIELDS) {
+      if (record?.[field]) paths.add(record[field]);
+    }
   }
   return [...paths];
 }

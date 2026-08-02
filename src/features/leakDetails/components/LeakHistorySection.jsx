@@ -18,7 +18,8 @@ import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
 function MonitoringRecordRow({ record, localeTexts, lang }) {
   const photoSrc = usePhotoSrc(record.photo ?? null);
-  const [viewerOpen, setViewerOpen] = useState(false);
+  const previousPhotoSrc = usePhotoSrc(record.previousPhoto ?? null);
+  const [viewerSrc, setViewerSrc] = useState(null);
   const roundNumber = Number(record.roundNumber);
 
   return (
@@ -72,32 +73,57 @@ function MonitoringRecordRow({ record, localeTexts, lang }) {
             )}
           </div>
 
-          {photoSrc && (
-            <div className={s.monitoringPhotoBlock}>
-              <span className={s.monitoringPhotoTitle}>
-                {localeTexts.monitoring.photo}
-              </span>
-              <button
-                type="button"
-                className={s.monitoringPhotoBtn}
-                onClick={() => setViewerOpen(true)}
-                aria-label={localeTexts.photo.monitoring}
-              >
-                <img
-                  src={photoSrc}
-                  alt={localeTexts.photo.monitoring}
-                  className={s.monitoringPhotoImg}
-                  loading="lazy"
-                  draggable={false}
-                />
-              </button>
+          {(photoSrc || previousPhotoSrc) && (
+            <div className={s.monitoringPhotos}>
+              {previousPhotoSrc && (
+                <div className={s.monitoringPhotoBlock}>
+                  <span className={s.monitoringPhotoTitle}>
+                    {localeTexts.monitoring.previousPhoto}
+                  </span>
+                  <button
+                    type="button"
+                    className={s.monitoringPhotoBtn}
+                    onClick={() => setViewerSrc(previousPhotoSrc)}
+                    aria-label={localeTexts.monitoring.previousPhoto}
+                  >
+                    <img
+                      src={previousPhotoSrc}
+                      alt={localeTexts.monitoring.previousPhoto}
+                      className={s.monitoringPhotoImg}
+                      loading="lazy"
+                      draggable={false}
+                    />
+                  </button>
+                </div>
+              )}
+              {photoSrc && (
+                <div className={s.monitoringPhotoBlock}>
+                  <span className={s.monitoringPhotoTitle}>
+                    {localeTexts.monitoring.photo}
+                  </span>
+                  <button
+                    type="button"
+                    className={s.monitoringPhotoBtn}
+                    onClick={() => setViewerSrc(photoSrc)}
+                    aria-label={localeTexts.photo.monitoring}
+                  >
+                    <img
+                      src={photoSrc}
+                      alt={localeTexts.photo.monitoring}
+                      className={s.monitoringPhotoImg}
+                      loading="lazy"
+                      draggable={false}
+                    />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
       </article>
 
-      {viewerOpen && photoSrc && (
-        <PhotoViewer src={photoSrc} onClose={() => setViewerOpen(false)} />
+      {viewerSrc && (
+        <PhotoViewer src={viewerSrc} onClose={() => setViewerSrc(null)} />
       )}
     </>
   );

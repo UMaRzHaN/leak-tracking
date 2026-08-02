@@ -171,16 +171,18 @@ function validateLeakRecord(record, index) {
 
   if (Array.isArray(record.monitoringRecords)) {
     record.monitoringRecords.forEach((monitoringRecord, monitoringIndex) => {
-      if (
-        isPlainObject(monitoringRecord) &&
-        monitoringRecord.photo != null &&
-        !isValidPortablePhotoPath(monitoringRecord.photo)
-      ) {
-        pushIssue(
-          issues,
-          [index, "monitoringRecords", monitoringIndex, "photo"],
-          "Недопустимый формат пути к фото",
-        );
+      if (!isPlainObject(monitoringRecord)) return;
+      for (const field of ["photo", "previousPhoto"]) {
+        if (
+          monitoringRecord[field] != null &&
+          !isValidPortablePhotoPath(monitoringRecord[field])
+        ) {
+          pushIssue(
+            issues,
+            [index, "monitoringRecords", monitoringIndex, field],
+            "Недопустимый формат пути к фото",
+          );
+        }
       }
     });
   }

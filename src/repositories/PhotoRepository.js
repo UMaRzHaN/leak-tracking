@@ -3,8 +3,11 @@ import { isNative } from "@/utils/platform";
 import { compressImage } from "./compressImage";
 import { idb } from "./idb";
 import { isPhotoPrepared } from "@/utils/photoPreparation";
+import {
+  LEAK_PHOTO_FIELDS,
+  MONITORING_PHOTO_FIELDS,
+} from "@/utils/photoFields";
 
-const PHOTO_FIELDS = ["photo", "photo_after", "photo_repair"];
 const photoFolderPromises = new Map();
 let lastPhotoTimestamp = 0;
 let photoTimestampSequence = 0;
@@ -38,13 +41,15 @@ function createPhotoVersion() {
 function collectReferencedPhotos(leaks = []) {
   const referenced = new Set();
   for (const leak of leaks) {
-    for (const field of PHOTO_FIELDS) {
+    for (const field of LEAK_PHOTO_FIELDS) {
       if (leak[field]) referenced.add(leak[field]);
     }
 
     if (Array.isArray(leak.monitoringRecords)) {
       for (const record of leak.monitoringRecords) {
-        if (record?.photo) referenced.add(record.photo);
+        for (const field of MONITORING_PHOTO_FIELDS) {
+          if (record?.[field]) referenced.add(record[field]);
+        }
       }
     }
   }

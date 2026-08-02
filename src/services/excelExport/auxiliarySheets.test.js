@@ -120,6 +120,7 @@ describe("Excel auxiliary worksheets", () => {
             roundNumber: 1,
             result: "resolved",
             photo: "idb://monitoring",
+            previousPhoto: "idb://before-monitoring",
           },
         ],
       },
@@ -130,7 +131,11 @@ describe("Excel auxiliary worksheets", () => {
       workbook,
       leaks,
       "en",
-      { "monitoring:0:0": "photos/TAG-1/monitoring/record-1.jpg" },
+      {
+        "monitoring:0:0": "photos/TAG-1/monitoring/record-1.jpg",
+        "monitoring:0:0:previousPhoto":
+          "photos/TAG-1/monitoring/record-1-previousPhoto.jpg",
+      },
       "full",
     );
 
@@ -150,6 +155,12 @@ describe("Excel auxiliary worksheets", () => {
       text: "Open photo",
       hyperlink: "photos/TAG-1/monitoring/record-1.jpg",
     });
+    expect(monitoringSheet.getRow(1).getCell(11).value).toBe("Previous photo");
+    expect(monitoringSheet.getRow(2).getCell(11).value).toEqual({
+      text: "Open photo",
+      hyperlink: "photos/TAG-1/monitoring/record-1-previousPhoto.jpg",
+    });
     expect(monitoringSheet.getColumn(10).width).toBe(18);
+    expect(monitoringSheet.getColumn(11).width).toBe(18);
   });
 });

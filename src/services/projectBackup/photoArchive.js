@@ -13,7 +13,7 @@ import {
   EXPORT_CONCURRENCY,
   EXPORT_YIELD_EVERY,
   IMPORT_CONCURRENCY,
-  MONITORING_PHOTO_KEY,
+  MONITORING_PHOTO_KEYS,
   PHOTO_KEYS,
 } from "./constants";
 import { mapWithConcurrency, yieldToMainThread } from "./runtime";
@@ -106,32 +106,25 @@ export async function exportLeaksWithPhotosToStream(
     if (Array.isArray(copy.monitoringRecords)) {
       const records = [];
       for (const [recordIndex, record] of copy.monitoringRecords.entries()) {
-        const path = record?.[MONITORING_PHOTO_KEY];
-        if (path == null) {
-          records.push(record);
-          continue;
-        }
-        const resolved = await resolvePhotoBlob(path, idbGet);
-        if (!resolved) {
-          if (preserveUnresolvedPhotoPaths) {
-            records.push(record);
+        const recordCopy = { ...record };
+        for (const key of MONITORING_PHOTO_KEYS) {
+          const path = record?.[key];
+          if (path == null) continue;
+          const resolved = await resolvePhotoBlob(path, idbGet);
+          if (!resolved) {
+            if (!preserveUnresolvedPhotoPaths) delete recordCopy[key];
             continue;
           }
-          const sanitizedRecord = { ...record };
-          delete sanitizedRecord[MONITORING_PHOTO_KEY];
-          records.push(sanitizedRecord);
-          continue;
+          const archivePath = buildMonitoringPhotoArchivePath(
+            leakNumber,
+            recordIndex,
+            resolved.ext,
+            key,
+          );
+          await zip.add(archivePath, resolved.blob);
+          recordCopy[key] = `zip:${archivePath}`;
         }
-        const archivePath = buildMonitoringPhotoArchivePath(
-          leakNumber,
-          recordIndex,
-          resolved.ext,
-        );
-        await zip.add(archivePath, resolved.blob);
-        records.push({
-          ...record,
-          [MONITORING_PHOTO_KEY]: `zip:${archivePath}`,
-        });
+        records.push(recordCopy);
       }
       copy.monitoringRecords = records;
     }
@@ -185,34 +178,27 @@ export async function exportLeaksWithPhotos(
     if (Array.isArray(copy.monitoringRecords)) {
       const records = [];
       for (const [recordIndex, record] of copy.monitoringRecords.entries()) {
-        const path = record?.[MONITORING_PHOTO_KEY];
-        if (path == null) {
-          records.push(record);
-          continue;
-        }
+        const recordCopy = { ...record };
+        for (const key of MONITORING_PHOTO_KEYS) {
+          const path = record?.[key];
+          if (path == null) continue;
 
-        const resolved = await resolveBase64(path, idbGet);
-        if (!resolved) {
-          if (preserveUnresolvedPhotoPaths) {
-            records.push(record);
+          const resolved = await resolveBase64(path, idbGet);
+          if (!resolved) {
+            if (!preserveUnresolvedPhotoPaths) delete recordCopy[key];
             continue;
           }
-          const sanitizedRecord = { ...record };
-          delete sanitizedRecord[MONITORING_PHOTO_KEY];
-          records.push(sanitizedRecord);
-          continue;
-        }
 
-        const archivePath = buildMonitoringPhotoArchivePath(
-          leakNumber,
-          recordIndex,
-          resolved.ext,
-        );
-        zip.file(archivePath, resolved.base64, { base64: true });
-        records.push({
-          ...record,
-          [MONITORING_PHOTO_KEY]: `zip:${archivePath}`,
-        });
+          const archivePath = buildMonitoringPhotoArchivePath(
+            leakNumber,
+            recordIndex,
+            resolved.ext,
+            key,
+          );
+          zip.file(archivePath, resolved.base64, { base64: true });
+          recordCopy[key] = `zip:${archivePath}`;
+        }
+        records.push(recordCopy);
       }
       copy.monitoringRecords = records;
     }
@@ -259,7 +245,7 @@ export async function restorePhotosFromZip(
   for (const leak of leaks) {
     for (const key of PHOTO_KEYS) collectSize(leak?.[key]);
     for (const record of leak?.monitoringRecords ?? []) {
-      collectSize(record?.[MONITORING_PHOTO_KEY]);
+      for (const key of MONITORING_PHOTO_KEYS) collectSize(record?.[key]);
     }
   }
   const totalPhotoBytes = archivePhotoSizes.reduce(
@@ -340,36 +326,34 @@ export async function restorePhotosFromZip(
     if (Array.isArray(copy.monitoringRecords)) {
       const restoredRecords = [];
       for (const [index, record] of copy.monitoringRecords.entries()) {
-        const path = record?.[MONITORING_PHOTO_KEY];
-        if (typeof path !== "string" || !path) {
-          restoredRecords.push(record);
-          continue;
-        }
-
-        const prepared = await preparePhoto(path);
-        if (!prepared) {
-          restoredRecords.push(record);
-          continue;
-        }
-
+        const recordCopy = { ...record };
         const recordId = String(record.id ?? index + 1);
-        const storageKey = `${baseKey}_monitoring_${recordId}`;
-        const newPath = await savePhoto(
-          prepared.blob,
-          storageKey,
-          [...Object.values(savedPaths)],
-          {
-            cleanupOldVersions: false,
-            contentHash: prepared.contentHash,
-          },
-        );
-        if (!newPath && path.startsWith("zip:")) {
-          throw new Error(`Не удалось сохранить фотографию ${path}`);
+
+        for (const key of MONITORING_PHOTO_KEYS) {
+          const path = record?.[key];
+          if (typeof path !== "string" || !path) continue;
+
+          const prepared = await preparePhoto(path);
+          if (!prepared) continue;
+
+          const keySuffix = key === "photo" ? "" : `_${key}`;
+          const storageKey = `${baseKey}_monitoring_${recordId}${keySuffix}`;
+          const newPath = await savePhoto(
+            prepared.blob,
+            storageKey,
+            [...Object.values(savedPaths)],
+            {
+              cleanupOldVersions: false,
+              contentHash: prepared.contentHash,
+            },
+          );
+          if (!newPath && path.startsWith("zip:")) {
+            throw new Error(`Не удалось сохранить фотографию ${path}`);
+          }
+          recordCopy[key] = newPath ?? prepared.fallbackPath;
+          if (newPath) savedPaths[`monitoring_${recordId}_${key}`] = newPath;
         }
-        restoredRecords.push({
-          ...record,
-          [MONITORING_PHOTO_KEY]: newPath ?? prepared.fallbackPath,
-        });
+        restoredRecords.push(recordCopy);
       }
       copy.monitoringRecords = restoredRecords;
     }

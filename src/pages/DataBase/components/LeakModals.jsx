@@ -6,6 +6,7 @@ import { STATUS } from "@/utils/status";
 
 export default function LeakModals({
   activeLeak,
+  allLeaks,
   onCloseDetails,
   onSave,
   onDelete,
@@ -40,6 +41,7 @@ export default function LeakModals({
       {activeLeak && (
         <LeakDetailsSheet
           leak={activeLeak}
+          allLeaks={allLeaks}
           onClose={onCloseDetails}
           onSave={onSave}
           onDelete={onDelete}

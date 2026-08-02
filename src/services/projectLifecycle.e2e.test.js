@@ -58,6 +58,7 @@ describe("project lifecycle backup and synchronization", () => {
           result: "still_leaking",
           comment: "Leak confirmed during monitoring",
           photo: "idb://device-a-monitoring",
+          previousPhoto: "idb://device-a-monitoring-before",
         },
       ],
     };
@@ -65,6 +66,7 @@ describe("project lifecycle backup and synchronization", () => {
       ["device-a-before", png("before-photo")],
       ["device-a-repair", png("repair-photo")],
       ["device-a-monitoring", png("monitoring-photo")],
+      ["device-a-monitoring-before", png("monitoring-before-photo")],
     ]);
     const archiveFromDeviceA = await buildProjectBackupZip({
       leaks: [changedOnDeviceA],
@@ -134,16 +136,21 @@ describe("project lifecycle backup and synchronization", () => {
       id: "monitoring-1",
       result: "still_leaking",
       photo: "idb://synced-TAG-1_monitoring_monitoring-1",
+      previousPhoto: "idb://synced-TAG-1_monitoring_monitoring-1_previousPhoto",
     });
     expect(synchronizedLeaks.some((leak) => leak.id === "device-b-only")).toBe(
       true,
     );
-    expect(savePhoto).toHaveBeenCalledTimes(3);
+    expect(savePhoto).toHaveBeenCalledTimes(4);
 
     const synchronizedPhotos = new Map([
       ["synced-TAG-1", png("before-photo")],
       ["synced-TAG-1_repair", png("repair-photo")],
       ["synced-TAG-1_monitoring_monitoring-1", png("monitoring-photo")],
+      [
+        "synced-TAG-1_monitoring_monitoring-1_previousPhoto",
+        png("monitoring-before-photo"),
+      ],
     ]);
     const postSyncBackup = await buildProjectBackupZip({
       leaks: synchronizedLeaks,
@@ -194,6 +201,8 @@ describe("project lifecycle backup and synchronization", () => {
     expect(restoredShared.monitoringRecords[0]).toMatchObject({
       result: "still_leaking",
       photo: "idb://restored-TAG-1_monitoring_monitoring-1",
+      previousPhoto:
+        "idb://restored-TAG-1_monitoring_monitoring-1_previousPhoto",
     });
     expect(
       JSON.parse(

@@ -122,7 +122,9 @@ export function useLeakActions({
         }
       } catch (err) {
         if (photo_after && photo_after !== leak.photo_after) {
-          deletePhoto(photo_after).catch(() => {});
+          deletePhotoIfUnreferenced(photo_after, data, deletePhoto).catch(
+            () => {},
+          );
         }
         notify("error", `Ошибка сохранения: ${err.message}`);
       }
@@ -170,7 +172,9 @@ export function useLeakActions({
         );
       } catch (err) {
         if (photo_repair && photo_repair !== leak.photo_repair) {
-          deletePhoto(photo_repair).catch(() => {});
+          deletePhotoIfUnreferenced(photo_repair, data, deletePhoto).catch(
+            () => {},
+          );
         }
         notify("error", `Ошибка сохранения: ${err.message}`);
       }

@@ -21,10 +21,12 @@ import {
 import {
   cleanupUncommittedPhotoReplacements,
   persistPhotoReplacements,
+  replaceLeakInCollection,
 } from "../utils/persistPhotoReplacements";
 
 export function useLeakDetailsPersistence({
   leak,
+  allLeaks,
   onSave,
   deletePhoto,
   lang,
@@ -177,6 +179,7 @@ export function useLeakDetailsPersistence({
       await persistPhotoReplacements({
         save: onSave,
         value: withPriority,
+        referenceLeaks: replaceLeakInCollection(allLeaks, withPriority),
         replacements: [
           [isPhotoDirty, leak.photo, photoPath],
           [isAfterDirty, leak.photo_after, photoAfterPath],
@@ -187,6 +190,7 @@ export function useLeakDetailsPersistence({
     } catch (error) {
       await cleanupUncommittedPhotoReplacements({
         value: leak,
+        referenceLeaks: allLeaks,
         replacements: [
           [isPhotoDirty, leak.photo, photoPath],
           [isAfterDirty, leak.photo_after, photoAfterPath],
@@ -239,10 +243,13 @@ export function useLeakDetailsPersistence({
     const orphanedPhoto = getOrphanedOriginalPhoto(leak);
     try {
       const next = changeLeakStatus(leak, newStatus, { user: historyUser });
+      const nextData = replaceLeakInCollection(allLeaks, next);
       await onSave(next);
-      await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-        () => {},
-      );
+      await deletePhotoIfUnreferenced(
+        orphanedPhoto,
+        nextData,
+        deletePhoto,
+      ).catch(() => {});
     } catch {
       reportSaveError();
     }
@@ -260,18 +267,23 @@ export function useLeakDetailsPersistence({
         { photo_after, materials_equipment, note },
         { user: historyUser },
       );
+      const nextData = replaceLeakInCollection(allLeaks, next);
       await onSave(next);
       setResolveOpen(false);
       if (leak.photo_after && leak.photo_after !== photo_after) {
         await deletePhotoIfUnreferenced(
           leak.photo_after,
-          next,
+          nextData,
           deletePhoto,
         ).catch(() => {});
       }
     } catch {
       if (photo_after && photo_after !== leak.photo_after) {
-        await deletePhoto(photo_after).catch(() => {});
+        await deletePhotoIfUnreferenced(
+          photo_after,
+          allLeaks,
+          deletePhoto,
+        ).catch(() => {});
       }
       reportSaveError();
     }
@@ -290,21 +302,28 @@ export function useLeakDetailsPersistence({
         { photo_repair, materials_equipment, note },
         { user: historyUser },
       );
+      const nextData = replaceLeakInCollection(allLeaks, next);
       await onSave(next);
       setRepairOpen(false);
       if (leak.photo_repair && leak.photo_repair !== photo_repair) {
         await deletePhotoIfUnreferenced(
           leak.photo_repair,
-          next,
+          nextData,
           deletePhoto,
         ).catch(() => {});
       }
-      await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-        () => {},
-      );
+      await deletePhotoIfUnreferenced(
+        orphanedPhoto,
+        nextData,
+        deletePhoto,
+      ).catch(() => {});
     } catch {
       if (photo_repair && photo_repair !== leak.photo_repair) {
-        await deletePhoto(photo_repair).catch(() => {});
+        await deletePhotoIfUnreferenced(
+          photo_repair,
+          allLeaks,
+          deletePhoto,
+        ).catch(() => {});
       }
       reportSaveError();
     }
@@ -313,13 +332,16 @@ export function useLeakDetailsPersistence({
   const handleReopenConfirm = async (draft) => {
     if (!requireHistoryUser()) return;
     const next = buildReopenedLeak({ leak, draft, vars, user: historyUser });
+    const nextData = replaceLeakInCollection(allLeaks, next);
     const orphanedPhoto = getOrphanedOriginalPhoto(leak);
     try {
       await onSave(next, { optimistic: false });
       setReopenOpen(false);
-      await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-        () => {},
-      );
+      await deletePhotoIfUnreferenced(
+        orphanedPhoto,
+        nextData,
+        deletePhoto,
+      ).catch(() => {});
     } catch {
       reportSaveError();
     }

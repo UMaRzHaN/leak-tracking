@@ -18,6 +18,7 @@ import s from "./LeakDetailsSheet.module.scss";
 
 export default function LeakDetailsSheet({
   leak,
+  allLeaks,
   onClose,
   onSave,
   onDelete,
@@ -82,7 +83,14 @@ export default function LeakDetailsSheet({
     choosePhotoAfter,
     changePhotoRepair,
     choosePhotoRepair,
-  } = useLeakDetailsSheet({ leak, onClose, onSave, onDelete, userProfile });
+  } = useLeakDetailsSheet({
+    leak,
+    allLeaks,
+    onClose,
+    onSave,
+    onDelete,
+    userProfile,
+  });
   const heroSrc = usePhotoSrc(getLeakDetailsHeroPhotoPath(leak)) || src;
   const dialogRef = useModalDialog({
     onClose: handleClose,

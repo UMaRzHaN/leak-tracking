@@ -155,6 +155,13 @@ const MONITORING_HEADER_ALIASES = {
   materials_equipment: ["мтр", "materials", "материалы"],
   comment: ["комментарий", "comment"],
   photo: ["фото мониторинга", "monitoring photo", "photo"],
+  previousPhoto: [
+    "предыдущее фото",
+    "фото до обхода",
+    "previous photo",
+    "photo before round",
+    "previousPhoto",
+  ],
 };
 
 const HISTORY_HEADER_ALIASES = {

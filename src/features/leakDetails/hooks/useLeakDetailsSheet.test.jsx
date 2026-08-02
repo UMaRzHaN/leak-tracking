@@ -85,6 +85,7 @@ const leak = {
 function renderDetails(overrides = {}) {
   const props = {
     leak,
+    allLeaks: [leak],
     onClose: vi.fn(),
     onSave: vi.fn().mockResolvedValue(undefined),
     onDelete: vi.fn(),
@@ -135,6 +136,22 @@ describe("useLeakDetailsSheet", () => {
     });
     expect(order).toEqual(["saved", "deleted"]);
     expect(mocks.deletePhoto).toHaveBeenCalledWith("idb://old-before");
+  });
+
+  it("does not delete a replaced photo shared by another leak", async () => {
+    const sharedLeak = {
+      id: "leak-2",
+      leak_id: "TAG-2",
+      photo_after: "idb://old-before",
+    };
+    const { result } = renderDetails({ allLeaks: [leak, sharedLeak] });
+
+    await waitFor(() =>
+      expect(result.current.localEdit.component).toBe("Old valve"),
+    );
+    await act(() => result.current.handleSave());
+
+    expect(mocks.deletePhoto).not.toHaveBeenCalledWith("idb://old-before");
   });
 
   it("removes only the uncommitted replacement when persistence fails", async () => {
@@ -199,6 +216,28 @@ describe("useLeakDetailsSheet", () => {
     expect(result.current.mode).toBe(MODE.VIEW);
   });
 
+  it("keeps a failed resolution photo that is already referenced elsewhere", async () => {
+    const onSave = vi.fn().mockRejectedValue(new Error("database failed"));
+    const sharedLeak = {
+      id: "leak-2",
+      monitoringRecords: [{ previousPhoto: "idb://new-after" }],
+    };
+    const { result } = renderDetails({
+      onSave,
+      allLeaks: [leak, sharedLeak],
+    });
+
+    await act(() =>
+      result.current.handleResolveConfirm({
+        photo_after: "idb://new-after",
+        materials_equipment: "Seal replaced",
+        note: "Resolved",
+      }),
+    );
+
+    expect(mocks.deletePhoto).not.toHaveBeenCalledWith("idb://new-after");
+  });
+
   it("rejects invalid coordinates before writing photos or project data", async () => {
     const { result, props } = renderDetails();
 
@@ -213,6 +252,26 @@ describe("useLeakDetailsSheet", () => {
     expect(result.current.notification.message).toContain(
       "Latitude 91 is outside the allowed range",
     );
+  });
+
+  it("keeps a superseded after-photo shared by another leak", async () => {
+    mocks.photoDirty = false;
+    const activeLeak = { ...leak, status: "in_progress" };
+    const sharedLeak = { id: "leak-2", photo: "idb://old-after" };
+    const { result } = renderDetails({
+      leak: activeLeak,
+      allLeaks: [activeLeak, sharedLeak],
+    });
+
+    await act(() =>
+      result.current.handleResolveConfirm({
+        photo_after: "idb://new-after",
+        materials_equipment: "Seal replaced",
+        note: "Resolved",
+      }),
+    );
+
+    expect(mocks.deletePhoto).not.toHaveBeenCalledWith("idb://old-after");
   });
 
   it("commits a resolution before removing the superseded after-photo", async () => {

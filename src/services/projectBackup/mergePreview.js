@@ -1,4 +1,4 @@
-import { MONITORING_PHOTO_KEY, PHOTO_KEYS } from "./constants";
+import { MONITORING_PHOTO_KEYS, PHOTO_KEYS } from "./constants";
 import {
   getChangedFieldKeys,
   getLeakIdentity,
@@ -18,9 +18,13 @@ function countImportableArchivePhotos(leak) {
     hasImportablePhoto(leak, key),
   ).length;
   const monitoringPhotos = Array.isArray(leak?.monitoringRecords)
-    ? leak.monitoringRecords.filter((record) =>
-        hasImportablePhoto(record, MONITORING_PHOTO_KEY),
-      ).length
+    ? leak.monitoringRecords.reduce(
+        (count, record) =>
+          count +
+          MONITORING_PHOTO_KEYS.filter((key) => hasImportablePhoto(record, key))
+            .length,
+        0,
+      )
     : 0;
 
   return mainPhotos + monitoringPhotos;
@@ -58,7 +62,9 @@ function getArchivePhotoMergeStats(current, incoming, applies) {
     const existingRecord =
       (record?.id != null ? currentById.get(String(record.id)) : null) ??
       currentMonitoring[index];
-    classify(record?.photo, existingRecord?.photo);
+    for (const key of MONITORING_PHOTO_KEYS) {
+      classify(record?.[key], existingRecord?.[key]);
+    }
   }
 
   return stats;

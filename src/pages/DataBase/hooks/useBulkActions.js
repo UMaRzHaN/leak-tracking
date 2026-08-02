@@ -259,7 +259,9 @@ export function useBulkActions({
         }
       } catch (err) {
         if (photo_after && photo_after !== leak.photo_after) {
-          await deletePhoto(photo_after).catch(() => {});
+          await deletePhotoIfUnreferenced(photo_after, data, deletePhoto).catch(
+            () => {},
+          );
         }
         notify(
           "error",
@@ -333,7 +335,11 @@ export function useBulkActions({
         );
       } catch (err) {
         if (photo_repair && photo_repair !== leak.photo_repair) {
-          await deletePhoto(photo_repair).catch(() => {});
+          await deletePhotoIfUnreferenced(
+            photo_repair,
+            data,
+            deletePhoto,
+          ).catch(() => {});
         }
         notify(
           "error",

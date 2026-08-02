@@ -272,6 +272,7 @@ describe("PhotoRepository on web", () => {
       "photo_project_after",
       "photo_project_repair",
       "photo_project_monitoring",
+      "photo_project_monitoring_before",
       "photo_project_orphan",
       "photo_other_orphan",
     ]);
@@ -280,7 +281,13 @@ describe("PhotoRepository on web", () => {
         photo: "idb://photo_project_original",
         photo_after: "idb://photo_project_after",
         photo_repair: "idb://photo_project_repair",
-        monitoringRecords: [{ photo: "idb://photo_project_monitoring" }, null],
+        monitoringRecords: [
+          {
+            photo: "idb://photo_project_monitoring",
+            previousPhoto: "idb://photo_project_monitoring_before",
+          },
+          null,
+        ],
       },
     ];
 

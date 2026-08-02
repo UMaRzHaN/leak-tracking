@@ -26,7 +26,11 @@ describe("backupSchema leak validation", () => {
         photo: "zip:photos/one/before.jpg",
         photo_after: "data:image/jpeg;base64,AA==",
         monitoringRecords: [
-          { id: "m1", photo: "zip:photos/one/monitoring_m1.jpg" },
+          {
+            id: "m1",
+            photo: "zip:photos/one/monitoring_m1.jpg",
+            previousPhoto: "zip:photos/one/monitoring_m1_previous.jpg",
+          },
         ],
       },
       {
@@ -50,6 +54,23 @@ describe("backupSchema leak validation", () => {
 
     expect(result.ok).toBe(false);
     expect(result.error).toContain("photo");
+  });
+
+  it("validates previous monitoring photo paths", () => {
+    const result = validateBackup([
+      {
+        id: "unsafe-previous-monitoring-photo",
+        monitoringRecords: [
+          {
+            id: "m1",
+            previousPhoto: "data://LeakReports/Victim/data/data.json",
+          },
+        ],
+      },
+    ]);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("previousPhoto");
   });
 
   it("validates monitoring photo paths", () => {

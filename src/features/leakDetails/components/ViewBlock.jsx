@@ -59,6 +59,7 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
         materials: lang === "ru" ? "МТР" : "Materials and equipment",
         comment: lang === "ru" ? "Комментарий" : "Comment",
         photo: lang === "ru" ? "Фото обхода" : "Round photo",
+        previousPhoto: lang === "ru" ? "Фото до обхода" : "Photo before round",
       },
 
       empty: {

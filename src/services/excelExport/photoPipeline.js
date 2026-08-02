@@ -6,8 +6,12 @@ import {
 import { getPhotoSrc } from "@/hooks/photoService";
 import { blobToDataUri } from "@/utils/photoConversion";
 import { getMonitoringRecords } from "@/utils/monitoring";
+import {
+  LEAK_PHOTO_FIELDS,
+  MONITORING_PHOTO_FIELDS,
+} from "@/utils/photoFields";
 
-export const PHOTO_KEYS = ["photo", "photo_after", "photo_repair"];
+export const PHOTO_KEYS = LEAK_PHOTO_FIELDS;
 
 const EXPORT_YIELD_EVERY = 40;
 const PHOTO_READ_CONCURRENCY = 4;
@@ -91,7 +95,13 @@ function getLeakPhotoIdentity(leak, leakIndex, photoKey) {
   return `${leakIdentity}:field:${photoKey}`;
 }
 
-function getMonitoringPhotoIdentity(leak, leakIndex, record, recordIndex) {
+function getMonitoringPhotoIdentity(
+  leak,
+  leakIndex,
+  record,
+  recordIndex,
+  photoKey,
+) {
   const leakIdentity =
     leak?.id != null && String(leak.id).trim()
       ? `id:${String(leak.id)}`
@@ -100,7 +110,15 @@ function getMonitoringPhotoIdentity(leak, leakIndex, record, recordIndex) {
     record?.id != null && String(record.id).trim()
       ? `id:${String(record.id)}`
       : `index:${recordIndex}`;
-  return `${leakIdentity}:monitoring:${recordIdentity}`;
+  const baseIdentity = `${leakIdentity}:monitoring:${recordIdentity}`;
+  return photoKey === "photo"
+    ? baseIdentity
+    : `${baseIdentity}:field:${photoKey}`;
+}
+
+function getMonitoringPhotoMapKey(leakIndex, recordIndex, photoKey) {
+  const baseKey = `monitoring:${leakIndex}:${recordIndex}`;
+  return photoKey === "photo" ? baseKey : `${baseKey}:${photoKey}`;
 }
 
 export async function buildLeakPhotoEntries(
@@ -154,30 +172,49 @@ export async function buildMonitoringPhotoEntries(
     const records = getMonitoringRecords(leak);
 
     for (const [recordIndex, record] of records.entries()) {
-      const mapKey = `monitoring:${leakIndex}:${recordIndex}`;
-      if (includedPhotoKeys && !includedPhotoKeys.has(mapKey)) continue;
-      if (!record.photo) continue;
-
-      candidates.push({
-        path: record.photo,
-        mapKey,
-        logicalKey: getMonitoringPhotoIdentity(
-          leak,
+      const baseMapKey = getMonitoringPhotoMapKey(
+        leakIndex,
+        recordIndex,
+        "photo",
+      );
+      for (const photoKey of MONITORING_PHOTO_FIELDS) {
+        const mapKey = getMonitoringPhotoMapKey(
           leakIndex,
-          record,
           recordIndex,
-        ),
-        buildArchivePath: (extension) => {
-          const backupPath = buildMonitoringPhotoArchivePath(
-            leakSegment,
+          photoKey,
+        );
+        if (
+          includedPhotoKeys &&
+          !includedPhotoKeys.has(baseMapKey) &&
+          !includedPhotoKeys.has(mapKey)
+        ) {
+          continue;
+        }
+        if (!record?.[photoKey]) continue;
+
+        candidates.push({
+          path: record[photoKey],
+          mapKey,
+          logicalKey: getMonitoringPhotoIdentity(
+            leak,
+            leakIndex,
+            record,
             recordIndex,
-            extension,
-          );
-          return archiveRoot === "photos"
-            ? backupPath
-            : `${archiveRoot}/${backupPath.slice("photos/".length)}`;
-        },
-      });
+            photoKey,
+          ),
+          buildArchivePath: (extension) => {
+            const backupPath = buildMonitoringPhotoArchivePath(
+              leakSegment,
+              recordIndex,
+              extension,
+              photoKey,
+            );
+            return archiveRoot === "photos"
+              ? backupPath
+              : `${archiveRoot}/${backupPath.slice("photos/".length)}`;
+          },
+        });
+      }
     }
   }
 
@@ -208,20 +245,24 @@ export function buildPortableLeaks(leaks, photoMap) {
     if (Array.isArray(copy.monitoringRecords)) {
       copy.monitoringRecords = copy.monitoringRecords.map(
         (record, recordIndex) => {
-          const photoFileName =
-            photoMap[`monitoring:${leakIndex}:${recordIndex}`];
-          if (photoFileName) {
-            return { ...record, photo: `zip:${photoFileName}` };
+          const recordCopy = { ...record };
+          for (const photoKey of MONITORING_PHOTO_FIELDS) {
+            const photoFileName =
+              photoMap[
+                getMonitoringPhotoMapKey(leakIndex, recordIndex, photoKey)
+              ];
+            if (photoFileName) {
+              recordCopy[photoKey] = `zip:${photoFileName}`;
+              continue;
+            }
+            if (
+              record?.[photoKey] != null &&
+              !String(record[photoKey]).startsWith("data:image/")
+            ) {
+              delete recordCopy[photoKey];
+            }
           }
-          if (
-            record?.photo == null ||
-            String(record.photo).startsWith("data:image/")
-          ) {
-            return record;
-          }
-          const sanitizedRecord = { ...record };
-          delete sanitizedRecord.photo;
-          return sanitizedRecord;
+          return recordCopy;
         },
       );
     }

@@ -405,7 +405,9 @@ export function useMonitoringPage({
       await setData(updated, reopenDraft ? { optimistic: false } : undefined);
     } catch (error) {
       if (photoPath) {
-        await deletePhoto(photoPath).catch(() => {});
+        await deletePhotoIfUnreferenced(photoPath, data, deletePhoto).catch(
+          () => {},
+        );
       }
       throw error;
     }
@@ -642,7 +644,9 @@ export function useMonitoringPage({
       }
     } catch (error) {
       if (photo_after && photo_after !== leak.photo_after) {
-        deletePhoto(photo_after).catch(() => {});
+        deletePhotoIfUnreferenced(photo_after, data, deletePhoto).catch(
+          () => {},
+        );
       }
       throw error;
     }
@@ -682,7 +686,9 @@ export function useMonitoringPage({
       );
     } catch (error) {
       if (photo_repair && photo_repair !== leak.photo_repair) {
-        deletePhoto(photo_repair).catch(() => {});
+        deletePhotoIfUnreferenced(photo_repair, data, deletePhoto).catch(
+          () => {},
+        );
       }
       throw error;
     }

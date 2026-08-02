@@ -233,6 +233,7 @@ describe("projectBackupService legacy imports", () => {
           id: "round-1",
           date: "2026-07-14T09:00:00.000Z",
           photo: tinyPng,
+          previousPhoto: tinyPng,
           result: "still_leaking",
         },
       ],
@@ -249,9 +250,15 @@ describe("projectBackupService legacy imports", () => {
 
     const result = await importBackupZip(blob, savePhoto);
 
-    expect(savePhoto).toHaveBeenCalledTimes(1);
+    expect(savePhoto).toHaveBeenCalledTimes(2);
     expect(savePhoto.mock.calls[0][1]).toBe("1001_monitoring_round-1");
+    expect(savePhoto.mock.calls[1][1]).toBe(
+      "1001_monitoring_round-1_previousPhoto",
+    );
     expect(result.leaks[0].monitoringRecords[0].photo).toBe(
+      "idb://photo_project_1001_monitoring_round-1_100",
+    );
+    expect(result.leaks[0].monitoringRecords[0].previousPhoto).toBe(
       "idb://photo_project_1001_monitoring_round-1_100",
     );
   });

@@ -20,6 +20,7 @@ const ReopenLeakModal = lazy(
 
 export default function MonitoringDialogs({
   activeLeak,
+  allLeaks,
   drafts,
   hasMonitoringRound,
   isSaving,
@@ -113,6 +114,7 @@ export default function MonitoringDialogs({
         {activeLeak && (
           <LeakDetailsSheet
             leak={activeLeak}
+            allLeaks={allLeaks}
             onClose={onCloseActiveLeak}
             onSave={onSaveLeak}
             onDelete={onDeleteLeak}

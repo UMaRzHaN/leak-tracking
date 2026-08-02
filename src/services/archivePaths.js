@@ -145,8 +145,10 @@ export function buildMonitoringPhotoArchivePath(
   leakSegment,
   recordIndex,
   extension,
+  photoKey = "photo",
 ) {
-  return `photos/${leakSegment}/monitoring/record-${recordIndex + 1}.${normalizeImageExtension(extension)}`;
+  const suffix = photoKey === "photo" ? "" : `-${photoKey}`;
+  return `photos/${leakSegment}/monitoring/record-${recordIndex + 1}${suffix}.${normalizeImageExtension(extension)}`;
 }
 
 export function getImageMimeTypeFromExtension(extension) {

@@ -170,6 +170,7 @@ export default function MainPage({
         {activeLeak && (
           <LeakDetailsSheet
             leak={activeLeak}
+            allLeaks={data}
             onClose={() => setActiveLeak(null)}
             onSave={handleSaveLeak}
             onDelete={handleDeleteLeak}

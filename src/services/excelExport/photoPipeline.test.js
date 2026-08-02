@@ -25,6 +25,7 @@ describe("Excel export photo pipeline", () => {
             id: "record-2",
             date: "2026-08-02T10:00:00.000Z",
             photo: PNG_DATA_URI,
+            previousPhoto: PNG_DATA_URI,
           },
         ],
       },
@@ -55,6 +56,11 @@ describe("Excel export photo pipeline", () => {
         mapKey: "monitoring:0:1",
         logicalKey: "id:7:monitoring:id:record-2",
         photoFileName: "photos/TAG-7/monitoring/record-2.png",
+      }),
+      expect.objectContaining({
+        mapKey: "monitoring:0:1:previousPhoto",
+        logicalKey: "id:7:monitoring:id:record-2:field:previousPhoto",
+        photoFileName: "photos/TAG-7/monitoring/record-2-previousPhoto.png",
       }),
     ]);
   });
@@ -93,7 +99,11 @@ describe("Excel export photo pipeline", () => {
         photo_after: "idb://missing",
         photo_repair: dataPhoto,
         monitoringRecords: [
-          { id: "m1", photo: "data://missing" },
+          {
+            id: "m1",
+            photo: "data://missing",
+            previousPhoto: "data://previous",
+          },
           { id: "m2", photo: dataPhoto },
           { id: "m3" },
         ],
@@ -105,6 +115,10 @@ describe("Excel export photo pipeline", () => {
         mapKey: "monitoring:0:0",
         photoFileName: "photos/TAG-1/monitoring/record-1.jpg",
       },
+      {
+        mapKey: "monitoring:0:0:previousPhoto",
+        photoFileName: "photos/TAG-1/monitoring/record-1-previousPhoto.jpg",
+      },
     ]);
 
     const [portable] = buildPortableLeaks(leaks, photoMap);
@@ -114,6 +128,9 @@ describe("Excel export photo pipeline", () => {
     expect(portable.photo_repair).toBe(dataPhoto);
     expect(portable.monitoringRecords[0].photo).toBe(
       "zip:photos/TAG-1/monitoring/record-1.jpg",
+    );
+    expect(portable.monitoringRecords[0].previousPhoto).toBe(
+      "zip:photos/TAG-1/monitoring/record-1-previousPhoto.jpg",
     );
     expect(portable.monitoringRecords[1].photo).toBe(dataPhoto);
     expect(portable.monitoringRecords[2]).not.toHaveProperty("photo");

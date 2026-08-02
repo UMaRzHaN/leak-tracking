@@ -9,7 +9,7 @@ import {
   verifyArchiveLimits,
 } from "@/utils/importLimits";
 import {
-  MONITORING_PHOTO_KEY,
+  MONITORING_PHOTO_KEYS,
   PHOTO_KEYS,
   RECOVERY_RECORDS_FILE,
   TYPE_SIGNATURES,
@@ -43,7 +43,7 @@ function assertArchivePhotoReferences(leaks, zip) {
     for (const key of PHOTO_KEYS) assertPhoto(leak?.[key]);
     if (Array.isArray(leak?.monitoringRecords)) {
       for (const record of leak.monitoringRecords) {
-        assertPhoto(record?.[MONITORING_PHOTO_KEY]);
+        for (const key of MONITORING_PHOTO_KEYS) assertPhoto(record?.[key]);
       }
     }
   }

@@ -1,5 +1,6 @@
 package com.leak.tracking;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.LinkAddress;
@@ -754,6 +755,10 @@ public class LocalSyncPlugin extends Plugin {
         }
     }
 
+    // This trust manager intentionally accepts only the certificate fingerprint
+    // confirmed out-of-band by the local-sync protocol. It does not disable TLS
+    // validation; it replaces CA validation with explicit certificate pinning.
+    @SuppressLint("CustomX509TrustManager")
     private Socket connectPinnedTls(String host, int port, String fingerprint) throws Exception {
         final byte[] expectedFingerprint = hexToBytes(fingerprint);
         X509TrustManager trustManager = new X509TrustManager() {

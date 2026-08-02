@@ -1,12 +1,21 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  getPhotoSrc: vi.fn(async () => "data:image/jpeg;base64,ok"),
+}));
 
 vi.mock("@/hooks/photoService", () => ({
-  getPhotoSrc: vi.fn(async () => "data:image/jpeg;base64,ok"),
+  getPhotoSrc: mocks.getPhotoSrc,
 }));
 
 const { analyzeProjectIntegrity } = await import("./projectIntegrityService");
 
 describe("analyzeProjectIntegrity", () => {
+  beforeEach(() => {
+    mocks.getPhotoSrc.mockReset();
+    mocks.getPhotoSrc.mockResolvedValue("data:image/jpeg;base64,ok");
+  });
+
   it("reports required status and monitoring photos", async () => {
     const report = await analyzeProjectIntegrity([
       {
@@ -34,6 +43,38 @@ describe("analyzeProjectIntegrity", () => {
     expect(report.missingMonitoringPhoto).toEqual([
       "1001:monitoringRecords[0]",
     ]);
+  });
+
+  it("reports a broken previous monitoring photo reference", async () => {
+    mocks.getPhotoSrc.mockImplementation(async (path) =>
+      path === "file://missing-before.jpg" ? null : "data:image/jpeg;base64,ok",
+    );
+
+    const report = await analyzeProjectIntegrity(
+      [
+        {
+          id: 1,
+          leak_id: "1001",
+          status: "open",
+          photo: "file://current.jpg",
+          lat: 41,
+          lng: 69,
+          monitoringRecords: [
+            {
+              date: "2026-07-14T00:00:00.000Z",
+              photo: "file://monitoring.jpg",
+              previousPhoto: "file://missing-before.jpg",
+            },
+          ],
+        },
+      ],
+      { monitoringPhotoRequired: false },
+    );
+
+    expect(report.brokenPhoto).toEqual([
+      "1001:monitoringRecords[0].previousPhoto",
+    ]);
+    expect(report.ok).toBe(false);
   });
 
   it("does not report a missing monitoring photo when it is optional", async () => {

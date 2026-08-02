@@ -163,6 +163,9 @@ function mergeMonitoringRecord(current, incoming) {
   if (!isEmptyMergeValue(incoming?.photo)) {
     next.photo = incoming.photo;
   }
+  if (!isEmptyMergeValue(incoming?.previousPhoto)) {
+    next.previousPhoto = incoming.previousPhoto;
+  }
 
   next.id = current?.id ?? incoming?.id;
   return next;
@@ -282,6 +285,7 @@ const SYNC_CONFLICT_IGNORED_KEYS = new Set([
   "photo",
   "photo_after",
   "photo_repair",
+  "previousPhoto",
 ]);
 
 function normalizeSyncConflictValue(value) {

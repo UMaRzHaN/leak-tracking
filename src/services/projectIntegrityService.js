@@ -1,14 +1,18 @@
 import { getPhotoSrc } from "@/hooks/photoService";
 import { normalizeLeakTag } from "@/utils/leakIdentity";
 import { hasValidCoordinates } from "@/utils/coordinates";
-
-const PHOTO_FIELDS = ["photo", "photo_after", "photo_repair"];
+import {
+  LEAK_PHOTO_FIELDS,
+  MONITORING_PHOTO_FIELDS,
+} from "@/utils/photoFields";
 
 function getLeakPhotoRefs(leak) {
-  const refs = PHOTO_FIELDS.map((field) => [field, leak?.[field]]);
+  const refs = LEAK_PHOTO_FIELDS.map((field) => [field, leak?.[field]]);
   if (Array.isArray(leak?.monitoringRecords)) {
     leak.monitoringRecords.forEach((record, index) => {
-      refs.push([`monitoringRecords[${index}].photo`, record?.photo]);
+      MONITORING_PHOTO_FIELDS.forEach((field) => {
+        refs.push([`monitoringRecords[${index}].${field}`, record?.[field]]);
+      });
     });
   }
   return refs;
