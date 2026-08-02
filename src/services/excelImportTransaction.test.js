@@ -260,4 +260,85 @@ describe("runExcelImportTransaction", () => {
       ),
     ).toMatchObject({ phase: "committing" });
   });
+
+  it("returns no warning for non-object and ordinary results", () => {
+    expect(getExcelImportTransactionWarning(null)).toBeNull();
+    expect(getExcelImportTransactionWarning("not-an-object")).toBeNull();
+    expect(getExcelImportTransactionWarning([])).toBeNull();
+  });
+
+  it("handles a photo persistence failure without created paths or a delete callback", async () => {
+    const error = new Error("photo failed before persistence");
+
+    await expect(
+      runExcelImportTransaction({
+        projectId: "early-photo-failure",
+        persistPhotos: vi.fn().mockRejectedValue(error),
+        commit: vi.fn(),
+        rollbackState: vi.fn(),
+      }),
+    ).rejects.toBe(error);
+
+    expect(error.photoRollbackErrors).toBeUndefined();
+  });
+
+  it("records rejected photo deletions during rollback", async () => {
+    const error = Object.assign(new Error("photo failed"), {
+      createdPhotoPaths: ["idb://duplicate", "idb://duplicate"],
+    });
+    const deleteError = new Error("delete failed");
+    const deletePhoto = vi.fn().mockRejectedValue(deleteError);
+
+    await expect(
+      runExcelImportTransaction({
+        projectId: "delete-failure",
+        persistPhotos: vi.fn().mockRejectedValue(error),
+        commit: vi.fn(),
+        rollbackState: vi.fn(),
+        deletePhoto,
+      }),
+    ).rejects.toBe(error);
+
+    expect(deletePhoto).toHaveBeenCalledOnce();
+    expect(error.photoRollbackErrors).toEqual([
+      expect.objectContaining({ status: "rejected", reason: deleteError }),
+    ]);
+  });
+
+  it("supports a successful photo transaction without a createdPaths array", async () => {
+    const leaks = [{ id: 1 }];
+
+    await expect(
+      runExcelImportTransaction({
+        projectId: "no-created-paths",
+        persistPhotos: vi.fn().mockResolvedValue({ leaks }),
+        commit: vi.fn().mockResolvedValue(undefined),
+        rollbackState: vi.fn(),
+        deletePhoto: vi.fn(),
+      }),
+    ).resolves.toBe(leaks);
+  });
+
+  it("preserves the original commit error when rollback journal completion fails", async () => {
+    const completionError = new DOMException("blocked", "SecurityError");
+    vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+      throw completionError;
+    });
+    const rootError = new Error("commit failed");
+
+    await expect(
+      runExcelImportTransaction({
+        projectId: "rollback-completion-failure",
+        persistPhotos: vi.fn().mockResolvedValue({
+          leaks: [{ id: 1 }],
+          createdPaths: ["idb://new"],
+        }),
+        commit: vi.fn().mockRejectedValue(rootError),
+        rollbackState: vi.fn().mockResolvedValue(undefined),
+        deletePhoto: vi.fn().mockResolvedValue(true),
+      }),
+    ).rejects.toBe(rootError);
+
+    expect(rootError.journalCompletionError).toBe(completionError);
+  });
 });

@@ -58,6 +58,20 @@ describe("PhotoRepository on Android", () => {
     });
   });
 
+  it("retries folder preparation after a mkdir failure", async () => {
+    const error = new Error("mkdir failed");
+    mocks.mkdir.mockRejectedValueOnce(error).mockResolvedValueOnce(undefined);
+
+    await expect(
+      PhotoRepository.prepare({ folderName: "native_prepare_retry" }),
+    ).rejects.toBe(error);
+    await expect(
+      PhotoRepository.prepare({ folderName: "native_prepare_retry" }),
+    ).resolves.toBeUndefined();
+
+    expect(mocks.mkdir).toHaveBeenCalledTimes(2);
+  });
+
   it("writes a photo and removes stale versions except excluded files", async () => {
     vi.spyOn(Date, "now").mockReturnValue(700);
     mocks.readdir.mockResolvedValue({
