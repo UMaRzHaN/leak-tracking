@@ -7,11 +7,11 @@ import {
   isZipFile,
   persistExcelImportPhotos,
   reconcileExcelImportPhotos,
-} from "@/services/excelImport/photoPipeline";
+} from "@/services/import/photoPipeline";
 import {
   attachHistoryRecords,
   attachMonitoringRecords,
-} from "@/services/excelImport/recordMerge";
+} from "@/services/import/recordMerge";
 import {
   buildHeaderMap,
   findHeaderRow,
@@ -20,8 +20,8 @@ import {
   findMonitoringSheet,
   getCellDisplayValue,
   getCellPhotoValue,
-} from "@/services/excelImport/workbookSchema";
-import { parseEmbeddedBackup } from "@/services/excelImport/embeddedBackup";
+} from "@/services/import/workbookSchema";
+import { parseEmbeddedBackup } from "@/services/import/embeddedBackup";
 import {
   isRecognizedStatus,
   isValidPhotoPath,
@@ -29,13 +29,13 @@ import {
   normalizeCellValue,
   normalizeImportedLeak,
   parseNumberValue,
-} from "@/services/excelImport/valueNormalization";
+} from "@/services/import/valueNormalization";
 import { normalizeLeakTag } from "@/utils/leakIdentity";
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import {
   parseHistoryRecords,
   parseMonitoringRecords,
-} from "@/services/excelImport/sheetRecordParsers";
+} from "@/services/import/sheetRecordParsers";
 import {
   assertImportFileSize,
   preflightZipFile,

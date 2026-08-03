@@ -378,7 +378,7 @@ export default defineConfig(({ mode }) => {
             functions: 66,
             lines: 91,
           },
-          "src/services/excelImportTransaction.js": {
+          "src/services/import/excelImportTransaction.js": {
             statements: 100,
             branches: 82,
             functions: 100,

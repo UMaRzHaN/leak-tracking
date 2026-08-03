@@ -2,7 +2,7 @@ import {
   beginImportOperation,
   completeImportOperation,
   updateImportOperation,
-} from "@/services/importOperationJournal";
+} from "@/services/import/importOperationJournal";
 
 const transactionWarnings = new WeakMap();
 
