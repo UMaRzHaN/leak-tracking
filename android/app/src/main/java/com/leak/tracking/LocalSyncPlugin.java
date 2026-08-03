@@ -168,7 +168,7 @@ public class LocalSyncPlugin extends Plugin {
             result.put("preparedArchiveTtlMs", PREPARED_ARCHIVE_TTL_MS);
             call.resolve(result);
         } catch (Exception error) {
-            call.reject(readableMessage(error), error);
+            call.reject(readableMessage(error), LocalSyncException.codeOf(error), error);
         }
     }
 
@@ -201,7 +201,7 @@ public class LocalSyncPlugin extends Plugin {
                         PREPARED_ARCHIVE_TTL_MS
                     )
                 ) {
-                    throw new Exception("Archive token has expired");
+                    throw new LocalSyncException(LocalSyncFailure.SESSION_EXPIRED, "Archive token has expired");
                 }
                 if (chunk.length > MAX_ARCHIVE_CHUNK_BYTES) {
                     throw new Exception("Archive chunk is too large");
@@ -227,7 +227,7 @@ public class LocalSyncPlugin extends Plugin {
             call.resolve(result);
         } catch (Exception error) {
             discardPreparedArchive(token);
-            call.reject(readableMessage(error), error);
+            call.reject(readableMessage(error), LocalSyncException.codeOf(error), error);
         }
     }
 
@@ -336,7 +336,7 @@ public class LocalSyncPlugin extends Plugin {
             }
             preparedArchive.delete();
             stopHostInternal();
-            call.reject(readableMessage(error), error);
+            call.reject(readableMessage(error), LocalSyncException.codeOf(error), error);
         }
     }
 
@@ -418,7 +418,7 @@ public class LocalSyncPlugin extends Plugin {
                     JSObject result = archiveResult(received);
                     call.resolve(result);
                 } catch (Exception error) {
-                    call.reject(readableMessage(error), error);
+                    call.reject(readableMessage(error), LocalSyncException.codeOf(error), error);
                 } finally {
                     synchronized (archiveLock) {
                         activeArchives.remove(outgoing);
@@ -463,7 +463,7 @@ public class LocalSyncPlugin extends Plugin {
                     JSObject result = archiveResult(received);
                     call.resolve(result);
                 } catch (Exception error) {
-                    call.reject(readableMessage(error), error);
+                    call.reject(readableMessage(error), LocalSyncException.codeOf(error), error);
                 } finally {
                     outboundTransfers.release();
                 }
@@ -596,7 +596,7 @@ public class LocalSyncPlugin extends Plugin {
             }
             if (!MAGIC.equals(magic)) {
                 connectionGuard.registerPreAuthFailure(peerKey);
-                rejectPeer(output, "Несовместимая версия приложения на втором телефоне");
+                rejectPeer(output, LocalSyncFailure.INCOMPATIBLE_VERSION, "Несовместимая версия приложения на втором телефоне");
                 return ClientOutcome.CONTINUE;
             }
             String code = input.readUTF();
@@ -607,17 +607,17 @@ public class LocalSyncPlugin extends Plugin {
             String expectedSessionId = hostSessionId;
             File outgoing = hostedArchive;
             if (isHostSessionExpired()) {
-                rejectPeer(output, "Срок действия QR-кода истёк");
+                rejectPeer(output, LocalSyncFailure.SESSION_EXPIRED, "Срок действия QR-кода истёк");
                 return ClientOutcome.CONTINUE;
             }
             if (expectedCode == null || expectedProjectKey == null || expectedSyncId == null || expectedSessionId == null || outgoing == null) {
-                rejectPeer(output, "Сеанс синхронизации уже остановлен");
+                rejectPeer(output, LocalSyncFailure.SESSION_STOPPED, "Сеанс синхронизации уже остановлен");
                 return ClientOutcome.CONTINUE;
             }
             if (!SyncSecurity.secretsEqual(expectedCode, code)) {
                 boolean shouldStop = registerFailedAuthAttempt();
                 connectionGuard.registerPreAuthFailure(peerKey);
-                rejectPeer(output, "Неверный код подключения");
+                rejectPeer(output, LocalSyncFailure.INVALID_CODE, "Неверный код подключения");
                 return shouldStop ? ClientOutcome.STOP : ClientOutcome.CONTINUE;
             }
             connectionDeadline.markAuthenticated();
@@ -630,35 +630,35 @@ public class LocalSyncPlugin extends Plugin {
             long archiveSize = input.readLong();
             String expectedHash = input.readUTF();
             if (!expectedSyncId.equals(syncId)) {
-                rejectPeer(output, "Проекты имеют разное происхождение и не могут быть объединены");
+                rejectPeer(output, LocalSyncFailure.DIFFERENT_ORIGIN, "Проекты имеют разное происхождение и не могут быть объединены");
                 return ClientOutcome.CONTINUE;
             }
             if (!expectedSessionId.equals(sessionId)) {
-                rejectPeer(output, "QR-код относится к завершённому сеансу");
+                rejectPeer(output, LocalSyncFailure.WRONG_SESSION, "QR-код относится к завершённому сеансу");
                 return ClientOutcome.CONTINUE;
             }
             try {
                 assertArchiveSize(archiveSize);
             } catch (Exception error) {
-                rejectPeer(output, readableMessage(error));
+                rejectPeer(output, LocalSyncException.codeOf(error), readableMessage(error));
                 return ClientOutcome.CONTINUE;
             }
 
             if (!claimExchangeSession(outgoing)) {
-                rejectPeer(output, "Сеанс синхронизации уже используется другим устройством");
+                rejectPeer(output, LocalSyncFailure.SESSION_BUSY, "Сеанс синхронизации уже используется другим устройством");
                 return ClientOutcome.CONTINUE;
             }
 
             boolean completed = false;
             try {
                 if (!requestPeerApproval("sync", peerKey, expectedSessionId)) {
-                    rejectPeer(output, "Передача не подтверждена на первом устройстве");
+                    rejectPeer(output, LocalSyncFailure.NOT_CONFIRMED, "Передача не подтверждена на первом устройстве");
                     return ClientOutcome.CONTINUE;
                 }
                 try {
                     reserveTemporaryArchiveBytes(archiveSize);
                 } catch (Exception error) {
-                    rejectPeer(output, readableMessage(error));
+                    rejectPeer(output, LocalSyncException.codeOf(error), readableMessage(error));
                     return ClientOutcome.CONTINUE;
                 }
                 boolean reservationPending = true;
@@ -678,7 +678,7 @@ public class LocalSyncPlugin extends Plugin {
                 if (!expectedHash.equals(sha256(received))) {
                     discardActiveArchive(received);
                     received = null;
-                    rejectPeer(output, "Архив повреждён при передаче");
+                    rejectPeer(output, LocalSyncFailure.ARCHIVE_CORRUPT, "Архив повреждён при передаче");
                     return ClientOutcome.CONTINUE;
                 }
 
@@ -716,17 +716,17 @@ public class LocalSyncPlugin extends Plugin {
         String expectedSessionId = hostSessionId;
         File outgoing = hostedArchive;
         if (isHostSessionExpired()) {
-            rejectPeer(output, "Срок действия QR-кода истёк");
+            rejectPeer(output, LocalSyncFailure.SESSION_EXPIRED, "Срок действия QR-кода истёк");
             return ClientOutcome.CONTINUE;
         }
         if (expectedCode == null || expectedProjectKey == null || expectedSyncId == null || expectedSessionId == null || outgoing == null) {
-            rejectPeer(output, "Сеанс синхронизации уже остановлен");
+            rejectPeer(output, LocalSyncFailure.SESSION_STOPPED, "Сеанс синхронизации уже остановлен");
             return ClientOutcome.CONTINUE;
         }
         if (!SyncSecurity.secretsEqual(expectedCode, code)) {
             boolean shouldStop = registerFailedAuthAttempt();
             connectionGuard.registerPreAuthFailure(peerKey);
-            rejectPeer(output, "Неверный код подключения");
+            rejectPeer(output, LocalSyncFailure.INVALID_CODE, "Неверный код подключения");
             return shouldStop ? ClientOutcome.STOP : ClientOutcome.CONTINUE;
         }
         connectionDeadline.markAuthenticated();
@@ -737,21 +737,21 @@ public class LocalSyncPlugin extends Plugin {
         String syncId = normalizeSyncId(input.readUTF());
         String sessionId = normalizeSessionId(input.readUTF());
         if (!expectedSyncId.equals(syncId) || !expectedProjectKey.equals(projectKey)) {
-            rejectPeer(output, "QR-код содержит данные другого сеанса");
+            rejectPeer(output, LocalSyncFailure.WRONG_SESSION, "QR-код содержит данные другого сеанса");
             return ClientOutcome.CONTINUE;
         }
         if (!expectedSessionId.equals(sessionId)) {
-            rejectPeer(output, "QR-код относится к завершённому сеансу");
+            rejectPeer(output, LocalSyncFailure.WRONG_SESSION, "QR-код относится к завершённому сеансу");
             return ClientOutcome.CONTINUE;
         }
         if (!claimExchangeSession(outgoing)) {
-            rejectPeer(output, "Сеанс передачи уже используется другим устройством");
+            rejectPeer(output, LocalSyncFailure.TRANSFER_BUSY, "Сеанс передачи уже используется другим устройством");
             return ClientOutcome.CONTINUE;
         }
         boolean completed = false;
         try {
             if (!requestPeerApproval("import", peerKey, expectedSessionId)) {
-                rejectPeer(output, "Передача не подтверждена на первом устройстве");
+                rejectPeer(output, LocalSyncFailure.NOT_CONFIRMED, "Передача не подтверждена на первом устройстве");
                 return ClientOutcome.CONTINUE;
             }
 
@@ -803,7 +803,12 @@ public class LocalSyncPlugin extends Plugin {
 
                 String readiness = input.readUTF();
                 if (!"READY".equals(readiness)) {
-                    throw new Exception(input.readUTF());
+                    // A peer on an older build sends a bare "ERROR"; codeFromStatus
+                    // then returns null and only the message is available.
+                    throw new LocalSyncException(
+                        LocalSyncFailure.codeFromStatus(readiness),
+                        input.readUTF()
+                    );
                 }
 
                 sendFile(output, outgoing);
@@ -811,7 +816,12 @@ public class LocalSyncPlugin extends Plugin {
 
                 String status = input.readUTF();
                 if (!"OK".equals(status)) {
-                    throw new Exception(input.readUTF());
+                    // A peer on an older build sends a bare "ERROR"; codeFromStatus
+                    // then returns null and only the message is available.
+                    throw new LocalSyncException(
+                        LocalSyncFailure.codeFromStatus(status),
+                        input.readUTF()
+                    );
                 }
 
                 long incomingSize = input.readLong();
@@ -825,7 +835,7 @@ public class LocalSyncPlugin extends Plugin {
                 if (!expectedHash.equals(sha256(received))) {
                     discardActiveArchive(received);
                     received = null;
-                    throw new Exception("Архив повреждён при передаче");
+                    throw new LocalSyncException(LocalSyncFailure.ARCHIVE_CORRUPT, "Архив повреждён при передаче");
                 }
                 File result = received;
                 received = null;
@@ -864,7 +874,12 @@ public class LocalSyncPlugin extends Plugin {
 
                 String status = input.readUTF();
                 if (!"OK".equals(status)) {
-                    throw new Exception(input.readUTF());
+                    // A peer on an older build sends a bare "ERROR"; codeFromStatus
+                    // then returns null and only the message is available.
+                    throw new LocalSyncException(
+                        LocalSyncFailure.codeFromStatus(status),
+                        input.readUTF()
+                    );
                 }
 
                 long incomingSize = input.readLong();
@@ -878,7 +893,7 @@ public class LocalSyncPlugin extends Plugin {
                 if (!expectedHash.equals(sha256(received))) {
                     discardActiveArchive(received);
                     received = null;
-                    throw new Exception("Архив повреждён при передаче");
+                    throw new LocalSyncException(LocalSyncFailure.ARCHIVE_CORRUPT, "Архив повреждён при передаче");
                 }
                 File result = received;
                 received = null;
@@ -1092,8 +1107,12 @@ public class LocalSyncPlugin extends Plugin {
         }
     }
 
-    private void rejectPeer(DataOutputStream output, String message) throws Exception {
-        output.writeUTF("ERROR");
+    private void rejectPeer(DataOutputStream output, String code, String message)
+        throws Exception {
+        // The status carries the code; the message stays Russian so a peer on
+        // an older build, which only checks the status is not "OK", still has
+        // something readable to show.
+        output.writeUTF(LocalSyncFailure.status(code));
         output.writeUTF(message);
         output.flush();
     }
@@ -1120,7 +1139,7 @@ public class LocalSyncPlugin extends Plugin {
         try (FileOutputStream stream = new FileOutputStream(target, false)) {
             while (remaining > 0) {
                 int read = input.read(buffer, 0, (int) Math.min(buffer.length, remaining));
-                if (read < 0) throw new Exception("Соединение прервано во время передачи");
+                if (read < 0) throw new LocalSyncException(LocalSyncFailure.CONNECTION_INTERRUPTED, "Соединение прервано во время передачи");
                 stream.write(buffer, 0, read);
                 remaining -= read;
             }
@@ -1230,7 +1249,7 @@ public class LocalSyncPlugin extends Plugin {
     }
 
     private void assertArchiveSize(long size) throws Exception {
-        if (size <= 0) throw new Exception("Архив синхронизации пуст");
+        if (size <= 0) throw new LocalSyncException(LocalSyncFailure.ARCHIVE_EMPTY, "Архив синхронизации пуст");
         assertArchiveSizeLimit(size);
     }
 
@@ -1289,7 +1308,7 @@ public class LocalSyncPlugin extends Plugin {
             }
         }
         if (fallback != null) return fallback;
-        throw new Exception("Подключитесь к Wi-Fi или включите точку доступа");
+        throw new LocalSyncException(LocalSyncFailure.NO_LOCAL_NETWORK, "Подключитесь к Wi-Fi или включите точку доступа");
     }
 
     private int interfaceScore(String rawName) {
