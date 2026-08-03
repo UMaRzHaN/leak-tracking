@@ -1445,6 +1445,9 @@ public class LocalSyncPlugin extends Plugin {
     private void notifySyncError(Exception error) {
         JSObject payload = new JSObject();
         payload.put("message", readableMessage(error));
+        // Null for a failure that carries no code, which the web layer treats
+        // the same as an untranslatable one and falls back to the message.
+        payload.put("code", LocalSyncException.codeOf(error));
         notifyListeners("syncError", payload);
     }
 

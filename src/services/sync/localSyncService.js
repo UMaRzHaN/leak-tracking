@@ -405,8 +405,8 @@ export async function startLocalSyncHost({
         onError?.(error);
       }
     });
-    await addListener("syncError", ({ message }) => {
-      onError?.(new Error(message));
+    await addListener("syncError", ({ message, code }) => {
+      onError?.(Object.assign(new Error(message), code ? { code } : {}));
     });
     await addListener("peerApprovalRequested", async (request) => {
       let approved = false;

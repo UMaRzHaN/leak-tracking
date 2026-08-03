@@ -1,4 +1,6 @@
+import i18next from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { localSyncErrorText } from "@/services/sync/localSyncErrorText";
 import {
   cancelLocalSyncQrScan,
   createLocalSyncQrSvg,
@@ -25,6 +27,9 @@ function typeLabel(type, lang) {
 }
 
 function syncErrorMessage(error, lang) {
+  if (hasPluginSyncErrorText(error)) {
+    return localSyncErrorText(error, i18next.t.bind(i18next));
+  }
   if (error?.code === "SYNC_EPOCH_MISMATCH") {
     return lang === "ru"
       ? "На одном из устройств была очищена старая история удалений. Автоматическое объединение остановлено, чтобы не восстановить удалённые записи. Создайте полный ZIP на актуальном устройстве и замените проект на втором устройстве."
@@ -53,8 +58,17 @@ function syncErrorMessage(error, lang) {
 function isStructuredSyncError(error) {
   return (
     error?.code === "SYNC_EPOCH_MISMATCH" ||
-    error?.code?.includes("PROJECT_TYPE")
+    error?.code?.includes("PROJECT_TYPE") ||
+    hasPluginSyncErrorText(error)
   );
+}
+
+// True when the Android plugin tagged the failure with a code this build can
+// translate. A peer on an older build sends no code, and an unknown code means
+// a newer peer, so both fall through to the plugin's own message.
+function hasPluginSyncErrorText(error) {
+  const code = error?.code;
+  return Boolean(code) && i18next.exists(`syncErrors.${code}`);
 }
 
 export function useLocalSync({

@@ -337,6 +337,28 @@ const resources = {
         map: "Карта",
         addLeak: "Добавить утечку",
       },
+      // Failure codes reported by the Android local-sync plugin. The plugin
+      // still sends its own Russian text, used as a fallback when a code is
+      // missing — a peer on an older build sends none.
+      syncErrors: {
+        INCOMPATIBLE_VERSION:
+          "Несовместимая версия приложения на втором телефоне",
+        SESSION_EXPIRED: "Срок действия QR-кода истёк",
+        SESSION_STOPPED: "Сеанс синхронизации уже остановлен",
+        INVALID_CODE: "Неверный код подключения",
+        DIFFERENT_ORIGIN:
+          "Проекты имеют разное происхождение и не могут быть объединены",
+        SESSION_BUSY: "Сеанс синхронизации уже используется другим устройством",
+        TRANSFER_BUSY: "Сеанс передачи уже используется другим устройством",
+        NOT_CONFIRMED: "Передача не подтверждена на первом устройстве",
+        ARCHIVE_CORRUPT: "Архив повреждён при передаче",
+        WRONG_SESSION: "QR-код относится к завершённому сеансу",
+        FINGERPRINT_MISMATCH: "Ключ безопасности хоста не совпадает",
+        CONNECTION_INTERRUPTED: "Соединение прервано во время передачи",
+        ARCHIVE_EMPTY: "Архив синхронизации пуст",
+        ARCHIVE_TOO_LARGE: "Архив синхронизации слишком большой",
+        NO_LOCAL_NETWORK: "Подключитесь к Wi-Fi или включите точку доступа",
+      },
     },
   },
   en: {
@@ -806,6 +828,24 @@ const resources = {
         map: "Map",
         addLeak: "Add Leak",
       },
+    },
+    syncErrors: {
+      INCOMPATIBLE_VERSION: "The other phone runs an incompatible app version",
+      SESSION_EXPIRED: "The QR code has expired",
+      SESSION_STOPPED: "The sync session has already been stopped",
+      INVALID_CODE: "Wrong connection code",
+      DIFFERENT_ORIGIN:
+        "These projects have different origins and cannot be merged",
+      SESSION_BUSY: "Another device is already using this sync session",
+      TRANSFER_BUSY: "Another device is already using this transfer session",
+      NOT_CONFIRMED: "The transfer was not confirmed on the first device",
+      ARCHIVE_CORRUPT: "The archive was corrupted in transit",
+      WRONG_SESSION: "The QR code belongs to a finished session",
+      FINGERPRINT_MISMATCH: "The host security key does not match",
+      CONNECTION_INTERRUPTED: "The connection dropped during transfer",
+      ARCHIVE_EMPTY: "The sync archive is empty",
+      ARCHIVE_TOO_LARGE: "The sync archive is too large",
+      NO_LOCAL_NETWORK: "Connect to Wi-Fi or turn on a hotspot",
     },
   },
 };
