@@ -30,6 +30,7 @@ src/utils/importLimits.js:376-419  streamArchiveEntry()
 
 **Рекомендация (P0, наибольший эффект):**
 `assertArchiveLimits()` (`src/utils/importLimits.js:356-374`) уже дёшево проверяет объявленные в ZIP-заголовке размеры (`entry._data.uncompressedSize`) без распаковки — этого достаточно как быстрой защиты от zip-бомб. Полную побайтовую верификацию (`verifyArchiveLimits`) стоит не гонять заранее по всем файлам, а либо:
+
 1. убрать отдельный проход и проверять реальный размер прямо в момент первого чтения каждого файла (совместить проверку с уже существующим вызовом `.async(...)`), либо
 2. если нужна проверка "до старта импорта" — оставить её только для файлов, чей заявленный `uncompressedSize` отсутствует/подозрителен, а не для всех подряд.
 
@@ -88,6 +89,7 @@ src/services/excelImport/photoPipeline.js:189-196  вызов blobsEqual вну�
 Из-за этого импорт не только медленнее по сумме CPU-работы (см. п.1), но и **ощущается** медленнее — UI подвисает и не показывает прогресс.
 
 **Рекомендация:**
+
 - P0 (дёшево): добавить `yieldToMainThread()` каждые ~50-100 строк в цикл `parseExcelLeaks`, по аналогии с экспортом.
 - P1 (дороже, но самый заметный эффект для пользователя): вынести связку JSZip + ExcelJS + разбор строк в отдельный Web Worker, зеркально `excelExportWorkerClient.js`. IndexedDB доступен и из воркера, так что сохранение фото можно делать там же или пересылать `Blob`/`ArrayBuffer` обратно в основной поток через transferable objects.
 
@@ -105,15 +107,15 @@ src/services/zipStoreStream.js:19-25  updateCrc32()
 
 ## 7. Сводка по приоритетам (импорт архивов)
 
-| # | Проблема | Файл | Приоритет | Эффект |
-|---|---|---|---|---|
-| 1 | Двойная распаковка архива (verify + реальное использование) | `utils/importLimits.js` | P0 | Наибольший |
-| 2 | `hydrateZipPhotos` без параллелизма | `services/excelImport/photoPipeline.js:321` | P0 | Средний-высокий |
-| 3 | Побайтовое сравнение фото вместо хеша | `services/excelImport/photoPipeline.js:100` | P0 | Средний |
-| 4 | Нет `yield` в парсинге строк Excel | `services/excelImportService.js:150` | P0 | Средний (отзывчивость UI) |
-| 5 | Захардкоженный параллелизм = 3 везде | `photoPipeline.js`, `projectBackup/constants.js` | P1 (нужен бенчмарк) | Средний |
-| 6 | Импорт без Web Worker | весь путь импорта | P1 | Наибольший для восприятия скорости |
-| 7 | CRC32 побайтово при экспорте | `services/zipStoreStream.js` | P2 | Низкий (не импорт) |
+| #   | Проблема                                                    | Файл                                             | Приоритет           | Эффект                             |
+| --- | ----------------------------------------------------------- | ------------------------------------------------ | ------------------- | ---------------------------------- |
+| 1   | Двойная распаковка архива (verify + реальное использование) | `utils/importLimits.js`                          | P0                  | Наибольший                         |
+| 2   | `hydrateZipPhotos` без параллелизма                         | `services/excelImport/photoPipeline.js:321`      | P0                  | Средний-высокий                    |
+| 3   | Побайтовое сравнение фото вместо хеша                       | `services/excelImport/photoPipeline.js:100`      | P0                  | Средний                            |
+| 4   | Нет `yield` в парсинге строк Excel                          | `services/excelImportService.js:150`             | P0                  | Средний (отзывчивость UI)          |
+| 5   | Захардкоженный параллелизм = 3 везде                        | `photoPipeline.js`, `projectBackup/constants.js` | P1 (нужен бенчмарк) | Средний                            |
+| 6   | Импорт без Web Worker                                       | весь путь импорта                                | P1                  | Наибольший для восприятия скорости |
+| 7   | CRC32 побайтово при экспорте                                | `services/zipStoreStream.js`                     | P2                  | Низкий (не импорт)                 |
 
 Пункты 1-4 не меняют формат архива и не требуют миграций — их можно сделать отдельными небольшими PR без риска для обратной совместимости, в соответствии с ограничениями `PROJECT_REFACTORING_PLAN.md` (раздел 3).
 
@@ -150,16 +152,17 @@ src/services/
 
 Целевая структура уже зафиксирована в `PROJECT_REFACTORING_PLAN.md` (раздел 4, `services/import`, `services/export`, `services/backup`, `services/sync`, `services/maps`). Конкретное распределение файлов из корня:
 
-| Файл сейчас | Куда переносить |
-|---|---|
-| `excelImportService.js`, `excelImportTransaction.js`, `importOperationJournal.js` | `services/import/` (объединить с текущим `excelImport/`) |
-| `zipStoreStream.js`, `archivePaths.js` | `services/archive/` (общее для import и export) |
-| `projectBackupService.js`, `projectCleanup.js`, `projectIntegrityService.js` | `services/backup/` (объединить с текущим `projectBackup/`) |
-| `localSyncService.js`, `projectSyncState.js`, `syncClock.js` | `services/sync/` |
-| `persistentStorage.js`, `publicFileWriter.js`, `nativePhotoSourceCache.js`, `leakFieldVersions.js` | `services/storage/` |
-| `maps/` | без изменений |
+| Файл сейчас                                                                                        | Куда переносить                                            |
+| -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `excelImportService.js`, `excelImportTransaction.js`, `importOperationJournal.js`                  | `services/import/` (объединить с текущим `excelImport/`)   |
+| `zipStoreStream.js`, `archivePaths.js`                                                             | `services/archive/` (общее для import и export)            |
+| `projectBackupService.js`, `projectCleanup.js`, `projectIntegrityService.js`                       | `services/backup/` (объединить с текущим `projectBackup/`) |
+| `localSyncService.js`, `projectSyncState.js`, `syncClock.js`                                       | `services/sync/`                                           |
+| `persistentStorage.js`, `publicFileWriter.js`, `nativePhotoSourceCache.js`, `leakFieldVersions.js` | `services/storage/`                                        |
+| `maps/`                                                                                            | без изменений                                              |
 
 **Как переносить, не ломая проект (важно для правил из `PROJECT_REFACTORING_PLAN.md`, раздел 3 — "не смешивать переезд файлов с изменением поведения"):**
+
 1. Один PR = один переезд файлов, без изменения логики внутри них (только обновление импортов).
 2. Переносить по одному кластеру (сначала import, потом backup, потом sync, потом storage) — не всё за один PR.
 3. После каждого переноса — `npm run lint && npm run typecheck && npm run test:coverage`, чтобы алиасы (`@/services/...`) не разъехались молча.
