@@ -261,8 +261,7 @@ interface LeakViewModel {}
 
 ```ts
 type RepositoryResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; error: RepositoryError };
+  { ok: true; value: T } | { ok: false; error: RepositoryError };
 ```
 
 - [ ] Типизировать:
