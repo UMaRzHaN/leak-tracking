@@ -8,7 +8,7 @@ import {
   getImageMimeTypeFromExtension,
   normalizeImageExtension,
   parseDataImageUri,
-} from "@/services/archivePaths";
+} from "@/services/archive/archivePaths";
 import {
   EXPORT_CONCURRENCY,
   EXPORT_YIELD_EVERY,

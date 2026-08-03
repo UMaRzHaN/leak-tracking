@@ -151,7 +151,7 @@ export function useBackupActions({
         const [{ streamProjectBackupZip }, { writePublicFileStream }] =
           await Promise.all([
             import("@/services/backup/projectBackupService"),
-            import("@/services/publicFileWriter"),
+            import("@/services/storage/publicFileWriter"),
           ]);
         await writePublicFileStream({
           folder,

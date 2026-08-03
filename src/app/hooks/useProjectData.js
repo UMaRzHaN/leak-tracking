@@ -12,7 +12,7 @@ import {
   commitLeakDataMutation,
   restoreEmbeddedProjectSyncState,
 } from "@/services/sync/projectSyncState";
-import { stampLeakFieldVersions } from "@/services/leakFieldVersions";
+import { stampLeakFieldVersions } from "@/services/storage/leakFieldVersions";
 import { logger } from "@/utils/logger";
 
 export function useProjectData() {

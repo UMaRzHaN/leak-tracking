@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const writePublicFile = vi.hoisted(() => vi.fn());
 
 vi.mock("@/utils/platform", () => ({ isNative: true }));
-vi.mock("@/services/publicFileWriter", () => ({ writePublicFile }));
+vi.mock("@/services/storage/publicFileWriter", () => ({ writePublicFile }));
 
 const { saveLeaksKML } = await import("./kml");
 

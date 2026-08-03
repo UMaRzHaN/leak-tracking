@@ -160,7 +160,8 @@ export async function saveLeaksKML(
     : "export/map";
 
   if (isNative) {
-    const { writePublicFile } = await import("@/services/publicFileWriter");
+    const { writePublicFile } =
+      await import("@/services/storage/publicFileWriter");
     await writePublicFile({
       folder: folderName,
       fileName,

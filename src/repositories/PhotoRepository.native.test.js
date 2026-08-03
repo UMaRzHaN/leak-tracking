@@ -15,7 +15,7 @@ vi.mock("@/utils/platform", () => ({ isNative: true }));
 vi.mock("@/repositories/compressImage", () => ({
   compressImage: mocks.compressImage,
 }));
-vi.mock("@/services/nativePhotoSourceCache", () => ({
+vi.mock("@/services/storage/nativePhotoSourceCache", () => ({
   invalidateNativePhotoCachePath: mocks.invalidatePath,
   invalidateNativePhotoCachePrefix: mocks.invalidatePrefix,
 }));

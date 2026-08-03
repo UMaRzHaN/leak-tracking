@@ -1,6 +1,6 @@
 import { readProjectSettings } from "@/app/project/projectSettings";
 import { readProjectSyncStateAsync } from "@/services/sync/projectSyncState";
-import { allocateUniqueLeakArchiveSegments } from "@/services/archivePaths";
+import { allocateUniqueLeakArchiveSegments } from "@/services/archive/archivePaths";
 import { readMonitoringRound } from "@/utils/monitoringRound";
 import { assertImportFileSize, IMPORT_LIMITS } from "@/utils/importLimits";
 import { RECOVERY_RECORDS_FILE } from "./constants";
@@ -33,7 +33,8 @@ export async function streamProjectBackupZip({
   vars,
   writeChunk,
 }) {
-  const { ZipStoreStreamWriter } = await import("@/services/zipStoreStream");
+  const { ZipStoreStreamWriter } =
+    await import("@/services/archive/zipStoreStream");
   const zip = new ZipStoreStreamWriter(writeChunk, {
     maxBytes: IMPORT_LIMITS.maxExportBytes,
   });

@@ -23,7 +23,7 @@ vi.mock("@/utils/platform", () => ({
   },
 }));
 
-vi.mock("@/services/publicFileWriter", () => ({
+vi.mock("@/services/storage/publicFileWriter", () => ({
   writePublicFileStream: nativeWriter.writePublicFileStream,
 }));
 

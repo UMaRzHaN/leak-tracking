@@ -19,7 +19,7 @@ vi.mock("@capacitor/filesystem", () => ({
 }));
 vi.mock("@/utils/logger", () => ({ logger }));
 
-import { clearNativePhotoCache } from "@/services/nativePhotoSourceCache";
+import { clearNativePhotoCache } from "@/services/storage/nativePhotoSourceCache";
 import { deletePhotoFromFS, getPhotoSrc, photoExists } from "./photoService";
 
 describe("photoService", () => {

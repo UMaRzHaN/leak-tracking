@@ -6,7 +6,7 @@ import { isPhotoPrepared } from "@/utils/photoPreparation";
 import {
   invalidateNativePhotoCachePath,
   invalidateNativePhotoCachePrefix,
-} from "@/services/nativePhotoSourceCache";
+} from "@/services/storage/nativePhotoSourceCache";
 import {
   LEAK_PHOTO_FIELDS,
   MONITORING_PHOTO_FIELDS,

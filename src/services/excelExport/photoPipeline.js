@@ -2,7 +2,7 @@ import {
   buildLeakPhotoArchivePath,
   buildMonitoringPhotoArchivePath,
   parseDataImageUri,
-} from "@/services/archivePaths";
+} from "@/services/archive/archivePaths";
 import { getPhotoSrc } from "@/hooks/photoService";
 import { blobToDataUri } from "@/utils/photoConversion";
 import { getMonitoringRecords } from "@/utils/monitoring";

@@ -8,7 +8,7 @@ import {
 import {
   LEAK_FIELD_VERSIONS_KEY,
   normalizeLeakFieldVersions,
-} from "@/services/leakFieldVersions";
+} from "@/services/storage/leakFieldVersions";
 const SYNC_DB_NAME = "LeakTrackingSyncDB";
 const SYNC_STORE_NAME = "projectStates";
 export const MAX_PROJECT_TOMBSTONES = 10_000;

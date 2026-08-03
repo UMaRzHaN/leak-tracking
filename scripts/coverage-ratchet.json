@@ -85,11 +85,17 @@
       "functions": 75,
       "lines": 94
     },
-    "src/services/archivePaths.js": {
+    "src/services/archive/archivePaths.js": {
       "statements": 94,
       "branches": 80,
       "functions": 98,
       "lines": 98
+    },
+    "src/services/archive/zipStoreStream.js": {
+      "statements": 84,
+      "branches": 68,
+      "functions": 83,
+      "lines": 86
     },
     "src/services/backup/archiveParser.js": {
       "statements": 85,
@@ -223,25 +229,25 @@
       "functions": 98,
       "lines": 96
     },
-    "src/services/leakFieldVersions.js": {
-      "statements": 89,
-      "branches": 70,
-      "functions": 98,
-      "lines": 90
-    },
     "src/services/maps/tileCache.js": {
       "statements": 91,
       "branches": 79,
       "functions": 86,
       "lines": 94
     },
-    "src/services/nativePhotoSourceCache.js": {
+    "src/services/storage/leakFieldVersions.js": {
+      "statements": 89,
+      "branches": 70,
+      "functions": 98,
+      "lines": 90
+    },
+    "src/services/storage/nativePhotoSourceCache.js": {
       "statements": 74,
       "branches": 61,
       "functions": 88,
       "lines": 79
     },
-    "src/services/publicFileWriter.js": {
+    "src/services/storage/publicFileWriter.js": {
       "statements": 84,
       "branches": 60,
       "functions": 78,
@@ -264,12 +270,6 @@
       "branches": 79,
       "functions": 98,
       "lines": 92
-    },
-    "src/services/zipStoreStream.js": {
-      "statements": 84,
-      "branches": 68,
-      "functions": 83,
-      "lines": 86
     },
     "src/utils/calculations/calculations.js": {
       "statements": 93,

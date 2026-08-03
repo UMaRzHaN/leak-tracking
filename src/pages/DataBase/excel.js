@@ -2,7 +2,7 @@ import { compareLeakIds } from "@/utils/leakOrder";
 import {
   allocateUniqueLeakArchiveSegments,
   sanitizePortableArchiveSegment,
-} from "@/services/archivePaths";
+} from "@/services/archive/archivePaths";
 const getExcelJS = () => import("exceljs");
 const getJSZip = () => import("jszip");
 
@@ -300,7 +300,8 @@ async function downloadBlob(
     };
   }
 
-  const { writePublicFile } = await import("@/services/publicFileWriter");
+  const { writePublicFile } =
+    await import("@/services/storage/publicFileWriter");
   await writePublicFile({
     folder: outputFolder,
     fileName,

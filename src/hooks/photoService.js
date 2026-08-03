@@ -10,7 +10,7 @@ import {
   getNativePhotoReadPromise,
   invalidateNativePhotoCachePath,
   setNativePhotoReadPromise,
-} from "@/services/nativePhotoSourceCache";
+} from "@/services/storage/nativePhotoSourceCache";
 
 /*
  * Все фото хранятся в Directory.Data (приватное хранилище приложения).

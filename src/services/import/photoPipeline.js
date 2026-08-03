@@ -1,7 +1,7 @@
 import { getPhotoSrc } from "@/hooks/photoService";
 import { fingerprintBlob } from "@/utils/blobHash";
 import { getLeakMergeIdentity } from "@/services/sync/projectSyncState";
-import { getImageMimeTypeFromExtension } from "@/services/archivePaths";
+import { getImageMimeTypeFromExtension } from "@/services/archive/archivePaths";
 import { mapWithConcurrency } from "@/services/backup/runtime";
 import {
   LEAK_PHOTO_FIELDS,

@@ -3,7 +3,7 @@ import {
   getLeakFieldVersion,
   isVersionedLeakField,
   normalizeLeakFieldVersions,
-} from "@/services/leakFieldVersions";
+} from "@/services/storage/leakFieldVersions";
 import { getLeakMergeIdentity } from "@/services/sync/projectSyncState";
 import { PHOTO_KEYS } from "./constants";
 import {

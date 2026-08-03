@@ -1,4 +1,4 @@
-import { LEAK_FIELD_VERSIONS_KEY } from "@/services/leakFieldVersions";
+import { LEAK_FIELD_VERSIONS_KEY } from "@/services/storage/leakFieldVersions";
 import { PHOTO_KEYS } from "./constants";
 
 export const MERGE_IGNORED_FIELD_KEYS = new Set([

@@ -4,7 +4,7 @@ import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { PROJECT_META } from "@/configs/projects";
 import { logger } from "@/utils/logger";
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
-import { requestPersistentStorage } from "@/services/persistentStorage";
+import { requestPersistentStorage } from "@/services/storage/persistentStorage";
 import {
   getWebProjectDataReadFailurePolicy,
   isProjectDataReadWarningBlocking,

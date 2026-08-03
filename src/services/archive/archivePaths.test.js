@@ -6,7 +6,7 @@ import {
   buildMonitoringPhotoArchivePath,
   parseDataImageUri,
   sanitizePortableArchiveSegment,
-} from "@/services/archivePaths";
+} from "@/services/archive/archivePaths";
 
 describe("archivePaths", () => {
   it("creates portable path segments", () => {
