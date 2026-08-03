@@ -43,6 +43,33 @@ describe("ZipStoreStreamWriter", () => {
     );
   });
 
+  // The other tests read entries back with CRC checking off, so a wrong
+  // checksum would still round-trip through them. This verifies our CRC32
+  // against JSZip's independent implementation instead.
+  it("writes checksums that validate against an independent CRC32", async () => {
+    const chunks = [];
+    const writer = new ZipStoreStreamWriter(async (chunk) => {
+      chunks.push(chunk.slice());
+    });
+
+    await writer.add("ascii.txt", "123456789");
+    await writer.add("unicode.txt", "данные — ok");
+    // Larger than BLOB_CHUNK_BYTES, so the checksum spans several chunks.
+    const photo = new Uint8Array(600_000);
+    for (let index = 0; index < photo.length; index += 1) {
+      photo[index] = (index * 31) & 0xff;
+    }
+    await writer.add("photo.jpg", new Blob([photo]));
+    await writer.close();
+
+    const zip = await JSZip.loadAsync(concatenate(chunks), {
+      checkCRC32: true,
+    });
+    expect(await zip.file("ascii.txt").async("string")).toBe("123456789");
+    expect(await zip.file("unicode.txt").async("string")).toBe("данные — ok");
+    expect(await zip.file("photo.jpg").async("uint8array")).toEqual(photo);
+  });
+
   it("rejects traversal and duplicate entry names", async () => {
     const writer = new ZipStoreStreamWriter(async () => {});
 
