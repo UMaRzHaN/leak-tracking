@@ -22,27 +22,27 @@
 
 Текущие показатели сохраненного coverage-отчета:
 
-| Метрика | Значение |
-|---|---:|
-| Lines | 79,82% |
-| Statements | 77,31% |
-| Functions | 70,71% |
-| Branches | 63,39% |
+| Метрика    | Значение |
+| ---------- | -------: |
+| Lines      |   79,82% |
+| Statements |   77,31% |
+| Functions  |   70,71% |
+| Branches   |   63,39% |
 
 Крупнейшие производственные файлы:
 
-| Файл | Строк |
-|---|---:|
-| `src/pages/Settings/hooks/useSettingsPage.js` | 829 |
-| `src/repositories/LeakRepository.js` | 817 |
-| `src/pages/Monitoring/hooks/useMonitoringPage.js` | 784 |
-| `src/services/maps/tileCache.js` | 601 |
-| `src/services/projectBackup/backupImport.js` | 546 |
-| `src/app/hooks/useAppBootstrap.js` | 539 |
-| `src/repositories/backupSchema.js` | 520 |
-| `src/services/projectSyncState.js` | 515 |
-| `src/services/localSyncService.js` | 508 |
-| `src/pages/Settings/hooks/useLocalSync.js` | 508 |
+| Файл                                              | Строк |
+| ------------------------------------------------- | ----: |
+| `src/pages/Settings/hooks/useSettingsPage.js`     |   829 |
+| `src/repositories/LeakRepository.js`              |   817 |
+| `src/pages/Monitoring/hooks/useMonitoringPage.js` |   784 |
+| `src/services/maps/tileCache.js`                  |   601 |
+| `src/services/projectBackup/backupImport.js`      |   546 |
+| `src/app/hooks/useAppBootstrap.js`                |   539 |
+| `src/repositories/backupSchema.js`                |   520 |
+| `src/services/projectSyncState.js`                |   515 |
+| `src/services/localSyncService.js`                |   508 |
+| `src/pages/Settings/hooks/useLocalSync.js`        |   508 |
 
 Основная проблема проекта — не отсутствие функций, а рост сложности в критических слоях:
 
@@ -572,14 +572,14 @@ interface OutboxEvent {
 
 ### Рекомендуемая политика конфликтов
 
-| Данные | Политика |
-|---|---|
-| Независимые поля | field-level merge |
-| Статус утечки | domain rule + журнал |
-| Фото | сохранять обе версии |
-| Monitoring | append/merge по UUID |
+| Данные                    | Политика                  |
+| ------------------------- | ------------------------- |
+| Независимые поля          | field-level merge         |
+| Статус утечки             | domain rule + журнал      |
+| Фото                      | сохранять обе версии      |
+| Monitoring                | append/merge по UUID      |
 | Удаление против изменения | пользовательский конфликт |
-| Project metadata | explicit conflict |
+| Project metadata          | explicit conflict         |
 
 ### API boundary
 
@@ -694,13 +694,13 @@ interface SyncGateway {
 
 Целевые значения после завершения этапов:
 
-| Метрика | Минимум |
-|---|---:|
-| Lines | 82% |
-| Statements | 80% |
-| Functions | 75% |
-| Branches | 70% |
-| Critical repository/import/sync branches | 85% |
+| Метрика                                  | Минимум |
+| ---------------------------------------- | ------: |
+| Lines                                    |     82% |
+| Statements                               |     80% |
+| Functions                                |     75% |
+| Branches                                 |     70% |
+| Critical repository/import/sync branches |     85% |
 
 ---
 
