@@ -5,7 +5,7 @@ import { useProject } from "@/app/project/ProjectContext";
 import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { PROJECT_META } from "@/configs/projects";
 import { clearMapCache } from "@/services/maps/tileCache";
-import { deleteProjectArtifacts } from "@/services/projectCleanup";
+import { deleteProjectArtifacts } from "@/services/backup/projectCleanup";
 import { isLeakFormDirty } from "@/features/leakForm/utils/isLeakFormDirty";
 import { MONITORING_PHOTO_FIELDS } from "@/utils/photoFields";
 

@@ -54,7 +54,7 @@ vi.mock("@/app/hooks/useLanguage", () => ({
 
 vi.mock("@/services/localSyncService", () => localSync);
 
-vi.mock("@/services/projectBackupService", () => ({
+vi.mock("@/services/backup/projectBackupService", () => ({
   peekBackupZip: vi.fn().mockResolvedValue({
     leaks: [],
     meta: { project: { name: "Imported", type: "upstream" } },
@@ -62,7 +62,7 @@ vi.mock("@/services/projectBackupService", () => ({
   }),
 }));
 
-const backupService = await import("@/services/projectBackupService");
+const backupService = await import("@/services/backup/projectBackupService");
 
 describe("ProjectSetupScreen", () => {
   beforeEach(() => {

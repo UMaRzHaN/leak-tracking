@@ -17,7 +17,7 @@ import {
 } from "@/app/project/projectFilters";
 import { writeProjectSettings } from "@/app/project/projectSettings";
 import { writeProjectSyncState } from "@/services/projectSyncState";
-import { rollbackImportedProject } from "@/services/projectCleanup";
+import { rollbackImportedProject } from "@/services/backup/projectCleanup";
 import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { useDeferredPhotoGc } from "./useDeferredPhotoGc";
 
@@ -321,7 +321,7 @@ export function useAppBootstrap() {
     (file, fallback = {}) =>
       runWithImportOverlay(async () => {
         const { importProjectZip } =
-          await import("@/services/projectBackupService");
+          await import("@/services/backup/projectBackupService");
         return importProjectZip(file, {
           ...stableImportCtx,
           metaFallback: fallback,
@@ -336,7 +336,7 @@ export function useAppBootstrap() {
     (file, fallback, options = {}) =>
       runWithImportOverlay(async () => {
         const { importProjectZip } =
-          await import("@/services/projectBackupService");
+          await import("@/services/backup/projectBackupService");
         const result = await importProjectZip(file, {
           ...stableImportCtx,
           metaFallback: fallback,
@@ -354,7 +354,7 @@ export function useAppBootstrap() {
       runWithImportOverlay(async () => {
         const previousProjectId = activeProjectIdRef.current;
         const { importIntoExistingProject } =
-          await import("@/services/projectBackupService");
+          await import("@/services/backup/projectBackupService");
         const result = await importIntoExistingProject(
           file,
           { ...stableImportCtx, overwriteProject, existingProject },
@@ -401,7 +401,7 @@ export function useAppBootstrap() {
           }
           if (settings) writeProjectSettings(newProject.id, settings);
           const { persistExcelImportPhotos } =
-            await import("@/services/excelImportService");
+            await import("@/services/import/excelImportService");
           const withPhotos = await persistExcelImportPhotos(
             leaks,
             savePhotoRef.current,
@@ -444,7 +444,7 @@ export function useAppBootstrap() {
   const handleSetupImportExcel = useCallback(
     async (file, { name, type }) => {
       const { parseExcelImportFile } =
-        await import("@/services/excelImportService");
+        await import("@/services/import/excelImportService");
       const result = await parseExcelImportFile(file, {
         // Do not invent an upstream project type on the first-run screen.
         // Ordinary XLSX files are parsed with their common columns first and
@@ -459,7 +459,7 @@ export function useAppBootstrap() {
       let resolvedType = result.project?.type || type;
       if (!resolvedType) {
         const { detectProjectTypeFromLeaks } =
-          await import("@/services/projectBackupService");
+          await import("@/services/backup/projectBackupService");
         resolvedType = detectProjectTypeFromLeaks(result.leaks);
       }
       if (!resolvedType) {

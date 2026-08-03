@@ -170,13 +170,13 @@ vi.mock("@/utils/monitoringRound", () => ({
 vi.mock("@/services/projectSyncState", () => ({
   writeProjectSyncState: mocks.writeProjectSyncState,
 }));
-vi.mock("@/services/projectCleanup", () => ({
+vi.mock("@/services/backup/projectCleanup", () => ({
   rollbackImportedProject: mocks.rollbackImportedProject,
 }));
-vi.mock("@/services/excelImportService", () => ({
+vi.mock("@/services/import/excelImportService", () => ({
   persistExcelImportPhotos: mocks.persistExcelImportPhotos,
 }));
-vi.mock("@/services/projectBackupService", () => ({
+vi.mock("@/services/backup/projectBackupService", () => ({
   importProjectZip: mocks.importProjectZip,
   importIntoExistingProject: mocks.importIntoExistingProject,
 }));

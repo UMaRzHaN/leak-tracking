@@ -91,6 +91,78 @@
       "functions": 98,
       "lines": 98
     },
+    "src/services/backup/archiveParser.js": {
+      "statements": 85,
+      "branches": 87,
+      "functions": 98,
+      "lines": 87
+    },
+    "src/services/backup/backupExport.js": {
+      "statements": 59,
+      "branches": 64,
+      "functions": 38,
+      "lines": 58
+    },
+    "src/services/backup/backupImport.js": {
+      "statements": 86,
+      "branches": 87,
+      "functions": 58,
+      "lines": 87
+    },
+    "src/services/backup/leakMergeEngine.js": {
+      "statements": 90,
+      "branches": 81,
+      "functions": 82,
+      "lines": 91
+    },
+    "src/services/backup/mergePreview.js": {
+      "statements": 96,
+      "branches": 88,
+      "functions": 98,
+      "lines": 98
+    },
+    "src/services/backup/mergeValues.js": {
+      "statements": 89,
+      "branches": 76,
+      "functions": 98,
+      "lines": 90
+    },
+    "src/services/backup/photoArchive.js": {
+      "statements": 87,
+      "branches": 75,
+      "functions": 98,
+      "lines": 90
+    },
+    "src/services/backup/projectCleanup.js": {
+      "statements": 82,
+      "branches": 69,
+      "functions": 64,
+      "lines": 89
+    },
+    "src/services/backup/projectIntegrityService.js": {
+      "statements": 88,
+      "branches": 81,
+      "functions": 98,
+      "lines": 90
+    },
+    "src/services/backup/projectMeta.js": {
+      "statements": 84,
+      "branches": 80,
+      "functions": 98,
+      "lines": 93
+    },
+    "src/services/backup/recordArrayMerge.js": {
+      "statements": 72,
+      "branches": 65,
+      "functions": 78,
+      "lines": 77
+    },
+    "src/services/backup/runtime.js": {
+      "statements": 88,
+      "branches": 76,
+      "functions": 75,
+      "lines": 93
+    },
     "src/services/import/cellDates.js": {
       "statements": 94,
       "branches": 88,
@@ -174,78 +246,6 @@
       "branches": 61,
       "functions": 88,
       "lines": 79
-    },
-    "src/services/projectBackup/archiveParser.js": {
-      "statements": 85,
-      "branches": 87,
-      "functions": 98,
-      "lines": 87
-    },
-    "src/services/projectBackup/backupExport.js": {
-      "statements": 59,
-      "branches": 64,
-      "functions": 38,
-      "lines": 58
-    },
-    "src/services/projectBackup/backupImport.js": {
-      "statements": 86,
-      "branches": 87,
-      "functions": 58,
-      "lines": 87
-    },
-    "src/services/projectBackup/leakMergeEngine.js": {
-      "statements": 90,
-      "branches": 81,
-      "functions": 82,
-      "lines": 91
-    },
-    "src/services/projectBackup/mergePreview.js": {
-      "statements": 96,
-      "branches": 88,
-      "functions": 98,
-      "lines": 98
-    },
-    "src/services/projectBackup/mergeValues.js": {
-      "statements": 89,
-      "branches": 76,
-      "functions": 98,
-      "lines": 90
-    },
-    "src/services/projectBackup/photoArchive.js": {
-      "statements": 87,
-      "branches": 75,
-      "functions": 98,
-      "lines": 90
-    },
-    "src/services/projectBackup/projectMeta.js": {
-      "statements": 84,
-      "branches": 80,
-      "functions": 98,
-      "lines": 93
-    },
-    "src/services/projectBackup/recordArrayMerge.js": {
-      "statements": 72,
-      "branches": 65,
-      "functions": 78,
-      "lines": 77
-    },
-    "src/services/projectBackup/runtime.js": {
-      "statements": 88,
-      "branches": 76,
-      "functions": 75,
-      "lines": 93
-    },
-    "src/services/projectCleanup.js": {
-      "statements": 82,
-      "branches": 69,
-      "functions": 64,
-      "lines": 89
-    },
-    "src/services/projectIntegrityService.js": {
-      "statements": 88,
-      "branches": 81,
-      "functions": 98,
-      "lines": 90
     },
     "src/services/projectSyncState.js": {
       "statements": 89,

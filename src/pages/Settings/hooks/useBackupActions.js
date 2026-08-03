@@ -150,7 +150,7 @@ export function useBackupActions({
       if (isNative) {
         const [{ streamProjectBackupZip }, { writePublicFileStream }] =
           await Promise.all([
-            import("@/services/projectBackupService"),
+            import("@/services/backup/projectBackupService"),
             import("@/services/publicFileWriter"),
           ]);
         await writePublicFileStream({
@@ -175,7 +175,7 @@ export function useBackupActions({
         );
       } else {
         const { buildProjectBackupZip } =
-          await import("@/services/projectBackupService");
+          await import("@/services/backup/projectBackupService");
         const blob = await buildProjectBackupZip({
           leaks: data,
           idbGet: idbGetPhoto,
@@ -214,7 +214,7 @@ export function useBackupActions({
       try {
         notifyZipReadProgress();
         const { peekBackupZip, previewMergeLeaks } =
-          await import("@/services/projectBackupService");
+          await import("@/services/backup/projectBackupService");
         const peek = await peekBackupZip(file);
         const metaProject = peek.meta?.project;
 

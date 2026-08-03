@@ -372,7 +372,7 @@ export default defineConfig(({ mode }) => {
             functions: 89,
             lines: 92,
           },
-          "src/services/projectCleanup.js": {
+          "src/services/backup/projectCleanup.js": {
             statements: 84,
             branches: 71,
             functions: 66,

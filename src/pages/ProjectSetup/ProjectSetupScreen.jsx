@@ -160,7 +160,7 @@ export default function ProjectSetupScreen({
       // Уровень 3: ключевые слова в имени файла
       try {
         const { peekBackupZip } =
-          await import("@/services/projectBackupService");
+          await import("@/services/backup/projectBackupService");
         const peek = await peekBackupZip(file);
         const metaProject = peek.meta?.project;
 

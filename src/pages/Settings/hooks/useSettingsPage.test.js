@@ -36,7 +36,7 @@ vi.mock("@/services/maps/tileCache", () => ({
   getMapCacheInfo: mocks.getMapCacheInfo,
   clearMapCache: mocks.clearMapCache,
 }));
-vi.mock("@/services/importOperationJournal", () => ({
+vi.mock("@/services/import/importOperationJournal", () => ({
   readImportOperation: mocks.readImportOperation,
 }));
 vi.mock("../settingsCleanup", () => ({
@@ -45,19 +45,19 @@ vi.mock("../settingsCleanup", () => ({
 vi.mock("../excelArchiveRouting", () => ({
   resolvePortableExcelArchiveRoute: mocks.resolvePortableExcelArchiveRoute,
 }));
-vi.mock("@/services/excelImportService", () => ({
+vi.mock("@/services/import/excelImportService", () => ({
   parseExcelImportFile: mocks.parseExcelImportFile,
   reconcileExcelImportPhotos: mocks.reconcileExcelImportPhotos,
   persistExcelImportPhotos: mocks.persistExcelImportPhotos,
 }));
-vi.mock("@/services/projectBackupService", () => ({
+vi.mock("@/services/backup/projectBackupService", () => ({
   previewMergeLeaks: mocks.previewMergeLeaks,
   mergeLeaksByFreshness: mocks.mergeLeaksByFreshness,
 }));
-vi.mock("@/services/projectIntegrityService", () => ({
+vi.mock("@/services/backup/projectIntegrityService", () => ({
   analyzeProjectIntegrity: mocks.analyzeProjectIntegrity,
 }));
-vi.mock("@/services/excelImportTransaction", () => ({
+vi.mock("@/services/import/excelImportTransaction", () => ({
   runExcelImportTransaction: mocks.runExcelImportTransaction,
   getExcelImportTransactionWarning: mocks.getExcelImportTransactionWarning,
 }));

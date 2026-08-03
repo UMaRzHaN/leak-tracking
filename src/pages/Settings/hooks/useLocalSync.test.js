@@ -11,12 +11,12 @@ vi.mock("@/services/localSyncService", () => ({
   exchangeLocalSyncArchive: vi.fn(),
 }));
 
-vi.mock("@/services/projectBackupService", () => ({
+vi.mock("@/services/backup/projectBackupService", () => ({
   streamProjectBackupZip: vi.fn(),
 }));
 
 const syncService = await import("@/services/localSyncService");
-const backupService = await import("@/services/projectBackupService");
+const backupService = await import("@/services/backup/projectBackupService");
 const { useLocalSync } = await import("./useLocalSync");
 
 const QR_SESSION = {

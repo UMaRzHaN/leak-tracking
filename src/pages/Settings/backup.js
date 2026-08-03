@@ -7,4 +7,4 @@ export {
   importIntoExistingProject,
   importProjectZip,
   peekBackupZip,
-} from "@/services/projectBackupService";
+} from "@/services/backup/projectBackupService";

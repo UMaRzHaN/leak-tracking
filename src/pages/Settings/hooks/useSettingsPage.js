@@ -22,8 +22,8 @@ import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import {
   getExcelImportTransactionWarning,
   runExcelImportTransaction,
-} from "@/services/excelImportTransaction";
-import { readImportOperation } from "@/services/importOperationJournal";
+} from "@/services/import/excelImportTransaction";
+import { readImportOperation } from "@/services/import/importOperationJournal";
 import { useBackupActions } from "./useBackupActions";
 import { useProjectActions } from "./useProjectActions";
 import { useSettingsTexts } from "./useSettingsTexts";
@@ -220,7 +220,7 @@ export function useSettingsPage({
     setCheckingIntegrity(true);
     try {
       const { analyzeProjectIntegrity } =
-        await import("@/services/projectIntegrityService");
+        await import("@/services/backup/projectIntegrityService");
       const report = await analyzeProjectIntegrity(data, {
         idbGetPhoto,
         leakPhotoRequired,
@@ -303,7 +303,7 @@ export function useSettingsPage({
 
       try {
         const { parseExcelImportFile, reconcileExcelImportPhotos } =
-          await import("@/services/excelImportService");
+          await import("@/services/import/excelImportService");
         const result = await parseExcelImportFile(file, {
           projectType: activeProject.type,
         });
@@ -348,7 +348,7 @@ export function useSettingsPage({
 
         if (data.length > 0) {
           const { previewMergeLeaks } =
-            await import("@/services/projectBackupService");
+            await import("@/services/backup/projectBackupService");
           const prepared = prepareExcelLeaks(result.leaks, {
             mode: "merge",
           });
@@ -416,7 +416,7 @@ export function useSettingsPage({
   const persistPreparedExcelPhotos = useCallback(
     async (leaks) => {
       const { persistExcelImportPhotos } =
-        await import("@/services/excelImportService");
+        await import("@/services/import/excelImportService");
       return persistExcelImportPhotos(leaks, savePhoto, {
         returnTransaction: true,
       });
@@ -518,7 +518,7 @@ export function useSettingsPage({
       setIsImportingExcel(true);
       notifyExcelImportProgress();
       const { reconcileExcelImportPhotos } =
-        await import("@/services/excelImportService");
+        await import("@/services/import/excelImportService");
       const reconciled = await reconcileExcelImportPhotos(
         data,
         prepared,
@@ -592,7 +592,7 @@ export function useSettingsPage({
       setIsImportingExcel(true);
       notifyExcelImportProgress();
       const { mergeLeaksByFreshness } =
-        await import("@/services/projectBackupService");
+        await import("@/services/backup/projectBackupService");
       const snapshot = await captureExcelImportSnapshot();
       let mergeResult;
       const importedLeaks = await runExcelImportTransaction({

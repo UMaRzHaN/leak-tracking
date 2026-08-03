@@ -27,7 +27,7 @@ vi.mock("@/services/publicFileWriter", () => ({
   writePublicFileStream: nativeWriter.writePublicFileStream,
 }));
 
-vi.mock("@/services/projectBackupService", () => ({
+vi.mock("@/services/backup/projectBackupService", () => ({
   peekBackupZip: vi.fn(),
   buildProjectBackupZip: vi.fn(),
   streamProjectBackupZip: vi.fn(),
@@ -36,7 +36,7 @@ vi.mock("@/services/projectBackupService", () => ({
 
 const languageModule = await import("@/app/hooks/useLanguage");
 const repositoryModule = await import("@/repositories/LeakRepository");
-const servicesModule = await import("@/services/projectBackupService");
+const servicesModule = await import("@/services/backup/projectBackupService");
 const { useBackupActions } = await import("./useBackupActions");
 
 describe("useBackupActions", () => {

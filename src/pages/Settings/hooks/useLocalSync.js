@@ -114,7 +114,7 @@ export function useLocalSync({
         );
       }
       const { streamProjectBackupZip } =
-        await import("@/services/projectBackupService");
+        await import("@/services/backup/projectBackupService");
       return streamProjectBackupZip({
         leaks: data,
         idbGet: idbGetPhoto,

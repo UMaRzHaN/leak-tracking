@@ -41,8 +41,8 @@ import {
   preflightZipFile,
   verifyArchiveLimits,
 } from "@/utils/importLimits";
-import { IMPORT_ROW_YIELD_EVERY } from "@/services/projectBackup/constants";
-import { yieldToMainThread } from "@/services/projectBackup/runtime";
+import { IMPORT_ROW_YIELD_EVERY } from "@/services/backup/constants";
+import { yieldToMainThread } from "@/services/backup/runtime";
 
 export { persistExcelImportPhotos, reconcileExcelImportPhotos };
 

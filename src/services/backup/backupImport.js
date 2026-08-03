@@ -10,7 +10,7 @@ import {
   getPreservedInvalidLeakRecords,
 } from "@/repositories/LeakRepository";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
-import { rollbackImportedProject } from "@/services/projectCleanup";
+import { rollbackImportedProject } from "@/services/backup/projectCleanup";
 import {
   applyProjectTombstones,
   assertProjectSyncStateCompatible,
