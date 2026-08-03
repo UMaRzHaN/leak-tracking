@@ -152,14 +152,14 @@ src/
 │   ├── backupSchema.js     # Manual validation for ZIP import/export
 │   └── compressImage.js
 │
-├── services/
-│   ├── excelImportService.js
-│   ├── localSyncService.js
-│   ├── projectBackupService.js
-│   ├── projectIntegrityService.js
-│   ├── projectSyncState.js
-│   ├── publicFileWriter.js
-│   └── maps/tileCache.js   # Shared tile-caching logic
+├── services/               # One directory per subsystem; no loose files
+│   ├── archive/            # zipStoreStream, archivePaths — shared by import/export
+│   ├── backup/             # projectBackupService facade + merge/import/export parts
+│   ├── excelExport/        # Workbook building, run in a Web Worker
+│   ├── import/             # excelImportService facade + XLSX/ZIP parsing parts
+│   ├── maps/               # tileCache — offline tile storage
+│   ├── storage/            # persistentStorage, publicFileWriter, leakFieldVersions
+│   └── sync/               # localSyncService, projectSyncState, syncClock
 │
 ├── utils/
 │   ├── calculations/       # Emissions & flow-rate calculations

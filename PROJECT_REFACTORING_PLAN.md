@@ -131,6 +131,17 @@ src/
 └── pages/
 ```
 
+> **Статус `services/` (выполнено).** Переезд сделан по уточнённой таблице из
+> `ARCHIVE_IMPORT_PERFORMANCE_AUDIT.md`, раздел 8, поэтому фактическая структура
+> отличается от схемы выше двумя пунктами:
+>
+> - добавлены `archive/` (`zipStoreStream`, `archivePaths` — общие для импорта и
+>   экспорта) и `storage/` (`persistentStorage`, `publicFileWriter`,
+>   `leakFieldVersions`, `nativePhotoSourceCache`). В схеме выше этим файлам не
+>   нашлось места ни в одной из пяти папок;
+> - папка называется `excelExport/`, а не `export/`: экспорт в KML живёт в
+>   `pages/MapPage/`, и общее имя вводило бы в заблуждение.
+
 React-страницы должны:
 
 - получать подготовленное состояние;
