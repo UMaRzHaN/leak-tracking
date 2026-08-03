@@ -22,8 +22,10 @@ const MIRROR_DB = "LeakTrackingMirrorDB";
 // A copy is addressed by database *and* store: the mirror now lives in a
 // database of its own so that one database failing cannot take the other with
 // it, and both use the same store name.
-const PRIMARY = { db: PRIMARY_DB, store: "projects" };
-const MIRROR = { db: MIRROR_DB, store: "projects" };
+// Since schema v3 an envelope is two records: metadata in `store` and the leak
+// array in `payload`, written together in one transaction.
+const PRIMARY = { db: PRIMARY_DB, store: "projects", payload: "projectsData" };
+const MIRROR = { db: MIRROR_DB, store: "projects", payload: "projectsData" };
 // Where the mirror lived in schema v2: a second store inside the primary
 // database. Read-only now, kept only as a migration source.
 const LEGACY_MIRROR = { db: PRIMARY_DB, store: "projectsMirror" };
@@ -124,8 +126,10 @@ async function openRawDb(location) {
     const request = indexedDB.open(location.db);
     request.onupgradeneeded = () => {
       const db = request.result;
-      if (!db.objectStoreNames.contains(location.store)) {
-        db.createObjectStore(location.store, { keyPath: "id" });
+      for (const name of [location.store, location.payload]) {
+        if (name && !db.objectStoreNames.contains(name)) {
+          db.createObjectStore(name, { keyPath: "id" });
+        }
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -147,16 +151,43 @@ async function overwriteStoreEntry(location, projectId, data, extra = {}) {
   db.close();
 }
 
+// Writes an envelope the way the store does: split across both records for a
+// schema-v3 location, as a single inline record for the schema-v2 one.
 async function writeStoreEnvelope(location, projectId, envelope) {
   const db = await openRawDb(location);
+  const { data, ...meta } = envelope;
   await new Promise((resolve, reject) => {
-    const transaction = db.transaction(location.store, "readwrite");
-    transaction.objectStore(location.store).put({ id: projectId, ...envelope });
+    const stores = location.payload
+      ? [location.store, location.payload]
+      : [location.store];
+    const transaction = db.transaction(stores, "readwrite");
+    transaction
+      .objectStore(location.store)
+      .put(
+        location.payload
+          ? { id: projectId, ...meta }
+          : { id: projectId, ...envelope },
+      );
+    if (location.payload) {
+      transaction.objectStore(location.payload).put({ id: projectId, data });
+    }
     transaction.oncomplete = resolve;
     transaction.onerror = () => reject(transaction.error);
     transaction.onabort = () => reject(transaction.error);
   });
   db.close();
+}
+
+// Reassembles both records, mirroring how the store reads a copy back.
+async function readStoreEnvelope(location, projectId) {
+  const meta = await readStoreEntry(location, projectId);
+  if (meta == null) return null;
+  if ("data" in meta || !location.payload) return meta;
+  const payload = await readStoreEntry(
+    { ...location, store: location.payload },
+    projectId,
+  );
+  return { ...meta, data: payload?.data };
 }
 
 async function readStoreEntry(location, projectId) {
@@ -346,15 +377,15 @@ describe("LeakRepository web IndexedDB storage", () => {
   it("keeps the previous mirror when IndexedDB saves but the mirror store write fails", async () => {
     const { LeakRepository } = await loadRepository();
     await LeakRepository.saveAll([makeLeak("previous")], PROJECT);
-    const previousMirror = await readStoreEntry(MIRROR, PROJECT.projectId);
+    const previousMirror = await readStoreEnvelope(MIRROR, PROJECT.projectId);
     failMirrorWritesFor(PROJECT.projectId);
 
     await expect(
       LeakRepository.saveAll([makeLeak("current")], PROJECT),
     ).resolves.toBeUndefined();
 
-    // The failed mirror write left the store entry unchanged.
-    expect(await readStoreEntry(MIRROR, PROJECT.projectId)).toEqual(
+    // The failed mirror write left both of its records unchanged.
+    expect(await readStoreEnvelope(MIRROR, PROJECT.projectId)).toEqual(
       previousMirror,
     );
     await expect(LeakRepository.getAll(PROJECT)).resolves.toMatchObject([
@@ -393,7 +424,7 @@ describe("LeakRepository web IndexedDB storage", () => {
   it("keeps a newer IndexedDB revision when the mirror store is stale", async () => {
     const { LeakRepository } = await loadRepository();
     await LeakRepository.saveAll([makeLeak("previous")], PROJECT);
-    const stale = await readStoreEntry(MIRROR, PROJECT.projectId);
+    const stale = await readStoreEnvelope(MIRROR, PROJECT.projectId);
     await LeakRepository.saveAll([makeLeak("current")], PROJECT);
     await writeStoreEnvelope(MIRROR, PROJECT.projectId, stale);
 
@@ -401,7 +432,7 @@ describe("LeakRepository web IndexedDB storage", () => {
       { id: "current" },
     ]);
     expect(
-      (await readStoreEntry(MIRROR, PROJECT.projectId)).data,
+      (await readStoreEnvelope(MIRROR, PROJECT.projectId)).data,
     ).toMatchObject([{ id: "current" }]);
   });
 
@@ -501,7 +532,7 @@ describe("LeakRepository web IndexedDB storage", () => {
     ]);
 
     expect(
-      (await readStoreEntry(MIRROR, PROJECT.projectId)).data,
+      (await readStoreEnvelope(MIRROR, PROJECT.projectId)).data,
     ).toMatchObject([{ id: "v2-mirror" }]);
     expect(await readStoreEntry(LEGACY_MIRROR, PROJECT.projectId)).toBeNull();
   });
@@ -522,6 +553,15 @@ describe("LeakRepository web IndexedDB storage", () => {
     expect(await readStoreEntry(PRIMARY, PROJECT.projectId)).toBeNull();
     expect(await readStoreEntry(MIRROR, PROJECT.projectId)).toBeNull();
     expect(await readStoreEntry(LEGACY_MIRROR, PROJECT.projectId)).toBeNull();
+    // Purging metadata but leaving payloads behind would strand megabytes.
+    for (const location of [PRIMARY, MIRROR]) {
+      expect(
+        await readStoreEntry(
+          { ...location, store: location.payload },
+          PROJECT.projectId,
+        ),
+      ).toBeNull();
+    }
     await expect(LeakRepository.getAll(PROJECT)).resolves.toEqual([]);
   });
 
@@ -542,6 +582,62 @@ describe("LeakRepository web IndexedDB storage", () => {
       source: "mirror",
       blocksWrites: false,
     });
+  });
+
+  // Schema v2 kept the leak array inline in the metadata record. Those records
+  // are not rewritten by the version upgrade, so reading one has to keep
+  // working, and the split happens on the project's next write.
+  it("reads a schema-v2 inline record and splits it on the next save", async () => {
+    const { LeakRepository } = await loadRepository();
+    await overwriteStoreEntry(PRIMARY, PROJECT.projectId, [makeLeak("v2")], {
+      version: 1,
+      revision: 7,
+      updatedAt: 7,
+      deleted: false,
+    });
+
+    await expect(LeakRepository.getAll(PROJECT)).resolves.toMatchObject([
+      { id: "v2" },
+    ]);
+
+    await LeakRepository.saveAll([makeLeak("v3")], PROJECT);
+
+    const meta = await readStoreEntry(PRIMARY, PROJECT.projectId);
+    expect(meta).not.toHaveProperty("data");
+    expect(
+      (
+        await readStoreEntry(
+          { ...PRIMARY, store: PRIMARY.payload },
+          PROJECT.projectId,
+        )
+      ).data,
+    ).toMatchObject([{ id: "v3" }]);
+  });
+
+  // Metadata and payload are written in one transaction, so this state should
+  // be unreachable — but if it ever occurs, a half-written copy must lose to a
+  // whole one instead of being read as an empty project.
+  it("rejects a copy whose payload record is missing", async () => {
+    const { LeakRepository } = await loadRepository();
+    await LeakRepository.saveAll([makeLeak("intact")], PROJECT);
+    // A far newer mirror that would win on revision — written as metadata with
+    // no `data` key at all, then stripped of its payload record.
+    await writeStoreEnvelope(MIRROR, PROJECT.projectId, {
+      version: 1,
+      revision: Number.MAX_SAFE_INTEGER - 1,
+      updatedAt: Date.now() + 60_000,
+      deleted: false,
+    });
+    await deleteStoreEntry(
+      { ...MIRROR, store: MIRROR.payload },
+      PROJECT.projectId,
+    );
+    const torn = await readStoreEntry(MIRROR, PROJECT.projectId);
+    expect(torn).not.toHaveProperty("data");
+
+    await expect(LeakRepository.getAll(PROJECT)).resolves.toMatchObject([
+      { id: "intact" },
+    ]);
   });
 
   it("drops the legacy localStorage copy once a save reaches IndexedDB", async () => {

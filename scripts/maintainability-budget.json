@@ -3,7 +3,7 @@
   "files": {
     "src/pages/Settings/hooks/useSettingsPage.js": 829,
     "src/repositories/LeakRepository.js": 650,
-    "src/repositories/webProjectEnvelopeStore.js": 290,
+    "src/repositories/webProjectEnvelopeStore.js": 300,
     "src/pages/Monitoring/hooks/useMonitoringPage.js": 784,
     "src/services/maps/tileCache.js": 610,
     "src/services/backup/backupImport.js": 546,
