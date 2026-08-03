@@ -113,6 +113,38 @@ public class LeakDatabaseStoreInstrumentedTest {
     }
 
     @Test
+    public void loadProjectPageReturnsOrderedSlicesWithHasMore() throws Exception {
+        JSONArray records = new JSONArray();
+        for (int i = 0; i < 5; i++) {
+            records.put(new JSONObject().put("id", "leak-" + i).put("value", i));
+        }
+        store.replaceAll("project-a", records, null);
+
+        LeakDatabaseStore.ProjectPage firstPage = store.loadProjectPage("project-a", 0, 2);
+        assertTrue(firstPage.found);
+        assertEquals(5, firstPage.totalCount);
+        assertTrue(firstPage.hasMore);
+        JSONArray firstRows = new JSONArray(firstPage.recordsJson);
+        assertEquals(2, firstRows.length());
+        assertEquals("leak-0", firstRows.getJSONObject(0).getString("id"));
+        assertEquals("leak-1", firstRows.getJSONObject(1).getString("id"));
+
+        LeakDatabaseStore.ProjectPage lastPage = store.loadProjectPage("project-a", 4, 2);
+        assertFalse(lastPage.hasMore);
+        JSONArray lastRows = new JSONArray(lastPage.recordsJson);
+        assertEquals(1, lastRows.length());
+        assertEquals("leak-4", lastRows.getJSONObject(0).getString("id"));
+    }
+
+    @Test
+    public void loadProjectPageOnMissingProjectReturnsNotFound() throws Exception {
+        LeakDatabaseStore.ProjectPage page = store.loadProjectPage("missing", 0, 10);
+        assertFalse(page.found);
+        assertEquals(0, page.totalCount);
+        assertFalse(page.hasMore);
+    }
+
+    @Test
     public void projectsRemainIsolated() throws Exception {
         store.replaceAll(
             "first",

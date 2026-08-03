@@ -62,8 +62,8 @@ function ProjectDataLoadWarning({ lang, onRetry }) {
         </strong>
         <p>
           {ru
-            ? "Основная база IndexedDB работает. Можно продолжать работу; резервная копия localStorage будет восстановлена после устранения ошибки."
-            : "The primary IndexedDB database is working. You can continue; the localStorage mirror will be repaired after the error is resolved."}
+            ? "Основная база IndexedDB работает. Можно продолжать работу; резервная копия будет восстановлена после устранения ошибки."
+            : "The primary IndexedDB database is working. You can continue; the backup copy will be repaired after the error is resolved."}
         </p>
       </div>
       <button type="button" onClick={onRetry}>

@@ -201,6 +201,46 @@ export async function loadNativeProject(folderName) {
   return loadLegacyNativeProject(folderName);
 }
 
+/**
+ * Additive, currently-unwired paged read of a native SQLite project (see
+ * LeakDatabaseStore#loadProjectPage on the Android side). Nothing in the app
+ * calls this yet — LeakRepository.getAll() / loadNativeProject() above still
+ * load the whole project in one call, and every page/hook that consumes
+ * leaks (Settings, Monitoring, MainPage, search, ...) still assumes it has
+ * the full array. Wiring real pagination through those call sites is a
+ * separate, larger change (see PERFORMANCE_MAINTAINABILITY_TODO.md, "Этап
+ * 5"). This function exists so that work can start from a tested, working
+ * native primitive instead of from scratch, without touching any existing
+ * behavior.
+ *
+ * Returns null when the SQLite engine is unavailable (e.g. a project still
+ * on legacy JSON snapshot storage) — paging only exists for SQLite-backed
+ * projects, so callers must be prepared to fall back to the full read.
+ */
+export async function loadNativeProjectPage(
+  folderName,
+  { offset = 0, limit = 500 } = {},
+) {
+  const result = await invokeSqlite("loadPage", {
+    projectKey: folderName,
+    offset,
+    limit,
+  });
+  if (result === null || !result.found) return null;
+  const data = parseJson(result.recordsJson, [], "page records");
+  if (!Array.isArray(data)) {
+    throw new TypeError("Native SQLite page records must be an array");
+  }
+  return {
+    leaks: data,
+    totalCount: Number(result.totalCount ?? data.length),
+    offset: Number(result.offset ?? offset),
+    limit: Number(result.limit ?? limit),
+    hasMore: Boolean(result.hasMore),
+    updatedAt: Number(result.updatedAt ?? 0),
+  };
+}
+
 export async function saveNativeProject(
   folderName,
   leaks,

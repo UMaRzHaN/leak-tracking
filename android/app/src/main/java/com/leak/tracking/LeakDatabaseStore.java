@@ -33,6 +33,37 @@ final class LeakDatabaseStore implements AutoCloseable {
         }
     }
 
+    /**
+     * Result of a paged read — see {@link #loadProjectPage}.
+     */
+    static final class ProjectPage {
+        final boolean found;
+        final String recordsJson;
+        final int totalCount;
+        final int offset;
+        final int limit;
+        final boolean hasMore;
+        final long updatedAt;
+
+        ProjectPage(
+            boolean found,
+            String recordsJson,
+            int totalCount,
+            int offset,
+            int limit,
+            boolean hasMore,
+            long updatedAt
+        ) {
+            this.found = found;
+            this.recordsJson = recordsJson;
+            this.totalCount = totalCount;
+            this.offset = offset;
+            this.limit = limit;
+            this.hasMore = hasMore;
+            this.updatedAt = updatedAt;
+        }
+    }
+
     static final class Diagnostics {
         final boolean found;
         final int recordCount;
@@ -125,6 +156,90 @@ final class LeakDatabaseStore implements AutoCloseable {
         }
         recordsJson.append(']');
         return new ProjectData(true, recordsJson.toString(), syncStateJson, updatedAt);
+    }
+
+    /**
+     * Reads one page of leak rows ordered by the same {@code position} column
+     * used by {@link #loadProject}, using the existing
+     * {@code leaks_project_position} index so LIMIT/OFFSET stays an indexed
+     * range scan rather than a full-table sort. Unlike loadProject, this does
+     * not include sync_state_json — callers that need it should read it once
+     * from the first page (offset 0) rather than on every page.
+     *
+     * <p>This is additive, currently-unwired infrastructure:
+     * {@link #loadProject} is still what {@code NativeLeakStoragePlugin#load}
+     * and every JS caller actually use. Nothing in the app calls
+     * loadProjectPage yet — wiring a page-by-page read through
+     * Settings/Monitoring/MainPage/search is a larger, separate change (see
+     * PERFORMANCE_MAINTAINABILITY_TODO.md, "Этап 5"). This method exists so
+     * that future work has a tested, working native primitive to build on
+     * without touching the existing read path.
+     */
+    synchronized ProjectPage loadProjectPage(
+        String rawProjectKey,
+        int offset,
+        int limit
+    ) throws Exception {
+        String projectKey = validateProjectKey(rawProjectKey);
+        if (offset < 0) throw new IllegalArgumentException("offset must not be negative");
+        if (limit <= 0 || limit > 2000) {
+            throw new IllegalArgumentException("limit must be between 1 and 2000");
+        }
+        SQLiteDatabase database = helper.getReadableDatabase();
+
+        long updatedAt = 0L;
+        try (
+            Cursor project = database.query(
+                "projects",
+                new String[] { "updated_at" },
+                "project_key = ?",
+                new String[] { projectKey },
+                null,
+                null,
+                null,
+                "1"
+            )
+        ) {
+            if (!project.moveToFirst()) {
+                return new ProjectPage(false, "[]", 0, offset, limit, false, 0L);
+            }
+            updatedAt = project.getLong(0);
+        }
+
+        int totalCount;
+        try (
+            Cursor count = database.rawQuery(
+                "SELECT COUNT(*) FROM leaks WHERE project_key = ?",
+                new String[] { projectKey }
+            )
+        ) {
+            totalCount = count.moveToFirst() ? count.getInt(0) : 0;
+        }
+
+        StringBuilder recordsJson = new StringBuilder("[");
+        try (
+            Cursor cursor = database.query(
+                "leaks",
+                new String[] { "payload_json" },
+                "project_key = ?",
+                new String[] { projectKey },
+                null,
+                null,
+                "position ASC",
+                limit + " OFFSET " + offset
+            )
+        ) {
+            boolean first = true;
+            while (cursor.moveToNext()) {
+                if (!first) recordsJson.append(',');
+                recordsJson.append(cursor.getString(0));
+                first = false;
+            }
+        }
+        recordsJson.append(']');
+
+        boolean hasMore = offset + limit < totalCount;
+        return new ProjectPage(true, recordsJson.toString(), totalCount, offset, limit, hasMore, updatedAt);
     }
 
     synchronized void replaceAll(

@@ -42,6 +42,33 @@ public class NativeLeakStoragePlugin extends Plugin {
         });
     }
 
+    /**
+     * Additive, currently-unwired paged read (see
+     * {@link LeakDatabaseStore#loadProjectPage}). No JS caller invokes this
+     * yet — {@code load} above remains the one path the app actually uses.
+     */
+    @PluginMethod
+    public void loadPage(PluginCall call) {
+        execute(call, () -> {
+            int offset = call.getInt("offset", 0);
+            int limit = call.getInt("limit", 500);
+            LeakDatabaseStore.ProjectPage page = store.loadProjectPage(
+                requireProjectKey(call),
+                offset,
+                limit
+            );
+            JSObject result = new JSObject();
+            result.put("found", page.found);
+            result.put("recordsJson", page.recordsJson);
+            result.put("totalCount", page.totalCount);
+            result.put("offset", page.offset);
+            result.put("limit", page.limit);
+            result.put("hasMore", page.hasMore);
+            result.put("updatedAt", page.updatedAt);
+            call.resolve(result);
+        });
+    }
+
     @PluginMethod
     public void replaceAll(PluginCall call) {
         execute(call, () -> {

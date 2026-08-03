@@ -105,6 +105,56 @@ async function buildPhotoEntries(
 
   return [...leakPhotos, ...monitoringPhotos];
 }
+// Resolves report + backup photo entries (each holding a full base64 copy of
+// one photo) and reduces them down to what the rest of the export actually
+// needs going forward: two lightweight path maps and the deduped entry list
+// used later by the zip-assembly loop. Keeping this in its own function
+// means the larger intermediate arrays below (reportPhotoEntries,
+// resolvedReportPhotoEntries, backupPhotoEntries, and the lookup Map built
+// from them) become unreachable — and collectible — as soon as this
+// function returns, instead of staying resident for the entire, separately
+// slow, workbook-building phase that follows in exportToExcelFile.
+async function resolvePhotoExportData({
+  orderedLeaks,
+  backupLeaks,
+  idbGet,
+  monitoringExportMode,
+  photoReadCache,
+}) {
+  const reportPhotoEntries = await buildPhotoEntries(
+    orderedLeaks,
+    idbGet,
+    monitoringExportMode,
+    photoReadCache,
+    "photos/report",
+  );
+  const backupPhotoEntries = await buildPhotoEntries(
+    backupLeaks,
+    idbGet,
+    EXCEL_MONITORING_EXPORT_MODE.FULL,
+    photoReadCache,
+  );
+  const backupPhotoPathByLogicalKey = new Map(
+    backupPhotoEntries.map((entry) => [entry.logicalKey, entry.photoFileName]),
+  );
+  const resolvedReportPhotoEntries = reportPhotoEntries.map((entry) => {
+    const backupPath = backupPhotoPathByLogicalKey.get(entry.logicalKey);
+    return backupPath ? { ...entry, photoFileName: backupPath } : entry;
+  });
+  const photoEntries = [
+    ...new Map(
+      [...resolvedReportPhotoEntries, ...backupPhotoEntries].map((entry) => [
+        entry.photoFileName,
+        entry,
+      ]),
+    ).values(),
+  ];
+  const photoMap = buildPhotoMap(resolvedReportPhotoEntries);
+  const backupPhotoMap = buildPhotoMap(backupPhotoEntries);
+
+  return { photoMap, backupPhotoMap, photoEntries };
+}
+
 async function buildWorkbook({
   orderedLeaks,
   orderedRows,
@@ -295,40 +345,22 @@ export async function exportToExcelFile(
   );
   const photosStartedAt = performance.now();
   const photoReadCache = new Map();
-  const reportPhotoEntries = await buildPhotoEntries(
-    orderedLeaks,
-    idbGet,
-    monitoringExportMode,
-    photoReadCache,
-    "photos/report",
-  );
   const backupLeaks = Array.isArray(options.backupLeaks)
     ? options.backupLeaks
     : orderedLeaks;
-  const backupPhotoEntries = await buildPhotoEntries(
-    backupLeaks,
-    idbGet,
-    EXCEL_MONITORING_EXPORT_MODE.FULL,
-    photoReadCache,
-  );
-  const backupPhotoPathByLogicalKey = new Map(
-    backupPhotoEntries.map((entry) => [entry.logicalKey, entry.photoFileName]),
-  );
-  const resolvedReportPhotoEntries = reportPhotoEntries.map((entry) => {
-    const backupPath = backupPhotoPathByLogicalKey.get(entry.logicalKey);
-    return backupPath ? { ...entry, photoFileName: backupPath } : entry;
-  });
-  const photoEntries = [
-    ...new Map(
-      [...resolvedReportPhotoEntries, ...backupPhotoEntries].map((entry) => [
-        entry.photoFileName,
-        entry,
-      ]),
-    ).values(),
-  ];
+  // photoEntries (each holding a full base64 photo) is the only heavy value
+  // kept from this call; the larger intermediate arrays it was derived from
+  // are freed here, before the workbook build below.
+  const { photoMap, backupPhotoMap, photoEntries } =
+    await resolvePhotoExportData({
+      orderedLeaks,
+      backupLeaks,
+      idbGet,
+      monitoringExportMode,
+      photoReadCache,
+    });
+  photoReadCache.clear();
   phaseMetrics.photosMs = performance.now() - photosStartedAt;
-  const photoMap = buildPhotoMap(resolvedReportPhotoEntries);
-  const backupPhotoMap = buildPhotoMap(backupPhotoEntries);
   const archivePayload = {
     schemaVersion: BACKUP_SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
@@ -374,6 +406,13 @@ export async function exportToExcelFile(
       await yieldToMainThread();
     }
     zip.file(entry.photoFileName, entry.base64, { base64: true });
+    // JSZip decodes base64 into its own internal bytes synchronously above,
+    // so our copy of the string is redundant from this point on. Dropping it
+    // per-entry (rather than only when the whole photoEntries array goes out
+    // of scope) lets the GC reclaim already-zipped photos incrementally
+    // while later ones are still being processed, instead of peaking at
+    // "every photo's base64 string, all at once" for the whole loop.
+    entry.base64 = null;
   }
 
   const zipBlob = await zip.generateAsync({ type: "blob" });

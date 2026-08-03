@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { IDBFactory } from "fake-indexeddb";
+import { IDBFactory, IDBObjectStore } from "fake-indexeddb";
 
 vi.mock("@/utils/platform", () => ({
   isNative: false,
@@ -16,6 +16,8 @@ vi.mock("@capacitor/filesystem", () => ({
 }));
 
 const PROJECT = { projectId: "proj-big", folderName: "big_project" };
+const PRIMARY_STORE = "projects";
+const MIRROR_STORE = "projectsMirror";
 
 const makeLeak = (id) => ({
   id,
@@ -26,6 +28,10 @@ const makeLeak = (id) => ({
   monitoringRecords: [{ id: `${id}-m1`, date: "2026-07-14T00:00:00.000Z" }],
 });
 
+// The legacy full-envelope mirror (pre schema-v2) lived under this
+// localStorage key. Nothing writes a full envelope back here anymore; it is
+// only read as a one-time migration source, so tests that pre-seed or
+// inspect it still use this key directly.
 function storageKey(projectId) {
   return `app:${projectId}:data_v1`;
 }
@@ -54,16 +60,34 @@ function failLocalStorageWritesFor(key) {
     });
 }
 
-async function overwriteIndexedProjectData(projectId, data, extra = {}) {
-  const db = await new Promise((resolve, reject) => {
-    const request = indexedDB.open("LeakTrackingDataDB", 1);
+// Simulates the IndexedDB mirror store rejecting a write (e.g. a transient
+// browser-storage failure) while the primary store keeps working, mirroring
+// how the old test suite forced localStorage.setItem to fail for one key.
+function failMirrorWritesFor(projectId) {
+  const originalPut = IDBObjectStore.prototype.put;
+  return vi
+    .spyOn(IDBObjectStore.prototype, "put")
+    .mockImplementation(function put(value) {
+      if (this.name === MIRROR_STORE && value?.id === projectId) {
+        throw new DOMException("Mirror store put failed", "UnknownError");
+      }
+      return originalPut.call(this, value);
+    });
+}
+
+async function openRawDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("LeakTrackingDataDB");
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
+}
 
+async function overwriteStoreEntry(storeName, projectId, data, extra = {}) {
+  const db = await openRawDb();
   await new Promise((resolve, reject) => {
-    const transaction = db.transaction("projects", "readwrite");
-    transaction.objectStore("projects").put({ id: projectId, data, ...extra });
+    const transaction = db.transaction(storeName, "readwrite");
+    transaction.objectStore(storeName).put({ id: projectId, data, ...extra });
     transaction.oncomplete = resolve;
     transaction.onerror = () => reject(transaction.error);
     transaction.onabort = () => reject(transaction.error);
@@ -71,8 +95,45 @@ async function overwriteIndexedProjectData(projectId, data, extra = {}) {
   db.close();
 }
 
-function readLocalEnvelope(projectId) {
-  return JSON.parse(localStorage.getItem(storageKey(projectId)));
+async function writeStoreEnvelope(storeName, projectId, envelope) {
+  const db = await openRawDb();
+  await new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, "readwrite");
+    transaction.objectStore(storeName).put({ id: projectId, ...envelope });
+    transaction.oncomplete = resolve;
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error);
+  });
+  db.close();
+}
+
+async function readStoreEntry(storeName, projectId) {
+  const db = await openRawDb();
+  const result = await new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, "readonly");
+    const request = transaction.objectStore(storeName).get(projectId);
+    request.onsuccess = () => resolve(request.result ?? null);
+    request.onerror = () => reject(request.error);
+  });
+  db.close();
+  return result;
+}
+
+async function deleteStoreEntry(storeName, projectId) {
+  const db = await openRawDb();
+  await new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, "readwrite");
+    transaction.objectStore(storeName).delete(projectId);
+    transaction.oncomplete = resolve;
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error);
+  });
+  db.close();
+}
+
+function readLegacyLocalStorageEnvelope(projectId) {
+  const raw = localStorage.getItem(storageKey(projectId));
+  return raw ? JSON.parse(raw) : null;
 }
 
 beforeEach(() => {
@@ -84,12 +145,12 @@ afterEach(() => {
 });
 
 describe("LeakRepository web IndexedDB storage", () => {
-  it("reads project leaks from IndexedDB when localStorage mirror is absent", async () => {
+  it("reads project leaks from IndexedDB when the mirror store is absent", async () => {
     const { LeakRepository } = await loadRepository();
     const leaks = [makeLeak("1"), makeLeak("2")];
 
     await LeakRepository.saveAll(leaks, PROJECT);
-    localStorage.removeItem(storageKey(PROJECT.projectId));
+    await deleteStoreEntry(MIRROR_STORE, PROJECT.projectId);
 
     const result = await LeakRepository.getAll(PROJECT);
     expect(result).toHaveLength(2);
@@ -110,7 +171,7 @@ describe("LeakRepository web IndexedDB storage", () => {
       ...PROJECT,
       syncState,
     });
-    localStorage.removeItem(storageKey(PROJECT.projectId));
+    await deleteStoreEntry(MIRROR_STORE, PROJECT.projectId);
 
     const result = await LeakRepository.getAll(PROJECT);
     expect(result).toMatchObject([{ id: "current" }]);
@@ -121,7 +182,7 @@ describe("LeakRepository web IndexedDB storage", () => {
     const { LeakRepository } = await loadRepository();
 
     await LeakRepository.saveAll([makeLeak("1")], PROJECT);
-    localStorage.removeItem(storageKey(PROJECT.projectId));
+    await deleteStoreEntry(MIRROR_STORE, PROJECT.projectId);
     await LeakRepository.clear(PROJECT);
 
     await expect(LeakRepository.getAll(PROJECT)).resolves.toEqual([]);
@@ -133,15 +194,18 @@ describe("LeakRepository web IndexedDB storage", () => {
 
     await LeakRepository.purge(PROJECT);
 
-    expect(localStorage.getItem(storageKey(PROJECT.projectId))).toBeNull();
+    expect(await readStoreEntry(PRIMARY_STORE, PROJECT.projectId)).toBeNull();
+    expect(await readStoreEntry(MIRROR_STORE, PROJECT.projectId)).toBeNull();
     await expect(LeakRepository.getAll(PROJECT)).resolves.toEqual([]);
   });
 
   it("rejects malformed IndexedDB data when no recovery mirror exists", async () => {
     const { LeakRepository } = await loadRepository();
     await LeakRepository.saveAll([makeLeak("1")], PROJECT);
-    localStorage.removeItem(storageKey(PROJECT.projectId));
-    await overwriteIndexedProjectData(PROJECT.projectId, { not: "an array" });
+    await deleteStoreEntry(MIRROR_STORE, PROJECT.projectId);
+    await overwriteStoreEntry(PRIMARY_STORE, PROJECT.projectId, {
+      not: "an array",
+    });
 
     await expect(LeakRepository.getAll(PROJECT)).rejects.toMatchObject({
       code: "PROJECT_DATA_READ_FAILED",
@@ -153,7 +217,11 @@ describe("LeakRepository web IndexedDB storage", () => {
     const { LeakRepository, getProjectDataReadWarning } =
       await loadRepository();
     await LeakRepository.saveAll([makeLeak("recoverable")], PROJECT);
-    await overwriteIndexedProjectData(PROJECT.projectId, { not: "an array" });
+    // Corrupt only the primary store; the mirror store still holds the
+    // valid envelope written by saveAll above.
+    await overwriteStoreEntry(PRIMARY_STORE, PROJECT.projectId, {
+      not: "an array",
+    });
 
     const result = await LeakRepository.getAll(PROJECT);
 
@@ -165,14 +233,18 @@ describe("LeakRepository web IndexedDB storage", () => {
     });
   });
 
-  it("marks a broken localStorage mirror as non-blocking when IndexedDB is valid", async () => {
+  it("marks a broken mirror store as non-blocking when IndexedDB is valid", async () => {
     const {
       LeakRepository,
       getProjectDataReadWarning,
       isProjectDataReadWarningBlocking,
     } = await loadRepository();
     await LeakRepository.saveAll([makeLeak("indexed")], PROJECT);
-    localStorage.setItem(storageKey(PROJECT.projectId), "not-json{{");
+    // Corrupt only the mirror store; the primary store still holds the
+    // valid envelope written by saveAll above.
+    await overwriteStoreEntry(MIRROR_STORE, PROJECT.projectId, {
+      not: "an array",
+    });
 
     const result = await LeakRepository.getAll(PROJECT);
     const warning = getProjectDataReadWarning(result);
@@ -194,7 +266,11 @@ describe("LeakRepository web IndexedDB storage", () => {
     const indexedLegacy = [makeLeak("indexed-old")];
     const localLegacy = [makeLeak("local-new")];
     await LeakRepository.getAll(PROJECT);
-    await overwriteIndexedProjectData(PROJECT.projectId, indexedLegacy, {
+    // Both copies predate envelope versioning: the primary store holds a
+    // bare {data, timestamp} record and the pre schema-v2 secondary copy
+    // sits in localStorage as a bare array. Neither carries a revision, so
+    // they cannot be ordered safely.
+    await overwriteStoreEntry(PRIMARY_STORE, PROJECT.projectId, indexedLegacy, {
       timestamp: 100,
     });
     localStorage.setItem(
@@ -210,33 +286,40 @@ describe("LeakRepository web IndexedDB storage", () => {
         localStorage: localLegacy,
       },
     });
-    expect(
-      JSON.parse(localStorage.getItem(storageKey(PROJECT.projectId))),
-    ).toEqual(localLegacy);
+    expect(readLegacyLocalStorageEnvelope(PROJECT.projectId)).toEqual(
+      localLegacy,
+    );
   });
 
-  it("keeps the previous mirror when IndexedDB saves but localStorage is full", async () => {
+  it("keeps the previous mirror when IndexedDB saves but the mirror store write fails", async () => {
     const { LeakRepository } = await loadRepository();
-    const key = storageKey(PROJECT.projectId);
-    const previous = [makeLeak("previous")];
-    localStorage.setItem(key, JSON.stringify(previous));
-    failLocalStorageWritesFor(key);
+    await LeakRepository.saveAll([makeLeak("previous")], PROJECT);
+    const previousMirror = await readStoreEntry(
+      MIRROR_STORE,
+      PROJECT.projectId,
+    );
+    failMirrorWritesFor(PROJECT.projectId);
 
     await expect(
       LeakRepository.saveAll([makeLeak("current")], PROJECT),
     ).resolves.toBeUndefined();
 
-    expect(JSON.parse(localStorage.getItem(key))).toEqual(previous);
+    // The failed mirror write left the store entry unchanged.
+    expect(await readStoreEntry(MIRROR_STORE, PROJECT.projectId)).toEqual(
+      previousMirror,
+    );
     await expect(LeakRepository.getAll(PROJECT)).resolves.toMatchObject([
       { id: "current" },
     ]);
   });
 
-  it("selects a newer localStorage revision and repairs stale IndexedDB", async () => {
+  it("selects a newer legacy localStorage revision and migrates it into IndexedDB", async () => {
     const { LeakRepository } = await loadRepository();
     await LeakRepository.saveAll([makeLeak("previous")], PROJECT);
-    const previous = readLocalEnvelope(PROJECT.projectId);
+    const previous = await readStoreEntry(PRIMARY_STORE, PROJECT.projectId);
     const current = [makeLeak("current")];
+    // Simulate a pre schema-v2 install where a newer full envelope was only
+    // ever written to localStorage.
     localStorage.setItem(
       storageKey(PROJECT.projectId),
       JSON.stringify({
@@ -251,38 +334,38 @@ describe("LeakRepository web IndexedDB storage", () => {
     await expect(LeakRepository.getAll(PROJECT)).resolves.toMatchObject([
       { id: "current" },
     ]);
-    localStorage.removeItem(storageKey(PROJECT.projectId));
+    // The legacy copy is migrated into both IndexedDB stores and removed.
+    expect(localStorage.getItem(storageKey(PROJECT.projectId))).toBeNull();
     await expect(LeakRepository.getAll(PROJECT)).resolves.toMatchObject([
       { id: "current" },
     ]);
   });
 
-  it("keeps a newer IndexedDB revision when the local mirror is stale", async () => {
+  it("keeps a newer IndexedDB revision when the mirror store is stale", async () => {
     const { LeakRepository } = await loadRepository();
     await LeakRepository.saveAll([makeLeak("previous")], PROJECT);
-    const stale = readLocalEnvelope(PROJECT.projectId);
+    const stale = await readStoreEntry(MIRROR_STORE, PROJECT.projectId);
     await LeakRepository.saveAll([makeLeak("current")], PROJECT);
-    localStorage.setItem(storageKey(PROJECT.projectId), JSON.stringify(stale));
+    await writeStoreEnvelope(MIRROR_STORE, PROJECT.projectId, stale);
 
     await expect(LeakRepository.getAll(PROJECT)).resolves.toMatchObject([
       { id: "current" },
     ]);
-    expect(readLocalEnvelope(PROJECT.projectId).data).toMatchObject([
-      { id: "current" },
-    ]);
+    expect(
+      (await readStoreEntry(MIRROR_STORE, PROJECT.projectId)).data,
+    ).toMatchObject([{ id: "current" }]);
   });
 
-  it("uses a newer IndexedDB tombstone when the local mirror cannot be updated", async () => {
+  it("uses a newer IndexedDB tombstone when the mirror store cannot be updated", async () => {
     const { LeakRepository } = await loadRepository();
-    const key = storageKey(PROJECT.projectId);
     await LeakRepository.saveAll([makeLeak("previous")], PROJECT);
-    failLocalStorageWritesFor(key);
+    failMirrorWritesFor(PROJECT.projectId);
 
     await expect(LeakRepository.clear(PROJECT)).resolves.toBeUndefined();
     await expect(LeakRepository.getAll(PROJECT)).resolves.toEqual([]);
   });
 
-  it("rejects the save and preserves the mirror when both web stores fail", async () => {
+  it("rejects the save when IndexedDB is unavailable and the localStorage fallback also fails", async () => {
     const { LeakRepository } = await loadRepositoryWithoutIndexedDb();
     const key = storageKey(PROJECT.projectId);
     const previous = [makeLeak("previous")];
@@ -294,6 +377,18 @@ describe("LeakRepository web IndexedDB storage", () => {
     ).rejects.toMatchObject({
       code: "PROJECT_DATA_WRITE_FAILED",
     });
+    // The failed fallback write left the previous copy untouched.
     expect(JSON.parse(localStorage.getItem(key))).toEqual(previous);
+  });
+
+  it("falls back to a full localStorage envelope when IndexedDB is entirely unavailable", async () => {
+    const { LeakRepository } = await loadRepositoryWithoutIndexedDb();
+
+    await expect(
+      LeakRepository.saveAll([makeLeak("current")], PROJECT),
+    ).resolves.toBeUndefined();
+    await expect(LeakRepository.getAll(PROJECT)).resolves.toMatchObject([
+      { id: "current" },
+    ]);
   });
 });

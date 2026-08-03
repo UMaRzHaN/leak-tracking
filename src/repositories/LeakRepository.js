@@ -21,7 +21,14 @@ import {
 const VALID_STATUSES = new Set(["open", "in_progress", "resolved"]);
 const WEB_DATA_DB = "LeakTrackingDataDB";
 const WEB_DATA_STORE = "projects";
-const WEB_DATA_VERSION = 1;
+// Secondary full copy of the project envelope. Before schema v2 this copy
+// lived in localStorage and was rewritten synchronously on every single
+// save, which blocked the main thread and risked hitting the ~5-10MB
+// localStorage quota on large projects. It now lives in its own IndexedDB
+// object store (same async, non-blocking write path as the primary store)
+// while keeping the exact same cross-validation/repair semantics.
+const WEB_MIRROR_STORE = "projectsMirror";
+const WEB_DATA_VERSION = 2;
 const WEB_ENVELOPE_VERSION = 1;
 const PRESERVED_INVALID_RECORDS = Symbol("preservedInvalidLeakRecords");
 const WEB_READ_WARNING = Symbol("webProjectDataReadWarning");
@@ -225,6 +232,9 @@ function openWebDataDb() {
       if (!db.objectStoreNames.contains(WEB_DATA_STORE)) {
         db.createObjectStore(WEB_DATA_STORE, { keyPath: "id" });
       }
+      if (!db.objectStoreNames.contains(WEB_MIRROR_STORE)) {
+        db.createObjectStore(WEB_MIRROR_STORE, { keyPath: "id" });
+      }
     };
     request.onsuccess = () => {
       const db = request.result;
@@ -242,26 +252,26 @@ function openWebDataDb() {
   return webDataDbPromise;
 }
 
-async function readWebData(projectId) {
+async function readObjectStoreEnvelope(storeName, projectId) {
   const db = await openWebDataDb();
   if (!db || !projectId) return null;
 
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(WEB_DATA_STORE, "readonly");
-    const store = tx.objectStore(WEB_DATA_STORE);
+    const tx = db.transaction(storeName, "readonly");
+    const store = tx.objectStore(storeName);
     const request = store.get(projectId);
     request.onsuccess = () => resolve(request.result ?? null);
     request.onerror = () => reject(request.error);
   });
 }
 
-async function writeWebData(projectId, envelope) {
+async function writeObjectStoreEnvelope(storeName, projectId, envelope) {
   const db = await openWebDataDb();
   if (!db || !projectId) return false;
 
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(WEB_DATA_STORE, "readwrite");
-    const store = tx.objectStore(WEB_DATA_STORE);
+    const tx = db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
     const request = store.put({
       id: projectId,
       ...envelope,
@@ -273,18 +283,34 @@ async function writeWebData(projectId, envelope) {
   });
 }
 
-async function deleteWebData(projectId) {
+async function deleteObjectStoreEnvelope(storeName, projectId) {
   const db = await openWebDataDb();
   if (!db || !projectId) return false;
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(WEB_DATA_STORE, "readwrite");
-    const request = tx.objectStore(WEB_DATA_STORE).delete(projectId);
+    const tx = db.transaction(storeName, "readwrite");
+    const request = tx.objectStore(storeName).delete(projectId);
     request.onerror = () => reject(request.error);
     tx.oncomplete = () => resolve(true);
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error);
   });
 }
+
+const readWebData = (projectId) =>
+  readObjectStoreEnvelope(WEB_DATA_STORE, projectId);
+const writeWebData = (projectId, envelope) =>
+  writeObjectStoreEnvelope(WEB_DATA_STORE, projectId, envelope);
+const deleteWebData = (projectId) =>
+  deleteObjectStoreEnvelope(WEB_DATA_STORE, projectId);
+
+// Secondary copy. Same read/write/delete shape as the primary store above,
+// just targeting the mirror object store instead of localStorage.
+const readMirrorData = (projectId) =>
+  readObjectStoreEnvelope(WEB_MIRROR_STORE, projectId);
+const writeMirrorData = (projectId, envelope) =>
+  writeObjectStoreEnvelope(WEB_MIRROR_STORE, projectId, envelope);
+const deleteMirrorData = (projectId) =>
+  deleteObjectStoreEnvelope(WEB_MIRROR_STORE, projectId);
 
 function checksumWebPayload(data, deleted, syncState = null) {
   const value = JSON.stringify({
@@ -356,11 +382,49 @@ function normalizeWebEnvelope(value, source) {
   return envelope;
 }
 
-function readWebDataFromLocalStorage(projectId) {
+// Read-only: projects saved before schema v2 kept their only secondary copy
+// as a full envelope in localStorage. This is consulted so those projects
+// keep working across the upgrade, but nothing writes a full envelope back
+// to localStorage anymore — new/ongoing secondary copies live in
+// WEB_MIRROR_STORE instead. Once a project's IndexedDB copies are confirmed
+// current the legacy key is removed (see clearLegacyLocalStorageEnvelope).
+function readLegacyLocalStorageEnvelope(projectId) {
   const key = STORAGE_KEYS.PROJECT_DATA(projectId);
   const raw = localStorage.getItem(key);
   if (!raw) return null;
   return normalizeWebEnvelope(JSON.parse(raw), `localStorage[${key}]`);
+}
+
+function clearLegacyLocalStorageEnvelope(projectId) {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.PROJECT_DATA(projectId));
+  } catch (error) {
+    // Best effort: leaving the legacy key behind is harmless once both
+    // IndexedDB copies hold data at least as fresh as it.
+    logger.warn(
+      `[LeakRepository] Could not remove the legacy localStorage copy for "${projectId}":`,
+      error,
+    );
+  }
+}
+
+// Last-resort fallback used only when neither IndexedDB store accepted a
+// write (most commonly: IndexedDB is entirely unavailable in this browser).
+// This is the only place that still writes a full envelope to localStorage,
+// and it exists purely so the project keeps working somewhere durable in
+// that narrow case — exactly like every web save did before schema v2.
+function writeLegacyLocalStorageEnvelope(projectId, envelope) {
+  const key = STORAGE_KEYS.PROJECT_DATA(projectId);
+  try {
+    localStorage.setItem(key, JSON.stringify(envelope));
+    return true;
+  } catch (error) {
+    logger.warn(
+      `[LeakRepository] Could not write the localStorage fallback copy for "${key}":`,
+      error,
+    );
+    return false;
+  }
 }
 
 function nextWebRevision(envelopes = []) {
@@ -407,20 +471,6 @@ function sameWebEnvelope(left, right) {
     left?.deleted === right?.deleted &&
     left?.checksum === right?.checksum
   );
-}
-
-function saveWebDataToLocalStorage(projectId, envelope) {
-  const key = STORAGE_KEYS.PROJECT_DATA(projectId);
-  try {
-    localStorage.setItem(key, JSON.stringify(envelope));
-    return true;
-  } catch (error) {
-    logger.warn(
-      `[LeakRepository] Could not update the localStorage mirror for "${key}":`,
-      error,
-    );
-    return false;
-  }
 }
 
 function attachEmbeddedSyncState(leaks, syncState) {
@@ -479,9 +529,9 @@ export const LeakRepository = {
     }
 
     let indexedEnvelope = null;
-    let localEnvelope = null;
+    let mirrorEnvelope = null;
     let indexedDbError = null;
-    let localStorageError = null;
+    let mirrorError = null;
 
     try {
       indexedEnvelope = normalizeWebEnvelope(
@@ -490,32 +540,65 @@ export const LeakRepository = {
       );
     } catch (error) {
       indexedDbError = error;
-      logger.error("[LeakRepository] Failed to read IndexedDB:", error);
+      logger.error(
+        "[LeakRepository] Failed to read the primary IndexedDB store:",
+        error,
+      );
     }
 
     try {
-      localEnvelope = readWebDataFromLocalStorage(projectId);
+      mirrorEnvelope = normalizeWebEnvelope(
+        await readMirrorData(projectId),
+        `IndexedDB-mirror[${projectId}]`,
+      );
     } catch (error) {
-      localStorageError = error;
-      logger.error("[LeakRepository] Corrupted localStorage:", error);
+      mirrorError = error;
+      logger.error("[LeakRepository] Corrupted IndexedDB mirror store:", error);
     }
 
-    const available = [indexedEnvelope, localEnvelope].filter(Boolean);
+    // Read-only fallback for projects that predate the IndexedDB mirror
+    // store (schema v2): their only secondary copy is a full envelope in
+    // localStorage. Nothing writes a full envelope back to localStorage
+    // anymore, so this candidate naturally disappears once both IndexedDB
+    // copies are repaired below.
+    let legacyEnvelope = null;
+    let legacyError = null;
+    try {
+      legacyEnvelope = readLegacyLocalStorageEnvelope(projectId);
+    } catch (error) {
+      legacyError = error;
+      logger.warn(
+        "[LeakRepository] Ignoring a corrupted legacy localStorage copy:",
+        error,
+      );
+    }
+
+    const available = [indexedEnvelope, mirrorEnvelope, legacyEnvelope].filter(
+      Boolean,
+    );
     if (available.length === 0) {
-      if (indexedDbError || localStorageError) {
+      // When IndexedDB is unavailable entirely, indexedEnvelope/mirrorEnvelope
+      // simply resolve to `null` (not an error) — legacyError is then the
+      // only signal that this is corrupted data, not a genuinely empty
+      // project, and must still surface as a read failure rather than [].
+      if (indexedDbError || mirrorError || legacyError) {
         const source = indexedDbError ? "indexeddb" : "localstorage";
         throw new ProjectDataReadError(
           "No valid project data copy is available",
-          { cause: indexedDbError ?? localStorageError, source },
+          { cause: indexedDbError ?? mirrorError ?? legacyError, source },
         );
       }
       return [];
     }
 
+    // The IndexedDB mirror store is new in schema v2, so it can never hold
+    // pre-versioning data — only the primary store and the legacy
+    // localStorage copy can. This conflict check is therefore always about
+    // those two, not the mirror store.
     if (
       indexedEnvelope?.[LEGACY_WEB_ENVELOPE] &&
-      localEnvelope?.[LEGACY_WEB_ENVELOPE] &&
-      indexedEnvelope.checksum !== localEnvelope.checksum
+      legacyEnvelope?.[LEGACY_WEB_ENVELOPE] &&
+      indexedEnvelope.checksum !== legacyEnvelope.checksum
     ) {
       throw new ProjectDataReadError(
         "Legacy IndexedDB and localStorage copies differ and cannot be ordered safely",
@@ -524,7 +607,7 @@ export const LeakRepository = {
           code: "PROJECT_DATA_CONFLICT",
           recoveryData: {
             indexedDB: indexedEnvelope.data,
-            localStorage: localEnvelope.data,
+            localStorage: legacyEnvelope.data,
           },
         },
       );
@@ -536,18 +619,45 @@ export const LeakRepository = {
 
     // Repair only stores that were read successfully. A transient read error
     // must never cause an older fallback copy to overwrite an unknown version.
-    if (!indexedDbError && !sameWebEnvelope(indexedEnvelope, selected)) {
-      await writeWebData(projectId, selected).catch((error) => {
-        logger.warn("[LeakRepository] Failed to repair IndexedDB:", error);
-      });
+    // Track whether each store actually ends up holding "selected" — if
+    // IndexedDB is unavailable, writeWebData/writeMirrorData resolve to
+    // `false` without throwing, and that must NOT be treated as success.
+    let indexedHoldsSelected = sameWebEnvelope(indexedEnvelope, selected);
+    if (!indexedDbError && !indexedHoldsSelected) {
+      indexedHoldsSelected = await writeWebData(projectId, selected).catch(
+        (error) => {
+          logger.warn(
+            "[LeakRepository] Failed to repair the primary IndexedDB store:",
+            error,
+          );
+          return false;
+        },
+      );
     }
-    if (!localStorageError && !sameWebEnvelope(localEnvelope, selected)) {
-      saveWebDataToLocalStorage(projectId, selected);
+    let mirrorHoldsSelected = sameWebEnvelope(mirrorEnvelope, selected);
+    if (!mirrorError && !mirrorHoldsSelected) {
+      mirrorHoldsSelected = await writeMirrorData(projectId, selected).catch(
+        (error) => {
+          logger.warn(
+            "[LeakRepository] Failed to repair the IndexedDB mirror store:",
+            error,
+          );
+          return false;
+        },
+      );
+    }
+    // Only drop the legacy localStorage copy once at least one IndexedDB
+    // store is confirmed to hold data at least as fresh as it. If IndexedDB
+    // is unavailable entirely, both repairs silently no-op (they resolve
+    // `false`, not an error), and the legacy copy is the only durable data —
+    // clearing it here would delete the project.
+    if (legacyEnvelope && (indexedHoldsSelected || mirrorHoldsSelected)) {
+      clearLegacyLocalStorageEnvelope(projectId);
     }
 
     const readFailurePolicy = getWebProjectDataReadFailurePolicy({
       indexedDbError,
-      localStorageError,
+      localStorageError: mirrorError,
     });
     const readWarning = readFailurePolicy
       ? new ProjectDataReadError(
@@ -570,7 +680,11 @@ export const LeakRepository = {
       return empty;
     }
     const selectedSource =
-      selected === indexedEnvelope ? "IndexedDB" : "localStorage";
+      selected === indexedEnvelope
+        ? "IndexedDB"
+        : selected === mirrorEnvelope
+          ? "IndexedDB mirror"
+          : "legacy localStorage";
     const result = filterValidLeaks(
       selected.data,
       `${selectedSource}[${projectId}]`,
@@ -594,7 +708,8 @@ export const LeakRepository = {
     let indexedDbSaved = false;
     let indexedDbError = null;
     let indexedEnvelope = null;
-    let localEnvelope = null;
+    let mirrorEnvelope = null;
+    let legacyEnvelope = null;
     try {
       indexedEnvelope = normalizeWebEnvelope(
         await readWebData(projectId),
@@ -604,12 +719,20 @@ export const LeakRepository = {
       // A new clock-based revision remains newer in normal operation.
     }
     try {
-      localEnvelope = readWebDataFromLocalStorage(projectId);
+      mirrorEnvelope = normalizeWebEnvelope(
+        await readMirrorData(projectId),
+        `IndexedDB-mirror[${projectId}]`,
+      );
     } catch {
       // The valid destination will replace a corrupted mirror.
     }
+    try {
+      legacyEnvelope = readLegacyLocalStorageEnvelope(projectId);
+    } catch {
+      // Ignore a corrupted legacy copy when computing the next revision.
+    }
     const envelope = createWebEnvelope(leaks, {
-      previous: [indexedEnvelope, localEnvelope],
+      previous: [indexedEnvelope, mirrorEnvelope, legacyEnvelope],
       syncState,
     });
     try {
@@ -617,18 +740,42 @@ export const LeakRepository = {
     } catch (error) {
       indexedDbError = error;
       logger.warn(
-        `[LeakRepository] Could not save project "${projectId}" to IndexedDB:`,
+        `[LeakRepository] Could not save project "${projectId}" to the primary IndexedDB store:`,
         error,
       );
     }
 
-    const localStorageSaved = saveWebDataToLocalStorage(projectId, envelope);
-    if (!indexedDbSaved && !localStorageSaved) {
-      throw new ProjectDataWriteError(
-        "Project data could not be saved to IndexedDB or localStorage",
-        { cause: indexedDbError },
+    let mirrorSaved = false;
+    try {
+      mirrorSaved = await writeMirrorData(projectId, envelope);
+    } catch (error) {
+      logger.warn(
+        `[LeakRepository] Could not update the IndexedDB mirror store for "${projectId}":`,
+        error,
       );
     }
+
+    if (!indexedDbSaved && !mirrorSaved) {
+      // Neither IndexedDB store accepted the write — most likely IndexedDB
+      // is unavailable in this browser entirely. Fall back to a full
+      // envelope in localStorage so the project is still saved somewhere
+      // durable, exactly like every web save did before schema v2.
+      const legacyFallbackSaved = writeLegacyLocalStorageEnvelope(
+        projectId,
+        envelope,
+      );
+      if (!legacyFallbackSaved) {
+        throw new ProjectDataWriteError(
+          "Project data could not be saved to IndexedDB or localStorage",
+          { cause: indexedDbError },
+        );
+      }
+    } else if (legacyEnvelope) {
+      // At least one IndexedDB store now holds the new data, so the
+      // pre-upgrade localStorage copy (if any) is no longer needed.
+      clearLegacyLocalStorageEnvelope(projectId);
+    }
+
     requestPersistentStorage().catch((error) => {
       logger.warn(
         "[LeakRepository] Persistent web storage was not granted:",
@@ -646,7 +793,8 @@ export const LeakRepository = {
       return;
     }
     let indexedEnvelope = null;
-    let localEnvelope = null;
+    let mirrorEnvelope = null;
+    let legacyEnvelope = null;
     try {
       indexedEnvelope = normalizeWebEnvelope(
         await readWebData(projectId),
@@ -656,13 +804,21 @@ export const LeakRepository = {
       // Continue with a newer tombstone so a stale mirror cannot resurrect data.
     }
     try {
-      localEnvelope = readWebDataFromLocalStorage(projectId);
+      mirrorEnvelope = normalizeWebEnvelope(
+        await readMirrorData(projectId),
+        `IndexedDB-mirror[${projectId}]`,
+      );
     } catch {
       // Continue and replace the corrupted mirror if possible.
     }
+    try {
+      legacyEnvelope = readLegacyLocalStorageEnvelope(projectId);
+    } catch {
+      // Ignore a corrupted legacy copy when computing the tombstone revision.
+    }
     const tombstone = createWebEnvelope([], {
       deleted: true,
-      previous: [indexedEnvelope, localEnvelope],
+      previous: [indexedEnvelope, mirrorEnvelope, legacyEnvelope],
       syncState,
     });
     let indexedDbSaved = false;
@@ -672,14 +828,27 @@ export const LeakRepository = {
     } catch (error) {
       indexedDbError = error;
     }
-    const localStorageSaved = saveWebDataToLocalStorage(projectId, tombstone);
-    if (!indexedDbSaved && !localStorageSaved) {
-      throw new ProjectDataWriteError(
-        "Project deletion could not be persisted",
-        {
-          cause: indexedDbError,
-        },
+    let mirrorSaved = false;
+    try {
+      mirrorSaved = await writeMirrorData(projectId, tombstone);
+    } catch (error) {
+      indexedDbError = indexedDbError ?? error;
+    }
+    if (!indexedDbSaved && !mirrorSaved) {
+      const legacyFallbackSaved = writeLegacyLocalStorageEnvelope(
+        projectId,
+        tombstone,
       );
+      if (!legacyFallbackSaved) {
+        throw new ProjectDataWriteError(
+          "Project deletion could not be persisted",
+          {
+            cause: indexedDbError,
+          },
+        );
+      }
+    } else if (legacyEnvelope) {
+      clearLegacyLocalStorageEnvelope(projectId);
     }
   },
 
@@ -698,15 +867,21 @@ export const LeakRepository = {
     } catch (error) {
       indexedDbError = error;
     }
+    let mirrorError = null;
+    try {
+      await deleteMirrorData(projectId);
+    } catch (error) {
+      mirrorError = error;
+    }
     let localStorageError = null;
     try {
       localStorage.removeItem(STORAGE_KEYS.PROJECT_DATA(projectId));
     } catch (error) {
       localStorageError = error;
     }
-    if (indexedDbError || localStorageError) {
+    if (indexedDbError || mirrorError || localStorageError) {
       throw new ProjectDataWriteError("Project data could not be purged", {
-        cause: indexedDbError ?? localStorageError,
+        cause: indexedDbError ?? mirrorError ?? localStorageError,
       });
     }
   },
