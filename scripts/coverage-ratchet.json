@@ -1,17 +1,281 @@
 {
-  "description": "Minimums may only increase. Current Settings orchestration floor is enforced by direct hook tests; long-term target remains 70% lines and 60% branches.",
+  "description": "Per-file coverage floors for the data-integrity critical path (storage, import, backup, sync, domain) plus the Settings orchestration. Floors sit ~2 points below measured coverage so ordinary refactoring does not trip them, and may only increase.",
   "files": {
+    "src/domain/leakLifecycle.js": {
+      "statements": 95,
+      "branches": 88,
+      "functions": 98,
+      "lines": 98
+    },
     "src/pages/Settings/hooks/useSettingsPage.js": {
-      "statements": 45,
-      "branches": 25,
-      "functions": 40,
-      "lines": 45
+      "statements": 92,
+      "branches": 58,
+      "functions": 92,
+      "lines": 94
     },
     "src/pages/Settings/Settings.jsx": {
-      "statements": 30,
-      "branches": 15,
-      "functions": 30,
-      "lines": 30
+      "statements": 68,
+      "branches": 66,
+      "functions": 51,
+      "lines": 68
+    },
+    "src/repositories/backupNestedValidators.js": {
+      "statements": 84,
+      "branches": 84,
+      "functions": 98,
+      "lines": 85
+    },
+    "src/repositories/backupSchema.js": {
+      "statements": 90,
+      "branches": 91,
+      "functions": 98,
+      "lines": 92
+    },
+    "src/repositories/compressImage.js": {
+      "statements": 89,
+      "branches": 79,
+      "functions": 98,
+      "lines": 89
+    },
+    "src/repositories/idb.js": {
+      "statements": 87,
+      "branches": 66,
+      "functions": 74,
+      "lines": 89
+    },
+    "src/repositories/LeakRepository.js": {
+      "statements": 87,
+      "branches": 85,
+      "functions": 88,
+      "lines": 88
+    },
+    "src/repositories/legacyNativeLeakStorage.js": {
+      "statements": 62,
+      "branches": 51,
+      "functions": 62,
+      "lines": 63
+    },
+    "src/repositories/nativeLeakStorage.js": {
+      "statements": 76,
+      "branches": 62,
+      "functions": 76,
+      "lines": 78
+    },
+    "src/repositories/nativeSqliteMutation.js": {
+      "statements": 95,
+      "branches": 95,
+      "functions": 98,
+      "lines": 98
+    },
+    "src/repositories/PhotoRepository.js": {
+      "statements": 91,
+      "branches": 87,
+      "functions": 91,
+      "lines": 92
+    },
+    "src/repositories/webProjectEnvelope.js": {
+      "statements": 89,
+      "branches": 85,
+      "functions": 98,
+      "lines": 89
+    },
+    "src/repositories/webProjectEnvelopeStore.js": {
+      "statements": 89,
+      "branches": 89,
+      "functions": 75,
+      "lines": 94
+    },
+    "src/services/archivePaths.js": {
+      "statements": 94,
+      "branches": 80,
+      "functions": 98,
+      "lines": 98
+    },
+    "src/services/excelImport/cellDates.js": {
+      "statements": 94,
+      "branches": 88,
+      "functions": 98,
+      "lines": 95
+    },
+    "src/services/excelImport/embeddedBackup.js": {
+      "statements": 98,
+      "branches": 89,
+      "functions": 98,
+      "lines": 98
+    },
+    "src/services/excelImport/photoPipeline.js": {
+      "statements": 86,
+      "branches": 72,
+      "functions": 98,
+      "lines": 89
+    },
+    "src/services/excelImport/recordMerge.js": {
+      "statements": 92,
+      "branches": 74,
+      "functions": 98,
+      "lines": 98
+    },
+    "src/services/excelImport/sheetRecordParsers.js": {
+      "statements": 89,
+      "branches": 79,
+      "functions": 98,
+      "lines": 95
+    },
+    "src/services/excelImport/valueNormalization.js": {
+      "statements": 93,
+      "branches": 86,
+      "functions": 98,
+      "lines": 94
+    },
+    "src/services/excelImport/workbookSchema.js": {
+      "statements": 93,
+      "branches": 85,
+      "functions": 98,
+      "lines": 96
+    },
+    "src/services/excelImportService.js": {
+      "statements": 93,
+      "branches": 77,
+      "functions": 98,
+      "lines": 92
+    },
+    "src/services/excelImportTransaction.js": {
+      "statements": 98,
+      "branches": 98,
+      "functions": 98,
+      "lines": 98
+    },
+    "src/services/importOperationJournal.js": {
+      "statements": 76,
+      "branches": 62,
+      "functions": 98,
+      "lines": 75
+    },
+    "src/services/leakFieldVersions.js": {
+      "statements": 89,
+      "branches": 70,
+      "functions": 98,
+      "lines": 90
+    },
+    "src/services/localSyncService.js": {
+      "statements": 85,
+      "branches": 71,
+      "functions": 65,
+      "lines": 86
+    },
+    "src/services/maps/tileCache.js": {
+      "statements": 91,
+      "branches": 79,
+      "functions": 86,
+      "lines": 94
+    },
+    "src/services/nativePhotoSourceCache.js": {
+      "statements": 74,
+      "branches": 61,
+      "functions": 88,
+      "lines": 79
+    },
+    "src/services/projectBackup/archiveParser.js": {
+      "statements": 85,
+      "branches": 87,
+      "functions": 98,
+      "lines": 87
+    },
+    "src/services/projectBackup/backupExport.js": {
+      "statements": 59,
+      "branches": 64,
+      "functions": 38,
+      "lines": 58
+    },
+    "src/services/projectBackup/backupImport.js": {
+      "statements": 86,
+      "branches": 87,
+      "functions": 58,
+      "lines": 87
+    },
+    "src/services/projectBackup/leakMergeEngine.js": {
+      "statements": 90,
+      "branches": 81,
+      "functions": 82,
+      "lines": 91
+    },
+    "src/services/projectBackup/mergePreview.js": {
+      "statements": 96,
+      "branches": 88,
+      "functions": 98,
+      "lines": 98
+    },
+    "src/services/projectBackup/mergeValues.js": {
+      "statements": 89,
+      "branches": 76,
+      "functions": 98,
+      "lines": 90
+    },
+    "src/services/projectBackup/photoArchive.js": {
+      "statements": 87,
+      "branches": 75,
+      "functions": 98,
+      "lines": 90
+    },
+    "src/services/projectBackup/projectMeta.js": {
+      "statements": 84,
+      "branches": 80,
+      "functions": 98,
+      "lines": 93
+    },
+    "src/services/projectBackup/recordArrayMerge.js": {
+      "statements": 72,
+      "branches": 65,
+      "functions": 78,
+      "lines": 77
+    },
+    "src/services/projectBackup/runtime.js": {
+      "statements": 88,
+      "branches": 76,
+      "functions": 75,
+      "lines": 93
+    },
+    "src/services/projectCleanup.js": {
+      "statements": 82,
+      "branches": 69,
+      "functions": 64,
+      "lines": 89
+    },
+    "src/services/projectIntegrityService.js": {
+      "statements": 88,
+      "branches": 81,
+      "functions": 98,
+      "lines": 90
+    },
+    "src/services/projectSyncState.js": {
+      "statements": 89,
+      "branches": 83,
+      "functions": 85,
+      "lines": 93
+    },
+    "src/services/publicFileWriter.js": {
+      "statements": 84,
+      "branches": 60,
+      "functions": 78,
+      "lines": 85
+    },
+    "src/services/syncClock.js": {
+      "statements": 86,
+      "branches": 79,
+      "functions": 98,
+      "lines": 92
+    },
+    "src/services/zipStoreStream.js": {
+      "statements": 84,
+      "branches": 68,
+      "functions": 83,
+      "lines": 86
+    },
+    "src/utils/calculations/calculations.js": {
+      "statements": 93,
+      "branches": 93,
+      "functions": 98,
+      "lines": 94
     }
   }
 }
