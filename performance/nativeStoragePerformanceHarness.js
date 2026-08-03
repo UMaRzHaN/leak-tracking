@@ -101,9 +101,10 @@ function mutateRecords(records, startIndex, count, revision) {
 }
 
 function readHeapBytes() {
-  const performanceWithMemory = /** @type {Performance & { memory?: { usedJSHeapSize?: number } }} */ (
-    globalThis.performance
-  );
+  const performanceWithMemory =
+    /** @type {Performance & { memory?: { usedJSHeapSize?: number } }} */ (
+      globalThis.performance
+    );
   const value = performanceWithMemory?.memory?.usedJSHeapSize;
   return Number.isFinite(value) ? Math.round(value) : null;
 }
@@ -165,7 +166,8 @@ async function runDatasetScenario(recordCount) {
 
     const loadAfterSingle = await measure(() => loadNativeProject(folderName));
     assertCondition(
-      loadAfterSingle.value.state.data[recordCount - 1].performanceRevision === 1,
+      loadAfterSingle.value.state.data[recordCount - 1].performanceRevision ===
+        1,
       "Single-record SQLite mutation was not restored",
     );
 
@@ -260,7 +262,10 @@ function normalizeRecordCounts(recordCounts) {
     .filter(
       (value) => Number.isInteger(value) && value >= 1_000 && value <= 10_000,
     );
-  assertCondition(normalized.length > 0, "No valid native record counts supplied");
+  assertCondition(
+    normalized.length > 0,
+    "No valid native record counts supplied",
+  );
   return [...new Set(normalized)];
 }
 
@@ -299,9 +304,10 @@ export async function runNativeStoragePerformance(options = {}) {
 }
 
 export function installNativeStoragePerformanceHarness() {
-  const performanceWindow = /** @type {Window & typeof globalThis & { __nativeStoragePerformance?: { run: typeof runNativeStoragePerformance, resultPath: string } }} */ (
-    window
-  );
+  const performanceWindow =
+    /** @type {Window & typeof globalThis & { __nativeStoragePerformance?: { run: typeof runNativeStoragePerformance, resultPath: string } }} */ (
+      window
+    );
   const api = {
     run: runNativeStoragePerformance,
     resultPath: RESULT_PATH,
