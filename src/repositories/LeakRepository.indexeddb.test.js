@@ -252,7 +252,7 @@ describe("LeakRepository web IndexedDB storage", () => {
     expect(result).toMatchObject([{ id: "indexed" }]);
     expect(warning).toMatchObject({
       code: "PROJECT_DATA_DEGRADED",
-      source: "localstorage",
+      source: "mirror",
       blocksWrites: false,
     });
     expect(isProjectDataReadWarningBlocking(warning)).toBe(false);

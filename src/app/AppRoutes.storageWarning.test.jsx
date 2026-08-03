@@ -57,7 +57,7 @@ describe("AppRoutes project data storage states", () => {
         {...baseProps}
         loadWarning={{
           code: "PROJECT_DATA_DEGRADED",
-          source: "localstorage",
+          source: "mirror",
           blocksWrites: false,
         }}
       />,

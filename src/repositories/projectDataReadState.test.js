@@ -6,13 +6,21 @@ import {
 } from "./projectDataReadState";
 
 describe("projectDataReadState", () => {
-  it("treats a localStorage mirror failure as non-blocking", () => {
-    const warning = { source: "localstorage", blocksWrites: false };
+  it("treats a mirror-store failure as non-blocking", () => {
+    const warning = { source: "mirror", blocksWrites: false };
     expect(isProjectDataReadWarningBlocking(warning)).toBe(false);
     expect(splitProjectDataReadWarning(warning)).toEqual({
       loadError: null,
       loadWarning: warning,
     });
+  });
+
+  it("still treats a pre-v2 localStorage mirror warning as non-blocking", () => {
+    // Warnings created by an older build carry no blocksWrites flag and name
+    // localStorage as the secondary copy; they must not start blocking writes.
+    expect(isProjectDataReadWarningBlocking({ source: "localstorage" })).toBe(
+      false,
+    );
   });
 
   it("keeps an IndexedDB failure blocking", () => {
@@ -24,24 +32,22 @@ describe("projectDataReadState", () => {
     });
   });
 
-  it("makes localStorage mirror failures non-blocking", () => {
-    const error = new Error("localStorage unavailable");
-    expect(
-      getWebProjectDataReadFailurePolicy({ localStorageError: error }),
-    ).toEqual({
+  it("makes mirror-store failures non-blocking", () => {
+    const error = new Error("mirror store unreadable");
+    expect(getWebProjectDataReadFailurePolicy({ mirrorError: error })).toEqual({
       cause: error,
-      source: "localstorage",
+      source: "mirror",
       blocksWrites: false,
     });
   });
 
-  it("gives IndexedDB failure precedence and blocks writes", () => {
+  it("gives primary IndexedDB failure precedence and blocks writes", () => {
     const indexedDbError = new Error("IndexedDB unavailable");
-    const localStorageError = new Error("localStorage unavailable");
+    const mirrorError = new Error("mirror store unreadable");
     expect(
       getWebProjectDataReadFailurePolicy({
         indexedDbError,
-        localStorageError,
+        mirrorError,
       }),
     ).toEqual({
       cause: indexedDbError,

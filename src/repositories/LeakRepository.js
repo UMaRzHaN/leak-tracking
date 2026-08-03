@@ -331,7 +331,14 @@ export const LeakRepository = {
       // only signal that this is corrupted data, not a genuinely empty
       // project, and must still surface as a read failure rather than [].
       if (indexedDbError || mirrorError || legacyError) {
-        const source = indexedDbError ? "indexeddb" : "localstorage";
+        // Name the copy that actually failed. Every copy is unusable here, so
+        // this is always a hard read failure regardless of the label — the
+        // source only has to be accurate for diagnostics.
+        const source = indexedDbError
+          ? "indexeddb"
+          : mirrorError
+            ? "mirror"
+            : "localstorage";
         throw new ProjectDataReadError(
           "No valid project data copy is available",
           { cause: indexedDbError ?? mirrorError ?? legacyError, source },
@@ -406,7 +413,7 @@ export const LeakRepository = {
 
     const readFailurePolicy = getWebProjectDataReadFailurePolicy({
       indexedDbError,
-      localStorageError: mirrorError,
+      mirrorError,
     });
     const readWarning = readFailurePolicy
       ? new ProjectDataReadError(

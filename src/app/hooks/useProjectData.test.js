@@ -108,11 +108,11 @@ describe("useProjectData", () => {
     });
   });
 
-  it("keeps writes enabled when only the localStorage mirror fails", async () => {
+  it("keeps writes enabled when only the mirror store fails", async () => {
     const recovered = [{ id: "indexed", status: "open" }];
-    const warning = Object.assign(new Error("localStorage failed"), {
+    const warning = Object.assign(new Error("mirror store failed"), {
       code: "PROJECT_DATA_DEGRADED",
-      source: "localstorage",
+      source: "mirror",
       blocksWrites: false,
     });
     repositoryModule.LeakRepository.getAll.mockResolvedValueOnce(recovered);
