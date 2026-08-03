@@ -4,7 +4,7 @@ import {
   nextSyncTimestamp,
   observeSyncTimestamp,
   sanitizeSyncTimestamp,
-} from "@/services/syncClock";
+} from "@/services/sync/syncClock";
 import {
   LEAK_FIELD_VERSIONS_KEY,
   normalizeLeakFieldVersions,

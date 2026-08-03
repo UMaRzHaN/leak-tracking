@@ -17,7 +17,7 @@ import {
 import {
   readProjectSyncStateAsync,
   writeProjectSyncState,
-} from "@/services/projectSyncState";
+} from "@/services/sync/projectSyncState";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import {
   getExcelImportTransactionWarning,

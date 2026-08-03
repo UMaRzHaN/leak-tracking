@@ -4,7 +4,7 @@ import {
   isVersionedLeakField,
   normalizeLeakFieldVersions,
 } from "@/services/leakFieldVersions";
-import { getLeakMergeIdentity } from "@/services/projectSyncState";
+import { getLeakMergeIdentity } from "@/services/sync/projectSyncState";
 import { PHOTO_KEYS } from "./constants";
 import {
   buildMergeHistoryChanges,

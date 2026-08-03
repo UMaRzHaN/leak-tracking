@@ -7,7 +7,7 @@ import {
   fetchLocalSyncArchive,
   isLocalSyncAvailable,
   scanLocalSyncQr,
-} from "@/services/localSyncService";
+} from "@/services/sync/localSyncService";
 import s from "./ProjectSetupScreen.module.scss";
 
 const VALID_TYPES = ["upstream", "midstream", "downstream"];

@@ -7,7 +7,7 @@ import {
   isLocalSyncAvailable,
   scanLocalSyncQr,
   startLocalSyncHost,
-} from "@/services/localSyncService";
+} from "@/services/sync/localSyncService";
 
 const IDLE_STATE = { status: "idle", session: null };
 

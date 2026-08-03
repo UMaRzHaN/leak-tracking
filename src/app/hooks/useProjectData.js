@@ -11,7 +11,7 @@ import { PhotoRepository } from "@/repositories/PhotoRepository";
 import {
   commitLeakDataMutation,
   restoreEmbeddedProjectSyncState,
-} from "@/services/projectSyncState";
+} from "@/services/sync/projectSyncState";
 import { stampLeakFieldVersions } from "@/services/leakFieldVersions";
 import { logger } from "@/utils/logger";
 

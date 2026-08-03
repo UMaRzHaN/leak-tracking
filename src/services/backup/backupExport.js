@@ -1,5 +1,5 @@
 import { readProjectSettings } from "@/app/project/projectSettings";
-import { readProjectSyncStateAsync } from "@/services/projectSyncState";
+import { readProjectSyncStateAsync } from "@/services/sync/projectSyncState";
 import { allocateUniqueLeakArchiveSegments } from "@/services/archivePaths";
 import { readMonitoringRound } from "@/utils/monitoringRound";
 import { assertImportFileSize, IMPORT_LIMITS } from "@/utils/importLimits";

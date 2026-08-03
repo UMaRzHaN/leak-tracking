@@ -26,7 +26,7 @@ vi.mock("@/app/project/projectSettings", () => ({
 vi.mock("@/app/project/projectFilters", () => ({
   clearProjectFilters: mocks.clearProjectFilters,
 }));
-vi.mock("@/services/projectSyncState", () => ({
+vi.mock("@/services/sync/projectSyncState", () => ({
   clearProjectSyncState: mocks.clearProjectSyncState,
 }));
 vi.mock("@/utils/monitoringRound", () => ({

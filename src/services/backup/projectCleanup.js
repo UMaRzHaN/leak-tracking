@@ -4,7 +4,7 @@ import { clearProjectSettings } from "@/app/project/projectSettings";
 import { clearProjectFilters } from "@/app/project/projectFilters";
 import { LeakRepository } from "@/repositories/LeakRepository";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
-import { clearProjectSyncState } from "@/services/projectSyncState";
+import { clearProjectSyncState } from "@/services/sync/projectSyncState";
 import { isNative } from "@/utils/platform";
 import { saveMonitoringRound } from "@/utils/monitoringRound";
 

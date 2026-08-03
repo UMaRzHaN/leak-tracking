@@ -22,7 +22,7 @@ vi.mock("@/repositories/PhotoRepository", () => ({
   },
 }));
 
-vi.mock("@/services/projectSyncState", () => ({
+vi.mock("@/services/sync/projectSyncState", () => ({
   commitLeakDataMutation: vi.fn(
     async (_projectId, _previous, _next, persistData) =>
       persistData({ version: 2, deleted: {} }),
@@ -33,7 +33,7 @@ vi.mock("@/services/projectSyncState", () => ({
 const projectContextModule = await import("@/app/project/ProjectContext");
 const repositoryModule = await import("@/repositories/LeakRepository");
 const photoRepositoryModule = await import("@/repositories/PhotoRepository");
-const syncStateModule = await import("@/services/projectSyncState");
+const syncStateModule = await import("@/services/sync/projectSyncState");
 const { useProjectData } = await import("./useProjectData");
 
 describe("useProjectData", () => {

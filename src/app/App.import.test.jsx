@@ -167,7 +167,7 @@ vi.mock("@/configs/projects", () => ({
 vi.mock("@/utils/monitoringRound", () => ({
   saveMonitoringRound: vi.fn(),
 }));
-vi.mock("@/services/projectSyncState", () => ({
+vi.mock("@/services/sync/projectSyncState", () => ({
   writeProjectSyncState: mocks.writeProjectSyncState,
 }));
 vi.mock("@/services/backup/projectCleanup", () => ({

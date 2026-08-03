@@ -9,7 +9,7 @@ import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { readProjectSettings } from "@/app/project/projectSettings";
 import { readMonitoringRound } from "@/utils/monitoringRound";
-import { readProjectSyncStateAsync } from "@/services/projectSyncState";
+import { readProjectSyncStateAsync } from "@/services/sync/projectSyncState";
 import { buildLeakCalculationParams } from "@/utils/calculationParams";
 
 function fmtTs(ts, lang) {

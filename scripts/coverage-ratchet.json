@@ -229,12 +229,6 @@
       "functions": 98,
       "lines": 90
     },
-    "src/services/localSyncService.js": {
-      "statements": 85,
-      "branches": 71,
-      "functions": 65,
-      "lines": 86
-    },
     "src/services/maps/tileCache.js": {
       "statements": 91,
       "branches": 79,
@@ -247,19 +241,25 @@
       "functions": 88,
       "lines": 79
     },
-    "src/services/projectSyncState.js": {
-      "statements": 89,
-      "branches": 83,
-      "functions": 85,
-      "lines": 93
-    },
     "src/services/publicFileWriter.js": {
       "statements": 84,
       "branches": 60,
       "functions": 78,
       "lines": 85
     },
-    "src/services/syncClock.js": {
+    "src/services/sync/localSyncService.js": {
+      "statements": 85,
+      "branches": 71,
+      "functions": 65,
+      "lines": 86
+    },
+    "src/services/sync/projectSyncState.js": {
+      "statements": 89,
+      "branches": 83,
+      "functions": 85,
+      "lines": 93
+    },
+    "src/services/sync/syncClock.js": {
       "statements": 86,
       "branches": 79,
       "functions": 98,

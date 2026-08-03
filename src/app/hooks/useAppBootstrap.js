@@ -16,7 +16,7 @@ import {
   writeProjectFilters,
 } from "@/app/project/projectFilters";
 import { writeProjectSettings } from "@/app/project/projectSettings";
-import { writeProjectSyncState } from "@/services/projectSyncState";
+import { writeProjectSyncState } from "@/services/sync/projectSyncState";
 import { rollbackImportedProject } from "@/services/backup/projectCleanup";
 import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { useDeferredPhotoGc } from "./useDeferredPhotoGc";

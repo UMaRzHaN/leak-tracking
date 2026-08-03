@@ -13,7 +13,7 @@ import { PhotoRepository } from "@/repositories/PhotoRepository";
 import {
   readProjectSyncState,
   writeProjectSyncState,
-} from "@/services/projectSyncState";
+} from "@/services/sync/projectSyncState";
 
 vi.mock("@/hooks/photoService", () => ({
   getPhotoSrc: vi.fn().mockResolvedValue(null),

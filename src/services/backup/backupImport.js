@@ -19,7 +19,7 @@ import {
   readProjectSyncState,
   readProjectSyncStateAsync,
   writeProjectSyncState,
-} from "@/services/projectSyncState";
+} from "@/services/sync/projectSyncState";
 import {
   getRestoredMonitoringRound,
   readMonitoringRound,

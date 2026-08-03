@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { VAR_DEFAULTS } from "@/data/variables";
 import { normalizeProjectVarsUnits } from "@/utils/projectVars";
-import { markProjectVarsUpdated } from "@/services/projectSyncState";
+import { markProjectVarsUpdated } from "@/services/sync/projectSyncState";
 
 const defaultVars = VAR_DEFAULTS;
 

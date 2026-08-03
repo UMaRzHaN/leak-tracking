@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ markProjectVarsUpdated: vi.fn() }));
-vi.mock("@/services/projectSyncState", () => ({
+vi.mock("@/services/sync/projectSyncState", () => ({
   markProjectVarsUpdated: mocks.markProjectVarsUpdated,
 }));
 

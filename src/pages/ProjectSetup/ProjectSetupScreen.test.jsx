@@ -52,7 +52,7 @@ vi.mock("@/app/hooks/useLanguage", () => ({
   }),
 }));
 
-vi.mock("@/services/localSyncService", () => localSync);
+vi.mock("@/services/sync/localSyncService", () => localSync);
 
 vi.mock("@/services/backup/projectBackupService", () => ({
   peekBackupZip: vi.fn().mockResolvedValue({

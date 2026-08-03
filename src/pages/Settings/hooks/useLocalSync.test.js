@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/services/localSyncService", () => ({
+vi.mock("@/services/sync/localSyncService", () => ({
   cancelLocalSyncQrScan: vi.fn(),
   createLocalSyncQrSvg: vi.fn(),
   isLocalSyncAvailable: vi.fn(() => true),
@@ -15,7 +15,7 @@ vi.mock("@/services/backup/projectBackupService", () => ({
   streamProjectBackupZip: vi.fn(),
 }));
 
-const syncService = await import("@/services/localSyncService");
+const syncService = await import("@/services/sync/localSyncService");
 const backupService = await import("@/services/backup/projectBackupService");
 const { useLocalSync } = await import("./useLocalSync");
 

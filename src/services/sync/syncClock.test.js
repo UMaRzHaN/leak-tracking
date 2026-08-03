@@ -4,7 +4,7 @@ import {
   observeSyncTimestamp,
   resetSyncClockForTests,
   sanitizeSyncTimestamp,
-} from "@/services/syncClock";
+} from "@/services/sync/syncClock";
 
 describe("syncClock", () => {
   beforeEach(() => resetSyncClockForTests());

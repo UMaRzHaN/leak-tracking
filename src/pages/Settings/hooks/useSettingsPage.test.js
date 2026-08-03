@@ -69,7 +69,7 @@ vi.mock("@/app/project/projectSettings", () => ({
   readProjectSettings: mocks.readProjectSettings,
   writeProjectSettings: mocks.writeProjectSettings,
 }));
-vi.mock("@/services/projectSyncState", () => ({
+vi.mock("@/services/sync/projectSyncState", () => ({
   readProjectSyncStateAsync: mocks.readProjectSyncStateAsync,
   writeProjectSyncState: mocks.writeProjectSyncState,
 }));
