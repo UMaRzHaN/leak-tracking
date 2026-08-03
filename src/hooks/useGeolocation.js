@@ -151,16 +151,16 @@ export const useGeolocation = (enabled = true) => {
       nativeTimeoutRetryCount += 1;
       retryTimer = setTimeout(() => {
         retryTimer = null;
-        if (!stopped) void startNativeWatch();
+        if (!stopped) void startNativeWatch(true);
       }, retryDelay);
       return true;
     };
 
-    async function startNativeWatch() {
+    async function startNativeWatch(isRetry = false) {
       if (stopped) return;
 
       clearRetryTimer();
-      setError(null);
+      if (!isRetry) setError(null);
       setLoading(true);
 
       const generation = ++nativeWatchGeneration;

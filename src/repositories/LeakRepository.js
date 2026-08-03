@@ -98,12 +98,13 @@ function normalizeLeakRecord(item) {
     return null;
   }
 
-  return {
+  const normalized = {
     ...item,
-    lat,
-    lng,
     status,
   };
+  if (item.lat !== undefined) normalized.lat = lat;
+  if (item.lng !== undefined) normalized.lng = lng;
+  return normalized;
 }
 
 function filterValidLeaks(arr, source) {
