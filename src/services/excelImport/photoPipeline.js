@@ -12,6 +12,11 @@ const PHOTO_KEYS = new Set(LEAK_PHOTO_FIELDS);
 
 const DEFAULT_PHOTO_RECONCILE_CONCURRENCY = 3;
 const DEFAULT_REUSABLE_PHOTO_CONCURRENCY = 3;
+// Kept equal to the constants above on purpose: this value is not yet backed
+// by a measurement, so hydrating ZIP photos concurrently should not silently
+// introduce a different, equally unmeasured number. Tune all of them together
+// once performance/large-dataset.perf.spec.js has been run at 3 / 5 / 8.
+const DEFAULT_ZIP_HYDRATE_CONCURRENCY = 3;
 
 export function isZipFile(file) {
   return (
@@ -87,30 +92,23 @@ async function resolveStoredPhotoBlob(path, getStoredPhoto) {
     : null;
 }
 
-function readBlobBytes(blob) {
-  if (typeof blob.arrayBuffer === "function") return blob.arrayBuffer();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsArrayBuffer(blob);
-  });
-}
-
-async function blobsEqual(left, right) {
+// Content equality via the same fingerprint the reuse map is keyed by, so a
+// photo is hashed at most once per import (getPhotoFingerprint memoizes on
+// blob identity) instead of being fully re-read and compared byte by byte in
+// a JS loop. Sizes are checked first because that rules out most mismatches
+// without reading the stored blob at all.
+async function blobsEqual(left, right, incomingFingerprint, fingerprintCache) {
   if (!(left instanceof Blob) || !(right instanceof Blob)) return false;
   if (left.size !== right.size) return false;
+  if (!incomingFingerprint) return false;
 
-  const [leftBytes, rightBytes] = await Promise.all([
-    readBlobBytes(left),
-    readBlobBytes(right),
-  ]);
-  const a = new Uint8Array(leftBytes);
-  const b = new Uint8Array(rightBytes);
-  for (let index = 0; index < a.length; index += 1) {
-    if (a[index] !== b[index]) return false;
-  }
-  return true;
+  const existingFingerprint = await getPhotoFingerprint(
+    right,
+    fingerprintCache,
+  );
+  return (
+    Boolean(existingFingerprint) && existingFingerprint === incomingFingerprint
+  );
 }
 
 async function buildReusablePhotoMap(
@@ -190,7 +188,14 @@ async function reconcilePhotoValue(
       existingPath,
       getStoredPhoto,
     );
-    if (await blobsEqual(incomingBlob, existingBlob)) {
+    if (
+      await blobsEqual(
+        incomingBlob,
+        existingBlob,
+        fingerprint,
+        fingerprintCache,
+      )
+    ) {
       stats.reused += 1;
       return existingPath;
     }
@@ -318,7 +323,11 @@ async function zipPhotoToBlob(zip, path) {
   return blob.type === mime ? blob : new Blob([blob], { type: mime });
 }
 
-export async function hydrateZipPhotos(result, zip) {
+export async function hydrateZipPhotos(
+  result,
+  zip,
+  concurrency = DEFAULT_ZIP_HYDRATE_CONCURRENCY,
+) {
   let restoredPhotos = 0;
   let missingPhotos = 0;
   let photoReferences = 0;
@@ -330,46 +339,54 @@ export async function hydrateZipPhotos(result, zip) {
     }
     return photoCache.get(key);
   };
-  const leaks = [];
 
-  for (const leak of result.leaks) {
-    const copy = { ...leak };
+  // Decompressing a photo out of the ZIP is the slow part here, and each one
+  // is independent, so leaks are hydrated with the same bounded concurrency
+  // the rest of the photo pipeline uses. mapWithConcurrency writes results by
+  // index, so leak order is preserved; readPhoto memoizes its promise per
+  // entry, so a shared photo is still only decompressed once.
+  const leaks = await mapWithConcurrency(
+    result.leaks,
+    concurrency,
+    async (leak) => {
+      const copy = { ...leak };
 
-    for (const key of PHOTO_KEYS) {
-      if (!String(copy[key] ?? "").startsWith("zip:")) continue;
-      photoReferences += 1;
-      const photoBlob = await readPhoto(copy[key]);
-      if (photoBlob) {
-        copy[key] = photoBlob;
-        restoredPhotos += 1;
-      } else {
-        delete copy[key];
-        missingPhotos += 1;
-      }
-    }
-
-    if (Array.isArray(copy.monitoringRecords)) {
-      copy.monitoringRecords = [];
-      for (const record of leak.monitoringRecords) {
-        const recordCopy = { ...record };
-        for (const field of MONITORING_PHOTO_FIELDS) {
-          if (!String(record?.[field] ?? "").startsWith("zip:")) continue;
-          photoReferences += 1;
-          const photoBlob = await readPhoto(record[field]);
-          if (!photoBlob) {
-            delete recordCopy[field];
-            missingPhotos += 1;
-            continue;
-          }
+      for (const key of PHOTO_KEYS) {
+        if (!String(copy[key] ?? "").startsWith("zip:")) continue;
+        photoReferences += 1;
+        const photoBlob = await readPhoto(copy[key]);
+        if (photoBlob) {
+          copy[key] = photoBlob;
           restoredPhotos += 1;
-          recordCopy[field] = photoBlob;
+        } else {
+          delete copy[key];
+          missingPhotos += 1;
         }
-        copy.monitoringRecords.push(recordCopy);
       }
-    }
 
-    leaks.push(copy);
-  }
+      if (Array.isArray(copy.monitoringRecords)) {
+        copy.monitoringRecords = [];
+        for (const record of leak.monitoringRecords) {
+          const recordCopy = { ...record };
+          for (const field of MONITORING_PHOTO_FIELDS) {
+            if (!String(record?.[field] ?? "").startsWith("zip:")) continue;
+            photoReferences += 1;
+            const photoBlob = await readPhoto(record[field]);
+            if (!photoBlob) {
+              delete recordCopy[field];
+              missingPhotos += 1;
+              continue;
+            }
+            restoredPhotos += 1;
+            recordCopy[field] = photoBlob;
+          }
+          copy.monitoringRecords.push(recordCopy);
+        }
+      }
+
+      return copy;
+    },
+  );
 
   return {
     ...result,

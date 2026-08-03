@@ -15,5 +15,10 @@ export const TYPE_SIGNATURES = {
 };
 
 export const EXPORT_YIELD_EVERY = 25;
+// Higher than EXPORT_YIELD_EVERY because the unit of work is different:
+// export yields between whole photos, import yields between spreadsheet rows,
+// which are far cheaper. Yielding as often as the export does would cost more
+// in scheduling than it buys back in responsiveness.
+export const IMPORT_ROW_YIELD_EVERY = 100;
 export const EXPORT_CONCURRENCY = 8;
 export const IMPORT_CONCURRENCY = 3;

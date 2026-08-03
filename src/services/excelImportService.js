@@ -41,6 +41,8 @@ import {
   preflightZipFile,
   verifyArchiveLimits,
 } from "@/utils/importLimits";
+import { IMPORT_ROW_YIELD_EVERY } from "@/services/projectBackup/constants";
+import { yieldToMainThread } from "@/services/projectBackup/runtime";
 
 export { persistExcelImportPhotos, reconcileExcelImportPhotos };
 
@@ -152,6 +154,13 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
     rowNumber <= sheet.rowCount;
     rowNumber += 1
   ) {
+    // Parsing a large sheet is thousands of iterations of pure CPU work with
+    // no I/O to interrupt it, so without this the main thread is blocked for
+    // the whole parse and the import UI cannot paint or report progress.
+    // Mirrors the yield the export path already performs between photos.
+    if ((rowNumber - headerRow.rowNumber) % IMPORT_ROW_YIELD_EVERY === 0) {
+      await yieldToMainThread();
+    }
     const row = sheet.getRow(rowNumber);
     const raw = {};
 
