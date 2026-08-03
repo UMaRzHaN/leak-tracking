@@ -18,17 +18,19 @@ import {
   writeNativeProjectSnapshot,
 } from "@/repositories/nativeLeakStorage";
 import {
-  clearLegacyLocalStorageEnvelope,
   compareWebEnvelopes,
   createWebEnvelope,
-  deleteMirrorData,
-  deleteWebData,
   LEGACY_WEB_ENVELOPE,
   normalizeWebEnvelope,
+  sameWebEnvelope,
+} from "@/repositories/webProjectEnvelope";
+import {
+  clearLegacyLocalStorageEnvelope,
+  deleteMirrorData,
+  deleteWebData,
   readLegacyLocalStorageEnvelope,
   readMirrorData,
   readWebData,
-  sameWebEnvelope,
   writeLegacyLocalStorageEnvelope,
   writeMirrorData,
   writeWebData,

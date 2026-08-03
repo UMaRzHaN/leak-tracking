@@ -1,66 +1,97 @@
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { logger } from "@/utils/logger";
+import { normalizeWebEnvelope } from "@/repositories/webProjectEnvelope";
 
 /**
- * Storage layer for the web (non-native) project envelope: the IndexedDB
- * database that holds it, the envelope format itself (checksum, revision,
- * tombstone), and the read-only legacy localStorage copy kept for projects
- * that predate schema v2.
+ * Where a web (non-native) project copy physically lives: the IndexedDB
+ * databases holding the primary and mirror copies, and the read-only legacy
+ * locations kept for projects written by earlier schema versions.
  *
- * This module owns *how* a copy is stored. Deciding which copy wins, when to
- * repair a stale one and what to surface to the UI stays in LeakRepository.
+ * The envelope format itself lives in webProjectEnvelope.js. This module owns
+ * *where* a copy is stored; deciding which copy wins, when to repair a stale
+ * one and what to surface to the UI stays in LeakRepository.
  */
 
 const WEB_DATA_DB = "LeakTrackingDataDB";
 const WEB_DATA_STORE = "projects";
-// Secondary full copy of the project envelope. Before schema v2 this copy
-// lived in localStorage and was rewritten synchronously on every single
-// save, which blocked the main thread and risked hitting the ~5-10MB
-// localStorage quota on large projects. It now lives in its own IndexedDB
-// object store (same async, non-blocking write path as the primary store)
-// while keeping the exact same cross-validation/repair semantics.
-const WEB_MIRROR_STORE = "projectsMirror";
 const WEB_DATA_VERSION = 2;
-const WEB_ENVELOPE_VERSION = 1;
 
-export const LEGACY_WEB_ENVELOPE = Symbol("legacyWebEnvelope");
+// The secondary copy lives in a database of its own, opened over a separate
+// connection. That separation is the whole point: an IndexedDB failure is
+// usually database-wide (the file is corrupt, or `open` itself rejects), and
+// while both copies shared one connection a single failed open took out the
+// primary and its backup together — leaving the backup unreachable in exactly
+// the situation it exists for. Two databases fail independently.
+//
+// This does NOT protect against origin-level storage loss (browser eviction,
+// "clear site data") or a quota that is exhausted for the whole origin —
+// those take every local store with them, as they did when this copy still
+// lived in localStorage.
+const WEB_MIRROR_DB = "LeakTrackingMirrorDB";
+const WEB_MIRROR_DB_VERSION = 1;
 
-let webDataDbPromise = null;
-let lastIssuedWebRevision = 0;
+// Where the secondary copy lived in schema v2: an object store inside the
+// primary database. Read-only now, purely so a project written by that build
+// still has a recoverable backup; cleared per project once the dedicated
+// mirror database holds the same data. The store itself is left in place —
+// dropping it needs a version bump of the primary database, which is not
+// worth the migration risk for an empty store.
+const LEGACY_MIRROR_STORE = "projectsMirror";
 
-function openWebDataDb() {
-  if (typeof indexedDB === "undefined") return Promise.resolve(null);
-  if (webDataDbPromise) return webDataDbPromise;
+// Each database gets its own opener holding its own connection, so a failed
+// or closed connection is reset for that database alone.
+function createDatabaseOpener(name, version, upgrade) {
+  let connection = null;
 
-  webDataDbPromise = new Promise((resolve, reject) => {
-    const request = indexedDB.open(WEB_DATA_DB, WEB_DATA_VERSION);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(WEB_DATA_STORE)) {
-        db.createObjectStore(WEB_DATA_STORE, { keyPath: "id" });
-      }
-      if (!db.objectStoreNames.contains(WEB_MIRROR_STORE)) {
-        db.createObjectStore(WEB_MIRROR_STORE, { keyPath: "id" });
-      }
-    };
-    request.onsuccess = () => {
-      const db = request.result;
-      db.onclose = () => {
-        webDataDbPromise = null;
+  return function openDatabase() {
+    if (typeof indexedDB === "undefined") return Promise.resolve(null);
+    if (connection) return connection;
+
+    connection = new Promise((resolve, reject) => {
+      const request = indexedDB.open(name, version);
+      request.onupgradeneeded = () => upgrade(request.result);
+      request.onsuccess = () => {
+        const db = request.result;
+        db.onclose = () => {
+          connection = null;
+        };
+        resolve(db);
       };
-      resolve(db);
-    };
-    request.onerror = () => {
-      webDataDbPromise = null;
-      reject(request.error);
-    };
-  });
+      request.onerror = () => {
+        connection = null;
+        reject(request.error);
+      };
+    });
 
-  return webDataDbPromise;
+    return connection;
+  };
 }
 
-async function readObjectStoreEnvelope(storeName, projectId) {
-  const db = await openWebDataDb();
+const openWebDataDb = createDatabaseOpener(
+  WEB_DATA_DB,
+  WEB_DATA_VERSION,
+  (db) => {
+    if (!db.objectStoreNames.contains(WEB_DATA_STORE)) {
+      db.createObjectStore(WEB_DATA_STORE, { keyPath: "id" });
+    }
+    if (!db.objectStoreNames.contains(LEGACY_MIRROR_STORE)) {
+      db.createObjectStore(LEGACY_MIRROR_STORE, { keyPath: "id" });
+    }
+  },
+);
+
+const openMirrorDb = createDatabaseOpener(
+  WEB_MIRROR_DB,
+  WEB_MIRROR_DB_VERSION,
+  (db) => {
+    if (!db.objectStoreNames.contains(WEB_DATA_STORE)) {
+      db.createObjectStore(WEB_DATA_STORE, { keyPath: "id" });
+    }
+  },
+);
+
+async function readObjectStoreEnvelope(openDb, storeName, projectId) {
+  const db = await openDb();
   if (!db || !projectId) return null;
 
   return new Promise((resolve, reject) => {
@@ -72,8 +103,13 @@ async function readObjectStoreEnvelope(storeName, projectId) {
   });
 }
 
-async function writeObjectStoreEnvelope(storeName, projectId, envelope) {
-  const db = await openWebDataDb();
+async function writeObjectStoreEnvelope(
+  openDb,
+  storeName,
+  projectId,
+  envelope,
+) {
+  const db = await openDb();
   if (!db || !projectId) return false;
 
   return new Promise((resolve, reject) => {
@@ -90,8 +126,8 @@ async function writeObjectStoreEnvelope(storeName, projectId, envelope) {
   });
 }
 
-async function deleteObjectStoreEnvelope(storeName, projectId) {
-  const db = await openWebDataDb();
+async function deleteObjectStoreEnvelope(openDb, storeName, projectId) {
+  const db = await openDb();
   if (!db || !projectId) return false;
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, "readwrite");
@@ -104,89 +140,101 @@ async function deleteObjectStoreEnvelope(storeName, projectId) {
 }
 
 export const readWebData = (projectId) =>
-  readObjectStoreEnvelope(WEB_DATA_STORE, projectId);
+  readObjectStoreEnvelope(openWebDataDb, WEB_DATA_STORE, projectId);
 export const writeWebData = (projectId, envelope) =>
-  writeObjectStoreEnvelope(WEB_DATA_STORE, projectId, envelope);
+  writeObjectStoreEnvelope(openWebDataDb, WEB_DATA_STORE, projectId, envelope);
 export const deleteWebData = (projectId) =>
-  deleteObjectStoreEnvelope(WEB_DATA_STORE, projectId);
+  deleteObjectStoreEnvelope(openWebDataDb, WEB_DATA_STORE, projectId);
 
-// Secondary copy. Same read/write/delete shape as the primary store above,
-// just targeting the mirror object store instead of localStorage.
-export const readMirrorData = (projectId) =>
-  readObjectStoreEnvelope(WEB_MIRROR_STORE, projectId);
-export const writeMirrorData = (projectId, envelope) =>
-  writeObjectStoreEnvelope(WEB_MIRROR_STORE, projectId, envelope);
-export const deleteMirrorData = (projectId) =>
-  deleteObjectStoreEnvelope(WEB_MIRROR_STORE, projectId);
-
-function checksumWebPayload(data, deleted, syncState = null) {
-  const value = JSON.stringify({
-    deleted: Boolean(deleted),
-    data,
-    ...(syncState == null ? {} : { syncState }),
-  });
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 0x01000193);
+// Best effort throughout: the schema-v2 copy is a migration source, never the
+// destination. It lives in the primary database, so reaching it can fail for
+// reasons that say nothing about the health of the mirror database — those
+// failures must stay invisible to the caller rather than mask a good mirror.
+async function readLegacyMirrorEnvelope(projectId) {
+  try {
+    return await readObjectStoreEnvelope(
+      openWebDataDb,
+      LEGACY_MIRROR_STORE,
+      projectId,
+    );
+  } catch {
+    return null;
   }
-  return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
-export function normalizeWebEnvelope(value, source) {
-  if (value == null) return null;
+async function clearLegacyMirrorEnvelope(projectId) {
+  try {
+    await deleteObjectStoreEnvelope(
+      openWebDataDb,
+      LEGACY_MIRROR_STORE,
+      projectId,
+    );
+  } catch {
+    // Leaving the schema-v2 entry behind is harmless: it is only ever read
+    // when the dedicated mirror database has nothing for this project.
+  }
+}
 
-  // Backward compatibility for data written before mirrored revisions existed.
-  if (Array.isArray(value)) {
-    const envelope = {
-      version: 0,
-      revision: 0,
-      updatedAt: 0,
-      deleted: false,
-      checksum: checksumWebPayload(value, false),
-      data: value,
-      syncState: null,
-    };
-    Object.defineProperty(envelope, LEGACY_WEB_ENVELOPE, {
-      value: true,
-    });
-    return envelope;
-  }
+/**
+ * Reads the secondary copy, preferring the dedicated mirror database and
+ * falling back to the schema-v2 store only when the former has nothing yet.
+ * A read error from the mirror database propagates — that is a real signal
+ * the caller must weigh — while the legacy fallback stays silent.
+ *
+ * Finding a schema-v2 copy also migrates it, because nothing else will: to
+ * callers this value simply *is* the mirror, so the repair logic upstream sees
+ * an up-to-date mirror and never writes it to its new home. Doing it here
+ * keeps that one-time move invisible to LeakRepository. The copy is returned
+ * whether or not the move succeeds — a project that cannot be migrated yet
+ * must still be readable.
+ */
+export async function readMirrorData(projectId) {
+  const current = await readObjectStoreEnvelope(
+    openMirrorDb,
+    WEB_DATA_STORE,
+    projectId,
+  );
+  if (current != null) return current;
 
-  const deleted = value.deleted === true;
-  const data = deleted && value.data == null ? [] : value.data;
-  const syncState = value.syncState ?? null;
-  if (!Array.isArray(data)) {
-    throw new TypeError(`Expected a data array in ${source}`);
-  }
+  const legacy = await readLegacyMirrorEnvelope(projectId);
+  if (legacy == null) return null;
 
-  const revision = Number(value.revision ?? value.timestamp ?? 0);
-  const updatedAt = Number(value.updatedAt ?? value.timestamp ?? 0);
-  if (!Number.isSafeInteger(revision) || revision < 0) {
-    throw new TypeError(`Invalid revision in ${source}`);
+  try {
+    const migrated = await writeObjectStoreEnvelope(
+      openMirrorDb,
+      WEB_DATA_STORE,
+      projectId,
+      legacy,
+    );
+    if (migrated) await clearLegacyMirrorEnvelope(projectId);
+  } catch {
+    // The schema-v2 entry stays put and will be retried on the next read.
   }
-  if (!Number.isFinite(updatedAt) || updatedAt < 0) {
-    throw new TypeError(`Invalid updatedAt in ${source}`);
-  }
+  return legacy;
+}
 
-  const expectedChecksum = checksumWebPayload(data, deleted, syncState);
-  if (value.checksum != null && value.checksum !== expectedChecksum) {
-    throw new TypeError(`Checksum mismatch in ${source}`);
-  }
+export async function writeMirrorData(projectId, envelope) {
+  const saved = await writeObjectStoreEnvelope(
+    openMirrorDb,
+    WEB_DATA_STORE,
+    projectId,
+    envelope,
+  );
+  // Only once the dedicated database is confirmed to hold this envelope is
+  // the schema-v2 entry redundant. Dropping it earlier could discard the only
+  // remaining backup.
+  if (saved) await clearLegacyMirrorEnvelope(projectId);
+  return saved;
+}
 
-  const envelope = {
-    version: Number(value.version ?? 0),
-    revision,
-    updatedAt,
-    deleted,
-    checksum: expectedChecksum,
-    data,
-    syncState,
-  };
-  if (value.version == null && value.revision == null) {
-    Object.defineProperty(envelope, LEGACY_WEB_ENVELOPE, { value: true });
-  }
-  return envelope;
+export async function deleteMirrorData(projectId) {
+  const deleted = await deleteObjectStoreEnvelope(
+    openMirrorDb,
+    WEB_DATA_STORE,
+    projectId,
+  );
+  await clearLegacyMirrorEnvelope(projectId);
+  return deleted;
 }
 
 // Read-only: projects saved before schema v2 kept their only secondary copy
@@ -232,50 +280,4 @@ export function writeLegacyLocalStorageEnvelope(projectId, envelope) {
     );
     return false;
   }
-}
-
-function nextWebRevision(envelopes = []) {
-  const knownRevision = envelopes.reduce(
-    (maximum, envelope) => Math.max(maximum, envelope?.revision ?? 0),
-    0,
-  );
-  const clockRevision = Date.now() * 1000;
-  lastIssuedWebRevision = Math.max(
-    clockRevision,
-    knownRevision + 1,
-    lastIssuedWebRevision + 1,
-  );
-  return lastIssuedWebRevision;
-}
-
-export function createWebEnvelope(
-  data,
-  { deleted = false, previous = [], syncState = null } = {},
-) {
-  const revision = nextWebRevision(previous);
-  const updatedAt = Date.now();
-  return {
-    version: WEB_ENVELOPE_VERSION,
-    revision,
-    updatedAt,
-    deleted,
-    checksum: checksumWebPayload(data, deleted, syncState),
-    data,
-    ...(syncState == null ? {} : { syncState }),
-  };
-}
-
-export function compareWebEnvelopes(left, right) {
-  if (left.revision !== right.revision) return left.revision - right.revision;
-  if (left.updatedAt !== right.updatedAt)
-    return left.updatedAt - right.updatedAt;
-  return 0;
-}
-
-export function sameWebEnvelope(left, right) {
-  return (
-    left?.revision === right?.revision &&
-    left?.deleted === right?.deleted &&
-    left?.checksum === right?.checksum
-  );
 }
