@@ -115,11 +115,11 @@ src/
 │   ├── importConflict/     # Merge / overwrite / copy preview sheet
 │   ├── leakDetails/        # LeakDetailsSheet + hooks + sub-components
 │   ├── leakForm/           # LeakForm + LeakFormContext + hooks + Header/Footer
-│   │   └── components/     # ClearActions, StepHeader, InputCard, StepRenderer
-│   ├── leakList/           # VirtualizedLeakList, LeakCardCompact, RecentLeaks
+│   │   └── components/     # ClearActions, InputCard, StepRenderer
+│   ├── leakList/           # VirtualizedLeakList, LeakCardCompact
 │   ├── photos/             # PhotoViewer, PhotoInput
 │   ├── resolve/            # ResolveModal
-│   ├── search/             # Autocomplete (+ smartFilter), SearchFieldSelect, QuickActions
+│   ├── search/             # Autocomplete (+ smartFilter)
 │   ├── settings/           # SettingsModal (UI only; page logic lives in pages/Settings)
 │   ├── status/             # StatusPickerModal
 │   └── voice/              # VoiceButton, VoicePreviewSheet

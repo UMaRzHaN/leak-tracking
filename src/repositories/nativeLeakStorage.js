@@ -208,8 +208,8 @@ export async function loadNativeProject(folderName) {
  * load the whole project in one call, and every page/hook that consumes
  * leaks (Settings, Monitoring, MainPage, search, ...) still assumes it has
  * the full array. Wiring real pagination through those call sites is a
- * separate, larger change (see PERFORMANCE_MAINTAINABILITY_TODO.md, "Этап
- * 5"). This function exists so that work can start from a tested, working
+ * separate, larger change (see PROJECT_REFACTORING_PLAN.md, "Этап 4").
+ * This function exists so that work can start from a tested, working
  * native primitive instead of from scratch, without touching any existing
  * behavior.
  *

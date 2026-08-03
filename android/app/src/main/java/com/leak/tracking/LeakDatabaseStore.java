@@ -171,7 +171,7 @@ final class LeakDatabaseStore implements AutoCloseable {
      * and every JS caller actually use. Nothing in the app calls
      * loadProjectPage yet — wiring a page-by-page read through
      * Settings/Monitoring/MainPage/search is a larger, separate change (see
-     * PERFORMANCE_MAINTAINABILITY_TODO.md, "Этап 5"). This method exists so
+     * PROJECT_REFACTORING_PLAN.md, "Этап 4"). This method exists so
      * that future work has a tested, working native primitive to build on
      * without touching the existing read path.
      */
