@@ -524,4 +524,46 @@ describe("LeakRepository web IndexedDB storage", () => {
     expect(await readStoreEntry(LEGACY_MIRROR, PROJECT.projectId)).toBeNull();
     await expect(LeakRepository.getAll(PROJECT)).resolves.toEqual([]);
   });
+
+  // A deleted project still has to report a degraded read: the caller decides
+  // whether writes are safe from that warning, and a tombstone returns early
+  // before the normal result is assembled.
+  it("carries the degraded-read warning on a deleted project", async () => {
+    const { LeakRepository, getProjectDataReadWarning } =
+      await loadRepository();
+    await LeakRepository.saveAll([makeLeak("1")], PROJECT);
+    await LeakRepository.clear(PROJECT);
+    await overwriteStoreEntry(MIRROR, PROJECT.projectId, { not: "an array" });
+
+    const result = await LeakRepository.getAll(PROJECT);
+
+    expect(result).toEqual([]);
+    expect(getProjectDataReadWarning(result)).toMatchObject({
+      source: "mirror",
+      blocksWrites: false,
+    });
+  });
+
+  it("drops the legacy localStorage copy once a save reaches IndexedDB", async () => {
+    const { LeakRepository } = await loadRepository();
+    const key = storageKey(PROJECT.projectId);
+    // A project carried over from a pre schema-v2 install.
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        version: 1,
+        revision: 3,
+        updatedAt: 3,
+        deleted: false,
+        data: [makeLeak("legacy")],
+      }),
+    );
+
+    await LeakRepository.saveAll([makeLeak("current")], PROJECT);
+
+    expect(localStorage.getItem(key)).toBeNull();
+    await expect(LeakRepository.getAll(PROJECT)).resolves.toMatchObject([
+      { id: "current" },
+    ]);
+  });
 });
