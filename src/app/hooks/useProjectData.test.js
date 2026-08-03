@@ -86,10 +86,12 @@ describe("useProjectData", () => {
     errorSpy.mockRestore();
   });
 
-  it("loads a single valid mirror read-only when the other web store fails", async () => {
+  it("keeps IndexedDB failure read-only when only the recovery mirror is valid", async () => {
     const recovered = [{ id: "recovered", status: "open" }];
     const warning = Object.assign(new Error("IndexedDB failed"), {
       code: "PROJECT_DATA_DEGRADED",
+      source: "indexeddb",
+      blocksWrites: true,
     });
     repositoryModule.LeakRepository.getAll.mockResolvedValueOnce(recovered);
     repositoryModule.getProjectDataReadWarning.mockReturnValueOnce(warning);
@@ -99,10 +101,36 @@ describe("useProjectData", () => {
 
     expect(result.current.data).toEqual(recovered);
     expect(result.current.loadError).toBe(warning);
+    expect(result.current.loadWarning).toBeNull();
     expect(result.current.canWrite).toBe(false);
     await expect(result.current.save(recovered)).rejects.toMatchObject({
       code: "PROJECT_DATA_WRITE_BLOCKED",
     });
+  });
+
+  it("keeps writes enabled when only the localStorage mirror fails", async () => {
+    const recovered = [{ id: "indexed", status: "open" }];
+    const warning = Object.assign(new Error("localStorage failed"), {
+      code: "PROJECT_DATA_DEGRADED",
+      source: "localstorage",
+      blocksWrites: false,
+    });
+    repositoryModule.LeakRepository.getAll.mockResolvedValueOnce(recovered);
+    repositoryModule.getProjectDataReadWarning.mockReturnValueOnce(warning);
+    repositoryModule.LeakRepository.saveAll.mockResolvedValueOnce(undefined);
+
+    const { result } = renderHook(() => useProjectData());
+    await waitFor(() => expect(result.current.dataLoaded).toBe(true));
+
+    expect(result.current.data).toEqual(recovered);
+    expect(result.current.loadError).toBeNull();
+    expect(result.current.loadWarning).toBe(warning);
+    expect(result.current.canWrite).toBe(true);
+
+    await act(async () => {
+      await expect(result.current.save(recovered)).resolves.toBeUndefined();
+    });
+    expect(repositoryModule.LeakRepository.saveAll).toHaveBeenCalledOnce();
   });
 
   it("loads repository data for the active project", async () => {
@@ -298,6 +326,7 @@ describe("useProjectData", () => {
       projectId: "proj-1",
       folderName: "project_one",
       syncState: { version: 2, deleted: {} },
+      previousLeaks: original,
     });
   });
 
@@ -524,6 +553,7 @@ describe("useProjectData", () => {
         projectId: "proj-1",
         folderName: "project_one",
         syncState: { version: 2, deleted: {} },
+        previousLeaks: [...visible, ...preserved],
       },
     );
   });
@@ -546,6 +576,7 @@ describe("useProjectData", () => {
         projectId: "proj-1",
         folderName: "project_one",
         syncState: { version: 2, deleted: {} },
+        previousLeaks: [],
       },
     );
     expect(result.current.dataForPhotoGc).toEqual([

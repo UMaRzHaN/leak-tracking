@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(PublicFileWriterPlugin.class);
         registerPlugin(LocalSyncPlugin.class);
+        registerPlugin(NativeLeakStoragePlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

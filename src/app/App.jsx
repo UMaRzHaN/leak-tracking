@@ -32,6 +32,7 @@ export default function App() {
     isImportingProject,
     lang,
     loadError,
+    loadWarning,
     openCount,
     page,
     prevPage,
@@ -102,6 +103,7 @@ export default function App() {
         isImportingProject={isImportingProject}
         lang={lang}
         loadError={loadError}
+        loadWarning={loadWarning}
         page={page}
         prevPage={prevPage}
         requestMonitoring={requestMonitoring}

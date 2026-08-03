@@ -18,7 +18,7 @@ const NATIVE_POSITION_OPTIONS = {
 };
 
 const NATIVE_RETRY_DELAY_MS = 3000;
-const MAX_NATIVE_TIMEOUT_RETRIES = 1;
+const MAX_NATIVE_RETRY_DELAY_MS = 30000;
 
 const getNativeErrorCode = (error) =>
   typeof error?.code === "string" ? error.code : "";
@@ -142,19 +142,17 @@ export const useGeolocation = (enabled = true) => {
     };
 
     const scheduleNativeTimeoutRetry = () => {
-      if (
-        stopped ||
-        retryTimer !== null ||
-        nativeTimeoutRetryCount >= MAX_NATIVE_TIMEOUT_RETRIES
-      ) {
-        return false;
-      }
+      if (stopped || retryTimer !== null) return false;
 
+      const retryDelay = Math.min(
+        NATIVE_RETRY_DELAY_MS * 2 ** nativeTimeoutRetryCount,
+        MAX_NATIVE_RETRY_DELAY_MS,
+      );
       nativeTimeoutRetryCount += 1;
       retryTimer = setTimeout(() => {
         retryTimer = null;
         if (!stopped) void startNativeWatch();
-      }, NATIVE_RETRY_DELAY_MS);
+      }, retryDelay);
       return true;
     };
 
@@ -189,7 +187,7 @@ export const useGeolocation = (enabled = true) => {
                 isNativeTimeoutError(watchError) &&
                 scheduleNativeTimeoutRetry();
 
-              clearPosition();
+              if (!retrying) clearPosition();
               setError(getGeolocationErrorMessage(watchError, retrying));
               setLoading(false);
               return;
@@ -211,7 +209,7 @@ export const useGeolocation = (enabled = true) => {
         const retrying =
           isNativeTimeoutError(watchError) && scheduleNativeTimeoutRetry();
 
-        clearPosition();
+        if (!retrying) clearPosition();
         setError(getGeolocationErrorMessage(watchError, retrying));
         setLoading(false);
       }

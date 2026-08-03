@@ -70,6 +70,7 @@ vi.mock("./hooks/useProjectData", () => ({
     dataLoaded: true,
     dataProjectId: mocks.previousProject.id,
     loadError: null,
+    loadWarning: null,
     retryLoad: vi.fn(),
   }),
 }));

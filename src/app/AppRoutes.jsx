@@ -47,6 +47,32 @@ function downloadRecoveryData(data, fileName) {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+function ProjectDataLoadWarning({ lang, onRetry }) {
+  const ru = lang === "ru";
+  return (
+    <section className="dataLoadWarning" role="status" aria-live="polite">
+      <span className="dataLoadWarningIcon" aria-hidden="true">
+        !
+      </span>
+      <div className="dataLoadWarningContent">
+        <strong>
+          {ru
+            ? "Резервное хранилище браузера недоступно"
+            : "Browser backup storage is unavailable"}
+        </strong>
+        <p>
+          {ru
+            ? "Основная база IndexedDB работает. Можно продолжать работу; резервная копия localStorage будет восстановлена после устранения ошибки."
+            : "The primary IndexedDB database is working. You can continue; the localStorage mirror will be repaired after the error is resolved."}
+        </p>
+      </div>
+      <button type="button" onClick={onRetry}>
+        {ru ? "Проверить снова" : "Retry mirror"}
+      </button>
+    </section>
+  );
+}
+
 function ProjectDataLoadError({ lang, onRetry, error, data, projectName }) {
   const ru = lang === "ru";
   const recoveryData = error?.recoveryData ?? (data?.length ? data : null);
@@ -102,6 +128,7 @@ export default function AppRoutes({
   isImportingProject,
   lang,
   loadError,
+  loadWarning,
   page,
   prevPage,
   requestMonitoring,
@@ -137,6 +164,9 @@ export default function AppRoutes({
             data={data}
             projectName={activeProject?.name}
           />
+        )}
+        {dataLoaded && !isImportingProject && !loadError && loadWarning && (
+          <ProjectDataLoadWarning lang={lang} onRetry={retryLoad} />
         )}
         {dataLoaded && !isImportingProject && !loadError && page === "" && (
           <MainPage

@@ -161,7 +161,32 @@ describe("LeakRepository web IndexedDB storage", () => {
     expect(getProjectDataReadWarning(result)).toMatchObject({
       code: "PROJECT_DATA_DEGRADED",
       source: "indexeddb",
+      blocksWrites: true,
     });
+  });
+
+  it("marks a broken localStorage mirror as non-blocking when IndexedDB is valid", async () => {
+    const {
+      LeakRepository,
+      getProjectDataReadWarning,
+      isProjectDataReadWarningBlocking,
+    } = await loadRepository();
+    await LeakRepository.saveAll([makeLeak("indexed")], PROJECT);
+    localStorage.setItem(storageKey(PROJECT.projectId), "not-json{{");
+
+    const result = await LeakRepository.getAll(PROJECT);
+    const warning = getProjectDataReadWarning(result);
+
+    expect(result).toMatchObject([{ id: "indexed" }]);
+    expect(warning).toMatchObject({
+      code: "PROJECT_DATA_DEGRADED",
+      source: "localstorage",
+      blocksWrites: false,
+    });
+    expect(isProjectDataReadWarningBlocking(warning)).toBe(false);
+    await expect(
+      LeakRepository.saveAll([makeLeak("updated")], PROJECT),
+    ).resolves.toBeUndefined();
   });
 
   it("does not guess between differing legacy web copies", async () => {

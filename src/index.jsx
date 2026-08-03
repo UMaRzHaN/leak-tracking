@@ -14,6 +14,15 @@ const PwaUpdateBanner = React.lazy(
 async function bootstrap() {
   await import("./i18n");
 
+  if (
+    isNative &&
+    import.meta.env.VITE_ENABLE_NATIVE_STORAGE_PERFORMANCE === "true"
+  ) {
+    const { installNativeStoragePerformanceHarness } =
+      await import("../performance/nativeStoragePerformanceHarness");
+    installNativeStoragePerformanceHarness();
+  }
+
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(
     <React.StrictMode>

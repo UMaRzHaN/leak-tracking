@@ -6,6 +6,7 @@ import {
   getPreservedInvalidLeakRecords,
   getProjectDataReadWarning,
 } from "@/repositories/LeakRepository";
+import { splitProjectDataReadWarning } from "@/repositories/projectDataReadState";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
 import {
   commitLeakDataMutation,
@@ -27,6 +28,7 @@ export function useProjectData() {
   const [preservedRecords, setPreservedRecords] = useState([]);
 
   const [loadError, setLoadError] = useState(null);
+  const [loadWarning, setLoadWarning] = useState(null);
   const [reloadRevision, setReloadRevision] = useState(0);
   const saveQueueRef = useRef(Promise.resolve());
   const dataRef = useRef([]);
@@ -44,6 +46,7 @@ export function useProjectData() {
     const loadGeneration = ++loadGenerationRef.current;
     setDataLoaded(false);
     setLoadError(null);
+    setLoadWarning(null);
     loadErrorRef.current = null;
 
     if (!activeProjectId || !activeProjectFolderName) {
@@ -53,6 +56,7 @@ export function useProjectData() {
       setDataLoaded(true);
       setDataProjectId(activeProjectId);
       setPreservedRecords([]);
+      setLoadWarning(null);
       return;
     }
 
@@ -69,6 +73,8 @@ export function useProjectData() {
         if (cancelled || loadGeneration !== loadGenerationRef.current) return;
         const preserved = getPreservedInvalidLeakRecords?.(result) ?? [];
         const readWarning = getProjectDataReadWarning?.(result) ?? null;
+        const { loadError: blockingWarning, loadWarning: nonBlockingWarning } =
+          splitProjectDataReadWarning(readWarning);
         await restoreEmbeddedProjectSyncState(
           activeProjectId,
           getEmbeddedProjectSyncState?.(result),
@@ -76,8 +82,9 @@ export function useProjectData() {
         );
         if (cancelled || loadGeneration !== loadGenerationRef.current) return;
         setPreservedRecords(preserved);
-        setLoadError(readWarning);
-        loadErrorRef.current = readWarning;
+        setLoadWarning(nonBlockingWarning);
+        setLoadError(blockingWarning);
+        loadErrorRef.current = blockingWarning;
         persistedByProjectRef.current.set(activeProjectId, [
           ...result,
           ...preserved,
@@ -94,6 +101,7 @@ export function useProjectData() {
         if (cancelled || loadGeneration !== loadGenerationRef.current) return;
         logger.error("[useProjectData] Failed to load project data:", error);
         setLoadError(error);
+        setLoadWarning(null);
         loadErrorRef.current = error;
         setPreservedRecords([]);
         persistedByProjectRef.current.delete(activeProjectId);
@@ -192,6 +200,7 @@ export function useProjectData() {
                   projectId,
                   folderName,
                   syncState,
+                  previousLeaks: persistedBefore,
                 }),
             );
           } catch (error) {
@@ -334,6 +343,7 @@ export function useProjectData() {
     dataLoaded: dataLoaded && dataProjectId === activeProjectId,
     dataProjectId,
     loadError,
+    loadWarning,
     retryLoad,
     canWrite: !loadError,
   };

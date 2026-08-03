@@ -1,10 +1,22 @@
 import { isNative } from "@/utils/platform";
-import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
+import { Directory } from "@capacitor/filesystem";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { PROJECT_META } from "@/configs/projects";
 import { logger } from "@/utils/logger";
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import { requestPersistentStorage } from "@/services/persistentStorage";
+import {
+  getWebProjectDataReadFailurePolicy,
+  isProjectDataReadWarningBlocking,
+} from "@/repositories/projectDataReadState";
+import {
+  deleteNativeProjectStorage,
+  isMissingNativeFileError,
+  loadNativeProject,
+  readNativeSnapshot,
+  saveNativeProject,
+  writeNativeProjectSnapshot,
+} from "@/repositories/nativeLeakStorage";
 
 const VALID_STATUSES = new Set(["open", "in_progress", "resolved"]);
 const WEB_DATA_DB = "LeakTrackingDataDB";
@@ -21,12 +33,16 @@ let lastIssuedWebRevision = 0;
 
 export class ProjectDataReadError extends Error {
   /** @param {string} message @param {any} [options] */
-  constructor(message, { cause, source, code, recoveryData } = {}) {
+  constructor(
+    message,
+    { cause, source, code, recoveryData, blocksWrites } = {},
+  ) {
     super(message, cause ? { cause } : undefined);
     this.name = "ProjectDataReadError";
     this.code = code ?? "PROJECT_DATA_READ_FAILED";
     this.source = source ?? "unknown";
     if (recoveryData !== undefined) this.recoveryData = recoveryData;
+    if (blocksWrites !== undefined) this.blocksWrites = Boolean(blocksWrites);
   }
 }
 
@@ -132,48 +148,7 @@ export function getProjectDataReadWarning(leaks) {
   return leaks?.[WEB_READ_WARNING] ?? null;
 }
 
-function getMobileRecoveryPaths(folderName) {
-  const dir = `LeakReports/${folderName}/data`;
-  return {
-    main: `${dir}/data.json`,
-    backup: `${dir}/data.backup.json`,
-    temp: `${dir}/data.tmp.json`,
-  };
-}
-
-function isMissingFileError(error) {
-  const message = String(error?.message ?? error).toLowerCase();
-  return message.includes("exist") || message.includes("not found");
-}
-
-function normalizeNativeProjectState(value, path) {
-  if (Array.isArray(value)) return { data: value, syncState: null };
-  if (
-    value &&
-    typeof value === "object" &&
-    value.version === 2 &&
-    Array.isArray(value.data)
-  ) {
-    return { data: value.data, syncState: value.syncState ?? null };
-  }
-  throw new TypeError(`Expected project data in ${path}`);
-}
-
-async function readNativeProjectState(path, directory = Directory.Data) {
-  const result = await Filesystem.readFile({
-    path,
-    directory,
-    encoding: Encoding.UTF8,
-  });
-  return normalizeNativeProjectState(
-    JSON.parse(String(result.data || "[]")),
-    path,
-  );
-}
-
-async function readNativeArray(path, directory = Directory.Data) {
-  return (await readNativeProjectState(path, directory)).data;
-}
+export { isProjectDataReadWarningBlocking };
 
 function getLegacyNativeCandidates(legacyStorageType) {
   if (!PROJECT_META[legacyStorageType]) return [];
@@ -214,9 +189,11 @@ async function recoverLegacyNativeArray(
 
     let legacyData;
     try {
-      legacyData = await readNativeArray(candidate.path, candidate.directory);
+      legacyData = (
+        await readNativeSnapshot(candidate.path, candidate.directory)
+      ).data;
     } catch (error) {
-      if (isMissingFileError(error)) continue;
+      if (isMissingNativeFileError(error)) continue;
       throw new ProjectDataReadError(
         `Legacy project data could not be read from "${candidate.path}"`,
         { cause: error, source: "native-legacy" },
@@ -224,9 +201,7 @@ async function recoverLegacyNativeArray(
     }
 
     try {
-      // Persist the exact legacy array through the same crash-safe writer used
-      // by normal saves. The source file is deliberately left untouched.
-      await writeNativeArray(folderName, legacyData);
+      await writeNativeProjectSnapshot(folderName, legacyData);
     } catch (error) {
       logger.warn(
         `[LeakRepository] Read legacy data from "${candidate.path}", but could not copy it to current storage:`,
@@ -236,85 +211,6 @@ async function recoverLegacyNativeArray(
     return { data: legacyData, source: candidate.path };
   }
   return null;
-}
-
-async function writeNativeArray(folderName, leaks, syncState = null) {
-  const paths = getMobileRecoveryPaths(folderName);
-  const serialized = JSON.stringify(
-    syncState == null ? leaks : { version: 2, data: leaks, syncState },
-  );
-  await ensureDir(paths.temp);
-
-  await Filesystem.writeFile({
-    path: paths.temp,
-    directory: Directory.Data,
-    data: serialized,
-    encoding: Encoding.UTF8,
-  });
-
-  let hasPreviousData = false;
-  try {
-    await readNativeArray(paths.main);
-    hasPreviousData = true;
-  } catch (error) {
-    if (!isMissingFileError(error)) {
-      logger.warn(
-        `[LeakRepository] Current data is invalid; preserving existing recovery copy for "${paths.main}":`,
-        error,
-      );
-    }
-  }
-
-  if (hasPreviousData) {
-    await Filesystem.deleteFile({
-      path: paths.backup,
-      directory: Directory.Data,
-    }).catch((error) => {
-      if (!isMissingFileError(error)) throw error;
-    });
-
-    // Native copy avoids sending and serializing the complete previous JSON
-    // through the JavaScript bridge a second time.
-    await Filesystem.copy({
-      from: paths.main,
-      to: paths.backup,
-      directory: Directory.Data,
-    });
-  }
-
-  await Filesystem.deleteFile({
-    path: paths.main,
-    directory: Directory.Data,
-  }).catch((error) => {
-    if (!isMissingFileError(error)) throw error;
-  });
-
-  try {
-    await Filesystem.rename({
-      from: paths.temp,
-      to: paths.main,
-      directory: Directory.Data,
-    });
-  } catch (error) {
-    // Keep the project readable even if the final rename fails.
-    if (hasPreviousData) {
-      await Filesystem.copy({
-        from: paths.backup,
-        to: paths.main,
-        directory: Directory.Data,
-      }).catch(() => {});
-    }
-    throw error;
-  }
-}
-
-async function ensureDir(filePath) {
-  const dir = filePath.substring(0, filePath.lastIndexOf("/"));
-  await Filesystem.mkdir({
-    path: dir,
-    directory: Directory.Data,
-    recursive: true,
-  }).catch(() => {});
 }
 
 function openWebDataDb() {
@@ -543,53 +439,41 @@ export function getEmbeddedProjectSyncState(leaks) {
 export const LeakRepository = {
   async getAll({ projectId, folderName, legacyStorageType = null }) {
     if (isNative) {
-      const { main, backup } = getMobileRecoveryPaths(folderName);
       try {
-        const state = await readNativeProjectState(main);
-        return attachEmbeddedSyncState(
-          filterValidLeaks(state.data, main),
-          state.syncState,
-        );
-      } catch (mainError) {
-        try {
-          const recovered = await readNativeProjectState(backup);
-          logger.warn(
-            `[LeakRepository] Recovered project data from "${backup}" after failing to read "${main}".`,
-            mainError,
-          );
-          return attachEmbeddedSyncState(
-            filterValidLeaks(recovered.data, backup),
-            recovered.syncState,
-          );
-        } catch (backupError) {
-          const mainMissing = isMissingFileError(mainError);
-          const backupMissing = isMissingFileError(backupError);
-          if (mainMissing && backupMissing) {
-            const recovered = await recoverLegacyNativeArray(
-              folderName,
-              legacyStorageType,
-              main,
-            );
-            if (!recovered) return [];
+        const loaded = await loadNativeProject(folderName);
+        if (loaded) {
+          if (loaded.recovered) {
             logger.warn(
-              `[LeakRepository] Migrated legacy native data from "${recovered.source}" without deleting the source file.`,
+              `[LeakRepository] Recovered project data from "${loaded.source}" after failing to read the main snapshot.`,
+              loaded.mainError,
             );
-            return filterValidLeaks(recovered.data, recovered.source);
           }
-
-          logger.error(
-            `[LeakRepository] Failed to read both "${main}" and "${backup}":`,
-            mainError,
-            backupError,
-          );
-          throw new ProjectDataReadError(
-            "Project data and its recovery copy could not be read",
-            {
-              cause: mainMissing ? backupError : mainError,
-              source: "native",
-            },
+          return attachEmbeddedSyncState(
+            filterValidLeaks(loaded.state.data, loaded.source),
+            loaded.state.syncState,
           );
         }
+
+        const recovered = await recoverLegacyNativeArray(
+          folderName,
+          legacyStorageType,
+          `LeakReports/${folderName}/data/data.json`,
+        );
+        if (!recovered) return [];
+        logger.warn(
+          `[LeakRepository] Migrated legacy native data from "${recovered.source}" without deleting the source file.`,
+        );
+        return filterValidLeaks(recovered.data, recovered.source);
+      } catch (error) {
+        if (error instanceof ProjectDataReadError) throw error;
+        logger.error(
+          `[LeakRepository] Failed to read native project "${folderName}":`,
+          error,
+        );
+        throw new ProjectDataReadError(
+          "Project data and its recovery copy could not be read",
+          { cause: error, source: "native" },
+        );
       }
     }
 
@@ -660,18 +544,20 @@ export const LeakRepository = {
       saveWebDataToLocalStorage(projectId, selected);
     }
 
-    const readWarning =
-      indexedDbError || localStorageError
-        ? new ProjectDataReadError(
-            "Project data was loaded from only one web storage copy",
-            {
-              cause: indexedDbError ?? localStorageError,
-              source: indexedDbError ? "indexeddb" : "localstorage",
-              code: "PROJECT_DATA_DEGRADED",
-              recoveryData: selected.data,
-            },
-          )
-        : null;
+    const readFailurePolicy = getWebProjectDataReadFailurePolicy({
+      indexedDbError,
+      localStorageError,
+    });
+    const readWarning = readFailurePolicy
+      ? new ProjectDataReadError(
+          "Project data was loaded from only one web storage copy",
+          {
+            ...readFailurePolicy,
+            code: "PROJECT_DATA_DEGRADED",
+            recoveryData: selected.data,
+          },
+        )
+      : null;
     if (selected.deleted) {
       const empty = [];
       attachEmbeddedSyncState(empty, selected.syncState);
@@ -695,9 +581,12 @@ export const LeakRepository = {
     return result;
   },
 
-  async saveAll(leaks, { projectId, folderName, syncState = null }) {
+  async saveAll(
+    leaks,
+    { projectId, folderName, syncState = null, previousLeaks = null },
+  ) {
     if (isNative) {
-      await writeNativeArray(folderName, leaks, syncState);
+      await saveNativeProject(folderName, leaks, { syncState, previousLeaks });
       return;
     }
 
@@ -749,7 +638,10 @@ export const LeakRepository = {
 
   async clear({ projectId, folderName, syncState = null }) {
     if (isNative) {
-      await writeNativeArray(folderName, [], syncState);
+      await saveNativeProject(folderName, [], {
+        syncState,
+        forceSnapshot: true,
+      });
       return;
     }
     let indexedEnvelope = null;
@@ -792,7 +684,10 @@ export const LeakRepository = {
 
   async purge({ projectId, folderName }) {
     if (isNative) {
-      await writeNativeArray(folderName, []);
+      const deleted = await deleteNativeProjectStorage(folderName);
+      if (!deleted) {
+        await saveNativeProject(folderName, [], { forceSnapshot: true });
+      }
       return;
     }
 

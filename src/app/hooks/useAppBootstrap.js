@@ -143,6 +143,7 @@ export function useAppBootstrap() {
     dataLoaded,
     dataProjectId,
     loadError,
+    loadWarning,
     retryLoad,
   } = useProjectData();
 
@@ -510,6 +511,7 @@ export function useAppBootstrap() {
     isImportingProject,
     lang,
     loadError,
+    loadWarning,
     openCount,
     page,
     prevPage,

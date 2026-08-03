@@ -47,3 +47,40 @@ Default budgets can be overridden with:
 
 The performance suite uses `playwright.performance.config.mjs`; it is not
 included in `npm test` or `npm run test:e2e`.
+
+## Android native storage performance
+
+The Android instrumentation suite contains a separate native-storage scenario.
+Unlike the browser performance suite, it runs inside the real Capacitor WebView
+and uses the production Android SQLite plugin through the Capacitor bridge.
+
+It measures:
+
+- full transactional SQLite writes for 2,000 and 10,000 records;
+- cold loading of ordered records and embedded sync state;
+- a one-record incremental transaction;
+- a 100-record incremental transaction;
+- 40 consecutive one-record transactions for the 2,000-record dataset;
+- database and write-ahead-log sizes reported by the native plugin.
+
+The harness is excluded from normal production builds. Build it explicitly and
+sync Android before running the dedicated instrumentation class:
+
+```bash
+npm run build -- --mode android-performance
+npm run cap:sync
+cd android
+./gradlew :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.leak.tracking.NativeStoragePerformanceInstrumentedTest \
+  -Pandroid.testInstrumentationRunnerArguments.nativeStoragePerformance=true
+```
+
+The generated metrics are stored in the debug application's data directory at:
+
+```text
+files/LeakReports/performance-results/native-storage.json
+```
+
+CI runs this heavier scenario once on API 35 and uploads the JSON metrics with
+the Android instrumentation report. Normal Android builds do not expose the
+performance harness.

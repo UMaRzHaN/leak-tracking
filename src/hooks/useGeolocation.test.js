@@ -102,7 +102,7 @@ describe("useGeolocation native lifecycle", () => {
     });
   });
 
-  it("retries one timeout and does not start a third watch", async () => {
+  it("keeps retrying native timeouts with capped exponential backoff", async () => {
     vi.useFakeTimers();
     const callbacks = [];
     mocks.watchPosition.mockImplementation(async (_options, callback) => {
@@ -113,26 +113,111 @@ describe("useGeolocation native lifecycle", () => {
     await flushAsyncWork();
 
     expect(mocks.watchPosition).toHaveBeenCalledOnce();
+
     act(() => {
       callbacks[0](null, { code: "OS-PLUG-GLOC-0010" });
     });
-    expect(result.current.coords).toEqual({ lat: null, lng: null });
     expect(result.current.error).toContain("повторная попытка");
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
+      await vi.advanceTimersByTimeAsync(2999);
+    });
+    expect(mocks.watchPosition).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
     });
     expect(mocks.watchPosition).toHaveBeenCalledTimes(2);
 
     act(() => {
       callbacks[1](null, { code: "OS-PLUG-GLOC-0010" });
     });
-    expect(result.current.error).toContain("не смог определить координаты");
-
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(10000);
+      await vi.advanceTimersByTimeAsync(5999);
     });
     expect(mocks.watchPosition).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(mocks.watchPosition).toHaveBeenCalledTimes(3);
+
+    for (const expectedDelay of [12000, 24000, 30000, 30000]) {
+      const callback = callbacks.at(-1);
+      act(() => {
+        callback(null, { code: "OS-PLUG-GLOC-0010" });
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(expectedDelay - 1);
+      });
+      const callsBeforeRetry = mocks.watchPosition.mock.calls.length;
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(mocks.watchPosition).toHaveBeenCalledTimes(callsBeforeRetry + 1);
+    }
+
+    expect(result.current.error).toContain("повторная попытка");
+  });
+
+  it("keeps the last valid coordinates while recovering from a timeout", async () => {
+    vi.useFakeTimers();
+    const callbacks = [];
+    mocks.watchPosition.mockImplementation(async (_options, callback) => {
+      callbacks.push(callback);
+      return `watch-${callbacks.length}`;
+    });
+    const { result } = renderHook(() => useGeolocation(true));
+    await flushAsyncWork();
+
+    act(() => {
+      callbacks[0]({
+        coords: { latitude: 41.3, longitude: 69.2, accuracy: 5 },
+      });
+    });
+    expect(result.current.coords).toMatchObject({ lat: 41.3, lng: 69.2 });
+
+    act(() => {
+      callbacks[0](null, { code: "OS-PLUG-GLOC-0010" });
+    });
+
+    expect(result.current.coords).toMatchObject({ lat: 41.3, lng: 69.2 });
+    expect(result.current.error).toContain("повторная попытка");
+  });
+
+  it("resets timeout backoff after receiving a valid position", async () => {
+    vi.useFakeTimers();
+    const callbacks = [];
+    mocks.watchPosition.mockImplementation(async (_options, callback) => {
+      callbacks.push(callback);
+      return `watch-${callbacks.length}`;
+    });
+    renderHook(() => useGeolocation(true));
+    await flushAsyncWork();
+
+    act(() => {
+      callbacks[0](null, { code: "OS-PLUG-GLOC-0010" });
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+
+    act(() => {
+      callbacks[1]({
+        coords: { latitude: 41.3, longitude: 69.2, accuracy: 5 },
+      });
+      callbacks[1](null, { code: "OS-PLUG-GLOC-0010" });
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2999);
+    });
+    expect(mocks.watchPosition).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(mocks.watchPosition).toHaveBeenCalledTimes(3);
   });
 
   it("does not retry terminal errors and clears stale coordinates", async () => {

@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { hydrateZipPhotos } from "./photoPipeline";
+import {
+  hydrateZipPhotos,
+  reconcileExcelImportPhotos,
+  rollbackExcelImportPhotos,
+} from "./photoPipeline";
 
 describe("hydrateZipPhotos", () => {
   it("materializes a shared ZIP entry only once", async () => {
@@ -36,5 +40,103 @@ describe("hydrateZipPhotos", () => {
     expect(result.leaks[0].monitoringRecords[0].previousPhoto).toBe(
       result.leaks[0].photo,
     );
+  });
+});
+
+describe("reconcileExcelImportPhotos concurrency", () => {
+  it("limits storage reads and preserves incoming leak order", async () => {
+    let activeReads = 0;
+    let maxActiveReads = 0;
+    const existing = Array.from({ length: 8 }, (_, index) => ({
+      leak_id: `TAG-${index + 1}`,
+      photo: `idb://existing-${index + 1}`,
+    }));
+    const incoming = Array.from({ length: 8 }, (_, index) => ({
+      leak_id: `TAG-${index + 1}`,
+      photo: new Blob([`incoming-${index + 1}`], { type: "image/jpeg" }),
+    }));
+    const getStoredPhoto = vi.fn(async (key) => {
+      activeReads += 1;
+      maxActiveReads = Math.max(maxActiveReads, activeReads);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      activeReads -= 1;
+      return new Blob([`stored-${key}`], { type: "image/jpeg" });
+    });
+
+    const result = await reconcileExcelImportPhotos(
+      existing,
+      incoming,
+      getStoredPhoto,
+      { concurrency: 2, reusablePhotoConcurrency: 2 },
+    );
+
+    expect(maxActiveReads).toBeLessThanOrEqual(2);
+    expect(result.leaks.map((leak) => leak.leak_id)).toEqual(
+      incoming.map((leak) => leak.leak_id),
+    );
+    expect(result.photos).toMatchObject({ replaced: 8, toSave: 8 });
+  });
+
+  it("limits rollback deletions and continues after individual failures", async () => {
+    let activeDeletes = 0;
+    let maxActiveDeletes = 0;
+    const attempted = [];
+    const paths = Array.from({ length: 7 }, (_, index) => `idb://p-${index}`);
+
+    await rollbackExcelImportPhotos(
+      [...paths, paths[0]],
+      async (path) => {
+        activeDeletes += 1;
+        maxActiveDeletes = Math.max(maxActiveDeletes, activeDeletes);
+        await new Promise((resolve) => setTimeout(resolve, 3));
+        activeDeletes -= 1;
+        attempted.push(path);
+        if (path === paths[2]) throw new Error("delete failed");
+      },
+      { concurrency: 2 },
+    );
+
+    expect(maxActiveDeletes).toBeLessThanOrEqual(2);
+    expect(new Set(attempted)).toEqual(new Set(paths));
+    expect(attempted).toHaveLength(paths.length);
+  });
+
+  it("does not multiply concurrency for nested monitoring photos", async () => {
+    let activeReads = 0;
+    let maxActiveReads = 0;
+    const existing = Array.from({ length: 3 }, (_, leakIndex) => ({
+      leak_id: `MON-${leakIndex + 1}`,
+      monitoringRecords: Array.from({ length: 5 }, (_, recordIndex) => ({
+        id: `R-${recordIndex + 1}`,
+        photo: `idb://existing-${leakIndex + 1}-${recordIndex + 1}`,
+      })),
+    }));
+    const incoming = existing.map((leak, leakIndex) => ({
+      leak_id: leak.leak_id,
+      monitoringRecords: leak.monitoringRecords.map((record, recordIndex) => ({
+        id: record.id,
+        photo: new Blob([`incoming-${leakIndex + 1}-${recordIndex + 1}`], {
+          type: "image/jpeg",
+        }),
+      })),
+    }));
+    const getStoredPhoto = vi.fn(async (key) => {
+      activeReads += 1;
+      maxActiveReads = Math.max(maxActiveReads, activeReads);
+      await new Promise((resolve) => setTimeout(resolve, 3));
+      activeReads -= 1;
+      return new Blob([`stored-${key}`], { type: "image/jpeg" });
+    });
+
+    const result = await reconcileExcelImportPhotos(
+      existing,
+      incoming,
+      getStoredPhoto,
+      { concurrency: 2, reusablePhotoConcurrency: 2 },
+    );
+
+    expect(maxActiveReads).toBeLessThanOrEqual(2);
+    expect(result.leaks).toHaveLength(3);
+    expect(result.photos).toMatchObject({ replaced: 15, toSave: 15 });
   });
 });

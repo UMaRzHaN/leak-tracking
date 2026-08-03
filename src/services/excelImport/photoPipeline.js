@@ -10,6 +10,9 @@ import {
 
 const PHOTO_KEYS = new Set(LEAK_PHOTO_FIELDS);
 
+const DEFAULT_PHOTO_RECONCILE_CONCURRENCY = 3;
+const DEFAULT_REUSABLE_PHOTO_CONCURRENCY = 3;
+
 export function isZipFile(file) {
   return (
     /\.zip$/i.test(file?.name ?? "") || String(file?.type ?? "").includes("zip")
@@ -110,7 +113,11 @@ async function blobsEqual(left, right) {
   return true;
 }
 
-async function buildReusablePhotoMap(existingLeaks, getStoredPhoto) {
+async function buildReusablePhotoMap(
+  existingLeaks,
+  getStoredPhoto,
+  concurrency = DEFAULT_REUSABLE_PHOTO_CONCURRENCY,
+) {
   const paths = new Set();
   for (const leak of existingLeaks ?? []) {
     for (const key of PHOTO_KEYS) {
@@ -123,27 +130,18 @@ async function buildReusablePhotoMap(existingLeaks, getStoredPhoto) {
     }
   }
 
-  const queue = [...paths];
   const reusable = new Map();
-  let cursor = 0;
-  async function worker() {
-    while (cursor < queue.length) {
-      const path = queue[cursor];
-      cursor += 1;
-      try {
-        const blob = await resolveStoredPhotoBlob(path, getStoredPhoto);
-        const fingerprint = await fingerprintBlob(blob);
-        if (fingerprint && !reusable.has(fingerprint)) {
-          reusable.set(fingerprint, path);
-        }
-      } catch {
-        // Unreadable paths remain eligible for normal slot comparison.
+  await mapWithConcurrency([...paths], concurrency, async (path) => {
+    try {
+      const blob = await resolveStoredPhotoBlob(path, getStoredPhoto);
+      const fingerprint = await fingerprintBlob(blob);
+      if (fingerprint && !reusable.has(fingerprint)) {
+        reusable.set(fingerprint, path);
       }
+    } catch {
+      // Unreadable paths remain eligible for normal slot comparison.
     }
-  }
-  await Promise.all(
-    Array.from({ length: Math.min(8, queue.length) }, () => worker()),
-  );
+  });
   return reusable;
 }
 
@@ -155,6 +153,7 @@ async function reconcilePhotoValue(
   field,
   reusablePhotos,
   preserveExisting,
+  fingerprintCache,
 ) {
   const incomingIsBlob = incomingPath instanceof Blob;
   const incomingIsDataUrl = String(incomingPath ?? "").startsWith(
@@ -171,7 +170,10 @@ async function reconcilePhotoValue(
     const incomingBlob = incomingIsBlob
       ? incomingPath
       : await dataUrlToBlob(incomingPath);
-    const fingerprint = await fingerprintBlob(incomingBlob);
+    const fingerprint = await getPhotoFingerprint(
+      incomingBlob,
+      fingerprintCache,
+    );
     const reusablePath = fingerprint ? reusablePhotos.get(fingerprint) : null;
     if (reusablePath) {
       stats.reused += 1;
@@ -225,12 +227,24 @@ export async function reconcileExcelImportPhotos(
     if (identity) existingByIdentity.set(identity, leak);
   }
   const preserveExisting = options.preserveExisting === true;
+  const concurrency =
+    options.concurrency ?? DEFAULT_PHOTO_RECONCILE_CONCURRENCY;
+  const reusablePhotoConcurrency =
+    options.reusablePhotoConcurrency ??
+    Math.min(concurrency, DEFAULT_REUSABLE_PHOTO_CONCURRENCY);
   const reusablePhotos = preserveExisting
     ? new Map()
-    : await buildReusablePhotoMap(existingLeaks, getStoredPhoto);
+    : await buildReusablePhotoMap(
+        existingLeaks,
+        getStoredPhoto,
+        reusablePhotoConcurrency,
+      );
+  const fingerprintCache = new WeakMap();
 
-  const leaks = await Promise.all(
-    (incomingLeaks ?? []).map(async (leak) => {
+  const leaks = await mapWithConcurrency(
+    incomingLeaks ?? [],
+    concurrency,
+    async (leak) => {
       const current = existingByIdentity.get(getLeakIdentity(leak));
       const copy = { ...leak };
 
@@ -243,6 +257,7 @@ export async function reconcileExcelImportPhotos(
           key,
           reusablePhotos,
           preserveExisting,
+          fingerprintCache,
         );
       }
 
@@ -254,34 +269,34 @@ export async function reconcileExcelImportPhotos(
             record,
           ]),
         );
-        copy.monitoringRecords = await Promise.all(
-          leak.monitoringRecords.map(async (record, index) => {
-            const recordAtSamePosition = currentMonitoringRecords[index];
-            const currentRecord =
-              preserveExisting &&
-              currentMonitoringRecords.length === leak.monitoringRecords.length
-                ? recordAtSamePosition
-                : (currentRecords.get(getMonitoringIdentity(record, index)) ??
-                  recordAtSamePosition);
-            const recordCopy = { ...record };
-            for (const field of MONITORING_PHOTO_FIELDS) {
-              recordCopy[field] = await reconcilePhotoValue(
-                record?.[field],
-                currentRecord?.[field],
-                getStoredPhoto,
-                stats,
-                `monitoring.${field}`,
-                reusablePhotos,
-                preserveExisting,
-              );
-            }
-            return recordCopy;
-          }),
-        );
+        copy.monitoringRecords = [];
+        for (const [index, record] of leak.monitoringRecords.entries()) {
+          const recordAtSamePosition = currentMonitoringRecords[index];
+          const currentRecord =
+            preserveExisting &&
+            currentMonitoringRecords.length === leak.monitoringRecords.length
+              ? recordAtSamePosition
+              : (currentRecords.get(getMonitoringIdentity(record, index)) ??
+                recordAtSamePosition);
+          const recordCopy = { ...record };
+          for (const field of MONITORING_PHOTO_FIELDS) {
+            recordCopy[field] = await reconcilePhotoValue(
+              record?.[field],
+              currentRecord?.[field],
+              getStoredPhoto,
+              stats,
+              `monitoring.${field}`,
+              reusablePhotos,
+              preserveExisting,
+              fingerprintCache,
+            );
+          }
+          copy.monitoringRecords.push(recordCopy);
+        }
       }
 
       return copy;
-    }),
+    },
   );
 
   return {
@@ -488,9 +503,17 @@ export async function persistExcelImportPhotos(
     : persistedLeaks;
 }
 
-export async function rollbackExcelImportPhotos(paths, deletePhoto) {
+export async function rollbackExcelImportPhotos(
+  paths,
+  deletePhoto,
+  { concurrency = DEFAULT_PHOTO_PERSIST_CONCURRENCY } = {},
+) {
   if (typeof deletePhoto !== "function") return;
-  await Promise.allSettled(
-    [...new Set(paths)].map((path) => deletePhoto(path)),
-  );
+  await mapWithConcurrency([...new Set(paths)], concurrency, async (path) => {
+    try {
+      await deletePhoto(path);
+    } catch {
+      // Rollback remains best-effort, but native deletions stay bounded.
+    }
+  });
 }
