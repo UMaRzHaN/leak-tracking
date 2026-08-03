@@ -75,6 +75,12 @@ describe("Excel import value normalization", () => {
     expect(normalizeMonitoringCellValue("photo", "photos/round.jpg")).toBe(
       "zip:photos/round.jpg",
     );
+    expect(
+      normalizeMonitoringCellValue(
+        "previousPhoto",
+        "photos/round-previous.jpg",
+      ),
+    ).toBe("zip:photos/round-previous.jpg");
   });
 
   it("builds a persisted leak and removes invalid coordinates", () => {

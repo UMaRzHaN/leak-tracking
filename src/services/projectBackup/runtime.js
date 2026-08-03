@@ -13,19 +13,34 @@ export function yieldToMainThread() {
 }
 
 export async function mapWithConcurrency(items, concurrency, mapper) {
+  if (!items.length) return [];
+
   const results = new Array(items.length);
+  const workerCount = Math.max(
+    1,
+    Math.min(
+      Number.isFinite(concurrency) ? Math.floor(concurrency) : 1,
+      items.length,
+    ),
+  );
   let cursor = 0;
+  let firstError = null;
 
   async function worker() {
-    while (cursor < items.length) {
+    while (!firstError) {
       const index = cursor;
       cursor += 1;
-      results[index] = await mapper(items[index], index);
+      if (index >= items.length) return;
+
+      try {
+        results[index] = await mapper(items[index], index);
+      } catch (error) {
+        firstError ??= error;
+      }
     }
   }
 
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
-  );
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  if (firstError) throw firstError;
   return results;
 }

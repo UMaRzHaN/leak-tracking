@@ -1,7 +1,57 @@
 import { useEffect, useState } from "react";
-import { isNative } from "@/utils/platform";
 import { Geolocation } from "@capacitor/geolocation";
+import { isNative } from "@/utils/platform";
 import { logger } from "@/utils/logger";
+
+const WEB_POSITION_OPTIONS = {
+  enableHighAccuracy: true,
+  maximumAge: 1000,
+  timeout: 10000,
+};
+
+const NATIVE_POSITION_OPTIONS = {
+  timeout: 60000,
+  maximumAge: 15000,
+  interval: 5000,
+  minimumUpdateInterval: 3000,
+  enableLocationFallback: true,
+};
+
+const NATIVE_RETRY_DELAY_MS = 3000;
+const MAX_NATIVE_TIMEOUT_RETRIES = 1;
+
+const getNativeErrorCode = (error) =>
+  typeof error?.code === "string" ? error.code : "";
+
+const isNativeTimeoutError = (error) =>
+  getNativeErrorCode(error) === "OS-PLUG-GLOC-0010";
+
+const getGeolocationErrorMessage = (error, retrying = false) => {
+  switch (getNativeErrorCode(error)) {
+    case "OS-PLUG-GLOC-0003":
+      return "Доступ к геолокации запрещён";
+    case "OS-PLUG-GLOC-0007":
+      return "Геолокация на телефоне выключена";
+    case "OS-PLUG-GLOC-0008":
+      return "Использование геолокации ограничено системой";
+    case "OS-PLUG-GLOC-0009":
+      return "Включение геолокации отклонено";
+    case "OS-PLUG-GLOC-0010":
+      return retrying
+        ? "GPS не успел определить координаты. Выполняется повторная попытка"
+        : "GPS не смог определить координаты. Проверьте сигнал и повторите попытку";
+    case "OS-PLUG-GLOC-0014":
+      return "Требуется действие в настройках Google Play Services";
+    case "OS-PLUG-GLOC-0015":
+      return "Ошибка Google Play Services при определении координат";
+    case "OS-PLUG-GLOC-0016":
+      return "Настройки геолокации не позволяют получить координаты";
+    case "OS-PLUG-GLOC-0017":
+      return "Включите геолокацию или сеть на телефоне";
+    default:
+      return error?.message || "Не удалось получить координаты";
+  }
+};
 
 export const useGeolocation = (enabled = true) => {
   const [coords, setCoords] = useState(
@@ -15,9 +65,6 @@ export const useGeolocation = (enabled = true) => {
 
   useEffect(() => {
     if (!enabled) {
-      // A disabled GPS control must not leave the last fix looking current.
-      // Consumers use these coordinates for new leak records and proximity
-      // filters, so retaining them would silently reuse a stale location.
       setCoords({ lat: null, lng: null });
       setError(null);
       setLoading(false);
@@ -27,11 +74,47 @@ export const useGeolocation = (enabled = true) => {
     let watchId = null;
     let stopped = false;
     let permStatus = null;
+    let retryTimer = null;
+    let nativeWatchGeneration = 0;
+    let nativeTimeoutRetryCount = 0;
+    let preciseLocationGranted = false;
 
-    const clearCurrentWatch = () => {
+    const applyPosition = (position) => {
+      nativeTimeoutRetryCount = 0;
+      setCoords({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+      });
+      setError(null);
+      setLoading(false);
+    };
+
+    const clearRetryTimer = () => {
+      if (retryTimer !== null) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+    };
+
+    const clearWebWatch = () => {
       if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
         watchId = null;
+      }
+    };
+
+    const clearNativeWatch = async (id = watchId) => {
+      if (id === null) return;
+      if (watchId === id) watchId = null;
+
+      try {
+        await Geolocation.clearWatch({ id });
+      } catch (clearError) {
+        logger.warn(
+          "[useGeolocation] Failed to clear native watch:",
+          clearError,
+        );
       }
     };
 
@@ -40,27 +123,94 @@ export const useGeolocation = (enabled = true) => {
       setLoading(true);
 
       watchId = navigator.geolocation.watchPosition(
-        (pos) => {
+        (position) => {
           if (stopped) return;
-          setCoords({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            accuracy: pos.coords.accuracy,
-          });
-          setError(null);
+          applyPosition(position);
+        },
+        (watchError) => {
+          if (stopped) return;
+          setError(watchError.message);
           setLoading(false);
         },
-        (err) => {
-          if (stopped) return;
-          setError(err.message);
-          setLoading(false);
-        },
-        { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 },
+        WEB_POSITION_OPTIONS,
       );
     };
 
+    const scheduleNativeTimeoutRetry = () => {
+      if (
+        stopped ||
+        retryTimer !== null ||
+        nativeTimeoutRetryCount >= MAX_NATIVE_TIMEOUT_RETRIES
+      ) {
+        return false;
+      }
+
+      nativeTimeoutRetryCount += 1;
+      retryTimer = setTimeout(() => {
+        retryTimer = null;
+        if (!stopped) void startNativeWatch();
+      }, NATIVE_RETRY_DELAY_MS);
+      return true;
+    };
+
+    async function startNativeWatch() {
+      if (stopped) return;
+
+      clearRetryTimer();
+      setError(null);
+      setLoading(true);
+
+      const generation = ++nativeWatchGeneration;
+      let registeredWatchId = null;
+
+      try {
+        registeredWatchId = await Geolocation.watchPosition(
+          {
+            ...NATIVE_POSITION_OPTIONS,
+            enableHighAccuracy: preciseLocationGranted,
+          },
+          (position, watchError) => {
+            if (stopped || generation !== nativeWatchGeneration) return;
+
+            if (watchError) {
+              nativeWatchGeneration += 1;
+
+              const failedWatchId = registeredWatchId ?? watchId;
+              if (failedWatchId !== null) {
+                void clearNativeWatch(failedWatchId);
+              }
+
+              const retrying =
+                isNativeTimeoutError(watchError) &&
+                scheduleNativeTimeoutRetry();
+
+              setError(getGeolocationErrorMessage(watchError, retrying));
+              setLoading(false);
+              return;
+            }
+
+            if (position) applyPosition(position);
+          },
+        );
+
+        if (stopped || generation !== nativeWatchGeneration) {
+          await clearNativeWatch(registeredWatchId);
+          return;
+        }
+
+        watchId = registeredWatchId;
+      } catch (watchError) {
+        if (stopped || generation !== nativeWatchGeneration) return;
+
+        const retrying =
+          isNativeTimeoutError(watchError) && scheduleNativeTimeoutRetry();
+
+        setError(getGeolocationErrorMessage(watchError, retrying));
+        setLoading(false);
+      }
+    }
+
     const init = async () => {
-      // WEB
       if (!isNative) {
         if (!navigator.geolocation) {
           setError("Браузер не поддерживает геолокацию");
@@ -70,7 +220,6 @@ export const useGeolocation = (enabled = true) => {
 
         startWebWatch();
 
-        // Follow permission changes so GPS watch can recover without reloading.
         if (navigator.permissions) {
           try {
             const status = await navigator.permissions.query({
@@ -80,86 +229,64 @@ export const useGeolocation = (enabled = true) => {
               status.onchange = null;
               return;
             }
+
             permStatus = status;
             permStatus.onchange = () => {
               if (stopped) return;
+
               if (permStatus.state === "granted") {
-                clearCurrentWatch();
+                clearWebWatch();
                 startWebWatch();
               } else if (permStatus.state === "denied") {
-                clearCurrentWatch();
+                clearWebWatch();
                 setError("Доступ к геолокации запрещён");
                 setLoading(false);
               }
             };
-          } catch (err) {
-            // Permissions API not available in this browser - expected on some mobile webviews
-            logger.warn("[useGeolocation] Permissions API unavailable:", err);
+          } catch (permissionsError) {
+            logger.warn(
+              "[useGeolocation] Permissions API unavailable:",
+              permissionsError,
+            );
           }
         }
         return;
       }
 
-      // MOBILE
       try {
-        const perm = await Geolocation.requestPermissions();
+        const permissions = await Geolocation.requestPermissions();
         if (stopped) return;
-        if (perm.location !== "granted") {
-          throw new Error("Нет разрешения на геолокацию");
-        }
 
-        const registeredWatchId = await Geolocation.watchPosition(
-          { enableHighAccuracy: true },
-          (pos, err) => {
-            if (stopped) return;
-            if (err) {
-              setError(err.message);
-              setLoading(false);
-              return;
-            }
-            if (pos) {
-              setCoords({
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude,
-                accuracy: pos.coords.accuracy,
-              });
-              setError(null);
-              setLoading(false);
-            }
-          },
-        );
-        if (stopped) {
-          await Geolocation.clearWatch({ id: registeredWatchId }).catch(
-            (error) =>
-              logger.warn(
-                "[useGeolocation] Failed to clear late watch:",
-                error,
-              ),
-          );
+        preciseLocationGranted = permissions.location === "granted";
+        const coarseLocationGranted = permissions.coarseLocation === "granted";
+
+        if (!preciseLocationGranted && !coarseLocationGranted) {
+          setError("Нет разрешения на геолокацию");
+          setLoading(false);
           return;
         }
-        watchId = registeredWatchId;
-      } catch (e) {
+
+        await startNativeWatch();
+      } catch (permissionError) {
         if (stopped) return;
-        setError(e.message);
+        setError(getGeolocationErrorMessage(permissionError));
         setLoading(false);
       }
     };
 
-    init();
+    void init();
 
     return () => {
       stopped = true;
+      nativeWatchGeneration += 1;
+      clearRetryTimer();
+
       if (permStatus) permStatus.onchange = null;
 
       if (!isNative) {
-        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-      } else {
-        if (watchId !== null) {
-          Geolocation.clearWatch({ id: watchId }).catch((error) =>
-            logger.warn("[useGeolocation] Failed to clear watch:", error),
-          );
-        }
+        clearWebWatch();
+      } else if (watchId !== null) {
+        void clearNativeWatch(watchId);
       }
     };
   }, [enabled]);

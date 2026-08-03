@@ -600,6 +600,7 @@ describe("parseExcelLeaks", () => {
       "Кто мониторил",
       "Результат",
       "Фото мониторинга",
+      "Предыдущее фото",
     ]);
     monitoringSheet.addRow([
       1,
@@ -609,10 +610,15 @@ describe("parseExcelLeaks", () => {
       "Ирина",
       "Утечка устранена",
       "",
+      "",
     ]);
     monitoringSheet.getRow(2).getCell(7).value = {
       text: "Открыть фото",
       hyperlink: "photos/TAG-9/monitoring/TAG-9_monitoring_1.jpg",
+    };
+    monitoringSheet.getRow(2).getCell(8).value = {
+      text: "Открыть предыдущее фото",
+      hyperlink: "photos/TAG-9/monitoring/TAG-9_monitoring_previous.jpg",
     };
 
     const xlsx = await workbook.xlsx.writeBuffer();
@@ -630,6 +636,11 @@ describe("parseExcelLeaks", () => {
     zip.file("photos/TAG-9/monitoring/TAG-9_monitoring_1.jpg", "aGVsbG8=", {
       base64: true,
     });
+    zip.file(
+      "photos/TAG-9/monitoring/TAG-9_monitoring_previous.jpg",
+      "cHJldmlvdXM=",
+      { base64: true },
+    );
     const zipBlob = await zip.generateAsync({ type: "blob" });
     Object.defineProperty(zipBlob, "name", { value: "report.zip" });
 
@@ -637,7 +648,7 @@ describe("parseExcelLeaks", () => {
       projectType: "upstream",
     });
 
-    expect(result.stats.restoredPhotos).toBe(2);
+    expect(result.stats.restoredPhotos).toBe(3);
     expect(result.project).toEqual({
       name: "Archive project",
       type: "midstream",
@@ -646,14 +657,21 @@ describe("parseExcelLeaks", () => {
     expect(result.leaks[0].photo.type).toBe("image/jpeg");
     expect(result.leaks[0].monitoringRecords[0].photo).toBeInstanceOf(Blob);
     expect(result.leaks[0].monitoringRecords[0].photo.type).toBe("image/jpeg");
+    expect(result.leaks[0].monitoringRecords[0].previousPhoto).toBeInstanceOf(
+      Blob,
+    );
+    expect(result.leaks[0].monitoringRecords[0].previousPhoto.type).toBe(
+      "image/jpeg",
+    );
 
     const savePhoto = vi
       .fn()
       .mockResolvedValueOnce("idb://main")
-      .mockResolvedValueOnce("idb://monitoring");
+      .mockResolvedValueOnce("idb://monitoring")
+      .mockResolvedValueOnce("idb://monitoring-previous");
     const persisted = await persistExcelImportPhotos(result.leaks, savePhoto);
 
-    expect(savePhoto).toHaveBeenCalledTimes(2);
+    expect(savePhoto).toHaveBeenCalledTimes(3);
     expect(savePhoto).toHaveBeenNthCalledWith(
       1,
       expect.any(Blob),
@@ -666,6 +684,9 @@ describe("parseExcelLeaks", () => {
     );
     expect(persisted[0].photo).toBe("idb://main");
     expect(persisted[0].monitoringRecords[0].photo).toBe("idb://monitoring");
+    expect(persisted[0].monitoringRecords[0].previousPhoto).toBe(
+      "idb://monitoring-previous",
+    );
   });
 
   it("rejects null photo saves and exposes only newly created paths for rollback", async () => {
@@ -685,6 +706,73 @@ describe("parseExcelLeaks", () => {
     ).rejects.toMatchObject({
       createdPhotoPaths: ["idb://created"],
     });
+  });
+
+  it("limits photo persistence concurrency and preserves leak order", async () => {
+    let active = 0;
+    let maxActive = 0;
+    const leaks = Array.from({ length: 6 }, (_, index) => ({
+      id: index + 1,
+      leak_id: `TAG-${index + 1}`,
+      photo: new Blob([String(index + 1)], { type: "image/jpeg" }),
+    }));
+    const savePhoto = vi.fn(async (_blob, storageKey) => {
+      active += 1;
+      maxActive = Math.max(maxActive, active);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      active -= 1;
+      return { path: `idb://${storageKey}`, created: true };
+    });
+
+    const transaction = await persistExcelImportPhotos(leaks, savePhoto, {
+      returnTransaction: true,
+      concurrency: 2,
+    });
+
+    expect(maxActive).toBe(2);
+    expect(transaction.leaks.map((leak) => leak.leak_id)).toEqual(
+      leaks.map((leak) => leak.leak_id),
+    );
+    expect(transaction.createdPaths).toHaveLength(6);
+  });
+
+  it("waits for in-flight photo saves before exposing rollback paths", async () => {
+    const leaks = [
+      {
+        id: 1,
+        leak_id: "SLOW",
+        photo: new Blob(["slow"], { type: "image/jpeg" }),
+      },
+      {
+        id: 2,
+        leak_id: "FAIL",
+        photo: new Blob(["fail"], { type: "image/jpeg" }),
+      },
+      {
+        id: 3,
+        leak_id: "NOT-STARTED",
+        photo: new Blob(["not-started"], { type: "image/jpeg" }),
+      },
+    ];
+    const savePhoto = vi.fn(async (_blob, storageKey) => {
+      if (storageKey === "FAIL") {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        throw new Error("save failed");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return { path: `idb://${storageKey}`, created: true };
+    });
+
+    await expect(
+      persistExcelImportPhotos(leaks, savePhoto, {
+        returnTransaction: true,
+        concurrency: 2,
+      }),
+    ).rejects.toMatchObject({
+      message: "save failed",
+      createdPhotoPaths: ["idb://SLOW"],
+    });
+    expect(savePhoto).toHaveBeenCalledTimes(2);
   });
 
   it("does not mark a reused content-addressed photo as newly created", async () => {

@@ -5,7 +5,6 @@ import { useAppState } from "./useAppState";
 import { useUserProfile } from "./useUserProfile";
 import { useLanguage } from "./useLanguage";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
-import { logger } from "@/utils/logger";
 import { STATUS } from "@/utils/status";
 import { saveMonitoringRound } from "@/utils/monitoringRound";
 import { NEARBY_RADIUS_M } from "@/pages/DataBase/hooks/useDataBaseFilters";
@@ -20,6 +19,7 @@ import { writeProjectSettings } from "@/app/project/projectSettings";
 import { writeProjectSyncState } from "@/services/projectSyncState";
 import { rollbackImportedProject } from "@/services/projectCleanup";
 import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
+import { useDeferredPhotoGc } from "./useDeferredPhotoGc";
 
 function waitForRefValue(ref, expectedValue, timeoutMs = 2000) {
   const startedAt = Date.now();
@@ -224,7 +224,6 @@ export function useAppBootstrap() {
   useEffect(() => {
     activeProjectIdRef.current = activeProject?.id ?? null;
   }, [activeProject?.id]);
-  const gcRanRef = useRef(false);
   const [isImportingProject, setIsImportingProject] = useState(false);
   const importOperationCountRef = useRef(0);
   const runWithImportOverlay = useCallback(async (operation) => {
@@ -243,29 +242,14 @@ export function useAppBootstrap() {
     }
   }, []);
 
-  // Сбрасываем флаг при смене проекта, чтобы GC запустился снова
-  useEffect(() => {
-    gcRanRef.current = false;
-  }, [activeProject?.id]);
-
-  // Запускаем GC один раз после загрузки данных текущего проекта
-  useEffect(() => {
-    if (!dataLoaded) return;
-    if (dataProjectId !== (activeProject?.id ?? null)) return;
-    if (loadError) return;
-    if (gcRanRef.current) return;
-    gcRanRef.current = true;
-    gcOrphanedPhotos(dataForPhotoGc).catch((err) =>
-      logger.warn("Photo GC error:", err),
-    );
-  }, [
+  useDeferredPhotoGc({
+    activeProjectId: activeProject?.id ?? null,
     dataForPhotoGc,
-    gcOrphanedPhotos,
     dataLoaded,
-    loadError,
     dataProjectId,
-    activeProject?.id,
-  ]);
+    loadError,
+    gcOrphanedPhotos,
+  });
   /* =========================
      OPEN LEAKS COUNT (for Footer badge)
   ========================= */

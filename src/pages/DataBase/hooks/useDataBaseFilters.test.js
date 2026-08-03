@@ -66,6 +66,32 @@ describe("useDataBaseFilters multi-select", () => {
     ]);
   });
 
+  it("builds the expensive search index only after a query is entered", () => {
+    vi.useFakeTimers();
+    let monitoringReads = 0;
+    const leak = {
+      id: 1,
+      status: "open",
+      component: "Main valve",
+      get monitoringRecords() {
+        monitoringReads += 1;
+        return [];
+      },
+    };
+    const { result } = renderHook(() =>
+      useDataBaseFilters({ data: [leak], coords: null }),
+    );
+
+    expect(result.current.displayed).toHaveLength(1);
+    expect(monitoringReads).toBe(0);
+
+    act(() => result.current.setSearch("valve"));
+    act(() => vi.advanceTimersByTime(300));
+
+    expect(result.current.displayed).toHaveLength(1);
+    expect(monitoringReads).toBeGreaterThan(0);
+  });
+
   it("debounces case-insensitive search across configured fields", () => {
     vi.useFakeTimers();
     const data = [

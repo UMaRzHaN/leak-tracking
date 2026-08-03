@@ -55,6 +55,53 @@ describe("photoService", () => {
     });
   });
 
+  it("reuses cached native photo data on repeated database renders", async () => {
+    platform.isNative = true;
+    filesystem.readFile.mockResolvedValue({ data: "cached" });
+    const path = "data://LeakReports/cache/photos/photo.jpg";
+
+    expect(await getPhotoSrc(path)).toBe("data:image/jpeg;base64,cached");
+    expect(await getPhotoSrc(path)).toBe("data:image/jpeg;base64,cached");
+    expect(filesystem.readFile).toHaveBeenCalledOnce();
+  });
+
+  it("limits concurrent native photo reads to protect the Android bridge", async () => {
+    platform.isNative = true;
+    const resolvers = [];
+    filesystem.readFile.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvers.push(resolve);
+        }),
+    );
+
+    const reads = Array.from({ length: 5 }, (_, index) =>
+      getPhotoSrc(`data://LeakReports/project/photos/photo-${index}.jpg`),
+    );
+
+    await vi.waitFor(() =>
+      expect(filesystem.readFile).toHaveBeenCalledTimes(3),
+    );
+    resolvers.shift()({ data: "first" });
+    await vi.waitFor(() =>
+      expect(filesystem.readFile).toHaveBeenCalledTimes(4),
+    );
+
+    while (resolvers.length > 0) {
+      resolvers.shift()({ data: "next" });
+      await Promise.resolve();
+    }
+    await vi.waitFor(() =>
+      expect(filesystem.readFile).toHaveBeenCalledTimes(5),
+    );
+    while (resolvers.length > 0) {
+      resolvers.shift()({ data: "last" });
+      await Promise.resolve();
+    }
+
+    await expect(Promise.all(reads)).resolves.toHaveLength(5);
+  });
+
   it("returns safe fallbacks when native files are missing", async () => {
     platform.isNative = true;
     filesystem.readFile.mockRejectedValue(new Error("missing"));

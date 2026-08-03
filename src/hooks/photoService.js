@@ -7,6 +7,68 @@ import { logger } from "@/utils/logger";
  * Путь в БД использует префикс "data://" для нативных фото.
  */
 
+const MAX_CONCURRENT_NATIVE_PHOTO_READS = 3;
+const MAX_NATIVE_PHOTO_CACHE_BYTES = 8 * 1024 * 1024;
+let activeNativePhotoReads = 0;
+let nativePhotoCacheBytes = 0;
+const nativePhotoReadQueue = [];
+const nativePhotoSrcCache = new Map();
+const nativePhotoReadPromises = new Map();
+
+function drainNativePhotoReadQueue() {
+  while (
+    activeNativePhotoReads < MAX_CONCURRENT_NATIVE_PHOTO_READS &&
+    nativePhotoReadQueue.length > 0
+  ) {
+    const { task, resolve, reject } = nativePhotoReadQueue.shift();
+    activeNativePhotoReads += 1;
+    Promise.resolve()
+      .then(task)
+      .then(resolve, reject)
+      .finally(() => {
+        activeNativePhotoReads -= 1;
+        drainNativePhotoReadQueue();
+      });
+  }
+}
+
+function queueNativePhotoRead(task) {
+  return new Promise((resolve, reject) => {
+    nativePhotoReadQueue.push({ task, resolve, reject });
+    drainNativePhotoReadQueue();
+  });
+}
+
+function getNativePhotoCacheKey(nativePath) {
+  return `${nativePath.dir}:${nativePath.fsPath}`;
+}
+
+function getCachedNativePhoto(cacheKey) {
+  const entry = nativePhotoSrcCache.get(cacheKey);
+  if (!entry) return null;
+  nativePhotoSrcCache.delete(cacheKey);
+  nativePhotoSrcCache.set(cacheKey, entry);
+  return entry.src;
+}
+
+function cacheNativePhoto(cacheKey, src) {
+  const bytes = src.length * 2;
+  if (bytes > MAX_NATIVE_PHOTO_CACHE_BYTES) return;
+
+  const existing = nativePhotoSrcCache.get(cacheKey);
+  if (existing) nativePhotoCacheBytes -= existing.bytes;
+  nativePhotoSrcCache.delete(cacheKey);
+  nativePhotoSrcCache.set(cacheKey, { src, bytes });
+  nativePhotoCacheBytes += bytes;
+
+  while (nativePhotoCacheBytes > MAX_NATIVE_PHOTO_CACHE_BYTES) {
+    const oldestKey = nativePhotoSrcCache.keys().next().value;
+    const oldest = nativePhotoSrcCache.get(oldestKey);
+    nativePhotoSrcCache.delete(oldestKey);
+    nativePhotoCacheBytes -= oldest?.bytes ?? 0;
+  }
+}
+
 /* =======================
    🖼 SRC
 ======================= */
@@ -47,14 +109,28 @@ export async function getPhotoSrc(path) {
   const nativePath = parseNativePhotoPath(path);
   if (!nativePath) return null;
 
-  try {
-    const file = await Filesystem.readFile({
-      path: nativePath.fsPath,
-      directory: nativePath.dir,
-    });
+  const cacheKey = getNativePhotoCacheKey(nativePath);
+  const cached = getCachedNativePhoto(cacheKey);
+  if (cached) return cached;
 
-    // file.data — base64 строка
-    return `data:image/jpeg;base64,${file.data}`;
+  try {
+    let pending = nativePhotoReadPromises.get(cacheKey);
+    if (!pending) {
+      pending = queueNativePhotoRead(() =>
+        Filesystem.readFile({
+          path: nativePath.fsPath,
+          directory: nativePath.dir,
+        }),
+      )
+        .then((file) => {
+          const src = `data:image/jpeg;base64,${file.data}`;
+          cacheNativePhoto(cacheKey, src);
+          return src;
+        })
+        .finally(() => nativePhotoReadPromises.delete(cacheKey));
+      nativePhotoReadPromises.set(cacheKey, pending);
+    }
+    return await pending;
   } catch (err) {
     logger.error(
       `[photoService] Failed to read photo "${nativePath.fsPath}":`,

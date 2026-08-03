@@ -254,10 +254,10 @@ export function useDataBaseFilters({
     () => normalizeLeakSearchText(search).split(" ").filter(Boolean),
     [search],
   );
-  const searchIndex = useMemo(
-    () => new Map(data.map((leak) => [leak, buildLeakSearchText(leak)])),
-    [data],
-  );
+  const searchIndex = useMemo(() => {
+    if (searchTokens.length === 0) return null;
+    return new Map(data.map((leak) => [leak, buildLeakSearchText(leak)]));
+  }, [data, searchTokens.length]);
 
   const displayed = useMemo(() => {
     const applySearch = (list) =>

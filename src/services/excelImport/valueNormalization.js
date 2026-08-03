@@ -254,7 +254,7 @@ export function normalizeMonitoringCellValue(key, value) {
   }
   if (key === "time") return formatTime(value);
   if (key === "result") return normalizeMonitoringResult(value);
-  if (key === "photo") {
+  if (key === "photo" || key === "previousPhoto") {
     const text = String(value ?? "").trim();
     if (text.startsWith("photos/")) return `zip:${text}`;
     return isValidPhotoPath(text) ? text : "";
