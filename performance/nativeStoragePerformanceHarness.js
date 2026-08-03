@@ -162,7 +162,8 @@ async function runDatasetScenario(recordCount) {
 
     const loadAfterSingle = await measure(() => loadNativeProject(folderName));
     assertCondition(
-      loadAfterSingle.value.state.data[recordCount - 1].performanceRevision === 1,
+      loadAfterSingle.value.state.data[recordCount - 1].performanceRevision ===
+        1,
       "Single-record SQLite mutation was not restored",
     );
 
@@ -257,7 +258,10 @@ function normalizeRecordCounts(recordCounts) {
     .filter(
       (value) => Number.isInteger(value) && value >= 1_000 && value <= 10_000,
     );
-  assertCondition(normalized.length > 0, "No valid native record counts supplied");
+  assertCondition(
+    normalized.length > 0,
+    "No valid native record counts supplied",
+  );
   return [...new Set(normalized)];
 }
 
