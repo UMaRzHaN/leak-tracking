@@ -43,6 +43,22 @@ describe("project backup runtime", () => {
     expect(mapper).toHaveBeenCalledTimes(2);
   });
 
+  it.each([null, undefined, false, 0, ""])(
+    "rejects when a mapper throws the falsey value %p",
+    async (thrownValue) => {
+      let rejected = false;
+      try {
+        await mapWithConcurrency([1], 1, async () => {
+          throw thrownValue;
+        });
+      } catch (error) {
+        rejected = true;
+        expect(error).toBe(thrownValue);
+      }
+      expect(rejected).toBe(true);
+    },
+  );
+
   it("uses a safe worker count for invalid concurrency values", async () => {
     await expect(
       mapWithConcurrency([1, 2], 0, async (value) => value),

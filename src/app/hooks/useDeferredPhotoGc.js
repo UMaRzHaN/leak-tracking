@@ -9,6 +9,9 @@ export function useDeferredPhotoGc({
   dataProjectId,
   loadError,
   gcOrphanedPhotos,
+  suspended = false,
+  isSuspended,
+  resumeKey = 0,
 }) {
   const gcRanRef = useRef(false);
 
@@ -17,21 +20,34 @@ export function useDeferredPhotoGc({
   }, [activeProjectId]);
 
   useEffect(() => {
+    const photoGcIsSuspended =
+      suspended || (typeof isSuspended === "function" && isSuspended());
+
     if (
+      photoGcIsSuspended ||
       !activeProjectId ||
       !dataLoaded ||
       dataProjectId !== activeProjectId ||
       loadError ||
       gcRanRef.current
-    )
+    ) {
       return undefined;
+    }
 
     return scheduleIdleWork(() => {
-      if (gcRanRef.current) return;
+      if (
+        gcRanRef.current ||
+        suspended ||
+        (typeof isSuspended === "function" && isSuspended())
+      ) {
+        return;
+      }
+
       gcRanRef.current = true;
-      gcOrphanedPhotos(dataForPhotoGc).catch((error) =>
-        logger.warn("Photo GC error:", error),
-      );
+      gcOrphanedPhotos(dataForPhotoGc).catch((error) => {
+        gcRanRef.current = false;
+        logger.warn("Photo GC error:", error);
+      });
     });
   }, [
     activeProjectId,
@@ -39,6 +55,9 @@ export function useDeferredPhotoGc({
     dataLoaded,
     dataProjectId,
     gcOrphanedPhotos,
+    isSuspended,
     loadError,
+    resumeKey,
+    suspended,
   ]);
 }

@@ -7,11 +7,17 @@ const mocks = vi.hoisted(() => ({
   writeFile: vi.fn(),
   deleteFile: vi.fn(),
   stat: vi.fn(),
+  invalidatePath: vi.fn(),
+  invalidatePrefix: vi.fn(),
 }));
 
 vi.mock("@/utils/platform", () => ({ isNative: true }));
 vi.mock("@/repositories/compressImage", () => ({
   compressImage: mocks.compressImage,
+}));
+vi.mock("@/services/nativePhotoSourceCache", () => ({
+  invalidateNativePhotoCachePath: mocks.invalidatePath,
+  invalidateNativePhotoCachePrefix: mocks.invalidatePrefix,
 }));
 vi.mock("@/repositories/idb", () => ({
   idb: {
@@ -104,6 +110,10 @@ describe("PhotoRepository on Android", () => {
       directory: "DATA",
       path: "LeakReports/native_save/photos/photo_leak_100.jpg",
     });
+    expect(mocks.invalidatePath).toHaveBeenCalledWith(
+      "DATA",
+      "LeakReports/native_save/photos/photo_leak_100.jpg",
+    );
     expect(mocks.deleteFile).not.toHaveBeenCalledWith({
       directory: "DATA",
       path: "LeakReports/native_save/photos/photo_leak_monitoring_100.jpg",
@@ -191,6 +201,10 @@ describe("PhotoRepository on Android", () => {
       directory: "DATA",
       path: "LeakReports/native_delete/photos/photo_1.jpg",
     });
+    expect(mocks.invalidatePath).toHaveBeenCalledWith(
+      "DATA",
+      "LeakReports/native_delete/photos/photo_1.jpg",
+    );
 
     await PhotoRepository.delete("data://LeakReports/victim/data/data.json", {
       folderName: "native_delete",
@@ -199,6 +213,15 @@ describe("PhotoRepository on Android", () => {
       directory: "DATA",
       path: "LeakReports/victim/data/data.json",
     });
+  });
+
+  it("invalidates all cached photos when a native project is removed", async () => {
+    await PhotoRepository.deleteProjectPhotos("project", "native_project");
+
+    expect(mocks.invalidatePrefix).toHaveBeenCalledWith(
+      "DATA",
+      "LeakReports/native_project/photos/",
+    );
   });
 
   it("garbage-collects only unreferenced native files", async () => {
@@ -221,6 +244,10 @@ describe("PhotoRepository on Android", () => {
       directory: "DATA",
       path: `${folder}/orphan.jpg`,
     });
+    expect(mocks.invalidatePath).toHaveBeenCalledWith(
+      "DATA",
+      `${folder}/orphan.jpg`,
+    );
   });
 
   it("treats a missing photo folder as an empty folder during cleanup", async () => {

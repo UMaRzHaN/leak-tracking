@@ -19,6 +19,20 @@ vi.mock("@/utils/logger", () => ({
 
 import { useDeferredPhotoGc } from "./useDeferredPhotoGc";
 
+function createBaseProps(overrides = {}) {
+  return {
+    activeProjectId: "project-a",
+    dataForPhotoGc: [{ id: 1 }],
+    dataLoaded: false,
+    dataProjectId: "project-a",
+    loadError: null,
+    gcOrphanedPhotos: vi.fn().mockResolvedValue(undefined),
+    suspended: false,
+    isSuspended: vi.fn(() => false),
+    ...overrides,
+  };
+}
+
 describe("useDeferredPhotoGc", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -26,15 +40,7 @@ describe("useDeferredPhotoGc", () => {
   });
 
   it("waits for project data, runs once, and resets after project change", async () => {
-    const gcOrphanedPhotos = vi.fn().mockResolvedValue(undefined);
-    const baseProps = {
-      activeProjectId: "project-a",
-      dataForPhotoGc: [{ id: 1 }],
-      dataLoaded: false,
-      dataProjectId: "project-a",
-      loadError: null,
-      gcOrphanedPhotos,
-    };
+    const baseProps = createBaseProps();
     const { rerender } = renderHook((props) => useDeferredPhotoGc(props), {
       initialProps: baseProps,
     });
@@ -45,7 +51,9 @@ describe("useDeferredPhotoGc", () => {
     expect(mocks.scheduleIdleWork).toHaveBeenCalledOnce();
 
     await act(async () => mocks.scheduledWork());
-    expect(gcOrphanedPhotos).toHaveBeenCalledWith(baseProps.dataForPhotoGc);
+    expect(baseProps.gcOrphanedPhotos).toHaveBeenCalledWith(
+      baseProps.dataForPhotoGc,
+    );
 
     rerender({ ...baseProps, dataLoaded: true });
     expect(mocks.scheduleIdleWork).toHaveBeenCalledOnce();
@@ -57,5 +65,63 @@ describe("useDeferredPhotoGc", () => {
       dataLoaded: true,
     });
     expect(mocks.scheduleIdleWork).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not schedule photo GC while an import is suspended", () => {
+    const baseProps = createBaseProps({
+      dataLoaded: true,
+      suspended: true,
+      isSuspended: vi.fn(() => true),
+    });
+
+    renderHook(() => useDeferredPhotoGc(baseProps));
+
+    expect(mocks.scheduleIdleWork).not.toHaveBeenCalled();
+    expect(baseProps.gcOrphanedPhotos).not.toHaveBeenCalled();
+  });
+
+  it("rechecks the synchronous import guard before deleting photos", async () => {
+    let importActive = false;
+    const baseProps = createBaseProps({
+      dataLoaded: true,
+      isSuspended: vi.fn(() => importActive),
+    });
+    const { rerender } = renderHook((props) => useDeferredPhotoGc(props), {
+      initialProps: baseProps,
+    });
+
+    expect(mocks.scheduleIdleWork).toHaveBeenCalledOnce();
+    importActive = true;
+    await act(async () => mocks.scheduledWork());
+    expect(baseProps.gcOrphanedPhotos).not.toHaveBeenCalled();
+
+    rerender({ ...baseProps, suspended: true });
+    rerender({ ...baseProps, suspended: false });
+    importActive = false;
+
+    expect(mocks.scheduleIdleWork).toHaveBeenCalledTimes(2);
+    await act(async () => mocks.scheduledWork());
+    expect(baseProps.gcOrphanedPhotos).toHaveBeenCalledOnce();
+  });
+
+  it("allows a later retry when photo GC itself fails", async () => {
+    const gcOrphanedPhotos = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("temporary"))
+      .mockResolvedValueOnce(undefined);
+    const baseProps = createBaseProps({
+      dataLoaded: true,
+      gcOrphanedPhotos,
+    });
+    const { rerender } = renderHook((props) => useDeferredPhotoGc(props), {
+      initialProps: baseProps,
+    });
+
+    await act(async () => mocks.scheduledWork());
+    rerender({ ...baseProps, dataForPhotoGc: [{ id: 2 }] });
+
+    expect(mocks.scheduleIdleWork).toHaveBeenCalledTimes(2);
+    await act(async () => mocks.scheduledWork());
+    expect(gcOrphanedPhotos).toHaveBeenCalledTimes(2);
   });
 });

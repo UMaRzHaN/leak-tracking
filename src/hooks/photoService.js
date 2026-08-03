@@ -1,6 +1,16 @@
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { isNative } from "@/utils/platform";
 import { logger } from "@/utils/logger";
+import {
+  cacheNativePhoto,
+  createNativePhotoCacheKey,
+  deleteNativePhotoReadPromise,
+  getCachedNativePhoto,
+  getNativePhotoCacheVersion,
+  getNativePhotoReadPromise,
+  invalidateNativePhotoCachePath,
+  setNativePhotoReadPromise,
+} from "@/services/nativePhotoSourceCache";
 
 /*
  * Все фото хранятся в Directory.Data (приватное хранилище приложения).
@@ -8,12 +18,8 @@ import { logger } from "@/utils/logger";
  */
 
 const MAX_CONCURRENT_NATIVE_PHOTO_READS = 3;
-const MAX_NATIVE_PHOTO_CACHE_BYTES = 8 * 1024 * 1024;
 let activeNativePhotoReads = 0;
-let nativePhotoCacheBytes = 0;
 const nativePhotoReadQueue = [];
-const nativePhotoSrcCache = new Map();
-const nativePhotoReadPromises = new Map();
 
 function drainNativePhotoReadQueue() {
   while (
@@ -37,36 +43,6 @@ function queueNativePhotoRead(task) {
     nativePhotoReadQueue.push({ task, resolve, reject });
     drainNativePhotoReadQueue();
   });
-}
-
-function getNativePhotoCacheKey(nativePath) {
-  return `${nativePath.dir}:${nativePath.fsPath}`;
-}
-
-function getCachedNativePhoto(cacheKey) {
-  const entry = nativePhotoSrcCache.get(cacheKey);
-  if (!entry) return null;
-  nativePhotoSrcCache.delete(cacheKey);
-  nativePhotoSrcCache.set(cacheKey, entry);
-  return entry.src;
-}
-
-function cacheNativePhoto(cacheKey, src) {
-  const bytes = src.length * 2;
-  if (bytes > MAX_NATIVE_PHOTO_CACHE_BYTES) return;
-
-  const existing = nativePhotoSrcCache.get(cacheKey);
-  if (existing) nativePhotoCacheBytes -= existing.bytes;
-  nativePhotoSrcCache.delete(cacheKey);
-  nativePhotoSrcCache.set(cacheKey, { src, bytes });
-  nativePhotoCacheBytes += bytes;
-
-  while (nativePhotoCacheBytes > MAX_NATIVE_PHOTO_CACHE_BYTES) {
-    const oldestKey = nativePhotoSrcCache.keys().next().value;
-    const oldest = nativePhotoSrcCache.get(oldestKey);
-    nativePhotoSrcCache.delete(oldestKey);
-    nativePhotoCacheBytes -= oldest?.bytes ?? 0;
-  }
 }
 
 /* =======================
@@ -109,13 +85,14 @@ export async function getPhotoSrc(path) {
   const nativePath = parseNativePhotoPath(path);
   if (!nativePath) return null;
 
-  const cacheKey = getNativePhotoCacheKey(nativePath);
+  const cacheKey = createNativePhotoCacheKey(nativePath.dir, nativePath.fsPath);
   const cached = getCachedNativePhoto(cacheKey);
   if (cached) return cached;
 
   try {
-    let pending = nativePhotoReadPromises.get(cacheKey);
+    let pending = getNativePhotoReadPromise(cacheKey);
     if (!pending) {
+      const cacheVersion = getNativePhotoCacheVersion(cacheKey);
       pending = queueNativePhotoRead(() =>
         Filesystem.readFile({
           path: nativePath.fsPath,
@@ -124,11 +101,11 @@ export async function getPhotoSrc(path) {
       )
         .then((file) => {
           const src = `data:image/jpeg;base64,${file.data}`;
-          cacheNativePhoto(cacheKey, src);
+          cacheNativePhoto(cacheKey, src, cacheVersion);
           return src;
         })
-        .finally(() => nativePhotoReadPromises.delete(cacheKey));
-      nativePhotoReadPromises.set(cacheKey, pending);
+        .finally(() => deleteNativePhotoReadPromise(cacheKey, pending));
+      setNativePhotoReadPromise(cacheKey, pending);
     }
     return await pending;
   } catch (err) {
@@ -180,5 +157,7 @@ export async function deletePhotoFromFS(path) {
     });
   } catch {
     // файл уже удалён — нормально
+  } finally {
+    invalidateNativePhotoCachePath(nativePath.dir, nativePath.fsPath);
   }
 }

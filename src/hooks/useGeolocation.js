@@ -79,6 +79,10 @@ export const useGeolocation = (enabled = true) => {
     let nativeTimeoutRetryCount = 0;
     let preciseLocationGranted = false;
 
+    const clearPosition = () => {
+      setCoords({ lat: null, lng: null });
+    };
+
     const applyPosition = (position) => {
       nativeTimeoutRetryCount = 0;
       setCoords({
@@ -129,6 +133,7 @@ export const useGeolocation = (enabled = true) => {
         },
         (watchError) => {
           if (stopped) return;
+          clearPosition();
           setError(watchError.message);
           setLoading(false);
         },
@@ -184,6 +189,7 @@ export const useGeolocation = (enabled = true) => {
                 isNativeTimeoutError(watchError) &&
                 scheduleNativeTimeoutRetry();
 
+              clearPosition();
               setError(getGeolocationErrorMessage(watchError, retrying));
               setLoading(false);
               return;
@@ -205,6 +211,7 @@ export const useGeolocation = (enabled = true) => {
         const retrying =
           isNativeTimeoutError(watchError) && scheduleNativeTimeoutRetry();
 
+        clearPosition();
         setError(getGeolocationErrorMessage(watchError, retrying));
         setLoading(false);
       }
@@ -261,6 +268,7 @@ export const useGeolocation = (enabled = true) => {
         const coarseLocationGranted = permissions.coarseLocation === "granted";
 
         if (!preciseLocationGranted && !coarseLocationGranted) {
+          clearPosition();
           setError("Нет разрешения на геолокацию");
           setLoading(false);
           return;
@@ -269,6 +277,7 @@ export const useGeolocation = (enabled = true) => {
         await startNativeWatch();
       } catch (permissionError) {
         if (stopped) return;
+        clearPosition();
         setError(getGeolocationErrorMessage(permissionError));
         setLoading(false);
       }

@@ -4,6 +4,10 @@ import { compressImage } from "./compressImage";
 import { idb } from "./idb";
 import { isPhotoPrepared } from "@/utils/photoPreparation";
 import {
+  invalidateNativePhotoCachePath,
+  invalidateNativePhotoCachePrefix,
+} from "@/services/nativePhotoSourceCache";
+import {
   LEAK_PHOTO_FIELDS,
   MONITORING_PHOTO_FIELDS,
 } from "@/utils/photoFields";
@@ -164,10 +168,13 @@ async function cleanupOldVersions(
         file.name !== keepFileName &&
         !excludeFileNames.has(file.name)
       ) {
+        const stalePath = `${folder}/${file.name}`;
         await Filesystem.deleteFile({
           directory: Directory.Data,
-          path: `${folder}/${file.name}`,
-        }).catch(() => {});
+          path: stalePath,
+        })
+          .then(() => invalidateNativePhotoCachePath(Directory.Data, stalePath))
+          .catch(() => {});
       }
     }
   } catch {
@@ -308,11 +315,15 @@ export const PhotoRepository = {
     if (isNative && path.startsWith("data://")) {
       const scopedPath = getScopedNativePhotoPath(path, folderName);
       if (!scopedPath) return false;
-      await Filesystem.deleteFile({
-        directory: Directory.Data,
-        path: scopedPath,
-      });
-      return true;
+      try {
+        await Filesystem.deleteFile({
+          directory: Directory.Data,
+          path: scopedPath,
+        });
+        return true;
+      } finally {
+        invalidateNativePhotoCachePath(Directory.Data, scopedPath);
+      }
     }
 
     return false;
@@ -329,7 +340,11 @@ export const PhotoRepository = {
 
   async deleteProjectPhotos(projectId, folderName) {
     if (isNative) {
-      if (folderName) photoFolderPromises.delete(getPhotoFolder(folderName));
+      if (folderName) {
+        const folder = getPhotoFolder(folderName);
+        photoFolderPromises.delete(folder);
+        invalidateNativePhotoCachePrefix(Directory.Data, `${folder}/`);
+      }
       return;
     }
     if (
@@ -405,10 +420,15 @@ export const PhotoRepository = {
       for (const file of files) {
         const path = `data://${folder}/${file.name}`;
         if (!referenced.has(path)) {
+          const orphanPath = `${folder}/${file.name}`;
           await Filesystem.deleteFile({
             directory: Directory.Data,
-            path: `${folder}/${file.name}`,
-          }).catch(() => {});
+            path: orphanPath,
+          })
+            .catch(() => {})
+            .finally(() =>
+              invalidateNativePhotoCachePath(Directory.Data, orphanPath),
+            );
         }
       }
     } catch {

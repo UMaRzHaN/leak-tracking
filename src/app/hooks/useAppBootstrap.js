@@ -225,6 +225,7 @@ export function useAppBootstrap() {
     activeProjectIdRef.current = activeProject?.id ?? null;
   }, [activeProject?.id]);
   const [isImportingProject, setIsImportingProject] = useState(false);
+  const [photoGcResumeRevision, setPhotoGcResumeRevision] = useState(0);
   const importOperationCountRef = useRef(0);
   const runWithImportOverlay = useCallback(async (operation) => {
     importOperationCountRef.current += 1;
@@ -238,9 +239,14 @@ export function useAppBootstrap() {
       );
       if (importOperationCountRef.current === 0) {
         setIsImportingProject(false);
+        setPhotoGcResumeRevision((revision) => revision + 1);
       }
     }
   }, []);
+  const isPhotoGcSuspended = useCallback(
+    () => importOperationCountRef.current > 0,
+    [],
+  );
 
   useDeferredPhotoGc({
     activeProjectId: activeProject?.id ?? null,
@@ -249,6 +255,9 @@ export function useAppBootstrap() {
     dataProjectId,
     loadError,
     gcOrphanedPhotos,
+    suspended: isImportingProject,
+    isSuspended: isPhotoGcSuspended,
+    resumeKey: photoGcResumeRevision,
   });
   /* =========================
      OPEN LEAKS COUNT (for Footer badge)
@@ -308,16 +317,16 @@ export function useAppBootstrap() {
 
   /** First-run (ProjectSetupScreen): supports name/type fallback when ZIP has no project.json */
   const handleSetupImportZip = useCallback(
-    async (file, fallback = {}) => {
-      const { importProjectZip } =
-        await import("@/services/projectBackupService");
-      await importProjectZip(file, {
-        ...stableImportCtx,
-        metaFallback: fallback,
-      });
-      // importCtx values are stable refs — addProject is the only real dep
-    },
-    [stableImportCtx],
+    (file, fallback = {}) =>
+      runWithImportOverlay(async () => {
+        const { importProjectZip } =
+          await import("@/services/projectBackupService");
+        return importProjectZip(file, {
+          ...stableImportCtx,
+          metaFallback: fallback,
+        });
+      }),
+    [runWithImportOverlay, stableImportCtx],
   );
 
   /** In-app import (Settings): always creates a new project, optional fallback for legacy ZIPs.

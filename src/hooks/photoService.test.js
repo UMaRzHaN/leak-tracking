@@ -19,11 +19,13 @@ vi.mock("@capacitor/filesystem", () => ({
 }));
 vi.mock("@/utils/logger", () => ({ logger }));
 
+import { clearNativePhotoCache } from "@/services/nativePhotoSourceCache";
 import { deletePhotoFromFS, getPhotoSrc, photoExists } from "./photoService";
 
 describe("photoService", () => {
   beforeEach(() => {
     platform.isNative = false;
+    clearNativePhotoCache();
     vi.clearAllMocks();
   });
 
@@ -63,6 +65,39 @@ describe("photoService", () => {
     expect(await getPhotoSrc(path)).toBe("data:image/jpeg;base64,cached");
     expect(await getPhotoSrc(path)).toBe("data:image/jpeg;base64,cached");
     expect(filesystem.readFile).toHaveBeenCalledOnce();
+  });
+
+  it("invalidates a cached native photo after filesystem deletion", async () => {
+    platform.isNative = true;
+    filesystem.readFile
+      .mockResolvedValueOnce({ data: "before-delete" })
+      .mockResolvedValueOnce({ data: "after-delete" });
+    filesystem.deleteFile.mockResolvedValue(undefined);
+    const path = "data://LeakReports/cache/photos/deleted.jpg";
+
+    expect(await getPhotoSrc(path)).toBe(
+      "data:image/jpeg;base64,before-delete",
+    );
+    await deletePhotoFromFS(path);
+    expect(await getPhotoSrc(path)).toBe("data:image/jpeg;base64,after-delete");
+
+    expect(filesystem.readFile).toHaveBeenCalledTimes(2);
+  });
+
+  it("invalidates cached native data even when the file is already missing", async () => {
+    platform.isNative = true;
+    filesystem.readFile
+      .mockResolvedValueOnce({ data: "cached-before-missing-delete" })
+      .mockResolvedValueOnce({ data: "fresh-after-missing-delete" });
+    filesystem.deleteFile.mockRejectedValueOnce(new Error("missing"));
+    const path = "data://LeakReports/cache/photos/already-missing.jpg";
+
+    await getPhotoSrc(path);
+    await deletePhotoFromFS(path);
+    expect(await getPhotoSrc(path)).toBe(
+      "data:image/jpeg;base64,fresh-after-missing-delete",
+    );
+    expect(filesystem.readFile).toHaveBeenCalledTimes(2);
   });
 
   it("limits concurrent native photo reads to protect the Android bridge", async () => {

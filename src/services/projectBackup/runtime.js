@@ -24,10 +24,11 @@ export async function mapWithConcurrency(items, concurrency, mapper) {
     ),
   );
   let cursor = 0;
-  let firstError = null;
+  let hasError = false;
+  let firstError;
 
   async function worker() {
-    while (!firstError) {
+    while (!hasError) {
       const index = cursor;
       cursor += 1;
       if (index >= items.length) return;
@@ -35,12 +36,15 @@ export async function mapWithConcurrency(items, concurrency, mapper) {
       try {
         results[index] = await mapper(items[index], index);
       } catch (error) {
-        firstError ??= error;
+        if (!hasError) {
+          hasError = true;
+          firstError = error;
+        }
       }
     }
   }
 
   await Promise.all(Array.from({ length: workerCount }, () => worker()));
-  if (firstError) throw firstError;
+  if (hasError) throw firstError;
   return results;
 }
