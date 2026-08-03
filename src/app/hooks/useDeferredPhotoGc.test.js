@@ -96,8 +96,8 @@ describe("useDeferredPhotoGc", () => {
     expect(baseProps.gcOrphanedPhotos).not.toHaveBeenCalled();
 
     rerender({ ...baseProps, suspended: true });
-    rerender({ ...baseProps, suspended: false });
     importActive = false;
+    rerender({ ...baseProps, suspended: false, resumeKey: 1 });
 
     expect(mocks.scheduleIdleWork).toHaveBeenCalledTimes(2);
     await act(async () => mocks.scheduledWork());
