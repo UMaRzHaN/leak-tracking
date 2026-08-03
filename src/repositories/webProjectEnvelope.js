@@ -85,9 +85,12 @@ export function normalizeWebEnvelope(value, source) {
   return envelope;
 }
 
-function nextWebRevision(envelopes = []) {
-  const knownRevision = envelopes.reduce(
-    (maximum, envelope) => Math.max(maximum, envelope?.revision ?? 0),
+// Takes the revisions themselves, not the envelopes carrying them: this is
+// all the ordering needs, and asking for whole envelopes would oblige callers
+// to read a project's entire payload to supply one number.
+function nextWebRevision(previousRevisions = []) {
+  const knownRevision = previousRevisions.reduce(
+    (maximum, revision) => Math.max(maximum, revision ?? 0),
     0,
   );
   const clockRevision = Date.now() * 1000;
@@ -101,9 +104,9 @@ function nextWebRevision(envelopes = []) {
 
 export function createWebEnvelope(
   data,
-  { deleted = false, previous = [], syncState = null } = {},
+  { deleted = false, previousRevisions = [], syncState = null } = {},
 ) {
-  const revision = nextWebRevision(previous);
+  const revision = nextWebRevision(previousRevisions);
   const updatedAt = Date.now();
   return {
     version: WEB_ENVELOPE_VERSION,

@@ -30,7 +30,9 @@ import {
   deleteWebData,
   readLegacyLocalStorageEnvelope,
   readMirrorData,
+  readMirrorDataRevision,
   readWebData,
+  readWebDataRevision,
   writeLegacyLocalStorageEnvelope,
   writeMirrorData,
   writeWebData,
@@ -465,32 +467,25 @@ export const LeakRepository = {
 
     let indexedDbSaved = false;
     let indexedDbError = null;
-    let indexedEnvelope = null;
-    let mirrorEnvelope = null;
+    // Only the revisions matter here — reading whole envelopes to derive the
+    // next one would pull both copies of the project through a structured
+    // clone on every save.
+    const [indexedRevision, mirrorRevision] = await Promise.all([
+      readWebDataRevision(projectId),
+      readMirrorDataRevision(projectId),
+    ]);
     let legacyEnvelope = null;
-    try {
-      indexedEnvelope = normalizeWebEnvelope(
-        await readWebData(projectId),
-        `IndexedDB[${projectId}]`,
-      );
-    } catch {
-      // A new clock-based revision remains newer in normal operation.
-    }
-    try {
-      mirrorEnvelope = normalizeWebEnvelope(
-        await readMirrorData(projectId),
-        `IndexedDB-mirror[${projectId}]`,
-      );
-    } catch {
-      // The valid destination will replace a corrupted mirror.
-    }
     try {
       legacyEnvelope = readLegacyLocalStorageEnvelope(projectId);
     } catch {
       // Ignore a corrupted legacy copy when computing the next revision.
     }
     const envelope = createWebEnvelope(leaks, {
-      previous: [indexedEnvelope, mirrorEnvelope, legacyEnvelope],
+      previousRevisions: [
+        indexedRevision,
+        mirrorRevision,
+        legacyEnvelope?.revision,
+      ],
       syncState,
     });
     try {
@@ -550,25 +545,13 @@ export const LeakRepository = {
       });
       return;
     }
-    let indexedEnvelope = null;
-    let mirrorEnvelope = null;
+    // Revisions only, as in saveAll — the tombstone just has to outrank every
+    // existing copy so a stale one cannot resurrect the project.
+    const [indexedRevision, mirrorRevision] = await Promise.all([
+      readWebDataRevision(projectId),
+      readMirrorDataRevision(projectId),
+    ]);
     let legacyEnvelope = null;
-    try {
-      indexedEnvelope = normalizeWebEnvelope(
-        await readWebData(projectId),
-        `IndexedDB[${projectId}]`,
-      );
-    } catch {
-      // Continue with a newer tombstone so a stale mirror cannot resurrect data.
-    }
-    try {
-      mirrorEnvelope = normalizeWebEnvelope(
-        await readMirrorData(projectId),
-        `IndexedDB-mirror[${projectId}]`,
-      );
-    } catch {
-      // Continue and replace the corrupted mirror if possible.
-    }
     try {
       legacyEnvelope = readLegacyLocalStorageEnvelope(projectId);
     } catch {
@@ -576,7 +559,11 @@ export const LeakRepository = {
     }
     const tombstone = createWebEnvelope([], {
       deleted: true,
-      previous: [indexedEnvelope, mirrorEnvelope, legacyEnvelope],
+      previousRevisions: [
+        indexedRevision,
+        mirrorRevision,
+        legacyEnvelope?.revision,
+      ],
       syncState,
     });
     let indexedDbSaved = false;

@@ -640,6 +640,33 @@ describe("LeakRepository web IndexedDB storage", () => {
     ]);
   });
 
+  // The reason metadata and payload are separate records. Saving has to know
+  // the highest existing revision, which lives in the metadata; pulling the
+  // payload back for it would structured-clone the whole project twice per
+  // save just to discard it.
+  it("reads no payload back when saving", async () => {
+    const { LeakRepository } = await loadRepository();
+    await LeakRepository.saveAll([makeLeak("first")], PROJECT);
+
+    const reads = [];
+    const originalGet = IDBObjectStore.prototype.get;
+    vi.spyOn(IDBObjectStore.prototype, "get").mockImplementation(
+      function get(key) {
+        reads.push(`${this.transaction.db.name}/${this.name}`);
+        return originalGet.call(this, key);
+      },
+    );
+
+    await LeakRepository.saveAll([makeLeak("second")], PROJECT);
+
+    expect(reads).not.toContain(`${PRIMARY_DB}/${PRIMARY.payload}`);
+    expect(reads).not.toContain(`${MIRROR_DB}/${MIRROR.payload}`);
+    // Metadata is still read from both, so revisions stay ordered even when
+    // another tab wrote in between.
+    expect(reads).toContain(`${PRIMARY_DB}/${PRIMARY.store}`);
+    expect(reads).toContain(`${MIRROR_DB}/${MIRROR.store}`);
+  });
+
   it("drops the legacy localStorage copy once a save reaches IndexedDB", async () => {
     const { LeakRepository } = await loadRepository();
     const key = storageKey(PROJECT.projectId);

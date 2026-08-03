@@ -187,6 +187,33 @@ export const writeWebData = (projectId, envelope) =>
 export const deleteWebData = (projectId) =>
   deleteEnvelope(openWebDataDb, projectId);
 
+/**
+ * The revision of a stored copy, without reading its payload — the reason
+ * metadata is a record of its own.
+ *
+ * Returns 0 for anything unusable: absent, unreadable, or holding a revision
+ * that is not a sane integer. Zero is safe because the caller takes the
+ * maximum against a clock-derived value, so an unknown copy can only fail to
+ * raise the next revision, never lower it. A schema-v2 record still carries
+ * its payload inline, so until that project is rewritten this is no cheaper
+ * than a full read — just not wrong.
+ */
+async function readStoredRevision(openDb, projectId) {
+  let meta;
+  try {
+    meta = await readRecord(openDb, WEB_META_STORE, projectId);
+  } catch {
+    return 0;
+  }
+  const revision = Number(meta?.revision ?? meta?.timestamp ?? 0);
+  return Number.isSafeInteger(revision) && revision >= 0 ? revision : 0;
+}
+
+export const readWebDataRevision = (projectId) =>
+  readStoredRevision(openWebDataDb, projectId);
+export const readMirrorDataRevision = (projectId) =>
+  readStoredRevision(openMirrorDb, projectId);
+
 // Best effort throughout: the schema-v2 copy is a migration source, never the
 // destination. It lives in the primary database, so reaching it can fail for
 // reasons that say nothing about the health of the mirror database — those
