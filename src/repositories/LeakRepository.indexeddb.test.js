@@ -29,6 +29,22 @@ const MIRROR = { db: MIRROR_DB, store: "projects", payload: "projectsData" };
 // Where the mirror lived in schema v2: a second store inside the primary
 // database. Read-only now, kept only as a migration source.
 const LEGACY_MIRROR = { db: PRIMARY_DB, store: "projectsMirror" };
+// Deltas appended since the last snapshot.
+const PRIMARY_JOURNAL = { db: PRIMARY_DB, store: "projectsJournal" };
+
+async function readJournalEntries(location, projectId) {
+  const db = await openRawDb(location);
+  const entries = await new Promise((resolve, reject) => {
+    const request = db
+      .transaction(location.store, "readonly")
+      .objectStore(location.store)
+      .getAll();
+    request.onsuccess = () => resolve(request.result ?? []);
+    request.onerror = () => reject(request.error);
+  });
+  db.close();
+  return entries.filter((entry) => entry.projectId === projectId);
+}
 
 const makeLeak = (id) => ({
   id,
@@ -665,6 +681,153 @@ describe("LeakRepository web IndexedDB storage", () => {
     // another tab wrote in between.
     expect(reads).toContain(`${PRIMARY_DB}/${PRIMARY.store}`);
     expect(reads).toContain(`${MIRROR_DB}/${MIRROR.store}`);
+  });
+
+  // A small edit appends a delta rather than rewriting the whole array, which
+  // is what makes saving a large project cheap.
+  it("journals a small edit instead of rewriting the snapshot", async () => {
+    const { LeakRepository } = await loadRepository();
+    const original = [makeLeak("a"), makeLeak("b"), makeLeak("c")];
+    await LeakRepository.saveAll(original, PROJECT);
+    const snapshotBefore = await readStoreEntry(
+      { ...PRIMARY, store: PRIMARY.payload },
+      PROJECT.projectId,
+    );
+
+    const edited = [
+      { ...original[0], leak_id: "L-edited" },
+      original[1],
+      original[2],
+    ];
+    await LeakRepository.saveAll(edited, {
+      ...PROJECT,
+      previousLeaks: original,
+    });
+
+    // The snapshot is untouched; the change lives in one journal entry.
+    expect(
+      await readStoreEntry(
+        { ...PRIMARY, store: PRIMARY.payload },
+        PROJECT.projectId,
+      ),
+    ).toEqual(snapshotBefore);
+    const entries = await readJournalEntries(
+      PRIMARY_JOURNAL,
+      PROJECT.projectId,
+    );
+    expect(entries).toHaveLength(1);
+    expect(entries[0].upserts).toHaveLength(1);
+
+    // Reading replays it, so callers see the edit.
+    await expect(LeakRepository.getAll(PROJECT)).resolves.toMatchObject([
+      { id: "a", leak_id: "L-edited" },
+      { id: "b" },
+      { id: "c" },
+    ]);
+  });
+
+  it("replays additions and deletions in order", async () => {
+    const { LeakRepository } = await loadRepository();
+    let current = [makeLeak("a"), makeLeak("b")];
+    await LeakRepository.saveAll(current, PROJECT);
+
+    for (const next of [
+      [current[0], current[1], makeLeak("c")], // append
+      [current[0], makeLeak("c")], // delete b
+      [{ ...current[0], leak_id: "L-final" }, makeLeak("c")], // edit a
+    ]) {
+      await LeakRepository.saveAll(next, {
+        ...PROJECT,
+        previousLeaks: current,
+      });
+      current = next;
+    }
+
+    await expect(LeakRepository.getAll(PROJECT)).resolves.toMatchObject([
+      { id: "a", leak_id: "L-final" },
+      { id: "c" },
+    ]);
+  });
+
+  it("compacts once the journal reaches its entry limit", async () => {
+    const { LeakRepository } = await loadRepository();
+    let current = [makeLeak("a"), makeLeak("b")];
+    await LeakRepository.saveAll(current, PROJECT);
+
+    // One more edit than the journal is allowed to hold.
+    for (let i = 0; i < 41; i += 1) {
+      const next = [{ ...current[0], leak_id: `L-${i}` }, current[1]];
+      await LeakRepository.saveAll(next, {
+        ...PROJECT,
+        previousLeaks: current,
+      });
+      current = next;
+    }
+
+    const entries = await readJournalEntries(
+      PRIMARY_JOURNAL,
+      PROJECT.projectId,
+    );
+    expect(entries.length).toBeLessThanOrEqual(40);
+    // Whatever the journal holds, the assembled result is still correct.
+    await expect(LeakRepository.getAll(PROJECT)).resolves.toMatchObject([
+      { id: "a", leak_id: "L-40" },
+      { id: "b" },
+    ]);
+  });
+
+  it("writes a snapshot instead of journalling a wholesale change", async () => {
+    const { LeakRepository } = await loadRepository();
+    // Past the 250-record change limit, replaying costs more than rewriting.
+    const original = Array.from({ length: 300 }, (_, i) => makeLeak(`a${i}`));
+    await LeakRepository.saveAll(original, PROJECT);
+
+    const replaced = original.map((leak, i) => ({
+      ...leak,
+      leak_id: `L-new-${i}`,
+    }));
+    await LeakRepository.saveAll(replaced, {
+      ...PROJECT,
+      previousLeaks: original,
+    });
+
+    expect(
+      await readJournalEntries(PRIMARY_JOURNAL, PROJECT.projectId),
+    ).toHaveLength(0);
+    const reloaded = await LeakRepository.getAll(PROJECT);
+    expect(reloaded).toHaveLength(300);
+    expect(reloaded[0]).toMatchObject({ id: "a0", leak_id: "L-new-0" });
+  });
+
+  // A delta only means anything against the state it was computed from. If
+  // another tab wrote in between, replaying it would corrupt that write, so
+  // the store checks the copy is still the revision it handed out.
+  it("falls back to a snapshot when another writer advanced the copy", async () => {
+    const { LeakRepository } = await loadRepository();
+    const original = [makeLeak("a"), makeLeak("b")];
+    await LeakRepository.saveAll(original, PROJECT);
+
+    // Another tab writes: advance the stored revision behind this module's
+    // back, the way a second connection would.
+    const stored = await readStoreEnvelope(PRIMARY, PROJECT.projectId);
+    await writeStoreEnvelope(PRIMARY, PROJECT.projectId, {
+      ...stored,
+      revision: stored.revision + 1000,
+    });
+
+    await LeakRepository.saveAll(
+      [{ ...original[0], leak_id: "L-x" }, original[1]],
+      { ...PROJECT, previousLeaks: original },
+    );
+
+    // The delta was refused, so the save rewrote the snapshot instead.
+    expect(
+      await readJournalEntries(PRIMARY_JOURNAL, PROJECT.projectId),
+    ).toHaveLength(0);
+    await expect(LeakRepository.getAll(PROJECT)).resolves.toMatchObject([
+      { id: "a", leak_id: "L-x" },
+      { id: "b" },
+    ]);
   });
 
   it("drops the legacy localStorage copy once a save reaches IndexedDB", async () => {

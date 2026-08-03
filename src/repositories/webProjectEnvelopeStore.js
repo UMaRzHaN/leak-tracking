@@ -1,6 +1,16 @@
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { logger } from "@/utils/logger";
 import { normalizeWebEnvelope } from "@/repositories/webProjectEnvelope";
+import {
+  appendJournalEntry,
+  applyJournalEntries,
+  clearJournal,
+  createJournalStore,
+  isWorthJournalling,
+  JOURNAL_MAX_ENTRIES,
+  readJournal,
+  WEB_JOURNAL_STORE,
+} from "@/repositories/webProjectJournal";
 
 /**
  * Where a web (non-native) project copy physically lives: the IndexedDB
@@ -13,7 +23,7 @@ import { normalizeWebEnvelope } from "@/repositories/webProjectEnvelope";
  */
 
 const WEB_DATA_DB = "LeakTrackingDataDB";
-const WEB_DATA_VERSION = 3;
+const WEB_DATA_VERSION = 4;
 
 // An envelope is stored as two records rather than one: the metadata that
 // orders copies against each other, and the leak array itself. They live in
@@ -27,6 +37,21 @@ const WEB_DATA_VERSION = 3;
 const WEB_META_STORE = "projects";
 const WEB_PAYLOAD_STORE = "projectsData";
 
+// The revision this tab last saw in each copy, whether it read or wrote it.
+//
+// A delta is only meaningful against the state it was computed from, and the
+// caller's idea of that state came from this module. So a delta may be
+// appended only while the stored revision is still the one we handed out or
+// last wrote; anything else means another tab has written, and stacking a
+// delta on an unknown state would corrupt it. Comparing revisions catches
+// that for the price of a number, where verifying the caller's snapshot would
+// mean checksumming the whole array again.
+const observedRevisions = new Map();
+
+function revisionKey(dbName, projectId) {
+  return `${dbName}:${projectId}`;
+}
+
 // The secondary copy lives in a database of its own, opened over a separate
 // connection. That separation is the whole point: an IndexedDB failure is
 // usually database-wide (the file is corrupt, or `open` itself rejects), and
@@ -39,7 +64,7 @@ const WEB_PAYLOAD_STORE = "projectsData";
 // those take every local store with them, as they did when this copy still
 // lived in localStorage.
 const WEB_MIRROR_DB = "LeakTrackingMirrorDB";
-const WEB_MIRROR_DB_VERSION = 2;
+const WEB_MIRROR_DB_VERSION = 3;
 
 // Where the secondary copy lived in schema v2: an object store inside the
 // primary database. Read-only now, purely so a project written by that build
@@ -85,6 +110,7 @@ function createEnvelopeStores(db) {
   if (!db.objectStoreNames.contains(WEB_PAYLOAD_STORE)) {
     db.createObjectStore(WEB_PAYLOAD_STORE, { keyPath: "id" });
   }
+  createJournalStore(db);
 }
 
 // Schema v2 records are left exactly where they are. They carry their leak
@@ -107,7 +133,7 @@ const openMirrorDb = createDatabaseOpener(
   createEnvelopeStores,
 );
 
-const ENVELOPE_STORES = [WEB_META_STORE, WEB_PAYLOAD_STORE];
+const ENVELOPE_STORES = [WEB_META_STORE, WEB_PAYLOAD_STORE, WEB_JOURNAL_STORE];
 
 // Settling on the transaction rather than the individual request means a read
 // reports the same failures a write does, and every access below shares one
@@ -141,25 +167,101 @@ async function readRecord(openDb, storeName, projectId) {
  * and so survives even if its payload record is gone.
  */
 async function readEnvelope(openDb, projectId) {
-  const meta = await readRecord(openDb, WEB_META_STORE, projectId);
-  if (meta == null) return null;
-  if ("data" in meta) return meta;
+  const db = await openDb();
+  if (!db || !projectId) return null;
 
-  const payload = await readRecord(openDb, WEB_PAYLOAD_STORE, projectId);
-  return { ...meta, data: payload?.data };
+  const tx = db.transaction(
+    [WEB_META_STORE, WEB_PAYLOAD_STORE, WEB_JOURNAL_STORE],
+    "readonly",
+  );
+  const metaRequest = tx.objectStore(WEB_META_STORE).get(projectId);
+  const payloadRequest = tx.objectStore(WEB_PAYLOAD_STORE).get(projectId);
+  const journalRequest = readJournal(tx, projectId);
+
+  return settleOnTransaction(tx, () => {
+    const meta = metaRequest.result ?? null;
+    if (meta == null) return null;
+    // Schema v2 kept the array inline and predates the journal entirely.
+    if ("data" in meta) return meta;
+
+    const snapshot = payloadRequest.result?.data;
+    if (!Array.isArray(snapshot)) return { ...meta, data: snapshot };
+    return {
+      ...meta,
+      data: applyJournalEntries(snapshot, journalRequest.result),
+    };
+  });
 }
 
 // Both records go in one transaction, so the metadata that orders a copy can
 // never be visible without the payload it describes.
+// Rewrites the snapshot and drops the journal it supersedes — the compaction
+// step, and the only path that pays for a full payload clone.
 async function writeEnvelope(openDb, projectId, envelope) {
   const db = await openDb();
   if (!db || !projectId) return false;
 
   const { data, ...meta } = envelope;
   const tx = db.transaction(ENVELOPE_STORES, "readwrite");
-  tx.objectStore(WEB_META_STORE).put({ id: projectId, ...meta });
+  tx.objectStore(WEB_META_STORE).put({
+    id: projectId,
+    ...meta,
+    journalSeq: 0,
+  });
   tx.objectStore(WEB_PAYLOAD_STORE).put({ id: projectId, data });
-  return settleOnTransaction(tx, () => true);
+  clearJournal(tx, projectId);
+  return settleOnTransaction(tx, () => {
+    observedRevisions.set(revisionKey(db.name, projectId), meta.revision);
+    return true;
+  });
+}
+
+/**
+ * Records a change as a journal entry instead of rewriting the snapshot.
+ *
+ * The metadata still describes the assembled result, so the copy orders and
+ * verifies exactly as a compacted one does; only the payload store is left
+ * untouched. Both records go in one transaction, so a reader never sees
+ * metadata promising a delta the journal does not hold.
+ *
+ * Returns false when the stored metadata is not the base this delta was built
+ * from — another tab has written since — leaving the caller to fall back to a
+ * full write rather than stack a delta on an unknown state.
+ */
+async function appendEnvelopeDelta(openDb, projectId, envelope, mutation) {
+  const db = await openDb();
+  if (!db || !projectId) return false;
+
+  const meta = { ...envelope };
+  delete meta.data;
+  const tx = db.transaction(ENVELOPE_STORES, "readwrite");
+  const metaStore = tx.objectStore(WEB_META_STORE);
+  const currentRequest = metaStore.get(projectId);
+  let appended = false;
+
+  // Issued from inside the same transaction, so the base-revision check and
+  // the append cannot be separated by another writer.
+  currentRequest.onsuccess = () => {
+    const current = currentRequest.result;
+    const expected = observedRevisions.get(revisionKey(db.name, projectId));
+    if (current == null || expected == null) return;
+    if (current.revision !== expected) return;
+    // A schema-v2 record has no snapshot to append to.
+    if ("data" in current) return;
+
+    const seq = Number(current.journalSeq ?? 0) + 1;
+    if (seq > JOURNAL_MAX_ENTRIES) return;
+    metaStore.put({ id: projectId, ...meta, journalSeq: seq });
+    appendJournalEntry(tx, projectId, seq, mutation);
+    appended = true;
+  };
+
+  return settleOnTransaction(tx, () => {
+    if (appended) {
+      observedRevisions.set(revisionKey(db.name, projectId), meta.revision);
+    }
+    return appended;
+  });
 }
 
 async function deleteEnvelope(openDb, projectId) {
@@ -167,8 +269,13 @@ async function deleteEnvelope(openDb, projectId) {
   if (!db || !projectId) return false;
 
   const tx = db.transaction(ENVELOPE_STORES, "readwrite");
-  for (const store of ENVELOPE_STORES) tx.objectStore(store).delete(projectId);
-  return settleOnTransaction(tx, () => true);
+  tx.objectStore(WEB_META_STORE).delete(projectId);
+  tx.objectStore(WEB_PAYLOAD_STORE).delete(projectId);
+  clearJournal(tx, projectId);
+  return settleOnTransaction(tx, () => {
+    observedRevisions.delete(revisionKey(db.name, projectId));
+    return true;
+  });
 }
 
 async function deleteRecord(openDb, storeName, projectId) {
@@ -180,10 +287,29 @@ async function deleteRecord(openDb, storeName, projectId) {
   return settleOnTransaction(tx, () => true);
 }
 
+/**
+ * Persists an envelope, as a journal entry when a small mutation against a
+ * known base is available and as a full snapshot otherwise. The delta path
+ * declines rather than throws — a stale base, a full journal or a schema-v2
+ * record all fall through to the snapshot write below.
+ */
+async function saveEnvelope(openDb, projectId, envelope, mutation) {
+  if (isWorthJournalling(mutation, envelope.data?.length ?? 0)) {
+    const appended = await appendEnvelopeDelta(
+      openDb,
+      projectId,
+      envelope,
+      mutation,
+    );
+    if (appended) return true;
+  }
+  return writeEnvelope(openDb, projectId, envelope);
+}
+
 export const readWebData = (projectId) =>
   readEnvelope(openWebDataDb, projectId);
-export const writeWebData = (projectId, envelope) =>
-  writeEnvelope(openWebDataDb, projectId, envelope);
+export const writeWebData = (projectId, envelope, mutation = null) =>
+  saveEnvelope(openWebDataDb, projectId, envelope, mutation);
 export const deleteWebData = (projectId) =>
   deleteEnvelope(openWebDataDb, projectId);
 
@@ -264,8 +390,8 @@ export async function readMirrorData(projectId) {
   return legacy;
 }
 
-export async function writeMirrorData(projectId, envelope) {
-  const saved = await writeEnvelope(openMirrorDb, projectId, envelope);
+export async function writeMirrorData(projectId, envelope, mutation = null) {
+  const saved = await saveEnvelope(openMirrorDb, projectId, envelope, mutation);
   // Only once the dedicated database is confirmed to hold this envelope is
   // the schema-v2 entry redundant. Dropping it earlier could discard the only
   // remaining backup.

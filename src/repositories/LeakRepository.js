@@ -17,6 +17,7 @@ import {
   saveNativeProject,
   writeNativeProjectSnapshot,
 } from "@/repositories/nativeLeakStorage";
+import { createNativeSqliteMutation } from "@/repositories/nativeSqliteMutation";
 import {
   compareWebEnvelopes,
   createWebEnvelope,
@@ -488,8 +489,16 @@ export const LeakRepository = {
       ],
       syncState,
     });
+    // The same diff the native SQLite path uses. Null when the caller cannot
+    // say what was persisted before, or when records moved rather than being
+    // appended — either way the store falls back to a full snapshot.
+    const changes =
+      previousLeaks == null
+        ? null
+        : createNativeSqliteMutation(previousLeaks, leaks);
+
     try {
-      indexedDbSaved = await writeWebData(projectId, envelope);
+      indexedDbSaved = await writeWebData(projectId, envelope, changes);
     } catch (error) {
       indexedDbError = error;
       logger.warn(
@@ -500,7 +509,7 @@ export const LeakRepository = {
 
     let mirrorSaved = false;
     try {
-      mirrorSaved = await writeMirrorData(projectId, envelope);
+      mirrorSaved = await writeMirrorData(projectId, envelope, changes);
     } catch (error) {
       logger.warn(
         `[LeakRepository] Could not update the IndexedDB mirror store for "${projectId}":`,
