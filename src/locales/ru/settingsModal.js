@@ -1,0 +1,35 @@
+export const settingsModal = {
+  title: "Параметры расчёта",
+  gasToFlare: "Газ на сжигание",
+  flare: "Сжигание",
+  utilization: "Утилизация",
+  gasContent: "Содержание газа в смеси",
+  current: "Текущее",
+  equipmentType: "Тип оборудования",
+  uncertainty: "Неопределённость",
+  serialNumber: "Серийный номер оборудования",
+  equipmentOptions: {
+    gfm20: "GFM 2.0",
+    gfm30: "GFM 3.0",
+    pinkBag: "Розовый мешок",
+  },
+  operatingMode: "Режим работы",
+  operatingModeDays: "дней за год",
+  gasType: "Тип газа",
+  gasOptions: {
+    methane: "Метан (CH₄)",
+    ethane: "Этан (C₂H₆)",
+    propane: "Пропан (C₃H₈)",
+    butane: "Бутан (C₄H₁₀)",
+  },
+  density: "Плотность",
+  cancel: "Отмена",
+  save: "Сохранить",
+
+  confirm: {
+    title: "Отменить изменения?",
+    text: "Вы уверены? Все несохранённые изменения будут потеряны.",
+    continueEditing: "Продолжить редактирование",
+    discardChanges: "Отменить изменения",
+  },
+};

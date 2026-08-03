@@ -1,0 +1,35 @@
+export const settingsModal = {
+  title: "Calculation Parameters",
+  gasToFlare: "Gas to flare",
+  flare: "Flaring",
+  utilization: "Utilization",
+  gasContent: "Gas content in mixture",
+  current: "Current",
+  equipmentType: "Equipment type",
+  uncertainty: "Uncertainty",
+  serialNumber: "Equipment serial number",
+  equipmentOptions: {
+    gfm20: "GFM 2.0",
+    gfm30: "GFM 3.0",
+    pinkBag: "Pink bag",
+  },
+  operatingMode: "Operating mode",
+  operatingModeDays: "days per year",
+  gasType: "Gas type",
+  gasOptions: {
+    methane: "Methane (CH₄)",
+    ethane: "Ethane (C₂H₆)",
+    propane: "Propane (C₃H₈)",
+    butane: "Butane (C₄H₁₀)",
+  },
+  density: "Density",
+  cancel: "Cancel",
+  save: "Save",
+
+  confirm: {
+    title: "Discard changes?",
+    text: "Are you sure? All unsaved changes will be lost.",
+    continueEditing: "Continue editing",
+    discardChanges: "Discard changes",
+  },
+};
