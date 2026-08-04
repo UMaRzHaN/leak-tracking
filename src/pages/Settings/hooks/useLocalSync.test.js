@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { translate } from "@/test/translate";
 
 vi.mock("@/services/sync/localSyncService", () => ({
   cancelLocalSyncQrScan: vi.fn(),
@@ -46,7 +47,7 @@ function renderSync(overrides = {}) {
     onImportZip,
     onImportIntoExisting,
     notify,
-    lang: "ru",
+    t: translate,
     ensureProjectSyncId: vi.fn(() => activeProject),
   };
   const hook = renderHook(
@@ -119,7 +120,7 @@ describe("useLocalSync", () => {
     expect(result.current.state.status).toBe("complete");
     expect(notify).toHaveBeenCalledWith(
       "success",
-      "Синхронизация завершена: применено изменений — 2",
+      "Sync complete: 2 changes applied",
     );
   });
 
@@ -280,7 +281,7 @@ describe("useLocalSync", () => {
     );
     await waitFor(() => expect(result.current.state.status).toBe("idle"));
     expect(stop).toHaveBeenCalledOnce();
-    expect(notify).toHaveBeenCalledWith("info", "Срок действия QR-кода истёк");
+    expect(notify).toHaveBeenCalledWith("info", "The QR code has expired");
   });
 
   it("allows an empty matching project to receive its first sync", async () => {
@@ -436,7 +437,7 @@ describe("useLocalSync", () => {
     expect(syncService.exchangeLocalSyncArchive).not.toHaveBeenCalled();
     expect(notify).toHaveBeenCalledWith(
       "error",
-      "Ошибка QR-кода: QR-код относится к другой базе данных",
+      "QR code error: QR-код относится к другой базе данных",
     );
   });
 
@@ -468,13 +469,14 @@ describe("useLocalSync", () => {
     expect(result.current.state.status).toBe("complete");
     expect(notify).toHaveBeenCalledWith(
       "success",
-      "База импортирована по QR: «Imported» (3 записей)",
+      'Database imported by QR: "Imported" (3 records)',
     );
   });
 
   it("returns to idle when a sync id cannot be assigned", async () => {
     const { result, notify } = renderSync({
       lang: "en",
+      t: translate,
       ensureProjectSyncId: vi.fn(() => null),
     });
 
@@ -710,7 +712,7 @@ describe("useLocalSync", () => {
     expect(onImportZip).not.toHaveBeenCalled();
     expect(notify).toHaveBeenCalledWith(
       "error",
-      "Ошибка импорта по QR: Не удалось прочитать полученный архив (404)",
+      "QR import error: Не удалось прочитать полученный архив (404)",
     );
   });
 
@@ -772,7 +774,7 @@ describe("useLocalSync", () => {
     act(() => hostCall.onError(missing));
     expect(notify).toHaveBeenCalledWith(
       "error",
-      "Полученный архив не содержит тип проекта. Синхронизация отменена.",
+      "The received archive does not contain a project type. Synchronization was cancelled.",
     );
   });
 

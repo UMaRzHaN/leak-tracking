@@ -59,13 +59,11 @@ export function useSettingsPage({
   const notify = useCallback((type, message, options = {}) => {
     setNotification({ type, message, ...options });
   }, []);
-
   useEffect(() => {
     getMapCacheInfo()
       .then(setCacheInfo)
       .catch(() => setCacheInfo({ count: 0, sizeMB: 0 }));
   }, []);
-
   const {
     projects,
     activeProject,
@@ -89,15 +87,14 @@ export function useSettingsPage({
   useEffect(() => {
     const interrupted = readImportOperation(activeProject?.id);
     if (!interrupted) return;
-    notify(
-      "error",
-      lang === "ru"
-        ? "Обнаружен прерванный импорт. Проверьте данные проекта и повторите импорт из исходного файла."
-        : "An interrupted import was detected. Verify the project data and retry from the source file.",
-      { autoCloseMs: 0 },
-    );
-  }, [activeProject?.id, lang, notify]);
-
+    notify("error", t("settings.anInterruptedImportWas"), { autoCloseMs: 0 });
+    // `t` is deliberately absent. It is read when the notice fires, and
+    // depending on its identity would re-notify on every render — the
+    // useSettingsTexts mock hands out a fresh one each call, which turned this
+    // into an infinite render loop that exhausted the test worker's heap.
+    /* eslint-disable-next-line react-hooks/exhaustive-deps,
+       @eslint-react/exhaustive-deps */
+  }, [activeProject?.id, notify]);
   const saveExcelMonitoringRound = useCallback(
     (round) => {
       if (round) saveMonitoringRound(activeProject?.id, round);
@@ -137,7 +134,6 @@ export function useSettingsPage({
       sync: await readProjectSyncStateAsync(projectId),
     };
   }, [activeProject]);
-
   const restoreExcelImportSnapshot = useCallback(
     async (snapshot) => {
       const projectId = snapshot?.project?.id;
@@ -204,18 +200,16 @@ export function useSettingsPage({
     onImportZip,
     onImportIntoExisting,
     notify,
-    lang,
+    t,
     ensureProjectSyncId,
   });
 
   const handleClearMapCache = useCallback(() => {
     setSettingsConfirmAction("clearMapCache");
   }, []);
-
   const handleClearDatabase = useCallback(() => {
     setSettingsConfirmAction("clearDatabase");
   }, []);
-
   const handleCheckIntegrity = useCallback(async () => {
     setCheckingIntegrity(true);
     try {
@@ -230,28 +224,21 @@ export function useSettingsPage({
       notify(
         report.ok ? "success" : "warning",
         report.ok
-          ? lang === "ru"
-            ? "Проблем в данных не найдено"
-            : "No data issues found"
-          : lang === "ru"
-            ? `Проверка завершена: ${report.issues} проблем`
-            : `Check complete: ${report.issues} issues`,
+          ? t("settings.noDataIssuesFound")
+          : t("settings.checkCompleteVIssues", { v1: report.issues }),
       );
     } catch (error) {
-      notify(
-        "error",
-        `${lang === "ru" ? "Ошибка проверки" : "Check error"}: ${error.message}`,
-      );
+      notify("error", `${t("settings.checkError")}: ${error.message}`);
     } finally {
       setCheckingIntegrity(false);
     }
   }, [
     data,
     idbGetPhoto,
-    lang,
     leakPhotoRequired,
     monitoringPhotoRequired,
     notify,
+    t,
   ]);
 
   const prepareExcelLeaks = useCallback(
@@ -293,13 +280,7 @@ export function useSettingsPage({
       if (!file || !activeProject) return;
 
       setIsImportingExcel(true);
-      notify(
-        "info",
-        lang === "ru"
-          ? "Идёт чтение Excel, подождите..."
-          : "Reading Excel file, please wait...",
-        { autoCloseMs: 0 },
-      );
+      notify("info", t("settings.readingExcelFilePlease"), { autoCloseMs: 0 });
 
       try {
         const { parseExcelImportFile, reconcileExcelImportPhotos } =
@@ -309,12 +290,7 @@ export function useSettingsPage({
         });
 
         if (!result.leaks.length && !result.portableArchive) {
-          notify(
-            "warning",
-            lang === "ru"
-              ? "В Excel не найдено строк для импорта"
-              : "No importable rows found in Excel",
-          );
+          notify("warning", t("settings.noImportableRowsFound"));
           return;
         }
 
@@ -339,9 +315,10 @@ export function useSettingsPage({
           });
           notify(
             "success",
-            lang === "ru"
-              ? `Импортирован проект «${created?.project?.name ?? archiveRoute.name}» (${result.leaks.length} записей)`
-              : `Project "${created?.project?.name ?? archiveRoute.name}" imported (${result.leaks.length} records)`,
+            t("settings.projectVImportedV2", {
+              v1: created?.project?.name ?? archiveRoute.name,
+              v2: result.leaks.length,
+            }),
           );
           return;
         }
@@ -388,15 +365,13 @@ export function useSettingsPage({
 
         notify(
           "success",
-          lang === "ru"
-            ? `Excel прочитан: ${result.leaks.length} записей, фото: ${result.stats.restoredPhotos ?? 0}`
-            : `Excel parsed: ${result.leaks.length} records, photos: ${result.stats.restoredPhotos ?? 0}`,
+          t("settings.excelParsedVRecords", {
+            v1: result.leaks.length,
+            v2: result.stats.restoredPhotos ?? 0,
+          }),
         );
       } catch (error) {
-        notify(
-          "error",
-          `${lang === "ru" ? "Ошибка импорта Excel" : "Excel import error"}: ${error.message}`,
-        );
+        notify("error", `${t("settings.excelImportError")}: ${error.message}`);
       } finally {
         setIsImportingExcel(false);
       }
@@ -405,11 +380,11 @@ export function useSettingsPage({
       activeProject,
       data,
       idbGetPhoto,
-      lang,
       notify,
       onCreateExcelCopy,
       prepareExcelLeaks,
       projects,
+      t,
     ],
   );
 
@@ -425,15 +400,11 @@ export function useSettingsPage({
   );
 
   const notifyExcelImportProgress = useCallback(() => {
-    notify(
-      "info",
-      lang === "ru"
-        ? "Идёт импорт Excel, подождите..."
-        : "Excel import in progress, please wait...",
-      { autoCloseMs: 0 },
-    );
-  }, [lang, notify]);
-
+    notify("info", t("settings.excelImportInProgress"), { autoCloseMs: 0 });
+    // See above: the translator is read at call time, not depended upon.
+    /* eslint-disable-next-line react-hooks/exhaustive-deps,
+       @eslint-react/exhaustive-deps */
+  }, [notify]);
   const confirmExcelImport = useCallback(async () => {
     const leaks = excelImportState.result?.leaks ?? [];
     if (!leaks.length && !excelImportState.result?.portableArchive) {
@@ -471,17 +442,13 @@ export function useSettingsPage({
       notify(
         transactionWarning ? "warning" : "success",
         transactionWarning
-          ? lang === "ru"
-            ? `Импортировано ${withPhotos.length} записей, но журнал операции не удалось очистить. Не повторяйте импорт и перезапустите приложение для проверки восстановления.`
-            : `Imported ${withPhotos.length} records, but the operation journal could not be cleared. Do not repeat the import; restart the app to verify recovery.`
-          : lang === "ru"
-            ? `Импортировано из Excel: ${withPhotos.length} записей`
-            : `Imported from Excel: ${withPhotos.length} records`,
+          ? t("settings.importedVRecordsBut", { v1: withPhotos.length })
+          : t("settings.importedFromExcelV", { v1: withPhotos.length }),
       );
     } catch (error) {
       notify(
         "error",
-        `${lang === "ru" ? "Не удалось сохранить импорт" : "Failed to save import"}: ${error.message}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}${error.photoRollbackErrors?.length ? `; photo rollback: ${error.photoRollbackErrors.length}` : ""}`,
+        `${t("settings.failedToSaveImport")}: ${error.message}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}${error.photoRollbackErrors?.length ? `; photo rollback: ${error.photoRollbackErrors.length}` : ""}`,
       );
     } finally {
       setIsImportingExcel(false);
@@ -494,7 +461,6 @@ export function useSettingsPage({
     data,
     deletePhoto,
     excelImportState.result,
-    lang,
     notify,
     notifyExcelImportProgress,
     persistPreparedExcelPhotos,
@@ -502,12 +468,12 @@ export function useSettingsPage({
     restoreExcelImportSnapshot,
     saveExcelMonitoringRound,
     setData,
+    t,
   ]);
 
   const cancelExcelImport = useCallback(() => {
     setExcelImportState({ open: false });
   }, []);
-
   const handleExcelConflictOverwrite = useCallback(async () => {
     const leaks = excelConflictState.result?.leaks ?? [];
     const prepared = excelConflictState.result?.portableArchive
@@ -547,17 +513,15 @@ export function useSettingsPage({
       notify(
         transactionWarning ? "warning" : "success",
         transactionWarning
-          ? lang === "ru"
-            ? `Проект перезаписан (${withPhotos.length} записей), но журнал операции не удалось очистить. Перезапустите приложение для проверки восстановления.`
-            : `Project overwritten (${withPhotos.length} records), but the operation journal could not be cleared. Restart the app to verify recovery.`
-          : lang === "ru"
-            ? `Проект перезаписан из Excel (${withPhotos.length} записей)`
-            : `Project overwritten from Excel (${withPhotos.length} records)`,
+          ? t("settings.projectOverwrittenVRecords", { v1: withPhotos.length })
+          : t("settings.projectOverwrittenFromExcel", {
+              v1: withPhotos.length,
+            }),
       );
     } catch (error) {
       notify(
         "error",
-        `${lang === "ru" ? "Не удалось сохранить импорт" : "Failed to save import"}: ${error.message}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}${error.photoRollbackErrors?.length ? `; photo rollback: ${error.photoRollbackErrors.length}` : ""}`,
+        `${t("settings.failedToSaveImport")}: ${error.message}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}${error.photoRollbackErrors?.length ? `; photo rollback: ${error.photoRollbackErrors.length}` : ""}`,
       );
     } finally {
       setIsImportingExcel(false);
@@ -571,7 +535,6 @@ export function useSettingsPage({
     deletePhoto,
     excelConflictState.result,
     idbGetPhoto,
-    lang,
     notify,
     notifyExcelImportProgress,
     persistPreparedExcelPhotos,
@@ -579,6 +542,7 @@ export function useSettingsPage({
     restoreExcelImportSnapshot,
     saveExcelMonitoringRound,
     setData,
+    t,
   ]);
 
   const handleExcelConflictMerge = useCallback(async () => {
@@ -619,17 +583,13 @@ export function useSettingsPage({
       notify(
         transactionWarning ? "warning" : "success",
         transactionWarning
-          ? lang === "ru"
-            ? `Excel объединён с проектом, но журнал операции не удалось очистить. Перезапустите приложение для проверки восстановления.`
-            : `Excel was merged, but the operation journal could not be cleared. Restart the app to verify recovery.`
-          : lang === "ru"
-            ? `Excel объединён с проектом: применено ${appliedCount} записей`
-            : `Excel merged into project: ${appliedCount} records applied`,
+          ? t("settings.excelWasMergedBut")
+          : t("settings.excelMergedIntoProject", { v1: appliedCount }),
       );
     } catch (error) {
       notify(
         "error",
-        `${lang === "ru" ? "Не удалось объединить Excel" : "Failed to merge Excel"}: ${error.message}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}${error.photoRollbackErrors?.length ? `; photo rollback: ${error.photoRollbackErrors.length}` : ""}`,
+        `${t("settings.failedToMergeExcel")}: ${error.message}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}${error.photoRollbackErrors?.length ? `; photo rollback: ${error.photoRollbackErrors.length}` : ""}`,
       );
     } finally {
       setIsImportingExcel(false);
@@ -642,7 +602,6 @@ export function useSettingsPage({
     deletePhoto,
     excelConflictState.preparedForMerge,
     excelConflictState.result,
-    lang,
     notify,
     notifyExcelImportProgress,
     persistPreparedExcelPhotos,
@@ -650,6 +609,7 @@ export function useSettingsPage({
     restoreExcelImportSnapshot,
     saveExcelMonitoringRound,
     setData,
+    t,
   ]);
 
   const handleExcelConflictCopy = useCallback(async () => {
@@ -674,15 +634,13 @@ export function useSettingsPage({
       });
       notify(
         "success",
-        lang === "ru"
-          ? `Создана копия «${result?.project?.name ?? copyName}» (${prepared.length} записей)`
-          : `Copy "${result?.project?.name ?? copyName}" created (${prepared.length} records)`,
+        t("settings.copyVCreatedV2", {
+          v1: result?.project?.name ?? copyName,
+          v2: prepared.length,
+        }),
       );
     } catch (error) {
-      notify(
-        "error",
-        `${lang === "ru" ? "Не удалось создать копию" : "Failed to create copy"}: ${error.message}`,
-      );
+      notify("error", `${t("settings.failedToCreateCopy")}: ${error.message}`);
     } finally {
       setIsImportingExcel(false);
       setExcelConflictState({ open: false });
@@ -691,11 +649,11 @@ export function useSettingsPage({
     activeProject?.name,
     activeProject?.type,
     excelConflictState.result,
-    lang,
     notify,
     notifyExcelImportProgress,
     onCreateExcelCopy,
     prepareExcelLeaks,
+    t,
   ]);
 
   const handleSettingsConfirm = useCallback(async () => {
@@ -714,20 +672,17 @@ export function useSettingsPage({
         notify("warning", localeTexts.notifications.databaseCleared);
       }
     } catch (error) {
-      notify(
-        "error",
-        `${lang === "ru" ? "Не удалось выполнить очистку" : "Cleanup failed"}: ${error.message}`,
-      );
+      notify("error", `${t("settings.cleanupFailed")}: ${error.message}`);
     } finally {
       setSettingsConfirmAction(null);
     }
   }, [
     clearDatabase,
-    lang,
     localeTexts.notifications.cacheCleared,
     localeTexts.notifications.databaseCleared,
     notify,
     settingsConfirmAction,
+    t,
   ]);
 
   const settingsConfirmTexts = useMemo(() => {

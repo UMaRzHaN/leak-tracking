@@ -1,9 +1,14 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { translate } from "@/test/translate";
 
-vi.mock("@/app/hooks/useLanguage", () => ({
-  useLanguage: vi.fn(),
-}));
+// Resolves against the real English locale, so these assertions fail if the
+// screen loses a translation rather than quietly falling back to the key.
+vi.mock("@/app/hooks/useLanguage", async () => {
+  const { englishLanguageHook } = await import("@/test/translate");
+  // vi.fn so a test can still override the hook's return value.
+  return { useLanguage: vi.fn(englishLanguageHook().useLanguage) };
+});
 
 vi.mock("@/repositories/LeakRepository", () => ({
   LeakRepository: {
@@ -46,7 +51,7 @@ describe("useBackupActions", () => {
     nativeWriter.writePublicFileStream.mockImplementation(({ produce }) =>
       produce(nativeWriter.append),
     );
-    languageModule.useLanguage.mockReturnValue({ lang: "en" });
+    languageModule.useLanguage.mockReturnValue({ lang: "en", t: translate });
     repositoryModule.LeakRepository.getAll.mockResolvedValue([
       { id: "l1" },
       { id: "l2" },

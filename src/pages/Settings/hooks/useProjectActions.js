@@ -55,7 +55,7 @@ export function remapProjectPhotoPaths(leaks, oldFolderName, newFolderName) {
 }
 
 export function useProjectActions({ setCacheInfo, notify }) {
-  const { lang } = useLanguage();
+  const { t } = useLanguage();
   const {
     projects,
     activeProject,
@@ -82,15 +82,12 @@ export function useProjectActions({ setCacheInfo, notify }) {
 
   const projectSwitchTexts = useMemo(
     () => ({
-      title: lang === "ru" ? "Переключить проект?" : "Switch project?",
-      description:
-        lang === "ru"
-          ? "Форма добавления утечки будет сброшена."
-          : "The leak entry form will be reset.",
-      confirmLabel: lang === "ru" ? "Переключить" : "Switch",
-      cancelLabel: lang === "ru" ? "Отмена" : "Cancel",
+      title: t("settings.switchProject"),
+      description: t("settings.theLeakEntryForm"),
+      confirmLabel: t("settings.switch"),
+      cancelLabel: t("settings.cancel"),
     }),
-    [lang],
+    [t],
   );
 
   const clearProjectScopedState = useCallback(async () => {
@@ -98,19 +95,13 @@ export function useProjectActions({ setCacheInfo, notify }) {
     await clearMapCache();
     setCacheInfo({ count: 0, sizeMB: 0 });
   }, [clearForm, setCacheInfo]);
-
   const performProjectSwitch = useCallback(
     async (id) => {
       selectProject(id);
       await clearProjectScopedState();
-      notify(
-        "info",
-        lang === "ru"
-          ? "Проект переключён, кэш карты очищен"
-          : "Project switched, map cache cleared",
-      );
+      notify("info", t("settings.projectSwitchedMapCache"));
     },
-    [clearProjectScopedState, lang, notify, selectProject],
+    [clearProjectScopedState, notify, selectProject, t],
   );
 
   const handleSelect = useCallback(
@@ -134,7 +125,6 @@ export function useProjectActions({ setCacheInfo, notify }) {
   const cancelProjectSwitch = useCallback(() => {
     setProjectSwitchState(CLOSED_SWITCH_STATE);
   }, []);
-
   const handleRename = useCallback(
     async (id, name) => {
       const result = renameProject(id, name);
@@ -148,9 +138,9 @@ export function useProjectActions({ setCacheInfo, notify }) {
       if (!isNative && oldFolderName !== newFolderName) {
         applyFolderRename(id, newFolderName);
       }
-      notify("success", lang === "ru" ? "Название сохранено" : "Name saved");
+      notify("success", t("settings.nameSaved"));
     },
-    [applyFolderRename, lang, notify, renameProject],
+    [applyFolderRename, notify, renameProject, t],
   );
 
   const performProjectRemove = useCallback(
@@ -168,9 +158,10 @@ export function useProjectActions({ setCacheInfo, notify }) {
         } catch (error) {
           notify(
             "error",
-            lang === "ru"
-              ? `Не удалось удалить проект «${target.name}»: ${error.message}`
-              : `Could not remove project "${target.name}": ${error.message}`,
+            t("settings.couldNotRemoveProject", {
+              v1: target.name,
+              v2: error.message,
+            }),
           );
           return;
         }
@@ -190,12 +181,8 @@ export function useProjectActions({ setCacheInfo, notify }) {
         notify(
           cleanupComplete ? "warning" : "error",
           cleanupComplete
-            ? lang === "ru"
-              ? `Проект «${target.name}» удалён`
-              : `Project "${target.name}" deleted`
-            : lang === "ru"
-              ? `Проект «${target.name}» удалён, но некоторые файлы не удалось очистить`
-              : `Project "${target.name}" was removed, but some files could not be cleaned up`,
+            ? t("settings.projectVDeleted", { v1: target.name })
+            : t("settings.projectVWasRemoved", { v1: target.name }),
         );
       } finally {
         removingProjectIdsRef.current.delete(id);
@@ -204,10 +191,10 @@ export function useProjectActions({ setCacheInfo, notify }) {
     [
       activeProject?.id,
       clearProjectScopedState,
-      lang,
       notify,
       projects,
       removeProject,
+      t,
     ],
   );
 
@@ -234,12 +221,10 @@ export function useProjectActions({ setCacheInfo, notify }) {
       await clearProjectScopedState();
       notify(
         "success",
-        lang === "ru"
-          ? `Проект «${name || PROJECT_META[type].title}» создан`
-          : `Project "${name || PROJECT_META[type].title}" created`,
+        t("settings.projectVCreated", { v1: name || PROJECT_META[type].title }),
       );
     },
-    [addProject, clearProjectScopedState, lang, notify],
+    [addProject, clearProjectScopedState, notify, t],
   );
 
   const handleAdd = useCallback(
@@ -271,20 +256,18 @@ export function useProjectActions({ setCacheInfo, notify }) {
     } catch (error) {
       notify(
         "error",
-        lang === "ru"
-          ? `Не удалось переключить проект: ${error.message}`
-          : `Could not switch project: ${error.message}`,
+        t("settings.couldNotSwitchProject", { v1: error.message }),
       );
     } finally {
       setProjectSwitchState(CLOSED_SWITCH_STATE);
     }
   }, [
-    lang,
     notify,
     performProjectAdd,
     performProjectRemove,
     performProjectSwitch,
     projectSwitchState.pendingAction,
+    t,
   ]);
 
   const handleChangeSyncId = useCallback((id, currentSyncId) => {
@@ -298,22 +281,15 @@ export function useProjectActions({ setCacheInfo, notify }) {
   const updateSyncIdEditorValue = useCallback((value) => {
     setSyncIdEditorState((state) => ({ ...state, value }));
   }, []);
-
   const cancelSyncIdEditor = useCallback(() => {
     setSyncIdEditorState(CLOSED_SYNC_ID_EDITOR);
   }, []);
-
   const confirmSyncIdEditor = useCallback(() => {
     if (!syncIdEditorState.projectId) return;
 
     const normalized = syncIdEditorState.value.trim().toLowerCase();
     if (normalized.length < 8) {
-      notify(
-        "warning",
-        lang === "ru"
-          ? "syncId должен содержать минимум 8 символов"
-          : "syncId must be at least 8 characters",
-      );
+      notify("warning", t("settings.syncidMustBeAt"));
       return;
     }
 
@@ -324,16 +300,11 @@ export function useProjectActions({ setCacheInfo, notify }) {
     notify(
       updated ? "success" : "error",
       updated
-        ? lang === "ru"
-          ? "syncId проекта обновлен"
-          : "Project syncId updated"
-        : lang === "ru"
-          ? "Не удалось обновить syncId проекта"
-          : "Could not update project syncId",
+        ? t("settings.projectSyncidUpdated")
+        : t("settings.couldNotUpdateProject"),
     );
     if (updated) setSyncIdEditorState(CLOSED_SYNC_ID_EDITOR);
-  }, [lang, notify, replaceProjectSyncId, syncIdEditorState]);
-
+  }, [notify, replaceProjectSyncId, syncIdEditorState, t]);
   return {
     projects,
     activeProject,
@@ -350,14 +321,10 @@ export function useProjectActions({ setCacheInfo, notify }) {
     handleChangeSyncId,
     syncIdEditorState: {
       ...syncIdEditorState,
-      title:
-        lang === "ru" ? "Изменить syncId проекта" : "Change project syncId",
-      description:
-        lang === "ru"
-          ? "Текущий syncId показан в поле. Его можно скопировать или заменить для теста синхронизации."
-          : "The current syncId is shown in the field. You can copy it or replace it for sync testing.",
-      confirmLabel: lang === "ru" ? "Сохранить" : "Save",
-      cancelLabel: lang === "ru" ? "Отмена" : "Cancel",
+      title: t("settings.changeProjectSyncid"),
+      description: t("settings.theCurrentSyncidIs"),
+      confirmLabel: t("settings.save"),
+      cancelLabel: t("settings.cancel"),
       inputLabel: "syncId",
     },
     updateSyncIdEditorValue,

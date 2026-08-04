@@ -24,38 +24,35 @@ function pluralRecords(count, lang) {
   return "записей";
 }
 
-function typeLabel(type, lang) {
+function typeLabel(type, t) {
   const labels = {
-    upstream: lang === "ru" ? "Добыча" : "Upstream",
-    midstream: lang === "ru" ? "Транспортировка" : "Midstream",
-    downstream: lang === "ru" ? "Переработка" : "Downstream",
+    upstream: t("settings.projectTypes.upstream"),
+    midstream: t("settings.projectTypes.midstream"),
+    downstream: t("settings.projectTypes.downstream"),
   };
 
   return labels[type] ?? type;
 }
 
-function projectImportErrorMessage(error, lang) {
+function projectImportErrorMessage(error, t) {
   if (error?.code === "PROJECT_TYPE_MISMATCH") {
-    const current = typeLabel(error.existingProjectType, lang);
-    const incoming = typeLabel(error.incomingProjectType, lang);
-    return lang === "ru"
-      ? `Нельзя объединить проекты разных типов: текущий — ${current}, импортируемый — ${incoming}.`
-      : `Projects of different types cannot be combined: current — ${current}, imported — ${incoming}.`;
+    const current = typeLabel(error.existingProjectType, t);
+    const incoming = typeLabel(error.incomingProjectType, t);
+    return t("settings.projectsOfDifferentTypes", {
+      v1: current,
+      v2: incoming,
+    });
   }
 
   if (error?.code === "PROJECT_TYPE_MISSING") {
-    return lang === "ru"
-      ? "В архиве не указан тип проекта. Импорт в существующий проект отменён."
-      : "The archive does not specify a project type. Import into the existing project was cancelled.";
+    return t("settings.theArchiveDoesNot");
   }
 
   if (error?.code === "CURRENT_PROJECT_TYPE_MISSING") {
-    return lang === "ru"
-      ? "У текущего проекта не определён тип. Импорт отменён."
-      : "The current project has no defined type. Import was cancelled.";
+    return t("settings.theCurrentProjectHas");
   }
 
-  return `${lang === "ru" ? "Ошибка импорта" : "Import error"}: ${error.message}`;
+  return `${t("settings.importError")}: ${error.message}`;
 }
 
 export function useBackupActions({
@@ -68,7 +65,7 @@ export function useBackupActions({
   notify,
   projects,
 }) {
-  const { lang } = useLanguage();
+  const { lang, t } = useLanguage();
   const importZipRef = useRef(null);
   const [conflictState, setConflictState] = useState(CONFLICT_CLOSED);
   const [importConfirmState, setImportConfirmState] = useState(
@@ -77,60 +74,35 @@ export function useBackupActions({
   const [isExportingZip, setIsExportingZip] = useState(false);
 
   const notifyZipImportProgress = useCallback(() => {
-    notify(
-      "info",
-      lang === "ru"
-        ? "Идёт импорт ZIP backup, подождите..."
-        : "ZIP backup import in progress, please wait...",
-      { autoCloseMs: 0 },
-    );
-  }, [lang, notify]);
-
+    notify("info", t("settings.zipBackupImportIn"), { autoCloseMs: 0 });
+  }, [notify, t]);
   const notifyZipReadProgress = useCallback(() => {
-    notify(
-      "info",
-      lang === "ru"
-        ? "Идёт чтение ZIP backup, подождите..."
-        : "Reading ZIP backup, please wait...",
-      { autoCloseMs: 0 },
-    );
-  }, [lang, notify]);
-
+    notify("info", t("settings.readingZipBackupPlease"), { autoCloseMs: 0 });
+  }, [notify, t]);
   const importProject = useCallback(
     async (file, fallback) => {
       const result = await onImportZip(file, fallback);
       if (!result?.project) {
-        throw new Error(
-          lang === "ru"
-            ? "Не удалось получить данные проекта из файла"
-            : "Could not read project data from file",
-        );
+        throw new Error(t("settings.couldNotReadProject"));
       }
 
       notify(
         "success",
-        lang === "ru"
-          ? `Импортирован проект «${result.project.name}» (${result.leakCount} ${pluralRecords(
-              result.leakCount,
-              lang,
-            )})`
-          : `Project "${result.project.name}" imported (${result.leakCount} ${pluralRecords(
-              result.leakCount,
-              lang,
-            )})`,
+        t("settings.projectVImportedV", {
+          v1: result.project.name,
+          v2: result.leakCount,
+          v3: pluralRecords(result.leakCount, lang),
+        }),
       );
     },
-    [lang, notify, onImportZip],
+    [lang, notify, onImportZip, t],
   );
 
   const handleExportZip = useCallback(async () => {
     if (isExportingZip) return;
 
     if (!data.length) {
-      notify(
-        "warning",
-        lang === "ru" ? "Нет данных для экспорта" : "No data to export",
-      );
+      notify("warning", t("settings.noDataToExport"));
       return;
     }
 
@@ -139,13 +111,7 @@ export function useBackupActions({
 
     try {
       setIsExportingZip(true);
-      notify(
-        "info",
-        lang === "ru"
-          ? "Идёт экспорт ZIP backup, подождите..."
-          : "ZIP backup export in progress, please wait...",
-        { autoCloseMs: 0 },
-      );
+      notify("info", t("settings.zipBackupExportIn"), { autoCloseMs: 0 });
 
       if (isNative) {
         const [{ streamProjectBackupZip }, { writePublicFileStream }] =
@@ -167,12 +133,7 @@ export function useBackupActions({
             }),
         });
 
-        notify(
-          "success",
-          lang === "ru"
-            ? `ZIP сохранён в Документы/${folder}/`
-            : `ZIP saved to Documents/${folder}/`,
-        );
+        notify("success", t("settings.zipSavedToDocuments", { v1: folder }));
       } else {
         const { buildProjectBackupZip } =
           await import("@/services/backup/projectBackupService");
@@ -191,21 +152,18 @@ export function useBackupActions({
 
         notify(
           "success",
-          lang === "ru"
-            ? `ZIP-архив скачан (${data.length} ${pluralRecords(data.length, lang)})`
-            : `ZIP archive downloaded (${data.length} ${pluralRecords(data.length, lang)})`,
+          t("settings.zipArchiveDownloadedV", {
+            v1: data.length,
+            v2: pluralRecords(data.length, lang),
+          }),
         );
       }
     } catch (error) {
-      notify(
-        "error",
-        `${lang === "ru" ? "Ошибка экспорта" : "Export error"}: ${error.message}`,
-      );
+      notify("error", `${t("settings.exportError")}: ${error.message}`);
     } finally {
       setIsExportingZip(false);
     }
-  }, [activeProject, data, idbGetPhoto, isExportingZip, lang, notify, vars]);
-
+  }, [activeProject, data, idbGetPhoto, isExportingZip, lang, notify, t, vars]);
   const handleImportZip = useCallback(
     async (event) => {
       const file = event.target.files?.[0];
@@ -230,9 +188,7 @@ export function useBackupActions({
         if (!resolvedType) {
           notify(
             "error",
-            lang === "ru"
-              ? `Не удалось определить тип проекта из файла «${file.name}». Переименуйте файл, добавив в имя upstream / midstream / downstream.`
-              : `Could not determine the project type from file "${file.name}". Rename the file to include upstream / midstream / downstream.`,
+            t("settings.couldNotDetermineThe", { v1: file.name }),
           );
           event.target.value = "";
           return;
@@ -272,12 +228,8 @@ export function useBackupActions({
         const source = metaProject?.type
           ? "project.json"
           : peek.detectedType
-            ? lang === "ru"
-              ? "данным записей"
-              : "record data"
-            : lang === "ru"
-              ? "имени файла"
-              : "file name";
+            ? t("settings.recordData")
+            : t("settings.fileName");
 
         setImportConfirmState({
           open: true,
@@ -285,30 +237,24 @@ export function useBackupActions({
           fallback: metaProject
             ? undefined
             : { name: resolvedName, type: resolvedType },
-          title: lang === "ru" ? "Импортировать проект?" : "Import project?",
-          description:
-            lang === "ru"
-              ? `Название: ${resolvedName}\nТип: ${typeLabel(
-                  resolvedType,
-                  lang,
-                )} (${resolvedType})\nЗаписей: ${peek.leaks.length}\nОпределено по: ${source}\n\nБудет создан новый проект.`
-              : `Name: ${resolvedName}\nType: ${typeLabel(
-                  resolvedType,
-                  lang,
-                )} (${resolvedType})\nRecords: ${peek.leaks.length}\nDetected from: ${source}\n\nA new project will be created.`,
-          confirmLabel: lang === "ru" ? "Импортировать" : "Import",
-          cancelLabel: lang === "ru" ? "Отмена" : "Cancel",
+          title: t("settings.importProject"),
+          description: t("settings.nameVTypeV", {
+            v1: resolvedName,
+            v2: typeLabel(resolvedType, t),
+            v3: resolvedType,
+            v4: peek.leaks.length,
+            v5: source,
+          }),
+          confirmLabel: t("settings.importAction"),
+          cancelLabel: t("settings.cancel"),
         });
       } catch (error) {
-        notify(
-          "error",
-          `${lang === "ru" ? "Ошибка импорта" : "Import error"}: ${error.message}`,
-        );
+        notify("error", `${t("settings.importError")}: ${error.message}`);
       }
 
       event.target.value = "";
     },
-    [lang, notify, notifyZipReadProgress, projects],
+    [notify, notifyZipReadProgress, projects, t],
   );
 
   const confirmImport = useCallback(async () => {
@@ -320,20 +266,13 @@ export function useBackupActions({
       notifyZipImportProgress();
       await importProject(file, fallback);
     } catch (error) {
-      notify("error", projectImportErrorMessage(error, lang));
+      notify("error", projectImportErrorMessage(error, t));
     }
-  }, [
-    importConfirmState,
-    importProject,
-    lang,
-    notify,
-    notifyZipImportProgress,
-  ]);
+  }, [importConfirmState, importProject, notify, notifyZipImportProgress, t]);
 
   const cancelImport = useCallback(() => {
     setImportConfirmState(IMPORT_CONFIRM_CLOSED);
   }, []);
-
   const handleConflictOverwrite = useCallback(async () => {
     const { file, existingProject } = conflictState;
 
@@ -346,18 +285,14 @@ export function useBackupActions({
       );
       notify(
         "success",
-        lang === "ru"
-          ? `Проект «${result.project.name}» перезаписан (${result.leakCount} ${pluralRecords(
-              result.leakCount,
-              lang,
-            )})`
-          : `Project "${result.project.name}" overwritten (${result.leakCount} ${pluralRecords(
-              result.leakCount,
-              lang,
-            )})`,
+        t("settings.projectVOverwrittenV", {
+          v1: result.project.name,
+          v2: result.leakCount,
+          v3: pluralRecords(result.leakCount, lang),
+        }),
       );
     } catch (error) {
-      notify("error", projectImportErrorMessage(error, lang));
+      notify("error", projectImportErrorMessage(error, t));
     }
 
     setConflictState(CONFLICT_CLOSED);
@@ -367,6 +302,7 @@ export function useBackupActions({
     notify,
     notifyZipImportProgress,
     onImportIntoExisting,
+    t,
   ]);
 
   const handleConflictMerge = useCallback(async () => {
@@ -377,18 +313,14 @@ export function useBackupActions({
       const result = await onImportIntoExisting(file, existingProject, "merge");
       notify(
         "success",
-        lang === "ru"
-          ? `Объединено с «${result.project.name}» (из архива применено: ${result.leakCount} ${pluralRecords(
-              result.leakCount,
-              lang,
-            )})`
-          : `Merged into "${result.project.name}" (applied from archive: ${result.leakCount} ${pluralRecords(
-              result.leakCount,
-              lang,
-            )})`,
+        t("settings.mergedIntoVApplied", {
+          v1: result.project.name,
+          v2: result.leakCount,
+          v3: pluralRecords(result.leakCount, lang),
+        }),
       );
     } catch (error) {
-      notify("error", projectImportErrorMessage(error, lang));
+      notify("error", projectImportErrorMessage(error, t));
     }
 
     setConflictState(CONFLICT_CLOSED);
@@ -398,6 +330,7 @@ export function useBackupActions({
     notify,
     notifyZipImportProgress,
     onImportIntoExisting,
+    t,
   ]);
 
   const handleConflictCopy = useCallback(async () => {
@@ -412,32 +345,23 @@ export function useBackupActions({
         { overrideName: copyName },
       );
       if (!result?.project) {
-        throw new Error(
-          lang === "ru"
-            ? "Не удалось создать проект"
-            : "Could not create project",
-        );
+        throw new Error(t("settings.couldNotCreateProject"));
       }
 
       notify(
         "success",
-        lang === "ru"
-          ? `Создана копия «${result.project.name}» (${result.leakCount} ${pluralRecords(
-              result.leakCount,
-              lang,
-            )})`
-          : `Copy "${result.project.name}" created (${result.leakCount} ${pluralRecords(
-              result.leakCount,
-              lang,
-            )})`,
+        t("settings.copyVCreatedV", {
+          v1: result.project.name,
+          v2: result.leakCount,
+          v3: pluralRecords(result.leakCount, lang),
+        }),
       );
     } catch (error) {
-      notify("error", projectImportErrorMessage(error, lang));
+      notify("error", projectImportErrorMessage(error, t));
     }
 
     setConflictState(CONFLICT_CLOSED);
-  }, [conflictState, lang, notify, notifyZipImportProgress, onImportZip]);
-
+  }, [conflictState, lang, notify, notifyZipImportProgress, onImportZip, t]);
   return {
     importZipRef,
     handleExportZip,

@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { translate } from "@/test/translate";
 import { useSettingsPage } from "./useSettingsPage";
 
 const mocks = vi.hoisted(() => ({
@@ -111,8 +112,8 @@ vi.mock("@/app/project/hooks/usePhotoRequirements", () => ({
 }));
 vi.mock("./useSettingsTexts", () => ({
   useSettingsTexts: () => ({
-    lang: "ru",
-    t: (value) => value,
+    lang: "en",
+    t: translate,
     toggleLanguage: vi.fn(),
     localeTexts: {
       clearMapCache: "Очистить карту",
@@ -549,7 +550,7 @@ describe("useSettingsPage orchestration", () => {
 
     expect(result.current.notification).toMatchObject({ type: "warning" });
     expect(result.current.notification.message).toContain(
-      "журнал операции не удалось очистить",
+      "the operation journal could not be cleared",
     );
   });
 

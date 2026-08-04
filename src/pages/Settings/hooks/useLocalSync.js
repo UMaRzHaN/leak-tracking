@@ -17,40 +17,35 @@ function projectKey(project) {
   return `${project?.type ?? "unknown"}:${project?.name?.trim().toLowerCase() ?? ""}`;
 }
 
-function typeLabel(type, lang) {
+function typeLabel(type, t) {
   const labels = {
-    upstream: lang === "ru" ? "Добыча" : "Upstream",
-    midstream: lang === "ru" ? "Транспортировка" : "Midstream",
-    downstream: lang === "ru" ? "Переработка" : "Downstream",
+    upstream: t("settings.projectTypes.upstream"),
+    midstream: t("settings.projectTypes.midstream"),
+    downstream: t("settings.projectTypes.downstream"),
   };
-  return labels[type] ?? type ?? (lang === "ru" ? "неизвестно" : "unknown");
+  return labels[type] ?? type ?? t("settings.unknown");
 }
 
-function syncErrorMessage(error, lang) {
+function syncErrorMessage(error, t) {
   if (hasPluginSyncErrorText(error)) {
     return localSyncErrorText(error, i18next.t.bind(i18next));
   }
   if (error?.code === "SYNC_EPOCH_MISMATCH") {
-    return lang === "ru"
-      ? "На одном из устройств была очищена старая история удалений. Автоматическое объединение остановлено, чтобы не восстановить удалённые записи. Создайте полный ZIP на актуальном устройстве и замените проект на втором устройстве."
-      : "Old deletion history was compacted on one device. Automatic merge was stopped to prevent deleted records from being restored. Export a full ZIP from the current device and replace the project on the other device.";
+    return t("settings.oldDeletionHistoryWas");
   }
   if (error?.code === "PROJECT_TYPE_MISMATCH") {
-    const current = typeLabel(error.existingProjectType, lang);
-    const incoming = typeLabel(error.incomingProjectType, lang);
-    return lang === "ru"
-      ? `Нельзя синхронизировать проекты разных типов: текущий — ${current}, полученный — ${incoming}.`
-      : `Projects of different types cannot be synchronized: current — ${current}, received — ${incoming}.`;
+    const current = typeLabel(error.existingProjectType, t);
+    const incoming = typeLabel(error.incomingProjectType, t);
+    return t("settings.projectsOfDifferentTypes2", {
+      v1: current,
+      v2: incoming,
+    });
   }
   if (error?.code === "PROJECT_TYPE_MISSING") {
-    return lang === "ru"
-      ? "Полученный архив не содержит тип проекта. Синхронизация отменена."
-      : "The received archive does not contain a project type. Synchronization was cancelled.";
+    return t("settings.theReceivedArchiveDoes");
   }
   if (error?.code === "CURRENT_PROJECT_TYPE_MISSING") {
-    return lang === "ru"
-      ? "У текущего проекта не определён тип. Синхронизация отменена."
-      : "The current project has no defined type. Synchronization was cancelled.";
+    return t("settings.theCurrentProjectHas2");
   }
   return error.message;
 }
@@ -79,7 +74,7 @@ export function useLocalSync({
   onImportZip,
   onImportIntoExisting,
   notify,
-  lang,
+  t,
   ensureProjectSyncId,
 }) {
   const [state, setState] = useState(IDLE_STATE);
@@ -103,7 +98,6 @@ export function useLocalSync({
     if (!mountedRef.current) return;
     setState(next);
   }, []);
-
   const beginProjectOperation = useCallback(() => {
     operationGenerationRef.current += 1;
     return {
@@ -111,7 +105,6 @@ export function useLocalSync({
       projectId: activeProjectIdRef.current,
     };
   }, []);
-
   const isProjectOperationCurrent = useCallback(
     (operation) =>
       mountedRef.current &&
@@ -123,9 +116,7 @@ export function useLocalSync({
   const streamArchive = useCallback(
     async (writeChunk, project = activeProject) => {
       if (!project) {
-        throw new Error(
-          lang === "ru" ? "Проект не выбран" : "No project selected",
-        );
+        throw new Error(t("settings.noProjectSelected"));
       }
       const { streamProjectBackupZip } =
         await import("@/services/backup/projectBackupService");
@@ -137,7 +128,7 @@ export function useLocalSync({
         writeChunk,
       });
     },
-    [activeProject, data, idbGetPhoto, lang, vars],
+    [activeProject, data, idbGetPhoto, t, vars],
   );
 
   const mergeArchive = useCallback(
@@ -145,13 +136,11 @@ export function useLocalSync({
       const result = await onImportIntoExisting(file, targetProject, "sync");
       notify(
         "success",
-        lang === "ru"
-          ? `Синхронизация завершена: применено изменений — ${result.leakCount}`
-          : `Sync complete: ${result.leakCount} changes applied`,
+        t("settings.syncCompleteVChanges", { v1: result.leakCount }),
       );
       return result;
     },
-    [activeProject, lang, notify, onImportIntoExisting],
+    [activeProject, notify, onImportIntoExisting, t],
   );
 
   const stopHost = useCallback(async () => {
@@ -167,7 +156,6 @@ export function useLocalSync({
     if (session) await session.stop();
     setStateSafe(IDLE_STATE);
   }, [setStateSafe]);
-
   const startHost = useCallback(async () => {
     const operation = beginProjectOperation();
     setStateSafe({ status: "preparing", session: null });
@@ -228,18 +216,13 @@ export function useLocalSync({
           activeSession?.stop().catch(() => {});
           setStateSafe(IDLE_STATE);
           if (reason === "expired") {
-            notify(
-              "info",
-              lang === "ru"
-                ? "Срок действия QR-кода истёк"
-                : "The QR code has expired",
-            );
+            notify("info", t("settings.theQrCodeHas"));
           } else if (reason === "completed") {
             notify(
               "success",
-              lang === "ru"
-                ? `Передача завершена. Устройств: ${transferCount ?? 1}`
-                : `Transfer complete. Devices: ${transferCount ?? 1}`,
+              t("settings.transferCompleteDevicesV", {
+                v1: transferCount ?? 1,
+              }),
             );
           }
         },
@@ -266,8 +249,8 @@ export function useLocalSync({
           notify(
             "error",
             isStructuredSyncError(error)
-              ? syncErrorMessage(error, lang)
-              : `${lang === "ru" ? "Ошибка локальной синхронизации" : "Local sync error"}: ${error.message}`,
+              ? syncErrorMessage(error, t)
+              : `${t("settings.localSyncError")}: ${error.message}`,
           );
           setStateSafe(IDLE_STATE);
         },
@@ -294,20 +277,20 @@ export function useLocalSync({
       setStateSafe(IDLE_STATE);
       notify(
         "error",
-        `${lang === "ru" ? "Не удалось создать сеанс" : "Could not create session"}: ${error.message}`,
+        `${t("settings.couldNotCreateSession")}: ${error.message}`,
       );
     }
   }, [
     activeProject,
     allowMultipleImports,
     beginProjectOperation,
-    streamArchive,
     ensureProjectSyncId,
     isProjectOperationCurrent,
-    lang,
     mergeArchive,
     notify,
     setStateSafe,
+    streamArchive,
+    t,
   ]);
 
   const joinHost = useCallback(
@@ -341,20 +324,20 @@ export function useLocalSync({
         notify(
           "error",
           isStructuredSyncError(error)
-            ? syncErrorMessage(error, lang)
-            : `${lang === "ru" ? "Ошибка подключения" : "Connection error"}: ${error.message}`,
+            ? syncErrorMessage(error, t)
+            : `${t("settings.connectionError")}: ${error.message}`,
         );
       }
     },
     [
       activeProject,
       beginProjectOperation,
-      streamArchive,
       isProjectOperationCurrent,
-      lang,
       mergeArchive,
       notify,
       setStateSafe,
+      streamArchive,
+      t,
     ],
   );
 
@@ -372,19 +355,16 @@ export function useLocalSync({
       if (!isProjectOperationCurrent(operation)) return;
       setStateSafe(IDLE_STATE);
       if (error.code === "QR_SCAN_CANCELLED") return;
-      notify(
-        "error",
-        `${lang === "ru" ? "Ошибка QR-кода" : "QR code error"}: ${error.message}`,
-      );
+      notify("error", `${t("settings.qrCodeError")}: ${error.message}`);
     }
   }, [
     activeProject,
     beginProjectOperation,
     isProjectOperationCurrent,
     joinHost,
-    lang,
     notify,
     setStateSafe,
+    t,
   ]);
 
   const scanAndImport = useCallback(async () => {
@@ -399,33 +379,30 @@ export function useLocalSync({
       const result = await onImportZip?.(incoming);
       notify(
         "success",
-        lang === "ru"
-          ? `База импортирована по QR: «${result?.project?.name ?? "проект"}» (${result?.leakCount ?? 0} записей)`
-          : `Database imported by QR: "${result?.project?.name ?? "project"}" (${result?.leakCount ?? 0} records)`,
+        t("settings.databaseImportedByQr", {
+          v1: result?.project?.name ?? "project",
+          v2: result?.leakCount ?? 0,
+        }),
       );
       setStateSafe({ status: "complete", session: null });
     } catch (error) {
       if (!isProjectOperationCurrent(operation)) return;
       setStateSafe(IDLE_STATE);
       if (error.code === "QR_SCAN_CANCELLED") return;
-      notify(
-        "error",
-        `${lang === "ru" ? "Ошибка импорта по QR" : "QR import error"}: ${error.message}`,
-      );
+      notify("error", `${t("settings.qrImportError")}: ${error.message}`);
     }
   }, [
     beginProjectOperation,
     isProjectOperationCurrent,
-    lang,
     notify,
     onImportZip,
     setStateSafe,
+    t,
   ]);
 
   const cancelScan = useCallback(() => {
     cancelLocalSyncQrScan();
   }, []);
-
   const resolveApproval = useCallback((approved) => {
     if (approvalTimeoutRef.current) {
       window.clearTimeout(approvalTimeoutRef.current);
@@ -436,7 +413,6 @@ export function useLocalSync({
     setApprovalRequest(null);
     resolve?.(approved);
   }, []);
-
   const approvePeer = useCallback(
     () => resolveApproval(true),
     [resolveApproval],
@@ -468,7 +444,6 @@ export function useLocalSync({
     const timer = window.setInterval(updateRemaining, 1000);
     return () => window.clearInterval(timer);
   }, [setStateSafe, state.session?.expiresAt, state.status]);
-
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -485,7 +460,6 @@ export function useLocalSync({
       hostSessionRef.current = null;
     };
   }, []);
-
   useEffect(() => {
     if (observedProjectIdRef.current === activeProjectId) return;
     observedProjectIdRef.current = activeProjectId;
@@ -503,7 +477,6 @@ export function useLocalSync({
     activeSession?.stop().catch(() => {});
     setStateSafe(IDLE_STATE);
   }, [activeProjectId, setStateSafe]);
-
   return {
     available,
     state,

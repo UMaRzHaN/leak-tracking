@@ -1,4 +1,95 @@
 export const settings = {
+  projectsOfDifferentTypes:
+    "Нельзя объединить проекты разных типов: текущий — {{v1}}, импортируемый — {{v2}}.",
+  theArchiveDoesNot:
+    "В архиве не указан тип проекта. Импорт в существующий проект отменён.",
+  theCurrentProjectHas: "У текущего проекта не определён тип. Импорт отменён.",
+  importError: "Ошибка импорта",
+  zipBackupImportIn: "Идёт импорт ZIP backup, подождите...",
+  readingZipBackupPlease: "Идёт чтение ZIP backup, подождите...",
+  couldNotReadProject: "Не удалось получить данные проекта из файла",
+  projectVImportedV: "Импортирован проект «{{v1}}» ({{v2}} {{v3}})",
+  noDataToExport: "Нет данных для экспорта",
+  zipBackupExportIn: "Идёт экспорт ZIP backup, подождите...",
+  zipSavedToDocuments: "ZIP сохранён в Документы/{{v1}}/",
+  zipArchiveDownloadedV: "ZIP-архив скачан ({{v1}} {{v2}})",
+  exportError: "Ошибка экспорта",
+  couldNotDetermineThe:
+    "Не удалось определить тип проекта из файла «{{v1}}». Переименуйте файл, добавив в имя upstream / midstream / downstream.",
+  recordData: "данным записей",
+  fileName: "имени файла",
+  importProject: "Импортировать проект?",
+  nameVTypeV:
+    "Название: {{v1}}\nТип: {{v2}} ({{v3}})\nЗаписей: {{v4}}\nОпределено по: {{v5}}\n\nБудет создан новый проект.",
+  projectVOverwrittenV: "Проект «{{v1}}» перезаписан ({{v2}} {{v3}})",
+  mergedIntoVApplied:
+    "Объединено с «{{v1}}» (из архива применено: {{v2}} {{v3}})",
+  couldNotCreateProject: "Не удалось создать проект",
+  copyVCreatedV: "Создана копия «{{v1}}» ({{v2}} {{v3}})",
+  anInterruptedImportWas:
+    "Обнаружен прерванный импорт. Проверьте данные проекта и повторите импорт из исходного файла.",
+  noDataIssuesFound: "Проблем в данных не найдено",
+  checkCompleteVIssues: "Проверка завершена: {{v1}} проблем",
+  checkError: "Ошибка проверки",
+  readingExcelFilePlease: "Идёт чтение Excel, подождите...",
+  noImportableRowsFound: "В Excel не найдено строк для импорта",
+  projectVImportedV2: "Импортирован проект «{{v1}}» ({{v2}} записей)",
+  excelParsedVRecords: "Excel прочитан: {{v1}} записей, фото: {{v2}}",
+  excelImportError: "Ошибка импорта Excel",
+  excelImportInProgress: "Идёт импорт Excel, подождите...",
+  importedVRecordsBut:
+    "Импортировано {{v1}} записей, но журнал операции не удалось очистить. Не повторяйте импорт и перезапустите приложение для проверки восстановления.",
+  importedFromExcelV: "Импортировано из Excel: {{v1}} записей",
+  failedToSaveImport: "Не удалось сохранить импорт",
+  projectOverwrittenVRecords:
+    "Проект перезаписан ({{v1}} записей), но журнал операции не удалось очистить. Перезапустите приложение для проверки восстановления.",
+  projectOverwrittenFromExcel: "Проект перезаписан из Excel ({{v1}} записей)",
+  excelWasMergedBut:
+    "Excel объединён с проектом, но журнал операции не удалось очистить. Перезапустите приложение для проверки восстановления.",
+  excelMergedIntoProject:
+    "Excel объединён с проектом: применено {{v1}} записей",
+  failedToMergeExcel: "Не удалось объединить Excel",
+  copyVCreatedV2: "Создана копия «{{v1}}» ({{v2}} записей)",
+  failedToCreateCopy: "Не удалось создать копию",
+  cleanupFailed: "Не удалось выполнить очистку",
+  switchProject: "Переключить проект?",
+  theLeakEntryForm: "Форма добавления утечки будет сброшена.",
+  switch: "Переключить",
+  projectSwitchedMapCache: "Проект переключён, кэш карты очищен",
+  nameSaved: "Название сохранено",
+  couldNotRemoveProject: "Не удалось удалить проект «{{v1}}»: {{v2}}",
+  projectVDeleted: "Проект «{{v1}}» удалён",
+  projectVWasRemoved:
+    "Проект «{{v1}}» удалён, но некоторые файлы не удалось очистить",
+  projectVCreated: "Проект «{{v1}}» создан",
+  couldNotSwitchProject: "Не удалось переключить проект: {{v1}}",
+  syncidMustBeAt: "syncId должен содержать минимум 8 символов",
+  projectSyncidUpdated: "syncId проекта обновлен",
+  couldNotUpdateProject: "Не удалось обновить syncId проекта",
+  changeProjectSyncid: "Изменить syncId проекта",
+  theCurrentSyncidIs:
+    "Текущий syncId показан в поле. Его можно скопировать или заменить для теста синхронизации.",
+  save: "Сохранить",
+  unknown: "неизвестно",
+  oldDeletionHistoryWas:
+    "На одном из устройств была очищена старая история удалений. Автоматическое объединение остановлено, чтобы не восстановить удалённые записи. Создайте полный ZIP на актуальном устройстве и замените проект на втором устройстве.",
+  projectsOfDifferentTypes2:
+    "Нельзя синхронизировать проекты разных типов: текущий — {{v1}}, полученный — {{v2}}.",
+  theReceivedArchiveDoes:
+    "Полученный архив не содержит тип проекта. Синхронизация отменена.",
+  theCurrentProjectHas2:
+    "У текущего проекта не определён тип. Синхронизация отменена.",
+  noProjectSelected: "Проект не выбран",
+  syncCompleteVChanges: "Синхронизация завершена: применено изменений — {{v1}}",
+  theQrCodeHas: "Срок действия QR-кода истёк",
+  transferCompleteDevicesV: "Передача завершена. Устройств: {{v1}}",
+  localSyncError: "Ошибка локальной синхронизации",
+  couldNotCreateSession: "Не удалось создать сеанс",
+  connectionError: "Ошибка подключения",
+  qrCodeError: "Ошибка QR-кода",
+  databaseImportedByQr: "База импортирована по QR: «{{v1}}» ({{v2}} записей)",
+  qrImportError: "Ошибка импорта по QR",
+  import: "Импорт...",
   projectTypes: {
     upstream: "Добыча",
     upstreamHint: "Добыча",
