@@ -1,4 +1,54 @@
 export const leakDetails = {
+  sheetTitle: "Leak details",
+  deleteConfirm: "Delete?",
+  deleteLeak: "Delete leak",
+  edit: "Edit",
+  close: "Close",
+  cancel: "Cancel",
+  saving: "Saving...",
+  save: "Save",
+  closeWithoutSavingTitle: "Close without saving?",
+  closeWithoutSavingDescription: "Your unsaved changes will be lost.",
+
+  noEditableFields: "No editable fields",
+  noCoordinateFields: "No coordinate fields",
+  noNumericParameters: "No numeric parameters",
+  calcParams: "Calculation parameters",
+  calcParamsHint: "Used when this leak is saved",
+  editParameters: "Edit parameters",
+
+  hasPhoto: "photo",
+  valueEmpty: "empty",
+  valueChanged: "changed",
+
+  monitoring: "Monitoring",
+  monitoringPhoto: "Monitoring photo",
+  round: "Round",
+  checkedBy: "Checked by",
+  materials: "Materials and equipment",
+  roundComment: "Comment",
+  roundPhoto: "Round photo",
+  photoBeforeRound: "Photo before round",
+  noMonitoringChecks: "No monitoring checks yet",
+  user: "User",
+
+  historyDamaged: "This record history is damaged and cannot be displayed",
+  removed: "Removed",
+
+  enterSerialNumber: "Enter the equipment serial number",
+  saveError: "Save error",
+  fillUserName: "Fill in the user name in the profile",
+
+  tabs: {
+    info: "Info",
+    main: "Main",
+    photos: "Photos",
+    parameters: "Parameters",
+    coordinates: "Coordinates",
+    monitoring: "Monitoring",
+    log: "Log",
+  },
+
   priority: "Priority",
 
   actions: {

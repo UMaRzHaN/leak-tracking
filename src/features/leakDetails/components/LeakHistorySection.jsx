@@ -1,4 +1,5 @@
 import { Component, useState } from "react";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import { usePhotoSrc } from "@/hooks/usePhotoSrc";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import {
@@ -47,17 +48,15 @@ class HistoryErrorBoundary extends Component {
     return (
       <div className={s.tabEmpty} role="alert">
         <span className={s.tabEmptyIcon}>!</span>
-        <p>
-          {this.props.lang === "ru"
-            ? "История записи повреждена и не может быть показана"
-            : "This record history is damaged and cannot be displayed"}
-        </p>
+        <p>{this.props.t("leakDetails.historyDamaged")}</p>
       </div>
     );
   }
 }
 
 function MonitoringRecordRow({ record, localeTexts, lang }) {
+  const { t } = useLanguage();
+
   const photoSrc = usePhotoSrc(record.photo ?? null);
   const previousPhotoSrc = usePhotoSrc(record.previousPhoto ?? null);
   const [viewerSrc, setViewerSrc] = useState(null);
@@ -101,7 +100,7 @@ function MonitoringRecordRow({ record, localeTexts, lang }) {
                 <span>{localeTexts.monitoring.materials}</span>
                 <p>
                   {displayText(record.materials_equipment) ||
-                    (lang === "ru" ? "Удалено" : "Removed")}
+                    t("leakDetails.removed")}
                 </p>
               </div>
             )}
@@ -205,7 +204,7 @@ function ChangeHistory({ data, fields, localeTexts, t, lang }) {
     <div className={s.tabPane}>
       {history.length > 0 ? (
         history.map((entry, index) => {
-          const relative = relativeTime(entry.date, lang);
+          const relative = relativeTime(entry.date, t);
           const absolute = fmtDate(entry.date, lang);
           const action = displayText(entry.action);
           const targetStatus = displayText(entry.to);
@@ -272,6 +271,7 @@ function ChangeHistory({ data, fields, localeTexts, t, lang }) {
                             change.key,
                             change.from,
                             change.kind,
+                            t,
                             lang,
                           )}
                         </span>
@@ -283,6 +283,7 @@ function ChangeHistory({ data, fields, localeTexts, t, lang }) {
                             change.key,
                             change.to,
                             change.kind,
+                            t,
                             lang,
                           )}
                         </span>

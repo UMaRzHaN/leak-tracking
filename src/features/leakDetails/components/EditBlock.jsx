@@ -105,11 +105,7 @@ export default function EditBlock(props) {
         {!hasText && !hasMulti && (
           <div className={s.tabEmpty}>
             <span className={s.tabEmptyIcon}>📋</span>
-            <p>
-              {lang === "ru"
-                ? "Нет полей для редактирования"
-                : "No editable fields"}
-            </p>
+            <p>{t("leakDetails.noEditableFields")}</p>
           </div>
         )}
       </div>
@@ -158,9 +154,7 @@ export default function EditBlock(props) {
         ) : (
           <div className={s.tabEmpty}>
             <span className={s.tabEmptyIcon}>📍</span>
-            <p>
-              {lang === "ru" ? "Нет полей координат" : "No coordinate fields"}
-            </p>
+            <p>{t("leakDetails.noCoordinateFields")}</p>
           </div>
         )}
       </div>
@@ -186,27 +180,17 @@ export default function EditBlock(props) {
         ) : (
           <div className={s.tabEmpty}>
             <span className={s.tabEmptyIcon}>📊</span>
-            <p>
-              {lang === "ru"
-                ? "Нет числовых параметров"
-                : "No numeric parameters"}
-            </p>
+            <p>{t("leakDetails.noNumericParameters")}</p>
           </div>
         )}
 
         <div className={s.calcShortcut}>
           <div className={s.calcShortcutText}>
-            <strong>
-              {lang === "ru" ? "Параметры расчёта" : "Calculation parameters"}
-            </strong>
-            <span>
-              {lang === "ru"
-                ? "Используются при сохранении этой утечки"
-                : "Used when this leak is saved"}
-            </span>
+            <strong>{t("leakDetails.calcParams")}</strong>
+            <span>{t("leakDetails.calcParamsHint")}</span>
           </div>
           <button type="button" onClick={() => setCalcSettingsOpen(true)}>
-            {lang === "ru" ? "Редактировать параметры" : "Edit parameters"}
+            {t("leakDetails.editParameters")}
           </button>
         </div>
 

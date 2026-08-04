@@ -31,7 +31,7 @@ export function useLeakDetailsSheet({
   onDelete,
   userProfile,
 }) {
-  const { lang } = useLanguage();
+  const { lang, t } = useLanguage();
   const historyUser = userProfile?.name?.trim() ?? "";
   const projectConfig = useProjectConfig();
   const { activeProject } = useProjectData();
@@ -121,13 +121,10 @@ export function useLeakDetailsSheet({
     hapticWarning();
     setNotification({
       type: "error",
-      message:
-        lang === "ru"
-          ? "Заполните имя пользователя в профиле"
-          : "Fill in the user name in the profile",
+      message: t("leakDetails.fillUserName"),
     });
     return false;
-  }, [historyUser, lang]);
+  }, [historyUser, t]);
 
   useEffect(() => {
     const handler = (event) => {
@@ -241,32 +238,32 @@ export function useLeakDetailsSheet({
   const tabs =
     mode === MODE.VIEW
       ? [
-          { id: TAB.INFO, label: lang === "ru" ? "Инфо" : "Info" },
-          { id: TAB.PHOTO, label: lang === "ru" ? "Фото" : "Photos" },
+          { id: TAB.INFO, label: t("leakDetails.tabs.info") },
+          { id: TAB.PHOTO, label: t("leakDetails.tabs.photos") },
           {
             id: TAB.PARAMS,
-            label: lang === "ru" ? "Параметры" : "Parameters",
+            label: t("leakDetails.tabs.parameters"),
           },
           {
             id: TAB.COORDS,
-            label: lang === "ru" ? "Координаты" : "Coordinates",
+            label: t("leakDetails.tabs.coordinates"),
           },
           {
             id: TAB.MONITORING,
-            label: lang === "ru" ? "Мониторинг" : "Monitoring",
+            label: t("leakDetails.tabs.monitoring"),
           },
-          { id: TAB.LOG, label: lang === "ru" ? "Лог" : "Log" },
+          { id: TAB.LOG, label: t("leakDetails.tabs.log") },
         ]
       : [
-          { id: TAB.INFO, label: lang === "ru" ? "Основное" : "Main" },
-          { id: TAB.PHOTO, label: lang === "ru" ? "Фото" : "Photos" },
+          { id: TAB.INFO, label: t("leakDetails.tabs.main") },
+          { id: TAB.PHOTO, label: t("leakDetails.tabs.photos") },
           {
             id: TAB.PARAMS,
-            label: lang === "ru" ? "Параметры" : "Parameters",
+            label: t("leakDetails.tabs.parameters"),
           },
           {
             id: TAB.COORDS,
-            label: lang === "ru" ? "Координаты" : "Coordinates",
+            label: t("leakDetails.tabs.coordinates"),
           },
         ];
 

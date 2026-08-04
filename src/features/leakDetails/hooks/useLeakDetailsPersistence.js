@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import { isPinkBagEquipment } from "@/utils/calculations/calculations";
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import {
@@ -53,6 +54,8 @@ export function useLeakDetailsPersistence({
   setReopenOpen,
   paramsTab,
 }) {
+  const { t } = useLanguage();
+
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -67,10 +70,7 @@ export function useLeakDetailsPersistence({
       setActiveTab(paramsTab);
       setNotification({
         type: "error",
-        message:
-          lang === "ru"
-            ? "Укажите серийный номер оборудования"
-            : "Enter the equipment serial number",
+        message: t("leakDetails.enterSerialNumber"),
       });
       return;
     }
@@ -201,7 +201,7 @@ export function useLeakDetailsPersistence({
       if (error?.name === "AbortError") return;
       setNotification({
         type: "error",
-        message: lang === "ru" ? "Ошибка сохранения" : "Save error",
+        message: t("leakDetails.saveError"),
       });
     } finally {
       setSaving(false);

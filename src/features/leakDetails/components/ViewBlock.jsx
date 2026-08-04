@@ -28,7 +28,7 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
         edited: t("leakDetails.actions.edited"),
         comment: t("leakDetails.actions.comment"),
         monitoring: t("leakDetails.actions.monitoring", {
-          defaultValue: lang === "ru" ? "Мониторинг" : "Monitoring",
+          defaultValue: t("leakDetails.monitoring"),
         }),
       },
 
@@ -47,19 +47,19 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
 
       photo: {
         before: t("leakDetails.photo.before"),
-        repair: lang === "ru" ? "В ремонте" : "Under repair",
+        repair: t("leakDetails.statuses.in_progress"),
         after: t("leakDetails.photo.after"),
-        monitoring: lang === "ru" ? "Фото мониторинга" : "Monitoring photo",
+        monitoring: t("leakDetails.monitoringPhoto"),
         noPhoto: t("leakDetails.photo.noPhoto"),
       },
 
       monitoring: {
-        round: lang === "ru" ? "Обход" : "Round",
-        inspector: lang === "ru" ? "Проверил" : "Checked by",
-        materials: lang === "ru" ? "МТР" : "Materials and equipment",
-        comment: lang === "ru" ? "Комментарий" : "Comment",
-        photo: lang === "ru" ? "Фото обхода" : "Round photo",
-        previousPhoto: lang === "ru" ? "Фото до обхода" : "Photo before round",
+        round: t("leakDetails.round"),
+        inspector: t("leakDetails.checkedBy"),
+        materials: t("leakDetails.materials"),
+        comment: t("leakDetails.roundComment"),
+        photo: t("leakDetails.roundPhoto"),
+        previousPhoto: t("leakDetails.photoBeforeRound"),
       },
 
       empty: {
@@ -68,14 +68,11 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
         params: t("leakDetails.empty.params"),
         coords: t("leakDetails.empty.coords"),
         history: t("leakDetails.empty.history"),
-        monitoring:
-          lang === "ru"
-            ? "Проверки мониторинга пока не добавлены"
-            : "No monitoring checks yet",
+        monitoring: t("leakDetails.noMonitoringChecks"),
       },
-      user: lang === "ru" ? "Пользователь" : "User",
+      user: t("leakDetails.user"),
     }),
-    [t, lang],
+    [t],
   );
   const fields = useMemo(() => {
     const all = projectConfig.system.fields ?? [];

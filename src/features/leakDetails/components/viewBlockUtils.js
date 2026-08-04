@@ -1,3 +1,4 @@
+import { getIntlLocale } from "@/utils/locale";
 import { formatLeakDate } from "@/utils/locale";
 
 export const ACTION_ICONS = {
@@ -18,7 +19,7 @@ export const IDENTIFIER_KEYS = new Set(["leak_id", "video_id"]);
 
 export function fmtDate(iso, lang) {
   if (!iso) return "";
-  return new Date(iso).toLocaleString(lang === "ru" ? "ru-RU" : "en-US", {
+  return new Date(iso).toLocaleString(getIntlLocale(lang), {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -27,22 +28,25 @@ export function fmtDate(iso, lang) {
   });
 }
 
-export function relativeTime(iso, lang) {
+export function relativeTime(iso, t) {
   if (!iso) return null;
   const diff = Date.now() - new Date(iso).getTime();
   if (diff < 0) return null;
-  if (diff < 60_000) return lang === "ru" ? "только что" : "just now";
+  if (diff < 60_000) return t("leakDetails.relativeTime.justNow");
   if (diff < 3_600_000) {
-    const n = Math.floor(diff / 60_000);
-    return lang === "ru" ? `${n} мин назад` : `${n} min ago`;
+    return t("leakDetails.relativeTime.minutesAgo", {
+      count: Math.floor(diff / 60_000),
+    });
   }
   if (diff < 86_400_000) {
-    const n = Math.floor(diff / 3_600_000);
-    return lang === "ru" ? `${n} ч назад` : `${n} h ago`;
+    return t("leakDetails.relativeTime.hoursAgo", {
+      count: Math.floor(diff / 3_600_000),
+    });
   }
   if (diff < 7 * 86_400_000) {
-    const n = Math.floor(diff / 86_400_000);
-    return lang === "ru" ? `${n} дн назад` : `${n} d ago`;
+    return t("leakDetails.relativeTime.daysAgo", {
+      count: Math.floor(diff / 86_400_000),
+    });
   }
   return null;
 }
@@ -58,22 +62,16 @@ export function translateFieldLabel(key, fallbackLabel, t, lang) {
   });
 }
 
-export function formatHistoryValue(key, value, kind, lang) {
+export function formatHistoryValue(key, value, kind, t, lang) {
   if (kind === "photo") {
-    return value
-      ? lang === "ru"
-        ? "фото есть"
-        : "photo"
-      : lang === "ru"
-        ? "нет фото"
-        : "no photo";
+    return value ? t("leakDetails.hasPhoto") : t("leakDetails.photo.noPhoto");
   }
-  if (value == null || value === "") return lang === "ru" ? "пусто" : "empty";
-  if (value === "[changed]") return lang === "ru" ? "изменено" : "changed";
+  if (value == null || value === "") return t("leakDetails.valueEmpty");
+  if (value === "[changed]") return t("leakDetails.valueChanged");
   if (key === "date") return formatLeakDate(value, {}, lang);
   if (IDENTIFIER_KEYS.has(key)) return String(value);
   if (typeof value === "number") {
-    return value.toLocaleString(lang === "ru" ? "ru-RU" : "en-US");
+    return value.toLocaleString(getIntlLocale(lang));
   }
   return String(value);
 }
@@ -84,7 +82,7 @@ export function getHistoryChangeLabel(change, fields, localeTexts, t, lang) {
   if (change.key === "photo_repair") return localeTexts.photo.repair;
   if (change.key === "priority") return localeTexts.priority;
   if (change.key === "materials_equipment") {
-    return lang === "ru" ? "МТР" : "Materials and equipment";
+    return t("leakDetails.materials");
   }
   const field = fields.find((item) => item.key === change.key);
   return translateFieldLabel(change.key, field?.label ?? change.key, t, lang);

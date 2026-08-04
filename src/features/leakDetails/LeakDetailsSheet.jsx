@@ -24,7 +24,7 @@ export default function LeakDetailsSheet({
   onDelete,
   userProfile,
 }) {
-  const { lang } = useLanguage();
+  const { lang, t } = useLanguage();
   const titleId = useId();
   const tabRefsRef = useRef(new Map());
   const absoluteDate = formatLeakDate(leak.date, {}, lang);
@@ -123,7 +123,7 @@ export default function LeakDetailsSheet({
           onClick={(event) => event.stopPropagation()}
         >
           <h2 id={titleId} className={s.visuallyHidden}>
-            {lang === "ru" ? "Детали утечки" : "Leak details"}
+            {t("leakDetails.sheetTitle")}
           </h2>
           <PhotoBlock
             src={mode === MODE.EDIT ? null : heroSrc}
@@ -215,7 +215,7 @@ export default function LeakDetailsSheet({
                     type="button"
                     onClick={confirmDelete}
                   >
-                    <span>{lang === "ru" ? "Удалить?" : "Delete?"}</span>
+                    <span>{t("leakDetails.deleteConfirm")}</span>
                     <span className={s.btnDangerProgress} />
                   </button>
                 ) : (
@@ -223,16 +223,16 @@ export default function LeakDetailsSheet({
                     className={s.btnDanger}
                     type="button"
                     onClick={armDelete}
-                    title={lang === "ru" ? "Удалить утечку" : "Delete leak"}
+                    title={t("leakDetails.deleteLeak")}
                   >
                     🗑
                   </button>
                 ))}
               <button className={s.btnPrimary} onClick={handleEdit}>
-                {lang === "ru" ? "Редактировать" : "Edit"}
+                {t("leakDetails.edit")}
               </button>
               <button className={s.btnGhost} onClick={handleClose}>
-                {lang === "ru" ? "Закрыть" : "Close"}
+                {t("leakDetails.close")}
               </button>
             </div>
           ) : (
@@ -271,7 +271,7 @@ export default function LeakDetailsSheet({
                 type="button"
                 onClick={handleCancel}
               >
-                {lang === "ru" ? "Отмена" : "Cancel"}
+                {t("leakDetails.cancel")}
               </button>
               <button
                 className={s.btnPrimary}
@@ -279,13 +279,7 @@ export default function LeakDetailsSheet({
                 disabled={saving}
                 onClick={handleSave}
               >
-                {saving
-                  ? lang === "ru"
-                    ? "Сохранение..."
-                    : "Saving..."
-                  : lang === "ru"
-                    ? "Сохранить"
-                    : "Save"}
+                {saving ? t("leakDetails.saving") : t("leakDetails.save")}
               </button>
             </div>
           )}
@@ -294,16 +288,10 @@ export default function LeakDetailsSheet({
 
       <ConfirmSheet
         open={closeConfirmOpen}
-        title={
-          lang === "ru" ? "Закрыть без сохранения?" : "Close without saving?"
-        }
-        description={
-          lang === "ru"
-            ? "Изменения не сохранены. Они будут потеряны."
-            : "Your unsaved changes will be lost."
-        }
-        confirmLabel={lang === "ru" ? "Закрыть" : "Close"}
-        cancelLabel={lang === "ru" ? "Отмена" : "Cancel"}
+        title={t("leakDetails.closeWithoutSavingTitle")}
+        description={t("leakDetails.closeWithoutSavingDescription")}
+        confirmLabel={t("leakDetails.close")}
+        cancelLabel={t("leakDetails.cancel")}
         onConfirm={confirmClose}
         onCancel={cancelClose}
       />

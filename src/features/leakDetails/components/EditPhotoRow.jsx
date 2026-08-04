@@ -16,7 +16,7 @@ export default function EditPhotoRow({
   showAfter = true,
   showRepair = false,
 }) {
-  const { lang, t } = useLanguage();
+  const { t } = useLanguage();
   const [activeSlot, setActiveSlot] = useState(null);
 
   const slots = [
@@ -29,7 +29,7 @@ export default function EditPhotoRow({
     },
     {
       key: "repair",
-      label: lang === "ru" ? "В ремонте" : "Under repair",
+      label: t("leakDetails.statuses.in_progress"),
       src: srcRepair,
       onCamera: onEditRepair,
       onGallery: onPickRepair,
