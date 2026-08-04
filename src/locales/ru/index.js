@@ -7,6 +7,7 @@ import { footer } from "./footer";
 import { header } from "./header";
 import { leakDetails } from "./leakDetails";
 import { mainPage } from "./mainPage";
+import { map } from "./map";
 import { monitoring } from "./monitoring";
 import { photoInput } from "./photoInput";
 import { projectSetup } from "./projectSetup";
@@ -26,6 +27,7 @@ export const translation = {
   header,
   leakDetails,
   mainPage,
+  map,
   monitoring,
   photoInput,
   projectSetup,

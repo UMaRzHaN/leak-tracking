@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import { handleExport } from "@/pages/MapPage/handleExport";
 
 export function useMapExport({
@@ -8,6 +9,8 @@ export function useMapExport({
   notify,
   lang,
 }) {
+  const { t } = useLanguage();
+
   const handleExportKML = useCallback(async () => {
     const { saveLeaksKML } = await import("@/pages/MapPage/kml");
 
@@ -16,17 +19,11 @@ export function useMapExport({
       saveFn: () =>
         saveLeaksKML(visibleLeaks, projectType, projectFolder, lang),
       onSuccess: (result) =>
-        notify(
-          "success",
-          result?.message ||
-            (lang === "ru"
-              ? "KML-файл успешно экспортирован"
-              : "KML file exported successfully"),
-        ),
+        notify("success", result?.message || t("map.kmlExported")),
       onError: (message) => notify("error", message),
-      lang,
+      t,
     });
-  }, [visibleLeaks, projectType, projectFolder, notify, lang]);
+  }, [visibleLeaks, projectType, projectFolder, notify, lang, t]);
 
   return { handleExportKML };
 }

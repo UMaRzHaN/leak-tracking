@@ -50,14 +50,15 @@ export default function MapControls({
     : MONITORING_FILTER.ALL;
   const monitoringActive =
     hasMonitoringRound && activeMonitoringFilter !== MONITORING_FILTER.ALL;
-  const monitoringLabels =
-    lang === "ru"
-      ? { due: "К проверке", checked: "Проверено", all: "Все теги" }
-      : { due: "To check", checked: "Checked", all: "All tags" };
+  const monitoringLabels = {
+    due: t("map.monitoringDue"),
+    checked: t("map.monitoringChecked"),
+    all: t("map.monitoringAll"),
+  };
   const formatRadius = (radius) =>
     radius >= 1000
-      ? `${radius / 1000}${lang === "ru" ? "км" : "km"}`
-      : `${radius}${lang === "ru" ? "м" : "m"}`;
+      ? `${radius / 1000}${t("map.radiusKm")}`
+      : `${radius}${t("map.radiusM")}`;
   const toggleFilterMenu = (menu) =>
     setOpenFilterMenu((current) => (current === menu ? null : menu));
   const selectNearbyRadius = (radius) => {
@@ -127,9 +128,7 @@ export default function MapControls({
           }`}
           onClick={() => toggleFilterMenu(FILTER_MENU.MONITORING)}
           aria-expanded={isMonitoringOpen}
-          aria-label={
-            lang === "ru" ? "Фильтр по мониторингу" : "Monitoring filter"
-          }
+          aria-label={t("map.monitoringFilter")}
         >
           <svg
             className={s.controlIcon}
@@ -178,7 +177,7 @@ export default function MapControls({
         type="button"
         className={`${s.controlBtn} ${heatmapEnabled ? s.controlBtnActive : ""}`}
         onClick={onToggleHeatmap}
-        aria-label={lang === "ru" ? "Тепловая карта" : "Heatmap"}
+        aria-label={t("map.heatmap")}
       >
         <svg
           className={s.controlIcon}
@@ -202,7 +201,7 @@ export default function MapControls({
           className={`${s.controlBtn} ${statusActive ? s.controlBtnActive : ""}`}
           onClick={() => toggleFilterMenu(FILTER_MENU.STATUS)}
           aria-expanded={isStatusOpen}
-          aria-label={lang === "ru" ? "Фильтр по статусу" : "Status filter"}
+          aria-label={t("map.statusFilter")}
         >
           <svg
             className={s.controlIcon}
@@ -229,7 +228,7 @@ export default function MapControls({
             className={s.filterOptionBtn}
             onClick={onStatusClear}
           >
-            {lang === "ru" ? "Все" : "All"}
+            {t("map.all")}
           </button>
           {STATUS_ORDER.map((status) => {
             const meta = getStatusMeta(status, t);
@@ -266,9 +265,7 @@ export default function MapControls({
           className={`${s.controlBtn} ${priorityActive ? s.controlBtnActive : ""}`}
           onClick={() => toggleFilterMenu(FILTER_MENU.PRIORITY)}
           aria-expanded={isPriorityOpen}
-          aria-label={
-            lang === "ru" ? "Фильтр по приоритету" : "Priority filter"
-          }
+          aria-label={t("map.priorityFilter")}
         >
           <svg
             className={s.controlIcon}
@@ -292,7 +289,7 @@ export default function MapControls({
             className={s.filterOptionBtn}
             onClick={onPriorityClear}
           >
-            {lang === "ru" ? "Все" : "All"}
+            {t("map.all")}
           </button>
           {PRIORITY_ORDER.map((priority) => {
             const meta = getPriorityMeta(priority, t, lang);
@@ -330,7 +327,7 @@ export default function MapControls({
             className={`${s.controlBtn} ${nearbyOnly ? s.controlBtnActive : ""}`}
             onClick={() => toggleFilterMenu(FILTER_MENU.NEARBY)}
             aria-expanded={isNearbyOpen}
-            aria-label={lang === "ru" ? "Утечки рядом" : "Nearby leaks"}
+            aria-label={t("map.nearbyLeaks")}
           >
             <svg
               className={s.controlIcon}
@@ -353,7 +350,7 @@ export default function MapControls({
               className={s.filterOptionBtn}
               onClick={clearNearby}
             >
-              {lang === "ru" ? "\u0412\u0441\u0435" : "All"}
+              {t("map.all")}
             </button>
             {nearbyRadiusOptions.map((radius) => (
               <button
@@ -379,9 +376,7 @@ export default function MapControls({
         onClick={downloading ? onCancelDownload : onDownload}
         aria-label={
           downloading
-            ? lang === "ru"
-              ? "Отменить скачивание карты"
-              : "Cancel map download"
+            ? t("map.cancelDownload")
             : t("map.controls.downloadArea", {
                 defaultValue: "Download current area map",
               })

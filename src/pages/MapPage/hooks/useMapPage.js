@@ -224,7 +224,7 @@ export function useMapPage({
   }, [heatmapEnabled, markerLeaks, mapReady]);
 
   const { tileProgress, downloading, handleDownloadArea, cancelDownload } =
-    useOfflineMapActions({ mapRef, notify, lang });
+    useOfflineMapActions({ mapRef, notify });
   const { handleExportKML } = useMapExport({
     visibleLeaks,
     projectType: activeProject?.type,

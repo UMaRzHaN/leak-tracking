@@ -1,0 +1,36 @@
+export const map = {
+  noDataToExport: "No data to export",
+  exportUnavailable: "Export is not available for this project",
+  exportError: "Export error",
+  kmlExported: "KML file exported successfully",
+  noTilesToDownload: "No tiles to download",
+
+  popup: {
+    tag: "Tag No.",
+    component: "Component",
+    description: "Leak description",
+    status: "Status",
+  },
+
+  tilesSaved: "Saved {{total}} tiles",
+  tilesFailed: "Failed to download {{failed}} tiles",
+  tilesDownloaded: "downloaded {{count}}",
+  tilesAlreadyCached: "cached {{count}}",
+  tilesFailedPart: "failed {{count}}",
+  downloadFailed: "✕ Download failed",
+  downloadCancelled: "Cancelled — saved {{done}} of {{total}}",
+  downloading: "Downloading {{percent}}%",
+  cancelDownload: "Cancel map download",
+
+  monitoringFilter: "Monitoring filter",
+  monitoringDue: "To check",
+  monitoringChecked: "Checked",
+  monitoringAll: "All tags",
+  heatmap: "Heatmap",
+  statusFilter: "Status filter",
+  priorityFilter: "Priority filter",
+  nearbyLeaks: "Nearby leaks",
+  all: "All",
+  radiusKm: "km",
+  radiusM: "m",
+};

@@ -106,21 +106,12 @@ function leakIcon(leak) {
 }
 
 function createPopupEl(leak) {
-  const lang = i18n.language === "en" ? "en" : "ru";
-  const labels =
-    lang === "ru"
-      ? {
-          tag: "Бирка №",
-          component: "Компонент",
-          description: "Описание утечки",
-          status: "Статус",
-        }
-      : {
-          tag: "Tag No.",
-          component: "Component",
-          description: "Leak description",
-          status: "Status",
-        };
+  const labels = {
+    tag: i18n.t("map.popup.tag"),
+    component: i18n.t("map.popup.component"),
+    description: i18n.t("map.popup.description"),
+    status: i18n.t("map.popup.status"),
+  };
   const meta = getStatusMeta(leak.status, i18n.t.bind(i18n));
   const el = document.createElement("div");
 

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export function useOfflineMapActions({ mapRef, notify, lang }) {
+import { useLanguage } from "@/app/hooks/useLanguage";
+
+export function useOfflineMapActions({ mapRef, notify }) {
+  const { t } = useLanguage();
   const [tileProgress, setTileProgress] = useState(null);
   const [downloading, setDownloading] = useState(false);
   const abortControllerRef = useRef(null);
@@ -62,10 +65,7 @@ export function useOfflineMapActions({ mapRef, notify, lang }) {
 
       const urls = [...urlSet];
       if (urls.length === 0) {
-        notify(
-          "error",
-          lang === "ru" ? "Нет тайлов для скачивания" : "No tiles to download",
-        );
+        notify("error", t("map.noTilesToDownload"));
         return;
       }
 
@@ -100,7 +100,7 @@ export function useOfflineMapActions({ mapRef, notify, lang }) {
         );
       }
     }
-  }, [downloading, notify, lang, mapRef]);
+  }, [downloading, notify, mapRef, t]);
 
   return { tileProgress, downloading, handleDownloadArea, cancelDownload };
 }

@@ -1,26 +1,14 @@
 import { logger } from "@/utils/logger";
 
-export async function handleExport({
-  leaks,
-  saveFn,
-  onSuccess,
-  onError,
-  lang = "ru",
-}) {
+export async function handleExport({ leaks, saveFn, onSuccess, onError, t }) {
   try {
     if (!leaks.length) {
-      onError?.(
-        lang === "ru" ? "Нет данных для экспорта" : "No data to export",
-      );
+      onError?.(t("map.noDataToExport"));
       return;
     }
 
     if (!saveFn) {
-      onError?.(
-        lang === "ru"
-          ? "Экспорт недоступен для этого проекта"
-          : "Export is not available for this project",
-      );
+      onError?.(t("map.exportUnavailable"));
       return;
     }
 
@@ -28,6 +16,6 @@ export async function handleExport({
     onSuccess?.(result);
   } catch (error) {
     logger.error("[handleExport] Export failed:", error);
-    onError?.(lang === "ru" ? "Ошибка экспорта" : "Export error");
+    onError?.(t("map.exportError"));
   }
 }

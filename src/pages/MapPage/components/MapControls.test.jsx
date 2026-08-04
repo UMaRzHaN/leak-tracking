@@ -2,12 +2,12 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import MapControls from "./MapControls";
 
-vi.mock("@/app/hooks/useLanguage", () => ({
-  useLanguage: () => ({
-    lang: "ru",
-    t: (_key, options) => options?.defaultValue ?? _key,
-  }),
-}));
+// Resolves against the real English locale, so these assertions fail if the
+// screen loses a translation rather than quietly falling back to the key.
+vi.mock("@/app/hooks/useLanguage", async () => {
+  const { englishLanguageHook } = await import("@/test/translate");
+  return englishLanguageHook();
+});
 
 function renderControls(overrides = {}) {
   const props = {
@@ -53,7 +53,7 @@ describe("MapControls monitoring filter", () => {
     const props = renderControls({ downloading: true });
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Отменить скачивание карты" }),
+      screen.getByRole("button", { name: "Cancel map download" }),
     );
     expect(props.onCancelDownload).toHaveBeenCalledOnce();
     expect(props.onDownload).not.toHaveBeenCalled();
@@ -62,20 +62,18 @@ describe("MapControls monitoring filter", () => {
   it("opens inside the map controls and selects a monitoring state", () => {
     const props = renderControls();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Фильтр по мониторингу" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Monitoring filter" }));
 
-    const monitoringOptions = ["Все теги", "К проверке", "Проверено"].map(
-      (name) => screen.getByRole("button", { name }),
+    const monitoringOptions = ["All tags", "To check", "Checked"].map((name) =>
+      screen.getByRole("button", { name }),
     );
     expect(
       [...monitoringOptions[0].parentElement.querySelectorAll("button")].map(
         (button) => button.textContent,
       ),
-    ).toEqual(["Все теги", "К проверке", "Проверено"]);
+    ).toEqual(["All tags", "To check", "Checked"]);
     expect(monitoringOptions[1].getAttribute("aria-pressed")).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Проверено" }));
+    fireEvent.click(screen.getByRole("button", { name: "Checked" }));
     expect(props.onMonitoringChange).toHaveBeenCalledWith("checked");
   });
 
@@ -84,15 +82,13 @@ describe("MapControls monitoring filter", () => {
       hasMonitoringRound: false,
     });
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Фильтр по мониторингу" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Monitoring filter" }));
     expect(
       screen
-        .getByRole("button", { name: "Все теги" })
+        .getByRole("button", { name: "All tags" })
         .getAttribute("aria-pressed"),
     ).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "К проверке" }));
+    fireEvent.click(screen.getByRole("button", { name: "To check" }));
     expect(props.onMonitoringChange).toHaveBeenCalledWith("all");
   });
 });

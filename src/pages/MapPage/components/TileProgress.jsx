@@ -1,39 +1,30 @@
 import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "@/pages/MapPage/MapPage.module.scss";
 
-function buildStatsLabel({ lang, progress }) {
+function buildStatsLabel({ t, progress }) {
   const { stats } = progress;
 
   if (!stats) {
-    return lang === "ru"
-      ? `Сохранено ${progress.total} тайлов`
-      : `Saved ${progress.total} tiles`;
+    return t("map.tilesSaved", { total: progress.total });
   }
 
   if (stats.saved === 0 && stats.alreadyCached === 0 && stats.failed > 0) {
-    return lang === "ru"
-      ? `Не удалось скачать ${stats.failed} тайлов`
-      : `Failed to download ${stats.failed} tiles`;
+    return t("map.tilesFailed", { failed: stats.failed });
   }
 
-  const parts =
-    lang === "ru"
-      ? [
-          stats.saved > 0 ? `скачано ${stats.saved}` : null,
-          stats.alreadyCached > 0 ? `уже было ${stats.alreadyCached}` : null,
-          stats.failed > 0 ? `не удалось ${stats.failed}` : null,
-        ]
-      : [
-          stats.saved > 0 ? `downloaded ${stats.saved}` : null,
-          stats.alreadyCached > 0 ? `cached ${stats.alreadyCached}` : null,
-          stats.failed > 0 ? `failed ${stats.failed}` : null,
-        ];
+  const parts = [
+    stats.saved > 0 ? t("map.tilesDownloaded", { count: stats.saved }) : null,
+    stats.alreadyCached > 0
+      ? t("map.tilesAlreadyCached", { count: stats.alreadyCached })
+      : null,
+    stats.failed > 0 ? t("map.tilesFailedPart", { count: stats.failed }) : null,
+  ];
 
   return parts.filter(Boolean).join(", ");
 }
 
 export default function TileProgress({ progress }) {
-  const { lang } = useLanguage();
+  const { t } = useLanguage();
 
   if (!progress) return null;
 
@@ -42,20 +33,17 @@ export default function TileProgress({ progress }) {
 
   const label =
     progress.status === "success"
-      ? `✓ ${buildStatsLabel({ lang, progress })}`
+      ? `✓ ${buildStatsLabel({ t, progress })}`
       : progress.status === "error"
         ? progress.stats
-          ? `✕ ${buildStatsLabel({ lang, progress })}`
-          : lang === "ru"
-            ? "✕ Ошибка скачивания"
-            : "✕ Download failed"
+          ? `✕ ${buildStatsLabel({ t, progress })}`
+          : t("map.downloadFailed")
         : progress.status === "cancelled"
-          ? lang === "ru"
-            ? `Отменено — сохранено ${progress.done} из ${progress.total}`
-            : `Cancelled — saved ${progress.done} of ${progress.total}`
-          : lang === "ru"
-            ? `Загрузка ${percent}%`
-            : `Downloading ${percent}%`;
+          ? t("map.downloadCancelled", {
+              done: progress.done,
+              total: progress.total,
+            })
+          : t("map.downloading", { percent });
 
   return (
     <div

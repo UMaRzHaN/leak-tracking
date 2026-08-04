@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { translate } from "@/test/translate";
 
 vi.mock("@/utils/logger", () => ({
   logger: {
@@ -21,7 +22,7 @@ describe("handleExport", () => {
       leaks: [],
       saveFn: vi.fn(),
       onError,
-      lang: "en",
+      t: translate,
     });
 
     expect(onError).toHaveBeenCalledWith("No data to export");
@@ -34,7 +35,7 @@ describe("handleExport", () => {
       leaks: [{ id: "l1" }],
       saveFn: null,
       onError,
-      lang: "en",
+      t: translate,
     });
 
     expect(onError).toHaveBeenCalledWith(
@@ -49,7 +50,7 @@ describe("handleExport", () => {
       leaks: [{ id: "l1" }],
       saveFn: vi.fn().mockRejectedValue(new Error("boom")),
       onError,
-      lang: "en",
+      t: translate,
     });
 
     expect(loggerModule.logger.error).toHaveBeenCalled();
