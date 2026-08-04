@@ -1,14 +1,21 @@
 # Оставшиеся задачи
 
-**Дата:** 2026-08-04
-**Состояние на:** `2227743`
+**Дата:** 2026-08-05
+**Состояние на:** `ab7208f`
 
 Что осталось после аудита и последующей работы. Числа проверены на текущем коде,
 а не взяты из отчётов.
 
-Состояние гейтов: lint, format, typecheck, maintainability, coverage-ratchet,
-build, bundle, licenses — зелёные. 175 тест-файлов, 1427 тестов. Android:
-42 unit-теста, `lintDebug` чист.
+Состояние гейтов: lint, format, typecheck, check:clean, maintainability,
+coverage-ratchet, build, bundle, licenses, `npm audit` — зелёные. 177
+тест-файлов, 1510 тестов. `verify:release` проходит целиком.
+
+**e2e прогнаны локально и проходят:** 26/26 (chromium и mobile-chromium) плюс
+offline-smoke прод-сборки. Локальный кэш Playwright был устаревшим
+(chromium-1228 при нужном 1234) — отсюда и «ни разу не запускались»; нужная
+сборка доустановлена.
+
+Android: 84 unit-теста, `lintDebug` чист.
 
 ---
 
@@ -41,6 +48,27 @@ build, bundle, licenses — зелёные. 175 тест-файлов, 1427 те
   отдаёт новый `t` на каждый вызов — бесконечный цикл и смерть воркера **без
   единого упавшего утверждения**: файл просто исчезает из прогона. Проверять
   число тестов, а не только «passed».
+
+### Чего не видел счётчик тернарников
+
+Двенадцать литеральных ключей не существовали ни в одной локали.
+`t(key, { defaultValue })` на отсутствующий ключ не падает — он отдаёт
+default, и все двенадцать были английскими. Русский читатель видел «My
+location», «Search leaks», «Change status», «ZIP archive downloaded
+successfully» и результаты массовых действий по-английски. Страж паритета
+этого не ловил: он сравнивает локали друг с другом, а обе одинаково не знали
+ключа.
+
+Плюс четырнадцать сообщений в `useLeakActions` и `useMainPageActions` были
+захардкожены по-русски — обычные строки, не тернарники, поэтому в счётчик не
+попали.
+
+Теперь есть страж: `locales.test.js` вытаскивает каждый литеральный `t("…")`
+из `src` и падает на любом, которого нет в локалях, называя ключ и файл.
+
+`src/utils/status.js` держал последние в UI-слое словари вида
+`{ ru: …, en: … }` и выбирал между ними, читая язык из хранилища — в обход
+активного экземпляра i18n. Оба удалены.
 
 ### Что осталось от §3: placeholder и hint
 
@@ -101,8 +129,23 @@ build, bundle, licenses — зелёные. 175 тест-файлов, 1427 те
 
 ## 3. Покрытие тестами
 
-**Сейчас:** 78,4 % statements, 68,0 % branches. Ratchet сторожит 47 файлов
-критичного пути — они деградировать не могут.
+**Сейчас:** 80,4 % statements, 69,6 % branches. Глобальный порог поднят до
+78/67/72/80. Ratchet сторожит пофайловые полы; в него добавлены четыре хука,
+закрытые в этой сессии, — деградировать они не могут.
+
+Закрыто:
+
+```
+useLeakActions        40% → 94%
+useMainPageActions    41% → 94%
+useBulkActions        57% → 98%
+useGeolocation        60% → 91%
+```
+
+Это пути, которые пишут пользовательские данные, и ветка GPS. У
+`useGeolocation` до этого не было ни одного теста на браузерный путь — теперь
+есть отдельный `useGeolocation.web.test.js` на Permissions API (granted /
+revoked / unsupported / отсутствует) и на переключатель GPS.
 
 **Файлы с нулевым покрытием**, где есть реальная логика:
 
@@ -119,17 +162,10 @@ build, bundle, licenses — зелёные. 175 тест-файлов, 1427 те
 ```
 22%  pages/DataBase/hooks/useDataBaseExport.js
 28%  features/leakDetails/components/viewBlockUtils.js
-40%  pages/DataBase/hooks/useLeakActions.js
-41%  pages/MainPage/hooks/useMainPageActions.js
 45%  pages/MapPage/offlineMap.js
 49%  features/calculationParameters/CalculationParametersForm.jsx
 53%  features/leakDetails/hooks/useLeakDetailsPersistence.js
-57%  pages/DataBase/hooks/useBulkActions.js
-60%  hooks/useGeolocation.js
 ```
-
-`useGeolocation` стоит отдельного внимания: коммит `21c60ec` заявлен как
-«improve GPS reliability», но надёжность не зафиксирована тестами.
 
 ---
 
@@ -179,7 +215,7 @@ initialGzip  122 677 / 128 000   (95,8 %)
 ```
 
 Запас ~15 КБ. Локали лежат в ленивых чанках (`locale-ru` 45 КБ, `locale-en`
-32 КБ), поэтому миграция i18n бюджет не съела. Следующая заметная фича в
+32 КБ), поэтому ни миграция i18n, ни новые ключи бюджет не съели. Следующая заметная фича в
 initial-графе уронит CI.
 
 ### Мажорные версии
@@ -198,26 +234,54 @@ web-vitals      2 → 6       jsdom      29 → 30
 ### Дублирование порогов покрытия
 
 Пофайловые пороги заданы **в двух местах**: `vite.config.mjs`
-(`coverage.thresholds`) и `scripts/coverage-ratchet.json`. Стоит свести к
-одному источнику.
+(`coverage.thresholds`) и `scripts/coverage-ratchet.json`. При подъёме порогов
+пришлось править оба. Стоит свести к одному источнику.
 
 ---
 
-## 6. Что не проверялось локально
+## 6. Готовность к продакшену
 
-- **e2e / Playwright.** Ни разу не запускались. Важно: job `e2e` был сломан
-  битым SHA до коммита `a419345`, то есть offline-smoke продакшен-сборки не
-  выполнялся неизвестно сколько. Починку подтвердит только реальный прогон CI.
-- **Android instrumented-тесты.** Unit-тесты гоняются локально (`cap sync`
-  пишет только в игнорируемые пути), instrumented — нет, нужен эмулятор.
+### Блокеры выпуска Android
+
+**Подпись релиза не настроена.** `node scripts/verify-android-signing.mjs`:
+
+```
+Android release is not configured. Missing: ANDROID_KEYSTORE_PATH,
+ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD,
+ANDROID_VERSION_CODE, ANDROID_VERSION_NAME
+```
+
+`npm run android:release` падает на первом шаге, подписанный APK/AAB собрать
+нельзя. Ключи создаёт владелец проекта.
+
+**Instrumented-тесты ни разу не выполнялись.** В CI job есть (API 24 и 35),
+локально нужен эмулятор. Приложение Android-first — Filesystem API и локальная
+Wi-Fi-синхронизация имеют native-половину, а именно её проверяют instrumented.
+JS-сторона синхронизации покрыта на 87,5 %, Kotlin — 84 unit-теста, но стык
+между ними не проверен.
+
+### Процесс
+
+`main` отстаёт на 437 коммитов, его верхушка — «Android APP», «Test», «Commit
+changes». Релизный путь целиком ни разу не проходили: всё живёт на
+`codex/local-wifi-sync`. Прежде чем выпускать, надо один раз довести коммит до
+`main` через CI и увидеть все шесть job'ов зелёными — включая те два, что
+локально не воспроизвести.
+
+### Веб/PWA
+
+Готов. Все гейты, `verify:release`, e2e и offline-smoke проходят.
 
 ---
 
 ## Порядок, который я бы предложил
 
-1. **Покрытие** (§3) — сначала `useLeakActions` и `useMainPageActions`: там
-   пользовательские действия над данными.
-2. **Placeholder и hint** (§1) — решить вопрос про типы проекта, затем добить
+1. **Keystore и подпись** (§6) — без этого Android не выпускается вообще.
+2. **Влить в `main`**, дождаться зелёного CI целиком — единственный способ
+   проверить instrumented-тесты.
+3. **Placeholder и hint** (§1) — решить вопрос про типы проекта, затем добить
    `addLeak.fields` целиком и убрать список долга из `locales.test.js`.
-3. **Мажоры** (§5) — `i18next` больше ничем не заблокирован.
-4. **Производительность** (§4) — самое дорогое, требует браузерного стенда.
+4. **Покрытие** (§3) — из оставшегося важнее всего `useLeakDetailsPersistence`
+   и `offlineMap`.
+5. **Мажоры** (§5) — `i18next` больше ничем не заблокирован.
+6. **Производительность** (§4) — самое дорогое, требует браузерного стенда.
