@@ -1,15 +1,17 @@
 import { EXCEL_MONITORING_EXPORT_MODE } from "@/utils/excelExportMode";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "../Settings.module.scss";
 
 export default function FieldVisibilitySection({
   activeProject,
   hiddenFields,
-  lang,
   localeTexts,
   exportMode,
   onConfigure,
   onExportModeChange,
 }) {
+  const { t } = useLanguage();
+
   if (!activeProject) return null;
 
   return (
@@ -23,9 +25,7 @@ export default function FieldVisibilitySection({
           {hiddenFields.size > 0 && (
             <strong>
               {" "}
-              {lang === "ru"
-                ? `Скрыто: ${hiddenFields.size}.`
-                : `Hidden: ${hiddenFields.size}.`}
+              {t("settings.hiddenFieldsCount", { count: hiddenFields.size })}
             </strong>
           )}
         </p>

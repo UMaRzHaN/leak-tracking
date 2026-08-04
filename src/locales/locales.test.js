@@ -4,15 +4,6 @@ import { translation as ru } from "@/locales/ru";
 
 const LANGUAGES = { ru, en };
 
-// Keys that legitimately exist in one language only, because they name the
-// *other* language: the Russian UI offers a switch to English and vice versa.
-const CROSS_LANGUAGE_KEYS = [
-  "settings.languageHintEn",
-  "settings.languageHintRu",
-  "settings.toggleButtonEn",
-  "settings.toggleButtonRu",
-];
-
 // Keys English defines and Russian does not, because those Russian strings
 // still live in `defaultValue` arguments at the call sites rather than here.
 // Moving them is part of the wider i18n migration; until then they are listed
@@ -35,7 +26,6 @@ function flattenKeys(node, prefix = "") {
 }
 
 const isKnownGap = (key) =>
-  CROSS_LANGUAGE_KEYS.includes(key) ||
   RUSSIAN_STRINGS_STILL_AT_CALL_SITES.some((prefix) =>
     key.startsWith(`${prefix}.`),
   );

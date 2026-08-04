@@ -1,4 +1,84 @@
 export const settings = {
+  projectTypes: {
+    upstream: "Upstream",
+    upstreamHint: "Production",
+    midstream: "Midstream",
+    midstreamHint: "Transport and storage",
+    downstream: "Downstream",
+    downstreamHint: "Processing and distribution",
+  },
+  selectProjectType: "Select a project type",
+  newProject: "New project",
+  projectName: "Name",
+  projectNamePlaceholder: "Example: Tengiz Q1 2026",
+  deviceFolder: "Device folder:",
+  projectType: "Type",
+  cancel: "Cancel",
+  create: "Create",
+  back: "Back",
+  close: "Close",
+
+  toggleTheme: "Toggle theme",
+  toggleLanguageAria: "Toggle language",
+  hiddenFieldsCount: "Hidden: {{count}}.",
+
+  importWarningLine: "{{sheet}}, row {{row}}, {{column}}: {{message}}",
+  validationWarnings: " Validation warnings: {{count}}.",
+  inExcel: "in Excel",
+  excelPhotos: "Excel photos",
+  importExcelTitle: "Import Excel?",
+  importExcelDescription:
+    "File: {{fileName}}. Sheet: {{sheetName}}. Rows found: {{totalRows}}; to import: {{imported}}; monitoring: {{monitoring}}; photos: {{photos}}; skipped: {{skipped}}.{{warnings}}",
+  importAction: "Import",
+
+  connectionQr: "Connection QR code",
+
+  tileCacheSummary: "{{count}} tiles · ~{{sizeMB}} MB",
+  mapProvider: "Map provider",
+  mapProviderLocalOnly: "Local cache only — external requests disabled",
+  mapProviderUnknown: "Not configured",
+  mapProviderPrivacyHint:
+    "The provider receives requested tile coordinates. Use a corporate server for sensitive sites.",
+
+  photoRequired: "Cannot save without a photo.",
+  photoOptional: "The photo is optional.",
+  photoRequirements: "Photo requirements",
+  photoWhenAdding: "When adding a leak",
+  photoWhenMonitoring: "During monitoring",
+  leakPhotoRequirementSaved: "Leak photo requirement saved",
+  monitoringPhotoRequirementSaved: "Monitoring photo requirement saved",
+
+  integrityTitle: "Data Check",
+  integrityDescription:
+    "Finds missing photos, broken links, coordinates, and duplicate IDs.",
+  integrityChecking: "Checking...",
+  integrityCheck: "Check",
+  integrityNoIssues: "No issues found ({{total}} records)",
+  integrityIssues: "Issues found: {{issues}}",
+  integrityNoPhoto: "No photo",
+  integrityNoRepairPhoto: "No repair photo",
+  integrityNoAfterPhoto: "No after photo",
+  integrityNoMonitoringPhoto: "No monitoring photo",
+  integrityBrokenPhotos: "Broken photos",
+  integrityNoCoordinates: "No coordinates",
+  integrityDuplicateLeakId: "Duplicate leak_id",
+
+  activeProject: "Active project",
+  selectProject: "Select project",
+  notCreatedYet: "not created yet",
+  changeSyncId: "Change syncId",
+  rename: "Rename",
+  deleteConfirm: "Delete?",
+  deleteProject: "Delete project",
+
+  enterSerialNumber: "Enter equipment serial number",
+  gases: {
+    methane: "Methane (CH₄)",
+    ethane: "Ethane (C₂H₆)",
+    propane: "Propane (C₃H₈)",
+    butane: "Butane (C₄H₁₀)",
+  },
+
   title: "Settings",
 
   appearanceTitle: "Appearance",
@@ -8,8 +88,8 @@ export const settings = {
   themeHintLight: "Light background",
 
   languageLabel: "Language",
-  languageHintEn: "Current leak entry page language: English",
-  toggleButtonRu: "RU",
+  languageHint: "Current leak entry page language: English",
+  languageToggleLabel: "RU",
   projects: "Projects",
   addProject: "Add",
   noProjects: "No projects yet. Create your first one.",

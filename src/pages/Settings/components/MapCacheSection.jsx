@@ -1,12 +1,10 @@
 import { OFFLINE_MAP_ONLY, TILE_PROVIDER_ORIGIN } from "@/configs/mapTiles";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "../Settings.module.scss";
 
-export default function MapCacheSection({
-  cacheInfo,
-  lang,
-  localeTexts,
-  onClear,
-}) {
+export default function MapCacheSection({ cacheInfo, localeTexts, onClear }) {
+  const { t } = useLanguage();
+
   return (
     <section className={s.section}>
       <div className={s.sectionHead}>
@@ -18,9 +16,10 @@ export default function MapCacheSection({
           {cacheInfo ? (
             <span className={s.cacheSize}>
               {cacheInfo.count > 0
-                ? lang === "ru"
-                  ? `${cacheInfo.count} тайлов · ~${cacheInfo.sizeMB} МБ`
-                  : `${cacheInfo.count} tiles · ~${cacheInfo.sizeMB} MB`
+                ? t("settings.tileCacheSummary", {
+                    count: cacheInfo.count,
+                    sizeMB: cacheInfo.sizeMB,
+                  })
                 : localeTexts.cacheEmpty}
             </span>
           ) : (
@@ -28,22 +27,15 @@ export default function MapCacheSection({
           )}
         </div>
         <div className={s.cacheInfo}>
-          <span className={s.cacheLabel}>
-            {lang === "ru" ? "Источник карты" : "Map provider"}
-          </span>
+          <span className={s.cacheLabel}>{t("settings.mapProvider")}</span>
           <span className={s.cacheSize}>
             {OFFLINE_MAP_ONLY
-              ? lang === "ru"
-                ? "Только локальный кэш — внешние запросы отключены"
-                : "Local cache only — external requests disabled"
-              : TILE_PROVIDER_ORIGIN ||
-                (lang === "ru" ? "Не определён" : "Not configured")}
+              ? t("settings.mapProviderLocalOnly")
+              : TILE_PROVIDER_ORIGIN || t("settings.mapProviderUnknown")}
           </span>
           {!OFFLINE_MAP_ONLY && TILE_PROVIDER_ORIGIN && (
             <span className={s.cacheSize} role="note">
-              {lang === "ru"
-                ? "Провайдер получает координаты запрашиваемых тайлов. Для чувствительных объектов используйте корпоративный сервер."
-                : "The provider receives requested tile coordinates. Use a corporate server for sensitive sites."}
+              {t("settings.mapProviderPrivacyHint")}
             </span>
           )}
         </div>

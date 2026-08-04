@@ -96,7 +96,7 @@ export default function Settings(props) {
       <PageHeader
         title={localeTexts.title}
         onBack={onBack ?? (() => setPage?.(""))}
-        backLabel={lang === "ru" ? "\u041d\u0430\u0437\u0430\u0434" : "Back"}
+        backLabel={t("settings.back")}
       />
 
       <Notification
@@ -144,7 +144,6 @@ export default function Settings(props) {
         </section>
 
         <AppearanceSection
-          lang={lang}
           localeTexts={localeTexts}
           onToggleLanguage={toggleLanguage}
         />
@@ -156,7 +155,6 @@ export default function Settings(props) {
         <FieldVisibilitySection
           activeProject={activeProject}
           hiddenFields={hiddenFields}
-          lang={lang}
           localeTexts={localeTexts}
           exportMode={monitoringExportMode}
           onConfigure={() => setFieldsModalOpen(true)}
@@ -168,27 +166,16 @@ export default function Settings(props) {
 
         <PhotoRequirementsSection
           activeProject={activeProject}
-          lang={lang}
           leakPhotoRequired={leakPhotoRequired}
           monitoringPhotoRequired={monitoringPhotoRequired}
           onLeakPhotoRequiredChange={(required) => {
             setLeakPhotoRequired(required);
-            notify(
-              "success",
-              lang === "ru"
-                ? "Требование к фото утечки сохранено"
-                : "Leak photo requirement saved",
-            );
+            notify("success", t("settings.leakPhotoRequirementSaved"));
           }}
           onMonitoringPhotoRequiredChange={(required) => {
             setMonitoringPhotoRequired(required);
             setIntegrityReport(null);
-            notify(
-              "success",
-              lang === "ru"
-                ? "Требование к фото мониторинга сохранено"
-                : "Monitoring photo requirement saved",
-            );
+            notify("success", t("settings.monitoringPhotoRequirementSaved"));
           }}
         />
 
@@ -208,7 +195,6 @@ export default function Settings(props) {
 
         <ProjectIntegritySection
           activeProject={activeProject}
-          lang={lang}
           report={integrityReport}
           checking={checkingIntegrity}
           onCheck={handleCheckIntegrity}
@@ -216,7 +202,6 @@ export default function Settings(props) {
 
         <MapCacheSection
           cacheInfo={cacheInfo}
-          lang={lang}
           localeTexts={localeTexts}
           onClear={handleClearMapCache}
         />
@@ -233,7 +218,7 @@ export default function Settings(props) {
         title={settingsConfirmTexts?.title}
         description={settingsConfirmTexts?.description}
         confirmLabel={settingsConfirmTexts?.confirmLabel}
-        cancelLabel={lang === "ru" ? "Отмена" : "Cancel"}
+        cancelLabel={t("settings.cancel")}
         onConfirm={handleSettingsConfirm}
         onCancel={() => setSettingsConfirmAction(null)}
       />
@@ -263,7 +248,6 @@ export default function Settings(props) {
           onConfirm: confirmImport,
           onCancel: cancelImport,
         }}
-        lang={lang}
       />
 
       <ProjectManagementDialogs

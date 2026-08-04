@@ -1,4 +1,5 @@
 import s from "../Settings.module.scss";
+import { useLanguage } from "@/app/hooks/useLanguage";
 
 function RequirementToggle({ label, hint, checked, onChange }) {
   return (
@@ -23,39 +24,32 @@ function RequirementToggle({ label, hint, checked, onChange }) {
 
 export default function PhotoRequirementsSection({
   activeProject,
-  lang,
   leakPhotoRequired,
   monitoringPhotoRequired,
   onLeakPhotoRequiredChange,
   onMonitoringPhotoRequiredChange,
 }) {
+  const { t } = useLanguage();
+
   if (!activeProject) return null;
 
-  const requiredHint =
-    lang === "ru"
-      ? "Без фото сохранить нельзя."
-      : "Cannot save without a photo.";
-  const optionalHint =
-    lang === "ru"
-      ? "Фото можно добавить по желанию."
-      : "The photo is optional.";
+  const requiredHint = t("settings.photoRequired");
+  const optionalHint = t("settings.photoOptional");
 
   return (
     <section className={s.section}>
       <div className={s.sectionHead}>
-        <h2 className={s.sectionTitle}>
-          {lang === "ru" ? "Требования к фото" : "Photo requirements"}
-        </h2>
+        <h2 className={s.sectionTitle}>{t("settings.photoRequirements")}</h2>
       </div>
       <div className={s.photoRequirementsBody}>
         <RequirementToggle
-          label={lang === "ru" ? "При добавлении утечки" : "When adding a leak"}
+          label={t("settings.photoWhenAdding")}
           hint={leakPhotoRequired ? requiredHint : optionalHint}
           checked={leakPhotoRequired}
           onChange={onLeakPhotoRequiredChange}
         />
         <RequirementToggle
-          label={lang === "ru" ? "При мониторинге" : "During monitoring"}
+          label={t("settings.photoWhenMonitoring")}
           hint={monitoringPhotoRequired ? requiredHint : optionalHint}
           checked={monitoringPhotoRequired}
           onChange={onMonitoringPhotoRequiredChange}

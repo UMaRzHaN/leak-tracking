@@ -1,4 +1,5 @@
 import s from "../Settings.module.scss";
+import { useLanguage } from "@/app/hooks/useLanguage";
 
 function IssueRow({ label, values }) {
   return (
@@ -12,25 +13,20 @@ function IssueRow({ label, values }) {
 
 export default function ProjectIntegritySection({
   activeProject,
-  lang,
   report,
   checking,
   onCheck,
 }) {
+  const { t } = useLanguage();
+
   if (!activeProject) return null;
 
   return (
     <section className={s.section}>
       <div className={s.sectionHead}>
         <div>
-          <h2 className={s.sectionTitle}>
-            {lang === "ru" ? "Проверка данных" : "Data Check"}
-          </h2>
-          <p className={s.sectionHint}>
-            {lang === "ru"
-              ? "Ищет пропущенные фото, битые ссылки, координаты и дубли ID."
-              : "Finds missing photos, broken links, coordinates, and duplicate IDs."}
-          </p>
+          <h2 className={s.sectionTitle}>{t("settings.integrityTitle")}</h2>
+          <p className={s.sectionHint}>{t("settings.integrityDescription")}</p>
         </div>
         <button
           className={s.cacheBtn}
@@ -39,12 +35,8 @@ export default function ProjectIntegritySection({
           disabled={checking}
         >
           {checking
-            ? lang === "ru"
-              ? "Проверка..."
-              : "Checking..."
-            : lang === "ru"
-              ? "Проверить"
-              : "Check"}
+            ? t("settings.integrityChecking")
+            : t("settings.integrityCheck")}
         </button>
       </div>
 
@@ -52,43 +44,37 @@ export default function ProjectIntegritySection({
         <div className={s.integrityReport}>
           <div className={report.ok ? s.integrityOk : s.integrityWarn}>
             {report.ok
-              ? lang === "ru"
-                ? `Проблем не найдено (${report.total} записей)`
-                : `No issues found (${report.total} records)`
-              : lang === "ru"
-                ? `Найдено проблем: ${report.issues}`
-                : `Issues found: ${report.issues}`}
+              ? t("settings.integrityNoIssues", { total: report.total })
+              : t("settings.integrityIssues", { issues: report.issues })}
           </div>
           {!report.ok && (
             <div className={s.integrityGrid}>
               <IssueRow
-                label={lang === "ru" ? "Без фото" : "No photo"}
+                label={t("settings.integrityNoPhoto")}
                 values={report.missingPhoto}
               />
               <IssueRow
-                label={lang === "ru" ? "Без фото в ремонте" : "No repair photo"}
+                label={t("settings.integrityNoRepairPhoto")}
                 values={report.missingRepairPhoto ?? []}
               />
               <IssueRow
-                label={lang === "ru" ? "Без фото после" : "No after photo"}
+                label={t("settings.integrityNoAfterPhoto")}
                 values={report.missingAfterPhoto ?? []}
               />
               <IssueRow
-                label={
-                  lang === "ru" ? "Без фото мониторинга" : "No monitoring photo"
-                }
+                label={t("settings.integrityNoMonitoringPhoto")}
                 values={report.missingMonitoringPhoto ?? []}
               />
               <IssueRow
-                label={lang === "ru" ? "Битые фото" : "Broken photos"}
+                label={t("settings.integrityBrokenPhotos")}
                 values={report.brokenPhoto}
               />
               <IssueRow
-                label={lang === "ru" ? "Без координат" : "No coordinates"}
+                label={t("settings.integrityNoCoordinates")}
                 values={report.missingCoords}
               />
               <IssueRow
-                label={lang === "ru" ? "Дубли leak_id" : "Duplicate leak_id"}
+                label={t("settings.integrityDuplicateLeakId")}
                 values={report.duplicateLeakIds}
               />
             </div>

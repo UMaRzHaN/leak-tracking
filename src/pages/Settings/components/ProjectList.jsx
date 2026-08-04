@@ -6,14 +6,14 @@ import s from "./ProjectList.module.scss";
 const PROJECT_ICONS = { upstream: "⛽", midstream: "🔧", downstream: "🏭" };
 const DELETE_ARM_MS = 3000;
 
-function projectTypeMeta(type, lang) {
+function projectTypeMeta(type, t) {
   const meta = PROJECT_META[type];
   if (!meta) return { title: type };
 
   const titles = {
-    upstream: lang === "ru" ? "Добыча" : "Upstream",
-    midstream: lang === "ru" ? "Транспортировка" : "Midstream",
-    downstream: lang === "ru" ? "Переработка" : "Downstream",
+    upstream: t("settings.projectTypes.upstream"),
+    midstream: t("settings.projectTypes.midstream"),
+    downstream: t("settings.projectTypes.downstream"),
   };
 
   return { ...meta, title: titles[type] ?? meta.title };
@@ -52,12 +52,12 @@ function ProjectItem({
   onRemove,
   onChangeSyncId,
 }) {
-  const { lang } = useLanguage();
+  const { t } = useLanguage();
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState(project.name);
   const [deleteArmed, setDeleteArmed] = useState(false);
   const timerRef = useRef(null);
-  const meta = projectTypeMeta(project.type, lang);
+  const meta = projectTypeMeta(project.type, t);
 
   const commitRename = () => {
     const trimmed = nameInput.trim();
@@ -92,13 +92,7 @@ function ProjectItem({
         type="button"
         onClick={onSelect}
         title={
-          isActive
-            ? lang === "ru"
-              ? "Активный проект"
-              : "Active project"
-            : lang === "ru"
-              ? "Выбрать проект"
-              : "Select project"
+          isActive ? t("settings.activeProject") : t("settings.selectProject")
         }
       >
         <span className={s.activeIndicator}>{isActive ? "●" : "○"}</span>
@@ -125,11 +119,7 @@ function ProjectItem({
           )}
           <span className={s.type}>{meta.title ?? project.type}</span>
           <span className={s.syncId}>
-            syncId:{" "}
-            <code>
-              {project.syncId ||
-                (lang === "ru" ? "еще не создан" : "not created yet")}
-            </code>
+            syncId: <code>{project.syncId || t("settings.notCreatedYet")}</code>
           </span>
           <span className={s.folder}>📁 {project.folderName}</span>
         </div>
@@ -140,7 +130,7 @@ function ProjectItem({
           <button
             className={s.actionBtn}
             type="button"
-            title={lang === "ru" ? "Изменить syncId" : "Change syncId"}
+            title={t("settings.changeSyncId")}
             onClick={onChangeSyncId}
           >
             ID
@@ -150,7 +140,7 @@ function ProjectItem({
           <button
             className={s.actionBtn}
             type="button"
-            title={lang === "ru" ? "Переименовать" : "Rename"}
+            title={t("settings.rename")}
             onClick={() => {
               setNameInput(project.name);
               setEditing(true);
@@ -166,7 +156,7 @@ function ProjectItem({
             onClick={confirmDelete}
           >
             <span className={s.deleteBtnLabel}>
-              {lang === "ru" ? "Удалить?" : "Delete?"}
+              {t("settings.deleteConfirm")}
             </span>
             <span className={s.deleteBtnProgress} />
           </button>
@@ -174,7 +164,7 @@ function ProjectItem({
           <button
             className={`${s.actionBtn} ${s.deleteBtn}`}
             type="button"
-            title={lang === "ru" ? "Удалить проект" : "Delete project"}
+            title={t("settings.deleteProject")}
             onClick={armDelete}
           >
             ✕

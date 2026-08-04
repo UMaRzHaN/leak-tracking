@@ -6,37 +6,34 @@ import s from "./AddProjectForm.module.scss";
 
 const PROJECT_ICONS = { upstream: "⛽", midstream: "🔧", downstream: "🏭" };
 
-function projectTexts(lang) {
+function projectTexts(t) {
   return {
     upstream: {
-      title: lang === "ru" ? "Добыча" : "Upstream",
-      description: lang === "ru" ? "Добыча" : "Production",
+      title: t("settings.projectTypes.upstream"),
+      description: t("settings.projectTypes.upstreamHint"),
     },
     midstream: {
-      title: lang === "ru" ? "Транспортировка" : "Midstream",
-      description:
-        lang === "ru" ? "Транспортировка и хранение" : "Transport and storage",
+      title: t("settings.projectTypes.midstream"),
+      description: t("settings.projectTypes.midstreamHint"),
     },
     downstream: {
-      title: lang === "ru" ? "Переработка" : "Downstream",
-      description:
-        lang === "ru" ? "Переработка и сбыт" : "Processing and distribution",
+      title: t("settings.projectTypes.downstream"),
+      description: t("settings.projectTypes.downstreamHint"),
     },
   };
 }
 
 export default function AddProjectForm({ onConfirm, onCancel }) {
-  const { lang } = useLanguage();
+  const { t } = useLanguage();
+
   const [name, setName] = useState("");
   const [type, setType] = useState("");
   const [error, setError] = useState("");
-  const texts = projectTexts(lang);
+  const texts = projectTexts(t);
 
   const handleSubmit = () => {
     if (!type) {
-      setError(
-        lang === "ru" ? "Выберите тип проекта" : "Select a project type",
-      );
+      setError(t("settings.selectProjectType"));
       return;
     }
     onConfirm(name.trim(), type);
@@ -46,20 +43,14 @@ export default function AddProjectForm({ onConfirm, onCancel }) {
 
   return (
     <div className={s.form}>
-      <h3 className={s.formTitle}>
-        {lang === "ru" ? "Новый проект" : "New project"}
-      </h3>
+      <h3 className={s.formTitle}>{t("settings.newProject")}</h3>
 
       <div className={s.field}>
-        <label className={s.label}>{lang === "ru" ? "Название" : "Name"}</label>
+        <label className={s.label}>{t("settings.projectName")}</label>
         <input
           className={s.input}
           type="text"
-          placeholder={
-            lang === "ru"
-              ? "Например: Тенгиз Q1 2026"
-              : "Example: Tengiz Q1 2026"
-          }
+          placeholder={t("settings.projectNamePlaceholder")}
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {
@@ -70,14 +61,13 @@ export default function AddProjectForm({ onConfirm, onCancel }) {
           autoFocus
         />
         <span className={s.hint}>
-          {lang === "ru" ? "Папка на устройстве:" : "Device folder:"}{" "}
-          <code>{preview}</code>
+          {t("settings.deviceFolder")} <code>{preview}</code>
         </span>
       </div>
 
       <div className={s.field}>
         <label className={s.label}>
-          {lang === "ru" ? "Тип" : "Type"} <span className={s.req}>*</span>
+          {t("settings.projectType")} <span className={s.req}>*</span>
         </label>
         <div className={s.types}>
           {Object.entries(PROJECT_META).map(([id]) => (
@@ -101,7 +91,7 @@ export default function AddProjectForm({ onConfirm, onCancel }) {
 
       <div className={s.footer}>
         <button className={s.cancelBtn} type="button" onClick={onCancel}>
-          {lang === "ru" ? "Отмена" : "Cancel"}
+          {t("settings.cancel")}
         </button>
         <button
           className={s.createBtn}
@@ -109,7 +99,7 @@ export default function AddProjectForm({ onConfirm, onCancel }) {
           onClick={handleSubmit}
           disabled={!type}
         >
-          {lang === "ru" ? "Создать" : "Create"}
+          {t("settings.create")}
         </button>
       </div>
     </div>

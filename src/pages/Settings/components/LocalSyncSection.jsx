@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "../Settings.module.scss";
 
 const SYNC_BUSY_STATUSES = new Set([
@@ -87,6 +88,8 @@ function getTexts(lang, status) {
 }
 
 export default function LocalSyncSection({ sync, lang }) {
+  const { t } = useLanguage();
+
   const [host, setHost] = useState("");
   const [port, setPort] = useState("");
   const [code, setCode] = useState("");
@@ -196,11 +199,7 @@ export default function LocalSyncSection({ sync, lang }) {
                 {session.qrSvg ? (
                   <img
                     className={s.localSyncQr}
-                    alt={
-                      lang === "ru"
-                        ? "QR-код подключения"
-                        : "Connection QR code"
-                    }
+                    alt={t("settings.connectionQr")}
                     src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(
                       session.qrSvg,
                     )}`}

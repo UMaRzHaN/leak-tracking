@@ -1,11 +1,10 @@
 import { useTheme } from "@/app/hooks/useTheme";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "../Settings.module.scss";
 
-export default function AppearanceSection({
-  lang,
-  localeTexts,
-  onToggleLanguage,
-}) {
+export default function AppearanceSection({ localeTexts, onToggleLanguage }) {
+  const { t } = useLanguage();
+
   const { dark, toggle: toggleTheme } = useTheme();
 
   return (
@@ -27,7 +26,7 @@ export default function AppearanceSection({
           className={`${s.themeToggle} ${dark ? s.themeToggleDark : ""}`}
           type="button"
           onClick={toggleTheme}
-          aria-label={lang === "ru" ? "Переключить тему" : "Toggle theme"}
+          aria-label={t("settings.toggleTheme")}
         >
           <span className={s.themeThumb} />
         </button>
@@ -36,21 +35,15 @@ export default function AppearanceSection({
       <div className={s.themeRow}>
         <div className={s.themeInfo}>
           <span className={s.themeLabel}>{localeTexts.languageLabel}</span>
-          <span className={s.themeHint}>
-            {lang === "ru"
-              ? localeTexts.languageHintRu
-              : localeTexts.languageHintEn}
-          </span>
+          <span className={s.themeHint}>{localeTexts.languageHint}</span>
         </div>
         <button
           className={s.languageToggle}
           type="button"
           onClick={onToggleLanguage}
-          aria-label={lang === "ru" ? "Переключить язык" : "Toggle language"}
+          aria-label={t("settings.toggleLanguageAria")}
         >
-          {lang === "ru"
-            ? localeTexts.toggleButtonEn
-            : localeTexts.toggleButtonRu}
+          {localeTexts.languageToggleLabel}
         </button>
       </div>
     </section>

@@ -31,7 +31,7 @@ export default function SettingsModal({
   saveLabel = null,
   allowUnchangedSave = false,
 }) {
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const localeTexts = useMemo(
     () => ({
       title: t("settingsModal.title"),
@@ -43,10 +43,7 @@ export default function SettingsModal({
       equipmentType: t("settingsModal.equipmentType"),
       uncertainty: t("settingsModal.uncertainty"),
       serialNumber: t("settingsModal.serialNumber"),
-      serialNumberRequired:
-        lang === "ru"
-          ? "Укажите серийный номер оборудования"
-          : "Enter equipment serial number",
+      serialNumberRequired: t("settings.enterSerialNumber"),
       equipmentOptions: {
         gfm20: t("settingsModal.equipmentOptions.gfm20"),
         gfm30: t("settingsModal.equipmentOptions.gfm30"),
@@ -57,16 +54,16 @@ export default function SettingsModal({
       gasType: t("settingsModal.gasType"),
       gasOptions: {
         methane: t("settingsModal.gasOptions.methane", {
-          defaultValue: lang === "ru" ? "Метан (CH₄)" : "Methane (CH₄)",
+          defaultValue: t("settings.gases.methane"),
         }),
         ethane: t("settingsModal.gasOptions.ethane", {
-          defaultValue: lang === "ru" ? "Этан (C₂H₆)" : "Ethane (C₂H₆)",
+          defaultValue: t("settings.gases.ethane"),
         }),
         propane: t("settingsModal.gasOptions.propane", {
-          defaultValue: lang === "ru" ? "Пропан (C₃H₈)" : "Propane (C₃H₈)",
+          defaultValue: t("settings.gases.propane"),
         }),
         butane: t("settingsModal.gasOptions.butane", {
-          defaultValue: lang === "ru" ? "Бутан (C₄H₁₀)" : "Butane (C₄H₁₀)",
+          defaultValue: t("settings.gases.butane"),
         }),
       },
       cancel: t("settingsModal.cancel"),
@@ -78,7 +75,7 @@ export default function SettingsModal({
         discardChanges: t("settingsModal.confirm.discardChanges"),
       },
     }),
-    [t, lang],
+    [t],
   );
 
   const [localVars, setLocalVars] = useState(() => pickCalcVars(currentVars));
@@ -151,7 +148,7 @@ export default function SettingsModal({
             type="button"
             className={s.closeBtn}
             onClick={handleCancel}
-            aria-label={lang === "ru" ? "Закрыть" : "Close"}
+            aria-label={t("settings.close")}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M6 6l12 12M18 6L6 18" />

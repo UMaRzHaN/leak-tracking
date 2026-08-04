@@ -1,21 +1,22 @@
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import ImportConflictSheet from "@/features/importConflict/ImportConflictSheet";
 
-function formatExcelValidationSummary(result, lang) {
+function formatExcelValidationSummary(result, t) {
   const count = result?.stats?.validationWarningCount ?? 0;
   if (!count) return "";
   const examples = (result.stats.validationWarnings ?? [])
     .slice(0, 3)
     .map((warning) =>
-      lang === "ru"
-        ? `${warning.sheet}, строка ${warning.row}, ${warning.column}: ${warning.message}`
-        : `${warning.sheet}, row ${warning.row}, ${warning.column}: ${warning.message}`,
+      t("settings.importWarningLine", {
+        sheet: warning.sheet,
+        row: warning.row,
+        column: warning.column,
+        message: warning.message,
+      }),
     )
     .join("; ");
-  const prefix =
-    lang === "ru"
-      ? ` Предупреждения валидации: ${count}.`
-      : ` Validation warnings: ${count}.`;
+  const prefix = t("settings.validationWarnings", { count });
   return examples ? `${prefix} ${examples}` : prefix;
 }
 
@@ -24,8 +25,9 @@ export default function ImportExportDialogs({
   excelConflict,
   excelImport,
   importConfirm,
-  lang,
 }) {
+  const { t } = useLanguage();
+
   return (
     <>
       <ImportConflictSheet
@@ -46,8 +48,8 @@ export default function ImportExportDialogs({
         existingProject={excelConflict.state.existingProject}
         leakCount={excelConflict.state.leakCount}
         mergePreview={excelConflict.state.mergePreview}
-        sourceLabel={lang === "ru" ? "в Excel" : "in Excel"}
-        photoLabel={lang === "ru" ? "Фото Excel" : "Excel photos"}
+        sourceLabel={t("settings.inExcel")}
+        photoLabel={t("settings.excelPhotos")}
         onOverwrite={excelConflict.onOverwrite}
         onMerge={excelConflict.onMerge}
         onCopy={excelConflict.onCopy}
@@ -66,16 +68,27 @@ export default function ImportExportDialogs({
 
       <ConfirmSheet
         open={excelImport.state.open}
-        title={lang === "ru" ? "Импортировать Excel?" : "Import Excel?"}
+        title={t("settings.importExcelTitle")}
         description={
           excelImport.state.result
-            ? lang === "ru"
-              ? `Файл: ${excelImport.state.fileName}. Лист: ${excelImport.state.result.sheetName}. Найдено строк: ${excelImport.state.result.stats.totalRows}; будет импортировано: ${excelImport.state.result.stats.imported}; мониторинг: ${excelImport.state.result.stats.monitoringRecords ?? 0}; фото: ${excelImport.state.result.stats.restoredPhotos ?? 0}; пропущено: ${excelImport.state.result.stats.skipped}.${formatExcelValidationSummary(excelImport.state.result, lang)}`
-              : `File: ${excelImport.state.fileName}. Sheet: ${excelImport.state.result.sheetName}. Rows found: ${excelImport.state.result.stats.totalRows}; to import: ${excelImport.state.result.stats.imported}; monitoring: ${excelImport.state.result.stats.monitoringRecords ?? 0}; photos: ${excelImport.state.result.stats.restoredPhotos ?? 0}; skipped: ${excelImport.state.result.stats.skipped}.${formatExcelValidationSummary(excelImport.state.result, lang)}`
+            ? t("settings.importExcelDescription", {
+                fileName: excelImport.state.fileName,
+                sheetName: excelImport.state.result.sheetName,
+                totalRows: excelImport.state.result.stats.totalRows,
+                imported: excelImport.state.result.stats.imported,
+                monitoring:
+                  excelImport.state.result.stats.monitoringRecords ?? 0,
+                photos: excelImport.state.result.stats.restoredPhotos ?? 0,
+                skipped: excelImport.state.result.stats.skipped,
+                warnings: formatExcelValidationSummary(
+                  excelImport.state.result,
+                  t,
+                ),
+              })
             : ""
         }
-        confirmLabel={lang === "ru" ? "Импортировать" : "Import"}
-        cancelLabel={lang === "ru" ? "Отмена" : "Cancel"}
+        confirmLabel={t("settings.importAction")}
+        cancelLabel={t("settings.cancel")}
         onConfirm={excelImport.onConfirm}
         onCancel={excelImport.onCancel}
       />
