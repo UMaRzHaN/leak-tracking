@@ -258,7 +258,7 @@ describe("useMapPage", () => {
       ]),
       "upstream",
       "project-folder",
-      "en",
+      expect.any(Function),
     );
     expect(current.notification).toEqual({
       type: "success",

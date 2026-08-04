@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { addBackupSheet, BACKUP_SCHEMA_VERSION } from "./backupSheet";
 
+import { translate, translateRu } from "@/test/translate";
+import { buildExcelExportTexts } from "./exportTexts";
+
+const enTexts = buildExcelExportTexts(translate);
+const ruTexts = buildExcelExportTexts(translateRu);
+
 class FakeCell {
   constructor(value = null) {
     this.value = value;
@@ -78,7 +84,7 @@ describe("Excel project backup sheet", () => {
   it("does not add a worksheet without an archive payload", () => {
     const workbook = createWorkbook();
 
-    addBackupSheet(workbook, null, "en");
+    addBackupSheet(workbook, null, enTexts);
 
     expect(workbook.addWorksheet).not.toHaveBeenCalled();
   });
@@ -111,7 +117,7 @@ describe("Excel project backup sheet", () => {
       ],
     };
 
-    addBackupSheet(workbook, payload, "en");
+    addBackupSheet(workbook, payload, enTexts);
 
     const sheet = workbook.sheets[0];
     const summary = getSummary(sheet);
@@ -151,7 +157,7 @@ describe("Excel project backup sheet", () => {
       leaks: [],
     };
 
-    addBackupSheet(workbook, payload, "ru");
+    addBackupSheet(workbook, payload, ruTexts);
 
     const sheet = workbook.sheets[0];
     const summary = getSummary(sheet);

@@ -7,7 +7,6 @@ export function useMapExport({
   projectType,
   projectFolder,
   notify,
-  lang,
 }) {
   const { t } = useLanguage();
 
@@ -16,14 +15,13 @@ export function useMapExport({
 
     await handleExport({
       leaks: visibleLeaks,
-      saveFn: () =>
-        saveLeaksKML(visibleLeaks, projectType, projectFolder, lang),
+      saveFn: () => saveLeaksKML(visibleLeaks, projectType, projectFolder, t),
       onSuccess: (result) =>
         notify("success", result?.message || t("map.kmlExported")),
       onError: (message) => notify("error", message),
       t,
     });
-  }, [visibleLeaks, projectType, projectFolder, notify, lang, t]);
+  }, [visibleLeaks, projectType, projectFolder, notify, t]);
 
   return { handleExportKML };
 }

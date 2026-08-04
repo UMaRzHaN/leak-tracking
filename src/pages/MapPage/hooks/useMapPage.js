@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useLanguage } from "@/app/hooks/useLanguage";
 import { useOfflineMapActions } from "./useOfflineMapActions";
 import { useMapFilters } from "./useMapFilters";
 import { useMapSelection } from "./useMapSelection";
@@ -12,7 +11,6 @@ export function useMapPage({
   gpsEnabled = true,
   sharedFilters = null,
 }) {
-  const { lang } = useLanguage();
   const { activeProject } = useProjectData();
   const exportProjectFolder = activeProject?.folderName;
 
@@ -230,7 +228,6 @@ export function useMapPage({
     projectType: activeProject?.type,
     projectFolder: exportProjectFolder,
     notify,
-    lang,
   });
 
   return {

@@ -59,22 +59,12 @@ function styleHeaderRow(sheet, fillColor) {
   headerRow.height = 34;
 }
 
-export function addBackupSheet(workbook, archivePayload, lang) {
+export function addBackupSheet(workbook, archivePayload, texts) {
   if (!archivePayload) return;
 
   const sheet = workbook.addWorksheet(BACKUP_SHEET_NAME);
-  sheet.addRow([
-    BACKUP_MARKER,
-    BACKUP_SCHEMA_VERSION,
-    lang === "ru" ? "Резервная копия проекта" : "Project backup",
-  ]);
-  sheet.addRow([
-    "Chunk",
-    "Payload",
-    lang === "ru"
-      ? "Сводка предназначена для просмотра. Для восстановления используются скрытые служебные столбцы."
-      : "The summary is for reference. Restore data is stored in hidden system columns.",
-  ]);
+  sheet.addRow([BACKUP_MARKER, BACKUP_SCHEMA_VERSION, texts.backup.title]);
+  sheet.addRow(["Chunk", "Payload", texts.backup.note]);
 
   const serialized = JSON.stringify(archivePayload);
   let chunkCount = 0;
@@ -98,18 +88,7 @@ export function addBackupSheet(workbook, archivePayload, lang) {
       total + (Array.isArray(leak?.history) ? leak.history.length : 0),
     0,
   );
-  const typeLabels =
-    lang === "ru"
-      ? {
-          upstream: "Добыча (Upstream)",
-          midstream: "Транспортировка (Midstream)",
-          downstream: "Переработка (Downstream)",
-        }
-      : {
-          upstream: "Upstream",
-          midstream: "Midstream",
-          downstream: "Downstream",
-        };
+  const typeLabels = texts.backup.projectTypes;
   const exportedAt = parseTimestamp(archivePayload.exportedAt);
   const round = archivePayload.monitoringRound;
   const currentRoundCheckedFromRecords = round
@@ -137,86 +116,46 @@ export function addBackupSheet(workbook, archivePayload, lang) {
     ? Math.max(0, currentRoundTotal - currentRoundChecked)
     : null;
   const emptyValue = "—";
-  const summaryRows =
-    lang === "ru"
-      ? [
-          ["Проект", archivePayload.project?.name || emptyValue, "@"],
-          [
-            "Тип проекта",
-            typeLabels[archivePayload.project?.type] ||
-              archivePayload.project?.type ||
-              emptyValue,
-            "@",
-          ],
-          [
-            "Экспортировано",
-            exportedAt || emptyValue,
-            exportedAt ? EXCEL_DATE_TIME_FORMAT : "@",
-          ],
-          ["Утечек", leaks.length, INTEGER_FORMAT],
-          ["Проверок мониторинга", monitoringCount, INTEGER_FORMAT],
-          ["Записей истории", historyCount, INTEGER_FORMAT],
-          [
-            "Текущий обход",
-            round?.number ? Number(round.number) : emptyValue,
-            round?.number ? '"№ "0' : "@",
-          ],
-          [
-            "Проверено в текущем обходе",
-            currentRoundChecked ?? emptyValue,
-            currentRoundChecked == null ? "@" : INTEGER_FORMAT,
-          ],
-          [
-            "Всего в текущем обходе",
-            currentRoundTotal ?? emptyValue,
-            currentRoundTotal == null ? "@" : INTEGER_FORMAT,
-          ],
-          [
-            "Осталось проверить",
-            currentRoundRemaining ?? emptyValue,
-            currentRoundRemaining == null ? "@" : INTEGER_FORMAT,
-          ],
-          ["Версия резервной копии", BACKUP_SCHEMA_VERSION, INTEGER_FORMAT],
-        ]
-      : [
-          ["Project", archivePayload.project?.name || emptyValue, "@"],
-          [
-            "Project type",
-            typeLabels[archivePayload.project?.type] ||
-              archivePayload.project?.type ||
-              emptyValue,
-            "@",
-          ],
-          [
-            "Exported at",
-            exportedAt || emptyValue,
-            exportedAt ? EXCEL_DATE_TIME_FORMAT : "@",
-          ],
-          ["Leaks", leaks.length, INTEGER_FORMAT],
-          ["Monitoring checks", monitoringCount, INTEGER_FORMAT],
-          ["History records", historyCount, INTEGER_FORMAT],
-          [
-            "Current round",
-            round?.number ? Number(round.number) : emptyValue,
-            round?.number ? '"No. "0' : "@",
-          ],
-          [
-            "Checked in current round",
-            currentRoundChecked ?? emptyValue,
-            currentRoundChecked == null ? "@" : INTEGER_FORMAT,
-          ],
-          [
-            "Total in current round",
-            currentRoundTotal ?? emptyValue,
-            currentRoundTotal == null ? "@" : INTEGER_FORMAT,
-          ],
-          [
-            "Remaining to check",
-            currentRoundRemaining ?? emptyValue,
-            currentRoundRemaining == null ? "@" : INTEGER_FORMAT,
-          ],
-          ["Backup schema", BACKUP_SCHEMA_VERSION, INTEGER_FORMAT],
-        ];
+  const summary = texts.backup.summary;
+  const summaryRows = [
+    [summary.project, archivePayload.project?.name || emptyValue, "@"],
+    [
+      summary.projectType,
+      typeLabels[archivePayload.project?.type] ||
+        archivePayload.project?.type ||
+        emptyValue,
+      "@",
+    ],
+    [
+      summary.exportedAt,
+      exportedAt || emptyValue,
+      exportedAt ? EXCEL_DATE_TIME_FORMAT : "@",
+    ],
+    [summary.leaks, leaks.length, INTEGER_FORMAT],
+    [summary.monitoringChecks, monitoringCount, INTEGER_FORMAT],
+    [summary.historyRecords, historyCount, INTEGER_FORMAT],
+    [
+      summary.currentRound,
+      round?.number ? Number(round.number) : emptyValue,
+      round?.number ? texts.backup.roundNumberFormat : "@",
+    ],
+    [
+      summary.checkedInRound,
+      currentRoundChecked ?? emptyValue,
+      currentRoundChecked == null ? "@" : INTEGER_FORMAT,
+    ],
+    [
+      summary.totalInRound,
+      currentRoundTotal ?? emptyValue,
+      currentRoundTotal == null ? "@" : INTEGER_FORMAT,
+    ],
+    [
+      summary.remainingInRound,
+      currentRoundRemaining ?? emptyValue,
+      currentRoundRemaining == null ? "@" : INTEGER_FORMAT,
+    ],
+    [summary.schemaVersion, BACKUP_SCHEMA_VERSION, INTEGER_FORMAT],
+  ];
 
   const summaryHeaderRow = 4;
   const requiredRows = summaryHeaderRow + summaryRows.length;
@@ -228,10 +167,8 @@ export function addBackupSheet(workbook, archivePayload, lang) {
     sheet.addRow([]);
   }
 
-  sheet.getRow(summaryHeaderRow).getCell(3).value =
-    lang === "ru" ? "Параметр" : "Field";
-  sheet.getRow(summaryHeaderRow).getCell(4).value =
-    lang === "ru" ? "Значение" : "Value";
+  sheet.getRow(summaryHeaderRow).getCell(3).value = texts.backup.fieldColumn;
+  sheet.getRow(summaryHeaderRow).getCell(4).value = texts.backup.valueColumn;
 
   summaryRows.forEach(([label, value, numberFormat], index) => {
     const row = sheet.getRow(summaryHeaderRow + index + 1);

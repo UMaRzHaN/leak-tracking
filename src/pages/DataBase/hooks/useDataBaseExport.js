@@ -105,7 +105,7 @@ export function useDataBaseExport({ displayed, notify }) {
         `!Database_${activeProject?.name || "no_name"}`,
         idbGetPhoto,
         activeProject?.folderName,
-        lang,
+        t,
         {
           monitoringExportMode,
           project: activeProject,

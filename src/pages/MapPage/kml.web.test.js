@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { translate } from "@/test/translate";
 
 vi.mock("@/utils/platform", () => ({ isNative: false }));
 
@@ -18,7 +19,7 @@ describe("KML web export", () => {
         { leak_id: "missing-lng", lat: 10 },
       ],
       "downstream",
-      "en",
+      translate,
     );
 
     expect(kml).toContain("<name>Not specified</name>");
@@ -46,7 +47,7 @@ describe("KML web export", () => {
         [{ leak_id: "A1", lat: 10, lng: 20, station: "S1" }],
         "midstream",
         "alpha",
-        "en",
+        translate,
       );
 
       expect(result).toEqual({

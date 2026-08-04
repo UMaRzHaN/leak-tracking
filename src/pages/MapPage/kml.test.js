@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { translate, translateRu } from "@/test/translate";
 import { exportLeaksKML } from "./kml";
 
 describe("exportLeaksKML", () => {
@@ -17,7 +18,7 @@ describe("exportLeaksKML", () => {
         },
       ],
       "midstream",
-      "ru",
+      translateRu,
     );
 
     expect(kml).toContain("<name>A&amp;B&lt;1&gt;</name>");
@@ -27,7 +28,9 @@ describe("exportLeaksKML", () => {
       "&lt;img src=&quot;https://tracker.test/pixel&quot;&gt; ]]&gt; test",
     );
     expect(kml).not.toContain('<img src="https://tracker.test/pixel">');
+    // The Russian export uses the Russian labels, not the interface default.
     expect(kml).toContain("Скорость");
+    expect(kml).toContain("Отчет по утечкам");
   });
 
   it("omits placemarks with out-of-range coordinates", () => {
@@ -37,6 +40,7 @@ describe("exportLeaksKML", () => {
         { leak_id: "INVALID", station: "A", lat: 999, lng: 0 },
       ],
       "midstream",
+      translate,
     );
 
     expect(kml).toContain("<name>VALID</name>");

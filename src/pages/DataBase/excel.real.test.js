@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { translate } from "@/test/translate";
+import { buildExcelExportTexts } from "@/services/excelExport/exportTexts";
 import { buildWorkbookBufferLocally } from "./excel";
 
 describe("real Excel workbook output", () => {
@@ -13,7 +15,7 @@ describe("real Excel workbook output", () => {
       headers: ["Tag"],
       keysOrder: ["leak_id"],
       photoMap: {},
-      lang: "en",
+      texts: buildExcelExportTexts(translate),
       monitoringExportMode: "full",
       archivePayload: null,
     });

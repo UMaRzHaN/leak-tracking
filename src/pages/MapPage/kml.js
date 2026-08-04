@@ -47,34 +47,17 @@ function safeDescriptionText(value) {
   return cdataText(escapeHtml(value));
 }
 
-function getProjectLabels(project, lang) {
-  const isRu = lang === "ru";
-
-  if (project === "midstream") {
-    return {
-      mainLabel: isRu ? "УМГ" : "MGPA",
-      secondaryLabel: isRu ? "Станция" : "Station",
-    };
-  }
-
-  if (project === "upstream") {
-    return {
-      mainLabel: isRu ? "Подразделение" : "Subdivision",
-      secondaryLabel: isRu ? "Месторождение" : "Deposit",
-    };
-  }
-
-  return {
-    mainLabel: isRu ? "Район" : "District",
-    secondaryLabel: isRu ? "Населенный пункт" : "Locality",
-  };
-}
-
-export function exportLeaksKML(leaks, project, lang = "ru") {
+// The exported file speaks the language of the interface that asked for it,
+// so `t` comes in from the caller rather than the module reaching for a
+// global i18n instance.
+export function exportLeaksKML(leaks, project, t) {
   const config = PROJECT_LOCATION_CONFIG[project];
-  const labels = getProjectLabels(project, lang);
-  const notSpecified = lang === "ru" ? "Не указано" : "Not specified";
-  const noRate = lang === "ru" ? "Без скорости" : "No rate";
+  // The two location fields a project uses are named by its type, and those
+  // names are already keys under `database.locationLabels`.
+  const mainLabel = t(`database.locationLabels.${config.main}`);
+  const secondaryLabel = t(`database.locationLabels.${config.secondary}`);
+  const notSpecified = t("map.sheet.notSpecified");
+  const noRate = t("map.kml.noRate");
 
   const byField = new Map();
   leaks.forEach((leak) => {
@@ -112,12 +95,12 @@ export function exportLeaksKML(leaks, project, lang = "ru") {
         <styleUrl>#style_${groupIndex}</styleUrl>
         <description>
           <![CDATA[
-            <b>${safeDescriptionText(labels.mainLabel)}:</b> ${safeDescriptionText(leak[config.main]) || notSpecified}<br/>
-            <b>${safeDescriptionText(labels.secondaryLabel)}:</b> ${safeDescriptionText(leak[config.secondary]) || notSpecified}<br/>
-            <b>${lang === "ru" ? "Компонент" : "Component"}:</b> ${safeDescriptionText(leak.component) || notSpecified}<br/>
-            <b>${lang === "ru" ? "Скорость" : "Leak rate"}:</b> ${
+            <b>${safeDescriptionText(mainLabel)}:</b> ${safeDescriptionText(leak[config.main]) || notSpecified}<br/>
+            <b>${safeDescriptionText(secondaryLabel)}:</b> ${safeDescriptionText(leak[config.secondary]) || notSpecified}<br/>
+            <b>${safeDescriptionText(t("addLeak.fields.component.label"))}:</b> ${safeDescriptionText(leak.component) || notSpecified}<br/>
+            <b>${safeDescriptionText(t("addLeak.fields.leak_speed.shortLabel"))}:</b> ${
               leak.leak_speed != null
-                ? `${safeDescriptionText(leak.leak_speed)} ${lang === "ru" ? "л/мин" : "L/min"}`
+                ? `${safeDescriptionText(leak.leak_speed)} ${safeDescriptionText(t("common.units.litresPerMinute"))}`
                 : noRate
             }
           ]]>
@@ -140,20 +123,15 @@ export function exportLeaksKML(leaks, project, lang = "ru") {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
-    <name>${lang === "ru" ? "Отчет по утечкам" : "Leak Report"}</name>
+    <name>${escapeXml(t("map.kml.documentName"))}</name>
     ${styles}
     ${folders}
   </Document>
 </kml>`;
 }
 
-export async function saveLeaksKML(
-  leaks,
-  project,
-  projectFolderName = null,
-  lang = "ru",
-) {
-  const kml = exportLeaksKML(leaks, project, lang);
+export async function saveLeaksKML(leaks, project, projectFolderName, t) {
+  const kml = exportLeaksKML(leaks, project, t);
   const fileName = "leaks_map.kml";
   const folderName = projectFolderName
     ? `${projectFolderName}/export/map`
@@ -173,10 +151,9 @@ export async function saveLeaksKML(
       ok: true,
       fileName,
       path: `${folderName}/${fileName}`,
-      message:
-        lang === "ru"
-          ? `Сохранено в Документы/${folderName}/${fileName}`
-          : `Saved to Documents/${folderName}/${fileName}`,
+      message: t("map.kml.savedToDocuments", {
+        path: `${folderName}/${fileName}`,
+      }),
     };
   }
 
@@ -186,10 +163,7 @@ export async function saveLeaksKML(
     ok: true,
     fileName,
     path: fileName,
-    message:
-      lang === "ru"
-        ? "KML-файл успешно скачан"
-        : "KML file downloaded successfully",
+    message: t("map.kml.downloaded"),
   };
 }
 

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { translate } from "@/test/translate";
 
 const writePublicFile = vi.hoisted(() => vi.fn());
 
@@ -18,7 +19,7 @@ describe("saveLeaksKML on Android", () => {
       [{ leak_id: "A1", lat: 10, lng: 20, field: "North" }],
       "upstream",
       "alpha",
-      "en",
+      translate,
     );
 
     expect(writePublicFile).toHaveBeenCalledWith({
@@ -36,7 +37,7 @@ describe("saveLeaksKML on Android", () => {
   });
 
   it("uses the shared export folder when no project folder is available", async () => {
-    const result = await saveLeaksKML([], "downstream", null, "en");
+    const result = await saveLeaksKML([], "downstream", null, translate);
 
     expect(writePublicFile).toHaveBeenCalledWith(
       expect.objectContaining({ folder: "export/map" }),
@@ -47,8 +48,8 @@ describe("saveLeaksKML on Android", () => {
   it("propagates public writer failures to the export controller", async () => {
     writePublicFile.mockRejectedValueOnce(new Error("storage unavailable"));
 
-    await expect(saveLeaksKML([], "downstream", "alpha", "en")).rejects.toThrow(
-      "storage unavailable",
-    );
+    await expect(
+      saveLeaksKML([], "downstream", "alpha", translate),
+    ).rejects.toThrow("storage unavailable");
   });
 });

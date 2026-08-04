@@ -5,6 +5,7 @@ import { common } from "./common";
 import { database } from "./database";
 import { emissionsSummary } from "./emissionsSummary";
 import { emptyState } from "./emptyState";
+import { excelExport } from "./excelExport";
 import { fieldVisibility } from "./fieldVisibility";
 import { footer } from "./footer";
 import { header } from "./header";
@@ -35,6 +36,7 @@ export const translation = {
   database,
   emissionsSummary,
   emptyState,
+  excelExport,
   fieldVisibility,
   footer,
   header,

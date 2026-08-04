@@ -23,6 +23,7 @@ import {
   addBackupSheet,
   BACKUP_SCHEMA_VERSION,
 } from "@/services/excelExport/backupSheet";
+import { buildExcelExportTexts } from "@/services/excelExport/exportTexts";
 import {
   applyColumnFormats,
   formatLeakTime,
@@ -161,7 +162,7 @@ async function buildWorkbook({
   headers,
   keysOrder,
   photoMap,
-  lang,
+  texts,
   ExcelJS,
   monitoringExportMode,
   archivePayload,
@@ -171,7 +172,7 @@ async function buildWorkbook({
   ).filter((index) => index !== -1);
 
   const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet(lang === "ru" ? "Утечки" : "Leaks");
+  const sheet = workbook.addWorksheet(texts.sheets.leaks);
 
   const tableRows = orderedRows.map((row, leakIndex) =>
     keysOrder.map((key) => {
@@ -204,17 +205,10 @@ async function buildWorkbook({
       const cell = sheet.getRow(leakIndex + 2).getCell(columnIndex + 1);
 
       if (photoFile) {
-        cell.value = {
-          text: lang === "ru" ? "Открыть фото" : "Open photo",
-          hyperlink: photoFile,
-        };
+        cell.value = { text: texts.photo.open, hyperlink: photoFile };
         cell.font = { color: { argb: "FF1155CC" }, underline: true };
       } else {
-        cell.value = row[key]
-          ? lang === "ru"
-            ? "Есть (файл не найден)"
-            : "Present (file missing)"
-          : "";
+        cell.value = row[key] ? texts.photo.missing : "";
       }
     }
   }
@@ -237,12 +231,12 @@ async function buildWorkbook({
   await buildMonitoringSheet(
     workbook,
     orderedLeaks,
-    lang,
+    texts,
     photoMap,
     monitoringExportMode,
   );
-  await buildHistorySheet(workbook, orderedLeaks, lang);
-  addBackupSheet(workbook, archivePayload, lang);
+  await buildHistorySheet(workbook, orderedLeaks, texts);
+  addBackupSheet(workbook, archivePayload, texts);
 
   return workbook;
 }
@@ -279,7 +273,7 @@ async function downloadBlob(
   blob,
   fileName,
   outputFolder = DEFAULT_EXPORT_DIR,
-  lang = "ru",
+  t,
   webMessage = null,
 ) {
   if (!isNative) {
@@ -292,11 +286,7 @@ async function downloadBlob(
 
     return {
       ok: true,
-      message:
-        webMessage ??
-        (lang === "ru"
-          ? `Файл экспортирован (${fileName})`
-          : `File exported (${fileName})`),
+      message: webMessage ?? t("excelExport.downloaded", { fileName }),
     };
   }
 
@@ -312,10 +302,7 @@ async function downloadBlob(
   return {
     ok: true,
     path: `${outputFolder}/${fileName}`,
-    message:
-      lang === "ru"
-        ? `Сохранено в Документы/${outputFolder}/${fileName}`
-        : `Saved to Documents/${outputFolder}/${fileName}`,
+    message: t("excelExport.saved", { path: `${outputFolder}/${fileName}` }),
   };
 }
 
@@ -327,9 +314,10 @@ export async function exportToExcelFile(
   fileName = "утечки",
   idbGet = null,
   projectFolderName = null,
-  lang = "ru",
+  t,
   options = {},
 ) {
+  const texts = buildExcelExportTexts(t);
   const safeFileName = sanitizePortableArchiveSegment(fileName) || "report";
   const exportStartedAt = performance.now();
   const phaseMetrics = {};
@@ -389,7 +377,7 @@ export async function exportToExcelFile(
       headers,
       keysOrder,
       photoMap,
-      lang,
+      texts,
       monitoringExportMode,
       archivePayload,
     },
@@ -423,10 +411,8 @@ export async function exportToExcelFile(
     zipBlob,
     `${safeFileName}.zip`,
     outputFolder,
-    lang,
-    lang === "ru"
-      ? `Excel-архив проекта экспортирован (${safeFileName}.zip)`
-      : `Excel project archive exported (${safeFileName}.zip)`,
+    t,
+    t("excelExport.archiveExported", { fileName: `${safeFileName}.zip` }),
   );
   return { ...result, metrics: phaseMetrics };
 }

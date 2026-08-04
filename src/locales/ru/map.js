@@ -43,4 +43,11 @@ export const map = {
     searchLabel: "Поиск по номеру бирки",
     empty: "Ничего не найдено",
   },
+
+  kml: {
+    documentName: "Отчет по утечкам",
+    noRate: "Без скорости",
+    savedToDocuments: "Сохранено в Документы/{{path}}",
+    downloaded: "KML-файл успешно скачан",
+  },
 };

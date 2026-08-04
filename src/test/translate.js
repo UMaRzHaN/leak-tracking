@@ -1,7 +1,20 @@
 import { translation as en } from "@/locales/en";
+import { translation as ru } from "@/locales/ru";
+
+function resolve(translation, key, options) {
+  const value = String(key)
+    .split(".")
+    .reduce((node, part) => node?.[part], translation);
+
+  if (typeof value !== "string") return options?.defaultValue ?? key;
+
+  return value.replace(/\{\{(\w+)\}\}/g, (match, name) =>
+    options && name in options ? String(options[name]) : match,
+  );
+}
 
 /**
- * A `t` for component tests that resolves against the real English locale.
+ * A `t` for tests that resolves against the real English locale.
  *
  * Tests used to stub this with `(key, options) => options?.defaultValue ?? key`,
  * which asserts nothing about the translations themselves — a screen could lose
@@ -13,15 +26,12 @@ import { translation as en } from "@/locales/en";
  * call site, which is the state the wider i18n migration is working through.
  */
 export function translate(key, options) {
-  const value = String(key)
-    .split(".")
-    .reduce((node, part) => node?.[part], en);
+  return resolve(en, key, options);
+}
 
-  if (typeof value !== "string") return options?.defaultValue ?? key;
-
-  return value.replace(/\{\{(\w+)\}\}/g, (match, name) =>
-    options && name in options ? String(options[name]) : match,
-  );
+/** The same against the Russian locale, for code that has to work in both. */
+export function translateRu(key, options) {
+  return resolve(ru, key, options);
 }
 
 /** The shape `vi.mock("@/app/hooks/useLanguage", …)` needs, in English. */

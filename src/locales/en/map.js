@@ -42,4 +42,11 @@ export const map = {
     searchLabel: "Search by tag number",
     empty: "Nothing found",
   },
+
+  kml: {
+    documentName: "Leak Report",
+    noRate: "No rate",
+    savedToDocuments: "Saved to Documents/{{path}}",
+    downloaded: "KML file downloaded successfully",
+  },
 };

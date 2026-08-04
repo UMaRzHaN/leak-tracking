@@ -5,6 +5,12 @@ import {
   buildMonitoringSheet,
 } from "./auxiliarySheets";
 
+import { translate, translateRu } from "@/test/translate";
+import { buildExcelExportTexts } from "./exportTexts";
+
+const enTexts = buildExcelExportTexts(translate);
+const ruTexts = buildExcelExportTexts(translateRu);
+
 class FakeCell {
   constructor(value = null) {
     this.value = value;
@@ -79,7 +85,7 @@ describe("Excel auxiliary worksheets", () => {
           ],
         },
       ],
-      "en",
+      enTexts,
     );
 
     expect(row).toMatchObject({
@@ -95,8 +101,8 @@ describe("Excel auxiliary worksheets", () => {
   it("does not create empty history or monitoring worksheets", async () => {
     const workbook = createWorkbook();
 
-    await buildHistorySheet(workbook, [{ history: [] }], "en");
-    await buildMonitoringSheet(workbook, [], "en", {}, "full");
+    await buildHistorySheet(workbook, [{ history: [] }], enTexts);
+    await buildMonitoringSheet(workbook, [], enTexts, {}, "full");
 
     expect(workbook.addWorksheet).not.toHaveBeenCalled();
   });
@@ -126,11 +132,11 @@ describe("Excel auxiliary worksheets", () => {
       },
     ];
 
-    await buildHistorySheet(workbook, leaks, "ru");
+    await buildHistorySheet(workbook, leaks, ruTexts);
     await buildMonitoringSheet(
       workbook,
       leaks,
-      "en",
+      enTexts,
       {
         "monitoring:0:0": "photos/TAG-1/monitoring/record-1.jpg",
         "monitoring:0:0:previousPhoto":

@@ -1,4 +1,3 @@
-import { getMonitoringAnswerLabel } from "@/utils/monitoring";
 import {
   applyColumnFormats,
   parseTimestamp,
@@ -19,8 +18,8 @@ import {
 const MONITORING_TABLE_THEME = "TableStyleMedium4";
 const EXPORT_YIELD_EVERY = 40;
 
-export function buildHistoryRows(orderedLeaks, lang) {
-  const fallbackUser = lang === "ru" ? "Не указан" : "Unknown";
+export function buildHistoryRows(orderedLeaks, texts) {
+  const fallbackUser = texts.history.unknownUser;
   const getHistoryUser = (entry, leak) =>
     entry.user ??
     entry.monitoredBy ??
@@ -46,37 +45,11 @@ export function buildHistoryRows(orderedLeaks, lang) {
   );
 }
 
-export async function buildHistorySheet(workbook, orderedLeaks, lang) {
-  const rows = buildHistoryRows(orderedLeaks, lang);
+export async function buildHistorySheet(workbook, orderedLeaks, texts) {
+  const rows = buildHistoryRows(orderedLeaks, texts);
   if (rows.length === 0) return;
 
-  const sheet = workbook.addWorksheet(
-    lang === "ru" ? "История" : "Leak History",
-  );
-  const headers =
-    lang === "ru"
-      ? [
-          "№",
-          "Бирка",
-          "Дата",
-          "Время",
-          "Действие",
-          "Пользователь",
-          "Текст",
-          "Статус",
-          "Изменения JSON",
-        ]
-      : [
-          "No.",
-          "Tag",
-          "Date",
-          "Time",
-          "Action",
-          "User",
-          "Text",
-          "Status",
-          "Changes JSON",
-        ];
+  const sheet = workbook.addWorksheet(texts.sheets.history);
   const keys = [
     "index",
     "leak_id",
@@ -88,6 +61,7 @@ export async function buildHistorySheet(workbook, orderedLeaks, lang) {
     "to",
     "changes",
   ];
+  const headers = keys.map((key) => texts.history.headers[key]);
 
   const tableRows = rows.map((row) =>
     keys.map((key) => toExcelCellValue(key, row[key])),
@@ -115,7 +89,7 @@ export async function buildHistorySheet(workbook, orderedLeaks, lang) {
 export async function buildMonitoringSheet(
   workbook,
   orderedLeaks,
-  lang,
+  texts,
   photoMap,
   monitoringExportMode,
 ) {
@@ -128,38 +102,12 @@ export async function buildMonitoringSheet(
     ...row,
     date: parseTimestamp(row.dateRaw) ?? "",
     time: parseTimestamp(row.dateRaw) ?? "",
-    result: getMonitoringAnswerLabel(row.result, lang),
+    result: texts.monitoring.answers[row.result] ?? String(row.result ?? ""),
   }));
 
   if (rows.length === 0) return;
 
-  const sheet = workbook.addWorksheet(
-    lang === "ru" ? "Мониторинг" : "Monitoring",
-  );
-  const headers =
-    lang === "ru"
-      ? [
-          "№",
-          "Бирка",
-          "Обход",
-          "Дата мониторинга",
-          "Время мониторинга",
-          "Кто мониторил",
-          "Утечка есть",
-          "МТР",
-          "Комментарий",
-        ]
-      : [
-          "No.",
-          "Tag",
-          "Round",
-          "Monitoring date",
-          "Monitoring time",
-          "Monitored by",
-          "Leak present",
-          "Materials",
-          "Comment",
-        ];
+  const sheet = workbook.addWorksheet(texts.sheets.monitoring);
   const keys = [
     "index",
     "leak_id",
@@ -170,12 +118,10 @@ export async function buildMonitoringSheet(
     "result",
     "materials_equipment",
     "comment",
+    "photo",
+    "previousPhoto",
   ];
-
-  headers.push(lang === "ru" ? "Фото мониторинга" : "Monitoring photo");
-  keys.push("photo");
-  headers.push(lang === "ru" ? "Предыдущее фото" : "Previous photo");
-  keys.push("previousPhoto");
+  const headers = keys.map((key) => texts.monitoring.headers[key]);
 
   const tableRows = rows.map((row) =>
     keys.map((key) => {
@@ -210,17 +156,10 @@ export async function buildMonitoringSheet(
       const photoCell = sheet.getRow(rowIndex + 2).getCell(photoColumnIndex);
 
       if (photoFile) {
-        photoCell.value = {
-          text: lang === "ru" ? "Открыть фото" : "Open photo",
-          hyperlink: photoFile,
-        };
+        photoCell.value = { text: texts.photo.open, hyperlink: photoFile };
         photoCell.font = { color: { argb: "FF1155CC" }, underline: true };
       } else {
-        photoCell.value = row[key]
-          ? lang === "ru"
-            ? "Есть (файл не найден)"
-            : "Present (file missing)"
-          : "";
+        photoCell.value = row[key] ? texts.photo.missing : "";
       }
     }
   }

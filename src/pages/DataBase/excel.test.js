@@ -153,6 +153,7 @@ vi.mock("@capacitor/filesystem", () => ({
   },
 }));
 
+const { translate, translateRu } = await import("@/test/translate");
 const { exportToExcelFile, exportToExcelZip } = await import("./excel");
 
 describe("excel export helpers", () => {
@@ -202,7 +203,7 @@ describe("excel export helpers", () => {
       "report",
       null,
       null,
-      "en",
+      translate,
     );
 
     expect(mocks.workbookInstances).toHaveLength(1);
@@ -234,7 +235,7 @@ describe("excel export helpers", () => {
       "../../../escape",
       null,
       null,
-      "en",
+      translate,
     );
 
     const workbookEntry = mocks.zipInstances[0].file.mock.calls[0][0];
@@ -260,7 +261,7 @@ describe("excel export helpers", () => {
       "report",
       null,
       null,
-      "en",
+      translate,
       {
         project: { name: "North Field", type: "midstream" },
       },
@@ -329,7 +330,7 @@ describe("excel export helpers", () => {
       "report",
       null,
       null,
-      "en",
+      translate,
       { backupLeaks: leaks },
     );
 
@@ -394,7 +395,7 @@ describe("excel export helpers", () => {
       "report",
       null,
       null,
-      "en",
+      translate,
       { backupLeaks: [visible] },
     );
 
@@ -447,7 +448,7 @@ describe("excel export helpers", () => {
       "report",
       getStoredPhoto,
       null,
-      "en",
+      translate,
     );
 
     const [leak] = readEmbeddedBackup(
@@ -469,7 +470,7 @@ describe("excel export helpers", () => {
       "report",
       null,
       null,
-      "en",
+      translate,
     );
 
     const sheet = mocks.workbookInstances[0].sheets[0];
@@ -491,7 +492,7 @@ describe("excel export helpers", () => {
       "report",
       null,
       null,
-      "en",
+      translate,
     );
 
     const sheet = mocks.workbookInstances[0].sheets[0];
@@ -554,7 +555,7 @@ describe("excel export helpers", () => {
       "report",
       null,
       null,
-      "en",
+      translate,
     );
 
     const sheet = mocks.workbookInstances[0].sheets[0];
@@ -613,7 +614,7 @@ describe("excel export helpers", () => {
       "report",
       null,
       null,
-      "ru",
+      translateRu,
     );
 
     const monitoringSheet = mocks.workbookInstances[0].sheets[1];
@@ -656,7 +657,7 @@ describe("excel export helpers", () => {
       "report",
       vi.fn().mockResolvedValue("data:image/png;base64,ZmFrZQ=="),
       null,
-      "en",
+      translate,
     );
 
     const monitoringSheet = mocks.workbookInstances[0].sheets[1];
@@ -712,7 +713,7 @@ describe("excel export helpers", () => {
       "report",
       null,
       null,
-      "en",
+      translate,
     );
 
     const historySheet = mocks.workbookInstances[0].sheets[1];
@@ -772,7 +773,7 @@ describe("excel export helpers", () => {
       "report",
       vi.fn().mockResolvedValue("data:image/png;base64,ZmFrZQ=="),
       null,
-      "en",
+      translate,
       { monitoringExportMode: "latest_per_round" },
     );
 
@@ -821,7 +822,7 @@ describe("excel export helpers", () => {
       "report",
       null,
       null,
-      "en",
+      translate,
       {
         project: { name: "North Field", type: "upstream" },
         monitoringRound: {
@@ -870,7 +871,7 @@ describe("excel export helpers", () => {
       "report",
       null,
       null,
-      "en",
+      translate,
     );
 
     expect(maxActive).toBeGreaterThan(1);
