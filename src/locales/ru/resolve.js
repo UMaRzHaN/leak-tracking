@@ -10,4 +10,12 @@ export const resolve = {
   addPhoto: "Добавьте фото",
   saving: "Сохранение...",
   error: "Ошибка сохранения",
+
+  // The same modal in "repair" mode: only these four differ.
+  repair: {
+    title: "Утечка в ремонте",
+    photoLabel: "Фото ремонта",
+    confirm: "Подтвердить",
+    addPhoto: "Добавьте фото",
+  },
 };

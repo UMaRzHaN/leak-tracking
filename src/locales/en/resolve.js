@@ -10,4 +10,11 @@ export const resolve = {
   addPhoto: "Add photo",
   saving: "Saving...",
   error: "Save error",
+
+  repair: {
+    title: "Leak under repair",
+    photoLabel: "Repair photo",
+    confirm: "Confirm",
+    addPhoto: "Add photo",
+  },
 };

@@ -13,22 +13,16 @@ export default function ResolveModal({
   onConfirm,
   onClose,
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const isRepair = mode === "repair";
-  const isRu = i18n.language?.startsWith("ru");
-  const labels = isRepair
-    ? {
-        title: isRu ? "Утечка в ремонте" : "Leak under repair",
-        photoLabel: isRu ? "Фото ремонта" : "Repair photo",
-        confirm: isRu ? "Подтвердить" : "Confirm",
-        addPhoto: isRu ? "Добавьте фото" : "Add photo",
-      }
-    : {
-        title: t("resolve.title"),
-        photoLabel: t("resolve.photoLabel"),
-        confirm: t("resolve.confirm"),
-        addPhoto: t("resolve.addPhoto"),
-      };
+  // Repair mode overrides four of the labels; the rest of the modal is shared.
+  const scope = isRepair ? "resolve.repair" : "resolve";
+  const labels = {
+    title: t(`${scope}.title`),
+    photoLabel: t(`${scope}.photoLabel`),
+    confirm: t(`${scope}.confirm`),
+    addPhoto: t(`${scope}.addPhoto`),
+  };
   const [photo, setPhoto] = useState(null);
   const [mtr, setMtr] = useState(leak?.materials_equipment ?? "");
   const [note, setNote] = useState(leak?.note ?? "");
