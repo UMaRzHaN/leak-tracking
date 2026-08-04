@@ -296,6 +296,10 @@ export default defineConfig(({ mode }) => {
             ],
             "vendor-excel": ["exceljs"],
             "vendor-zip": ["jszip"],
+            // Named so the bundle report says which language a chunk is;
+            // Rollup would otherwise call both "index", after the file.
+            "locale-ru": ["@/locales/ru"],
+            "locale-en": ["@/locales/en"],
           },
         },
       },

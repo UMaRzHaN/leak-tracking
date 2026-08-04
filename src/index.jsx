@@ -12,7 +12,11 @@ const PwaUpdateBanner = React.lazy(
 );
 
 async function bootstrap() {
-  await import("./i18n");
+  // Awaiting the module alone is no longer enough: it only starts fetching the
+  // active language's chunk, and rendering before it lands would paint raw
+  // keys.
+  const { ready } = await import("./i18n");
+  await ready;
 
   if (
     isNative &&
