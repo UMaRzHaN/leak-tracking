@@ -8,4 +8,7 @@ export const common = {
     cubicMetresPerYear: "m3/y",
     tonnesCo2PerYear: "t CO2-eq/year",
   },
+
+  saveError: "Save error: {{message}}",
+  deleteError: "Delete error: {{message}}",
 };

@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { STATUS } from "@/utils/status";
 import { hapticSuccess } from "@/utils/haptics";
 import { buildReopenedLeak } from "@/utils/reopenLeak";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import {
@@ -28,14 +29,15 @@ export function useLeakActions({
   const [resolveLeak, setResolveLeak] = useState(null);
   const [repairLeak, setRepairLeak] = useState(null);
   const [reopenLeak, setReopenLeak] = useState(null);
+  const { t } = useLanguage();
   const { activeProject } = useProjectData();
   const { vars } = useProjectVars(activeProject?.id ?? null);
   const historyUser = userProfile?.name?.trim() || undefined;
   const requireHistoryUser = useCallback(() => {
     if (historyUser) return true;
-    notify("error", "Заполните имя пользователя в профиле");
+    notify("error", t("database.fillUserName"));
     return false;
-  }, [historyUser, notify]);
+  }, [historyUser, notify, t]);
 
   const handlePickStatus = useCallback(
     (leak) => {
@@ -68,19 +70,22 @@ export function useLeakActions({
       }
 
       const orphanedPhoto = getOrphanedOriginalPhoto(leak);
-      const next = data.map((r) =>
-        r.id === leak.id
-          ? changeLeakStatus(r, newStatus, { user: historyUser })
-          : r,
-      );
       try {
+        // Inside the try: the lifecycle rejects a transition that skips a
+        // step, and that rejection belongs in a notification like any other
+        // failure rather than escaping as an unhandled rejection.
+        const next = data.map((r) =>
+          r.id === leak.id
+            ? changeLeakStatus(r, newStatus, { user: historyUser })
+            : r,
+        );
         await setData(next);
         hapticSuccess();
         await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
           () => {},
         );
       } catch (err) {
-        notify("error", `Ошибка сохранения: ${err.message}`);
+        notify("error", t("common.saveError", { message: err.message }));
       }
     },
     [
@@ -91,6 +96,7 @@ export function useLeakActions({
       pickerLeak,
       requireHistoryUser,
       setData,
+      t,
     ],
   );
 
@@ -126,7 +132,7 @@ export function useLeakActions({
             () => {},
           );
         }
-        notify("error", `Ошибка сохранения: ${err.message}`);
+        notify("error", t("common.saveError", { message: err.message }));
       }
     },
     [
@@ -137,6 +143,7 @@ export function useLeakActions({
       requireHistoryUser,
       resolveLeak,
       setData,
+      t,
     ],
   );
 
@@ -176,7 +183,7 @@ export function useLeakActions({
             () => {},
           );
         }
-        notify("error", `Ошибка сохранения: ${err.message}`);
+        notify("error", t("common.saveError", { message: err.message }));
       }
     },
     [
@@ -187,6 +194,7 @@ export function useLeakActions({
       repairLeak,
       requireHistoryUser,
       setData,
+      t,
     ],
   );
 
@@ -211,7 +219,7 @@ export function useLeakActions({
           () => {},
         );
       } catch (err) {
-        notify("error", `Ошибка сохранения: ${err.message}`);
+        notify("error", t("common.saveError", { message: err.message }));
       }
     },
     [
@@ -222,6 +230,7 @@ export function useLeakActions({
       reopenLeak,
       requireHistoryUser,
       setData,
+      t,
       vars,
     ],
   );
@@ -234,11 +243,11 @@ export function useLeakActions({
         hapticSuccess();
         setActiveLeak(null);
       } catch (err) {
-        notify("error", `Ошибка сохранения: ${err.message}`);
+        notify("error", t("common.saveError", { message: err.message }));
         throw err;
       }
     },
-    [data, notify, setData],
+    [data, notify, setData, t],
   );
 
   const handleDelete = useCallback(
@@ -255,10 +264,10 @@ export function useLeakActions({
           () => {},
         );
       } catch (err) {
-        notify("error", `Ошибка удаления: ${err.message}`);
+        notify("error", t("common.deleteError", { message: err.message }));
       }
     },
-    [data, deletePhoto, notify, setData],
+    [data, deletePhoto, notify, setData, t],
   );
 
   return {

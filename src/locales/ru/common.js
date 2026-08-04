@@ -10,4 +10,7 @@ export const common = {
     cubicMetresPerYear: "м3/г",
     tonnesCo2PerYear: "т CO2-экв/год",
   },
+
+  saveError: "Ошибка сохранения: {{message}}",
+  deleteError: "Ошибка удаления: {{message}}",
 };
