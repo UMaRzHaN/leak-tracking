@@ -31,9 +31,7 @@ export default function StatusBadge({
           e.stopPropagation();
           onClick();
         }}
-        title={t("statusActions.fallback", {
-          defaultValue: "Change status",
-        })}
+        title={t("statusActions.fallback")}
         type="button"
       >
         {meta.label}

@@ -50,4 +50,10 @@ export const map = {
     savedToDocuments: "Сохранено в Документы/{{path}}",
     downloaded: "KML-файл успешно скачан",
   },
+
+  controls: {
+    myLocation: "Моё местоположение",
+    searchLeaks: "Поиск утечек",
+    downloadArea: "Скачать карту текущей области",
+  },
 };

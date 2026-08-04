@@ -3,12 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import { STATUS } from "@/utils/status";
 import { useBulkActions } from "./useBulkActions";
 
-vi.mock("@/app/hooks/useLanguage", () => ({
-  useLanguage: () => ({
-    lang: "en",
-    t: (key, options) => options?.defaultValue ?? key,
-  }),
-}));
+vi.mock("@/app/hooks/useLanguage", async () => {
+  const { englishLanguageHook } = await import("@/test/translate");
+  return englishLanguageHook();
+});
 
 vi.mock("@/utils/haptics", () => ({
   hapticSuccess: vi.fn(),

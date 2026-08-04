@@ -58,15 +58,9 @@ export function prepareRows(data, lang, t, projectVars = {}) {
       (row.created_at ? formatDate(Number(row.created_at), {}, lang) : ""),
     Total_Annual_Methane_Loss_m3_y: round2(row.Total_Annual_Methane_Loss_m3_y),
     Emissions_t_CO2eq_year: round2(row.Emissions_t_CO2eq_year),
-    photo: row.photo
-      ? t("database.export.hasPhoto", { defaultValue: "Yes" })
-      : "",
-    photo_after: row.photo_after
-      ? t("database.export.hasPhoto", { defaultValue: "Yes" })
-      : "",
-    photo_repair: row.photo_repair
-      ? t("database.export.hasPhoto", { defaultValue: "Yes" })
-      : "",
+    photo: row.photo ? t("database.export.hasPhoto") : "",
+    photo_after: row.photo_after ? t("database.export.hasPhoto") : "",
+    photo_repair: row.photo_repair ? t("database.export.hasPhoto") : "",
     repairAt: fmtTs(getRepairAt(row), lang),
     resolvedAt: fmtTs(row.resolvedAt, lang),
   }));
@@ -123,20 +117,9 @@ export function useDataBaseExport({ displayed, notify }) {
       if (typeof window !== "undefined") {
         window.__EXCEL_EXPORT_METRICS__ = result?.metrics ?? null;
       }
-      notify(
-        "success",
-        result?.message ||
-          t("database.export.success", {
-            defaultValue: "ZIP archive downloaded successfully",
-          }),
-      );
+      notify("success", result?.message || t("database.export.success"));
     } catch (err) {
-      notify(
-        "error",
-        t("database.export.error", {
-          defaultValue: `Export error: ${err.message}`,
-        }),
-      );
+      notify("error", t("database.export.error", { message: err.message }));
     } finally {
       setIsExporting(false);
     }

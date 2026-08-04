@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { execSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { translation as en } from "@/locales/en";
 import { translation as ru } from "@/locales/ru";
@@ -68,6 +70,34 @@ describe("locales", () => {
       (_, index) => !russianKeys.some((key) => gapMatchers[index].test(key)),
     );
     expect(stillMissing).toEqual(RUSSIAN_STRINGS_STILL_AT_CALL_SITES);
+  });
+
+  // The parity test above only compares the two locales to each other; both
+  // can agree that a key does not exist. `t("x.y", { defaultValue: "…" })`
+  // then renders that default in every language, which is how a handful of
+  // screens showed English to a Russian reader while every test passed.
+  //
+  // Only literal keys are checked. A key built from a template — the field
+  // labels, the status names — is covered by the screen's own test resolving
+  // against the real locale.
+  it("defines every literal key the code asks for", () => {
+    const known = new Set(flattenKeys(ru));
+    const files = execSync(
+      `grep -rl 't("' src/ | grep -v '\\.test\\.' | grep -v '/locales/'`,
+      { encoding: "utf8" },
+    )
+      .trim()
+      .split("\n");
+
+    const missing = new Set();
+    for (const file of files) {
+      const source = readFileSync(file, "utf8");
+      for (const [, key] of source.matchAll(/\bt\(\s*"([a-zA-Z][\w.]*)"/g)) {
+        if (!known.has(key)) missing.add(`${key}  (${file})`);
+      }
+    }
+
+    expect([...missing].sort()).toEqual([]);
   });
 
   it("leaves no value empty", () => {

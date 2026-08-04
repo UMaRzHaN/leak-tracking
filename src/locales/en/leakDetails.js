@@ -56,6 +56,7 @@ export const leakDetails = {
     status_changed: "Status changed",
     edited: "Data updated",
     comment: "Comment",
+    monitoring: "Monitoring",
   },
 
   statuses: {

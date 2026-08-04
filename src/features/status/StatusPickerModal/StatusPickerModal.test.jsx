@@ -2,11 +2,10 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import StatusPickerModal from "./StatusPickerModal";
 
-vi.mock("@/app/hooks/useLanguage", () => ({
-  useLanguage: () => ({
-    t: (_key, options) => options?.defaultValue ?? _key,
-  }),
-}));
+vi.mock("@/app/hooks/useLanguage", async () => {
+  const { englishLanguageHook } = await import("@/test/translate");
+  return englishLanguageHook();
+});
 
 describe("StatusPickerModal", () => {
   it("exposes a labelled dialog and closes with Escape", () => {
@@ -26,7 +25,7 @@ describe("StatusPickerModal", () => {
     );
 
     expect(screen.getAllByRole("button")).toHaveLength(1);
-    expect(screen.getByText("В ремонте")).toBeTruthy();
-    expect(screen.queryByText("Устранена")).toBeNull();
+    expect(screen.getByText("Under repair")).toBeTruthy();
+    expect(screen.queryByText("Resolved")).toBeNull();
   });
 });

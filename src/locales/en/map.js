@@ -49,4 +49,10 @@ export const map = {
     savedToDocuments: "Saved to Documents/{{path}}",
     downloaded: "KML file downloaded successfully",
   },
+
+  controls: {
+    myLocation: "My location",
+    searchLeaks: "Search leaks",
+    downloadArea: "Download current area map",
+  },
 };

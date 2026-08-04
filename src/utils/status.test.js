@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { LANGUAGE_STORAGE_KEY } from "./locale";
+import { describe, expect, it, vi } from "vitest";
+import { translate, translateRu } from "@/test/translate";
 import {
   STATUS,
   STATUS_META,
@@ -12,11 +12,6 @@ import {
 } from "./status";
 
 describe("status utilities", () => {
-  beforeEach(() => {
-    localStorage.clear();
-    localStorage.setItem(LANGUAGE_STORAGE_KEY, "en");
-  });
-
   it("defines the strict production status workflow", () => {
     expect(STATUS_ORDER).toEqual([
       STATUS.OPEN,
@@ -35,54 +30,68 @@ describe("status utilities", () => {
     expect(nextStatus("unknown")).toBe(STATUS.IN_PROGRESS);
   });
 
-  it("returns English labels and action labels from persisted language", () => {
-    expect(getStatusLabel()).toBe("Open");
-    expect(getStatusLabel(STATUS.IN_PROGRESS)).toBe("Under repair");
-    expect(getStatusLabel(STATUS.RESOLVED)).toBe("Resolved");
-    expect(getStatusLabel("custom")).toBe("custom");
+  // These used to keep their own Russian and English tables and pick between
+  // them by reading the stored language — the last per-language dictionary in
+  // the UI layer. The labels are locale keys now, and the caller's `t` decides
+  // the language.
+  it("reads its labels out of the locale it is given", () => {
+    expect(getStatusLabel(STATUS.OPEN, translate)).toBe("Open");
+    expect(getStatusLabel(STATUS.IN_PROGRESS, translate)).toBe("Under repair");
+    expect(getStatusLabel(STATUS.RESOLVED, translate)).toBe("Resolved");
 
-    expect(transitionLabel(STATUS.OPEN)).toBe("Start repair");
-    expect(transitionLabel(STATUS.IN_PROGRESS)).toBe("Mark resolved");
-    expect(transitionLabel(STATUS.RESOLVED)).toBe("Reopen");
-    expect(transitionLabel("custom")).toBe("Change status");
+    expect(getStatusLabel(STATUS.OPEN, translateRu)).toBe("Открыта");
+    expect(getStatusLabel(STATUS.IN_PROGRESS, translateRu)).toBe("В ремонте");
   });
 
-  it("passes stable translation keys and locale fallbacks to i18n", () => {
-    const t = vi.fn((key, options) => `${key}:${options.defaultValue}`);
+  it("labels the transition a status can make", () => {
+    expect(transitionLabel(STATUS.OPEN, translate)).toBe("Start repair");
+    expect(transitionLabel(STATUS.IN_PROGRESS, translate)).toBe(
+      "Mark resolved",
+    );
+    expect(transitionLabel(STATUS.RESOLVED, translate)).toBe("Reopen");
 
-    expect(getStatusLabel(STATUS.RESOLVED, t)).toBe(
-      "leakDetails.statuses.resolved:Resolved",
-    );
-    expect(transitionLabel(STATUS.OPEN, t)).toBe(
-      "statusActions.open:Start repair",
-    );
-    expect(t).toHaveBeenNthCalledWith(1, "leakDetails.statuses.resolved", {
-      defaultValue: "Resolved",
-    });
-    expect(t).toHaveBeenNthCalledWith(2, "statusActions.open", {
-      defaultValue: "Start repair",
-    });
+    expect(transitionLabel(STATUS.OPEN, translateRu)).toBe("Взять в ремонт");
   });
 
-  it("returns visual metadata and falls back to open for unknown statuses", () => {
-    expect(getStatusMeta(STATUS.IN_PROGRESS)).toEqual({
-      ...STATUS_META.in_progress,
-      label: "Under repair",
-      short: "Under repair",
-    });
-    expect(getStatusMeta("unknown")).toEqual({
+  it("defaults an absent status to open", () => {
+    expect(getStatusLabel(undefined, translate)).toBe("Open");
+    expect(transitionLabel(undefined, translate)).toBe("Start repair");
+  });
+
+  // A status the locale does not name is shown as itself rather than as a raw
+  // key, and gets the neutral open styling.
+  it("falls back to the status name for one the locale does not know", () => {
+    expect(getStatusLabel("custom", translate)).toBe("custom");
+    expect(transitionLabel("custom", translate)).toBe("Change status");
+    expect(getStatusMeta("unknown", translate)).toEqual({
       ...STATUS_META.open,
       label: "unknown",
       short: "unknown",
     });
   });
 
-  it("uses Russian defaults when the stored language is unsupported", () => {
-    localStorage.setItem(LANGUAGE_STORAGE_KEY, "unsupported");
+  it("asks for stable keys", () => {
+    const t = vi.fn((key) => key);
 
-    expect(getStatusLabel(STATUS.OPEN)).not.toBe("Open");
-    expect(transitionLabel(STATUS.OPEN)).not.toBe("Start repair");
-    expect(getStatusLabel(STATUS.OPEN)).toBeTruthy();
-    expect(transitionLabel(STATUS.OPEN)).toBeTruthy();
+    getStatusLabel(STATUS.RESOLVED, t);
+    transitionLabel(STATUS.OPEN, t);
+
+    expect(t).toHaveBeenCalledWith("leakDetails.statuses.resolved", {
+      defaultValue: "resolved",
+    });
+    // The fallback is itself a key, resolved before the specific one is asked
+    // for, so an unknown status still reads in the reader's language.
+    expect(t).toHaveBeenCalledWith("statusActions.fallback");
+    expect(t).toHaveBeenCalledWith("statusActions.open", {
+      defaultValue: "statusActions.fallback",
+    });
+  });
+
+  it("returns visual metadata alongside the label", () => {
+    expect(getStatusMeta(STATUS.IN_PROGRESS, translate)).toEqual({
+      ...STATUS_META.in_progress,
+      label: "Under repair",
+      short: "Under repair",
+    });
   });
 });

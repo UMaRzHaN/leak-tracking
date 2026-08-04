@@ -17,16 +17,11 @@ import {
 /** @type {(path: string) => Promise<void>} */
 const noopDeletePhoto = async () => {};
 
-function pluralLeaks(n, lang) {
-  if (lang !== "ru") {
-    return n === 1 ? "record" : "records";
-  }
-
-  if (n % 10 === 1 && n % 100 !== 11) return "запись";
-  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) {
-    return "записи";
-  }
-  return "записей";
+// Russian needs three plural forms where English needs two; Intl.PluralRules
+// picks the one this count takes and the locale carries every form.
+function pluralLeaks(count, t, intlLocale) {
+  const form = new Intl.PluralRules(intlLocale).select(count);
+  return t(`database.bulk.records.${form}`);
 }
 
 export function useBulkActions({
@@ -38,7 +33,7 @@ export function useBulkActions({
   userProfile,
   projectVars = {},
 }) {
-  const { lang, t } = useLanguage();
+  const { t, intlLocale } = useLanguage();
   const historyUser = userProfile?.name?.trim() || undefined;
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [resolveQueue, setResolveQueue] = useState([]);
@@ -184,20 +179,13 @@ export function useBulkActions({
         notify(
           "success",
           t("database.bulk.statusChanged", {
-            defaultValue: `Status changed for ${affected.length} ${pluralLeaks(
-              affected.length,
-              lang,
-            )}`,
+            count: affected.length,
+            records: pluralLeaks(affected.length, t, intlLocale),
           }),
         );
         clearSelection();
       } catch (err) {
-        notify(
-          "error",
-          t("database.bulk.saveError", {
-            defaultValue: `Save error: ${err.message}`,
-          }),
-        );
+        notify("error", t("database.bulk.saveError", { message: err.message }));
       }
     },
     [
@@ -205,7 +193,7 @@ export function useBulkActions({
       data,
       deletePhoto,
       historyUser,
-      lang,
+      intlLocale,
       notify,
       requireHistoryUser,
       selectedIds,
@@ -246,12 +234,7 @@ export function useBulkActions({
             () => {},
           );
         }
-        notify(
-          "error",
-          t("database.bulk.saveError", {
-            defaultValue: `Save error: ${err.message}`,
-          }),
-        );
+        notify("error", t("database.bulk.saveError", { message: err.message }));
         return;
       }
 
@@ -261,10 +244,8 @@ export function useBulkActions({
         notify(
           "success",
           t("database.bulk.resolved", {
-            defaultValue: `Resolved ${resolveTotal} ${pluralLeaks(
-              resolveTotal,
-              lang,
-            )}`,
+            count: resolveTotal,
+            records: pluralLeaks(resolveTotal, t, intlLocale),
           }),
         );
         clearSelection();
@@ -276,7 +257,7 @@ export function useBulkActions({
       data,
       deletePhoto,
       historyUser,
-      lang,
+      intlLocale,
       notify,
       requireHistoryUser,
       resolveQueue,
@@ -324,12 +305,7 @@ export function useBulkActions({
             deletePhoto,
           ).catch(() => {});
         }
-        notify(
-          "error",
-          t("database.bulk.saveError", {
-            defaultValue: `Save error: ${err.message}`,
-          }),
-        );
+        notify("error", t("database.bulk.saveError", { message: err.message }));
         return;
       }
 
@@ -339,10 +315,8 @@ export function useBulkActions({
         notify(
           "success",
           t("database.bulk.statusChanged", {
-            defaultValue: `Status changed for ${repairTotal} ${pluralLeaks(
-              repairTotal,
-              lang,
-            )}`,
+            count: repairTotal,
+            records: pluralLeaks(repairTotal, t, intlLocale),
           }),
         );
         clearSelection();
@@ -354,7 +328,7 @@ export function useBulkActions({
       data,
       deletePhoto,
       historyUser,
-      lang,
+      intlLocale,
       notify,
       requireHistoryUser,
       repairQueue,

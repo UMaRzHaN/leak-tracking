@@ -45,4 +45,22 @@ export const database = {
   paramsAlreadyApplied: "Selected parameters are already applied",
   paramsUpdated: "Parameters and calculations updated: {{changed}}",
   paramsUpdateFailed: "Failed to update parameters: {{message}}",
+
+  bulk: {
+    statusChanged: "Status changed for {{count}} {{records}}",
+    resolved: "Resolved {{count}} {{records}}",
+    saveError: "Save error: {{message}}",
+    records: {
+      one: "record",
+      few: "records",
+      many: "records",
+      other: "records",
+    },
+  },
+
+  export: {
+    hasPhoto: "Yes",
+    success: "ZIP archive downloaded successfully",
+    error: "Export error: {{message}}",
+  },
 };

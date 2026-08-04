@@ -1,5 +1,3 @@
-import { readStoredLanguage } from "@/utils/locale";
-
 export const STATUS = {
   OPEN: "open",
   IN_PROGRESS: "in_progress",
@@ -26,49 +24,9 @@ export const STATUS_META = {
 
 export const STATUS_ORDER = [STATUS.OPEN, STATUS.IN_PROGRESS, STATUS.RESOLVED];
 
-const STATUS_LABEL_DEFAULTS = {
-  ru: {
-    open: "Открыта",
-    in_progress: "В ремонте",
-    resolved: "Устранена",
-  },
-  en: {
-    open: "Open",
-    in_progress: "Under repair",
-    resolved: "Resolved",
-  },
-};
-
-const STATUS_ACTION_DEFAULTS = {
-  ru: {
-    open: "Взять в ремонт",
-    in_progress: "Устранено",
-    resolved: "Переоткрыть",
-    fallback: "Изменить статус",
-  },
-  en: {
-    open: "Start repair",
-    in_progress: "Mark resolved",
-    resolved: "Reopen",
-    fallback: "Change status",
-  },
-};
-
-function getCurrentLanguage() {
-  return readStoredLanguage();
-}
-
 export function getStatusLabel(status, t) {
-  const lang = getCurrentLanguage();
   const normalized = status ?? STATUS.OPEN;
-  const fallback =
-    STATUS_LABEL_DEFAULTS[lang]?.[normalized] ??
-    STATUS_LABEL_DEFAULTS.ru[normalized] ??
-    normalized;
-
-  return t
-    ? t(`leakDetails.statuses.${normalized}`, { defaultValue: fallback })
-    : fallback;
+  return t(`leakDetails.statuses.${normalized}`, { defaultValue: normalized });
 }
 
 /**
@@ -89,17 +47,10 @@ export function nextStatus(current) {
 
 /** Label for the transition action button */
 export function transitionLabel(current, t) {
-  const lang = getCurrentLanguage();
   const normalized = current ?? STATUS.OPEN;
-  const fallback =
-    STATUS_ACTION_DEFAULTS[lang]?.[normalized] ??
-    STATUS_ACTION_DEFAULTS.ru[normalized] ??
-    STATUS_ACTION_DEFAULTS[lang]?.fallback ??
-    STATUS_ACTION_DEFAULTS.ru.fallback;
-
-  return t
-    ? t(`statusActions.${normalized}`, { defaultValue: fallback })
-    : fallback;
+  return t(`statusActions.${normalized}`, {
+    defaultValue: t("statusActions.fallback"),
+  });
 }
 
 export function getStatusMeta(status, t) {

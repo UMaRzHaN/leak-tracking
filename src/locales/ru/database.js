@@ -47,4 +47,24 @@ export const database = {
   paramsAlreadyApplied: "Выбранные параметры уже применены",
   paramsUpdated: "Параметры и расчёты обновлены: {{changed}}",
   paramsUpdateFailed: "Не удалось обновить параметры: {{message}}",
+
+  bulk: {
+    statusChanged: "Статус изменён у {{count}} {{records}}",
+    resolved: "Устранено {{count}} {{records}}",
+    saveError: "Ошибка сохранения: {{message}}",
+    // Plural forms picked by Intl.PluralRules; every form a language can
+    // select has to be present, which is why English repeats itself.
+    records: {
+      one: "записи",
+      few: "записей",
+      many: "записей",
+      other: "записей",
+    },
+  },
+
+  export: {
+    hasPhoto: "Да",
+    success: "ZIP-архив успешно скачан",
+    error: "Ошибка экспорта: {{message}}",
+  },
 };

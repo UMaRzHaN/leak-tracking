@@ -24,6 +24,7 @@ import { reopen } from "./reopen";
 import { resolve } from "./resolve";
 import { settings } from "./settings";
 import { settingsModal } from "./settingsModal";
+import { statusActions } from "./statusActions";
 import { syncErrors } from "./syncErrors";
 import { userProfile } from "./userProfile";
 import { voice } from "./voice";
@@ -55,6 +56,7 @@ export const translation = {
   resolve,
   settings,
   settingsModal,
+  statusActions,
   syncErrors,
   userProfile,
   voice,

@@ -77,9 +77,7 @@ export default function MapControls({
         className={s.controlBtn}
         onClick={onLocate}
         disabled={!gpsEnabled}
-        aria-label={t("map.controls.myLocation", {
-          defaultValue: "My location",
-        })}
+        aria-label={t("map.controls.myLocation")}
       >
         <svg
           className={s.controlIcon}
@@ -102,9 +100,7 @@ export default function MapControls({
         type="button"
         className={s.controlBtn}
         onClick={onOpenSheet}
-        aria-label={t("map.controls.searchLeaks", {
-          defaultValue: "Search leaks",
-        })}
+        aria-label={t("map.controls.searchLeaks")}
       >
         <svg
           className={s.controlIcon}
@@ -375,11 +371,7 @@ export default function MapControls({
         className={`${s.controlBtn} ${downloading ? s.controlBtnActive : ""}`}
         onClick={downloading ? onCancelDownload : onDownload}
         aria-label={
-          downloading
-            ? t("map.cancelDownload")
-            : t("map.controls.downloadArea", {
-                defaultValue: "Download current area map",
-              })
+          downloading ? t("map.cancelDownload") : t("map.controls.downloadArea")
         }
       >
         <svg

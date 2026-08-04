@@ -23,7 +23,7 @@ export default function StatusPickerModal({ current, onSelect, onClose }) {
       >
         <div className={s.handle} />
         <p id={titleId} className={s.title}>
-          {t("statusActions.fallback", { defaultValue: "Change status" })}
+          {t("statusActions.fallback")}
         </p>
         <div className={s.options}>
           {options.map((status) => {
