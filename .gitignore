@@ -32,3 +32,11 @@ yarn-error.log*
 
 # agents
 /.claude/settings.local.json
+
+# Signing keys. A committed keystore is a compromised keystore: the history
+# keeps it even after a delete, and anyone with the repo can sign a build that
+# Android will accept as an update to the real app.
+*.jks
+*.keystore
+*.p12
+keystore.properties
