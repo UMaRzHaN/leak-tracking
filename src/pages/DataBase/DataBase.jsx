@@ -22,7 +22,7 @@ export default function DataBase({
 }) {
   useRenderMetric("DataBase");
 
-  const { lang } = useLanguage();
+  const { t } = useLanguage();
   const projectConfig = useProjectConfig();
   const [bulkCalculationOpen, setBulkCalculationOpen] = useState(false);
   const {
@@ -151,13 +151,11 @@ export default function DataBase({
         onClose={() => setBulkCalculationOpen(false)}
         variables={bulk.bulkCalculationVars}
         onSave={bulk.handleBulkCalculationSave}
-        title={lang === "ru" ? "Массовый пересчёт" : "Bulk recalculation"}
-        description={
-          lang === "ru"
-            ? `Параметры первой выбранной утечки будут применены к ${bulk.selectedCount} записям.`
-            : `The first selected record's parameters will be applied to ${bulk.selectedCount} records.`
-        }
-        saveLabel={lang === "ru" ? "Применить" : "Apply"}
+        title={t("database.bulkRecalcTitle")}
+        description={t("database.bulkRecalcDescription", {
+          count: bulk.selectedCount,
+        })}
+        saveLabel={t("database.apply")}
         allowUnchangedSave
       />
     </div>

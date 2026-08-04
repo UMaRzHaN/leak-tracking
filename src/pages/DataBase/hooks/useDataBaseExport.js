@@ -90,13 +90,7 @@ export function useDataBaseExport({ displayed, notify }) {
 
     try {
       setIsExporting(true);
-      notify(
-        "info",
-        lang === "ru"
-          ? "Идёт экспорт, подождите..."
-          : "Export in progress, please wait...",
-        { autoCloseMs: 0 },
-      );
+      notify("info", t("database.exportInProgress"), { autoCloseMs: 0 });
 
       const [{ exportToExcelFile }, { buildWorkbookBufferInWorker }] =
         await Promise.all([

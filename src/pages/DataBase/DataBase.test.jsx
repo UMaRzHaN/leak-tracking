@@ -4,9 +4,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const controller = vi.hoisted(() => ({ current: null }));
 
 vi.mock("@/utils/renderMetrics", () => ({ useRenderMetric: vi.fn() }));
-vi.mock("@/app/hooks/useLanguage", () => ({
-  useLanguage: () => ({ lang: "en" }),
-}));
+// Resolves against the real English locale, so these assertions fail if the
+// screen loses a translation rather than quietly falling back to the key.
+vi.mock("@/app/hooks/useLanguage", async () => {
+  const { englishLanguageHook } = await import("@/test/translate");
+  return englishLanguageHook();
+});
 vi.mock("@/app/project/hooks/useProjectConfig", () => ({
   useProjectConfig: () => ({
     system: { location: { secondary: "station", label: "Station" } },

@@ -2,12 +2,12 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import FilterBar from "./FilterBar";
 
-vi.mock("@/app/hooks/useLanguage", () => ({
-  useLanguage: () => ({
-    lang: "en",
-    t: (key, options) => options?.defaultValue ?? key,
-  }),
-}));
+// Resolves against the real English locale, so these assertions fail if the
+// screen loses a translation rather than quietly falling back to the key.
+vi.mock("@/app/hooks/useLanguage", async () => {
+  const { englishLanguageHook } = await import("@/test/translate");
+  return englishLanguageHook();
+});
 
 function props(overrides = {}) {
   return {

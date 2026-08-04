@@ -1,0 +1,50 @@
+export const database = {
+  bulkRecalcTitle: "Массовый пересчёт",
+  bulkRecalcDescription:
+    "Параметры первой выбранной утечки будут применены к {{count}} записям.",
+  apply: "Применить",
+
+  changeSortOrder: "Изменить порядок сортировки",
+  dateAsc: "дата ↑",
+  dateDesc: "дата ↓",
+  clearAll: "Снять всё",
+  selectAll: "Выбрать всё",
+  exportZip: "Экспорт в Excel + фото (ZIP)",
+  exporting: "Экспорт...",
+  exportInProgress: "Идёт экспорт, подождите...",
+  clearSelection: "Снять выбор",
+  check: "Проверить",
+  editCalcParamsForSelected: "Изменить параметры расчёта для выбранных",
+  calcParams: "Параметры расчёта",
+
+  notSpecified: "Не указано",
+  radiusKm: "км",
+  radiusM: "м",
+  searchPlaceholder: "Бирка, место, объект, описание, проверяющий...",
+  searchLeaks: "Поиск утечек",
+  clearSearch: "Очистить поиск",
+  filters: "Фильтры",
+  status: "Статус",
+  priority: "Приоритет",
+  all: "Все",
+  nearbyRadius: " • в радиусе {{radius}} м",
+  selectedOf: "{{selected}} выбрано из {{visible}}",
+  nearMe: "Рядом со мной",
+
+  // Names of the location field a project type uses; which one applies is
+  // decided by the project config, not by language.
+  locationLabels: {
+    subdivision: "Подразделение",
+    field: "УМГ",
+    district: "Район",
+    deposit: "Месторождение",
+    station: "Станция",
+    locality: "Населённый пункт",
+    location: "Местоположение",
+  },
+
+  fillUserName: "Заполните имя пользователя в профиле",
+  paramsAlreadyApplied: "Выбранные параметры уже применены",
+  paramsUpdated: "Параметры и расчёты обновлены: {{changed}}",
+  paramsUpdateFailed: "Не удалось обновить параметры: {{message}}",
+};

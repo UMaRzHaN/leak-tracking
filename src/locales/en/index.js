@@ -1,4 +1,5 @@
 import { addLeak } from "./addLeak";
+import { database } from "./database";
 import { emissionsSummary } from "./emissionsSummary";
 import { emptyState } from "./emptyState";
 import { fieldVisibility } from "./fieldVisibility";
@@ -17,6 +18,7 @@ import { voice } from "./voice";
 
 export const translation = {
   addLeak,
+  database,
   emissionsSummary,
   emptyState,
   fieldVisibility,

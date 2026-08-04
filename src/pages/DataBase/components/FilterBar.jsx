@@ -44,7 +44,7 @@ function FilterBar({
   hasGps,
 }) {
   const { t, lang } = useLanguage();
-  const noLocationLabel = lang === "ru" ? "Не указано" : "Not specified";
+  const noLocationLabel = t("database.notSpecified");
   const selectedStatuses = normalizeSelected(statusFilter);
   const selectedPriorities = normalizeSelected(priorityFilter);
   const hasActiveFilter =
@@ -56,31 +56,17 @@ function FilterBar({
   const [open, setOpen] = useState(false);
   const formatRadius = (radius) =>
     radius >= 1000
-      ? `${radius / 1000} ${lang === "ru" ? "км" : "km"}`
-      : `${radius} ${lang === "ru" ? "м" : "m"}`;
-  const locationLabels =
-    lang === "ru"
-      ? {
-          subdivision: "Подразделение",
-          field: "УМГ",
-          district: "Район",
-          deposit: "Месторождение",
-          station: "Станция",
-          locality: "Населённый пункт",
-        }
-      : {
-          subdivision: "Subdivision",
-          field: "MGPA",
-          district: "District",
-          deposit: "Deposit",
-          station: "Station",
-          locality: "Locality",
-        };
+      ? `${radius / 1000} ${t("database.radiusKm")}`
+      : `${radius} ${t("database.radiusM")}`;
+  // Which location field a project uses is decided by its type, not by
+  // language, so the key is looked up rather than branched on.
+  const locationLabelOf = (key) =>
+    key ? t(`database.locationLabels.${key}`, { defaultValue: "" }) : "";
   const effectiveMainLocationKey = mainLocationFilter?.key ?? mainLocationKey;
   const mainLocationFilterLabel =
-    (lang === "ru" ? mainLocationLabel : null) ??
-    locationLabels[effectiveMainLocationKey] ??
-    (lang === "ru" ? "Подразделение" : "Subdivision");
+    (lang === "ru" ? mainLocationLabel : null) ||
+    locationLabelOf(effectiveMainLocationKey) ||
+    t("database.locationLabels.subdivision");
   const mainLocationValues = Array.isArray(mainLocationFilter?.values)
     ? mainLocationFilter.values
     : [];
@@ -91,9 +77,9 @@ function FilterBar({
 
   const effectiveLocationKey = locationFilter?.key ?? locationKey;
   const locationFilterLabel =
-    (lang === "ru" ? locationLabel : null) ??
-    locationLabels[effectiveLocationKey] ??
-    (lang === "ru" ? "Местоположение" : "Location");
+    (lang === "ru" ? locationLabel : null) ||
+    locationLabelOf(effectiveLocationKey) ||
+    t("database.locationLabels.location");
   const locationValues = Array.isArray(locationFilter?.values)
     ? locationFilter.values
     : [];
@@ -147,13 +133,9 @@ function FilterBar({
           <span className={s.searchIcon}>🔍</span>
           <input
             className={s.searchInput}
-            placeholder={
-              lang === "ru"
-                ? "Бирка, место, объект, описание, проверяющий..."
-                : "Tag, location, object, description, inspector..."
-            }
+            placeholder={t("database.searchPlaceholder")}
             value={search}
-            aria-label={lang === "ru" ? "Поиск утечек" : "Search leaks"}
+            aria-label={t("database.searchLeaks")}
             autoComplete="off"
             enterKeyHint="search"
             onChange={(event) => setSearch(event.target.value)}
@@ -163,7 +145,7 @@ function FilterBar({
               className={s.clearSearch}
               onClick={() => setSearch("")}
               type="button"
-              aria-label={lang === "ru" ? "Очистить поиск" : "Clear search"}
+              aria-label={t("database.clearSearch")}
             >
               ✕
             </button>
@@ -178,7 +160,7 @@ function FilterBar({
             if (open) event.currentTarget.blur();
           }}
           type="button"
-          aria-label={lang === "ru" ? "Фильтры" : "Filters"}
+          aria-label={t("database.filters")}
         >
           <svg
             width="18"
@@ -272,13 +254,11 @@ function FilterBar({
           )}
 
           <div className={s.filterSection}>
-            <span className={s.filterLabel}>
-              {lang === "ru" ? "Статус" : "Status"}
-            </span>
+            <span className={s.filterLabel}>{t("database.status")}</span>
             <div className={s.filters}>
               <FilterTab
                 id={ALL}
-                label={lang === "ru" ? "Все" : "All"}
+                label={t("database.all")}
                 count={counts.all}
                 active={selectedStatuses.length === 0}
                 onSelect={setFilter}
@@ -306,9 +286,7 @@ function FilterBar({
           <div className={s.filterDivider} />
 
           <div className={s.filterSection}>
-            <span className={s.filterLabel}>
-              {lang === "ru" ? "Приоритет" : "Priority"}
-            </span>
+            <span className={s.filterLabel}>{t("database.priority")}</span>
             <div className={s.priorityFilters}>
               <button
                 className={`${s.priorityTab} ${
@@ -325,7 +303,7 @@ function FilterBar({
                 }
                 onClick={() => setPriorityFilter([])}
               >
-                {lang === "ru" ? "Все" : "All"}
+                {t("database.all")}
               </button>
               {PRIORITY_ORDER.map((priority) => {
                 const meta = getPriorityMeta(priority, t, lang);
@@ -370,9 +348,7 @@ function FilterBar({
               >
                 <span className={s.nearbyLeft}>
                   <span className={s.nearbyIcon}>📌</span>
-                  <span className={s.nearbyLabel}>
-                    {lang === "ru" ? "Рядом со мной" : "Near me"}
-                  </span>
+                  <span className={s.nearbyLabel}>{t("database.nearMe")}</span>
                   {counts.nearby > 0 && (
                     <span className={s.nearbyCount}>{counts.nearby}</span>
                   )}

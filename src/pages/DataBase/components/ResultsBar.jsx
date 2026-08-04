@@ -28,7 +28,7 @@ export default function ResultsBar({
   onExport,
   isExporting = false,
 }) {
-  const { lang } = useLanguage();
+  const { lang, t } = useLanguage();
 
   return (
     <>
@@ -38,28 +38,14 @@ export default function ResultsBar({
             <>
               {`${visibleCount} ${pluralLeaks(visibleCount, lang)}`}
               {statusFilter === NEARBY ? (
-                lang === "ru" ? (
-                  ` • в радиусе ${NEARBY_RADIUS_M} м`
-                ) : (
-                  ` • within ${NEARBY_RADIUS_M} m`
-                )
+                t("database.nearbyRadius", { radius: NEARBY_RADIUS_M })
               ) : (
                 <button
                   className={s.sortToggle}
                   onClick={onSortToggle}
-                  title={
-                    lang === "ru"
-                      ? "Изменить порядок сортировки"
-                      : "Change sort order"
-                  }
+                  title={t("database.changeSortOrder")}
                 >
-                  {sortAsc
-                    ? lang === "ru"
-                      ? "дата ↑"
-                      : "date ↑"
-                    : lang === "ru"
-                      ? "дата ↓"
-                      : "date ↓"}
+                  {sortAsc ? t("database.dateAsc") : t("database.dateDesc")}
                 </button>
               )}
             </>
@@ -70,12 +56,8 @@ export default function ResultsBar({
           {visibleCount > 0 && (
             <button className={s.actionBtn} onClick={onSelectDisplayed}>
               {allDisplayedSelected
-                ? lang === "ru"
-                  ? "Снять всё"
-                  : "Clear all"
-                : lang === "ru"
-                  ? "Выбрать всё"
-                  : "Select all"}
+                ? t("database.clearAll")
+                : t("database.selectAll")}
             </button>
           )}
           {totalCount > 0 && (
@@ -83,17 +65,9 @@ export default function ResultsBar({
               className={s.exportBtn}
               onClick={onExport}
               disabled={isExporting}
-              title={
-                lang === "ru"
-                  ? "Экспорт в Excel + фото (ZIP)"
-                  : "Export to Excel + photos (ZIP)"
-              }
+              title={t("database.exportZip")}
             >
-              {isExporting
-                ? lang === "ru"
-                  ? "Экспорт..."
-                  : "Export..."
-                : "📥 XLSX"}
+              {isExporting ? t("database.exporting") : "📥 XLSX"}
             </button>
           )}
         </div>
@@ -103,28 +77,23 @@ export default function ResultsBar({
         <div className={s.bulkBar}>
           <span className={s.bulkCheck}>✓</span>
           <span className={s.bulkCount}>
-            {lang === "ru"
-              ? `${selectedCount} выбрано из ${visibleCount}`
-              : `${selectedCount} selected of ${visibleCount}`}
+            {t("database.selectedOf", {
+              selected: selectedCount,
+              visible: visibleCount,
+            })}
           </span>
           <div className={s.bulkBtns}>
             <button className={s.bulkClearBtn} onClick={onClearSelection}>
-              {lang === "ru" ? "Снять выбор" : "Clear selection"}
+              {t("database.clearSelection")}
             </button>
             <button className={s.bulkMonitorBtn} onClick={onMonitorSelected}>
-              {lang === "ru" ? "Проверить" : "Check"}
+              {t("database.check")}
             </button>
             <button
               className={s.bulkCalcBtn}
               onClick={onEditBulkCalculation}
-              title={
-                lang === "ru"
-                  ? "Изменить параметры расчёта для выбранных"
-                  : "Edit calculation parameters for selected records"
-              }
-              aria-label={
-                lang === "ru" ? "Параметры расчёта" : "Calculation parameters"
-              }
+              title={t("database.editCalcParamsForSelected")}
+              aria-label={t("database.calcParams")}
             >
               ⚙
             </button>

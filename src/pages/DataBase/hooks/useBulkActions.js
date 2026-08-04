@@ -47,14 +47,9 @@ export function useBulkActions({
   const [repairTotal, setRepairTotal] = useState(0);
   const requireHistoryUser = useCallback(() => {
     if (historyUser) return true;
-    notify(
-      "error",
-      lang === "ru"
-        ? "Заполните имя пользователя в профиле"
-        : "Fill in the user name in the profile",
-    );
+    notify("error", t("database.fillUserName"));
     return false;
-  }, [historyUser, lang, notify]);
+  }, [historyUser, notify, t]);
 
   const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
 
@@ -110,12 +105,7 @@ export function useBulkActions({
       });
 
       if (changed === 0) {
-        notify(
-          "info",
-          lang === "ru"
-            ? "Выбранные параметры уже применены"
-            : "Selected parameters are already applied",
-        );
+        notify("info", t("database.paramsAlreadyApplied"));
         clearSelection();
         return true;
       }
@@ -123,20 +113,13 @@ export function useBulkActions({
       try {
         await setData(next);
         hapticSuccess();
-        notify(
-          "success",
-          lang === "ru"
-            ? `Параметры и расчёты обновлены: ${changed}`
-            : `Parameters and calculations updated: ${changed}`,
-        );
+        notify("success", t("database.paramsUpdated", { changed }));
         clearSelection();
         return true;
       } catch (error) {
         notify(
           "error",
-          lang === "ru"
-            ? `Не удалось обновить параметры: ${error.message}`
-            : `Failed to update parameters: ${error.message}`,
+          t("database.paramsUpdateFailed", { message: error.message }),
         );
         return false;
       }
@@ -145,12 +128,12 @@ export function useBulkActions({
       clearSelection,
       data,
       historyUser,
-      lang,
       notify,
       projectVars,
       requireHistoryUser,
       selectedIds,
       setData,
+      t,
     ],
   );
 
