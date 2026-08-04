@@ -16,6 +16,12 @@ export const projectSetup = {
 
   import: "Import from ZIP",
   importing: "Importing…",
+  importQr: "Import by QR",
+  importingQr: "Importing by QR...",
+  scanQrProgress: "Point the camera at the sync QR code...",
+  importQrProgress: "Downloading the database by QR, please wait...",
+  importProgress: "ZIP backup import in progress, please wait...",
+  cancelScan: "Cancel",
   importExcel: "Import Excel",
   importingExcel: "Importing Excel…",
   importExcelProgress: "Reading the Excel archive, please wait...",

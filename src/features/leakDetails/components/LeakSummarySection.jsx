@@ -13,9 +13,7 @@ export default function LeakSummarySection({
   const hasAny = fields.some(
     (field) => data[field.key] != null && data[field.key] !== "",
   );
-  const priority = data.priority
-    ? getPriorityMeta(data.priority, t, lang)
-    : null;
+  const priority = data.priority ? getPriorityMeta(data.priority, t) : null;
 
   return (
     <div className={s.tabPane}>

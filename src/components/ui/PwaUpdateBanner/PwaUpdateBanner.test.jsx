@@ -2,9 +2,10 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import PwaUpdateBanner from "./PwaUpdateBanner";
 
-vi.mock("@/app/hooks/useLanguage", () => ({
-  useLanguage: () => ({ lang: "ru" }),
-}));
+vi.mock("@/app/hooks/useLanguage", async () => {
+  const { englishLanguageHook } = await import("@/test/translate");
+  return englishLanguageHook();
+});
 
 describe("PwaUpdateBanner", () => {
   it("activates a waiting worker only after explicit user confirmation", () => {
@@ -24,7 +25,7 @@ describe("PwaUpdateBanner", () => {
         }),
       );
     });
-    fireEvent.click(screen.getByRole("button", { name: "Обновить" }));
+    fireEvent.click(screen.getByRole("button", { name: "Update" }));
 
     expect(addEventListener).toHaveBeenCalledWith(
       "controllerchange",

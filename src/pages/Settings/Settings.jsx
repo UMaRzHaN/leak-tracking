@@ -61,7 +61,6 @@ export default function Settings(props) {
     integrityReport,
     isExportingZip,
     isImportingExcel,
-    lang,
     leakPhotoRequired,
     localSync,
     localeTexts,
@@ -191,7 +190,7 @@ export default function Settings(props) {
           onImport={handleImportZip}
         />
 
-        <LocalSyncSection sync={localSync} lang={lang} />
+        <LocalSyncSection sync={localSync} />
 
         <ProjectIntegritySection
           activeProject={activeProject}

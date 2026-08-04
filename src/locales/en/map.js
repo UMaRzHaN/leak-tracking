@@ -33,4 +33,13 @@ export const map = {
   all: "All",
   radiusKm: "km",
   radiusM: "m",
+
+  sheet: {
+    title: "Map filters",
+    filterBy: "Filter by:",
+    notSpecified: "Not specified",
+    searchPlaceholder: "Search by tag number...",
+    searchLabel: "Search by tag number",
+    empty: "Nothing found",
+  },
 };

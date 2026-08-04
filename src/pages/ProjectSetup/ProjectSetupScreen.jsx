@@ -60,7 +60,7 @@ export default function ProjectSetupScreen({
   onImportZip,
   onImportExcel,
 }) {
-  const { t, toggleLanguage, lang } = useLanguage();
+  const { t, toggleLanguage } = useLanguage();
   const localeTexts = useMemo(
     () => ({
       title: t("projectSetup.title"),
@@ -80,34 +80,17 @@ export default function ProjectSetupScreen({
 
       import: t("projectSetup.import"),
       importing: t("projectSetup.importing"),
-      importQr: t("projectSetup.importQr", {
-        defaultValue: lang === "ru" ? "Импорт по QR" : "Import by QR",
-      }),
-      importingQr: t("projectSetup.importingQr", {
-        defaultValue: lang === "ru" ? "Импорт по QR..." : "Importing by QR...",
-      }),
-      scanQrProgress: t("projectSetup.scanQrProgress", {
-        defaultValue:
-          lang === "ru"
-            ? "Наведите камеру на QR-код синхронизации..."
-            : "Point the camera at the sync QR code...",
-      }),
-      importQrProgress: t("projectSetup.importQrProgress", {
-        defaultValue:
-          lang === "ru"
-            ? "Загрузка базы по QR, подождите..."
-            : "Downloading the database by QR, please wait...",
-      }),
+      importQr: t("projectSetup.importQr"),
+      importingQr: t("projectSetup.importingQr"),
+      scanQrProgress: t("projectSetup.scanQrProgress"),
+      importQrProgress: t("projectSetup.importQrProgress"),
       importExcel: t("projectSetup.importExcel"),
       importingExcel: t("projectSetup.importingExcel"),
       importExcelProgress: t("projectSetup.importExcelProgress"),
       emptyExcel: t("projectSetup.emptyExcel"),
-      importProgress: t("projectSetup.importProgress", {
-        defaultValue:
-          lang === "ru"
-            ? "Идёт импорт ZIP backup, подождите..."
-            : "ZIP backup import in progress, please wait...",
-      }),
+      importProgress: t("projectSetup.importProgress"),
+
+      cancelScan: t("projectSetup.cancelScan"),
 
       importHint: t("projectSetup.importHint"),
 
@@ -128,7 +111,7 @@ export default function ProjectSetupScreen({
         },
       },
     }),
-    [lang, t],
+    [t],
   );
   const [name, setName] = useState("");
   const [type, setType] = useState("");
@@ -366,7 +349,7 @@ export default function ProjectSetupScreen({
                   className={s.cancelScanBtn}
                   onClick={cancelLocalSyncQrScan}
                 >
-                  {lang === "ru" ? "Отмена" : "Cancel"}
+                  {localeTexts.cancelScan}
                 </button>
               </div>
             )}

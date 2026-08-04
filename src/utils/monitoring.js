@@ -1,3 +1,4 @@
+import { getIntlLocale } from "@/utils/locale";
 export const MONITORING_RESULT = {
   STILL_LEAKING: "still_leaking",
   RESOLVED: "resolved",
@@ -138,7 +139,7 @@ export function formatMonitoringDate(value, lang = "ru") {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
 
-  return date.toLocaleDateString(lang === "ru" ? "ru-RU" : "en-US", {
+  return date.toLocaleDateString(getIntlLocale(lang), {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",

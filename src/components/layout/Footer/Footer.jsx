@@ -3,7 +3,7 @@ import s from "./Footer.module.scss";
 import { useLanguage } from "@/app/hooks/useLanguage";
 
 export default function Footer({ page, setPage, openCount = 0 }) {
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const navItems = useMemo(
     () => [
       {
@@ -26,9 +26,7 @@ export default function Footer({ page, setPage, openCount = 0 }) {
       {
         key: "monitoring",
         icon: "M",
-        label: t("footer.monitoring", {
-          defaultValue: lang === "ru" ? "Мониторинг" : "Monitoring",
-        }),
+        label: t("footer.monitoring"),
       },
       {
         key: "map",
@@ -36,7 +34,7 @@ export default function Footer({ page, setPage, openCount = 0 }) {
         label: t("footer.map"),
       },
     ],
-    [t, lang],
+    [t],
   );
   return (
     <footer className={s.nav}>

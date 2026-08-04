@@ -2,9 +2,10 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import AppRoutes from "./AppRoutes";
 
-vi.mock("./hooks/useLanguage", () => ({
-  useLanguage: () => ({ lang: "ru" }),
-}));
+vi.mock("./hooks/useLanguage", async () => {
+  const { englishLanguageHook } = await import("@/test/translate");
+  return englishLanguageHook();
+});
 
 vi.mock("@/hooks/useModalDialog", () => ({
   useModalDialog: () => null,
@@ -32,7 +33,6 @@ const baseProps = {
   handleImportZip: vi.fn(),
   importingDataLabel: null,
   isImportingProject: false,
-  lang: "ru",
   loadError: null,
   loadWarning: null,
   page: "",
@@ -64,7 +64,7 @@ describe("AppRoutes project data storage states", () => {
     );
 
     expect(
-      await screen.findByText("Резервное хранилище браузера недоступно"),
+      await screen.findByText("Browser backup storage is unavailable"),
     ).toBeInTheDocument();
     expect(await screen.findByText("main-page-ready")).toBeInTheDocument();
   });
@@ -82,7 +82,7 @@ describe("AppRoutes project data storage states", () => {
     );
 
     expect(
-      await screen.findByText("Не удалось прочитать данные"),
+      await screen.findByText("Data could not be read"),
     ).toBeInTheDocument();
     expect(screen.queryByText("main-page-ready")).not.toBeInTheDocument();
   });

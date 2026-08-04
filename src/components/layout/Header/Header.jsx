@@ -16,7 +16,7 @@ export default function Header({
 }) {
   const { projectName, project } = useProjectData();
   const meta = PROJECT_META[project];
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const localeTexts = useMemo(
     () => ({
       appTitle: t("header.appTitle"),
@@ -66,8 +66,8 @@ export default function Header({
             className={`${s.userBtn} ${userName ? s.userBtnActive : ""}`}
             type="button"
             onClick={onUserProfileOpen}
-            title={userName || (lang === "ru" ? "Пользователь" : "User")}
-            aria-label={userName || (lang === "ru" ? "Пользователь" : "User")}
+            title={userName || t("header.user")}
+            aria-label={userName || t("header.user")}
           >
             {userInitial || <span className={s.userIcon} aria-hidden="true" />}
           </button>

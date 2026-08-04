@@ -67,9 +67,7 @@ function LeakCardCompact({
 
   const status = leak.status ?? "open";
   const meta = getStatusMeta(status, t);
-  const priorityMeta = leak.priority
-    ? getPriorityMeta(leak.priority, t, lang)
-    : null;
+  const priorityMeta = leak.priority ? getPriorityMeta(leak.priority, t) : null;
   const ago = timeAgo(leak.createdAt, lang);
   const absoluteDate = formatLeakDate(leak.date, {}, lang);
   const urgency = urgencyOf(leak.createdAt, status);
@@ -283,22 +281,22 @@ function LeakCardCompact({
               <div className={s.chips}>
                 {nearbyDist != null && (
                   <span className={s.chipNear}>
-                    📌 {nearbyDist} {t("cards.units.meters")}
+                    📌 {nearbyDist} {t("common.units.meters")}
                   </span>
                 )}
                 {leak.leak_speed != null && (
                   <span className={s.chip}>
-                    {leak.leak_speed} {t("cards.units.litresPerMinute")}
+                    {leak.leak_speed} {t("common.units.litresPerMinute")}
                   </span>
                 )}
                 {methane != null && (
                   <span className={s.chipCalc}>
-                    ~{methane} {t("cards.units.cubicMetresPerYear")}
+                    ~{methane} {t("common.units.cubicMetresPerYear")}
                   </span>
                 )}
                 {emissions != null && (
                   <span className={s.chipCalc}>
-                    ~{emissions} {t("cards.units.tonnesCo2PerYear")}
+                    ~{emissions} {t("common.units.tonnesCo2PerYear")}
                   </span>
                 )}
               </div>

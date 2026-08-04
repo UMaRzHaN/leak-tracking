@@ -11,83 +11,52 @@ const SYNC_BUSY_STATUSES = new Set([
   "importing",
 ]);
 
-function getTexts(lang, status) {
-  const ru = lang === "ru";
-  const statusText = {
-    idle: ru ? "Готово" : "Ready",
-    preparing: ru ? "Подготовка архива" : "Preparing archive",
-    hosting: ru ? "QR активен" : "QR is active",
-    scanning: ru ? "Открытие камеры" : "Opening camera",
-    scanningImport: ru ? "Открытие камеры" : "Opening camera",
-    joining: ru ? "Подключение" : "Connecting",
-    merging: ru ? "Объединение данных" : "Merging data",
-    importing: ru ? "Импорт базы" : "Importing database",
-    complete: ru ? "Завершено" : "Complete",
-  };
-
+function getTexts(t, status) {
   return {
-    title: ru ? "Локальная синхронизация" : "Local sync",
-    status: statusText[status] ?? statusText.idle,
-    lead: ru
-      ? "Передайте базу напрямую между телефонами в одной Wi-Fi сети или через точку доступа. Интернет не нужен."
-      : "Transfer the database directly between phones on the same Wi-Fi network or hotspot. No internet required.",
-    hostTitle: ru ? "Этот телефон" : "This phone",
-    hostHint: ru
-      ? "Создайте QR на устройстве, где уже есть нужная база."
-      : "Create a QR code on the device that already has the database.",
-    hostIdle: ru ? "Показать QR" : "Show QR",
-    hostPreparing: ru ? "Подготовка архива..." : "Preparing archive...",
-    stop: ru ? "Остановить сеанс" : "Stop session",
-    expiresIn: ru ? "Истекает через" : "Expires in",
-    transferred: ru ? "Передано устройствам" : "Transferred to devices",
-    sessionId: ru ? "ID сеанса" : "Session ID",
-    multiDevice: ru
-      ? "Разрешить импорт на несколько устройств"
-      : "Allow imports to multiple devices",
-    multiDeviceHint: ru
-      ? "По умолчанию QR закрывается после первой успешной передачи."
-      : "By default, the QR closes after the first successful transfer.",
-    approvalTitle: ru ? "Разрешить передачу?" : "Allow transfer?",
-    approvalSync: ru
-      ? "Второе устройство запрашивает двустороннюю синхронизацию."
-      : "The second device requests two-way synchronization.",
-    approvalImport: ru
-      ? "Второе устройство запрашивает копию базы."
-      : "The second device requests a copy of the database.",
-    peerAddress: ru ? "Устройство" : "Device",
-    approve: ru ? "Разрешить" : "Allow",
-    reject: ru ? "Отклонить" : "Reject",
-    peerTitle: ru ? "Второй телефон" : "Second phone",
-    peerHint: ru
-      ? "Сканируйте QR, чтобы синхронизировать текущий проект или импортировать базу как новый проект."
-      : "Scan the QR to synchronize the current project or import the database as a new project.",
-    scanSync: ru ? "Сканировать и синхронизировать" : "Scan and synchronize",
-    scanSyncLoading: ru ? "Открытие камеры..." : "Opening camera...",
-    scanImport: ru
-      ? "Сканировать и импортировать базу"
-      : "Scan and import database",
-    scanImportLoading: ru ? "Импорт по QR..." : "Importing by QR...",
-    manualTitle: ru ? "Ручное подключение" : "Manual connection",
-    manualHint: ru
-      ? "Используйте IP, порт, код, ключ безопасности и ID сеанса, если камера недоступна."
-      : "Use IP, port, code, security key and session ID if the camera is unavailable.",
-    address: ru ? "Адрес" : "Address",
-    code: ru ? "Код" : "Code",
-    securityKey: ru ? "Ключ безопасности" : "Security key",
-    port: ru ? "Порт" : "Port",
-    connect: ru ? "Подключиться и синхронизировать" : "Connect and synchronize",
-    connecting: ru ? "Синхронизация..." : "Synchronizing...",
-    overlay: ru
-      ? "Наведите камеру на QR-код"
-      : "Point the camera at the QR code",
-    cancel: ru ? "Отмена" : "Cancel",
-    warning: ru
-      ? "Соединение зашифровано TLS. При ручном подключении сверьте ключ безопасности с экраном первого телефона."
-      : "The connection is encrypted with TLS. For manual connection, verify the security key against the first phone.",
+    title: t("localSync.title"),
+    lead: t("localSync.lead"),
+    hostTitle: t("localSync.hostTitle"),
+    hostHint: t("localSync.hostHint"),
+    hostIdle: t("localSync.hostIdle"),
+    hostPreparing: t("localSync.hostPreparing"),
+    stop: t("localSync.stop"),
+    expiresIn: t("localSync.expiresIn"),
+    transferred: t("localSync.transferred"),
+    sessionId: t("localSync.sessionId"),
+    multiDevice: t("localSync.multiDevice"),
+    multiDeviceHint: t("localSync.multiDeviceHint"),
+    approvalTitle: t("localSync.approvalTitle"),
+    approvalSync: t("localSync.approvalSync"),
+    approvalImport: t("localSync.approvalImport"),
+    peerAddress: t("localSync.peerAddress"),
+    approve: t("localSync.approve"),
+    reject: t("localSync.reject"),
+    peerTitle: t("localSync.peerTitle"),
+    peerHint: t("localSync.peerHint"),
+    scanSync: t("localSync.scanSync"),
+    scanSyncLoading: t("localSync.scanSyncLoading"),
+    scanImport: t("localSync.scanImport"),
+    scanImportLoading: t("localSync.scanImportLoading"),
+    manualTitle: t("localSync.manualTitle"),
+    manualHint: t("localSync.manualHint"),
+    address: t("localSync.address"),
+    code: t("localSync.code"),
+    securityKey: t("localSync.securityKey"),
+    port: t("localSync.port"),
+    connect: t("localSync.connect"),
+    connecting: t("localSync.connecting"),
+    overlay: t("localSync.overlay"),
+    cancel: t("localSync.cancel"),
+    warning: t("localSync.warning"),
+    // A status the locale does not name falls back to the idle one rather
+    // than showing a raw key.
+    status: t(`localSync.status.${status}`, {
+      defaultValue: t("localSync.status.idle"),
+    }),
   };
 }
 
-export default function LocalSyncSection({ sync, lang }) {
+export default function LocalSyncSection({ sync }) {
   const { t } = useLanguage();
 
   const [host, setHost] = useState("");
@@ -100,7 +69,7 @@ export default function LocalSyncSection({ sync, lang }) {
 
   const { status, session } = sync.state;
   const busy = SYNC_BUSY_STATUSES.has(status);
-  const texts = getTexts(lang, status);
+  const texts = getTexts(t, status);
   const isScanning = status === "scanning" || status === "scanningImport";
   const remainingSeconds = session?.remainingSeconds ?? 0;
   const remainingTime = `${String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:${String(remainingSeconds % 60).padStart(2, "0")}`;

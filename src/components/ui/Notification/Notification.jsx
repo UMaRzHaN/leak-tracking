@@ -15,7 +15,7 @@ export default function Notification({
   onClose,
   autoCloseMs = 3000,
 }) {
-  const { lang } = useLanguage();
+  const { t } = useLanguage();
   const effectiveAutoCloseMs = notification?.autoCloseMs ?? autoCloseMs;
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export default function Notification({
         className={s.close}
         type="button"
         onClick={onClose}
-        aria-label={lang === "ru" ? "Закрыть" : "Close"}
+        aria-label={t("common.close")}
       >
         ✕
       </button>

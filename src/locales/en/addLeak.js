@@ -25,6 +25,27 @@ export const addLeak = {
     lng: "Longitude {{lng}} is outside the allowed range [-180, 180]",
     photoReady: "Photo is not ready for saving yet. Try again in a second.",
   },
+
+  errors: {
+    userNameRequired: "Fill in the user name in the profile",
+    serialNumberRequired:
+      "Fill in the equipment serial number in calculation parameters",
+    duplicateTag: "A leak with this tag already exists",
+    photoSaveFailed: "Failed to save the photo",
+    saveFailed: "Failed to save the leak",
+  },
+
+  success: {
+    title: "Leak saved",
+    description:
+      "The record has been added to the log and is available in the database.",
+    newLeak: "New leak",
+    home: "Return home",
+    tag: "Tag",
+    component: "Component",
+    leakRate: "Leak rate",
+  },
+
   stepTitles: {
     basic: "Basic",
     mtrAndDescription: "MTR and description *",

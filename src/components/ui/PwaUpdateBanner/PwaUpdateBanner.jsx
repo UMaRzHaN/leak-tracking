@@ -3,7 +3,7 @@ import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "./PwaUpdateBanner.module.scss";
 
 export default function PwaUpdateBanner() {
-  const { lang } = useLanguage();
+  const { t } = useLanguage();
   const [registration, setRegistration] = useState(
     () => window.leakTrackingWaitingServiceWorkerRegistration ?? null,
   );
@@ -35,19 +35,9 @@ export default function PwaUpdateBanner() {
 
   return (
     <aside className={s.banner} role="status" aria-live="polite">
-      <span>
-        {lang === "ru"
-          ? "Доступна новая версия приложения"
-          : "A new app version is available"}
-      </span>
+      <span>{t("pwa.updateAvailable")}</span>
       <button type="button" onClick={activate} disabled={activating}>
-        {activating
-          ? lang === "ru"
-            ? "Обновление…"
-            : "Updating…"
-          : lang === "ru"
-            ? "Обновить"
-            : "Update"}
+        {activating ? t("pwa.updating") : t("pwa.update")}
       </button>
     </aside>
   );

@@ -30,7 +30,6 @@ export default function App() {
     importingDataLabel,
     isConfigured,
     isImportingProject,
-    lang,
     loadError,
     loadWarning,
     openCount,
@@ -101,7 +100,6 @@ export default function App() {
         handleImportZip={handleImportZip}
         importingDataLabel={importingDataLabel}
         isImportingProject={isImportingProject}
-        lang={lang}
         loadError={loadError}
         loadWarning={loadWarning}
         page={page}

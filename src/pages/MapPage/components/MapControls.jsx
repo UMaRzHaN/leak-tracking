@@ -35,7 +35,7 @@ export default function MapControls({
   onStatusClear,
   onMonitoringChange,
 }) {
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const [openFilterMenu, setOpenFilterMenu] = useState(null);
   const statusSet = new Set(statusFilters);
   const statusActive = statusFilters.length > 0;
@@ -292,7 +292,7 @@ export default function MapControls({
             {t("map.all")}
           </button>
           {PRIORITY_ORDER.map((priority) => {
-            const meta = getPriorityMeta(priority, t, lang);
+            const meta = getPriorityMeta(priority, t);
             const isActive = prioritySet.has(priority);
 
             return (

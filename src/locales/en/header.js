@@ -12,4 +12,6 @@ export const header = {
   gpsError: "Error",
 
   settings: "Settings",
+
+  user: "User",
 };

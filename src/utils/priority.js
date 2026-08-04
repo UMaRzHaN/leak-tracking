@@ -9,68 +9,37 @@ export const PRIORITY_ORDER = ["critical", "high", "medium", "low"];
 
 export const PRIORITY_META = {
   critical: {
-    label: "Критичный",
-    short: "Крит",
     color: "var(--c-critical)",
     bg: "var(--c-critical-bg)",
     border: "var(--c-critical-border)",
   },
   high: {
-    label: "Высокий",
-    short: "Выс",
     color: "var(--c-high)",
     bg: "var(--c-high-bg)",
     border: "var(--c-high-border)",
   },
   medium: {
-    label: "Средний",
-    short: "Сред",
     color: "var(--c-medium)",
     bg: "var(--c-medium-bg)",
     border: "var(--c-medium-border)",
   },
   low: {
-    label: "Низкий",
-    short: "Низ",
     color: "var(--c-low)",
     bg: "var(--c-low-bg)",
     border: "var(--c-low-border)",
   },
 };
 
-export function getPriorityMeta(priority, t, lang = "ru") {
+// `label`/`short` come from the `priority` locale namespace; PRIORITY_META
+// carries only the colours, which are the same in every language.
+export function getPriorityMeta(priority, t) {
   const meta = PRIORITY_META[priority];
   if (!meta) return null;
 
-  const defaults =
-    lang === "ru"
-      ? {
-          critical: { label: "Критичный", short: "Крит" },
-          high: { label: "Высокий", short: "Выс" },
-          medium: { label: "Средний", short: "Сред" },
-          low: { label: "Низкий", short: "Низ" },
-        }
-      : {
-          critical: { label: "Critical", short: "Crit" },
-          high: { label: "High", short: "High" },
-          medium: { label: "Medium", short: "Med" },
-          low: { label: "Low", short: "Low" },
-        };
-
   return {
     ...meta,
-    label:
-      t?.(`priority.${priority}.label`, {
-        defaultValue: defaults[priority]?.label ?? meta.label,
-      }) ??
-      defaults[priority]?.label ??
-      meta.label,
-    short:
-      t?.(`priority.${priority}.short`, {
-        defaultValue: defaults[priority]?.short ?? meta.short,
-      }) ??
-      defaults[priority]?.short ??
-      meta.short,
+    label: t(`priority.${priority}.label`),
+    short: t(`priority.${priority}.short`),
   };
 }
 

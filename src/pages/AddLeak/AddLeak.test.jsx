@@ -48,9 +48,10 @@ vi.mock("@/hooks/usePhotoStorage", () => ({
 vi.mock("@/hooks/useSafeSave", () => ({
   useSafeSave: () => ({ isSaving: false, run: (operation) => operation() }),
 }));
-vi.mock("@/app/hooks/useLanguage", () => ({
-  useLanguage: () => ({ lang: "en", t: (key) => key }),
-}));
+vi.mock("@/app/hooks/useLanguage", async () => {
+  const { englishLanguageHook } = await import("@/test/translate");
+  return englishLanguageHook();
+});
 vi.mock("@/utils/haptics", () => ({
   hapticSuccess: mocks.hapticSuccess,
   hapticWarning: mocks.hapticWarning,
@@ -208,11 +209,11 @@ describe("AddLeak orchestration", () => {
     });
     renderAddLeak();
 
-    const restore = await screen.findByText("addLeak.draftBanner.restore");
+    const restore = await screen.findByText("Restore");
     fireEvent.click(restore);
 
     expect(mocks.loadDraft).toHaveBeenCalled();
-    expect(screen.queryByText("addLeak.draftBanner.restore")).toBeNull();
+    expect(screen.queryByText("Restore")).toBeNull();
   });
 
   it("does not overwrite a stored draft before deciding restoration when defaults are non-empty", async () => {
@@ -226,14 +227,14 @@ describe("AddLeak orchestration", () => {
 
     renderAddLeak();
 
-    expect(screen.getByText("addLeak.draftBanner.restore")).not.toBeNull();
+    expect(screen.getByText("Restore")).not.toBeNull();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1500);
     });
     expect(mocks.saveDraft).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByText("addLeak.draftBanner.restore"));
+    fireEvent.click(screen.getByText("Restore"));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(1000);
     });
@@ -271,6 +272,6 @@ describe("AddLeak orchestration", () => {
     renderAddLeak();
 
     expect(mocks.clearDraft).toHaveBeenCalled();
-    expect(screen.queryByText("addLeak.draftBanner.restore")).toBeNull();
+    expect(screen.queryByText("Restore")).toBeNull();
   });
 });

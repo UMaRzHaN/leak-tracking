@@ -9,4 +9,6 @@ export const header = {
   gpsSearch: "Поиск…",
   gpsError: "Ошибка",
   settings: "Настройки",
+
+  user: "Пользователь",
 };

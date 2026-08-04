@@ -16,6 +16,12 @@ export const projectSetup = {
 
   import: "Импортировать из ZIP",
   importing: "Импорт…",
+  importQr: "Импорт по QR",
+  importingQr: "Импорт по QR...",
+  scanQrProgress: "Наведите камеру на QR-код синхронизации...",
+  importQrProgress: "Загрузка базы по QR, подождите...",
+  importProgress: "Идёт импорт ZIP backup, подождите...",
+  cancelScan: "Отмена",
   importExcel: "Импорт Excel",
   importingExcel: "Импорт Excel…",
   importExcelProgress: "Идёт чтение Excel-архива, подождите...",

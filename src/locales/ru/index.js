@@ -1,4 +1,5 @@
 import { addLeak } from "./addLeak";
+import { app } from "./app";
 import { cards } from "./cards";
 import { common } from "./common";
 import { database } from "./database";
@@ -10,20 +11,25 @@ import { header } from "./header";
 import { importConflict } from "./importConflict";
 import { leakDetails } from "./leakDetails";
 import { leakForm } from "./leakForm";
+import { localSync } from "./localSync";
 import { mainPage } from "./mainPage";
 import { map } from "./map";
 import { monitoring } from "./monitoring";
 import { photoInput } from "./photoInput";
 import { projectSetup } from "./projectSetup";
+import { priority } from "./priority";
+import { pwa } from "./pwa";
 import { reopen } from "./reopen";
 import { resolve } from "./resolve";
 import { settings } from "./settings";
 import { settingsModal } from "./settingsModal";
 import { syncErrors } from "./syncErrors";
+import { userProfile } from "./userProfile";
 import { voice } from "./voice";
 
 export const translation = {
   addLeak,
+  app,
   cards,
   common,
   database,
@@ -35,15 +41,19 @@ export const translation = {
   importConflict,
   leakDetails,
   leakForm,
+  localSync,
   mainPage,
   map,
   monitoring,
   photoInput,
   projectSetup,
+  priority,
+  pwa,
   reopen,
   resolve,
   settings,
   settingsModal,
   syncErrors,
+  userProfile,
   voice,
 };

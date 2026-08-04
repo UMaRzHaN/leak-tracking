@@ -18,12 +18,12 @@ export default function MobileSheet({
   onClose,
   onSelect,
 }) {
-  const { lang } = useLanguage();
+  const { t } = useLanguage();
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [notification, setNotification] = useState(null);
   const dialogRef = useModalDialog({ open, onClose });
-  const noLabel = lang === "ru" ? "Не указано" : "Not specified";
+  const noLabel = t("map.sheet.notSpecified");
 
   const filteredLeaks = useMemo(() => {
     if (!deferredQuery.trim()) return leaks;
@@ -49,11 +49,7 @@ export default function MobileSheet({
             className={`${s.sheet} ${s.open}`}
             role="dialog"
             aria-modal="true"
-            aria-label={
-              lang === "ru"
-                ? "\u0424\u0438\u043b\u044c\u0442\u0440\u044b \u043a\u0430\u0440\u0442\u044b"
-                : "Map filters"
-            }
+            aria-label={t("map.sheet.title")}
             tabIndex={-1}
             onClick={(event) => event.stopPropagation()}
           >
@@ -62,8 +58,7 @@ export default function MobileSheet({
             {mainLocations.length > 0 && (
               <div className={s.stationList}>
                 <div className={s.stationTitle}>
-                  {lang === "ru" ? "Фильтр по:" : "Filter by:"}{" "}
-                  {mainLocationLabel}
+                  {t("map.sheet.filterBy")} {mainLocationLabel}
                 </div>
 
                 {mainLocations.map((location) => {
@@ -88,7 +83,7 @@ export default function MobileSheet({
 
             <div className={s.stationList}>
               <div className={s.stationTitle}>
-                {lang === "ru" ? "Фильтр по:" : "Filter by:"} {locationLabel}
+                {t("map.sheet.filterBy")} {locationLabel}
               </div>
 
               {locations.map((location) => {
@@ -113,26 +108,16 @@ export default function MobileSheet({
             <div className={s.sheetSearch}>
               <input
                 type="search"
-                placeholder={
-                  lang === "ru"
-                    ? "Поиск по номеру бирки..."
-                    : "Search by tag number..."
-                }
+                placeholder={t("map.sheet.searchPlaceholder")}
                 value={query}
-                aria-label={
-                  lang === "ru"
-                    ? "Поиск по номеру бирки"
-                    : "Search by tag number"
-                }
+                aria-label={t("map.sheet.searchLabel")}
                 onChange={(event) => setQuery(event.target.value)}
               />
             </div>
 
             <div className={s.sheetList}>
               {filteredLeaks.length === 0 && (
-                <div className={s.sheetEmpty}>
-                  {lang === "ru" ? "Ничего не найдено" : "Nothing found"}
-                </div>
+                <div className={s.sheetEmpty}>{t("map.sheet.empty")}</div>
               )}
               {filteredLeaks.map((leak) => (
                 <button
@@ -142,7 +127,7 @@ export default function MobileSheet({
                   onClick={() => onSelect(leak)}
                 >
                   <span className={s.dot} />
-                  {lang === "ru" ? "Бирка №" : "Tag No."} {leak.leak_id}
+                  {t("map.popup.tag")} {leak.leak_id}
                 </button>
               ))}
             </div>

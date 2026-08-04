@@ -29,7 +29,7 @@ export default function AddLeak({
   userProfile,
   projectId,
 }) {
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const { form, setForm } = useLeakFormContext();
   const { deletePhoto, savePhoto, ready: photoReady } = usePhotoStorage();
   const { saveDraft, loadDraft, clearDraft } = useFormDraft(projectId);
@@ -65,33 +65,16 @@ export default function AddLeak({
         cancelLabel: t("addLeak.confirm.cancelLabel"),
       },
       success: {
-        title: t("addLeak.success.title", {
-          defaultValue: lang === "ru" ? "Утечка сохранена" : "Leak saved",
-        }),
-        description: t("addLeak.success.description", {
-          defaultValue:
-            lang === "ru"
-              ? "Запись добавлена в журнал и доступна в базе данных."
-              : "The record has been added to the log and is available in the database.",
-        }),
-        newLeak: t("addLeak.success.newLeak", {
-          defaultValue: lang === "ru" ? "Новая утечка" : "New leak",
-        }),
-        home: t("addLeak.success.home", {
-          defaultValue: lang === "ru" ? "На главную" : "Return home",
-        }),
-        tag: t("addLeak.success.tag", {
-          defaultValue: lang === "ru" ? "№" : "Tag",
-        }),
-        component: t("addLeak.success.component", {
-          defaultValue: lang === "ru" ? "Компонент" : "Component",
-        }),
-        leakRate: t("addLeak.success.leakRate", {
-          defaultValue: lang === "ru" ? "Скорость" : "Leak rate",
-        }),
+        title: t("addLeak.success.title"),
+        description: t("addLeak.success.description"),
+        newLeak: t("addLeak.success.newLeak"),
+        home: t("addLeak.success.home"),
+        tag: t("addLeak.success.tag"),
+        component: t("addLeak.success.component"),
+        leakRate: t("addLeak.success.leakRate"),
       },
     }),
-    [t, lang],
+    [t],
   );
 
   useEffect(() => {
@@ -191,10 +174,7 @@ export default function AddLeak({
           hapticWarning();
           setNotification({
             type: "error",
-            message:
-              lang === "ru"
-                ? "Заполните имя пользователя в профиле"
-                : "Fill in the user name in the profile",
+            message: t("addLeak.errors.userNameRequired"),
           });
           return null;
         }
@@ -207,10 +187,7 @@ export default function AddLeak({
           hapticWarning();
           setNotification({
             type: "error",
-            message:
-              lang === "ru"
-                ? "Заполните серийный номер оборудования в параметрах расчета"
-                : "Fill in the equipment serial number in calculation parameters",
+            message: t("addLeak.errors.serialNumberRequired"),
           });
           return null;
         }
@@ -225,10 +202,7 @@ export default function AddLeak({
           hapticWarning();
           setNotification({
             type: "error",
-            message:
-              lang === "ru"
-                ? "\u0423\u0442\u0435\u0447\u043a\u0430 \u0441 \u0442\u0430\u043a\u0438\u043c \u043d\u043e\u043c\u0435\u0440\u043e\u043c \u0443\u0436\u0435 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u0435\u0442"
-                : "A leak with this tag already exists",
+            message: t("addLeak.errors.duplicateTag"),
           });
           return null;
         }
@@ -254,11 +228,7 @@ export default function AddLeak({
             cleanupOldVersions: false,
           });
           if (!photoPath) {
-            throw new Error(
-              lang === "ru"
-                ? "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0444\u043e\u0442\u043e\u0433\u0440\u0430\u0444\u0438\u044e"
-                : "Failed to save the photo",
-            );
+            throw new Error(t("addLeak.errors.photoSaveFailed"));
           }
         }
 
@@ -305,11 +275,7 @@ export default function AddLeak({
         hapticWarning();
         setNotification({
           type: "error",
-          message:
-            err?.message ||
-            (lang === "ru"
-              ? "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0443\u0442\u0435\u0447\u043a\u0443"
-              : "Failed to save the leak"),
+          message: err?.message || t("addLeak.errors.saveFailed"),
         });
         return null;
       }
@@ -332,13 +298,12 @@ export default function AddLeak({
         ? {
             label: localeTexts.success.leakRate,
             value: `${savedLeak.leak_speed} ${t(
-              "addLeak.fields.leak_speed.unit",
-              { defaultValue: lang === "ru" ? "л/мин" : "L/min" },
+              "common.units.litresPerMinute",
             )}`,
           }
         : null,
     ].filter(Boolean);
-  }, [savedLeak, localeTexts, t, lang]);
+  }, [savedLeak, localeTexts, t]);
 
   const handleNewLeak = () => {
     setSavedLeak(null);

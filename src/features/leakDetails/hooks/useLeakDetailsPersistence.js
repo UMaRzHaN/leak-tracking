@@ -88,7 +88,7 @@ export function useLeakDetailsPersistence({
     if (Number.isFinite(lng) && !isValidLongitude(lng)) {
       setNotification({
         type: "error",
-        message: t("addLeak.validation.lng", { lng }),
+        message: t("addLeak.validation.lng", /** @type {any} */ ({ lng })),
       });
       return;
     }

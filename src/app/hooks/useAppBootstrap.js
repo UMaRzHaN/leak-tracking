@@ -60,11 +60,8 @@ export function useAppBootstrap() {
   } = useAppState();
 
   const [sharedSearch, setSharedSearch] = useState("");
-  const { lang } = useLanguage();
-  const importingDataLabel =
-    lang === "ru"
-      ? "Импорт данных, подождите..."
-      : "Importing data, please wait...";
+  const { t } = useLanguage();
+  const importingDataLabel = t("app.importingData");
   const [sharedStatusFilter, setSharedStatusFilter] = useState([]);
   const [sharedPriorityFilter, setSharedPriorityFilter] = useState([]);
   const [sharedMainLocationFilter, setSharedMainLocationFilter] =
@@ -509,7 +506,6 @@ export function useAppBootstrap() {
     importingDataLabel,
     isConfigured,
     isImportingProject,
-    lang,
     loadError,
     loadWarning,
     openCount,

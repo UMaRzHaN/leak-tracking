@@ -96,9 +96,10 @@ vi.mock("./hooks/useUserProfile", () => ({
   }),
 }));
 
-vi.mock("./hooks/useLanguage", () => ({
-  useLanguage: () => ({ lang: "en" }),
-}));
+vi.mock("./hooks/useLanguage", async () => {
+  const { englishLanguageHook } = await import("@/test/translate");
+  return englishLanguageHook();
+});
 
 vi.mock("@/features/leakForm/LeakFormContext", () => ({
   useLeakFormContext: () => ({ clearForm: mocks.clearForm }),

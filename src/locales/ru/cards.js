@@ -9,11 +9,4 @@ export const cards = {
   tagPrefix: "Бирка № ",
   collapse: "Свернуть карточку",
   expand: "Развернуть карточку",
-
-  units: {
-    meters: "м",
-    litresPerMinute: "л/мин",
-    cubicMetresPerYear: "м3/г",
-    tonnesCo2PerYear: "т CO2-экв/год",
-  },
 };

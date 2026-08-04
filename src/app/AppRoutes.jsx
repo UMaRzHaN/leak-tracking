@@ -10,9 +10,8 @@ const MapPage = lazy(() => import("@/pages/MapPage/MapPage"));
 const Monitoring = lazy(() => import("@/pages/Monitoring/Monitoring"));
 
 export function AppLoader({ label = null, overlay = false }) {
-  const { lang } = useLanguage();
-  const resolvedLabel =
-    label ?? (lang === "ru" ? "Загрузка данных" : "Loading data");
+  const { t } = useLanguage();
+  const resolvedLabel = label ?? t("app.loading");
   const dialogRef = useModalDialog({
     open: overlay,
     closeDisabled: true,
@@ -47,54 +46,36 @@ function downloadRecoveryData(data, fileName) {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-function ProjectDataLoadWarning({ lang, onRetry }) {
-  const ru = lang === "ru";
+function ProjectDataLoadWarning({ onRetry }) {
+  const { t } = useLanguage();
   return (
     <section className="dataLoadWarning" role="status" aria-live="polite">
       <span className="dataLoadWarningIcon" aria-hidden="true">
         !
       </span>
       <div className="dataLoadWarningContent">
-        <strong>
-          {ru
-            ? "Резервное хранилище браузера недоступно"
-            : "Browser backup storage is unavailable"}
-        </strong>
-        <p>
-          {ru
-            ? "Основная база IndexedDB работает. Можно продолжать работу; резервная копия будет восстановлена после устранения ошибки."
-            : "The primary IndexedDB database is working. You can continue; the backup copy will be repaired after the error is resolved."}
-        </p>
+        <strong>{t("app.loadWarning.title")}</strong>
+        <p>{t("app.loadWarning.description")}</p>
       </div>
       <button type="button" onClick={onRetry}>
-        {ru ? "Проверить снова" : "Retry mirror"}
+        {t("app.loadWarning.retry")}
       </button>
     </section>
   );
 }
 
-function ProjectDataLoadError({ lang, onRetry, error, data, projectName }) {
-  const ru = lang === "ru";
+function ProjectDataLoadError({ onRetry, error, data, projectName }) {
+  const { t } = useLanguage();
   const recoveryData = error?.recoveryData ?? (data?.length ? data : null);
   return (
     <section className="dataLoadError" role="alert" aria-live="assertive">
       <span className="dataLoadErrorIcon" aria-hidden="true">
         !
       </span>
-      <h1>
-        {ru
-          ? "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043f\u0440\u043e\u0447\u0438\u0442\u0430\u0442\u044c \u0434\u0430\u043d\u043d\u044b\u0435"
-          : "Data could not be read"}
-      </h1>
-      <p>
-        {ru
-          ? "\u0414\u0430\u043d\u043d\u044b\u0435 \u043f\u0440\u043e\u0435\u043a\u0442\u0430 \u043d\u0435 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u044b. \u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u0445\u0440\u0430\u043d\u0438\u043b\u0438\u0449\u0435 \u0438 \u043f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u0435 \u043f\u043e\u043f\u044b\u0442\u043a\u0443."
-          : "The project is not treated as empty. Writes are blocked to protect existing data. Check storage and try again."}
-      </p>
+      <h1>{t("app.loadError.title")}</h1>
+      <p>{t("app.loadError.description")}</p>
       <button type="button" onClick={onRetry}>
-        {ru
-          ? "\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c \u0447\u0442\u0435\u043d\u0438\u0435"
-          : "Retry"}
+        {t("app.loadError.retry")}
       </button>
       {recoveryData && (
         <button
@@ -106,7 +87,7 @@ function ProjectDataLoadError({ lang, onRetry, error, data, projectName }) {
             )
           }
         >
-          {ru ? "Скачать данные для восстановления" : "Download recovery data"}
+          {t("app.loadError.download")}
         </button>
       )}
     </section>
@@ -126,7 +107,6 @@ export default function AppRoutes({
   handleImportZip,
   importingDataLabel,
   isImportingProject,
-  lang,
   loadError,
   loadWarning,
   page,
@@ -158,7 +138,6 @@ export default function AppRoutes({
 
         {dataLoaded && !isImportingProject && loadError && (
           <ProjectDataLoadError
-            lang={lang}
             onRetry={retryLoad}
             error={loadError}
             data={data}
@@ -166,7 +145,7 @@ export default function AppRoutes({
           />
         )}
         {dataLoaded && !isImportingProject && !loadError && loadWarning && (
-          <ProjectDataLoadWarning lang={lang} onRetry={retryLoad} />
+          <ProjectDataLoadWarning onRetry={retryLoad} />
         )}
         {dataLoaded && !isImportingProject && !loadError && page === "" && (
           <MainPage

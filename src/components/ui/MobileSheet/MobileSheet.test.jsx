@@ -2,9 +2,10 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import MobileSheet from "./MobileSheet";
 
-vi.mock("@/app/hooks/useLanguage", () => ({
-  useLanguage: () => ({ lang: "en" }),
-}));
+vi.mock("@/app/hooks/useLanguage", async () => {
+  const { englishLanguageHook } = await import("@/test/translate");
+  return englishLanguageHook();
+});
 
 const kashaganLeak = {
   id: "leak-1",

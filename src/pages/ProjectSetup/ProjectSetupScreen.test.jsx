@@ -9,48 +9,10 @@ const localSync = vi.hoisted(() => ({
   scanLocalSyncQr: vi.fn(),
 }));
 
-vi.mock("@/app/hooks/useLanguage", () => ({
-  useLanguage: () => ({
-    lang: "en",
-    toggleLanguage: vi.fn(),
-    t: (key, options) =>
-      ({
-        "projectSetup.title": "Leak Tracking",
-        "projectSetup.subtitle": "Create your first project",
-        "projectSetup.projectName": "Project Name",
-        "projectSetup.projectType": "Project Type",
-        "projectSetup.projectExample": "Example",
-        "projectSetup.deviceFolder": "Device folder",
-        "projectSetup.selectProjectType": "Select project type",
-        "projectSetup.start": "Start",
-        "projectSetup.or": "or",
-        "projectSetup.import": "Import from ZIP",
-        "projectSetup.importing": "Importing...",
-        "projectSetup.importQr": "Import by QR",
-        "projectSetup.importingQr": "Importing by QR...",
-        "projectSetup.scanQrProgress":
-          "Point the camera at the sync QR code...",
-        "projectSetup.importQrProgress":
-          "Downloading the database by QR, please wait...",
-        "projectSetup.importExcel": "Import Excel",
-        "projectSetup.importingExcel": "Importing Excel...",
-        "projectSetup.importExcelProgress":
-          "Reading the Excel archive, please wait...",
-        "projectSetup.emptyExcel": "No importable rows found in Excel",
-        "projectSetup.importHint": "Restore a project from a backup",
-        "projectSetup.importError": "Import error",
-        "projectSetup.languageToggle": "RU",
-        "projectSetup.projectTypes.upstream.title": "Upstream",
-        "projectSetup.projectTypes.upstream.description": "Production",
-        "projectSetup.projectTypes.midstream.title": "Midstream",
-        "projectSetup.projectTypes.midstream.description": "Transportation",
-        "projectSetup.projectTypes.downstream.title": "Downstream",
-        "projectSetup.projectTypes.downstream.description": "Processing",
-      })[key] ??
-      options?.defaultValue ??
-      key,
-  }),
-}));
+vi.mock("@/app/hooks/useLanguage", async () => {
+  const { englishLanguageHook } = await import("@/test/translate");
+  return englishLanguageHook();
+});
 
 vi.mock("@/services/sync/localSyncService", () => localSync);
 

@@ -4,7 +4,7 @@ import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "./UserProfileSheet.module.scss";
 
 export default function UserProfileSheet({ open, profile, onSave, onClose }) {
-  const { lang } = useLanguage();
+  const { t } = useLanguage();
   const [name, setName] = useState("");
   const titleId = useId();
   const dialogRef = useModalDialog({ open, onClose });
@@ -15,26 +15,15 @@ export default function UserProfileSheet({ open, profile, onSave, onClose }) {
   }, [open, profile?.name]);
 
   const texts = useMemo(
-    () =>
-      lang === "ru"
-        ? {
-            title: "Пользователь",
-            subtitle: "Имя будет автоматически подставляться в поля действий.",
-            name: "Имя",
-            placeholder: "ФИО или короткое имя",
-            cancel: "Отмена",
-            save: "Сохранить",
-          }
-        : {
-            title: "User",
-            subtitle:
-              "The name will be filled into action fields automatically.",
-            name: "Name",
-            placeholder: "Full name or short name",
-            cancel: "Cancel",
-            save: "Save",
-          },
-    [lang],
+    () => ({
+      title: t("userProfile.title"),
+      subtitle: t("userProfile.subtitle"),
+      name: t("userProfile.name"),
+      placeholder: t("userProfile.placeholder"),
+      cancel: t("userProfile.cancel"),
+      save: t("userProfile.save"),
+    }),
+    [t],
   );
 
   if (!open) return null;

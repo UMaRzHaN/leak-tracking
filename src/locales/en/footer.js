@@ -4,4 +4,5 @@ export const footer = {
   database: "Database",
   map: "Map",
   addLeak: "Add Leak",
+  monitoring: "Monitoring",
 };

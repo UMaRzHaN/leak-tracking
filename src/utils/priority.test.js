@@ -67,37 +67,30 @@ describe("priorityFromSpeed", () => {
 });
 
 describe("getPriorityMeta", () => {
-  it("defines severity order and returns English metadata", () => {
+  const t = (key) => key.split(".").slice(1).join(".");
+
+  it("defines severity order and reads the label off the locale", () => {
     expect(PRIORITY_ORDER).toEqual(["critical", "high", "medium", "low"]);
-    expect(getPriorityMeta(PRIORITY.CRITICAL, null, "en")).toEqual({
+    expect(getPriorityMeta(PRIORITY.CRITICAL, t)).toEqual({
       ...PRIORITY_META.critical,
-      label: "Critical",
-      short: "Crit",
-    });
-    expect(getPriorityMeta(PRIORITY.MEDIUM, null, "en")).toEqual({
-      ...PRIORITY_META.medium,
-      label: "Medium",
-      short: "Med",
+      label: "critical.label",
+      short: "critical.short",
     });
   });
 
-  it("uses translated values with stable keys and defaults", () => {
-    const t = vi.fn((key) => `translated:${key}`);
+  it("asks for stable keys under the priority namespace", () => {
+    const spy = vi.fn((key) => `translated:${key}`);
 
-    const result = getPriorityMeta(PRIORITY.HIGH, t, "en");
+    const result = getPriorityMeta(PRIORITY.HIGH, spy);
 
     expect(result.label).toBe("translated:priority.high.label");
     expect(result.short).toBe("translated:priority.high.short");
-    expect(t).toHaveBeenNthCalledWith(1, "priority.high.label", {
-      defaultValue: "High",
-    });
-    expect(t).toHaveBeenNthCalledWith(2, "priority.high.short", {
-      defaultValue: "High",
-    });
+    expect(spy).toHaveBeenNthCalledWith(1, "priority.high.label");
+    expect(spy).toHaveBeenNthCalledWith(2, "priority.high.short");
   });
 
   it("returns null for an unknown or missing priority", () => {
-    expect(getPriorityMeta("unknown", null, "en")).toBeNull();
-    expect(getPriorityMeta(null, null, "en")).toBeNull();
+    expect(getPriorityMeta("unknown", t)).toBeNull();
+    expect(getPriorityMeta(null, t)).toBeNull();
   });
 });

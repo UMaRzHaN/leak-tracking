@@ -306,7 +306,7 @@ function FilterBar({
                 {t("database.all")}
               </button>
               {PRIORITY_ORDER.map((priority) => {
-                const meta = getPriorityMeta(priority, t, lang);
+                const meta = getPriorityMeta(priority, t);
                 const isActive = selectedPriorities.includes(priority);
 
                 return (
