@@ -318,10 +318,10 @@ export default defineConfig(({ mode }) => {
         reporter: ["text", "html", "lcov", "json-summary"],
         reportsDirectory: "./coverage",
         thresholds: {
-          statements: 65,
-          branches: 50,
-          functions: 55,
-          lines: 66,
+          statements: 78,
+          branches: 67,
+          functions: 72,
+          lines: 80,
           "src/features/leakForm/**": {
             statements: 50,
             branches: 30,

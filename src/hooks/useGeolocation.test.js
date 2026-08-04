@@ -270,3 +270,89 @@ describe("useGeolocation native lifecycle", () => {
     expect(mocks.watchPosition).toHaveBeenCalledOnce();
   });
 });
+
+describe("useGeolocation native permissions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.clearWatch.mockResolvedValue(undefined);
+    mocks.watchPosition.mockResolvedValue("watch-1");
+  });
+
+  it("stops with an error when neither precise nor coarse is granted", async () => {
+    mocks.requestPermissions.mockResolvedValue({
+      location: "denied",
+      coarseLocation: "denied",
+    });
+
+    const { result } = renderHook(() => useGeolocation(true));
+    await flushAsyncWork();
+
+    expect(mocks.watchPosition).not.toHaveBeenCalled();
+    expect(result.current.error).toBeTruthy();
+    expect(result.current.loading).toBe(false);
+    expect(result.current.coords).toEqual({ lat: null, lng: null });
+  });
+
+  // The message is chosen from the plugin's error code, so a user who has
+  // location switched off is told that rather than "could not get position".
+  it.each([
+    ["OS-PLUG-GLOC-0003", "запрещён"],
+    ["OS-PLUG-GLOC-0007", "выключена"],
+    ["OS-PLUG-GLOC-0008", "ограничено"],
+    ["OS-PLUG-GLOC-0009", "отклонено"],
+    ["OS-PLUG-GLOC-0014", "Google Play"],
+    ["OS-PLUG-GLOC-0015", "Google Play"],
+    ["OS-PLUG-GLOC-0016", "Настройки"],
+    ["OS-PLUG-GLOC-0017", "Включите"],
+  ])("explains the %s permission failure", async (code, fragment) => {
+    const failure = new Error("raw");
+    failure.code = code;
+    mocks.requestPermissions.mockRejectedValue(failure);
+
+    const { result } = renderHook(() => useGeolocation(true));
+    await flushAsyncWork();
+
+    expect(result.current.error).toContain(fragment);
+    expect(result.current.loading).toBe(false);
+  });
+
+  it("falls back to the raw message for an unrecognised code", async () => {
+    mocks.requestPermissions.mockRejectedValue(new Error("something odd"));
+
+    const { result } = renderHook(() => useGeolocation(true));
+    await flushAsyncWork();
+
+    expect(result.current.error).toBe("something odd");
+  });
+
+  it("ignores a permission failure that lands after unmount", async () => {
+    let rejectPermissions;
+    mocks.requestPermissions.mockReturnValue(
+      new Promise((_, reject) => {
+        rejectPermissions = reject;
+      }),
+    );
+
+    const { result, unmount } = renderHook(() => useGeolocation(true));
+    unmount();
+
+    await act(async () => {
+      rejectPermissions(new Error("too late"));
+      await Promise.resolve();
+    });
+
+    expect(result.current.error).toBeNull();
+  });
+
+  it("keeps watching with coarse permission only", async () => {
+    mocks.requestPermissions.mockResolvedValue({
+      location: "denied",
+      coarseLocation: "granted",
+    });
+
+    renderHook(() => useGeolocation(true));
+    await flushAsyncWork();
+
+    expect(mocks.watchPosition).toHaveBeenCalledTimes(1);
+  });
+});
