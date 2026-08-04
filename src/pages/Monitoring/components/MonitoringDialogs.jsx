@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import { useLanguage } from "@/app/hooks/useLanguage";
 import Notification from "@/components/ui/Notification/Notification";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import { STATUS } from "@/utils/status";
@@ -64,47 +65,31 @@ export default function MonitoringDialogs({
   userProfile,
   vars,
 }) {
+  const { t } = useLanguage();
+
   return (
     <>
       <Notification notification={notification} onClose={onCloseNotification} />
       <ConfirmSheet
         open={roundConfirmOpen}
-        title={
+        title={t(
           hasMonitoringRound
-            ? lang === "ru"
-              ? "Начать новый обход?"
-              : "Start a new round?"
-            : lang === "ru"
-              ? "Начать мониторинг?"
-              : "Start monitoring?"
-        }
-        description={
-          lang === "ru"
-            ? "Список к проверке будет сформирован заново. Уже сохраненные результаты мониторинга останутся в истории утечек."
-            : "The due list will be rebuilt. Already saved monitoring results will remain in each leak history."
-        }
-        confirmLabel={lang === "ru" ? "Начать обход" : "Start round"}
-        cancelLabel={lang === "ru" ? "Отмена" : "Cancel"}
+            ? "monitoring.startNewRoundTitle"
+            : "monitoring.startMonitoringTitle",
+        )}
+        description={t("monitoring.startRoundDescription")}
+        confirmLabel={t("monitoring.startRoundConfirm")}
+        cancelLabel={t("monitoring.cancel")}
         onConfirm={onStartRound}
         onCancel={onCancelRound}
       />
       <ConfirmSheet
         open={Boolean(repeatConfirmLeak)}
-        title={
-          lang === "ru"
-            ? "Тег уже проверен в этом обходе"
-            : "Tag already checked in this round"
-        }
-        description={
-          lang === "ru"
-            ? "Для этого тега уже сохранён результат мониторинга. Выполнить повторную проверку?"
-            : "A monitoring result has already been saved for this tag. Check it again?"
-        }
-        confirmLabel={lang === "ru" ? "Проверить повторно" : "Check again"}
-        cancelLabel={lang === "ru" ? "Отмена" : "Cancel"}
-        secondaryActionLabel={
-          lang === "ru" ? "Начать новый обход" : "Start a new round"
-        }
+        title={t("monitoring.repeatTitle")}
+        description={t("monitoring.repeatDescription")}
+        confirmLabel={t("monitoring.repeatConfirm")}
+        cancelLabel={t("monitoring.cancel")}
+        secondaryActionLabel={t("monitoring.repeatSecondary")}
         onSecondaryAction={onRepeatNewRound}
         onConfirm={onRepeatConfirm}
         onCancel={onRepeatCancel}

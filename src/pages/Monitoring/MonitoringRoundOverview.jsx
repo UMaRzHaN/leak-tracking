@@ -1,3 +1,4 @@
+import { useLanguage } from "@/app/hooks/useLanguage";
 import { formatRoundPeriod } from "./monitoringDomain";
 import s from "./Monitoring.module.scss";
 
@@ -11,6 +12,8 @@ export default function MonitoringRoundOverview({
   onStartRound,
   onFinishRound,
 }) {
+  const { t } = useLanguage();
+
   const isCompleted = Boolean(round?.completedAt);
 
   return (
@@ -20,7 +23,7 @@ export default function MonitoringRoundOverview({
           {round?.startedAt ? (
             <div className={s.roundMeta}>
               <span className={s.roundBadge}>
-                {lang === "ru" ? "Обход" : "Round"} №{round.number ?? 1}
+                {t("monitoring.roundBadge")} №{round.number ?? 1}
               </span>
               <span className={s.roundSeparator}>·</span>
               <span>

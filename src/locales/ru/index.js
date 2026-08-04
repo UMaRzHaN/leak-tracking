@@ -6,6 +6,7 @@ import { footer } from "./footer";
 import { header } from "./header";
 import { leakDetails } from "./leakDetails";
 import { mainPage } from "./mainPage";
+import { monitoring } from "./monitoring";
 import { photoInput } from "./photoInput";
 import { projectSetup } from "./projectSetup";
 import { resolve } from "./resolve";
@@ -23,6 +24,7 @@ export const translation = {
   header,
   leakDetails,
   mainPage,
+  monitoring,
   photoInput,
   projectSetup,
   resolve,

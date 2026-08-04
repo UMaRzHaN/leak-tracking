@@ -47,7 +47,7 @@ export function useMonitoringPage({
   onRequestedLeaksConsumed,
   userProfile,
 }) {
-  const { lang } = useLanguage();
+  const { lang, t } = useLanguage();
   const { activeProject } = useProjectData();
   const projectConfig = useProjectConfig();
   const { vars } = useProjectVars(activeProject?.id ?? null);
@@ -178,7 +178,7 @@ export function useMonitoringPage({
     setMonitoringFilter(FILTERS.CHECKED);
     setNotification({
       type: "success",
-      message: lang === "ru" ? "Обход успешно завершён" : "Round completed",
+      message: t("monitoring.roundCompletedNotice"),
     });
   };
 
@@ -249,88 +249,48 @@ export function useMonitoringPage({
     onRequestedLeaksConsumed?.();
   }, [data, openMonitoringSheet, requestedLeakIds, onRequestedLeaksConsumed]);
 
+  // Shape kept as-is so every consumer of `texts` is untouched; only where
+  // the strings come from has changed.
   const texts = useMemo(
-    () =>
-      lang === "ru"
-        ? {
-            title: "Мониторинг",
-            due: "К проверке",
-            checked: "Проверено",
-            allTags: "Все теги",
-            lastCheck: "Последняя проверка",
-            never: "Не проверялась",
-            detectedBy: "Зафиксировал",
-            result: "Утечка есть?",
-            currentState: "текущее состояние",
-            comment: "Комментарий",
-            commentPlaceholder: "Дополнительные сведения по проверке",
-            materials: "МТР (материалы и оборудование)",
-            materialsPlaceholder: "Материалы и оборудование",
-            photo: "Фото мониторинга",
-            check: "Проверить",
-            leakNumber: "№",
-            close: "Закрыть",
-            save: "Сохранить",
-            saving: "Сохранение…",
-            saveFailed: "Не удалось сохранить результат мониторинга",
-            required: "Заполните имя пользователя в профиле",
-            photoRequired: "Добавьте фото мониторинга",
-            startRequired: "Сначала начните обход мониторинга",
-            saved: "Результат мониторинга сохранен",
-            empty: "Нет утечек для выбранного фильтра",
-            searchEmpty: "Ничего не найдено",
-            noActiveRound:
-              "Активного обхода нет. Начните мониторинг, чтобы сформировать список к проверке.",
-            startRound: "Начать мониторинг",
-            newRound: "Новый обход",
-            finishRound: "Завершить обход",
-            roundReady: "Все теги проверены",
-            roundCompleted: "Обход завершён",
-            completed: "Завершён",
-            openResult: "Открыто",
-            repairResult: "В ремонте",
-            resolvedResult: "Устранено",
-          }
-        : {
-            title: "Monitoring",
-            due: "Due",
-            checked: "Checked",
-            allTags: "All tags",
-            lastCheck: "Last check",
-            never: "Never checked",
-            detectedBy: "Detected by",
-            result: "Is there a leak?",
-            currentState: "current state",
-            comment: "Comment",
-            commentPlaceholder: "Additional check details",
-            materials: "Materials and equipment",
-            materialsPlaceholder: "Materials and equipment",
-            photo: "Monitoring photo",
-            check: "Check",
-            leakNumber: "№",
-            close: "Close",
-            save: "Save",
-            saving: "Saving…",
-            saveFailed: "Failed to save monitoring result",
-            required: "Fill in the user name in profile",
-            photoRequired: "Add a monitoring photo",
-            startRequired: "Start a monitoring round first",
-            saved: "Monitoring result saved",
-            empty: "No leaks for the selected filter",
-            searchEmpty: "Nothing found",
-            noActiveRound:
-              "No active round. Start monitoring to build the due list.",
-            startRound: "Start monitoring",
-            newRound: "New round",
-            finishRound: "Complete round",
-            roundReady: "All tags checked",
-            roundCompleted: "Round completed",
-            completed: "Completed",
-            openResult: "Open",
-            repairResult: "In repair",
-            resolvedResult: "Resolved",
-          },
-    [lang],
+    () => ({
+      title: t("monitoring.title"),
+      due: t("monitoring.due"),
+      checked: t("monitoring.checked"),
+      allTags: t("monitoring.allTags"),
+      lastCheck: t("monitoring.lastCheck"),
+      never: t("monitoring.never"),
+      detectedBy: t("monitoring.detectedBy"),
+      result: t("monitoring.result"),
+      currentState: t("monitoring.currentState"),
+      comment: t("monitoring.comment"),
+      commentPlaceholder: t("monitoring.commentPlaceholder"),
+      materials: t("monitoring.materials"),
+      materialsPlaceholder: t("monitoring.materialsPlaceholder"),
+      photo: t("monitoring.photo"),
+      check: t("monitoring.check"),
+      leakNumber: t("monitoring.leakNumber"),
+      close: t("monitoring.close"),
+      save: t("monitoring.save"),
+      saving: t("monitoring.saving"),
+      saveFailed: t("monitoring.saveFailed"),
+      required: t("monitoring.required"),
+      photoRequired: t("monitoring.photoRequired"),
+      startRequired: t("monitoring.startRequired"),
+      saved: t("monitoring.saved"),
+      empty: t("monitoring.empty"),
+      searchEmpty: t("monitoring.searchEmpty"),
+      noActiveRound: t("monitoring.noActiveRound"),
+      startRound: t("monitoring.startRound"),
+      newRound: t("monitoring.newRound"),
+      finishRound: t("monitoring.finishRound"),
+      roundReady: t("monitoring.roundReady"),
+      roundCompleted: t("monitoring.roundCompleted"),
+      completed: t("monitoring.completed"),
+      openResult: t("monitoring.openResult"),
+      repairResult: t("monitoring.repairResult"),
+      resolvedResult: t("monitoring.resolvedResult"),
+    }),
+    [t],
   );
   const requireHistoryUser = useCallback(() => {
     if (profileName) return true;
@@ -490,11 +450,7 @@ export function useMonitoringPage({
           )
         : null;
       if (rawPhoto && !photoPath) {
-        throw new Error(
-          lang === "ru"
-            ? "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0444\u043e\u0442\u043e\u0433\u0440\u0430\u0444\u0438\u044e \u043c\u043e\u043d\u0438\u0442\u043e\u0440\u0438\u043d\u0433\u0430"
-            : "Failed to save the monitoring photo",
-        );
+        throw new Error(t("monitoring.photoSaveFailed"));
       }
       await finishMonitoringSave({ leak, draft, photoPath });
     } catch (error) {
@@ -530,11 +486,7 @@ export function useMonitoringPage({
           )
         : null;
       if (rawPhoto && !photoPath) {
-        throw new Error(
-          lang === "ru"
-            ? "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0444\u043e\u0442\u043e\u0433\u0440\u0430\u0444\u0438\u044e \u043c\u043e\u043d\u0438\u0442\u043e\u0440\u0438\u043d\u0433\u0430"
-            : "Failed to save the monitoring photo",
-        );
+        throw new Error(t("monitoring.photoSaveFailed"));
       }
       await finishMonitoringSave({
         leak: pending.leak,

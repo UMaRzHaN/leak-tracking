@@ -1,3 +1,4 @@
+import { getIntlLocale } from "@/utils/locale";
 import { collectLeakPhotoPaths } from "@/domain/leakLifecycle";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
 import { MONITORING_RESULT, isMonitoringDue } from "@/utils/monitoring";
@@ -18,7 +19,7 @@ const STATUS_TO_MONITORING_RESULT = {
 export function formatRoundPeriod(startedAt, completedAt, lang) {
   const started = new Date(startedAt);
   if (!Number.isFinite(started.getTime())) return "";
-  const locale = lang === "ru" ? "ru-RU" : "en-US";
+  const locale = getIntlLocale(lang);
   const date = started.toLocaleDateString(locale, {
     day: "2-digit",
     month: "2-digit",

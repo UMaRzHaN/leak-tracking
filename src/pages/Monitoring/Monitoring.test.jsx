@@ -2,12 +2,12 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/app/hooks/useLanguage", () => ({
-  useLanguage: () => ({
-    lang: "en",
-    t: (key, options) => options?.defaultValue ?? key,
-  }),
-}));
+// Resolves against the real English locale, so these assertions fail if the
+// screen loses a translation rather than quietly falling back to the key.
+vi.mock("@/app/hooks/useLanguage", async () => {
+  const { englishLanguageHook } = await import("@/test/translate");
+  return englishLanguageHook();
+});
 vi.mock("@/app/project/ProjectContext", () => ({
   useProjectData: () => ({ activeProject: { id: "project-1" } }),
 }));
