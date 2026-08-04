@@ -1,4 +1,5 @@
 import { IDENTIFIER_KEYS, translateFieldLabel } from "./viewBlockUtils";
+import { getIntlLocale } from "@/utils/locale";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
 export default function LeakMeasurementSection({
@@ -23,7 +24,7 @@ export default function LeakMeasurementSection({
             const display =
               IDENTIFIER_KEYS.has(key) || Number.isNaN(number)
                 ? String(raw)
-                : number.toLocaleString(lang === "ru" ? "ru-RU" : "en-US");
+                : number.toLocaleString(getIntlLocale(lang));
             return (
               <div key={key} className={s.paramCard}>
                 <span className={s.paramLabel}>

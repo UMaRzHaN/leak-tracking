@@ -3,24 +3,22 @@ import { useModalDialog } from "@/hooks/useModalDialog";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "./ImportConflictSheet.module.scss";
 
-function pluralRecords(count, lang) {
-  if (lang !== "ru") return count === 1 ? "record" : "records";
-  if (count % 10 === 1 && count % 100 !== 11) return "запись";
-  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) {
-    return "записи";
-  }
-  return "записей";
+// Russian needs three plural forms where English needs two, and picking
+// between them is what Intl.PluralRules is for — the locale carries every form
+// its language can select, so this stays free of per-language branching.
+function pluralRecords(count, t, intlLocale) {
+  const form = new Intl.PluralRules(intlLocale).select(count);
+  return t(`importConflict.records.${form}`);
 }
 
-function getChangedFieldLabel(key, lang, t) {
-  const explicit = {
-    monitoringRecords:
-      lang === "ru" ? "История мониторинга" : "Monitoring history",
-    history: lang === "ru" ? "История изменений" : "Change history",
-  };
-  return (
-    explicit[key] ?? t(`addLeak.fields.${key}.label`, { defaultValue: key })
-  );
+// `monitoringRecords` and `history` are not form fields, so they have no entry
+// under `addLeak.fields`; the merge preview counts them all the same.
+const DIAGNOSTIC_FIELD_KEYS = new Set(["monitoringRecords", "history"]);
+
+function getChangedFieldLabel(key, t) {
+  return DIAGNOSTIC_FIELD_KEYS.has(key)
+    ? t(`importConflict.diagnostics.${key}`)
+    : t(`addLeak.fields.${key}.label`, { defaultValue: key });
 }
 
 export default function ImportConflictSheet({
@@ -37,7 +35,7 @@ export default function ImportConflictSheet({
   onCancel,
   onActionError = null,
 }) {
-  const { lang, t } = useLanguage();
+  const { t, intlLocale } = useLanguage();
   const titleId = useId();
   const descriptionId = useId();
   const [pending, setPending] = useState(false);
@@ -50,9 +48,8 @@ export default function ImportConflictSheet({
     onClose: handleCancel,
     closeDisabled: pending,
   });
-  const source = sourceLabel ?? (lang === "ru" ? "в архиве" : "in archive");
-  const photos =
-    photoLabel ?? (lang === "ru" ? "Фото архива" : "Archive photos");
+  const source = sourceLabel ?? t("importConflict.source");
+  const photos = photoLabel ?? t("importConflict.preview.archivePhotos");
   const photoStats = mergePreview?.photoStats ?? mergePreview?.excelPhotos;
 
   useEffect(() => {
@@ -95,49 +92,43 @@ export default function ImportConflictSheet({
           ⚠️
         </div>
         <h3 id={titleId} className={s.title}>
-          {lang === "ru" ? "Проект уже существует" : "Project already exists"}
+          {t("importConflict.title")}
         </h3>
         <p id={descriptionId} className={s.description}>
-          {lang === "ru"
-            ? `«${projectName}» уже есть в приложении`
-            : `"${projectName}" already exists in the app`}
+          {t("importConflict.description", { project: projectName })}
           <span className={s.counts}>
             {existingProject?.leakCount ?? 0}{" "}
-            {pluralRecords(existingProject?.leakCount ?? 0, lang)} → {leakCount}{" "}
-            {source}
+            {pluralRecords(existingProject?.leakCount ?? 0, t, intlLocale)} →{" "}
+            {leakCount} {source}
           </span>
         </p>
         {mergePreview && (
           <div className={s.previewWrap}>
             <div className={s.preview}>
               <div className={s.previewItem}>
-                <span>{lang === "ru" ? "Добавится" : "Added"}</span>
+                <span>{t("importConflict.preview.added")}</span>
                 <strong>{mergePreview.added}</strong>
               </div>
               <div className={s.previewItem}>
-                <span>{lang === "ru" ? "Обновится" : "Updated"}</span>
+                <span>{t("importConflict.preview.updated")}</span>
                 <strong>{mergePreview.updated}</strong>
               </div>
               <div className={s.previewItem}>
-                <span>{lang === "ru" ? "Пропустится" : "Skipped"}</span>
+                <span>{t("importConflict.preview.skipped")}</span>
                 <strong>{mergePreview.skipped}</strong>
               </div>
               {photoStats ? (
                 <>
                   <div className={s.previewItem}>
-                    <span>{lang === "ru" ? "Фото новых" : "New photos"}</span>
+                    <span>{t("importConflict.preview.photosAdded")}</span>
                     <strong>{photoStats.added}</strong>
                   </div>
                   <div className={s.previewItem}>
-                    <span>
-                      {lang === "ru" ? "Фото на замену" : "Replaced photos"}
-                    </span>
+                    <span>{t("importConflict.preview.photosReplaced")}</span>
                     <strong>{photoStats.replaced}</strong>
                   </div>
                   <div className={s.previewItem}>
-                    <span>
-                      {lang === "ru" ? "Фото уже есть" : "Reused photos"}
-                    </span>
+                    <span>{t("importConflict.preview.photosReused")}</span>
                     <strong>{photoStats.reused}</strong>
                   </div>
                 </>
@@ -148,9 +139,7 @@ export default function ImportConflictSheet({
                 </div>
               )}
               <div className={s.previewItem}>
-                <span>
-                  {lang === "ru" ? "Изменённые поля" : "Changed fields"}
-                </span>
+                <span>{t("importConflict.preview.changedFields")}</span>
                 <strong>{mergePreview.changedFields ?? 0}</strong>
               </div>
             </div>
@@ -158,37 +147,31 @@ export default function ImportConflictSheet({
               0 ||
               Object.keys(photoStats?.replacedByField ?? {}).length > 0) && (
               <details className={s.diagnostics}>
-                <summary>
-                  {lang === "ru" ? "Что отличается" : "Difference details"}
-                </summary>
+                <summary>{t("importConflict.diagnostics.summary")}</summary>
                 {Object.entries(mergePreview.changedFieldBreakdown ?? {}).map(
                   ([key, count]) => (
                     <span key={`field-${key}`}>
-                      {getChangedFieldLabel(key, lang, t)}: {count}
+                      {getChangedFieldLabel(key, t)}: {count}
                     </span>
                   ),
                 )}
                 {Object.entries(photoStats?.replacedByField ?? {}).map(
                   ([key, count]) => (
                     <span key={`photo-${key}`}>
-                      {lang === "ru" ? "фото" : "photo"} {key}: {count}
+                      {t("importConflict.diagnostics.photo")} {key}: {count}
                     </span>
                   ),
                 )}
                 {(photoStats?.replacedByReason?.unreadable ?? 0) > 0 && (
                   <span>
-                    {lang === "ru"
-                      ? "локальное фото не прочитано"
-                      : "local photo could not be read"}
-                    : {photoStats.replacedByReason.unreadable}
+                    {t("importConflict.diagnostics.unreadable")}:{" "}
+                    {photoStats.replacedByReason.unreadable}
                   </span>
                 )}
                 {(photoStats?.replacedByReason?.different ?? 0) > 0 && (
                   <span>
-                    {lang === "ru"
-                      ? "содержимое фото отличается"
-                      : "photo content differs"}
-                    : {photoStats.replacedByReason.different}
+                    {t("importConflict.diagnostics.different")}:{" "}
+                    {photoStats.replacedByReason.different}
                   </span>
                 )}
               </details>
@@ -202,7 +185,7 @@ export default function ImportConflictSheet({
             onClick={() => runAction(onOverwrite)}
             disabled={pending}
           >
-            {lang === "ru" ? "Перезаписать" : "Overwrite"}
+            {t("importConflict.actions.overwrite")}
           </button>
           <button
             type="button"
@@ -210,7 +193,7 @@ export default function ImportConflictSheet({
             onClick={() => runAction(onMerge)}
             disabled={pending}
           >
-            {lang === "ru" ? "Объединить" : "Merge"}
+            {t("importConflict.actions.merge")}
           </button>
           <button
             type="button"
@@ -218,7 +201,7 @@ export default function ImportConflictSheet({
             onClick={() => runAction(onCopy)}
             disabled={pending}
           >
-            {lang === "ru" ? "Создать копию" : "Create copy"}
+            {t("importConflict.actions.copy")}
           </button>
           <button
             type="button"
@@ -226,7 +209,7 @@ export default function ImportConflictSheet({
             onClick={handleCancel}
             disabled={pending}
           >
-            {lang === "ru" ? "Отмена" : "Cancel"}
+            {t("importConflict.actions.cancel")}
           </button>
         </div>
       </div>

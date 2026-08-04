@@ -20,7 +20,7 @@ function gasLabel(key) {
 }
 
 export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
-  const { lang } = useLanguage();
+  const { t } = useLanguage();
   const initialCalcVars = useMemo(
     () => buildReopenCalcVars({ leak, vars }),
     [leak, vars],
@@ -64,65 +64,37 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
   );
 
   const texts = useMemo(
-    () =>
-      lang === "ru"
-        ? {
-            title: "Повторное открытие утечки",
-            subtitle: `№ ${leak?.leak_id ?? leak?.index ?? "-"}`,
-            old: "Было",
-            copy: "Скопировать",
-            copyAll: "Скопировать все",
-            measurements: "Новые замеры",
-            emptyKeepsValue: "Пустое поле сохранит прежнее значение",
-            calcTitle: "Параметры расчета",
-            editCalc: "Изменить параметры",
-            equipment: "Тип оборудования",
-            serial: "Серийный номер оборудования",
-            operatingMode: "Режим работы",
-            gasType: "Тип газа",
-            gasToFlare: "Газ на сжигание",
-            flare: "Сжигание",
-            utilization: "Утилизация",
-            gasContent: "Содержание газа в смеси",
-            current: "Текущее",
-            daysPerYear: "дней за год",
-            serialRequired: "Укажите серийный номер оборудования",
-            cancel: "Отмена",
-            save: "Сохранить",
-            saving: "Сохранение…",
-            confirm: "Открыть",
-            placeholder: "Новое значение",
-            saveError: "Не удалось повторно открыть утечку",
-          }
-        : {
-            title: "Reopen leak",
-            subtitle: `No. ${leak?.leak_id ?? leak?.index ?? "-"}`,
-            old: "Previous",
-            copy: "Copy",
-            copyAll: "Copy all",
-            measurements: "New measurements",
-            emptyKeepsValue: "An empty field keeps its previous value",
-            calcTitle: "Calculation parameters",
-            editCalc: "Edit parameters",
-            equipment: "Equipment type",
-            serial: "Equipment serial number",
-            operatingMode: "Operating mode",
-            gasType: "Gas type",
-            gasToFlare: "Gas to flare",
-            flare: "Flare",
-            utilization: "Utilization",
-            gasContent: "Gas content",
-            current: "Current",
-            daysPerYear: "days per year",
-            serialRequired: "Enter equipment serial number",
-            cancel: "Cancel",
-            save: "Save",
-            saving: "Saving…",
-            confirm: "Open",
-            placeholder: "New value",
-            saveError: "Failed to reopen leak",
-          },
-    [lang, leak?.index, leak?.leak_id],
+    () => ({
+      title: t("reopen.title"),
+      subtitle: t("reopen.subtitle", {
+        id: leak?.leak_id ?? leak?.index ?? "-",
+      }),
+      old: t("reopen.old"),
+      copy: t("reopen.copy"),
+      copyAll: t("reopen.copyAll"),
+      measurements: t("reopen.measurements"),
+      emptyKeepsValue: t("reopen.emptyKeepsValue"),
+      calcTitle: t("reopen.calcTitle"),
+      editCalc: t("reopen.editCalc"),
+      equipment: t("reopen.equipment"),
+      serial: t("reopen.serial"),
+      operatingMode: t("reopen.operatingMode"),
+      gasType: t("reopen.gasType"),
+      gasToFlare: t("reopen.gasToFlare"),
+      flare: t("reopen.flare"),
+      utilization: t("reopen.utilization"),
+      gasContent: t("reopen.gasContent"),
+      current: t("reopen.current"),
+      daysPerYear: t("reopen.daysPerYear"),
+      serialRequired: t("reopen.serialRequired"),
+      cancel: t("reopen.cancel"),
+      save: t("reopen.save"),
+      saving: t("reopen.saving"),
+      confirm: t("reopen.confirm"),
+      placeholder: t("reopen.placeholder"),
+      saveError: t("reopen.saveError"),
+    }),
+    [t, leak?.index, leak?.leak_id],
   );
   const calcFormTexts = useMemo(
     () => ({
@@ -132,7 +104,7 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
       gasContent: texts.gasContent,
       current: texts.current,
       equipmentType: texts.equipment,
-      uncertainty: lang === "ru" ? "Неопределенность" : "Uncertainty",
+      uncertainty: t("reopen.uncertainty"),
       serialNumber: texts.serial,
       serialNumberRequired: texts.serialRequired,
       operatingMode: texts.operatingMode,
@@ -141,7 +113,7 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
       equipmentOptions: {},
       gasOptions: {},
     }),
-    [lang, texts],
+    [t, texts],
   );
 
   const setField = (key, value) =>
@@ -246,8 +218,8 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
             </div>
 
             <div className={s.fields}>
-              {REOPEN_MEASUREMENT_FIELDS.map(({ key, ru, en }) => {
-                const fieldLabel = lang === "ru" ? ru : en;
+              {REOPEN_MEASUREMENT_FIELDS.map(({ key }) => {
+                const fieldLabel = t(`reopen.fields.${key}`);
                 return (
                   <div key={key} className={s.field}>
                     <div className={s.fieldHeader}>

@@ -98,9 +98,12 @@ function LeakCardCompact({
 
   const emissions = fmtNum(leak.Emissions_t_CO2eq_year, 2, lang);
   const methane = fmtNum(leak.Total_Annual_Methane_Loss_m3_y, 0, lang);
-  const beforeLabel = t("leakDetails.photo.before", { defaultValue: "Before" });
-  const afterLabel = t("leakDetails.photo.after", { defaultValue: "After" });
-  const repairLabel = lang === "ru" ? "В ремонте" : "Under repair";
+  const beforeLabel = t("leakDetails.photo.before");
+  const afterLabel = t("leakDetails.photo.after");
+  const repairLabel = t("leakDetails.photo.repair");
+  const selectToggleLabel = selected
+    ? t("cards.deselectLeak")
+    : t("cards.selectLeak");
 
   const comparePairs = [
     photoSrc ? { key: "before", src: photoSrc, label: beforeLabel } : null,
@@ -138,9 +141,7 @@ function LeakCardCompact({
         {goingRight && (
           <div className={s.hintRight}>
             <span className={s.hintIcon}>→</span>
-            <span className={s.hintText}>
-              {t("cards.open", { defaultValue: "Open" })}
-            </span>
+            <span className={s.hintText}>{t("cards.open")}</span>
           </div>
         )}
 
@@ -148,11 +149,7 @@ function LeakCardCompact({
           <div className={s.hintLeft}>
             <span className={s.hintIcon}>☰</span>
             <span className={s.hintText}>
-              {onMonitor
-                ? t("cards.monitoring", {
-                    defaultValue: lang === "ru" ? "Мониторинг" : "Monitoring",
-                  })
-                : t("cards.status", { defaultValue: "Status" })}
+              {onMonitor ? t("cards.monitoring") : t("cards.status")}
             </span>
           </div>
         )}
@@ -183,16 +180,8 @@ function LeakCardCompact({
                   onToggleSelect(leak.id);
                 }}
                 aria-pressed={selected}
-                aria-label={t("cards.selectLeak", {
-                  defaultValue: selected
-                    ? "Remove from selection"
-                    : "Select leak",
-                })}
-                title={t("cards.selectLeak", {
-                  defaultValue: selected
-                    ? "Remove from selection"
-                    : "Select leak",
-                })}
+                aria-label={selectToggleLabel}
+                title={selectToggleLabel}
               >
                 <span className={s.selectToggleMark}>
                   {selected ? "✓" : ""}
@@ -223,7 +212,7 @@ function LeakCardCompact({
               </span>
             )}
             <span className={s.id}>
-              {lang === "ru" ? "Бирка № " : "Tag № "}
+              {t("cards.tagPrefix")}
               {leak.leak_id ?? leak.index}
             </span>
             <span className={s.time}>{ago ?? absoluteDate}</span>
@@ -232,15 +221,7 @@ function LeakCardCompact({
                 type="button"
                 className={s.expandToggle}
                 aria-expanded={expanded}
-                aria-label={
-                  expanded
-                    ? lang === "ru"
-                      ? "Свернуть карточку"
-                      : "Collapse card"
-                    : lang === "ru"
-                      ? "Развернуть карточку"
-                      : "Expand card"
-                }
+                aria-label={expanded ? t("cards.collapse") : t("cards.expand")}
                 onClick={(event) => {
                   event.stopPropagation();
                   toggleExpanded();
@@ -302,23 +283,22 @@ function LeakCardCompact({
               <div className={s.chips}>
                 {nearbyDist != null && (
                   <span className={s.chipNear}>
-                    📌 {nearbyDist} {lang === "ru" ? "м" : "m"}
+                    📌 {nearbyDist} {t("cards.units.meters")}
                   </span>
                 )}
                 {leak.leak_speed != null && (
                   <span className={s.chip}>
-                    {leak.leak_speed} {lang === "ru" ? "л/мин" : "L/min"}
+                    {leak.leak_speed} {t("cards.units.litresPerMinute")}
                   </span>
                 )}
                 {methane != null && (
                   <span className={s.chipCalc}>
-                    ~{methane} {lang === "ru" ? "м3/г" : "m3/y"}
+                    ~{methane} {t("cards.units.cubicMetresPerYear")}
                   </span>
                 )}
                 {emissions != null && (
                   <span className={s.chipCalc}>
-                    ~{emissions}{" "}
-                    {lang === "ru" ? "т CO2-экв/год" : "t CO2-eq/year"}
+                    ~{emissions} {t("cards.units.tonnesCo2PerYear")}
                   </span>
                 )}
               </div>

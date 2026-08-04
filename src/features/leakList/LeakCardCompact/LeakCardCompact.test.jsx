@@ -30,12 +30,10 @@ vi.mock("@/utils/locale", () => ({
   formatLeakDate: () => "14.07.2026",
   formatNumber: (value) => String(value),
 }));
-vi.mock("@/app/hooks/useLanguage", () => ({
-  useLanguage: () => ({
-    lang: "en",
-    t: (_key, options = {}) => options.defaultValue ?? _key,
-  }),
-}));
+vi.mock("@/app/hooks/useLanguage", async () => {
+  const { englishLanguageHook } = await import("@/test/translate");
+  return englishLanguageHook();
+});
 vi.mock("@/features/photos/PhotoViewer/PhotoViewer", () => ({
   default: () => null,
 }));

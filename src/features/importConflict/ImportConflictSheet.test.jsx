@@ -2,12 +2,89 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import ImportConflictSheet from "./ImportConflictSheet";
 
-vi.mock("@/app/hooks/useLanguage", () => ({
-  useLanguage: () => ({
-    lang: "en",
-    t: (key, options) => options?.defaultValue ?? key,
-  }),
-}));
+vi.mock("@/app/hooks/useLanguage", async () => {
+  const { englishLanguageHook } = await import("@/test/translate");
+  return englishLanguageHook();
+});
+
+describe("ImportConflictSheet content", () => {
+  it("renders the conflict, the merge preview and the photo diagnostics", () => {
+    render(
+      <ImportConflictSheet
+        open
+        projectName="Project A"
+        existingProject={{ leakCount: 1 }}
+        leakCount={3}
+        mergePreview={{
+          added: 2,
+          updated: 1,
+          skipped: 0,
+          changedFields: 4,
+          changedFieldBreakdown: { monitoringRecords: 3, history: 1 },
+          photoStats: {
+            added: 5,
+            replaced: 2,
+            reused: 1,
+            replacedByField: { photo: 2 },
+            replacedByReason: { unreadable: 1, different: 1 },
+          },
+        }}
+        onOverwrite={vi.fn()}
+        onMerge={vi.fn()}
+        onCopy={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("heading").textContent).toBe(
+      "Project already exists",
+    );
+    // Interpolation, and the singular plural form for a single record.
+    expect(screen.getByRole("dialog").textContent).toContain(
+      '"Project A" already exists in the app',
+    );
+    expect(screen.getByRole("dialog").textContent).toContain(
+      "1 record → 3 in archive",
+    );
+
+    for (const label of [
+      "Added",
+      "Updated",
+      "Skipped",
+      "New photos",
+      "Replaced photos",
+      "Reused photos",
+      "Changed fields",
+      "Difference details",
+      "Monitoring history: 3",
+      "Change history: 1",
+      "photo photo: 2",
+      "local photo could not be read: 1",
+      "photo content differs: 1",
+    ]) {
+      expect(screen.getByText(label)).toBeTruthy();
+    }
+  });
+
+  it("falls back to the archive photo label when there are no photo stats", () => {
+    render(
+      <ImportConflictSheet
+        open
+        projectName="Project A"
+        existingProject={{ leakCount: 4 }}
+        leakCount={3}
+        mergePreview={{ added: 0, updated: 0, skipped: 0, archivePhotos: 7 }}
+        onOverwrite={vi.fn()}
+        onMerge={vi.fn()}
+        onCopy={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Archive photos")).toBeTruthy();
+    expect(screen.getByRole("dialog").textContent).toContain("4 records");
+  });
+});
 
 describe("ImportConflictSheet async actions", () => {
   it("allows only one import action and blocks closing while it is pending", async () => {

@@ -173,7 +173,7 @@ export default function LeakForm({
         if (type === "photo") {
           const photo = form[key];
           if (!hasRestorablePhoto(photo)) {
-            nextErrors[key] = lang === "ru" ? "Добавьте фото" : "Add a photo";
+            nextErrors[key] = t("leakForm.validation.photoRequired");
             firstInvalidStep ??= index + 1;
           }
           return;
@@ -184,32 +184,15 @@ export default function LeakForm({
           value == null || (typeof value === "string" && value.trim() === "");
 
         if (empty) {
-          nextErrors[key] =
-            lang === "ru" ? "Обязательное поле" : "Required field";
+          nextErrors[key] = t("leakForm.validation.required");
           firstInvalidStep ??= index + 1;
         }
       });
     });
 
-    const calculationMessages = {
-      finite:
-        lang === "ru" ? "Введите корректное число" : "Enter a valid number",
-      non_negative:
-        lang === "ru"
-          ? "Значение не может быть отрицательным"
-          : "Value cannot be negative",
-      positive:
-        lang === "ru"
-          ? "Для розового мешка укажите значение больше нуля"
-          : "Enter a value above zero for Pink Bag",
-      above_absolute_zero:
-        lang === "ru"
-          ? "Температура должна быть выше −273,15 °C"
-          : "Temperature must be above −273.15 °C",
-    };
     const calculationErrors = getLeakCalculationFieldErrors(form, vars);
     Object.entries(calculationErrors).forEach(([key, code]) => {
-      nextErrors[key] = calculationMessages[code];
+      nextErrors[key] = t(`leakForm.validation.${code}`);
       const invalidStep = STEPS.findIndex((item) =>
         item.fields?.some((field) => field.key === key),
       );
@@ -222,7 +205,7 @@ export default function LeakForm({
       return false;
     }
     return true;
-  }, [STEPS, form, lang, setErrors, vars]);
+  }, [STEPS, form, setErrors, t, vars]);
 
   const nextStep = useCallback(() => {
     if (!validateStep(step)) return;
@@ -396,25 +379,11 @@ export default function LeakForm({
 
         <div className={s.calcShortcut}>
           <div className={s.calcShortcutText}>
-            <strong>
-              {t("settings.calculationParameters", {
-                defaultValue:
-                  lang === "ru"
-                    ? "Параметры расчёта"
-                    : "Calculation Parameters",
-              })}
-            </strong>
-            <span>
-              {lang === "ru"
-                ? "Используются при сохранении этой утечки"
-                : "Used when this leak is saved"}
-            </span>
+            <strong>{t("settings.calculationParameters")}</strong>
+            <span>{t("leakForm.calcShortcutHint")}</span>
           </div>
           <button type="button" onClick={() => setCalcSettingsOpen(true)}>
-            {t("settings.editParameters", {
-              defaultValue:
-                lang === "ru" ? "Редактировать параметры" : "Edit Parameters",
-            })}
+            {t("settings.editParameters")}
           </button>
         </div>
 

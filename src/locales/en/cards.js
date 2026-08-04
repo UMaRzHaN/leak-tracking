@@ -1,0 +1,19 @@
+export const cards = {
+  open: "Open",
+  monitoring: "Monitoring",
+  status: "Status",
+
+  selectLeak: "Select leak",
+  deselectLeak: "Remove from selection",
+
+  tagPrefix: "Tag № ",
+  collapse: "Collapse card",
+  expand: "Expand card",
+
+  units: {
+    meters: "m",
+    litresPerMinute: "L/min",
+    cubicMetresPerYear: "m3/y",
+    tonnesCo2PerYear: "t CO2-eq/year",
+  },
+};

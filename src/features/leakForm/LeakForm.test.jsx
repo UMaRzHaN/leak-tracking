@@ -67,12 +67,13 @@ vi.mock("@/app/project/hooks/usePhotoRequirements", () => ({
 vi.mock("@/app/project/hooks/useProjectVars", () => ({
   useProjectVars: () => ({ vars: mocks.vars, setVars: mocks.setVars }),
 }));
-vi.mock("@/app/hooks/useLanguage", () => ({
-  useLanguage: () => ({
-    lang: mocks.language,
-    t: (key, options) => options?.defaultValue ?? key,
-  }),
-}));
+vi.mock("@/app/hooks/useLanguage", async () => {
+  const { englishLanguageHook } = await import("@/test/translate");
+  const hook = englishLanguageHook();
+  return {
+    useLanguage: () => ({ ...hook.useLanguage(), lang: mocks.language }),
+  };
+});
 vi.mock("@/app/hooks/useVoiceControl", () => ({
   useVoiceControl: () => ({
     pendingVoiceData: null,

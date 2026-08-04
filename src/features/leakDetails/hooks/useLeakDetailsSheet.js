@@ -168,7 +168,6 @@ export function useLeakDetailsSheet({
     allLeaks,
     onSave,
     deletePhoto,
-    lang,
     historyUser,
     vars,
     editFields,

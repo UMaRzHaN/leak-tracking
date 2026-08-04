@@ -3,13 +3,13 @@ import { isNative } from "@/utils/platform";
 import s from "./VoiceButton.module.scss";
 
 export default function VoiceButton({ startVoiceInput, stopVoiceInput, dark }) {
-  const { lang } = useLanguage();
+  const { t } = useLanguage();
 
   return (
     <button
       type="button"
       className={`${s.mic}${dark ? ` ${s.dark}` : ""}`}
-      aria-label={lang === "ru" ? "Голосовой ввод" : "Voice input"}
+      aria-label={t("voice.buttonLabel")}
       onClick={isNative ? startVoiceInput : undefined}
       onMouseDown={!isNative ? startVoiceInput : undefined}
       onMouseUp={!isNative ? stopVoiceInput : undefined}

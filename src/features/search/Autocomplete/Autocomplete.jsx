@@ -25,7 +25,7 @@ export default function Autocomplete({
   onComplete,
   hint,
 }) {
-  const { lang } = useLanguage();
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value ?? "");
   const inputRef = useRef(null);
@@ -104,7 +104,7 @@ export default function Autocomplete({
             type="button"
             className={s.clearBtn}
             tabIndex={-1}
-            aria-label={lang === "ru" ? "Очистить" : "Clear"}
+            aria-label={t("common.clear")}
             onMouseDown={(e) => e.preventDefault()}
             onClick={clear}
           >

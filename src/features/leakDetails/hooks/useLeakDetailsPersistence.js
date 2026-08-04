@@ -30,7 +30,6 @@ export function useLeakDetailsPersistence({
   allLeaks,
   onSave,
   deletePhoto,
-  lang,
   historyUser,
   vars,
   editFields,
@@ -81,10 +80,7 @@ export function useLeakDetailsPersistence({
     if (Number.isFinite(lat) && !isValidLatitude(lat)) {
       setNotification({
         type: "error",
-        message:
-          lang === "ru"
-            ? `Широта ${lat} вне допустимого диапазона [-90, 90]`
-            : `Latitude ${lat} is outside the allowed range [-90, 90]`,
+        message: t("addLeak.validation.lat", { lat }),
       });
       return;
     }
@@ -92,10 +88,7 @@ export function useLeakDetailsPersistence({
     if (Number.isFinite(lng) && !isValidLongitude(lng)) {
       setNotification({
         type: "error",
-        message:
-          lang === "ru"
-            ? `Долгота ${lng} вне допустимого диапазона [-180, 180]`
-            : `Longitude ${lng} is outside the allowed range [-180, 180]`,
+        message: t("addLeak.validation.lng", { lng }),
       });
       return;
     }
@@ -210,10 +203,7 @@ export function useLeakDetailsPersistence({
   const reportSaveError = () => {
     setNotification({
       type: "error",
-      message:
-        lang === "ru"
-          ? "\u041e\u0448\u0438\u0431\u043a\u0430 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u044f"
-          : "Save error",
+      message: t("leakDetails.saveError"),
     });
   };
 

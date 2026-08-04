@@ -8,9 +8,10 @@ import {
 import { describe, expect, it, vi } from "vitest";
 import ReopenLeakModal from "./ReopenLeakModal";
 
-vi.mock("@/app/hooks/useLanguage", () => ({
-  useLanguage: () => ({ lang: "en" }),
-}));
+vi.mock("@/app/hooks/useLanguage", async () => {
+  const { englishLanguageHook } = await import("@/test/translate");
+  return englishLanguageHook();
+});
 vi.mock("@/features/calculationParameters/CalculationParametersForm", () => ({
   default: ({ submitted, texts }) => (
     <div>

@@ -74,6 +74,7 @@ export const leakDetails = {
   photo: {
     before: "До",
     after: "После",
+    repair: "В ремонте",
     noPhoto: "нет фото",
   },
 
