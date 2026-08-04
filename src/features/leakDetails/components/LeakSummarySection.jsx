@@ -1,6 +1,6 @@
+import { fieldLabel } from "@/utils/fieldLabels";
 import { getPriorityMeta } from "@/utils/priority";
 import { formatLeakDate } from "@/utils/locale";
-import { translateFieldLabel } from "./viewBlockUtils";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
 export default function LeakSummarySection({
@@ -42,9 +42,7 @@ export default function LeakSummarySection({
               key={key}
               className={`${s.fieldRow} ${multiline ? s.fieldRowMulti : ""}`}
             >
-              <span className={s.fieldLabel}>
-                {translateFieldLabel(key, label, t, lang)}
-              </span>
+              <span className={s.fieldLabel}>{fieldLabel(key, t, label)}</span>
               <span
                 className={`${s.fieldValue} ${multiline ? s.fieldValueMulti : ""}`}
               >

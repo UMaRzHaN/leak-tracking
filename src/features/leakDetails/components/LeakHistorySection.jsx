@@ -261,7 +261,6 @@ function ChangeHistory({ data, fields, localeTexts, t, lang }) {
                             fields,
                             localeTexts,
                             t,
-                            lang,
                           )}
                         </span>
                         <span

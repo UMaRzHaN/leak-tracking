@@ -1,24 +1,8 @@
 import { useState, useMemo, useEffect, useId } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useModalDialog } from "@/hooks/useModalDialog";
+import { fieldLabel } from "@/utils/fieldLabels";
 import s from "./VoicePreviewSheet.module.scss";
-
-const VOICE_KEY_LABELS = {
-  leak_cause: {
-    ru: "Причина утечки",
-    en: "Leak cause",
-  },
-  category: {
-    ru: "Категория",
-    en: "Category",
-  },
-};
-
-function getFieldLabel(key, fallbackLabel, lang, t) {
-  return t(`addLeak.fields.${key}.label`, {
-    defaultValue: VOICE_KEY_LABELS[key]?.[lang] ?? fallbackLabel ?? key,
-  });
-}
 
 export default function VoicePreviewSheet({
   pending,
@@ -26,7 +10,7 @@ export default function VoicePreviewSheet({
   onConfirm,
   onDismiss,
 }) {
-  const { lang, t } = useLanguage();
+  const { t } = useLanguage();
   const titleId = useId();
   const dialogRef = useModalDialog({
     open: Boolean(pending),
@@ -37,11 +21,11 @@ export default function VoicePreviewSheet({
     const map = {};
     steps?.forEach((step) =>
       step.fields?.forEach((field) => {
-        map[field.key] = getFieldLabel(field.key, field.label, lang, t);
+        map[field.key] = fieldLabel(field.key, t, field.label);
       }),
     );
     return map;
-  }, [lang, steps, t]);
+  }, [steps, t]);
 
   const entries = useMemo(
     () =>
@@ -106,21 +90,20 @@ export default function VoicePreviewSheet({
         ) : (
           <div className={s.list}>
             {entries.map(([key, value]) => {
-              const fieldLabel =
-                labelMap[key] ?? getFieldLabel(key, null, lang, t);
+              const label = labelMap[key] ?? fieldLabel(key, t);
               return (
                 <button
                   key={key}
                   type="button"
                   className={`${s.row} ${selected.has(key) ? s.checked : ""}`}
-                  aria-label={`${fieldLabel} ${String(value)}`}
+                  aria-label={`${label} ${String(value)}`}
                   aria-pressed={selected.has(key)}
                   onClick={() => toggle(key)}
                 >
                   <span className={s.check}>
                     {selected.has(key) ? "✓" : ""}
                   </span>
-                  <span className={s.fieldLabel}>{fieldLabel}</span>
+                  <span className={s.fieldLabel}>{label}</span>
                   <span className={s.value}>{String(value)}</span>
                 </button>
               );

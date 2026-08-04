@@ -21,6 +21,7 @@ import ClearActions from "./components/ClearActions";
 import SettingsModal from "@/features/settings/SettingsModal/SettingsModal";
 import { getCopyPreviousKeys } from "@/features/leakForm/utils/copyPrevious";
 import { dataUrlToBlob } from "@/utils/photoConversion";
+import { shortFieldLabel } from "@/utils/fieldLabels";
 import s from "./LeakForm.module.scss";
 
 const STEP_TITLE_KEYS = {
@@ -29,40 +30,39 @@ const STEP_TITLE_KEYS = {
   "Примечание и фото": "noteAndPhoto",
 };
 
-function translateStep(step, t) {
+function localizeStep(step, t, lang) {
   return {
     ...step,
     title:
       STEP_TITLE_KEYS[step.title] != null
-        ? t(`addLeak.stepTitles.${STEP_TITLE_KEYS[step.title]}`, {
-            defaultValue: step.title,
-          })
+        ? t(`addLeak.stepTitles.${STEP_TITLE_KEYS[step.title]}`)
         : step.title,
     fields: step.fields.map((field) => ({
       ...field,
-      label: t(`addLeak.fields.${field.key}.label`, {
-        defaultValue: field.key === "field" ? "MGPA" : field.label,
-      }),
-      placeholder: t(`addLeak.fields.${field.key}.placeholder`, {
-        defaultValue:
-          field.key === "field" ? "e.g. MGPA-1" : (field.placeholder ?? ""),
-      }),
-      hint: t(`addLeak.fields.${field.key}.hint`, {
-        defaultValue:
-          field.key === "field"
-            ? "Main gas pipeline administration"
-            : (field.hint ?? ""),
-      }),
-      options:
-        field.type === "autocomplete"
-          ? localizeAutocompleteOptions(field.options ?? [], "en")
-          : field.options,
+      label: shortFieldLabel(field.key, t, field.label),
+      // Placeholders and hints are the one part of a field that still differs
+      // per project type, so Russian reads them from the config it came from.
+      // English has only one set of them, in the locale.
+      ...(lang === "en"
+        ? {
+            placeholder: t(`addLeak.fields.${field.key}.placeholder`, {
+              defaultValue: field.placeholder ?? "",
+            }),
+            hint: t(`addLeak.fields.${field.key}.hint`, {
+              defaultValue: field.hint ?? "",
+            }),
+            options:
+              field.type === "autocomplete"
+                ? localizeAutocompleteOptions(field.options ?? [], "en")
+                : field.options,
+          }
+        : null),
     })),
   };
 }
 
-function translateSteps(steps, t) {
-  return steps.map((step) => translateStep(step, t));
+function localizeSteps(steps, t, lang) {
+  return steps.map((step) => localizeStep(step, t, lang));
 }
 
 function hasRestorablePhoto(photo) {
@@ -129,7 +129,7 @@ export default function LeakForm({
     [leakPhotoRequired, projectConfig],
   );
   const translatedSteps = useMemo(
-    () => (lang === "en" ? translateSteps(STEPS, t) : STEPS),
+    () => localizeSteps(STEPS, t, lang),
     [STEPS, lang, t],
   );
 

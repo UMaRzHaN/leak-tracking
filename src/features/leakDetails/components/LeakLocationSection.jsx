@@ -1,13 +1,7 @@
-import { translateFieldLabel } from "./viewBlockUtils";
+import { fieldLabel } from "@/utils/fieldLabels";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
-export default function LeakLocationSection({
-  data,
-  fields,
-  localeTexts,
-  t,
-  lang,
-}) {
+export default function LeakLocationSection({ data, fields, localeTexts, t }) {
   const hasAny = fields.some(
     (field) => data[field.key] != null && data[field.key] !== "",
   );
@@ -20,9 +14,7 @@ export default function LeakLocationSection({
           if (value == null || value === "") return null;
           return (
             <div key={key} className={s.fieldRow}>
-              <span className={s.fieldLabel}>
-                {translateFieldLabel(key, label, t, lang)}
-              </span>
+              <span className={s.fieldLabel}>{fieldLabel(key, t, label)}</span>
               <span className={s.fieldValue}>{Number(value).toFixed(6)}</span>
             </div>
           );

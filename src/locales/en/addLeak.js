@@ -79,6 +79,7 @@ export const addLeak = {
     },
     leak_id: {
       label: "Tag",
+      shortLabel: "Tag",
       placeholder: "e.g. 4242",
       hint: "Unique number on the physical marker attached to the leak location",
     },
@@ -89,21 +90,25 @@ export const addLeak = {
     },
     video_id: {
       label: "Video",
+      shortLabel: "Video",
       placeholder: "e.g. 1042",
       hint: "Video recording number from the instrument (OGI)",
     },
     pressure: {
       label: "Pressure, atm",
+      shortLabel: "Pressure",
       placeholder: "e.g. 4.5",
       hint: "Operating pressure in the pipeline, atm",
     },
     temperature: {
       label: "Temperature, °C",
+      shortLabel: "Temperature",
       placeholder: "e.g. 20",
       hint: "Operating medium temperature, °C",
     },
     leak_speed: {
       label: "Leak rate, L/min",
+      shortLabel: "Leak rate",
       placeholder: "e.g. 1.5",
       hint: "Measured leak rate by instrument, L/min",
     },
@@ -144,16 +149,19 @@ export const addLeak = {
     },
     technological_solution: {
       label: "Technical solution",
+      shortLabel: "Solution",
       placeholder: "e.g. Inspection",
       hint: "Proposed method to fix the leak",
     },
     repair_recommendation: {
       label: "Repair plan",
+      shortLabel: "Repair plan",
       placeholder: "e.g. Fix without shutdown",
       hint: "How to fix without or with equipment shutdown",
     },
     materials_equipment: {
       label: "Repair materials/equipment",
+      shortLabel: "Repair materials",
       placeholder: "e.g. gasket",
       hint: "Proposed materials and equipment for repair",
     },
@@ -178,6 +186,75 @@ export const addLeak = {
     },
     photo: {
       label: "Leak photo",
+    },
+    date: {
+      label: "Date",
+    },
+    detectedBy: {
+      label: "Detected by",
+    },
+    lat: {
+      label: "Latitude (X)",
+    },
+    lng: {
+      label: "Longitude (Y)",
+    },
+    equipmentType: {
+      label: "Leak volume measuring equipment",
+    },
+    serial_number: {
+      label: "Equipment serial number",
+    },
+    uncertainty: {
+      label: "Uncertainty",
+    },
+    repairAt: {
+      label: "Repair date",
+    },
+    resolvedAt: {
+      label: "Resolved date",
+    },
+    photo_repair: {
+      label: "Repair photo",
+    },
+    photo_after: {
+      label: "After repair photo",
+    },
+    monitoringRecords: {
+      label: "Monitoring history",
+    },
+    roundNumber: {
+      label: "Round number",
+    },
+    leak_speed_kg_h: {
+      label: "Measured leak rate, kg/h",
+    },
+    temperature_K: {
+      label: "Temperature, K",
+    },
+    flareShare: {
+      label: "Gas to flare share",
+    },
+    utilShare: {
+      label: "Gas to utilization share",
+    },
+    Operating_mode: {
+      label: "Operating mode (days)",
+    },
+    Total_Annual_Methane_Loss_m3_y: {
+      label: "Total annual methane loss CH4, m3/year",
+    },
+    Total_Annual_Methane_Loss_t_y: {
+      label: "Annual methane loss CH4, t/year",
+    },
+    Emissions_t_CO2eq_year: {
+      label: "Emissions, CO2-eq, t/year",
+    },
+    Emissions_kg_CO2_eq_year: {
+      label: "Emissions, kg CO2, t/year",
+    },
+    weightedGWP: {
+      label: "Global warming potential",
     },
   },
 };

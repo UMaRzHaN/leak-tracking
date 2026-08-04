@@ -46,7 +46,6 @@ export default function Monitoring(props) {
     pendingMonitoringReopen,
     photoRequired,
     pickerLeak,
-    projectConfig,
     reopenLeak,
     repairLeak,
     repeatConfirmLeak,
@@ -110,7 +109,6 @@ export default function Monitoring(props) {
         onMonitor={openMonitoringSheet}
         onOpenDetails={setActiveLeak}
         onPickStatus={handlePickStatus}
-        projectConfig={projectConfig}
         setMonitoringFilter={setMonitoringFilter}
         texts={texts}
       />

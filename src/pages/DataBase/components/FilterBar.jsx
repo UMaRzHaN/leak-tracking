@@ -28,12 +28,10 @@ function FilterBar({
   mainLocationFilter,
   setMainLocationFilter,
   mainLocationKey,
-  mainLocationLabel,
   mainLocationOptions = [],
   locationFilter,
   setLocationFilter,
   locationKey,
-  locationLabel,
   locationOptions = [],
   nearbyFilter,
   setNearbyFilter,
@@ -43,7 +41,7 @@ function FilterBar({
   counts,
   hasGps,
 }) {
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const noLocationLabel = t("database.notSpecified");
   const selectedStatuses = normalizeSelected(statusFilter);
   const selectedPriorities = normalizeSelected(priorityFilter);
@@ -64,7 +62,6 @@ function FilterBar({
     key ? t(`database.locationLabels.${key}`, { defaultValue: "" }) : "";
   const effectiveMainLocationKey = mainLocationFilter?.key ?? mainLocationKey;
   const mainLocationFilterLabel =
-    (lang === "ru" ? mainLocationLabel : null) ||
     locationLabelOf(effectiveMainLocationKey) ||
     t("database.locationLabels.subdivision");
   const mainLocationValues = Array.isArray(mainLocationFilter?.values)
@@ -77,7 +74,6 @@ function FilterBar({
 
   const effectiveLocationKey = locationFilter?.key ?? locationKey;
   const locationFilterLabel =
-    (lang === "ru" ? locationLabel : null) ||
     locationLabelOf(effectiveLocationKey) ||
     t("database.locationLabels.location");
   const locationValues = Array.isArray(locationFilter?.values)

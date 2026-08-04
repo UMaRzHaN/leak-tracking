@@ -117,7 +117,6 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
         fields={coords}
         localeTexts={localeTexts}
         t={t}
-        lang={lang}
       />
     );
   }

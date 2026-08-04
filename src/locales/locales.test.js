@@ -5,13 +5,13 @@ import { translation as ru } from "@/locales/ru";
 const LANGUAGES = { ru, en };
 
 // Keys English defines and Russian does not, because those Russian strings
-// still live in `defaultValue` arguments at the call sites rather than here.
-// Moving them is part of the wider i18n migration; until then they are listed
-// so that the parity check still catches anything new. This list may only
-// shrink.
+// still live in the step configs rather than here — their Russian text differs
+// per project type, which a single key cannot carry, so moving them is its own
+// decision. Listed so the parity check still catches anything new. `*` matches
+// one key segment. This list may only shrink.
 const RUSSIAN_STRINGS_STILL_AT_CALL_SITES = [
-  "addLeak.fields",
-  "addLeak.stepTitles",
+  "addLeak.fields.*.placeholder",
+  "addLeak.fields.*.hint",
 ];
 
 function flattenKeys(node, prefix = "") {
@@ -25,10 +25,17 @@ function flattenKeys(node, prefix = "") {
     .sort();
 }
 
-const isKnownGap = (key) =>
-  RUSSIAN_STRINGS_STILL_AT_CALL_SITES.some((prefix) =>
-    key.startsWith(`${prefix}.`),
-  );
+const gapMatchers = RUSSIAN_STRINGS_STILL_AT_CALL_SITES.map(
+  (pattern) =>
+    new RegExp(
+      `^${pattern
+        .split(".")
+        .map((part) => (part === "*" ? "[^.]+" : part.replace(/\W/g, "\\$&")))
+        .join("\\.")}$`,
+    ),
+);
+
+const isKnownGap = (key) => gapMatchers.some((matcher) => matcher.test(key));
 
 describe("locales", () => {
   // i18next falls back to Russian, so a key missing from English resolves to
@@ -58,7 +65,7 @@ describe("locales", () => {
   it("still needs every entry in the known-gap list", () => {
     const russianKeys = flattenKeys(ru);
     const stillMissing = RUSSIAN_STRINGS_STILL_AT_CALL_SITES.filter(
-      (prefix) => !russianKeys.some((key) => key.startsWith(`${prefix}.`)),
+      (_, index) => !russianKeys.some((key) => gapMatchers[index].test(key)),
     );
     expect(stillMissing).toEqual(RUSSIAN_STRINGS_STILL_AT_CALL_SITES);
   });

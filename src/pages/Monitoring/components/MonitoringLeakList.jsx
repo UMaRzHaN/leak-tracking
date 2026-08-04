@@ -19,7 +19,6 @@ export default function MonitoringLeakList({
   onMonitor,
   onOpenDetails,
   onPickStatus,
-  projectConfig,
   setMonitoringFilter,
   texts,
 }) {
@@ -38,12 +37,10 @@ export default function MonitoringLeakList({
           mainLocationFilter={filters.mainLocationFilter}
           setMainLocationFilter={filters.setMainLocationFilter}
           mainLocationKey={filters.mainLocationKey}
-          mainLocationLabel={projectConfig.system.location.main_label}
           mainLocationOptions={filters.mainLocationOptions}
           locationFilter={filters.locationFilter}
           setLocationFilter={filters.setLocationFilter}
           locationKey={filters.locationKey}
-          locationLabel={projectConfig.system.location.label}
           locationOptions={filters.locationOptions}
           nearbyFilter={filters.nearbyFilter}
           setNearbyFilter={filters.setNearbyFilter}

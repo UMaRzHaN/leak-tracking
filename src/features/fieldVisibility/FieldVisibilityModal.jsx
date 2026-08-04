@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import s from "./FieldVisibilityModal.module.scss";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { PROTECTED_FIELD_KEYS } from "@/configs/shared/protectedFields";
+import { fieldLabel } from "@/utils/fieldLabels";
 
 // These keys are managed by the system and can never be hidden
 const SYSTEM_KEYS = PROTECTED_FIELD_KEYS;
@@ -13,73 +14,12 @@ const STEP_TITLE_KEYS = {
   "Примечание и фото": "noteAndPhoto",
 };
 
-function translateFieldLabel(key, fallbackLabel, t, lang) {
-  const explicitLabels = {
-    date: lang === "ru" ? "Дата" : "Date",
-    detectedBy: lang === "ru" ? "Кто зафиксировал" : "Detected by",
-    lat: lang === "ru" ? "Широта (X)" : "Latitude (X)",
-    lng: lang === "ru" ? "Долгота (Y)" : "Longitude (Y)",
-    equipmentType:
-      lang === "ru"
-        ? "Оборудование для замера объёма утечки"
-        : "Leak volume measuring equipment",
-    serial_number:
-      lang === "ru" ? "Серийный номер оборудования" : "Equipment serial number",
-    uncertainty: lang === "ru" ? "Погрешность" : "Uncertainty",
-    repairAt: lang === "ru" ? "Дата ремонта" : "Repair date",
-    resolvedAt: lang === "ru" ? "Дата устранения" : "Resolved date",
-    photo: lang === "ru" ? "Фото утечки" : "Leak photo",
-    photo_repair: lang === "ru" ? "Фото в ремонте" : "Repair photo",
-    photo_after: lang === "ru" ? "Фото после ремонта" : "After repair photo",
-    monitoringRecords:
-      lang === "ru" ? "История мониторинга" : "Monitoring history",
-    roundNumber: lang === "ru" ? "Номер обхода" : "Round number",
-    leak_speed_kg_h:
-      lang === "ru"
-        ? "Измеренная скорость утечки, кг/ч"
-        : "Measured leak rate, kg/h",
-    temperature_K: lang === "ru" ? "Температура, K" : "Temperature, K",
-    flareShare:
-      lang === "ru" ? "Процент газа на сжигание" : "Gas to flare share",
-    utilShare:
-      lang === "ru"
-        ? "Процент газа на использование"
-        : "Gas to utilization share",
-    Operating_mode:
-      lang === "ru" ? "Наработка (дней)" : "Operating mode (days)",
-    Total_Annual_Methane_Loss_m3_y:
-      lang === "ru"
-        ? "Общие годовые потери метана CH4, м3/год"
-        : "Total annual methane loss CH4, m3/year",
-    Total_Annual_Methane_Loss_t_y:
-      lang === "ru"
-        ? "Годовые потери метана CH4, т/год"
-        : "Annual methane loss CH4, t/year",
-    Emissions_t_CO2eq_year:
-      lang === "ru" ? "Выбросы, CO2-экв, т/год" : "Emissions, CO2-eq, t/year",
-    Emissions_kg_CO2_eq_year:
-      lang === "ru" ? "Выбросы, кг CO2, т/год" : "Emissions, kg CO2, t/year",
-    weightedGWP:
-      lang === "ru"
-        ? "Потенциал глобального потепления"
-        : "Global warming potential",
-  };
-
-  return t(`addLeak.fields.${key}.label`, {
-    defaultValue: explicitLabels[key] ?? fallbackLabel,
-  });
-}
-
 function translateStepTitle(title, t) {
   const key = STEP_TITLE_KEYS[title];
-  if (!key) return title;
-
-  return t(`addLeak.stepTitles.${key}`, {
-    defaultValue: title,
-  });
+  return key ? t(`addLeak.stepTitles.${key}`) : title;
 }
 
-function buildGroups(config, localeTexts, t, lang) {
+function buildGroups(config, localeTexts, t) {
   const { headers, keysOrder } = config.export.excel;
   const headerMap = Object.fromEntries(
     keysOrder.map((k, i) => [k, headers[i]]),
@@ -92,7 +32,7 @@ function buildGroups(config, localeTexts, t, lang) {
         .filter((f) => !SYSTEM_KEYS.has(f.key))
         .map((f) => ({
           key: f.key,
-          label: translateFieldLabel(f.key, f.label, t, lang),
+          label: fieldLabel(f.key, t, f.label),
           required: !!f.required,
         }));
       fields.forEach((f) => stepFieldKeys.add(f.key));
@@ -108,7 +48,7 @@ function buildGroups(config, localeTexts, t, lang) {
     .filter((k) => !stepFieldKeys.has(k) && !SYSTEM_KEYS.has(k))
     .map((k) => ({
       key: k,
-      label: translateFieldLabel(k, headerMap[k] ?? k, t, lang),
+      label: fieldLabel(k, t, headerMap[k] ?? k),
       required: false,
     }));
 
@@ -229,7 +169,7 @@ export default function FieldVisibilityModal({
   hiddenFields,
   onSave,
 }) {
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const localeTexts = useMemo(
     () => ({
       title: t("fieldVisibility.title"),
@@ -261,8 +201,8 @@ export default function FieldVisibilityModal({
   const [openGroups, setOpenGroups] = useState(() => new Set());
 
   const groups = useMemo(
-    () => buildGroups(config, localeTexts, t, lang),
-    [config, localeTexts, t, lang],
+    () => buildGroups(config, localeTexts, t),
+    [config, localeTexts, t],
   );
   const configurableHiddenFields = useMemo(
     () => toConfigurableHiddenSet(hiddenFields),

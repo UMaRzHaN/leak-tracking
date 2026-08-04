@@ -1,4 +1,5 @@
-import { IDENTIFIER_KEYS, translateFieldLabel } from "./viewBlockUtils";
+import { fieldLabel } from "@/utils/fieldLabels";
+import { IDENTIFIER_KEYS } from "./viewBlockUtils";
 import { getIntlLocale } from "@/utils/locale";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
@@ -28,7 +29,7 @@ export default function LeakMeasurementSection({
             return (
               <div key={key} className={s.paramCard}>
                 <span className={s.paramLabel}>
-                  {translateFieldLabel(key, label, t, lang)}
+                  {fieldLabel(key, t, label)}
                 </span>
                 <span className={s.paramValue}>{display}</span>
               </div>

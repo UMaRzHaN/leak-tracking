@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useModalDialog } from "@/hooks/useModalDialog";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { fieldLabel } from "@/utils/fieldLabels";
 import s from "./ImportConflictSheet.module.scss";
 
 // Russian needs three plural forms where English needs two, and picking
@@ -18,7 +19,7 @@ const DIAGNOSTIC_FIELD_KEYS = new Set(["monitoringRecords", "history"]);
 function getChangedFieldLabel(key, t) {
   return DIAGNOSTIC_FIELD_KEYS.has(key)
     ? t(`importConflict.diagnostics.${key}`)
-    : t(`addLeak.fields.${key}.label`, { defaultValue: key });
+    : fieldLabel(key, t);
 }
 
 export default function ImportConflictSheet({

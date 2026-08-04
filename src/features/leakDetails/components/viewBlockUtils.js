@@ -1,5 +1,5 @@
-import { getIntlLocale } from "@/utils/locale";
-import { formatLeakDate } from "@/utils/locale";
+import { fieldLabel } from "@/utils/fieldLabels";
+import { formatLeakDate, getIntlLocale } from "@/utils/locale";
 
 export const ACTION_ICONS = {
   created: "✦",
@@ -51,17 +51,6 @@ export function relativeTime(iso, t) {
   return null;
 }
 
-export function translateFieldLabel(key, fallbackLabel, t, lang) {
-  const explicitLabels = {
-    date: lang === "ru" ? "Дата" : "Date",
-    lat: lang === "ru" ? "Широта (X)" : "Latitude (X)",
-    lng: lang === "ru" ? "Долгота (Y)" : "Longitude (Y)",
-  };
-  return t(`addLeak.fields.${key}.label`, {
-    defaultValue: explicitLabels[key] ?? fallbackLabel,
-  });
-}
-
 export function formatHistoryValue(key, value, kind, t, lang) {
   if (kind === "photo") {
     return value ? t("leakDetails.hasPhoto") : t("leakDetails.photo.noPhoto");
@@ -76,7 +65,7 @@ export function formatHistoryValue(key, value, kind, t, lang) {
   return String(value);
 }
 
-export function getHistoryChangeLabel(change, fields, localeTexts, t, lang) {
+export function getHistoryChangeLabel(change, fields, localeTexts, t) {
   if (change.key === "photo") return localeTexts.photo.before;
   if (change.key === "photo_after") return localeTexts.photo.after;
   if (change.key === "photo_repair") return localeTexts.photo.repair;
@@ -85,5 +74,5 @@ export function getHistoryChangeLabel(change, fields, localeTexts, t, lang) {
     return t("leakDetails.materials");
   }
   const field = fields.find((item) => item.key === change.key);
-  return translateFieldLabel(change.key, field?.label ?? change.key, t, lang);
+  return fieldLabel(change.key, t, field?.label ?? change.key);
 }

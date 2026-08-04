@@ -45,4 +45,170 @@ export const addLeak = {
     component: "Компонент",
     leakRate: "Скорость",
   },
+
+  stepTitles: {
+    basic: "Основное",
+    mtrAndDescription: "МТР и Описание *",
+    noteAndPhoto: "Примечание и фото",
+  },
+
+  // Placeholders and hints still live in the step configs: their Russian
+  // text differs per project type, which a single key here cannot carry.
+  fields: {
+    district: {
+      label: "Район",
+    },
+    locality: {
+      label: "Населенный пункт",
+    },
+    address: {
+      label: "Адрес",
+    },
+    object: {
+      label: "Объект",
+    },
+    category: {
+      label: "Категория",
+    },
+    leak_id: {
+      label: "Индивидуальный номер утечки",
+      shortLabel: "Бирка",
+    },
+    component: {
+      label: "Компонент",
+    },
+    video_id: {
+      label: "Индивидуальный номер видео",
+      shortLabel: "Видео",
+    },
+    pressure: {
+      label: "Давление, атм",
+      shortLabel: "Давление",
+    },
+    temperature: {
+      label: "Температура, °C",
+      shortLabel: "Температура",
+    },
+    leak_speed: {
+      label: "Скорость утечки, л/мин",
+      shortLabel: "Скорость",
+    },
+    field: {
+      label: "УМГ",
+    },
+    station: {
+      label: "Компрессорная станция",
+    },
+    location: {
+      label: "Локация",
+    },
+    subdivision: {
+      label: "Подразделение",
+    },
+    deposit: {
+      label: "Месторождение",
+    },
+    leak_cause: {
+      label: "Причина утечки",
+    },
+    leak_description: {
+      label: "Описание утечки",
+    },
+    technological_solution: {
+      label: "Технологическое решение",
+      shortLabel: "Техрешение",
+    },
+    repair_recommendation: {
+      label: "Решение / План устранения",
+      shortLabel: "План устранения",
+    },
+    materials_equipment: {
+      label: "Материалы и оборудование",
+      shortLabel: "МТР ремонта",
+    },
+    actuator_type: {
+      label: "Тип привода",
+    },
+    connection_type: {
+      label: "Тип присоединения",
+    },
+    installation_type: {
+      label: "Тип установки",
+    },
+    note: {
+      label: "Примечание",
+    },
+    photo: {
+      label: "Фото утечки",
+    },
+    date: {
+      label: "Дата",
+    },
+    detectedBy: {
+      label: "Кто зафиксировал",
+    },
+    lat: {
+      label: "Широта (X)",
+    },
+    lng: {
+      label: "Долгота (Y)",
+    },
+    equipmentType: {
+      label: "Оборудование для замера объёма утечки",
+    },
+    serial_number: {
+      label: "Серийный номер оборудования",
+    },
+    uncertainty: {
+      label: "Погрешность",
+    },
+    repairAt: {
+      label: "Дата ремонта",
+    },
+    resolvedAt: {
+      label: "Дата устранения",
+    },
+    photo_repair: {
+      label: "Фото в ремонте",
+    },
+    photo_after: {
+      label: "Фото после ремонта",
+    },
+    monitoringRecords: {
+      label: "История мониторинга",
+    },
+    roundNumber: {
+      label: "Номер обхода",
+    },
+    leak_speed_kg_h: {
+      label: "Измеренная скорость утечки, кг/ч",
+    },
+    temperature_K: {
+      label: "Температура, K",
+    },
+    flareShare: {
+      label: "Процент газа на сжигание",
+    },
+    utilShare: {
+      label: "Процент газа на использование",
+    },
+    Operating_mode: {
+      label: "Наработка (дней)",
+    },
+    Total_Annual_Methane_Loss_m3_y: {
+      label: "Общие годовые потери метана CH4, м3/год",
+    },
+    Total_Annual_Methane_Loss_t_y: {
+      label: "Годовые потери метана CH4, т/год",
+    },
+    Emissions_t_CO2eq_year: {
+      label: "Выбросы, CO2-экв, т/год",
+    },
+    Emissions_kg_CO2_eq_year: {
+      label: "Выбросы, кг CO2, т/год",
+    },
+    weightedGWP: {
+      label: "Потенциал глобального потепления",
+    },
+  },
 };
