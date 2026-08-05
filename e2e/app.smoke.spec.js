@@ -1,109 +1,15 @@
 import { expect, test } from "@playwright/test";
-import path from "node:path";
-
-const PHOTO_FIXTURE = path.resolve("public/vema_sa_logo.jpg");
-
-async function createProject(page, name = "E2E Upstream") {
-  await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "Журнал утечек", exact: true }),
-  ).toBeVisible();
-
-  await page.getByLabel("Название проекта", { exact: true }).fill(name);
-  await page.getByRole("button", { name: /Upstream/ }).click();
-  await page.getByRole("button", { name: "Начать работу" }).click();
-
-  await expect(page.getByText(name, { exact: true })).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Добавить утечку", exact: true }),
-  ).toBeVisible();
-}
-
-async function setUserProfile(page, name = "E2E Inspector") {
-  await page.getByTitle("Пользователь").click();
-  await page.getByLabel("Имя", { exact: true }).fill(name);
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "Пользователь", exact: true }),
-  ).toHaveCount(0);
-}
-
-async function createLeak(page, leakId = "4242") {
-  await page
-    .getByRole("button", { name: "Добавить утечку", exact: true })
-    .click();
-  await expect(page.getByText("Новая утечка", { exact: true })).toBeVisible();
-
-  await page.getByRole("button", { name: "Редактировать параметры" }).click();
-  const paramsModal = page.locator('[class*="_modal_"]').last();
-  await paramsModal.locator('input[type="number"]').first().fill("1");
-  await paramsModal.getByLabel(/^Серийный номер оборудования/).fill(leakId);
-  await expect(
-    paramsModal.getByRole("button", { name: "Сохранить", exact: true }),
-  ).toBeEnabled();
-  await paramsModal
-    .getByRole("button", { name: "Сохранить", exact: true })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Параметры расчёта" }),
-  ).toHaveCount(0);
-
-  await page.getByLabel(/^Бирка/).fill(leakId);
-  await page.getByLabel(/^Видео/).fill("1042");
-  await page.getByLabel(/^Скорость/).fill("1.5");
-  await page.getByRole("button", { name: /^Далее/ }).click();
-
-  await expect(page.getByText("Шаг 2 /", { exact: false })).toBeVisible();
-  await page.getByRole("button", { name: /^Далее/ }).click();
-
-  await expect(page.getByText("Шаг 3 /", { exact: false })).toBeVisible();
-  await page
-    .locator('input[type="file"][accept="image/*"]')
-    .setInputFiles(PHOTO_FIXTURE);
-  await expect(page.getByAltText("Выбранное фото")).toBeVisible();
-  await page.getByRole("button", { name: /Сохранить$/ }).click();
-
-  await expect(
-    page.getByRole("heading", { name: "Утечка сохранена" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "На главную" }).click();
-  await expect(
-    page.getByText(`Бирка № ${leakId}`, { exact: true }),
-  ).toBeVisible();
-}
-
-async function openLeakDetails(page, currentStatus = "Открыта") {
-  const card = page.locator("[data-urgency]").first();
-  await expect(card).toBeVisible();
-  const box = await card.boundingBox();
-  if (!box) throw new Error("Leak card is not visible");
-
-  const startX = box.x + 40;
-  const y = box.y + Math.min(box.height / 2, 80);
-  await page.mouse.move(startX, y);
-  await page.mouse.down();
-  await page.mouse.move(startX + 100, y, { steps: 5 });
-  await page.mouse.up();
-  await expect(
-    page.getByRole("button", { name: currentStatus, exact: true }),
-  ).toBeVisible();
-}
-
-async function chooseDetailsStatus(page, status) {
-  await page
-    .getByRole("button", {
-      name: /^(Открыта|В ремонте|Устранена)$/,
-      exact: true,
-    })
-    .click();
-  await page.getByRole("button", { name: status, exact: true }).click();
-}
-
-async function attachModalPhoto(page) {
-  const modalFileInput = page.locator('input[type="file"][accept="image/*"]');
-  await modalFileInput.setInputFiles(PHOTO_FIXTURE);
-  await expect(page.getByAltText("Выбранное фото")).toBeVisible();
-}
+import {
+  attachModalPhoto,
+  chooseDetailsStatus,
+  createLeak,
+  createProject,
+  exportExcelArchive,
+  importExcelArchive,
+  openDatabase,
+  openLeakDetails,
+  setUserProfile,
+} from "./helpers.js";
 
 async function seedMapCache(page, count = 3) {
   await page.evaluate(async (entryCount) => {
@@ -119,10 +25,6 @@ async function seedMapCache(page, count = 3) {
       ),
     );
   }, count);
-}
-
-async function openDatabase(page) {
-  await page.getByRole("contentinfo").getByRole("button").nth(2).click();
 }
 
 test("creates a project and restores it after reload", async ({ page }) => {
@@ -568,21 +470,10 @@ test("exports and imports an Excel archive as a project copy", async ({
   await createLeak(page, "5501");
 
   await openDatabase(page);
-  const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: /XLSX$/ }).click();
-  const download = await downloadPromise;
-  const excelArchivePath = testInfo.outputPath(download.suggestedFilename());
-  await download.saveAs(excelArchivePath);
+  const excelArchivePath = await exportExcelArchive(page, testInfo);
 
-  await page.getByTitle("Настройки").click();
-  const fileChooserPromise = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Импорт Excel" }).click();
-  const fileChooser = await fileChooserPromise;
-  await fileChooser.setFiles(excelArchivePath);
+  await importExcelArchive(page, excelArchivePath);
 
-  await expect(
-    page.getByRole("heading", { name: "Проект уже существует" }),
-  ).toBeVisible();
   await expect(
     page.getByText("Обновится", { exact: true }).locator(".."),
   ).toContainText("0");
