@@ -6,7 +6,6 @@ import { useUserProfile } from "./useUserProfile";
 import { useLanguage } from "./useLanguage";
 import { useSharedFilters } from "./useSharedFilters";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
-import { STATUS } from "@/utils/status";
 import { saveMonitoringRound } from "@/utils/monitoringRound";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { writeProjectSettings } from "@/app/project/projectSettings";
@@ -156,14 +155,6 @@ export function useAppBootstrap() {
     isSuspended: isPhotoGcSuspended,
     resumeKey: photoGcResumeRevision,
   });
-  /* =========================
-     OPEN LEAKS COUNT (for Footer badge)
-  ========================= */
-  const openCount = useMemo(
-    () => data.filter((l) => (l.status ?? STATUS.OPEN) === STATUS.OPEN).length,
-    [data],
-  );
-
   const requestMonitoring = useCallback(
     (leak) => {
       setRequestedMonitoringLeakId(leak?.id ?? null);
@@ -407,7 +398,6 @@ export function useAppBootstrap() {
     isImportingProject,
     loadError,
     loadWarning,
-    openCount,
     page,
     prevPage,
     requestMonitoring,

@@ -1,6 +1,7 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import "@/index.scss";
 import { useLocationScope } from "@/hooks/useLocationScope";
+import { STATUS } from "@/utils/status";
 
 const Header = lazy(() => import("@/components/layout/Header/Header"));
 const Footer = lazy(() => import("@/components/layout/Footer/Footer"));
@@ -37,7 +38,6 @@ export default function App() {
     isImportingProject,
     loadError,
     loadWarning,
-    openCount,
     page,
     prevPage,
     requestMonitoring,
@@ -63,6 +63,13 @@ export default function App() {
     sharedFilters,
     projectType: activeProject?.type,
   });
+  const scopedOpenCount = useMemo(
+    () =>
+      locationScope.scopedLeaks.filter(
+        (leak) => (leak.status ?? STATUS.OPEN) === STATUS.OPEN,
+      ).length,
+    [locationScope.scopedLeaks],
+  );
 
   if (!isConfigured) {
     return (
@@ -124,6 +131,7 @@ export default function App() {
         requestedMonitoringLeakIds={requestedMonitoringLeakIds}
         retryLoad={retryLoad}
         save={save}
+        scopedData={locationScope.scopedLeaks}
         setPage={setPage}
         setRequestedMonitoringLeakId={setRequestedMonitoringLeakId}
         setRequestedMonitoringLeakIds={setRequestedMonitoringLeakIds}
@@ -133,7 +141,10 @@ export default function App() {
 
       {!hideLayout && (
         <Suspense fallback={null}>
-          <Footer page={page} setPage={setPage} openCount={openCount} />
+          {/* The badge counts what the "База" button leads to, and that screen
+              is scoped, so counting the whole project would contradict the
+              list the user lands on. */}
+          <Footer page={page} setPage={setPage} openCount={scopedOpenCount} />
         </Suspense>
       )}
 

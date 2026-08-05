@@ -19,7 +19,17 @@ import {
 const RECENT_COUNT = 8;
 const ALL = "all";
 
-export function useMainPageActions({ data, setData, userProfile }) {
+// `data` is the whole project and `scopedData` is what the selected location
+// leaves visible. Every mutation below rebuilds the list from `data` and hands
+// it to setData, so it has to stay the full one — writing back a scoped list
+// would delete every leak outside the folder. Only the summary and the recent
+// list read the scoped view.
+export function useMainPageActions({
+  data,
+  scopedData = data,
+  setData,
+  userProfile,
+}) {
   const [activeLeak, setActiveLeak] = useState(null);
   const [statusFilter, setStatusFilter] = useState(ALL);
   const [pickerLeak, setPickerLeak] = useState(null);
@@ -46,13 +56,14 @@ export function useMainPageActions({ data, setData, userProfile }) {
 
   const stats = useMemo(
     () => ({
-      total: data.length,
-      open: data.filter((l) => (l.status ?? STATUS.OPEN) === STATUS.OPEN)
+      total: scopedData.length,
+      open: scopedData.filter((l) => (l.status ?? STATUS.OPEN) === STATUS.OPEN)
         .length,
-      inProgress: data.filter((l) => l.status === STATUS.IN_PROGRESS).length,
-      resolved: data.filter((l) => l.status === STATUS.RESOLVED).length,
+      inProgress: scopedData.filter((l) => l.status === STATUS.IN_PROGRESS)
+        .length,
+      resolved: scopedData.filter((l) => l.status === STATUS.RESOLVED).length,
     }),
-    [data],
+    [scopedData],
   );
 
   const toggleFilter = useCallback(
@@ -61,12 +72,12 @@ export function useMainPageActions({ data, setData, userProfile }) {
   );
 
   const recent = useMemo(() => {
-    let list = [...data].sort((a, b) => compareLeakIds(b, a));
+    let list = [...scopedData].sort((a, b) => compareLeakIds(b, a));
     if (statusFilter !== ALL) {
       list = list.filter((l) => (l.status ?? STATUS.OPEN) === statusFilter);
     }
     return list.slice(0, RECENT_COUNT);
-  }, [data, statusFilter]);
+  }, [scopedData, statusFilter]);
 
   const handlePickStatus = useCallback(
     (leak) => {

@@ -111,6 +111,49 @@ describe("useLocationScope", () => {
     expect(result.current.scopedCount).toBeNull();
   });
 
+  it("returns every leak while nothing is selected", () => {
+    const { result } = renderScope(createSharedFilters());
+
+    expect(result.current.scopedLeaks).toHaveLength(3);
+  });
+
+  it("narrows the leaks to the selected path", () => {
+    const { result } = renderScope(
+      createSharedFilters({
+        mainLocationFilter: { key: "field", values: ["УМГ-2"] },
+        locationFilter: { key: "station", values: ["КС-5"] },
+      }),
+    );
+
+    expect(result.current.scopedLeaks.map((leak) => leak.id)).toEqual([1, 2]);
+  });
+
+  it("narrows by a selection that is not a single path", () => {
+    // Filters saved by a version that still had location checkboxes can hold
+    // several values. There is no path to show, but the leaks still have to be
+    // narrowed the same way the database narrows them.
+    const { result } = renderScope(
+      createSharedFilters({
+        mainLocationFilter: { key: "field", values: ["УМГ-1", "УМГ-2"] },
+        locationFilter: { key: "station", values: ["КС-3"] },
+      }),
+    );
+
+    expect(result.current.path).toBeNull();
+    expect(result.current.scopedLeaks.map((leak) => leak.id)).toEqual([3]);
+  });
+
+  it("ignores a filter belonging to another project type when scoping", () => {
+    const { result } = renderScope(
+      createSharedFilters({
+        mainLocationFilter: { key: "subdivision", values: ["Х"] },
+      }),
+    );
+
+    // Applying it would match nothing and hide the whole project.
+    expect(result.current.scopedLeaks).toHaveLength(3);
+  });
+
   it("survives filters left behind by a different project type", () => {
     const { result } = renderScope(
       createSharedFilters({

@@ -1,9 +1,12 @@
 import { expect, test } from "@playwright/test";
 import {
+  attachModalPhoto,
+  chooseDetailsStatus,
   createLeak,
   createProject,
   openDatabase,
   openHome,
+  openLeakDetails,
   setUserProfile,
 } from "./helpers.js";
 
@@ -91,6 +94,65 @@ test("narrows the database to a chosen location and back", async ({ page }) => {
 
   await page.getByRole("button", { name: "Сбросить выбор объекта" }).click();
   await expect(page.getByText("Бирка № 7003", { exact: true })).toBeVisible();
+});
+
+test("summarises only the chosen location on the main page", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await seedProject(page);
+
+  await openHome(page);
+  await expect(page.getByText("Последние", { exact: false })).toBeVisible();
+  await expect(page.getByText("Бирка № 7003", { exact: true })).toBeVisible();
+
+  await openLocationBrowser(page);
+  await page
+    .getByRole("dialog", { name: "Выбор объекта" })
+    .getByRole("button", { name: /Северное УПГ\s*2/ })
+    .click();
+  await openHome(page);
+
+  // The summary, the recent list and the footer badge all describe the same
+  // set now, so a disagreement between them is the regression to catch.
+  const total = page.locator("text=ВСЕГО").locator("..");
+  await expect(total).toContainText("2");
+  await expect(page.getByText("Бирка № 7001", { exact: true })).toBeVisible();
+  await expect(page.getByText("Бирка № 7003", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("contentinfo").getByRole("button").nth(2),
+  ).toContainText("2");
+});
+
+test("keeps leaks outside the location when one inside it is edited", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await seedProject(page);
+
+  await openLocationBrowser(page);
+  await page
+    .getByRole("dialog", { name: "Выбор объекта" })
+    .getByRole("button", { name: /Северное УПГ\s*2/ })
+    .click();
+
+  // Saving while a folder is selected must not persist the scoped list: that
+  // would delete every record outside it, and only a later reload would show
+  // the loss.
+  await openLeakDetails(page);
+  await chooseDetailsStatus(page, "В ремонте");
+  await expect(
+    page.getByRole("heading", { name: "Утечка в ремонте" }),
+  ).toBeVisible();
+  await attachModalPhoto(page);
+  await page.getByRole("button", { name: "Подтвердить" }).click();
+  await expect(page.getByText(/^В ремонте$/i).first()).toBeVisible();
+
+  await page.reload();
+  await page.getByRole("button", { name: "Сбросить выбор объекта" }).click();
+  await openDatabase(page);
+  await expect(page.getByText("Бирка № 7003", { exact: true })).toBeVisible();
+  await expect(page.getByText("3 записи")).toBeVisible();
 });
 
 test("drills to the third level without leaving the sheet", async ({

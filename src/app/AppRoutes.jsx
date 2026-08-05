@@ -117,6 +117,7 @@ export default function AppRoutes({
   requestedMonitoringLeakIds,
   retryLoad,
   save,
+  scopedData,
   setPage,
   setRequestedMonitoringLeakId,
   setRequestedMonitoringLeakIds,
@@ -151,6 +152,7 @@ export default function AppRoutes({
           <MainPage
             setPage={setPage}
             data={data}
+            scopedData={scopedData}
             setData={save}
             onMonitorLeak={requestMonitoring}
             userProfile={userProfile}

@@ -24,6 +24,7 @@ const ReopenLeakModal = lazy(
 export default function MainPage({
   setPage,
   data,
+  scopedData,
   setData,
   onMonitorLeak,
   userProfile,
@@ -58,7 +59,7 @@ export default function MainPage({
     handleReopenConfirm,
     handleSaveLeak,
     handleDeleteLeak,
-  } = useMainPageActions({ data, setData, userProfile });
+  } = useMainPageActions({ data, scopedData, setData, userProfile });
 
   const localeTexts = useMemo(
     () => ({

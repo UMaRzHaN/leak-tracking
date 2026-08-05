@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
+import { matchesLeakLocationFilter } from "@/utils/locationFilter";
 import {
   buildLocationTree,
   countLeaksAtPath,
@@ -75,6 +76,22 @@ export function useLocationScope({
     [path, tree],
   );
 
+  // Filtered off the three filters rather than the path, so a selection that
+  // is not a single path — several values ticked in a version that still had
+  // location checkboxes — narrows the same way it does on the database screen.
+  //
+  // This is a view of the leaks, never the list to write back: persisting it
+  // would drop every record outside the folder.
+  const scopedLeaks = useMemo(() => {
+    const active = filters.filter(
+      (filter, depth) => filter?.key === levelKeys[depth],
+    );
+    if (active.length === 0) return leaks;
+    return leaks.filter((leak) =>
+      active.every((filter) => matchesLeakLocationFilter(leak, filter)),
+    );
+  }, [filters, leaks, levelKeys]);
+
   const childrenAtPath = useCallback(
     (currentPath) => findChildren(tree, currentPath),
     [tree],
@@ -88,6 +105,7 @@ export function useLocationScope({
     path,
     setPath,
     scopedCount,
+    scopedLeaks,
     childrenAtPath,
     totalCount: leaks.length,
   };

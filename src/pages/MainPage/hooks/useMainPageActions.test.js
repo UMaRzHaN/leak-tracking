@@ -27,11 +27,12 @@ vi.mock("@/utils/haptics", () => ({
 
 function renderActions({
   data,
+  scopedData,
   userProfile = { name: "Inspector" },
   setData = vi.fn().mockResolvedValue(undefined),
 }) {
   const hook = renderHook(() =>
-    useMainPageActions({ data, setData, userProfile }),
+    useMainPageActions({ data, scopedData, setData, userProfile }),
   );
   return { ...hook, setData };
 }
@@ -48,6 +49,66 @@ beforeEach(() => {
 });
 
 describe("useMainPageActions", () => {
+  describe("the selected location", () => {
+    const inScope = leakWith("leak-1");
+    const outOfScope = leakWith("leak-2", { status: "resolved" });
+
+    it("summarises and lists only what the location leaves visible", () => {
+      const { result } = renderActions({
+        data: [inScope, outOfScope],
+        scopedData: [inScope],
+      });
+
+      expect(result.current.stats).toEqual({
+        total: 1,
+        open: 1,
+        inProgress: 0,
+        resolved: 0,
+      });
+      expect(result.current.recent.map((leak) => leak.id)).toEqual(["leak-1"]);
+    });
+
+    it("keeps leaks outside the location when one inside it is saved", async () => {
+      // The mutation rebuilds the list it persists. Building it from the
+      // scoped view would delete every record outside the selected folder —
+      // silently, and on the next save.
+      const { result, setData } = renderActions({
+        data: [inScope, outOfScope],
+        scopedData: [inScope],
+      });
+
+      await act(async () => {
+        await result.current.handleSaveLeak({ ...inScope, note: "edited" });
+      });
+
+      expect(setData.mock.calls[0][0].map((leak) => leak.id)).toEqual([
+        "leak-1",
+        "leak-2",
+      ]);
+    });
+
+    it("keeps leaks outside the location when one inside it is deleted", async () => {
+      const { result, setData } = renderActions({
+        data: [inScope, outOfScope],
+        scopedData: [inScope],
+      });
+
+      await act(async () => {
+        await result.current.handleDeleteLeak("leak-1");
+      });
+
+      expect(setData.mock.calls[0][0].map((leak) => leak.id)).toEqual([
+        "leak-2",
+      ]);
+    });
+
+    it("falls back to the whole project when no location is selected", () => {
+      const { result } = renderActions({ data: [inScope, outOfScope] });
+
+      expect(result.current.stats.total).toBe(2);
+    });
+  });
+
   describe("the dashboard summary", () => {
     it("counts each status, treating a missing status as open", () => {
       const { result } = renderActions({
