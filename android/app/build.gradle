@@ -49,6 +49,13 @@ android {
                 storePassword releaseKeystorePassword
                 keyAlias releaseKeyAlias
                 keyPassword releaseKeyPassword
+                // v2 is what minSdk 24 needs and AGP enables on its own. v3 is
+                // added for one reason: it is the only mechanism that can ever
+                // replace this key without breaking updates. The app ships
+                // outside the stores, so Play App Signing holds no copy of it
+                // and losing it is otherwise final.
+                enableV2Signing = true
+                enableV3Signing = true
             }
         }
     }
