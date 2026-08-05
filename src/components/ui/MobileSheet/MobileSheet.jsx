@@ -4,26 +4,15 @@ import { useModalDialog } from "@/hooks/useModalDialog";
 import Notification from "@/components/ui/Notification/Notification";
 import s from "./MobileSheet.module.scss";
 
-export default function MobileSheet({
-  open,
-  leaks,
-  mainLocations = [],
-  mainLocationLabel,
-  enabledMainLocations = {},
-  onToggleMainLocation,
-  locations,
-  locationLabel,
-  enabledLocations,
-  onToggleLocation,
-  onClose,
-  onSelect,
-}) {
+// Location is chosen in the header's folder browser, which writes the same
+// three filters this sheet used to toggle. Keeping a second control over them
+// would duplicate the logic and let the two drift apart.
+export default function MobileSheet({ open, leaks, onClose, onSelect }) {
   const { t } = useLanguage();
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [notification, setNotification] = useState(null);
   const dialogRef = useModalDialog({ open, onClose });
-  const noLabel = t("map.sheet.notSpecified");
 
   const filteredLeaks = useMemo(() => {
     if (!deferredQuery.trim()) return leaks;
@@ -54,56 +43,6 @@ export default function MobileSheet({
             onClick={(event) => event.stopPropagation()}
           >
             <div className={s.sheetHandle} />
-
-            {mainLocations.length > 0 && (
-              <div className={s.stationList}>
-                <div className={s.stationTitle}>
-                  {t("map.sheet.filterBy")} {mainLocationLabel}
-                </div>
-
-                {mainLocations.map((location) => {
-                  const label = location || noLabel;
-
-                  return (
-                    <label
-                      key={location || "__empty_main_location__"}
-                      className={s.stationItem}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={enabledMainLocations[location] ?? true}
-                        onChange={() => onToggleMainLocation?.(location)}
-                      />
-                      <span>{label}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-
-            <div className={s.stationList}>
-              <div className={s.stationTitle}>
-                {t("map.sheet.filterBy")} {locationLabel}
-              </div>
-
-              {locations.map((location) => {
-                const label = location || noLabel;
-
-                return (
-                  <label
-                    key={location || "__empty_location__"}
-                    className={s.stationItem}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={enabledLocations[location] ?? true}
-                      onChange={() => onToggleLocation(location)}
-                    />
-                    <span>{label}</span>
-                  </label>
-                );
-              })}
-            </div>
 
             <div className={s.sheetSearch}>
               <input

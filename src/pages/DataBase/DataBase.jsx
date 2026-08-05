@@ -58,14 +58,6 @@ export default function DataBase({
         setFilter={filters.setFilter}
         priorityFilter={filters.priorityFilter}
         setPriorityFilter={filters.setPriorityFilter}
-        mainLocationFilter={filters.mainLocationFilter}
-        setMainLocationFilter={filters.setMainLocationFilter}
-        mainLocationKey={filters.mainLocationKey}
-        mainLocationOptions={filters.mainLocationOptions}
-        locationFilter={filters.locationFilter}
-        setLocationFilter={filters.setLocationFilter}
-        locationKey={filters.locationKey}
-        locationOptions={filters.locationOptions}
         nearbyFilter={filters.nearbyFilter}
         setNearbyFilter={filters.setNearbyFilter}
         nearbyRadius={filters.nearbyRadius}

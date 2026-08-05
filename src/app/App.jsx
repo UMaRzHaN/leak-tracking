@@ -143,6 +143,11 @@ export default function App() {
             open={locationBrowserOpen}
             scope={locationScope}
             onClose={() => setLocationBrowserOpen(false)}
+            onApplied={(path) => {
+              // "Show all" is a way back out of a folder, not a request to go
+              // read the whole project, so it leaves the current screen alone.
+              if (path.length > 0) setPage("db");
+            }}
           />
         </Suspense>
       )}

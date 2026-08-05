@@ -7,7 +7,7 @@ import s from "./LocationBrowser.module.scss";
 // filters only change when a folder is actually applied, so backing out of the
 // sheet leaves the list on screen alone.
 
-export default function LocationBrowser({ open, scope, onClose }) {
+export default function LocationBrowser({ open, scope, onClose, onApplied }) {
   const { t } = useLanguage();
   const dialogRef = useModalDialog({ open, onClose });
   const [draft, setDraft] = useState([]);
@@ -28,6 +28,10 @@ export default function LocationBrowser({ open, scope, onClose }) {
 
   const apply = (nextPath) => {
     setPath(nextPath);
+    // Opening a folder shows what is inside it, the way a file manager does.
+    // Landing back on whatever screen the browser was opened from would leave
+    // the user to go looking for the records they just selected.
+    onApplied?.(nextPath);
     onClose?.();
   };
 

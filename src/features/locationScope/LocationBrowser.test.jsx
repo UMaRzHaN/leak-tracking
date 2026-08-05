@@ -46,8 +46,16 @@ function createScope(overrides = {}) {
 }
 
 function renderBrowser(scope = createScope(), onClose = vi.fn()) {
-  render(<LocationBrowser open scope={scope} onClose={onClose} />);
-  return { scope, onClose };
+  const onApplied = vi.fn();
+  render(
+    <LocationBrowser
+      open
+      scope={scope}
+      onClose={onClose}
+      onApplied={onApplied}
+    />,
+  );
+  return { scope, onClose, onApplied };
 }
 
 describe("LocationBrowser", () => {
@@ -124,6 +132,26 @@ describe("LocationBrowser", () => {
     await user.click(screen.getByRole("button", { name: "Show all (6)" }));
 
     expect(scope.setPath).toHaveBeenCalledWith([]);
+  });
+
+  it("reports the applied path so the caller can show its records", async () => {
+    const user = userEvent.setup();
+    const { onApplied } = renderBrowser();
+
+    await user.click(screen.getByRole("button", { name: /УМГ-2\s*3/ }));
+
+    expect(onApplied).toHaveBeenCalledWith(["УМГ-2"]);
+  });
+
+  it("reports the empty path for show all", async () => {
+    const user = userEvent.setup();
+    const { onApplied } = renderBrowser(createScope({ path: ["УМГ-2"] }));
+
+    await user.click(screen.getByRole("button", { name: "Show all (6)" }));
+
+    // Callers use the empty path to tell "go into this folder" from "back out
+    // of it", and the latter should not drag the user to another screen.
+    expect(onApplied).toHaveBeenCalledWith([]);
   });
 
   it("renders nothing while closed", () => {

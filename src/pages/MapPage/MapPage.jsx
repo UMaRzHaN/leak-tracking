@@ -25,12 +25,6 @@ export default function MapPage({
     visibleLeaks,
     monitoringFilter,
     hasMonitoringRound,
-    mainLocations,
-    mainLocationLabel,
-    enabledMainLocations,
-    locations,
-    locationLabel,
-    enabledLocations,
     activeProject,
     nearbyOnly,
     nearbyRadius,
@@ -45,8 +39,6 @@ export default function MapPage({
     clearPriorityFilters,
     toggleStatusFilter,
     clearStatusFilters,
-    toggleMainLocation,
-    toggleLocation,
     handleDownloadArea,
     cancelDownload,
     handleExportKML,
@@ -111,14 +103,6 @@ export default function MapPage({
       <MobileSheet
         open={open}
         leaks={visibleLeaks}
-        mainLocations={mainLocations}
-        mainLocationLabel={mainLocationLabel}
-        enabledMainLocations={enabledMainLocations}
-        onToggleMainLocation={toggleMainLocation}
-        locations={locations}
-        locationLabel={locationLabel}
-        enabledLocations={enabledLocations}
-        onToggleLocation={toggleLocation}
         onClose={() => setOpen(false)}
         onSelect={(leak) => {
           focusLeak(leak, 17);

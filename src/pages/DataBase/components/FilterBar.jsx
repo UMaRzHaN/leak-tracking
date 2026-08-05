@@ -25,14 +25,6 @@ function FilterBar({
   setFilter,
   priorityFilter,
   setPriorityFilter,
-  mainLocationFilter,
-  setMainLocationFilter,
-  mainLocationKey,
-  mainLocationOptions = [],
-  locationFilter,
-  setLocationFilter,
-  locationKey,
-  locationOptions = [],
   nearbyFilter,
   setNearbyFilter,
   nearbyRadius,
@@ -42,86 +34,19 @@ function FilterBar({
   hasGps,
 }) {
   const { t } = useLanguage();
-  const noLocationLabel = t("database.notSpecified");
   const selectedStatuses = normalizeSelected(statusFilter);
   const selectedPriorities = normalizeSelected(priorityFilter);
+  // Location is chosen in the header's folder browser, not here: two controls
+  // over the same three filters would drift apart and duplicate the logic.
   const hasActiveFilter =
     selectedStatuses.length > 0 ||
     selectedPriorities.length > 0 ||
-    Boolean(mainLocationFilter) ||
-    Boolean(locationFilter) ||
     nearbyFilter;
   const [open, setOpen] = useState(false);
   const formatRadius = (radius) =>
     radius >= 1000
       ? `${radius / 1000} ${t("database.radiusKm")}`
       : `${radius} ${t("database.radiusM")}`;
-  // Which location field a project uses is decided by its type, not by
-  // language, so the key is looked up rather than branched on.
-  const locationLabelOf = (key) =>
-    key ? t(`database.locationLabels.${key}`, { defaultValue: "" }) : "";
-  const effectiveMainLocationKey = mainLocationFilter?.key ?? mainLocationKey;
-  const mainLocationFilterLabel =
-    locationLabelOf(effectiveMainLocationKey) ||
-    t("database.locationLabels.subdivision");
-  const mainLocationValues = Array.isArray(mainLocationFilter?.values)
-    ? mainLocationFilter.values
-    : [];
-  const selectedMainLocationValues =
-    mainLocationFilter?.key === effectiveMainLocationKey
-      ? new Set(mainLocationValues)
-      : new Set(mainLocationOptions);
-
-  const effectiveLocationKey = locationFilter?.key ?? locationKey;
-  const locationFilterLabel =
-    locationLabelOf(effectiveLocationKey) ||
-    t("database.locationLabels.location");
-  const locationValues = Array.isArray(locationFilter?.values)
-    ? locationFilter.values
-    : [];
-  const selectedLocationValues =
-    locationFilter?.key === effectiveLocationKey
-      ? new Set(locationValues)
-      : new Set(locationOptions);
-
-  const toggleMainLocation = (value) => {
-    if (!effectiveMainLocationKey) return;
-    setMainLocationFilter((current) => {
-      const selected =
-        current?.key === effectiveMainLocationKey
-          ? new Set(current.values ?? [])
-          : new Set(mainLocationOptions);
-
-      if (selected.has(value)) selected.delete(value);
-      else selected.add(value);
-
-      const values = mainLocationOptions.filter((option) =>
-        selected.has(option),
-      );
-      return values.length === mainLocationOptions.length
-        ? null
-        : { key: effectiveMainLocationKey, values };
-    });
-  };
-
-  const toggleLocation = (value) => {
-    if (!effectiveLocationKey) return;
-    setLocationFilter((current) => {
-      const selected =
-        current?.key === effectiveLocationKey
-          ? new Set(current.values ?? [])
-          : new Set(locationOptions);
-
-      if (selected.has(value)) selected.delete(value);
-      else selected.add(value);
-
-      const values = locationOptions.filter((option) => selected.has(option));
-      return values.length === locationOptions.length
-        ? null
-        : { key: effectiveLocationKey, values };
-    });
-  };
-
   return (
     <>
       <div className={s.searchRow}>
@@ -177,78 +102,6 @@ function FilterBar({
 
       {open && (
         <div className={s.filtersPanel}>
-          {effectiveMainLocationKey && mainLocationOptions.length > 0 && (
-            <>
-              <div className={s.filterSection}>
-                <span className={s.filterLabel}>{mainLocationFilterLabel}</span>
-                <div className={s.filters}>
-                  {mainLocationOptions.map((value) => {
-                    const checked = selectedMainLocationValues.has(value);
-                    return (
-                      <button
-                        type="button"
-                        key={value}
-                        className={`${s.filterTab} ${
-                          checked ? s.filterActive : ""
-                        }`}
-                        style={
-                          checked
-                            ? {
-                                color: "var(--c-blue)",
-                                background: "var(--c-blue-dim)",
-                                borderColor: "var(--c-blue)",
-                              }
-                            : undefined
-                        }
-                        aria-pressed={checked}
-                        onClick={() => toggleMainLocation(value)}
-                      >
-                        {value || noLocationLabel}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className={s.filterDivider} />
-            </>
-          )}
-
-          {effectiveLocationKey && locationOptions.length > 0 && (
-            <>
-              <div className={s.filterSection}>
-                <span className={s.filterLabel}>{locationFilterLabel}</span>
-                <div className={s.filters}>
-                  {locationOptions.map((value) => {
-                    const checked = selectedLocationValues.has(value);
-                    return (
-                      <button
-                        type="button"
-                        key={value}
-                        className={`${s.filterTab} ${
-                          checked ? s.filterActive : ""
-                        }`}
-                        style={
-                          checked
-                            ? {
-                                color: "var(--c-blue)",
-                                background: "var(--c-blue-dim)",
-                                borderColor: "var(--c-blue)",
-                              }
-                            : undefined
-                        }
-                        aria-pressed={checked}
-                        onClick={() => toggleLocation(value)}
-                      >
-                        {value || noLocationLabel}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className={s.filterDivider} />
-            </>
-          )}
-
           <div className={s.filterSection}>
             <span className={s.filterLabel}>{t("database.status")}</span>
             <div className={s.filters}>

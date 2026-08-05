@@ -17,10 +17,6 @@ function props(overrides = {}) {
     setFilter: vi.fn(),
     priorityFilter: [],
     setPriorityFilter: vi.fn(),
-    locationFilter: null,
-    setLocationFilter: vi.fn(),
-    locationKey: "deposit",
-    locationOptions: ["Kashagan", "Tengiz"],
     nearbyFilter: false,
     setNearbyFilter: vi.fn(),
     nearbyRadius: 500,
@@ -32,84 +28,36 @@ function props(overrides = {}) {
   };
 }
 
-describe("FilterBar shared location filter", () => {
-  it("does not show a separate location summary", () => {
-    render(
-      <FilterBar
-        {...props({
-          locationFilter: { key: "deposit", values: ["Kashagan"] },
-        })}
-      />,
-    );
+describe("FilterBar", () => {
+  it("filters by status and priority", () => {
+    const setFilter = vi.fn();
+    render(<FilterBar {...props({ setFilter })} />);
 
-    expect(screen.queryByText("Deposit:")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(screen.getByText("Status")).toBeTruthy();
+    expect(screen.getByText("Priority")).toBeTruthy();
+  });
+
+  it("offers no location controls", () => {
+    // Location moved to the header's folder browser. Two controls writing the
+    // same three filters is the duplication this removal was about, so the
+    // absence is the behaviour worth pinning.
+    render(<FilterBar {...props()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
+    expect(screen.queryByText("Deposit")).toBeNull();
+    expect(screen.queryByText("Subdivision")).toBeNull();
     expect(screen.queryByRole("button", { name: "Kashagan" })).toBeNull();
   });
 
-  it("allows changing the shared selection from status-style chips", () => {
-    const setLocationFilter = vi.fn();
-    render(<FilterBar {...props({ setLocationFilter })} />);
+  it("does not mark the filter button active for a location selection", () => {
+    // The badge tracks what this panel can change; a location chosen in the
+    // browser is shown by the header breadcrumb instead.
+    render(<FilterBar {...props()} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
-    const kashagan = screen.getByRole("button", { name: "Kashagan" });
-    const tengiz = screen.getByRole("button", { name: "Tengiz" });
-    expect(kashagan.getAttribute("aria-pressed")).toBe("true");
-    expect(tengiz.getAttribute("aria-pressed")).toBe("true");
-
-    fireEvent.click(kashagan);
-    const update = setLocationFilter.mock.calls[0][0];
-    expect(update(null)).toEqual({ key: "deposit", values: ["Tengiz"] });
-  });
-
-  it("removes the filter when every location is selected again", () => {
-    const setLocationFilter = vi.fn();
-    const current = { key: "deposit", values: ["Kashagan"] };
-    render(
-      <FilterBar {...props({ locationFilter: current, setLocationFilter })} />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
-    fireEvent.click(screen.getByRole("button", { name: "Tengiz" }));
-    const update = setLocationFilter.mock.calls[0][0];
-    expect(update(current)).toBeNull();
-  });
-
-  it("shows an empty selection through inactive location chips", () => {
-    render(
-      <FilterBar
-        {...props({ locationFilter: { key: "deposit", values: [] } })}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
     expect(
-      screen
-        .getByRole("button", { name: "Kashagan" })
-        .getAttribute("aria-pressed"),
-    ).toBe("false");
-  });
-  it("shows and updates the configured main location filter", () => {
-    const setMainLocationFilter = vi.fn();
-    render(
-      <FilterBar
-        {...props({
-          mainLocationKey: "subdivision",
-          mainLocationLabel: "Subdivision",
-          mainLocationOptions: ["North", "South"],
-          mainLocationFilter: null,
-          setMainLocationFilter,
-        })}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
-    expect(screen.getByText("Subdivision")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "North" }));
-
-    const update = setMainLocationFilter.mock.calls[0][0];
-    expect(update(null)).toEqual({
-      key: "subdivision",
-      values: ["South"],
-    });
+      screen.getByRole("button", { name: "Filters" }).querySelector("span"),
+    ).toBeNull();
   });
 });

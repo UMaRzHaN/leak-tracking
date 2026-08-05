@@ -43,6 +43,26 @@ async function openLocationBrowser(page) {
   ).toBeVisible();
 }
 
+test("opens the database on the chosen location from any screen", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await seedProject(page);
+
+  // Deliberately not on the database screen: picking a folder should take the
+  // user to the records inside it, the way opening a folder does.
+  await openHome(page);
+  await openLocationBrowser(page);
+  await page
+    .getByRole("dialog", { name: "Выбор объекта" })
+    .getByRole("button", { name: /Южное УПГ\s*1/ })
+    .click();
+
+  await expect(page.getByText("Бирка № 7003", { exact: true })).toBeVisible();
+  await expect(page.getByText("Бирка № 7001", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("1 запись")).toBeVisible();
+});
+
 test("narrows the database to a chosen location and back", async ({ page }) => {
   test.setTimeout(120_000);
   await seedProject(page);
