@@ -30,7 +30,7 @@ export async function setUserProfile(page, name = "E2E Inspector") {
   ).toHaveCount(0);
 }
 
-export async function createLeak(page, leakId = "4242") {
+export async function createLeak(page, leakId = "4242", location = null) {
   await page
     .getByRole("button", { name: "Добавить утечку", exact: true })
     .click();
@@ -53,6 +53,18 @@ export async function createLeak(page, leakId = "4242") {
   await page.getByLabel(/^Бирка/).fill(leakId);
   await page.getByLabel(/^Видео/).fill("1042");
   await page.getByLabel(/^Скорость/).fill("1.5");
+
+  // The three location levels live on this first step, so a leak can be filed
+  // straight into a place in the hierarchy.
+  if (location) {
+    await page.getByLabel(/^Подразделение/).fill(location.subdivision);
+    await page.getByLabel(/^Месторождение/).fill(location.deposit);
+    await page.getByLabel(/^Локация/).fill(location.location);
+    // The location field is an autocomplete; dismiss its list so it does not
+    // cover the Next button.
+    await page.keyboard.press("Escape");
+  }
+
   await page.getByRole("button", { name: /^Далее/ }).click();
 
   await expect(page.getByText("Шаг 2 /", { exact: false })).toBeVisible();

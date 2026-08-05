@@ -4,17 +4,11 @@ import { useProjectData } from "./useProjectData";
 import { useAppState } from "./useAppState";
 import { useUserProfile } from "./useUserProfile";
 import { useLanguage } from "./useLanguage";
+import { useSharedFilters } from "./useSharedFilters";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { STATUS } from "@/utils/status";
 import { saveMonitoringRound } from "@/utils/monitoringRound";
-import { NEARBY_RADIUS_M } from "@/pages/DataBase/hooks/useDataBaseFilters";
-import { MONITORING_FILTER } from "@/pages/Monitoring/monitoringDomain";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
-import { PROJECTS } from "@/configs/projects";
-import {
-  readProjectFilters,
-  writeProjectFilters,
-} from "@/app/project/projectFilters";
 import { writeProjectSettings } from "@/app/project/projectSettings";
 import { writeProjectSyncState } from "@/services/sync/projectSyncState";
 import { rollbackImportedProject } from "@/services/backup/projectCleanup";
@@ -59,59 +53,15 @@ export function useAppBootstrap() {
     geoLoading,
   } = useAppState();
 
-  const [sharedSearch, setSharedSearch] = useState("");
   const { t } = useLanguage();
   const importingDataLabel = t("app.importingData");
-  const [sharedStatusFilter, setSharedStatusFilter] = useState([]);
-  const [sharedPriorityFilter, setSharedPriorityFilter] = useState([]);
-  const [sharedMainLocationFilter, setSharedMainLocationFilter] =
-    useState(null);
-  const [sharedLocationFilter, setSharedLocationFilter] = useState(null);
-  const [sharedNearbyFilter, setSharedNearbyFilter] = useState(false);
-  const [sharedNearbyRadius, setSharedNearbyRadius] = useState(NEARBY_RADIUS_M);
-  const [sharedMonitoringFilter, setSharedMonitoringFilter] = useState(
-    MONITORING_FILTER.DUE,
-  );
   const [requestedMonitoringLeakId, setRequestedMonitoringLeakId] =
     useState(null);
   const [requestedMonitoringLeakIds, setRequestedMonitoringLeakIds] = useState(
     [],
   );
   const [userProfileOpen, setUserProfileOpen] = useState(false);
-  const filterPersistenceProjectRef = useRef(null);
-  const skipNextFilterPersistRef = useRef(false);
   const { profile: userProfile, setProfile: setUserProfile } = useUserProfile();
-
-  const sharedFilters = useMemo(
-    () => ({
-      search: sharedSearch,
-      setSearch: setSharedSearch,
-      statusFilter: sharedStatusFilter,
-      setFilter: setSharedStatusFilter,
-      priorityFilter: sharedPriorityFilter,
-      setPriorityFilter: setSharedPriorityFilter,
-      mainLocationFilter: sharedMainLocationFilter,
-      setMainLocationFilter: setSharedMainLocationFilter,
-      locationFilter: sharedLocationFilter,
-      setLocationFilter: setSharedLocationFilter,
-      nearbyFilter: sharedNearbyFilter,
-      setNearbyFilter: setSharedNearbyFilter,
-      nearbyRadius: sharedNearbyRadius,
-      setNearbyRadius: setSharedNearbyRadius,
-      monitoringFilter: sharedMonitoringFilter,
-      setMonitoringFilter: setSharedMonitoringFilter,
-    }),
-    [
-      sharedSearch,
-      sharedStatusFilter,
-      sharedPriorityFilter,
-      sharedMainLocationFilter,
-      sharedLocationFilter,
-      sharedNearbyFilter,
-      sharedNearbyRadius,
-      sharedMonitoringFilter,
-    ],
-  );
 
   /* =========================
      PROJECT CONTEXT
@@ -144,61 +94,10 @@ export function useAppBootstrap() {
     retryLoad,
   } = useProjectData();
 
-  useEffect(() => {
-    const projectId = activeProject?.id ?? null;
-    filterPersistenceProjectRef.current = projectId;
-    skipNextFilterPersistRef.current = true;
-    const filters = readProjectFilters(projectId);
-    const locationConfig = PROJECTS[activeProject?.type]?.system?.location;
-    const mainLocationFilter =
-      filters.mainLocationFilter?.key === locationConfig?.main
-        ? filters.mainLocationFilter
-        : null;
-    const locationFilter =
-      filters.locationFilter?.key === locationConfig?.secondary
-        ? filters.locationFilter
-        : null;
-
-    setSharedSearch(filters.search);
-    setSharedStatusFilter(filters.statusFilter);
-    setSharedPriorityFilter(filters.priorityFilter);
-    setSharedMainLocationFilter(mainLocationFilter);
-    setSharedLocationFilter(locationFilter);
-    setSharedNearbyFilter(filters.nearbyFilter);
-    setSharedNearbyRadius(filters.nearbyRadius);
-    setSharedMonitoringFilter(filters.monitoringFilter);
-  }, [activeProject?.id, activeProject?.type]);
-
-  useEffect(() => {
-    const projectId = activeProject?.id ?? null;
-    if (!projectId || filterPersistenceProjectRef.current !== projectId) return;
-    if (skipNextFilterPersistRef.current) {
-      skipNextFilterPersistRef.current = false;
-      return;
-    }
-
-    writeProjectFilters(projectId, {
-      search: sharedSearch,
-      statusFilter: sharedStatusFilter,
-      priorityFilter: sharedPriorityFilter,
-      mainLocationFilter: sharedMainLocationFilter,
-      locationFilter: sharedLocationFilter,
-      nearbyFilter: sharedNearbyFilter,
-      nearbyRadius: sharedNearbyRadius,
-      monitoringFilter: sharedMonitoringFilter,
-    });
-  }, [
-    activeProject?.id,
-    activeProject?.type,
-    sharedSearch,
-    sharedStatusFilter,
-    sharedPriorityFilter,
-    sharedMainLocationFilter,
-    sharedLocationFilter,
-    sharedNearbyFilter,
-    sharedNearbyRadius,
-    sharedMonitoringFilter,
-  ]);
+  const sharedFilters = useSharedFilters({
+    projectId: activeProject?.id ?? null,
+    projectType: activeProject?.type,
+  });
 
   /* =========================
      PHOTO GC

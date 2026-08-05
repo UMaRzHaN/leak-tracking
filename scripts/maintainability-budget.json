@@ -7,7 +7,7 @@
     "src/pages/Monitoring/hooks/useMonitoringPage.js": 784,
     "src/services/maps/tileCache.js": 610,
     "src/services/backup/backupImport.js": 546,
-    "src/app/hooks/useAppBootstrap.js": 539,
+    "src/app/hooks/useAppBootstrap.js": 435,
     "src/repositories/backupSchema.js": 670,
     "src/services/sync/projectSyncState.js": 515,
     "src/services/sync/localSyncService.js": 508,

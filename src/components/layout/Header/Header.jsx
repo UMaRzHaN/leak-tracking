@@ -13,6 +13,8 @@ export default function Header({
   setGpsEnabled,
   userProfile,
   onUserProfileOpen,
+  locationScope = null,
+  onLocationScopeOpen,
 }) {
   const { projectName, project } = useProjectData();
   const meta = PROJECT_META[project];
@@ -83,6 +85,50 @@ export default function Header({
           </button>
         </div>
       </div>
+
+      {locationScope?.available && (
+        <div className={s.scopeRow}>
+          <button
+            className={`${s.scopeBtn} ${
+              locationScope.path?.length ? s.scopeBtnActive : ""
+            }`}
+            type="button"
+            onClick={onLocationScopeOpen}
+            title={t("locationScope.title")}
+          >
+            <span className={s.scopeIcon} aria-hidden="true">
+              📁
+            </span>
+            <span className={s.scopePath}>
+              {locationScope.path === null
+                ? t("locationScope.several")
+                : locationScope.path.length === 0
+                  ? t("locationScope.all")
+                  : locationScope.path
+                      .map((value) => value || t("locationScope.unnamed"))
+                      .join(" › ")}
+            </span>
+            {locationScope.path?.length > 0 &&
+              locationScope.scopedCount !== null && (
+                <span className={s.scopeCount}>
+                  {locationScope.scopedCount}
+                </span>
+              )}
+          </button>
+
+          {(locationScope.path === null || locationScope.path.length > 0) && (
+            <button
+              className={s.scopeReset}
+              type="button"
+              onClick={() => locationScope.setPath([])}
+              title={t("locationScope.reset")}
+              aria-label={t("locationScope.reset")}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      )}
 
       <div className={s.statusRow}>
         {meta && <span className={s.typeBadge}>{meta.title}</span>}

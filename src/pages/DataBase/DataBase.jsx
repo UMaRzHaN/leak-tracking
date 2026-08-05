@@ -43,6 +43,7 @@ export default function DataBase({
     sharedFilters,
     configuredMainLocationKey: projectConfig.system.location.main,
     configuredLocationKey: projectConfig.system.location.secondary,
+    configuredLastLocationKey: projectConfig.system.location.last,
     userProfile,
   });
 

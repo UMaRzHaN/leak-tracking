@@ -90,6 +90,7 @@ export function useMonitoringPage({
     sharedFilters,
     configuredMainLocationKey: projectConfig.system.location.main,
     configuredLocationKey: projectConfig.system.location.secondary,
+    configuredLastLocationKey: projectConfig.system.location.last,
   });
   const monitoringRoundId = monitoringRound?.id ?? null;
   const monitoringRoundNumber = monitoringRound?.number ?? null;

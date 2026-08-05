@@ -39,6 +39,7 @@ export const database = {
     station: "Station",
     locality: "Locality",
     location: "Location",
+    address: "Address",
   },
 
   fillUserName: "Fill in the user name in the profile",

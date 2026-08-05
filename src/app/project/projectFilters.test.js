@@ -53,6 +53,36 @@ describe("project filter persistence", () => {
       localStorage.getItem(STORAGE_KEYS.PROJECT_FILTERS("one")),
     ).toBeNull();
   });
+  it("keeps the third location level across sessions", () => {
+    writeProjectFilters("one", {
+      mainLocationFilter: { key: "field", values: ["West"] },
+      locationFilter: { key: "station", values: ["S1"] },
+      lastLocationFilter: { key: "location", values: ["Shop 1"] },
+    });
+
+    expect(readProjectFilters("one")).toMatchObject({
+      lastLocationFilter: { key: "location", values: ["Shop 1"] },
+    });
+  });
+
+  it("reads filters written before the third level existed", () => {
+    localStorage.setItem(
+      STORAGE_KEYS.PROJECT_FILTERS("one"),
+      JSON.stringify({
+        search: "tag-1",
+        mainLocationFilter: { key: "field", values: ["West"] },
+      }),
+    );
+
+    // A missing level has to mean "not filtered", or an upgrade would hide
+    // every leak that the absent filter does not match.
+    expect(readProjectFilters("one")).toMatchObject({
+      search: "tag-1",
+      mainLocationFilter: { key: "field", values: ["West"] },
+      lastLocationFilter: null,
+    });
+  });
+
   it("migrates localized empty-location labels to a stable value", () => {
     writeProjectFilters("one", {
       mainLocationFilter: {

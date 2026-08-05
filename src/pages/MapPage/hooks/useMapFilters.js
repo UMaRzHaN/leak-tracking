@@ -7,6 +7,7 @@ import {
   buildLocationFilterFromEnabled,
   buildSmartLocationSelection,
   getEnabledLocations,
+  matchesLeakLocationFilter,
   normalizeLocationValue,
 } from "@/utils/locationFilter";
 import {
@@ -90,6 +91,7 @@ export function useMapFilters({
   const setMainLocationFilter = hasSharedMainLocationFilter
     ? sharedFilters.setMainLocationFilter
     : setLocalMainLocationFilter;
+  const lastLocationFilter = sharedFilters?.lastLocationFilter ?? null;
   const mainLocations = useMemo(
     () =>
       Array.from(
@@ -171,6 +173,10 @@ export function useMapFilters({
           enabledMainLocations[
             normalizeLocationValue(leak?.[mainLocationKey])
           ] &&
+          // The map has no toggle list for the third level; it only honours
+          // what the location browser set, so an unfiltered level passes
+          // everything through.
+          matchesLeakLocationFilter(leak, lastLocationFilter) &&
           (statusFilters.length === 0 ||
             statusFilters.includes(leak.status ?? STATUS.OPEN)) &&
           (priorityFilters.length === 0 ||
@@ -180,6 +186,7 @@ export function useMapFilters({
       normalizedLeaks,
       enabledLocations,
       enabledMainLocations,
+      lastLocationFilter,
       mainLocationKey,
       statusFilters,
       priorityFilters,

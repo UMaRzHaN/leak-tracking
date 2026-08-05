@@ -11,6 +11,7 @@ const DEFAULT_PROJECT_FILTERS = Object.freeze({
   priorityFilter: [],
   mainLocationFilter: null,
   locationFilter: null,
+  lastLocationFilter: null,
   nearbyFilter: false,
   nearbyRadius: DEFAULT_NEARBY_RADIUS,
   monitoringFilter: DEFAULT_MONITORING_FILTER,
@@ -45,6 +46,9 @@ export function normalizeProjectFilters(value) {
     priorityFilter: normalizeValues(value?.priorityFilter),
     mainLocationFilter: normalizeLocationFilter(value?.mainLocationFilter),
     locationFilter: normalizeLocationFilter(value?.locationFilter),
+    // Third location level. Absent from filters written before it existed,
+    // which normalizes to null — the same as "not filtered".
+    lastLocationFilter: normalizeLocationFilter(value?.lastLocationFilter),
     nearbyFilter: value?.nearbyFilter === true,
     nearbyRadius:
       Number.isFinite(radius) && radius > 0 ? radius : DEFAULT_NEARBY_RADIUS,

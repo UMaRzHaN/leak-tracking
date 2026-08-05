@@ -13,6 +13,7 @@ import { importConflict } from "./importConflict";
 import { leakDetails } from "./leakDetails";
 import { leakForm } from "./leakForm";
 import { localSync } from "./localSync";
+import { locationScope } from "./locationScope";
 import { mainPage } from "./mainPage";
 import { map } from "./map";
 import { monitoring } from "./monitoring";
@@ -45,6 +46,7 @@ export const translation = {
   leakDetails,
   leakForm,
   localSync,
+  locationScope,
   mainPage,
   map,
   monitoring,

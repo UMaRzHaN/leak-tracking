@@ -12,6 +12,7 @@ export function useDataBaseController({
   sharedFilters,
   configuredMainLocationKey,
   configuredLocationKey,
+  configuredLastLocationKey,
   userProfile,
 }) {
   const [notification, setNotification] = useState(null);
@@ -29,6 +30,7 @@ export function useDataBaseController({
     sharedFilters,
     configuredMainLocationKey,
     configuredLocationKey,
+    configuredLastLocationKey,
   });
   const actions = useLeakActions({
     data,

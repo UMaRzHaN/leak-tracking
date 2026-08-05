@@ -1,8 +1,13 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import "@/index.scss";
+import { useLocationScope } from "@/hooks/useLocationScope";
 
 const Header = lazy(() => import("@/components/layout/Header/Header"));
 const Footer = lazy(() => import("@/components/layout/Footer/Footer"));
+// Only reached from the header button, so it stays out of the initial graph.
+const LocationBrowser = lazy(
+  () => import("@/features/locationScope/LocationBrowser"),
+);
 const ProjectSetupScreen = lazy(
   () => import("@/pages/ProjectSetup/ProjectSetupScreen"),
 );
@@ -52,6 +57,13 @@ export default function App() {
     userProfileOpen,
   } = useAppBootstrap();
 
+  const [locationBrowserOpen, setLocationBrowserOpen] = useState(false);
+  const locationScope = useLocationScope({
+    leaks: data,
+    sharedFilters,
+    projectType: activeProject?.type,
+  });
+
   if (!isConfigured) {
     return (
       <Suspense fallback={<AppLoader />}>
@@ -83,6 +95,8 @@ export default function App() {
             setGpsEnabled={setGpsEnabled}
             userProfile={userProfile}
             onUserProfileOpen={() => setUserProfileOpen(true)}
+            locationScope={locationScope}
+            onLocationScopeOpen={() => setLocationBrowserOpen(true)}
           />
         </Suspense>
       )}
@@ -120,6 +134,16 @@ export default function App() {
       {!hideLayout && (
         <Suspense fallback={null}>
           <Footer page={page} setPage={setPage} openCount={openCount} />
+        </Suspense>
+      )}
+
+      {locationBrowserOpen && (
+        <Suspense fallback={null}>
+          <LocationBrowser
+            open={locationBrowserOpen}
+            scope={locationScope}
+            onClose={() => setLocationBrowserOpen(false)}
+          />
         </Suspense>
       )}
 

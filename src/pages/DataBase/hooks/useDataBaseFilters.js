@@ -158,6 +158,7 @@ export function useDataBaseFilters({
   sharedFilters = null,
   configuredMainLocationKey = null,
   configuredLocationKey = null,
+  configuredLastLocationKey = null,
 }) {
   const [localSearchInput, setLocalSearchInput] = useState("");
   const [search, setSearch] = useState(() => sharedFilters?.search ?? "");
@@ -165,6 +166,7 @@ export function useDataBaseFilters({
   const [localPriorityFilter, setLocalPriorityFilter] = useState([]);
   const [localMainLocationFilter, setLocalMainLocationFilter] = useState(null);
   const [localLocationFilter, setLocalLocationFilter] = useState(null);
+  const [localLastLocationFilter, setLocalLastLocationFilter] = useState(null);
   const [localNearbyFilter, setLocalNearbyFilter] = useState(false);
   const [localNearbyRadius, setLocalNearbyRadius] = useState(NEARBY_RADIUS_M);
   const [sortAsc, setSortAsc] = useState(false);
@@ -196,6 +198,14 @@ export function useDataBaseFilters({
   const setLocationFilter = hasSharedLocationFilter
     ? sharedFilters.setLocationFilter
     : setLocalLocationFilter;
+  const hasSharedLastLocationFilter =
+    typeof sharedFilters?.setLastLocationFilter === "function";
+  const lastLocationFilter = hasSharedLastLocationFilter
+    ? (sharedFilters.lastLocationFilter ?? null)
+    : localLastLocationFilter;
+  const setLastLocationFilter = hasSharedLastLocationFilter
+    ? sharedFilters.setLastLocationFilter
+    : setLocalLastLocationFilter;
   const nearbyFilter = sharedFilters?.nearbyFilter ?? localNearbyFilter;
   const setNearbyFilter =
     sharedFilters?.setNearbyFilter ?? setLocalNearbyFilter;
@@ -286,6 +296,15 @@ export function useDataBaseFilters({
           )
         : list;
 
+    // The third level has no checkbox list of its own — it is set by the
+    // location browser — so it is keyed off the project config alone.
+    const applyLastLocation = (list) =>
+      lastLocationFilter?.key === configuredLastLocationKey
+        ? list.filter((leak) =>
+            matchesLeakLocationFilter(leak, lastLocationFilter),
+          )
+        : list;
+
     let list = [...data].sort((a, b) =>
       sortAsc ? compareLeakIds(a, b) : compareLeakIds(b, a),
     );
@@ -293,7 +312,9 @@ export function useDataBaseFilters({
       list = list.filter((l) => statusFilter.includes(l.status ?? STATUS.OPEN));
     if (nearbyFilter && hasGps)
       list = filterNearbyLeaks(list, coords.lat, coords.lng, nearbyRadius);
-    return applySearch(applyPriority(applyLocation(applyMainLocation(list))));
+    return applySearch(
+      applyPriority(applyLastLocation(applyLocation(applyMainLocation(list)))),
+    );
   }, [
     data,
     statusFilter,
@@ -304,6 +325,8 @@ export function useDataBaseFilters({
     mainLocationKey,
     locationFilter,
     locationKey,
+    lastLocationFilter,
+    configuredLastLocationKey,
     searchIndex,
     searchTokens,
     hasGps,
@@ -343,6 +366,9 @@ export function useDataBaseFilters({
     setLocationFilter,
     locationKey,
     locationOptions,
+    lastLocationFilter,
+    setLastLocationFilter,
+    lastLocationKey: configuredLastLocationKey,
     nearbyFilter,
     setNearbyFilter,
     nearbyRadius,

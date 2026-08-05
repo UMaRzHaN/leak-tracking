@@ -340,6 +340,57 @@ describe("useDataBaseFilters multi-select", () => {
     expect(result.current.displayed.map((item) => item.id)).toEqual([2, 1]);
   });
 
+  it("narrows the list by the third location level", () => {
+    const data = [
+      { id: 1, field: "West", station: "S1", location: "Shop 1" },
+      { id: 2, field: "West", station: "S1", location: "Shop 2" },
+      { id: 3, field: "West", station: "S2", location: "Shop 1" },
+    ];
+    const sharedFilters = {
+      mainLocationFilter: { key: "field", values: ["West"] },
+      setMainLocationFilter: vi.fn(),
+      locationFilter: { key: "station", values: ["S1"] },
+      setLocationFilter: vi.fn(),
+      lastLocationFilter: { key: "location", values: ["Shop 1"] },
+      setLastLocationFilter: vi.fn(),
+    };
+    const { result } = renderHook(() =>
+      useDataBaseFilters({
+        data,
+        coords: null,
+        sharedFilters,
+        configuredMainLocationKey: "field",
+        configuredLocationKey: "station",
+        configuredLastLocationKey: "location",
+      }),
+    );
+
+    // Only the leak matching all three levels survives: id 2 shares the
+    // station but not the shop, id 3 shares the shop but not the station.
+    expect(result.current.displayed.map((item) => item.id)).toEqual([1]);
+  });
+
+  it("ignores a third-level filter belonging to another project type", () => {
+    const data = [
+      { id: 1, field: "West", station: "S1", location: "Shop 1" },
+      { id: 2, field: "West", station: "S1", location: "Shop 2" },
+    ];
+    const sharedFilters = {
+      lastLocationFilter: { key: "address", values: ["Somewhere"] },
+      setLastLocationFilter: vi.fn(),
+    };
+    const { result } = renderHook(() =>
+      useDataBaseFilters({
+        data,
+        coords: null,
+        sharedFilters,
+        configuredLastLocationKey: "location",
+      }),
+    );
+
+    expect(result.current.displayed.map((item) => item.id)).toEqual([2, 1]);
+  });
+
   it("offers an empty main location as a filter option", () => {
     const { result } = renderHook(() =>
       useDataBaseFilters({

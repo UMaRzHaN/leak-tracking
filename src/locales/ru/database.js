@@ -41,6 +41,7 @@ export const database = {
     station: "Станция",
     locality: "Населённый пункт",
     location: "Местоположение",
+    address: "Адрес",
   },
 
   fillUserName: "Заполните имя пользователя в профиле",
