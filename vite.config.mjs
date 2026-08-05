@@ -18,6 +18,19 @@ const PUBLIC_PRECACHE_FILES = [
 const DEFAULT_TILE_URL =
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile";
 
+// Coverage floors live in one file so raising a threshold is a single edit.
+// `scripts/check-coverage-ratchet.mjs` re-checks the same floors against the
+// written summary; the per-directory globs are vitest-only, because the ratchet
+// matches concrete file paths.
+const coveragePolicy = JSON.parse(
+  readFileSync(path.join(__dirname, "scripts/coverage-policy.json"), "utf8"),
+);
+const coverageThresholds = {
+  ...coveragePolicy.global,
+  ...coveragePolicy.files,
+  ...coveragePolicy.directories,
+};
+
 function getHttpOrigin(value) {
   try {
     const origin = new URL(value).origin;
@@ -317,102 +330,7 @@ export default defineConfig(({ mode }) => {
         include: ["src/**/*.{js,jsx}"],
         reporter: ["text", "html", "lcov", "json-summary"],
         reportsDirectory: "./coverage",
-        thresholds: {
-          statements: 78,
-          branches: 67,
-          functions: 72,
-          lines: 80,
-          "src/features/leakForm/**": {
-            statements: 50,
-            branches: 30,
-            functions: 50,
-            lines: 55,
-          },
-          "src/pages/MainPage/MainPage.jsx": {
-            statements: 95,
-            branches: 90,
-            functions: 95,
-            lines: 95,
-          },
-          "src/pages/DataBase/DataBase.jsx": {
-            statements: 75,
-            branches: 45,
-            functions: 65,
-            lines: 75,
-          },
-          "src/pages/MapPage/MapPage.jsx": {
-            statements: 95,
-            branches: 75,
-            functions: 95,
-            lines: 95,
-          },
-          "src/pages/Settings/Settings.jsx": {
-            statements: 30,
-            branches: 15,
-            functions: 30,
-            lines: 30,
-          },
-          "src/pages/Settings/hooks/useSettingsPage.js": {
-            statements: 45,
-            branches: 25,
-            functions: 40,
-            lines: 45,
-          },
-          "src/app/project/ProjectContext.jsx": {
-            statements: 87,
-            branches: 69,
-            functions: 94,
-            lines: 90,
-          },
-          "src/repositories/LeakRepository.js": {
-            statements: 87,
-            branches: 82,
-            functions: 78,
-            lines: 91,
-          },
-          "src/repositories/PhotoRepository.js": {
-            statements: 90,
-            branches: 88,
-            functions: 89,
-            lines: 92,
-          },
-          "src/services/backup/projectCleanup.js": {
-            statements: 84,
-            branches: 71,
-            functions: 66,
-            lines: 91,
-          },
-          "src/services/import/excelImportTransaction.js": {
-            statements: 100,
-            branches: 82,
-            functions: 100,
-            lines: 100,
-          },
-          "src/pages/MapPage/hooks/useOfflineMapActions.js": {
-            statements: 85,
-            branches: 60,
-            functions: 77,
-            lines: 91,
-          },
-          "src/pages/AddLeak/**": {
-            statements: 40,
-            branches: 30,
-            functions: 40,
-            lines: 45,
-          },
-          "src/services/maps/tileCache.js": {
-            statements: 90,
-            branches: 80,
-            functions: 80,
-            lines: 95,
-          },
-          "src/pages/Monitoring/**": {
-            statements: 70,
-            branches: 60,
-            functions: 60,
-            lines: 75,
-          },
-        },
+        thresholds: coverageThresholds,
         exclude: [
           "src/**/*.{test,spec}.{js,jsx}",
           "src/reportWebVitals.js",

@@ -1,6 +1,18 @@
 {
-  "description": "Per-file coverage floors for the data-integrity critical path (storage, import, backup, sync, domain) plus the Settings orchestration. Floors sit ~2 points below measured coverage so ordinary refactoring does not trip them, and may only increase.",
+  "description": "Single source of truth for coverage floors. `vite.config.mjs` feeds this file to the vitest coverage thresholds, and `scripts/check-coverage-ratchet.mjs` re-checks the per-file floors against the written summary. Floors sit ~2 points below measured coverage so ordinary refactoring does not trip them, and may only increase. Per-file floors cover the data-integrity critical path (storage, import, backup, sync, domain) plus the page and Settings orchestration.",
+  "global": {
+    "statements": 78,
+    "branches": 67,
+    "functions": 72,
+    "lines": 80
+  },
   "files": {
+    "src/app/project/ProjectContext.jsx": {
+      "statements": 87,
+      "branches": 69,
+      "functions": 94,
+      "lines": 90
+    },
     "src/domain/leakLifecycle.js": {
       "statements": 95,
       "branches": 88,
@@ -12,6 +24,12 @@
       "branches": 75,
       "functions": 98,
       "lines": 94
+    },
+    "src/pages/DataBase/DataBase.jsx": {
+      "statements": 75,
+      "branches": 45,
+      "functions": 65,
+      "lines": 75
     },
     "src/pages/DataBase/hooks/useBulkActions.js": {
       "statements": 96,
@@ -25,11 +43,29 @@
       "functions": 62,
       "lines": 95
     },
+    "src/pages/MainPage/MainPage.jsx": {
+      "statements": 95,
+      "branches": 90,
+      "functions": 95,
+      "lines": 95
+    },
     "src/pages/MainPage/hooks/useMainPageActions.js": {
       "statements": 92,
       "branches": 74,
       "functions": 74,
       "lines": 94
+    },
+    "src/pages/MapPage/MapPage.jsx": {
+      "statements": 95,
+      "branches": 75,
+      "functions": 95,
+      "lines": 95
+    },
+    "src/pages/MapPage/hooks/useOfflineMapActions.js": {
+      "statements": 85,
+      "branches": 60,
+      "functions": 77,
+      "lines": 91
     },
     "src/pages/Settings/Settings.jsx": {
       "statements": 68,
@@ -47,11 +83,11 @@
       "statements": 87,
       "branches": 85,
       "functions": 88,
-      "lines": 88
+      "lines": 91
     },
     "src/repositories/PhotoRepository.js": {
       "statements": 91,
-      "branches": 87,
+      "branches": 88,
       "functions": 91,
       "lines": 92
     },
@@ -170,10 +206,10 @@
       "lines": 90
     },
     "src/services/backup/projectCleanup.js": {
-      "statements": 82,
-      "branches": 69,
-      "functions": 64,
-      "lines": 89
+      "statements": 84,
+      "branches": 71,
+      "functions": 66,
+      "lines": 91
     },
     "src/services/backup/projectIntegrityService.js": {
       "statements": 88,
@@ -218,10 +254,10 @@
       "lines": 92
     },
     "src/services/import/excelImportTransaction.js": {
-      "statements": 98,
+      "statements": 100,
       "branches": 98,
-      "functions": 98,
-      "lines": 98
+      "functions": 100,
+      "lines": 100
     },
     "src/services/import/importOperationJournal.js": {
       "statements": 76,
@@ -261,9 +297,9 @@
     },
     "src/services/maps/tileCache.js": {
       "statements": 91,
-      "branches": 79,
+      "branches": 80,
       "functions": 86,
-      "lines": 94
+      "lines": 95
     },
     "src/services/storage/leakFieldVersions.js": {
       "statements": 89,
@@ -306,6 +342,26 @@
       "branches": 93,
       "functions": 98,
       "lines": 94
+    }
+  },
+  "directories": {
+    "src/features/leakForm/**": {
+      "statements": 50,
+      "branches": 30,
+      "functions": 50,
+      "lines": 55
+    },
+    "src/pages/AddLeak/**": {
+      "statements": 40,
+      "branches": 30,
+      "functions": 40,
+      "lines": 45
+    },
+    "src/pages/Monitoring/**": {
+      "statements": 70,
+      "branches": 60,
+      "functions": 60,
+      "lines": 75
     }
   }
 }
