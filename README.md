@@ -446,6 +446,41 @@ npx cap open ios
 - Для публикации в подпапке задавать `VITE_BASE_PATH`, например
   `/leak-tracking/`; manifest и service worker используют тот же scope
 
+### Заголовки, которые обязан отдавать сервер
+
+CSP лежит в `<meta http-equiv>` в `index.html` и собирается на сборке
+(`cspPolicy` в `vite.config.mjs`): origin тайлов подставляется из `VITE_TILE_URL`,
+а при `VITE_OFFLINE_MAP_ONLY=true` не подставляется вовсе.
+
+**Директивы `frame-ancestors`, `report-uri` и `sandbox` в meta-теге игнорируются
+браузером по спецификации** — их нельзя доставить иначе, чем HTTP-заголовком.
+Защиты от вставки приложения в чужой iframe у веб-версии нет, пока сервер не
+отдаёт эти заголовки:
+
+```
+Content-Security-Policy: frame-ancestors 'none'
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+X-Content-Type-Options: nosniff
+Referrer-Policy: no-referrer
+Cross-Origin-Opener-Policy: same-origin
+Permissions-Policy: geolocation=(self), camera=(self), microphone=(self), interest-cohort=()
+```
+
+Замечания:
+
+- `Strict-Transport-Security` ставить только там, где весь домен уже на HTTPS:
+  заголовок необратим на время своего `max-age`.
+- `Permissions-Policy` перечисляет ровно те разрешения, которыми пользуется
+  приложение (GPS, камера, распознавание речи). Убирать `self` у любого из них —
+  значит выключить соответствующую функцию.
+- `Referrer-Policy: no-referrer` выбран намеренно: при запросе тайлов к внешнему
+  провайдеру Referer иначе раскрыл бы адрес развёрнутого приложения.
+- Проверять после деплоя: `curl -sI https://<host>/ | sort`.
+
+Примеры для типовых хостингов — nginx `add_header`, Apache `Header always set`,
+Netlify `public/_headers`, Vercel `headers` в `vercel.json`. Файл в репозиторий
+не кладётся: он зависит от хостинга, а неверный формат молча ничего не даёт.
+
 ---
 
 ## 📜 Скрипты
