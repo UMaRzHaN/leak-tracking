@@ -13,5 +13,7 @@
     "Unlicense",
     "Zlib"
   ],
-  "exceptions": {}
+  "exceptions": {
+    "fsevents@2.3.3": "MIT, see https://github.com/fsevents/fsevents/blob/master/LICENSE. The registry metadata for this version carries no license field, so the lockfile has none either, and the package is darwin-only and optional: on Linux and on CI it is never installed, so there is no on-disk package.json to read one from. Every other fsevents copy in the tree (2.3.2) does declare MIT."
+  }
 }

@@ -226,7 +226,13 @@ final class LeakDatabaseStore implements AutoCloseable {
                 null,
                 null,
                 "position ASC",
-                limit + " OFFSET " + offset
+                // SQLite's comma form, "LIMIT offset, count". The "count OFFSET
+                // offset" spelling is equivalent to SQLite itself, but
+                // SQLiteQueryBuilder validates this string before handing it
+                // over and only accepts the comma form below API 30, so on the
+                // minSdk 24 devices this app supports it throws
+                // "invalid LIMIT clauses".
+                offset + "," + limit
             )
         ) {
             boolean first = true;

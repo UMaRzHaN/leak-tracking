@@ -14,6 +14,7 @@ import android.content.pm.FeatureInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PermissionInfo;
+import android.os.Build;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.ByteArrayInputStream;
@@ -82,12 +83,19 @@ public class AndroidSecurityInstrumentedTest {
                 PermissionInfo.PROTECTION_DANGEROUS,
                 info.protectionLevel & PermissionInfo.PROTECTION_MASK_BASE
             );
-            automation.grantRuntimePermission(packageName, permission);
-            assertEquals(
-                permission,
-                PackageManager.PERMISSION_GRANTED,
-                context.checkSelfPermission(permission)
-            );
+            // UiAutomation.grantRuntimePermission only exists from API 28, and
+            // the minSdk 24 emulator throws NoSuchMethodError on it. The
+            // protection level asserted above is what this test is really
+            // about; the grant is the extra confirmation that the flow works
+            // end to end, so run it where the platform offers it.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                automation.grantRuntimePermission(packageName, permission);
+                assertEquals(
+                    permission,
+                    PackageManager.PERMISSION_GRANTED,
+                    context.checkSelfPermission(permission)
+                );
+            }
         }
     }
 
