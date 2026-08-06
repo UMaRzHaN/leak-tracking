@@ -28,21 +28,13 @@ vi.mock("./components/MapControls", () => ({
 vi.mock("./components/TileProgress", () => ({
   default: () => <div>progress</div>,
 }));
+// The sheet no longer toggles locations — that moved to the header's folder
+// browser — so it only closes and picks a leak.
 vi.mock("@/components/ui/MobileSheet/MobileSheet", () => ({
-  default: ({
-    onClose,
-    onSelect,
-    leaks,
-    onToggleMainLocation,
-    onToggleLocation,
-  }) => (
+  default: ({ onClose, onSelect, leaks }) => (
     <div>
       <button onClick={onClose}>close-sheet</button>
       <button onClick={() => onSelect(leaks[0])}>pick-leak</button>
-      <button onClick={() => onToggleMainLocation("field")}>
-        main-location
-      </button>
-      <button onClick={() => onToggleLocation("station")}>location</button>
     </div>
   ),
 }));
@@ -125,8 +117,6 @@ describe("MapPage", () => {
       "KML",
       "close-sheet",
       "pick-leak",
-      "main-location",
-      "location",
     ])
       fireEvent.click(screen.getByText(label === "KML" ? /KML/ : label));
 
