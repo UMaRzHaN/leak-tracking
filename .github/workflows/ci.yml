@@ -80,6 +80,10 @@ jobs:
             dist/stats.html
             .artifacts/
           if-no-files-found: warn
+          # .artifacts is a dotted directory, and upload-artifact counts
+          # everything under it as hidden, so without this the release
+          # evidence is dropped from the upload without a word.
+          include-hidden-files: true
           retention-days: 14
 
   source-artifact:
@@ -121,6 +125,9 @@ jobs:
           name: source-artifact-${{ github.sha }}
           path: .artifacts/
           if-no-files-found: error
+          # Without this the whole upload finds nothing: .artifacts is a
+          # dotted directory and counts as hidden.
+          include-hidden-files: true
           retention-days: 30
 
   performance:
@@ -206,6 +213,7 @@ jobs:
             test-results/
             .artifacts/
           if-no-files-found: warn
+          include-hidden-files: true
           retention-days: 14
 
   cross-browser:
@@ -303,6 +311,7 @@ jobs:
             android/app/build/outputs/bundle/
             .artifacts/
           if-no-files-found: warn
+          include-hidden-files: true
           retention-days: 14
 
   android-instrumentation:
