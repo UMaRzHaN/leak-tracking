@@ -158,7 +158,19 @@ public class NativeFileOperationsInstrumentedTest {
         );
         long deadline = System.currentTimeMillis() + BOOT_TIMEOUT_MS;
         while (System.currentTimeMillis() < deadline) {
-            if ("object".equals(poll(webView, "typeof window.Capacitor?.Plugins?.Filesystem"))) {
+            // Deliberately ES5: this runs in whatever WebView the device
+            // ships, and an old one cannot parse optional chaining — the probe
+            // would then fail for its own syntax and report nothing about the
+            // app.
+            if (
+                "object".equals(
+                    poll(
+                        webView,
+                        "typeof (window.Capacitor && window.Capacitor.Plugins &&" +
+                        " window.Capacitor.Plugins.Filesystem)"
+                    )
+                )
+            ) {
                 return;
             }
             Thread.sleep(100);
