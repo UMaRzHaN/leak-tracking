@@ -177,29 +177,26 @@ public class NativeFileOperationsInstrumentedTest {
      * by hand to find out is not an option.
      */
     private static String describePage(WebView webView) {
-        String[][] probes = {
-            { "url", "String(location.href)" },
-            { "readyState", "String(document.readyState)" },
-            { "capacitor", "typeof window.Capacitor" },
-            {
-                "plugins",
-                "window.Capacitor ? Object.keys(window.Capacitor.Plugins || {}).sort().join('|') : ''",
-            },
-            { "scriptError", "String(window.__testError || '')" },
-            { "bodyChars", "String((document.body && document.body.innerHTML.length) || 0)" },
-        };
-        StringBuilder description = new StringBuilder();
-        for (String[] probe : probes) {
-            String value;
-            try {
-                value = poll(webView, probe[1]);
-            } catch (Exception error) {
-                value = "<" + error + ">";
-            }
-            if (description.length() > 0) description.append(", ");
-            description.append(probe[0]).append('=').append(value);
+        // One evaluation rather than one per field: by the time this runs the
+        // page is already misbehaving, and every extra round trip into it is
+        // another chance to hang or to take the process down with it.
+        try {
+            return poll(
+                webView,
+                "[" +
+                "  'url=' + location.href," +
+                "  'readyState=' + document.readyState," +
+                "  'capacitor=' + typeof window.Capacitor," +
+                "  'plugins=' + (window.Capacitor" +
+                "    ? Object.keys(window.Capacitor.Plugins || {}).sort().join('|')" +
+                "    : '')," +
+                "  'scriptError=' + (window.__testError || '')," +
+                "  'bodyChars=' + ((document.body && document.body.innerHTML.length) || 0)" +
+                "].join(', ');"
+            );
+        } catch (Exception error) {
+            return "page state unavailable: " + error;
         }
-        return description.toString();
     }
 
     private static JSONObject waitForScenarioResult(WebView webView) throws Exception {
