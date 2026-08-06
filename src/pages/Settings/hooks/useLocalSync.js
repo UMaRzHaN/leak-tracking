@@ -314,11 +314,14 @@ export function useLocalSync({
           projectKey: projectKey(activeProject),
           // A project created before sync ids existed has none of its own, so
           // it adopts the host's and the host's same-origin check passes. That
-          // is not a hole: this branch is only reachable from a QR scan, and
-          // scanLocalSyncQr already refused any code whose projectKey differs
-          // from this project's when there was no local syncId to match on.
-          // The manual-entry form passes no syncId, so a legacy project there
-          // sends "" and the host rejects it as a different origin.
+          // is not a hole. connectionSyncId only ever arrives from scanAndJoin,
+          // whose scan passes this project's identity to scanLocalSyncQr, and
+          // that refuses any code whose projectKey differs when there is no
+          // local syncId to match on. The manual-entry form passes no syncId at
+          // all, so a legacy project there sends "" and the host rejects it as
+          // a different origin. The other scan in this hook, scanAndImport,
+          // deliberately checks no identity — but it never reaches here: it
+          // fetches into a brand-new project instead of merging into this one.
           syncId: activeProject?.syncId ?? connectionSyncId ?? "",
           sessionId,
         });
