@@ -830,3 +830,30 @@ describe("localSyncService", () => {
     });
   });
 });
+
+describe("failure codes", () => {
+  it("gives every thrown failure a code both locales can translate", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { syncErrors: ru } = await import("@/locales/ru/syncErrors");
+    const { syncErrors: en } = await import("@/locales/en/syncErrors");
+    const source = readFileSync(
+      "src/services/sync/localSyncService.js",
+      "utf8",
+    );
+
+    const codes = [
+      ...new Set(
+        [...source.matchAll(/syncError\(\s*"([A-Z_]+)"/g)].map(
+          ([, code]) => code,
+        ),
+      ),
+    ];
+
+    // The scan-cancelled code is swallowed by the UI instead of being shown,
+    // so it is the one failure that needs no text.
+    const shown = codes.filter((code) => code !== "QR_SCAN_CANCELLED");
+    expect(shown.length).toBeGreaterThan(0);
+    expect(shown.filter((code) => !ru[code])).toEqual([]);
+    expect(shown.filter((code) => !en[code])).toEqual([]);
+  });
+});
