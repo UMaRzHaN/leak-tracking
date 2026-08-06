@@ -145,9 +145,13 @@ export default function MainPage({
               ? localeTexts.recentRecords
               : activeStatusMeta?.label}
           </h2>
-          {data.length > RECENT_COUNT && (
+          {/* Counts the selected location, not the project: the button leads
+              to the database, which is scoped too, so a project-wide number
+              would promise records that screen will not show. stats.total is
+              the same count the summary tile above displays. */}
+          {stats.total > RECENT_COUNT && (
             <button className={s.viewAll} onClick={() => setPage("db")}>
-              {localeTexts.showAll(data.length)}
+              {localeTexts.showAll(stats.total)}
             </button>
           )}
         </div>

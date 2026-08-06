@@ -171,4 +171,39 @@ describe("MainPage", () => {
     expect(actionsState.current.setStatusFilter).toHaveBeenCalledWith("all");
     expect(setPage).toHaveBeenCalledWith("add");
   });
+
+  it("counts the selected location on the show-all button, not the project", () => {
+    // The button leads to the database, which is scoped, so a project-wide
+    // number would promise records that screen will not show.
+    actionsState.current = createActions({
+      stats: { total: 6, open: 6, inProgress: 0, resolved: 0 },
+    });
+    render(
+      <MainPage
+        setPage={vi.fn()}
+        data={Array.from({ length: 20 }, (_, id) => ({ id }))}
+        scopedData={Array.from({ length: 6 }, (_, id) => ({ id }))}
+        setData={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("mainPage.showAll:6")).toBeTruthy();
+    expect(screen.queryByText("mainPage.showAll:20")).toBeNull();
+  });
+
+  it("hides the show-all button when the location holds no more than the recent list", () => {
+    actionsState.current = createActions({
+      stats: { total: 3, open: 3, inProgress: 0, resolved: 0 },
+    });
+    render(
+      <MainPage
+        setPage={vi.fn()}
+        data={Array.from({ length: 20 }, (_, id) => ({ id }))}
+        scopedData={Array.from({ length: 3 }, (_, id) => ({ id }))}
+        setData={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText(/mainPage\.showAll/)).toBeNull();
+  });
 });
