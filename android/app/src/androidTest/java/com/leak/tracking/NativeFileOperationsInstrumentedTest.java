@@ -25,6 +25,15 @@ import org.junit.runner.RunWith;
 
 @RunWith(AndroidJUnit4.class)
 public class NativeFileOperationsInstrumentedTest {
+    // A cold CI emulator boots the activity, the WebView, the JS bundle and the
+    // Capacitor bridge in sequence, and every one of those steps has been slow
+    // enough to overrun a 20-second budget. These are upper bounds for a failing
+    // run, not expected waits: a healthy device passes each poll in well under a
+    // second.
+    private static final long BOOT_TIMEOUT_MS = 60_000L;
+    private static final long SCENARIO_TIMEOUT_MS = 60_000L;
+    private static final long EVALUATION_TIMEOUT_MS = 30_000L;
+
     @Test
     public void capacitorFilesystemRenamesAndDeletesProjectWithPhoto() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
@@ -97,7 +106,7 @@ public class NativeFileOperationsInstrumentedTest {
 
     private static Activity waitForActivity() throws Exception {
         AtomicReference<Activity> found = new AtomicReference<>();
-        long deadline = System.currentTimeMillis() + 20_000;
+        long deadline = System.currentTimeMillis() + BOOT_TIMEOUT_MS;
         while (System.currentTimeMillis() < deadline) {
             InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
                 for (Activity activity : ActivityLifecycleMonitorRegistry.getInstance()
@@ -113,7 +122,7 @@ public class NativeFileOperationsInstrumentedTest {
 
     private static WebView waitForWebView(Activity activity) throws Exception {
         AtomicReference<WebView> found = new AtomicReference<>();
-        long deadline = System.currentTimeMillis() + 20_000;
+        long deadline = System.currentTimeMillis() + BOOT_TIMEOUT_MS;
         while (System.currentTimeMillis() < deadline) {
             InstrumentationRegistry.getInstrumentation().runOnMainSync(() ->
                 found.set(findWebView(activity.getWindow().getDecorView()))
@@ -136,22 +145,39 @@ public class NativeFileOperationsInstrumentedTest {
     }
 
     private static void waitForFilesystemBridge(WebView webView) throws Exception {
-        long deadline = System.currentTimeMillis() + 20_000;
+        long deadline = System.currentTimeMillis() + BOOT_TIMEOUT_MS;
         while (System.currentTimeMillis() < deadline) {
-            if ("object".equals(evaluate(webView, "typeof window.Capacitor?.Plugins?.Filesystem"))) return;
+            if ("object".equals(poll(webView, "typeof window.Capacitor?.Plugins?.Filesystem"))) {
+                return;
+            }
             Thread.sleep(100);
         }
         throw new AssertionError("Capacitor Filesystem bridge was not ready");
     }
 
     private static JSONObject waitForScenarioResult(WebView webView) throws Exception {
-        long deadline = System.currentTimeMillis() + 20_000;
+        long deadline = System.currentTimeMillis() + SCENARIO_TIMEOUT_MS;
         while (System.currentTimeMillis() < deadline) {
-            String value = evaluate(webView, "window.__nativeFileScenario");
+            String value = poll(webView, "window.__nativeFileScenario");
             if (value != null && !"null".equals(value)) return new JSONObject(value);
             Thread.sleep(100);
         }
         throw new AssertionError("Native file scenario timed out");
+    }
+
+    /**
+     * One poll of the WebView. While the app is still booting an individual
+     * evaluation can outlive its own budget — that means "not ready yet", so it
+     * feeds back into the caller's loop instead of failing the test outright.
+     * The surrounding deadline is what decides that something is actually
+     * wrong.
+     */
+    private static String poll(WebView webView, String script) throws Exception {
+        try {
+            return evaluate(webView, script);
+        } catch (EvaluationTimeout ignored) {
+            return null;
+        }
     }
 
     private static String evaluate(WebView webView, String script) throws Exception {
@@ -163,8 +189,16 @@ public class NativeFileOperationsInstrumentedTest {
                 latch.countDown();
             })
         );
-        if (!latch.await(10, TimeUnit.SECONDS)) throw new AssertionError("JavaScript evaluation timed out");
+        if (!latch.await(EVALUATION_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+            throw new EvaluationTimeout();
+        }
         Object decoded = new JSONTokener(result.get()).nextValue();
         return decoded == JSONObject.NULL ? null : String.valueOf(decoded);
+    }
+
+    private static final class EvaluationTimeout extends AssertionError {
+        private EvaluationTimeout() {
+            super("JavaScript evaluation timed out");
+        }
     }
 }
