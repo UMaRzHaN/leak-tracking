@@ -145,6 +145,17 @@ public class NativeFileOperationsInstrumentedTest {
     }
 
     private static void waitForFilesystemBridge(WebView webView) throws Exception {
+        // Remember the first script error the page reports, so a bundle that
+        // fails to evaluate can say so instead of looking like a slow boot.
+        poll(
+            webView,
+            "if (!window.__testErrorHook) {" +
+            "  window.__testErrorHook = 1;" +
+            "  window.addEventListener('error', function (event) {" +
+            "    window.__testError = window.__testError || String(event.message);" +
+            "  });" +
+            "} 'installed';"
+        );
         long deadline = System.currentTimeMillis() + BOOT_TIMEOUT_MS;
         while (System.currentTimeMillis() < deadline) {
             if ("object".equals(poll(webView, "typeof window.Capacitor?.Plugins?.Filesystem"))) {
@@ -152,7 +163,43 @@ public class NativeFileOperationsInstrumentedTest {
             }
             Thread.sleep(100);
         }
-        throw new AssertionError("Capacitor Filesystem bridge was not ready");
+        throw new AssertionError(
+            "Capacitor Filesystem bridge was not ready. " + describePage(webView)
+        );
+    }
+
+    /**
+     * Snapshot of what the WebView is actually showing.
+     *
+     * Without it a boot failure is a bare timeout that says nothing about
+     * whether the page never loaded, the bundle threw, or only this one plugin
+     * is missing — and this test only fails on CI hardware, where re-running it
+     * by hand to find out is not an option.
+     */
+    private static String describePage(WebView webView) {
+        String[][] probes = {
+            { "url", "String(location.href)" },
+            { "readyState", "String(document.readyState)" },
+            { "capacitor", "typeof window.Capacitor" },
+            {
+                "plugins",
+                "window.Capacitor ? Object.keys(window.Capacitor.Plugins || {}).sort().join('|') : ''",
+            },
+            { "scriptError", "String(window.__testError || '')" },
+            { "bodyChars", "String((document.body && document.body.innerHTML.length) || 0)" },
+        };
+        StringBuilder description = new StringBuilder();
+        for (String[] probe : probes) {
+            String value;
+            try {
+                value = poll(webView, probe[1]);
+            } catch (Exception error) {
+                value = "<" + error + ">";
+            }
+            if (description.length() > 0) description.append(", ");
+            description.append(probe[0]).append('=').append(value);
+        }
+        return description.toString();
     }
 
     private static JSONObject waitForScenarioResult(WebView webView) throws Exception {
