@@ -138,14 +138,14 @@ export const calculations = (leak, vars) => {
 
   const leak_speed_kg_m = (leakRate * density) / 1000;
   const leak_speed_kg_h = leak_speed_kg_m * 60;
-  const Total_Annual_Methane_Loss_m3_y =
-    (leakRate * minutesPerYear * uncertaintyFactor) / 1000;
+  const Total_Annual_Methane_Loss_m3_y = (leakRate * minutesPerYear) / 1000;
   const Total_Annual_Methane_Loss_kg_y =
     Total_Annual_Methane_Loss_m3_y * density;
   const Total_Annual_Methane_Loss_t_y =
     Total_Annual_Methane_Loss_kg_y * kgToTon;
   const weightedGWP = flareShare * GWP_Minus + utilShare * GWP;
-  const Emissions_t_CO2eq_year = Total_Annual_Methane_Loss_t_y * weightedGWP;
+  const Emissions_t_CO2eq_year =
+    Total_Annual_Methane_Loss_t_y * weightedGWP * uncertaintyFactor;
   const Emissions_kg_CO2_eq_year = Emissions_t_CO2eq_year * 1000;
 
   const derivedValues = [

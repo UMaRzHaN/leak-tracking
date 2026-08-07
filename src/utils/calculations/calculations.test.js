@@ -21,8 +21,8 @@ const BASE_VARS = {
 // uncertaintyFactor = (100 - uncertainty) / 100
 const UF = (100 - BASE_VARS.uncertainty) / 100;
 
-// Annual volume loss in m³/year: leak_speed (л/мин) × minutes × UF / 1000
-const M3_Y = (speed, days = 365) => (speed * 1440 * days * UF) / 1000;
+// Annual volume loss in m³/year: leak_speed (л/мин) × minutes / 1000
+const M3_Y = (speed, days = 365) => (speed * 1440 * days) / 1000;
 
 // leak_speed_standard for "Розовый мешок": normalised to STP (0°C, 1 atm)
 const stdSpeed = (speed, pressure, tempC, gasPercentage) =>
@@ -168,7 +168,7 @@ describe("calculations", () => {
     const result = calculations({ leak_speed: 1 }, BASE_VARS);
     const t_y = M3_Y(1) * BASE_VARS.density * 0.001;
     // 0.5×GWP_Minus + 0.5×GWP = 0.5×25.25 + 0.5×28 = 26.625
-    expect(result.Emissions_t_CO2eq_year).toBeCloseTo(t_y * 26.625);
+    expect(result.Emissions_t_CO2eq_year).toBeCloseTo(t_y * 26.625 * UF);
   });
 
   it("computes CO₂-equivalent emissions in kg/year", () => {
@@ -217,10 +217,10 @@ describe("calculations", () => {
     const t_y = M3_Y(1) * BASE_VARS.density * 0.001;
     expect(
       calculations({ leak_speed: 1 }, varsFlare).Emissions_t_CO2eq_year,
-    ).toBeCloseTo(t_y * 25.25);
+    ).toBeCloseTo(t_y * 25.25 * UF);
     expect(
       calculations({ leak_speed: 1 }, varsUtil).Emissions_t_CO2eq_year,
-    ).toBeCloseTo(t_y * 28);
+    ).toBeCloseTo(t_y * 28 * UF);
   });
 
   it("converts temperature to Kelvin", () => {
@@ -344,8 +344,7 @@ describe("calculations", () => {
     });
 
     it("годовые потери Розовый мешок совпадают с ручным расчётом", () => {
-      const expected_m3_y =
-        (stdSpeed(10, 0.2, 20, 100) * 1440 * 365 * UF) / 1000;
+      const expected_m3_y = (stdSpeed(10, 0.2, 20, 100) * 1440 * 365) / 1000;
       const result = calculations(LEAK, PINK_VARS);
       expect(result.Total_Annual_Methane_Loss_m3_y).toBeCloseTo(expected_m3_y);
     });
