@@ -38,7 +38,7 @@ export const database = {
     field: "УМГ",
     district: "Район",
     deposit: "Месторождение",
-    station: "Станция",
+    station: "Компрессорная станция",
     locality: "Населённый пункт",
     location: "Локация",
     address: "Адрес",
