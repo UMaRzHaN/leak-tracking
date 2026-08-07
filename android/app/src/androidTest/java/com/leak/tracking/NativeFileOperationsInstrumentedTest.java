@@ -25,15 +25,6 @@ import org.junit.runner.RunWith;
 
 @RunWith(AndroidJUnit4.class)
 public class NativeFileOperationsInstrumentedTest {
-    // A cold CI emulator boots the activity, the WebView, the JS bundle and the
-    // Capacitor bridge in sequence, and every one of those steps has been slow
-    // enough to overrun a 20-second budget. These are upper bounds for a failing
-    // run, not expected waits: a healthy device passes each poll in well under a
-    // second.
-    private static final long BOOT_TIMEOUT_MS = 60_000L;
-    private static final long SCENARIO_TIMEOUT_MS = 60_000L;
-    private static final long EVALUATION_TIMEOUT_MS = 30_000L;
-
     @Test
     public void capacitorFilesystemRenamesAndDeletesProjectWithPhoto() throws Exception {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
@@ -106,7 +97,7 @@ public class NativeFileOperationsInstrumentedTest {
 
     private static Activity waitForActivity() throws Exception {
         AtomicReference<Activity> found = new AtomicReference<>();
-        long deadline = System.currentTimeMillis() + BOOT_TIMEOUT_MS;
+        long deadline = System.currentTimeMillis() + 20_000;
         while (System.currentTimeMillis() < deadline) {
             InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
                 for (Activity activity : ActivityLifecycleMonitorRegistry.getInstance()
@@ -122,7 +113,7 @@ public class NativeFileOperationsInstrumentedTest {
 
     private static WebView waitForWebView(Activity activity) throws Exception {
         AtomicReference<WebView> found = new AtomicReference<>();
-        long deadline = System.currentTimeMillis() + BOOT_TIMEOUT_MS;
+        long deadline = System.currentTimeMillis() + 20_000;
         while (System.currentTimeMillis() < deadline) {
             InstrumentationRegistry.getInstrumentation().runOnMainSync(() ->
                 found.set(findWebView(activity.getWindow().getDecorView()))
@@ -145,95 +136,22 @@ public class NativeFileOperationsInstrumentedTest {
     }
 
     private static void waitForFilesystemBridge(WebView webView) throws Exception {
-        // Remember the first script error the page reports, so a bundle that
-        // fails to evaluate can say so instead of looking like a slow boot.
-        poll(
-            webView,
-            "if (!window.__testErrorHook) {" +
-            "  window.__testErrorHook = 1;" +
-            "  window.addEventListener('error', function (event) {" +
-            "    window.__testError = window.__testError || String(event.message);" +
-            "  });" +
-            "} 'installed';"
-        );
-        long deadline = System.currentTimeMillis() + BOOT_TIMEOUT_MS;
+        long deadline = System.currentTimeMillis() + 20_000;
         while (System.currentTimeMillis() < deadline) {
-            // Deliberately ES5: this runs in whatever WebView the device
-            // ships, and an old one cannot parse optional chaining — the probe
-            // would then fail for its own syntax and report nothing about the
-            // app.
-            if (
-                "object".equals(
-                    poll(
-                        webView,
-                        "typeof (window.Capacitor && window.Capacitor.Plugins &&" +
-                        " window.Capacitor.Plugins.Filesystem)"
-                    )
-                )
-            ) {
-                return;
-            }
+            if ("object".equals(evaluate(webView, "typeof window.Capacitor?.Plugins?.Filesystem"))) return;
             Thread.sleep(100);
         }
-        throw new AssertionError(
-            "Capacitor Filesystem bridge was not ready. " + describePage(webView)
-        );
-    }
-
-    /**
-     * Snapshot of what the WebView is actually showing.
-     *
-     * Without it a boot failure is a bare timeout that says nothing about
-     * whether the page never loaded, the bundle threw, or only this one plugin
-     * is missing — and this test only fails on CI hardware, where re-running it
-     * by hand to find out is not an option.
-     */
-    private static String describePage(WebView webView) {
-        // One evaluation rather than one per field: by the time this runs the
-        // page is already misbehaving, and every extra round trip into it is
-        // another chance to hang or to take the process down with it.
-        try {
-            return poll(
-                webView,
-                "[" +
-                "  'url=' + location.href," +
-                "  'readyState=' + document.readyState," +
-                "  'capacitor=' + typeof window.Capacitor," +
-                "  'plugins=' + (window.Capacitor" +
-                "    ? Object.keys(window.Capacitor.Plugins || {}).sort().join('|')" +
-                "    : '')," +
-                "  'scriptError=' + (window.__testError || '')," +
-                "  'bodyChars=' + ((document.body && document.body.innerHTML.length) || 0)" +
-                "].join(', ');"
-            );
-        } catch (Exception error) {
-            return "page state unavailable: " + error;
-        }
+        throw new AssertionError("Capacitor Filesystem bridge was not ready");
     }
 
     private static JSONObject waitForScenarioResult(WebView webView) throws Exception {
-        long deadline = System.currentTimeMillis() + SCENARIO_TIMEOUT_MS;
+        long deadline = System.currentTimeMillis() + 20_000;
         while (System.currentTimeMillis() < deadline) {
-            String value = poll(webView, "window.__nativeFileScenario");
+            String value = evaluate(webView, "window.__nativeFileScenario");
             if (value != null && !"null".equals(value)) return new JSONObject(value);
             Thread.sleep(100);
         }
         throw new AssertionError("Native file scenario timed out");
-    }
-
-    /**
-     * One poll of the WebView. While the app is still booting an individual
-     * evaluation can outlive its own budget — that means "not ready yet", so it
-     * feeds back into the caller's loop instead of failing the test outright.
-     * The surrounding deadline is what decides that something is actually
-     * wrong.
-     */
-    private static String poll(WebView webView, String script) throws Exception {
-        try {
-            return evaluate(webView, script);
-        } catch (EvaluationTimeout ignored) {
-            return null;
-        }
     }
 
     private static String evaluate(WebView webView, String script) throws Exception {
@@ -245,16 +163,8 @@ public class NativeFileOperationsInstrumentedTest {
                 latch.countDown();
             })
         );
-        if (!latch.await(EVALUATION_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
-            throw new EvaluationTimeout();
-        }
+        if (!latch.await(10, TimeUnit.SECONDS)) throw new AssertionError("JavaScript evaluation timed out");
         Object decoded = new JSONTokener(result.get()).nextValue();
         return decoded == JSONObject.NULL ? null : String.valueOf(decoded);
-    }
-
-    private static final class EvaluationTimeout extends AssertionError {
-        private EvaluationTimeout() {
-            super("JavaScript evaluation timed out");
-        }
     }
 }

@@ -302,6 +302,7 @@ public class LocalSyncPlugin extends Plugin {
                     .createServerSocket(0);
                 enableModernTls(tlsServerSocket);
                 serverSocket = tlsServerSocket;
+                serverSocket.setReuseAddress(true);
                 scheduleHostExpiry(tlsServerSocket, hostSessionId, sessionDurationMs);
             }
             synchronized (archiveLock) {
@@ -623,15 +624,7 @@ public class LocalSyncPlugin extends Plugin {
             connectionGuard.markAuthenticated(peerKey);
             socket.setSoTimeout(TRANSFER_TIMEOUT_MS);
 
-            // Read but deliberately not compared against hostedProjectKey. In
-            // an exchange the peer sends the key of *its own* project, which is
-            // derived from the project's display name, so renaming a project on
-            // one phone would otherwise block a sync between two copies that
-            // syncId proves are the same database. syncId is the identity here;
-            // projectKey stays on the wire for diagnostics and for the import
-            // flow below, where the peer echoes back the key it read from the
-            // QR code and comparing it is meaningful.
-            normalizeProjectKey(input.readUTF());
+            String projectKey = normalizeProjectKey(input.readUTF());
             String syncId = normalizeSyncId(input.readUTF());
             String sessionId = normalizeSessionId(input.readUTF());
             long archiveSize = input.readLong();

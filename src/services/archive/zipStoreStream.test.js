@@ -17,26 +17,6 @@ async function openChunks(chunks) {
   return JSZip.loadAsync(concatenate(chunks));
 }
 
-/**
- * Byte-exact comparison that names the first mismatch.
- *
- * expect().toEqual() on a 600 KB Uint8Array runs its structural diff over
- * every element and takes ~2.6 s of the 5 s test budget on an idle machine,
- * which is what made this file fail under a loaded CI runner. This loop does
- * the same check in about a millisecond and reports a more useful failure.
- */
-function firstDifference(actual, expected) {
-  if (actual.length !== expected.length) {
-    return `length ${actual.length}, expected ${expected.length}`;
-  }
-  for (let index = 0; index < actual.length; index += 1) {
-    if (actual[index] !== expected[index]) {
-      return `byte ${index} is ${actual[index]}, expected ${expected[index]}`;
-    }
-  }
-  return null;
-}
-
 describe("ZipStoreStreamWriter", () => {
   it("writes a standards-compatible archive without collecting output", async () => {
     const chunks = [];
@@ -87,9 +67,7 @@ describe("ZipStoreStreamWriter", () => {
     });
     expect(await zip.file("ascii.txt").async("string")).toBe("123456789");
     expect(await zip.file("unicode.txt").async("string")).toBe("данные — ok");
-    expect(
-      firstDifference(await zip.file("photo.jpg").async("uint8array"), photo),
-    ).toBeNull();
+    expect(await zip.file("photo.jpg").async("uint8array")).toEqual(photo);
   });
 
   it("rejects traversal and duplicate entry names", async () => {

@@ -238,12 +238,32 @@ async function nativeRead(url) {
   }
 }
 
-async function nativeWrite(url, skipMkdir = false, signal) {
+// A response is reusable only while its body is still readable. Anything else
+// (a consumed clone, a mock without a body) falls back to fetching.
+function isReusableResponse(response) {
+  return (
+    Boolean(response) &&
+    typeof response.blob === "function" &&
+    response.bodyUsed !== true
+  );
+}
+
+async function nativeWrite(
+  url,
+  skipMkdir = false,
+  signal,
+  prefetchedResponse = null,
+) {
   const path = tileFilePath(url);
   if (!path || (await nativeExists(path))) return false;
   try {
     throwIfAborted(signal);
-    const response = await fetchWithTimeout(url, 10000, signal);
+    // Interactive panning already downloaded this tile to paint it and hands
+    // the response over, so refetching here would double the mobile traffic of
+    // every map move. Bulk preloading passes nothing and still fetches itself.
+    const response = isReusableResponse(prefetchedResponse)
+      ? prefetchedResponse
+      : await fetchWithTimeout(url, 10000, signal);
     if (!response.ok) return false;
     const base64 = await blobToBase64(await response.blob());
     throwIfAborted(signal);
@@ -342,7 +362,7 @@ export async function getTileBlobUrl(url) {
 
 export async function cacheTile(url, prefetchedResponse = null) {
   if (isNative) {
-    const saved = await nativeWrite(url);
+    const saved = await nativeWrite(url, false, undefined, prefetchedResponse);
     if (saved) {
       incrementNativeCount();
       await enforceNativeQuota();

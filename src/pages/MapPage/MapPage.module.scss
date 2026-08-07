@@ -21,7 +21,7 @@
   position: absolute;
   right: 12px;
   bottom: var(--map-control-offset);
-  z-index: 1000;
+  z-index: var(--z-overlay);
 
   display: flex;
   flex-direction: column;
@@ -164,7 +164,7 @@
   position: absolute;
   left: 12px;
   bottom: var(--map-control-offset);
-  z-index: 1000;
+  z-index: var(--z-overlay);
   display: flex;
   flex-direction: column;
   gap: 6px;

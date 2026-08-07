@@ -162,10 +162,7 @@ export function useLocalSync({
     try {
       const syncProject = ensureProjectSyncId?.(activeProject?.id);
       if (!syncProject?.syncId) {
-        throw Object.assign(
-          new Error("Не удалось создать идентификатор синхронизации"),
-          { code: "SYNC_ID_CREATE_FAILED" },
-        );
+        throw new Error("Не удалось создать идентификатор синхронизации");
       }
       const identity = {
         projectKey: projectKey(syncProject),
@@ -312,16 +309,6 @@ export function useLocalSync({
           fingerprint,
           produceArchive: (writeChunk) => streamArchive(writeChunk),
           projectKey: projectKey(activeProject),
-          // A project created before sync ids existed has none of its own, so
-          // it adopts the host's and the host's same-origin check passes. That
-          // is not a hole. connectionSyncId only ever arrives from scanAndJoin,
-          // whose scan passes this project's identity to scanLocalSyncQr, and
-          // that refuses any code whose projectKey differs when there is no
-          // local syncId to match on. The manual-entry form passes no syncId at
-          // all, so a legacy project there sends "" and the host rejects it as
-          // a different origin. The other scan in this hook, scanAndImport,
-          // deliberately checks no identity — but it never reaches here: it
-          // fetches into a brand-new project instead of merging into this one.
           syncId: activeProject?.syncId ?? connectionSyncId ?? "",
           sessionId,
         });
@@ -368,12 +355,7 @@ export function useLocalSync({
       if (!isProjectOperationCurrent(operation)) return;
       setStateSafe(IDLE_STATE);
       if (error.code === "QR_SCAN_CANCELLED") return;
-      notify(
-        "error",
-        isStructuredSyncError(error)
-          ? syncErrorMessage(error, t)
-          : `${t("settings.qrCodeError")}: ${error.message}`,
-      );
+      notify("error", `${t("settings.qrCodeError")}: ${error.message}`);
     }
   }, [
     activeProject,
@@ -407,12 +389,7 @@ export function useLocalSync({
       if (!isProjectOperationCurrent(operation)) return;
       setStateSafe(IDLE_STATE);
       if (error.code === "QR_SCAN_CANCELLED") return;
-      notify(
-        "error",
-        isStructuredSyncError(error)
-          ? syncErrorMessage(error, t)
-          : `${t("settings.qrImportError")}: ${error.message}`,
-      );
+      notify("error", `${t("settings.qrImportError")}: ${error.message}`);
     }
   }, [
     beginProjectOperation,

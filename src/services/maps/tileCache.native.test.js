@@ -105,6 +105,45 @@ describe("tileCache native storage", () => {
     });
   });
 
+  it("stores the response the map already downloaded instead of refetching", async () => {
+    vi.stubGlobal("fetch", vi.fn());
+    const prefetched = {
+      ok: true,
+      bodyUsed: false,
+      blob: vi.fn().mockResolvedValue(new Blob(["tile"])),
+    };
+
+    await cacheTile("https://server/tile/3/2/1.jpg", prefetched);
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(prefetched.blob).toHaveBeenCalled();
+    expect(filesystem.writeFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: `${NATIVE_TILE_CACHE_DIR}/3/2/1.jpg`,
+        directory: "DATA",
+      }),
+    );
+  });
+
+  it("refetches when the handed over response was already consumed", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(["tile"])),
+      }),
+    );
+
+    await cacheTile("https://server/tile/3/2/1.jpg", {
+      ok: true,
+      bodyUsed: true,
+      blob: vi.fn(),
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(filesystem.writeFile).toHaveBeenCalled();
+  });
+
   it("skips existing, malformed and failed native downloads", async () => {
     filesystem.stat.mockResolvedValue({});
     vi.stubGlobal("fetch", vi.fn());

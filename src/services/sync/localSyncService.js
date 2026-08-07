@@ -1,6 +1,5 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { assertImportFileSize, IMPORT_LIMITS } from "@/utils/importLimits";
-import { syncError } from "@/services/sync/localSyncFailures";
 
 const LocalSync = registerPlugin("LocalSync");
 const ARCHIVE_CHUNK_BYTES = 512 * 1024;
@@ -11,12 +10,16 @@ let activeQrScanCancel = null;
 let qrScanGeneration = 0;
 
 function cancelledScanError() {
-  return syncError("QR_SCAN_CANCELLED");
+  const error = new Error("Сканирование отменено");
+  error.code = "QR_SCAN_CANCELLED";
+  return error;
 }
 
 function assertNativeAndroid() {
   if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") {
-    throw syncError("SYNC_ANDROID_ONLY");
+    throw new Error(
+      "Локальная синхронизация доступна только в Android-приложении",
+    );
   }
 }
 
@@ -29,7 +32,7 @@ function normalizeSessionId(value) {
       sessionId,
     )
   ) {
-    throw syncError("QR_SESSION_ID_INVALID");
+    throw new Error("Некорректный идентификатор QR-сеанса");
   }
   return sessionId;
 }
@@ -38,12 +41,12 @@ function blobChunkToBase64(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () =>
-      reject(reader.error ?? syncError("ARCHIVE_READ_FAILED"));
+      reject(reader.error ?? new Error("Не удалось прочитать архив"));
     reader.onload = () => {
       const value = String(reader.result ?? "");
       const separator = value.indexOf(",");
       if (separator < 0) {
-        reject(syncError("ARCHIVE_PREPARE_FAILED"));
+        reject(new Error("Не удалось подготовить архив"));
         return;
       }
       resolve(value.slice(separator + 1));
@@ -79,7 +82,7 @@ async function prepareNativeArchive({ archive, produceArchive }) {
     if (typeof token === "string" && token) {
       await LocalSync.discardArchive({ token }).catch(() => {});
     }
-    throw syncError("ARCHIVE_LIMIT_INVALID");
+    throw new Error("Native sync returned an invalid archive limit");
   }
 
   const maxArchiveBytes = Math.min(nativeLimit, IMPORT_LIMITS.maxFileBytes);
@@ -90,8 +93,7 @@ async function prepareNativeArchive({ archive, produceArchive }) {
       for (let offset = 0; offset < blob.size; offset += ARCHIVE_CHUNK_BYTES) {
         const chunk = blob.slice(offset, offset + ARCHIVE_CHUNK_BYTES);
         if (writtenBytes + chunk.size > maxArchiveBytes) {
-          throw syncError(
-            "ARCHIVE_TOO_LARGE",
+          throw new Error(
             `Архив синхронизации больше ${Math.floor(maxArchiveBytes / 1024 / 1024)} МБ`,
           );
         }
@@ -107,13 +109,13 @@ async function prepareNativeArchive({ archive, produceArchive }) {
         reportedSize != null &&
         (!Number.isSafeInteger(reportedSize) || reportedSize !== writtenBytes)
       ) {
-        throw syncError("ARCHIVE_SIZE_MISMATCH");
+        throw new Error("Размер подготовленного архива не совпадает");
       }
     } else {
       await append(archive);
     }
 
-    if (writtenBytes <= 0) throw syncError("ARCHIVE_EMPTY");
+    if (writtenBytes <= 0) throw new Error("Архив синхронизации пуст");
     return token;
   } catch (error) {
     await LocalSync.discardArchive({ token }).catch(() => {});
@@ -126,29 +128,28 @@ async function archiveResultToFile(result, fileName = "local-sync.zip") {
   try {
     const reportedSize = Number(size);
     if (!Number.isSafeInteger(reportedSize) || reportedSize <= 0) {
-      throw syncError("ARCHIVE_SIZE_INVALID");
+      throw new Error("Получен некорректный размер архива");
     }
     assertImportFileSize({ size: reportedSize });
 
     if (typeof uri !== "string" || !uri.startsWith("file://")) {
-      throw syncError("ARCHIVE_URI_INVALID");
+      throw new Error("Получен некорректный путь к архиву");
     }
     if (typeof archiveToken !== "string" || archiveToken.length === 0) {
-      throw syncError("ARCHIVE_TOKEN_MISSING");
+      throw new Error("Получен архив без токена очистки");
     }
 
     const localUrl = Capacitor.convertFileSrc(uri);
     const response = await fetch(localUrl);
     if (!response.ok) {
-      throw syncError(
-        "ARCHIVE_READ_FAILED",
+      throw new Error(
         `Не удалось прочитать полученный архив (${response.status})`,
       );
     }
     const blob = await response.blob();
     assertImportFileSize(blob);
     if (blob.size !== reportedSize) {
-      throw syncError("ARCHIVE_SIZE_MISMATCH");
+      throw new Error("Размер полученного архива не совпадает с заявленным");
     }
     return new File([blob], fileName, { type: "application/zip" });
   } finally {
@@ -189,18 +190,18 @@ export function buildLocalSyncQrPayload({
 
 export function parseLocalSyncQrPayload(value, expectedIdentity) {
   if (typeof value !== "string" || !value.startsWith(QR_PREFIX)) {
-    throw syncError("QR_NOT_LEAK_TRACKER");
+    throw new Error("Это не QR-код Leak Tracker");
   }
 
   let payload;
   try {
     payload = JSON.parse(value.slice(QR_PREFIX.length));
   } catch {
-    throw syncError("QR_CORRUPT");
+    throw new Error("QR-код синхронизации повреждён");
   }
 
   if (payload?.version !== QR_VERSION) {
-    throw syncError("QR_INCOMPATIBLE_VERSION");
+    throw new Error("QR-код создан в несовместимой версии приложения");
   }
 
   const validPort =
@@ -228,7 +229,7 @@ export function parseLocalSyncQrPayload(value, expectedIdentity) {
     !validSessionId ||
     !validExpiresAt
   ) {
-    throw syncError("QR_INVALID_PARAMS");
+    throw new Error("QR-код содержит некорректные параметры подключения");
   }
   const expectedProjectKey =
     typeof expectedIdentity === "string"
@@ -239,14 +240,14 @@ export function parseLocalSyncQrPayload(value, expectedIdentity) {
   const validSyncId =
     typeof payload.syncId === "string" && payload.syncId.trim().length >= 8;
   if (!validSyncId) {
-    throw syncError("QR_MISSING_PROJECT_ID");
+    throw new Error("QR-код не содержит идентификатор проекта");
   }
   if (expectedSyncId) {
     if (payload.syncId !== expectedSyncId) {
-      throw syncError("QR_OTHER_DATABASE");
+      throw new Error("QR-код относится к другой базе данных");
     }
   } else if (expectedProjectKey && payload.projectKey !== expectedProjectKey) {
-    throw syncError("QR_OTHER_PROJECT");
+    throw new Error("QR-код создан для другого проекта");
   }
 
   return {
@@ -287,13 +288,13 @@ export async function scanLocalSyncQr(expectedIdentity) {
   const { supported } = await BarcodeScanner.isSupported();
   assertScanActive();
   if (!supported) {
-    throw syncError("QR_SCAN_UNSUPPORTED");
+    throw new Error("Сканирование QR не поддерживается на этом телефоне");
   }
 
   const { camera } = await BarcodeScanner.requestPermissions();
   assertScanActive();
   if (camera !== "granted" && camera !== "limited") {
-    throw syncError("CAMERA_PERMISSION_REQUIRED");
+    throw new Error("Разрешите приложению использовать камеру");
   }
 
   document.body.classList.add("local-sync-scanner-active");
