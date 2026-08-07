@@ -40,7 +40,7 @@ export const database = {
     deposit: "Месторождение",
     station: "Станция",
     locality: "Населённый пункт",
-    location: "Местоположение",
+    location: "Локация",
     address: "Адрес",
   },
 
