@@ -80,6 +80,10 @@ jobs:
             dist/stats.html
             .artifacts/
           if-no-files-found: warn
+          # .artifacts is a dotted directory, and upload-artifact counts
+          # everything under it as hidden, so without this the release
+          # evidence is dropped from the upload without a word.
+          include-hidden-files: true
           retention-days: 14
 
   source-artifact:
@@ -121,6 +125,9 @@ jobs:
           name: source-artifact-${{ github.sha }}
           path: .artifacts/
           if-no-files-found: error
+          # Without this the whole upload finds nothing: .artifacts is a
+          # dotted directory and counts as hidden.
+          include-hidden-files: true
           retention-days: 30
 
   performance:
@@ -206,6 +213,7 @@ jobs:
             test-results/
             .artifacts/
           if-no-files-found: warn
+          include-hidden-files: true
           retention-days: 14
 
   cross-browser:
@@ -303,6 +311,7 @@ jobs:
             android/app/build/outputs/bundle/
             .artifacts/
           if-no-files-found: warn
+          include-hidden-files: true
           retention-days: 14
 
   android-instrumentation:
@@ -342,13 +351,24 @@ jobs:
           api-level: ${{ matrix.api-level }}
           arch: x86_64
           profile: pixel_6
-          script: cd android && ./gradlew :app:connectedDebugAndroidTest
+          # The emulator only exists for the duration of this step, so logcat
+          # has to be pulled here: a later step has nothing left to ask. It is
+          # what names an app-process crash — the reports directory records
+          # only that a test failed, not what took the process down.
+          script: |
+            status=0
+            adb logcat -c || true
+            (cd android && ./gradlew :app:connectedDebugAndroidTest) || status=$?
+            adb logcat -d > "${GITHUB_WORKSPACE}/logcat-api-${{ matrix.api-level }}.txt" || true
+            exit $status
 
       - name: Upload Android instrumentation reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: android-instrumentation-api-${{ matrix.api-level }}-${{ github.sha }}
-          path: android/app/build/reports/androidTests/
+          path: |
+            android/app/build/reports/androidTests/
+            logcat-api-${{ matrix.api-level }}.txt
           if-no-files-found: warn
           retention-days: 14
