@@ -380,6 +380,7 @@ button {
     }
   }
 }
-.leaflet-top, .leaflet-bottom {
+.leaflet-top,
+.leaflet-bottom {
   z-index: var(--z-overlay) !important;
 }
