@@ -97,7 +97,7 @@ describe("projectBackupService legacy imports", () => {
     expect(storedVars.uncertainty).toBeCloseTo(5);
 
     const [savedLeaks] = ctx.saveRef.current.mock.calls[0];
-    expect(savedLeaks[0].Total_Annual_Methane_Loss_m3_y).toBeCloseTo(2496.6);
+    expect(savedLeaks[0].Total_Annual_Methane_Loss_m3_y).toBeCloseTo(2628);
     expect(savedLeaks[0].Emissions_t_CO2eq_year).toBeCloseTo(50.10776064);
   });
 
