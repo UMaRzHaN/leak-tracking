@@ -40,10 +40,17 @@ function parseNativeMethods(source) {
   while ((match = signature.exec(source)) !== null) {
     const bodyStart = source.indexOf("{", match.index + match[0].length - 1);
     const body = readMatchingBlock(source, bodyStart, "{", "}");
+    // Two shapes count as reading a key: the typed accessors
+    // (call.getString("x")) and a raw read off the payload
+    // (call.getData().opt("x")), which numeric arguments need because
+    // PluginCall.getLong only accepts a Long and org.json hands back an
+    // Integer for anything below 2^31.
     const keys = new Set(
-      [...body.matchAll(/\bcall\.get\w+\(\s*"([^"]+)"/g)].map(
-        (keyMatch) => keyMatch[1],
-      ),
+      [
+        ...body.matchAll(
+          /\bcall\.getData\(\)\.\w+\(\s*"([^"]+)"|\bcall\.get\w+\(\s*"([^"]+)"/g,
+        ),
+      ].map((keyMatch) => keyMatch[1] ?? keyMatch[2]),
     );
     methods.set(match[1], keys);
   }
