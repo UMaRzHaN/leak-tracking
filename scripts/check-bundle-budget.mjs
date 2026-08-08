@@ -10,7 +10,13 @@ const budgets = {
   nonExcelChunkBytes: 360 * 1024,
   excelChunkBytes: 1_000 * 1024,
   appGraphJsBytes: 2_500 * 1024,
-  excelWorkerGraphBytes: 1_100 * 1024,
+  // Re-baselined when the Excel worker took on import parsing in addition to
+  // export: its graph gained the parser plus a JSZip copy (~97 kB), since
+  // decompression moved off the main thread. Measured 1 150 190 B; this leaves
+  // ~2.5% headroom. Raised because the worker's responsibility changed, not to
+  // make a failing check pass — trimming what was avoidable (Capacitor, ~9 kB)
+  // does not close a 24 kB gap.
+  excelWorkerGraphBytes: 1_152 * 1024,
 };
 
 const html = await readFile(path.join(DIST, "index.html"), "utf8");
