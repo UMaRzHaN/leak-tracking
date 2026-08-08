@@ -42,14 +42,34 @@ _Работает полностью офлайн, поддерживает му
 
 ## 🚀 Быстрый старт
 
-Требуется Node.js 22 или новее (это минимальная версия для Capacitor CLI 8).
+Требуется Node.js 22 или новее (`engines.node` в `package.json`; это же минимальная
+версия для Capacitor CLI 8).
 
 ```bash
 git clone <repo>
 cd leak-tracking
-npm install
+cp .env.example .env        # значения по умолчанию рабочие, править не обязательно
+npm install                 # ставит husky-хуки и патчит Gradle (postinstall)
 npm run dev
 ```
+
+`npm install` выполняет `postinstall` → `scripts/patch-gradle.js` и `prepare` → `husky`.
+Если ставите с `--ignore-scripts`, оба шага нужно выполнить вручную.
+
+### Переменные окружения
+
+Все переменные необязательны — без `.env` приложение собирается на значениях
+по умолчанию. Шаблон лежит в `.env.example`.
+
+| Переменная                               | По умолчанию       | Назначение                                             |
+| ---------------------------------------- | ------------------ | ------------------------------------------------------ |
+| `VITE_TILE_URL`                          | ESRI World Imagery | Базовый URL тайлового сервера                          |
+| `VITE_TILE_ATTRIBUTION`                  | —                  | Обязательна для не-ESRI провайдера тайлов              |
+| `VITE_BASE_PATH`                         | `/`                | Подпапка публикации, например `/leak-tracking/`        |
+| `VITE_OFFLINE_MAP_ONLY`                  | `false`            | Полный запрет сетевых тайлов; origin не попадает в CSP |
+| `VITE_REQUIRE_PRIVATE_TILE_PROVIDER`     | `false`            | Отклонить сборку на публичном тайловом сервере         |
+| `VITE_RENDER_METRICS`                    | выкл.              | Метрики рендеринга для perf-тестов                     |
+| `VITE_ENABLE_NATIVE_STORAGE_PERFORMANCE` | выкл.              | Замеры нативного хранилища                             |
 
 ---
 
@@ -60,7 +80,7 @@ Frontend        React 19 + Vite 6
 Styling         SCSS Modules / CSS Variables
 Mobile          Capacitor 8
 Maps            Leaflet + MarkerCluster
-Storage         localStorage / IndexedDB / Filesystem
+Storage         SQLite (Android) / IndexedDB (web) / localStorage / Filesystem
 Export          ExcelJS / JSZip / KML
 i18n            i18next + react-i18next
 Testing         Vitest + Testing Library + Playwright
@@ -68,15 +88,16 @@ Testing         Vitest + Testing Library + Playwright
 
 ### 📦 Зависимости
 
-| Категория       | Пакеты                                                                                                                |
-| --------------- | --------------------------------------------------------------------------------------------------------------------- |
-| **Core**        | React 19.2, React DOM 19.2, Vite 6                                                                                    |
-| **Mobile**      | Capacitor 8 (android, camera, cli, core, filesystem, geolocation, share), speech-recognition, ML Kit barcode scanning |
-| **Maps**        | Leaflet 1.9, Leaflet MarkerCluster 1.5                                                                                |
-| **Export / QR** | ExcelJS 4.4, JSZip 3.10, QRCode 1.5                                                                                   |
-| **i18n**        | i18next, react-i18next                                                                                                |
-| **UI**          | clsx 2.1                                                                                                              |
-| **Testing**     | Vitest, Testing Library (DOM, Jest, React, User Event), Playwright                                                    |
+| Категория       | Пакеты                                                                                                                                    |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **Core**        | React 19.2, React DOM 19.2, Vite 6                                                                                                        |
+| **Mobile**      | Capacitor 8 (android, camera, core, filesystem, geolocation, share; CLI — в devDependencies), speech-recognition, ML Kit barcode scanning |
+| **Maps**        | Leaflet 1.9, Leaflet MarkerCluster 1.5                                                                                                    |
+| **Export / QR** | ExcelJS 4.4, JSZip 3.10, QRCode 1.5                                                                                                       |
+| **i18n**        | i18next, react-i18next                                                                                                                    |
+| **UI**          | clsx 2.1                                                                                                                                  |
+| **Testing**     | Vitest 4, Testing Library (DOM, Jest DOM, React, User Event), Playwright, fake-indexeddb, jsdom                                           |
+| **Tooling**     | TypeScript 6 (только контракты в `src/types/`), ESLint 10, Prettier 3, Sass, husky + lint-staged                                          |
 
 ---
 
@@ -86,6 +107,7 @@ Testing         Vitest + Testing Library + Playwright
 src/
 ├── app/
 │   ├── App.jsx
+│   ├── AppRoutes.jsx       # Экранный роутинг + предупреждение о хранилище
 │   ├── hooks/              # useAppState, useProjectData, useTheme, useVoiceControl
 │   ├── migrations/         # One-time legacy data cleanup
 │   └── project/            # ProjectContext + project storage/migration/keys
@@ -107,7 +129,10 @@ src/
 │
 ├── data/
 │   ├── leak/               # fieldDictionary, statusDictionary, priorityDictionary
-│   └── variables.js
+│   └── variables.js        # Типы газов, оборудование, дефолты расчётных переменных
+│
+├── domain/                 # Правила предметной области вне UI
+│   └── leakLifecycle.js    # Разрешённые переходы статусов
 │
 ├── features/               # Domain components — one folder per bounded context
 │   ├── editTextField/
@@ -118,6 +143,7 @@ src/
 │   ├── leakForm/           # LeakForm + LeakFormContext + hooks + Header/Footer
 │   │   └── components/     # ClearActions, InputCard, StepRenderer
 │   ├── leakList/           # VirtualizedLeakList, LeakCardCompact
+│   ├── locationScope/      # LocationBrowser — выбор объекта как навигация по папкам
 │   ├── photos/             # PhotoViewer, PhotoInput
 │   ├── resolve/            # ResolveModal
 │   ├── search/             # Autocomplete (+ smartFilter)
@@ -146,10 +172,15 @@ src/
 │   ├── ProjectSetup/
 │   └── Settings/           # + backup.js + hooks/ + components/
 │
-├── repositories/
+├── locales/                # ru/ и en/ по неймспейсам + loadLanguage (ленивая загрузка)
+│
+├── repositories/           # Доступ к данным; выбор бэкенда скрыт за фасадом
 │   ├── idb.js              # createIdbStore() factory (IndexedDB)
 │   ├── LeakRepository.js
 │   ├── PhotoRepository.js
+│   ├── nativeLeakStorage.js       # SQLite-хранилище на Android
+│   ├── nativeSqliteMutation.js    # Транзакционные мутации нативной базы
+│   ├── webProjectEnvelope*.js     # Формат и журнал проекта в вебе
 │   ├── backupSchema.js     # Manual validation for ZIP import/export
 │   └── compressImage.js
 │
@@ -173,14 +204,49 @@ src/
 │   ├── status.js
 │   └── timeAgo.js
 │
+├── types/                  # TS-контракты домена и деклараций (проверяются typecheck)
+├── test/                   # setup.js для Vitest + тестовый переводчик
+│
+├── i18n.js                 # Инициализация i18next
 ├── index.jsx               # App entry point
 ├── index.scss              # Global CSS variables + base styles
 └── reportWebVitals.js
 ```
 
+Вне `src/`:
+
+```text
+android/        Нативный проект Capacitor
+e2e/            Playwright-сценарии (smoke, офлайн, кросс-браузерные)
+performance/    Нагрузочные сценарии на 1 000 / 10 000 записей
+scripts/        Release-гейты: бюджеты, лицензии, SBOM, подпись, чек-суммы
+design/         Референсные макеты карточек и экранов
+public/         Статика, manifest, service worker
+```
+
 > **Placement rule (hook / service / util):** co-locate with the single consumer;
 > promote to `src/hooks/` / `src/services/` / `src/utils/` only when used by 2+
 > unrelated features. Consumer count = 0 → delete. See `CONTRIBUTING.md`.
+
+---
+
+## 💾 Хранилище данных
+
+Доступ к данным идёт только через `src/repositories/`; вызывающий код не знает,
+какой бэкенд под ним.
+
+| Платформа | Записи утечек                                         | Фотографии         |
+| --------- | ----------------------------------------------------- | ------------------ |
+| Android   | SQLite через собственный плагин `NativeLeakStorage`   | Файлы в Filesystem |
+| Web       | IndexedDB (`createIdbStore`)                          | IndexedDB (blob)   |
+| Оба       | Настройки, фильтры и активный проект — `localStorage` |                    |
+
+Плагин `NativeLeakStorage` реализован в
+`android/app/src/main/java/com/leak/tracking/` (`NativeLeakStoragePlugin.java`,
+`LeakDatabaseStore.java`). Если плагин недоступен — например, приложение открыто
+как веб-страница или собрано без нативной части — `nativeLeakStorage.js`
+автоматически переключается на прежнее хранение проекта в JSON-файле
+(`legacyNativeLeakStorage.js`), поэтому данные не теряются при откате.
 
 ---
 
@@ -451,13 +517,21 @@ Android Studio обновит варианты `mipmap-*` и круглую adap
 
 ### iOS
 
+Платформа iOS в репозиторий не добавлена — каталога `ios/` нет, поэтому
+`npx cap sync ios` на чистом клоне завершится ошибкой. Сначала нужно создать
+платформу (требуется macOS с Xcode):
+
 ```bash
+npm install @capacitor/ios
+npx cap add ios
 npm run build
 npx cap sync ios
 npx cap open ios
 ```
 
-Далее открыть проект в Xcode и выполнить build на устройство.
+Далее открыть проект в Xcode и выполнить build на устройство. Разрешения на
+геолокацию, камеру и микрофон нужно прописать в `Info.plist` вручную —
+готовых значений в репозитории нет. Ветка iOS не проверялась на устройстве.
 
 ---
 
@@ -515,21 +589,58 @@ Netlify `public/_headers`, Vercel `headers` в `vercel.json`. Файл в реп
 
 ## 📜 Скрипты
 
+**Разработка и сборка**
+
 ```bash
-npm run dev          # Development server
-npm run build        # Production build
-npm run preview      # Preview production build
-npm test             # Vitest unit / integration tests
-npm run test:coverage # Vitest with coverage
-npm run test:e2e     # Playwright smoke/e2e tests
-npm run test:perf    # Production build + large dataset performance tests
-npm run lint         # ESLint
-npm run format:check # Prettier check
-npm run typecheck    # TypeScript contracts gate
-npm run cap:sync     # Sync Capacitor и Android Gradle patch
-npm run verify:release # Полный web release-gate
-npm run android:release # Release APK с R8 и lintRelease
-npm run pack:source  # Чистый source ZIP + проверка через npm ci и lint
+npm run dev            # Development server (алиас: npm start)
+npm run build          # Production build
+npm run build:analyze  # Сборка с отчётом по размеру бандла
+npm run preview        # Preview production build
+npm run cap:sync       # Sync Capacitor и Android Gradle patch
+```
+
+**Тесты**
+
+```bash
+npm test                    # Vitest unit / integration tests
+npm run test:coverage       # Vitest с покрытием
+npm run test:e2e            # Playwright smoke/e2e
+npm run test:e2e:offline    # Сборка + офлайн-сценарии
+npm run test:e2e:cross-browser
+npm run test:e2e:ui         # Playwright UI-режим
+npm run test:perf           # Сборка + нагрузочные сценарии
+```
+
+**Качество кода**
+
+```bash
+npm run lint           # ESLint (--max-warnings=0)
+npm run lint:fix
+npm run format         # Prettier --write
+npm run format:check
+npm run typecheck      # TypeScript contracts gate
+```
+
+**Релизные гейты** (`scripts/*.mjs`, те же шаги гоняет CI)
+
+```bash
+npm run check:clean              # Рабочее дерево без незакоммиченных изменений
+npm run check:maintainability    # Бюджет сложности/размера модулей
+npm run check:coverage-ratchet   # Покрытие не ниже зафиксированного
+npm run check:bundle             # Бюджет размера бандла
+npm run check:licenses           # Политика лицензий зависимостей
+npm run generate:sbom            # CycloneDX SBOM
+npm run artifacts:checksums:web  # Чек-суммы артефактов (есть :android, :source, :e2e)
+npm run release:evidence:web     # Манифест верификации по точной SHA
+```
+
+**Составные команды**
+
+```bash
+npm run verify:release   # Полный web release-gate: все проверки выше подряд
+npm run android:release  # Проверка подписи → build → cap:sync → gradlew test lintRelease assembleRelease
+npm run pack:source      # Чистый source ZIP + проверка через npm ci и lint
+npm run deps:refresh-lock # Обновить package-lock без установки
 ```
 
 Для подписанной Android release-сборки должны быть заданы переменные окружения:
@@ -602,6 +713,23 @@ npm run test:perf
 
 ---
 
+## 🤖 Непрерывная интеграция
+
+`.github/workflows/ci.yml`, Node 22, две задачи:
+
+| Задача            | Что делает                                                                                                                                                                                            |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `quality`         | Чистота дерева → lint → format → typecheck → аудит зависимостей → бюджет поддерживаемости → тесты с покрытием → ratchet → сборка → бюджет бандла → лицензии → SBOM → манифест верификации и чек-суммы |
+| `source-artifact` | После `quality`: собирает source-архив и проверяет его установкой с нуля                                                                                                                              |
+
+Артефакты (отчёт покрытия, bundle-отчёт, SBOM, манифесты верификации) выкладываются
+в результаты запуска. Локальный эквивалент первой задачи — `npm run verify:release`.
+
+Обратите внимание: `check:clean` падает при незакоммиченных изменениях, поэтому
+`verify:release` запускают на чистом рабочем дереве.
+
+---
+
 ## 🧭 Архитектурная диаграмма
 
 ```mermaid
@@ -610,7 +738,7 @@ flowchart TD
     Hooks --> Context[Project / App Context]
     Hooks --> Services[Domain Services]
 
-    Services --> Storage[localStorage / IndexedDB / Filesystem]
+    Services --> Storage[SQLite / IndexedDB / localStorage / Filesystem]
     Services --> Maps[Offline Map Engine + Tile Cache]
     Services --> Export[Export Engine: XLSX / KML / ZIP]
     Services --> Photo[Photo Service + GC]
