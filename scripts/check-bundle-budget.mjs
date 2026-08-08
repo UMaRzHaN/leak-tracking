@@ -46,13 +46,20 @@ const totalJs = jsNames.reduce(
   (sum, name) => sum + sizes.get(`assets/${name}`),
   0,
 );
+const VENDOR_COPY_MIN_BYTES = 50 * 1024;
 const excelWorkerFiles = jsNames.filter((name) => {
   const size = sizes.get(`assets/${name}`) ?? 0;
   return (
     // Export and import share one worker; keep the old name matching so a
     // stale build directory is still classified correctly.
     /excel(Export)?\.worker/i.test(name) ||
-    (/^exceljs\.min-/i.test(name) && size > 100 * 1024)
+    // The worker decompresses archives itself, so its graph carries its own
+    // copies of both vendors. Counting only ExcelJS understated it by ~97 kB
+    // and inflated the app graph by the same amount. The size gate separates a
+    // real vendor copy from the sub-kilobyte re-export shims Rollup emits, so
+    // it has to sit below JSZip's ~97 kB rather than above it.
+    ((/^exceljs\.min-/i.test(name) || /^jszip\.min-/i.test(name)) &&
+      size > VENDOR_COPY_MIN_BYTES)
   );
 });
 const excelWorkerJs = excelWorkerFiles.reduce(
