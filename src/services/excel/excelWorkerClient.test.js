@@ -114,7 +114,10 @@ describe("parseExcelImportFileInWorker", () => {
     const pending = parseExcelImportFileInWorker("f").catch((e) => e);
     await vi.advanceTimersByTimeAsync(600_001);
 
-    expect((await pending).message).toMatch("timed out");
+    const error = await pending;
+    expect(error.message).toMatch("timed out");
+    // A timeout must fall back to the main thread rather than fail the import.
+    expect(isWorkerUnavailableError(error)).toBe(true);
     expect(instances[0].terminate).toHaveBeenCalled();
   });
 });

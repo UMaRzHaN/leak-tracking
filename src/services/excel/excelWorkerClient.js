@@ -52,7 +52,14 @@ function runInExcelWorker({ kind, payload, timeoutMs, readResult }) {
     };
 
     timeoutId = setTimeout(() => {
-      finish(reject, new Error(`Excel worker timed out (${kind})`));
+      // A deadline says nothing about the data, only that this worker did not
+      // finish in time. Before the import ran in a worker there was no
+      // deadline at all, so failing outright here would be a regression on
+      // slow devices — fall back and let the main thread finish the job.
+      finish(
+        reject,
+        new WorkerUnavailableError(`Excel worker timed out (${kind})`),
+      );
     }, timeoutMs);
 
     worker.onmessage = (event) => {
