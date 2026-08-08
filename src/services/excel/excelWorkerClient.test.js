@@ -77,6 +77,36 @@ describe("parseExcelImportFileInWorker", () => {
     expect(isWorkerUnavailableError(error)).toBe(true);
   });
 
+  it("falls back when the payload cannot be cloned", async () => {
+    const instances = [];
+    globalThis.Worker = class {
+      constructor() {
+        this.terminate = vi.fn();
+        instances.push(this);
+      }
+      postMessage() {
+        throw new DOMException("could not be cloned", "DataCloneError");
+      }
+    };
+
+    const error = await parseExcelImportFileInWorker("f").catch((e) => e);
+
+    expect(isWorkerUnavailableError(error)).toBe(true);
+    expect(instances[0].terminate).toHaveBeenCalled();
+  });
+
+  it("treats a worker-reported unavailable reply as a fallback signal", async () => {
+    installWorker((worker) => {
+      worker.onmessage({
+        data: { ok: false, unavailable: true, error: "could not read request" },
+      });
+    });
+
+    const error = await parseExcelImportFileInWorker("f").catch((e) => e);
+
+    expect(isWorkerUnavailableError(error)).toBe(true);
+  });
+
   it("times out instead of hanging", async () => {
     vi.useFakeTimers();
     const instances = installWorker(() => {});

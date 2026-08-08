@@ -20,6 +20,17 @@ function toTransferableArrayBuffer(value) {
 const post = (message, transfer) =>
   /** @type {any} */ (globalThis).postMessage(message, transfer ?? []);
 
+// A request that fails to deserialize would otherwise get no reply at all,
+// leaving the client pending until its timeout. The payload was never read, so
+// the main thread can still do the work itself.
+globalThis.onmessageerror = () => {
+  post({
+    ok: false,
+    unavailable: true,
+    error: "Excel worker could not read the request",
+  });
+};
+
 globalThis.onmessage = async (event) => {
   const { kind, payload } = event.data ?? {};
   try {

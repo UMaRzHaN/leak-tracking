@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { mapWithConcurrency } from "./runtime";
+import { mapWithConcurrency, yieldToMainThread } from "./runtime";
 
 describe("project backup runtime", () => {
   it("limits concurrency and preserves result order", async () => {
@@ -63,5 +63,28 @@ describe("project backup runtime", () => {
     await expect(
       mapWithConcurrency([1, 2], 0, async (value) => value),
     ).resolves.toEqual([1, 2]);
+  });
+});
+
+describe("yieldToMainThread in a worker", () => {
+  it("resolves without waiting when there is no main thread", async () => {
+    const originalWindow = globalThis.window;
+    const originalScope = globalThis.WorkerGlobalScope;
+    // jsdom gives us a window; a worker has none and is an instance of
+    // WorkerGlobalScope instead.
+    delete globalThis.window;
+    globalThis.WorkerGlobalScope =
+      Object.getPrototypeOf(globalThis).constructor;
+
+    const timeoutSpy = vi.spyOn(globalThis, "setTimeout");
+    try {
+      await yieldToMainThread();
+      expect(timeoutSpy).not.toHaveBeenCalled();
+    } finally {
+      timeoutSpy.mockRestore();
+      globalThis.window = originalWindow;
+      if (originalScope === undefined) delete globalThis.WorkerGlobalScope;
+      else globalThis.WorkerGlobalScope = originalScope;
+    }
   });
 });

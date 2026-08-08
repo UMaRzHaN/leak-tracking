@@ -2,10 +2,22 @@ export const getJSZip = () => import("jszip");
 
 export const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function isWorkerContext() {
+  const scope = globalThis.WorkerGlobalScope;
+  return typeof scope !== "undefined" && globalThis instanceof scope;
+}
+
 export function yieldToMainThread() {
   return new Promise((resolve) => {
     if (typeof window !== "undefined" && "requestAnimationFrame" in window) {
       window.requestAnimationFrame(() => resolve());
+      return;
+    }
+    // Inside a worker there is no main thread to yield to, and nested
+    // setTimeout(0) is clamped to ~4 ms — on a 20 000-row sheet the 200 yields
+    // would add about a second of pure waiting for nobody's benefit.
+    if (isWorkerContext()) {
+      resolve();
       return;
     }
     setTimeout(resolve, 0);

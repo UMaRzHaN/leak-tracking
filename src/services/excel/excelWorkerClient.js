@@ -63,9 +63,12 @@ function runInExcelWorker({ kind, payload, timeoutMs, readResult }) {
           return;
         }
       }
+      const message = event.data?.error || `Excel worker returned no ${kind}`;
       finish(
         reject,
-        new Error(event.data?.error || `Excel worker returned no ${kind}`),
+        event.data?.unavailable
+          ? new WorkerUnavailableError(message)
+          : new Error(message),
       );
     };
     worker.onerror = (event) => {
@@ -83,7 +86,19 @@ function runInExcelWorker({ kind, payload, timeoutMs, readResult }) {
       );
     };
 
-    worker.postMessage({ kind, payload });
+    try {
+      worker.postMessage({ kind, payload });
+    } catch (error) {
+      // Structured clone rejected the payload — e.g. a duck-typed file object
+      // rather than a real File. Nothing was sent, so the main thread can
+      // still do the work.
+      finish(
+        reject,
+        new WorkerUnavailableError(
+          String(error?.message ?? "Excel worker payload could not be cloned"),
+        ),
+      );
+    }
   });
 }
 
