@@ -5,7 +5,7 @@ import {
 import {
   isWorkerUnavailableError,
   parseExcelImportFileInWorker,
-} from "@/services/import/excelImportWorkerClient";
+} from "@/services/excel/excelWorkerClient";
 import { logger } from "@/utils/logger";
 
 // Main-thread entry point for the Excel import. Parsing lives in

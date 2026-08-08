@@ -89,7 +89,7 @@ export function useDataBaseExport({ displayed, notify }) {
       const [{ exportToExcelFile }, { buildWorkbookBufferInWorker }] =
         await Promise.all([
           import("@/pages/DataBase/excel"),
-          import("@/pages/DataBase/excelExportWorkerClient"),
+          import("@/services/excel/excelWorkerClient"),
         ]);
       const result = await exportToExcelFile(
         displayed,

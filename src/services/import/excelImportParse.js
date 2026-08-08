@@ -1,6 +1,6 @@
 // Pure parsing half of the Excel import: file in, plain data out. Nothing here
 // may reach for Capacitor, the DOM or storage — this module is what
-// excelImport.worker.js loads, and the worker has none of them.
+// services/excel/excel.worker.js loads, and the worker has none of them.
 
 const getExcelJS = () => import("exceljs");
 const getJSZip = () => import("jszip");

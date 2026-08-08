@@ -49,7 +49,9 @@ const totalJs = jsNames.reduce(
 const excelWorkerFiles = jsNames.filter((name) => {
   const size = sizes.get(`assets/${name}`) ?? 0;
   return (
-    /excelExport\.worker/i.test(name) ||
+    // Export and import share one worker; keep the old name matching so a
+    // stale build directory is still classified correctly.
+    /excel(Export)?\.worker/i.test(name) ||
     (/^exceljs\.min-/i.test(name) && size > 100 * 1024)
   );
 });

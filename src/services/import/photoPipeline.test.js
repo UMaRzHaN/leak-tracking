@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   hydrateZipPhotos,
+  persistExcelImportPhotos,
   reconcileExcelImportPhotos,
   rollbackExcelImportPhotos,
 } from "./photoPipeline";
@@ -157,5 +158,38 @@ describe("reconcileExcelImportPhotos concurrency", () => {
     expect(maxActiveReads).toBeLessThanOrEqual(2);
     expect(result.leaks).toHaveLength(3);
     expect(result.photos).toMatchObject({ replaced: 15, toSave: 15 });
+  });
+});
+
+describe("photo pipeline edge cases", () => {
+  it("returns leaks untouched when no savePhoto is provided", async () => {
+    const leaks = [{ leak_id: "TAG-1", photo: new Blob(["x"]) }];
+
+    await expect(persistExcelImportPhotos(leaks, undefined)).resolves.toBe(
+      leaks,
+    );
+    await expect(
+      persistExcelImportPhotos(leaks, undefined, { returnTransaction: true }),
+    ).resolves.toEqual({ leaks, createdPaths: [] });
+  });
+
+  it("counts an unreadable stored photo as a replacement", async () => {
+    const existing = [{ leak_id: "TAG-1", photo: "idb://broken" }];
+    const incoming = [
+      { leak_id: "TAG-1", photo: new Blob(["new"], { type: "image/jpeg" }) },
+    ];
+    const getStoredPhoto = vi.fn(async () => {
+      throw new Error("storage read failed");
+    });
+
+    const result = await reconcileExcelImportPhotos(
+      existing,
+      incoming,
+      getStoredPhoto,
+    );
+
+    expect(getStoredPhoto).toHaveBeenCalled();
+    expect(result.photos.replaced).toBe(1);
+    expect(result.photos.replacedByReason.unreadable).toBe(1);
   });
 });

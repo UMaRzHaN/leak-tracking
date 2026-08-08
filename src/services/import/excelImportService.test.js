@@ -4,7 +4,8 @@ vi.mock("@/services/import/excelImportParse", () => ({
   parseExcelImportFile: vi.fn(),
   parseExcelLeaks: vi.fn(),
 }));
-vi.mock("@/services/import/excelImportWorkerClient", () => ({
+vi.mock("@/services/excel/excelWorkerClient", () => ({
+  buildWorkbookBufferInWorker: vi.fn(),
   parseExcelImportFileInWorker: vi.fn(),
   isWorkerUnavailableError: (error) => error?.name === "WorkerUnavailableError",
 }));
@@ -13,7 +14,7 @@ const { parseExcelImportFile } = await import("./excelImportService");
 const { parseExcelImportFile: parseLocally } =
   await import("@/services/import/excelImportParse");
 const { parseExcelImportFileInWorker } =
-  await import("@/services/import/excelImportWorkerClient");
+  await import("@/services/excel/excelWorkerClient");
 
 beforeEach(() => {
   vi.clearAllMocks();

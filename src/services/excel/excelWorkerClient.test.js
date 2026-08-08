@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  buildWorkbookBufferInWorker,
   isWorkerUnavailableError,
   parseExcelImportFileInWorker,
-} from "./excelImportWorkerClient";
+} from "./excelWorkerClient";
 
 const original = globalThis.Worker;
 
@@ -28,7 +29,10 @@ afterEach(() => {
 describe("parseExcelImportFileInWorker", () => {
   it("resolves with the parsed result and terminates the worker", async () => {
     const instances = installWorker((worker, payload) => {
-      expect(payload.file).toBe("file-handle");
+      expect(payload).toEqual({
+        kind: "import",
+        payload: { file: "file-handle", options: { projectType: "upstream" } },
+      });
       worker.onmessage({ data: { ok: true, result: { leaks: [1] } } });
     });
 
@@ -82,5 +86,29 @@ describe("parseExcelImportFileInWorker", () => {
 
     expect((await pending).message).toMatch("timed out");
     expect(instances[0].terminate).toHaveBeenCalled();
+  });
+});
+
+describe("buildWorkbookBufferInWorker", () => {
+  it("resolves with the transferred buffer", async () => {
+    const buffer = new ArrayBuffer(8);
+    installWorker((worker, payload) => {
+      expect(payload.kind).toBe("export");
+      worker.onmessage({ data: { ok: true, buffer } });
+    });
+
+    await expect(buildWorkbookBufferInWorker({ rows: [] })).resolves.toBe(
+      buffer,
+    );
+  });
+
+  it("rejects when the worker returns something that is not a buffer", async () => {
+    installWorker((worker) => {
+      worker.onmessage({ data: { ok: true, buffer: "not-a-buffer" } });
+    });
+
+    await expect(buildWorkbookBufferInWorker({})).rejects.toThrow(
+      "returned no export",
+    );
   });
 });
