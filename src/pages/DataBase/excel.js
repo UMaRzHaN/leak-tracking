@@ -1,9 +1,9 @@
+import { buildWorkbookBufferLocally } from "@/services/excelExport/buildWorkbookBuffer";
 import { compareLeakIds } from "@/utils/leakOrder";
 import {
   allocateUniqueLeakArchiveSegments,
   sanitizePortableArchiveSegment,
 } from "@/services/archive/archivePaths";
-const getExcelJS = () => import("exceljs");
 const getJSZip = () => import("jszip");
 
 import { isNative } from "@/utils/platform";
@@ -17,55 +17,23 @@ import {
   buildMonitoringPhotoEntries,
   buildPhotoMap,
   buildPortableLeaks,
-  PHOTO_KEYS,
 } from "@/services/excelExport/photoPipeline";
-import {
-  addBackupSheet,
-  BACKUP_SCHEMA_VERSION,
-} from "@/services/excelExport/backupSheet";
+import { BACKUP_SCHEMA_VERSION } from "@/services/excelExport/backupSheet";
 import { buildExcelExportTexts } from "@/services/excelExport/exportTexts";
-import {
-  applyColumnFormats,
-  formatLeakTime,
-  toExcelCellValue,
-} from "@/services/excelExport/cellValues";
+import { formatLeakTime } from "@/services/excelExport/cellValues";
 import {
   buildMonitoringRoundLookup,
   getMonitoringExportRows,
 } from "@/services/excelExport/monitoringRows";
-import {
-  buildHistorySheet,
-  buildMonitoringSheet,
-} from "@/services/excelExport/auxiliarySheets";
-import {
-  addStructuredTable,
-  getColumnWidth,
-  styleBodyRows,
-  styleHeaderRow,
-  yieldToMainThread,
-} from "@/services/excelExport/sheetLayout";
+import { yieldToMainThread } from "@/services/excelExport/sheetLayout";
 
 const DEFAULT_EXPORT_DIR = "export/xlsx";
-const LEAKS_TABLE_THEME = "TableStyleMedium2";
 const EXPORT_YIELD_EVERY = 40;
 
 function getExportFolder(projectFolderName) {
   return projectFolderName
     ? `${projectFolderName}/${DEFAULT_EXPORT_DIR}`
     : DEFAULT_EXPORT_DIR;
-}
-
-function releaseWorkbook(workbook) {
-  if (
-    typeof workbook?.removeWorksheet !== "function" ||
-    !Array.isArray(workbook.worksheets)
-  ) {
-    return;
-  }
-
-  for (const worksheet of [...workbook.worksheets]) {
-    workbook.removeWorksheet(worksheet.id);
-  }
 }
 
 async function buildPhotoEntries(
@@ -154,104 +122,6 @@ async function resolvePhotoExportData({
   const backupPhotoMap = buildPhotoMap(backupPhotoEntries);
 
   return { photoMap, backupPhotoMap, photoEntries };
-}
-
-async function buildWorkbook({
-  orderedLeaks,
-  orderedRows,
-  headers,
-  keysOrder,
-  photoMap,
-  texts,
-  ExcelJS,
-  monitoringExportMode,
-  archivePayload,
-}) {
-  const photoColumnIndexes = PHOTO_KEYS.map((key) =>
-    keysOrder.indexOf(key),
-  ).filter((index) => index !== -1);
-
-  const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet(texts.sheets.leaks);
-
-  const tableRows = orderedRows.map((row, leakIndex) =>
-    keysOrder.map((key) => {
-      if (PHOTO_KEYS.includes(key) && photoMap[`${leakIndex}:${key}`]) {
-        return "";
-      }
-
-      return toExcelCellValue(key, row[key]);
-    }),
-  );
-
-  addStructuredTable(sheet, {
-    name: "Leaks",
-    headers,
-    rows: tableRows,
-    theme: LEAKS_TABLE_THEME,
-  });
-  styleHeaderRow(sheet, "FF1F4E78");
-  await styleBodyRows(sheet, orderedRows.length);
-
-  for (const [leakIndex, row] of orderedRows.entries()) {
-    if (leakIndex > 0 && leakIndex % EXPORT_YIELD_EVERY === 0) {
-      await yieldToMainThread();
-    }
-
-    for (const columnIndex of photoColumnIndexes) {
-      const key = keysOrder[columnIndex];
-      const mapKey = `${leakIndex}:${key}`;
-      const photoFile = photoMap[mapKey];
-      const cell = sheet.getRow(leakIndex + 2).getCell(columnIndex + 1);
-
-      if (photoFile) {
-        cell.value = { text: texts.photo.open, hyperlink: photoFile };
-        cell.font = { color: { argb: "FF1155CC" }, underline: true };
-      } else {
-        cell.value = row[key] ? texts.photo.missing : "";
-      }
-    }
-  }
-
-  applyColumnFormats(sheet, keysOrder);
-
-  headers.forEach((header, index) => {
-    const key = keysOrder[index];
-    const isPhoto = PHOTO_KEYS.includes(key);
-    sheet.getColumn(index + 1).width = getColumnWidth(
-      header,
-      key,
-      orderedRows,
-      {
-        isPhoto,
-      },
-    );
-  });
-
-  await buildMonitoringSheet(
-    workbook,
-    orderedLeaks,
-    texts,
-    photoMap,
-    monitoringExportMode,
-  );
-  await buildHistorySheet(workbook, orderedLeaks, texts);
-  addBackupSheet(workbook, archivePayload, texts);
-
-  return workbook;
-}
-
-export async function buildWorkbookBufferLocally(payload) {
-  const ExcelJS = (await getExcelJS()).default;
-  let workbook = await buildWorkbook({ ...payload, ExcelJS });
-
-  await yieldToMainThread();
-  const buffer = await workbook.xlsx.writeBuffer();
-  releaseWorkbook(workbook);
-  workbook = null;
-  await yieldToMainThread();
-
-  return buffer;
 }
 
 async function createWorkbookBuffer(payload, workerBuilder) {
@@ -418,3 +288,6 @@ export async function exportToExcelFile(
 }
 
 export const exportToExcelZip = exportToExcelFile;
+
+// Re-exported so the export page keeps one entry point.
+export { buildWorkbookBufferLocally };

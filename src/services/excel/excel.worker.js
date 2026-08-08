@@ -1,4 +1,4 @@
-import { buildWorkbookBufferLocally } from "@/pages/DataBase/excel";
+import { buildWorkbookBufferLocally } from "@/services/excelExport/buildWorkbookBuffer";
 import { parseExcelImportFile } from "@/services/import/excelImportParse";
 import { parseBackupZip } from "@/services/backup/archiveParser";
 
