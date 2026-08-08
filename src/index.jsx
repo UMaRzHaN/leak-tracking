@@ -27,6 +27,12 @@ async function bootstrap() {
     installNativeStoragePerformanceHarness();
   }
 
+  if (isNative && import.meta.env.VITE_ENABLE_IMPORT_PERFORMANCE === "true") {
+    const { installImportPerformanceHarness } =
+      await import("../performance/importPerformanceHarness");
+    installImportPerformanceHarness();
+  }
+
   const root = ReactDOM.createRoot(document.getElementById("root"));
   root.render(
     <React.StrictMode>
