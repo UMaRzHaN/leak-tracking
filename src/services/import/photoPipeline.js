@@ -3,6 +3,7 @@ import { fingerprintBlob } from "@/utils/blobHash";
 import { getLeakMergeIdentity } from "@/services/sync/projectSyncState";
 import { getImageMimeTypeFromExtension } from "@/services/archive/archivePaths";
 import { mapWithConcurrency } from "@/services/backup/runtime";
+import { readArchiveEntry } from "@/utils/importLimits";
 import {
   LEAK_PHOTO_FIELDS,
   MONITORING_PHOTO_FIELDS,
@@ -318,7 +319,7 @@ async function zipPhotoToBlob(zip, path) {
   const relativePath = path.replace(/^zip:/, "");
   const file = zip.file(relativePath);
   if (!file) return null;
-  const blob = await file.async("blob");
+  const blob = await readArchiveEntry(zip, file, "blob");
   const mime = getMimeFromPath(relativePath);
   return blob.type === mime ? blob : new Blob([blob], { type: mime });
 }

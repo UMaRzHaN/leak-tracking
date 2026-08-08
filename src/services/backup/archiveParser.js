@@ -4,9 +4,10 @@ import {
   validateProjectBackupMeta,
 } from "@/repositories/backupSchema";
 import {
+  assertArchiveLimits,
   assertImportFileSize,
   preflightZipFile,
-  verifyArchiveLimits,
+  readArchiveEntry,
 } from "@/utils/importLimits";
 import {
   MONITORING_PHOTO_KEYS,
@@ -54,7 +55,9 @@ async function parseZipMeta(zip) {
   if (!metaFile) return null;
 
   try {
-    const parsedMeta = JSON.parse(await metaFile.async("string"));
+    const parsedMeta = JSON.parse(
+      await readArchiveEntry(zip, metaFile, "string"),
+    );
     const metaValidation = validateProjectBackupMeta(parsedMeta);
     if (metaValidation.ok) return normalizeProjectMeta(metaValidation.data);
     const legacyProject = parsedMeta?.project;
@@ -84,14 +87,16 @@ export async function parseBackupZip(zipFile) {
   await preflightZipFile(zipFile);
   const JSZip = (await getJSZip()).default;
   const zip = await JSZip.loadAsync(zipFile);
-  await verifyArchiveLimits(zip);
+  // Header preflight only: readArchiveEntry enforces the real byte limits
+  // during the reads this parser performs anyway.
+  assertArchiveLimits(zip);
 
   const jsonFile = zip.file("backup.json");
   if (!jsonFile) throw new Error("Файл backup.json не найден в архиве");
 
   let parsed;
   try {
-    parsed = JSON.parse(await jsonFile.async("string"));
+    parsed = JSON.parse(await readArchiveEntry(zip, jsonFile, "string"));
   } catch {
     throw new Error("backup.json содержит невалидный JSON");
   }
@@ -103,7 +108,9 @@ export async function parseBackupZip(zipFile) {
   if (recoveryFile) {
     let parsedRecovery;
     try {
-      parsedRecovery = JSON.parse(await recoveryFile.async("string"));
+      parsedRecovery = JSON.parse(
+        await readArchiveEntry(zip, recoveryFile, "string"),
+      );
     } catch {
       throw new Error(`${RECOVERY_RECORDS_FILE} содержит невалидный JSON`);
     }

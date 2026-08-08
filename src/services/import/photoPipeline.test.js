@@ -7,8 +7,27 @@ import {
 
 describe("hydrateZipPhotos", () => {
   it("materializes a shared ZIP entry only once", async () => {
-    const asyncRead = vi.fn().mockResolvedValue(new Blob(["photo"]));
-    const zip = { file: vi.fn(() => ({ async: asyncRead })) };
+    const streamRead = vi.fn(() => {
+      const handlers = {};
+      return {
+        on(event, handler) {
+          handlers[event] = handler;
+          return this;
+        },
+        pause() {},
+        resume() {
+          handlers.data(new Uint8Array([1, 2, 3]));
+          handlers.end?.();
+        },
+      };
+    });
+    const zip = {
+      file: vi.fn(() => ({
+        name: "photos/shared.jpg",
+        dir: false,
+        internalStream: streamRead,
+      })),
+    };
     const result = await hydrateZipPhotos(
       {
         leaks: [
@@ -29,7 +48,7 @@ describe("hydrateZipPhotos", () => {
       zip,
     );
 
-    expect(asyncRead).toHaveBeenCalledOnce();
+    expect(streamRead).toHaveBeenCalledOnce();
     expect(zip.file).toHaveBeenCalledOnce();
     expect(result.stats).toMatchObject({
       restoredPhotos: 4,

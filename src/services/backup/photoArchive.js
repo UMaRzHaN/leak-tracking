@@ -1,6 +1,7 @@
 import { getPhotoSrc } from "@/hooks/photoService";
 import { fingerprintBlob } from "@/utils/blobHash";
 import { blobToDataUri, dataUrlToBlob } from "@/utils/photoConversion";
+import { readArchiveEntry } from "@/utils/importLimits";
 import {
   allocateUniqueLeakArchiveSegments,
   buildLeakPhotoArchivePath,
@@ -265,7 +266,7 @@ export async function restorePhotosFromZip(
       const relativePath = path.slice("zip:".length);
       const photoFile = zip.file(relativePath);
       if (!photoFile) return null;
-      const sourceBlob = await photoFile.async("blob");
+      const sourceBlob = await readArchiveEntry(zip, photoFile, "blob");
       const extension = relativePath.split(".").pop() || "jpg";
       const mime = getImageMimeTypeFromExtension(extension);
       const blob =

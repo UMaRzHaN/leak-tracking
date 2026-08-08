@@ -400,7 +400,7 @@ function streamArchiveEntry(entry, onChunk) {
             if (!Number.isSafeInteger(size) || size < 0) {
               throw new Error(`Archive entry "${entry.name}" is invalid.`);
             }
-            onChunk(size);
+            onChunk(size, chunk);
           } catch (error) {
             fail(error);
           }
@@ -440,5 +440,81 @@ export async function verifyArchiveLimits(zip) {
         throw archiveTooLargeError();
       }
     });
+  }
+}
+
+/**
+ * Per-archive tally of bytes actually decompressed by readArchiveEntry.
+ * Keyed by the JSZip instance so one import shares one budget without every
+ * call site having to thread it through.
+ */
+const archiveByteBudgets = new WeakMap();
+
+function getArchiveByteBudget(zip) {
+  let budget = archiveByteBudgets.get(zip);
+  if (!budget) {
+    budget = { total: 0 };
+    archiveByteBudgets.set(zip, budget);
+  }
+  return budget;
+}
+
+function concatChunks(chunks, totalSize) {
+  const bytes = new Uint8Array(totalSize);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength ?? chunk.length;
+  }
+  return bytes;
+}
+
+/**
+ * Reads one archive entry while enforcing the same actual-byte limits that
+ * verifyArchiveLimits enforces — but during the read the import needs anyway,
+ * instead of in a separate pass that decompresses the whole archive first.
+ *
+ * The guarantee is unchanged: bytes are counted as the decompressor emits
+ * them, so a forged `uncompressedSize` cannot buy an attacker more memory than
+ * the limits allow. What changes is when a bomb is rejected — while reading the
+ * offending entry rather than before the import starts. Entries the import
+ * never reads are never decompressed, so they cannot exhaust memory either;
+ * assertArchiveLimits still bounds the archive by its declared sizes up front.
+ *
+ * @param {object} zip JSZip instance the entry belongs to; scopes the budget.
+ * @param {object} entry JSZip entry to read.
+ * @param {"uint8array"|"arraybuffer"|"string"|"blob"} [type]
+ */
+export async function readArchiveEntry(zip, entry, type = "uint8array") {
+  const budget = getArchiveByteBudget(zip);
+  const chunks = [];
+  let entrySize = 0;
+
+  await streamArchiveEntry(entry, (chunkSize, chunk) => {
+    entrySize += chunkSize;
+    if (entrySize > IMPORT_LIMITS.maxSingleEntryBytes) {
+      throw entryTooLargeError(entry, entrySize);
+    }
+    if (budget.total + entrySize > IMPORT_LIMITS.maxUncompressedBytes) {
+      throw archiveTooLargeError();
+    }
+    chunks.push(chunk);
+  });
+
+  budget.total += entrySize;
+  const bytes = concatChunks(chunks, entrySize);
+
+  switch (type) {
+    case "arraybuffer":
+      return bytes.buffer.slice(
+        bytes.byteOffset,
+        bytes.byteOffset + bytes.byteLength,
+      );
+    case "string":
+      return new globalThis.TextDecoder().decode(bytes);
+    case "blob":
+      return new Blob([bytes]);
+    default:
+      return bytes;
   }
 }

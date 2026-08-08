@@ -37,8 +37,10 @@ import {
   parseMonitoringRecords,
 } from "@/services/import/sheetRecordParsers";
 import {
+  assertArchiveLimits,
   assertImportFileSize,
   preflightZipFile,
+  readArchiveEntry,
   verifyArchiveLimits,
 } from "@/utils/importLimits";
 import { IMPORT_ROW_YIELD_EVERY } from "@/services/backup/constants";
@@ -320,12 +322,16 @@ export async function parseExcelImportFile(file, options = {}) {
   await preflightZipFile(file);
   const JSZip = (await getJSZip()).default;
   const zip = await JSZip.loadAsync(file);
-  await verifyArchiveLimits(zip);
+  // Header preflight only: the reads below enforce the real byte limits as
+  // they decompress, so the archive is no longer expanded twice.
+  assertArchiveLimits(zip);
   let project = null;
   const projectEntry = zip.file("excel-project.json");
   if (projectEntry) {
     try {
-      const manifest = JSON.parse(await projectEntry.async("string"));
+      const manifest = JSON.parse(
+        await readArchiveEntry(zip, projectEntry, "string"),
+      );
       const type = manifest?.project?.type || manifest?.config;
       if (["upstream", "midstream", "downstream"].includes(type)) {
         project = {
@@ -348,7 +354,7 @@ export async function parseExcelImportFile(file, options = {}) {
     throw new Error("В ZIP не найден Excel-файл .xlsx");
   }
 
-  const buffer = await xlsxEntry.async("arraybuffer");
+  const buffer = await readArchiveEntry(zip, xlsxEntry, "arraybuffer");
   const parsed = await parseExcelLeaks(
     {
       name: xlsxEntry.name,

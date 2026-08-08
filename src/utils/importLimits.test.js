@@ -4,6 +4,7 @@ import {
   assertImportFileSize,
   IMPORT_LIMITS,
   preflightZipFile,
+  readArchiveEntry,
   verifyArchiveLimits,
 } from "./importLimits";
 
@@ -200,5 +201,104 @@ describe("importLimits", () => {
 
   it("leaves malformed non-ZIP input to the archive parser", async () => {
     await expect(preflightZipFile(new Blob(["not a zip"]))).resolves.toBeNull();
+  });
+});
+
+describe("readArchiveEntry", () => {
+  const streamingEntry = (name, chunks) => ({
+    name,
+    dir: false,
+    _data: { uncompressedSize: 1 },
+    internalStream: () => {
+      const handlers = {};
+      return {
+        on(event, handler) {
+          handlers[event] = handler;
+          return this;
+        },
+        pause() {},
+        resume() {
+          for (const chunk of chunks) handlers.data(chunk);
+          handlers.end?.();
+        },
+      };
+    },
+  });
+
+  it("decodes an entry to the requested type", async () => {
+    const zip = {};
+    const entry = streamingEntry("backup.json", [new Uint8Array([0x7b, 0x7d])]);
+
+    await expect(readArchiveEntry(zip, entry, "string")).resolves.toBe("{}");
+    await expect(readArchiveEntry(zip, entry, "uint8array")).resolves.toEqual(
+      new Uint8Array([0x7b, 0x7d]),
+    );
+  });
+
+  it("joins chunks in order", async () => {
+    const entry = streamingEntry("photo.jpg", [
+      new Uint8Array([1, 2]),
+      new Uint8Array([3]),
+      new Uint8Array([4, 5]),
+    ]);
+
+    await expect(readArchiveEntry({}, entry, "uint8array")).resolves.toEqual(
+      new Uint8Array([1, 2, 3, 4, 5]),
+    );
+  });
+
+  it("rejects an entry whose real stream exceeds its forged uncompressedSize", async () => {
+    const entry = streamingEntry("bomb.bin", [
+      { byteLength: IMPORT_LIMITS.maxSingleEntryBytes + 1 },
+    ]);
+
+    await expect(readArchiveEntry({}, entry, "uint8array")).rejects.toThrow(
+      "too large",
+    );
+  });
+
+  it("keeps one shared budget across reads of the same archive", async () => {
+    const zip = {};
+    const entrySize = IMPORT_LIMITS.maxSingleEntryBytes;
+    const reads =
+      Math.floor(IMPORT_LIMITS.maxUncompressedBytes / entrySize) + 1;
+
+    let lastError = null;
+    for (let index = 0; index < reads; index += 1) {
+      const entry = streamingEntry(`entry-${index}.bin`, [
+        { byteLength: entrySize },
+      ]);
+      try {
+        await readArchiveEntry(zip, entry, "uint8array");
+      } catch (error) {
+        lastError = error;
+        break;
+      }
+    }
+
+    expect(lastError?.message).toMatch("safety limit");
+  });
+
+  it("scopes the budget per archive", async () => {
+    const entrySize = IMPORT_LIMITS.maxSingleEntryBytes;
+    const reads = Math.floor(IMPORT_LIMITS.maxUncompressedBytes / entrySize);
+    const zip = {};
+
+    for (let index = 0; index < reads; index += 1) {
+      await readArchiveEntry(
+        zip,
+        streamingEntry(`entry-${index}.bin`, [{ byteLength: entrySize }]),
+        "uint8array",
+      );
+    }
+
+    // A different archive starts from a clean budget.
+    await expect(
+      readArchiveEntry(
+        {},
+        streamingEntry("fresh.bin", [{ byteLength: entrySize }]),
+        "uint8array",
+      ),
+    ).resolves.toBeTruthy();
   });
 });
