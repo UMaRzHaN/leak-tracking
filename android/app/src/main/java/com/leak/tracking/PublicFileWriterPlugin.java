@@ -44,7 +44,10 @@ public class PublicFileWriterPlugin extends Plugin {
     @Override
     public void load() {
         cleanupOrphanedExportFiles();
-        cleanupExecutor.scheduleAtFixedRate(
+        // Fixed delay, not fixed rate: a cached process suppresses the timer,
+        // and a fixed rate then fires every missed run back to back the moment
+        // the process wakes up.
+        cleanupExecutor.scheduleWithFixedDelay(
             this::cleanupExpiredPreparedExports,
             1,
             1,

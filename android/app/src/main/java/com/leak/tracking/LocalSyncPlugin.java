@@ -128,7 +128,10 @@ public class LocalSyncPlugin extends Plugin {
     @Override
     public void load() {
         cleanupOrphanedArchiveFiles();
-        cleanupExecutor.scheduleAtFixedRate(
+        // Fixed delay, not fixed rate: a cached process suppresses the timer,
+        // and a fixed rate then fires every missed run back to back the moment
+        // the process wakes up.
+        cleanupExecutor.scheduleWithFixedDelay(
             this::cleanupExpiredArchiveSessions,
             1,
             1,

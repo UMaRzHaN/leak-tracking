@@ -166,6 +166,18 @@ describe("map tile boundaries", () => {
     });
     await expect(cacheTile("tile")).resolves.toBeUndefined();
   });
+
+  it("reports a preload as failed when Cache Storage cannot be opened", async () => {
+    // Without a cache there is nowhere to store a tile, and silently counting
+    // those tiles as neither saved nor failed would show the user a finished
+    // preload that cached nothing.
+    cachesMock.open.mockRejectedValue(new Error("cache unavailable"));
+
+    const stats = await preloadUrls(["one", "two"], { concurrency: 1 });
+
+    expect(stats).toMatchObject({ saved: 0, alreadyCached: 0, failed: 2 });
+    expect(fetch).not.toHaveBeenCalled();
+  });
   it("evicts by real cache size even when metadata undercounts", async () => {
     const requests = Array.from({ length: 6_001 }, (_, index) => ({
       url: `https://tiles/${index}`,

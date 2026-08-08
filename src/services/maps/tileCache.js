@@ -1,102 +1,37 @@
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { isNative } from "@/utils/platform";
+import { buildMapTileUrl, OFFLINE_MAP_ONLY } from "@/configs/mapTiles";
 import {
-  buildMapTileUrl,
-  OFFLINE_MAP_ONLY,
-  TILE_URL_TEMPLATE,
-} from "@/configs/mapTiles";
+  clearWebMetadata,
+  getNativeCount,
+  incrementNativeCount,
+  isTileCacheStorageKey,
+  NATIVE_TILE_CACHE_DIR,
+  oldestKeys,
+  readMetadata,
+  removeMetadata,
+  resetNativeCount,
+  setNativeCount,
+  TILE_ROOT_DIR,
+  touchMetadata,
+  writeMetadata,
+} from "./tileCacheMetadata";
+
+export {
+  buildNativeTileCacheNamespace,
+  NATIVE_TILE_CACHE_COUNT_KEY,
+  NATIVE_TILE_CACHE_DIR,
+  NATIVE_TILE_CACHE_METADATA_KEY,
+  NATIVE_TILE_CACHE_NAMESPACE,
+} from "./tileCacheMetadata";
+
 const CACHE_NAME = "map-tiles-v2";
-const TILE_ROOT_DIR = "map-tiles";
-const NATIVE_CACHE_FORMAT_VERSION = "v3";
 const MAX_MERCATOR_LAT = 85.05112878;
-const LEGACY_NATIVE_COUNT_KEY = "map-tiles-native-count";
-const WEB_METADATA_KEY = "map-tiles-metadata-v1";
-const NATIVE_COUNT_PREFIX = "map-tiles-native-count:";
-const NATIVE_METADATA_PREFIX = "map-tiles-native-metadata:";
 const FILESYSTEM_NOT_FOUND_CODE = "OS-PLUG-FILE-0008";
 export const MAX_TILE_CACHE_ENTRIES = 6_000;
 const TILE_CACHE_EVICTION_TARGET = 5_400;
 
-export function buildNativeTileCacheNamespace(tileUrlTemplate) {
-  const value = String(tileUrlTemplate ?? "").trim();
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < value.length; index++) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return `${NATIVE_CACHE_FORMAT_VERSION}-${(hash >>> 0)
-    .toString(16)
-    .padStart(8, "0")}`;
-}
-
-export const NATIVE_TILE_CACHE_NAMESPACE =
-  buildNativeTileCacheNamespace(TILE_URL_TEMPLATE);
-export const NATIVE_TILE_CACHE_DIR = `${TILE_ROOT_DIR}/${NATIVE_TILE_CACHE_NAMESPACE}`;
-export const NATIVE_TILE_CACHE_COUNT_KEY = `${NATIVE_COUNT_PREFIX}${NATIVE_TILE_CACHE_NAMESPACE}`;
-export const NATIVE_TILE_CACHE_METADATA_KEY = `${NATIVE_METADATA_PREFIX}${NATIVE_TILE_CACHE_NAMESPACE}`;
-
 const webSupported = typeof caches !== "undefined";
-
-function getNativeCount() {
-  const count = Number.parseInt(
-    localStorage.getItem(NATIVE_TILE_CACHE_COUNT_KEY) || "0",
-    10,
-  );
-  return Number.isFinite(count) && count > 0 ? count : 0;
-}
-function incrementNativeCount() {
-  localStorage.setItem(
-    NATIVE_TILE_CACHE_COUNT_KEY,
-    String(getNativeCount() + 1),
-  );
-}
-function resetNativeCount() {
-  localStorage.removeItem(NATIVE_TILE_CACHE_COUNT_KEY);
-}
-
-function metadataKey() {
-  return isNative ? NATIVE_TILE_CACHE_METADATA_KEY : WEB_METADATA_KEY;
-}
-
-function readMetadata() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(metadataKey()) ?? "{}");
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? parsed
-      : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeMetadata(metadata) {
-  try {
-    localStorage.setItem(metadataKey(), JSON.stringify(metadata));
-  } catch {
-    // Cache remains usable when localStorage is unavailable.
-  }
-}
-
-function touchMetadata(key) {
-  const metadata = readMetadata();
-  metadata[key] = Date.now();
-  writeMetadata(metadata);
-}
-
-function removeMetadata(keys) {
-  const metadata = readMetadata();
-  keys.forEach((key) => delete metadata[key]);
-  writeMetadata(metadata);
-}
-
-function oldestKeys(keys, metadata, count) {
-  return [...keys]
-    .sort(
-      (left, right) =>
-        Number(metadata[left] ?? 0) - Number(metadata[right] ?? 0),
-    )
-    .slice(0, count);
-}
 
 function clampLatitude(value) {
   const number = Number(value);
@@ -341,10 +276,7 @@ async function enforceNativeQuota() {
     )
   ).filter(Boolean);
   removeMetadata(deleted);
-  localStorage.setItem(
-    NATIVE_TILE_CACHE_COUNT_KEY,
-    String(Math.max(0, count - deleted.length)),
-  );
+  setNativeCount(count - deleted.length);
 }
 export async function getTileBlobUrl(url) {
   if (isNative) return nativeRead(url);
@@ -421,19 +353,12 @@ export async function clearMapCache() {
     resetNativeCount();
     for (let index = localStorage.length - 1; index >= 0; index--) {
       const key = localStorage.key(index);
-      if (
-        key === LEGACY_NATIVE_COUNT_KEY ||
-        key === WEB_METADATA_KEY ||
-        key?.startsWith(NATIVE_COUNT_PREFIX) ||
-        key?.startsWith(NATIVE_METADATA_PREFIX)
-      ) {
-        localStorage.removeItem(key);
-      }
+      if (isTileCacheStorageKey(key)) localStorage.removeItem(key);
     }
     return;
   }
   if (webSupported) await caches.delete(CACHE_NAME);
-  localStorage.removeItem(WEB_METADATA_KEY);
+  clearWebMetadata();
 }
 
 export function buildViewportTileUrls(bounds, minZoom, maxZoom) {
@@ -584,6 +509,11 @@ export async function preloadUrls(
           /* таймаут или сеть — пропускаем */
         }
       }
+    } else {
+      // Cache Storage refused to open, so there is nowhere to put the tile.
+      // Counting it as failed keeps the caller from reporting a preload that
+      // stored nothing as a success.
+      stats.failed++;
     }
     done++;
     if (done % 5 === 0 || done === total) {

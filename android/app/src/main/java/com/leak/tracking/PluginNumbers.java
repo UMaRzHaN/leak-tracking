@@ -14,16 +14,8 @@ final class PluginNumbers {
     private PluginNumbers() {}
 
     static Long asLong(Object value) {
-        if (value instanceof Number) {
-            return ((Number) value).longValue();
-        }
-        if (value instanceof String) {
-            try {
-                return Long.valueOf(Long.parseLong(((String) value).trim()));
-            } catch (NumberFormatException ignored) {
-                return null;
-            }
-        }
-        return null;
+        // Anything that is not a number is a caller bug, and null makes the
+        // caller reject the call rather than quietly coercing it.
+        return value instanceof Number ? ((Number) value).longValue() : null;
     }
 }

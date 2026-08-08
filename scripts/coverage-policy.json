@@ -301,6 +301,12 @@
       "functions": 86,
       "lines": 95
     },
+    "src/services/maps/tileCacheMetadata.js": {
+      "statements": 97,
+      "branches": 84,
+      "functions": 100,
+      "lines": 97
+    },
     "src/services/storage/leakFieldVersions.js": {
       "statements": 89,
       "branches": 70,

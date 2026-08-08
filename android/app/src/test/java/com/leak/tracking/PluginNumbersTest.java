@@ -25,14 +25,11 @@ public class PluginNumbersTest {
     }
 
     @Test
-    public void readsNumericStrings() {
-        assertEquals(Long.valueOf(17L), PluginNumbers.asLong(" 17 "));
-    }
-
-    @Test
     public void rejectsMissingAndNonNumericValues() {
+        // A non-number means the JavaScript side sent the wrong thing; the
+        // caller must reject rather than coerce it into a plausible size.
         assertNull(PluginNumbers.asLong(null));
-        assertNull(PluginNumbers.asLong("not-a-number"));
+        assertNull(PluginNumbers.asLong("17"));
         assertNull(PluginNumbers.asLong(Boolean.TRUE));
     }
 }
