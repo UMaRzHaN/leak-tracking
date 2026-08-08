@@ -46,6 +46,54 @@ hooks/cameraService.js       ← 1 consumer (useCamera) → lives next to it
 Same rule. Example: `features/search/Autocomplete/smartFilter.js` lives
 alongside `Autocomplete.jsx` because only that component uses it.
 
+### Subsystem layout under `services/`
+
+One directory per subsystem, no loose files at the top level:
+
+```
+services/
+├── archive/      # zipStoreStream, archivePaths — shared by import and export
+├── backup/       # projectBackupService facade + merge/import/export parts
+├── excelExport/  # Workbook building, runs in a Web Worker
+├── import/       # excelImportService facade + XLSX/ZIP parsing parts
+├── maps/         # tileCache — offline tile storage
+├── storage/      # persistentStorage, publicFileWriter, leakFieldVersions
+└── sync/         # localSyncService, projectSyncState, syncClock
+```
+
+Two naming decisions worth knowing before adding a directory here:
+
+- `archive/` and `storage/` exist because their files are shared across
+  subsystems and belong to none of them individually.
+- the folder is `excelExport/`, not `export/`: KML export lives in
+  `pages/MapPage/`, so the generic name would be misleading.
+
+### Layering
+
+React pages receive prepared state, call services, and render errors. A page
+must not know the details of IndexedDB, Filesystem, ZIP, XLSX or TLS — reach
+for a service instead. Data access goes through `src/repositories/` only, so
+that the web (IndexedDB) and Android (SQLite plugin) backends stay
+interchangeable.
+
+Do not mix UI, filesystem access, merge logic and validation in one module,
+and do not put backend calls directly into React components.
+
+## Data compatibility constraints
+
+The app stores field data that cannot be re-collected, and archives created by
+older versions stay in circulation. These rules are not negotiable in a
+refactor:
+
+- do not change the archive format without bumping `schemaVersion`;
+- do not drop support for older archives;
+- do not run an irreversible migration without a backup;
+- do not change photo paths without a separate migration;
+- do not overwrite a project after a failed import;
+- do not delete an old implementation before its migration tests pass;
+- do not swallow read/write errors — a silent failure loses data;
+- do not lower the coverage, bundle or maintainability budgets to make CI pass.
+
 ## Running the project
 
 ```bash

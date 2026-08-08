@@ -207,8 +207,9 @@ export async function loadNativeProject(folderName) {
  * calls this yet — LeakRepository.getAll() / loadNativeProject() above still
  * load the whole project in one call, and every page/hook that consumes
  * leaks (Settings, Monitoring, MainPage, search, ...) still assumes it has
- * the full array. Wiring real pagination through those call sites is a
- * separate, larger change (see PROJECT_REFACTORING_PLAN.md, "Этап 4").
+ * the full array. Wiring real pagination through those call sites — moving
+ * from a whole-array project to record-level reads — is a separate, larger
+ * change.
  * This function exists so that work can start from a tested, working
  * native primitive instead of from scratch, without touching any existing
  * behavior.

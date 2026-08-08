@@ -170,8 +170,9 @@ final class LeakDatabaseStore implements AutoCloseable {
      * {@link #loadProject} is still what {@code NativeLeakStoragePlugin#load}
      * and every JS caller actually use. Nothing in the app calls
      * loadProjectPage yet — wiring a page-by-page read through
-     * Settings/Monitoring/MainPage/search is a larger, separate change (see
-     * PROJECT_REFACTORING_PLAN.md, "Этап 4"). This method exists so
+     * Settings/Monitoring/MainPage/search, i.e. moving from a whole-array
+     * project to record-level reads, is a larger, separate change. This
+     * method exists so
      * that future work has a tested, working native primitive to build on
      * without touching the existing read path.
      */
