@@ -28,7 +28,7 @@ import {
 import { logger } from "@/utils/logger";
 import { parseBackupZip } from "./archiveParser";
 import { filterIncomingLeaksForMerge, mergeLeaksByFreshness } from "./merge";
-import { restorePhotosFromZip } from "./photoArchive";
+import { restorePhotos } from "./photoArchive";
 import {
   monitoringRoundFreshness,
   readStoredProjectVars,
@@ -56,7 +56,7 @@ async function waitForPhotoStorage(photoReadyRef) {
   throw new Error("Хранилище фото не готово");
 }
 
-export async function importProjectZip(zipFile, ctx) {
+export async function importProjectZip(file, ctx) {
   const {
     addProject,
     removeProject,
@@ -69,7 +69,7 @@ export async function importProjectZip(zipFile, ctx) {
     selectProject,
   } = ctx;
 
-  const { zip, leaks, meta, recoveryRecords } = await parseBackupZip(zipFile);
+  const { photos, leaks, meta, recoveryRecords } = await parseBackupZip(file);
 
   const projectName =
     ctx.overrideName?.trim() || meta?.project?.name || metaFallback?.name;
@@ -115,15 +115,15 @@ export async function importProjectZip(zipFile, ctx) {
       await writeProjectSyncState(newProject.id, meta.sync, []);
     }
 
-    const restoredLeaks = await restorePhotosFromZip(
+    const restoredLeaks = await restorePhotos(
       leaks,
-      zip,
+      photos,
       savePhotoToImportedProject,
     );
     const finalLeaks = recalculateLeaks(restoredLeaks, meta?.vars);
-    const restoredRecoveryRecords = await restorePhotosFromZip(
+    const restoredRecoveryRecords = await restorePhotos(
       recoveryRecords,
-      zip,
+      photos,
       savePhotoToImportedProject,
       { keyPrefix: "recovery_" },
     );
@@ -175,7 +175,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
 
   const { id: existingProjectId, folderName: existingFolderName } =
     existingProject;
-  const { zip, leaks, meta } = await parseBackupZip(zipFile);
+  const { photos, leaks, meta } = await parseBackupZip(zipFile);
 
   const isSync = mode === "sync";
   const isMerge = mode === "merge" || isSync;
@@ -318,9 +318,9 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
         isSync ? applyProjectTombstones(leaks, mergedSyncState) : leaks,
         isSync ? { source: "sync" } : { source: "archive" },
       );
-      const restoredIncoming = await restorePhotosFromZip(
+      const restoredIncoming = await restorePhotos(
         incomingToApply,
-        zip,
+        photos,
         savePhotoToExistingProject,
       );
       const effectiveVars = shouldApplyIncomingVars
@@ -350,9 +350,9 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
             : currentRound;
       }
     } else {
-      const restoredLeaks = await restorePhotosFromZip(
+      const restoredLeaks = await restorePhotos(
         leaks,
-        zip,
+        photos,
         savePhotoToExistingProject,
       );
       finalLeaks = recalculateLeaks(restoredLeaks, meta?.vars);
@@ -540,7 +540,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
 }
 
 export async function importBackupZip(zipFile, savePhoto) {
-  const { zip, leaks, meta } = await parseBackupZip(zipFile);
-  const restoredLeaks = await restorePhotosFromZip(leaks, zip, savePhoto);
+  const { photos, leaks, meta } = await parseBackupZip(zipFile);
+  const restoredLeaks = await restorePhotos(leaks, photos, savePhoto);
   return { leaks: recalculateLeaks(restoredLeaks, meta?.vars), meta };
 }

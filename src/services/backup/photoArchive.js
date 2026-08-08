@@ -1,12 +1,11 @@
 import { getPhotoSrc } from "@/hooks/photoService";
 import { fingerprintBlob } from "@/utils/blobHash";
 import { blobToDataUri, dataUrlToBlob } from "@/utils/photoConversion";
-import { readArchiveEntry } from "@/utils/importLimits";
+import { isArchivePhotoPath } from "@/services/backup/archivePhotoReader";
 import {
   allocateUniqueLeakArchiveSegments,
   buildLeakPhotoArchivePath,
   buildMonitoringPhotoArchivePath,
-  getImageMimeTypeFromExtension,
   normalizeImageExtension,
   parseDataImageUri,
 } from "@/services/archive/archivePaths";
@@ -225,9 +224,9 @@ export async function exportLeaksWithPhotos(
   return exported;
 }
 
-export async function restorePhotosFromZip(
+export async function restorePhotos(
   leaks,
-  zip,
+  photos,
   savePhotoRefOrFn,
   { keyPrefix = "" } = {},
 ) {
@@ -238,10 +237,8 @@ export async function restorePhotosFromZip(
 
   const archivePhotoSizes = [];
   const collectSize = (path) => {
-    if (typeof path !== "string" || !path.startsWith("zip:")) return;
-    const entry = zip.file(path.slice("zip:".length));
-    const size = Number(entry?._data?.uncompressedSize);
-    if (Number.isFinite(size) && size > 0) archivePhotoSizes.push(size);
+    const size = photos.declaredSize(path);
+    if (size > 0) archivePhotoSizes.push(size);
   };
   for (const leak of leaks) {
     for (const key of PHOTO_KEYS) collectSize(leak?.[key]);
@@ -262,17 +259,9 @@ export async function restorePhotosFromZip(
         : IMPORT_CONCURRENCY;
 
   const preparePhoto = async (path) => {
-    if (path.startsWith("zip:")) {
-      const relativePath = path.slice("zip:".length);
-      const photoFile = zip.file(relativePath);
-      if (!photoFile) return null;
-      const sourceBlob = await readArchiveEntry(zip, photoFile, "blob");
-      const extension = relativePath.split(".").pop() || "jpg";
-      const mime = getImageMimeTypeFromExtension(extension);
-      const blob =
-        sourceBlob.type === mime
-          ? sourceBlob
-          : new Blob([sourceBlob], { type: mime });
+    if (isArchivePhotoPath(path)) {
+      const blob = await photos.read(path);
+      if (!blob) return null;
       return {
         blob,
         fallbackPath: null,

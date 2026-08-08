@@ -3,6 +3,7 @@ import {
   validateBackupRecovery,
   validateProjectBackupMeta,
 } from "@/repositories/backupSchema";
+import { createArchivePhotoReader } from "@/services/backup/archivePhotoReader";
 import {
   assertArchiveLimits,
   assertImportFileSize,
@@ -118,7 +119,8 @@ export async function parseBackupZip(zipFile) {
     assertArchivePhotoReferences(recoveryRecords, zip);
   }
   return {
-    zip,
+    // Deliberately not the JSZip instance: see createArchivePhotoReader.
+    photos: createArchivePhotoReader(zip),
     leaks,
     recoveryRecords,
     meta: await parseZipMeta(zip),
