@@ -37,6 +37,22 @@ export function createArchivePhotoReader(zip) {
       return Number.isFinite(size) && size > 0 ? size : 0;
     },
 
+    /**
+     * Declared size of every entry, keyed by archive path. The worker sends
+     * this across once, because declaredSize() is synchronous and a proxy
+     * cannot ask another thread a synchronous question.
+     */
+    declaredSizes() {
+      const sizes = {};
+      for (const entry of Object.values(zip?.files ?? {})) {
+        if (entry.dir) continue;
+        const size = Number(entry?._data?.uncompressedSize);
+        sizes[`${ARCHIVE_PATH_PREFIX}${entry.name}`] =
+          Number.isFinite(size) && size > 0 ? size : 0;
+      }
+      return sizes;
+    },
+
     /** Decompresses one photo, typed by its extension. Null when absent. */
     async read(path) {
       const entry = entryFor(path);

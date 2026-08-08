@@ -26,7 +26,7 @@ import {
   saveMonitoringRound,
 } from "@/utils/monitoringRound";
 import { logger } from "@/utils/logger";
-import { parseBackupZip } from "./archiveParser";
+import { openArchive } from "./backupArchiveSession";
 import { filterIncomingLeaksForMerge, mergeLeaksByFreshness } from "./merge";
 import { restorePhotos } from "./photoArchive";
 import {
@@ -69,7 +69,7 @@ export async function importProjectZip(file, ctx) {
     selectProject,
   } = ctx;
 
-  const { photos, leaks, meta, recoveryRecords } = await parseBackupZip(file);
+  const { photos, leaks, meta, recoveryRecords } = await openArchive(file);
 
   const projectName =
     ctx.overrideName?.trim() || meta?.project?.name || metaFallback?.name;
@@ -175,7 +175,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
 
   const { id: existingProjectId, folderName: existingFolderName } =
     existingProject;
-  const { photos, leaks, meta } = await parseBackupZip(zipFile);
+  const { photos, leaks, meta } = await openArchive(zipFile);
 
   const isSync = mode === "sync";
   const isMerge = mode === "merge" || isSync;
@@ -540,7 +540,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
 }
 
 export async function importBackupZip(zipFile, savePhoto) {
-  const { photos, leaks, meta } = await parseBackupZip(zipFile);
+  const { photos, leaks, meta } = await openArchive(zipFile);
   const restoredLeaks = await restorePhotos(leaks, photos, savePhoto);
   return { leaks: recalculateLeaks(restoredLeaks, meta?.vars), meta };
 }
