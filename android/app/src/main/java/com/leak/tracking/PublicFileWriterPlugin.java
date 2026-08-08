@@ -162,7 +162,7 @@ public class PublicFileWriterPlugin extends Plugin {
     @PluginMethod
     public void commit(PluginCall call) {
         String token = call.getString("token", "");
-        Long expectedSize = call.getLong("expectedSize");
+        Long expectedSize = PluginNumbers.asLong(call.getData().opt("expectedSize"));
         String folder = call.getString("folder", "");
         String fileName = call.getString("fileName");
         String mimeType = call.getString("mimeType", "application/octet-stream");

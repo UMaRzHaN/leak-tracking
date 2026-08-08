@@ -251,7 +251,9 @@ public class LocalSyncPlugin extends Plugin {
         boolean allowMultipleImports = Boolean.TRUE.equals(
             call.getBoolean("allowMultipleImports", false)
         );
-        Long requestedDuration = call.getLong("sessionDurationMs");
+        Long requestedDuration = PluginNumbers.asLong(
+            call.getData().opt("sessionDurationMs")
+        );
         long sessionDurationMs = clampSessionDuration(requestedDuration);
         File preparedArchive;
         synchronized (archiveLock) {

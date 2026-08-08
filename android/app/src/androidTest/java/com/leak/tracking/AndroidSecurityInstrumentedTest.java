@@ -14,6 +14,7 @@ import android.content.pm.FeatureInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PermissionInfo;
+import android.os.Build;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.ByteArrayInputStream;
@@ -80,7 +81,7 @@ public class AndroidSecurityInstrumentedTest {
             assertEquals(
                 permission + " must use the Android runtime-permission flow",
                 PermissionInfo.PROTECTION_DANGEROUS,
-                info.protectionLevel & PermissionInfo.PROTECTION_MASK_BASE
+                basePermissionProtection(info)
             );
             automation.grantRuntimePermission(packageName, permission);
             assertEquals(
@@ -89,6 +90,17 @@ public class AndroidSecurityInstrumentedTest {
                 context.checkSelfPermission(permission)
             );
         }
+    }
+
+    /**
+     * {@code getProtection()} replaced the {@code protectionLevel} field in
+     * API 28, but minSdk is 24, so the legacy read has to stay for older
+     * devices. The suppression is scoped to that one branch.
+     */
+    @SuppressWarnings("deprecation")
+    private static int basePermissionProtection(PermissionInfo info) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) return info.getProtection();
+        return info.protectionLevel & PermissionInfo.PROTECTION_MASK_BASE;
     }
 
     @Test

@@ -34,6 +34,18 @@ allprojects {
     }
 }
 
+// Capacitor plugin modules are compiled straight from node_modules, so their
+// javac "uses unchecked or unsafe operations" / "uses a deprecated API" notes
+// are noise we cannot act on. Suppress the notes there only — :app keeps them,
+// so the same problems in our own sources stay visible.
+subprojects { sub ->
+    if (sub.name != 'app') {
+        sub.tasks.withType(JavaCompile).configureEach {
+            options.compilerArgs << "-XDsuppressNotes"
+        }
+    }
+}
+
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
