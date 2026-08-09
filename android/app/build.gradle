@@ -4,8 +4,13 @@ def releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
 def releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
 def configuredVersionCode = System.getenv("ANDROID_VERSION_CODE")
 def configuredVersionName = System.getenv("ANDROID_VERSION_NAME")
+// `releaseCheck` is excluded deliberately. It carries release's R8 setup so
+// minification can be reproduced by hand, but it is never shipped, so demanding
+// an explicit version code and name would only force callers to invent numbers
+// for a build nobody distributes.
 def requestedReleaseTask = gradle.startParameter.taskNames.any {
-    it.toLowerCase().contains("release")
+    def taskName = it.toLowerCase()
+    taskName.contains("release") && !taskName.contains("releasecheck")
 }
 def validVersionCode = configuredVersionCode != null &&
     configuredVersionCode ==~ /^[1-9]\d*$/ &&
@@ -71,6 +76,25 @@ android {
             if (hasReleaseSigning) {
                 signingConfig signingConfigs.release
             }
+        }
+        // An installable twin of release. `initWith` copies R8 and resource
+        // shrinking, so this is the shipped code, but it is signed with the
+        // debug key and therefore needs no release keystore — anyone, and CI,
+        // can build it. It exists to make R8 damage reproducible by hand:
+        // stripped plugin annotations crashed camera and geolocation on tap in
+        // release only, and debug never goes through R8, so there was nothing
+        // to install and try short of a signed release.
+        //
+        // The applicationId is suffixed on purpose. Without it this would share
+        // `com.leak.tracking` with the real release while carrying a different
+        // signature, and installing it over an installed release fails with
+        // INSTALL_FAILED_UPDATE_INCOMPATIBLE. Suffixed, the two coexist.
+        releaseCheck {
+            initWith release
+            applicationIdSuffix ".releasecheck"
+            versionNameSuffix "-releasecheck"
+            signingConfig signingConfigs.debug
+            matchingFallbacks = ['release']
         }
     }
 }

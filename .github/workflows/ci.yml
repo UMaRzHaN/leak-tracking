@@ -302,6 +302,13 @@ jobs:
           ANDROID_VERSION_CODE: ${{ github.run_number }}
           ANDROID_VERSION_NAME: 1.0.0-ci.${{ github.run_number }}
 
+      # Reads the reports the step above just wrote. Instrumented tests run on
+      # the debug variant, which never goes through R8, so nothing else here
+      # can see a release that shipped stripped Capacitor metadata and crashed
+      # camera and geolocation on tap.
+      - name: Check R8 kept the Capacitor runtime
+        run: npm run check:android-r8
+
       - name: Create Android verification manifest
         if: always()
         run: npm run release:evidence:android -- --allow-dirty

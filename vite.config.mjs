@@ -324,7 +324,14 @@ export default defineConfig(({ mode }) => {
       globals: true,
       environment: "jsdom",
       setupFiles: ["./src/test/setup.js"],
-      include: ["src/**/*.{test,spec}.{js,jsx}"],
+      // `scripts/` is listed because the gate scripts have tests too and the
+      // pattern used to stop at `src/`, so those files were collected by
+      // nobody and ran never. Coverage still measures `src/` alone, so the
+      // thresholds below are unaffected by what is picked up here.
+      include: [
+        "src/**/*.{test,spec}.{js,jsx}",
+        "scripts/**/*.{test,spec}.{js,mjs}",
+      ],
       coverage: {
         provider: "v8",
         include: ["src/**/*.{js,jsx}"],
