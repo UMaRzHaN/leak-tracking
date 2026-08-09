@@ -3,7 +3,7 @@ import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { STATUS } from "@/utils/status";
 import { hapticSuccess } from "@/utils/haptics";
 import { buildReopenedLeak } from "@/utils/reopenLeak";
-import { compareLeakIds } from "@/utils/leakOrder";
+import { compareLeakRecency } from "@/utils/leakOrder";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
@@ -72,7 +72,7 @@ export function useMainPageActions({
   );
 
   const recent = useMemo(() => {
-    let list = [...scopedData].sort((a, b) => compareLeakIds(b, a));
+    let list = [...scopedData].sort(compareLeakRecency);
     if (statusFilter !== ALL) {
       list = list.filter((l) => (l.status ?? STATUS.OPEN) === statusFilter);
     }

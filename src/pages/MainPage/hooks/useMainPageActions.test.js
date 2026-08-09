@@ -139,6 +139,33 @@ describe("useMainPageActions", () => {
       expect(result.current.recent[0].leak_id).toBe("12");
     });
 
+    // Records added in the app get a random UUID, so ordering by id showed the
+    // "last N records" in random order — the screen's own timestamps ran out of
+    // sequence. Ordering is by createdAt, the value the cards render.
+    it("orders the list by creation time, not by the random record id", () => {
+      const data = [
+        leakWith("leak-a", {
+          id: "f81d4fae-7dec-41d0-9f6c-000000000001",
+          createdAt: "2026-08-09T09:05:00.000Z",
+        }),
+        leakWith("leak-b", {
+          id: "00000000-7dec-41d0-9f6c-000000000002",
+          createdAt: "2026-08-09T09:11:00.000Z",
+        }),
+        leakWith("leak-c", {
+          id: "aaaaaaaa-7dec-41d0-9f6c-000000000003",
+          createdAt: "2026-08-09T09:08:00.000Z",
+        }),
+      ];
+      const { result } = renderActions({ data });
+
+      expect(result.current.recent.map((leak) => leak.createdAt)).toEqual([
+        "2026-08-09T09:11:00.000Z",
+        "2026-08-09T09:08:00.000Z",
+        "2026-08-09T09:05:00.000Z",
+      ]);
+    });
+
     it("filters the list by status and toggles the filter off on a second press", () => {
       const { result } = renderActions({
         data: [

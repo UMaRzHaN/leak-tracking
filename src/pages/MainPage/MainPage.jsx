@@ -67,18 +67,17 @@ export default function MainPage({
       open: t("mainPage.open"),
       inProgress: t("mainPage.inProgress"),
       resolved: t("mainPage.resolved"),
-      recentRecords: t("mainPage.recentRecords", {
-        count: RECENT_COUNT,
-      }),
+      // Both counts describe what is on screen, not the ceiling. The heading
+      // used to announce RECENT_COUNT regardless, so five records were filed
+      // under "last 8 records".
+      recentRecords: (count) => t("mainPage.recentRecords", { count }),
       showAll: (count) =>
         t("mainPage.showAll", {
           count,
         }),
-      shownRecent: t("mainPage.shownRecent", {
-        count: RECENT_COUNT,
-      }),
+      shownRecent: (count) => t("mainPage.shownRecent", { count }),
     }),
-    [RECENT_COUNT, t],
+    [t],
   );
 
   const activeStatusMeta =
@@ -128,7 +127,7 @@ export default function MainPage({
             className={s.filterDot}
             style={{ background: STATUS_META[statusFilter]?.color }}
           />
-          {activeStatusMeta.label} - {localeTexts.shownRecent}
+          {activeStatusMeta.label} - {localeTexts.shownRecent(recent.length)}
           <button
             className={s.filterClear}
             onClick={() => setStatusFilter(ALL)}
@@ -142,7 +141,7 @@ export default function MainPage({
         <div className={s.sectionHead}>
           <h2 className={s.sectionTitle}>
             {statusFilter === ALL
-              ? localeTexts.recentRecords
+              ? localeTexts.recentRecords(recent.length)
               : activeStatusMeta?.label}
           </h2>
           {/* Counts the selected location, not the project: the button leads
