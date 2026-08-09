@@ -424,10 +424,24 @@ ANDROID_VERSION_CODE, ANDROID_VERSION_NAME
 `npm run android:release` падает на первом шаге, подписанный APK/AAB собрать
 нельзя. Ключи создаёт владелец проекта.
 
-**Instrumented-тесты ни разу не выполнялись.** В CI job есть (API 24 и 35),
-локально нужен эмулятор. Приложение Android-first — Filesystem API и локальная
-Wi-Fi-синхронизация имеют native-половину, а именно её проверяют instrumented.
-JS-сторона синхронизации покрыта на 87,5 %, Kotlin — 84 unit-теста.
+**Instrumented-тесты выполнены — первый раз.** Приложение Android-first —
+Filesystem API и локальная Wi-Fi-синхронизация имеют native-половину, а именно
+её проверяют instrumented. JS-сторона синхронизации покрыта на 87,5 %,
+Kotlin — 84 unit-теста.
+
+Прогон на локальном эмуляторе (`Pixel_9`, arm64, API 37):
+`./gradlew :app:connectedDebugAndroidTest` — 15 тестов, 0 падений, 0 ошибок.
+Пропущен один, `sqliteStorageMeetsBudgets`: он под `assumeTrue` и требует
+`nativeStoragePerformance=true` плюс сборку с
+`VITE_ENABLE_NATIVE_STORAGE_PERFORMANCE=true`, так что CI его тоже пропускает.
+Пройдено в том числе `localSyncCreatesAndroidKeystoreTlsIdentity` и
+`partialTransferFailsClosed` — то самое поведение native-половины, которого
+статический сторож не касается.
+
+Оговорка: локальный прогон был на API 37, а матрица CI — 24 и 35. Установить
+образы 24/35 локально нечем: в SDK нет `cmdline-tools`, а значит и
+`sdkmanager`. API 24 — это `minSdkVersion`, самый рискованный уровень, и
+проверен он пока только в CI.
 
 Часть стыка теперь сторожится статически:
 `src/services/sync/localSyncNativeContract.test.js` разбирает

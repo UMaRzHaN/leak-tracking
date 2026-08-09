@@ -1,10 +1,22 @@
 name: CI
 
+# A push to a branch that also has an open pull request used to start the whole
+# workflow twice. That is expensive here: seven jobs, two of which boot an
+# emulator on a 45-minute timeout, against a 2 000-minute monthly budget. Push
+# is narrowed to main, so branch work is covered by the pull_request trigger
+# alone and every commit is built exactly once.
 on:
   push:
     branches:
-      - "**"
+      - main
   pull_request:
+
+# Superseded runs are cancelled on branches, where only the newest commit is
+# interesting. main is exempt: its runs are the release record, and cancelling
+# one would leave a commit on the release branch with no verdict.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
