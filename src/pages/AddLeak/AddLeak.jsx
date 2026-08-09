@@ -11,6 +11,7 @@ import { toNullableNumber } from "@/utils/normalize/toNullableNumber";
 import { STATUS } from "@/utils/status";
 import { priorityFromSpeed } from "@/utils/priority";
 import { dataUrlToBlob } from "@/utils/photoConversion";
+import { formatNativeError } from "@/utils/nativeErrorMessage";
 import { isPinkBagEquipment } from "@/utils/calculations/calculations";
 import { normalizeLeakTag } from "@/utils/leakIdentity";
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
@@ -31,7 +32,12 @@ export default function AddLeak({
 }) {
   const { t } = useLanguage();
   const { form, setForm } = useLeakFormContext();
-  const { deletePhoto, savePhoto, ready: photoReady } = usePhotoStorage();
+  const {
+    deletePhoto,
+    savePhoto,
+    ready: photoReady,
+    storageError,
+  } = usePhotoStorage();
   const { saveDraft, loadDraft, clearDraft } = useFormDraft(projectId);
   const { isSaving, run } = useSafeSave();
   const [draftPrompt, setDraftPrompt] = useState(false);
@@ -39,6 +45,7 @@ export default function AddLeak({
   const [notification, setNotification] = useState(null);
   const [savedLeak, setSavedLeak] = useState(null);
   const photoReadyRef = useRef(photoReady);
+  const storageErrorRef = useRef(storageError);
   const normalizedProjectId = String(projectId ?? "");
 
   const localeTexts = useMemo(
@@ -80,6 +87,10 @@ export default function AddLeak({
   useEffect(() => {
     photoReadyRef.current = photoReady;
   }, [photoReady]);
+
+  useEffect(() => {
+    storageErrorRef.current = storageError;
+  }, [storageError]);
 
   useEffect(() => {
     const profileName = userProfile?.name?.trim();
@@ -134,6 +145,8 @@ export default function AddLeak({
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
       if (photoReadyRef.current) return true;
+      // Хранилище уже отказало — ждать нечего, показываем причину сразу.
+      if (storageErrorRef.current) return false;
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
     return photoReadyRef.current;
@@ -217,9 +230,18 @@ export default function AddLeak({
             const ready = await waitForPhotoReady();
             if (!ready) {
               hapticWarning();
+              // Причина отказа хранилища важнее общего «повторите позже»:
+              // раньше она уходила только в storageError и нигде не всплывала.
+              const reason = formatNativeError(storageErrorRef.current);
+              if (reason) {
+                logger.error("Photo storage unavailable", reason);
+              }
               setNotification({
                 type: "error",
-                message: t("addLeak.validation.photoReady"),
+                message: reason
+                  ? t("addLeak.validation.photoStorageError", { reason })
+                  : t("addLeak.validation.photoReady"),
+                ...(reason ? { autoCloseMs: 8000 } : {}),
               });
               return null;
             }

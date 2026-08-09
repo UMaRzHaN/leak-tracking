@@ -11,7 +11,10 @@ export function isDirectoryExistsError(error) {
   return /already exists/i.test(String(error?.message ?? error));
 }
 
-/** @param {string} path @param {string} directory */
+/**
+ * @param {string} path
+ * @param {import("@capacitor/filesystem").Directory} directory
+ */
 export async function ensureNativeDirectory(path, directory) {
   try {
     await Filesystem.mkdir({ path, directory, recursive: true });

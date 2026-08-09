@@ -24,6 +24,7 @@ export const addLeak = {
     lat: "Latitude {{lat}} is outside the allowed range [-90, 90]",
     lng: "Longitude {{lng}} is outside the allowed range [-180, 180]",
     photoReady: "Photo is not ready for saving yet. Try again in a second.",
+    photoStorageError: "Photo storage is unavailable: {{reason}}",
   },
 
   errors: {

@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
   clearDraft: vi.fn(),
   savePhoto: vi.fn(),
   deletePhoto: vi.fn(),
+  photoReady: true,
+  photoStorageError: null,
   hapticSuccess: vi.fn(),
   hapticWarning: vi.fn(),
 }));
@@ -42,7 +44,8 @@ vi.mock("@/hooks/usePhotoStorage", () => ({
   usePhotoStorage: () => ({
     savePhoto: mocks.savePhoto,
     deletePhoto: mocks.deletePhoto,
-    ready: true,
+    ready: mocks.photoReady,
+    storageError: mocks.photoStorageError,
   }),
 }));
 vi.mock("@/hooks/useSafeSave", () => ({
@@ -109,6 +112,8 @@ describe("AddLeak orchestration", () => {
     mocks.clearDraft.mockReset();
     mocks.savePhoto.mockReset().mockResolvedValue("photos/leak.jpg");
     mocks.deletePhoto.mockReset().mockResolvedValue(undefined);
+    mocks.photoReady = true;
+    mocks.photoStorageError = null;
     mocks.hapticSuccess.mockReset();
     mocks.hapticWarning.mockReset();
     window.scrollTo = vi.fn();
@@ -143,6 +148,49 @@ describe("AddLeak orchestration", () => {
     expect(await screen.findByRole("alert")).not.toBeNull();
     expect(props.setData).not.toHaveBeenCalled();
     expect(mocks.hapticWarning).toHaveBeenCalled();
+  });
+
+  it("shows why photo storage failed instead of a generic retry notice", async () => {
+    // The reason used to stay in storageError, so a permanent mkdir failure
+    // looked like a transient "try again in a second" timeout.
+    mocks.photoReady = false;
+    mocks.photoStorageError = {
+      message: "Directory at '/data/.../photos/' already exists.",
+      code: "OS-PLUG-FILE-0010",
+    };
+    mocks.submittedRow = {
+      ...mocks.submittedRow,
+      photo: { raw: new Blob(["photo"], { type: "image/jpeg" }) },
+    };
+
+    const { props } = renderAddLeak();
+    fireEvent.click(screen.getByText("submit-leak"));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe(
+      "Photo storage is unavailable: Directory at '/data/.../photos/' already exists. (OS-PLUG-FILE-0010)",
+    );
+    expect(props.setData).not.toHaveBeenCalled();
+    expect(mocks.savePhoto).not.toHaveBeenCalled();
+    expect(mocks.hapticWarning).toHaveBeenCalled();
+  });
+
+  it("keeps the retry notice while photo storage is still initializing", async () => {
+    mocks.photoReady = false;
+    mocks.photoStorageError = null;
+    mocks.submittedRow = {
+      ...mocks.submittedRow,
+      photo: { raw: new Blob(["photo"], { type: "image/jpeg" }) },
+    };
+
+    const { props } = renderAddLeak();
+    fireEvent.click(screen.getByText("submit-leak"));
+
+    const alert = await screen.findByRole("alert", {}, { timeout: 4000 });
+    expect(alert.textContent).toBe(
+      "Photo is not ready for saving yet. Try again in a second.",
+    );
+    expect(props.setData).not.toHaveBeenCalled();
   });
 
   it("blocks saving when the user profile is empty", async () => {
