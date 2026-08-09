@@ -18,6 +18,7 @@ import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import { isLeakFormDirty } from "@/features/leakForm/utils/isLeakFormDirty";
 import { createRecordId } from "@/utils/createRecordId";
 import Notification from "@/components/ui/Notification/Notification";
+import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import AddLeakSuccess from "./components/AddLeakSuccess";
 import s from "./AddLeak.module.scss";
 
@@ -25,6 +26,7 @@ export default function AddLeak({
   data,
   setData,
   coords,
+  gpsEnabled = true,
   setPage,
   onBack,
   userProfile,
@@ -44,6 +46,12 @@ export default function AddLeak({
   const [draftReadyProjectId, setDraftReadyProjectId] = useState(null);
   const [notification, setNotification] = useState(null);
   const [savedLeak, setSavedLeak] = useState(null);
+  const [coordsPrompt, setCoordsPrompt] = useState(false);
+  // Holds the answer the sheet is waiting to give back to handleAdd. A promise
+  // rather than a callback because LeakForm awaits onAdd and only clears the
+  // form once it resolves with a saved row — asking the question inside that
+  // await keeps the contract, so cancelling leaves everything typed in place.
+  const coordsDecisionRef = useRef(null);
   const photoReadyRef = useRef(photoReady);
   const storageErrorRef = useRef(storageError);
   const normalizedProjectId = String(projectId ?? "");
@@ -71,6 +79,17 @@ export default function AddLeak({
         confirmLabel: t("addLeak.confirm.confirmLabel"),
         cancelLabel: t("addLeak.confirm.cancelLabel"),
       },
+      noCoords: {
+        title: t("addLeak.noCoords.title"),
+        // Two reasons produce the same empty coordinates and want different
+        // advice: one is fixed by a tap, the other by waiting or stepping
+        // outside.
+        description: gpsEnabled
+          ? t("addLeak.noCoords.noFix")
+          : t("addLeak.noCoords.gpsOff"),
+        confirmLabel: t("addLeak.noCoords.confirmLabel"),
+        cancelLabel: t("addLeak.noCoords.cancelLabel"),
+      },
       success: {
         title: t("addLeak.success.title"),
         description: t("addLeak.success.description"),
@@ -81,7 +100,7 @@ export default function AddLeak({
         leakRate: t("addLeak.success.leakRate"),
       },
     }),
-    [t],
+    [t, gpsEnabled],
   );
 
   useEffect(() => {
@@ -152,12 +171,33 @@ export default function AddLeak({
     return photoReadyRef.current;
   };
 
+  const settleCoordsPrompt = (proceed) => {
+    setCoordsPrompt(false);
+    const decide = coordsDecisionRef.current;
+    coordsDecisionRef.current = null;
+    decide?.(proceed);
+  };
+
   const handleAdd = async (row) => {
+    const lat = toNullableNumber(coords?.lat);
+    const lng = toNullableNumber(coords?.lng);
+
+    // A leak saved without coordinates is filtered out of the map, and until
+    // now that happened silently: the record existed in the database, never
+    // showed up on the map, and nothing said why. Asking first is not a
+    // blocker — plenty of leaks are logged where there is no signal — it just
+    // stops the loss from being invisible.
+    if (lat == null || lng == null) {
+      const proceed = await new Promise((resolve) => {
+        coordsDecisionRef.current = resolve;
+        setCoordsPrompt(true);
+      });
+      if (!proceed) return null;
+    }
+
     return run(async () => {
       try {
         const id = createRecordId();
-        const lat = toNullableNumber(coords?.lat);
-        const lng = toNullableNumber(coords?.lng);
 
         if (lat != null && !isValidLatitude(lat)) {
           hapticWarning();
@@ -339,6 +379,16 @@ export default function AddLeak({
       <Notification
         notification={notification}
         onClose={() => setNotification(null)}
+      />
+
+      <ConfirmSheet
+        open={coordsPrompt}
+        title={localeTexts.noCoords.title}
+        description={localeTexts.noCoords.description}
+        confirmLabel={localeTexts.noCoords.confirmLabel}
+        cancelLabel={localeTexts.noCoords.cancelLabel}
+        onConfirm={() => settleCoordsPrompt(true)}
+        onCancel={() => settleCoordsPrompt(false)}
       />
 
       {draftPrompt && (

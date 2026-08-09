@@ -164,6 +164,7 @@ export default function AppRoutes({
             data={data}
             setData={save}
             coords={coords}
+            gpsEnabled={gpsEnabled}
             setPage={setPage}
             onBack={() => goBack(prevPage)}
             userProfile={userProfile}

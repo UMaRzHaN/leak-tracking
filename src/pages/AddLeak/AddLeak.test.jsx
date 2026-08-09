@@ -322,4 +322,72 @@ describe("AddLeak orchestration", () => {
     expect(mocks.clearDraft).toHaveBeenCalled();
     expect(screen.queryByText("Restore")).toBeNull();
   });
+
+  // A leak without coordinates is filtered off the map, and it used to be
+  // saved that way silently — the record existed but never appeared, with
+  // nothing said about why.
+  describe("saving without coordinates", () => {
+    const noCoords = { coords: { lat: null, lng: null } };
+
+    it("asks before saving and holds the leak back until answered", async () => {
+      const { props } = renderAddLeak(noCoords);
+      fireEvent.click(screen.getByText("submit-leak"));
+
+      expect(
+        await screen.findByText("Save without coordinates?"),
+      ).toBeInTheDocument();
+      expect(props.setData).not.toHaveBeenCalled();
+    });
+
+    it("saves with empty coordinates once confirmed", async () => {
+      const { props } = renderAddLeak(noCoords);
+      fireEvent.click(screen.getByText("submit-leak"));
+      fireEvent.click(await screen.findByText("Save without coordinates"));
+
+      await waitFor(() => expect(props.setData).toHaveBeenCalledOnce());
+      expect(props.setData.mock.calls[0][0][0]).toMatchObject({
+        leak_id: "TAG-1",
+        lat: null,
+        lng: null,
+      });
+    });
+
+    // Cancelling has to leave the typed leak alone: LeakForm only clears the
+    // form when onAdd resolves with a saved row.
+    it("saves nothing when the prompt is dismissed", async () => {
+      const { props } = renderAddLeak(noCoords);
+      fireEvent.click(screen.getByText("submit-leak"));
+      fireEvent.click(await screen.findByText("Go back"));
+
+      await waitFor(() =>
+        expect(screen.queryByText("Save without coordinates?")).toBeNull(),
+      );
+      expect(props.setData).not.toHaveBeenCalled();
+      expect(screen.queryByText("saved-success")).toBeNull();
+    });
+
+    it("names the switched-off GPS as the reason when it is off", async () => {
+      renderAddLeak({ ...noCoords, gpsEnabled: false });
+      fireEvent.click(screen.getByText("submit-leak"));
+
+      expect(await screen.findByText(/GPS is off/)).toBeInTheDocument();
+    });
+
+    it("blames the missing fix when GPS is on", async () => {
+      renderAddLeak({ ...noCoords, gpsEnabled: true });
+      fireEvent.click(screen.getByText("submit-leak"));
+
+      expect(
+        await screen.findByText(/have not been determined yet/),
+      ).toBeInTheDocument();
+    });
+
+    it("does not ask when coordinates are known", async () => {
+      const { props } = renderAddLeak();
+      fireEvent.click(screen.getByText("submit-leak"));
+
+      await waitFor(() => expect(props.setData).toHaveBeenCalledOnce());
+      expect(screen.queryByText("Save without coordinates?")).toBeNull();
+    });
+  });
 });
