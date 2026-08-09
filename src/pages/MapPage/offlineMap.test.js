@@ -236,3 +236,190 @@ describe("offline map adapter", () => {
     adapter.destroy();
   });
 });
+
+describe("heatmap layer", () => {
+  // Sibling of the suite above, so its beforeEach does not reach here: without
+  // a reset of its own the shared Leaflet mock accumulates calls across tests.
+  beforeEach(() => {
+    vi.clearAllMocks();
+    leaflet.map = createMapMock();
+    leaflet.cluster = {
+      addTo: vi.fn(() => leaflet.cluster),
+      clearLayers: vi.fn(),
+    };
+    vi.stubGlobal("navigator", {
+      geolocation: { watchPosition: vi.fn(() => 7), clearWatch: vi.fn() },
+    });
+  });
+
+  function makeAdapter() {
+    return createOfflineMap(document.createElement("div"), {
+      center: [41, 69],
+      gpsEnabled: false,
+    });
+  }
+
+  it("adds no layer when nothing has usable coordinates", () => {
+    const adapter = makeAdapter();
+
+    adapter.setHeatmap([
+      { lat: null, lng: null },
+      { lat: NaN, lng: 2 },
+    ]);
+
+    expect(leaflet.map.removeLayer).not.toHaveBeenCalled();
+  });
+
+  it("creates the layer once and feeds it every update", () => {
+    const adapter = makeAdapter();
+
+    adapter.setHeatmap([{ lat: 41, lng: 69 }]);
+    adapter.setHeatmap([
+      { lat: 41, lng: 69 },
+      { lat: 42, lng: 70 },
+    ]);
+
+    // One layer, two data pushes: re-creating it would drop the canvas and
+    // flash the map on every filter change.
+    expect(leaflet.map.removeLayer).not.toHaveBeenCalled();
+  });
+
+  it("removes the layer when the last point goes away", () => {
+    const adapter = makeAdapter();
+    adapter.setHeatmap([{ lat: 41, lng: 69 }]);
+
+    adapter.setHeatmap([]);
+
+    expect(leaflet.map.removeLayer).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("destroy", () => {
+  // Sibling of the suite above, so its beforeEach does not reach here: without
+  // a reset of its own the shared Leaflet mock accumulates calls across tests.
+  beforeEach(() => {
+    vi.clearAllMocks();
+    leaflet.map = createMapMock();
+    leaflet.cluster = {
+      addTo: vi.fn(() => leaflet.cluster),
+      clearLayers: vi.fn(),
+    };
+    vi.stubGlobal("navigator", {
+      geolocation: { watchPosition: vi.fn(() => 7), clearWatch: vi.fn() },
+    });
+  });
+
+  function makeAdapter() {
+    return createOfflineMap(document.createElement("div"), {
+      center: [41, 69],
+      gpsEnabled: false,
+    });
+  }
+
+  it("tears the map down once", () => {
+    const adapter = makeAdapter();
+
+    adapter.destroy();
+    adapter.destroy();
+
+    expect(leaflet.map.remove).toHaveBeenCalledTimes(1);
+    expect(leaflet.map.off).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops the heatmap layer along with the map", () => {
+    const adapter = makeAdapter();
+    adapter.setHeatmap([{ lat: 41, lng: 69 }]);
+
+    adapter.destroy();
+
+    expect(leaflet.map.removeLayer).toHaveBeenCalled();
+  });
+
+  it("ignores heatmap updates after teardown", () => {
+    const adapter = makeAdapter();
+    adapter.destroy();
+    leaflet.map.removeLayer.mockClear();
+
+    adapter.setHeatmap([{ lat: 41, lng: 69 }]);
+
+    // A late update from an unmounted screen must not resurrect a layer on a
+    // map that is already gone.
+    expect(leaflet.map.removeLayer).not.toHaveBeenCalled();
+  });
+
+  it("survives a Leaflet failure while removing", () => {
+    const adapter = makeAdapter();
+    leaflet.map.remove.mockImplementationOnce(() => {
+      throw new Error("already detached");
+    });
+
+    expect(() => adapter.destroy()).not.toThrow();
+  });
+});
+
+describe("locating the user", () => {
+  // Sibling suite again — see the note above.
+  beforeEach(() => {
+    vi.clearAllMocks();
+    leaflet.map = createMapMock();
+    leaflet.markers.length = 0;
+    leaflet.cluster = {
+      addTo: vi.fn(() => leaflet.cluster),
+      clearLayers: vi.fn(),
+    };
+    vi.stubGlobal("navigator", {
+      geolocation: { watchPosition: vi.fn(() => 7), clearWatch: vi.fn() },
+    });
+  });
+
+  function makeAdapter(options = {}) {
+    return createOfflineMap(document.createElement("div"), {
+      center: [41, 69],
+      gpsEnabled: false,
+      ...options,
+    });
+  }
+
+  it("centres on the supplied fallback when there is no fix yet", () => {
+    const adapter = makeAdapter();
+
+    adapter.locateMe({ lat: 41.5, lng: 69.5 });
+
+    expect(leaflet.map.setView).toHaveBeenCalledWith(
+      [41.5, 69.5],
+      17,
+      expect.objectContaining({ animate: true }),
+    );
+  });
+
+  it("does nothing without a fix or a fallback", () => {
+    const adapter = makeAdapter();
+    leaflet.map.setView.mockClear();
+
+    adapter.locateMe(null);
+
+    expect(leaflet.map.setView).not.toHaveBeenCalled();
+  });
+
+  it("stays put after teardown", () => {
+    const adapter = makeAdapter();
+    adapter.destroy();
+    leaflet.map.setView.mockClear();
+
+    adapter.locateMe({ lat: 41.5, lng: 69.5 });
+
+    expect(leaflet.map.setView).not.toHaveBeenCalled();
+  });
+
+  it("removes the user marker when tracking is switched off", () => {
+    const adapter = makeAdapter({
+      gpsEnabled: true,
+      initialUserCoords: { lat: 41.2, lng: 69.2 },
+    });
+    leaflet.map.removeLayer.mockClear();
+
+    adapter.setGpsTracking(false);
+
+    expect(leaflet.map.removeLayer).toHaveBeenCalled();
+  });
+});
