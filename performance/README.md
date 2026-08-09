@@ -107,7 +107,8 @@ Then `cd android && ./gradlew assembleDebug installDebug`.
 The harness exposes `window.__importPerformance.run(options)` and writes its
 result to `files/LeakReports/performance-results/import.json`. Options are
 `photoCount`, `photoWidth`, `photoHeight`, `photoQuality`, `seed`,
-`concurrencies`, and `scenarios` (`backupImport`, `persist`, `reconcile`).
+`concurrencies`, and `scenarios` (`backupImport`, `persist`, `reconcile`,
+`hydrate`).
 Setting `VITE_IMPORT_PERFORMANCE_AUTORUN=true` starts a run three seconds after
 launch, reading overrides from `import-config.json` next to the result file.
 
@@ -174,7 +175,36 @@ So `DEFAULT_PHOTO_PERSIST_CONCURRENCY`, `DEFAULT_PHOTO_RECONCILE_CONCURRENCY`
 and `DEFAULT_REUSABLE_PHOTO_CONCURRENCY` are 2. The previous 3 was picked
 without measurement and happened to land in a local pessimum.
 
-`DEFAULT_ZIP_HYDRATE_CONCURRENCY` is untouched at 3: no scenario covers it, and
-it is a different workload — hydration inflates entries of an already-parsed
-ZIP in memory, while these numbers came from Filesystem writes. It needs its
-own scenario before it gets a number.
+### ZIP hydration
+
+`hydrateZipPhotos` got its own scenario because it is a different workload:
+these leaks come from an Excel-export ZIP whose photos are `zip:` references,
+and hydration extracts entries in memory instead of writing through the
+Filesystem bridge. Same 52,619,648-byte class of fixture, 60 photos, five
+sweeps, milliseconds:
+
+| Concurrency | Samples                 | Mean       | Spread    |
+| ----------- | ----------------------- | ---------- | --------- |
+| 1           | 261, 300, 282, 281, 292 | **283 ms** | 39 ms     |
+| 2           | 250, 259, 248, 268, 263 | **258 ms** | 20 ms     |
+| 3           | 254, 276, 257, 306, 274 | **273 ms** | **52 ms** |
+| 5           | 266, 268, 263, 274, 261 | **266 ms** | 13 ms     |
+| 8           | 242, 258, 256, 262, 268 | **257 ms** | 26 ms     |
+
+The whole range of means spans 26 ms while a single concurrency varies by up to
+52 ms between its own repeats — the noise is wider than the effect, so this
+constant has no measurable influence on time. Worst stalls were 4–25 ms
+throughout, never close to the 100 ms the persist sweep hit at 8.
+
+The reason is the archive layout: JPEG bytes are already compressed, JSZip
+stores rather than deflates them, and extraction is a memory slice. The whole
+pass costs about 270 ms against the 107 s of a full import — a quarter of one
+percent.
+
+Nor is there a memory argument for a smaller value: `photoCache` inside
+`hydrateZipPhotos` memoizes every entry for the duration of the call, so all 60
+blobs are alive by the end whether one or eight were in flight.
+
+`DEFAULT_ZIP_HYDRATE_CONCURRENCY` therefore stays at 3. It is the one constant
+here whose value does not matter, and changing it to match the others would
+imply a difference the measurement does not support.

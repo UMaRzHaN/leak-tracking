@@ -12,10 +12,13 @@ import {
 
 const PHOTO_KEYS = new Set(LEAK_PHOTO_FIELDS);
 
-// Still unmeasured, and deliberately no longer tied to the photoPipeline
-// constants: those were tuned against Filesystem writes, while hydration only
-// inflates entries of an already-parsed ZIP in memory. Borrowing their number
-// would look like evidence there is none of. See performance/README.md.
+// Measured and left alone: unlike the photoPipeline constants, this one does
+// not matter. Hydrating a 52.6 MB archive takes ~270 ms whatever the value —
+// across five sweeps the spread within one concurrency was wider than the gap
+// between concurrencies. JPEG bytes are already compressed, so JSZip stores
+// them and extraction is a memory slice, not inflate. Nor does the value trade
+// time for memory: photoCache below retains every blob for the whole call, so
+// peak footprint is the same at 1 as at 8. See performance/README.md.
 export const DEFAULT_ZIP_HYDRATE_CONCURRENCY = 3;
 
 function getMimeFromPath(path) {

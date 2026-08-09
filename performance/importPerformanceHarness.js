@@ -2,10 +2,12 @@ import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
 import { buildBackupZip } from "@/services/backup/backupExport";
 import { importBackupZip } from "@/services/backup/backupImport";
+import { getJSZip } from "@/services/backup/runtime";
 import {
   persistExcelImportPhotos,
   reconcileExcelImportPhotos,
 } from "@/services/import/photoPipeline";
+import { hydrateZipPhotos } from "@/services/import/zipPhotoHydration";
 
 const RESULT_DIRECTORY = "LeakReports/performance-results";
 const RESULT_PATH = `${RESULT_DIRECTORY}/import.json`;
@@ -260,6 +262,63 @@ async function buildFixtureArchive(options) {
   };
 }
 
+/**
+ * The ZIP that reaches hydrateZipPhotos is the app's own Excel export, whose
+ * photos are plain entries referenced as `zip:<name>`. Built with JSZip's
+ * defaults, matching exportLeaksWithPhotos: JPEG bytes are already compressed,
+ * so the archive stores them and hydration measures entry extraction rather
+ * than inflate.
+ */
+async function buildHydrationArchive(options) {
+  const { blobs, totalBytes } = await createPhotoBlobs(options);
+  const JSZip = (await getJSZip()).default;
+  const zip = new JSZip();
+  const names = blobs.map((blob, index) => {
+    const name = `photos/perf_photo_${index + 1}.jpg`;
+    zip.file(name, blob);
+    return name;
+  });
+  const archive = await zip.generateAsync({ type: "blob" });
+  return { archive, names, photoCount: blobs.length, photoBytes: totalBytes };
+}
+
+async function runHydrateConcurrencyScenario(options) {
+  const fixture = await buildHydrationArchive(options);
+  const JSZip = (await getJSZip()).default;
+  const runs = [];
+
+  for (const concurrency of options.concurrencies) {
+    // Reloaded per run: a JSZip instance holds on to what it has already
+    // handed out, so reusing one would measure the second run against a
+    // warmer archive than the first.
+    const zip = await JSZip.loadAsync(fixture.archive);
+    const parsed = {
+      leaks: fixture.names.map((name, index) =>
+        createFixtureLeak(index, `zip:${name}`),
+      ),
+      stats: {},
+    };
+
+    const measured = await measure(() =>
+      hydrateZipPhotos(parsed, zip, concurrency),
+    );
+    runs.push({
+      concurrency,
+      durationMs: measured.durationMs,
+      mainThread: measured.mainThread,
+      restoredPhotos: measured.value?.stats?.restoredPhotos ?? 0,
+    });
+  }
+
+  return {
+    name: "hydrateZipPhotos",
+    photoCount: fixture.photoCount,
+    photoBytes: fixture.photoBytes,
+    archiveBytes: fixture.archive.size,
+    runs,
+  };
+}
+
 async function runBackupImportScenario(options) {
   const fixture = await buildFixtureArchive(options);
   const measured = await withPhotoFolder("perf-backup-import", (savePhoto) =>
@@ -423,7 +482,7 @@ export async function runImportPerformance(rawOptions = {}) {
   const scenarios = new Set(
     Array.isArray(rawOptions.scenarios) && rawOptions.scenarios.length > 0
       ? rawOptions.scenarios
-      : ["backupImport", "persist", "reconcile"],
+      : ["backupImport", "persist", "reconcile", "hydrate"],
   );
 
   try {
@@ -435,6 +494,9 @@ export async function runImportPerformance(rawOptions = {}) {
     }
     if (scenarios.has("reconcile")) {
       result.scenarios.push(await runReconcileConcurrencyScenario(options));
+    }
+    if (scenarios.has("hydrate")) {
+      result.scenarios.push(await runHydrateConcurrencyScenario(options));
     }
     result.ok = true;
   } catch (error) {
