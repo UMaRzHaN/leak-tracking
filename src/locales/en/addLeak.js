@@ -21,13 +21,8 @@ export const addLeak = {
     cancelLabel: "Cancel",
   },
   noCoords: {
-    title: "Save without coordinates?",
-    gpsOff:
-      "GPS is off, so no coordinates will be recorded. The leak stays findable in the database but will not appear on the map.",
-    noFix:
-      "Coordinates have not been determined yet, so none will be recorded. The leak stays findable in the database but will not appear on the map.",
-    confirmLabel: "Save without coordinates",
-    cancelLabel: "Go back",
+    saved:
+      "The leak was saved without coordinates: the location could not be determined. It stays findable in the database but will not appear on the map.",
   },
   validation: {
     lat: "Latitude {{lat}} is outside the allowed range [-90, 90]",

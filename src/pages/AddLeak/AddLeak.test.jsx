@@ -323,71 +323,91 @@ describe("AddLeak orchestration", () => {
     expect(screen.queryByText("Restore")).toBeNull();
   });
 
-  // A leak without coordinates is filtered off the map, and it used to be
-  // saved that way silently — the record existed but never appeared, with
-  // nothing said about why.
+  // A leak without coordinates is dropped from the map, and it used to be saved
+  // that way silently. Now the receiver is switched on instead of the user
+  // being asked.
   describe("saving without coordinates", () => {
     const noCoords = { coords: { lat: null, lng: null } };
 
-    it("asks before saving and holds the leak back until answered", async () => {
-      const { props } = renderAddLeak(noCoords);
+    it("switches GPS on instead of asking", async () => {
+      const setGpsEnabled = vi.fn();
+      renderAddLeak({ ...noCoords, gpsEnabled: false, setGpsEnabled });
       fireEvent.click(screen.getByText("submit-leak"));
 
-      expect(
-        await screen.findByText("Save without coordinates?"),
-      ).toBeInTheDocument();
-      expect(props.setData).not.toHaveBeenCalled();
+      await waitFor(() => expect(setGpsEnabled).toHaveBeenCalledWith(true));
     });
 
-    it("saves with empty coordinates once confirmed", async () => {
-      const { props } = renderAddLeak(noCoords);
+    it("saves with the fix once the receiver reports one", async () => {
+      const { props, rerender } = renderAddLeak({
+        ...noCoords,
+        gpsEnabled: false,
+        setGpsEnabled: vi.fn(),
+      });
       fireEvent.click(screen.getByText("submit-leak"));
-      fireEvent.click(await screen.findByText("Save without coordinates"));
+
+      // The watch reports a position while the save is still waiting.
+      await act(async () => {
+        rerender(<AddLeak {...props} coords={{ lat: 41.3, lng: 69.2 }} />);
+      });
 
       await waitFor(() => expect(props.setData).toHaveBeenCalledOnce());
       expect(props.setData.mock.calls[0][0][0]).toMatchObject({
-        leak_id: "TAG-1",
+        lat: 41.3,
+        lng: 69.2,
+      });
+      expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("leaves GPS alone when it is already on", async () => {
+      const setGpsEnabled = vi.fn();
+      const { props, rerender } = renderAddLeak({
+        ...noCoords,
+        gpsEnabled: true,
+        setGpsEnabled,
+      });
+      fireEvent.click(screen.getByText("submit-leak"));
+      await act(async () => {
+        rerender(<AddLeak {...props} coords={{ lat: 41.3, lng: 69.2 }} />);
+      });
+
+      await waitFor(() => expect(props.setData).toHaveBeenCalledOnce());
+      expect(setGpsEnabled).not.toHaveBeenCalled();
+    });
+
+    // Underground the wait always expires. The leak still has to be saved —
+    // losing a filled-in form because there is no sky would be worse.
+    it("still saves and says so when no fix ever arrives", async () => {
+      vi.useFakeTimers();
+      const { props } = renderAddLeak({
+        ...noCoords,
+        gpsEnabled: false,
+        setGpsEnabled: vi.fn(),
+      });
+      fireEvent.click(screen.getByText("submit-leak"));
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(16000);
+      });
+
+      expect(props.setData).toHaveBeenCalledOnce();
+      expect(props.setData.mock.calls[0][0][0]).toMatchObject({
         lat: null,
         lng: null,
       });
-    });
-
-    // Cancelling has to leave the typed leak alone: LeakForm only clears the
-    // form when onAdd resolves with a saved row.
-    it("saves nothing when the prompt is dismissed", async () => {
-      const { props } = renderAddLeak(noCoords);
-      fireEvent.click(screen.getByText("submit-leak"));
-      fireEvent.click(await screen.findByText("Go back"));
-
-      await waitFor(() =>
-        expect(screen.queryByText("Save without coordinates?")).toBeNull(),
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /saved without coordinates/i,
       );
-      expect(props.setData).not.toHaveBeenCalled();
-      expect(screen.queryByText("saved-success")).toBeNull();
+      vi.useRealTimers();
     });
 
-    it("names the switched-off GPS as the reason when it is off", async () => {
-      renderAddLeak({ ...noCoords, gpsEnabled: false });
-      fireEvent.click(screen.getByText("submit-leak"));
-
-      expect(await screen.findByText(/GPS is off/)).toBeInTheDocument();
-    });
-
-    it("blames the missing fix when GPS is on", async () => {
-      renderAddLeak({ ...noCoords, gpsEnabled: true });
-      fireEvent.click(screen.getByText("submit-leak"));
-
-      expect(
-        await screen.findByText(/have not been determined yet/),
-      ).toBeInTheDocument();
-    });
-
-    it("does not ask when coordinates are known", async () => {
-      const { props } = renderAddLeak();
+    it("does not wait at all when coordinates are already known", async () => {
+      const setGpsEnabled = vi.fn();
+      const { props } = renderAddLeak({ setGpsEnabled });
       fireEvent.click(screen.getByText("submit-leak"));
 
       await waitFor(() => expect(props.setData).toHaveBeenCalledOnce());
-      expect(screen.queryByText("Save without coordinates?")).toBeNull();
+      expect(setGpsEnabled).not.toHaveBeenCalled();
+      expect(screen.queryByRole("alert")).toBeNull();
     });
   });
 });

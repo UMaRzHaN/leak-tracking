@@ -117,6 +117,7 @@ export default function AppRoutes({
   requestedMonitoringLeakIds,
   retryLoad,
   save,
+  setGpsEnabled,
   scopedData,
   setPage,
   setRequestedMonitoringLeakId,
@@ -165,6 +166,7 @@ export default function AppRoutes({
             setData={save}
             coords={coords}
             gpsEnabled={gpsEnabled}
+            setGpsEnabled={setGpsEnabled}
             setPage={setPage}
             onBack={() => goBack(prevPage)}
             userProfile={userProfile}

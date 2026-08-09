@@ -116,6 +116,7 @@ export default function App() {
         dataLoaded={dataLoaded}
         goBack={goBack}
         gpsEnabled={gpsEnabled}
+        setGpsEnabled={setGpsEnabled}
         handleCreateExcelCopy={handleCreateExcelCopy}
         handleImportIntoExisting={handleImportIntoExisting}
         handleImportZip={handleImportZip}
