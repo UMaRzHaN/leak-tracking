@@ -1,4 +1,11 @@
-const EXCEL_DATE_FORMAT = "dd.mm.yyyy";
+// The dots are escaped on purpose. In an Excel format code an unescaped `.`
+// is the decimal-separator placeholder, not a literal, so Excel renders it
+// with the separator of the viewer's locale: a Russian Excel turned
+// `dd.mm.yyyy` into `09,08,2026`. Worse than the look, a code that reads as a
+// number stops the column being treated as dates at all, so the autofilter
+// offered number filters instead of the year/month/day tree. `\.` is a
+// literal dot in every locale.
+const EXCEL_DATE_FORMAT = "dd\\.mm\\.yyyy";
 const EXCEL_TIME_FORMAT = "hh:mm:ss";
 const INTEGER_FORMAT = "#,##0";
 const DECIMAL_FORMAT = "#,##0.00";

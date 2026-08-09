@@ -36,7 +36,7 @@ describe("Excel export cell values", () => {
   });
 
   it("selects number formats by domain field", () => {
-    expect(getExcelColumnFormat("date")).toBe("dd.mm.yyyy");
+    expect(getExcelColumnFormat("date")).toBe("dd\\.mm\\.yyyy");
     expect(getExcelColumnFormat("time")).toBe("hh:mm:ss");
     expect(getExcelColumnFormat("leak_id")).toBe("General");
     expect(getExcelColumnFormat("roundNumber")).toBe("#,##0");
@@ -75,7 +75,7 @@ describe("Excel export cell values", () => {
     applyColumnFormats(sheet, ["leak_id", "date", "gasPercentage"]);
 
     expect(columns.get(1).numFmt).toBe("General");
-    expect(columns.get(2).numFmt).toBe("dd.mm.yyyy");
+    expect(columns.get(2).numFmt).toBe("dd\\.mm\\.yyyy");
     expect(columns.get(3).numFmt).toBe("0.0%");
   });
 

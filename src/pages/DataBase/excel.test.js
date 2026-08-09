@@ -500,7 +500,7 @@ describe("excel export helpers", () => {
       new Date(Date.UTC(2026, 6, 14)),
       excelTimeValue(new Date(2026, 6, 14, 13, 45, 12)),
     ]);
-    expect(sheet.getColumn(1).numFmt).toBe("dd.mm.yyyy");
+    expect(sheet.getColumn(1).numFmt).toBe("dd\\.mm\\.yyyy");
     expect(sheet.getColumn(2).numFmt).toBe("hh:mm:ss");
   });
 
@@ -669,7 +669,7 @@ describe("excel export helpers", () => {
     expect(monitoringSheet.rows[1].values[4]).toBe(
       excelTimeValue("2026-07-14T10:00:00.000Z"),
     );
-    expect(monitoringSheet.getColumn(4).numFmt).toBe("dd.mm.yyyy");
+    expect(monitoringSheet.getColumn(4).numFmt).toBe("dd\\.mm\\.yyyy");
     expect(monitoringSheet.getColumn(5).numFmt).toBe("hh:mm:ss");
     expect(monitoringSheet.getRow(2).getCell(10).value).toEqual({
       text: "Open photo",
@@ -741,7 +741,7 @@ describe("excel export helpers", () => {
       "",
       JSON.stringify([{ key: "leak_speed", from: 10, to: 15 }]),
     ]);
-    expect(historySheet.getColumn(3).numFmt).toBe("dd.mm.yyyy");
+    expect(historySheet.getColumn(3).numFmt).toBe("dd\\.mm\\.yyyy");
     expect(historySheet.getColumn(4).numFmt).toBe("hh:mm:ss");
   });
 
@@ -835,7 +835,9 @@ describe("excel export helpers", () => {
 
     const backupSheet = mocks.workbookInstances[0].sheets.at(-1);
     expect(backupSheet.getRow(7).getCell(4).value).toBeInstanceOf(Date);
-    expect(backupSheet.getRow(7).getCell(4).numFmt).toBe("dd.mm.yyyy hh:mm:ss");
+    expect(backupSheet.getRow(7).getCell(4).numFmt).toBe(
+      "dd\\.mm\\.yyyy hh:mm:ss",
+    );
     expect(backupSheet.getRow(11).getCell(4).value).toBe(5);
     expect(backupSheet.getRow(11).getCell(4).numFmt).toBe('"No. "0');
     expect(backupSheet.getRow(12).getCell(3).value).toBe(

@@ -4,7 +4,10 @@ const BACKUP_SHEET_NAME = "Project Backup";
 const BACKUP_MARKER = "LEAK_TRACKER_EXCEL_BACKUP";
 export const BACKUP_SCHEMA_VERSION = 1;
 const BACKUP_CHUNK_SIZE = 30_000;
-const EXCEL_DATE_TIME_FORMAT = "dd.mm.yyyy hh:mm:ss";
+// Dots escaped for the same reason as in cellValues.js: unescaped they are
+// the locale's decimal separator, not literal dots. The colons need no
+// escaping — they are literal in a time code.
+const EXCEL_DATE_TIME_FORMAT = "dd\\.mm\\.yyyy hh:mm:ss";
 const INTEGER_FORMAT = "#,##0";
 
 function parseTimestamp(value) {
