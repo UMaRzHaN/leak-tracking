@@ -30,7 +30,7 @@ const STEP_TITLE_KEYS = {
   "Примечание и фото": "noteAndPhoto",
 };
 
-function localizeStep(step, t, lang) {
+function localizeStep(step, t, lang, projectType) {
   return {
     ...step,
     title:
@@ -44,14 +44,20 @@ function localizeStep(step, t, lang) {
       // three project configs, all 25 of them are word-for-word identical per
       // field, so one key carries them.
       hint: t(`addLeak.fields.${field.key}.hint`, { defaultValue: "" }),
-      // Placeholders are examples drawn from the domain and three of them
-      // (location, object, category) genuinely differ per project type, so
-      // they still come from the config the field came from.
+      // Placeholders are domain examples, and three of them (location, object,
+      // category) differ per project type — hence the suffixed key, which
+      // falls back to the shared one for the other twenty-one.
+      placeholder: t(
+        [
+          `addLeak.fields.${field.key}.placeholder_${projectType}`,
+          `addLeak.fields.${field.key}.placeholder`,
+        ],
+        { defaultValue: "" },
+      ),
+      // Autocomplete options are dictionary values rather than interface text,
+      // so they are translated from the data side, not through a locale key.
       ...(lang === "en"
         ? {
-            placeholder: t(`addLeak.fields.${field.key}.placeholder`, {
-              defaultValue: field.placeholder ?? "",
-            }),
             options:
               field.type === "autocomplete"
                 ? localizeAutocompleteOptions(field.options ?? [], "en")
@@ -62,8 +68,8 @@ function localizeStep(step, t, lang) {
   };
 }
 
-function localizeSteps(steps, t, lang) {
-  return steps.map((step) => localizeStep(step, t, lang));
+function localizeSteps(steps, t, lang, projectType) {
+  return steps.map((step) => localizeStep(step, t, lang, projectType));
 }
 
 function hasRestorablePhoto(photo) {
@@ -130,8 +136,8 @@ export default function LeakForm({
     [leakPhotoRequired, projectConfig],
   );
   const translatedSteps = useMemo(
-    () => localizeSteps(STEPS, t, lang),
-    [STEPS, lang, t],
+    () => localizeSteps(STEPS, t, lang, activeProject?.type),
+    [STEPS, activeProject?.type, lang, t],
   );
 
   const COPY_KEYS = useMemo(() => {

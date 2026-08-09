@@ -6,14 +6,14 @@ import { translation as ru } from "@/locales/ru";
 
 const LANGUAGES = { ru, en };
 
-// Keys English defines and Russian does not, because those Russian strings
-// still live in the step configs rather than here. Only placeholders are left:
-// they are examples drawn from the domain, and three of them (location, object,
-// category) genuinely differ per project type, which a single key cannot carry.
-// Hints left this list once measurement showed all 25 of them are identical
-// across the three configs. Listed so the parity check still catches anything
-// new. `*` matches one key segment. This list may only shrink.
-const RUSSIAN_STRINGS_STILL_AT_CALL_SITES = ["addLeak.fields.*.placeholder"];
+// Empty on purpose: every English key now has a Russian counterpart. Hints
+// moved once measurement showed all 25 identical across the three project
+// configs; placeholders followed, with a `_<projectType>` suffix for the three
+// that genuinely differ. Kept as a mechanism so a new call-site string has
+// somewhere to be declared — and so the test below fails if it is declared and
+// then quietly forgotten. `*` matches one key segment. This list may only
+// shrink.
+const RUSSIAN_STRINGS_STILL_AT_CALL_SITES = [];
 
 function flattenKeys(node, prefix = "") {
   return Object.entries(node)

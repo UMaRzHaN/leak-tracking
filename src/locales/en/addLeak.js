@@ -70,13 +70,16 @@ export const addLeak = {
     },
     object: {
       label: "Object",
-      placeholder: "e.g. Basement of a residential building",
       hint: "Object where the leak was recorded",
+      placeholder_downstream: "e.g. Basement of a residential building",
+      placeholder_midstream: "e.g. AVOG-1",
+      placeholder_upstream: "e.g. drain line",
     },
     category: {
       label: "Category",
-      placeholder: "e.g. Cabinet and regulator stations",
       hint: "Leak category",
+      placeholder_downstream: "e.g. Cabinet and regulator stations",
+      placeholder_upstream: "e.g. Well",
     },
     leak_id: {
       label: "Tag",
@@ -125,8 +128,9 @@ export const addLeak = {
     },
     location: {
       label: "Location",
-      placeholder: "e.g. workshop A of compressor units",
       hint: "Area where the leak was recorded",
+      placeholder_midstream: "e.g. compressor hall A",
+      placeholder_upstream: "e.g. well 1",
     },
     subdivision: {
       label: "Subdivision",
