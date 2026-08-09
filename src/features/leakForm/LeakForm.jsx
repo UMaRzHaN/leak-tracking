@@ -40,16 +40,17 @@ function localizeStep(step, t, lang) {
     fields: step.fields.map((field) => ({
       ...field,
       label: shortFieldLabel(field.key, t, field.label),
-      // Placeholders and hints are the one part of a field that still differs
-      // per project type, so Russian reads them from the config it came from.
-      // English has only one set of them, in the locale.
+      // Hints read from the locale in both languages: measured across the
+      // three project configs, all 25 of them are word-for-word identical per
+      // field, so one key carries them.
+      hint: t(`addLeak.fields.${field.key}.hint`, { defaultValue: "" }),
+      // Placeholders are examples drawn from the domain and three of them
+      // (location, object, category) genuinely differ per project type, so
+      // they still come from the config the field came from.
       ...(lang === "en"
         ? {
             placeholder: t(`addLeak.fields.${field.key}.placeholder`, {
               defaultValue: field.placeholder ?? "",
-            }),
-            hint: t(`addLeak.fields.${field.key}.hint`, {
-              defaultValue: field.hint ?? "",
             }),
             options:
               field.type === "autocomplete"

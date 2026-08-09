@@ -15,14 +15,12 @@ export const STEPS = [
         key: "district",
         label: "Район",
         placeholder: "напр. Ярославский",
-        hint: "Административный район города, в котором зафиксирована утечка",
       },
       {
         type: "input",
         key: "locality",
         label: "Населенный пункт",
         placeholder: "напр. Ярославль",
-        hint: "Город или населенный пункт",
       },
       {
         type: "autocomplete",
@@ -30,7 +28,6 @@ export const STEPS = [
         label: "Адрес",
         options: Object.values(addresses).flat(),
         placeholder: "напр. ул. Ленина, д. 1, кв. 1",
-        hint: "Улица, дом, квартира",
       },
       {
         type: "autocomplete",
@@ -38,7 +35,6 @@ export const STEPS = [
         label: "Объект",
         options: Object.values(objects).flat(),
         placeholder: "напр. Подвал жилого дома",
-        hint: "Объект, в котором зафиксирована утечка",
       },
       {
         type: "autocomplete",
@@ -46,7 +42,6 @@ export const STEPS = [
         label: "Категория",
         options: Object.values(categories_down).flat(),
         placeholder: "напр. Шкафные и регуляторные пункты",
-        hint: "Категория утечки",
       },
       {
         type: "input",
@@ -55,7 +50,6 @@ export const STEPS = [
         required: true,
         number: true,
         placeholder: "напр. 4242",
-        hint: "Уникальный номер на физическом маркере, прикреплённом к месту утечки",
       },
       {
         type: "autocomplete",
@@ -63,7 +57,6 @@ export const STEPS = [
         label: "Компонент",
         options: Object.values(components).flat(),
         placeholder: "напр. Кран Шаровый",
-        hint: "Деталь или узел, из которого зафиксирована утечка",
       },
       {
         type: "input",
@@ -72,7 +65,6 @@ export const STEPS = [
         number: true,
         required: true,
         placeholder: "напр. 1042",
-        hint: "Номер видеозаписи из прибора (OGI)",
       },
       {
         type: "input",
@@ -80,7 +72,6 @@ export const STEPS = [
         label: "Давление",
         number: true,
         placeholder: "напр. 4.5",
-        hint: "Рабочее давление в трубопроводе, атм",
       },
       {
         type: "input",
@@ -88,7 +79,6 @@ export const STEPS = [
         label: "Температура",
         number: true,
         placeholder: "напр. 20",
-        hint: "Температура рабочей среды, °C",
       },
       {
         type: "input",
@@ -97,7 +87,6 @@ export const STEPS = [
         number: true,
         required: true,
         placeholder: "напр. 1.5",
-        hint: "Измеренная скорость утечки по прибору, л/мин",
       },
     ],
   },

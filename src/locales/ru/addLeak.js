@@ -53,91 +53,117 @@ export const addLeak = {
     noteAndPhoto: "Примечание и фото",
   },
 
-  // Placeholders and hints still live in the step configs: their Russian
-  // text differs per project type, which a single key here cannot carry.
+  // Hints live here for both languages. Placeholders still come from the step
+  // configs: they are domain examples, and three of them (location, object,
+  // category) differ per project type.
   fields: {
     district: {
       label: "Район",
+      hint: "Административный район города, в котором зафиксирована утечка",
     },
     locality: {
       label: "Населенный пункт",
+      hint: "Город или населенный пункт",
     },
     address: {
       label: "Адрес",
+      hint: "Улица, дом, квартира",
     },
     object: {
       label: "Объект",
+      hint: "Объект, в котором зафиксирована утечка",
     },
     category: {
       label: "Категория",
+      hint: "Категория утечки",
     },
     leak_id: {
       label: "Индивидуальный номер утечки",
       shortLabel: "Бирка",
+      hint: "Уникальный номер на физическом маркере, прикреплённом к месту утечки",
     },
     component: {
       label: "Компонент",
+      hint: "Деталь или узел, из которого зафиксирована утечка",
     },
     video_id: {
       label: "Индивидуальный номер видео",
       shortLabel: "Видео",
+      hint: "Номер видеозаписи из прибора (OGI)",
     },
     pressure: {
       label: "Давление, атм",
       shortLabel: "Давление",
+      hint: "Рабочее давление в трубопроводе, атм",
     },
     temperature: {
       label: "Температура, °C",
       shortLabel: "Температура",
+      hint: "Температура рабочей среды, °C",
     },
     leak_speed: {
       label: "Скорость утечки, л/мин",
       shortLabel: "Скорость",
+      hint: "Измеренная скорость утечки по прибору, л/мин",
     },
     field: {
       label: "УМГ",
+      hint: "Наименование управления магистральных газопроводов",
     },
     station: {
       label: "Компрессорная станция",
+      hint: "Наименование компрессорной станции",
     },
     location: {
       label: "Локация",
+      hint: "Участок, на котором зафиксирована утечка",
     },
     subdivision: {
       label: "Подразделение",
+      hint: "Наименование подразделения, в котором зафиксирована утечка",
     },
     deposit: {
       label: "Месторождение",
+      hint: "Наименование месторождения, на котором зафиксирована утечка",
     },
     leak_cause: {
       label: "Причина утечки",
+      hint: "Установленная или предполагаемая причина возникновения утечки",
     },
     leak_description: {
       label: "Описание утечки",
+      hint: "Характер и место утечки: тип соединения, видимые повреждения",
     },
     technological_solution: {
       label: "Технологическое решение",
       shortLabel: "Техрешение",
+      hint: "Предполагаемый способ устранения утечки",
     },
     repair_recommendation: {
       label: "Решение / План устранения",
       shortLabel: "План устранения",
+      hint: "Способ устранения без или с остановкой оборудования",
     },
     materials_equipment: {
       label: "Материалы и оборудование",
       shortLabel: "МТР ремонта",
+      hint: "Предполагаемые материалы и оборудование для устранения",
     },
     actuator_type: {
       label: "Тип привода",
+      hint: "Ручной, электрический, пневматический и т.д.",
     },
     connection_type: {
       label: "Тип присоединения",
+      hint: "Фланцевое, резьбовое, сварное и т.д.",
     },
     installation_type: {
       label: "Тип установки",
+      hint: "Надземная, подземная, внутри здания и т.д.",
     },
     note: {
       label: "Примечание",
+      hint: "Любые дополнительные сведения: условия обнаружения, сопутствующие дефекты",
     },
     photo: {
       label: "Фото утечки",

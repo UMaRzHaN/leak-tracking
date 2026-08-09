@@ -27,7 +27,6 @@ export function makeDescriptionStep(extraFields = []) {
         label: "Описание утечки",
         options: Object.values(description).flat(),
         placeholder: "напр. трещина",
-        hint: "Характер и место утечки: тип соединения, видимые повреждения",
       },
       {
         type: "autocomplete",
@@ -35,7 +34,6 @@ export function makeDescriptionStep(extraFields = []) {
         label: "Техрешение",
         options: Object.values(solutions).flat(),
         placeholder: "напр. Ревизия",
-        hint: "Предполагаемый способ устранения утечки",
       },
       {
         type: "autocomplete",
@@ -43,7 +41,6 @@ export function makeDescriptionStep(extraFields = []) {
         label: "План устранения",
         options: Object.values(recommendations).flat(),
         placeholder: "напр. Устранение без остановки",
-        hint: "Способ устранения без или с остановкой оборудования",
       },
       {
         type: "autocomplete",
@@ -51,7 +48,6 @@ export function makeDescriptionStep(extraFields = []) {
         label: "МТР ремонта",
         options: Object.values(materials).flat(),
         placeholder: "напр. сальник",
-        hint: "Предполагаемые материалы и оборудование для устранения",
       },
       {
         type: "autocomplete",
@@ -59,7 +55,6 @@ export function makeDescriptionStep(extraFields = []) {
         label: "Тип привода",
         options: Object.values(actuator_type).flat(),
         placeholder: "напр. ручной",
-        hint: "Ручной, электрический, пневматический и т.д.",
       },
       {
         type: "autocomplete",
@@ -67,7 +62,6 @@ export function makeDescriptionStep(extraFields = []) {
         label: "Тип присоединения",
         options: Object.values(connection_type).flat(),
         placeholder: "напр. фланцевое соединение",
-        hint: "Фланцевое, резьбовое, сварное и т.д.",
       },
       {
         type: "autocomplete",
@@ -75,7 +69,6 @@ export function makeDescriptionStep(extraFields = []) {
         label: "Тип установки",
         options: Object.values(installation_type).flat(),
         placeholder: "напр. надземная",
-        hint: "Надземная, подземная, внутри здания и т.д.",
       },
     ],
   };
@@ -88,7 +81,6 @@ export const PHOTO_STEP = {
       type: "textarea",
       key: "note",
       label: "Примечание",
-      hint: "Любые дополнительные сведения: условия обнаружения, сопутствующие дефекты",
     },
     { type: "photo", key: "photo", label: "Фото утечки", required: true },
   ],
