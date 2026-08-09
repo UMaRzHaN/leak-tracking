@@ -2,6 +2,7 @@ import { Filesystem, Directory } from "@capacitor/filesystem";
 import { isNative } from "@/utils/platform";
 import { compressImage } from "./compressImage";
 import { idb } from "./idb";
+import { ensureNativeDirectory } from "./nativeDirectory";
 import { isPhotoPrepared } from "@/utils/photoPreparation";
 import {
   invalidateNativePhotoCachePath,
@@ -134,11 +135,7 @@ function ensurePhotoFolder(folderName) {
 
   const folder = getPhotoFolder(folderName);
   if (!photoFolderPromises.has(folder)) {
-    const pending = Filesystem.mkdir({
-      path: folder,
-      directory: Directory.Data,
-      recursive: true,
-    })
+    const pending = ensureNativeDirectory(folder, Directory.Data)
       .catch((error) => {
         photoFolderPromises.delete(folder);
         throw error;

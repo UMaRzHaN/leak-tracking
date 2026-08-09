@@ -64,6 +64,31 @@ describe("PhotoRepository on Android", () => {
     });
   });
 
+  it("treats an existing photo folder as prepared", async () => {
+    // @capacitor/filesystem 8 rejects mkdir on an existing directory even with
+    // recursive: true, so every launch after the first one hit this path.
+    mocks.mkdir.mockRejectedValue(
+      Object.assign(
+        new Error(
+          "Directory at 'LeakReports/native_existing/photos' already exists, cannot be overwritten.",
+        ),
+        { code: "OS-PLUG-FILE-0010" },
+      ),
+    );
+
+    await expect(
+      PhotoRepository.prepare({ folderName: "native_existing" }),
+    ).resolves.toBeUndefined();
+
+    await expect(
+      PhotoRepository.save(new Blob(["photo"], { type: "image/jpeg" }), {
+        leakId: "leak",
+        folderName: "native_existing",
+      }),
+    ).resolves.toMatch(/^data:\/\/LeakReports\/native_existing\/photos\//);
+    expect(mocks.writeFile).toHaveBeenCalledOnce();
+  });
+
   it("retries folder preparation after a mkdir failure", async () => {
     const error = new Error("mkdir failed");
     mocks.mkdir.mockRejectedValueOnce(error).mockResolvedValueOnce(undefined);

@@ -10,6 +10,7 @@ import {
   saveNativeProject as saveLegacyNativeProject,
   writeNativeProjectSnapshot as writeLegacyNativeProjectSnapshot,
 } from "@/repositories/legacyNativeLeakStorage";
+import { ensureNativeDirectory } from "@/repositories/nativeDirectory";
 import {
   createNativeSqliteMutation,
   shouldReplaceNativeSqliteDataset,
@@ -57,11 +58,7 @@ async function writeSqliteMarker(folderName) {
   const path = getSqliteMarkerPath(folderName);
   const directory = path.substring(0, path.lastIndexOf("/"));
   try {
-    await Filesystem.mkdir({
-      path: directory,
-      directory: Directory.Data,
-      recursive: true,
-    });
+    await ensureNativeDirectory(directory, Directory.Data);
     await Filesystem.writeFile({
       path,
       directory: Directory.Data,
