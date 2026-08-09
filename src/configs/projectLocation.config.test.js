@@ -41,4 +41,23 @@ describe("project location hierarchy", () => {
       last: "address",
     });
   });
+
+  // The AddLeak form asks for the levels in the order its steps list them, and
+  // a form that asks for the district before the town it sits in reads as
+  // backwards even when the stored data is fine. Tying the two together means
+  // reordering the hierarchy cannot quietly leave the form behind.
+  it.each(Object.keys(PROJECT_LOCATION_CONFIG))(
+    "%s asks for location levels in hierarchy order",
+    (projectType) => {
+      const { main, secondary, last } = PROJECT_LOCATION_CONFIG[projectType];
+      const levels = [main, secondary, last];
+
+      const askedInForm = PROJECTS[projectType].steps.steps
+        .flatMap((step) => step.fields ?? [])
+        .map((field) => field.key)
+        .filter((key) => levels.includes(key));
+
+      expect(askedInForm).toEqual(levels);
+    },
+  );
 });
