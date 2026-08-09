@@ -413,16 +413,25 @@ i18n-библиотек: initial gzip 122 633 против 123 152 до всей
 
 ### Блокеры выпуска Android
 
-**Подпись релиза не настроена.** `node scripts/verify-android-signing.mjs`:
+**Подпись релиза — сделана.** `npm run android:release` прошёл целиком впервые:
+собран `app-release.apk`, `versionCode=1`, `versionName=1.0.0`. Отпечаток сверен
+с README сравнением строк, а не глазами:
 
 ```
-Android release is not configured. Missing: ANDROID_KEYSTORE_PATH,
-ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD,
-ANDROID_VERSION_CODE, ANDROID_VERSION_NAME
+b56e337c377ed17a7534e0c86c055f735446e137be7bc8b83713a8d2a47f1527
 ```
 
-`npm run android:release` падает на первом шаге, подписанный APK/AAB собрать
-нельзя. Ключи создаёт владелец проекта.
+Подпись схемами v2 и v3, один подписант, DN совпадает. APK установлен на
+устройство и запускается без исключений.
+
+Шесть переменных окружения задаются вне репозитория; keystore и пароли в
+историю не попадали, `.gitignore` по-прежнему отклоняет `*.jks`, `*.keystore`,
+`*.p12`.
+
+В цепочку добавлен `check:android-r8` — он читает отчёты R8 после
+`assembleRelease` и падает, если из рантайма Capacitor пропали аннотации
+плагинов. Без него релиз, в котором камера и геолокация падают по нажатию,
+проходил все гейты (см. ниже).
 
 **Instrumented-тесты выполнены — первый раз.** Приложение Android-first —
 Filesystem API и локальная Wi-Fi-синхронизация имеют native-половину, а именно
