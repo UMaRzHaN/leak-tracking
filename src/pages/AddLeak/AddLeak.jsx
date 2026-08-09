@@ -182,24 +182,30 @@ export default function AddLeak({
     return null;
   };
 
-  const handleAdd = async (row) => {
-    let { lat, lng } = readCoords();
+  // The wait for a fix belongs inside `run`, not before it. `run` is what
+  // raises `isSaving` — which disables the Save button and switches its label —
+  // and what arms the re-entry guard. Waiting outside left the button looking
+  // idle for as long as fifteen seconds, so it got tapped again, and each tap
+  // opened its own wait: two that finished apart would each save, filing the
+  // same leak twice.
+  const handleAdd = async (row) =>
+    run(async () => {
+      let { lat, lng } = readCoords();
 
-    // A leak without coordinates is dropped from the map, and it used to be
-    // saved that way silently. Rather than ask, switch the receiver on and give
-    // it a moment: the common case is someone who simply left GPS off, and for
-    // them this costs one wait instead of one decision. Where there is no sky —
-    // a basement, a shop floor — no amount of waiting helps, so the save still
-    // goes through and says what was lost.
-    if (lat == null || lng == null) {
-      if (!gpsEnabled) setGpsEnabled?.(true);
-      const fix = await waitForCoords();
-      if (fix) ({ lat, lng } = fix);
-    }
+      // A leak without coordinates is dropped from the map, and it used to be
+      // saved that way silently. Rather than ask, switch the receiver on and
+      // give it a moment: the common case is someone who simply left GPS off,
+      // and for them this costs one wait instead of one decision. Where there
+      // is no sky — a basement, a shop floor — no amount of waiting helps, so
+      // the save still goes through and says what was lost.
+      if (lat == null || lng == null) {
+        if (!gpsEnabled) setGpsEnabled?.(true);
+        const fix = await waitForCoords();
+        if (fix) ({ lat, lng } = fix);
+      }
 
-    const savedWithoutCoords = lat == null || lng == null;
+      const savedWithoutCoords = lat == null || lng == null;
 
-    return run(async () => {
       try {
         const id = createRecordId();
 
@@ -355,7 +361,6 @@ export default function AddLeak({
         return null;
       }
     });
-  };
 
   const successChips = useMemo(() => {
     if (!savedLeak) return [];

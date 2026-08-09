@@ -48,9 +48,10 @@ vi.mock("@/hooks/usePhotoStorage", () => ({
     storageError: mocks.photoStorageError,
   }),
 }));
-vi.mock("@/hooks/useSafeSave", () => ({
-  useSafeSave: () => ({ isSaving: false, run: (operation) => operation() }),
-}));
+// useSafeSave is deliberately NOT mocked. Its re-entry guard is the thing that
+// stops a second tap from filing a second leak, and a stub that just calls the
+// operation reports success while the guard is gone — which is exactly how the
+// double-save regression reached a phone unnoticed.
 vi.mock("@/app/hooks/useLanguage", async () => {
   const { englishLanguageHook } = await import("@/test/translate");
   return englishLanguageHook();
@@ -397,6 +398,30 @@ describe("AddLeak orchestration", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(
         /saved without coordinates/i,
       );
+      vi.useRealTimers();
+    });
+
+    // The wait used to sit outside `run`, so isSaving stayed false and the Save
+    // button stayed live: it got tapped again, and each tap opened its own wait.
+    // Two waits ending apart each reached the save and filed the leak twice.
+    it("files one leak however many times Save is tapped during the wait", async () => {
+      vi.useFakeTimers();
+      const { props } = renderAddLeak({
+        ...noCoords,
+        gpsEnabled: false,
+        setGpsEnabled: vi.fn(),
+      });
+
+      const button = screen.getByText("submit-leak");
+      fireEvent.click(button);
+      fireEvent.click(button);
+      fireEvent.click(button);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(16000);
+      });
+
+      expect(props.setData).toHaveBeenCalledOnce();
       vi.useRealTimers();
     });
 
