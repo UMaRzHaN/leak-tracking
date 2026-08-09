@@ -4,30 +4,12 @@ import { useEffectiveProjectConfig } from "@/app/project/hooks/useEffectiveProje
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useLanguage } from "@/app/hooks/useLanguage";
-import { formatDate } from "@/utils/locale";
 import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { readProjectSettings } from "@/app/project/projectSettings";
 import { readMonitoringRound } from "@/utils/monitoringRound";
 import { readProjectSyncStateAsync } from "@/services/sync/projectSyncState";
 import { buildLeakCalculationParams } from "@/utils/calculationParams";
-
-function fmtTs(ts, lang) {
-  if (!ts) return "";
-
-  const date = new Date(ts);
-  if (!Number.isFinite(date.getTime())) return "";
-
-  return formatDate(
-    date,
-    {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    },
-    lang,
-  );
-}
 
 function getRepairAt(row) {
   if (row.repairAt) return row.repairAt;
@@ -48,26 +30,31 @@ function round2(value) {
     : value;
 }
 
-export function prepareRows(data, lang, t, projectVars = {}) {
+// Timestamps leave here raw — as numbers, not as text. They used to be run
+// through Intl first and parsed back into dates by the Excel layer, and that
+// round trip lost information: with an English interface Intl writes 9 October
+// as `10/09/2026`, the parser reads the leading number as the day, and the
+// export silently reported 10 September. Every date whose day was 12 or lower
+// swapped its day and month. Nothing needs the text form anyway — the column
+// carries a date format, so Excel renders it in the viewer's own locale.
+export function prepareRows(data, t, projectVars = {}) {
   return data.map((row) => ({
     ...row,
     gasPercentage: buildLeakCalculationParams(row, projectVars).gasPercentage,
     status: getStatusLabel(row.status ?? STATUS.OPEN, t),
-    date:
-      row.date ??
-      (row.created_at ? formatDate(Number(row.created_at), {}, lang) : ""),
+    date: row.date ?? (row.created_at ? Number(row.created_at) : ""),
     Total_Annual_Methane_Loss_m3_y: round2(row.Total_Annual_Methane_Loss_m3_y),
     Emissions_t_CO2eq_year: round2(row.Emissions_t_CO2eq_year),
     photo: row.photo ? t("database.export.hasPhoto") : "",
     photo_after: row.photo_after ? t("database.export.hasPhoto") : "",
     photo_repair: row.photo_repair ? t("database.export.hasPhoto") : "",
-    repairAt: fmtTs(getRepairAt(row), lang),
-    resolvedAt: fmtTs(row.resolvedAt, lang),
+    repairAt: getRepairAt(row) ?? "",
+    resolvedAt: row.resolvedAt ?? "",
   }));
 }
 
 export function useDataBaseExport({ displayed, notify }) {
-  const { lang, t } = useLanguage();
+  const { t } = useLanguage();
   const [isExporting, setIsExporting] = useState(false);
   const projectConfig = useEffectiveProjectConfig();
   const { headers: excelHeaders, keysOrder: excelKeys } =
@@ -93,7 +80,7 @@ export function useDataBaseExport({ displayed, notify }) {
         ]);
       const result = await exportToExcelFile(
         displayed,
-        prepareRows(displayed, lang, t, vars),
+        prepareRows(displayed, t, vars),
         excelHeaders,
         excelKeys,
         `!Database_${activeProject?.name || "no_name"}`,
@@ -130,7 +117,6 @@ export function useDataBaseExport({ displayed, notify }) {
     excelKeys,
     idbGetPhoto,
     isExporting,
-    lang,
     monitoringExportMode,
     notify,
     t,

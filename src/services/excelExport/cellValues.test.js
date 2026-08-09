@@ -26,6 +26,27 @@ describe("Excel export cell values", () => {
     expect(parseTimestamp("")).toBeNull();
   });
 
+  // Comma and hyphen used to miss the pattern and fall through to
+  // `new Date(text)`, which V8 reads as month-day-year and builds in local
+  // time: 9 October came back as 10 September, a day earlier again east of
+  // UTC. Every separator has to land on the same instant, day-first.
+  it("reads every separator as the same day-first date", () => {
+    for (const text of [
+      "09.10.2026",
+      "09,10,2026",
+      "09-10-2026",
+      "09/10/2026",
+    ]) {
+      expect(parseTimestamp(text).toISOString()).toBe(
+        "2026-10-09T00:00:00.000Z",
+      );
+    }
+
+    expect(parseTimestamp("09,10,2026, 14:30").toISOString()).toBe(
+      "2026-10-09T14:30:00.000Z",
+    );
+  });
+
   it("converts clock values to Excel day fractions", () => {
     expect(toExcelTimeValue("12:00")).toBe(0.5);
     expect(toExcelTimeValue("06:00:00")).toBe(0.25);

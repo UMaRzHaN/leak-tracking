@@ -60,8 +60,15 @@ export function parseTimestamp(value) {
   const text = String(value ?? "").trim();
   if (!text) return null;
 
+  // Comma and hyphen belong here next to dot and slash. Without them a date
+  // like `09,10,2026` fell through to `new Date(text)`, and V8 reads that as
+  // the American month-day-year: 9 October came back as 10 September. The
+  // fallback also builds in local time, so at UTC+5 the result landed on the
+  // previous day once ExcelJS converted it to a serial number. Matching here
+  // keeps both bugs out — this branch is day-first, which is how the app
+  // stores dates, and it builds through Date.UTC.
   const localized = text.match(
-    /^(\d{1,2})[./](\d{1,2})[./](\d{4})(?:[,\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/,
+    /^(\d{1,2})[./,-](\d{1,2})[./,-](\d{4})(?:[,\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/,
   );
   if (localized) {
     const [, day, month, year, hour = 0, minute = 0, second = 0] = localized;
