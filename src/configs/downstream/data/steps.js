@@ -12,13 +12,13 @@ export const STEPS = [
     fields: [
       {
         type: "input",
-        key: "district",
-        label: "Район",
+        key: "locality",
+        label: "Населенный пункт",
       },
       {
         type: "input",
-        key: "locality",
-        label: "Населенный пункт",
+        key: "district",
+        label: "Район",
       },
       {
         type: "autocomplete",

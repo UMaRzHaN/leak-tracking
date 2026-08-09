@@ -12,16 +12,16 @@ import { createFieldSets } from "@/configs/shared/fieldRegistry";
 
 const LOCATION_FIELDS = [
   {
-    key: "district",
-    label: "Район",
+    key: "locality",
+    label: "Населенный пункт",
     viewable: true,
     editable: true,
     copyable: true,
     voice: true,
   },
   {
-    key: "locality",
-    label: "Населенный пункт",
+    key: "district",
+    label: "Район",
     viewable: true,
     editable: true,
     copyable: true,

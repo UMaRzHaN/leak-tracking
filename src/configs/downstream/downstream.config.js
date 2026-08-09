@@ -23,8 +23,8 @@ import {
 
 const SEARCH_FIELDS = [
   ...SEARCH_FIELDS_HEAD,
-  { key: "district", label: "Район" },
   { key: "locality", label: "Населенный пункт" },
+  { key: "district", label: "Район" },
   { key: "address", label: "Адрес" },
   { key: "category", label: "Категория" },
   ...SEARCH_FIELDS_TAIL,
@@ -33,8 +33,8 @@ const SEARCH_FIELDS = [
 const EXCEL_COLUMNS = [
   { key: "index", header: "№" },
   { key: "date", header: "Дата обнаружения" },
-  { key: "district", header: "Район" },
   { key: "locality", header: "Населенный пункт" },
+  { key: "district", header: "Район" },
   { key: "address", header: "Адрес" },
   { key: "object", header: "Объект" },
   { key: "category", header: "Категория" },
@@ -109,11 +109,13 @@ const DOWNSTREAM_CONFIG = Object.freeze({
     lossy: ["rawVoiceText", "note"],
     fields: FIELDS,
     location: {
-      main: "district",
-      secondary: "locality",
+      // Дублирует PROJECT_LOCATION_CONFIG.downstream — менять только вместе,
+      // иначе карта и голос разойдутся с базой.
+      main: "locality",
+      secondary: "district",
       last: "address",
-      main_label: "Район",
-      label: "Населенный пункт",
+      main_label: "Населенный пункт",
+      label: "Район",
     },
   },
   export: {

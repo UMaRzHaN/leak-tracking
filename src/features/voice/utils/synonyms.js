@@ -192,16 +192,27 @@ export const VOICE_FIELD_CONFIG = {
     markers: "категори(?:я|и|ю)?|category",
     type: "text",
   },
+  // These slots are abstract: `normalizeVoiceResult` drops whatever lands in
+  // `main` onto the project's top location level. So a marker's slot encodes
+  // which level the spoken word names, and when downstream's hierarchy was
+  // corrected — населённый пункт above район, since a town contains districts —
+  // «район» had to move down here with it. Left in `main` it kept filling the
+  // top level, and dictating «район N населённый пункт M» stored them swapped.
   main: {
     markers: joinVoiceMarkers([
+      // Long phrases must precede their shorter alternatives.
       "main\\s+gas\\s+pipeline\\s+administration",
+      "насел[её]нн(?:ый|ого|ом)\\s+пункт",
       "управлени(?:е|я|ю)",
       "подразделени(?:е|я|ю)",
       "subdivision",
+      "settlement",
       "management",
-      "district",
-      "район",
+      "locality",
       "field",
+      "town",
+      "city",
+      "пункт",
       "умгэ",
       "умге",
       "умга",
@@ -221,19 +232,15 @@ export const VOICE_FIELD_CONFIG = {
       "compressor\\s+station",
       "газов(?:ое|ого)\\s+месторождени(?:е|я)",
       "нефтян(?:ое|ого)\\s+месторождени(?:е|я)",
-      "насел[её]нн(?:ый|ого|ом)\\s+пункт",
       "field\\s+deposit",
       "oil\\s+field",
       "gas\\s+field",
       "месторождени(?:е|я)",
       "станци(?:я|и|ю)",
-      "settlement",
-      "locality",
+      "district",
       "station",
       "deposit",
-      "town",
-      "city",
-      "пункт",
+      "район",
       "дкс",
       "dcs",
       "кс",

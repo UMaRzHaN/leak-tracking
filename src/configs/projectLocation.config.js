@@ -13,11 +13,14 @@ export const PROJECT_LOCATION_CONFIG = {
     label: "Станция",
     main_label: "УМГ",
   },
+  // Населённый пункт стоит выше района: распределительные сети городские, а
+  // город делится на районы, не наоборот. Обратный порядок строил проводник
+  // объектов вверх ногами.
   downstream: {
-    main: "district",
-    secondary: "locality",
+    main: "locality",
+    secondary: "district",
     last: "address",
-    label: "Населённый пункт",
-    main_label: "Район",
+    label: "Район",
+    main_label: "Населённый пункт",
   },
 };

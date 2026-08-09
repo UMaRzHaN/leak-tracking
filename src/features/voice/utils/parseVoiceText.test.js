@@ -168,9 +168,10 @@ describe("parseVoiceText", () => {
       expect(parseVoiceText(text)).toMatchObject({ secondary: expected });
     });
 
-    it('extracts secondary from full phrase "населённый пункт"', () => {
+    // Населённый пункт — верхний уровень downstream, поэтому слот main.
+    it('extracts main from full phrase "населённый пункт"', () => {
       const r = parseVoiceText("населённый пункт советский");
-      expect(r.secondary).toBe("Советский");
+      expect(r.main).toBe("Советский");
     });
 
     it("extracts last (локация)", () => {
@@ -202,8 +203,11 @@ describe("parseVoiceText", () => {
       });
     });
 
+    // Район лежит под населённым пунктом, отсюда slot secondary.
     it("extracts district for downstream mapping", () => {
-      expect(parseVoiceText("district north")).toMatchObject({ main: "North" });
+      expect(parseVoiceText("district north")).toMatchObject({
+        secondary: "North",
+      });
     });
   });
 

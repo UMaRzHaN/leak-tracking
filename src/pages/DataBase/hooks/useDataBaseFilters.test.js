@@ -186,12 +186,14 @@ describe("useDataBaseFilters multi-select", () => {
           deposit: "Deposit A",
           station: "Station A",
           locality: "Locality A",
+          district: "District A",
         },
         {
           id: 2,
           deposit: "Deposit B",
           station: "Station B",
           locality: "Locality B",
+          district: "District B",
         },
       ];
       const configuredLocationKey = config.system.location.secondary;
