@@ -12,6 +12,10 @@ import {
 
 const PHOTO_KEYS = new Set(LEAK_PHOTO_FIELDS);
 
+// Still unmeasured, and deliberately no longer tied to the photoPipeline
+// constants: those were tuned against Filesystem writes, while hydration only
+// inflates entries of an already-parsed ZIP in memory. Borrowing their number
+// would look like evidence there is none of. See performance/README.md.
 export const DEFAULT_ZIP_HYDRATE_CONCURRENCY = 3;
 
 function getMimeFromPath(path) {

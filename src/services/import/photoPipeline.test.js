@@ -161,6 +161,104 @@ describe("reconcileExcelImportPhotos concurrency", () => {
   });
 });
 
+/*
+ * The defaults below were measured on a device, not chosen — see
+ * performance/README.md. Every other test here passes its own concurrency, so
+ * without these nothing would fail if someone restored the unmeasured 3.
+ * They assert the observed maximum exactly: a bound of "<= 2" would keep
+ * passing if a default silently dropped to 1.
+ */
+describe("photo pipeline default concurrency", () => {
+  function createConcurrencyProbe(delayMs = 5) {
+    let active = 0;
+    const probe = {
+      max: 0,
+      async enter() {
+        active += 1;
+        probe.max = Math.max(probe.max, active);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        active -= 1;
+      },
+    };
+    return probe;
+  }
+
+  it("persists photos two at a time", async () => {
+    const probe = createConcurrencyProbe();
+    const leaks = Array.from({ length: 8 }, (_, index) => ({
+      leak_id: `TAG-${index + 1}`,
+      photo: new Blob([`photo-${index + 1}`], { type: "image/jpeg" }),
+    }));
+    const savePhoto = vi.fn(async (_blob, leakId) => {
+      await probe.enter();
+      return `idb://saved-${leakId}`;
+    });
+
+    await persistExcelImportPhotos(leaks, savePhoto);
+
+    expect(savePhoto).toHaveBeenCalledTimes(8);
+    expect(probe.max).toBe(2);
+  });
+
+  it("rolls back deletions two at a time", async () => {
+    const probe = createConcurrencyProbe();
+    const paths = Array.from({ length: 8 }, (_, index) => `idb://p-${index}`);
+
+    await rollbackExcelImportPhotos(paths, async () => {
+      await probe.enter();
+    });
+
+    expect(probe.max).toBe(2);
+  });
+
+  it("builds the reusable photo map two at a time", async () => {
+    const probe = createConcurrencyProbe();
+    // A high explicit concurrency plus photoless incoming leaks isolates the
+    // reusable-map pass: it is capped at min(concurrency, the reusable
+    // default), and nothing else reaches storage.
+    const existing = Array.from({ length: 8 }, (_, index) => ({
+      leak_id: `TAG-${index + 1}`,
+      photo: `idb://existing-${index + 1}`,
+    }));
+    const incoming = existing.map((leak) => ({ leak_id: leak.leak_id }));
+    const getStoredPhoto = vi.fn(async (key) => {
+      await probe.enter();
+      return new Blob([`stored-${key}`], { type: "image/jpeg" });
+    });
+
+    await reconcileExcelImportPhotos(existing, incoming, getStoredPhoto, {
+      concurrency: 8,
+    });
+
+    expect(getStoredPhoto).toHaveBeenCalled();
+    expect(probe.max).toBe(2);
+  });
+
+  it("reconciles leaks two at a time", async () => {
+    const probe = createConcurrencyProbe();
+    // The reusable pass is pinned to 1 explicitly, so the maximum observed
+    // across the run belongs to the per-leak pass and its default.
+    const existing = Array.from({ length: 8 }, (_, index) => ({
+      leak_id: `TAG-${index + 1}`,
+      photo: `idb://existing-${index + 1}`,
+    }));
+    const incoming = Array.from({ length: 8 }, (_, index) => ({
+      leak_id: `TAG-${index + 1}`,
+      photo: new Blob([`incoming-${index + 1}`], { type: "image/jpeg" }),
+    }));
+    const getStoredPhoto = vi.fn(async (key) => {
+      await probe.enter();
+      return new Blob([`stored-${key}`], { type: "image/jpeg" });
+    });
+
+    await reconcileExcelImportPhotos(existing, incoming, getStoredPhoto, {
+      reusablePhotoConcurrency: 1,
+    });
+
+    expect(probe.max).toBe(2);
+  });
+});
+
 describe("photo pipeline edge cases", () => {
   it("returns leaks untouched when no savePhoto is provided", async () => {
     const leaks = [{ leak_id: "TAG-1", photo: new Blob(["x"]) }];

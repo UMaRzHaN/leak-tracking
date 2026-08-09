@@ -11,12 +11,11 @@ import {
 
 const PHOTO_KEYS = new Set(LEAK_PHOTO_FIELDS);
 
-const DEFAULT_PHOTO_RECONCILE_CONCURRENCY = 3;
-const DEFAULT_REUSABLE_PHOTO_CONCURRENCY = 3;
-// Kept equal to the constants above on purpose: this value is not yet backed
-// by a measurement, so hydrating ZIP photos concurrently should not silently
-// introduce a different, equally unmeasured number. Tune all of them together
-// once performance/large-dataset.perf.spec.js has been run at 3 / 5 / 8.
+// Measured on device, not guessed — see performance/README.md. Reconciling 40
+// photos takes 10.7 s at 1 and flattens from 2 onward (8.1 / 8.3 / 8.4 / 8.3 s
+// at 2 / 3 / 5 / 8), so the whole win is the step from serial to a pair.
+const DEFAULT_PHOTO_RECONCILE_CONCURRENCY = 2;
+const DEFAULT_REUSABLE_PHOTO_CONCURRENCY = 2;
 
 async function dataUrlToBlob(dataUrl) {
   const match = String(dataUrl ?? "").match(/^data:([^;,]+);base64,(.*)$/);
@@ -303,7 +302,10 @@ export async function reconcileExcelImportPhotos(
   };
 }
 
-const DEFAULT_PHOTO_PERSIST_CONCURRENCY = 3;
+// Measured on device, not guessed — see performance/README.md. Persisting 40
+// photos takes 72 s serially and ~42 s at 2; 3 was reproducibly slower than 2
+// in every sweep order, and 8 produced a >100 ms main-thread stall every time.
+const DEFAULT_PHOTO_PERSIST_CONCURRENCY = 2;
 
 async function getPhotoFingerprint(blob, fingerprintCache) {
   if (!fingerprintCache.has(blob)) {
