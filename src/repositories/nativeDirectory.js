@@ -8,7 +8,9 @@ import { Filesystem } from "@capacitor/filesystem";
  */
 export function isDirectoryExistsError(error) {
   if (String(error?.code ?? "") === "OS-PLUG-FILE-0010") return true;
-  return /already exists/i.test(String(error?.message ?? error));
+  // The web implementation words it differently ("Current directory does
+  // already exist.") and sets no code, so match both spellings.
+  return /already exists?\b/i.test(String(error?.message ?? error));
 }
 
 /**

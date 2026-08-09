@@ -3,6 +3,7 @@ import { PhotoRepository } from "@/repositories/PhotoRepository";
 import { buildBackupZip } from "@/services/backup/backupExport";
 import { importBackupZip } from "@/services/backup/backupImport";
 import { getJSZip } from "@/services/backup/runtime";
+import { IMPORT_LIMITS } from "@/utils/importLimits";
 import {
   persistExcelImportPhotos,
   reconcileExcelImportPhotos,
@@ -14,10 +15,14 @@ const RESULT_PATH = `${RESULT_DIRECTORY}/import.json`;
 const CONFIG_PATH = `${RESULT_DIRECTORY}/import-config.json`;
 
 const DEFAULT_OPTIONS = Object.freeze({
-  // 100 photos of roughly 0.5 MB land near 55 MB of archive, which is a large
-  // but importable file: IMPORT_LIMITS.maxFileBytes rejects anything past
-  // 96 MB, so a bigger fixture would measure the rejection path instead.
-  photoCount: 100,
+  // Noise photos at these settings measured 877 kB each on device, so 60 of
+  // them make the 52.6 MB archive the recorded results in performance/README
+  // were taken with — a large but importable file at ~55% of the 96 MB
+  // IMPORT_LIMITS.maxFileBytes ceiling. The previous default of 100 was
+  // written against a 0.5 MB estimate; at the real size it lands at 88 MB,
+  // close enough to the ceiling that a small option bump measures the
+  // rejection path instead of the import.
+  photoCount: 60,
   photoWidth: 1280,
   photoHeight: 960,
   photoQuality: 0.85,
@@ -88,15 +93,20 @@ function startMainThreadMonitor(tickMs = 16) {
         // The observer is best-effort telemetry, not part of the result.
       }
       const sum = (values) => values.reduce((total, ms) => total + ms, 0);
+      // Reduced rather than spread into Math.max: the monitor appends ~62
+      // samples a second, and a long enough run would blow the argument limit
+      // here — inside stop(), after the measured work already succeeded.
+      const max = (values) =>
+        values.reduce((highest, ms) => (ms > highest ? ms : highest), 0);
       return {
         blockedMs: Math.round(sum(stalls)),
-        maxStallMs: Math.round(Math.max(0, ...stalls)),
+        maxStallMs: Math.round(max(stalls)),
         stallsOver100ms: stalls.filter((ms) => ms > 100).length,
         stallsOver500ms: stalls.filter((ms) => ms > 500).length,
         longTaskSupported: observer != null,
         longTaskCount: longTasks.length,
         longTaskTotalMs: Math.round(sum(longTasks)),
-        longTaskMaxMs: Math.round(Math.max(0, ...longTasks)),
+        longTaskMaxMs: Math.round(max(longTasks)),
       };
     },
   };
@@ -200,6 +210,17 @@ async function createPhotoBlobs(options) {
     });
     blobs.push(blob);
     totalBytes += blob.size;
+    // Fail on the photo that crosses the line rather than after the whole
+    // fixture: generation costs seconds per photo, and assertImportFileSize
+    // would otherwise reject the archive minutes later with a message about
+    // the import rather than about the fixture.
+    if (totalBytes > IMPORT_LIMITS.maxFileBytes) {
+      throw new Error(
+        `Fixture exceeds the ${IMPORT_LIMITS.maxFileBytes}-byte import limit ` +
+          `after ${blobs.length} of ${options.photoCount} photos. Lower ` +
+          `photoCount, photoWidth, photoHeight or photoQuality.`,
+      );
+    }
   }
   return { blobs, totalBytes };
 }
@@ -416,6 +437,19 @@ function normalizeOptions(options = {}) {
   if (!Number.isInteger(photoCount) || photoCount < 1 || photoCount > 2_000) {
     throw new Error(`Unsupported photoCount: ${merged.photoCount}`);
   }
+  const dimension = (key, min, max) => {
+    const value = Number(merged[key]);
+    if (!Number.isInteger(value) || value < min || value > max) {
+      throw new Error(`Unsupported ${key}: ${merged[key]}`);
+    }
+    return value;
+  };
+  const photoWidth = dimension("photoWidth", 16, 8_000);
+  const photoHeight = dimension("photoHeight", 16, 8_000);
+  const photoQuality = Number(merged.photoQuality);
+  if (!Number.isFinite(photoQuality) || photoQuality <= 0 || photoQuality > 1) {
+    throw new Error(`Unsupported photoQuality: ${merged.photoQuality}`);
+  }
   const concurrencies = (
     Array.isArray(merged.concurrencies)
       ? merged.concurrencies
@@ -426,7 +460,14 @@ function normalizeOptions(options = {}) {
   if (concurrencies.length === 0) {
     throw new Error("No valid concurrency values supplied");
   }
-  return { ...merged, photoCount, concurrencies: [...new Set(concurrencies)] };
+  return {
+    ...merged,
+    photoCount,
+    photoWidth,
+    photoHeight,
+    photoQuality,
+    concurrencies: [...new Set(concurrencies)],
+  };
 }
 
 async function persistResult(result) {
