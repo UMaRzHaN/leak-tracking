@@ -4,7 +4,6 @@ import App from "@/app/App";
 import { ProjectProvider } from "@/app/project/ProjectContext";
 import { LeakFormProvider } from "@/features/leakForm/LeakFormContext";
 import ErrorBoundary from "@/components/ui/ErrorBoundary/ErrorBoundary";
-import { reportWebVitals } from "@/reportWebVitals";
 import { isNative } from "@/utils/platform";
 
 const PwaUpdateBanner = React.lazy(
@@ -49,7 +48,11 @@ async function bootstrap() {
     </React.StrictMode>,
   );
 
-  reportWebVitals();
+  // Loaded lazily: performance telemetry is not part of showing the first
+  // screen, and web-vitals in the entry chunk pushed it past its size budget.
+  void import("@/reportWebVitals").then(({ reportWebVitals }) =>
+    reportWebVitals(),
+  );
 
   if (import.meta.env.PROD && !isNative && "serviceWorker" in navigator) {
     navigator.serviceWorker

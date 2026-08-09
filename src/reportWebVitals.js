@@ -1,4 +1,4 @@
-import { getCLS, getFID, getFCP, getLCP, getTTFB } from "web-vitals";
+import { onCLS, onFCP, onINP, onLCP, onTTFB } from "web-vitals";
 import { logger } from "@/utils/logger";
 
 const RATING_COLOR = {
@@ -39,9 +39,12 @@ function sendToEndpoint(metric) {
 
 export function reportWebVitals() {
   const report = import.meta.env.DEV ? logToConsole : sendToEndpoint;
-  getCLS(report);
-  getFID(report);
-  getFCP(report);
-  getLCP(report);
-  getTTFB(report);
+  onCLS(report);
+  // INP replaced FID, which web-vitals dropped in v4: FID measured only the
+  // delay before the first interaction was handled, INP measures how long
+  // every interaction actually took to show a result.
+  onINP(report);
+  onFCP(report);
+  onLCP(report);
+  onTTFB(report);
 }
