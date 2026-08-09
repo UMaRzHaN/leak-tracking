@@ -112,7 +112,12 @@ const scopePaths = {
     ".artifacts/licenses.json",
   ],
   android: [
-    "android/app/build/outputs/apk",
+    // The release directory rather than the whole of `apk`. That directory
+    // also holds the debug build, its instrumentation APK, and the
+    // debug-signed `releaseCheck` twin — none of which are the release, and
+    // the last of which is minified exactly like it and so is the easiest to
+    // mistake for it. Evidence for a release should describe the release.
+    "android/app/build/outputs/apk/release",
     "android/app/build/reports/lint-results-debug.html",
     "android/app/build/reports/lint-results-release.html",
     "android/app/build/test-results",

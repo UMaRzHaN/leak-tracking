@@ -66,7 +66,7 @@
     "release:evidence:source": "node scripts/write-release-verification.mjs --scope=source",
     "artifacts:checksums:web": "node scripts/write-artifact-checksums.mjs .artifacts dist",
     "artifacts:checksums:source": "node scripts/write-artifact-checksums.mjs .artifacts",
-    "artifacts:checksums:android": "node scripts/write-artifact-checksums.mjs .artifacts android/app/build/outputs/apk android/app/build/outputs/bundle",
+    "artifacts:checksums:android": "node scripts/write-artifact-checksums.mjs .artifacts android/app/build/outputs/apk/release android/app/build/outputs/bundle/release",
     "artifacts:checksums:e2e": "node scripts/write-artifact-checksums.mjs .artifacts playwright-report test-results"
   },
   "lint-staged": {
