@@ -3,7 +3,7 @@ import { STATUS, STATUS_ORDER } from "@/utils/status";
 import { distanceMeters, filterNearbyLeaks } from "@/utils/geoUtils";
 import { ABBREV_MAP } from "@/features/search/Autocomplete/smartFilter";
 import { matchesLeakLocationFilter } from "@/utils/locationFilter";
-import { compareLeakIds } from "@/utils/leakOrder";
+import { compareLeakRecency } from "@/utils/leakOrder";
 
 export const ALL = "all";
 export const NEARBY = "nearby";
@@ -305,8 +305,12 @@ export function useDataBaseFilters({
           )
         : list;
 
+    // The toggle above this list is labelled "date", and it sorted by
+    // `compareLeakIds` — the record id. Imported records carry a numeric id and
+    // came out roughly by age, which hid it; anything added in the app gets a
+    // random UUID, so the control promised dates and delivered noise.
     let list = [...data].sort((a, b) =>
-      sortAsc ? compareLeakIds(a, b) : compareLeakIds(b, a),
+      sortAsc ? compareLeakRecency(b, a) : compareLeakRecency(a, b),
     );
     if (statusFilter.length > 0)
       list = list.filter((l) => statusFilter.includes(l.status ?? STATUS.OPEN));

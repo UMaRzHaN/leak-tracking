@@ -226,6 +226,34 @@ describe("excel export helpers", () => {
     });
   });
 
+  // The export used to re-sort by record id. The caller already hands over what
+  // the database screen shows — filtered, and ordered by the user's own date
+  // toggle — and for anything added in the app the id is a random UUID, so the
+  // sheet came out shuffled. Ids here run opposite to the given order.
+  it("keeps the order it was handed instead of re-sorting by record id", async () => {
+    await exportToExcelFile(
+      [
+        { id: "ffffffff-0000-4000-8000-000000000001", leak_id: "first" },
+        { id: "00000000-0000-4000-8000-000000000002", leak_id: "second" },
+        { id: "88888888-0000-4000-8000-000000000003", leak_id: "third" },
+      ],
+      [{ note: "first" }, { note: "second" }, { note: "third" }],
+      ["Note"],
+      ["note"],
+      "report",
+      null,
+      null,
+      translate,
+    );
+
+    const sheet = mocks.workbookInstances[0].sheets[0];
+    expect(sheet.rows.slice(1).map((row) => row.values[0])).toEqual([
+      "first",
+      "second",
+      "third",
+    ]);
+  });
+
   it("sanitizes the workbook entry and download name", async () => {
     const result = await exportToExcelFile(
       [{ id: 1, leak_id: "TAG-1" }],

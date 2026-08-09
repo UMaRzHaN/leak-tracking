@@ -1,5 +1,4 @@
 import { buildWorkbookBufferLocally } from "@/services/excelExport/buildWorkbookBuffer";
-import { compareLeakIds } from "@/utils/leakOrder";
 import {
   allocateUniqueLeakArchiveSegments,
   sanitizePortableArchiveSegment,
@@ -191,8 +190,13 @@ export async function exportToExcelFile(
   const safeFileName = sanitizePortableArchiveSegment(fileName) || "report";
   const exportStartedAt = performance.now();
   const phaseMetrics = {};
+  // Deliberately not re-sorted. The caller hands over exactly what the database
+  // screen shows, already filtered and ordered by the user's own date toggle;
+  // re-sorting here threw that away and put the sheet in order of record id,
+  // which for anything added in the app is a random UUID. The `No` column comes
+  // from the record rather than the row position, so those numbers came out
+  // shuffled too.
   const paired = rawLeaks.map((leak, index) => ({ leak, row: rows[index] }));
-  paired.sort((left, right) => compareLeakIds(left.leak, right.leak));
 
   const orderedLeaks = paired.map((pair) => pair.leak);
   const orderedRows = paired.map(({ leak, row }) => ({

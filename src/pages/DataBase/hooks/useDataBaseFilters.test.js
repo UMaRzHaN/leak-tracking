@@ -31,6 +31,46 @@ describe("useDataBaseFilters multi-select", () => {
     expect(normalizeMultiFilter(null)).toEqual([]);
   });
 
+  // The toggle is labelled "date", but the list was ordered by `compareLeakIds`
+  // — the record id. Records added in the app get a random UUID, so the control
+  // promised dates and delivered noise. Ids here are deliberately in the
+  // opposite order to the timestamps.
+  it("orders by date in both directions, not by the record id", () => {
+    const data = [
+      {
+        id: "ffffffff-0000-4000-8000-000000000001",
+        status: "open",
+        createdAt: "2026-08-09T09:05:00.000Z",
+      },
+      {
+        id: "00000000-0000-4000-8000-000000000002",
+        status: "open",
+        createdAt: "2026-08-09T09:11:00.000Z",
+      },
+      {
+        id: "88888888-0000-4000-8000-000000000003",
+        status: "open",
+        createdAt: "2026-08-09T09:08:00.000Z",
+      },
+    ];
+    const { result } = renderHook(() =>
+      useDataBaseFilters({ data, coords: null }),
+    );
+
+    expect(result.current.displayed.map((item) => item.createdAt)).toEqual([
+      "2026-08-09T09:11:00.000Z",
+      "2026-08-09T09:08:00.000Z",
+      "2026-08-09T09:05:00.000Z",
+    ]);
+
+    act(() => result.current.toggleSort());
+    expect(result.current.displayed.map((item) => item.createdAt)).toEqual([
+      "2026-08-09T09:05:00.000Z",
+      "2026-08-09T09:08:00.000Z",
+      "2026-08-09T09:11:00.000Z",
+    ]);
+  });
+
   it("combines statuses with OR and status/priority groups with AND", () => {
     const { result } = renderHook(() =>
       useDataBaseFilters({ data: DATA, coords: null }),
