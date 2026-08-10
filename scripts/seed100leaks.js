@@ -11,7 +11,7 @@
  * - последнее фото синхронизируется с миниатюрой/шапкой detailed;
  * - данные пригодны для проверки Excel и ZIP с полным журналом фото;
  * - активный обход для страницы мониторинга;
- * - web: пишет данные в localStorage, фото в IndexedDB;
+ * - web: пишет проект в IndexedDB — основную базу и зеркало, фото туда же;
  * - native Capacitor: пишет data.json и фото в Directory.Data.
  */
 (async function seed100Leaks() {
@@ -501,7 +501,8 @@
 
   async function saveWebData({ leaks, projectId, dataKey }) {
     const db = await openSeedPhotoDb();
-    const dataDb = await openSeedDataDb();
+    const dataDb = await openSeedEnvelopeDb(WEB_DATA_DB);
+    const mirrorDb = await openSeedEnvelopeDb(WEB_MIRROR_DB);
     let photoCount = 0;
 
     await deleteWebProjectPhotos(db, projectId);
@@ -555,25 +556,15 @@
 
     db.close();
     await yieldToBrowser();
-    await writeWebProjectData({ db: dataDb, projectId, leaks });
+    await writeWebProjectData({ dataDb, mirrorDb, projectId, leaks });
     dataDb.close();
+    mirrorDb.close();
     await yieldToBrowser();
-    if (leaks.length <= FULL_PHOTO_LIMIT) {
-      try {
-        localStorage.setItem(dataKey, JSON.stringify(leaks));
-      } catch (error) {
-        localStorage.removeItem(dataKey);
-        console.warn(
-          "localStorage переполнен, база записана только в IndexedDB:",
-          error,
-        );
-      }
-    } else {
-      localStorage.removeItem(dataKey);
-      console.log(
-        "Большая тестовая база записана только в IndexedDB, без дубля в localStorage.",
-      );
-    }
+
+    // Копию в localStorage приложение читает только как наследие старой схемы
+    // и удаляет при первом же чтении, поэтому сид её не пишет — обе актуальные
+    // копии живут в IndexedDB. Старый дубль от прежних прогонов убираем.
+    localStorage.removeItem(dataKey);
     console.log(`Фото записано в IndexedDB: ${photoCount}`);
   }
 
@@ -596,22 +587,62 @@
     });
   }
 
-  function openSeedDataDb() {
+  // Проект в вебе хранится двумя независимыми копиями: основной базой и
+  // зеркалом. Каждая копия — «конверт» из двух записей в одной транзакции:
+  // метаданные (упорядочивают копии между собой) и сам массив утечек.
+  // См. src/repositories/webProjectEnvelopeStore.js.
+  const WEB_DATA_DB = "LeakTrackingDataDB";
+  const WEB_MIRROR_DB = "LeakTrackingMirrorDB";
+  const WEB_META_STORE = "projects";
+  const WEB_PAYLOAD_STORE = "projectsData";
+  const WEB_JOURNAL_STORE = "projectsJournal";
+  const WEB_JOURNAL_BY_PROJECT = "byProject";
+  const WEB_ENVELOPE_VERSION = 1;
+
+  function openDbRequest(name, version, upgrade) {
     return new Promise((resolve, reject) => {
       if (!window.indexedDB) {
         reject(new Error("IndexedDB недоступен"));
         return;
       }
 
-      const request = window.indexedDB.open("LeakTrackingDataDB", 1);
-      request.onupgradeneeded = (event) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains("projects")) {
-          db.createObjectStore("projects", { keyPath: "id" });
-        }
-      };
+      const request =
+        version == null
+          ? window.indexedDB.open(name)
+          : window.indexedDB.open(name, version);
+      if (upgrade) request.onupgradeneeded = () => upgrade(request.result);
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
+      request.onblocked = () =>
+        reject(new Error(`База ${name} занята другой вкладкой`));
+    });
+  }
+
+  // Версия базы не зашивается в сид: открываемся без неё и поднимаем версию
+  // только если нужного хранилища ещё нет. Иначе сид ломался бы при каждом
+  // повышении версии схемы в приложении — ровно это и произошло со схемой v1.
+  async function openSeedEnvelopeDb(name) {
+    let db = await openDbRequest(name);
+    const required = [WEB_META_STORE, WEB_PAYLOAD_STORE, WEB_JOURNAL_STORE];
+    if (required.every((store) => db.objectStoreNames.contains(store))) {
+      return db;
+    }
+
+    const nextVersion = db.version + 1;
+    db.close();
+    return openDbRequest(name, nextVersion, (upgradeDb) => {
+      if (!upgradeDb.objectStoreNames.contains(WEB_META_STORE)) {
+        upgradeDb.createObjectStore(WEB_META_STORE, { keyPath: "id" });
+      }
+      if (!upgradeDb.objectStoreNames.contains(WEB_PAYLOAD_STORE)) {
+        upgradeDb.createObjectStore(WEB_PAYLOAD_STORE, { keyPath: "id" });
+      }
+      if (!upgradeDb.objectStoreNames.contains(WEB_JOURNAL_STORE)) {
+        const journal = upgradeDb.createObjectStore(WEB_JOURNAL_STORE, {
+          keyPath: ["projectId", "seq"],
+        });
+        journal.createIndex(WEB_JOURNAL_BY_PROJECT, "projectId");
+      }
     });
   }
 
@@ -654,20 +685,87 @@
     });
   }
 
-  function writeWebProjectData({ db, projectId, leaks }) {
+  // FNV-1a, повторяет checksumWebPayload из
+  // src/repositories/webProjectEnvelope.js. Конверт с чужой контрольной суммой
+  // приложение считает повреждённым и отбрасывает.
+  function checksumWebPayload(data, deleted, syncState = null) {
+    const value = JSON.stringify({
+      deleted: Boolean(deleted),
+      data,
+      ...(syncState == null ? {} : { syncState }),
+    });
+    let hash = 0x811c9dc5;
+    for (let index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 0x01000193);
+    }
+    return (hash >>> 0).toString(16).padStart(8, "0");
+  }
+
+  function readWebRevision(db, projectId) {
+    return new Promise((resolve) => {
+      const tx = db.transaction(WEB_META_STORE, "readonly");
+      const request = tx.objectStore(WEB_META_STORE).get(projectId);
+      tx.oncomplete = () => resolve(Number(request.result?.revision ?? 0) || 0);
+      tx.onerror = () => resolve(0);
+      tx.onabort = () => resolve(0);
+    });
+  }
+
+  function clearWebJournal(tx, projectId) {
+    const store = tx.objectStore(WEB_JOURNAL_STORE);
+    const keysRequest = store
+      .index(WEB_JOURNAL_BY_PROJECT)
+      .getAllKeys(projectId);
+    keysRequest.onsuccess = () => {
+      for (const key of keysRequest.result) store.delete(key);
+    };
+  }
+
+  // Метаданные и полезная нагрузка пишутся одной транзакцией, а накопленный
+  // журнал изменений сбрасывается: он описывал прежний снимок.
+  function writeWebEnvelope({ db, projectId, envelope }) {
     return new Promise((resolve, reject) => {
-      const tx = db.transaction("projects", "readwrite");
-      const store = tx.objectStore("projects");
-      const request = store.put({
+      const { data, ...meta } = envelope;
+      const tx = db.transaction(
+        [WEB_META_STORE, WEB_PAYLOAD_STORE, WEB_JOURNAL_STORE],
+        "readwrite",
+      );
+      tx.objectStore(WEB_META_STORE).put({
         id: projectId,
-        data: leaks,
-        timestamp: Date.now(),
+        ...meta,
+        journalSeq: 0,
       });
-      request.onerror = () => reject(request.error);
+      tx.objectStore(WEB_PAYLOAD_STORE).put({ id: projectId, data });
+      clearWebJournal(tx, projectId);
       tx.oncomplete = resolve;
       tx.onerror = () => reject(tx.error);
       tx.onabort = () => reject(tx.error);
     });
+  }
+
+  async function writeWebProjectData({ dataDb, mirrorDb, projectId, leaks }) {
+    // Ревизия упорядочивает копии, поэтому она должна быть больше уже
+    // записанной — иначе приложение оставит прежние данные как более свежие.
+    const knownRevisions = await Promise.all([
+      readWebRevision(dataDb, projectId),
+      readWebRevision(mirrorDb, projectId),
+    ]);
+    const revision = Math.max(
+      Date.now() * 1000,
+      Math.max(...knownRevisions) + 1,
+    );
+    const envelope = {
+      version: WEB_ENVELOPE_VERSION,
+      revision,
+      updatedAt: Date.now(),
+      deleted: false,
+      checksum: checksumWebPayload(leaks, false),
+      data: leaks,
+    };
+
+    await writeWebEnvelope({ db: dataDb, projectId, envelope });
+    await writeWebEnvelope({ db: mirrorDb, projectId, envelope });
   }
 
   async function dataUrlToBlob(dataUrl) {
