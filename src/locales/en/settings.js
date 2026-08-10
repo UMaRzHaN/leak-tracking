@@ -187,7 +187,6 @@ export const settings = {
   noProjects: "No projects yet. Create your first one.",
 
   calculationParameters: "Calculation Parameters",
-  projectSettings: "Settings for project",
   editParameters: "Edit Parameters",
 
   fieldsAndExcel: "Form Fields and Excel",
