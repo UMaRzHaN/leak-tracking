@@ -106,10 +106,16 @@ vi.mock("@/features/leakForm/components/StepRenderer/StepRenderer", () => ({
   ),
 }));
 vi.mock("./components/ClearActions", () => ({
-  default: ({ onClearStep, onClearAll }) => (
+  default: ({ onClearStep, onClearAll, localeTexts }) => (
     <div>
       <button onClick={onClearStep}>clear-step</button>
       <button onClick={onClearAll}>clear-all</button>
+      <output data-testid="clear-labels">
+        {JSON.stringify({
+          clearStep: localeTexts?.buttons?.clearStep,
+          clearAll: localeTexts?.buttons?.clearAll,
+        })}
+      </output>
     </div>
   ),
 }));
@@ -198,6 +204,19 @@ describe("LeakForm", () => {
     expect(screen.getByTestId("form").textContent).toContain('"leak_speed":""');
     fireEvent.click(screen.getByText("clear-all"));
     expect(screen.getByTestId("form").textContent).toContain("{}");
+  });
+
+  // Подписи кнопок очистки не доезжали до ClearActions, а тот подставлял свои
+  // английские значения — русский интерфейс показывал «Clear all fields».
+  it("hands the clear buttons their translated labels", async () => {
+    const { translate } = await import("@/test/translate");
+    mocks.initialForm = { leak_speed: "3" };
+    render(<LeakForm />);
+
+    expect(JSON.parse(screen.getByTestId("clear-labels").textContent)).toEqual({
+      clearStep: translate("addLeak.buttons.clearStep"),
+      clearAll: translate("addLeak.buttons.clearAll"),
+    });
   });
 
   it("accepts a restorable data URL photo loaded from a draft", async () => {

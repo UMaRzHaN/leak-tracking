@@ -6,17 +6,20 @@ export default function ClearActions({
   onClearAll,
   localeTexts,
 }) {
+  // Раньше здесь стояли английские запасные подписи. Вызывающая форма не
+  // передавала эти два ключа, запасные значения молча подставлялись — и русский
+  // интерфейс показывал «Clear all fields».
   const buttons = localeTexts?.buttons ?? {};
 
   return (
     <div className={s.clearActions}>
       {hasStepData && (
         <button type="button" className={s.clearStepIcon} onClick={onClearStep}>
-          {buttons.clearStep ?? "Clear step 🧽"}
+          {buttons.clearStep}
         </button>
       )}
       <button className={s.clearAllSteps} type="button" onClick={onClearAll}>
-        {buttons.clearAll ?? "Clear all fields 🧹"}
+        {buttons.clearAll}
       </button>
     </div>
   );

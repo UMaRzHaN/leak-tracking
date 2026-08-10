@@ -112,6 +112,8 @@ export default function LeakForm({
         next: t("addLeak.buttons.next"),
         save: t("addLeak.buttons.save"),
         saving: t("addLeak.buttons.saving"),
+        clearStep: t("addLeak.buttons.clearStep"),
+        clearAll: t("addLeak.buttons.clearAll"),
       },
       confirm: {
         title: t("addLeak.confirm.title"),
