@@ -688,6 +688,48 @@ describe("parseExcelLeaks", () => {
     );
   });
 
+  it("восстанавливает фото из книги со смешанными разделителями путей", async () => {
+    const { default: ExcelJS } = await import("exceljs");
+    const { default: JSZip } = await import("jszip");
+
+    const workbook = new ExcelJS.Workbook();
+    const leaksSheet = workbook.addWorksheet("Утечки");
+    leaksSheet.addRow(["Бирка", "Дата", "Статус", "Фото"]);
+    leaksSheet.addRow(["5500", "14.07.2026", "Открыта", ""]);
+    leaksSheet.addRow(["5502", "14.07.2026", "Открыта", ""]);
+    leaksSheet.getRow(2).getCell(4).value = {
+      text: "Открыть фото",
+      hyperlink: "photos/5500/before.jpg",
+    };
+    // Так Excel переписывает цель гиперссылки при пересохранении на Windows.
+    leaksSheet.getRow(3).getCell(4).value = {
+      text: "Открыть фото",
+      hyperlink: "photos\\5502\\before.jpg",
+    };
+
+    const xlsx = await workbook.xlsx.writeBuffer();
+    const zip = new JSZip();
+    zip.file("report.xlsx", xlsx);
+    zip.file("photos/5500/before.jpg", "aGVsbG8=", { base64: true });
+    zip.file("photos/5502/before.jpg", "aGVsbG8=", { base64: true });
+    const zipBlob = await zip.generateAsync({ type: "blob" });
+    Object.defineProperty(zipBlob, "name", { value: "database.zip" });
+
+    const result = await parseExcelImportFile(zipBlob, {
+      projectType: "upstream",
+    });
+
+    expect(result.stats.restoredPhotos).toBe(2);
+    expect(result.stats.missingPhotos).toBe(0);
+    expect(result.leaks[0].photo).toBeInstanceOf(Blob);
+    expect(result.leaks[1].photo).toBeInstanceOf(Blob);
+    expect(
+      result.stats.validationWarnings.some((warning) =>
+        warning.message.includes("путь к фотографии"),
+      ),
+    ).toBe(false);
+  });
+
   it("rejects null photo saves and exposes only newly created paths for rollback", async () => {
     const firstPhoto = new Blob(["first"], { type: "image/jpeg" });
     const secondPhoto = new Blob(["second"], { type: "image/jpeg" });

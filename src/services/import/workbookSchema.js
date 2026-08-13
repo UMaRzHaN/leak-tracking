@@ -241,12 +241,21 @@ export function getCellDisplayValue(cell) {
   return value;
 }
 
+// Экспорт пишет цели гиперссылок через `/`, но Excel при пересохранении книги
+// на Windows переписывает часть из них в виндовый вид (`photos\TAG-1\before.jpg`).
+// Внутри ZIP разделитель всегда `/`, поэтому путь приводится к нему до проверки
+// и до превращения в `zip:`-ссылку — иначе фото молча выпадает из импорта.
+function normalizeArchiveSeparators(value) {
+  if (typeof value !== "string") return value;
+  return value.replace(/\\/g, "/").replace(/^\.\//, "");
+}
+
 export function getCellPhotoValue(cell) {
   const value = cell?.value;
   if (value && typeof value === "object" && "hyperlink" in value) {
-    return value.hyperlink;
+    return normalizeArchiveSeparators(value.hyperlink);
   }
-  return getCellDisplayValue(cell);
+  return normalizeArchiveSeparators(getCellDisplayValue(cell));
 }
 
 export function findHeaderRow(sheet, headerMap) {

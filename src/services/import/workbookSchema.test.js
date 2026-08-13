@@ -75,6 +75,18 @@ describe("Excel workbook schema discovery", () => {
     expect(getCellDisplayValue(null)).toBe("");
   });
 
+  it("приводит виндовые разделители в путях к фото к ZIP-виду", () => {
+    expect(
+      getCellPhotoValue({
+        value: { hyperlink: "photos\\5502\\before.jpg", text: "Открыть фото" },
+      }),
+    ).toBe("photos/5502/before.jpg");
+    expect(
+      getCellPhotoValue({ value: ".\\photos\\5502\\monitoring\\record-1.jpg" }),
+    ).toBe("photos/5502/monitoring/record-1.jpg");
+    expect(getCellPhotoValue({ value: 42 })).toBe(42);
+  });
+
   it("selects the row with the greatest number of recognized headers", () => {
     const sheet = makeSheet("Data", [
       ["Report", "Unknown"],
