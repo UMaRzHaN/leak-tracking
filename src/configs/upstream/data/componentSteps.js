@@ -174,11 +174,6 @@ export const COMPONENT_STEPS = [
         label: "Дата монтажа",
       },
       {
-        type: "input",
-        key: "inspected_at",
-        label: "Дата инспекции",
-      },
-      {
         type: "autocomplete",
         key: "component_status",
         label: "Статус компонента",

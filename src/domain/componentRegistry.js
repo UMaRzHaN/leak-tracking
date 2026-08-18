@@ -107,6 +107,12 @@ export function normalizeComponent(component, { numericKeys = [], now } = {}) {
   normalized.date = component?.date ?? new Date(timestamp).toISOString();
   normalized.updatedAt = timestamp;
 
+  // The inspection date is when somebody stood in front of the equipment and
+  // filled the card in — the app already knows that, so it is never typed.
+  // Set once and left alone: correcting a typo months later must not move the
+  // date the equipment was actually looked at.
+  normalized.inspected_at = component?.inspected_at ?? normalized.date;
+
   for (const key of numericKeys) {
     if (key === "component_uid") continue;
     if (key in normalized) normalized[key] = normalizeNumeric(normalized[key]);

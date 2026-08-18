@@ -54,6 +54,26 @@ describe("upstream component fields", () => {
     );
   });
 
+  it("does not ask for a date the app already knows", () => {
+    const stepKeys = COMPONENT_STEPS.flatMap((step) =>
+      step.fields.map((field) => field.key),
+    );
+    expect(stepKeys).not.toContain("inspected_at");
+
+    // Still a field, and still an export column — just never typed.
+    const inspected = FIELDS.find((field) => field.key === "inspected_at");
+    expect(inspected.editable).toBe(false);
+    expect(inspected.viewable).toBe(true);
+    expect(COMPONENT_BLOCK.export.excel.keysOrder).toContain("inspected_at");
+  });
+
+  it("still asks for the installation date, which is on the plate", () => {
+    const stepKeys = COMPONENT_STEPS.flatMap((step) =>
+      step.fields.map((field) => field.key),
+    );
+    expect(stepKeys).toContain("installed_at");
+  });
+
   it("declares every step field in the field set", () => {
     const stepKeys = COMPONENT_STEPS.flatMap((step) =>
       step.fields.map((field) => field.key),

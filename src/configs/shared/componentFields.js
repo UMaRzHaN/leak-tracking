@@ -177,13 +177,6 @@ export const COMPONENT_PASSPORT_FIELDS = [
     copyable: true,
   },
   {
-    key: "inspected_at",
-    label: "Дата инспекции",
-    viewable: true,
-    editable: true,
-    copyable: true,
-  },
-  {
     key: "component_status",
     label: "Статус компонента",
     viewable: true,
@@ -197,6 +190,18 @@ export const COMPONENT_SYSTEM_FIELDS = [
   {
     key: "date",
     label: "Дата внесения",
+    viewable: true,
+    editable: false,
+  },
+  {
+    /*
+     * When the equipment was actually looked at, which is when the card was
+     * filled in. Derived rather than typed: asking for a date the app already
+     * knows only invites a wrong one, and the source workbook expects the
+     * column filled either way.
+     */
+    key: "inspected_at",
+    label: "Дата инспекции",
     viewable: true,
     editable: false,
   },

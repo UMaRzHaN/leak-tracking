@@ -153,6 +153,38 @@ describe("normalization", () => {
     expect(normalized.lng).toBeNull();
   });
 
+  it("derives the inspection date instead of asking for one", () => {
+    const normalized = normalizeComponent(
+      { component_uid: "1" },
+      { now: 1_700_000_000_000 },
+    );
+    expect(normalized.inspected_at).toBe(normalized.date);
+  });
+
+  it("does not move the inspection date when the card is edited later", () => {
+    // Correcting a typo months on must not claim the equipment was looked at
+    // again that day.
+    const first = normalizeComponent(
+      { component_uid: "1" },
+      { now: 1_700_000_000_000 },
+    );
+    const edited = normalizeComponent(
+      { ...first, manufacturer: "Завод" },
+      { now: 1_800_000_000_000 },
+    );
+
+    expect(edited.inspected_at).toBe(first.inspected_at);
+    expect(edited.updatedAt).toBe(1_800_000_000_000);
+  });
+
+  it("keeps an inspection date that arrived from another device", () => {
+    const normalized = normalizeComponent({
+      component_uid: "1",
+      inspected_at: "2026-01-01T00:00:00.000Z",
+    });
+    expect(normalized.inspected_at).toBe("2026-01-01T00:00:00.000Z");
+  });
+
   it("stamps the record with a creation date and a change time", () => {
     const normalized = normalizeComponent(
       { component_uid: "1" },
