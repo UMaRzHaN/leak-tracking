@@ -1,0 +1,236 @@
+.page {
+  height: 100%;
+  min-height: 0;
+  padding: 12px 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--c-text);
+  }
+}
+
+/* Absolute, never a percentage: the app does not mark a node as walked, so the
+   total number of components on the field is never known. */
+.count {
+  margin: 0;
+  font-size: 13px;
+  color: var(--c-text3);
+}
+
+.filters {
+  display: flex;
+  gap: 8px;
+
+  input,
+  select {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1.5px solid var(--c-border);
+    border-radius: var(--r-lg);
+    background: var(--c-surface);
+    font-size: 14px;
+    color: var(--c-text);
+    outline: none;
+    transition: border-color var(--t-fast);
+
+    &:focus {
+      border-color: var(--c-blue);
+    }
+  }
+}
+
+.primary {
+  padding: 11px 16px;
+  border: none;
+  border-radius: var(--r-lg);
+  background: var(--c-blue);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.card {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-lg);
+  background: var(--c-surface);
+  overflow: hidden;
+}
+
+.cardBody {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "uid name"
+    "uid meta";
+  gap: 0 10px;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--c-text);
+}
+
+.uid {
+  grid-area: uid;
+  align-self: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--c-blue);
+}
+
+.name {
+  grid-area: name;
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  grid-area: meta;
+  font-size: 12px;
+  color: var(--c-text3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remove {
+  flex: none;
+  width: 40px;
+  border: none;
+  background: none;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--c-text3);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--c-red, #d33);
+  }
+}
+
+.muted {
+  margin: 0;
+  padding: 20px 4px;
+  font-size: 14px;
+  color: var(--c-text3);
+  text-align: center;
+}
+
+.error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--r-lg);
+  background: var(--c-surface2, var(--c-surface));
+  font-size: 13px;
+  color: var(--c-red, #d33);
+}
+
+/* ── Card form ── */
+
+.form {
+  height: 100%;
+  min-height: 0;
+  padding: 12px 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.formHead {
+  h2 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--c-text);
+  }
+}
+
+.stepLabel {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--c-text3);
+}
+
+/* A duplicate number is reported, never refused: the app cannot see another
+   device's numbers, so blocking here would only strand somebody at a wellhead. */
+.warning {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--r-lg);
+  border: 1.5px solid var(--c-amber, #e0a800);
+  font-size: 13px;
+  color: var(--c-text);
+}
+
+.formFoot {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0;
+  background: var(--c-bg, var(--c-surface));
+
+  button {
+    padding: 11px 16px;
+    border: 1.5px solid var(--c-border);
+    border-radius: var(--r-lg);
+    background: var(--c-surface);
+    font-size: 14px;
+    color: var(--c-text);
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+  }
+
+  .primary {
+    margin-left: auto;
+    border-color: transparent;
+    background: var(--c-blue);
+    color: #fff;
+    font-weight: 600;
+  }
+}

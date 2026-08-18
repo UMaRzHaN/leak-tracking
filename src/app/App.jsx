@@ -145,7 +145,12 @@ export default function App() {
           {/* The badge counts what the "База" button leads to, and that screen
               is scoped, so counting the whole project would contradict the
               list the user lands on. */}
-          <Footer page={page} setPage={setPage} openCount={scopedOpenCount} />
+          <Footer
+            page={page}
+            setPage={setPage}
+            openCount={scopedOpenCount}
+            project={activeProject}
+          />
         </Suspense>
       )}
 

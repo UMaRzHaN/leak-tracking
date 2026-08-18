@@ -2,6 +2,7 @@ import { addLeak } from "./addLeak";
 import { app } from "./app";
 import { cards } from "./cards";
 import { common } from "./common";
+import { components } from "./components";
 import { database } from "./database";
 import { emissionsSummary } from "./emissionsSummary";
 import { emptyState } from "./emptyState";
@@ -35,6 +36,7 @@ export const translation = {
   app,
   cards,
   common,
+  components,
   database,
   emissionsSummary,
   emptyState,

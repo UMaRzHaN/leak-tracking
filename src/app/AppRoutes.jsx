@@ -8,6 +8,9 @@ const MainPage = lazy(() => import("@/pages/MainPage/MainPage"));
 const DataBase = lazy(() => import("@/pages/DataBase/DataBase"));
 const MapPage = lazy(() => import("@/pages/MapPage/MapPage"));
 const Monitoring = lazy(() => import("@/pages/Monitoring/Monitoring"));
+const ComponentRegistry = lazy(
+  () => import("@/pages/ComponentRegistry/ComponentRegistry"),
+);
 
 export function AppLoader({ label = null, overlay = false }) {
   const { t } = useLanguage();
@@ -125,7 +128,8 @@ export default function AppRoutes({
   sharedFilters,
   userProfile,
 }) {
-  const isListPage = page === "db" || page === "monitoring";
+  const isListPage =
+    page === "db" || page === "monitoring" || page === "components";
 
   return (
     <div
@@ -214,6 +218,13 @@ export default function AppRoutes({
               onRequestedLeaksConsumed={() => setRequestedMonitoringLeakIds([])}
               userProfile={userProfile}
             />
+          )}
+
+        {dataLoaded &&
+          !isImportingProject &&
+          !loadError &&
+          page === "components" && (
+            <ComponentRegistry project={activeProject} />
           )}
 
         {dataLoaded && !isImportingProject && !loadError && page === "map" && (

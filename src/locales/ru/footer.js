@@ -4,5 +4,6 @@ export const footer = {
   database: "База",
   map: "Карта",
   addLeak: "Добавить утечку",
+  components: "Реестр",
   monitoring: "Мониторинг",
 };

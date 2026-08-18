@@ -1,9 +1,13 @@
 import { useMemo } from "react";
 import s from "./Footer.module.scss";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { hasComponentRegistry } from "@/configs/projectAdapter";
 
-export default function Footer({ page, setPage, openCount = 0 }) {
+export default function Footer({ page, setPage, openCount = 0, project }) {
   const { t } = useLanguage();
+  // Derived from the project config, never from a comparison against the
+  // project type: a stream that declares no registry simply has no tab.
+  const showRegistry = hasComponentRegistry(project);
   const navItems = useMemo(
     () => [
       {
@@ -28,13 +32,22 @@ export default function Footer({ page, setPage, openCount = 0 }) {
         icon: "M",
         label: t("footer.monitoring"),
       },
+      ...(showRegistry
+        ? [
+            {
+              key: "components",
+              icon: "⚙",
+              label: t("footer.components"),
+            },
+          ]
+        : []),
       {
         key: "map",
         icon: "◎",
         label: t("footer.map"),
       },
     ],
-    [t],
+    [t, showRegistry],
   );
   return (
     <footer className={s.nav}>

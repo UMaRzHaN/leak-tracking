@@ -9,7 +9,18 @@ import {
   SEARCH_FIELDS_HEAD,
   SEARCH_FIELDS_TAIL,
 } from "@/configs/shared/fields";
-import { withRequiredExcelColumns } from "@/configs/shared/excel";
+import {
+  splitExcelColumns,
+  withRequiredExcelColumns,
+} from "@/configs/shared/excel";
+import {
+  COPY_FIELDS as COMPONENT_COPY_FIELDS,
+  FIELDS as COMPONENT_FIELDS,
+  NUMBER_FIELDS as COMPONENT_NUMBER_FIELDS,
+  REQUIRED_FIELDS as COMPONENT_REQUIRED_FIELDS,
+  SEARCH_FIELDS as COMPONENT_SEARCH_FIELDS,
+} from "./data/componentFields";
+import { COMPONENT_STEPS } from "./data/componentSteps";
 import {
   description,
   solutions,
@@ -77,6 +88,49 @@ const EXCEL_COLUMNS = [
   { key: "resolvedAt", header: "Дата устранения" },
 ];
 
+/**
+ * Mirrors the column order of "Database component.xlsx" so the registry sheet
+ * drops straight into the customer's existing reporting. Two deviations, both
+ * deliberate: Подразделение/Месторождение are added so the sheet identifies its
+ * own scope, and the source's single "Координаты" column is split into X and Y
+ * to match how the leak sheet in the same workbook already writes them.
+ *
+ * Built with splitExcelColumns, not withRequiredExcelColumns — the latter
+ * injects leak-only columns (время обнаружения, оборудование для замера,
+ * погрешность) that mean nothing for a piece of equipment.
+ */
+const COMPONENT_EXCEL_COLUMNS = [
+  { key: "index", header: "№" },
+  { key: "subdivision", header: "Подразделение" },
+  { key: "deposit", header: "Месторождение" },
+  { key: "location", header: "Местонахождения" },
+  { key: "component_name", header: "Наименование компонента" },
+  { key: "component_name_en", header: "Component name" },
+  { key: "component_uid", header: "Индивидуальный номер компонента" },
+  { key: "scheme_tag", header: "Инвентаризационный номер на схеме" },
+  { key: "process_line", header: "Location" },
+  { key: "diameter", header: "Diameter (mm)" },
+  { key: "line_pressure", header: "Pressure P, Mpa" },
+  { key: "component_type", header: "Тип компонента" },
+  { key: "equipment_type", header: "Тип оборудования" },
+  { key: "nominal_diameter", header: "Номинальный диаметр компонента" },
+  { key: "nominal_pressure", header: "Номинальное давление компонента" },
+  { key: "working_pressure", header: "Рабочее давление" },
+  { key: "working_temperature", header: "Рабочая температура" },
+  { key: "connection_type", header: "Тип соединения" },
+  { key: "medium", header: "Среда применения" },
+  { key: "body_material", header: "Материал Корпуса" },
+  { key: "actuator_type", header: "Тип привода" },
+  { key: "installation_type", header: "Тип установки" },
+  { key: "installed_at", header: "Дата монтажа" },
+  { key: "inspected_at", header: "Дата Инспекции" },
+  { key: "manufacturer", header: "Производитель" },
+  { key: "component_status", header: "Статус компонента" },
+  { key: "lat", header: "Координата X" },
+  { key: "lng", header: "Координата Y" },
+  { key: "photo", header: "Фото" },
+];
+
 const UPSTREAM_CONFIG = Object.freeze({
   steps: { mode: "manual", steps: STEPS },
   voice: {
@@ -121,6 +175,45 @@ const UPSTREAM_CONFIG = Object.freeze({
       direction: ["import", "export"],
       handler: null,
       ...withRequiredExcelColumns(EXCEL_COLUMNS),
+    },
+  },
+
+  /**
+   * The component registry, declared as a sibling of the leak entity rather
+   * than folded into it. Everything above keeps meaning "leak" and stays
+   * untouched; consumers reach this block through the component-specific
+   * helpers in projectAdapter.
+   *
+   * A project type without this block simply has no registry — the section
+   * never appears. That keeps the feature switch derived from config, the way
+   * the adapter already promises, instead of a comparison against the project
+   * type somewhere in the UI.
+   */
+  components: {
+    steps: { mode: "manual", steps: COMPONENT_STEPS },
+    system: {
+      fields: COMPONENT_FIELDS,
+      numeric: COMPONENT_NUMBER_FIELDS,
+      copyable: COMPONENT_COPY_FIELDS,
+      search: COMPONENT_SEARCH_FIELDS,
+      required: COMPONENT_REQUIRED_FIELDS,
+      identity: "component_uid",
+      location: {
+        main: "subdivision",
+        secondary: "deposit",
+        last: "location",
+        main_label: "Подразделение",
+        label: "Месторождение",
+      },
+    },
+    export: {
+      excel: {
+        format: "XLSX",
+        purpose: "sheet",
+        direction: ["export"],
+        sheet: "Компоненты",
+        ...splitExcelColumns(COMPONENT_EXCEL_COLUMNS),
+      },
     },
   },
 });

@@ -42,6 +42,15 @@ export const STORAGE_KEYS = {
     `${APP_PREFIX}:${projectId}:settings_updated_at_${VERSION}`,
   PROJECT_IMPORT_OPERATION: (projectId) =>
     `${APP_PREFIX}:${projectId}:import_operation_${VERSION}`,
+  /**
+   * The component registry lives beside the leak data, never inside it: the
+   * leak container is read whole on every start, and a few thousand equipment
+   * cards in it would slow the launch for no reason. Two independent datasets.
+   */
+  PROJECT_COMPONENTS: (projectId) =>
+    `${APP_PREFIX}:${projectId}:components_${VERSION}`,
+  PROJECT_COMPONENTS_UPDATED_AT: (projectId) =>
+    `${APP_PREFIX}:${projectId}:components_updated_at_${VERSION}`,
 
   /* =========================
      LEGACY (migration only — не использовать в новом коде)
