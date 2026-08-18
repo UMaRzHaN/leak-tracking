@@ -39,7 +39,11 @@ export default function PhotoBlock({
 
       {/* ── Status badge — top right ── */}
       <div className={s.heroBadgeRow}>
-        <StatusBadge status={status} size="md" onClick={onStatusChange} />
+        {/* A component has no leak lifecycle, so it passes no status and the
+            badge is simply absent rather than claiming the card is "open". */}
+        {status && (
+          <StatusBadge status={status} size="md" onClick={onStatusChange} />
+        )}
       </div>
 
       {/* ── Identity info — bottom left ── */}

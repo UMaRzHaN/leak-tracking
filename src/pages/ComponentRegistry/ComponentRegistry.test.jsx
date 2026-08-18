@@ -266,10 +266,12 @@ describe("ComponentRegistry screen", () => {
 
     fireEvent.click(screen.getByText("Задвижка"));
 
+    // The trail lives on its own tab, as it does on the leak sheet.
+    fireEvent.click(screen.getByText("History"));
     expect(screen.getByText("Card created")).toBeTruthy();
     expect(screen.getByText("Мухиддин", { exact: false })).toBeTruthy();
     // Deletion lives behind the reading rather than one mis-tap away in the list.
-    expect(screen.getByText("Delete component")).toBeTruthy();
+    expect(screen.getByText("Delete")).toBeTruthy();
   });
 
   it("asks twice before throwing a walked card away", () => {
@@ -279,7 +281,7 @@ describe("ComponentRegistry screen", () => {
     renderRegistry();
 
     fireEvent.click(screen.getByText("Задвижка"));
-    fireEvent.click(screen.getByText("Delete component"));
+    fireEvent.click(screen.getByText("Delete"));
     expect(registry.current.removeComponent).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByText("Delete for good"));
