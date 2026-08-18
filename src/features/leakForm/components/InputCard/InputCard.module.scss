@@ -81,6 +81,39 @@ textarea.control {
   resize: vertical;
 }
 
+/* ── Date ──
+   A native date control brings its own conventions, and left alone they read
+   wrong next to the other fields: the empty format hint is drawn in full ink,
+   so an untouched field looks filled in, and the picker glyph is a system
+   icon among rounded cards. */
+input[type="date"].control {
+  /* The picker indicator takes the clear button's slot, so the field does not
+     need room reserved for both. */
+  padding-right: 14px;
+  cursor: pointer;
+}
+
+/* Empty means "дд.мм.гггг", which is a hint about the format and belongs in
+   the same grey as every other placeholder on the screen. */
+.field:not(.hasValue) input[type="date"].control::-webkit-datetime-edit {
+  color: var(--c-text3);
+}
+
+input[type="date"].control::-webkit-calendar-picker-indicator {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  margin: 0;
+  border-radius: var(--r-sm, 6px);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity var(--t-fast);
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
 /* filled state */
 .hasValue .control:not(:focus) {
   border-color: var(--c-resolved);

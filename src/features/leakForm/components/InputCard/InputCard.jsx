@@ -18,6 +18,7 @@ export default function InputCard({
 }) {
   const isTextarea = as === "textarea";
   const isNumber = type === "number";
+  const isDate = type === "date";
   const hasValue = value != null && value !== "" && String(value).length > 0;
 
   const inputId = useId();
@@ -67,6 +68,20 @@ export default function InputCard({
              */
             type={isNumber ? "text" : type}
             inputMode={isNumber ? "decimal" : undefined}
+            /*
+             * Opening the picker from anywhere in the field rather than from
+             * the glyph alone: the glyph is 22px, and the person tapping it is
+             * wearing gloves in front of a wellhead.
+             */
+            onClick={
+              isDate
+                ? (event) => {
+                    if (typeof event.currentTarget.showPicker === "function") {
+                      event.currentTarget.showPicker();
+                    }
+                  }
+                : undefined
+            }
             enterKeyHint="next"
             value={value ?? ""}
             placeholder={placeholder ?? ""}
@@ -86,7 +101,7 @@ export default function InputCard({
           />
         )}
 
-        {hasValue && (
+        {hasValue && !isDate && (
           <button
             type="button"
             className={s.clearBtn}

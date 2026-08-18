@@ -2,6 +2,12 @@
    DESIGN TOKENS
    ===================================================== */
 :root {
+  /* Native controls — date pickers, scrollbars, the form widgets the platform
+     draws itself — follow this rather than the operating system. Left to the
+     OS, a phone in dark mode drew the calendar glyph white on a white field
+     and it vanished. */
+  color-scheme: light;
+
   /* Layout */
   --app-header: 76px;
   --app-footer: 64px;
@@ -101,6 +107,8 @@
    DARK THEME
    ===================================================== */
 [data-theme="dark"] {
+  color-scheme: dark;
+
   --c-bg: #0f172a;
   --c-surface: #1e293b;
   --c-surface2: #162032;
