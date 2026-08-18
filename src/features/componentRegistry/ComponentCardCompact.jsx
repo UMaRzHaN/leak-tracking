@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useRef, useState } from "react";
 import { useSwipeActions } from "@/hooks/useSwipeActions";
 import { usePhotoSrc } from "@/hooks/usePhotoSrc";
 import { useLanguage } from "@/app/hooks/useLanguage";
@@ -20,27 +20,35 @@ function ComponentCardCompact({
   conflicting = false,
   onOpenDetails,
   onInspect,
-  onRemove,
 }) {
   const { t } = useLanguage();
   const [offset, setOffset] = useState(0);
+  /*
+   * A finished swipe resets the offset before the browser delivers the click
+   * that ends it, so a gesture used to fire its own action and then open the
+   * card on top. The flag outlives that reset by one event.
+   */
+  const swipedRef = useRef(false);
   const photoSrc = usePhotoSrc(component.photo ?? null);
 
   const swipe = useSwipeActions({
-    onSwipeMove: setOffset,
+    onSwipeMove: (dx) => {
+      if (Math.abs(dx) > 4) swipedRef.current = true;
+      setOffset(dx);
+    },
     // 👈 right to left — the card in full
-    onSwipeLeft: () => {
-      setOffset(0);
-      onOpenDetails?.(component);
-    },
+    onSwipeLeft: () => onOpenDetails?.(component),
     // 👉 left to right — state of the hardware, and the visit that found it
-    onSwipeRight: () => {
-      setOffset(0);
-      onInspect?.(component);
-    },
+    onSwipeRight: () => onInspect?.(component),
   });
 
-  const swiping = Math.abs(offset) > 4;
+  const openIfNotSwiping = () => {
+    if (swipedRef.current) {
+      swipedRef.current = false;
+      return;
+    }
+    onOpenDetails?.(component);
+  };
   const status = String(component.component_status ?? "").trim();
 
   return (
@@ -64,13 +72,7 @@ function ComponentCardCompact({
         onMouseMove={swipe.onMouseMove}
         onMouseUp={swipe.onMouseUp}
       >
-        <button
-          type="button"
-          className={s.body}
-          onClick={() => {
-            if (!swiping) onOpenDetails?.(component);
-          }}
-        >
+        <button type="button" className={s.body} onClick={openIfNotSwiping}>
           <span className={s.thumb}>
             {photoSrc ? (
               <img src={photoSrc} alt="" loading="lazy" />
@@ -102,15 +104,6 @@ function ComponentCardCompact({
             </span>
             {status && <span className={s.status}>{status}</span>}
           </span>
-        </button>
-
-        <button
-          type="button"
-          className={s.remove}
-          onClick={() => onRemove?.(component)}
-          aria-label={t("components.remove")}
-        >
-          ×
         </button>
       </div>
     </li>

@@ -22,14 +22,14 @@
 
 .hintLeft {
   left: 0;
-  right: 0;
+  width: 50%;
   justify-content: flex-start;
   background: var(--c-blue);
 }
 
 .hintRight {
-  left: 0;
   right: 0;
+  width: 50%;
   justify-content: flex-end;
   background: var(--c-surface2);
   color: var(--c-text);
@@ -135,21 +135,6 @@
 .status {
   color: var(--c-text2, var(--c-text3));
   font-weight: 600;
-}
-
-.remove {
-  flex: none;
-  width: 40px;
-  border: none;
-  background: none;
-  font-size: 20px;
-  line-height: 1;
-  color: var(--c-text3);
-  cursor: pointer;
-
-  &:hover {
-    color: var(--c-red, #d33);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

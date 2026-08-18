@@ -7,6 +7,7 @@ import ComponentCardForm from "./ComponentCardForm";
 import SchemaList from "@/features/schemas/SchemaList";
 import ComponentCardCompact from "@/features/componentRegistry/ComponentCardCompact";
 import ComponentInspectSheet from "@/features/componentRegistry/ComponentInspectSheet";
+import ComponentDetailsSheet from "@/features/componentRegistry/ComponentDetailsSheet";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { createRecordId } from "@/utils/createRecordId";
 import { withStoredPhoto } from "@/features/componentRegistry/componentPhoto";
@@ -76,6 +77,7 @@ export default function ComponentRegistry({
   const [tab, setTab] = useState("components");
   const [conflictsOnly, setConflictsOnly] = useState(false);
   const [inspecting, setInspecting] = useState(null);
+  const [viewing, setViewing] = useState(null);
 
   /*
    * Nothing is written without a name. Every history entry is signed, and a
@@ -276,6 +278,22 @@ export default function ComponentRegistry({
 
       {tab === "schemas" && <SchemaList project={project} />}
 
+      {viewing && (
+        <ComponentDetailsSheet
+          component={viewing}
+          fields={fields?.viewable ?? []}
+          onEdit={(card) => {
+            setViewing(null);
+            if (canWrite) openCard(card);
+          }}
+          onRemove={async (card) => {
+            setViewing(null);
+            await removeComponent(card.id);
+          }}
+          onClose={() => setViewing(null)}
+        />
+      )}
+
       {inspecting && (
         <ComponentInspectSheet
           component={inspecting}
@@ -364,9 +382,8 @@ export default function ComponentRegistry({
                   key={component.id}
                   component={component}
                   conflicting={conflictingIds.has(component.id)}
-                  onOpenDetails={canWrite ? openCard : undefined}
+                  onOpenDetails={setViewing}
                   onInspect={canWrite ? setInspecting : undefined}
-                  onRemove={() => removeComponent(component.id)}
                 />
               ))}
             </ul>

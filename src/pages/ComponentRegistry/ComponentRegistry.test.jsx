@@ -244,6 +244,48 @@ describe("ComponentRegistry screen", () => {
     expect(screen.queryByText("Труба")).toBeNull();
   });
 
+  it("opens the card for reading, with its history and its delete", () => {
+    registry.current = makeRegistry({
+      components: [
+        {
+          id: "a",
+          component_uid: "7",
+          component: "Задвижка",
+          location: "УППГ",
+          history: [
+            {
+              action: "component_created",
+              date: "2026-01-01T00:00:00.000Z",
+              user: "Мухиддин",
+            },
+          ],
+        },
+      ],
+    });
+    renderRegistry();
+
+    fireEvent.click(screen.getByText("Задвижка"));
+
+    expect(screen.getByText("Card created")).toBeTruthy();
+    expect(screen.getByText("Мухиддин", { exact: false })).toBeTruthy();
+    // Deletion lives behind the reading rather than one mis-tap away in the list.
+    expect(screen.getByText("Delete component")).toBeTruthy();
+  });
+
+  it("asks twice before throwing a walked card away", () => {
+    registry.current = makeRegistry({
+      components: [{ id: "a", component_uid: "7", component: "Задвижка" }],
+    });
+    renderRegistry();
+
+    fireEvent.click(screen.getByText("Задвижка"));
+    fireEvent.click(screen.getByText("Delete component"));
+    expect(registry.current.removeComponent).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText("Delete for good"));
+    expect(registry.current.removeComponent).toHaveBeenCalledWith("a");
+  });
+
   it("marks the colliding cards in the list itself", () => {
     registry.current = makeRegistry({
       components: [
@@ -599,8 +641,10 @@ describe("component card form", () => {
     });
     renderRegistry();
 
+    // Opening a card lands on what it says; editing is a step further in.
     fireEvent.click(screen.getByText("Задвижка"));
-    expect(screen.getByText("Component card")).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Component card" })).toBeTruthy();
+    fireEvent.click(screen.getByText("Edit"));
 
     // The stored card already carries its number, so paging needs nothing.
     for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next →"));
