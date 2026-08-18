@@ -1,13 +1,42 @@
-.viewer {
+.overlay {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  /* The app's own overlay level. Anything lower leaves the sticky header (120)
+     and the bottom navigation (800) drawn over the drawing — which hid the
+     close button and left no way back out. */
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+/* Leaving the app visible behind the drawing is the point: a full-bleed viewer
+   covered the navigation too, so there was nothing left to press to get out. */
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.62);
+}
+
+.viewer {
+  position: relative;
+  width: min(100%, 1100px);
+  height: min(100%, 820px);
   display: flex;
   flex-direction: column;
-  background: var(--c-bg, #000);
+  border-radius: var(--r-lg);
+  background: var(--c-bg, #111);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+
+  &:focus {
+    outline: none;
+  }
 }
 
 .bar {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -18,6 +47,7 @@
   button {
     flex: none;
     padding: 7px 12px;
+    white-space: nowrap;
     border: 1.5px solid var(--c-border);
     border-radius: var(--r-lg);
     background: var(--c-surface);
@@ -73,6 +103,7 @@
 }
 
 .hint {
+  flex: none;
   margin: 0;
   padding: 8px 12px;
   border-top: 1px solid var(--c-border);
@@ -86,4 +117,8 @@
   .image {
     will-change: auto;
   }
+}
+
+.closeBtn {
+  font-weight: 600;
 }

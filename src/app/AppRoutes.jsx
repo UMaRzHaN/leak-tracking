@@ -224,7 +224,7 @@ export default function AppRoutes({
           !isImportingProject &&
           !loadError &&
           page === "components" && (
-            <ComponentRegistry project={activeProject} />
+            <ComponentRegistry project={activeProject} coords={coords} />
           )}
 
         {dataLoaded && !isImportingProject && !loadError && page === "map" && (

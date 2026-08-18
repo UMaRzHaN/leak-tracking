@@ -22,7 +22,7 @@ function matchesSearch(component, query) {
  * the total number of components on the field is never known — a percentage
  * here would be invented.
  */
-export default function ComponentRegistry({ project }) {
+export default function ComponentRegistry({ project, coords = null }) {
   const { t } = useLanguage();
   const {
     enabled,
@@ -59,6 +59,7 @@ export default function ComponentRegistry({ project }) {
       errors: {
         required: t("components.errors.required"),
         digitsOnly: t("components.errors.digitsOnly"),
+        badCoordinate: t("components.errors.badCoordinate"),
       },
     }),
     [t],
@@ -101,6 +102,7 @@ export default function ComponentRegistry({ project }) {
     return (
       <ComponentCardForm
         steps={steps.steps}
+        coords={coords}
         component={editing.id ? editing : null}
         suggestUid={suggestNextUid}
         findConflicts={findConflicts}

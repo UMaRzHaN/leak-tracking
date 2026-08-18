@@ -123,6 +123,39 @@ describe("schema list", () => {
     expect(hooks.openExternally).not.toHaveBeenCalled();
   });
 
+  it("keeps the list reachable behind the open drawing", async () => {
+    // The viewer used to replace the screen outright, navigation included.
+    hooks.current = makeHook({ schemas: [drawing] });
+    render(<SchemaList project={project} />);
+
+    fireEvent.click(screen.getByText("Схема УППГ.png"));
+    await waitFor(() => screen.getByRole("dialog"));
+
+    expect(screen.getByText("Add schema")).toBeTruthy();
+  });
+
+  it("closes the drawing by clicking away from it", async () => {
+    hooks.current = makeHook({ schemas: [drawing] });
+    const { container } = render(<SchemaList project={project} />);
+
+    fireEvent.click(screen.getByText("Схема УППГ.png"));
+    await waitFor(() => screen.getByRole("dialog"));
+
+    fireEvent.click(container.querySelector('[class*="backdrop"]'));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("closes the drawing with Escape", async () => {
+    hooks.current = makeHook({ schemas: [drawing] });
+    render(<SchemaList project={project} />);
+
+    fireEvent.click(screen.getByText("Схема УППГ.png"));
+    await waitFor(() => screen.getByRole("dialog"));
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
   it("hands a PDF to the system viewer instead", async () => {
     hooks.current = makeHook({ schemas: [pdf] });
     render(<SchemaList project={project} />);

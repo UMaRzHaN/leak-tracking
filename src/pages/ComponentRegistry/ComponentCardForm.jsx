@@ -4,6 +4,8 @@ import {
   isValidComponentUid,
   missingRequiredFields,
 } from "@/domain/componentRegistry";
+import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
+import { toNullableNumber } from "@/utils/normalize/toNullableNumber";
 import { COMPONENT_NAME_TRANSLATIONS } from "@/data/component/componentDictionary";
 import s from "./ComponentRegistry.module.scss";
 
@@ -18,6 +20,7 @@ import s from "./ComponentRegistry.module.scss";
  */
 export default function ComponentCardForm({
   steps,
+  coords = null,
   component = null,
   suggestUid,
   findConflicts,
@@ -28,7 +31,16 @@ export default function ComponentCardForm({
   const isEditing = Boolean(component?.id);
 
   const [form, setForm] = useState(() =>
-    isEditing ? { ...component } : { component_uid: suggestUid?.() ?? "" },
+    isEditing
+      ? { ...component }
+      : {
+          component_uid: suggestUid?.() ?? "",
+          // Stamped once, when the card is opened, rather than at save: the
+          // walker is standing at the equipment now, and by the time the
+          // passport fields are filled in they may have moved on.
+          lat: toNullableNumber(coords?.lat) ?? "",
+          lng: toNullableNumber(coords?.lng) ?? "",
+        },
   );
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState({});
@@ -64,6 +76,19 @@ export default function ComponentCardForm({
     );
   }, []);
 
+  /** The first step carrying one of these keys, so an error is never hidden. */
+  const stepOf = useCallback(
+    (keys) => {
+      for (const [index, formStep] of steps.entries()) {
+        if (formStep.fields.some((field) => keys.includes(field.key))) {
+          return index + 1;
+        }
+      }
+      return 1;
+    },
+    [steps],
+  );
+
   const validate = useCallback(() => {
     const next = {};
     for (const key of missingRequiredFields(form, required)) {
@@ -72,15 +97,33 @@ export default function ComponentCardForm({
     if (form.component_uid && !isValidComponentUid(form.component_uid)) {
       next.component_uid = texts.errors.digitsOnly;
     }
+    // A coordinate typed by hand can land anywhere; one that is out of range
+    // would put the component on the far side of the planet on the map.
+    if (
+      form.lat !== "" &&
+      form.lat != null &&
+      !isValidLatitude(Number(form.lat))
+    ) {
+      next.lat = texts.errors.badCoordinate;
+    }
+    if (
+      form.lng !== "" &&
+      form.lng != null &&
+      !isValidLongitude(Number(form.lng))
+    ) {
+      next.lng = texts.errors.badCoordinate;
+    }
     setErrors(next);
-    return Object.keys(next).length === 0;
+    return Object.keys(next);
   }, [form, required, texts]);
 
   const handleSave = useCallback(async () => {
-    if (!validate()) {
-      // Required fields all live on step one; send the operator back to them
-      // rather than leaving an error nobody can see.
-      setStep(1);
+    const failed = validate();
+    if (failed.length > 0) {
+      // Land on the step that actually holds the problem. Saving is allowed
+      // from any step, so a fixed jump to the first one would hide an error
+      // sitting three steps away and look like a button that does nothing.
+      setStep(stepOf(failed));
       return;
     }
     setSaving(true);
@@ -89,7 +132,7 @@ export default function ComponentCardForm({
     } finally {
       setSaving(false);
     }
-  }, [form, onSave, validate]);
+  }, [form, onSave, stepOf, validate]);
 
   const isLastStep = step >= steps.length;
 

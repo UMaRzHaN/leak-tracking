@@ -222,6 +222,97 @@ describe("component card form", () => {
     fireEvent.click(screen.getByText("Add component"));
   }
 
+  it("stamps the current fix onto a new card", async () => {
+    render(
+      <ComponentRegistry
+        project={project}
+        coords={{ lat: 38.4769, lng: 66.1466 }}
+      />,
+    );
+    fireEvent.click(screen.getByText("Add component"));
+    // Coordinates sit on the last step, beside the photo.
+    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next"));
+
+    expect(screen.getByDisplayValue("38.4769")).toBeTruthy();
+    expect(screen.getByDisplayValue("66.1466")).toBeTruthy();
+  });
+
+  it("opens a card without a fix when the receiver has none", () => {
+    render(<ComponentRegistry project={project} coords={null} />);
+    fireEvent.click(screen.getByText("Add component"));
+    // Indoors a fix never arrives; that must not stop the card being written.
+    expect(screen.getByText("New component")).toBeTruthy();
+  });
+
+  it("keeps a stored fix instead of overwriting it on edit", () => {
+    registry.current = makeRegistry({
+      components: [
+        {
+          id: "a",
+          component_uid: "7",
+          component_name: "Задвижка",
+          lat: 38.1,
+          lng: 66.1,
+        },
+      ],
+    });
+    render(<ComponentRegistry project={project} coords={{ lat: 1, lng: 2 }} />);
+
+    fireEvent.click(screen.getByText("Задвижка"));
+    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next"));
+
+    expect(screen.getByDisplayValue("38.1")).toBeTruthy();
+    expect(screen.queryByDisplayValue("1")).toBeNull();
+  });
+
+  it("refuses a coordinate that would land off the planet", async () => {
+    render(<ComponentRegistry project={project} coords={null} />);
+    fireEvent.click(screen.getByText("Add component"));
+
+    fireEvent.change(screen.getByLabelText(/Локация/), {
+      target: { value: "УППГ" },
+    });
+    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
+      target: { value: "Труба" },
+    });
+    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next"));
+    fireEvent.change(screen.getByLabelText(/Координата X/), {
+      target: { value: "120" },
+    });
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() =>
+      expect(screen.getByText("Coordinate is out of range")).toBeTruthy(),
+    );
+    expect(registry.current.addComponent).not.toHaveBeenCalled();
+  });
+
+  it("saves a coordinate corrected by hand", async () => {
+    render(
+      <ComponentRegistry project={project} coords={{ lat: 38.4, lng: 66.1 }} />,
+    );
+    fireEvent.click(screen.getByText("Add component"));
+
+    fireEvent.change(screen.getByLabelText(/Локация/), {
+      target: { value: "УППГ" },
+    });
+    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
+      target: { value: "Труба" },
+    });
+    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next"));
+    fireEvent.change(screen.getByLabelText(/Координата X/), {
+      target: { value: "38.5" },
+    });
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() =>
+      expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
+    );
+    // The form hands over what was typed; storage coerces it to a number —
+    // see normalizeComponent.
+    expect(registry.current.addComponent.mock.calls[0][0].lat).toBe("38.5");
+  });
+
   it("blocks saving only on the three fields readable without a plate", async () => {
     openBlankCard();
     fireEvent.click(screen.getByText("Save"));

@@ -111,23 +111,24 @@ export default function SchemaList({ project }) {
     });
   }, []);
 
-  if (open) {
-    return (
-      <SchemaViewer
-        src={open.url}
-        alt={open.schema.name}
-        onClose={handleClose}
-        texts={{
-          fit: t("schemas.fit"),
-          close: t("schemas.close"),
-          hint: t("schemas.viewerHint"),
-        }}
-      />
-    );
-  }
-
   return (
     <div className={s.panel}>
+      {/* Rendered over the list rather than instead of it: the drawing used to
+          replace the whole screen, navigation included, leaving nothing to
+          press to get back. */}
+      {open && (
+        <SchemaViewer
+          src={open.url}
+          alt={open.schema.name}
+          onClose={handleClose}
+          texts={{
+            fit: t("schemas.fit"),
+            close: t("schemas.close"),
+            hint: t("schemas.viewerHint"),
+          }}
+        />
+      )}
+
       {error && (
         <p className={s.error} role="alert">
           {t("schemas.loadError")}

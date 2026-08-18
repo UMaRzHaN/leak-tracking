@@ -29,6 +29,7 @@ export const components = {
     "That number is already in the registry ({{count}}). You can still save — it gets resolved on merge.",
   errors: {
     required: "Required",
+    badCoordinate: "Coordinate is out of range",
     digitsOnly: "Digits only",
   },
 };

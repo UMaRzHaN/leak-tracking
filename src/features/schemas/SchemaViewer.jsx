@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useModalDialog } from "@/hooks/useModalDialog";
 import s from "./SchemaViewer.module.scss";
 
 const MIN_SCALE = 1;
@@ -24,9 +25,15 @@ function distanceBetween(a, b) {
  *
  * The drawing is never downscaled on the way in for the same reason: the tags
  * are small, and a shrunk copy is unreadable precisely where it is needed.
+ *
+ * Shown as a modal rather than as a screen of its own. A full-bleed viewer left
+ * nothing to press to get back out — the drawing covered the navigation along
+ * with everything else. A modal keeps the app visible behind it and gives three
+ * ways out: the close button, the backdrop, and Escape.
  */
 export default function SchemaViewer({ src, alt, texts, onClose }) {
   const frameRef = useRef(null);
+  const dialogRef = useModalDialog({ open: true, onClose });
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
 
@@ -42,14 +49,6 @@ export default function SchemaViewer({ src, alt, texts, onClose }) {
   useEffect(() => {
     reset();
   }, [src, reset]);
-
-  useEffect(() => {
-    const onKeyDown = (event) => {
-      if (event.key === "Escape") onClose?.();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
 
   const applyScale = useCallback((nextScale) => {
     setScale((current) => {
@@ -152,40 +151,50 @@ export default function SchemaViewer({ src, alt, texts, onClose }) {
   }, [applyScale, reset, scale]);
 
   return (
-    <div className={s.viewer} role="dialog" aria-label={alt}>
-      <header className={s.bar}>
-        <span className={s.title}>{alt}</span>
-        <span className={s.zoom}>{Math.round(scale * 100)}%</span>
-        <button type="button" onClick={reset} disabled={scale === MIN_SCALE}>
-          {texts.fit}
-        </button>
-        <button type="button" onClick={onClose}>
-          {texts.close}
-        </button>
-      </header>
-
+    <div className={s.overlay}>
+      <div className={s.backdrop} onClick={onClose} />
       <div
-        ref={frameRef}
-        className={s.frame}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        onWheel={handleWheel}
-        onClick={handleClick}
+        ref={dialogRef}
+        className={s.viewer}
+        role="dialog"
+        aria-modal="true"
+        aria-label={alt}
+        tabIndex={-1}
       >
-        <img
-          className={s.image}
-          src={src}
-          alt={alt}
-          draggable={false}
-          style={{
-            transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
-          }}
-        />
-      </div>
+        <header className={s.bar}>
+          <span className={s.title}>{alt}</span>
+          <span className={s.zoom}>{Math.round(scale * 100)}%</span>
+          <button type="button" onClick={reset} disabled={scale === MIN_SCALE}>
+            {texts.fit}
+          </button>
+          <button type="button" className={s.closeBtn} onClick={onClose}>
+            {texts.close}
+          </button>
+        </header>
 
-      <p className={s.hint}>{texts.hint}</p>
+        <div
+          ref={frameRef}
+          className={s.frame}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          onWheel={handleWheel}
+          onClick={handleClick}
+        >
+          <img
+            className={s.image}
+            src={src}
+            alt={alt}
+            draggable={false}
+            style={{
+              transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
+            }}
+          />
+        </div>
+
+        <p className={s.hint}>{texts.hint}</p>
+      </div>
     </div>
   );
 }
