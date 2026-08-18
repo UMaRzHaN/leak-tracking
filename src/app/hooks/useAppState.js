@@ -1,22 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { APP_PAGES, HOME_PAGE, normalizePage } from "@/app/pages";
 
 const NAVIGATION_STATE_KEY = "leakTrackingNavigation";
 const GPS_ENABLED_KEY = "app:gps_enabled_v1";
-const HOME_PAGE = "";
-const APP_PAGES = new Set([
-  HOME_PAGE,
-  "add",
-  "db",
-  "map",
-  "monitoring",
-  "settings",
-]);
-
-function normalizePage(value) {
-  return typeof value === "string" && APP_PAGES.has(value) ? value : HOME_PAGE;
-}
-
 function readNavigationState(state = globalThis.history?.state) {
   const navigation = state?.[NAVIGATION_STATE_KEY];
   if (

@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
 import { useLanguage } from "./hooks/useLanguage";
+import { isListPage } from "@/app/pages";
 import { useModalDialog } from "@/hooks/useModalDialog";
 
 const Settings = lazy(() => import("@/pages/Settings/Settings"));
@@ -128,13 +129,12 @@ export default function AppRoutes({
   sharedFilters,
   userProfile,
 }) {
-  const isListPage =
-    page === "db" || page === "monitoring" || page === "components";
+  const listPage = isListPage(page);
 
   return (
     <div
       className={`pages ${page === "map" ? "pagesMap" : ""} ${
-        isListPage ? "pagesList" : ""
+        listPage ? "pagesList" : ""
       }`}
     >
       <Suspense fallback={<AppLoader />}>

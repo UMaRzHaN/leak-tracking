@@ -108,16 +108,18 @@ export default function ComponentCardForm({
         </p>
       )}
 
-      <StepRenderer
-        step={step}
-        steps={steps}
-        form={form}
-        errors={errors}
-        onChange={handleChange}
-        nextStep={() => setStep((value) => Math.min(value + 1, steps.length))}
-        save={handleSave}
-        ghostPlaceholders={null}
-      />
+      <div className={s.formScroll}>
+        <StepRenderer
+          step={step}
+          steps={steps}
+          form={form}
+          errors={errors}
+          onChange={handleChange}
+          nextStep={() => setStep((value) => Math.min(value + 1, steps.length))}
+          save={handleSave}
+          ghostPlaceholders={null}
+        />
+      </div>
 
       <footer className={s.formFoot}>
         <button type="button" onClick={onCancel} disabled={saving}>

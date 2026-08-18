@@ -15,6 +15,7 @@ const ProjectSetupScreen = lazy(
 import { useAppBootstrap } from "./hooks/useAppBootstrap";
 import AppRoutes, { AppLoader } from "./AppRoutes";
 import AppDialogs from "./components/AppDialogs";
+import { isListPage } from "@/app/pages";
 
 export default function App() {
   const {
@@ -84,13 +85,13 @@ export default function App() {
   }
 
   const hideLayout = page === "add" || page === "settings";
-  const isListPage = page === "db" || page === "monitoring";
+  const listPage = isListPage(page);
 
   /* =========================
      RENDER
   ========================= */
   return (
-    <div className={`app ${isListPage ? "appList" : ""}`}>
+    <div className={`app ${listPage ? "appList" : ""}`}>
       {!hideLayout && (
         <Suspense fallback={null}>
           <Header
