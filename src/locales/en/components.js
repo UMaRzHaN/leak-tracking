@@ -38,6 +38,8 @@ export const components = {
   loadError: "Could not read the registry. Nothing is lost — try again later.",
   searchPlaceholder: "Number, name, drawing tag...",
   locationFilter: "Filter by location",
+  statusFilter: "Filter by state",
+  allStatuses: "All",
   allLocations: "All locations",
   duplicateWarning:
     "That number is already in the registry ({{count}}). You can still save — it gets resolved on merge.",

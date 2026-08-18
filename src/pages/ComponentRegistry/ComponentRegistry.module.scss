@@ -219,3 +219,40 @@
   composes: uid;
   color: var(--c-amber, #e0a800);
 }
+
+/* ── Status chips ──
+   Built like the database's status row: what a walk actually found, with the
+   count next to it, and only the states that occur. */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip,
+.chipActive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1.5px solid var(--c-border);
+  border-radius: 999px;
+  background: var(--c-surface);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text2, var(--c-text));
+  cursor: pointer;
+}
+
+.chipActive {
+  border-color: var(--c-blue);
+  background: var(--c-surface2);
+  color: var(--c-text);
+}
+
+.chipCount {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--c-text3);
+}

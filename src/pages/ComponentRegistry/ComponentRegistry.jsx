@@ -10,6 +10,8 @@ import VirtualizedLeakList from "@/features/leakList/VirtualizedLeakList/Virtual
 import ComponentInspectSheet from "@/features/componentRegistry/ComponentInspectSheet";
 import ComponentDetailsSheet from "@/features/componentRegistry/ComponentDetailsSheet";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
+import { matchesLeakLocationFilter } from "@/utils/locationFilter";
+import { component_statuses } from "@/data/component/componentDictionary";
 import { createRecordId } from "@/utils/createRecordId";
 import { withStoredPhoto } from "@/features/componentRegistry/componentPhoto";
 import {
@@ -42,6 +44,7 @@ export default function ComponentRegistry({
   coords = null,
   cardPage = false,
   userProfile = null,
+  sharedFilters = null,
   onOpenCard = null,
   onCloseCard = null,
 }) {
@@ -73,7 +76,7 @@ export default function ComponentRegistry({
   const { startVoiceInput, stopVoiceInput } = useVoiceControl();
 
   const [search, setSearch] = useState("");
-  const [locationFilter, setLocationFilter] = useState(ALL);
+  const [statusFilter, setStatusFilter] = useState(ALL);
   const [editing, setEditing] = useState(null);
   const [tab, setTab] = useState("components");
   const [conflictsOnly, setConflictsOnly] = useState(false);
@@ -147,25 +150,46 @@ export default function ComponentRegistry({
     [canWrite, conflictingIds],
   );
 
-  const locations = useMemo(() => {
-    const seen = new Set();
-    for (const component of components) {
-      const value = String(component.location ?? "").trim();
-      if (value) seen.add(value);
-    }
-    return [...seen].sort((a, b) => a.localeCompare(b, "ru"));
-  }, [components]);
-
+  /*
+   * Место берётся из выбора в шапке, а не из своего списка: там уже стоит
+   * иерархия этого типа проекта, и она одна на базу, карту, мониторинг и
+   * реестр. Второй выбор рядом с первым означал бы два ответа на один вопрос.
+   */
   const visible = useMemo(
     () =>
       components.filter(
         (component) =>
-          (locationFilter === ALL || component.location === locationFilter) &&
+          matchesLeakLocationFilter(
+            component,
+            sharedFilters?.mainLocationFilter,
+          ) &&
+          matchesLeakLocationFilter(component, sharedFilters?.locationFilter) &&
+          matchesLeakLocationFilter(
+            component,
+            sharedFilters?.lastLocationFilter,
+          ) &&
+          (statusFilter === ALL ||
+            String(component.component_status ?? "") === statusFilter) &&
           (!conflictsOnly || conflictingIds.has(component.id)) &&
           matchesSearch(component, search),
       ),
-    [components, conflictingIds, conflictsOnly, locationFilter, search],
+    [
+      components,
+      conflictingIds,
+      conflictsOnly,
+      search,
+      sharedFilters,
+      statusFilter,
+    ],
   );
+
+  /** Только те состояния, что встречаются — пустая кнопка ничего не отбирает. */
+  const usedStatuses = useMemo(() => {
+    const seen = new Set(
+      components.map((c) => String(c.component_status ?? "").trim()),
+    );
+    return component_statuses.filter((status) => seen.has(status));
+  }, [components]);
 
   /**
    * The page follows the card, not the other way round: opening one switches to
@@ -364,19 +388,41 @@ export default function ComponentRegistry({
               placeholder={t("components.searchPlaceholder")}
               aria-label={t("components.searchPlaceholder")}
             />
-            <select
-              value={locationFilter}
-              onChange={(event) => setLocationFilter(event.target.value)}
-              aria-label={t("components.locationFilter")}
-            >
-              <option value={ALL}>{t("components.allLocations")}</option>
-              {locations.map((location) => (
-                <option key={location} value={location}>
-                  {location}
-                </option>
-              ))}
-            </select>
           </div>
+
+          {usedStatuses.length > 0 && (
+            <div
+              className={s.chips}
+              role="group"
+              aria-label={t("components.statusFilter")}
+            >
+              <button
+                type="button"
+                className={statusFilter === ALL ? s.chipActive : s.chip}
+                onClick={() => setStatusFilter(ALL)}
+              >
+                {t("components.allStatuses")}
+                <span className={s.chipCount}>{components.length}</span>
+              </button>
+              {usedStatuses.map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  className={statusFilter === status ? s.chipActive : s.chip}
+                  onClick={() => setStatusFilter(status)}
+                >
+                  {status}
+                  <span className={s.chipCount}>
+                    {
+                      components.filter(
+                        (c) => String(c.component_status ?? "") === status,
+                      ).length
+                    }
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
 
           <button
             type="button"

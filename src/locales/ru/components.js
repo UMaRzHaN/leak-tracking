@@ -39,6 +39,8 @@ export const components = {
     "Не удалось прочитать реестр. Данные не потеряны, попробуйте позже.",
   searchPlaceholder: "Номер, наименование, номер на схеме...",
   locationFilter: "Фильтр по локации",
+  statusFilter: "Фильтр по состоянию",
+  allStatuses: "Все",
   allLocations: "Все локации",
   duplicateWarning:
     "Такой номер уже есть в реестре ({{count}}). Сохранить можно — разберём при сведении.",

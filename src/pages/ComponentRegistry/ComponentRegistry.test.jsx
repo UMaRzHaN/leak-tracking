@@ -145,7 +145,9 @@ describe("ComponentRegistry screen", () => {
     expect(screen.getByRole("alert").textContent).toMatch(/could not read/i);
   });
 
-  it("filters by location", () => {
+  it("follows the place chosen in the header rather than its own list", () => {
+    // One hierarchy, shared with the database, the map and the monitoring list.
+    // A second selector beside the first would be two answers to one question.
     registry.current = makeRegistry({
       components: [
         {
@@ -162,14 +164,59 @@ describe("ComponentRegistry screen", () => {
         },
       ],
     });
-    renderRegistry();
-
-    fireEvent.change(screen.getByLabelText("Filter by location"), {
-      target: { value: "УППГ" },
+    renderRegistry({
+      sharedFilters: { locationFilter: { key: "location", values: ["УППГ"] } },
     });
 
     expect(screen.getByText("Задвижка")).toBeTruthy();
     expect(screen.queryByText("Труба")).toBeNull();
+    expect(screen.queryByLabelText("Filter by location")).toBeNull();
+  });
+
+  it("filters by the state the hardware was found in", () => {
+    registry.current = makeRegistry({
+      components: [
+        {
+          id: "a",
+          component_uid: "1",
+          component: "Задвижка",
+          component_status: "В работе",
+        },
+        {
+          id: "b",
+          component_uid: "2",
+          component: "Труба",
+          component_status: "Требует замены",
+        },
+      ],
+    });
+    const { container } = renderRegistry();
+
+    // The state shows on the card too, so the row is picked by class.
+    const chip = [...container.querySelectorAll('[class*="chip_"]')].find(
+      (el) => el.textContent.startsWith("Требует замены"),
+    );
+    fireEvent.click(chip);
+
+    expect(screen.getByText("Труба")).toBeTruthy();
+    expect(screen.queryByText("Задвижка")).toBeNull();
+  });
+
+  it("offers only the states a walk actually found", () => {
+    registry.current = makeRegistry({
+      components: [
+        { id: "a", component_uid: "1", component_status: "В работе" },
+      ],
+    });
+    const { container } = renderRegistry();
+
+    // The state shows on the card too, so the row is picked by class.
+    const chips = [...container.querySelectorAll('[class*="chip_"]')].map(
+      (el) => el.textContent,
+    );
+    expect(chips.some((text) => text.startsWith("В работе"))).toBe(true);
+    // An empty button selects nothing and only adds to the noise.
+    expect(chips.some((text) => text.startsWith("Демонтирован"))).toBe(false);
   });
 
   it("searches across the card, not just the name", () => {
