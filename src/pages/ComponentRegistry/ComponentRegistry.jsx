@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useComponentRegistry } from "@/features/componentRegistry/useComponentRegistry";
 import ComponentCardForm from "./ComponentCardForm";
@@ -22,7 +22,13 @@ function matchesSearch(component, query) {
  * the total number of components on the field is never known — a percentage
  * here would be invented.
  */
-export default function ComponentRegistry({ project, coords = null }) {
+export default function ComponentRegistry({
+  project,
+  coords = null,
+  cardPage = false,
+  onOpenCard = null,
+  onCloseCard = null,
+}) {
   const { t } = useLanguage();
   const {
     enabled,
@@ -99,13 +105,43 @@ export default function ComponentRegistry({ project, coords = null }) {
     [components, conflictingIds, conflictsOnly, locationFilter, search],
   );
 
+  /**
+   * The page follows the card, not the other way round: opening one switches to
+   * the full-screen page, closing it returns to the list. Stated as an
+   * invariant so a reload that lands on the card page with nothing open — the
+   * page value is remembered, the card is not — corrects itself instead of
+   * showing the list under a hidden navigation bar.
+   */
+  const openCard = useCallback(
+    (card) => {
+      setEditing(card);
+      onOpenCard?.();
+    },
+    [onOpenCard],
+  );
+
+  const closeCard = useCallback(() => {
+    setEditing(null);
+    onCloseCard?.();
+  }, [onCloseCard]);
+
+  useEffect(() => {
+    // Page and card are kept in step in both directions. Opening a card asks
+    // for the page; leaving the page — by the header arrow, but equally by the
+    // hardware back button, which the app turns into history navigation —
+    // closes the card. Syncing one way only left the form on screen with the
+    // navigation already back underneath it.
+    if (editing && !cardPage) setEditing(null);
+    else if (!editing && cardPage) onCloseCard?.();
+  }, [cardPage, editing, onCloseCard]);
+
   const handleSave = useCallback(
     async (form) => {
       if (editing?.id) await updateComponent(editing.id, form);
       else await addComponent(form);
-      setEditing(null);
+      closeCard();
     },
-    [addComponent, editing, updateComponent],
+    [addComponent, closeCard, editing, updateComponent],
   );
 
   if (!enabled) return null;
@@ -123,7 +159,7 @@ export default function ComponentRegistry({ project, coords = null }) {
         suggestUid={suggestNextUid}
         findConflicts={findConflicts}
         onSave={handleSave}
-        onCancel={() => setEditing(null)}
+        onCancel={closeCard}
         texts={texts}
       />
     );
@@ -217,7 +253,7 @@ export default function ComponentRegistry({ project, coords = null }) {
           <button
             type="button"
             className={s.primary}
-            onClick={() => setEditing({})}
+            onClick={() => openCard({})}
           >
             {t("components.add")}
           </button>
@@ -237,7 +273,7 @@ export default function ComponentRegistry({ project, coords = null }) {
                   <button
                     type="button"
                     className={s.cardBody}
-                    onClick={() => setEditing(component)}
+                    onClick={() => openCard(component)}
                   >
                     {/* A colliding number is a state, not a value: the list
                         has to show which cards need a decision without

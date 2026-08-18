@@ -15,7 +15,7 @@ const ProjectSetupScreen = lazy(
 import { useAppBootstrap } from "./hooks/useAppBootstrap";
 import AppRoutes, { AppLoader } from "./AppRoutes";
 import AppDialogs from "./components/AppDialogs";
-import { isListPage } from "@/app/pages";
+import { isFullScreenPage, isListPage } from "@/app/pages";
 
 export default function App() {
   const {
@@ -84,7 +84,7 @@ export default function App() {
     );
   }
 
-  const hideLayout = page === "add" || page === "settings";
+  const hideLayout = isFullScreenPage(page);
   const listPage = isListPage(page);
 
   /* =========================

@@ -20,6 +20,7 @@ export const APP_PAGES = new Set([
   "map",
   "monitoring",
   "components",
+  "component",
   "settings",
 ]);
 
@@ -34,6 +35,21 @@ export const APP_PAGES = new Set([
  * scrolls the wrong thing.
  */
 export const LIST_PAGES = new Set(["db", "monitoring", "components"]);
+
+/**
+ * Pages that take over the screen: the app header and the bottom navigation are
+ * hidden, and the page carries its own header with a way back. A form filled in
+ * front of equipment gets the whole display, and its action bar can sit at the
+ * bottom edge without landing under the navigation.
+ *
+ * Deliberately not list pages — these scroll the document, the way the leak form
+ * does, rather than being pinned to the viewport.
+ */
+export const FULL_SCREEN_PAGES = new Set(["add", "settings", "component"]);
+
+export function isFullScreenPage(page) {
+  return FULL_SCREEN_PAGES.has(page);
+}
 
 export function isListPage(page) {
   return LIST_PAGES.has(page);

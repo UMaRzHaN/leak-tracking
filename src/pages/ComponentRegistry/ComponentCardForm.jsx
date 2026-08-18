@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import PageHeader from "@/components/layout/PageHeader/PageHeader";
+import AddLeakFooter from "@/features/leakForm/Footer/AddLeakFooter";
 import ClearActions from "@/features/leakForm/components/ClearActions";
 import StepRenderer from "@/features/leakForm/components/StepRenderer/StepRenderer";
 import {
@@ -258,7 +259,7 @@ export default function ComponentCardForm({
   }, [keepOnClear]);
 
   return (
-    <div className={`${leak.card} ${s.cardShell} content`}>
+    <div className={`${leak.card} content`}>
       <PageHeader
         title={isEditing ? texts.editTitle : texts.addTitle}
         subtitle={`${texts.stepPrefix} ${step} / ${steps.length} · ${
@@ -293,34 +294,15 @@ export default function ComponentCardForm({
         localeTexts={texts}
       />
 
-      {/*
-        The leak form's own action bar, minus its fixed positioning. There the
-        card owns the screen and the app's bottom navigation is hidden; here the
-        registry keeps its tabs, so a bar pinned to the viewport would land under
-        the navigation and be covered by it.
-      */}
-      <div className={s.actions}>
-        <button
-          type="button"
-          onClick={() => setStep((value) => Math.max(1, value - 1))}
-          disabled={step === 1 || saving}
-        >
-          {texts.buttons.prev}
-        </button>
-        {step < steps.length ? (
-          <button
-            type="button"
-            onClick={() => setStep((value) => value + 1)}
-            disabled={saving}
-          >
-            {texts.buttons.next}
-          </button>
-        ) : (
-          <button type="button" onClick={handleSave} disabled={saving}>
-            {saving ? texts.buttons.saving : texts.buttons.save}
-          </button>
-        )}
-      </div>
+      <AddLeakFooter
+        prevStep={() => setStep((value) => Math.max(1, value - 1))}
+        nextStep={() => setStep((value) => Math.min(value + 1, steps.length))}
+        save={handleSave}
+        step={step}
+        stepsLength={steps.length}
+        isSaving={saving}
+        localeTexts={texts}
+      />
 
       <ConfirmSheet
         open={confirmOpen}

@@ -223,8 +223,20 @@ export default function AppRoutes({
         {dataLoaded &&
           !isImportingProject &&
           !loadError &&
-          page === "components" && (
-            <ComponentRegistry project={activeProject} coords={coords} />
+          (page === "components" || page === "component") && (
+            /*
+             * Rendered for both pages so the same instance survives the switch:
+             * the card takes over the screen under its own page value, and the
+             * registry holds which card is open. Unmounting on the way in would
+             * lose it.
+             */
+            <ComponentRegistry
+              project={activeProject}
+              coords={coords}
+              cardPage={page === "component"}
+              onOpenCard={() => setPage("component")}
+              onCloseCard={() => setPage("components")}
+            />
           )}
 
         {dataLoaded && !isImportingProject && !loadError && page === "map" && (

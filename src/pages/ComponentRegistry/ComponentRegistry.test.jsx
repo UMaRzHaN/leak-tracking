@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const registry = vi.hoisted(() => ({ current: null }));
@@ -23,6 +24,37 @@ const { FIELDS: COMPONENT_FIELDS } =
   await import("@/configs/upstream/data/componentFields");
 
 const project = { id: "p1", type: "upstream", folderName: "buzahur" };
+
+/**
+ * Mirrors how the app routes the registry: the card is a page of its own, and
+ * page and card are kept in step in both directions. Tested through the real
+ * wiring rather than around it — syncing one way only was exactly the bug that
+ * left a card on screen with the navigation already back underneath it.
+ */
+function renderRegistry(props = {}) {
+  const spies = { onOpenCard: vi.fn(), onCloseCard: vi.fn() };
+
+  function Harness() {
+    const [page, setPage] = useState("components");
+    return (
+      <ComponentRegistry
+        project={project}
+        {...props}
+        cardPage={page === "component"}
+        onOpenCard={() => {
+          spies.onOpenCard();
+          setPage("component");
+        }}
+        onCloseCard={() => {
+          spies.onCloseCard();
+          setPage("components");
+        }}
+      />
+    );
+  }
+
+  return { ...render(<Harness />), spies };
+}
 
 function makeRegistry(overrides = {}) {
   return {
@@ -52,7 +84,7 @@ describe("ComponentRegistry screen", () => {
 
   it("renders nothing for a project type without a registry", () => {
     registry.current = makeRegistry({ enabled: false });
-    const { container } = render(<ComponentRegistry project={project} />);
+    const { container } = renderRegistry();
     expect(container).toBeEmptyDOMElement();
   });
 
@@ -65,20 +97,20 @@ describe("ComponentRegistry screen", () => {
         { id: "b", component_uid: "2", component_name: "Труба" },
       ],
     });
-    render(<ComponentRegistry project={project} />);
+    renderRegistry();
 
     expect(screen.getByText("Recorded: 2")).toBeTruthy();
     expect(screen.queryByText(/%/)).toBeNull();
   });
 
   it("invites the first card when the registry is empty", () => {
-    render(<ComponentRegistry project={project} />);
+    renderRegistry();
     expect(screen.getByText(/registry is empty/i)).toBeTruthy();
   });
 
   it("reports a read failure instead of looking empty", () => {
     registry.current = makeRegistry({ error: new Error("boom") });
-    render(<ComponentRegistry project={project} />);
+    renderRegistry();
     expect(screen.getByRole("alert").textContent).toMatch(/could not read/i);
   });
 
@@ -99,7 +131,7 @@ describe("ComponentRegistry screen", () => {
         },
       ],
     });
-    render(<ComponentRegistry project={project} />);
+    renderRegistry();
 
     fireEvent.change(screen.getByLabelText("Filter by location"), {
       target: { value: "УППГ" },
@@ -126,7 +158,7 @@ describe("ComponentRegistry screen", () => {
         },
       ],
     });
-    render(<ComponentRegistry project={project} />);
+    renderRegistry();
 
     fireEvent.change(screen.getByLabelText(/Number, name, drawing tag/i), {
       target: { value: "зд32" },
@@ -137,7 +169,7 @@ describe("ComponentRegistry screen", () => {
   });
 
   it("says nothing about conflicts when there are none", () => {
-    render(<ComponentRegistry project={project} />);
+    renderRegistry();
     expect(screen.queryByText(/duplicated number/i)).toBeNull();
   });
 
@@ -156,7 +188,7 @@ describe("ComponentRegistry screen", () => {
       conflicts: [{ uid: "7", records: clash }],
       conflictingIds: new Set(["a", "b"]),
     });
-    render(<ComponentRegistry project={project} />);
+    renderRegistry();
 
     expect(screen.getByRole("status").textContent).toMatch(
       /1 duplicated number/i,
@@ -179,7 +211,7 @@ describe("ComponentRegistry screen", () => {
       conflicts: [{ uid: "7", records: [{ id: "a" }, { id: "b" }] }],
       conflictingIds: new Set(["a"]),
     });
-    const { container } = render(<ComponentRegistry project={project} />);
+    const { container } = renderRegistry();
 
     const marked = container.querySelectorAll("[data-conflict]");
     expect(marked).toHaveLength(1);
@@ -195,7 +227,7 @@ describe("ComponentRegistry screen", () => {
       conflicts: [{ uid: "7", records: [{ id: "a" }, { id: "b" }] }],
       conflictingIds: new Set(["a"]),
     });
-    render(<ComponentRegistry project={project} />);
+    renderRegistry();
 
     fireEvent.click(screen.getByText("Show them"));
     expect(screen.queryByText("Труба")).toBeNull();
@@ -206,12 +238,99 @@ describe("ComponentRegistry screen", () => {
 
   it("opens a blank card prefilled with the suggested number", () => {
     registry.current = makeRegistry({ suggestNextUid: vi.fn(() => "113") });
-    render(<ComponentRegistry project={project} />);
+    renderRegistry();
 
     fireEvent.click(screen.getByText("Add component"));
 
     expect(screen.getByText("New component")).toBeTruthy();
     expect(screen.getByDisplayValue("113")).toBeTruthy();
+  });
+});
+
+describe("card page switching", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    registry.current = makeRegistry();
+  });
+
+  it("asks for the full-screen page when a card opens", () => {
+    // The card hides the app header and the bottom navigation, so it has to be
+    // a page of its own rather than a panel inside the registry.
+    const { spies } = renderRegistry();
+
+    fireEvent.click(screen.getByText("Add component"));
+    expect(spies.onOpenCard).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("New component")).toBeTruthy();
+  });
+
+  it("returns to the list page when the card is left", () => {
+    const { spies } = renderRegistry();
+
+    fireEvent.click(screen.getByText("Add component"));
+    spies.onCloseCard.mockClear();
+    fireEvent.click(screen.getByLabelText("Cancel"));
+
+    expect(spies.onCloseCard).toHaveBeenCalled();
+    expect(screen.getByText("Add component")).toBeTruthy();
+  });
+
+  it("closes the card when the page is left from outside the form", () => {
+    // The hardware back button navigates history rather than pressing the
+    // header arrow; the card has to follow.
+    function Harness() {
+      const [page, setPage] = useState("components");
+      return (
+        <>
+          <button type="button" onClick={() => setPage("components")}>
+            hardware back
+          </button>
+          <ComponentRegistry
+            project={project}
+            cardPage={page === "component"}
+            onOpenCard={() => setPage("component")}
+            onCloseCard={() => setPage("components")}
+          />
+        </>
+      );
+    }
+    render(<Harness />);
+
+    fireEvent.click(screen.getByText("Add component"));
+    expect(screen.getByText("New component")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("hardware back"));
+    expect(screen.queryByText("New component")).toBeNull();
+    expect(screen.getByText("Add component")).toBeTruthy();
+  });
+
+  it("returns to the list page after a card is saved", async () => {
+    const { spies } = renderRegistry();
+
+    fireEvent.click(screen.getByText("Add component"));
+    fireEvent.change(screen.getByLabelText(/Локация/), {
+      target: { value: "УППГ" },
+    });
+    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
+      target: { value: "Задвижка" },
+    });
+    spies.onCloseCard.mockClear();
+    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next →"));
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => expect(spies.onCloseCard).toHaveBeenCalled());
+  });
+
+  it("corrects a page left pointing at a card that is not open", () => {
+    // A reload remembers the page value but not which card was being filled in.
+    const onCloseCard = vi.fn();
+    render(
+      <ComponentRegistry
+        project={project}
+        cardPage
+        onCloseCard={onCloseCard}
+      />,
+    );
+    expect(onCloseCard).toHaveBeenCalled();
   });
 });
 
@@ -222,7 +341,7 @@ describe("component card form", () => {
   });
 
   function openBlankCard(coords = null) {
-    render(<ComponentRegistry project={project} coords={coords} />);
+    renderRegistry({ coords: coords });
     fireEvent.click(screen.getByText("Add component"));
   }
 
@@ -376,7 +495,7 @@ describe("component card form", () => {
         },
       ],
     });
-    render(<ComponentRegistry project={project} />);
+    renderRegistry();
 
     fireEvent.click(screen.getByText("Задвижка"));
     expect(screen.getByText("Component card")).toBeTruthy();
@@ -399,7 +518,7 @@ describe("clearing a card", () => {
   });
 
   it("offers to clear the step only once something is in it", () => {
-    render(<ComponentRegistry project={project} />);
+    renderRegistry();
     fireEvent.click(screen.getByText("Add component"));
 
     // The number arrives prefilled, so the step already has data.
@@ -408,9 +527,7 @@ describe("clearing a card", () => {
   });
 
   it("keeps the number and the fix when clearing", () => {
-    render(
-      <ComponentRegistry project={project} coords={{ lat: 38.4, lng: 66.1 }} />,
-    );
+    renderRegistry({ coords: { lat: 38.4, lng: 66.1 } });
     fireEvent.click(screen.getByText("Add component"));
 
     fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
@@ -424,7 +541,7 @@ describe("clearing a card", () => {
   });
 
   it("returns to the first step when clearing everything", () => {
-    render(<ComponentRegistry project={project} />);
+    renderRegistry();
     fireEvent.click(screen.getByText("Add component"));
 
     fireEvent.click(screen.getByText("Next →"));
@@ -442,7 +559,7 @@ describe("copying from the previous card", () => {
 
   function openWithPrevious(lastComponent) {
     registry.current = makeRegistry({ lastComponent });
-    render(<ComponentRegistry project={project} />);
+    renderRegistry();
     fireEvent.click(screen.getByText("Add component"));
     fireEvent.change(screen.getByLabelText(/Локация/), {
       target: { value: "УППГ" },
@@ -464,7 +581,7 @@ describe("copying from the previous card", () => {
         scheme_tag: "PG",
       },
     });
-    render(<ComponentRegistry project={project} />);
+    renderRegistry();
     fireEvent.click(screen.getByText("Add component"));
 
     expect(screen.getByLabelText(/Наименование компонента/).placeholder).toBe(
@@ -477,7 +594,7 @@ describe("copying from the previous card", () => {
     registry.current = makeRegistry({
       lastComponent: { id: "prev", component_uid: "6" },
     });
-    render(<ComponentRegistry project={project} />);
+    renderRegistry();
     fireEvent.click(screen.getByText("Add component"));
 
     expect(
@@ -489,7 +606,7 @@ describe("copying from the previous card", () => {
     registry.current = makeRegistry({
       lastComponent: { id: "prev", component_name: "Манометр" },
     });
-    render(<ComponentRegistry project={project} />);
+    renderRegistry();
     fireEvent.click(screen.getByText("Add component"));
 
     const name = screen.getByLabelText(/Наименование компонента/);
