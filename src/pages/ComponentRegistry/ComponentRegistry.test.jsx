@@ -60,6 +60,7 @@ function renderRegistry(props = {}) {
     return (
       <ComponentRegistry
         project={project}
+        userProfile={{ name: "Мухиддин" }}
         {...props}
         cardPage={page === "component"}
         onOpenCard={() => {
@@ -189,6 +190,17 @@ describe("ComponentRegistry screen", () => {
     expect(screen.queryByText("Труба")).toBeNull();
   });
 
+  it("will not let an unsigned walker write to the registry", () => {
+    // Every history entry is signed; a registry nobody signs is a list of
+    // assertions with no one behind them.
+    renderRegistry({ userProfile: { name: "  " } });
+
+    expect(screen.getByText("Add component").disabled).toBe(true);
+    expect(screen.getByRole("status").textContent).toMatch(
+      /Set your name in the profile/i,
+    );
+  });
+
   it("says nothing about conflicts when there are none", () => {
     renderRegistry();
     expect(screen.queryByText(/duplicated number/i)).toBeNull();
@@ -308,6 +320,7 @@ describe("card page switching", () => {
           </button>
           <ComponentRegistry
             project={project}
+            userProfile={{ name: "Мухиддин" }}
             cardPage={page === "component"}
             onOpenCard={() => setPage("component")}
             onCloseCard={() => setPage("components")}

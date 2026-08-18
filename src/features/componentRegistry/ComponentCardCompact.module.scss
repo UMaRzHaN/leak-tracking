@@ -1,0 +1,159 @@
+.row {
+  position: relative;
+  list-style: none;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+/* Uncovered by the swipe itself, so the gesture says what it will do while it
+   is still happening. */
+.hint {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  pointer-events: none;
+}
+
+.hintLeft {
+  left: 0;
+  right: 0;
+  justify-content: flex-start;
+  background: var(--c-blue);
+}
+
+.hintRight {
+  left: 0;
+  right: 0;
+  justify-content: flex-end;
+  background: var(--c-surface2);
+  color: var(--c-text);
+}
+
+.card {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-lg);
+  background: var(--c-surface);
+  overflow: hidden;
+  transition: transform 0.12s ease-out;
+  touch-action: pan-y;
+}
+
+.body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--c-text);
+}
+
+.thumb {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--r-md, 10px);
+  overflow: hidden;
+  background: var(--c-surface2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.thumbEmpty {
+  font-size: 20px;
+  color: var(--c-text3);
+}
+
+.text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.uid,
+.uidConflict {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--c-blue);
+}
+
+/* A colliding number is a state, not a value — the list has to show which
+   cards need a decision without opening them. */
+.uidConflict {
+  color: var(--c-amber, #e0a800);
+}
+
+.name {
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta,
+.status {
+  font-size: 12px;
+  color: var(--c-text3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status {
+  color: var(--c-text2, var(--c-text3));
+  font-weight: 600;
+}
+
+.remove {
+  flex: none;
+  width: 40px;
+  border: none;
+  background: none;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--c-text3);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--c-red, #d33);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+}

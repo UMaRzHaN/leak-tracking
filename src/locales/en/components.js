@@ -12,6 +12,13 @@ export const components = {
   editTitle: "Component card",
   cancel: "Cancel",
   remove: "Delete component",
+  nameRequired:
+    "Set your name in the profile — every registry entry is signed.",
+  inspectTitle: "State at the time of inspection",
+  statusNow: "now",
+  swipeInspect: "Inspect",
+  swipeDetails: "Details",
+  noLocation: "No location given",
   unnamed: "Unnamed",
   loading: "Loading the registry...",
   empty: "The registry is empty. The first component is recorded on site.",

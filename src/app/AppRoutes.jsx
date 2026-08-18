@@ -234,6 +234,7 @@ export default function AppRoutes({
               project={activeProject}
               coords={coords}
               cardPage={page === "component"}
+              userProfile={userProfile}
               onOpenCard={() => setPage("component")}
               onCloseCard={() => setPage("components")}
             />

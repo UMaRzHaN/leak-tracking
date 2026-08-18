@@ -5,6 +5,14 @@ import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import { useVoiceControl } from "@/app/hooks/useVoiceControl";
 import ComponentCardForm from "./ComponentCardForm";
 import SchemaList from "@/features/schemas/SchemaList";
+import ComponentCardCompact from "@/features/componentRegistry/ComponentCardCompact";
+import ComponentInspectSheet from "@/features/componentRegistry/ComponentInspectSheet";
+import {
+  canWriteRegistry,
+  recordComponentCreated,
+  recordComponentEdited,
+  recordComponentInspected,
+} from "@/domain/componentHistory";
 import s from "./ComponentRegistry.module.scss";
 
 const ALL = "__all__";
@@ -28,6 +36,7 @@ export default function ComponentRegistry({
   project,
   coords = null,
   cardPage = false,
+  userProfile = null,
   onOpenCard = null,
   onCloseCard = null,
 }) {
@@ -62,6 +71,14 @@ export default function ComponentRegistry({
   const [editing, setEditing] = useState(null);
   const [tab, setTab] = useState("components");
   const [conflictsOnly, setConflictsOnly] = useState(false);
+  const [inspecting, setInspecting] = useState(null);
+
+  /*
+   * Nothing is written without a name. Every history entry is signed, and a
+   * registry nobody signs is a list of assertions with no one behind them — the
+   * first disagreement about a reading would have nowhere to go.
+   */
+  const canWrite = canWriteRegistry(userProfile);
 
   const texts = useMemo(
     () => ({
@@ -148,11 +165,38 @@ export default function ComponentRegistry({
 
   const handleSave = useCallback(
     async (form) => {
-      if (editing?.id) await updateComponent(editing.id, form);
-      else await addComponent(form);
+      const user = userProfile?.name;
+      if (editing?.id) {
+        await updateComponent(
+          editing.id,
+          recordComponentEdited(
+            editing,
+            { ...editing, ...form },
+            {
+              user,
+              fields: fields?.all ?? [],
+            },
+          ),
+        );
+      } else {
+        await addComponent(recordComponentCreated(form, { user }));
+      }
       closeCard();
     },
-    [addComponent, closeCard, editing, updateComponent],
+    [addComponent, closeCard, editing, fields, updateComponent, userProfile],
+  );
+
+  const handleInspect = useCallback(
+    async (status) => {
+      const card = inspecting;
+      setInspecting(null);
+      if (!card) return;
+      await updateComponent(
+        card.id,
+        recordComponentInspected(card, { status, user: userProfile?.name }),
+      );
+    },
+    [inspecting, updateComponent, userProfile],
   );
 
   if (!enabled) return null;
@@ -216,6 +260,14 @@ export default function ComponentRegistry({
 
       {tab === "schemas" && <SchemaList project={project} />}
 
+      {inspecting && (
+        <ComponentInspectSheet
+          component={inspecting}
+          onPick={handleInspect}
+          onClose={() => setInspecting(null)}
+        />
+      )}
+
       {tab === "components" && (
         <>
           {error && (
@@ -268,9 +320,18 @@ export default function ComponentRegistry({
             type="button"
             className={s.primary}
             onClick={() => openCard({})}
+            disabled={!canWrite}
           >
             {t("components.add")}
           </button>
+
+          {/* Said once, where the button is, rather than after a walker has
+              filled a card and pressed save. */}
+          {!canWrite && (
+            <p className={s.warning} role="status">
+              {t("components.nameRequired")}
+            </p>
+          )}
 
           {loading ? (
             <p className={s.muted}>{t("components.loading")}</p>
@@ -283,43 +344,14 @@ export default function ComponentRegistry({
           ) : (
             <ul className={s.list}>
               {visible.map((component) => (
-                <li key={component.id} className={s.card}>
-                  <button
-                    type="button"
-                    className={s.cardBody}
-                    onClick={() => openCard(component)}
-                  >
-                    {/* A colliding number is a state, not a value: the list
-                        has to show which cards need a decision without
-                        opening each one. */}
-                    <span
-                      className={
-                        conflictingIds.has(component.id) ? s.uidConflict : s.uid
-                      }
-                      data-conflict={
-                        conflictingIds.has(component.id) || undefined
-                      }
-                    >
-                      {component.component_uid || "—"}
-                    </span>
-                    <span className={s.name}>
-                      {component.component || t("components.unnamed")}
-                    </span>
-                    <span className={s.meta}>
-                      {[component.location, component.scheme_tag]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    className={s.remove}
-                    onClick={() => removeComponent(component.id)}
-                    aria-label={t("components.remove")}
-                  >
-                    ×
-                  </button>
-                </li>
+                <ComponentCardCompact
+                  key={component.id}
+                  component={component}
+                  conflicting={conflictingIds.has(component.id)}
+                  onOpenDetails={canWrite ? openCard : undefined}
+                  onInspect={canWrite ? setInspecting : undefined}
+                  onRemove={() => removeComponent(component.id)}
+                />
               ))}
             </ul>
           )}
