@@ -70,17 +70,9 @@ export const components = {
       hint: "Class of equipment it belongs to",
       placeholder: "e.g. Pipeline valve",
     },
-    diameter: {
-      hint: "Actual outer diameter, millimetres",
-      placeholder: "e.g. 426",
-    },
     nominal_diameter: {
       hint: "Nominal bore DN from the plate",
       placeholder: "e.g. 400",
-    },
-    line_pressure: {
-      hint: "Pressure on the line the component sits on, MPa",
-      placeholder: "e.g. 35",
     },
     nominal_pressure: {
       hint: "Nominal pressure PN from the plate, MPa",
@@ -147,6 +139,7 @@ export const components = {
   errors: {
     required: "Required",
     badCoordinate: "Coordinate is out of range",
+    photoRequired: "A photo of the component is required",
     digitsOnly: "Digits only",
   },
 };

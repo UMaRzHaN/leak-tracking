@@ -3,6 +3,7 @@ import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import PageHeader from "@/components/layout/PageHeader/PageHeader";
 import AddLeakFooter from "@/features/leakForm/Footer/AddLeakFooter";
 import ClearActions from "@/features/leakForm/components/ClearActions";
+import VoiceButton from "@/features/voice/VoiceButton/VoiceButton";
 import StepRenderer from "@/features/leakForm/components/StepRenderer/StepRenderer";
 import {
   isValidComponentUid,
@@ -39,11 +40,23 @@ export default function ComponentCardForm({
   onCancel,
   texts,
   t,
+  photoRequired = true,
+  startVoiceInput = null,
+  stopVoiceInput = null,
 }) {
-  const steps = useMemo(
-    () => localizeComponentSteps(rawSteps, t),
-    [rawSteps, t],
-  );
+  const steps = useMemo(() => {
+    const localized = localizeComponentSteps(rawSteps, t);
+    if (photoRequired) return localized;
+    // Turned off in settings, the photo stops gating the card entirely rather
+    // than being asked for and then waved through.
+    return localized.map((step) => ({
+      ...step,
+      title: step.title.replace(" *", ""),
+      fields: step.fields.map((field) =>
+        field.type === "photo" ? { ...field, required: false } : field,
+      ),
+    }));
+  }, [photoRequired, rawSteps, t]);
   const isEditing = Boolean(component?.id);
 
   const [form, setForm] = useState(() =>
@@ -109,10 +122,70 @@ export default function ComponentCardForm({
     [steps],
   );
 
+  /**
+   * Which required fields of one step are still missing.
+   *
+   * A photo is checked for its parts rather than its presence: PhotoInput
+   * holds an object, and an empty one would pass a truthiness test while the
+   * card carries no evidence at all.
+   */
+  const missingOnStep = useCallback(
+    (stepIndex) =>
+      (steps[stepIndex - 1]?.fields ?? [])
+        .filter((field) => field.required)
+        .filter((field) => {
+          const value = form[field.key];
+          if (field.type === "photo") return !value?.raw || !value?.src;
+          return value == null || String(value).trim() === "";
+        })
+        .map((field) => field.key),
+    [form, steps],
+  );
+
+  /**
+   * Blocks the step until its required fields are answered. The walk moves
+   * forward one screen at a time, so a missing number is caught where it is
+   * asked for rather than three steps later at the save button.
+   */
+  const validateStep = useCallback(
+    (stepIndex) => {
+      const missing = missingOnStep(stepIndex);
+      if (missing.length === 0) return true;
+
+      setErrors(
+        Object.fromEntries(
+          missing.map((key) => [
+            key,
+            key === "photo"
+              ? texts.errors.photoRequired
+              : texts.errors.required,
+          ]),
+        ),
+      );
+      return false;
+    },
+    [missingOnStep, texts],
+  );
+
+  const nextStep = useCallback(() => {
+    if (!validateStep(step)) return;
+    setErrors({});
+    setStep((value) => Math.min(value + 1, steps.length));
+  }, [step, steps.length, validateStep]);
+
   const validate = useCallback(() => {
     const next = {};
     for (const key of missingRequiredFields(form, required)) {
       next[key] = texts.errors.required;
+    }
+    // The photo is an object, not a string, so the shared check cannot see it.
+    const photoStep = steps.findIndex((formStep) =>
+      formStep.fields.some((field) => field.type === "photo" && field.required),
+    );
+    if (photoStep !== -1 && missingOnStep(photoStep + 1).includes("photo")) {
+      next.photo = texts.errors.photoRequired;
+    } else {
+      delete next.photo;
     }
     if (form.component_uid && !isValidComponentUid(form.component_uid)) {
       next.component_uid = texts.errors.digitsOnly;
@@ -135,7 +208,7 @@ export default function ComponentCardForm({
     }
     setErrors(next);
     return Object.keys(next);
-  }, [form, required, texts]);
+  }, [form, missingOnStep, required, steps, texts]);
 
   /**
    * Copyable fields the operator left empty that the previous card can fill.
@@ -247,7 +320,19 @@ export default function ComponentCardForm({
         }`}
         badge={`${step}/${steps.length}`}
         backLabel={texts.cancel}
-        onBack={onCancel}
+        onBack={() => {
+          stopVoiceInput?.();
+          onCancel();
+        }}
+        right={
+          startVoiceInput ? (
+            <VoiceButton
+              startVoiceInput={startVoiceInput}
+              stopVoiceInput={stopVoiceInput}
+              dark
+            />
+          ) : null
+        }
       />
 
       {conflicts.length > 0 && (
@@ -262,7 +347,7 @@ export default function ComponentCardForm({
         form={form}
         errors={errors}
         onChange={handleChange}
-        nextStep={() => setStep((value) => Math.min(value + 1, steps.length))}
+        nextStep={nextStep}
         save={handleSave}
         // Deliberately none: the input carries the worked example from the
         // locale, and the previous card's value sitting in the same place hid
@@ -280,7 +365,7 @@ export default function ComponentCardForm({
 
       <AddLeakFooter
         prevStep={() => setStep((value) => Math.max(1, value - 1))}
-        nextStep={() => setStep((value) => Math.min(value + 1, steps.length))}
+        nextStep={nextStep}
         save={handleSave}
         step={step}
         stepsLength={steps.length}

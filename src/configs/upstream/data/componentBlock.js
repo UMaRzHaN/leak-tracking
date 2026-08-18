@@ -40,8 +40,6 @@ const COMPONENT_EXCEL_COLUMNS = [
   { key: "component_name_en", header: "Component name" },
   { key: "component_uid", header: "Индивидуальный номер компонента" },
   { key: "scheme_tag", header: "Инвентаризационный номер на схеме" },
-  { key: "diameter", header: "Diameter (mm)" },
-  { key: "line_pressure", header: "Pressure P, Mpa" },
   { key: "component_type", header: "Тип компонента" },
   { key: "equipment_type", header: "Тип оборудования" },
   { key: "nominal_diameter", header: "Номинальный диаметр компонента" },

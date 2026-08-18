@@ -37,6 +37,10 @@ describe("usePhotoRequirements", () => {
     ).toBeNull();
     expect(
       JSON.parse(localStorage.getItem("app:project-a:photo_requirements_v1")),
-    ).toEqual({ leakPhotoRequired: false, monitoringPhotoRequired: false });
+    ).toEqual({
+      leakPhotoRequired: false,
+      monitoringPhotoRequired: false,
+      componentPhotoRequired: true,
+    });
   });
 });

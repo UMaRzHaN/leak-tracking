@@ -10,6 +10,7 @@ export const PROJECT_SETTINGS_UPDATED_EVENT = "project-settings-updated";
 const DEFAULT_PHOTO_REQUIREMENTS = Object.freeze({
   leakPhotoRequired: true,
   monitoringPhotoRequired: true,
+  componentPhotoRequired: true,
 });
 
 function readJson(key) {
@@ -51,6 +52,10 @@ function normalizePhotoRequirements(value) {
         : typeof value?.photoRequired === "boolean"
           ? value.photoRequired
           : DEFAULT_PHOTO_REQUIREMENTS.monitoringPhotoRequired,
+    componentPhotoRequired:
+      typeof value?.componentPhotoRequired === "boolean"
+        ? value.componentPhotoRequired
+        : DEFAULT_PHOTO_REQUIREMENTS.componentPhotoRequired,
   };
 }
 
@@ -121,7 +126,9 @@ export function writeProjectSettings(projectId, value, { emit = true } = {}) {
     settings.photoRequirements.leakPhotoRequired ===
       DEFAULT_PHOTO_REQUIREMENTS.leakPhotoRequired &&
     settings.photoRequirements.monitoringPhotoRequired ===
-      DEFAULT_PHOTO_REQUIREMENTS.monitoringPhotoRequired;
+      DEFAULT_PHOTO_REQUIREMENTS.monitoringPhotoRequired &&
+    settings.photoRequirements.componentPhotoRequired ===
+      DEFAULT_PHOTO_REQUIREMENTS.componentPhotoRequired;
   if (usesPhotoDefaults) {
     localStorage.removeItem(photoKey);
   } else {

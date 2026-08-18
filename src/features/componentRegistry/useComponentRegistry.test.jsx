@@ -76,7 +76,7 @@ describe("useComponentRegistry", () => {
 
     const [, list, options] = mocks.save.mock.calls[0];
     expect(list).toHaveLength(1);
-    expect(options.numericKeys).toContain("diameter");
+    expect(options.numericKeys).toContain("nominal_diameter");
   });
 
   it("does not drop a card when two are saved back to back", async () => {

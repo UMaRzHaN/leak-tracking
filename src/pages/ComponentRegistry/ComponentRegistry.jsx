@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useComponentRegistry } from "@/features/componentRegistry/useComponentRegistry";
+import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
+import { useVoiceControl } from "@/app/hooks/useVoiceControl";
 import ComponentCardForm from "./ComponentCardForm";
 import SchemaList from "@/features/schemas/SchemaList";
 import s from "./ComponentRegistry.module.scss";
@@ -46,6 +48,15 @@ export default function ComponentRegistry({
     findConflicts,
   } = useComponentRegistry(project);
 
+  const { componentPhotoRequired } = usePhotoRequirements(project?.id ?? null);
+  /*
+   * The microphone the leak form offers, on the same screen furniture. Speech
+   * recognition starts and stops; nothing is filled in yet, because the
+   * registry declares no voice mapping of its own — that comes with the fields
+   * it should write to.
+   */
+  const { startVoiceInput, stopVoiceInput } = useVoiceControl();
+
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState(ALL);
   const [editing, setEditing] = useState(null);
@@ -77,6 +88,7 @@ export default function ComponentRegistry({
       },
       errors: {
         required: t("components.errors.required"),
+        photoRequired: t("components.errors.photoRequired"),
         digitsOnly: t("components.errors.digitsOnly"),
         badCoordinate: t("components.errors.badCoordinate"),
       },
@@ -160,6 +172,9 @@ export default function ComponentRegistry({
         onCancel={closeCard}
         texts={texts}
         t={t}
+        photoRequired={componentPhotoRequired}
+        startVoiceInput={startVoiceInput}
+        stopVoiceInput={stopVoiceInput}
       />
     );
   }

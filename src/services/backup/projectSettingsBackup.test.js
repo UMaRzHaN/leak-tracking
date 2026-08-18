@@ -27,6 +27,7 @@ const SETTINGS = {
   photoRequirements: {
     leakPhotoRequired: false,
     monitoringPhotoRequired: false,
+    componentPhotoRequired: true,
   },
   updatedAt: 200,
 };
@@ -178,6 +179,7 @@ describe("project settings backup and synchronization", () => {
       photoRequirements: {
         leakPhotoRequired: true,
         monitoringPhotoRequired: true,
+        componentPhotoRequired: true,
       },
       updatedAt: 0,
     });

@@ -18,13 +18,14 @@ import {
  * Four steps, ordered by how much of the information is actually available
  * while standing in front of the equipment.
  *
- * Only the first step carries required fields. Steps two and three are read off
- * a plate that is often unreadable, so they must never block saving — the card
- * is expected to be incomplete and filled in later.
+ * Two fields are required and no more: the identity number on the first step
+ * and the photograph on the last. Everything between is read off a plate that
+ * is often unreadable, so none of it may block the walk — the card is expected
+ * to be incomplete and filled in later.
  */
 export const COMPONENT_STEPS = [
   {
-    title: "Идентификация *",
+    title: "Идентификация",
     fields: [
       {
         type: "input",
@@ -40,7 +41,6 @@ export const COMPONENT_STEPS = [
         type: "autocomplete",
         key: "location",
         label: "Локация",
-        required: true,
         options: Object.values(locations).flat(),
       },
       {
@@ -58,7 +58,6 @@ export const COMPONENT_STEPS = [
         type: "autocomplete",
         key: "component",
         label: "Компонент",
-        required: true,
         options: component_names,
       },
       {
@@ -92,20 +91,8 @@ export const COMPONENT_STEPS = [
       },
       {
         type: "input",
-        key: "diameter",
-        label: "Диаметр, мм",
-        number: true,
-      },
-      {
-        type: "input",
         key: "nominal_diameter",
         label: "Номинальный диаметр",
-        number: true,
-      },
-      {
-        type: "input",
-        key: "line_pressure",
-        label: "Давление на линии, МПа",
         number: true,
       },
       {
@@ -188,7 +175,9 @@ export const COMPONENT_STEPS = [
      * never asked for, exactly as a leak records them — a field for a number
      * the app already has only invites a worse one.
      */
-    title: "Фото",
-    fields: [{ type: "photo", key: "photo", label: "Фото компонента" }],
+    title: "Фото *",
+    fields: [
+      { type: "photo", key: "photo", label: "Фото компонента", required: true },
+    ],
   },
 ];

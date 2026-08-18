@@ -23,11 +23,20 @@ describe("upstream component fields", () => {
     expect(COMPONENT_BLOCK.system.fields).toBe(FIELDS);
   });
 
-  it("requires only what is visible without a readable plate", () => {
-    expect(REQUIRED_FIELDS).toEqual(["location", "component_uid", "component"]);
-    for (const key of REQUIRED_FIELDS) {
+  it("requires identity and evidence, and nothing else", () => {
+    expect(REQUIRED_FIELDS).toEqual(["component_uid", "photo"]);
+    // photo rides the attachment pipeline rather than the field set, the same
+    // way it does for a leak.
+    for (const key of REQUIRED_FIELDS.filter((key) => key !== "photo")) {
       expect(fieldKeys.has(key)).toBe(true);
     }
+  });
+
+  it("asks for nothing that has to be measured rather than read", () => {
+    // A walker with a tape measure is doing something other than an inventory.
+    expect(fieldKeys.has("diameter")).toBe(false);
+    expect(fieldKeys.has("line_pressure")).toBe(false);
+    expect(COMPONENT_BLOCK.export.excel.keysOrder).not.toContain("diameter");
   });
 
   it("does not reuse the leak's pressure and temperature keys", () => {

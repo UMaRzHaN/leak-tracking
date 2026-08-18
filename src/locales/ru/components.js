@@ -53,7 +53,7 @@ export const components = {
     },
     component_uid: {
       hint: "Номер, который вы присваиваете компоненту при обходе. Только цифры",
-      placeholder: "напр. 14",
+      placeholder: "напр. 4242",
     },
     scheme_tag: {
       hint: "Позиционное обозначение с чертежа. Повторяется, уникальным быть не обязано",
@@ -71,17 +71,9 @@ export const components = {
       hint: "Класс оборудования, к которому относится компонент",
       placeholder: "напр. Трубопроводная арматура",
     },
-    diameter: {
-      hint: "Фактический наружный диаметр, миллиметры",
-      placeholder: "напр. 426",
-    },
     nominal_diameter: {
       hint: "Условный проход DN по паспорту",
       placeholder: "напр. 400",
-    },
-    line_pressure: {
-      hint: "Давление на линии, где стоит компонент, МПа",
-      placeholder: "напр. 35",
     },
     nominal_pressure: {
       hint: "Условное давление PN по паспорту, МПа",
@@ -148,6 +140,7 @@ export const components = {
   errors: {
     required: "Обязательное поле",
     badCoordinate: "Координата вне допустимого диапазона",
+    photoRequired: "Нужно фото компонента",
     digitsOnly: "Только цифры",
   },
 };

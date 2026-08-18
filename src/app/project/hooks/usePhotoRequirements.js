@@ -8,6 +8,7 @@ import {
 const DEFAULTS = Object.freeze({
   leakPhotoRequired: true,
   monitoringPhotoRequired: true,
+  componentPhotoRequired: true,
 });
 
 function normalizeSettings(value) {
@@ -22,6 +23,10 @@ function normalizeSettings(value) {
         : typeof value?.photoRequired === "boolean"
           ? value.photoRequired
           : DEFAULTS.monitoringPhotoRequired,
+    componentPhotoRequired:
+      typeof value?.componentPhotoRequired === "boolean"
+        ? value.componentPhotoRequired
+        : DEFAULTS.componentPhotoRequired,
   };
 }
 
@@ -75,7 +80,9 @@ export function usePhotoRequirements(projectId) {
       const normalized = normalizeSettings(next);
       const usesDefaults =
         normalized.leakPhotoRequired === DEFAULTS.leakPhotoRequired &&
-        normalized.monitoringPhotoRequired === DEFAULTS.monitoringPhotoRequired;
+        normalized.monitoringPhotoRequired ===
+          DEFAULTS.monitoringPhotoRequired &&
+        normalized.componentPhotoRequired === DEFAULTS.componentPhotoRequired;
       if (usesDefaults) localStorage.removeItem(keys.current);
       else localStorage.setItem(keys.current, JSON.stringify(normalized));
       if (keys.legacy) localStorage.removeItem(keys.legacy);
@@ -95,9 +102,16 @@ export function usePhotoRequirements(projectId) {
     [save, settings],
   );
 
+  const setComponentPhotoRequired = useCallback(
+    (required) =>
+      save({ ...settings, componentPhotoRequired: Boolean(required) }),
+    [save, settings],
+  );
+
   return {
     ...settings,
     setLeakPhotoRequired,
     setMonitoringPhotoRequired,
+    setComponentPhotoRequired,
   };
 }

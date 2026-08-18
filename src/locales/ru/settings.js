@@ -135,6 +135,8 @@ export const settings = {
   photoOptional: "Фото можно добавить по желанию.",
   photoRequirements: "Требования к фото",
   photoWhenAdding: "При добавлении утечки",
+  photoWhenComponent: "Фото при добавлении компонента",
+  componentPhotoRequirementSaved: "Требование фото для компонента сохранено",
   photoWhenMonitoring: "При мониторинге",
   leakPhotoRequirementSaved: "Требование к фото утечки сохранено",
   monitoringPhotoRequirementSaved: "Требование к фото мониторинга сохранено",

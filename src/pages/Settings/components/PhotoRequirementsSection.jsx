@@ -26,8 +26,11 @@ export default function PhotoRequirementsSection({
   activeProject,
   leakPhotoRequired,
   monitoringPhotoRequired,
+  componentPhotoRequired,
+  hasComponentRegistry = false,
   onLeakPhotoRequiredChange,
   onMonitoringPhotoRequiredChange,
+  onComponentPhotoRequiredChange,
 }) {
   const { t } = useLanguage();
 
@@ -54,6 +57,17 @@ export default function PhotoRequirementsSection({
           checked={monitoringPhotoRequired}
           onChange={onMonitoringPhotoRequiredChange}
         />
+        {/* Offered only where a registry exists, the same way the tab itself
+            appears — a switch for a screen this project type does not have
+            would be a promise the app cannot keep. */}
+        {hasComponentRegistry && (
+          <RequirementToggle
+            label={t("settings.photoWhenComponent")}
+            hint={componentPhotoRequired ? requiredHint : optionalHint}
+            checked={componentPhotoRequired}
+            onChange={onComponentPhotoRequiredChange}
+          />
+        )}
       </div>
     </section>
   );

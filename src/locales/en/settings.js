@@ -136,6 +136,8 @@ export const settings = {
   photoOptional: "The photo is optional.",
   photoRequirements: "Photo requirements",
   photoWhenAdding: "When adding a leak",
+  photoWhenComponent: "Photo when adding a component",
+  componentPhotoRequirementSaved: "Component photo requirement saved",
   photoWhenMonitoring: "During monitoring",
   leakPhotoRequirementSaved: "Leak photo requirement saved",
   monitoringPhotoRequirementSaved: "Monitoring photo requirement saved",

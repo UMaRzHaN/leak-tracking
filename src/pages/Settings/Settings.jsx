@@ -17,6 +17,7 @@ import ImportExportDialogs from "./components/ImportExportDialogs";
 import ProjectManagementDialogs from "./components/ProjectManagementDialogs";
 import { useSettingsPage } from "./hooks/useSettingsPage";
 import s from "./Settings.module.scss";
+import { hasComponentRegistry } from "@/configs/projectAdapter";
 
 export default function Settings(props) {
   const {
@@ -62,6 +63,8 @@ export default function Settings(props) {
     isExportingZip,
     isImportingExcel,
     leakPhotoRequired,
+    componentPhotoRequired,
+    setComponentPhotoRequired,
     localSync,
     localeTexts,
     monitoringExportMode,
@@ -167,6 +170,12 @@ export default function Settings(props) {
           activeProject={activeProject}
           leakPhotoRequired={leakPhotoRequired}
           monitoringPhotoRequired={monitoringPhotoRequired}
+          componentPhotoRequired={componentPhotoRequired}
+          hasComponentRegistry={hasComponentRegistry(activeProject)}
+          onComponentPhotoRequiredChange={(required) => {
+            setComponentPhotoRequired(required);
+            notify("success", t("settings.componentPhotoRequirementSaved"));
+          }}
           onLeakPhotoRequiredChange={(required) => {
             setLeakPhotoRequired(required);
             notify("success", t("settings.leakPhotoRequirementSaved"));

@@ -3,6 +3,9 @@ import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const registry = vi.hoisted(() => ({ current: null }));
+const photoRequirements = vi.hoisted(() => ({
+  current: { componentPhotoRequired: true },
+}));
 
 vi.mock("@/app/hooks/useLanguage", async () => {
   const { englishLanguageHook } = await import("@/test/translate");
@@ -12,7 +15,25 @@ vi.mock("@/features/componentRegistry/useComponentRegistry", () => ({
   useComponentRegistry: () => registry.current,
 }));
 vi.mock("@/features/photos/PhotoInput/PhotoInput", () => ({
-  default: ({ label }) => <div>{label}</div>,
+  default: ({ label, value, onChange, error }) => (
+    <div>
+      <button type="button" onClick={() => onChange({ raw: "r", src: "s" })}>
+        {label}
+      </button>
+      {value ? <span>photo attached</span> : null}
+      {error ? <span>{error}</span> : null}
+    </div>
+  ),
+}));
+// Both reach for providers the app supplies and a bare render does not.
+vi.mock("@/app/hooks/useVoiceControl", () => ({
+  useVoiceControl: () => ({
+    startVoiceInput: vi.fn(),
+    stopVoiceInput: vi.fn(),
+  }),
+}));
+vi.mock("@/app/project/hooks/usePhotoRequirements", () => ({
+  usePhotoRequirements: () => photoRequirements.current,
 }));
 
 const ComponentRegistry = (await import("./ComponentRegistry")).default;
@@ -319,6 +340,7 @@ describe("card page switching", () => {
     });
     spies.onCloseCard.mockClear();
     for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next →"));
+    fireEvent.click(screen.getByText("Фото компонента"));
     fireEvent.click(screen.getByText("Save"));
 
     await waitFor(() => expect(spies.onCloseCard).toHaveBeenCalled());
@@ -349,21 +371,28 @@ describe("component card form", () => {
     fireEvent.click(screen.getByText("Add component"));
   }
 
-  /** The leak form's footer offers Save on the last step only. */
+  function fillNumber(value = "14") {
+    fireEvent.change(screen.getByLabelText(/Индивидуальный номер/), {
+      target: { value },
+    });
+  }
+
+  function attachPhoto() {
+    fireEvent.click(screen.getByText("Фото компонента"));
+  }
+
+  /**
+   * The leak form's footer offers Save on the last step only, and each step is
+   * now gated, so the number has to be answered before the walk can move on.
+   */
   function goToLastStep() {
+    fillNumber();
     for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next →"));
   }
 
   function fillRequired() {
-    fireEvent.change(screen.getByLabelText(/Локация/), {
-      target: { value: "УППГ" },
-    });
-    fireEvent.change(screen.getByLabelText(/Компонент/), {
-      target: { value: "Задвижка" },
-    });
-    fireEvent.change(screen.getByLabelText(/Индивидуальный номер/), {
-      target: { value: "14" },
-    });
+    goToLastStep();
+    attachPhoto();
   }
 
   it("wears the leak form's header, with the step in it", () => {
@@ -386,7 +415,6 @@ describe("component card form", () => {
     expect(screen.queryByLabelText(/Координата/)).toBeNull();
 
     fillRequired();
-    goToLastStep();
     fireEvent.click(screen.getByText("Save"));
 
     return waitFor(() => {
@@ -400,7 +428,6 @@ describe("component card form", () => {
     // Indoors a receiver reports nothing; that must not stop the walk.
     openBlankCard(null);
     fillRequired();
-    goToLastStep();
     fireEvent.click(screen.getByText("Save"));
 
     await waitFor(() =>
@@ -408,31 +435,63 @@ describe("component card form", () => {
     );
   });
 
-  it("blocks saving only on the fields readable without a plate", async () => {
+  it("will not leave the first step without the identity number", () => {
+    // Каждый шаг заперт: пропущенное обязательное поле ловится там, где его
+    // спрашивают, а не через три экрана у кнопки сохранения.
+    openBlankCard();
+
+    fireEvent.click(screen.getByText("Next →"));
+
+    expect(screen.getByText(/Step 1 \/ 4/)).toBeTruthy();
+    expect(screen.getByText("Required")).toBeTruthy();
+  });
+
+  it("moves on once the number is answered", () => {
+    openBlankCard();
+    fillNumber();
+
+    fireEvent.click(screen.getByText("Next →"));
+    expect(screen.getByText(/Step 2 \/ 4/)).toBeTruthy();
+  });
+
+  it("asks nothing of the passport steps", () => {
+    openBlankCard();
+    fillNumber();
+
+    fireEvent.click(screen.getByText("Next →"));
+    fireEvent.click(screen.getByText("Next →"));
+    fireEvent.click(screen.getByText("Next →"));
+    expect(screen.getByText(/Step 4 \/ 4/)).toBeTruthy();
+  });
+
+  it("will not save without a photograph of the equipment", async () => {
     openBlankCard();
     goToLastStep();
     fireEvent.click(screen.getByText("Save"));
 
     await waitFor(() =>
-      expect(screen.getAllByText("Required").length).toBeGreaterThan(0),
+      expect(
+        screen.getByText("A photo of the component is required"),
+      ).toBeTruthy(),
     );
     expect(registry.current.addComponent).not.toHaveBeenCalled();
-    expect(screen.getAllByText("Required")).toHaveLength(3);
   });
 
-  it("sends the operator to the step holding the problem", async () => {
+  it("keeps the photo requirement off when settings turn it off", async () => {
+    photoRequirements.current = { componentPhotoRequired: false };
     openBlankCard();
     goToLastStep();
-    expect(screen.getByText(/Step 4 \/ 4/)).toBeTruthy();
-
     fireEvent.click(screen.getByText("Save"));
-    await waitFor(() => expect(screen.getByText(/Step 1 \/ 4/)).toBeTruthy());
+
+    await waitFor(() =>
+      expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
+    );
+    photoRequirements.current = { componentPhotoRequired: true };
   });
 
   it("saves a card with the passport steps left empty", async () => {
     openBlankCard();
     fillRequired();
-    goToLastStep();
     fireEvent.click(screen.getByText("Save"));
 
     await waitFor(() =>
@@ -459,6 +518,7 @@ describe("component card form", () => {
       target: { value: "14" },
     });
     goToLastStep();
+    attachPhoto();
     fireEvent.click(screen.getByText("Save"));
 
     await waitFor(() =>
@@ -482,7 +542,6 @@ describe("component card form", () => {
     );
 
     fillRequired();
-    goToLastStep();
     fireEvent.click(screen.getByText("Save"));
 
     await waitFor(() =>
@@ -492,13 +551,13 @@ describe("component card form", () => {
 
   it("rejects a number that is not digits", async () => {
     openBlankCard();
-    fillRequired();
     // Letters never reach the form — the numeric input strips them, so "ЗД32"
     // would arrive as "32". A decimal separator does get through.
     fireEvent.change(screen.getByLabelText(/Индивидуальный номер/), {
       target: { value: "1.5" },
     });
-    goToLastStep();
+    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next →"));
+    attachPhoto();
     fireEvent.click(screen.getByText("Save"));
 
     await waitFor(() => expect(screen.getByText("Digits only")).toBeTruthy());
@@ -521,7 +580,9 @@ describe("component card form", () => {
     fireEvent.click(screen.getByText("Задвижка"));
     expect(screen.getByText("Component card")).toBeTruthy();
 
-    goToLastStep();
+    // The stored card already carries its number, so paging needs nothing.
+    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next →"));
+    attachPhoto();
     fireEvent.click(screen.getByText("Save"));
     await waitFor(() =>
       expect(registry.current.updateComponent).toHaveBeenCalledWith(
@@ -572,6 +633,9 @@ describe("clearing a card", () => {
     renderRegistry();
     fireEvent.click(screen.getByText("Add component"));
 
+    fireEvent.change(screen.getByLabelText(/Индивидуальный номер/), {
+      target: { value: "14" },
+    });
     fireEvent.click(screen.getByText("Next →"));
     expect(screen.getByText(/Step 2 \/ 4/)).toBeTruthy();
 
@@ -599,6 +663,7 @@ describe("copying from the previous card", () => {
       target: { value: "14" },
     });
     for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next →"));
+    fireEvent.click(screen.getByText("Фото компонента"));
     fireEvent.click(screen.getByText("Save"));
   }
 

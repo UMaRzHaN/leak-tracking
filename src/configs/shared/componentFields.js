@@ -105,27 +105,15 @@ export const COMPONENT_TYPE_FIELDS = [
  * are a measurement at the moment of detection in atm and °C, while these are
  * equipment ratings in MPa. Sharing a key would silently mix two units in one
  * column the first time the two entities are joined.
+ *
+ * Only what the plate states. The actual bore and the pressure on the line are
+ * measured, not read, and a walker with a tape measure is doing something other
+ * than an inventory.
  */
 export const COMPONENT_SIZE_FIELDS = [
   {
-    key: "diameter",
-    label: "Диаметр, мм",
-    viewable: true,
-    editable: true,
-    copyable: true,
-    numeric: true,
-  },
-  {
     key: "nominal_diameter",
     label: "Номинальный диаметр компонента",
-    viewable: true,
-    editable: true,
-    copyable: true,
-    numeric: true,
-  },
-  {
-    key: "line_pressure",
-    label: "Давление на линии, МПа",
     viewable: true,
     editable: true,
     copyable: true,

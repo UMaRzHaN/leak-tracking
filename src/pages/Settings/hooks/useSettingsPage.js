@@ -164,8 +164,10 @@ export function useSettingsPage({
   const {
     leakPhotoRequired,
     monitoringPhotoRequired,
+    componentPhotoRequired,
     setLeakPhotoRequired,
     setMonitoringPhotoRequired,
+    setComponentPhotoRequired,
   } = usePhotoRequirements(activeProject?.id ?? null);
 
   const {
@@ -755,6 +757,8 @@ export function useSettingsPage({
     isImportingExcel,
     lang,
     leakPhotoRequired,
+    componentPhotoRequired,
+    setComponentPhotoRequired,
     localSync,
     localeTexts,
     monitoringExportMode,

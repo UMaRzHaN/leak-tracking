@@ -28,6 +28,7 @@ describe("projectSettings", () => {
       photoRequirements: {
         leakPhotoRequired: false,
         monitoringPhotoRequired: true,
+        componentPhotoRequired: true,
       },
       updatedAt: 0,
     });
@@ -52,6 +53,7 @@ describe("projectSettings", () => {
       photoRequirements: {
         leakPhotoRequired: true,
         monitoringPhotoRequired: false,
+        componentPhotoRequired: true,
       },
       updatedAt: 50,
     });

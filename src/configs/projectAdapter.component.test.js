@@ -73,11 +73,7 @@ describe("component validation", () => {
   const validation = upstreamRegistry.validation;
 
   it("requires only the three fields readable without a plate", () => {
-    expect(validation.required).toEqual([
-      "location",
-      "component_uid",
-      "component",
-    ]);
+    expect(validation.required).toEqual(["component_uid", "photo"]);
   });
 
   it("does not inherit the leak rule of requiring both location anchors", () => {
@@ -112,10 +108,10 @@ describe("component steps", () => {
     const steps = upstreamRegistry.steps;
     expect(steps.mode).toBe("manual");
     expect(steps.steps.map((step) => step.title)).toEqual([
-      "Идентификация *",
+      "Идентификация",
       "Параметры",
       "Паспорт",
-      "Фото",
+      "Фото *",
     ]);
   });
 });
