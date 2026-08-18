@@ -53,14 +53,28 @@ export const COMPONENT_IDENTITY_FIELDS = [
   },
 ];
 
-/** Process line the component sits on: main line, pressure line, gas manifold. */
-export const COMPONENT_LINE_FIELD = {
-  key: "process_line",
-  label: "Линия",
-  viewable: true,
-  editable: true,
-  copyable: true,
-};
+/**
+ * Where the component sits and what it is, named with the leak entity's own two
+ * keys. Shared verbatim so the pair reads the same on both screens, and so the
+ * planned link from a leak to its component stays a straight copy rather than a
+ * mapping table.
+ */
+export const COMPONENT_PLACE_FIELDS = [
+  {
+    key: "object",
+    label: "Объект",
+    viewable: true,
+    editable: true,
+    copyable: true,
+  },
+  {
+    key: "component",
+    label: "Компонент",
+    viewable: true,
+    editable: true,
+    copyable: true,
+  },
+];
 
 export const COMPONENT_TYPE_FIELDS = [
   {
@@ -221,7 +235,8 @@ export const COMPONENT_SEARCH_FIELDS_HEAD = [
 ];
 
 export const COMPONENT_SEARCH_FIELDS_TAIL = [
-  { key: "process_line", label: "Линия" },
+  { key: "object", label: "Объект" },
+  { key: "component", label: "Компонент" },
   { key: "component_type", label: "Тип компонента" },
   { key: "equipment_type", label: "Тип оборудования" },
   { key: "body_material", label: "Материал корпуса" },

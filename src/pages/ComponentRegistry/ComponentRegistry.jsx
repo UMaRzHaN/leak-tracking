@@ -161,6 +161,7 @@ export default function ComponentRegistry({
         onSave={handleSave}
         onCancel={closeCard}
         texts={texts}
+        t={t}
       />
     );
   }

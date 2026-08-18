@@ -6,13 +6,14 @@ import {
   component_types,
   equipment_types,
   mediums,
-  process_lines,
 } from "@/data/component/componentDictionary";
 import {
   actuator_type,
   connection_type,
+  components,
   installation_type,
   locations,
+  objects,
 } from "@/data/leak/fieldDictionary";
 
 /**
@@ -46,9 +47,15 @@ export const COMPONENT_STEPS = [
       },
       {
         type: "autocomplete",
-        key: "process_line",
-        label: "Линия",
-        options: process_lines,
+        key: "object",
+        label: "Объект",
+        options: Object.values(objects).flat(),
+      },
+      {
+        type: "autocomplete",
+        key: "component",
+        label: "Компонент",
+        options: Object.values(components).flat(),
       },
       {
         type: "input",

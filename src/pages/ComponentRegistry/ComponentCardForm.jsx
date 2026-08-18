@@ -12,6 +12,7 @@ import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import { toNullableNumber } from "@/utils/normalize/toNullableNumber";
 import { COMPONENT_NAME_TRANSLATIONS } from "@/data/component/componentDictionary";
 import { getCopyPreviousKeys } from "@/features/leakForm/utils/copyPrevious";
+import { localizeComponentSteps } from "./localizeComponentSteps";
 import leak from "@/features/leakForm/LeakForm.module.scss";
 import s from "./ComponentRegistry.module.scss";
 
@@ -28,7 +29,7 @@ import s from "./ComponentRegistry.module.scss";
  * receiver without ever being asked for, the way a leak records them.
  */
 export default function ComponentCardForm({
-  steps,
+  steps: rawSteps,
   coords = null,
   copyableFields = [],
   lastComponent = null,
@@ -38,7 +39,12 @@ export default function ComponentCardForm({
   onSave,
   onCancel,
   texts,
+  t,
 }) {
+  const steps = useMemo(
+    () => localizeComponentSteps(rawSteps, t),
+    [rawSteps, t],
+  );
   const isEditing = Boolean(component?.id);
 
   const [form, setForm] = useState(() =>
@@ -195,33 +201,6 @@ export default function ComponentCardForm({
     setConfirmOpen(true);
   }, [commitSave, findFillableKeys, form, stepOf, validate]);
 
-  /**
-   * What the previous card held, shown as placeholder text in the empty fields
-   * of the current step — the same affordance the leak form gives.
-   *
-   * Only fields marked copyable in the config: the identity number is suggested
-   * from the highest already used, and coordinates belong to this piece of
-   * equipment, so neither should echo the card before it.
-   */
-  const ghostPlaceholders = useMemo(() => {
-    if (!lastComponent) return {};
-
-    const copyable = new Set(getCopyPreviousKeys(copyableFields));
-    const result = {};
-    for (const field of steps[step - 1]?.fields ?? []) {
-      if (field.type === "photo" || !copyable.has(field.key)) continue;
-
-      const current = form[field.key];
-      if (current != null && String(current).trim() !== "") continue;
-
-      const previous = lastComponent[field.key];
-      if (previous != null && String(previous).trim() !== "") {
-        result[field.key] = String(previous);
-      }
-    }
-    return result;
-  }, [copyableFields, form, lastComponent, step, steps]);
-
   const hasStepData = (steps[step - 1]?.fields ?? []).some(
     ({ key }) => form[key] != null && String(form[key]).trim() !== "",
   );
@@ -284,7 +263,11 @@ export default function ComponentCardForm({
         onChange={handleChange}
         nextStep={() => setStep((value) => Math.min(value + 1, steps.length))}
         save={handleSave}
-        ghostPlaceholders={ghostPlaceholders}
+        // Deliberately none: the input carries the worked example from the
+        // locale, and the previous card's value sitting in the same place hid
+        // it. What the last card held is offered on save instead, where it can
+        // be accepted or declined rather than silently read as a suggestion.
+        ghostPlaceholders={null}
       />
 
       <ClearActions

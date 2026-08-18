@@ -571,8 +571,9 @@ describe("copying from the previous card", () => {
     fireEvent.click(screen.getByText("Save"));
   }
 
-  it("shows the previous values as hints in the empty fields", () => {
-    // Walking a row of identical gauges means most of the passport repeats.
+  it("keeps the worked example in the input, not the previous value", () => {
+    // The example is what tells a walker the shape of the answer; the previous
+    // card's value used to sit in the same place and hide it.
     registry.current = makeRegistry({
       lastComponent: {
         id: "prev",
@@ -584,38 +585,22 @@ describe("copying from the previous card", () => {
     renderRegistry();
     fireEvent.click(screen.getByText("Add component"));
 
-    expect(screen.getByLabelText(/Наименование компонента/).placeholder).toBe(
-      "Манометр",
+    expect(screen.getByLabelText(/Подразделение/).placeholder).toBe(
+      "e.g. Messoyakha gas plant",
     );
-    expect(screen.getByLabelText(/Номер на схеме/).placeholder).toBe("PG");
+    expect(screen.getByLabelText(/Номер на схеме/).placeholder).not.toBe("PG");
   });
 
-  it("never echoes the previous identity number", () => {
-    registry.current = makeRegistry({
-      lastComponent: { id: "prev", component_uid: "6" },
-    });
+  it("explains what each field wants", () => {
     renderRegistry();
     fireEvent.click(screen.getByText("Add component"));
 
     expect(
-      screen.getByLabelText(/Индивидуальный номер/).placeholder.trim(),
-    ).toBe("");
-  });
-
-  it("drops the hint once the field is filled in", () => {
-    registry.current = makeRegistry({
-      lastComponent: { id: "prev", component_name: "Манометр" },
-    });
-    renderRegistry();
-    fireEvent.click(screen.getByText("Add component"));
-
-    const name = screen.getByLabelText(/Наименование компонента/);
-    expect(name.placeholder).toBe("Манометр");
-
-    fireEvent.change(name, { target: { value: "Задвижка" } });
+      screen.getByText("Name of the division the component belongs to"),
+    ).toBeTruthy();
     expect(
-      screen.getByLabelText(/Наименование компонента/).placeholder.trim(),
-    ).toBe("");
+      screen.getByText("The number you assign during the walk. Digits only"),
+    ).toBeTruthy();
   });
 
   it("asks before filling anything", async () => {
