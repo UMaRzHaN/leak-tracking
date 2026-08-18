@@ -221,325 +221,105 @@ describe("component card form", () => {
     registry.current = makeRegistry();
   });
 
-  function openBlankCard() {
-    render(<ComponentRegistry project={project} />);
+  function openBlankCard(coords = null) {
+    render(<ComponentRegistry project={project} coords={coords} />);
     fireEvent.click(screen.getByText("Add component"));
   }
 
-  it("stamps the current fix onto a new card", async () => {
-    render(
-      <ComponentRegistry
-        project={project}
-        coords={{ lat: 38.4769, lng: 66.1466 }}
-      />,
-    );
-    fireEvent.click(screen.getByText("Add component"));
-    // Coordinates sit on the last step, beside the photo.
-    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next"));
+  /** The leak form's footer offers Save on the last step only. */
+  function goToLastStep() {
+    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next →"));
+  }
 
-    expect(screen.getByDisplayValue("38.4769")).toBeTruthy();
-    expect(screen.getByDisplayValue("66.1466")).toBeTruthy();
-  });
+  function fillRequired() {
+    fireEvent.change(screen.getByLabelText(/Локация/), {
+      target: { value: "УППГ" },
+    });
+    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
+      target: { value: "Задвижка" },
+    });
+  }
 
-  it("opens a card without a fix when the receiver has none", () => {
-    render(<ComponentRegistry project={project} coords={null} />);
-    fireEvent.click(screen.getByText("Add component"));
-    // Indoors a fix never arrives; that must not stop the card being written.
+  it("wears the leak form's header, with the step in it", () => {
+    openBlankCard();
     expect(screen.getByText("New component")).toBeTruthy();
+    expect(screen.getByText(/Step 1 \/ 4/)).toBeTruthy();
+    expect(screen.getByText("1/4")).toBeTruthy();
   });
 
-  it("keeps a stored fix instead of overwriting it on edit", () => {
-    registry.current = makeRegistry({
-      components: [
-        {
-          id: "a",
-          component_uid: "7",
-          component_name: "Задвижка",
-          lat: 38.1,
-          lng: 66.1,
-        },
-      ],
-    });
-    render(<ComponentRegistry project={project} coords={{ lat: 1, lng: 2 }} />);
-
-    fireEvent.click(screen.getByText("Задвижка"));
-    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next"));
-
-    expect(screen.getByDisplayValue("38.1")).toBeTruthy();
-    expect(screen.queryByDisplayValue("1")).toBeNull();
+  it("leaves the card through the header, as the leak form does", () => {
+    openBlankCard();
+    fireEvent.click(screen.getByLabelText("Cancel"));
+    expect(screen.getByText("Add component")).toBeTruthy();
   });
 
-  it("refuses a coordinate that would land off the planet", async () => {
-    render(<ComponentRegistry project={project} coords={null} />);
-    fireEvent.click(screen.getByText("Add component"));
+  it("records the fix without ever asking for it", () => {
+    openBlankCard({ lat: 38.4769, lng: 66.1466 });
 
-    fireEvent.change(screen.getByLabelText(/Локация/), {
-      target: { value: "УППГ" },
-    });
-    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
-      target: { value: "Труба" },
-    });
-    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next"));
-    fireEvent.change(screen.getByLabelText(/Координата X/), {
-      target: { value: "120" },
-    });
+    // No field for a number the app already has.
+    expect(screen.queryByLabelText(/Координата/)).toBeNull();
+
+    fillRequired();
+    goToLastStep();
     fireEvent.click(screen.getByText("Save"));
 
-    await waitFor(() =>
-      expect(screen.getByText("Coordinate is out of range")).toBeTruthy(),
-    );
-    expect(registry.current.addComponent).not.toHaveBeenCalled();
+    return waitFor(() => {
+      const saved = registry.current.addComponent.mock.calls[0][0];
+      expect(saved.lat).toBe(38.4769);
+      expect(saved.lng).toBe(66.1466);
+    });
   });
 
-  it("saves a coordinate corrected by hand", async () => {
-    render(
-      <ComponentRegistry project={project} coords={{ lat: 38.4, lng: 66.1 }} />,
-    );
-    fireEvent.click(screen.getByText("Add component"));
-
-    fireEvent.change(screen.getByLabelText(/Локация/), {
-      target: { value: "УППГ" },
-    });
-    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
-      target: { value: "Труба" },
-    });
-    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next"));
-    fireEvent.change(screen.getByLabelText(/Координата X/), {
-      target: { value: "38.5" },
-    });
+  it("writes the card even when no fix ever arrived", async () => {
+    // Indoors a receiver reports nothing; that must not stop the walk.
+    openBlankCard(null);
+    fillRequired();
+    goToLastStep();
     fireEvent.click(screen.getByText("Save"));
 
     await waitFor(() =>
       expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
     );
-    // The form hands over what was typed; storage coerces it to a number —
-    // see normalizeComponent.
-    expect(registry.current.addComponent.mock.calls[0][0].lat).toBe("38.5");
   });
 
-  it("offers the previous card's values as hints in the empty fields", () => {
-    // Walking a row of identical gauges means most of the passport repeats.
-    registry.current = makeRegistry({
-      lastComponent: {
-        id: "prev",
-        component_uid: "6",
-        component_name: "Манометр",
-        scheme_tag: "PG",
-        location: "Скважина 22",
-      },
-    });
+  it("blocks saving only on the fields readable without a plate", async () => {
     openBlankCard();
-
-    expect(screen.getByLabelText(/Наименование компонента/).placeholder).toBe(
-      "Манометр",
-    );
-    expect(screen.getByLabelText(/Номер на схеме/).placeholder).toBe("PG");
-  });
-
-  it("never echoes the previous number or its coordinates", () => {
-    // The identity number is suggested from the highest already used, and a
-    // fix belongs to the piece of equipment in front of you.
-    registry.current = makeRegistry({
-      lastComponent: {
-        id: "prev",
-        component_uid: "6",
-        component_name: "Манометр",
-        lat: 38.1,
-        lng: 66.1,
-      },
-    });
-    openBlankCard();
-
-    // Blank in practice is a single space — the floating-label trick needs a
-    // non-empty placeholder to size against.
-    expect(
-      screen.getByLabelText(/Индивидуальный номер/).placeholder.trim(),
-    ).toBe("");
-
-    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next"));
-    expect(screen.getByLabelText(/Координата X/).placeholder.trim()).toBe("");
-  });
-
-  it("drops the hint once the field is filled in", () => {
-    registry.current = makeRegistry({
-      lastComponent: { id: "prev", component_name: "Манометр" },
-    });
-    openBlankCard();
-
-    const name = screen.getByLabelText(/Наименование компонента/);
-    expect(name.placeholder).toBe("Манометр");
-
-    fireEvent.change(name, { target: { value: "Задвижка" } });
-    expect(
-      screen.getByLabelText(/Наименование компонента/).placeholder.trim(),
-    ).toBe("");
-  });
-
-  it("shows no hints on the very first card of a walk", () => {
-    openBlankCard();
-    expect(
-      screen.getByLabelText(/Наименование компонента/).placeholder.trim(),
-    ).toBe("");
-  });
-
-  it("offers to fill the empty fields from the previous card", async () => {
-    registry.current = makeRegistry({
-      lastComponent: {
-        id: "prev",
-        component_uid: "6",
-        component_name: "Манометр",
-        manufacturer: "Завод",
-        body_material: "Сталь 20",
-      },
-    });
-    openBlankCard();
-
-    fireEvent.change(screen.getByLabelText(/Локация/), {
-      target: { value: "УППГ" },
-    });
-    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
-      target: { value: "Задвижка" },
-    });
-    fireEvent.click(screen.getByText("Save"));
-
-    await waitFor(() =>
-      expect(screen.getByText(/Fill from the previous card/i)).toBeTruthy(),
-    );
-    // Nothing is written until the operator answers.
-    expect(registry.current.addComponent).not.toHaveBeenCalled();
-  });
-
-  it("copies only what was left empty, never what was typed", async () => {
-    registry.current = makeRegistry({
-      lastComponent: {
-        id: "prev",
-        component_name: "Манометр",
-        manufacturer: "Завод",
-        body_material: "Сталь 20",
-      },
-    });
-    openBlankCard();
-
-    fireEvent.change(screen.getByLabelText(/Локация/), {
-      target: { value: "УППГ" },
-    });
-    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
-      target: { value: "Задвижка" },
-    });
-    fireEvent.click(screen.getByText("Save"));
-
-    await waitFor(() => screen.getByText("Fill"));
-    fireEvent.click(screen.getByText("Fill"));
-
-    await waitFor(() =>
-      expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
-    );
-    const saved = registry.current.addComponent.mock.calls[0][0];
-    // Typed here, so it stands.
-    expect(saved.component_name).toBe("Задвижка");
-    // Left empty, so it comes across.
-    expect(saved.manufacturer).toBe("Завод");
-    expect(saved.body_material).toBe("Сталь 20");
-  });
-
-  it("saves the card untouched when the offer is declined", async () => {
-    registry.current = makeRegistry({
-      lastComponent: { id: "prev", manufacturer: "Завод" },
-    });
-    openBlankCard();
-
-    fireEvent.change(screen.getByLabelText(/Локация/), {
-      target: { value: "УППГ" },
-    });
-    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
-      target: { value: "Задвижка" },
-    });
-    fireEvent.click(screen.getByText("Save"));
-
-    await waitFor(() => screen.getByText("Leave empty"));
-    fireEvent.click(screen.getByText("Leave empty"));
-
-    await waitFor(() =>
-      expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
-    );
-    // An unreadable plate is a fact about this component, not a gap to paper
-    // over with the previous one's values.
-    expect(
-      registry.current.addComponent.mock.calls[0][0].manufacturer,
-    ).toBeUndefined();
-  });
-
-  it("does not ask when the previous card has nothing to give", async () => {
-    registry.current = makeRegistry({
-      lastComponent: { id: "prev", component_name: "Манометр" },
-    });
-    openBlankCard();
-
-    fireEvent.change(screen.getByLabelText(/Локация/), {
-      target: { value: "УППГ" },
-    });
-    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
-      target: { value: "Задвижка" },
-    });
-    fireEvent.click(screen.getByText("Save"));
-
-    await waitFor(() =>
-      expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
-    );
-    expect(screen.queryByText(/Fill from the previous card/i)).toBeNull();
-  });
-
-  it("does not ask on the first card of a walk", async () => {
-    openBlankCard();
-
-    fireEvent.change(screen.getByLabelText(/Локация/), {
-      target: { value: "УППГ" },
-    });
-    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
-      target: { value: "Задвижка" },
-    });
-    fireEvent.click(screen.getByText("Save"));
-
-    await waitFor(() =>
-      expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
-    );
-    expect(screen.queryByText(/Fill from the previous card/i)).toBeNull();
-  });
-
-  it("blocks saving only on the three fields readable without a plate", async () => {
-    openBlankCard();
+    goToLastStep();
     fireEvent.click(screen.getByText("Save"));
 
     await waitFor(() =>
       expect(screen.getAllByText("Required").length).toBeGreaterThan(0),
     );
     expect(registry.current.addComponent).not.toHaveBeenCalled();
-    // Two of the three are still blank; the number came prefilled.
+    // Two of the three are blank; the number came prefilled.
     expect(screen.getAllByText("Required")).toHaveLength(2);
   });
 
-  it("saves from the first step without visiting the passport steps", async () => {
+  it("sends the operator to the step holding the problem", async () => {
     openBlankCard();
+    goToLastStep();
+    expect(screen.getByText(/Step 4 \/ 4/)).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText(/Локация/), {
-      target: { value: "Скважина 22" },
-    });
-    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
-      target: { value: "Задвижка" },
-    });
+    fireEvent.click(screen.getByText("Save"));
+    await waitFor(() => expect(screen.getByText(/Step 1 \/ 4/)).toBeTruthy());
+  });
+
+  it("saves a card with the passport steps left empty", async () => {
+    openBlankCard();
+    fillRequired();
+    goToLastStep();
     fireEvent.click(screen.getByText("Save"));
 
     await waitFor(() =>
       expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
     );
-    const saved = registry.current.addComponent.mock.calls[0][0];
-    expect(saved.manufacturer).toBeUndefined();
-    expect(saved.component_name).toBe("Задвижка");
+    expect(
+      registry.current.addComponent.mock.calls[0][0].manufacturer,
+    ).toBeUndefined();
   });
 
   it("fills the English name from the Russian one", async () => {
     openBlankCard();
-
     fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
       target: { value: "Задвижка" },
     });
@@ -561,12 +341,8 @@ describe("component card form", () => {
       /already in the registry/i,
     );
 
-    fireEvent.change(screen.getByLabelText(/Локация/), {
-      target: { value: "УППГ" },
-    });
-    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
-      target: { value: "Труба" },
-    });
+    fillRequired();
+    goToLastStep();
     fireEvent.click(screen.getByText("Save"));
 
     await waitFor(() =>
@@ -576,19 +352,13 @@ describe("component card form", () => {
 
   it("rejects a number that is not digits", async () => {
     openBlankCard();
-
-    fireEvent.change(screen.getByLabelText(/Локация/), {
-      target: { value: "УППГ" },
-    });
-    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
-      target: { value: "Труба" },
-    });
+    fillRequired();
     // Letters never reach the form — the numeric input strips them, so "ЗД32"
-    // would arrive as "32". A decimal separator does get through, and "1.5" is
-    // not an identity number.
+    // would arrive as "32". A decimal separator does get through.
     fireEvent.change(screen.getByLabelText(/Индивидуальный номер/), {
       target: { value: "1.5" },
     });
+    goToLastStep();
     fireEvent.click(screen.getByText("Save"));
 
     await waitFor(() => expect(screen.getByText("Digits only")).toBeTruthy());
@@ -611,6 +381,7 @@ describe("component card form", () => {
     fireEvent.click(screen.getByText("Задвижка"));
     expect(screen.getByText("Component card")).toBeTruthy();
 
+    goToLastStep();
     fireEvent.click(screen.getByText("Save"));
     await waitFor(() =>
       expect(registry.current.updateComponent).toHaveBeenCalledWith(
@@ -618,5 +389,182 @@ describe("component card form", () => {
         expect.objectContaining({ component_uid: "7" }),
       ),
     );
+  });
+});
+
+describe("clearing a card", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    registry.current = makeRegistry({ suggestNextUid: vi.fn(() => "9") });
+  });
+
+  it("offers to clear the step only once something is in it", () => {
+    render(<ComponentRegistry project={project} />);
+    fireEvent.click(screen.getByText("Add component"));
+
+    // The number arrives prefilled, so the step already has data.
+    expect(screen.getByText("Clear step")).toBeTruthy();
+    expect(screen.getByText("Clear all")).toBeTruthy();
+  });
+
+  it("keeps the number and the fix when clearing", () => {
+    render(
+      <ComponentRegistry project={project} coords={{ lat: 38.4, lng: 66.1 }} />,
+    );
+    fireEvent.click(screen.getByText("Add component"));
+
+    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
+      target: { value: "Задвижка" },
+    });
+    fireEvent.click(screen.getByText("Clear step"));
+
+    // Identity and position are not what the button is for.
+    expect(screen.getByDisplayValue("9")).toBeTruthy();
+    expect(screen.getByLabelText(/Наименование компонента/).value).toBe("");
+  });
+
+  it("returns to the first step when clearing everything", () => {
+    render(<ComponentRegistry project={project} />);
+    fireEvent.click(screen.getByText("Add component"));
+
+    fireEvent.click(screen.getByText("Next →"));
+    expect(screen.getByText(/Step 2 \/ 4/)).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Clear all"));
+    expect(screen.getByText(/Step 1 \/ 4/)).toBeTruthy();
+  });
+});
+
+describe("copying from the previous card", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function openWithPrevious(lastComponent) {
+    registry.current = makeRegistry({ lastComponent });
+    render(<ComponentRegistry project={project} />);
+    fireEvent.click(screen.getByText("Add component"));
+    fireEvent.change(screen.getByLabelText(/Локация/), {
+      target: { value: "УППГ" },
+    });
+    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
+      target: { value: "Задвижка" },
+    });
+    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next →"));
+    fireEvent.click(screen.getByText("Save"));
+  }
+
+  it("shows the previous values as hints in the empty fields", () => {
+    // Walking a row of identical gauges means most of the passport repeats.
+    registry.current = makeRegistry({
+      lastComponent: {
+        id: "prev",
+        component_uid: "6",
+        component_name: "Манометр",
+        scheme_tag: "PG",
+      },
+    });
+    render(<ComponentRegistry project={project} />);
+    fireEvent.click(screen.getByText("Add component"));
+
+    expect(screen.getByLabelText(/Наименование компонента/).placeholder).toBe(
+      "Манометр",
+    );
+    expect(screen.getByLabelText(/Номер на схеме/).placeholder).toBe("PG");
+  });
+
+  it("never echoes the previous identity number", () => {
+    registry.current = makeRegistry({
+      lastComponent: { id: "prev", component_uid: "6" },
+    });
+    render(<ComponentRegistry project={project} />);
+    fireEvent.click(screen.getByText("Add component"));
+
+    expect(
+      screen.getByLabelText(/Индивидуальный номер/).placeholder.trim(),
+    ).toBe("");
+  });
+
+  it("drops the hint once the field is filled in", () => {
+    registry.current = makeRegistry({
+      lastComponent: { id: "prev", component_name: "Манометр" },
+    });
+    render(<ComponentRegistry project={project} />);
+    fireEvent.click(screen.getByText("Add component"));
+
+    const name = screen.getByLabelText(/Наименование компонента/);
+    expect(name.placeholder).toBe("Манометр");
+
+    fireEvent.change(name, { target: { value: "Задвижка" } });
+    expect(
+      screen.getByLabelText(/Наименование компонента/).placeholder.trim(),
+    ).toBe("");
+  });
+
+  it("asks before filling anything", async () => {
+    openWithPrevious({
+      id: "prev",
+      component_name: "Манометр",
+      manufacturer: "Завод",
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(/Fill from the previous card/i)).toBeTruthy(),
+    );
+    expect(registry.current.addComponent).not.toHaveBeenCalled();
+  });
+
+  it("copies only what was left empty, never what was typed", async () => {
+    openWithPrevious({
+      id: "prev",
+      component_name: "Манометр",
+      manufacturer: "Завод",
+      body_material: "Сталь 20",
+    });
+
+    await waitFor(() => screen.getByText("Fill"));
+    fireEvent.click(screen.getByText("Fill"));
+
+    await waitFor(() =>
+      expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
+    );
+    const saved = registry.current.addComponent.mock.calls[0][0];
+    expect(saved.component_name).toBe("Задвижка");
+    expect(saved.manufacturer).toBe("Завод");
+    expect(saved.body_material).toBe("Сталь 20");
+  });
+
+  it("saves the card untouched when the offer is declined", async () => {
+    openWithPrevious({ id: "prev", manufacturer: "Завод" });
+
+    await waitFor(() => screen.getByText("Leave empty"));
+    fireEvent.click(screen.getByText("Leave empty"));
+
+    await waitFor(() =>
+      expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
+    );
+    // An unreadable plate is a fact about this component, not a gap to paper
+    // over with the previous one's values.
+    expect(
+      registry.current.addComponent.mock.calls[0][0].manufacturer,
+    ).toBeUndefined();
+  });
+
+  it("does not ask when the previous card has nothing to give", async () => {
+    openWithPrevious({ id: "prev", component_name: "Манометр" });
+
+    await waitFor(() =>
+      expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.queryByText(/Fill from the previous card/i)).toBeNull();
+  });
+
+  it("does not ask on the first card of a walk", async () => {
+    openWithPrevious(null);
+
+    await waitFor(() =>
+      expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.queryByText(/Fill from the previous card/i)).toBeNull();
   });
 });

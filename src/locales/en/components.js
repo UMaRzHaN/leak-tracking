@@ -10,12 +10,7 @@ export const components = {
   add: "Add component",
   addTitle: "New component",
   editTitle: "Component card",
-  stepPrefix: "Step",
-  save: "Save",
-  saving: "Saving...",
   cancel: "Cancel",
-  prev: "Back",
-  next: "Next",
   remove: "Delete component",
   unnamed: "Unnamed",
   loading: "Loading the registry...",
@@ -27,6 +22,15 @@ export const components = {
   allLocations: "All locations",
   duplicateWarning:
     "That number is already in the registry ({{count}}). You can still save — it gets resolved on merge.",
+  stepPrefix: "Step",
+  buttons: {
+    prev: "← Back",
+    next: "Next →",
+    save: "Save",
+    saving: "Saving...",
+    clearStep: "Clear step",
+    clearAll: "Clear all",
+  },
   copyConfirm: {
     title: "Fill from the previous card?",
     description:

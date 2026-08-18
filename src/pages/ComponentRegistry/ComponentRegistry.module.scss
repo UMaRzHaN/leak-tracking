@@ -167,85 +167,6 @@
   color: var(--c-red, #d33);
 }
 
-/* ── Card form ── */
-
-/* The root does not scroll — the rest of the app keeps its page shells fixed
-   and scrolls the content inside them. A scrollable root here dragged the
-   whole document, header and all. */
-.form {
-  flex: 1 1 auto;
-  min-height: 0;
-  padding: 12px 12px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow: hidden;
-}
-
-.formScroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.formHead {
-  h2 {
-    margin: 0;
-    font-size: 17px;
-    font-weight: 700;
-    color: var(--c-text);
-  }
-}
-
-.stepLabel {
-  margin: 2px 0 0;
-  font-size: 13px;
-  color: var(--c-text3);
-}
-
-/* A duplicate number is reported, never refused: the app cannot see another
-   device's numbers, so blocking here would only strand somebody at a wellhead. */
-.warning {
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: var(--r-lg);
-  border: 1.5px solid var(--c-amber, #e0a800);
-  font-size: 13px;
-  color: var(--c-text);
-}
-
-.formFoot {
-  flex: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px 0;
-  background: var(--c-bg, var(--c-surface));
-
-  button {
-    padding: 11px 16px;
-    border: 1.5px solid var(--c-border);
-    border-radius: var(--r-lg);
-    background: var(--c-surface);
-    font-size: 14px;
-    color: var(--c-text);
-    cursor: pointer;
-
-    &:disabled {
-      opacity: 0.6;
-      cursor: default;
-    }
-  }
-
-  .primary {
-    margin-left: auto;
-    border-color: transparent;
-    background: var(--c-blue);
-    color: #fff;
-    font-weight: 600;
-  }
-}
-
 /* ── Tabs ── */
 
 .tabs {
@@ -297,4 +218,56 @@
 .uidConflict {
   composes: uid;
   color: var(--c-amber, #e0a800);
+}
+
+/* ── Card form ──
+   Reuses the leak form's card and field styling; only the shell differs. There
+   the card owns the whole screen, here it lives inside the registry page, so
+   the height comes from the flex parent and the scrolling happens inside. */
+
+.cardShell {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-bottom: 0;
+  overflow-y: auto;
+}
+
+/* The leak form's action bar without the fixed positioning — see the note at
+   the call site. */
+.actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--c-surface);
+  border-top: 2px solid var(--c-border);
+
+  button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    background: var(--c-surface2);
+    color: var(--c-text);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    &:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+
+    &:last-child {
+      background: var(--c-blue);
+      color: #fff;
+    }
+  }
 }

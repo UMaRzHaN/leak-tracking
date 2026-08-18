@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
+import PageHeader from "@/components/layout/PageHeader/PageHeader";
+import ClearActions from "@/features/leakForm/components/ClearActions";
 import StepRenderer from "@/features/leakForm/components/StepRenderer/StepRenderer";
 import {
   isValidComponentUid,
@@ -9,16 +11,20 @@ import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import { toNullableNumber } from "@/utils/normalize/toNullableNumber";
 import { COMPONENT_NAME_TRANSLATIONS } from "@/data/component/componentDictionary";
 import { getCopyPreviousKeys } from "@/features/leakForm/utils/copyPrevious";
+import leak from "@/features/leakForm/LeakForm.module.scss";
 import s from "./ComponentRegistry.module.scss";
 
 /**
  * The card a walker fills in standing in front of a piece of equipment.
  *
- * Two things separate it from the leak form. Only the first step can block
- * saving — a plate that is worn off or buried under insulation is the normal
- * case, so steps two and three are always skippable. And a duplicate identity
- * number warns but never refuses: the app cannot see another device's numbers,
- * so refusing here would only strand somebody at a wellhead.
+ * Built from the leak form's own parts — PageHeader, StepRenderer, ClearActions,
+ * AddLeakFooter and its stylesheet — so a walker moving between the two screens
+ * meets the same interface twice rather than two dialects of one.
+ *
+ * What differs is the rules, not the look. A duplicate identity number warns but
+ * never refuses: the app cannot see another device's numbers, so refusing would
+ * only strand somebody at a wellhead. And coordinates are stamped from the
+ * receiver without ever being asked for, the way a leak records them.
  */
 export default function ComponentCardForm({
   steps,
@@ -215,16 +221,53 @@ export default function ComponentCardForm({
     return result;
   }, [copyableFields, form, lastComponent, step, steps]);
 
-  const isLastStep = step >= steps.length;
+  const hasStepData = (steps[step - 1]?.fields ?? []).some(
+    ({ key }) => form[key] != null && String(form[key]).trim() !== "",
+  );
+
+  /**
+   * Clearing leaves the identity number and the recorded fix alone: one is the
+   * card's identity and the other is where the walker is standing, and neither
+   * is something the button is meant to throw away.
+   */
+  const keepOnClear = useCallback(
+    (current) => ({
+      component_uid: current.component_uid,
+      lat: current.lat,
+      lng: current.lng,
+    }),
+    [],
+  );
+
+  const clearStep = useCallback(() => {
+    setForm((current) => {
+      const next = { ...current };
+      for (const field of steps[step - 1]?.fields ?? []) {
+        if (field.key in keepOnClear(current)) continue;
+        delete next[field.key];
+      }
+      return next;
+    });
+    setErrors({});
+  }, [keepOnClear, step, steps]);
+
+  const clearAll = useCallback(() => {
+    setForm((current) => keepOnClear(current));
+    setErrors({});
+    setStep(1);
+  }, [keepOnClear]);
 
   return (
-    <div className={s.form}>
-      <header className={s.formHead}>
-        <h2>{isEditing ? texts.editTitle : texts.addTitle}</h2>
-        <p className={s.stepLabel}>
-          {texts.stepPrefix} {step}/{steps.length} — {steps[step - 1]?.title}
-        </p>
-      </header>
+    <div className={`${leak.card} ${s.cardShell} content`}>
+      <PageHeader
+        title={isEditing ? texts.editTitle : texts.addTitle}
+        subtitle={`${texts.stepPrefix} ${step} / ${steps.length} · ${
+          steps[step - 1]?.title ?? ""
+        }`}
+        badge={`${step}/${steps.length}`}
+        backLabel={texts.cancel}
+        onBack={onCancel}
+      />
 
       {conflicts.length > 0 && (
         <p className={s.warning} role="status">
@@ -232,53 +275,52 @@ export default function ComponentCardForm({
         </p>
       )}
 
-      <div className={s.formScroll}>
-        <StepRenderer
-          step={step}
-          steps={steps}
-          form={form}
-          errors={errors}
-          onChange={handleChange}
-          nextStep={() => setStep((value) => Math.min(value + 1, steps.length))}
-          save={handleSave}
-          ghostPlaceholders={ghostPlaceholders}
-        />
-      </div>
+      <StepRenderer
+        step={step}
+        steps={steps}
+        form={form}
+        errors={errors}
+        onChange={handleChange}
+        nextStep={() => setStep((value) => Math.min(value + 1, steps.length))}
+        save={handleSave}
+        ghostPlaceholders={ghostPlaceholders}
+      />
 
-      <footer className={s.formFoot}>
-        <button type="button" onClick={onCancel} disabled={saving}>
-          {texts.cancel}
+      <ClearActions
+        hasStepData={hasStepData}
+        onClearStep={clearStep}
+        onClearAll={clearAll}
+        localeTexts={texts}
+      />
+
+      {/*
+        The leak form's own action bar, minus its fixed positioning. There the
+        card owns the screen and the app's bottom navigation is hidden; here the
+        registry keeps its tabs, so a bar pinned to the viewport would land under
+        the navigation and be covered by it.
+      */}
+      <div className={s.actions}>
+        <button
+          type="button"
+          onClick={() => setStep((value) => Math.max(1, value - 1))}
+          disabled={step === 1 || saving}
+        >
+          {texts.buttons.prev}
         </button>
-        {step > 1 && (
-          <button
-            type="button"
-            onClick={() => setStep((value) => value - 1)}
-            disabled={saving}
-          >
-            {texts.prev}
-          </button>
-        )}
-        {!isLastStep && (
+        {step < steps.length ? (
           <button
             type="button"
             onClick={() => setStep((value) => value + 1)}
             disabled={saving}
           >
-            {texts.next}
+            {texts.buttons.next}
+          </button>
+        ) : (
+          <button type="button" onClick={handleSave} disabled={saving}>
+            {saving ? texts.buttons.saving : texts.buttons.save}
           </button>
         )}
-        {/* Saving is allowed from any step: the card is expected to be
-            incomplete, and forcing a walk through empty passport fields would
-            only teach people to fill them with dashes. */}
-        <button
-          type="button"
-          className={s.primary}
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saving ? texts.saving : texts.save}
-        </button>
-      </footer>
+      </div>
 
       <ConfirmSheet
         open={confirmOpen}

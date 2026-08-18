@@ -10,12 +10,7 @@ export const components = {
   add: "Добавить компонент",
   addTitle: "Новый компонент",
   editTitle: "Карточка компонента",
-  stepPrefix: "Шаг",
-  save: "Сохранить",
-  saving: "Сохранение...",
   cancel: "Отмена",
-  prev: "Назад",
-  next: "Далее",
   remove: "Удалить компонент",
   unnamed: "Без наименования",
   loading: "Загрузка реестра...",
@@ -28,6 +23,15 @@ export const components = {
   allLocations: "Все локации",
   duplicateWarning:
     "Такой номер уже есть в реестре ({{count}}). Сохранить можно — разберём при сведении.",
+  stepPrefix: "Шаг",
+  buttons: {
+    prev: "← Назад",
+    next: "Далее →",
+    save: "Сохранить",
+    saving: "Сохранение...",
+    clearStep: "Очистить шаг",
+    clearAll: "Очистить всё",
+  },
   copyConfirm: {
     title: "Заполнить из предыдущей карточки?",
     description:

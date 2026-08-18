@@ -182,17 +182,12 @@ export const COMPONENT_STEPS = [
     ],
   },
   {
-    title: "Фото и координаты",
-    fields: [
-      { type: "photo", key: "photo", label: "Фото компонента" },
-      /*
-       * Stamped from the receiver when the card is created, the way a leak is,
-       * and left editable: indoors and among steelwork a fix is often wrong by
-       * more than the distance between two valves, and the person standing
-       * there is the one who can correct it.
-       */
-      { type: "input", key: "lat", label: "Координата X", number: true },
-      { type: "input", key: "lng", label: "Координата Y", number: true },
-    ],
+    /*
+     * Coordinates are stamped from the receiver when the card is opened and
+     * never asked for, exactly as a leak records them — a field for a number
+     * the app already has only invites a worse one.
+     */
+    title: "Фото",
+    fields: [{ type: "photo", key: "photo", label: "Фото компонента" }],
   },
 ];

@@ -52,11 +52,17 @@ export default function ComponentRegistry({ project, coords = null }) {
       addTitle: t("components.addTitle"),
       editTitle: t("components.editTitle"),
       stepPrefix: t("components.stepPrefix"),
-      save: t("components.save"),
-      saving: t("components.saving"),
       cancel: t("components.cancel"),
-      prev: t("components.prev"),
-      next: t("components.next"),
+      // Shaped the way the leak form's header, footer and clear actions expect
+      // their labels, since the card reuses all three.
+      buttons: {
+        prev: t("components.buttons.prev"),
+        next: t("components.buttons.next"),
+        save: t("components.buttons.save"),
+        saving: t("components.buttons.saving"),
+        clearStep: t("components.buttons.clearStep"),
+        clearAll: t("components.buttons.clearAll"),
+      },
       duplicateWarning: (count) => t("components.duplicateWarning", { count }),
       copyConfirm: {
         title: t("components.copyConfirm.title"),
