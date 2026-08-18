@@ -1,6 +1,10 @@
 export const components = {
   title: "Component registry",
   tab: "Components",
+  conflictBanner:
+    "{{count}} duplicated number(s). Both cards were kept — renumber one.",
+  showConflicts: "Show them",
+  showAll: "Show all",
   count: "Recorded: {{count}}",
   shown: "{{count}} shown",
   add: "Add component",

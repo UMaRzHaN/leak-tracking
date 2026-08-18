@@ -78,16 +78,25 @@ export function useDataBaseExport({ displayed, notify }) {
         { buildWorkbookBufferInWorker },
         { buildSchemaArchiveEntries },
         { SchemaRepository },
+        { buildComponentSheetSpec },
+        { buildComponentArchiveEntry },
       ] = await Promise.all([
         import("@/pages/DataBase/excel"),
         import("@/services/excel/excelWorkerClient"),
         import("@/services/backup/schemaArchive"),
         import("@/repositories/SchemaRepository"),
+        import("@/services/excelExport/componentSheetSpec"),
+        import("@/services/backup/componentArchive"),
       ]);
 
       // Drawings are a project-level attachment, so they go out whole even
       // when the record list is filtered — a filtered export is still the
       // whole project's documentation.
+      // The registry goes out whole for the same reason drawings do: a filter
+      // narrows which leaks are reported, not which equipment exists.
+      const componentSheet = await buildComponentSheetSpec(activeProject);
+      const componentArchive = await buildComponentArchiveEntry(activeProject);
+
       const schemaEntries = await buildSchemaArchiveEntries(
         activeProject,
         await SchemaRepository.listSchemas(activeProject).catch(() => []),
@@ -114,6 +123,8 @@ export function useDataBaseExport({ displayed, notify }) {
           backupLeaks: displayed,
           buildWorkbookBuffer: buildWorkbookBufferInWorker,
           schemaEntries,
+          componentSheet,
+          componentArchive,
         },
       );
 

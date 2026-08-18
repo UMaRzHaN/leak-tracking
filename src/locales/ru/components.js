@@ -1,6 +1,10 @@
 export const components = {
   title: "Реестр компонентов",
   tab: "Компоненты",
+  conflictBanner:
+    "Одинаковых номеров: {{count}}. Оба варианта сохранены — перенумеруйте один.",
+  showConflicts: "Показать",
+  showAll: "Показать все",
   count: "Заведено: {{count}}",
   shown: "показано {{count}}",
   add: "Добавить компонент",

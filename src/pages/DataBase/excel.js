@@ -254,6 +254,7 @@ export async function exportToExcelFile(
       texts,
       monitoringExportMode,
       archivePayload,
+      componentSheet: options.componentSheet ?? null,
     },
     options.buildWorkbookBuffer,
   );
@@ -282,6 +283,12 @@ export async function exportToExcelFile(
   // "!Database.xlsx" next to photos/ next to technological_schemas/.
   for (const entry of options.schemaEntries ?? []) {
     zip.file(entry.path, entry.blob);
+  }
+
+  // The registry as plain JSON beside the workbook: the sheet is for reading,
+  // this is what another device merges from.
+  if (options.componentArchive) {
+    zip.file(options.componentArchive.path, options.componentArchive.content);
   }
 
   const zipBlob = await zip.generateAsync({ type: "blob" });

@@ -28,6 +28,8 @@ export default function ComponentRegistry({ project }) {
     enabled,
     steps,
     components,
+    conflicts,
+    conflictingIds,
     loading,
     error,
     addComponent,
@@ -41,6 +43,7 @@ export default function ComponentRegistry({ project }) {
   const [locationFilter, setLocationFilter] = useState(ALL);
   const [editing, setEditing] = useState(null);
   const [tab, setTab] = useState("components");
+  const [conflictsOnly, setConflictsOnly] = useState(false);
 
   const texts = useMemo(
     () => ({
@@ -75,9 +78,10 @@ export default function ComponentRegistry({ project }) {
       components.filter(
         (component) =>
           (locationFilter === ALL || component.location === locationFilter) &&
+          (!conflictsOnly || conflictingIds.has(component.id)) &&
           matchesSearch(component, search),
       ),
-    [components, locationFilter, search],
+    [components, conflictingIds, conflictsOnly, locationFilter, search],
   );
 
   const handleSave = useCallback(
@@ -152,6 +156,24 @@ export default function ComponentRegistry({ project }) {
             </p>
           )}
 
+          {/* Two devices with no allotted number ranges collide by design. The
+              merge keeps both cards and says so here; renumbering is a call
+              only somebody who saw the equipment can make. */}
+          {conflicts.length > 0 && (
+            <p className={s.warning} role="status">
+              {t("components.conflictBanner", { count: conflicts.length })}{" "}
+              <button
+                type="button"
+                className={s.link}
+                onClick={() => setConflictsOnly((value) => !value)}
+              >
+                {conflictsOnly
+                  ? t("components.showAll")
+                  : t("components.showConflicts")}
+              </button>
+            </p>
+          )}
+
           <div className={s.filters}>
             <input
               type="search"
@@ -199,7 +221,17 @@ export default function ComponentRegistry({ project }) {
                     className={s.cardBody}
                     onClick={() => setEditing(component)}
                   >
-                    <span className={s.uid}>
+                    {/* A colliding number is a state, not a value: the list
+                        has to show which cards need a decision without
+                        opening each one. */}
+                    <span
+                      className={
+                        conflictingIds.has(component.id) ? s.uidConflict : s.uid
+                      }
+                      data-conflict={
+                        conflictingIds.has(component.id) || undefined
+                      }
+                    >
                       {component.component_uid || "—"}
                     </span>
                     <span className={s.name}>

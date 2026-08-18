@@ -10,6 +10,7 @@ import {
   buildHistorySheet,
   buildMonitoringSheet,
 } from "@/services/excelExport/auxiliarySheets";
+import { buildComponentSheet } from "@/services/excelExport/componentSheet";
 import {
   addStructuredTable,
   getColumnWidth,
@@ -55,6 +56,7 @@ async function buildWorkbook({
   ExcelJS,
   monitoringExportMode,
   archivePayload,
+  componentSheet,
 }) {
   const photoColumnIndexes = PHOTO_KEYS.map((key) =>
     keysOrder.indexOf(key),
@@ -125,6 +127,9 @@ async function buildWorkbook({
     monitoringExportMode,
   );
   await buildHistorySheet(workbook, orderedLeaks, texts);
+  // Before the backup sheet, so the registry sits with the readable tabs
+  // rather than after the machine-readable one nobody opens by hand.
+  await buildComponentSheet(workbook, componentSheet);
   addBackupSheet(workbook, archivePayload, texts);
 
   return workbook;

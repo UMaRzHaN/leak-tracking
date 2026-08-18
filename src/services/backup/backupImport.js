@@ -73,6 +73,22 @@ async function restoreProjectSchemas(file, project) {
   }
 }
 
+/**
+ * Merges the archive's component registry into the imported project. Like the
+ * schemas, kept outside the leak rollback: an archive that carried the leaks
+ * across correctly must not be discarded because the registry would not merge.
+ */
+async function restoreProjectComponents(file, project) {
+  try {
+    const { restoreComponentsFromArchive } =
+      await import("@/services/backup/componentArchive");
+    return await restoreComponentsFromArchive(file, project);
+  } catch (error) {
+    logger.warn("[projectBackupService] Could not merge components:", error);
+    return { added: 0, updated: 0, conflicts: 0 };
+  }
+}
+
 export async function importProjectZip(file, ctx) {
   const {
     addProject,
@@ -160,11 +176,17 @@ export async function importProjectZip(file, ctx) {
     // not be thrown away because one drawing would not store, and the operator
     // can always load that drawing again by hand.
     const schemaResult = await restoreProjectSchemas(file, importedProject);
+    const componentResult = await restoreProjectComponents(
+      file,
+      importedProject,
+    );
 
     return {
       project: importedProject,
       leakCount: finalLeaks.length,
       schemaCount: schemaResult.restored,
+      componentCount: componentResult.added,
+      componentConflicts: componentResult.conflicts,
     };
   } catch (error) {
     try {

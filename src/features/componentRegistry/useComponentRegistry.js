@@ -5,6 +5,7 @@ import {
   findComponentUidConflicts,
   nextComponentUid,
 } from "@/domain/componentRegistry";
+import { findUidConflicts } from "@/domain/componentMerge";
 import {
   hasComponentRegistry,
   loadComponentRegistry,
@@ -158,11 +159,29 @@ export function useComponentRegistry(project) {
     [components],
   );
 
+  /**
+   * Cards sharing an identity number. Recomputed from what is stored rather
+   * than remembered from the merge, so a collision typed on this device shows
+   * up the same way as one that arrived from another.
+   */
+  const conflicts = useMemo(() => findUidConflicts(components), [components]);
+  const conflictingIds = useMemo(
+    () =>
+      new Set(
+        conflicts.flatMap((conflict) =>
+          conflict.records.map((record) => record.id),
+        ),
+      ),
+    [conflicts],
+  );
+
   return {
     enabled,
     steps: registry?.steps ?? null,
     fields: registry?.fields ?? null,
     components: sorted,
+    conflicts,
+    conflictingIds,
     loading,
     error,
     validation,

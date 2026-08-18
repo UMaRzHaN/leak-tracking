@@ -260,3 +260,30 @@
   background: var(--c-blue);
   color: #fff;
 }
+
+.warning {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1.5px solid var(--c-amber, #e0a800);
+  border-radius: var(--r-lg);
+  font-size: 13px;
+  color: var(--c-text);
+}
+
+.link {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--c-blue);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* A colliding number reads as a state, not a value — the list has to show
+   which cards need a decision without opening them. */
+.uidConflict {
+  composes: uid;
+  color: var(--c-amber, #e0a800);
+}

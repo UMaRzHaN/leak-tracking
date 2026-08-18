@@ -27,6 +27,8 @@ function makeRegistry(overrides = {}) {
     enabled: true,
     steps: { mode: "manual", steps: COMPONENT_STEPS },
     components: [],
+    conflicts: [],
+    conflictingIds: new Set(),
     loading: false,
     error: null,
     addComponent: vi.fn().mockResolvedValue([]),
@@ -128,6 +130,74 @@ describe("ComponentRegistry screen", () => {
 
     expect(screen.getByText("Задвижка")).toBeTruthy();
     expect(screen.queryByText("Труба")).toBeNull();
+  });
+
+  it("says nothing about conflicts when there are none", () => {
+    render(<ComponentRegistry project={project} />);
+    expect(screen.queryByText(/duplicated number/i)).toBeNull();
+  });
+
+  it("reports colliding numbers after a merge and offers to isolate them", () => {
+    // Two devices with no allotted ranges collide by design; the merge keeps
+    // both cards and the screen has to say which ones need a decision.
+    const clash = [
+      { id: "a", component_uid: "7", component_name: "Задвижка" },
+      { id: "b", component_uid: "7", component_name: "Манометр" },
+    ];
+    registry.current = makeRegistry({
+      components: [
+        ...clash,
+        { id: "c", component_uid: "8", component_name: "Труба" },
+      ],
+      conflicts: [{ uid: "7", records: clash }],
+      conflictingIds: new Set(["a", "b"]),
+    });
+    render(<ComponentRegistry project={project} />);
+
+    expect(screen.getByRole("status").textContent).toMatch(
+      /1 duplicated number/i,
+    );
+    expect(screen.getByText("Труба")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Show them"));
+
+    expect(screen.getByText("Задвижка")).toBeTruthy();
+    expect(screen.getByText("Манометр")).toBeTruthy();
+    expect(screen.queryByText("Труба")).toBeNull();
+  });
+
+  it("marks the colliding cards in the list itself", () => {
+    registry.current = makeRegistry({
+      components: [
+        { id: "a", component_uid: "7", component_name: "Задвижка" },
+        { id: "c", component_uid: "8", component_name: "Труба" },
+      ],
+      conflicts: [{ uid: "7", records: [{ id: "a" }, { id: "b" }] }],
+      conflictingIds: new Set(["a"]),
+    });
+    const { container } = render(<ComponentRegistry project={project} />);
+
+    const marked = container.querySelectorAll("[data-conflict]");
+    expect(marked).toHaveLength(1);
+    expect(marked[0].textContent).toBe("7");
+  });
+
+  it("goes back to the whole registry from the conflict view", () => {
+    registry.current = makeRegistry({
+      components: [
+        { id: "a", component_uid: "7", component_name: "Задвижка" },
+        { id: "c", component_uid: "8", component_name: "Труба" },
+      ],
+      conflicts: [{ uid: "7", records: [{ id: "a" }, { id: "b" }] }],
+      conflictingIds: new Set(["a"]),
+    });
+    render(<ComponentRegistry project={project} />);
+
+    fireEvent.click(screen.getByText("Show them"));
+    expect(screen.queryByText("Труба")).toBeNull();
+
+    fireEvent.click(screen.getByText("Show all"));
+    expect(screen.getByText("Труба")).toBeTruthy();
   });
 
   it("opens a blank card prefilled with the suggested number", () => {
