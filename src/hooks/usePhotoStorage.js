@@ -79,12 +79,30 @@ export function usePhotoStorage() {
 
   const gcOrphanedPhotos = useCallback(
     async (leaks) => {
-      await PhotoRepository.gcOrphaned(leaks, {
+      /*
+       * Component cards hold photos too, and they live in a store of their own.
+       * Collecting against the leaks alone declared every component photo an
+       * orphan and deleted it on the first idle sweep after a reload — the
+       * thumbnail was there until the app restarted, then gone.
+       *
+       * Loaded here rather than asked of every caller: the collector runs from
+       * one place and must see everything that can hold a path.
+       */
+      const { ComponentRepository } =
+        await import("@/repositories/ComponentRepository");
+      const components = await ComponentRepository.load(activeProject).catch(
+        () => null,
+      );
+      // A registry that would not load is not evidence that nothing references
+      // these photos, so nothing is collected rather than guessed at.
+      if (components === null) return;
+
+      await PhotoRepository.gcOrphaned([...(leaks ?? []), ...components], {
         projectId: activeProject?.id,
         folderName: activeProject?.folderName,
       });
     },
-    [activeProject?.id, activeProject?.folderName],
+    [activeProject],
   );
 
   return {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useComponentRegistry } from "@/features/componentRegistry/useComponentRegistry";
 import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
@@ -6,6 +6,7 @@ import { useVoiceControl } from "@/app/hooks/useVoiceControl";
 import ComponentCardForm from "./ComponentCardForm";
 import SchemaList from "@/features/schemas/SchemaList";
 import ComponentCardCompact from "@/features/componentRegistry/ComponentCardCompact";
+import VirtualizedLeakList from "@/features/leakList/VirtualizedLeakList/VirtualizedLeakList";
 import ComponentInspectSheet from "@/features/componentRegistry/ComponentInspectSheet";
 import ComponentDetailsSheet from "@/features/componentRegistry/ComponentDetailsSheet";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
@@ -77,6 +78,8 @@ export default function ComponentRegistry({
   const [tab, setTab] = useState("components");
   const [conflictsOnly, setConflictsOnly] = useState(false);
   const [inspecting, setInspecting] = useState(null);
+  const listRef = useRef(null);
+  const [listHeight, setListHeight] = useState(600);
   const [viewing, setViewing] = useState(null);
 
   /*
@@ -117,6 +120,31 @@ export default function ComponentRegistry({
       },
     }),
     [t],
+  );
+
+  // Measured rather than assumed: the list sits under a header whose height
+  // changes with the conflict banner and the filters.
+  useEffect(() => {
+    const node = listRef.current;
+    if (!node || typeof ResizeObserver === "undefined") return undefined;
+
+    const measure = () => setListHeight(node.clientHeight || 600);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [tab]);
+
+  const renderCard = useCallback(
+    (component) => (
+      <ComponentCardCompact
+        component={component}
+        conflicting={conflictingIds.has(component.id)}
+        onOpenDetails={setViewing}
+        onInspect={canWrite ? setInspecting : undefined}
+      />
+    ),
+    [canWrite, conflictingIds],
   );
 
   const locations = useMemo(() => {
@@ -376,17 +404,19 @@ export default function ComponentRegistry({
                 : t("components.noMatches")}
             </p>
           ) : (
-            <ul className={s.list}>
-              {visible.map((component) => (
-                <ComponentCardCompact
-                  key={component.id}
-                  component={component}
-                  conflicting={conflictingIds.has(component.id)}
-                  onOpenDetails={setViewing}
-                  onInspect={canWrite ? setInspecting : undefined}
-                />
-              ))}
-            </ul>
+            /*
+             * The same virtualiser the leak list uses. A finished walk is
+             * thousands of cards, each with a photograph — rendering them all
+             * would cost the scroll long before the registry is complete.
+             */
+            <div ref={listRef} className={s.list}>
+              <VirtualizedLeakList
+                items={visible}
+                height={listHeight}
+                bottomPadding={88}
+                renderItem={renderCard}
+              />
+            </div>
           )}
         </>
       )}

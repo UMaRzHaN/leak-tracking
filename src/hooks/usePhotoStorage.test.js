@@ -7,6 +7,14 @@ vi.mock("@capacitor/core", () => ({
   Capacitor: { isNativePlatform: () => false },
 }));
 
+// Component cards hold photos too; the collector has to see them or it declares
+// every one an orphan on the first idle sweep after a reload.
+vi.mock("@/repositories/ComponentRepository", () => ({
+  ComponentRepository: { load: vi.fn(async () => componentCards.current) },
+}));
+
+const componentCards = vi.hoisted(() => ({ current: [] }));
+
 vi.mock("@capacitor/filesystem", () => ({
   Filesystem: {},
   Directory: { Data: "DATA" },
@@ -193,6 +201,25 @@ describe("gcOrphanedPhotos (web path)", () => {
     expect(mockIdbDelete).toHaveBeenCalledWith("photo_proj-1_orphan_333");
     expect(mockIdbDelete).not.toHaveBeenCalledWith("photo_proj-1_leak-1_111");
     expect(mockIdbDelete).not.toHaveBeenCalledWith("photo_proj-1_leak-2_222");
+  });
+
+  it("keeps a photo that only a component card references", async () => {
+    // The thumbnail used to survive until the app restarted and then vanish:
+    // the sweep saw only leaks and called every component photo an orphan.
+    componentCards.current = [{ id: "c1", photo: "idb://photo_proj-1_c1_111" }];
+    mockListKeys.mockResolvedValue([
+      "photo_proj-1_c1_111",
+      "photo_proj-1_orphan_333",
+    ]);
+
+    const { result } = renderHook(() => usePhotoStorage());
+    await act(async () => {
+      await result.current.gcOrphanedPhotos([]);
+    });
+
+    expect(mockIdbDelete).toHaveBeenCalledWith("photo_proj-1_orphan_333");
+    expect(mockIdbDelete).not.toHaveBeenCalledWith("photo_proj-1_c1_111");
+    componentCards.current = [];
   });
 
   it("deletes nothing when all keys are referenced", async () => {

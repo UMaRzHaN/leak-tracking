@@ -9,11 +9,9 @@ import s from "./ComponentCardCompact.module.scss";
  * leak card: a photograph you can recognise the hardware by, the identity, and
  * the two swipes that carry the actions.
  *
- * The swipe directions are the reverse of the leak card's, and deliberately so.
- * There, right-to-left reaches the status because a leak's status is what
- * changes constantly. Here it reaches the detail, because a walker with a
- * finished registry is mostly reading it; changing what the hardware is doing
- * is the rarer act and sits on the other side.
+ * Swipe directions match the leak card exactly: right-to-left reaches the state
+ * of the thing, left-to-right opens it in full. One gesture vocabulary across
+ * both lists — a hand that learned it on leaks does not have to unlearn it here.
  */
 function ComponentCardCompact({
   component,
@@ -36,10 +34,10 @@ function ComponentCardCompact({
       if (Math.abs(dx) > 4) swipedRef.current = true;
       setOffset(dx);
     },
-    // 👈 right to left — the card in full
-    onSwipeLeft: () => onOpenDetails?.(component),
-    // 👉 left to right — state of the hardware, and the visit that found it
-    onSwipeRight: () => onInspect?.(component),
+    // 👈 right to left — state of the hardware, and the visit that found it
+    onSwipeLeft: () => onInspect?.(component),
+    // 👉 left to right — the card in full
+    onSwipeRight: () => onOpenDetails?.(component),
   });
 
   const openIfNotSwiping = () => {
@@ -56,10 +54,10 @@ function ComponentCardCompact({
       {/* The hints sit under the card and are uncovered by the swipe itself,
           so the gesture explains what it is about to do while it happens. */}
       <span className={`${s.hint} ${s.hintLeft}`} aria-hidden="true">
-        {t("components.swipeInspect")}
+        {t("components.swipeDetails")}
       </span>
       <span className={`${s.hint} ${s.hintRight}`} aria-hidden="true">
-        {t("components.swipeDetails")}
+        {t("components.swipeInspect")}
       </span>
 
       <div
