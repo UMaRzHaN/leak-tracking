@@ -56,6 +56,23 @@ async function waitForPhotoStorage(photoReadyRef) {
   throw new Error("Хранилище фото не готово");
 }
 
+/**
+ * Restores the archive's technological schemas into a freshly imported
+ * project. Never throws: losing the drawings is a nuisance the operator can
+ * fix by loading them again, while failing the import here would discard a
+ * project that already came across correctly.
+ */
+async function restoreProjectSchemas(file, project) {
+  try {
+    const { restoreSchemasFromArchive } =
+      await import("@/services/backup/schemaArchive");
+    return await restoreSchemasFromArchive(file, project);
+  } catch (error) {
+    logger.warn("[projectBackupService] Could not restore schemas:", error);
+    return { restored: 0, skipped: 0 };
+  }
+}
+
 export async function importProjectZip(file, ctx) {
   const {
     addProject,
@@ -136,7 +153,19 @@ export async function importProjectZip(file, ctx) {
     });
 
     await writeProjectSyncState(newProject.id, meta?.sync, finalLeaks);
-    return { project: importedProject, leakCount: finalLeaks.length };
+
+    // Drawings travel in a folder of their own and are restored in a separate
+    // pass — see schemaArchive for why. Deliberately after the leak data is
+    // committed and outside its rollback: a project that arrived intact must
+    // not be thrown away because one drawing would not store, and the operator
+    // can always load that drawing again by hand.
+    const schemaResult = await restoreProjectSchemas(file, importedProject);
+
+    return {
+      project: importedProject,
+      leakCount: finalLeaks.length,
+      schemaCount: schemaResult.restored,
+    };
   } catch (error) {
     try {
       await rollbackImportedProject(newProject, removeProject);

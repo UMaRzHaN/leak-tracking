@@ -73,11 +73,26 @@ export function useDataBaseExport({ displayed, notify }) {
       setIsExporting(true);
       notify("info", t("database.exportInProgress"), { autoCloseMs: 0 });
 
-      const [{ exportToExcelFile }, { buildWorkbookBufferInWorker }] =
-        await Promise.all([
-          import("@/pages/DataBase/excel"),
-          import("@/services/excel/excelWorkerClient"),
-        ]);
+      const [
+        { exportToExcelFile },
+        { buildWorkbookBufferInWorker },
+        { buildSchemaArchiveEntries },
+        { SchemaRepository },
+      ] = await Promise.all([
+        import("@/pages/DataBase/excel"),
+        import("@/services/excel/excelWorkerClient"),
+        import("@/services/backup/schemaArchive"),
+        import("@/repositories/SchemaRepository"),
+      ]);
+
+      // Drawings are a project-level attachment, so they go out whole even
+      // when the record list is filtered — a filtered export is still the
+      // whole project's documentation.
+      const schemaEntries = await buildSchemaArchiveEntries(
+        activeProject,
+        await SchemaRepository.listSchemas(activeProject).catch(() => []),
+        (project, schema) => SchemaRepository.readSchemaFile(project, schema),
+      );
       const result = await exportToExcelFile(
         displayed,
         prepareRows(displayed, t, vars),
@@ -98,6 +113,7 @@ export function useDataBaseExport({ displayed, notify }) {
           // including records (and photos) hidden by the current filters.
           backupLeaks: displayed,
           buildWorkbookBuffer: buildWorkbookBufferInWorker,
+          schemaEntries,
         },
       );
 

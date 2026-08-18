@@ -6,8 +6,8 @@ import {
   nextComponentUid,
 } from "@/domain/componentRegistry";
 import {
-  getComponentValidation,
   hasComponentRegistry,
+  loadComponentRegistry,
 } from "@/configs/projectAdapter";
 import { logger } from "@/utils/logger";
 
@@ -31,10 +31,29 @@ export function useComponentRegistry(project) {
   // still builds on the list it was computed from.
   const latestRef = useRef([]);
 
-  const validation = useMemo(
-    () => (enabled ? getComponentValidation(project) : null),
-    [enabled, project],
-  );
+  // The declaration arrives with the screen rather than with the app: it
+  // carries the equipment dictionaries and the four-step form, which no
+  // session that never opens the registry should have to download.
+  const [registry, setRegistry] = useState(null);
+  const validation = registry?.validation ?? null;
+
+  useEffect(() => {
+    if (!enabled) {
+      setRegistry(null);
+      return undefined;
+    }
+    let cancelled = false;
+    loadComponentRegistry(project)
+      .then((loaded) => !cancelled && setRegistry(loaded))
+      .catch((loadError) => {
+        if (cancelled) return;
+        logger.error("[components] registry config load failed:", loadError);
+        setError(loadError);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, project]);
 
   useEffect(() => {
     if (!enabled) {
@@ -141,6 +160,8 @@ export function useComponentRegistry(project) {
 
   return {
     enabled,
+    steps: registry?.steps ?? null,
+    fields: registry?.fields ?? null,
     components: sorted,
     loading,
     error,

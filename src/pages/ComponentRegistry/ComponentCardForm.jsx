@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
 import StepRenderer from "@/features/leakForm/components/StepRenderer/StepRenderer";
-import { getComponentSteps } from "@/configs/projectAdapter";
 import {
   isValidComponentUid,
   missingRequiredFields,
@@ -18,7 +17,7 @@ import s from "./ComponentRegistry.module.scss";
  * so refusing here would only strand somebody at a wellhead.
  */
 export default function ComponentCardForm({
-  project,
+  steps,
   component = null,
   suggestUid,
   findConflicts,
@@ -26,7 +25,6 @@ export default function ComponentCardForm({
   onCancel,
   texts,
 }) {
-  const steps = useMemo(() => getComponentSteps(project).steps, [project]);
   const isEditing = Boolean(component?.id);
 
   const [form, setForm] = useState(() =>

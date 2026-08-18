@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useComponentRegistry } from "@/features/componentRegistry/useComponentRegistry";
 import ComponentCardForm from "./ComponentCardForm";
+import SchemaList from "@/features/schemas/SchemaList";
 import s from "./ComponentRegistry.module.scss";
 
 const ALL = "__all__";
@@ -25,6 +26,7 @@ export default function ComponentRegistry({ project }) {
   const { t } = useLanguage();
   const {
     enabled,
+    steps,
     components,
     loading,
     error,
@@ -38,6 +40,7 @@ export default function ComponentRegistry({ project }) {
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState(ALL);
   const [editing, setEditing] = useState(null);
+  const [tab, setTab] = useState("components");
 
   const texts = useMemo(
     () => ({
@@ -88,10 +91,12 @@ export default function ComponentRegistry({ project }) {
 
   if (!enabled) return null;
 
-  if (editing) {
+  // The form waits on the declaration that arrives with the screen; the list
+  // behind it renders from stored data and needs nothing from the config.
+  if (editing && steps) {
     return (
       <ComponentCardForm
-        project={project}
+        steps={steps.steps}
         component={editing.id ? editing : null}
         suggestUid={suggestNextUid}
         findConflicts={findConflicts}
@@ -106,87 +111,119 @@ export default function ComponentRegistry({ project }) {
     <div className={s.page}>
       <header className={s.head}>
         <h1>{t("components.title")}</h1>
-        <p className={s.count}>
-          {t("components.count", { count: components.length })}
-          {visible.length !== components.length &&
-            ` · ${t("components.shown", { count: visible.length })}`}
-        </p>
+        {/* Drawings sit next to the registry rather than in settings: they are
+            consulted while a card is being filled in, not configured once. */}
+        <div className={s.tabs} role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "components"}
+            className={tab === "components" ? s.tabActive : s.tab}
+            onClick={() => setTab("components")}
+          >
+            {t("components.tab")}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "schemas"}
+            className={tab === "schemas" ? s.tabActive : s.tab}
+            onClick={() => setTab("schemas")}
+          >
+            {t("schemas.tab")}
+          </button>
+        </div>
+        {tab === "components" && (
+          <p className={s.count}>
+            {t("components.count", { count: components.length })}
+            {visible.length !== components.length &&
+              ` · ${t("components.shown", { count: visible.length })}`}
+          </p>
+        )}
       </header>
 
-      {error && (
-        <p className={s.error} role="alert">
-          {t("components.loadError")}
-        </p>
-      )}
+      {tab === "schemas" && <SchemaList project={project} />}
 
-      <div className={s.filters}>
-        <input
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder={t("components.searchPlaceholder")}
-          aria-label={t("components.searchPlaceholder")}
-        />
-        <select
-          value={locationFilter}
-          onChange={(event) => setLocationFilter(event.target.value)}
-          aria-label={t("components.locationFilter")}
-        >
-          <option value={ALL}>{t("components.allLocations")}</option>
-          {locations.map((location) => (
-            <option key={location} value={location}>
-              {location}
-            </option>
-          ))}
-        </select>
-      </div>
+      {tab === "components" && (
+        <>
+          {error && (
+            <p className={s.error} role="alert">
+              {t("components.loadError")}
+            </p>
+          )}
 
-      <button
-        type="button"
-        className={s.primary}
-        onClick={() => setEditing({})}
-      >
-        {t("components.add")}
-      </button>
+          <div className={s.filters}>
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("components.searchPlaceholder")}
+              aria-label={t("components.searchPlaceholder")}
+            />
+            <select
+              value={locationFilter}
+              onChange={(event) => setLocationFilter(event.target.value)}
+              aria-label={t("components.locationFilter")}
+            >
+              <option value={ALL}>{t("components.allLocations")}</option>
+              {locations.map((location) => (
+                <option key={location} value={location}>
+                  {location}
+                </option>
+              ))}
+            </select>
+          </div>
 
-      {loading ? (
-        <p className={s.muted}>{t("components.loading")}</p>
-      ) : visible.length === 0 ? (
-        <p className={s.muted}>
-          {components.length === 0
-            ? t("components.empty")
-            : t("components.noMatches")}
-        </p>
-      ) : (
-        <ul className={s.list}>
-          {visible.map((component) => (
-            <li key={component.id} className={s.card}>
-              <button
-                type="button"
-                className={s.cardBody}
-                onClick={() => setEditing(component)}
-              >
-                <span className={s.uid}>{component.component_uid || "—"}</span>
-                <span className={s.name}>
-                  {component.component_name || t("components.unnamed")}
-                </span>
-                <span className={s.meta}>
-                  {[component.location, component.scheme_tag]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
-              </button>
-              <button
-                type="button"
-                className={s.remove}
-                onClick={() => removeComponent(component.id)}
-                aria-label={t("components.remove")}
-              >
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
+          <button
+            type="button"
+            className={s.primary}
+            onClick={() => setEditing({})}
+          >
+            {t("components.add")}
+          </button>
+
+          {loading ? (
+            <p className={s.muted}>{t("components.loading")}</p>
+          ) : visible.length === 0 ? (
+            <p className={s.muted}>
+              {components.length === 0
+                ? t("components.empty")
+                : t("components.noMatches")}
+            </p>
+          ) : (
+            <ul className={s.list}>
+              {visible.map((component) => (
+                <li key={component.id} className={s.card}>
+                  <button
+                    type="button"
+                    className={s.cardBody}
+                    onClick={() => setEditing(component)}
+                  >
+                    <span className={s.uid}>
+                      {component.component_uid || "—"}
+                    </span>
+                    <span className={s.name}>
+                      {component.component_name || t("components.unnamed")}
+                    </span>
+                    <span className={s.meta}>
+                      {[component.location, component.scheme_tag]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className={s.remove}
+                    onClick={() => removeComponent(component.id)}
+                    aria-label={t("components.remove")}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
       )}
     </div>
   );

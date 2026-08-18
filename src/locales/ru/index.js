@@ -24,6 +24,7 @@ import { priority } from "./priority";
 import { pwa } from "./pwa";
 import { reopen } from "./reopen";
 import { resolve } from "./resolve";
+import { schemas } from "./schemas";
 import { settings } from "./settings";
 import { settingsModal } from "./settingsModal";
 import { statusActions } from "./statusActions";
@@ -58,6 +59,7 @@ export const translation = {
   pwa,
   reopen,
   resolve,
+  schemas,
   settings,
   settingsModal,
   statusActions,

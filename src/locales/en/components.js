@@ -1,5 +1,6 @@
 export const components = {
   title: "Component registry",
+  tab: "Components",
   count: "Recorded: {{count}}",
   shown: "{{count}} shown",
   add: "Add component",

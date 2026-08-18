@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import UPSTREAM_CONFIG from "@/configs/upstream/upstream.config";
+import COMPONENT_BLOCK from "@/configs/upstream/data/componentBlock";
 import {
   FIELDS,
   NUMBER_FIELDS,
@@ -19,7 +20,7 @@ describe("upstream component fields", () => {
     expect(
       UPSTREAM_CONFIG.system.fields.some((f) => f.key === "component_uid"),
     ).toBe(false);
-    expect(UPSTREAM_CONFIG.components.system.fields).toBe(FIELDS);
+    expect(COMPONENT_BLOCK.system.fields).toBe(FIELDS);
   });
 
   it("requires only what is visible without a readable plate", () => {
@@ -74,7 +75,7 @@ describe("upstream component fields", () => {
 });
 
 describe("upstream component excel columns", () => {
-  const { headers, keysOrder } = UPSTREAM_CONFIG.components.export.excel;
+  const { headers, keysOrder } = COMPONENT_BLOCK.export.excel;
 
   it("pairs every header with a key", () => {
     expect(headers).toHaveLength(keysOrder.length);
@@ -111,9 +112,7 @@ describe("upstream component excel columns", () => {
   });
 
   it("ships as its own sheet rather than its own file", () => {
-    expect(UPSTREAM_CONFIG.components.export.excel.sheet).toBe("Компоненты");
-    expect(UPSTREAM_CONFIG.components.export.excel.direction).toEqual([
-      "export",
-    ]);
+    expect(COMPONENT_BLOCK.export.excel.sheet).toBe("Компоненты");
+    expect(COMPONENT_BLOCK.export.excel.direction).toEqual(["export"]);
   });
 });

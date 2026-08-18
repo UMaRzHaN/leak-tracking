@@ -15,12 +15,17 @@ vi.mock("@/features/photos/PhotoInput/PhotoInput", () => ({
 }));
 
 const ComponentRegistry = (await import("./ComponentRegistry")).default;
+// The real declaration, so the form under test renders the fields it will in
+// production rather than a fixture that can drift away from the config.
+const { COMPONENT_STEPS } =
+  await import("@/configs/upstream/data/componentSteps");
 
 const project = { id: "p1", type: "upstream", folderName: "buzahur" };
 
 function makeRegistry(overrides = {}) {
   return {
     enabled: true,
+    steps: { mode: "manual", steps: COMPONENT_STEPS },
     components: [],
     loading: false,
     error: null,

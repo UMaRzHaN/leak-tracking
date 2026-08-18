@@ -234,3 +234,29 @@
     font-weight: 600;
   }
 }
+
+/* ── Tabs ── */
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.tab,
+.tabActive {
+  padding: 7px 14px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-lg);
+  background: var(--c-surface);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text3);
+  cursor: pointer;
+}
+
+.tabActive {
+  border-color: transparent;
+  background: var(--c-blue);
+  color: #fff;
+}

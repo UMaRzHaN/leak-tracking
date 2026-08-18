@@ -1,5 +1,6 @@
 export const components = {
   title: "Реестр компонентов",
+  tab: "Компоненты",
   count: "Заведено: {{count}}",
   shown: "показано {{count}}",
   add: "Добавить компонент",

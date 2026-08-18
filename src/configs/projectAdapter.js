@@ -173,47 +173,54 @@ export function getProjectMapBehavior(project) {
    A project type that does not declare the block simply has no registry. That
    keeps the feature switch derived from config, in line with the promise at
    the top of this file: no hardcoded comparisons against the project type.
+
+   The block loads on demand. Checking whether a registry exists happens on
+   every render of the navigation bar, so that check has to stay synchronous
+   and free; reading the block only happens once the screen opens, so it can
+   afford an await. Declaring the two together would have charged every cold
+   start for a screen most sessions never reach.
    ========================================================================= */
 
 /**
  * Whether this project type carries a component registry at all.
+ * Synchronous and cheap — called from the navigation bar on every render.
  * @param {object|string} project
  */
 export function hasComponentRegistry(project) {
-  return Boolean(resolveConfig(project)?.components);
+  return typeof resolveConfig(project)?.components?.load === "function";
 }
 
-function resolveComponentConfig(project) {
-  const components = resolveConfig(project)?.components;
-  if (!components) {
+/**
+ * Loads the registry declaration for a project type.
+ *
+ * @param {object|string} project
+ * @returns {Promise<{
+ *   fields: {
+ *     all: Field[], viewable: Field[], editable: Field[], copyable: Field[],
+ *     numeric: Field[], search: SearchField[], location: LocationMeta,
+ *     locationFields: Field[],
+ *   },
+ *   steps: any,
+ *   validation: {
+ *     required: string[], numericKeys: string[], identityKey: string,
+ *     location: { main: string, secondary: string, last: string },
+ *   },
+ *   excel: any,
+ * }>}
+ */
+export async function loadComponentRegistry(project) {
+  const loader = resolveConfig(project)?.components?.load;
+  if (typeof loader !== "function") {
     const error = new Error(
       "Project type has no component registry configured",
     );
     error.code = "NO_COMPONENT_REGISTRY";
     throw error;
   }
-  return components;
-}
 
-/**
- * Structured field sets for the registry. Mirrors getProjectFields so the list
- * and detail views can be written against one shape regardless of entity.
- *
- * @param {object|string} project
- * @returns {{
- *   all: Field[],
- *   viewable: Field[],
- *   editable: Field[],
- *   copyable: Field[],
- *   numeric: Field[],
- *   search: SearchField[],
- *   location: LocationMeta,
- *   locationFields: Field[],
- * }}
- */
-export function getComponentFields(project) {
-  const { fields, location, search, copyable, numeric } =
-    resolveComponentConfig(project).system;
+  const block = (await loader()).default;
+  const { fields, location, search, copyable, numeric, required, identity } =
+    block.system;
 
   const locationKeys = new Set([
     location.main,
@@ -222,67 +229,39 @@ export function getComponentFields(project) {
   ]);
 
   return {
-    all: fields,
-    viewable: fields.filter((f) => f.viewable),
-    editable: fields.filter((f) => f.editable),
-    copyable,
-    numeric,
-    search,
-    location: {
-      main: location.main,
-      secondary: location.secondary,
-      last: location.last,
-      mainLabel: location.main_label,
-      label: location.label,
+    fields: {
+      all: fields,
+      viewable: fields.filter((f) => f.viewable),
+      editable: fields.filter((f) => f.editable),
+      copyable,
+      numeric,
+      search,
+      location: {
+        main: location.main,
+        secondary: location.secondary,
+        last: location.last,
+        mainLabel: location.main_label,
+        label: location.label,
+      },
+      locationFields: fields.filter((f) => locationKeys.has(f.key)),
     },
-    locationFields: fields.filter((f) => locationKeys.has(f.key)),
-  };
-}
-
-/**
- * Form steps for a component card.
- * @param {object|string} project
- */
-export function getComponentSteps(project) {
-  return resolveComponentConfig(project).steps;
-}
-
-/**
- * Validation rules for a component card.
- *
- * Unlike a leak, "required" here is a short explicit list rather than the
- * location anchors: a plate that is worn off or hidden under insulation must
- * not stop the walk, so only what is readable from across the platform is
- * mandatory.
- *
- * @param {object|string} project
- * @returns {{
- *   required: string[],
- *   numericKeys: string[],
- *   identityKey: string,
- *   location: { main: string, secondary: string, last: string },
- * }}
- */
-export function getComponentValidation(project) {
-  const { required, numeric, identity, location } =
-    resolveComponentConfig(project).system;
-
-  return {
-    required: [...required],
-    numericKeys: numeric.map((f) => f.key),
-    identityKey: identity,
-    location: {
-      main: location.main,
-      secondary: location.secondary,
-      last: location.last,
+    steps: block.steps,
+    /**
+     * Unlike a leak, "required" here is a short explicit list rather than the
+     * location anchors: a plate that is worn off or hidden under insulation
+     * must not stop the walk, so only what is readable from across the
+     * platform is mandatory.
+     */
+    validation: {
+      required: [...required],
+      numericKeys: numeric.map((f) => f.key),
+      identityKey: identity,
+      location: {
+        main: location.main,
+        secondary: location.secondary,
+        last: location.last,
+      },
     },
+    excel: block.export.excel,
   };
-}
-
-/**
- * Excel shape for the registry sheet.
- * @param {object|string} project
- */
-export function getComponentExcel(project) {
-  return resolveComponentConfig(project).export.excel;
 }

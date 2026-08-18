@@ -278,6 +278,12 @@ export async function exportToExcelFile(
     entry.base64 = null;
   }
 
+  // Drawings ride beside the photos so the archive stays openable by hand:
+  // "!Database.xlsx" next to photos/ next to technological_schemas/.
+  for (const entry of options.schemaEntries ?? []) {
+    zip.file(entry.path, entry.blob);
+  }
+
   const zipBlob = await zip.generateAsync({ type: "blob" });
   phaseMetrics.zipMs = performance.now() - zipStartedAt;
   phaseMetrics.totalMs = performance.now() - exportStartedAt;
