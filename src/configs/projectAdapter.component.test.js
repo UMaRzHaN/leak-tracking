@@ -76,7 +76,7 @@ describe("component validation", () => {
     expect(validation.required).toEqual([
       "location",
       "component_uid",
-      "component_name",
+      "component",
     ]);
   });
 

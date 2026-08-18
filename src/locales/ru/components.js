@@ -48,7 +48,7 @@ export const components = {
       placeholder: "напр. дренажная линия",
     },
     component: {
-      hint: "Что это за железо",
+      hint: "Наименование компонента по документации — что это за железо",
       placeholder: "напр. Задвижка",
     },
     component_uid: {
@@ -58,10 +58,6 @@ export const components = {
     scheme_tag: {
       hint: "Позиционное обозначение с чертежа. Повторяется, уникальным быть не обязано",
       placeholder: "напр. ЗД32",
-    },
-    component_name: {
-      hint: "Наименование компонента по документации",
-      placeholder: "напр. Задвижка",
     },
     component_name_en: {
       hint: "Подставляется само по русскому наименованию",

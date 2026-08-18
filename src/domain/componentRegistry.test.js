@@ -4,7 +4,6 @@ import {
   findComponentUidConflicts,
   isValidComponentUid,
   missingRequiredFields,
-  nextComponentUid,
   normalizeComponent,
   parseComponentUid,
 } from "@/domain/componentRegistry";
@@ -25,41 +24,6 @@ describe("component uid parsing", () => {
 
   it("refuses a number too large to compare safely", () => {
     expect(parseComponentUid("9".repeat(20))).toBeNull();
-  });
-});
-
-describe("next uid suggestion", () => {
-  it("offers one past the highest known number", () => {
-    expect(
-      nextComponentUid([
-        { component_uid: "3" },
-        { component_uid: "17" },
-        { component_uid: "9" },
-      ]),
-    ).toBe("18");
-  });
-
-  it("starts at one on an empty registry", () => {
-    expect(nextComponentUid()).toBe("1");
-    expect(nextComponentUid([])).toBe("1");
-  });
-
-  it("ignores junk instead of letting it win the maximum", () => {
-    expect(
-      nextComponentUid([
-        { component_uid: "5" },
-        { component_uid: "ЗД32" },
-        { component_uid: null },
-      ]),
-    ).toBe("6");
-  });
-
-  it("continues past merged records rather than restarting", () => {
-    // After a sync the caller passes the merged set: numbering has to carry on
-    // from what the other device wrote, not from this device's own maximum.
-    const mine = [{ component_uid: "4" }];
-    const theirs = [{ component_uid: "112" }];
-    expect(nextComponentUid([...mine, ...theirs])).toBe("113");
   });
 });
 

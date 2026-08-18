@@ -24,11 +24,7 @@ describe("upstream component fields", () => {
   });
 
   it("requires only what is visible without a readable plate", () => {
-    expect(REQUIRED_FIELDS).toEqual([
-      "location",
-      "component_uid",
-      "component_name",
-    ]);
+    expect(REQUIRED_FIELDS).toEqual(["location", "component_uid", "component"]);
     for (const key of REQUIRED_FIELDS) {
       expect(fieldKeys.has(key)).toBe(true);
     }
@@ -59,7 +55,7 @@ describe("upstream component fields", () => {
       step.fields.map((field) => field.key),
     );
     expect(stepKeys).not.toContain("component_name_en");
-    expect(stepKeys).toContain("component_name");
+    expect(stepKeys).toContain("component");
 
     expect(
       FIELDS.find((field) => field.key === "component_name_en").editable,
@@ -123,7 +119,7 @@ describe("upstream component excel columns", () => {
       "subdivision",
       "deposit",
       "location",
-      "component_name",
+      "component",
       "component_name_en",
       "component_uid",
       "scheme_tag",

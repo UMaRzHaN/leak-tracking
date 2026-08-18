@@ -38,13 +38,6 @@ export const COMPONENT_IDENTITY_FIELDS = [
     copyable: true,
   },
   {
-    key: "component_name",
-    label: "Наименование компонента",
-    viewable: true,
-    editable: true,
-    copyable: true,
-  },
-  {
     /*
      * Derived from the Russian name rather than typed. The customer's workbook
      * expects the column, but asking a walker to write the same equipment down
@@ -72,6 +65,14 @@ export const COMPONENT_PLACE_FIELDS = [
     copyable: true,
   },
   {
+    /*
+     * What the equipment is. One field, not two: the workbook calls the column
+     * "Наименование компонента" and the leak calls the field "component", but
+     * they name the same thing, and two of them only drift apart.
+     *
+     * Carries the leak's key so the pair reads the same on both screens and the
+     * planned link from a leak to its component stays a straight copy.
+     */
     key: "component",
     label: "Компонент",
     viewable: true,
@@ -235,7 +236,6 @@ export const COMPONENT_SEARCH_FIELDS_HEAD = [
   { key: "all", label: "По всем полям" },
   { key: "component_uid", label: "Индивидуальный номер компонента" },
   { key: "scheme_tag", label: "Инвентаризационный номер на схеме" },
-  { key: "component_name", label: "Наименование компонента" },
 ];
 
 export const COMPONENT_SEARCH_FIELDS_TAIL = [

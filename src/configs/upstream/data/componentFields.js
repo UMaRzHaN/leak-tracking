@@ -70,7 +70,7 @@ export const SEARCH_FIELDS = [
  * later — a plate that is worn off or buried under insulation must not stop the
  * walk, which is the opposite of how the leak form behaves.
  */
-export const REQUIRED_FIELDS = ["location", "component_uid", "component_name"];
+export const REQUIRED_FIELDS = ["location", "component_uid", "component"];
 
 export const { FIELDS, VIEW_FIELDS, EDIT_FIELDS, COPY_FIELDS, NUMBER_FIELDS } =
   createFieldSets(FIELD_DEFINITIONS);

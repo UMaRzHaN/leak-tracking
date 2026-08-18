@@ -136,17 +136,6 @@ describe("useComponentRegistry", () => {
     expect(result.current.components.map((c) => c.id)).toEqual(["b"]);
   });
 
-  it("suggests the next number past everything loaded", async () => {
-    mocks.load.mockResolvedValue([
-      { id: "a", component_uid: "4" },
-      { id: "b", component_uid: "112" },
-    ]);
-    const { result } = renderHook(() => useComponentRegistry(upstream));
-    await waitFor(() => expect(result.current.loading).toBe(false));
-
-    expect(result.current.suggestNextUid()).toBe("113");
-  });
-
   it("reports a duplicate number without refusing it", async () => {
     mocks.load.mockResolvedValue([{ id: "a", component_uid: "7" }]);
     const { result } = renderHook(() => useComponentRegistry(upstream));

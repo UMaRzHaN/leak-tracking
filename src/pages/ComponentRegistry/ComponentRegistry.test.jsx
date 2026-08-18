@@ -93,8 +93,8 @@ describe("ComponentRegistry screen", () => {
     // percentage here would be invented.
     registry.current = makeRegistry({
       components: [
-        { id: "a", component_uid: "1", component_name: "Задвижка" },
-        { id: "b", component_uid: "2", component_name: "Труба" },
+        { id: "a", component_uid: "1", component: "Задвижка" },
+        { id: "b", component_uid: "2", component: "Труба" },
       ],
     });
     renderRegistry();
@@ -120,13 +120,13 @@ describe("ComponentRegistry screen", () => {
         {
           id: "a",
           component_uid: "1",
-          component_name: "Задвижка",
+          component: "Задвижка",
           location: "УППГ",
         },
         {
           id: "b",
           component_uid: "2",
-          component_name: "Труба",
+          component: "Труба",
           location: "Скважина 22",
         },
       ],
@@ -147,13 +147,13 @@ describe("ComponentRegistry screen", () => {
         {
           id: "a",
           component_uid: "1",
-          component_name: "Задвижка",
+          component: "Задвижка",
           scheme_tag: "ЗД32",
         },
         {
           id: "b",
           component_uid: "2",
-          component_name: "Труба",
+          component: "Труба",
           scheme_tag: "—",
         },
       ],
@@ -177,13 +177,13 @@ describe("ComponentRegistry screen", () => {
     // Two devices with no allotted ranges collide by design; the merge keeps
     // both cards and the screen has to say which ones need a decision.
     const clash = [
-      { id: "a", component_uid: "7", component_name: "Задвижка" },
-      { id: "b", component_uid: "7", component_name: "Манометр" },
+      { id: "a", component_uid: "7", component: "Задвижка" },
+      { id: "b", component_uid: "7", component: "Манометр" },
     ];
     registry.current = makeRegistry({
       components: [
         ...clash,
-        { id: "c", component_uid: "8", component_name: "Труба" },
+        { id: "c", component_uid: "8", component: "Труба" },
       ],
       conflicts: [{ uid: "7", records: clash }],
       conflictingIds: new Set(["a", "b"]),
@@ -205,8 +205,8 @@ describe("ComponentRegistry screen", () => {
   it("marks the colliding cards in the list itself", () => {
     registry.current = makeRegistry({
       components: [
-        { id: "a", component_uid: "7", component_name: "Задвижка" },
-        { id: "c", component_uid: "8", component_name: "Труба" },
+        { id: "a", component_uid: "7", component: "Задвижка" },
+        { id: "c", component_uid: "8", component: "Труба" },
       ],
       conflicts: [{ uid: "7", records: [{ id: "a" }, { id: "b" }] }],
       conflictingIds: new Set(["a"]),
@@ -221,8 +221,8 @@ describe("ComponentRegistry screen", () => {
   it("goes back to the whole registry from the conflict view", () => {
     registry.current = makeRegistry({
       components: [
-        { id: "a", component_uid: "7", component_name: "Задвижка" },
-        { id: "c", component_uid: "8", component_name: "Труба" },
+        { id: "a", component_uid: "7", component: "Задвижка" },
+        { id: "c", component_uid: "8", component: "Труба" },
       ],
       conflicts: [{ uid: "7", records: [{ id: "a" }, { id: "b" }] }],
       conflictingIds: new Set(["a"]),
@@ -236,14 +236,15 @@ describe("ComponentRegistry screen", () => {
     expect(screen.getByText("Труба")).toBeTruthy();
   });
 
-  it("opens a blank card prefilled with the suggested number", () => {
-    registry.current = makeRegistry({ suggestNextUid: vi.fn(() => "113") });
+  it("opens a blank card with the number left to the walker", () => {
+    // The number goes on a tag the walker assigns; one already sitting in the
+    // field invites being left as it is.
     renderRegistry();
 
     fireEvent.click(screen.getByText("Add component"));
 
     expect(screen.getByText("New component")).toBeTruthy();
-    expect(screen.getByDisplayValue("113")).toBeTruthy();
+    expect(screen.getByLabelText(/Индивидуальный номер/).value).toBe("");
   });
 });
 
@@ -310,8 +311,11 @@ describe("card page switching", () => {
     fireEvent.change(screen.getByLabelText(/Локация/), {
       target: { value: "УППГ" },
     });
-    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
+    fireEvent.change(screen.getByLabelText(/Компонент/), {
       target: { value: "Задвижка" },
+    });
+    fireEvent.change(screen.getByLabelText(/Индивидуальный номер/), {
+      target: { value: "14" },
     });
     spies.onCloseCard.mockClear();
     for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next →"));
@@ -354,8 +358,11 @@ describe("component card form", () => {
     fireEvent.change(screen.getByLabelText(/Локация/), {
       target: { value: "УППГ" },
     });
-    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
+    fireEvent.change(screen.getByLabelText(/Компонент/), {
       target: { value: "Задвижка" },
+    });
+    fireEvent.change(screen.getByLabelText(/Индивидуальный номер/), {
+      target: { value: "14" },
     });
   }
 
@@ -410,8 +417,7 @@ describe("component card form", () => {
       expect(screen.getAllByText("Required").length).toBeGreaterThan(0),
     );
     expect(registry.current.addComponent).not.toHaveBeenCalled();
-    // Two of the three are blank; the number came prefilled.
-    expect(screen.getAllByText("Required")).toHaveLength(2);
+    expect(screen.getAllByText("Required")).toHaveLength(3);
   });
 
   it("sends the operator to the step holding the problem", async () => {
@@ -446,8 +452,11 @@ describe("component card form", () => {
     fireEvent.change(screen.getByLabelText(/Локация/), {
       target: { value: "УППГ" },
     });
-    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
+    fireEvent.change(screen.getByLabelText(/Компонент/), {
       target: { value: "Задвижка" },
+    });
+    fireEvent.change(screen.getByLabelText(/Индивидуальный номер/), {
+      target: { value: "14" },
     });
     goToLastStep();
     fireEvent.click(screen.getByText("Save"));
@@ -502,7 +511,7 @@ describe("component card form", () => {
         {
           id: "a",
           component_uid: "7",
-          component_name: "Задвижка",
+          component: "Задвижка",
           location: "УППГ",
         },
       ],
@@ -526,30 +535,37 @@ describe("component card form", () => {
 describe("clearing a card", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    registry.current = makeRegistry({ suggestNextUid: vi.fn(() => "9") });
+    registry.current = makeRegistry();
   });
 
   it("offers to clear the step only once something is in it", () => {
     renderRegistry();
     fireEvent.click(screen.getByText("Add component"));
 
-    // The number arrives prefilled, so the step already has data.
-    expect(screen.getByText("Clear step")).toBeTruthy();
+    expect(screen.queryByText("Clear step")).toBeNull();
     expect(screen.getByText("Clear all")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText(/Компонент/), {
+      target: { value: "Задвижка" },
+    });
+    expect(screen.getByText("Clear step")).toBeTruthy();
   });
 
   it("keeps the number and the fix when clearing", () => {
     renderRegistry({ coords: { lat: 38.4, lng: 66.1 } });
     fireEvent.click(screen.getByText("Add component"));
 
-    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
+    fireEvent.change(screen.getByLabelText(/Индивидуальный номер/), {
+      target: { value: "14" },
+    });
+    fireEvent.change(screen.getByLabelText(/Компонент/), {
       target: { value: "Задвижка" },
     });
     fireEvent.click(screen.getByText("Clear step"));
 
     // Identity and position are not what the button is for.
-    expect(screen.getByDisplayValue("9")).toBeTruthy();
-    expect(screen.getByLabelText(/Наименование компонента/).value).toBe("");
+    expect(screen.getByDisplayValue("14")).toBeTruthy();
+    expect(screen.getByLabelText(/Компонент/).value).toBe("");
   });
 
   it("returns to the first step when clearing everything", () => {
@@ -576,8 +592,11 @@ describe("copying from the previous card", () => {
     fireEvent.change(screen.getByLabelText(/Локация/), {
       target: { value: "УППГ" },
     });
-    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
+    fireEvent.change(screen.getByLabelText(/Компонент/), {
       target: { value: "Задвижка" },
+    });
+    fireEvent.change(screen.getByLabelText(/Индивидуальный номер/), {
+      target: { value: "14" },
     });
     for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next →"));
     fireEvent.click(screen.getByText("Save"));
@@ -590,7 +609,7 @@ describe("copying from the previous card", () => {
       lastComponent: {
         id: "prev",
         component_uid: "6",
-        component_name: "Манометр",
+        component: "Манометр",
         scheme_tag: "PG",
       },
     });
@@ -618,7 +637,7 @@ describe("copying from the previous card", () => {
   it("asks before filling anything", async () => {
     openWithPrevious({
       id: "prev",
-      component_name: "Манометр",
+      component: "Манометр",
       manufacturer: "Завод",
     });
 
@@ -631,7 +650,7 @@ describe("copying from the previous card", () => {
   it("copies only what was left empty, never what was typed", async () => {
     openWithPrevious({
       id: "prev",
-      component_name: "Манометр",
+      component: "Манометр",
       manufacturer: "Завод",
       body_material: "Сталь 20",
     });
@@ -643,7 +662,7 @@ describe("copying from the previous card", () => {
       expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
     );
     const saved = registry.current.addComponent.mock.calls[0][0];
-    expect(saved.component_name).toBe("Задвижка");
+    expect(saved.component).toBe("Задвижка");
     expect(saved.manufacturer).toBe("Завод");
     expect(saved.body_material).toBe("Сталь 20");
   });
@@ -665,7 +684,7 @@ describe("copying from the previous card", () => {
   });
 
   it("does not ask when the previous card has nothing to give", async () => {
-    openWithPrevious({ id: "prev", component_name: "Манометр" });
+    openWithPrevious({ id: "prev", component: "Манометр" });
 
     await waitFor(() =>
       expect(registry.current.addComponent).toHaveBeenCalledTimes(1),

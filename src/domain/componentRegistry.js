@@ -35,24 +35,6 @@ export function parseComponentUid(value) {
 }
 
 /**
- * The number to offer for the next card: one past the highest already known.
- *
- * Deliberately computed over whatever the caller passes in, which is the
- * merged dataset after a sync rather than only what this device typed. Two
- * people walking in parallel with no allotted ranges will still collide — that
- * is accepted, and the merge conflict screen is where it gets resolved — but
- * numbering at least continues after a sync instead of restarting from one.
- */
-export function nextComponentUid(components = []) {
-  let highest = 0;
-  for (const component of components) {
-    const parsed = parseComponentUid(component?.component_uid);
-    if (parsed !== null && parsed > highest) highest = parsed;
-  }
-  return String(highest + 1);
-}
-
-/**
  * Records already carrying this uid, excluding the one being edited.
  *
  * Used to warn, never to block: the operator is standing in front of the

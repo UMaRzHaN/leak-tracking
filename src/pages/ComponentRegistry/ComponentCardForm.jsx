@@ -34,7 +34,6 @@ export default function ComponentCardForm({
   copyableFields = [],
   lastComponent = null,
   component = null,
-  suggestUid,
   findConflicts,
   onSave,
   onCancel,
@@ -51,10 +50,13 @@ export default function ComponentCardForm({
     isEditing
       ? { ...component }
       : {
-          component_uid: suggestUid?.() ?? "",
-          // Stamped once, when the card is opened, rather than at save: the
-          // walker is standing at the equipment now, and by the time the
-          // passport fields are filled in they may have moved on.
+          // The fix is stamped once, when the card is opened rather than at
+          // save: the walker is standing at the equipment now, and by the time
+          // the passport fields are filled in they may have moved on.
+          //
+          // The identity number is not prefilled. It is written on a tag the
+          // walker assigns, and a number already sitting in the field invites
+          // being left as it is.
           lat: toNullableNumber(coords?.lat) ?? "",
           lng: toNullableNumber(coords?.lng) ?? "",
         },
@@ -81,10 +83,9 @@ export default function ComponentCardForm({
   const handleChange = useCallback((key, value) => {
     setForm((current) => {
       const next = { ...current, [key]: value };
-      // Typing the Russian name fills the English one, so the operator names a
-      // component once instead of twice. Only when the English field is still
-      // untouched — an edited value is never overwritten.
-      if (key === "component_name" && !current.component_name_en) {
+      // Naming the component fills the English column the workbook expects, so
+      // the operator names it once instead of twice.
+      if (key === "component" && !current.component_name_en) {
         const translated = COMPONENT_NAME_TRANSLATIONS[value];
         if (translated) next.component_name_en = translated;
       }

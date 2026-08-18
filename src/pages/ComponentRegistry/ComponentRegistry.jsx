@@ -43,7 +43,6 @@ export default function ComponentRegistry({
     addComponent,
     updateComponent,
     removeComponent,
-    suggestNextUid,
     findConflicts,
   } = useComponentRegistry(project);
 
@@ -156,7 +155,6 @@ export default function ComponentRegistry({
         copyableFields={fields?.copyable ?? []}
         lastComponent={lastComponent}
         component={editing.id ? editing : null}
-        suggestUid={suggestNextUid}
         findConflicts={findConflicts}
         onSave={handleSave}
         onCancel={closeCard}
@@ -290,7 +288,7 @@ export default function ComponentRegistry({
                       {component.component_uid || "—"}
                     </span>
                     <span className={s.name}>
-                      {component.component_name || t("components.unnamed")}
+                      {component.component || t("components.unnamed")}
                     </span>
                     <span className={s.meta}>
                       {[component.location, component.scheme_tag]

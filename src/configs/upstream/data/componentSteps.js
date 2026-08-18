@@ -9,7 +9,6 @@ import {
 import {
   actuator_type,
   connection_type,
-  components,
   installation_type,
   locations,
   objects,
@@ -51,10 +50,16 @@ export const COMPONENT_STEPS = [
         options: Object.values(objects).flat(),
       },
       {
+        /*
+         * Named from the workbook's own list rather than the leak dictionary:
+         * the two spellings differ here and there, and the registry is the one
+         * that has to match the customer's documentation.
+         */
         type: "autocomplete",
         key: "component",
         label: "Компонент",
-        options: Object.values(components).flat(),
+        required: true,
+        options: component_names,
       },
       {
         type: "input",
@@ -67,13 +72,6 @@ export const COMPONENT_STEPS = [
         type: "input",
         key: "scheme_tag",
         label: "Номер на схеме",
-      },
-      {
-        type: "autocomplete",
-        key: "component_name",
-        label: "Наименование компонента",
-        required: true,
-        options: component_names,
       },
     ],
   },
