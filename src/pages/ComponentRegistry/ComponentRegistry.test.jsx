@@ -6,6 +6,9 @@ const registry = vi.hoisted(() => ({ current: null }));
 const photoRequirements = vi.hoisted(() => ({
   current: { componentPhotoRequired: true },
 }));
+const photoStorage = vi.hoisted(() => ({
+  savePhoto: vi.fn(async () => "idb://photo"),
+}));
 
 vi.mock("@/app/hooks/useLanguage", async () => {
   const { englishLanguageHook } = await import("@/test/translate");
@@ -34,6 +37,12 @@ vi.mock("@/app/hooks/useVoiceControl", () => ({
 }));
 vi.mock("@/app/project/hooks/usePhotoRequirements", () => ({
   usePhotoRequirements: () => photoRequirements.current,
+}));
+vi.mock("@/hooks/usePhotoStorage", () => ({
+  usePhotoStorage: () => ({
+    savePhoto: photoStorage.savePhoto,
+    ready: true,
+  }),
 }));
 
 const ComponentRegistry = (await import("./ComponentRegistry")).default;

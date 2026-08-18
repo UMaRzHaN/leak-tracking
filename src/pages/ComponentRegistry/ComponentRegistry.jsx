@@ -7,6 +7,9 @@ import ComponentCardForm from "./ComponentCardForm";
 import SchemaList from "@/features/schemas/SchemaList";
 import ComponentCardCompact from "@/features/componentRegistry/ComponentCardCompact";
 import ComponentInspectSheet from "@/features/componentRegistry/ComponentInspectSheet";
+import { usePhotoStorage } from "@/hooks/usePhotoStorage";
+import { createRecordId } from "@/utils/createRecordId";
+import { withStoredPhoto } from "@/features/componentRegistry/componentPhoto";
 import {
   canWriteRegistry,
   recordComponentCreated,
@@ -58,6 +61,7 @@ export default function ComponentRegistry({
   } = useComponentRegistry(project);
 
   const { componentPhotoRequired } = usePhotoRequirements(project?.id ?? null);
+  const { savePhoto } = usePhotoStorage();
   /*
    * The microphone the leak form offers, on the same screen furniture. Speech
    * recognition starts and stops; nothing is filled in yet, because the
@@ -166,24 +170,36 @@ export default function ComponentRegistry({
   const handleSave = useCallback(
     async (form) => {
       const user = userProfile?.name;
+      const id = editing?.id ?? createRecordId();
+      // The input hands over a blob and a preview; a card stores a path. The
+      // leak form has always converted between the two, and so must this one —
+      // writing the object straight onto the card left the photo unsaved and
+      // every reader calling startsWith on an object.
+      const card = await withStoredPhoto({ ...form, id }, id, savePhoto);
+
       if (editing?.id) {
         await updateComponent(
           editing.id,
           recordComponentEdited(
             editing,
-            { ...editing, ...form },
-            {
-              user,
-              fields: fields?.all ?? [],
-            },
+            { ...editing, ...card },
+            { user, fields: fields?.all ?? [] },
           ),
         );
       } else {
-        await addComponent(recordComponentCreated(form, { user }));
+        await addComponent(recordComponentCreated(card, { user }));
       }
       closeCard();
     },
-    [addComponent, closeCard, editing, fields, updateComponent, userProfile],
+    [
+      addComponent,
+      closeCard,
+      editing,
+      fields,
+      savePhoto,
+      updateComponent,
+      userProfile,
+    ],
   );
 
   const handleInspect = useCallback(
