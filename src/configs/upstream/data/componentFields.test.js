@@ -54,6 +54,21 @@ describe("upstream component fields", () => {
     );
   });
 
+  it("keeps the English name out of the form but in the workbook", () => {
+    const stepKeys = COMPONENT_STEPS.flatMap((step) =>
+      step.fields.map((field) => field.key),
+    );
+    expect(stepKeys).not.toContain("component_name_en");
+    expect(stepKeys).toContain("component_name");
+
+    expect(
+      FIELDS.find((field) => field.key === "component_name_en").editable,
+    ).toBe(false);
+    expect(COMPONENT_BLOCK.export.excel.keysOrder).toContain(
+      "component_name_en",
+    );
+  });
+
   it("does not ask for a date the app already knows", () => {
     const stepKeys = COMPONENT_STEPS.flatMap((step) =>
       step.fields.map((field) => field.key),

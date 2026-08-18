@@ -45,11 +45,15 @@ export const COMPONENT_IDENTITY_FIELDS = [
     copyable: true,
   },
   {
+    /*
+     * Derived from the Russian name rather than typed. The customer's workbook
+     * expects the column, but asking a walker to write the same equipment down
+     * twice only invites the two to disagree.
+     */
     key: "component_name_en",
     label: "Component name",
     viewable: true,
-    editable: true,
-    copyable: true,
+    editable: false,
   },
 ];
 

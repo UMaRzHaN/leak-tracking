@@ -1,7 +1,6 @@
 import {
   body_materials,
   component_names,
-  component_names_en,
   component_statuses,
   component_types,
   equipment_types,
@@ -75,12 +74,6 @@ export const COMPONENT_STEPS = [
         label: "Наименование компонента",
         required: true,
         options: component_names,
-      },
-      {
-        type: "autocomplete",
-        key: "component_name_en",
-        label: "Component name",
-        options: component_names_en,
       },
     ],
   },

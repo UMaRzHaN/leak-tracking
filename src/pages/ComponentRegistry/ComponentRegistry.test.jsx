@@ -437,15 +437,27 @@ describe("component card form", () => {
     ).toBeUndefined();
   });
 
-  it("fills the English name from the Russian one", async () => {
+  it("derives the English name without asking for it", async () => {
+    // The workbook expects the column; writing the same equipment down twice
+    // only invites the two spellings to disagree.
     openBlankCard();
+    expect(screen.queryByLabelText(/Component name/)).toBeNull();
+
+    fireEvent.change(screen.getByLabelText(/Локация/), {
+      target: { value: "УППГ" },
+    });
     fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
       target: { value: "Задвижка" },
     });
+    goToLastStep();
+    fireEvent.click(screen.getByText("Save"));
 
     await waitFor(() =>
-      expect(screen.getByDisplayValue("Gate valve")).toBeTruthy(),
+      expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
     );
+    expect(
+      registry.current.addComponent.mock.calls[0][0].component_name_en,
+    ).toBe("Gate valve");
   });
 
   it("warns about a duplicate number but still saves it", async () => {
