@@ -167,7 +167,10 @@ export const COMPONENT_STEPS = [
         label: "Производитель",
       },
       {
-        type: "input",
+        // A date the walker reads off a plate and the app has no way to guess,
+        // so it is asked for — but through the platform's own picker, which
+        // spares everyone an argument about separators.
+        type: "date",
         key: "installed_at",
         label: "Дата монтажа",
       },

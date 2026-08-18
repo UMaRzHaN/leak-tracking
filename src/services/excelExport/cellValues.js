@@ -12,7 +12,13 @@ const DECIMAL_FORMAT = "#,##0.00";
 const COORDINATE_FORMAT = "0.000000";
 const PERCENT_FORMAT = "0.0%";
 
-const DATE_KEYS = new Set(["date", "repairAt", "resolvedAt"]);
+const DATE_KEYS = new Set([
+  "date",
+  "repairAt",
+  "resolvedAt",
+  "installed_at",
+  "inspected_at",
+]);
 const TIME_KEYS = new Set(["time"]);
 const INTEGER_KEYS = new Set(["index", "roundNumber", "Operating_mode"]);
 const PERCENT_KEYS = new Set([

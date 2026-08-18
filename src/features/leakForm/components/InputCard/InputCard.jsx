@@ -59,8 +59,14 @@ export default function InputCard({
             ref={inputRef}
             id={inputId}
             className={s.control}
-            type="text"
-            inputMode={isNumber ? "decimal" : "text"}
+            /*
+             * Numbers stay a text box on purpose: parseNumericInput keeps
+             * "4,0" readable while it is being typed, which a number input
+             * would collapse. Anything else — a date, most of all — gets the
+             * control the platform provides.
+             */
+            type={isNumber ? "text" : type}
+            inputMode={isNumber ? "decimal" : undefined}
             enterKeyHint="next"
             value={value ?? ""}
             placeholder={placeholder ?? ""}

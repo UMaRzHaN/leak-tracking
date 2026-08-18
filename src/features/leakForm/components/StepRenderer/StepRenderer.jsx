@@ -50,14 +50,14 @@ export default function StepRenderer({
       }}
     >
       {config.fields.map((f) => {
-        if (f.type === "input" || f.type === "textarea") {
+        if (f.type === "input" || f.type === "textarea" || f.type === "date") {
           return (
             <InputCard
               key={f.key}
               as={f.type === "textarea" ? "textarea" : "input"}
               rows={f.type === "textarea" ? 4 : undefined}
               label={f.label}
-              type={f.number ? "number" : "text"}
+              type={f.type === "date" ? "date" : f.number ? "number" : "text"}
               required={f.required}
               value={form[f.key]}
               error={errors?.[f.key]}

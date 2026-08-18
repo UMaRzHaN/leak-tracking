@@ -120,7 +120,6 @@ export const components = {
     },
     installed_at: {
       hint: "Installation date from the plate or the documentation",
-      placeholder: "e.g. 12.05.2019",
     },
     component_status: {
       hint: "State of the hardware at the time of the walk",

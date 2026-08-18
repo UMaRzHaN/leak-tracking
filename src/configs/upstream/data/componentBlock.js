@@ -19,10 +19,12 @@ import { splitExcelColumns } from "@/configs/shared/excel";
 
 /**
  * Mirrors the column order of "Database component.xlsx" so the registry sheet
- * drops straight into the customer's existing reporting. Two deviations, both
- * deliberate: Подразделение/Месторождение are added so the sheet identifies its
- * own scope, and the source's single "Координаты" column is split into X and Y
- * to match how the leak sheet in the same workbook already writes them.
+ * drops straight into the customer's existing reporting. Three deviations, all
+ * deliberate: the source's single "Местонахождения" column becomes the four the
+ * app actually records against — Подразделение, Месторождение, Локация,
+ * Объект — its single "Координаты" column is split into X and Y to match how
+ * the leak sheet in the same workbook already writes them, and the row number
+ * leads.
  *
  * Built with splitExcelColumns, not withRequiredExcelColumns — the latter
  * injects leak-only columns (время обнаружения, оборудование для замера,
@@ -32,12 +34,12 @@ const COMPONENT_EXCEL_COLUMNS = [
   { key: "index", header: "№" },
   { key: "subdivision", header: "Подразделение" },
   { key: "deposit", header: "Месторождение" },
-  { key: "location", header: "Местонахождения" },
+  { key: "location", header: "Локация" },
+  { key: "object", header: "Объект" },
   { key: "component", header: "Наименование компонента" },
   { key: "component_name_en", header: "Component name" },
   { key: "component_uid", header: "Индивидуальный номер компонента" },
   { key: "scheme_tag", header: "Инвентаризационный номер на схеме" },
-  { key: "object", header: "Location" },
   { key: "diameter", header: "Diameter (mm)" },
   { key: "line_pressure", header: "Pressure P, Mpa" },
   { key: "component_type", header: "Тип компонента" },

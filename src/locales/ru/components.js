@@ -121,7 +121,6 @@ export const components = {
     },
     installed_at: {
       hint: "Дата монтажа с таблички или из документации",
-      placeholder: "напр. 12.05.2019",
     },
     component_status: {
       hint: "Состояние железа на момент обхода",

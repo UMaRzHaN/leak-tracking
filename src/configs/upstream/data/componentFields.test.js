@@ -50,6 +50,13 @@ describe("upstream component fields", () => {
     );
   });
 
+  it("asks for the installation date through a date control", () => {
+    const installed = COMPONENT_STEPS.flatMap((step) => step.fields).find(
+      (field) => field.key === "installed_at",
+    );
+    expect(installed.type).toBe("date");
+  });
+
   it("keeps the English name out of the form but in the workbook", () => {
     const stepKeys = COMPONENT_STEPS.flatMap((step) =>
       step.fields.map((field) => field.key),
@@ -114,11 +121,14 @@ describe("upstream component excel columns", () => {
   });
 
   it("keeps the customer's column order from the source workbook", () => {
-    expect(keysOrder.slice(0, 8)).toEqual([
+    // The source keeps one "Местонахождения" column; the app records against
+    // four, so they lead the sheet in the order the card asks for them.
+    expect(keysOrder.slice(0, 9)).toEqual([
       "index",
       "subdivision",
       "deposit",
       "location",
+      "object",
       "component",
       "component_name_en",
       "component_uid",
