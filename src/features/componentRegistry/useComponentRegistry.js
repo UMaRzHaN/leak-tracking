@@ -164,6 +164,24 @@ export function useComponentRegistry(project) {
    * than remembered from the merge, so a collision typed on this device shows
    * up the same way as one that arrived from another.
    */
+  /**
+   * The card written most recently, whatever the list is sorted by. Walking a
+   * row of identical gauges means most of the passport repeats, so the form
+   * shows this one's values as hints in the empty fields.
+   */
+  const lastComponent = useMemo(() => {
+    let latest = null;
+    for (const component of components) {
+      if (
+        !latest ||
+        Number(component?.updatedAt ?? 0) >= Number(latest.updatedAt ?? 0)
+      ) {
+        latest = component;
+      }
+    }
+    return latest;
+  }, [components]);
+
   const conflicts = useMemo(() => findUidConflicts(components), [components]);
   const conflictingIds = useMemo(
     () =>
@@ -180,6 +198,7 @@ export function useComponentRegistry(project) {
     steps: registry?.steps ?? null,
     fields: registry?.fields ?? null,
     components: sorted,
+    lastComponent,
     conflicts,
     conflictingIds,
     loading,

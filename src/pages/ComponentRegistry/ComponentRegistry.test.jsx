@@ -19,6 +19,8 @@ const ComponentRegistry = (await import("./ComponentRegistry")).default;
 // production rather than a fixture that can drift away from the config.
 const { COMPONENT_STEPS } =
   await import("@/configs/upstream/data/componentSteps");
+const { FIELDS: COMPONENT_FIELDS } =
+  await import("@/configs/upstream/data/componentFields");
 
 const project = { id: "p1", type: "upstream", folderName: "buzahur" };
 
@@ -29,6 +31,8 @@ function makeRegistry(overrides = {}) {
     components: [],
     conflicts: [],
     conflictingIds: new Set(),
+    fields: { copyable: COMPONENT_FIELDS.filter((f) => f.copyable) },
+    lastComponent: null,
     loading: false,
     error: null,
     addComponent: vi.fn().mockResolvedValue([]),
@@ -311,6 +315,71 @@ describe("component card form", () => {
     // The form hands over what was typed; storage coerces it to a number —
     // see normalizeComponent.
     expect(registry.current.addComponent.mock.calls[0][0].lat).toBe("38.5");
+  });
+
+  it("offers the previous card's values as hints in the empty fields", () => {
+    // Walking a row of identical gauges means most of the passport repeats.
+    registry.current = makeRegistry({
+      lastComponent: {
+        id: "prev",
+        component_uid: "6",
+        component_name: "Манометр",
+        scheme_tag: "PG",
+        location: "Скважина 22",
+      },
+    });
+    openBlankCard();
+
+    expect(screen.getByLabelText(/Наименование компонента/).placeholder).toBe(
+      "Манометр",
+    );
+    expect(screen.getByLabelText(/Номер на схеме/).placeholder).toBe("PG");
+  });
+
+  it("never echoes the previous number or its coordinates", () => {
+    // The identity number is suggested from the highest already used, and a
+    // fix belongs to the piece of equipment in front of you.
+    registry.current = makeRegistry({
+      lastComponent: {
+        id: "prev",
+        component_uid: "6",
+        component_name: "Манометр",
+        lat: 38.1,
+        lng: 66.1,
+      },
+    });
+    openBlankCard();
+
+    // Blank in practice is a single space — the floating-label trick needs a
+    // non-empty placeholder to size against.
+    expect(
+      screen.getByLabelText(/Индивидуальный номер/).placeholder.trim(),
+    ).toBe("");
+
+    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next"));
+    expect(screen.getByLabelText(/Координата X/).placeholder.trim()).toBe("");
+  });
+
+  it("drops the hint once the field is filled in", () => {
+    registry.current = makeRegistry({
+      lastComponent: { id: "prev", component_name: "Манометр" },
+    });
+    openBlankCard();
+
+    const name = screen.getByLabelText(/Наименование компонента/);
+    expect(name.placeholder).toBe("Манометр");
+
+    fireEvent.change(name, { target: { value: "Задвижка" } });
+    expect(
+      screen.getByLabelText(/Наименование компонента/).placeholder.trim(),
+    ).toBe("");
+  });
+
+  it("shows no hints on the very first card of a walk", () => {
+    openBlankCard();
+    expect(
+      screen.getByLabelText(/Наименование компонента/).placeholder.trim(),
+    ).toBe("");
   });
 
   it("blocks saving only on the three fields readable without a plate", async () => {

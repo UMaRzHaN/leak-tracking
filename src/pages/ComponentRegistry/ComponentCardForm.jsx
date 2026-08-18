@@ -7,6 +7,7 @@ import {
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import { toNullableNumber } from "@/utils/normalize/toNullableNumber";
 import { COMPONENT_NAME_TRANSLATIONS } from "@/data/component/componentDictionary";
+import { getCopyPreviousKeys } from "@/features/leakForm/utils/copyPrevious";
 import s from "./ComponentRegistry.module.scss";
 
 /**
@@ -21,6 +22,8 @@ import s from "./ComponentRegistry.module.scss";
 export default function ComponentCardForm({
   steps,
   coords = null,
+  copyableFields = [],
+  lastComponent = null,
   component = null,
   suggestUid,
   findConflicts,
@@ -134,6 +137,33 @@ export default function ComponentCardForm({
     }
   }, [form, onSave, stepOf, validate]);
 
+  /**
+   * What the previous card held, shown as placeholder text in the empty fields
+   * of the current step — the same affordance the leak form gives.
+   *
+   * Only fields marked copyable in the config: the identity number is suggested
+   * from the highest already used, and coordinates belong to this piece of
+   * equipment, so neither should echo the card before it.
+   */
+  const ghostPlaceholders = useMemo(() => {
+    if (!lastComponent) return {};
+
+    const copyable = new Set(getCopyPreviousKeys(copyableFields));
+    const result = {};
+    for (const field of steps[step - 1]?.fields ?? []) {
+      if (field.type === "photo" || !copyable.has(field.key)) continue;
+
+      const current = form[field.key];
+      if (current != null && String(current).trim() !== "") continue;
+
+      const previous = lastComponent[field.key];
+      if (previous != null && String(previous).trim() !== "") {
+        result[field.key] = String(previous);
+      }
+    }
+    return result;
+  }, [copyableFields, form, lastComponent, step, steps]);
+
   const isLastStep = step >= steps.length;
 
   return (
@@ -160,7 +190,7 @@ export default function ComponentCardForm({
           onChange={handleChange}
           nextStep={() => setStep((value) => Math.min(value + 1, steps.length))}
           save={handleSave}
-          ghostPlaceholders={null}
+          ghostPlaceholders={ghostPlaceholders}
         />
       </div>
 

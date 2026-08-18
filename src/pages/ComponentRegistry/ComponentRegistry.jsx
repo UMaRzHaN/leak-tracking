@@ -27,7 +27,9 @@ export default function ComponentRegistry({ project, coords = null }) {
   const {
     enabled,
     steps,
+    fields,
     components,
+    lastComponent,
     conflicts,
     conflictingIds,
     loading,
@@ -103,6 +105,8 @@ export default function ComponentRegistry({ project, coords = null }) {
       <ComponentCardForm
         steps={steps.steps}
         coords={coords}
+        copyableFields={fields?.copyable ?? []}
+        lastComponent={lastComponent}
         component={editing.id ? editing : null}
         suggestUid={suggestNextUid}
         findConflicts={findConflicts}
