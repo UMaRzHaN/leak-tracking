@@ -27,6 +27,13 @@ export const components = {
   allLocations: "All locations",
   duplicateWarning:
     "That number is already in the registry ({{count}}). You can still save — it gets resolved on merge.",
+  copyConfirm: {
+    title: "Fill from the previous card?",
+    description:
+      "Some fields were left empty. Take them from the previous component? Anything already filled stays as it is.",
+    confirmLabel: "Fill",
+    cancelLabel: "Leave empty",
+  },
   errors: {
     required: "Required",
     badCoordinate: "Coordinate is out of range",

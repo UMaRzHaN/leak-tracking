@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import StepRenderer from "@/features/leakForm/components/StepRenderer/StepRenderer";
 import {
   isValidComponentUid,
@@ -48,6 +49,8 @@ export default function ComponentCardForm({
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const pendingKeysRef = useRef([]);
 
   const required = useMemo(
     () =>
@@ -120,6 +123,49 @@ export default function ComponentCardForm({
     return Object.keys(next);
   }, [form, required, texts]);
 
+  /**
+   * Copyable fields the operator left empty that the previous card can fill.
+   *
+   * Only the empty ones: what was typed here describes the equipment in front
+   * of the walker and is never overwritten by the card before it.
+   */
+  const findFillableKeys = useCallback(
+    (candidate) => {
+      if (!lastComponent) return [];
+      return getCopyPreviousKeys(copyableFields).filter((key) => {
+        const current = candidate[key];
+        if (current != null && String(current).trim() !== "") return false;
+        const previous = lastComponent[key];
+        return previous != null && String(previous).trim() !== "";
+      });
+    },
+    [copyableFields, lastComponent],
+  );
+
+  const commitSave = useCallback(
+    async (payload) => {
+      setSaving(true);
+      try {
+        await onSave(payload);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [onSave],
+  );
+
+  const handleConfirmCopy = useCallback(() => {
+    const merged = { ...form };
+    for (const key of pendingKeysRef.current) merged[key] = lastComponent[key];
+    setConfirmOpen(false);
+    void commitSave(merged);
+  }, [commitSave, form, lastComponent]);
+
+  const handleCancelCopy = useCallback(() => {
+    setConfirmOpen(false);
+    void commitSave({ ...form });
+  }, [commitSave, form]);
+
   const handleSave = useCallback(async () => {
     const failed = validate();
     if (failed.length > 0) {
@@ -129,13 +175,18 @@ export default function ComponentCardForm({
       setStep(stepOf(failed));
       return;
     }
-    setSaving(true);
-    try {
-      await onSave(form);
-    } finally {
-      setSaving(false);
+    const fillable = findFillableKeys(form);
+    if (fillable.length === 0) {
+      await commitSave(form);
+      return;
     }
-  }, [form, onSave, stepOf, validate]);
+
+    // Offered rather than applied: a blank passport field may mean "same as the
+    // last one" or "the plate was unreadable", and only the person holding the
+    // card knows which.
+    pendingKeysRef.current = fillable;
+    setConfirmOpen(true);
+  }, [commitSave, findFillableKeys, form, stepOf, validate]);
 
   /**
    * What the previous card held, shown as placeholder text in the empty fields
@@ -228,6 +279,16 @@ export default function ComponentCardForm({
           {saving ? texts.saving : texts.save}
         </button>
       </footer>
+
+      <ConfirmSheet
+        open={confirmOpen}
+        title={texts.copyConfirm.title}
+        description={texts.copyConfirm.description}
+        confirmLabel={texts.copyConfirm.confirmLabel}
+        cancelLabel={texts.copyConfirm.cancelLabel}
+        onConfirm={handleConfirmCopy}
+        onCancel={handleCancelCopy}
+      />
     </div>
   );
 }

@@ -58,6 +58,12 @@ export default function ComponentRegistry({ project, coords = null }) {
       prev: t("components.prev"),
       next: t("components.next"),
       duplicateWarning: (count) => t("components.duplicateWarning", { count }),
+      copyConfirm: {
+        title: t("components.copyConfirm.title"),
+        description: t("components.copyConfirm.description"),
+        confirmLabel: t("components.copyConfirm.confirmLabel"),
+        cancelLabel: t("components.copyConfirm.cancelLabel"),
+      },
       errors: {
         required: t("components.errors.required"),
         digitsOnly: t("components.errors.digitsOnly"),

@@ -382,6 +382,130 @@ describe("component card form", () => {
     ).toBe("");
   });
 
+  it("offers to fill the empty fields from the previous card", async () => {
+    registry.current = makeRegistry({
+      lastComponent: {
+        id: "prev",
+        component_uid: "6",
+        component_name: "Манометр",
+        manufacturer: "Завод",
+        body_material: "Сталь 20",
+      },
+    });
+    openBlankCard();
+
+    fireEvent.change(screen.getByLabelText(/Локация/), {
+      target: { value: "УППГ" },
+    });
+    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
+      target: { value: "Задвижка" },
+    });
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() =>
+      expect(screen.getByText(/Fill from the previous card/i)).toBeTruthy(),
+    );
+    // Nothing is written until the operator answers.
+    expect(registry.current.addComponent).not.toHaveBeenCalled();
+  });
+
+  it("copies only what was left empty, never what was typed", async () => {
+    registry.current = makeRegistry({
+      lastComponent: {
+        id: "prev",
+        component_name: "Манометр",
+        manufacturer: "Завод",
+        body_material: "Сталь 20",
+      },
+    });
+    openBlankCard();
+
+    fireEvent.change(screen.getByLabelText(/Локация/), {
+      target: { value: "УППГ" },
+    });
+    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
+      target: { value: "Задвижка" },
+    });
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => screen.getByText("Fill"));
+    fireEvent.click(screen.getByText("Fill"));
+
+    await waitFor(() =>
+      expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
+    );
+    const saved = registry.current.addComponent.mock.calls[0][0];
+    // Typed here, so it stands.
+    expect(saved.component_name).toBe("Задвижка");
+    // Left empty, so it comes across.
+    expect(saved.manufacturer).toBe("Завод");
+    expect(saved.body_material).toBe("Сталь 20");
+  });
+
+  it("saves the card untouched when the offer is declined", async () => {
+    registry.current = makeRegistry({
+      lastComponent: { id: "prev", manufacturer: "Завод" },
+    });
+    openBlankCard();
+
+    fireEvent.change(screen.getByLabelText(/Локация/), {
+      target: { value: "УППГ" },
+    });
+    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
+      target: { value: "Задвижка" },
+    });
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => screen.getByText("Leave empty"));
+    fireEvent.click(screen.getByText("Leave empty"));
+
+    await waitFor(() =>
+      expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
+    );
+    // An unreadable plate is a fact about this component, not a gap to paper
+    // over with the previous one's values.
+    expect(
+      registry.current.addComponent.mock.calls[0][0].manufacturer,
+    ).toBeUndefined();
+  });
+
+  it("does not ask when the previous card has nothing to give", async () => {
+    registry.current = makeRegistry({
+      lastComponent: { id: "prev", component_name: "Манометр" },
+    });
+    openBlankCard();
+
+    fireEvent.change(screen.getByLabelText(/Локация/), {
+      target: { value: "УППГ" },
+    });
+    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
+      target: { value: "Задвижка" },
+    });
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() =>
+      expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.queryByText(/Fill from the previous card/i)).toBeNull();
+  });
+
+  it("does not ask on the first card of a walk", async () => {
+    openBlankCard();
+
+    fireEvent.change(screen.getByLabelText(/Локация/), {
+      target: { value: "УППГ" },
+    });
+    fireEvent.change(screen.getByLabelText(/Наименование компонента/), {
+      target: { value: "Задвижка" },
+    });
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() =>
+      expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
+    );
+    expect(screen.queryByText(/Fill from the previous card/i)).toBeNull();
+  });
+
   it("blocks saving only on the three fields readable without a plate", async () => {
     openBlankCard();
     fireEvent.click(screen.getByText("Save"));
