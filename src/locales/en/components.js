@@ -159,6 +159,20 @@ export const components = {
     saved:
       "The component was saved without coordinates: the location could not be determined. The card is there, but the component will not appear on the map.",
   },
+  conflictFilter: "Colliding numbers",
+  changeSortOrder: "Change the order",
+  uidAsc: "by number ↑",
+  uidDesc: "by number ↓",
+  select: "Select component",
+  deselect: "Deselect",
+  selected: "{{count}} selected",
+  clearSelection: "Clear selection",
+  removeSelected: "Delete selected",
+  removeSelectedConfirm: {
+    title: "Delete the selected cards?",
+    description:
+      "{{count}} card(s) will be deleted. Somebody filled in each of them on site; getting them back means walking the site again.",
+  },
   tabs: {
     params: "Parameters",
     photo: "Photo",

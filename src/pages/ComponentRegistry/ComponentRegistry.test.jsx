@@ -217,13 +217,13 @@ describe("ComponentRegistry screen", () => {
         },
       ],
     });
-    const { container } = renderRegistry();
+    renderRegistry();
 
-    // The state shows on the card too, so the row is picked by class.
-    const chip = [...container.querySelectorAll('[class*="chip_"]')].find(
-      (el) => el.textContent.startsWith("Требует замены"),
+    // Фильтры прячутся за кнопкой, как на странице базы.
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    fireEvent.click(
+      screen.getByRole("button", { pressed: false, name: /Требует замены/ }),
     );
-    fireEvent.click(chip);
 
     expect(screen.getByText("Труба")).toBeTruthy();
     expect(screen.queryByText("Задвижка")).toBeNull();
@@ -235,15 +235,14 @@ describe("ComponentRegistry screen", () => {
         { id: "a", component_uid: "1", component_status: "В работе" },
       ],
     });
-    const { container } = renderRegistry();
+    renderRegistry();
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
-    // The state shows on the card too, so the row is picked by class.
-    const chips = [...container.querySelectorAll('[class*="chip_"]')].map(
-      (el) => el.textContent,
-    );
-    expect(chips.some((text) => text.startsWith("В работе"))).toBe(true);
+    expect(
+      screen.getByRole("button", { name: /В работе/, pressed: false }),
+    ).toBeTruthy();
     // An empty button selects nothing and only adds to the noise.
-    expect(chips.some((text) => text.startsWith("Демонтирован"))).toBe(false);
+    expect(screen.queryByRole("button", { name: /Демонтирован/ })).toBeNull();
   });
 
   it("searches across the card, not just the name", () => {
@@ -1046,5 +1045,50 @@ describe("the card in full", () => {
     expect(screen.getByText("ЗД31")).toBeTruthy();
     expect(screen.getAllByText("ЗД32").length).toBeGreaterThan(0);
     expect(screen.queryByText("scheme_tag")).toBeNull();
+  });
+});
+
+describe("working with a set of cards at once", () => {
+  function withCards() {
+    registry.current = makeRegistry({
+      components: [
+        { id: "a", component_uid: "1", component: "Задвижка" },
+        { id: "b", component_uid: "2", component: "Труба" },
+      ],
+    });
+    renderRegistry();
+  }
+
+  it("sorts by the number the walker assigned, not by when it was typed", () => {
+    // Обход идут по номерам, и «9 после 1» вместо «9 после 8» сбивает поиск
+    // карточки глазами.
+    withCards();
+
+    expect(screen.getByText("by number ↑")).toBeTruthy();
+    fireEvent.click(screen.getByText("by number ↑"));
+    expect(screen.getByText("by number ↓")).toBeTruthy();
+  });
+
+  it("takes the whole shown list and gives it back", () => {
+    withCards();
+
+    fireEvent.click(screen.getByText("Select all"));
+    expect(screen.getByText("2 selected")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Clear selection"));
+    expect(screen.queryByText("2 selected")).toBeNull();
+  });
+
+  it("asks before throwing a set of walked cards away", () => {
+    withCards();
+
+    fireEvent.click(screen.getByText("Select all"));
+    fireEvent.click(screen.getByText("Delete selected"));
+    expect(registry.current.removeComponent).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText("Delete for good"));
+    return waitFor(() =>
+      expect(registry.current.removeComponent).toHaveBeenCalledTimes(2),
+    );
   });
 });

@@ -48,6 +48,35 @@
   touch-action: pan-y;
 }
 
+.cardSelected {
+  border-color: var(--c-blue);
+}
+
+.selectToggle {
+  flex-shrink: 0;
+  align-self: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 10px;
+  border-radius: 5px;
+  border: 1px solid var(--c-border);
+  background: var(--c-surface2);
+  color: var(--c-blue);
+  font-size: 12px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.selectToggleActive {
+  border-color: var(--c-blue);
+  background: var(--c-blue);
+  color: #fff;
+}
+
 .body {
   flex: 1 1 auto;
   min-width: 0;

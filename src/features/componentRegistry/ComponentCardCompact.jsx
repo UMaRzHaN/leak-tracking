@@ -16,6 +16,8 @@ import s from "./ComponentCardCompact.module.scss";
 function ComponentCardCompact({
   component,
   conflicting = false,
+  selected = false,
+  onToggleSelect = null,
   onOpenDetails,
   onInspect,
 }) {
@@ -61,7 +63,8 @@ function ComponentCardCompact({
       </span>
 
       <div
-        className={s.card}
+        className={`${s.card} ${selected ? s.cardSelected : ""}`}
+        data-selected={selected ? "true" : undefined}
         style={{ transform: `translateX(${offset}px)` }}
         onTouchStart={swipe.onTouchStart}
         onTouchMove={swipe.onTouchMove}
@@ -70,6 +73,28 @@ function ComponentCardCompact({
         onMouseMove={swipe.onMouseMove}
         onMouseUp={swipe.onMouseUp}
       >
+        {/* Отметка появляется, только когда список набирают: иначе она стоит
+            рядом с каждой карточкой и предлагает действие, которого никто не
+            начинал. */}
+        {onToggleSelect && (
+          <button
+            type="button"
+            className={`${s.selectToggle} ${
+              selected ? s.selectToggleActive : ""
+            }`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleSelect(component.id);
+            }}
+            aria-pressed={selected}
+            aria-label={
+              selected ? t("components.deselect") : t("components.select")
+            }
+          >
+            {selected ? "✓" : ""}
+          </button>
+        )}
+
         <button type="button" className={s.body} onClick={openIfNotSwiping}>
           <span className={s.thumb}>
             {photoSrc ? (

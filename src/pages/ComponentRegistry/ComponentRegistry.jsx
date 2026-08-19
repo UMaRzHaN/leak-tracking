@@ -10,6 +10,9 @@ import ComponentInspectSheet from "@/features/componentRegistry/ComponentInspect
 import ComponentDetailsSheet from "@/features/componentRegistry/ComponentDetailsSheet";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import Notification from "@/components/ui/Notification/Notification";
+import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
+import ComponentFilterBar from "./components/ComponentFilterBar";
+import ComponentResultsBar from "./components/ComponentResultsBar";
 import { useInventoryExport } from "./hooks/useInventoryExport";
 import { matchesLeakLocationFilter } from "@/utils/locationFilter";
 import { component_statuses } from "@/data/component/componentDictionary";
@@ -22,8 +25,6 @@ import {
   recordComponentInspected,
 } from "@/domain/componentHistory";
 import s from "./ComponentRegistry.module.scss";
-
-const ALL = "__all__";
 
 function matchesSearch(component, query) {
   if (!query) return true;
@@ -73,7 +74,11 @@ export default function ComponentRegistry({
   const { savePhoto } = usePhotoStorage();
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState(ALL);
+  /** Несколько состояний сразу, как статусы на странице базы. */
+  const [statusFilter, setStatusFilter] = useState([]);
+  const [sortAsc, setSortAsc] = useState(true);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [removingSelected, setRemovingSelected] = useState(false);
   const [editing, setEditing] = useState(null);
   const [tab, setTab] = useState("components");
   const [conflictsOnly, setConflictsOnly] = useState(false);
@@ -148,18 +153,6 @@ export default function ComponentRegistry({
     return () => observer.disconnect();
   }, [tab]);
 
-  const renderCard = useCallback(
-    (component) => (
-      <ComponentCardCompact
-        component={component}
-        conflicting={conflictingIds.has(component.id)}
-        onOpenDetails={setViewing}
-        onInspect={canWrite ? setInspecting : undefined}
-      />
-    ),
-    [canWrite, conflictingIds],
-  );
-
   /*
    * Место берётся из выбора в шапке, а не из своего списка: там уже стоит
    * иерархия этого типа проекта, и она одна на базу, карту, мониторинг и
@@ -178,8 +171,8 @@ export default function ComponentRegistry({
             component,
             sharedFilters?.lastLocationFilter,
           ) &&
-          (statusFilter === ALL ||
-            String(component.component_status ?? "") === statusFilter) &&
+          (statusFilter.length === 0 ||
+            statusFilter.includes(String(component.component_status ?? ""))) &&
           (!conflictsOnly || conflictingIds.has(component.id)) &&
           matchesSearch(component, search),
       ),
@@ -200,6 +193,75 @@ export default function ComponentRegistry({
     );
     return component_statuses.filter((status) => seen.has(status));
   }, [components]);
+
+  const statusCounts = useMemo(() => {
+    const counts = { all: components.length };
+    for (const component of components) {
+      const status = String(component.component_status ?? "").trim();
+      if (!status) continue;
+      counts[status] = (counts[status] ?? 0) + 1;
+    }
+    return counts;
+  }, [components]);
+
+  const toggleStatus = useCallback((status) => {
+    setStatusFilter((current) =>
+      current.includes(status)
+        ? current.filter((item) => item !== status)
+        : [...current, status],
+    );
+  }, []);
+
+  /*
+   * По номеру, а не по дате: список утечек читают по свежести, потому что
+   * важно, что нашли сегодня, а обход идут по номерам, и «9 после 1» вместо
+   * «9 после 8» сбивает поиск карточки глазами.
+   */
+  const ordered = useMemo(
+    () => (sortAsc ? visible : [...visible].reverse()),
+    [sortAsc, visible],
+  );
+
+  const selectDisplayed = useCallback(() => {
+    setSelectedIds(new Set(visible.map((component) => component.id)));
+  }, [visible]);
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  const toggleSelect = useCallback((id) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const allDisplayedSelected =
+    visible.length > 0 &&
+    visible.every((component) => selectedIds.has(component.id));
+
+  const renderCard = useCallback(
+    (component) => (
+      <ComponentCardCompact
+        component={component}
+        conflicting={conflictingIds.has(component.id)}
+        selected={selectedIds.has(component.id)}
+        onToggleSelect={canWrite ? toggleSelect : undefined}
+        onOpenDetails={setViewing}
+        onInspect={canWrite ? setInspecting : undefined}
+      />
+    ),
+    [canWrite, conflictingIds, selectedIds, toggleSelect],
+  );
+
+  const removeSelected = useCallback(async () => {
+    setRemovingSelected(false);
+    // По одной, как их и заводили: удаление проходит через ту же очередь
+    // записи, и половина списка не потеряется, если одна карточка не удалится.
+    for (const id of selectedIds) await removeComponent(id);
+    clearSelection();
+  }, [clearSelection, removeComponent, selectedIds]);
 
   /**
    * The page follows the card, not the other way round: opening one switches to
@@ -366,6 +428,18 @@ export default function ComponentRegistry({
         />
       )}
 
+      <ConfirmSheet
+        open={removingSelected}
+        title={t("components.removeSelectedConfirm.title")}
+        description={t("components.removeSelectedConfirm.description", {
+          count: selectedIds.size,
+        })}
+        confirmLabel={t("components.removeConfirm")}
+        cancelLabel={t("components.cancel")}
+        onConfirm={removeSelected}
+        onCancel={() => setRemovingSelected(false)}
+      />
+
       {inspecting && (
         <ComponentInspectSheet
           component={inspecting}
@@ -400,49 +474,32 @@ export default function ComponentRegistry({
             </p>
           )}
 
-          <div className={s.filters}>
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={t("components.searchPlaceholder")}
-              aria-label={t("components.searchPlaceholder")}
-            />
-          </div>
+          <ComponentFilterBar
+            search={search}
+            setSearch={setSearch}
+            statuses={usedStatuses}
+            statusFilter={statusFilter}
+            onToggleStatus={toggleStatus}
+            onClearStatuses={() => setStatusFilter([])}
+            conflictsOnly={conflictsOnly}
+            onToggleConflicts={() => setConflictsOnly((value) => !value)}
+            conflictCount={conflicts.length}
+            counts={statusCounts}
+          />
 
-          {usedStatuses.length > 0 && (
-            <div
-              className={s.chips}
-              role="group"
-              aria-label={t("components.statusFilter")}
-            >
-              <button
-                type="button"
-                className={statusFilter === ALL ? s.chipActive : s.chip}
-                onClick={() => setStatusFilter(ALL)}
-              >
-                {t("components.allStatuses")}
-                <span className={s.chipCount}>{components.length}</span>
-              </button>
-              {usedStatuses.map((status) => (
-                <button
-                  key={status}
-                  type="button"
-                  className={statusFilter === status ? s.chipActive : s.chip}
-                  onClick={() => setStatusFilter(status)}
-                >
-                  {status}
-                  <span className={s.chipCount}>
-                    {
-                      components.filter(
-                        (c) => String(c.component_status ?? "") === status,
-                      ).length
-                    }
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
+          <ComponentResultsBar
+            visibleCount={visible.length}
+            totalCount={components.length}
+            sortAsc={sortAsc}
+            onSortToggle={() => setSortAsc((value) => !value)}
+            selectedCount={selectedIds.size}
+            allDisplayedSelected={allDisplayedSelected}
+            onSelectDisplayed={selectDisplayed}
+            onClearSelection={clearSelection}
+            onRemoveSelected={() => setRemovingSelected(true)}
+            onExport={exportInventory}
+            isExporting={isExporting}
+          />
 
           <div className={s.actions}>
             <button
@@ -452,18 +509,6 @@ export default function ComponentRegistry({
               disabled={!canWrite}
             >
               {t("components.add")}
-            </button>
-            {/* Рядом с добавлением, а не в настройках: обход заканчивается
-                тем, что реестр отдают, и отдают его отсюда. */}
-            <button
-              type="button"
-              className={s.secondary}
-              onClick={exportInventory}
-              disabled={isExporting || components.length === 0}
-            >
-              {isExporting
-                ? t("components.export.inProgress")
-                : t("components.export.button")}
             </button>
           </div>
 
@@ -491,7 +536,7 @@ export default function ComponentRegistry({
              */
             <div ref={listRef} className={s.list}>
               <VirtualizedLeakList
-                items={visible}
+                items={ordered}
                 height={listHeight}
                 bottomPadding={88}
                 gap={8}
