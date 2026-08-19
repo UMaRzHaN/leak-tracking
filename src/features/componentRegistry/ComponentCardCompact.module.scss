@@ -145,10 +145,43 @@
 }
 
 .name {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 14px;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Правый верхний угол карточки — там же, где у утечки: глаз ищет «когда» в
+   одном месте на обоих списках. */
+.time {
+  flex: none;
+  margin-left: auto;
+  padding-left: 8px;
+  font-size: 11px;
+  color: var(--c-text3);
+  white-space: nowrap;
+}
+
+.footRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Тот же значок расстояния, что на карточке утечки. */
+.chipNear {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-blue);
+  background: var(--c-blue-dim);
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  border-radius: var(--r-pill);
+  padding: 1px 8px;
   white-space: nowrap;
 }
 

@@ -277,6 +277,24 @@ describe("поиск по чертежам", () => {
     expect(screen.queryByPlaceholderText(/Drawing name/)).toBeNull();
   });
 
+  it("рисует один крестик, а не два", () => {
+    // type="search" добавляет свой; рядом с нашим их получалось два.
+    hooks.current = makeHook({ schemas: many });
+    render(<SchemaList project={project} />);
+
+    expect(screen.getByPlaceholderText(/Drawing name/).type).toBe("text");
+  });
+
+  it("ставит поиск выше кнопки: ищут чаще, чем добавляют", () => {
+    hooks.current = makeHook({ schemas: many });
+    const { container } = render(<SchemaList project={project} />);
+
+    const nodes = [...container.querySelectorAll("input, button")];
+    const search = nodes.indexOf(screen.getByPlaceholderText(/Drawing name/));
+    const add = nodes.indexOf(screen.getByText("Add schema"));
+    expect(search).toBeLessThan(add);
+  });
+
   it("находит чертёж по имени", () => {
     hooks.current = makeHook({ schemas: many });
     render(<SchemaList project={project} />);

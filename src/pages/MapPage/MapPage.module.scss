@@ -17,6 +17,67 @@
   height: 100%;
 }
 
+/*
+ * Переключатель баз. Намеренно не похож на кнопки справа: те отвечают на
+ * вопрос «что показать из этого», а он — на вопрос «что это». Поэтому
+ * пилюля с подписью в другом углу, а не ещё одна иконка в том же столбце.
+ */
+.baseSwitch {
+  position: absolute;
+  /* Справа сверху: слева зум карты, а внизу справа столбец кнопок — угол,
+     свободный на любом экране. */
+  right: 12px;
+  top: 12px;
+  z-index: var(--z-overlay);
+
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-pill, 999px);
+  background: var(--c-surface);
+  color: var(--c-text);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background var(--t-fast),
+    border-color var(--t-fast),
+    color var(--t-fast);
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+/* На базе железа переключатель окрашен: с одного взгляда видно, что булавки
+   на карте — не утечки. */
+.baseSwitchComponents {
+  border-color: var(--c-blue);
+  background: var(--c-blue);
+  color: #fff;
+}
+
+.baseSwitchIcon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.baseSwitchLabel {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.baseSwitchHint {
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.6;
+}
+
 .controls {
   position: absolute;
   right: 12px;
@@ -78,13 +139,6 @@
     border-radius: var(--r-pill);
     background: currentColor;
   }
-}
-
-.baseLabel {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
 }
 
 .filterControlWrap {

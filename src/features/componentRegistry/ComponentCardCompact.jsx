@@ -19,6 +19,9 @@ function ComponentCardCompact({
   component,
   conflicting = false,
   selected = false,
+  // Расстояние от того места, где человек стоит, до этого железа. Считается
+  // списком, а не карточкой: одна и та же точка отсчёта на все карточки.
+  distance = null,
   onToggleSelect = null,
   onOpenDetails,
   onInspect,
@@ -53,12 +56,16 @@ function ComponentCardCompact({
   };
   const status = String(component.component_status ?? "").trim();
   /*
-   * Когда карточку завели — тем же, чем это подписано у утечки: «2 часа
-   * назад» рядом, датой, когда «рядом» уже ничего не значит. По списку видно,
-   * докуда дошёл обход сегодня, а не только что в нём вообще есть.
+   * Когда железо видели в последний раз — тем же, чем это подписано у утечки:
+   * «2 часа назад» рядом, датой, когда «рядом» уже ничего не значит.
+   *
+   * Осмотр важнее заведения: карточку заводят однажды, а обходят её потом
+   * годами, и в списке спрашивают «когда здесь были», а не «когда завели».
+   * Дата инспекции ставится и при заведении — тогда это одно и то же число, и
+   * показать любое из них значит показать верное.
    */
-  const recorded =
-    timeAgo(component.date, lang) ?? formatLeakDate(component.date, {}, lang);
+  const seenAt = component.inspected_at || component.date;
+  const recorded = timeAgo(seenAt, lang) ?? formatLeakDate(seenAt, {}, lang);
 
   return (
     <li className={s.row}>
@@ -135,7 +142,14 @@ function ComponentCardCompact({
                 .filter(Boolean)
                 .join(" · ") || t("components.noLocation")}
             </span>
-            {status && <span className={s.status}>{status}</span>}
+            <span className={s.footRow}>
+              {distance != null && (
+                <span className={s.chipNear}>
+                  📌 {distance} {t("common.units.meters")}
+                </span>
+              )}
+              {status && <span className={s.status}>{status}</span>}
+            </span>
           </span>
         </button>
       </div>

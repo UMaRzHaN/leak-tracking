@@ -1181,6 +1181,62 @@ describe("что видно в списке и по чему он отбирае
     expect(screen.queryByText("Труба")).toBeNull();
   });
 
+  it("подписывает карточку осмотром, а не заведением", () => {
+    // Карточку заводят однажды, а обходят её потом годами: в списке
+    // спрашивают «когда здесь были», а не «когда завели».
+    const now = Date.now();
+    registry.current = makeRegistry({
+      components: [
+        {
+          id: "a",
+          component_uid: "1",
+          component: "Задвижка",
+          date: new Date(now - 86400e3 * 5).toISOString(),
+          inspected_at: new Date(now - 3600e3).toISOString(),
+        },
+      ],
+    });
+    renderRegistry();
+
+    expect(screen.getByText("1 hr. ago")).toBeTruthy();
+  });
+
+  it("ставит на карточку расстояние до железа", () => {
+    // «Сто метров» отвечает на вопрос «это то самое или соседнее» — тот, ради
+    // которого в список и заглядывают, стоя перед задвижкой.
+    registry.current = makeRegistry({
+      components: [
+        {
+          id: "a",
+          component_uid: "1",
+          component: "Задвижка",
+          lat: 38.4,
+          lng: 66.1,
+        },
+      ],
+    });
+    renderRegistry({ coords: { lat: 38.4, lng: 66.101 } });
+
+    expect(screen.getByText(/📌/)).toBeTruthy();
+  });
+
+  it("не обещает расстояния без фикса", () => {
+    registry.current = makeRegistry({
+      components: [
+        {
+          id: "a",
+          component_uid: "1",
+          component: "Задвижка",
+          lat: 38.4,
+          lng: 66.1,
+        },
+      ],
+    });
+    renderRegistry({ coords: null });
+
+    expect(screen.queryByText(/📌/)).toBeNull();
+  });
+
   it("не предлагает круг, когда мерить не от чего", () => {
     registry.current = makeRegistry({
       components: [{ id: "a", component_uid: "1", component: "Задвижка" }],

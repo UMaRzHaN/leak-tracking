@@ -231,32 +231,17 @@ export default function SchemaList({ project }) {
         </p>
       )}
 
-      <button
-        type="button"
-        className={s.primary}
-        onClick={() => inputRef.current?.click()}
-        disabled={busy}
-      >
-        {busy ? t("schemas.working") : t("schemas.add")}
-      </button>
-      <input
-        ref={inputRef}
-        type="file"
-        accept={ACCEPT}
-        onChange={handlePick}
-        className={s.hiddenInput}
-        aria-label={t("schemas.add")}
-      />
-
-      {/* Строка появляется, когда искать уже есть в чём: над двумя чертежами
-          она только отнимает высоту у списка. */}
+      {/* Поиск выше кнопки: комплект загружают однажды, а ищут в нём каждый
+          раз, когда открывают вкладку. */}
       {schemas.length > 1 && (
         <div className={db.searchRow}>
           <div className={db.searchWrap}>
             <span className={db.searchIcon}>🔍</span>
+            {/* Не type="search": браузер рисует свой крестик, и рядом с
+                нашим их получалось два. */}
             <input
               className={db.searchInput}
-              type="search"
+              type="text"
               value={search}
               placeholder={t("schemas.searchPlaceholder")}
               aria-label={t("schemas.searchPlaceholder")}
@@ -277,6 +262,23 @@ export default function SchemaList({ project }) {
           </div>
         </div>
       )}
+
+      <button
+        type="button"
+        className={s.primary}
+        onClick={() => inputRef.current?.click()}
+        disabled={busy}
+      >
+        {busy ? t("schemas.working") : t("schemas.add")}
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={ACCEPT}
+        onChange={handlePick}
+        className={s.hiddenInput}
+        aria-label={t("schemas.add")}
+      />
 
       {loading ? (
         <p className={s.muted}>{t("schemas.loading")}</p>

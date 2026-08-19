@@ -99,6 +99,24 @@ describe("switching between the project's two bases", () => {
     expect(screen.queryByRole("button", { name: /Switch base/ })).toBeNull();
   });
 
+  it("выделен отдельной кнопкой, а не ещё одной иконкой в столбце", () => {
+    // Пока он выглядел как остальные кнопки, его читали как ещё один фильтр.
+    renderControls({ componentsAvailable: true });
+    const base = screen.getByRole("button", { name: /Switch base/ });
+    const locate = screen.getByRole("button", { name: "My location" });
+
+    expect(base.className).not.toBe(locate.className);
+    expect(base.textContent).toMatch(/Leaks/);
+  });
+
+  it("называет базу, на которую смотрит человек", () => {
+    renderControls({ componentsAvailable: true, showsComponents: true });
+
+    expect(
+      screen.getByRole("button", { name: /Switch base/ }).textContent,
+    ).toMatch(/Assets/);
+  });
+
   it("hands the switch back to the map", () => {
     const onToggleBase = vi.fn();
     renderControls({ componentsAvailable: true, onToggleBase });

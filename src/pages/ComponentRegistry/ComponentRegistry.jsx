@@ -292,18 +292,41 @@ export default function ComponentRegistry({
     visible.length > 0 &&
     visible.every((component) => selectedIds.has(component.id));
 
+  /**
+   * Расстояние до карточки от того места, где человек стоит.
+   *
+   * Показывается всегда, когда есть фикс, а не только при включённом круге:
+   * «сто двадцать метров» отвечает на вопрос «это то самое железо или
+   * соседнее» — тот самый вопрос, ради которого в список и заглядывают,
+   * стоя перед задвижкой.
+   */
+  const distanceTo = useCallback(
+    (component) => {
+      if (!hasGps) return null;
+      const meters = getDistanceMeters(
+        coords.lat,
+        coords.lng,
+        component.lat,
+        component.lng,
+      );
+      return Number.isFinite(meters) ? Math.round(meters) : null;
+    },
+    [coords, hasGps],
+  );
+
   const renderCard = useCallback(
     (component) => (
       <ComponentCardCompact
         component={component}
         conflicting={conflictingIds.has(component.id)}
         selected={selectedIds.has(component.id)}
+        distance={distanceTo(component)}
         onToggleSelect={canWrite ? toggleSelect : undefined}
         onOpenDetails={setViewing}
         onInspect={canWrite ? setInspecting : undefined}
       />
     ),
-    [canWrite, conflictingIds, selectedIds, toggleSelect],
+    [canWrite, conflictingIds, distanceTo, selectedIds, toggleSelect],
   );
 
   /*
