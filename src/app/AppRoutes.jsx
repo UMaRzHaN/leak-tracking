@@ -235,6 +235,10 @@ export default function AppRoutes({
               coords={coords}
               cardPage={page === "component"}
               userProfile={userProfile}
+              // Тот же выбор места, что у базы, карты и мониторинга: экран его
+              // уже читает, но до сих пор не получал — фильтр шапки на реестре
+              // молча ничего не отбирал.
+              sharedFilters={sharedFilters}
               onOpenCard={() => setPage("component")}
               onCloseCard={() => setPage("components")}
             />

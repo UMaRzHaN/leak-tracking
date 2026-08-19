@@ -10,6 +10,8 @@ import VirtualizedLeakList from "@/features/leakList/VirtualizedLeakList/Virtual
 import ComponentInspectSheet from "@/features/componentRegistry/ComponentInspectSheet";
 import ComponentDetailsSheet from "@/features/componentRegistry/ComponentDetailsSheet";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
+import Notification from "@/components/ui/Notification/Notification";
+import { useInventoryExport } from "./hooks/useInventoryExport";
 import { matchesLeakLocationFilter } from "@/utils/locationFilter";
 import { component_statuses } from "@/data/component/componentDictionary";
 import { createRecordId } from "@/utils/createRecordId";
@@ -84,6 +86,15 @@ export default function ComponentRegistry({
   const listRef = useRef(null);
   const [listHeight, setListHeight] = useState(600);
   const [viewing, setViewing] = useState(null);
+  const [notification, setNotification] = useState(null);
+
+  const notify = useCallback((type, message, options = {}) => {
+    setNotification({ type, message, ...options });
+  }, []);
+  const { exportInventory, isExporting } = useInventoryExport({
+    project,
+    notify,
+  });
 
   /*
    * Nothing is written without a name. Every history entry is signed, and a
@@ -295,6 +306,10 @@ export default function ComponentRegistry({
 
   return (
     <div className={s.page}>
+      <Notification
+        notification={notification}
+        onClose={() => setNotification(null)}
+      />
       <header className={s.head}>
         <h1>{t("components.title")}</h1>
         {/* Drawings sit next to the registry rather than in settings: they are
@@ -424,14 +439,28 @@ export default function ComponentRegistry({
             </div>
           )}
 
-          <button
-            type="button"
-            className={s.primary}
-            onClick={() => openCard({})}
-            disabled={!canWrite}
-          >
-            {t("components.add")}
-          </button>
+          <div className={s.actions}>
+            <button
+              type="button"
+              className={s.primary}
+              onClick={() => openCard({})}
+              disabled={!canWrite}
+            >
+              {t("components.add")}
+            </button>
+            {/* Рядом с добавлением, а не в настройках: обход заканчивается
+                тем, что реестр отдают, и отдают его отсюда. */}
+            <button
+              type="button"
+              className={s.secondary}
+              onClick={exportInventory}
+              disabled={isExporting || components.length === 0}
+            >
+              {isExporting
+                ? t("components.export.inProgress")
+                : t("components.export.button")}
+            </button>
+          </div>
 
           {/* Said once, where the button is, rather than after a walker has
               filled a card and pressed save. */}

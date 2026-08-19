@@ -1,6 +1,10 @@
 import { ComponentRepository } from "@/repositories/ComponentRepository";
 import { mergeComponentRegistries } from "@/domain/componentMerge";
 import { logger } from "@/utils/logger";
+import {
+  buildComponentPhotoArchive,
+  restoreComponentPhotos,
+} from "./componentPhotoArchive";
 import { getJSZip } from "./runtime";
 
 /**
@@ -22,21 +26,36 @@ const ARCHIVE_VERSION = 1;
  * The archive entry for a project's registry, or null when there is nothing
  * to carry.
  *
+ * Comes with the photographs: `photoEntries` are zip entries the caller adds
+ * beside the JSON, and the JSON's own photo paths already point at them. The
+ * two are returned together because they are only correct together — writing
+ * the JSON without the pictures is exactly the silent loss this replaced.
+ *
  * @param {object} project
- * @param {(project: object) => Promise<object[]>} [load]
+ * @param {{load?: (project: object) => Promise<object[]>, idbGet?: (id: string) => Promise<any>, photoDir?: string}} [options]
  */
-export async function buildComponentArchiveEntry(
-  project,
-  load = (target) => ComponentRepository.load(target),
-) {
+export async function buildComponentArchiveEntry(project, options = {}) {
   if (!project?.id) return null;
 
+  const {
+    load = (target) => ComponentRepository.load(target),
+    idbGet,
+    photoDir,
+  } = typeof options === "function" ? { load: options } : options;
+
   try {
-    const components = await load(project);
-    if (!components?.length) return null;
+    const stored = await load(project);
+    if (!stored?.length) return null;
+
+    const { components, entries } = await buildComponentPhotoArchive(
+      stored,
+      idbGet,
+      photoDir ? { dir: photoDir } : {},
+    );
 
     return {
       path: COMPONENT_ARCHIVE_FILE,
+      photoEntries: entries,
       content: JSON.stringify({
         version: ARCHIVE_VERSION,
         exportedAt: Date.now(),
@@ -81,6 +100,10 @@ export async function restoreComponentsFromArchive(file, project) {
     if (!entry) return nothing;
 
     incoming = unwrap(JSON.parse(await entry.async("string")));
+    // Before the merge, not after: the merge decides which card wins, and a
+    // card that won with a path into another device's storage would show an
+    // empty frame where a photograph is.
+    incoming = await restoreComponentPhotos(zip, incoming, project);
   } catch (error) {
     logger.warn(
       "[components] could not read the registry from the archive:",

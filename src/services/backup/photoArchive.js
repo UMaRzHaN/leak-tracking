@@ -38,7 +38,7 @@ async function resolveBase64(path, idbGet) {
   return parseDataImageUri(src);
 }
 
-async function resolvePhotoBlob(path, idbGet) {
+export async function resolvePhotoBlob(path, idbGet) {
   if (typeof path !== "string" || !path) return null;
 
   let value = null;

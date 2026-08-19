@@ -45,6 +45,10 @@ function whenReady(timeoutMs = 5_000) {
   ensureOpen();
   const { ready } = store.getState();
   if (ready) return Promise.resolve(true);
+  // No IndexedDB at all — a locked-down browser, a private window — is an
+  // answer, not something to wait out. The store can never open, and the full
+  // timeout used to be spent before reporting what was already known.
+  if (typeof indexedDB === "undefined") return Promise.resolve(false);
 
   return new Promise((resolve) => {
     const timer = setTimeout(() => {

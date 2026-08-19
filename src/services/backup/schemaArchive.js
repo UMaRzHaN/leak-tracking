@@ -33,12 +33,16 @@ export const SCHEMA_ARCHIVE_DIR = "technological_schemas";
  * @param {object} project
  * @param {object[]} schemas index entries
  * @param {(project: object, schema: object) => Promise<Blob|null>} readSchemaFile
+ * @param {{dir?: string}} [options]
  * @returns {Promise<{path: string, blob: Blob, name: string}[]>}
  */
 export async function buildSchemaArchiveEntries(
   project,
   schemas,
   readSchemaFile,
+  // The inventory archive files its drawings under "Schemes", beside "Photos".
+  // Same bytes, a folder name chosen for the person opening that archive.
+  { dir = SCHEMA_ARCHIVE_DIR } = {},
 ) {
   const used = new Set();
   const entries = [];
@@ -54,7 +58,7 @@ export async function buildSchemaArchiveEntries(
 
     const name = allocateSchemaFileName(schema.name, used);
     used.add(name);
-    entries.push({ path: `${SCHEMA_ARCHIVE_DIR}/${name}`, blob, name });
+    entries.push({ path: `${dir}/${name}`, blob, name });
   }
 
   return entries;

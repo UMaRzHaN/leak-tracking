@@ -75,7 +75,14 @@ export function sanitizePortableArchiveSegment(value) {
 
 export function allocateUniqueLeakArchiveSegments(
   leaks,
-  { prefix = "leak", reservedSegments = [] } = {},
+  // `identity` exists for the component registry: its records are numbered by
+  // `component_uid`, not `leak_id`, and the collision handling below — folding,
+  // the `~id` suffix, the length limit — is the same problem either way.
+  {
+    prefix = "leak",
+    reservedSegments = [],
+    identity = (leak) => leak?.leak_id,
+  } = {},
 ) {
   const usedSegments = new Set(
     reservedSegments.map((segment) => foldArchiveSegment(segment)),
@@ -83,7 +90,8 @@ export function allocateUniqueLeakArchiveSegments(
 
   return (Array.isArray(leaks) ? leaks : []).map((leak, index) => {
     const baseSegment =
-      sanitizePortableArchiveSegment(leak?.leak_id) || `${prefix}-${index + 1}`;
+      sanitizePortableArchiveSegment(identity(leak)) ||
+      `${prefix}-${index + 1}`;
     let candidate = baseSegment;
 
     if (!usedSegments.has(foldArchiveSegment(candidate))) {

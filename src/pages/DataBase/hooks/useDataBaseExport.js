@@ -95,7 +95,12 @@ export function useDataBaseExport({ displayed, notify }) {
       // The registry goes out whole for the same reason drawings do: a filter
       // narrows which leaks are reported, not which equipment exists.
       const componentSheet = await buildComponentSheetSpec(activeProject);
-      const componentArchive = await buildComponentArchiveEntry(activeProject);
+      // The registry's photographs need the same storage reader the leaks use;
+      // without it the cards travel with paths into this device's storage and
+      // arrive elsewhere with empty frames.
+      const componentArchive = await buildComponentArchiveEntry(activeProject, {
+        idbGet: idbGetPhoto,
+      });
 
       const schemaEntries = await buildSchemaArchiveEntries(
         activeProject,

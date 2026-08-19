@@ -142,6 +142,18 @@ export const components = {
       hint: "A shot of the whole component, enough to recognise it by",
     },
   },
+  /*
+   * The inventory leaves in an archive of its own: the registry goes to
+   * whoever owns the equipment, the leak report to whoever counts emissions.
+   */
+  export: {
+    button: "Export inventory",
+    inProgress: "Building the inventory archive...",
+    empty: "The registry is empty — nothing to export.",
+    saved: "Archive saved: {{path}}",
+    downloaded: 'Archive "{{fileName}}" downloaded',
+    error: "Could not export the inventory: {{message}}",
+  },
   buttons: {
     prev: "← Back",
     next: "Next →",

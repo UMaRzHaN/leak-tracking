@@ -289,6 +289,11 @@ export async function exportToExcelFile(
   // this is what another device merges from.
   if (options.componentArchive) {
     zip.file(options.componentArchive.path, options.componentArchive.content);
+    // The pictures the registry's paths now point at. Without them the JSON is
+    // a set of dead references on any device but this one.
+    for (const entry of options.componentArchive.photoEntries ?? []) {
+      zip.file(entry.path, entry.blob);
+    }
   }
 
   const zipBlob = await zip.generateAsync({ type: "blob" });
