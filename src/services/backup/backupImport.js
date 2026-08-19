@@ -34,27 +34,12 @@ import {
   readStoredProjectVars,
   recalculateLeaks,
 } from "./projectMeta";
-import { delay } from "./runtime";
-
-async function waitForProjectActivation(activeProjectIdRef, projectId) {
-  for (let i = 0; i < 60; i++) {
-    if (activeProjectIdRef.current === projectId) return;
-    await delay(50);
-  }
-
-  throw new Error("Таймаут переключения проекта");
-}
-
-async function waitForPhotoStorage(photoReadyRef) {
-  if (!photoReadyRef) return;
-
-  for (let i = 0; i < 60; i++) {
-    if (photoReadyRef.current) return;
-    await delay(50);
-  }
-
-  throw new Error("Хранилище фото не готово");
-}
+import { waitForPhotoStorage, waitForProjectActivation } from "./runtime";
+import {
+  assertProjectTypesMatch,
+  resolveIncomingApplication,
+  resolveSyncIdDecision,
+} from "./backupImportGuards";
 
 /**
  * Restores the archive's technological schemas into a freshly imported
@@ -230,68 +215,38 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
 
   const isSync = mode === "sync";
   const isMerge = mode === "merge" || isSync;
-  const incomingProjectType =
-    typeof meta?.project?.type === "string"
-      ? meta.project.type.trim().toLowerCase()
-      : null;
-  const existingProjectType =
-    typeof existingProject.type === "string"
-      ? existingProject.type.trim().toLowerCase()
-      : null;
 
-  if (!incomingProjectType) {
-    const error = new Error(
-      "Не удалось определить тип проекта в импортируемом архиве",
-    );
-    error.code = "PROJECT_TYPE_MISSING";
-    error.existingProjectType = existingProjectType;
-    throw error;
-  }
-
-  if (!existingProjectType) {
-    const error = new Error("Не удалось определить тип текущего проекта");
-    error.code = "CURRENT_PROJECT_TYPE_MISSING";
-    error.incomingProjectType = incomingProjectType;
-    throw error;
-  }
-
-  if (incomingProjectType !== existingProjectType) {
-    const error = new Error(
-      "Тип импортируемого проекта не соответствует текущему проекту",
-    );
-    error.code = "PROJECT_TYPE_MISMATCH";
-    error.incomingProjectType = incomingProjectType;
-    error.existingProjectType = existingProjectType;
-    throw error;
-  }
-
+  assertProjectTypesMatch(meta, existingProject);
+  const { shouldAdoptSyncId, shouldReplaceSyncId } = resolveSyncIdDecision({
+    mode,
+    isSync,
+    incomingMeta: meta,
+    existingProject,
+    setProjectSyncId,
+    replaceProjectSyncId,
+  });
   const incomingSyncId = meta?.project?.syncId?.trim().toLowerCase() || null;
-  const existingSyncId = existingProject.syncId?.trim().toLowerCase() || null;
-  if (
-    isSync &&
-    existingSyncId &&
-    incomingSyncId &&
-    incomingSyncId !== existingSyncId
-  ) {
-    throw new Error("Архив получен из другой базы данных");
-  }
-  if (isSync && !existingSyncId && !incomingSyncId) {
-    throw new Error("Архив не содержит идентификатор синхронизации");
-  }
-  const shouldAdoptSyncId = isSync && !existingSyncId && incomingSyncId;
-  const shouldReplaceSyncId =
-    mode === "overwrite" &&
-    Boolean(incomingSyncId) &&
-    incomingSyncId !== existingSyncId;
-  if (shouldAdoptSyncId && typeof setProjectSyncId !== "function") {
-    throw new Error("Не удалось сохранить идентификатор синхронизации");
-  }
-  if (shouldReplaceSyncId && typeof replaceProjectSyncId !== "function") {
-    throw new Error("Не удалось заменить идентификатор синхронизации");
-  }
 
   const localSyncState = await readProjectSyncStateAsync(existingProjectId);
-  const incomingSyncState = meta?.sync;
+  const localSettings = readProjectSettings(existingProjectId);
+  const localMonitoringRound = readMonitoringRound(existingProjectId);
+  const localVarsRaw = localStorage.getItem(
+    STORAGE_KEYS.PROJECT_VARS(existingProjectId),
+  );
+  const {
+    incomingSyncState,
+    incomingSettings,
+    shouldApplyIncomingVars,
+    shouldApplyIncomingSettings,
+    vars,
+  } = resolveIncomingApplication({
+    mode,
+    isSync,
+    incomingMeta: meta,
+    localSettings,
+    localSyncState,
+    shouldApplyIncomingProjectSettings,
+  });
   if (isSync && incomingSyncState) {
     assertProjectSyncStateCompatible(localSyncState, incomingSyncState);
   }
@@ -299,30 +254,6 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     localSyncState,
     incomingSyncState,
   );
-  const shouldApplyIncomingVars =
-    isSync &&
-    meta?.vars &&
-    (incomingSyncState?.varsUpdatedAt ?? 0) > localSyncState.varsUpdatedAt;
-  const localSettings = readProjectSettings(existingProjectId);
-  const localMonitoringRound = readMonitoringRound(existingProjectId);
-  const localVarsRaw = localStorage.getItem(
-    STORAGE_KEYS.PROJECT_VARS(existingProjectId),
-  );
-  const incomingSettings = meta?.settings ?? null;
-  const hasIncomingSettings = Boolean(incomingSettings);
-  const shouldApplyIncomingSettings =
-    mode === "overwrite" ||
-    (hasIncomingSettings &&
-      mode === "merge" &&
-      incomingSettings.updatedAt > localSettings.updatedAt) ||
-    (hasIncomingSettings &&
-      isSync &&
-      shouldApplyIncomingProjectSettings(localSettings, incomingSettings));
-
-  let vars = null;
-  if (mode === "overwrite") {
-    vars = meta?.vars ?? null;
-  }
 
   await waitForPhotoStorage(photoReadyRef);
   const existing = await LeakRepository.getAll({

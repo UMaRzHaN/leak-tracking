@@ -2,6 +2,40 @@ export const getJSZip = () => import("jszip");
 
 export const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/*
+ * Импорт ждёт две вещи, которыми не управляет: переключения активного проекта
+ * и готовности хранилища фотографий. Обе приходят из React, обе через ref, и
+ * обе имеют один и тот же предел — три секунды, после которых лучше отказать,
+ * чем писать в наполовину поднятый проект.
+ */
+const WAIT_ATTEMPTS = 60;
+const WAIT_STEP_MS = 50;
+
+async function waitForRef(ref, isReady, timeoutMessage) {
+  for (let attempt = 0; attempt < WAIT_ATTEMPTS; attempt += 1) {
+    if (isReady(ref)) return;
+    await delay(WAIT_STEP_MS);
+  }
+  throw new Error(timeoutMessage);
+}
+
+export function waitForProjectActivation(activeProjectIdRef, projectId) {
+  return waitForRef(
+    activeProjectIdRef,
+    (ref) => ref.current === projectId,
+    "Таймаут переключения проекта",
+  );
+}
+
+export async function waitForPhotoStorage(photoReadyRef) {
+  if (!photoReadyRef) return;
+  await waitForRef(
+    photoReadyRef,
+    (ref) => Boolean(ref.current),
+    "Хранилище фото не готово",
+  );
+}
+
 function isWorkerContext() {
   const scope = globalThis.WorkerGlobalScope;
   return typeof scope !== "undefined" && globalThis instanceof scope;

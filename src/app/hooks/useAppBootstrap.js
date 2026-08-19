@@ -13,28 +13,8 @@ import { writeProjectSyncState } from "@/services/sync/projectSyncState";
 import { rollbackImportedProject } from "@/services/backup/projectCleanup";
 import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { useDeferredPhotoGc } from "./useDeferredPhotoGc";
-
-function waitForRefValue(ref, expectedValue, timeoutMs = 2000) {
-  const startedAt = Date.now();
-
-  return new Promise((resolve, reject) => {
-    const check = () => {
-      if (ref.current === expectedValue) {
-        resolve();
-        return;
-      }
-
-      if (Date.now() - startedAt > timeoutMs) {
-        reject(new Error("Не удалось дождаться переключения проекта"));
-        return;
-      }
-
-      setTimeout(check, 25);
-    };
-
-    check();
-  });
-}
+import { useSetupImports } from "./useSetupImports";
+import { waitForRefValue } from "./waitForProjectSwitch";
 
 export function useAppBootstrap() {
   /* =========================
@@ -203,20 +183,6 @@ export function useAppBootstrap() {
     ],
   );
 
-  /** First-run (ProjectSetupScreen): supports name/type fallback when ZIP has no project.json */
-  const handleSetupImportZip = useCallback(
-    (file, fallback = {}) =>
-      runWithImportOverlay(async () => {
-        const { importProjectZip } =
-          await import("@/services/backup/projectBackupService");
-        return importProjectZip(file, {
-          ...stableImportCtx,
-          metaFallback: fallback,
-        });
-      }),
-    [runWithImportOverlay, stableImportCtx],
-  );
-
   /** In-app import (Settings): always creates a new project, optional fallback for legacy ZIPs.
    *  options.overrideName forces the project name regardless of project.json (used for copies). */
   const handleImportZip = useCallback(
@@ -328,124 +294,21 @@ export function useAppBootstrap() {
     ],
   );
 
-  /**
-   * Первый экран: проект заводится из архива инвентаризации.
-   *
-   * Такой архив не несёт ни имени проекта, ни его типа — только карточки:
-   * инвентаризацию отдают отдельно от отчёта по утечкам, и она ничего не знает
-   * о том, кто и как считает выбросы. Имя берётся из имени файла (его пишет
-   * сама выгрузка: «!Inventorization_Бузахур»), тип — тот, который вообще
-   * ведёт реестр, а если человек уже выбрал тип на экране, то его.
-   */
-  const handleSetupImportInventory = useCallback(
-    (file, /** @type {{name?: string, type?: string}} */ { name, type } = {}) =>
-      runWithImportOverlay(async () => {
-        const [
-          { componentRegistryProjectTypes, loadComponentRegistry },
-          { importInventoryFile },
-        ] = await Promise.all([
-          import("@/configs/projectAdapter"),
-          import("@/services/inventory/inventoryImport"),
-        ]);
-
-        const registryTypes = componentRegistryProjectTypes();
-        const resolvedType =
-          type || (registryTypes.length === 1 ? registryTypes[0] : null);
-        if (!resolvedType) {
-          const error = new Error("Project type is missing");
-          error.code = "MISSING_PROJECT_TYPE";
-          throw error;
-        }
-
-        const previousProjectId = activeProjectIdRef.current;
-        const newProject = addProject(name, resolvedType);
-        if (!newProject) throw new Error("Не удалось создать проект");
-
-        try {
-          await waitForRefValue(activeProjectIdRef, newProject.id);
-          const registry = await loadComponentRegistry(newProject);
-          const result = await importInventoryFile(file, newProject, registry);
-          if (!result.added && !result.updated) {
-            const error = new Error("No components found in the archive");
-            error.code = "EMPTY_INVENTORY";
-            throw error;
-          }
-          // Записей об утечках в таком архиве нет, и это не ошибка: обход
-          // железа начинается раньше, чем находят первую утечку.
-          await saveRef.current([]);
-          clearForm();
-          return {
-            project: newProject,
-            leakCount: 0,
-            components: result.added,
-          };
-        } catch (error) {
-          try {
-            try {
-              const rollback = await rollbackImportedProject(
-                newProject,
-                removeProject,
-              );
-              if (!rollback.cleanupComplete) {
-                error.rollbackCleanupError = rollback.cleanupError;
-              }
-            } catch (rollbackError) {
-              error.rollbackError = rollbackError;
-            }
-          } finally {
-            if (previousProjectId) overwriteProject(previousProjectId);
-          }
-          throw error;
-        }
-      }),
-    [
-      addProject,
-      clearForm,
-      overwriteProject,
-      removeProject,
-      runWithImportOverlay,
-    ],
-  );
-
-  const handleSetupImportExcel = useCallback(
-    async (file, { name, type }) => {
-      const { parseExcelImportFile } =
-        await import("@/services/import/excelImportService");
-      const result = await parseExcelImportFile(file, {
-        // Do not invent an upstream project type on the first-run screen.
-        // Ordinary XLSX files are parsed with their common columns first and
-        // the resulting leak fields are then used for type detection below.
-        projectType: type || undefined,
-      });
-      if (!result.leaks.length && !result.portableArchive) {
-        const error = new Error("No importable rows found in XLSX");
-        error.code = "EMPTY_EXCEL";
-        throw error;
-      }
-      let resolvedType = result.project?.type || type;
-      if (!resolvedType) {
-        const { detectProjectTypeFromLeaks } =
-          await import("@/services/backup/projectBackupService");
-        resolvedType = detectProjectTypeFromLeaks(result.leaks);
-      }
-      if (!resolvedType) {
-        const error = new Error("Project type is missing");
-        error.code = "MISSING_PROJECT_TYPE";
-        throw error;
-      }
-      return handleCreateExcelCopy({
-        name: result.project?.name || name,
-        type: resolvedType,
-        leaks: result.leaks,
-        monitoringRound: result.monitoringRound,
-        vars: result.vars,
-        settings: result.settings,
-        syncId: result.project?.syncId,
-        sync: result.sync,
-      });
-    },
-    [handleCreateExcelCopy],
-  );
+  const {
+    handleSetupImportZip,
+    handleSetupImportInventory,
+    handleSetupImportExcel,
+  } = useSetupImports({
+    runWithImportOverlay,
+    stableImportCtx,
+    activeProjectIdRef,
+    saveRef,
+    addProject,
+    removeProject,
+    overwriteProject,
+    clearForm,
+    handleCreateExcelCopy,
+  });
 
   const bootstrapStatus = !isConfigured
     ? "setup"
