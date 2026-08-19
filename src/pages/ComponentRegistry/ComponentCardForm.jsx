@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import PageHeader from "@/components/layout/PageHeader/PageHeader";
 import AddLeakFooter from "@/features/leakForm/Footer/AddLeakFooter";
@@ -11,6 +11,7 @@ import {
 } from "@/domain/componentRegistry";
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import { toNullableNumber } from "@/utils/normalize/toNullableNumber";
+import { hasCoordsFix, waitForCoordsFix } from "@/utils/coordsFix";
 import { COMPONENT_NAME_TRANSLATIONS } from "@/data/component/componentDictionary";
 import { getCopyPreviousKeys } from "@/features/leakForm/utils/copyPrevious";
 import { localizeComponentSteps } from "./localizeComponentSteps";
@@ -32,6 +33,9 @@ import s from "./ComponentRegistry.module.scss";
 export default function ComponentCardForm({
   steps: rawSteps,
   coords = null,
+  gpsEnabled = true,
+  setGpsEnabled = null,
+  onSavedWithoutCoords = null,
   copyableFields = [],
   lastComponent = null,
   component = null,
@@ -229,16 +233,45 @@ export default function ComponentCardForm({
     [copyableFields, lastComponent],
   );
 
+  /*
+   * Читается по ссылке, а не по значению: ожидание фикса идёт внутри
+   * сохранения, и координата, пришедшая за эти секунды, должна быть видна.
+   */
+  const coordsRef = useRef(coords);
+  useEffect(() => {
+    coordsRef.current = coords;
+  }, [coords]);
+
   const commitSave = useCallback(
     async (payload) => {
       setSaving(true);
       try {
-        await onSave(payload);
+        let card = payload;
+
+        /*
+         * Карточка без координат выпадает с карты, и до сих пор она так и
+         * сохранялась молча: фикс снимался при открытии, а если приёмник был
+         * выключен — в карточку уходила пустота. Теперь так же, как в форме
+         * утечки: приёмник включается сам, ему дают время, и только потом
+         * карточка уходит без координат — но уже вслух.
+         *
+         * Только при заведении. У карточки, заведённой без координат когда-то,
+         * они уже не появятся, и держать правку по пятнадцать секунд каждый
+         * раз значило бы наказывать за чужую давнюю пустоту.
+         */
+        if (!isEditing && !hasCoordsFix(card)) {
+          if (!gpsEnabled) setGpsEnabled?.(true);
+          const fix = await waitForCoordsFix(coordsRef);
+          if (fix) card = { ...card, lat: fix.lat, lng: fix.lng };
+        }
+
+        await onSave(card);
+        if (!hasCoordsFix(card)) onSavedWithoutCoords?.();
       } finally {
         setSaving(false);
       }
     },
-    [onSave],
+    [gpsEnabled, isEditing, onSave, onSavedWithoutCoords, setGpsEnabled],
   );
 
   const handleConfirmCopy = useCallback(() => {

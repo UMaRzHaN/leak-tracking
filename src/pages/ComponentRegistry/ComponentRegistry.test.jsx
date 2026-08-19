@@ -70,6 +70,9 @@ function renderRegistry(props = {}) {
       <ComponentRegistry
         project={project}
         userProfile={{ name: "Мухиддин" }}
+        // Приёмник по умолчанию отвечает: сохранение без фикса честно ждёт
+        // его пятнадцать секунд, и это проверяется отдельным тестом.
+        coords={{ lat: 38.4, lng: 66.1 }}
         {...props}
         cardPage={page === "component"}
         onOpenCard={() => {
@@ -479,7 +482,7 @@ describe("component card form", () => {
     registry.current = makeRegistry();
   });
 
-  function openBlankCard(coords = null) {
+  function openBlankCard(coords = { lat: 38.4, lng: 66.1 }) {
     renderRegistry({ coords: coords });
     fireEvent.click(screen.getByText("Add component"));
   }
@@ -537,15 +540,31 @@ describe("component card form", () => {
     });
   });
 
-  it("writes the card even when no fix ever arrived", async () => {
-    // Indoors a receiver reports nothing; that must not stop the walk.
-    openBlankCard(null);
-    fillRequired();
-    fireEvent.click(screen.getByText("Save"));
+  it("waits for the receiver, then writes the card and says what was lost", async () => {
+    // Indoors a receiver reports nothing; that must not stop the walk, and it
+    // must not pass in silence either — the card would simply be off the map.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const setGpsEnabled = vi.fn();
+      renderRegistry({ coords: null, gpsEnabled: false, setGpsEnabled });
+      fireEvent.click(screen.getByText("Add component"));
+      fillRequired();
+      fireEvent.click(screen.getByText("Save"));
 
-    await waitFor(() =>
-      expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
-    );
+      // Приёмник включается сам, а не спрашивает у человека у скважины.
+      await waitFor(() => expect(setGpsEnabled).toHaveBeenCalledWith(true));
+      expect(registry.current.addComponent).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(16_000);
+      await waitFor(() =>
+        expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
+      );
+      expect(
+        screen.getByText(/без координат|without coordinates/),
+      ).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("will not leave the first step without the identity number", () => {

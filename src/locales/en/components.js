@@ -154,6 +154,10 @@ export const components = {
     downloaded: 'Archive "{{fileName}}" downloaded',
     error: "Could not export the inventory: {{message}}",
   },
+  noCoords: {
+    saved:
+      "The component was saved without coordinates: the location could not be determined. The card is there, but the component will not appear on the map.",
+  },
   buttons: {
     prev: "← Back",
     next: "Next →",

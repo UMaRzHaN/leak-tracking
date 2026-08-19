@@ -44,6 +44,8 @@ function matchesSearch(component, query) {
 export default function ComponentRegistry({
   project,
   coords = null,
+  gpsEnabled = true,
+  setGpsEnabled = null,
   cardPage = false,
   userProfile = null,
   sharedFilters = null,
@@ -289,6 +291,11 @@ export default function ComponentRegistry({
       <ComponentCardForm
         steps={steps.steps}
         coords={coords}
+        gpsEnabled={gpsEnabled}
+        setGpsEnabled={setGpsEnabled}
+        onSavedWithoutCoords={() =>
+          notify("error", t("components.noCoords.saved"))
+        }
         copyableFields={fields?.copyable ?? []}
         lastComponent={lastComponent}
         component={editing.id ? editing : null}

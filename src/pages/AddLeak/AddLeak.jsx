@@ -7,7 +7,7 @@ import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { hapticSuccess, hapticWarning } from "@/utils/haptics";
 import { logger } from "@/utils/logger";
-import { toNullableNumber } from "@/utils/normalize/toNullableNumber";
+import { readCoordsFix, waitForCoordsFix } from "@/utils/coordsFix";
 import { STATUS } from "@/utils/status";
 import { priorityFromSpeed } from "@/utils/priority";
 import { dataUrlToBlob } from "@/utils/photoConversion";
@@ -24,8 +24,6 @@ import s from "./AddLeak.module.scss";
 // Long enough for a receiver that was just switched on to report a first fix,
 // short enough that nobody stares at a stuck Save button. Indoors it will
 // always expire, and that is the expected outcome there, not a failure.
-const COORDS_WAIT_MS = 15000;
-const COORDS_POLL_MS = 200;
 
 export default function AddLeak({
   data,
@@ -167,20 +165,7 @@ export default function AddLeak({
     return photoReadyRef.current;
   };
 
-  const readCoords = () => ({
-    lat: toNullableNumber(coordsRef.current?.lat),
-    lng: toNullableNumber(coordsRef.current?.lng),
-  });
-
-  const waitForCoords = async (timeoutMs = COORDS_WAIT_MS) => {
-    const start = Date.now();
-    while (Date.now() - start < timeoutMs) {
-      const fix = readCoords();
-      if (fix.lat != null && fix.lng != null) return fix;
-      await new Promise((resolve) => setTimeout(resolve, COORDS_POLL_MS));
-    }
-    return null;
-  };
+  const readCoords = () => readCoordsFix(coordsRef.current);
 
   // The wait for a fix belongs inside `run`, not before it. `run` is what
   // raises `isSaving` — which disables the Save button and switches its label —
@@ -200,7 +185,7 @@ export default function AddLeak({
       // the save still goes through and says what was lost.
       if (lat == null || lng == null) {
         if (!gpsEnabled) setGpsEnabled?.(true);
-        const fix = await waitForCoords();
+        const fix = await waitForCoordsFix(coordsRef);
         if (fix) ({ lat, lng } = fix);
       }
 

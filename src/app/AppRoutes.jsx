@@ -233,6 +233,8 @@ export default function AppRoutes({
             <ComponentRegistry
               project={activeProject}
               coords={coords}
+              gpsEnabled={gpsEnabled}
+              setGpsEnabled={setGpsEnabled}
               cardPage={page === "component"}
               userProfile={userProfile}
               // Тот же выбор места, что у базы, карты и мониторинга: экран его
