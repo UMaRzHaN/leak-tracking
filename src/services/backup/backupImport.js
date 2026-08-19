@@ -558,6 +558,14 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     throw error;
   }
 
+  // The registry and the drawings ride outside the leak transaction, and are
+  // applied only once it has committed. They are the same for every route in:
+  // a ZIP backup, an archive merged into an existing project, and a QR
+  // exchange all arrive here, and until now only a brand-new project got them
+  // — two phones syncing in the field kept their walks to themselves.
+  await restoreProjectComponents(zipFile, existingProject);
+  await restoreProjectSchemas(zipFile, existingProject);
+
   // Data is committed. Cleanup failure must not turn a successful import into
   // a false "Import error"; orphan cleanup can be retried later.
   await PhotoRepository.gcOrphaned([...finalLeaks, ...preservedExisting], {

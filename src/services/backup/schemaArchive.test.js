@@ -1,9 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ addSchema: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  addSchema: vi.fn(),
+  listSchemas: vi.fn(),
+}));
 
 vi.mock("@/repositories/SchemaRepository", () => ({
-  SchemaRepository: { addSchema: mocks.addSchema },
+  SchemaRepository: {
+    addSchema: mocks.addSchema,
+    listSchemas: mocks.listSchemas,
+  },
 }));
 
 const {
@@ -85,6 +91,7 @@ describe("restoring from an archive", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.addSchema.mockResolvedValue(undefined);
+    mocks.listSchemas.mockResolvedValue([]);
   });
 
   async function makeArchive(files) {

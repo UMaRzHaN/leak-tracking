@@ -31,7 +31,6 @@ export function useInventoryExport({ project, notify }) {
         {
           buildInventoryArchive,
           buildInventoryFileStem,
-          INVENTORY_EXPORT_DIR,
           INVENTORY_PHOTO_DIR,
           INVENTORY_SCHEMA_DIR,
         },
@@ -77,11 +76,17 @@ export function useInventoryExport({ project, notify }) {
         // Its own folder inside the project's, next to the leak exports rather
         // than mixed in with them: on a phone the two are told apart by where
         // they sit, because both are zips with a long name.
-        const folder = project.folderName
-          ? `${project.folderName}/${INVENTORY_EXPORT_DIR}`
-          : INVENTORY_EXPORT_DIR;
-        const { writePublicFile } =
-          await import("@/services/storage/publicFileWriter");
+        const [
+          { writePublicFile },
+          { INVENTORY_EXPORT_DIR, projectExportFolder },
+        ] = await Promise.all([
+          import("@/services/storage/publicFileWriter"),
+          import("@/services/storage/exportFolders"),
+        ]);
+        const folder = projectExportFolder(
+          project.folderName,
+          INVENTORY_EXPORT_DIR,
+        );
         await writePublicFile({
           folder,
           fileName,

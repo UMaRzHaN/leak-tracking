@@ -96,6 +96,16 @@ export async function restoreSchemasFromArchive(file, project) {
     if (!entry.dir) files.push({ relativePath, entry });
   });
 
+  // Drawings a project already holds are left alone. A fresh import meets an
+  // empty list and this costs nothing; a sync between two phones meets the
+  // same drawings on every exchange, and without this the section would grow
+  // a new copy of every scheme each time the two met.
+  const known = new Set(
+    (await SchemaRepository.listSchemas(project).catch(() => [])).map(
+      (schema) => `${schema.name}:${schema.size}`,
+    ),
+  );
+
   let restored = 0;
   let skipped = 0;
 
@@ -110,10 +120,14 @@ export async function restoreSchemasFromArchive(file, project) {
         size: blob.size,
       });
 
-      if (!isSupportedSchema(schema)) {
+      if (
+        !isSupportedSchema(schema) ||
+        known.has(`${schema.name}:${schema.size}`)
+      ) {
         skipped += 1;
         continue;
       }
+      known.add(`${schema.name}:${schema.size}`);
 
       await SchemaRepository.addSchema(project, schema, blob);
       restored += 1;

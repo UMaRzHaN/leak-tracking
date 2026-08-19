@@ -2,6 +2,10 @@ import { useCallback, useRef, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { LeakRepository } from "@/repositories/LeakRepository";
 import { isNative } from "@/utils/platform";
+import {
+  LEAK_BACKUP_DIR,
+  projectExportFolder,
+} from "@/services/storage/exportFolders";
 
 const VALID_TYPES = ["upstream", "midstream", "downstream"];
 const CONFLICT_CLOSED = /** @type {any} */ ({ open: false });
@@ -106,8 +110,11 @@ export function useBackupActions({
       return;
     }
 
-    const folder = activeProject?.folderName ?? "backup";
-    const fileName = `${folder}.zip`;
+    const projectFolder = activeProject?.folderName ?? "backup";
+    // Своей папкой внутри проекта, рядом с zip_xlsx: на телефоне два архива
+    // с похожими именами различаются только тем, где они лежат.
+    const folder = projectExportFolder(projectFolder, LEAK_BACKUP_DIR);
+    const fileName = `${projectFolder}.zip`;
 
     try {
       setIsExportingZip(true);

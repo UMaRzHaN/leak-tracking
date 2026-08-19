@@ -263,7 +263,7 @@ describe("useBackupActions", () => {
     expect(nativeWriter.append).toHaveBeenCalledWith(new Uint8Array([1, 2, 3]));
     expect(nativeWriter.writePublicFileStream).toHaveBeenCalledWith(
       expect.objectContaining({
-        folder: "active",
+        folder: "active/Leaks/zip_backup",
         fileName: "active.zip",
         mimeType: "application/zip",
         produce: expect.any(Function),
@@ -271,7 +271,7 @@ describe("useBackupActions", () => {
     );
     expect(notify).toHaveBeenCalledWith(
       "success",
-      "ZIP saved to Documents/active/",
+      "ZIP saved to Documents/active/Leaks/zip_backup/",
     );
   });
   it("warns instead of building an empty backup", async () => {

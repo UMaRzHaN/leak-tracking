@@ -24,7 +24,6 @@ import { sanitizePortableArchiveSegment } from "@/services/archive/archivePaths"
 export const INVENTORY_SHEET_NAME = "Inventorization";
 export const INVENTORY_PHOTO_DIR = "Photos";
 export const INVENTORY_SCHEMA_DIR = "Schemes";
-export const INVENTORY_EXPORT_DIR = "Inventorization";
 
 const getExcelJS = () => import("exceljs");
 const getJSZip = () => import("jszip");

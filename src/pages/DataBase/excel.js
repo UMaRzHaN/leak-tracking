@@ -25,14 +25,16 @@ import {
   getMonitoringExportRows,
 } from "@/services/excelExport/monitoringRows";
 import { yieldToMainThread } from "@/services/excelExport/sheetLayout";
+import {
+  LEAK_XLSX_DIR,
+  projectExportFolder,
+} from "@/services/storage/exportFolders";
 
-const DEFAULT_EXPORT_DIR = "export/xlsx";
+const DEFAULT_EXPORT_DIR = LEAK_XLSX_DIR;
 const EXPORT_YIELD_EVERY = 40;
 
 function getExportFolder(projectFolderName) {
-  return projectFolderName
-    ? `${projectFolderName}/${DEFAULT_EXPORT_DIR}`
-    : DEFAULT_EXPORT_DIR;
+  return projectExportFolder(projectFolderName, LEAK_XLSX_DIR);
 }
 
 async function buildPhotoEntries(
