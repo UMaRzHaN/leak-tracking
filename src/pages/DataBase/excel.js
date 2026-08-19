@@ -256,7 +256,6 @@ export async function exportToExcelFile(
       texts,
       monitoringExportMode,
       archivePayload,
-      componentSheet: options.componentSheet ?? null,
     },
     options.buildWorkbookBuffer,
   );
@@ -279,23 +278,6 @@ export async function exportToExcelFile(
     // while later ones are still being processed, instead of peaking at
     // "every photo's base64 string, all at once" for the whole loop.
     entry.base64 = null;
-  }
-
-  // Drawings ride beside the photos so the archive stays openable by hand:
-  // "!Database.xlsx" next to photos/ next to technological_schemas/.
-  for (const entry of options.schemaEntries ?? []) {
-    zip.file(entry.path, entry.blob);
-  }
-
-  // The registry as plain JSON beside the workbook: the sheet is for reading,
-  // this is what another device merges from.
-  if (options.componentArchive) {
-    zip.file(options.componentArchive.path, options.componentArchive.content);
-    // The pictures the registry's paths now point at. Without them the JSON is
-    // a set of dead references on any device but this one.
-    for (const entry of options.componentArchive.photoEntries ?? []) {
-      zip.file(entry.path, entry.blob);
-    }
   }
 
   const zipBlob = await zip.generateAsync({ type: "blob" });

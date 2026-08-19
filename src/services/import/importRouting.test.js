@@ -44,8 +44,9 @@ describe("working out what an imported file is", () => {
   });
 
   it("keeps a leak export archive out of the inventory route", async () => {
-    // It carries components.json beside its workbook, and reading that first
-    // used to misroute the whole export.
+    // Отчёт по утечкам больше не везёт реестр, но архивы, выгруженные когда
+    // он его вёз, никуда не делись: components.json рядом с книгой не должен
+    // отправлять весь отчёт в инвентаризацию.
     const book = await workbook(["Утечки", "Компоненты"]);
     const file = await archive({
       "!Database_test.xlsx": await book.arrayBuffer(),

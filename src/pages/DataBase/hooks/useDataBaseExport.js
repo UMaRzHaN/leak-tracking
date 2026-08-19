@@ -73,40 +73,19 @@ export function useDataBaseExport({ displayed, notify }) {
       setIsExporting(true);
       notify("info", t("database.exportInProgress"), { autoCloseMs: 0 });
 
-      const [
-        { exportToExcelFile },
-        { buildWorkbookBufferInWorker },
-        { buildSchemaArchiveEntries },
-        { SchemaRepository },
-        { buildComponentSheetSpec },
-        { buildComponentArchiveEntry },
-      ] = await Promise.all([
-        import("@/pages/DataBase/excel"),
-        import("@/services/excel/excelWorkerClient"),
-        import("@/services/backup/schemaArchive"),
-        import("@/repositories/SchemaRepository"),
-        import("@/services/excelExport/componentSheetSpec"),
-        import("@/services/backup/componentArchive"),
-      ]);
+      /*
+       * Здесь только утечки. Реестр, его снимки и чертежи ездили в этом же
+       * архиве, пока другого не было; теперь инвентаризация выгружается своим
+       * архивом со своей страницы. Отчёт по утечкам отдают тем, кто считает
+       * выбросы, и класть им в него чужую работу — значит заставлять
+       * получателя разбираться, что из этого его.
+       */
+      const [{ exportToExcelFile }, { buildWorkbookBufferInWorker }] =
+        await Promise.all([
+          import("@/pages/DataBase/excel"),
+          import("@/services/excel/excelWorkerClient"),
+        ]);
 
-      // Drawings are a project-level attachment, so they go out whole even
-      // when the record list is filtered — a filtered export is still the
-      // whole project's documentation.
-      // The registry goes out whole for the same reason drawings do: a filter
-      // narrows which leaks are reported, not which equipment exists.
-      const componentSheet = await buildComponentSheetSpec(activeProject);
-      // The registry's photographs need the same storage reader the leaks use;
-      // without it the cards travel with paths into this device's storage and
-      // arrive elsewhere with empty frames.
-      const componentArchive = await buildComponentArchiveEntry(activeProject, {
-        idbGet: idbGetPhoto,
-      });
-
-      const schemaEntries = await buildSchemaArchiveEntries(
-        activeProject,
-        await SchemaRepository.listSchemas(activeProject).catch(() => []),
-        (project, schema) => SchemaRepository.readSchemaFile(project, schema),
-      );
       const result = await exportToExcelFile(
         displayed,
         prepareRows(displayed, t, vars),
@@ -127,9 +106,6 @@ export function useDataBaseExport({ displayed, notify }) {
           // including records (and photos) hidden by the current filters.
           backupLeaks: displayed,
           buildWorkbookBuffer: buildWorkbookBufferInWorker,
-          schemaEntries,
-          componentSheet,
-          componentArchive,
         },
       );
 
