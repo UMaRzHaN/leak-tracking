@@ -17,14 +17,21 @@ export const STATUS_COLORS = {
 
 export const IDENTIFIER_KEYS = new Set(["leak_id", "video_id"]);
 
+/**
+ * A record's date, as shown on screen.
+ *
+ * Date only. The minute a card was saved is stored and goes out to Excel,
+ * where somebody reconstructing a shift can use it, but on screen it was only
+ * ever noise: nobody reading a history asks at what minute a valve was
+ * inspected, and every entry carried five characters saying so. What the
+ * reader does want — how long ago — is next to this, in words.
+ */
 export function fmtDate(iso, lang) {
   if (!iso) return "";
-  return new Date(iso).toLocaleString(getIntlLocale(lang), {
+  return new Date(iso).toLocaleDateString(getIntlLocale(lang), {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   });
 }
 

@@ -12,6 +12,9 @@ import {
 import { COMPONENT_HISTORY_ACTIONS } from "@/domain/componentHistory";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
+/** Поля, чьё значение — момент времени, а не текст. */
+const DATE_KEYS = new Set(["date", "inspected_at", "installed_at"]);
+
 /**
  * The card in full, wearing the leak details sheet: its shell, its hero photo,
  * its tab bar, its field rows, its action bar — the same stylesheet, not a
@@ -116,7 +119,14 @@ export default function ComponentDetailsSheet({
                   filled.map(({ key, label, value }) => (
                     <div key={key} className={s.fieldRow}>
                       <span className={s.fieldLabel}>{label}</span>
-                      <span className={s.fieldValue}>{String(value)}</span>
+                      <span className={s.fieldValue}>
+                        {/* Дата внесения и дата инспекции хранятся с точностью
+                            до минуты и в таком виде уходят в Excel; на экране
+                            это была строка ISO во всю ширину. */}
+                        {DATE_KEYS.has(key)
+                          ? fmtDate(value, lang)
+                          : String(value)}
+                      </span>
                     </div>
                   ))
                 )}
