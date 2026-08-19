@@ -1,4 +1,5 @@
 import { buildComponentSheet } from "@/services/excelExport/componentSheet";
+import { buildComponentHistorySheet } from "@/services/inventory/componentHistorySheet";
 import { sanitizePortableArchiveSegment } from "@/services/archive/archivePaths";
 
 /**
@@ -12,7 +13,7 @@ import { sanitizePortableArchiveSegment } from "@/services/archive/archivePaths"
  *
  * The layout is chosen for a person with a zip open, not for a parser:
  *
- *   !Inventorization_<project>.xlsx   the sheet, for reading
+ *   !Inventorization_<project>.xlsx   the sheets, for reading
  *   components.json                   the same cards, for merging back
  *   Photos/                           one picture per card, named by its number
  *   Schemes/                          the drawings, under their own names
@@ -45,7 +46,7 @@ export function buildInventoryFileStem(projectName) {
  * thousand-record report off the main thread, and paying its round trip for a
  * single table would be slower, not faster.
  *
- * @param {{name?: string, headers: string[], keysOrder: string[], rows: object[], ids?: string[]}} sheetSpec
+ * @param {{name?: string, headers: string[], keysOrder: string[], rows: object[], ids?: string[], components?: object[], fields?: object[]}} sheetSpec
  * @param {{photoPaths?: Record<string, string>, texts?: object}} [options]
  */
 export async function buildInventoryWorkbookBuffer(sheetSpec, options = {}) {
@@ -56,6 +57,13 @@ export async function buildInventoryWorkbookBuffer(sheetSpec, options = {}) {
     { ...sheetSpec, name: INVENTORY_SHEET_NAME },
     options,
   );
+  // Вторым листом, как у утечек: сначала то, что есть, потом — как это стало
+  // таким. Реестр — набор утверждений о железе, и у каждого есть автор.
+  await buildComponentHistorySheet(workbook, {
+    components: sheetSpec?.components ?? [],
+    fields: sheetSpec?.fields ?? [],
+    texts: options.texts?.componentHistory ?? {},
+  });
   return workbook.xlsx.writeBuffer();
 }
 

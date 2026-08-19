@@ -148,6 +148,7 @@ src/services/backup/componentArchive.js      реестр в архиве, сл�
 src/services/backup/componentPhotoArchive.js снимки компонентов в архиве
 src/services/backup/schemaArchive.js         схемы в архиве
 src/services/inventory/inventoryArchive.js   отдельный архив инвентаризации
+src/services/inventory/componentHistorySheet.js лист истории реестра
 src/services/inventory/inventorySheet.js     разбор листа Inventorization
 src/services/inventory/inventoryImport.js    ввод инвентаризации любым файлом
 src/services/import/importRouting.js         что за файл принесли

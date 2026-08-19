@@ -153,6 +153,26 @@ export const components = {
     saved: "Archive saved: {{path}}",
     downloaded: 'Archive "{{fileName}}" downloaded',
     error: "Could not export the inventory: {{message}}",
+    historySheet: {
+      sheet: "History",
+      unknownUser: "Not stated",
+      emptyValue: "—",
+      actions: {
+        created: "Card created",
+        edited: "Edited",
+        inspected: "Inspected",
+      },
+      headers: {
+        index: "No",
+        component_uid: "Component number",
+        date: "Date",
+        time: "Time",
+        action: "Action",
+        user: "By",
+        to: "State",
+        changes: "Changes",
+      },
+    },
   },
   noCoords: {
     missing: "No coordinates recorded — the component is not on the map.",

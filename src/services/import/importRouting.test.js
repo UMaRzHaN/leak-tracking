@@ -33,6 +33,15 @@ describe("working out what an imported file is", () => {
     });
   });
 
+  it("still reads an inventory workbook that carries its own history", async () => {
+    // У архива инвентаризации второй лист — «История», и он не должен уводить
+    // книгу с маршрута реестра.
+    const file = await workbook(["Inventorization", "История"]);
+    await expect(detectImportKind(file)).resolves.toMatchObject({
+      kind: "inventory",
+    });
+  });
+
   it("recognises a ZIP backup by the file the import actually reads", async () => {
     const file = await archive({
       "backup.json": "[]",

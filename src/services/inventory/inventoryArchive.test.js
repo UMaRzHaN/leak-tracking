@@ -71,6 +71,39 @@ describe("the inventory archive", () => {
     );
   });
 
+  it("puts the trail on a second sheet, as the leak workbook does", async () => {
+    const blob = await buildInventoryArchive({
+      fileStem: "!Inventorization_test",
+      sheetSpec: {
+        ...sheetSpec,
+        components: [
+          {
+            id: "a",
+            component_uid: "4242",
+            history: [
+              {
+                action: "component_created",
+                date: "2026-08-19T10:00:00.000Z",
+                user: "Мухиддин",
+              },
+            ],
+          },
+        ],
+        fields: [],
+      },
+      registryEntry: null,
+      texts: { componentHistory: { sheet: "История", headers: {} } },
+    });
+
+    const zip = await new JSZip().loadAsync(blob);
+    const workbook = await new JSZip().loadAsync(
+      await zip.file("!Inventorization_test.xlsx").async("uint8array"),
+    );
+    const meta = await workbook.file("xl/workbook.xml").async("string");
+    expect(meta).toContain(INVENTORY_SHEET_NAME);
+    expect(meta).toContain("История");
+  });
+
   it("writes the sheet under the name the importer looks for", async () => {
     // The standalone file is read back by name, so this is a contract, not a
     // label: the leak workbook's tab keeps the customer's Russian heading.

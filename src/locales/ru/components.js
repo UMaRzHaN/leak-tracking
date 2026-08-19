@@ -154,6 +154,26 @@ export const components = {
     saved: "Архив сохранён: {{path}}",
     downloaded: "Архив «{{fileName}}» скачан",
     error: "Не удалось выгрузить инвентаризацию: {{message}}",
+    historySheet: {
+      sheet: "История",
+      unknownUser: "Не указан",
+      emptyValue: "—",
+      actions: {
+        created: "Карточка заведена",
+        edited: "Правка",
+        inspected: "Осмотр",
+      },
+      headers: {
+        index: "№",
+        component_uid: "Индивидуальный номер компонента",
+        date: "Дата",
+        time: "Время",
+        action: "Действие",
+        user: "Кто",
+        to: "Состояние",
+        changes: "Изменения",
+      },
+    },
   },
   noCoords: {
     missing: "Координаты не записаны — на карте компонента нет.",

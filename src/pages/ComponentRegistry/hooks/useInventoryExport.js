@@ -71,7 +71,33 @@ export function useInventoryExport({ project, notify }) {
         sheetSpec,
         registryEntry,
         schemaEntries,
-        texts: buildExcelExportTexts(t),
+        texts: {
+          ...buildExcelExportTexts(t),
+          // Лист истории подписан своими словами: у железа заводят карточку и
+          // осматривают, а не открывают и устраняют.
+          componentHistory: {
+            sheet: t("components.export.historySheet.sheet"),
+            unknownUser: t("components.export.historySheet.unknownUser"),
+            emptyValue: t("components.export.historySheet.emptyValue"),
+            actions: {
+              created: t("components.export.historySheet.actions.created"),
+              edited: t("components.export.historySheet.actions.edited"),
+              inspected: t("components.export.historySheet.actions.inspected"),
+            },
+            headers: {
+              index: t("components.export.historySheet.headers.index"),
+              component_uid: t(
+                "components.export.historySheet.headers.component_uid",
+              ),
+              date: t("components.export.historySheet.headers.date"),
+              time: t("components.export.historySheet.headers.time"),
+              action: t("components.export.historySheet.headers.action"),
+              user: t("components.export.historySheet.headers.user"),
+              to: t("components.export.historySheet.headers.to"),
+              changes: t("components.export.historySheet.headers.changes"),
+            },
+          },
+        },
       });
       const fileName = `${fileStem}.zip`;
 

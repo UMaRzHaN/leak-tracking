@@ -42,6 +42,13 @@ export async function buildComponentSheetSpec(project) {
       // Лист не показывает UUID — читателю он ничего не значит, — но ссылка на
       // снимок должна найти картинку той строки, на которой стоит.
       ids: buildComponentRowIds(ordered),
+      /*
+       * Сами карточки и объявление полей — для листа истории: он пишет, кто и
+       * когда что менял, и подписывает поля их заголовками, а не ключами.
+       * Строки листа реестра для этого не годятся: истории в них нет.
+       */
+      components: ordered,
+      fields: registry.fields?.all ?? [],
     };
   } catch (error) {
     logger.warn("[components] registry left out of the export:", error);
