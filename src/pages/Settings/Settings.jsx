@@ -49,15 +49,13 @@ export default function Settings(props) {
     handleExcelConflictMerge,
     handleExcelConflictOverwrite,
     handleExportZip,
-    handleImportExcel,
-    handleImportZip,
+    handleImportFile,
     handleRemove,
     handleRename,
     handleSelect,
     handleSettingsConfirm,
     hiddenFields,
     importConfirmState,
-    importExcelRef,
     importZipRef,
     integrityReport,
     isExportingZip,
@@ -189,14 +187,12 @@ export default function Settings(props) {
 
         <BackupSection
           activeProject={activeProject}
-          importExcelRef={importExcelRef}
-          importZipRef={importZipRef}
+          importRef={importZipRef}
           isExporting={isExportingZip}
           isImportingExcel={isImportingExcel}
           localeTexts={localeTexts}
           onExport={handleExportZip}
-          onImportExcel={handleImportExcel}
-          onImport={handleImportZip}
+          onImport={handleImportFile}
         />
 
         <LocalSyncSection sync={localSync} />

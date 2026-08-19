@@ -207,11 +207,20 @@ export const settings = {
 
   backup: "Backup",
   exportZip: "Export ZIP",
-  importZip: "Import ZIP",
   importExcel: "Import Excel",
   importExcelLoading: "Import...",
   backupHint:
-    "Export ZIP creates a complete project backup. Import ZIP restores that backup. Import Excel accepts an XLSX or Excel ZIP archive with tables, monitoring history, and photos.",
+    "Export ZIP creates a complete project backup. Import accepts any of the three — a ZIP backup, an XLSX or Excel ZIP archive, an inventory archive — and works out on its own what the file is and where it belongs.",
+  importFile: "Import",
+  importUnknownFile:
+    'Could not tell what "{{v1}}" is. Expected an XLSX, a ZIP backup or an inventory archive.',
+  inventoryImportInProgress: "Reading the inventory...",
+  inventoryImportEmpty: "No components to import were found in the file.",
+  inventoryImported:
+    "Inventory: {{v1}} added, {{v2}} updated, {{v3}} number(s) colliding.",
+  inventoryRowsShadowed:
+    "{{v1}} row(s) were not merged — those numbers already exist on the device, and a card written on site outweighs a spreadsheet row.",
+  inventoryImportError: "Inventory import error",
 
   mapCache: "Map Cache",
   satelliteTiles: "Satellite Tiles",

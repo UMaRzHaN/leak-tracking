@@ -28,7 +28,7 @@ export function useSettingsTexts() {
       excelExportLatestHint: t("settings.excelExportLatestHint"),
       backup: t("settings.backup"),
       exportZip: t("settings.exportZip"),
-      importZip: t("settings.importZip"),
+      importFile: t("settings.importFile"),
       importExcel: t("settings.importExcel", {
         defaultValue: t("settings.importExcel"),
       }),

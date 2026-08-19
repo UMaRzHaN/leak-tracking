@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   handleChangeSyncId: vi.fn(),
   handleExportZip: vi.fn(),
   handleImportZip: vi.fn(),
+  detectImportKind: vi.fn(),
 }));
 
 vi.mock("@/services/maps/tileCache", () => ({
@@ -190,13 +191,25 @@ vi.mock("./components/PhotoRequirementsSection", () => ({
     </div>
   ),
 }));
+// Одна кнопка импорта: секция отдаёт файл, а страница сама решает, что это.
 vi.mock("./components/BackupSection", () => ({
   default: ({ onExport, onImport }) => (
     <div>
       <button onClick={onExport}>export-backup</button>
-      <button onClick={onImport}>import-backup</button>
+      <button
+        onClick={() =>
+          onImport({
+            target: { files: [new File([""], "backup.zip")], value: "" },
+          })
+        }
+      >
+        import-backup
+      </button>
     </div>
   ),
+}));
+vi.mock("@/services/import/importRouting", () => ({
+  detectImportKind: mocks.detectImportKind,
 }));
 vi.mock("./components/LocalSyncSection", () => ({
   default: () => <div>local-sync</div>,
@@ -246,6 +259,7 @@ describe("Settings", () => {
     vi.clearAllMocks();
     mocks.getMapCacheInfo.mockResolvedValue({ count: 12, sizeMB: 1 });
     mocks.clearMapCache.mockResolvedValue(undefined);
+    mocks.detectImportKind.mockResolvedValue({ kind: "project" });
   });
 
   it("wires project, visibility, photo, backup, and cleanup settings", async () => {
@@ -297,6 +311,7 @@ describe("Settings", () => {
     expect(mocks.setLeakPhotoRequired).toHaveBeenCalledWith(true);
     expect(mocks.setMonitoringPhotoRequired).toHaveBeenCalledWith(true);
     expect(mocks.handleExportZip).toHaveBeenCalled();
-    expect(mocks.handleImportZip).toHaveBeenCalled();
+    // Файл распознан как ZIP-бэкап и ушёл тому же обработчику, что и раньше.
+    await waitFor(() => expect(mocks.handleImportZip).toHaveBeenCalled());
   });
 });
