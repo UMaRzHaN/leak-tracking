@@ -104,6 +104,10 @@ export default function ComponentRegistry({
       editTitle: t("components.editTitle"),
       stepPrefix: t("components.stepPrefix"),
       cancel: t("components.cancel"),
+      coords: {
+        lat: t("components.coords.lat"),
+        lng: t("components.coords.lng"),
+      },
       // Shaped the way the leak form's header, footer and clear actions expect
       // their labels, since the card reuses all three.
       buttons: {
@@ -347,7 +351,9 @@ export default function ComponentRegistry({
       {viewing && (
         <ComponentDetailsSheet
           component={viewing}
-          fields={fields?.viewable ?? []}
+          // Целиком, а не только видимые: подписи в истории берутся отсюда, и
+          // поле, скрытое из карточки, всё равно должно называться по-русски.
+          fields={fields?.all ?? []}
           onEdit={(card) => {
             setViewing(null);
             if (canWrite) openCard(card);

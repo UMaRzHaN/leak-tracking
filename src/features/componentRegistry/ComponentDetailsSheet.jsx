@@ -7,6 +7,7 @@ import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import {
   ACTION_ICONS,
   fmtDate,
+  formatHistoryValue,
   relativeTime,
 } from "@/features/leakDetails/components/viewBlockUtils";
 import { COMPONENT_HISTORY_ACTIONS } from "@/domain/componentHistory";
@@ -14,6 +15,9 @@ import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
 /** Поля, чьё значение — момент времени, а не текст. */
 const DATE_KEYS = new Set(["date", "inspected_at", "installed_at"]);
+
+/** Координаты живут на своей вкладке, а не среди паспортных величин. */
+const COORD_KEYS = new Set(["lat", "lng"]);
 
 /**
  * The card in full, wearing the leak details sheet: its shell, its hero photo,
@@ -50,6 +54,21 @@ export default function ComponentDetailsSheet({
     [component, fields],
   );
 
+  /*
+   * Разложено по вкладкам так же, как у утечки: паспорт отдельно, снимок
+   * отдельно, координаты отдельно. Одним списком номер на схеме, давление и
+   * широта стояли подряд, хотя отвечают на разные вопросы, и найти нужное
+   * получалось только прокруткой.
+   */
+  const params = useMemo(
+    () => filled.filter(({ key }) => !COORD_KEYS.has(key)),
+    [filled],
+  );
+  const coords = useMemo(
+    () => filled.filter(({ key }) => COORD_KEYS.has(key)),
+    [filled],
+  );
+
   const history = [...(component?.history ?? [])].reverse();
 
   const actionLabel = (action) =>
@@ -60,9 +79,18 @@ export default function ComponentDetailsSheet({
     })[action] ?? action;
 
   const tabs = [
-    { id: "card", label: t("components.detailsTitle") },
-    { id: "history", label: t("components.historyTitle") },
+    { id: "card", label: t("components.tabs.params") },
+    { id: "photo", label: t("components.tabs.photo") },
+    { id: "coords", label: t("components.tabs.coords") },
+    { id: "history", label: t("components.tabs.history") },
   ];
+
+  const fieldValue = (key, value) =>
+    DATE_KEYS.has(key) ? fmtDate(value, lang) : String(value);
+
+  /** Заголовок поля из объявления реестра, а не ключ из кода. */
+  const labelOf = (key) =>
+    fields.find((field) => field.key === key)?.label ?? key;
 
   return (
     <>
@@ -111,22 +139,63 @@ export default function ComponentDetailsSheet({
           <div className={s.tabContent} key={tab}>
             {tab === "card" ? (
               <div className={s.tabPane}>
-                {filled.length === 0 ? (
+                {params.length === 0 ? (
                   <div className={s.tabEmpty}>
                     <p>{t("components.detailsEmpty")}</p>
                   </div>
                 ) : (
-                  filled.map(({ key, label, value }) => (
+                  params.map(({ key, label, value }) => (
                     <div key={key} className={s.fieldRow}>
                       <span className={s.fieldLabel}>{label}</span>
+                      {/* Дата внесения и дата инспекции хранятся с точностью до
+                          минуты и в таком виде уходят в Excel; на экране это
+                          была строка ISO во всю ширину. */}
                       <span className={s.fieldValue}>
-                        {/* Дата внесения и дата инспекции хранятся с точностью
-                            до минуты и в таком виде уходят в Excel; на экране
-                            это была строка ISO во всю ширину. */}
-                        {DATE_KEYS.has(key)
-                          ? fmtDate(value, lang)
-                          : String(value)}
+                        {fieldValue(key, value)}
                       </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : tab === "photo" ? (
+              <div className={s.tabPane}>
+                {photoSrc ? (
+                  /* Той же плиткой, что у утечки, и тем же просмотрщиком:
+                     разглядывают снимки одинаково — сводя и разводя пальцы. */
+                  <div className={`${s.photoCompare} ${s.photoCompareSingle}`}>
+                    <div className={s.photoCompareSlot}>
+                      <button
+                        type="button"
+                        className={s.photoCompareThumb}
+                        onClick={() => setViewerOpen(true)}
+                      >
+                        <img
+                          className={s.photoCompareImg}
+                          src={photoSrc}
+                          alt={component?.component ?? ""}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={s.tabEmpty}>
+                    <p>{t("components.noPhoto")}</p>
+                  </div>
+                )}
+              </div>
+            ) : tab === "coords" ? (
+              <div className={s.tabPane}>
+                {coords.length === 0 ? (
+                  <div className={s.tabEmpty}>
+                    {/* Карточка на месте, компонента на карте нет — это стоит
+                        сказать прямо, а не пустой вкладкой. */}
+                    <p>{t("components.noCoords.missing")}</p>
+                  </div>
+                ) : (
+                  coords.map(({ key, label, value }) => (
+                    <div key={key} className={s.fieldRow}>
+                      <span className={s.fieldLabel}>{label}</span>
+                      <span className={s.fieldValue}>{String(value)}</span>
                     </div>
                   ))
                 )}
@@ -158,12 +227,48 @@ export default function ComponentDetailsSheet({
                         {entry.to && (
                           <span className={s.logStatus}>{entry.to}</span>
                         )}
+                        {/* Прежнее значение и новое, как в истории утечки.
+                            Раньше здесь стояло имя поля из кода — «medium»,
+                            «scheme_tag», — и запись сообщала, что что-то
+                            менялось, но не что именно. */}
                         {Array.isArray(entry.changes) &&
-                          entry.changes.map((change) => (
-                            <span key={change.key} className={s.logChange}>
-                              {change.key}
-                            </span>
-                          ))}
+                          entry.changes.length > 0 && (
+                            <div className={s.logChanges}>
+                              {entry.changes.map((change, changeIndex) => (
+                                <div
+                                  key={`${change.key}-${changeIndex}`}
+                                  className={s.logChange}
+                                >
+                                  <span className={s.logChangeLabel}>
+                                    {labelOf(change.key)}
+                                  </span>
+                                  <span
+                                    className={`${s.logChangeValue} ${s.logChangeValueBefore}`}
+                                  >
+                                    {formatHistoryValue(
+                                      change.key,
+                                      change.from,
+                                      change.kind,
+                                      t,
+                                      lang,
+                                    )}
+                                  </span>
+                                  <span className={s.logChangeArrow}>→</span>
+                                  <span
+                                    className={`${s.logChangeValue} ${s.logChangeValueAfter}`}
+                                  >
+                                    {formatHistoryValue(
+                                      change.key,
+                                      change.to,
+                                      change.kind,
+                                      t,
+                                      lang,
+                                    )}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         <span className={s.logTime}>
                           {fmtDate(entry.date, lang)} ·{" "}
                           {relativeTime(entry.date, t)}
@@ -195,12 +300,16 @@ export default function ComponentDetailsSheet({
             ) : (
               <>
                 {/* Behind the reading rather than in the list, where a mis-tap
-                    costs a card somebody walked out to write. */}
+                    costs a card somebody walked out to write. Значком, как у
+                    утечки: слово «Удалить» рядом с «Редактировать» читается
+                    как равный по весу выбор, а он не равный. */}
                 <button
                   className={s.btnDanger}
                   onClick={() => setConfirmingRemove(true)}
+                  title={t("components.remove")}
+                  aria-label={t("components.remove")}
                 >
-                  {t("components.removeShort")}
+                  🗑
                 </button>
                 <button
                   className={s.btnPrimary}

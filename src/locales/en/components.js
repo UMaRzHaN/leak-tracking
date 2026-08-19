@@ -155,8 +155,19 @@ export const components = {
     error: "Could not export the inventory: {{message}}",
   },
   noCoords: {
+    missing: "No coordinates recorded — the component is not on the map.",
     saved:
       "The component was saved without coordinates: the location could not be determined. The card is there, but the component will not appear on the map.",
+  },
+  tabs: {
+    params: "Parameters",
+    photo: "Photo",
+    coords: "Coordinates",
+    history: "History",
+  },
+  coords: {
+    lat: "Coordinate X",
+    lng: "Coordinate Y",
   },
   buttons: {
     prev: "← Back",

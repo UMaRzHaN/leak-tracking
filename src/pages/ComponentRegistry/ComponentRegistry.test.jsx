@@ -116,7 +116,11 @@ function makeRegistry(overrides = {}) {
     components: [],
     conflicts: [],
     conflictingIds: new Set(),
-    fields: { copyable: COMPONENT_FIELDS.filter((f) => f.copyable) },
+    fields: {
+      all: COMPONENT_FIELDS,
+      viewable: COMPONENT_FIELDS.filter((f) => f.viewable),
+      copyable: COMPONENT_FIELDS.filter((f) => f.copyable),
+    },
     voice: { outputFields: ["component"], synonymsFields: ["component"] },
     lastComponent: null,
     loading: false,
@@ -340,8 +344,12 @@ describe("ComponentRegistry screen", () => {
     fireEvent.click(screen.getByText("History"));
     expect(screen.getByText("Card created")).toBeTruthy();
     expect(screen.getByText("Мухиддин", { exact: false })).toBeTruthy();
-    // Deletion lives behind the reading rather than one mis-tap away in the list.
-    expect(screen.getByText("Delete")).toBeTruthy();
+    // Deletion lives behind the reading rather than one mis-tap away in the
+    // list, и значком: слово рядом с «Редактировать» читалось бы как равный
+    // по весу выбор, а он не равный.
+    expect(
+      screen.getByRole("button", { name: "Delete component" }),
+    ).toBeTruthy();
   });
 
   it("asks twice before throwing a walked card away", () => {
@@ -351,7 +359,7 @@ describe("ComponentRegistry screen", () => {
     renderRegistry();
 
     fireEvent.click(screen.getByText("Задвижка"));
-    fireEvent.click(screen.getByText("Delete"));
+    fireEvent.click(screen.getByRole("button", { name: "Delete component" }));
     expect(registry.current.removeComponent).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByText("Delete for good"));
@@ -734,8 +742,9 @@ describe("component card form", () => {
     expect(screen.getByRole("dialog", { name: "Component card" })).toBeTruthy();
     fireEvent.click(screen.getByText("Edit"));
 
-    // The stored card already carries its number, so paging needs nothing.
-    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByText("Next →"));
+    // Правка — один лист, а не мастер: у сохранённой карточки правят одно
+    // поле, и проводить ради него через четыре шага не за чем.
+    expect(screen.queryByText("Next →")).toBeNull();
     attachPhoto();
     fireEvent.click(screen.getByText("Save"));
     await waitFor(() =>
@@ -981,5 +990,61 @@ describe("the microphone in the card", () => {
     fireEvent.click(screen.getByText("Add component"));
 
     expect(screen.queryByRole("button", { name: "Voice input" })).toBeNull();
+  });
+});
+
+describe("the card in full", () => {
+  const walked = {
+    id: "a",
+    component_uid: "7",
+    component: "Задвижка",
+    scheme_tag: "ЗД32",
+    lat: 38.4,
+    lng: 66.1,
+    history: [
+      {
+        action: "component_edited",
+        date: "2026-01-02T00:00:00.000Z",
+        user: "Мухиддин",
+        changes: [{ key: "scheme_tag", from: "ЗД31", to: "ЗД32" }],
+      },
+    ],
+  };
+
+  function openCard(component = walked) {
+    registry.current = makeRegistry({ components: [component] });
+    renderRegistry();
+    fireEvent.click(screen.getByText("Задвижка"));
+  }
+
+  it("keeps the coordinates off the passport list and on their own tab", () => {
+    openCard();
+
+    // Номер на схеме и широта отвечают на разные вопросы; одним списком
+    // нужное находилось только прокруткой.
+    expect(screen.getAllByText("ЗД32").length).toBeGreaterThan(0);
+    expect(screen.queryByText("38.4")).toBeNull();
+
+    fireEvent.click(screen.getByText("Coordinates"));
+    expect(screen.getByText("38.4")).toBeTruthy();
+    expect(screen.getByText("66.1")).toBeTruthy();
+  });
+
+  it("says outright when a card never got a fix", () => {
+    openCard({ ...walked, lat: undefined, lng: undefined });
+
+    fireEvent.click(screen.getByText("Coordinates"));
+    expect(screen.getByText(/not on the map/)).toBeTruthy();
+  });
+
+  it("shows what a change was, not which field it touched", () => {
+    // Раньше в истории стояло имя поля из кода — «scheme_tag», — и запись
+    // сообщала, что что-то менялось, но не что именно.
+    openCard();
+
+    fireEvent.click(screen.getByText("History"));
+    expect(screen.getByText("ЗД31")).toBeTruthy();
+    expect(screen.getAllByText("ЗД32").length).toBeGreaterThan(0);
+    expect(screen.queryByText("scheme_tag")).toBeNull();
   });
 });
