@@ -1,5 +1,6 @@
 import { buildComponentSheet } from "@/services/excelExport/componentSheet";
 import { buildComponentHistorySheet } from "@/services/inventory/componentHistorySheet";
+import { addInventoryBackupSheet } from "@/services/inventory/inventoryBackupSheet";
 import { sanitizePortableArchiveSegment } from "@/services/archive/archivePaths";
 
 /**
@@ -13,13 +14,14 @@ import { sanitizePortableArchiveSegment } from "@/services/archive/archivePaths"
  *
  * The layout is chosen for a person with a zip open, not for a parser:
  *
- *   !Inventorization_<project>.xlsx   the sheets, for reading
- *   components.json                   the same cards, for merging back
- *   Photos/                           one picture per card, named by its number
- *   Schemes/                          the drawings, under their own names
+ *   !Inventorization_<project>.xlsx   листы для чтения и служебный — для машины
+ *   Photos/                           по снимку на карточку, названы её номером
+ *   Schemes/                          чертежи под своими именами
  *
- * `components.json` and `Photos/` are exactly what a project archive carries,
- * so an inventory archive imports through the path that already exists.
+ * Как у отчёта по утечкам: один файл, который открывают и читают, и он же
+ * возвращается обратно без потерь. Карточки целиком — с историей, подписями и
+ * ссылками на снимки — лежат скрытым листом внутри книги, а не отдельным
+ * json рядом: json рядом с книгой выглядит как черновик, забытый в архиве.
  */
 
 export const INVENTORY_SHEET_NAME = "Inventorization";
@@ -47,7 +49,8 @@ export function buildInventoryFileStem(projectName) {
  * single table would be slower, not faster.
  *
  * @param {{name?: string, headers: string[], keysOrder: string[], rows: object[], ids?: string[], components?: object[], fields?: object[]}} sheetSpec
- * @param {{photoPaths?: Record<string, string>, texts?: object}} [options]
+ * @param {{photoPaths?: Record<string, string>, texts?: object, backup?: object[]|null}} [options]
+ *   `backup` — карточки целиком, как они уедут в служебный лист.
  */
 export async function buildInventoryWorkbookBuffer(sheetSpec, options = {}) {
   const ExcelJS = (await getExcelJS()).default;
@@ -64,6 +67,13 @@ export async function buildInventoryWorkbookBuffer(sheetSpec, options = {}) {
     fields: sheetSpec?.fields ?? [],
     texts: options.texts?.componentHistory ?? {},
   });
+  // Последним и скрытым: это страница для машины, и открывший книгу должен
+  // сначала увидеть то, ради чего её открыл.
+  addInventoryBackupSheet(
+    workbook,
+    { data: options.backup ?? [] },
+    options.texts?.inventoryBackup ?? {},
+  );
   return workbook.xlsx.writeBuffer();
 }
 
@@ -73,7 +83,7 @@ export async function buildInventoryWorkbookBuffer(sheetSpec, options = {}) {
  * @param {object} options
  * @param {string} options.fileStem
  * @param {object} options.sheetSpec rows and headers for the sheet
- * @param {{path: string, content: string, photoEntries?: {path: string, blob: Blob}[], photoPaths?: Record<string, string>}|null} options.registryEntry
+ * @param {{photoEntries?: {path: string, blob: Blob}[], photoPaths?: Record<string, string>, components?: object[]}|null} options.registryEntry
  * @param {{path: string, blob: Blob}[]} [options.schemaEntries]
  * @param {object} [options.texts] подписи для ячейки со снимком
  * @returns {Promise<Blob>}
@@ -94,15 +104,13 @@ export async function buildInventoryArchive({
     `${fileStem}.xlsx`,
     await buildInventoryWorkbookBuffer(sheetSpec, {
       photoPaths: registryEntry?.photoPaths ?? {},
+      backup: registryEntry?.components ?? [],
       texts,
     }),
   );
 
-  if (registryEntry) {
-    zip.file(registryEntry.path, registryEntry.content);
-    for (const entry of registryEntry.photoEntries ?? []) {
-      zip.file(entry.path, entry.blob);
-    }
+  for (const entry of registryEntry?.photoEntries ?? []) {
+    zip.file(entry.path, entry.blob);
   }
 
   for (const entry of schemaEntries) zip.file(entry.path, entry.blob);

@@ -20,24 +20,25 @@ describe("the inventory archive", () => {
     expect(buildInventoryFileStem("")).toBe("!Inventorization_no_name");
   });
 
-  it("carries the sheet, the cards and the drawings side by side", async () => {
+  it("carries the sheet, the pictures and the drawings side by side", async () => {
+    // Никакого json рядом: карточки лежат служебным листом внутри книги, как
+    // у отчёта по утечкам, и архив состоит из книги и двух папок.
     const blob = await buildInventoryArchive({
       fileStem: "!Inventorization_test",
       sheetSpec,
       registryEntry: {
-        path: "components.json",
-        content: JSON.stringify({ data: [{ id: "a" }] }),
+        components: [{ id: "a", component_uid: "4242" }],
         photoEntries: [{ path: "Photos/4242.jpg", blob: new Blob(["x"]) }],
       },
       schemaEntries: [{ path: "Schemes/узел.pdf", blob: new Blob(["y"]) }],
     });
 
     const zip = await new JSZip().loadAsync(blob);
-    const names = Object.keys(zip.files);
+    const names = Object.keys(zip.files).filter((name) => !zip.files[name].dir);
     expect(names).toContain("!Inventorization_test.xlsx");
-    expect(names).toContain("components.json");
     expect(names).toContain("Photos/4242.jpg");
     expect(names).toContain("Schemes/узел.pdf");
+    expect(names).not.toContain("components.json");
   });
 
   it("points the photo column at the folder beside the workbook", async () => {

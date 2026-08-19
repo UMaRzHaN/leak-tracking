@@ -10,9 +10,23 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/repositories/ComponentRepository", () => ({
   ComponentRepository: { load: mocks.load, save: mocks.save },
 }));
-vi.mock("@/services/backup/componentArchive", () => ({
-  restoreComponentsFromArchive: mocks.restoreComponents,
-}));
+vi.mock("@/services/backup/componentArchive", async () => {
+  const { mergeComponentRegistries } = await import("@/domain/componentMerge");
+  return {
+    restoreComponentsFromArchive: mocks.restoreComponents,
+    // Настоящее сведение поверх мока хранилища: путь через служебный лист
+    // должен отличаться от json только источником карточек.
+    mergeIncomingComponents: async (project, incoming) => {
+      const local = await mocks.load(project);
+      const { merged, added, updated, conflicts } = mergeComponentRegistries(
+        local,
+        incoming,
+      );
+      await mocks.save(project, merged);
+      return { added, updated, conflicts: conflicts.length };
+    },
+  };
+});
 vi.mock("@/services/backup/schemaArchive", () => ({
   restoreSchemasFromArchive: mocks.restoreSchemas,
 }));
@@ -110,5 +124,70 @@ describe("a spreadsheet meeting a card written on site", () => {
     ];
 
     expect(separateSheetCards(local, incoming).mergeable).toHaveLength(1);
+  });
+});
+
+describe("реестр внутри книги", () => {
+  const cards = [
+    { id: "c1", component_uid: "4242", component: "Задвижка", history: [] },
+    { id: "c2", component_uid: "4243", component: "Кран шаровой", history: [] },
+  ];
+
+  async function archiveWithBackupSheet({ json = null } = {}) {
+    const { buildInventoryArchive } = await import("./inventoryArchive");
+    const blob = await buildInventoryArchive({
+      fileStem: "!Inventorization_test",
+      sheetSpec: {
+        headers: ["№", "Индивидуальный номер компонента"],
+        keysOrder: ["index", "component_uid"],
+        rows: cards.map((card, index) => ({
+          index: index + 1,
+          component_uid: card.component_uid,
+        })),
+        ids: cards.map((card) => card.id),
+        components: cards,
+        fields: [],
+      },
+      registryEntry: { components: cards },
+    });
+
+    if (!json) return new File([blob], "!Inventorization_test.zip");
+
+    const JSZip = (await import("jszip")).default;
+    const zip = await new JSZip().loadAsync(blob);
+    zip.file("components.json", JSON.stringify({ version: 1, data: json }));
+    return new File(
+      [await zip.generateAsync({ type: "blob" })],
+      "!Inventorization_test.zip",
+    );
+  }
+
+  it("читает карточки из служебного листа, без json рядом", async () => {
+    // Ради этого json и убран: архив состоит из книги и папок, как у утечек.
+    const result = await importInventoryFile(
+      await archiveWithBackupSheet(),
+      project,
+      { excel },
+    );
+
+    expect(result).toMatchObject({ source: "archive", added: 2 });
+    expect(
+      mocks.save.mock.calls[0][1].map((card) => card.component_uid),
+    ).toEqual(["4242", "4243"]);
+  });
+
+  it("всё ещё читает архивы, выгруженные с json", async () => {
+    // Их у людей на руках сколько угодно, и они не перестают быть верными.
+    mocks.restoreComponents.mockResolvedValue({
+      added: 1,
+      updated: 0,
+      conflicts: 0,
+    });
+    const legacy = new File(["не зип"], "!Inventorization_old.zip");
+
+    const result = await importInventoryFile(legacy, project, { excel });
+
+    expect(result).toMatchObject({ source: "archive", added: 1 });
+    expect(mocks.restoreComponents).toHaveBeenCalled();
   });
 });

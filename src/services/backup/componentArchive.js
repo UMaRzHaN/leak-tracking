@@ -58,6 +58,9 @@ export async function buildComponentArchiveEntry(project, options = {}) {
       photoEntries: entries,
       // Куда лист должен ссылаться из колонки «Фото», по id карточки.
       photoPaths: paths,
+      // Карточки с уже переписанными путями к снимкам. Архив инвентаризации
+      // кладёт их служебным листом в саму книгу, а не файлом рядом.
+      components,
       content: JSON.stringify({
         version: ARCHIVE_VERSION,
         exportedAt: Date.now(),
@@ -115,7 +118,20 @@ export async function restoreComponentsFromArchive(file, project) {
   }
 
   if (incoming.length === 0) return nothing;
+  return mergeIncomingComponents(project, incoming);
+}
 
+/**
+ * Сводит приехавшие карточки с теми, что уже есть, и сохраняет результат.
+ *
+ * Вынесено отдельно, потому что путей, по которым карточки приезжают, стало
+ * два: json рядом с книгой у прежних архивов и служебный лист внутри книги у
+ * нынешних. Сведение у них одно и то же, и расходиться ему незачем.
+ *
+ * @param {object} project
+ * @param {object[]} incoming
+ */
+export async function mergeIncomingComponents(project, incoming) {
   try {
     const local = await ComponentRepository.load(project);
     const { merged, added, updated, conflicts } = mergeComponentRegistries(
@@ -127,6 +143,6 @@ export async function restoreComponentsFromArchive(file, project) {
     return { added, updated, conflicts: conflicts.length };
   } catch (error) {
     logger.warn("[components] could not merge the incoming registry:", error);
-    return nothing;
+    return { added: 0, updated: 0, conflicts: 0 };
   }
 }

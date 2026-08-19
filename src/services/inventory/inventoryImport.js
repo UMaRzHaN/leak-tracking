@@ -1,22 +1,27 @@
 import { ComponentRepository } from "@/repositories/ComponentRepository";
 import { mergeComponentRegistries } from "@/domain/componentMerge";
-import { restoreComponentsFromArchive } from "@/services/backup/componentArchive";
+import {
+  mergeIncomingComponents,
+  restoreComponentsFromArchive,
+} from "@/services/backup/componentArchive";
+import { restoreComponentPhotos } from "@/services/backup/componentPhotoArchive";
 import { restoreSchemasFromArchive } from "@/services/backup/schemaArchive";
 import { logger } from "@/utils/logger";
 import { componentIdFromUid, parseInventorySheet } from "./inventorySheet";
+import { parseInventoryBackupSheet } from "./inventoryBackupSheet";
 
 /**
  * Bringing an inventory in, whatever shape it arrives in.
  *
  * Three routes, in order of how much they carry:
  *
- *   an inventory or project archive  cards, photographs, drawings
- *   a zip holding a workbook         the sheet inside it
- *   a bare .xlsx                     the sheet
+ *   архив со служебным листом или json  карточки, снимки, чертежи
+ *   зип с книгой внутри                 видимый лист
+ *   голый .xlsx                         видимый лист
  *
- * The archive route is the whole thing and is preferred wherever a
- * `components.json` is present — the sheet is a flattened view of the same
- * cards, and reading it instead would silently drop the photographs.
+ * Полный путь предпочтителен везде, где он есть: видимый лист — это те же
+ * карточки, разложенные в плоскую таблицу, и прочитать его вместо служебного
+ * значило бы молча потерять снимки, историю и подписи.
  */
 
 const getExcelJS = () => import("exceljs");
@@ -41,24 +46,62 @@ async function readWorkbook(data) {
  * @returns {Promise<{components: object[], skipped: number}>}
  */
 export async function readInventorySheetFile(file, excel) {
-  const buffer = await file.arrayBuffer();
+  const workbook = await openInventoryWorkbook(file);
+  if (!workbook) return { components: [], skipped: 0 };
+  return parseInventorySheet(workbook, excel);
+}
 
+/** Книга инвентаризации — голая или лежащая в архиве. */
+async function openInventoryWorkbook(file, openedZip = null) {
   const isZip =
     /\.zip$/i.test(/** @type {File} */ (file)?.name ?? "") ||
     String(file?.type ?? "").includes("zip");
-  if (!isZip) return parseInventorySheet(await readWorkbook(buffer), excel);
 
-  const JSZip = (await getJSZip()).default;
-  const zip = await new JSZip().loadAsync(buffer);
+  if (!isZip && !openedZip) return readWorkbook(await file.arrayBuffer());
+
+  const zip = openedZip ?? (await openZip(file));
   const entry = Object.keys(zip.files).find(
     (name) => !zip.files[name].dir && isWorkbookName(name),
   );
-  if (!entry) return { components: [], skipped: 0 };
+  if (!entry) return null;
+  return readWorkbook(await zip.file(entry).async("arraybuffer"));
+}
 
-  return parseInventorySheet(
-    await readWorkbook(await zip.file(entry).async("arraybuffer")),
-    excel,
-  );
+async function openZip(file) {
+  const JSZip = (await getJSZip()).default;
+  return new JSZip().loadAsync(await file.arrayBuffer());
+}
+
+/**
+ * Карточки из служебного листа книги, лежащей в архиве.
+ *
+ * Снимки восстанавливаются здесь же и до сведения: карточка, выигравшая
+ * слияние с путём в чужое хранилище, показывала бы пустую рамку там, где есть
+ * фотография.
+ *
+ * @returns {Promise<{added: number, updated: number, conflicts: number}|null>}
+ *   null — если служебного листа в архиве нет вовсе.
+ */
+async function restoreComponentsFromWorkbook(file, project) {
+  let zip;
+  try {
+    zip = await openZip(file);
+  } catch {
+    return null;
+  }
+
+  let cards;
+  try {
+    const workbook = await openInventoryWorkbook(file, zip);
+    cards = workbook ? parseInventoryBackupSheet(workbook) : null;
+  } catch (error) {
+    logger.warn("[inventory] служебный лист книги не прочитался:", error);
+    return null;
+  }
+  if (!cards?.length) return null;
+
+  const restored = await restoreComponentPhotos(zip, cards, project);
+  return mergeIncomingComponents(project, restored);
 }
 
 /**
@@ -113,7 +156,11 @@ export async function importInventoryFile(file, project, registry) {
   };
   if (!project?.id) return nothing;
 
-  const archive = await restoreComponentsFromArchive(file, project);
+  // Служебный лист книги — нынешние архивы; components.json рядом — те, что
+  // выгружены до него, и ZIP-бэкапы проекта, которые несут его до сих пор.
+  const archive =
+    (await restoreComponentsFromWorkbook(file, project)) ??
+    (await restoreComponentsFromArchive(file, project));
   if (archive.added || archive.updated || archive.conflicts) {
     // Drawings ride in the same archive and are cheap to miss: the registry
     // screen shows both, and an inventory handed over without its schemes is

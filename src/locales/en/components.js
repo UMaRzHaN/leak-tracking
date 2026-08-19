@@ -153,6 +153,17 @@ export const components = {
     saved: "Archive saved: {{path}}",
     downloaded: 'Archive "{{fileName}}" downloaded',
     error: "Could not export the inventory: {{message}}",
+    inventoryBackup: {
+      sheet: "Component registry",
+      note: "A summary for reading. The registry itself is in the hidden service columns — the archive is restored from them.",
+      fieldColumn: "Field",
+      valueColumn: "Value",
+      summary: {
+        components: "Components",
+        withPhoto: "With a photo",
+        version: "Backup version",
+      },
+    },
     historySheet: {
       sheet: "History",
       unknownUser: "Not stated",

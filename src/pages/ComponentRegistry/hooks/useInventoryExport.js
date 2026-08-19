@@ -73,6 +73,23 @@ export function useInventoryExport({ project, notify }) {
         schemaEntries,
         texts: {
           ...buildExcelExportTexts(t),
+          // Служебный лист подписан своими словами: реестр — не резервная
+          // копия проекта, а то, что этот архив и есть.
+          inventoryBackup: {
+            sheet: t("components.export.inventoryBackup.sheet"),
+            note: t("components.export.inventoryBackup.note"),
+            fieldColumn: t("components.export.inventoryBackup.fieldColumn"),
+            valueColumn: t("components.export.inventoryBackup.valueColumn"),
+            summary: {
+              components: t(
+                "components.export.inventoryBackup.summary.components",
+              ),
+              withPhoto: t(
+                "components.export.inventoryBackup.summary.withPhoto",
+              ),
+              version: t("components.export.inventoryBackup.summary.version"),
+            },
+          },
           // Лист истории подписан своими словами: у железа заводят карточку и
           // осматривают, а не открывают и устраняют.
           componentHistory: {

@@ -154,6 +154,17 @@ export const components = {
     saved: "Архив сохранён: {{path}}",
     downloaded: "Архив «{{fileName}}» скачан",
     error: "Не удалось выгрузить инвентаризацию: {{message}}",
+    inventoryBackup: {
+      sheet: "Реестр компонентов",
+      note: "Сводка для просмотра. Реестр целиком — в скрытых служебных столбцах: по ним архив возвращается обратно.",
+      fieldColumn: "Параметр",
+      valueColumn: "Значение",
+      summary: {
+        components: "Компонентов",
+        withPhoto: "Со снимком",
+        version: "Версия резервной копии",
+      },
+    },
     historySheet: {
       sheet: "История",
       unknownUser: "Не указан",
