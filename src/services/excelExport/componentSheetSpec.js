@@ -4,7 +4,10 @@ import {
 } from "@/configs/projectAdapter";
 import { ComponentRepository } from "@/repositories/ComponentRepository";
 import { compareComponentsByUid } from "@/domain/componentRegistry";
-import { buildComponentRows } from "@/services/excelExport/componentSheet";
+import {
+  buildComponentRowIds,
+  buildComponentRows,
+} from "@/services/excelExport/componentSheet";
 import { logger } from "@/utils/logger";
 
 /**
@@ -36,6 +39,9 @@ export async function buildComponentSheetSpec(project) {
       headers,
       keysOrder,
       rows: buildComponentRows(ordered, keysOrder),
+      // Лист не показывает UUID — читателю он ничего не значит, — но ссылка на
+      // снимок должна найти картинку той строки, на которой стоит.
+      ids: buildComponentRowIds(ordered),
     };
   } catch (error) {
     logger.warn("[components] registry left out of the export:", error);

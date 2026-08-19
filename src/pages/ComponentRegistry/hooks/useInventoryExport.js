@@ -38,12 +38,14 @@ export function useInventoryExport({ project, notify }) {
         { buildComponentArchiveEntry },
         { buildSchemaArchiveEntries },
         { SchemaRepository },
+        { buildExcelExportTexts },
       ] = await Promise.all([
         import("@/services/inventory/inventoryArchive"),
         import("@/services/excelExport/componentSheetSpec"),
         import("@/services/backup/componentArchive"),
         import("@/services/backup/schemaArchive"),
         import("@/repositories/SchemaRepository"),
+        import("@/services/excelExport/exportTexts"),
       ]);
 
       const sheetSpec = await buildComponentSheetSpec(project);
@@ -69,6 +71,7 @@ export function useInventoryExport({ project, notify }) {
         sheetSpec,
         registryEntry,
         schemaEntries,
+        texts: buildExcelExportTexts(t),
       });
       const fileName = `${fileStem}.zip`;
 

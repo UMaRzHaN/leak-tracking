@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  buildComponentRowIds,
   buildComponentRows,
   buildComponentSheet,
 } from "@/services/excelExport/componentSheet";
@@ -10,14 +11,20 @@ function createWorkbook() {
     sheets,
     addWorksheet: vi.fn((name) => {
       const columns = new Map();
+      /** @type {any} */
       const sheet = {
         name,
         rows: [],
         tables: [],
         addTable: vi.fn((table) => sheet.tables.push(table)),
-        getRow: vi.fn(() => ({
+        cells: new Map(),
+        getRow: vi.fn((rowNumber) => ({
           eachCell: vi.fn(),
-          getCell: vi.fn(() => ({})),
+          getCell: vi.fn((columnNumber) => {
+            const key = `${rowNumber}:${columnNumber}`;
+            if (!sheet.cells.has(key)) sheet.cells.set(key, {});
+            return sheet.cells.get(key);
+          }),
           font: {},
           fill: {},
           height: 0,
@@ -109,5 +116,69 @@ describe("component rows", () => {
   it("ignores columns the record knows nothing about", () => {
     const rows = buildComponentRows(undefined, ["index"]);
     expect(rows).toEqual([]);
+  });
+});
+
+describe("the photo column", () => {
+  const photoSpec = {
+    name: "Inventorization",
+    headers: ["№", "Индивидуальный номер компонента", "Фото"],
+    keysOrder: ["index", "component_uid", "photo"],
+    rows: [
+      { index: 1, component_uid: "7", photo: "idb://photo_a" },
+      { index: 2, component_uid: "8", photo: "idb://photo_gone" },
+      { index: 3, component_uid: "9", photo: "" },
+    ],
+    ids: ["a", "b", "c"],
+  };
+  const texts = {
+    photo: { open: "Открыть фото", missing: "Есть (файл не найден)" },
+  };
+
+  it("links to the picture lying next to the workbook", async () => {
+    // Раньше в ячейку попадал сам путь хранения — читателю он не говорит
+    // ничего, а на другом устройстве ещё и никуда не ведёт.
+    const workbook = createWorkbook();
+    await buildComponentSheet(workbook, photoSpec, {
+      photoPaths: { a: "Photos/7.jpg" },
+      texts,
+    });
+
+    const sheet = workbook.sheets[0];
+    expect(sheet.tables[0].rows[0][2]).toBe("");
+    expect(sheet.cells.get("2:3").value).toEqual({
+      text: "Открыть фото",
+      hyperlink: "Photos/7.jpg",
+    });
+  });
+
+  it("says the picture is missing rather than leaving a blank", async () => {
+    const workbook = createWorkbook();
+    await buildComponentSheet(workbook, photoSpec, {
+      photoPaths: { a: "Photos/7.jpg" },
+      texts,
+    });
+
+    expect(workbook.sheets[0].cells.get("3:3").value).toBe(
+      "Есть (файл не найден)",
+    );
+  });
+
+  it("leaves a card that never had a photograph empty", async () => {
+    const workbook = createWorkbook();
+    await buildComponentSheet(workbook, photoSpec, {
+      photoPaths: { a: "Photos/7.jpg" },
+      texts,
+    });
+
+    expect(workbook.sheets[0].cells.get("4:3").value).toBe("");
+  });
+
+  it("carries the card ids beside the rows, not in them", () => {
+    // Колонки с UUID в листе нет — читателю он не нужен, — а ссылке на снимок
+    // нужно знать, чья это строка.
+    const components = [{ id: "a" }, { id: "b" }];
+    expect(buildComponentRowIds(components)).toEqual(["a", "b"]);
+    expect(buildComponentRows(components, ["index"])[0]).toEqual({ index: 1 });
   });
 });

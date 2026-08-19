@@ -47,7 +47,7 @@ export async function buildComponentArchiveEntry(project, options = {}) {
     const stored = await load(project);
     if (!stored?.length) return null;
 
-    const { components, entries } = await buildComponentPhotoArchive(
+    const { components, entries, paths } = await buildComponentPhotoArchive(
       stored,
       idbGet,
       photoDir ? { dir: photoDir } : {},
@@ -56,6 +56,8 @@ export async function buildComponentArchiveEntry(project, options = {}) {
     return {
       path: COMPONENT_ARCHIVE_FILE,
       photoEntries: entries,
+      // Куда лист должен ссылаться из колонки «Фото», по id карточки.
+      photoPaths: paths,
       content: JSON.stringify({
         version: ARCHIVE_VERSION,
         exportedAt: Date.now(),

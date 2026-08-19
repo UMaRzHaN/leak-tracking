@@ -45,7 +45,11 @@ function archivePathOf(value) {
  * @param {object[]} components
  * @param {(id: string) => Promise<any>} [idbGet] web photo storage reader
  * @param {{dir?: string}} [options]
- * @returns {Promise<{components: object[], entries: {path: string, blob: Blob}[]}>}
+ * `paths` is the same rewriting, keyed by card id: the sheet writes a link to
+ * the picture rather than the storage path nobody outside this device can
+ * follow, and it needs to find one by the card it is printing.
+ *
+ * @returns {Promise<{components: object[], entries: {path: string, blob: Blob}[], paths: Record<string, string>}>}
  */
 export async function buildComponentPhotoArchive(
   components,
@@ -61,6 +65,8 @@ export async function buildComponentPhotoArchive(
 
   const entries = [];
   const rewritten = [];
+  /** @type {Record<string, string>} */
+  const paths = {};
 
   for (const [index, component] of list.entries()) {
     if (!component || typeof component !== "object") {
@@ -90,10 +96,11 @@ export async function buildComponentPhotoArchive(
       resolved.ext,
     )}`;
     entries.push({ path: archivePath, blob: resolved.blob });
+    paths[component.id] = archivePath;
     rewritten.push({ ...component, photo: `${ARCHIVE_PREFIX}${archivePath}` });
   }
 
-  return { components: rewritten, entries };
+  return { components: rewritten, entries, paths };
 }
 
 /**

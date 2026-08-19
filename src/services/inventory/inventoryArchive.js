@@ -45,15 +45,17 @@ export function buildInventoryFileStem(projectName) {
  * thousand-record report off the main thread, and paying its round trip for a
  * single table would be slower, not faster.
  *
- * @param {{name?: string, headers: string[], keysOrder: string[], rows: object[]}} sheetSpec
+ * @param {{name?: string, headers: string[], keysOrder: string[], rows: object[], ids?: string[]}} sheetSpec
+ * @param {{photoPaths?: Record<string, string>, texts?: object}} [options]
  */
-export async function buildInventoryWorkbookBuffer(sheetSpec) {
+export async function buildInventoryWorkbookBuffer(sheetSpec, options = {}) {
   const ExcelJS = (await getExcelJS()).default;
   const workbook = new ExcelJS.Workbook();
-  await buildComponentSheet(workbook, {
-    ...sheetSpec,
-    name: INVENTORY_SHEET_NAME,
-  });
+  await buildComponentSheet(
+    workbook,
+    { ...sheetSpec, name: INVENTORY_SHEET_NAME },
+    options,
+  );
   return workbook.xlsx.writeBuffer();
 }
 
@@ -63,8 +65,9 @@ export async function buildInventoryWorkbookBuffer(sheetSpec) {
  * @param {object} options
  * @param {string} options.fileStem
  * @param {object} options.sheetSpec rows and headers for the sheet
- * @param {{path: string, content: string, photoEntries?: {path: string, blob: Blob}[]}|null} options.registryEntry
+ * @param {{path: string, content: string, photoEntries?: {path: string, blob: Blob}[], photoPaths?: Record<string, string>}|null} options.registryEntry
  * @param {{path: string, blob: Blob}[]} [options.schemaEntries]
+ * @param {object} [options.texts] подписи для ячейки со снимком
  * @returns {Promise<Blob>}
  */
 export async function buildInventoryArchive({
@@ -72,11 +75,20 @@ export async function buildInventoryArchive({
   sheetSpec,
   registryEntry,
   schemaEntries = [],
+  texts = {},
 }) {
   const JSZip = (await getJSZip()).default;
   const zip = new JSZip();
 
-  zip.file(`${fileStem}.xlsx`, await buildInventoryWorkbookBuffer(sheetSpec));
+  // Колонка «Фото» ссылается в ту же папку Photos, что лежит рядом: открыв
+  // книгу из распакованного архива, снимок открывают нажатием на ячейку.
+  zip.file(
+    `${fileStem}.xlsx`,
+    await buildInventoryWorkbookBuffer(sheetSpec, {
+      photoPaths: registryEntry?.photoPaths ?? {},
+      texts,
+    }),
+  );
 
   if (registryEntry) {
     zip.file(registryEntry.path, registryEntry.content);

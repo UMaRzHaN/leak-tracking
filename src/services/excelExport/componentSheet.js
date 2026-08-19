@@ -22,21 +22,38 @@ import {
  */
 
 const COMPONENT_TABLE_THEME = "TableStyleMedium3";
+const PHOTO_KEY = "photo";
 
 /**
  * @param {any} workbook
- * @param {{name: string, headers: string[], keysOrder: string[], rows: any[]}} sheetSpec
+ * @param {{name: string, headers: string[], keysOrder: string[], rows: any[], ids?: string[]}} sheetSpec
+ * @param {{photoPaths?: Record<string, string>, texts?: {photo?: {open?: string, missing?: string}}}} [options]
+ *   `photoPaths` maps a card id to where its picture sits in the archive.
  */
-export async function buildComponentSheet(workbook, sheetSpec) {
-  const { name, headers, keysOrder, rows } = sheetSpec ?? {};
+export async function buildComponentSheet(
+  workbook,
+  sheetSpec,
+  { photoPaths = {}, texts = {} } = {},
+) {
+  const { name, headers, keysOrder, rows, ids = [] } = sheetSpec ?? {};
   // No registry, or a project type that declares none: the workbook simply has
   // one sheet fewer, rather than an empty tab implying the walk found nothing.
   if (!name || !Array.isArray(rows) || rows.length === 0) return;
 
   const sheet = workbook.addWorksheet(name);
+  const photoColumn = keysOrder.indexOf(PHOTO_KEY);
 
-  const tableRows = rows.map((row) =>
-    keysOrder.map((key) => toExcelCellValue(key, row[key])),
+  /*
+   * Ячейка со снимком заполняется отдельно, ссылкой. Раньше в неё попадал
+   * сам путь хранения — «idb://photo_…», — который читателю не говорит
+   * ничего, а на другом устройстве ещё и никуда не ведёт.
+   */
+  const tableRows = rows.map((row, index) =>
+    keysOrder.map((key) =>
+      key === PHOTO_KEY && photoPaths[ids[index]]
+        ? ""
+        : toExcelCellValue(key, row[key]),
+    ),
   );
 
   addStructuredTable(sheet, {
@@ -47,6 +64,25 @@ export async function buildComponentSheet(workbook, sheetSpec) {
   });
   styleHeaderRow(sheet, "FF31859B");
   await styleBodyRows(sheet, rows.length);
+  if (photoColumn !== -1) {
+    for (const [rowIndex, row] of rows.entries()) {
+      const archivePath = photoPaths[ids[rowIndex]];
+      const cell = sheet.getRow(rowIndex + 2).getCell(photoColumn + 1);
+
+      if (archivePath) {
+        cell.value = {
+          text: texts.photo?.open ?? archivePath,
+          hyperlink: archivePath,
+        };
+        cell.font = { color: { argb: "FF1155CC" }, underline: true };
+      } else {
+        // Снимок был, но прочитать его не удалось: сказать об этом честнее,
+        // чем оставить пустую ячейку рядом с заполненной карточкой.
+        cell.value = row[PHOTO_KEY] ? (texts.photo?.missing ?? "") : "";
+      }
+    }
+  }
+
   applyColumnFormats(sheet, keysOrder);
 
   keysOrder.forEach((key, index) => {
@@ -54,6 +90,9 @@ export async function buildComponentSheet(workbook, sheetSpec) {
       headers[index],
       key,
       rows,
+      {
+        isPhoto: key === PHOTO_KEY,
+      },
     );
   });
 }
@@ -75,4 +114,15 @@ export function buildComponentRows(components, keysOrder) {
     }
     return row;
   });
+}
+
+/**
+ * The card ids behind the rows, in the same order.
+ *
+ * The sheet has no id column — a UUID is nothing to a reader — but the photo
+ * link has to find the picture belonging to the row it is on, so the identity
+ * travels alongside the rows instead of in them.
+ */
+export function buildComponentRowIds(components) {
+  return (components ?? []).map((component) => component?.id);
 }
