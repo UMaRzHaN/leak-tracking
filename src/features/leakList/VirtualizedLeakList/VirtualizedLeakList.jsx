@@ -19,6 +19,11 @@ export default function VirtualizedLeakList({
   items = [],
   height = 800,
   bottomPadding = 0,
+  // Пробел между карточками, в пикселях. Строки расставлены абсолютно по
+  // измеренной высоте, поэтому `gap` контейнера на них не действует, а `margin`
+  // карточки в измерение не входит и дал бы наложение: расстояние приходится
+  // закладывать в саму раскладку.
+  gap = 0,
   renderItem,
 }) {
   useRenderMetric("VirtualizedLeakList");
@@ -94,10 +99,12 @@ export default function VirtualizedLeakList({
       const key = getKey(items[index], index);
       tops[index] = total;
       rowHeights[index] = heights[key] ?? ESTIMATED_HEIGHT;
-      total += rowHeights[index];
+      total += rowHeights[index] + gap;
     }
-    return { rowHeights, tops, totalHeight: total + bottomPadding };
-  }, [items, heights, getKey, bottomPadding]);
+    // Пробел ставится между карточками, а не после последней.
+    const totalHeight = Math.max(0, total - (items.length ? gap : 0));
+    return { rowHeights, tops, totalHeight: totalHeight + bottomPadding };
+  }, [items, heights, getKey, bottomPadding, gap]);
 
   const visibleItems = useMemo(() => {
     const startBoundary = Math.max(0, scrollTop - OVERSCAN_PX);

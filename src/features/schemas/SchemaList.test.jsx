@@ -166,6 +166,48 @@ describe("schema list", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it("claims the tab in the tap itself, before the file is read", async () => {
+    // Браузер разрешает открыть вкладку только пока обрабатывает касание.
+    // Чтение чертежа длится дольше, и раньше к моменту готовности байтов
+    // разрешения уже не было — каждый PDF сообщал о блокировке.
+    const fakeWindow = { closed: false, close: vi.fn(), location: {} };
+    const openSpy = vi
+      .spyOn(window, "open")
+      .mockReturnValue(/** @type {any} */ (fakeWindow));
+    hooks.current = makeHook({ schemas: [pdf] });
+    render(<SchemaList project={project} />);
+
+    fireEvent.click(screen.getByText("Схема обвязки устья.pdf"));
+
+    expect(openSpy).toHaveBeenCalledWith("", "_blank");
+    await waitFor(() =>
+      expect(hooks.openExternally).toHaveBeenCalledWith(
+        project,
+        pdf,
+        expect.anything(),
+        { targetWindow: fakeWindow },
+      ),
+    );
+    openSpy.mockRestore();
+  });
+
+  it("does not leave an empty tab behind when the drawing cannot be read", async () => {
+    const fakeWindow = { closed: false, close: vi.fn(), location: {} };
+    const openSpy = vi
+      .spyOn(window, "open")
+      .mockReturnValue(/** @type {any} */ (fakeWindow));
+    hooks.current = makeHook({
+      schemas: [pdf],
+      readSchemaFile: vi.fn().mockResolvedValue(null),
+    });
+    render(<SchemaList project={project} />);
+
+    fireEvent.click(screen.getByText("Схема обвязки устья.pdf"));
+
+    await waitFor(() => expect(fakeWindow.close).toHaveBeenCalled());
+    openSpy.mockRestore();
+  });
+
   it("says so when the bytes are gone rather than opening a blank viewer", async () => {
     hooks.current = makeHook({
       schemas: [drawing],

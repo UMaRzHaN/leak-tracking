@@ -12,19 +12,46 @@ import { logger } from "@/utils/logger";
  * On the web a blob URL in a new tab is enough — every desktop browser renders
  * PDF inline. On a device the file already sits in app storage, so it is passed
  * by URI through the share sheet, from which the user picks a reader.
+ *
+ * `targetWindow` is how the web side stops being blocked. A browser only lets
+ * a tab open while it is still handling the tap; reading the drawing out of
+ * storage takes longer than that, so by the time the bytes arrived the
+ * permission was gone and every PDF reported "the browser blocked the new
+ * tab". The caller now opens an empty tab in the tap itself and hands it over
+ * here to be pointed at the file.
  */
-export async function openSchemaExternally(project, schema, blob) {
-  if (isNative) return openWithSystemViewer(project, schema);
-  return openInNewTab(blob);
+export async function openSchemaExternally(
+  project,
+  schema,
+  blob,
+  { targetWindow = null } = {},
+) {
+  if (isNative) {
+    // A tab opened in hope is closed again: the share sheet is the way out on
+    // a device, and leaving a blank tab behind would be a second thing to
+    // dismiss.
+    targetWindow?.close();
+    return openWithSystemViewer(project, schema);
+  }
+  return openInNewTab(blob, targetWindow);
 }
 
-function openInNewTab(blob) {
+function openInNewTab(blob, targetWindow) {
   const url = URL.createObjectURL(blob);
-  const opened = window.open(url, "_blank", "noopener");
   // Revoking immediately would break the tab that is still loading; a minute
   // is well past any reasonable load and keeps the blob from leaking for the
   // rest of the session.
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  const scheduleRevoke = () =>
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+
+  if (targetWindow && !targetWindow.closed) {
+    targetWindow.location.replace(url);
+    scheduleRevoke();
+    return true;
+  }
+
+  const opened = window.open(url, "_blank", "noopener");
+  scheduleRevoke();
 
   if (!opened) {
     const error = new Error("The browser blocked the new tab");

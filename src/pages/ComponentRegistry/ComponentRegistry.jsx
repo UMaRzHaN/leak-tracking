@@ -496,6 +496,7 @@ export default function ComponentRegistry({
                 items={visible}
                 height={listHeight}
                 bottomPadding={88}
+                gap={8}
                 renderItem={renderCard}
               />
             </div>

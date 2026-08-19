@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useSchemas } from "./useSchemas";
 import { openSchemaExternally } from "./openSchemaExternally";
+import { isNative } from "@/utils/platform";
 import SchemaViewer from "./SchemaViewer";
+import VirtualizedLeakList from "@/features/leakList/VirtualizedLeakList/VirtualizedLeakList";
 import {
   formatSchemaSize,
   isImageSchema,
@@ -28,6 +30,20 @@ export default function SchemaList({ project }) {
   const [notice, setNotice] = useState(null);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(null);
+  const listRef = useRef(null);
+  // Меряется, а не задаётся: над списком стоит кнопка и, бывает, предупреждение.
+  const [listHeight, setListHeight] = useState(600);
+
+  useEffect(() => {
+    const node = listRef.current;
+    if (!node || typeof ResizeObserver === "undefined") return undefined;
+
+    const measure = () => setListHeight(node.clientHeight || 600);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [loading, schemas.length]);
 
   // Object URLs outlive the component unless revoked by hand, and a drawing is
   // the largest thing the app holds — leaking one per open would add up fast.
@@ -73,11 +89,31 @@ export default function SchemaList({ project }) {
 
   const handleOpen = useCallback(
     async (schema) => {
+      /*
+       * Вкладка открывается прямо в обработчике нажатия, ещё пустой. Браузер
+       * разрешает открыть её только пока обрабатывает касание, а чтение
+       * чертежа из хранилища длится дольше — к моменту, когда байты готовы,
+       * разрешения уже нет, и каждый PDF сообщал «браузер заблокировал новую
+       * вкладку». Без noopener: без ссылки на окно его некуда направить.
+       */
+      let targetWindow = null;
+      if (!isNative && isPdfSchema(schema)) {
+        try {
+          targetWindow = window.open("", "_blank");
+          if (targetWindow) targetWindow.opener = null;
+        } catch {
+          // Окно не открылось — ниже отработает обычный путь и, если браузер
+          // откажет и там, человек увидит сообщение об этом.
+          targetWindow = null;
+        }
+      }
+
       setBusy(true);
       setNotice(null);
       try {
         const blob = await readSchemaFile(schema);
         if (!blob) {
+          targetWindow?.close();
           setNotice({ kind: "error", text: t("schemas.missingFile") });
           return;
         }
@@ -88,8 +124,9 @@ export default function SchemaList({ project }) {
         }
         // PDF goes to whatever the device already reads PDFs with — see
         // openSchemaExternally for why the app does not render it itself.
-        await openSchemaExternally(project, schema, blob);
+        await openSchemaExternally(project, schema, blob, { targetWindow });
       } catch (openError) {
+        targetWindow?.close();
         setNotice({
           kind: "error",
           text:
@@ -102,6 +139,39 @@ export default function SchemaList({ project }) {
       }
     },
     [project, readSchemaFile, t],
+  );
+
+  const renderSchema = useCallback(
+    (schema) => (
+      <div className={s.card}>
+        <button
+          type="button"
+          className={s.cardBody}
+          onClick={() => handleOpen(schema)}
+          disabled={busy}
+        >
+          <span className={s.kind}>
+            {isPdfSchema(schema) ? "PDF" : t("schemas.image")}
+          </span>
+          <span className={s.name}>{schema.name}</span>
+          <span className={s.meta}>
+            {[formatSchemaSize(schema.size), schema.location]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+        </button>
+        <button
+          type="button"
+          className={s.remove}
+          onClick={() => removeSchema(schema)}
+          aria-label={t("schemas.remove")}
+          disabled={busy}
+        >
+          ×
+        </button>
+      </div>
+    ),
+    [busy, handleOpen, removeSchema, t],
   );
 
   const handleClose = useCallback(() => {
@@ -166,37 +236,20 @@ export default function SchemaList({ project }) {
       ) : schemas.length === 0 ? (
         <p className={s.muted}>{t("schemas.empty")}</p>
       ) : (
-        <ul className={s.list}>
-          {schemas.map((schema) => (
-            <li key={schema.id} className={s.card}>
-              <button
-                type="button"
-                className={s.cardBody}
-                onClick={() => handleOpen(schema)}
-                disabled={busy}
-              >
-                <span className={s.kind}>
-                  {isPdfSchema(schema) ? "PDF" : t("schemas.image")}
-                </span>
-                <span className={s.name}>{schema.name}</span>
-                <span className={s.meta}>
-                  {[formatSchemaSize(schema.size), schema.location]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
-              </button>
-              <button
-                type="button"
-                className={s.remove}
-                onClick={() => removeSchema(schema)}
-                aria-label={t("schemas.remove")}
-                disabled={busy}
-              >
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
+        /*
+         * Тот же виртуализатор, что у списка утечек и у реестра. Комплект
+         * чертежей месторождения — это сотни листов, и отрисовывать их все
+         * ради экрана, по которому пролистывают до нужного, незачем.
+         */
+        <div ref={listRef} className={s.list}>
+          <VirtualizedLeakList
+            items={schemas}
+            height={listHeight}
+            bottomPadding={88}
+            gap={8}
+            renderItem={renderSchema}
+          />
+        </div>
       )}
     </div>
   );
