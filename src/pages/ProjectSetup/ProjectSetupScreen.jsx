@@ -35,15 +35,6 @@ function ImportIcon({ type }) {
     );
   }
 
-  if (type === "excel") {
-    return (
-      <svg className={s.importIcon} viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M5 3.5h10l4 4V20.5H5z" />
-        <path d="M15 3.5v4h4M8 11h8M8 14h8M8 17h8M11 10v8" />
-      </svg>
-    );
-  }
-
   return (
     <svg className={s.importIcon} viewBox="0 0 24 24" aria-hidden="true">
       <path d="M5 3.5h10l4 4V20.5H5z" />
@@ -55,10 +46,40 @@ function ImportIcon({ type }) {
 
 const PROJECT_ICONS = { upstream: "⛽", midstream: "🔧", downstream: "🏭" };
 
+/**
+ * Имя проекта, каким его написала выгрузка.
+ *
+ * Файл называется «!Database_Бузахур.zip» или «!Inventorization_Бузахур.zip»:
+ * приставку ставит приложение, чтобы архивы различались в папке, и предлагать
+ * её человеку как название проекта — значит заставлять его стирать её руками.
+ */
+function projectNameFromFile(fileName) {
+  return (
+    String(fileName)
+      .replace(/\.(?:xlsx|zip)$/i, "")
+      .replace(/^!?(?:Database|Inventorization)[_-]?/i, "")
+      .trim() || String(fileName).replace(/\.(?:xlsx|zip)$/i, "")
+  );
+}
+
+/** Ошибка импорта словами, которые что-то говорят стоящему у экрана. */
+function importErrorText(error, localeTexts) {
+  if (error?.code === "MISSING_PROJECT_TYPE") {
+    return localeTexts.selectProjectType;
+  }
+  if (error?.code === "EMPTY_EXCEL") return localeTexts.emptyExcel;
+  if (error?.code === "EMPTY_INVENTORY") return localeTexts.emptyInventory;
+  if (error?.code === "UNKNOWN_IMPORT_FILE") {
+    return localeTexts.importUnknownFile;
+  }
+  return error?.message ?? localeTexts.importError;
+}
+
 export default function ProjectSetupScreen({
   onComplete,
   onImportZip,
   onImportExcel,
+  onImportInventory,
 }) {
   const { t, toggleLanguage } = useLanguage();
   const localeTexts = useMemo(
@@ -79,14 +100,14 @@ export default function ProjectSetupScreen({
       or: t("projectSetup.or"),
 
       import: t("projectSetup.import"),
+      importFile: t("projectSetup.importFile"),
       importing: t("projectSetup.importing"),
+      importUnknownFile: t("projectSetup.importUnknownFile"),
+      emptyInventory: t("projectSetup.emptyInventory"),
       importQr: t("projectSetup.importQr"),
       importingQr: t("projectSetup.importingQr"),
       scanQrProgress: t("projectSetup.scanQrProgress"),
       importQrProgress: t("projectSetup.importQrProgress"),
-      importExcel: t("projectSetup.importExcel"),
-      importingExcel: t("projectSetup.importingExcel"),
-      importExcelProgress: t("projectSetup.importExcelProgress"),
       emptyExcel: t("projectSetup.emptyExcel"),
       importProgress: t("projectSetup.importProgress"),
 
@@ -119,11 +140,10 @@ export default function ProjectSetupScreen({
   const [importing, setImporting] = useState(false);
   const [importingQr, setImportingQr] = useState(false);
   const [qrPhase, setQrPhase] = useState("idle");
-  const [importingExcel, setImportingExcel] = useState(false);
-  const zipFileRef = useRef(null);
-  const excelFileRef = useRef(null);
+  const fileRef = useRef(null);
   const canImportByQr = onImportZip && isLocalSyncAvailable();
-  const isImporting = importing || importingQr || importingExcel;
+  const canImportFile = Boolean(onImportZip || onImportExcel);
+  const isImporting = importing || importingQr;
 
   const handleSubmit = () => {
     if (!type) {
@@ -178,6 +198,33 @@ export default function ProjectSetupScreen({
     [name, onImportZip, type],
   );
 
+  const importExcelFile = useCallback(
+    async (file) => {
+      const resolvedName = name.trim() || projectNameFromFile(file.name);
+      if (!name.trim()) setName(resolvedName);
+      await onImportExcel(file, { name: resolvedName, type });
+    },
+    [name, onImportExcel, type],
+  );
+
+  const importInventoryArchive = useCallback(
+    async (file) => {
+      const resolvedName = name.trim() || projectNameFromFile(file.name);
+      if (!name.trim()) setName(resolvedName);
+      await onImportInventory(file, { name: resolvedName, type });
+    },
+    [name, onImportInventory, type],
+  );
+
+  /**
+   * Один разбор на любой принесённый файл.
+   *
+   * Кнопок было две, и человеку с только что полученным файлом приходилось
+   * знать, бэкап у него, отчёт или инвентаризация: ошибся кнопкой — получил
+   * «файл backup.json не найден в архиве» и никакой подсказки, что делать
+   * дальше. Ответ целиком лежит внутри файла, и тем же распознаванием, что
+   * в настройках.
+   */
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -186,9 +233,21 @@ export default function ProjectSetupScreen({
     setImporting(true);
     setError("");
     try {
-      await importZipFile(file);
+      const { detectImportKind } =
+        await import("@/services/import/importRouting");
+      const { kind } = await detectImportKind(file);
+
+      if (kind === "project" && onImportZip) await importZipFile(file);
+      else if (kind === "excel" && onImportExcel) await importExcelFile(file);
+      else if (kind === "inventory" && onImportInventory) {
+        await importInventoryArchive(file);
+      } else {
+        const error = new Error(localeTexts.importUnknownFile);
+        error.code = "UNKNOWN_IMPORT_FILE";
+        throw error;
+      }
     } catch (err) {
-      setError(err.message ?? localeTexts.importError);
+      setError(importErrorText(err, localeTexts));
       setImporting(false);
     }
   };
@@ -204,39 +263,10 @@ export default function ProjectSetupScreen({
       await importZipFile(file);
     } catch (err) {
       if (err.code !== "QR_SCAN_CANCELLED") {
-        setError(err.message ?? localeTexts.importError);
+        setError(importErrorText(err, localeTexts));
       }
       setImportingQr(false);
       setQrPhase("idle");
-    }
-  };
-
-  const requestExcelFile = () => {
-    setError("");
-    excelFileRef.current?.click();
-  };
-
-  const handleExcelFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-
-    setImportingExcel(true);
-    setError("");
-    try {
-      const resolvedName =
-        name.trim() || file.name.replace(/\.(?:xlsx|zip)$/i, "");
-      if (!name.trim()) setName(resolvedName);
-      await onImportExcel(file, { name: resolvedName, type });
-    } catch (err) {
-      setError(
-        err.code === "MISSING_PROJECT_TYPE"
-          ? localeTexts.selectProjectType
-          : err.code === "EMPTY_EXCEL"
-            ? localeTexts.emptyExcel
-            : (err.message ?? localeTexts.importError),
-      );
-      setImportingExcel(false);
     }
   };
 
@@ -358,21 +388,26 @@ export default function ProjectSetupScreen({
               <span>{localeTexts.or}</span>
             </div>
 
+            {/* Одна кнопка на любой файл и отдельная — на QR: там не файл, а
+                чужой телефон рядом, и выбирать нечего. */}
             <div
               className={`${s.importActions} ${
-                canImportByQr ? "" : s.importActionsTwoColumns
+                canImportByQr ? s.importActionsTwoColumns : ""
               }`}
             >
-              {onImportZip && (
+              {canImportFile && (
                 <button
                   className={s.importBtn}
                   type="button"
                   title={localeTexts.import}
                   disabled={isImporting}
-                  onClick={() => zipFileRef.current?.click()}
+                  onClick={() => {
+                    setError("");
+                    fileRef.current?.click();
+                  }}
                 >
                   <ImportIcon type="zip" />
-                  {importing ? localeTexts.importing : "ZIP"}
+                  {importing ? localeTexts.importing : localeTexts.importFile}
                   <span className={s.importBtnSr}>
                     {"↓ " + localeTexts.import}
                   </span>
@@ -393,48 +428,24 @@ export default function ProjectSetupScreen({
                   </span>
                 </button>
               )}
-              {onImportExcel && (
-                <button
-                  className={`${s.importBtn} ${s.excelImportBtn}`}
-                  type="button"
-                  title={localeTexts.importExcel}
-                  disabled={isImporting}
-                  onClick={requestExcelFile}
-                >
-                  <ImportIcon type="excel" />
-                  {importingExcel ? localeTexts.importingExcel : "Excel"}
-                  <span className={s.importBtnSr}>
-                    {"▦ " + localeTexts.importExcel}
-                  </span>
-                </button>
-              )}
             </div>
             {isImporting && (
               <p className={s.importStatus} role="status" aria-live="polite">
-                {importingExcel
-                  ? localeTexts.importExcelProgress
-                  : importingQr
-                    ? qrPhase === "scanning"
-                      ? localeTexts.scanQrProgress
-                      : localeTexts.importQrProgress
-                    : localeTexts.importProgress}
+                {importingQr
+                  ? qrPhase === "scanning"
+                    ? localeTexts.scanQrProgress
+                    : localeTexts.importQrProgress
+                  : localeTexts.importProgress}
               </p>
             )}
             <p className={s.importHint}>{localeTexts.importHint}</p>
 
             <input
-              ref={zipFileRef}
+              ref={fileRef}
               type="file"
-              accept=".zip,application/zip"
+              accept=".zip,.xlsx,application/zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               style={{ display: "none" }}
               onChange={handleFileChange}
-            />
-            <input
-              ref={excelFileRef}
-              type="file"
-              accept=".xlsx,.zip,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip"
-              style={{ display: "none" }}
-              onChange={handleExcelFileChange}
             />
           </>
         )}

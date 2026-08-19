@@ -328,6 +328,85 @@ export function useAppBootstrap() {
     ],
   );
 
+  /**
+   * Первый экран: проект заводится из архива инвентаризации.
+   *
+   * Такой архив не несёт ни имени проекта, ни его типа — только карточки:
+   * инвентаризацию отдают отдельно от отчёта по утечкам, и она ничего не знает
+   * о том, кто и как считает выбросы. Имя берётся из имени файла (его пишет
+   * сама выгрузка: «!Inventorization_Бузахур»), тип — тот, который вообще
+   * ведёт реестр, а если человек уже выбрал тип на экране, то его.
+   */
+  const handleSetupImportInventory = useCallback(
+    (file, /** @type {{name?: string, type?: string}} */ { name, type } = {}) =>
+      runWithImportOverlay(async () => {
+        const [
+          { componentRegistryProjectTypes, loadComponentRegistry },
+          { importInventoryFile },
+        ] = await Promise.all([
+          import("@/configs/projectAdapter"),
+          import("@/services/inventory/inventoryImport"),
+        ]);
+
+        const registryTypes = componentRegistryProjectTypes();
+        const resolvedType =
+          type || (registryTypes.length === 1 ? registryTypes[0] : null);
+        if (!resolvedType) {
+          const error = new Error("Project type is missing");
+          error.code = "MISSING_PROJECT_TYPE";
+          throw error;
+        }
+
+        const previousProjectId = activeProjectIdRef.current;
+        const newProject = addProject(name, resolvedType);
+        if (!newProject) throw new Error("Не удалось создать проект");
+
+        try {
+          await waitForRefValue(activeProjectIdRef, newProject.id);
+          const registry = await loadComponentRegistry(newProject);
+          const result = await importInventoryFile(file, newProject, registry);
+          if (!result.added && !result.updated) {
+            const error = new Error("No components found in the archive");
+            error.code = "EMPTY_INVENTORY";
+            throw error;
+          }
+          // Записей об утечках в таком архиве нет, и это не ошибка: обход
+          // железа начинается раньше, чем находят первую утечку.
+          await saveRef.current([]);
+          clearForm();
+          return {
+            project: newProject,
+            leakCount: 0,
+            components: result.added,
+          };
+        } catch (error) {
+          try {
+            try {
+              const rollback = await rollbackImportedProject(
+                newProject,
+                removeProject,
+              );
+              if (!rollback.cleanupComplete) {
+                error.rollbackCleanupError = rollback.cleanupError;
+              }
+            } catch (rollbackError) {
+              error.rollbackError = rollbackError;
+            }
+          } finally {
+            if (previousProjectId) overwriteProject(previousProjectId);
+          }
+          throw error;
+        }
+      }),
+    [
+      addProject,
+      clearForm,
+      overwriteProject,
+      removeProject,
+      runWithImportOverlay,
+    ],
+  );
+
   const handleSetupImportExcel = useCallback(
     async (file, { name, type }) => {
       const { parseExcelImportFile } =
@@ -392,6 +471,7 @@ export function useAppBootstrap() {
     handleImportIntoExisting,
     handleImportZip,
     handleSetupImportExcel,
+    handleSetupImportInventory,
     handleSetupImportZip,
     importingDataLabel,
     isConfigured,

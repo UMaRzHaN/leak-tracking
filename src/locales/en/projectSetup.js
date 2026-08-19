@@ -15,6 +15,10 @@ export const projectSetup = {
   or: "or",
 
   import: "Import from ZIP",
+  importFile: "File",
+  importUnknownFile:
+    "Could not tell what this file is. Expected a ZIP backup, an XLSX or an inventory archive.",
+  emptyInventory: "No component cards were found in the archive.",
   importing: "Importing…",
   importQr: "Import by QR",
   importingQr: "Importing by QR...",
@@ -22,12 +26,10 @@ export const projectSetup = {
   importQrProgress: "Downloading the database by QR, please wait...",
   importProgress: "ZIP backup import in progress, please wait...",
   cancelScan: "Cancel",
-  importExcel: "Import Excel",
-  importingExcel: "Importing Excel…",
-  importExcelProgress: "Reading the Excel archive, please wait...",
   emptyExcel: "No importable rows found in Excel",
 
-  importHint: "ZIP backup or Excel archive with photos",
+  importHint:
+    "A ZIP backup, an XLSX or an inventory archive — the app works out which",
 
   importError: "Import error",
   languageToggle: "RU",

@@ -263,10 +263,12 @@
   }
 }
 
+/* Кнопок стало две — файл и QR, — а без QR остаётся одна: сетка считается от
+   того, что есть, а не от трёх форматов, которых больше нет по отдельности. */
 .importActions {
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   margin-top: 10px;
 }
@@ -336,15 +338,6 @@
   color: #9ca3af;
   margin: 6px 0 0;
   text-align: center;
-}
-
-.excelImportBtn {
-  color: #047857;
-  border-color: #059669;
-
-  &:hover:not(:disabled) {
-    background: #ecfdf5;
-  }
 }
 
 .qrImportBtn {

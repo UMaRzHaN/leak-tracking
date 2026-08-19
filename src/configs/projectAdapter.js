@@ -191,6 +191,21 @@ export function hasComponentRegistry(project) {
 }
 
 /**
+ * Типы проектов, которые вообще ведут реестр компонентов.
+ *
+ * Нужен там, где реестр приезжает раньше проекта: архив инвентаризации не
+ * несёт ни имени проекта, ни его типа — только карточки. Если реестр объявлен
+ * ровно у одного типа, выбирать не из чего, и спрашивать человека не о чем;
+ * если типов станет несколько, ответ перестанет быть однозначным сам, и
+ * вызывающая сторона это увидит.
+ *
+ * @returns {string[]}
+ */
+export function componentRegistryProjectTypes() {
+  return Object.keys(PROJECTS).filter((type) => hasComponentRegistry(type));
+}
+
+/**
  * Loads the registry declaration for a project type.
  *
  * @param {object|string} project

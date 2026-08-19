@@ -15,6 +15,10 @@ export const projectSetup = {
   or: "или",
 
   import: "Импортировать из ZIP",
+  importFile: "Файл",
+  importUnknownFile:
+    "Не удалось понять, что это за файл. Ожидается ZIP-бэкап, XLSX или архив инвентаризации.",
+  emptyInventory: "В архиве не нашлось карточек компонентов.",
   importing: "Импорт…",
   importQr: "Импорт по QR",
   importingQr: "Импорт по QR...",
@@ -22,12 +26,10 @@ export const projectSetup = {
   importQrProgress: "Загрузка базы по QR, подождите...",
   importProgress: "Идёт импорт ZIP backup, подождите...",
   cancelScan: "Отмена",
-  importExcel: "Импорт Excel",
-  importingExcel: "Импорт Excel…",
-  importExcelProgress: "Идёт чтение Excel-архива, подождите...",
   emptyExcel: "В Excel не найдено строк для импорта",
 
-  importHint: "ZIP-бэкап или Excel-архив с фотографиями",
+  importHint:
+    "ZIP-бэкап, XLSX или архив инвентаризации — приложение само разберётся",
 
   importError: "Ошибка импорта",
   languageToggle: "EN",

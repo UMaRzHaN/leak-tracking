@@ -34,6 +34,7 @@ export default function App() {
     handleImportIntoExisting,
     handleImportZip,
     handleSetupImportExcel,
+    handleSetupImportInventory,
     handleSetupImportZip,
     importingDataLabel,
     isConfigured,
@@ -98,6 +99,7 @@ export default function App() {
           onComplete={configure}
           onImportZip={handleSetupImportZip}
           onImportExcel={handleSetupImportExcel}
+          onImportInventory={handleSetupImportInventory}
         />
       </Suspense>
     );

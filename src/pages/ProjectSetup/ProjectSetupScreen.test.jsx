@@ -9,6 +9,10 @@ const localSync = vi.hoisted(() => ({
   scanLocalSyncQr: vi.fn(),
 }));
 
+// Файл принимает одна кнопка, а что это за файл — решает распознавание.
+const routing = vi.hoisted(() => ({ detectImportKind: vi.fn() }));
+vi.mock("@/services/import/importRouting", () => routing);
+
 vi.mock("@/app/hooks/useLanguage", async () => {
   const { englishLanguageHook } = await import("@/test/translate");
   return englishLanguageHook();
@@ -30,7 +34,12 @@ describe("ProjectSetupScreen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localSync.isLocalSyncAvailable.mockReturnValue(true);
+    routing.detectImportKind.mockResolvedValue({ kind: "project" });
   });
+
+  /** Единственное файловое поле экрана. */
+  const fileInput = (container) =>
+    container.querySelector('input[type="file"]');
 
   it("shows an import progress notice while importing zip into an empty app", async () => {
     const onImportZip = vi.fn(() => new Promise(() => {}));
@@ -60,12 +69,12 @@ describe("ProjectSetupScreen", () => {
       />,
     );
 
+    routing.detectImportKind.mockResolvedValue({ kind: "excel" });
     fireEvent.click(screen.getByText("Midstream"));
-    const input = container.querySelector('input[accept^=".xlsx"]');
     const file = new File(["zip"], "inspection.zip", {
       type: "application/zip",
     });
-    fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.change(fileInput(container), { target: { files: [file] } });
 
     await waitFor(() =>
       expect(onImportExcel).toHaveBeenCalledWith(file, {
@@ -122,11 +131,11 @@ describe("ProjectSetupScreen", () => {
       />,
     );
 
-    const input = container.querySelector('input[accept^=".xlsx"]');
+    routing.detectImportKind.mockResolvedValue({ kind: "excel" });
     const file = new File(["zip"], "project.zip", {
       type: "application/zip",
     });
-    fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.change(fileInput(container), { target: { files: [file] } });
 
     await waitFor(() =>
       expect(onImportExcel).toHaveBeenCalledWith(file, {
@@ -248,11 +257,10 @@ describe("ProjectSetupScreen", () => {
     const { container } = render(
       <ProjectSetupScreen onComplete={vi.fn()} onImportExcel={onImportExcel} />,
     );
+    routing.detectImportKind.mockResolvedValue({ kind: "excel" });
     const file = new File(["xlsx"], "inspection.xlsx");
 
-    fireEvent.change(container.querySelector('input[accept^=".xlsx"]'), {
-      target: { files: [file] },
-    });
+    fireEvent.change(fileInput(container), { target: { files: [file] } });
 
     expect(await screen.findByText(message)).toBeTruthy();
   });
@@ -291,5 +299,96 @@ describe("ProjectSetupScreen", () => {
     expect(screen.queryByText("QR Import by QR")).toBeNull();
     unmount();
     expect(localSync.cancelLocalSyncQrScan).toHaveBeenCalledOnce();
+  });
+
+  describe("один файл, три вида", () => {
+    const file = (name) => new File(["x"], name, { type: "application/zip" });
+
+    it("узнаёт бэкап проекта и заводит из него проект", async () => {
+      routing.detectImportKind.mockResolvedValue({ kind: "project" });
+      const onImportZip = vi.fn().mockResolvedValue({});
+      const { container } = render(
+        <ProjectSetupScreen
+          onComplete={vi.fn()}
+          onImportZip={onImportZip}
+          onImportExcel={vi.fn()}
+          onImportInventory={vi.fn()}
+        />,
+      );
+
+      fireEvent.change(fileInput(container), {
+        target: { files: [file("backup.zip")] },
+      });
+
+      await waitFor(() => expect(onImportZip).toHaveBeenCalled());
+    });
+
+    it("заводит проект из архива инвентаризации", async () => {
+      // Раньше он уходил в разбор бэкапа и получал «файл backup.json не
+      // найден в архиве»: начать обход с переданной инвентаризации было нельзя.
+      routing.detectImportKind.mockResolvedValue({ kind: "inventory" });
+      const onImportInventory = vi.fn().mockResolvedValue({});
+      const { container } = render(
+        <ProjectSetupScreen
+          onComplete={vi.fn()}
+          onImportZip={vi.fn()}
+          onImportInventory={onImportInventory}
+        />,
+      );
+
+      const archive = file("!Inventorization_Бузахур.zip");
+      fireEvent.change(fileInput(container), { target: { files: [archive] } });
+
+      await waitFor(() =>
+        // Имя проекта пишет сама выгрузка — набирать его заново незачем.
+        expect(onImportInventory).toHaveBeenCalledWith(archive, {
+          name: "Бузахур",
+          type: "",
+        }),
+      );
+    });
+
+    it("говорит, что не понял файл, вместо чужой ошибки разбора", async () => {
+      routing.detectImportKind.mockResolvedValue({ kind: "unknown" });
+      const { container } = render(
+        <ProjectSetupScreen
+          onComplete={vi.fn()}
+          onImportZip={vi.fn()}
+          onImportExcel={vi.fn()}
+        />,
+      );
+
+      fireEvent.change(fileInput(container), {
+        target: { files: [file("notes.txt")] },
+      });
+
+      expect(
+        await screen.findByText(/Could not tell what this file is/),
+      ).toBeTruthy();
+    });
+
+    it("сообщает о пустом архиве инвентаризации его же словами", async () => {
+      routing.detectImportKind.mockResolvedValue({ kind: "inventory" });
+      const onImportInventory = vi
+        .fn()
+        .mockRejectedValue(
+          Object.assign(new Error("raw"), { code: "EMPTY_INVENTORY" }),
+        );
+      const { container } = render(
+        <ProjectSetupScreen
+          onComplete={vi.fn()}
+          onImportZip={vi.fn()}
+          onImportInventory={onImportInventory}
+        />,
+      );
+
+      fireEvent.change(fileInput(container), {
+        target: { files: [file("!Inventorization_X.zip")] },
+      });
+
+      expect(
+        await screen.findByText(/No component cards were found/),
+      ).toBeTruthy();
+    });
   });
 });
