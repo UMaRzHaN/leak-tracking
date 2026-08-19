@@ -1201,9 +1201,9 @@ describe("что видно в списке и по чему он отбирае
     expect(screen.getByText("1 hr. ago")).toBeTruthy();
   });
 
-  it("ставит на карточку расстояние до железа", () => {
-    // «Сто метров» отвечает на вопрос «это то самое или соседнее» — тот, ради
-    // которого в список и заглядывают, стоя перед задвижкой.
+  it("ставит расстояние на карточку вместе с кругом", () => {
+    // Как в списке утечек: значок ставит сам отбор по близости. Спрашивают о
+    // расстоянии тогда же, когда его включают.
     registry.current = makeRegistry({
       components: [
         {
@@ -1217,7 +1217,17 @@ describe("что видно в списке и по чему он отбирае
     });
     renderRegistry({ coords: { lat: 38.4, lng: 66.101 } });
 
-    expect(screen.getByText(/📌/)).toBeTruthy();
+    // Значок с числом — на карточке; такой же без числа стоит на тумблере.
+    const badges = () =>
+      screen.queryAllByText((_, node) =>
+        /^📌\s*\d+/.test(node?.textContent ?? ""),
+      );
+    expect(badges()).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    fireEvent.click(screen.getByText(/Near me/));
+
+    expect(badges().length).toBeGreaterThan(0);
   });
 
   it("не обещает расстояния без фикса", () => {

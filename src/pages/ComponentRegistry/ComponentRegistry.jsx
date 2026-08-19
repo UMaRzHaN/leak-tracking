@@ -295,14 +295,14 @@ export default function ComponentRegistry({
   /**
    * Расстояние до карточки от того места, где человек стоит.
    *
-   * Показывается всегда, когда есть фикс, а не только при включённом круге:
-   * «сто двадцать метров» отвечает на вопрос «это то самое железо или
-   * соседнее» — тот самый вопрос, ради которого в список и заглядывают,
-   * стоя перед задвижкой.
+   * Только при включённом круге — так же, как в списке утечек, где значок
+   * ставит сам отбор по близости. Спрашивают о расстоянии тогда же, когда его
+   * включают; в остальное время это число на каждой строке, которого никто не
+   * просил, и оно отнимает место у наименования.
    */
   const distanceTo = useCallback(
     (component) => {
-      if (!hasGps) return null;
+      if (!nearby) return null;
       const meters = getDistanceMeters(
         coords.lat,
         coords.lng,
@@ -311,7 +311,7 @@ export default function ComponentRegistry({
       );
       return Number.isFinite(meters) ? Math.round(meters) : null;
     },
-    [coords, hasGps],
+    [coords, nearby],
   );
 
   const renderCard = useCallback(
