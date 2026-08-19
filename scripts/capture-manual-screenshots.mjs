@@ -3,7 +3,7 @@
  *
  * Снимает скриншоты для docs/MANUAL.md, проходя по приложению так же, как
  * это делает пользователь: создание проекта → добавление утечки → база →
- * мониторинг → карта → настройки.
+ * мониторинг → реестр компонентов → карта → настройки.
  *
  * Запуск (сервер поднимается отдельно):
  *   npm run build && npx vite preview --host 127.0.0.1 --port 4173 &
@@ -16,6 +16,9 @@ import path from "node:path";
 const BASE_URL = process.env.MANUAL_BASE_URL ?? "http://127.0.0.1:4173";
 const OUT_DIR = path.resolve("docs/manual/img");
 const PHOTO = path.resolve("public/vema_sa_logo.jpg");
+// Второй файл нужен только затем, чтобы на вкладке схем было что искать:
+// строка поиска появляется, когда чертежей больше одного.
+const SCHEMA_SECOND = path.resolve("public/icons/icon-512.png");
 const SEED = path.resolve("scripts/seed100leaks.js");
 
 const done = [];
@@ -46,6 +49,7 @@ async function main() {
     await step("mainPage", () => mainPageShots(page));
     await step("database", () => databaseShots(page));
     await step("monitoring", () => monitoringShots(page));
+    await step("registry", () => registryShots(page));
     await step("map", () => mapShots(page));
     await step("settings", () => settingsShots(page));
     await step("themeAndLanguage", () => themeAndLanguage(page));
@@ -78,13 +82,25 @@ async function resetToHome(page) {
   }
   await page.keyboard.press("Escape").catch(() => {});
   await page.waitForTimeout(300);
+  await openTab(page, "Главная").catch(() => {});
+  await page.waitForTimeout(600);
+}
+
+/**
+ * Вкладка нижней навигации — по названию, а не по номеру.
+ *
+ * Номера съехали, как только у Upstream появился «Реестр»: он встал между
+ * «Мониторингом» и «Картой», и `nth(4)` начал открывать реестр вместо карты.
+ * Название переживёт и следующую вкладку.
+ */
+async function openTab(page, name) {
   await page
     .getByRole("contentinfo")
-    .getByRole("button")
-    .nth(0)
-    .click({ timeout: 5000 })
-    .catch(() => {});
-  await page.waitForTimeout(600);
+    .getByRole("button", {
+      name: name instanceof RegExp ? name : new RegExp(name),
+    })
+    .first()
+    .click();
 }
 
 async function shot(page, name, options = {}) {
@@ -213,7 +229,7 @@ async function seedData(page) {
 async function mainPageShots(page) {
   console.log("\n[4] Главный экран");
   await step("11-main-page", async () => {
-    await page.getByRole("contentinfo").getByRole("button").nth(0).click();
+    await openTab(page, "Главная");
     await page.locator("[data-urgency]").first().waitFor();
     await shot(page, "11-main-page", { settle: 1200 });
   });
@@ -367,7 +383,7 @@ async function monitoringShots(page) {
   console.log("\n[6] Мониторинг");
   await resetToHome(page);
   await step("27-monitoring", async () => {
-    await page.getByRole("contentinfo").getByRole("button").nth(3).click();
+    await openTab(page, "Мониторинг");
     await page.waitForTimeout(1500);
     await shot(page, "27-monitoring");
   });
@@ -406,39 +422,173 @@ async function monitoringShots(page) {
   });
 }
 
-// --- 7. Карта -------------------------------------------------------------
+// --- 7. Реестр компонентов ------------------------------------------------
 
-async function mapShots(page) {
-  console.log("\n[7] Карта");
+/*
+ * Карточки заводятся через ту же форму, что и у пользователя.
+ *
+ * Первая попытка сажала их прямо в IndexedDB через page.evaluate — и повисала
+ * навсегда: у evaluate нет таймаута, а исключение внутри обработчика IDB не
+ * доходит ни до resolve, ни до reject. Через форму одна карточка занимает
+ * секунду, и снимок показывает то же, что увидит человек.
+ */
+const REGISTRY_CARDS = [
+  { uid: "4242", tag: "ЗД-32", location: "Куст 12", name: "Задвижка" },
+  { uid: "4243", tag: "КШ-7", location: "Куст 12", name: "Кран шаровой" },
+  { uid: "4244", tag: "PG-3", location: "Куст 14", name: "Манометр" },
+  { uid: "4245", tag: "ОК-1", location: "Куст 14", name: "Обратный клапан" },
+];
+
+async function addComponentCard(page, card, { captureForm = false } = {}) {
+  await page
+    .getByRole("button", { name: "Добавить компонент", exact: true })
+    .click();
+  await page.getByText("Новый компонент", { exact: true }).waitFor();
+
+  await page.getByLabel(/^Индивидуальный номер/).fill(card.uid);
+  await page.getByLabel(/^Номер на схеме/).fill(card.tag);
+  await page.getByLabel(/^Локация/).fill(card.location);
+  await page.getByLabel(/^Компонент/).fill(card.name);
+  // Автодополнение перекрывает нижние поля — закрываем перед снимком.
+  await page.keyboard.press("Escape");
+  if (captureForm) await shot(page, "34-registry-card", { settle: 500 });
+
+  for (let index = 0; index < 3; index += 1) {
+    await page.getByRole("button", { name: /^Далее/ }).click();
+    await page.waitForTimeout(350);
+  }
+  await page
+    .locator('input[type="file"][accept="image/*"]')
+    .setInputFiles(PHOTO);
+  await page.waitForTimeout(500);
+  await page.getByRole("button", { name: /Сохранить$/ }).click();
+  await page
+    .getByRole("button", { name: "Добавить компонент", exact: true })
+    .waitFor({ timeout: 30000 });
+}
+
+async function registryShots(page) {
+  console.log("\n[7] Реестр компонентов");
   await resetToHome(page);
-  await step("32-map", async () => {
-    await page.getByRole("contentinfo").getByRole("button").nth(4).click();
-    await page.waitForTimeout(9000);
-    await shot(page, "32-map");
+  await openTab(page, "Реестр");
+  await page.waitForTimeout(800);
+
+  await step("registry-cards", async () => {
+    for (const [index, card] of REGISTRY_CARDS.entries()) {
+      await addComponentCard(page, card, { captureForm: index === 0 });
+    }
   });
 
-  await step("33-map-filters", async () => {
+  /*
+   * Осмотр до снимков списка и фильтров, а не после: состояние — это то, что
+   * записывают при обходе, и без него на карточках нечего показывать, а в
+   * фильтре нечего отбирать. Списком всем сразу, потом одному свайпом — так
+   * состояний становится два, как и бывает на площадке.
+   */
+  await step("registry-inspect", async () => {
+    await page.getByRole("button", { name: "Выбрать всё" }).click();
+    await page.waitForTimeout(400);
+    await page.getByRole("button", { name: "Сменить статус" }).click();
+    await page
+      .getByRole("dialog", { name: /Состояние на момент осмотра/ })
+      .waitFor();
+    await page.getByRole("button", { name: "В работе", exact: true }).click();
+    await page.waitForTimeout(1500);
+
+    const card = page.getByText("Манометр", { exact: true }).first();
+    const box = await card.boundingBox();
+    const y = box.y + box.height / 2;
+    await page.mouse.move(box.x + 150, y);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 20, y, { steps: 8 });
+    await page.mouse.up();
+    await page
+      .getByRole("dialog", { name: /Состояние на момент осмотра/ })
+      .waitFor();
+    await page
+      .getByRole("button", { name: "Требует замены", exact: true })
+      .click();
+    await page.waitForTimeout(1500);
+  });
+
+  await step("32-registry-list", async () => {
+    await shot(page, "32-registry-list", { settle: 900 });
+  });
+
+  await step("33-registry-filters", async () => {
+    await page.getByRole("button", { name: "Фильтры" }).first().click();
+    await shot(page, "33-registry-filters", { settle: 700 });
+    await page.getByRole("button", { name: "Фильтры" }).first().click();
+    await page.waitForTimeout(400);
+  });
+
+  await step("35-registry-details", async () => {
+    await page.getByText("Задвижка", { exact: true }).first().click();
+    await page
+      .getByRole("dialog", { name: "Карточка компонента" })
+      .waitFor({ timeout: 10000 });
+    await shot(page, "35-registry-details", { settle: 800 });
+  });
+
+  await step("36-registry-history", async () => {
+    await page.getByRole("button", { name: "История", exact: true }).click();
+    await shot(page, "36-registry-history", { settle: 700 });
+    await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+    await page.waitForTimeout(500);
+  });
+
+  await step("37-schemas", async () => {
+    await page.getByRole("tab", { name: "Схемы", exact: true }).click();
+    await page.waitForTimeout(600);
+    const picker = page.locator('input[type="file"][accept*="pdf"]');
+    await picker.setInputFiles(PHOTO);
+    await page.waitForTimeout(1500);
+    await picker.setInputFiles(SCHEMA_SECOND);
+    await page.waitForTimeout(1500);
+    await shot(page, "37-schemas", { settle: 700 });
+  });
+
+  await step("38-map-components", async () => {
+    await openTab(page, "Карта");
+    await page.waitForTimeout(9000);
+    await page.getByRole("button", { name: /Переключить базу/ }).click();
+    await shot(page, "38-map-components", { settle: 2500 });
+  });
+}
+
+// --- 8. Карта -------------------------------------------------------------
+
+async function mapShots(page) {
+  console.log("\n[8] Карта");
+  await resetToHome(page);
+  await step("39-map", async () => {
+    await openTab(page, "Карта");
+    await page.waitForTimeout(9000);
+    await shot(page, "39-map");
+  });
+
+  await step("40-map-filters", async () => {
     await page.getByRole("button", { name: "Фильтр по мониторингу" }).click();
-    await shot(page, "33-map-filters", { settle: 900 });
+    await shot(page, "40-map-filters", { settle: 900 });
     await page.keyboard.press("Escape");
     await page.waitForTimeout(400);
   });
 }
 
-// --- 8. Настройки ---------------------------------------------------------
+// --- 9. Настройки ---------------------------------------------------------
 
 const SETTINGS_SECTIONS = [
-  ["34-settings-projects", "Проекты"],
-  ["35-settings-fields", "Поля формы и Excel"],
-  ["36-settings-photos", "Требования к фото"],
-  ["37-settings-backup", "Резервная копия"],
+  ["41-settings-projects", "Проекты"],
+  ["42-settings-fields", "Поля формы и Excel"],
+  ["43-settings-photos", "Требования к фото"],
+  ["44-settings-backup", "Резервная копия"],
   // Последний снимок захватывает сразу «Проверку данных», «Кэш карты» и
   // «Опасную зону»: страница на них заканчивается и дальше не прокручивается.
-  ["38-settings-bottom", "Проверка данных"],
+  ["45-settings-bottom", "Проверка данных"],
 ];
 
 async function settingsShots(page) {
-  console.log("\n[8] Настройки");
+  console.log("\n[9] Настройки");
   await resetToHome(page);
   await step("open-settings", async () => {
     await page.getByTitle("Настройки").click();
@@ -459,12 +609,12 @@ async function settingsShots(page) {
     });
   }
 
-  await step("39-field-visibility", async () => {
+  await step("46-field-visibility", async () => {
     const button = page.getByRole("button", { name: "Настроить поля" }).first();
     await button.scrollIntoViewIfNeeded();
     await button.click();
     await page.getByRole("heading", { name: "Настройка полей" }).waitFor();
-    await shot(page, "39-field-visibility", { settle: 800 });
+    await shot(page, "46-field-visibility", { settle: 800 });
     await page
       .getByRole("button", { name: "Отмена", exact: true })
       .first()
@@ -473,11 +623,11 @@ async function settingsShots(page) {
   });
 }
 
-// --- 9. Тема и язык -------------------------------------------------------
+// --- 10. Тема и язык -------------------------------------------------------
 
 async function themeAndLanguage(page) {
-  console.log("\n[9] Тема и язык");
-  await step("40-dark-theme", async () => {
+  console.log("\n[10] Тема и язык");
+  await step("47-dark-theme", async () => {
     const toggle = page.getByRole("button", { name: "Переключить тему" });
     await toggle.scrollIntoViewIfNeeded();
     await toggle.click();
@@ -486,12 +636,12 @@ async function themeAndLanguage(page) {
       .getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ })
       .click();
     await page.waitForTimeout(900);
-    await page.getByRole("contentinfo").getByRole("button").nth(0).click();
+    await openTab(page, /Главная|Home/);
     await page.waitForTimeout(1200);
-    await shot(page, "40-dark-theme", { settle: 1500 });
+    await shot(page, "47-dark-theme", { settle: 1500 });
   });
 
-  await step("41-english", async () => {
+  await step("48-english", async () => {
     await page.getByTitle(/Настройки|Settings/).click();
     await page.waitForTimeout(800);
     const language = page.getByRole("button", {
@@ -504,9 +654,9 @@ async function themeAndLanguage(page) {
       .getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ })
       .click();
     await page.waitForTimeout(900);
-    await page.getByRole("contentinfo").getByRole("button").nth(0).click();
+    await openTab(page, /Главная|Home/);
     await page.waitForTimeout(1200);
-    await shot(page, "41-english", { settle: 1200 });
+    await shot(page, "48-english", { settle: 1200 });
   });
 }
 
