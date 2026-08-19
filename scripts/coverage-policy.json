@@ -1,5 +1,5 @@
 {
-  "description": "Single source of truth for coverage floors. `vite.config.mjs` feeds this file to the vitest coverage thresholds, and `scripts/check-coverage-ratchet.mjs` re-checks the per-file floors against the written summary. Floors sit ~2 points below measured coverage so ordinary refactoring does not trip them, and may only increase. Per-file floors cover the data-integrity critical path (storage, import, backup, sync, domain) plus the page and Settings orchestration.",
+  "description": "Single source of truth for coverage floors. `vite.config.mjs` feeds this file to the vitest coverage thresholds, and `scripts/check-coverage-ratchet.mjs` re-checks the per-file floors against the written summary. Floors sit ~2 points below measured coverage so ordinary refactoring does not trip them, and may only increase. Per-file floors cover the data-integrity critical path (storage, import, backup, sync, domain) plus the page and Settings orchestration, and the component registry (domain, inventory archive/sheet/import, component backup, native storage, import routing).",
   "global": {
     "statements": 78,
     "branches": 67,
@@ -12,6 +12,24 @@
       "branches": 69,
       "functions": 94,
       "lines": 90
+    },
+    "src/domain/componentHistory.js": {
+      "statements": 98,
+      "branches": 90,
+      "functions": 98,
+      "lines": 98
+    },
+    "src/domain/componentMerge.js": {
+      "statements": 95,
+      "branches": 87,
+      "functions": 98,
+      "lines": 98
+    },
+    "src/domain/componentRegistry.js": {
+      "statements": 93,
+      "branches": 87,
+      "functions": 98,
+      "lines": 98
     },
     "src/domain/leakLifecycle.js": {
       "statements": 95,
@@ -121,6 +139,12 @@
       "functions": 62,
       "lines": 63
     },
+    "src/repositories/nativeComponentStorage.js": {
+      "statements": 90,
+      "branches": 80,
+      "functions": 98,
+      "lines": 94
+    },
     "src/repositories/nativeLeakStorage.js": {
       "statements": 76,
       "branches": 62,
@@ -180,6 +204,18 @@
       "branches": 87,
       "functions": 58,
       "lines": 87
+    },
+    "src/services/backup/componentArchive.js": {
+      "statements": 88,
+      "branches": 73,
+      "functions": 98,
+      "lines": 95
+    },
+    "src/services/backup/componentPhotoArchive.js": {
+      "statements": 86,
+      "branches": 75,
+      "functions": 98,
+      "lines": 88
     },
     "src/services/backup/leakMergeEngine.js": {
       "statements": 90,
@@ -265,6 +301,12 @@
       "functions": 98,
       "lines": 75
     },
+    "src/services/import/importRouting.js": {
+      "statements": 88,
+      "branches": 79,
+      "functions": 98,
+      "lines": 88
+    },
     "src/services/import/photoPipeline.js": {
       "statements": 86,
       "branches": 72,
@@ -294,6 +336,30 @@
       "branches": 85,
       "functions": 98,
       "lines": 96
+    },
+    "src/services/inventory/inventoryArchive.js": {
+      "statements": 98,
+      "branches": 89,
+      "functions": 98,
+      "lines": 98
+    },
+    "src/services/inventory/inventoryBackupSheet.js": {
+      "statements": 92,
+      "branches": 83,
+      "functions": 98,
+      "lines": 96
+    },
+    "src/services/inventory/inventoryImport.js": {
+      "statements": 89,
+      "branches": 79,
+      "functions": 98,
+      "lines": 92
+    },
+    "src/services/inventory/inventorySheet.js": {
+      "statements": 91,
+      "branches": 82,
+      "functions": 98,
+      "lines": 98
     },
     "src/services/maps/tileCache.js": {
       "statements": 91,

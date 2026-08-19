@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  projects: [],
+  activeProject: null,
   getMapCacheInfo: vi.fn(),
   clearMapCache: vi.fn(),
   clearDatabase: vi.fn(),
@@ -10,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   setMonitoringExportMode: vi.fn(),
   setLeakPhotoRequired: vi.fn(),
   setMonitoringPhotoRequired: vi.fn(),
+  setComponentPhotoRequired: vi.fn(),
   handleAdd: vi.fn(),
   handleSelect: vi.fn(),
   handleRename: vi.fn(),
@@ -49,8 +52,10 @@ vi.mock("@/app/project/hooks/usePhotoRequirements", () => ({
   usePhotoRequirements: () => ({
     leakPhotoRequired: false,
     monitoringPhotoRequired: false,
+    componentPhotoRequired: true,
     setLeakPhotoRequired: mocks.setLeakPhotoRequired,
     setMonitoringPhotoRequired: mocks.setMonitoringPhotoRequired,
+    setComponentPhotoRequired: mocks.setComponentPhotoRequired,
   }),
 }));
 vi.mock("./hooks/useSettingsTexts", () => ({
@@ -87,8 +92,8 @@ vi.mock("./hooks/useSettingsTexts", () => ({
 }));
 vi.mock("./hooks/useProjectActions", () => ({
   useProjectActions: () => ({
-    projects: [{ id: "project-1", name: "Project" }],
-    activeProject: { id: "project-1", name: "Project", folderName: "Project" },
+    projects: mocks.projects,
+    activeProject: mocks.activeProject,
     handleSelect: mocks.handleSelect,
     projectSwitchState: { open: false },
     confirmProjectSwitch: vi.fn(),
@@ -180,14 +185,43 @@ vi.mock("./components/FieldVisibilitySection", () => ({
   ),
 }));
 vi.mock("./components/PhotoRequirementsSection", () => ({
-  default: ({ onLeakPhotoRequiredChange, onMonitoringPhotoRequiredChange }) => (
+  default: ({
+    onLeakPhotoRequiredChange,
+    onMonitoringPhotoRequiredChange,
+    onComponentPhotoRequiredChange,
+    hasComponentRegistry,
+  }) => (
     <div>
+      <span>registry:{String(hasComponentRegistry)}</span>
       <button onClick={() => onLeakPhotoRequiredChange(true)}>
         require-leak-photo
       </button>
       <button onClick={() => onMonitoringPhotoRequiredChange(true)}>
         require-monitor-photo
       </button>
+      <button onClick={() => onComponentPhotoRequiredChange(true)}>
+        require-component-photo
+      </button>
+    </div>
+  ),
+}));
+// Оба набора диалогов подменены сквозными кнопками: их собственная разметка
+// проверяется в ImportExportDialogs.test.jsx, здесь важна только разводка.
+vi.mock("./components/ImportExportDialogs", () => ({
+  default: ({ backupConflict, excelConflict, excelImport, importConfirm }) => (
+    <div>
+      <button onClick={backupConflict.onCancel}>cancel-backup-conflict</button>
+      <button onClick={excelConflict.onCancel}>cancel-excel-conflict</button>
+      <button onClick={excelImport.onCancel}>cancel-excel-import</button>
+      <button onClick={importConfirm.onCancel}>cancel-import-confirm</button>
+    </div>
+  ),
+}));
+vi.mock("./components/ProjectManagementDialogs", () => ({
+  default: ({ switchState, syncIdEditor }) => (
+    <div>
+      <button onClick={switchState.onCancel}>cancel-switch</button>
+      <button onClick={syncIdEditor.onCancel}>cancel-sync-id</button>
     </div>
   ),
 }));
@@ -234,6 +268,7 @@ vi.mock("@/features/fieldVisibility/FieldVisibilityModal", () => ({
         <button onClick={() => onSave(new Set(["pressure"]))}>
           save-fields
         </button>
+        <button onClick={() => onSave(new Set())}>clear-fields</button>
         <button onClick={onClose}>close-fields</button>
       </div>
     ) : null,
@@ -257,6 +292,13 @@ import Settings from "./Settings";
 describe("Settings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.projects = [{ id: "project-1", name: "Project" }];
+    mocks.activeProject = {
+      id: "project-1",
+      name: "Project",
+      folderName: "Project",
+      type: "upstream",
+    };
     mocks.getMapCacheInfo.mockResolvedValue({ count: 12, sizeMB: 1 });
     mocks.clearMapCache.mockResolvedValue(undefined);
     mocks.detectImportKind.mockResolvedValue({ kind: "project" });
@@ -313,5 +355,170 @@ describe("Settings", () => {
     expect(mocks.handleExportZip).toHaveBeenCalled();
     // Файл распознан как ZIP-бэкап и ушёл тому же обработчику, что и раньше.
     await waitFor(() => expect(mocks.handleImportZip).toHaveBeenCalled());
+  });
+  it("uses setPage to leave when no explicit back handler is given", () => {
+    const setPage = vi.fn();
+    render(
+      <Settings
+        setPage={setPage}
+        data={[]}
+        setData={vi.fn()}
+        clearDatabase={mocks.clearDatabase}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Settings"));
+
+    expect(setPage).toHaveBeenCalledWith("");
+  });
+
+  it("offers the registry photo switch and saves it", async () => {
+    render(
+      <Settings
+        data={[]}
+        setData={vi.fn()}
+        clearDatabase={mocks.clearDatabase}
+      />,
+    );
+
+    expect(screen.getByText("registry:true")).toBeTruthy();
+    fireEvent.click(screen.getByText("require-component-photo"));
+
+    expect(mocks.setComponentPhotoRequired).toHaveBeenCalledWith(true);
+    await waitFor(() =>
+      expect(
+        screen.getByText("notice:settings.componentPhotoRequirementSaved:"),
+      ).toBeTruthy(),
+    );
+  });
+
+  it("hides the registry photo switch for a project without a registry", () => {
+    mocks.activeProject = { ...mocks.activeProject, type: "midstream" };
+    render(
+      <Settings
+        data={[]}
+        setData={vi.fn()}
+        clearDatabase={mocks.clearDatabase}
+      />,
+    );
+
+    expect(screen.getByText("registry:false")).toBeTruthy();
+  });
+
+  it("prompts to create the first project and closes the form on cancel", () => {
+    mocks.projects = [];
+    render(
+      <Settings
+        data={[]}
+        setData={vi.fn()}
+        clearDatabase={mocks.clearDatabase}
+      />,
+    );
+
+    expect(screen.getByText("No projects")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("+ Add project"));
+    // Пока форма открыта, "проектов нет" не показывается — иначе экран
+    // одновременно и предлагает завести проект, и жалуется на их отсутствие.
+    expect(screen.queryByText("No projects")).toBeNull();
+
+    fireEvent.click(screen.getByText("cancel-add"));
+    expect(screen.getByText("No projects")).toBeTruthy();
+    expect(mocks.handleAdd).not.toHaveBeenCalled();
+  });
+
+  it("dismisses a notification", async () => {
+    render(
+      <Settings
+        data={[]}
+        setData={vi.fn()}
+        clearDatabase={mocks.clearDatabase}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("export-mode"));
+    await waitFor(() =>
+      expect(screen.getByText("notice:Export mode saved")).toBeTruthy(),
+    );
+
+    fireEvent.click(screen.getByText("notice:Export mode saved"));
+    expect(screen.queryByText(/^notice:/)).toBeNull();
+  });
+
+  it("reports when every field is back on", async () => {
+    render(
+      <Settings
+        data={[]}
+        setData={vi.fn()}
+        clearDatabase={mocks.clearDatabase}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("configure-fields"));
+    fireEvent.click(screen.getByText("clear-fields"));
+
+    expect(mocks.setHiddenFields).toHaveBeenCalledWith(new Set());
+    await waitFor(() =>
+      expect(screen.getByText("notice:All fields active")).toBeTruthy(),
+    );
+  });
+
+  it("closes the field modal without saving", () => {
+    render(
+      <Settings
+        data={[]}
+        setData={vi.fn()}
+        clearDatabase={mocks.clearDatabase}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("configure-fields"));
+    fireEvent.click(screen.getByText("close-fields"));
+
+    expect(screen.queryByText("close-fields")).toBeNull();
+    expect(mocks.setHiddenFields).not.toHaveBeenCalled();
+  });
+
+  it("keeps the field modal out of reach with no project open", () => {
+    mocks.activeProject = null;
+    render(
+      <Settings
+        data={[]}
+        setData={vi.fn()}
+        clearDatabase={mocks.clearDatabase}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("configure-fields"));
+
+    expect(screen.queryByText("close-fields")).toBeNull();
+  });
+
+  it("closes every import and project dialog on cancel", async () => {
+    render(
+      <Settings
+        data={[]}
+        setData={vi.fn()}
+        clearDatabase={mocks.clearDatabase}
+      />,
+    );
+    await waitFor(() => expect(screen.getByText("cache:12")).toBeTruthy());
+
+    for (const label of [
+      "cancel-backup-conflict",
+      "cancel-excel-conflict",
+      "cancel-excel-import",
+      "cancel-import-confirm",
+      "cancel-switch",
+      "cancel-sync-id",
+    ])
+      fireEvent.click(screen.getByText(label));
+
+    // Отказ от подтверждения очистки закрывает лист, ничего не тронув.
+    fireEvent.click(screen.getByText("cache:12"));
+    fireEvent.click(screen.getByText("cancel:Clear map cache"));
+
+    expect(screen.queryByText("cancel:Clear map cache")).toBeNull();
+    expect(mocks.clearMapCache).not.toHaveBeenCalled();
   });
 });

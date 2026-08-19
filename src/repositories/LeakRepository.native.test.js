@@ -6,6 +6,7 @@ const nativeState = vi.hoisted(() => ({
   unavailable: false,
   failNext: null,
   failMarkerWrite: false,
+  failMarkerStat: false,
 }));
 
 function diagnostics(project) {
@@ -102,6 +103,9 @@ vi.mock("@capacitor/filesystem", () => ({
       return { data: nativeState.files.get(key) };
     }),
     stat: vi.fn(async ({ path, directory }) => {
+      if (nativeState.failMarkerStat && path.endsWith("data.sqlite.json")) {
+        throw new Error("Permission denied");
+      }
       const key = directory === "DOCUMENTS" ? `DOCUMENTS:${path}` : path;
       if (!nativeState.files.has(key)) throw new Error("File does not exist");
       return { size: String(nativeState.files.get(key)).length };
@@ -144,8 +148,12 @@ vi.mock("@capacitor/filesystem", () => ({
 
 const { LeakRepository, getEmbeddedProjectSyncState } =
   await import("./LeakRepository");
-const { resetNativeStorageStrategyForTests } =
-  await import("./nativeLeakStorage");
+const {
+  clearNativeProjectStorageCache,
+  getNativeStorageDiagnostics,
+  loadNativeProject,
+  resetNativeStorageStrategyForTests,
+} = await import("./nativeLeakStorage");
 
 const project = { projectId: "p1", folderName: "alpha" };
 
@@ -155,6 +163,7 @@ beforeEach(() => {
   nativeState.unavailable = false;
   nativeState.failNext = null;
   nativeState.failMarkerWrite = false;
+  nativeState.failMarkerStat = false;
   resetNativeStorageStrategyForTests();
   vi.clearAllMocks();
 });
@@ -389,6 +398,69 @@ describe("LeakRepository Android SQLite storage", () => {
     expect(nativeState.files.has("LeakReports/alpha/data/data.json")).toBe(
       true,
     );
+    await expect(LeakRepository.getAll(project)).resolves.toEqual([
+      { id: "legacy", status: "open" },
+    ]);
+  });
+
+  // Однажды признав плагин недоступным, обёртка больше не дёргает его на
+  // каждую операцию: иначе каждое чтение стоило бы брошенного исключения.
+  it("stops calling the plugin once the fallback is in effect", async () => {
+    nativeState.unavailable = true;
+    await LeakRepository.saveAll([{ id: "legacy", status: "open" }], project);
+    sqlitePlugin.load.mockClear();
+
+    await expect(loadNativeProject("alpha")).resolves.toMatchObject({
+      state: expect.objectContaining({
+        data: [{ id: "legacy", status: "open" }],
+      }),
+    });
+    expect(sqlitePlugin.load).not.toHaveBeenCalled();
+  });
+
+  // Маркер миграции читается через stat, и «файла нет» — единственная ошибка,
+  // которая означает «проект ещё на JSON». Всё остальное — сбой файловой
+  // системы, и глотать его нельзя: иначе отказ диска выглядит как проект без
+  // маркера, и рядом с SQLite появится вторая, расходящаяся копия данных.
+  it("does not mistake a filesystem failure for a missing migration marker", async () => {
+    await LeakRepository.saveAll([{ id: "stored", status: "open" }], project);
+    resetNativeStorageStrategyForTests();
+    nativeState.unavailable = true;
+    nativeState.failMarkerStat = true;
+
+    await expect(LeakRepository.getAll(project)).rejects.toMatchObject({
+      code: "PROJECT_DATA_READ_FAILED",
+      cause: expect.objectContaining({ message: "Permission denied" }),
+    });
+    expect(nativeState.files.has("LeakReports/alpha/data/data.json")).toBe(
+      false,
+    );
+  });
+
+  it("reports the storage engine behind a project", async () => {
+    await LeakRepository.saveAll([{ id: "stored", status: "open" }], project);
+
+    await expect(getNativeStorageDiagnostics("alpha")).resolves.toMatchObject({
+      engine: "sqlite",
+      recordCount: 1,
+    });
+  });
+
+  it("reports the legacy engine for a project the plugin never took", async () => {
+    nativeState.unavailable = true;
+    await LeakRepository.saveAll([{ id: "legacy", status: "open" }], project);
+
+    await expect(getNativeStorageDiagnostics("beta")).resolves.toMatchObject({
+      engine: "legacy-json",
+      paths: expect.any(Object),
+    });
+  });
+
+  it("clears the cached legacy snapshot for one project", async () => {
+    nativeState.unavailable = true;
+    await LeakRepository.saveAll([{ id: "legacy", status: "open" }], project);
+
+    expect(() => clearNativeProjectStorageCache("alpha")).not.toThrow();
     await expect(LeakRepository.getAll(project)).resolves.toEqual([
       { id: "legacy", status: "open" },
     ]);

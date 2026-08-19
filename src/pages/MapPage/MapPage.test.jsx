@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mapState = vi.hoisted(() => ({ current: null }));
 vi.mock("@/utils/renderMetrics", () => ({ useRenderMetric: vi.fn() }));
-vi.mock("./hooks/useMapPage", () => ({ useMapPage: () => mapState.current }));
+vi.mock("./hooks/useMapPage", () => ({
+  MAP_BASE: { LEAKS: "leaks", COMPONENTS: "components" },
+  useMapPage: () => mapState.current,
+}));
 vi.mock("@/components/ui/Notification/Notification", () => ({
   default: ({ onClose }) => <button onClick={onClose}>notification</button>,
 }));
@@ -15,6 +18,7 @@ vi.mock("./components/MapControls", () => ({
       <button onClick={props.onDownload}>download</button>
       <button onClick={props.onCancelDownload}>cancel-download</button>
       <button onClick={props.onToggleHeatmap}>heatmap</button>
+      <button onClick={props.onToggleBase}>toggle-base</button>
       <button onClick={() => props.onToggleNearby(true)}>nearby</button>
       <button onClick={() => props.onRadiusChange(500)}>radius</button>
       <button onClick={() => props.onPriorityToggle("high")}>priority</button>
@@ -61,6 +65,10 @@ function createState() {
     enabledLocations: ["station"],
     activeProject: { id: "project-1" },
     heatmapEnabled: false,
+    base: "leaks",
+    setBase: vi.fn(),
+    componentsAvailable: true,
+    showsComponents: false,
     nearbyOnly: false,
     nearbyRadius: 100,
     nearbyRadiusOptions: [100, 500],
@@ -130,5 +138,39 @@ describe("MapPage", () => {
       { id: "leak-1" },
       17,
     );
+  });
+
+  // Переключатель базы — единственная кнопка, у которой обе стороны тернарника
+  // ведут в разные слои карты, поэтому проверяем оба направления.
+  it("switches the base from leaks to components", () => {
+    render(<MapPage leaks={[]} coords={null} />);
+
+    fireEvent.click(screen.getByText("toggle-base"));
+
+    expect(mapState.current.setBase).toHaveBeenCalledWith("components");
+  });
+
+  it("switches the base back to leaks", () => {
+    mapState.current.base = "components";
+    mapState.current.showsComponents = true;
+    render(<MapPage leaks={[]} coords={null} />);
+
+    fireEvent.click(screen.getByText("toggle-base"));
+
+    expect(mapState.current.setBase).toHaveBeenCalledWith("leaks");
+  });
+
+  it("hides the KML export when there is nothing to export", () => {
+    mapState.current.visibleLeaks = [];
+    render(<MapPage leaks={[]} coords={null} />);
+
+    expect(screen.queryByText(/KML/)).toBeNull();
+  });
+
+  it("hides the KML export when no project is open", () => {
+    mapState.current.activeProject = null;
+    render(<MapPage leaks={[]} coords={null} />);
+
+    expect(screen.queryByText(/KML/)).toBeNull();
   });
 });

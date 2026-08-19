@@ -31,6 +31,9 @@ const mocks = vi.hoisted(() => ({
   savePhoto: vi.fn(),
   deletePhoto: vi.fn(),
   getPhoto: vi.fn(),
+  detectImportKind: vi.fn(),
+  importInventoryFile: vi.fn(),
+  loadComponentRegistry: vi.fn(),
 }));
 
 vi.mock("@/services/maps/tileCache", () => ({
@@ -169,6 +172,15 @@ vi.mock("./useBackupActions", () => ({
 vi.mock("./useLocalSync", () => ({
   useLocalSync: () => ({ state: "idle" }),
 }));
+vi.mock("@/services/import/importRouting", () => ({
+  detectImportKind: mocks.detectImportKind,
+}));
+vi.mock("@/services/inventory/inventoryImport", () => ({
+  importInventoryFile: mocks.importInventoryFile,
+}));
+vi.mock("@/configs/projectAdapter", () => ({
+  loadComponentRegistry: mocks.loadComponentRegistry,
+}));
 
 function excelResult(overrides = {}) {
   return {
@@ -229,6 +241,14 @@ beforeEach(() => {
   mocks.readMonitoringRound.mockReturnValue(null);
   mocks.readProjectSyncStateAsync.mockResolvedValue({ deleted: {} });
   mocks.previewMergeLeaks.mockReturnValue({ changed: 1 });
+  mocks.detectImportKind.mockResolvedValue({ kind: "project" });
+  mocks.loadComponentRegistry.mockResolvedValue({ groups: [] });
+  mocks.importInventoryFile.mockResolvedValue({
+    added: 2,
+    updated: 1,
+    conflicts: 0,
+    shadowed: 0,
+  });
   mocks.mergeLeaksByFreshness.mockReturnValue({
     leaks: [{ id: "merged", leak_id: "TAG-2" }],
     changed: 1,
@@ -586,5 +606,128 @@ describe("useSettingsPage orchestration", () => {
     expect(result.current.notification.message).toContain("copy failed");
     expect(result.current.excelConflictState).toEqual({ open: false });
     expect(result.current.isImportingExcel).toBe(false);
+  });
+  // Один вход для импорта: страница сама разбирает, что за файл ей дали, и
+  // раздаёт его прежним обработчикам. Проверяем все четыре исхода.
+  describe("import routing", () => {
+    function inventoryFile(name = "inventory.zip") {
+      return { target: { files: [new File(["data"], name)], value: "chosen" } };
+    }
+
+    it("routes an inventory archive into the registry import", async () => {
+      mocks.detectImportKind.mockResolvedValue({ kind: "inventory" });
+      const { result } = renderSettings();
+
+      await act(async () => result.current.handleImportFile(inventoryFile()));
+
+      expect(mocks.importInventoryFile).toHaveBeenCalledWith(
+        expect.any(File),
+        mocks.activeProject,
+        { groups: [] },
+      );
+      expect(result.current.notification).toMatchObject({ type: "success" });
+      expect(result.current.notification.message).toContain("2 added");
+    });
+
+    it("warns when the inventory archive brings nothing new", async () => {
+      mocks.detectImportKind.mockResolvedValue({ kind: "inventory" });
+      mocks.importInventoryFile.mockResolvedValue({
+        added: 0,
+        updated: 0,
+        conflicts: 0,
+      });
+      const { result } = renderSettings();
+
+      await act(async () => result.current.handleImportFile(inventoryFile()));
+
+      expect(result.current.notification).toMatchObject({ type: "warning" });
+      expect(result.current.notification.message).toBe(
+        "No components to import were found in the file.",
+      );
+    });
+
+    // Карточка, заполненная у железа, важнее строки в таблице — но промолчать
+    // о непринятых строках нельзя.
+    it("reports rows that lost to cards already on the device", async () => {
+      mocks.detectImportKind.mockResolvedValue({ kind: "inventory" });
+      mocks.importInventoryFile.mockResolvedValue({
+        added: 1,
+        updated: 0,
+        conflicts: 0,
+        shadowed: 3,
+      });
+      const { result } = renderSettings();
+
+      await act(async () => result.current.handleImportFile(inventoryFile()));
+
+      expect(result.current.notification).toMatchObject({ type: "warning" });
+      expect(result.current.notification.message).toContain("3 row(s)");
+    });
+
+    it("reports an inventory import failure", async () => {
+      mocks.detectImportKind.mockResolvedValue({ kind: "inventory" });
+      mocks.importInventoryFile.mockRejectedValue(new Error("broken archive"));
+      const { result } = renderSettings();
+
+      await act(async () => result.current.handleImportFile(inventoryFile()));
+
+      expect(result.current.notification).toMatchObject({ type: "error" });
+      expect(result.current.notification.message).toContain("broken archive");
+    });
+
+    it("ignores an inventory import with no project open", async () => {
+      mocks.detectImportKind.mockResolvedValue({ kind: "inventory" });
+      mocks.activeProject = null;
+      const { result } = renderSettings();
+
+      await act(async () => result.current.handleImportFile(inventoryFile()));
+
+      expect(mocks.importInventoryFile).not.toHaveBeenCalled();
+    });
+
+    it("routes a workbook into the Excel import", async () => {
+      mocks.detectImportKind.mockResolvedValue({ kind: "excel" });
+      mocks.parseExcelImportFile.mockResolvedValue(excelResult());
+      const { result } = renderSettings();
+
+      await act(async () =>
+        result.current.handleImportFile(inventoryFile("leaks.xlsx")),
+      );
+
+      expect(mocks.parseExcelImportFile).toHaveBeenCalled();
+    });
+
+    it("refuses a file it cannot identify", async () => {
+      mocks.detectImportKind.mockResolvedValue({ kind: "unknown" });
+      const { result } = renderSettings();
+
+      await act(async () =>
+        result.current.handleImportFile(inventoryFile("notes.txt")),
+      );
+
+      expect(result.current.notification).toMatchObject({ type: "error" });
+      expect(result.current.notification.message).toContain("notes.txt");
+    });
+
+    it("reports a failure to inspect the file at all", async () => {
+      mocks.detectImportKind.mockRejectedValue(new Error("unreadable"));
+      const { result } = renderSettings();
+
+      await act(async () => result.current.handleImportFile(inventoryFile()));
+
+      expect(result.current.notification).toMatchObject({ type: "error" });
+      expect(result.current.notification.message).toContain("unreadable");
+      expect(mocks.importInventoryFile).not.toHaveBeenCalled();
+    });
+
+    it("does nothing when the picker is dismissed", async () => {
+      const event = { target: { files: [], value: "chosen" } };
+      const { result } = renderSettings();
+
+      await act(async () => result.current.handleImportFile(event));
+
+      expect(event.target.value).toBe("");
+      expect(mocks.detectImportKind).not.toHaveBeenCalled();
+    });
   });
 });
