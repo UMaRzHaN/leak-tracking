@@ -165,14 +165,7 @@ export const components = {
   uidDesc: "by number ↓",
   select: "Select component",
   deselect: "Deselect",
-  selected: "{{count}} selected",
-  clearSelection: "Clear selection",
-  removeSelected: "Delete selected",
-  removeSelectedConfirm: {
-    title: "Delete the selected cards?",
-    description:
-      "{{count}} card(s) will be deleted. Somebody filled in each of them on site; getting them back means walking the site again.",
-  },
+  bulkStatus: "Change state",
   tabs: {
     params: "Parameters",
     photo: "Photo",

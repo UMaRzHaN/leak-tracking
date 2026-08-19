@@ -1073,22 +1073,29 @@ describe("working with a set of cards at once", () => {
     withCards();
 
     fireEvent.click(screen.getByText("Select all"));
-    expect(screen.getByText("2 selected")).toBeTruthy();
+    expect(screen.getByText("2 selected of 2")).toBeTruthy();
 
     fireEvent.click(screen.getByText("Clear selection"));
-    expect(screen.queryByText("2 selected")).toBeNull();
+    expect(screen.queryByText("2 selected of 2")).toBeNull();
   });
 
-  it("asks before throwing a set of walked cards away", () => {
+  it("records one inspection per card when a set is walked at once", async () => {
+    // Подряд стоящее железо осматривают разом и находят в одном состоянии.
+    // Запись всё равно идёт по одной: у каждой карточки своя подпись и своя
+    // отметка о времени.
     withCards();
 
     fireEvent.click(screen.getByText("Select all"));
-    fireEvent.click(screen.getByText("Delete selected"));
-    expect(registry.current.removeComponent).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Change state"));
+    fireEvent.click(screen.getByText("В работе"));
 
-    fireEvent.click(screen.getByText("Delete for good"));
-    return waitFor(() =>
-      expect(registry.current.removeComponent).toHaveBeenCalledTimes(2),
+    await waitFor(() =>
+      expect(registry.current.updateComponent).toHaveBeenCalledTimes(2),
     );
+    expect(registry.current.updateComponent.mock.calls[0][1]).toMatchObject({
+      component_status: "В работе",
+    });
+    // Выбор снимается сам: набранный список — это одно действие, а не режим.
+    expect(screen.queryByText("2 selected of 2")).toBeNull();
   });
 });

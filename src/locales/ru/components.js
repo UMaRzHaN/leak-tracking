@@ -166,14 +166,7 @@ export const components = {
   uidDesc: "по номеру ↓",
   select: "Выбрать компонент",
   deselect: "Снять выбор",
-  selected: "Выбрано: {{count}}",
-  clearSelection: "Снять выделение",
-  removeSelected: "Удалить выбранные",
-  removeSelectedConfirm: {
-    title: "Удалить выбранные карточки?",
-    description:
-      "Будет удалено карточек: {{count}}. Каждую кто-то заполнял на площадке; вернуть их можно будет только обойдя заново.",
-  },
+  bulkStatus: "Сменить статус",
   tabs: {
     params: "Параметры",
     photo: "Фото",

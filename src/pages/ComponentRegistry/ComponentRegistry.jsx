@@ -10,7 +10,6 @@ import ComponentInspectSheet from "@/features/componentRegistry/ComponentInspect
 import ComponentDetailsSheet from "@/features/componentRegistry/ComponentDetailsSheet";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import Notification from "@/components/ui/Notification/Notification";
-import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import ComponentFilterBar from "./components/ComponentFilterBar";
 import ComponentResultsBar from "./components/ComponentResultsBar";
 import { useInventoryExport } from "./hooks/useInventoryExport";
@@ -78,7 +77,7 @@ export default function ComponentRegistry({
   const [statusFilter, setStatusFilter] = useState([]);
   const [sortAsc, setSortAsc] = useState(true);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
-  const [removingSelected, setRemovingSelected] = useState(false);
+  const [bulkInspecting, setBulkInspecting] = useState(false);
   const [editing, setEditing] = useState(null);
   const [tab, setTab] = useState("components");
   const [conflictsOnly, setConflictsOnly] = useState(false);
@@ -255,13 +254,30 @@ export default function ComponentRegistry({
     [canWrite, conflictingIds, selectedIds, toggleSelect],
   );
 
-  const removeSelected = useCallback(async () => {
-    setRemovingSelected(false);
-    // По одной, как их и заводили: удаление проходит через ту же очередь
-    // записи, и половина списка не потеряется, если одна карточка не удалится.
-    for (const id of selectedIds) await removeComponent(id);
-    clearSelection();
-  }, [clearSelection, removeComponent, selectedIds]);
+  /*
+   * Осмотр списком. Обход идёт линией: подряд стоящее железо осматривают
+   * разом и находят в одном состоянии, и отмечать это по одной карточке —
+   * переписывать один ответ двадцать раз.
+   *
+   * Запись всё равно идёт по одной: каждая карточка получает свою подпись и
+   * свою отметку о времени, потому что осмотр — это событие с человеком за
+   * ним, а не свойство выборки.
+   */
+  const inspectSelected = useCallback(
+    async (status) => {
+      setBulkInspecting(false);
+      const user = userProfile?.name;
+      for (const card of components) {
+        if (!selectedIds.has(card.id)) continue;
+        await updateComponent(
+          card.id,
+          recordComponentInspected(card, { status, user }),
+        );
+      }
+      clearSelection();
+    },
+    [clearSelection, components, selectedIds, updateComponent, userProfile],
+  );
 
   /**
    * The page follows the card, not the other way round: opening one switches to
@@ -428,23 +444,22 @@ export default function ComponentRegistry({
         />
       )}
 
-      <ConfirmSheet
-        open={removingSelected}
-        title={t("components.removeSelectedConfirm.title")}
-        description={t("components.removeSelectedConfirm.description", {
-          count: selectedIds.size,
-        })}
-        confirmLabel={t("components.removeConfirm")}
-        cancelLabel={t("components.cancel")}
-        onConfirm={removeSelected}
-        onCancel={() => setRemovingSelected(false)}
-      />
-
       {inspecting && (
         <ComponentInspectSheet
           component={inspecting}
           onPick={handleInspect}
           onClose={() => setInspecting(null)}
+        />
+      )}
+
+      {bulkInspecting && (
+        <ComponentInspectSheet
+          subtitle={t("database.selectedOf", {
+            selected: selectedIds.size,
+            visible: visible.length,
+          })}
+          onPick={inspectSelected}
+          onClose={() => setBulkInspecting(false)}
         />
       )}
 
@@ -496,7 +511,7 @@ export default function ComponentRegistry({
             allDisplayedSelected={allDisplayedSelected}
             onSelectDisplayed={selectDisplayed}
             onClearSelection={clearSelection}
-            onRemoveSelected={() => setRemovingSelected(true)}
+            onInspectSelected={() => setBulkInspecting(true)}
             onExport={exportInventory}
             isExporting={isExporting}
           />

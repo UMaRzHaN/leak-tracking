@@ -11,7 +11,14 @@ import s from "./ComponentInspectSheet.module.scss";
  * choice here — including "unchanged" — stamps the visit, because "looked at
  * it, still fine" is the evidence that the walk covered this component at all.
  */
-export default function ComponentInspectSheet({ component, onPick, onClose }) {
+export default function ComponentInspectSheet({
+  component = null,
+  // Осмотр списком спрашивает то же самое, но не про одну карточку: вместо
+  // номера и наименования в подзаголовке стоит, сколько их выбрано.
+  subtitle = null,
+  onPick,
+  onClose,
+}) {
   const { t } = useLanguage();
   const dialogRef = useModalDialog({ open: true, onClose });
 
@@ -31,8 +38,10 @@ export default function ComponentInspectSheet({ component, onPick, onClose }) {
         <header className={s.head}>
           <h2>{t("components.inspectTitle")}</h2>
           <p>
-            {component?.component_uid} ·{" "}
-            {component?.component || t("components.unnamed")}
+            {subtitle ??
+              `${component?.component_uid} · ${
+                component?.component || t("components.unnamed")
+              }`}
           </p>
         </header>
 
