@@ -17,6 +17,13 @@ export default defineConfig({
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
+    // Сохранение ждёт координаты до пятнадцати секунд (см. COORDS_WAIT_MS):
+    // запись без них выпадает с карты, поэтому приёмник включается и ему
+    // дают время. В браузере без разрешения этот срок выходит целиком на
+    // каждой утечке. Фикс выдаётся сразу — так проверяется тот же путь, что
+    // и у человека с работающим GPS, а не путь ожидания.
+    geolocation: { latitude: 41.311081, longitude: 69.240562 },
+    permissions: ["geolocation"],
   },
   projects: [
     {

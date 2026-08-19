@@ -8,6 +8,7 @@ import {
   importExcelArchive,
   openDatabase,
   openLeakDetails,
+  openMap,
   setUserProfile,
 } from "./helpers.js";
 
@@ -75,9 +76,19 @@ test("opens the main application sections", async ({ page }) => {
     page.getByRole("button", { name: "Начать мониторинг" }),
   ).toBeVisible();
 
-  const mapButton = page.getByRole("contentinfo").getByRole("button").nth(4);
-  await mapButton.click();
-  await expect(mapButton).toHaveAttribute("aria-current", "page");
+  // У Upstream между мониторингом и картой стоит реестр — переход по имени,
+  // а не по номеру вкладки.
+  const registryButton = page.getByRole("button", {
+    name: "Реестр",
+    exact: true,
+  });
+  await registryButton.click();
+  await expect(registryButton).toHaveAttribute("aria-current", "page");
+  await expect(
+    page.getByRole("heading", { name: "Реестр компонентов" }),
+  ).toBeVisible();
+
+  await openMap(page);
 
   const monitoringMapFilter = page.getByRole("button", {
     name: "Фильтр по мониторингу",
@@ -316,7 +327,7 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
   await expect(page.getByRole("alert")).toContainText("База данных очищена");
 
   const fileChooserPromise = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Импорт ZIP" }).click();
+  await page.getByRole("button", { name: "Импорт", exact: true }).click();
   const fileChooser = await fileChooserPromise;
   await fileChooser.setFiles(backupPath);
 
@@ -366,7 +377,7 @@ test("rejects a corrupted ZIP backup without changing project data", async ({
 
   await page.getByTitle("Настройки").click();
   const fileChooserPromise = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Импорт ZIP" }).click();
+  await page.getByRole("button", { name: "Импорт", exact: true }).click();
   const fileChooser = await fileChooserPromise;
   await fileChooser.setFiles({
     name: "broken-upstream.zip",
@@ -374,7 +385,11 @@ test("rejects a corrupted ZIP backup without changing project data", async ({
     buffer: Buffer.from("this is not a zip archive"),
   });
 
-  await expect(page.getByRole("alert")).toContainText("Ошибка импорта");
+  // Импорт один на все форматы и определяет тип по содержимому, поэтому мусор
+  // отсеивается на маршрутизации — раньше, чем до него доберётся разбор ZIP.
+  await expect(page.getByRole("alert")).toContainText(
+    "Не удалось понять, что за файл",
+  );
 
   await page.getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ }).click();
   await openDatabase(page);
@@ -398,8 +413,7 @@ test("records and completes a monitoring round", async ({ page }) => {
   await page.getByRole("button", { name: "Начать обход" }).click();
 
   await page.getByRole("button", { name: "Проверено 0" }).click();
-  const mapButton = page.getByRole("contentinfo").getByRole("button").nth(4);
-  await mapButton.click();
+  await openMap(page);
   const monitoringMapFilter = page.getByRole("button", {
     name: "Фильтр по мониторингу",
   });

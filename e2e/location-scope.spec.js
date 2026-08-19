@@ -4,6 +4,7 @@ import {
   chooseDetailsStatus,
   createLeak,
   createProject,
+  footerTab,
   openDatabase,
   openHome,
   openLeakDetails,
@@ -119,9 +120,7 @@ test("summarises only the chosen location on the main page", async ({
   await expect(total).toContainText("2");
   await expect(page.getByText("Бирка № 7001", { exact: true })).toBeVisible();
   await expect(page.getByText("Бирка № 7003", { exact: true })).toHaveCount(0);
-  await expect(
-    page.getByRole("contentinfo").getByRole("button").nth(2),
-  ).toContainText("2");
+  await expect(footerTab(page, "База")).toContainText("2");
 });
 
 test("keeps leaks outside the location when one inside it is edited", async ({

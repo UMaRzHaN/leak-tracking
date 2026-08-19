@@ -119,13 +119,35 @@ export async function attachModalPhoto(page) {
   await expect(page.getByAltText("Выбранное фото")).toBeVisible();
 }
 
-// Footer order is home, add (FAB), database, monitoring, map.
+// Каждая вкладка подписана aria-label, поэтому выбирается по имени, а не по
+// номеру: у проекта с реестром вкладок шесть, без него — пять, и нумерация
+// уезжает от одного лишь типа проекта.
+export function footerTab(page, name) {
+  return page
+    .getByRole("contentinfo")
+    .getByRole("button", { name, exact: true });
+}
+
 export async function openDatabase(page) {
-  await page.getByRole("contentinfo").getByRole("button").nth(2).click();
+  await footerTab(page, "База").click();
+}
+
+export async function openMap(page) {
+  const map = footerTab(page, "Карта");
+  await map.click();
+  await expect(map).toHaveAttribute("aria-current", "page");
+}
+
+export async function openComponentRegistry(page) {
+  const registry = footerTab(page, "Реестр");
+  await registry.click();
+  await expect(
+    page.getByRole("heading", { name: "Реестр компонентов" }),
+  ).toBeVisible();
 }
 
 export async function openHome(page) {
-  await page.getByRole("contentinfo").getByRole("button").nth(0).click();
+  await footerTab(page, "Главная").click();
   await expect(
     page.getByRole("button", { name: "Добавить утечку", exact: true }),
   ).toBeVisible();
@@ -142,12 +164,18 @@ export async function exportExcelArchive(page, testInfo) {
   return archivePath;
 }
 
-export async function importExcelArchive(page, archivePath) {
+// Кнопка импорта одна на все форматы: тип определяется по содержимому файла,
+// а не по тому, какую из трёх кнопок нажали.
+export async function importFile(page, archivePath) {
   await page.getByTitle("Настройки").click();
   const fileChooserPromise = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Импорт Excel" }).click();
+  await page.getByRole("button", { name: "Импорт", exact: true }).click();
   const fileChooser = await fileChooserPromise;
   await fileChooser.setFiles(archivePath);
+}
+
+export async function importExcelArchive(page, archivePath) {
+  await importFile(page, archivePath);
   await expect(
     page.getByRole("heading", { name: "Проект уже существует" }),
   ).toBeVisible();
