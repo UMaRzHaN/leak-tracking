@@ -46,6 +46,14 @@ describe("Excel workbook schema discovery", () => {
     expect(generic.get(normalizeHeader("Индивидуальный номер бирки"))).toBe(
       "leak_id",
     );
+    /*
+     * Как эту колонку подписывают в файлах, сделанных руками: приложение
+     * пишет «Индивидуальный номер утечки», а человек за таблицей — как
+     * говорит, и такой файл не читался вовсе.
+     */
+    for (const header of ["Номер бирки", "№ бирки", "Tag number"]) {
+      expect(generic.get(normalizeHeader(header))).toBe("leak_id");
+    }
     expect(upstream.get(normalizeHeader("Координата X"))).toBe("lat");
     expect(buildMonitoringHeaderMap().get(normalizeHeader("Обход"))).toBe(
       "roundNumber",
