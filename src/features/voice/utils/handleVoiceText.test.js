@@ -121,3 +121,68 @@ describe("handleVoiceText", () => {
     },
   );
 });
+
+describe("услышанное к словарю поля", () => {
+  const registry = {
+    component: ["Задвижка", "Кран шаровой"],
+    component_type: ["Запорная арматура", "Регулирующая арматура"],
+    medium: ["Природный газ", "Нефть"],
+    body_material: ["Сталь 20", "Чугун"],
+    component_status: ["В работе", "Требует замены"],
+  };
+  const allowed = [
+    "component",
+    "component_type",
+    "medium",
+    "body_material",
+    "component_status",
+  ];
+
+  function run(text, options = registry) {
+    const setVoiceData = vi.fn();
+    handleVoiceText([], text, setVoiceData, "upstream", null, allowed, options);
+    return setVoiceData.mock.calls[0]?.[0] ?? {};
+  }
+
+  it("кладёт в карточку значение из списка, а не как расслышалось", () => {
+    // Иначе в поле оказывается строка, которой нет ни в одном выпадающем
+    // списке, и человек правит её руками, стоя у железа.
+    expect(run("тип компонента запорной арматуры")).toMatchObject({
+      component_type: "Запорная арматура",
+    });
+  });
+
+  it("сопоставляет среду, материал и состояние", () => {
+    expect(
+      run("среда природный газ материал корпуса сталь 20 состояние в работе"),
+    ).toMatchObject({
+      medium: "Природный газ",
+      body_material: "Сталь 20",
+      component_status: "В работе",
+    });
+  });
+
+  it("предпочитает список реестра словарю утечек", () => {
+    // У утечки то же железо называется описательно — «Задвижка механическая
+    // стальная», — а в реестре оно «Задвижка».
+    expect(run("компонент задвижка")).toMatchObject({ component: "Задвижка" });
+  });
+
+  it("оставляет услышанное, когда списка для поля нет", () => {
+    // Завод-изготовитель словарём не описать: их столько же, сколько табличек.
+    const setVoiceData = vi.fn();
+    handleVoiceText(
+      [],
+      "производитель пензтяжпромарматура",
+      setVoiceData,
+      "upstream",
+      null,
+      ["manufacturer"],
+      registry,
+    );
+
+    expect(setVoiceData).toHaveBeenCalledWith({
+      manufacturer: "Пензтяжпромарматура",
+    });
+  });
+});

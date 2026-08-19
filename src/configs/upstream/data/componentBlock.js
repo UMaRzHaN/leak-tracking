@@ -7,6 +7,14 @@ import {
 } from "./componentFields";
 import { COMPONENT_STEPS } from "./componentSteps";
 import { splitExcelColumns } from "@/configs/shared/excel";
+import {
+  body_materials,
+  component_names,
+  component_statuses,
+  component_types,
+  equipment_types,
+  mediums,
+} from "@/data/component/componentDictionary";
 
 /**
  * The upstream component registry, loaded on demand.
@@ -63,21 +71,43 @@ const COMPONENT_EXCEL_COLUMNS = [
 /**
  * Что голос вправе заполнить в карточке компонента.
  *
- * Только поля, общие с утечкой: распознаватель обучен на её словаре, и
- * называть ему паспортные величины — давления, диаметры, материал корпуса —
- * значит получать в ответ услышанное наугад. Их читают с таблички, а не
- * произносят.
+ * Сначала здесь были только поля, общие с утечкой, — и голос заполнял пятую
+ * часть карточки, а остальное человек дописывал руками, стоя у железа с
+ * телефоном в одной руке. Теперь распознаватель знает и паспортные величины:
+ * они читаются с таблички вслух ровно так же, как всё прочее.
  *
- * Без этого блока кнопка микрофона запускала распознавание, но писать
- * распознанному было некуда, и оно просто пропадало.
+ * Дата монтажа сюда намеренно не входит: её берут календарём, а
+ * продиктованная дата — это спор о том, что значит «двенадцатое пятое».
+ *
+ * `options` — списки допустимых значений. Услышанное «запорная арматура»
+ * сопоставляется с «Запорная арматура» из словаря, иначе в карточку попадала
+ * бы строка, которой нет ни в одном выпадающем списке.
  */
 const COMPONENT_VOICE = {
   outputFields: [
+    // Место: голос кладёт услышанное на уровни иерархии этого типа проекта.
+    "subdivision",
+    "deposit",
+    "location",
     "object",
+    // Что это за железо.
     "component",
-    "actuator_type",
+    "component_uid",
+    "scheme_tag",
+    "component_type",
+    "equipment_type",
+    // Что написано на табличке.
+    "nominal_diameter",
+    "nominal_pressure",
+    "working_pressure",
+    "working_temperature",
     "connection_type",
+    "actuator_type",
     "installation_type",
+    "medium",
+    "body_material",
+    "manufacturer",
+    "component_status",
   ],
   synonymsFields: [
     "component",
@@ -85,6 +115,19 @@ const COMPONENT_VOICE = {
     "connection_type",
     "installation_type",
   ],
+  options: {
+    /*
+     * Места здесь нет намеренно. В словаре стоит «Скважина» — вид узла, — а
+     * говорят «Скважина 22», и сведение к словарю отрезало бы номер, то есть
+     * ровно то, что отличает один узел от другого.
+     */
+    component: component_names,
+    component_type: component_types,
+    equipment_type: equipment_types,
+    medium: mediums,
+    body_material: body_materials,
+    component_status: component_statuses,
+  },
 };
 
 const COMPONENT_BLOCK = Object.freeze({

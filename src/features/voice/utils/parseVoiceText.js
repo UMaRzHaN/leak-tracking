@@ -61,6 +61,15 @@ function formatValue(type, rawValue) {
     return normalizeStationName(value);
   }
   if (type === "integerString") return rawValue.trim();
+  if (type === "tag") {
+    /*
+     * Бирка со схемы — «ЗД32», «PG», «PT-101». Текст к этому месту уже
+     * приведён к нижнему регистру, а обозначение с чертежа в нижнем регистре
+     * не существует: одним словом его возвращают целиком заглавными.
+     */
+    const value = rawValue.trim();
+    return /\s/.test(value) ? formatCapturedText(value) : value.toUpperCase();
+  }
   if (type === "entity") {
     const { value } = parseVoiceEntityDescriptor(rawValue);
     return formatCapturedText(value);

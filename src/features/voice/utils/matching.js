@@ -4,6 +4,19 @@
  *
  * Returns the matched canonical string, or null if no word overlap found.
  */
+// Длина общего начала, после которой два слова считаются одним и тем же в
+// разных падежах: «запорной» и «запорная» расходятся на седьмой букве, и
+// сравнение по началу строки их не сводило — сказанное после «тип компонента»
+// почти всегда стоит в родительном падеже.
+const STEM_LENGTH = 5;
+
+function sharesStem(left, right) {
+  if (left.startsWith(right) || right.startsWith(left)) return true;
+  const limit = Math.min(left.length, right.length);
+  if (limit < STEM_LENGTH) return false;
+  return left.slice(0, STEM_LENGTH) === right.slice(0, STEM_LENGTH);
+}
+
 function wordScore(input, candidate) {
   const iWords = input
     .toLowerCase()
@@ -16,7 +29,7 @@ function wordScore(input, candidate) {
 
   let hits = 0;
   for (const iw of iWords) {
-    if (cWords.some((cw) => cw.startsWith(iw) || iw.startsWith(cw))) hits++;
+    if (cWords.some((cw) => sharesStem(cw, iw))) hits++;
   }
   return hits;
 }

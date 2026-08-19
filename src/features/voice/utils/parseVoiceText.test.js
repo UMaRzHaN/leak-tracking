@@ -577,3 +577,88 @@ describe("parseVoiceText end-to-end voice component scenarios", () => {
     });
   });
 });
+
+describe("что слышно у железа, а не у утечки", () => {
+  it("отделяет присвоенный номер от наименования", () => {
+    // Сказанное «номер компонента 4242» писало «4242» в наименование.
+    expect(
+      parseVoiceText("номер компонента 4242 компонент задвижка"),
+    ).toMatchObject({
+      component_uid: "4242",
+      component: "Задвижка механическая стальная",
+    });
+  });
+
+  it("понимает и «индивидуальный номер»", () => {
+    expect(parseVoiceText("индивидуальный номер 15")).toMatchObject({
+      component_uid: "15",
+    });
+  });
+
+  it("возвращает бирку со схемы заглавными, как её пишут", () => {
+    // Обозначения с чертежа в нижнем регистре не существует.
+    expect(parseVoiceText("инвентаризационный номер зд32")).toMatchObject({
+      scheme_tag: "ЗД32",
+    });
+    expect(parseVoiceText("номер на схеме pg-7")).toMatchObject({
+      scheme_tag: "PG-7",
+    });
+  });
+
+  it("не путает тип компонента с наименованием", () => {
+    const parsed = parseVoiceText(
+      "тип компонента запорная арматура тип оборудования трубопроводная арматура",
+    );
+
+    expect(parsed).toMatchObject({
+      component_type: "Запорная арматура",
+      equipment_type: "Трубопроводная арматура",
+    });
+    expect(parsed.component).toBeUndefined();
+  });
+
+  it("слышит паспортные величины по-русски и сокращениями", () => {
+    expect(
+      parseVoiceText(
+        "номинальный диаметр 400 номинальное давление 16 рабочее давление 12 рабочая температура 40",
+      ),
+    ).toMatchObject({
+      nominal_diameter: 400,
+      nominal_pressure: 16,
+      working_pressure: 12,
+      working_temperature: 40,
+    });
+  });
+
+  it("слышит ДУ и РУ, набранные с таблички", () => {
+    // \b рядом с кириллицей не срабатывает — граница здесь своя.
+    expect(parseVoiceText("ду 100 ру 6")).toMatchObject({
+      nominal_diameter: 100,
+      nominal_pressure: 6,
+    });
+  });
+
+  it("не принимает «ду» внутри слова за диаметр", () => {
+    expect(parseVoiceText("буду смотреть 5")).not.toHaveProperty(
+      "nominal_diameter",
+    );
+  });
+
+  it("слышит среду, материал корпуса и завод", () => {
+    expect(
+      parseVoiceText(
+        "среда природный газ материал корпуса сталь 20 производитель пензтяжпромарматура",
+      ),
+    ).toMatchObject({
+      medium: "Природный газ",
+      body_material: "Сталь 20",
+      manufacturer: "Пензтяжпромарматура",
+    });
+  });
+
+  it("слышит состояние железа", () => {
+    expect(parseVoiceText("состояние в работе")).toMatchObject({
+      component_status: "В работе",
+    });
+  });
+});

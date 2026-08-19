@@ -37,6 +37,11 @@ const normalizeComponentDisplayCase = (value) => {
  * @param {Function} setVoiceData — state setter that receives parsed result
  * @param {string}   project      — project type ("upstream"|"midstream"|"downstream")
  * @param {string|null} dictationKey — key of textarea field in current step (for dictation mode)
+ * @param {string[]} allowedFields — keys the asking entity can actually store
+ * @param {Record<string, string[]>} fieldOptions — списки допустимых значений по
+ *   полям. Приходят от сущности, а не лежат здесь: словари оборудования весят
+ *   одиннадцать килобайт и нужны только реестру, а этот модуль грузится вместе
+ *   с обеими формами.
  */
 export const handleVoiceText = (
   arr,
@@ -45,6 +50,7 @@ export const handleVoiceText = (
   project,
   dictationKey = null,
   allowedFields = [],
+  fieldOptions = {},
 ) => {
   const parsed = parseVoiceText(text);
   const normalizedData = normalizeSynonyms(
@@ -80,6 +86,18 @@ export const handleVoiceText = (
       data[field] = normalizeBySynonyms(data[field], synonymKey).value;
   }
 
+  /*
+   * Услышанное к словарю поля. Распознаватель отдаёт «запорная арматура» там,
+   * где в списке стоит «Запорная арматура», и «сталь двадцать» там, где
+   * «Сталь 20»: без сопоставления в карточку попадала бы строка, которой нет
+   * ни в одном выпадающем списке, и человек правил бы её руками.
+   */
+  for (const [field, options] of Object.entries(fieldOptions)) {
+    if (field === "component" || !data[field] || !options?.length) continue;
+    const matched = fuzzyMatchOption(String(data[field]), options);
+    if (matched) data[field] = matched;
+  }
+
   // Fuzzy match object against objects dictionary
   if (data.object) {
     const synonymed = normalizeBySynonyms(data.object, "component").value;
@@ -96,7 +114,17 @@ export const handleVoiceText = (
       descriptor.name,
       "component",
     ).value;
-    const fuzzy = fuzzyMatchOption(synonymedName, components);
+    /*
+     * Список реестра — тот же железный шкаф, названный короче: «Задвижка»
+     * против «Задвижка механическая стальная» у утечки. Сначала пробуем
+     * услышанное как есть, и только потом — приведённое словарём синонимов:
+     * тот словарь ведёт к именам утечки, и «задвижка» уходила в «ЗМС», после
+     * чего в списке реестра ничего не находилось.
+     */
+    const options = fieldOptions.component ?? components;
+    const fuzzy =
+      fuzzyMatchOption(descriptor.name, options) ??
+      fuzzyMatchOption(synonymedName, options);
 
     data.component = [
       normalizeComponentDisplayCase(fuzzy ?? synonymedName),

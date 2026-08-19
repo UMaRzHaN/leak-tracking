@@ -51,6 +51,7 @@ export function useVoiceControl({
         project,
         dictationKey ?? null,
         outputFields,
+        active?.options ?? {},
       );
     },
     [dictationKey, lang, onCommand, project, projectConfig, voice],
