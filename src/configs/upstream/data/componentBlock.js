@@ -60,8 +60,36 @@ const COMPONENT_EXCEL_COLUMNS = [
   { key: "photo", header: "Фото" },
 ];
 
+/**
+ * Что голос вправе заполнить в карточке компонента.
+ *
+ * Только поля, общие с утечкой: распознаватель обучен на её словаре, и
+ * называть ему паспортные величины — давления, диаметры, материал корпуса —
+ * значит получать в ответ услышанное наугад. Их читают с таблички, а не
+ * произносят.
+ *
+ * Без этого блока кнопка микрофона запускала распознавание, но писать
+ * распознанному было некуда, и оно просто пропадало.
+ */
+const COMPONENT_VOICE = {
+  outputFields: [
+    "object",
+    "component",
+    "actuator_type",
+    "connection_type",
+    "installation_type",
+  ],
+  synonymsFields: [
+    "component",
+    "actuator_type",
+    "connection_type",
+    "installation_type",
+  ],
+};
+
 const COMPONENT_BLOCK = Object.freeze({
   steps: { mode: "manual", steps: COMPONENT_STEPS },
+  voice: COMPONENT_VOICE,
   system: {
     fields: FIELDS,
     numeric: NUMBER_FIELDS,

@@ -187,6 +187,7 @@ export function useComponentRegistry(project) {
     enabled,
     steps: registry?.steps ?? null,
     fields: registry?.fields ?? null,
+    voice: registry?.voice ?? null,
     components: sorted,
     lastComponent,
     conflicts,

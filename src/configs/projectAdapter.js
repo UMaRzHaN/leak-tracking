@@ -206,6 +206,7 @@ export function hasComponentRegistry(project) {
  *     location: { main: string, secondary: string, last: string },
  *   },
  *   excel: any,
+ *   voice: any,
  * }>}
  */
 export async function loadComponentRegistry(project) {
@@ -263,5 +264,7 @@ export async function loadComponentRegistry(project) {
       },
     },
     excel: block.export.excel,
+    /** Может отсутствовать: тип проекта вправе не давать реестру голос. */
+    voice: block.voice ?? null,
   };
 }

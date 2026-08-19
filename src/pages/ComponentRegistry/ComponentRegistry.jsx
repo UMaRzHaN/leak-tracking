@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useComponentRegistry } from "@/features/componentRegistry/useComponentRegistry";
 import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
-import { useVoiceControl } from "@/app/hooks/useVoiceControl";
 import ComponentCardForm from "./ComponentCardForm";
 import SchemaList from "@/features/schemas/SchemaList";
 import ComponentCardCompact from "@/features/componentRegistry/ComponentCardCompact";
@@ -57,6 +56,7 @@ export default function ComponentRegistry({
     enabled,
     steps,
     fields,
+    voice,
     components,
     lastComponent,
     conflicts,
@@ -71,13 +71,6 @@ export default function ComponentRegistry({
 
   const { componentPhotoRequired } = usePhotoRequirements(project?.id ?? null);
   const { savePhoto } = usePhotoStorage();
-  /*
-   * The microphone the leak form offers, on the same screen furniture. Speech
-   * recognition starts and stops; nothing is filled in yet, because the
-   * registry declares no voice mapping of its own — that comes with the fields
-   * it should write to.
-   */
-  const { startVoiceInput, stopVoiceInput } = useVoiceControl();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState(ALL);
@@ -305,8 +298,7 @@ export default function ComponentRegistry({
         texts={texts}
         t={t}
         photoRequired={componentPhotoRequired}
-        startVoiceInput={startVoiceInput}
-        stopVoiceInput={stopVoiceInput}
+        voice={voice}
       />
     );
   }

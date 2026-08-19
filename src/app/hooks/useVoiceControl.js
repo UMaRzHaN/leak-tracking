@@ -13,8 +13,16 @@ import { useLanguage } from "@/app/hooks/useLanguage";
  * @param {number} [options.step]
  * @param {object[]} [options.steps]
  * @param {Function} [options.onCommand]
+ * @param {object|null} [options.voice] чей это словарь. По умолчанию — блок
+ *   утечки из конфига проекта; реестр компонентов передаёт свой, потому что
+ *   заполняет он другие поля, и без этого распознанному было некуда деться.
  */
-export function useVoiceControl({ step = 1, steps = [], onCommand } = {}) {
+export function useVoiceControl({
+  step = 1,
+  steps = [],
+  onCommand,
+  voice = null,
+} = {}) {
   const projectConfig = useProjectConfig();
   const { project } = useProjectData();
   const { lang } = useLanguage();
@@ -33,8 +41,9 @@ export function useVoiceControl({ step = 1, steps = [], onCommand } = {}) {
         return;
       }
 
-      const synonymsFields = projectConfig?.voice?.synonymsFields ?? [];
-      const outputFields = projectConfig?.voice?.outputFields ?? [];
+      const active = voice ?? projectConfig?.voice;
+      const synonymsFields = active?.synonymsFields ?? [];
+      const outputFields = active?.outputFields ?? [];
       handleVoiceText(
         synonymsFields,
         text,
@@ -44,7 +53,7 @@ export function useVoiceControl({ step = 1, steps = [], onCommand } = {}) {
         outputFields,
       );
     },
-    [dictationKey, lang, onCommand, project, projectConfig],
+    [dictationKey, lang, onCommand, project, projectConfig, voice],
   );
 
   const { start, stop } = useSpeechRecognition(onSpeechResult, lang);

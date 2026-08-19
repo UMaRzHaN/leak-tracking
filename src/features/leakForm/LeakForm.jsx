@@ -20,6 +20,7 @@ import StepRenderer from "@/features/leakForm/components/StepRenderer/StepRender
 import ClearActions from "./components/ClearActions";
 import SettingsModal from "@/features/settings/SettingsModal/SettingsModal";
 import { getCopyPreviousKeys } from "@/features/leakForm/utils/copyPrevious";
+import { buildGhostPlaceholders } from "@/features/leakForm/utils/ghostPlaceholders";
 import { dataUrlToBlob } from "@/utils/photoConversion";
 import { shortFieldLabel } from "@/utils/fieldLabels";
 import s from "./LeakForm.module.scss";
@@ -354,20 +355,10 @@ export default function LeakForm({
     void commitSave({ ...form, photo: form.photo });
   };
 
-  const ghostPlaceholders = useMemo(() => {
-    if (!lastItem) return {};
-    const currentFields = STEPS[step - 1]?.fields ?? [];
-    const result = {};
-    for (const f of currentFields) {
-      if (f.type === "photo") continue;
-      const isEmpty = form[f.key] == null || String(form[f.key]).trim() === "";
-      const lastVal = lastItem[f.key];
-      if (isEmpty && lastVal != null && String(lastVal).trim() !== "") {
-        result[f.key] = String(lastVal);
-      }
-    }
-    return result;
-  }, [lastItem, STEPS, step, form]);
+  const ghostPlaceholders = useMemo(
+    () => buildGhostPlaceholders(lastItem, STEPS[step - 1]?.fields, form),
+    [lastItem, STEPS, step, form],
+  );
 
   const hasStepData = translatedSteps[step - 1]?.fields?.some(
     ({ key }) => form[key],

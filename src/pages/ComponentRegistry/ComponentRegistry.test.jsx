@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -30,10 +36,15 @@ vi.mock("@/features/photos/PhotoInput/PhotoInput", () => ({
 }));
 // Both reach for providers the app supplies and a bare render does not.
 vi.mock("@/app/hooks/useVoiceControl", () => ({
-  useVoiceControl: () => ({
-    startVoiceInput: vi.fn(),
-    stopVoiceInput: vi.fn(),
-  }),
+  useVoiceControl: (options) => {
+    voiceControl.options = options;
+    return {
+      pendingVoiceData: voiceControl.pending,
+      dismissVoiceData: voiceControl.dismiss,
+      startVoiceInput: voiceControl.start,
+      stopVoiceInput: voiceControl.stop,
+    };
+  },
 }));
 vi.mock("@/app/project/hooks/usePhotoRequirements", () => ({
   usePhotoRequirements: () => photoRequirements.current,
@@ -44,6 +55,14 @@ vi.mock("@/hooks/usePhotoStorage", () => ({
     ready: true,
   }),
 }));
+
+const voiceControl = {
+  options: null,
+  pending: null,
+  dismiss: vi.fn(),
+  start: vi.fn(),
+  stop: vi.fn(),
+};
 
 const ComponentRegistry = (await import("./ComponentRegistry")).default;
 // The real declaration, so the form under test renders the fields it will in
@@ -98,6 +117,7 @@ function makeRegistry(overrides = {}) {
     conflicts: [],
     conflictingIds: new Set(),
     fields: { copyable: COMPONENT_FIELDS.filter((f) => f.copyable) },
+    voice: { outputFields: ["component"], synonymsFields: ["component"] },
     lastComponent: null,
     loading: false,
     error: null,
@@ -801,9 +821,10 @@ describe("copying from the previous card", () => {
     fireEvent.click(screen.getByText("Save"));
   }
 
-  it("keeps the worked example in the input, not the previous value", () => {
-    // The example is what tells a walker the shape of the answer; the previous
-    // card's value used to sit in the same place and hide it.
+  it("shows what the previous card said, greyed out, in the empty fields", () => {
+    // Обход однообразен, и быстрее всего сказать «здесь так же», увидев, что
+    // было в прошлый раз. Написанным это не становится: подсказка исчезает,
+    // как только в поле что-то печатают.
     registry.current = makeRegistry({
       lastComponent: {
         id: "prev",
@@ -815,9 +836,27 @@ describe("copying from the previous card", () => {
     renderRegistry();
     fireEvent.click(screen.getByText("Add component"));
 
+    expect(screen.getByLabelText(/Номер на схеме/).placeholder).toBe("PG");
+    // Чего предыдущая карточка не сказала, о том и подсказывать нечем —
+    // остаётся пример из локали, объясняющий форму ответа.
     expect(screen.getByLabelText(/Подразделение/).placeholder).toBe(
       "e.g. Messoyakha gas plant",
     );
+  });
+
+  it("leaves the example alone while editing a saved card", () => {
+    // В правке серым стояло бы значение соседней карточки, которое легко
+    // принять за уже сохранённое здесь.
+    registry.current = makeRegistry({
+      components: [
+        { id: "c1", component_uid: "14", component: "Задвижка", history: [] },
+      ],
+      lastComponent: { id: "prev", component_uid: "6", scheme_tag: "PG" },
+    });
+    renderRegistry();
+    fireEvent.click(screen.getByText("Задвижка"));
+    fireEvent.click(screen.getByText("Edit"));
+
     expect(screen.getByLabelText(/Номер на схеме/).placeholder).not.toBe("PG");
   });
 
@@ -898,5 +937,49 @@ describe("copying from the previous card", () => {
       expect(registry.current.addComponent).toHaveBeenCalledTimes(1),
     );
     expect(screen.queryByText(/Fill from the previous card/i)).toBeNull();
+  });
+});
+
+describe("the microphone in the card", () => {
+  beforeEach(() => {
+    voiceControl.pending = null;
+    voiceControl.options = null;
+  });
+
+  it("hands the registry's own dictionary to the recogniser", () => {
+    // Раньше кнопка запускала распознавание со словарём утечки, и писать
+    // распознанному в карточке было некуда — оно просто пропадало.
+    registry.current = makeRegistry();
+    renderRegistry();
+    fireEvent.click(screen.getByText("Add component"));
+
+    expect(voiceControl.options.voice).toEqual({
+      outputFields: ["component"],
+      synonymsFields: ["component"],
+    });
+    expect(voiceControl.options.steps).toBeTruthy();
+  });
+
+  it("offers what was heard for confirmation before writing it", () => {
+    registry.current = makeRegistry();
+    voiceControl.pending = { component: "Задвижка" };
+    renderRegistry();
+    fireEvent.click(screen.getByText("Add component"));
+
+    expect(screen.getByText("Задвижка")).toBeTruthy();
+  });
+
+  it("hides the microphone when the project type gives the registry no voice", () => {
+    registry.current = makeRegistry();
+    renderRegistry();
+    fireEvent.click(screen.getByText("Add component"));
+    expect(screen.getByRole("button", { name: "Voice input" })).toBeTruthy();
+
+    cleanup();
+    registry.current = makeRegistry({ voice: null });
+    renderRegistry();
+    fireEvent.click(screen.getByText("Add component"));
+
+    expect(screen.queryByRole("button", { name: "Voice input" })).toBeNull();
   });
 });

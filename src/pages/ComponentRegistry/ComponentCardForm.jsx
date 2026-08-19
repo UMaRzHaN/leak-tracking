@@ -4,6 +4,8 @@ import PageHeader from "@/components/layout/PageHeader/PageHeader";
 import AddLeakFooter from "@/features/leakForm/Footer/AddLeakFooter";
 import ClearActions from "@/features/leakForm/components/ClearActions";
 import VoiceButton from "@/features/voice/VoiceButton/VoiceButton";
+import VoicePreviewSheet from "@/features/voice/VoicePreviewSheet/VoicePreviewSheet";
+import { useVoiceControl } from "@/app/hooks/useVoiceControl";
 import StepRenderer from "@/features/leakForm/components/StepRenderer/StepRenderer";
 import {
   isValidComponentUid,
@@ -14,6 +16,7 @@ import { toNullableNumber } from "@/utils/normalize/toNullableNumber";
 import { hasCoordsFix, waitForCoordsFix } from "@/utils/coordsFix";
 import { COMPONENT_NAME_TRANSLATIONS } from "@/data/component/componentDictionary";
 import { getCopyPreviousKeys } from "@/features/leakForm/utils/copyPrevious";
+import { buildGhostPlaceholders } from "@/features/leakForm/utils/ghostPlaceholders";
 import { localizeComponentSteps } from "./localizeComponentSteps";
 import leak from "@/features/leakForm/LeakForm.module.scss";
 import s from "./ComponentRegistry.module.scss";
@@ -45,8 +48,7 @@ export default function ComponentCardForm({
   texts,
   t,
   photoRequired = true,
-  startVoiceInput = null,
-  stopVoiceInput = null,
+  voice = null,
 }) {
   const steps = useMemo(() => {
     const localized = localizeComponentSteps(rawSteps, t);
@@ -90,6 +92,45 @@ export default function ComponentCardForm({
         s.fields.filter((f) => f.required).map((f) => f.key),
       ),
     [steps],
+  );
+
+  /*
+   * Значение предыдущей карточки серым в пустом поле — так же, как в форме
+   * утечки. Обход однообразен: то же подразделение, та же среда, тот же тип
+   * соединения вдоль всей нитки, и быстрее всего сказать «здесь так же»,
+   * увидев, что было в прошлый раз. Подсказка ничего не пишет: значение
+   * попадёт в карточку, только если его напечатать или принять предложение
+   * при сохранении.
+   *
+   * Только при заведении. В правке серым стояло бы то, что человек мог принять
+   * за уже сохранённое значение соседней карточки.
+   */
+  const ghostPlaceholders = useMemo(
+    () =>
+      isEditing
+        ? null
+        : buildGhostPlaceholders(lastComponent, steps[step - 1]?.fields, form),
+    [form, isEditing, lastComponent, step, steps],
+  );
+
+  /*
+   * Голос заводится здесь, а не на странице: распознанное нужно положить в
+   * поля этого шага, а о шаге знает только форма. Раньше кнопка стояла на
+   * странице, распознавание запускалось — и результат было некуда деть.
+   */
+  const {
+    pendingVoiceData,
+    dismissVoiceData,
+    startVoiceInput,
+    stopVoiceInput,
+  } = useVoiceControl({ step, steps, voice });
+
+  const handleVoiceConfirm = useCallback(
+    (confirmed) => {
+      setForm((current) => ({ ...current, ...confirmed }));
+      dismissVoiceData();
+    },
+    [dismissVoiceData],
   );
 
   const conflicts = useMemo(
@@ -358,7 +399,9 @@ export default function ComponentCardForm({
           onCancel();
         }}
         right={
-          startVoiceInput ? (
+          /* Микрофон только там, где ему есть что заполнять: тип проекта
+             вправе не давать реестру голосового словаря. */
+          voice ? (
             <VoiceButton
               startVoiceInput={startVoiceInput}
               stopVoiceInput={stopVoiceInput}
@@ -382,11 +425,14 @@ export default function ComponentCardForm({
         onChange={handleChange}
         nextStep={nextStep}
         save={handleSave}
-        // Deliberately none: the input carries the worked example from the
-        // locale, and the previous card's value sitting in the same place hid
-        // it. What the last card held is offered on save instead, where it can
-        // be accepted or declined rather than silently read as a suggestion.
-        ghostPlaceholders={null}
+        ghostPlaceholders={ghostPlaceholders}
+      />
+
+      <VoicePreviewSheet
+        pending={pendingVoiceData}
+        steps={steps}
+        onConfirm={handleVoiceConfirm}
+        onDismiss={dismissVoiceData}
       />
 
       <ClearActions
