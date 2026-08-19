@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { PROJECT_META } from "@/configs/projects";
 import { toFolderName } from "@/app/project/ProjectContext";
@@ -25,6 +25,7 @@ function projectTexts(t) {
 
 export default function AddProjectForm({ onConfirm, onCancel }) {
   const { t } = useLanguage();
+  const nameId = useId();
 
   const [name, setName] = useState("");
   const [type, setType] = useState("");
@@ -46,8 +47,11 @@ export default function AddProjectForm({ onConfirm, onCancel }) {
       <h3 className={s.formTitle}>{t("settings.newProject")}</h3>
 
       <div className={s.field}>
-        <label className={s.label}>{t("settings.projectName")}</label>
+        <label className={s.label} htmlFor={nameId}>
+          {t("settings.projectName")}
+        </label>
         <input
+          id={nameId}
           className={s.input}
           type="text"
           placeholder={t("settings.projectNamePlaceholder")}
