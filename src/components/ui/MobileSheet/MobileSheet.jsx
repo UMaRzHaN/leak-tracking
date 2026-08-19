@@ -66,7 +66,13 @@ export default function MobileSheet({ open, leaks, onClose, onSelect }) {
                   onClick={() => onSelect(leak)}
                 >
                   <span className={s.dot} />
-                  {t("map.popup.tag")} {leak.leak_id}
+                  {/* Тот же список на обеих базах карты, но подписан тем, чем
+                      вещь на самом деле является: бирка у утечки, присвоенный
+                      номер у компонента. */}
+                  {leak.kind === "component"
+                    ? t("map.popup.componentTag")
+                    : t("map.popup.tag")}{" "}
+                  {leak.leak_id}
                 </button>
               ))}
             </div>

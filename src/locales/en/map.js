@@ -10,6 +10,8 @@ export const map = {
     component: "Component",
     description: "Leak description",
     status: "Status",
+    componentTag: "Component No.",
+    schemeTag: "Drawing tag",
   },
 
   tilesSaved: "Saved {{total}} tiles",
@@ -50,9 +52,15 @@ export const map = {
     downloaded: "KML file downloaded successfully",
   },
 
+  // Leaks and components are two bases of one project, and the map shows one
+  // at a time: mixed pins would make neither of them countable.
+  baseLeaks: "Leaks",
+  baseComponents: "Assets",
+
   controls: {
     myLocation: "My location",
     searchLeaks: "Search leaks",
     downloadArea: "Download current area map",
+    base: "Switch base: leaks or components",
   },
 };

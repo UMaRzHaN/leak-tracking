@@ -15,6 +15,9 @@ const FILTER_MENU = {
 export default function MapControls({
   onLocate,
   gpsEnabled = true,
+  showsComponents = false,
+  componentsAvailable = false,
+  onToggleBase = null,
   onOpenSheet,
   onDownload,
   onCancelDownload,
@@ -72,6 +75,24 @@ export default function MapControls({
 
   return (
     <div className={s.controls}>
+      {/* Переключатель баз стоит первым: он решает, о чём остальные кнопки.
+          Фильтры по статусу, приоритету и кругу мониторинга описывают, как
+          разбираются с утечкой, — к железу это не относится, и на его базе
+          они не висят без дела, а пропадают. */}
+      {componentsAvailable && (
+        <button
+          type="button"
+          className={`${s.controlBtn} ${showsComponents ? s.controlBtnActive : ""}`}
+          onClick={() => onToggleBase?.()}
+          aria-pressed={showsComponents}
+          aria-label={t("map.controls.base")}
+        >
+          <span className={s.baseLabel}>
+            {showsComponents ? t("map.baseComponents") : t("map.baseLeaks")}
+          </span>
+        </button>
+      )}
+
       <button
         type="button"
         className={s.controlBtn}
@@ -116,57 +137,59 @@ export default function MapControls({
         </svg>
       </button>
 
-      <div className={s.filterControlWrap}>
-        <button
-          type="button"
-          className={`${s.controlBtn} ${
-            monitoringActive ? s.controlBtnActive : ""
-          }`}
-          onClick={() => toggleFilterMenu(FILTER_MENU.MONITORING)}
-          aria-expanded={isMonitoringOpen}
-          aria-label={t("map.monitoringFilter")}
-        >
-          <svg
-            className={s.controlIcon}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+      {!showsComponents && (
+        <div className={s.filterControlWrap}>
+          <button
+            type="button"
+            className={`${s.controlBtn} ${
+              monitoringActive ? s.controlBtnActive : ""
+            }`}
+            onClick={() => toggleFilterMenu(FILTER_MENU.MONITORING)}
+            aria-expanded={isMonitoringOpen}
+            aria-label={t("map.monitoringFilter")}
           >
-            <circle cx="12" cy="12" r="8" />
-            <path d="m8.5 12 2.2 2.2 4.8-5" />
-          </svg>
-        </button>
-        <div
-          className={`${s.filterFlyout} ${
-            isMonitoringOpen ? s.filterFlyoutOpen : ""
-          }`}
-        >
-          {[
-            [MONITORING_FILTER.ALL, monitoringLabels.all],
-            [MONITORING_FILTER.DUE, monitoringLabels.due],
-            [MONITORING_FILTER.CHECKED, monitoringLabels.checked],
-          ].map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              className={`${s.filterOptionBtn} ${
-                activeMonitoringFilter === id ? s.filterOptionBtnActive : ""
-              }`}
-              aria-pressed={activeMonitoringFilter === id}
-              onClick={() =>
-                onMonitoringChange(
-                  hasMonitoringRound ? id : MONITORING_FILTER.ALL,
-                )
-              }
+            <svg
+              className={s.controlIcon}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              <span>{label}</span>
-            </button>
-          ))}
+              <circle cx="12" cy="12" r="8" />
+              <path d="m8.5 12 2.2 2.2 4.8-5" />
+            </svg>
+          </button>
+          <div
+            className={`${s.filterFlyout} ${
+              isMonitoringOpen ? s.filterFlyoutOpen : ""
+            }`}
+          >
+            {[
+              [MONITORING_FILTER.ALL, monitoringLabels.all],
+              [MONITORING_FILTER.DUE, monitoringLabels.due],
+              [MONITORING_FILTER.CHECKED, monitoringLabels.checked],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className={`${s.filterOptionBtn} ${
+                  activeMonitoringFilter === id ? s.filterOptionBtnActive : ""
+                }`}
+                aria-pressed={activeMonitoringFilter === id}
+                onClick={() =>
+                  onMonitoringChange(
+                    hasMonitoringRound ? id : MONITORING_FILTER.ALL,
+                  )
+                }
+              >
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/*
       <button
@@ -191,130 +214,134 @@ export default function MapControls({
 
       */}
 
-      <div className={s.filterControlWrap}>
-        <button
-          type="button"
-          className={`${s.controlBtn} ${statusActive ? s.controlBtnActive : ""}`}
-          onClick={() => toggleFilterMenu(FILTER_MENU.STATUS)}
-          aria-expanded={isStatusOpen}
-          aria-label={t("map.statusFilter")}
-        >
-          <svg
-            className={s.controlIcon}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M9 6h11" />
-            <path d="M9 12h11" />
-            <path d="M9 18h11" />
-            <path d="M4 6h.01" />
-            <path d="M4 12h.01" />
-            <path d="M4 18h.01" />
-          </svg>
-        </button>
-        <div
-          className={`${s.filterFlyout} ${isStatusOpen ? s.filterFlyoutOpen : ""}`}
-        >
+      {!showsComponents && (
+        <div className={s.filterControlWrap}>
           <button
             type="button"
-            className={s.filterOptionBtn}
-            onClick={onStatusClear}
+            className={`${s.controlBtn} ${statusActive ? s.controlBtnActive : ""}`}
+            onClick={() => toggleFilterMenu(FILTER_MENU.STATUS)}
+            aria-expanded={isStatusOpen}
+            aria-label={t("map.statusFilter")}
           >
-            {t("map.all")}
+            <svg
+              className={s.controlIcon}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9 6h11" />
+              <path d="M9 12h11" />
+              <path d="M9 18h11" />
+              <path d="M4 6h.01" />
+              <path d="M4 12h.01" />
+              <path d="M4 18h.01" />
+            </svg>
           </button>
-          {STATUS_ORDER.map((status) => {
-            const meta = getStatusMeta(status, t);
-            const isActive = statusSet.has(status);
-
-            return (
-              <button
-                key={status}
-                type="button"
-                className={`${s.filterOptionBtn} ${
-                  isActive ? s.filterOptionBtnActive : ""
-                }`}
-                style={
-                  isActive
-                    ? {
-                        borderColor: meta.border,
-                        color: meta.color,
-                        background: meta.bg,
-                      }
-                    : undefined
-                }
-                onClick={() => onStatusToggle(status)}
-              >
-                {meta.short}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className={s.filterControlWrap}>
-        <button
-          type="button"
-          className={`${s.controlBtn} ${priorityActive ? s.controlBtnActive : ""}`}
-          onClick={() => toggleFilterMenu(FILTER_MENU.PRIORITY)}
-          aria-expanded={isPriorityOpen}
-          aria-label={t("map.priorityFilter")}
-        >
-          <svg
-            className={s.controlIcon}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          <div
+            className={`${s.filterFlyout} ${isStatusOpen ? s.filterFlyoutOpen : ""}`}
           >
-            <path d="M3 5h18" />
-            <path d="M7 12h10" />
-            <path d="M10 19h4" />
-          </svg>
-        </button>
-        <div
-          className={`${s.filterFlyout} ${isPriorityOpen ? s.filterFlyoutOpen : ""}`}
-        >
+            <button
+              type="button"
+              className={s.filterOptionBtn}
+              onClick={onStatusClear}
+            >
+              {t("map.all")}
+            </button>
+            {STATUS_ORDER.map((status) => {
+              const meta = getStatusMeta(status, t);
+              const isActive = statusSet.has(status);
+
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  className={`${s.filterOptionBtn} ${
+                    isActive ? s.filterOptionBtnActive : ""
+                  }`}
+                  style={
+                    isActive
+                      ? {
+                          borderColor: meta.border,
+                          color: meta.color,
+                          background: meta.bg,
+                        }
+                      : undefined
+                  }
+                  onClick={() => onStatusToggle(status)}
+                >
+                  {meta.short}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {!showsComponents && (
+        <div className={s.filterControlWrap}>
           <button
             type="button"
-            className={s.filterOptionBtn}
-            onClick={onPriorityClear}
+            className={`${s.controlBtn} ${priorityActive ? s.controlBtnActive : ""}`}
+            onClick={() => toggleFilterMenu(FILTER_MENU.PRIORITY)}
+            aria-expanded={isPriorityOpen}
+            aria-label={t("map.priorityFilter")}
           >
-            {t("map.all")}
+            <svg
+              className={s.controlIcon}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 5h18" />
+              <path d="M7 12h10" />
+              <path d="M10 19h4" />
+            </svg>
           </button>
-          {PRIORITY_ORDER.map((priority) => {
-            const meta = getPriorityMeta(priority, t);
-            const isActive = prioritySet.has(priority);
+          <div
+            className={`${s.filterFlyout} ${isPriorityOpen ? s.filterFlyoutOpen : ""}`}
+          >
+            <button
+              type="button"
+              className={s.filterOptionBtn}
+              onClick={onPriorityClear}
+            >
+              {t("map.all")}
+            </button>
+            {PRIORITY_ORDER.map((priority) => {
+              const meta = getPriorityMeta(priority, t);
+              const isActive = prioritySet.has(priority);
 
-            return (
-              <button
-                key={priority}
-                type="button"
-                className={`${s.filterOptionBtn} ${
-                  isActive ? s.filterOptionBtnActive : ""
-                }`}
-                style={
-                  isActive
-                    ? {
-                        borderColor: meta.border,
-                        color: meta.color,
-                        background: meta.bg,
-                      }
-                    : undefined
-                }
-                onClick={() => onPriorityToggle(priority)}
-              >
-                {meta.short}
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={priority}
+                  type="button"
+                  className={`${s.filterOptionBtn} ${
+                    isActive ? s.filterOptionBtnActive : ""
+                  }`}
+                  style={
+                    isActive
+                      ? {
+                          borderColor: meta.border,
+                          color: meta.color,
+                          background: meta.bg,
+                        }
+                      : undefined
+                  }
+                  onClick={() => onPriorityToggle(priority)}
+                >
+                  {meta.short}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {hasGps && (
         <div className={s.filterControlWrap}>

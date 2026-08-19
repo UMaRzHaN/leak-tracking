@@ -1,4 +1,4 @@
-import { useMapPage } from "./hooks/useMapPage";
+import { MAP_BASE, useMapPage } from "./hooks/useMapPage";
 import { useRenderMetric } from "@/utils/renderMetrics";
 import MapControls from "./components/MapControls";
 import TileProgress from "./components/TileProgress";
@@ -23,6 +23,10 @@ export default function MapPage({
     tileProgress,
     downloading,
     visibleLeaks,
+    base,
+    setBase,
+    componentsAvailable,
+    showsComponents,
     monitoringFilter,
     hasMonitoringRound,
     activeProject,
@@ -58,6 +62,13 @@ export default function MapPage({
       <MapControls
         onLocate={locateMe}
         gpsEnabled={gpsEnabled}
+        showsComponents={showsComponents}
+        componentsAvailable={componentsAvailable}
+        onToggleBase={() =>
+          setBase(
+            base === MAP_BASE.COMPONENTS ? MAP_BASE.LEAKS : MAP_BASE.COMPONENTS,
+          )
+        }
         onOpenSheet={() => setOpen(true)}
         onDownload={handleDownloadArea}
         onCancelDownload={cancelDownload}

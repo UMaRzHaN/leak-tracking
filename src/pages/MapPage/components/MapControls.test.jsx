@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import MapControls from "./MapControls";
 
@@ -90,5 +90,37 @@ describe("MapControls monitoring filter", () => {
     ).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: "To check" }));
     expect(props.onMonitoringChange).toHaveBeenCalledWith("all");
+  });
+});
+
+describe("switching between the project's two bases", () => {
+  it("offers no switch when the project type declares no registry", () => {
+    renderControls({ componentsAvailable: false });
+    expect(screen.queryByRole("button", { name: /Switch base/ })).toBeNull();
+  });
+
+  it("hands the switch back to the map", () => {
+    const onToggleBase = vi.fn();
+    renderControls({ componentsAvailable: true, onToggleBase });
+
+    fireEvent.click(screen.getByRole("button", { name: /Switch base/ }));
+    expect(onToggleBase).toHaveBeenCalled();
+  });
+
+  it("drops the leak-only filters on the equipment base", () => {
+    // Status, priority and the monitoring round describe how a leak is being
+    // dealt with. A valve is not being dealt with, and a button that filters
+    // nothing is worse than no button.
+    renderControls({ componentsAvailable: true });
+    expect(screen.getByRole("button", { name: "Status filter" })).toBeTruthy();
+
+    cleanup();
+    renderControls({ componentsAvailable: true, showsComponents: true });
+
+    expect(screen.queryByRole("button", { name: "Status filter" })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Priority filter" }),
+    ).toBeNull();
+    expect(screen.getByRole("button", { name: "My location" })).toBeTruthy();
   });
 });

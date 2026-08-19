@@ -78,8 +78,18 @@ const CachedTileLayer = L.TileLayer.extend({
   },
 });
 
+// Оборудование — не событие, и цвет статуса утечки к нему не относится.
+// Своя метка, чтобы на карте нельзя было принять компонент за открытую утечку.
+const COMPONENT_MARKER_COLOR = "#0ea5e9";
+
+function isComponentMarker(item) {
+  return item?.kind === "component";
+}
+
 function leakIcon(leak) {
-  const meta = STATUS_META[leak.status] ?? STATUS_META.open;
+  const meta = isComponentMarker(leak)
+    ? { color: COMPONENT_MARKER_COLOR }
+    : (STATUS_META[leak.status] ?? STATUS_META.open);
   const safeLabel = escapeHtml(leak.leak_id ?? `#${leak.id}`);
 
   return L.divIcon({
@@ -112,18 +122,26 @@ function createPopupEl(leak) {
     description: i18n.t("map.popup.description"),
     status: i18n.t("map.popup.status"),
   };
-  const meta = getStatusMeta(leak.status, i18n.t.bind(i18n));
   const el = document.createElement("div");
+  const component = isComponentMarker(leak);
 
   const title = document.createElement("b");
-  title.textContent = `${labels.tag} ${leak.leak_id ?? ""}`;
+  title.textContent = component
+    ? `${i18n.t("map.popup.componentTag")} ${leak.leak_id ?? ""}`
+    : `${labels.tag} ${leak.leak_id ?? ""}`;
   el.appendChild(title);
 
-  const fields = [
-    [labels.component, leak.component],
-    [labels.description, leak.leak_description],
-    [labels.status, meta.label],
-  ];
+  const fields = component
+    ? [
+        [labels.component, leak.component],
+        [i18n.t("map.popup.schemeTag"), leak.scheme_tag],
+        [labels.status, leak.component_status],
+      ]
+    : [
+        [labels.component, leak.component],
+        [labels.description, leak.leak_description],
+        [labels.status, getStatusMeta(leak.status, i18n.t.bind(i18n)).label],
+      ];
 
   for (const [label, value] of fields) {
     el.appendChild(document.createElement("br"));

@@ -1,9 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOfflineMapActions } from "./useOfflineMapActions";
 import { useMapFilters } from "./useMapFilters";
 import { useMapSelection } from "./useMapSelection";
 import { useMapExport } from "./useMapExport";
 import { useProjectData } from "@/app/project/ProjectContext";
+import { useMapComponents } from "./useMapComponents";
+import { filterComponentMarkers } from "@/pages/MapPage/componentMarkers";
+
+/** Which of the project's two bases the map is showing. */
+export const MAP_BASE = { LEAKS: "leaks", COMPONENTS: "components" };
 
 export function useMapPage({
   leaks,
@@ -36,6 +41,18 @@ export function useMapPage({
     locateMe,
   } = useMapSelection({ coords, gpsEnabled, mapRef });
   const fittedRef = useRef(false);
+
+  /*
+   * Одна карта на две базы, но не одним слоем: утечка — событие, компонент —
+   * объект, их считают разные люди для разных отчётов, и смешанные булавки
+   * сделали бы вопрос «сколько их» без ответа для обеих.
+   */
+  const [base, setBase] = useState(MAP_BASE.LEAKS);
+  const {
+    available: componentsAvailable,
+    markers: componentMarkers,
+    loading: componentsLoading,
+  } = useMapComponents(activeProject, base === MAP_BASE.COMPONENTS);
 
   const [notification, setNotification] = useState(null);
   const [mapReady, setMapReady] = useState(false);
@@ -75,6 +92,29 @@ export function useMapPage({
     open,
     mapCenter,
   });
+
+  const showsComponents = base === MAP_BASE.COMPONENTS;
+  const visibleComponents = useMemo(
+    () =>
+      showsComponents
+        ? filterComponentMarkers(componentMarkers, {
+            sharedFilters,
+            nearbyOnly,
+            nearbyRadius,
+            coords,
+          })
+        : [],
+    [
+      componentMarkers,
+      coords,
+      nearbyOnly,
+      nearbyRadius,
+      sharedFilters,
+      showsComponents,
+    ],
+  );
+  const shownItems = showsComponents ? visibleComponents : visibleLeaks;
+  const shownMarkers = showsComponents ? visibleComponents : markerLeaks;
 
   const notify = useCallback(
     (type, message) => setNotification({ type, message }),
@@ -184,10 +224,16 @@ export function useMapPage({
     mapRef.current.setGpsTracking?.(gpsEnabled, coords);
   }, [coords, gpsEnabled, mapReady]);
 
+  // Смена базы — это другой набор точек, и вид на прежнюю к нему отношения не
+  // имеет: карта подгоняется под то, что показывает теперь.
+  useEffect(() => {
+    fittedRef.current = false;
+  }, [base]);
+
   useEffect(() => {
     mapModuleRef.current?.addMarkers?.(
       mapRef.current.markersLayer,
-      markerLeaks,
+      shownMarkers,
       mapRef.current.map,
     );
 
@@ -195,7 +241,7 @@ export function useMapPage({
     const map = mapRef.current.map;
     if (!map) return;
 
-    const validLeaks = markerLeaks.filter(
+    const validLeaks = shownMarkers.filter(
       (leak) => Number.isFinite(leak.lat) && Number.isFinite(leak.lng),
     );
     if (validLeaks.length === 0) return;
@@ -215,16 +261,18 @@ export function useMapPage({
         },
       );
     }
-  }, [markerLeaks, mapReady]);
+  }, [shownMarkers, mapReady]);
 
   useEffect(() => {
-    mapRef.current.setHeatmap?.(heatmapEnabled ? markerLeaks : []);
-  }, [heatmapEnabled, markerLeaks, mapReady]);
+    mapRef.current.setHeatmap?.(heatmapEnabled ? shownMarkers : []);
+  }, [heatmapEnabled, shownMarkers, mapReady]);
 
   const { tileProgress, downloading, handleDownloadArea, cancelDownload } =
     useOfflineMapActions({ mapRef, notify });
+  // Выгружается то, что на экране: переключив базу, человек ждёт от кнопки
+  // именно её, а не другую.
   const { handleExportKML } = useMapExport({
-    visibleLeaks,
+    visibleLeaks: shownItems,
     projectType: activeProject?.type,
     projectFolder: exportProjectFolder,
     notify,
@@ -238,7 +286,12 @@ export function useMapPage({
     setNotification,
     tileProgress,
     downloading,
-    visibleLeaks,
+    visibleLeaks: shownItems,
+    base,
+    setBase,
+    componentsAvailable,
+    componentsLoading,
+    showsComponents,
     monitoringFilter,
     hasMonitoringRound,
     mainLocations,
