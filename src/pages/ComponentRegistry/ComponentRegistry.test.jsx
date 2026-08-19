@@ -736,22 +736,30 @@ describe("component card form", () => {
     });
     renderRegistry();
 
-    // Opening a card lands on what it says; editing is a step further in.
+    // Opening a card lands on what it says; editing is a step further in —
+    // и остаётся в этом же листе, как у утечки, а не открывает мастер заново.
     fireEvent.click(screen.getByText("Задвижка"));
-    expect(screen.getByRole("dialog", { name: "Component card" })).toBeTruthy();
+    const sheet = screen.getByRole("dialog", { name: "Component card" });
     fireEvent.click(screen.getByText("Edit"));
 
-    // Правка — один лист, а не мастер: у сохранённой карточки правят одно
-    // поле, и проводить ради него через четыре шага не за чем.
     expect(screen.queryByText("Next →")).toBeNull();
-    attachPhoto();
+    expect(sheet).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Локация"), {
+      target: { value: "Скважина 22" },
+    });
     fireEvent.click(screen.getByText("Save"));
     await waitFor(() =>
       expect(registry.current.updateComponent).toHaveBeenCalledWith(
         "a",
-        expect.objectContaining({ component_uid: "7" }),
+        expect.objectContaining({ location: "Скважина 22" }),
       ),
     );
+
+    // Лист остаётся открытым на сохранённом и уже показывает дописанную
+    // строку истории: правка редко бывает одна.
+    fireEvent.click(screen.getByText("History"));
+    expect(screen.getByText("Edited")).toBeTruthy();
+    expect(screen.getByText("Скважина 22")).toBeTruthy();
   });
 });
 
@@ -852,9 +860,9 @@ describe("copying from the previous card", () => {
     );
   });
 
-  it("leaves the example alone while editing a saved card", () => {
-    // В правке серым стояло бы значение соседней карточки, которое легко
-    // принять за уже сохранённое здесь.
+  it("offers nothing from a neighbouring card while editing a saved one", () => {
+    // Подсказка — про заведение следующей карточки. В правке серым стояло бы
+    // значение соседней, которое легко принять за уже сохранённое здесь.
     registry.current = makeRegistry({
       components: [
         { id: "c1", component_uid: "14", component: "Задвижка", history: [] },
@@ -865,7 +873,9 @@ describe("copying from the previous card", () => {
     fireEvent.click(screen.getByText("Задвижка"));
     fireEvent.click(screen.getByText("Edit"));
 
-    expect(screen.getByLabelText(/Номер на схеме/).placeholder).not.toBe("PG");
+    expect(
+      screen.getByLabelText("Инвентаризационный номер на схеме").placeholder,
+    ).not.toBe("PG");
   });
 
   it("explains what each field wants", () => {

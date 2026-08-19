@@ -9,6 +9,7 @@ import {
   hasComponentRegistry,
   loadComponentRegistry,
 } from "@/configs/projectAdapter";
+import { COMPONENT_REGISTRY_UPDATED } from "@/hooks/useRegistryLocationSource";
 import { logger } from "@/utils/logger";
 
 /**
@@ -107,6 +108,11 @@ export function useComponentRegistry(project) {
         );
         latestRef.current = stored;
         setComponents(stored);
+        // Выбор места в шапке считает папки по реестру, когда реестр открыт, и
+        // читает его своим чтением — без этого счёт отставал бы на карточку.
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent(COMPONENT_REGISTRY_UPDATED));
+        }
         return stored;
       });
 

@@ -65,29 +65,6 @@ export default function ComponentCardForm({
   }, [photoRequired, rawSteps, t]);
   const isEditing = Boolean(component?.id);
 
-  /*
-   * Правка — не заведение заново. У новой карточки четыре шага, потому что
-   * человек стоит у железа и заполняет её сверху вниз; у сохранённой правят
-   * одно поле, и проводить ради него через мастер с «Далее» значит заставлять
-   * искать, на каком шаге лежит нужное. В правке всё лежит одним листом.
-   *
-   * Здесь же — координаты: единственное место, где их можно поправить. При
-   * заведении они снимаются приёмником и в вопросах не нуждаются.
-   */
-  const formSteps = useMemo(() => {
-    if (!isEditing) return steps;
-    return [
-      {
-        title: texts.editTitle,
-        fields: [
-          ...steps.flatMap((item) => item.fields),
-          { type: "input", key: "lat", label: texts.coords.lat, number: true },
-          { type: "input", key: "lng", label: texts.coords.lng, number: true },
-        ],
-      },
-    ];
-  }, [isEditing, steps, texts]);
-
   const [form, setForm] = useState(() =>
     isEditing
       ? { ...component }
@@ -111,10 +88,10 @@ export default function ComponentCardForm({
 
   const required = useMemo(
     () =>
-      formSteps.flatMap((s) =>
+      steps.flatMap((s) =>
         s.fields.filter((f) => f.required).map((f) => f.key),
       ),
-    [formSteps],
+    [steps],
   );
 
   /*
@@ -132,12 +109,8 @@ export default function ComponentCardForm({
     () =>
       isEditing
         ? null
-        : buildGhostPlaceholders(
-            lastComponent,
-            formSteps[step - 1]?.fields,
-            form,
-          ),
-    [form, isEditing, lastComponent, step, formSteps],
+        : buildGhostPlaceholders(lastComponent, steps[step - 1]?.fields, form),
+    [form, isEditing, lastComponent, step, steps],
   );
 
   /*
@@ -150,7 +123,7 @@ export default function ComponentCardForm({
     dismissVoiceData,
     startVoiceInput,
     stopVoiceInput,
-  } = useVoiceControl({ step, steps: formSteps, voice });
+  } = useVoiceControl({ step, steps: steps, voice });
 
   const handleVoiceConfirm = useCallback(
     (confirmed) => {
@@ -184,14 +157,14 @@ export default function ComponentCardForm({
   /** The first step carrying one of these keys, so an error is never hidden. */
   const stepOf = useCallback(
     (keys) => {
-      for (const [index, formStep] of formSteps.entries()) {
+      for (const [index, formStep] of steps.entries()) {
         if (formStep.fields.some((field) => keys.includes(field.key))) {
           return index + 1;
         }
       }
       return 1;
     },
-    [formSteps],
+    [steps],
   );
 
   /**
@@ -203,7 +176,7 @@ export default function ComponentCardForm({
    */
   const missingOnStep = useCallback(
     (stepIndex) =>
-      (formSteps[stepIndex - 1]?.fields ?? [])
+      (steps[stepIndex - 1]?.fields ?? [])
         .filter((field) => field.required)
         .filter((field) => {
           const value = form[field.key];
@@ -211,7 +184,7 @@ export default function ComponentCardForm({
           return value == null || String(value).trim() === "";
         })
         .map((field) => field.key),
-    [form, formSteps],
+    [form, steps],
   );
 
   /**
@@ -242,8 +215,8 @@ export default function ComponentCardForm({
   const nextStep = useCallback(() => {
     if (!validateStep(step)) return;
     setErrors({});
-    setStep((value) => Math.min(value + 1, formSteps.length));
-  }, [step, formSteps.length, validateStep]);
+    setStep((value) => Math.min(value + 1, steps.length));
+  }, [step, steps.length, validateStep]);
 
   const validate = useCallback(() => {
     const next = {};
@@ -251,7 +224,7 @@ export default function ComponentCardForm({
       next[key] = texts.errors.required;
     }
     // The photo is an object, not a string, so the shared check cannot see it.
-    const photoStep = formSteps.findIndex((formStep) =>
+    const photoStep = steps.findIndex((formStep) =>
       formStep.fields.some((field) => field.type === "photo" && field.required),
     );
     if (photoStep !== -1 && missingOnStep(photoStep + 1).includes("photo")) {
@@ -280,7 +253,7 @@ export default function ComponentCardForm({
     }
     setErrors(next);
     return Object.keys(next);
-  }, [form, missingOnStep, required, formSteps, texts]);
+  }, [form, missingOnStep, required, steps, texts]);
 
   /**
    * Copyable fields the operator left empty that the previous card can fill.
@@ -376,7 +349,7 @@ export default function ComponentCardForm({
     setConfirmOpen(true);
   }, [commitSave, findFillableKeys, form, stepOf, validate]);
 
-  const hasStepData = (formSteps[step - 1]?.fields ?? []).some(
+  const hasStepData = (steps[step - 1]?.fields ?? []).some(
     ({ key }) => form[key] != null && String(form[key]).trim() !== "",
   );
 
@@ -397,14 +370,14 @@ export default function ComponentCardForm({
   const clearStep = useCallback(() => {
     setForm((current) => {
       const next = { ...current };
-      for (const field of formSteps[step - 1]?.fields ?? []) {
+      for (const field of steps[step - 1]?.fields ?? []) {
         if (field.key in keepOnClear(current)) continue;
         delete next[field.key];
       }
       return next;
     });
     setErrors({});
-  }, [keepOnClear, step, formSteps]);
+  }, [keepOnClear, step, steps]);
 
   const clearAll = useCallback(() => {
     setForm((current) => keepOnClear(current));
@@ -416,15 +389,10 @@ export default function ComponentCardForm({
     <div className={`${leak.card} content`}>
       <PageHeader
         title={isEditing ? texts.editTitle : texts.addTitle}
-        // В правке шагов нет, и счётчик «1/1» сообщал бы о них зря.
-        subtitle={
-          isEditing
-            ? (component?.component ?? texts.editTitle)
-            : `${texts.stepPrefix} ${step} / ${formSteps.length} · ${
-                formSteps[step - 1]?.title ?? ""
-              }`
-        }
-        badge={isEditing ? null : `${step}/${formSteps.length}`}
+        subtitle={`${texts.stepPrefix} ${step} / ${steps.length} · ${
+          steps[step - 1]?.title ?? ""
+        }`}
+        badge={`${step}/${steps.length}`}
         backLabel={texts.cancel}
         onBack={() => {
           stopVoiceInput?.();
@@ -451,7 +419,7 @@ export default function ComponentCardForm({
 
       <StepRenderer
         step={step}
-        steps={formSteps}
+        steps={steps}
         form={form}
         errors={errors}
         onChange={handleChange}
@@ -462,7 +430,7 @@ export default function ComponentCardForm({
 
       <VoicePreviewSheet
         pending={pendingVoiceData}
-        steps={formSteps}
+        steps={steps}
         onConfirm={handleVoiceConfirm}
         onDismiss={dismissVoiceData}
       />
@@ -479,7 +447,7 @@ export default function ComponentCardForm({
         nextStep={nextStep}
         save={handleSave}
         step={step}
-        stepsLength={formSteps.length}
+        stepsLength={steps.length}
         isSaving={saving}
         localeTexts={texts}
       />

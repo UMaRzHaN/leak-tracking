@@ -4,6 +4,8 @@ import { usePhotoSrc } from "@/hooks/usePhotoSrc";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import PhotoBlock from "@/features/leakDetails/components/PhotoBlock";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
+import PhotoInput from "@/features/photos/PhotoInput/PhotoInput";
+import EditTextField from "@/features/editTextField/EditTextField";
 import {
   ACTION_ICONS,
   fmtDate,
@@ -26,13 +28,18 @@ const COORD_KEYS = new Set(["lat", "lng"]);
  * meet one interface twice.
  *
  * What differs is only what a component has to say. No repair to follow and no
- * calculation to show, so two tabs rather than five, and the destructive action
+ * calculation to show, so four tabs rather than six, and the destructive action
  * sits behind the reading instead of in the list.
+ *
+ * Правка — тоже здесь, режимом этого же листа, как у утечки. Она открывала
+ * форму заведения заново и проводила через четыре шага мастера ради одного
+ * исправленного поля; человек при этом терял из виду карточку, которую правит.
  */
 export default function ComponentDetailsSheet({
   component,
   fields = [],
-  onEdit,
+  canEdit = true,
+  onSave,
   onRemove,
   onClose,
 }) {
@@ -43,6 +50,46 @@ export default function ComponentDetailsSheet({
   const [tab, setTab] = useState("card");
   const [viewerOpen, setViewerOpen] = useState(false);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  /*
+   * Правки живут отдельно от карточки, пока их не сохранили: закрытый лист
+   * должен оставить всё как было, а не отменять по полю.
+   */
+  const [draft, setDraft] = useState(/** @type {any} */ ({}));
+
+  const editable = useMemo(
+    () => fields.filter((field) => field.editable && !field.coord),
+    [fields],
+  );
+  const coordFields = useMemo(
+    () => fields.filter((field) => field.coord),
+    [fields],
+  );
+
+  const startEditing = () => {
+    setDraft({ ...component });
+    setEditing(true);
+    if (tab === "history") setTab("card");
+  };
+
+  const cancelEditing = () => {
+    setEditing(false);
+    setDraft({});
+  };
+
+  const setField = (key, value) =>
+    setDraft((current) => ({ ...current, [key]: value }));
+
+  const commit = async () => {
+    setSaving(true);
+    try {
+      await onSave?.(draft);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   /** Only what was answered — an empty row says nothing worth its space. */
   const filled = useMemo(
@@ -78,11 +125,14 @@ export default function ComponentDetailsSheet({
       [COMPONENT_HISTORY_ACTIONS.INSPECTED]: t("components.historyInspected"),
     })[action] ?? action;
 
+  // В правке истории нет: она про то, что уже случилось, и править её нельзя.
   const tabs = [
     { id: "card", label: t("components.tabs.params") },
     { id: "photo", label: t("components.tabs.photo") },
     { id: "coords", label: t("components.tabs.coords") },
-    { id: "history", label: t("components.tabs.history") },
+    ...(editing
+      ? []
+      : [{ id: "history", label: t("components.tabs.history") }]),
   ];
 
   const fieldValue = (key, value) =>
@@ -114,11 +164,13 @@ export default function ComponentDetailsSheet({
           onClick={(event) => event.stopPropagation()}
         >
           <PhotoBlock
-            src={photoSrc}
+            src={editing ? null : photoSrc}
             status={null}
             identityNum={`№ ${component?.component_uid ?? "—"}`}
             identityTime={component?.component || t("components.unnamed")}
-            onView={photoSrc ? () => setViewerOpen(true) : undefined}
+            onView={
+              !editing && photoSrc ? () => setViewerOpen(true) : undefined
+            }
             /* A component has no leak lifecycle; its state is changed by the
                inspection swipe, not from the hero. */
             onStatusChange={null}
@@ -137,7 +189,46 @@ export default function ComponentDetailsSheet({
           </div>
 
           <div className={s.tabContent} key={tab}>
-            {tab === "card" ? (
+            {tab === "card" && editing ? (
+              <div className={s.tabPane}>
+                <div className={s.editSection}>
+                  {editable.map(({ key, label, numeric }) => (
+                    <EditTextField
+                      key={key}
+                      label={label}
+                      value={draft[key] ?? ""}
+                      numeric={numeric}
+                      onChange={(value) => setField(key, value)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : tab === "photo" && editing ? (
+              <div className={s.tabPane}>
+                <PhotoInput
+                  value={draft.photo}
+                  onChange={(photo) => setField("photo", photo)}
+                  label={t("components.tabs.photo")}
+                />
+              </div>
+            ) : tab === "coords" && editing ? (
+              <div className={s.tabPane}>
+                <div className={s.coordGroup}>
+                  <div className={s.coordPair}>
+                    {coordFields.map(({ key, label }) => (
+                      <EditTextField
+                        key={key}
+                        label={label}
+                        value={draft[key] ?? ""}
+                        numeric
+                        compact
+                        onChange={(value) => setField(key, value)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : tab === "card" ? (
               <div className={s.tabPane}>
                 {params.length === 0 ? (
                   <div className={s.tabEmpty}>
@@ -282,7 +373,27 @@ export default function ComponentDetailsSheet({
           </div>
 
           <div className={s.actionBar}>
-            {confirmingRemove ? (
+            {editing ? (
+              <>
+                <button
+                  className={s.btnGhost}
+                  type="button"
+                  onClick={cancelEditing}
+                >
+                  {t("components.cancel")}
+                </button>
+                <button
+                  className={s.btnPrimary}
+                  type="button"
+                  disabled={saving}
+                  onClick={commit}
+                >
+                  {saving
+                    ? t("components.buttons.saving")
+                    : t("components.buttons.save")}
+                </button>
+              </>
+            ) : confirmingRemove ? (
               <>
                 <button
                   className={s.btnGhost}
@@ -311,12 +422,11 @@ export default function ComponentDetailsSheet({
                 >
                   🗑
                 </button>
-                <button
-                  className={s.btnPrimary}
-                  onClick={() => onEdit?.(component)}
-                >
-                  {t("components.edit")}
-                </button>
+                {canEdit && (
+                  <button className={s.btnPrimary} onClick={startEditing}>
+                    {t("components.edit")}
+                  </button>
+                )}
                 <button className={s.btnGhost} onClick={onClose}>
                   {t("components.close")}
                 </button>

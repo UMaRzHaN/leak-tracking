@@ -1,6 +1,7 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import "@/index.scss";
 import { useLocationScope } from "@/hooks/useLocationScope";
+import { useRegistryLocationSource } from "@/hooks/useRegistryLocationSource";
 import { STATUS } from "@/utils/status";
 
 const Header = lazy(() => import("@/components/layout/Header/Header"));
@@ -59,17 +60,35 @@ export default function App() {
   } = useAppBootstrap();
 
   const [locationBrowserOpen, setLocationBrowserOpen] = useState(false);
-  const locationScope = useLocationScope({
+  const leakScope = useLocationScope({
     leaks: data,
     sharedFilters,
     projectType: activeProject?.type,
   });
+
+  /*
+   * Один выбор места на всё приложение, но считает он то, что на экране. На
+   * реестре рядом с «Мессояхское УПГ» стояло число утечек, а открывалась папка
+   * с железом: фильтр общий, а деревья у сущностей разные.
+   */
+  const registryPage = page === "components" || page === "component";
+  const registryComponents = useRegistryLocationSource(
+    activeProject,
+    registryPage,
+  );
+  const componentScope = useLocationScope({
+    leaks: registryComponents,
+    sharedFilters,
+    projectType: activeProject?.type,
+  });
+  const locationScope = registryPage ? componentScope : leakScope;
+
   const scopedOpenCount = useMemo(
     () =>
-      locationScope.scopedLeaks.filter(
+      leakScope.scopedLeaks.filter(
         (leak) => (leak.status ?? STATUS.OPEN) === STATUS.OPEN,
       ).length,
-    [locationScope.scopedLeaks],
+    [leakScope.scopedLeaks],
   );
 
   if (!isConfigured) {
@@ -133,7 +152,7 @@ export default function App() {
         requestedMonitoringLeakIds={requestedMonitoringLeakIds}
         retryLoad={retryLoad}
         save={save}
-        scopedData={locationScope.scopedLeaks}
+        scopedData={leakScope.scopedLeaks}
         setPage={setPage}
         setRequestedMonitoringLeakId={setRequestedMonitoringLeakId}
         setRequestedMonitoringLeakIds={setRequestedMonitoringLeakIds}
@@ -164,7 +183,9 @@ export default function App() {
             onApplied={(path) => {
               // "Show all" is a way back out of a folder, not a request to go
               // read the whole project, so it leaves the current screen alone.
-              if (path.length > 0) setPage("db");
+              // Реестр — тоже список, и выбранную папку он показывает сам;
+              // уводить с него на базу значило бы подменить сущность.
+              if (path.length > 0 && !registryPage) setPage("db");
             }}
           />
         </Suspense>

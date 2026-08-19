@@ -344,6 +344,34 @@ export default function ComponentRegistry({
     ],
   );
 
+  /**
+   * Правка из подробной карточки. Мастер заведения к ней отношения не имеет:
+   * там четыре шага для того, кто стоит у железа впервые, а здесь исправляют
+   * одно поле, не теряя карточку из виду.
+   */
+  const handleEditSaved = useCallback(
+    async (form) => {
+      const target = viewing;
+      if (!target?.id) return;
+      const card = await withStoredPhoto(
+        { ...form, id: target.id },
+        target.id,
+        savePhoto,
+      );
+      const recorded = recordComponentEdited(
+        target,
+        { ...target, ...card },
+        { user: userProfile?.name, fields: fields?.all ?? [] },
+      );
+      await updateComponent(target.id, recorded);
+      // Лист остаётся открытым и показывает сохранённое — вместе с только что
+      // дописанной строкой истории: правка редко бывает одна, а закрытие
+      // отправляло бы искать ту же карточку заново.
+      setViewing(recorded);
+    },
+    [fields, savePhoto, updateComponent, userProfile, viewing],
+  );
+
   const handleInspect = useCallback(
     async (status) => {
       const card = inspecting;
@@ -432,10 +460,8 @@ export default function ComponentRegistry({
           // Целиком, а не только видимые: подписи в истории берутся отсюда, и
           // поле, скрытое из карточки, всё равно должно называться по-русски.
           fields={fields?.all ?? []}
-          onEdit={(card) => {
-            setViewing(null);
-            if (canWrite) openCard(card);
-          }}
+          canEdit={canWrite}
+          onSave={handleEditSaved}
           onRemove={async (card) => {
             setViewing(null);
             await removeComponent(card.id);
