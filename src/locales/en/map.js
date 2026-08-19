@@ -46,6 +46,8 @@ export const map = {
   },
 
   kml: {
+    componentsDocumentName: "Components",
+    schemeTag: "Drawing tag",
     documentName: "Leak Report",
     noRate: "No rate",
     savedToDocuments: "Saved to Documents/{{path}}",

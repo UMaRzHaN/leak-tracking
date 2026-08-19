@@ -47,6 +47,8 @@ export const map = {
   },
 
   kml: {
+    componentsDocumentName: "Компоненты",
+    schemeTag: "Номер на схеме",
     documentName: "Отчет по утечкам",
     noRate: "Без скорости",
     savedToDocuments: "Сохранено в Документы/{{path}}",

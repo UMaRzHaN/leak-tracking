@@ -5,6 +5,8 @@ export const schemas = {
   remove: "Delete schema",
   image: "IMG",
   loading: "Loading schemas...",
+  searchPlaceholder: "Drawing name, location...",
+  noMatches: "Nothing found",
   empty: "No schemas yet. Load drawings ahead of time or add them as you go.",
   loadError: "Could not read the schema list.",
   addFailed: "Could not save the schema.",

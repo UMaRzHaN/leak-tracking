@@ -1109,3 +1109,85 @@ describe("working with a set of cards at once", () => {
     expect(screen.queryByText("2 selected of 2")).toBeNull();
   });
 });
+
+describe("что видно в списке и по чему он отбирается", () => {
+  it("подписывает карточку тем, когда её завели", () => {
+    // Как у утечки: по списку видно, докуда дошёл обход сегодня, а не только
+    // что в нём вообще есть.
+    registry.current = makeRegistry({
+      components: [
+        {
+          id: "a",
+          component_uid: "1",
+          component: "Задвижка",
+          date: new Date().toISOString(),
+        },
+      ],
+    });
+    renderRegistry();
+
+    expect(screen.getByText(/назад|ago|сейчас|now/i)).toBeTruthy();
+  });
+
+  it("предлагает состояние, которого нет в словаре", () => {
+    // Поле открытое, и карточка с дописанным от руки состоянием раньше не
+    // находилась вовсе — кнопки для него не существовало.
+    registry.current = makeRegistry({
+      components: [
+        {
+          id: "a",
+          component_uid: "1",
+          component: "Задвижка",
+          component_status: "Законсервирован до весны",
+        },
+      ],
+    });
+    renderRegistry();
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    // Состояние стоит и на карточке, и кнопкой в панели — берём кнопку.
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /Законсервирован до весны/ })[0],
+    );
+
+    expect(screen.getByText("Задвижка")).toBeTruthy();
+  });
+
+  it("отбирает по кругу вокруг стоящего человека", () => {
+    registry.current = makeRegistry({
+      components: [
+        {
+          id: "near",
+          component_uid: "1",
+          component: "Задвижка",
+          lat: 38.4,
+          lng: 66.1,
+        },
+        {
+          id: "far",
+          component_uid: "2",
+          component: "Труба",
+          lat: 39.4,
+          lng: 67.1,
+        },
+      ],
+    });
+    renderRegistry({ coords: { lat: 38.4, lng: 66.1 } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    fireEvent.click(screen.getByText(/Near me/));
+
+    expect(screen.getByText("Задвижка")).toBeTruthy();
+    expect(screen.queryByText("Труба")).toBeNull();
+  });
+
+  it("не предлагает круг, когда мерить не от чего", () => {
+    registry.current = makeRegistry({
+      components: [{ id: "a", component_uid: "1", component: "Задвижка" }],
+    });
+    renderRegistry({ coords: null });
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(screen.queryByText(/Near me/)).toBeNull();
+  });
+});

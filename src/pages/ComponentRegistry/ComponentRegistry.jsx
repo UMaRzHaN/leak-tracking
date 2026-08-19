@@ -14,6 +14,12 @@ import ComponentFilterBar from "./components/ComponentFilterBar";
 import ComponentResultsBar from "./components/ComponentResultsBar";
 import { useInventoryExport } from "./hooks/useInventoryExport";
 import { matchesLeakLocationFilter } from "@/utils/locationFilter";
+import { getDistanceMeters } from "@/utils/geoUtils";
+import { hasCoordsFix } from "@/utils/coordsFix";
+import {
+  NEARBY_RADIUS_M,
+  NEARBY_RADIUS_OPTIONS,
+} from "@/pages/DataBase/hooks/useDataBaseFilters";
 import { component_statuses } from "@/data/component/componentDictionary";
 import { createRecordId } from "@/utils/createRecordId";
 import { withStoredPhoto } from "@/features/componentRegistry/componentPhoto";
@@ -24,6 +30,13 @@ import {
   recordComponentInspected,
 } from "@/domain/componentHistory";
 import s from "./ComponentRegistry.module.scss";
+
+function withinRadius(component, coords, radius) {
+  return (
+    getDistanceMeters(coords.lat, coords.lng, component.lat, component.lng) <=
+    radius
+  );
+}
 
 function matchesSearch(component, query) {
   if (!query) return true;
@@ -76,6 +89,8 @@ export default function ComponentRegistry({
   /** Несколько состояний сразу, как статусы на странице базы. */
   const [statusFilter, setStatusFilter] = useState([]);
   const [sortAsc, setSortAsc] = useState(true);
+  const [nearbyOnly, setNearbyOnly] = useState(false);
+  const [nearbyRadius, setNearbyRadius] = useState(NEARBY_RADIUS_M);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [bulkInspecting, setBulkInspecting] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -157,6 +172,14 @@ export default function ComponentRegistry({
    * иерархия этого типа проекта, и она одна на базу, карту, мониторинг и
    * реестр. Второй выбор рядом с первым означал бы два ответа на один вопрос.
    */
+  /*
+   * Обход идут ногами, и чаще нужен не весь реестр, а то железо, что стоит
+   * здесь же: заводя карточку, сперва смотрят, не заведена ли она. Без фикса
+   * круг ничего не отбирает — мерить не от чего.
+   */
+  const hasGps = hasCoordsFix(coords);
+  const nearby = hasGps && nearbyOnly;
+
   const visible = useMemo(
     () =>
       components.filter(
@@ -173,24 +196,53 @@ export default function ComponentRegistry({
           (statusFilter.length === 0 ||
             statusFilter.includes(String(component.component_status ?? ""))) &&
           (!conflictsOnly || conflictingIds.has(component.id)) &&
+          (!nearby || withinRadius(component, coords, nearbyRadius)) &&
           matchesSearch(component, search),
       ),
     [
       components,
       conflictingIds,
       conflictsOnly,
+      coords,
+      nearby,
+      nearbyRadius,
       search,
       sharedFilters,
       statusFilter,
     ],
   );
 
-  /** Только те состояния, что встречаются — пустая кнопка ничего не отбирает. */
+  /** Сколько железа в круге — то же число, что у базы под тумблером. */
+  const nearbyCount = useMemo(
+    () =>
+      hasGps
+        ? components.filter((component) =>
+            withinRadius(component, coords, nearbyRadius),
+          ).length
+        : 0,
+    [components, coords, hasGps, nearbyRadius],
+  );
+
+  /**
+   * Состояния, которые встречаются в реестре, — а не те, что есть в словаре.
+   *
+   * Поле открытое: обходчик вправе написать «законсервирован до весны», и
+   * такая карточка отбором не находилась вовсе — кнопки для её состояния
+   * просто не существовало. Порядок словаря сохранён, дописанное руками идёт
+   * после него.
+   */
   const usedStatuses = useMemo(() => {
-    const seen = new Set(
-      components.map((c) => String(c.component_status ?? "").trim()),
-    );
-    return component_statuses.filter((status) => seen.has(status));
+    const seen = new Set();
+    for (const component of components) {
+      const status = String(component.component_status ?? "").trim();
+      if (status) seen.add(status);
+    }
+    return [
+      ...component_statuses.filter((status) => seen.has(status)),
+      ...[...seen]
+        .filter((status) => !component_statuses.includes(status))
+        .sort((left, right) => left.localeCompare(right)),
+    ];
   }, [components]);
 
   const statusCounts = useMemo(() => {
@@ -526,6 +578,16 @@ export default function ComponentRegistry({
             onToggleConflicts={() => setConflictsOnly((value) => !value)}
             conflictCount={conflicts.length}
             counts={statusCounts}
+            hasGps={hasGps}
+            nearbyOnly={nearbyOnly}
+            nearbyRadius={nearbyRadius}
+            nearbyRadiusOptions={NEARBY_RADIUS_OPTIONS}
+            nearbyCount={nearbyCount}
+            onToggleNearby={() => setNearbyOnly((value) => !value)}
+            onRadiusChange={(radius) => {
+              setNearbyRadius(radius);
+              setNearbyOnly(true);
+            }}
           />
 
           <ComponentResultsBar

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useSchemas } from "./useSchemas";
 import { openSchemaExternally } from "./openSchemaExternally";
@@ -12,6 +12,7 @@ import {
   isPdfSchema,
 } from "@/domain/technologicalSchemas";
 import s from "./SchemaList.module.scss";
+import db from "@/pages/DataBase/DataBase.module.scss";
 
 const ACCEPT = "image/*,application/pdf,.pdf";
 
@@ -30,6 +31,7 @@ export default function SchemaList({ project }) {
   const [notice, setNotice] = useState(null);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(null);
+  const [search, setSearch] = useState("");
   const listRef = useRef(null);
   // Меряется, а не задаётся: над списком стоит кнопка и, бывает, предупреждение.
   const [listHeight, setListHeight] = useState(600);
@@ -141,6 +143,21 @@ export default function SchemaList({ project }) {
     [project, readSchemaFile, t],
   );
 
+  /*
+   * Комплект чертежей месторождения — сотни листов, и нужный ищут по имени:
+   * «обвязка устья», «уппг». Тем же поиском, что на базе и в реестре — по
+   * названию и по подписи места, потому что чертёж подписывают и так, и так.
+   */
+  const visible = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    if (!needle) return schemas;
+    return schemas.filter((schema) =>
+      [schema.name, schema.location]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(needle)),
+    );
+  }, [schemas, search]);
+
   const renderSchema = useCallback(
     (schema) => (
       <div className={s.card}>
@@ -231,10 +248,42 @@ export default function SchemaList({ project }) {
         aria-label={t("schemas.add")}
       />
 
+      {/* Строка появляется, когда искать уже есть в чём: над двумя чертежами
+          она только отнимает высоту у списка. */}
+      {schemas.length > 1 && (
+        <div className={db.searchRow}>
+          <div className={db.searchWrap}>
+            <span className={db.searchIcon}>🔍</span>
+            <input
+              className={db.searchInput}
+              type="search"
+              value={search}
+              placeholder={t("schemas.searchPlaceholder")}
+              aria-label={t("schemas.searchPlaceholder")}
+              autoComplete="off"
+              enterKeyHint="search"
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            {search && (
+              <button
+                type="button"
+                className={db.clearSearch}
+                onClick={() => setSearch("")}
+                aria-label={t("database.clearSearch")}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <p className={s.muted}>{t("schemas.loading")}</p>
       ) : schemas.length === 0 ? (
         <p className={s.muted}>{t("schemas.empty")}</p>
+      ) : visible.length === 0 ? (
+        <p className={s.muted}>{t("schemas.noMatches")}</p>
       ) : (
         /*
          * Тот же виртуализатор, что у списка утечек и у реестра. Комплект
@@ -243,7 +292,7 @@ export default function SchemaList({ project }) {
          */
         <div ref={listRef} className={s.list}>
           <VirtualizedLeakList
-            items={schemas}
+            items={visible}
             height={listHeight}
             bottomPadding={88}
             gap={8}

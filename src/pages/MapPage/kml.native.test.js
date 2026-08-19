@@ -23,7 +23,7 @@ describe("saveLeaksKML on Android", () => {
     );
 
     expect(writePublicFile).toHaveBeenCalledWith({
-      folder: "alpha/export/map",
+      folder: "alpha/Leaks/kml",
       fileName: "leaks_map.kml",
       blob: expect.any(Blob),
       mimeType: "application/vnd.google-earth.kml+xml",
@@ -31,8 +31,8 @@ describe("saveLeaksKML on Android", () => {
     expect(result).toEqual({
       ok: true,
       fileName: "leaks_map.kml",
-      path: "alpha/export/map/leaks_map.kml",
-      message: "Saved to Documents/alpha/export/map/leaks_map.kml",
+      path: "alpha/Leaks/kml/leaks_map.kml",
+      message: "Saved to Documents/alpha/Leaks/kml/leaks_map.kml",
     });
   });
 
@@ -40,9 +40,9 @@ describe("saveLeaksKML on Android", () => {
     const result = await saveLeaksKML([], "downstream", null, translate);
 
     expect(writePublicFile).toHaveBeenCalledWith(
-      expect.objectContaining({ folder: "export/map" }),
+      expect.objectContaining({ folder: "Leaks/kml" }),
     );
-    expect(result.path).toBe("export/map/leaks_map.kml");
+    expect(result.path).toBe("Leaks/kml/leaks_map.kml");
   });
 
   it("propagates public writer failures to the export controller", async () => {

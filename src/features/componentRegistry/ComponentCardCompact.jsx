@@ -2,6 +2,8 @@ import { memo, useRef, useState } from "react";
 import { useSwipeActions } from "@/hooks/useSwipeActions";
 import { usePhotoSrc } from "@/hooks/usePhotoSrc";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { formatLeakDate } from "@/utils/locale";
+import { timeAgo } from "@/utils/timeAgo";
 import s from "./ComponentCardCompact.module.scss";
 
 /**
@@ -21,7 +23,7 @@ function ComponentCardCompact({
   onOpenDetails,
   onInspect,
 }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [offset, setOffset] = useState(0);
   /*
    * A finished swipe resets the offset before the browser delivers the click
@@ -50,6 +52,13 @@ function ComponentCardCompact({
     onOpenDetails?.(component);
   };
   const status = String(component.component_status ?? "").trim();
+  /*
+   * Когда карточку завели — тем же, чем это подписано у утечки: «2 часа
+   * назад» рядом, датой, когда «рядом» уже ничего не значит. По списку видно,
+   * докуда дошёл обход сегодня, а не только что в нём вообще есть.
+   */
+  const recorded =
+    timeAgo(component.date, lang) ?? formatLeakDate(component.date, {}, lang);
 
   return (
     <li className={s.row}>
@@ -119,6 +128,7 @@ function ComponentCardCompact({
               <span className={s.name}>
                 {component.component || t("components.unnamed")}
               </span>
+              {recorded && <span className={s.time}>{recorded}</span>}
             </span>
             <span className={s.meta}>
               {[component.location, component.object, component.scheme_tag]

@@ -24,10 +24,22 @@ function ComponentFilterBar({
   onToggleConflicts,
   conflictCount = 0,
   counts = /** @type {Record<string, number>} */ ({}),
+  hasGps = false,
+  nearbyOnly = false,
+  nearbyRadius = 0,
+  nearbyRadiusOptions = [],
+  nearbyCount = 0,
+  onToggleNearby,
+  onRadiusChange,
 }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
-  const hasActiveFilter = statusFilter.length > 0 || conflictsOnly;
+  const hasActiveFilter =
+    statusFilter.length > 0 || conflictsOnly || nearbyOnly;
+  const formatRadius = (radius) =>
+    radius >= 1000
+      ? `${radius / 1000} ${t("database.radiusKm")}`
+      : `${radius} ${t("database.radiusM")}`;
 
   return (
     <>
@@ -116,6 +128,58 @@ function ComponentFilterBar({
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Обход идут ногами, и чаще нужен не весь реестр, а железо, что
+              стоит здесь же. Тем же тумблером и теми же радиусами, что на
+              странице базы: расстояние одно и то же, где его ни спрашивай. */}
+          {hasGps && (
+            <div className={s.filterSection}>
+              <div className={s.filterDivider} />
+              <button
+                type="button"
+                className={`${s.nearbyToggle} ${
+                  nearbyOnly ? s.nearbyToggleActive : ""
+                }`}
+                onClick={() => onToggleNearby?.()}
+                aria-pressed={nearbyOnly}
+              >
+                <span className={s.nearbyLeft}>
+                  <span className={s.nearbyIcon}>📌</span>
+                  <span className={s.nearbyLabel}>{t("database.nearMe")}</span>
+                  {nearbyCount > 0 && (
+                    <span className={s.nearbyCount}>{nearbyCount}</span>
+                  )}
+                </span>
+                <span
+                  className={`${s.nearbyTrack} ${
+                    nearbyOnly ? s.nearbyTrackOn : ""
+                  }`}
+                >
+                  <span
+                    className={`${s.nearbyThumb} ${
+                      nearbyOnly ? s.nearbyThumbOn : ""
+                    }`}
+                  />
+                </span>
+              </button>
+              {nearbyOnly && (
+                <div className={s.nearbyRadiusGroup}>
+                  {nearbyRadiusOptions.map((radius) => (
+                    <button
+                      key={radius}
+                      type="button"
+                      className={`${s.nearbyRadiusBtn} ${
+                        nearbyRadius === radius ? s.nearbyRadiusBtnActive : ""
+                      }`}
+                      onClick={() => onRadiusChange?.(radius)}
+                    >
+                      {formatRadius(radius)}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

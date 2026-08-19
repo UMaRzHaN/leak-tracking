@@ -251,3 +251,64 @@ describe("schema list", () => {
     expect(screen.getByRole("alert").textContent).toMatch(/could not read/i);
   });
 });
+
+describe("поиск по чертежам", () => {
+  const many = [
+    {
+      id: "1",
+      name: "Схема обвязки устья.pdf",
+      type: "application/pdf",
+      size: 2048,
+      location: "Скважина 22",
+    },
+    {
+      id: "2",
+      name: "УППГ общий вид.png",
+      type: "image/png",
+      size: 4096,
+      location: "УППГ",
+    },
+  ];
+
+  it("не занимает высоту, когда искать не в чем", () => {
+    hooks.current = makeHook({ schemas: [many[0]] });
+    render(<SchemaList project={project} />);
+
+    expect(screen.queryByPlaceholderText(/Drawing name/)).toBeNull();
+  });
+
+  it("находит чертёж по имени", () => {
+    hooks.current = makeHook({ schemas: many });
+    render(<SchemaList project={project} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/Drawing name/), {
+      target: { value: "устья" },
+    });
+
+    expect(screen.getByText("Схема обвязки устья.pdf")).toBeTruthy();
+    expect(screen.queryByText("УППГ общий вид.png")).toBeNull();
+  });
+
+  it("находит и по подписи места", () => {
+    // Чертёж подписывают и так, и так: одному имени доверять нельзя.
+    hooks.current = makeHook({ schemas: many });
+    render(<SchemaList project={project} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/Drawing name/), {
+      target: { value: "скважина" },
+    });
+
+    expect(screen.getByText("Схема обвязки устья.pdf")).toBeTruthy();
+  });
+
+  it("говорит, что не нашлось, вместо пустого места", () => {
+    hooks.current = makeHook({ schemas: many });
+    render(<SchemaList project={project} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/Drawing name/), {
+      target: { value: "трубопровод" },
+    });
+
+    expect(screen.getByText("Nothing found")).toBeTruthy();
+  });
+});

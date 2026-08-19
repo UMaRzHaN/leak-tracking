@@ -1,6 +1,11 @@
 import { isNative } from "@/utils/platform";
 import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
 import { hasValidCoordinates } from "@/utils/coordinates";
+import {
+  INVENTORY_KML_DIR,
+  LEAK_KML_DIR,
+  projectExportFolder,
+} from "@/services/storage/exportFolders";
 
 const ICON_COLORS = [
   "E53935",
@@ -130,13 +135,112 @@ export function exportLeaksKML(leaks, project, t) {
 </kml>`;
 }
 
-export async function saveLeaksKML(leaks, project, projectFolderName, t) {
-  const kml = exportLeaksKML(leaks, project, t);
-  const fileName = "leaks_map.kml";
-  const folderName = projectFolderName
-    ? `${projectFolderName}/export/map`
-    : "export/map";
+/**
+ * Компоненты на карте — своим файлом.
+ *
+ * Тот же формат и та же группировка по месторождению, но говорится в нём
+ * другое: у железа нет скорости утечки, зато есть номер на схеме и состояние,
+ * в котором его застали. Выгружать компоненты под видом утечек значило бы
+ * отдать получателю файл, где половина подписей не про то.
+ */
+export function exportComponentsKML(components, project, t) {
+  const config = PROJECT_LOCATION_CONFIG[project];
+  const mainLabel = t(`database.locationLabels.${config.main}`);
+  const secondaryLabel = t(`database.locationLabels.${config.secondary}`);
+  const notSpecified = t("map.sheet.notSpecified");
 
+  const byField = new Map();
+  components.forEach((component) => {
+    if (!hasValidCoordinates(component)) return;
+    const field = component[config.secondary] || notSpecified;
+    if (!byField.has(field)) byField.set(field, []);
+    byField.get(field).push(component);
+  });
+
+  const groupNames = [...byField.keys()];
+
+  const styles = groupNames
+    .map((_, index) => {
+      const color = ICON_COLORS[index % ICON_COLORS.length];
+      return `
+    <Style id="style_${index}">
+      <IconStyle>
+        <scale>1.2</scale>
+        <Icon>
+          <href>${tornadoIconUrl(color)}</href>
+        </Icon>
+      </IconStyle>
+    </Style>`;
+    })
+    .join("");
+
+  const folders = groupNames
+    .map((field, groupIndex) => {
+      const placemarks = byField
+        .get(field)
+        .map(
+          (component) => `
+      <Placemark>
+        <name>${escapeXml(component.component_uid ?? component.scheme_tag ?? "")}</name>
+        <styleUrl>#style_${groupIndex}</styleUrl>
+        <description>
+          <![CDATA[
+            <b>${safeDescriptionText(mainLabel)}:</b> ${safeDescriptionText(component[config.main]) || notSpecified}<br/>
+            <b>${safeDescriptionText(secondaryLabel)}:</b> ${safeDescriptionText(component[config.secondary]) || notSpecified}<br/>
+            <b>${safeDescriptionText(t("components.tab"))}:</b> ${safeDescriptionText(component.component) || notSpecified}<br/>
+            <b>${safeDescriptionText(t("map.kml.schemeTag"))}:</b> ${safeDescriptionText(component.scheme_tag) || notSpecified}<br/>
+            <b>${safeDescriptionText(t("map.popup.status"))}:</b> ${safeDescriptionText(component.component_status) || notSpecified}
+          ]]>
+        </description>
+        <Point>
+          <coordinates>${component.lng},${component.lat},0</coordinates>
+        </Point>
+      </Placemark>`,
+        )
+        .join("");
+
+      return `
+    <Folder>
+      <name>${escapeXml(field)}</name>
+      ${placemarks}
+    </Folder>`;
+    })
+    .join("");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>${escapeXml(t("map.kml.componentsDocumentName"))}</name>
+    ${styles}
+    ${folders}
+  </Document>
+</kml>`;
+}
+
+export async function saveComponentsKML(
+  components,
+  project,
+  projectFolderName,
+  t,
+) {
+  return writeKML({
+    kml: exportComponentsKML(components, project, t),
+    fileName: "components_map.kml",
+    folderName: projectExportFolder(projectFolderName, INVENTORY_KML_DIR),
+    t,
+  });
+}
+
+export async function saveLeaksKML(leaks, project, projectFolderName, t) {
+  return writeKML({
+    kml: exportLeaksKML(leaks, project, t),
+    fileName: "leaks_map.kml",
+    folderName: projectExportFolder(projectFolderName, LEAK_KML_DIR),
+    t,
+  });
+}
+
+async function writeKML({ kml, fileName, folderName, t }) {
   if (isNative) {
     const { writePublicFile } =
       await import("@/services/storage/publicFileWriter");

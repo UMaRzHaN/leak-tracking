@@ -25,6 +25,7 @@ const serviceMocks = vi.hoisted(() => ({
     return { saved: urls.length, alreadyCached: 0, failed: 0 };
   }),
   saveLeaksKML: vi.fn(async () => ({ message: "KML ready" })),
+  saveComponentsKML: vi.fn(async () => ({ message: "Components KML ready" })),
 }));
 
 // Resolves against the real English locale, so these assertions fail if the
@@ -69,6 +70,7 @@ vi.mock("@/pages/MapPage/handleExport", () => ({
 }));
 vi.mock("@/pages/MapPage/kml", () => ({
   saveLeaksKML: serviceMocks.saveLeaksKML,
+  saveComponentsKML: serviceMocks.saveComponentsKML,
 }));
 
 import { useMapPage } from "./useMapPage";

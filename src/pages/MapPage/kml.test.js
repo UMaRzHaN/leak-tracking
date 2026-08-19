@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { translate, translateRu } from "@/test/translate";
-import { exportLeaksKML } from "./kml";
+import { exportComponentsKML, exportLeaksKML } from "./kml";
 
 describe("exportLeaksKML", () => {
   it("escapes XML tag values and keeps description content readable", () => {
@@ -45,5 +45,54 @@ describe("exportLeaksKML", () => {
 
     expect(kml).toContain("<name>VALID</name>");
     expect(kml).not.toContain("<name>INVALID</name>");
+  });
+});
+
+describe("exportComponentsKML", () => {
+  const cards = [
+    {
+      id: "a",
+      component_uid: "4242",
+      component: "Задвижка",
+      scheme_tag: "ЗД32",
+      component_status: "Требует замены",
+      subdivision: "Мессояхское УПГ",
+      deposit: "Бузахур",
+      lat: 38.4,
+      lng: 66.1,
+    },
+  ];
+
+  it("подписывает булавку присвоенным номером, а не биркой утечки", () => {
+    const kml = exportComponentsKML(cards, "upstream", translateRu);
+
+    expect(kml).toContain("<name>4242</name>");
+    expect(kml).toContain("ЗД32");
+    expect(kml).toContain("Требует замены");
+  });
+
+  it("не говорит о скорости утечки там, где её нет", () => {
+    // У железа её не бывает; выгружать компоненты под видом утечек значило бы
+    // отдать получателю файл, где половина подписей не про то.
+    const kml = exportComponentsKML(cards, "upstream", translateRu);
+
+    expect(kml).not.toContain(
+      translateRu("addLeak.fields.leak_speed.shortLabel"),
+    );
+  });
+
+  it("группирует по месторождению, как и утечки", () => {
+    const kml = exportComponentsKML(cards, "upstream", translateRu);
+    expect(kml).toContain("<name>Бузахур</name>");
+  });
+
+  it("пропускает карточку без координат, а не ставит её в ноль", () => {
+    const kml = exportComponentsKML(
+      [{ ...cards[0], lat: null, lng: null }],
+      "upstream",
+      translateRu,
+    );
+
+    expect(kml).not.toContain("<Placemark>");
   });
 });

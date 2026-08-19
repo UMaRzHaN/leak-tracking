@@ -273,6 +273,7 @@ export function useMapPage({
   // именно её, а не другую.
   const { handleExportKML } = useMapExport({
     visibleLeaks: shownItems,
+    showsComponents,
     projectType: activeProject?.type,
     projectFolder: exportProjectFolder,
     notify,
