@@ -1,4 +1,3 @@
-import { registerPlugin } from "@capacitor/core";
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import { logger } from "@/utils/logger";
 import {
@@ -15,24 +14,14 @@ import {
   createNativeSqliteMutation,
   shouldReplaceNativeSqliteDataset,
 } from "@/repositories/nativeSqliteMutation";
+import {
+  NativeLeakStorage,
+  isSqlitePluginUnavailable,
+} from "@/repositories/nativeSqlitePlugin";
 
-const NativeLeakStorage = registerPlugin("NativeLeakStorage");
 let sqliteUnavailable = false;
 let fallbackWarningLogged = false;
 const sqliteMarkers = new Set();
-
-function isPluginUnavailableError(error) {
-  const code = String(error?.code ?? "").toUpperCase();
-  const message = String(error?.message ?? error).toLowerCase();
-  return (
-    code === "UNIMPLEMENTED" ||
-    code === "NOT_IMPLEMENTED" ||
-    message.includes("not implemented") ||
-    message.includes("unimplemented") ||
-    message.includes("plugin is not available") ||
-    message.includes("plugin not available")
-  );
-}
 
 function getSqliteMarkerPath(folderName) {
   return `LeakReports/${folderName}/data/data.sqlite.json`;
@@ -110,7 +99,7 @@ async function invokeSqlite(method, payload) {
   try {
     return await NativeLeakStorage[method](payload);
   } catch (error) {
-    if (isPluginUnavailableError(error)) {
+    if (isSqlitePluginUnavailable(error)) {
       await assertLegacyFallbackAllowed(payload?.projectKey, error);
       noteLegacyFallback(error);
       return null;

@@ -101,10 +101,17 @@ export function useComponentRegistry(project) {
       if (!enabled) return Promise.resolve([]);
 
       const run = writeQueueRef.current.then(async () => {
+        const previous = latestRef.current;
         const stored = await ComponentRepository.save(
           project,
-          recompute(latestRef.current),
-          { numericKeys: validation?.numericKeys ?? [] },
+          recompute(previous),
+          {
+            numericKeys: validation?.numericKeys ?? [],
+            // Что, по мнению приложения, уже лежит в хранилище. С этим одна
+            // исправленная карточка стоит одной строки, а не переписывания
+            // всего обхода — на телефоне, под открытым небом, посреди обхода.
+            previous,
+          },
         );
         latestRef.current = stored;
         setComponents(stored);
