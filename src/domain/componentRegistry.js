@@ -69,6 +69,33 @@ function normalizeNumeric(value) {
 }
 
 /**
+ * Приводит карточку к нынешней форме полей.
+ *
+ * «Компонент» и «Наименование компонента» описывали одно и то же и разъезжались
+ * бы порознь, поэтому слились в одно поле под ключом утечки (`component`).
+ * Карточки, заведённые до слияния, несут `component_name` и без этого
+ * показываются как «Без наименования» — данные на месте, но не там, где их
+ * ищут.
+ *
+ * Применяется при чтении, а не только при записи: иначе старая карточка
+ * оставалась бы безымянной до тех пор, пока её кто-нибудь не откроет и не
+ * сохранит, — то есть ровно до того момента, когда это уже поздно заметить.
+ *
+ * `component_name_en` не трогается: это действующее поле английской колонки, а
+ * не наследство.
+ */
+export function migrateComponentShape(component) {
+  if (!component || typeof component !== "object") return component;
+  if (!("component_name" in component)) return component;
+
+  const { component_name: legacyName, ...rest } = component;
+  const current = String(rest.component ?? "").trim();
+  // Заполненное нынешнее поле весомее: старый ключ мог остаться от импорта
+  // архива, где сосуществовали оба.
+  return current ? rest : { ...rest, component: legacyName };
+}
+
+/**
  * Brings a card into storable shape.
  *
  * Missing values stay missing — an unreadable plate is the normal case, not an
@@ -82,18 +109,19 @@ function normalizeNumeric(value) {
  */
 export function normalizeComponent(component, { numericKeys = [], now } = {}) {
   const timestamp = typeof now === "number" ? now : Date.now();
-  const normalized = { ...component };
+  const migrated = migrateComponentShape(component);
+  const normalized = { ...migrated };
 
-  normalized.id = component?.id ?? createRecordId();
-  normalized.component_uid = String(component?.component_uid ?? "").trim();
-  normalized.date = component?.date ?? new Date(timestamp).toISOString();
+  normalized.id = migrated?.id ?? createRecordId();
+  normalized.component_uid = String(migrated?.component_uid ?? "").trim();
+  normalized.date = migrated?.date ?? new Date(timestamp).toISOString();
   normalized.updatedAt = timestamp;
 
   // The inspection date is when somebody stood in front of the equipment and
   // filled the card in — the app already knows that, so it is never typed.
   // Set once and left alone: correcting a typo months later must not move the
   // date the equipment was actually looked at.
-  normalized.inspected_at = component?.inspected_at ?? normalized.date;
+  normalized.inspected_at = migrated?.inspected_at ?? normalized.date;
 
   for (const key of numericKeys) {
     if (key === "component_uid") continue;

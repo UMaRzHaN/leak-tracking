@@ -5,7 +5,10 @@ import {
   saveNativeComponents,
   unwrapEnvelope,
 } from "@/repositories/nativeComponentStorage";
-import { normalizeComponent } from "@/domain/componentRegistry";
+import {
+  migrateComponentShape,
+  normalizeComponent,
+} from "@/domain/componentRegistry";
 import { isNative } from "@/utils/platform";
 import { logger } from "@/utils/logger";
 
@@ -86,6 +89,17 @@ export class ComponentDataError extends Error {
   }
 }
 
+/**
+ * Старые ключи приводятся к нынешним на чтении — до того, как карточка попадёт
+ * на экран, в выгрузку или в сведение. Одна точка на все пути чтения: экран
+ * реестра, карта, шапка, книга, архив и импорт ходят сюда же.
+ */
+function migrateStored(components) {
+  return Array.isArray(components)
+    ? components.map(migrateComponentShape)
+    : components;
+}
+
 export const ComponentRepository = {
   /**
    * All components of a project, in stored order.
@@ -100,7 +114,9 @@ export const ComponentRepository = {
 
     try {
       if (isNative) {
-        return await loadNativeComponents(project.folderName ?? project.id);
+        return migrateStored(
+          await loadNativeComponents(project.folderName ?? project.id),
+        );
       }
 
       if (!(await whenReady())) {
@@ -108,7 +124,7 @@ export const ComponentRepository = {
           code: "COMPONENT_STORE_UNAVAILABLE",
         });
       }
-      return unwrapEnvelope(await store.getStrict(project.id));
+      return migrateStored(unwrapEnvelope(await store.getStrict(project.id)));
     } catch (error) {
       if (error instanceof ComponentDataError) throw error;
       logger.error("[components] failed to read registry:", error);

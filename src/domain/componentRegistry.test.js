@@ -4,6 +4,7 @@ import {
   findComponentUidConflicts,
   isValidComponentUid,
   missingRequiredFields,
+  migrateComponentShape,
   normalizeComponent,
   parseComponentUid,
 } from "@/domain/componentRegistry";
@@ -90,10 +91,10 @@ describe("normalization", () => {
   it("leaves an unreadable plate empty rather than failing", () => {
     const normalized = normalizeComponent({
       component_uid: "5",
-      component_name: "Задвижка",
+      component: "Задвижка",
     });
     expect(normalized.manufacturer).toBeUndefined();
-    expect(normalized.component_name).toBe("Задвижка");
+    expect(normalized.component).toBe("Задвижка");
   });
 
   it("coerces declared numeric fields and blanks the unparsable ones", () => {
@@ -159,20 +160,88 @@ describe("normalization", () => {
   });
 });
 
+/*
+ * Карточки, заведённые до слияния полей наименования, несут `component_name` и
+ * без приведения показываются как «Без наименования» — данные на месте, но не
+ * там, где их ищут.
+ */
+describe("приведение старых карточек", () => {
+  it("переносит наименование в нынешний ключ", () => {
+    const migrated = migrateComponentShape({
+      id: "a",
+      component_uid: "7",
+      component_name: "Задвижка",
+    });
+
+    expect(migrated.component).toBe("Задвижка");
+    expect("component_name" in migrated).toBe(false);
+    expect(migrated.component_uid).toBe("7");
+  });
+
+  it("не трогает английское наименование — это действующее поле", () => {
+    const migrated = migrateComponentShape({
+      component_name: "Задвижка",
+      component_name_en: "Gate valve",
+    });
+
+    expect(migrated.component).toBe("Задвижка");
+    expect(migrated.component_name_en).toBe("Gate valve");
+  });
+
+  // Оба ключа рядом бывают в архиве, выгруженном во время перехода. Побеждает
+  // заполненное нынешнее поле, а старое просто отбрасывается.
+  it("оставляет заполненное нынешнее поле, отбрасывая старый ключ", () => {
+    const migrated = migrateComponentShape({
+      component: "Кран Шаровой",
+      component_name: "Задвижка",
+    });
+
+    expect(migrated.component).toBe("Кран Шаровой");
+    expect("component_name" in migrated).toBe(false);
+  });
+
+  it("считает пустое нынешнее поле незаполненным", () => {
+    expect(
+      migrateComponentShape({ component: "   ", component_name: "Задвижка" })
+        .component,
+    ).toBe("Задвижка");
+  });
+
+  it("возвращает нынешнюю карточку как есть", () => {
+    const card = { id: "a", component: "Труба" };
+    expect(migrateComponentShape(card)).toBe(card);
+  });
+
+  it("переживает мусор вместо карточки", () => {
+    expect(migrateComponentShape(null)).toBeNull();
+    expect(migrateComponentShape("нет")).toBe("нет");
+  });
+
+  it("применяется и при записи", () => {
+    const normalized = normalizeComponent({
+      component_uid: "7",
+      component_name: "Задвижка",
+    });
+
+    expect(normalized.component).toBe("Задвижка");
+    expect("component_name" in normalized).toBe(false);
+  });
+});
+
 describe("required fields", () => {
-  const required = ["location", "component_uid", "component_name"];
+  const required = ["location", "component_uid", "component"];
 
   it("names what is still missing", () => {
     expect(missingRequiredFields({ component_uid: "4" }, required)).toEqual([
       "location",
-      "component_name",
+      "component",
     ]);
   });
 
   it("treats whitespace as missing", () => {
     expect(
       missingRequiredFields(
-        { location: "  ", component_uid: "4", component_name: "Труба" },
+        { location: "  ", component_uid: "4", component: "Труба" },
         required,
       ),
     ).toEqual(["location"]);
@@ -184,7 +253,7 @@ describe("required fields", () => {
         {
           location: "Скважина 22",
           component_uid: "4",
-          component_name: "Труба",
+          component: "Труба",
         },
         required,
       ),

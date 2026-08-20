@@ -192,6 +192,28 @@ describe("ComponentRepository on mobile", () => {
         data: JSON.stringify({
           version: 1,
           updatedAt: 1,
+          data: [{ id: "a", component_uid: "7", component: "Задвижка" }],
+        }),
+      }),
+      writeFile: vi.fn(),
+      mkdir: vi.fn(),
+      deleteFile: vi.fn(),
+    });
+
+    const loaded = await repository.load(project);
+    expect(loaded[0].component).toBe("Задвижка");
+  });
+
+  // Карточка, заведённая до слияния полей, приходит с `component_name` и без
+  // этого показывалась бы как «Без наименования». Приводится на чтении, а не
+  // при следующем сохранении, — иначе безымянной она была бы ровно до тех пор,
+  // пока это ещё можно заметить.
+  it("приводит карточку, заведённую до слияния полей", async () => {
+    const repository = await loadNativeRepository({
+      readFile: vi.fn().mockResolvedValue({
+        data: JSON.stringify({
+          version: 1,
+          updatedAt: 1,
           data: [{ id: "a", component_uid: "7", component_name: "Задвижка" }],
         }),
       }),
@@ -201,6 +223,8 @@ describe("ComponentRepository on mobile", () => {
     });
 
     const loaded = await repository.load(project);
-    expect(loaded[0].component_name).toBe("Задвижка");
+
+    expect(loaded[0].component).toBe("Задвижка");
+    expect(loaded[0].component_name).toBeUndefined();
   });
 });
