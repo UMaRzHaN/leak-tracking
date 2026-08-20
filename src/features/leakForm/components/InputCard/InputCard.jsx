@@ -1,6 +1,7 @@
 import { useId, useRef } from "react";
 import { parseNumericInput } from "@/utils/normalize/parseNumericInput";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
+import { maskDateInput } from "@/utils/normalize/maskDateInput";
 import s from "./InputCard.module.scss";
 
 export default function InputCard({
@@ -63,33 +64,24 @@ export default function InputCard({
             /*
              * Numbers stay a text box on purpose: parseNumericInput keeps
              * "4,0" readable while it is being typed, which a number input
-             * would collapse. Anything else — a date, most of all — gets the
-             * control the platform provides.
+             * would collapse.
+             *
+             * Дата — тоже текст, и по той же причине. Календарь платформы
+             * открывался на текущем месяце и требовал долистать до года
+             * монтажа: с шильдика число читают и набирают, а не выбирают.
+             * Формат остался прежним — ДД.ММ.ГГГГ, точки ставит maskDateInput.
              */
-            type={isNumber ? "text" : type}
-            inputMode={isNumber ? "decimal" : undefined}
-            /*
-             * Opening the picker from anywhere in the field rather than from
-             * the glyph alone: the glyph is 22px, and the person tapping it is
-             * wearing gloves in front of a wellhead.
-             */
-            onClick={
-              isDate
-                ? (event) => {
-                    if (typeof event.currentTarget.showPicker === "function") {
-                      event.currentTarget.showPicker();
-                    }
-                  }
-                : undefined
-            }
+            type={isNumber || isDate ? "text" : type}
+            inputMode={isNumber ? "decimal" : isDate ? "numeric" : undefined}
             enterKeyHint="next"
             value={value ?? ""}
             placeholder={placeholder ?? ""}
-            onChange={(e) =>
-              onChange(
-                isNumber ? parseNumericInput(e.target.value) : e.target.value,
-              )
-            }
+            onChange={(e) => {
+              const raw = e.target.value;
+              if (isNumber) return onChange(parseNumericInput(raw));
+              if (isDate) return onChange(maskDateInput(raw));
+              onChange(raw);
+            }}
             onBlur={
               isNumber
                 ? () => {
@@ -101,7 +93,7 @@ export default function InputCard({
           />
         )}
 
-        {hasValue && !isDate && (
+        {hasValue && (
           <button
             type="button"
             className={s.clearBtn}

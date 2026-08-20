@@ -156,11 +156,13 @@ export const COMPONENT_STEPS = [
       },
       {
         // A date the walker reads off a plate and the app has no way to guess,
-        // so it is asked for — but through the platform's own picker, which
-        // spares everyone an argument about separators.
+        // so it is asked for. Набирается руками: календарь открывался на
+        // текущем месяце, а монтаж был в позапрошлом десятилетии, и до него
+        // долистывали. Формат прежний — ДД.ММ.ГГГГ, точки поле ставит само.
         type: "date",
         key: "installed_at",
         label: "Дата монтажа",
+        placeholder: "ДД.ММ.ГГГГ",
       },
       {
         type: "autocomplete",

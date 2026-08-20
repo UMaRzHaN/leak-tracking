@@ -59,11 +59,12 @@ describe("upstream component fields", () => {
     );
   });
 
-  it("asks for the installation date through a date control", () => {
+  it("asks for the installation date by hand, in the format it stores", () => {
     const installed = COMPONENT_STEPS.flatMap((step) => step.fields).find(
       (field) => field.key === "installed_at",
     );
     expect(installed.type).toBe("date");
+    expect(installed.placeholder).toBe("ДД.ММ.ГГГГ");
   });
 
   it("keeps the English name out of the form but in the workbook", () => {

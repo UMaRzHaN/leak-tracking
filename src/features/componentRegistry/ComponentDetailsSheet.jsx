@@ -13,6 +13,7 @@ import {
   relativeTime,
 } from "@/features/leakDetails/components/viewBlockUtils";
 import { COMPONENT_HISTORY_ACTIONS } from "@/domain/componentHistory";
+import { formatLeakDate } from "@/utils/locale";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
 /** Поля, чьё значение — момент времени, а не текст. */
@@ -135,8 +136,20 @@ export default function ComponentDetailsSheet({
       : [{ id: "history", label: t("components.tabs.history") }]),
   ];
 
+  /*
+   * Дата внесения и дата инспекции приходят со штампа — строкой ISO; дату
+   * монтажа набирает человек в виде ДД.ММ.ГГГГ. formatLeakDate читает обе и
+   * возвращает исходную строку, если разобрать её не вышло, — «Invalid Date»
+   * в паспорте компонента говорит читающему меньше, чем то, что там написано.
+   */
   const fieldValue = (key, value) =>
-    DATE_KEYS.has(key) ? fmtDate(value, lang) : String(value);
+    DATE_KEYS.has(key)
+      ? formatLeakDate(
+          value,
+          { day: "2-digit", month: "2-digit", year: "numeric" },
+          lang,
+        )
+      : String(value);
 
   /** Заголовок поля из объявления реестра, а не ключ из кода. */
   const labelOf = (key) =>
