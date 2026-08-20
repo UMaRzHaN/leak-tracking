@@ -12,6 +12,7 @@
 import { chromium } from "@playwright/test";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { encodePngFilesToWebp } from "./image-encoder.mjs";
 
 const BASE_URL = process.env.MANUAL_BASE_URL ?? "http://127.0.0.1:4173";
 const OUT_DIR = path.resolve("docs/manual/img");
@@ -57,6 +58,8 @@ async function main() {
     await browser.close();
   }
 
+  await storeShotsAsWebp();
+
   console.log(`\nГотово: ${done.length} скриншотов`);
   for (const name of done) console.log("  ✓", name);
   if (failed.length) {
@@ -101,6 +104,23 @@ async function openTab(page, name) {
     })
     .first()
     .click();
+}
+
+// PNG с экрана весит впятеро больше того же кадра в WebP, а руководство
+// переснимают целиком: раз в несколько месяцев это два десятка мегабайт,
+// которые остаются в истории навсегда. Кодировщик — тот же Chromium, что
+// уже открыт ради съёмки; ставить ничего не нужно.
+async function storeShotsAsWebp() {
+  const dir = await fs.readdir(OUT_DIR);
+  const pngs = dir
+    .filter((name) => name.endsWith(".png"))
+    .map((name) => path.join(OUT_DIR, name));
+  if (pngs.length === 0) return;
+
+  const kb = (bytes) => Math.round(bytes / 1024);
+  const { before, after } = await encodePngFilesToWebp(pngs);
+  await Promise.all(pngs.map((file) => fs.rm(file, { force: true })));
+  console.log(`Кадры пересжаты в WebP: ${kb(before)} КБ → ${kb(after)} КБ`);
 }
 
 async function shot(page, name, options = {}) {
