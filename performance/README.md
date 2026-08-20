@@ -188,6 +188,31 @@ So the remaining bridge cost is now the whole of what is left, and a native
 write path — the one idea these measurements have not tested — has a clean floor
 to be judged against.
 
+### Results — 2026-08-21, collecting an archive without base64
+
+The sending half of a QR transfer: one phone reads every photo it has on disk
+and streams them into an archive for the other. The photos are device files, so
+each one used to be read as a base64 string through the Capacitor bridge and
+decoded back into bytes in JS. `Capacitor.convertFileSrc` plus `fetch` reads the
+same file directly — the way a received sync archive was already being read.
+
+Emulator again, so read the ratio and not the seconds. The `collectArchive`
+scenario, 60 photos, 52.6 MB, two runs per side:
+
+|                         | before         | after              |
+| ----------------------- | -------------- | ------------------ |
+| Duration                | 8767 / 8930 ms | **3085 / 2414 ms** |
+| Total main-thread block | 2535 / 2931 ms | **278 / 189 ms**   |
+| Worst single stall      | 97 / 209 ms    | **12 / 15 ms**     |
+| `longtask` entries      | 14             | **0**              |
+
+The archive came out byte-identical on both sides — 52,614,454 bytes every run,
+which is what says the faster read returned the same photos rather than fewer.
+
+The fallback matters as much as the speed: any failure in the direct read drops
+back to the base64 path, because a photo missing from a transfer is a worse
+outcome than a slow transfer.
+
 ### Photo concurrency
 
 `persistExcelImportPhotos`, 40 photos / 35 MB. The sweep is sequential, so the

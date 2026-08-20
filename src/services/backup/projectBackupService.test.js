@@ -17,6 +17,7 @@ import {
 
 vi.mock("@/hooks/photoService", () => ({
   getPhotoSrc: vi.fn().mockResolvedValue(null),
+  getPhotoBlob: vi.fn().mockResolvedValue(null),
 }));
 
 const PROJECT = {

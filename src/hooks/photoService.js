@@ -1,6 +1,8 @@
+import { Capacitor } from "@capacitor/core";
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { isNative } from "@/utils/platform";
 import { logger } from "@/utils/logger";
+import { dataUrlToBlob } from "@/utils/photoConversion";
 import {
   cacheNativePhoto,
   createNativePhotoCacheKey,
@@ -114,6 +116,57 @@ export async function getPhotoSrc(path) {
       err,
     );
     return null;
+  }
+}
+
+/**
+ * Фото как Blob, без base64 и без моста.
+ *
+ * `getPhotoSrc` отдаёт data:URL, потому что этого хочет <img>. Но тому, кто
+ * собирает архив или сверяет снимки, нужны байты, и путь через base64 обходится
+ * дорого дважды: сначала плагин кодирует файл в строку и передаёт её через мост,
+ * потом эту строку разбирают обратно в JS. `convertFileSrc` отдаёт тот же файл
+ * по локальному адресу WebView, и `fetch` читает его напрямую — так уже читается
+ * принятый архив локальной синхронизации.
+ *
+ * При любой осечке остаётся прежний путь: терять фото ради скорости незачем.
+ */
+export async function getPhotoBlob(path) {
+  if (!path || !isNative) return null;
+
+  const nativePath = parseNativePhotoPath(path);
+  if (!nativePath) return null;
+
+  try {
+    const { uri } = await Filesystem.getUri({
+      path: nativePath.fsPath,
+      directory: nativePath.dir,
+    });
+    if (typeof uri !== "string" || !uri) {
+      throw new Error("Filesystem.getUri returned no URI");
+    }
+    // Очередь та же, что у чтения через мост: параллельных чтений столько же,
+    // сколько их было, — меняется способ, а не нагрузка на память.
+    const blob = await queueNativePhotoRead(async () => {
+      const response = await fetch(Capacitor.convertFileSrc(uri));
+      if (!response.ok) {
+        throw new Error(`Photo read failed with ${response.status}`);
+      }
+      return response.blob();
+    });
+    if (!(blob instanceof Blob) || blob.size === 0) {
+      throw new Error("Photo read returned no bytes");
+    }
+    return blob.type.startsWith("image/")
+      ? blob
+      : new Blob([blob], { type: "image/jpeg" });
+  } catch (error) {
+    logger.warn(
+      `[photoService] Direct read failed for "${nativePath.fsPath}", falling back to base64`,
+      error,
+    );
+    const src = await getPhotoSrc(path);
+    return typeof src === "string" ? dataUrlToBlob(src) : null;
   }
 }
 

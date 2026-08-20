@@ -1,4 +1,4 @@
-import { getPhotoSrc } from "@/hooks/photoService";
+import { getPhotoBlob, getPhotoSrc } from "@/hooks/photoService";
 import { fingerprintBlob } from "@/utils/blobHash";
 import { getPhotoPathContentHash } from "@/utils/photoContentHash";
 import { getLeakMergeIdentity } from "@/services/sync/projectSyncState";
@@ -73,6 +73,9 @@ async function resolveStoredPhotoBlob(path, getStoredPhoto) {
     }
     return null;
   }
+
+  const direct = await getPhotoBlob(String(path));
+  if (direct) return direct;
 
   const src = await getPhotoSrc(String(path));
   return String(src ?? "").startsWith("data:image/")

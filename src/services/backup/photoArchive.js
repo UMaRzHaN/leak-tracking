@@ -1,4 +1,4 @@
-import { getPhotoSrc } from "@/hooks/photoService";
+import { getPhotoBlob, getPhotoSrc } from "@/hooks/photoService";
 import { fingerprintBlob } from "@/utils/blobHash";
 import { blobToDataUri, dataUrlToBlob } from "@/utils/photoConversion";
 import { isArchivePhotoPath } from "@/services/backup/archivePhotoReader";
@@ -48,7 +48,10 @@ export async function resolvePhotoBlob(path, idbGet) {
   } else if (path.startsWith("data:image/")) {
     value = path;
   } else {
-    value = await getPhotoSrc(path);
+    // Здесь нужны байты, а не строка для <img>: на устройстве это читается
+    // напрямую, минуя base64 и мост. Каждое фото проекта проходит через эту
+    // строку, когда собирается архив — и для выгрузки, и для переноса по QR.
+    value = (await getPhotoBlob(path)) ?? (await getPhotoSrc(path));
   }
   if (!value) return null;
 

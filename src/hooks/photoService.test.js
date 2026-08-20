@@ -5,8 +5,10 @@ const filesystem = vi.hoisted(() => ({
   readFile: vi.fn(),
   stat: vi.fn(),
   deleteFile: vi.fn(),
+  getUri: vi.fn(),
 }));
-const logger = vi.hoisted(() => ({ error: vi.fn() }));
+const capacitor = vi.hoisted(() => ({ convertFileSrc: vi.fn() }));
+const logger = vi.hoisted(() => ({ error: vi.fn(), warn: vi.fn() }));
 
 vi.mock("@/utils/platform", () => ({
   get isNative() {
@@ -17,10 +19,16 @@ vi.mock("@capacitor/filesystem", () => ({
   Filesystem: filesystem,
   Directory: { Data: "DATA", Documents: "DOCUMENTS" },
 }));
+vi.mock("@capacitor/core", () => ({ Capacitor: capacitor }));
 vi.mock("@/utils/logger", () => ({ logger }));
 
 import { clearNativePhotoCache } from "@/services/storage/nativePhotoSourceCache";
-import { deletePhotoFromFS, getPhotoSrc, photoExists } from "./photoService";
+import {
+  deletePhotoFromFS,
+  getPhotoBlob,
+  getPhotoSrc,
+  photoExists,
+} from "./photoService";
 
 describe("photoService", () => {
   beforeEach(() => {
@@ -186,5 +194,88 @@ describe("photoService", () => {
     expect(filesystem.readFile).not.toHaveBeenCalled();
     expect(filesystem.stat).not.toHaveBeenCalled();
     expect(filesystem.deleteFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("getPhotoBlob", () => {
+  const PATH = "data://LeakReports/site/photos/photo_leak_h_abc.jpg";
+
+  beforeEach(() => {
+    platform.isNative = true;
+    clearNativePhotoCache();
+    vi.clearAllMocks();
+    filesystem.getUri.mockResolvedValue({ uri: "file:///data/photo.jpg" });
+    capacitor.convertFileSrc.mockReturnValue(
+      "https://localhost/_capacitor_file_/data/photo.jpg",
+    );
+  });
+
+  it("reads the file directly, without the base64 bridge", async () => {
+    const bytes = new Blob(["photo-bytes"], { type: "image/jpeg" });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, status: 200, blob: async () => bytes })),
+    );
+
+    const blob = await getPhotoBlob(PATH);
+
+    expect(await blob.text()).toBe("photo-bytes");
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "https://localhost/_capacitor_file_/data/photo.jpg",
+    );
+    expect(filesystem.readFile).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("labels a typeless response as an image", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        blob: async () => new Blob(["bytes"]),
+      })),
+    );
+
+    await expect(getPhotoBlob(PATH)).resolves.toMatchObject({
+      type: "image/jpeg",
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("falls back to the base64 read when the direct read fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: false, status: 404 })),
+    );
+    filesystem.readFile.mockResolvedValue({ data: btoa("fallback-bytes") });
+
+    const blob = await getPhotoBlob(PATH);
+
+    expect(await blob.text()).toBe("fallback-bytes");
+    expect(filesystem.readFile).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("falls back when the direct read returns an empty file", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        blob: async () => new Blob([]),
+      })),
+    );
+    filesystem.readFile.mockResolvedValue({ data: btoa("recovered") });
+
+    await expect((await getPhotoBlob(PATH)).text()).resolves.toBe("recovered");
+    vi.unstubAllGlobals();
+  });
+
+  it("ignores paths outside the app photo folder and the web platform", async () => {
+    await expect(getPhotoBlob("data://../escape.jpg")).resolves.toBe(null);
+    platform.isNative = false;
+    await expect(getPhotoBlob(PATH)).resolves.toBe(null);
+    expect(filesystem.getUri).not.toHaveBeenCalled();
   });
 });

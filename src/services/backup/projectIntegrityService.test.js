@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/hooks/photoService", () => ({
   getPhotoSrc: mocks.getPhotoSrc,
+  getPhotoBlob: vi.fn().mockResolvedValue(null),
 }));
 
 const { analyzeProjectIntegrity } = await import("./projectIntegrityService");

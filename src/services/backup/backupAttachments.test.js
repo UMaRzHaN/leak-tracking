@@ -19,7 +19,10 @@ vi.mock("@/repositories/SchemaRepository", () => ({
 vi.mock("@/repositories/PhotoRepository", () => ({
   PhotoRepository: { save: vi.fn() },
 }));
-vi.mock("@/hooks/photoService", () => ({ getPhotoSrc: vi.fn() }));
+vi.mock("@/hooks/photoService", () => ({
+  getPhotoSrc: vi.fn(),
+  getPhotoBlob: vi.fn().mockResolvedValue(null),
+}));
 
 const { buildProjectBackupZip } = await import("./backupExport");
 

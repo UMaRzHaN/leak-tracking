@@ -1,6 +1,9 @@
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
-import { buildBackupZip } from "@/services/backup/backupExport";
+import {
+  buildBackupZip,
+  streamProjectBackupZip,
+} from "@/services/backup/backupExport";
 import { importBackupZip } from "@/services/backup/backupImport";
 import { getJSZip } from "@/services/backup/runtime";
 import { IMPORT_LIMITS } from "@/utils/importLimits";
@@ -431,6 +434,54 @@ async function runReconcileConcurrencyScenario(options) {
   };
 }
 
+/**
+ * The sending half of a QR transfer, which no other scenario covers.
+ *
+ * A phone that hands its project to another phone has to collect every photo it
+ * holds on disk into one archive, and the photos it reads are device files, not
+ * the in-memory blobs `backupImport` starts from. That read is the thing worth
+ * timing: it is per photo, it is the whole project, and until the archive is
+ * built the other phone is waiting on a progress bar.
+ */
+async function runCollectArchiveScenario(options) {
+  const { blobs, totalBytes } = await createPhotoBlobs(options);
+  const measured = await withPhotoFolder(
+    "perf-collect-archive",
+    async (savePhoto) => {
+      // The photos have to be on disk before the clock starts: what is being
+      // measured is reading them back out, not putting them there.
+      const stored = await persistExcelImportPhotos(
+        blobs.map((blob, index) => ({
+          ...createFixtureLeak(index, null),
+          photo: blob,
+        })),
+        savePhoto,
+        { concurrency: 2 },
+      );
+      let archiveBytes = 0;
+      return measure(() =>
+        streamProjectBackupZip({
+          leaks: stored,
+          idbGet: null,
+          project: { id: "perf-collect", name: "perf", type: "upstream" },
+          vars: null,
+          writeChunk: async (chunk) => {
+            archiveBytes += chunk.size ?? chunk.byteLength ?? 0;
+          },
+        }).then((size) => ({ size, archiveBytes })),
+      );
+    },
+  );
+  return {
+    name: "streamProjectBackupZip",
+    photoCount: blobs.length,
+    photoBytes: totalBytes,
+    archiveBytes: measured.value?.archiveBytes ?? 0,
+    durationMs: measured.durationMs,
+    mainThread: measured.mainThread,
+  };
+}
+
 function normalizeOptions(options = {}) {
   const merged = { ...DEFAULT_OPTIONS, ...options };
   const photoCount = Number(merged.photoCount);
@@ -523,7 +574,7 @@ export async function runImportPerformance(rawOptions = {}) {
   const scenarios = new Set(
     Array.isArray(rawOptions.scenarios) && rawOptions.scenarios.length > 0
       ? rawOptions.scenarios
-      : ["backupImport", "persist", "reconcile", "hydrate"],
+      : ["backupImport", "persist", "reconcile", "hydrate", "collectArchive"],
   );
 
   try {
@@ -535,6 +586,9 @@ export async function runImportPerformance(rawOptions = {}) {
     }
     if (scenarios.has("reconcile")) {
       result.scenarios.push(await runReconcileConcurrencyScenario(options));
+    }
+    if (scenarios.has("collectArchive")) {
+      result.scenarios.push(await runCollectArchiveScenario(options));
     }
     if (scenarios.has("hydrate")) {
       result.scenarios.push(await runHydrateConcurrencyScenario(options));

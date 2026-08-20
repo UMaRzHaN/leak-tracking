@@ -136,6 +136,7 @@ vi.mock("@/utils/platform", () => ({
 
 vi.mock("@/hooks/photoService", () => ({
   getPhotoSrc: mocks.getPhotoSrcMock,
+  getPhotoBlob: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock("@/utils/photoConversion", () => ({

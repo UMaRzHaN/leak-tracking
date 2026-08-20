@@ -5,7 +5,10 @@ const mocks = vi.hoisted(() => ({ save: vi.fn() }));
 vi.mock("@/repositories/PhotoRepository", () => ({
   PhotoRepository: { save: mocks.save },
 }));
-vi.mock("@/hooks/photoService", () => ({ getPhotoSrc: vi.fn() }));
+vi.mock("@/hooks/photoService", () => ({
+  getPhotoSrc: vi.fn(),
+  getPhotoBlob: vi.fn().mockResolvedValue(null),
+}));
 
 const { buildComponentPhotoArchive, restoreComponentPhotos } =
   await import("./componentPhotoArchive");
