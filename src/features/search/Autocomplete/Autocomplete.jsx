@@ -97,6 +97,20 @@ export default function Autocomplete({
             onChange(nextValue);
             setOpen(true);
           }}
+          onKeyDown={(e) => {
+            if (e.key !== "Escape") return;
+            // Escape снимает подсказки — но только их. Карточку компонента и
+            // утечку заполняют внутри листа, который сам закрывается по Escape
+            // (`useModalDialog` слушает на document), поэтому пока список
+            // открыт, событие дальше не идёт: иначе попытка убрать подсказку
+            // уносила бы всё набранное вместе с листом.
+            //
+            // Список закрыт — Escape свободно уходит наверх и закрывает лист,
+            // как и ожидается.
+            if (!open || filtered.length === 0) return;
+            e.stopPropagation();
+            setOpen(false);
+          }}
         />
 
         {showClear && (

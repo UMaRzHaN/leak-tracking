@@ -60,8 +60,9 @@ export async function createLeak(page, leakId = "4242", location = null) {
     await page.getByLabel(/^Подразделение/).fill(location.subdivision);
     await page.getByLabel(/^Месторождение/).fill(location.deposit);
     await page.getByLabel(/^Локация/).fill(location.location);
-    // Список подсказок закрывается по уходу фокуса — Escape автодополнение не
-    // слушает. Пока список открыт, он перекрывает кнопку «Далее».
+    // Уход фокуса — то же, что делает человек, переходя к следующему полю.
+    // Пока список подсказок открыт, он перекрывает кнопку «Далее».
+    // (Escape тоже закрывает его — это проверено в Autocomplete.test.jsx.)
     await page.getByLabel(/^Локация/).blur();
   }
 

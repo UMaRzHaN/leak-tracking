@@ -29,8 +29,9 @@ async function addComponentCard(page, card) {
   await page.getByLabel(/^Индивидуальный номер/).fill(card.uid);
   await page.getByLabel(/^Номер на схеме/).fill(card.tag);
   await page.getByLabel(/^Локация/).fill(card.location);
-  // Список подсказок закрывается по уходу фокуса — Escape автодополнение не
-  // слушает. Пока список открыт, он перекрывает кнопку «Далее».
+  // Уход фокуса — то же, что делает человек, переходя к следующему полю.
+  // Пока список подсказок открыт, он перекрывает кнопку «Далее».
+  // (Escape тоже закрывает его — это проверено в Autocomplete.test.jsx.)
   await page.getByLabel(/^Компонент/).fill(card.name);
   await page.getByLabel(/^Компонент/).blur();
 
