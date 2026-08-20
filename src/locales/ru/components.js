@@ -128,7 +128,7 @@ export const components = {
     },
     medium: {
       hint: "Что проходит через компонент",
-      placeholder: "напр. Природный газ",
+      placeholder: "напр. Сырой газ",
     },
     body_material: {
       hint: "Материал корпуса по паспорту или маркировке",

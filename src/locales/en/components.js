@@ -126,7 +126,7 @@ export const components = {
     },
     medium: {
       hint: "What passes through it",
-      placeholder: "e.g. Natural gas",
+      placeholder: "e.g. Raw gas",
     },
     body_material: {
       hint: "Body material from the plate or the marking",
