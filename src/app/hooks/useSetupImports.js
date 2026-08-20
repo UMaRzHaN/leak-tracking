@@ -125,7 +125,7 @@ export function useSetupImports({
     async (file, { name, type }) => {
       const { parseExcelImportFile } =
         await import("@/services/import/excelImportService");
-      const result = await parseExcelImportFile(file, {
+      let result = await parseExcelImportFile(file, {
         // Do not invent an upstream project type on the first-run screen.
         // Ordinary XLSX files are parsed with their common columns first and
         // the resulting leak fields are then used for type detection below.
@@ -141,6 +141,20 @@ export function useSetupImports({
         const { detectProjectTypeFromLeaks } =
           await import("@/services/backup/projectBackupService");
         resolvedType = detectProjectTypeFromLeaks(result.leaks);
+        // Разбор без типа знает только общие колонки: у отчёта по утечкам
+        // сети из 41 колонки так читаются 19, а «Фото утечки», давление и
+        // выбросы остаются в файле — они описаны в раскладке типа проекта, а
+        // тип стал известен только сейчас. Проект завёлся бы выпотрошенным и
+        // без единой фотографии, поэтому файл читается заново.
+        if (resolvedType) {
+          const reparsed = await parseExcelImportFile(file, {
+            projectType: resolvedType,
+          });
+          // Раскладка типа — надстройка над общими колонками, но если она
+          // почему-то дала меньше строк, чем разбор без неё, побеждает то
+          // чтение, которое сохраняет больше данных.
+          if (reparsed.leaks.length >= result.leaks.length) result = reparsed;
+        }
       }
       if (!resolvedType) {
         const error = new Error("Project type is missing");

@@ -176,6 +176,50 @@ describe("useSetupImports", () => {
       );
     });
 
+    it("перечитывает файл раскладкой типа, как только тип стал известен", async () => {
+      mocks.parseExcel
+        .mockResolvedValueOnce({ leaks: [{ id: 1 }], project: null })
+        .mockResolvedValueOnce({
+          leaks: [{ id: 1, photo: "blob", pressure: 3 }],
+          project: null,
+        });
+      mocks.detectType.mockReturnValue("downstream");
+      const { api, deps } = setup();
+
+      await api.handleSetupImportExcel(new File(["x"], "report.xlsx"), {
+        name: "Омск",
+        type: null,
+      });
+
+      expect(mocks.parseExcel).toHaveBeenCalledTimes(2);
+      expect(mocks.parseExcel).toHaveBeenLastCalledWith(expect.any(File), {
+        projectType: "downstream",
+      });
+      expect(deps.handleCreateExcelCopy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "downstream",
+          leaks: [{ id: 1, photo: "blob", pressure: 3 }],
+        }),
+      );
+    });
+
+    it("держится за первое чтение, если повторное дало меньше строк", async () => {
+      mocks.parseExcel
+        .mockResolvedValueOnce({ leaks: [{ id: 1 }, { id: 2 }], project: null })
+        .mockResolvedValueOnce({ leaks: [{ id: 1 }], project: null });
+      mocks.detectType.mockReturnValue("downstream");
+      const { api, deps } = setup();
+
+      await api.handleSetupImportExcel(new File(["x"], "report.xlsx"), {
+        name: "Омск",
+        type: null,
+      });
+
+      expect(deps.handleCreateExcelCopy).toHaveBeenCalledWith(
+        expect.objectContaining({ leaks: [{ id: 1 }, { id: 2 }] }),
+      );
+    });
+
     it("отказывает файлу без единой пригодной строки", async () => {
       mocks.parseExcel.mockResolvedValue({ leaks: [], portableArchive: null });
       const { api, deps } = setup();
