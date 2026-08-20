@@ -55,6 +55,12 @@
       "functions": 98,
       "lines": 98
     },
+    "src/features/leakDetails/hooks/useLeakDetailsSheet.js": {
+      "statements": 96,
+      "branches": 68,
+      "functions": 98,
+      "lines": 98
+    },
     "src/features/leakForm/ComponentLink/ComponentPickerSheet.jsx": {
       "statements": 94,
       "branches": 85,

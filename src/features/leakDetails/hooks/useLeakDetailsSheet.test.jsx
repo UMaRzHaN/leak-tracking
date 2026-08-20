@@ -199,6 +199,86 @@ describe("useLeakDetailsSheet", () => {
     expect(props.onClose).toHaveBeenCalledOnce();
   });
 
+  it("keeps the sheet open when the confirmation is dismissed", () => {
+    const { result, props } = renderDetails();
+
+    act(() => result.current.handleClose());
+    act(() => result.current.cancelClose());
+
+    expect(result.current.closeConfirmOpen).toBe(false);
+    expect(props.onClose).not.toHaveBeenCalled();
+  });
+
+  it("closes without asking when nothing was edited", () => {
+    mocks.photoDirty = false;
+    const { result, props } = renderDetails();
+
+    act(() => result.current.handleClose());
+
+    expect(result.current.closeConfirmOpen).toBe(false);
+    expect(props.onClose).toHaveBeenCalledOnce();
+  });
+
+  it("warns the browser before the tab takes unsaved edits with it", () => {
+    // Единственная защита от закрытия вкладки: правка живёт в состоянии
+    // карточки и после перезагрузки её не вернуть.
+    renderDetails();
+
+    const event = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("does not hold the tab when there is nothing to lose", () => {
+    mocks.photoDirty = false;
+    renderDetails();
+
+    const event = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("returns to viewing on cancel, dropping the draft", () => {
+    const { result } = renderDetails();
+
+    act(() => result.current.handleEdit());
+    expect(result.current.mode).toBe("edit");
+
+    act(() => result.current.handleCancel());
+
+    expect(result.current.mode).toBe("view");
+    expect(result.current.closeConfirmOpen).toBe(false);
+    expect(mocks.resetPhoto).toHaveBeenCalled();
+  });
+
+  it("deletes a leak only on the second press", () => {
+    // Утечка уносит с собой фотографии и историю обходов.
+    vi.useFakeTimers();
+    const { result, props } = renderDetails();
+
+    act(() => result.current.armDelete());
+    expect(result.current.deleteArmed).toBe(true);
+    expect(props.onDelete).not.toHaveBeenCalled();
+
+    act(() => result.current.confirmDelete());
+    expect(props.onDelete).toHaveBeenCalledWith(leak.id);
+    vi.useRealTimers();
+  });
+
+  it("forgets an armed deletion after a few seconds", () => {
+    vi.useFakeTimers();
+    const { result, props } = renderDetails();
+
+    act(() => result.current.armDelete());
+    act(() => vi.advanceTimersByTime(3000));
+
+    expect(result.current.deleteArmed).toBe(false);
+    expect(props.onDelete).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
   it("cleans up a newly captured resolution photo after a failed save", async () => {
     const onSave = vi.fn().mockRejectedValue(new Error("database failed"));
     const { result } = renderDetails({ onSave });

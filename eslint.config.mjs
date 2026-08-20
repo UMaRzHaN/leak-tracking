@@ -44,6 +44,7 @@ export default defineConfig(
         describe: "readonly",
         document: "readonly",
         DOMException: "readonly",
+        Event: "readonly",
         expect: "readonly",
         fetch: "readonly",
         File: "readonly",
