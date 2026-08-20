@@ -10,8 +10,9 @@
     "src/app/hooks/useAppBootstrap.js": 375,
     "src/repositories/backupSchema.js": 670,
     "src/services/sync/projectSyncState.js": 515,
-    "src/services/sync/localSyncService.js": 508,
+    "src/services/sync/localSyncService.js": 310,
     "src/repositories/webProjectEnvelope.js": 140,
-    "src/repositories/webProjectJournal.js": 110
+    "src/repositories/webProjectJournal.js": 110,
+    "src/services/sync/localSyncQr.js": 245
   }
 }

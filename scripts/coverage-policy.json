@@ -391,11 +391,17 @@
       "functions": 78,
       "lines": 85
     },
+    "src/services/sync/localSyncQr.js": {
+      "statements": 91,
+      "branches": 82,
+      "functions": 98,
+      "lines": 93
+    },
     "src/services/sync/localSyncService.js": {
-      "statements": 85,
-      "branches": 71,
-      "functions": 65,
-      "lines": 86
+      "statements": 88,
+      "branches": 80,
+      "functions": 84,
+      "lines": 89
     },
     "src/services/sync/projectSyncState.js": {
       "statements": 89,

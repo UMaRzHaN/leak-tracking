@@ -92,15 +92,7 @@ export default defineConfig(
     // tooling whose failures never reach a reader's diagnostics, and a test
     // may need an empty handler to drive a rejection on purpose.
     files: ["src/**/*.{js,jsx}"],
-    ignores: [
-      "src/**/*.test.{js,jsx}",
-      // Sits exactly on its line ceiling in maintainability-budget.json, which
-      // may only go down. Its twelve cleanups cannot take even the import line
-      // this rule requires until the QR handshake and scanning move out of it
-      // into their own module — about 210 lines with a clean seam. Until then
-      // the file keeps its empty handlers, and this entry is the record of it.
-      "src/services/sync/localSyncService.js",
-    ],
+    ignores: ["src/**/*.test.{js,jsx}"],
     rules: {
       // An empty `.catch()` handler hides the failure completely — not even
       // the diagnostics a reader exports from the error screen keep it. Use

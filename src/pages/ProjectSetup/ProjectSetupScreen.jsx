@@ -4,9 +4,11 @@ import { toFolderName } from "@/app/project/ProjectContext";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import {
   cancelLocalSyncQrScan,
+  scanLocalSyncQr,
+} from "@/services/sync/localSyncQr";
+import {
   fetchLocalSyncArchive,
   isLocalSyncAvailable,
-  scanLocalSyncQr,
 } from "@/services/sync/localSyncService";
 import s from "./ProjectSetupScreen.module.scss";
 import { ignoredError } from "@/utils/ignoredError";

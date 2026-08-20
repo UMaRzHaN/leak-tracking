@@ -2,7 +2,9 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { translate } from "@/test/translate";
 
-vi.mock("@/services/sync/localSyncService", () => ({
+// The QR half and the archive half are separate modules now; the test keeps
+// one object over both so the assertions still read `syncService.<name>`.
+const localSync = vi.hoisted(() => ({
   cancelLocalSyncQrScan: vi.fn(),
   createLocalSyncQrSvg: vi.fn(),
   isLocalSyncAvailable: vi.fn(() => true),
@@ -12,11 +14,24 @@ vi.mock("@/services/sync/localSyncService", () => ({
   exchangeLocalSyncArchive: vi.fn(),
 }));
 
+vi.mock("@/services/sync/localSyncService", () => ({
+  isLocalSyncAvailable: localSync.isLocalSyncAvailable,
+  fetchLocalSyncArchive: localSync.fetchLocalSyncArchive,
+  startLocalSyncHost: localSync.startLocalSyncHost,
+  exchangeLocalSyncArchive: localSync.exchangeLocalSyncArchive,
+}));
+
+vi.mock("@/services/sync/localSyncQr", () => ({
+  cancelLocalSyncQrScan: localSync.cancelLocalSyncQrScan,
+  createLocalSyncQrSvg: localSync.createLocalSyncQrSvg,
+  scanLocalSyncQr: localSync.scanLocalSyncQr,
+}));
+
 vi.mock("@/services/backup/projectBackupService", () => ({
   streamProjectBackupZip: vi.fn(),
 }));
 
-const syncService = await import("@/services/sync/localSyncService");
+const syncService = localSync;
 const backupService = await import("@/services/backup/projectBackupService");
 const { useLocalSync } = await import("./useLocalSync");
 

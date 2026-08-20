@@ -18,7 +18,14 @@ vi.mock("@/app/hooks/useLanguage", async () => {
   return englishLanguageHook();
 });
 
-vi.mock("@/services/sync/localSyncService", () => localSync);
+vi.mock("@/services/sync/localSyncService", () => ({
+  fetchLocalSyncArchive: localSync.fetchLocalSyncArchive,
+  isLocalSyncAvailable: localSync.isLocalSyncAvailable,
+}));
+vi.mock("@/services/sync/localSyncQr", () => ({
+  cancelLocalSyncQrScan: localSync.cancelLocalSyncQrScan,
+  scanLocalSyncQr: localSync.scanLocalSyncQr,
+}));
 
 vi.mock("@/services/backup/projectBackupService", () => ({
   peekBackupZip: vi.fn().mockResolvedValue({

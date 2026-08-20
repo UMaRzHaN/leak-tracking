@@ -4,10 +4,12 @@ import { localSyncErrorText } from "@/services/sync/localSyncErrorText";
 import {
   cancelLocalSyncQrScan,
   createLocalSyncQrSvg,
+  scanLocalSyncQr,
+} from "@/services/sync/localSyncQr";
+import {
   exchangeLocalSyncArchive,
   fetchLocalSyncArchive,
   isLocalSyncAvailable,
-  scanLocalSyncQr,
   startLocalSyncHost,
 } from "@/services/sync/localSyncService";
 import { ignoredError } from "@/utils/ignoredError";

@@ -35,14 +35,6 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-const barcodeMocks = vi.hoisted(() => ({
-  addListener: vi.fn(),
-  isSupported: vi.fn().mockResolvedValue({ supported: true }),
-  requestPermissions: vi.fn().mockResolvedValue({ camera: "granted" }),
-  startScan: vi.fn().mockResolvedValue(undefined),
-  stopScan: vi.fn().mockResolvedValue(undefined),
-}));
-
 vi.mock("@capacitor/core", () => ({
   Capacitor: {
     isNativePlatform: vi.fn(() => true),
@@ -52,21 +44,8 @@ vi.mock("@capacitor/core", () => ({
   registerPlugin: vi.fn(() => mocks.plugin),
 }));
 
-vi.mock("@capacitor-mlkit/barcode-scanning", () => ({
-  BarcodeFormat: { QrCode: "QR_CODE" },
-  BarcodeScanner: barcodeMocks,
-}));
-
-const {
-  buildLocalSyncQrPayload,
-  createLocalSyncQrSvg,
-  parseLocalSyncQrPayload,
-  cancelLocalSyncQrScan,
-  exchangeLocalSyncArchive,
-  fetchLocalSyncArchive,
-  scanLocalSyncQr,
-  startLocalSyncHost,
-} = await import("./localSyncService");
+const { exchangeLocalSyncArchive, fetchLocalSyncArchive, startLocalSyncHost } =
+  await import("./localSyncService");
 
 describe("localSyncService", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -86,13 +65,6 @@ describe("localSyncService", () => {
       ...QR_SESSION,
       transferCount: 0,
     });
-    barcodeMocks.addListener.mockResolvedValue({
-      remove: vi.fn().mockResolvedValue(undefined),
-    });
-    barcodeMocks.isSupported.mockResolvedValue({ supported: true });
-    barcodeMocks.requestPermissions.mockResolvedValue({ camera: "granted" });
-    barcodeMocks.startScan.mockResolvedValue(undefined);
-    barcodeMocks.stopScan.mockResolvedValue(undefined);
   });
 
   it("prepares a large archive in bounded chunks before opening a host", async () => {
@@ -119,6 +91,66 @@ describe("localSyncService", () => {
     await session.stop();
     expect(mocks.plugin.stopHost).toHaveBeenCalledOnce();
     expect(mocks.remove).toHaveBeenCalledTimes(5);
+  });
+
+  // The chunk writer accepts whatever the archive producer hands it. Before
+  // the QR half moved out, these branches sat behind a coverage number the
+  // scanner tests were carrying; on their own they were never exercised.
+  it("accepts archive chunks as Uint8Array and ArrayBuffer, and refuses the rest", async () => {
+    const session = await startLocalSyncHost({
+      produceArchive: async (append) => {
+        await append(new Uint8Array([1, 2, 3]));
+        await append(new Uint8Array([4, 5]).buffer);
+        return 5;
+      },
+      projectKey: "upstream:alpha",
+      syncId: "sync-alpha-1234",
+      onArchive: vi.fn(),
+    });
+
+    expect(mocks.plugin.appendArchiveChunk).toHaveBeenCalledTimes(2);
+    await session.stop();
+
+    await expect(
+      startLocalSyncHost({
+        produceArchive: async (append) => void (await append("not a chunk")),
+        projectKey: "upstream:alpha",
+        syncId: "sync-alpha-1234",
+        onArchive: vi.fn(),
+      }),
+    ).rejects.toThrow(TypeError);
+    expect(mocks.plugin.discardArchive).toHaveBeenCalled();
+  });
+
+  it("requires something to send before it opens the archive", async () => {
+    await expect(
+      startLocalSyncHost({
+        projectKey: "upstream:alpha",
+        syncId: "sync-alpha-1234",
+        onArchive: vi.fn(),
+      }),
+    ).rejects.toThrow(TypeError);
+    expect(mocks.plugin.prepareArchive).not.toHaveBeenCalled();
+  });
+
+  it("reports a chunk the reader could not turn into base64", async () => {
+    class FailingReader {
+      readAsDataURL() {
+        this.error = new Error("reader exploded");
+        this.onerror?.();
+      }
+    }
+    vi.stubGlobal("FileReader", FailingReader);
+
+    await expect(
+      startLocalSyncHost({
+        archive: new Blob(["archive"]),
+        projectKey: "upstream:alpha",
+        syncId: "sync-alpha-1234",
+        onArchive: vi.fn(),
+      }),
+    ).rejects.toThrow("reader exploded");
+    expect(mocks.plugin.discardArchive).toHaveBeenCalled();
   });
 
   it("resolves native peer approval requests and forwards session events", async () => {
@@ -174,99 +206,6 @@ describe("localSyncService", () => {
     await session.stop();
     expect(removers).toHaveLength(5);
     removers.forEach((remove) => expect(remove).toHaveBeenCalledOnce());
-  });
-
-  it("round-trips a local session through its QR payload", async () => {
-    const payload = buildLocalSyncQrPayload({
-      ...QR_SESSION,
-      host: "192.168.43.1",
-      port: 49152,
-      code: "123456",
-      fingerprint: "A".repeat(64),
-      projectKey: "upstream:alpha",
-      syncId: "sync-alpha-1234",
-    });
-
-    expect(
-      parseLocalSyncQrPayload(payload, {
-        projectKey: "upstream:alpha",
-        syncId: "sync-alpha-1234",
-      }),
-    ).toEqual({
-      host: "192.168.43.1",
-      port: "49152",
-      code: "123456",
-      fingerprint: "A".repeat(64),
-      projectKey: "upstream:alpha",
-      syncId: "sync-alpha-1234",
-      ...QR_SESSION,
-    });
-    expect(() => parseLocalSyncQrPayload(payload, "upstream:beta")).toThrow(
-      "QR-код создан для другого проекта",
-    );
-    expect(
-      parseLocalSyncQrPayload(payload, {
-        projectKey: "upstream:renamed project",
-        syncId: "sync-alpha-1234",
-      }),
-    ).toMatchObject({ syncId: "sync-alpha-1234" });
-
-    const svg = await createLocalSyncQrSvg(
-      {
-        host: "192.168.43.1",
-        port: 49152,
-        code: "123456",
-        fingerprint: "A".repeat(64),
-        ...QR_SESSION,
-      },
-      { projectKey: "upstream:alpha", syncId: "sync-alpha-1234" },
-    );
-    expect(svg).toContain("<svg");
-  });
-
-  it("rejects malformed and mismatched QR payloads", () => {
-    expect(() =>
-      parseLocalSyncQrPayload("https://example.test", null),
-    ).toThrow();
-    expect(() =>
-      parseLocalSyncQrPayload("leak-tracker-sync:{broken", null),
-    ).toThrow();
-
-    const invalidConnection = `leak-tracker-sync:${JSON.stringify({
-      version: 4,
-      ...QR_SESSION,
-      host: "",
-      port: 70000,
-      code: "12",
-      fingerprint: "A".repeat(64),
-      syncId: "sync-alpha-1234",
-    })}`;
-    expect(() => parseLocalSyncQrPayload(invalidConnection, null)).toThrow();
-
-    const missingSyncId = buildLocalSyncQrPayload({
-      ...QR_SESSION,
-      host: "192.168.1.2",
-      port: 49152,
-      code: "123456",
-      fingerprint: "A".repeat(64),
-      projectKey: "upstream:alpha",
-    });
-    expect(() => parseLocalSyncQrPayload(missingSyncId, null)).toThrow();
-
-    const otherDatabase = buildLocalSyncQrPayload({
-      ...QR_SESSION,
-      host: "192.168.1.2",
-      port: 49152,
-      code: "123456",
-      fingerprint: "A".repeat(64),
-      projectKey: "upstream:alpha",
-      syncId: "sync-other-1234",
-    });
-    expect(() =>
-      parseLocalSyncQrPayload(otherDatabase, {
-        syncId: "sync-alpha-1234",
-      }),
-    ).toThrow();
   });
 
   it("discards an archive that exceeds the native size limit", async () => {
@@ -330,245 +269,6 @@ describe("localSyncService", () => {
       token: "archive-token",
     });
     expect(mocks.remove).toHaveBeenCalledTimes(5);
-  });
-
-  it("reports unsupported scanning and denied camera permission", async () => {
-    barcodeMocks.isSupported.mockResolvedValueOnce({ supported: false });
-    await expect(scanLocalSyncQr()).rejects.toThrow();
-    expect(barcodeMocks.requestPermissions).not.toHaveBeenCalled();
-
-    barcodeMocks.requestPermissions.mockResolvedValueOnce({ camera: "denied" });
-    await expect(scanLocalSyncQr()).rejects.toThrow();
-    expect(barcodeMocks.startScan).not.toHaveBeenCalled();
-  });
-
-  it("rejects malformed and incomplete QR payloads before starting sync", () => {
-    expect(() => parseLocalSyncQrPayload("not-a-leak-tracker-code")).toThrow(
-      "Это не QR-код Leak Tracker",
-    );
-    expect(() => parseLocalSyncQrPayload("leak-tracker-sync:{oops")).toThrow(
-      "QR-код синхронизации повреждён",
-    );
-    expect(() =>
-      parseLocalSyncQrPayload(
-        "leak-tracker-sync:" +
-          JSON.stringify({
-            version: 4,
-            ...QR_SESSION,
-            host: "192.168.43.1",
-            port: 70000,
-            code: "123456",
-            fingerprint: "A".repeat(64),
-            projectKey: "upstream:alpha",
-            syncId: "sync-alpha-1234",
-          }),
-      ),
-    ).toThrow("QR-код содержит некорректные параметры подключения");
-    expect(() =>
-      parseLocalSyncQrPayload(
-        "leak-tracker-sync:" +
-          JSON.stringify({
-            version: 4,
-            ...QR_SESSION,
-            host: "192.168.43.1",
-            port: 49152,
-            code: "123456",
-            fingerprint: "A".repeat(64),
-            projectKey: "upstream:alpha",
-          }),
-      ),
-    ).toThrow("QR-код не содержит идентификатор проекта");
-  });
-
-  it("resolves scanned QR codes and cleans up scanner listeners", async () => {
-    let barcodeCallback;
-    const barcodeRemove = vi.fn().mockResolvedValue(undefined);
-    const errorRemove = vi.fn().mockResolvedValue(undefined);
-    barcodeMocks.addListener.mockImplementation(async (eventName, callback) => {
-      if (eventName === "barcodeScanned") {
-        barcodeCallback = callback;
-        return { remove: barcodeRemove };
-      }
-      if (eventName === "scanError") {
-        return { remove: errorRemove };
-      }
-      throw new Error(`Unexpected listener: ${eventName}`);
-    });
-
-    const scanning = scanLocalSyncQr({
-      projectKey: "upstream:alpha",
-      syncId: "sync-alpha-1234",
-    });
-    await vi.waitFor(() => expect(barcodeMocks.startScan).toHaveBeenCalled());
-
-    barcodeCallback({
-      barcode: {
-        rawValue: buildLocalSyncQrPayload({
-          ...QR_SESSION,
-          host: " 192.168.43.1 ",
-          port: 49152,
-          code: "123456",
-          fingerprint: "A".repeat(64),
-          projectKey: "upstream:alpha",
-          syncId: "sync-alpha-1234",
-        }),
-      },
-    });
-
-    await expect(scanning).resolves.toEqual({
-      host: "192.168.43.1",
-      port: "49152",
-      code: "123456",
-      fingerprint: "A".repeat(64),
-      projectKey: "upstream:alpha",
-      syncId: "sync-alpha-1234",
-      ...QR_SESSION,
-    });
-    expect(barcodeRemove).toHaveBeenCalledOnce();
-    expect(errorRemove).toHaveBeenCalledOnce();
-    expect(barcodeMocks.stopScan).toHaveBeenCalledOnce();
-    expect(document.body.classList.contains("local-sync-scanner-active")).toBe(
-      false,
-    );
-  });
-
-  it("rejects scanned QR codes from another database and stops scanning", async () => {
-    let barcodeCallback;
-    const barcodeRemove = vi.fn().mockResolvedValue(undefined);
-    const errorRemove = vi.fn().mockResolvedValue(undefined);
-    barcodeMocks.addListener.mockImplementation(async (eventName, callback) => {
-      if (eventName === "barcodeScanned") {
-        barcodeCallback = callback;
-        return { remove: barcodeRemove };
-      }
-      return { remove: errorRemove };
-    });
-
-    const scanning = scanLocalSyncQr({
-      projectKey: "upstream:alpha",
-      syncId: "sync-alpha-1234",
-    });
-    await vi.waitFor(() => expect(barcodeMocks.startScan).toHaveBeenCalled());
-
-    barcodeCallback({
-      barcode: {
-        rawValue: buildLocalSyncQrPayload({
-          ...QR_SESSION,
-          host: "192.168.43.1",
-          port: 49152,
-          code: "123456",
-          fingerprint: "A".repeat(64),
-          projectKey: "upstream:alpha",
-          syncId: "sync-beta-9999",
-        }),
-      },
-    });
-
-    await expect(scanning).rejects.toThrow(
-      "QR-код относится к другой базе данных",
-    );
-    expect(barcodeRemove).toHaveBeenCalledOnce();
-    expect(errorRemove).toHaveBeenCalledOnce();
-    expect(barcodeMocks.stopScan).toHaveBeenCalledOnce();
-  });
-
-  it("propagates native scanner errors and cleans up the active scan", async () => {
-    let errorCallback;
-    const barcodeRemove = vi.fn().mockResolvedValue(undefined);
-    const errorRemove = vi.fn().mockResolvedValue(undefined);
-    barcodeMocks.addListener.mockImplementation(async (eventName, callback) => {
-      if (eventName === "scanError") {
-        errorCallback = callback;
-        return { remove: errorRemove };
-      }
-      return { remove: barcodeRemove };
-    });
-
-    const scanning = scanLocalSyncQr({
-      projectKey: "upstream:alpha",
-      syncId: "sync-alpha-1234",
-    });
-    await vi.waitFor(() => expect(barcodeMocks.startScan).toHaveBeenCalled());
-
-    errorCallback({ message: "Camera unavailable" });
-
-    await expect(scanning).rejects.toThrow("Camera unavailable");
-    expect(barcodeRemove).toHaveBeenCalledOnce();
-    expect(errorRemove).toHaveBeenCalledOnce();
-    expect(barcodeMocks.stopScan).toHaveBeenCalledOnce();
-  });
-
-  it("does not reopen the camera when scanning is cancelled during listener setup", async () => {
-    let resolveListener;
-    const remove = vi.fn().mockResolvedValue(undefined);
-    barcodeMocks.addListener.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolveListener = () => resolve({ remove });
-      }),
-    );
-
-    const scanning = scanLocalSyncQr({
-      projectKey: "upstream:alpha",
-      syncId: "sync-alpha-1234",
-    });
-    const rejected = expect(scanning).rejects.toMatchObject({
-      code: "QR_SCAN_CANCELLED",
-    });
-    await vi.waitFor(() => expect(barcodeMocks.addListener).toHaveBeenCalled());
-    const cancelling = cancelLocalSyncQrScan();
-    resolveListener();
-    await cancelling;
-    await rejected;
-
-    expect(remove).toHaveBeenCalledOnce();
-    expect(barcodeMocks.startScan).not.toHaveBeenCalled();
-    expect(document.body.classList.contains("local-sync-scanner-active")).toBe(
-      false,
-    );
-  });
-
-  it("does not start the camera after leaving during the permission request", async () => {
-    let resolvePermission;
-    barcodeMocks.requestPermissions.mockReturnValueOnce(
-      new Promise((resolve) => {
-        resolvePermission = () => resolve({ camera: "granted" });
-      }),
-    );
-    const scanning = scanLocalSyncQr({
-      projectKey: "upstream:alpha",
-      syncId: "sync-alpha-1234",
-    });
-    const rejected = expect(scanning).rejects.toMatchObject({
-      code: "QR_SCAN_CANCELLED",
-    });
-    await vi.waitFor(() =>
-      expect(barcodeMocks.requestPermissions).toHaveBeenCalled(),
-    );
-
-    await cancelLocalSyncQrScan();
-    resolvePermission();
-    await rejected;
-
-    expect(barcodeMocks.addListener).not.toHaveBeenCalled();
-    expect(barcodeMocks.startScan).not.toHaveBeenCalled();
-    expect(document.body.classList.contains("local-sync-scanner-active")).toBe(
-      false,
-    );
-  });
-
-  it("honors an immediate cancellation before scanner preflight completes", async () => {
-    const scanning = scanLocalSyncQr({
-      projectKey: "upstream:alpha",
-      syncId: "sync-alpha-1234",
-    });
-    const rejected = expect(scanning).rejects.toMatchObject({
-      code: "QR_SCAN_CANCELLED",
-    });
-
-    await cancelLocalSyncQrScan();
-    await rejected;
-
-    expect(barcodeMocks.startScan).not.toHaveBeenCalled();
   });
 
   it("rejects client transfers without a valid session id", async () => {
