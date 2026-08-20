@@ -43,6 +43,18 @@
       "functions": 98,
       "lines": 98
     },
+    "src/features/leakDetails/components/EditBlock.jsx": {
+      "statements": 88,
+      "branches": 85,
+      "functions": 81,
+      "lines": 87
+    },
+    "src/features/leakDetails/components/ViewBlock.jsx": {
+      "statements": 98,
+      "branches": 89,
+      "functions": 98,
+      "lines": 98
+    },
     "src/features/leakForm/ComponentLink/ComponentPickerSheet.jsx": {
       "statements": 94,
       "branches": 85,
