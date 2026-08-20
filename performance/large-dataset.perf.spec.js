@@ -250,10 +250,10 @@ for (const recordCount of readRecordCounts()) {
     const v8HeapAfterExportBytes = await readV8Heap(page);
 
     await page.getByTitle("Settings").click();
+    // Импорт — одна кнопка на все форматы: тип файла распознаётся по нему
+    // самому. Отдельных «Import Excel» и «Import ZIP» на экране нет.
     const fileChooserPromise = page.waitForEvent("filechooser");
-    await page
-      .getByRole("button", { name: "Import Excel", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Import", exact: true }).click();
     const fileChooser = await fileChooserPromise;
     const excelImportStartedAt = Date.now();
     await fileChooser.setFiles(downloadPath);
@@ -363,7 +363,7 @@ test("backs up and reopens 1,000 records with 1,000 photos", async ({
   expect(archivedPhotos).toBe(1_000);
 
   const fileChooserPromise = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Import ZIP", exact: true }).click();
+  await page.getByRole("button", { name: "Import", exact: true }).click();
   const fileChooser = await fileChooserPromise;
   const importStartedAt = Date.now();
   await fileChooser.setFiles(backupPath);
