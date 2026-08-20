@@ -43,12 +43,41 @@ export function redactDiagnosticValue(value) {
   return `[${typeof value}]`;
 }
 
+/**
+ * Adds an entry to the buffer, collapsing an immediate repeat into a counter.
+ *
+ * The buffer holds a hundred entries, and some failures arrive in bursts: a
+ * bulk action cleans up photos leak by leak, so a broken storage produced five
+ * hundred identical warnings and pushed out everything worth reading. The
+ * hundredth copy of a line says nothing the first one did not; how many times
+ * it happened does.
+ *
+ * @param {any[]} entries
+ * @param {{at: string, level: string, details: any[]}} entry
+ * @returns {any[]} the same array, mutated
+ */
+export function appendDiagnostic(entries, entry) {
+  const previous = entries[entries.length - 1];
+  const sameAsPrevious =
+    previous &&
+    previous.level === entry.level &&
+    JSON.stringify(previous.details) === JSON.stringify(entry.details);
+
+  if (sameAsPrevious) {
+    previous.repeated = (previous.repeated ?? 1) + 1;
+    previous.lastAt = entry.at;
+    return entries;
+  }
+
+  entries.push(entry);
+  return entries;
+}
+
 function persistDiagnostic(level, args) {
   if (isTest || typeof localStorage === "undefined") return;
   try {
     const current = JSON.parse(localStorage.getItem(DIAGNOSTIC_KEY) || "[]");
-    const entries = Array.isArray(current) ? current : [];
-    entries.push({
+    const entries = appendDiagnostic(Array.isArray(current) ? current : [], {
       at: new Date().toISOString(),
       level,
       details: args.map(redactDiagnosticValue),

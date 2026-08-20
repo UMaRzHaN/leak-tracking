@@ -290,7 +290,12 @@ export default function FieldVisibilityModal({
               {visibleCount} / {totalConfigurable} {localeTexts.active}
             </span>
           </div>
-          <button className={s.closeBtn} type="button" onClick={onClose}>
+          <button
+            className={s.closeBtn}
+            type="button"
+            onClick={onClose}
+            aria-label={t("common.close")}
+          >
             ✕
           </button>
         </div>

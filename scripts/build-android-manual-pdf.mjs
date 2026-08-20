@@ -7,6 +7,12 @@
  *
  *   node scripts/capture-android-manual-screenshots.mjs   # кадры
  *   node scripts/build-android-manual-pdf.mjs             # PDF
+ *
+ * Пересборка тяжелее закоммиченного файла примерно на два мегабайта: Chromium
+ * перекодирует картинки при печати, а артефакты WebP жмутся хуже, чем жался
+ * прежний PNG. Содержимое от смены формата снимков не изменилось, поэтому
+ * пересобирать PDF стоит тогда, когда изменилось само руководство, — а не за
+ * компанию с правкой скриптов.
  */
 import { chromium } from "@playwright/test";
 import fs from "node:fs/promises";
