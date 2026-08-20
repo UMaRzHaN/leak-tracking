@@ -19,6 +19,12 @@
       "functions": 94,
       "lines": 90
     },
+    "src/components/ui/ErrorBoundary/ErrorBoundary.jsx": {
+      "statements": 89,
+      "branches": 73,
+      "functions": 79,
+      "lines": 98
+    },
     "src/domain/componentHistory.js": {
       "statements": 98,
       "branches": 90,
@@ -73,6 +79,12 @@
       "functions": 98,
       "lines": 98
     },
+    "src/features/leakForm/hooks/useStepValidation.js": {
+      "statements": 98,
+      "branches": 98,
+      "functions": 98,
+      "lines": 98
+    },
     "src/features/schemas/SchemaViewer.jsx": {
       "statements": 94,
       "branches": 81,
@@ -120,6 +132,12 @@
       "branches": 84,
       "functions": 76,
       "lines": 97
+    },
+    "src/pages/DataBase/hooks/useDataBaseExport.js": {
+      "statements": 98,
+      "branches": 84,
+      "functions": 98,
+      "lines": 98
     },
     "src/pages/DataBase/hooks/useLeakActions.js": {
       "statements": 92,
