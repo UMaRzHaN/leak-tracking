@@ -482,6 +482,121 @@ async function runCollectArchiveScenario(options) {
   };
 }
 
+/**
+ * The second half of a QR transfer: handing the finished archive to the native
+ * side, which today happens as base64 chunks across the Capacitor bridge.
+ *
+ * `prepareArchive`, `appendArchiveChunk` and `discardArchive` are local calls —
+ * no peer, no socket, no session — so the cost of the bridge itself can be
+ * timed on one device. That is the whole question this scenario answers: how
+ * much a native write path would be worth before anyone writes one.
+ *
+ * The chunk size mirrors ARCHIVE_CHUNK_BYTES in localSyncService.
+ */
+const SYNC_ARCHIVE_CHUNK_BYTES = 512 * 1024;
+
+async function runUploadArchiveScenario(options) {
+  const { registerPlugin } = await import("@capacitor/core");
+  const LocalSync = registerPlugin("LocalSync");
+  const fixture = await buildFixtureArchive(options);
+
+  const prepared = await LocalSync.prepareArchive();
+  const token = prepared?.token;
+  if (typeof token !== "string" || !token) {
+    throw new Error("prepareArchive returned no token");
+  }
+
+  try {
+    const measured = await measure(async () => {
+      let written = 0;
+      for (
+        let offset = 0;
+        offset < fixture.archive.size;
+        offset += SYNC_ARCHIVE_CHUNK_BYTES
+      ) {
+        const chunk = fixture.archive.slice(
+          offset,
+          offset + SYNC_ARCHIVE_CHUNK_BYTES,
+        );
+        const chunkBase64 = await blobChunkToBase64(chunk);
+        await LocalSync.appendArchiveChunk({ token, chunkBase64 });
+        written += chunk.size;
+      }
+      return written;
+    });
+    return {
+      name: "appendArchiveChunk",
+      photoCount: fixture.photoCount,
+      photoBytes: fixture.photoBytes,
+      archiveBytes: fixture.archiveBytes,
+      writtenBytes: measured.value,
+      chunkBytes: SYNC_ARCHIVE_CHUNK_BYTES,
+      durationMs: measured.durationMs,
+      mainThread: measured.mainThread,
+    };
+  } finally {
+    await LocalSync.discardArchive({ token }).catch(() => {});
+  }
+}
+
+/**
+ * The same handover through the production path, which uses the binary channel
+ * where the WebView supports it. Measured in the same run as the base64 loop
+ * above and on the same bytes: comparing two builds would fold a rebuild, a
+ * reinstall and a fresh fixture into the difference.
+ */
+async function runUploadArchiveChannelScenario(options) {
+  const { prepareNativeArchive } =
+    await import("@/services/sync/localSyncService");
+  const { registerPlugin } = await import("@capacitor/core");
+  const LocalSync = registerPlugin("LocalSync");
+  const fixture = await buildFixtureArchive(options);
+
+  const measured = await measure(() =>
+    prepareNativeArchive({ archive: fixture.archive }),
+  );
+
+  // What the native side actually holds, not what the WebView believes it sent.
+  // An empty chunk writes nothing and answers with the file's current size, so
+  // this reads the result of the transfer without altering it. A faster path
+  // that quietly dropped bytes would look like a win without this line.
+  const written = await LocalSync.appendArchiveChunk({
+    token: measured.value,
+    chunkBase64: "",
+  }).catch(() => null);
+  await LocalSync.discardArchive({ token: measured.value }).catch(() => {});
+
+  const channel = await LocalSync.getArchiveUploadChannel().catch(() => null);
+  return {
+    name: "prepareNativeArchive",
+    photoCount: fixture.photoCount,
+    photoBytes: fixture.photoBytes,
+    archiveBytes: fixture.archiveBytes,
+    channelAvailable: Boolean(channel?.available),
+    writtenBytes: Number(written?.size ?? -1),
+    durationMs: measured.durationMs,
+    mainThread: measured.mainThread,
+  };
+}
+
+function blobChunkToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () =>
+      reject(reader.error ?? new Error("Chunk read failed"));
+    reader.onload = () => {
+      const value = String(reader.result ?? "");
+      const separator = value.indexOf(",");
+      if (separator < 0) {
+        reject(new Error("Chunk is not a data URL"));
+        return;
+      }
+      resolve(value.slice(separator + 1));
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
 function normalizeOptions(options = {}) {
   const merged = { ...DEFAULT_OPTIONS, ...options };
   const photoCount = Number(merged.photoCount);
@@ -586,6 +701,12 @@ export async function runImportPerformance(rawOptions = {}) {
     }
     if (scenarios.has("reconcile")) {
       result.scenarios.push(await runReconcileConcurrencyScenario(options));
+    }
+    if (scenarios.has("uploadArchive")) {
+      result.scenarios.push(await runUploadArchiveScenario(options));
+    }
+    if (scenarios.has("uploadArchiveChannel")) {
+      result.scenarios.push(await runUploadArchiveChannelScenario(options));
     }
     if (scenarios.has("collectArchive")) {
       result.scenarios.push(await runCollectArchiveScenario(options));

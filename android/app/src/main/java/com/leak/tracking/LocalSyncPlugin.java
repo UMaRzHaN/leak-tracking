@@ -10,6 +10,12 @@ import android.net.Uri;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
+import android.webkit.WebView;
+import androidx.annotation.NonNull;
+import androidx.webkit.JavaScriptReplyProxy;
+import androidx.webkit.WebMessageCompat;
+import androidx.webkit.WebViewCompat;
+import androidx.webkit.WebViewFeature;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -41,6 +47,7 @@ import java.security.spec.ECGenParameterSpec;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Set;
@@ -75,6 +82,9 @@ public class LocalSyncPlugin extends Plugin {
     // delivered sync files instead of applying independent per-map limits.
     private static final long MAX_TEMP_ARCHIVE_BYTES = MAX_ARCHIVE_BYTES * 2L;
     private static final int MAX_ARCHIVE_CHUNK_BYTES = 1024 * 1024;
+    // The JS object the WebView gets for handing over archive bytes without
+    // base64. Renaming it breaks the WebView half in localSyncService.
+    private static final String ARCHIVE_CHANNEL_NAME = "LeakSyncArchiveChannel";
     private static final int CONNECT_TIMEOUT_MS = 10_000;
     private static final int HANDSHAKE_TIMEOUT_MS = 10_000;
     private static final long CLIENT_TLS_DEADLINE_MS =
@@ -123,6 +133,11 @@ public class LocalSyncPlugin extends Plugin {
     private volatile int hostCompletedTransfers;
     private volatile ScheduledFuture<?> hostExpiryTask;
     private final SyncSessionClaim exchangeClaim = new SyncSessionClaim();
+    // The upload the channel is currently bound to. One at a time, because the
+    // WebView sends one archive at a time and a second binding would otherwise
+    // silently redirect chunks into another file.
+    private volatile String channelArchiveToken;
+    private volatile boolean archiveChannelReady;
 
 
     @Override
@@ -137,6 +152,164 @@ public class LocalSyncPlugin extends Plugin {
             1,
             TimeUnit.MINUTES
         );
+        registerArchiveChannel();
+    }
+
+    /**
+     * Opens the binary channel the WebView uses to hand over an archive.
+     *
+     * The bridge carries strings, so an archive crossing it has to be base64:
+     * encoded in JavaScript, decoded here, at 4 bytes of traffic for every 3 of
+     * archive. A web message listener takes an ArrayBuffer as it is. Both
+     * features are checked because the second one arrived later than the first;
+     * where either is missing the WebView keeps using appendArchiveChunk, which
+     * is slower but works everywhere.
+     */
+    private void registerArchiveChannel() {
+        if (
+            !WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) ||
+            !WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_ARRAY_BUFFER)
+        ) {
+            return;
+        }
+
+        final WebView webView = getBridge().getWebView();
+        final String localUrl = getBridge().getLocalUrl();
+        if (webView == null || localUrl == null || localUrl.isEmpty()) return;
+
+        // Only the app's own origin may address the channel. Anything the
+        // WebView loads from elsewhere gets no listener at all.
+        final Set<String> allowedOrigins = new HashSet<>();
+        allowedOrigins.add(localUrl);
+
+        getBridge()
+            .getActivity()
+            .runOnUiThread(() -> {
+                try {
+                    WebViewCompat.addWebMessageListener(
+                        webView,
+                        ARCHIVE_CHANNEL_NAME,
+                        allowedOrigins,
+                        this::onArchiveChannelMessage
+                    );
+                    archiveChannelReady = true;
+                } catch (Exception error) {
+                    // A channel that could not be installed is not a failure:
+                    // the base64 path stays, and the WebView is told the
+                    // channel is unavailable.
+                    archiveChannelReady = false;
+                }
+            });
+    }
+
+    private void onArchiveChannelMessage(
+        @NonNull WebView view,
+        @NonNull WebMessageCompat message,
+        @NonNull Uri sourceOrigin,
+        boolean isMainFrame,
+        @NonNull JavaScriptReplyProxy replyProxy
+    ) {
+        // A frame that is not the main one is not this app's page.
+        if (!isMainFrame) {
+            replyProxy.postMessage("error Unsupported frame");
+            return;
+        }
+
+        if (message.getType() == WebMessageCompat.TYPE_ARRAY_BUFFER) {
+            final byte[] chunk = message.getArrayBuffer();
+            final String token = channelArchiveToken;
+            if (token == null) {
+                replyProxy.postMessage("error No archive upload in progress");
+                return;
+            }
+            // Writing happens off the UI thread; the reply goes back on it,
+            // because that is the thread the proxy belongs to.
+            executor.execute(() -> {
+                String reply;
+                try {
+                    long size = appendPreparedArchiveBytes(token, chunk);
+                    reply = "ok " + size;
+                } catch (Exception error) {
+                    channelArchiveToken = null;
+                    discardPreparedArchive(token);
+                    reply = "error " + readableMessage(error);
+                }
+                final String outgoing = reply;
+                view.post(() -> replyProxy.postMessage(outgoing));
+            });
+            return;
+        }
+
+        ArchiveChannelCommand command = ArchiveChannelCommand.parse(message.getData());
+        switch (command.type()) {
+            case BEGIN:
+                if (!preparedArchives.containsKey(command.token())) {
+                    replyProxy.postMessage("error Unknown archive token");
+                    return;
+                }
+                channelArchiveToken = command.token();
+                replyProxy.postMessage("ok 0");
+                return;
+            case END:
+                channelArchiveToken = null;
+                replyProxy.postMessage("ok 0");
+                return;
+            default:
+                replyProxy.postMessage("error Unsupported channel message");
+        }
+    }
+
+    /**
+     * Appends bytes to a prepared archive under every limit the base64 path
+     * applies. Both entry points share this on purpose: a second copy of the
+     * quota checks is a second place for them to drift.
+     */
+    private long appendPreparedArchiveBytes(String token, byte[] chunk) throws Exception {
+        File archive = preparedArchives.get(token);
+        if (archive == null || chunk == null) {
+            throw new Exception("Unknown archive token or missing chunk");
+        }
+        synchronized (archiveLock) {
+            if (
+                TempFilePolicy.isExpired(
+                    archive,
+                    System.currentTimeMillis(),
+                    PREPARED_ARCHIVE_TTL_MS
+                )
+            ) {
+                throw new LocalSyncException(
+                    LocalSyncFailure.SESSION_EXPIRED,
+                    "Archive token has expired"
+                );
+            }
+            if (chunk.length > MAX_ARCHIVE_CHUNK_BYTES) {
+                throw new Exception("Archive chunk is too large");
+            }
+            if (
+                TempFilePolicy.wouldExceedFile(
+                    archive,
+                    chunk.length,
+                    MAX_ARCHIVE_BYTES
+                ) ||
+                wouldExceedTemporaryArchiveQuotaLocked(chunk.length)
+            ) {
+                throw new Exception("Archive exceeds the safety limit");
+            }
+            try (FileOutputStream stream = new FileOutputStream(archive, true)) {
+                stream.write(chunk);
+            }
+            TempFilePolicy.touch(archive, System.currentTimeMillis());
+            return archive.length();
+        }
+    }
+
+    @PluginMethod
+    public void getArchiveUploadChannel(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("available", archiveChannelReady);
+        result.put("name", ARCHIVE_CHANNEL_NAME);
+        result.put("maxChunkBytes", MAX_ARCHIVE_CHUNK_BYTES);
+        call.resolve(result);
     }
 
     @PluginMethod
@@ -195,36 +368,7 @@ public class LocalSyncPlugin extends Plugin {
 
         try {
             byte[] chunk = Base64.decode(chunkBase64, Base64.DEFAULT);
-            long size;
-            synchronized (archiveLock) {
-                if (
-                    TempFilePolicy.isExpired(
-                        archive,
-                        System.currentTimeMillis(),
-                        PREPARED_ARCHIVE_TTL_MS
-                    )
-                ) {
-                    throw new LocalSyncException(LocalSyncFailure.SESSION_EXPIRED, "Archive token has expired");
-                }
-                if (chunk.length > MAX_ARCHIVE_CHUNK_BYTES) {
-                    throw new Exception("Archive chunk is too large");
-                }
-                if (
-                    TempFilePolicy.wouldExceedFile(
-                        archive,
-                        chunk.length,
-                        MAX_ARCHIVE_BYTES
-                    ) ||
-                    wouldExceedTemporaryArchiveQuotaLocked(chunk.length)
-                ) {
-                    throw new Exception("Archive exceeds the safety limit");
-                }
-                try (FileOutputStream stream = new FileOutputStream(archive, true)) {
-                    stream.write(chunk);
-                }
-                TempFilePolicy.touch(archive, System.currentTimeMillis());
-                size = archive.length();
-            }
+            long size = appendPreparedArchiveBytes(token, chunk);
             JSObject result = new JSObject();
             result.put("size", size);
             call.resolve(result);

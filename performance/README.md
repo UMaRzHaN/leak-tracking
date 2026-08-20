@@ -213,6 +213,34 @@ The fallback matters as much as the speed: any failure in the direct read drops
 back to the base64 path, because a photo missing from a transfer is a worse
 outcome than a slow transfer.
 
+### Results — 2026-08-21, handing the archive over without base64
+
+The other half of a QR send: the finished archive has to reach the native side,
+and the Capacitor bridge carries strings, so it went as base64 chunks — 4 bytes
+of traffic per 3 bytes of archive, encoded in JavaScript and decoded in Java.
+A web message listener takes an `ArrayBuffer` unchanged.
+
+Both paths are measured **in the same run on the same bytes**, which is what
+makes this table stronger than the ones above it: no rebuild, no reinstall and
+no regenerated fixture sits between the two numbers.
+
+|                          | base64 chunks  | binary channel     |
+| ------------------------ | -------------- | ------------------ |
+| Duration                 | 9467 / 9543 ms | **1202 / 1471 ms** |
+| Total main-thread block  | 845 / 1044 ms  | **98 / 103 ms**    |
+| Worst single stall       | 40 / 39 ms     | **27 / 10 ms**     |
+| Bytes on the native side | 52,619,648     | **52,619,648**     |
+
+That last row is the one worth keeping. It is read back from the native file
+after the transfer, not counted in the WebView: a faster path that quietly
+dropped bytes would otherwise look exactly like a win.
+
+The channel needs two WebView features — `WEB_MESSAGE_LISTENER` and
+`WEB_MESSAGE_ARRAY_BUFFER`, the second of which arrived later. Where either is
+missing, `getArchiveUploadChannel` reports it unavailable and the base64 path
+runs unchanged, so the slower route is not dead code: it is what old devices
+still use.
+
 ### Photo concurrency
 
 `persistExcelImportPhotos`, 40 photos / 35 MB. The sweep is sequential, so the

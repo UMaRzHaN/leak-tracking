@@ -31,6 +31,9 @@ const mocks = vi.hoisted(() => {
       resolvePeerApproval: vi.fn().mockResolvedValue({}),
       exchange: vi.fn(),
       fetchArchive: vi.fn(),
+      getArchiveUploadChannel: vi
+        .fn()
+        .mockRejectedValue(new Error("not implemented")),
     },
   };
 });
@@ -528,5 +531,119 @@ describe("localSyncService", () => {
     expect(mocks.plugin.releaseReceivedArchive).toHaveBeenCalledWith({
       archiveToken: "broken-token",
     });
+  });
+});
+
+describe("archive upload channel", () => {
+  /** Двойник канала веб-сообщений: то же поведение, что у объекта WebView. */
+  function createChannelDouble({ failAt = null } = {}) {
+    const listeners = new Set();
+    let received = 0;
+    const channel = {
+      messages: [],
+      postMessage: vi.fn((payload) => {
+        channel.messages.push(payload);
+        const isBinary = payload instanceof ArrayBuffer;
+        if (isBinary) received += 1;
+        const reply =
+          isBinary && failAt === received
+            ? "error Archive exceeds the safety limit"
+            : "ok 5";
+        Promise.resolve().then(() => {
+          for (const listener of listeners) listener({ data: reply });
+        });
+      }),
+      addEventListener: vi.fn((_event, listener) => listeners.add(listener)),
+      removeEventListener: vi.fn((_event, listener) =>
+        listeners.delete(listener),
+      ),
+      listenerCount: () => listeners.size,
+    };
+    return channel;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.plugin.addListener.mockResolvedValue({ remove: mocks.remove });
+    mocks.plugin.getArchiveUploadChannel.mockResolvedValue({
+      available: true,
+      name: "LeakSyncArchiveChannel",
+      maxChunkBytes: 1024 * 1024,
+    });
+  });
+
+  afterEach(() => {
+    mocks.plugin.getArchiveUploadChannel.mockRejectedValue(
+      new Error("not implemented"),
+    );
+  });
+
+  it("sends archive bytes over the channel instead of base64", async () => {
+    const channel = createChannelDouble();
+    vi.stubGlobal("LeakSyncArchiveChannel", channel);
+
+    const session = await startLocalSyncHost({
+      archive: new Blob([new Uint8Array([1, 2, 3, 4, 5])]),
+      projectKey: "upstream:alpha",
+      syncId: "sync-alpha-1234",
+      onArchive: vi.fn(),
+    });
+
+    expect(mocks.plugin.appendArchiveChunk).not.toHaveBeenCalled();
+    expect(channel.messages[0]).toBe("begin archive-token");
+    expect(channel.messages[1]).toBeInstanceOf(ArrayBuffer);
+    expect(channel.messages.at(-1)).toBe("end");
+    // Слушатель снят: канал переживает передачу, подписка — нет.
+    expect(channel.listenerCount()).toBe(0);
+    await session.stop();
+  });
+
+  it("falls back to base64 when the channel is unavailable", async () => {
+    mocks.plugin.getArchiveUploadChannel.mockResolvedValue({
+      available: false,
+    });
+
+    const session = await startLocalSyncHost({
+      archive: new Blob([new Uint8Array([1, 2, 3])]),
+      projectKey: "upstream:alpha",
+      syncId: "sync-alpha-1234",
+      onArchive: vi.fn(),
+    });
+
+    expect(mocks.plugin.appendArchiveChunk).toHaveBeenCalledOnce();
+    await session.stop();
+  });
+
+  it("falls back to base64 when the WebView exposes no channel object", async () => {
+    vi.stubGlobal("LeakSyncArchiveChannel", undefined);
+
+    const session = await startLocalSyncHost({
+      archive: new Blob([new Uint8Array([1, 2, 3])]),
+      projectKey: "upstream:alpha",
+      syncId: "sync-alpha-1234",
+      onArchive: vi.fn(),
+    });
+
+    expect(mocks.plugin.appendArchiveChunk).toHaveBeenCalledOnce();
+    await session.stop();
+  });
+
+  it("discards the archive when the channel rejects a chunk", async () => {
+    const channel = createChannelDouble({ failAt: 1 });
+    vi.stubGlobal("LeakSyncArchiveChannel", channel);
+
+    await expect(
+      startLocalSyncHost({
+        archive: new Blob([new Uint8Array([1, 2, 3])]),
+        projectKey: "upstream:alpha",
+        syncId: "sync-alpha-1234",
+        onArchive: vi.fn(),
+      }),
+    ).rejects.toThrow("Archive exceeds the safety limit");
+
+    expect(mocks.plugin.discardArchive).toHaveBeenCalledWith({
+      token: "archive-token",
+    });
+    expect(channel.listenerCount()).toBe(0);
   });
 });
