@@ -94,6 +94,39 @@ refactor:
 - do not swallow read/write errors — a silent failure loses data;
 - do not lower the coverage, bundle or maintainability budgets to make CI pass.
 
+## Build budgets
+
+`npm run check:bundle` fails the build; it does not warn. There are two limits
+and both sit around 3.4 KB of headroom:
+
+- **`nonExcelChunkBytes` (368 640) is a per-chunk ceiling**, and the index chunk
+  is at 99.1 % of it. This one is **not** in the warning list — warnings are
+  printed for four summary metrics only — so it stays silent right up until it
+  fails a build. Measure it directly: `ls -l dist/assets/index-*.js`.
+- **`initialGzip` (128 000)**: about 3.4 KB left. In raw bytes the entry graph
+  looks far roomier (14 KB), which makes the two easy to confuse.
+
+What follows from that:
+
+- any new **static** dependency in the entry graph will fail CI. Everything
+  heavy is behind `await import` and loads only on the screen that needs it:
+  equipment dictionaries, `exceljs`, `jszip`, locales, the map;
+- the component registry follows the same rule — `config.components` is lazy,
+  the header reads cards through `useRegistryLocationSource`, the map through
+  `useMapComponents`;
+- splitting a module is not free: the last three splits cost about 130 bytes of
+  gzip between them. Measure with `npm run build:analyze` rather than guessing.
+
+## Release verification
+
+`npm run verify:release` runs the whole local gate: lint, formatting, types,
+maintainability, coverage plus its ratchet, the analyzed build, bundle budgets,
+licences, SBOM and checksums. It requires a clean worktree.
+
+Two things it cannot cover, both only reachable in CI: the Android emulator on
+API 24 (`minSdkVersion`) and API 35, and WebKit. Release signing is configured
+and verified through `npm run android:release`.
+
 ## Running the project
 
 ```bash
@@ -154,6 +187,68 @@ src/configs/
 
 The rest of the app (LeakForm, voice recognition, export) picks up the
 new type automatically through `projectAdapter.js`.
+
+**Component registry.** A type carries one only if its config declares a
+`components` block, and only `upstream` does today — that is the whole feature
+flag, and a type without the block simply has no registry tab. Adding one to a
+second type needs its own equipment dictionaries and export columns, which come
+from the customer rather than from us.
+
+Note that the inventory archive carries neither a project name nor a type, so
+the first-run screen infers the type as the only one that declares a registry
+(`componentRegistryProjectTypes()`). The moment a second type declares one the
+inference stops being unambiguous and the import fails with
+`MISSING_PROJECT_TYPE` — deliberately loud, because the screen will then have
+to ask.
+
+## Decisions not to re-litigate
+
+Not tasks. Written down so nobody overturns them without knowing the reason.
+
+- **CRC32 on export is not getting faster.** Slice-by-8 buys 41 → 32 ms on
+  16 MB (1.28×) at the price of eight tables and an unrolled loop inside the
+  function archive integrity depends on. If export speed is ever the actual
+  complaint, move CRC into the worker instead of speeding up the loop.
+- **Vite 6 → 8 stays where it is.** Version 8 builds through rolldown, which
+  takes only the function form of `manualChunks`. That changes chunk splitting
+  and with it every budget above. Separate piece of work, not a bump.
+- **The leak report does not carry the inventory.** Two archives for two
+  different recipients: emissions on one side, whoever owns the equipment on
+  the other. The ZIP backup still carries everything — it moves a project, it
+  is not a report.
+- **The registry shares SQLite with the leaks.** The plugin table keys rows by
+  project and `id` and never looks inside the payload; that is where the
+  transactionality comes from, and why two datasets in one file cannot collide.
+  A separate database would buy nothing. Locked down by
+  `LeakDatabaseStoreInstrumentedTest`.
+- **Component numbers are not guaranteed unique.** Ranges are not handed out
+  (the customer's decision) and another device's numbers are invisible. A
+  duplicate warns but never blocks; a collision from another device is resolved
+  when the two are merged.
+- **The GPS wait on save is not getting shorter.** Fifteen seconds is the price
+  of the record not falling off the map, and asking somebody standing at a
+  wellhead is worse than waiting. E2E supplies a fix through configuration
+  rather than routing around the code.
+- **A leak never takes the card's photograph.** The card shows the component;
+  a leak needs a photograph of the leak. Substituting one for the other passes
+  a picture of working hardware off as evidence of a leak.
+- **A card's coordinates are used only when the leak has none.** Its own fix is
+  evidence — found here means found here. But a leak without coordinates drops
+  off the map entirely, and the hardware's position beats nothing.
+- **Picking a card sorts by distance, it does not filter by radius.** Under a
+  canopy and between tanks the fix wanders by tens of metres, and a hard radius
+  would hide exactly the card somebody walked over to find. The distance is
+  printed on every row, so a wrong one is obvious.
+- **The registry offers the whole leak naming dictionary, lines included.**
+  "Входная линия", "Байпасная линия" and the other seven arrive in the card
+  along with everything else. Deliberate: a line carries a tag on the drawing
+  and is inventoried like any valve, so do not filter `line_types` out.
+- **Equipment names have one source.** `component_names` is derived from
+  `fieldDictionary.components` and only extended with hardware the leak
+  dictionary does not know. The `component` field is shared between a card and
+  a leak so that linking one to the other stays a straight copy; two
+  independent lists drifted into naming the same valve two ways.
+  `componentDictionary.test.js` keeps them from drifting again.
 
 ## Commit message convention
 
