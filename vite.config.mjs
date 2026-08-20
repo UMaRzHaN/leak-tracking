@@ -105,6 +105,53 @@ function cspPolicy(mode, env) {
   };
 }
 
+/**
+ * Splits what the service worker precaches into what the app cannot open
+ * without, and what merely makes a later screen instant.
+ *
+ * The essential half is the entry chunk with its static import graph and its
+ * stylesheet, plus the app shell and the theme script the document runs before
+ * anything else. Everything else — routes, locales, the Excel vendor — is
+ * optional: missing it costs one network request the first time that screen is
+ * opened, not the offline mode as a whole.
+ *
+ * @param {Record<string, any>} bundle rollup/rolldown output bundle
+ * @param {string} basePath deployment base, with a trailing slash
+ * @returns {{essential: string[], optional: string[]}}
+ */
+export function splitPrecacheFiles(bundle, basePath) {
+  const chunks = Object.values(bundle);
+  const byFileName = new Map(chunks.map((entry) => [entry.fileName, entry]));
+
+  const essentialNames = new Set();
+  const walk = (fileName) => {
+    if (!fileName || essentialNames.has(fileName)) return;
+    essentialNames.add(fileName);
+    const entry = byFileName.get(fileName);
+    if (!entry) return;
+    for (const imported of entry.imports ?? []) walk(imported);
+    for (const css of entry.viteMetadata?.importedCss ?? []) walk(css);
+  };
+  for (const entry of chunks) if (entry.isEntry) walk(entry.fileName);
+
+  const url = (fileName) => `${basePath}${fileName}`;
+  const essential = [
+    basePath,
+    // Стоит в head синхронно и решает тему до первой отрисовки.
+    url("theme-init.js"),
+    ...[...essentialNames].map(url),
+  ];
+  const optional = [
+    ...PUBLIC_PRECACHE_FILES.map(url),
+    ...chunks.map((entry) => url(entry.fileName)),
+  ].filter((file) => !essential.includes(file));
+
+  return {
+    essential: [...new Set(essential)].sort(),
+    optional: [...new Set(optional)].sort(),
+  };
+}
+
 function offlineServiceWorker() {
   let basePath = "/";
   return {
@@ -115,12 +162,7 @@ function offlineServiceWorker() {
       if (!basePath.endsWith("/")) basePath += "/";
     },
     generateBundle(_options, bundle) {
-      const files = [
-        basePath,
-        ...PUBLIC_PRECACHE_FILES.map((fileName) => `${basePath}${fileName}`),
-        ...Object.values(bundle).map((entry) => `${basePath}${entry.fileName}`),
-      ];
-      const uniqueFiles = [...new Set(files)].sort();
+      const { essential, optional } = splitPrecacheFiles(bundle, basePath);
       const versionHash = createHash("sha256");
       for (const entry of Object.values(bundle)) {
         versionHash.update(entry.fileName);
@@ -136,7 +178,15 @@ function offlineServiceWorker() {
       const source = `const PRECACHE_NAME = "leak-tracking-precache-${cacheVersion}";
 const RUNTIME_NAME = "leak-tracking-runtime-${cacheVersion}";
 const APP_SHELL = ${JSON.stringify(basePath)};
-const PRECACHE = ${JSON.stringify(uniqueFiles)};
+// Без этого приложение не откроется офлайн вовсе: оболочка, входной чанк со
+// своим графом статических импортов и стилями, и скрипт темы, который стоит
+// в head раньше всего остального.
+const ESSENTIAL = ${JSON.stringify(essential)};
+// Всё прочее — маршруты, локали, тяжёлые библиотеки. Их отсутствие в кэше
+// означает лишь, что первый заход на такой экран потребует сети; подберёт их
+// runtime-кэш.
+const OPTIONAL = ${JSON.stringify(optional)};
+let missingFromPrecache = [];
 const MAX_RUNTIME_ENTRIES = 150;
 const MAX_RUNTIME_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_RUNTIME_RESPONSE_BYTES = 5 * 1024 * 1024;
@@ -198,13 +248,44 @@ async function putRuntimeCache(request, response) {
   }
 }
 
+// cache.addAll отменяет всю установку из-за одного неудавшегося запроса. На
+// 149 файлах и 3.7 МБ по полевой связи это означало, что воркер не
+// активируется вовсе — а вместе с ним не работает и runtime-кэш, который
+// живёт в обработчике fetch. Человек оставался совсем без офлайна и без
+// единого признака этого.
+async function addTolerantly(cache, urls) {
+  const missing = [];
+  await Promise.all(
+    urls.map((url) => cache.add(url).catch(() => missing.push(url))),
+  );
+  return missing;
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(PRECACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE)),
+    (async () => {
+      const cache = await caches.open(PRECACHE_NAME);
+      // Оболочка обязана лечь в кэш: без неё офлайна нет по определению, и
+      // установку в этом случае правильнее провалить.
+      await cache.addAll(ESSENTIAL);
+      missingFromPrecache = await addTolerantly(cache, OPTIONAL);
+    })(),
   );
 });
+
+// Установка молчалива по устройству: сообщить о неполном кэше можно только
+// когда появится, кому слушать.
+async function announceIncompletePrecache() {
+  if (missingFromPrecache.length === 0) return;
+  const clients = await self.clients.matchAll({ includeUncontrolled: true });
+  for (const client of clients) {
+    client.postMessage({
+      type: "PRECACHE_INCOMPLETE",
+      missing: missingFromPrecache.length,
+      total: ESSENTIAL.length + OPTIONAL.length,
+    });
+  }
+}
 self.addEventListener("message", (event) => {
   // Activation is opt-in so an old, open document never loses the hashed lazy
   // chunks it was built against. The UI may send this only immediately before
@@ -227,7 +308,8 @@ self.addEventListener("activate", (event) => {
             .map((key) => caches.delete(key)),
         ),
       )
-      .then(() => self.clients.claim()),
+      .then(() => self.clients.claim())
+      .then(announceIncompletePrecache),
   );
 });
 self.addEventListener("fetch", (event) => {

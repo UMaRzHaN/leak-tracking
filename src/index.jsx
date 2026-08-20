@@ -6,6 +6,7 @@ import { LeakFormProvider } from "@/features/leakForm/LeakFormContext";
 import ErrorBoundary from "@/components/ui/ErrorBoundary/ErrorBoundary";
 import { isNative } from "@/utils/platform";
 import { ignoredError } from "@/utils/ignoredError";
+import { logger } from "@/utils/logger";
 
 const PwaUpdateBanner = React.lazy(
   () => import("@/components/ui/PwaUpdateBanner/PwaUpdateBanner"),
@@ -56,6 +57,17 @@ async function bootstrap() {
   );
 
   if (import.meta.env.PROD && !isNative && "serviceWorker" in navigator) {
+    // Предзагрузка терпима к отдельным неудачам: воркер устанавливается, даже
+    // если часть файлов не докачалась по полевой связи. Молчать об этом всё же
+    // нельзя — иначе экран, который не открылся без сети, выглядит поломкой
+    // приложения, а не недокачанным кэшем.
+    navigator.serviceWorker.addEventListener("message", (event) => {
+      if (event.data?.type !== "PRECACHE_INCOMPLETE") return;
+      logger.warn(
+        `[pwa] офлайн-кэш неполон: ${event.data.missing} файлов из ${event.data.total} не докачались`,
+      );
+    });
+
     navigator.serviceWorker
       .register(`${import.meta.env.BASE_URL}sw.js`, {
         scope: import.meta.env.BASE_URL,

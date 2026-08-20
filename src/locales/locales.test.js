@@ -139,9 +139,21 @@ describe("locales", () => {
       const source = readFileSync(file, "utf8")
         .replace(/\/\*[\s\S]*?\*\//g, "")
         .replace(/^\s*\/\/.*$/gm, "");
+      // Диагностическое логирование человеку не показывают. Пропускать по
+      // одной строке было мало: prettier переносит длинное сообщение на
+      // следующую, и она уже не выглядит частью вызова — так этот же тест
+      // однажды поймал собственное предупреждение сервис-воркера.
+      let loggerDepth = 0;
       source.split("\n").forEach((line, index) => {
+        const inLoggerCall =
+          loggerDepth > 0 || /\blogger\.(log|warn|error)\s*\(/.test(line);
+        if (inLoggerCall) {
+          const opened = (line.match(/\(/g) ?? []).length;
+          const closed = (line.match(/\)/g) ?? []).length;
+          loggerDepth = Math.max(0, loggerDepth + opened - closed);
+          return;
+        }
         if (!CYRILLIC.test(line)) return;
-        if (/\blogger\.(log|warn|error)\b/.test(line)) return;
         found.push(`${file}:${index + 1}  ${line.trim()}`);
       });
     }
