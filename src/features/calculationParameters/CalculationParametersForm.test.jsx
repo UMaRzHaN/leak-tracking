@@ -1,27 +1,21 @@
-import { useState } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import CalculationParametersForm from "./CalculationParametersForm";
 
 const texts = {
   gasToFlare: "Gas to flare",
-  flare: "Flare",
+  flare: "Flaring",
   utilization: "Utilization",
   gasContent: "Gas content",
   current: "Current",
-  equipmentType: "Equipment type",
+  equipmentType: "Equipment",
   uncertainty: "Uncertainty",
   serialNumber: "Serial number",
-  serialNumberRequired: "Serial number is required",
+  serialNumberRequired: "Enter the serial number",
+  equipmentOptions: { gfm20: "GFM 2.0", gfm30: "GFM 3.0", pinkBag: "Pink bag" },
   operatingMode: "Operating mode",
   operatingModeDays: "days",
-  gasType: "Gas type",
-  equipmentOptions: {
-    gfm20: "GFM 2.0",
-    gfm30: "GFM 3.0",
-    pinkBag: "Pink Bag",
-  },
+  gasType: "Gas",
   gasOptions: {
     methane: "Methane",
     ethane: "Ethane",
@@ -30,67 +24,179 @@ const texts = {
   },
 };
 
-const initialValue = {
-  gasType: "methane",
-  density: 0.7168,
+const base = {
   equipmentType: "GFM 2.0",
   uncertainty: 5,
-  serial_number: null,
-  percentage_gas_to_flare: 0,
-  percentage_gas_to_utilization: 100,
-  gasPercentage: 100,
-  Operating_mode: 365,
+  serial_number: 1234,
+  gasType: "methane",
+  density: 0.7168,
+  percentage_gas_to_flare: 40,
+  percentage_gas_to_utilization: 60,
+  gasPercentage: 90,
   GWP: 28,
-  GWP_Minus: 25.25,
+  GWP_Minus: 1,
+  Operating_mode: 300,
 };
 
-function Harness({ submitted = false }) {
-  const [value, setValue] = useState(initialValue);
-  return (
-    <>
-      <CalculationParametersForm
-        value={value}
-        setValue={setValue}
-        texts={texts}
-        submitted={submitted}
-        idPrefix="test-calc"
-      />
-      <output data-testid="state">{JSON.stringify(value)}</output>
-    </>
+let setValue;
+
+function open(overrides = {}) {
+  setValue = vi.fn();
+  render(
+    <CalculationParametersForm
+      value={{ ...base, ...overrides }}
+      setValue={setValue}
+      texts={texts}
+    />,
   );
 }
 
-function state() {
-  return JSON.parse(screen.getByTestId("state").textContent);
-}
+/** Значение правится обновителем — применяем его и смотрим итог. */
+const applied = (prev = base) => {
+  const [updater] = setValue.mock.calls.at(-1);
+  return updater(prev);
+};
 
 describe("CalculationParametersForm", () => {
-  it("keeps flare and utilization shares complementary", () => {
-    const { container } = render(<Harness />);
-    const flareNumberInput = container.querySelector('input[type="number"]');
+  beforeEach(() => vi.clearAllMocks());
 
-    fireEvent.change(flareNumberInput, { target: { value: "35.5" } });
+  it("переносит долю с факела на утилизацию", () => {
+    // Инвариант расчёта: газ уходит либо туда, либо туда.
+    open();
 
-    expect(state().percentage_gas_to_flare).toBe(35.5);
-    expect(state().percentage_gas_to_utilization).toBe(64.5);
+    fireEvent.change(screen.getByLabelText(/Gas to flare/), {
+      target: { value: "70" },
+    });
+
+    expect(applied()).toMatchObject({
+      percentage_gas_to_flare: 70,
+      percentage_gas_to_utilization: 30,
+    });
   });
 
-  it("switches Pink Bag defaults and disables serial editing", async () => {
-    const user = userEvent.setup();
-    render(<Harness />);
+  it("ползунок не выпускает долю за сотню", () => {
+    // Границу здесь держит сам элемент: браузер приводит значение к max, и до
+    // проверки в коде дело не доходит. Саму проверку испытывает соседний тест,
+    // через числовое поле рядом — оно ничего не обрезает.
+    open();
 
-    await user.selectOptions(
-      screen.getByLabelText("Equipment type"),
-      "Розовый мешок",
+    fireEvent.change(screen.getByLabelText(/Gas to flare/), {
+      target: { value: "140" },
+    });
+
+    expect(applied()).toMatchObject({
+      percentage_gas_to_flare: 100,
+      percentage_gas_to_utilization: 0,
+    });
+  });
+
+  it("отвергает долю за пределами сотни, введённую числом", () => {
+    // Рядом с ползунком стоит числовое поле, и оно, в отличие от ползунка,
+    // ничего не обрезает — сюда и приходит значение, ради которого в коде
+    // стоит проверка.
+    open();
+    const [, flareNumber] = screen.getAllByRole("spinbutton");
+
+    fireEvent.change(flareNumber, { target: { value: "140" } });
+    expect(setValue).toHaveBeenCalled();
+    expect(applied()).toBe(base);
+
+    fireEvent.change(flareNumber, { target: { value: "-5" } });
+    expect(applied()).toBe(base);
+  });
+
+  it("не принимает отрицательный потенциал потепления", () => {
+    open();
+
+    fireEvent.change(screen.getByLabelText("GWP"), { target: { value: "-1" } });
+
+    expect(applied()).toBe(base);
+  });
+
+  it("подставляет плотность выбранного газа", () => {
+    // Плотность не вводят руками — она свойство газа, и разойтись они не должны.
+    open();
+
+    fireEvent.change(screen.getByLabelText("Gas"), {
+      target: { value: "propane" },
+    });
+
+    expect(applied()).toMatchObject({ gasType: "propane", density: 2.019 });
+  });
+
+  it("подставляет погрешность и номер вместе с прибором", () => {
+    open();
+
+    fireEvent.change(screen.getByLabelText("Equipment"), {
+      target: { value: "Розовый мешок" },
+    });
+
+    expect(applied()).toMatchObject({
+      equipmentType: "Розовый мешок",
+      uncertainty: 10,
+      serial_number: 1,
+    });
+  });
+
+  it("держит заводской номер числом, а пустое поле — пустотой", () => {
+    open();
+    const serial = screen.getByLabelText(/Serial number/);
+
+    fireEvent.change(serial, { target: { value: "77" } });
+    expect(applied()).toMatchObject({ serial_number: 77 });
+
+    // Пустое поле — это «номера нет», а не ноль: на нём же держится
+    // требование заполнить его перед сохранением.
+    fireEvent.change(serial, { target: { value: "" } });
+    expect(applied()).toMatchObject({ serial_number: null });
+  });
+
+  it("у розового мешка номер не правится вовсе", () => {
+    // Он не прибор с серийником, и подставленная единица — часть его описания.
+    open({ equipmentType: "Розовый мешок", serial_number: 1 });
+
+    fireEvent.change(screen.getByLabelText(/Serial number/), {
+      target: { value: "999" },
+    });
+
+    expect(setValue).not.toHaveBeenCalled();
+  });
+
+  it("держит режим работы в пределах года и целым", () => {
+    open();
+    const mode = screen.getByLabelText(/Operating mode/);
+
+    fireEvent.change(mode, { target: { value: "0" } });
+    expect(setValue).not.toHaveBeenCalled();
+
+    fireEvent.change(mode, { target: { value: "400" } });
+    expect(setValue).not.toHaveBeenCalled();
+
+    fireEvent.change(mode, { target: { value: "182.7" } });
+    expect(applied()).toMatchObject({ Operating_mode: 182 });
+  });
+
+  it("показывает, чего не хватает, только после попытки сохранить", () => {
+    render(
+      <CalculationParametersForm
+        value={{ ...base, serial_number: null }}
+        setValue={vi.fn()}
+        texts={texts}
+        submitted={false}
+      />,
     );
+    expect(
+      screen.queryByText("Enter the serial number"),
+    ).not.toBeInTheDocument();
 
-    expect(state().uncertainty).toBe(10);
-    expect(state().serial_number).toBe(1);
-    expect(screen.getByLabelText(/Serial number/)).toBeDisabled();
-  });
-
-  it("shows a validation error for a missing required serial number", () => {
-    render(<Harness submitted />);
-    expect(screen.getByText("Serial number is required")).toBeInTheDocument();
+    render(
+      <CalculationParametersForm
+        value={{ ...base, serial_number: null }}
+        setValue={vi.fn()}
+        texts={texts}
+        submitted
+      />,
+    );
+    expect(screen.getByText("Enter the serial number")).toBeInTheDocument();
   });
 });

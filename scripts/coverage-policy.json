@@ -43,6 +43,12 @@
       "functions": 98,
       "lines": 98
     },
+    "src/features/calculationParameters/CalculationParametersForm.jsx": {
+      "statements": 85,
+      "branches": 71,
+      "functions": 84,
+      "lines": 92
+    },
     "src/features/leakDetails/components/EditBlock.jsx": {
       "statements": 88,
       "branches": 85,
