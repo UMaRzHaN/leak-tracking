@@ -79,6 +79,12 @@
       "functions": 80,
       "lines": 77
     },
+    "src/features/settings/SettingsModal/SettingsModal.jsx": {
+      "statements": 98,
+      "branches": 94,
+      "functions": 98,
+      "lines": 98
+    },
     "src/hooks/useGeolocation.js": {
       "statements": 88,
       "branches": 75,
@@ -88,6 +94,12 @@
     "src/hooks/useSwipeActions.js": {
       "statements": 93,
       "branches": 89,
+      "functions": 98,
+      "lines": 98
+    },
+    "src/pages/ComponentRegistry/hooks/useInventoryExport.js": {
+      "statements": 98,
+      "branches": 98,
       "functions": 98,
       "lines": 98
     },
