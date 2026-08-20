@@ -251,15 +251,13 @@ function FilterTab({
   border = null,
 }) {
   const isActive = active;
-  const activeStyle = isActive
-    ? color
+  // Синий по умолчанию даёт класс filterActive. Инлайновый стиль нужен только
+  // состояниям со своим цветом — «устранена» зелёная, и подменять её общим
+  // синим значило бы терять этот признак.
+  const activeStyle =
+    isActive && color
       ? { color, background: bg, borderColor: border }
-      : {
-          color: "var(--c-blue)",
-          background: "var(--c-blue-dim)",
-          borderColor: "var(--c-blue)",
-        }
-    : undefined;
+      : undefined;
 
   return (
     <button

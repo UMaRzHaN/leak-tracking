@@ -179,6 +179,17 @@
 .filterActive {
   font-weight: 700;
   border-width: 1.5px;
+  // Цвет здесь, а не только в инлайновом стиле страницы базы: реестр берёт
+  // эту же таблицу стилей, и без него включённый отбор отличался от
+  // выключенного одной жирностью — на кнопке в 12 пикселей это незаметно.
+  border-color: var(--c-blue);
+  background: var(--c-blue-dim);
+  color: var(--c-blue);
+
+  .filterCount {
+    background: var(--c-blue-overlay);
+    color: var(--c-blue);
+  }
 }
 
 .filterCount {
