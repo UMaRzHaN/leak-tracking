@@ -5,7 +5,7 @@ import {
   peekBackupZip,
   importProjectZip,
   importBackupZip,
-} from "./backup";
+} from "./projectBackupService";
 import {
   validateBackup,
   validateProjectBackupMeta,

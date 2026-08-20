@@ -134,9 +134,6 @@ vi.mock("@/components/ui/UserProfileSheet/UserProfileSheet", () => ({
   default: () => null,
 }));
 
-vi.mock("./migrations/cleanupLegacyLeaks", () => ({
-  cleanupLegacyLeaks: vi.fn(),
-}));
 vi.mock("@/app/project/projectFilters", () => ({
   readProjectFilters: () => ({
     search: "",
