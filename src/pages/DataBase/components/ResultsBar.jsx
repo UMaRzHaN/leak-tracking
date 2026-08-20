@@ -1,9 +1,7 @@
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { pluralRecords } from "@/pages/DataBase/pluralRecords";
+import { NEARBY, NEARBY_RADIUS_M } from "@/domain/leakFilters";
 import s from "@/pages/DataBase/DataBase.module.scss";
-
-const NEARBY = "nearby";
-const NEARBY_RADIUS_M = 500;
 
 export default function ResultsBar({
   visibleCount,

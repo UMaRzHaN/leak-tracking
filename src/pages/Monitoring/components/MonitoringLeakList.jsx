@@ -1,8 +1,9 @@
 import VirtualizedLeakList from "@/features/leakList/VirtualizedLeakList/VirtualizedLeakList";
 import FilterBar from "@/pages/DataBase/components/FilterBar";
 import MonitoringListItem from "../MonitoringListItem";
-import { MONITORING_FILTER as FILTERS } from "../monitoringDomain";
+
 import s from "../Monitoring.module.scss";
+import { MONITORING_FILTER as FILTERS } from "@/domain/leakFilters";
 
 export default function MonitoringLeakList({
   counts,

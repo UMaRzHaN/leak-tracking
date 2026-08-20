@@ -1,9 +1,12 @@
 import { STORAGE_KEYS } from "./storageKeys";
 import { normalizeLocationValue } from "@/utils/locationFilter";
+import { MONITORING_FILTER, NEARBY_RADIUS_M } from "@/domain/leakFilters";
 
-const DEFAULT_NEARBY_RADIUS = 500;
-const DEFAULT_MONITORING_FILTER = "due";
-const MONITORING_FILTERS = new Set(["due", "checked", "all"]);
+// Прежде здесь стояли те же значения литералами — третья копия радиуса и
+// набора фильтров, которая расходилась бы с остальными молча.
+const DEFAULT_NEARBY_RADIUS = NEARBY_RADIUS_M;
+const DEFAULT_MONITORING_FILTER = MONITORING_FILTER.DUE;
+const MONITORING_FILTERS = new Set(Object.values(MONITORING_FILTER));
 
 const DEFAULT_PROJECT_FILTERS = Object.freeze({
   search: "",

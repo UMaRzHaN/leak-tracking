@@ -2,11 +2,9 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import VirtualizedLeakList from "@/features/leakList/VirtualizedLeakList/VirtualizedLeakList";
 import LeakCardCompact from "@/features/leakList/LeakCardCompact/LeakCardCompact";
-import {
-  NEARBY,
-  NEARBY_RADIUS_M,
-} from "@/pages/DataBase/hooks/useDataBaseFilters";
+
 import s from "@/pages/DataBase/DataBase.module.scss";
+import { NEARBY, NEARBY_RADIUS_M } from "@/domain/leakFilters";
 
 function LeakList({
   items,

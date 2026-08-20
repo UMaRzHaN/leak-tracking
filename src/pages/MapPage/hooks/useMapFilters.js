@@ -10,14 +10,9 @@ import {
   matchesLeakLocationFilter,
   normalizeLocationValue,
 } from "@/utils/locationFilter";
-import {
-  MONITORING_FILTER,
-  filterLeaksByMonitoring,
-} from "@/pages/Monitoring/monitoringDomain";
-import {
-  NEARBY_RADIUS_M,
-  normalizeMultiFilter,
-} from "@/pages/DataBase/hooks/useDataBaseFilters";
+import { filterLeaksByMonitoring } from "@/pages/Monitoring/monitoringDomain";
+import { normalizeMultiFilter } from "@/pages/DataBase/hooks/useDataBaseFilters";
+import { MONITORING_FILTER, NEARBY_RADIUS_M } from "@/domain/leakFilters";
 
 const NEARBY_RADIUS_OPTIONS = [100, 500, 1000];
 

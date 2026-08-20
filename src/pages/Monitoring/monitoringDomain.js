@@ -3,12 +3,7 @@ import { collectLeakPhotoPaths } from "@/domain/leakLifecycle";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
 import { MONITORING_RESULT, isMonitoringDue } from "@/utils/monitoring";
 import { STATUS } from "@/utils/status";
-
-export const MONITORING_FILTER = {
-  DUE: "due",
-  CHECKED: "checked",
-  ALL: "all",
-};
+import { MONITORING_FILTER } from "@/domain/leakFilters";
 
 const STATUS_TO_MONITORING_RESULT = {
   [STATUS.OPEN]: MONITORING_RESULT.STILL_LEAKING,

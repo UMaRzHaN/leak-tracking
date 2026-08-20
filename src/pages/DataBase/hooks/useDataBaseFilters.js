@@ -6,8 +6,8 @@ import { matchesLeakLocationFilter } from "@/utils/locationFilter";
 import { compareLeakRecency } from "@/utils/leakOrder";
 
 export const ALL = "all";
-export const NEARBY = "nearby";
-export const NEARBY_RADIUS_M = 500;
+import { NEARBY, NEARBY_RADIUS_M } from "@/domain/leakFilters";
+
 export const NEARBY_RADIUS_OPTIONS = [100, 500, 1000];
 
 export function normalizeMultiFilter(value) {

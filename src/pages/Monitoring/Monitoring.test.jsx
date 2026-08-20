@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MONITORING_FILTER } from "@/domain/leakFilters";
 
 // Resolves against the real English locale, so these assertions fail if the
 // screen loses a translation rather than quietly falling back to the key.
@@ -85,7 +86,6 @@ vi.mock("@/features/status/ReopenLeakModal/ReopenLeakModal", () => ({
 import Monitoring from "./Monitoring";
 import { getMonitoringHistoryComment } from "@/utils/monitoring";
 import {
-  MONITORING_FILTER,
   buildMonitoringPatch,
   createMonitoringDraft,
   filterLeaksByMonitoring,

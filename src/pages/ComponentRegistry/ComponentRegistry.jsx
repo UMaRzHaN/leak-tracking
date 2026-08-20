@@ -16,10 +16,7 @@ import { useInventoryExport } from "./hooks/useInventoryExport";
 import { matchesLeakLocationFilter } from "@/utils/locationFilter";
 import { getDistanceMeters } from "@/utils/geoUtils";
 import { hasCoordsFix } from "@/utils/coordsFix";
-import {
-  NEARBY_RADIUS_M,
-  NEARBY_RADIUS_OPTIONS,
-} from "@/pages/DataBase/hooks/useDataBaseFilters";
+import { NEARBY_RADIUS_OPTIONS } from "@/pages/DataBase/hooks/useDataBaseFilters";
 import { component_statuses } from "@/data/component/componentDictionary";
 import { createRecordId } from "@/utils/createRecordId";
 import { withStoredPhoto } from "@/features/componentRegistry/componentPhoto";
@@ -30,6 +27,7 @@ import {
   recordComponentInspected,
 } from "@/domain/componentHistory";
 import s from "./ComponentRegistry.module.scss";
+import { NEARBY_RADIUS_M } from "@/domain/leakFilters";
 
 function withinRadius(component, coords, radius) {
   return (

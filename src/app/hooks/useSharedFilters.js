@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { NEARBY_RADIUS_M } from "@/pages/DataBase/hooks/useDataBaseFilters";
-import { MONITORING_FILTER } from "@/pages/Monitoring/monitoringDomain";
+import { MONITORING_FILTER, NEARBY_RADIUS_M } from "@/domain/leakFilters";
 import { PROJECTS } from "@/configs/projects";
 import {
   readProjectFilters,

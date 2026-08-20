@@ -25,7 +25,6 @@ import {
   startLeakRepair,
 } from "@/domain/leakLifecycle";
 import {
-  MONITORING_FILTER as FILTERS,
   buildMonitoringPatch,
   createMonitoringDraft,
   getInitialMonitoringResult,
@@ -35,6 +34,7 @@ import {
   getMonitoringRoundSummary,
   getNextMonitoringRoundNumber,
 } from "../monitoringDomain";
+import { MONITORING_FILTER as FILTERS } from "@/domain/leakFilters";
 
 export function useMonitoringPage({
   data,

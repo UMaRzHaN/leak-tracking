@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { PRIORITY_ORDER, getPriorityMeta } from "@/utils/priority";
 import { STATUS_ORDER, getStatusMeta } from "@/utils/status";
-import { MONITORING_FILTER } from "@/pages/Monitoring/monitoringDomain";
+
 import s from "@/pages/MapPage/MapPage.module.scss";
+import { MONITORING_FILTER } from "@/domain/leakFilters";
 
 const FILTER_MENU = {
   STATUS: "status",
