@@ -148,6 +148,46 @@ worst single stall fell threefold and long tasks disappeared. The 4.2 s that
 remain are not the worker's: they are many 30–35 ms delays from base64 crossing
 the Capacitor Filesystem bridge, and they are the same on both branches.
 
+### Results — 2026-08-21, emulator, skipping work instead of doing it faster
+
+Read these numbers as ratios, not as durations. They were taken on a Pixel 9
+emulator on a desktop host, where the CPU is far quicker than a phone's and the
+"device" storage is a host file: the 58 s baseline here is the same import that
+takes 107 s on the Xiaomi above. What the emulator can still show honestly is
+work that stopped happening at all, which is what this change is — reading a
+photo's fingerprint from its file name instead of reading the file back, and
+skipping compression for a JPEG already inside the storage budget.
+
+Same fixture as above, 52,619,648 bytes, 60 photos, concurrency 2, two runs per
+side, `claude/component-registry` against its parent `36fb0ff`:
+
+| Scenario                     | before         | after             |
+| ---------------------------- | -------------- | ----------------- |
+| `backupImport`               | 58.2 / 59.5 s  | **12.2 / 12.3 s** |
+| — main thread blocked        | 5499 / 6455 ms | **746 / 796 ms**  |
+| — worst single stall         | 57 / 159 ms    | **17 / 25 ms**    |
+| — `longtask` entries         | 23 / 7         | **0 / 0**         |
+| `persistExcelImportPhotos`   | 52.0 s         | **5.8 s**         |
+| `reconcileExcelImportPhotos` | 11.4 s         | **0.07 s**        |
+
+All 60 leaks were restored on both sides, so the shorter run is not a shorter
+import.
+
+`reconcile` is the clean case: it read all 60 photos back through the bridge to
+hash them, and now reads none, because a content-addressed file states the
+fingerprint of the photo it was written from in its own name. That is the whole
+scenario, hence 11.4 s → 0.07 s.
+
+`persist` keeps every byte it used to write; what it dropped is a decode and a
+JPEG re-encode per photo. That the emulator's fast CPU still shows 52 s → 5.8 s
+says how much of this scenario was compression rather than the bridge. On a
+phone the ratio will be smaller: the bridge half is relatively more expensive
+there, and it is untouched.
+
+So the remaining bridge cost is now the whole of what is left, and a native
+write path — the one idea these measurements have not tested — has a clean floor
+to be judged against.
+
 ### Photo concurrency
 
 `persistExcelImportPhotos`, 40 photos / 35 MB. The sweep is sequential, so the
