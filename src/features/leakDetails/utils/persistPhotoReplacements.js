@@ -1,4 +1,5 @@
 import { deletePhotoIfUnreferenced } from "@/domain/leakLifecycle";
+import { ignoredError } from "@/utils/ignoredError";
 
 export function replaceLeakInCollection(leaks, value) {
   if (!Array.isArray(leaks)) return value ? [value] : [];
@@ -41,7 +42,7 @@ export async function cleanupUncommittedPhotoReplacements({
 
   for (const path of paths) {
     await deletePhotoIfUnreferenced(path, references, deletePhoto).catch(
-      () => {},
+      ignoredError("leakDetails.photoCleanup"),
     );
   }
 }
@@ -66,7 +67,7 @@ export async function persistPhotoReplacements({
         previousPath,
         references,
         deletePhoto,
-      ).catch(() => {});
+      ).catch(ignoredError("leakDetails.photoCleanup"));
     }
   }
 }

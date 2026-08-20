@@ -7,6 +7,7 @@ import { PhotoRepository } from "@/repositories/PhotoRepository";
 import { clearProjectSyncState } from "@/services/sync/projectSyncState";
 import { isNative } from "@/utils/platform";
 import { saveMonitoringRound } from "@/utils/monitoringRound";
+import { ignoredError } from "@/utils/ignoredError";
 
 export async function deleteProjectArtifacts(project) {
   if (!project?.id) return;
@@ -29,7 +30,7 @@ export async function deleteProjectArtifacts(project) {
     path: `LeakReports/${project.folderName}`,
     directory: Directory.Data,
     recursive: true,
-  }).catch(() => {});
+  }).catch(ignoredError("projectCleanup.removeFolder"));
 }
 
 export async function rollbackImportedProject(project, removeProject) {

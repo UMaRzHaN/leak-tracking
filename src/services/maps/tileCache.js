@@ -24,6 +24,7 @@ export {
   NATIVE_TILE_CACHE_METADATA_KEY,
   NATIVE_TILE_CACHE_NAMESPACE,
 } from "./tileCacheMetadata";
+import { ignoredError } from "@/utils/ignoredError";
 
 const CACHE_NAME = "map-tiles-v2";
 const MAX_MERCATOR_LAT = 85.05112878;
@@ -208,7 +209,7 @@ async function nativeWrite(
         path: dir,
         directory: Directory.Data,
         recursive: true,
-      }).catch(() => {});
+      }).catch(ignoredError("tileCache.removeDirectory"));
     }
     await Filesystem.writeFile({
       path,
@@ -466,7 +467,7 @@ export async function preloadUrls(
           path: dir,
           directory: Directory.Data,
           recursive: true,
-        }).catch(() => {}),
+        }).catch(ignoredError("tileCache.removeDirectory")),
       ),
     );
   }

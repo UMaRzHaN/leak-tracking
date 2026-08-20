@@ -15,6 +15,7 @@ import {
   resolveLeakRecord,
   startLeakRepair,
 } from "@/domain/leakLifecycle";
+import { ignoredError } from "@/utils/ignoredError";
 
 const RECENT_COUNT = 8;
 const ALL = "all";
@@ -123,7 +124,7 @@ export function useMainPageActions({
         await setData(next);
         hapticSuccess();
         await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-          () => {},
+          ignoredError("mainPage.photoCleanup"),
         );
       } catch (err) {
         notify("error", t("common.saveError", { message: err.message }));
@@ -166,12 +167,12 @@ export function useMainPageActions({
             leak.photo_after,
             next,
             deletePhoto,
-          ).catch(() => {});
+          ).catch(ignoredError("mainPage.photoCleanup"));
         }
       } catch (err) {
         if (photo_after && photo_after !== leak.photo_after) {
           deletePhotoIfUnreferenced(photo_after, data, deletePhoto).catch(
-            () => {},
+            ignoredError("mainPage.photoCleanup"),
           );
         }
         notify("error", t("common.saveError", { message: err.message }));
@@ -215,15 +216,15 @@ export function useMainPageActions({
             leak.photo_repair,
             next,
             deletePhoto,
-          ).catch(() => {});
+          ).catch(ignoredError("mainPage.photoCleanup"));
         }
         await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-          () => {},
+          ignoredError("mainPage.photoCleanup"),
         );
       } catch (err) {
         if (photo_repair && photo_repair !== leak.photo_repair) {
           deletePhotoIfUnreferenced(photo_repair, data, deletePhoto).catch(
-            () => {},
+            ignoredError("mainPage.photoCleanup"),
           );
         }
         notify("error", t("common.saveError", { message: err.message }));
@@ -259,7 +260,7 @@ export function useMainPageActions({
         setReopenLeak(null);
         hapticSuccess();
         await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-          () => {},
+          ignoredError("mainPage.photoCleanup"),
         );
       } catch (err) {
         notify("error", t("common.saveError", { message: err.message }));
@@ -302,7 +303,7 @@ export function useMainPageActions({
         hapticSuccess();
         setActiveLeak(null);
         await deleteLeakPhotosIfUnreferenced(target, next, deletePhoto).catch(
-          () => {},
+          ignoredError("mainPage.photoCleanup"),
         );
       } catch (err) {
         notify("error", t("common.deleteError", { message: err.message }));

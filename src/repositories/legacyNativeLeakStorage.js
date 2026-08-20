@@ -1,5 +1,6 @@
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import { logger } from "@/utils/logger";
+import { ignoredError } from "@/utils/ignoredError";
 
 const JOURNAL_VERSION = 1;
 const JOURNAL_MAX_ENTRIES = 40;
@@ -77,7 +78,7 @@ async function ensureDir(filePath) {
     path: dir,
     directory: Directory.Data,
     recursive: true,
-  }).catch(() => {});
+  }).catch(ignoredError("legacyNativeStorage.removeDirectory"));
 }
 
 async function deleteIfExists(path) {
@@ -401,7 +402,9 @@ async function writeSnapshot(folderName, leaks, syncState = null) {
       );
     });
   } catch (error) {
-    await restoreMainFromRollback(paths, hasPrevious).catch(() => {});
+    await restoreMainFromRollback(paths, hasPrevious).catch(
+      ignoredError("legacyNativeStorage.restoreRollback"),
+    );
     throw error;
   }
 

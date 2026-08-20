@@ -13,6 +13,7 @@ import {
   resolveLeakRecord,
   startLeakRepair,
 } from "@/domain/leakLifecycle";
+import { ignoredError } from "@/utils/ignoredError";
 
 /** @type {(path: string) => Promise<void>} */
 const noopDeletePhoto = async () => {};
@@ -82,7 +83,7 @@ export function useLeakActions({
         await setData(next);
         hapticSuccess();
         await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-          () => {},
+          ignoredError("database.photoCleanup"),
         );
       } catch (err) {
         notify("error", t("common.saveError", { message: err.message }));
@@ -124,12 +125,12 @@ export function useLeakActions({
             leak.photo_after,
             next,
             deletePhoto,
-          ).catch(() => {});
+          ).catch(ignoredError("database.photoCleanup"));
         }
       } catch (err) {
         if (photo_after && photo_after !== leak.photo_after) {
           deletePhotoIfUnreferenced(photo_after, data, deletePhoto).catch(
-            () => {},
+            ignoredError("database.photoCleanup"),
           );
         }
         notify("error", t("common.saveError", { message: err.message }));
@@ -172,15 +173,15 @@ export function useLeakActions({
             leak.photo_repair,
             next,
             deletePhoto,
-          ).catch(() => {});
+          ).catch(ignoredError("database.photoCleanup"));
         }
         await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-          () => {},
+          ignoredError("database.photoCleanup"),
         );
       } catch (err) {
         if (photo_repair && photo_repair !== leak.photo_repair) {
           deletePhotoIfUnreferenced(photo_repair, data, deletePhoto).catch(
-            () => {},
+            ignoredError("database.photoCleanup"),
           );
         }
         notify("error", t("common.saveError", { message: err.message }));
@@ -216,7 +217,7 @@ export function useLeakActions({
         setReopenLeak(null);
         hapticSuccess();
         await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-          () => {},
+          ignoredError("database.photoCleanup"),
         );
       } catch (err) {
         notify("error", t("common.saveError", { message: err.message }));
@@ -261,7 +262,7 @@ export function useLeakActions({
         setActiveLeak(null);
         onDeleted?.(id);
         await deleteLeakPhotosIfUnreferenced(target, next, deletePhoto).catch(
-          () => {},
+          ignoredError("database.photoCleanup"),
         );
       } catch (err) {
         notify("error", t("common.deleteError", { message: err.message }));

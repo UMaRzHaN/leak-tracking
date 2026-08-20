@@ -14,6 +14,7 @@ import {
   buildLeakCalculationParams,
   updateLeakCalculationParams,
 } from "@/utils/calculationParams";
+import { ignoredError } from "@/utils/ignoredError";
 
 /** @type {(path: string) => Promise<void>} */
 const noopDeletePhoto = async () => {};
@@ -167,7 +168,7 @@ export function useBulkActions({
         hapticSuccess();
         for (const path of orphanedPhotos) {
           await deletePhotoIfUnreferenced(path, next, deletePhoto).catch(
-            () => {},
+            ignoredError("database.photoCleanup"),
           );
         }
         notify(
@@ -225,12 +226,12 @@ export function useBulkActions({
             leak.photo_after,
             next,
             deletePhoto,
-          ).catch(() => {});
+          ).catch(ignoredError("database.photoCleanup"));
         }
       } catch (err) {
         if (photo_after && photo_after !== leak.photo_after) {
           await deletePhotoIfUnreferenced(photo_after, data, deletePhoto).catch(
-            () => {},
+            ignoredError("database.photoCleanup"),
           );
         }
         notify("error", t("database.bulk.saveError", { message: err.message }));
@@ -296,10 +297,10 @@ export function useBulkActions({
             leak.photo_repair,
             next,
             deletePhoto,
-          ).catch(() => {});
+          ).catch(ignoredError("database.photoCleanup"));
         }
         await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-          () => {},
+          ignoredError("database.photoCleanup"),
         );
       } catch (err) {
         if (photo_repair && photo_repair !== leak.photo_repair) {
@@ -307,7 +308,7 @@ export function useBulkActions({
             photo_repair,
             data,
             deletePhoto,
-          ).catch(() => {});
+          ).catch(ignoredError("database.photoCleanup"));
         }
         notify("error", t("database.bulk.saveError", { message: err.message }));
         return;

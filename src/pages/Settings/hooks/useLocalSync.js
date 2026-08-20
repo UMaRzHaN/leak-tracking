@@ -10,6 +10,7 @@ import {
   scanLocalSyncQr,
   startLocalSyncHost,
 } from "@/services/sync/localSyncService";
+import { ignoredError } from "@/utils/ignoredError";
 
 const IDLE_STATE = { status: "idle", session: null };
 
@@ -213,7 +214,7 @@ export function useLocalSync({
           setApprovalRequest(null);
           const activeSession = hostSessionRef.current;
           hostSessionRef.current = null;
-          activeSession?.stop().catch(() => {});
+          activeSession?.stop().catch(ignoredError("localSync.stopSession"));
           setStateSafe(IDLE_STATE);
           if (reason === "expired") {
             notify("info", t("settings.theQrCodeHas"));
@@ -238,14 +239,16 @@ export function useLocalSync({
               setStateSafe({ status: "complete", session: null });
             }
           } finally {
-            await activeSession?.stop().catch(() => {});
+            await activeSession
+              ?.stop()
+              .catch(ignoredError("localSync.stopSession"));
           }
         },
         onError: (error) => {
           if (!isProjectOperationCurrent(operation)) return;
           const activeSession = hostSessionRef.current;
           hostSessionRef.current = null;
-          activeSession?.stop().catch(() => {});
+          activeSession?.stop().catch(ignoredError("localSync.stopSession"));
           notify(
             "error",
             isStructuredSyncError(error)
@@ -256,7 +259,7 @@ export function useLocalSync({
         },
       });
       if (!isProjectOperationCurrent(operation)) {
-        await session.stop().catch(() => {});
+        await session.stop().catch(ignoredError("localSync.stopSession"));
         return;
       }
       hostSessionRef.current = session;
@@ -264,7 +267,7 @@ export function useLocalSync({
       if (!isProjectOperationCurrent(operation)) {
         if (hostSessionRef.current === session) {
           hostSessionRef.current = null;
-          await session.stop().catch(() => {});
+          await session.stop().catch(ignoredError("localSync.stopSession"));
         }
         return;
       }
@@ -273,7 +276,7 @@ export function useLocalSync({
       if (!isProjectOperationCurrent(operation)) return;
       const activeSession = hostSessionRef.current;
       hostSessionRef.current = null;
-      await activeSession?.stop().catch(() => {});
+      await activeSession?.stop().catch(ignoredError("localSync.stopSession"));
       setStateSafe(IDLE_STATE);
       notify(
         "error",
@@ -455,8 +458,12 @@ export function useLocalSync({
         window.clearTimeout(approvalTimeoutRef.current);
         approvalTimeoutRef.current = null;
       }
-      Promise.resolve(cancelLocalSyncQrScan()).catch(() => {});
-      hostSessionRef.current?.stop().catch(() => {});
+      Promise.resolve(cancelLocalSyncQrScan()).catch(
+        ignoredError("localSync.cancelQrScan"),
+      );
+      hostSessionRef.current
+        ?.stop()
+        .catch(ignoredError("localSync.stopSession"));
       hostSessionRef.current = null;
     };
   }, []);
@@ -473,8 +480,10 @@ export function useLocalSync({
     setApprovalRequest(null);
     const activeSession = hostSessionRef.current;
     hostSessionRef.current = null;
-    Promise.resolve(cancelLocalSyncQrScan()).catch(() => {});
-    activeSession?.stop().catch(() => {});
+    Promise.resolve(cancelLocalSyncQrScan()).catch(
+      ignoredError("localSync.cancelQrScan"),
+    );
+    activeSession?.stop().catch(ignoredError("localSync.stopSession"));
     setStateSafe(IDLE_STATE);
   }, [activeProjectId, setStateSafe]);
   return {

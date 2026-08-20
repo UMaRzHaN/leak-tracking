@@ -20,6 +20,7 @@ import { createRecordId } from "@/utils/createRecordId";
 import Notification from "@/components/ui/Notification/Notification";
 import AddLeakSuccess from "./components/AddLeakSuccess";
 import s from "./AddLeak.module.scss";
+import { ignoredError } from "@/utils/ignoredError";
 
 // Long enough for a receiver that was just switched on to report a first fix,
 // short enough that nobody stares at a stuck Save button. Indoors it will
@@ -318,7 +319,9 @@ export default function AddLeak({
           await setData(updated);
         } catch (error) {
           if (photoPath) {
-            await deletePhoto(photoPath).catch(() => {});
+            await deletePhoto(photoPath).catch(
+              ignoredError("addLeak.photoRollback"),
+            );
           }
           throw error;
         }

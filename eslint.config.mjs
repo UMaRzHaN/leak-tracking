@@ -87,4 +87,36 @@ export default defineConfig(
       "react-hooks/rules-of-hooks": "error",
     },
   },
+  {
+    // Only the app's own code. The screenshot and seeding scripts are build
+    // tooling whose failures never reach a reader's diagnostics, and a test
+    // may need an empty handler to drive a rejection on purpose.
+    files: ["src/**/*.{js,jsx}"],
+    ignores: [
+      "src/**/*.test.{js,jsx}",
+      // Sits exactly on its line ceiling in maintainability-budget.json, which
+      // may only go down. Its twelve cleanups cannot take even the import line
+      // this rule requires until the QR handshake and scanning move out of it
+      // into their own module — about 210 lines with a clean seam. Until then
+      // the file keeps its empty handlers, and this entry is the record of it.
+      "src/services/sync/localSyncService.js",
+    ],
+    rules: {
+      // An empty `.catch()` handler hides the failure completely — not even
+      // the diagnostics a reader exports from the error screen keep it. Use
+      // `ignoredError("area.action")` from `@/utils/ignoredError`: it swallows
+      // the rejection the same way and leaves a warn behind. The three write
+      // queues that legitimately need an empty handler disable this by name,
+      // with the reason next to them.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "CallExpression[callee.property.name='catch'] > ArrowFunctionExpression[body.type='BlockStatement'][body.body.length=0]",
+          message:
+            'Empty .catch() hides the failure — use ignoredError("area.action") from @/utils/ignoredError.',
+        },
+      ],
+    },
+  },
 );

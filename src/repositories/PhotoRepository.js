@@ -12,6 +12,7 @@ import {
   LEAK_PHOTO_FIELDS,
   MONITORING_PHOTO_FIELDS,
 } from "@/utils/photoFields";
+import { ignoredError } from "@/utils/ignoredError";
 
 const photoFolderPromises = new Map();
 let lastPhotoTimestamp = 0;
@@ -171,7 +172,7 @@ async function cleanupOldVersions(
           path: stalePath,
         })
           .then(() => invalidateNativePhotoCachePath(Directory.Data, stalePath))
-          .catch(() => {});
+          .catch(ignoredError("photos.deleteStale"));
       }
     }
   } catch {
@@ -422,7 +423,7 @@ export const PhotoRepository = {
             directory: Directory.Data,
             path: orphanPath,
           })
-            .catch(() => {})
+            .catch(ignoredError("photos.deleteOrphan"))
             .finally(() =>
               invalidateNativePhotoCachePath(Directory.Data, orphanPath),
             );

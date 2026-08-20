@@ -40,6 +40,7 @@ import {
   resolveIncomingApplication,
   resolveSyncIdDecision,
 } from "./backupImportGuards";
+import { ignoredError } from "@/utils/ignoredError";
 
 /**
  * Restores the archive's technological schemas into a freshly imported
@@ -478,7 +479,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     await PhotoRepository.gcOrphaned(existingForStorage, {
       projectId: existingProjectId,
       folderName: existingFolderName,
-    }).catch(() => {});
+    }).catch(ignoredError("backupImport.gcOrphanedPhotos"));
     if (rollbackErrors.length > 0) {
       error.rollbackErrors = rollbackErrors;
       logger.error(

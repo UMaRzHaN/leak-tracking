@@ -5,6 +5,7 @@ import { ProjectProvider } from "@/app/project/ProjectContext";
 import { LeakFormProvider } from "@/features/leakForm/LeakFormContext";
 import ErrorBoundary from "@/components/ui/ErrorBoundary/ErrorBoundary";
 import { isNative } from "@/utils/platform";
+import { ignoredError } from "@/utils/ignoredError";
 
 const PwaUpdateBanner = React.lazy(
   () => import("@/components/ui/PwaUpdateBanner/PwaUpdateBanner"),
@@ -79,10 +80,10 @@ async function bootstrap() {
           );
         });
       })
-      .catch(() => {
-        // Offline support is progressive; startup must not fail if registration
-        // is blocked by the browser or deployment environment.
-      });
+      // Offline support is progressive; startup must not fail if registration
+      // is blocked by the browser or deployment environment. Which of the two
+      // it was only the warn can say.
+      .catch(ignoredError("pwa.registerServiceWorker"));
   }
 }
 

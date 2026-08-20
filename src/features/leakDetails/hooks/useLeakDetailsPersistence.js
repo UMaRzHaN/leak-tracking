@@ -24,6 +24,7 @@ import {
   persistPhotoReplacements,
   replaceLeakInCollection,
 } from "../utils/persistPhotoReplacements";
+import { ignoredError } from "@/utils/ignoredError";
 
 export function useLeakDetailsPersistence({
   leak,
@@ -239,7 +240,7 @@ export function useLeakDetailsPersistence({
         orphanedPhoto,
         nextData,
         deletePhoto,
-      ).catch(() => {});
+      ).catch(ignoredError("leakDetails.photoCleanup"));
     } catch {
       reportSaveError();
     }
@@ -265,7 +266,7 @@ export function useLeakDetailsPersistence({
           leak.photo_after,
           nextData,
           deletePhoto,
-        ).catch(() => {});
+        ).catch(ignoredError("leakDetails.photoCleanup"));
       }
     } catch {
       if (photo_after && photo_after !== leak.photo_after) {
@@ -273,7 +274,7 @@ export function useLeakDetailsPersistence({
           photo_after,
           allLeaks,
           deletePhoto,
-        ).catch(() => {});
+        ).catch(ignoredError("leakDetails.photoCleanup"));
       }
       reportSaveError();
     }
@@ -300,20 +301,20 @@ export function useLeakDetailsPersistence({
           leak.photo_repair,
           nextData,
           deletePhoto,
-        ).catch(() => {});
+        ).catch(ignoredError("leakDetails.photoCleanup"));
       }
       await deletePhotoIfUnreferenced(
         orphanedPhoto,
         nextData,
         deletePhoto,
-      ).catch(() => {});
+      ).catch(ignoredError("leakDetails.photoCleanup"));
     } catch {
       if (photo_repair && photo_repair !== leak.photo_repair) {
         await deletePhotoIfUnreferenced(
           photo_repair,
           allLeaks,
           deletePhoto,
-        ).catch(() => {});
+        ).catch(ignoredError("leakDetails.photoCleanup"));
       }
       reportSaveError();
     }
@@ -331,7 +332,7 @@ export function useLeakDetailsPersistence({
         orphanedPhoto,
         nextData,
         deletePhoto,
-      ).catch(() => {});
+      ).catch(ignoredError("leakDetails.photoCleanup"));
     } catch {
       reportSaveError();
     }

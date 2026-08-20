@@ -90,6 +90,10 @@ export function useSchemas(project) {
         return entry;
       });
 
+      // Empty on purpose: `run` is returned to the caller, which is what
+      // reports the failure. This branch only keeps the queue chain alive so
+      // one rejected write does not wedge every write after it.
+      // eslint-disable-next-line no-restricted-syntax
       writeQueueRef.current = run.catch(() => {});
       return run;
     },
@@ -110,6 +114,10 @@ export function useSchemas(project) {
         return removed;
       });
 
+      // Empty on purpose: `run` is returned to the caller, which is what
+      // reports the failure. This branch only keeps the queue chain alive so
+      // one rejected write does not wedge every write after it.
+      // eslint-disable-next-line no-restricted-syntax
       writeQueueRef.current = run.catch(() => {});
       return run;
     },

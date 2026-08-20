@@ -35,6 +35,7 @@ import {
   getNextMonitoringRoundNumber,
 } from "../monitoringDomain";
 import { MONITORING_FILTER as FILTERS } from "@/domain/leakFilters";
+import { ignoredError } from "@/utils/ignoredError";
 
 export function useMonitoringPage({
   data,
@@ -367,7 +368,7 @@ export function useMonitoringPage({
     } catch (error) {
       if (photoPath) {
         await deletePhotoIfUnreferenced(photoPath, data, deletePhoto).catch(
-          () => {},
+          ignoredError("monitoring.photoCleanup"),
         );
       }
       throw error;
@@ -377,7 +378,7 @@ export function useMonitoringPage({
         displacedPath,
         updated,
         deletePhoto,
-      ).catch(() => {});
+      ).catch(ignoredError("monitoring.photoCleanup"));
     }
     setDrafts((prev) => {
       const next = { ...prev };
@@ -521,7 +522,7 @@ export function useMonitoringPage({
     await setData(next);
     setActiveLeak(null);
     await deleteLeakPhotosIfUnreferenced(target, next, deletePhoto).catch(
-      () => {},
+      ignoredError("monitoring.photoCleanup"),
     );
   };
 
@@ -563,7 +564,7 @@ export function useMonitoringPage({
     await setData(next);
 
     await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-      () => {},
+      ignoredError("monitoring.photoCleanup"),
     );
   };
 
@@ -593,12 +594,12 @@ export function useMonitoringPage({
           leak.photo_after,
           next,
           deletePhoto,
-        ).catch(() => {});
+        ).catch(ignoredError("monitoring.photoCleanup"));
       }
     } catch (error) {
       if (photo_after && photo_after !== leak.photo_after) {
         deletePhotoIfUnreferenced(photo_after, data, deletePhoto).catch(
-          () => {},
+          ignoredError("monitoring.photoCleanup"),
         );
       }
       throw error;
@@ -632,15 +633,15 @@ export function useMonitoringPage({
           leak.photo_repair,
           next,
           deletePhoto,
-        ).catch(() => {});
+        ).catch(ignoredError("monitoring.photoCleanup"));
       }
       await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-        () => {},
+        ignoredError("monitoring.photoCleanup"),
       );
     } catch (error) {
       if (photo_repair && photo_repair !== leak.photo_repair) {
         deletePhotoIfUnreferenced(photo_repair, data, deletePhoto).catch(
-          () => {},
+          ignoredError("monitoring.photoCleanup"),
         );
       }
       throw error;
@@ -666,7 +667,7 @@ export function useMonitoringPage({
     await setData(next, { optimistic: false });
     setReopenLeak(null);
     await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-      () => {},
+      ignoredError("monitoring.photoCleanup"),
     );
   };
 

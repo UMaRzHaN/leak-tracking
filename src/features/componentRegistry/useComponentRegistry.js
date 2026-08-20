@@ -123,8 +123,10 @@ export function useComponentRegistry(project) {
         return stored;
       });
 
-      // Keep the chain alive after a rejection so one failed save does not
-      // wedge every later one.
+      // Empty on purpose: `run` is returned to the caller, which is what
+      // reports the failure. This branch only keeps the chain alive after a
+      // rejection so one failed save does not wedge every later one.
+      // eslint-disable-next-line no-restricted-syntax
       writeQueueRef.current = run.catch(() => {});
       return run;
     },

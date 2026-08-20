@@ -1,4 +1,5 @@
 import { registerPlugin } from "@capacitor/core";
+import { ignoredError } from "@/utils/ignoredError";
 
 const PublicFileWriter = registerPlugin("PublicFileWriter");
 const EXPORT_CHUNK_BYTES = 512 * 1024;
@@ -59,7 +60,9 @@ export async function writePublicFileStream({
       mimeType,
     });
   } catch (error) {
-    await PublicFileWriter.discard({ token }).catch(() => {});
+    await PublicFileWriter.discard({ token }).catch(
+      ignoredError("publicFileWriter.discard"),
+    );
     throw error;
   }
 }

@@ -9,6 +9,7 @@ import {
   scanLocalSyncQr,
 } from "@/services/sync/localSyncService";
 import s from "./ProjectSetupScreen.module.scss";
+import { ignoredError } from "@/utils/ignoredError";
 
 const VALID_TYPES = ["upstream", "midstream", "downstream"];
 
@@ -272,7 +273,9 @@ export default function ProjectSetupScreen({
 
   useEffect(
     () => () => {
-      Promise.resolve(cancelLocalSyncQrScan()).catch(() => {});
+      Promise.resolve(cancelLocalSyncQrScan()).catch(
+        ignoredError("projectSetup.cancelQrScan"),
+      );
     },
     [],
   );
