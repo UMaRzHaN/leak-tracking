@@ -13,5 +13,18 @@
     "Unlicense",
     "Zlib"
   ],
-  "exceptions": {}
+  "exceptions": {
+    "lightningcss": "MPL-2.0. Build-time CSS transformer that Vite 8 depends on directly; it never reaches the shipped bundle. MPL obliges sharing changes to its own files, and the project makes none.",
+    "lightningcss-android-arm64": "MPL-2.0. Build-time CSS transformer that Vite 8 depends on directly; it never reaches the shipped bundle. MPL obliges sharing changes to its own files, and the project makes none.",
+    "lightningcss-darwin-arm64": "MPL-2.0. Build-time CSS transformer that Vite 8 depends on directly; it never reaches the shipped bundle. MPL obliges sharing changes to its own files, and the project makes none.",
+    "lightningcss-darwin-x64": "MPL-2.0. Build-time CSS transformer that Vite 8 depends on directly; it never reaches the shipped bundle. MPL obliges sharing changes to its own files, and the project makes none.",
+    "lightningcss-freebsd-x64": "MPL-2.0. Build-time CSS transformer that Vite 8 depends on directly; it never reaches the shipped bundle. MPL obliges sharing changes to its own files, and the project makes none.",
+    "lightningcss-linux-arm-gnueabihf": "MPL-2.0. Build-time CSS transformer that Vite 8 depends on directly; it never reaches the shipped bundle. MPL obliges sharing changes to its own files, and the project makes none.",
+    "lightningcss-linux-arm64-gnu": "MPL-2.0. Build-time CSS transformer that Vite 8 depends on directly; it never reaches the shipped bundle. MPL obliges sharing changes to its own files, and the project makes none.",
+    "lightningcss-linux-arm64-musl": "MPL-2.0. Build-time CSS transformer that Vite 8 depends on directly; it never reaches the shipped bundle. MPL obliges sharing changes to its own files, and the project makes none.",
+    "lightningcss-linux-x64-gnu": "MPL-2.0. Build-time CSS transformer that Vite 8 depends on directly; it never reaches the shipped bundle. MPL obliges sharing changes to its own files, and the project makes none.",
+    "lightningcss-linux-x64-musl": "MPL-2.0. Build-time CSS transformer that Vite 8 depends on directly; it never reaches the shipped bundle. MPL obliges sharing changes to its own files, and the project makes none.",
+    "lightningcss-win32-arm64-msvc": "MPL-2.0. Build-time CSS transformer that Vite 8 depends on directly; it never reaches the shipped bundle. MPL obliges sharing changes to its own files, and the project makes none.",
+    "lightningcss-win32-x64-msvc": "MPL-2.0. Build-time CSS transformer that Vite 8 depends on directly; it never reaches the shipped bundle. MPL obliges sharing changes to its own files, and the project makes none."
+  }
 }

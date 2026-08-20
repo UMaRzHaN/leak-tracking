@@ -297,22 +297,30 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 1000,
       rollupOptions: {
         output: {
-          manualChunks: {
-            "vendor-react": ["react", "react-dom", "react-dom/client"],
-            "vendor-capacitor": [
-              "@capacitor/core",
-              "@capacitor/filesystem",
-              "@capacitor/camera",
-              "@capacitor/geolocation",
-              "@capacitor/share",
-              "@capacitor-community/speech-recognition",
+          // Rolldown, which Vite builds with from 8, takes groups rather than
+          // the entry-to-chunk map Rollup took. Same six chunks, named the
+          // same: the bundle budget reads them by name, and so does anyone
+          // looking at the report.
+          codeSplitting: {
+            groups: [
+              {
+                name: "vendor-react",
+                test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+              },
+              {
+                name: "vendor-capacitor",
+                test: /[\\/]node_modules[\\/]@capacitor(-community|-mlkit)?[\\/]/,
+              },
+              {
+                name: "vendor-excel",
+                test: /[\\/]node_modules[\\/]exceljs[\\/]/,
+              },
+              { name: "vendor-zip", test: /[\\/]node_modules[\\/]jszip[\\/]/ },
+              // Named so the bundle report says which language a chunk is;
+              // the bundler would otherwise call both "index", after the file.
+              { name: "locale-ru", test: /[\\/]src[\\/]locales[\\/]ru[\\/]/ },
+              { name: "locale-en", test: /[\\/]src[\\/]locales[\\/]en[\\/]/ },
             ],
-            "vendor-excel": ["exceljs"],
-            "vendor-zip": ["jszip"],
-            // Named so the bundle report says which language a chunk is;
-            // Rollup would otherwise call both "index", after the file.
-            "locale-ru": ["@/locales/ru"],
-            "locale-en": ["@/locales/en"],
           },
         },
       },
