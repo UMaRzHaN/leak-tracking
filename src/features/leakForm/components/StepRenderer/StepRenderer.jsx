@@ -1,6 +1,7 @@
 import InputCard from "@/features/leakForm/components/InputCard/InputCard";
 import Autocomplete from "@/features/search/Autocomplete/Autocomplete";
 import PhotoInput from "@/features/photos/PhotoInput/PhotoInput";
+import ComponentLinkField from "@/features/leakForm/ComponentLink/ComponentLinkField";
 import { useEnterNavigation } from "@/hooks/useEnterNavigation";
 import s from "./StepRenderer.module.scss";
 
@@ -13,6 +14,9 @@ export default function StepRenderer({
   nextStep,
   save,
   ghostPlaceholders,
+  // Объявляется только в шагах утечки: у карточки компонента такого поля нет —
+  // она сама и есть то, на что ссылаются.
+  componentLink = null,
 }) {
   const isLastStep = step >= steps.length;
   const config = steps[step - 1];
@@ -82,6 +86,20 @@ export default function StepRenderer({
               onComplete={completeFromElement}
               placeholder={ghostPlaceholders?.[f.key] ?? f.placeholder}
               hint={f.hint}
+            />
+          );
+        }
+
+        if (f.type === "component-link") {
+          if (!componentLink) return null;
+          return (
+            <ComponentLinkField
+              key={f.key}
+              form={form}
+              project={componentLink.project}
+              coords={componentLink.coords}
+              onPick={componentLink.onPick}
+              onUnlink={componentLink.onUnlink}
             />
           );
         }

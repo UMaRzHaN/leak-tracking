@@ -1,0 +1,136 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.sheet {
+  position: relative;
+  width: min(100%, 560px);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  background: var(--c-surface);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.head {
+  flex: none;
+  padding: 16px 16px 10px;
+  border-bottom: 1px solid var(--c-border);
+
+  h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--c-text);
+  }
+
+  p {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--c-text3);
+  }
+}
+
+.searchRow {
+  flex: none;
+  padding: 10px 16px 6px;
+}
+
+.searchLabel {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--c-text3);
+}
+
+.search {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-size: 15px;
+
+  &:focus {
+    outline: none;
+    border-color: var(--c-blue);
+  }
+}
+
+.state {
+  margin: 0;
+  padding: 20px 16px 24px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--c-text3);
+}
+
+.list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.option {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "uid name"
+    "uid meta";
+  column-gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-bg);
+  text-align: left;
+  cursor: pointer;
+
+  &:active {
+    background: var(--c-surface2);
+  }
+}
+
+.uid {
+  grid-area: uid;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--c-blue);
+}
+
+.name {
+  grid-area: name;
+  font-size: 15px;
+  color: var(--c-text);
+}
+
+.meta {
+  grid-area: meta;
+  font-size: 12px;
+  color: var(--c-text3);
+}

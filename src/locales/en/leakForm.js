@@ -1,6 +1,24 @@
 export const leakForm = {
   calcShortcutHint: "Used when this leak is saved",
 
+  componentLink: {
+    title: "Component from the registry",
+    pick: "Pick from the registry",
+    change: "Another card",
+    unlink: "Unlink",
+    searchLabel: "Search by number or name",
+    searchPlaceholder: "Number, name, tag on the drawing...",
+    loading: "Reading the registry...",
+    failed: "The registry could not be read",
+    empty: "The registry is empty — cards are written on site.",
+    nothingFound: "Nothing found",
+    nearestFirst: "Nearest first",
+    noFix: "No fix, so the usual order: the receiver is silent",
+    unnamed: "Unnamed",
+    metersAway: "{{v1}} m",
+    farAway: "far",
+    noCoords: "no coordinates",
+  },
   validation: {
     photoRequired: "Add a photo",
     required: "Required field",

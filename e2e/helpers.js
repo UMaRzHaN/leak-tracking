@@ -30,12 +30,12 @@ export async function setUserProfile(page, name = "E2E Inspector") {
   ).toHaveCount(0);
 }
 
-export async function createLeak(page, leakId = "4242", location = null) {
-  await page
-    .getByRole("button", { name: "Добавить утечку", exact: true })
-    .click();
-  await expect(page.getByText("Новая утечка", { exact: true })).toBeVisible();
-
+/**
+ * Обязательное на первом шаге утечки: параметры расчёта, бирка, видео,
+ * скорость. Без них форма не пускает дальше, поэтому это нужно любому
+ * сценарию, который доходит до второго шага.
+ */
+export async function fillLeakStepOne(page, leakId = "4242") {
   await page.getByRole("button", { name: "Редактировать параметры" }).click();
   const paramsModal = page.locator('[class*="_modal_"]').last();
   await paramsModal.locator('input[type="number"]').first().fill("1");
@@ -53,6 +53,15 @@ export async function createLeak(page, leakId = "4242", location = null) {
   await page.getByLabel(/^Бирка/).fill(leakId);
   await page.getByLabel(/^Видео/).fill("1042");
   await page.getByLabel(/^Скорость/).fill("1.5");
+}
+
+export async function createLeak(page, leakId = "4242", location = null) {
+  await page
+    .getByRole("button", { name: "Добавить утечку", exact: true })
+    .click();
+  await expect(page.getByText("Новая утечка", { exact: true })).toBeVisible();
+
+  await fillLeakStepOne(page, leakId);
 
   // The three location levels live on this first step, so a leak can be filed
   // straight into a place in the hierarchy.

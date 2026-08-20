@@ -418,6 +418,7 @@ export default function AddLeak({
           isSaving={isSaving}
           onBack={onBack}
           lastItem={data.at(-1)}
+          coords={coords}
         />
       )}
     </>

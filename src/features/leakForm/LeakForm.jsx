@@ -8,6 +8,10 @@ import { useProjectData } from "@/app/project/ProjectContext";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import {
+  linkLeakToComponent,
+  unlinkLeakComponent,
+} from "@/domain/leakComponentLink";
 import { calculateLeakWithSnapshot } from "@/utils/calculationParams";
 import { getLeakCalculationFieldErrors } from "@/utils/calculations/calculations";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
@@ -91,6 +95,7 @@ export default function LeakForm({
   onBack,
   lastItem,
   isSaving,
+  coords = null,
 }) {
   const { form, errors, handle, setErrors, setForm } = useLeakFormContext();
   const { t, lang } = useLanguage();
@@ -396,6 +401,13 @@ export default function LeakForm({
           nextStep={nextStep}
           save={save}
           ghostPlaceholders={ghostPlaceholders}
+          componentLink={{
+            project: activeProject,
+            coords,
+            onPick: (component) =>
+              setForm((current) => linkLeakToComponent(current, component)),
+            onUnlink: () => setForm((current) => unlinkLeakComponent(current)),
+          }}
         />
 
         <ClearActions

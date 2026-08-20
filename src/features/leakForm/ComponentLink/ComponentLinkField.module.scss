@@ -1,0 +1,56 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--c-text3);
+}
+
+.linked {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface2);
+}
+
+.value {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 15px;
+  color: var(--c-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unlink {
+  flex: none;
+  padding: 4px 8px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--c-text3);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pick {
+  padding: 10px 12px;
+  border: 1px dashed var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-bg);
+  color: var(--c-blue);
+  font-size: 14px;
+  cursor: pointer;
+
+  &:disabled {
+    color: var(--c-text3);
+    cursor: default;
+  }
+}

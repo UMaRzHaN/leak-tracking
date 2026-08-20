@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import {
   PHOTO_FIXTURE,
   createProject,
+  fillLeakStepOne,
+  footerTab,
   importFile,
   leaveSettings,
   openComponentRegistry,
@@ -35,9 +37,20 @@ async function addComponentCard(page, card) {
   await page.getByLabel(/^Компонент/).fill(card.name);
   await page.getByLabel(/^Компонент/).blur();
 
-  for (let step = 0; step < 3; step += 1) {
-    await page.getByRole("button", { name: /^Далее/ }).click();
+  await page.getByRole("button", { name: /^Далее/ }).click();
+  await page.getByRole("button", { name: /^Далее/ }).click();
+
+  // Третий шаг — паспорт. Именно эти поля утечка забирает у карточки, поэтому
+  // без них связь нечем проверять.
+  if (card.passport) {
+    for (const [label, value] of Object.entries(card.passport)) {
+      const field = page.getByLabel(new RegExp(`^${label}`));
+      await field.fill(value);
+      await field.blur();
+    }
   }
+
+  await page.getByRole("button", { name: /^Далее/ }).click();
 
   // Фото обязательно по умолчанию: карточка без него не сохранится.
   await page
@@ -45,6 +58,14 @@ async function addComponentCard(page, card) {
     .setInputFiles(PHOTO_FIXTURE);
   await expect(page.getByAltText("Выбранное фото")).toBeVisible();
   await page.getByRole("button", { name: /Сохранить$/ }).click();
+
+  // Со второй карточки приложение предлагает добить пустые поля значениями
+  // предыдущей. Каждая карточка здесь описывает своё железо, поэтому
+  // отказываемся: иначе манометр унаследовал бы паспорт задвижки.
+  const copyPrevious = page.getByRole("button", { name: "Оставить пустыми" });
+  if (await copyPrevious.isVisible().catch(() => false)) {
+    await copyPrevious.click();
+  }
 
   await expect(
     page.getByRole("button", { name: "Добавить компонент", exact: true }),
@@ -59,6 +80,10 @@ const VALVE = {
   tag: "ЗД-32",
   location: "Куст 12",
   name: "Задвижка",
+  passport: {
+    "Тип присоединения": "Фланцевое соединение",
+    "Тип привода": "Механический ручной",
+  },
 };
 const GAUGE = {
   uid: "9002",
@@ -144,4 +169,75 @@ test("выгружает инвентаризацию и вливает её в 
   await expect(
     page.getByText("Манометр", { exact: true }).first(),
   ).toBeVisible();
+});
+
+/*
+ * Связь утечки с карточкой.
+ *
+ * Компонент — постоянный объект учёта, утечка — событие на нём. Ключи у обеих
+ * сущностей общие намеренно, чтобы связь была прямым копированием; здесь
+ * проверяется, что копирование действительно доходит до сохранённой утечки.
+ */
+test("привязывает утечку к карточке компонента", async ({ page }) => {
+  test.setTimeout(120_000);
+  await createProject(page, "Registry Link");
+  await setUserProfile(page);
+  await openComponentRegistry(page);
+  await addComponentCard(page, VALVE);
+
+  await footerTab(page, "Главная").click();
+  await page
+    .getByRole("button", { name: "Добавить утечку", exact: true })
+    .click();
+  await expect(page.getByText("Новая утечка", { exact: true })).toBeVisible();
+
+  // Пока карточка не выбрана — приглашение выбрать.
+  const pick = page.getByRole("button", { name: "Выбрать из реестра" });
+  await expect(pick).toBeVisible();
+  await pick.click();
+
+  await expect(
+    page.getByRole("dialog", { name: "Компонент из реестра" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /№9001/ }).click();
+
+  // Выбранная карточка подписана номером и наименованием, а паспортные поля
+  // проставлены за обходчика.
+  await expect(page.getByText("№9001 · Задвижка")).toBeVisible();
+  await expect(page.getByLabel(/^Компонент$/)).toHaveValue("Задвижка");
+
+  await fillLeakStepOne(page, "7001");
+  await page.getByRole("button", { name: /^Далее/ }).click();
+  await expect(page.getByText("Шаг 2 /", { exact: false })).toBeVisible();
+  await expect(page.getByLabel(/^Тип присоединения/)).toHaveValue(
+    "Фланцевое соединение",
+  );
+  await expect(page.getByLabel(/^Тип привода/)).toHaveValue(
+    "Механический ручной",
+  );
+});
+
+test("открепляет карточку, оставляя заполненное", async ({ page }) => {
+  test.setTimeout(120_000);
+  await createProject(page, "Registry Unlink");
+  await setUserProfile(page);
+  await openComponentRegistry(page);
+  await addComponentCard(page, VALVE);
+
+  await footerTab(page, "Главная").click();
+  await page
+    .getByRole("button", { name: "Добавить утечку", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Выбрать из реестра" }).click();
+  await page.getByRole("button", { name: /№9001/ }).click();
+  await expect(page.getByText("№9001 · Задвижка")).toBeVisible();
+
+  await page.getByRole("button", { name: "Открепить" }).click();
+
+  // Ссылки нет, а перенесённое остаётся: часть могла быть исправлена руками.
+  await expect(page.getByText("№9001 · Задвижка")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Выбрать из реестра" }),
+  ).toBeVisible();
+  await expect(page.getByLabel(/^Компонент$/)).toHaveValue("Задвижка");
 });
