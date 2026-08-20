@@ -1,13 +1,21 @@
 export const IMPORT_LIMITS = Object.freeze({
-  // Imports are parsed inside the WebView. JSZip and ExcelJS retain multiple
-  // representations of the same bytes, so these limits are intentionally
-  // lower than the native streaming-export limit and are suitable for 2 GB
-  // Android devices as well as desktop browsers.
-  maxFileBytes: 96 * 1024 * 1024,
+  // A whole gigabyte, matching MAX_EXPORT_BYTES in PublicFileWriterPlugin and
+  // MAX_ARCHIVE_BYTES in LocalSyncPlugin: an archive this app can write is one
+  // it must be able to read back.
+  //
+  // These are safety ceilings, not a promise. Imports are parsed inside the
+  // WebView, where JSZip and ExcelJS hold several representations of the same
+  // bytes at once, so an archive near this limit can still exhaust a small
+  // phone — the ceiling stops a malicious file from being unbounded, it does
+  // not make every file below it comfortable.
+  maxFileBytes: 1024 * 1024 * 1024,
   maxArchiveEntries: 12_000,
-  maxUncompressedBytes: 192 * 1024 * 1024,
-  maxSingleEntryBytes: 24 * 1024 * 1024,
-  maxExportBytes: 96 * 1024 * 1024,
+  maxUncompressedBytes: 2 * 1024 * 1024 * 1024,
+  // Raised with the archive rather than left behind: at a gigabyte the
+  // backup.json of a large project is itself tens of megabytes, and a
+  // single-entry cap of 24 MB would reject the archive this app just wrote.
+  maxSingleEntryBytes: 256 * 1024 * 1024,
+  maxExportBytes: 1024 * 1024 * 1024,
 });
 
 const ZIP_EOCD_SIGNATURE = 0x06054b50;

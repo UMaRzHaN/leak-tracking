@@ -49,6 +49,7 @@ vi.mock("@capacitor/core", () => ({
 
 const { exchangeLocalSyncArchive, fetchLocalSyncArchive, startLocalSyncHost } =
   await import("./localSyncService");
+const { IMPORT_LIMITS } = await import("@/utils/importLimits");
 
 describe("localSyncService", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -389,7 +390,9 @@ describe("localSyncService", () => {
   it("rejects an oversized native archive before fetching it into the WebView", async () => {
     mocks.plugin.fetchArchive.mockResolvedValue({
       uri: "file:///cache/oversized.zip",
-      size: 256 * 1024 * 1024 + 1,
+      // От лимита, а не от числа: он уже поднимался, и тест, привязанный к
+      // прежнему значению, начинает проверять не отказ, а путь за ним.
+      size: IMPORT_LIMITS.maxFileBytes + 1,
       archiveToken: "oversized-token",
     });
     const fetchMock = vi.fn();

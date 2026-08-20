@@ -76,7 +76,7 @@ public class LocalSyncPlugin extends Plugin {
     // Keep this aligned with IMPORT_LIMITS.maxFileBytes in the WebView. The
     // received archive is exposed to JavaScript after transfer, so accepting a
     // larger native file would only defer rejection until after materialization.
-    private static final long MAX_ARCHIVE_BYTES = 256L * 1024L * 1024L;
+    private static final long MAX_ARCHIVE_BYTES = 1024L * 1024L * 1024L;
     // A full exchange temporarily needs both the outgoing and incoming archive.
     // Keep one explicit process-wide quota across prepared, hosted, active and
     // delivered sync files instead of applying independent per-map limits.
