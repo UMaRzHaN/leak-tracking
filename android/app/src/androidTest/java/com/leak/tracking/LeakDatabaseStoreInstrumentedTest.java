@@ -144,6 +144,156 @@ public class LeakDatabaseStoreInstrumentedTest {
         assertFalse(page.hasMore);
     }
 
+    /*
+     * Реестр компонентов живёт в этой же базе, под своим ключом проекта
+     * (`components:<папка>`, см. nativeComponentStorage.js). Хранилище внутрь
+     * полезной нагрузки не смотрит — держит строки по ключу проекта и id, —
+     * и утечки были просто первым его жильцом.
+     *
+     * Проверяется именно это: два набора в одном файле не мешают друг другу.
+     * Если бы мешали, обход железа и журнал утечек затирали бы друг друга на
+     * устройстве, а на вебе всё выглядело бы исправно.
+     */
+    private static final String LEAKS_KEY = "buzahur";
+    private static final String REGISTRY_KEY = "components:buzahur";
+
+    @Test
+    public void registryAndLeaksShareOneFileWithoutTouchingEachOther() throws Exception {
+        JSONArray leaks = new JSONArray().put(
+            new JSONObject().put("id", "leak-1").put("leak_id", "4242")
+        );
+        JSONArray components = new JSONArray()
+            .put(new JSONObject().put("id", "card-1").put("component_uid", "9001"))
+            .put(new JSONObject().put("id", "card-2").put("component_uid", "9002"));
+
+        store.replaceAll(LEAKS_KEY, leaks, null);
+        store.replaceAll(REGISTRY_KEY, components, null);
+
+        assertEquals(leaks.toString(), store.loadProject(LEAKS_KEY).recordsJson);
+        assertEquals(components.toString(), store.loadProject(REGISTRY_KEY).recordsJson);
+        assertEquals(1, store.diagnostics(LEAKS_KEY).recordCount);
+        assertEquals(2, store.diagnostics(REGISTRY_KEY).recordCount);
+    }
+
+    /*
+     * Одинаковый id по разные стороны ключа — обычное дело: и карточка, и
+     * утечка получают UUID из одного генератора, а вручную заведённые записи
+     * в тестовых данных и вовсе совпадают. Строка опознаётся парой
+     * «ключ проекта + id», поэтому столкнуться они не могут.
+     */
+    @Test
+    public void sameRecordIdOnBothSidesStaysTwoRecords() throws Exception {
+        store.replaceAll(
+            LEAKS_KEY,
+            new JSONArray().put(new JSONObject().put("id", "shared").put("kind", "leak")),
+            null
+        );
+        store.replaceAll(
+            REGISTRY_KEY,
+            new JSONArray().put(new JSONObject().put("id", "shared").put("kind", "component")),
+            null
+        );
+
+        assertEquals(
+            "leak",
+            new JSONArray(store.loadProject(LEAKS_KEY).recordsJson)
+                .getJSONObject(0)
+                .getString("kind")
+        );
+        assertEquals(
+            "component",
+            new JSONArray(store.loadProject(REGISTRY_KEY).recordsJson)
+                .getJSONObject(0)
+                .getString("kind")
+        );
+    }
+
+    @Test
+    public void editingOneCardLeavesTheLeakJournalAlone() throws Exception {
+        store.replaceAll(
+            LEAKS_KEY,
+            new JSONArray().put(new JSONObject().put("id", "leak-1").put("status", "open")),
+            null
+        );
+        store.replaceAll(
+            REGISTRY_KEY,
+            new JSONArray()
+                .put(new JSONObject().put("id", "card-1").put("component_status", "В работе"))
+                .put(new JSONObject().put("id", "card-2").put("component_status", "В работе")),
+            null
+        );
+
+        boolean applied = store.applyChanges(
+            REGISTRY_KEY,
+            new JSONArray().put(
+                new JSONObject().put("id", "card-1").put("component_status", "Требует замены")
+            ),
+            new JSONArray().put("card-2"),
+            null
+        );
+
+        assertTrue(applied);
+        JSONArray registry = new JSONArray(store.loadProject(REGISTRY_KEY).recordsJson);
+        assertEquals(1, registry.length());
+        assertEquals("Требует замены", registry.getJSONObject(0).getString("component_status"));
+
+        JSONArray journal = new JSONArray(store.loadProject(LEAKS_KEY).recordsJson);
+        assertEquals(1, journal.length());
+        assertEquals("open", journal.getJSONObject(0).getString("status"));
+        assertEquals("replace", store.diagnostics(LEAKS_KEY).lastWriteMode);
+    }
+
+    /*
+     * Проект удаляют целиком, а ключей у него два. Удаление одного не должно
+     * уносить второй — иначе снос журнала утечек забирал бы с собой обход
+     * железа, который никто не переснимет.
+     */
+    @Test
+    public void deletingTheLeakProjectKeepsItsRegistry() throws Exception {
+        store.replaceAll(
+            LEAKS_KEY,
+            new JSONArray().put(new JSONObject().put("id", "leak-1")),
+            null
+        );
+        store.replaceAll(
+            REGISTRY_KEY,
+            new JSONArray().put(new JSONObject().put("id", "card-1")),
+            null
+        );
+
+        store.deleteProject(LEAKS_KEY);
+
+        assertFalse(store.loadProject(LEAKS_KEY).found);
+        assertTrue(store.loadProject(REGISTRY_KEY).found);
+
+        store.deleteProject(REGISTRY_KEY);
+        assertFalse(store.loadProject(REGISTRY_KEY).found);
+    }
+
+    @Test
+    public void registryPagesIndependentlyOfTheJournal() throws Exception {
+        JSONArray journal = new JSONArray();
+        for (int i = 0; i < 3; i++) {
+            journal.put(new JSONObject().put("id", "leak-" + i));
+        }
+        JSONArray registry = new JSONArray();
+        for (int i = 0; i < 5; i++) {
+            registry.put(new JSONObject().put("id", "card-" + i));
+        }
+        store.replaceAll(LEAKS_KEY, journal, null);
+        store.replaceAll(REGISTRY_KEY, registry, null);
+
+        LeakDatabaseStore.ProjectPage page = store.loadProjectPage(REGISTRY_KEY, 0, 2);
+        assertTrue(page.found);
+        assertEquals(5, page.totalCount);
+        assertTrue(page.hasMore);
+        assertEquals(
+            "card-0",
+            new JSONArray(page.recordsJson).getJSONObject(0).getString("id")
+        );
+        assertEquals(3, store.loadProjectPage(LEAKS_KEY, 0, 10).totalCount);
+    }
+
     @Test
     public void projectsRemainIsolated() throws Exception {
         store.replaceAll(
