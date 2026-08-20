@@ -30,9 +30,9 @@ export const SCHEMA_ARCHIVE_DIR = "technological_schemas";
  * than failing the export: the point of the archive is the data, and losing a
  * whole export over one absent file would be a poor trade.
  *
- * @param {object} project
- * @param {object[]} schemas index entries
- * @param {(project: object, schema: object) => Promise<Blob|null>} readSchemaFile
+ * @param {{id: string, folderName?: string, name?: string, type?: string}} project
+ * @param {Record<string, any>[]} schemas index entries
+ * @param {(project: Record<string, any>, schema: object) => Promise<Blob|null>} readSchemaFile
  * @param {{dir?: string}} [options]
  * @returns {Promise<{path: string, blob: Blob, name: string}[]>}
  */
@@ -73,7 +73,7 @@ export async function buildSchemaArchiveEntries(
  * the field.
  *
  * @param {File|Blob} file the archive
- * @param {object} project the freshly created project
+ * @param {{id: string, folderName?: string, name?: string, type?: string}} project the freshly created project
  * @returns {Promise<{restored: number, skipped: number}>}
  */
 export async function restoreSchemasFromArchive(file, project) {

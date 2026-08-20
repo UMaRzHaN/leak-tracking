@@ -373,6 +373,7 @@ export function assertArchiveLimits(zip) {
   }
 }
 
+/** @returns {Promise<void>} */
 function streamArchiveEntry(entry, onChunk) {
   return new Promise((resolve, reject) => {
     let stream;
@@ -481,8 +482,8 @@ function concatChunks(chunks, totalSize) {
  * never reads are never decompressed, so they cannot exhaust memory either;
  * assertArchiveLimits still bounds the archive by its declared sizes up front.
  *
- * @param {object} zip JSZip instance the entry belongs to; scopes the budget.
- * @param {object} entry JSZip entry to read.
+ * @param {import("jszip")} zip JSZip instance the entry belongs to; scopes the budget.
+ * @param {import("jszip").JSZipObject} entry JSZip entry to read.
  * @param {"uint8array"|"arraybuffer"|"string"|"blob"} [type]
  */
 export async function readArchiveEntry(zip, entry, type = "uint8array") {

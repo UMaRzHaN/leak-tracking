@@ -176,6 +176,22 @@ describe("реестр внутри книги", () => {
     ).toEqual(["4242", "4243"]);
   });
 
+  it("вносит карточки, даже когда схемы из архива не восстановились", async () => {
+    // Схемы — приложение к реестру, а не его условие: упавшее восстановление
+    // чертежей не должно отменять уже разобранные карточки.
+    mocks.restoreComponents.mockResolvedValue({
+      added: 3,
+      updated: 0,
+      conflicts: 0,
+    });
+    mocks.restoreSchemas.mockRejectedValue(new Error("архив без чертежей"));
+    const archive = new File(["не зип"], "!Inventorization_2026.zip");
+
+    const result = await importInventoryFile(archive, project, { excel });
+
+    expect(result).toMatchObject({ source: "archive", added: 3, schemas: 0 });
+  });
+
   it("всё ещё читает архивы, выгруженные с json", async () => {
     // Их у людей на руках сколько угодно, и они не перестают быть верными.
     mocks.restoreComponents.mockResolvedValue({

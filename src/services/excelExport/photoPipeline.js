@@ -16,6 +16,7 @@ export const PHOTO_KEYS = LEAK_PHOTO_FIELDS;
 const EXPORT_YIELD_EVERY = 40;
 const PHOTO_READ_CONCURRENCY = 4;
 
+/** @returns {Promise<void>} */
 function yieldToMainThread() {
   return new Promise((resolve) => {
     if (typeof window !== "undefined" && "requestAnimationFrame" in window) {

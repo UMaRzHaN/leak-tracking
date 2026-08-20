@@ -1,5 +1,6 @@
 const EXPORT_YIELD_EVERY = 40;
 
+/** @returns {Promise<void>} */
 export function yieldToMainThread() {
   return new Promise((resolve) => {
     if (typeof window !== "undefined" && "requestAnimationFrame" in window) {

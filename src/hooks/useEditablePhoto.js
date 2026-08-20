@@ -43,8 +43,11 @@ export function useEditablePhoto({
   }, []);
 
   /* ===== change photo ===== */
+  // `e` is optional on purpose: on Android the picture comes from the camera
+  // plugin and there is no input event to pass. The call sites have always
+  // relied on that; the default is what says so to the type checker.
   const changePhoto = useCallback(
-    async (e, source = "camera") => {
+    async (e = null, source = "camera") => {
       let result;
 
       if (isNative) {
@@ -64,7 +67,7 @@ export function useEditablePhoto({
   );
 
   const choosePhoto = useCallback(
-    async (e) => changePhoto(e, "gallery"),
+    async (e = null) => changePhoto(e, "gallery"),
     [changePhoto],
   );
 

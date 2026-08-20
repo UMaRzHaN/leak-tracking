@@ -28,8 +28,8 @@ const CHUNK_SIZE = 30_000;
 
 /**
  * @param {any} workbook
- * @param {{version?: number, exportedAt?: number, data: object[]}} payload
- * @param {{sheet?: string, note?: string, fieldColumn?: string, valueColumn?: string, summary?: object}} [texts]
+ * @param {{version?: number, exportedAt?: number, data: Record<string, any>[]}} payload
+ * @param {{sheet?: string, note?: string, fieldColumn?: string, valueColumn?: string, summary?: Record<string, any>}} [texts]
  */
 export function addInventoryBackupSheet(workbook, payload, texts = {}) {
   const cards = Array.isArray(payload?.data) ? payload.data : [];
@@ -106,7 +106,7 @@ export function addInventoryBackupSheet(workbook, payload, texts = {}) {
  * половину реестра хуже, чем сказать, что файл сломан.
  *
  * @param {any} workbook
- * @returns {object[]|null}
+ * @returns {Record<string, any>[]|null}
  */
 export function parseInventoryBackupSheet(workbook) {
   const sheet = workbook?.getWorksheet?.(SHEET_NAME);

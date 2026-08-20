@@ -6,7 +6,7 @@ import { toNullableNumber } from "@/utils/normalize/toNullableNumber";
  * Component cards as things the map can draw.
  *
  * The two bases are kept apart on screen rather than merged into one layer:
- * a leak is an event and a component is an object, they are counted by
+ * a leak is an event and a component is an Record<string, any>, they are counted by
  * different people for different reports, and a single pin sheet mixing them
  * would make "how many are there" unanswerable for either.
  *
@@ -45,8 +45,8 @@ export function toComponentMarkers(components = []) {
  * dealt with. The map hides those buttons on this base rather than leaving
  * them there doing nothing.
  *
- * @param {object[]} markers
- * @param {{sharedFilters?: object, nearbyOnly?: boolean, nearbyRadius?: number, coords?: {lat: number, lng: number}|null}} options
+ * @param {Record<string, any>[]} markers
+ * @param {{sharedFilters?: Record<string, any>, nearbyOnly?: boolean, nearbyRadius?: number, coords?: {lat: number, lng: number}|null}} options
  */
 export function filterComponentMarkers(
   markers,

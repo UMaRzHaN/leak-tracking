@@ -38,9 +38,9 @@ function filled(value) {
  * снимок утечки; подставить одно вместо другого значит выдать фотографию
  * исправного железа за доказательство пропуска.
  *
- * @param {object} leak
- * @param {object} component
- * @returns {object} новая утечка; исходная не меняется
+ * @param {Record<string, any>} leak
+ * @param {Record<string, any>} component
+ * @returns {Record<string, any>} новая утечка; исходная не меняется
  */
 export function linkLeakToComponent(leak, component) {
   if (!component?.id) return leak;

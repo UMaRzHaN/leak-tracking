@@ -26,7 +26,7 @@ import { getJSZip, yieldToMainThread } from "./runtime";
  * that piece rather than the backup somebody is standing there waiting for.
  *
  * @param {(path: string, content: any) => any} add
- * @param {{project: object, idbGet?: (id: string) => Promise<any>}} context
+ * @param {{project: {id: string, folderName?: string, name?: string, type?: string}, idbGet?: (id: string) => Promise<any>}} context
  */
 async function addProjectAttachments(add, { project, idbGet }) {
   if (!project?.id) return;

@@ -41,6 +41,7 @@ function isWorkerContext() {
   return typeof scope !== "undefined" && globalThis instanceof scope;
 }
 
+/** @returns {Promise<void>} */
 export function yieldToMainThread() {
   return new Promise((resolve) => {
     if (typeof window !== "undefined" && "requestAnimationFrame" in window) {

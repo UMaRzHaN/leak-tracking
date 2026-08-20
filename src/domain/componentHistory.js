@@ -41,7 +41,7 @@ function withEntry(component, historyEntry) {
 }
 
 /**
- * @param {object} component
+ * @param {Record<string, any>} component
  * @param {{user?: string, now?: number}} options
  */
 export function recordComponentCreated(component, { user, now } = {}) {
@@ -58,8 +58,8 @@ export function recordComponentCreated(component, { user, now } = {}) {
  * hundred that changed nothing — somebody opening a card to read it and
  * pressing save on the way out.
  *
- * @param {object} before
- * @param {object} after
+ * @param {Record<string, any>} before
+ * @param {Record<string, any>} after
  * @param {{user?: string, now?: number, fields?: {key: string}[]}} options
  */
 export function recordComponentEdited(
@@ -84,7 +84,7 @@ export function recordComponentEdited(
  * — but it is carried on the card as well as in the history, because the
  * customer's workbook has a column for it and reads the latest value.
  *
- * @param {object} component
+ * @param {Record<string, any>} component
  * @param {{status?: string, user?: string, now?: number}} options
  */
 export function recordComponentInspected(

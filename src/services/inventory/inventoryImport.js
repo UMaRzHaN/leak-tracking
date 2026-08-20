@@ -43,7 +43,7 @@ async function readWorkbook(data) {
  *
  * @param {File|Blob} file
  * @param {{headers: string[], keysOrder: string[]}} excel
- * @returns {Promise<{components: object[], skipped: number}>}
+ * @returns {Promise<{components: Record<string, any>[], skipped: number}>}
  */
 export async function readInventorySheetFile(file, excel) {
   const workbook = await openInventoryWorkbook(file);

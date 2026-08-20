@@ -7,6 +7,8 @@
  *
  * Две секунды — это не про скорость устройства, а про признак того, что
  * переключение не случится вовсе; дальше импорт откатывается.
+ *
+ * @returns {Promise<void>}
  */
 export function waitForRefValue(ref, expectedValue, timeoutMs = 2000) {
   const startedAt = Date.now();

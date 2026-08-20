@@ -40,15 +40,15 @@ function uidOf(component) {
 /**
  * @typedef {{
  *   uid: string,
- *   records: object[],
+ *   records: Record<string, any>[],
  * }} ComponentUidConflict
  */
 
 /**
- * @param {object[]} local what this device holds
- * @param {object[]} incoming what arrived from another device
+ * @param {Record<string, any>[]} local what this device holds
+ * @param {Record<string, any>[]} incoming what arrived from another device
  * @returns {{
- *   merged: object[],
+ *   merged: Record<string, any>[],
  *   added: number,
  *   updated: number,
  *   conflicts: ComponentUidConflict[],
@@ -96,7 +96,7 @@ export function mergeComponentRegistries(local = [], incoming = []) {
  * collision that predates it — two cards typed on the same device by mistake —
  * surfaces the same way as one that arrived from elsewhere.
  *
- * @param {object[]} components
+ * @param {Record<string, any>[]} components
  * @returns {ComponentUidConflict[]}
  */
 export function findUidConflicts(components = []) {
@@ -120,7 +120,7 @@ export function findUidConflicts(components = []) {
 
 /**
  * Whether a registry needs a human before it can be trusted as a report.
- * @param {object[]} components
+ * @param {Record<string, any>[]} components
  */
 export function hasUnresolvedConflicts(components = []) {
   return findUidConflicts(components).length > 0;

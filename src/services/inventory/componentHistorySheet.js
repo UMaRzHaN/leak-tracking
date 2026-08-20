@@ -63,9 +63,9 @@ function describeChanges(changes, labelOf, texts) {
 }
 
 /**
- * @param {object[]} components в том же порядке, что и лист реестра
- * @param {{key: string, label: string}[]} fields объявление реестра — для подписей
- * @param {object} texts
+ * @param {Record<string, any>[]} components в том же порядке, что и лист реестра
+ * @param {{key?: string, label?: string}[]} fields объявление реестра — для подписей
+ * @param {Record<string, any>} texts
  */
 export function buildComponentHistoryRows(components, fields, texts) {
   const labelOf = (key) =>
@@ -91,7 +91,7 @@ export function buildComponentHistoryRows(components, fields, texts) {
 
 /**
  * @param {any} workbook
- * @param {{components: object[], fields?: object[], texts?: object}} spec
+ * @param {{components: Record<string, any>[], fields?: {key?: string, label?: string}[], texts?: Record<string, any>}} spec
  */
 export async function buildComponentHistorySheet(workbook, spec) {
   const { components, fields = [], texts = {} } = spec ?? {};

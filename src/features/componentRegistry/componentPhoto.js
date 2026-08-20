@@ -31,7 +31,7 @@ export function extractPhotoBlob(value) {
  * reopening a card and saving it does not rewrite the same image under a new
  * key and orphan the old one.
  *
- * @param {object} card
+ * @param {Record<string, any>} card
  * @param {string} id the record the photo belongs to
  * @param {(blob: Blob, id: string, exclude: string[], options: object) => Promise<any>} savePhoto
  */

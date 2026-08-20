@@ -48,8 +48,8 @@ export function buildInventoryFileStem(projectName) {
  * thousand-record report off the main thread, and paying its round trip for a
  * single table would be slower, not faster.
  *
- * @param {{name?: string, headers: string[], keysOrder: string[], rows: object[], ids?: string[], components?: object[], fields?: object[]}} sheetSpec
- * @param {{photoPaths?: Record<string, string>, texts?: object, backup?: object[]|null}} [options]
+ * @param {{name?: string, headers: string[], keysOrder: string[], rows: Record<string, any>[], ids?: string[], components?: Record<string, any>[], fields?: {key?: string, label?: string}[]}} sheetSpec
+ * @param {{photoPaths?: Record<string, string>, texts?: Record<string, any>, backup?: Record<string, any>[]|null}} [options]
  *   `backup` — карточки целиком, как они уедут в служебный лист.
  */
 export async function buildInventoryWorkbookBuffer(sheetSpec, options = {}) {
@@ -82,10 +82,10 @@ export async function buildInventoryWorkbookBuffer(sheetSpec, options = {}) {
  *
  * @param {object} options
  * @param {string} options.fileStem
- * @param {object} options.sheetSpec rows and headers for the sheet
- * @param {{photoEntries?: {path: string, blob: Blob}[], photoPaths?: Record<string, string>, components?: object[]}|null} options.registryEntry
+ * @param {{name?: string, headers: string[], keysOrder: string[], rows: Record<string, any>[], ids?: string[], components?: Record<string, any>[], fields?: {key?: string, label?: string}[]}} options.sheetSpec rows and headers for the sheet
+ * @param {{photoEntries?: {path: string, blob: Blob}[], photoPaths?: Record<string, string>, components?: Record<string, any>[]}|null} options.registryEntry
  * @param {{path: string, blob: Blob}[]} [options.schemaEntries]
- * @param {object} [options.texts] подписи для ячейки со снимком
+ * @param {Record<string, any>} [options.texts] подписи для ячейки со снимком
  * @returns {Promise<Blob>}
  */
 export async function buildInventoryArchive({

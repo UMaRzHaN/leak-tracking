@@ -42,14 +42,14 @@ function archivePathOf(value) {
  * the same trade the leak export makes — one unreadable image must not cost
  * the whole walk.
  *
- * @param {object[]} components
+ * @param {Record<string, any>[]} components
  * @param {(id: string) => Promise<any>} [idbGet] web photo storage reader
  * @param {{dir?: string}} [options]
  * `paths` is the same rewriting, keyed by card id: the sheet writes a link to
  * the picture rather than the storage path nobody outside this device can
  * follow, and it needs to find one by the card it is printing.
  *
- * @returns {Promise<{components: object[], entries: {path: string, blob: Blob}[], paths: Record<string, string>}>}
+ * @returns {Promise<{components: Record<string, any>[], entries: {path: string, blob: Blob}[], paths: Record<string, string>}>}
  */
 export async function buildComponentPhotoArchive(
   components,
@@ -112,9 +112,9 @@ export async function buildComponentPhotoArchive(
  * picture was taken at all.
  *
  * @param {any} zip an opened JSZip
- * @param {object[]} components cards as read from the archive
+ * @param {Record<string, any>[]} components cards as read from the archive
  * @param {{id: string, folderName?: string}} project
- * @returns {Promise<object[]>}
+ * @returns {Promise<Record<string, any>[]>}
  */
 export async function restoreComponentPhotos(zip, components, project) {
   const list = Array.isArray(components) ? components : [];

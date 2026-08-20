@@ -31,7 +31,7 @@ const ARCHIVE_VERSION = 1;
  * two are returned together because they are only correct together — writing
  * the JSON without the pictures is exactly the silent loss this replaced.
  *
- * @param {object} project
+ * @param {{id: string, folderName?: string, name?: string, type?: string}} project
  * @param {{load?: (project: object) => Promise<object[]>, idbGet?: (id: string) => Promise<any>, photoDir?: string}} [options]
  */
 export async function buildComponentArchiveEntry(project, options = {}) {
@@ -90,7 +90,7 @@ function unwrap(parsed) {
  * decides which gets renumbered.
  *
  * @param {File|Blob} file the archive
- * @param {object} project
+ * @param {{id: string, folderName?: string, name?: string, type?: string}} project
  * @returns {Promise<{added: number, updated: number, conflicts: number}>}
  */
 export async function restoreComponentsFromArchive(file, project) {
@@ -128,7 +128,7 @@ export async function restoreComponentsFromArchive(file, project) {
  * два: json рядом с книгой у прежних архивов и служебный лист внутри книги у
  * нынешних. Сведение у них одно и то же, и расходиться ему незачем.
  *
- * @param {object} project
+ * @param {{id: string, folderName?: string, name?: string, type?: string}} project
  * @param {object[]} incoming
  */
 export async function mergeIncomingComponents(project, incoming) {

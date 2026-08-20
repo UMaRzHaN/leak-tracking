@@ -98,7 +98,7 @@ export const SchemaRepository = {
   /**
    * The project's schema index. Never the file bytes — see the note at the top.
    * @param {{id: string, folderName?: string}} project
-   * @returns {Promise<object[]>}
+   * @returns {Promise<Record<string, any>[]>}
    */
   async listSchemas(project) {
     if (!project?.id) return [];
@@ -132,7 +132,7 @@ export const SchemaRepository = {
 
   /**
    * @param {{id: string, folderName?: string}} project
-   * @param {object[]} schemas
+   * @param {Record<string, any>[]} schemas
    * @param {{now?: number}} [options]
    */
   async saveIndex(project, schemas, { now } = {}) {
@@ -176,7 +176,7 @@ export const SchemaRepository = {
    * can reclaim.
    *
    * @param {{id: string, folderName?: string}} project
-   * @param {object} schema index entry from createSchemaEntry
+   * @param {Record<string, any>} schema index entry from createSchemaEntry
    * @param {Blob} blob the picked file
    */
   async addSchema(project, schema, blob) {

@@ -11,9 +11,9 @@ import { useLanguage } from "@/app/hooks/useLanguage";
  *
  * @param {object} options
  * @param {number} [options.step]
- * @param {object[]} [options.steps]
+ * @param {Record<string, any>[]} [options.steps]
  * @param {Function} [options.onCommand]
- * @param {object|null} [options.voice] чей это словарь. По умолчанию — блок
+ * @param {Record<string, any>|null} [options.voice] чей это словарь. По умолчанию — блок
  *   утечки из конфига проекта; реестр компонентов передаёт свой, потому что
  *   заполняет он другие поля, и без этого распознанному было некуда деться.
  */
