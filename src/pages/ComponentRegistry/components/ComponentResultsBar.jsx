@@ -29,17 +29,16 @@ function ComponentResultsBar({
     <>
       <div className={s.resultsRow}>
         <span className={s.resultsInfo}>
+          {/* Счётчик отсюда убран: сколько карточек заведено, сказано выше в
+              шапке, а при отборе там же появляется и сколько показано. */}
           {visibleCount > 0 && (
-            <>
-              {t("components.shown", { count: visibleCount })}
-              <button
-                className={s.sortToggle}
-                onClick={onSortToggle}
-                title={t("components.changeSortOrder")}
-              >
-                {sortAsc ? t("components.uidAsc") : t("components.uidDesc")}
-              </button>
-            </>
+            <button
+              className={s.sortToggle}
+              onClick={onSortToggle}
+              title={t("components.changeSortOrder")}
+            >
+              {sortAsc ? t("components.uidAsc") : t("components.uidDesc")}
+            </button>
           )}
         </span>
 
