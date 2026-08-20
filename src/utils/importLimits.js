@@ -9,7 +9,14 @@ export const IMPORT_LIMITS = Object.freeze({
   // phone — the ceiling stops a malicious file from being unbounded, it does
   // not make every file below it comfortable.
   maxFileBytes: 1024 * 1024 * 1024,
-  maxArchiveEntries: 12_000,
+  // The ceiling of an ordinary ZIP: its end record counts entries in 16 bits,
+  // and ZipStoreStreamWriter refuses to write past it because it emits no ZIP64
+  // records. Anything this app can produce therefore fits here, which is the
+  // property that matters — a lower number would reject an archive the export
+  // had just written. At a gigabyte it still leaves 16 KB per entry, well under
+  // any real photo, so an archive with more entries than this cannot be made of
+  // actual data.
+  maxArchiveEntries: 65_535,
   maxUncompressedBytes: 2 * 1024 * 1024 * 1024,
   // Raised with the archive rather than left behind: at a gigabyte the
   // backup.json of a large project is itself tens of megabytes, and a

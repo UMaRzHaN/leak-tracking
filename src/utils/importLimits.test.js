@@ -125,12 +125,18 @@ describe("importLimits", () => {
     );
   });
 
-  it("rejects an entry-count bomb from the EOCD before ZIP materialization", async () => {
+  it("does not take a saturated EOCD entry count at face value", async () => {
+    // The entry limit is now the largest number an ordinary end record can
+    // express, so a count above it cannot appear in those 16 bits at all: 0xffff
+    // means "read the ZIP64 record" rather than "65535 entries". With no ZIP64
+    // record present, the preflight declines to report a count instead of
+    // trusting the saturated one — the ZIP64 and central-directory tests below
+    // are what catch a real entry-count bomb.
     const bytes = new Uint8Array(22);
     const view = new DataView(bytes.buffer);
     view.setUint32(0, 0x06054b50, true);
-    view.setUint16(8, IMPORT_LIMITS.maxArchiveEntries + 1, true);
-    view.setUint16(10, IMPORT_LIMITS.maxArchiveEntries + 1, true);
+    view.setUint16(8, 0xffff, true);
+    view.setUint16(10, 0xffff, true);
 
     const file = {
       size: bytes.byteLength,
@@ -140,7 +146,7 @@ describe("importLimits", () => {
       arrayBuffer: async () => bytes,
     };
 
-    await expect(preflightZipFile(file)).rejects.toThrow("too many entries");
+    await expect(preflightZipFile(file)).resolves.toBe(null);
   });
 
   it("counts central-directory headers when the EOCD understates them", async () => {
