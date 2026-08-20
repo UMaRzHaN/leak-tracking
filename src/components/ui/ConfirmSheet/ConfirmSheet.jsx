@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useModalDialog } from "@/hooks/useModalDialog";
 import s from "./ConfirmSheet.module.scss";
 
@@ -10,10 +11,13 @@ export default function ConfirmSheet({
   onCancel,
   secondaryActionLabel = null,
   onSecondaryAction = null,
-  confirmLabel = "Подтвердить",
-  cancelLabel = "Отмена",
+  confirmLabel = null,
+  cancelLabel = null,
   onActionError = null,
 }) {
+  const { t } = useTranslation();
+  const confirmText = confirmLabel ?? t("common.confirm");
+  const cancelText = cancelLabel ?? t("common.cancel");
   const titleId = useId();
   const descriptionId = useId();
   const [pending, setPending] = useState(false);
@@ -80,7 +84,7 @@ export default function ConfirmSheet({
             onClick={handleCancel}
             disabled={pending}
           >
-            {cancelLabel}
+            {cancelText}
           </button>
           <button
             type="button"
@@ -88,7 +92,7 @@ export default function ConfirmSheet({
             onClick={() => runAction(onConfirm)}
             disabled={pending}
           >
-            {confirmLabel}
+            {confirmText}
           </button>
           {secondaryActionLabel && (
             <button

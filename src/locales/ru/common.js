@@ -3,6 +3,8 @@
 export const common = {
   clear: "Очистить",
   close: "Закрыть",
+  confirm: "Подтвердить",
+  cancel: "Отмена",
 
   units: {
     meters: "м",

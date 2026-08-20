@@ -22,7 +22,7 @@ export default function EditPhotoRow({
   const slots = [
     {
       key: "before",
-      label: t("leakDetails.photo.before", { defaultValue: "До" }),
+      label: t("leakDetails.photo.before"),
       src: srcBefore,
       onCamera: onEditBefore,
       onGallery: onPickBefore,
@@ -36,7 +36,7 @@ export default function EditPhotoRow({
     },
     {
       key: "after",
-      label: t("leakDetails.photo.after", { defaultValue: "После" }),
+      label: t("leakDetails.photo.after"),
       src: srcAfter,
       onCamera: onEditAfter,
       onGallery: onPickAfter,
@@ -82,9 +82,7 @@ export default function EditPhotoRow({
                 <div className={s.editPhotoEmpty}>
                   <span>📷</span>
                   <span className={s.editPhotoHint}>
-                    {t("leakDetails.photoAction.add", {
-                      defaultValue: "добавить",
-                    })}
+                    {t("leakDetails.photoAction.add")}
                   </span>
                 </div>
               )}
@@ -112,9 +110,7 @@ export default function EditPhotoRow({
                 onClick={() => runAction(selectedSlot.onCamera)}
               >
                 <span className={s.photoActionIcon}>📷</span>
-                {t("leakDetails.photoAction.camera", {
-                  defaultValue: "Камера",
-                })}
+                {t("leakDetails.photoAction.camera")}
               </button>
             )}
             <button
@@ -123,9 +119,7 @@ export default function EditPhotoRow({
               onClick={() => runAction(selectedSlot.onGallery)}
             >
               <span className={s.photoActionIcon}>🖼️</span>
-              {t("leakDetails.photoAction.gallery", {
-                defaultValue: "Выбрать из галереи",
-              })}
+              {t("leakDetails.photoAction.gallery")}
             </button>
             <button
               type="button"
@@ -133,9 +127,7 @@ export default function EditPhotoRow({
               onClick={() => setActiveSlot(null)}
             >
               <span className={s.photoActionIcon}>✕</span>
-              {t("leakDetails.photoAction.cancel", {
-                defaultValue: "Отмена",
-              })}
+              {t("leakDetails.photoAction.cancel")}
             </button>
           </div>
         </div>

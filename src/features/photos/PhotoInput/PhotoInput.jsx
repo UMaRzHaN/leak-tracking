@@ -6,12 +6,13 @@ import s from "./PhotoInput.module.scss";
 export default function PhotoInput({
   value,
   onChange,
-  label = "Фото",
+  label = null,
   required = false,
   error = false,
   compact = false,
 }) {
   const { t } = useTranslation();
+  const fieldLabel = label ?? t("photoInput.photo");
   const inputRef = useRef(null);
   const aliveRef = useRef(true);
   const inputId = useId();
@@ -98,7 +99,7 @@ export default function PhotoInput({
         .join(" ")}
     >
       <div className={s.fieldLabel}>
-        {label}
+        {fieldLabel}
         {required && <span className={s.required}> *</span>}
       </div>
 
@@ -135,7 +136,7 @@ export default function PhotoInput({
 
       {error && (
         <div className={s.fieldError}>
-          {t("photoInput.requiredField", { label })}
+          {t("photoInput.requiredField", { label: fieldLabel })}
         </div>
       )}
     </div>

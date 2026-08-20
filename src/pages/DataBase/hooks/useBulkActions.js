@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { STATUS } from "@/utils/status";
 import { hapticSuccess } from "@/utils/haptics";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { pluralRecords } from "@/pages/DataBase/pluralRecords";
 import {
   changeLeakStatus,
   deletePhotoIfUnreferenced,
@@ -16,13 +17,6 @@ import {
 
 /** @type {(path: string) => Promise<void>} */
 const noopDeletePhoto = async () => {};
-
-// Russian needs three plural forms where English needs two; Intl.PluralRules
-// picks the one this count takes and the locale carries every form.
-function pluralLeaks(count, t, intlLocale) {
-  const form = new Intl.PluralRules(intlLocale).select(count);
-  return t(`database.bulk.records.${form}`);
-}
 
 export function useBulkActions({
   data,
@@ -180,7 +174,12 @@ export function useBulkActions({
           "success",
           t("database.bulk.statusChanged", {
             count: affected.length,
-            records: pluralLeaks(affected.length, t, intlLocale),
+            records: pluralRecords(
+              affected.length,
+              t,
+              intlLocale,
+              "database.bulk.records",
+            ),
           }),
         );
         clearSelection();
@@ -245,7 +244,12 @@ export function useBulkActions({
           "success",
           t("database.bulk.resolved", {
             count: resolveTotal,
-            records: pluralLeaks(resolveTotal, t, intlLocale),
+            records: pluralRecords(
+              resolveTotal,
+              t,
+              intlLocale,
+              "database.bulk.records",
+            ),
           }),
         );
         clearSelection();
@@ -316,7 +320,12 @@ export function useBulkActions({
           "success",
           t("database.bulk.statusChanged", {
             count: repairTotal,
-            records: pluralLeaks(repairTotal, t, intlLocale),
+            records: pluralRecords(
+              repairTotal,
+              t,
+              intlLocale,
+              "database.bulk.records",
+            ),
           }),
         );
         clearSelection();

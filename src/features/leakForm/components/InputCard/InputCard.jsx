@@ -1,4 +1,5 @@
 import { useId, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { parseNumericInput } from "@/utils/normalize/parseNumericInput";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
 import { maskDateInput } from "@/utils/normalize/maskDateInput";
@@ -22,6 +23,7 @@ export default function InputCard({
   const isDate = type === "date";
   const hasValue = value != null && value !== "" && String(value).length > 0;
 
+  const { t } = useTranslation();
   const inputId = useId();
   const inputRef = useRef(null);
 
@@ -103,7 +105,7 @@ export default function InputCard({
               onChange("");
               inputRef.current?.focus();
             }}
-            aria-label="Очистить"
+            aria-label={t("common.clear")}
           >
             ✕
           </button>

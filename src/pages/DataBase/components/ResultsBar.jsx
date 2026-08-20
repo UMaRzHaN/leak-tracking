@@ -1,17 +1,9 @@
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { pluralRecords } from "@/pages/DataBase/pluralRecords";
 import s from "@/pages/DataBase/DataBase.module.scss";
 
 const NEARBY = "nearby";
 const NEARBY_RADIUS_M = 500;
-
-function pluralLeaks(count, lang) {
-  if (lang !== "ru") return count === 1 ? "record" : "records";
-  if (count % 10 === 1 && count % 100 !== 11) return "запись";
-  if ([2, 3, 4].includes(count % 10) && ![12, 13, 14].includes(count % 100)) {
-    return "записи";
-  }
-  return "записей";
-}
 
 export default function ResultsBar({
   visibleCount,
@@ -28,7 +20,7 @@ export default function ResultsBar({
   onExport,
   isExporting = false,
 }) {
-  const { lang, t } = useLanguage();
+  const { intlLocale, t } = useLanguage();
 
   return (
     <>
@@ -36,7 +28,7 @@ export default function ResultsBar({
         <span className={s.resultsInfo}>
           {visibleCount > 0 && (
             <>
-              {`${visibleCount} ${pluralLeaks(visibleCount, lang)}`}
+              {`${visibleCount} ${pluralRecords(visibleCount, t, intlLocale)}`}
               {statusFilter === NEARBY ? (
                 t("database.nearbyRadius", { radius: NEARBY_RADIUS_M })
               ) : (

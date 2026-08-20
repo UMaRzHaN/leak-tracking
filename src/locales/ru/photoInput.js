@@ -1,4 +1,5 @@
 export const photoInput = {
+  photo: "Фото",
   camera: "Камера",
   gallery: "Галерея",
   replace: "Заменить фото",

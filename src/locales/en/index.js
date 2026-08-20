@@ -19,6 +19,7 @@ import { mainPage } from "./mainPage";
 import { map } from "./map";
 import { monitoring } from "./monitoring";
 import { photoInput } from "./photoInput";
+import { photoViewer } from "./photoViewer";
 import { projectSetup } from "./projectSetup";
 import { priority } from "./priority";
 import { pwa } from "./pwa";
@@ -54,6 +55,7 @@ export const translation = {
   map,
   monitoring,
   photoInput,
+  photoViewer,
   projectSetup,
   priority,
   pwa,

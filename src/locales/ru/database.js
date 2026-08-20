@@ -28,6 +28,22 @@ export const database = {
   priority: "Приоритет",
   all: "Все",
   nearbyRadius: " • в радиусе {{radius}} м",
+
+  // Именительный падеж, для счётчика найденного: «1 запись», «2 записи».
+  // Формы выбирает Intl.PluralRules, поэтому присутствовать должна каждая,
+  // которую язык умеет выбрать — оттого английский и повторяется.
+  records: {
+    one: "запись",
+    few: "записи",
+    many: "записей",
+    other: "записей",
+  },
+
+  empty: {
+    nothingFound: "Ничего не найдено",
+    noNearby: "Нет утечек в радиусе {{radius}} м",
+    noRecords: "Записей нет",
+  },
   selectedOf: "{{selected}} выбрано из {{visible}}",
   nearMe: "Рядом со мной",
 
@@ -53,8 +69,8 @@ export const database = {
     statusChanged: "Статус изменён у {{count}} {{records}}",
     resolved: "Устранено {{count}} {{records}}",
     saveError: "Ошибка сохранения: {{message}}",
-    // Plural forms picked by Intl.PluralRules; every form a language can
-    // select has to be present, which is why English repeats itself.
+    // Родительный падеж: строка читается как «у 1 записи», «у 2 записей».
+    // Именительный набор для счётчика лежит отдельно, в database.records.
     records: {
       one: "записи",
       few: "записей",

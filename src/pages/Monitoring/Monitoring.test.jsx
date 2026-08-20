@@ -4,6 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Resolves against the real English locale, so these assertions fail if the
 // screen loses a translation rather than quietly falling back to the key.
+vi.mock("react-i18next", async () => {
+  const { translate } = await import("@/test/translate");
+  return { useTranslation: () => ({ t: translate, i18n: { language: "en" } }) };
+});
+
 vi.mock("@/app/hooks/useLanguage", async () => {
   const { englishLanguageHook } = await import("@/test/translate");
   return englishLanguageHook();

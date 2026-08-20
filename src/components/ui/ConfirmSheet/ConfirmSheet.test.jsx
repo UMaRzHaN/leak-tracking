@@ -2,6 +2,14 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import ConfirmSheet from "./ConfirmSheet";
 
+// The default button labels come from the locale now, so the test has to read
+// the same place the component does — asserting a literal would only prove the
+// literal.
+vi.mock("react-i18next", async () => {
+  const { translate } = await import("@/test/translate");
+  return { useTranslation: () => ({ t: translate, i18n: { language: "en" } }) };
+});
+
 describe("ConfirmSheet async actions", () => {
   it("prevents duplicate actions and closing while confirmation is pending", async () => {
     let finish;
@@ -58,11 +66,11 @@ describe("ConfirmSheet async actions", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Подтвердить" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
     await act(async () => {});
     expect(onActionError).toHaveBeenCalledWith(error);
-    expect(screen.getByRole("button", { name: "Подтвердить" }).disabled).toBe(
+    expect(screen.getByRole("button", { name: "Confirm" }).disabled).toBe(
       false,
     );
   });

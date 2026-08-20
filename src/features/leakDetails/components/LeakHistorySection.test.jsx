@@ -2,6 +2,11 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import LeakHistorySection from "./LeakHistorySection";
 
+vi.mock("react-i18next", async () => {
+  const { translate } = await import("@/test/translate");
+  return { useTranslation: () => ({ t: translate, i18n: { language: "en" } }) };
+});
+
 vi.mock("@/hooks/usePhotoSrc", () => ({ usePhotoSrc: () => null }));
 vi.mock("@/features/photos/PhotoViewer/PhotoViewer", () => ({
   default: () => null,

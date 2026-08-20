@@ -3,6 +3,11 @@ import { preserveAndResetCorruptedProjects } from "@/app/project/projectStorage"
 import { logger } from "@/utils/logger";
 import s from "./ErrorBoundary.module.scss";
 
+// The only screen that keeps its Russian text in the source. It renders after
+// something has already failed, and i18n is one of the things that can be the
+// failure: asking for a translation here risks showing raw keys — or nothing —
+// at the exact moment the reader needs to be told what to press. The locale
+// test allows this file by name.
 export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props);

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import s from "./PhotoViewer.module.scss";
 
 export default function PhotoViewer({
@@ -9,6 +10,7 @@ export default function PhotoViewer({
   initialIndex = 0,
   onClose,
 }) {
+  const { t } = useTranslation();
   const photoList = photos ?? (src ? [src] : []);
   const labelList = labels ?? [];
   const [idx, setIdx] = useState(initialIndex);
@@ -44,7 +46,11 @@ export default function PhotoViewer({
       role="dialog"
       aria-modal="true"
     >
-      <button className={s.closeBtn} onClick={onClose} aria-label="Закрыть">
+      <button
+        className={s.closeBtn}
+        onClick={onClose}
+        aria-label={t("common.close")}
+      >
         ✕
       </button>
 
@@ -55,7 +61,7 @@ export default function PhotoViewer({
             e.stopPropagation();
             setIdx((i) => i - 1);
           }}
-          aria-label="Предыдущее фото"
+          aria-label={t("photoViewer.previous")}
         >
           <svg
             width="11"
@@ -82,7 +88,7 @@ export default function PhotoViewer({
             e.stopPropagation();
             setIdx((i) => i + 1);
           }}
-          aria-label="Следующее фото"
+          aria-label={t("photoViewer.next")}
         >
           <svg
             width="11"
@@ -106,7 +112,7 @@ export default function PhotoViewer({
         <img
           key={idx}
           src={currentSrc}
-          alt={currentLabel ?? "Фото утечки"}
+          alt={currentLabel ?? t("photoViewer.photoAlt")}
           className={s.img}
           draggable={false}
           onClick={(e) => e.stopPropagation()}
@@ -119,8 +125,11 @@ export default function PhotoViewer({
 
       <p className={s.hint}>
         {photoList.length > 1
-          ? `${idx + 1} / ${photoList.length} · стрелки или смахивание для навигации`
-          : "Нажмите за пределами фото, чтобы закрыть"}
+          ? t("photoViewer.navigationHint", {
+              current: idx + 1,
+              total: photoList.length,
+            })
+          : t("photoViewer.closeHint")}
       </p>
     </div>,
     document.body,

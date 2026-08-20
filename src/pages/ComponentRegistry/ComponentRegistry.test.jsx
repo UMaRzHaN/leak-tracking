@@ -16,6 +16,11 @@ const photoStorage = vi.hoisted(() => ({
   savePhoto: vi.fn(async () => "idb://photo"),
 }));
 
+vi.mock("react-i18next", async () => {
+  const { translate } = await import("@/test/translate");
+  return { useTranslation: () => ({ t: translate, i18n: { language: "en" } }) };
+});
+
 vi.mock("@/app/hooks/useLanguage", async () => {
   const { englishLanguageHook } = await import("@/test/translate");
   return englishLanguageHook();

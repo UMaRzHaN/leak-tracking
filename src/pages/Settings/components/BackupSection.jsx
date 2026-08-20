@@ -24,7 +24,7 @@ export default function BackupSection({
             onClick={onExport}
             disabled={isExporting || isImportingExcel}
           >
-            {isExporting ? "Экспорт..." : localeTexts.exportZip}
+            {isExporting ? localeTexts.exportZipLoading : localeTexts.exportZip}
           </button>
           {/* Одна кнопка на все форматы: бэкап, отчёт и инвентаризация
               различаются по содержимому файла, а не по тому, что человек

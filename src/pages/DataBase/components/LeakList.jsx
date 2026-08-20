@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import VirtualizedLeakList from "@/features/leakList/VirtualizedLeakList/VirtualizedLeakList";
 import LeakCardCompact from "@/features/leakList/LeakCardCompact/LeakCardCompact";
 import {
@@ -17,6 +18,7 @@ function LeakList({
   onMonitor,
   onToggleSelect,
 }) {
+  const { t } = useTranslation();
   const listRef = useRef(null);
   const [listHeight, setListHeight] = useState(420);
 
@@ -60,10 +62,10 @@ function LeakList({
         <span>📭</span>
         <p>
           {search
-            ? "Ничего не найдено"
+            ? t("database.empty.nothingFound")
             : statusFilter === NEARBY
-              ? `Нет утечек в радиусе ${NEARBY_RADIUS_M} м`
-              : "Записей нет"}
+              ? t("database.empty.noNearby", { radius: NEARBY_RADIUS_M })
+              : t("database.empty.noRecords")}
         </p>
       </div>
     );

@@ -15,6 +15,20 @@ const LANGUAGES = { ru, en };
 // shrink.
 const RUSSIAN_STRINGS_STILL_AT_CALL_SITES = [];
 
+// Files where Russian in JSX is the right answer, not an oversight. This list
+// may only shrink.
+//
+// ErrorBoundary renders when the app has already failed — possibly i18n
+// itself — so it cannot ask for a translation and has to carry its own text.
+// The other two map field-group names that arrive from the project config and
+// from imported workbooks; they are data identifiers being translated *into*
+// locale keys, not text shown as-is.
+const DELIBERATE_RUSSIAN_IN_JSX = [
+  "components/ui/ErrorBoundary/ErrorBoundary.jsx",
+  "features/leakForm/LeakForm.jsx",
+  "features/fieldVisibility/FieldVisibilityModal.jsx",
+];
+
 function flattenKeys(node, prefix = "") {
   return Object.entries(node)
     .flatMap(([key, value]) => {
@@ -97,6 +111,42 @@ describe("locales", () => {
     }
 
     expect([...missing].sort()).toEqual([]);
+  });
+
+  // The three tests above all start from a key. A string that never reached
+  // `t()` has no key to start from, so none of them can see it — which is how
+  // the database empty states, the photo viewer's aria-labels and a hand-rolled
+  // Russian plural table sat in JSX while every locale test passed. This one
+  // starts from the source instead.
+  //
+  // Only .jsx is scanned: that is where text reaches the screen. Comments are
+  // stripped first — the codebase writes them in Russian on purpose — and
+  // diagnostic logging is skipped, since it is read from a bug report rather
+  // than by a user.
+  it("keeps Russian text out of the components", () => {
+    const CYRILLIC = /[\u0400-\u04FF]/;
+    const files = execSync("find src -name '*.jsx' | grep -v '\\.test\\.'", {
+      encoding: "utf8",
+    })
+      .trim()
+      .split("\n");
+
+    const found = [];
+    for (const file of files) {
+      if (DELIBERATE_RUSSIAN_IN_JSX.some((allowed) => file.endsWith(allowed))) {
+        continue;
+      }
+      const source = readFileSync(file, "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/^\s*\/\/.*$/gm, "");
+      source.split("\n").forEach((line, index) => {
+        if (!CYRILLIC.test(line)) return;
+        if (/\blogger\.(log|warn|error)\b/.test(line)) return;
+        found.push(`${file}:${index + 1}  ${line.trim()}`);
+      });
+    }
+
+    expect(found).toEqual([]);
   });
 
   it("leaves no value empty", () => {

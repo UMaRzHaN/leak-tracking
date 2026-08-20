@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { useTranslation } from "react-i18next";
 import { parseNumericInput } from "@/utils/normalize/parseNumericInput";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
 import s from "./EditTextField.module.scss";
@@ -22,6 +23,7 @@ export default function EditTextField({
   numeric = false,
   compact = false,
 }) {
+  const { t } = useTranslation();
   const id = useId();
   // 0 is a valid numeric value — never coerce with ||
   const display = value ?? "";
@@ -75,7 +77,7 @@ export default function EditTextField({
             tabIndex={-1}
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onChange("")}
-            aria-label="Очистить"
+            aria-label={t("common.clear")}
           >
             <span className={s.clearInner} aria-hidden>
               ✕

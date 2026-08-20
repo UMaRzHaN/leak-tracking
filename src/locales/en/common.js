@@ -1,6 +1,8 @@
 export const common = {
   clear: "Clear",
   close: "Close",
+  confirm: "Confirm",
+  cancel: "Cancel",
 
   units: {
     meters: "m",

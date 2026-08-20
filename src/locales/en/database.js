@@ -28,6 +28,19 @@ export const database = {
   priority: "Priority",
   all: "All",
   nearbyRadius: " • within {{radius}} m",
+
+  records: {
+    one: "record",
+    few: "records",
+    many: "records",
+    other: "records",
+  },
+
+  empty: {
+    nothingFound: "Nothing found",
+    noNearby: "No leaks within {{radius}} m",
+    noRecords: "No records",
+  },
   selectedOf: "{{selected}} selected of {{visible}}",
   nearMe: "Near me",
 

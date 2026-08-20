@@ -42,6 +42,7 @@ function getTexts(t, status) {
     address: t("localSync.address"),
     code: t("localSync.code"),
     securityKey: t("localSync.securityKey"),
+    securityKeyPlaceholder: t("localSync.securityKeyPlaceholder"),
     port: t("localSync.port"),
     connect: t("localSync.connect"),
     connecting: t("localSync.connecting"),
@@ -293,7 +294,7 @@ export default function LocalSyncSection({ sync }) {
                       .slice(0, 64),
                   )
                 }
-                placeholder="64 символа SHA-256"
+                placeholder={texts.securityKeyPlaceholder}
                 autoCapitalize="characters"
                 spellCheck={false}
                 disabled={busy || status === "hosting"}

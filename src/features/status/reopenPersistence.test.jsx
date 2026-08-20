@@ -7,6 +7,11 @@ const mocks = vi.hoisted(() => ({
   deletePhoto: vi.fn(),
 }));
 
+vi.mock("react-i18next", async () => {
+  const { translate } = await import("@/test/translate");
+  return { useTranslation: () => ({ t: translate, i18n: { language: "en" } }) };
+});
+
 vi.mock("@/hooks/usePhotoStorage", () => ({
   usePhotoStorage: () => ({ deletePhoto: mocks.deletePhoto }),
 }));

@@ -207,6 +207,7 @@ export const settings = {
 
   backup: "Backup",
   exportZip: "Export ZIP",
+  exportZipLoading: "Export...",
   importExcel: "Import Excel",
   importExcelLoading: "Import...",
   backupHint:

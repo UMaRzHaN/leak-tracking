@@ -47,6 +47,7 @@ export const localSync = {
   address: "Адрес",
   code: "Код",
   securityKey: "Ключ безопасности",
+  securityKeyPlaceholder: "64 символа SHA-256",
   port: "Порт",
   connect: "Подключиться и синхронизировать",
   connecting: "Синхронизация...",
