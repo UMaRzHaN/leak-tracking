@@ -1,6 +1,6 @@
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { isNative } from "@/utils/platform";
-import { compressImage } from "./compressImage";
+import { compressImage, isWithinPhotoBudget } from "./compressImage";
 import { idb } from "./idb";
 import { ensureNativeDirectory } from "./nativeDirectory";
 import { isPhotoPrepared } from "@/utils/photoPreparation";
@@ -60,6 +60,17 @@ function collectReferencedPhotos(leaks = []) {
     }
   }
   return referenced;
+}
+
+// Compression is skipped for a photo that is already inside the storage budget.
+// On Android that is the difference between a full JPEG decode plus canvas
+// re-encode per imported photo and a header read of a few hundred bytes, and
+// re-importing the app's own export hits this path for every photo in the file.
+async function preparePhotoBlob(rawPhoto) {
+  if (!(rawPhoto instanceof Blob)) return rawPhoto;
+  if (isPhotoPrepared(rawPhoto)) return rawPhoto;
+  if (await isWithinPhotoBudget(rawPhoto)) return rawPhoto;
+  return compressImage(rawPhoto);
 }
 
 function fileToBase64(file) {
@@ -223,10 +234,7 @@ export const PhotoRepository = {
         const path = `idb://${photoId}`;
         return returnMetadata ? { path, created: false } : path;
       }
-      const photo =
-        rawPhoto instanceof Blob && !isPhotoPrepared(rawPhoto)
-          ? await compressImage(rawPhoto)
-          : rawPhoto;
+      const photo = await preparePhotoBlob(rawPhoto);
       if (!(photo instanceof Blob)) return null;
 
       const ok = await idb.save(photoId, photo);
@@ -274,10 +282,7 @@ export const PhotoRepository = {
       }
     }
 
-    const photo =
-      rawPhoto instanceof Blob && !isPhotoPrepared(rawPhoto)
-        ? await compressImage(rawPhoto)
-        : rawPhoto;
+    const photo = await preparePhotoBlob(rawPhoto);
     if (!(photo instanceof Blob)) return null;
 
     const base64 = await fileToBase64(photo);

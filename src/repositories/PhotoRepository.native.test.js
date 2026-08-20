@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   compressImage: vi.fn(async (blob) => blob),
+  isWithinPhotoBudget: vi.fn(async () => false),
   mkdir: vi.fn(),
   readdir: vi.fn(),
   writeFile: vi.fn(),
@@ -14,6 +15,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/utils/platform", () => ({ isNative: true }));
 vi.mock("@/repositories/compressImage", () => ({
   compressImage: mocks.compressImage,
+  isWithinPhotoBudget: mocks.isWithinPhotoBudget,
 }));
 vi.mock("@/services/storage/nativePhotoSourceCache", () => ({
   invalidateNativePhotoCachePath: mocks.invalidatePath,
@@ -166,6 +168,23 @@ describe("PhotoRepository on Android", () => {
     });
     expect(mocks.compressImage).not.toHaveBeenCalled();
     expect(mocks.writeFile).not.toHaveBeenCalled();
+  });
+
+  it("writes a photo already inside the budget without compressing it", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(900);
+    mocks.isWithinPhotoBudget.mockResolvedValue(true);
+    const blob = new Blob(["already-small"], { type: "image/jpeg" });
+
+    const path = await PhotoRepository.save(blob, {
+      leakId: "leak",
+      folderName: "native_budget",
+    });
+
+    expect(path).toBe(
+      "data://LeakReports/native_budget/photos/photo_leak_900.jpg",
+    );
+    expect(mocks.compressImage).not.toHaveBeenCalled();
+    expect(mocks.writeFile).toHaveBeenCalledOnce();
   });
 
   it("keeps imported leak ids inside the native photo filename", async () => {

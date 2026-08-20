@@ -50,6 +50,7 @@ vi.mock("../app/project/ProjectContext", () => ({
 
 vi.mock("../repositories/compressImage", () => ({
   compressImage: mockCompressImage,
+  isWithinPhotoBudget: vi.fn(async () => false),
 }));
 
 /* ── import after mocks ────────────────────────────────── */

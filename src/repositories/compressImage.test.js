@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { compressImage } from "./compressImage";
+import {
+  MAX_PHOTO_WIDTH,
+  compressImage,
+  isWithinPhotoBudget,
+} from "./compressImage";
 
 describe("compressImage", () => {
   let image;
@@ -78,5 +82,61 @@ describe("compressImage", () => {
     });
 
     await expect(compressImage(input)).resolves.toBe(input);
+  });
+});
+
+describe("isWithinPhotoBudget", () => {
+  function jpegOfWidth(width, { bytes = 1024, type = "image/jpeg" } = {}) {
+    const header = [
+      0xff,
+      0xd8,
+      0xff,
+      0xc0,
+      0x00,
+      0x0b,
+      8,
+      0x00,
+      0x64,
+      width >> 8,
+      width & 0xff,
+      3,
+    ];
+    const padding = new Uint8Array(Math.max(0, bytes - header.length));
+    return new Blob([new Uint8Array(header), padding], { type });
+  }
+
+  it("accepts a JPEG already inside the width and size budget", async () => {
+    await expect(
+      isWithinPhotoBudget(jpegOfWidth(MAX_PHOTO_WIDTH)),
+    ).resolves.toBe(true);
+  });
+
+  it("rejects a JPEG wider than the budget", async () => {
+    await expect(
+      isWithinPhotoBudget(jpegOfWidth(MAX_PHOTO_WIDTH + 1)),
+    ).resolves.toBe(false);
+  });
+
+  it("rejects a JPEG heavier than the budget despite its width", async () => {
+    await expect(
+      isWithinPhotoBudget(jpegOfWidth(640, { bytes: 1024 * 1024 + 1 })),
+    ).resolves.toBe(false);
+  });
+
+  it("rejects formats that compression exists to convert", async () => {
+    await expect(
+      isWithinPhotoBudget(jpegOfWidth(640, { type: "image/png" })),
+    ).resolves.toBe(false);
+    await expect(isWithinPhotoBudget(null)).resolves.toBe(false);
+  });
+
+  it("rejects a JPEG whose header does not state a size", async () => {
+    await expect(
+      isWithinPhotoBudget(
+        new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xda, 0x00, 0x02])], {
+          type: "image/jpeg",
+        }),
+      ),
+    ).resolves.toBe(false);
   });
 });

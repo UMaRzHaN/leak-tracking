@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { fingerprintBlob } from "@/utils/blobHash";
 import {
   hydrateZipPhotos,
   persistExcelImportPhotos,
@@ -158,6 +159,80 @@ describe("reconcileExcelImportPhotos concurrency", () => {
     expect(maxActiveReads).toBeLessThanOrEqual(2);
     expect(result.leaks).toHaveLength(3);
     expect(result.photos).toMatchObject({ replaced: 15, toSave: 15 });
+  });
+});
+
+describe("reconcileExcelImportPhotos content-addressed slots", () => {
+  async function storedPathFor(blob, { leakId = "TAG-1" } = {}) {
+    return `idb://photo_p1_${leakId}_h_${await fingerprintBlob(blob)}`;
+  }
+
+  it("reuses an unchanged photo without reading it back", async () => {
+    const photo = new Blob(["same-photo"], { type: "image/jpeg" });
+    const storedPath = await storedPathFor(photo);
+    const getStoredPhoto = vi.fn();
+
+    const result = await reconcileExcelImportPhotos(
+      [{ leak_id: "TAG-1", photo: storedPath }],
+      [{ leak_id: "TAG-1", photo }],
+      getStoredPhoto,
+    );
+
+    expect(getStoredPhoto).not.toHaveBeenCalled();
+    expect(result.leaks[0].photo).toBe(storedPath);
+    expect(result.photos).toMatchObject({ reused: 1, replaced: 0, toSave: 0 });
+  });
+
+  it("replaces a changed photo without reading it back", async () => {
+    const storedPath = await storedPathFor(
+      new Blob(["old-photo"], { type: "image/jpeg" }),
+    );
+    const photo = new Blob(["new-photo"], { type: "image/jpeg" });
+    const getStoredPhoto = vi.fn();
+
+    const result = await reconcileExcelImportPhotos(
+      [{ leak_id: "TAG-1", photo: storedPath }],
+      [{ leak_id: "TAG-1", photo }],
+      getStoredPhoto,
+    );
+
+    expect(getStoredPhoto).not.toHaveBeenCalled();
+    expect(result.leaks[0].photo).toBe(photo);
+    expect(result.photos).toMatchObject({
+      replaced: 1,
+      toSave: 1,
+      replacedByReason: { different: 1 },
+    });
+  });
+
+  it("matches a photo that moved to another leak without reading it back", async () => {
+    const photo = new Blob(["moved-photo"], { type: "image/jpeg" });
+    const storedPath = await storedPathFor(photo, { leakId: "TAG-1" });
+    const getStoredPhoto = vi.fn();
+
+    const result = await reconcileExcelImportPhotos(
+      [{ leak_id: "TAG-1", photo: storedPath }],
+      [{ leak_id: "TAG-2", photo }],
+      getStoredPhoto,
+    );
+
+    expect(getStoredPhoto).not.toHaveBeenCalled();
+    expect(result.leaks[0].photo).toBe(storedPath);
+    expect(result.photos).toMatchObject({ reused: 1, toSave: 0 });
+  });
+
+  it("still reads camera photos, which carry no hash in their name", async () => {
+    const photo = new Blob(["camera-photo"], { type: "image/jpeg" });
+    const getStoredPhoto = vi.fn(async () => photo);
+
+    const result = await reconcileExcelImportPhotos(
+      [{ leak_id: "TAG-1", photo: "idb://photo_p1_TAG-1_1755772800000" }],
+      [{ leak_id: "TAG-1", photo }],
+      getStoredPhoto,
+    );
+
+    expect(getStoredPhoto).toHaveBeenCalled();
+    expect(result.photos).toMatchObject({ reused: 1, toSave: 0 });
   });
 });
 

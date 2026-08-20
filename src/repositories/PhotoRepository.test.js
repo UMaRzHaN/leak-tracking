@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   compressImage: vi.fn(async (blob) => blob),
+  isWithinPhotoBudget: vi.fn(async () => false),
   getState: vi.fn(),
   save: vi.fn(),
   remove: vi.fn(),
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/utils/platform", () => ({ isNative: false }));
 vi.mock("@/repositories/compressImage", () => ({
   compressImage: mocks.compressImage,
+  isWithinPhotoBudget: mocks.isWithinPhotoBudget,
 }));
 vi.mock("@/repositories/idb", () => ({
   idb: {

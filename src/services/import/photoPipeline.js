@@ -1,5 +1,6 @@
 import { getPhotoSrc } from "@/hooks/photoService";
 import { fingerprintBlob } from "@/utils/blobHash";
+import { getPhotoPathContentHash } from "@/utils/photoContentHash";
 import { getLeakMergeIdentity } from "@/services/sync/projectSyncState";
 import { mapWithConcurrency } from "@/services/backup/runtime";
 import { hydrateZipPhotos } from "@/services/import/zipPhotoHydration";
@@ -116,7 +117,20 @@ async function buildReusablePhotoMap(
   }
 
   const reusable = new Map();
-  await mapWithConcurrency([...paths], concurrency, async (path) => {
+  // A content-addressed path already states the fingerprint of the photo it
+  // was written from, so most of this map is built without touching storage.
+  // Only camera photos, versioned by timestamp, still have to be read.
+  const unnamed = [];
+  for (const path of paths) {
+    const fingerprint = getPhotoPathContentHash(path);
+    if (!fingerprint) {
+      unnamed.push(path);
+      continue;
+    }
+    if (!reusable.has(fingerprint)) reusable.set(fingerprint, path);
+  }
+
+  await mapWithConcurrency(unnamed, concurrency, async (path) => {
     try {
       const blob = await resolveStoredPhotoBlob(path, getStoredPhoto);
       const fingerprint = await fingerprintBlob(blob);
@@ -168,6 +182,25 @@ async function reconcilePhotoValue(
     if (!existingPath) {
       stats.added += 1;
       stats.addedByField[field] = (stats.addedByField[field] ?? 0) + 1;
+      return incomingPath;
+    }
+
+    // The slot holds a content-addressed photo: its name carries the
+    // fingerprint of the photo it was written from, which is the same kind of
+    // value as `fingerprint` above. Comparing the two settles the slot without
+    // reading the stored file — and settles it more truthfully, since a stored
+    // file that save() compressed no longer has the bytes it was created from
+    // and would compare as different to its own source.
+    const existingHash = getPhotoPathContentHash(existingPath);
+    if (existingHash && fingerprint) {
+      if (existingHash === fingerprint) {
+        stats.reused += 1;
+        return existingPath;
+      }
+      stats.replacedByReason.different =
+        (stats.replacedByReason.different ?? 0) + 1;
+      stats.replaced += 1;
+      stats.replacedByField[field] = (stats.replacedByField[field] ?? 0) + 1;
       return incomingPath;
     }
 
