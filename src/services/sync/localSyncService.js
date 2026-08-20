@@ -136,7 +136,18 @@ function toBlob(value) {
   );
 }
 
-export async function prepareNativeArchive({ archive, produceArchive }) {
+/**
+ * Кладёт архив в подготовленный нативный файл и возвращает его токен.
+ *
+ * @param {{
+ *   archive?: Blob|null,
+ *   produceArchive?: ((append: (chunk: unknown) => Promise<void>, maxBytes: number) => Promise<number|void>)|null,
+ * }} source готовый архив или тот, кто напишет его кусками
+ */
+export async function prepareNativeArchive({
+  archive = null,
+  produceArchive = null,
+}) {
   if (!(archive instanceof Blob) && typeof produceArchive !== "function") {
     throw new TypeError("archive or produceArchive is required");
   }
