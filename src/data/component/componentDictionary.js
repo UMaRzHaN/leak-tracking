@@ -6,27 +6,36 @@
  * are suggestions, never a closed set: the walk is a discovery process and the
  * operator has to be able to enter equipment nobody listed in advance.
  *
- * Kept separate from the leak dictionary on purpose. That one describes what
- * happened at a leak (causes, fixes, materials for the repair); this one
- * describes the hardware itself.
+ * Всё, что описывает само железо — назначение, класс, среду, материал,
+ * состояние, — живёт здесь: у утечки таких полей нет.
+ *
+ * А вот наименование берётся из словаря утечек и только дополняется здесь.
+ * Поле `component` у карточки и у утечки общее: карточка компонента должна
+ * копироваться в утечку напрямую, без таблицы соответствий. Пока списки были
+ * независимы, одно и то же железо называлось двумя способами («Кран шаровой»
+ * против «Кран Шаровой», «Клапан обратный» против «Обратный Клапан»), и
+ * голосовой ввод сводил сказанное то к одной строке, то к другой. Отсюда
+ * вывод, а не копия: разойтись заново им теперь негде.
  */
 
-/** Russian names, paired with `COMPONENT_NAMES_EN` through `COMPONENT_NAME_TRANSLATIONS`. */
-export const component_names = [
-  "Труба",
+import { components as leak_components } from "@/data/leak/fieldDictionary";
+
+/**
+ * Железо, которого нет в словаре утечек.
+ *
+ * Взято из книги заказчика: это то, что стоит на площадке, но около чего
+ * утечку пока не записывали. Именуется в том же стиле, что и словарь утечек, —
+ * он здесь главный.
+ */
+const registry_only_names = [
   "Задвижка",
   "Задвижка с ручным приводом",
-  "Кран шаровой",
-  "Вентиль",
   "Запорный вентиль",
-  "Клапан обратный",
-  "Клапан отсекатель",
   "Регулирующий клапан",
   "Клапан регулирующий давление",
   "Предохранительный клапан",
   "Регулируемый штуцер",
   "Двухвентильный манифолд",
-  "Манометр",
   "Датчик температуры газа",
   "Расходомер",
   "Уровнемерная колонка",
@@ -36,54 +45,18 @@ export const component_names = [
   "Дегазатор",
   "Ёмкость",
   "Воздухосборник",
-  "Фланцевое соединение",
-  "Сварной шов",
-  "Отвод",
   "Тройник",
-  "Заглушка",
-];
-
-export const component_names_en = [
-  "Pipe",
-  "Gate valve",
-  "Manual gate valve",
-  "Ball valve",
-  "Valve",
-  "Shut-off valve",
-  "Check valve",
-  "Shut-off valve",
-  "Control valve",
-  "Pressure control valve",
-  "Safety valve",
-  "Regulating nipple",
-  "Two-valve manifold",
-  "Pressure gauge",
-  "Gas temperature sensor",
-  "Flow meter",
-  "Level gauge column",
-  "Separator",
-  "Divider",
-  "Weathering agent",
-  "Degasser",
-  "Container",
-  "Air collector",
-  "Flange connection",
-  "Weld seam",
-  "Bend",
-  "Tee",
-  "Plug",
 ];
 
 /**
- * Fills the English name once the Russian one is picked, so the operator types
- * a component name once instead of twice. Both fields stay editable — the
- * lookup is a convenience, not a constraint.
+ * Наименования, которые предлагает карточка компонента.
+ *
+ * Английская колонка, которую ждёт книга заказчика, заполняется не отсюда, а
+ * общим переводчиком подсказок (`translateAutocompleteOption`) — по тем же
+ * строкам. Держать здесь второй список переводов значило бы завести ровно то
+ * расхождение, ради устранения которого наименования и выводятся.
  */
-export const COMPONENT_NAME_TRANSLATIONS = Object.freeze(
-  Object.fromEntries(
-    component_names.map((name, index) => [name, component_names_en[index]]),
-  ),
-);
+export const component_names = [...leak_components, ...registry_only_names];
 
 /** What the component does in the process. */
 export const component_types = [

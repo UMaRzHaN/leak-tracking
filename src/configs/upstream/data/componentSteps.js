@@ -51,9 +51,10 @@ export const COMPONENT_STEPS = [
       },
       {
         /*
-         * Named from the workbook's own list rather than the leak dictionary:
-         * the two spellings differ here and there, and the registry is the one
-         * that has to match the customer's documentation.
+         * Наименования — из словаря утечек, дополненные железом, которого там
+         * нет (см. `component_names`). Поле `component` у карточки и у утечки
+         * общее: карточка должна копироваться в утечку напрямую, а два списка
+         * называли одно и то же по-разному.
          */
         type: "autocomplete",
         key: "component",

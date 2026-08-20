@@ -14,7 +14,7 @@ import {
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import { toNullableNumber } from "@/utils/normalize/toNullableNumber";
 import { hasCoordsFix, waitForCoordsFix } from "@/utils/coordsFix";
-import { COMPONENT_NAME_TRANSLATIONS } from "@/data/component/componentDictionary";
+import { translateAutocompleteOption } from "@/features/search/Autocomplete/optionTranslations";
 import { getCopyPreviousKeys } from "@/features/leakForm/utils/copyPrevious";
 import { buildGhostPlaceholders } from "@/features/leakForm/utils/ghostPlaceholders";
 import { localizeComponentSteps } from "./localizeComponentSteps";
@@ -142,10 +142,15 @@ export default function ComponentCardForm({
     setForm((current) => {
       const next = { ...current, [key]: value };
       // Naming the component fills the English column the workbook expects, so
-      // the operator names it once instead of twice.
+      // the operator names it once instead of twice. Перевод берётся общим
+      // переводчиком подсказок — тем же, что переводит это поле у утечки.
       if (key === "component" && !current.component_name_en) {
-        const translated = COMPONENT_NAME_TRANSLATIONS[value];
-        if (translated) next.component_name_en = translated;
+        const translated = translateAutocompleteOption(value, "en");
+        // Незнакомое наименование возвращается как есть; в английскую колонку
+        // русское слово класть нельзя — лучше пусто, чем неверно.
+        if (translated && translated !== value) {
+          next.component_name_en = translated;
+        }
       }
       return next;
     });
