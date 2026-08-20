@@ -7,6 +7,12 @@
     "lines": 80
   },
   "files": {
+    "src/app/hooks/useSetupImports.js": {
+      "statements": 88,
+      "branches": 88,
+      "functions": 98,
+      "lines": 90
+    },
     "src/app/project/ProjectContext.jsx": {
       "statements": 87,
       "branches": 69,
@@ -48,6 +54,12 @@
       "branches": 75,
       "functions": 98,
       "lines": 94
+    },
+    "src/hooks/useSwipeActions.js": {
+      "statements": 93,
+      "branches": 89,
+      "functions": 98,
+      "lines": 98
     },
     "src/pages/DataBase/DataBase.jsx": {
       "statements": 75,
