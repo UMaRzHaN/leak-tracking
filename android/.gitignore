@@ -22,6 +22,10 @@ out/
 # Gradle files
 .gradle/
 build/
+# Сессии компилятора Kotlin. Появляются при первой же сборке и роняют
+# check:clean, а с ним и verify:release — на пустом месте, потому что к
+# исходникам они отношения не имеют.
+.kotlin/
 
 # Local configuration file (sdk path, etc)
 local.properties
