@@ -60,9 +60,9 @@ export async function createLeak(page, leakId = "4242", location = null) {
     await page.getByLabel(/^Подразделение/).fill(location.subdivision);
     await page.getByLabel(/^Месторождение/).fill(location.deposit);
     await page.getByLabel(/^Локация/).fill(location.location);
-    // The location field is an autocomplete; dismiss its list so it does not
-    // cover the Next button.
-    await page.keyboard.press("Escape");
+    // Список подсказок закрывается по уходу фокуса — Escape автодополнение не
+    // слушает. Пока список открыт, он перекрывает кнопку «Далее».
+    await page.getByLabel(/^Локация/).blur();
   }
 
   await page.getByRole("button", { name: /^Далее/ }).click();

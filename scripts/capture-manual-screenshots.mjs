@@ -434,9 +434,9 @@ async function monitoringShots(page) {
  */
 const REGISTRY_CARDS = [
   { uid: "4242", tag: "ЗД-32", location: "Куст 12", name: "Задвижка" },
-  { uid: "4243", tag: "КШ-7", location: "Куст 12", name: "Кран шаровой" },
+  { uid: "4243", tag: "КШ-7", location: "Куст 12", name: "Кран Шаровой" },
   { uid: "4244", tag: "PG-3", location: "Куст 14", name: "Манометр" },
-  { uid: "4245", tag: "ОК-1", location: "Куст 14", name: "Обратный клапан" },
+  { uid: "4245", tag: "ОК-1", location: "Куст 14", name: "Обратный Клапан" },
 ];
 
 async function addComponentCard(page, card, { captureForm = false } = {}) {

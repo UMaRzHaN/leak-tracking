@@ -29,9 +29,10 @@ async function addComponentCard(page, card) {
   await page.getByLabel(/^Индивидуальный номер/).fill(card.uid);
   await page.getByLabel(/^Номер на схеме/).fill(card.tag);
   await page.getByLabel(/^Локация/).fill(card.location);
+  // Список подсказок закрывается по уходу фокуса — Escape автодополнение не
+  // слушает. Пока список открыт, он перекрывает кнопку «Далее».
   await page.getByLabel(/^Компонент/).fill(card.name);
-  // Список автодополнения перекрывает кнопку «Далее».
-  await page.keyboard.press("Escape");
+  await page.getByLabel(/^Компонент/).blur();
 
   for (let step = 0; step < 3; step += 1) {
     await page.getByRole("button", { name: /^Далее/ }).click();
