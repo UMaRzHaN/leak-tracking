@@ -298,7 +298,7 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            "vendor-react": ["react", "react-dom"],
+            "vendor-react": ["react", "react-dom", "react-dom/client"],
             "vendor-capacitor": [
               "@capacitor/core",
               "@capacitor/filesystem",
