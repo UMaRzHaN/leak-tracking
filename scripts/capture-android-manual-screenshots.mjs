@@ -78,6 +78,22 @@ async function main() {
   }
 }
 
+/**
+ * Вкладка выбирается по названию, а не по номеру.
+ *
+ * Номера съехали, как только у Upstream появился «Реестр»: он встал между
+ * «Мониторингом» и «Картой», и `nth(4)` начал открывать реестр вместо карты —
+ * снимок «27-map» показывал не то, а «28-map-filters» падал, потому что у
+ * реестра нет фильтра по мониторингу. Название переживёт и следующую вкладку.
+ */
+async function openTab(page, name) {
+  await page
+    .getByRole("contentinfo")
+    .getByRole("button", { name: new RegExp(name) })
+    .first()
+    .click();
+}
+
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -395,7 +411,7 @@ async function monitoringShots(device, page) {
   await resetToHome(page);
 
   await step("23-monitoring", async () => {
-    await page.getByRole("contentinfo").getByRole("button").nth(3).click();
+    await openTab(page, "Мониторинг");
     await wait(1800);
     await shot(device, "23-monitoring");
   });
@@ -440,7 +456,7 @@ async function mapShots(device, page) {
   await resetToHome(page);
 
   await step("27-map", async () => {
-    await page.getByRole("contentinfo").getByRole("button").nth(4).click();
+    await openTab(page, "Карта");
     await wait(9000);
     await shot(device, "27-map");
   });
@@ -530,7 +546,7 @@ async function themeAndLanguage(device, page) {
       .getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ })
       .click();
     await wait(1000);
-    await page.getByRole("contentinfo").getByRole("button").nth(0).click();
+    await openTab(page, "Главная");
     await wait(1500);
     await shot(device, "37-dark-theme", { settle: 1500 });
   });
@@ -550,7 +566,7 @@ async function themeAndLanguage(device, page) {
       .getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ })
       .click();
     await wait(1000);
-    await page.getByRole("contentinfo").getByRole("button").nth(0).click();
+    await openTab(page, "Главная");
     await wait(1500);
     await shot(device, "38-english", { settle: 1200 });
   });
