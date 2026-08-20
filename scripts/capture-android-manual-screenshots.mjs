@@ -27,6 +27,9 @@ const GEO = { lat: 41.297147, lng: 69.258685 };
 const OUT_DIR = path.resolve("docs/manual/android/img");
 const SEED = path.resolve("scripts/seed100leaks.js");
 const SEED_COUNT = Number(process.env.ANDROID_SEED_COUNT ?? 18);
+// Карточки реестра: завести их через интерфейс нельзя — фото на устройстве
+// берёт нативная камера, и через WebView файл не подставить.
+const SEED_COMPONENTS = Number(process.env.ANDROID_SEED_COMPONENTS ?? 8);
 // Ширина хранимого кадра: экран устройства 1080 px, для PDF хватает половины.
 const STORED_WIDTH = 540;
 
@@ -61,6 +64,7 @@ async function main() {
     await step("database", () => databaseShots(device, seeded));
     await step("monitoring", () => monitoringShots(device, seeded));
     await step("map", () => mapShots(device, seeded));
+    await step("registry", () => registryShots(device, seeded));
     await step("settings", () => settingsShots(device, seeded));
     await step("themeAndLanguage", () => themeAndLanguage(device, seeded));
   } finally {
@@ -85,11 +89,16 @@ async function main() {
  * «Мониторингом» и «Картой», и `nth(4)` начал открывать реестр вместо карты —
  * снимок «27-map» показывал не то, а «28-map-filters» падал, потому что у
  * реестра нет фильтра по мониторингу. Название переживёт и следующую вкладку.
+ *
+ * Съёмка доходит до английского интерфейса, поэтому имя — регулярное выражение
+ * на оба языка: после переключения «Главная» становится «Home».
  */
 async function openTab(page, name) {
   await page
     .getByRole("contentinfo")
-    .getByRole("button", { name: new RegExp(name) })
+    .getByRole("button", {
+      name: name instanceof RegExp ? name : new RegExp(name),
+    })
     .first()
     .click();
 }
@@ -282,9 +291,13 @@ async function addLeakForm(device, page) {
 async function seedData(device, page) {
   console.log("\n[3] Тестовые данные");
   const source = await fs.readFile(SEED, "utf8");
-  await page.evaluate((count) => {
-    window.SEED_LEAK_COUNT = count;
-  }, SEED_COUNT);
+  await page.evaluate(
+    ({ leaks, components }) => {
+      window.SEED_LEAK_COUNT = leaks;
+      window.SEED_COMPONENT_COUNT = components;
+    },
+    { leaks: SEED_COUNT, components: SEED_COMPONENTS },
+  );
   await page.evaluate(source).catch(() => {});
   await wait(30000);
 }
@@ -411,7 +424,7 @@ async function monitoringShots(device, page) {
   await resetToHome(page);
 
   await step("23-monitoring", async () => {
-    await openTab(page, "Мониторинг");
+    await openTab(page, /Мониторинг|Monitoring/);
     await wait(1800);
     await shot(device, "23-monitoring");
   });
@@ -456,7 +469,7 @@ async function mapShots(device, page) {
   await resetToHome(page);
 
   await step("27-map", async () => {
-    await openTab(page, "Карта");
+    await openTab(page, /Карта|Map/);
     await wait(9000);
     await shot(device, "27-map");
   });
@@ -465,6 +478,50 @@ async function mapShots(device, page) {
     await page.getByRole("button", { name: "Фильтр по мониторингу" }).click();
     await shot(device, "28-map-filters", { settle: 1000 });
     await page.keyboard.press("Escape");
+    await wait(600);
+  });
+}
+
+// --- 7a. Реестр компонентов ------------------------------------------------
+
+async function registryShots(device, page) {
+  console.log("\n[7a] Реестр компонентов");
+  await resetToHome(page);
+
+  await step("39-registry-list", async () => {
+    await openTab(page, /Реестр|Registry/);
+    await page.getByRole("heading", { name: "Реестр компонентов" }).waitFor();
+    await shot(device, "39-registry-list", { settle: 1500 });
+  });
+
+  await step("40-registry-filters", async () => {
+    await page.getByRole("button", { name: "Фильтры" }).first().click();
+    await shot(device, "40-registry-filters", { settle: 800 });
+    await page.getByRole("button", { name: "Фильтры" }).first().click();
+    await wait(500);
+  });
+
+  await step("41-registry-card", async () => {
+    await page
+      .getByRole("button", { name: "Добавить компонент", exact: true })
+      .click();
+    await page.getByText("Новый компонент", { exact: true }).waitFor();
+    await shot(device, "41-registry-card", { settle: 800 });
+    await page
+      .getByRole("button", { name: /Отмена|Назад/ })
+      .first()
+      .click();
+    await wait(800);
+  });
+
+  await step("42-registry-details", async () => {
+    // Карточка открывается нажатием на неё, как и в веб-скрипте.
+    await page.getByText("9001", { exact: true }).first().click();
+    await page
+      .getByRole("dialog", { name: "Карточка компонента" })
+      .waitFor({ timeout: 10000 });
+    await shot(device, "42-registry-details", { settle: 800 });
+    await page.getByRole("button", { name: "Закрыть", exact: true }).click();
     await wait(600);
   });
 }
@@ -546,7 +603,7 @@ async function themeAndLanguage(device, page) {
       .getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ })
       .click();
     await wait(1000);
-    await openTab(page, "Главная");
+    await openTab(page, /Главная|Home/);
     await wait(1500);
     await shot(device, "37-dark-theme", { settle: 1500 });
   });
@@ -557,6 +614,7 @@ async function themeAndLanguage(device, page) {
     const language = page.getByRole("button", {
       name: /Переключить язык|Toggle language/,
     });
+    await language.waitFor({ timeout: 20000 });
     await language.evaluate((element) =>
       element.scrollIntoView({ block: "center" }),
     );
@@ -566,7 +624,7 @@ async function themeAndLanguage(device, page) {
       .getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ })
       .click();
     await wait(1000);
-    await openTab(page, "Главная");
+    await openTab(page, /Главная|Home/);
     await wait(1500);
     await shot(device, "38-english", { settle: 1200 });
   });

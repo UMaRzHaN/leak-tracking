@@ -28,6 +28,10 @@
     (window.SEED_DETAIL_PHOTO_EVERY = 1), // везде будут фото
     // ?? (COUNT > FULL_PHOTO_LIMIT ? 10 : 1), // не везде будут
   );
+  // Карточки реестра. Нужны прежде всего снимкам для руководства: завести их
+  // через интерфейс на эмуляторе нельзя — фото на устройстве берёт нативная
+  // камера, и через WebView файл не подставить.
+  const COMPONENT_COUNT = Number(window.SEED_COMPONENT_COUNT ?? 0);
   const USER_PROFILE_KEY = "leak_tracking:user_profile:v1";
 
   const STORAGE = {
@@ -109,11 +113,27 @@
       cardPhotoPool,
     });
 
+    const components = COMPONENT_COUNT
+      ? buildComponents({
+          count: COMPONENT_COUNT,
+          currentUser,
+          cardPhotoPool,
+        })
+      : [];
+
     try {
       if (isNative) {
         await saveNativeData({ leaks, folderName });
+        if (components.length) {
+          await saveNativeComponents({ components, folderName });
+          console.log(`Карточек реестра записано: ${components.length}`);
+        }
       } else {
         await saveWebData({ leaks, projectId: activeId, dataKey });
+        if (components.length) {
+          await saveWebComponents({ components, projectId: activeId });
+          console.log(`Карточек реестра записано: ${components.length}`);
+        }
       }
 
       const withBefore = leaks.filter((leak) => leak.photo).length;
@@ -174,6 +194,71 @@
     return Array.from({ length: CARD_PHOTO_POOL_SIZE }, (_, index) =>
       makePhoto((index * 37) % 360, `ДО ${2400 + index}`, "before"),
     );
+  }
+
+  /**
+   * Карточки реестра.
+   *
+   * Реестр — не выборка из утечек: компонент существует независимо от того,
+   * текло ли на нём. Поэтому карточки строятся своим набором железа и своими
+   * номерами, а совпадают с утечками только местом — обход у них общий.
+   */
+  function buildComponents({ count, currentUser, cardPhotoPool }) {
+    const STATUSES = [
+      "В работе",
+      "В работе",
+      "В работе",
+      "В резерве",
+      "Требует замены",
+      "Законсервирован",
+    ];
+    const TAG_PREFIX = { Задвижка: "ЗД", "Кран Шаровой": "КШ", Манометр: "PG" };
+
+    return Array.from({ length: count }, (_, index) => {
+      const name = pick(COMPONENT_NAMES);
+      const uid = String(9001 + index);
+      const subdivision = pick(SUBDIVISIONS);
+      const inspectedAt = new Date(
+        Date.now() - Math.floor(Math.random() * 30) * DAY,
+      ).toISOString();
+
+      return {
+        id: `seed-component-${uid}`,
+        component_uid: uid,
+        scheme_tag: `${TAG_PREFIX[name] ?? "К"}-${10 + index}`,
+        component: name,
+        component_type: pick(COMPONENT_TYPES),
+        equipment_type: pick(EQUIPMENT_CLASSES),
+        subdivision,
+        deposit: pick(DEPOSITS[subdivision] ?? ["Тенгизское"]),
+        location: pick(LOCATIONS),
+        object: pick(COMPONENT_OBJECTS),
+        connection_type: pick(CONNECTION_TYPES),
+        actuator_type: pick(ACTUATOR_TYPES),
+        installation_type: pick(INSTALLATION_TYPES),
+        medium: pick(MEDIUMS),
+        body_material: pick(BODY_MATERIALS),
+        manufacturer: pick(MANUFACTURERS),
+        nominal_diameter: pick([50, 80, 100, 150, 200, 300]),
+        nominal_pressure: pick([1.6, 4, 6.3, 10, 16]),
+        component_status: pick(STATUSES),
+        lat: rndFloat(BASE_LAT - 0.035, BASE_LAT + 0.035, 6),
+        lng: rndFloat(BASE_LNG - 0.045, BASE_LNG + 0.045, 6),
+        photo: cardPhotoPool
+          ? cardPhotoPool[index % cardPhotoPool.length]
+          : makePhoto((index * 53) % 360, `${uid}`, "before"),
+        date: inspectedAt,
+        inspected_at: inspectedAt,
+        updatedAt: Date.parse(inspectedAt),
+        history: [
+          {
+            at: inspectedAt,
+            user: currentUser,
+            action: "created",
+          },
+        ],
+      };
+    });
   }
 
   async function buildLeaks({
@@ -849,6 +934,74 @@
     console.log(`Фото записано в Filesystem: ${photoCount}`);
   }
 
+  /**
+   * Реестр рядом с утечками, в том же виде, что пишет приложение.
+   *
+   * Кладётся в `components.json`: хранилище читает SQLite первым, а не найдя
+   * там ничего — переносит этот файл внутрь. То есть сид пишет туда, куда
+   * приложение и так умеет заглядывать, и лезть в базу плагина не нужно.
+   */
+  async function saveNativeComponents({ components, folderName }) {
+    const Fs = window.Capacitor?.Plugins?.Filesystem;
+    if (!Fs) throw new Error("Capacitor Filesystem недоступен");
+
+    const dataDir = `LeakReports/${folderName}/data`;
+    const photoDir = `LeakReports/${folderName}/photos`;
+    await Fs.mkdir({ path: dataDir, directory: "DATA", recursive: true }).catch(
+      () => {},
+    );
+
+    for (const component of components) {
+      if (
+        typeof component.photo !== "string" ||
+        !component.photo.startsWith("data:image/")
+      )
+        continue;
+      component.photo = await writeNativePhoto({
+        Fs,
+        photoDir,
+        prefix: "component",
+        leakId: component.component_uid,
+        dataUrl: component.photo,
+      });
+    }
+
+    await Fs.writeFile({
+      path: `${dataDir}/components.json`,
+      directory: "DATA",
+      data: JSON.stringify({
+        version: 1,
+        updatedAt: Date.now(),
+        data: components,
+      }),
+      encoding: "utf8",
+    });
+  }
+
+  async function saveWebComponents({ components, projectId }) {
+    const request = indexedDB.open("LeakTrackingComponentsDB");
+    const db = await new Promise((resolve, reject) => {
+      request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains("components")) {
+          request.result.createObjectStore("components");
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction("components", "readwrite");
+      tx.objectStore("components").put(
+        { version: 1, updatedAt: Date.now(), data: components },
+        projectId,
+      );
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  }
+
   async function writeNativePhoto({ Fs, photoDir, prefix, leakId, dataUrl }) {
     const base64 = dataUrl.split(",")[1];
     const fileName = `photo_${prefix}_${leakId}_${Date.now()}_${Math.floor(
@@ -1106,6 +1259,44 @@
     "Кран Шаровой",
     "Блок фильтрсепараторов",
   ];
+  // Железо реестра. Совпадает по написанию со словарём наименований: поле
+  // `component` у карточки и у утечки общее.
+  const COMPONENT_NAMES = [
+    "Задвижка",
+    "Кран Шаровой",
+    "Манометр",
+    "Обратный Клапан",
+    "Вентиль",
+    "Фланцевое соединение",
+    "Предохранительный клапан",
+    "Сепаратор",
+  ];
+  const COMPONENT_TYPES = [
+    "Запорная арматура",
+    "Регулирующая арматура",
+    "Измерительный прибор",
+    "Соединение",
+  ];
+  const EQUIPMENT_CLASSES = [
+    "Трубопроводная арматура",
+    "КИПиА",
+    "Технологическое оборудование",
+  ];
+  const MEDIUMS = ["Природный газ", "Газовый конденсат", "Топливный газ"];
+  const BODY_MATERIALS = ["Сталь 20", "Сталь 09Г2С", "Нержавеющая сталь"];
+  const MANUFACTURERS = ["ПО «Арматура»", "Завод «Нефтемаш»", "Petrolvalves"];
+  // Объект карточки — сооружение, на котором стоит железо. В словаре утечек
+  // объектом бывает и сама арматура, но в реестре строка «Объект: Кран
+  // Шаровой» рядом с «Компонент: Обратный Клапан» читается как ошибка.
+  const COMPONENT_OBJECTS = [
+    "Компрессорная станция",
+    "Дожимная компрессорная станция",
+    "Установка комплексной подготовки газа",
+    "Газосборный пункт",
+    "Блок фильтрсепараторов",
+    "Кустовая площадка",
+  ];
+
   const COMPONENTS = [
     "Входная линия",
     "Выходная линия",
