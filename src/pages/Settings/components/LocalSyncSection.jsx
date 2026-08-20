@@ -5,7 +5,6 @@ import s from "../Settings.module.scss";
 const SYNC_BUSY_STATUSES = new Set([
   "preparing",
   "scanning",
-  "scanningImport",
   "joining",
   "merging",
   "importing",
@@ -33,10 +32,8 @@ function getTexts(t, status) {
     reject: t("localSync.reject"),
     peerTitle: t("localSync.peerTitle"),
     peerHint: t("localSync.peerHint"),
-    scanSync: t("localSync.scanSync"),
-    scanSyncLoading: t("localSync.scanSyncLoading"),
-    scanImport: t("localSync.scanImport"),
-    scanImportLoading: t("localSync.scanImportLoading"),
+    scan: t("localSync.scan"),
+    scanLoading: t("localSync.scanLoading"),
     manualTitle: t("localSync.manualTitle"),
     manualHint: t("localSync.manualHint"),
     address: t("localSync.address"),
@@ -71,7 +68,7 @@ export default function LocalSyncSection({ sync }) {
   const { status, session } = sync.state;
   const busy = SYNC_BUSY_STATUSES.has(status);
   const texts = getTexts(t, status);
-  const isScanning = status === "scanning" || status === "scanningImport";
+  const isScanning = status === "scanning";
   const remainingSeconds = session?.remainingSeconds ?? 0;
   const remainingTime = `${String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:${String(remainingSeconds % 60).padStart(2, "0")}`;
 
@@ -223,20 +220,9 @@ export default function LocalSyncSection({ sync }) {
                 type="button"
                 className={s.backupBtn}
                 disabled={busy || status === "hosting"}
-                onClick={sync.scanAndJoin}
+                onClick={sync.scanAndConnect}
               >
-                {status === "scanning" ? texts.scanSyncLoading : texts.scanSync}
-              </button>
-
-              <button
-                type="button"
-                className={`${s.backupBtn} ${s.restore}`}
-                disabled={busy || status === "hosting"}
-                onClick={sync.scanAndImport}
-              >
-                {status === "scanningImport" || status === "importing"
-                  ? texts.scanImportLoading
-                  : texts.scanImport}
+                {isScanning ? texts.scanLoading : texts.scan}
               </button>
             </div>
           </div>

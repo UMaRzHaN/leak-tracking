@@ -12,13 +12,14 @@ import {
   isLocalSyncAvailable,
   startLocalSyncHost,
 } from "@/services/sync/localSyncService";
+import {
+  buildProjectKey,
+  resolveScanIntent,
+  SCAN_INTENT_SYNC,
+} from "@/services/sync/scanIntent";
 import { ignoredError } from "@/utils/ignoredError";
 
 const IDLE_STATE = { status: "idle", session: null };
-
-function projectKey(project) {
-  return `${project?.type ?? "unknown"}:${project?.name?.trim().toLowerCase() ?? ""}`;
-}
 
 function typeLabel(type, t) {
   const labels = {
@@ -168,7 +169,7 @@ export function useLocalSync({
         throw new Error("Не удалось создать идентификатор синхронизации");
       }
       const identity = {
-        projectKey: projectKey(syncProject),
+        projectKey: buildProjectKey(syncProject),
         syncId: syncProject.syncId,
       };
       const session = await startLocalSyncHost({
@@ -313,7 +314,7 @@ export function useLocalSync({
           code,
           fingerprint,
           produceArchive: (writeChunk) => streamArchive(writeChunk),
-          projectKey: projectKey(activeProject),
+          projectKey: buildProjectKey(activeProject),
           syncId: activeProject?.syncId ?? connectionSyncId ?? "",
           sessionId,
         });
@@ -346,38 +347,27 @@ export function useLocalSync({
     ],
   );
 
-  const scanAndJoin = useCallback(async () => {
+  /**
+   * Одна кнопка на оба сценария.
+   *
+   * Код опознаёт базу, поэтому спрашивать человека, что он собирается делать,
+   * не нужно: если это база открытого проекта — синхронизация, если чужая —
+   * импорт. Прежние две кнопки заставляли выбирать вслепую, до того как камера
+   * что-либо увидела, и неверный выбор давал не другой результат, а отказ.
+   */
+  const scanAndConnect = useCallback(async () => {
     const operation = beginProjectOperation();
     setStateSafe({ status: "scanning", session: null });
     try {
-      const connection = await scanLocalSyncQr({
-        projectKey: projectKey(activeProject),
-        syncId: activeProject?.syncId,
-      });
-      if (!isProjectOperationCurrent(operation)) return;
-      await joinHost(connection, operation);
-    } catch (error) {
-      if (!isProjectOperationCurrent(operation)) return;
-      setStateSafe(IDLE_STATE);
-      if (error.code === "QR_SCAN_CANCELLED") return;
-      notify("error", `${t("settings.qrCodeError")}: ${error.message}`);
-    }
-  }, [
-    activeProject,
-    beginProjectOperation,
-    isProjectOperationCurrent,
-    joinHost,
-    notify,
-    setStateSafe,
-    t,
-  ]);
-
-  const scanAndImport = useCallback(async () => {
-    const operation = beginProjectOperation();
-    setStateSafe({ status: "scanningImport", session: null });
-    try {
+      // Без ожидаемого проекта: чужой код здесь не ошибка, а импорт.
       const connection = await scanLocalSyncQr();
       if (!isProjectOperationCurrent(operation)) return;
+
+      if (resolveScanIntent(connection, activeProject) === SCAN_INTENT_SYNC) {
+        await joinHost(connection, operation);
+        return;
+      }
+
       setStateSafe({ status: "importing", session: null });
       const incoming = await fetchLocalSyncArchive(connection);
       if (!isProjectOperationCurrent(operation)) return;
@@ -394,11 +384,13 @@ export function useLocalSync({
       if (!isProjectOperationCurrent(operation)) return;
       setStateSafe(IDLE_STATE);
       if (error.code === "QR_SCAN_CANCELLED") return;
-      notify("error", `${t("settings.qrImportError")}: ${error.message}`);
+      notify("error", `${t("settings.qrCodeError")}: ${error.message}`);
     }
   }, [
+    activeProject,
     beginProjectOperation,
     isProjectOperationCurrent,
+    joinHost,
     notify,
     onImportZip,
     setStateSafe,
@@ -494,8 +486,7 @@ export function useLocalSync({
     startHost,
     stopHost,
     joinHost,
-    scanAndJoin,
-    scanAndImport,
+    scanAndConnect,
     cancelScan,
     allowMultipleImports,
     setAllowMultipleImports,

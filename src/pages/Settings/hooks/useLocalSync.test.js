@@ -362,18 +362,19 @@ describe("useLocalSync", () => {
       code: "123456",
       fingerprint: "A".repeat(64),
       ...QR_SESSION,
+      projectKey: "upstream:alpha field",
+      syncId: "sync-alpha-1234",
     });
     syncService.exchangeLocalSyncArchive.mockResolvedValue(incoming);
     const { result } = renderSync();
 
     await act(async () => {
-      await result.current.scanAndJoin();
+      await result.current.scanAndConnect();
     });
 
-    expect(syncService.scanLocalSyncQr).toHaveBeenCalledWith({
-      projectKey: "upstream:alpha field",
-      syncId: "sync-alpha-1234",
-    });
+    // Сканирование больше ничего не ожидает от кода: чем он окажется,
+    // решается уже после того, как он прочитан.
+    expect(syncService.scanLocalSyncQr).toHaveBeenCalledWith();
     expect(syncService.exchangeLocalSyncArchive).toHaveBeenCalledWith(
       expect.objectContaining({
         host: "192.168.43.1",
@@ -406,7 +407,7 @@ describe("useLocalSync", () => {
     });
 
     await act(async () => {
-      await result.current.scanAndJoin();
+      await result.current.scanAndConnect();
     });
 
     expect(syncService.exchangeLocalSyncArchive).toHaveBeenCalledWith(
@@ -430,7 +431,7 @@ describe("useLocalSync", () => {
     const { result, notify } = renderSync();
 
     await act(async () => {
-      await result.current.scanAndJoin();
+      await result.current.scanAndConnect();
     });
 
     expect(result.current.state.status).toBe("idle");
@@ -440,19 +441,19 @@ describe("useLocalSync", () => {
 
   it("reports QR scan errors before starting the client exchange", async () => {
     syncService.scanLocalSyncQr.mockRejectedValue(
-      new Error("QR-код относится к другой базе данных"),
+      new Error("QR-код синхронизации повреждён"),
     );
     const { result, notify } = renderSync();
 
     await act(async () => {
-      await result.current.scanAndJoin();
+      await result.current.scanAndConnect();
     });
 
     expect(result.current.state.status).toBe("idle");
     expect(syncService.exchangeLocalSyncArchive).not.toHaveBeenCalled();
     expect(notify).toHaveBeenCalledWith(
       "error",
-      "QR code error: QR-код относится к другой базе данных",
+      "QR code error: QR-код синхронизации повреждён",
     );
   });
 
@@ -474,7 +475,7 @@ describe("useLocalSync", () => {
     const { result, onImportZip, onImportIntoExisting, notify } = renderSync();
 
     await act(async () => {
-      await result.current.scanAndImport();
+      await result.current.scanAndConnect();
     });
 
     expect(syncService.scanLocalSyncQr).toHaveBeenCalledWith();
@@ -578,12 +579,12 @@ describe("useLocalSync", () => {
     syncService.scanLocalSyncQr.mockRejectedValueOnce(cancelled);
     const { result, notify } = renderSync({ lang: "en" });
 
-    await act(async () => result.current.scanAndJoin());
+    await act(async () => result.current.scanAndConnect());
     expect(notify).not.toHaveBeenCalled();
     expect(result.current.state.status).toBe("idle");
 
     syncService.scanLocalSyncQr.mockRejectedValueOnce(new Error("wrong code"));
-    await act(async () => result.current.scanAndJoin());
+    await act(async () => result.current.scanAndConnect());
     expect(notify).toHaveBeenCalledWith("error", "QR code error: wrong code");
   });
 
@@ -695,7 +696,7 @@ describe("useLocalSync", () => {
     const { result, onImportZip, notify } = renderSync();
 
     await act(async () => {
-      await result.current.scanAndImport();
+      await result.current.scanAndConnect();
     });
 
     expect(result.current.state.status).toBe("idle");
@@ -720,14 +721,14 @@ describe("useLocalSync", () => {
     const { result, onImportZip, notify } = renderSync();
 
     await act(async () => {
-      await result.current.scanAndImport();
+      await result.current.scanAndConnect();
     });
 
     expect(result.current.state.status).toBe("idle");
     expect(onImportZip).not.toHaveBeenCalled();
     expect(notify).toHaveBeenCalledWith(
       "error",
-      "QR import error: Не удалось прочитать полученный архив (404)",
+      "QR code error: Не удалось прочитать полученный архив (404)",
     );
   });
 

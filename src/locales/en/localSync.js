@@ -7,7 +7,6 @@ export const localSync = {
     preparing: "Preparing archive",
     hosting: "QR is active",
     scanning: "Opening camera",
-    scanningImport: "Opening camera",
     joining: "Connecting",
     merging: "Merging data",
     importing: "Importing database",
@@ -35,11 +34,9 @@ export const localSync = {
 
   peerTitle: "Second phone",
   peerHint:
-    "Scan the QR to synchronize the current project or import the database as a new project.",
-  scanSync: "Scan and synchronize",
-  scanSyncLoading: "Opening camera...",
-  scanImport: "Scan and import database",
-  scanImportLoading: "Importing by QR...",
+    "Scan the QR. The open project's own database is synchronized; any other one is imported as a new project.",
+  scan: "Scan QR",
+  scanLoading: "Opening camera...",
 
   manualTitle: "Manual connection",
   manualHint:
