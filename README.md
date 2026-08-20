@@ -5,7 +5,7 @@
 **Полевая система учёта и контроля утечек газа**
 
 [![React](https://img.shields.io/badge/React-19.2-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://react.dev)
-[![Vite](https://img.shields.io/badge/Vite-6.x-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev)
+[![Vite](https://img.shields.io/badge/Vite-8.x-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev)
 [![Capacitor](https://img.shields.io/badge/Capacitor-8.0-119EFF?style=for-the-badge&logo=capacitor&logoColor=white)](https://capacitorjs.com)
 [![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900?style=for-the-badge&logo=leaflet&logoColor=white)](https://leafletjs.com)
 [![Offline First](https://img.shields.io/badge/Offline-First-orange?style=for-the-badge)](#-офлайн-карты)
@@ -79,7 +79,7 @@ npm run dev
 ## 🏗️ Технологический стек
 
 ```text
-Frontend        React 19 + Vite 6
+Frontend        React 19 + Vite 8
 Styling         SCSS Modules / CSS Variables
 Mobile          Capacitor 8
 Maps            Leaflet + MarkerCluster
@@ -93,14 +93,14 @@ Testing         Vitest + Testing Library + Playwright
 
 | Категория       | Пакеты                                                                                                                                    |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| **Core**        | React 19.2, React DOM 19.2, Vite 6                                                                                                        |
+| **Core**        | React 19.2, React DOM 19.2, Vite 8                                                                                                        |
 | **Mobile**      | Capacitor 8 (android, camera, core, filesystem, geolocation, share; CLI — в devDependencies), speech-recognition, ML Kit barcode scanning |
 | **Maps**        | Leaflet 1.9, Leaflet MarkerCluster 1.5                                                                                                    |
 | **Export / QR** | ExcelJS 4.4, JSZip 3.10, QRCode 1.5                                                                                                       |
 | **i18n**        | i18next, react-i18next                                                                                                                    |
 | **UI**          | clsx 2.1                                                                                                                                  |
 | **Testing**     | Vitest 4, Testing Library (DOM, Jest DOM, React, User Event), Playwright, fake-indexeddb, jsdom                                           |
-| **Tooling**     | TypeScript 6 (только контракты в `src/types/`), ESLint 10, Prettier 3, Sass, husky + lint-staged                                          |
+| **Tooling**     | TypeScript 7 в гейте типов, 6 для линта (см. CONTRIBUTING), ESLint 10, Prettier 3, Sass, husky + lint-staged                              |
 
 ---
 

@@ -209,9 +209,17 @@ Not tasks. Written down so nobody overturns them without knowing the reason.
   16 MB (1.28×) at the price of eight tables and an unrolled loop inside the
   function archive integrity depends on. If export speed is ever the actual
   complaint, move CRC into the worker instead of speeding up the loop.
-- **Vite 6 → 8 stays where it is.** Version 8 builds through rolldown, which
-  takes only the function form of `manualChunks`. That changes chunk splitting
-  and with it every budget above. Separate piece of work, not a bump.
+- **The project installs two TypeScripts, and that is deliberate.**
+  `typescript` stays on 6 because ESLint needs it: `@eslint-react` reaches
+  TypeScript through `ts-api-utils`, which reads `ts.TypeFlags` at module load.
+  In TypeScript 7 the root import returns only the version — the compiler API
+  moved under `typescript/unstable/*` — so that read throws and takes the whole
+  lint run down with it, before a single rule has been considered. The
+  `typescript-next` alias holds 7 and is what `npm run typecheck` runs: the
+  gate checks against the newer compiler, the linter parses with the older one,
+  and neither knows about the other. Collapse this back to one dependency once
+  `ts-api-utils` accepts TypeScript 7 — `npm view ts-api-utils peerDependencies`
+  still caps it at `<7`, release candidate included.
 - **The leak report does not carry the inventory.** Two archives for two
   different recipients: emissions on one side, whoever owns the equipment on
   the other. The ZIP backup still carries everything — it moves a project, it

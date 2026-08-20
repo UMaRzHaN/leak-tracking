@@ -42,7 +42,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write . --ignore-unknown",
     "format:check": "prettier --check . --ignore-unknown",
-    "typecheck": "tsc -p tsconfig.check.json",
+    "typecheck": "node node_modules/typescript-next/bin/tsc -p tsconfig.check.json",
     "prepare": "husky",
     "postinstall": "node scripts/patch-gradle.js",
     "deps:refresh-lock": "npm install --package-lock-only --ignore-scripts",
@@ -115,6 +115,7 @@
     "rollup-plugin-visualizer": "^7.1.1",
     "sass": "^1.103.0",
     "typescript": "^6.0.3",
+    "typescript-next": "npm:typescript@^7.0.2",
     "vite": "^8.2.2",
     "vitest": "^4.1.10"
   },
