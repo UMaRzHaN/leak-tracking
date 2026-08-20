@@ -25,7 +25,7 @@ import ClearActions from "./components/ClearActions";
 import SettingsModal from "@/features/settings/SettingsModal/SettingsModal";
 import { getCopyPreviousKeys } from "@/features/leakForm/utils/copyPrevious";
 import { buildGhostPlaceholders } from "@/features/leakForm/utils/ghostPlaceholders";
-import { dataUrlToBlob } from "@/utils/photoConversion";
+import { hasRestorablePhoto } from "@/utils/restorablePhoto";
 import { shortFieldLabel } from "@/utils/fieldLabels";
 import s from "./LeakForm.module.scss";
 
@@ -75,18 +75,6 @@ function localizeStep(step, t, lang, projectType) {
 
 function localizeSteps(steps, t, lang, projectType) {
   return steps.map((step) => localizeStep(step, t, lang, projectType));
-}
-
-function hasRestorablePhoto(photo) {
-  if (!photo?.src) return false;
-  if (photo.raw) return true;
-  try {
-    return Boolean(
-      dataUrlToBlob(photo.src)?.type?.toLowerCase().startsWith("image/"),
-    );
-  } catch {
-    return false;
-  }
 }
 
 export default function LeakForm({

@@ -10,6 +10,11 @@ export const components = {
   add: "Add component",
   addTitle: "New component",
   editTitle: "Component card",
+  draftBanner: {
+    message: "📋 An unfinished card is waiting",
+    restore: "Restore",
+    discard: "Discard",
+  },
   cancel: "Cancel",
   remove: "Delete component",
   nameRequired:

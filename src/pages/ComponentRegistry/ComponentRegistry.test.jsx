@@ -1257,3 +1257,124 @@ describe("что видно в списке и по чему он отбирае
     expect(screen.queryByText(/Near me/)).toBeNull();
   });
 });
+
+/*
+ * Черновик карточки.
+ *
+ * Обход прерывают постоянно, а карточка заполняется в четыре шага у железа:
+ * потерять её на полпути значит идти к этому железу второй раз. Ключ у неё
+ * свой — начатая карточка не должна стирать начатую утечку.
+ */
+describe("черновик карточки компонента", () => {
+  const DRAFT_KEY = "app:p1:component_draft_v1";
+
+  beforeEach(() => {
+    localStorage.clear();
+    registry.current = makeRegistry();
+  });
+
+  function storeDraft(form, step = 1) {
+    localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({ projectId: "p1", form, step, savedAt: Date.now() }),
+    );
+  }
+
+  it("сохраняет заполненное, пока карточку заводят", async () => {
+    renderRegistry();
+    fireEvent.click(screen.getByRole("button", { name: "Add component" }));
+
+    fireEvent.change(screen.getByLabelText(/Индивидуальный номер/), {
+      target: { value: "9001" },
+    });
+
+    await waitFor(
+      () => {
+        const stored = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? "null");
+        expect(String(stored?.form?.component_uid)).toBe("9001");
+      },
+      { timeout: 3000 },
+    );
+  });
+
+  it("предлагает восстановить незаконченную карточку", async () => {
+    storeDraft({ component_uid: "9001", component: "Задвижка" });
+    renderRegistry();
+    fireEvent.click(screen.getByRole("button", { name: "Add component" }));
+
+    expect(await screen.findByText(/unfinished card/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Restore" }));
+
+    expect(screen.getByLabelText(/Индивидуальный номер/).value).toBe("9001");
+    expect(screen.queryByText(/unfinished card/i)).toBeNull();
+  });
+
+  // Ради этого всё и делается: снимок в localStorage не положишь целиком, в
+  // черновик уходит только предпросмотр — и он должен считаться снимком.
+  it("возвращает выбранное фото и даёт сохранить карточку", async () => {
+    storeDraft(
+      {
+        component_uid: "9001",
+        component: "Задвижка",
+        photo: { src: "data:image/png;base64,iVBORw0KGgo=" },
+      },
+      4,
+    );
+    renderRegistry();
+    fireEvent.click(screen.getByRole("button", { name: "Add component" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Restore" }));
+
+    expect(screen.getByText("photo attached")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /Save$/ }));
+
+    await waitFor(() =>
+      expect(registry.current.addComponent).toHaveBeenCalled(),
+    );
+  });
+
+  it("забывает черновик, если его отвергли", async () => {
+    storeDraft({ component_uid: "9001" });
+    renderRegistry();
+    fireEvent.click(screen.getByRole("button", { name: "Add component" }));
+
+    fireEvent.click(await screen.findByRole("button", { name: "Discard" }));
+
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+    expect(screen.getByLabelText(/Индивидуальный номер/).value).toBe("");
+  });
+
+  // Иначе черновик предлагался бы поверх уже заведённой карточки.
+  it("снимает черновик после сохранения", async () => {
+    storeDraft(
+      {
+        component_uid: "9001",
+        component: "Задвижка",
+        photo: { src: "data:image/png;base64,iVBORw0KGgo=" },
+      },
+      4,
+    );
+    renderRegistry();
+    fireEvent.click(screen.getByRole("button", { name: "Add component" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Restore" }));
+
+    fireEvent.click(screen.getByRole("button", { name: /Save$/ }));
+
+    await waitFor(() =>
+      expect(registry.current.addComponent).toHaveBeenCalled(),
+    );
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+  });
+
+  // Только что открытая форма уже несёт координаты — они штампуются при
+  // открытии. Считать это началом работы значит предлагать восстановить пустое.
+  it("не считает начатой карточку с одними координатами", async () => {
+    renderRegistry();
+    fireEvent.click(screen.getByRole("button", { name: "Add component" }));
+
+    await new Promise((resolve) => setTimeout(resolve, 1300));
+
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+  });
+});

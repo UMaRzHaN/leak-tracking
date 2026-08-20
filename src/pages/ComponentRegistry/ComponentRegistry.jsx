@@ -468,6 +468,7 @@ export default function ComponentRegistry({
     return (
       <ComponentCardForm
         steps={steps.steps}
+        projectId={project?.id ?? null}
         coords={coords}
         gpsEnabled={gpsEnabled}
         setGpsEnabled={setGpsEnabled}

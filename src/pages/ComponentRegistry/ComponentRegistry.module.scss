@@ -211,3 +211,53 @@
   composes: uid;
   color: var(--c-amber, #e0a800);
 }
+
+/* Баннер черновика карточки — та же полоса, что у формы утечки: обход
+   прерывают одинаково, и узнавать её человек должен на обоих экранах. */
+.draftBanner {
+  position: fixed;
+  top: var(--app-header);
+  left: 0;
+  right: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #1e293b;
+  color: #f1f5f9;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.draftBannerText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.draftBtn {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:active {
+    opacity: 0.8;
+  }
+}
+
+.draftBtnRestore {
+  background: var(--c-blue);
+}
+
+.draftBtnDiscard {
+  background: var(--c-text2);
+}

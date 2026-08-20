@@ -14,12 +14,18 @@ import {
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import { toNullableNumber } from "@/utils/normalize/toNullableNumber";
 import { hasCoordsFix, waitForCoordsFix } from "@/utils/coordsFix";
+import { hasRestorablePhoto } from "@/utils/restorablePhoto";
+import { useFormDraft } from "@/hooks/useFormDraft";
+import { isFormDirty } from "@/features/leakForm/utils/isLeakFormDirty";
 import { translateAutocompleteOption } from "@/features/search/Autocomplete/optionTranslations";
 import { getCopyPreviousKeys } from "@/features/leakForm/utils/copyPrevious";
 import { buildGhostPlaceholders } from "@/features/leakForm/utils/ghostPlaceholders";
 import { localizeComponentSteps } from "./localizeComponentSteps";
 import leak from "@/features/leakForm/LeakForm.module.scss";
 import s from "./ComponentRegistry.module.scss";
+
+/** Проставляет приложение, а не человек: фикс снимается при открытии формы. */
+const DRAFT_DERIVED_FIELDS = ["lat", "lng"];
 
 /**
  * The card a walker fills in standing in front of a piece of equipment.
@@ -35,6 +41,7 @@ import s from "./ComponentRegistry.module.scss";
  */
 export default function ComponentCardForm({
   steps: rawSteps,
+  projectId = null,
   coords = null,
   gpsEnabled = true,
   setGpsEnabled = null,
@@ -83,8 +90,73 @@ export default function ComponentCardForm({
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
+  const [draftPrompt, setDraftPrompt] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const pendingKeysRef = useRef([]);
+
+  /*
+   * Черновик карточки.
+   *
+   * Обход прерывают постоянно — по звонку, по разряженной батарее, по «сначала
+   * дойду до конца нитки». Карточка заполняется в четыре шага у железа, и
+   * потерять её на полпути значит идти к этому железу второй раз.
+   *
+   * Только при заведении. В правке черновик перезаписывал бы сохранённую
+   * карточку недоделанной правкой — а её никто не просил сохранять.
+   *
+   * `lat`/`lng` не считаются заполненным: они штампуются в момент открытия
+   * формы, и без этого только что открытая карточка выглядела бы начатой.
+   */
+  const { saveDraft, loadDraft, clearDraft } = useFormDraft(
+    projectId,
+    "component",
+  );
+  const draftEnabled = Boolean(projectId) && !isEditing;
+
+  useEffect(() => {
+    if (!draftEnabled) {
+      setDraftReady(true);
+      return;
+    }
+    const stored = loadDraft();
+    const worthRestoring = isFormDirty(stored?.form, DRAFT_DERIVED_FIELDS);
+    if (stored && !worthRestoring) clearDraft();
+    setDraftPrompt(worthRestoring);
+    setDraftReady(!worthRestoring);
+  }, [clearDraft, draftEnabled, loadDraft]);
+
+  useEffect(() => {
+    if (!draftEnabled || draftPrompt || !draftReady) return undefined;
+    if (!isFormDirty(form, DRAFT_DERIVED_FIELDS)) {
+      clearDraft();
+      return undefined;
+    }
+    const timer = setTimeout(() => saveDraft(form, step), 1000);
+    return () => clearTimeout(timer);
+  }, [
+    clearDraft,
+    draftEnabled,
+    draftPrompt,
+    draftReady,
+    form,
+    saveDraft,
+    step,
+  ]);
+
+  const handleRestoreDraft = useCallback(() => {
+    const stored = loadDraft();
+    if (stored?.form) setForm(stored.form);
+    if (stored?.step) setStep(stored.step);
+    setDraftPrompt(false);
+    setDraftReady(true);
+  }, [loadDraft]);
+
+  const handleDiscardDraft = useCallback(() => {
+    clearDraft();
+    setDraftPrompt(false);
+    setDraftReady(true);
+  }, [clearDraft]);
 
   const required = useMemo(
     () =>
@@ -185,7 +257,10 @@ export default function ComponentCardForm({
         .filter((field) => field.required)
         .filter((field) => {
           const value = form[field.key];
-          if (field.type === "photo") return !value?.raw || !value?.src;
+          // Снимок, восстановленный из черновика, приходит без `raw` — только
+          // предпросмотром. Требовать `raw` значило бы объявить его
+          // отсутствующим: фотография на экране есть, а форма не сохраняется.
+          if (field.type === "photo") return !hasRestorablePhoto(value);
           return value == null || String(value).trim() === "";
         })
         .map((field) => field.key),
@@ -312,12 +387,22 @@ export default function ComponentCardForm({
         }
 
         await onSave(card);
+        // Черновик снимается только после успешной записи: упади сохранение
+        // раньше — заполненное осталось бы единственной копией и исчезло.
+        clearDraft();
         if (!hasCoordsFix(card)) onSavedWithoutCoords?.();
       } finally {
         setSaving(false);
       }
     },
-    [gpsEnabled, isEditing, onSave, onSavedWithoutCoords, setGpsEnabled],
+    [
+      clearDraft,
+      gpsEnabled,
+      isEditing,
+      onSave,
+      onSavedWithoutCoords,
+      setGpsEnabled,
+    ],
   );
 
   const handleConfirmCopy = useCallback(() => {
@@ -392,6 +477,28 @@ export default function ComponentCardForm({
 
   return (
     <div className={`${leak.card} content`}>
+      {draftPrompt && (
+        <div className={s.draftBanner}>
+          <span className={s.draftBannerText}>
+            {t("components.draftBanner.message")}
+          </span>
+          <button
+            type="button"
+            className={`${s.draftBtn} ${s.draftBtnRestore}`}
+            onClick={handleRestoreDraft}
+          >
+            {t("components.draftBanner.restore")}
+          </button>
+          <button
+            type="button"
+            className={`${s.draftBtn} ${s.draftBtnDiscard}`}
+            onClick={handleDiscardDraft}
+          >
+            {t("components.draftBanner.discard")}
+          </button>
+        </div>
+      )}
+
       <PageHeader
         title={isEditing ? texts.editTitle : texts.addTitle}
         subtitle={`${texts.stepPrefix} ${step} / ${steps.length} · ${

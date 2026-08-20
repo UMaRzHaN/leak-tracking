@@ -4,9 +4,25 @@ import { logger } from "@/utils/logger";
 const LEGACY_DRAFT_KEY = "app:form_draft_v1";
 const TTL = 86_400_000; // 24 часа
 
-function draftKey(projectId) {
+/**
+ * У каждой формы свой черновик.
+ *
+ * Утечка и карточка компонента заполняются на одной площадке и обе бросаются
+ * на полпути — по звонку, по севшему аккумулятору, по «сначала дойду до конца
+ * нитки». Общий ключ означал бы, что начатая карточка стирает начатую утечку.
+ *
+ * Ключ утечки оставлен прежним: черновики, лежащие на устройствах, должны
+ * пережить это изменение.
+ */
+const DRAFT_SUFFIX = {
+  leak: "form_draft_v2",
+  component: "component_draft_v1",
+};
+
+function draftKey(projectId, kind) {
   const normalized = String(projectId ?? "").trim();
-  return normalized ? `app:${normalized}:form_draft_v2` : null;
+  const suffix = DRAFT_SUFFIX[kind] ?? DRAFT_SUFFIX.leak;
+  return normalized ? `app:${normalized}:${suffix}` : null;
 }
 
 function removeStoredDraft(key) {
@@ -45,9 +61,9 @@ function readValidDraft(key, projectId) {
   return parsed;
 }
 
-function migrateLegacyDraft(key, projectId) {
-  if (!key) return null;
-  const raw = localStorage.getItem(LEGACY_DRAFT_KEY);
+function migrateLegacyDraft(key, projectId, legacyKey) {
+  if (!key || !legacyKey) return null;
+  const raw = localStorage.getItem(legacyKey);
   if (!raw) return null;
 
   try {
@@ -59,23 +75,26 @@ function migrateLegacyDraft(key, projectId) {
       !Array.isArray(parsed.form);
     const expired = !Number.isFinite(savedAt) || Date.now() - savedAt > TTL;
     if (!validForm || expired) {
-      localStorage.removeItem(LEGACY_DRAFT_KEY);
+      localStorage.removeItem(legacyKey);
       return null;
     }
 
     const migrated = { ...parsed, projectId };
     localStorage.setItem(key, JSON.stringify(migrated));
-    localStorage.removeItem(LEGACY_DRAFT_KEY);
+    localStorage.removeItem(legacyKey);
     return migrated;
   } catch {
-    localStorage.removeItem(LEGACY_DRAFT_KEY);
+    localStorage.removeItem(legacyKey);
     return null;
   }
 }
 
-export function useFormDraft(projectId) {
+export function useFormDraft(projectId, kind = "leak") {
   const normalizedProjectId = String(projectId ?? "").trim() || null;
-  const key = draftKey(normalizedProjectId);
+  const key = draftKey(normalizedProjectId, kind);
+  // Черновик первой версии был только у утечки, и переносить его в карточку
+  // нечего: там лежали поля утечки.
+  const legacyKey = kind === "leak" ? LEGACY_DRAFT_KEY : null;
   /* ======================================================
      SAVE
      ====================================================== */
@@ -99,12 +118,12 @@ export function useFormDraft(projectId) {
 
         if (!key) return;
         localStorage.setItem(key, JSON.stringify(payload));
-        localStorage.removeItem(LEGACY_DRAFT_KEY);
+        if (legacyKey) localStorage.removeItem(legacyKey);
       } catch (e) {
         logger.warn("Draft save failed:", e);
       }
     },
-    [key, normalizedProjectId],
+    [key, legacyKey, normalizedProjectId],
   );
 
   /* ======================================================
@@ -114,7 +133,7 @@ export function useFormDraft(projectId) {
     try {
       const parsed =
         readValidDraft(key, normalizedProjectId) ??
-        migrateLegacyDraft(key, normalizedProjectId);
+        migrateLegacyDraft(key, normalizedProjectId, legacyKey);
       if (!parsed) return null;
       const { form, step } = parsed;
 
@@ -124,7 +143,7 @@ export function useFormDraft(projectId) {
       removeStoredDraft(key);
       return null;
     }
-  }, [key, normalizedProjectId]);
+  }, [key, legacyKey, normalizedProjectId]);
 
   /* ======================================================
      CLEAR
@@ -132,11 +151,11 @@ export function useFormDraft(projectId) {
   const clearDraft = useCallback(() => {
     try {
       removeStoredDraft(key);
-      localStorage.removeItem(LEGACY_DRAFT_KEY);
+      if (legacyKey) localStorage.removeItem(legacyKey);
     } catch (e) {
       logger.warn("Draft clear failed:", e);
     }
-  }, [key]);
+  }, [key, legacyKey]);
 
   /* ======================================================
      HAS DRAFT
@@ -145,13 +164,13 @@ export function useFormDraft(projectId) {
     try {
       return Boolean(
         readValidDraft(key, normalizedProjectId) ??
-        migrateLegacyDraft(key, normalizedProjectId),
+        migrateLegacyDraft(key, normalizedProjectId, legacyKey),
       );
     } catch {
       removeStoredDraft(key);
       return false;
     }
-  }, [key, normalizedProjectId]);
+  }, [key, legacyKey, normalizedProjectId]);
 
   return {
     saveDraft,
