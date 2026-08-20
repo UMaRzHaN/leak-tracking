@@ -373,6 +373,17 @@ export function useSettingsPage({
             v2: result.stats.restoredPhotos ?? 0,
           }),
         );
+        // Книга, побывавшая в Excel, несёт два представления одних и тех же
+        // утечек, и слияние выбирает между ними само. Промолчать об этом
+        // нельзя: человек должен видеть, что его правки дошли.
+        const edited = result.stats.sheetEdited ?? 0;
+        const added = result.stats.sheetAdded ?? 0;
+        if (edited || added) {
+          notify(
+            "info",
+            t("settings.excelSheetEdits", { v1: edited, v2: added }),
+          );
+        }
       } catch (error) {
         notify("error", `${t("settings.excelImportError")}: ${error.message}`);
       } finally {

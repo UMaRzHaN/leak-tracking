@@ -36,6 +36,7 @@ export const settings = {
   noImportableRowsFound: "No importable rows found in Excel",
   projectVImportedV2: 'Project "{{v1}}" imported ({{v2}} records)',
   excelParsedVRecords: "Excel parsed: {{v1}} records, photos: {{v2}}",
+  excelSheetEdits: "Edits from the sheet taken: {{v1}} changed, {{v2}} added.",
   excelImportError: "Excel import error",
   excelImportInProgress: "Excel import in progress, please wait...",
   importedVRecordsBut:

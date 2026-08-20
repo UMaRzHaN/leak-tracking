@@ -21,6 +21,7 @@ import {
   getCellPhotoValue,
 } from "@/services/import/workbookSchema";
 import { parseEmbeddedBackup } from "@/services/import/embeddedBackup";
+import { mergeSheetEditsIntoBackup } from "@/services/import/backupSheetMerge";
 import {
   isRecognizedStatus,
   isValidPhotoPath,
@@ -93,15 +94,25 @@ export async function parseExcelLeaks(
 
   const embeddedBackup = parseEmbeddedBackup(workbook);
   if (embeddedBackup) {
+    // Видимый лист читается и здесь: он же и есть то, что человек правит в
+    // Excel, а слепок сам по себе о его правках не знает.
+    const sheet = await parseLeakSheets(workbook, {
+      projectType: embeddedBackup.project?.type ?? projectType,
+    });
+    const merged = mergeSheetEditsIntoBackup(embeddedBackup.leaks, sheet.leaks);
+
     return {
-      leaks: embeddedBackup.leaks,
+      leaks: merged.leaks,
       stats: {
-        totalRows: embeddedBackup.leaks.length,
-        imported: embeddedBackup.leaks.length,
+        totalRows: merged.leaks.length,
+        imported: merged.leaks.length,
         skipped: 0,
-        exactBackup: true,
-        validationWarnings: [],
-        validationWarningCount: 0,
+        exactBackup: merged.edited === 0 && merged.added === 0,
+        sheetEdited: merged.edited,
+        sheetAdded: merged.added,
+        sheetMissing: merged.missing,
+        validationWarnings: sheet.stats.validationWarnings ?? [],
+        validationWarningCount: sheet.stats.validationWarningCount ?? 0,
       },
       columns: [],
       sheetName: "Project Backup",
@@ -114,6 +125,16 @@ export async function parseExcelLeaks(
     };
   }
 
+  return parseLeakSheets(workbook, { projectType });
+}
+
+/**
+ * Утечки с видимых листов книги — строки таблицы, обходы и история.
+ *
+ * @param {any} workbook
+ * @param {{projectType?: string}} options
+ */
+async function parseLeakSheets(workbook, { projectType } = {}) {
   const validTypes = ["upstream", "midstream", "downstream"];
   const requestedType = validTypes.includes(projectType) ? projectType : null;
   // Ordinary XLSX files do not contain reliable project metadata. Shared

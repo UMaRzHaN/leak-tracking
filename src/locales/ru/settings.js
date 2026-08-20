@@ -35,6 +35,8 @@ export const settings = {
   noImportableRowsFound: "В Excel не найдено строк для импорта",
   projectVImportedV2: "Импортирован проект «{{v1}}» ({{v2}} записей)",
   excelParsedVRecords: "Excel прочитан: {{v1}} записей, фото: {{v2}}",
+  excelSheetEdits:
+    "Правки из таблицы приняты: изменено {{v1}}, дописано {{v2}}.",
   excelImportError: "Ошибка импорта Excel",
   excelImportInProgress: "Идёт импорт Excel, подождите...",
   importedVRecordsBut:
