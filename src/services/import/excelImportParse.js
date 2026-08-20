@@ -7,7 +7,6 @@ const getJSZip = () => import("jszip");
 
 import { inferMonitoringRound } from "@/utils/monitoringRound";
 import { hydrateZipPhotos } from "@/services/import/zipPhotoHydration";
-import { isZipFile } from "@/services/import/importFileType";
 import {
   attachHistoryRecords,
   attachMonitoringRecords,
@@ -71,15 +70,24 @@ function createValidationCollector() {
   };
 }
 
-/** @param {{name?: string, size: number, arrayBuffer: () => Promise<ArrayBuffer>}} file @param {{projectType?: string}} [options] */
-export async function parseExcelLeaks(file, { projectType } = {}) {
+/**
+ * @param {{name?: string, size: number, arrayBuffer: () => Promise<ArrayBuffer>}} file
+ * @param {{projectType?: string}} [options]
+ * @param {{buffer: ArrayBuffer, zip: any}|null} [opened] уже прочитанный файл —
+ *   чтобы распознавание не заставило читать и распаковывать книгу дважды
+ */
+export async function parseExcelLeaks(
+  file,
+  { projectType } = {},
+  opened = null,
+) {
   assertImportFileSize(file);
   await preflightZipFile(file);
   const ExcelJS = (await getExcelJS()).default;
   const workbook = new ExcelJS.Workbook();
-  const buffer = await file.arrayBuffer();
-  const JSZip = (await getJSZip()).default;
-  const workbookArchive = await JSZip.loadAsync(buffer);
+  const buffer = opened?.buffer ?? (await file.arrayBuffer());
+  const workbookArchive =
+    opened?.zip ?? (await (await getJSZip()).default.loadAsync(buffer));
   await verifyArchiveLimits(workbookArchive);
   await workbook.xlsx.load(buffer);
 
@@ -310,16 +318,46 @@ export async function parseExcelLeaks(file, { projectType } = {}) {
   };
 }
 
+/** Единственная запись, по которой zip опознаётся как книга Excel. */
+const WORKBOOK_ENTRY = "xl/workbook.xml";
+
+/** Файл, прочитанный как zip, или null, если он не zip. */
+async function openArchive(file) {
+  const buffer = await file.arrayBuffer();
+  // Загрузчик — вне try, чтобы не загрузившийся jszip не выдавал себя за
+  // файл, который не является zip.
+  const JSZip = (await getJSZip()).default;
+  try {
+    return { buffer, zip: await new JSZip().loadAsync(buffer) };
+  } catch {
+    return null;
+  }
+}
+
 export async function parseExcelImportFile(file, options = {}) {
   assertImportFileSize(file);
-  if (!isZipFile(file)) {
+  await preflightZipFile(file);
+
+  const opened = await openArchive(file);
+
+  // Не zip вовсе — пусть книгу читает ExcelJS, ошибку про испорченный файл
+  // выдаст он.
+  if (!opened) {
     const parsed = await parseExcelLeaks(file, options);
     return { ...parsed, project: parsed.project ?? null };
   }
 
-  await preflightZipFile(file);
-  const JSZip = (await getJSZip()).default;
-  const zip = await JSZip.loadAsync(file);
+  // Голая книга: и .xlsx, и архив с фотографиями — zip, отличает их только
+  // содержимое. Имя и MIME-тип для этого не годятся: файл, выбранный через
+  // системный проводник Android, приходит с тем именем и типом, какие отдал
+  // провайдер, вплоть до «document» и «application/octet-stream», — и архив,
+  // прочитанный как книга, разбирался в ноль строк без единой ошибки.
+  if (opened.zip.file(WORKBOOK_ENTRY)) {
+    const parsed = await parseExcelLeaks(file, options, opened);
+    return { ...parsed, project: parsed.project ?? null };
+  }
+
+  const zip = opened.zip;
   // Header preflight only: the reads below enforce the real byte limits as
   // they decompress, so the archive is no longer expanded twice.
   assertArchiveLimits(zip);

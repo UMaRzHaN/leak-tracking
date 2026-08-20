@@ -1203,3 +1203,56 @@ describe("reconcileExcelImportPhotos", () => {
     expect(result.photos).toMatchObject({ reused: 2, replaced: 0, toSave: 0 });
   });
 });
+
+describe("parseExcelImportFile file-type detection", () => {
+  async function makeArchive() {
+    const { default: ExcelJS } = await import("exceljs");
+    const { default: JSZip } = await import("jszip");
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Утечки");
+    sheet.addRow(["Индивидуальный номер утечки", "Компонент", "Фото утечки"]);
+    sheet.addRow(["TAG-1", "Задвижка", ""]);
+    sheet.getRow(2).getCell(3).value = {
+      text: "Открыть фото",
+      hyperlink: "photos/TAG-1/before.jpg",
+    };
+
+    const zip = new JSZip();
+    zip.file("report.xlsx", await workbook.xlsx.writeBuffer());
+    zip.file("photos/TAG-1/before.jpg", "aGVsbG8=", { base64: true });
+    return zip.generateAsync({ type: "blob" });
+  }
+
+  it("reads an archive handed over without a name or a zip MIME type", async () => {
+    const archive = await makeArchive();
+    // Так его отдаёт системный проводник Android: имени с расширением нет,
+    // тип — общий поток байтов.
+    const opaque = new Blob([await archive.arrayBuffer()], {
+      type: "application/octet-stream",
+    });
+
+    const result = await parseExcelImportFile(opaque, {
+      projectType: "downstream",
+    });
+
+    expect(result.leaks).toHaveLength(1);
+    expect(result.stats.restoredPhotos).toBe(1);
+    expect(result.leaks[0].photo).toBeInstanceOf(Blob);
+  }, 60_000);
+
+  it("reads a bare workbook named as an archive", async () => {
+    const blob = await makeWorkbookBlob([
+      ["Leak ID", "component"],
+      ["TAG-2", "Valve"],
+    ]);
+    const renamed = new Blob([await blob.arrayBuffer()], {
+      type: "application/zip",
+    });
+    Object.defineProperty(renamed, "name", { value: "report.zip" });
+
+    const result = await parseExcelImportFile(renamed);
+
+    expect(result.leaks).toHaveLength(1);
+    expect(result.leaks[0].leak_id).toBe("TAG-2");
+  }, 60_000);
+});

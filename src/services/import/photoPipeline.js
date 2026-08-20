@@ -3,7 +3,6 @@ import { fingerprintBlob } from "@/utils/blobHash";
 import { getLeakMergeIdentity } from "@/services/sync/projectSyncState";
 import { mapWithConcurrency } from "@/services/backup/runtime";
 import { hydrateZipPhotos } from "@/services/import/zipPhotoHydration";
-import { isZipFile } from "@/services/import/importFileType";
 import {
   LEAK_PHOTO_FIELDS,
   MONITORING_PHOTO_FIELDS,
@@ -440,4 +439,4 @@ export async function rollbackExcelImportPhotos(
 }
 
 // Re-exported so existing main-thread importers keep one entry point.
-export { hydrateZipPhotos, isZipFile };
+export { hydrateZipPhotos };

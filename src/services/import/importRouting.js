@@ -31,9 +31,14 @@ function sheetNamesFromWorkbookXml(xml) {
  * @returns {Promise<{kind: ImportKind, reason: string}>}
  */
 export async function detectImportKind(file) {
+  // Загрузчик — вне try: не загрузившийся jszip это отказ инструмента, а не
+  // приговор файлу. Пока он был внутри, любая осечка на этой строке выдавала
+  // «не удалось понять, что это за файл» — и человек шёл искать беду в
+  // исправном архиве.
+  const JSZip = (await getJSZip()).default;
+
   let zip;
   try {
-    const JSZip = (await getJSZip()).default;
     zip = await new JSZip().loadAsync(await file.arrayBuffer());
   } catch {
     // Not a zip at all, so not one of the three. The caller says so rather

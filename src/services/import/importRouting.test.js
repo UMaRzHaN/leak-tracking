@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
 import { detectImportKind } from "./importRouting";
@@ -82,5 +82,24 @@ describe("working out what an imported file is", () => {
     await expect(detectImportKind(file)).resolves.toMatchObject({
       kind: "unknown",
     });
+  });
+});
+
+describe("когда сорвался сам разбор", () => {
+  it("не выдаёт отказ инструмента за непонятный файл", async () => {
+    vi.resetModules();
+    vi.doMock("jszip", () => {
+      throw new Error("Failed to fetch dynamically imported module");
+    });
+    const { detectImportKind: detect } = await import("./importRouting");
+
+    // Сорвавшаяся загрузка jszip — это ошибка, а не вердикт о файле: иначе
+    // исправный архив объявляется непонятным и человек ищет беду не там.
+    await expect(
+      detect(await archive({ "backup.json": "{}" })),
+    ).rejects.toThrow();
+
+    vi.doUnmock("jszip");
+    vi.resetModules();
   });
 });

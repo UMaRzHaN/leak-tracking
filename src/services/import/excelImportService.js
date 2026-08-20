@@ -17,7 +17,6 @@ export {
   persistExcelImportPhotos,
   reconcileExcelImportPhotos,
 } from "@/services/import/photoPipeline";
-export { isZipFile } from "@/services/import/importFileType";
 
 /**
  * Parses an Excel or ZIP import off the main thread when the platform allows
