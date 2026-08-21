@@ -28,6 +28,21 @@ function pluralRecords(count, lang) {
   return "записей";
 }
 
+/** Есть ли в реестре компонентов хоть что-то, ради чего стоит собрать архив. */
+async function hasComponentsToExport(project) {
+  if (!project?.id) return false;
+  try {
+    const { ComponentRepository } =
+      await import("@/repositories/ComponentRepository");
+    const components = await ComponentRepository.load(project);
+    return Array.isArray(components) && components.length > 0;
+  } catch {
+    // Реестр, который не читается, — не повод отказать в выгрузке утечек;
+    // выше по коду решение принимается по ним.
+    return false;
+  }
+}
+
 function typeLabel(type, t) {
   const labels = {
     upstream: t("settings.projectTypes.upstream"),
@@ -105,7 +120,10 @@ export function useBackupActions({
   const handleExportZip = useCallback(async () => {
     if (isExportingZip) return;
 
-    if (!data.length) {
+    // Утечки — не единственное, что лежит в архиве: туда же идут реестр
+    // компонентов и чертежи. Проект, где утечек ещё нет, а компоненты уже
+    // заведены, отказывался выгружаться, хотя выгружать было что.
+    if (!data.length && !(await hasComponentsToExport(activeProject))) {
       notify("warning", t("settings.noDataToExport"));
       return;
     }

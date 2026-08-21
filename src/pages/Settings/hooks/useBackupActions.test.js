@@ -16,6 +16,11 @@ vi.mock("@/repositories/LeakRepository", () => ({
   },
 }));
 
+const componentRepository = vi.hoisted(() => ({ load: vi.fn() }));
+vi.mock("@/repositories/ComponentRepository", () => ({
+  ComponentRepository: componentRepository,
+}));
+
 const platformState = vi.hoisted(() => ({ isNative: false }));
 const nativeWriter = vi.hoisted(() => ({
   append: vi.fn(),
@@ -66,6 +71,7 @@ describe("useBackupActions", () => {
       },
       detectedType: "upstream",
     });
+    componentRepository.load.mockResolvedValue([]);
     servicesModule.previewMergeLeaks.mockReturnValue({
       added: 1,
       updated: 0,
@@ -506,5 +512,68 @@ describe("useBackupActions", () => {
       "Import error: broken archive",
     );
     expect(result.current.importConfirmState.open).toBe(false);
+  });
+});
+
+describe("useBackupActions ZIP export with no leaks", () => {
+  const project = {
+    id: "p1",
+    name: "Alpha",
+    type: "upstream",
+    folderName: "Alpha",
+  };
+
+  function renderExport(notify) {
+    return renderHook(() =>
+      useBackupActions({
+        data: [],
+        idbGetPhoto: vi.fn(),
+        activeProject: project,
+        vars: {},
+        onImportZip: vi.fn(),
+        onImportIntoExisting: vi.fn(),
+        notify,
+        projects: [],
+      }),
+    );
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    platformState.isNative = false;
+    languageModule.useLanguage.mockReturnValue({ lang: "en", t: translate });
+  });
+
+  it("still exports a project whose registry holds components", async () => {
+    componentRepository.load.mockResolvedValue([{ id: "c1", tag: "V-100" }]);
+    const notify = vi.fn();
+    const { result } = renderExport(notify);
+
+    await act(async () => result.current.handleExportZip());
+
+    expect(servicesModule.buildProjectBackupZip).toHaveBeenCalled();
+    expect(notify).not.toHaveBeenCalledWith("warning", expect.anything());
+  });
+
+  it("refuses only when neither leaks nor components exist", async () => {
+    componentRepository.load.mockResolvedValue([]);
+    const notify = vi.fn();
+    const { result } = renderExport(notify);
+
+    await act(async () => result.current.handleExportZip());
+
+    expect(servicesModule.buildProjectBackupZip).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalledWith("warning", "No data to export");
+  });
+
+  it("refuses when the registry cannot be read, rather than exporting nothing", async () => {
+    componentRepository.load.mockRejectedValue(new Error("registry is broken"));
+    const notify = vi.fn();
+    const { result } = renderExport(notify);
+
+    await act(async () => result.current.handleExportZip());
+
+    expect(servicesModule.buildProjectBackupZip).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalledWith("warning", "No data to export");
   });
 });
