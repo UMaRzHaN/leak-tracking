@@ -297,3 +297,60 @@ describe("правки, сделанные в Excel", () => {
     ).toEqual(["4242", "4243"]);
   });
 });
+
+describe("голый лист поверх заведённых карточек", () => {
+  it("не стирает историю и снимок карточки, пришедшей когда-то из таблицы", async () => {
+    // Карточку завела таблица, потом её осмотрели в приложении: появились
+    // история и фотография. Повторный импорт исправленной таблицы забирал
+    // карточку целиком — вместе с пустотой на месте того и другого.
+    const walked = {
+      id: componentIdFromUid("4242"),
+      component_uid: "4242",
+      scheme_tag: "ЗД32",
+      photo: "idb://photo_4242",
+      history: [{ date: 1, user: "Инспектор", action: "inspected" }],
+      updatedAt: 1000,
+    };
+    mocks.load.mockResolvedValue([walked]);
+    const file = await sheetFile([[1, "4242", "ЗД40"]]);
+
+    const result = await importInventoryFile(file, project, { excel });
+
+    expect(result).toMatchObject({ source: "sheet", updated: 1 });
+    const saved = mocks.save.mock.calls[0][1][0];
+    expect(saved).toMatchObject({
+      scheme_tag: "ЗД40",
+      photo: "idb://photo_4242",
+      history: [{ date: 1, user: "Инспектор", action: "inspected" }],
+    });
+  });
+
+  it("не трогает реестр, когда в таблице ничего не изменилось", async () => {
+    const walked = {
+      id: componentIdFromUid("4242"),
+      component_uid: "4242",
+      scheme_tag: "ЗД32",
+      updatedAt: 1000,
+    };
+    mocks.load.mockResolvedValue([walked]);
+    const file = await sheetFile([[1, "4242", "ЗД32"]]);
+
+    const result = await importInventoryFile(file, project, { excel });
+
+    expect(result).toMatchObject({ added: 0, updated: 0 });
+    expect(mocks.save.mock.calls[0][1][0]).toMatchObject({ updatedAt: 1000 });
+  });
+
+  it("по-прежнему заводит карточку, которой в реестре нет", async () => {
+    mocks.load.mockResolvedValue([]);
+    const file = await sheetFile([[1, "4243", "ЗД50"]]);
+
+    const result = await importInventoryFile(file, project, { excel });
+
+    expect(result).toMatchObject({ source: "sheet", added: 1 });
+    expect(mocks.save.mock.calls[0][1][0]).toMatchObject({
+      component_uid: "4243",
+      scheme_tag: "ЗД50",
+    });
+  });
+});

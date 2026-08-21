@@ -191,9 +191,21 @@ export async function importInventoryFile(file, project, registry) {
 
   const local = await ComponentRepository.load(project);
   const { mergeable, shadowed } = separateSheetCards(local, components);
+  // Строка листа ложится правками поверх карточки, а не заменяет её целиком.
+  // В таблице нет ни истории осмотров, ни снимка, а слияние берёт победившую
+  // карточку как есть: карточка, заведённая таблицей и потом осмотренная в
+  // приложении, теряла на повторном импорте и историю, и фотографию.
+  const edits = mergeSheetEditsIntoCards(local, mergeable);
+  const localCards = /** @type {Record<string, any>[]} */ (local);
+  const localById = new Map(localCards.map((card) => [card?.id, card]));
+  // Правки создают новый объект, нетронутые карточки остаются прежними, —
+  // так и отбираются те, ради которых стоит тревожить реестр.
+  const touched = edits.cards.filter(
+    (card) => localById.get(card?.id) !== card,
+  );
   const { merged, added, updated, conflicts } = mergeComponentRegistries(
     local,
-    mergeable,
+    touched,
   );
   await ComponentRepository.save(project, merged);
 
