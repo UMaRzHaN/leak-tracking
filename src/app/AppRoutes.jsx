@@ -109,6 +109,7 @@ export default function AppRoutes({
   handleCreateExcelCopy,
   handleImportIntoExisting,
   handleImportZip,
+  handleSetupImportInventory,
   importingDataLabel,
   isImportingProject,
   loadError,
@@ -188,6 +189,7 @@ export default function AppRoutes({
             onImportZip={handleImportZip}
             onImportIntoExisting={handleImportIntoExisting}
             onCreateExcelCopy={handleCreateExcelCopy}
+            onImportInventory={handleSetupImportInventory}
           />
         )}
 

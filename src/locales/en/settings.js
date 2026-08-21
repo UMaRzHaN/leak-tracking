@@ -222,6 +222,10 @@ export const settings = {
     "Inventory: {{v1}} added, {{v2}} updated, {{v3}} number(s) colliding.",
   inventoryRowsShadowed:
     "{{v1}} row(s) were not merged — those numbers already exist on the device, and a card written on site outweighs a spreadsheet row.",
+  inventoryImportedIntoNewProject:
+    'A component registry lives in its own project — created "{{v1}}" and merged {{v2}} card(s) into it.',
+  inventoryImportNoRegistry:
+    'Only "{{v1}}" projects keep a component registry. Create one and merge the inventory there — on the first screen an inventory archive creates the project by itself.',
   inventoryImportError: "Inventory import error",
 
   mapCache: "Map Cache",

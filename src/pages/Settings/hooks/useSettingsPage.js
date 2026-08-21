@@ -7,19 +7,6 @@ import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
 import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import { getMapCacheInfo, clearMapCache } from "@/services/maps/tileCache";
 import {
-  readMonitoringRound,
-  saveMonitoringRound,
-} from "@/utils/monitoringRound";
-import {
-  readProjectSettings,
-  writeProjectSettings,
-} from "@/app/project/projectSettings";
-import {
-  readProjectSyncStateAsync,
-  writeProjectSyncState,
-} from "@/services/sync/projectSyncState";
-import { STORAGE_KEYS } from "@/app/project/storageKeys";
-import {
   getExcelImportTransactionWarning,
   runExcelImportTransaction,
 } from "@/services/import/excelImportTransaction";
@@ -27,6 +14,7 @@ import { readImportOperation } from "@/services/import/importOperationJournal";
 import { useBackupActions } from "./useBackupActions";
 import { useProjectActions } from "./useProjectActions";
 import { useImportRouting } from "./useImportRouting";
+import { useExcelProjectState } from "./useExcelProjectState";
 import { useSettingsTexts } from "./useSettingsTexts";
 import { useLocalSync } from "./useLocalSync";
 import { performSettingsCleanup } from "../settingsCleanup";
@@ -39,6 +27,7 @@ export function useSettingsPage({
   onImportZip,
   onImportIntoExisting,
   onCreateExcelCopy,
+  onImportInventory,
 }) {
   const { lang, t, toggleLanguage, localeTexts } = useSettingsTexts();
   const [notification, setNotification] = useState(null);
@@ -96,64 +85,19 @@ export function useSettingsPage({
     /* eslint-disable-next-line react-hooks/exhaustive-deps,
        @eslint-react/exhaustive-deps */
   }, [activeProject?.id, notify]);
-  const saveExcelMonitoringRound = useCallback(
-    (round) => {
-      if (round) saveMonitoringRound(activeProject?.id, round);
-    },
-    [activeProject?.id],
-  );
-
   const { vars, setVarsAsync } = useProjectVars(activeProject?.id ?? null);
-  const applyExcelArchiveMetadata = useCallback(
-    async (result, leaks = []) => {
-      if (!result || !activeProject?.id) return;
-      if (result.project) {
-        restoreProjectMetadata(activeProject.id, result.project);
-      }
-      if (result.vars) await setVarsAsync(result.vars);
-      if (result.settings) {
-        writeProjectSettings(activeProject.id, result.settings);
-      }
-      if (result.portableArchive) {
-        saveMonitoringRound(activeProject.id, result.monitoringRound ?? null);
-      }
-      if (result.sync) {
-        await writeProjectSyncState(activeProject.id, result.sync, leaks);
-      }
-    },
-    [activeProject?.id, restoreProjectMetadata, setVarsAsync],
-  );
-
-  const captureExcelImportSnapshot = useCallback(async () => {
-    const projectId = activeProject?.id;
-    if (!projectId) return null;
-    return {
-      project: { ...activeProject },
-      varsRaw: localStorage.getItem(STORAGE_KEYS.PROJECT_VARS(projectId)),
-      settings: readProjectSettings(projectId),
-      monitoringRound: readMonitoringRound(projectId),
-      sync: await readProjectSyncStateAsync(projectId),
-    };
-  }, [activeProject]);
-  const restoreExcelImportSnapshot = useCallback(
-    async (snapshot) => {
-      const projectId = snapshot?.project?.id;
-      if (!projectId) return;
-      if (!restoreProjectSnapshot(projectId, snapshot.project)) {
-        throw new Error("Failed to restore project metadata");
-      }
-      const varsKey = STORAGE_KEYS.PROJECT_VARS(projectId);
-      if (snapshot.varsRaw == null) localStorage.removeItem(varsKey);
-      else localStorage.setItem(varsKey, snapshot.varsRaw);
-      window.dispatchEvent(
-        new CustomEvent("project-vars-updated", { detail: { projectId } }),
-      );
-      writeProjectSettings(projectId, snapshot.settings);
-      saveMonitoringRound(projectId, snapshot.monitoringRound);
-      await writeProjectSyncState(projectId, snapshot.sync, data);
-    },
-    [data, restoreProjectSnapshot],
-  );
+  const {
+    saveExcelMonitoringRound,
+    applyExcelArchiveMetadata,
+    captureExcelImportSnapshot,
+    restoreExcelImportSnapshot,
+  } = useExcelProjectState({
+    activeProject,
+    data,
+    setVarsAsync,
+    restoreProjectMetadata,
+    restoreProjectSnapshot,
+  });
   const { getPhoto: idbGetPhoto, savePhoto, deletePhoto } = usePhotoStorage();
   const projectConfig = useProjectConfig();
   const { hiddenFields, setHiddenFields } = useHiddenFields(
@@ -409,6 +353,7 @@ export function useSettingsPage({
     t,
     handleImportZip,
     handleImportExcel,
+    onImportInventory,
   });
 
   const persistPreparedExcelPhotos = useCallback(

@@ -34,6 +34,8 @@ const mocks = vi.hoisted(() => ({
   detectImportKind: vi.fn(),
   importInventoryFile: vi.fn(),
   loadComponentRegistry: vi.fn(),
+  hasComponentRegistry: vi.fn(),
+  componentRegistryProjectTypes: vi.fn(),
 }));
 
 vi.mock("@/services/maps/tileCache", () => ({
@@ -185,6 +187,8 @@ vi.mock("@/services/inventory/inventoryImport", () => ({
 }));
 vi.mock("@/configs/projectAdapter", () => ({
   loadComponentRegistry: mocks.loadComponentRegistry,
+  hasComponentRegistry: mocks.hasComponentRegistry,
+  componentRegistryProjectTypes: mocks.componentRegistryProjectTypes,
 }));
 
 function excelResult(overrides = {}) {
@@ -248,6 +252,8 @@ beforeEach(() => {
   mocks.previewMergeLeaks.mockReturnValue({ changed: 1 });
   mocks.detectImportKind.mockResolvedValue({ kind: "project" });
   mocks.loadComponentRegistry.mockResolvedValue({ groups: [] });
+  mocks.hasComponentRegistry.mockReturnValue(true);
+  mocks.componentRegistryProjectTypes.mockReturnValue(["upstream"]);
   mocks.importInventoryFile.mockResolvedValue({
     added: 2,
     updated: 1,
@@ -693,6 +699,66 @@ describe("useSettingsPage orchestration", () => {
 
       expect(result.current.notification).toMatchObject({ type: "error" });
       expect(result.current.notification.message).toContain("broken archive");
+    });
+
+    // Кнопка импорта одна на все типы проектов, а реестр ведут не все. Решать
+    // тут человеку нечего: тип известен приложению, имя написано на файле —
+    // архив заводит себе проект сам.
+    it("creates a registry project when the open one keeps no registry", async () => {
+      mocks.detectImportKind.mockResolvedValue({ kind: "inventory" });
+      mocks.hasComponentRegistry.mockReturnValue(false);
+      const onImportInventory = vi.fn().mockResolvedValue({
+        project: { id: "project-2", name: "Бузахур", type: "upstream" },
+        components: 7,
+      });
+      const { result } = renderSettings({ onImportInventory });
+
+      await act(async () =>
+        result.current.handleImportFile(
+          inventoryFile("!Inventorization_Бузахур.zip"),
+        ),
+      );
+
+      expect(onImportInventory).toHaveBeenCalledWith(expect.any(File), {
+        name: "Бузахур",
+      });
+      // Вливание в открытый проект не запускалось: карточки поехали в новый.
+      expect(mocks.importInventoryFile).not.toHaveBeenCalled();
+      expect(result.current.notification).toMatchObject({ type: "success" });
+      expect(result.current.notification.message).toContain("Бузахур");
+      expect(result.current.notification.message).toContain("7");
+    });
+
+    it("reports an archive that turned out to hold no cards", async () => {
+      mocks.detectImportKind.mockResolvedValue({ kind: "inventory" });
+      mocks.hasComponentRegistry.mockReturnValue(false);
+      const empty = Object.assign(new Error("empty"), {
+        code: "EMPTY_INVENTORY",
+      });
+      const onImportInventory = vi.fn().mockRejectedValue(empty);
+      const { result } = renderSettings({ onImportInventory });
+
+      await act(async () => result.current.handleImportFile(inventoryFile()));
+
+      expect(result.current.notification).toMatchObject({ type: "warning" });
+      expect(result.current.notification.message).toBe(
+        "No components to import were found in the file.",
+      );
+    });
+
+    // Без обработчика заведения проекта (экран настроек, поднятый в отрыве от
+    // приложения) остаётся объяснение словами вместо внутренней ошибки.
+    it("explains that the open project keeps no registry", async () => {
+      mocks.detectImportKind.mockResolvedValue({ kind: "inventory" });
+      mocks.hasComponentRegistry.mockReturnValue(false);
+      const { result } = renderSettings();
+
+      await act(async () => result.current.handleImportFile(inventoryFile()));
+
+      expect(mocks.importInventoryFile).not.toHaveBeenCalled();
+      expect(mocks.loadComponentRegistry).not.toHaveBeenCalled();
+      expect(result.current.notification).toMatchObject({ type: "error" });
+      expect(result.current.notification.message).toContain("Upstream");
     });
 
     it("ignores an inventory import with no project open", async () => {

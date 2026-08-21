@@ -142,6 +142,7 @@ export default function App() {
         handleCreateExcelCopy={handleCreateExcelCopy}
         handleImportIntoExisting={handleImportIntoExisting}
         handleImportZip={handleImportZip}
+        handleSetupImportInventory={handleSetupImportInventory}
         importingDataLabel={importingDataLabel}
         isImportingProject={isImportingProject}
         loadError={loadError}

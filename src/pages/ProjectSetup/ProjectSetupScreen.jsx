@@ -12,6 +12,7 @@ import {
 } from "@/services/sync/localSyncService";
 import s from "./ProjectSetupScreen.module.scss";
 import { ignoredError } from "@/utils/ignoredError";
+import { projectNameFromFile } from "@/services/import/projectNameFromFile";
 
 const VALID_TYPES = ["upstream", "midstream", "downstream"];
 
@@ -48,22 +49,6 @@ function ImportIcon({ type }) {
 }
 
 const PROJECT_ICONS = { upstream: "⛽", midstream: "🔧", downstream: "🏭" };
-
-/**
- * Имя проекта, каким его написала выгрузка.
- *
- * Файл называется «!Database_Бузахур.zip» или «!Inventorization_Бузахур.zip»:
- * приставку ставит приложение, чтобы архивы различались в папке, и предлагать
- * её человеку как название проекта — значит заставлять его стирать её руками.
- */
-function projectNameFromFile(fileName) {
-  return (
-    String(fileName)
-      .replace(/\.(?:xlsx|zip)$/i, "")
-      .replace(/^!?(?:Database|Inventorization)[_-]?/i, "")
-      .trim() || String(fileName).replace(/\.(?:xlsx|zip)$/i, "")
-  );
-}
 
 /** Ошибка импорта словами, которые что-то говорят стоящему у экрана. */
 function importErrorText(error, localeTexts) {

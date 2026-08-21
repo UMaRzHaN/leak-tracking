@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { projectNameFromFile } from "@/services/import/projectNameFromFile";
 
 /**
  * Импорт одной кнопкой.
@@ -23,20 +24,63 @@ export function useImportRouting({
   t,
   handleImportZip,
   handleImportExcel,
+  onImportInventory,
 }) {
   const handleImportInventory = useCallback(
     async (file) => {
       if (!activeProject?.id) return;
 
       try {
+        const [
+          { importInventoryFile },
+          {
+            hasComponentRegistry,
+            componentRegistryProjectTypes,
+            loadComponentRegistry,
+          },
+        ] = await Promise.all([
+          import("@/services/inventory/inventoryImport"),
+          import("@/configs/projectAdapter"),
+        ]);
+
+        // Реестр ведут не все типы проектов, а кнопка импорта одна на всех:
+        // человек приносит архив инвентаризации в проект, которому его некуда
+        // положить. Спрашивать тут не о чем — ни одного решения человек
+        // принять не может: тип, ведущий реестр, приложение знает само, а имя
+        // написано на файле. Поэтому архив заводит себе проект, ровно как на
+        // первом экране, и вливается уже в него.
+        if (!hasComponentRegistry(activeProject)) {
+          if (!onImportInventory) {
+            notify(
+              "error",
+              t("settings.inventoryImportNoRegistry", {
+                v1: componentRegistryProjectTypes()
+                  .map((type) => t(`settings.projectTypes.${type}`))
+                  .join(", "),
+              }),
+            );
+            return;
+          }
+
+          notify("info", t("settings.inventoryImportInProgress"), {
+            autoCloseMs: 0,
+          });
+          const created = await onImportInventory(file, {
+            name: projectNameFromFile(file.name),
+          });
+          notify(
+            "success",
+            t("settings.inventoryImportedIntoNewProject", {
+              v1: created?.project?.name ?? "",
+              v2: created?.components ?? 0,
+            }),
+          );
+          return;
+        }
+
         notify("info", t("settings.inventoryImportInProgress"), {
           autoCloseMs: 0,
         });
-        const [{ importInventoryFile }, { loadComponentRegistry }] =
-          await Promise.all([
-            import("@/services/inventory/inventoryImport"),
-            import("@/configs/projectAdapter"),
-          ]);
         const registry = await loadComponentRegistry(activeProject);
         const result = await importInventoryFile(file, activeProject, registry);
 
@@ -63,13 +107,20 @@ export function useImportRouting({
           );
         }
       } catch (error) {
+        // Пустой архив — не поломка разбора, а «в файле ничего нет»: заведение
+        // проекта отдаёт это кодом, и здесь оно должно звучать так же, как
+        // при вливании в открытый проект.
+        if (error.code === "EMPTY_INVENTORY") {
+          notify("warning", t("settings.inventoryImportEmpty"));
+          return;
+        }
         notify(
           "error",
           `${t("settings.inventoryImportError")}: ${error.message}`,
         );
       }
     },
-    [activeProject, notify, t],
+    [activeProject, notify, onImportInventory, t],
   );
 
   const handleImportFile = useCallback(
