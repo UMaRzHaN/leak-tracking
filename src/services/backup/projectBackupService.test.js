@@ -1949,6 +1949,89 @@ describe("mergeLeaksByFreshness", () => {
     ComponentRepository.load.mockResolvedValue([]);
   });
 
+  it("keeps a successful import successful when the tidy-up fails", async () => {
+    // Уборка сирот — послесловие к импорту, а не его часть: данные уже
+    // записаны, и превращать неудачу уборки в «ошибку импорта» значит пугать
+    // человека тем, что на самом деле удалось.
+    const existingProject = {
+      id: "target",
+      name: "Target",
+      type: "upstream",
+      folderName: "Target",
+    };
+    const blob = await buildProjectBackupZip({
+      leaks: [],
+      idbGet: async () => null,
+      project: existingProject,
+      vars: {},
+    });
+    const gcSpy = vi
+      .spyOn(PhotoRepository, "gcOrphaned")
+      .mockRejectedValue(new Error("папку не открыть"));
+    vi.spyOn(LeakRepository, "getAll").mockResolvedValue([]);
+    const saveRef = { current: vi.fn() };
+
+    await expect(
+      importIntoExistingProject(
+        blob,
+        {
+          activeProjectIdRef: { current: existingProject.id },
+          saveRef,
+          savePhotoRef: { current: vi.fn() },
+          photoReadyRef: { current: true },
+          existingProject,
+          overwriteProject: vi.fn(() => true),
+        },
+        "merge",
+      ),
+    ).resolves.toBeTruthy();
+
+    expect(saveRef.current).toHaveBeenCalled();
+    gcSpy.mockRestore();
+  });
+
+  it("skips the tidy-up entirely when the registry will not answer", async () => {
+    // Молчание реестра — не доказательство, что на его снимки никто не
+    // ссылается: собрать по такому списку значит стереть их все.
+    const { ComponentRepository: registry } =
+      await import("@/repositories/ComponentRepository");
+    registry.load.mockRejectedValue(new Error("реестр молчит"));
+
+    const existingProject = {
+      id: "target",
+      name: "Target",
+      type: "upstream",
+      folderName: "Target",
+    };
+    const blob = await buildProjectBackupZip({
+      leaks: [],
+      idbGet: async () => null,
+      project: existingProject,
+      vars: {},
+    });
+    const gcSpy = vi
+      .spyOn(PhotoRepository, "gcOrphaned")
+      .mockResolvedValue(undefined);
+    vi.spyOn(LeakRepository, "getAll").mockResolvedValue([]);
+
+    await importIntoExistingProject(
+      blob,
+      {
+        activeProjectIdRef: { current: existingProject.id },
+        saveRef: { current: vi.fn() },
+        savePhotoRef: { current: vi.fn() },
+        photoReadyRef: { current: true },
+        existingProject,
+        overwriteProject: vi.fn(() => true),
+      },
+      "merge",
+    );
+
+    expect(gcSpy).not.toHaveBeenCalled();
+    gcSpy.mockRestore();
+    registry.load.mockResolvedValue([]);
+  });
+
   it("cleans partially restored photos when existing-project preparation fails", async () => {
     const existingProject = {
       id: "target-project",

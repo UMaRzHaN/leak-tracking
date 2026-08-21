@@ -153,8 +153,13 @@ vi.mock("./useProjectActions", () => ({
     ensureProjectSyncId: vi.fn(),
   }),
 }));
+const backupActions = vi.hoisted(() => ({ options: null }));
 vi.mock("./useBackupActions", () => ({
-  useBackupActions: () => ({
+  useBackupActions: (options) => ({
+    ...(() => {
+      backupActions.options = options;
+      return {};
+    })(),
     importZipRef: { current: null },
     handleExportZip: vi.fn(),
     isExportingZip: false,
@@ -267,6 +272,21 @@ describe("useSettingsPage orchestration", () => {
       type: "error",
       autoCloseMs: 0,
     });
+  });
+
+  it("takes the notification down when the backup flow asks it to", async () => {
+    // Сообщение «идёт чтение» висело поверх диалога импорта — вопроса, на
+    // который человек в этот момент отвечает. Снятие уходит вниз, в действия
+    // с резервными копиями, и вызывают его оттуда.
+    mocks.readImportOperation.mockReturnValue({ stage: "commit" });
+    const { result } = renderSettings();
+
+    await waitFor(() => expect(result.current.notification).not.toBe(null));
+    expect(typeof backupActions.options.dismissNotification).toBe("function");
+
+    await act(async () => backupActions.options.dismissNotification());
+
+    expect(result.current.notification).toBe(null);
   });
 
   it("handles map and database cleanup confirmations", async () => {

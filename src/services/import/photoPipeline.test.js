@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { fingerprintBlob } from "@/utils/blobHash";
+
+const photoService = vi.hoisted(() => ({
+  getPhotoBlob: vi.fn().mockResolvedValue(null),
+  getPhotoSrc: vi.fn().mockResolvedValue(null),
+  photoExists: vi.fn().mockResolvedValue(true),
+}));
+vi.mock("@/hooks/photoService", () => photoService);
 import {
   hydrateZipPhotos,
   persistExcelImportPhotos,
@@ -403,5 +410,70 @@ describe("photo pipeline edge cases", () => {
     expect(getStoredPhoto).toHaveBeenCalled();
     expect(result.photos.replaced).toBe(1);
     expect(result.photos.replacedByReason.unreadable).toBe(1);
+  });
+});
+
+describe("reconcileExcelImportPhotos device-stored slots", () => {
+  const devicePath = (hash) =>
+    `data://LeakReports/site/photos/photo_TAG-1_h_${hash}.jpg`;
+
+  it("reuses a photo the device still holds", async () => {
+    const photo = new Blob(["device-photo"], { type: "image/jpeg" });
+    const path = devicePath(await fingerprintBlob(photo));
+    photoService.photoExists.mockResolvedValue(true);
+
+    const result = await reconcileExcelImportPhotos(
+      [{ leak_id: "TAG-1", photo: path }],
+      [{ leak_id: "TAG-1", photo }],
+      null,
+    );
+
+    expect(photoService.photoExists).toHaveBeenCalledWith(path);
+    expect(result.leaks[0].photo).toBe(path);
+    expect(result.photos).toMatchObject({ reused: 1, toSave: 0 });
+  });
+
+  it("re-saves a photo whose file the device no longer has", async () => {
+    const photo = new Blob(["device-photo"], { type: "image/jpeg" });
+    const path = devicePath(await fingerprintBlob(photo));
+    photoService.photoExists.mockResolvedValue(false);
+
+    const result = await reconcileExcelImportPhotos(
+      [{ leak_id: "TAG-1", photo: path }],
+      [{ leak_id: "TAG-1", photo }],
+      null,
+    );
+
+    expect(result.leaks[0].photo).toBe(photo);
+    expect(result.photos).toMatchObject({ toSave: 1 });
+  });
+
+  it("treats an unreadable storage answer as a missing file", async () => {
+    const photo = new Blob(["device-photo"], { type: "image/jpeg" });
+    const path = devicePath(await fingerprintBlob(photo));
+    photoService.photoExists.mockRejectedValue(new Error("хранилище молчит"));
+
+    const result = await reconcileExcelImportPhotos(
+      [{ leak_id: "TAG-1", photo: path }],
+      [{ leak_id: "TAG-1", photo }],
+      null,
+    );
+
+    expect(result.leaks[0].photo).toBe(photo);
+    photoService.photoExists.mockResolvedValue(true);
+  });
+
+  it("asks storage nothing about a slot with no path at all", async () => {
+    photoService.photoExists.mockClear();
+    const photo = new Blob(["fresh"], { type: "image/jpeg" });
+
+    const result = await reconcileExcelImportPhotos(
+      [],
+      [{ leak_id: "TAG-9", photo }],
+      null,
+    );
+
+    expect(photoService.photoExists).not.toHaveBeenCalled();
+    expect(result.photos).toMatchObject({ added: 1 });
   });
 });
