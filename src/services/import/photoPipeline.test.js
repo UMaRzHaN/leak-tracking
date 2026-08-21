@@ -167,10 +167,10 @@ describe("reconcileExcelImportPhotos content-addressed slots", () => {
     return `idb://photo_p1_${leakId}_h_${await fingerprintBlob(blob)}`;
   }
 
-  it("reuses an unchanged photo without reading it back", async () => {
+  it("reuses an unchanged photo without reading it back for comparison", async () => {
     const photo = new Blob(["same-photo"], { type: "image/jpeg" });
     const storedPath = await storedPathFor(photo);
-    const getStoredPhoto = vi.fn();
+    const getStoredPhoto = vi.fn(async () => photo);
 
     const result = await reconcileExcelImportPhotos(
       [{ leak_id: "TAG-1", photo: storedPath }],
@@ -178,9 +178,50 @@ describe("reconcileExcelImportPhotos content-addressed slots", () => {
       getStoredPhoto,
     );
 
-    expect(getStoredPhoto).not.toHaveBeenCalled();
     expect(result.leaks[0].photo).toBe(storedPath);
     expect(result.photos).toMatchObject({ reused: 1, replaced: 0, toSave: 0 });
+  });
+
+  /*
+   * The regression these guard against: the fingerprint in a file name says
+   * which photo the slot holds, not that the file is still there. Merging two
+   * databases fills the record with paths belonging to the other phone, and
+   * trusting the name alone substituted those for the real bytes — the photo
+   * then vanished from both devices.
+   */
+  it("re-saves a photo whose stored file is missing instead of pointing at it", async () => {
+    const photo = new Blob(["same-photo"], { type: "image/jpeg" });
+    const storedPath = await storedPathFor(photo);
+    const getStoredPhoto = vi.fn(async () => null);
+
+    const result = await reconcileExcelImportPhotos(
+      [{ leak_id: "TAG-1", photo: storedPath }],
+      [{ leak_id: "TAG-1", photo }],
+      getStoredPhoto,
+    );
+
+    expect(result.leaks[0].photo).toBe(photo);
+    expect(result.photos).toMatchObject({
+      reused: 0,
+      replaced: 1,
+      toSave: 1,
+      replacedByReason: { unreadable: 1 },
+    });
+  });
+
+  it("keeps a missing photo out of the reuse map", async () => {
+    const photo = new Blob(["moved-photo"], { type: "image/jpeg" });
+    const missingPath = await storedPathFor(photo, { leakId: "TAG-1" });
+    const getStoredPhoto = vi.fn(async () => null);
+
+    const result = await reconcileExcelImportPhotos(
+      [{ leak_id: "TAG-1", photo: missingPath }],
+      [{ leak_id: "TAG-2", photo }],
+      getStoredPhoto,
+    );
+
+    expect(result.leaks[0].photo).toBe(photo);
+    expect(result.photos).toMatchObject({ added: 1, reused: 0, toSave: 1 });
   });
 
   it("replaces a changed photo without reading it back", async () => {
@@ -188,7 +229,7 @@ describe("reconcileExcelImportPhotos content-addressed slots", () => {
       new Blob(["old-photo"], { type: "image/jpeg" }),
     );
     const photo = new Blob(["new-photo"], { type: "image/jpeg" });
-    const getStoredPhoto = vi.fn();
+    const getStoredPhoto = vi.fn(async () => new Blob(["old-photo"]));
 
     const result = await reconcileExcelImportPhotos(
       [{ leak_id: "TAG-1", photo: storedPath }],
@@ -196,7 +237,6 @@ describe("reconcileExcelImportPhotos content-addressed slots", () => {
       getStoredPhoto,
     );
 
-    expect(getStoredPhoto).not.toHaveBeenCalled();
     expect(result.leaks[0].photo).toBe(photo);
     expect(result.photos).toMatchObject({
       replaced: 1,
@@ -205,10 +245,10 @@ describe("reconcileExcelImportPhotos content-addressed slots", () => {
     });
   });
 
-  it("matches a photo that moved to another leak without reading it back", async () => {
+  it("matches a photo that moved to another leak", async () => {
     const photo = new Blob(["moved-photo"], { type: "image/jpeg" });
     const storedPath = await storedPathFor(photo, { leakId: "TAG-1" });
-    const getStoredPhoto = vi.fn();
+    const getStoredPhoto = vi.fn(async () => photo);
 
     const result = await reconcileExcelImportPhotos(
       [{ leak_id: "TAG-1", photo: storedPath }],
@@ -216,7 +256,6 @@ describe("reconcileExcelImportPhotos content-addressed slots", () => {
       getStoredPhoto,
     );
 
-    expect(getStoredPhoto).not.toHaveBeenCalled();
     expect(result.leaks[0].photo).toBe(storedPath);
     expect(result.photos).toMatchObject({ reused: 1, toSave: 0 });
   });

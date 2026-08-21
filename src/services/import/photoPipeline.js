@@ -1,4 +1,4 @@
-import { getPhotoBlob, getPhotoSrc } from "@/hooks/photoService";
+import { getPhotoBlob, getPhotoSrc, photoExists } from "@/hooks/photoService";
 import { fingerprintBlob } from "@/utils/blobHash";
 import { getPhotoPathContentHash } from "@/utils/photoContentHash";
 import { getLeakMergeIdentity } from "@/services/sync/projectSyncState";
@@ -102,6 +102,33 @@ async function blobsEqual(left, right, incomingFingerprint, fingerprintCache) {
   );
 }
 
+/**
+ * Есть ли по этому пути файл.
+ *
+ * Имя файла называет отпечаток снимка, но не обещает, что снимок на месте:
+ * при слиянии двух баз половина путей ведёт на чужое устройство. Принять такой
+ * путь за годный — значит подставить его вместо настоящих байтов и потерять
+ * фотографию. Проверка нужна дешёвая: stat не читает содержимое, в отличие от
+ * прежнего чтения всего файла через мост.
+ */
+async function storedPhotoExists(path, getStoredPhoto) {
+  const value = String(path ?? "");
+  if (!value) return false;
+  if (value.startsWith("idb://")) {
+    if (typeof getStoredPhoto !== "function") return false;
+    try {
+      return Boolean(await getStoredPhoto(value.slice("idb://".length)));
+    } catch {
+      return false;
+    }
+  }
+  try {
+    return await photoExists(value);
+  } catch {
+    return false;
+  }
+}
+
 async function buildReusablePhotoMap(
   existingLeaks,
   getStoredPhoto,
@@ -120,18 +147,27 @@ async function buildReusablePhotoMap(
   }
 
   const reusable = new Map();
-  // A content-addressed path already states the fingerprint of the photo it
-  // was written from, so most of this map is built without touching storage.
-  // Only camera photos, versioned by timestamp, still have to be read.
+  // A content-addressed path already states the fingerprint of the photo it was
+  // written from, so the map is built without reading any file back — but the
+  // path still has to point at a file that exists here, hence the stat.
+  // Camera photos, versioned by timestamp, carry no hash and are still read.
   const unnamed = [];
+  const named = [];
   for (const path of paths) {
     const fingerprint = getPhotoPathContentHash(path);
-    if (!fingerprint) {
-      unnamed.push(path);
-      continue;
-    }
-    if (!reusable.has(fingerprint)) reusable.set(fingerprint, path);
+    if (fingerprint) named.push({ path, fingerprint });
+    else unnamed.push(path);
   }
+
+  await mapWithConcurrency(
+    named,
+    concurrency,
+    async ({ path, fingerprint }) => {
+      if (reusable.has(fingerprint)) return;
+      if (!(await storedPhotoExists(path, getStoredPhoto))) return;
+      if (!reusable.has(fingerprint)) reusable.set(fingerprint, path);
+    },
+  );
 
   await mapWithConcurrency(unnamed, concurrency, async (path) => {
     try {
@@ -196,12 +232,18 @@ async function reconcilePhotoValue(
     // and would compare as different to its own source.
     const existingHash = getPhotoPathContentHash(existingPath);
     if (existingHash && fingerprint) {
-      if (existingHash === fingerprint) {
+      // Совпадение отпечатков говорит, что в слоте тот же снимок, но не что он
+      // на месте: путь мог прийти с другого устройства вместе с записью.
+      if (
+        existingHash === fingerprint &&
+        (await storedPhotoExists(existingPath, getStoredPhoto))
+      ) {
         stats.reused += 1;
         return existingPath;
       }
-      stats.replacedByReason.different =
-        (stats.replacedByReason.different ?? 0) + 1;
+      const reason = existingHash === fingerprint ? "unreadable" : "different";
+      stats.replacedByReason[reason] =
+        (stats.replacedByReason[reason] ?? 0) + 1;
       stats.replaced += 1;
       stats.replacedByField[field] = (stats.replacedByField[field] ?? 0) + 1;
       return incomingPath;
