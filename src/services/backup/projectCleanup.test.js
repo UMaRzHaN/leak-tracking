@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   clearProjectFilters: vi.fn(),
   clearProjectSyncState: vi.fn(),
   saveMonitoringRound: vi.fn(),
+  removeComponents: vi.fn(),
+  removeSchemas: vi.fn(),
 }));
 
 vi.mock("@/utils/platform", () => ({ isNative: false }));
@@ -19,6 +21,12 @@ vi.mock("@/repositories/LeakRepository", () => ({
 }));
 vi.mock("@/repositories/PhotoRepository", () => ({
   PhotoRepository: { deleteProjectPhotos: mocks.deleteProjectPhotos },
+}));
+vi.mock("@/repositories/ComponentRepository", () => ({
+  ComponentRepository: { remove: mocks.removeComponents },
+}));
+vi.mock("@/repositories/SchemaRepository", () => ({
+  SchemaRepository: { removeProjectSchemas: mocks.removeSchemas },
 }));
 vi.mock("@/app/project/projectSettings", () => ({
   clearProjectSettings: mocks.clearProjectSettings,
@@ -33,7 +41,8 @@ vi.mock("@/utils/monitoringRound", () => ({
   saveMonitoringRound: mocks.saveMonitoringRound,
 }));
 
-const { rollbackImportedProject } = await import("./projectCleanup");
+const { deleteProjectArtifacts, rollbackImportedProject } =
+  await import("./projectCleanup");
 
 describe("rollbackImportedProject", () => {
   const project = { id: "p1", folderName: "alpha" };
@@ -85,5 +94,31 @@ describe("rollbackImportedProject", () => {
       cleanupComplete: false,
       cleanupError,
     });
+  });
+});
+
+describe("deleteProjectArtifacts", () => {
+  const project = { id: "p1", folderName: "alpha" };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.removeComponents.mockResolvedValue(true);
+    mocks.removeSchemas.mockResolvedValue(true);
+  });
+
+  it("removes the component registry along with the project", async () => {
+    // Реестр живёт под своим ключом, а не в папке проекта: он оставался и
+    // всплывал в проекте, заведённом потом под тем же именем.
+    await deleteProjectArtifacts(project);
+
+    expect(mocks.removeComponents).toHaveBeenCalledWith(project);
+    expect(mocks.removeSchemas).toHaveBeenCalledWith(project);
+    expect(mocks.deleteProjectPhotos).toHaveBeenCalledWith("p1", "alpha");
+  });
+
+  it("finishes the cleanup even when the registry refuses to go", async () => {
+    mocks.removeComponents.mockRejectedValue(new Error("реестр занят"));
+
+    await expect(deleteProjectArtifacts(project)).resolves.toBeUndefined();
   });
 });

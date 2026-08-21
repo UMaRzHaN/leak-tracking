@@ -253,8 +253,15 @@ export function useAppBootstrap() {
             );
           }
           if (settings) writeProjectSettings(newProject.id, settings);
-          const { persistExcelImportPhotos } =
-            await import("@/services/import/excelImportService");
+          // Снимок, сохранённый в неготовое хранилище, не сохраняется вовсе, и
+          // никакой ошибки при этом не видно. На первом запуске хранилище
+          // готово не сразу — а Excel-копия заводится как раз оттуда.
+          const [{ persistExcelImportPhotos }, { waitForPhotoStorage }] =
+            await Promise.all([
+              import("@/services/import/excelImportService"),
+              import("@/services/backup/runtime"),
+            ]);
+          await waitForPhotoStorage(photoReadyRef);
           const withPhotos = await persistExcelImportPhotos(
             leaks,
             savePhotoRef.current,

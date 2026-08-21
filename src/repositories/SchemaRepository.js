@@ -256,6 +256,32 @@ export const SchemaRepository = {
     }
   },
 
+  /**
+   * Removes every drawing a project holds, index included.
+   *
+   * On a device the files live inside the project folder and go with it. In the
+   * browser they sit in a store of their own, keyed by project id, and used to
+   * outlive the project that owned them — a new project taking the same id
+   * would inherit drawings nobody put there.
+   */
+  async removeProjectSchemas(project) {
+    if (!project?.id) return false;
+    if (isNative) return true;
+
+    try {
+      await assertReady();
+      const schemas = await this.listSchemas(project);
+      for (const schema of schemas) {
+        await store.remove(fileKey(project.id, schema.id));
+      }
+      await store.remove(indexKey(project.id));
+      return true;
+    } catch (error) {
+      logger.warn("[schemas] failed to delete the project drawings:", error);
+      return false;
+    }
+  },
+
   /** Removes one schema, bytes and index entry together. */
   async removeSchema(project, schema) {
     if (!project?.id || !schema?.id) return false;

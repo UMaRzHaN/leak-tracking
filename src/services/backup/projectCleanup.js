@@ -3,7 +3,9 @@ import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { clearProjectSettings } from "@/app/project/projectSettings";
 import { clearProjectFilters } from "@/app/project/projectFilters";
 import { LeakRepository } from "@/repositories/LeakRepository";
+import { ComponentRepository } from "@/repositories/ComponentRepository";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
+import { SchemaRepository } from "@/repositories/SchemaRepository";
 import { clearProjectSyncState } from "@/services/sync/projectSyncState";
 import { isNative } from "@/utils/platform";
 import { saveMonitoringRound } from "@/utils/monitoringRound";
@@ -23,6 +25,16 @@ export async function deleteProjectArtifacts(project) {
     folderName: project.folderName,
   });
   await PhotoRepository.deleteProjectPhotos(project.id, project.folderName);
+  // Реестр живёт в хранилище со своим ключом, а не в папке проекта: на вебе он
+  // оставался в базе навсегда, а на устройстве — в SQLite, привязанный к имени
+  // папки. Проект, заведённый потом под тем же именем, получал чужие карточки,
+  // которых человек не заводил.
+  await Promise.resolve(ComponentRepository.remove(project)).catch(
+    ignoredError("projectCleanup.removeComponents"),
+  );
+  await Promise.resolve(SchemaRepository.removeProjectSchemas(project)).catch(
+    ignoredError("projectCleanup.removeSchemas"),
+  );
 
   if (!isNative || !project.folderName) return;
 
