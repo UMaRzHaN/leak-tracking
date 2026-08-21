@@ -8,6 +8,7 @@ import { restoreComponentPhotos } from "@/services/backup/componentPhotoArchive"
 import { restoreSchemasFromArchive } from "@/services/backup/schemaArchive";
 import { logger } from "@/utils/logger";
 import { componentIdFromUid, parseInventorySheet } from "./inventorySheet";
+import { mergeSheetEditsIntoCards } from "./inventorySheetMerge";
 import { parseInventoryBackupSheet } from "./inventoryBackupSheet";
 
 /**
@@ -82,7 +83,7 @@ async function openZip(file) {
  * @returns {Promise<{added: number, updated: number, conflicts: number}|null>}
  *   null — если служебного листа в архиве нет вовсе.
  */
-async function restoreComponentsFromWorkbook(file, project) {
+async function restoreComponentsFromWorkbook(file, project, registry) {
   let zip;
   try {
     zip = await openZip(file);
@@ -91,16 +92,24 @@ async function restoreComponentsFromWorkbook(file, project) {
   }
 
   let cards;
+  let sheetCards = [];
   try {
     const workbook = await openInventoryWorkbook(file, zip);
     cards = workbook ? parseInventoryBackupSheet(workbook) : null;
+    // Видимый лист той же книги — это те же карточки, которые человек правит
+    // в Excel. Слепок полнее, поэтому он остаётся основой, но игнорировать
+    // правки нельзя: до этого они пропадали молча.
+    if (cards?.length && workbook && registry?.excel) {
+      sheetCards = parseInventorySheet(workbook, registry.excel).components;
+    }
   } catch (error) {
     logger.warn("[inventory] служебный лист книги не прочитался:", error);
     return null;
   }
   if (!cards?.length) return null;
 
-  const restored = await restoreComponentPhotos(zip, cards, project);
+  const merged = mergeSheetEditsIntoCards(cards, sheetCards);
+  const restored = await restoreComponentPhotos(zip, merged.cards, project);
   return mergeIncomingComponents(project, restored);
 }
 
@@ -159,7 +168,7 @@ export async function importInventoryFile(file, project, registry) {
   // Служебный лист книги — нынешние архивы; components.json рядом — те, что
   // выгружены до него, и ZIP-бэкапы проекта, которые несут его до сих пор.
   const archive =
-    (await restoreComponentsFromWorkbook(file, project)) ??
+    (await restoreComponentsFromWorkbook(file, project, registry)) ??
     (await restoreComponentsFromArchive(file, project));
   if (archive.added || archive.updated || archive.conflicts) {
     // Drawings ride in the same archive and are cheap to miss: the registry

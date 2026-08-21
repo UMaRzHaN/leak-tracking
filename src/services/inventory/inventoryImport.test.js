@@ -207,3 +207,93 @@ describe("реестр внутри книги", () => {
     expect(mocks.restoreComponents).toHaveBeenCalled();
   });
 });
+
+describe("правки, сделанные в Excel", () => {
+  const sheetExcel = {
+    headers: [
+      "№",
+      "Индивидуальный номер компонента",
+      "Наименование компонента",
+    ],
+    keysOrder: ["index", "component_uid", "component"],
+  };
+
+  async function archiveWithSheet(snapshotCards, sheetRows) {
+    const { buildInventoryArchive } = await import("./inventoryArchive");
+    const blob = await buildInventoryArchive({
+      fileStem: "!Inventorization_test",
+      sheetSpec: {
+        headers: sheetExcel.headers,
+        keysOrder: sheetExcel.keysOrder,
+        rows: sheetRows,
+        ids: snapshotCards.map((card) => card.id),
+        components: snapshotCards,
+        fields: [],
+      },
+      registryEntry: { components: snapshotCards },
+    });
+    return new File([blob], "!Inventorization_test.zip");
+  }
+
+  it("вносит поправленную в таблице ячейку, а не молча её теряет", async () => {
+    // Служебный лист полнее видимого, поэтому раньше импорт читал только его —
+    // и правка, сделанная человеком в Excel, исчезала без следа.
+    const snapshot = [
+      { id: "c1", component_uid: "4242", component: "Задвижка", history: [] },
+    ];
+    const file = await archiveWithSheet(snapshot, [
+      { index: 1, component_uid: "4242", component: "Кран шаровой" },
+    ]);
+
+    const result = await importInventoryFile(file, project, {
+      excel: sheetExcel,
+    });
+
+    expect(result).toMatchObject({ source: "archive" });
+    expect(mocks.save.mock.calls[0][1][0]).toMatchObject({
+      component_uid: "4242",
+      component: "Кран шаровой",
+    });
+  });
+
+  it("оставляет карточку нетронутой, если книгу не правили", async () => {
+    const snapshot = [
+      {
+        id: "c1",
+        component_uid: "4242",
+        component: "Задвижка",
+        history: [{ at: 1 }],
+        updatedAt: 1000,
+      },
+    ];
+    const file = await archiveWithSheet(snapshot, [
+      { index: 1, component_uid: "4242", component: "Задвижка" },
+    ]);
+
+    await importInventoryFile(file, project, { excel: sheetExcel });
+
+    // Отметка времени не поднялась: нетронутая книга не должна объявлять себя
+    // свежее того, что записали в приложении после выгрузки.
+    expect(mocks.save.mock.calls[0][1][0]).toMatchObject({
+      component: "Задвижка",
+      updatedAt: 1000,
+      history: [{ at: 1 }],
+    });
+  });
+
+  it("забирает строку, дописанную в таблицу руками", async () => {
+    const snapshot = [
+      { id: "c1", component_uid: "4242", component: "Задвижка", history: [] },
+    ];
+    const file = await archiveWithSheet(snapshot, [
+      { index: 1, component_uid: "4242", component: "Задвижка" },
+      { index: 2, component_uid: "4243", component: "Фланец" },
+    ]);
+
+    await importInventoryFile(file, project, { excel: sheetExcel });
+
+    expect(
+      mocks.save.mock.calls[0][1].map((card) => card.component_uid),
+    ).toEqual(["4242", "4243"]);
+  });
+});
