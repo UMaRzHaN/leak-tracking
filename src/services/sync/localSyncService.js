@@ -1,12 +1,13 @@
-import { Capacitor, registerPlugin } from "@capacitor/core";
 import {
   assertNativeAndroid,
   isNativeAndroid,
 } from "@/services/sync/localSyncPlatform";
+import { openArchiveChannel } from "@/services/sync/archiveUploadChannel";
+import { LocalSync } from "@/services/sync/localSyncPlugin";
+import { archiveResultToFile } from "@/services/sync/receivedArchive";
 import { ignoredError } from "@/utils/ignoredError";
-import { assertImportFileSize, IMPORT_LIMITS } from "@/utils/importLimits";
+import { IMPORT_LIMITS } from "@/utils/importLimits";
 
-const LocalSync = registerPlugin("LocalSync");
 const ARCHIVE_CHUNK_BYTES = 512 * 1024;
 
 // Cleanups on a path that is already ending: the transfer either finished or
@@ -14,7 +15,6 @@ const ARCHIVE_CHUNK_BYTES = 512 * 1024;
 // the diagnostics but never a failure of its own.
 const ignoreDiscard = ignoredError("localSync.discardArchive");
 const ignoreChannelEnd = ignoredError("localSync.closeArchiveChannel");
-const ignoreRelease = ignoredError("localSync.releaseArchive");
 const ignoreListener = ignoredError("localSync.removeListener");
 const ignoreApproval = ignoredError("localSync.resolveApproval");
 
@@ -50,79 +50,6 @@ function blobChunkToBase64(blob) {
     };
     reader.readAsDataURL(blob);
   });
-}
-
-/**
- * Передача архива в нативную часть без base64.
- *
- * Мост Capacitor возит строки, поэтому архив, идущий через него, приходится
- * кодировать: 4 байта трафика на каждые 3 байта архива, плюс кодирование в JS и
- * декодирование в Java. Канал веб-сообщений принимает ArrayBuffer как есть.
- *
- * Ответ на каждый кусок — не вежливость, а сдерживание: без него JS успевает
- * поставить в очередь весь архив целиком, и он оказывается в памяти дважды.
- */
-function createArchiveChannel(channel) {
-  const pending = [];
-  const onMessage = (event) => {
-    const waiting = pending.shift();
-    if (!waiting) return;
-    const text = String(event?.data ?? "");
-    if (text.startsWith("ok")) {
-      waiting.resolve(Number(text.slice(3)) || 0);
-      return;
-    }
-    waiting.reject(
-      new Error(
-        text.replace(/^error\s*/, "") ||
-          "Канал передачи архива отклонил данные",
-      ),
-    );
-  };
-  channel.addEventListener("message", onMessage);
-
-  return {
-    send(payload) {
-      return new Promise((resolve, reject) => {
-        pending.push({ resolve, reject });
-        try {
-          channel.postMessage(payload);
-        } catch (error) {
-          pending.pop();
-          reject(error);
-        }
-      });
-    },
-    close() {
-      channel.removeEventListener("message", onMessage);
-      const abandoned = pending.splice(0, pending.length);
-      for (const waiting of abandoned) {
-        waiting.reject(new Error("Канал передачи архива закрыт"));
-      }
-    },
-  };
-}
-
-/** Канал, если эта сборка WebView его поддерживает, иначе null. */
-async function openArchiveChannel(token) {
-  try {
-    const info = await LocalSync.getArchiveUploadChannel();
-    if (!info?.available || typeof info.name !== "string") return null;
-    const target = globalThis[info.name];
-    if (typeof target?.postMessage !== "function") return null;
-
-    const channel = createArchiveChannel(target);
-    try {
-      await channel.send(`begin ${token}`);
-    } catch (error) {
-      channel.close();
-      throw error;
-    }
-    return channel;
-  } catch {
-    // Канала нет или он не открылся — остаётся base64, он работает везде.
-    return null;
-  }
 }
 
 function toBlob(value) {
@@ -210,44 +137,6 @@ export async function prepareNativeArchive({
     if (channel) {
       await channel.send("end").catch(ignoreChannelEnd);
       channel.close();
-    }
-  }
-}
-
-async function archiveResultToFile(result, fileName = "local-sync.zip") {
-  const { uri, archiveToken, size } = result ?? {};
-  try {
-    const reportedSize = Number(size);
-    if (!Number.isSafeInteger(reportedSize) || reportedSize <= 0) {
-      throw new Error("Получен некорректный размер архива");
-    }
-    assertImportFileSize({ size: reportedSize });
-
-    if (typeof uri !== "string" || !uri.startsWith("file://")) {
-      throw new Error("Получен некорректный путь к архиву");
-    }
-    if (typeof archiveToken !== "string" || archiveToken.length === 0) {
-      throw new Error("Получен архив без токена очистки");
-    }
-
-    const localUrl = Capacitor.convertFileSrc(uri);
-    const response = await fetch(localUrl);
-    if (!response.ok) {
-      throw new Error(
-        `Не удалось прочитать полученный архив (${response.status})`,
-      );
-    }
-    const blob = await response.blob();
-    assertImportFileSize(blob);
-    if (blob.size !== reportedSize) {
-      throw new Error("Размер полученного архива не совпадает с заявленным");
-    }
-    return new File([blob], fileName, { type: "application/zip" });
-  } finally {
-    if (typeof archiveToken === "string" && archiveToken) {
-      await LocalSync.releaseReceivedArchive({ archiveToken }).catch(
-        ignoreRelease,
-      );
     }
   }
 }
