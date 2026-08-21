@@ -28,6 +28,7 @@ import {
 import { logger } from "@/utils/logger";
 import { openArchive } from "./backupArchiveSession";
 import { filterIncomingLeaksForMerge, mergeLeaksByFreshness } from "./merge";
+import { collectPhotoOwners } from "@/services/storage/photoOwners";
 import { restorePhotos } from "./photoArchive";
 import {
   monitoringRoundFreshness,
@@ -476,10 +477,16 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
       }
     }
 
-    await PhotoRepository.gcOrphaned(existingForStorage, {
-      projectId: existingProjectId,
-      folderName: existingFolderName,
-    }).catch(ignoredError("backupImport.gcOrphanedPhotos"));
+    const rollbackPhotoOwners = await collectPhotoOwners(
+      existingProject,
+      existingForStorage,
+    );
+    if (rollbackPhotoOwners) {
+      await PhotoRepository.gcOrphaned(rollbackPhotoOwners, {
+        projectId: existingProjectId,
+        folderName: existingFolderName,
+      }).catch(ignoredError("backupImport.gcOrphanedPhotos"));
+    }
     if (rollbackErrors.length > 0) {
       error.rollbackErrors = rollbackErrors;
       logger.error(
@@ -500,10 +507,23 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
 
   // Data is committed. Cleanup failure must not turn a successful import into
   // a false "Import error"; orphan cleanup can be retried later.
-  await PhotoRepository.gcOrphaned([...finalLeaks, ...preservedExisting], {
-    projectId: existingProjectId,
-    folderName: existingFolderName,
-  }).catch((error) => {
+  //
+  // Cards count as photo owners too, and the registry was restored two lines
+  // up: collecting against the leaks alone deleted those pictures the moment
+  // they arrived, which is how two phones exchanging databases lost the
+  // photographs of their walks.
+  const photoOwners = await collectPhotoOwners(existingProject, [
+    ...finalLeaks,
+    ...preservedExisting,
+  ]);
+  await (
+    photoOwners
+      ? PhotoRepository.gcOrphaned(photoOwners, {
+          projectId: existingProjectId,
+          folderName: existingFolderName,
+        })
+      : Promise.resolve()
+  ).catch((error) => {
     logger.warn(
       "[projectBackupService] Imported data, but orphaned photos could not be removed:",
       error,

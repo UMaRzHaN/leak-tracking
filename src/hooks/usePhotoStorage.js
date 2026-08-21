@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { isNative } from "@/utils/platform";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
+import { collectPhotoOwners } from "@/services/storage/photoOwners";
 import { idb } from "@/repositories/idb";
 
 export function usePhotoStorage() {
@@ -85,19 +86,14 @@ export function usePhotoStorage() {
        * orphan and deleted it on the first idle sweep after a reload — the
        * thumbnail was there until the app restarted, then gone.
        *
-       * Loaded here rather than asked of every caller: the collector runs from
-       * one place and must see everything that can hold a path.
+       * The same question is asked from the import path and from the database
+       * clear, so the answer lives in one place; a registry that would not load
+       * means nothing is collected rather than guessed at.
        */
-      const { ComponentRepository } =
-        await import("@/repositories/ComponentRepository");
-      const components = await ComponentRepository.load(activeProject).catch(
-        () => null,
-      );
-      // A registry that would not load is not evidence that nothing references
-      // these photos, so nothing is collected rather than guessed at.
-      if (components === null) return;
+      const owners = await collectPhotoOwners(activeProject, leaks);
+      if (!owners) return;
 
-      await PhotoRepository.gcOrphaned([...(leaks ?? []), ...components], {
+      await PhotoRepository.gcOrphaned(owners, {
         projectId: activeProject?.id,
         folderName: activeProject?.folderName,
       });

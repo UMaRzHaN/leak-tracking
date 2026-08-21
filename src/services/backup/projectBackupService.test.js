@@ -15,6 +15,11 @@ import {
   writeProjectSyncState,
 } from "@/services/sync/projectSyncState";
 
+// Уборка снимков спрашивает реестр: карточки держат фото наравне с утечками.
+vi.mock("@/repositories/ComponentRepository", () => ({
+  ComponentRepository: { load: vi.fn().mockResolvedValue([]), save: vi.fn() },
+}));
+
 vi.mock("@/hooks/photoService", () => ({
   getPhotoSrc: vi.fn().mockResolvedValue(null),
   getPhotoBlob: vi.fn().mockResolvedValue(null),
@@ -1890,6 +1895,58 @@ describe("mergeLeaksByFreshness", () => {
     photoSaveSpy.mockRestore();
     saveAllSpy.mockRestore();
     gcSpy.mockRestore();
+  });
+
+  it("spares component photographs when tidying up after an import", async () => {
+    // Реестр восстанавливается в том же импорте, и уборка, считающая только
+    // утечки, стирала его снимки сразу после того, как они приехали: два
+    // телефона, обменявшиеся базами, теряли фотографии обхода.
+    const { ComponentRepository } =
+      await import("@/repositories/ComponentRepository");
+    ComponentRepository.load.mockResolvedValue([
+      { id: "card-1", photo: "idb://card-photo" },
+    ]);
+
+    const existingProject = {
+      id: "target",
+      name: "Target",
+      type: "upstream",
+      folderName: "Target",
+    };
+    const blob = await buildProjectBackupZip({
+      leaks: [],
+      idbGet: async () => null,
+      project: existingProject,
+      vars: {},
+    });
+    const gcSpy = vi
+      .spyOn(PhotoRepository, "gcOrphaned")
+      .mockResolvedValue(undefined);
+    vi.spyOn(LeakRepository, "getAll").mockResolvedValue([]);
+
+    await importIntoExistingProject(
+      blob,
+      {
+        activeProjectIdRef: { current: existingProject.id },
+        saveRef: { current: vi.fn() },
+        savePhotoRef: { current: vi.fn() },
+        photoReadyRef: { current: true },
+        existingProject,
+        overwriteProject: vi.fn(() => true),
+      },
+      "merge",
+    );
+
+    expect(gcSpy).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ photo: "idb://card-photo" }),
+      ]),
+      expect.objectContaining({ projectId: existingProject.id }),
+    );
+    gcSpy.mockRestore();
+    // Реестр общий на весь файл: оставить в нём карточку — значит поменять
+    // условия соседним тестам.
+    ComponentRepository.load.mockResolvedValue([]);
   });
 
   it("cleans partially restored photos when existing-project preparation fails", async () => {

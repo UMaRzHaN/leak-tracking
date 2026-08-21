@@ -16,6 +16,11 @@ vi.mock("@/repositories/LeakRepository", () => ({
   },
 }));
 
+// Уборка снимков спрашивает реестр: карточки держат фото наравне с утечками.
+vi.mock("@/repositories/ComponentRepository", () => ({
+  ComponentRepository: { load: vi.fn().mockResolvedValue([]) },
+}));
+
 vi.mock("@/repositories/PhotoRepository", () => ({
   PhotoRepository: {
     gcOrphaned: vi.fn(),
@@ -350,6 +355,8 @@ describe("useProjectData", () => {
       folderName: "project_one",
       syncState: { version: 2, deleted: {} },
     });
+    // Пустой список объявлял сиротами и снимки карточек, хотя реестр очистка
+    // не трогает: собираем по тому, что в проекте осталось.
     expect(
       photoRepositoryModule.PhotoRepository.gcOrphaned,
     ).toHaveBeenCalledWith([], {

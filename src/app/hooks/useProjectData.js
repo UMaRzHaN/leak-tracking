@@ -8,6 +8,7 @@ import {
 } from "@/repositories/LeakRepository";
 import { splitProjectDataReadWarning } from "@/repositories/projectDataReadState";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
+import { collectPhotoOwners } from "@/services/storage/photoOwners";
 import {
   commitLeakDataMutation,
   restoreEmbeddedProjectSyncState,
@@ -314,7 +315,16 @@ export function useProjectData() {
         committedDataByProjectRef.current.set(projectId, []);
         committedPreservedByProjectRef.current.set(projectId, []);
         try {
-          await PhotoRepository.gcOrphaned([], { projectId, folderName });
+          // Очистка обещает удалить записи об утечках и их фотографии — и
+          // ровно это должна делать. Пустой список объявлял сиротами и снимки
+          // карточек реестра, хотя сам реестр очистка не трогает.
+          const owners = await collectPhotoOwners({
+            id: projectId,
+            folderName,
+          });
+          if (owners) {
+            await PhotoRepository.gcOrphaned(owners, { projectId, folderName });
+          }
         } catch (error) {
           logger.error(
             "[useProjectData] Data was cleared, but orphaned photos could not be removed:",
