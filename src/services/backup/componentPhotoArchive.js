@@ -4,6 +4,7 @@ import {
   getImageMimeTypeFromExtension,
   normalizeImageExtension,
 } from "@/services/archive/archivePaths";
+import { fingerprintBlob } from "@/utils/blobHash";
 import { logger } from "@/utils/logger";
 import { resolvePhotoBlob } from "./photoArchive";
 
@@ -142,6 +143,11 @@ export async function restoreComponentPhotos(zip, components, project) {
         ? raw
         : new Blob([raw], { type: getImageMimeTypeFromExtension(extension) });
 
+      // Отпечаток снимка делает имя файла содержимым, а не временем: тот же
+      // архив, импортированный второй раз, попадает в уже лежащий файл вместо
+      // того, чтобы записать рядом его двойника. Фото утечек так хранятся
+      // давно, а карточки писали новую копию на каждый импорт.
+      const contentHash = await fingerprintBlob(blob).catch(() => null);
       const stored = await PhotoRepository.save(
         blob,
         {
@@ -150,7 +156,7 @@ export async function restoreComponentPhotos(zip, components, project) {
           folderName: project.folderName,
         },
         [],
-        { cleanupOldVersions: false },
+        { cleanupOldVersions: false, contentHash },
       );
       restored.push(stored ? { ...component, photo: stored } : component);
     } catch (error) {

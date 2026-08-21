@@ -81,6 +81,41 @@ describe("bringing component photographs back", () => {
 
     expect(mocks.save).toHaveBeenCalledTimes(1);
     expect(restored[0].photo).toBe("idb://photo_restored");
+    // Отпечаток снимка: имя файла становится содержимым, и повторный импорт
+    // того же архива попадает в уже лежащий файл вместо его двойника.
+    expect(mocks.save.mock.calls[0][3]).toMatchObject({
+      cleanupOldVersions: false,
+      contentHash: expect.stringMatching(/^[a-f0-9]{24,64}$/),
+    });
+  });
+
+  it("still stores the picture when its fingerprint cannot be taken", async () => {
+    const JSZip = (await getJSZip()).default;
+    const zip = new JSZip();
+    zip.file("component_photos/4242.jpg", pixel());
+    const reopened = await new JSZip().loadAsync(
+      await zip.generateAsync({ type: "blob" }),
+    );
+    const crypto = globalThis.crypto;
+    vi.stubGlobal("crypto", {
+      subtle: {
+        digest: () => Promise.reject(new Error("no digest here")),
+      },
+    });
+
+    try {
+      const restored = await restoreComponentPhotos(
+        reopened,
+        [{ id: "a", photo: "zip:component_photos/4242.jpg" }],
+        project,
+      );
+      // Хеш — способ не писать дубль, а не условие сохранения: без него
+      // снимок всё равно должен лечь на диск.
+      expect(restored[0].photo).toBe("idb://photo_restored");
+      expect(mocks.save).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.stubGlobal("crypto", crypto);
+    }
   });
 
   it("leaves a card alone when the archive never carried its picture", async () => {
