@@ -383,6 +383,9 @@ export async function parseExcelImportFile(file, options = {}) {
   // they decompress, so the archive is no longer expanded twice.
   assertArchiveLimits(zip);
   let project = null;
+  // Файл из старых выгрузок: тип и имя проекта лежали рядом с книгой, пока их
+  // не перенесли в служебный лист внутри неё. Выгрузка его больше не пишет —
+  // чтение остаётся ради архивов, которые люди уже унесли на диски и в почту.
   const projectEntry = zip.file("excel-project.json");
   if (projectEntry) {
     try {
