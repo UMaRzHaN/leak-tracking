@@ -33,12 +33,12 @@ const { useSetupImports } = await import("./useSetupImports");
 
 const file = () => new File(["x"], "!Inventorization_Buzahur.zip");
 
-function setup() {
+function setup({ photoReadyRef = { current: true } } = {}) {
   const activeProjectIdRef = { current: "existing" };
   const deps = {
     // Наложение поверх экрана здесь ничего не решает — прокидываем как есть.
     runWithImportOverlay: vi.fn((run) => run()),
-    stableImportCtx: { ctx: true },
+    stableImportCtx: { ctx: true, photoReadyRef },
     activeProjectIdRef,
     saveRef: { current: vi.fn().mockResolvedValue(undefined) },
     addProject: vi.fn((name, type) => {
@@ -79,6 +79,30 @@ describe("useSetupImports", () => {
       // раньше, чем находят первую утечку.
       expect(deps.saveRef.current).toHaveBeenCalledWith([]);
       expect(deps.removeProject).not.toHaveBeenCalled();
+    });
+
+    it("ждёт готовности хранилища фото, прежде чем вносить карточки", async () => {
+      // Снимок, сохранённый в неготовое хранилище, не сохраняется вовсе:
+      // карточка приезжает без фотографии, и никакой ошибки при этом не видно.
+      // На первом запуске телефона хранилище готово не сразу.
+      const photoReadyRef = { current: false };
+      const { api } = setup({ photoReadyRef });
+      const order = [];
+      mocks.importInventory.mockImplementation(async () => {
+        order.push(`photoReady=${photoReadyRef.current}`);
+        return { added: 3, updated: 0 };
+      });
+
+      const pending = api.handleSetupImportInventory(file(), {
+        name: "Бузахур",
+      });
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      expect(mocks.importInventory).not.toHaveBeenCalled();
+
+      photoReadyRef.current = true;
+      await pending;
+
+      expect(order).toEqual(["photoReady=true"]);
     });
 
     it("не заводит проект, когда тип определить не из чего", async () => {

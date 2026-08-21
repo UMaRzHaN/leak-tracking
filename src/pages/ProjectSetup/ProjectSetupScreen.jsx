@@ -251,6 +251,11 @@ export default function ProjectSetupScreen({
       }
     } catch (err) {
       setError(importErrorText(err, localeTexts));
+    } finally {
+      // Успешный импорт уводит с этого экрана, и раньше на этом всё и
+      // держалось. Но если проект по какой-то причине не открылся, экран
+      // оставался с вечным «Импорт…» и без единой кнопки — снять состояние
+      // здесь дешевле, чем полагаться на то, что нас размонтируют.
       setImporting(false);
     }
   };
@@ -268,6 +273,7 @@ export default function ProjectSetupScreen({
       if (err.code !== "QR_SCAN_CANCELLED") {
         setError(importErrorText(err, localeTexts));
       }
+    } finally {
       setImportingQr(false);
       setQrPhase("idle");
     }

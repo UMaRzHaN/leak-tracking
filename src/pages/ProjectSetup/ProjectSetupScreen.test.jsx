@@ -66,6 +66,32 @@ describe("ProjectSetupScreen", () => {
     );
   });
 
+  it("stops showing progress when an import finishes without opening a project", async () => {
+    // Успешный импорт обычно уводит с этого экрана, и раньше на это всё и
+    // опиралось. Если проект не открылся, экран оставался с вечным «Импорт…»
+    // и без единой кнопки — ровно то, что видно на телефоне.
+    routing.detectImportKind.mockResolvedValue({ kind: "inventory" });
+    const onImportInventory = vi.fn().mockResolvedValue({ components: 3 });
+    const { container } = render(
+      <ProjectSetupScreen
+        onComplete={vi.fn()}
+        onImportZip={vi.fn()}
+        onImportInventory={onImportInventory}
+      />,
+    );
+
+    fireEvent.change(fileInput(container), {
+      target: {
+        files: [new File(["zip"], "!Inventorization_Бузахур.zip")],
+      },
+    });
+
+    await waitFor(() => expect(onImportInventory).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.queryByRole("status")).not.toBeInTheDocument(),
+    );
+  });
+
   it("imports an Excel archive into a new project after selecting its type", async () => {
     const onImportExcel = vi.fn().mockResolvedValue({});
     const { container } = render(

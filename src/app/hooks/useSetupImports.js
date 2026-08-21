@@ -55,9 +55,11 @@ export function useSetupImports({
         const [
           { componentRegistryProjectTypes, loadComponentRegistry },
           { importInventoryFile },
+          { waitForPhotoStorage },
         ] = await Promise.all([
           import("@/configs/projectAdapter"),
           import("@/services/inventory/inventoryImport"),
+          import("@/services/backup/runtime"),
         ]);
 
         const registryTypes = componentRegistryProjectTypes();
@@ -75,6 +77,12 @@ export function useSetupImports({
 
         try {
           await waitForRefValue(activeProjectIdRef, newProject.id);
+          // Снимки карточек пишутся в то же хранилище, что и фото утечек, и
+          // на первом запуске оно готово не сразу. Импорт ZIP этого ждёт, а
+          // здесь не ждал: снимок, сохранённый в неготовое хранилище, не
+          // сохраняется вовсе — карточка приезжает без фотографии, и никакой
+          // ошибки при этом не видно.
+          await waitForPhotoStorage(stableImportCtx.photoReadyRef);
           const registry = await loadComponentRegistry(newProject);
           const result = await importInventoryFile(file, newProject, registry);
           if (!result.added && !result.updated) {
@@ -118,6 +126,7 @@ export function useSetupImports({
       removeProject,
       runWithImportOverlay,
       saveRef,
+      stableImportCtx,
     ],
   );
 
