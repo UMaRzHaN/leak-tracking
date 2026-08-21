@@ -232,6 +232,15 @@ public class PublicFileWriterPlugin extends Plugin {
         Uri collection = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
         String relativePath = Environment.DIRECTORY_DOCUMENTS + (folder.isEmpty() ? "/" : "/" + folder + "/");
 
+        // Before creating, not after: MediaStore refuses to collide, and asked
+        // for a name that is taken it silently stores "report (1).zip" instead.
+        // Deleting afterwards left that suffix on the file for good, so every
+        // export added another numbered copy and the message on screen named a
+        // file nobody had written. Nothing can be lost by clearing the way
+        // first — what is about to be published is already a complete file in
+        // the app's own storage, and this method only copies it out.
+        deleteExistingFile(resolver, collection, relativePath, fileName, null);
+
         ContentValues values = new ContentValues();
         values.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName);
         values.put(MediaStore.MediaColumns.MIME_TYPE, mimeType);
@@ -264,12 +273,13 @@ public class PublicFileWriterPlugin extends Plugin {
             }
             published = true;
 
-            // Keep the previous export intact until the replacement is fully
-            // written and visible. A failed write must never destroy the last
-            // usable copy.
-            deleteExistingFile(resolver, collection, relativePath, fileName, item);
+            // A name can still be taken by a file this app may not delete —
+            // one written by another build of it, for instance. Then the export
+            // keeps the suffix MediaStore gave it, and the caller is told the
+            // name the file actually carries rather than the one it asked for.
+            String storedName = renameToRequested(resolver, item, fileName);
 
-            return "Documents/" + (folder.isEmpty() ? "" : folder + "/") + fileName;
+            return "Documents/" + (folder.isEmpty() ? "" : folder + "/") + storedName;
         } finally {
             if (!published) {
                 try {
@@ -277,6 +287,57 @@ public class PublicFileWriterPlugin extends Plugin {
                 } catch (Exception ignored) {}
             }
         }
+    }
+
+    /**
+     * Puts the requested name back on a freshly published export.
+     *
+     * @return the name the file actually carries afterwards
+     */
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private String renameToRequested(ContentResolver resolver, Uri item, String fileName) {
+        try (
+            Cursor cursor = resolver.query(
+                item,
+                new String[] { MediaStore.MediaColumns.DISPLAY_NAME },
+                null,
+                null,
+                null
+            )
+        ) {
+            if (cursor != null && cursor.moveToFirst()) {
+                String current = cursor.getString(0);
+                if (fileName.equals(current)) return fileName;
+            }
+        } catch (Exception ignored) {
+            // Unreadable name is not a reason to fail an export that is written.
+        }
+
+        try {
+            ContentValues rename = new ContentValues();
+            rename.put(MediaStore.MediaColumns.DISPLAY_NAME, fileName);
+            if (resolver.update(item, rename, null, null) == 1) return fileName;
+        } catch (Exception ignored) {
+            // Scoped storage may refuse the rename; the export itself stands.
+        }
+
+        try (
+            Cursor cursor = resolver.query(
+                item,
+                new String[] { MediaStore.MediaColumns.DISPLAY_NAME },
+                null,
+                null,
+                null
+            )
+        ) {
+            if (cursor != null && cursor.moveToFirst()) {
+                String current = cursor.getString(0);
+                if (current != null && !current.isEmpty()) return current;
+            }
+        } catch (Exception ignored) {
+            // Fall through to the requested name.
+        }
+        return fileName;
     }
 
     private void deleteExistingFile(
@@ -287,6 +348,8 @@ public class PublicFileWriterPlugin extends Plugin {
         Uri keepItem
     ) {
         String[] projection = new String[] { MediaStore.MediaColumns._ID };
+        // keepItem is null when clearing the way before a write: there is
+        // nothing to spare yet.
         String selection = MediaStore.MediaColumns.DISPLAY_NAME + "=? AND " + MediaStore.MediaColumns.RELATIVE_PATH + "=?";
         String[] args = new String[] { fileName, relativePath };
 
@@ -297,7 +360,7 @@ public class PublicFileWriterPlugin extends Plugin {
             while (cursor.moveToNext()) {
                 long id = cursor.getLong(idColumn);
                 Uri item = Uri.withAppendedPath(collection, String.valueOf(id));
-                if (item.equals(keepItem)) continue;
+                if (keepItem != null && item.equals(keepItem)) continue;
                 try {
                     resolver.delete(item, null, null);
                 } catch (SecurityException ignored) {
