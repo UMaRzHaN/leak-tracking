@@ -28,6 +28,7 @@ export default function ImportConflictSheet({
   existingProject,
   leakCount,
   mergePreview,
+  registryPreview = null,
   sourceLabel = null,
   photoLabel = null,
   onOverwrite,
@@ -144,6 +145,31 @@ export default function ImportConflictSheet({
                 <strong>{mergePreview.changedFields ?? 0}</strong>
               </div>
             </div>
+            {registryPreview ? (
+              // Реестр везёт тот же архив, и решают его судьбу той же кнопкой.
+              // Отдельным блоком с подписью, а не вперемешку с утечками:
+              // путать карточки компонентов с записями об утечках — то же
+              // самое, что путать железо с тем, что из него течёт.
+              <>
+                <div className={s.previewGroup}>
+                  {t("importConflict.preview.registryGroup")}
+                </div>
+                <div className={s.preview}>
+                  <div className={s.previewItem}>
+                    <span>{t("importConflict.preview.componentsAdded")}</span>
+                    <strong>{registryPreview.added ?? 0}</strong>
+                  </div>
+                  <div className={s.previewItem}>
+                    <span>{t("importConflict.preview.componentsUpdated")}</span>
+                    <strong>{registryPreview.updated ?? 0}</strong>
+                  </div>
+                  <div className={s.previewItem}>
+                    <span>{t("importConflict.preview.componentPhotos")}</span>
+                    <strong>{registryPreview.photos ?? 0}</strong>
+                  </div>
+                </div>
+              </>
+            ) : null}
             {(Object.keys(mergePreview.changedFieldBreakdown ?? {}).length >
               0 ||
               Object.keys(photoStats?.replacedByField ?? {}).length > 0) && (

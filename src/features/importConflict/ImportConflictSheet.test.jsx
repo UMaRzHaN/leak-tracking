@@ -129,3 +129,37 @@ describe("ImportConflictSheet async actions", () => {
     expect(screen.getByRole("button", { name: "Merge" }).disabled).toBe(false);
   });
 });
+
+describe("ImportConflictSheet registry preview", () => {
+  const base = {
+    open: true,
+    projectName: "Project A",
+    existingProject: { leakCount: 0 },
+    leakCount: 0,
+    mergePreview: { added: 0, updated: 0, skipped: 0, archivePhotos: 0 },
+  };
+
+  it("shows what the archive does to the component registry", () => {
+    // Иначе архив с полутора десятками карточек и без единой утечки выглядит
+    // рядом нулей, и человек решает его судьбу вслепую.
+    render(
+      <ImportConflictSheet
+        {...base}
+        registryPreview={{ added: 12, updated: 3, total: 15, photos: 9 }}
+      />,
+    );
+
+    expect(screen.getByText("Components added")).toBeInTheDocument();
+    expect(screen.getByText("12")).toBeInTheDocument();
+    expect(screen.getByText("Components updated")).toBeInTheDocument();
+    expect(screen.getByText("Component photos")).toBeInTheDocument();
+    expect(screen.getByText("9")).toBeInTheDocument();
+  });
+
+  it("says nothing about a registry the archive does not carry", () => {
+    render(<ImportConflictSheet {...base} registryPreview={null} />);
+
+    expect(screen.queryByText("Components added")).not.toBeInTheDocument();
+    expect(screen.queryByText("Component photos")).not.toBeInTheDocument();
+  });
+});

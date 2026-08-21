@@ -39,6 +39,7 @@ vi.mock("@/services/storage/publicFileWriter", () => ({
 
 vi.mock("@/services/backup/projectBackupService", () => ({
   peekBackupZip: vi.fn(),
+  previewArchiveComponents: vi.fn(),
   buildProjectBackupZip: vi.fn(),
   streamProjectBackupZip: vi.fn(),
   previewMergeLeaks: vi.fn(),
@@ -575,5 +576,45 @@ describe("useBackupActions ZIP export with no leaks", () => {
 
     expect(servicesModule.buildProjectBackupZip).not.toHaveBeenCalled();
     expect(notify).toHaveBeenCalledWith("warning", "No data to export");
+  });
+});
+
+describe("useBackupActions conflict dialog", () => {
+  it("clears the progress notice and previews the registry", async () => {
+    // Сообщение о чтении висело поверх вопроса, на который человек как раз
+    // отвечает, а про карточки диалог молчал вовсе.
+    servicesModule.previewArchiveComponents.mockResolvedValue({
+      added: 12,
+      updated: 3,
+      total: 15,
+      photos: 9,
+    });
+    repositoryModule.LeakRepository.getAll.mockResolvedValue([]);
+    const dismissNotification = vi.fn();
+    const { result } = renderHook(() =>
+      useBackupActions({
+        data: [],
+        idbGetPhoto: vi.fn(),
+        activeProject: { id: "p1", name: "Alpha", folderName: "Alpha" },
+        vars: {},
+        onImportZip: vi.fn(),
+        onImportIntoExisting: vi.fn(),
+        notify: vi.fn(),
+        dismissNotification,
+        projects: [{ id: "p1", name: "Alpha", folderName: "Alpha" }],
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleImportZip({
+        target: { files: [{ name: "Alpha.zip" }], value: "filled" },
+      });
+    });
+
+    expect(dismissNotification).toHaveBeenCalled();
+    expect(result.current.conflictState).toMatchObject({
+      open: true,
+      registryPreview: { added: 12, updated: 3, photos: 9 },
+    });
   });
 });

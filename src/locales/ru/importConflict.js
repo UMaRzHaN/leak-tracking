@@ -21,6 +21,10 @@ export const importConflict = {
     photosReplaced: "Фото на замену",
     photosReused: "Фото уже есть",
     archivePhotos: "Фото архива",
+    registryGroup: "Реестр компонентов",
+    componentsAdded: "Компонентов добавится",
+    componentsUpdated: "Компонентов обновится",
+    componentPhotos: "Фото компонентов",
     changedFields: "Изменённые поля",
   },
 

@@ -17,4 +17,6 @@ export {
 
 export { detectProjectTypeFromLeaks, peekBackupZip } from "./archiveParser";
 
+export { previewArchiveComponents } from "./componentArchive";
+
 export { mergeLeaksByFreshness, previewMergeLeaks } from "./merge";

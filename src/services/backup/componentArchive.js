@@ -93,6 +93,47 @@ function unwrap(parsed) {
  * @param {{id: string, folderName?: string, name?: string, type?: string}} project
  * @returns {Promise<{added: number, updated: number, conflicts: number}>}
  */
+/**
+ * Что случится с реестром, если этот архив принять, — без единой записи.
+ *
+ * Диалог «проект уже существует» до этого считал только утечки и показывал
+ * ряд нулей архиву, который вёз полтора десятка карточек: человек решал
+ * судьбу реестра, ничего о нём не зная.
+ *
+ * Снимки здесь намеренно не восстанавливаются: предпросмотр не должен ничего
+ * писать на диск. Поэтому карточки сравниваются как есть, и «фото» считается
+ * по тому, что лежит в архиве.
+ *
+ * @param {File|Blob} file
+ * @param {{id: string, folderName?: string}|null} project
+ * @returns {Promise<{added: number, updated: number, total: number, photos: number}|null>}
+ *   null — если реестра в архиве нет вовсе.
+ */
+export async function previewArchiveComponents(file, project) {
+  try {
+    const JSZip = (await getJSZip()).default;
+    const zip = await new JSZip().loadAsync(file);
+    const entry = zip.file(COMPONENT_ARCHIVE_FILE);
+    if (!entry) return null;
+
+    const incoming = unwrap(JSON.parse(await entry.async("string")));
+    if (!Array.isArray(incoming) || incoming.length === 0) return null;
+
+    const local = project ? await ComponentRepository.load(project) : [];
+    const { added, updated } = mergeComponentRegistries(local, incoming);
+    const photos = incoming.filter((card) =>
+      String(card?.photo ?? "").startsWith("zip:"),
+    ).length;
+
+    return { added, updated, total: incoming.length, photos };
+  } catch (error) {
+    // Нечитаемый реестр не отменяет импорт утечек: диалог просто промолчит
+    // о карточках, как молчал раньше.
+    logger.warn("[components] could not preview the archive registry:", error);
+    return null;
+  }
+}
+
 export async function restoreComponentsFromArchive(file, project) {
   const nothing = { added: 0, updated: 0, conflicts: 0 };
   if (!project?.id) return nothing;

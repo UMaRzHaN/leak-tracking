@@ -36,6 +36,7 @@ export default function ImportExportDialogs({
         existingProject={backupConflict.state.existingProject}
         leakCount={backupConflict.state.leakCount}
         mergePreview={backupConflict.state.mergePreview}
+        registryPreview={backupConflict.state.registryPreview}
         onOverwrite={backupConflict.onOverwrite}
         onMerge={backupConflict.onMerge}
         onCopy={backupConflict.onCopy}

@@ -8,6 +8,7 @@ vi.mock("@/repositories/ComponentRepository", () => ({
 
 const {
   buildComponentArchiveEntry,
+  previewArchiveComponents,
   restoreComponentsFromArchive,
   COMPONENT_ARCHIVE_FILE,
 } = await import("./componentArchive");
@@ -164,6 +165,50 @@ describe("restoring from an archive", () => {
       added: 0,
       updated: 0,
       conflicts: 0,
+    });
+  });
+});
+
+describe("previewArchiveComponents", () => {
+  it("counts what the registry would gain without writing anything", async () => {
+    mocks.load.mockResolvedValue([card("c1", "4242", { updatedAt: 1 })]);
+    const file = await makeArchive({
+      [COMPONENT_ARCHIVE_FILE]: archivePayload([
+        card("c1", "4242", { updatedAt: 5_000 }),
+        card("c2", "4243", { photo: "zip:component_photos/4243.jpg" }),
+      ]),
+    });
+
+    await expect(previewArchiveComponents(file, project)).resolves.toEqual({
+      added: 1,
+      updated: 1,
+      total: 2,
+      photos: 1,
+    });
+    // Предпросмотр ничего не решает и ничего не пишет.
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+
+  it("stays silent about an archive that carries no registry", async () => {
+    const file = await makeArchive({ "backup.json": "[]" });
+    await expect(previewArchiveComponents(file, project)).resolves.toBe(null);
+  });
+
+  it("stays silent when the registry cannot be read", async () => {
+    const file = await makeArchive({ [COMPONENT_ARCHIVE_FILE]: "не json" });
+    await expect(previewArchiveComponents(file, project)).resolves.toBe(null);
+  });
+
+  it("counts every card as new when no project holds a registry yet", async () => {
+    mocks.load.mockResolvedValue([]);
+    const file = await makeArchive({
+      [COMPONENT_ARCHIVE_FILE]: archivePayload([card("c1", "4242")]),
+    });
+
+    await expect(previewArchiveComponents(file, null)).resolves.toMatchObject({
+      added: 1,
+      updated: 0,
+      total: 1,
     });
   });
 });

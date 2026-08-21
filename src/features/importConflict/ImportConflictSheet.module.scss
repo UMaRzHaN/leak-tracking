@@ -64,6 +64,17 @@
   gap: 8px;
 }
 
+/* Реестр — вторая половина архива, и её видно как вторую: без подписи строки
+   про компоненты выглядели продолжением строк про утечки. */
+.previewGroup {
+  margin-top: 12px;
+  color: var(--c-text3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .diagnostics {
   margin-top: 8px;
   padding: 8px 10px;

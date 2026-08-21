@@ -20,6 +20,10 @@ export const importConflict = {
     photosReplaced: "Replaced photos",
     photosReused: "Reused photos",
     archivePhotos: "Archive photos",
+    registryGroup: "Component registry",
+    componentsAdded: "Components added",
+    componentsUpdated: "Components updated",
+    componentPhotos: "Component photos",
     changedFields: "Changed fields",
   },
 

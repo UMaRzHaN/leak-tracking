@@ -192,6 +192,7 @@ export function useSettingsPage({
     onImportZip,
     onImportIntoExisting,
     notify,
+    dismissNotification: () => setNotification(null),
     projects,
   });
 

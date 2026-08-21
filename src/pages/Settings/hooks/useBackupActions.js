@@ -82,6 +82,7 @@ export function useBackupActions({
   onImportZip,
   onImportIntoExisting,
   notify,
+  dismissNotification = null,
   projects,
 }) {
   const { lang, t } = useLanguage();
@@ -196,7 +197,7 @@ export function useBackupActions({
 
       try {
         notifyZipReadProgress();
-        const { peekBackupZip, previewMergeLeaks } =
+        const { peekBackupZip, previewMergeLeaks, previewArchiveComponents } =
           await import("@/services/backup/projectBackupService");
         const peek = await peekBackupZip(file);
         const metaProject = peek.meta?.project;
@@ -234,6 +235,15 @@ export function useBackupActions({
               : {}),
           });
           const mergePreview = previewMergeLeaks(existingLeaks, peek.leaks);
+          // Реестр приезжает в том же архиве, и его судьбу решают той же
+          // кнопкой. Молчать о нём — значит просить решение вслепую.
+          const registryPreview = await previewArchiveComponents(
+            file,
+            existing,
+          );
+          // Чтение закончилось — а сообщение о нём висело поверх вопроса, на
+          // который человек как раз отвечает.
+          dismissNotification?.();
           setConflictState({
             open: true,
             file,
@@ -245,6 +255,7 @@ export function useBackupActions({
             existingProject: { ...existing, leakCount: existingLeaks.length },
             leakCount: peek.leaks.length,
             mergePreview,
+            registryPreview,
           });
           event.target.value = "";
           return;
@@ -279,7 +290,7 @@ export function useBackupActions({
 
       event.target.value = "";
     },
-    [notify, notifyZipReadProgress, projects, t],
+    [dismissNotification, notify, notifyZipReadProgress, projects, t],
   );
 
   const confirmImport = useCallback(async () => {
