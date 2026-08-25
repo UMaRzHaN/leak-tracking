@@ -12,8 +12,8 @@
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  background: #1e293b;
-  color: #f1f5f9;
+  background: var(--c-banner);
+  color: var(--c-banner-text);
   font-size: 13px;
   font-weight: 500;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -47,5 +47,5 @@
   background: var(--c-blue);
 }
 .draftBtnDiscard {
-  background: var(--c-text2);
+  background: var(--c-banner-muted);
 }

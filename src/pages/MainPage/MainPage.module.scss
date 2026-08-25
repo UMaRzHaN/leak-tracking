@@ -144,9 +144,9 @@
   transition: all var(--t-fast);
 
   &.gpsOn {
-    border-color: #a7f3d0;
+    border-color: var(--c-resolved-border);
     background: var(--c-resolved-bg);
-    color: var(--c-resolved);
+    color: var(--c-resolved-text);
     font-weight: 600;
   }
 }
@@ -174,7 +174,7 @@
 .viewAll {
   background: none;
   border: none;
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;

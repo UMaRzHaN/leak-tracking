@@ -42,25 +42,25 @@
 .success {
   background: var(--c-resolved-bg);
   border-left: 4px solid var(--c-resolved);
-  color: var(--c-resolved);
+  color: var(--c-resolved-text);
 }
 
 .warning {
   background: var(--c-progress-bg);
   border-left: 4px solid var(--c-progress);
-  color: var(--c-progress);
+  color: var(--c-progress-text);
 }
 
 .error {
   background: var(--c-open-bg);
   border-left: 4px solid var(--c-open);
-  color: var(--c-open);
+  color: var(--c-open-text);
 }
 
 .info {
   background: var(--c-blue-dim);
   border-left: 4px solid var(--c-blue);
-  color: var(--c-blue);
+  color: var(--c-blue-text);
 }
 
 /* =====================================================

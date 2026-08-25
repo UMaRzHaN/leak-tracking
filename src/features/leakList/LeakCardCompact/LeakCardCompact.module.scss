@@ -24,26 +24,26 @@
 .hintRight {
   left: 0;
   background: linear-gradient(to right, var(--c-blue-overlay), transparent);
-  color: var(--c-blue);
+  color: var(--c-blue-text);
 }
 
 /* Left hint color changes based on the next status */
 .hintLeft {
   right: 0;
   background: linear-gradient(to left, var(--c-progress-border), transparent);
-  color: var(--c-progress);
+  color: var(--c-progress-text);
 
   &[data-next="in_progress"] {
     background: linear-gradient(to left, var(--c-progress-border), transparent);
-    color: var(--c-progress);
+    color: var(--c-progress-text);
   }
   &[data-next="resolved"] {
     background: linear-gradient(to left, var(--c-resolved-border), transparent);
-    color: var(--c-resolved);
+    color: var(--c-resolved-text);
   }
   &[data-next="open"] {
     background: linear-gradient(to left, var(--c-blue-overlay), transparent);
-    color: var(--c-blue);
+    color: var(--c-blue-text);
   }
 }
 
@@ -152,7 +152,7 @@
   border-radius: 5px;
   border: 1px solid var(--c-border);
   background: var(--c-surface2);
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -268,7 +268,7 @@
 
   &:hover,
   &:focus-visible {
-    color: var(--c-blue);
+    color: var(--c-blue-text);
     background: var(--c-blue-dim);
   }
 }
@@ -433,7 +433,7 @@
 .chipCalc {
   font-size: 11px;
   font-weight: 600;
-  color: var(--c-resolved);
+  color: var(--c-resolved-text);
   background: var(--c-resolved-bg);
   border: 1px solid var(--c-resolved-border);
   border-radius: var(--r-pill);
@@ -444,7 +444,7 @@
 .chipNear {
   font-size: 11px;
   font-weight: 600;
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   background: var(--c-blue-dim);
   border: 1px solid rgba(37, 99, 235, 0.25);
   border-radius: var(--r-pill);

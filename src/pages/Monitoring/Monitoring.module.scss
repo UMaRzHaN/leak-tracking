@@ -35,7 +35,7 @@
 .roundBadge {
   display: inline-flex;
   align-items: center;
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   font-weight: 800;
 }
 
@@ -50,7 +50,7 @@
   border: 1px solid var(--c-blue);
   border-radius: var(--r-md);
   background: var(--c-blue-dim);
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
@@ -298,11 +298,11 @@
 
 .filterBtnActive {
   border-color: var(--c-blue);
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   background: var(--c-blue-bg, rgba(37, 99, 235, 0.08));
 
   strong {
-    color: var(--c-blue);
+    color: var(--c-blue-text);
   }
 }
 
@@ -358,12 +358,12 @@
 }
 
 .dueText {
-  color: var(--c-open);
+  color: var(--c-open-text);
   font-weight: 800;
 }
 
 .okText {
-  color: var(--c-resolved);
+  color: var(--c-resolved-text);
   font-weight: 800;
 }
 
@@ -417,7 +417,7 @@
   padding: 8px 14px 14px;
   border-radius: var(--r-xl) var(--r-xl) 0 0;
   background: var(--c-surface);
-  box-shadow: var(--shadow-modal);
+  box-shadow: var(--shadow-sheet);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -478,7 +478,7 @@
   border: 1px solid color-mix(in srgb, var(--c-blue) 22%, transparent);
   border-radius: 999px;
   background: var(--c-blue-dim);
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.25;

@@ -60,7 +60,7 @@
   text-overflow: ellipsis;
 
   .field:focus-within & {
-    color: var(--c-blue);
+    color: var(--c-blue-text);
   }
 }
 

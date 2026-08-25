@@ -56,7 +56,7 @@
   border: 1.5px solid var(--c-blue);
   border-radius: var(--r-md);
   background: transparent;
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -104,7 +104,7 @@
   transition: all var(--t-fast);
   &:hover {
     border-color: var(--c-blue);
-    color: var(--c-blue);
+    color: var(--c-blue-text);
     background: var(--c-blue-dim);
   }
   &:active {
@@ -125,7 +125,7 @@
   &.restore {
     border-color: var(--c-resolved-border);
     background: var(--c-resolved-bg);
-    color: var(--c-resolved);
+    color: var(--c-resolved-text);
     &:hover {
       border-color: var(--c-resolved);
     }
@@ -171,7 +171,7 @@
 }
 
 .localSyncEyebrow {
-  color: var(--c-text1);
+  color: var(--c-text);
   font-size: 14px;
   font-weight: 800;
 }
@@ -184,7 +184,7 @@
   border: 1px solid var(--c-resolved-border);
   border-radius: 999px;
   background: var(--c-resolved-bg);
-  color: var(--c-resolved);
+  color: var(--c-resolved-text);
   font-size: 11px;
   font-weight: 800;
   white-space: nowrap;
@@ -218,7 +218,7 @@
   gap: 3px;
 
   strong {
-    color: var(--c-text1);
+    color: var(--c-text);
     font-size: 13px;
   }
 
@@ -290,7 +290,7 @@
   }
 
   strong {
-    color: var(--c-text1);
+    color: var(--c-text);
     font-size: 12px;
   }
 
@@ -313,7 +313,7 @@
   }
 
   strong {
-    color: var(--c-text1);
+    color: var(--c-text);
     text-align: right;
     overflow-wrap: anywhere;
   }
@@ -382,7 +382,7 @@
     border: 1px solid var(--c-border);
     border-radius: var(--r-md);
     background: var(--c-surface);
-    color: var(--c-text1);
+    color: var(--c-text);
     font-size: 13px;
   }
 }
@@ -467,7 +467,7 @@
   box-shadow: 0 22px 60px rgb(15 23 42 / 28%);
 
   > strong {
-    color: var(--c-text1);
+    color: var(--c-text);
     font-size: 17px;
   }
 
@@ -616,7 +616,7 @@
   transition: all var(--t-fast);
   &:hover {
     border-color: var(--c-blue);
-    color: var(--c-blue);
+    color: var(--c-blue-text);
     background: var(--c-blue-dim);
   }
 }
@@ -687,7 +687,7 @@
   align-items: center;
   gap: 7px;
   margin: 0;
-  color: var(--c-danger, #ef4444);
+  color: var(--c-danger-text);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.07em;
@@ -729,7 +729,7 @@
   border-radius: var(--r-lg);
   border: 1.5px solid var(--c-danger, #ef4444);
   background: transparent;
-  color: var(--c-danger, #ef4444);
+  color: var(--c-danger-text);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -830,7 +830,7 @@
 
 .languageToggle:hover {
   border-color: var(--c-blue);
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   background: var(--c-blue-dim);
 }
 /* ── Map cache ── */
@@ -907,13 +907,13 @@
 }
 
 .integrityOk {
-  color: var(--c-resolved);
+  color: var(--c-resolved-text);
   background: var(--c-resolved-bg);
   border: 1px solid var(--c-resolved-border);
 }
 
 .integrityWarn {
-  color: var(--c-progress);
+  color: var(--c-progress-text);
   background: var(--c-progress-bg);
   border: 1px solid var(--c-progress-border);
 }

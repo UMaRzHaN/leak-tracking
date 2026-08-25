@@ -36,7 +36,7 @@
 
 .activeIndicator {
   font-size: 10px;
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   opacity: 0.4;
   flex-shrink: 0;
 
@@ -66,14 +66,14 @@
   white-space: nowrap;
 
   .active & {
-    color: var(--c-blue);
+    color: var(--c-blue-text);
   }
 }
 
 .nameInput {
   font-size: 14px;
   font-weight: 600;
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   border: none;
   border-bottom: 2px solid var(--c-blue);
   background: transparent;
@@ -145,7 +145,7 @@
 .deleteBtn {
   &:hover {
     background: var(--c-open-bg);
-    color: var(--c-open);
+    color: var(--c-open-text);
   }
 }
 

@@ -88,7 +88,7 @@
   @media (hover: hover) {
     &:hover {
       border-color: var(--c-blue);
-      color: var(--c-blue);
+      color: var(--c-blue-text);
       background: var(--c-blue-dim);
     }
   }
@@ -96,7 +96,7 @@
 
 .filterToggleBtnOpen {
   border-color: var(--c-blue);
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   background: var(--c-blue-dim);
 }
 
@@ -172,7 +172,7 @@
 
   &:hover {
     background: var(--c-blue-dim);
-    color: var(--c-blue);
+    color: var(--c-blue-text);
   }
 }
 
@@ -184,11 +184,11 @@
   // выключенного одной жирностью — на кнопке в 12 пикселей это незаметно.
   border-color: var(--c-blue);
   background: var(--c-blue-dim);
-  color: var(--c-blue);
+  color: var(--c-blue-text);
 
   .filterCount {
     background: var(--c-blue-overlay);
-    color: var(--c-blue);
+    color: var(--c-blue-text);
   }
 }
 
@@ -228,7 +228,7 @@
 
   &:hover {
     background: var(--c-blue-dim);
-    color: var(--c-blue);
+    color: var(--c-blue-text);
   }
 }
 
@@ -254,14 +254,14 @@
 
   &:hover {
     border-color: var(--c-blue-light);
-    color: var(--c-blue);
+    color: var(--c-blue-text);
     background: var(--c-blue-dim);
   }
 }
 
 .nearbyToggleActive {
   border-color: var(--c-blue);
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   background: var(--c-blue-dim);
 }
 
@@ -348,14 +348,14 @@
 
   &:hover {
     border-color: var(--c-blue);
-    color: var(--c-blue);
+    color: var(--c-blue-text);
     background: var(--c-blue-dim);
   }
 }
 
 .nearbyRadiusBtnActive {
   border-color: var(--c-blue);
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   background: var(--c-blue-dim);
 }
 
@@ -395,7 +395,7 @@
 
   &:hover {
     border-color: var(--c-blue);
-    color: var(--c-blue);
+    color: var(--c-blue-text);
     background: var(--c-blue-dim);
   }
   &:active {
@@ -428,7 +428,7 @@
 
   &:hover {
     border-color: var(--c-blue);
-    color: var(--c-blue);
+    color: var(--c-blue-text);
     background: var(--c-blue-dim);
   }
   &:active {
@@ -455,7 +455,7 @@
   &:hover {
     background: var(--c-resolved-bg);
     border-color: var(--c-resolved-border);
-    color: var(--c-resolved);
+    color: var(--c-resolved-text);
   }
 
   &:disabled {
@@ -516,7 +516,7 @@
   border-radius: var(--r-md);
   background: var(--c-blue-dim);
   border: 1.5px solid var(--c-blue-overlay);
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   font-size: 15px;
   font-weight: 700;
 }
@@ -570,7 +570,7 @@
   border: 1.5px solid var(--c-blue-overlay);
   border-radius: var(--r-md);
   background: var(--c-blue-dim);
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
@@ -604,7 +604,7 @@
 
   &:hover {
     border-color: var(--c-blue);
-    color: var(--c-blue);
+    color: var(--c-blue-text);
   }
 
   &:active {

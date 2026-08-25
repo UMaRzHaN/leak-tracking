@@ -91,7 +91,7 @@
 
 .secondaryAction {
   background: var(--c-blue-dim);
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   border: 1px solid color-mix(in srgb, var(--c-blue) 32%, transparent) !important;
 
   &:hover {

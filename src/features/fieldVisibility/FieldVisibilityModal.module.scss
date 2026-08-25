@@ -252,7 +252,7 @@
 .groupBadge {
   font-size: 10px;
   font-weight: 600;
-  color: var(--c-open, #ef4444);
+  color: var(--c-open-text);
   background: var(--c-open-bg, #fef2f2);
   border: 1px solid var(--c-open-border, #fecaca);
   border-radius: 10px;
@@ -276,7 +276,7 @@
 
   &:hover {
     border-color: var(--c-blue);
-    color: var(--c-blue);
+    color: var(--c-blue-text);
     background: var(--c-blue-dim, rgba(37, 99, 235, 0.07));
   }
 }
@@ -339,7 +339,7 @@
 .requiredBadge {
   font-size: 10px;
   font-weight: 600;
-  color: var(--c-progress, #d97706);
+  color: var(--c-progress-text);
   background: var(--c-progress-bg, #fffbeb);
   border: 1px solid var(--c-progress-border, #fde68a);
   border-radius: 10px;
@@ -422,7 +422,7 @@
 
   &:hover:not(:disabled) {
     border-color: var(--c-blue);
-    color: var(--c-blue);
+    color: var(--c-blue-text);
   }
   &:disabled {
     opacity: 0.4;

@@ -219,7 +219,7 @@
 
 .tabActive {
   background: var(--c-surface);
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   font-weight: 700;
   box-shadow: var(--shadow-sm);
 }
@@ -766,7 +766,7 @@
 .paramValue {
   font-size: 22px;
   font-weight: 800;
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   letter-spacing: -0.02em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -839,7 +839,7 @@
 .logStatus {
   font-size: 12px;
   font-weight: 700;
-  color: var(--c-blue);
+  color: var(--c-blue-text);
 }
 
 .logUser {
@@ -929,7 +929,7 @@
 
 .logChangeValueAfter {
   grid-area: after;
-  color: var(--c-blue);
+  color: var(--c-blue-text);
 }
 
 .logChangeArrow {
@@ -1045,7 +1045,7 @@
     border: 1px solid var(--c-blue);
     border-radius: var(--r-sm);
     background: var(--c-blue-bg, rgba(37, 99, 235, 0.08));
-    color: var(--c-blue);
+    color: var(--c-blue-text);
     font-size: 12px;
     font-weight: 800;
     cursor: pointer;
@@ -1193,7 +1193,7 @@
   border: 1.5px solid var(--c-open-border);
   border-radius: var(--r-lg);
   background: var(--c-open-bg);
-  color: var(--c-open);
+  color: var(--c-open-text);
   font-size: 18px;
   cursor: pointer;
   display: flex;

@@ -6,17 +6,17 @@ export const STATUS = {
 
 export const STATUS_META = {
   open: {
-    color: "var(--c-open)",
+    color: "var(--c-open-text)",
     bg: "var(--c-open-bg)",
     border: "var(--c-open-border)",
   },
   in_progress: {
-    color: "var(--c-progress)",
+    color: "var(--c-progress-text)",
     bg: "var(--c-progress-bg)",
     border: "var(--c-progress-border)",
   },
   resolved: {
-    color: "var(--c-resolved)",
+    color: "var(--c-resolved-text)",
     bg: "var(--c-resolved-bg)",
     border: "var(--c-resolved-border)",
   },

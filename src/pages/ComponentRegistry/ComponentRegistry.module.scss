@@ -106,7 +106,7 @@
   font-variant-numeric: tabular-nums;
   font-size: 15px;
   font-weight: 700;
-  color: var(--c-blue);
+  color: var(--c-blue-text);
 }
 
 .name {
@@ -200,7 +200,7 @@
   padding: 0;
   font: inherit;
   font-weight: 600;
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   cursor: pointer;
   text-decoration: underline;
 }
@@ -224,8 +224,8 @@
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  background: #1e293b;
-  color: #f1f5f9;
+  background: var(--c-banner);
+  color: var(--c-banner-text);
   font-size: 13px;
   font-weight: 500;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -259,5 +259,5 @@
 }
 
 .draftBtnDiscard {
-  background: var(--c-text2);
+  background: var(--c-banner-muted);
 }

@@ -127,7 +127,7 @@
 }
 
 .controlBtnActive {
-  color: var(--c-blue);
+  color: var(--c-blue-text);
 
   &::before {
     content: "";
@@ -188,14 +188,14 @@
   white-space: nowrap;
 
   &:hover {
-    color: var(--c-blue);
+    color: var(--c-blue-text);
     background: var(--c-blue-dim);
     border-color: var(--c-blue);
   }
 }
 
 .filterOptionBtnActive {
-  color: var(--c-blue);
+  color: var(--c-blue-text);
   background: var(--c-blue-dim);
   border-color: var(--c-blue);
 }
@@ -250,7 +250,7 @@
 
 .tileProgressBar {
   height: 3px;
-  background: var(--c-accent, #3b82f6);
+  background: var(--c-blue-light);
   border-radius: 2px;
   transition: width 0.2s ease;
   min-width: 4px;
@@ -258,7 +258,7 @@
 
 .tileProgressLabel {
   font-size: 11px;
-  color: var(--c-text-secondary, #888);
+  color: var(--c-text2);
   text-align: center;
   white-space: nowrap;
 }

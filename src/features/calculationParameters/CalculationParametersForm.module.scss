@@ -23,7 +23,7 @@
 }
 
 .required {
-  color: var(--c-danger);
+  color: var(--c-danger-text);
   font-weight: 800;
 }
 
@@ -64,7 +64,7 @@
 .errorText {
   font-size: 12px;
   font-weight: 700;
-  color: var(--c-danger);
+  color: var(--c-danger-text);
 }
 
 .select {
@@ -180,13 +180,13 @@
 
 .flare {
   flex: 1;
-  color: var(--c-open);
+  color: var(--c-open-text);
   font-weight: 500;
 }
 
 .util {
   flex: 1;
-  color: var(--c-resolved);
+  color: var(--c-resolved-text);
   font-weight: 500;
 }
 
