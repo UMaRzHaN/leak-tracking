@@ -77,6 +77,10 @@ export default function ProjectIntegritySection({
                 label={t("settings.integrityDuplicateLeakId")}
                 values={report.duplicateLeakIds}
               />
+              <IssueRow
+                label={t("settings.integrityMissingComponent")}
+                values={report.missingComponent ?? []}
+              />
             </div>
           )}
         </div>

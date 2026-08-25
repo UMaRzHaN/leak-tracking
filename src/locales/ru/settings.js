@@ -157,6 +157,7 @@ export const settings = {
   integrityBrokenPhotos: "Битые фото",
   integrityNoCoordinates: "Без координат",
   integrityDuplicateLeakId: "Дубли leak_id",
+  integrityMissingComponent: "Карточки компонента нет в реестре",
 
   activeProject: "Активный проект",
   selectProject: "Выбрать проект",

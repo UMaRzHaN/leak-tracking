@@ -157,6 +157,7 @@ export const settings = {
   integrityBrokenPhotos: "Broken photos",
   integrityNoCoordinates: "No coordinates",
   integrityDuplicateLeakId: "Duplicate leak_id",
+  integrityMissingComponent: "Linked component card is gone",
 
   activeProject: "Active project",
   selectProject: "Select project",

@@ -1,4 +1,6 @@
 import { getPhotoSrc } from "@/hooks/photoService";
+import { logger } from "@/utils/logger";
+import { isLinkedToComponent } from "@/domain/leakComponentLink";
 import { normalizeLeakTag } from "@/utils/leakIdentity";
 import { hasValidCoordinates } from "@/utils/coordinates";
 import {
@@ -49,13 +51,60 @@ async function photoExists(path, idbGetPhoto) {
   return Boolean(await getPhotoSrc(path));
 }
 
-/** @param {any[]} [leaks] @param {{idbGetPhoto?: Function, leakPhotoRequired?: boolean, monitoringPhotoRequired?: boolean}} [options] */
+/**
+ * Идентификаторы карточек, которые сейчас есть в реестре.
+ *
+ * `null` — «спросить не у кого»: у типа проекта реестра нет или он не
+ * прочитался. Пустой реестр и непрочитанный реестр выглядят одинаково, и
+ * принять второй за первый значит объявить битыми все связи разом.
+ *
+ * Читается прямо здесь, а не берётся у владельца списка: проверку запускают с
+ * экрана настроек, где реестр никто не открывал, и поднимать ради одной
+ * кнопки весь обход в память приложения незачем.
+ */
+export async function readComponentRegistryIds(project) {
+  const { hasComponentRegistry } =
+    await import("@/configs/componentRegistry.config");
+  if (!project?.id || !hasComponentRegistry(project)) return null;
+
+  try {
+    const [{ ComponentRepository }, { liveComponents }] = await Promise.all([
+      import("@/repositories/ComponentRepository"),
+      import("@/domain/componentTombstones"),
+    ]);
+    const stored = await ComponentRepository.load(project);
+    return new Set(
+      liveComponents(stored).map((component) => String(component.id)),
+    );
+  } catch (error) {
+    logger.warn(
+      "[settings] реестр не прочитался, связи не проверяются:",
+      error,
+    );
+    return null;
+  }
+}
+
+/**
+ * @param {any[]} [leaks]
+ * @param {{
+ *   idbGetPhoto?: Function,
+ *   leakPhotoRequired?: boolean,
+ *   monitoringPhotoRequired?: boolean,
+ *   componentIds?: Set<string>|null,
+ * }} [options]
+ *   `componentIds` — карточки реестра, которые сейчас есть. `null` значит «не
+ *   у кого спросить»: у типа проекта нет реестра или он не прочитался. Тогда
+ *   связи не проверяются вовсе — пустой реестр и непрочитанный реестр дают
+ *   один и тот же ответ, и второй объявил бы битыми все связи разом.
+ */
 export async function analyzeProjectIntegrity(
   leaks = [],
   {
     idbGetPhoto,
     leakPhotoRequired = true,
     monitoringPhotoRequired = true,
+    componentIds = null,
   } = {},
 ) {
   const missingPhoto = [];
@@ -65,6 +114,7 @@ export async function analyzeProjectIntegrity(
   const brokenPhoto = [];
   const missingCoords = [];
   const duplicateLeakIds = [];
+  const missingComponent = [];
   const seenLeakIds = new Map();
 
   for (const leak of leaks) {
@@ -114,6 +164,18 @@ export async function analyzeProjectIntegrity(
       });
     }
 
+    // Утечка ссылается на карточку, которой в реестре нет. Чаще всего карточку
+    // удалили — своим удалением или приехавшим с соседнего устройства. Утечка
+    // от этого не ломается: наименование, привод и присоединение переписаны на
+    // неё саму, и подпись читается по ним. Но «перейти к карточке» вести
+    // некуда, и человек об этом узнаёт, только ткнув.
+    if (componentIds && isLinkedToComponent(leak)) {
+      if (!componentIds.has(String(leak.component_id))) {
+        const uid = String(leak.component_uid ?? "").trim();
+        missingComponent.push(uid ? `${label}:№${uid}` : label);
+      }
+    }
+
     for (const [field, path] of getLeakPhotoRefs(leak)) {
       if (!path) continue;
       if (!(await photoExists(path, idbGetPhoto))) {
@@ -129,7 +191,8 @@ export async function analyzeProjectIntegrity(
     missingMonitoringPhoto.length +
     brokenPhoto.length +
     missingCoords.length +
-    duplicateLeakIds.length;
+    duplicateLeakIds.length +
+    missingComponent.length;
 
   return {
     total: leaks.length,
@@ -141,6 +204,7 @@ export async function analyzeProjectIntegrity(
     brokenPhoto,
     missingCoords,
     duplicateLeakIds,
+    missingComponent,
     ok: issues === 0,
   };
 }

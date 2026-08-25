@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
+import { useProjectIntegrityCheck } from "./useProjectIntegrityCheck";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
 import { useHiddenFields } from "@/app/project/hooks/useHiddenFields";
@@ -35,8 +36,6 @@ export function useSettingsPage({
   const [addingProject, setAddingProject] = useState(false);
   const [cacheInfo, setCacheInfo] = useState(null);
   const [settingsConfirmAction, setSettingsConfirmAction] = useState(null);
-  const [integrityReport, setIntegrityReport] = useState(null);
-  const [checkingIntegrity, setCheckingIntegrity] = useState(false);
   const [isImportingExcel, setIsImportingExcel] = useState(false);
   const [excelImportState, setExcelImportState] = useState(
     /** @type {any} */ ({ open: false }),
@@ -116,6 +115,21 @@ export function useSettingsPage({
   } = usePhotoRequirements(activeProject?.id ?? null);
 
   const {
+    integrityReport,
+    setIntegrityReport,
+    checkingIntegrity,
+    handleCheckIntegrity,
+  } = useProjectIntegrityCheck({
+    data,
+    activeProject,
+    idbGetPhoto,
+    leakPhotoRequired,
+    monitoringPhotoRequired,
+    notify,
+    t,
+  });
+
+  const {
     importZipRef,
     handleExportZip,
     isExportingZip,
@@ -158,37 +172,6 @@ export function useSettingsPage({
   const handleClearDatabase = useCallback(() => {
     setSettingsConfirmAction("clearDatabase");
   }, []);
-  const handleCheckIntegrity = useCallback(async () => {
-    setCheckingIntegrity(true);
-    try {
-      const { analyzeProjectIntegrity } =
-        await import("@/services/backup/projectIntegrityService");
-      const report = await analyzeProjectIntegrity(data, {
-        idbGetPhoto,
-        leakPhotoRequired,
-        monitoringPhotoRequired,
-      });
-      setIntegrityReport(report);
-      notify(
-        report.ok ? "success" : "warning",
-        report.ok
-          ? t("settings.noDataIssuesFound")
-          : t("settings.checkCompleteVIssues", { v1: report.issues }),
-      );
-    } catch (error) {
-      notify("error", `${t("settings.checkError")}: ${error.message}`);
-    } finally {
-      setCheckingIntegrity(false);
-    }
-  }, [
-    data,
-    idbGetPhoto,
-    leakPhotoRequired,
-    monitoringPhotoRequired,
-    notify,
-    t,
-  ]);
-
   const prepareExcelLeaks = useCallback(
     (leaks, { mode = "append" } = {}) => {
       const now = Date.now();

@@ -2,6 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getPhotoSrc: vi.fn(async () => "data:image/jpeg;base64,ok"),
+  loadComponents: vi.fn(async () => []),
+}));
+
+vi.mock("@/repositories/ComponentRepository", () => ({
+  ComponentRepository: { load: mocks.loadComponents },
 }));
 
 vi.mock("@/hooks/photoService", () => ({
@@ -9,7 +14,8 @@ vi.mock("@/hooks/photoService", () => ({
   getPhotoBlob: vi.fn().mockResolvedValue(null),
 }));
 
-const { analyzeProjectIntegrity } = await import("./projectIntegrityService");
+const { analyzeProjectIntegrity, readComponentRegistryIds } =
+  await import("./projectIntegrityService");
 
 describe("analyzeProjectIntegrity", () => {
   beforeEach(() => {
@@ -172,5 +178,107 @@ describe("analyzeProjectIntegrity", () => {
     );
 
     expect(report.duplicateLeakIds).toEqual(["tag-1"]);
+  });
+});
+
+describe("связи утечек с карточками реестра", () => {
+  const linked = (id, componentId, uid) => ({
+    id,
+    leak_id: `100${id}`,
+    status: "open",
+    photo: "data:image/jpeg;base64,before",
+    lat: 41,
+    lng: 69,
+    component_id: componentId,
+    component_uid: uid,
+  });
+
+  it("находит утечку, чья карточка удалена", async () => {
+    // Стало обычным делом: удаление карточки теперь доезжает до всех
+    // устройств, а ссылка на неё остаётся на утечке.
+    const report = await analyzeProjectIntegrity(
+      [linked(1, "card-a", "7"), linked(2, "card-b", "8")],
+      { componentIds: new Set(["card-a"]) },
+    );
+
+    // Номер в подписи — чтобы человек понимал, какой карточки не хватает.
+    expect(report.missingComponent).toEqual(["1002:№8"]);
+    expect(report.issues).toBe(1);
+    expect(report.ok).toBe(false);
+  });
+
+  it("не проверяет связи, когда спросить не у кого", async () => {
+    // Пустой реестр и непрочитанный реестр выглядят одинаково, и принять
+    // второй за первый значит объявить битыми все связи разом.
+    const report = await analyzeProjectIntegrity([linked(1, "card-a", "7")], {
+      componentIds: null,
+    });
+
+    expect(report.missingComponent).toEqual([]);
+    expect(report.ok).toBe(true);
+  });
+
+  it("молчит об утечке, которую ни к чему не привязывали", async () => {
+    const report = await analyzeProjectIntegrity(
+      [
+        {
+          id: 1,
+          leak_id: "1001",
+          status: "open",
+          photo: "data:image/jpeg;base64,before",
+          lat: 41,
+          lng: 69,
+        },
+      ],
+      { componentIds: new Set() },
+    );
+
+    expect(report.missingComponent).toEqual([]);
+  });
+
+  it("подписывает утечку одним ярлыком, когда номер карточки не известен", async () => {
+    const report = await analyzeProjectIntegrity(
+      [{ ...linked(1, "card-a", ""), component_uid: "" }],
+      { componentIds: new Set() },
+    );
+
+    expect(report.missingComponent).toEqual(["1001"]);
+  });
+});
+
+describe("readComponentRegistryIds", () => {
+  const upstream = { id: "p1", type: "upstream" };
+
+  beforeEach(() => {
+    mocks.loadComponents.mockReset();
+    mocks.loadComponents.mockResolvedValue([]);
+  });
+
+  it("отдаёт карточки, которые сейчас есть, и не считает удалённые", async () => {
+    mocks.loadComponents.mockResolvedValue([
+      { id: "a", component_uid: "1" },
+      { id: "b", component_uid: "2", deleted: true, deletedAt: 5_000 },
+    ]);
+
+    const ids = await readComponentRegistryIds(upstream);
+
+    expect([...ids]).toEqual(["a"]);
+  });
+
+  it("молчит там, где реестра не ведут вовсе", async () => {
+    // У типа проекта без реестра «связь битая» — не диагноз, а бессмыслица.
+    await expect(
+      readComponentRegistryIds({ id: "p2", type: "midstream" }),
+    ).resolves.toBeNull();
+    expect(mocks.loadComponents).not.toHaveBeenCalled();
+  });
+
+  it("молчит и тогда, когда реестр не прочитался", async () => {
+    mocks.loadComponents.mockRejectedValue(new Error("storage gone"));
+    await expect(readComponentRegistryIds(upstream)).resolves.toBeNull();
+  });
+
+  it("молчит без проекта", async () => {
+    await expect(readComponentRegistryIds(null)).resolves.toBeNull();
   });
 });

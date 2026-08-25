@@ -349,6 +349,12 @@ describe("useSettingsPage orchestration", () => {
 
     expect(result.current.integrityReport).toEqual({ ok: false, issues: 2 });
     expect(result.current.notification).toMatchObject({ type: "warning" });
+    // Реестр читается ради связей утечек с карточками: висячая ссылка — это
+    // карточка, которую удалили здесь или на соседнем устройстве.
+    expect(mocks.analyzeProjectIntegrity).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ componentIds: null }),
+    );
   });
 
   it("parses an Excel file and confirms a transactional import", async () => {
