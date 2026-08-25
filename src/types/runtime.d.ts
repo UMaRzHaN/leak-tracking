@@ -14,6 +14,9 @@ declare global {
     incomingGeneration?: number;
     localEpochId?: string;
     incomingEpochId?: string;
+    /** Ревизии при отказе PROJECT_CHANGED_ELSEWHERE; см. `webRevisionGuard`. */
+    seenRevision?: number;
+    storedRevision?: number;
   }
 
   interface Window {

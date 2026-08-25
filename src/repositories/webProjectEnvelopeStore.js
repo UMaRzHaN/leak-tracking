@@ -13,6 +13,11 @@ import {
   writeEnvelope,
 } from "@/repositories/webEnvelopeRecords";
 import { normalizeWebEnvelope } from "@/repositories/webProjectEnvelope";
+import {
+  assertNotOverwritingNewer,
+  forgetRevision,
+  rememberRevision,
+} from "@/repositories/webRevisionGuard";
 
 /**
  * Что проект держит в вебе и под какими ключами.
@@ -87,7 +92,10 @@ export function createWebDatasetStore(dataset, { legacyMirror = false } = {}) {
   async function readMirror(projectId) {
     const key = keyOf(projectId);
     const current = await readEnvelope(openMirrorDb, key);
-    if (current != null) return current;
+    if (current != null) {
+      rememberRevision(key, current.revision);
+      return current;
+    }
     if (!legacyMirror) return null;
 
     const legacy = await readLegacyMirrorEnvelope(key);
@@ -105,6 +113,7 @@ export function createWebDatasetStore(dataset, { legacyMirror = false } = {}) {
   async function writeMirror(projectId, envelope, mutation = null) {
     const key = keyOf(projectId);
     const saved = await saveEnvelope(openMirrorDb, key, envelope, mutation);
+    if (saved) rememberRevision(key, envelope?.revision);
     // Only once the dedicated database is confirmed to hold this envelope is
     // the schema-v2 entry redundant. Dropping it earlier could discard the
     // only remaining backup.
@@ -114,18 +123,43 @@ export function createWebDatasetStore(dataset, { legacyMirror = false } = {}) {
 
   async function deleteMirror(projectId) {
     const key = keyOf(projectId);
+    forgetRevision(key);
     const deleted = await deleteEnvelope(openMirrorDb, key);
     if (legacyMirror) await clearLegacyMirrorEnvelope(key);
     return deleted;
   }
 
+  /**
+   * Каждое чтение и каждая запись отмечаются в памяти ревизий. Именно здесь, а
+   * не у вызывающих: пропущенная отметка обернулась бы ложным «проект изменён
+   * в другой вкладке», а такой отказ хуже ошибки, ради которой всё затевалось.
+   */
+  async function readAndRemember(projectId) {
+    const envelope = await readEnvelope(openWebDataDb, keyOf(projectId));
+    rememberRevision(keyOf(projectId), envelope?.revision);
+    return envelope;
+  }
+
+  async function writeAndRemember(projectId, envelope, mutation = null) {
+    const saved = await saveEnvelope(
+      openWebDataDb,
+      keyOf(projectId),
+      envelope,
+      mutation,
+    );
+    if (saved) rememberRevision(keyOf(projectId), envelope?.revision);
+    return saved;
+  }
+
   return {
     dataset,
     keyOf,
-    read: (projectId) => readEnvelope(openWebDataDb, keyOf(projectId)),
-    write: (projectId, envelope, mutation = null) =>
-      saveEnvelope(openWebDataDb, keyOf(projectId), envelope, mutation),
-    remove: (projectId) => deleteEnvelope(openWebDataDb, keyOf(projectId)),
+    read: readAndRemember,
+    write: writeAndRemember,
+    remove: (projectId) => {
+      forgetRevision(keyOf(projectId));
+      return deleteEnvelope(openWebDataDb, keyOf(projectId));
+    },
     readRevision: (projectId) =>
       readStoredRevision(openWebDataDb, keyOf(projectId)),
     readMirror,
@@ -137,6 +171,18 @@ export function createWebDatasetStore(dataset, { legacyMirror = false } = {}) {
 }
 
 const leakDataset = createWebDatasetStore(LEAK_DATASET, { legacyMirror: true });
+
+/**
+ * Отказывается затирать утечки, которые с момента загрузки успела записать
+ * другая вкладка. Ключ строится здесь, а не у вызывающего: снаружи набор
+ * известен по имени, а не по тому, как из него получается ключ записи.
+ *
+ * @param {string} projectId
+ * @param {Array<unknown>} storedRevisions ревизии всех копий набора
+ */
+export function assertLeakDataUnchanged(projectId, storedRevisions) {
+  assertNotOverwritingNewer(leakDataset.keyOf(projectId), storedRevisions);
+}
 
 export const readWebData = leakDataset.read;
 export const writeWebData = leakDataset.write;
@@ -162,6 +208,11 @@ export async function purgeWebProject(projectId) {
   const keys = PROJECT_DATASETS.map((dataset) =>
     datasetRecordKey(dataset, projectId),
   );
+
+  // Проект уходит целиком — вместе с тем, что вкладка о нём помнила. Иначе
+  // проект, заведённый следом под тем же идентификатором, начал бы с чужой
+  // ревизии и отказался бы сохраняться.
+  for (const key of keys) forgetRevision(key);
 
   const [primary, mirror] = await Promise.all([
     deleteEnvelopes(openWebDataDb, keys),

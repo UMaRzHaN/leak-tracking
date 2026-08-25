@@ -802,6 +802,12 @@ describe("LeakRepository web IndexedDB storage", () => {
   // A delta only means anything against the state it was computed from. If
   // another tab wrote in between, replaying it would corrupt that write, so
   // the store checks the copy is still the revision it handed out.
+  //
+  // The reload in the middle is what the tab has to do now: saving straight
+  // onto a copy another tab advanced is refused outright by the revision
+  // guard (see LeakRepository.conflict.test.js). Once the tab has re-read, the
+  // save is allowed again — and the delta it was still carrying is the stale
+  // one this test is about.
   it("falls back to a snapshot when another writer advanced the copy", async () => {
     const { LeakRepository } = await loadRepository();
     const original = [makeLeak("a"), makeLeak("b")];
@@ -814,6 +820,7 @@ describe("LeakRepository web IndexedDB storage", () => {
       ...stored,
       revision: stored.revision + 1000,
     });
+    await LeakRepository.getAll(PROJECT);
 
     await LeakRepository.saveAll(
       [{ ...original[0], leak_id: "L-x" }, original[1]],

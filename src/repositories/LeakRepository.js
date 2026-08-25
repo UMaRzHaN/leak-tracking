@@ -31,6 +31,7 @@ import {
   readLegacyLocalStorageEnvelope,
   readMirrorData,
   readMirrorDataRevision,
+  assertLeakDataUnchanged,
   readWebData,
   readWebDataRevision,
   writeLegacyLocalStorageEnvelope,
@@ -480,12 +481,19 @@ export const LeakRepository = {
     } catch {
       // Ignore a corrupted legacy copy when computing the next revision.
     }
+    // Ревизии уже прочитаны выше — ради вычисления следующей. Здесь тот же
+    // ответ отвечает и на второй вопрос: не обогнал ли нас кто-то, пока эта
+    // вкладка держала набор в памяти. Проверка до записи, потому что после неё
+    // чужие правки уже затёрты.
+    const knownRevisions = [
+      indexedRevision,
+      mirrorRevision,
+      legacyEnvelope?.revision,
+    ];
+    assertLeakDataUnchanged(projectId, knownRevisions);
+
     const envelope = createWebEnvelope(leaks, {
-      previousRevisions: [
-        indexedRevision,
-        mirrorRevision,
-        legacyEnvelope?.revision,
-      ],
+      previousRevisions: knownRevisions,
       syncState,
     });
     // The same diff the native SQLite path uses. Null when the caller cannot
