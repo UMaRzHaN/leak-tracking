@@ -48,26 +48,28 @@ export function clearJournal(tx, projectId) {
  * Folds appended deltas into a snapshot. Records are matched by id; an upsert
  * for an unknown id appends, which is the only order change the mutation
  * builder allows, so replaying preserves the order the writer saw.
+ *
+ * The map holds that order itself: `set` leaves an existing key where it is,
+ * and a key that was deleted first comes back at the end — which is where the
+ * writer put it too. A separate list of positions used to track this, but it
+ * kept every position a key had ever had, so a record deleted in one delta and
+ * re-added in a later one was assembled twice. The metadata describes the
+ * assembled state, so a duplicate here fails the checksum its writer computed
+ * without it and the copy is discarded — the mirror along with it, being
+ * written from the same delta.
  */
 export function applyJournalEntries(data, entries) {
   if (!entries.length) return data;
 
   const byId = new Map();
-  const order = [];
-  for (const record of data) {
-    const key = String(record?.id);
-    if (!byId.has(key)) order.push(key);
-    byId.set(key, record);
-  }
+  for (const record of data) byId.set(String(record?.id), record);
   for (const entry of entries) {
     for (const id of entry.deletedIds ?? []) byId.delete(String(id));
     for (const record of entry.upserts ?? []) {
-      const key = String(record?.id);
-      if (!byId.has(key)) order.push(key);
-      byId.set(key, record);
+      byId.set(String(record?.id), record);
     }
   }
-  return order.filter((key) => byId.has(key)).map((key) => byId.get(key));
+  return [...byId.values()];
 }
 
 // A change large enough that replaying it would cost more than it saves is
