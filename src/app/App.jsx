@@ -14,6 +14,7 @@ const ProjectSetupScreen = lazy(
   () => import("@/pages/ProjectSetup/ProjectSetupScreen"),
 );
 import { useAppBootstrap } from "./hooks/useAppBootstrap";
+import { useTheme } from "./hooks/useTheme";
 import AppRoutes, { AppLoader } from "./AppRoutes";
 import AppDialogs from "./components/AppDialogs";
 import { isFullScreenPage, isListPage } from "@/app/pages";
@@ -59,6 +60,12 @@ export default function App() {
     userProfile,
     userProfileOpen,
   } = useAppBootstrap();
+
+  // Значение здесь не нужно — нужна сама подписка. Пока её держал только
+  // экран настроек, за системной темой никто не следил, пока настройки
+  // закрыты, и телефон, переключившийся на ночную, оставался со светлым
+  // приложением до следующего запуска.
+  useTheme();
 
   const [locationBrowserOpen, setLocationBrowserOpen] = useState(false);
   const leakScope = useLocationScope({

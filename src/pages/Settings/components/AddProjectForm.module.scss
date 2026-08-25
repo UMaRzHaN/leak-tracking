@@ -2,9 +2,33 @@
    ADD PROJECT FORM (inline inside Settings)
    ===================================================== */
 
+/* Форма живёт внутри настроек, но красилась своими литералами и в тёмной теме
+   оставалась светлым пятном на тёмном экране. Палитра собрана на корне формы
+   тем же приёмом, что на экране создания проекта: светлые значения прежние,
+   тёмные объявлены один раз ниже. */
 .form {
-  background: #eff6ff;
-  border: 2px solid #93c5fd;
+  --addp-tint: #eff6ff;
+  --addp-tint-strong: #dbeafe;
+  --addp-accent-border: #93c5fd;
+  --addp-title: #1e40af;
+  --addp-accent: #0d47a1;
+  --addp-accent-hover: #1565c0;
+  --addp-focus: #3b82f6;
+  --addp-label: #374151;
+  --addp-ink: #1f2937;
+  --addp-muted: #6b7280;
+  --addp-faint: #9ca3af;
+  --addp-border: #e5e7eb;
+  --addp-border-strong: #d1d5db;
+  --addp-surface: #ffffff;
+  --addp-surface-hover: #f0f9ff;
+  --addp-chip: #e5e7eb;
+  --addp-cancel-hover: #f3f4f6;
+  --addp-danger: #ef4444;
+  --addp-on-accent: #ffffff;
+
+  background: var(--addp-tint);
+  border: 2px solid var(--addp-accent-border);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 12px;
@@ -13,10 +37,35 @@
   gap: 14px;
 }
 
+:global([data-theme="dark"]) .form {
+  --addp-tint: rgba(96, 165, 250, 0.1);
+  --addp-tint-strong: rgba(96, 165, 250, 0.22);
+  --addp-accent-border: #40608f;
+  --addp-title: #a8c7f5;
+  --addp-accent: #8ab4f8;
+  --addp-accent-hover: #a6c8fa;
+  --addp-focus: #60a5fa;
+  --addp-label: #cbd5e1;
+  --addp-ink: #e2e8f0;
+  --addp-muted: #94a3b8;
+  --addp-faint: #8496ab;
+  --addp-border: #334155;
+  --addp-border-strong: #3f4d63;
+  --addp-surface: #172033;
+  --addp-surface-hover: #1b2740;
+  --addp-chip: #253247;
+  --addp-cancel-hover: #1f2a3d;
+  --addp-danger: #f87171;
+  /* Кнопка создания светлеет, а не темнеет: тёмно-синий на тёмной форме
+     переставал читаться как главное действие. */
+  --addp-accent-fill: #2563eb;
+  --addp-accent-fill-hover: #3b82f6;
+}
+
 .formTitle {
   font-size: 14px;
   font-weight: 700;
-  color: #1e40af;
+  color: var(--addp-title);
   margin: 0;
 }
 
@@ -33,41 +82,41 @@
 .label {
   font-size: 12px;
   font-weight: 600;
-  color: #374151;
+  color: var(--addp-label);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .req {
-  color: #ef4444;
+  color: var(--addp-danger);
 }
 
 .input {
   padding: 10px 12px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--addp-border);
   border-radius: 8px;
   font-size: 14px;
-  color: #1f2937;
-  background: #fff;
+  color: var(--addp-ink);
+  background: var(--addp-surface);
   outline: none;
   transition: border-color 0.15s ease;
 
   &:focus {
-    border-color: #3b82f6;
+    border-color: var(--addp-focus);
   }
 
   &::placeholder {
-    color: #9ca3af;
+    color: var(--addp-faint);
   }
 }
 
 .hint {
   font-size: 11px;
-  color: #6b7280;
+  color: var(--addp-muted);
 
   code {
     font-family: monospace;
-    background: #e5e7eb;
+    background: var(--addp-chip);
     padding: 1px 5px;
     border-radius: 4px;
     font-size: 11px;
@@ -76,7 +125,7 @@
 
 .error {
   font-size: 12px;
-  color: #ef4444;
+  color: var(--addp-danger);
   font-weight: 500;
 }
 
@@ -97,39 +146,39 @@
   column-gap: 8px;
   align-items: center;
   padding: 10px 12px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--addp-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--addp-surface);
   cursor: pointer;
   text-align: left;
   font-size: 14px;
   transition: all 0.15s ease;
 
   &:hover {
-    border-color: #93c5fd;
-    background: #f0f9ff;
+    border-color: var(--addp-accent-border);
+    background: var(--addp-surface-hover);
   }
 
   &.selected {
-    border-color: #0d47a1;
-    background: #dbeafe;
+    border-color: var(--addp-accent);
+    background: var(--addp-tint-strong);
   }
 }
 
 .typeName {
   font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--addp-ink);
 
   .selected & {
-    color: #0d47a1;
+    color: var(--addp-accent);
   }
 }
 
 .typeDesc {
   grid-column: 2;
   font-size: 11px;
-  color: #6b7280;
+  color: var(--addp-muted);
 }
 
 /* =====================================================
@@ -144,17 +193,17 @@
 
 .cancelBtn {
   padding: 8px 16px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--addp-border-strong);
   border-radius: 8px;
-  background: #fff;
-  color: #6b7280;
+  background: var(--addp-surface);
+  color: var(--addp-muted);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.15s;
 
   &:hover {
-    background: #f3f4f6;
+    background: var(--addp-cancel-hover);
   }
 }
 
@@ -162,15 +211,15 @@
   padding: 8px 20px;
   border: none;
   border-radius: 8px;
-  background: #0d47a1;
-  color: #fff;
+  background: var(--addp-accent-fill, var(--addp-accent));
+  color: var(--addp-on-accent);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s;
 
   &:hover:not(:disabled) {
-    background: #1565c0;
+    background: var(--addp-accent-fill-hover, var(--addp-accent-hover));
   }
 
   &:disabled {

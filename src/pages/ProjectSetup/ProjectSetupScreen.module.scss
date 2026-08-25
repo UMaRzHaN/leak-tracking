@@ -2,23 +2,103 @@
    PROJECT SETUP SCREEN
    ===================================================== */
 
+/* Экран рисовался до появления общих токенов и нёс полсотни литеральных
+   цветов, поэтому в тёмной теме оставался светлым — а это первое, что видит
+   новый пользователь. Палитра собрана здесь, на корне компонента: светлые
+   значения те же, что были, тёмные объявлены один раз ниже. Правила дальше
+   цветов не знают вовсе.
+
+   Общие --c-* сюда не подошли: у экрана свой синий (#0d47a1), отличный от
+   --c-blue, и переезд на него сдвинул бы светлую тему, которой ничего не
+   требовалось. */
 .screen {
+  --setup-backdrop: linear-gradient(
+    135deg,
+    #1a237e 0%,
+    #0d47a1 50%,
+    #1565c0 100%
+  );
+  --setup-card: #ffffff;
+  --setup-card-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+  --setup-title: #1a237e;
+  --setup-ink: #1f2937;
+  --setup-label: #374151;
+  --setup-muted: #6b7280;
+  --setup-faint: #9ca3af;
+  --setup-border: #e5e7eb;
+  --setup-field: #f9fafb;
+  --setup-field-focus: #ffffff;
+  --setup-code: #f3f4f6;
+  --setup-accent: #0d47a1;
+  --setup-accent-border: #93c5fd;
+  --setup-tint: #eff6ff;
+  --setup-tint-strong: #dbeafe;
+  --setup-status-border: #bfdbfe;
+  --setup-selected-glow: rgba(13, 71, 161, 0.15);
+  --setup-cta-from: #0d47a1;
+  --setup-cta-to: #1565c0;
+  --setup-cta-hover-from: #1565c0;
+  --setup-cta-hover-to: #1976d2;
+  --setup-cta-ink: #ffffff;
+  --setup-cta-glow: rgba(13, 71, 161, 0.35);
+  --setup-danger: #ef4444;
+  --setup-qr: #7c3aed;
+  --setup-qr-border: #8b5cf6;
+  --setup-qr-tint: #f5f3ff;
+
   min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1a237e 0%, #0d47a1 50%, #1565c0 100%);
+  background: var(--setup-backdrop);
   padding: 20px;
+}
+
+:global([data-theme="dark"]) .screen {
+  --setup-backdrop: linear-gradient(
+    135deg,
+    #0b1226 0%,
+    #101c38 50%,
+    #14233f 100%
+  );
+  --setup-card: #1e293b;
+  --setup-card-shadow: 0 24px 64px rgba(0, 0, 0, 0.62);
+  --setup-title: #c7d7f5;
+  --setup-ink: #e2e8f0;
+  --setup-label: #cbd5e1;
+  --setup-muted: #94a3b8;
+  --setup-faint: #8496ab;
+  --setup-border: #334155;
+  --setup-field: #172033;
+  --setup-field-focus: #1b2740;
+  --setup-code: #1f2a3d;
+  --setup-accent: #8ab4f8;
+  --setup-accent-border: #4c78bd;
+  --setup-tint: rgba(96, 165, 250, 0.12);
+  --setup-tint-strong: rgba(96, 165, 250, 0.22);
+  --setup-status-border: rgba(96, 165, 250, 0.35);
+  --setup-selected-glow: rgba(37, 99, 235, 0.3);
+  /* Кнопка светлеет, а не темнеет: тёмно-синий из светлой темы на тёмной
+     карточке переставал читаться как главное действие. */
+  --setup-cta-from: #2563eb;
+  --setup-cta-to: #3b82f6;
+  --setup-cta-hover-from: #3b82f6;
+  --setup-cta-hover-to: #60a5fa;
+  --setup-cta-glow: rgba(37, 99, 235, 0.45);
+  --setup-danger: #f87171;
+  --setup-qr: #c4b5fd;
+  --setup-qr-border: #7c6ad0;
+  --setup-qr-tint: rgba(139, 92, 246, 0.16);
 }
 
 .card {
   position: relative;
-  background: #ffffff;
+  background: var(--setup-card);
   border-radius: 20px;
   padding: 36px 28px;
   max-width: 420px;
   width: 100%;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--setup-card-shadow);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -36,10 +116,10 @@
   right: 16px;
   min-width: 44px;
   height: 34px;
-  border: 1px solid #dbeafe;
+  border: 1px solid var(--setup-tint-strong);
   border-radius: 10px;
-  background: #eff6ff;
-  color: #0d47a1;
+  background: var(--setup-tint);
+  color: var(--setup-accent);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -49,8 +129,8 @@
     transform 0.2s ease;
 
   &:hover {
-    background: #dbeafe;
-    border-color: #93c5fd;
+    background: var(--setup-tint-strong);
+    border-color: var(--setup-accent-border);
   }
 
   &:active {
@@ -67,14 +147,14 @@
 .title {
   font-size: 24px;
   font-weight: 700;
-  color: #1a237e;
+  color: var(--setup-title);
   margin: 0 0 6px;
   text-align: center;
 }
 
 .subtitle {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--setup-muted);
   margin: 0 0 24px;
   text-align: center;
 }
@@ -94,54 +174,54 @@
 .label {
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: var(--setup-label);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .required {
-  color: #ef4444;
+  color: var(--setup-danger);
   margin-left: 2px;
 }
 
 .input {
   width: 100%;
   padding: 12px 14px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--setup-border);
   border-radius: 10px;
   font-size: 15px;
-  color: #1f2937;
+  color: var(--setup-ink);
   outline: none;
   transition: border-color 0.2s ease;
-  background: #f9fafb;
+  background: var(--setup-field);
 
   &::placeholder {
-    color: #9ca3af;
+    color: var(--setup-faint);
   }
 
   &:focus {
-    border-color: #0d47a1;
-    background: #fff;
+    border-color: var(--setup-accent);
+    background: var(--setup-field-focus);
   }
 }
 
 .hint {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--setup-faint);
 }
 
 .code {
   font-family: monospace;
   font-size: 11px;
-  background: #f3f4f6;
+  background: var(--setup-code);
   padding: 1px 5px;
   border-radius: 4px;
-  color: #374151;
+  color: var(--setup-label);
 }
 
 .error {
   font-size: 13px;
-  color: #ef4444;
+  color: var(--setup-danger);
   font-weight: 500;
 }
 
@@ -162,22 +242,26 @@
   align-items: center;
   column-gap: 10px;
   padding: 11px 14px;
-  border: 2px solid #e5e7eb;
+  border: 2px solid var(--setup-border);
   border-radius: 11px;
-  background: #f9fafb;
+  background: var(--setup-field);
   cursor: pointer;
   text-align: left;
   transition: all 0.2s ease;
 
   &:hover {
-    border-color: #93c5fd;
-    background: #eff6ff;
+    border-color: var(--setup-accent-border);
+    background: var(--setup-tint);
   }
 
   &.selected {
-    border-color: #0d47a1;
-    background: linear-gradient(135deg, #eff6ff, #dbeafe);
-    box-shadow: 0 4px 12px rgba(13, 71, 161, 0.15);
+    border-color: var(--setup-accent);
+    background: linear-gradient(
+      135deg,
+      var(--setup-tint),
+      var(--setup-tint-strong)
+    );
+    box-shadow: 0 4px 12px var(--setup-selected-glow);
   }
 }
 
@@ -192,17 +276,17 @@
 .typeName {
   font-size: 14px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--setup-ink);
   line-height: 1.2;
 
   .selected & {
-    color: #0d47a1;
+    color: var(--setup-accent);
   }
 }
 
 .typeDesc {
   font-size: 11px;
-  color: #6b7280;
+  color: var(--setup-muted);
   line-height: 1.3;
 }
 
@@ -214,8 +298,12 @@
   width: 100%;
   min-height: 48px;
   padding: 12px 16px;
-  background: linear-gradient(135deg, #0d47a1, #1565c0);
-  color: #fff;
+  background: linear-gradient(
+    135deg,
+    var(--setup-cta-from),
+    var(--setup-cta-to)
+  );
+  color: var(--setup-cta-ink);
   border: none;
   border-radius: 11px;
   font-size: 15px;
@@ -226,8 +314,12 @@
   margin-top: 4px;
 
   &:hover:not(:disabled) {
-    background: linear-gradient(135deg, #1565c0, #1976d2);
-    box-shadow: 0 8px 20px rgba(13, 71, 161, 0.35);
+    background: linear-gradient(
+      135deg,
+      var(--setup-cta-hover-from),
+      var(--setup-cta-hover-to)
+    );
+    box-shadow: 0 8px 20px var(--setup-cta-glow);
     transform: translateY(-1px);
   }
 
@@ -251,7 +343,7 @@
   align-items: center;
   gap: 12px;
   margin: 14px 0 0;
-  color: #9ca3af;
+  color: var(--setup-faint);
   font-size: 13px;
 
   &::before,
@@ -259,7 +351,7 @@
     content: "";
     flex: 1;
     height: 1px;
-    background: #e5e7eb;
+    background: var(--setup-border);
   }
 }
 
@@ -287,8 +379,8 @@
   justify-content: center;
   gap: 3px;
   background: transparent;
-  color: #0d47a1;
-  border: 1.5px solid #0d47a1;
+  color: var(--setup-accent);
+  border: 1.5px solid var(--setup-accent);
   border-radius: 11px;
   font-size: 11px;
   font-weight: 700;
@@ -298,7 +390,7 @@
   transition: all 0.2s ease;
 
   &:hover:not(:disabled) {
-    background: #eff6ff;
+    background: var(--setup-tint);
   }
 
   &:disabled {
@@ -335,17 +427,17 @@
 
 .importHint {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--setup-faint);
   margin: 6px 0 0;
   text-align: center;
 }
 
 .qrImportBtn {
-  color: #7c3aed;
-  border-color: #8b5cf6;
+  color: var(--setup-qr);
+  border-color: var(--setup-qr-border);
 
   &:hover:not(:disabled) {
-    background: #f5f3ff;
+    background: var(--setup-qr-tint);
   }
 }
 
@@ -354,9 +446,9 @@
   margin: 8px 0 0;
   padding: 9px 12px;
   border-radius: 10px;
-  border: 1px solid #bfdbfe;
-  background: #eff6ff;
-  color: #0d47a1;
+  border: 1px solid var(--setup-status-border);
+  background: var(--setup-tint);
+  color: var(--setup-accent);
   font-size: 12px;
   font-weight: 600;
   text-align: center;
@@ -367,6 +459,8 @@
   background: transparent;
 }
 
+/* Слой поверх видоискателя камеры. Белое и чёрное здесь не тема, а контраст
+   к произвольной картинке в кадре, поэтому от неё не зависят. */
 .qrScannerOverlay {
   position: fixed;
   inset: 0;
