@@ -3,12 +3,12 @@ import { logger } from "@/utils/logger";
 import {
   clearNativeProjectStorageCache as clearLegacyCache,
   getNativeProjectPaths,
-  isMissingNativeFileError,
   loadNativeProject as loadLegacyNativeProject,
   readNativeSnapshot,
   saveNativeProject as saveLegacyNativeProject,
   writeNativeProjectSnapshot as writeLegacyNativeProjectSnapshot,
 } from "@/repositories/legacyNativeLeakStorage";
+import { isMissingNativeFileError } from "@/repositories/nativeFileErrors";
 import { ensureNativeDirectory } from "@/repositories/nativeDirectory";
 import {
   createNativeSqliteMutation,
@@ -155,7 +155,7 @@ export function clearNativeProjectStorageCache(folderName) {
   clearLegacyCache(folderName);
 }
 
-export { getNativeProjectPaths, isMissingNativeFileError, readNativeSnapshot };
+export { getNativeProjectPaths, readNativeSnapshot };
 
 export async function loadNativeProject(folderName) {
   const sqliteResult = await invokeSqlite("load", { projectKey: folderName });

@@ -1,6 +1,7 @@
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import { logger } from "@/utils/logger";
 import { ignoredError } from "@/utils/ignoredError";
+import { isMissingNativeFileError } from "@/repositories/nativeFileErrors";
 
 const JOURNAL_VERSION = 1;
 const JOURNAL_MAX_ENTRIES = 40;
@@ -28,11 +29,6 @@ export function getNativeProjectPaths(folderName) {
     journal: `${dir}/data.journal.jsonl`,
     meta: `${dir}/data.storage.json`,
   };
-}
-
-export function isMissingNativeFileError(error) {
-  const message = String(error?.message ?? error).toLowerCase();
-  return message.includes("exist") || message.includes("not found");
 }
 
 function normalizeSnapshot(value, path) {

@@ -49,7 +49,7 @@
     "src/repositories/PhotoRepository.js": 491,
     "src/repositories/SchemaRepository.js": 344,
     "src/repositories/backupSchema.js": 670,
-    "src/repositories/legacyNativeLeakStorage.js": 631,
+    "src/repositories/legacyNativeLeakStorage.js": 617,
     "src/repositories/nativeLeakStorage.js": 333,
     "src/repositories/webEnvelopeRecords.js": 367,
     "src/services/backup/backupImport.js": 546,

@@ -9,9 +9,9 @@ import {
   getWebProjectDataReadFailurePolicy,
   isProjectDataReadWarningBlocking,
 } from "@/repositories/projectDataReadState";
+import { isMissingNativeFileError } from "@/repositories/nativeFileErrors";
 import {
   deleteNativeProjectStorage,
-  isMissingNativeFileError,
   loadNativeProject,
   readNativeSnapshot,
   saveNativeProject,

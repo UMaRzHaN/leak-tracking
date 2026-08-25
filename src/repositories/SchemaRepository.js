@@ -1,7 +1,7 @@
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import { createIdbStore } from "@/repositories/idb";
 import { ensureNativeDirectory } from "@/repositories/nativeDirectory";
-import { isMissingNativeFileError } from "@/repositories/legacyNativeLeakStorage";
+import { isMissingNativeFileError } from "@/repositories/nativeFileErrors";
 import {
   getNativeSchemaIndexPath,
   getNativeSchemaPath,

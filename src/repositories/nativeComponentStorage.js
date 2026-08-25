@@ -1,5 +1,5 @@
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
-import { isMissingNativeFileError } from "@/repositories/legacyNativeLeakStorage";
+import { isMissingNativeFileError } from "@/repositories/nativeFileErrors";
 import { ensureNativeDirectory } from "@/repositories/nativeDirectory";
 import {
   createNativeSqliteMutation,
