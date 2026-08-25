@@ -1,3 +1,4 @@
+import { liveComponents } from "@/domain/componentTombstones";
 import { getCellDisplayValue } from "@/services/import/workbookSchema";
 
 /**
@@ -50,9 +51,12 @@ export function addInventoryBackupSheet(workbook, payload, texts = {}) {
   }
 
   const summary = texts.summary ?? {};
-  const withPhoto = cards.filter((card) => card?.photo).length;
+  // Лист везёт и записи об удалённых карточках — иначе удаление не доедет до
+  // второго устройства, — но в сводке человеку показывают карточки.
+  const live = liveComponents(cards);
+  const withPhoto = live.filter((card) => card?.photo).length;
   const rows = [
-    [summary.components, cards.length],
+    [summary.components, live.length],
     [summary.withPhoto, withPhoto],
     [summary.version, INVENTORY_BACKUP_VERSION],
   ].filter(([label]) => label);

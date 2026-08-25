@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   getExcelImportTransactionWarning: vi.fn(),
   resolvePortableExcelArchiveRoute: vi.fn(),
   analyzeProjectIntegrity: vi.fn(),
+  readComponentRegistryIds: vi.fn(async () => null),
   setVarsAsync: vi.fn(),
   restoreProjectMetadata: vi.fn(),
   restoreProjectSnapshot: vi.fn(),
@@ -62,6 +63,7 @@ vi.mock("@/services/backup/projectBackupService", () => ({
 }));
 vi.mock("@/services/backup/projectIntegrityService", () => ({
   analyzeProjectIntegrity: mocks.analyzeProjectIntegrity,
+  readComponentRegistryIds: mocks.readComponentRegistryIds,
 }));
 vi.mock("@/services/import/excelImportTransaction", () => ({
   runExcelImportTransaction: mocks.runExcelImportTransaction,
@@ -185,10 +187,12 @@ vi.mock("@/services/import/importRouting", () => ({
 vi.mock("@/services/inventory/inventoryImport", () => ({
   importInventoryFile: mocks.importInventoryFile,
 }));
-vi.mock("@/configs/projectAdapter", () => ({
-  loadComponentRegistry: mocks.loadComponentRegistry,
+vi.mock("@/configs/componentRegistry.config", () => ({
   hasComponentRegistry: mocks.hasComponentRegistry,
   componentRegistryProjectTypes: mocks.componentRegistryProjectTypes,
+}));
+vi.mock("@/configs/projectAdapter", () => ({
+  loadComponentRegistry: mocks.loadComponentRegistry,
 }));
 
 function excelResult(overrides = {}) {

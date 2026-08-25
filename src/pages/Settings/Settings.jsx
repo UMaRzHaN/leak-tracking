@@ -17,7 +17,7 @@ import ImportExportDialogs from "./components/ImportExportDialogs";
 import ProjectManagementDialogs from "./components/ProjectManagementDialogs";
 import { useSettingsPage } from "./hooks/useSettingsPage";
 import s from "./Settings.module.scss";
-import { hasComponentRegistry } from "@/configs/projectAdapter";
+import { hasComponentRegistry } from "@/configs/componentRegistry.config";
 
 export default function Settings(props) {
   const {

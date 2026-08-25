@@ -1,9 +1,7 @@
-import {
-  hasComponentRegistry,
-  loadComponentRegistry,
-} from "@/configs/projectAdapter";
-import { ComponentRepository } from "@/repositories/ComponentRepository";
+import { hasComponentRegistry } from "@/configs/componentRegistry.config";
+import { loadComponentRegistry } from "@/configs/projectAdapter";
 import { compareComponentsByUid } from "@/domain/componentRegistry";
+import { liveComponents } from "@/domain/componentTombstones";
 import {
   buildComponentRowIds,
   buildComponentRows,
@@ -21,14 +19,29 @@ import { logger } from "@/utils/logger";
  * registry, an empty walk, or storage that would not answer. A missing tab is
  * a better outcome than failing an export somebody is waiting on.
  */
+/**
+ * `ComponentRepository` тянет за собой мост Capacitor и нативное хранилище
+ * карточек. Статический импорт клал его в стартовый чанк — сборка предупреждала
+ * об этом прямо, — хотя нужен он только тем, кто уже открыл реестр, экспорт или
+ * импорт. Здесь он читается на месте вызова.
+ */
+function componentRepository() {
+  return import("@/repositories/ComponentRepository").then(
+    (module) => module.ComponentRepository,
+  );
+}
+
 export async function buildComponentSheetSpec(project) {
   if (!project?.id || !hasComponentRegistry(project)) return null;
 
   try {
-    const [registry, components] = await Promise.all([
+    const [registry, stored] = await Promise.all([
       loadComponentRegistry(project),
-      ComponentRepository.load(project),
+      componentRepository().then((repository) => repository.load(project)),
     ]);
+    // Лист — это то, что человек прочтёт. Запись об удалённой карточке в нём
+    // не строка, а недоразумение; ездит она служебным листом бэкапа.
+    const components = liveComponents(stored);
     if (components.length === 0) return null;
 
     const { sheet, headers, keysOrder } = registry.excel;

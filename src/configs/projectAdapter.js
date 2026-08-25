@@ -179,31 +179,13 @@ export function getProjectMapBehavior(project) {
    and free; reading the block only happens once the screen opens, so it can
    afford an await. Declaring the two together would have charged every cold
    start for a screen most sessions never reach.
+
+   Синхронные проверки — «есть ли реестр у этого типа» и «у каких типов он
+   есть» — вынесены в componentRegistry.config.js. Причина та же, по которой
+   объявление грузится отдельно, только на уровне сборки: их спрашивают из
+   стартового графа, а всё остальное здесь — поля утечки, и тащить их за собой
+   на каждый холодный старт незачем.
    ========================================================================= */
-
-/**
- * Whether this project type carries a component registry at all.
- * Synchronous and cheap — called from the navigation bar on every render.
- * @param {object|string} project
- */
-export function hasComponentRegistry(project) {
-  return typeof resolveConfig(project)?.components?.load === "function";
-}
-
-/**
- * Типы проектов, которые вообще ведут реестр компонентов.
- *
- * Нужен там, где реестр приезжает раньше проекта: архив инвентаризации не
- * несёт ни имени проекта, ни его типа — только карточки. Если реестр объявлен
- * ровно у одного типа, выбирать не из чего, и спрашивать человека не о чем;
- * если типов станет несколько, ответ перестанет быть однозначным сам, и
- * вызывающая сторона это увидит.
- *
- * @returns {string[]}
- */
-export function componentRegistryProjectTypes() {
-  return Object.keys(PROJECTS).filter((type) => hasComponentRegistry(type));
-}
 
 /**
  * Loads the registry declaration for a project type.

@@ -4,6 +4,11 @@ import {
   hasUnresolvedConflicts,
   mergeComponentRegistries,
 } from "@/domain/componentMerge";
+import {
+  isComponentTombstone,
+  liveComponents,
+  tombstoneFor,
+} from "@/domain/componentTombstones";
 
 const card = (id, uid, extra = {}) => ({
   id,
@@ -162,5 +167,65 @@ describe("finding conflicts", () => {
       false,
     );
     expect(hasUnresolvedConflicts([card("a", "1"), card("b", "1")])).toBe(true);
+  });
+});
+
+describe("удаление, пережившее обмен", () => {
+  it("уносит карточку на том устройстве, где её ещё не удаляли", () => {
+    // До этого удаление не переживало ни одного обмена: для второго телефона
+    // карточка просто есть, и первый же архив возвращал её обратно.
+    const result = mergeComponentRegistries(
+      [card("a", "1"), card("b", "2")],
+      [tombstoneFor(card("b", "2"), 5_000)],
+    );
+
+    expect(liveComponents(result.merged).map((c) => c.id)).toEqual(["a"]);
+    expect(result.removed).toBe(1);
+    expect(result.added).toBe(0);
+  });
+
+  it("возвращает карточку, если её правили уже после удаления", () => {
+    // Удалили на одном, а на другом в это же время дописали паспорт — правка
+    // позже, значит, человек видел железо после того, как карточку списали.
+    const result = mergeComponentRegistries(
+      [tombstoneFor(card("b", "2"), 5_000)],
+      [card("b", "2", { updatedAt: 9_000, manufacturer: "Завод" })],
+    );
+
+    const live = liveComponents(result.merged);
+    expect(live).toHaveLength(1);
+    expect(live[0].manufacturer).toBe("Завод");
+  });
+
+  it("на равном времени оставляет удаление", () => {
+    const result = mergeComponentRegistries(
+      [card("b", "2", { updatedAt: 5_000 })],
+      [tombstoneFor(card("b", "2"), 5_000)],
+    );
+
+    expect(liveComponents(result.merged)).toHaveLength(0);
+  });
+
+  it("несёт дальше надгробие карточки, которой здесь никогда не было", () => {
+    // Иначе третье устройство вернуло бы удалённое обоим.
+    const result = mergeComponentRegistries(
+      [card("a", "1")],
+      [tombstoneFor(card("z", "9"), 5_000)],
+    );
+
+    expect(result.merged.filter(isComponentTombstone)).toHaveLength(1);
+    // Но человеку тут показывать нечего: карточку он не терял и не получал.
+    expect(result.added).toBe(0);
+    expect(result.removed).toBe(0);
+  });
+
+  it("надгробие не занимает номер и не спорит с живой карточкой", () => {
+    const result = mergeComponentRegistries(
+      [tombstoneFor(card("a", "7"), 5_000)],
+      [card("b", "7")],
+    );
+
+    expect(result.conflicts).toEqual([]);
+    expect(findUidConflicts(result.merged)).toEqual([]);
   });
 });

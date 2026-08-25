@@ -52,7 +52,7 @@ export function useMapPage({
     available: componentsAvailable,
     markers: componentMarkers,
     loading: componentsLoading,
-  } = useMapComponents(activeProject, base === MAP_BASE.COMPONENTS);
+  } = useMapComponents(base === MAP_BASE.COMPONENTS);
 
   const [notification, setNotification] = useState(null);
   const [mapReady, setMapReady] = useState(false);

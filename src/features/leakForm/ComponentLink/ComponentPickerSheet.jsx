@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useModalDialog } from "@/hooks/useModalDialog";
 import { useLanguage } from "@/app/hooks/useLanguage";
-import { ComponentRepository } from "@/repositories/ComponentRepository";
+import { useComponentRegistryStore } from "@/features/componentRegistry/ComponentRegistryContext";
 import { getDistanceMeters } from "@/utils/geoUtils";
 import { hasCoordsFix, readCoordsFix } from "@/utils/coordsFix";
 import { logger } from "@/utils/logger";
@@ -19,8 +19,9 @@ import s from "./ComponentPickerSheet.module.scss";
  * Карточки без координат уходят вниз, но не исчезают: их заводили, когда
  * приёмник молчал, и это не повод не находить их поиском.
  *
- * Читает реестр сам: грузится этот лист динамически, поэтому
- * `ComponentRepository` со всем мостом Capacitor в стартовый граф не попадает.
+ * Список берёт у провайдера — того же, из которого его читают экран реестра и
+ * карта. Раньше лист читал хранилище сам, и открытый посреди обхода поднимал
+ * с диска весь реестр заново, уже лежавший в памяти соседнего экрана.
  */
 
 const FAR_AWAY_M = 10_000;
@@ -41,32 +42,24 @@ function matches(component, needle) {
 }
 
 export default function ComponentPickerSheet({
-  project,
   coords = null,
   onPick,
   onClose,
 }) {
   const { t } = useLanguage();
   const dialogRef = useModalDialog({ open: true, onClose });
-  const [components, setComponents] = useState(null);
-  const [failed, setFailed] = useState(false);
+  const { components: stored, loading, error } = useComponentRegistryStore();
   const [search, setSearch] = useState("");
 
+  // Пустой список и непрочитанный список — разные ответы: первый значит, что
+  // карточек нет, второй — что их не видно. Показать одно вместо другого
+  // значит отправить обходчика заводить карточку, которая уже есть.
+  const components = loading ? null : stored;
+  const failed = Boolean(error);
+
   useEffect(() => {
-    let cancelled = false;
-    ComponentRepository.load(project)
-      .then((loaded) => {
-        if (!cancelled) setComponents(loaded);
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        logger.warn("[componentLink] реестр не прочитался:", error);
-        setFailed(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [project]);
+    if (error) logger.warn("[componentLink] реестр не прочитался:", error);
+  }, [error]);
 
   const hasGps = hasCoordsFix(coords);
 

@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "@/app/App";
 import { ProjectProvider } from "@/app/project/ProjectContext";
+import { ComponentRegistryProvider } from "@/features/componentRegistry/ComponentRegistryContext";
 import { LeakFormProvider } from "@/features/leakForm/LeakFormContext";
 import ErrorBoundary from "@/components/ui/ErrorBoundary/ErrorBoundary";
 import { isNative } from "@/utils/platform";
@@ -39,12 +40,14 @@ async function bootstrap() {
     <React.StrictMode>
       <ErrorBoundary>
         <ProjectProvider>
-          <LeakFormProvider>
-            <App />
-            <React.Suspense fallback={null}>
-              <PwaUpdateBanner />
-            </React.Suspense>
-          </LeakFormProvider>
+          <ComponentRegistryProvider>
+            <LeakFormProvider>
+              <App />
+              <React.Suspense fallback={null}>
+                <PwaUpdateBanner />
+              </React.Suspense>
+            </LeakFormProvider>
+          </ComponentRegistryProvider>
         </ProjectProvider>
       </ErrorBoundary>
     </React.StrictMode>,

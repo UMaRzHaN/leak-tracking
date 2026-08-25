@@ -74,9 +74,43 @@ describe("restoring from an archive", () => {
 
     const result = await restoreComponentsFromArchive(archive, project);
 
-    expect(result).toEqual({ added: 1, updated: 0, conflicts: 0 });
+    expect(result).toEqual({ added: 1, updated: 0, removed: 0, conflicts: 0 });
     const [, saved] = mocks.save.mock.calls[0];
     expect(saved.map((c) => c.id)).toEqual(["a", "b"]);
+  });
+
+  it("довозит удаление: карточка уходит и на этом устройстве", async () => {
+    // Ради этого надгробия и заводились. Раньше архив с соседнего телефона
+    // возвращал удалённую карточку обратно — молча.
+    mocks.load.mockResolvedValue([card("a", "1"), card("b", "2")]);
+    const archive = await makeArchive({
+      [COMPONENT_ARCHIVE_FILE]: archivePayload([
+        { id: "b", component_uid: "2", deleted: true, deletedAt: 9_000 },
+      ]),
+    });
+
+    const result = await restoreComponentsFromArchive(archive, project);
+
+    expect(result.removed).toBe(1);
+    const [, saved] = mocks.save.mock.calls[0];
+    // Карточка ушла, но запись о её удалении осталась — иначе следующий обмен
+    // вернул бы её снова.
+    expect(saved.filter((record) => !record.deleted).map((c) => c.id)).toEqual([
+      "a",
+    ]);
+    expect(saved.find((record) => record.id === "b").deleted).toBe(true);
+  });
+
+  it("везёт удаление дальше в архиве, а не только принимает его", async () => {
+    const grave = { id: "b", component_uid: "2", deleted: true, deletedAt: 9 };
+    const entry = await buildComponentArchiveEntry(project, async () => [
+      card("a", "1"),
+      grave,
+    ]);
+
+    expect(JSON.parse(entry.content).data).toContainEqual(
+      expect.objectContaining({ id: "b", deleted: true }),
+    );
   });
 
   it("does not overwrite the half that arrived first", async () => {
@@ -131,7 +165,7 @@ describe("restoring from an archive", () => {
 
     await expect(
       restoreComponentsFromArchive(archive, project),
-    ).resolves.toEqual({ added: 0, updated: 0, conflicts: 0 });
+    ).resolves.toEqual({ added: 0, updated: 0, removed: 0, conflicts: 0 });
     expect(mocks.save).not.toHaveBeenCalled();
   });
 
@@ -142,7 +176,7 @@ describe("restoring from an archive", () => {
 
     await expect(
       restoreComponentsFromArchive(archive, project),
-    ).resolves.toEqual({ added: 0, updated: 0, conflicts: 0 });
+    ).resolves.toEqual({ added: 0, updated: 0, removed: 0, conflicts: 0 });
     expect(mocks.save).not.toHaveBeenCalled();
   });
 
@@ -154,7 +188,7 @@ describe("restoring from an archive", () => {
 
     await expect(
       restoreComponentsFromArchive(archive, project),
-    ).resolves.toEqual({ added: 0, updated: 0, conflicts: 0 });
+    ).resolves.toEqual({ added: 0, updated: 0, removed: 0, conflicts: 0 });
   });
 
   it("does nothing without a project", async () => {
@@ -164,6 +198,7 @@ describe("restoring from an archive", () => {
     await expect(restoreComponentsFromArchive(archive, null)).resolves.toEqual({
       added: 0,
       updated: 0,
+      removed: 0,
       conflicts: 0,
     });
   });
@@ -182,6 +217,7 @@ describe("previewArchiveComponents", () => {
     await expect(previewArchiveComponents(file, project)).resolves.toEqual({
       added: 1,
       updated: 1,
+      removed: 0,
       total: 2,
       photos: 1,
     });

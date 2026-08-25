@@ -14,8 +14,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/services/backup/projectCleanup", () => ({
   rollbackImportedProject: mocks.rollback,
 }));
-vi.mock("@/configs/projectAdapter", () => ({
+vi.mock("@/configs/componentRegistry.config", () => ({
   componentRegistryProjectTypes: mocks.registryTypes,
+}));
+vi.mock("@/configs/projectAdapter", () => ({
   loadComponentRegistry: mocks.loadRegistry,
 }));
 vi.mock("@/services/inventory/inventoryImport", () => ({

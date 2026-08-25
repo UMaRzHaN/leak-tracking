@@ -73,10 +73,7 @@ export default function App() {
    * с железом: фильтр общий, а деревья у сущностей разные.
    */
   const registryPage = page === "components" || page === "component";
-  const registryComponents = useRegistryLocationSource(
-    activeProject,
-    registryPage,
-  );
+  const registryComponents = useRegistryLocationSource(registryPage);
   const componentScope = useLocationScope({
     leaks: registryComponents,
     sharedFilters,

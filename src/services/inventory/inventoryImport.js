@@ -1,4 +1,5 @@
-import { ComponentRepository } from "@/repositories/ComponentRepository";
+import { notifyComponentRegistryChanged } from "@/repositories/componentRegistrySignal";
+import { liveComponents } from "@/domain/componentTombstones";
 import { mergeComponentRegistries } from "@/domain/componentMerge";
 import {
   mergeIncomingComponents,
@@ -153,6 +154,18 @@ export function separateSheetCards(local, incoming) {
  * @param {{excel: {headers: string[], keysOrder: string[]}}} registry the project's registry declaration
  * @returns {Promise<{added: number, updated: number, conflicts: number, shadowed: number, skipped: number, source: "archive"|"sheet"|"none", schemas: number}>}
  */
+/**
+ * `ComponentRepository` тянет за собой мост Capacitor и нативное хранилище
+ * карточек. Статический импорт клал его в стартовый чанк — сборка предупреждала
+ * об этом прямо, — хотя нужен он только тем, кто уже открыл реестр, экспорт или
+ * импорт. Здесь он читается на месте вызова.
+ */
+function componentRepository() {
+  return import("@/repositories/ComponentRepository").then(
+    (module) => module.ComponentRepository,
+  );
+}
+
 export async function importInventoryFile(file, project, registry) {
   const nothing = {
     added: 0,
@@ -189,14 +202,19 @@ export async function importInventoryFile(file, project, registry) {
   );
   if (components.length === 0) return { ...nothing, skipped };
 
-  const local = await ComponentRepository.load(project);
-  const { mergeable, shadowed } = separateSheetCards(local, components);
+  const local = await (await componentRepository()).load(project);
+  // Строки листа сличаются с карточками. Надгробие номера не занимает, и
+  // строка на удалённый номер заводит карточку заново — с новым
+  // идентификатором, так что прежнее удаление её не уносит: импорт листа
+  // человек делает руками и именно этого от него и ждёт.
+  const cards = liveComponents(local);
+  const { mergeable, shadowed } = separateSheetCards(cards, components);
   // Строка листа ложится правками поверх карточки, а не заменяет её целиком.
   // В таблице нет ни истории осмотров, ни снимка, а слияние берёт победившую
   // карточку как есть: карточка, заведённая таблицей и потом осмотренная в
   // приложении, теряла на повторном импорте и историю, и фотографию.
-  const edits = mergeSheetEditsIntoCards(local, mergeable);
-  const localCards = /** @type {Record<string, any>[]} */ (local);
+  const edits = mergeSheetEditsIntoCards(cards, mergeable);
+  const localCards = /** @type {Record<string, any>[]} */ (cards);
   const localById = new Map(localCards.map((card) => [card?.id, card]));
   // Правки создают новый объект, нетронутые карточки остаются прежними, —
   // так и отбираются те, ради которых стоит тревожить реестр.
@@ -207,7 +225,9 @@ export async function importInventoryFile(file, project, registry) {
     local,
     touched,
   );
-  await ComponentRepository.save(project, merged);
+  await (await componentRepository()).save(project, merged);
+  // Как и у архива: запись сделана мимо владельца списка, и он должен узнать.
+  notifyComponentRegistryChanged();
 
   return {
     added,

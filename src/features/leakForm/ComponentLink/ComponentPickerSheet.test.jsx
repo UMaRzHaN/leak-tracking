@@ -2,18 +2,17 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const repo = vi.hoisted(() => ({ load: vi.fn() }));
-vi.mock("@/repositories/ComponentRepository", () => ({
-  ComponentRepository: { load: repo.load },
-}));
 vi.mock("@/app/hooks/useLanguage", async () => {
   const { englishLanguageHook } = await import("@/test/translate");
   return englishLanguageHook();
 });
 
 const ComponentPickerSheet = (await import("./ComponentPickerSheet")).default;
+const { componentRegistryWrapper } = await import("@/test/componentRegistry");
 
-const project = { id: "p1", folderName: "tengiz" };
+// Лист берёт список у провайдера, поэтому здесь он просто подставляется:
+// проверяется порядок, поиск и выбор, а не то, как список читается с диска.
+let registry = { components: [] };
 // Обходчик стоит здесь; расстояния ниже отмерены от этой точки.
 const here = { lat: 55.0, lng: 73.0 };
 
@@ -42,12 +41,12 @@ function open(props = {}) {
   const onClose = vi.fn();
   render(
     <ComponentPickerSheet
-      project={project}
       coords={here}
       onPick={onPick}
       onClose={onClose}
       {...props}
     />,
+    { wrapper: componentRegistryWrapper(registry) },
   );
   return { onPick, onClose };
 }
@@ -58,7 +57,7 @@ const uids = () =>
 describe("ComponentPickerSheet", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    repo.load.mockResolvedValue([faraway, mid, near, noFix]);
+    registry = { components: [faraway, mid, near, noFix] };
   });
 
   it("ставит ближние наверх, а карточки без координат — вниз, но в список", async () => {
@@ -119,14 +118,14 @@ describe("ComponentPickerSheet", () => {
   it("отличает нечитаемый реестр от пустого", async () => {
     // Пустой реестр — приглашение завести карточку; нечитаемый — отказ
     // хранилища, и молчать о нём нельзя.
-    repo.load.mockRejectedValue(new Error("storage gone"));
+    registry = { components: [], error: new Error("storage gone") };
     open();
 
     expect(
       await screen.findByText("The registry could not be read"),
     ).toBeInTheDocument();
 
-    repo.load.mockResolvedValue([]);
+    registry = { components: [] };
     open();
     expect(
       await screen.findByText(/The registry is empty/),

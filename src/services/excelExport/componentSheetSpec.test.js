@@ -6,8 +6,10 @@ const mocks = vi.hoisted(() => ({
   loadComponents: vi.fn(),
 }));
 
-vi.mock("@/configs/projectAdapter", () => ({
+vi.mock("@/configs/componentRegistry.config", () => ({
   hasComponentRegistry: mocks.hasRegistry,
+}));
+vi.mock("@/configs/projectAdapter", () => ({
   loadComponentRegistry: mocks.loadRegistry,
 }));
 vi.mock("@/repositories/ComponentRepository", () => ({

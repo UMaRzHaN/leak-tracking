@@ -1,4 +1,5 @@
 import { act, render, renderHook, waitFor } from "@testing-library/react";
+import { componentRegistryWrapper } from "@/test/componentRegistry";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mapMocks = vi.hoisted(() => ({
@@ -122,6 +123,10 @@ function createMapResult() {
   };
 }
 
+// Эти проверки про утечки на карте; реестр компонентов к ним не относится, и
+// проект без него — самый обычный случай.
+const noRegistry = componentRegistryWrapper({ enabled: false });
+
 describe("useMapPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -134,8 +139,9 @@ describe("useMapPage", () => {
   });
 
   it("combines status, priority, location, and nearby filters", () => {
-    const { result } = renderHook(() =>
-      useMapPage({ leaks, coords: { lat: 41, lng: 69 } }),
+    const { result } = renderHook(
+      () => useMapPage({ leaks, coords: { lat: 41, lng: 69 } }),
+      { wrapper: noRegistry },
     );
 
     expect(result.current.visibleLeaks.map((leak) => leak.id)).toEqual([
@@ -180,7 +186,7 @@ describe("useMapPage", () => {
       return <div ref={current.containerRef} />;
     }
 
-    const view = render(<Harness gpsEnabled />);
+    const view = render(<Harness gpsEnabled />, { wrapper: noRegistry });
 
     await waitFor(() => expect(mapMocks.createOfflineMap).toHaveBeenCalled());
     expect(mapMocks.createOfflineMap.mock.calls[0][1]).toMatchObject({
@@ -237,7 +243,7 @@ describe("useMapPage", () => {
       return <div ref={current.containerRef} />;
     }
 
-    render(<Harness />);
+    render(<Harness />, { wrapper: noRegistry });
     await waitFor(() => expect(mapMocks.createOfflineMap).toHaveBeenCalled());
 
     await act(() => current.handleDownloadArea());
@@ -291,7 +297,7 @@ describe("useMapPage", () => {
       return <div ref={current.containerRef} />;
     }
 
-    render(<Harness />);
+    render(<Harness />, { wrapper: noRegistry });
     await waitFor(() => expect(mapMocks.createOfflineMap).toHaveBeenCalled());
     let download;
     act(() => {

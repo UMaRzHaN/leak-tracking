@@ -1,5 +1,6 @@
-import { ComponentRepository } from "@/repositories/ComponentRepository";
+import { notifyComponentRegistryChanged } from "@/repositories/componentRegistrySignal";
 import { mergeComponentRegistries } from "@/domain/componentMerge";
+import { liveComponents } from "@/domain/componentTombstones";
 import { logger } from "@/utils/logger";
 import {
   buildComponentPhotoArchive,
@@ -18,6 +19,18 @@ import { getJSZip } from "./runtime";
  * half of the same walk, and overwriting would throw away whichever half
  * happened to arrive second.
  */
+
+/**
+ * `ComponentRepository` тянет за собой мост Capacitor и нативное хранилище
+ * карточек. Статический импорт клал его в стартовый чанк — сборка предупреждала
+ * об этом прямо, — хотя нужен он только тем, кто уже открыл реестр, экспорт или
+ * импорт. Здесь он читается на месте вызова.
+ */
+function componentRepository() {
+  return import("@/repositories/ComponentRepository").then(
+    (module) => module.ComponentRepository,
+  );
+}
 
 export const COMPONENT_ARCHIVE_FILE = "components.json";
 const ARCHIVE_VERSION = 1;
@@ -38,7 +51,7 @@ export async function buildComponentArchiveEntry(project, options = {}) {
   if (!project?.id) return null;
 
   const {
-    load = (target) => ComponentRepository.load(target),
+    load = async (target) => (await componentRepository()).load(target),
     idbGet,
     photoDir,
   } = typeof options === "function" ? { load: options } : options;
@@ -91,7 +104,7 @@ function unwrap(parsed) {
  *
  * @param {File|Blob} file the archive
  * @param {{id: string, folderName?: string, name?: string, type?: string}} project
- * @returns {Promise<{added: number, updated: number, conflicts: number}>}
+ * @returns {Promise<{added: number, updated: number, removed: number, conflicts: number}>}
  */
 /**
  * Что случится с реестром, если этот архив принять, — без единой записи.
@@ -106,7 +119,7 @@ function unwrap(parsed) {
  *
  * @param {File|Blob} file
  * @param {{id: string, folderName?: string}|null} project
- * @returns {Promise<{added: number, updated: number, total: number, photos: number}|null>}
+ * @returns {Promise<{added: number, updated: number, removed: number, total: number, photos: number}|null>}
  *   null — если реестра в архиве нет вовсе.
  */
 export async function previewArchiveComponents(file, project) {
@@ -119,13 +132,21 @@ export async function previewArchiveComponents(file, project) {
     const incoming = unwrap(JSON.parse(await entry.async("string")));
     if (!Array.isArray(incoming) || incoming.length === 0) return null;
 
-    const local = project ? await ComponentRepository.load(project) : [];
-    const { added, updated } = mergeComponentRegistries(local, incoming);
-    const photos = incoming.filter((card) =>
+    const local = project
+      ? await (await componentRepository()).load(project)
+      : [];
+    const { added, updated, removed } = mergeComponentRegistries(
+      local,
+      incoming,
+    );
+    // Считается то, что человек увидит: записи об удалённых карточках едут
+    // вместе с ними, но карточками не являются.
+    const cards = liveComponents(incoming);
+    const photos = cards.filter((card) =>
       String(card?.photo ?? "").startsWith("zip:"),
     ).length;
 
-    return { added, updated, total: incoming.length, photos };
+    return { added, updated, removed, total: cards.length, photos };
   } catch (error) {
     // Нечитаемый реестр не отменяет импорт утечек: диалог просто промолчит
     // о карточках, как молчал раньше.
@@ -135,7 +156,7 @@ export async function previewArchiveComponents(file, project) {
 }
 
 export async function restoreComponentsFromArchive(file, project) {
-  const nothing = { added: 0, updated: 0, conflicts: 0 };
+  const nothing = { added: 0, updated: 0, removed: 0, conflicts: 0 };
   if (!project?.id) return nothing;
 
   let incoming;
@@ -174,16 +195,17 @@ export async function restoreComponentsFromArchive(file, project) {
  */
 export async function mergeIncomingComponents(project, incoming) {
   try {
-    const local = await ComponentRepository.load(project);
-    const { merged, added, updated, conflicts } = mergeComponentRegistries(
-      local,
-      incoming,
-    );
+    const local = await (await componentRepository()).load(project);
+    const { merged, added, updated, removed, conflicts } =
+      mergeComponentRegistries(local, incoming);
 
-    await ComponentRepository.save(project, merged);
-    return { added, updated, conflicts: conflicts.length };
+    await (await componentRepository()).save(project, merged);
+    // Список реестра держит владелец на стороне экрана, и эта запись прошла
+    // мимо него: без сигнала он показывал бы то, что прочитал до импорта.
+    notifyComponentRegistryChanged();
+    return { added, updated, removed, conflicts: conflicts.length };
   } catch (error) {
     logger.warn("[components] could not merge the incoming registry:", error);
-    return { added: 0, updated: 0, conflicts: 0 };
+    return { added: 0, updated: 0, removed: 0, conflicts: 0 };
   }
 }

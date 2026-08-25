@@ -162,4 +162,41 @@ describe("ImportConflictSheet registry preview", () => {
     expect(screen.queryByText("Components added")).not.toBeInTheDocument();
     expect(screen.queryByText("Component photos")).not.toBeInTheDocument();
   });
+  it("говорит и о том, что архив унесёт", () => {
+    // Архив с соседнего телефона везёт не только карточки, но и записи об
+    // удалённых. Ряд «добавится 0, обновится 0» скрывал бы, что двенадцать
+    // карточек сейчас уйдут.
+    render(
+      <ImportConflictSheet
+        {...base}
+        registryPreview={{
+          added: 0,
+          updated: 0,
+          removed: 12,
+          total: 0,
+          photos: 0,
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Components removed")).toBeInTheDocument();
+    expect(screen.getByText("12")).toBeInTheDocument();
+  });
+
+  it("молчит об удалении, которого в архиве нет", () => {
+    render(
+      <ImportConflictSheet
+        {...base}
+        registryPreview={{
+          added: 1,
+          updated: 0,
+          removed: 0,
+          total: 1,
+          photos: 0,
+        }}
+      />,
+    );
+
+    expect(screen.queryByText("Components removed")).not.toBeInTheDocument();
+  });
 });

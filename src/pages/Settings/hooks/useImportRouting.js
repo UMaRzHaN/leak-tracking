@@ -33,13 +33,11 @@ export function useImportRouting({
       try {
         const [
           { importInventoryFile },
-          {
-            hasComponentRegistry,
-            componentRegistryProjectTypes,
-            loadComponentRegistry,
-          },
+          { hasComponentRegistry, componentRegistryProjectTypes },
+          { loadComponentRegistry },
         ] = await Promise.all([
           import("@/services/inventory/inventoryImport"),
+          import("@/configs/componentRegistry.config"),
           import("@/configs/projectAdapter"),
         ]);
 

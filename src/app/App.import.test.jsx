@@ -1,6 +1,7 @@
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
+import { componentRegistryWrapper } from "@/test/componentRegistry";
 
 const mocks = vi.hoisted(() => ({
   settingsProps: null,
@@ -179,6 +180,10 @@ vi.mock("@/services/backup/projectBackupService", () => ({
   importIntoExistingProject: mocks.importIntoExistingProject,
 }));
 
+// Проверяется оркестрация импорта, а не реестр компонентов: провайдер здесь
+// нужен только затем, чтобы шапка нашла, у кого спросить.
+const noRegistry = componentRegistryWrapper({ enabled: false });
+
 describe("App import orchestration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -205,7 +210,7 @@ describe("App import orchestration", () => {
   });
 
   it("clears the old leak form only after a copied project is fully imported", async () => {
-    render(<App />);
+    render(<App />, { wrapper: noRegistry });
     await screen.findByText("settings-ready");
 
     let pending;
@@ -230,7 +235,7 @@ describe("App import orchestration", () => {
   it("restores the source project and keeps its form when copied-project import fails", async () => {
     const importError = new Error("photo import failed");
     mocks.persistExcelImportPhotos.mockRejectedValue(importError);
-    render(<App />);
+    render(<App />, { wrapper: noRegistry });
     await screen.findByText("settings-ready");
 
     let pending;
@@ -269,7 +274,7 @@ describe("App import orchestration", () => {
           finishImport = resolve;
         }),
     );
-    render(<App />);
+    render(<App />, { wrapper: noRegistry });
     await screen.findByText("settings-ready");
 
     let pending;
@@ -318,7 +323,7 @@ describe("App import orchestration", () => {
       project: targetProject,
       leakCount: 2,
     });
-    render(<App />);
+    render(<App />, { wrapper: noRegistry });
     await screen.findByText("settings-ready");
 
     await act(async () => {
@@ -341,7 +346,7 @@ describe("App import orchestration", () => {
     };
     const importError = new Error("invalid backup");
     mocks.importIntoExistingProject.mockRejectedValue(importError);
-    render(<App />);
+    render(<App />, { wrapper: noRegistry });
     await screen.findByText("settings-ready");
 
     let caught;

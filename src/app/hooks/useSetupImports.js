@@ -53,10 +53,12 @@ export function useSetupImports({
     (file, /** @type {{name?: string, type?: string}} */ { name, type } = {}) =>
       runWithImportOverlay(async () => {
         const [
-          { componentRegistryProjectTypes, loadComponentRegistry },
+          { componentRegistryProjectTypes },
+          { loadComponentRegistry },
           { importInventoryFile },
           { waitForPhotoStorage },
         ] = await Promise.all([
+          import("@/configs/componentRegistry.config"),
           import("@/configs/projectAdapter"),
           import("@/services/inventory/inventoryImport"),
           import("@/services/backup/runtime"),

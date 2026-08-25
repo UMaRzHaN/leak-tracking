@@ -163,6 +163,17 @@ export default function ImportConflictSheet({
                     <span>{t("importConflict.preview.componentsUpdated")}</span>
                     <strong>{registryPreview.updated ?? 0}</strong>
                   </div>
+                  {registryPreview.removed ? (
+                    // Архив умеет не только привозить карточки, но и уносить:
+                    // вместе с ним едут записи об удалённых. Промолчать об
+                    // этом — то же самое, что просить решение вслепую.
+                    <div className={s.previewItem}>
+                      <span>
+                        {t("importConflict.preview.componentsRemoved")}
+                      </span>
+                      <strong>{registryPreview.removed}</strong>
+                    </div>
+                  ) : null}
                   <div className={s.previewItem}>
                     <span>{t("importConflict.preview.componentPhotos")}</span>
                     <strong>{registryPreview.photos ?? 0}</strong>

@@ -3,13 +3,24 @@ import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { clearProjectSettings } from "@/app/project/projectSettings";
 import { clearProjectFilters } from "@/app/project/projectFilters";
 import { LeakRepository } from "@/repositories/LeakRepository";
-import { ComponentRepository } from "@/repositories/ComponentRepository";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
 import { SchemaRepository } from "@/repositories/SchemaRepository";
 import { clearProjectSyncState } from "@/services/sync/projectSyncState";
 import { isNative } from "@/utils/platform";
 import { saveMonitoringRound } from "@/utils/monitoringRound";
 import { ignoredError } from "@/utils/ignoredError";
+
+/**
+ * `ComponentRepository` тянет за собой мост Capacitor и нативное хранилище
+ * карточек. Статический импорт клал его в стартовый чанк — сборка предупреждала
+ * об этом прямо, — хотя нужен он только тем, кто уже открыл реестр, экспорт или
+ * импорт. Здесь он читается на месте вызова.
+ */
+function componentRepository() {
+  return import("@/repositories/ComponentRepository").then(
+    (module) => module.ComponentRepository,
+  );
+}
 
 export async function deleteProjectArtifacts(project) {
   if (!project?.id) return;
@@ -29,7 +40,7 @@ export async function deleteProjectArtifacts(project) {
   // оставался в базе навсегда, а на устройстве — в SQLite, привязанный к имени
   // папки. Проект, заведённый потом под тем же именем, получал чужие карточки,
   // которых человек не заводил.
-  await Promise.resolve(ComponentRepository.remove(project)).catch(
+  await Promise.resolve((await componentRepository()).remove(project)).catch(
     ignoredError("projectCleanup.removeComponents"),
   );
   await Promise.resolve(SchemaRepository.removeProjectSchemas(project)).catch(

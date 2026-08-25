@@ -9,9 +9,9 @@ import s from "./ComponentLinkField.module.scss";
 /*
  * Лист выбора грузится по нажатию, а не вместе с формой.
  *
- * Форма утечки лежит в стартовом графе, а лист тянет за собой
- * `ComponentRepository` и мост Capacitor. Запас до предела сборки — около трёх
- * килобайт, поэтому цена статического импорта здесь — упавший CI.
+ * Форма утечки лежит в стартовом графе, где запас до предела сборки — около
+ * трёх килобайт, а лист — это целый экран со своей вёрсткой, поиском и счётом
+ * расстояний. Открывают его на меньшинстве утечек.
  */
 const ComponentPickerSheet = lazy(() => import("./ComponentPickerSheet"));
 
@@ -61,7 +61,6 @@ export default function ComponentLinkField({
       {open && (
         <Suspense fallback={null}>
           <ComponentPickerSheet
-            project={project}
             coords={coords}
             onPick={(component) => {
               onPick(component);

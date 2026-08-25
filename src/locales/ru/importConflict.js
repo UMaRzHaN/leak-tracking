@@ -24,6 +24,7 @@ export const importConflict = {
     registryGroup: "Реестр компонентов",
     componentsAdded: "Компонентов добавится",
     componentsUpdated: "Компонентов обновится",
+    componentsRemoved: "Компонентов удалится",
     componentPhotos: "Фото компонентов",
     changedFields: "Изменённые поля",
   },

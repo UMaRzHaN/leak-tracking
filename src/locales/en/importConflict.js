@@ -23,6 +23,7 @@ export const importConflict = {
     registryGroup: "Component registry",
     componentsAdded: "Components added",
     componentsUpdated: "Components updated",
+    componentsRemoved: "Components removed",
     componentPhotos: "Component photos",
     changedFields: "Changed fields",
   },

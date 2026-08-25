@@ -1,3 +1,10 @@
+import {
+  compactComponentTombstones,
+  componentChangedAt,
+  isComponentTombstone,
+  isLiveComponent,
+} from "@/domain/componentTombstones";
+
 /**
  * Merging component registries written on different devices.
  *
@@ -9,16 +16,16 @@
  * The rule throughout: a card somebody walked out to a wellhead to write must
  * survive the merge. Anything ambiguous is kept and reported, never dropped,
  * never silently renumbered, never folded into its namesake.
+ *
+ * Единственное, что карточку из реестра всё-таки убирает, — запись о её
+ * удалении, приехавшая вместе с ней; см. componentTombstones. Без этого
+ * удаление не переживало ни одного обмена: для второго устройства карточка
+ * просто есть, и первый же обмен возвращал её обратно.
  */
 
 /** Same record, seen twice: the UUID is stable across devices. */
 function isSameRecord(a, b) {
   return a?.id != null && a.id === b?.id;
-}
-
-function changedAt(component) {
-  const value = Number(component?.updatedAt ?? 0);
-  return Number.isFinite(value) ? value : 0;
 }
 
 /**
@@ -28,9 +35,17 @@ function changedAt(component) {
  * card is filled in one sitting in front of the equipment; merging halves of
  * two sittings would produce a card that describes nothing that was ever
  * actually seen.
+ *
+ * Надгробие и карточка сравниваются тем же числом: удалили или правили —
+ * важно, что случилось позже. На равенстве побеждает удаление: человек, чьё
+ * решение мы не можем упорядочить, скорее переживёт лишний раз заведённую
+ * карточку, чем ту, что он удалил и которая вернулась.
  */
 function pickNewer(mine, theirs) {
-  return changedAt(theirs) > changedAt(mine) ? theirs : mine;
+  const mineAt = componentChangedAt(mine);
+  const theirsAt = componentChangedAt(theirs);
+  if (theirsAt !== mineAt) return theirsAt > mineAt ? theirs : mine;
+  return isComponentTombstone(theirs) ? theirs : mine;
 }
 
 function uidOf(component) {
@@ -51,6 +66,7 @@ function uidOf(component) {
  *   merged: Record<string, any>[],
  *   added: number,
  *   updated: number,
+ *   removed: number,
  *   conflicts: ComponentUidConflict[],
  * }}
  */
@@ -62,6 +78,7 @@ export function mergeComponentRegistries(local = [], incoming = []) {
 
   let added = 0;
   let updated = 0;
+  let removed = 0;
 
   for (const candidate of incoming) {
     if (!candidate) continue;
@@ -74,7 +91,11 @@ export function mergeComponentRegistries(local = [], incoming = []) {
       const winner = pickNewer(existing, candidate);
       if (winner !== existing) {
         merged[existingIndex] = winner;
-        updated += 1;
+        if (isComponentTombstone(winner) && isLiveComponent(existing)) {
+          removed += 1;
+        } else {
+          updated += 1;
+        }
       }
       continue;
     }
@@ -83,10 +104,19 @@ export function mergeComponentRegistries(local = [], incoming = []) {
     // stay, and a human decides which one gets renumbered.
     merged.push(candidate);
     byId.set(candidate.id, merged.length - 1);
-    added += 1;
+    // Надгробие карточки, которой здесь никогда не было, — не «добавили»:
+    // человеку показывать нечего, а нести его дальше всё равно надо, иначе
+    // третье устройство вернёт удалённое обоим.
+    if (isLiveComponent(candidate)) added += 1;
   }
 
-  return { merged, added, updated, conflicts: findUidConflicts(merged) };
+  return {
+    merged: compactComponentTombstones(merged),
+    added,
+    updated,
+    removed,
+    conflicts: findUidConflicts(merged),
+  };
 }
 
 /**
@@ -103,6 +133,8 @@ export function findUidConflicts(components = []) {
   const byUid = new Map();
 
   for (const component of components) {
+    // Надгробие номер не занимает: у удалённой карточки его не с чем сличать.
+    if (!isLiveComponent(component)) continue;
     const uid = uidOf(component);
     if (!uid) continue;
     if (!byUid.has(uid)) byUid.set(uid, []);

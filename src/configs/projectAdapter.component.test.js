@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { hasComponentRegistry } from "@/configs/componentRegistry.config";
 import {
   getProjectFields,
-  hasComponentRegistry,
   loadComponentRegistry,
 } from "@/configs/projectAdapter";
 

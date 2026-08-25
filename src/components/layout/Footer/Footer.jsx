@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import s from "./Footer.module.scss";
 import { useLanguage } from "@/app/hooks/useLanguage";
-import { hasComponentRegistry } from "@/configs/projectAdapter";
+import { hasComponentRegistry } from "@/configs/componentRegistry.config";
 
 export default function Footer({ page, setPage, openCount = 0, project }) {
   const { t } = useLanguage();

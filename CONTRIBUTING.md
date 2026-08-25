@@ -115,8 +115,13 @@ What follows from that:
   heavy is behind `await import` and loads only on the screen that needs it:
   equipment dictionaries, `exceljs`, `jszip`, locales, the map;
 - the component registry follows the same rule — `config.components` is lazy,
-  the header reads cards through `useRegistryLocationSource`, the map through
-  `useMapComponents`;
+  and so is `ComponentRepository`: every caller reaches it through an
+  `await import`, which is what keeps the Capacitor bridge out of the entry
+  chunk. The cards themselves come from `ComponentRegistryContext`; the header
+  reads them through `useRegistryLocationSource`, the map through
+  `useMapComponents`. `hasComponentRegistry` lives apart from the rest of
+  `projectAdapter` for the same reason: it is asked from the entry graph, the
+  leak-field helpers beside it are not;
 - splitting a module is not free: the last three splits cost about 130 bytes of
   gzip between them. Measure with `npm run build:analyze` rather than guessing.
 
