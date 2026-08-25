@@ -1,6 +1,5 @@
 import { appError } from "@/utils/appError";
 import { isNative } from "@/utils/platform";
-import { SpeechRecognition } from "@capacitor-community/speech-recognition";
 import { getSpeechLocale } from "@/utils/locale";
 
 let webRecognition = null;
@@ -10,6 +9,11 @@ export const startSpeechRecognition = async (language) => {
   const speechLocale = getSpeechLocale(language);
 
   if (isNative) {
+    // Плагин подтягивается по нажатию, а не при загрузке приложения: чанк
+    // Capacitor общий на все плагины, и статический импорт затаскивал
+    // распознавание речи на первый экран вместе с камерой и сканером.
+    const { SpeechRecognition } =
+      await import("@capacitor-community/speech-recognition");
     const perm = await SpeechRecognition.requestPermissions();
     if (perm.speechRecognition !== "granted") {
       throw appError("MIC_DENIED", "Нет доступа к микрофону");

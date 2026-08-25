@@ -1,5 +1,4 @@
 import { isNative } from "@/utils/platform";
-import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { markPhotoPrepared } from "@/utils/photoPreparation";
 import { dataUrlToBlob } from "@/utils/photoConversion";
 
@@ -18,7 +17,17 @@ function assertPhotoSize(blob) {
  * сохраняется в приватное хранилище приложения (Directory.Data).
  */
 
+/**
+ * Плагин камеры грузится по действию, а не при старте приложения: чанк
+ * Capacitor общий на все плагины, и статический импорт затаскивал камеру,
+ * сканер штрихкодов и распознавание речи на первый экран.
+ */
+function loadCamera() {
+  return import("@capacitor/camera");
+}
+
 async function requestCameraPermission() {
+  const { Camera } = await loadCamera();
   const perm = await Camera.requestPermissions({ permissions: ["camera"] });
   if (perm.camera !== "granted") {
     throw new Error("Camera permission denied");
@@ -55,6 +64,7 @@ export async function takePhotoFromCamera() {
 
   await requestCameraPermission();
 
+  const { Camera, CameraResultType, CameraSource } = await loadCamera();
   const photo = await Camera.getPhoto({
     quality: 80,
     width: 1280,
@@ -71,6 +81,7 @@ export async function pickPhotoFromGallery() {
     throw new Error("Gallery is available only on mobile");
   }
 
+  const { Camera, CameraResultType, CameraSource } = await loadCamera();
   const photo = await Camera.getPhoto({
     quality: 70,
     width: 1280,
