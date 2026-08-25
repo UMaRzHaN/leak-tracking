@@ -172,6 +172,25 @@ describe("locales", () => {
       expect({ language, blank }).toEqual({ language, blank: [] });
     }
   });
+
+  // Every test above is satisfied by a key that exists in both languages and
+  // is not blank — including one whose English value was never translated.
+  // Two placeholders sat that way: the English component form asked for
+  // "e.g. Задвижка". The parity test cannot see it, because the key is there;
+  // the JSX scan cannot, because the string is in the locale, which that test
+  // skips by design. This one reads the values themselves.
+  it("keeps Russian text out of the English locale", () => {
+    const CYRILLIC = /[\u0400-\u04FF]/;
+    const untranslated = flattenKeys(en)
+      .map((key) => [
+        key,
+        key.split(".").reduce((node, part) => node?.[part], en),
+      ])
+      .filter(([, value]) => typeof value === "string" && CYRILLIC.test(value))
+      .map(([key, value]) => `${key}  ${value}`);
+
+    expect(untranslated).toEqual([]);
+  });
 });
 
 /**

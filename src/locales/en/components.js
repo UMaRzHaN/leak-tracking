@@ -74,7 +74,7 @@ export const components = {
     },
     component: {
       hint: "What the equipment is, as the documentation names it",
-      placeholder: "e.g. Задвижка",
+      placeholder: "e.g. gate valve",
     },
     component_uid: {
       hint: "The number you assign during the walk. Digits only",
@@ -82,7 +82,7 @@ export const components = {
     },
     scheme_tag: {
       hint: "Position tag from the drawing. Repeats — it need not be unique",
-      placeholder: "e.g. ЗД32",
+      placeholder: "e.g. GV32",
     },
     component_name_en: {
       hint: "Filled in from the Russian name",
