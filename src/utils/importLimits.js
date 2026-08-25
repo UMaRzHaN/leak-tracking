@@ -58,11 +58,22 @@ export function assertImportFileSize(file) {
   }
 }
 
+/**
+ * Приводит то, что вернул источник, к ArrayBuffer — или к null, если это не
+ * байты. Аннотация здесь держит весь остальной файл: без неё возвращаемый тип
+ * выводился как `never`, и `.slice`/`.byteLength` ниже становились ошибками.
+ *
+ * @param {any} value
+ * @returns {ArrayBuffer | null}
+ */
 function normalizeArrayBuffer(value) {
   if (ArrayBuffer.isView(value)) {
-    return value.buffer.slice(
-      value.byteOffset,
-      value.byteOffset + value.byteLength,
+    // Приведение, а не догадка: у представления `buffer` объявлен как
+    // ArrayBufferLike, то есть допускает и SharedArrayBuffer. Сюда он попасть
+    // не может — источники это File, Blob и fetch, — но сказать это типу
+    // больше негде.
+    return /** @type {ArrayBuffer} */ (
+      value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength)
     );
   }
   if (
@@ -76,6 +87,7 @@ function normalizeArrayBuffer(value) {
 }
 
 function createFileRangeReader(file) {
+  /** @type {Promise<ArrayBuffer | null> | null} */
   let fullBufferPromise = null;
 
   const readFullBuffer = async () => {
@@ -111,6 +123,14 @@ function createFileRangeReader(file) {
   };
 }
 
+/**
+ * @param {(start: number, end: number) => Promise<ArrayBuffer | null>} readRange
+ * @param {number} endExclusive
+ * @param {number} signature
+ * @param {number} minimumBytes
+ * @param {((offset: number) => Promise<boolean>) | null} [validate]
+ * @returns {Promise<number>} смещение записи или -1
+ */
 async function findLastRecordOffset(
   readRange,
   endExclusive,
@@ -192,6 +212,7 @@ async function readZip64Info(readRange, eocdOffset) {
   // Self-extracting archives store ZIP offsets relative to the ZIP payload,
   // not necessarily to byte zero. Find the physical record and require it to
   // end exactly where the ZIP64 locator starts.
+  /** @type {Awaited<ReturnType<typeof parseZip64Record>>} */
   let matched = null;
   await findLastRecordOffset(
     readRange,
@@ -212,6 +233,7 @@ async function readZip64Info(readRange, eocdOffset) {
 
 function createBufferedReader(readRange, fileSize) {
   let cacheStart = -1;
+  /** @type {ArrayBuffer | null} */
   let cache = null;
 
   return async (offset, length) => {
@@ -322,10 +344,15 @@ export async function preflightZipFile(file) {
   if (needsZip64) {
     const zip64 = await readZip64Info(readRange, eocdOffset);
     if (!zip64) return null;
+    // Проверка перенесена до присваивания: раньше размер сначала уходил в
+    // переменную, объявленную как число, и лишь потом выяснялось, что там
+    // null. Промежуточное состояние никому не было видно, но и держать его
+    // незачем.
+    const zip64DirectorySize = safeBigIntToNumber(zip64.centralDirectorySize);
+    if (zip64DirectorySize == null) return null;
     entryCount = zip64.entryCount;
-    directorySize = safeBigIntToNumber(zip64.centralDirectorySize);
+    directorySize = zip64DirectorySize;
     directoryEnd = zip64.recordOffset;
-    if (directorySize == null) return null;
   }
 
   if (entryCount > BigInt(IMPORT_LIMITS.maxArchiveEntries)) {

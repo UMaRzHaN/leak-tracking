@@ -59,9 +59,16 @@ export function hasValidCalculationParameters(vars = {}) {
     const number = toFiniteNumber(value);
     return number != null && number >= 0;
   };
+  // Плотность — единственная величина, которую проверяли без этой обёртки:
+  // `toFiniteNumber(...) > 0` для пустого значения давало `null > 0`, то есть
+  // ложь, и работало по совпадению правил сравнения, а не по замыслу.
+  const positive = (value) => {
+    const number = toFiniteNumber(value);
+    return number != null && number > 0;
+  };
 
   return (
-    toFiniteNumber(vars.density) > 0 &&
+    positive(vars.density) &&
     nonNegative(vars.GWP) &&
     nonNegative(vars.GWP_Minus) &&
     inRange(vars.percentage_gas_to_flare, 0, 100) &&

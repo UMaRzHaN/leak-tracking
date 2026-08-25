@@ -58,6 +58,12 @@ jobs:
       - name: Type-check domain contracts
         run: npm run typecheck
 
+      # Отдельным шагом, потому что охват у него уже: strictNullChecks включена
+      # для domain/ и utils/ и расширяется по каталогам. Падение здесь означает,
+      # что в уже строгий слой вернулось необработанное null/undefined.
+      - name: Type-check strict directories
+        run: npm run typecheck:strict
+
       - name: Audit dependencies
         run: npm audit --audit-level=high
 

@@ -21,6 +21,15 @@ function assertStatusTransition(leak, targetStatus) {
   throw error;
 }
 
+/**
+ * @param {Record<string, any>} before
+ * @param {Record<string, any>} after
+ * @param {object} entry
+ * @param {string} entry.to
+ * @param {string} entry.user
+ * @param {string} entry.iso
+ * @param {import("@/utils/historyChanges").LeakHistoryChange[]} [entry.changes]
+ */
 function withStatusHistory(before, after, { to, user, iso, changes = [] }) {
   return {
     ...after,

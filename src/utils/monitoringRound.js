@@ -9,6 +9,11 @@ export function createMonitoringRound(number = 1) {
   };
 }
 
+/**
+ * @param {Record<string, any> | null | undefined} round
+ * @param {string} [completedAt]
+ * @param {Record<string, any> | null} [summary]
+ */
 export function completeMonitoringRound(
   round,
   completedAt = new Date().toISOString(),
@@ -62,7 +67,11 @@ export function readMonitoringRound(projectId) {
     );
     if (current) return current;
 
+    // Оба ключа строятся из одного projectId, и раз основной непустой — этот
+    // тоже. Связь между ними нигде не записана, поэтому проверяется явно:
+    // иначе при пустом ключе сюда ушло бы чтение по строке "null".
     const legacyKey = getLegacyMonitoringRoundStorageKey(projectId);
+    if (!legacyKey) return null;
     const legacy = normalizeMonitoringRound(
       JSON.parse(localStorage.getItem(legacyKey) ?? "null"),
     );

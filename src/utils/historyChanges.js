@@ -46,12 +46,38 @@ function addPhotoChange(changes, before, after, key) {
   });
 }
 
+/**
+ * Одна запись в истории изменений утечки.
+ *
+ * @typedef {{
+ *   key: string,
+ *   kind?: "photo",
+ *   from?: string | number | boolean | null,
+ *   to?: string | number | boolean | null,
+ * }} LeakHistoryChange
+ */
+
+/**
+ * Сравнивает две версии записи и возвращает список того, что изменилось.
+ *
+ * Аннотации здесь не косметика: без них `fields = []` выводится как `never[]`,
+ * и под strictNullChecks на этом падали девять мест вызова в domain/ и utils/ —
+ * при том что ошибка была ровно одна, здесь.
+ *
+ * @param {object} params
+ * @param {Record<string, any>} params.before
+ * @param {Record<string, any>} params.after
+ * @param {{key: string}[]} [params.fields] поля конфигурации проекта
+ * @param {string[]} [params.includeKeys] ключи, которых нет в конфигурации
+ * @returns {LeakHistoryChange[]}
+ */
 export function buildLeakHistoryChanges({
   before,
   after,
   fields = [],
   includeKeys = [],
 }) {
+  /** @type {LeakHistoryChange[]} */
   const changes = [];
   const keys = new Set([
     ...fields.map((field) => field.key).filter(Boolean),

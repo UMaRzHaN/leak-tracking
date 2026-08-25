@@ -232,6 +232,17 @@ Not tasks. Written down so nobody overturns them without knowing the reason.
   and neither knows about the other. Collapse this back to one dependency once
   `ts-api-utils` accepts TypeScript 7 — `npm view ts-api-utils peerDependencies`
   still caps it at `<7`, release candidate included.
+- **`strictNullChecks` включается по каталогам, а не разом.** Для всего `src`
+  она даёт около восьмисот ошибок — столько не разбирают за раз, и в итоге не
+  включают никогда. Но распределены они неравномерно: больше половины
+  приходится на `pages/` и `features/`, а на `domain/` и `utils/` — где расчёт
+  выбросов, разбор архивов и жизненный цикл записи — их было двадцать шесть.
+  Эти два каталога уже строгие: `tsconfig.strict.json`, скрипт
+  `npm run typecheck:strict`, отдельный шаг в CI. Список `include` может
+  только расти; следующие по цене входа — `repositories/` (55 ошибок на
+  замере), `app/` (34), `components/` (22). Обычный `npm run typecheck`
+  остаётся нестрогим и покрывает весь `src` — это два разных гейта, а не
+  замена одного другим.
 - **The leak report does not carry the inventory.** Two archives for two
   different recipients: emissions on one side, whoever owns the equipment on
   the other. The ZIP backup still carries everything — it moves a project, it

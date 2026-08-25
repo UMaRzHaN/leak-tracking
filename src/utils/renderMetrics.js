@@ -4,8 +4,12 @@ const enabled =
 function metricsStore() {
   if (!enabled || typeof window === "undefined") return null;
   window.__RENDER_METRICS__ ??= { counts: {} };
+  // Сброс кладёт новый объект, а не чистит поле у старого: замыкание живёт на
+  // window и вызывается когда угодно позже, в том числе из Playwright, и на
+  // существование хранилища в этот момент опереться нечем. Читатели берут
+  // хранилище заново на каждый вызов, поэтому подмена объекта им безразлична.
   window.__RESET_RENDER_METRICS__ ??= () => {
-    window.__RENDER_METRICS__.counts = {};
+    window.__RENDER_METRICS__ = { counts: {} };
   };
   return window.__RENDER_METRICS__;
 }
