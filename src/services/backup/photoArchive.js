@@ -1,3 +1,4 @@
+import { appError } from "@/utils/appError";
 import { getPhotoBlob, getPhotoSrc } from "@/hooks/photoService";
 import { fingerprintBlob } from "@/utils/blobHash";
 import { blobToDataUri, dataUrlToBlob } from "@/utils/photoConversion";
@@ -310,7 +311,11 @@ export async function restorePhotos(
         contentHash: prepared.contentHash,
       });
       if (!newPath && path.startsWith("zip:")) {
-        throw new Error(`Не удалось сохранить фотографию ${path}`);
+        throw appError(
+          "PHOTO_SAVE_FAILED",
+          `Не удалось сохранить фотографию ${path}`,
+          { path },
+        );
       }
       copy[key] = newPath ?? prepared.fallbackPath;
       if (newPath) savedPaths[key] = newPath;
@@ -341,7 +346,11 @@ export async function restorePhotos(
             },
           );
           if (!newPath && path.startsWith("zip:")) {
-            throw new Error(`Не удалось сохранить фотографию ${path}`);
+            throw appError(
+              "PHOTO_SAVE_FAILED",
+              `Не удалось сохранить фотографию ${path}`,
+              { path },
+            );
           }
           recordCopy[key] = newPath ?? prepared.fallbackPath;
           if (newPath) savedPaths[`monitoring_${recordId}_${key}`] = newPath;

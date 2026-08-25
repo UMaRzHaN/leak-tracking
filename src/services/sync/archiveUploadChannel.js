@@ -1,3 +1,4 @@
+import { appError } from "@/utils/appError";
 import { LocalSync } from "@/services/sync/localSyncPlugin";
 
 /**
@@ -45,7 +46,9 @@ function createArchiveChannel(channel) {
       channel.removeEventListener("message", onMessage);
       const abandoned = pending.splice(0, pending.length);
       for (const waiting of abandoned) {
-        waiting.reject(new Error("Канал передачи архива закрыт"));
+        waiting.reject(
+          appError("ARCHIVE_CHANNEL_CLOSED", "Канал передачи архива закрыт"),
+        );
       }
     },
   };

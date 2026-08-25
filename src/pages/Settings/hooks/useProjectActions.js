@@ -1,3 +1,4 @@
+import { errorText } from "@/utils/appError";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { isNative } from "@/utils/platform";
@@ -160,7 +161,7 @@ export function useProjectActions({ setCacheInfo, notify }) {
             "error",
             t("settings.couldNotRemoveProject", {
               v1: target.name,
-              v2: error.message,
+              v2: errorText(error, t),
             }),
           );
           return;
@@ -256,7 +257,7 @@ export function useProjectActions({ setCacheInfo, notify }) {
     } catch (error) {
       notify(
         "error",
-        t("settings.couldNotSwitchProject", { v1: error.message }),
+        t("settings.couldNotSwitchProject", { v1: errorText(error, t) }),
       );
     } finally {
       setProjectSwitchState(CLOSED_SWITCH_STATE);

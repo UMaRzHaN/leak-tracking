@@ -1,15 +1,18 @@
+import { errorText } from "@/utils/appError";
+
 /**
- * Localises a failure reported by the Android plugin.
+ * Локализует отказ, о котором сообщил Android-плагин.
  *
- * The plugin tags each failure with a stable code and still sends its own
- * Russian text. The code is what gets translated; the text is the fallback,
- * used when a code is absent — which happens when the message came from a
- * peer device running a build that predates the codes.
+ * Плагин помечает каждый отказ стабильным кодом и всё равно присылает свой
+ * русский текст. Переводится код; текст — запасной вариант на случай, когда
+ * кода нет: так приходит сообщение от устройства со сборкой, которая старше
+ * самих кодов.
+ *
+ * Разбор переехал в `errorText`: та же схема понадобилась ошибкам, которые
+ * бросает JS, и держать две реализации одного правила смысла нет. Функция
+ * осталась ради имени — на стороне синхронизации оно объясняет, откуда берётся
+ * код, — и ищет в обоих неймспейсах.
  */
 export function localSyncErrorText(error, t) {
-  const code = error?.code;
-  if (!code) return error?.message ?? "";
-  const key = `syncErrors.${code}`;
-  const translated = t(key);
-  return translated === key ? (error?.message ?? code) : translated;
+  return errorText(error, t);
 }

@@ -1,3 +1,4 @@
+import { appError } from "@/utils/appError";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import {
   clearProjectSettings,
@@ -67,7 +68,8 @@ export async function importProjectZip(file, ctx) {
   const projectType = meta?.project?.type || metaFallback?.type;
 
   if (!projectName || !projectType) {
-    throw new Error(
+    throw appError(
+      "ARCHIVE_NO_PROJECT_META",
       "Архив не содержит метаданных проекта. Заполните название и тип проекта.",
     );
   }
@@ -78,7 +80,9 @@ export async function importProjectZip(file, ctx) {
         syncId: meta.project.syncId,
       })
     : addProject(projectName, projectType);
-  if (!newProject) throw new Error("Не удалось создать проект");
+  if (!newProject) {
+    throw appError("PROJECT_CREATE_FAILED", "Не удалось создать проект");
+  }
 
   try {
     await waitForProjectActivation(activeProjectIdRef, newProject.id);
@@ -89,7 +93,10 @@ export async function importProjectZip(file, ctx) {
       typeof savePhotoToImportedProject !== "function" ||
       typeof saveImportedProject !== "function"
     ) {
-      throw new Error("Хранилище импортируемого проекта не готово");
+      throw appError(
+        "IMPORT_STORAGE_NOT_READY",
+        "Хранилище импортируемого проекта не готово",
+      );
     }
 
     if (meta?.vars) {
@@ -388,11 +395,15 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
         ? replaceProjectSyncId(existingProjectId, incomingSyncId)
         : setProjectSyncId(existingProjectId, incomingSyncId);
       if (!committedProject) {
-        throw new Error(
-          shouldReplaceSyncId
-            ? "Не удалось заменить идентификатор синхронизации"
-            : "Не удалось сохранить идентификатор синхронизации",
-        );
+        throw shouldReplaceSyncId
+          ? appError(
+              "SYNC_ID_REPLACE_FAILED",
+              "Не удалось заменить идентификатор синхронизации",
+            )
+          : appError(
+              "SYNC_ID_SAVE_FAILED",
+              "Не удалось сохранить идентификатор синхронизации",
+            );
       }
     }
   } catch (error) {

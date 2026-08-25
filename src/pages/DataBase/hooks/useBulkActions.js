@@ -1,3 +1,4 @@
+import { errorText } from "@/utils/appError";
 import { useState, useCallback, useMemo } from "react";
 import { STATUS } from "@/utils/status";
 import { hapticSuccess } from "@/utils/haptics";
@@ -109,7 +110,7 @@ export function useBulkActions({
       } catch (error) {
         notify(
           "error",
-          t("database.paramsUpdateFailed", { message: error.message }),
+          t("database.paramsUpdateFailed", { message: errorText(error, t) }),
         );
         return false;
       }
@@ -185,7 +186,10 @@ export function useBulkActions({
         );
         clearSelection();
       } catch (err) {
-        notify("error", t("database.bulk.saveError", { message: err.message }));
+        notify(
+          "error",
+          t("database.bulk.saveError", { message: errorText(err, t) }),
+        );
       }
     },
     [
@@ -234,7 +238,10 @@ export function useBulkActions({
             ignoredError("database.photoCleanup"),
           );
         }
-        notify("error", t("database.bulk.saveError", { message: err.message }));
+        notify(
+          "error",
+          t("database.bulk.saveError", { message: errorText(err, t) }),
+        );
         return;
       }
 
@@ -310,7 +317,10 @@ export function useBulkActions({
             deletePhoto,
           ).catch(ignoredError("database.photoCleanup"));
         }
-        notify("error", t("database.bulk.saveError", { message: err.message }));
+        notify(
+          "error",
+          t("database.bulk.saveError", { message: errorText(err, t) }),
+        );
         return;
       }
 

@@ -1,3 +1,4 @@
+import { appError } from "@/utils/appError";
 import { useCallback } from "react";
 import { rollbackImportedProject } from "@/services/backup/projectCleanup";
 import { waitForRefValue } from "./waitForProjectSwitch";
@@ -75,7 +76,9 @@ export function useSetupImports({
 
         const previousProjectId = activeProjectIdRef.current;
         const newProject = addProject(name, resolvedType);
-        if (!newProject) throw new Error("Не удалось создать проект");
+        if (!newProject) {
+          throw appError("PROJECT_CREATE_FAILED", "Не удалось создать проект");
+        }
 
         try {
           await waitForRefValue(activeProjectIdRef, newProject.id);

@@ -1,3 +1,4 @@
+import { appError } from "@/utils/appError";
 import { Capacitor } from "@capacitor/core";
 
 /**
@@ -12,7 +13,8 @@ export function isNativeAndroid() {
 
 export function assertNativeAndroid() {
   if (!isNativeAndroid()) {
-    throw new Error(
+    throw appError(
+      "SYNC_ANDROID_ONLY",
       "Локальная синхронизация доступна только в Android-приложении",
     );
   }

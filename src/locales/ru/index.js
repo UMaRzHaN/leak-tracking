@@ -29,6 +29,7 @@ import { schemas } from "./schemas";
 import { settings } from "./settings";
 import { settingsModal } from "./settingsModal";
 import { statusActions } from "./statusActions";
+import { errors } from "./errors";
 import { syncErrors } from "./syncErrors";
 import { userProfile } from "./userProfile";
 import { voice } from "./voice";
@@ -65,6 +66,7 @@ export const translation = {
   settings,
   settingsModal,
   statusActions,
+  errors,
   syncErrors,
   userProfile,
   voice,

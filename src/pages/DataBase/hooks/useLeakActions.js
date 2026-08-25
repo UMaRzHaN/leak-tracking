@@ -1,3 +1,4 @@
+import { errorText } from "@/utils/appError";
 import { useState, useCallback } from "react";
 import { STATUS } from "@/utils/status";
 import { hapticSuccess } from "@/utils/haptics";
@@ -86,7 +87,7 @@ export function useLeakActions({
           ignoredError("database.photoCleanup"),
         );
       } catch (err) {
-        notify("error", t("common.saveError", { message: err.message }));
+        notify("error", t("common.saveError", { message: errorText(err, t) }));
       }
     },
     [
@@ -133,7 +134,7 @@ export function useLeakActions({
             ignoredError("database.photoCleanup"),
           );
         }
-        notify("error", t("common.saveError", { message: err.message }));
+        notify("error", t("common.saveError", { message: errorText(err, t) }));
       }
     },
     [
@@ -184,7 +185,7 @@ export function useLeakActions({
             ignoredError("database.photoCleanup"),
           );
         }
-        notify("error", t("common.saveError", { message: err.message }));
+        notify("error", t("common.saveError", { message: errorText(err, t) }));
       }
     },
     [
@@ -220,7 +221,7 @@ export function useLeakActions({
           ignoredError("database.photoCleanup"),
         );
       } catch (err) {
-        notify("error", t("common.saveError", { message: err.message }));
+        notify("error", t("common.saveError", { message: errorText(err, t) }));
       }
     },
     [
@@ -244,7 +245,7 @@ export function useLeakActions({
         hapticSuccess();
         setActiveLeak(null);
       } catch (err) {
-        notify("error", t("common.saveError", { message: err.message }));
+        notify("error", t("common.saveError", { message: errorText(err, t) }));
         throw err;
       }
     },
@@ -265,7 +266,10 @@ export function useLeakActions({
           ignoredError("database.photoCleanup"),
         );
       } catch (err) {
-        notify("error", t("common.deleteError", { message: err.message }));
+        notify(
+          "error",
+          t("common.deleteError", { message: errorText(err, t) }),
+        );
       }
     },
     [data, deletePhoto, notify, setData, t],

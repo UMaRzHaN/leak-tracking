@@ -1,3 +1,5 @@
+import { appError } from "@/utils/appError";
+
 /**
  * Ждёт, пока активным станет именно тот проект, который только что завели.
  *
@@ -21,7 +23,12 @@ export function waitForRefValue(ref, expectedValue, timeoutMs = 2000) {
       }
 
       if (Date.now() - startedAt > timeoutMs) {
-        reject(new Error("Не удалось дождаться переключения проекта"));
+        reject(
+          appError(
+            "PROJECT_SWITCH_TIMEOUT",
+            "Не удалось дождаться переключения проекта",
+          ),
+        );
         return;
       }
 

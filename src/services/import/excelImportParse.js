@@ -1,3 +1,4 @@
+import { appError } from "@/utils/appError";
 // Pure parsing half of the Excel import: file in, plain data out. Nothing here
 // may reach for Capacitor, the DOM or storage — this module is what
 // services/excel/excel.worker.js loads, and the worker has none of them.
@@ -411,7 +412,7 @@ export async function parseExcelImportFile(file, options = {}) {
   );
 
   if (!xlsxEntry) {
-    throw new Error("В ZIP не найден Excel-файл .xlsx");
+    throw appError("ZIP_NO_XLSX", "В ZIP не найден Excel-файл .xlsx");
   }
 
   const buffer = await readArchiveEntry(zip, xlsxEntry, "arraybuffer");

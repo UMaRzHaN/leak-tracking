@@ -1,3 +1,4 @@
+import { appError } from "@/utils/appError";
 import {
   assertNativeAndroid,
   isNativeAndroid,
@@ -29,7 +30,10 @@ function normalizeSessionId(value) {
       sessionId,
     )
   ) {
-    throw new Error("Некорректный идентификатор QR-сеанса");
+    throw appError(
+      "QR_SESSION_INVALID",
+      "Некорректный идентификатор QR-сеанса",
+    );
   }
   return sessionId;
 }
@@ -38,12 +42,17 @@ function blobChunkToBase64(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () =>
-      reject(reader.error ?? new Error("Не удалось прочитать архив"));
+      reject(
+        reader.error ??
+          appError("ARCHIVE_READ_FAILED", "Не удалось прочитать архив"),
+      );
     reader.onload = () => {
       const value = String(reader.result ?? "");
       const separator = value.indexOf(",");
       if (separator < 0) {
-        reject(new Error("Не удалось подготовить архив"));
+        reject(
+          appError("ARCHIVE_PREPARE_FAILED", "Не удалось подготовить архив"),
+        );
         return;
       }
       resolve(value.slice(separator + 1));
@@ -102,8 +111,11 @@ export async function prepareNativeArchive({
       for (let offset = 0; offset < blob.size; offset += ARCHIVE_CHUNK_BYTES) {
         const chunk = blob.slice(offset, offset + ARCHIVE_CHUNK_BYTES);
         if (writtenBytes + chunk.size > maxArchiveBytes) {
-          throw new Error(
-            `Архив синхронизации больше ${Math.floor(maxArchiveBytes / 1024 / 1024)} МБ`,
+          const limitMb = Math.floor(maxArchiveBytes / 1024 / 1024);
+          throw appError(
+            "ARCHIVE_OVER_LIMIT",
+            `Архив синхронизации больше ${limitMb} МБ`,
+            { limitMb },
           );
         }
         if (channel) {
@@ -122,13 +134,18 @@ export async function prepareNativeArchive({
         reportedSize != null &&
         (!Number.isSafeInteger(reportedSize) || reportedSize !== writtenBytes)
       ) {
-        throw new Error("Размер подготовленного архива не совпадает");
+        throw appError(
+          "ARCHIVE_SIZE_MISMATCH",
+          "Размер подготовленного архива не совпадает",
+        );
       }
     } else {
       await append(archive);
     }
 
-    if (writtenBytes <= 0) throw new Error("Архив синхронизации пуст");
+    if (writtenBytes <= 0) {
+      throw appError("ARCHIVE_EMPTY", "Архив синхронизации пуст");
+    }
     return token;
   } catch (error) {
     await LocalSync.discardArchive({ token }).catch(ignoreDiscard);

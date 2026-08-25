@@ -1,3 +1,4 @@
+import { appError } from "@/utils/appError";
 import { isNative } from "@/utils/platform";
 import { SpeechRecognition } from "@capacitor-community/speech-recognition";
 import { getSpeechLocale } from "@/utils/locale";
@@ -11,7 +12,7 @@ export const startSpeechRecognition = async (language) => {
   if (isNative) {
     const perm = await SpeechRecognition.requestPermissions();
     if (perm.speechRecognition !== "granted") {
-      throw new Error("Нет доступа к микрофону");
+      throw appError("MIC_DENIED", "Нет доступа к микрофону");
     }
 
     const result = await SpeechRecognition.start({
@@ -25,7 +26,7 @@ export const startSpeechRecognition = async (language) => {
   const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (!SpeechAPI) {
-    throw new Error("Голосовой ввод не поддерживается");
+    throw appError("VOICE_UNSUPPORTED", "Голосовой ввод не поддерживается");
   }
 
   webBuffer = "";

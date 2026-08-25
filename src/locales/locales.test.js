@@ -173,3 +173,80 @@ describe("locales", () => {
     }
   });
 });
+
+/**
+ * Тексты ошибок живут не только в JSX.
+ *
+ * Тесты выше начинают с ключа или со строки в `*.jsx`, и сорок сообщений об
+ * ошибках, зашитых по-русски в `new Error(...)` внутри сервисов и хуков, для
+ * них не существовали. На экран они попадали через
+ * `${t("settings.importError")}: ${error.message}`, и английский интерфейс
+ * показывал «Import error: QR-код создан для другого проекта».
+ *
+ * Правило теперь такое: ошибка, которую увидит человек, помечается кодом через
+ * `appError`, а код переводится в неймспейсе `errors`. Проверяется и то, и
+ * другое — иначе достаточно один раз забыть про локаль, и сообщение снова
+ * поедет русским текстом, а тест этого не заметит.
+ */
+describe("coded errors", () => {
+  const sourceFiles = execSync(
+    "find src -name '*.js' -o -name '*.jsx' | grep -v '\\.test\\.' | grep -v '/locales/'",
+    { encoding: "utf8" },
+  )
+    .trim()
+    .split("\n");
+
+  const stripComments = (source) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+  it("не оставляет русских текстов в необозначенных ошибках", () => {
+    const CYRILLIC = /[Ѐ-ӿ]/;
+    const found = [];
+    for (const file of sourceFiles) {
+      const source = stripComments(readFileSync(file, "utf8"));
+      for (const [match] of source.matchAll(/new Error\([^;]*?\)/gs)) {
+        if (CYRILLIC.test(match)) found.push(`${file}: ${match.slice(0, 60)}`);
+      }
+    }
+
+    expect(found).toEqual([]);
+  });
+
+  const codesThrownInJs = () => {
+    const used = new Set();
+    for (const file of sourceFiles) {
+      const source = stripComments(readFileSync(file, "utf8"));
+      for (const [, code] of source.matchAll(
+        /\bappError\(\s*"([A-Z0-9_]+)"/g,
+      )) {
+        used.add(code);
+      }
+    }
+    return used;
+  };
+
+  it("переводит каждый код, который бросает appError", () => {
+    // Оба неймспейса, потому что ровно в них и смотрит `errorText`: часть
+    // отказов JS совпадает по смыслу с отказами плагина, и заводить второй
+    // перевод той же фразы незачем.
+    const declared = new Set([
+      ...Object.keys(ru.errors),
+      ...Object.keys(ru.syncErrors),
+    ]);
+
+    const missing = [...codesThrownInJs()]
+      .filter((code) => !declared.has(code))
+      .sort();
+    expect(missing).toEqual([]);
+  });
+
+  // Обратная сторона: запись, которую никто не бросает, — это либо опечатка в
+  // коде, либо след удалённой ошибки. И то, и другое стоит заметить.
+  it("не держит переводов для кодов, которых больше нет", () => {
+    const used = codesThrownInJs();
+    const orphaned = Object.keys(ru.errors)
+      .filter((code) => !used.has(code))
+      .sort();
+    expect(orphaned).toEqual([]);
+  });
+});

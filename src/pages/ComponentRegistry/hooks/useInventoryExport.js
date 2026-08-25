@@ -1,3 +1,4 @@
+import { errorText } from "@/utils/appError";
 import { useCallback, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
@@ -155,7 +156,7 @@ export function useInventoryExport({ project, notify }) {
     } catch (error) {
       notify?.(
         "error",
-        t("components.export.error", { message: error.message }),
+        t("components.export.error", { message: errorText(error, t) }),
       );
     } finally {
       setIsExporting(false);

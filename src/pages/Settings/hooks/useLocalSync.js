@@ -1,5 +1,7 @@
+import { appError } from "@/utils/appError";
 import i18next from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { errorText } from "@/utils/appError";
 import { localSyncErrorText } from "@/services/sync/localSyncErrorText";
 import {
   cancelLocalSyncQrScan,
@@ -51,7 +53,10 @@ function syncErrorMessage(error, t) {
   if (error?.code === "CURRENT_PROJECT_TYPE_MISSING") {
     return t("settings.theCurrentProjectHas2");
   }
-  return error.message;
+  // Ниже — коды, которые бросает JS этого же экрана: создание идентификатора,
+  // сканирование, подготовка архива. Без этого они доезжали сюда русским
+  // текстом и так и показывались в английском интерфейсе.
+  return errorText(error, t);
 }
 
 function isStructuredSyncError(error) {
@@ -166,7 +171,10 @@ export function useLocalSync({
     try {
       const syncProject = ensureProjectSyncId?.(activeProject?.id);
       if (!syncProject?.syncId) {
-        throw new Error("Не удалось создать идентификатор синхронизации");
+        throw appError(
+          "SYNC_ID_CREATE_FAILED",
+          "Не удалось создать идентификатор синхронизации",
+        );
       }
       const identity = {
         projectKey: buildProjectKey(syncProject),
@@ -256,7 +264,7 @@ export function useLocalSync({
             "error",
             isStructuredSyncError(error)
               ? syncErrorMessage(error, t)
-              : `${t("settings.localSyncError")}: ${error.message}`,
+              : `${t("settings.localSyncError")}: ${errorText(error, t)}`,
           );
           setStateSafe(IDLE_STATE);
         },
@@ -283,7 +291,7 @@ export function useLocalSync({
       setStateSafe(IDLE_STATE);
       notify(
         "error",
-        `${t("settings.couldNotCreateSession")}: ${error.message}`,
+        `${t("settings.couldNotCreateSession")}: ${errorText(error, t)}`,
       );
     }
   }, [
@@ -331,7 +339,7 @@ export function useLocalSync({
           "error",
           isStructuredSyncError(error)
             ? syncErrorMessage(error, t)
-            : `${t("settings.connectionError")}: ${error.message}`,
+            : `${t("settings.connectionError")}: ${errorText(error, t)}`,
         );
       }
     },
@@ -384,7 +392,7 @@ export function useLocalSync({
       if (!isProjectOperationCurrent(operation)) return;
       setStateSafe(IDLE_STATE);
       if (error.code === "QR_SCAN_CANCELLED") return;
-      notify("error", `${t("settings.qrCodeError")}: ${error.message}`);
+      notify("error", `${t("settings.qrCodeError")}: ${errorText(error, t)}`);
     }
   }, [
     activeProject,

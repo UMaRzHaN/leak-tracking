@@ -1,3 +1,4 @@
+import { appError } from "@/utils/appError";
 import {
   validateBackup,
   validateBackupRecovery,
@@ -37,7 +38,11 @@ function assertArchivePhotoReferences(leaks, zip) {
     const relativePath = path.slice("zip:".length);
     const entry = zip.file(relativePath);
     if (!entry || entry.dir) {
-      throw new Error(`Файл фото "${relativePath}" не найден в архиве`);
+      throw appError(
+        "ARCHIVE_PHOTO_MISSING",
+        `Файл фото "${relativePath}" не найден в архиве`,
+        { path: relativePath },
+      );
     }
   };
 
@@ -93,13 +98,21 @@ export async function parseBackupZip(zipFile) {
   assertArchiveLimits(zip);
 
   const jsonFile = zip.file("backup.json");
-  if (!jsonFile) throw new Error("Файл backup.json не найден в архиве");
+  if (!jsonFile) {
+    throw appError(
+      "ARCHIVE_NO_BACKUP_JSON",
+      "Файл backup.json не найден в архиве",
+    );
+  }
 
   let parsed;
   try {
     parsed = JSON.parse(await readArchiveEntry(zip, jsonFile, "string"));
   } catch {
-    throw new Error("backup.json содержит невалидный JSON");
+    throw appError(
+      "ARCHIVE_BACKUP_JSON_INVALID",
+      "backup.json содержит невалидный JSON",
+    );
   }
 
   const leaks = parseBackupValidation(parsed);
@@ -113,7 +126,11 @@ export async function parseBackupZip(zipFile) {
         await readArchiveEntry(zip, recoveryFile, "string"),
       );
     } catch {
-      throw new Error(`${RECOVERY_RECORDS_FILE} содержит невалидный JSON`);
+      throw appError(
+        "ARCHIVE_RECOVERY_JSON_INVALID",
+        `${RECOVERY_RECORDS_FILE} содержит невалидный JSON`,
+        { file: RECOVERY_RECORDS_FILE },
+      );
     }
     recoveryRecords = parseRecoveryValidation(parsedRecovery);
     assertArchivePhotoReferences(recoveryRecords, zip);

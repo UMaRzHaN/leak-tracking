@@ -4,6 +4,8 @@ import "react";
 declare global {
   interface Error {
     code?: string;
+    /** Подстановки для перевода `errors.<code>`; см. `@/utils/appError`. */
+    params?: Record<string, unknown>;
     recoveryValue?: unknown;
     failedKeys?: string[];
     existingProjectType?: string;

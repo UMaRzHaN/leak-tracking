@@ -1,3 +1,4 @@
+import { appError } from "@/utils/appError";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { createIdbConnection } from "@/repositories/idbConnection";
 import { logger } from "@/utils/logger";
@@ -172,10 +173,10 @@ export function assertProjectSyncStateCompatible(localValue, incomingValue) {
     return true;
   }
 
-  const error = new Error(
+  const error = appError(
+    "SYNC_EPOCH_MISMATCH",
     "История синхронизации устройств разошлась после очистки удалённых записей. Выполните полную передачу проекта с актуального устройства.",
   );
-  error.code = "SYNC_EPOCH_MISMATCH";
   error.localGeneration = local.generation;
   error.incomingGeneration = incoming.generation;
   error.localEpochId = local.epochId;

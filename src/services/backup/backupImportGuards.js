@@ -8,6 +8,8 @@
  * исключение с `code` — вызывающая сторона по нему выбирает текст.
  */
 
+import { appError } from "@/utils/appError";
+
 function normalizeType(value) {
   return typeof value === "string" ? value.trim().toLowerCase() : null;
 }
@@ -27,26 +29,28 @@ export function assertProjectTypesMatch(incomingMeta, existingProject) {
   const existingProjectType = normalizeType(existingProject.type);
 
   if (!incomingProjectType) {
-    const error = new Error(
+    const error = appError(
+      "PROJECT_TYPE_MISSING",
       "Не удалось определить тип проекта в импортируемом архиве",
     );
-    error.code = "PROJECT_TYPE_MISSING";
     error.existingProjectType = existingProjectType;
     throw error;
   }
 
   if (!existingProjectType) {
-    const error = new Error("Не удалось определить тип текущего проекта");
-    error.code = "CURRENT_PROJECT_TYPE_MISSING";
+    const error = appError(
+      "CURRENT_PROJECT_TYPE_MISSING",
+      "Не удалось определить тип текущего проекта",
+    );
     error.incomingProjectType = incomingProjectType;
     throw error;
   }
 
   if (incomingProjectType !== existingProjectType) {
-    const error = new Error(
+    const error = appError(
+      "PROJECT_TYPE_MISMATCH",
       "Тип импортируемого проекта не соответствует текущему проекту",
     );
-    error.code = "PROJECT_TYPE_MISMATCH";
     error.incomingProjectType = incomingProjectType;
     error.existingProjectType = existingProjectType;
     throw error;
@@ -81,10 +85,16 @@ export function resolveSyncIdDecision({
     incomingSyncId &&
     incomingSyncId !== existingSyncId
   ) {
-    throw new Error("Архив получен из другой базы данных");
+    throw appError(
+      "ARCHIVE_OTHER_DATABASE",
+      "Архив получен из другой базы данных",
+    );
   }
   if (isSync && !existingSyncId && !incomingSyncId) {
-    throw new Error("Архив не содержит идентификатор синхронизации");
+    throw appError(
+      "ARCHIVE_NO_SYNC_ID",
+      "Архив не содержит идентификатор синхронизации",
+    );
   }
 
   const shouldAdoptSyncId = Boolean(
@@ -96,10 +106,16 @@ export function resolveSyncIdDecision({
     incomingSyncId !== existingSyncId;
 
   if (shouldAdoptSyncId && typeof setProjectSyncId !== "function") {
-    throw new Error("Не удалось сохранить идентификатор синхронизации");
+    throw appError(
+      "SYNC_ID_SAVE_FAILED",
+      "Не удалось сохранить идентификатор синхронизации",
+    );
   }
   if (shouldReplaceSyncId && typeof replaceProjectSyncId !== "function") {
-    throw new Error("Не удалось заменить идентификатор синхронизации");
+    throw appError(
+      "SYNC_ID_REPLACE_FAILED",
+      "Не удалось заменить идентификатор синхронизации",
+    );
   }
 
   return { shouldAdoptSyncId, shouldReplaceSyncId };

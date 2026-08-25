@@ -1,3 +1,4 @@
+import { errorText } from "@/utils/appError";
 import { useCallback } from "react";
 import { projectNameFromFile } from "@/services/import/projectNameFromFile";
 
@@ -114,7 +115,7 @@ export function useImportRouting({
         }
         notify(
           "error",
-          `${t("settings.inventoryImportError")}: ${error.message}`,
+          `${t("settings.inventoryImportError")}: ${errorText(error, t)}`,
         );
       }
     },
@@ -133,7 +134,7 @@ export function useImportRouting({
           await import("@/services/import/importRouting");
         ({ kind } = await detectImportKind(file));
       } catch (error) {
-        notify("error", `${t("settings.importError")}: ${error.message}`);
+        notify("error", `${t("settings.importError")}: ${errorText(error, t)}`);
         return;
       }
 

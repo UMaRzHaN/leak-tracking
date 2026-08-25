@@ -1,3 +1,4 @@
+import { appError } from "@/utils/appError";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useProject } from "../project/ProjectContext";
 import { useProjectData } from "./useProjectData";
@@ -241,7 +242,7 @@ export function useAppBootstrap() {
           syncId ? { syncId } : undefined,
         );
         if (!newProject) {
-          throw new Error("Не удалось создать проект");
+          throw appError("PROJECT_CREATE_FAILED", "Не удалось создать проект");
         }
 
         try {

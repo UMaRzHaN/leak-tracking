@@ -1,3 +1,4 @@
+import { errorText } from "@/utils/appError";
 import { useCallback, useState } from "react";
 
 /**
@@ -14,7 +15,7 @@ import { useCallback, useState } from "react";
  *   leakPhotoRequired?: boolean,
  *   monitoringPhotoRequired?: boolean,
  *   notify: Function,
- *   t: Function,
+ *   t: (key: string, params?: any) => string,
  * }} options
  */
 export function useProjectIntegrityCheck({
@@ -48,7 +49,7 @@ export function useProjectIntegrityCheck({
           : t("settings.checkCompleteVIssues", { v1: report.issues }),
       );
     } catch (error) {
-      notify("error", `${t("settings.checkError")}: ${error.message}`);
+      notify("error", `${t("settings.checkError")}: ${errorText(error, t)}`);
     } finally {
       setCheckingIntegrity(false);
     }

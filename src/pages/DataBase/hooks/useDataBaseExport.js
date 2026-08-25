@@ -1,3 +1,4 @@
+import { errorText } from "@/utils/appError";
 import { useCallback, useState } from "react";
 import { STATUS, getStatusLabel } from "@/utils/status";
 import { useEffectiveProjectConfig } from "@/app/project/hooks/useEffectiveProjectConfig";
@@ -114,7 +115,10 @@ export function useDataBaseExport({ displayed, notify }) {
       }
       notify("success", result?.message || t("database.export.success"));
     } catch (err) {
-      notify("error", t("database.export.error", { message: err.message }));
+      notify(
+        "error",
+        t("database.export.error", { message: errorText(err, t) }),
+      );
     } finally {
       setIsExporting(false);
     }

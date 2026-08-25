@@ -1,3 +1,4 @@
+import { errorText } from "@/utils/appError";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { useProjectIntegrityCheck } from "./useProjectIntegrityCheck";
@@ -313,7 +314,10 @@ export function useSettingsPage({
           );
         }
       } catch (error) {
-        notify("error", `${t("settings.excelImportError")}: ${error.message}`);
+        notify(
+          "error",
+          `${t("settings.excelImportError")}: ${errorText(error, t)}`,
+        );
       } finally {
         setIsImportingExcel(false);
       }
@@ -399,7 +403,7 @@ export function useSettingsPage({
     } catch (error) {
       notify(
         "error",
-        `${t("settings.failedToSaveImport")}: ${error.message}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}${error.photoRollbackErrors?.length ? `; photo rollback: ${error.photoRollbackErrors.length}` : ""}`,
+        `${t("settings.failedToSaveImport")}: ${errorText(error, t)}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}${error.photoRollbackErrors?.length ? `; photo rollback: ${error.photoRollbackErrors.length}` : ""}`,
       );
     } finally {
       setIsImportingExcel(false);
@@ -472,7 +476,7 @@ export function useSettingsPage({
     } catch (error) {
       notify(
         "error",
-        `${t("settings.failedToSaveImport")}: ${error.message}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}${error.photoRollbackErrors?.length ? `; photo rollback: ${error.photoRollbackErrors.length}` : ""}`,
+        `${t("settings.failedToSaveImport")}: ${errorText(error, t)}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}${error.photoRollbackErrors?.length ? `; photo rollback: ${error.photoRollbackErrors.length}` : ""}`,
       );
     } finally {
       setIsImportingExcel(false);
@@ -540,7 +544,7 @@ export function useSettingsPage({
     } catch (error) {
       notify(
         "error",
-        `${t("settings.failedToMergeExcel")}: ${error.message}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}${error.photoRollbackErrors?.length ? `; photo rollback: ${error.photoRollbackErrors.length}` : ""}`,
+        `${t("settings.failedToMergeExcel")}: ${errorText(error, t)}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}${error.photoRollbackErrors?.length ? `; photo rollback: ${error.photoRollbackErrors.length}` : ""}`,
       );
     } finally {
       setIsImportingExcel(false);
@@ -591,7 +595,10 @@ export function useSettingsPage({
         }),
       );
     } catch (error) {
-      notify("error", `${t("settings.failedToCreateCopy")}: ${error.message}`);
+      notify(
+        "error",
+        `${t("settings.failedToCreateCopy")}: ${errorText(error, t)}`,
+      );
     } finally {
       setIsImportingExcel(false);
       setExcelConflictState({ open: false });
@@ -623,7 +630,7 @@ export function useSettingsPage({
         notify("warning", localeTexts.notifications.databaseCleared);
       }
     } catch (error) {
-      notify("error", `${t("settings.cleanupFailed")}: ${error.message}`);
+      notify("error", `${t("settings.cleanupFailed")}: ${errorText(error, t)}`);
     } finally {
       setSettingsConfirmAction(null);
     }

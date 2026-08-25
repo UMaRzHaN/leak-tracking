@@ -1,3 +1,4 @@
+import { errorText } from "@/utils/appError";
 import { useCallback, useRef, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { LeakRepository } from "@/repositories/LeakRepository";
@@ -71,7 +72,7 @@ function projectImportErrorMessage(error, t) {
     return t("settings.theCurrentProjectHas");
   }
 
-  return `${t("settings.importError")}: ${error.message}`;
+  return `${t("settings.importError")}: ${errorText(error, t)}`;
 }
 
 export function useBackupActions({
@@ -185,7 +186,7 @@ export function useBackupActions({
         );
       }
     } catch (error) {
-      notify("error", `${t("settings.exportError")}: ${error.message}`);
+      notify("error", `${t("settings.exportError")}: ${errorText(error, t)}`);
     } finally {
       setIsExportingZip(false);
     }
@@ -285,7 +286,7 @@ export function useBackupActions({
           cancelLabel: t("settings.cancel"),
         });
       } catch (error) {
-        notify("error", `${t("settings.importError")}: ${error.message}`);
+        notify("error", `${t("settings.importError")}: ${errorText(error, t)}`);
       }
 
       event.target.value = "";
