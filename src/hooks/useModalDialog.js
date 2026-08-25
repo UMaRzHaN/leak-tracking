@@ -4,6 +4,65 @@ const FOCUSABLE =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const modalStack = [];
 
+// Живые области озвучиваются сами и мимо фокуса: уведомление об итоге
+// действия часто и появляется-то в ответ на нажатие внутри диалога. Погасить
+// их вместе с фоном значило бы отобрать у читателя именно тот текст, ради
+// которого он нажимал.
+const LIVE_REGION = '[aria-live], [role="alert"], [role="status"]';
+
+// Пометка ставится своим атрибутом, а не читается из свойства `inert`: в
+// старом WebView свойства может не быть, и вложенный диалог принял бы уже
+// погашенный фон за незатронутый — а на закрытии вернул бы его, пока внешний
+// диалог ещё открыт.
+const MARKER = "data-modal-inert";
+
+function isLiveRegion(element) {
+  return element.matches(LIVE_REGION) || element.querySelector(LIVE_REGION);
+}
+
+/**
+ * Гасит всё, кроме пути от диалога до корня.
+ *
+ * Ловушка фокуса не пускает внутрь фона клавиатуру, но не трогает дерево
+ * доступности: свайп-навигация VoiceOver и TalkBack уходила в содержимое под
+ * модалкой. `inert` убирает его целиком; `aria-hidden` — на случай WebView,
+ * который `inert` ещё не понимает.
+ *
+ * Идём вверх от самого диалога, а не по детям `body`: часть модалок
+ * отрисована прямо в дереве приложения, и там гашение верхнего уровня не
+ * задело бы ничего.
+ *
+ * @param {Element | null} dialog
+ * @returns {() => void} снять ровно то, что поставили
+ */
+function inertOutside(dialog) {
+  const marked = [];
+  let node = dialog;
+  while (node?.parentElement) {
+    for (const sibling of node.parentElement.children) {
+      // Только HTMLElement: у `children` тип шире, и свойства `inert` нет,
+      // например, у вложенного SVG.
+      if (!(sibling instanceof HTMLElement)) continue;
+      if (sibling === node) continue;
+      if (sibling.hasAttribute(MARKER)) continue;
+      if (isLiveRegion(sibling)) continue;
+      sibling.setAttribute(MARKER, "");
+      sibling.setAttribute("aria-hidden", "true");
+      sibling.inert = true;
+      marked.push(sibling);
+    }
+    node = node.parentElement;
+  }
+
+  return () => {
+    for (const element of marked) {
+      element.removeAttribute(MARKER);
+      element.removeAttribute("aria-hidden");
+      element.inert = false;
+    }
+  };
+}
+
 export function useModalDialog({
   open = true,
   onClose = null,
@@ -23,8 +82,12 @@ export function useModalDialog({
     modalStack.push(modalId);
 
     const previousFocus = document.activeElement;
+    // Гашение фона откладывается вместе с фокусом: диалог попадает в дерево
+    // тем же кадром, и до отрисовки идти по нему вверх не от чего.
+    let releaseInert = () => {};
     const frame = requestAnimationFrame(() => {
       const dialog = dialogRef.current;
+      releaseInert = inertOutside(dialog);
       const target = dialog?.querySelector(FOCUSABLE) ?? dialog;
       target?.focus();
     });
@@ -62,6 +125,7 @@ export function useModalDialog({
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       cancelAnimationFrame(frame);
+      releaseInert();
       document.removeEventListener("keydown", handleKeyDown);
       const stackIndex = modalStack.lastIndexOf(modalId);
       if (stackIndex >= 0) modalStack.splice(stackIndex, 1);

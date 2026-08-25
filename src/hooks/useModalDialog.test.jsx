@@ -1,4 +1,10 @@
-﻿import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+﻿import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { useModalDialog } from "./useModalDialog";
@@ -70,5 +76,65 @@ describe("useModalDialog", () => {
 
     expect(onChildClose).toHaveBeenCalledOnce();
     expect(onParentClose).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Ловушка фокуса держала клавиатуру, но дерево доступности оставалось целым:
+ * свайп-навигация VoiceOver и TalkBack уходила в содержимое под модалкой.
+ */
+describe("useModalDialog: фон под диалогом", () => {
+  function Dialog({ open }) {
+    const ref = useModalDialog({ open, onClose: () => {} });
+    return (
+      <div>
+        <div data-testid="background">
+          <button type="button">за диалогом</button>
+        </div>
+        <div data-testid="toast" role="alert">
+          готово
+        </div>
+        {open ? (
+          <div ref={ref} role="dialog" aria-modal="true" aria-label="Диалог">
+            <button type="button">в диалоге</button>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  it("гасит содержимое вокруг диалога", async () => {
+    render(<Dialog open />);
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+
+    const background = screen.getByTestId("background");
+    expect(background).toHaveAttribute("aria-hidden", "true");
+    expect(background.inert).toBe(true);
+  });
+
+  // Уведомление об итоге действия часто и появляется-то в ответ на нажатие
+  // внутри диалога — гасить его вместе с фоном значит отобрать именно тот
+  // текст, ради которого нажимали.
+  it("оставляет живые области слышимыми", async () => {
+    render(<Dialog open />);
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+
+    expect(screen.getByTestId("toast")).not.toHaveAttribute("aria-hidden");
+  });
+
+  it("возвращает фон при закрытии", async () => {
+    const { rerender } = render(<Dialog open />);
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+    rerender(<Dialog open={false} />);
+
+    const background = screen.getByTestId("background");
+    expect(background).not.toHaveAttribute("aria-hidden");
+    expect(background.inert).toBe(false);
   });
 });
