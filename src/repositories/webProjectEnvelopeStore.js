@@ -1,408 +1,174 @@
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { logger } from "@/utils/logger";
-import { normalizeWebEnvelope } from "@/repositories/webProjectEnvelope";
 import {
-  appendJournalEntry,
-  applyJournalEntries,
-  clearJournal,
-  createJournalStore,
-  isWorthJournalling,
-  JOURNAL_MAX_ENTRIES,
-  readJournal,
-  WEB_JOURNAL_STORE,
-} from "@/repositories/webProjectJournal";
+  clearLegacyMirrorEnvelope,
+  deleteEnvelope,
+  deleteEnvelopes,
+  openMirrorDb,
+  openWebDataDb,
+  readEnvelope,
+  readLegacyMirrorEnvelope,
+  readStoredRevision,
+  saveEnvelope,
+  writeEnvelope,
+} from "@/repositories/webEnvelopeRecords";
+import { normalizeWebEnvelope } from "@/repositories/webProjectEnvelope";
 
 /**
- * Where a web (non-native) project copy physically lives: the IndexedDB
- * databases holding the primary and mirror copies, and the read-only legacy
- * locations kept for projects written by earlier schema versions.
+ * Что проект держит в вебе и под какими ключами.
  *
- * The envelope format itself lives in webProjectEnvelope.js. This module owns
- * *where* a copy is stored; deciding which copy wins, when to repair a stale
- * one and what to surface to the UI stays in LeakRepository.
+ * Слоем ниже — webEnvelopeRecords.js — лежит одна запись конверта, которой всё
+ * равно, чей она. Здесь появляются проект и его наборы данных; какая из копий
+ * свежее и что показать человеку, решают репозитории.
  */
 
-const WEB_DATA_DB = "LeakTrackingDataDB";
-const WEB_DATA_VERSION = 4;
+/* =========================================================================
+   НАБОРЫ ДАННЫХ ПРОЕКТА
+   =========================================================================
 
-// An envelope is stored as two records rather than one: the metadata that
-// orders copies against each other, and the leak array itself. They live in
-// separate stores of the same database and are always written in a single
-// transaction, so a reader never sees one without the other.
-//
-// The split exists because deciding which copy is newer only needs the
-// metadata, while the payload is megabytes on a real project. Reading a
-// revision used to mean pulling — and structured-cloning — the whole array
-// out of IndexedDB just to compare one number against another.
-const WEB_META_STORE = "projects";
-const WEB_PAYLOAD_STORE = "projectsData";
+   У проекта не один набор записей, а несколько: утечки и реестр компонентов.
+   Лежат они в одних и тех же сторах, различаясь только ключом записи, — ровно
+   как на устройстве, где реестр арендует у той же таблицы SQLite собственный
+   ключ проекта. Отсюда три вещи, ради которых всё и делалось.
 
-// The revision this tab last saw in each copy, whether it read or wrote it.
-//
-// A delta is only meaningful against the state it was computed from, and the
-// caller's idea of that state came from this module. So a delta may be
-// appended only while the stored revision is still the one we handed out or
-// last wrote; anything else means another tab has written, and stacking a
-// delta on an unknown state would corrupt it. Comparing revisions catches
-// that for the price of a number, where verifying the caller's snapshot would
-// mean checksumming the whole array again.
-const observedRevisions = new Map();
+   Во-первых, наборы читаются и удаляются **одной транзакцией**. «Кто держит
+   эту фотографию» — вопрос к обоим сразу, и ответ, собранный из двух разных
+   транзакций, неверен настолько, насколько между ними успели записать; а
+   удаление проекта, разложенное на несколько транзакций, умеет оборваться
+   посередине.
 
-function revisionKey(dbName, projectId) {
-  return `${dbName}:${projectId}`;
+   Во-вторых, реестр получает даром всё, что было построено для утечек:
+   ревизию, контрольную сумму, зеркальную копию и журнал дельт. До этого он
+   лежал в отдельной базе одной записью без единой из этих защит — притом что
+   инвентаризация месторождения теряется дороже, чем день утечек.
+
+   В-третьих, ключ утечек не меняется. Они лежат под голым идентификатором
+   проекта, как их клали все прежние сборки: миграция, которой нет, — это
+   миграция, которая не потеряет данные.
+   ========================================================================= */
+
+export const LEAK_DATASET = "leaks";
+export const COMPONENT_DATASET = "components";
+
+/** Всё, что проект держит в этих базах. Порядок роли не играет. */
+const PROJECT_DATASETS = [LEAK_DATASET, COMPONENT_DATASET];
+
+/** @param {string} dataset @param {string} projectId */
+export function datasetRecordKey(dataset, projectId) {
+  return dataset === LEAK_DATASET ? projectId : `${dataset}:${projectId}`;
 }
 
-// The secondary copy lives in a database of its own, opened over a separate
-// connection. That separation is the whole point: an IndexedDB failure is
-// usually database-wide (the file is corrupt, or `open` itself rejects), and
-// while both copies shared one connection a single failed open took out the
-// primary and its backup together — leaving the backup unreachable in exactly
-// the situation it exists for. Two databases fail independently.
-//
-// This does NOT protect against origin-level storage loss (browser eviction,
-// "clear site data") or a quota that is exhausted for the whole origin —
-// those take every local store with them, as they did when this copy still
-// lived in localStorage.
-const WEB_MIRROR_DB = "LeakTrackingMirrorDB";
-const WEB_MIRROR_DB_VERSION = 3;
+/**
+ * Доступ к одному набору данных проекта в основной копии и в зеркальной.
+ *
+ * `legacyMirror` — только у утечек: разбираться со схемой v2, где зеркало
+ * лежало стором внутри основной базы, больше некому, а набор, появившийся
+ * после неё, там ничего найти не может по построению.
+ *
+ * @param {string} dataset
+ * @param {{legacyMirror?: boolean}} [options]
+ */
+export function createWebDatasetStore(dataset, { legacyMirror = false } = {}) {
+  const keyOf = (projectId) => datasetRecordKey(dataset, projectId);
 
-// Where the secondary copy lived in schema v2: an object store inside the
-// primary database. Read-only now, purely so a project written by that build
-// still has a recoverable backup; cleared per project once the dedicated
-// mirror database holds the same data. The store itself is left in place —
-// dropping it needs a version bump of the primary database, which is not
-// worth the migration risk for an empty store.
-const LEGACY_MIRROR_STORE = "projectsMirror";
+  /**
+   * Reads the secondary copy, preferring the dedicated mirror database and
+   * falling back to the schema-v2 store only when the former has nothing yet.
+   * A read error from the mirror database propagates — that is a real signal
+   * the caller must weigh — while the legacy fallback stays silent.
+   *
+   * Finding a schema-v2 copy also migrates it, because nothing else will: to
+   * callers this value simply *is* the mirror, so the repair logic upstream
+   * sees an up-to-date mirror and never writes it to its new home. Doing it
+   * here keeps that one-time move invisible to LeakRepository. The copy is
+   * returned whether or not the move succeeds — a project that cannot be
+   * migrated yet must still be readable.
+   */
+  async function readMirror(projectId) {
+    const key = keyOf(projectId);
+    const current = await readEnvelope(openMirrorDb, key);
+    if (current != null) return current;
+    if (!legacyMirror) return null;
 
-// Each database gets its own opener holding its own connection, so a failed
-// or closed connection is reset for that database alone.
-function createDatabaseOpener(name, version, upgrade) {
-  let connection = null;
+    const legacy = await readLegacyMirrorEnvelope(key);
+    if (legacy == null) return null;
 
-  return function openDatabase() {
-    if (typeof indexedDB === "undefined") return Promise.resolve(null);
-    if (connection) return connection;
+    try {
+      const migrated = await writeEnvelope(openMirrorDb, key, legacy);
+      if (migrated) await clearLegacyMirrorEnvelope(key);
+    } catch {
+      // The schema-v2 entry stays put and will be retried on the next read.
+    }
+    return legacy;
+  }
 
-    connection = new Promise((resolve, reject) => {
-      const request = indexedDB.open(name, version);
-      request.onupgradeneeded = () => upgrade(request.result);
-      request.onsuccess = () => {
-        const db = request.result;
-        db.onclose = () => {
-          connection = null;
-        };
-        resolve(db);
-      };
-      request.onerror = () => {
-        connection = null;
-        reject(request.error);
-      };
-    });
+  async function writeMirror(projectId, envelope, mutation = null) {
+    const key = keyOf(projectId);
+    const saved = await saveEnvelope(openMirrorDb, key, envelope, mutation);
+    // Only once the dedicated database is confirmed to hold this envelope is
+    // the schema-v2 entry redundant. Dropping it earlier could discard the
+    // only remaining backup.
+    if (saved && legacyMirror) await clearLegacyMirrorEnvelope(key);
+    return saved;
+  }
 
-    return connection;
+  async function deleteMirror(projectId) {
+    const key = keyOf(projectId);
+    const deleted = await deleteEnvelope(openMirrorDb, key);
+    if (legacyMirror) await clearLegacyMirrorEnvelope(key);
+    return deleted;
+  }
+
+  return {
+    dataset,
+    keyOf,
+    read: (projectId) => readEnvelope(openWebDataDb, keyOf(projectId)),
+    write: (projectId, envelope, mutation = null) =>
+      saveEnvelope(openWebDataDb, keyOf(projectId), envelope, mutation),
+    remove: (projectId) => deleteEnvelope(openWebDataDb, keyOf(projectId)),
+    readRevision: (projectId) =>
+      readStoredRevision(openWebDataDb, keyOf(projectId)),
+    readMirror,
+    writeMirror,
+    deleteMirror,
+    readMirrorRevision: (projectId) =>
+      readStoredRevision(openMirrorDb, keyOf(projectId)),
   };
 }
 
-function createEnvelopeStores(db) {
-  if (!db.objectStoreNames.contains(WEB_META_STORE)) {
-    db.createObjectStore(WEB_META_STORE, { keyPath: "id" });
-  }
-  if (!db.objectStoreNames.contains(WEB_PAYLOAD_STORE)) {
-    db.createObjectStore(WEB_PAYLOAD_STORE, { keyPath: "id" });
-  }
-  createJournalStore(db);
-}
+const leakDataset = createWebDatasetStore(LEAK_DATASET, { legacyMirror: true });
 
-// Schema v2 records are left exactly where they are. They carry their leak
-// array inline, which readEnvelope still understands, so an upgrade neither
-// rewrites nor risks them; each project splits on its next write.
-const openWebDataDb = createDatabaseOpener(
-  WEB_DATA_DB,
-  WEB_DATA_VERSION,
-  (db) => {
-    createEnvelopeStores(db);
-    if (!db.objectStoreNames.contains(LEGACY_MIRROR_STORE)) {
-      db.createObjectStore(LEGACY_MIRROR_STORE, { keyPath: "id" });
-    }
-  },
-);
-
-const openMirrorDb = createDatabaseOpener(
-  WEB_MIRROR_DB,
-  WEB_MIRROR_DB_VERSION,
-  createEnvelopeStores,
-);
-
-const ENVELOPE_STORES = [WEB_META_STORE, WEB_PAYLOAD_STORE, WEB_JOURNAL_STORE];
-
-// Settling on the transaction rather than the individual request means a read
-// reports the same failures a write does, and every access below shares one
-// error path.
-function settleOnTransaction(tx, getResult) {
-  return new Promise((resolve, reject) => {
-    tx.oncomplete = () => resolve(getResult());
-    tx.onerror = () => reject(tx.error);
-    tx.onabort = () => reject(tx.error);
-  });
-}
-
-async function readRecord(openDb, storeName, projectId) {
-  const db = await openDb();
-  if (!db || !projectId) return null;
-
-  const tx = db.transaction(storeName, "readonly");
-  const request = tx.objectStore(storeName).get(projectId);
-  return settleOnTransaction(tx, () => request.result ?? null);
-}
+export const readWebData = leakDataset.read;
+export const writeWebData = leakDataset.write;
+export const readWebDataRevision = leakDataset.readRevision;
+export const readMirrorData = leakDataset.readMirror;
+export const writeMirrorData = leakDataset.writeMirror;
+export const readMirrorDataRevision = leakDataset.readMirrorRevision;
 
 /**
- * Reassembles a stored envelope. A schema-v2 record holds its leak array
- * inline and is returned as-is; anything else has its payload fetched from
- * the payload store.
+ * Стирает проект целиком — все его наборы, в обеих базах, одной транзакцией
+ * на базу.
  *
- * A missing payload record yields an envelope whose `data` is undefined,
- * which normalizeWebEnvelope rejects — the correct outcome, because a
- * half-written copy must lose to a whole one rather than read as empty. The
- * exception is a tombstone, which normalizes to [] with no payload at all
- * and so survives even if its payload record is gone.
+ * Наборы уходят вместе, а не по очереди, потому что удаление, разложенное на
+ * несколько транзакций, умеет оборваться посередине. Реестр, переживший свой
+ * проект, — не абстракция: пока он лежал отдельной базой, проект, заведённый
+ * потом под тем же именем папки, поднимал чужие карточки, которых человек не
+ * заводил.
+ *
+ * @param {string} projectId
  */
-async function readEnvelope(openDb, projectId) {
-  const db = await openDb();
-  if (!db || !projectId) return null;
-
-  const tx = db.transaction(
-    [WEB_META_STORE, WEB_PAYLOAD_STORE, WEB_JOURNAL_STORE],
-    "readonly",
+export async function purgeWebProject(projectId) {
+  if (!projectId) return false;
+  const keys = PROJECT_DATASETS.map((dataset) =>
+    datasetRecordKey(dataset, projectId),
   );
-  const metaRequest = tx.objectStore(WEB_META_STORE).get(projectId);
-  const payloadRequest = tx.objectStore(WEB_PAYLOAD_STORE).get(projectId);
-  const journalRequest = readJournal(tx, projectId);
 
-  return settleOnTransaction(tx, () => {
-    const meta = metaRequest.result ?? null;
-    if (meta == null) return null;
-    // Schema v2 kept the array inline and predates the journal entirely.
-    if ("data" in meta) return meta;
-
-    const snapshot = payloadRequest.result?.data;
-    if (!Array.isArray(snapshot)) return { ...meta, data: snapshot };
-    return {
-      ...meta,
-      data: applyJournalEntries(snapshot, journalRequest.result),
-    };
-  });
-}
-
-// Both records go in one transaction, so the metadata that orders a copy can
-// never be visible without the payload it describes.
-// Rewrites the snapshot and drops the journal it supersedes — the compaction
-// step, and the only path that pays for a full payload clone.
-async function writeEnvelope(openDb, projectId, envelope) {
-  const db = await openDb();
-  if (!db || !projectId) return false;
-
-  const { data, ...meta } = envelope;
-  const tx = db.transaction(ENVELOPE_STORES, "readwrite");
-  tx.objectStore(WEB_META_STORE).put({
-    id: projectId,
-    ...meta,
-    journalSeq: 0,
-  });
-  tx.objectStore(WEB_PAYLOAD_STORE).put({ id: projectId, data });
-  clearJournal(tx, projectId);
-  return settleOnTransaction(tx, () => {
-    observedRevisions.set(revisionKey(db.name, projectId), meta.revision);
-    return true;
-  });
-}
-
-/**
- * Records a change as a journal entry instead of rewriting the snapshot.
- *
- * The metadata still describes the assembled result, so the copy orders and
- * verifies exactly as a compacted one does; only the payload store is left
- * untouched. Both records go in one transaction, so a reader never sees
- * metadata promising a delta the journal does not hold.
- *
- * Returns false when the stored metadata is not the base this delta was built
- * from — another tab has written since — leaving the caller to fall back to a
- * full write rather than stack a delta on an unknown state.
- */
-async function appendEnvelopeDelta(openDb, projectId, envelope, mutation) {
-  const db = await openDb();
-  if (!db || !projectId) return false;
-
-  const meta = { ...envelope };
-  delete meta.data;
-  const tx = db.transaction(ENVELOPE_STORES, "readwrite");
-  const metaStore = tx.objectStore(WEB_META_STORE);
-  const currentRequest = metaStore.get(projectId);
-  let appended = false;
-
-  // Issued from inside the same transaction, so the base-revision check and
-  // the append cannot be separated by another writer.
-  currentRequest.onsuccess = () => {
-    const current = currentRequest.result;
-    const expected = observedRevisions.get(revisionKey(db.name, projectId));
-    if (current == null || expected == null) return;
-    if (current.revision !== expected) return;
-    // A schema-v2 record has no snapshot to append to.
-    if ("data" in current) return;
-
-    const seq = Number(current.journalSeq ?? 0) + 1;
-    if (seq > JOURNAL_MAX_ENTRIES) return;
-    metaStore.put({ id: projectId, ...meta, journalSeq: seq });
-    appendJournalEntry(tx, projectId, seq, mutation);
-    appended = true;
-  };
-
-  return settleOnTransaction(tx, () => {
-    if (appended) {
-      observedRevisions.set(revisionKey(db.name, projectId), meta.revision);
-    }
-    return appended;
-  });
-}
-
-async function deleteEnvelope(openDb, projectId) {
-  const db = await openDb();
-  if (!db || !projectId) return false;
-
-  const tx = db.transaction(ENVELOPE_STORES, "readwrite");
-  tx.objectStore(WEB_META_STORE).delete(projectId);
-  tx.objectStore(WEB_PAYLOAD_STORE).delete(projectId);
-  clearJournal(tx, projectId);
-  return settleOnTransaction(tx, () => {
-    observedRevisions.delete(revisionKey(db.name, projectId));
-    return true;
-  });
-}
-
-async function deleteRecord(openDb, storeName, projectId) {
-  const db = await openDb();
-  if (!db || !projectId) return false;
-
-  const tx = db.transaction(storeName, "readwrite");
-  tx.objectStore(storeName).delete(projectId);
-  return settleOnTransaction(tx, () => true);
-}
-
-/**
- * Persists an envelope, as a journal entry when a small mutation against a
- * known base is available and as a full snapshot otherwise. The delta path
- * declines rather than throws — a stale base, a full journal or a schema-v2
- * record all fall through to the snapshot write below.
- */
-async function saveEnvelope(openDb, projectId, envelope, mutation) {
-  if (isWorthJournalling(mutation, envelope.data?.length ?? 0)) {
-    const appended = await appendEnvelopeDelta(
-      openDb,
-      projectId,
-      envelope,
-      mutation,
-    );
-    if (appended) return true;
-  }
-  return writeEnvelope(openDb, projectId, envelope);
-}
-
-export const readWebData = (projectId) =>
-  readEnvelope(openWebDataDb, projectId);
-export const writeWebData = (projectId, envelope, mutation = null) =>
-  saveEnvelope(openWebDataDb, projectId, envelope, mutation);
-export const deleteWebData = (projectId) =>
-  deleteEnvelope(openWebDataDb, projectId);
-
-/**
- * The revision of a stored copy, without reading its payload — the reason
- * metadata is a record of its own.
- *
- * Returns 0 for anything unusable: absent, unreadable, or holding a revision
- * that is not a sane integer. Zero is safe because the caller takes the
- * maximum against a clock-derived value, so an unknown copy can only fail to
- * raise the next revision, never lower it. A schema-v2 record still carries
- * its payload inline, so until that project is rewritten this is no cheaper
- * than a full read — just not wrong.
- */
-async function readStoredRevision(openDb, projectId) {
-  let meta;
-  try {
-    meta = await readRecord(openDb, WEB_META_STORE, projectId);
-  } catch {
-    return 0;
-  }
-  const revision = Number(meta?.revision ?? meta?.timestamp ?? 0);
-  return Number.isSafeInteger(revision) && revision >= 0 ? revision : 0;
-}
-
-export const readWebDataRevision = (projectId) =>
-  readStoredRevision(openWebDataDb, projectId);
-export const readMirrorDataRevision = (projectId) =>
-  readStoredRevision(openMirrorDb, projectId);
-
-// Best effort throughout: the schema-v2 copy is a migration source, never the
-// destination. It lives in the primary database, so reaching it can fail for
-// reasons that say nothing about the health of the mirror database — those
-// failures must stay invisible to the caller rather than mask a good mirror.
-async function readLegacyMirrorEnvelope(projectId) {
-  try {
-    return await readRecord(openWebDataDb, LEGACY_MIRROR_STORE, projectId);
-  } catch {
-    return null;
-  }
-}
-
-async function clearLegacyMirrorEnvelope(projectId) {
-  try {
-    await deleteRecord(openWebDataDb, LEGACY_MIRROR_STORE, projectId);
-  } catch {
-    // Leaving the schema-v2 entry behind is harmless: it is only ever read
-    // when the dedicated mirror database has nothing for this project.
-  }
-}
-
-/**
- * Reads the secondary copy, preferring the dedicated mirror database and
- * falling back to the schema-v2 store only when the former has nothing yet.
- * A read error from the mirror database propagates — that is a real signal
- * the caller must weigh — while the legacy fallback stays silent.
- *
- * Finding a schema-v2 copy also migrates it, because nothing else will: to
- * callers this value simply *is* the mirror, so the repair logic upstream sees
- * an up-to-date mirror and never writes it to its new home. Doing it here
- * keeps that one-time move invisible to LeakRepository. The copy is returned
- * whether or not the move succeeds — a project that cannot be migrated yet
- * must still be readable.
- */
-export async function readMirrorData(projectId) {
-  const current = await readEnvelope(openMirrorDb, projectId);
-  if (current != null) return current;
-
-  const legacy = await readLegacyMirrorEnvelope(projectId);
-  if (legacy == null) return null;
-
-  try {
-    const migrated = await writeEnvelope(openMirrorDb, projectId, legacy);
-    if (migrated) await clearLegacyMirrorEnvelope(projectId);
-  } catch {
-    // The schema-v2 entry stays put and will be retried on the next read.
-  }
-  return legacy;
-}
-
-export async function writeMirrorData(projectId, envelope, mutation = null) {
-  const saved = await saveEnvelope(openMirrorDb, projectId, envelope, mutation);
-  // Only once the dedicated database is confirmed to hold this envelope is
-  // the schema-v2 entry redundant. Dropping it earlier could discard the only
-  // remaining backup.
-  if (saved) await clearLegacyMirrorEnvelope(projectId);
-  return saved;
-}
-
-export async function deleteMirrorData(projectId) {
-  const deleted = await deleteEnvelope(openMirrorDb, projectId);
-  await clearLegacyMirrorEnvelope(projectId);
-  return deleted;
+  const [primary, mirror] = await Promise.all([
+    deleteEnvelopes(openWebDataDb, keys),
+    deleteEnvelopes(openMirrorDb, keys),
+  ]);
+  for (const key of keys) await clearLegacyMirrorEnvelope(key);
+  return primary || mirror;
 }
 
 // Read-only: projects saved before schema v2 kept their only secondary copy

@@ -92,7 +92,10 @@ refactor:
 - do not overwrite a project after a failed import;
 - do not delete an old implementation before its migration tests pass;
 - do not swallow read/write errors — a silent failure loses data;
-- do not lower the coverage, bundle or maintainability budgets to make CI pass.
+- do not lower the coverage, bundle or maintainability budgets to make CI pass;
+- do not change the record key of an existing dataset — the key _is_ the
+  migration, and a dataset that moves is a dataset that can be lost. Leaks stay
+  under the bare project id for exactly this reason.
 
 ## Build budgets
 

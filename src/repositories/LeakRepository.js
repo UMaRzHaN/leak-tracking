@@ -27,8 +27,7 @@ import {
 } from "@/repositories/webProjectEnvelope";
 import {
   clearLegacyLocalStorageEnvelope,
-  deleteMirrorData,
-  deleteWebData,
+  purgeWebProject,
   readLegacyLocalStorageEnvelope,
   readMirrorData,
   readMirrorDataRevision,
@@ -615,17 +614,15 @@ export const LeakRepository = {
       return;
     }
 
+    // Все наборы проекта разом: не только записи об утечках, но и реестр
+    // компонентов, который лежит в тех же сторах своим ключом. Удалять их по
+    // очереди значит уметь остановиться посередине — а реестр, переживший
+    // свой проект, достаётся тому, кого заведут следующим под тем же именем.
     let indexedDbError = null;
     try {
-      await deleteWebData(projectId);
+      await purgeWebProject(projectId);
     } catch (error) {
       indexedDbError = error;
-    }
-    let mirrorError = null;
-    try {
-      await deleteMirrorData(projectId);
-    } catch (error) {
-      mirrorError = error;
     }
     let localStorageError = null;
     try {
@@ -633,9 +630,9 @@ export const LeakRepository = {
     } catch (error) {
       localStorageError = error;
     }
-    if (indexedDbError || mirrorError || localStorageError) {
+    if (indexedDbError || localStorageError) {
       throw new ProjectDataWriteError("Project data could not be purged", {
-        cause: indexedDbError ?? mirrorError ?? localStorageError,
+        cause: indexedDbError ?? localStorageError,
       });
     }
   },

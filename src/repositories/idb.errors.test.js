@@ -89,6 +89,43 @@ describe("createIdbStore error handling", () => {
     expect(globalThis.indexedDB.open).toHaveBeenCalledTimes(2);
   });
 
+  it("warns while another connection blocks the open, without reopening", () => {
+    const store = createIdbStore("blocked", "items", 1);
+    const request = {};
+    globalThis.indexedDB.open.mockReturnValueOnce(request);
+
+    store.open();
+    request.onblocked();
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("is blocked by another open connection"),
+    );
+    // Запрос остаётся открытым и продолжится сам, когда чужая вкладка
+    // отпустит базу: второе открытие только встало бы в ту же очередь.
+    expect(globalThis.indexedDB.open).toHaveBeenCalledTimes(1);
+    expect(store.getState()).toEqual({ db: null, ready: false });
+  });
+
+  it("closes the connection for another tab's upgrade and stays closed", () => {
+    const store = createIdbStore("versionchange", "items", 1);
+    const db = { close: vi.fn() };
+    const subscriber = vi.fn();
+    store.subscribe(subscriber);
+    openWithDb(store, db);
+
+    db.onversionchange();
+
+    expect(db.close).toHaveBeenCalled();
+    expect(store.getState()).toEqual({ db: null, ready: false });
+    expect(subscriber).toHaveBeenLastCalledWith(null, false);
+    // В отличие от `onclose`: поднявшись обратно, стор заблокировал бы ту же
+    // миграцию снова.
+    expect(globalThis.indexedDB.open).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("another tab is upgrading the schema"),
+    );
+  });
+
   it("logs unexpected connection-level errors", () => {
     const store = createIdbStore("db-error", "items", 1);
     const db = {};

@@ -1,4 +1,5 @@
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
+import { createIdbConnection } from "@/repositories/idbConnection";
 import { logger } from "@/utils/logger";
 import {
   nextSyncTimestamp,
@@ -16,27 +17,14 @@ export const TOMBSTONES_AFTER_COMPACTION = 5_000;
 const LEGACY_SYNC_EPOCH = "legacy";
 const syncStateMemory = new Map();
 const syncStateMutationQueues = new Map();
-let syncDbPromise;
 
-function openSyncDb() {
-  if (typeof indexedDB === "undefined") return Promise.resolve(null);
-  if (syncDbPromise) return syncDbPromise;
-  syncDbPromise = new Promise((resolve, reject) => {
-    const request = indexedDB.open(SYNC_DB_NAME, 1);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(SYNC_STORE_NAME)) {
-        db.createObjectStore(SYNC_STORE_NAME, { keyPath: "id" });
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => {
-      syncDbPromise = null;
-      reject(request.error);
-    };
-  });
-  return syncDbPromise;
-}
+// Соединение с базой синхронизации: одно на всех, со сроком ожидания чужой
+// вкладки и с отпусканием ради её обновления схемы — см. idbConnection.
+const openSyncDb = createIdbConnection(SYNC_DB_NAME, 1, (db) => {
+  if (!db.objectStoreNames.contains(SYNC_STORE_NAME)) {
+    db.createObjectStore(SYNC_STORE_NAME, { keyPath: "id" });
+  }
+});
 
 async function loadDurableSyncState(projectId) {
   const db = await openSyncDb();

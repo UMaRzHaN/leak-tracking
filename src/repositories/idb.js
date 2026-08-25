@@ -34,6 +34,17 @@ export function createIdbStore(dbName, storeName, version) {
       }
     };
 
+    // Соседняя вкладка ещё держит базу прежней версии. Ждать здесь можно
+    // сколько угодно: запрос останется открытым и сам продолжится, когда та
+    // вкладка отпустит, а всё, что ходит в этот стор, до тех пор отвечает
+    // «не готово», а не виснет. Единственное, чего не должно случиться, — это
+    // молчания в диагностике.
+    request.onblocked = () => {
+      logger.warn(
+        `[idb] "${DB_NAME}" is blocked by another open connection; the store stays unavailable until it closes.`,
+      );
+    };
+
     request.onsuccess = () => {
       _db = request.result;
       _ready = true;
@@ -45,6 +56,21 @@ export function createIdbStore(dbName, storeName, version) {
         _opening = false;
         _notify();
         open();
+      };
+
+      // Схему обновляет соседняя вкладка, и открытое соединение — ровно то,
+      // что её держит. Закрываемся и, в отличие от `onclose`, не открываемся
+      // заново: обратно поднявшись, мы бы заблокировали её снова. Стор ждёт
+      // следующего `open()` — то есть перезагрузки страницы на новую версию.
+      _db.onversionchange = () => {
+        logger.warn(
+          `[idb] closing "${DB_NAME}": another tab is upgrading the schema.`,
+        );
+        _db?.close();
+        _db = null;
+        _ready = false;
+        _opening = false;
+        _notify();
       };
 
       _db.onerror = (event) => {
