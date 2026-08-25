@@ -1,6 +1,7 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
+import { isExcelVendorChunk } from "./bundle-chunk-names.mjs";
 
 const DIST = path.resolve("dist");
 const ASSETS = path.join(DIST, "assets");
@@ -36,12 +37,9 @@ for (const name of assetNames) {
   sizes.set(`assets/${name}`, (await stat(filePath)).size);
 }
 
-const isExcelChunk = (name) =>
-  /(?:^|[-_.])(?:vendor-)?excel(?:js)?(?:[-_.]|$)/i.test(name);
-
 const failures = [];
 const warnings = [];
-const eagerExcelFiles = initialFiles.filter(isExcelChunk);
+const eagerExcelFiles = initialFiles.filter(isExcelVendorChunk);
 if (eagerExcelFiles.length) {
   failures.push(`ExcelJS must remain lazy: ${eagerExcelFiles.join(", ")}`);
 }
@@ -101,7 +99,7 @@ for (const [label, value, limit] of [
 }
 for (const name of jsNames) {
   const size = sizes.get(`assets/${name}`);
-  const limit = isExcelChunk(name)
+  const limit = isExcelVendorChunk(name)
     ? budgets.excelChunkBytes
     : budgets.nonExcelChunkBytes;
   if (size > limit) failures.push(`${name} ${size} > ${limit}`);
