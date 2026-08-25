@@ -5,6 +5,8 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import android.os.StatFs;
+import java.io.File;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -146,6 +148,33 @@ public class NativeLeakStoragePlugin extends Plugin {
     private static String optionalJson(PluginCall call, String name) {
         if (!call.getData().has(name) || call.getData().isNull(name)) return null;
         return requireJson(call, name);
+    }
+
+    /**
+     * Free and total bytes of the volume the app writes photos to.
+     *
+     * Photos go to internal app storage through Filesystem's Directory.Data,
+     * and nothing in the web layer can measure that: navigator.storage.estimate
+     * reports the WebView's own quota, which is a different volume with a
+     * different number. Without this the settings screen could show how much
+     * the map cache takes and nothing about the space it is taking it from.
+     *
+     * Not routed through `execute`: that helper serialises onto the database
+     * executor and refuses to run when the SQLite store is absent, and a disk
+     * measurement needs neither.
+     */
+    @PluginMethod
+    public void getStorageInfo(PluginCall call) {
+        try {
+            File directory = getContext().getFilesDir();
+            StatFs stats = new StatFs(directory.getAbsolutePath());
+            JSObject result = new JSObject();
+            result.put("freeBytes", stats.getAvailableBytes());
+            result.put("totalBytes", stats.getTotalBytes());
+            call.resolve(result);
+        } catch (Exception error) {
+            call.reject(error.getMessage(), error);
+        }
     }
 
     private void execute(PluginCall call, ThrowingOperation operation) {

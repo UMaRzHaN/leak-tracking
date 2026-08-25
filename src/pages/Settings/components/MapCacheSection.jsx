@@ -1,9 +1,14 @@
 import { OFFLINE_MAP_ONLY, TILE_PROVIDER_ORIGIN } from "@/configs/mapTiles";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { formatStorageAmount } from "@/services/storage/deviceStorage";
+import { useDeviceStorage } from "../hooks/useDeviceStorage";
 import s from "../Settings.module.scss";
 
 export default function MapCacheSection({ cacheInfo, localeTexts, onClear }) {
   const { t } = useLanguage();
+  // Объём кэша карт показывали, а место, из которого он берётся, — нет.
+  const deviceStorage = useDeviceStorage();
+  const freeSpace = formatStorageAmount(deviceStorage?.freeBytes ?? null);
 
   return (
     <section className={s.section}>
@@ -25,6 +30,19 @@ export default function MapCacheSection({ cacheInfo, localeTexts, onClear }) {
           ) : (
             <span className={s.cacheSize}>{localeTexts.loading}</span>
           )}
+        </div>
+        <div className={s.cacheInfo}>
+          <span className={s.cacheLabel}>{t("settings.deviceStorage")}</span>
+          <span className={s.cacheSize}>
+            {deviceStorage === null
+              ? localeTexts.loading
+              : freeSpace
+                ? t("settings.deviceStorageFree", {
+                    value: freeSpace.value,
+                    unit: t(`settings.storageUnit.${freeSpace.unit}`),
+                  })
+                : t("settings.deviceStorageUnknown")}
+          </span>
         </div>
         <div className={s.cacheInfo}>
           <span className={s.cacheLabel}>{t("settings.mapProvider")}</span>

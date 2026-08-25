@@ -1,3 +1,4 @@
+import { errorText } from "@/utils/appError";
 import { useEffect, useMemo, useState, useRef } from "react";
 import LeakForm from "@/features/leakForm/LeakForm";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
@@ -344,7 +345,7 @@ export default function AddLeak({
         hapticWarning();
         setNotification({
           type: "error",
-          message: err?.message || t("addLeak.errors.saveFailed"),
+          message: errorText(err, t) || t("addLeak.errors.saveFailed"),
         });
         return null;
       }

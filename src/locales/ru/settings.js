@@ -176,6 +176,11 @@ export const settings = {
   },
 
   title: "Настройки",
+  deviceStorage: "Свободно на устройстве",
+  deviceStorageFree: "{{value}} {{unit}}",
+  deviceStorageUnknown: "Не удалось определить",
+  storageUnit: { MB: "МБ", GB: "ГБ" },
+
   appearanceTitle: "Внешний вид",
   themeLabelDark: "Тёмная тема",
   themeLabelLight: "Светлая тема",

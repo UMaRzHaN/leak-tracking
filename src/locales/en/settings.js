@@ -177,6 +177,11 @@ export const settings = {
 
   title: "Settings",
 
+  deviceStorage: "Free on device",
+  deviceStorageFree: "{{value}} {{unit}}",
+  deviceStorageUnknown: "Could not determine",
+  storageUnit: { MB: "MB", GB: "GB" },
+
   appearanceTitle: "Appearance",
   themeLabelDark: "Dark theme",
   themeLabelLight: "Light theme",

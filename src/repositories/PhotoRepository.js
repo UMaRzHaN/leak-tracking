@@ -1,4 +1,5 @@
 import { Filesystem, Directory } from "@capacitor/filesystem";
+import { asOutOfSpaceError } from "@/services/storage/outOfSpace";
 import { isNative } from "@/utils/platform";
 import { compressImage, isWithinPhotoBudget } from "./compressImage";
 import { idb } from "./idb";
@@ -286,11 +287,17 @@ export const PhotoRepository = {
     if (!(photo instanceof Blob)) return null;
 
     const base64 = await fileToBase64(photo);
-    await Filesystem.writeFile({
-      path: targetPath,
-      data: base64,
-      directory: Directory.Data,
-    });
+    try {
+      await Filesystem.writeFile({
+        path: targetPath,
+        data: base64,
+        directory: Directory.Data,
+      });
+    } catch (error) {
+      // Кончившееся место приходит текстом системной ошибки; помечаем кодом,
+      // чтобы экран показал «освободите место», а не общий отказ записи.
+      throw asOutOfSpaceError(error);
+    }
 
     const excludeFileNames = new Set(
       excludePaths

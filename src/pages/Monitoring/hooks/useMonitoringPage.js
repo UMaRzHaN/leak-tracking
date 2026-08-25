@@ -1,3 +1,4 @@
+import { errorText } from "@/utils/appError";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useProjectData } from "@/app/project/ProjectContext";
@@ -458,7 +459,7 @@ export function useMonitoringPage({
     } catch (error) {
       setNotification({
         type: "error",
-        message: `${texts.saveFailed}: ${error.message}`,
+        message: `${texts.saveFailed}: ${errorText(error, t)}`,
       });
     } finally {
       setIsSaving(false);
@@ -499,7 +500,7 @@ export function useMonitoringPage({
     } catch (error) {
       setNotification({
         type: "error",
-        message: `${texts.saveFailed}: ${error.message}`,
+        message: `${texts.saveFailed}: ${errorText(error, t)}`,
       });
     } finally {
       setIsSaving(false);

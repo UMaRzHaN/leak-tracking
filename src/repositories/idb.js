@@ -1,4 +1,8 @@
 import { logger } from "@/utils/logger";
+import {
+  asOutOfSpaceError,
+  isOutOfSpaceError,
+} from "@/services/storage/outOfSpace";
 
 export function createIdbStore(dbName, storeName, version) {
   const DB_NAME = dbName;
@@ -99,29 +103,35 @@ export function createIdbStore(dbName, storeName, version) {
     return { db: _db, ready: _ready };
   }
 
+  /**
+   * `false` — «не сохранилось», и вызывающая сторона показывает общий отказ.
+   * Для кончившегося места этого мало: там другое действие, а не повтор,
+   * поэтому такой отказ уходит исключением с кодом. Остальные ошибки ведут
+   * себя как раньше — иначе пришлось бы переписывать всех вызывающих.
+   */
   async function save(id, photoData) {
     if (!_ready || !_db) return false;
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      const fail = (scope, error) => {
+        if (isOutOfSpaceError(error)) {
+          logger.warn(`[idb] ${scope}: хранилище переполнено`, error);
+          reject(asOutOfSpaceError(error));
+          return;
+        }
+        logger.error(`[idb] ${scope}:`, error);
+        resolve(false);
+      };
+
       try {
         const tx = _db.transaction(STORE_NAME, "readwrite");
         const store = tx.objectStore(STORE_NAME);
         const req = store.put({ id, data: photoData, timestamp: Date.now() });
         tx.oncomplete = () => resolve(true);
-        req.onerror = () => {
-          logger.error("[idb] save error:", req.error);
-          resolve(false);
-        };
-        tx.onerror = () => {
-          logger.error("[idb] save transaction error:", tx.error);
-          resolve(false);
-        };
-        tx.onabort = () => {
-          logger.error("[idb] save transaction aborted:", tx.error);
-          resolve(false);
-        };
+        req.onerror = () => fail("save error", req.error);
+        tx.onerror = () => fail("save transaction error", tx.error);
+        tx.onabort = () => fail("save transaction aborted", tx.error);
       } catch (err) {
-        logger.error("[idb] save transaction error:", err);
-        resolve(false);
+        fail("save transaction error", err);
       }
     });
   }
