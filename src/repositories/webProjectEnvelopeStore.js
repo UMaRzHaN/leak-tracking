@@ -100,6 +100,10 @@ export function createWebDatasetStore(dataset, { legacyMirror = false } = {}) {
 
     const legacy = await readLegacyMirrorEnvelope(key);
     if (legacy == null) return null;
+    // Отметка нужна и здесь: копия из схемы v2 — такое же прочитанное
+    // значение, и без неё страж молчал бы ровно у тех проектов, что ещё не
+    // переехали.
+    rememberRevision(key, legacy.revision);
 
     try {
       const migrated = await writeEnvelope(openMirrorDb, key, legacy);
@@ -184,6 +188,20 @@ export function assertLeakDataUnchanged(projectId, storedRevisions) {
   assertNotOverwritingNewer(leakDataset.keyOf(projectId), storedRevisions);
 }
 
+/**
+ * Отмечает ревизию, на которой основано то, что вкладка забрала себе в память.
+ *
+ * Нужна там, где копия пришла не через `read`: из localStorage или из починки,
+ * которая не удалась. Пропущенная отметка — это ложное «проект изменён в
+ * другой вкладке» на ровном месте.
+ *
+ * @param {string} projectId
+ * @param {unknown} revision
+ */
+export function rememberLeakDataRevision(projectId, revision) {
+  rememberRevision(leakDataset.keyOf(projectId), revision);
+}
+
 export const readWebData = leakDataset.read;
 export const writeWebData = leakDataset.write;
 export const readWebDataRevision = leakDataset.readRevision;
@@ -257,6 +275,11 @@ export function writeLegacyLocalStorageEnvelope(projectId, envelope) {
   const key = STORAGE_KEYS.PROJECT_DATA(projectId);
   try {
     localStorage.setItem(key, JSON.stringify(envelope));
+    // Запись состоялась — значит, вкладка знает эту ревизию. Без отметки
+    // следующее же сохранение находило бы в localStorage ревизию свежее
+    // запомненной и отказывалось работать, ссылаясь на другую вкладку,
+    // которой нет.
+    rememberRevision(leakDataset.keyOf(projectId), envelope?.revision);
     return true;
   } catch (error) {
     logger.warn(

@@ -32,6 +32,7 @@ import {
   readMirrorData,
   readMirrorDataRevision,
   assertLeakDataUnchanged,
+  rememberLeakDataRevision,
   readWebData,
   readWebDataRevision,
   writeLegacyLocalStorageEnvelope,
@@ -377,6 +378,8 @@ export const LeakRepository = {
     const selected = available.reduce((latest, candidate) =>
       compareWebEnvelopes(candidate, latest) > 0 ? candidate : latest,
     );
+    // На этой копии основано унесённое отсюда — а починка ниже умеет не состояться.
+    rememberLeakDataRevision(projectId, selected.revision);
 
     // Repair only stores that were read successfully. A transient read error
     // must never cause an older fallback copy to overwrite an unknown version.

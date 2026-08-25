@@ -553,6 +553,27 @@ describe("LeakRepository web IndexedDB storage", () => {
     expect(await readStoreEntry(LEGACY_MIRROR, PROJECT.projectId)).toBeNull();
   });
 
+  // Прочитанное отмечается в памяти ревизий, из какой бы копии оно ни пришло —
+  // и отмечается здесь, слоем хранилища, а не у вызывающих. Копия из схемы v2
+  // отметку пропускала: репозиторий утечек это прикрывает собой, но набор,
+  // который заведут следующим, такого прикрытия не получит.
+  it("запоминает ревизию копии, поднятой из схемы v2", async () => {
+    await loadRepository();
+    const { readMirrorData } = await import("./webProjectEnvelopeStore");
+    const { lastSeenRevision } = await import("./webRevisionGuard");
+    await writeStoreEnvelope(LEGACY_MIRROR, PROJECT.projectId, {
+      version: 1,
+      revision: 9,
+      updatedAt: 9,
+      deleted: false,
+      data: [makeLeak("v2-mirror")],
+    });
+
+    await readMirrorData(PROJECT.projectId);
+
+    expect(lastSeenRevision(PROJECT.projectId)).toBe(9);
+  });
+
   it("purges the primary, mirror and schema-v2 copies together", async () => {
     const { LeakRepository } = await loadRepository();
     await LeakRepository.saveAll([makeLeak("1")], PROJECT);
