@@ -158,7 +158,7 @@ describe("PhotoRepository on web", () => {
       orphanKey,
       "photo_other_1_100",
     ]);
-    await PhotoRepository.gcOrphaned([{ photo: path }], { projectId });
+    await PhotoRepository.gcOrphaned(() => [{ photo: path }], { projectId });
     expect(mocks.remove).toHaveBeenCalledOnce();
     expect(mocks.remove).toHaveBeenCalledWith(orphanKey);
 
@@ -268,6 +268,69 @@ describe("PhotoRepository on web", () => {
     expect(mocks.remove).not.toHaveBeenCalledWith("photo_other_1_100");
   });
 
+  it("не сметает снимок, сделанный во время самой уборки", async () => {
+    // Гонка, ради которой перевёрнут порядок: карточку реестра фотографируют
+    // посреди обхода, а уборка идёт в это же время фоном. Снимок, попавший в
+    // это окно, объявлялся сиротой и удалялся.
+    mocks.listKeys.mockResolvedValue(["photo_project_old"]);
+
+    await PhotoRepository.gcOrphaned(
+      async () => {
+        // Пока уборка спрашивает владельцев, кто-то успел сохранить снимок.
+        mocks.listKeys.mockResolvedValue([
+          "photo_project_old",
+          "photo_project_fresh",
+        ]);
+        return [{ photo: "idb://photo_project_old" }];
+      },
+      { projectId: "project" },
+    );
+
+    // Свежего снимка в списке, составленном до вопроса, не было — и удалить
+    // его уборка не может по построению, а не потому, что успела заметить.
+    expect(mocks.remove).not.toHaveBeenCalled();
+  });
+
+  it("сметает то, что осиротело, пока она спрашивала", async () => {
+    // Обратная сторона того же порядка: ссылки спрашиваются позже списка,
+    // поэтому снимок, чей владелец исчез в это окно, уже сирота.
+    mocks.listKeys.mockResolvedValue([
+      "photo_project_kept",
+      "photo_project_dropped",
+    ]);
+
+    await PhotoRepository.gcOrphaned(
+      async () => [{ photo: "idb://photo_project_kept" }],
+      {
+        projectId: "project",
+      },
+    );
+
+    expect(mocks.remove).toHaveBeenCalledOnce();
+    expect(mocks.remove).toHaveBeenCalledWith("photo_project_dropped");
+  });
+
+  it("не убирает ничего, когда о владельцах не смогли ответить", async () => {
+    // Молчание реестра — не то же самое, что отсутствие ссылок.
+    mocks.listKeys.mockResolvedValue(["photo_project_orphan"]);
+
+    await PhotoRepository.gcOrphaned(async () => null, {
+      projectId: "project",
+    });
+
+    expect(mocks.remove).not.toHaveBeenCalled();
+  });
+
+  it("требует сборщика, а не готовый список", async () => {
+    // Готовый список означал бы, что владельцев собрали раньше уборки, — то
+    // есть ровно ту гонку, от которой здесь и уходят.
+    await expect(
+      PhotoRepository.gcOrphaned([{ photo: "idb://x" }], {
+        projectId: "project",
+      }),
+    ).rejects.toBeInstanceOf(TypeError);
+  });
+
   it("garbage-collects orphaned photos but keeps all supported references", async () => {
     mocks.listKeys.mockResolvedValue([
       "photo_project_original",
@@ -293,7 +356,7 @@ describe("PhotoRepository on web", () => {
       },
     ];
 
-    await PhotoRepository.gcOrphaned(leaks, { projectId: "project" });
+    await PhotoRepository.gcOrphaned(() => leaks, { projectId: "project" });
 
     expect(mocks.remove).toHaveBeenCalledOnce();
     expect(mocks.remove).toHaveBeenCalledWith("photo_project_orphan");

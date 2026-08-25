@@ -90,13 +90,17 @@ export function usePhotoStorage() {
        * clear, so the answer lives in one place; a registry that would not load
        * means nothing is collected rather than guessed at.
        */
-      const owners = await collectPhotoOwners(activeProject, leaks);
-      if (!owners) return;
-
-      await PhotoRepository.gcOrphaned(owners, {
-        projectId: activeProject?.id,
-        folderName: activeProject?.folderName,
-      });
+      // Владельцы спрашиваются не здесь, а изнутри уборки — после того, как
+      // она составила список того, что лежит. Иначе между этими двумя шагами
+      // помещается сохранение, и снимок, сделанный ровно в это окно, уходит
+      // как сирота.
+      await PhotoRepository.gcOrphaned(
+        () => collectPhotoOwners(activeProject, leaks),
+        {
+          projectId: activeProject?.id,
+          folderName: activeProject?.folderName,
+        },
+      );
     },
     [activeProject],
   );

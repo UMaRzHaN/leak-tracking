@@ -95,7 +95,11 @@ refactor:
 - do not lower the coverage, bundle or maintainability budgets to make CI pass;
 - do not change the record key of an existing dataset — the key _is_ the
   migration, and a dataset that moves is a dataset that can be lost. Leaks stay
-  under the bare project id for exactly this reason.
+  under the bare project id for exactly this reason;
+- do not collect photo owners before `PhotoRepository.gcOrphaned` lists what is
+  stored. The sweep takes a collector, not a list, precisely so the listing
+  happens first: anything saved after it cannot be in that list, and so cannot
+  be deleted. Handing it a ready-made array puts that race back, silently.
 
 ## Build budgets
 

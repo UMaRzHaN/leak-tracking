@@ -376,11 +376,40 @@ export const PhotoRepository = {
   },
 
   /**
-   * Delete photos from storage that are not referenced by any leak.
-   * Call once after loading project data to clean up orphaned photos.
+   * Убирает снимки, на которые никто не ссылается.
+   *
+   * Порядок здесь — не деталь реализации, а собственно защита. Сначала
+   * составляется список того, что **уже лежит**, и только потом спрашивается,
+   * кто на что ссылается. Наоборот было нельзя: между сбором ссылок и
+   * удалением помещается сохранение, и снимок, сделанный ровно в это окно,
+   * объявлялся сиротой и удалялся — карточку реестра фотографировали посреди
+   * обхода, а уборка шла в это же время фоном, на первом простое после
+   * загрузки проекта.
+   *
+   * При нынешнем порядке снимок, появившийся после составления списка, в
+   * список не попал и удалён быть не может; а владелец, появившийся после
+   * него, попадёт в ссылки, потому что их спрашивают позже. Оба случая
+   * закрыты порядком, а не сверкой времени.
+   *
+   * Остаётся один узкий случай, который порядком не лечится: на устройстве
+   * файл снимка адресуется содержимым, и карточка, снятая заново ровно тем же
+   * кадром, переиспользует уже лежащий файл. Если тот к началу уборки был
+   * сиротой, он уйдёт вместе с новой ссылкой на него. Нужны совпадение байт в
+   * байт и попадание в то же окно; чинится это не здесь, а тем, чтобы уборка
+   * и запись не шли одновременно.
+   *
+   * @param {() => Promise<Record<string, any>[]|null>} collectOwners
+   *   Спрашивается **после** составления списка. `null` — «ответить не смогли»
+   *   (например, не прочитался реестр компонентов): тогда не убирается ничего,
+   *   потому что молчание владельца — не то же самое, что отсутствие ссылок.
+   * @param {{projectId?: string, folderName?: string}} options
    */
-  async gcOrphaned(leaks, { projectId, folderName }) {
-    const referenced = collectReferencedPhotos(leaks);
+  async gcOrphaned(collectOwners, { projectId, folderName }) {
+    if (typeof collectOwners !== "function") {
+      throw new TypeError(
+        "gcOrphaned requires a collector so owners are read after the listing",
+      );
+    }
 
     if (!isNative) {
       if (
@@ -390,11 +419,17 @@ export const PhotoRepository = {
       ) {
         return;
       }
-      const keys = await listStoredPhotoKeys();
       const prefix = `photo_${encodeStorageKeyPart(projectId)}_`;
+      const stored = (await listStoredPhotoKeys()).filter((key) =>
+        key.startsWith(prefix),
+      );
+
+      const owners = await collectOwners();
+      if (!owners) return;
+      const referenced = collectReferencedPhotos(owners);
+
       const failedKeys = [];
-      for (const key of keys) {
-        if (!key.startsWith(prefix)) continue;
+      for (const key of stored) {
         if (
           !referenced.has(`idb://${key}`) &&
           (await idb.remove(key)) === false
@@ -415,27 +450,32 @@ export const PhotoRepository = {
 
     if (!folderName) return;
     const folder = getPhotoFolder(folderName);
+    let stored;
     try {
-      const { files } = await Filesystem.readdir({
-        path: folder,
-        directory: Directory.Data,
-      });
-      for (const file of files) {
-        const path = `data://${folder}/${file.name}`;
-        if (!referenced.has(path)) {
-          const orphanPath = `${folder}/${file.name}`;
-          await Filesystem.deleteFile({
-            directory: Directory.Data,
-            path: orphanPath,
-          })
-            .catch(ignoredError("photos.deleteOrphan"))
-            .finally(() =>
-              invalidateNativePhotoCachePath(Directory.Data, orphanPath),
-            );
-        }
-      }
+      stored = (
+        await Filesystem.readdir({ path: folder, directory: Directory.Data })
+      ).files;
     } catch {
       // folder not yet created — ok
+      return;
+    }
+
+    const owners = await collectOwners();
+    if (!owners) return;
+    const referenced = collectReferencedPhotos(owners);
+
+    for (const file of stored) {
+      const path = `data://${folder}/${file.name}`;
+      if (referenced.has(path)) continue;
+      const orphanPath = `${folder}/${file.name}`;
+      await Filesystem.deleteFile({
+        directory: Directory.Data,
+        path: orphanPath,
+      })
+        .catch(ignoredError("photos.deleteOrphan"))
+        .finally(() =>
+          invalidateNativePhotoCachePath(Directory.Data, orphanPath),
+        );
     }
   },
 };

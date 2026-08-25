@@ -275,11 +275,7 @@ describe("PhotoRepository on Android", () => {
     const folder = "LeakReports/native_gc/photos";
 
     await PhotoRepository.gcOrphaned(
-      [
-        {
-          monitoringRecords: [{ photo: `data://${folder}/kept.jpg` }],
-        },
-      ],
+      () => [{ monitoringRecords: [{ photo: `data://${folder}/kept.jpg` }] }],
       { folderName: "native_gc" },
     );
 
@@ -294,11 +290,40 @@ describe("PhotoRepository on Android", () => {
     );
   });
 
+  it("не сметает файл, появившийся во время самой уборки", async () => {
+    // Та же гонка, что и на вебе: карточку фотографируют посреди обхода, а
+    // уборка идёт фоном.
+    const folder = "LeakReports/native_race/photos";
+    mocks.readdir.mockResolvedValue({ files: [{ name: "old.jpg" }] });
+
+    await PhotoRepository.gcOrphaned(
+      async () => {
+        mocks.readdir.mockResolvedValue({
+          files: [{ name: "old.jpg" }, { name: "fresh.jpg" }],
+        });
+        return [{ photo: `data://${folder}/old.jpg` }];
+      },
+      { folderName: "native_race" },
+    );
+
+    expect(mocks.deleteFile).not.toHaveBeenCalled();
+  });
+
+  it("не убирает ничего, когда о владельцах не смогли ответить", async () => {
+    mocks.readdir.mockResolvedValue({ files: [{ name: "orphan.jpg" }] });
+
+    await PhotoRepository.gcOrphaned(async () => null, {
+      folderName: "native_silent",
+    });
+
+    expect(mocks.deleteFile).not.toHaveBeenCalled();
+  });
+
   it("treats a missing photo folder as an empty folder during cleanup", async () => {
     mocks.readdir.mockRejectedValueOnce(new Error("missing folder"));
 
     await expect(
-      PhotoRepository.gcOrphaned([], { folderName: "native_missing" }),
+      PhotoRepository.gcOrphaned(() => [], { folderName: "native_missing" }),
     ).resolves.toBeUndefined();
     expect(mocks.deleteFile).not.toHaveBeenCalled();
   });

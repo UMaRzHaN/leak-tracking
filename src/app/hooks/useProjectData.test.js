@@ -359,10 +359,15 @@ describe("useProjectData", () => {
     // не трогает: собираем по тому, что в проекте осталось.
     expect(
       photoRepositoryModule.PhotoRepository.gcOrphaned,
-    ).toHaveBeenCalledWith([], {
+    ).toHaveBeenCalledWith(expect.any(Function), {
       projectId: "proj-1",
       folderName: "project_one",
     });
+    // Владельцев уборка спрашивает сама — после того, как составит список
+    // того, что лежит.
+    await expect(
+      photoRepositoryModule.PhotoRepository.gcOrphaned.mock.calls[0][0](),
+    ).resolves.toEqual([]);
     expect(result.current.data).toEqual([]);
     expect(result.current.dataProjectId).toBe("proj-1");
   });

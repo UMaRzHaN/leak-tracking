@@ -318,13 +318,10 @@ export function useProjectData() {
           // Очистка обещает удалить записи об утечках и их фотографии — и
           // ровно это должна делать. Пустой список объявлял сиротами и снимки
           // карточек реестра, хотя сам реестр очистка не трогает.
-          const owners = await collectPhotoOwners({
-            id: projectId,
-            folderName,
-          });
-          if (owners) {
-            await PhotoRepository.gcOrphaned(owners, { projectId, folderName });
-          }
+          await PhotoRepository.gcOrphaned(
+            () => collectPhotoOwners({ id: projectId, folderName }),
+            { projectId, folderName },
+          );
         } catch (error) {
           logger.error(
             "[useProjectData] Data was cleared, but orphaned photos could not be removed:",

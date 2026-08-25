@@ -1884,13 +1884,14 @@ describe("mergeLeaksByFreshness", () => {
         folderName: existingProject.folderName,
       },
     );
-    expect(gcSpy).toHaveBeenCalledWith(
-      [expect.objectContaining({ photo: "idb://target-photo" })],
-      {
-        projectId: existingProject.id,
-        folderName: existingProject.folderName,
-      },
-    );
+    // Владельцев уборка спрашивает сама, уже составив список того, что лежит.
+    expect(gcSpy).toHaveBeenCalledWith(expect.any(Function), {
+      projectId: existingProject.id,
+      folderName: existingProject.folderName,
+    });
+    await expect(gcSpy.mock.calls[0][0]()).resolves.toEqual([
+      expect.objectContaining({ photo: "idb://target-photo" }),
+    ]);
 
     photoSaveSpy.mockRestore();
     saveAllSpy.mockRestore();
@@ -1938,10 +1939,13 @@ describe("mergeLeaksByFreshness", () => {
     );
 
     expect(gcSpy).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({ projectId: existingProject.id }),
+    );
+    await expect(gcSpy.mock.calls[0][0]()).resolves.toEqual(
       expect.arrayContaining([
         expect.objectContaining({ photo: "idb://card-photo" }),
       ]),
-      expect.objectContaining({ projectId: existingProject.id }),
     );
     gcSpy.mockRestore();
     // Реестр общий на весь файл: оставить в нём карточку — значит поменять
@@ -2027,7 +2031,10 @@ describe("mergeLeaksByFreshness", () => {
       "merge",
     );
 
-    expect(gcSpy).not.toHaveBeenCalled();
+    // Уборка запускается, но, не получив ответа о владельцах, не сметает
+    // ничего: молчание реестра — не то же самое, что отсутствие ссылок.
+    expect(gcSpy).toHaveBeenCalledWith(expect.any(Function), expect.anything());
+    await expect(gcSpy.mock.calls[0][0]()).resolves.toBeNull();
     gcSpy.mockRestore();
     registry.load.mockResolvedValue([]);
   });
@@ -2074,10 +2081,11 @@ describe("mergeLeaksByFreshness", () => {
     ).rejects.toThrow("second photo failed");
 
     expect(ctx.saveRef.current).not.toHaveBeenCalled();
-    expect(gcSpy).toHaveBeenCalledWith(existingLeaks, {
+    expect(gcSpy).toHaveBeenCalledWith(expect.any(Function), {
       projectId: existingProject.id,
       folderName: existingProject.folderName,
     });
+    await expect(gcSpy.mock.calls[0][0]()).resolves.toEqual(existingLeaks);
 
     getAllSpy.mockRestore();
     photoSaveSpy.mockRestore();
