@@ -98,7 +98,6 @@ Testing         Vitest + Testing Library + Playwright
 | **Maps**        | Leaflet 1.9, Leaflet MarkerCluster 1.5                                                                                                    |
 | **Export / QR** | ExcelJS 4.4, JSZip 3.10, QRCode 1.5                                                                                                       |
 | **i18n**        | i18next, react-i18next                                                                                                                    |
-| **UI**          | clsx 2.1                                                                                                                                  |
 | **Testing**     | Vitest 4, Testing Library (DOM, Jest DOM, React, User Event), Playwright, fake-indexeddb, jsdom                                           |
 | **Tooling**     | TypeScript 7 в гейте типов, 6 для линта (см. CONTRIBUTING), ESLint 10, Prettier 3, Sass, husky + lint-staged                              |
 
