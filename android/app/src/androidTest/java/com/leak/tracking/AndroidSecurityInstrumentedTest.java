@@ -15,11 +15,13 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PermissionInfo;
 import android.os.Build;
+import android.os.ParcelFileDescriptor;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.File;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -83,12 +85,44 @@ public class AndroidSecurityInstrumentedTest {
                 PermissionInfo.PROTECTION_DANGEROUS,
                 basePermissionProtection(info)
             );
-            automation.grantRuntimePermission(packageName, permission);
+            grantRuntimePermission(automation, packageName, permission);
             assertEquals(
                 permission,
                 PackageManager.PERMISSION_GRANTED,
                 context.checkSelfPermission(permission)
             );
+        }
+    }
+
+    /**
+     * {@code UiAutomation.grantRuntimePermission} тоже появился в API 28 — как
+     * и {@code getProtection()} ниже. На 24 вызов уходил в
+     * {@code NoSuchMethodError}, то есть тест не проверял разрешения ровно на
+     * том уровне, который объявлен минимальным. Пропустить его там значило бы
+     * оставить пол поддержки без проверки, поэтому на старых уровнях
+     * разрешение выдаётся через shell — так же, как это делает
+     * {@code GrantPermissionRule}.
+     */
+    private static void grantRuntimePermission(
+        UiAutomation automation,
+        String packageName,
+        String permission
+    ) throws Exception {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            automation.grantRuntimePermission(packageName, permission);
+            return;
+        }
+        ParcelFileDescriptor output = automation.executeShellCommand(
+            "pm grant " + packageName + " " + permission
+        );
+        // Команда не считается выполненной, пока дескриптор не вычитан до
+        // конца. Сам вывод не разбирается: успех проверяет checkSelfPermission
+        // сразу после вызова, а не текст `pm`.
+        try (InputStream stream = new ParcelFileDescriptor.AutoCloseInputStream(output)) {
+            byte[] buffer = new byte[256];
+            while (stream.read(buffer) >= 0) {
+                // читаем до EOF
+            }
         }
     }
 
