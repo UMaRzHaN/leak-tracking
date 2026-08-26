@@ -333,11 +333,9 @@ export function mergeProjectSyncStates(...values) {
   const candidates = states.filter(
     (state) => state.generation === highestGeneration,
   );
+  const sortedEpochIds = candidates.map((state) => state.epochId).sort();
   const selectedEpochId =
-    candidates
-      .map((state) => state.epochId)
-      .sort()
-      .at(-1) ?? LEGACY_SYNC_EPOCH;
+    sortedEpochIds[sortedEpochIds.length - 1] ?? LEGACY_SYNC_EPOCH;
   const compatible = candidates.filter(
     (state) => state.epochId === selectedEpochId,
   );

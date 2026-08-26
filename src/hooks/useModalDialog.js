@@ -113,7 +113,7 @@ export function useModalDialog({
     const handleKeyDown = (event) => {
       const dialog = dialogRef.current;
       if (!dialog) return;
-      if (modalStack.at(-1) !== modalId) return;
+      if (modalStack[modalStack.length - 1] !== modalId) return;
 
       if (event.key === "Escape" && !disabledRef.current) {
         event.preventDefault();

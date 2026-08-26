@@ -89,7 +89,7 @@ export const parseVoiceText = (text) => {
 
   for (const { key, regex, type } of PATTERNS) {
     const matches = [...normalized.matchAll(regex)];
-    const rawValue = matches.at(-1)?.groups?.value;
+    const rawValue = matches[matches.length - 1]?.groups?.value;
     if (!rawValue) continue;
 
     const value = formatValue(type, rawValue);

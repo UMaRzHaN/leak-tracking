@@ -112,6 +112,15 @@ export default defineConfig(
           message:
             'Empty .catch() hides the failure — use ignoredError("area.action") from @/utils/ignoredError.',
         },
+        {
+          // `.at()` появился в Chrome 92, и шесть вызовов молча делали его
+          // самым новым требованием всего приложения — новее любого синтаксиса,
+          // который сборка умеет понижать. Отказ от него выглядел бы как
+          // TypeError в середине работы, а не как ошибка сборки.
+          selector: "CallExpression[callee.property.name='at']",
+          message:
+            "Array.prototype.at needs Chrome 92 and cannot be transpiled — use items[items.length - 1].",
+        },
       ],
     },
   },

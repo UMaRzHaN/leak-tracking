@@ -245,7 +245,7 @@ function applyMonitoringDerivedStatus(leak, options = {}) {
   const records = Array.isArray(leak?.monitoringRecords)
     ? leak.monitoringRecords
     : [];
-  const latestMonitoring = records.at(-1);
+  const latestMonitoring = records[records.length - 1];
   if (!latestMonitoring) return leak;
 
   const next = {

@@ -90,7 +90,7 @@ export function attachMonitoringRecords(
     };
 
     if (normalizedInferredIds.has(leakId)) {
-      const latestMonitoring = monitoringRecords.at(-1);
+      const latestMonitoring = monitoringRecords[monitoringRecords.length - 1];
       next.status = statusFromMonitoringResult(latestMonitoring?.result);
       if (next.status === "resolved") {
         const resolvedDate = parseDateValue(latestMonitoring?.date);
