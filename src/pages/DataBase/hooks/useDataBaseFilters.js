@@ -55,7 +55,7 @@ export function normalizeLeakSearchText(value) {
     .replace(/[№#]/g, " ")
     .normalize("NFKC")
     .toLocaleLowerCase()
-    .replaceAll("ё", "е")
+    .replace(/ё/g, "е")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
     .replace(/\s+/g, " ");

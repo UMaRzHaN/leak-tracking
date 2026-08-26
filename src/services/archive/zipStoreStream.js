@@ -46,7 +46,7 @@ function createBytes(length, write) {
 
 function normalizeEntryName(name) {
   const normalized = String(name ?? "")
-    .replaceAll("\\", "/")
+    .replace(/\\/g, "/")
     .replace(/^\/+/, "");
   if (
     !normalized ||

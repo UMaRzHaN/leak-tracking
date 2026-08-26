@@ -121,6 +121,14 @@ export default defineConfig(
           message:
             "Array.prototype.at needs Chrome 92 and cannot be transpiled — use items[items.length - 1].",
         },
+        {
+          // Следующая ступень после `.at()`: Chrome 85. Ограничение бьёт по
+          // вызову метода, а не по имени, — одноимённая функция нативного
+          // хранилища (действие плагина) под него не попадает.
+          selector: "CallExpression[callee.property.name='replaceAll']",
+          message:
+            "String.prototype.replaceAll needs Chrome 85 and cannot be transpiled — use .replace(/x/g, y) or .split(x).join(y).",
+        },
       ],
     },
   },

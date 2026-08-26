@@ -294,7 +294,10 @@ function translateDynamicAutocompleteOption(option) {
   }
 
   for (const [ru, en] of DYNAMIC_PHRASE_TRANSLATIONS) {
-    translated = translated.replaceAll(ru, en);
+    // `split().join()`, а не регулярка: заменяемое приходит фразой из
+    // таблицы, и её пришлось бы экранировать — literal-замена делает это
+    // сама.
+    translated = translated.split(ru).join(en);
   }
 
   return translated;

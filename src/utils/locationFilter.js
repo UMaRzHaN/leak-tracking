@@ -17,13 +17,13 @@ export function buildSmartLocationSelection(locations, search) {
   const normalizedQuery = String(search)
     .normalize("NFKC")
     .toLocaleLowerCase()
-    .replaceAll("ё", "е")
+    .replace(/ё/g, "е")
     .trim();
   const matchingLocations = locations.filter((location) =>
     String(location)
       .normalize("NFKC")
       .toLocaleLowerCase()
-      .replaceAll("ё", "е")
+      .replace(/ё/g, "е")
       .includes(normalizedQuery),
   );
   if (matchingLocations.length === 0) return null;
