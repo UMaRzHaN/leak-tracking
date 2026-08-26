@@ -87,14 +87,28 @@ if (excelWorkerJs > budgets.excelWorkerGraphBytes)
   failures.push(
     `Excel worker graph JS ${excelWorkerJs} > ${budgets.excelWorkerGraphBytes}`,
   );
+// Полоса предупреждения стояла на 90% и молчать не умела. Потолки здесь
+// перебазируют по факту с запасом в 2–5% — так поставлен, например,
+// `excelWorkerGraphBytes`: измерено 1 150 190, потолок 1 179 648. Такой бюджет
+// начинает предупреждать в день, когда его выставили, и предупреждает всегда.
+// Четыре из шести так и висели, ничего не сообщая: разбор начального графа
+// показал, что резать там нечего — половина это React, а остальное бутстрап,
+// который обязан прочитать проект прежде, чем рисовать.
+//
+// 97% — это «осталось несколько килобайт», то есть ровно то, о чём стоит
+// предупреждать при таком способе выставлять потолки. Полоса шире имеет смысл
+// только с бюджетом, у которого запас хотя бы вдвое больше.
+const WARN_AT = 0.97;
 for (const [label, value, limit] of [
   ["initial raw", initialRaw, budgets.initialRawBytes],
   ["initial gzip", initialGzip, budgets.initialGzipBytes],
   ["app graph JS", appGraphJs, budgets.appGraphJsBytes],
   ["Excel worker graph JS", excelWorkerJs, budgets.excelWorkerGraphBytes],
 ]) {
-  if (value > limit * 0.9 && value <= limit) {
-    warnings.push(`${label} is above 90% of budget (${value}/${limit})`);
+  if (value > limit * WARN_AT && value <= limit) {
+    warnings.push(
+      `${label} is above ${Math.round(WARN_AT * 100)}% of budget (${value}/${limit})`,
+    );
   }
 }
 for (const name of jsNames) {
