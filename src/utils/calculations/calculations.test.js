@@ -349,4 +349,29 @@ describe("calculations", () => {
       expect(result.Total_Annual_Methane_Loss_m3_y).toBeCloseTo(expected_m3_y);
     });
   });
+
+  // Выгрузка пишет каждый параметр расчёта отдельной колонкой, а импорт
+  // возвращает его полем верхнего уровня. Параметр, которого здесь нет,
+  // приезжает обратно как новое поле: повторный импорт неизменённого архива
+  // объявлял «изменённое поле» на записи, где ничего не менялось, и при
+  // слиянии ставил свежую отметку в `_fieldUpdatedAt` — правку, которой не
+  // было и которая умеет побить настоящую правку с другого устройства.
+  // Так восемь месяцев жил `gasPercentage`: вход формулы, не попавший в
+  // результат.
+  describe("параметры расчёта на верхнем уровне записи", () => {
+    const PARAMETERS = [
+      "equipmentType",
+      "serial_number",
+      "uncertainty",
+      "gasPercentage",
+      "GWP",
+      "GWP_Minus",
+      "Operating_mode",
+    ];
+
+    it.each(PARAMETERS)("возвращает %s", (key) => {
+      const result = calculations({ leak_speed: 5 }, BASE_VARS);
+      expect(result).toHaveProperty(key, BASE_VARS[key]);
+    });
+  });
 });
