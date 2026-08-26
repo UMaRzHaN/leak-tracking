@@ -25,6 +25,7 @@ export {
   NATIVE_TILE_CACHE_NAMESPACE,
 } from "./tileCacheMetadata";
 import { ignoredError } from "@/utils/ignoredError";
+import { fromEntries } from "@/utils/fromEntries";
 
 const CACHE_NAME = "map-tiles-v2";
 const MAX_MERCATOR_LAT = 85.05112878;
@@ -232,7 +233,7 @@ async function enforceWebQuota(cache) {
   // against the actual cache before deciding that no eviction is needed.
   const requests = await cache.keys();
   const byUrl = new Map(requests.map((request) => [request.url, request]));
-  metadata = Object.fromEntries(
+  metadata = fromEntries(
     requests.map((request) => [request.url, metadata[request.url] ?? 0]),
   );
   writeMetadata(metadata);
@@ -248,7 +249,7 @@ async function enforceNativeQuota() {
   const count = getNativeCount();
   if (count <= MAX_TILE_CACHE_ENTRIES) return;
   const storedMetadata = readMetadata();
-  const metadata = Object.fromEntries(
+  const metadata = fromEntries(
     Object.entries(storedMetadata).filter(([path]) => isNativeTilePath(path)),
   );
   if (Object.keys(metadata).length !== Object.keys(storedMetadata).length) {

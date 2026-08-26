@@ -10,6 +10,7 @@ import {
 import { isPinkBagEquipment } from "@/utils/calculations/calculations";
 import Notification from "@/components/ui/Notification/Notification";
 import s from "./ReopenLeakModal.module.scss";
+import { fromEntries } from "@/utils/fromEntries";
 
 function formatValue(value) {
   return value == null || value === "" ? "-" : String(value);
@@ -26,7 +27,7 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
     [leak, vars],
   );
   const [draft, setDraft] = useState(() =>
-    Object.fromEntries(REOPEN_MEASUREMENT_FIELDS.map(({ key }) => [key, ""])),
+    fromEntries(REOPEN_MEASUREMENT_FIELDS.map(({ key }) => [key, ""])),
   );
   const [calcOpen, setCalcOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -139,7 +140,7 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
   const copyField = (key) => setField(key, leak?.[key] ?? "");
   const copyAll = () =>
     setDraft(
-      Object.fromEntries(
+      fromEntries(
         REOPEN_MEASUREMENT_FIELDS.map(({ key }) => [key, leak?.[key] ?? ""]),
       ),
     );

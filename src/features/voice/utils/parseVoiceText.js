@@ -15,6 +15,7 @@ import {
 } from "./normalization";
 import { normalizeCapturedNumber, normalizeNumberWords } from "./numbers";
 import { VOICE_FIELD_CONFIG } from "./synonyms";
+import { matchAll } from "@/utils/matchAll";
 
 const FIELD_MARKERS = buildVoiceFieldMarkers(VOICE_FIELD_CONFIG);
 
@@ -88,7 +89,7 @@ export const parseVoiceText = (text) => {
   const result = {};
 
   for (const { key, regex, type } of PATTERNS) {
-    const matches = [...normalized.matchAll(regex)];
+    const matches = matchAll(normalized, regex);
     const rawValue = matches[matches.length - 1]?.groups?.value;
     if (!rawValue) continue;
 

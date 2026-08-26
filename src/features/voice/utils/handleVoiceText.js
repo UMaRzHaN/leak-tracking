@@ -7,6 +7,7 @@ import {
 import { parseVoiceText } from "./parseVoiceText";
 import { fuzzyMatchOption } from "./matching";
 import { objects, components } from "@/data/leak/fieldDictionary";
+import { fromEntries } from "@/utils/fromEntries";
 
 const normalizeComponentDisplayCase = (value) => {
   const words = String(value ?? "")
@@ -60,7 +61,7 @@ export const handleVoiceText = (
   const allowed = new Set(allowedFields);
   const data =
     allowed.size > 0
-      ? Object.fromEntries(
+      ? fromEntries(
           Object.entries(normalizedData).filter(([key]) => allowed.has(key)),
         )
       : normalizedData;

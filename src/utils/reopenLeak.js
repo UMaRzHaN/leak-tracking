@@ -7,6 +7,7 @@ import { priorityFromSpeed } from "@/utils/priority";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
 import { requireHistoryUser } from "@/utils/historyUser";
+import { fromEntries } from "@/utils/fromEntries";
 
 export const REOPEN_CALC_FIELDS = [
   { key: "equipmentType", ru: "Тип оборудования", en: "Equipment type" },
@@ -42,7 +43,7 @@ export const REOPEN_MEASUREMENT_FIELDS = [
 ];
 
 export function normalizeReopenMeasurements(draft = {}) {
-  return Object.fromEntries(
+  return fromEntries(
     REOPEN_MEASUREMENT_FIELDS.map(({ key }) => {
       const normalized = normalizeNumber(draft[key]);
       return [key, normalized === "" ? undefined : normalized];

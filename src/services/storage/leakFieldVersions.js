@@ -3,6 +3,7 @@ import {
   observeSyncTimestamp,
   sanitizeSyncTimestamp,
 } from "@/services/sync/syncClock";
+import { fromEntries } from "@/utils/fromEntries";
 
 export const LEAK_FIELD_VERSIONS_KEY = "_fieldUpdatedAt";
 
@@ -52,7 +53,7 @@ export function isVersionedLeakField(key) {
 
 export function normalizeLeakFieldVersions(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  return Object.fromEntries(
+  return fromEntries(
     Object.entries(value)
       .map(([key, timestamp]) => [key, toTimestamp(timestamp)])
       .filter(

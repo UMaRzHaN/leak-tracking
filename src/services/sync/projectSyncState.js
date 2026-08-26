@@ -11,6 +11,7 @@ import {
   LEAK_FIELD_VERSIONS_KEY,
   normalizeLeakFieldVersions,
 } from "@/services/storage/leakFieldVersions";
+import { fromEntries } from "@/utils/fromEntries";
 const SYNC_DB_NAME = "LeakTrackingSyncDB";
 const SYNC_STORE_NAME = "projectStates";
 export const MAX_PROJECT_TOMBSTONES = 10_000;
@@ -144,7 +145,7 @@ export function getLeakSyncFreshness(leak) {
 
 function normalizeDeleted(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  return Object.fromEntries(
+  return fromEntries(
     Object.entries(value)
       .map(([identity, deletedAt]) => [identity, toTime(deletedAt)])
       .filter(([identity, deletedAt]) => identity && Number(deletedAt) > 0),
@@ -186,7 +187,7 @@ export function assertProjectSyncStateCompatible(localValue, incomingValue) {
 
 function compactDeletedState(state, deletedEntries) {
   if (deletedEntries.length <= MAX_PROJECT_TOMBSTONES) {
-    return { ...state, deleted: Object.fromEntries(deletedEntries) };
+    return { ...state, deleted: fromEntries(deletedEntries) };
   }
 
   const retained = deletedEntries.slice(0, TOMBSTONES_AFTER_COMPACTION);
@@ -197,7 +198,7 @@ function compactDeletedState(state, deletedEntries) {
     generation: state.generation + 1,
     epochId: createCompactionEpochId(state, dropped),
     compactedAt: Math.max(state.compactedAt, newestDroppedAt),
-    deleted: Object.fromEntries(retained),
+    deleted: fromEntries(retained),
   };
 }
 

@@ -25,6 +25,7 @@ import {
   replaceLeakInCollection,
 } from "../utils/persistPhotoReplacements";
 import { ignoredError } from "@/utils/ignoredError";
+import { fromEntries } from "@/utils/fromEntries";
 
 export function useLeakDetailsPersistence({
   leak,
@@ -107,7 +108,7 @@ export function useLeakDetailsPersistence({
       const numericKeys = new Set(
         editFields.filter((field) => field.numeric).map((field) => field.key),
       );
-      const textPatch = Object.fromEntries(
+      const textPatch = fromEntries(
         dirtyFields.map(({ key }) => [
           key,
           numericKeys.has(key)

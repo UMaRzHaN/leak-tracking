@@ -4,6 +4,7 @@ import s from "./FieldVisibilityModal.module.scss";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { PROTECTED_FIELD_KEYS } from "@/configs/shared/protectedFields";
 import { fieldLabel } from "@/utils/fieldLabels";
+import { fromEntries } from "@/utils/fromEntries";
 
 // These keys are managed by the system and can never be hidden
 const SYSTEM_KEYS = PROTECTED_FIELD_KEYS;
@@ -21,9 +22,7 @@ function translateStepTitle(title, t) {
 
 function buildGroups(config, localeTexts, t) {
   const { headers, keysOrder } = config.export.excel;
-  const headerMap = Object.fromEntries(
-    keysOrder.map((k, i) => [k, headers[i]]),
-  );
+  const headerMap = fromEntries(keysOrder.map((k, i) => [k, headers[i]]));
 
   const stepFieldKeys = new Set();
   const stepGroups = config.steps.steps

@@ -1,6 +1,7 @@
 import { normalizeLeakFieldVersions } from "@/services/storage/leakFieldVersions";
 import { parseTime } from "./projectMeta";
 import { comparableExcelDate, isEmptyMergeValue } from "./mergeValues";
+import { fromEntries } from "@/utils/fromEntries";
 
 function getRecordMergeIdentity(record, index, arrayKey) {
   if (arrayKey === "monitoringRecords" && record?.id != null) {
@@ -297,7 +298,7 @@ function normalizeSyncConflictValue(value) {
       );
   }
   if (value && typeof value === "object") {
-    return Object.fromEntries(
+    return fromEntries(
       Object.keys(value)
         .filter((key) => !SYNC_CONFLICT_IGNORED_KEYS.has(key))
         .sort()

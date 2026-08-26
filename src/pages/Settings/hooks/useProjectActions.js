@@ -9,6 +9,7 @@ import { clearMapCache } from "@/services/maps/tileCache";
 import { deleteProjectArtifacts } from "@/services/backup/projectCleanup";
 import { isLeakFormDirty } from "@/features/leakForm/utils/isLeakFormDirty";
 import { MONITORING_PHOTO_FIELDS } from "@/utils/photoFields";
+import { fromEntries } from "@/utils/fromEntries";
 
 export { deleteProjectArtifacts };
 
@@ -43,7 +44,7 @@ export function remapProjectPhotoPaths(leaks, oldFolderName, newFolderName) {
       ? {
           monitoringRecords: leak.monitoringRecords.map((record) => ({
             ...record,
-            ...Object.fromEntries(
+            ...fromEntries(
               MONITORING_PHOTO_FIELDS.map((field) => [
                 field,
                 remapPhotoPath(record?.[field], oldPrefix, newPrefix),

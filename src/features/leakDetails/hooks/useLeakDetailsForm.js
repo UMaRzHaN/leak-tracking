@@ -3,6 +3,7 @@ import {
   buildLeakCalculationParams,
   calculationParamsEqual,
 } from "@/utils/calculationParams";
+import { fromEntries } from "@/utils/fromEntries";
 
 export function useLeakDetailsForm({
   leak,
@@ -25,9 +26,7 @@ export function useLeakDetailsForm({
 
   const resetDraft = useCallback(() => {
     const keys = editFields.map((field) => field.key);
-    setLocalEdit(
-      Object.fromEntries(keys.map((keyName) => [keyName, leak[keyName]])),
-    );
+    setLocalEdit(fromEntries(keys.map((keyName) => [keyName, leak[keyName]])));
     setLocalCalcParams(buildLeakCalculationParams(leak, vars));
   }, [editFields, leak, vars]);
 

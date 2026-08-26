@@ -17,6 +17,7 @@ import {
 import { hasOwn, mergeRecordArray } from "./recordArrayMerge";
 import { parseTime } from "./projectMeta";
 import { normalizeLeakTag } from "@/utils/leakIdentity";
+import { fromEntries } from "@/utils/fromEntries";
 
 export function getLeakIdentity(leak, options = {}) {
   if (options.source !== "sync") {
@@ -59,7 +60,7 @@ function normalizeSyncConflictValue(value) {
       );
   }
   if (value && typeof value === "object") {
-    return Object.fromEntries(
+    return fromEntries(
       Object.keys(value)
         .filter((key) => !SYNC_CONFLICT_IGNORED_KEYS.has(key))
         .sort()

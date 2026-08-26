@@ -129,6 +129,20 @@ export default defineConfig(
           message:
             "String.prototype.replaceAll needs Chrome 85 and cannot be transpiled — use .replace(/x/g, y) or .split(x).join(y).",
         },
+        {
+          // Ступень Chrome 73. Оба заменены своими модулями в @/utils; те
+          // вызываются как функции, а не как методы, и под эти селекторы не
+          // попадают.
+          selector:
+            "CallExpression[callee.object.name='Object'][callee.property.name='fromEntries']",
+          message:
+            "Object.fromEntries needs Chrome 73 and cannot be transpiled — use fromEntries from @/utils/fromEntries.",
+        },
+        {
+          selector: "CallExpression[callee.property.name='matchAll']",
+          message:
+            "String.prototype.matchAll needs Chrome 73 and cannot be transpiled — use matchAll from @/utils/matchAll.",
+        },
       ],
     },
   },

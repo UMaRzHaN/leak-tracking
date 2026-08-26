@@ -1,3 +1,4 @@
+import { fromEntries } from "@/utils/fromEntries";
 const EMPTY_LOCATION_LABELS = new Set(["Не указано", "Not specified"]);
 
 export function normalizeLocationValue(value) {
@@ -29,14 +30,14 @@ export function buildSmartLocationSelection(locations, search) {
   if (matchingLocations.length === 0) return null;
 
   const selectedLocations = new Set(matchingLocations);
-  return Object.fromEntries(
+  return fromEntries(
     locations.map((location) => [location, selectedLocations.has(location)]),
   );
 }
 
 export function getEnabledLocations(locations, locationKey, filter) {
   const selected = getFilterValues(filter, locationKey);
-  return Object.fromEntries(
+  return fromEntries(
     locations.map((location) => [
       location,
       selected ? selected.has(normalizeLocationValue(location)) : true,

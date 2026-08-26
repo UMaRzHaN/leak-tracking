@@ -10,6 +10,7 @@ import {
   LEAK_PHOTO_FIELDS,
   MONITORING_PHOTO_FIELDS,
 } from "@/utils/photoFields";
+import { fromEntries } from "@/utils/fromEntries";
 
 export const PHOTO_KEYS = LEAK_PHOTO_FIELDS;
 
@@ -223,7 +224,7 @@ export async function buildMonitoringPhotoEntries(
 }
 
 export function buildPhotoMap(photoEntries) {
-  return Object.fromEntries(
+  return fromEntries(
     photoEntries.map((entry) => [entry.mapKey, entry.photoFileName]),
   );
 }

@@ -1,3 +1,4 @@
+import { fromEntries } from "@/utils/fromEntries";
 const HISTORY_KEYS = [
   "index",
   "leak_id",
@@ -43,7 +44,7 @@ const SUMMARY_LABELS = [
 const PROJECT_TYPES = ["upstream", "midstream", "downstream"];
 
 const byKey = (keys, resolve) =>
-  Object.fromEntries(keys.map((key) => [key, resolve(key)]));
+  fromEntries(keys.map((key) => [key, resolve(key)]));
 
 /**
  * Every string the workbook needs, resolved up front.

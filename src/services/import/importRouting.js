@@ -1,3 +1,5 @@
+import { matchAll } from "@/utils/matchAll";
+
 const getJSZip = () => import("jszip");
 
 /**
@@ -21,8 +23,8 @@ const INVENTORY_SHEET_NAMES = ["inventorization", "inventory", "компонен
 const LEAK_SHEET_HINTS = ["утечк", "leak"];
 
 function sheetNamesFromWorkbookXml(xml) {
-  return [...String(xml).matchAll(/<sheet\b[^>]*\bname="([^"]*)"/g)].map(
-    (match) => match[1].toLowerCase(),
+  return matchAll(String(xml), /<sheet\b[^>]*\bname="([^"]*)"/g).map((match) =>
+    match[1].toLowerCase(),
   );
 }
 

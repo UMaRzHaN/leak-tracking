@@ -23,6 +23,7 @@ import { buildGhostPlaceholders } from "@/features/leakForm/utils/ghostPlacehold
 import { localizeComponentSteps } from "./localizeComponentSteps";
 import leak from "@/features/leakForm/LeakForm.module.scss";
 import s from "./ComponentRegistry.module.scss";
+import { fromEntries } from "@/utils/fromEntries";
 
 /** Проставляет приложение, а не человек: фикс снимается при открытии формы. */
 const DRAFT_DERIVED_FIELDS = ["lat", "lng"];
@@ -278,7 +279,7 @@ export default function ComponentCardForm({
       if (missing.length === 0) return true;
 
       setErrors(
-        Object.fromEntries(
+        fromEntries(
           missing.map((key) => [
             key,
             key === "photo"

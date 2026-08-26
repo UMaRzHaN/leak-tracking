@@ -19,6 +19,7 @@ import {
 } from "./constants";
 import { normalizeProjectMeta } from "./projectMeta";
 import { getJSZip } from "./runtime";
+import { fromEntries } from "@/utils/fromEntries";
 
 function parseBackupValidation(parsed) {
   const validation = validateBackup(parsed);
@@ -151,7 +152,7 @@ export function detectProjectTypeFromLeaks(leaks) {
   // empty placeholder must not influence detection. Scoring avoids the old
   // "first matching type wins" behaviour and deliberately returns null when
   // two project types have the same evidence so the UI can ask the user.
-  const scores = Object.fromEntries(
+  const scores = fromEntries(
     Object.keys(TYPE_SIGNATURES).map((type) => [type, 0]),
   );
 
