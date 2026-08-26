@@ -1,3 +1,4 @@
+import { globalScope } from "@/utils/globalScope";
 export const getJSZip = () => import("jszip");
 
 export const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -37,8 +38,10 @@ export async function waitForPhotoStorage(photoReadyRef) {
 }
 
 function isWorkerContext() {
-  const scope = globalThis.WorkerGlobalScope;
-  return typeof scope !== "undefined" && globalThis instanceof scope;
+  // `globalScope` объявлен как окно; в воркере у него есть это свойство,
+  // но описать оба контекста одним типом нечем.
+  const scope = /** @type {any} */ (globalScope).WorkerGlobalScope;
+  return typeof scope !== "undefined" && globalScope instanceof scope;
 }
 
 /** @returns {Promise<void>} */

@@ -9,6 +9,7 @@ import {
 } from "@/repositories/schemaPaths";
 import { isNative } from "@/utils/platform";
 import { logger } from "@/utils/logger";
+import { globalScope } from "@/utils/globalScope";
 
 /**
  * Storage for technological schema files.
@@ -323,11 +324,11 @@ export async function blobToBase64(blob) {
   for (let i = 0; i < bytes.length; i += CHUNK) {
     binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
   }
-  return globalThis.btoa(binary);
+  return globalScope.btoa(binary);
 }
 
 export function base64ToBlob(base64, type) {
-  const binary = globalThis.atob(base64);
+  const binary = globalScope.atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
   return new Blob([bytes], { type: type || "application/octet-stream" });

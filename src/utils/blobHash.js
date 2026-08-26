@@ -1,3 +1,4 @@
+import { globalScope } from "@/utils/globalScope";
 function readBlobBytes(blob) {
   if (!(blob instanceof Blob)) {
     throw new TypeError("Expected a Blob");
@@ -29,8 +30,8 @@ function fallbackHash(bytes) {
 export async function fingerprintBlob(blob) {
   const buffer = await readBlobBytes(blob);
   const bytes = new Uint8Array(buffer);
-  if (globalThis.crypto?.subtle) {
-    const digest = await globalThis.crypto.subtle.digest("SHA-256", buffer);
+  if (globalScope.crypto?.subtle) {
+    const digest = await globalScope.crypto.subtle.digest("SHA-256", buffer);
     return [...new Uint8Array(digest)]
       .map((value) => value.toString(16).padStart(2, "0"))
       .join("");

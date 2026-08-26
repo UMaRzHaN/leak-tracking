@@ -1,7 +1,8 @@
+import { globalScope } from "@/utils/globalScope";
 let persistenceRequest = null;
 
 export async function requestPersistentStorage() {
-  const storage = globalThis.navigator?.storage;
+  const storage = globalScope.navigator?.storage;
   if (!storage?.persist) {
     return { supported: false, persisted: false };
   }

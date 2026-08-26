@@ -1,5 +1,6 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { getStorageItem, setStorageItem } from "@/utils/safeStorage";
+import { globalScope } from "@/utils/globalScope";
 
 const STORAGE_KEY = "app-theme";
 const DARK_QUERY = "(prefers-color-scheme: dark)";
@@ -31,7 +32,7 @@ function readStoredMode() {
 }
 
 function darkMediaQuery() {
-  return globalThis.matchMedia?.(DARK_QUERY) ?? null;
+  return globalScope.matchMedia?.(DARK_QUERY) ?? null;
 }
 
 function systemPrefersDark() {

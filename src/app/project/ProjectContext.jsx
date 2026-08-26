@@ -17,6 +17,7 @@ import {
   toUniqueFolderName,
 } from "./projectStorage";
 import { migrateFromLegacy } from "./projectMigration";
+import { globalScope } from "@/utils/globalScope";
 
 export { toFolderName };
 
@@ -27,14 +28,14 @@ const ProjectActionsContext = createContext(null);
 
 function createSyncId() {
   return (
-    globalThis.crypto?.randomUUID?.() ??
+    globalScope.crypto?.randomUUID?.() ??
     `sync-${Date.now()}-${Math.random().toString(36).slice(2, 14)}`
   );
 }
 
 function createProjectId() {
   return (
-    globalThis.crypto?.randomUUID?.() ??
+    globalScope.crypto?.randomUUID?.() ??
     `project-${Date.now()}-${Math.random().toString(36).slice(2, 14)}`
   );
 }

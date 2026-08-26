@@ -1,3 +1,4 @@
+import { globalScope } from "@/utils/globalScope";
 export const IMPORT_LIMITS = Object.freeze({
   // A whole gigabyte, matching MAX_EXPORT_BYTES in PublicFileWriterPlugin and
   // MAX_ARCHIVE_BYTES in LocalSyncPlugin: an archive this app can write is one
@@ -554,7 +555,7 @@ export async function readArchiveEntry(zip, entry, type = "uint8array") {
         bytes.byteOffset + bytes.byteLength,
       );
     case "string":
-      return new globalThis.TextDecoder().decode(bytes);
+      return new globalScope.TextDecoder().decode(bytes);
     case "blob":
       return new Blob([bytes]);
     default:

@@ -4,6 +4,7 @@ import {
   NativeLeakStorage,
   isSqlitePluginUnavailable,
 } from "@/repositories/nativeSqlitePlugin";
+import { globalScope } from "@/utils/globalScope";
 
 /**
  * Сколько места осталось на устройстве.
@@ -55,7 +56,7 @@ async function readNativeStorage() {
 }
 
 async function readWebStorage() {
-  const storage = globalThis.navigator?.storage;
+  const storage = globalScope.navigator?.storage;
   if (!storage?.estimate) return UNKNOWN;
   try {
     const estimate = await storage.estimate();

@@ -1,3 +1,4 @@
+import { globalScope } from "@/utils/globalScope";
 const isDev = import.meta.env.DEV;
 const isTest = import.meta.env.MODE === "test" || import.meta.env.VITEST;
 const DIAGNOSTIC_KEY = "app:diagnostics_v1";
@@ -108,7 +109,7 @@ export function exportDiagnostics() {
   return JSON.stringify(
     {
       exportedAt: new Date().toISOString(),
-      userAgent: redactText(globalThis.navigator?.userAgent ?? "unknown"),
+      userAgent: redactText(globalScope.navigator?.userAgent ?? "unknown"),
       entries: Array.isArray(entries) ? entries : [],
     },
     null,

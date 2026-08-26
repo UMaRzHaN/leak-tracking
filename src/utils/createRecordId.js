@@ -1,5 +1,6 @@
+import { globalScope } from "@/utils/globalScope";
 export function createRecordId() {
-  const cryptoApi = globalThis.crypto;
+  const cryptoApi = globalScope.crypto;
   if (typeof cryptoApi?.randomUUID === "function") {
     return cryptoApi.randomUUID();
   }

@@ -34,6 +34,7 @@ export default defineConfig(
         afterEach: "readonly",
         beforeEach: "readonly",
         Blob: "readonly",
+        self: "readonly",
         Buffer: "readonly",
         caches: "readonly",
         cancelAnimationFrame: "readonly",
@@ -142,6 +143,13 @@ export default defineConfig(
           selector: "CallExpression[callee.property.name='matchAll']",
           message:
             "String.prototype.matchAll needs Chrome 73 and cannot be transpiled — use matchAll from @/utils/matchAll.",
+        },
+        {
+          // Ступень Chrome 71. Это имя, а не метод: на старом WebView
+          // обращение к нему — `ReferenceError`, а не тихое `undefined`.
+          selector: "Identifier[name='globalThis']",
+          message:
+            "globalThis needs Chrome 71 — use globalScope from @/utils/globalScope.",
         },
       ],
     },

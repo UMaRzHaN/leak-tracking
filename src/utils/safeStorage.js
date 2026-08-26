@@ -1,6 +1,7 @@
+import { globalScope } from "@/utils/globalScope";
 function getLocalStorage() {
   try {
-    return globalThis.localStorage ?? null;
+    return globalScope.localStorage ?? null;
   } catch {
     return null;
   }

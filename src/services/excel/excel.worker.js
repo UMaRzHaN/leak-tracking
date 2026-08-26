@@ -1,6 +1,7 @@
 import { buildWorkbookBufferLocally } from "@/services/excelExport/buildWorkbookBuffer";
 import { parseExcelImportFile } from "@/services/import/excelImportParse";
 import { parseBackupZip } from "@/services/backup/archiveParser";
+import { globalScope } from "@/utils/globalScope";
 
 // One worker serves both directions on purpose. Vite gives every worker its
 // own module graph, so a second Excel worker would ship a second copy of
@@ -19,12 +20,12 @@ function toTransferableArrayBuffer(value) {
 }
 
 const post = (message, transfer) =>
-  /** @type {any} */ (globalThis).postMessage(message, transfer ?? []);
+  /** @type {any} */ (globalScope).postMessage(message, transfer ?? []);
 
 // A request that fails to deserialize would otherwise get no reply at all,
 // leaving the client pending until its timeout. The payload was never read, so
 // the main thread can still do the work itself.
-globalThis.onmessageerror = () => {
+globalScope.onmessageerror = () => {
   post({
     ok: false,
     unavailable: true,
@@ -38,7 +39,7 @@ globalThis.onmessageerror = () => {
 // set back at once would have meant holding a 190 MB archive in memory.
 let backupArchive = null;
 
-globalThis.onmessage = async (event) => {
+globalScope.onmessage = async (event) => {
   const { kind, op, id, payload } = event.data ?? {};
   try {
     if (kind === "backup") {

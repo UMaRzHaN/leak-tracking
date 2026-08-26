@@ -1,3 +1,4 @@
+import { globalScope } from "@/utils/globalScope";
 /**
  * Schedule non-critical work after the first UI render without relying on
  * requestIdleCallback being available in every Android WebView.
@@ -12,17 +13,17 @@ export function scheduleIdleWork(
     if (!cancelled) work();
   };
 
-  if (typeof globalThis.requestIdleCallback === "function") {
-    const idleId = globalThis.requestIdleCallback(run, { timeout });
+  if (typeof globalScope.requestIdleCallback === "function") {
+    const idleId = globalScope.requestIdleCallback(run, { timeout });
     return () => {
       cancelled = true;
-      globalThis.cancelIdleCallback?.(idleId);
+      globalScope.cancelIdleCallback?.(idleId);
     };
   }
 
-  const timerId = globalThis.setTimeout(run, fallbackDelay);
+  const timerId = globalScope.setTimeout(run, fallbackDelay);
   return () => {
     cancelled = true;
-    globalThis.clearTimeout(timerId);
+    globalScope.clearTimeout(timerId);
   };
 }

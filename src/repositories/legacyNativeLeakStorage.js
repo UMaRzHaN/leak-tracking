@@ -2,6 +2,7 @@ import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import { logger } from "@/utils/logger";
 import { ignoredError } from "@/utils/ignoredError";
 import { isMissingNativeFileError } from "@/repositories/nativeFileErrors";
+import { globalScope } from "@/utils/globalScope";
 
 const JOURNAL_VERSION = 1;
 const JOURNAL_MAX_ENTRIES = 40;
@@ -342,7 +343,7 @@ async function restoreMainFromRollback(paths, hasPrevious) {
 
 function createSnapshotId() {
   return (
-    globalThis.crypto?.randomUUID?.() ??
+    globalScope.crypto?.randomUUID?.() ??
     `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
   );
 }

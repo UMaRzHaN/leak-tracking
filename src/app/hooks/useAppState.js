@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { APP_PAGES, HOME_PAGE, normalizePage } from "@/app/pages";
+import { globalScope } from "@/utils/globalScope";
 
 const NAVIGATION_STATE_KEY = "leakTrackingNavigation";
 const GPS_ENABLED_KEY = "app:gps_enabled_v1";
-function readNavigationState(state = globalThis.history?.state) {
+function readNavigationState(state = globalScope.history?.state) {
   const navigation = state?.[NAVIGATION_STATE_KEY];
   if (
     !navigation ||
@@ -23,13 +24,13 @@ function readNavigationState(state = globalThis.history?.state) {
 }
 
 function writeNavigationState(navigation, replace = false) {
-  if (!globalThis.history) return;
+  if (!globalScope.history) return;
   const state = {
-    ...(globalThis.history.state ?? {}),
+    ...(globalScope.history.state ?? {}),
     [NAVIGATION_STATE_KEY]: navigation,
   };
   const method = replace ? "replaceState" : "pushState";
-  globalThis.history[method](state, "");
+  globalScope.history[method](state, "");
 }
 
 function readGpsPreference() {
@@ -79,8 +80,8 @@ export function useAppState() {
       setPageState({ page: next.page, prevPage: current.page });
     };
 
-    globalThis.addEventListener?.("popstate", handlePopState);
-    return () => globalThis.removeEventListener?.("popstate", handlePopState);
+    globalScope.addEventListener?.("popstate", handlePopState);
+    return () => globalScope.removeEventListener?.("popstate", handlePopState);
   }, []);
 
   const setPage = useCallback((next, { replace = false } = {}) => {
@@ -99,8 +100,8 @@ export function useAppState() {
 
   const goBack = useCallback((fallback = HOME_PAGE) => {
     const current = navigationRef.current;
-    if (current.depth > 0 && globalThis.history) {
-      globalThis.history.back();
+    if (current.depth > 0 && globalScope.history) {
+      globalScope.history.back();
       return;
     }
 

@@ -1,5 +1,6 @@
 import { appError } from "@/utils/appError";
 import { LocalSync } from "@/services/sync/localSyncPlugin";
+import { globalScope } from "@/utils/globalScope";
 
 /**
  * Передача архива в нативную часть без base64.
@@ -59,7 +60,7 @@ export async function openArchiveChannel(token) {
   try {
     const info = await LocalSync.getArchiveUploadChannel();
     if (!info?.available || typeof info.name !== "string") return null;
-    const target = globalThis[info.name];
+    const target = globalScope[info.name];
     if (typeof target?.postMessage !== "function") return null;
 
     const channel = createArchiveChannel(target);

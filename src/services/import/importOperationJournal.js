@@ -1,8 +1,9 @@
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
+import { globalScope } from "@/utils/globalScope";
 
 function createOperationId() {
   return (
-    globalThis.crypto?.randomUUID?.() ??
+    globalScope.crypto?.randomUUID?.() ??
     `import-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`
   );
 }
