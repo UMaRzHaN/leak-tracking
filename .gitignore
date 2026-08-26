@@ -17,6 +17,13 @@
 /dist
 /.artifacts
 
+# Собранное руководство для Android. Исходник — docs/manual/android/ — лежит
+# в репозитории; PDF из него печатает scripts/build-android-manual-pdf.mjs.
+# Отслеживать сам PDF вышло дорого: четыре пересборки оставили в истории
+# 40 МБ, и каждая следующая добавляла бы ещё десять — сжатый файл не жмётся
+# паком и не складывается в дельту с предыдущей версией.
+/docs/Leak-Tracker-Android-Manual.pdf
+
 # misc
 .DS_Store
 /android/.idea/
