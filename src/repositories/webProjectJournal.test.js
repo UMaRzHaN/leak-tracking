@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { applyJournalEntries, isWorthJournalling } from "./webProjectJournal";
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  applyJournalEntries,
+  createJournalStore,
+  isWorthJournalling,
+  WEB_JOURNAL_STORE,
+} from "./webProjectJournal";
 import { createWebEnvelope, normalizeWebEnvelope } from "./webProjectEnvelope";
 
 describe("web project journal replay", () => {
@@ -54,6 +59,22 @@ describe("web project journal replay", () => {
     ]);
   });
 
+  // A delta is written as one record, and a reader has no say in what comes
+  // back out of it. An entry that arrived without one of its arrays — an older
+  // writer, a partial record — must cost that one delta, not the whole project:
+  // throwing here would take down the assembly of an otherwise intact copy.
+  it("survives an entry missing either of its arrays", () => {
+    const snapshot = [{ id: "a" }, { id: "b" }];
+
+    expect(applyJournalEntries(snapshot, [{ upserts: [{ id: "c" }] }])).toEqual(
+      [{ id: "a" }, { id: "b" }, { id: "c" }],
+    );
+    expect(applyJournalEntries(snapshot, [{ deletedIds: ["a"] }])).toEqual([
+      { id: "b" },
+    ]);
+    expect(applyJournalEntries(snapshot, [{}])).toEqual(snapshot);
+  });
+
   // The metadata describes the assembled state, so a reader that assembles
   // anything other than what the writer held fails the checksum and the copy
   // is discarded. Both the primary and its mirror are written from the same
@@ -77,6 +98,39 @@ describe("web project journal replay", () => {
     expect(() =>
       normalizeWebEnvelope({ ...written, data: assembled }, "test"),
     ).not.toThrow();
+  });
+});
+
+describe("web project journal store", () => {
+  const fakeDb = (existing = []) => ({
+    objectStoreNames: { contains: (name) => existing.includes(name) },
+    createObjectStore: (name, options) => {
+      created.push({ name, options });
+      return {
+        createIndex: (index, keyPath) => indexed.push({ index, keyPath }),
+      };
+    },
+  });
+  let created;
+  let indexed;
+  beforeEach(() => {
+    created = [];
+    indexed = [];
+  });
+
+  it("creates the store with its project index", () => {
+    createJournalStore(fakeDb());
+    expect(created).toEqual([
+      { name: WEB_JOURNAL_STORE, options: { keyPath: ["projectId", "seq"] } },
+    ]);
+    expect(indexed).toEqual([{ index: "byProject", keyPath: "projectId" }]);
+  });
+
+  // Every upgrade of the database runs this, not only the one that introduced
+  // the store. Recreating it would throw and take the upgrade with it.
+  it("leaves an existing store alone", () => {
+    createJournalStore(fakeDb([WEB_JOURNAL_STORE]));
+    expect(created).toEqual([]);
   });
 });
 

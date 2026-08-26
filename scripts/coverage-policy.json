@@ -266,10 +266,10 @@
       "lines": 94
     },
     "src/repositories/webProjectJournal.js": {
-      "statements": 95,
-      "branches": 70,
-      "functions": 98,
-      "lines": 98
+      "statements": 100,
+      "branches": 98,
+      "functions": 100,
+      "lines": 100
     },
     "src/services/archive/archivePaths.js": {
       "statements": 94,
