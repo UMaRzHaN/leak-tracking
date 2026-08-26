@@ -227,7 +227,15 @@ final class LeakDatabaseStore implements AutoCloseable {
                 null,
                 null,
                 "position ASC",
-                limit + " OFFSET " + offset
+                // `LIMIT <offset>,<count>`, а не `LIMIT <count> OFFSET
+                // <offset>`: SQLiteQueryBuilder проверяет эту строку своим
+                // шаблоном, и на Android 7 тот принимает только цифры с
+                // запятой — форма со словом OFFSET там падает с
+                // `IllegalArgumentException: invalid LIMIT clauses`. Смысл
+                // у форм один, но в запятой смещение идёт первым.
+                // minSdk у приложения 24, так что проверять это некому,
+                // кроме инструментального теста на самом низком уровне.
+                offset + "," + limit
             )
         ) {
             boolean first = true;
