@@ -1,8 +1,31 @@
 import { expect, test } from "@playwright/test";
 import { readFile, stat } from "node:fs/promises";
 import JSZip from "jszip";
+import { calculations } from "../src/utils/calculations/calculations.js";
+import { VAR_DEFAULTS } from "../src/data/variables.js";
 
 const DEFAULT_RECORD_COUNTS = [1_000, 10_000];
+
+/**
+ * Поля расчёта, которые несёт настоящая запись.
+ *
+ * Сидер пишет записи прямо в IndexedDB, минуя расчёт, и без этого у них не
+ * было ни одного параметра — а выгрузка эти колонки всё равно заполняет из
+ * переменных проекта. На импорте они возвращались как «изменённое поле» у
+ * каждой записи, и круг «выгрузить → импортировать» не сходился в принципе.
+ * Заодно записи были в полтора раза легче настоящих, то есть бюджеты
+ * измерялись по облегчённым данным.
+ *
+ * Считает та же `calculations`, что и приложение, — оба модуля ни от чего не
+ * зависят, поэтому импортируются сюда напрямую. Производные поля зависят
+ * только от `leak_speed` (давление и температуру сидер не задаёт), а он
+ * принимает двести различных значений: таблицы на двести строк хватает, и по
+ * мосту в страницу не едут десять тысяч готовых записей.
+ */
+const SPEED_VARIANTS = 200;
+const CALCULATED_BY_SPEED = Array.from({ length: SPEED_VARIANTS }, (_, index) =>
+  calculations({ leak_speed: index / 10 + 0.1 }, VAR_DEFAULTS),
+);
 
 function readRecordCounts() {
   if (!process.env.PERF_RECORDS) return DEFAULT_RECORD_COUNTS;
@@ -79,7 +102,7 @@ async function collectChromiumGarbage(page) {
 
 async function seedProject(page, recordCount, { photoCount = 0 } = {}) {
   return page.evaluate(
-    async ({ count, requestedPhotoCount }) => {
+    async ({ count, requestedPhotoCount, calculated }) => {
       const startedAt = performance.now();
       const storedPhotoCount = Math.min(count, requestedPhotoCount);
       const projectId = `perf-${count}`;
@@ -97,6 +120,7 @@ async function seedProject(page, recordCount, { photoCount = 0 } = {}) {
         const sequence = index + 1;
         const timestamp = baseTime + sequence * 60_000;
         return {
+          ...calculated[index % calculated.length],
           id: sequence,
           index: sequence,
           leak_id: `PERF-${String(sequence).padStart(5, "0")}`,
@@ -189,7 +213,11 @@ async function seedProject(page, recordCount, { photoCount = 0 } = {}) {
 
       return performance.now() - startedAt;
     },
-    { count: recordCount, requestedPhotoCount: photoCount },
+    {
+      count: recordCount,
+      requestedPhotoCount: photoCount,
+      calculated: CALCULATED_BY_SPEED,
+    },
   );
 }
 
