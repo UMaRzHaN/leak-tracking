@@ -19,25 +19,21 @@ import { normalizeLeakTag } from "@/utils/leakIdentity";
  */
 
 /*
- * Поля, которых видимый лист не касается.
+ * Поля, которых правка в таблице не касается.
  *
  * Снимки в таблице — ссылки на файлы в архиве, а в слепке лежат сами
  * изображения; взять ссылку вместо снимка значило бы потерять фотографию.
- * Остальное — служебное: идентификаторы, отметки времени и записи, которые
- * ведёт приложение, а не человек за таблицей.
+ * `index` — номер строки: его меняют перестановкой строк, а не как данные.
+ *
+ * Раньше список был длиннее и перечислял `id`, отметки времени, историю и
+ * обходы. Не потому, что их нельзя править, а потому, что правки брались из
+ * нормализованной утечки, куда `normalizeImportedLeak` дописывает всё это сам.
+ * Список догонял побочные эффекты нормализатора — и не догнал `status`,
+ * из-за чего утечка, устранённая в приложении, возвращалась из Excel
+ * открытой. Теперь правки берутся из строки листа, и перечислять там нечего:
+ * этих полей в ней просто нет.
  */
-const IGNORED_KEYS = new Set([
-  ...LEAK_PHOTO_FIELDS,
-  "id",
-  "index",
-  "created_at",
-  "createdAt",
-  "updatedAt",
-  "history",
-  "monitoringRecords",
-  "importedFromExcel",
-  "importedAt",
-]);
+const IGNORED_KEYS = new Set([...LEAK_PHOTO_FIELDS, "index"]);
 
 /** Поля, которые считаются сами и идут следом за своим источником. */
 const DERIVED_KEYS = new Map([["priority", "leak_speed"]]);
@@ -77,18 +73,12 @@ function sameValue(left, right) {
  * @param {Record<string, any>} row строка видимого листа
  * @returns {{leak: Record<string, any>, changed: string[]}}
  */
-function applyRowEdits(base, row, { statusFromSheet = true } = {}) {
+function applyRowEdits(base, row) {
   const changed = [];
   const leak = { ...base };
 
   for (const [key, value] of Object.entries(row)) {
     if (IGNORED_KEYS.has(key) || DERIVED_KEYS.has(key)) continue;
-    // Статуса в строке не было — его дописал `normalizeImportedLeak`, потому
-    // что путь без слепка обязан отдать утечку со статусом. Здесь слепок
-    // полнее: принять дописанное за правку значило бы откатить статус,
-    // который человек в таблице не трогал. Так терялось «устранена» после
-    // круга через Excel, если ячейку не удавалось прочитать.
-    if (key === "status" && !statusFromSheet) continue;
     // Пустая ячейка — это «здесь ничего не написано», а не «сотри то, что
     // знает приложение»: в таблице нет всех полей карточки, и вычищать по ней
     // означало бы терять данные при каждом круге.
@@ -122,7 +112,7 @@ function applyRowEdits(base, row, { statusFromSheet = true } = {}) {
 export function mergeSheetEditsIntoBackup(
   backupLeaks,
   sheetLeaks,
-  { statusFromSheet = null } = {},
+  { sheetRows = null } = {},
 ) {
   const leaks = Array.isArray(backupLeaks) ? [...backupLeaks] : [];
   const rows = Array.isArray(sheetLeaks) ? sheetLeaks : [];
@@ -140,7 +130,7 @@ export function mergeSheetEditsIntoBackup(
   const added = [];
   let edited = 0;
 
-  for (const row of rows) {
+  for (const [rowIndex, row] of rows.entries()) {
     const tag = normalizeLeakTag(row?.leak_id);
     const index = tag ? indexByTag.get(tag) : undefined;
     if (index === undefined) {
@@ -149,11 +139,10 @@ export function mergeSheetEditsIntoBackup(
     }
 
     seenTags.add(tag);
-    const { leak, changed } = applyRowEdits(leaks[index], row, {
-      // `null` — вызывающая сторона не знает, что дала таблица: тогда
-      // поведение прежнее, статус считается пришедшим из листа.
-      statusFromSheet: statusFromSheet == null || statusFromSheet.has(tag),
-    });
+    // Строка листа, если её дали. Без неё правки берутся из самой утечки —
+    // так зовут этот модуль тесты и так он работал раньше.
+    const edits = sheetRows?.[rowIndex] ?? row;
+    const { leak, changed } = applyRowEdits(leaks[index], edits);
     if (changed.length === 0) continue;
     leaks[index] = leak;
     edited += 1;

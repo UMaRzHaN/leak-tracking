@@ -103,9 +103,7 @@ export async function parseExcelLeaks(
     const merged = mergeSheetEditsIntoBackup(
       embeddedBackup.leaks,
       sheet.leaks,
-      {
-        statusFromSheet: new Set(sheet.sheetStatusLeakIds ?? []),
-      },
+      { sheetRows: sheet.sheetRows },
     );
 
     return {
@@ -180,6 +178,10 @@ async function parseLeakSheets(workbook, { projectType } = {}) {
   const leaks = [];
   const seenLeakTags = new Set();
   const explicitStatusLeakIds = new Set();
+  // Строки листа как они есть — до того как нормализатор дописал в них
+  // недостающее. Слияние берёт правки отсюда: правкой человека может быть
+  // только то, что таблица действительно дала.
+  const sheetRows = [];
   let totalRows = 0;
   let skipped = 0;
   let duplicateLeakIds = 0;
@@ -287,6 +289,7 @@ async function parseLeakSheets(workbook, { projectType } = {}) {
     if (leakTag) seenLeakTags.add(leakTag);
     if (raw.status) explicitStatusLeakIds.add(leakTag);
     leaks.push(leak);
+    sheetRows.push(raw);
   }
 
   const monitoringSheet = findMonitoringSheet(workbook);
@@ -342,10 +345,7 @@ async function parseLeakSheets(workbook, { projectType } = {}) {
     historySheetName: historySheet?.name ?? "",
     monitoringRound,
     inferredStatusLeakIds,
-    // Строки, где статус в таблице действительно стоял. Нужен слиянию: у
-    // остальных статус дописал `normalizeImportedLeak`, и принимать его за
-    // правку человека нельзя.
-    sheetStatusLeakIds: [...explicitStatusLeakIds],
+    sheetRows,
     project: resolvedProjectType ? { type: resolvedProjectType } : null,
   };
 }

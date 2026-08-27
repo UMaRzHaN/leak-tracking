@@ -197,6 +197,16 @@ export function normalizeCellValue(
   }
   if (NUMERIC_KEYS.has(key)) {
     const numeric = parseNumberValue(value);
+    // Координата вне диапазона не импортируется — так и написано в
+    // предупреждении, которое выдаёт разбор. Отсеивается здесь, а не после,
+    // чтобы негодное значение вовсе не попало в строку: слияние берёт из неё
+    // правки, и координата, отброшенная позже, успела бы сойти за правку.
+    if (key === "lat" && numeric != null && !isValidLatitude(numeric)) {
+      return null;
+    }
+    if (key === "lng" && numeric != null && !isValidLongitude(numeric)) {
+      return null;
+    }
     return numeric != null && percentFormatted && WHOLE_PERCENT_KEYS.has(key)
       ? numeric * 100
       : numeric;
