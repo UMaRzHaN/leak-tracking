@@ -52,9 +52,17 @@ const STATUS_BY_VALUE = new Map(
       value,
       "open",
     ]),
-    ...["in progress", "in_progress", "в ремонте", "ремонт", "на ремонте"].map(
-      (value) => [value, "in_progress"],
-    ),
+    ...[
+      "in progress",
+      "in_progress",
+      // Подпись, которую пишет сама выгрузка на английском
+      // (`leakDetails.statuses.in_progress`). Её тут не было, и статус после
+      // круга через Excel становился `open` — см. тест на круг подписей.
+      "under repair",
+      "в ремонте",
+      "ремонт",
+      "на ремонте",
+    ].map((value) => [value, "in_progress"]),
     ...["resolved", "устранена", "устранено", "закрыта", "закрыто"].map(
       (value) => [value, "resolved"],
     ),
@@ -68,6 +76,10 @@ const MONITORING_RESULT_BY_VALUE = new Map(
       "still_leaking",
       "leak present",
       "yes — leak present",
+      // `excelExport.monitoring.answers.still_leaking` на английском — просто
+      // «Yes». Совпадало с нужным значением только потому, что запасной
+      // вариант `normalizeMonitoringResult` и есть `still_leaking`.
+      "yes",
       "да",
       "да — утечка есть",
       "утечка есть",
@@ -89,6 +101,10 @@ const MONITORING_RESULT_BY_VALUE = new Map(
       "resolved",
       "no leak",
       "no — no leak",
+      // `excelExport.monitoring.answers.resolved` на английском — просто «No».
+      // Худший из трёх промахов: обход «утечки нет» возвращался как «утечка
+      // есть».
+      "no",
       "нет",
       "нет — утечки нет",
       "утечки нет",

@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { translation as en } from "@/locales/en";
+import { translation as ru } from "@/locales/ru";
 import {
   isRecognizedMonitoringResult,
   isRecognizedStatus,
@@ -123,4 +125,51 @@ describe("Excel import value normalization", () => {
       normalizeImportedLeak({ status: "open", note: "Only note" }, 1, 1),
     ).toBeNull();
   });
+});
+
+/**
+ * Выгрузка пишет в видимый лист **переведённую подпись**, а импорт разбирает
+ * её обратно по таблице соответствий. Таблицы велись руками и от локалей
+ * отставали: английское «Under repair» в них не попало, и статус утечки после
+ * круга через Excel молча становился «Open» — `normalizeStatus` возвращает
+ * `open` на всё неузнанное. У результата обхода было хуже: «No» (утечки нет)
+ * превращалось в «Yes».
+ *
+ * Заметить это могло только что-то, работающее на английском. Единственный
+ * такой тест — `large-dataset.perf.spec.js`, он один переключает язык, и он же
+ * лежит в том job CI, который ни разу не запускался.
+ *
+ * Проверка идёт от локалей, а не от списка подписей: любая подпись, которую
+ * выгрузка способна написать на любом языке, обязана читаться обратно. Новый
+ * язык или переименование подписи ломают этот тест, а не данные пользователя.
+ */
+describe("подписи из локалей читаются обратно", () => {
+  const LANGUAGES = { ru, en };
+
+  const cases = [
+    {
+      enumName: "статус утечки",
+      values: ["open", "in_progress", "resolved"],
+      label: (translation, value) => translation.leakDetails.statuses[value],
+      normalize: normalizeStatus,
+    },
+    {
+      enumName: "результат обхода",
+      values: ["still_leaking", "needs_recheck", "resolved"],
+      label: (translation, value) =>
+        translation.excelExport.monitoring.answers[value],
+      normalize: normalizeMonitoringResult,
+    },
+  ];
+
+  for (const { enumName, values, label, normalize } of cases) {
+    for (const [language, translation] of Object.entries(LANGUAGES)) {
+      it(`${enumName}: ${language}`, () => {
+        const broken = values
+          .map((value) => ({ value, text: label(translation, value) }))
+          .filter(({ value, text }) => normalize(text) !== value);
+        expect(broken).toEqual([]);
+      });
+    }
+  }
 });
