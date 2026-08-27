@@ -77,12 +77,18 @@ function sameValue(left, right) {
  * @param {Record<string, any>} row строка видимого листа
  * @returns {{leak: Record<string, any>, changed: string[]}}
  */
-function applyRowEdits(base, row) {
+function applyRowEdits(base, row, { statusFromSheet = true } = {}) {
   const changed = [];
   const leak = { ...base };
 
   for (const [key, value] of Object.entries(row)) {
     if (IGNORED_KEYS.has(key) || DERIVED_KEYS.has(key)) continue;
+    // Статуса в строке не было — его дописал `normalizeImportedLeak`, потому
+    // что путь без слепка обязан отдать утечку со статусом. Здесь слепок
+    // полнее: принять дописанное за правку значило бы откатить статус,
+    // который человек в таблице не трогал. Так терялось «устранена» после
+    // круга через Excel, если ячейку не удавалось прочитать.
+    if (key === "status" && !statusFromSheet) continue;
     // Пустая ячейка — это «здесь ничего не написано», а не «сотри то, что
     // знает приложение»: в таблице нет всех полей карточки, и вычищать по ней
     // означало бы терять данные при каждом круге.
@@ -113,7 +119,11 @@ function applyRowEdits(base, row) {
  * @param {Record<string, any>[]} sheetLeaks
  * @returns {{leaks: Record<string, any>[], edited: number, added: number, missing: number}}
  */
-export function mergeSheetEditsIntoBackup(backupLeaks, sheetLeaks) {
+export function mergeSheetEditsIntoBackup(
+  backupLeaks,
+  sheetLeaks,
+  { statusFromSheet = null } = {},
+) {
   const leaks = Array.isArray(backupLeaks) ? [...backupLeaks] : [];
   const rows = Array.isArray(sheetLeaks) ? sheetLeaks : [];
   if (rows.length === 0) {
@@ -139,7 +149,11 @@ export function mergeSheetEditsIntoBackup(backupLeaks, sheetLeaks) {
     }
 
     seenTags.add(tag);
-    const { leak, changed } = applyRowEdits(leaks[index], row);
+    const { leak, changed } = applyRowEdits(leaks[index], row, {
+      // `null` — вызывающая сторона не знает, что дала таблица: тогда
+      // поведение прежнее, статус считается пришедшим из листа.
+      statusFromSheet: statusFromSheet == null || statusFromSheet.has(tag),
+    });
     if (changed.length === 0) continue;
     leaks[index] = leak;
     edited += 1;

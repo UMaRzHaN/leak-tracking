@@ -125,6 +125,15 @@ describe("Excel import value normalization", () => {
       normalizeImportedLeak({ status: "open", note: "Only note" }, 1, 1),
     ).toBeNull();
   });
+
+  // Неузнанный статус раньше превращался в `open` — выдуманное значение,
+  // которое дальше невозможно отличить от того, что человек так и написал.
+  it("не подставляет статус вместо неузнанного значения", () => {
+    expect(normalizeCellValue("status", "Открыта")).toBe("open");
+    expect(normalizeCellValue("status", "Under repair")).toBe("in_progress");
+    expect(normalizeCellValue("status", "")).toBe("");
+    expect(normalizeCellValue("status", "нечто неведомое")).toBe("");
+  });
 });
 
 /**

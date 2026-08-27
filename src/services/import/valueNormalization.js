@@ -182,7 +182,18 @@ export function normalizeCellValue(
 ) {
   if (key === "status") {
     const text = String(value ?? "").trim();
-    return text ? normalizeStatus(text) : "";
+    if (!text) return "";
+    // Неузнанный статус — это «прочитать не удалось», а не «человек поставил
+    // open». Подставленное значение доезжало до `mergeSheetEditsIntoBackup`
+    // неотличимым от осознанной правки и переписывало верный статус из слепка
+    // проекта. Пустая строка сюда не попадает в `raw`, и слепок остаётся —
+    // ровно так же здесь поступают с негодным путём к фотографии и с
+    // координатой вне диапазона.
+    //
+    // Путь без слепка не меняется: `normalizeImportedLeak` всё равно зовёт
+    // `normalizeStatus`, и утечка из чужой книги по-прежнему получает `open`.
+    if (!isRecognizedStatus(text)) return "";
+    return normalizeStatus(text);
   }
   if (NUMERIC_KEYS.has(key)) {
     const numeric = parseNumberValue(value);

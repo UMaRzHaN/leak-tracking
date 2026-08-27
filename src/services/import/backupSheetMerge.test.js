@@ -211,6 +211,36 @@ describe("книга, вернувшаяся из Excel", () => {
     ]);
   }, 60_000);
 
+  // Неузнанный статус — это «прочитать не удалось», а не правка. Раньше он
+  // превращался в `open`, приезжал в слияние неотличимым от осознанного
+  // редактирования и переписывал верное значение из слепка: утечка,
+  // устранённая в приложении, возвращалась из Excel открытой.
+  it("не считает правкой статус, который не удалось прочитать", async () => {
+    const column = keysOrder.indexOf("status") + 1;
+    expect(column).toBeGreaterThan(0);
+    const result = await roundTrip((sheet) => {
+      sheet.getRow(3).getCell(column).value = "Статус, которого нет";
+    });
+
+    expect(result.stats).toMatchObject({ sheetEdited: 0, exactBackup: true });
+    expect(result.leaks.map((leak) => leak.status)).toEqual([
+      "open",
+      "resolved",
+    ]);
+  }, 60_000);
+
+  // Парный к предыдущему: подавлять надо дописанный статус, а не любой.
+  // Человек, поменявший статус в таблице, должен быть услышан.
+  it("доносит статус, изменённый в таблице", async () => {
+    const column = keysOrder.indexOf("status") + 1;
+    const result = await roundTrip((sheet) => {
+      sheet.getRow(3).getCell(column).value = "Открыта";
+    });
+
+    expect(result.stats).toMatchObject({ sheetEdited: 1, exactBackup: false });
+    expect(result.leaks.map((leak) => leak.status)).toEqual(["open", "open"]);
+  }, 60_000);
+
   it("доносит строку, дописанную в конец таблицы", async () => {
     const tagColumn = keysOrder.indexOf("leak_id") + 1;
     const componentColumn = keysOrder.indexOf("component") + 1;

@@ -100,7 +100,13 @@ export async function parseExcelLeaks(
     const sheet = await parseLeakSheets(workbook, {
       projectType: embeddedBackup.project?.type ?? projectType,
     });
-    const merged = mergeSheetEditsIntoBackup(embeddedBackup.leaks, sheet.leaks);
+    const merged = mergeSheetEditsIntoBackup(
+      embeddedBackup.leaks,
+      sheet.leaks,
+      {
+        statusFromSheet: new Set(sheet.sheetStatusLeakIds ?? []),
+      },
+    );
 
     return {
       leaks: merged.leaks,
@@ -209,7 +215,7 @@ async function parseLeakSheets(workbook, { projectType } = {}) {
           rowNumber,
           column.header,
           value,
-          "Неизвестный статус; использовано значение open",
+          "Неизвестный статус; значение не импортировано",
         );
       }
       if (["lat", "lng"].includes(column.key) && String(value ?? "").trim()) {
@@ -336,6 +342,10 @@ async function parseLeakSheets(workbook, { projectType } = {}) {
     historySheetName: historySheet?.name ?? "",
     monitoringRound,
     inferredStatusLeakIds,
+    // Строки, где статус в таблице действительно стоял. Нужен слиянию: у
+    // остальных статус дописал `normalizeImportedLeak`, и принимать его за
+    // правку человека нельзя.
+    sheetStatusLeakIds: [...explicitStatusLeakIds],
     project: resolvedProjectType ? { type: resolvedProjectType } : null,
   };
 }
