@@ -72,10 +72,10 @@ const voiceControl = {
 const ComponentRegistry = (await import("./ComponentRegistry")).default;
 // The real declaration, so the form under test renders the fields it will in
 // production rather than a fixture that can drift away from the config.
-const { COMPONENT_STEPS } =
-  await import("@/configs/upstream/data/componentSteps");
-const { FIELDS: COMPONENT_FIELDS } =
-  await import("@/configs/upstream/data/componentFields");
+const { default: COMPONENT_BLOCK } =
+  await import("@/configs/upstream/data/componentBlock");
+const COMPONENT_STEPS = COMPONENT_BLOCK.steps.steps;
+const COMPONENT_FIELDS = COMPONENT_BLOCK.system.fields;
 
 const project = { id: "p1", type: "upstream", folderName: "buzahur" };
 

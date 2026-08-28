@@ -10,7 +10,7 @@ import {
 } from "@/configs/shared/fields";
 import { createFieldSets } from "@/configs/shared/fieldRegistry";
 
-const LOCATION_FIELDS = [
+export const LOCATION_FIELDS = [
   {
     key: "field",
     label: "УМГ",

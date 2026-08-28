@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import UPSTREAM_CONFIG from "@/configs/upstream/upstream.config";
 import COMPONENT_BLOCK from "@/configs/upstream/data/componentBlock";
-import {
-  FIELDS,
-  NUMBER_FIELDS,
-  REQUIRED_FIELDS,
-} from "@/configs/upstream/data/componentFields";
-import { COMPONENT_STEPS } from "@/configs/upstream/data/componentSteps";
+
+// Наборы полей и шаги больше не лежат отдельными модулями: их собирает общая
+// фабрика реестра, а тип проекта отдаёт ей свои уровни места. Проверять
+// имеет смысл собранный блок — именно его видят вызывающие стороны.
+const {
+  system: { fields: FIELDS, numeric: NUMBER_FIELDS, required: REQUIRED_FIELDS },
+  steps: { steps: COMPONENT_STEPS },
+} = COMPONENT_BLOCK;
 
 const fieldKeys = new Set(FIELDS.map((field) => field.key));
 
