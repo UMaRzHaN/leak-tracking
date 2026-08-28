@@ -7,13 +7,13 @@ import {
 describe("которые типы проектов ведут реестр компонентов", () => {
   it("отвечает по объявленному блоку, а не по имени типа", () => {
     expect(hasComponentRegistry("upstream")).toBe(true);
-    expect(hasComponentRegistry("midstream")).toBe(false);
-    expect(hasComponentRegistry("downstream")).toBe(false);
+    expect(hasComponentRegistry("midstream")).toBe(true);
+    expect(hasComponentRegistry("downstream")).toBe(true);
   });
 
   it("принимает и объект проекта, и голый тип", () => {
     expect(hasComponentRegistry({ type: "upstream" })).toBe(true);
-    expect(hasComponentRegistry({ type: "midstream" })).toBe(false);
+    expect(hasComponentRegistry({ type: "midstream" })).toBe(true);
   });
 
   it("у незнакомого типа реестра нет", () => {
@@ -22,8 +22,13 @@ describe("которые типы проектов ведут реестр ко�
   });
 
   it("перечисляет типы, куда можно принять архив инвентаризации", () => {
-    // Архив не несёт ни имени проекта, ни его типа. Пока ответ один — спрашивать
-    // человека не о чем; станет несколько — вызывающая сторона это увидит.
-    expect(componentRegistryProjectTypes()).toEqual(["upstream"]);
+    // Архив не несёт ни имени проекта, ни его типа. Пока ответ был один,
+    // вызывающая сторона подставляла его молча; теперь их три, и выбор
+    // приходится показать человеку.
+    expect(componentRegistryProjectTypes()).toEqual([
+      "upstream",
+      "midstream",
+      "downstream",
+    ]);
   });
 });

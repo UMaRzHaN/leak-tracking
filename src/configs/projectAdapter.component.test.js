@@ -8,26 +8,33 @@ import {
 const upstreamRegistry = await loadComponentRegistry("upstream");
 
 describe("component registry availability", () => {
-  it("is on for upstream and off for the streams without a declared block", () => {
+  it("is on for every type that declares a block", () => {
     expect(hasComponentRegistry("upstream")).toBe(true);
-    expect(hasComponentRegistry("midstream")).toBe(false);
-    expect(hasComponentRegistry("downstream")).toBe(false);
+    expect(hasComponentRegistry("midstream")).toBe(true);
+    expect(hasComponentRegistry("downstream")).toBe(true);
   });
 
   it("accepts a project object the same way the leak helpers do", () => {
     expect(hasComponentRegistry({ type: "upstream" })).toBe(true);
   });
 
+  // Пока реестр вёл один тип, «нет» на незнакомый тип получалось само:
+  // подстановка по умолчанию приводила к midstream, у которого блока не было.
+  // Теперь блок есть у всех, и ответ должен быть по существу, а не по тому,
+  // на какой тип пришлась подстановка.
   it("treats an unknown type as having no registry", () => {
-    // resolveConfig falls back to midstream, which declares no block.
     expect(hasComponentRegistry("nonsense")).toBe(false);
+    expect(hasComponentRegistry(null)).toBe(false);
   });
 
+  // Загрузчик обязан отвечать так же, как проверка доступности: иначе
+  // `hasComponentRegistry` сказал бы «нет», а `loadComponentRegistry` молча
+  // отдал бы чужой реестр.
   it("throws a recognisable error instead of returning junk", async () => {
-    await expect(loadComponentRegistry("midstream")).rejects.toThrowError(
+    await expect(loadComponentRegistry("nonsense")).rejects.toThrowError(
       /no component registry/i,
     );
-    await expect(loadComponentRegistry("midstream")).rejects.toMatchObject({
+    await expect(loadComponentRegistry("nonsense")).rejects.toMatchObject({
       code: "NO_COMPONENT_REGISTRY",
     });
   });

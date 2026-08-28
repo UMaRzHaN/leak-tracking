@@ -22,7 +22,9 @@ const { notifyComponentRegistryChanged } =
 
 const upstream = { id: "p1", type: "upstream", folderName: "buzahur" };
 const otherUpstream = { id: "p2", type: "upstream", folderName: "messoyaha" };
-const midstream = { id: "p3", type: "midstream", folderName: "umg" };
+// Реестр ведут все три типа проекта, поэтому «без реестра» — это тип,
+// которого в конфигурации нет вовсе.
+const withoutRegistry = { id: "p3", type: "unknown", folderName: "none" };
 
 function mount(useSubject = () => useComponentRegistryStore()) {
   return renderHook(useSubject, { wrapper: ComponentRegistryProvider });
@@ -59,7 +61,7 @@ describe("ComponentRegistryProvider", () => {
   });
 
   it("молчит для типа проекта без реестра", async () => {
-    mocks.activeProject = midstream;
+    mocks.activeProject = withoutRegistry;
     const { result } = mount();
 
     await act(async () => {});

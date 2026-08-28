@@ -10,7 +10,8 @@ vi.mock("@/app/hooks/useLanguage", async () => {
 const Footer = (await import("./Footer")).default;
 
 const upstream = { id: "p1", type: "upstream" };
-const midstream = { id: "p2", type: "midstream" };
+// Тип без объявленного блока реестра: все настоящие типы его теперь ведут.
+const withoutRegistry = { id: "p2", type: "unknown" };
 
 function renderFooter(project, page = "") {
   const setPage = vi.fn();
@@ -40,7 +41,7 @@ describe("Footer navigation", () => {
   });
 
   it("hides the registry for a project type without one", () => {
-    renderFooter(midstream);
+    renderFooter(withoutRegistry);
     expect(screen.queryByLabelText("Registry")).toBeNull();
   });
 

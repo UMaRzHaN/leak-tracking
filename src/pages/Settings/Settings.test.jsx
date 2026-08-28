@@ -393,7 +393,7 @@ describe("Settings", () => {
   });
 
   it("hides the registry photo switch for a project without a registry", () => {
-    mocks.activeProject = { ...mocks.activeProject, type: "midstream" };
+    mocks.activeProject = { ...mocks.activeProject, type: "unknown" };
     render(
       <Settings
         data={[]}

@@ -268,7 +268,7 @@ describe("readComponentRegistryIds", () => {
   it("молчит там, где реестра не ведут вовсе", async () => {
     // У типа проекта без реестра «связь битая» — не диагноз, а бессмыслица.
     await expect(
-      readComponentRegistryIds({ id: "p2", type: "midstream" }),
+      readComponentRegistryIds({ id: "p2", type: "unknown" }),
     ).resolves.toBeNull();
     expect(mocks.loadComponents).not.toHaveBeenCalled();
   });

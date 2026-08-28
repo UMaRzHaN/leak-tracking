@@ -14,17 +14,22 @@ import { PROJECTS } from "./projects";
  * это то же обещание, что и в projectAdapter.
  */
 
-function resolveConfig(project) {
-  const type = project?.type ?? project;
-  return PROJECTS[type] ?? PROJECTS.midstream;
-}
-
 /**
- * @param {object|string} project
+ * Без подстановки типа по умолчанию — намеренно.
+ *
+ * Раньше незнакомый тип и `null` уходили в `PROJECTS.midstream`, и ответом было
+ * «нет» просто потому, что midstream реестра не вёл. Теперь его ведут все три
+ * типа, и та же подстановка стала бы отвечать «да» на вопрос о проекте,
+ * которого не существует, — раздел реестра появился бы в навигации у пустоты.
+ * Незнакомый тип не ведёт реестра, и это ответ по существу, а не следствие
+ * того, на какой тип пришлась подстановка.
+ *
+ * @param {{type?: string}|string} project
  * @returns {boolean}
  */
 export function hasComponentRegistry(project) {
-  return typeof resolveConfig(project)?.components?.load === "function";
+  const type = /** @type {{type?: string}} */ (project)?.type ?? project;
+  return typeof PROJECTS[type]?.components?.load === "function";
 }
 
 /**

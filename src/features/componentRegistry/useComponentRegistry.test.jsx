@@ -22,7 +22,9 @@ const { ComponentRegistryProvider } =
   await import("./ComponentRegistryContext");
 
 const upstream = { id: "p1", type: "upstream", folderName: "buzahur" };
-const midstream = { id: "p2", type: "midstream", folderName: "umg" };
+// Реестр ведут все три типа проекта, поэтому «без реестра» — это тип,
+// которого в конфигурации нет вовсе.
+const withoutRegistry = { id: "p2", type: "unknown", folderName: "none" };
 
 /**
  * Хук проверяется вместе с провайдером, а не вместо него: список и очередь
@@ -46,7 +48,7 @@ describe("useComponentRegistry", () => {
   });
 
   it("stays off for a project type without a declared registry", async () => {
-    const { result } = render(midstream);
+    const { result } = render(withoutRegistry);
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.enabled).toBe(false);

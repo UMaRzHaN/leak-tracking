@@ -207,7 +207,12 @@ export function getProjectMapBehavior(project) {
  * }>}
  */
 export async function loadComponentRegistry(project) {
-  const loader = resolveConfig(project)?.components?.load;
+  // Без подстановки midstream по умолчанию — в отличие от остальных вопросов к
+  // адаптеру. Реестр теперь ведут все типы, и подстановка молча отдала бы
+  // чужой реестр проекту неизвестного типа. Ответ должен совпадать с
+  // `hasComponentRegistry`, который на такой тип отвечает «нет».
+  const type = /** @type {{type?: string}} */ (project)?.type ?? project;
+  const loader = PROJECTS[type]?.components?.load;
   if (typeof loader !== "function") {
     const error = new Error(
       "Project type has no component registry configured",

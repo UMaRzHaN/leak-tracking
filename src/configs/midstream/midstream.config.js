@@ -122,6 +122,14 @@ const MIDSTREAM_CONFIG = Object.freeze({
       ...withRequiredExcelColumns(EXCEL_COLUMNS),
     },
   },
+
+  /**
+   * Реестр компонентов. Тип, не объявивший этот блок, реестра просто не имеет —
+   * признак выводится из конфигурации, а не из имени типа.
+   */
+  components: {
+    load: () => import("./data/componentBlock"),
+  },
 });
 
 export default MIDSTREAM_CONFIG;
