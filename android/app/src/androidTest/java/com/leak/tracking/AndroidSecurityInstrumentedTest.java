@@ -95,13 +95,15 @@ public class AndroidSecurityInstrumentedTest {
     }
 
     /**
-     * {@code UiAutomation.grantRuntimePermission} тоже появился в API 28 — как
-     * и {@code getProtection()} ниже. На 24 вызов уходил в
-     * {@code NoSuchMethodError}, то есть тест не проверял разрешения ровно на
-     * том уровне, который объявлен минимальным. Пропустить его там значило бы
-     * оставить пол поддержки без проверки, поэтому на старых уровнях
-     * разрешение выдаётся через shell — так же, как это делает
-     * {@code GrantPermissionRule}.
+     * {@code UiAutomation.grantRuntimePermission} появился в API 28, и пока
+     * minSdk был 24, на нижнем уровне матрицы вызов уходил в
+     * {@code NoSuchMethodError} — разрешения не проверялись ровно там, где это
+     * было нужно. Теперь minSdk 33, и ветка через shell недостижима.
+     *
+     * Оставлена намеренно: она стоит четыре строки, а minSdk — величина, за
+     * которую держится парк устройств заказчика, и опуститься обратно дешевле,
+     * чем восстанавливать выясненное однажды. Удалять её стоит вместе с
+     * остальным кодом совместимости, а не поодиночке.
      */
     private static void grantRuntimePermission(
         UiAutomation automation,
@@ -128,8 +130,9 @@ public class AndroidSecurityInstrumentedTest {
 
     /**
      * {@code getProtection()} replaced the {@code protectionLevel} field in
-     * API 28, but minSdk is 24, so the legacy read has to stay for older
-     * devices. The suppression is scoped to that one branch.
+     * API 28. minSdk is 33, so the legacy read below is unreachable; it is kept
+     * for the same reason as the shell fallback above — cheap, and minSdk is a
+     * number that can come back down.
      */
     @SuppressWarnings("deprecation")
     private static int basePermissionProtection(PermissionInfo info) {
