@@ -90,7 +90,6 @@ export const settings = {
   connectionError: "Connection error",
   qrCodeError: "QR code error",
   databaseImportedByQr: 'Database imported by QR: "{{v1}}" ({{v2}} records)',
-  qrImportError: "QR import error",
   import: "Import...",
   projectTypes: {
     upstream: "Upstream",

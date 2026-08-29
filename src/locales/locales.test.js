@@ -191,6 +191,59 @@ describe("locales", () => {
 
     expect(untranslated).toEqual([]);
   });
+
+  // Ключи, которые собираются во время работы, а не написаны литералом.
+  // Обратной проверке ниже их не найти по определению, и каждая строка здесь —
+  // утверждение о том, откуда ключ берётся, а не отговорка.
+  const COMPOSED_AT_RUNTIME = [
+    // Коды отказов синхронизации приходят от Android-плагина; в JS их нет
+    // вовсе, их подставляет `errorText` по `error.code`.
+    /^syncErrors\./,
+    // Суффикс контекста i18next по типу проекта: `t("…placeholder", { context })`.
+    /\.placeholder_(upstream|midstream|downstream)$/,
+  ];
+
+  // Обратная сторона проверки выше. Та идёт от кода к локали и ловит ключ,
+  // которого нет; эта идёт от локали к коду и ловит перевод, который никто не
+  // просит. Такой перевод не виден никак: он не ломает экран, не роняет тест и
+  // не отличим от нужного — его просто продолжают переводить на второй язык
+  // при каждой правке. Так дожили пять записей: `components.removeShort`,
+  // `historyTitle`, `allLocations`, `map.sheet.filterBy` и
+  // `settings.qrImportError` — следы удалённых кнопок.
+  //
+  // Ключ считается востребованным и по полному пути, и по последнему сегменту:
+  // сегмент закрывает `t(`components.${name}`)` и обращение по свойству, то
+  // есть проверка намеренно снисходительна. Её цель — заметить забытое, а не
+  // доказать, что каждый ключ достижим.
+  it("не держит переводов, которых код не просит", () => {
+    const files = execSync(
+      "find src e2e -name '*.js' -o -name '*.jsx' | grep -v '/locales/'",
+      { encoding: "utf8" },
+    )
+      .trim()
+      .split("\n");
+    const blob = files.map((file) => readFileSync(file, "utf8")).join("\n");
+
+    const orphaned = flattenKeys(ru).filter((key) => {
+      if (COMPOSED_AT_RUNTIME.some((pattern) => pattern.test(key)))
+        return false;
+      const leaf = key.slice(key.lastIndexOf(".") + 1);
+      return !blob.includes(key) && !new RegExp(`\\b${leaf}\\b`).test(blob);
+    });
+
+    expect(orphaned).toEqual([]);
+  });
+
+  // Сторож самого списка: правило, которому больше нечего покрывать, молча
+  // возвращает целому неймспейсу право копить мусор.
+  it("не держит лишних правил в списке собираемых ключей", () => {
+    const keys = flattenKeys(ru);
+    const unusedRules = COMPOSED_AT_RUNTIME.filter(
+      (pattern) => !keys.some((key) => pattern.test(key)),
+    ).map(String);
+
+    expect(unusedRules).toEqual([]);
+  });
 });
 
 /**

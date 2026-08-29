@@ -38,7 +38,6 @@ export const map = {
 
   sheet: {
     title: "Map filters",
-    filterBy: "Filter by:",
     notSpecified: "Not specified",
     searchPlaceholder: "Search by tag number...",
     searchLabel: "Search by tag number",

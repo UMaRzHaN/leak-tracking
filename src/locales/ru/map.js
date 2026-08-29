@@ -39,7 +39,6 @@ export const map = {
 
   sheet: {
     title: "Фильтры карты",
-    filterBy: "Фильтр по:",
     notSpecified: "Не указано",
     searchPlaceholder: "Поиск по номеру бирки...",
     searchLabel: "Поиск по номеру бирки",

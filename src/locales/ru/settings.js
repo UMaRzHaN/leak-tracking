@@ -90,7 +90,6 @@ export const settings = {
   connectionError: "Ошибка подключения",
   qrCodeError: "Ошибка QR-кода",
   databaseImportedByQr: "База импортирована по QR: «{{v1}}» ({{v2}} записей)",
-  qrImportError: "Ошибка импорта по QR",
   import: "Импорт...",
   projectTypes: {
     upstream: "Добыча",
