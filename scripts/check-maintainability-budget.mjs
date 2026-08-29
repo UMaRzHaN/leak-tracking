@@ -10,6 +10,18 @@ import path from "node:path";
  * самые новые. Правило перевёрнуто: ограничены все, а превышение требует
  * отдельной строки в `exceptions` — то есть решения, а не умолчания.
  *
+ * Ту же ошибку правило повторяло на уровне выше: «все» означало `src/**` и
+ * только `.js`/`.jsx`. Вне охвата росли `LocalSyncPlugin.java` — 1872 строки,
+ * вдвое больше самого длинного файла под потолком, — таблицы стилей до 1281
+ * строки, `scripts/`, `performance/` и `vite.config.mjs`. Обход идёт от корня
+ * репозитория: каталог выпадает из бюджета только записью в
+ * `ignoredDirectories`, то есть тем же решением, что и превышение.
+ *
+ * Тесты по-прежнему вне бюджета — `.test.`, `.spec.` и `*Test.java`. Длина у
+ * них своя природа: сорок два файла из двухсот шестидесяти семи длиннее трёхсот
+ * строк, и внесение их разом превратило бы `exceptions` в шум. Это следующий
+ * кандидат, но отдельной задачей и со своим потолком.
+ *
  * `stricter` — обратный случай: модули, которым потолок задан жёстче общего,
  * потому что их намеренно держат маленькими.
  */
@@ -17,7 +29,18 @@ import path from "node:path";
 const policy = JSON.parse(
   readFileSync("scripts/maintainability-budget.json", "utf8"),
 );
-const { maxLines, exceptions = {}, stricter = {} } = policy;
+const {
+  maxLines,
+  extensions,
+  ignoredDirectories,
+  exceptions = {},
+  stricter = {},
+} = policy;
+
+const sourceExtension = new RegExp(`\\.(${extensions.join("|")})$`);
+const ignored = new Set(ignoredDirectories);
+const isTestFile = (name) =>
+  /\.test\.|\.spec\./.test(name) || /Test\.java$/.test(name);
 
 function countLines(filePath) {
   const source = readFileSync(filePath, "utf8");
@@ -34,15 +57,21 @@ function collectSourceFiles(directory) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const full = path.posix.join(directory, entry.name);
     if (entry.isDirectory()) {
+      if (ignored.has(full) || entry.name.startsWith(".")) continue;
       found.push(...collectSourceFiles(full));
-    } else if (/\.(js|jsx)$/.test(entry.name) && !/\.test\./.test(entry.name)) {
+    } else if (sourceExtension.test(entry.name) && !isTestFile(entry.name)) {
       found.push(full);
     }
   }
   return found.sort();
 }
 
-const sourceFiles = collectSourceFiles("src");
+// `.` — весь репозиторий, начиная с конфигов в корне: `vite.config.mjs` длиной
+// в 460 строк не лежал ни под одним потолком именно потому, что не лежит ни в
+// одном каталоге.
+const sourceFiles = collectSourceFiles(".").map((file) =>
+  file.replace(/^\.\//, ""),
+);
 
 const failures = [];
 
