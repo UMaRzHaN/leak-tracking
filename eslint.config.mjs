@@ -59,6 +59,7 @@ export default defineConfig(
         global: "readonly",
         HTMLElement: "readonly",
         HTMLAnchorElement: "readonly",
+        HTMLInputElement: "readonly",
         Image: "readonly",
         indexedDB: "readonly",
         it: "readonly",
