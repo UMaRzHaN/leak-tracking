@@ -225,6 +225,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     incomingMeta: meta,
     localSettings,
     localSyncState,
+    localVars: readStoredProjectVars(existingProjectId),
     shouldApplyIncomingProjectSettings,
   });
   if (isSync && incomingSyncState) {

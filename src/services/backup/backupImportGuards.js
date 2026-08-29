@@ -122,6 +122,21 @@ export function resolveSyncIdDecision({
 }
 
 /**
+ * Устойчивая запись параметров расчёта: ключи по алфавиту.
+ *
+ * Нужна только для разрешения ничьей, и важно в ней одно — что обе стороны
+ * получат одну и ту же строку для одних и тех же параметров.
+ */
+function comparableVars(value) {
+  if (value == null || typeof value !== "object") return "";
+  return JSON.stringify(
+    Object.keys(value)
+      .sort()
+      .map((key) => [key, value[key]]),
+  );
+}
+
+/**
  * Что из архива берётся поверх местного, а что остаётся своим.
  *
  * Три режима расходятся именно здесь: перезапись берёт настройки и параметры
@@ -136,16 +151,27 @@ export function resolveIncomingApplication({
   incomingMeta,
   localSettings,
   localSyncState,
+  localVars = null,
   shouldApplyIncomingProjectSettings,
 }) {
   const incomingSyncState = incomingMeta?.sync;
   const incomingSettings = incomingMeta?.settings ?? null;
   const hasIncomingSettings = Boolean(incomingSettings);
 
+  // Ничья по отметке разрешается сравнением самих параметров — так же, как у
+  // настроек проекта строкой ниже. Без этого при равных отметках ни одна
+  // сторона не принимала чужое: каждый телефон оставлял своё, и параметры
+  // расчёта расходились навсегда — а по ним считаются выбросы, то есть два
+  // телефона выдавали по одному проекту разные числа. Ничья не экзотика:
+  // отметку выдают логические часы, и два устройства, отсчитавшие её от одного
+  // увиденного числа, получают одно и то же.
+  const incomingVarsAt = incomingSyncState?.varsUpdatedAt ?? 0;
   const shouldApplyIncomingVars = Boolean(
     isSync &&
     incomingMeta?.vars &&
-    (incomingSyncState?.varsUpdatedAt ?? 0) > localSyncState.varsUpdatedAt,
+    (incomingVarsAt > localSyncState.varsUpdatedAt ||
+      (incomingVarsAt === localSyncState.varsUpdatedAt &&
+        comparableVars(incomingMeta.vars) > comparableVars(localVars))),
   );
 
   const shouldApplyIncomingSettings = Boolean(
