@@ -1,6 +1,11 @@
 import { normalizeLeakFieldVersions } from "@/services/storage/leakFieldVersions";
 import { parseTime } from "./projectMeta";
-import { comparableExcelDate, isEmptyMergeValue } from "./mergeValues";
+import {
+  comparableExcelDate,
+  findByRoundAndTime,
+  isEmptyMergeValue,
+  sameMonitoringRound,
+} from "./mergeValues";
 import { fromEntries } from "@/utils/fromEntries";
 
 function getRecordMergeIdentity(record, index, arrayKey) {
@@ -194,7 +199,6 @@ export function mergeRecordArray(
     // still need the legacy calendar-day fallback, but a timed record must never
     // overwrite the first monitoring entry from the same day.
     if (options.source === "excel" && arrayKey === "monitoringRecords") {
-      const recordTime = parseTime(record?.date);
       const recordHasTimeOfDay = (() => {
         const parsed = new Date(record?.date);
         if (!Number.isFinite(parsed.getTime())) return false;
@@ -210,13 +214,8 @@ export function mergeRecordArray(
           parsed.getUTCMilliseconds() === 0;
         return !isLocalMidnight && !isUtcMidnight;
       })();
-      const matchesExcelTimestamp = (current) =>
-        (Number(current?.roundNumber) || 1) ===
-          (Number(record?.roundNumber) || 1) &&
-        parseTime(current?.date) === recordTime;
       const matchesExcelCalendarRow = (current) =>
-        (Number(current?.roundNumber) || 1) ===
-          (Number(record?.roundNumber) || 1) &&
+        sameMonitoringRound(current, record) &&
         comparableExcelDate(current?.date) ===
           comparableExcelDate(record?.date);
 
@@ -225,13 +224,23 @@ export function mergeRecordArray(
           merged[existingIndex],
         );
       } else {
-        existingIndex = merged.findIndex(matchesExcelTimestamp);
+        existingIndex = findByRoundAndTime(merged, record);
         if (existingIndex < 0 && !recordHasTimeOfDay) {
           existingIndex = merged.findIndex(matchesExcelCalendarRow);
         }
         matchedExcelCalendarRow = existingIndex >= 0;
         if (existingIndex < 0) existingIndex = undefined;
       }
+    }
+
+    // То же узнавание для архива. Идентификатор записи зависит от того, где
+    // её завели: приложение пишет `<id утечки>-<время>`, разбор листа —
+    // `excel-<тег>-round-<N>-<строка>`. Проект приходит на телефоны обоими
+    // путями, и при обмене архивом один обход приезжал дважды. Сравнение по
+    // миллисекунде безопасно: на ней построен и сам идентификатор.
+    if (existingIndex == null && arrayKey === "monitoringRecords") {
+      const found = findByRoundAndTime(merged, record);
+      if (found >= 0) existingIndex = found;
     }
 
     if (existingIndex == null) {

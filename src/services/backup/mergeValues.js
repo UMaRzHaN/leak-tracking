@@ -1,5 +1,6 @@
 import { LEAK_FIELD_VERSIONS_KEY } from "@/services/storage/leakFieldVersions";
 import { PHOTO_KEYS } from "./constants";
+import { parseTime } from "./projectMeta";
 
 export const MERGE_IGNORED_FIELD_KEYS = new Set([
   "id",
@@ -127,4 +128,20 @@ export function buildMergeHistoryChanges(
         to: serializeMergeHistoryValue(mergedLeak?.[key]),
       };
     });
+}
+
+export const sameMonitoringRound = (left, right) =>
+  (Number(left?.roundNumber) || 1) === (Number(right?.roundNumber) || 1);
+
+/**
+ * Индекс записи о том же событии мониторинга: тот же обход, та же метка
+ * времени до миллисекунды. Отвечает `-1`, если времени нет.
+ */
+export function findByRoundAndTime(records, record) {
+  const time = parseTime(record?.date);
+  if (!(time > 0)) return -1;
+  return records.findIndex(
+    (current) =>
+      sameMonitoringRound(current, record) && parseTime(current?.date) === time,
+  );
 }
