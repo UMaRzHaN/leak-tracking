@@ -1,6 +1,5 @@
 package com.leak.tracking;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,20 +24,5 @@ final class ExportPathSafety {
             if (!segment.isEmpty()) safeSegments.add(segment);
         }
         return String.join("/", safeSegments);
-    }
-
-    static File resolveDescendant(File root, String relativePath) throws Exception {
-        File canonicalRoot = root.getCanonicalFile();
-        File candidate = relativePath == null || relativePath.isEmpty()
-            ? canonicalRoot
-            : new File(canonicalRoot, relativePath).getCanonicalFile();
-        String rootPrefix = canonicalRoot.getPath() + File.separator;
-        if (
-            !candidate.equals(canonicalRoot) &&
-            !candidate.getPath().startsWith(rootPrefix)
-        ) {
-            throw new Exception("Export path escapes the Documents directory");
-        }
-        return candidate;
     }
 }

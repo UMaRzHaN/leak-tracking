@@ -4,12 +4,9 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.system.Os;
 import android.util.Base64;
-import androidx.annotation.RequiresApi;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -208,9 +205,7 @@ public class PublicFileWriterPlugin extends Plugin {
                     String safeFolder = ExportPathSafety.sanitizeRelativePath(folder);
                     String safeFileName = sanitizeFileName(fileName);
                     if (safeFileName.isEmpty()) throw new Exception("fileName contains no valid characters");
-                    String savedPath = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
-                        ? writeWithMediaStore(safeFolder, safeFileName, mimeType, source)
-                        : writeLegacy(safeFolder, safeFileName, source);
+                    String savedPath = writeWithMediaStore(safeFolder, safeFileName, mimeType, source);
                     JSObject result = new JSObject();
                     result.put("path", savedPath);
                     call.resolve(result);
@@ -226,7 +221,6 @@ public class PublicFileWriterPlugin extends Plugin {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.Q)
     private String writeWithMediaStore(String folder, String fileName, String mimeType, InputStream source) throws Exception {
         ContentResolver resolver = getContext().getContentResolver();
         Uri collection = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
@@ -294,7 +288,6 @@ public class PublicFileWriterPlugin extends Plugin {
      *
      * @return the name the file actually carries afterwards
      */
-    @RequiresApi(Build.VERSION_CODES.Q)
     private String renameToRequested(ContentResolver resolver, Uri item, String fileName) {
         try (
             Cursor cursor = resolver.query(
@@ -371,23 +364,6 @@ public class PublicFileWriterPlugin extends Plugin {
         } catch (Exception ignored) {
             // Export should still proceed even if cleanup is blocked by scoped storage.
         }
-    }
-
-    private String writeLegacy(String folder, String fileName, InputStream source) throws Exception {
-        File documents = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
-        File outputDir = ExportPathSafety.resolveDescendant(documents, folder);
-        if (!outputDir.exists() && !outputDir.mkdirs()) {
-            throw new Exception("Unable to create export folder");
-        }
-
-        File output = new File(outputDir, fileName);
-        AtomicFileWriter.replace(
-            output,
-            source,
-            (pending, target) -> Os.rename(pending.getAbsolutePath(), target.getAbsolutePath())
-        );
-
-        return output.getAbsolutePath();
     }
 
     private void discardPreparedExport(String token) {
