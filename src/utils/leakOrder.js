@@ -59,3 +59,24 @@ export function compareLeakRecency(left, right) {
 
   return compareLeakIds(right, left);
 }
+
+/**
+ * Запись, добавленная последней, — по времени, а не по месту в массиве.
+ *
+ * Форма подсказок брала `data[data.length - 1]`. Пока записи только
+ * дописывались в конец, это совпадало с замыслом; после импорта — нет. Лист
+ * Excel пишется в том порядке, в каком его показывает база, то есть от новых к
+ * старым; импорт порядок листа сохраняет, и в конце массива оказывается самая
+ * старая запись. Подсказки предлагали значения из неё.
+ *
+ * @param {object[]} leaks
+ * @returns {object|null}
+ */
+export function findLatestLeak(leaks) {
+  /** @type {object|null} */
+  let latest = null;
+  for (const leak of leaks ?? []) {
+    if (!latest || compareLeakRecency(leak, latest) < 0) latest = leak;
+  }
+  return latest;
+}

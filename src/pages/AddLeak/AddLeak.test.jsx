@@ -74,7 +74,7 @@ vi.mock("./components/AddLeakSuccess", () => ({
   ),
 }));
 vi.mock("@/features/leakForm/LeakForm", () => ({
-  default: ({ onAdd, onSaved }) => (
+  default: ({ onAdd, onSaved, lastItem }) => (
     <div>
       <button
         onClick={async () => {
@@ -84,6 +84,8 @@ vi.mock("@/features/leakForm/LeakForm", () => ({
       >
         submit-leak
       </button>
+      {/* Форма показывает значения этой записи серым в пустых полях. */}
+      <span data-testid="last-item">{lastItem?.id ?? "нет"}</span>
     </div>
   ),
 }));
@@ -118,6 +120,33 @@ describe("AddLeak orchestration", () => {
     mocks.hapticSuccess.mockReset();
     mocks.hapticWarning.mockReset();
     window.scrollTo = vi.fn();
+  });
+
+  describe("запись, с которой берутся подсказки", () => {
+    // Лист Excel пишется в том порядке, в каком его показывает база — от новых
+    // к старым, — а импорт порядок листа сохраняет. Поэтому в конце массива
+    // после импорта лежит самая старая запись, и `data[data.length - 1]`
+    // предлагал подсказки из неё.
+    const older = { id: "старая", createdAt: 1_000, object: "старый объект" };
+    const newer = { id: "новая", createdAt: 5_000, object: "новый объект" };
+
+    it("берёт самую свежую, а не последнюю в массиве", () => {
+      renderAddLeak({ data: [newer, older] });
+
+      expect(screen.getByTestId("last-item")).toHaveTextContent("новая");
+    });
+
+    it("не зависит от порядка хранения", () => {
+      renderAddLeak({ data: [older, newer] });
+
+      expect(screen.getByTestId("last-item")).toHaveTextContent("новая");
+    });
+
+    it("на пустом проекте подсказок нет", () => {
+      renderAddLeak({ data: [] });
+
+      expect(screen.getByTestId("last-item")).toHaveTextContent("нет");
+    });
   });
 
   it("persists a valid leak and renders the success state", async () => {

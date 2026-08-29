@@ -15,6 +15,7 @@ import { dataUrlToBlob } from "@/utils/photoConversion";
 import { formatNativeError } from "@/utils/nativeErrorMessage";
 import { isPinkBagEquipment } from "@/utils/calculations/calculations";
 import { normalizeLeakTag } from "@/utils/leakIdentity";
+import { findLatestLeak } from "@/utils/leakOrder";
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import { isLeakFormDirty } from "@/features/leakForm/utils/isLeakFormDirty";
 import { createRecordId } from "@/utils/createRecordId";
@@ -374,6 +375,8 @@ export default function AddLeak({
     ].filter(Boolean);
   }, [savedLeak, localeTexts, t]);
 
+  const lastItem = useMemo(() => findLatestLeak(data), [data]);
+
   const handleNewLeak = () => {
     setSavedLeak(null);
     setDraftPrompt(false);
@@ -421,7 +424,7 @@ export default function AddLeak({
           onSaved={setSavedLeak}
           isSaving={isSaving}
           onBack={onBack}
-          lastItem={data[data.length - 1]}
+          lastItem={lastItem}
           coords={coords}
         />
       )}

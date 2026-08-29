@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { compareLeakIds, compareLeakRecency } from "./leakOrder";
+import {
+  compareLeakIds,
+  compareLeakRecency,
+  findLatestLeak,
+} from "./leakOrder";
 
 describe("compareLeakIds", () => {
   it("sorts numeric and numeric-string ids numerically", () => {
@@ -78,5 +82,26 @@ describe("compareLeakRecency", () => {
       "leak-2",
       "leak-1",
     ]);
+  });
+});
+
+describe("findLatestLeak", () => {
+  const older = { id: "старая", createdAt: 1_000 };
+  const newer = { id: "новая", createdAt: 5_000 };
+
+  it("берёт самую свежую независимо от порядка хранения", () => {
+    expect(findLatestLeak([newer, older])).toBe(newer);
+    expect(findLatestLeak([older, newer])).toBe(newer);
+  });
+
+  it("на пустом списке возвращает ничего", () => {
+    expect(findLatestLeak([])).toBeNull();
+    expect(findLatestLeak(undefined)).toBeNull();
+  });
+
+  it("запись без читаемой даты уступает датированной", () => {
+    const undated = { id: "без-даты" };
+    expect(findLatestLeak([undated, older])).toBe(older);
+    expect(findLatestLeak([older, undated])).toBe(older);
   });
 });
