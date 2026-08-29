@@ -193,13 +193,3 @@ export async function buildProjectBackupZip({
   assertImportFileSize(blob);
   return blob;
 }
-
-export async function exportBackupZip(leaks, idbGet, projectName = "backup") {
-  const blob = await buildBackupZip(leaks, idbGet);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${projectName}.zip`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
-}

@@ -5,7 +5,6 @@
 export {
   buildBackupZip,
   buildProjectBackupZip,
-  exportBackupZip,
   streamProjectBackupZip,
 } from "./backupExport";
 
