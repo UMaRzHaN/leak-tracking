@@ -17,7 +17,7 @@ import {
 import { createNativeSqliteMutation } from "@/repositories/nativeSqliteMutation";
 import {
   migrateComponentShape,
-  keepUnchangedComponentStamps,
+  stampChangedComponents,
   normalizeComponent,
 } from "@/domain/componentRegistry";
 import { isNative } from "@/utils/platform";
@@ -316,13 +316,14 @@ export const ComponentRepository = {
       });
     }
 
-    // Метка изменения остаётся у тех карточек, которые не менялись: по ней
-    // сведение реестров решает, чья версия свежее.
-    const normalized = keepUnchangedComponentStamps(
+    // Метку получают только карточки, изменившиеся здесь: по ней сведение
+    // реестров решает, чья версия свежее.
+    const normalized = stampChangedComponents(
       components.map((component) =>
         normalizeComponent(component, { numericKeys, now }),
       ),
       previous,
+      now,
     );
 
     try {

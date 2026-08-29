@@ -45,7 +45,31 @@ function pickNewer(mine, theirs) {
   const mineAt = componentChangedAt(mine);
   const theirsAt = componentChangedAt(theirs);
   if (theirsAt !== mineAt) return theirsAt > mineAt ? theirs : mine;
-  return isComponentTombstone(theirs) ? theirs : mine;
+  if (isComponentTombstone(theirs)) return theirs;
+  if (isComponentTombstone(mine)) return mine;
+  return stableCardKey(theirs) > stableCardKey(mine) ? theirs : mine;
+}
+
+/**
+ * Строка, по которой две живые карточки с одинаковой меткой сравниваются между
+ * собой.
+ *
+ * Ничья по времени — не редкость: метка выдаётся логическими часами, и два
+ * телефона, отсчитавшие её от одного и того же увиденного числа, получают одно
+ * и то же. Пока такая ничья решалась «оставить своё», каждый телефон оставлял
+ * своё — и они расходились навсегда, потому что при следующем обмене ничья
+ * повторялась. Правило должно давать один ответ на обоих устройствах, каким бы
+ * ни был порядок обмена; какая именно из двух карточек победит, значения не
+ * имеет — важно, что обе стороны выберут ту же самую.
+ *
+ * Так же разрешается ничья и у утечек: см. `getSyncConflictKey`.
+ */
+function stableCardKey(card) {
+  return JSON.stringify(
+    Object.keys(card ?? {})
+      .sort()
+      .map((key) => [key, card[key]]),
+  );
 }
 
 function uidOf(component) {

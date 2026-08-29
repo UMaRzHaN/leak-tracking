@@ -3,7 +3,7 @@ import {
   compareComponentsByUid,
   findComponentUidConflicts,
   isValidComponentUid,
-  keepUnchangedComponentStamps,
+  stampChangedComponents,
   missingRequiredFields,
   migrateComponentShape,
   normalizeComponent,
@@ -140,7 +140,15 @@ describe("normalization", () => {
     );
 
     expect(edited.inspected_at).toBe(first.inspected_at);
-    expect(edited.updatedAt).toBe(1_800_000_000_000);
+    // Метку правке ставит `stampChangedComponents`: нормализация сохраняет ту,
+    // что карточка несёт, — иначе принятая со стороны карточка получала бы
+    // время чужого сохранения вместо своего времени правки.
+    const [stamped] = stampChangedComponents(
+      [edited],
+      [first],
+      1_800_000_000_000,
+    );
+    expect(stamped.updatedAt).toBe(1_800_000_000_000);
   });
 
   it("keeps an inspection date that arrived from another device", () => {
@@ -270,7 +278,7 @@ describe("required fields", () => {
  * правленная в понедельник, оказывалась новее чужой правки в среду, если в
  * пятницу на этом телефоне завели любую другую карточку.
  */
-describe("метка изменения переживает сохранение реестра", () => {
+describe("метку получает только карточка, изменившаяся здесь", () => {
   const MONDAY = 1_772_000_000_000;
   const FRIDAY = 1_772_400_000_000;
   const card = (extra = {}) => ({
@@ -284,9 +292,10 @@ describe("метка изменения переживает сохранени�
   });
 
   const saved = (list, previous, now) =>
-    keepUnchangedComponentStamps(
+    stampChangedComponents(
       list.map((item) => normalizeComponent(item, { now })),
       previous,
+      now,
     );
 
   it("неизменившаяся карточка сохраняет прежнюю метку", () => {
@@ -320,10 +329,13 @@ describe("метка изменения переживает сохранени�
     expect(fresh.updatedAt).toBe(FRIDAY);
   });
 
-  it("без сведений о прежнем состоянии метка ставится как раньше", () => {
+  it("без сведений о прежнем состоянии метки не трогаются вовсе", () => {
+    // Так пишется результат сведения реестров: правок этого устройства в нём
+    // нет, и карточка, приехавшая со стороны, обязана сохранить своё время
+    // правки, а не получить время чужого сохранения.
     const [result] = saved([card()], null, FRIDAY);
 
-    expect(result.updatedAt).toBe(FRIDAY);
+    expect(result.updatedAt).toBe(MONDAY);
   });
 
   it("несравнимое значение считается изменением", () => {

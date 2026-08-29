@@ -24,6 +24,11 @@
  * человеку, а не тихая потеря.
  */
 
+import {
+  nextSyncTimestamp,
+  observeSyncTimestamp,
+} from "@/services/sync/syncClock";
+
 /** Сколько надгробий реестр несёт с собой, прежде чем начнёт забывать старые. */
 export const MAX_COMPONENT_TOMBSTONES = 5_000;
 
@@ -44,9 +49,17 @@ export function componentTombstones(records = []) {
   return Array.isArray(records) ? records.filter(isComponentTombstone) : [];
 }
 
+/**
+ * Читает метку и заодно двигает по ней логические часы устройства.
+ *
+ * Сведение спрашивает время у обеих сторон, поэтому здесь телефон и узнаёт
+ * чужие метки. Без этого шага его следующая правка нумеровалась бы от
+ * собственных часов и могла оказаться «старее» уже принятой чужой.
+ */
 function toTime(value) {
   const time = Number(value ?? 0);
-  return Number.isFinite(time) && time > 0 ? time : 0;
+  if (!Number.isFinite(time) || time <= 0) return 0;
+  return observeSyncTimestamp(time);
 }
 
 /**
@@ -67,7 +80,7 @@ export function componentChangedAt(record) {
  * @param {number} [deletedAt]
  */
 export function tombstoneFor(component, deletedAt) {
-  const at = toTime(deletedAt) || Date.now();
+  const at = toTime(deletedAt) || nextSyncTimestamp();
   return {
     id: component?.id,
     // Номер остаётся: по нему человек узнаёт, какую карточку он удалил, если

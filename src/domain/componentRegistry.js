@@ -1,4 +1,5 @@
 import { createRecordId } from "@/utils/createRecordId";
+import { nextSyncTimestamp } from "@/services/sync/syncClock";
 
 /**
  * Rules for the component registry.
@@ -108,14 +109,26 @@ export function migrateComponentShape(component) {
  * @param {{numericKeys?: string[], now?: number}} [options]
  */
 export function normalizeComponent(component, { numericKeys = [], now } = {}) {
-  const timestamp = typeof now === "number" ? now : Date.now();
+  // Логические часы, а не настенные. Сведение реестров решает по этой метке,
+  // чья версия карточки свежее, а часы двух телефонов расходятся: у одного они
+  // убегают на час, и его копия карточки навсегда оказывается «новее». Правка
+  // на отстающем телефоне не могла победить — она получала меньшее число, и
+  // обмен молча возвращал старое содержимое. `nextSyncTimestamp` выдаёт число
+  // больше всего, что это устройство уже видело, — в том числе чужих меток,
+  // прочитанных при сведении.
+  const timestamp = typeof now === "number" ? now : nextSyncTimestamp();
   const migrated = migrateComponentShape(component);
   const normalized = { ...migrated };
 
   normalized.id = migrated?.id ?? createRecordId();
   normalized.component_uid = String(migrated?.component_uid ?? "").trim();
   normalized.date = migrated?.date ?? new Date(timestamp).toISOString();
-  normalized.updatedAt = timestamp;
+  // Метка, которую карточка уже несёт, сохраняется. Она говорит, когда
+  // карточку меняли, а не когда этот телефон записал реестр: карточка,
+  // приехавшая с соседнего устройства, менялась там и тогда. Новую метку
+  // ставит `stampChangedComponents` — и только той карточке, которую здесь
+  // действительно правили.
+  normalized.updatedAt = toPositiveTime(migrated?.updatedAt) ?? timestamp;
 
   // The inspection date is when somebody stood in front of the equipment and
   // filled the card in — the app already knows that, so it is never typed.
@@ -170,35 +183,47 @@ function sameComponentContent(left, right) {
   return true;
 }
 
+/** Число, если это положительное время, иначе `null`. */
+function toPositiveTime(value) {
+  const time = Number(value);
+  return Number.isFinite(time) && time > 0 ? time : null;
+}
+
 /**
- * Возвращает прежнюю метку изменения карточкам, которые не менялись.
+ * Ставит метку изменения тем карточкам, которые изменились здесь.
  *
- * Реестр сохраняется целиком, и `normalizeComponent` ставит `updatedAt`
- * каждой карточке — то есть метка отвечала на вопрос «когда этот телефон в
- * последний раз писал реестр», а не «когда меняли эту карточку». По ней же
- * сведение реестров решает, чья версия свежее, и решало неверно: карточку,
- * правленную в понедельник, пятничное сохранение делало новее чужой правки в
- * среду. Правка среды пропадала молча, а удалённая на другом телефоне
- * карточка возвращалась.
+ * Правило перевёрнуто относительно прежнего. Раньше метку получали все
+ * карточки при каждом сохранении реестра, потому что реестр сохраняется
+ * целиком; метка отвечала на вопрос «когда этот телефон писал реестр», а
+ * сведение спрашивает у неё «когда меняли эту карточку». Из этого выходило
+ * две тихие беды: правка соседа проигрывала нетронутой копии, которую
+ * переставило чужое сохранение, и тем же способом возвращалась карточка,
+ * удалённая на другом устройстве.
  *
- * Слияние листа инвентаризации метку ведёт правильно — ставит её только
- * изменившимся строкам; сохранение это затирало.
+ * Теперь карточка несёт свою метку сама, а новую получает только тогда, когда
+ * её содержимое отличается от того, что лежало здесь до записи. Карточке,
+ * приехавшей со стороны, метку не переставляют вовсе: менялась она не здесь.
  *
  * @param {Record<string, any>[]} normalized карточки после нормализации
- * @param {Record<string, any>[]|null} previous что, по мнению приложения, уже лежит в хранилище
+ * @param {Record<string, any>[]|null} previous что, по мнению приложения, уже
+ *   лежит в хранилище; `null` у путей, которые пишут результат сведения — там
+ *   правок этого устройства нет по определению
+ * @param {number} [now] по умолчанию — следующая отметка логических часов
  */
-export function keepUnchangedComponentStamps(normalized, previous) {
+export function stampChangedComponents(normalized, previous, now) {
+  const at = toPositiveTime(now) ?? nextSyncTimestamp();
   if (!Array.isArray(previous) || previous.length === 0) return normalized;
   const stored = new Map(
-    previous.filter((record) => record?.id != null).map((r) => [r.id, r]),
+    previous
+      .filter((record) => record?.id != null)
+      .map((record) => [record.id, record]),
   );
 
   return normalized.map((card) => {
     const before = stored.get(card?.id);
-    const beforeAt = Number(before?.updatedAt);
-    if (!before || !Number.isFinite(beforeAt) || beforeAt <= 0) return card;
+    if (!before) return card;
     return sameComponentContent(before, card)
-      ? { ...card, updatedAt: beforeAt }
-      : card;
+      ? card
+      : { ...card, updatedAt: at };
   });
 }
