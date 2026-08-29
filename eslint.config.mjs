@@ -75,6 +75,7 @@ export default defineConfig(
         ResizeObserver: "readonly",
         Response: "readonly",
         setTimeout: "readonly",
+        structuredClone: "readonly",
         Storage: "readonly",
         TextEncoder: "readonly",
         URL: "readonly",

@@ -120,9 +120,19 @@ function stampMonitoringRecord(previousRecord, nextRecord, now) {
   }
 
   const normalizedVersions = normalizeLeakFieldVersions(versions);
+  const versionTimes = Object.values(normalizedVersions);
   return {
     ...nextRecord,
-    updatedAt: Math.max(fallbackVersion(nextRecord), now),
+    // Из версий полей, а не из времени сохранения. Версии двигаются только при
+    // настоящем изменении, поэтому у двух телефонов с одинаковой записью метка
+    // совпадает. Пока она бралась от `now`, каждое сохранение переставляло её
+    // заново, у каждого телефона на своё число, и записи мониторинга навсегда
+    // оставались «разными»: обмен сообщал об изменении там, где обе стороны
+    // держали одно и то же, а разбор изменений показывал `monitoringRecords`
+    // изменённым полем на каждой синхронизации.
+    updatedAt: versionTimes.length
+      ? Math.max(...versionTimes)
+      : Math.max(fallbackVersion(nextRecord), now),
     ...(Object.keys(normalizedVersions).length > 0
       ? { _fieldUpdatedAt: normalizedVersions }
       : {}),
