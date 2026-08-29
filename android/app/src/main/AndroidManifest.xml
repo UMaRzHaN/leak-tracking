@@ -4,14 +4,13 @@
     android:name="android.hardware.camera"
     android:required="false" />
 
-<!-- Storage access for exports written to Directory.Documents. -->
-<uses-permission
-    android:name="android.permission.READ_EXTERNAL_STORAGE"
-    android:maxSdkVersion="32" />
-<uses-permission
-    android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-    android:maxSdkVersion="28" />
-<!--    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>-->
+<!--
+    Разрешений на внешнее хранилище здесь нет намеренно. READ_EXTERNAL_STORAGE
+    и WRITE_EXTERNAL_STORAGE ограничены сверху API 32 и 28, а minSdk — 33: обе
+    строки не действовали ни на одном устройстве, на которое приложение вообще
+    ставится. Экспорт в Документы идёт через MediaStore из PublicFileWriter, и
+    ему разрешение не нужно.
+-->
 <!-- 🌐 Интернет -->
 <uses-permission android:name="android.permission.INTERNET" />
 <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
