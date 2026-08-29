@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useProjectData } from "@/app/project/ProjectContext";
-import { PROJECT_META } from "@/configs/projects";
+import { PROJECT_META } from "@/configs/projectMeta";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "./Header.module.scss";
 

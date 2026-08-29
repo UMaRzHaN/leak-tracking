@@ -1,15 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
 import { parseNumericInput } from "@/utils/normalize/parseNumericInput";
-import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
+import { NUMERIC_FIELD_KEY_SET } from "@/configs/shared/fieldRegistry";
 
 export function useLeakForm() {
-  const projectConfig = useProjectConfig();
-
-  // system.numeric is an array of field objects — extract keys into a Set
-  const NUMBER_KEYS = useMemo(() => {
-    const raw = projectConfig?.system?.numeric ?? [];
-    return new Set(raw.map((f) => (typeof f === "string" ? f : f.key)));
-  }, [projectConfig]);
+  // Из лёгкого списка, а не из `system.numeric` конфига типа. Провайдер этой
+  // формы обёрнут вокруг всего приложения, и обращение к конфигу затаскивало
+  // на первый экран поля, словари и шаги всех трёх типов проекта. Набор
+  // числовых полей у типов общий, и за его общностью следит тест.
+  const NUMBER_KEYS = NUMERIC_FIELD_KEY_SET;
 
   const [form, setForm] = useState({
     leak_id: "",

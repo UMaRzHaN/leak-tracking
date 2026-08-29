@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
-import { PROJECT_META } from "@/configs/projects";
+import { PROJECT_META } from "@/configs/projectMeta";
 import s from "./ProjectList.module.scss";
 
 const PROJECT_ICONS = { upstream: "⛽", midstream: "🔧", downstream: "🏭" };

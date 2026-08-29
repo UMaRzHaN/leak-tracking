@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MONITORING_FILTER, NEARBY_RADIUS_M } from "@/domain/leakFilters";
-import { PROJECTS } from "@/configs/projects";
+import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
 import {
   readProjectFilters,
   writeProjectFilters,
@@ -31,7 +31,10 @@ export function useSharedFilters({ projectId, projectType }) {
     persistenceProjectRef.current = projectId ?? null;
     skipNextPersistRef.current = true;
     const stored = readProjectFilters(projectId ?? null);
-    const locationConfig = PROJECTS[projectType]?.system?.location;
+    // Из общего конфига места, а не из конфига типа проекта: нужны три
+    // имени полей, а `PROJECTS` тянет за собой словари полей и шаги формы —
+    // тридцать килобайт на первый экран ради трёх строк.
+    const locationConfig = PROJECT_LOCATION_CONFIG[projectType];
 
     // A location filter names a field of the project type it was saved under.
     // Carrying it into a different type would filter on a field the records do

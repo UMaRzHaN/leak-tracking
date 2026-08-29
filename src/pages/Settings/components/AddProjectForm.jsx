@@ -1,6 +1,6 @@
 import { useId, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
-import { PROJECT_META } from "@/configs/projects";
+import { PROJECT_META } from "@/configs/projectMeta";
 import { toFolderName } from "@/app/project/ProjectContext";
 import s from "./AddProjectForm.module.scss";
 

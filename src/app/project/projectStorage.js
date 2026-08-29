@@ -1,5 +1,5 @@
 import { STORAGE_KEYS } from "./storageKeys";
-import { PROJECT_META } from "@/configs/projects";
+import { PROJECT_META } from "@/configs/projectMeta";
 
 const RESERVED_FOLDER_CHARACTERS = '<>:"/\\|?*';
 const MAX_FOLDER_NAME_LENGTH = 50;

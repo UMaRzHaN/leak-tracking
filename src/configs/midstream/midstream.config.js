@@ -5,6 +5,8 @@ import {
   VOICE_FIELDS,
 } from "./data/fields";
 import { STEPS } from "./data/steps";
+import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
+import { COMPONENT_REGISTRY_LOADERS } from "@/configs/componentRegistryLoaders";
 import {
   SEARCH_FIELDS_HEAD,
   SEARCH_FIELDS_TAIL,
@@ -105,13 +107,10 @@ const MIDSTREAM_CONFIG = Object.freeze({
     search: SEARCH_FIELDS,
     lossy: ["rawVoiceText", "note"],
     fields: FIELDS,
-    location: {
-      main: "field",
-      secondary: "station",
-      last: "location",
-      main_label: "УМГ",
-      label: "Станция",
-    },
+    // Один источник на оба экрана. Уровни места дублировались здесь и в
+    // `PROJECT_LOCATION_CONFIG`, с комментарием «менять только вместе», — и
+    // разошлись: у downstream подпись отличалась одной буквой «ё».
+    location: PROJECT_LOCATION_CONFIG.midstream,
   },
   export: {
     excel: {
@@ -128,7 +127,7 @@ const MIDSTREAM_CONFIG = Object.freeze({
    * признак выводится из конфигурации, а не из имени типа.
    */
   components: {
-    load: () => import("./data/componentBlock"),
+    load: COMPONENT_REGISTRY_LOADERS.midstream,
   },
 });
 

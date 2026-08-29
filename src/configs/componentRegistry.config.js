@@ -1,4 +1,4 @@
-import { PROJECTS } from "./projects";
+import { COMPONENT_REGISTRY_LOADERS } from "./componentRegistryLoaders";
 
 /**
  * Есть ли у типа проекта реестр компонентов — и у каких типов он есть.
@@ -9,9 +9,12 @@ import { PROJECTS } from "./projects";
  * projectAdapter описывает поля утечки и на холодном старте не нужно, а лежали
  * бы они вместе — приезжало бы вместе.
  *
- * Ответ выводится из самой конфигурации: тип, не объявивший блок
- * `components`, реестра просто не имеет. Никаких сравнений с именем типа —
- * это то же обещание, что и в projectAdapter.
+ * Ответ выводится из самого объявления: тип, не объявивший загрузчик реестра,
+ * реестра просто не имеет. Никаких сравнений с именем типа — это то же
+ * обещание, что и в projectAdapter. Объявление живёт в
+ * `componentRegistryLoaders`, оттуда же его берут и конфиги типов: раньше оно
+ * стояло внутри `PROJECTS`, и дешёвая проверка тянула на первый экран все три
+ * конфига целиком.
  */
 
 /**
@@ -29,7 +32,7 @@ import { PROJECTS } from "./projects";
  */
 export function hasComponentRegistry(project) {
   const type = /** @type {{type?: string}} */ (project)?.type ?? project;
-  return typeof PROJECTS[type]?.components?.load === "function";
+  return typeof COMPONENT_REGISTRY_LOADERS[type] === "function";
 }
 
 /**
@@ -44,5 +47,7 @@ export function hasComponentRegistry(project) {
  * @returns {string[]}
  */
 export function componentRegistryProjectTypes() {
-  return Object.keys(PROJECTS).filter((type) => hasComponentRegistry(type));
+  return Object.keys(COMPONENT_REGISTRY_LOADERS).filter((type) =>
+    hasComponentRegistry(type),
+  );
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
-import { PROJECT_META } from "@/configs/projects";
+import { PROJECT_META } from "@/configs/projectMeta";
 import { toFolderName } from "@/app/project/ProjectContext";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import {

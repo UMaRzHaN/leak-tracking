@@ -7,7 +7,7 @@ import {
   useEffect,
   useRef,
 } from "react";
-import { PROJECT_META } from "@/configs/projects";
+import { PROJECT_META } from "@/configs/projectMeta";
 import {
   loadProjects,
   saveProjects,

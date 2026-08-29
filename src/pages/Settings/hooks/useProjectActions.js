@@ -4,7 +4,7 @@ import { useLanguage } from "@/app/hooks/useLanguage";
 import { isNative } from "@/utils/platform";
 import { useProject } from "@/app/project/ProjectContext";
 import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
-import { PROJECT_META } from "@/configs/projects";
+import { PROJECT_META } from "@/configs/projectMeta";
 import { clearMapCache } from "@/services/maps/tileCache";
 import { deleteProjectArtifacts } from "@/services/backup/projectCleanup";
 import { isLeakFormDirty } from "@/features/leakForm/utils/isLeakFormDirty";

@@ -1,7 +1,7 @@
 import { isNative } from "@/utils/platform";
 import { Directory } from "@capacitor/filesystem";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
-import { PROJECT_META } from "@/configs/projects";
+import { PROJECT_META } from "@/configs/projectMeta";
 import { logger } from "@/utils/logger";
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import { requestPersistentStorage } from "@/services/storage/persistentStorage";

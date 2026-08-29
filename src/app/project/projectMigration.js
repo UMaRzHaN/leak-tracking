@@ -1,5 +1,5 @@
 import { STORAGE_KEYS } from "./storageKeys";
-import { PROJECT_META } from "@/configs/projects";
+import { PROJECT_META } from "@/configs/projectMeta";
 import { toFolderName, saveProjects } from "./projectStorage";
 
 const MIGRATION_DONE_KEY = "app:legacy_migrated_v1";
