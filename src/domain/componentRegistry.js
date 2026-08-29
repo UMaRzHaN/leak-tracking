@@ -145,3 +145,60 @@ export function missingRequiredFields(component, required = []) {
     return value == null || String(value).trim() === "";
   });
 }
+
+/**
+ * Сравнение содержимого двух карточек, не считая метки изменения.
+ *
+ * Значение, которое нельзя сравнить как данные — например, ещё не сохранённый
+ * снимок Blob, — считается изменившимся. Ошибка в эту сторону стоит лишней
+ * метки, в обратную — потерянной правки.
+ */
+function sameComponentContent(left, right) {
+  const keys = new Set([
+    ...Object.keys(left ?? {}),
+    ...Object.keys(right ?? {}),
+  ]);
+  keys.delete("updatedAt");
+  for (const key of keys) {
+    const a = left?.[key];
+    const b = right?.[key];
+    if (a === b) continue;
+    if (typeof a === "object" && a !== null && !Array.isArray(a)) return false;
+    if (typeof b === "object" && b !== null && !Array.isArray(b)) return false;
+    if (JSON.stringify(a) !== JSON.stringify(b)) return false;
+  }
+  return true;
+}
+
+/**
+ * Возвращает прежнюю метку изменения карточкам, которые не менялись.
+ *
+ * Реестр сохраняется целиком, и `normalizeComponent` ставит `updatedAt`
+ * каждой карточке — то есть метка отвечала на вопрос «когда этот телефон в
+ * последний раз писал реестр», а не «когда меняли эту карточку». По ней же
+ * сведение реестров решает, чья версия свежее, и решало неверно: карточку,
+ * правленную в понедельник, пятничное сохранение делало новее чужой правки в
+ * среду. Правка среды пропадала молча, а удалённая на другом телефоне
+ * карточка возвращалась.
+ *
+ * Слияние листа инвентаризации метку ведёт правильно — ставит её только
+ * изменившимся строкам; сохранение это затирало.
+ *
+ * @param {Record<string, any>[]} normalized карточки после нормализации
+ * @param {Record<string, any>[]|null} previous что, по мнению приложения, уже лежит в хранилище
+ */
+export function keepUnchangedComponentStamps(normalized, previous) {
+  if (!Array.isArray(previous) || previous.length === 0) return normalized;
+  const stored = new Map(
+    previous.filter((record) => record?.id != null).map((r) => [r.id, r]),
+  );
+
+  return normalized.map((card) => {
+    const before = stored.get(card?.id);
+    const beforeAt = Number(before?.updatedAt);
+    if (!before || !Number.isFinite(beforeAt) || beforeAt <= 0) return card;
+    return sameComponentContent(before, card)
+      ? { ...card, updatedAt: beforeAt }
+      : card;
+  });
+}

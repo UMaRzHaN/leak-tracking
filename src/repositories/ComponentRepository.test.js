@@ -174,6 +174,51 @@ describe("ComponentRepository on web", () => {
     expect(stored[0].updatedAt).toBe(1_700_000_000_000);
   });
 
+  it("не переставляет метку изменения карточкам, которых правка не касалась", async () => {
+    // Реестр пишется целиком, но `updatedAt` отвечает на вопрос «когда меняли
+    // эту карточку»: по нему сведение реестров двух телефонов решает, чья
+    // версия свежее. Переставленная всем метка делала правку соседа старее
+    // собственной карточки, которую никто не трогал.
+    const { ComponentRepository } = await loadRepository();
+    const monday = 1_772_000_000_000;
+    const friday = 1_772_400_000_000;
+    const stored = await ComponentRepository.save(
+      project,
+      [{ component_uid: "1", manufacturer: "Завод" }],
+      { now: monday },
+    );
+
+    const afterSecondCard = await ComponentRepository.save(
+      project,
+      [...stored, { component_uid: "2" }],
+      { now: friday, previous: stored },
+    );
+
+    const untouched = afterSecondCard.find((c) => c.component_uid === "1");
+    const added = afterSecondCard.find((c) => c.component_uid === "2");
+    expect(untouched.updatedAt).toBe(monday);
+    expect(added.updatedAt).toBe(friday);
+  });
+
+  it("правленая карточка метку получает", async () => {
+    const { ComponentRepository } = await loadRepository();
+    const monday = 1_772_000_000_000;
+    const friday = 1_772_400_000_000;
+    const stored = await ComponentRepository.save(
+      project,
+      [{ component_uid: "1", manufacturer: "Завод" }],
+      { now: monday },
+    );
+
+    const edited = await ComponentRepository.save(
+      project,
+      [{ ...stored[0], manufacturer: "Другой завод" }],
+      { now: friday, previous: stored },
+    );
+
+    expect(edited[0].updatedAt).toBe(friday);
+  });
+
   it("переносит обход из прежней отдельной базы и не стирает его оттуда", async () => {
     // Переезд, теряющий обход, хуже лишней копии: файл остаётся как запасной.
     await loadRepository();

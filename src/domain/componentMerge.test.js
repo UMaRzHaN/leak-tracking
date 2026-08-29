@@ -6,6 +6,7 @@ import {
 } from "@/domain/componentMerge";
 import {
   isComponentTombstone,
+  isLiveComponent,
   liveComponents,
   tombstoneFor,
 } from "@/domain/componentTombstones";
@@ -227,5 +228,81 @@ describe("удаление, пережившее обмен", () => {
 
     expect(result.conflicts).toEqual([]);
     expect(findUidConflicts(result.merged)).toEqual([]);
+  });
+});
+
+/*
+ * Свежесть карточки читается из `updatedAt`. Пока сохранение реестра ставило
+ * эту метку всем карточкам разом, она отвечала не на тот вопрос, и сведение
+ * ошибалось предсказуемо: чужая правка пропадала, а удалённая карточка
+ * возвращалась. Здесь проверяется поведение сведения на метках, какими их
+ * теперь ведёт хранилище.
+ */
+describe("сведение опирается на время правки карточки", () => {
+  const MONDAY = 1_772_000_000_000;
+  const WEDNESDAY = 1_772_200_000_000;
+  const FRIDAY = 1_772_400_000_000;
+
+  it("правка среды побеждает карточку, которую с понедельника не трогали", () => {
+    // На первом телефоне в пятницу писали реестр — но эту карточку не меняли,
+    // и её метка осталась понедельничной.
+    const mine = [
+      {
+        id: "c1",
+        component_uid: "1",
+        manufacturer: "Старый завод",
+        updatedAt: MONDAY,
+      },
+      { id: "c2", component_uid: "2", updatedAt: FRIDAY },
+    ];
+    const theirs = [
+      {
+        id: "c1",
+        component_uid: "1",
+        manufacturer: "Правка среды",
+        updatedAt: WEDNESDAY,
+      },
+    ];
+
+    const { merged } = mergeComponentRegistries(mine, theirs);
+
+    expect(merged.find((card) => card.id === "c1")).toMatchObject({
+      manufacturer: "Правка среды",
+    });
+  });
+
+  it("удаление в среду убирает карточку, которую с понедельника не трогали", () => {
+    const mine = [{ id: "c9", component_uid: "9", updatedAt: MONDAY }];
+    const theirs = [
+      { id: "c9", component_uid: "9", deleted: true, deletedAt: WEDNESDAY },
+    ];
+
+    const { merged } = mergeComponentRegistries(mine, theirs);
+
+    expect(merged.filter(isLiveComponent)).toEqual([]);
+  });
+
+  it("своя правка в пятницу побеждает чужую среду", () => {
+    // Обратная сторона: метка не должна и отставать.
+    const mine = [
+      {
+        id: "c1",
+        component_uid: "1",
+        manufacturer: "Правка пятницы",
+        updatedAt: FRIDAY,
+      },
+    ];
+    const theirs = [
+      {
+        id: "c1",
+        component_uid: "1",
+        manufacturer: "Правка среды",
+        updatedAt: WEDNESDAY,
+      },
+    ];
+
+    const { merged } = mergeComponentRegistries(mine, theirs);
+
+    expect(merged[0]).toMatchObject({ manufacturer: "Правка пятницы" });
   });
 });

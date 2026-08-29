@@ -3,6 +3,7 @@ import {
   compareComponentsByUid,
   findComponentUidConflicts,
   isValidComponentUid,
+  keepUnchangedComponentStamps,
   missingRequiredFields,
   migrateComponentShape,
   normalizeComponent,
@@ -258,5 +259,84 @@ describe("required fields", () => {
         required,
       ),
     ).toEqual([]);
+  });
+});
+
+/*
+ * Метка изменения карточки отвечает на вопрос «когда меняли эту карточку», и
+ * по ней сведение реестров решает, чья версия свежее. Реестр сохраняется
+ * целиком, поэтому нормализация ставила метку всем карточкам разом — и ответ
+ * превращался в «когда этот телефон в последний раз писал реестр». Карточка,
+ * правленная в понедельник, оказывалась новее чужой правки в среду, если в
+ * пятницу на этом телефоне завели любую другую карточку.
+ */
+describe("метка изменения переживает сохранение реестра", () => {
+  const MONDAY = 1_772_000_000_000;
+  const FRIDAY = 1_772_400_000_000;
+  const card = (extra = {}) => ({
+    id: "c1",
+    component_uid: "1",
+    manufacturer: "Завод",
+    date: "2026-02-25T10:00:00.000Z",
+    inspected_at: "2026-02-25T10:00:00.000Z",
+    updatedAt: MONDAY,
+    ...extra,
+  });
+
+  const saved = (list, previous, now) =>
+    keepUnchangedComponentStamps(
+      list.map((item) => normalizeComponent(item, { now })),
+      previous,
+    );
+
+  it("неизменившаяся карточка сохраняет прежнюю метку", () => {
+    const stored = [card()];
+
+    const [result] = saved(stored, stored, FRIDAY);
+
+    expect(result.updatedAt).toBe(MONDAY);
+  });
+
+  it("правленая карточка получает новую", () => {
+    const stored = [card()];
+
+    const [result] = saved(
+      [card({ manufacturer: "Другой завод" })],
+      stored,
+      FRIDAY,
+    );
+
+    expect(result.updatedAt).toBe(FRIDAY);
+  });
+
+  it("новая карточка получает метку сохранения", () => {
+    const [existing, fresh] = saved(
+      [card(), { id: "c2", component_uid: "2" }],
+      [card()],
+      FRIDAY,
+    );
+
+    expect(existing.updatedAt).toBe(MONDAY);
+    expect(fresh.updatedAt).toBe(FRIDAY);
+  });
+
+  it("без сведений о прежнем состоянии метка ставится как раньше", () => {
+    const [result] = saved([card()], null, FRIDAY);
+
+    expect(result.updatedAt).toBe(FRIDAY);
+  });
+
+  it("несравнимое значение считается изменением", () => {
+    // Ещё не сохранённый снимок: сравнить его как данные нельзя, и метку
+    // безопаснее переставить, чем потерять правку.
+    const stored = [card()];
+
+    const [result] = saved(
+      [card({ photo: new Blob(["снимок"]) })],
+      stored,
+      FRIDAY,
+    );
+
+    expect(result.updatedAt).toBe(FRIDAY);
   });
 });
