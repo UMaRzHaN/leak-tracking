@@ -143,7 +143,9 @@ let activePage = null;
 // любого заполнения поля — поэтому фокус снимается перед каждым снимком.
 async function hideKeyboard() {
   await activePage
-    ?.evaluate(() => document.activeElement?.blur?.())
+    ?.evaluate(() =>
+      /** @type {HTMLElement | null} */ (document.activeElement)?.blur?.(),
+    )
     .catch(() => {});
   await wait(700);
 }

@@ -20,7 +20,13 @@ export default defineConfig(
   {
     files: ["**/*.{js,jsx,mjs}"],
     extends: [eslintJs.configs.recommended, eslintReact.configs.recommended],
-    plugins: { "react-hooks": reactHooks },
+    // Приведение из-за расхождения в типах вверх по течению:
+    // eslint-plugin-react-hooks описывает свои правила собственным
+    // `RuleModule`, и он не совпадает с тем, что объявляет сам eslint.
+    // Расхождение чисто типовое — плагин работает.
+    plugins: {
+      "react-hooks": /** @type {import("eslint").ESLint.Plugin} */ (reactHooks),
+    },
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",

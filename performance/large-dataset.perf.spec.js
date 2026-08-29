@@ -153,54 +153,24 @@ async function seedProject(page, recordCount, { photoCount = 0 } = {}) {
       localStorage.setItem("app:projects_v1", JSON.stringify([project]));
       localStorage.setItem("app:active_id_v1", projectId);
 
-      await new Promise((resolve, reject) => {
-        const request = indexedDB.open("LeakTrackingDataDB", 1);
-        request.onupgradeneeded = () => {
-          const db = request.result;
-          if (!db.objectStoreNames.contains("projects")) {
-            db.createObjectStore("projects", { keyPath: "id" });
-          }
-        };
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => {
-          const db = request.result;
-          const transaction = db.transaction("projects", "readwrite");
-          transaction.objectStore("projects").put({
-            id: projectId,
-            data: leaks,
-            timestamp: Date.now(),
-          });
-          transaction.oncomplete = () => {
-            db.close();
-            resolve();
-          };
-          transaction.onerror = () => reject(transaction.error);
-          transaction.onabort = () => reject(transaction.error);
-        };
-      });
-
-      if (storedPhotoCount > 0) {
-        await new Promise((resolve, reject) => {
-          const request = indexedDB.open("LeakTrackingDB", 1);
+      await /** @type {Promise<void>} */ (
+        new Promise((resolve, reject) => {
+          const request = indexedDB.open("LeakTrackingDataDB", 1);
           request.onupgradeneeded = () => {
             const db = request.result;
-            if (!db.objectStoreNames.contains("photos")) {
-              db.createObjectStore("photos", { keyPath: "id" });
+            if (!db.objectStoreNames.contains("projects")) {
+              db.createObjectStore("projects", { keyPath: "id" });
             }
           };
           request.onerror = () => reject(request.error);
           request.onsuccess = () => {
             const db = request.result;
-            const transaction = db.transaction("photos", "readwrite");
-            const store = transaction.objectStore("photos");
-            const photoBytes = new Uint8Array(4 * 1024);
-            for (let index = 0; index < storedPhotoCount; index++) {
-              store.put({
-                id: `photo_${projectId}_${index + 1}_perf`,
-                data: new Blob([photoBytes], { type: "image/jpeg" }),
-                timestamp: Date.now(),
-              });
-            }
+            const transaction = db.transaction("projects", "readwrite");
+            transaction.objectStore("projects").put({
+              id: projectId,
+              data: leaks,
+              timestamp: Date.now(),
+            });
             transaction.oncomplete = () => {
               db.close();
               resolve();
@@ -208,7 +178,41 @@ async function seedProject(page, recordCount, { photoCount = 0 } = {}) {
             transaction.onerror = () => reject(transaction.error);
             transaction.onabort = () => reject(transaction.error);
           };
-        });
+        })
+      );
+
+      if (storedPhotoCount > 0) {
+        await /** @type {Promise<void>} */ (
+          new Promise((resolve, reject) => {
+            const request = indexedDB.open("LeakTrackingDB", 1);
+            request.onupgradeneeded = () => {
+              const db = request.result;
+              if (!db.objectStoreNames.contains("photos")) {
+                db.createObjectStore("photos", { keyPath: "id" });
+              }
+            };
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => {
+              const db = request.result;
+              const transaction = db.transaction("photos", "readwrite");
+              const store = transaction.objectStore("photos");
+              const photoBytes = new Uint8Array(4 * 1024);
+              for (let index = 0; index < storedPhotoCount; index++) {
+                store.put({
+                  id: `photo_${projectId}_${index + 1}_perf`,
+                  data: new Blob([photoBytes], { type: "image/jpeg" }),
+                  timestamp: Date.now(),
+                });
+              }
+              transaction.oncomplete = () => {
+                db.close();
+                resolve();
+              };
+              transaction.onerror = () => reject(transaction.error);
+              transaction.onabort = () => reject(transaction.error);
+            };
+          })
+        );
       }
 
       return performance.now() - startedAt;

@@ -356,13 +356,10 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: { "@": path.resolve(__dirname, "src") },
     },
-    css: {
-      preprocessorOptions: {
-        scss: {
-          api: "modern-compiler",
-        },
-      },
-    },
+    // `css.preprocessorOptions.scss.api: "modern-compiler"` стоял здесь со
+    // времён Vite 5, где выбирал между старым и новым API Sass. В Vite 8
+    // опции нет вовсе: старый компилятор убран, новый остался единственным.
+    // Значение молча игнорировалось; проверка типов на конфигах его и нашла.
     plugins: [
       cspPolicy(mode, env),
       react(),

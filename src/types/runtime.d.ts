@@ -23,7 +23,8 @@ declare global {
     leakTrackingWaitingServiceWorkerRegistration?: ServiceWorkerRegistration;
     SpeechRecognition?: new () => any;
     webkitSpeechRecognition?: new () => any;
-    __EXCEL_EXPORT_METRICS__?: unknown;
+    /** Длительности фаз выгрузки Excel; их читают бюджеты производительности. */
+    __EXCEL_EXPORT_METRICS__?: Record<string, number> | null;
     __RENDER_METRICS__?: { counts: Record<string, number> };
     __RESET_RENDER_METRICS__?: () => void;
   }

@@ -299,6 +299,9 @@
       const resolvedAt =
         status === "resolved" ? repairAt + rndInt(3, 35) * DAY : null;
 
+      // Запись достраивается ниже — историей и раундами мониторинга, которые
+      // считаются от неё же самой, поэтому в литерале их ещё нет.
+      /** @type {Record<string, any>} */
       const leak = {
         id: createdAt + index,
         created_at: String(createdAt),
@@ -661,8 +664,10 @@
       }
 
       const request = window.indexedDB.open("LeakTrackingDB", 1);
-      request.onupgradeneeded = (event) => {
-        const db = event.target.result;
+      request.onupgradeneeded = () => {
+        // `request.result`, а не `event.target.result`: то же значение, но с
+        // типом открытой базы, а не безымянной цели события.
+        const db = request.result;
         if (!db.objectStoreNames.contains("photos")) {
           db.createObjectStore("photos", { keyPath: "id" });
         }
@@ -853,13 +858,17 @@
     await writeWebEnvelope({ db: mirrorDb, projectId, envelope });
   }
 
+  // Кэш замыканием, а не свойством самой функции: одно и то же время жизни,
+  // но у переменной есть тип, а у дописанного свойства функции его нет.
+  /** @type {Map<string, Blob>} */
+  const blobByDataUrl = new Map();
+
   async function dataUrlToBlob(dataUrl) {
-    if (!dataUrlToBlob.cache) dataUrlToBlob.cache = new Map();
-    const cached = dataUrlToBlob.cache.get(dataUrl);
+    const cached = blobByDataUrl.get(dataUrl);
     if (cached) return cached;
     const response = await fetch(dataUrl);
     const blob = await response.blob();
-    dataUrlToBlob.cache.set(dataUrl, blob);
+    blobByDataUrl.set(dataUrl, blob);
     return blob;
   }
 
@@ -990,15 +999,17 @@
       request.onerror = () => reject(request.error);
     });
 
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction("components", "readwrite");
-      tx.objectStore("components").put(
-        { version: 1, updatedAt: Date.now(), data: components },
-        projectId,
-      );
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
+    await /** @type {Promise<void>} */ (
+      new Promise((resolve, reject) => {
+        const tx = db.transaction("components", "readwrite");
+        tx.objectStore("components").put(
+          { version: 1, updatedAt: Date.now(), data: components },
+          projectId,
+        );
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      })
+    );
     db.close();
   }
 

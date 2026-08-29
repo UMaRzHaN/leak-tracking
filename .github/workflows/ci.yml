@@ -64,6 +64,13 @@ jobs:
       - name: Type-check strict directories
         run: npm run typecheck:strict
 
+      # Ещё один отдельный шаг, потому что охват другой: не приложение, а код
+      # вокруг него — сборочные скрипты, сценарии Playwright, замеры, конфиги в
+      # корне. У него свои окружение и типы (node, страница под Playwright),
+      # поэтому одним проектом с `src` он не проверяется.
+      - name: Type-check tooling outside src
+        run: npm run typecheck:tools
+
       - name: Audit dependencies
         run: npm audit --audit-level=high
 

@@ -18,10 +18,12 @@ let server;
 
 async function stopServer() {
   if (!server?.listening) return;
-  await new Promise((resolve, reject) => {
-    server.close((error) => (error ? reject(error) : resolve()));
-    server.closeAllConnections();
-  });
+  await /** @type {Promise<void>} */ (
+    new Promise((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+      server.closeAllConnections();
+    })
+  );
 }
 
 test.beforeAll(async () => {
