@@ -231,20 +231,36 @@ describe("coded errors", () => {
     expect(found).toEqual([]);
   });
 
+  /**
+   * Коды заводятся двумя способами, и сторож обязан видеть оба.
+   *
+   * Сначала здесь стоял только `appError("CODE")`. Второй идиом —
+   * `error.code = "CODE"` и `this.code = "CODE"` у собственных классов ошибок —
+   * в поле зрения не попадал, и десять кодов прожили без переводов ровно
+   * потому, что проверка, заведённая их ловить, на них не смотрела:
+   * `IDB_NOT_READY`, `PROJECT_DATA_WRITE_FAILED`, `NO_COMPONENT_REGISTRY` и
+   * прочие показывали человеку английский отладочный текст через запасной путь
+   * `errorText`.
+   *
+   * Присваивание отличается от сравнения одним знаком, и шаблон это учитывает:
+   * `=== "CODE"` под него не подходит.
+   */
   const codesThrownInJs = () => {
     const used = new Set();
+    const patterns = [
+      /\bappError\(\s*"([A-Z0-9_]+)"/g,
+      /\.code\s*=\s*"([A-Z0-9_]+)"/g,
+    ];
     for (const file of sourceFiles) {
       const source = stripComments(readFileSync(file, "utf8"));
-      for (const [, code] of source.matchAll(
-        /\bappError\(\s*"([A-Z0-9_]+)"/g,
-      )) {
-        used.add(code);
+      for (const pattern of patterns) {
+        for (const [, code] of source.matchAll(pattern)) used.add(code);
       }
     }
     return used;
   };
 
-  it("переводит каждый код, который бросает appError", () => {
+  it("переводит каждый код, который бросает JS", () => {
     // Оба неймспейса, потому что ровно в них и смотрит `errorText`: часть
     // отказов JS совпадает по смыслу с отказами плагина, и заводить второй
     // перевод той же фразы незачем.

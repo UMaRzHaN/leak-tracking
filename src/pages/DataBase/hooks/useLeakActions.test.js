@@ -230,7 +230,9 @@ describe("useLeakActions", () => {
       expect(setData).not.toHaveBeenCalled();
       expect(notify).toHaveBeenCalledWith(
         "error",
-        "Save error: Invalid leak status transition: in_progress -> open",
+        // Код перехода перестал утекать на экран: у него теперь есть перевод,
+        // и `errorText` берёт его вместо отладочного текста с именами статусов.
+        "Save error: This status change is not allowed",
       );
     });
   });
