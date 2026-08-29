@@ -1,6 +1,7 @@
 import { Component } from "react";
 import { preserveAndResetCorruptedProjects } from "@/app/project/projectStorage";
 import { logger } from "@/utils/logger";
+import { saveRecoveryFile } from "@/services/storage/saveRecoveryFile";
 import s from "./ErrorBoundary.module.scss";
 
 // The only screen that keeps its Russian text in the source. It renders after
@@ -11,7 +12,7 @@ import s from "./ErrorBoundary.module.scss";
 export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, saveNotice: null };
   }
 
   static getDerivedStateFromError(error) {
@@ -22,17 +23,29 @@ export default class ErrorBoundary extends Component {
     logger.error("[ErrorBoundary]", error, info);
   }
 
+  // Исход сохранения виден на экране, а не только в файловом менеджере. В
+  // браузере файл падает в загрузки сам собой, на телефоне — в папку, которую
+  // без подсказки не найти; а отказ на обеих платформах раньше выглядел ровно
+  // как успех, потому что не выглядел никак.
+  saveFile = async (fileName, text) => {
+    this.setState({ saveNotice: null });
+    const result = await saveRecoveryFile({ fileName, text });
+    if (!result.ok) {
+      logger.error("[ErrorBoundary] save failed", result.error);
+      this.setState({ saveNotice: "Не удалось сохранить файл" });
+      return;
+    }
+    this.setState({
+      saveNotice: result.path
+        ? `Сохранено в Документы/${result.path}`
+        : `Файл сохранён: ${result.fileName}`,
+    });
+  };
+
   downloadProjectRecovery = () => {
     const raw = this.state.error?.recoveryValue;
     if (raw == null) return;
-    const url = URL.createObjectURL(
-      new Blob([raw], { type: "application/json;charset=utf-8" }),
-    );
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "leak-tracking-project-list-recovery.json";
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    void this.saveFile("leak-tracking-project-list-recovery.json", raw);
   };
 
   resetProjectStorage = () => {
@@ -41,15 +54,10 @@ export default class ErrorBoundary extends Component {
   };
 
   downloadDiagnostics = () => {
-    const payload = logger.exportDiagnostics?.() ?? "{}";
-    const url = URL.createObjectURL(
-      new Blob([payload], { type: "application/json;charset=utf-8" }),
+    void this.saveFile(
+      "leak-tracking-diagnostics.json",
+      logger.exportDiagnostics?.() ?? "{}",
     );
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "leak-tracking-diagnostics.json";
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
 
   render() {
@@ -72,6 +80,7 @@ export default class ErrorBoundary extends Component {
           <button className={s.btnSecondary} onClick={this.resetProjectStorage}>
             Сохранить копию и сбросить список
           </button>
+          {this.renderSaveNotice()}
         </div>
       );
     }
@@ -85,7 +94,9 @@ export default class ErrorBoundary extends Component {
         </p>
         <button
           className={s.btn}
-          onClick={() => this.setState({ hasError: false, error: null })}
+          onClick={() =>
+            this.setState({ hasError: false, error: null, saveNotice: null })
+          }
         >
           Попробовать снова
         </button>
@@ -98,7 +109,17 @@ export default class ErrorBoundary extends Component {
         <button className={s.btnSecondary} onClick={this.downloadDiagnostics}>
           Скачать диагностику
         </button>
+        {this.renderSaveNotice()}
       </div>
+    );
+  }
+
+  renderSaveNotice() {
+    if (!this.state.saveNotice) return null;
+    return (
+      <p className={s.notice} role="status" aria-live="polite">
+        {this.state.saveNotice}
+      </p>
     );
   }
 }

@@ -15,5 +15,8 @@ export const app = {
       "The project is not treated as empty. Writes are blocked to protect existing data. Check storage and try again.",
     retry: "Retry",
     download: "Download recovery data",
+    saved: "Saved to Documents/{{path}}",
+    downloaded: "File saved ({{fileName}})",
+    saveFailed: "The file could not be saved",
   },
 };

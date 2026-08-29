@@ -1,7 +1,8 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useLanguage } from "./hooks/useLanguage";
 import { isListPage } from "@/app/pages";
 import { useModalDialog } from "@/hooks/useModalDialog";
+import { saveRecoveryFile } from "@/services/storage/saveRecoveryFile";
 
 const Settings = lazy(() => import("@/pages/Settings/Settings"));
 const AddLeak = lazy(() => import("@/pages/AddLeak/AddLeak"));
@@ -39,15 +40,10 @@ export function AppLoader({ label = null, overlay = false }) {
 }
 
 function downloadRecoveryData(data, fileName) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], {
-    type: "application/json",
+  return saveRecoveryFile({
+    fileName,
+    text: JSON.stringify(data, null, 2),
   });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 function ProjectDataLoadWarning({ onRetry }) {
@@ -71,6 +67,10 @@ function ProjectDataLoadWarning({ onRetry }) {
 function ProjectDataLoadError({ onRetry, error, data, projectName }) {
   const { t } = useLanguage();
   const recoveryData = error?.recoveryData ?? (data?.length ? data : null);
+  // Куда лёг файл, видно на экране: в браузере он уходит в загрузки сам, на
+  // телефоне — в папку, которую иначе пришлось бы искать наугад, а отказ до
+  // этого не показывался вообще.
+  const [saveNotice, setSaveNotice] = useState(null);
   return (
     <section className="dataLoadError" role="alert" aria-live="assertive">
       <span className="dataLoadErrorIcon" aria-hidden="true">
@@ -84,16 +84,27 @@ function ProjectDataLoadError({ onRetry, error, data, projectName }) {
       {recoveryData && (
         <button
           type="button"
-          onClick={() =>
-            downloadRecoveryData(
+          onClick={async () => {
+            setSaveNotice(null);
+            const result = await downloadRecoveryData(
               recoveryData,
               `${projectName || "project"}-recovery.json`,
-            )
-          }
+            );
+            setSaveNotice(
+              result.ok
+                ? result.path
+                  ? t("app.loadError.saved", { path: result.path })
+                  : t("app.loadError.downloaded", {
+                      fileName: result.fileName,
+                    })
+                : t("app.loadError.saveFailed"),
+            );
+          }}
         >
           {t("app.loadError.download")}
         </button>
       )}
+      {saveNotice && <p>{saveNotice}</p>}
     </section>
   );
 }

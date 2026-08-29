@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import AppRoutes from "./AppRoutes";
 
@@ -85,5 +85,31 @@ describe("AppRoutes project data storage states", () => {
       await screen.findByText("Data could not be read"),
     ).toBeInTheDocument();
     expect(screen.queryByText("main-page-ready")).not.toBeInTheDocument();
+  });
+
+  it("reports where the recovery copy went", async () => {
+    // The button used to be a no-op on Android and silent everywhere: it said
+    // nothing whether the file was written or not.
+    const click = vi
+      .spyOn(globalThis.HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+    globalThis.URL.createObjectURL = vi.fn(() => "blob:recovery");
+    globalThis.URL.revokeObjectURL = vi.fn();
+
+    render(
+      <AppRoutes
+        {...baseProps}
+        data={[{ id: "leak-1" }]}
+        loadError={{ code: "PROJECT_DATA_DEGRADED", blocksWrites: true }}
+      />,
+    );
+
+    fireEvent.click(await screen.findByText("Download recovery data"));
+
+    expect(click).toHaveBeenCalledOnce();
+    expect(
+      await screen.findByText("File saved (Project 1-recovery.json)"),
+    ).toBeInTheDocument();
+    click.mockRestore();
   });
 });

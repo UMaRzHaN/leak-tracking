@@ -104,13 +104,33 @@ describe("ErrorBoundary", () => {
       expect(screen.getByText("рабочий экран")).toBeInTheDocument();
     });
 
-    it("отдаёт диагностику файлом", () => {
+    it("отдаёт диагностику файлом и говорит, что файл сохранён", async () => {
       renderBroken();
 
       fireEvent.click(screen.getByText("Скачать диагностику"));
 
       expect(mocks.exportDiagnostics).toHaveBeenCalled();
       expect(click).toHaveBeenCalledOnce();
+      // Молчание после нажатия выглядело одинаково и при успехе, и при
+      // отказе — на телефоне это была вторая половина неработающей кнопки.
+      expect(
+        await screen.findByText(
+          "Файл сохранён: leak-tracking-diagnostics.json",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("не выдаёт отказ сохранения за успех", async () => {
+      click.mockImplementation(() => {
+        throw new Error("скачивание заблокировано");
+      });
+      renderBroken();
+
+      fireEvent.click(screen.getByText("Скачать диагностику"));
+
+      expect(
+        await screen.findByText("Не удалось сохранить файл"),
+      ).toBeInTheDocument();
     });
 
     it("перезагружает приложение по просьбе", () => {
@@ -137,13 +157,18 @@ describe("ErrorBoundary", () => {
       expect(screen.queryByText("Что-то пошло не так")).not.toBeInTheDocument();
     });
 
-    it("даёт скачать исходное значение до сброса", () => {
+    it("даёт скачать исходное значение до сброса", async () => {
       renderCorrupted();
 
       fireEvent.click(screen.getByText("Скачать данные для восстановления"));
 
       expect(globalThis.URL.createObjectURL).toHaveBeenCalledOnce();
       expect(click).toHaveBeenCalledOnce();
+      expect(
+        await screen.findByText(
+          "Файл сохранён: leak-tracking-project-list-recovery.json",
+        ),
+      ).toBeInTheDocument();
     });
 
     it("не предлагает скачивание, когда сохранять нечего", () => {

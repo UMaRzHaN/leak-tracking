@@ -19,6 +19,11 @@ export const LEAK_XLSX_DIR = `${LEAK_EXPORT_ROOT}/zip_xlsx`;
 export const LEAK_KML_DIR = `${LEAK_EXPORT_ROOT}/kml`;
 export const INVENTORY_EXPORT_DIR = "Inventorization";
 export const INVENTORY_KML_DIR = `${INVENTORY_EXPORT_DIR}/kml`;
+// Не про утечки и не про оборудование: сюда падает то, что собрано после
+// поломки — копия непрочитанного списка проектов и буфер диагностики. Такой
+// файл ищут, чтобы передать его дальше, и отдельная папка — единственное, что
+// отличает его от выгрузки с данными.
+export const RECOVERY_EXPORT_DIR = "Recovery";
 
 /** Joins a project's own folder with one of the directories above. */
 export function projectExportFolder(projectFolderName, dir) {
