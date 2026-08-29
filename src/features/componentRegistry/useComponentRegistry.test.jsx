@@ -206,4 +206,64 @@ describe("useComponentRegistry", () => {
     expect(result.current.conflicts).toEqual([]);
     expect(result.current.findConflicts("7")).toHaveLength(1);
   });
+
+  describe("карточка, с которой берутся подсказки", () => {
+    it("берёт заведённую последней, а не последнюю в списке", async () => {
+      // Так выглядит реестр после импорта инвентаризации: порядок задан
+      // архивом, а не временем заведения.
+      mocks.load.mockResolvedValue([
+        {
+          id: "b",
+          component_uid: "2",
+          date: "2026-03-02T10:00:00.000Z",
+          manufacturer: "Пензтяжпромарматура",
+        },
+        {
+          id: "a",
+          component_uid: "1",
+          date: "2026-01-05T10:00:00.000Z",
+          manufacturer: "Завод постарше",
+        },
+      ]);
+      const { result } = render(upstream);
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.lastComponent?.id).toBe("b");
+    });
+
+    it("не смотрит на updatedAt: он одинаков у всех карточек сразу", async () => {
+      // Сохраняется всегда весь реестр, и `normalizeComponent` ставит одну и ту
+      // же метку каждой карточке. Раньше выбор по `updatedAt` в этой ничьей
+      // сводился к «последняя в массиве», то есть к порядку хранения.
+      mocks.load.mockResolvedValue([
+        {
+          id: "новая",
+          component_uid: "2",
+          date: "2026-03-02T10:00:00.000Z",
+          updatedAt: 7_000,
+        },
+        {
+          id: "старая",
+          component_uid: "1",
+          date: "2026-01-05T10:00:00.000Z",
+          updatedAt: 7_000,
+        },
+      ]);
+      const { result } = render(upstream);
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.lastComponent?.id).toBe("новая");
+    });
+
+    it("карточка без даты годится, пока не нашлось ни одной датированной", async () => {
+      mocks.load.mockResolvedValue([
+        { id: "без-даты", component_uid: "1" },
+        { id: "с-датой", component_uid: "2", date: "2026-01-05T10:00:00.000Z" },
+      ]);
+      const { result } = render(upstream);
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.lastComponent?.id).toBe("с-датой");
+    });
+  });
 });
