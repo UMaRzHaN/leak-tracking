@@ -3,7 +3,7 @@
  * Вставить в консоль браузера / WebView DevTools при открытом приложении.
  *
  * Генерирует тестовую базу для активного проекта:
- * - 1000 утечек;
+ * - 100 утечек, число меняется через `window.SEED_LEAK_COUNT`;
  * - фото до / в ремонте / после;
  * - detectedBy, serial_number, repairAt, resolvedAt;
  * - 2–4 обхода на тег и несколько повторных проверок в одном обходе;
@@ -15,6 +15,27 @@
  * - native Capacitor: пишет data.json и фото в Directory.Data.
  */
 (async function seed100Leaks() {
+  // Сид повторяем: одно и то же зерно и одно и то же «сейчас» дают одну и ту же
+  // базу. Зачем — в `scripts/manual-capture-time.mjs`; оттуда же съёмка
+  // руководства передаёт `SEED_NOW`. Обе величины подменяемы через `window`.
+  const RANDOM_SEED = Number(window.SEED_RANDOM_SEED ?? 20_260_820);
+  const NOW = Number(window.SEED_NOW ?? Date.parse("2026-08-20T09:00:00.000Z"));
+
+  // mulberry32: короткий, без зависимостей и одинаковый во всех движках —
+  // от `Math.random` этого не обещано.
+  let randomState = RANDOM_SEED >>> 0;
+  function random() {
+    randomState = (randomState + 0x6d2b79f5) >>> 0;
+    let t = randomState;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  // Уникальность идентификаторов держит счётчик, а не момент вызова.
+  let idCounter = 0;
+  const nextId = () => (idCounter += 1);
+
   const COUNT = Number(window.SEED_LEAK_COUNT ?? 100);
   const ROUNDS = 5;
   const CURRENT_ROUND = 5;
@@ -24,10 +45,9 @@
   const CARD_PHOTO_POOL_SIZE = Number(
     window.SEED_CARD_PHOTO_POOL_SIZE ?? (COUNT > FULL_PHOTO_LIMIT ? 120 : 0),
   );
-  const DETAIL_PHOTO_SAMPLE_EVERY = Number(
-    (window.SEED_DETAIL_PHOTO_EVERY = 1), // везде будут фото
-    // ?? (COUNT > FULL_PHOTO_LIMIT ? 10 : 1), // не везде будут
-  );
+  // Единица — фото у каждой записи. Ручка присваивала себе единицу прямо
+  // внутри `Number()`, то есть переданное значение молча терялось.
+  const DETAIL_PHOTO_SAMPLE_EVERY = Number(window.SEED_DETAIL_PHOTO_EVERY ?? 1);
   // Карточки реестра. Нужны прежде всего снимкам для руководства: завести их
   // через интерфейс на эмуляторе нельзя — фото на устройстве берёт нативная
   // камера, и через WebView файл не подставить.
@@ -89,7 +109,7 @@
       JSON.stringify({
         id: `seed-round-${CURRENT_ROUND}`,
         number: CURRENT_ROUND,
-        startedAt: new Date().toISOString(),
+        startedAt: new Date(NOW).toISOString(),
       }),
     );
 
@@ -219,7 +239,7 @@
       const uid = String(9001 + index);
       const subdivision = pick(SUBDIVISIONS);
       const inspectedAt = new Date(
-        Date.now() - Math.floor(Math.random() * 30) * DAY,
+        NOW - Math.floor(random() * 30) * DAY,
       ).toISOString();
 
       return {
@@ -270,12 +290,12 @@
     vars,
     cardPhotoPool,
   }) {
-    const now = Date.now();
+    const now = NOW;
     const twoYears = 2 * 365 * 24 * 60 * 60 * 1000;
     const leaks = [];
 
     for (let index = 0; index < count; index += 1) {
-      const createdAt = now - Math.floor(Math.random() * twoYears);
+      const createdAt = now - Math.floor(random() * twoYears);
       const leakId = String(2400 + index);
       const status = pickWeighted([
         ["open", 52],
@@ -333,7 +353,7 @@
         repair_recommendation: pick(RECOMMENDATIONS),
         materials_equipment: pick(MATERIALS),
         note:
-          Math.random() > 0.55
+          random() > 0.55
             ? `Плановый осмотр ${formatShortDate(new Date(createdAt))}`
             : "",
         lat: rndFloat(BASE_LAT - 0.035, BASE_LAT + 0.035, 6),
@@ -422,7 +442,7 @@
     const maxRounds = Math.min(rounds, rndInt(2, rounds));
 
     for (let round = 1; round <= maxRounds; round += 1) {
-      const shouldSkipCurrent = round === currentRound && Math.random() < 0.35;
+      const shouldSkipCurrent = round === currentRound && random() < 0.35;
       if (shouldSkipCurrent) continue;
 
       const duplicates =
@@ -737,15 +757,13 @@
   }
 
   async function writeWebPhoto({ db, projectId, prefix, leakId, dataUrl }) {
-    const id = `photo_${projectId}_${prefix}_${leakId}_${Date.now()}_${Math.floor(
-      Math.random() * 100000,
-    )}`;
+    const id = `photo_${projectId}_${prefix}_${leakId}_${nextId()}`;
     const data = await dataUrlToBlob(dataUrl);
 
     await new Promise((resolve, reject) => {
       const tx = db.transaction("photos", "readwrite");
       const store = tx.objectStore("photos");
-      const request = store.put({ id, data, timestamp: Date.now() });
+      const request = store.put({ id, data, timestamp: NOW });
       request.onerror = () => reject(request.error);
       tx.oncomplete = resolve;
       tx.onerror = () => reject(tx.error);
@@ -841,14 +859,11 @@
       readWebRevision(dataDb, projectId),
       readWebRevision(mirrorDb, projectId),
     ]);
-    const revision = Math.max(
-      Date.now() * 1000,
-      Math.max(...knownRevisions) + 1,
-    );
+    const revision = Math.max(NOW * 1000, Math.max(...knownRevisions) + 1);
     const envelope = {
       version: WEB_ENVELOPE_VERSION,
       revision,
-      updatedAt: Date.now(),
+      updatedAt: NOW,
       deleted: false,
       checksum: checksumWebPayload(leaks, false),
       data: leaks,
@@ -980,7 +995,7 @@
       directory: "DATA",
       data: JSON.stringify({
         version: 1,
-        updatedAt: Date.now(),
+        updatedAt: NOW,
         data: components,
       }),
       encoding: "utf8",
@@ -1003,7 +1018,7 @@
       new Promise((resolve, reject) => {
         const tx = db.transaction("components", "readwrite");
         tx.objectStore("components").put(
-          { version: 1, updatedAt: Date.now(), data: components },
+          { version: 1, updatedAt: NOW, data: components },
           projectId,
         );
         tx.oncomplete = () => resolve();
@@ -1015,15 +1030,13 @@
 
   async function writeNativePhoto({ Fs, photoDir, prefix, leakId, dataUrl }) {
     const base64 = dataUrl.split(",")[1];
-    const fileName = `photo_${prefix}_${leakId}_${Date.now()}_${Math.floor(
-      Math.random() * 100000,
-    )}.jpg`;
+    const fileName = `photo_${prefix}_${leakId}_${nextId()}.jpg`;
     const path = `${photoDir}/${fileName}`;
     await Fs.writeFile({ path, directory: "DATA", data: base64 });
     return `data://${path}`;
   }
 
-  function makePhoto(hue, label, mode, capturedAt = new Date()) {
+  function makePhoto(hue, label, mode, capturedAt = new Date(NOW)) {
     const width = 240;
     const height = 180;
     const canvas = document.createElement("canvas");
@@ -1162,12 +1175,12 @@
   }
 
   function pick(list) {
-    return list[Math.floor(Math.random() * list.length)];
+    return list[Math.floor(random() * list.length)];
   }
 
   function pickWeighted(items) {
     const total = items.reduce((sum, [, weight]) => sum + weight, 0);
-    let cursor = Math.random() * total;
+    let cursor = random() * total;
     for (const [value, weight] of items) {
       cursor -= weight;
       if (cursor <= 0) return value;
@@ -1176,11 +1189,11 @@
   }
 
   function rndInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+    return Math.floor(random() * (max - min + 1)) + min;
   }
 
   function rndFloat(min, max, digits = 2) {
-    return round(Math.random() * (max - min) + min, digits);
+    return round(random() * (max - min) + min, digits);
   }
 
   function round(value, digits = 2) {

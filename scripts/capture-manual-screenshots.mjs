@@ -13,6 +13,7 @@ import { chromium } from "@playwright/test";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { encodePngFilesToWebp } from "./image-encoder.mjs";
+import { MANUAL_CAPTURE_TIME } from "./manual-capture-time.mjs";
 
 const BASE_URL = process.env.MANUAL_BASE_URL ?? "http://127.0.0.1:4173";
 const OUT_DIR = path.resolve("docs/manual/img");
@@ -38,6 +39,7 @@ async function main() {
     geolocation: { latitude: 41.297147, longitude: 69.258685 },
     acceptDownloads: true,
   });
+  await context.clock.setFixedTime(MANUAL_CAPTURE_TIME);
   const page = await context.newPage();
   page.on("console", (message) => {
     if (message.type() === "error") console.log("  [console]", message.text());
@@ -231,9 +233,12 @@ async function seedData(page) {
   console.log("\n[3] Тестовые данные");
   const source = await fs.readFile(SEED, "utf8");
 
-  await page.evaluate(() => {
+  await page.evaluate((now) => {
     window.SEED_LEAK_COUNT = 24;
-  });
+    // Тот же момент, что у замороженных часов: иначе данные и экран
+    // разошлись бы во времени.
+    window.SEED_NOW = now;
+  }, MANUAL_CAPTURE_TIME.getTime());
   // Сид сам перезагружает страницу в конце, поэтому evaluate обрывается —
   // это ожидаемо, дальше просто ждём главную с новыми данными.
   await page.evaluate(source).catch(() => {});

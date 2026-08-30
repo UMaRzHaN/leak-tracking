@@ -17,6 +17,8 @@ declare global {
     SEED_COMPONENT_COUNT?: number;
     SEED_CARD_PHOTO_POOL_SIZE?: number;
     SEED_DETAIL_PHOTO_EVERY?: number;
+    SEED_RANDOM_SEED?: number;
+    SEED_NOW?: number;
     /** Мост Capacitor: есть только в сборке под телефон. */
     Capacitor?: {
       isNativePlatform?: () => boolean;
