@@ -199,7 +199,16 @@ async function reconcilePhotoValue(
   );
   if (!incomingIsBlob && !incomingIsDataUrl) return incomingPath;
 
-  if (preserveExisting && existingPath) {
+  // Слияние не трогает занятый слот — но занят он, только если снимок в нём и
+  // правда есть. Путь мог приехать с другого устройства вместе с записью, а
+  // файла по нему здесь никогда не было; сохранить такой путь значило бы
+  // сохранить ссылку в пустоту, выбросив единственный снимок, который у нас на
+  // руках. Дальше по этой же функции проверка уже стоит — здесь её не было.
+  if (
+    preserveExisting &&
+    existingPath &&
+    (await storedPhotoExists(existingPath, getStoredPhoto))
+  ) {
     stats.reused += 1;
     return existingPath;
   }

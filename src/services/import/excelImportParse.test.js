@@ -1169,8 +1169,9 @@ describe("reconcileExcelImportPhotos", () => {
     expect(result.photos).toMatchObject({ reused: 2, replaced: 0 });
   });
 
-  it("preserves photos in occupied slots during a non-destructive merge", async () => {
-    const result = await reconcileExcelImportPhotos(
+  /** Слияние поверх местных снимков: занятые слоты против приезжих фото. */
+  const mergeOntoLocalPhotos = (getStoredPhoto) =>
+    reconcileExcelImportPhotos(
       [
         {
           leak_id: "TAG-4",
@@ -1192,8 +1193,13 @@ describe("reconcileExcelImportPhotos", () => {
           ],
         },
       ],
-      async () => null,
+      getStoredPhoto,
       { preserveExisting: true },
+    );
+
+  it("preserves photos in occupied slots during a non-destructive merge", async () => {
+    const result = await mergeOntoLocalPhotos(
+      async (key) => new Blob([key], { type: "image/jpeg" }),
     );
 
     expect(result.leaks[0].photo).toBe("idb://local-main");
@@ -1201,6 +1207,22 @@ describe("reconcileExcelImportPhotos", () => {
       "idb://local-round",
     );
     expect(result.photos).toMatchObject({ reused: 2, replaced: 0, toSave: 0 });
+  });
+
+  it("принимает приезжее фото, когда местного файла по пути нет", async () => {
+    // Путь в слоте мог приехать с другого устройства вместе с записью, а файла
+    // по нему здесь никогда не было. Сохранить такой путь значило бы сохранить
+    // ссылку в пустоту, выбросив единственный снимок, который у нас на руках.
+    const result = await mergeOntoLocalPhotos(async () => null);
+
+    expect(result.leaks[0].photo).toBe(
+      "data:image/jpeg;base64,b3JpZ2luYWwtbWFpbg==",
+    );
+    expect(result.leaks[0].monitoringRecords[0].photo).toBe(
+      "data:image/jpeg;base64,b3JpZ2luYWwtcm91bmQ=",
+    );
+    expect(result.photos).toMatchObject({ reused: 0, replaced: 2 });
+    expect(result.photos.replacedByReason).toMatchObject({ unreadable: 2 });
   });
 });
 
