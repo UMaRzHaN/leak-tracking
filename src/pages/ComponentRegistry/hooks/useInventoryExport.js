@@ -61,7 +61,7 @@ export function useInventoryExport({ project, notify }) {
       });
       const schemaEntries = await buildSchemaArchiveEntries(
         project,
-        await SchemaRepository.listSchemas(project).catch(() => []),
+        await SchemaRepository.readIndex(project).catch(() => []),
         (target, schema) => SchemaRepository.readSchemaFile(target, schema),
         { dir: INVENTORY_SCHEMA_DIR },
       );

@@ -9,7 +9,12 @@ import {
 } from "@/repositories/schemaPaths";
 import { isNative } from "@/utils/platform";
 import { logger } from "@/utils/logger";
-import { globalScope } from "@/utils/globalScope";
+import { base64ToBlob, blobToBase64 } from "@/utils/base64Blob";
+import {
+  liveSchemas,
+  withSchemaAdded,
+  withSchemaRemoved,
+} from "@/domain/schemaTombstones";
 
 /**
  * Storage for technological schema files.
@@ -96,12 +101,19 @@ function folderOf(project) {
 }
 
 export const SchemaRepository = {
+  /** Чертежи проекта. Никогда не байты — см. заметку наверху. */
+  async listSchemas(project) {
+    return liveSchemas(await this.readIndex(project));
+  },
+
   /**
-   * The project's schema index. Never the file bytes — see the note at the top.
+   * Весь список, вместе с надгробиями: они нужны выгрузке и сведению, а на
+   * экран идут только живые чертежи.
+   *
    * @param {{id: string, folderName?: string}} project
    * @returns {Promise<Record<string, any>[]>}
    */
-  async listSchemas(project) {
+  async readIndex(project) {
     if (!project?.id) return [];
 
     try {
@@ -210,8 +222,9 @@ export const SchemaRepository = {
         }
       }
 
-      const schemas = await this.listSchemas(project);
-      await this.saveIndex(project, [...schemas, schema]);
+      // Из всего списка: иначе добавление стирало бы надгробия.
+      const schemas = await this.readIndex(project);
+      await this.saveIndex(project, withSchemaAdded(schemas, schema));
       return schema;
     } catch (error) {
       if (error instanceof SchemaStorageError) throw error;
@@ -300,11 +313,10 @@ export const SchemaRepository = {
         await store.remove(fileKey(project.id, schema.id));
       }
 
-      const schemas = await this.listSchemas(project);
-      await this.saveIndex(
-        project,
-        schemas.filter((entry) => entry.id !== schema.id),
-      );
+      // Запись остаётся надгробием: без него второй телефон вернёт схему при
+      // первом же обмене — для него она просто есть.
+      const schemas = await this.readIndex(project);
+      await this.saveIndex(project, withSchemaRemoved(schemas, schema.id));
       return true;
     } catch (error) {
       logger.warn("[schemas] failed to delete a schema:", error);
@@ -312,24 +324,3 @@ export const SchemaRepository = {
     }
   },
 };
-
-/** Capacitor's Filesystem takes base64; the browser hands us a Blob. */
-export async function blobToBase64(blob) {
-  const buffer = await blob.arrayBuffer();
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  // Chunked because a 25 MB drawing spread over one apply() call overflows the
-  // argument limit on every engine that has one.
-  const CHUNK = 0x8000;
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-  }
-  return globalScope.btoa(binary);
-}
-
-export function base64ToBlob(base64, type) {
-  const binary = globalScope.atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-  return new Blob([bytes], { type: type || "application/octet-stream" });
-}

@@ -1,4 +1,5 @@
 import { createRecordId } from "@/utils/createRecordId";
+import { nextSyncTimestamp } from "@/services/sync/syncClock";
 
 /**
  * Rules for technological schemas — the P&ID sheets a walker consults while
@@ -89,7 +90,10 @@ export function isLargeSchema(schema) {
  * @param {{location?: string, now?: number}} [options]
  */
 export function createSchemaEntry(file, { location = "", now } = {}) {
-  const timestamp = typeof now === "number" ? now : Date.now();
+  // Логические часы, а не настенные: по `addedAt` сведение списков решает, что
+  // свежее — чертёж или надгробие с другого телефона, а часы двух устройств
+  // расходятся.
+  const timestamp = typeof now === "number" ? now : nextSyncTimestamp();
   return {
     id: createRecordId(),
     name: String(file?.name ?? "").trim() || "schema",

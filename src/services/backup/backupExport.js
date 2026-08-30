@@ -50,7 +50,9 @@ async function addProjectAttachments(add, { project, idbGet }) {
         import("./schemaArchive"),
         import("@/repositories/SchemaRepository"),
       ]);
-    const schemas = await SchemaRepository.listSchemas(project).catch(() => []);
+    // Весь список, вместе с надгробиями: без них удаление схемы не переживёт
+    // обмена, и она вернётся с соседнего телефона.
+    const schemas = await SchemaRepository.readIndex(project).catch(() => []);
     const entries = await buildSchemaArchiveEntries(
       project,
       schemas,

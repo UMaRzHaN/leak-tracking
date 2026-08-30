@@ -129,7 +129,9 @@ describe("SchemaRepository on web", () => {
     ).resolves.toBeNull();
   });
 
-  it("drops the bytes and the index entry together", async () => {
+  it("drops the bytes and leaves a tombstone in their place", async () => {
+    // Байты уходят, а запись остаётся надгробием: без него схема вернётся с
+    // соседнего телефона при первом же обмене — для него она просто есть.
     mocks.getStrict.mockImplementation(async (key) =>
       key === "p1:index"
         ? { version: 1, updatedAt: 1, data: [schema, { id: "s2" }] }
@@ -142,7 +144,38 @@ describe("SchemaRepository on web", () => {
 
     expect(mocks.remove).toHaveBeenCalledWith("p1:file:s1");
     const indexCall = mocks.save.mock.calls.find(([key]) => key === "p1:index");
-    expect(indexCall[1].data.map((entry) => entry.id)).toEqual(["s2"]);
+    expect(indexCall[1].data.map((entry) => entry.id)).toEqual(["s1", "s2"]);
+    expect(indexCall[1].data[0]).toMatchObject({
+      deleted: true,
+      name: schema.name,
+      size: schema.size,
+      deletedAt: expect.any(Number),
+    });
+  });
+
+  it("не показывает удалённую схему в списке", async () => {
+    mocks.getStrict.mockImplementation(async (key) =>
+      key === "p1:index"
+        ? {
+            version: 1,
+            updatedAt: 1,
+            data: [
+              {
+                id: "s1",
+                name: "старая.pdf",
+                size: 10,
+                deleted: true,
+                deletedAt: 5,
+              },
+              { id: "s2", name: "живая.pdf", size: 20 },
+            ],
+          }
+        : null,
+    );
+
+    await expect(SchemaRepository.listSchemas(project)).resolves.toEqual([
+      { id: "s2", name: "живая.pdf", size: 20 },
+    ]);
   });
 
   it("surfaces an index read failure instead of showing no schemas", async () => {

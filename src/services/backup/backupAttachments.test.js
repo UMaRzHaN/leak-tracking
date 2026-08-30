@@ -3,7 +3,7 @@ import JSZip from "jszip";
 
 const mocks = vi.hoisted(() => ({
   loadComponents: vi.fn(),
-  listSchemas: vi.fn(),
+  readIndex: vi.fn(),
   readSchemaFile: vi.fn(),
 }));
 
@@ -12,7 +12,9 @@ vi.mock("@/repositories/ComponentRepository", () => ({
 }));
 vi.mock("@/repositories/SchemaRepository", () => ({
   SchemaRepository: {
-    listSchemas: mocks.listSchemas,
+    // Выгрузка читает весь список, вместе с надгробиями: без них удаление
+    // схемы не переживает обмена.
+    readIndex: mocks.readIndex,
     readSchemaFile: mocks.readSchemaFile,
   },
 }));
@@ -36,7 +38,7 @@ const project = {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.loadComponents.mockResolvedValue([]);
-  mocks.listSchemas.mockResolvedValue([]);
+  mocks.readIndex.mockResolvedValue([]);
 });
 
 describe("what a ZIP backup carries besides the leaks", () => {
@@ -46,7 +48,7 @@ describe("what a ZIP backup carries besides the leaks", () => {
     mocks.loadComponents.mockResolvedValue([
       { id: "c1", component_uid: "4242", photo: "idb://photo_c1" },
     ]);
-    mocks.listSchemas.mockResolvedValue([{ id: "s1", name: "узел.pdf" }]);
+    mocks.readIndex.mockResolvedValue([{ id: "s1", name: "узел.pdf" }]);
     mocks.readSchemaFile.mockResolvedValue(new Blob(["pdf"]));
 
     const blob = await buildProjectBackupZip({

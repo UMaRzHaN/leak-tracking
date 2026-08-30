@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   buildArchive: vi.fn(),
   buildRegistryEntry: vi.fn(),
   buildSchemaEntries: vi.fn(),
-  listSchemas: vi.fn(),
+  readIndex: vi.fn(),
   readSchemaFile: vi.fn(),
   writePublicFile: vi.fn(),
 }));
@@ -41,7 +41,8 @@ vi.mock("@/services/backup/schemaArchive", () => ({
 }));
 vi.mock("@/repositories/SchemaRepository", () => ({
   SchemaRepository: {
-    listSchemas: mocks.listSchemas,
+    // Весь список, вместе с надгробиями удалённых схем.
+    readIndex: mocks.readIndex,
     readSchemaFile: mocks.readSchemaFile,
   },
 }));
@@ -77,7 +78,7 @@ describe("useInventoryExport", () => {
     mocks.buildSheetSpec.mockResolvedValue({ headers: [], rows: [] });
     mocks.buildRegistryEntry.mockResolvedValue(null);
     mocks.buildSchemaEntries.mockResolvedValue([]);
-    mocks.listSchemas.mockResolvedValue([]);
+    mocks.readIndex.mockResolvedValue([]);
     mocks.buildArchive.mockResolvedValue(new Blob(["zip"]));
     globalThis.URL.createObjectURL = vi.fn(() => "blob:inventory");
     globalThis.URL.revokeObjectURL = vi.fn();
@@ -144,7 +145,7 @@ describe("useInventoryExport", () => {
 
   it("выгружает реестр и без чертежей, если их не прочитать", async () => {
     // Чертежи — приложение к реестру, а не его условие.
-    mocks.listSchemas.mockRejectedValue(new Error("нет доступа"));
+    mocks.readIndex.mockRejectedValue(new Error("нет доступа"));
     const { result } = setup();
 
     await act(async () => {

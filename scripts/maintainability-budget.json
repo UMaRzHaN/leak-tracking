@@ -81,7 +81,7 @@
     "src/repositories/ComponentRepository.js": 382,
     "src/repositories/LeakRepository.js": 650,
     "src/repositories/PhotoRepository.js": 491,
-    "src/repositories/SchemaRepository.js": 344,
+    "src/repositories/SchemaRepository.js": 336,
     "src/repositories/backupSchema.js": 670,
     "src/repositories/legacyNativeLeakStorage.js": 618,
     "src/repositories/nativeLeakStorage.js": 333,

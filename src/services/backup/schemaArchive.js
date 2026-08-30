@@ -3,6 +3,12 @@ import {
   createSchemaEntry,
   isSupportedSchema,
 } from "@/domain/technologicalSchemas";
+import {
+  isLiveSchema,
+  liveSchemas,
+  mergeSchemaLists,
+  schemaIdentity,
+} from "@/domain/schemaTombstones";
 import { SchemaRepository } from "@/repositories/SchemaRepository";
 import { logger } from "@/utils/logger";
 import { getJSZip } from "./runtime";
@@ -22,6 +28,17 @@ import { getJSZip } from "./runtime";
  */
 
 export const SCHEMA_ARCHIVE_DIR = "technological_schemas";
+
+/**
+ * Список схем внутри папки с чертежами.
+ *
+ * Без него в архиве едут одни файлы, а по имени файла не восстановить ни
+ * времени добавления, ни того, что схему удалили. Отсюда и брался возврат
+ * удалённой схемы с соседнего телефона: приём видел незнакомый файл и добавлял
+ * его. Архивы без этого файла читаются по-прежнему — по именам.
+ */
+export const SCHEMA_INDEX_FILE = "index.json";
+const SCHEMA_INDEX_VERSION = 1;
 
 /**
  * Zip entries for a project's drawings.
@@ -46,8 +63,15 @@ export async function buildSchemaArchiveEntries(
 ) {
   const used = new Set();
   const entries = [];
+  const index = [];
 
   for (const schema of schemas ?? []) {
+    if (!isLiveSchema(schema)) {
+      // Надгробие едет записью в списке: файла у него нет и быть не может.
+      index.push(schema);
+      continue;
+    }
+
     let blob = null;
     try {
       blob = await readSchemaFile(project, schema);
@@ -59,6 +83,20 @@ export async function buildSchemaArchiveEntries(
     const name = allocateSchemaFileName(schema.name, used);
     used.add(name);
     entries.push({ path: `${dir}/${name}`, blob, name });
+    // Имя файла в архиве не совпадает с именем схемы: его чистят и разводят
+    // от совпадений. Связь между ними и держит эта запись.
+    index.push({ ...schema, file: name });
+  }
+
+  if (index.length > 0) {
+    entries.push({
+      path: `${dir}/${SCHEMA_INDEX_FILE}`,
+      blob: new Blob(
+        [JSON.stringify({ version: SCHEMA_INDEX_VERSION, data: index })],
+        { type: "application/json" },
+      ),
+      name: SCHEMA_INDEX_FILE,
+    });
   }
 
   return entries;
@@ -91,25 +129,29 @@ export async function restoreSchemasFromArchive(file, project) {
   const folder = zip.folder(SCHEMA_ARCHIVE_DIR);
   if (!folder) return { restored: 0, skipped: 0 };
 
-  const files = [];
+  const files = new Map();
   folder.forEach((relativePath, entry) => {
-    if (!entry.dir) files.push({ relativePath, entry });
+    if (!entry.dir) files.set(relativePath, entry);
   });
 
-  // Drawings a project already holds are left alone. A fresh import meets an
-  // empty list and this costs nothing; a sync between two phones meets the
-  // same drawings on every exchange, and without this the section would grow
-  // a new copy of every scheme each time the two met.
+  const indexEntry = files.get(SCHEMA_INDEX_FILE);
+  if (indexEntry) {
+    files.delete(SCHEMA_INDEX_FILE);
+    return await restoreFromIndex(project, files, indexEntry);
+  }
+
+  // Архив без списка — из версии, которая его ещё не писала. Читается как
+  // раньше: по именам файлов, без надгробий, потому что их там нет.
   const known = new Set(
     (await SchemaRepository.listSchemas(project).catch(() => [])).map(
-      (schema) => `${schema.name}:${schema.size}`,
+      schemaIdentity,
     ),
   );
 
   let restored = 0;
   let skipped = 0;
 
-  for (const { relativePath, entry } of files) {
+  for (const [relativePath, entry] of files) {
     try {
       const blob = await entry.async("blob");
       const schema = createSchemaEntry({
@@ -120,14 +162,11 @@ export async function restoreSchemasFromArchive(file, project) {
         size: blob.size,
       });
 
-      if (
-        !isSupportedSchema(schema) ||
-        known.has(`${schema.name}:${schema.size}`)
-      ) {
+      if (!isSupportedSchema(schema) || known.has(schemaIdentity(schema))) {
         skipped += 1;
         continue;
       }
-      known.add(`${schema.name}:${schema.size}`);
+      known.add(schemaIdentity(schema));
 
       await SchemaRepository.addSchema(project, schema, blob);
       restored += 1;
@@ -136,6 +175,75 @@ export async function restoreSchemasFromArchive(file, project) {
       skipped += 1;
     }
   }
+
+  return { restored, skipped };
+}
+
+/**
+ * Приём архива, который несёт список схем.
+ *
+ * Списки сводятся, а не складываются: у записи есть время, и надгробие удаления
+ * спорит с добавлением на равных. После сведения на устройстве остаётся ровно
+ * то, что победило, — чертежи, которых здесь ещё нет, забираются из архива, а
+ * те, что удалили на другом телефоне, уходят вместе с байтами.
+ */
+async function restoreFromIndex(project, files, indexEntry) {
+  let incoming = [];
+  try {
+    const parsed = JSON.parse(await indexEntry.async("string"));
+    incoming = Array.isArray(parsed?.data) ? parsed.data : [];
+  } catch (error) {
+    logger.warn("[schemas] could not read the archive schema list:", error);
+    return { restored: 0, skipped: files.size };
+  }
+
+  const local = await SchemaRepository.readIndex(project).catch(() => []);
+  const merged = mergeSchemaLists(local, incoming);
+  const survivors = new Set(liveSchemas(merged).map(schemaIdentity));
+
+  // Сначала уходят чертежи, которых сведение больше не оставило: их удалили на
+  // другом телефоне. `removeSchema` убирает и байты, и запись — список ниже
+  // всё равно перезаписывается сведённым.
+  for (const schema of liveSchemas(local)) {
+    if (survivors.has(schemaIdentity(schema))) continue;
+    await SchemaRepository.removeSchema(project, schema);
+  }
+
+  const stored = new Set(liveSchemas(local).map(schemaIdentity));
+  let restored = 0;
+  let skipped = 0;
+
+  for (const schema of liveSchemas(merged)) {
+    const identity = schemaIdentity(schema);
+    if (!identity || stored.has(identity)) continue;
+
+    const entry = schema.file ? files.get(schema.file) : null;
+    if (!entry || !isSupportedSchema(schema)) {
+      skipped += 1;
+      continue;
+    }
+    try {
+      // Запись берётся из архива целиком, вместе со своим временем добавления:
+      // оно и решает споры с надгробиями при следующем обмене. Своё `file`
+      // остаётся в архиве — хранилищу оно ни к чему.
+      const entryToStore = { ...schema };
+      delete entryToStore.file;
+      await SchemaRepository.addSchema(
+        project,
+        entryToStore,
+        await entry.async("blob"),
+      );
+      restored += 1;
+    } catch (error) {
+      logger.warn(`[schemas] could not restore "${schema.name}":`, error);
+      skipped += 1;
+    }
+  }
+
+  await SchemaRepository.saveIndex(project, mergeSchemaLists(merged, [])).catch(
+    (error) =>
+      logger.warn("[schemas] could not write the merged schema list:", error),
+  );
 
   return { restored, skipped };
 }
