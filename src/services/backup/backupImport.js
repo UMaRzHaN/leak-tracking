@@ -32,7 +32,7 @@ import { filterIncomingLeaksForMerge, mergeLeaksByFreshness } from "./merge";
 import { collectPhotoOwners } from "@/services/storage/photoOwners";
 import { restorePhotos } from "./photoArchive";
 import {
-  monitoringRoundFreshness,
+  resolveMonitoringRound,
   readStoredProjectVars,
   recalculateLeaks,
 } from "./projectMeta";
@@ -270,8 +270,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
 
   let finalLeaks;
   let addedCount;
-  let nextMonitoringRound =
-    /** @type {{id: any, number: number, startedAt: any}|null} */ (null);
+  let nextMonitoringRound = /** @type {Record<string, any>|null} */ (null);
   let committedProject = existingProject;
   let dataCommitAttempted = false;
   let syncIdMutationAttempted = false;
@@ -306,13 +305,10 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
       addedCount =
         mergeResult.changed + (mergeResult.leaks.length - finalLeaks.length);
       if (isSync) {
-        const currentRound = readMonitoringRound(existingProjectId);
-        const incomingRound = getRestoredMonitoringRound(meta, finalLeaks);
-        nextMonitoringRound =
-          monitoringRoundFreshness(incomingRound) >
-          monitoringRoundFreshness(currentRound)
-            ? incomingRound
-            : currentRound;
+        nextMonitoringRound = resolveMonitoringRound(
+          readMonitoringRound(existingProjectId),
+          getRestoredMonitoringRound(meta, finalLeaks),
+        );
       }
     } else {
       const restoredLeaks = await restorePhotos(
