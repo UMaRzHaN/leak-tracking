@@ -1,5 +1,5 @@
 import { globalScope } from "@/utils/globalScope";
-let persistenceRequest = null;
+let persistenceRequest = /** @type {Promise<boolean>|null} */ (null);
 
 export async function requestPersistentStorage() {
   const storage = globalScope.navigator?.storage;
@@ -10,7 +10,7 @@ export async function requestPersistentStorage() {
     persistenceRequest = Promise.resolve(storage.persist()).then(Boolean);
   }
   const persisted = await persistenceRequest;
-  let estimate = null;
+  let estimate = /** @type {StorageEstimate|null} */ (null);
   try {
     estimate = storage.estimate ? await storage.estimate() : null;
   } catch {

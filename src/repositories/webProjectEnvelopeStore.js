@@ -114,6 +114,7 @@ export function createWebDatasetStore(dataset, { legacyMirror = false } = {}) {
     return legacy;
   }
 
+  /** @param {string} projectId @param {any} envelope @param {any} [mutation] */
   async function writeMirror(projectId, envelope, mutation = null) {
     const key = keyOf(projectId);
     const saved = await saveEnvelope(openMirrorDb, key, envelope, mutation);
@@ -144,6 +145,7 @@ export function createWebDatasetStore(dataset, { legacyMirror = false } = {}) {
     return envelope;
   }
 
+  /** @param {string} projectId @param {any} envelope @param {any} [mutation] */
   async function writeAndRemember(projectId, envelope, mutation = null) {
     const saved = await saveEnvelope(
       openWebDataDb,

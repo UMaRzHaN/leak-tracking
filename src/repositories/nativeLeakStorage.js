@@ -242,7 +242,7 @@ export async function saveNativeProject(
     : null;
   const replaceAll =
     forceSnapshot ||
-    !Array.isArray(previousLeaks) ||
+    mutation == null ||
     shouldReplaceNativeSqliteDataset(mutation, leaks.length);
 
   if (replaceAll) {

@@ -70,6 +70,15 @@ function pushIssue(issues, path, message) {
   issues.push({ path, message });
 }
 
+/**
+ * Итог проверки. Замечания есть только у неудачной — форма, на которую
+ * опираются вызывающие стороны и тесты; собирающие их места читают поле через
+ * `?? []`.
+ *
+ * @typedef {{ok: boolean, data?: any, issues?: {path: (string|number)[], message: string}[]}} SchemaCheck
+ */
+
+/** @returns {SchemaCheck} */
 function validateLeakRecord(record, index) {
   const issues = [];
 
@@ -193,6 +202,7 @@ function validateLeakRecord(record, index) {
   };
 }
 
+/** @returns {SchemaCheck} */
 function validateMetaProject(project) {
   const issues = [];
 
@@ -272,7 +282,7 @@ export function validateBackup(parsed) {
       seenIds.add(canonicalId);
       normalized.push(result.data);
     } else {
-      issues.push(...result.issues);
+      issues.push(...(result.issues ?? []));
     }
   });
 
@@ -338,7 +348,7 @@ export function validateProjectBackupMeta(parsed) {
 
   const projectResult = validateMetaProject(parsed.project);
   if (!projectResult.ok) {
-    issues.push(...projectResult.issues);
+    issues.push(...(projectResult.issues ?? []));
   }
 
   if (parsed.vars !== undefined && !isPlainObject(parsed.vars)) {

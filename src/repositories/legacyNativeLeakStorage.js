@@ -553,8 +553,8 @@ export async function saveNativeProject(
     Array.isArray(previousLeaks) && state?.snapshotId
       ? createMutation(previousLeaks, leaks, syncState, state.snapshotId)
       : null;
-  const serializedEntry = mutation ? `${JSON.stringify(mutation)}\n` : null;
-
+  // Пустая строка, а не null: без дельты `!mutation` ниже уводит в снимок.
+  const serializedEntry = mutation ? `${JSON.stringify(mutation)}\n` : "";
   if (
     forceSnapshot ||
     !hasSnapshot ||

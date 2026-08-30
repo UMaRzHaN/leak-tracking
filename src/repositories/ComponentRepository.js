@@ -22,6 +22,9 @@ import {
 } from "@/domain/componentRegistry";
 import { isNative } from "@/utils/platform";
 import { logger } from "@/utils/logger";
+import { isPresent } from "@/utils/isPresent";
+
+/** @typedef {ReturnType<typeof normalizeWebEnvelope>} Envelope */
 
 /**
  * Storage for the component registry.
@@ -151,10 +154,10 @@ async function readLegacyRegistry(projectId) {
  * потерять то, что в ней лежало.
  */
 async function readDurableRegistry(projectId) {
-  let primary = null;
-  let mirror = null;
-  let primaryError = null;
-  let mirrorError = null;
+  let primary = /** @type {Envelope} */ (null);
+  let mirror = /** @type {Envelope} */ (null);
+  let primaryError = /** @type {any} */ (null);
+  let mirrorError = /** @type {any} */ (null);
 
   try {
     primary = normalizeWebEnvelope(
@@ -183,7 +186,7 @@ async function readDurableRegistry(projectId) {
       ? await readLegacyRegistry(projectId)
       : null;
 
-  const available = [primary, mirror, legacy].filter(Boolean);
+  const available = [primary, mirror, legacy].filter(isPresent);
   if (available.length === 0) {
     if (primaryError || mirrorError) {
       throw new ComponentDataError("Реестр не прочитался ни из одной копии", {

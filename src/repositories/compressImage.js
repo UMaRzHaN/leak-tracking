@@ -20,7 +20,7 @@ export async function isWithinPhotoBudget(blob) {
   if (blob.type !== "image/jpeg") return false;
   if (blob.size > MAX_UNCOMPRESSED_PHOTO_BYTES) return false;
   const dimensions = await readJpegDimensions(blob);
-  return Boolean(dimensions) && dimensions.width <= MAX_PHOTO_WIDTH;
+  return dimensions != null && dimensions.width <= MAX_PHOTO_WIDTH;
 }
 
 export async function compressImage(

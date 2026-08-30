@@ -106,6 +106,7 @@ function nextWebRevision(previousRevisions = []) {
   return lastIssuedWebRevision;
 }
 
+/** @param {any[]} data @param {{deleted?: boolean, previousRevisions?: (number|undefined|null)[], syncState?: any}} [options] */
 export function createWebEnvelope(
   data,
   { deleted = false, previousRevisions = [], syncState = null } = {},

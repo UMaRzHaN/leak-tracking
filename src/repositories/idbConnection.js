@@ -54,7 +54,7 @@ export function openIdbDatabase(name, version, { upgrade, onLost } = {}) {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(name, version);
     let abandoned = false;
-    let blockedTimer = null;
+    let blockedTimer = /** @type {ReturnType<typeof setTimeout>|null} */ (null);
 
     const stopWaiting = () => {
       if (blockedTimer == null) return;
@@ -123,7 +123,7 @@ export function openIdbDatabase(name, version, { upgrade, onLost } = {}) {
  * @returns {() => Promise<IDBDatabase|null>} `null` — если IndexedDB нет вовсе
  */
 export function createIdbConnection(name, version, upgrade) {
-  let connection = null;
+  let connection = /** @type {Promise<IDBDatabase>|null} */ (null);
 
   return function openDatabase() {
     // Без IndexedDB база не откроется никогда, и кэшировать эту попытку нечем
@@ -131,7 +131,7 @@ export function createIdbConnection(name, version, upgrade) {
     if (typeof indexedDB === "undefined") return Promise.resolve(null);
     if (connection) return connection;
 
-    let opened = null;
+    let opened = /** @type {Promise<IDBDatabase>|null} */ (null);
     // Только свой промис: пока шло открытие, вызывающий мог начать новое, и
     // сброс устаревшего унёс бы годное соединение.
     const forget = () => {

@@ -160,7 +160,7 @@ export async function loadNativeComponents(folderName) {
  *
  * @param {string} folderName
  * @param {object[]} components
- * @param {{previous?: object[]|null, envelope?: object}} [options]
+ * @param {{previous?: object[]|null, envelope?: object|null}} [options]
  */
 export async function saveNativeComponents(
   folderName,
@@ -171,7 +171,12 @@ export async function saveNativeComponents(
     ? createNativeSqliteMutation(previous, components)
     : null;
 
-  if (!shouldReplaceNativeSqliteDataset(mutation, components.length)) {
+  // `mutation &&` не лишнее: без дельты `shouldReplace…` и так отвечает «да»,
+  // но здесь это и условие ветки — журнал пишется только когда есть что писать.
+  if (
+    mutation &&
+    !shouldReplaceNativeSqliteDataset(mutation, components.length)
+  ) {
     const result = await invoke("applyChanges", {
       projectKey: projectKeyOf(folderName),
       upsertsJson: JSON.stringify(mutation.upserts),

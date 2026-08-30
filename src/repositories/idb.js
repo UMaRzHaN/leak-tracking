@@ -9,7 +9,10 @@ export function createIdbStore(dbName, storeName, version) {
   const STORE_NAME = storeName;
   const DB_VERSION = version;
 
-  let _db = null;
+  // Каждый метод после своей проверки захватывает соединение в `db`:
+  // `onclose` обнуляет `_db`, и между проверкой и колбэком оно успевает
+  // исчезнуть — обращение к нему упало бы уже внутри транзакции.
+  let _db = /** @type {IDBDatabase|null} */ (null);
   let _ready = false;
   let _opening = false;
   const _subscribers = new Set();
@@ -50,11 +53,12 @@ export function createIdbStore(dbName, storeName, version) {
     };
 
     request.onsuccess = () => {
-      _db = request.result;
+      const db = request.result;
+      _db = db;
       _ready = true;
       _opening = false;
 
-      _db.onclose = () => {
+      db.onclose = () => {
         _db = null;
         _ready = false;
         _opening = false;
@@ -66,7 +70,7 @@ export function createIdbStore(dbName, storeName, version) {
       // что её держит. Закрываемся и, в отличие от `onclose`, не открываемся
       // заново: обратно поднявшись, мы бы заблокировали её снова. Стор ждёт
       // следующего `open()` — то есть перезагрузки страницы на новую версию.
-      _db.onversionchange = () => {
+      db.onversionchange = () => {
         logger.warn(
           `[idb] closing "${DB_NAME}": another tab is upgrading the schema.`,
         );
@@ -77,7 +81,7 @@ export function createIdbStore(dbName, storeName, version) {
         _notify();
       };
 
-      _db.onerror = (event) => {
+      db.onerror = (event) => {
         logger.error(
           "[idb] Unexpected IDB error:",
           /** @type {any} */ (event.target)?.error,
@@ -111,6 +115,7 @@ export function createIdbStore(dbName, storeName, version) {
    */
   async function save(id, photoData) {
     if (!_ready || !_db) return false;
+    const db = _db;
     return new Promise((resolve, reject) => {
       const fail = (scope, error) => {
         if (isOutOfSpaceError(error)) {
@@ -123,7 +128,7 @@ export function createIdbStore(dbName, storeName, version) {
       };
 
       try {
-        const tx = _db.transaction(STORE_NAME, "readwrite");
+        const tx = db.transaction(STORE_NAME, "readwrite");
         const store = tx.objectStore(STORE_NAME);
         const req = store.put({ id, data: photoData, timestamp: Date.now() });
         tx.oncomplete = () => resolve(true);
@@ -138,9 +143,10 @@ export function createIdbStore(dbName, storeName, version) {
 
   async function get(id) {
     if (!_ready || !_db) return null;
+    const db = _db;
     return new Promise((resolve) => {
       try {
-        const tx = _db.transaction(STORE_NAME, "readonly");
+        const tx = db.transaction(STORE_NAME, "readonly");
         const store = tx.objectStore(STORE_NAME);
         const req = store.get(id);
         req.onsuccess = () => resolve(req.result?.data ?? null);
@@ -161,9 +167,10 @@ export function createIdbStore(dbName, storeName, version) {
       error.code = "IDB_NOT_READY";
       throw error;
     }
+    const db = _db;
     return new Promise((resolve, reject) => {
       try {
-        const tx = _db.transaction(STORE_NAME, "readonly");
+        const tx = db.transaction(STORE_NAME, "readonly");
         const store = tx.objectStore(STORE_NAME);
         const req = store.get(id);
         req.onsuccess = () => resolve(req.result?.data ?? null);
@@ -178,9 +185,10 @@ export function createIdbStore(dbName, storeName, version) {
 
   async function remove(id) {
     if (!_ready || !_db) return false;
+    const db = _db;
     return new Promise((resolve) => {
       try {
-        const tx = _db.transaction(STORE_NAME, "readwrite");
+        const tx = db.transaction(STORE_NAME, "readwrite");
         const store = tx.objectStore(STORE_NAME);
         const req = store.delete(id);
         tx.oncomplete = () => resolve(true);
@@ -205,9 +213,10 @@ export function createIdbStore(dbName, storeName, version) {
 
   async function clear() {
     if (!_ready || !_db) return false;
+    const db = _db;
     return new Promise((resolve) => {
       try {
-        const tx = _db.transaction(STORE_NAME, "readwrite");
+        const tx = db.transaction(STORE_NAME, "readwrite");
         const store = tx.objectStore(STORE_NAME);
         const req = store.clear();
         tx.oncomplete = () => resolve(true);
@@ -232,9 +241,10 @@ export function createIdbStore(dbName, storeName, version) {
 
   async function listKeys() {
     if (!_ready || !_db) return [];
+    const db = _db;
     return new Promise((resolve) => {
       try {
-        const tx = _db.transaction(STORE_NAME, "readonly");
+        const tx = db.transaction(STORE_NAME, "readonly");
         const store = tx.objectStore(STORE_NAME);
         const req = store.getAllKeys();
         req.onsuccess = () => resolve(req.result ?? []);
@@ -255,9 +265,10 @@ export function createIdbStore(dbName, storeName, version) {
       error.code = "IDB_NOT_READY";
       throw error;
     }
+    const db = _db;
     return new Promise((resolve, reject) => {
       try {
-        const tx = _db.transaction(STORE_NAME, "readonly");
+        const tx = db.transaction(STORE_NAME, "readonly");
         const store = tx.objectStore(STORE_NAME);
         const req = store.getAllKeys();
         req.onsuccess = () => resolve(req.result ?? []);

@@ -49,4 +49,12 @@ describe("native SQLite mutation planner", () => {
       ),
     ).toBe(false);
   });
+
+  it("без дельты отвечает «переписать целиком»", () => {
+    // Вызывающие стороны проверяют дельту сами и в эту ветку не заходят, но
+    // ответ на «дельты нет» — часть договора: посчитать долю изменённого не от
+    // чего, а записать набор целиком всегда можно.
+    expect(shouldReplaceNativeSqliteDataset(null, 10)).toBe(true);
+    expect(shouldReplaceNativeSqliteDataset(undefined, 0)).toBe(true);
+  });
 });

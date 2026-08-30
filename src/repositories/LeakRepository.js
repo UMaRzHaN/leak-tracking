@@ -3,6 +3,7 @@ import { Directory } from "@capacitor/filesystem";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { PROJECT_META } from "@/configs/projectMeta";
 import { logger } from "@/utils/logger";
+import { isPresent } from "@/utils/isPresent";
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import { requestPersistentStorage } from "@/services/storage/persistentStorage";
 import {
@@ -39,7 +40,7 @@ import {
   writeMirrorData,
   writeWebData,
 } from "@/repositories/webProjectEnvelopeStore";
-
+/** @typedef {ReturnType<typeof normalizeWebEnvelope>} Envelope */
 const VALID_STATUSES = new Set(["open", "in_progress", "resolved"]);
 const PRESERVED_INVALID_RECORDS = Symbol("preservedInvalidLeakRecords");
 const WEB_READ_WARNING = Symbol("webProjectDataReadWarning");
@@ -283,10 +284,10 @@ export const LeakRepository = {
       }
     }
 
-    let indexedEnvelope = null;
-    let mirrorEnvelope = null;
-    let indexedDbError = null;
-    let mirrorError = null;
+    let indexedEnvelope = /** @type {Envelope} */ (null);
+    let mirrorEnvelope = /** @type {Envelope} */ (null);
+    let indexedDbError = /** @type {any} */ (null);
+    let mirrorError = /** @type {any} */ (null);
 
     try {
       indexedEnvelope = normalizeWebEnvelope(
@@ -316,8 +317,8 @@ export const LeakRepository = {
     // localStorage. Nothing writes a full envelope back to localStorage
     // anymore, so this candidate naturally disappears once both IndexedDB
     // copies are repaired below.
-    let legacyEnvelope = null;
-    let legacyError = null;
+    let legacyEnvelope = /** @type {Envelope} */ (null);
+    let legacyError = /** @type {any} */ (null);
     try {
       legacyEnvelope = readLegacyLocalStorageEnvelope(projectId);
     } catch (error) {
@@ -328,9 +329,8 @@ export const LeakRepository = {
       );
     }
 
-    const available = [indexedEnvelope, mirrorEnvelope, legacyEnvelope].filter(
-      Boolean,
-    );
+    const copies = [indexedEnvelope, mirrorEnvelope, legacyEnvelope];
+    const available = copies.filter(isPresent);
     if (available.length === 0) {
       // When IndexedDB is unavailable entirely, indexedEnvelope/mirrorEnvelope
       // simply resolve to `null` (not an error) — legacyError is then the
@@ -470,7 +470,7 @@ export const LeakRepository = {
     }
 
     let indexedDbSaved = false;
-    let indexedDbError = null;
+    let indexedDbError = /** @type {any} */ (null);
     // Only the revisions matter here — reading whole envelopes to derive the
     // next one would pull both copies of the project through a structured
     // clone on every save.
@@ -478,7 +478,7 @@ export const LeakRepository = {
       readWebDataRevision(projectId),
       readMirrorDataRevision(projectId),
     ]);
-    let legacyEnvelope = null;
+    let legacyEnvelope = /** @type {Envelope} */ (null);
     try {
       legacyEnvelope = readLegacyLocalStorageEnvelope(projectId);
     } catch {
@@ -570,7 +570,7 @@ export const LeakRepository = {
       readWebDataRevision(projectId),
       readMirrorDataRevision(projectId),
     ]);
-    let legacyEnvelope = null;
+    let legacyEnvelope = /** @type {Envelope} */ (null);
     try {
       legacyEnvelope = readLegacyLocalStorageEnvelope(projectId);
     } catch {
@@ -586,7 +586,7 @@ export const LeakRepository = {
       syncState,
     });
     let indexedDbSaved = false;
-    let indexedDbError = null;
+    let indexedDbError = /** @type {any} */ (null);
     try {
       indexedDbSaved = await writeWebData(projectId, tombstone);
     } catch (error) {
@@ -629,13 +629,13 @@ export const LeakRepository = {
     // компонентов, который лежит в тех же сторах своим ключом. Удалять их по
     // очереди значит уметь остановиться посередине — а реестр, переживший
     // свой проект, достаётся тому, кого заведут следующим под тем же именем.
-    let indexedDbError = null;
+    let indexedDbError = /** @type {any} */ (null);
     try {
       await purgeWebProject(projectId);
     } catch (error) {
       indexedDbError = error;
     }
-    let localStorageError = null;
+    let localStorageError = /** @type {any} */ (null);
     try {
       localStorage.removeItem(STORAGE_KEYS.PROJECT_DATA(projectId));
     } catch (error) {
