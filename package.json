@@ -23,7 +23,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-i18next": "^17.0.12",
-    "web-vitals": "^6.2.0"
+    "web-vitals": "^6.2.1"
   },
   "scripts": {
     "dev": "vite",
@@ -130,7 +130,7 @@
     "brace-expansion": "^5.0.9"
   },
   "optionalDependencies": {
-    "@rolldown/binding-linux-x64-gnu": "1.2.5"
+    "@rolldown/binding-linux-x64-gnu": "1.2.6"
   },
   "allowScripts": {
     "@parcel/watcher@2.6.0": true,
