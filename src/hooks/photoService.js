@@ -63,7 +63,9 @@ function parseNativePhotoPath(path) {
     !fsPath.startsWith("LeakReports/") ||
     fsPath.includes("\\") ||
     [...fsPath].some((character) => {
-      const codePoint = character.codePointAt(0);
+      // Разбор идёт по символам непустой строки, так что точка всегда есть;
+      // ноль на невозможном случае отправляет символ в отказ, а не мимо него.
+      const codePoint = character.codePointAt(0) ?? 0;
       return codePoint <= 31 || codePoint === 127;
     }) ||
     segments.some((segment) => !segment || segment === "." || segment === "..")

@@ -66,7 +66,9 @@ async function openInventoryWorkbook(file, openedZip = null) {
     (name) => !zip.files[name].dir && isWorkbookName(name),
   );
   if (!entry) return null;
-  return readWorkbook(await zip.file(entry).async("arraybuffer"));
+  // Имя взято из списка того же архива — файл под ним точно есть.
+  const workbookEntry = /** @type {any} */ (zip.file(entry));
+  return readWorkbook(await workbookEntry.async("arraybuffer"));
 }
 
 async function openZip(file) {

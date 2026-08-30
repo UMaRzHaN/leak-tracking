@@ -177,6 +177,10 @@ async function nativeRead(url) {
 
 // A response is reusable only while its body is still readable. Anything else
 // (a consumed clone, a mock without a body) falls back to fetching.
+/**
+ * @param {any} response
+ * @returns {response is Response}
+ */
 function isReusableResponse(response) {
   return (
     Boolean(response) &&

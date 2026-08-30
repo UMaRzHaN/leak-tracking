@@ -72,7 +72,7 @@ export async function buildSchemaArchiveEntries(
       continue;
     }
 
-    let blob = null;
+    let blob = /** @type {Blob|null} */ (null);
     try {
       blob = await readSchemaFile(project, schema);
     } catch (error) {

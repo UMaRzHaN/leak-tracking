@@ -60,7 +60,7 @@ export const useGeolocation = (enabled = true) => {
       lng: null,
     }),
   );
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(/** @type {string|null} */ (null));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -71,10 +71,12 @@ export const useGeolocation = (enabled = true) => {
       return;
     }
 
-    let watchId = null;
+    // Слежка одна, а выдают её двое: браузер отвечает номером, плагин —
+    // строкой. Здесь лежит то, что вернул тот, кто её завёл.
+    let watchId = /** @type {number|string|null} */ (null);
     let stopped = false;
-    let permStatus = null;
-    let retryTimer = null;
+    let permStatus = /** @type {PermissionStatus|null} */ (null);
+    let retryTimer = /** @type {ReturnType<typeof setTimeout>|null} */ (null);
     let nativeWatchGeneration = 0;
     let nativeTimeoutRetryCount = 0;
     let preciseLocationGranted = false;
@@ -102,14 +104,14 @@ export const useGeolocation = (enabled = true) => {
     };
 
     const clearWebWatch = () => {
-      if (watchId !== null) {
+      if (typeof watchId === "number") {
         navigator.geolocation.clearWatch(watchId);
         watchId = null;
       }
     };
 
     const clearNativeWatch = async (id = watchId) => {
-      if (id === null) return;
+      if (typeof id !== "string") return;
       if (watchId === id) watchId = null;
 
       try {
@@ -164,7 +166,7 @@ export const useGeolocation = (enabled = true) => {
       setLoading(true);
 
       const generation = ++nativeWatchGeneration;
-      let registeredWatchId = null;
+      let registeredWatchId = /** @type {any} */ (null);
 
       try {
         registeredWatchId = await Geolocation.watchPosition(
@@ -236,13 +238,13 @@ export const useGeolocation = (enabled = true) => {
             }
 
             permStatus = status;
-            permStatus.onchange = () => {
+            status.onchange = () => {
               if (stopped) return;
 
-              if (permStatus.state === "granted") {
+              if (status.state === "granted") {
                 clearWebWatch();
                 startWebWatch();
-              } else if (permStatus.state === "denied") {
+              } else if (status.state === "denied") {
                 clearWebWatch();
                 setError("Доступ к геолокации запрещён");
                 setLoading(false);

@@ -31,7 +31,7 @@ import { logger } from "@/utils/logger";
  * уже прочитанное.
  */
 
-const EMPTY = /** @type {any[]} */ (Object.freeze([]));
+const EMPTY = /** @type {any[]} */ (/** @type {unknown} */ (Object.freeze([])));
 const NOTHING_SETTLED = -1;
 
 /**
@@ -39,6 +39,7 @@ const NOTHING_SETTLED = -1;
  * на подставленном списке, не поднимая ни хранилища, ни провайдера — их
  * поведение от того, откуда пришёл список, не зависит.
  */
+/** @type {import("react").Context<any>} */
 export const ComponentRegistryContext = createContext(null);
 
 /**

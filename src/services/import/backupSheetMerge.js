@@ -112,7 +112,7 @@ function applyRowEdits(base, row) {
 export function mergeSheetEditsIntoBackup(
   backupLeaks,
   sheetLeaks,
-  { sheetRows = null } = {},
+  { sheetRows = /** @type {any[]|null} */ (null) } = {},
 ) {
   const leaks = Array.isArray(backupLeaks) ? [...backupLeaks] : [];
   const rows = Array.isArray(sheetLeaks) ? sheetLeaks : [];

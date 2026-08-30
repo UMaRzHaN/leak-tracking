@@ -209,7 +209,7 @@ export const PhotoRepository = {
     excludePaths = [],
     {
       cleanupOldVersions: shouldCleanupOldVersions = true,
-      contentHash: rawContentHash = null,
+      contentHash: rawContentHash = /** @type {string|null} */ (null),
       returnMetadata = false,
     } = {},
   ) {

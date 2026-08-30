@@ -4,10 +4,12 @@ import { useSwipeActions } from "./useSwipeActions";
 export function useSwipeCard({
   onOpenDetails,
   leak,
-  onPickStatus = null,
-  onMonitor = null,
+  onPickStatus = /** @type {((leak: any) => void)|null} */ (null),
+  onMonitor = /** @type {((leak: any) => void)|null} */ (null),
 }) {
-  const [swipeState, setSwipeState] = useState(null);
+  const [swipeState, setSwipeState] = useState(
+    /** @type {"left"|"right"|null} */ (null),
+  );
   const [swipeOffset, setSwipeOffset] = useState(0);
 
   const swipe = useSwipeActions({

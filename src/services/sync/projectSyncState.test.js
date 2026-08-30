@@ -390,4 +390,12 @@ describe("projectSyncState", () => {
     expect(localStorage.getItem("app:project-1:vars_updated_at_v1")).toBeNull();
     expect(readProjectSyncState("project-1").varsUpdatedAt).toBe(0);
   });
+  it("возвращает промис и без проекта, чтобы на него можно было повесить обработчик", async () => {
+    // Откат импорта вешает на запись `.catch`. Пока запись без проекта
+    // возвращала `undefined`, такой вызов падал бы прямо в обработчике ошибки —
+    // и вместо настоящей причины сбоя читатель получал бы эту.
+    await expect(writeProjectSyncState(null, { deleted: {} })).resolves.toBe(
+      false,
+    );
+  });
 });

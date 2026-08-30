@@ -90,7 +90,7 @@
     "src/services/backup/leakMergeEngine.js": 508,
     "src/services/backup/photoArchive.js": 375,
     "src/services/backup/recordArrayMerge.js": 324,
-    "src/services/import/excelImportParse.js": 447,
+    "src/services/import/excelImportParse.js": 433,
     "src/services/import/photoPipeline.js": 530,
     "src/services/import/workbookSchema.js": 364,
     "src/services/maps/tileCache.js": 610,

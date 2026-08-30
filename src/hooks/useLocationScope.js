@@ -18,8 +18,8 @@ import {
 
 export function useLocationScope({
   leaks = [],
-  sharedFilters = null,
-  projectType = null,
+  sharedFilters = /** @type {any} */ (null),
+  projectType = /** @type {string|null} */ (null),
 }) {
   const { t } = useLanguage();
   const levelKeys = useMemo(

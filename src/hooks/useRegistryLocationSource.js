@@ -25,4 +25,4 @@ export function useRegistryLocationSource(active) {
   return active ? components : EMPTY;
 }
 
-const EMPTY = /** @type {any[]} */ (Object.freeze([]));
+const EMPTY = /** @type {any[]} */ (/** @type {unknown} */ (Object.freeze([])));

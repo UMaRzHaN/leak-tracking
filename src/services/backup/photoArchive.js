@@ -22,7 +22,7 @@ import { mapWithConcurrency, yieldToMainThread } from "./runtime";
 async function resolveBase64(path, idbGet) {
   if (typeof path !== "string" || !path) return null;
 
-  let src = null;
+  let src = /** @type {string|null} */ (null);
   if (path.startsWith("idb://")) {
     const id = path.replace("idb://", "");
     const raw = idbGet ? await idbGet(id) : null;
@@ -42,7 +42,7 @@ async function resolveBase64(path, idbGet) {
 export async function resolvePhotoBlob(path, idbGet) {
   if (typeof path !== "string" || !path) return null;
 
-  let value = null;
+  let value = /** @type {Blob|string|null} */ (null);
   if (path.startsWith("idb://")) {
     const id = path.replace("idb://", "");
     value = idbGet ? await idbGet(id) : null;
@@ -70,7 +70,7 @@ export async function exportLeaksWithPhotosToStream(
   {
     segmentPrefix = "leak",
     preserveUnresolvedPhotoPaths = false,
-    leakSegments: providedLeakSegments = null,
+    leakSegments: providedLeakSegments = /** @type {string[]|null} */ (null),
   } = {},
 ) {
   const exported = new Array(leaks.length);
@@ -144,7 +144,7 @@ export async function exportLeaksWithPhotos(
   {
     segmentPrefix = "leak",
     preserveUnresolvedPhotoPaths = false,
-    leakSegments: providedLeakSegments = null,
+    leakSegments: providedLeakSegments = /** @type {string[]|null} */ (null),
   } = {},
 ) {
   const exported = new Array(leaks.length);

@@ -269,7 +269,8 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
 
   let finalLeaks;
   let addedCount;
-  let nextMonitoringRound = null;
+  let nextMonitoringRound =
+    /** @type {{id: any, number: number, startedAt: any}|null} */ (null);
   let committedProject = existingProject;
   let dataCommitAttempted = false;
   let syncIdMutationAttempted = false;

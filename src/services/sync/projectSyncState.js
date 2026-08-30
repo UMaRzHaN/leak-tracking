@@ -228,7 +228,13 @@ export function readProjectSyncState(projectId) {
 }
 
 export function writeProjectSyncState(projectId, value, liveLeaks = []) {
-  if (!projectId || typeof localStorage === "undefined") return;
+  // Промис, а не пустой выход: остальное тело возвращает запись в IndexedDB, и
+  // зовущий вправе повесить на неё `.catch`. Ранний выход без промиса ронял бы
+  // такой вызов на `undefined.catch` — причём в откате импорта, то есть вместо
+  // настоящей ошибки читатель получал бы эту.
+  if (!projectId || typeof localStorage === "undefined") {
+    return Promise.resolve(false);
+  }
   const state = normalizeProjectSyncState(value);
   const liveFreshness = new Map(
     liveLeaks.flatMap((leak) =>

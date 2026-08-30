@@ -26,7 +26,9 @@ export function useEditablePhoto({
   const mountedRef = useRef(true);
 
   // черновик фото { raw, src }
-  const [draftPhoto, setDraftPhoto] = useState(null);
+  const [draftPhoto, setDraftPhoto] = useState(
+    /** @type {{src?: string, raw?: any}|null} */ (null),
+  );
 
   /* ===== reset on leak change ===== */
   useEffect(() => {
@@ -47,7 +49,10 @@ export function useEditablePhoto({
   // plugin and there is no input event to pass. The call sites have always
   // relied on that; the default is what says so to the type checker.
   const changePhoto = useCallback(
-    async (e = null, source = "camera") => {
+    async (
+      e = /** @type {{target?: {files?: FileList|null}}|null} */ (null),
+      source = "camera",
+    ) => {
       let result;
 
       if (isNative) {

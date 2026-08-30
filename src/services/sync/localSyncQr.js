@@ -30,7 +30,7 @@ const ignoreStopScan = ignoredError("localSync.stopScan");
 
 // Одно сканирование за раз, а поколение — это то, что сообщает начатому до
 // отмены скану, что он больше не текущий.
-let activeQrScanCancel = null;
+let activeQrScanCancel = /** @type {(() => Promise<void>)|null} */ (null);
 let qrScanGeneration = 0;
 
 function cancelledScanError() {

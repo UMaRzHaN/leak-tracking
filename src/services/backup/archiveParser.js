@@ -27,10 +27,12 @@ function parseBackupValidation(parsed) {
   return validation.data;
 }
 
+/** @returns {any[]} */
 export function parseRecoveryValidation(parsed) {
   const validation = validateBackupRecovery(parsed);
   if (!validation.ok) throw new Error(validation.error);
-  return validation.data;
+  // Разбор либо бросил, либо положил список: «прошло» без данных не бывает.
+  return /** @type {any[]} */ (validation.data);
 }
 
 function assertArchivePhotoReferences(leaks, zip) {

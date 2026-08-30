@@ -33,7 +33,7 @@ export function assertProjectTypesMatch(incomingMeta, existingProject) {
       "PROJECT_TYPE_MISSING",
       "Не удалось определить тип проекта в импортируемом архиве",
     );
-    error.existingProjectType = existingProjectType;
+    error.existingProjectType = existingProjectType ?? undefined;
     throw error;
   }
 

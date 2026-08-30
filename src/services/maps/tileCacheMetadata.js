@@ -101,6 +101,10 @@ export function oldestKeys(keys, metadata, count) {
  * Every localStorage key this module may have written, including the ones a
  * previous cache format left behind — clearing the cache must not strand them.
  */
+/**
+ * @param {string|null} key
+ * @returns {key is string} у отсутствующего ключа имени нет — и совпасть ему не с чем
+ */
 export function isTileCacheStorageKey(key) {
   return (
     key === LEGACY_NATIVE_COUNT_KEY ||

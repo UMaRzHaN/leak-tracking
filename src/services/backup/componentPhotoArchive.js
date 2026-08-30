@@ -80,7 +80,7 @@ export async function buildComponentPhotoArchive(
       continue;
     }
 
-    let resolved = null;
+    let resolved = /** @type {{blob: Blob, ext: any}|null} */ (null);
     try {
       resolved = await resolvePhotoBlob(path, idbGet);
     } catch (error) {

@@ -37,7 +37,7 @@ globalScope.onmessageerror = () => {
 // are read one at a time as the main thread saves them, so peak memory stays
 // what it was before the parse moved off the main thread. Handing the whole
 // set back at once would have meant holding a 190 MB archive in memory.
-let backupArchive = null;
+let backupArchive = /** @type {any} */ (null);
 
 globalScope.onmessage = async (event) => {
   const { kind, op, id, payload } = event.data ?? {};

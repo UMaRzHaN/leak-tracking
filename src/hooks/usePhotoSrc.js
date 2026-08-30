@@ -4,12 +4,12 @@ import { getPhotoSrc } from "./photoService";
 import { useIndexedDB } from "./useIndexedDB";
 
 export function usePhotoSrc(path, version = 0) {
-  const [src, setSrc] = useState(null);
+  const [src, setSrc] = useState(/** @type {string|null} */ (null));
   const { ready, getPhoto } = useIndexedDB();
 
   useEffect(() => {
     let alive = true;
-    let blobUrl = null;
+    let blobUrl = /** @type {string|null} */ (null);
 
     const cleanup = () => {
       alive = false;

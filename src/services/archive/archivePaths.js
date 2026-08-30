@@ -80,7 +80,7 @@ export function allocateUniqueLeakArchiveSegments(
   // the `~id` suffix, the length limit — is the same problem either way.
   {
     prefix = "leak",
-    reservedSegments = [],
+    reservedSegments = /** @type {string[]} */ ([]),
     identity = (leak) => leak?.leak_id,
   } = {},
 ) {

@@ -163,7 +163,7 @@ export async function buildMonitoringPhotoEntries(
   orderedLeaks,
   leakSegments,
   idbGet,
-  includedPhotoKeys = null,
+  includedPhotoKeys = /** @type {Set<string>|null} */ (null),
   photoReadCache,
   archiveRoot = "photos",
 ) {

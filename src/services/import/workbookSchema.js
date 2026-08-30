@@ -268,13 +268,19 @@ export function getCellPhotoValue(cell) {
   return normalizeArchiveSeparators(getCellDisplayValue(cell));
 }
 
+/**
+ * @typedef {{columnNumber: number, key: string, header: string}} HeaderColumn
+ * @typedef {{rowNumber: number, recognized: number, columns: HeaderColumn[]}} HeaderRow
+ */
+
+/** @returns {HeaderRow|null} */
 export function findHeaderRow(sheet, headerMap) {
-  let best = null;
+  let best = /** @type {HeaderRow|null} */ (null);
   const maxRow = Math.min(sheet.rowCount, 30);
 
   for (let rowNumber = 1; rowNumber <= maxRow; rowNumber += 1) {
     const row = sheet.getRow(rowNumber);
-    const columns = [];
+    const columns = /** @type {HeaderColumn[]} */ ([]);
     let recognized = 0;
 
     row.eachCell({ includeEmpty: false }, (cell, columnNumber) => {
@@ -291,7 +297,7 @@ export function findHeaderRow(sheet, headerMap) {
     }
   }
 
-  return best?.recognized >= 2 ? best : null;
+  return best && best.recognized >= 2 ? best : null;
 }
 
 function isMonitoringSheet(sheet) {
@@ -305,7 +311,7 @@ function isHistorySheet(sheet) {
 }
 
 export function findLeakSheet(workbook, headerMap) {
-  let best = null;
+  let best = /** @type {{sheet: any, header: HeaderRow}|null} */ (null);
   for (const sheet of workbook.worksheets) {
     if (!sheet.rowCount || isMonitoringSheet(sheet) || isHistorySheet(sheet)) {
       continue;

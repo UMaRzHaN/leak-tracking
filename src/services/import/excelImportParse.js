@@ -45,6 +45,7 @@ import {
   verifyArchiveLimits,
 } from "@/utils/importLimits";
 import { IMPORT_ROW_YIELD_EVERY } from "@/services/backup/constants";
+import { readLegacyExcelProjectManifest } from "./legacyExcelProjectManifest";
 import { yieldToMainThread } from "@/services/backup/runtime";
 
 function createValidationCollector() {
@@ -141,7 +142,8 @@ export async function parseExcelLeaks(
  */
 async function parseLeakSheets(workbook, { projectType } = {}) {
   const validTypes = ["upstream", "midstream", "downstream"];
-  const requestedType = validTypes.includes(projectType) ? projectType : null;
+  const requestedType =
+    projectType && validTypes.includes(projectType) ? projectType : null;
   // Ordinary XLSX files do not contain reliable project metadata. Shared
   // headers must not be used to guess a type, because a downstream sheet can
   // otherwise be silently classified as upstream. When no type was supplied,
@@ -173,7 +175,11 @@ async function parseLeakSheets(workbook, { projectType } = {}) {
     };
   }
 
-  const { type: resolvedProjectType, sheet, headerRow } = selected;
+  const { type: resolvedProjectType, sheet } = selected;
+  // Отбор выше пропустил только листы, у которых строка заголовка нашлась.
+  const headerRow = /** @type {import("./workbookSchema").HeaderRow} */ (
+    selected.headerRow
+  );
 
   const leaks = [];
   const seenLeakTags = new Set();
@@ -393,27 +399,7 @@ export async function parseExcelImportFile(file, options = {}) {
   // Header preflight only: the reads below enforce the real byte limits as
   // they decompress, so the archive is no longer expanded twice.
   assertArchiveLimits(zip);
-  let project = null;
-  // Файл из старых выгрузок: тип и имя проекта лежали рядом с книгой, пока их
-  // не перенесли в служебный лист внутри неё. Выгрузка его больше не пишет —
-  // чтение остаётся ради архивов, которые люди уже унесли на диски и в почту.
-  const projectEntry = zip.file("excel-project.json");
-  if (projectEntry) {
-    try {
-      const manifest = JSON.parse(
-        await readArchiveEntry(zip, projectEntry, "string"),
-      );
-      const type = manifest?.project?.type || manifest?.config;
-      if (["upstream", "midstream", "downstream"].includes(type)) {
-        project = {
-          name: String(manifest?.project?.name ?? "").trim(),
-          type,
-        };
-      }
-    } catch {
-      // Старые или повреждённые метаданные не блокируют импорт таблицы.
-    }
-  }
+  const project = await readLegacyExcelProjectManifest(zip);
   const xlsxEntry = Object.values(zip.files).find(
     (entry) =>
       !entry.dir &&
@@ -439,7 +425,7 @@ export async function parseExcelImportFile(file, options = {}) {
   const mergedProject =
     project || parsed.project
       ? {
-          ...project,
+          ...(project ?? {}),
           ...parsed.project,
         }
       : null;

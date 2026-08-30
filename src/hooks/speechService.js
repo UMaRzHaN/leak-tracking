@@ -2,7 +2,7 @@ import { appError } from "@/utils/appError";
 import { isNative } from "@/utils/platform";
 import { getSpeechLocale } from "@/utils/locale";
 
-let webRecognition = null;
+let webRecognition = /** @type {any} */ (null);
 let webBuffer = "";
 
 export const startSpeechRecognition = async (language) => {
