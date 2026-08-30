@@ -46,11 +46,16 @@ export function toComponentMarkers(components = []) {
  * them there doing nothing.
  *
  * @param {Record<string, any>[]} markers
- * @param {{sharedFilters?: Record<string, any>, nearbyOnly?: boolean, nearbyRadius?: number, coords?: {lat: number, lng: number}|null}} options
+ * @param {{sharedFilters?: Record<string, any>|null, nearbyOnly?: boolean, nearbyRadius?: number, coords?: {lat: number, lng: number}|null}} options
  */
 export function filterComponentMarkers(
   markers,
-  { sharedFilters = null, nearbyOnly = false, nearbyRadius = 0, coords = null },
+  {
+    sharedFilters = /** @type {Record<string, any>|null} */ (null),
+    nearbyOnly = false,
+    nearbyRadius = 0,
+    coords = /** @type {{lat: number, lng: number}|null} */ (null),
+  },
 ) {
   const origin =
     nearbyOnly && Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng)

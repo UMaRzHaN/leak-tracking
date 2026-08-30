@@ -18,7 +18,7 @@ function makeCopyName(baseName, projects) {
 
 export function resolvePortableExcelArchiveRoute({
   result,
-  projects = [],
+  projects = /** @type {any[]} */ ([]),
   activeProject,
 }) {
   const archiveProject = result?.portableArchive ? result.project : null;

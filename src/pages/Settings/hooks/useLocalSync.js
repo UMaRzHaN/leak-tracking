@@ -21,7 +21,10 @@ import {
 } from "@/services/sync/scanIntent";
 import { ignoredError } from "@/utils/ignoredError";
 
-const IDLE_STATE = { status: "idle", session: null };
+const IDLE_STATE = /** @type {{status: string, session: any}} */ ({
+  status: "idle",
+  session: null,
+});
 
 function typeLabel(type, t) {
   const labels = {
@@ -88,10 +91,14 @@ export function useLocalSync({
 }) {
   const [state, setState] = useState(IDLE_STATE);
   const [allowMultipleImports, setAllowMultipleImports] = useState(false);
-  const [approvalRequest, setApprovalRequest] = useState(null);
-  const hostSessionRef = useRef(null);
-  const approvalResolverRef = useRef(null);
-  const approvalTimeoutRef = useRef(null);
+  const [approvalRequest, setApprovalRequest] = useState(
+    /** @type {any} */ (null),
+  );
+  const hostSessionRef = useRef(/** @type {any} */ (null));
+  const approvalResolverRef = useRef(/** @type {any} */ (null));
+  // Отсчёт заводится через `window.setTimeout`, а он отвечает числом — не тем
+  // же, чем отвечает setTimeout в Node.
+  const approvalTimeoutRef = useRef(/** @type {number|null} */ (null));
   const mountedRef = useRef(true);
   const operationGenerationRef = useRef(0);
   const activeProjectId = activeProject?.id ?? null;

@@ -145,7 +145,7 @@ async function downloadBlob(
   fileName,
   outputFolder = DEFAULT_EXPORT_DIR,
   t,
-  webMessage = null,
+  webMessage = /** @type {string|null} */ (null),
 ) {
   if (!isNative) {
     const url = URL.createObjectURL(blob);
@@ -183,8 +183,8 @@ export async function exportToExcelFile(
   headers,
   keysOrder,
   fileName = "утечки",
-  idbGet = null,
-  projectFolderName = null,
+  idbGet = /** @type {((id: string) => Promise<any>)|null} */ (null),
+  projectFolderName = /** @type {string|null} */ (null),
   t,
   options = {},
 ) {

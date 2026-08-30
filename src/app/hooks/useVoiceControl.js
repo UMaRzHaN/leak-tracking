@@ -19,9 +19,9 @@ import { useLanguage } from "@/app/hooks/useLanguage";
  */
 export function useVoiceControl({
   step = 1,
-  steps = [],
+  steps = /** @type {any[]} */ ([]),
   onCommand,
-  voice = null,
+  voice = /** @type {any} */ (null),
 } = {}) {
   const projectConfig = useProjectConfig();
   const { project } = useProjectData();

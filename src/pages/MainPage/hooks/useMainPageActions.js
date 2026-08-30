@@ -32,13 +32,13 @@ export function useMainPageActions({
   setData,
   userProfile,
 }) {
-  const [activeLeak, setActiveLeak] = useState(null);
+  const [activeLeak, setActiveLeak] = useState(/** @type {any} */ (null));
   const [statusFilter, setStatusFilter] = useState(ALL);
-  const [pickerLeak, setPickerLeak] = useState(null);
-  const [resolveLeak, setResolveLeak] = useState(null);
-  const [repairLeak, setRepairLeak] = useState(null);
-  const [reopenLeak, setReopenLeak] = useState(null);
-  const [notification, setNotification] = useState(null);
+  const [pickerLeak, setPickerLeak] = useState(/** @type {any} */ (null));
+  const [resolveLeak, setResolveLeak] = useState(/** @type {any} */ (null));
+  const [repairLeak, setRepairLeak] = useState(/** @type {any} */ (null));
+  const [reopenLeak, setReopenLeak] = useState(/** @type {any} */ (null));
+  const [notification, setNotification] = useState(/** @type {any} */ (null));
   const { t } = useLanguage();
   const { activeProject } = useProjectData();
   const { vars } = useProjectVars(activeProject?.id ?? null);

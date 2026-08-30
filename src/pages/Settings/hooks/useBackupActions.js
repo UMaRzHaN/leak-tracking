@@ -83,11 +83,11 @@ export function useBackupActions({
   onImportZip,
   onImportIntoExisting,
   notify,
-  dismissNotification = null,
+  dismissNotification = /** @type {(() => void)|null} */ (null),
   projects,
 }) {
   const { lang, t } = useLanguage();
-  const importZipRef = useRef(null);
+  const importZipRef = useRef(/** @type {any} */ (null));
   const [conflictState, setConflictState] = useState(CONFLICT_CLOSED);
   const [importConfirmState, setImportConfirmState] = useState(
     IMPORT_CONFIRM_CLOSED,

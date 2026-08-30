@@ -12,7 +12,7 @@ import { readDeviceStorage } from "@/services/storage/deviceStorage";
  * `null`, пока замер не пришёл
  */
 export function useDeviceStorage() {
-  const [storage, setStorage] = useState(null);
+  const [storage, setStorage] = useState(/** @type {any} */ (null));
 
   useEffect(() => {
     let cancelled = false;

@@ -13,6 +13,7 @@ import {
   TILE_ATTRIBUTION,
   TILE_URL_TEMPLATE,
 } from "@/configs/mapTiles";
+import { distanceMeters } from "@/utils/geoUtils";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -109,7 +110,7 @@ function leakIcon(leak) {
         border:1px solid rgba(255,255,255,0.18);
       ">${safeLabel}</div>
     </div>`,
-    iconSize: null,
+    iconSize: undefined,
     iconAnchor: [5, 5],
     popupAnchor: [20, -6],
   });
@@ -157,17 +158,6 @@ function normalizeHeading(value) {
   const heading = Number(value);
   if (!Number.isFinite(heading)) return null;
   return ((heading % 360) + 360) % 360;
-}
-
-function distanceMeters(from, to) {
-  const [lat1, lng1] = from.map((value) => (value * Math.PI) / 180);
-  const [lat2, lng2] = to.map((value) => (value * Math.PI) / 180);
-  const dlat = lat2 - lat1;
-  const dlng = lng2 - lng1;
-  const a =
-    Math.sin(dlat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dlng / 2) ** 2;
-  return 2 * 6371000 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 function bearingDegrees(from, to) {
@@ -291,11 +281,16 @@ const HeatmapLayer = L.Layer.extend({
 
 export function createOfflineMap(
   container,
-  { center, zoom = 13, initialUserCoords = null, gpsEnabled = true },
+  {
+    center,
+    zoom = 13,
+    initialUserCoords = /** @type {{lat?: number, lng?: number}|null} */ (null),
+    gpsEnabled = true,
+  },
 ) {
   const map = L.map(container, { zoomControl: true }).setView(center, zoom);
   let destroyed = false;
-  let heatmapLayer = null;
+  let heatmapLayer = /** @type {any} */ (null);
 
   new /** @type {any} */ (CachedTileLayer)(TILE_URL_TEMPLATE, {
     maxZoom: 19,
@@ -324,10 +319,10 @@ export function createOfflineMap(
     },
   }).addTo(map);
 
-  let userMarker = null;
+  let userMarker = /** @type {any} */ (null);
   let gpsTrackingEnabled = false;
-  let lastLatLng = null;
-  let lastHeading = null;
+  let lastLatLng = /** @type {[number, number]|null} */ (null);
+  let lastHeading = /** @type {number|null} */ (null);
 
   const buildUserIcon = (heading) => {
     const hasHeading =
@@ -349,7 +344,10 @@ export function createOfflineMap(
     });
   };
 
-  const ensureUserMarker = (latlng, heading = null) => {
+  const ensureUserMarker = (
+    latlng,
+    heading = /** @type {number|null} */ (null),
+  ) => {
     if (!userMarker) {
       userMarker = L.marker(latlng, { icon: buildUserIcon(heading) })
         .addTo(map)
@@ -362,7 +360,10 @@ export function createOfflineMap(
   const initialLatLng =
     Number.isFinite(initialUserCoords?.lat) &&
     Number.isFinite(initialUserCoords?.lng)
-      ? [initialUserCoords.lat, initialUserCoords.lng]
+      ? /** @type {[number, number]} */ ([
+          initialUserCoords?.lat,
+          initialUserCoords?.lng,
+        ])
       : null;
   if (initialLatLng) {
     lastLatLng = initialLatLng;
@@ -378,12 +379,12 @@ export function createOfflineMap(
     ) {
       return;
     }
-    const latlng = [coords.lat, coords.lng];
+    const latlng = /** @type {[number, number]} */ ([coords.lat, coords.lng]);
     let heading = normalizeHeading(coords.heading);
     if (
       heading == null &&
       lastLatLng &&
-      distanceMeters(lastLatLng, latlng) > 2
+      distanceMeters(...lastLatLng, ...latlng) > 2
     ) {
       heading = bearingDegrees(lastLatLng, latlng);
     }
@@ -392,7 +393,10 @@ export function createOfflineMap(
     ensureUserMarker(latlng, heading ?? lastHeading);
   };
 
-  const setGpsTracking = (enabled, fallbackCoords = null) => {
+  const setGpsTracking = (
+    enabled,
+    fallbackCoords = /** @type {{lat?: number, lng?: number}|null} */ (null),
+  ) => {
     if (destroyed) return;
 
     if (!enabled) {
@@ -412,15 +416,17 @@ export function createOfflineMap(
 
   setGpsTracking(gpsEnabled, initialUserCoords);
 
-  const locateMe = (fallbackCoords = null) => {
+  const locateMe = (
+    fallbackCoords = /** @type {{lat?: number, lng?: number}|null} */ (null),
+  ) => {
     if (destroyed) return;
 
     const fallbackLatLng =
       Number.isFinite(fallbackCoords?.lat) &&
       Number.isFinite(fallbackCoords?.lng)
         ? /** @type {[number, number]} */ ([
-            fallbackCoords.lat,
-            fallbackCoords.lng,
+            fallbackCoords?.lat,
+            fallbackCoords?.lng,
           ])
         : null;
 
@@ -480,7 +486,11 @@ export function createOfflineMap(
   return { map, markersLayer, locateMe, setGpsTracking, setHeatmap, destroy };
 }
 
-export function addMarkers(markersLayer, leaks = [], map = null) {
+export function addMarkers(
+  markersLayer,
+  leaks = /** @type {any[]} */ ([]),
+  map = /** @type {any} */ (null),
+) {
   if (!markersLayer) return;
 
   markersLayer.clearLayers();

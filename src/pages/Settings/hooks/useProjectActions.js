@@ -13,11 +13,15 @@ import { fromEntries } from "@/utils/fromEntries";
 
 export { deleteProjectArtifacts };
 
-const CLOSED_SWITCH_STATE = {
+const CLOSED_SWITCH_STATE = /** @type {{
+  open: boolean,
+  nextProjectId: string|null,
+  pendingAction: {type: string, id?: any, name?: any, projectType?: any}|null,
+}} */ ({
   open: false,
   nextProjectId: null,
   pendingAction: null,
-};
+});
 
 const CLOSED_SYNC_ID_EDITOR = {
   open: false,

@@ -53,14 +53,14 @@ function matchesSearch(component, query) {
  */
 export default function ComponentRegistry({
   project,
-  coords = null,
+  coords = /** @type {{lat?: number, lng?: number}|null} */ (null),
   gpsEnabled = true,
-  setGpsEnabled = null,
+  setGpsEnabled = /** @type {((enabled: boolean) => void)|null} */ (null),
   cardPage = false,
-  userProfile = null,
-  sharedFilters = null,
-  onOpenCard = null,
-  onCloseCard = null,
+  userProfile = /** @type {any} */ (null),
+  sharedFilters = /** @type {any} */ (null),
+  onOpenCard = /** @type {(() => void)|null} */ (null),
+  onCloseCard = /** @type {(() => void)|null} */ (null),
 }) {
   const { t } = useLanguage();
   const {
@@ -85,20 +85,22 @@ export default function ComponentRegistry({
 
   const [search, setSearch] = useState("");
   /** Несколько состояний сразу, как статусы на странице базы. */
-  const [statusFilter, setStatusFilter] = useState([]);
+  const [statusFilter, setStatusFilter] = useState(
+    /** @type {string[]} */ ([]),
+  );
   const [sortAsc, setSortAsc] = useState(true);
   const [nearbyOnly, setNearbyOnly] = useState(false);
   const [nearbyRadius, setNearbyRadius] = useState(NEARBY_RADIUS_M);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [bulkInspecting, setBulkInspecting] = useState(false);
-  const [editing, setEditing] = useState(null);
+  const [editing, setEditing] = useState(/** @type {any} */ (null));
   const [tab, setTab] = useState("components");
   const [conflictsOnly, setConflictsOnly] = useState(false);
-  const [inspecting, setInspecting] = useState(null);
-  const listRef = useRef(null);
+  const [inspecting, setInspecting] = useState(/** @type {any} */ (null));
+  const listRef = useRef(/** @type {HTMLDivElement|null} */ (null));
   const [listHeight, setListHeight] = useState(600);
-  const [viewing, setViewing] = useState(null);
-  const [notification, setNotification] = useState(null);
+  const [viewing, setViewing] = useState(/** @type {any} */ (null));
+  const [notification, setNotification] = useState(/** @type {any} */ (null));
 
   const notify = useCallback((type, message, options = {}) => {
     setNotification({ type, message, ...options });
@@ -302,8 +304,8 @@ export default function ComponentRegistry({
     (component) => {
       if (!nearby) return null;
       const meters = getDistanceMeters(
-        coords.lat,
-        coords.lng,
+        coords?.lat,
+        coords?.lng,
         component.lat,
         component.lng,
       );

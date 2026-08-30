@@ -26,11 +26,11 @@ export function useLeakActions({
   deletePhoto = noopDeletePhoto,
   userProfile,
 }) {
-  const [activeLeak, setActiveLeak] = useState(null);
-  const [pickerLeak, setPickerLeak] = useState(null);
-  const [resolveLeak, setResolveLeak] = useState(null);
-  const [repairLeak, setRepairLeak] = useState(null);
-  const [reopenLeak, setReopenLeak] = useState(null);
+  const [activeLeak, setActiveLeak] = useState(/** @type {any} */ (null));
+  const [pickerLeak, setPickerLeak] = useState(/** @type {any} */ (null));
+  const [resolveLeak, setResolveLeak] = useState(/** @type {any} */ (null));
+  const [repairLeak, setRepairLeak] = useState(/** @type {any} */ (null));
+  const [reopenLeak, setReopenLeak] = useState(/** @type {any} */ (null));
   const { t } = useLanguage();
   const { activeProject } = useProjectData();
   const { vars } = useProjectVars(activeProject?.id ?? null);

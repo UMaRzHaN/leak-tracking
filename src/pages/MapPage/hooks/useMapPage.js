@@ -14,23 +14,27 @@ export function useMapPage({
   leaks,
   coords,
   gpsEnabled = true,
-  sharedFilters = null,
+  sharedFilters = /** @type {any} */ (null),
 }) {
   const { activeProject } = useProjectData();
   const exportProjectFolder = activeProject?.folderName;
 
-  const mapModuleRef = useRef(null);
-  const containerRef = useRef(null);
+  const mapModuleRef = useRef(/** @type {any} */ (null));
+  const containerRef = useRef(/** @type {HTMLDivElement|null} */ (null));
   const initialCoordsRef = useRef(coords);
   const initialGpsEnabledRef = useRef(gpsEnabled);
-  const mapRef = useRef({
-    map: null,
-    markersLayer: null,
-    locateMe: null,
-    setGpsTracking: null,
-    setHeatmap: null,
-    destroy: null,
-  });
+  // Ручка живой карты: её собирает `offlineMap`, и описывать её форму здесь
+  // значило бы вести второй список рядом с настоящим.
+  const mapRef = useRef(
+    /** @type {any} */ ({
+      map: null,
+      markersLayer: null,
+      locateMe: null,
+      setGpsTracking: null,
+      setHeatmap: null,
+      destroy: null,
+    }),
+  );
   const {
     mapApiRef,
     mapCenter,
@@ -54,7 +58,7 @@ export function useMapPage({
     loading: componentsLoading,
   } = useMapComponents(base === MAP_BASE.COMPONENTS);
 
-  const [notification, setNotification] = useState(null);
+  const [notification, setNotification] = useState(/** @type {any} */ (null));
   const [mapReady, setMapReady] = useState(false);
   const [heatmapEnabled, setHeatmapEnabled] = useState(false);
   const {
@@ -123,8 +127,10 @@ export function useMapPage({
 
   useEffect(() => {
     let cancelled = false;
-    let invalidateFrame = null;
-    let invalidateTimeout = null;
+    let invalidateFrame = /** @type {number|null} */ (null);
+    let invalidateTimeout = /** @type {ReturnType<typeof setTimeout>|null} */ (
+      null
+    );
 
     async function initMap() {
       const container = containerRef.current;

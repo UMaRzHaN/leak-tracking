@@ -18,7 +18,7 @@ export default function MapControls({
   gpsEnabled = true,
   showsComponents = false,
   componentsAvailable = false,
-  onToggleBase = null,
+  onToggleBase = /** @type {(() => void)|null} */ (null),
   onOpenSheet,
   onDownload,
   onCancelDownload,
@@ -40,7 +40,9 @@ export default function MapControls({
   onMonitoringChange,
 }) {
   const { t } = useLanguage();
-  const [openFilterMenu, setOpenFilterMenu] = useState(null);
+  const [openFilterMenu, setOpenFilterMenu] = useState(
+    /** @type {string|null} */ (null),
+  );
   const statusSet = new Set(statusFilters);
   const statusActive = statusFilters.length > 0;
   const prioritySet = new Set(priorityFilters);

@@ -21,10 +21,12 @@ import { normalizeProjectMeta } from "./projectMeta";
 import { getJSZip } from "./runtime";
 import { fromEntries } from "@/utils/fromEntries";
 
+/** @returns {any[]} */
 function parseBackupValidation(parsed) {
   const validation = validateBackup(parsed);
   if (!validation.ok) throw new Error(validation.error);
-  return validation.data;
+  // Разбор либо бросил, либо положил список: «прошло» без данных не бывает.
+  return /** @type {any[]} */ (validation.data);
 }
 
 /** @returns {any[]} */

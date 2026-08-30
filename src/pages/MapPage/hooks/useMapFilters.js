@@ -36,10 +36,18 @@ export function useMapFilters({
   } = useActiveLocation(leaks);
   const [localNearbyOnly, setLocalNearbyOnly] = useState(false);
   const [localNearbyRadius, setLocalNearbyRadius] = useState(NEARBY_RADIUS_M);
-  const [localPriorityFilter, setLocalPriorityFilter] = useState([]);
-  const [localStatusFilter, setLocalStatusFilter] = useState([]);
-  const [localMainLocationFilter, setLocalMainLocationFilter] = useState(null);
-  const [localLocationFilter, setLocalLocationFilter] = useState(null);
+  const [localPriorityFilter, setLocalPriorityFilter] = useState(
+    /** @type {string[]} */ ([]),
+  );
+  const [localStatusFilter, setLocalStatusFilter] = useState(
+    /** @type {string[]} */ ([]),
+  );
+  const [localMainLocationFilter, setLocalMainLocationFilter] = useState(
+    /** @type {string|null} */ (null),
+  );
+  const [localLocationFilter, setLocalLocationFilter] = useState(
+    /** @type {string|null} */ (null),
+  );
   const [localMonitoringFilter, setLocalMonitoringFilter] = useState(
     MONITORING_FILTER.DUE,
   );

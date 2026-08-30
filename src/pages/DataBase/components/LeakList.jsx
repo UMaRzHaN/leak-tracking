@@ -17,7 +17,7 @@ function LeakList({
   onToggleSelect,
 }) {
   const { t } = useTranslation();
-  const listRef = useRef(null);
+  const listRef = useRef(/** @type {HTMLDivElement|null} */ (null));
   const [listHeight, setListHeight] = useState(420);
 
   useEffect(() => {

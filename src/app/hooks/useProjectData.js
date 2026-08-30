@@ -23,16 +23,20 @@ export function useProjectData() {
   const activeProjectLegacyStorageType =
     activeProject?.legacyStorageType ?? null;
 
-  const [data, setData] = useState([]);
+  const [data, setData] = useState(/** @type {any[]} */ ([]));
   const [dataLoaded, setDataLoaded] = useState(false);
-  const [dataProjectId, setDataProjectId] = useState(null);
-  const [preservedRecords, setPreservedRecords] = useState([]);
+  const [dataProjectId, setDataProjectId] = useState(
+    /** @type {string|null} */ (null),
+  );
+  const [preservedRecords, setPreservedRecords] = useState(
+    /** @type {any[]} */ ([]),
+  );
 
-  const [loadError, setLoadError] = useState(null);
-  const [loadWarning, setLoadWarning] = useState(null);
+  const [loadError, setLoadError] = useState(/** @type {any} */ (null));
+  const [loadWarning, setLoadWarning] = useState(/** @type {any} */ (null));
   const [reloadRevision, setReloadRevision] = useState(0);
   const saveQueueRef = useRef(Promise.resolve());
-  const dataRef = useRef([]);
+  const dataRef = useRef(/** @type {any[]} */ ([]));
   const dataProjectIdRef = useRef(null);
   const loadGenerationRef = useRef(0);
   const persistedByProjectRef = useRef(new Map());
@@ -270,7 +274,7 @@ export function useProjectData() {
       dataProjectIdRef.current === projectId
         ? preservedRecords
         : (committedPreservedByProjectRef.current.get(projectId) ?? []);
-    const clearedData = [];
+    const clearedData = /** @type {any[]} */ ([]);
     if (isActiveProject()) {
       dataRef.current = clearedData;
       dataProjectIdRef.current = projectId;

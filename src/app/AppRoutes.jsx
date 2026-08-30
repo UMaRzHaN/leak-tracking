@@ -70,7 +70,9 @@ function ProjectDataLoadError({ onRetry, error, data, projectName }) {
   // Куда лёг файл, видно на экране: в браузере он уходит в загрузки сам, на
   // телефоне — в папку, которую иначе пришлось бы искать наугад, а отказ до
   // этого не показывался вообще.
-  const [saveNotice, setSaveNotice] = useState(null);
+  const [saveNotice, setSaveNotice] = useState(
+    /** @type {string|null} */ (null),
+  );
   return (
     <section className="dataLoadError" role="alert" aria-live="assertive">
       <span className="dataLoadErrorIcon" aria-hidden="true">

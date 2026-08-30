@@ -56,7 +56,9 @@ function ProjectItem({
   const [editing, setEditing] = useState(false);
   const [nameInput, setNameInput] = useState(project.name);
   const [deleteArmed, setDeleteArmed] = useState(false);
-  const timerRef = useRef(null);
+  const timerRef = useRef(
+    /** @type {ReturnType<typeof setTimeout>|undefined} */ (undefined),
+  );
   const meta = projectTypeMeta(project.type, t);
 
   const commitRename = () => {

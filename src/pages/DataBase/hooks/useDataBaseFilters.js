@@ -155,18 +155,28 @@ export function matchesLeakSearch(leak, query) {
 export function useDataBaseFilters({
   data,
   coords,
-  sharedFilters = null,
-  configuredMainLocationKey = null,
-  configuredLocationKey = null,
-  configuredLastLocationKey = null,
+  sharedFilters = /** @type {any} */ (null),
+  configuredMainLocationKey = /** @type {string|null} */ (null),
+  configuredLocationKey = /** @type {string|null} */ (null),
+  configuredLastLocationKey = /** @type {string|null} */ (null),
 }) {
   const [localSearchInput, setLocalSearchInput] = useState("");
   const [search, setSearch] = useState(() => sharedFilters?.search ?? "");
-  const [localStatusFilter, setLocalStatusFilter] = useState([]);
-  const [localPriorityFilter, setLocalPriorityFilter] = useState([]);
-  const [localMainLocationFilter, setLocalMainLocationFilter] = useState(null);
-  const [localLocationFilter, setLocalLocationFilter] = useState(null);
-  const [localLastLocationFilter, setLocalLastLocationFilter] = useState(null);
+  const [localStatusFilter, setLocalStatusFilter] = useState(
+    /** @type {string[]} */ ([]),
+  );
+  const [localPriorityFilter, setLocalPriorityFilter] = useState(
+    /** @type {string[]} */ ([]),
+  );
+  const [localMainLocationFilter, setLocalMainLocationFilter] = useState(
+    /** @type {string|null} */ (null),
+  );
+  const [localLocationFilter, setLocalLocationFilter] = useState(
+    /** @type {string|null} */ (null),
+  );
+  const [localLastLocationFilter, setLocalLastLocationFilter] = useState(
+    /** @type {string|null} */ (null),
+  );
   const [localNearbyFilter, setLocalNearbyFilter] = useState(false);
   const [localNearbyRadius, setLocalNearbyRadius] = useState(NEARBY_RADIUS_M);
   const [sortAsc, setSortAsc] = useState(false);
@@ -274,7 +284,7 @@ export function useDataBaseFilters({
       searchTokens.length > 0
         ? list.filter((leak) =>
             searchTokens.every((token) =>
-              searchIndex.get(leak)?.includes(token),
+              searchIndex?.get(leak)?.includes(token),
             ),
           )
         : list;

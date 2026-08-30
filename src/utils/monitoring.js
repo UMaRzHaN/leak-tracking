@@ -134,7 +134,11 @@ export function getLeakDetailsHeroPhotoPath(leak) {
   return getLatestMonitoringPhotoPath(leak) ?? leak?.photo ?? null;
 }
 
-export function isMonitoringDue(leak, roundId = null, roundNumber = null) {
+export function isMonitoringDue(
+  leak,
+  roundId = /** @type {any} */ (null),
+  roundNumber = /** @type {number|null} */ (null),
+) {
   const records = getMonitoringRecords(leak);
   const normalizedRoundNumber = Number(roundNumber);
   const hasRoundNumber =

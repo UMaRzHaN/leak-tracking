@@ -23,7 +23,7 @@ import { performSettingsCleanup } from "../settingsCleanup";
 import { resolvePortableExcelArchiveRoute } from "../excelArchiveRouting";
 
 export function useSettingsPage({
-  data = [],
+  data = /** @type {any[]} */ ([]),
   setData,
   clearDatabase,
   onImportZip,
@@ -32,11 +32,13 @@ export function useSettingsPage({
   onImportInventory,
 }) {
   const { lang, t, toggleLanguage, localeTexts } = useSettingsTexts();
-  const [notification, setNotification] = useState(null);
+  const [notification, setNotification] = useState(/** @type {any} */ (null));
   const [fieldsModalOpen, setFieldsModalOpen] = useState(false);
   const [addingProject, setAddingProject] = useState(false);
-  const [cacheInfo, setCacheInfo] = useState(null);
-  const [settingsConfirmAction, setSettingsConfirmAction] = useState(null);
+  const [cacheInfo, setCacheInfo] = useState(/** @type {any} */ (null));
+  const [settingsConfirmAction, setSettingsConfirmAction] = useState(
+    /** @type {any} */ (null),
+  );
   const [isImportingExcel, setIsImportingExcel] = useState(false);
   const [excelImportState, setExcelImportState] = useState(
     /** @type {any} */ ({ open: false }),
@@ -44,7 +46,7 @@ export function useSettingsPage({
   const [excelConflictState, setExcelConflictState] = useState(
     /** @type {any} */ ({ open: false }),
   );
-  const importExcelRef = useRef(null);
+  const importExcelRef = useRef(/** @type {any} */ (null));
 
   const notify = useCallback((type, message, options = {}) => {
     setNotification({ type, message, ...options });

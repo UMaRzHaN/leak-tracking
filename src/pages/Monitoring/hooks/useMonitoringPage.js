@@ -44,7 +44,7 @@ export function useMonitoringPage({
   coords,
   sharedFilters,
   requestedLeakId,
-  requestedLeakIds = [],
+  requestedLeakIds = /** @type {any[]} */ ([]),
   onRequestedLeakConsumed,
   onRequestedLeaksConsumed,
   userProfile,
@@ -57,7 +57,7 @@ export function useMonitoringPage({
     activeProject?.id ?? null,
   );
   const { deletePhoto, savePhoto } = usePhotoStorage();
-  const listRef = useRef(null);
+  const listRef = useRef(/** @type {HTMLDivElement|null} */ (null));
   const profileName = userProfile?.name?.trim() ?? "";
   const [monitoringRound, setMonitoringRound] = useState(() =>
     readMonitoringRound(activeProject?.id ?? null),
@@ -71,21 +71,29 @@ export function useMonitoringPage({
   const setMonitoringFilter =
     sharedFilters?.setMonitoringFilter ?? setLocalMonitoringFilter;
   const [drafts, setDrafts] = useState({});
-  const [activeLeak, setActiveLeak] = useState(null);
-  const [pickerLeak, setPickerLeak] = useState(null);
-  const [resolveLeak, setResolveLeak] = useState(null);
-  const [repairLeak, setRepairLeak] = useState(null);
-  const [reopenLeak, setReopenLeak] = useState(null);
-  const [pendingMonitoringReopen, setPendingMonitoringReopen] = useState(null);
-  const [monitorLeak, setMonitorLeak] = useState(null);
-  const [monitorQueueIds, setMonitorQueueIds] = useState([]);
+  const [activeLeak, setActiveLeak] = useState(/** @type {any} */ (null));
+  const [pickerLeak, setPickerLeak] = useState(/** @type {any} */ (null));
+  const [resolveLeak, setResolveLeak] = useState(/** @type {any} */ (null));
+  const [repairLeak, setRepairLeak] = useState(/** @type {any} */ (null));
+  const [reopenLeak, setReopenLeak] = useState(/** @type {any} */ (null));
+  const [pendingMonitoringReopen, setPendingMonitoringReopen] = useState(
+    /** @type {any} */ (null),
+  );
+  const [monitorLeak, setMonitorLeak] = useState(/** @type {any} */ (null));
+  const [monitorQueueIds, setMonitorQueueIds] = useState(
+    /** @type {any[]} */ ([]),
+  );
   const [monitorQueueTotal, setMonitorQueueTotal] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [roundConfirmOpen, setRoundConfirmOpen] = useState(false);
-  const [pendingRoundLeakId, setPendingRoundLeakId] = useState(null);
-  const [repeatConfirmLeak, setRepeatConfirmLeak] = useState(null);
-  const [notification, setNotification] = useState(null);
+  const [pendingRoundLeakId, setPendingRoundLeakId] = useState(
+    /** @type {string|null} */ (null),
+  );
+  const [repeatConfirmLeak, setRepeatConfirmLeak] = useState(
+    /** @type {any} */ (null),
+  );
+  const [notification, setNotification] = useState(/** @type {any} */ (null));
   const filters = useDataBaseFilters({
     data,
     coords,
@@ -329,7 +337,7 @@ export function useMonitoringPage({
     leak,
     draft,
     photoPath,
-    reopenDraft = null,
+    reopenDraft = /** @type {any} */ (null),
   }) => {
     const displacedPhotoPaths = new Set();
     if (reopenDraft && leak.status === STATUS.RESOLVED && leak.photo_after) {

@@ -27,7 +27,9 @@ export function useProjectIntegrityCheck({
   notify,
   t,
 }) {
-  const [integrityReport, setIntegrityReport] = useState(null);
+  const [integrityReport, setIntegrityReport] = useState(
+    /** @type {any} */ (null),
+  );
   const [checkingIntegrity, setCheckingIntegrity] = useState(false);
 
   const handleCheckIntegrity = useCallback(async () => {

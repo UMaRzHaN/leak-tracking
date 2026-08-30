@@ -422,4 +422,23 @@ describe("locating the user", () => {
 
     expect(leaflet.map.removeLayer).toHaveBeenCalled();
   });
+  it("направление берёт из движения, когда прибор его не сообщил", () => {
+    // У части телефонов в показаниях нет курса вовсе. Тогда его считают по
+    // самому перемещению — иначе стрелка «вы здесь» смотрит в одну сторону,
+    // куда бы человек ни шёл.
+    const adapter = makeAdapter({
+      gpsEnabled: true,
+      initialUserCoords: { lat: 41.2, lng: 69.2 },
+    });
+    leaflet.divIcons.length = 0;
+
+    // Заметно севернее прежней точки: движение на север — курс около нуля.
+    adapter.setGpsTracking(true, { lat: 41.201, lng: 69.2 });
+
+    const icon = leaflet.divIcons.at(-1);
+    const rotation = Number(
+      /rotate\((-?[\d.]+)deg\)/.exec(icon?.html ?? "")?.[1],
+    );
+    expect(rotation).toBeCloseTo(0, 1);
+  });
 });

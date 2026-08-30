@@ -50,9 +50,11 @@ export default function AddLeak({
   const { saveDraft, loadDraft, clearDraft } = useFormDraft(projectId);
   const { isSaving, run } = useSafeSave();
   const [draftPrompt, setDraftPrompt] = useState(false);
-  const [draftReadyProjectId, setDraftReadyProjectId] = useState(null);
-  const [notification, setNotification] = useState(null);
-  const [savedLeak, setSavedLeak] = useState(null);
+  const [draftReadyProjectId, setDraftReadyProjectId] = useState(
+    /** @type {string|null} */ (null),
+  );
+  const [notification, setNotification] = useState(/** @type {any} */ (null));
+  const [savedLeak, setSavedLeak] = useState(/** @type {any} */ (null));
   // `coords` arrives as a prop, so the value captured when handleAdd started is
   // frozen for the whole save. Waiting for a fix means watching this instead.
   const coordsRef = useRef(coords);
@@ -259,7 +261,8 @@ export default function AddLeak({
         }
 
         /* Save photo */
-        let photoPath = null;
+        let photoPath =
+          /** @type {string|{path: string, created: boolean}|null} */ (null);
         const rawPhoto =
           row.photo?.raw ??
           (row.photo?.src ? dataUrlToBlob(row.photo.src) : null);

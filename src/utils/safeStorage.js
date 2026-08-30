@@ -7,7 +7,17 @@ function getLocalStorage() {
   }
 }
 
-export function getStorageItem(key, fallback = null) {
+/**
+ * Читатель, у которого спросили запасное значение, получает его же, а не
+ * «строку или пусто»: без этого каждый вызов с запасным значением приходилось
+ * бы проверять на пустоту, которой там быть не может.
+ *
+ * @template {string|null} [T=null]
+ * @param {string} key
+ * @param {T} [fallback]
+ * @returns {string|T}
+ */
+export function getStorageItem(key, fallback = /** @type {any} */ (null)) {
   try {
     return getLocalStorage()?.getItem(key) ?? fallback;
   } catch {

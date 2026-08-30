@@ -8,7 +8,7 @@ export default function SyncIdEditorSheet({
   onConfirm,
   onCancel,
 }) {
-  const inputRef = useRef(null);
+  const inputRef = useRef(/** @type {HTMLInputElement|null} */ (null));
   const titleId = useId();
   const dialogRef = useModalDialog({ open: state.open, onClose: onCancel });
 

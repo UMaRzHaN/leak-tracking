@@ -15,7 +15,7 @@ export function useDataBaseController({
   configuredLastLocationKey,
   userProfile,
 }) {
-  const [notification, setNotification] = useState(null);
+  const [notification, setNotification] = useState(/** @type {any} */ (null));
   const [bulkPickerOpen, setBulkPickerOpen] = useState(false);
 
   const notify = useCallback((type, message, options = {}) => {

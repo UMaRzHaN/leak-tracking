@@ -42,21 +42,21 @@ const DRAFT_DERIVED_FIELDS = ["lat", "lng"];
  */
 export default function ComponentCardForm({
   steps: rawSteps,
-  projectId = null,
-  coords = null,
+  projectId = /** @type {string|null} */ (null),
+  coords = /** @type {{lat?: number, lng?: number}|null} */ (null),
   gpsEnabled = true,
-  setGpsEnabled = null,
-  onSavedWithoutCoords = null,
-  copyableFields = [],
-  lastComponent = null,
-  component = null,
+  setGpsEnabled = /** @type {((enabled: boolean) => void)|null} */ (null),
+  onSavedWithoutCoords = /** @type {(() => void)|null} */ (null),
+  copyableFields = /** @type {string[]} */ ([]),
+  lastComponent = /** @type {any} */ (null),
+  component = /** @type {any} */ (null),
   findConflicts,
   onSave,
   onCancel,
   texts,
   t,
   photoRequired = true,
-  voice = null,
+  voice = /** @type {any} */ (null),
 }) {
   const steps = useMemo(() => {
     const localized = localizeComponentSteps(rawSteps, t);
@@ -94,7 +94,7 @@ export default function ComponentCardForm({
   const [draftPrompt, setDraftPrompt] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const pendingKeysRef = useRef([]);
+  const pendingKeysRef = useRef(/** @type {string[]} */ ([]));
 
   /*
    * Черновик карточки.

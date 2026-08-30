@@ -193,7 +193,7 @@ async function nativeWrite(
   url,
   skipMkdir = false,
   signal,
-  prefetchedResponse = null,
+  prefetchedResponse = /** @type {Response|null} */ (null),
 ) {
   const path = tileFilePath(url);
   if (!path || (await nativeExists(path))) return false;
@@ -298,7 +298,10 @@ export async function getTileBlobUrl(url) {
   }
 }
 
-export async function cacheTile(url, prefetchedResponse = null) {
+export async function cacheTile(
+  url,
+  prefetchedResponse = /** @type {Response|null} */ (null),
+) {
   if (isNative) {
     const saved = await nativeWrite(url, false, undefined, prefetchedResponse);
     if (saved) {

@@ -128,7 +128,7 @@ export default function ProjectSetupScreen({
   const [importing, setImporting] = useState(false);
   const [importingQr, setImportingQr] = useState(false);
   const [qrPhase, setQrPhase] = useState("idle");
-  const fileRef = useRef(null);
+  const fileRef = useRef(/** @type {HTMLInputElement|null} */ (null));
   const canImportByQr = onImportZip && isLocalSyncAvailable();
   const canImportFile = Boolean(onImportZip || onImportExcel);
   const isImporting = importing || importingQr;

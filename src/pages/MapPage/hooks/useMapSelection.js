@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export function useMapSelection({ coords, gpsEnabled, mapRef }) {
-  const mapApiRef = useRef(null);
+  const mapApiRef = useRef(/** @type {any} */ (null));
   const latestCoordsRef = useRef(coords);
-  const [mapCenter, setMapCenter] = useState(null);
+  const [mapCenter, setMapCenter] = useState(/** @type {any} */ (null));
   const [open, setOpen] = useState(false);
 
   useEffect(() => {

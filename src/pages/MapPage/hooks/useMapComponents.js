@@ -27,4 +27,4 @@ export function useMapComponents(active) {
   return { available: enabled, markers, loading };
 }
 
-const EMPTY = /** @type {any[]} */ (Object.freeze([]));
+const EMPTY = /** @type {any[]} */ (/** @type {unknown} */ (Object.freeze([])));

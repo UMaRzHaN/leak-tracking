@@ -26,9 +26,9 @@ export default function SettingsModal({
   onClose,
   variables: currentVars,
   onSave,
-  title = null,
-  description = null,
-  saveLabel = null,
+  title = /** @type {string|null} */ (null),
+  description = /** @type {string|null} */ (null),
+  saveLabel = /** @type {string|null} */ (null),
   allowUnchangedSave = false,
 }) {
   const { t } = useLanguage();

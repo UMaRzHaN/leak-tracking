@@ -35,10 +35,11 @@ export function useAppBootstrap() {
 
   const { t } = useLanguage();
   const importingDataLabel = t("app.importingData");
-  const [requestedMonitoringLeakId, setRequestedMonitoringLeakId] =
-    useState(null);
+  const [requestedMonitoringLeakId, setRequestedMonitoringLeakId] = useState(
+    /** @type {any} */ (null),
+  );
   const [requestedMonitoringLeakIds, setRequestedMonitoringLeakIds] = useState(
-    [],
+    /** @type {any[]} */ ([]),
   );
   const [userProfileOpen, setUserProfileOpen] = useState(false);
   const { profile: userProfile, setProfile: setUserProfile } = useUserProfile();

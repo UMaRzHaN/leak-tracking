@@ -4,10 +4,12 @@ import { useLanguage } from "@/app/hooks/useLanguage";
 
 export function useOfflineMapActions({ mapRef, notify }) {
   const { t } = useLanguage();
-  const [tileProgress, setTileProgress] = useState(null);
+  const [tileProgress, setTileProgress] = useState(/** @type {any} */ (null));
   const [downloading, setDownloading] = useState(false);
-  const abortControllerRef = useRef(null);
-  const progressTimerRef = useRef(null);
+  const abortControllerRef = useRef(/** @type {AbortController|null} */ (null));
+  const progressTimerRef = useRef(
+    /** @type {ReturnType<typeof setTimeout>|undefined} */ (undefined),
+  );
 
   useEffect(
     () => () => {

@@ -32,9 +32,9 @@ export function useBulkActions({
   const { t, intlLocale } = useLanguage();
   const historyUser = userProfile?.name?.trim() || undefined;
   const [selectedIds, setSelectedIds] = useState(() => new Set());
-  const [resolveQueue, setResolveQueue] = useState([]);
+  const [resolveQueue, setResolveQueue] = useState(/** @type {any[]} */ ([]));
   const [resolveTotal, setResolveTotal] = useState(0);
-  const [repairQueue, setRepairQueue] = useState([]);
+  const [repairQueue, setRepairQueue] = useState(/** @type {any[]} */ ([]));
   const [repairTotal, setRepairTotal] = useState(0);
   const requireHistoryUser = useCallback(() => {
     if (historyUser) return true;

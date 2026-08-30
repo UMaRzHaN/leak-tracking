@@ -13,11 +13,21 @@ import {
 
 export function useSharedFilters({ projectId, projectType }) {
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState([]);
-  const [priorityFilter, setPriorityFilter] = useState([]);
-  const [mainLocationFilter, setMainLocationFilter] = useState(null);
-  const [locationFilter, setLocationFilter] = useState(null);
-  const [lastLocationFilter, setLastLocationFilter] = useState(null);
+  const [statusFilter, setStatusFilter] = useState(
+    /** @type {string[]} */ ([]),
+  );
+  const [priorityFilter, setPriorityFilter] = useState(
+    /** @type {string[]} */ ([]),
+  );
+  const [mainLocationFilter, setMainLocationFilter] = useState(
+    /** @type {string|null} */ (null),
+  );
+  const [locationFilter, setLocationFilter] = useState(
+    /** @type {string|null} */ (null),
+  );
+  const [lastLocationFilter, setLastLocationFilter] = useState(
+    /** @type {string|null} */ (null),
+  );
   const [nearbyFilter, setNearbyFilter] = useState(false);
   const [nearbyRadius, setNearbyRadius] = useState(NEARBY_RADIUS_M);
   const [monitoringFilter, setMonitoringFilter] = useState(

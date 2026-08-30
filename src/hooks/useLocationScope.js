@@ -17,7 +17,7 @@ import {
 // project switch for free, because those filters are already persisted.
 
 export function useLocationScope({
-  leaks = [],
+  leaks = /** @type {any[]} */ ([]),
   sharedFilters = /** @type {any} */ (null),
   projectType = /** @type {string|null} */ (null),
 }) {

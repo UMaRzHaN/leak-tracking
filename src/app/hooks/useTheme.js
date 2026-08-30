@@ -71,7 +71,7 @@ function publish() {
 // Запрос держится в модуле, а не в замыкании подписки: снимать слушателя
 // должен уход последнего потребителя, кто бы им ни оказался. В замыкании
 // первого он пережил бы всех остальных, если первый уходил не последним.
-let mediaQuery = null;
+let mediaQuery = /** @type {MediaQueryList|null} */ (null);
 
 function subscribe(listener) {
   listeners.add(listener);

@@ -246,9 +246,9 @@ function FilterTab({
   count,
   active,
   onSelect,
-  color = null,
-  bg = null,
-  border = null,
+  color = /** @type {string|null} */ (null),
+  bg = /** @type {string|null} */ (null),
+  border = /** @type {string|null} */ (null),
 }) {
   const isActive = active;
   // Синий по умолчанию даёт класс filterActive. Инлайновый стиль нужен только
@@ -256,7 +256,7 @@ function FilterTab({
   // синим значило бы терять этот признак.
   const activeStyle =
     isActive && color
-      ? { color, background: bg, borderColor: border }
+      ? { color, background: bg ?? undefined, borderColor: border ?? undefined }
       : undefined;
 
   return (
