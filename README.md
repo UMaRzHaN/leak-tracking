@@ -113,8 +113,8 @@ src/
 │   ├── App.jsx
 │   ├── AppRoutes.jsx       # Экранный роутинг + предупреждение о хранилище
 │   ├── hooks/              # useAppState, useProjectData, useTheme, useVoiceControl
-│   ├── migrations/         # One-time legacy data cleanup
-│   └── project/            # ProjectContext + project storage/migration/keys
+│   └── project/            # ProjectContext + storage/keys
+│       ├── projectMigration.js  # Разовая чистка данных старых версий
 │       └── hooks/          # useProjectConfig, useProjectVars, useHiddenFields, …
 │
 ├── components/
@@ -122,10 +122,11 @@ src/
 │   └── ui/                 # ConfirmSheet, MobileSheet, Notification, StatusBadge, ErrorBoundary
 │
 ├── configs/
-│   ├── index.js            # Barrel → PROJECT_CONFIGS, PROJECT_META
-│   ├── projects.js
+│   ├── projects.js         # PROJECTS — тяжёлый, тянет все три конфигурации
+│   ├── projectMeta.js      # PROJECT_META — название и папка типа, лёгкий
 │   ├── projectAdapter.js
 │   ├── projectLocation.config.js
+│   ├── componentRegistry.config.js  # Есть ли у типа реестр компонентов
 │   ├── shared/             # Common fields + steps across project types
 │   ├── upstream/           # UPSTREAM_CONFIG + data/fields + data/steps
 │   ├── midstream/
@@ -180,7 +181,8 @@ src/
 │   ├── MapPage/            # + offlineMap.js + kml.js + handleExport.js + hooks/
 │   ├── Monitoring/
 │   ├── ProjectSetup/
-│   └── Settings/           # + backup.js + hooks/ + components/
+│   └── Settings/           # + excelArchiveRouting.js + settingsCleanup.js
+│                           #   + hooks/ + components/
 │
 ├── locales/                # ru/ и en/ по неймспейсам + loadLanguage (ленивая загрузка)
 │
@@ -764,7 +766,7 @@ npm run lint:fix
 npm run format         # Prettier --write
 npm run format:check
 npm run typecheck        # Контракты приложения: src/** через tsconfig.check.json
-npm run typecheck:strict # strictNullChecks по каталогам-храповику: domain/, utils/
+npm run typecheck:strict # strictNullChecks на весь src + ещё три флага
 npm run typecheck:tools  # Код вокруг приложения: scripts/, e2e/, performance/, конфиги
 ```
 
