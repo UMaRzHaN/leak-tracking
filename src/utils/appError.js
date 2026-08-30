@@ -62,3 +62,37 @@ export function errorText(error, t) {
   // ошибке, а пустое место не даёт вообще ничего.
   return error?.message ?? code ?? "";
 }
+
+/**
+ * Пойманное — как ошибка, на которую можно писать.
+ *
+ * `catch` ловит что угодно: бросить в JS можно строку, число, `undefined`, да
+ * и чужая библиотека не обязана бросать `Error`. Дописать же поле можно только
+ * объекту — у брошенной строки присваивание в модуле бросает TypeError прямо в
+ * обработчике. Наружу тогда уходит он, остаток обработчика не доигрывает, и
+ * вместо причины сбоя читатель получает «Cannot create property on string».
+ *
+ * Так делают все места, где откат оставляет следы на самой ошибке: что не
+ * удалось откатить, какие фото остались лежать, что случилось с журналом.
+ *
+ * @param {unknown} caught
+ * @returns {Error & Record<string, any>}
+ */
+export function asError(caught) {
+  return caught instanceof Error ? caught : new Error(String(caught));
+}
+
+/**
+ * Код пойманной ошибки, если он у неё есть.
+ *
+ * Спрашивать `error.code` напрямую значит верить, что поймали объект: у
+ * брошенных `null` и `undefined` такое чтение падает само. Здесь этот вопрос
+ * задан один раз и безопасно.
+ *
+ * @param {unknown} caught
+ * @returns {string|undefined}
+ */
+export function errorCode(caught) {
+  const code = /** @type {any} */ (caught)?.code;
+  return typeof code === "string" ? code : undefined;
+}

@@ -26,6 +26,7 @@ export {
 } from "./tileCacheMetadata";
 import { ignoredError } from "@/utils/ignoredError";
 import { fromEntries } from "@/utils/fromEntries";
+import { errorCode } from "@/utils/appError";
 
 const CACHE_NAME = "map-tiles-v2";
 const MAX_MERCATOR_LAT = 85.05112878;
@@ -357,7 +358,7 @@ export async function clearMapCache() {
     } catch (error) {
       // Capacitor Filesystem v8 exposes a stable not-found code. Any other
       // failure must preserve count/LRU metadata and be surfaced to the caller.
-      if (error?.code !== FILESYSTEM_NOT_FOUND_CODE) throw error;
+      if (errorCode(error) !== FILESYSTEM_NOT_FOUND_CODE) throw error;
     }
     resetNativeCount();
     for (let index = localStorage.length - 1; index >= 0; index--) {

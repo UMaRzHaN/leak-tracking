@@ -341,4 +341,26 @@ describe("runExcelImportTransaction", () => {
 
     expect(rootError.journalCompletionError).toBe(completionError);
   });
+  it("доигрывает откат, когда брошено не Error", async () => {
+    // Откат дописывает следы на саму ошибку, а дописать поле можно только
+    // объекту: у брошенной строки присваивание бросало TypeError прямо в
+    // обработчике. Наружу уходил он, откат ниже по блоку не доигрывал вовсе, и
+    // вместо причины сбоя читатель получал «Cannot create property on string».
+    const deletePhoto = vi.fn().mockResolvedValue(true);
+
+    const failure = await runExcelImportTransaction({
+      projectId: "non-error-throw",
+      persistPhotos: vi.fn().mockResolvedValue({
+        leaks: [{ id: 1 }],
+        createdPaths: ["idb://new"],
+      }),
+      commit: vi.fn().mockRejectedValue("сорвалось на записи"),
+      rollbackState: vi.fn().mockResolvedValue(undefined),
+      deletePhoto,
+    }).catch((error) => error);
+
+    expect(failure).toBeInstanceOf(Error);
+    expect(failure.message).toBe("сорвалось на записи");
+    expect(deletePhoto).toHaveBeenCalledWith("idb://new");
+  });
 });

@@ -31,7 +31,7 @@ function runInExcelWorker({ kind, payload, timeoutMs, readResult }) {
     worker = new Worker(new URL("./excel.worker.js", import.meta.url), {
       type: "module",
     });
-  } catch (error) {
+  } catch (/** @type {any} */ error) {
     // Older Android WebViews reject module workers outright.
     return Promise.reject(
       new WorkerUnavailableError(
@@ -95,7 +95,7 @@ function runInExcelWorker({ kind, payload, timeoutMs, readResult }) {
 
     try {
       worker.postMessage({ kind, payload });
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
       // Structured clone rejected the payload — e.g. a duck-typed file object
       // rather than a real File. Nothing was sent, so the main thread can
       // still do the work.
@@ -155,7 +155,7 @@ export function openBackupArchiveInWorker(file) {
     worker = new Worker(new URL("./excel.worker.js", import.meta.url), {
       type: "module",
     });
-  } catch (error) {
+  } catch (/** @type {any} */ error) {
     return Promise.reject(
       new WorkerUnavailableError(
         String(error?.message ?? "Excel worker unavailable"),
@@ -194,7 +194,7 @@ export function openBackupArchiveInWorker(file) {
       touch();
       try {
         worker.postMessage({ kind: "backup", op, id, payload });
-      } catch (error) {
+      } catch (/** @type {any} */ error) {
         pending.delete(id);
         reject(
           new WorkerUnavailableError(

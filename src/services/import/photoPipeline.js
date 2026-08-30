@@ -1,13 +1,17 @@
 import { getPhotoBlob, getPhotoSrc, photoExists } from "@/hooks/photoService";
 import { fingerprintBlob } from "@/utils/blobHash";
 import { getPhotoPathContentHash } from "@/utils/photoContentHash";
-import { getLeakMergeIdentity } from "@/services/sync/projectSyncState";
+import {
+  getLeakIdentity,
+  getMonitoringIdentity,
+} from "@/services/import/photoIdentity";
 import { mapWithConcurrency } from "@/services/backup/runtime";
 import { hydrateZipPhotos } from "@/services/import/zipPhotoHydration";
 import {
   LEAK_PHOTO_FIELDS,
   MONITORING_PHOTO_FIELDS,
 } from "@/utils/photoFields";
+import { asError } from "@/utils/appError";
 
 const PHOTO_KEYS = new Set(LEAK_PHOTO_FIELDS);
 
@@ -26,37 +30,6 @@ async function dataUrlToBlob(dataUrl) {
     bytes[index] = binary.charCodeAt(index);
   }
   return new Blob([bytes], { type: match[1] });
-}
-
-function getLeakIdentity(leak) {
-  const leakTag = String(leak?.leak_id ?? "").trim();
-  if (leakTag) return `tag:${leakTag}`;
-  return getLeakMergeIdentity(leak);
-}
-
-function normalizeRecordDateIdentity(value) {
-  if (value == null || value === "") return "";
-  if (typeof value === "number" && Number.isFinite(value)) return String(value);
-  if (value instanceof Date && Number.isFinite(value.getTime())) {
-    return String(value.getTime());
-  }
-
-  const text = String(value).trim();
-  const dotted = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
-  if (dotted) {
-    const year = dotted[3].length === 2 ? `20${dotted[3]}` : dotted[3];
-    return `${year}-${Number(dotted[2])}-${Number(dotted[1])}`;
-  }
-  const parsed = Date.parse(text);
-  return Number.isFinite(parsed) ? String(parsed) : text;
-}
-
-function getMonitoringIdentity(record, index) {
-  if (record?.date) {
-    return `date:${normalizeRecordDateIdentity(record.date)}|result:${String(record?.result ?? "")}`;
-  }
-  if (record?.id != null) return `id:${String(record.id)}`;
-  return `index:${index}`;
 }
 
 async function resolveStoredPhotoBlob(path, getStoredPhoto) {
@@ -501,7 +474,10 @@ export async function persistExcelImportPhotos(
     persistedLeaks = await mapWithConcurrency(leaks, concurrency, (leak) =>
       persistLeakPhotos(leak, savePhoto, createdPaths, fingerprintCache),
     );
-  } catch (error) {
+  } catch (caught) {
+    // Список созданных фото едет на самой ошибке: по нему откат импорта их и
+    // удаляет. Писать поля можно только объекту — см. `asError`.
+    const error = asError(caught);
     error.createdPhotoPaths = [...createdPaths];
     throw error;
   }

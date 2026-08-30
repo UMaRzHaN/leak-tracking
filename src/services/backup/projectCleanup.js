@@ -69,7 +69,7 @@ export async function rollbackImportedProject(project, removeProject) {
     throw new Error(`Could not remove imported project "${project.id}"`);
   }
 
-  let cleanupError = null;
+  let cleanupError = /** @type {unknown} */ (null);
   try {
     saveMonitoringRound(project.id, null);
     await deleteProjectArtifacts(project);

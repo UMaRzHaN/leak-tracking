@@ -65,7 +65,10 @@ vi.mock("@/services/backup/projectIntegrityService", () => ({
   analyzeProjectIntegrity: mocks.analyzeProjectIntegrity,
   readComponentRegistryIds: mocks.readComponentRegistryIds,
 }));
-vi.mock("@/services/import/excelImportTransaction", () => ({
+vi.mock("@/services/import/excelImportTransaction", async (importOriginal) => ({
+  // Приписка про откат — чистое форматирование того, что транзакция оставила
+  // на ошибке. Подменять её нечем: тесты проверяют сообщение целиком.
+  ...(await importOriginal()),
   runExcelImportTransaction: mocks.runExcelImportTransaction,
   getExcelImportTransactionWarning: mocks.getExcelImportTransactionWarning,
 }));

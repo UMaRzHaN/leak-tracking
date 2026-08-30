@@ -47,6 +47,7 @@ import {
   restoreProjectSchemas,
 } from "./projectExtrasRestore";
 import { ignoredError } from "@/utils/ignoredError";
+import { asError } from "@/utils/appError";
 
 export async function importProjectZip(file, ctx) {
   const {
@@ -408,8 +409,11 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
             );
       }
     }
-  } catch (error) {
-    const rollbackErrors = [];
+  } catch (caught) {
+    // Откат оставляет след на самой ошибке, а писать поля можно только
+    // объекту — см. `asError`.
+    const error = asError(caught);
+    const rollbackErrors = /** @type {unknown[]} */ ([]);
     if (localVarsRaw == null) {
       localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(existingProjectId));
     } else {

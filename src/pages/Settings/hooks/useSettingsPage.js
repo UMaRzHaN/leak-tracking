@@ -21,6 +21,7 @@ import { useSettingsTexts } from "./useSettingsTexts";
 import { useLocalSync } from "./useLocalSync";
 import { performSettingsCleanup } from "../settingsCleanup";
 import { resolvePortableExcelArchiveRoute } from "../excelArchiveRouting";
+import { importRollbackNote } from "@/services/import/excelImportTransaction";
 
 export function useSettingsPage({
   data = /** @type {any[]} */ ([]),
@@ -405,7 +406,7 @@ export function useSettingsPage({
     } catch (error) {
       notify(
         "error",
-        `${t("settings.failedToSaveImport")}: ${errorText(error, t)}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}${error.photoRollbackErrors?.length ? `; photo rollback: ${error.photoRollbackErrors.length}` : ""}`,
+        `${t("settings.failedToSaveImport")}: ${errorText(error, t)}${importRollbackNote(error)}`,
       );
     } finally {
       setIsImportingExcel(false);
@@ -478,7 +479,7 @@ export function useSettingsPage({
     } catch (error) {
       notify(
         "error",
-        `${t("settings.failedToSaveImport")}: ${errorText(error, t)}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}${error.photoRollbackErrors?.length ? `; photo rollback: ${error.photoRollbackErrors.length}` : ""}`,
+        `${t("settings.failedToSaveImport")}: ${errorText(error, t)}${importRollbackNote(error)}`,
       );
     } finally {
       setIsImportingExcel(false);
@@ -546,7 +547,7 @@ export function useSettingsPage({
     } catch (error) {
       notify(
         "error",
-        `${t("settings.failedToMergeExcel")}: ${errorText(error, t)}${error.rollbackError ? `; rollback: ${error.rollbackError.message}` : ""}${error.photoRollbackErrors?.length ? `; photo rollback: ${error.photoRollbackErrors.length}` : ""}`,
+        `${t("settings.failedToMergeExcel")}: ${errorText(error, t)}${importRollbackNote(error)}`,
       );
     } finally {
       setIsImportingExcel(false);

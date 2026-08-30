@@ -1,4 +1,4 @@
-import { errorText } from "@/utils/appError";
+import { errorCode, errorText } from "@/utils/appError";
 import { useCallback } from "react";
 import { projectNameFromFile } from "@/services/import/projectNameFromFile";
 
@@ -109,7 +109,7 @@ export function useImportRouting({
         // Пустой архив — не поломка разбора, а «в файле ничего нет»: заведение
         // проекта отдаёт это кодом, и здесь оно должно звучать так же, как
         // при вливании в открытый проект.
-        if (error.code === "EMPTY_INVENTORY") {
+        if (errorCode(error) === "EMPTY_INVENTORY") {
           notify("warning", t("settings.inventoryImportEmpty"));
           return;
         }

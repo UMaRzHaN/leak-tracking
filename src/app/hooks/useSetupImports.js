@@ -2,6 +2,7 @@ import { appError } from "@/utils/appError";
 import { useCallback } from "react";
 import { rollbackImportedProject } from "@/services/backup/projectCleanup";
 import { waitForRefValue } from "./waitForProjectSwitch";
+import { asError } from "@/utils/appError";
 
 /**
  * Первый экран: проект заводится из файла, а не из формы.
@@ -104,7 +105,10 @@ export function useSetupImports({
             leakCount: 0,
             components: result.added,
           };
-        } catch (error) {
+        } catch (caught) {
+          // Откат оставляет следы на самой ошибке, а писать поля можно только
+          // объекту — см. `asError`.
+          const error = asError(caught);
           try {
             try {
               const rollback = await rollbackImportedProject(

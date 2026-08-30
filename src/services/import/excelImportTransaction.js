@@ -3,6 +3,7 @@ import {
   completeImportOperation,
   updateImportOperation,
 } from "@/services/import/importOperationJournal";
+import { asError } from "@/utils/appError";
 
 const transactionWarnings = new WeakMap();
 
@@ -12,6 +13,25 @@ export function getExcelImportTransactionWarning(result) {
     : null;
 }
 
+/**
+ * Ошибка импорта с тем, что налипло на неё по дороге.
+ *
+ * Откат дописывает следы своей работы на саму ошибку: что не удалось откатить,
+ * какие фото остались лежать, что случилось с журналом. Читают это на экране
+ * настроек, чтобы человек знал, в каком состоянии остался проект.
+ *
+ * @typedef {Error & {
+ *   importCode?: string,
+ *   createdPhotoPaths?: string[],
+ *   photosPreserved?: boolean,
+ *   rollbackError?: unknown,
+ *   photoRollbackErrors?: unknown[],
+ *   journalRollbackError?: unknown,
+ *   journalCompletionError?: unknown,
+ * }} ImportFailure
+ */
+
+/** @param {ImportFailure} rootError */
 async function deleteCreatedPhotos(paths, deletePhoto, rootError) {
   if (typeof deletePhoto !== "function") return;
   const uniquePaths = [...new Set(paths)];
@@ -24,6 +44,7 @@ async function deleteCreatedPhotos(paths, deletePhoto, rootError) {
   if (failed.length) rootError.photoRollbackErrors = failed;
 }
 
+/** @param {ImportFailure} rootError */
 function tryUpdateRollbackJournal(operation, createdPaths, rootError) {
   try {
     return updateImportOperation(operation, {
@@ -36,6 +57,7 @@ function tryUpdateRollbackJournal(operation, createdPaths, rootError) {
   }
 }
 
+/** @param {ImportFailure} rootError */
 function tryCompleteRollbackJournal(operation, rootError) {
   if (rootError.rollbackError || rootError.photoRollbackErrors?.length) return;
   try {
@@ -59,7 +81,8 @@ export async function runExcelImportTransaction({
 
   try {
     photoTransaction = await persistPhotos();
-  } catch (error) {
+  } catch (caught) {
+    const error = /** @type {ImportFailure} */ (asError(caught));
     const createdPaths = error.createdPhotoPaths ?? [];
     operation = tryUpdateRollbackJournal(operation, createdPaths, error);
     await deleteCreatedPhotos(createdPaths, deletePhoto, error);
@@ -73,7 +96,8 @@ export async function runExcelImportTransaction({
       phase: "committing",
       createdPhotoPaths: createdPaths,
     });
-  } catch (error) {
+  } catch (caught) {
+    const error = /** @type {ImportFailure} */ (asError(caught));
     error.importCode = "IMPORT_JOURNAL_WRITE_FAILED";
     error.createdPhotoPaths = createdPaths;
     operation = tryUpdateRollbackJournal(operation, createdPaths, error);
@@ -84,7 +108,8 @@ export async function runExcelImportTransaction({
 
   try {
     await commit(photoTransaction.leaks);
-  } catch (error) {
+  } catch (caught) {
+    const error = /** @type {ImportFailure} */ (asError(caught));
     operation = tryUpdateRollbackJournal(operation, createdPaths, error);
     try {
       await rollbackState();
@@ -114,4 +139,26 @@ export async function runExcelImportTransaction({
   }
 
   return photoTransaction.leaks;
+}
+
+/**
+ * Чем закончился откат — приписка к сообщению об ошибке.
+ *
+ * Человеку мало знать, что импорт не удался: ему нужно знать, в каком
+ * состоянии остался проект. Не удалось ли откатить записи, остались ли лежать
+ * фото. Три места на экране настроек собирали эту приписку одинаково, каждое
+ * своей строкой.
+ *
+ * @param {unknown} caught
+ * @returns {string} пустая строка, когда откатывать было нечего
+ */
+export function importRollbackNote(caught) {
+  const error = /** @type {ImportFailure} */ (asError(caught));
+  const rollback = error.rollbackError
+    ? `; rollback: ${asError(error.rollbackError).message}`
+    : "";
+  const photos = error.photoRollbackErrors?.length
+    ? `; photo rollback: ${error.photoRollbackErrors.length}`
+    : "";
+  return `${rollback}${photos}`;
 }

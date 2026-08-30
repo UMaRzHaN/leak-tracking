@@ -1,7 +1,6 @@
-import { appError } from "@/utils/appError";
 import i18next from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { errorText } from "@/utils/appError";
+import { appError, errorCode, errorText } from "@/utils/appError";
 import { localSyncErrorText } from "@/services/sync/localSyncErrorText";
 import {
   cancelLocalSyncQrScan,
@@ -398,7 +397,7 @@ export function useLocalSync({
     } catch (error) {
       if (!isProjectOperationCurrent(operation)) return;
       setStateSafe(IDLE_STATE);
-      if (error.code === "QR_SCAN_CANCELLED") return;
+      if (errorCode(error) === "QR_SCAN_CANCELLED") return;
       notify("error", `${t("settings.qrCodeError")}: ${errorText(error, t)}`);
     }
   }, [

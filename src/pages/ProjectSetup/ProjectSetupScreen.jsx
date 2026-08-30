@@ -13,6 +13,7 @@ import {
 import s from "./ProjectSetupScreen.module.scss";
 import { ignoredError } from "@/utils/ignoredError";
 import { projectNameFromFile } from "@/services/import/projectNameFromFile";
+import { errorCode } from "@/utils/appError";
 
 const VALID_TYPES = ["upstream", "midstream", "downstream"];
 
@@ -255,7 +256,7 @@ export default function ProjectSetupScreen({
       const file = await fetchLocalSyncArchive(connection);
       await importZipFile(file);
     } catch (err) {
-      if (err.code !== "QR_SCAN_CANCELLED") {
+      if (errorCode(err) !== "QR_SCAN_CANCELLED") {
         setError(importErrorText(err, localeTexts));
       }
     } finally {

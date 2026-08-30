@@ -91,7 +91,7 @@
     "src/services/backup/photoArchive.js": 375,
     "src/services/backup/recordArrayMerge.js": 324,
     "src/services/import/excelImportParse.js": 433,
-    "src/services/import/photoPipeline.js": 530,
+    "src/services/import/photoPipeline.js": 505,
     "src/services/import/workbookSchema.js": 364,
     "src/services/maps/tileCache.js": 610,
     "src/services/sync/localSyncService.js": 310,

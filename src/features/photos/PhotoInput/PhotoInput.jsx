@@ -32,7 +32,7 @@ export default function PhotoInput({
       setCameraError("");
       const photo = await takePhoto();
       if (photo && aliveRef.current) onChange(photo);
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
       setCameraError(error?.message || "Unable to open camera");
     }
   }, [takePhoto, onChange]);
@@ -43,7 +43,7 @@ export default function PhotoInput({
       try {
         const photo = await pickFromGallery();
         if (photo && aliveRef.current) onChange(photo);
-      } catch (error) {
+      } catch (/** @type {any} */ error) {
         setCameraError(error?.message || "Unable to open gallery");
       }
     } else {
@@ -59,7 +59,7 @@ export default function PhotoInput({
         setCameraError("");
         const photo = await pickFromBrowser(file);
         if (photo && aliveRef.current) onChange(photo);
-      } catch (error) {
+      } catch (/** @type {any} */ error) {
         setCameraError(error?.message || "Unable to read photo");
       } finally {
         e.target.value = "";

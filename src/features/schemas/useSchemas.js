@@ -18,7 +18,7 @@ export function useSchemas(project) {
 
   const [schemas, setSchemas] = useState(/** @type {any[]} */ ([]));
   const [loading, setLoading] = useState(enabled);
-  const [error, setError] = useState(/** @type {string|null} */ (null));
+  const [error, setError] = useState(/** @type {unknown} */ (null));
   /** @type {import("react").MutableRefObject<Promise<any>>} */
   const writeQueueRef = useRef(Promise.resolve());
 

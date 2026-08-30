@@ -13,6 +13,7 @@ import {
 } from "@/domain/technologicalSchemas";
 import s from "./SchemaList.module.scss";
 import db from "@/pages/DataBase/DataBase.module.scss";
+import { errorCode } from "@/utils/appError";
 
 const ACCEPT = "image/*,application/pdf,.pdf";
 
@@ -82,7 +83,7 @@ export default function SchemaList({ project }) {
         setNotice({
           kind: "error",
           text:
-            addError?.code === "SCHEMA_UNSUPPORTED"
+            errorCode(addError) === "SCHEMA_UNSUPPORTED"
               ? t("schemas.unsupported")
               : t("schemas.addFailed"),
         });
@@ -136,7 +137,7 @@ export default function SchemaList({ project }) {
         setNotice({
           kind: "error",
           text:
-            openError?.code === "SCHEMA_OPEN_BLOCKED"
+            errorCode(openError) === "SCHEMA_OPEN_BLOCKED"
               ? t("schemas.popupBlocked")
               : t("schemas.openFailed"),
         });
@@ -220,7 +221,9 @@ export default function SchemaList({ project }) {
         />
       )}
 
-      {error && (
+      {/* Значение ошибки здесь только признак: текст на экране свой, а в
+          журнал она уже попала при чтении. */}
+      {Boolean(error) && (
         <p className={s.error} role="alert">
           {t("schemas.loadError")}
         </p>

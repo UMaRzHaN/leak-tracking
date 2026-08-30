@@ -83,7 +83,7 @@ globalScope.onmessage = async (event) => {
     }
 
     throw new Error(`Unknown Excel worker request: ${String(kind)}`);
-  } catch (error) {
+  } catch (/** @type {any} */ error) {
     post({ ok: false, id, error: String(error?.message ?? error) });
   }
 };

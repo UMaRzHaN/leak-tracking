@@ -76,7 +76,7 @@ async function openWithSystemViewer(project, schema) {
 
     await Share.share({ title: schema.name, files: [uri] });
     return true;
-  } catch (error) {
+  } catch (/** @type {any} */ error) {
     // A cancelled share sheet is a normal outcome, not a failure worth
     // shouting about.
     if (/cancel/i.test(String(error?.message ?? error))) return false;

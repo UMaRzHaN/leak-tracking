@@ -16,6 +16,7 @@ import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { useDeferredPhotoGc } from "./useDeferredPhotoGc";
 import { useSetupImports } from "./useSetupImports";
 import { waitForRefValue } from "./waitForProjectSwitch";
+import { asError } from "@/utils/appError";
 
 export function useAppBootstrap() {
   /* =========================
@@ -275,7 +276,10 @@ export function useAppBootstrap() {
             saveMonitoringRound(newProject.id, monitoringRound);
           clearForm();
           return { project: newProject, leakCount: withPhotos.length };
-        } catch (error) {
+        } catch (caught) {
+          // Откат оставляет следы на самой ошибке, а писать поля можно только
+          // объекту — см. `asError`.
+          const error = asError(caught);
           try {
             try {
               const rollback = await rollbackImportedProject(

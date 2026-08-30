@@ -182,7 +182,7 @@ export function useLeakDetailsPersistence({
         ],
         deletePhoto,
       });
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
       await cleanupUncommittedPhotoReplacements({
         value: leak,
         referenceLeaks: allLeaks,
