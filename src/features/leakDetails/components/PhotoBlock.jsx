@@ -1,6 +1,17 @@
 import StatusBadge from "@/components/ui/StatusBadge/StatusBadge";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
+/**
+ * @param {{
+ *   src?: string|null,
+ *   onEdit?: (() => void)|null,
+ *   onView?: (() => void)|undefined,
+ *   status?: import("@/types/domain").LeakStatus,
+ *   identityNum?: string,
+ *   identityTime?: string,
+ *   onStatusChange?: () => void,
+ * }} props
+ */
 export default function PhotoBlock({
   src,
   onEdit = null,

@@ -29,6 +29,10 @@ function checksumWebPayload(data, deleted, syncState = null) {
   return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
+/**
+ * @param {any} value @param {string} source
+ * @returns {(import("@/types/domain").WebDataEnvelope & {syncState: any})|null}
+ */
 export function normalizeWebEnvelope(value, source) {
   if (value == null) return null;
 

@@ -1,3 +1,26 @@
+/**
+ * Формы домена, на которые ссылается код.
+ *
+ * Файл долго лежал описанием: семь объявлений, ни одной ссылки. Описание,
+ * которое ничего не сторожит, расходится с кодом молча, поэтому типы отсюда
+ * подключены через JSDoc там, где эти формы и живут:
+ *
+ *   `LeakStatus`       — `utils/status`, и через него весь жизненный цикл
+ *   `LeakRecord`       — `utils/leakOrder`, `utils/monitoring`
+ *   `MonitoringRecord` — `utils/monitoring`
+ *   `ProjectMetadata`  — `app/project/projectStorage`
+ *   `WebDataEnvelope`  — `repositories/webProjectEnvelope`
+ *   `ImportOperation`  — `services/import/importOperationJournal`
+ *
+ * `domain/` и `utils/` проверяются со strictNullChecks, так что ссылки оттуда
+ * ловят не только несовпадение полей, но и пропущенный `undefined`. Первое же
+ * подключение нашло две вещи: статус, приходивший в `PhotoBlock` нетипизированной
+ * строкой, и чтение `record.date` там, где тип разрешал его отсутствие.
+ *
+ * `types/domain.test.js` следит, чтобы ссылки не исчезли, — иначе файл снова
+ * станет описанием.
+ */
+
 export type ProjectType = "upstream" | "midstream" | "downstream";
 export type LeakStatus = "open" | "in_progress" | "resolved";
 

@@ -8,6 +8,12 @@ function createOperationId() {
   );
 }
 
+/**
+ * Незавершённый импорт, если он остался с прошлого запуска.
+ *
+ * @param {string|null} projectId
+ * @returns {import("@/types/domain").ImportOperation|null}
+ */
 export function readImportOperation(projectId) {
   if (!projectId) return null;
   const raw = localStorage.getItem(
@@ -22,8 +28,13 @@ export function readImportOperation(projectId) {
   }
 }
 
+/**
+ * @param {string|null} projectId
+ * @returns {import("@/types/domain").ImportOperation|null}
+ */
 export function beginImportOperation(projectId) {
   if (!projectId) return null;
+  /** @type {import("@/types/domain").ImportOperation} */
   const operation = {
     operationId: createOperationId(),
     projectId,
@@ -38,6 +49,11 @@ export function beginImportOperation(projectId) {
   return operation;
 }
 
+/**
+ * @param {import("@/types/domain").ImportOperation|null} operation
+ * @param {Partial<import("@/types/domain").ImportOperation>} changes
+ * @returns {import("@/types/domain").ImportOperation|null}
+ */
 export function updateImportOperation(operation, changes) {
   if (!operation?.projectId) return null;
   const next = { ...operation, ...changes, updatedAt: Date.now() };

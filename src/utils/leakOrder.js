@@ -69,11 +69,11 @@ export function compareLeakRecency(left, right) {
  * старым; импорт порядок листа сохраняет, и в конце массива оказывается самая
  * старая запись. Подсказки предлагали значения из неё.
  *
- * @param {object[]} leaks
- * @returns {object|null}
+ * @param {import("@/types/domain").LeakRecord[]} leaks
+ * @returns {import("@/types/domain").LeakRecord|null}
  */
 export function findLatestLeak(leaks) {
-  /** @type {object|null} */
+  /** @type {import("@/types/domain").LeakRecord|null} */
   let latest = null;
   for (const leak of leaks ?? []) {
     if (!latest || compareLeakRecency(leak, latest) < 0) latest = leak;

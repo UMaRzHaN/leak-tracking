@@ -83,12 +83,29 @@ export function getMonitoringHistoryComment(entry) {
   return text;
 }
 
+/**
+ * Записи обходов утечки.
+ *
+ * Без даты запись не запись: по ней их упорядочивают, и ниже её читают без
+ * проверки. Отсев здесь — это и есть обещание, поэтому дата в возвращаемом
+ * типе обязательна, в отличие от самой `MonitoringRecord`, где она может
+ * отсутствовать у записи, ещё не дошедшей до этого отсева.
+ *
+ * @param {import("@/types/domain").LeakRecord|null|undefined} leak
+ * @returns {(import("@/types/domain").MonitoringRecord & {date: string})[]}
+ */
 export function getMonitoringRecords(leak) {
-  return Array.isArray(leak?.monitoringRecords)
-    ? leak.monitoringRecords.filter((record) => record && record.date)
-    : [];
+  if (!Array.isArray(leak?.monitoringRecords)) return [];
+  return leak.monitoringRecords.filter(
+    /** @returns {record is import("@/types/domain").MonitoringRecord & {date: string}} */
+    (record) => Boolean(record?.date),
+  );
 }
 
+/**
+ * @param {import("@/types/domain").LeakRecord|null|undefined} leak
+ * @returns {import("@/types/domain").MonitoringRecord|null}
+ */
 export function getLastMonitoringRecord(leak) {
   const records = getMonitoringRecords(leak);
   if (records.length === 0) return null;

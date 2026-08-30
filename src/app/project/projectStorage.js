@@ -159,6 +159,9 @@ export function preserveAndResetCorruptedProjects(recoveryValue) {
   localStorage.removeItem(STORAGE_KEYS.ACTIVE_PROJECT_ID);
 }
 
+/**
+ * @param {import("@/types/domain").ProjectMetadata[]} list
+ */
 export function saveProjects(list) {
   localStorage.setItem(STORAGE_KEYS.PROJECTS_LIST, JSON.stringify(list));
 }
