@@ -27,7 +27,7 @@
     "android/app/src/main/java/com/leak/tracking/PublicFileWriterPlugin.java": 451,
     "performance/importPerformanceHarness.js": 764,
     "performance/nativeStoragePerformanceHarness.js": 327,
-    "scripts/capture-android-manual-screenshots.mjs": 664,
+    "scripts/capture-android-manual-screenshots.mjs": 663,
     "scripts/capture-manual-screenshots.mjs": 693,
     "scripts/seed100leaks.js": 1407,
     "src/app/hooks/useAppBootstrap.js": 375,

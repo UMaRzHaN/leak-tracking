@@ -20,6 +20,7 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { encodePngFilesToWebp } from "./image-encoder.mjs";
+import { MANUAL_CAPTURE_TIME, freezeClock } from "./manual-capture-time.mjs";
 
 const PKG = process.env.ANDROID_PKG ?? "com.leak.tracking.debug";
 // Точка, вокруг которой seed100leaks.js расставляет утечки: на эмуляторе
@@ -133,6 +134,7 @@ async function openWebView(device) {
   const webview = await device.webView({ pkg: PKG });
   const page = await webview.page();
   page.setDefaultTimeout(20000);
+  await freezeClock(page);
   activePage = page;
   return page;
 }
@@ -313,11 +315,18 @@ async function seedData(device, page) {
   console.log("\n[3] Тестовые данные");
   const source = await fs.readFile(SEED, "utf8");
   await page.evaluate(
-    ({ leaks, components }) => {
+    ({ leaks, components, now }) => {
       window.SEED_LEAK_COUNT = leaks;
       window.SEED_COMPONENT_COUNT = components;
+      // Тот же момент, что у замороженных часов: иначе данные и экран
+      // разошлись бы во времени.
+      window.SEED_NOW = now;
     },
-    { leaks: SEED_COUNT, components: SEED_COMPONENTS },
+    {
+      leaks: SEED_COUNT,
+      components: SEED_COMPONENTS,
+      now: MANUAL_CAPTURE_TIME.getTime(),
+    },
   );
   await page.evaluate(source).catch(() => {});
   await wait(30000);

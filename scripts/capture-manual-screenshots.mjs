@@ -13,7 +13,7 @@ import { chromium } from "@playwright/test";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { encodePngFilesToWebp } from "./image-encoder.mjs";
-import { MANUAL_CAPTURE_TIME } from "./manual-capture-time.mjs";
+import { MANUAL_CAPTURE_TIME, freezeClock } from "./manual-capture-time.mjs";
 
 const BASE_URL = process.env.MANUAL_BASE_URL ?? "http://127.0.0.1:4173";
 const OUT_DIR = path.resolve("docs/manual/img");
@@ -39,7 +39,7 @@ async function main() {
     geolocation: { latitude: 41.297147, longitude: 69.258685 },
     acceptDownloads: true,
   });
-  await context.clock.setFixedTime(MANUAL_CAPTURE_TIME);
+  await freezeClock(context);
   const page = await context.newPage();
   page.on("console", (message) => {
     if (message.type() === "error") console.log("  [console]", message.text());

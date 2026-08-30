@@ -15,3 +15,27 @@
 export const MANUAL_CAPTURE_TIME = new Date(
   process.env.MANUAL_CAPTURE_TIME ?? "2026-08-20T09:00:00.000Z",
 );
+
+/**
+ * Замораживает часы у страницы или контекста на этом моменте.
+ *
+ * Принимает и то и другое: веб-съёмка правит контекст до открытия страницы,
+ * android-съёмка получает уже открытую страницу из WebView.
+ *
+ * Отказ не роняет съёмку. У android связь идёт по отладочному сокету, и если
+ * подмена часов через него окажется недоступна, лучше снять кадры с живым
+ * временем и сказать об этом, чем не снять вовсе: данные повторяемы в любом
+ * случае — их держит зерно сида.
+ *
+ * @param {{clock: {setFixedTime: (time: Date) => Promise<void>}}} target
+ */
+export async function freezeClock(target) {
+  try {
+    await target.clock.setFixedTime(MANUAL_CAPTURE_TIME);
+  } catch (error) {
+    console.log(
+      "  [часы] заморозить не удалось, время в кадрах будет живым:",
+      error?.message ?? error,
+    );
+  }
+}
