@@ -2,6 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/utils/platform", () => ({ isNative: false }));
 
+// Наверху, а не внутри describe: `vi.hoisted` всё равно поднимается выше всего
+// файла, и запись внутри блока показывала порядок выполнения неверно. Vitest
+// на это предупреждает и обещает сделать ошибкой.
+const nativeMocks = vi.hoisted(() => ({
+  requestPermissions: vi.fn(),
+  start: vi.fn(),
+}));
+
 const { startSpeechRecognition, stopSpeechRecognition } =
   await import("./speechService");
 
@@ -110,11 +118,6 @@ describe("распознавание речи в браузере", () => {
 });
 
 describe("распознавание речи на телефоне", () => {
-  const nativeMocks = vi.hoisted(() => ({
-    requestPermissions: vi.fn(),
-    start: vi.fn(),
-  }));
-
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
