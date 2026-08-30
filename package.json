@@ -115,7 +115,7 @@
     "prettier": "^3.9.6",
     "rollup-plugin-visualizer": "^7.1.1",
     "sass": "^1.103.1",
-    "typescript": "^7.0.2",
+    "typescript": "^6.0.3",
     "typescript-next": "npm:typescript@^7.0.2",
     "vite": "^8.2.2",
     "vitest": "^4.1.10"
