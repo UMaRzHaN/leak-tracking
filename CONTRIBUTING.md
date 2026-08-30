@@ -103,15 +103,34 @@ refactor:
 
 ## Build budgets
 
-`npm run check:bundle` fails the build; it does not warn. There are two limits
-and both sit around 3.4 KB of headroom:
+`npm run check:bundle` роняет сборку, а не предупреждает. Пределов шесть, и
+тесно сейчас не там, где кажется:
 
-- **`nonExcelChunkBytes` (368 640) is a per-chunk ceiling**, and the index chunk
-  is at 99.1 % of it. This one is **not** in the warning list — warnings are
-  printed for four summary metrics only — so it stays silent right up until it
-  fails a build. Measure it directly: `ls -l dist/assets/index-*.js`.
-- **`initialGzip` (128 000)**: about 3.4 KB left. In raw bytes the entry graph
-  looks far roomier (14 KB), which makes the two easy to confuse.
+| Предел                  | Сейчас | Запас  |
+| ----------------------- | -----: | ------ |
+| `appGraphJsBytes`       | 96.3 % | 93 КБ  |
+| `excelWorkerGraphBytes` | 96.0 % | 46 КБ  |
+| `initialGzipBytes`      | 92.0 % | 9.9 КБ |
+| `excelChunkBytes`       | 90.9 % | 91 КБ  |
+| `initialRawBytes`       | 85.5 % | 59 КБ  |
+| `nonExcelChunkBytes`    | 51.9 % | 173 КБ |
+
+Числа сверять по `npm run check:bundle` — он печатает их все. Таблица здесь
+только чтобы был виден порядок величин и что с чем сравнивать.
+
+- **Ближе всего к потолку два графа целиком**, `appGraphJs` и
+  `excelWorkerGraph`. Оба подошли вплотную к порогу предупреждения, но ещё под
+  ним: предупреждают с 97 % (`WARN_AT`), а они на 96.3 % и 96.0 %. То есть
+  следующее же прибавление там сработает молча в первый раз и уронит сборку во
+  второй.
+- **`initialGzipBytes` (128 000)** — самый узкий по абсолютному запасу: около
+  десяти килобайт. В сырых байтах тот же граф выглядит куда просторнее (59 КБ),
+  и эти две величины легко перепутать.
+- **`nonExcelChunkBytes` (368 640) — потолок на каждый кусок в отдельности**, и
+  запаса там сейчас вдвое: самый крупный не-Excel кусок это `offlineMap`
+  (191 КБ), а вовсе не входной (124 КБ). Этого предела **нет** в списке
+  предупреждений — их печатают для четырёх сводных величин, — так что он молчит
+  до самого падения сборки. Мерить напрямую: `ls -l dist/assets/*.js`.
 
 What follows from that:
 
