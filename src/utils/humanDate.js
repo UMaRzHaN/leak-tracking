@@ -12,20 +12,25 @@
  * Поэтому знание здесь одно. Что делать с разобранными числами — дело
  * читателя: кому-то нужна `Date`, кому-то ключ для сравнения.
  *
- * Разделителем считается точка, косая черта или дефис: так дату пишут в разных
- * книгах, а порядок в ней от разделителя не меняется. Год из двух цифр
- * дополняется до двадцать первого века — записи прошлого столетия в обходе не
- * встречаются.
+ * Разделителем считается точка, косая черта, дефис или запятая: так дату пишут
+ * в разных книгах, а порядок в ней от разделителя не меняется. Запятая попала
+ * сюда не из осторожности — на ней уже ловились: «09,10,2026» до шаблона не
+ * доходило, уезжало в `new Date`, и девятое октября возвращалось десятым
+ * сентября. Выгрузка это у себя починила, чтение книги — нет, потому что копия
+ * шаблона у него была своя.
+ *
+ * Год из двух цифр дополняется до двадцать первого века — записи прошлого
+ * столетия в обходе не встречаются.
  *
  * ISO под шаблон не попадает: он начинается с четырёх цифр года, а здесь
  * первым стоит день из одной или двух.
  */
 const HUMAN_DATE =
-  /^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})(?:[ T](\d{1,2}):(\d{2}))?/;
+  /^(\d{1,2})[./,-](\d{1,2})[./,-](\d{2,4})(?:[,\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/;
 
 /**
  * @param {unknown} value
- * @returns {{year: number, month: number, day: number, hours: number, minutes: number}|null}
+ * @returns {{year: number, month: number, day: number, hours: number, minutes: number, seconds: number}|null}
  */
 export function matchHumanDate(value) {
   const match = String(value ?? "")
@@ -33,12 +38,13 @@ export function matchHumanDate(value) {
     .match(HUMAN_DATE);
   if (!match) return null;
 
-  const [, day, month, year, hours = "0", minutes = "0"] = match;
+  const [, day, month, year, hours = "0", minutes = "0", seconds = "0"] = match;
   return {
     year: year.length === 2 ? Number(`20${year}`) : Number(year),
     month: Number(month),
     day: Number(day),
     hours: Number(hours),
     minutes: Number(minutes),
+    seconds: Number(seconds),
   };
 }

@@ -1,3 +1,4 @@
+import { matchHumanDate } from "@/utils/humanDate";
 // The dots are escaped on purpose. In an Excel format code an unescaped `.`
 // is the decimal-separator placeholder, not a literal, so Excel renders it
 // with the separator of the viewer's locale: a Russian Excel turned
@@ -66,26 +67,18 @@ export function parseTimestamp(value) {
   const text = String(value ?? "").trim();
   if (!text) return null;
 
-  // Comma and hyphen belong here next to dot and slash. Without them a date
-  // like `09,10,2026` fell through to `new Date(text)`, and V8 reads that as
-  // the American month-day-year: 9 October came back as 10 September. The
-  // fallback also builds in local time, so at UTC+5 the result landed on the
-  // previous day once ExcelJS converted it to a serial number. Matching here
-  // keeps both bugs out — this branch is day-first, which is how the app
-  // stores dates, and it builds through Date.UTC.
-  const localized = text.match(
-    /^(\d{1,2})[./,-](\d{1,2})[./,-](\d{4})(?:[,\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/,
-  );
-  if (localized) {
-    const [, day, month, year, hour = 0, minute = 0, second = 0] = localized;
+  // Собирается через `Date.UTC`, а не в местном времени: ExcelJS переводит дату
+  // в серийный номер, и построенная на UTC+5 полночь съезжала на день назад.
+  const human = matchHumanDate(text);
+  if (human) {
     const date = new Date(
       Date.UTC(
-        Number(year),
-        Number(month) - 1,
-        Number(day),
-        Number(hour),
-        Number(minute),
-        Number(second),
+        human.year,
+        human.month - 1,
+        human.day,
+        human.hours,
+        human.minutes,
+        human.seconds,
       ),
     );
     return Number.isFinite(date.getTime()) ? date : null;

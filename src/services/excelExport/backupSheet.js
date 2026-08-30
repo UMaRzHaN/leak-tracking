@@ -1,4 +1,5 @@
 import { getMonitoringRecords } from "@/utils/monitoring";
+import { matchHumanDate } from "@/utils/humanDate";
 
 const BACKUP_SHEET_NAME = "Project Backup";
 const BACKUP_MARKER = "LEAK_TRACKER_EXCEL_BACKUP";
@@ -23,19 +24,18 @@ function parseTimestamp(value) {
   const text = String(value ?? "").trim();
   if (!text) return null;
 
-  const localized = text.match(
-    /^(\d{1,2})[./](\d{1,2})[./](\d{4})(?:[,\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/,
-  );
-  if (localized) {
-    const [, day, month, year, hour = 0, minute = 0, second = 0] = localized;
+  // Собирается через `Date.UTC`, а не в местном времени: ExcelJS переводит дату
+  // в серийный номер, и построенная на UTC+5 полночь съезжала на день назад.
+  const human = matchHumanDate(text);
+  if (human) {
     const date = new Date(
       Date.UTC(
-        Number(year),
-        Number(month) - 1,
-        Number(day),
-        Number(hour),
-        Number(minute),
-        Number(second),
+        human.year,
+        human.month - 1,
+        human.day,
+        human.hours,
+        human.minutes,
+        human.seconds,
       ),
     );
     return Number.isFinite(date.getTime()) ? date : null;
