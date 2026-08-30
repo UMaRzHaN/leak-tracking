@@ -16,7 +16,7 @@ function lowerBound(tops, heights, boundary) {
 }
 
 export default function VirtualizedLeakList({
-  items = [],
+  items = /** @type {any[]} */ ([]),
   height = 800,
   bottomPadding = 0,
   // Пробел между карточками, в пикселях. Строки расставлены абсолютно по

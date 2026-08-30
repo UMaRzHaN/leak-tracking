@@ -6,14 +6,14 @@ import s from "./PhotoInput.module.scss";
 export default function PhotoInput({
   value,
   onChange,
-  label = null,
+  label = /** @type {string|null} */ (null),
   required = false,
   error = false,
   compact = false,
 }) {
   const { t } = useTranslation();
   const fieldLabel = label ?? t("photoInput.photo");
-  const inputRef = useRef(null);
+  const inputRef = useRef(/** @type {HTMLInputElement|null} */ (null));
   const aliveRef = useRef(true);
   const inputId = useId();
   const [cameraError, setCameraError] = useState("");

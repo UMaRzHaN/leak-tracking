@@ -33,7 +33,10 @@ function normalize(str) {
 
 function extractNumbers(query) {
   const n = normalize(query);
-  const result = { dn: null, pn: null };
+  const result = /** @type {{dn: number|null, pn: number|null}} */ ({
+    dn: null,
+    pn: null,
+  });
 
   const slashMatch = n.match(/(\d{1,3})\/(\d{1,3})/);
   if (slashMatch) {
@@ -151,8 +154,8 @@ export function smartFilter(query, options, minScore = 60) {
   const nums = extractNumbers(query);
   const hasNumbers = nums.dn !== null || nums.pn !== null;
 
-  let foundAbbrev = null;
-  let expandedAbbrev = null;
+  let foundAbbrev = /** @type {string|null} */ (null);
+  let expandedAbbrev = /** @type {string|null} */ (null);
   for (const abbr of Object.keys(ABBREV_MAP).sort(
     (a, b) => b.length - a.length,
   )) {

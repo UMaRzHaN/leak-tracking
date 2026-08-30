@@ -22,7 +22,7 @@ export function useLeakDetailsForm({
   } = photoActions;
   const [localEdit, setLocalEdit] = useState({});
   const [localCalcParams, setLocalCalcParams] = useState({});
-  const previousRevisionRef = useRef(null);
+  const previousRevisionRef = useRef(/** @type {any} */ (null));
 
   const resetDraft = useCallback(() => {
     const keys = editFields.map((field) => field.key);

@@ -24,7 +24,7 @@ export async function openSchemaExternally(
   project,
   schema,
   blob,
-  { targetWindow = null } = {},
+  { targetWindow = /** @type {Window|null} */ (null) } = {},
 ) {
   if (isNative) {
     // A tab opened in hope is closed again: the share sheet is the way out on

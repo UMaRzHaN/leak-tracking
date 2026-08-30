@@ -28,7 +28,7 @@ export default function Autocomplete({
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value ?? "");
-  const inputRef = useRef(null);
+  const inputRef = useRef(/** @type {HTMLInputElement|null} */ (null));
 
   useEffect(() => {
     if (!value) {

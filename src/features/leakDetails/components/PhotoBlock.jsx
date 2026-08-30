@@ -6,10 +6,10 @@ import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
  *   src?: string|null,
  *   onEdit?: (() => void)|null,
  *   onView?: (() => void)|undefined,
- *   status?: import("@/types/domain").LeakStatus,
+ *   status?: import("@/types/domain").LeakStatus|null,
  *   identityNum?: string,
  *   identityTime?: string,
- *   onStatusChange?: () => void,
+ *   onStatusChange?: (() => void)|null,
  * }} props
  */
 export default function PhotoBlock({

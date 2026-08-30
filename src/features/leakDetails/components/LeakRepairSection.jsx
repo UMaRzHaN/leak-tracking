@@ -12,7 +12,7 @@ function PhotoComparison({
   const srcBefore = usePhotoSrc(photoBefore ?? null);
   const srcRepair = usePhotoSrc(photoRepair ?? null);
   const srcAfter = usePhotoSrc(photoAfter ?? null);
-  const [viewer, setViewer] = useState(null); // "before" | "repair" | "after" | null
+  const [viewer, setViewer] = useState(/** @type {string|null} */ (null));
 
   const hasBefore = Boolean(photoBefore);
   const hasRepair = Boolean(photoRepair);

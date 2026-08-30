@@ -2,9 +2,11 @@ import { useRef } from "react";
 import { useEditablePhoto } from "@/hooks/useEditablePhoto";
 
 export function useLeakPhotoActions(leak) {
-  const fileInputRef = useRef(null);
-  const fileInputAfterRef = useRef(null);
-  const fileInputRepairRef = useRef(null);
+  const fileInputRef = useRef(/** @type {HTMLInputElement|null} */ (null));
+  const fileInputAfterRef = useRef(/** @type {HTMLInputElement|null} */ (null));
+  const fileInputRepairRef = useRef(
+    /** @type {HTMLInputElement|null} */ (null),
+  );
 
   const before = useEditablePhoto({
     initialPath: leak.photo,

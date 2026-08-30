@@ -52,7 +52,7 @@ export function useLeakDetailsSheet({
   const { deletePhoto } = usePhotoStorage();
   const [mode, setMode] = useState(MODE.VIEW);
   const [activeTab, setActiveTab] = useState(TAB.INFO);
-  const [notification, setNotification] = useState(null);
+  const [notification, setNotification] = useState(/** @type {any} */ (null));
   const [viewerOpen, setViewerOpen] = useState(false);
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
   const [deleteArmed, setDeleteArmed] = useState(false);
@@ -61,7 +61,9 @@ export function useLeakDetailsSheet({
   const [reopenOpen, setReopenOpen] = useState(false);
   const [statusPickerOpen, setStatusPickerOpen] = useState(false);
 
-  const deleteTimerRef = useRef(null);
+  const deleteTimerRef = useRef(
+    /** @type {ReturnType<typeof setTimeout>|undefined} */ (undefined),
+  );
   const {
     fileInputRef,
     fileInputAfterRef,

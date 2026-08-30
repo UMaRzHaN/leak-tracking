@@ -9,7 +9,7 @@ export function useEditablePhoto({
   initialPath,
   leakId,
   version,
-  excludePaths = [],
+  excludePaths = /** @type {string[]} */ ([]),
 }) {
   const { isNative, takePhoto, pickFromGallery, pickFromBrowser } = useCamera();
   const {

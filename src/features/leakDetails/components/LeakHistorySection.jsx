@@ -59,7 +59,7 @@ function MonitoringRecordRow({ record, localeTexts, lang }) {
 
   const photoSrc = usePhotoSrc(record.photo ?? null);
   const previousPhotoSrc = usePhotoSrc(record.previousPhoto ?? null);
-  const [viewerSrc, setViewerSrc] = useState(null);
+  const [viewerSrc, setViewerSrc] = useState(/** @type {string|null} */ (null));
   const roundNumber = Number(record.roundNumber);
 
   return (

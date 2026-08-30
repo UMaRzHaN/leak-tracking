@@ -8,7 +8,7 @@ import s from "./ResolveModal.module.scss";
 
 export default function ResolveModal({
   leak,
-  progress = null,
+  progress = /** @type {{current: number, total: number}|null} */ (null),
   mode = "resolved",
   onConfirm,
   onClose,
@@ -23,12 +23,12 @@ export default function ResolveModal({
     confirm: t(`${scope}.confirm`),
     addPhoto: t(`${scope}.addPhoto`),
   };
-  const [photo, setPhoto] = useState(null);
+  const [photo, setPhoto] = useState(/** @type {any} */ (null));
   const [mtr, setMtr] = useState(leak?.materials_equipment ?? "");
   const [note, setNote] = useState(leak?.note ?? "");
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [notification, setNotification] = useState(null);
+  const [notification, setNotification] = useState(/** @type {any} */ (null));
   const titleId = useId();
   const materialsId = useId();
   const noteId = useId();

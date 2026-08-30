@@ -32,13 +32,17 @@ function distanceBetween(a, b) {
  * ways out: the close button, the backdrop, and Escape.
  */
 export default function SchemaViewer({ src, alt, texts, onClose }) {
-  const frameRef = useRef(null);
+  const frameRef = useRef(/** @type {HTMLDivElement|null} */ (null));
   const dialogRef = useModalDialog({ open: true, onClose });
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
 
   const pointersRef = useRef(new Map());
-  const gestureRef = useRef(null);
+  const gestureRef = useRef(
+    /** @type {{type: "pinch", distance: number}|{type: "pan", x: number, y: number}|null} */ (
+      null
+    ),
+  );
   const lastTapRef = useRef(0);
 
   const reset = useCallback(() => {

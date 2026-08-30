@@ -25,7 +25,9 @@ export default function InputCard({
 
   const { t } = useTranslation();
   const inputId = useId();
-  const inputRef = useRef(null);
+  // Одна ссылка на два поля: карточка рисует либо `input`, либо `textarea`, и
+  // ветка выбирается по типу поля, а не по типу ссылки.
+  const inputRef = useRef(/** @type {any} */ (null));
 
   const className = [
     s.field,

@@ -16,9 +16,9 @@ import { logger } from "@/utils/logger";
 export function useSchemas(project) {
   const enabled = Boolean(project?.id);
 
-  const [schemas, setSchemas] = useState([]);
+  const [schemas, setSchemas] = useState(/** @type {any[]} */ ([]));
   const [loading, setLoading] = useState(enabled);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(/** @type {string|null} */ (null));
   /** @type {import("react").MutableRefObject<Promise<any>>} */
   const writeQueueRef = useRef(Promise.resolve());
 

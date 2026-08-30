@@ -1,6 +1,7 @@
 import { createContext, use } from "react";
 import { useLeakForm } from "@/features/leakForm/hooks/useLeakForm";
 
+/** @type {import("react").Context<any>} */
 const LeakFormContext = createContext(null);
 
 export function LeakFormProvider({ children }) {

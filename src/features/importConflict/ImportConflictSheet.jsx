@@ -28,14 +28,14 @@ export default function ImportConflictSheet({
   existingProject,
   leakCount,
   mergePreview,
-  registryPreview = null,
-  sourceLabel = null,
-  photoLabel = null,
+  registryPreview = /** @type {any} */ (null),
+  sourceLabel = /** @type {string|null} */ (null),
+  photoLabel = /** @type {string|null} */ (null),
   onOverwrite,
   onMerge,
   onCopy,
   onCancel,
-  onActionError = null,
+  onActionError = /** @type {((error: unknown) => void)|null} */ (null),
 }) {
   const { t, intlLocale } = useLanguage();
   const titleId = useId();

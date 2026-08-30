@@ -65,7 +65,7 @@ export function ComponentRegistryProvider({ children }) {
   // но в хранилище лежат и ездят между устройствами: без них удаление не
   // переживает ни одного обмена. См. componentTombstones.
   const [stored, setStored] = useState(EMPTY);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(/** @type {any} */ (null));
   const [revision, setRevision] = useState(0);
   const [requested, setRequested] = useState(false);
   // Какое поколение чтения уже отработало. Отсюда `loading` считается, а не

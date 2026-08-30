@@ -12,10 +12,10 @@ import s from "./ComponentInspectSheet.module.scss";
  * it, still fine" is the evidence that the walk covered this component at all.
  */
 export default function ComponentInspectSheet({
-  component = null,
+  component = /** @type {any} */ (null),
   // Осмотр списком спрашивает то же самое, но не про одну карточку: вместо
   // номера и наименования в подзаголовке стоит, сколько их выбрано.
-  subtitle = null,
+  subtitle = /** @type {string|null} */ (null),
   onPick,
   onClose,
 }) {

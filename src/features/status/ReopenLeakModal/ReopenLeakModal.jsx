@@ -34,7 +34,7 @@ export default function ReopenLeakModal({ leak, vars, onConfirm, onClose }) {
   const [calcDraft, setCalcDraft] = useState(() => initialCalcVars);
   const [calcModalDraft, setCalcModalDraft] = useState(() => initialCalcVars);
   const [saving, setSaving] = useState(false);
-  const [notification, setNotification] = useState(null);
+  const [notification, setNotification] = useState(/** @type {any} */ (null));
   const titleId = useId();
   const calcTitleId = useId();
   const handleClose = () => {

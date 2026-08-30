@@ -9,10 +9,10 @@ export default function ConfirmSheet({
   description,
   onConfirm,
   onCancel,
-  secondaryActionLabel = null,
-  onSecondaryAction = null,
-  confirmLabel = null,
-  cancelLabel = null,
+  secondaryActionLabel = /** @type {string|null} */ (null),
+  onSecondaryAction = /** @type {(() => void)|null} */ (null),
+  confirmLabel = /** @type {string|null} */ (null),
+  cancelLabel = /** @type {string|null} */ (null),
   onActionError = /** @type {((error: unknown) => void)|null} */ (null),
 }) {
   const { t } = useTranslation();

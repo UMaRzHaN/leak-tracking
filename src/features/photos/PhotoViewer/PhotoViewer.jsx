@@ -4,9 +4,9 @@ import { useTranslation } from "react-i18next";
 import s from "./PhotoViewer.module.scss";
 
 export default function PhotoViewer({
-  src = null,
-  photos = null,
-  labels = null,
+  src = /** @type {string|null} */ (null),
+  photos = /** @type {(string|null)[]|null} */ (null),
+  labels = /** @type {string[]|null} */ (null),
   initialIndex = 0,
   onClose,
 }) {

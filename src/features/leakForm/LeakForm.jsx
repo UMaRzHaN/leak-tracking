@@ -148,10 +148,10 @@ export default function LeakForm({
 
   const [step, setStep] = useState(1);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const pendingKeysRef = useRef([]);
-  const topRef = useRef(null);
-  const stopVoiceInputRef = useRef(null);
-  const saveRef = useRef(null);
+  const pendingKeysRef = useRef(/** @type {string[]} */ ([]));
+  const topRef = useRef(/** @type {HTMLDivElement|null} */ (null));
+  const stopVoiceInputRef = useRef(/** @type {(() => void)|null} */ (null));
+  const saveRef = useRef(/** @type {(() => void)|null} */ (null));
 
   useEffect(() => {
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });

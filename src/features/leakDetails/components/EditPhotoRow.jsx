@@ -17,7 +17,9 @@ export default function EditPhotoRow({
   showRepair = false,
 }) {
   const { t } = useLanguage();
-  const [activeSlot, setActiveSlot] = useState(null);
+  const [activeSlot, setActiveSlot] = useState(
+    /** @type {string|null} */ (null),
+  );
 
   const slots = [
     {

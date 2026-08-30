@@ -30,8 +30,8 @@ export function useComponentRegistry(project) {
   const enabled =
     storeEnabled && Boolean(project?.id) && hasComponentRegistry(project);
 
-  const [registry, setRegistry] = useState(null);
-  const [configError, setConfigError] = useState(null);
+  const [registry, setRegistry] = useState(/** @type {any} */ (null));
+  const [configError, setConfigError] = useState(/** @type {any} */ (null));
   const validation = registry?.validation ?? null;
 
   useEffect(() => {

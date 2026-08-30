@@ -37,7 +37,7 @@ function wordScore(input, candidate) {
 export function fuzzyMatchOption(input, options) {
   if (!input || !options?.length) return null;
 
-  let best = null;
+  let best = /** @type {string|null} */ (null);
   let bestScore = 0;
 
   for (const opt of options) {
@@ -48,7 +48,7 @@ export function fuzzyMatchOption(input, options) {
     }
   }
 
-  if (bestScore === 0) return null;
+  if (!best) return null;
   const parts = best.split("/");
   const afterSlash = parts[parts.length - 1].trim();
   const isAbbrev = parts.length > 1 && !/[а-яёa-z]/.test(afterSlash);

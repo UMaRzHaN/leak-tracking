@@ -21,8 +21,8 @@ function ComponentCardCompact({
   selected = false,
   // Расстояние от того места, где человек стоит, до этого железа. Считается
   // списком, а не карточкой: одна и та же точка отсчёта на все карточки.
-  distance = null,
-  onToggleSelect = null,
+  distance = /** @type {number|null} */ (null),
+  onToggleSelect = /** @type {((id: any) => void)|null} */ (null),
   onOpenDetails,
   onInspect,
 }) {

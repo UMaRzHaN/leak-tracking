@@ -10,7 +10,7 @@ import s from "./LocationBrowser.module.scss";
 export default function LocationBrowser({ open, scope, onClose, onApplied }) {
   const { t } = useLanguage();
   const dialogRef = useModalDialog({ open, onClose });
-  const [draft, setDraft] = useState([]);
+  const [draft, setDraft] = useState(/** @type {any[]} */ ([]));
 
   const { levelKeys, levelLabels, path, setPath, childrenAtPath, totalCount } =
     scope;

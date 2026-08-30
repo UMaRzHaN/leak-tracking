@@ -16,7 +16,7 @@ export default function StepRenderer({
   ghostPlaceholders,
   // Объявляется только в шагах утечки: у карточки компонента такого поля нет —
   // она сама и есть то, на что ссылаются.
-  componentLink = null,
+  componentLink = /** @type {any} */ (null),
 }) {
   const isLastStep = step >= steps.length;
   const config = steps[step - 1];

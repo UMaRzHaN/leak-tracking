@@ -14,6 +14,7 @@ import {
 import { getLatestMonitoringPhotoPath } from "@/utils/monitoring";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import s from "./LeakCardCompact.module.scss";
+import { isPresent } from "@/utils/isPresent";
 
 function fmtNum(value, decimals = 1, lang) {
   if (value == null || !Number.isFinite(Number(value))) return null;
@@ -44,9 +45,9 @@ function LeakCardCompact({
   onPickStatus,
   onMonitor,
   onOpenDetails,
-  nearbyDist = null,
+  nearbyDist = /** @type {number|null} */ (null),
   selected = false,
-  onToggleSelect = null,
+  onToggleSelect = /** @type {((id: any) => void)|null} */ (null),
   className = "",
   collapsible = true,
   defaultExpanded = false,
@@ -72,7 +73,9 @@ function LeakCardCompact({
   const absoluteDate = formatLeakDate(leak.date, {}, lang);
   const urgency = urgencyOf(leak.createdAt, status);
 
-  const [viewerIndex, setViewerIndex] = useState(null);
+  const [viewerIndex, setViewerIndex] = useState(
+    /** @type {number|null} */ (null),
+  );
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   useEffect(() => {
@@ -111,7 +114,7 @@ function LeakCardCompact({
     photoAfterSrc
       ? { key: "after", src: photoAfterSrc, label: afterLabel }
       : null,
-  ].filter(Boolean);
+  ].filter(isPresent);
 
   const showBook = comparePairs.length >= 2;
   const showRepairStack = Boolean(photoRepairSrc) && status === "in_progress";
@@ -352,7 +355,7 @@ function LeakCardCompact({
                     }}
                   >
                     <img
-                      src={displayPhotoSrc}
+                      src={displayPhotoSrc ?? undefined}
                       alt=""
                       className={s.photoThumbImg}
                       loading="lazy"

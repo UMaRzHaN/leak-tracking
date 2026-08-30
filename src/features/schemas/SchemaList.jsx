@@ -27,12 +27,16 @@ export default function SchemaList({ project }) {
   const { schemas, loading, error, addSchema, removeSchema, readSchemaFile } =
     useSchemas(project);
 
-  const inputRef = useRef(null);
-  const [notice, setNotice] = useState(null);
+  const inputRef = useRef(/** @type {HTMLInputElement|null} */ (null));
+  const [notice, setNotice] = useState(
+    /** @type {{kind: string, text?: string, schema?: any}|null} */ (null),
+  );
   const [busy, setBusy] = useState(false);
-  const [open, setOpen] = useState(null);
+  const [open, setOpen] = useState(
+    /** @type {{url?: string, schema?: any}|null} */ (null),
+  );
   const [search, setSearch] = useState("");
-  const listRef = useRef(null);
+  const listRef = useRef(/** @type {HTMLDivElement|null} */ (null));
   // Меряется, а не задаётся: над списком стоит кнопка и, бывает, предупреждение.
   const [listHeight, setListHeight] = useState(600);
 
@@ -98,7 +102,7 @@ export default function SchemaList({ project }) {
        * разрешения уже нет, и каждый PDF сообщал «браузер заблокировал новую
        * вкладку». Без noopener: без ссылки на окно его некуда направить.
        */
-      let targetWindow = null;
+      let targetWindow = /** @type {Window|null} */ (null);
       if (!isNative && isPdfSchema(schema)) {
         try {
           targetWindow = window.open("", "_blank");
