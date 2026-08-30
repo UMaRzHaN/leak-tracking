@@ -1,6 +1,7 @@
 import { LEAK_FIELD_VERSIONS_KEY } from "@/services/storage/leakFieldVersions";
 import { PHOTO_KEYS } from "./constants";
 import { parseTime } from "./projectMeta";
+import { matchHumanDate } from "@/utils/humanDate";
 
 export const MERGE_IGNORED_FIELD_KEYS = new Set([
   "id",
@@ -61,10 +62,9 @@ export function comparableExcelDate(value) {
   }
 
   const text = String(value).trim();
-  const dotted = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
-  if (dotted) {
-    const year = dotted[3].length === 2 ? `20${dotted[3]}` : dotted[3];
-    return `${year}-${Number(dotted[2])}-${Number(dotted[1])}`;
+  const human = matchHumanDate(text);
+  if (human) {
+    return `${human.year}-${human.month}-${human.day}`;
   }
   const parsed = new Date(text);
   return Number.isFinite(parsed.getTime()) ? comparableExcelDate(parsed) : text;

@@ -1,4 +1,5 @@
 import { getStorageItem } from "./safeStorage";
+import { matchHumanDate } from "@/utils/humanDate";
 
 export const LANGUAGE_STORAGE_KEY = "app_language";
 const DEFAULT_LANGUAGE = "ru";
@@ -93,21 +94,18 @@ function parseStoredDate(value) {
   // дату, так что до разбора ниже дело не доходило вовсе. Числа больше
   // двенадцати за месяц не сходят — и только у них, у «25.03.2026», всё
   // случайно получалось верно.
-  const match = raw.match(
-    /^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:[ T](\d{1,2}):(\d{2}))?$/,
-  );
-  if (!match) {
+  const human = matchHumanDate(raw);
+  if (!human) {
     const direct = new Date(raw);
     return Number.isFinite(direct.getTime()) ? direct : null;
   }
 
-  const [, day, month, year, hours = "0", minutes = "0"] = match;
   const parsed = new Date(
-    Number(year),
-    Number(month) - 1,
-    Number(day),
-    Number(hours),
-    Number(minutes),
+    human.year,
+    human.month - 1,
+    human.day,
+    human.hours,
+    human.minutes,
   );
 
   return Number.isFinite(parsed.getTime()) ? parsed : null;

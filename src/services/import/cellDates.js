@@ -1,3 +1,4 @@
+import { matchHumanDate } from "@/utils/humanDate";
 function excelSerialToDate(value) {
   const epoch = Date.UTC(1899, 11, 30);
   return new Date(epoch + Number(value) * 24 * 60 * 60 * 1000);
@@ -22,11 +23,9 @@ export function parseDateValue(value, { calendarOnly = false } = {}) {
 
   const text = String(value).trim();
   if (!text) return null;
-  const dotted = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
-  if (dotted) {
-    const year =
-      dotted[3].length === 2 ? Number(`20${dotted[3]}`) : Number(dotted[3]);
-    return createCalendarDate(year, Number(dotted[2]), Number(dotted[1]));
+  const human = matchHumanDate(text);
+  if (human) {
+    return createCalendarDate(human.year, human.month, human.day);
   }
 
   if (calendarOnly) {

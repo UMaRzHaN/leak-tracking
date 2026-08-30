@@ -7,6 +7,7 @@ import {
   sameMonitoringRound,
 } from "./mergeValues";
 import { fromEntries } from "@/utils/fromEntries";
+import { matchHumanDate } from "@/utils/humanDate";
 
 function getRecordMergeIdentity(record, index, arrayKey) {
   if (arrayKey === "monitoringRecords" && record?.id != null) {
@@ -38,11 +39,9 @@ function getRecordMergeIdentity(record, index, arrayKey) {
 function getRecordDateIdentity(value) {
   const time = parseTime(value);
   if (time > 0) return String(time);
-  const text = String(value ?? "").trim();
-  const dotted = text.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);
-  if (!dotted) return text;
-  const year = dotted[3].length === 2 ? `20${dotted[3]}` : dotted[3];
-  return `${year}-${Number(dotted[2])}-${Number(dotted[1])}`;
+  const human = matchHumanDate(value);
+  if (!human) return String(value ?? "").trim();
+  return `${human.year}-${human.month}-${human.day}`;
 }
 
 function recordHasFieldVersions(record) {

@@ -89,6 +89,19 @@ describe("locale utilities", () => {
     );
   });
 
+  it("читает человеческую дату через косую черту и с коротким годом", () => {
+    // Расширение: раньше показ признавал только точки и четырёхзначный год, а
+    // всё прочее отдавал `new Date` — то есть читал месяцем вперёд. Теперь у
+    // показа тот же разбор, что у чтения книги и сведения архивов.
+    const options = { year: "numeric", month: "2-digit", day: "2-digit" };
+    const tenthOfMarch = new Intl.DateTimeFormat("en-US", options).format(
+      new Date(2026, 2, 10),
+    );
+
+    expect(formatLeakDate("10/03/2026", options, "en")).toBe(tenthOfMarch);
+    expect(formatLeakDate("10.03.26", options, "en")).toBe(tenthOfMarch);
+  });
+
   it("formats recent past values and rejects future, invalid, and old dates", () => {
     const now = new Date("2026-07-20T12:00:00.000Z").getTime();
 

@@ -1,0 +1,63 @@
+import { describe, expect, it } from "vitest";
+import { matchHumanDate } from "@/utils/humanDate";
+
+/**
+ * Один разбор человеческой даты на все пять читателей.
+ *
+ * До этого копий было пять — в чтении книги, в сведении архивов, в опознании
+ * записей обхода, в сведении списков записей и в показе на экране, — и они
+ * разошлись. Два дефекта из этого уже вышли наружу.
+ */
+describe("человеческая дата", () => {
+  it("первое число — день, а не месяц", () => {
+    expect(matchHumanDate("10.03.2026")).toMatchObject({
+      day: 10,
+      month: 3,
+      year: 2026,
+    });
+  });
+
+  it("день больше двенадцатого читается так же, как любой другой", () => {
+    // Прежние разборы на таких датах работали верно случайно: `new Date` от
+    // «25.03.2026» отказывается, и дело доходило до правильной ветки.
+    expect(matchHumanDate("25.03.2026")).toMatchObject({ day: 25, month: 3 });
+  });
+
+  it("разделителем считается точка, косая черта и дефис", () => {
+    for (const text of ["10.03.2026", "10/03/2026", "10-03-2026"]) {
+      expect(matchHumanDate(text)).toMatchObject({
+        day: 10,
+        month: 3,
+        year: 2026,
+      });
+    }
+  });
+
+  it("год из двух цифр — этого столетия", () => {
+    expect(matchHumanDate("10.03.26")).toMatchObject({ year: 2026 });
+  });
+
+  it("время читается, когда оно есть, и молчит, когда нет", () => {
+    expect(matchHumanDate("15.07.2026 09:30")).toMatchObject({
+      hours: 9,
+      minutes: 30,
+    });
+    expect(matchHumanDate("15.07.2026")).toMatchObject({
+      hours: 0,
+      minutes: 0,
+    });
+  });
+
+  it("ISO под шаблон не попадает", () => {
+    // Иначе год «2026» сошёл бы за день, и общий разбор сломал бы то, что и
+    // без него читалось верно.
+    expect(matchHumanDate("2026-03-10")).toBeNull();
+    expect(matchHumanDate("2026-03-10T08:00:00.000Z")).toBeNull();
+  });
+
+  it("не дата — не дата", () => {
+    for (const value of ["", "  ", "не дата", null, undefined, 1773129600000]) {
+      expect(matchHumanDate(value)).toBeNull();
+    }
+  });
+});
