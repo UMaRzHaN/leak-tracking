@@ -87,13 +87,19 @@ function parseStoredDate(value) {
   const raw = String(value).trim();
   if (!raw) return null;
 
-  const direct = new Date(raw);
-  if (Number.isFinite(direct.getTime())) return direct;
-
+  // Свой вид — раньше чужого. Приложение хранит дату импортированной записи как
+  // ДД.ММ.ГГГГ, а `new Date` ждёт месяц первым и от такой строки не
+  // отказывается: «10.03.2026» она читает как третье октября и отдаёт годную
+  // дату, так что до разбора ниже дело не доходило вовсе. Числа больше
+  // двенадцати за месяц не сходят — и только у них, у «25.03.2026», всё
+  // случайно получалось верно.
   const match = raw.match(
     /^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:[ T](\d{1,2}):(\d{2}))?$/,
   );
-  if (!match) return null;
+  if (!match) {
+    const direct = new Date(raw);
+    return Number.isFinite(direct.getTime()) ? direct : null;
+  }
 
   const [, day, month, year, hours = "0", minutes = "0"] = match;
   const parsed = new Date(

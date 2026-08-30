@@ -72,6 +72,23 @@ describe("locale utilities", () => {
     expect(formatLeakDate(null, options, "en")).toBe("");
   });
 
+  it("читает свой ДД.ММ.ГГГГ днём вперёд, даже когда день похож на месяц", () => {
+    // Импорт кладёт дату записи как ДД.ММ.ГГГГ, а `new Date` ждёт месяц первым
+    // и от такой строки не отказывается: «10.03.2026» она читает как третье
+    // октября. На карточке утечки и в подробностях день с месяцем менялись
+    // местами у всех дат с числом до двенадцатого — а у «25.03.2026», где
+    // `new Date` сдаётся, всё выходило верно, и проверка этого не замечала.
+    const options = { year: "numeric", month: "2-digit", day: "2-digit" };
+    const tenthOfMarch = new Intl.DateTimeFormat("en-US", options).format(
+      new Date(2026, 2, 10),
+    );
+
+    expect(formatLeakDate("10.03.2026", options, "en")).toBe(tenthOfMarch);
+    expect(formatLeakDate("01.12.2026", options, "en")).toBe(
+      new Intl.DateTimeFormat("en-US", options).format(new Date(2026, 11, 1)),
+    );
+  });
+
   it("formats recent past values and rejects future, invalid, and old dates", () => {
     const now = new Date("2026-07-20T12:00:00.000Z").getTime();
 
