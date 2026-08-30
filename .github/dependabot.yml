@@ -9,11 +9,39 @@ updates:
         dependency-type: production
       npm-development:
         dependency-type: development
+    ignore:
+      # TypeScript держится на шестой намеренно, и поднимать её нельзя.
+      #
+      # Цепочка eslint требует `>=4.8.4 <6.1.0`. С седьмой `npm ci` ставит с
+      # предупреждением, а `npm run lint` падает целиком: `ts-api-utils` читает
+      # `TypeFlags.Intrinsic`, которого в ней нет. Отваливается весь шов линта,
+      # а не отдельное правило.
+      #
+      # Проверка типов при этом идёт как раз на седьмой: рядом лежит
+      # `typescript-next`, псевдоним на неё, и все три `typecheck` зовут его.
+      # То есть обе версии нужны одновременно, каждая своему читателю.
+      #
+      # Подъём уже приходил предложением и был отклонён после проверки. Снять
+      # эту запись можно, когда цепочка eslint научится седьмой.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: gradle
     directory: /android
     schedule:
       interval: weekly
+    ignore:
+      # Gradle не выше 9.5, пока не поднят Android Gradle Plugin.
+      #
+      # AGP 8.13.0 опирается на `InternalProblems` — внутренний API, удалённый
+      # в Gradle 9.6.0. На 9.7.1 сборка падает при настройке проекта, о чём сам
+      # Gradle и сообщает: обновите плагин или возьмите 9.5.
+      #
+      # Проверено обеими сторонами: на 9.7.1 `./gradlew help` падает, на 9.5.0
+      # проходит `:app:assembleDebug` целиком. То есть 9.5 взять можно хоть
+      # сейчас, а дальше — только вместе с AGP и в этом порядке.
+      - dependency-name: gradle-wrapper
+        versions: [">=9.6"]
 
   - package-ecosystem: github-actions
     directory: /
