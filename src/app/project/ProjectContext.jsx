@@ -23,7 +23,13 @@ export { toFolderName };
 
 // Split into two contexts so action-only consumers don't re-render on data change
 // and data-only consumers don't re-render when stable action callbacks are recreated.
+// Значение по умолчанию — `null`: провайдера может не быть, и хуки ниже это
+// проверяют. Тип оставлен свободным намеренно: контекст собирается из десятка
+// действий, и описывать их здесь значило бы вести второй список рядом с
+// настоящим.
+/** @type {import("react").Context<any>} */
 const ProjectDataContext = createContext(null);
+/** @type {import("react").Context<any>} */
 const ProjectActionsContext = createContext(null);
 
 function createSyncId() {
@@ -68,7 +74,9 @@ function initProjectState() {
 }
 
 export function ProjectProvider({ children }) {
-  const initialStateRef = useRef(null);
+  const initialStateRef = useRef(
+    /** @type {ReturnType<typeof initProjectState>|null} */ (null),
+  );
   if (initialStateRef.current === null)
     initialStateRef.current = initProjectState();
   const [projects, setProjects] = useState(initialStateRef.current.projects);

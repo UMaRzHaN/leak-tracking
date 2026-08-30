@@ -133,7 +133,7 @@ function validateStoredProjects(list) {
 }
 
 export function loadProjects() {
-  let raw = null;
+  let raw = /** @type {string|null} */ (null);
   try {
     raw = localStorage.getItem(STORAGE_KEYS.PROJECTS_LIST);
     const list = raw ? JSON.parse(raw) : [];

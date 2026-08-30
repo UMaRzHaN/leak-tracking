@@ -5,7 +5,10 @@ import s from "./PwaUpdateBanner.module.scss";
 export default function PwaUpdateBanner() {
   const { t } = useLanguage();
   const [registration, setRegistration] = useState(
-    () => window.leakTrackingWaitingServiceWorkerRegistration ?? null,
+    () =>
+      /** @type {ServiceWorkerRegistration|null} */ (
+        window.leakTrackingWaitingServiceWorkerRegistration ?? null
+      ),
   );
   const [activating, setActivating] = useState(false);
 
@@ -19,7 +22,8 @@ export default function PwaUpdateBanner() {
       );
   }, []);
 
-  if (!registration?.waiting) return null;
+  const waiting = registration?.waiting;
+  if (!waiting) return null;
 
   const activate = () => {
     if (activating) return;
@@ -30,7 +34,7 @@ export default function PwaUpdateBanner() {
       () => window.location.reload(),
       { once: true },
     );
-    registration.waiting.postMessage({ type: "ACTIVATE_UPDATE" });
+    waiting.postMessage({ type: "ACTIVATE_UPDATE" });
   };
 
   return (

@@ -13,7 +13,7 @@ export default function ConfirmSheet({
   onSecondaryAction = null,
   confirmLabel = null,
   cancelLabel = null,
-  onActionError = null,
+  onActionError = /** @type {((error: unknown) => void)|null} */ (null),
 }) {
   const { t } = useTranslation();
   const confirmText = confirmLabel ?? t("common.confirm");

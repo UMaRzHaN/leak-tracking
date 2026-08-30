@@ -81,12 +81,19 @@ function inertOutside(dialog) {
   };
 }
 
+/**
+ * @param {{
+ *   open?: boolean,
+ *   onClose?: (() => void)|null,
+ *   closeDisabled?: boolean,
+ * }} options
+ */
 export function useModalDialog({
   open = true,
   onClose = null,
   closeDisabled = false,
 }) {
-  const dialogRef = useRef(null);
+  const dialogRef = useRef(/** @type {HTMLDivElement|null} */ (null));
   const closeRef = useRef(onClose);
   const disabledRef = useRef(closeDisabled);
   const modalIdRef = useRef(Symbol("modal"));
@@ -106,7 +113,9 @@ export function useModalDialog({
     const frame = requestAnimationFrame(() => {
       const dialog = dialogRef.current;
       releaseInert = inertOutside(dialog);
-      const target = dialog?.querySelector(FOCUSABLE) ?? dialog;
+      const target =
+        /** @type {HTMLElement|null} */ (dialog?.querySelector(FOCUSABLE)) ??
+        dialog;
       target?.focus();
     });
 
@@ -122,7 +131,9 @@ export function useModalDialog({
       }
 
       if (event.key !== "Tab") return;
-      const focusable = [...dialog.querySelectorAll(FOCUSABLE)];
+      const focusable = /** @type {HTMLElement[]} */ ([
+        ...dialog.querySelectorAll(FOCUSABLE),
+      ]);
       if (focusable.length === 0) {
         event.preventDefault();
         dialog.focus();

@@ -12,7 +12,14 @@ import s from "./ErrorBoundary.module.scss";
 export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null, saveNotice: null };
+    // Ловится всё, что долетело до границы, но пара полей нам знакома:
+    // `code` и `recoveryValue` кладёт чтение списка проектов — по ним экран и
+    // предлагает скачать уцелевшее.
+    this.state = /** @type {{
+      hasError: boolean,
+      error: (Error & {code?: string, recoveryValue?: string})|null,
+      saveNotice: string|null,
+    }} */ ({ hasError: false, error: null, saveNotice: null });
   }
 
   static getDerivedStateFromError(error) {

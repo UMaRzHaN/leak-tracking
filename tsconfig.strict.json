@@ -13,7 +13,13 @@
   // обнулиться, и проверка результата разбора, у которой поле замечаний было
   // то ли есть, то ли нет.
   //
-  // Следующие кандидаты по цене входа: components/ (22 ошибки), app/ (34).
+  // components/ добавлен: 34 ошибки на замере вместо ожидавшихся 22 — включение
+  // каталога тянет за собой и то, на что он опирается, так что под проверку
+  // попали заодно app/project/ и hooks/. Половину дал один createContext(null):
+  // из-за него useProjectData() возвращал null, и в шапке любое обращение к
+  // проекту становилось обращением к never.
+  //
+  // Следующий кандидат по цене входа: app/ целиком.
   "extends": "./tsconfig.check.json",
   "compilerOptions": {
     "strictNullChecks": true
@@ -24,7 +30,9 @@
     "src/types/**/*",
     "src/domain/**/*.js",
     "src/utils/**/*.js",
-    "src/repositories/**/*.js"
+    "src/repositories/**/*.js",
+    "src/components/**/*.js",
+    "src/components/**/*.jsx"
   ],
   "exclude": ["src/**/*.test.js", "src/**/*.test.jsx"]
 }

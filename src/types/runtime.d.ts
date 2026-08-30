@@ -20,7 +20,7 @@ declare global {
   }
 
   interface Window {
-    leakTrackingWaitingServiceWorkerRegistration?: ServiceWorkerRegistration;
+    leakTrackingWaitingServiceWorkerRegistration?: ServiceWorkerRegistration | null;
     SpeechRecognition?: new () => any;
     webkitSpeechRecognition?: new () => any;
     /** Длительности фаз выгрузки Excel; их читают бюджеты производительности. */

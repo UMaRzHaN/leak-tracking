@@ -13,7 +13,9 @@ export default function Header({
   setGpsEnabled,
   userProfile,
   onUserProfileOpen,
-  locationScope = null,
+  // Форму задаёт `useActiveLocation`, а не эта шапка: здесь достаточно знать,
+  // что области может не быть вовсе.
+  locationScope = /** @type {any} */ (null),
   onLocationScopeOpen,
 }) {
   const { projectName, project } = useProjectData();
