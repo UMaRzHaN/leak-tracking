@@ -155,7 +155,7 @@ maintainability, coverage plus its ratchet, the analyzed build, bundle budgets,
 licences, SBOM and checksums. It requires a clean worktree.
 
 Two things it cannot cover, both only reachable in CI: the Android emulator on
-API 24 (`minSdkVersion`) and API 35, and WebKit. Release signing is configured
+API 33 (`minSdkVersion`) and API 35, and WebKit. Release signing is configured
 and verified through `npm run android:release`.
 
 ## Running the project
@@ -172,8 +172,10 @@ npm run format:check   # Check formatting without writing
 
 ## Before committing
 
-The pre-commit hook runs automatically via Husky and applies
-`eslint --fix` + `prettier --write` to staged `src/**/*.{js,jsx}` files.
+The pre-commit hook runs automatically via Husky. It applies
+`eslint --fix` + `prettier --write` to every staged `*.{js,jsx,mjs}` file —
+scripts and configs at the repository root included, not just `src/` — and
+`prettier --write` to staged `*.{md,json,yml,yaml,scss,ts,html}`.
 
 To run the same checks manually:
 
@@ -187,20 +189,26 @@ Project types (upstream / midstream / downstream) live in `src/configs/`.
 
 ```
 src/configs/
-├── index.js                   ← barrel: exports PROJECT_CONFIGS
-├── projects.js                ← PROJECTS map + PROJECT_META
-├── projectAdapter.js          ← capability helpers (getProjectFields, etc.)
-├── projectLocation.config.js  ← location label config per type
-├── shared/                    ← fields and steps shared across all types
+├── projects.js                    ← PROJECTS map (тяжёлый: тянет все конфиги)
+├── projectMeta.js                 ← PROJECT_META: имя и папка типа, лёгкий
+├── projectAdapter.js              ← capability helpers (getProjectFields, etc.)
+├── projectLocation.config.js      ← location label config per type
+├── componentRegistry.config.js    ← есть ли у типа реестр компонентов
+├── componentRegistryLoaders.js    ← ленивые загрузчики блоков реестра
+├── shared/                        ← fields and steps shared across all types
 ├── upstream/
-│   ├── index.js               ← barrel
-│   ├── upstream.config.js     ← UPSTREAM_CONFIG (frozen object)
+│   ├── upstream.config.js         ← UPSTREAM_CONFIG (frozen object)
 │   └── data/
-│       ├── fields.js          ← FIELDS, NUMBER_FIELDS, COPY_FIELDS
-│       └── steps.js           ← STEPS (form step definitions)
+│       ├── fields.js              ← FIELDS, NUMBER_FIELDS, COPY_FIELDS
+│       ├── steps.js               ← STEPS (form step definitions)
+│       └── componentBlock.js      ← словари и колонки реестра
 ├── midstream/  (same shape)
 └── downstream/ (same shape)
 ```
+
+Файлов-бочек здесь нет намеренно: `projects.js` тянет за собой все три
+конфигурации, и общий вход означал бы, что их читает всякий, кому нужно одно
+название типа. За названием и папкой ходят в `projectMeta.js`, он лёгкий.
 
 **Steps to add a new type `newtype`:**
 
@@ -212,25 +220,26 @@ src/configs/
    import newtype from "./newtype/newtype.config";
    export const PROJECTS = { upstream, midstream, downstream, newtype };
    ```
-4. Add its metadata to `PROJECT_META` in the same file.
+4. Add its metadata to `PROJECT_META` — в `src/configs/projectMeta.js`, не в
+   `projects.js`: он лежит отдельно, чтобы название типа можно было прочитать,
+   не втягивая конфигурации в стартовый граф.
 5. Add location config to `src/configs/projectLocation.config.js`.
 6. Add field/step data under `src/configs/newtype/data/`.
 
 The rest of the app (LeakForm, voice recognition, export) picks up the
 new type automatically through `projectAdapter.js`.
 
-**Component registry.** A type carries one only if its config declares a
-`components` block, and only `upstream` does today — that is the whole feature
-flag, and a type without the block simply has no registry tab. Adding one to a
-second type needs its own equipment dictionaries and export columns, which come
-from the customer rather than from us.
+**Component registry.** A type carries one only if `COMPONENT_REGISTRY_LOADERS`
+in `componentRegistryLoaders.js` has an entry for it — это и есть весь флаг, а
+тип без записи просто не имеет вкладки реестра. Записи ленивые: блок реестра
+попадает в сборку отдельным куском и читается на той странице, где нужен.
 
-Note that the inventory archive carries neither a project name nor a type, so
-the first-run screen infers the type as the only one that declares a registry
-(`componentRegistryProjectTypes()`). The moment a second type declares one the
-inference stops being unambiguous and the import fails with
-`MISSING_PROJECT_TYPE` — deliberately loud, because the screen will then have
-to ask.
+Реестр объявлен у всех трёх типов. Пока он был у одного, экран первого запуска
+угадывал тип сам: архив инвентаризации не несёт ни имени проекта, ни его типа,
+и выбирать было не из чего. Теперь угадывать нельзя, и `useSetupImports`
+берёт тип, выбранный на экране; если не выбран — импорт останавливается с
+`MISSING_PROJECT_TYPE`, а человек видит «Выберите тип проекта». Это и было
+задумано как громкий отказ, а не как поломка.
 
 ## Decisions not to re-litigate
 
