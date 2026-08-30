@@ -1,5 +1,6 @@
 import { createRecordId } from "@/utils/createRecordId";
 import { nextSyncTimestamp } from "@/services/sync/syncClock";
+import { parseDateValue } from "@/services/import/cellDates";
 
 /**
  * Rules for the component registry.
@@ -226,4 +227,44 @@ export function stampChangedComponents(normalized, previous, now) {
       ? card
       : { ...card, updatedAt: at };
   });
+}
+
+/**
+ * Какая карточка заведена последней.
+ *
+ * Форма подставляет из неё призрачные подсказки: обходчик идёт по одному узлу
+ * и заполняет соседние поля одинаково. `date` для этого и годится — она
+ * ставится один раз при заведении и дальше не двигается, в том числе у
+ * карточки, приехавшей с другого телефона.
+ *
+ * Но приходит она в трёх видах, и `Date.parse` справляется только с одним.
+ * Заведённая в приложении несёт ISO. Приехавшая из книги несёт либо число
+ * миллисекунд, если ячейка была настоящей датой, либо текст «10.03.2026», если
+ * текстом: инвентаризация кладёт в карточку то, что нашла в ячейке, и к общему
+ * виду не приводит. `Date.parse` первое читает как ничто, а второе — как второе
+ * октября, потому что ждёт месяц первым; «25.03.2026» для него и вовсе не дата.
+ * После импорта нечитаемыми оказывались почти все карточки разом, и выбор
+ * сваливался на последнюю в массиве.
+ *
+ * Поэтому дата читается тем же разбором, что и при чтении книги, — он знает
+ * все три вида и считает первое число днём.
+ *
+ * @param {Record<string, any>[]|null|undefined} components
+ * @returns {Record<string, any>|null}
+ */
+export function findLatestComponent(components) {
+  let latest = /** @type {Record<string, any>|null} */ (null);
+  let latestTime = -Infinity;
+
+  for (const component of Array.isArray(components) ? components : []) {
+    const parsed = parseDateValue(component?.date);
+    // Карточка без читаемой даты годится только пока не нашлось датированной.
+    const rank = parsed ? parsed.getTime() : -Infinity;
+    if (!latest || rank >= latestTime) {
+      latest = component;
+      latestTime = rank;
+    }
+  }
+
+  return latest;
 }

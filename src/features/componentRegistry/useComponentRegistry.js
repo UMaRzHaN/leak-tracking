@@ -9,6 +9,7 @@ import { hasComponentRegistry } from "@/configs/componentRegistry.config";
 import { loadComponentRegistry } from "@/configs/projectAdapter";
 import { useComponentRegistryStore } from "./ComponentRegistryContext";
 import { logger } from "@/utils/logger";
+import { findLatestComponent } from "@/domain/componentRegistry";
 
 /**
  * Экран реестра: объявление реестра плюс всё, что считается по списку.
@@ -106,25 +107,13 @@ export function useComponentRegistry(project) {
    * архива. Обычно заполненная на треть — отсюда и подсказки, которые
    * появлялись у одних полей и не появлялись у других.
    *
-   * `date` ставится один раз при заведении и дальше не двигается, в том числе
-   * у карточки, приехавшей с другого телефона: там это по-прежнему момент,
-   * когда её завели.
+   * Как из даты получается порядок — в `findLatestComponent`: она приходит в
+   * трёх видах, и `Date.parse` справляется только с одним.
    */
-  const lastComponent = useMemo(() => {
-    let latest = null;
-    let latestTime = -Infinity;
-    for (const component of components) {
-      const time = Date.parse(component?.date ?? "");
-      // Карточка без читаемой даты — из ранних версий формата. Она годится
-      // только пока не нашлось ни одной датированной.
-      const rank = Number.isFinite(time) ? time : -Infinity;
-      if (!latest || rank >= latestTime) {
-        latest = component;
-        latestTime = rank;
-      }
-    }
-    return latest;
-  }, [components]);
+  const lastComponent = useMemo(
+    () => findLatestComponent(components),
+    [components],
+  );
 
   /**
    * Cards sharing an identity number. Recomputed from what is stored rather
