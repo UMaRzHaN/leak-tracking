@@ -14,13 +14,23 @@
  *   (cd android && ./gradlew assembleDebug)
  *   adb install -r android/app/build/outputs/apk/debug/app-debug.apk
  *   node scripts/capture-android-manual-screenshots.mjs
+ *
+ * Один раздел вместо всего набора:
+ *
+ *   ANDROID_CAPTURE_SECTIONS=map node scripts/capture-android-manual-screenshots.mjs
  */
 import { _android as android } from "playwright";
-import { execFileSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { encodePngFilesToWebp } from "./image-encoder.mjs";
-import { MANUAL_CAPTURE_TIME, freezeClock } from "./manual-capture-time.mjs";
+import { MANUAL_CAPTURE_TIME } from "./manual-capture-time.mjs";
+import {
+  hideKeyboard,
+  openWebView,
+  resizeStoredShots,
+  sendEmulatorLocation,
+  storeShotsAsWebp,
+  wait,
+} from "./android-capture-device.mjs";
 
 const PKG = process.env.ANDROID_PKG ?? "com.leak.tracking.debug";
 // Точка, вокруг которой seed100leaks.js расставляет утечки: на эмуляторе
@@ -34,6 +44,25 @@ const SEED_COUNT = Number(process.env.ANDROID_SEED_COUNT ?? 18);
 const SEED_COMPONENTS = Number(process.env.ANDROID_SEED_COMPONENTS ?? 8);
 // Ширина хранимого кадра: экран устройства 1080 px, для PDF хватает половины.
 const STORED_WIDTH = 540;
+
+/*
+ * Какие разделы снимать: `ANDROID_CAPTURE_SECTIONS=map` вместо всего набора.
+ *
+ * Понадобилось, когда в руководство добавился один снимок: полный проход
+ * переписывает все сорок с лишним кадров, а различие в нетронутых — часы
+ * системной строки, которые заморозке страницы не подчиняются. Ради одной
+ * картинки платить сорока одной подделкой истории незачем.
+ *
+ * Путь до наполнения данными не выбирается — он нужен любому разделу.
+ */
+const SECTIONS = (process.env.ANDROID_CAPTURE_SECTIONS ?? "")
+  .split(",")
+  .map((name) => name.trim())
+  .filter(Boolean);
+
+function wanted(section) {
+  return SECTIONS.length === 0 || SECTIONS.includes(section);
+}
 
 const done = [];
 const failed = [];
@@ -53,28 +82,36 @@ async function main() {
   );
   await device.shell(`monkey -p ${PKG} -c android.intent.category.LAUNCHER 1`);
   await wait(7000);
-  sendEmulatorLocation(device);
+  sendEmulatorLocation(device, GEO);
 
-  const page = await openWebView(device);
+  const page = await openWebView(device, PKG);
 
   try {
+    // Начало пути не выбирается: `pm clear` оставил телефон с пустым
+    // приложением, и без проекта, утечки и наполнения снимать нечего.
     await step("onboarding", () => onboarding(device, page));
     await step("addLeak", () => addLeakForm(device, page));
     await step("seed", () => seedData(device, page));
-    const seeded = await openWebView(device);
-    await step("mainPage", () => mainPageShots(device, seeded));
-    await step("database", () => databaseShots(device, seeded));
-    await step("monitoring", () => monitoringShots(device, seeded));
-    await step("map", () => mapShots(device, seeded));
-    await step("registry", () => registryShots(device, seeded));
-    await step("settings", () => settingsShots(device, seeded));
-    await step("themeAndLanguage", () => themeAndLanguage(device, seeded));
+    const seeded = await openWebView(device, PKG);
+    const sections =
+      /** @type {[string, (device: any, page: any) => Promise<void>][]} */ ([
+        ["mainPage", mainPageShots],
+        ["database", databaseShots],
+        ["monitoring", monitoringShots],
+        ["map", mapShots],
+        ["registry", registryShots],
+        ["settings", settingsShots],
+        ["themeAndLanguage", themeAndLanguage],
+      ]);
+    for (const [name, shots] of sections) {
+      if (wanted(name)) await step(name, () => shots(device, seeded));
+    }
   } finally {
     await device.close();
   }
 
-  await resizeStoredShots();
-  await storeShotsAsWebp();
+  await resizeStoredShots(OUT_DIR, STORED_WIDTH);
+  await storeShotsAsWebp(OUT_DIR);
 
   console.log(`\nГотово: ${done.length} экранов`);
   for (const name of done) console.log("  ✓", name);
@@ -106,52 +143,6 @@ async function openTab(page, name) {
     .click();
 }
 
-function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// Эмулятору координаты передаются через консоль, а не через adb shell; на
-// реальном устройстве команда просто не выполнится, и это не ошибка.
-function sendEmulatorLocation(device) {
-  try {
-    execFileSync("adb", [
-      "-s",
-      device.serial(),
-      "emu",
-      "geo",
-      "fix",
-      String(GEO.lng),
-      String(GEO.lat),
-    ]);
-  } catch {
-    console.log(
-      "  (координаты эмулятора не заданы — вероятно, это устройство)",
-    );
-  }
-}
-
-async function openWebView(device) {
-  const webview = await device.webView({ pkg: PKG });
-  const page = await webview.page();
-  page.setDefaultTimeout(20000);
-  await freezeClock(page);
-  activePage = page;
-  return page;
-}
-
-let activePage = null;
-
-// Экранная клавиатура закрывает нижнюю половину кадра, а поднимается она от
-// любого заполнения поля — поэтому фокус снимается перед каждым снимком.
-async function hideKeyboard() {
-  await activePage
-    ?.evaluate(() =>
-      /** @type {HTMLElement | null} */ (document.activeElement)?.blur?.(),
-    )
-    .catch(() => {});
-  await wait(700);
-}
-
 async function shot(device, name, options = {}) {
   await hideKeyboard();
   await wait(options.settle ?? 600);
@@ -167,38 +158,6 @@ async function step(name, fn) {
     failed.push(`${name}: ${error.message.split("\n")[0]}`);
     console.log("  ✗", name, "—", error.message.split("\n")[0]);
   }
-}
-
-// Кадры устройства весят по полтора мегабайта — для PDF это лишнее.
-async function resizeStoredShots() {
-  const files = (await fs.readdir(OUT_DIR)).filter((name) =>
-    name.endsWith(".png"),
-  );
-  for (const file of files) {
-    execFileSync("sips", [
-      "--resampleWidth",
-      String(STORED_WIDTH),
-      path.join(OUT_DIR, file),
-    ]);
-  }
-  console.log(`Кадры уменьшены до ${STORED_WIDTH} px по ширине`);
-}
-
-// PNG с экрана весит впятеро больше того же кадра в WebP, а руководство
-// переснимают целиком: раз в несколько месяцев это два десятка мегабайт,
-// которые остаются в истории навсегда. Кодировщик — тот же Chromium, что
-// уже открыт ради съёмки; ставить ничего не нужно.
-async function storeShotsAsWebp() {
-  const dir = await fs.readdir(OUT_DIR);
-  const pngs = dir
-    .filter((name) => name.endsWith(".png"))
-    .map((name) => path.join(OUT_DIR, name));
-  if (pngs.length === 0) return;
-
-  const kb = (bytes) => Math.round(bytes / 1024);
-  const { before, after } = await encodePngFilesToWebp(pngs);
-  await Promise.all(pngs.map((file) => fs.rm(file, { force: true })));
-  console.log(`Кадры пересжаты в WebP: ${kb(before)} КБ → ${kb(after)} КБ`);
 }
 
 async function resetToHome(page) {
@@ -256,7 +215,7 @@ async function onboarding(device, page) {
   await step("05-gps-on", async () => {
     await page.getByTitle(/GPS/).click();
     await wait(2000);
-    sendEmulatorLocation(device);
+    sendEmulatorLocation(device, GEO);
     await page
       .getByText(/\d+\.\d+\s*\/\s*\d+\.\d+/)
       .waitFor({ timeout: 30000 });
@@ -507,6 +466,22 @@ async function mapShots(device, page) {
   await step("28-map-filters", async () => {
     await page.getByRole("button", { name: "Фильтр по мониторингу" }).click();
     await shot(device, "28-map-filters", { settle: 1000 });
+    await page.keyboard.press("Escape");
+    await wait(600);
+  });
+
+  /*
+   * Вторая база карты — на ней другие кнопки, и снимать её нужно отдельно.
+   * Отбор по состоянию открыт нарочно: он общий с реестром, и картинка со
+   * свёрнутой кнопкой не отличалась бы от базы утечек ничем, кроме пилюли.
+   */
+  await step("43-map-components", async () => {
+    await page.getByRole("button", { name: /Переключить базу/ }).click();
+    await wait(1500);
+    await page
+      .getByRole("button", { name: "Фильтр по состоянию железа" })
+      .click();
+    await shot(device, "43-map-components", { settle: 1000 });
     await page.keyboard.press("Escape");
     await wait(600);
   });

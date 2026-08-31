@@ -38,6 +38,17 @@ const GAUGE = {
   passport: { "Статус компонента": "Требует замены" },
 };
 
+/*
+ * Состояния из словаря — словами, и длинными. Список открытый: своё
+ * состояние можно вписать руками, так что ширину подписей задаёт не словарь.
+ */
+const LONG_STATUSES = [
+  "Законсервирован",
+  "Выведен из эксплуатации",
+  "Демонтирован",
+  "В резерве",
+];
+
 function marker(page, uid) {
   return page.locator(".leaflet-marker-icon", { hasText: uid });
 }
@@ -88,4 +99,47 @@ test("несёт отбор по состоянию из реестра на к�
   await openComponentRegistry(page);
   await expect(page.getByText("Задвижка", { exact: true })).toBeVisible();
   await expect(page.getByText("Манометр", { exact: true })).toBeVisible();
+});
+
+test("держит список состояний на карте в пределах экрана", async ({
+  page,
+  context,
+}) => {
+  test.setTimeout(240_000);
+  await createProject(page, "Registry Map Overflow");
+  await setUserProfile(page);
+  await openComponentRegistry(page);
+
+  await context.setGeolocation({ latitude: 41.311081, longitude: 69.240562 });
+  await addComponentCard(page, VALVE);
+  for (const [index, status] of LONG_STATUSES.entries()) {
+    await addComponentCard(page, {
+      uid: String(9100 + index),
+      tag: `ЗД-${index}`,
+      location: "Куст 12",
+      name: "Задвижка",
+      passport: { "Статус компонента": status },
+    });
+  }
+
+  await openMap(page);
+  await page.getByRole("button", { name: /Переключить базу/ }).click();
+  await page
+    .getByRole("button", { name: "Фильтр по состоянию железа" })
+    .click();
+
+  /*
+   * Список раскрывается влево от кнопки. В одну строку пять состояний
+   * словами не помещаются, и без переноса он уезжал за левый край вместе с
+   * кнопкой «Все» — снять отбор на телефоне было нечем.
+   */
+  const flyout = page.locator('[class*="filterFlyout"]').filter({
+    has: page.getByRole("button", { name: "Законсервирован", exact: true }),
+  });
+  const box = await flyout.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  await expect(
+    flyout.getByRole("button", { name: "Все", exact: true }),
+  ).toBeVisible();
 });
