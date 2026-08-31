@@ -6,7 +6,7 @@ export const cards = {
   selectLeak: "Select leak",
   deselectLeak: "Remove from selection",
 
-  tagPrefix: "Tag № ",
+  tagPrefix: "№ ",
   collapse: "Collapse card",
   expand: "Expand card",
 };

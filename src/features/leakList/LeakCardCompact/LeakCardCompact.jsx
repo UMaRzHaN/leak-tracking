@@ -2,7 +2,6 @@ import { useRenderMetric } from "@/utils/renderMetrics";
 import { memo, useEffect, useState } from "react";
 import { useSwipeCard } from "@/hooks/useSwipeCard";
 import { getStatusMeta } from "@/utils/status";
-import { getPriorityMeta } from "@/utils/priority";
 import { timeAgo } from "@/utils/timeAgo";
 import { usePhotoSrc } from "@/hooks/usePhotoSrc";
 import { useLanguage } from "@/app/hooks/useLanguage";
@@ -68,7 +67,6 @@ function LeakCardCompact({
 
   const status = leak.status ?? "open";
   const meta = getStatusMeta(status, t);
-  const priorityMeta = leak.priority ? getPriorityMeta(leak.priority, t) : null;
   const ago = timeAgo(leak.createdAt, lang);
   const absoluteDate = formatLeakDate(leak.date, {}, lang);
   const urgency = urgencyOf(leak.createdAt, status);
@@ -200,18 +198,6 @@ function LeakCardCompact({
             >
               {meta.label}
             </span>
-            {priorityMeta && (
-              <span
-                className={s.priorityPill}
-                style={{
-                  color: priorityMeta.color,
-                  background: priorityMeta.bg,
-                  borderColor: priorityMeta.border,
-                }}
-              >
-                {priorityMeta.short}
-              </span>
-            )}
             <span className={s.id}>
               {t("cards.tagPrefix")}
               {leak.leak_id ?? leak.index}

@@ -19,7 +19,6 @@ vi.mock("@/utils/status", () => ({
   }),
 }));
 
-vi.mock("@/utils/priority", () => ({ getPriorityMeta: () => null }));
 vi.mock("@/utils/timeAgo", () => ({ timeAgo: () => "now" }));
 vi.mock("@/hooks/usePhotoSrc", () => ({ usePhotoSrc: () => null }));
 vi.mock("@/utils/monitoring", () => ({
@@ -66,7 +65,7 @@ describe("LeakCardCompact location hierarchy", () => {
     });
 
     const bodyText = container.textContent;
-    expect(screen.getByText("Tag № TAG-1")).toBeTruthy();
+    expect(screen.getByText("№ TAG-1")).toBeTruthy();
     expect(
       container.querySelector('[data-description-connector="true"]'),
     ).toBeTruthy();

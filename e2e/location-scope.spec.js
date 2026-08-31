@@ -62,8 +62,8 @@ test("opens the database on the chosen location from any screen", async ({
     .getByRole("button", { name: /Южное УПГ\s*1/ })
     .click();
 
-  await expect(page.getByText("Бирка № 7003", { exact: true })).toBeVisible();
-  await expect(page.getByText("Бирка № 7001", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("№ 7003", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 7001", { exact: true })).toHaveCount(0);
   await expect(page.getByText("1 запись")).toBeVisible();
 });
 
@@ -72,8 +72,8 @@ test("narrows the database to a chosen location and back", async ({ page }) => {
   await seedProject(page);
 
   await openDatabase(page);
-  await expect(page.getByText("Бирка № 7001", { exact: true })).toBeVisible();
-  await expect(page.getByText("Бирка № 7003", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 7001", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 7003", { exact: true })).toBeVisible();
 
   await openLocationBrowser(page);
   const dialog = page.getByRole("dialog", { name: "Выбор объекта" });
@@ -83,18 +83,18 @@ test("narrows the database to a chosen location and back", async ({ page }) => {
   ).toBeVisible();
   await dialog.getByRole("button", { name: /Северное УПГ\s*2/ }).click();
 
-  await expect(page.getByText("Бирка № 7001", { exact: true })).toBeVisible();
-  await expect(page.getByText("Бирка № 7002", { exact: true })).toBeVisible();
-  await expect(page.getByText("Бирка № 7003", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("№ 7001", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 7002", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 7003", { exact: true })).toHaveCount(0);
 
   // The selection is part of the project's saved filters, so it has to outlive
   // a reload — that is what makes it a place you are in rather than a gesture.
   await page.reload();
   await openDatabase(page);
-  await expect(page.getByText("Бирка № 7003", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("№ 7003", { exact: true })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Сбросить выбор объекта" }).click();
-  await expect(page.getByText("Бирка № 7003", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 7003", { exact: true })).toBeVisible();
 });
 
 test("summarises only the chosen location on the main page", async ({
@@ -105,7 +105,7 @@ test("summarises only the chosen location on the main page", async ({
 
   await openHome(page);
   await expect(page.getByText("Последние", { exact: false })).toBeVisible();
-  await expect(page.getByText("Бирка № 7003", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 7003", { exact: true })).toBeVisible();
 
   await openLocationBrowser(page);
   await page
@@ -118,8 +118,8 @@ test("summarises only the chosen location on the main page", async ({
   // set now, so a disagreement between them is the regression to catch.
   const total = page.locator("text=ВСЕГО").locator("..");
   await expect(total).toContainText("2");
-  await expect(page.getByText("Бирка № 7001", { exact: true })).toBeVisible();
-  await expect(page.getByText("Бирка № 7003", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("№ 7001", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 7003", { exact: true })).toHaveCount(0);
   await expect(footerTab(page, "База")).toContainText("2");
 });
 
@@ -150,7 +150,7 @@ test("keeps leaks outside the location when one inside it is edited", async ({
   await page.reload();
   await page.getByRole("button", { name: "Сбросить выбор объекта" }).click();
   await openDatabase(page);
-  await expect(page.getByText("Бирка № 7003", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 7003", { exact: true })).toBeVisible();
   await expect(page.getByText("3 записи")).toBeVisible();
 });
 
@@ -169,7 +169,7 @@ test("drills to the third level without leaving the sheet", async ({
   // Third level: the individual wells.
   await dialog.getByRole("button", { name: /скважина 2\s*1/ }).click();
 
-  await expect(page.getByText("Бирка № 7002", { exact: true })).toBeVisible();
-  await expect(page.getByText("Бирка № 7001", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("Бирка № 7003", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("№ 7002", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 7001", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("№ 7003", { exact: true })).toHaveCount(0);
 });

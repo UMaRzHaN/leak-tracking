@@ -91,9 +91,7 @@ export async function createLeak(page, leakId = "4242", location = null) {
     page.getByRole("heading", { name: "Утечка сохранена" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "На главную" }).click();
-  await expect(
-    page.getByText(`Бирка № ${leakId}`, { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText(`№ ${leakId}`, { exact: true })).toBeVisible();
 }
 
 export async function openLeakDetails(page, currentStatus = "Открыта") {

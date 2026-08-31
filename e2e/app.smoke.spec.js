@@ -216,7 +216,7 @@ test("creates a leak with a photo and keeps it after reload", async ({
   await expect(
     page.getByText("Leak persistence", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Бирка № 5101", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 5101", { exact: true })).toBeVisible();
   await expect(page.getByText("1.5 л/мин", { exact: true })).toBeVisible();
   await expect(page.locator("img")).toHaveCount(1);
 });
@@ -351,7 +351,7 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
 
   await page.getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ }).click();
   await openDatabase(page);
-  await expect(page.getByText("Бирка № 5301", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 5301", { exact: true })).toBeVisible();
 
   await openLeakDetails(page);
   await expect(
@@ -393,10 +393,10 @@ test("rejects a corrupted ZIP backup without changing project data", async ({
 
   await page.getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ }).click();
   await openDatabase(page);
-  await expect(page.getByText("Бирка № 5351", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 5351", { exact: true })).toBeVisible();
 
   await page.reload();
-  await expect(page.getByText("Бирка № 5351", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 5351", { exact: true })).toBeVisible();
 });
 
 test("records and completes a monitoring round", async ({ page }) => {
@@ -462,8 +462,8 @@ test("keeps the hidden bulk status action unavailable", async ({ page }) => {
   await createLeak(page, "5452");
 
   await openDatabase(page);
-  await expect(page.getByText("Бирка № 5451", { exact: true })).toBeVisible();
-  await expect(page.getByText("Бирка № 5452", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 5451", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 5452", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Выбрать всё" }).click();
   await expect(page.getByText("2 выбрано из 2")).toBeVisible();
@@ -504,5 +504,5 @@ test("exports and imports an Excel archive as a project copy", async ({
 
   await page.getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ }).click();
   await openDatabase(page);
-  await expect(page.getByText("Бирка № 5501", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 5501", { exact: true })).toBeVisible();
 });

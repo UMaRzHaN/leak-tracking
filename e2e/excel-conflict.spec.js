@@ -48,7 +48,7 @@ test("overwriting an Excel import restores the state held in the archive", async
   // from merge — otherwise the two branches would be indistinguishable here.
   await leaveSettings(page);
   await openDatabase(page);
-  await expect(page.getByText("Бирка № 5601", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 5601", { exact: true })).toBeVisible();
   await expect(page.getByText(/^Открыта$/i).first()).toBeVisible();
   await expect(page.getByText(/^В ремонте$/i)).toHaveCount(0);
 
@@ -85,10 +85,10 @@ test("merging an Excel import keeps a leak the archive does not contain", async 
   // above, so the assertion that matters is that both leaks survive a reload.
   await leaveSettings(page);
   await openDatabase(page);
-  await expect(page.getByText("Бирка № 5701", { exact: true })).toBeVisible();
-  await expect(page.getByText("Бирка № 5702", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 5701", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 5702", { exact: true })).toBeVisible();
 
   await page.reload();
-  await expect(page.getByText("Бирка № 5701", { exact: true })).toBeVisible();
-  await expect(page.getByText("Бирка № 5702", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 5701", { exact: true })).toBeVisible();
+  await expect(page.getByText("№ 5702", { exact: true })).toBeVisible();
 });
