@@ -6,6 +6,12 @@ import {
 import { findUidConflicts } from "@/domain/componentMerge";
 import { withComponentRemoved } from "@/domain/componentTombstones";
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
+import { useHiddenFields } from "@/app/project/hooks/useHiddenFields";
+import { HIDDEN_FIELD_SCOPES } from "@/app/project/hiddenFieldsStorage";
+import {
+  hideFieldsInSteps,
+  withoutProtected,
+} from "@/configs/shared/hideFields";
 import { loadComponentRegistry } from "@/configs/projectAdapter";
 import { useComponentRegistryStore } from "./ComponentRegistryContext";
 import { logger } from "@/utils/logger";
@@ -34,6 +40,25 @@ export function useComponentRegistry(project) {
   const [registry, setRegistry] = useState(/** @type {any} */ (null));
   const [configError, setConfigError] = useState(/** @type {any} */ (null));
   const validation = registry?.validation ?? null;
+
+  /*
+   * Поля, убранные в настройках, не показываются в форме — как это давно
+   * работает у утечки. Списки у двух сущностей раздельные: имена полей
+   * пересекаются, и общий скрыл бы поле разом на обоих экранах.
+   */
+  const { hiddenFields } = useHiddenFields(
+    project?.id ?? null,
+    HIDDEN_FIELD_SCOPES.COMPONENTS,
+  );
+  const steps = useMemo(() => {
+    if (!registry?.steps) return null;
+    const hidden = withoutProtected(hiddenFields);
+    if (!hidden.size) return registry.steps;
+    return {
+      ...registry.steps,
+      steps: hideFieldsInSteps(registry.steps.steps, hidden),
+    };
+  }, [registry?.steps, hiddenFields]);
 
   useEffect(() => {
     if (!enabled) {
@@ -133,7 +158,7 @@ export function useComponentRegistry(project) {
 
   return {
     enabled,
-    steps: registry?.steps ?? null,
+    steps,
     fields: registry?.fields ?? null,
     voice: registry?.voice ?? null,
     components: sorted,

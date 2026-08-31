@@ -18,6 +18,7 @@ import ProjectManagementDialogs from "./components/ProjectManagementDialogs";
 import { useSettingsPage } from "./hooks/useSettingsPage";
 import s from "./Settings.module.scss";
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
+import ComponentFieldsSection from "./components/ComponentFieldsSection";
 
 export default function Settings(props) {
   const {
@@ -164,6 +165,12 @@ export default function Settings(props) {
           }}
         />
 
+        <ComponentFieldsSection
+          activeProject={activeProject}
+          localeTexts={localeTexts}
+          notify={notify}
+        />
+
         <PhotoRequirementsSection
           activeProject={activeProject}
           leakPhotoRequired={leakPhotoRequired}
@@ -269,26 +276,24 @@ export default function Settings(props) {
       />
 
       {activeProject && (
-        <>
-          <FieldVisibilityModal
-            open={fieldsModalOpen}
-            onClose={() => setFieldsModalOpen(false)}
-            config={projectConfig}
-            hiddenFields={hiddenFields}
-            onSave={(next) => {
-              setHiddenFields(next);
-              setFieldsModalOpen(false);
-              notify(
-                "success",
-                next.size > 0
-                  ? t("settings.notifications.hiddenFieldsCount", {
-                      count: next.size,
-                    })
-                  : localeTexts.notifications.allFieldsActive,
-              );
-            }}
-          />
-        </>
+        <FieldVisibilityModal
+          open={fieldsModalOpen}
+          onClose={() => setFieldsModalOpen(false)}
+          config={projectConfig}
+          hiddenFields={hiddenFields}
+          onSave={(next) => {
+            setHiddenFields(next);
+            setFieldsModalOpen(false);
+            notify(
+              "success",
+              next.size > 0
+                ? t("settings.notifications.hiddenFieldsCount", {
+                    count: next.size,
+                  })
+                : localeTexts.notifications.allFieldsActive,
+            );
+          }}
+        />
       )}
     </div>
   );

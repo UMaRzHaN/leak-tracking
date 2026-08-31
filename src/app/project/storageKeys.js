@@ -26,6 +26,11 @@ export const STORAGE_KEYS = {
   PROJECT_DATA: (projectId) => `${APP_PREFIX}:${projectId}:data_${VERSION}`,
   PROJECT_HIDDEN_FIELDS: (projectId) =>
     `${APP_PREFIX}:${projectId}:hidden_fields_${VERSION}`,
+  // Своим ключом, а не общим с утечками: имена полей у двух сущностей
+  // пересекаются — `location`, `object`, `component` есть и там и там, — и
+  // общий список скрыл бы поле разом на обоих экранах.
+  PROJECT_HIDDEN_COMPONENT_FIELDS: (projectId) =>
+    `${APP_PREFIX}:${projectId}:hidden_component_fields_${VERSION}`,
   PROJECT_EXCEL_EXPORT_MODE: (projectId) =>
     `${APP_PREFIX}:${projectId}:excel_export_mode_${VERSION}`,
   PROJECT_MONITORING_SETTINGS: (projectId) =>

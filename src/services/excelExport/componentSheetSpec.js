@@ -1,5 +1,13 @@
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
 import { loadComponentRegistry } from "@/configs/projectAdapter";
+import {
+  HIDDEN_FIELD_SCOPES,
+  readHiddenFields,
+} from "@/app/project/hiddenFieldsStorage";
+import {
+  hideFieldsInExcel,
+  withoutProtected,
+} from "@/configs/shared/hideFields";
 import { compareComponentsByUid } from "@/domain/componentRegistry";
 import { liveComponents } from "@/domain/componentTombstones";
 import {
@@ -44,7 +52,15 @@ export async function buildComponentSheetSpec(project) {
     const components = liveComponents(stored);
     if (components.length === 0) return null;
 
-    const { sheet, headers, keysOrder } = registry.excel;
+    // Поля, убранные в настройках, не попадают и в книгу: столбец, которого
+    // человек не видит на экране, в отчёте только сбивает. Читается из
+    // хранилища напрямую — сюда, в сборку листа, хук не дотянется.
+    const { sheet, headers, keysOrder } = hideFieldsInExcel(
+      registry.excel,
+      withoutProtected(
+        readHiddenFields(project?.id, HIDDEN_FIELD_SCOPES.COMPONENTS),
+      ),
+    );
     const ordered = [...components].sort(compareComponentsByUid);
 
     return {

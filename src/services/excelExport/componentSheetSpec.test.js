@@ -17,6 +17,8 @@ vi.mock("@/repositories/ComponentRepository", () => ({
 }));
 
 const { buildComponentSheetSpec } = await import("./componentSheetSpec");
+const { HIDDEN_FIELD_SCOPES, hiddenFieldsStorageKey } =
+  await import("@/app/project/hiddenFieldsStorage");
 
 const project = { id: "p1", type: "upstream" };
 const registry = {
@@ -31,12 +33,39 @@ const registry = {
 describe("buildComponentSheetSpec", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     mocks.hasRegistry.mockReturnValue(true);
     mocks.loadRegistry.mockResolvedValue(registry);
     mocks.loadComponents.mockResolvedValue([
       { id: "c2", component_uid: "4243" },
       { id: "c1", component_uid: "4242" },
     ]);
+  });
+
+  it("не выгружает столбец, скрытый в настройках реестра", async () => {
+    // Столбец, которого человек не видит в форме, в отчёте только сбивает.
+    // Список скрытого читается из хранилища: сюда, в сборку листа, хук не
+    // дотянется.
+    localStorage.setItem(
+      hiddenFieldsStorageKey(project.id, HIDDEN_FIELD_SCOPES.COMPONENTS),
+      JSON.stringify(["component_uid"]),
+    );
+
+    const spec = await buildComponentSheetSpec(project);
+
+    expect(spec.keysOrder).toEqual(["index"]);
+    expect(spec.headers).toEqual(["№"]);
+  });
+
+  it("скрытое у утечек столбцов реестра не трогает", async () => {
+    localStorage.setItem(
+      hiddenFieldsStorageKey(project.id, HIDDEN_FIELD_SCOPES.LEAKS),
+      JSON.stringify(["component_uid"]),
+    );
+
+    const spec = await buildComponentSheetSpec(project);
+
+    expect(spec.keysOrder).toEqual(["index", "component_uid"]);
   });
 
   it("orders cards by their identity number, not by storage order", async () => {

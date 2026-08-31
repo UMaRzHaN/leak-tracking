@@ -2,7 +2,11 @@ import { useMemo } from "react";
 import { useProjectConfig } from "./useProjectConfig";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useHiddenFields } from "./useHiddenFields";
-import { PROTECTED_FIELD_KEYS } from "@/configs/shared/protectedFields";
+import {
+  hideFieldsInExcel,
+  hideFieldsInSteps,
+  withoutProtected,
+} from "@/configs/shared/hideFields";
 
 /**
  * Returns the project config with hidden fields filtered out from:
@@ -19,34 +23,18 @@ export function useEffectiveProjectConfig() {
 
   return useMemo(() => {
     if (!hiddenFields.size) return config;
-    const effectiveHiddenFields = new Set(
-      [...hiddenFields].filter((key) => !PROTECTED_FIELD_KEYS.has(key)),
-    );
-
-    if (!effectiveHiddenFields.size) return config;
-
-    const filteredSteps = config.steps.steps
-      .map((step) => ({
-        ...step,
-        fields: step.fields.filter((f) => !effectiveHiddenFields.has(f.key)),
-      }))
-      .filter((step) => step.fields.length > 0);
-
-    const { headers, keysOrder } = config.export.excel;
-    const filteredPairs = keysOrder
-      .map((key, i) => ({ key, header: headers[i] }))
-      .filter(({ key }) => !effectiveHiddenFields.has(key));
+    const hidden = withoutProtected(hiddenFields);
+    if (!hidden.size) return config;
 
     return {
       ...config,
-      steps: { ...config.steps, steps: filteredSteps },
+      steps: {
+        ...config.steps,
+        steps: hideFieldsInSteps(config.steps.steps, hidden),
+      },
       export: {
         ...config.export,
-        excel: {
-          ...config.export.excel,
-          headers: filteredPairs.map((p) => p.header),
-          keysOrder: filteredPairs.map((p) => p.key),
-        },
+        excel: hideFieldsInExcel(config.export.excel, hidden),
       },
     };
   }, [config, hiddenFields]);

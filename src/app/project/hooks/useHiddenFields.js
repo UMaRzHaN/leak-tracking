@@ -1,29 +1,27 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import {
   PROJECT_SETTINGS_UPDATED_EVENT,
   touchProjectSettings,
 } from "@/app/project/projectSettings";
-
-function readFromStorage(key) {
-  if (!key) return new Set();
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch {
-    return new Set();
-  }
-}
+import {
+  HIDDEN_FIELD_SCOPES,
+  hiddenFieldsStorageKey,
+  readHiddenFields,
+} from "@/app/project/hiddenFieldsStorage";
 
 /**
  * Per-project hidden fields list.
  * Returns a Set of field keys that the user has chosen to hide.
  * Uses a revision counter so that setHiddenFields triggers a synchronous re-read.
+ *
+ * `scope` разделяет два независимых списка: поля утечки и поля карточки
+ * компонента. Имена у них пересекаются, и общий список скрывал бы поле разом
+ * на обоих экранах.
  */
-export function useHiddenFields(projectId) {
+export function useHiddenFields(projectId, scope = HIDDEN_FIELD_SCOPES.LEAKS) {
   const storageKey = useMemo(
-    () => (projectId ? STORAGE_KEYS.PROJECT_HIDDEN_FIELDS(projectId) : null),
-    [projectId],
+    () => hiddenFieldsStorageKey(projectId, scope),
+    [projectId, scope],
   );
 
   // revision bump forces useMemo to re-read localStorage
@@ -49,8 +47,8 @@ export function useHiddenFields(projectId) {
 
   const hiddenFields = useMemo(() => {
     void revision;
-    return readFromStorage(storageKey);
-  }, [storageKey, revision]);
+    return readHiddenFields(projectId, scope);
+  }, [projectId, scope, revision]);
 
   const setHiddenFields = useCallback(
     (fields) => {
