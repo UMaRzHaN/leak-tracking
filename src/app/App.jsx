@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import "@/index.scss";
 import { useLocationScope } from "@/hooks/useLocationScope";
 import { useRegistryLocationSource } from "@/hooks/useRegistryLocationSource";
@@ -83,6 +83,15 @@ export default function App() {
    */
   const registryPage = page === "components" || page === "component";
   const [mapBase, setMapBase] = useState(MAP_BASE.LEAKS);
+  /*
+   * Уходя с карты, база возвращается к утечкам — так было, пока она жила
+   * внутри карты и умирала вместе с ней. Подняв её в приложение, я это
+   * поведение молча поменял: карта стала открываться там, где её оставили, и
+   * съёмка руководства сняла «карту утечек» с железом на ней.
+   */
+  useEffect(() => {
+    if (page !== "map") setMapBase(MAP_BASE.LEAKS);
+  }, [page]);
   const componentTree = showsComponentTree(page, mapBase);
   const registryComponents = useRegistryLocationSource(componentTree);
   const componentScope = useLocationScope({
