@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
 import {
-  PHOTO_FIXTURE,
   createProject,
   fillLeakStepOne,
   footerTab,
   importFile,
   leaveSettings,
+  addComponentCard,
   openComponentRegistry,
   setUserProfile,
 } from "./helpers.js";
@@ -19,61 +19,6 @@ import {
  * звене — это потерянный обход, а не неудобство, поэтому путь проверяется
  * целиком, а не по частям.
  */
-
-async function addComponentCard(page, card) {
-  await page
-    .getByRole("button", { name: "Добавить компонент", exact: true })
-    .click();
-  await expect(
-    page.getByText("Новый компонент", { exact: true }),
-  ).toBeVisible();
-
-  await page.getByLabel(/^Индивидуальный номер/).fill(card.uid);
-  await page.getByLabel(/^Номер на схеме/).fill(card.tag);
-  await page.getByLabel(/^Локация/).fill(card.location);
-  // Уход фокуса — то же, что делает человек, переходя к следующему полю.
-  // Пока список подсказок открыт, он перекрывает кнопку «Далее».
-  // (Escape тоже закрывает его — это проверено в Autocomplete.test.jsx.)
-  await page.getByLabel(/^Компонент/).fill(card.name);
-  await page.getByLabel(/^Компонент/).blur();
-
-  await page.getByRole("button", { name: /^Далее/ }).click();
-  await page.getByRole("button", { name: /^Далее/ }).click();
-
-  // Третий шаг — паспорт. Именно эти поля утечка забирает у карточки, поэтому
-  // без них связь нечем проверять.
-  if (card.passport) {
-    for (const [label, value] of Object.entries(card.passport)) {
-      const field = page.getByLabel(new RegExp(`^${label}`));
-      await field.fill(value);
-      await field.blur();
-    }
-  }
-
-  await page.getByRole("button", { name: /^Далее/ }).click();
-
-  // Фото обязательно по умолчанию: карточка без него не сохранится.
-  await page
-    .locator('input[type="file"][accept="image/*"]')
-    .setInputFiles(PHOTO_FIXTURE);
-  await expect(page.getByAltText("Выбранное фото")).toBeVisible();
-  await page.getByRole("button", { name: /Сохранить$/ }).click();
-
-  // Со второй карточки приложение предлагает добить пустые поля значениями
-  // предыдущей. Каждая карточка здесь описывает своё железо, поэтому
-  // отказываемся: иначе манометр унаследовал бы паспорт задвижки.
-  const copyPrevious = page.getByRole("button", { name: "Оставить пустыми" });
-  if (await copyPrevious.isVisible().catch(() => false)) {
-    await copyPrevious.click();
-  }
-
-  await expect(
-    page.getByRole("button", { name: "Добавить компонент", exact: true }),
-  ).toBeEnabled({ timeout: 30_000 });
-  await expect(
-    page.getByText(card.name, { exact: true }).first(),
-  ).toBeVisible();
-}
 
 const VALVE = {
   uid: "9001",
