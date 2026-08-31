@@ -53,6 +53,13 @@ export const components = {
    * abbreviation.
    */
   fields: {
+    // The one exception: for a leak the district is where the leak "was
+    // recorded", and a card describes hardware, not an event. The rest of the
+    // location hints come from `addLeak.fields` as they are — see
+    // localizeComponentSteps.
+    district: {
+      hint: "Administrative district where the component stands",
+    },
     subdivision: {
       hint: "Name of the division the component belongs to",
       placeholder: "e.g. Messoyakha gas plant",
