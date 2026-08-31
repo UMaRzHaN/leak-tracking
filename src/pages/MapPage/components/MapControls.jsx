@@ -5,8 +5,11 @@ import { STATUS_ORDER, getStatusMeta } from "@/utils/status";
 
 import s from "@/pages/MapPage/MapPage.module.scss";
 import { MONITORING_FILTER } from "@/domain/leakFilters";
+import ComponentStatusFilter from "./ComponentStatusFilter";
+import FilterIcon from "./FilterIcon";
 
 const FILTER_MENU = {
+  COMPONENT_STATUS: "componentStatus",
   STATUS: "status",
   PRIORITY: "priority",
   NEARBY: "nearby",
@@ -17,6 +20,7 @@ export default function MapControls({
   onLocate,
   gpsEnabled = true,
   showsComponents = false,
+  componentStatus = /** @type {any} */ (null),
   componentsAvailable = false,
   onToggleBase = /** @type {(() => void)|null} */ (null),
   onOpenSheet,
@@ -47,6 +51,7 @@ export default function MapControls({
   const statusActive = statusFilters.length > 0;
   const prioritySet = new Set(priorityFilters);
   const priorityActive = priorityFilters.length > 0;
+  const isComponentStatusOpen = openFilterMenu === FILTER_MENU.COMPONENT_STATUS;
   const isStatusOpen = openFilterMenu === FILTER_MENU.STATUS;
   const isPriorityOpen = openFilterMenu === FILTER_MENU.PRIORITY;
   const isNearbyOpen = openFilterMenu === FILTER_MENU.NEARBY;
@@ -241,22 +246,7 @@ export default function MapControls({
               aria-expanded={isStatusOpen}
               aria-label={t("map.statusFilter")}
             >
-              <svg
-                className={s.controlIcon}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M9 6h11" />
-                <path d="M9 12h11" />
-                <path d="M9 18h11" />
-                <path d="M4 6h.01" />
-                <path d="M4 12h.01" />
-                <path d="M4 18h.01" />
-              </svg>
+              <FilterIcon />
             </button>
             <div
               className={`${s.filterFlyout} ${isStatusOpen ? s.filterFlyoutOpen : ""}`}
@@ -297,6 +287,17 @@ export default function MapControls({
             </div>
           </div>
         )}
+
+        {/*
+         * Состояние железа — только на своей базе, ровно как статус утечки
+         * только на своей. Отбор общий с реестром: выбранное там видно здесь.
+         */}
+        <ComponentStatusFilter
+          {...componentStatus}
+          shown={showsComponents}
+          open={isComponentStatusOpen}
+          onToggleMenu={() => toggleFilterMenu(FILTER_MENU.COMPONENT_STATUS)}
+        />
 
         {!showsComponents && (
           <div className={s.filterControlWrap}>

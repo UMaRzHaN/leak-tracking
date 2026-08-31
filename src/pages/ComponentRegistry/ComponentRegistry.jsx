@@ -11,13 +11,14 @@ import ComponentDetailsSheet from "@/features/componentRegistry/ComponentDetails
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import Notification from "@/components/ui/Notification/Notification";
 import ComponentFilterBar from "./components/ComponentFilterBar";
+import { useRegistryFilters } from "./hooks/useRegistryFilters";
 import ComponentResultsBar from "./components/ComponentResultsBar";
 import { useInventoryExport } from "./hooks/useInventoryExport";
 import { matchesLeakLocationFilter } from "@/utils/locationFilter";
 import { getDistanceMeters } from "@/utils/geoUtils";
 import { hasCoordsFix } from "@/utils/coordsFix";
 import { NEARBY_RADIUS_OPTIONS } from "@/pages/DataBase/hooks/useDataBaseFilters";
-import { component_statuses } from "@/data/component/componentDictionary";
+import { usedComponentStatuses } from "@/domain/componentStatuses";
 import { createRecordId } from "@/utils/createRecordId";
 import { withStoredPhoto } from "@/features/componentRegistry/componentPhoto";
 import {
@@ -27,7 +28,6 @@ import {
   recordComponentInspected,
 } from "@/domain/componentHistory";
 import s from "./ComponentRegistry.module.scss";
-import { NEARBY_RADIUS_M } from "@/domain/leakFilters";
 
 function withinRadius(component, coords, radius) {
   return (
@@ -84,13 +84,16 @@ export default function ComponentRegistry({
   const { savePhoto } = usePhotoStorage();
 
   const [search, setSearch] = useState("");
-  /** Несколько состояний сразу, как статусы на странице базы. */
-  const [statusFilter, setStatusFilter] = useState(
-    /** @type {string[]} */ ([]),
-  );
+  const {
+    statusFilter,
+    setStatusFilter,
+    nearbyOnly,
+    setNearbyOnly,
+    nearbyRadius,
+    setNearbyRadius,
+  } = useRegistryFilters(sharedFilters);
+
   const [sortAsc, setSortAsc] = useState(true);
-  const [nearbyOnly, setNearbyOnly] = useState(false);
-  const [nearbyRadius, setNearbyRadius] = useState(NEARBY_RADIUS_M);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [bulkInspecting, setBulkInspecting] = useState(false);
   const [editing, setEditing] = useState(/** @type {any} */ (null));
@@ -231,19 +234,10 @@ export default function ComponentRegistry({
    * просто не существовало. Порядок словаря сохранён, дописанное руками идёт
    * после него.
    */
-  const usedStatuses = useMemo(() => {
-    const seen = new Set();
-    for (const component of components) {
-      const status = String(component.component_status ?? "").trim();
-      if (status) seen.add(status);
-    }
-    return [
-      ...component_statuses.filter((status) => seen.has(status)),
-      ...[...seen]
-        .filter((status) => !component_statuses.includes(status))
-        .sort((left, right) => left.localeCompare(right)),
-    ];
-  }, [components]);
+  const usedStatuses = useMemo(
+    () => usedComponentStatuses(components),
+    [components],
+  );
 
   const statusCounts = useMemo(() => {
     const counts = { all: components.length };
@@ -255,13 +249,16 @@ export default function ComponentRegistry({
     return counts;
   }, [components]);
 
-  const toggleStatus = useCallback((status) => {
-    setStatusFilter((current) =>
-      current.includes(status)
-        ? current.filter((item) => item !== status)
-        : [...current, status],
-    );
-  }, []);
+  const toggleStatus = useCallback(
+    (status) => {
+      setStatusFilter((current) =>
+        current.includes(status)
+          ? current.filter((item) => item !== status)
+          : [...current, status],
+      );
+    },
+    [setStatusFilter],
+  );
 
   /*
    * По номеру, а не по дате: список утечек читают по свежести, потому что

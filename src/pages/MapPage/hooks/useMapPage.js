@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useOfflineMapActions } from "./useOfflineMapActions";
 import { useMapFilters } from "./useMapFilters";
 import { useMapSelection } from "./useMapSelection";
 import { useMapExport } from "./useMapExport";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useMapComponents } from "./useMapComponents";
-import { filterComponentMarkers } from "@/pages/MapPage/componentMarkers";
+import { useMapComponentsView } from "./useMapComponentsView";
 import { MAP_BASE } from "@/pages/MapPage/mapBase";
 
 export function useMapPage({
@@ -102,25 +102,16 @@ export function useMapPage({
   });
 
   const showsComponents = base === MAP_BASE.COMPONENTS;
-  const visibleComponents = useMemo(
-    () =>
-      showsComponents
-        ? filterComponentMarkers(componentMarkers, {
-            sharedFilters,
-            nearbyOnly,
-            nearbyRadius,
-            coords,
-          })
-        : [],
-    [
-      componentMarkers,
-      coords,
+  const { visible: visibleComponents, status: componentStatus } =
+    useMapComponentsView({
+      markers: componentMarkers,
+      showsComponents,
+      sharedFilters,
       nearbyOnly,
       nearbyRadius,
-      sharedFilters,
-      showsComponents,
-    ],
-  );
+      coords,
+    });
+
   const shownItems = showsComponents ? visibleComponents : visibleLeaks;
   const shownMarkers = showsComponents ? visibleComponents : markerLeaks;
 
@@ -300,6 +291,7 @@ export function useMapPage({
     visibleLeaks: shownItems,
     base,
     setBase,
+    componentStatus,
     componentsAvailable,
     componentsLoading,
     showsComponents,

@@ -19,6 +19,15 @@ export function useSharedFilters({ projectId, projectType }) {
   const [priorityFilter, setPriorityFilter] = useState(
     /** @type {string[]} */ ([]),
   );
+  /*
+   * Состояние железа — отдельно от статуса утечки: словари разные, а живёт
+   * фильтр здесь по той же причине, что и остальные. Реестр и карта на базе
+   * железа показывают один и тот же отбор, и переход между ними не должен его
+   * сбрасывать.
+   */
+  const [componentStatusFilter, setComponentStatusFilter] = useState(
+    /** @type {string[]} */ ([]),
+  );
   const [mainLocationFilter, setMainLocationFilter] = useState(
     /** @type {string|null} */ (null),
   );
@@ -54,6 +63,7 @@ export function useSharedFilters({ projectId, projectType }) {
     setSearch(stored.search);
     setStatusFilter(stored.statusFilter);
     setPriorityFilter(stored.priorityFilter);
+    setComponentStatusFilter(stored.componentStatusFilter);
     setMainLocationFilter(
       keep(stored.mainLocationFilter, locationConfig?.main),
     );
@@ -79,6 +89,7 @@ export function useSharedFilters({ projectId, projectType }) {
       search,
       statusFilter,
       priorityFilter,
+      componentStatusFilter,
       mainLocationFilter,
       locationFilter,
       lastLocationFilter,
@@ -92,6 +103,7 @@ export function useSharedFilters({ projectId, projectType }) {
     search,
     statusFilter,
     priorityFilter,
+    componentStatusFilter,
     mainLocationFilter,
     locationFilter,
     lastLocationFilter,
@@ -108,6 +120,8 @@ export function useSharedFilters({ projectId, projectType }) {
       setFilter: setStatusFilter,
       priorityFilter,
       setPriorityFilter,
+      componentStatusFilter,
+      setComponentStatusFilter,
       mainLocationFilter,
       setMainLocationFilter,
       locationFilter,
@@ -125,6 +139,7 @@ export function useSharedFilters({ projectId, projectType }) {
       search,
       statusFilter,
       priorityFilter,
+      componentStatusFilter,
       mainLocationFilter,
       locationFilter,
       lastLocationFilter,

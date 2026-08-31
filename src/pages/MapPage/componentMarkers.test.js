@@ -73,3 +73,46 @@ describe("filters that mean something for equipment", () => {
     expect(filtered).toHaveLength(2);
   });
 });
+
+describe("отбор по состоянию железа", () => {
+  const markers = [
+    { lat: 41, lng: 69, component_status: "В работе" },
+    { lat: 41, lng: 69, component_status: "Требует замены" },
+    { lat: 41, lng: 69 },
+  ];
+
+  it("оставляет только выбранные состояния", () => {
+    // Тот же отбор, что на странице реестра: он лежит в общем наборе.
+    const result = filterComponentMarkers(markers, {
+      sharedFilters: { componentStatusFilter: ["Требует замены"] },
+    });
+
+    expect(result.map((m) => m.component_status)).toEqual(["Требует замены"]);
+  });
+
+  it("пустой выбор ничего не отсеивает", () => {
+    expect(
+      filterComponentMarkers(markers, {
+        sharedFilters: { componentStatusFilter: [] },
+      }),
+    ).toHaveLength(3);
+  });
+
+  it("железо без состояния под выбранное не подходит", () => {
+    expect(
+      filterComponentMarkers(markers, {
+        sharedFilters: { componentStatusFilter: ["В работе"] },
+      }),
+    ).toHaveLength(1);
+  });
+
+  it("статус утечки состояние железа не подменяет", () => {
+    // Словари разные: «Открыта» у железа не бывает, и общий список отбирал бы
+    // по чужому.
+    expect(
+      filterComponentMarkers(markers, {
+        sharedFilters: { statusFilter: ["open"] },
+      }),
+    ).toHaveLength(3);
+  });
+});

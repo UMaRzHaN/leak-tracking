@@ -31,6 +31,7 @@ export const map = {
   monitoringAll: "Все теги",
   heatmap: "Тепловая карта",
   statusFilter: "Фильтр по статусу",
+  componentStatusFilter: "Фильтр по состоянию железа",
   priorityFilter: "Фильтр по приоритету",
   nearbyLeaks: "Утечки рядом",
   all: "Все",

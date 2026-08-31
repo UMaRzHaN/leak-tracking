@@ -12,6 +12,9 @@ const DEFAULT_PROJECT_FILTERS = Object.freeze({
   search: "",
   statusFilter: [],
   priorityFilter: [],
+  // Своим ключом, а не общим со статусом утечки: словари разные — у утечки
+  // «Открыта», у железа «В работе», — и общий список отбирал бы по чужому.
+  componentStatusFilter: [],
   mainLocationFilter: null,
   locationFilter: null,
   lastLocationFilter: null,
@@ -47,6 +50,7 @@ export function normalizeProjectFilters(value) {
     search: typeof value?.search === "string" ? value.search : "",
     statusFilter: normalizeValues(value?.statusFilter),
     priorityFilter: normalizeValues(value?.priorityFilter),
+    componentStatusFilter: normalizeValues(value?.componentStatusFilter),
     mainLocationFilter: normalizeLocationFilter(value?.mainLocationFilter),
     locationFilter: normalizeLocationFilter(value?.locationFilter),
     // Third location level. Absent from filters written before it existed,

@@ -40,10 +40,12 @@ export function toComponentMarkers(components = []) {
 /**
  * The filters that mean something for equipment.
  *
- * Place and distance do; status, priority and the monitoring round do not —
- * those describe how a leak is being dealt with, and a valve is not being
- * dealt with. The map hides those buttons on this base rather than leaving
- * them there doing nothing.
+ * Место, расстояние и состояние железа — да; статус утечки, приоритет и обход
+ * — нет: они описывают, как разбираются с утечкой, а с задвижкой не
+ * разбираются. Кнопки этих трёх карта на базе железа не показывает вовсе.
+ *
+ * Состояние берётся из общего набора своим ключом: у утечки статусы свои, и
+ * общий список отбирал бы железо по «Открыта».
  *
  * @param {Record<string, any>[]} markers
  * @param {{sharedFilters?: Record<string, any>|null, nearbyOnly?: boolean, nearbyRadius?: number, coords?: {lat: number, lng: number}|null}} options
@@ -62,7 +64,16 @@ export function filterComponentMarkers(
       ? coords
       : null;
 
+  const statuses = sharedFilters?.componentStatusFilter ?? [];
+
   return markers.filter((marker) => {
+    if (
+      statuses.length > 0 &&
+      !statuses.includes(String(marker.component_status ?? ""))
+    ) {
+      return false;
+    }
+
     if (
       !matchesLeakLocationFilter(marker, sharedFilters?.mainLocationFilter) ||
       !matchesLeakLocationFilter(marker, sharedFilters?.locationFilter) ||

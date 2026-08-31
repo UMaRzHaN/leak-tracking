@@ -32,6 +32,7 @@ export default function MapPage({
     setBase,
     componentsAvailable,
     showsComponents,
+    componentStatus,
     monitoringFilter,
     hasMonitoringRound,
     activeProject,
@@ -75,6 +76,7 @@ export default function MapPage({
         onLocate={locateMe}
         gpsEnabled={gpsEnabled}
         showsComponents={showsComponents}
+        componentStatus={componentStatus}
         componentsAvailable={componentsAvailable}
         onToggleBase={() =>
           setBase(

@@ -30,6 +30,7 @@ export const map = {
   monitoringAll: "All tags",
   heatmap: "Heatmap",
   statusFilter: "Status filter",
+  componentStatusFilter: "Equipment condition filter",
   priorityFilter: "Priority filter",
   nearbyLeaks: "Nearby leaks",
   all: "All",
