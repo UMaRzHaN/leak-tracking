@@ -1,5 +1,5 @@
 import PageHeader from "@/components/layout/PageHeader/PageHeader";
-import FieldVisibilityModal from "@/features/fieldVisibility/FieldVisibilityModal";
+import LeakFieldsModal from "./components/LeakFieldsModal";
 import Notification from "@/components/ui/Notification/Notification";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import AddProjectForm from "./components/AddProjectForm";
@@ -18,7 +18,8 @@ import ProjectManagementDialogs from "./components/ProjectManagementDialogs";
 import { useSettingsPage } from "./hooks/useSettingsPage";
 import s from "./Settings.module.scss";
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
-import ComponentFieldsSection from "./components/ComponentFieldsSection";
+import ComponentFieldsModal from "./components/ComponentFieldsModal";
+import { useComponentFieldVisibility } from "./hooks/useComponentFieldVisibility";
 
 export default function Settings(props) {
   const {
@@ -91,6 +92,7 @@ export default function Settings(props) {
     updateSyncIdEditorValue,
   } = useSettingsPage(props);
   const { data = [], onBack, setPage } = props;
+  const componentFields = useComponentFieldVisibility(activeProject);
 
   return (
     <div className={s.settings}>
@@ -163,12 +165,7 @@ export default function Settings(props) {
             setMonitoringExportMode(nextMode);
             notify("success", localeTexts.notifications.excelExportModeSaved);
           }}
-        />
-
-        <ComponentFieldsSection
-          activeProject={activeProject}
-          localeTexts={localeTexts}
-          notify={notify}
+          registry={componentFields.column}
         />
 
         <PhotoRequirementsSection
@@ -275,24 +272,23 @@ export default function Settings(props) {
         }}
       />
 
+      {componentFields.available && (
+        <ComponentFieldsModal
+          {...componentFields.modal}
+          localeTexts={localeTexts}
+          notify={notify}
+        />
+      )}
+
       {activeProject && (
-        <FieldVisibilityModal
+        <LeakFieldsModal
           open={fieldsModalOpen}
           onClose={() => setFieldsModalOpen(false)}
           config={projectConfig}
           hiddenFields={hiddenFields}
-          onSave={(next) => {
-            setHiddenFields(next);
-            setFieldsModalOpen(false);
-            notify(
-              "success",
-              next.size > 0
-                ? t("settings.notifications.hiddenFieldsCount", {
-                    count: next.size,
-                  })
-                : localeTexts.notifications.allFieldsActive,
-            );
-          }}
+          setHiddenFields={setHiddenFields}
+          localeTexts={localeTexts}
+          notify={notify}
         />
       )}
     </div>

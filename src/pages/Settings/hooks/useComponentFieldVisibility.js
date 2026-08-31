@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
 import { useHiddenFields } from "@/app/project/hooks/useHiddenFields";
 import { HIDDEN_FIELD_SCOPES } from "@/app/project/hiddenFieldsStorage";
@@ -47,10 +47,24 @@ export function useComponentFieldVisibility(project) {
     };
   }, [available, project]);
 
-  return {
-    available: available && Boolean(config),
-    config,
-    hiddenFields,
-    setHiddenFields,
-  };
+  const [open, setOpen] = useState(false);
+  const ready = available && Boolean(config);
+
+  /*
+   * Готовыми кусками, а не россыпью: раздел «поля и Excel» получает колонку,
+   * окно — свои свойства. Собирать это на месте значило бы держать в
+   * `Settings` десяток строк про реестр, которых ему знать незачем.
+   */
+  return useMemo(
+    () => ({
+      available: ready,
+      column: ready ? { hiddenFields, onConfigure: () => setOpen(true) } : null,
+      modal: {
+        open,
+        onClose: () => setOpen(false),
+        fields: { config, hiddenFields, setHiddenFields },
+      },
+    }),
+    [ready, open, config, hiddenFields, setHiddenFields],
+  );
 }

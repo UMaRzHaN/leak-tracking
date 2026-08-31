@@ -1,24 +1,31 @@
 import { EXCEL_MONITORING_EXPORT_MODE } from "@/utils/excelExportMode";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import FieldsColumn from "./FieldsColumn";
 import s from "../Settings.module.scss";
+import c from "./FieldsColumns.module.scss";
 
 /**
- * Раздел «скрыть поля» — один на две сущности.
+ * «Поля и Excel» — один блок на обе сущности, в две колонки.
  *
- * Заголовок и описание приходят снаружи: у утечки и у карточки компонента
- * списки полей раздельные, а вид у раздела один. Выбор режима журнала
- * мониторинга рисуется только там, где его передали, — к реестру он отношения
- * не имеет.
+ * Раньше это были два одинаковых раздела подряд, и между ними вклинивался
+ * выбор режима журнала мониторинга: человек читал «Настроить поля», потом
+ * что-то про обходы, потом снова «Настроить поля» — и не понимал, чем вторая
+ * кнопка отличается от первой. Рядом разница видна сразу.
+ *
+ * Списки скрытого при этом остаются раздельными: имена полей у утечки и у
+ * карточки компонента пересекаются.
+ *
+ * Колонка реестра появляется только у проектов с реестром; без неё блок
+ * остаётся одноколоночным, как и был.
  */
 export default function FieldVisibilitySection({
   activeProject,
   hiddenFields,
   localeTexts,
-  title = /** @type {string|null} */ (null),
-  description = /** @type {string|null} */ (null),
   exportMode = /** @type {string|null} */ (null),
   onConfigure,
   onExportModeChange = /** @type {((mode: string) => void)|null} */ (null),
+  registry = /** @type {any} */ (null),
 }) {
   const { t } = useLanguage();
 
@@ -27,23 +34,25 @@ export default function FieldVisibilitySection({
   return (
     <section className={s.section}>
       <div className={s.sectionHead}>
-        <h2 className={s.sectionTitle}>
-          {title ?? localeTexts.fieldsAndExcel}
-        </h2>
+        <h2 className={s.sectionTitle}>{localeTexts.fieldsAndExcel}</h2>
       </div>
       <div className={s.calcBody}>
-        <p className={s.description}>
-          {description ?? localeTexts.fieldsDescription}
-          {hiddenFields.size > 0 && (
-            <strong>
-              {" "}
-              {t("settings.hiddenFieldsCount", { count: hiddenFields.size })}
-            </strong>
+        <div className={c.fieldsColumns}>
+          <FieldsColumn
+            title={t("settings.fieldsLeaks")}
+            description={localeTexts.fieldsDescription}
+            hiddenFields={hiddenFields}
+            onConfigure={onConfigure}
+          />
+          {registry && (
+            <FieldsColumn
+              title={t("settings.fieldsRegistry")}
+              description={t("settings.componentFieldsDescription")}
+              hiddenFields={registry.hiddenFields}
+              onConfigure={registry.onConfigure}
+            />
           )}
-        </p>
-        <button className={s.editVarsBtn} type="button" onClick={onConfigure}>
-          {localeTexts.configureFields}
-        </button>
+        </div>
 
         {onExportModeChange && (
           <div className={s.exportModeInline}>

@@ -202,9 +202,10 @@ export const settings = {
   hiddenFields: "Скрыто",
   configureFields: "Настроить поля",
 
-  componentFieldsAndExcel: "Поля реестра и Excel",
+  fieldsLeaks: "Утечки",
+  fieldsRegistry: "Реестр",
   componentFieldsDescription:
-    "То же для карточки компонента: скрытые поля исчезнут из формы реестра и из столбцов его выгрузки. Список свой — поля утечки он не трогает.",
+    "Скрытые поля исчезнут из формы реестра и из столбцов его выгрузки. Список свой — поля утечки он не трогает.",
 
   excelExportMode: "Журнал мониторинга в Excel",
   excelExportFull: "Полная история",

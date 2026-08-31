@@ -203,9 +203,10 @@ export const settings = {
   hiddenFields: "Hidden",
   configureFields: "Configure Fields",
 
-  componentFieldsAndExcel: "Registry fields and Excel",
+  fieldsLeaks: "Leaks",
+  fieldsRegistry: "Registry",
   componentFieldsDescription:
-    "The same for the component card: hidden fields leave the registry form and its export columns. The list is its own — it does not touch leak fields.",
+    "Hidden fields leave the registry form and its export columns. The list is its own — it does not touch leak fields.",
 
   excelExportMode: "Monitoring Log in Excel",
   excelExportFull: "Full History",

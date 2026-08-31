@@ -72,7 +72,7 @@
     "src/pages/Monitoring/hooks/useMonitoringPage.js": 784,
     "src/pages/ProjectSetup/ProjectSetupScreen.jsx": 466,
     "src/pages/ProjectSetup/ProjectSetupScreen.module.scss": 515,
-    "src/pages/Settings/Settings.module.scss": 959,
+    "src/pages/Settings/Settings.module.scss": 950,
     "src/pages/Settings/components/LocalSyncSection.jsx": 350,
     "src/pages/Settings/hooks/useBackupActions.js": 426,
     "src/pages/Settings/hooks/useLocalSync.js": 515,
