@@ -6,15 +6,15 @@ import { useMapExport } from "./useMapExport";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useMapComponents } from "./useMapComponents";
 import { filterComponentMarkers } from "@/pages/MapPage/componentMarkers";
-
-/** Which of the project's two bases the map is showing. */
-export const MAP_BASE = { LEAKS: "leaks", COMPONENTS: "components" };
+import { MAP_BASE } from "@/pages/MapPage/mapBase";
 
 export function useMapPage({
   leaks,
   coords,
   gpsEnabled = true,
   sharedFilters = /** @type {any} */ (null),
+  base: controlledBase = /** @type {string|null} */ (null),
+  onBaseChange = /** @type {((base: string) => void)|null} */ (null),
 }) {
   const { activeProject } = useProjectData();
   const exportProjectFolder = activeProject?.folderName;
@@ -51,7 +51,11 @@ export function useMapPage({
    * объект, их считают разные люди для разных отчётов, и смешанные булавки
    * сделали бы вопрос «сколько их» без ответа для обеих.
    */
-  const [base, setBase] = useState(MAP_BASE.LEAKS);
+  const [ownBase, setOwnBase] = useState(MAP_BASE.LEAKS);
+  // Базу может держать приложение: по ней шапка выбирает, чьё дерево мест
+  // показывать. Своя остаётся на случай, когда карту открывают саму по себе.
+  const base = controlledBase ?? ownBase;
+  const setBase = onBaseChange ?? setOwnBase;
   const {
     available: componentsAvailable,
     markers: componentMarkers,

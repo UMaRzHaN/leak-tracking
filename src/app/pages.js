@@ -6,6 +6,8 @@
  * a stateful hook to ask what kind of page it is showing.
  */
 
+import { MAP_BASE } from "@/pages/MapPage/mapBase";
+
 export const HOME_PAGE = "";
 
 /**
@@ -57,4 +59,22 @@ export function isListPage(page) {
 
 export function normalizePage(value) {
   return typeof value === "string" && APP_PAGES.has(value) ? value : HOME_PAGE;
+}
+
+/**
+ * Показывает ли экран железо, а не утечки.
+ *
+ * От этого зависит, чьё дерево мест открывает выбор места в шапке. Реестр
+ * показывает железо всегда, карта — когда на ней включена база компонентов;
+ * иначе рядом с «Мессояхское УПГ» стояло бы число утечек, а открывалась папка
+ * с железом. Ровно эту рассогласованность когда-то развели на реестре, а карта
+ * осталась с ней.
+ *
+ * @param {string} page
+ * @param {string} [mapBase]
+ * @returns {boolean}
+ */
+export function showsComponentTree(page, mapBase) {
+  if (page === "components" || page === "component") return true;
+  return page === "map" && mapBase === MAP_BASE.COMPONENTS;
 }

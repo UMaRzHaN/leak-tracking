@@ -141,6 +141,8 @@ export default function AppRoutes({
   setRequestedMonitoringLeakId,
   setRequestedMonitoringLeakIds,
   sharedFilters,
+  mapBase,
+  onMapBaseChange,
   userProfile,
 }) {
   const listPage = isListPage(page);
@@ -267,6 +269,8 @@ export default function AppRoutes({
             coords={coords}
             gpsEnabled={gpsEnabled}
             sharedFilters={sharedFilters}
+            base={mapBase}
+            onBaseChange={onMapBaseChange}
           />
         )}
       </Suspense>

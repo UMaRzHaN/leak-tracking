@@ -2,6 +2,8 @@ import { lazy, Suspense, useMemo, useState } from "react";
 import "@/index.scss";
 import { useLocationScope } from "@/hooks/useLocationScope";
 import { useRegistryLocationSource } from "@/hooks/useRegistryLocationSource";
+import { MAP_BASE } from "@/pages/MapPage/mapBase";
+import { showsComponentTree } from "./pages";
 import { STATUS } from "@/utils/status";
 
 const Header = lazy(() => import("@/components/layout/Header/Header"));
@@ -80,13 +82,15 @@ export default function App() {
    * с железом: фильтр общий, а деревья у сущностей разные.
    */
   const registryPage = page === "components" || page === "component";
-  const registryComponents = useRegistryLocationSource(registryPage);
+  const [mapBase, setMapBase] = useState(MAP_BASE.LEAKS);
+  const componentTree = showsComponentTree(page, mapBase);
+  const registryComponents = useRegistryLocationSource(componentTree);
   const componentScope = useLocationScope({
     leaks: registryComponents,
     sharedFilters,
     projectType: activeProject?.type,
   });
-  const locationScope = registryPage ? componentScope : leakScope;
+  const locationScope = componentTree ? componentScope : leakScope;
 
   const scopedOpenCount = useMemo(
     () =>
@@ -163,6 +167,8 @@ export default function App() {
         setPage={setPage}
         setRequestedMonitoringLeakId={setRequestedMonitoringLeakId}
         setRequestedMonitoringLeakIds={setRequestedMonitoringLeakIds}
+        mapBase={mapBase}
+        onMapBaseChange={setMapBase}
         sharedFilters={sharedFilters}
         userProfile={userProfile}
       />

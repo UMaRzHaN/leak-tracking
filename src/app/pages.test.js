@@ -4,9 +4,11 @@ import {
   FULL_SCREEN_PAGES,
   isFullScreenPage,
   isListPage,
+  showsComponentTree,
   LIST_PAGES,
   normalizePage,
 } from "@/app/pages";
+import { MAP_BASE } from "@/pages/MapPage/mapBase";
 
 describe("app pages", () => {
   it("keeps every navigable page in one allow-list", () => {
@@ -37,5 +39,26 @@ describe("app pages", () => {
 
     expect(isFullScreenPage("component")).toBe(true);
     expect(isListPage("component")).toBe(false);
+  });
+});
+
+describe("чьё дерево мест показывает экран", () => {
+  it("реестр — всегда железо", () => {
+    expect(showsComponentTree("components")).toBe(true);
+    expect(showsComponentTree("component")).toBe(true);
+  });
+
+  it("карта — по включённой на ней базе", () => {
+    // Раньше шапка на карте всегда считала утечки: рядом с «Мессояхское УПГ»
+    // стояло их число, а на карте в это время было железо.
+    expect(showsComponentTree("map", MAP_BASE.COMPONENTS)).toBe(true);
+    expect(showsComponentTree("map", MAP_BASE.LEAKS)).toBe(false);
+    expect(showsComponentTree("map")).toBe(false);
+  });
+
+  it("на остальных экранах база карты ничего не решает", () => {
+    for (const page of ["", "db", "monitoring", "add", "settings"]) {
+      expect(showsComponentTree(page, MAP_BASE.COMPONENTS)).toBe(false);
+    }
   });
 });

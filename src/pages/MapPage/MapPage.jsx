@@ -1,4 +1,5 @@
-import { MAP_BASE, useMapPage } from "./hooks/useMapPage";
+import { useMapPage } from "./hooks/useMapPage";
+import { MAP_BASE } from "./mapBase";
 import { useRenderMetric } from "@/utils/renderMetrics";
 import MapControls from "./components/MapControls";
 import TileProgress from "./components/TileProgress";
@@ -11,6 +12,10 @@ export default function MapPage({
   coords,
   gpsEnabled = true,
   sharedFilters,
+  // Приходит из приложения: по ней шапка выбирает дерево мест. Хук ниже
+  // отдаёт действующую базу — свою, если управляющей не передали.
+  base: controlledBase,
+  onBaseChange,
 }) {
   useRenderMetric("MapPage");
 
@@ -48,7 +53,14 @@ export default function MapPage({
     handleExportKML,
     focusLeak,
     locateMe,
-  } = useMapPage({ leaks, coords, gpsEnabled, sharedFilters });
+  } = useMapPage({
+    leaks,
+    coords,
+    gpsEnabled,
+    sharedFilters,
+    base: controlledBase,
+    onBaseChange,
+  });
 
   return (
     <div className={s.mapWrapper}>
