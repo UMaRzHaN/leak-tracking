@@ -5,6 +5,7 @@ import {
   getRepairDonePhoto,
   getRepairPhoto,
   getRepairStartedAt,
+  withReplacedRepairPhoto,
   appendLeakEvent,
   createLeakEvent,
   getEventsOfType,
@@ -327,5 +328,71 @@ describe("вехи ремонта одним ответом", () => {
   it("молчит, когда сказать нечего", () => {
     expect(getRepairStartedAt({ id: "1" })).toBeNull();
     expect(getRepairPhoto({ id: "1" })).toBeNull();
+  });
+});
+
+describe("правка снимка починки", () => {
+  const repaired = () => ({
+    events: [
+      {
+        id: "e1",
+        type: LEAK_EVENT_TYPES.REPAIR_STARTED,
+        date: at(1),
+        photo: "idb://a",
+      },
+      {
+        id: "e2",
+        type: LEAK_EVENT_TYPES.REPAIR_DONE,
+        date: at(2),
+        photo: "idb://b",
+      },
+      {
+        id: "e3",
+        type: LEAK_EVENT_TYPES.REPAIR_STARTED,
+        date: at(5),
+        photo: "idb://c",
+      },
+    ],
+  });
+
+  it("меняет вложение у последней починки, а не заводит новую", () => {
+    const events = withReplacedRepairPhoto(
+      repaired(),
+      LEAK_EVENT_TYPES.REPAIR_STARTED,
+      "idb://fixed",
+    );
+
+    expect(events).toHaveLength(3);
+    expect(events.map((event) => event.photo)).toEqual([
+      "idb://a",
+      "idb://b",
+      "idb://fixed",
+    ]);
+  });
+
+  it("не трогает событие другого вида", () => {
+    const events = withReplacedRepairPhoto(
+      repaired(),
+      LEAK_EVENT_TYPES.REPAIR_DONE,
+      "idb://fixed",
+    );
+
+    expect(events.map((event) => event.photo)).toEqual([
+      "idb://a",
+      "idb://fixed",
+      "idb://c",
+    ]);
+  });
+
+  it("молчит, когда менять нечего", () => {
+    // Запись, заведённая до ленты, или устранённая обходом: снимок остаётся
+    // там, где у неё и лежал.
+    expect(
+      withReplacedRepairPhoto(
+        { photo_after: "idb://old" },
+        LEAK_EVENT_TYPES.REPAIR_DONE,
+        "idb://new",
+      ),
+    ).toBeNull();
   });
 });

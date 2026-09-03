@@ -417,3 +417,30 @@ export function getRepairDonePhoto(leak) {
   if (leak?.status !== "resolved") return null;
   return lastEventValue(leak, LEAK_EVENT_TYPES.INSPECTION, "photo");
 }
+
+/**
+ * Заменяет снимок у последней починки своего вида.
+ *
+ * Правка фото в карточке — не новый ремонт, а исправление снимка у того,
+ * который уже был: событие остаётся тем же, меняется его вложение.
+ *
+ * Если события нет, менять нечего — так бывает у записей, заведённых до
+ * ленты, и у устранённых обходом, где «фото после» принадлежит осмотру.
+ * Тогда возвращается `null`, и вызывающий кладёт снимок туда, где он у такой
+ * записи и лежал, — в веху.
+ *
+ * @param {any} leak
+ * @param {string} type
+ * @param {string|null} photo
+ * @returns {any[]|null} новая лента или `null`, если менять было нечего
+ */
+export function withReplacedRepairPhoto(leak, type, photo) {
+  const events = sortLeakEvents(getLeakEvents(leak));
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    if (events[index]?.type !== type) continue;
+    const next = [...events];
+    next[index] = { ...next[index], photo };
+    return next;
+  }
+  return null;
+}

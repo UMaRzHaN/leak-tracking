@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { isPinkBagEquipment } from "@/utils/calculations/calculations";
+import {
+  LEAK_EVENT_TYPES,
+  getRepairDonePhoto,
+  getRepairPhoto,
+  withReplacedRepairPhoto,
+} from "@/domain/leakEvents";
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import {
   CALCULATION_PARAM_KEYS,
@@ -26,6 +32,29 @@ import {
 } from "../utils/persistPhotoReplacements";
 import { ignoredError } from "@/utils/ignoredError";
 import { fromEntries } from "@/utils/fromEntries";
+
+/**
+ * Куда лечь заменённым снимкам починки.
+ *
+ * Возвращает либо новую ленту, либо вехи — смотря есть ли событие, которому
+ * снимок принадлежит.
+ */
+function repairPhotoPatch(leak, photoRepairPath, photoAfterPath) {
+  let events = /** @type {any[]|null} */ (null);
+  const patch = {};
+
+  for (const [path, type, field] of [
+    [photoRepairPath, LEAK_EVENT_TYPES.REPAIR_STARTED, "photo_repair"],
+    [photoAfterPath, LEAK_EVENT_TYPES.REPAIR_DONE, "photo_after"],
+  ]) {
+    if (!path) continue;
+    const next = withReplacedRepairPhoto({ ...leak, events }, type, path);
+    if (next) events = next;
+    else patch[field] = path;
+  }
+
+  return events ? { ...patch, events } : patch;
+}
 
 export function useLeakDetailsPersistence({
   leak,
@@ -136,8 +165,11 @@ export function useLeakDetailsPersistence({
         ...textPatch,
         ...(coordsEditedByHand ? { coords_accuracy: undefined } : {}),
         photo: photoPath ?? leak.photo,
-        photo_after: photoAfterPath ?? leak.photo_after,
-        photo_repair: photoRepairPath ?? leak.photo_repair,
+        // Правка снимка починки — не новый ремонт, а исправление вложения у
+        // того, который уже был: меняется событие, а не поле записи. У записи
+        // без события — заведённой до ленты или устранённой обходом — менять
+        // нечего, и снимок остаётся там, где у неё и лежал.
+        ...repairPhotoPatch(leak, photoRepairPath, photoAfterPath),
         calculationParams: localCalcParams,
         calculationVersion: CALCULATION_PARAMS_VERSION,
         updatedAt: Date.now(),
@@ -185,8 +217,8 @@ export function useLeakDetailsPersistence({
         referenceLeaks: replaceLeakInCollection(allLeaks, withPriority),
         replacements: [
           [isPhotoDirty, leak.photo, photoPath],
-          [isAfterDirty, leak.photo_after, photoAfterPath],
-          [isRepairDirty, leak.photo_repair, photoRepairPath],
+          [isAfterDirty, getRepairDonePhoto(leak), photoAfterPath],
+          [isRepairDirty, getRepairPhoto(leak), photoRepairPath],
         ],
         deletePhoto,
       });
@@ -196,8 +228,8 @@ export function useLeakDetailsPersistence({
         referenceLeaks: allLeaks,
         replacements: [
           [isPhotoDirty, leak.photo, photoPath],
-          [isAfterDirty, leak.photo_after, photoAfterPath],
-          [isRepairDirty, leak.photo_repair, photoRepairPath],
+          [isAfterDirty, getRepairDonePhoto(leak), photoAfterPath],
+          [isRepairDirty, getRepairPhoto(leak), photoRepairPath],
         ],
         deletePhoto,
       });
@@ -270,15 +302,18 @@ export function useLeakDetailsPersistence({
       const nextData = replaceLeakInCollection(allLeaks, next);
       await onSave(next);
       setResolveOpen(false);
-      if (leak.photo_after && leak.photo_after !== photo_after) {
+      if (
+        getRepairDonePhoto(leak) &&
+        getRepairDonePhoto(leak) !== photo_after
+      ) {
         await deletePhotoIfUnreferenced(
-          leak.photo_after,
+          getRepairDonePhoto(leak),
           nextData,
           deletePhoto,
         ).catch(ignoredError("leakDetails.photoCleanup"));
       }
     } catch {
-      if (photo_after && photo_after !== leak.photo_after) {
+      if (photo_after && photo_after !== getRepairDonePhoto(leak)) {
         await deletePhotoIfUnreferenced(
           photo_after,
           allLeaks,
@@ -305,9 +340,9 @@ export function useLeakDetailsPersistence({
       const nextData = replaceLeakInCollection(allLeaks, next);
       await onSave(next);
       setRepairOpen(false);
-      if (leak.photo_repair && leak.photo_repair !== photo_repair) {
+      if (getRepairPhoto(leak) && getRepairPhoto(leak) !== photo_repair) {
         await deletePhotoIfUnreferenced(
-          leak.photo_repair,
+          getRepairPhoto(leak),
           nextData,
           deletePhoto,
         ).catch(ignoredError("leakDetails.photoCleanup"));
@@ -318,7 +353,7 @@ export function useLeakDetailsPersistence({
         deletePhoto,
       ).catch(ignoredError("leakDetails.photoCleanup"));
     } catch {
-      if (photo_repair && photo_repair !== leak.photo_repair) {
+      if (photo_repair && photo_repair !== getRepairPhoto(leak)) {
         await deletePhotoIfUnreferenced(
           photo_repair,
           allLeaks,
