@@ -353,6 +353,19 @@ describe("два телефона, обмен схемами", () => {
  * Телефоны заводятся с одинаковыми часами нарочно: только так до правила
  * «на равенстве побеждает удаление» вообще доходит дело.
  */
+/**
+ * Свой срок для случайных сценариев.
+ *
+ * Пятисекундного по умолчанию им хватает только на свободной машине. Это
+ * перебор из десятков прогонов подряд — чистый счёт без ввода-вывода, — и на
+ * занятой машине или в CI он растягивается кратно: измеренные 270 мс
+ * превращались в шесть секунд, и набор падал не там, где что-то сломалось.
+ *
+ * Срок здесь сторожит зависание, а не медлительность: проверок он не
+ * ослабляет — при расхождении тест падает сравнением, а не по времени.
+ */
+const RANDOM_SCENARIO_TIMEOUT_MS = 15_000;
+
 describe("случайные сценарии на трёх телефонах", () => {
   const NAMES = ["устье.pdf", "коллектор.pdf", "замерная.pdf"];
 
@@ -395,57 +408,69 @@ describe("случайные сценарии на трёх телефонах",
     return { phones, history };
   }
 
-  it("сходятся из любого сочетания правок и обменов", async () => {
-    const diverged = [];
-    for (let seed = 1; seed <= 40; seed += 1) {
-      const {
-        phones: [a, b, c],
-      } = await play(seed);
-      const first = JSON.stringify(snapshot(a));
-      if (
-        first !== JSON.stringify(snapshot(b)) ||
-        first !== JSON.stringify(snapshot(c))
-      ) {
-        diverged.push(seed);
-      }
-    }
-
-    expect(diverged).toEqual([]);
-  });
-
-  it("остаётся ровно то, что последним завели, а не удалили", async () => {
-    // Проверка «все трое пришли к одному» молчит, когда телефоны дружно
-    // сходятся на неверном: воскрешённый чертёж одинаков у всех.
-    const wrong = [];
-    for (let seed = 1; seed <= 40; seed += 1) {
-      const { phones, history } = await play(seed);
-      const should = expected(history);
-      for (const target of phones) {
-        if (JSON.stringify(snapshot(target)) !== JSON.stringify(should)) {
-          wrong.push(`${seed}:${target.name}`);
-        }
-      }
-    }
-
-    expect(wrong).toEqual([]);
-  });
-
-  it("байты не расходятся со списком", async () => {
-    // Чертёж, который список считает живым, а байтов под ним нет, откроется
-    // сообщением «файл не найден»; лишние байты остаются занимать место.
-    const mismatched = [];
-    for (let seed = 1; seed <= 40; seed += 1) {
-      const { phones } = await play(seed);
-      for (const target of phones) {
+  it(
+    "сходятся из любого сочетания правок и обменов",
+    async () => {
+      const diverged = [];
+      for (let seed = 1; seed <= 40; seed += 1) {
+        const {
+          phones: [a, b, c],
+        } = await play(seed);
+        const first = JSON.stringify(snapshot(a));
         if (
-          JSON.stringify(bytes(target).map(nameOf)) !==
-          JSON.stringify(snapshot(target))
+          first !== JSON.stringify(snapshot(b)) ||
+          first !== JSON.stringify(snapshot(c))
         ) {
-          mismatched.push(`${seed}:${target.name}`);
+          diverged.push(seed);
         }
       }
-    }
 
-    expect(mismatched).toEqual([]);
-  });
+      expect(diverged).toEqual([]);
+    },
+    RANDOM_SCENARIO_TIMEOUT_MS,
+  );
+
+  it(
+    "остаётся ровно то, что последним завели, а не удалили",
+    async () => {
+      // Проверка «все трое пришли к одному» молчит, когда телефоны дружно
+      // сходятся на неверном: воскрешённый чертёж одинаков у всех.
+      const wrong = [];
+      for (let seed = 1; seed <= 40; seed += 1) {
+        const { phones, history } = await play(seed);
+        const should = expected(history);
+        for (const target of phones) {
+          if (JSON.stringify(snapshot(target)) !== JSON.stringify(should)) {
+            wrong.push(`${seed}:${target.name}`);
+          }
+        }
+      }
+
+      expect(wrong).toEqual([]);
+    },
+    RANDOM_SCENARIO_TIMEOUT_MS,
+  );
+
+  it(
+    "байты не расходятся со списком",
+    async () => {
+      // Чертёж, который список считает живым, а байтов под ним нет, откроется
+      // сообщением «файл не найден»; лишние байты остаются занимать место.
+      const mismatched = [];
+      for (let seed = 1; seed <= 40; seed += 1) {
+        const { phones } = await play(seed);
+        for (const target of phones) {
+          if (
+            JSON.stringify(bytes(target).map(nameOf)) !==
+            JSON.stringify(snapshot(target))
+          ) {
+            mismatched.push(`${seed}:${target.name}`);
+          }
+        }
+      }
+
+      expect(mismatched).toEqual([]);
+    },
+    RANDOM_SCENARIO_TIMEOUT_MS,
+  );
 });
