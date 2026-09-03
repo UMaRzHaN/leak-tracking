@@ -64,6 +64,57 @@ describe("leakLifecycle", () => {
     );
   });
 
+  it("keeps both repairs of a leak that came back", () => {
+    // Вехи это теряли: второй ремонт затирал `repairAt` и `photo_repair`
+    // первого, и вопрос «этот ремонт помог?» отвечать было нечем.
+    const detected = { id: 3, status: "open", history: [] };
+    const firstRepair = startLeakRepair(
+      detected,
+      { photo_repair: "idb://repair-1" },
+      { user: "Operator", now: NOW },
+    );
+    const firstDone = resolveLeakRecord(
+      firstRepair,
+      { photo_after: "idb://after-1" },
+      { user: "Operator", now: NOW + 1000 },
+    );
+    const reopened = changeLeakStatus(firstDone, "open", {
+      user: "Operator",
+      now: NOW + 2000,
+    });
+    const secondRepair = startLeakRepair(
+      reopened,
+      { photo_repair: "idb://repair-2" },
+      { user: "Operator", now: NOW + 3000 },
+    );
+    const secondDone = resolveLeakRecord(
+      secondRepair,
+      { photo_after: "idb://after-2" },
+      { user: "Operator", now: NOW + 4000 },
+    );
+
+    expect(secondDone.events.map((event) => event.type)).toEqual([
+      "repair_started",
+      "repair_done",
+      "repair_started",
+      "repair_done",
+    ]);
+    expect(secondDone.events.map((event) => event.photo)).toEqual([
+      "idb://repair-1",
+      "idb://after-1",
+      "idb://repair-2",
+      "idb://after-2",
+    ]);
+    // Возврат в работу события не оставляет: он уже виден следующим ремонтом.
+    expect(reopened.events).toHaveLength(2);
+    // Снимок первого ремонта на самой записи к этому моменту уже затёрт —
+    // и найти его можно только в ленте.
+    expect(secondDone.photo_repair).toBe("idb://repair-2");
+    expect(collectLeakPhotoPaths(secondDone)).toEqual(
+      expect.arrayContaining(["idb://repair-1", "idb://after-1"]),
+    );
+  });
+
   it("rejects status skips inside the domain API", () => {
     expect(() =>
       resolveLeakRecord({ id: 1, status: "open" }, {}, { now: NOW }),

@@ -7,6 +7,12 @@ const VALID_HISTORY_ACTIONS = new Set([
   "comment",
   "monitoring",
 ]);
+const VALID_LEAK_EVENT_TYPES = new Set([
+  "detected",
+  "inspection",
+  "repair_started",
+  "repair_done",
+]);
 const VALID_MONITORING_RESULTS = new Set([
   "still_leaking",
   "needs_recheck",
@@ -246,5 +252,39 @@ export function validateMonitoringRecord(
     if (record[field] != null && !isValidPortablePhotoPath(record[field])) {
       pushIssue(issues, [...path, field], "Недопустимый формат пути к фото");
     }
+  }
+}
+
+/**
+ * Событие ленты.
+ *
+ * Проверяется по тем же правилам, что и запись обхода: осмотр — это она и
+ * есть, только с дописанным типом, и второй набор правил для одной формы
+ * разошёлся бы с первым. Сверх них обязательны тип из известного набора и
+ * разобранная дата: событие без даты не встанет на своё место в ленте и
+ * испортит счёт сроков ремонта.
+ */
+export function validateLeakEvent(
+  event,
+  path,
+  issues,
+  isValidPortablePhotoPath,
+) {
+  if (!isPlainObject(event)) {
+    pushIssue(issues, path, "Expected object");
+    return;
+  }
+
+  validateMonitoringRecord(event, path, issues, isValidPortablePhotoPath);
+  validateOptionalString(event.user, issues, [...path, "user"], { max: 256 });
+
+  if (
+    typeof event.type !== "string" ||
+    !VALID_LEAK_EVENT_TYPES.has(event.type)
+  ) {
+    pushIssue(issues, [...path, "type"], "Expected valid leak event type");
+  }
+  if (!isValidBackupDate(event.date)) {
+    pushIssue(issues, [...path, "date"], "Expected valid date");
   }
 }

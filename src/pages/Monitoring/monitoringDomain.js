@@ -4,6 +4,12 @@ import { buildLeakHistoryChanges } from "@/utils/historyChanges";
 import { MONITORING_RESULT, isMonitoringDue } from "@/utils/monitoring";
 import { STATUS } from "@/utils/status";
 import { MONITORING_FILTER } from "@/domain/leakFilters";
+import {
+  LEAK_EVENT_TYPES,
+  createLeakEvent,
+  getLeakEvents,
+  sortLeakEvents,
+} from "@/domain/leakEvents";
 
 const STATUS_TO_MONITORING_RESULT = {
   [STATUS.OPEN]: MONITORING_RESULT.STILL_LEAKING,
@@ -225,7 +231,15 @@ export function buildMonitoringPatch({
     ...statusPatch,
     materials_equipment: materialsEquipment,
     updatedAt: now.getTime(),
+    // Обход пишется в оба списка одной и той же записью — с общим номером,
+    // поэтому чтение сводит их в одну, а не показывает осмотр дважды. Пока в
+    // поле ходят телефоны прежней сборки, обмен доносит до них обходы только
+    // через `monitoringRecords`; убрать его можно вместе с вехами ремонта.
     monitoringRecords: [...(leak.monitoringRecords ?? []), record],
+    events: sortLeakEvents([
+      ...getLeakEvents(leak),
+      createLeakEvent({ ...record, type: LEAK_EVENT_TYPES.INSPECTION }),
+    ]),
     history: [
       ...(leak.history ?? []),
       {

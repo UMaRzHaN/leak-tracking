@@ -1,4 +1,5 @@
 import {
+  EVENT_PHOTO_FIELDS,
   LEAK_PHOTO_FIELDS,
   MONITORING_PHOTO_FIELDS,
 } from "@/utils/photoFields";
@@ -6,6 +7,7 @@ import {
 export const PHOTO_KEYS = LEAK_PHOTO_FIELDS;
 export const MONITORING_PHOTO_KEYS = MONITORING_PHOTO_FIELDS;
 export const MONITORING_PHOTO_KEY = MONITORING_PHOTO_FIELDS[0];
+export const EVENT_PHOTO_KEYS = EVENT_PHOTO_FIELDS;
 export const RECOVERY_RECORDS_FILE = "recovery-invalid-records.json";
 
 export const TYPE_SIGNATURES = {

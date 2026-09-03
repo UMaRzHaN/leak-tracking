@@ -25,6 +25,20 @@ const MONITORING_KEYS = [
   "previousPhoto",
 ];
 
+const REPAIR_KEYS = [
+  "index",
+  "leak_id",
+  "attempt",
+  "repairAt",
+  "repairTime",
+  "resolvedAt",
+  "resolvedTime",
+  "durationHours",
+  "user",
+  "repairPhoto",
+  "donePhoto",
+];
+
 const MONITORING_ANSWERS = ["still_leaking", "needs_recheck", "resolved"];
 
 const SUMMARY_LABELS = [
@@ -60,6 +74,7 @@ export function buildExcelExportTexts(t) {
       leaks: t("excelExport.sheets.leaks"),
       history: t("excelExport.sheets.history"),
       monitoring: t("excelExport.sheets.monitoring"),
+      repairs: t("excelExport.sheets.repairs"),
     },
     photo: {
       open: t("excelExport.photo.open"),
@@ -77,6 +92,11 @@ export function buildExcelExportTexts(t) {
       ),
       answers: byKey(MONITORING_ANSWERS, (key) =>
         t(`excelExport.monitoring.answers.${key}`),
+      ),
+    },
+    repairs: {
+      headers: byKey(REPAIR_KEYS, (key) =>
+        t(`excelExport.repairs.headers.${key}`),
       ),
     },
     backup: {

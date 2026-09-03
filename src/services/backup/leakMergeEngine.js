@@ -34,12 +34,31 @@ function getLeakFreshness(leak) {
   const monitoringTimes = Array.isArray(leak?.monitoringRecords)
     ? leak.monitoringRecords.map((entry) => parseTime(entry?.date))
     : [];
+  const eventTimes = Array.isArray(leak?.events)
+    ? leak.events.map((entry) => parseTime(entry?.date))
+    : [];
   return Math.max(
     parseTime(leak?.updatedAt),
     parseTime(leak?.createdAt),
     parseTime(leak?.resolvedAt),
     ...historyTimes,
     ...monitoringTimes,
+    ...eventTimes,
+  );
+}
+
+/**
+ * Принесло ли объединение записи в списки.
+ *
+ * Отдельно от `buildMergeHistoryChanges`: тот сравнивает поля, а появление
+ * события или обхода полем не выглядит — без этой проверки объединение,
+ * добавившее чужой ремонт, не оставляло бы в журнале ни следа.
+ */
+function mergedRecordArraysChanged(existingLeak, merged) {
+  return ["monitoringRecords", "events"].some(
+    (key) =>
+      JSON.stringify(existingLeak?.[key] ?? []) !==
+      JSON.stringify(merged?.[key] ?? []),
   );
 }
 
@@ -294,10 +313,10 @@ function mergeFreshLeakFields(existingLeak, incomingLeak, options = {}) {
     const merged = mergeMixedFormatLeak(existingLeak, incomingLeak, options);
     if (options.addHistory) {
       const changes = buildMergeHistoryChanges(existingLeak, merged, options);
-      const monitoringChanged =
-        JSON.stringify(existingLeak?.monitoringRecords ?? []) !==
-        JSON.stringify(merged.monitoringRecords ?? []);
-      if (changes.length > 0 || monitoringChanged) {
+      if (
+        changes.length > 0 ||
+        mergedRecordArraysChanged(existingLeak, merged)
+      ) {
         merged.history = [
           ...(Array.isArray(merged.history) ? merged.history : []),
           {
@@ -325,11 +344,12 @@ function mergeFreshLeakFields(existingLeak, incomingLeak, options = {}) {
       const historyChanged =
         JSON.stringify(existingLeak?.history ?? []) !==
         JSON.stringify(merged.history ?? []);
-      const monitoringChanged =
-        JSON.stringify(existingLeak?.monitoringRecords ?? []) !==
-        JSON.stringify(merged.monitoringRecords ?? []);
 
-      if (changes.length > 0 || historyChanged || monitoringChanged) {
+      if (
+        changes.length > 0 ||
+        historyChanged ||
+        mergedRecordArraysChanged(existingLeak, merged)
+      ) {
         merged.history = [
           ...(Array.isArray(merged.history) ? merged.history : []),
           {
@@ -380,11 +400,12 @@ function mergeFreshLeakFields(existingLeak, incomingLeak, options = {}) {
       : historyBeforeMerge;
     const historyChanged =
       JSON.stringify(historyBeforeMerge) !== JSON.stringify(mergedHistory);
-    const monitoringChanged =
-      JSON.stringify(existingLeak?.monitoringRecords ?? []) !==
-      JSON.stringify(merged.monitoringRecords ?? []);
 
-    if (changes.length > 0 || historyChanged || monitoringChanged) {
+    if (
+      changes.length > 0 ||
+      historyChanged ||
+      mergedRecordArraysChanged(existingLeak, merged)
+    ) {
       merged.history = [
         ...mergedHistory,
         {

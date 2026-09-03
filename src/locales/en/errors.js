@@ -89,6 +89,7 @@ export const errors = {
   INVALID_LEAK_STATUS_TRANSITION: "This status change is not allowed",
   HISTORY_USER_REQUIRED:
     "No one is set to record the change: fill in the name in your profile.",
+  INVALID_LEAK_EVENT_TYPE: "Unknown event kind in the leak history",
 
   // Drawings
   SCHEMA_OPEN_FAILED: "No app on this device can open the drawing",

@@ -7,6 +7,7 @@ import {
   getMonitoringRecords,
   getMonitoringResultLabel,
 } from "@/utils/monitoring";
+import { LEAK_EVENT_TYPES, getLeakEvents } from "@/domain/leakEvents";
 import {
   ACTION_ICONS,
   STATUS_COLORS,
@@ -169,22 +170,105 @@ function MonitoringRecordRow({ record, localeTexts, lang }) {
   );
 }
 
+/**
+ * Ремонт в той же ленте, что и обходы.
+ *
+ * Отдельной вкладкой это было бы седьмой на телефоне, а вопрос у человека
+ * один: что с утечкой происходило. Осмотр и ремонт идут вперемешку по времени
+ * — так их и читают. И только здесь виден снимок первой починки: на самой
+ * записи `photo_repair` к этому моменту уже перезаписан второй.
+ */
+function RepairEventRow({ event, localeTexts, lang }) {
+  const photoSrc = usePhotoSrc(event.photo ?? null);
+  const [viewerSrc, setViewerSrc] = useState(/** @type {string|null} */ (null));
+  const label = localeTexts.repairEvents[event.type] ?? event.type;
+
+  return (
+    <>
+      <article className={s.monitoringRecord} data-event={event.type}>
+        <header className={s.monitoringRecordHeader}>
+          <time className={s.monitoringRecordDate} dateTime={event.date}>
+            {fmtDate(event.date, lang)}
+          </time>
+          <span className={s.monitoringRoundBadge}>{label}</span>
+        </header>
+
+        <div className={s.monitoringRecordContent}>
+          <div className={s.monitoringRecordText}>
+            {event.user && (
+              <div className={s.monitoringMetaRow}>
+                <span>{localeTexts.user}</span>
+                <strong>{displayText(event.user)}</strong>
+              </div>
+            )}
+          </div>
+
+          {photoSrc && (
+            <div className={s.monitoringPhotos}>
+              <div className={s.monitoringPhotoBlock}>
+                <span className={s.monitoringPhotoTitle}>
+                  {localeTexts.repairEvents.photo}
+                </span>
+                <button
+                  type="button"
+                  className={s.monitoringPhotoBtn}
+                  onClick={() => setViewerSrc(photoSrc)}
+                  aria-label={localeTexts.repairEvents.photo}
+                >
+                  <img
+                    src={photoSrc}
+                    alt={localeTexts.repairEvents.photo}
+                    className={s.monitoringPhotoImg}
+                    loading="lazy"
+                    draggable={false}
+                  />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </article>
+
+      {viewerSrc && (
+        <PhotoViewer src={viewerSrc} onClose={() => setViewerSrc(null)} />
+      )}
+    </>
+  );
+}
+
+const REPAIR_EVENT_TYPES = new Set([
+  LEAK_EVENT_TYPES.REPAIR_STARTED,
+  LEAK_EVENT_TYPES.REPAIR_DONE,
+]);
+
 function MonitoringHistory({ data, localeTexts, lang }) {
-  const records = getMonitoringRecords(data)
-    .slice()
-    .sort((left, right) => Date.parse(right.date) - Date.parse(left.date));
+  const repairs = getLeakEvents(data).filter(
+    (event) => REPAIR_EVENT_TYPES.has(event?.type) && event?.date,
+  );
+  const records = [...getMonitoringRecords(data), ...repairs].sort(
+    (left, right) => Date.parse(right.date) - Date.parse(left.date),
+  );
 
   return (
     <div className={s.tabPane}>
       {records.length > 0 ? (
-        records.map((record) => (
-          <MonitoringRecordRow
-            key={record.id ?? record.date}
-            record={record}
-            localeTexts={localeTexts}
-            lang={lang}
-          />
-        ))
+        records.map((record) =>
+          REPAIR_EVENT_TYPES.has(record.type) ? (
+            <RepairEventRow
+              key={record.id ?? record.date}
+              event={record}
+              localeTexts={localeTexts}
+              lang={lang}
+            />
+          ) : (
+            <MonitoringRecordRow
+              key={record.id ?? record.date}
+              record={record}
+              localeTexts={localeTexts}
+              lang={lang}
+            />
+          ),
+        )
       ) : (
         <div className={s.tabEmpty}>
           <span className={s.tabEmptyIcon}>M</span>

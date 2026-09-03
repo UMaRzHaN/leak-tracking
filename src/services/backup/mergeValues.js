@@ -15,7 +15,11 @@ export const MERGE_IGNORED_FIELD_KEYS = new Set([
   LEAK_FIELD_VERSIONS_KEY,
 ]);
 
-export const MERGE_ARRAY_FIELD_KEYS = new Set(["history", "monitoringRecords"]);
+export const MERGE_ARRAY_FIELD_KEYS = new Set([
+  "history",
+  "monitoringRecords",
+  "events",
+]);
 export const EXCEL_DERIVED_FIELD_KEYS = new Set([
   "temperature_K",
   "leak_speed_kg_m",
@@ -52,10 +56,34 @@ function comparableMergeValue(value) {
   return String(value).trim();
 }
 
+/**
+ * Ровно полночь UTC — это день, потерявший время, а не момент.
+ *
+ * Так выглядит дата, приехавшая из ячейки-даты без колонки времени: книга
+ * времени не несла, и запись сохранилась началом суток. Осмотр, случившийся
+ * ровно в 00:00:00.000 по Гринвичу, — событие раз в сутки на восемьдесят шесть
+ * миллионов, и спутать эти два случая дешевле, чем читать день из книги
+ * местными часами и получать вчерашний западнее Гринвича.
+ *
+ * Допущение живёт только здесь: эта функция и без него нестрогая — вся её
+ * работа в том, чтобы узнать одну и ту же строку книги, потерявшую точность.
+ * В хранимые данные она не пишет.
+ */
+function isCalendarDayInstant(date) {
+  return (
+    date.getUTCHours() === 0 &&
+    date.getUTCMinutes() === 0 &&
+    date.getUTCSeconds() === 0 &&
+    date.getUTCMilliseconds() === 0
+  );
+}
+
 export function comparableExcelDate(value) {
   if (value == null || value === "") return "";
   if (value instanceof Date && Number.isFinite(value.getTime())) {
-    return `${value.getFullYear()}-${value.getMonth() + 1}-${value.getDate()}`;
+    return isCalendarDayInstant(value)
+      ? `${value.getUTCFullYear()}-${value.getUTCMonth() + 1}-${value.getUTCDate()}`
+      : `${value.getFullYear()}-${value.getMonth() + 1}-${value.getDate()}`;
   }
   if (typeof value === "number" && value > 100000000000) {
     return comparableExcelDate(new Date(value));
@@ -65,6 +93,14 @@ export function comparableExcelDate(value) {
   const human = matchHumanDate(text);
   if (human) {
     return `${human.year}-${human.month}-${human.day}`;
+  }
+  // ISO без времени — тот же календарный день, что и «01.08.2026», и читается
+  // так же: по написанным числам. Через `new Date` он становится полуночью UTC,
+  // а местные геттеры западнее Гринвича возвращают из неё вчерашний день — и
+  // одна и та же дата, записанная двумя способами, переставала совпадать.
+  const isoDay = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (isoDay) {
+    return `${Number(isoDay[1])}-${Number(isoDay[2])}-${Number(isoDay[3])}`;
   }
   const parsed = new Date(text);
   return Number.isFinite(parsed.getTime()) ? comparableExcelDate(parsed) : text;

@@ -548,6 +548,18 @@
     --monitoring-accent: var(--c-resolved);
     --monitoring-accent-bg: var(--c-resolved-bg);
   }
+
+  // Ремонт стоит в той же ленте, что и обходы, и красится по тому же смыслу:
+  // начатый — цветом «в работе», завершённый — цветом «устранено».
+  &[data-event="repair_started"] {
+    --monitoring-accent: var(--c-progress);
+    --monitoring-accent-bg: var(--c-progress-bg);
+  }
+
+  &[data-event="repair_done"] {
+    --monitoring-accent: var(--c-resolved);
+    --monitoring-accent-bg: var(--c-resolved-bg);
+  }
 }
 
 .monitoringRecordHeader {

@@ -12,6 +12,7 @@ import {
   readArchiveEntry,
 } from "@/utils/importLimits";
 import {
+  EVENT_PHOTO_KEYS,
   MONITORING_PHOTO_KEYS,
   PHOTO_KEYS,
   RECOVERY_RECORDS_FILE,
@@ -56,6 +57,11 @@ function assertArchivePhotoReferences(leaks, zip) {
     if (Array.isArray(leak?.monitoringRecords)) {
       for (const record of leak.monitoringRecords) {
         for (const key of MONITORING_PHOTO_KEYS) assertPhoto(record?.[key]);
+      }
+    }
+    if (Array.isArray(leak?.events)) {
+      for (const event of leak.events) {
+        for (const key of EVENT_PHOTO_KEYS) assertPhoto(event?.[key]);
       }
     }
   }

@@ -8,6 +8,7 @@
  *   `LeakStatus`       — `utils/status`, и через него весь жизненный цикл
  *   `LeakRecord`       — `utils/leakOrder`, `utils/monitoring`
  *   `MonitoringRecord` — `utils/monitoring`
+ *   `LeakEvent`        — `domain/leakEvents`
  *   `ProjectMetadata`  — `app/project/projectStorage`
  *   `WebDataEnvelope`  — `repositories/webProjectEnvelope`
  *   `ImportOperation`  — `services/import/importOperationJournal`
@@ -42,6 +43,16 @@ export interface MonitoringRecord {
   [field: string]: unknown;
 }
 
+export interface LeakEvent {
+  id: string | number;
+  type: string;
+  date: string;
+  user?: string;
+  photo?: string | null;
+  previousPhoto?: string | null;
+  [field: string]: unknown;
+}
+
 export interface LeakRecord {
   id: string | number;
   status: LeakStatus;
@@ -51,6 +62,7 @@ export interface LeakRecord {
   photo_after?: string | null;
   photo_repair?: string | null;
   monitoringRecords?: MonitoringRecord[];
+  events?: LeakEvent[];
   [field: string]: unknown;
 }
 

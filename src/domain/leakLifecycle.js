@@ -1,7 +1,16 @@
-import { MONITORING_PHOTO_FIELDS } from "@/utils/photoFields";
+import {
+  EVENT_PHOTO_FIELDS,
+  MONITORING_PHOTO_FIELDS,
+} from "@/utils/photoFields";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
 import { requireHistoryUser } from "@/utils/historyUser";
 import { STATUS, nextStatus } from "@/utils/status";
+import {
+  LEAK_EVENT_TYPES,
+  createLeakEvent,
+  getLeakEvents,
+  sortLeakEvents,
+} from "@/domain/leakEvents";
 
 const STATUS_NOTE_FIELDS = [{ key: "materials_equipment" }, { key: "note" }];
 
@@ -22,6 +31,51 @@ function assertStatusTransition(leak, targetStatus) {
 }
 
 /**
+ * Статус, который переход оставляет в ленте событий.
+ *
+ * Возврата в работу здесь нет намеренно. «Утечка вернулась» видно из самой
+ * ленты — за завершённым ремонтом идёт следующий начатый, — а снимка у ручного
+ * возврата нет, и событие вышло бы пустой отметкой рядом с той же записью в
+ * журнале изменений. Возврат по итогам обхода приходит осмотром, у которого
+ * фото есть.
+ */
+const STATUS_EVENT_TYPES = {
+  [STATUS.IN_PROGRESS]: LEAK_EVENT_TYPES.REPAIR_STARTED,
+  [STATUS.RESOLVED]: LEAK_EVENT_TYPES.REPAIR_DONE,
+};
+
+const EVENT_PHOTO_SOURCES = {
+  [LEAK_EVENT_TYPES.REPAIR_STARTED]: "photo_repair",
+  [LEAK_EVENT_TYPES.REPAIR_DONE]: "photo_after",
+};
+
+/**
+ * Дописывает событие к переходу статуса.
+ *
+ * Снимок берётся с уже сложенной записи, а не из черновика: три вызывающих
+ * места кладут его туда по-разному — из черновика, из прежнего значения или
+ * не кладут вовсе, — и читать результат надёжнее, чем повторять эту развилку
+ * в каждом из них.
+ */
+function withStatusEvent(after, { to, user, iso }) {
+  const type = STATUS_EVENT_TYPES[to];
+  // Возврат в работу события не оставляет, а уже накопленную ленту уносит
+  // расстановка `...after` у вызывающего.
+  if (!type) return undefined;
+
+  const photo = after[EVENT_PHOTO_SOURCES[type]];
+  return sortLeakEvents([
+    ...getLeakEvents(after),
+    createLeakEvent({
+      type,
+      date: iso,
+      user,
+      ...(photo ? { photo } : {}),
+    }),
+  ]);
+}
+
+/**
  * @param {Record<string, any>} before
  * @param {Record<string, any>} after
  * @param {object} entry
@@ -31,8 +85,10 @@ function assertStatusTransition(leak, targetStatus) {
  * @param {import("@/utils/historyChanges").LeakHistoryChange[]} [entry.changes]
  */
 function withStatusHistory(before, after, { to, user, iso, changes = [] }) {
+  const events = withStatusEvent(after, { to, user, iso });
   return {
     ...after,
+    ...(events ? { events } : {}),
     history: [
       ...(before.history ?? []),
       {
@@ -132,6 +188,11 @@ export function startLeakRepair(leak, draft = {}, { user, now } = {}) {
   });
 }
 
+/**
+ * Оба списка обходятся, пока записи обхода не переехали в ленту событий целиком.
+ * Снимок, оставшийся только в одном из них, — это снимок, который сборка мусора
+ * сочла бы бесхозным и удалила; объединение здесь дешевле потерянного фото.
+ */
 export function collectLeakPhotoPaths(leak) {
   const paths = new Set(
     [leak?.photo, leak?.photo_after, leak?.photo_repair].filter(Boolean),
@@ -139,6 +200,11 @@ export function collectLeakPhotoPaths(leak) {
   for (const record of leak?.monitoringRecords ?? []) {
     for (const field of MONITORING_PHOTO_FIELDS) {
       if (record?.[field]) paths.add(record[field]);
+    }
+  }
+  for (const event of getLeakEvents(leak)) {
+    for (const field of EVENT_PHOTO_FIELDS) {
+      if (event?.[field]) paths.add(event[field]);
     }
   }
   return [...paths];

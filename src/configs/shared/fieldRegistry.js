@@ -5,6 +5,8 @@ export const SYSTEM_FIELD_KEYS = Object.freeze([
   "status",
   "resolvedAt",
   "monitoringRecords",
+  "events",
+  "coords_accuracy",
   "roundNumber",
 ]);
 

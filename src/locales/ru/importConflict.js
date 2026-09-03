@@ -35,6 +35,7 @@ export const importConflict = {
     unreadable: "локальное фото не прочитано",
     different: "содержимое фото отличается",
     monitoringRecords: "История мониторинга",
+    events: "История событий",
     history: "История изменений",
   },
 

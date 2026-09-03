@@ -5,6 +5,7 @@ import { PROJECT_META } from "@/configs/projectMeta";
 import { logger } from "@/utils/logger";
 import { isPresent } from "@/utils/isPresent";
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
+import { migrateLeakEvents } from "@/domain/leakEvents";
 import { requestPersistentStorage } from "@/services/storage/persistentStorage";
 import {
   getWebProjectDataReadFailurePolicy,
@@ -113,10 +114,13 @@ function normalizeLeakRecord(item) {
     return null;
   }
 
-  const normalized = {
+  // Лента событий разворачивается здесь, на общем пути чтения: сюда приходит
+  // всё — хранилище, зеркало, архив, наследство прежних сборок, — и запись,
+  // прошедшая мимо, осталась бы без ленты до первого сохранения.
+  const normalized = migrateLeakEvents({
     ...item,
     status,
-  };
+  });
   if (item.lat !== undefined) normalized.lat = lat;
   if (item.lng !== undefined) normalized.lng = lng;
   return normalized;

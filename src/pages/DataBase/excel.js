@@ -12,6 +12,7 @@ import {
   normalizeExcelMonitoringExportMode,
 } from "@/utils/excelExportMode";
 import {
+  buildEventPhotoEntries,
   buildLeakPhotoEntries,
   buildMonitoringPhotoEntries,
   buildPhotoMap,
@@ -73,7 +74,21 @@ async function buildPhotoEntries(
     ),
   ]);
 
-  return [...leakPhotos, ...monitoringPhotos];
+  // Лента идёт третьей и знает, что уже выгружено: её снимки почти все —
+  // те же самые, и второй копии в книге им не нужно. Своё место получают
+  // только фото прежних починок, которых больше нет ни в полях, ни в обходах.
+  const eventPhotos = await buildEventPhotoEntries(
+    orderedLeaks,
+    leakSegments,
+    idbGet,
+    new Set(
+      [...leakPhotos, ...monitoringPhotos].map((entry) => entry.sourcePath),
+    ),
+    photoReadCache,
+    archiveRoot,
+  );
+
+  return [...leakPhotos, ...monitoringPhotos, ...eventPhotos];
 }
 // Resolves report + backup photo entries (each holding a full base64 copy of
 // one photo) and reduces them down to what the rest of the export actually

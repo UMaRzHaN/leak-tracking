@@ -12,9 +12,13 @@ function pluralRecords(count, t, intlLocale) {
   return t(`importConflict.records.${form}`);
 }
 
-// `monitoringRecords` and `history` are not form fields, so they have no entry
-// under `addLeak.fields`; the merge preview counts them all the same.
-const DIAGNOSTIC_FIELD_KEYS = new Set(["monitoringRecords", "history"]);
+// `monitoringRecords`, `events` and `history` are not form fields, so they have
+// no entry under `addLeak.fields`; the merge preview counts them all the same.
+const DIAGNOSTIC_FIELD_KEYS = new Set([
+  "monitoringRecords",
+  "events",
+  "history",
+]);
 
 function getChangedFieldLabel(key, t) {
   return DIAGNOSTIC_FIELD_KEYS.has(key)

@@ -60,6 +60,12 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
         previousPhoto: t("leakDetails.photoBeforeRound"),
       },
 
+      repairEvents: {
+        repair_started: t("leakDetails.repairEvents.repair_started"),
+        repair_done: t("leakDetails.repairEvents.repair_done"),
+        photo: t("leakDetails.repairEvents.photo"),
+      },
+
       empty: {
         info: t("leakDetails.empty.info"),
         photo: t("leakDetails.empty.photo"),

@@ -9,7 +9,23 @@ import {
 import { fromEntries } from "@/utils/fromEntries";
 import { matchHumanDate } from "@/utils/humanDate";
 
+/**
+ * Записи, у которых слияние идёт по полям, а не заменой свежайшей целиком.
+ * Событие осмотра — это запись обхода с дописанным типом, и разбирать их
+ * по-разному значило бы завести для одной формы два несогласованных правила.
+ */
+function mergesFieldByField(arrayKey) {
+  return arrayKey === "monitoringRecords" || arrayKey === "events";
+}
+
 function getRecordMergeIdentity(record, index, arrayKey) {
+  if (arrayKey === "events") {
+    // Номер обязателен для всех, кроме событий, восстановленных из архива
+    // прежней сборки: у них его не было. Запасное опознание — по типу и
+    // моменту: два ремонта одной утечки в одну миллисекунду не начинаются.
+    if (record?.id != null) return `id:${String(record.id)}`;
+    return `event:${String(record?.type ?? "")}|${getRecordDateIdentity(record?.date)}`;
+  }
   if (arrayKey === "monitoringRecords" && record?.id != null) {
     return `id:${String(record.id)}`;
   }
@@ -249,7 +265,7 @@ export function mergeRecordArray(
     }
 
     const current = merged[existingIndex];
-    if (arrayKey === "monitoringRecords" && options.source !== "excel") {
+    if (mergesFieldByField(arrayKey) && options.source !== "excel") {
       merged[existingIndex] = mergeMonitoringRecord(current, record);
       return;
     }

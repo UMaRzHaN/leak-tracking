@@ -159,6 +159,25 @@ export function buildMonitoringPhotoArchivePath(
   return `photos/${leakSegment}/monitoring/record-${recordIndex + 1}${suffix}.${normalizeImageExtension(extension)}`;
 }
 
+/**
+ * Снимок события ленты.
+ *
+ * Отдельная папка от `monitoring/` нужна только тем снимкам, которых больше
+ * нет нигде: осмотр лежит в записи обхода, последняя починка — в полях самой
+ * утечки, а вот фото первого ремонта после второго не остаётся ни там, ни там.
+ * Всё остальное в архив второй раз не кладётся — сборщик переиспользует уже
+ * записанный путь.
+ */
+export function buildEventPhotoArchivePath(
+  leakSegment,
+  eventIndex,
+  extension,
+  photoKey = "photo",
+) {
+  const suffix = photoKey === "photo" ? "" : `-${photoKey}`;
+  return `photos/${leakSegment}/events/event-${eventIndex + 1}${suffix}.${normalizeImageExtension(extension)}`;
+}
+
 export function getImageMimeTypeFromExtension(extension) {
   const normalized = normalizeImageExtension(extension);
   const mimeByExtension = {

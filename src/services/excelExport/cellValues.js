@@ -20,8 +20,18 @@ const DATE_KEYS = new Set([
   "installed_at",
   "inspected_at",
 ]);
-const TIME_KEYS = new Set(["time"]);
-const INTEGER_KEYS = new Set(["index", "roundNumber", "Operating_mode"]);
+// `repairTime` и `resolvedTime` держат тот же момент, что и колонки-даты рядом:
+// формат даты в книге показывает только день, а лист ремонтов читают вместе с
+// часами — иначе починка «за 0,5 часа» выглядит начатой и законченной в один
+// день без всякого объяснения.
+const TIME_KEYS = new Set(["time", "repairTime", "resolvedTime"]);
+const INTEGER_KEYS = new Set([
+  "index",
+  "roundNumber",
+  "attempt",
+  "coords_accuracy",
+  "Operating_mode",
+]);
 const PERCENT_KEYS = new Set([
   "flareShare",
   "utilShare",
@@ -31,6 +41,7 @@ const PERCENT_KEYS = new Set([
 const WHOLE_PERCENT_KEYS = new Set(["gasPercentage", "uncertainty"]);
 const COORDINATE_KEYS = new Set(["lat", "lng"]);
 const DECIMAL_KEYS = new Set([
+  "durationHours",
   "pressure",
   "temperature",
   "temperature_K",

@@ -3,6 +3,7 @@ export const excelExport = {
     leaks: "Утечки",
     history: "История",
     monitoring: "Мониторинг",
+    repairs: "Ремонты",
   },
 
   photo: {
@@ -22,6 +23,22 @@ export const excelExport = {
       text: "Текст",
       to: "Статус",
       changes: "Изменения JSON",
+    },
+  },
+
+  repairs: {
+    headers: {
+      index: "№",
+      leak_id: "Бирка",
+      attempt: "Попытка",
+      repairAt: "Начат",
+      repairTime: "Время начала",
+      resolvedAt: "Завершён",
+      resolvedTime: "Время завершения",
+      durationHours: "Часов на ремонт",
+      user: "Исполнитель",
+      repairPhoto: "Фото начала",
+      donePhoto: "Фото завершения",
     },
   },
 

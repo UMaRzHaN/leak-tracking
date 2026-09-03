@@ -1,6 +1,7 @@
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import {
   validateHistoryEntry,
+  validateLeakEvent,
   validateMonitoringRecord,
 } from "./backupNestedValidators";
 
@@ -172,6 +173,29 @@ function validateLeakRecord(record, index) {
         validateMonitoringRecord(
           monitoringRecord,
           [index, "monitoringRecords", monitoringIndex],
+          issues,
+          isValidPortablePhotoPath,
+        ),
+      );
+    }
+  }
+
+  if (
+    record.coords_accuracy != null &&
+    (!Number.isFinite(Number(record.coords_accuracy)) ||
+      Number(record.coords_accuracy) < 0)
+  ) {
+    pushIssue(issues, [index, "coords_accuracy"], "Expected positive number");
+  }
+
+  if (record.events != null) {
+    if (!Array.isArray(record.events)) {
+      pushIssue(issues, [index, "events"], "Expected array");
+    } else {
+      record.events.forEach((event, eventIndex) =>
+        validateLeakEvent(
+          event,
+          [index, "events", eventIndex],
           issues,
           isValidPortablePhotoPath,
         ),

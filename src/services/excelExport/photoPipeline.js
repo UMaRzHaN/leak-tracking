@@ -1,4 +1,5 @@
 import {
+  buildEventPhotoArchivePath,
   buildLeakPhotoArchivePath,
   buildMonitoringPhotoArchivePath,
   parseDataImageUri,
@@ -7,9 +8,11 @@ import { getPhotoSrc } from "@/hooks/photoService";
 import { blobToDataUri } from "@/utils/photoConversion";
 import { getMonitoringRecords } from "@/utils/monitoring";
 import {
+  EVENT_PHOTO_FIELDS,
   LEAK_PHOTO_FIELDS,
   MONITORING_PHOTO_FIELDS,
 } from "@/utils/photoFields";
+import { getLeakEvents } from "@/domain/leakEvents";
 import { fromEntries } from "@/utils/fromEntries";
 
 export const PHOTO_KEYS = LEAK_PHOTO_FIELDS;
@@ -123,6 +126,26 @@ function getMonitoringPhotoMapKey(leakIndex, recordIndex, photoKey) {
   return photoKey === "photo" ? baseKey : `${baseKey}:${photoKey}`;
 }
 
+export function getEventPhotoMapKey(leakIndex, eventIndex, photoKey) {
+  const baseKey = `event:${leakIndex}:${eventIndex}`;
+  return photoKey === "photo" ? baseKey : `${baseKey}:${photoKey}`;
+}
+
+function getEventPhotoIdentity(leak, leakIndex, event, eventIndex, photoKey) {
+  const leakIdentity =
+    leak?.id != null && String(leak.id).trim()
+      ? `id:${String(leak.id)}`
+      : `tag:${String(leak?.leak_id ?? "").trim() || `index:${leakIndex}`}`;
+  const eventIdentity =
+    event?.id != null && String(event.id).trim()
+      ? `id:${String(event.id)}`
+      : `index:${eventIndex}`;
+  const baseIdentity = `${leakIdentity}:event:${eventIdentity}`;
+  return photoKey === "photo"
+    ? baseIdentity
+    : `${baseIdentity}:field:${photoKey}`;
+}
+
 export async function buildLeakPhotoEntries(
   orderedLeaks,
   leakSegments,
@@ -223,6 +246,71 @@ export async function buildMonitoringPhotoEntries(
   return resolvePhotoCandidates(candidates, idbGet, photoReadCache);
 }
 
+/**
+ * Снимки ленты, которых нет больше нигде.
+ *
+ * Почти каждый снимок события уже выгружен своим владельцем: осмотр — записью
+ * обхода, последняя починка — полем самой утечки. Второй раз класть его в книгу
+ * незачем, поэтому берутся только пути, не встреченные прежними сборщиками, —
+ * а это ровно фото прежних починок, которые после следующего ремонта не
+ * остаются ни в полях, ни в обходах.
+ *
+ * @param {string[]} orderedLeaks
+ * @param {any} leakSegments
+ * @param {any} idbGet
+ * @param {Set<string>} takenSourcePaths пути, уже попавшие в книгу
+ * @param {any} photoReadCache
+ * @param {string} archiveRoot
+ */
+export async function buildEventPhotoEntries(
+  orderedLeaks,
+  leakSegments,
+  idbGet,
+  takenSourcePaths = /** @type {Set<string>} */ (new Set()),
+  photoReadCache,
+  archiveRoot = "photos",
+) {
+  const candidates = [];
+  const seen = new Set(takenSourcePaths);
+
+  for (const [leakIndex, leak] of orderedLeaks.entries()) {
+    const leakSegment = leakSegments[leakIndex];
+
+    for (const [eventIndex, event] of getLeakEvents(leak).entries()) {
+      for (const photoKey of EVENT_PHOTO_FIELDS) {
+        const path = event?.[photoKey];
+        if (!path || seen.has(String(path))) continue;
+        seen.add(String(path));
+
+        candidates.push({
+          path,
+          mapKey: getEventPhotoMapKey(leakIndex, eventIndex, photoKey),
+          logicalKey: getEventPhotoIdentity(
+            leak,
+            leakIndex,
+            event,
+            eventIndex,
+            photoKey,
+          ),
+          buildArchivePath: (extension) => {
+            const backupPath = buildEventPhotoArchivePath(
+              leakSegment,
+              eventIndex,
+              extension,
+              photoKey,
+            );
+            return archiveRoot === "photos"
+              ? backupPath
+              : `${archiveRoot}/${backupPath.slice("photos/".length)}`;
+          },
+        });
+      }
+    }
+  }
+
+  return resolvePhotoCandidates(candidates, idbGet, photoReadCache);
+}
+
 export function buildPhotoMap(photoEntries) {
   return fromEntries(
     photoEntries.map((entry) => [entry.mapKey, entry.photoFileName]),
@@ -244,6 +332,16 @@ export function buildPortableLeaks(leaks, photoMap) {
       }
     }
 
+    // Путь на устройстве → имя файла в книге. Лента переиспользует его: осмотр
+    // и его событие несут один и тот же снимок, и второй записи он не требует.
+    const archived = new Map();
+    for (const key of PHOTO_KEYS) {
+      const photoFileName = photoMap[`${leakIndex}:${key}`];
+      if (photoFileName && leak?.[key] != null) {
+        archived.set(String(leak[key]), `zip:${photoFileName}`);
+      }
+    }
+
     if (Array.isArray(copy.monitoringRecords)) {
       copy.monitoringRecords = copy.monitoringRecords.map(
         (record, recordIndex) => {
@@ -255,6 +353,9 @@ export function buildPortableLeaks(leaks, photoMap) {
               ];
             if (photoFileName) {
               recordCopy[photoKey] = `zip:${photoFileName}`;
+              if (record?.[photoKey] != null) {
+                archived.set(String(record[photoKey]), `zip:${photoFileName}`);
+              }
               continue;
             }
             if (
@@ -267,6 +368,40 @@ export function buildPortableLeaks(leaks, photoMap) {
           return recordCopy;
         },
       );
+    }
+
+    if (Array.isArray(copy.events)) {
+      copy.events = copy.events.map((event, eventIndex) => {
+        const eventCopy = { ...event };
+        for (const photoKey of EVENT_PHOTO_FIELDS) {
+          const path = event?.[photoKey];
+          if (path == null) continue;
+
+          // Сначала общий снимок: осмотр и его событие несут один и тот же
+          // файл, и второй копии в книге у него нет.
+          const shared = archived.get(String(path));
+          if (shared) {
+            eventCopy[photoKey] = shared;
+            continue;
+          }
+
+          const own =
+            photoMap[getEventPhotoMapKey(leakIndex, eventIndex, photoKey)];
+          if (own) {
+            eventCopy[photoKey] = `zip:${own}`;
+            archived.set(String(path), `zip:${own}`);
+            continue;
+          }
+
+          // Снимка нет среди выгруженных — значит, прочитать его не удалось.
+          // Оставить путь устройства значило бы обещать фото, которого в
+          // файле нет.
+          if (!String(path).startsWith("data:image/")) {
+            delete eventCopy[photoKey];
+          }
+        }
+        return eventCopy;
+      });
     }
 
     return copy;

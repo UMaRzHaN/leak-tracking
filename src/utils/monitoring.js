@@ -1,4 +1,5 @@
 import { getIntlLocale } from "@/utils/locale";
+import { LEAK_EVENT_TYPES, getEventsOfType } from "@/domain/leakEvents";
 export const MONITORING_RESULT = {
   STILL_LEAKING: "still_leaking",
   RESOLVED: "resolved",
@@ -94,11 +95,33 @@ export function getMonitoringHistoryComment(entry) {
  * @param {import("@/types/domain").LeakRecord|null|undefined} leak
  * @returns {(import("@/types/domain").MonitoringRecord & {date: string})[]}
  */
+/**
+ * Обходы записи — из ленты событий и из старого списка сразу.
+ *
+ * Оба, а не один: пока обход пишется в оба места, они совпадают, но между
+ * записью и следующим чтением из хранилища в старый список успевает добавить
+ * импорт книги — и осмотр, показанный только после перезагрузки проекта,
+ * выглядел бы потерянным. Общий номер записи не даёт ему задвоиться.
+ *
+ * Порядок — по дате: последний обход спрашивают чаще всего, и до сих пор он
+ * получался последним лишь потому, что список пополнялся с конца.
+ */
 export function getMonitoringRecords(leak) {
-  if (!Array.isArray(leak?.monitoringRecords)) return [];
-  return leak.monitoringRecords.filter(
-    /** @returns {record is import("@/types/domain").MonitoringRecord & {date: string}} */
-    (record) => Boolean(record?.date),
+  const inspections = getEventsOfType(leak, LEAK_EVENT_TYPES.INSPECTION);
+  const known = new Set(
+    inspections.map((event) => String(event?.id ?? "")).filter(Boolean),
+  );
+  const legacy = (
+    Array.isArray(leak?.monitoringRecords) ? leak.monitoringRecords : []
+  ).filter((record) => !known.has(String(record?.id ?? "")));
+
+  return /** @type {(import("@/types/domain").MonitoringRecord & {date: string})[]} */ (
+    [...inspections, ...legacy]
+      .filter((record) => Boolean(record?.date))
+      .sort(
+        (left, right) =>
+          Date.parse(String(left.date)) - Date.parse(String(right.date)),
+      )
   );
 }
 

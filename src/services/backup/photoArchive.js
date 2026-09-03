@@ -5,12 +5,14 @@ import { blobToDataUri, dataUrlToBlob } from "@/utils/photoConversion";
 import { isArchivePhotoPath } from "@/services/backup/archivePhotoReader";
 import {
   allocateUniqueLeakArchiveSegments,
+  buildEventPhotoArchivePath,
   buildLeakPhotoArchivePath,
   buildMonitoringPhotoArchivePath,
   normalizeImageExtension,
   parseDataImageUri,
 } from "@/services/archive/archivePaths";
 import {
+  EVENT_PHOTO_KEYS,
   EXPORT_CONCURRENCY,
   EXPORT_YIELD_EVERY,
   IMPORT_CONCURRENCY,
@@ -63,6 +65,60 @@ export async function resolvePhotoBlob(path, idbGet) {
   return { blob, ext: normalizeImageExtension(mime) };
 }
 
+/**
+ * Снимки ленты событий в архив.
+ *
+ * Почти каждый из них уже там: осмотр — это запись обхода, последняя починка —
+ * поле самой утечки. Поэтому сначала спрашивается, куда этот путь уже положили,
+ * и только не найденное пишется заново. Иначе архив с двумя обходами и двумя
+ * ремонтами раздувался бы вдвое — на телефоне это десятки мегабайт.
+ *
+ * @param {any[]} events
+ * @param {string} leakNumber
+ * @param {Map<string, string>} archived путь на устройстве → путь в архиве
+ * @param {(path: string) => Promise<{ext: string, write: (archivePath: string) => void|Promise<void>}|null>} store
+ * @param {boolean} preserveUnresolvedPhotoPaths
+ */
+async function exportEventPhotos(
+  events,
+  leakNumber,
+  archived,
+  store,
+  preserveUnresolvedPhotoPaths,
+) {
+  const exported = [];
+  for (const [eventIndex, event] of events.entries()) {
+    const copy = { ...event };
+    for (const key of EVENT_PHOTO_KEYS) {
+      const path = event?.[key];
+      if (path == null) continue;
+
+      const known = archived.get(String(path));
+      if (known) {
+        copy[key] = known;
+        continue;
+      }
+
+      const resolved = await store(String(path));
+      if (!resolved) {
+        if (!preserveUnresolvedPhotoPaths) delete copy[key];
+        continue;
+      }
+      const archivePath = buildEventPhotoArchivePath(
+        leakNumber,
+        eventIndex,
+        resolved.ext,
+        key,
+      );
+      await resolved.write(archivePath);
+      archived.set(String(path), `zip:${archivePath}`);
+      copy[key] = `zip:${archivePath}`;
+    }
+    exported.push(copy);
+  }
+  return exported;
+}
+
 export async function exportLeaksWithPhotosToStream(
   leaks,
   zip,
@@ -89,6 +145,8 @@ export async function exportLeaksWithPhotosToStream(
     const copy = { ...leak };
     const leakNumber = leakSegments[index];
 
+    const archived = new Map();
+
     for (const key of PHOTO_KEYS) {
       const path = leak[key];
       if (path == null) continue;
@@ -105,6 +163,7 @@ export async function exportLeaksWithPhotosToStream(
       );
       await zip.add(archivePath, resolved.blob);
       copy[key] = `zip:${archivePath}`;
+      archived.set(String(path), `zip:${archivePath}`);
     }
 
     if (Array.isArray(copy.monitoringRecords)) {
@@ -127,11 +186,30 @@ export async function exportLeaksWithPhotosToStream(
           );
           await zip.add(archivePath, resolved.blob);
           recordCopy[key] = `zip:${archivePath}`;
+          archived.set(String(path), `zip:${archivePath}`);
         }
         records.push(recordCopy);
       }
       copy.monitoringRecords = records;
     }
+
+    if (Array.isArray(copy.events)) {
+      copy.events = await exportEventPhotos(
+        copy.events,
+        leakNumber,
+        archived,
+        async (path) => {
+          const resolved = await resolvePhotoBlob(path, idbGet);
+          if (!resolved) return null;
+          return {
+            ext: resolved.ext,
+            write: (archivePath) => zip.add(archivePath, resolved.blob),
+          };
+        },
+        preserveUnresolvedPhotoPaths,
+      );
+    }
+
     exported[index] = copy;
   }
 
@@ -161,6 +239,8 @@ export async function exportLeaksWithPhotos(
     const copy = { ...leak };
     const leakNumber = leakSegments[index];
 
+    const archived = new Map();
+
     for (const key of PHOTO_KEYS) {
       const path = leak[key];
       if (path == null) continue;
@@ -177,6 +257,7 @@ export async function exportLeaksWithPhotos(
       );
       zip.file(archivePath, resolved.base64, { base64: true });
       copy[key] = `zip:${archivePath}`;
+      archived.set(String(path), `zip:${archivePath}`);
     }
 
     if (Array.isArray(copy.monitoringRecords)) {
@@ -201,10 +282,29 @@ export async function exportLeaksWithPhotos(
           );
           zip.file(archivePath, resolved.base64, { base64: true });
           recordCopy[key] = `zip:${archivePath}`;
+          archived.set(String(path), `zip:${archivePath}`);
         }
         records.push(recordCopy);
       }
       copy.monitoringRecords = records;
+    }
+
+    if (Array.isArray(copy.events)) {
+      copy.events = await exportEventPhotos(
+        copy.events,
+        leakNumber,
+        archived,
+        async (path) => {
+          const resolved = await resolveBase64(path, idbGet);
+          if (!resolved) return null;
+          return {
+            ext: resolved.ext,
+            write: (archivePath) =>
+              zip.file(archivePath, resolved.base64, { base64: true }),
+          };
+        },
+        preserveUnresolvedPhotoPaths,
+      );
     }
 
     exported[index] = copy;
@@ -249,6 +349,9 @@ export async function restorePhotos(
     for (const record of leak?.monitoringRecords ?? []) {
       for (const key of MONITORING_PHOTO_KEYS) collectSize(record?.[key]);
     }
+    for (const event of leak?.events ?? []) {
+      for (const key of EVENT_PHOTO_KEYS) collectSize(event?.[key]);
+    }
   }
   const totalPhotoBytes = archivePhotoSizes.reduce(
     (total, size) => total + size,
@@ -291,6 +394,7 @@ export async function restorePhotos(
       leak.leak_id ?? leak.id ?? leakIndex + 1,
     )}`;
     const savedPaths = {};
+    const restoredByArchivePath = new Map();
 
     for (const key of PHOTO_KEYS) {
       const path = leak[key];
@@ -318,7 +422,10 @@ export async function restorePhotos(
         );
       }
       copy[key] = newPath ?? prepared.fallbackPath;
-      if (newPath) savedPaths[key] = newPath;
+      if (newPath) {
+        savedPaths[key] = newPath;
+        restoredByArchivePath.set(path, newPath);
+      }
     }
 
     if (Array.isArray(copy.monitoringRecords)) {
@@ -353,11 +460,66 @@ export async function restorePhotos(
             );
           }
           recordCopy[key] = newPath ?? prepared.fallbackPath;
-          if (newPath) savedPaths[`monitoring_${recordId}_${key}`] = newPath;
+          if (newPath) {
+            savedPaths[`monitoring_${recordId}_${key}`] = newPath;
+            restoredByArchivePath.set(path, newPath);
+          }
         }
         restoredRecords.push(recordCopy);
       }
       copy.monitoringRecords = restoredRecords;
+    }
+
+    // Лента восстанавливается последней и переиспользует уже разложенные
+    // снимки: один и тот же путь в архиве значит один и тот же файл на
+    // устройстве, и второе сохранение развело бы осмотр и его событие по
+    // разным копиям одной фотографии.
+    if (Array.isArray(copy.events)) {
+      const restoredEvents = [];
+      for (const [index, event] of copy.events.entries()) {
+        const eventCopy = { ...event };
+        const eventId = String(event?.id ?? index + 1);
+
+        for (const key of EVENT_PHOTO_KEYS) {
+          const path = event?.[key];
+          if (typeof path !== "string" || !path) continue;
+
+          const known = restoredByArchivePath.get(path);
+          if (known) {
+            eventCopy[key] = known;
+            continue;
+          }
+
+          const prepared = await preparePhoto(path);
+          if (!prepared) continue;
+
+          const keySuffix = key === "photo" ? "" : `_${key}`;
+          const storageKey = `${baseKey}_event_${eventId}${keySuffix}`;
+          const newPath = await savePhoto(
+            prepared.blob,
+            storageKey,
+            [...Object.values(savedPaths)],
+            {
+              cleanupOldVersions: false,
+              contentHash: prepared.contentHash,
+            },
+          );
+          if (!newPath && path.startsWith("zip:")) {
+            throw appError(
+              "PHOTO_SAVE_FAILED",
+              `Не удалось сохранить фотографию ${path}`,
+              { path },
+            );
+          }
+          eventCopy[key] = newPath ?? prepared.fallbackPath;
+          if (newPath) {
+            savedPaths[`event_${eventId}_${key}`] = newPath;
+            restoredByArchivePath.set(path, newPath);
+          }
+        }
+        restoredEvents.push(eventCopy);
+      }
+      copy.events = restoredEvents;
     }
 
     return copy;

@@ -30,6 +30,11 @@ export const leakDetails = {
   roundPhoto: "Фото обхода",
   photoBeforeRound: "Фото до обхода",
   noMonitoringChecks: "Проверки мониторинга пока не добавлены",
+  repairEvents: {
+    repair_started: "Начат ремонт",
+    repair_done: "Ремонт завершён",
+    photo: "Фото ремонта",
+  },
   user: "Пользователь",
 
   historyDamaged: "История записи повреждена и не может быть показана",

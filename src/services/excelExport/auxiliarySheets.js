@@ -7,6 +7,7 @@ import {
   buildMonitoringRoundLookup,
   getMonitoringExportRows,
 } from "./monitoringRows";
+import { getRepairExportRows } from "./repairRows";
 import {
   addStructuredTable,
   getColumnWidth,
@@ -172,6 +173,94 @@ export async function buildMonitoringSheet(
       key,
       rows,
       { isPhoto: key === "photo" || key === "previousPhoto" },
+    );
+  });
+}
+
+/**
+ * Лист ремонтов: строка на попытку, со ссылками на снимки.
+ *
+ * Ссылка ставится только там, где файл в книге действительно есть. Снимок,
+ * который прочитать не удалось, отмечается словами — обещать открытие того,
+ * чего в архиве нет, хуже, чем сказать об этом прямо.
+ */
+export async function buildRepairSheet(
+  workbook,
+  orderedLeaks,
+  texts,
+  photoMap,
+) {
+  const rows = getRepairExportRows(orderedLeaks).map((row) => ({
+    ...row,
+    repairAt: parseTimestamp(row.repairAt) ?? "",
+    repairTime: parseTimestamp(row.repairTime) ?? "",
+    resolvedAt: parseTimestamp(row.resolvedAt) ?? "",
+    resolvedTime: parseTimestamp(row.resolvedTime) ?? "",
+  }));
+  if (rows.length === 0) return;
+
+  const sheet = workbook.addWorksheet(texts.sheets.repairs);
+  const keys = [
+    "index",
+    "leak_id",
+    "attempt",
+    "repairAt",
+    "repairTime",
+    "resolvedAt",
+    "resolvedTime",
+    "durationHours",
+    "user",
+    "repairPhoto",
+    "donePhoto",
+  ];
+  const photoColumns = [
+    ["repairPhoto", "repairPhotoMapKey"],
+    ["donePhoto", "donePhotoMapKey"],
+  ];
+  const headers = keys.map((key) => texts.repairs.headers[key]);
+  const map = photoMap ?? {};
+
+  addStructuredTable(sheet, {
+    name: "Repairs",
+    headers,
+    rows: rows.map((row) =>
+      keys.map((key) => {
+        // Ячейку со ссылкой заполняет отдельный проход ниже: таблица строится
+        // из значений, а гиперссылка — свойство самой ячейки.
+        if (key === "repairPhoto" || key === "donePhoto") return "";
+        return toExcelCellValue(key, row[key]);
+      }),
+    ),
+    theme: "TableStyleMedium3",
+  });
+  styleHeaderRow(sheet, "FFC55A11");
+  await styleBodyRows(sheet, rows.length);
+
+  for (const [rowIndex, row] of rows.entries()) {
+    if (rowIndex > 0 && rowIndex % EXPORT_YIELD_EVERY === 0) {
+      await yieldToMainThread();
+    }
+
+    for (const [key, mapKey] of photoColumns) {
+      const cell = sheet.getRow(rowIndex + 2).getCell(keys.indexOf(key) + 1);
+      const photoFile = map[row[mapKey]];
+      if (photoFile) {
+        cell.value = { text: texts.photo.open, hyperlink: photoFile };
+        cell.font = { color: { argb: "FF1155CC" }, underline: true };
+      } else {
+        cell.value = row[key] ? texts.photo.missing : "";
+      }
+    }
+  }
+
+  applyColumnFormats(sheet, keys);
+
+  keys.forEach((key, index) => {
+    sheet.getColumn(index + 1).width = getColumnWidth(
+      headers[index],
+      key,
+      rows,
+      { isPhoto: key === "repairPhoto" || key === "donePhoto" },
     );
   });
 }

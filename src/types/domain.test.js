@@ -29,6 +29,7 @@ describe("типы домена", () => {
       "LeakStatus",
       "ProjectMetadata",
       "MonitoringRecord",
+      "LeakEvent",
       "LeakRecord",
       "WebDataEnvelope",
       "ImportOperation",

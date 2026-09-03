@@ -9,6 +9,7 @@ import {
 import {
   buildHistorySheet,
   buildMonitoringSheet,
+  buildRepairSheet,
 } from "@/services/excelExport/auxiliarySheets";
 import {
   addStructuredTable,
@@ -124,6 +125,7 @@ async function buildWorkbook({
     photoMap,
     monitoringExportMode,
   );
+  await buildRepairSheet(workbook, orderedLeaks, texts, photoMap);
   await buildHistorySheet(workbook, orderedLeaks, texts);
   addBackupSheet(workbook, archivePayload, texts);
 

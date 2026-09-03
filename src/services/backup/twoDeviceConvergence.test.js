@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { startLeakRepair } from "@/domain/leakLifecycle";
 import { stampLeakFieldVersions } from "@/services/storage/leakFieldVersions";
 import { filterIncomingLeaksForMerge } from "@/services/backup/mergePreview";
 import {
@@ -149,6 +150,22 @@ function monitor(phone, id, result) {
   return phone;
 }
 
+/** Ремонт: заводится теми же функциями домена, что и кнопкой в приложении. */
+function repair(phone, id, photo) {
+  const at = tick(phone);
+  const next = phone.leaks.map((leak) =>
+    leak.id === id
+      ? startLeakRepair(
+          leak,
+          { photo_repair: photo },
+          { user: phone.name, now: at },
+        )
+      : leak,
+  );
+  phone.leaks = stampLeakFieldVersions(phone.leaks, next, at);
+  return phone;
+}
+
 /** Удаление записи: карточка уходит, а надгробие остаётся в состоянии обмена. */
 function removeLeak(phone, id) {
   const gone = phone.leaks.filter((leak) => leak.id === id);
@@ -185,9 +202,12 @@ function snapshot(phone) {
   return phone.leaks
     .map((leak) => {
       const rest = omit(leak, ["history"]);
-      return leak.monitoringRecords
+      const withMonitoring = leak.monitoringRecords
         ? { ...rest, monitoringRecords: byId(leak.monitoringRecords) }
         : rest;
+      return leak.events
+        ? { ...withMonitoring, events: byId(leak.events) }
+        : withMonitoring;
     })
     .sort((left, right) => String(left.id).localeCompare(String(right.id)));
 }
@@ -352,6 +372,37 @@ describe("два телефона, обмен архивом", () => {
     expect(snapshot(a)).toEqual(snapshot(b));
   });
 
+  it("ремонты с двух телефонов складываются, а не вытесняют друг друга", () => {
+    // Ровно то, ради чего заведена лента. Вехой ремонт был одним полем:
+    // `photo_repair` и `repairAt` сводятся выбором свежайшего, и одна из двух
+    // починок, записанных без связи, пропадала молча.
+    const [a, b] = twoDevices();
+    repair(a, "leak-1", "idb://repair-a");
+    repair(b, "leak-1", "idb://repair-b");
+
+    exchange(a, b);
+
+    for (const phone of [a, b]) {
+      const leak = phone.leaks.find((item) => item.id === "leak-1");
+      const photos = leak.events
+        .filter((event) => event.type === "repair_started")
+        .map((event) => event.photo)
+        .sort();
+      expect({ телефон: phone.name, фото: photos }).toEqual({
+        телефон: phone.name,
+        фото: ["idb://repair-a", "idb://repair-b"],
+      });
+    }
+
+    // Поле на самой записи по-прежнему одно — список чинит именно это.
+    expect(snapshot(a)).toEqual(snapshot(b));
+
+    // Повторный обмен ленту не раздваивает: номера событий свои у каждого.
+    const before = snapshot(a);
+    exchange(a, b);
+    expect(snapshot(a)).toEqual(before);
+  });
+
   it("принятая запись обхода не считается изменённой на обратном пути", () => {
     // Обход заведён на A и уехал на B. Метку записи B проставляет своим
     // временем сохранения — и пока она бралась оттуда, а не выводилась из
@@ -429,6 +480,19 @@ function dataSnapshot(phone) {
  * обменами. Зерно фиксировано, поэтому падение воспроизводится: в сообщении
  * стоит номер сценария.
  */
+/**
+ * Свой срок для случайных сценариев.
+ *
+ * Пятисекундного по умолчанию им хватает только на свободной машине. Это
+ * перебор из десятков прогонов подряд — чистый счёт без ввода-вывода, — и на
+ * занятой машине или в CI он растягивается кратно: измеренные 1800 мс
+ * превращались в шесть секунд, и набор падал не там, где что-то сломалось.
+ *
+ * Срок здесь сторожит зависание, а не медлительность: проверок он не
+ * ослабляет — при расхождении тест падает сравнением, а не по времени.
+ */
+const RANDOM_SCENARIO_TIMEOUT_MS = 30_000;
+
 describe("случайные сценарии на трёх телефонах", () => {
   const FIELDS = ["object", "component", "status", "note"];
   const VALUES = ["А", "Б", "В", "Г"];
@@ -470,19 +534,23 @@ describe("случайные сценарии на трёх телефонах",
     return phones;
   }
 
-  it("сходятся к одному состоянию из любого сочетания правок и обменов", () => {
-    const diverged = [];
-    for (let seed = 1; seed <= 200; seed += 1) {
-      const [a, b, c] = play(seed);
-      const first = JSON.stringify(stable(dataSnapshot(a)));
-      if (
-        first !== JSON.stringify(stable(dataSnapshot(b))) ||
-        first !== JSON.stringify(stable(dataSnapshot(c)))
-      ) {
-        diverged.push(seed);
+  it(
+    "сходятся к одному состоянию из любого сочетания правок и обменов",
+    () => {
+      const diverged = [];
+      for (let seed = 1; seed <= 200; seed += 1) {
+        const [a, b, c] = play(seed);
+        const first = JSON.stringify(stable(dataSnapshot(a)));
+        if (
+          first !== JSON.stringify(stable(dataSnapshot(b))) ||
+          first !== JSON.stringify(stable(dataSnapshot(c)))
+        ) {
+          diverged.push(seed);
+        }
       }
-    }
 
-    expect(diverged).toEqual([]);
-  });
+      expect(diverged).toEqual([]);
+    },
+    RANDOM_SCENARIO_TIMEOUT_MS,
+  );
 });

@@ -34,6 +34,7 @@ export const importConflict = {
     unreadable: "local photo could not be read",
     different: "photo content differs",
     monitoringRecords: "Monitoring history",
+    events: "Event history",
     history: "Change history",
   },
 

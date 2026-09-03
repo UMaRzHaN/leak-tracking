@@ -10,6 +10,7 @@ import {
   invalidateNativePhotoCachePrefix,
 } from "@/services/storage/nativePhotoSourceCache";
 import {
+  EVENT_PHOTO_FIELDS,
   LEAK_PHOTO_FIELDS,
   MONITORING_PHOTO_FIELDS,
 } from "@/utils/photoFields";
@@ -56,6 +57,17 @@ function collectReferencedPhotos(leaks = []) {
       for (const record of leak.monitoringRecords) {
         for (const field of MONITORING_PHOTO_FIELDS) {
           if (record?.[field]) referenced.add(record[field]);
+        }
+      }
+    }
+
+    // Лента событий обходится наравне со списком обходов, а не вместо него.
+    // Пока обе формы живут рядом, снимок может числиться только в одной из
+    // них, и пропуск любой означает удаление живого фото как бесхозного.
+    if (Array.isArray(leak.events)) {
+      for (const event of leak.events) {
+        for (const field of EVENT_PHOTO_FIELDS) {
+          if (event?.[field]) referenced.add(event[field]);
         }
       }
     }

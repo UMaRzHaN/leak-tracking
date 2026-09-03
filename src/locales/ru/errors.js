@@ -93,6 +93,7 @@ export const errors = {
   INVALID_LEAK_STATUS_TRANSITION: "Такой переход статуса недопустим",
   HISTORY_USER_REQUIRED:
     "Не указано, кто вносит запись: заполните имя в профиле.",
+  INVALID_LEAK_EVENT_TYPE: "Неизвестный вид события в истории утечки",
 
   // Схемы
   SCHEMA_OPEN_FAILED: "На устройстве нет приложения, которое откроет схему",
