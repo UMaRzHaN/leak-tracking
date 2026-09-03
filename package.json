@@ -7,22 +7,22 @@
   },
   "dependencies": {
     "@capacitor-community/speech-recognition": "^7.0.1",
-    "@capacitor-mlkit/barcode-scanning": "^8.1.0",
-    "@capacitor/android": "^8.5.0",
-    "@capacitor/camera": "^8.2.3",
-    "@capacitor/core": "^8.5.0",
+    "@capacitor-mlkit/barcode-scanning": "^8.1.1",
+    "@capacitor/android": "^8.5.1",
+    "@capacitor/camera": "^8.2.4",
+    "@capacitor/core": "^8.5.1",
     "@capacitor/filesystem": "^8.1.3",
     "@capacitor/geolocation": "^8.2.2",
     "@capacitor/share": "^8.0.1",
     "exceljs": "^4.4.0",
-    "i18next": "^26.4.0",
+    "i18next": "^26.4.1",
     "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-i18next": "^17.0.12",
+    "react-i18next": "^17.0.13",
     "web-vitals": "^6.2.1"
   },
   "scripts": {
@@ -93,7 +93,7 @@
     ]
   },
   "devDependencies": {
-    "@capacitor/cli": "^8.5.0",
+    "@capacitor/cli": "^8.5.1",
     "@eslint-react/eslint-plugin": "^5.18.6",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.62.1",
