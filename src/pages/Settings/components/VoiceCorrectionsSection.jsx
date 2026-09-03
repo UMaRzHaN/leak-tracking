@@ -48,63 +48,64 @@ export default function VoiceCorrectionsSection({
       <div className={s.sectionHead}>
         <h2 className={s.sectionTitle}>{t("settings.voice.title")}</h2>
       </div>
+      <div className={s.sectionBody}>
+        <p className={s.voiceHint}>{t("settings.voice.hint")}</p>
 
-      <p className={s.voiceHint}>{t("settings.voice.hint")}</p>
+        <div className={s.voiceForm}>
+          <label className={s.voiceField} htmlFor={fromId}>
+            <span className={s.voiceLabel}>{t("settings.voice.heard")}</span>
+            <input
+              id={fromId}
+              className={s.voiceInput}
+              value={from}
+              onChange={(event) => setFrom(event.target.value)}
+              placeholder={t("settings.voice.heardPlaceholder")}
+            />
+          </label>
+          <label className={s.voiceField} htmlFor={toId}>
+            <span className={s.voiceLabel}>{t("settings.voice.written")}</span>
+            <input
+              id={toId}
+              className={s.voiceInput}
+              value={to}
+              onChange={(event) => setTo(event.target.value)}
+              placeholder={t("settings.voice.writtenPlaceholder")}
+            />
+          </label>
+          <button
+            type="button"
+            className={s.voiceAdd}
+            disabled={!canAdd}
+            onClick={handleAdd}
+          >
+            {t("settings.voice.add")}
+          </button>
+        </div>
 
-      <div className={s.voiceForm}>
-        <label className={s.voiceField} htmlFor={fromId}>
-          <span className={s.voiceLabel}>{t("settings.voice.heard")}</span>
-          <input
-            id={fromId}
-            className={s.voiceInput}
-            value={from}
-            onChange={(event) => setFrom(event.target.value)}
-            placeholder={t("settings.voice.heardPlaceholder")}
-          />
-        </label>
-        <label className={s.voiceField} htmlFor={toId}>
-          <span className={s.voiceLabel}>{t("settings.voice.written")}</span>
-          <input
-            id={toId}
-            className={s.voiceInput}
-            value={to}
-            onChange={(event) => setTo(event.target.value)}
-            placeholder={t("settings.voice.writtenPlaceholder")}
-          />
-        </label>
-        <button
-          type="button"
-          className={s.voiceAdd}
-          disabled={!canAdd}
-          onClick={handleAdd}
-        >
-          {t("settings.voice.add")}
-        </button>
+        {corrections.length === 0 ? (
+          <p className={s.voiceEmpty}>{t("settings.voice.empty")}</p>
+        ) : (
+          <ul className={s.voiceList}>
+            {corrections.map((correction, index) => (
+              <li key={`${correction.from}-${index}`} className={s.voiceRow}>
+                <span className={s.voiceRowText}>
+                  <strong>{correction.from}</strong> → {correction.to}
+                </span>
+                <button
+                  type="button"
+                  className={s.voiceRemove}
+                  onClick={() => handleRemove(index)}
+                  aria-label={t("settings.voice.remove", {
+                    from: correction.from,
+                  })}
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-
-      {corrections.length === 0 ? (
-        <p className={s.voiceEmpty}>{t("settings.voice.empty")}</p>
-      ) : (
-        <ul className={s.voiceList}>
-          {corrections.map((correction, index) => (
-            <li key={`${correction.from}-${index}`} className={s.voiceRow}>
-              <span className={s.voiceRowText}>
-                <strong>{correction.from}</strong> → {correction.to}
-              </span>
-              <button
-                type="button"
-                className={s.voiceRemove}
-                onClick={() => handleRemove(index)}
-                aria-label={t("settings.voice.remove", {
-                  from: correction.from,
-                })}
-              >
-                ✕
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
     </section>
   );
 }
