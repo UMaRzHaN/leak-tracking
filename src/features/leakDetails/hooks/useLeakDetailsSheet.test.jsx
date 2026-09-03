@@ -1,3 +1,4 @@
+import { getRepairDonePhoto } from "@/domain/leakEvents";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -375,10 +376,10 @@ describe("useLeakDetailsSheet", () => {
       }),
     );
 
-    expect(onSave.mock.calls[0][0]).toMatchObject({
-      status: "resolved",
-      photo_after: "idb://new-after",
-    });
+    const saved = onSave.mock.calls[0][0];
+    expect(saved).toMatchObject({ status: "resolved" });
+    // Снимок лежит в событии: веха гасится, забрав своё значение в ленту.
+    expect(getRepairDonePhoto(saved)).toBe("idb://new-after");
     expect(mocks.deletePhoto).toHaveBeenCalledWith("idb://old-after");
     expect(order).toEqual(["saved", "deleted"]);
   });

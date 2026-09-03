@@ -1,3 +1,4 @@
+import { getRepairDonePhoto, getRepairPhoto } from "@/domain/leakEvents";
 import { useRef } from "react";
 import { useEditablePhoto } from "@/hooks/useEditablePhoto";
 
@@ -12,19 +13,21 @@ export function useLeakPhotoActions(leak) {
     initialPath: leak.photo,
     leakId: String(leak.id),
     version: leak.updatedAt,
-    excludePaths: [leak.photo_after, leak.photo_repair].filter(Boolean),
+    excludePaths: [getRepairDonePhoto(leak), getRepairPhoto(leak)].filter(
+      Boolean,
+    ),
   });
   const after = useEditablePhoto({
-    initialPath: leak.photo_after,
+    initialPath: getRepairDonePhoto(leak),
     leakId: `${leak.id}_after`,
     version: leak.updatedAt,
-    excludePaths: [leak.photo, leak.photo_repair].filter(Boolean),
+    excludePaths: [leak.photo, getRepairPhoto(leak)].filter(Boolean),
   });
   const repair = useEditablePhoto({
-    initialPath: leak.photo_repair,
+    initialPath: getRepairPhoto(leak),
     leakId: `${leak.id}_repair`,
     version: leak.updatedAt,
-    excludePaths: [leak.photo, leak.photo_after].filter(Boolean),
+    excludePaths: [leak.photo, getRepairDonePhoto(leak)].filter(Boolean),
   });
 
   return {

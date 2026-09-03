@@ -7,6 +7,7 @@ import { priorityFromSpeed } from "@/utils/priority";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
 import { requireHistoryUser } from "@/utils/historyUser";
+import { getRepairDonePhoto } from "@/domain/leakEvents";
 import { fromEntries } from "@/utils/fromEntries";
 
 export const REOPEN_CALC_FIELDS = [
@@ -95,7 +96,7 @@ export function buildReopenedLeak({
     ...leak,
     ...measurements,
     ...(leak.status === STATUS.RESOLVED
-      ? { photo: leak.photo_after ?? leak.photo, photo_after: null }
+      ? { photo: getRepairDonePhoto(leak) ?? leak.photo, photo_after: null }
       : {}),
     status: STATUS.OPEN,
     resolvedAt: null,

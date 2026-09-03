@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  getRepairDoneAt,
+  getRepairDonePhoto,
+  getRepairPhoto,
+  getRepairStartedAt,
+} from "./leakEvents";
+import {
   changeLeakStatus,
   collectLeakPhotoPaths,
   deleteLeakPhotosIfUnreferenced,
@@ -21,20 +27,24 @@ describe("leakLifecycle", () => {
 
     expect(updated).toMatchObject({
       status: "resolved",
-      resolvedAt: NOW,
       updatedAt: NOW,
-      photo_after: "idb://after",
       note: "fixed",
     });
+    // Вехи не пишутся: и момент, и снимок теперь лежат в событии, а поле
+    // гасится — у записи, заведённой до переезда, оно осталось бы лежать.
+    expect(updated.resolvedAt).toBeUndefined();
+    expect(updated.photo_after).toBeNull();
+    expect(getRepairDoneAt(updated)).toBe("2026-07-15T08:00:00.000Z");
+    expect(getRepairDonePhoto(updated)).toBe("idb://after");
     expect(updated.history.at(-1)).toMatchObject({
       action: "status_changed",
       to: "resolved",
       date: "2026-07-15T08:00:00.000Z",
       user: "Operator",
     });
-    expect(updated.history.at(-1).changes.map((change) => change.key)).toEqual(
-      expect.arrayContaining(["note", "photo_after"]),
-    );
+    expect(updated.history.at(-1).changes.map((change) => change.key)).toEqual([
+      "note",
+    ]);
   });
 
   it("starts repair from open and clears stale resolved state", () => {
@@ -52,16 +62,18 @@ describe("leakLifecycle", () => {
     expect(updated).toMatchObject({
       status: "in_progress",
       photo: "idb://before",
+      // Прошлое устранение перестало быть текущим, а свои вехи ремонт больше
+      // не пишет: момент и снимок легли в событие.
       photo_after: null,
-      photo_repair: "idb://repair",
-      repairAt: NOW,
       resolvedAt: null,
     });
-    expect(updated.history.at(-1).changes).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ key: "photo_repair" }),
-      ]),
-    );
+    expect(updated.repairAt).toBeUndefined();
+    expect(updated.photo_repair).toBeNull();
+    expect(getRepairStartedAt(updated)).toBe("2026-07-15T08:00:00.000Z");
+    expect(getRepairPhoto(updated)).toBe("idb://repair");
+    // Снимок в журнал изменений не заносится: он лежит в событии, и запись
+    // «photo_repair изменился» повторяла бы его, ничего не добавляя.
+    expect(updated.history.at(-1).changes).toBeUndefined();
   });
 
   it("keeps both repairs of a leak that came back", () => {
@@ -107,9 +119,9 @@ describe("leakLifecycle", () => {
     ]);
     // Возврат в работу события не оставляет: он уже виден следующим ремонтом.
     expect(reopened.events).toHaveLength(2);
-    // Снимок первого ремонта на самой записи к этому моменту уже затёрт —
-    // и найти его можно только в ленте.
-    expect(secondDone.photo_repair).toBe("idb://repair-2");
+    // Вех на записи нет вовсе: единственный ответ про починку даёт лента.
+    expect(secondDone.photo_repair).toBeNull();
+    expect(getRepairPhoto(secondDone)).toBe("idb://repair-2");
     expect(collectLeakPhotoPaths(secondDone)).toEqual(
       expect.arrayContaining(["idb://repair-1", "idb://after-1"]),
     );

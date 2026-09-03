@@ -194,12 +194,17 @@ export function buildMonitoringPatch({
       : result === MONITORING_RESULT.NEEDS_RECHECK
         ? STATUS.IN_PROGRESS
         : STATUS.OPEN;
+  // Вехи ремонта обход больше не пишет: снимок он и так кладёт в своё
+  // событие, а «фото после ремонта» у устранённой записи карточка берёт
+  // оттуда же. Гасятся они по той же причине, что и в жизненном цикле: у
+  // записи, заведённой до переезда, старое значение осталось бы висеть и
+  // спорить с лентой.
   const statusPatch =
     nextStatus === STATUS.RESOLVED
       ? {
           status: nextStatus,
-          resolvedAt: now.getTime(),
-          photo_after: photoPath ?? leak.photo_after,
+          resolvedAt: null,
+          photo_after: null,
         }
       : {
           status: nextStatus,
@@ -208,12 +213,7 @@ export function buildMonitoringPatch({
           ...(nextStatus === STATUS.OPEN
             ? { photo: photoPath ?? leak.photo }
             : {}),
-          ...(nextStatus === STATUS.IN_PROGRESS
-            ? {
-                repairAt: now.getTime(),
-                photo_repair: photoPath ?? leak.photo_repair,
-              }
-            : {}),
+          ...(nextStatus === STATUS.IN_PROGRESS ? { repairAt: null } : {}),
         };
   const nextLeakForChanges = {
     ...leak,

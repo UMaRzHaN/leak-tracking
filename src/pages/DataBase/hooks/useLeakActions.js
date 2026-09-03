@@ -1,3 +1,4 @@
+import { getRepairDonePhoto, getRepairPhoto } from "@/domain/leakEvents";
 import { errorText } from "@/utils/appError";
 import { useState, useCallback } from "react";
 import { STATUS } from "@/utils/status";
@@ -121,15 +122,20 @@ export function useLeakActions({
         await setData(next);
         setResolveLeak(null);
         hapticSuccess();
-        if (leak.photo_after && leak.photo_after !== photo_after) {
+        // Прежний снимок спрашивается у ленты: веха больше не пишется, и
+        // сравнение с ней объявляло бы заменённым то, чего на записи нет.
+        if (
+          getRepairDonePhoto(leak) &&
+          getRepairDonePhoto(leak) !== photo_after
+        ) {
           await deletePhotoIfUnreferenced(
-            leak.photo_after,
+            getRepairDonePhoto(leak),
             next,
             deletePhoto,
           ).catch(ignoredError("database.photoCleanup"));
         }
       } catch (err) {
-        if (photo_after && photo_after !== leak.photo_after) {
+        if (photo_after && photo_after !== getRepairDonePhoto(leak)) {
           deletePhotoIfUnreferenced(photo_after, data, deletePhoto).catch(
             ignoredError("database.photoCleanup"),
           );
@@ -169,9 +175,9 @@ export function useLeakActions({
         await setData(next);
         setRepairLeak(null);
         hapticSuccess();
-        if (leak.photo_repair && leak.photo_repair !== photo_repair) {
+        if (getRepairPhoto(leak) && getRepairPhoto(leak) !== photo_repair) {
           await deletePhotoIfUnreferenced(
-            leak.photo_repair,
+            getRepairPhoto(leak),
             next,
             deletePhoto,
           ).catch(ignoredError("database.photoCleanup"));
@@ -180,7 +186,7 @@ export function useLeakActions({
           ignoredError("database.photoCleanup"),
         );
       } catch (err) {
-        if (photo_repair && photo_repair !== leak.photo_repair) {
+        if (photo_repair && photo_repair !== getRepairPhoto(leak)) {
           deletePhotoIfUnreferenced(photo_repair, data, deletePhoto).catch(
             ignoredError("database.photoCleanup"),
           );

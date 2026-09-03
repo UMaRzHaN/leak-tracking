@@ -12,7 +12,11 @@ import {
   LEAK_PHOTO_FIELDS,
   MONITORING_PHOTO_FIELDS,
 } from "@/utils/photoFields";
-import { getLeakEvents } from "@/domain/leakEvents";
+import {
+  getLeakEvents,
+  getRepairDonePhoto,
+  getRepairPhoto,
+} from "@/domain/leakEvents";
 import { fromEntries } from "@/utils/fromEntries";
 
 export const PHOTO_KEYS = LEAK_PHOTO_FIELDS;
@@ -146,6 +150,20 @@ function getEventPhotoIdentity(leak, leakIndex, event, eventIndex, photoKey) {
     : `${baseIdentity}:field:${photoKey}`;
 }
 
+/**
+ * Путь снимка утечки для колонки книги.
+ *
+ * Поля `photo_repair` и `photo_after` перестали писаться: починка живёт в
+ * ленте. Колонки «Фото в ремонте» и «Фото после ремонта» остаются, и путь для
+ * них спрашивается там же, где его теперь спрашивает карточка, — иначе книга
+ * обещала бы снимок и отправляла к файлу, которого в ней нет.
+ */
+function getLeakPhotoPath(leak, key) {
+  if (key === "photo_repair") return getRepairPhoto(leak);
+  if (key === "photo_after") return getRepairDonePhoto(leak);
+  return leak?.[key] ?? null;
+}
+
 export async function buildLeakPhotoEntries(
   orderedLeaks,
   leakSegments,
@@ -157,7 +175,7 @@ export async function buildLeakPhotoEntries(
 
   for (const [leakIndex, leak] of orderedLeaks.entries()) {
     for (const key of PHOTO_KEYS) {
-      const path = leak[key];
+      const path = getLeakPhotoPath(leak, key);
       if (!path) continue;
 
       const leakSegment = leakSegments[leakIndex];
@@ -337,8 +355,9 @@ export function buildPortableLeaks(leaks, photoMap) {
     const archived = new Map();
     for (const key of PHOTO_KEYS) {
       const photoFileName = photoMap[`${leakIndex}:${key}`];
-      if (photoFileName && leak?.[key] != null) {
-        archived.set(String(leak[key]), `zip:${photoFileName}`);
+      const path = getLeakPhotoPath(leak, key);
+      if (photoFileName && path != null) {
+        archived.set(String(path), `zip:${photoFileName}`);
       }
     }
 

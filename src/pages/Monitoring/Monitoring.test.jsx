@@ -244,8 +244,11 @@ describe("Monitoring round flow", () => {
     });
 
     expect(patch.status).toBe("in_progress");
+    // Вехи гасятся, а снимок обхода лежит в его событии — оттуда карточка
+    // его и берёт.
     expect(patch.photo_after).toBeNull();
-    expect(patch.photo_repair).toBe("idb://recheck");
+    expect(patch.repairAt).toBeNull();
+    expect(getMonitoringRecords(patch).at(-1).photo).toBe("idb://recheck");
   });
 
   it("builds a consistent round summary, counts and filtered list", () => {

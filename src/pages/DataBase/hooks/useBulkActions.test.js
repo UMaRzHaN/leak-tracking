@@ -1,3 +1,4 @@
+import { getRepairDonePhoto, getRepairPhoto } from "@/domain/leakEvents";
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { STATUS } from "@/utils/status";
@@ -17,6 +18,7 @@ const modes = [
     label: "resolve",
     status: STATUS.RESOLVED,
     photoKey: "photo_after",
+    readPhoto: getRepairDonePhoto,
     queueKey: "resolveQueue",
     confirmKey: "handleSequentialResolveConfirm",
   },
@@ -24,6 +26,7 @@ const modes = [
     label: "repair",
     status: STATUS.IN_PROGRESS,
     photoKey: "photo_repair",
+    readPhoto: getRepairPhoto,
     queueKey: "repairQueue",
     confirmKey: "handleSequentialRepairConfirm",
   },
@@ -117,7 +120,8 @@ describe.each(modes)("bulk sequential $label photo lifecycle", (mode) => {
     });
 
     expect(setData).toHaveBeenCalledOnce();
-    expect(setData.mock.calls[0][0][0][mode.photoKey]).toBe(newPath);
+    // Снимок лежит в событии: веха гасится, забрав своё значение в ленту.
+    expect(mode.readPhoto(setData.mock.calls[0][0][0])).toBe(newPath);
     expect(deletePhoto).toHaveBeenCalledWith(oldPath);
     expect(deletePhoto).not.toHaveBeenCalledWith(newPath);
     expect(result.current[mode.queueKey]).toHaveLength(0);

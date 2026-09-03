@@ -397,11 +397,23 @@ export function getRepairPhoto(leak) {
   );
 }
 
-/** Снимок последней завершённой починки. */
+/**
+ * Снимок последней завершённой починки.
+ *
+ * Третий источник — осмотр: утечку закрывает не только ремонт, но и обход,
+ * нашедший, что течи больше нет. Снимок такого обхода и есть «фото после» для
+ * карточки, и до переезда он попадал в веху `photo_after` именно оттуда.
+ * Спрашивается он только у устранённой записи: у открытой последний осмотр
+ * показывает течь, а не её отсутствие.
+ */
 export function getRepairDonePhoto(leak) {
-  return (
-    lastEventValue(leak, LEAK_EVENT_TYPES.REPAIR_DONE, "photo") ??
-    leak?.photo_after ??
-    null
+  const fromRepair = lastEventValue(
+    leak,
+    LEAK_EVENT_TYPES.REPAIR_DONE,
+    "photo",
   );
+  if (fromRepair) return fromRepair;
+  if (leak?.photo_after) return leak.photo_after;
+  if (leak?.status !== "resolved") return null;
+  return lastEventValue(leak, LEAK_EVENT_TYPES.INSPECTION, "photo");
 }

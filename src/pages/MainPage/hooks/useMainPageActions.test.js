@@ -1,3 +1,4 @@
+import { getRepairDonePhoto, getRepairPhoto } from "@/domain/leakEvents";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useMainPageActions } from "./useMainPageActions";
@@ -300,11 +301,10 @@ describe("useMainPageActions", () => {
         });
       });
 
-      expect(setData.mock.calls[0][0][0]).toMatchObject({
-        status: "resolved",
-        photo_after: "idb://after",
-        note: "sealed",
-      });
+      const saved = setData.mock.calls[0][0][0];
+      expect(saved).toMatchObject({ status: "resolved", note: "sealed" });
+      // Снимок лежит в событии, а не в вехе записи.
+      expect(getRepairDonePhoto(saved)).toBe("idb://after");
       expect(result.current.resolveLeak).toBeNull();
     });
 
@@ -336,10 +336,9 @@ describe("useMainPageActions", () => {
         await result.current.handleRepairConfirm({ photo_repair: "idb://new" });
       });
 
-      expect(setData.mock.calls[0][0][0]).toMatchObject({
-        status: "in_progress",
-        photo_repair: "idb://new",
-      });
+      const saved = setData.mock.calls[0][0][0];
+      expect(saved).toMatchObject({ status: "in_progress" });
+      expect(getRepairPhoto(saved)).toBe("idb://new");
       expect(deletePhoto).toHaveBeenCalledWith("idb://old");
       expect(result.current.repairLeak).toBeNull();
     });

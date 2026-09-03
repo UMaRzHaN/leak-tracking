@@ -1,3 +1,4 @@
+import { getRepairDonePhoto, getRepairPhoto } from "@/domain/leakEvents";
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { useLeakActions } from "./useLeakActions";
@@ -254,9 +255,10 @@ describe("useLeakActions", () => {
       const [written] = setData.mock.calls[0];
       expect(written[0]).toMatchObject({
         status: "resolved",
-        photo_after: "idb://after",
         materials_equipment: "gasket",
       });
+      // Снимок лежит в событии: веха гасится, забрав своё значение в ленту.
+      expect(getRepairDonePhoto(written[0])).toBe("idb://after");
       expect(result.current.resolveLeak).toBeNull();
     });
 
@@ -320,10 +322,8 @@ describe("useLeakActions", () => {
       });
 
       const [written] = setData.mock.calls[0];
-      expect(written[0]).toMatchObject({
-        status: "in_progress",
-        photo_repair: "idb://new-repair",
-      });
+      expect(written[0]).toMatchObject({ status: "in_progress" });
+      expect(getRepairPhoto(written[0])).toBe("idb://new-repair");
       expect(deletePhoto).toHaveBeenCalledWith("idb://old-repair");
       expect(result.current.repairLeak).toBeNull();
     });

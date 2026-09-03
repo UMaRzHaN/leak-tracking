@@ -9,6 +9,8 @@ import {
   LEAK_EVENT_TYPES,
   createLeakEvent,
   getLeakEvents,
+  getRepairDonePhoto,
+  getRepairPhoto,
   sortLeakEvents,
 } from "@/domain/leakEvents";
 
@@ -44,11 +46,6 @@ const STATUS_EVENT_TYPES = {
   [STATUS.RESOLVED]: LEAK_EVENT_TYPES.REPAIR_DONE,
 };
 
-const EVENT_PHOTO_SOURCES = {
-  [LEAK_EVENT_TYPES.REPAIR_STARTED]: "photo_repair",
-  [LEAK_EVENT_TYPES.REPAIR_DONE]: "photo_after",
-};
-
 /**
  * Дописывает событие к переходу статуса.
  *
@@ -57,13 +54,12 @@ const EVENT_PHOTO_SOURCES = {
  * не кладут вовсе, — и читать результат надёжнее, чем повторять эту развилку
  * в каждом из них.
  */
-function withStatusEvent(after, { to, user, iso }) {
+function withStatusEvent(after, { to, user, iso, photo }) {
   const type = STATUS_EVENT_TYPES[to];
   // Возврат в работу события не оставляет, а уже накопленную ленту уносит
   // расстановка `...after` у вызывающего.
   if (!type) return undefined;
 
-  const photo = after[EVENT_PHOTO_SOURCES[type]];
   return sortLeakEvents([
     ...getLeakEvents(after),
     createLeakEvent({
@@ -83,9 +79,14 @@ function withStatusEvent(after, { to, user, iso }) {
  * @param {string} entry.user
  * @param {string} entry.iso
  * @param {import("@/utils/historyChanges").LeakHistoryChange[]} [entry.changes]
+ * @param {string|null} [entry.photo]
  */
-function withStatusHistory(before, after, { to, user, iso, changes = [] }) {
-  const events = withStatusEvent(after, { to, user, iso });
+function withStatusHistory(
+  before,
+  after,
+  { to, user, iso, changes = [], photo = null },
+) {
+  const events = withStatusEvent(after, { to, user, iso, photo });
   return {
     ...after,
     ...(events ? { events } : {}),
@@ -103,11 +104,15 @@ function withStatusHistory(before, after, { to, user, iso, changes = [] }) {
 }
 
 export function getOrphanedOriginalPhoto(leak) {
+  // Снимок «после» спрашивается у ленты: у записей, заведённых после переезда,
+  // поля `photo_after` нет, и сравнение с ним признало бы исходный снимок
+  // нужным навсегда.
+  const after = getRepairDonePhoto(leak);
   if (
     leak?.status !== STATUS.RESOLVED ||
     !leak.photo ||
-    !leak.photo_after ||
-    leak.photo === leak.photo_after
+    !after ||
+    leak.photo === after
   ) {
     return null;
   }
@@ -120,8 +125,11 @@ export function changeLeakStatus(leak, status, { user, now } = {}) {
   const { timestamp, iso } = lifecycleTime(now);
   const after = {
     ...leak,
+    // Снимок «после» становится главным снимком карточки: утечка снова
+    // открыта, и показывать надо последнее, что о ней известно. Веха при этом
+    // гасится — у записей, заведённых до переезда, она осталась бы висеть.
     ...(leak.status === STATUS.RESOLVED
-      ? { photo: leak.photo_after ?? leak.photo, photo_after: null }
+      ? { photo: getRepairDonePhoto(leak) ?? leak.photo, photo_after: null }
       : {}),
     status,
     updatedAt: timestamp,
@@ -134,11 +142,14 @@ export function changeLeakStatus(leak, status, { user, now } = {}) {
 export function resolveLeakRecord(leak, draft = {}, { user, now } = {}) {
   assertStatusTransition(leak, STATUS.RESOLVED);
   const { timestamp, iso } = lifecycleTime(now);
+  const photo = draft.photo_after ?? getRepairDonePhoto(leak);
   const after = {
     ...leak,
+    // Веха гасится после того, как её значение забрано в событие: у записи,
+    // заведённой до переезда, она осталась бы лежать и держать прежний снимок
+    // «нужным» — его не убрала бы уборка, а лента отвечала бы уже другим.
+    photo_after: null,
     status: STATUS.RESOLVED,
-    resolvedAt: timestamp,
-    photo_after: draft.photo_after ?? leak.photo_after,
     materials_equipment: draft.materials_equipment ?? leak.materials_equipment,
     note: draft.note ?? leak.note,
     updatedAt: timestamp,
@@ -146,8 +157,9 @@ export function resolveLeakRecord(leak, draft = {}, { user, now } = {}) {
   const changes = buildLeakHistoryChanges({
     before: leak,
     after,
+    // Снимок в журнал изменений больше не заносится: он лежит в событии, и
+    // запись «photo_after изменился» повторяла бы его, ничего не добавляя.
     fields: STATUS_NOTE_FIELDS,
-    includeKeys: ["photo_after"],
   });
 
   return withStatusHistory(leak, after, {
@@ -155,6 +167,7 @@ export function resolveLeakRecord(leak, draft = {}, { user, now } = {}) {
     user,
     iso,
     changes,
+    photo,
   });
 }
 
@@ -162,13 +175,15 @@ export function resolveLeakRecord(leak, draft = {}, { user, now } = {}) {
 export function startLeakRepair(leak, draft = {}, { user, now } = {}) {
   assertStatusTransition(leak, STATUS.IN_PROGRESS);
   const { timestamp, iso } = lifecycleTime(now);
+  const photo = draft.photo_repair ?? getRepairPhoto(leak);
   const after = {
     ...leak,
+    // Вехи не пишутся, а у записи, заведённой до переезда, они лежат: значение
+    // забрано в событие, и дальше их держать незачем.
     photo_after: null,
+    photo_repair: null,
     status: STATUS.IN_PROGRESS,
     resolvedAt: null,
-    repairAt: timestamp,
-    photo_repair: draft.photo_repair ?? leak.photo_repair,
     materials_equipment: draft.materials_equipment ?? leak.materials_equipment,
     note: draft.note ?? leak.note,
     updatedAt: timestamp,
@@ -177,13 +192,13 @@ export function startLeakRepair(leak, draft = {}, { user, now } = {}) {
     before: leak,
     after,
     fields: STATUS_NOTE_FIELDS,
-    includeKeys: ["photo_repair"],
   });
 
   return withStatusHistory(leak, after, {
     to: STATUS.IN_PROGRESS,
     user,
     iso,
+    photo,
     changes,
   });
 }
