@@ -8,6 +8,7 @@ import {
 import { mapWithConcurrency } from "@/services/backup/runtime";
 import { hydrateZipPhotos } from "@/services/import/zipPhotoHydration";
 import {
+  EVENT_PHOTO_FIELDS,
   LEAK_PHOTO_FIELDS,
   MONITORING_PHOTO_FIELDS,
 } from "@/utils/photoFields";
@@ -115,6 +116,11 @@ async function buildReusablePhotoMap(
     for (const record of leak?.monitoringRecords ?? []) {
       for (const field of MONITORING_PHOTO_FIELDS) {
         if (record?.[field]) paths.add(record[field]);
+      }
+    }
+    for (const event of leak?.events ?? []) {
+      for (const field of EVENT_PHOTO_FIELDS) {
+        if (event?.[field]) paths.add(event[field]);
       }
     }
   }
@@ -344,6 +350,34 @@ export async function reconcileExcelImportPhotos(
             );
           }
           copy.monitoringRecords.push(recordCopy);
+        }
+      }
+
+      // Событие узнаётся по своему номеру, а не по месту в списке: лента
+      // сводится объединением, и порядок у двух телефонов разный.
+      if (Array.isArray(leak.events)) {
+        const currentEvents = current?.events ?? [];
+        const currentById = new Map(
+          currentEvents.map((event, index) => [event?.id ?? index, event]),
+        );
+        copy.events = [];
+        for (const [index, event] of leak.events.entries()) {
+          const currentEvent =
+            currentById.get(event?.id ?? index) ?? currentEvents[index];
+          const eventCopy = { ...event };
+          for (const field of EVENT_PHOTO_FIELDS) {
+            eventCopy[field] = await reconcilePhotoValue(
+              event?.[field],
+              currentEvent?.[field],
+              getStoredPhoto,
+              stats,
+              `event.${field}`,
+              reusablePhotos,
+              preserveExisting,
+              fingerprintCache,
+            );
+          }
+          copy.events.push(eventCopy);
         }
       }
 

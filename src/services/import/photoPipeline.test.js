@@ -69,6 +69,94 @@ describe("hydrateZipPhotos", () => {
       result.leaks[0].photo,
     );
   });
+
+  it("оживляет снимок из ленты событий, а не оставляет мёртвую ссылку", async () => {
+    // Фото прежней починки лежит только в ленте: в полях утечки его уже нет,
+    // в записях обхода не было никогда. Без этого прохода из книги
+    // возвращалась строка «zip:...», указывающая на файл, которого после
+    // импорта не существует.
+    const streamRead = vi.fn(() => {
+      const handlers = {};
+      return {
+        on(event, handler) {
+          handlers[event] = handler;
+          return this;
+        },
+        pause() {},
+        resume() {
+          handlers.data(new Uint8Array([9, 9, 9]));
+          handlers.end?.();
+        },
+      };
+    });
+    const zip = {
+      file: vi.fn(() => ({
+        name: "photos/leak-1/events/event-1.jpg",
+        dir: false,
+        internalStream: streamRead,
+      })),
+    };
+
+    const result = await hydrateZipPhotos(
+      {
+        leaks: [
+          {
+            id: "one",
+            events: [
+              {
+                id: "e1",
+                type: "repair_started",
+                date: "2026-08-01T08:00:00.000Z",
+                photo: "zip:photos/leak-1/events/event-1.jpg",
+              },
+              {
+                id: "e2",
+                type: "repair_done",
+                date: "2026-08-01T14:00:00.000Z",
+              },
+            ],
+          },
+        ],
+        stats: {},
+      },
+      zip,
+    );
+
+    const [started, done] = result.leaks[0].events;
+    expect(started.photo).toBeInstanceOf(Blob);
+    expect(done.photo).toBeUndefined();
+    expect(result.stats).toMatchObject({
+      restoredPhotos: 1,
+      photoReferences: 1,
+    });
+  });
+
+  it("сообщает о снимке ленты, которого в архиве не оказалось", async () => {
+    const zip = { file: vi.fn(() => null) };
+
+    const result = await hydrateZipPhotos(
+      {
+        leaks: [
+          {
+            id: "one",
+            events: [
+              {
+                id: "e1",
+                type: "repair_started",
+                photo: "zip:photos/gone.jpg",
+              },
+            ],
+          },
+        ],
+        stats: {},
+      },
+      zip,
+    );
+
+    // Путь снимается, а не остаётся обещанием файла, которого нет.
+    expect(result.leaks[0].events[0].photo).toBeUndefined();
+    expect(result.stats).toMatchObject({ missingPhotos: 1 });
+  });
 });
 
 describe("reconcileExcelImportPhotos concurrency", () => {

@@ -2,6 +2,7 @@ import { getImageMimeTypeFromExtension } from "@/services/archive/archivePaths";
 import { mapWithConcurrency } from "@/services/backup/runtime";
 import { readArchiveEntry } from "@/utils/importLimits";
 import {
+  EVENT_PHOTO_FIELDS,
   LEAK_PHOTO_FIELDS,
   MONITORING_PHOTO_FIELDS,
 } from "@/utils/photoFields";
@@ -93,6 +94,29 @@ export async function hydrateZipPhotos(
             recordCopy[field] = photoBlob;
           }
           copy.monitoringRecords.push(recordCopy);
+        }
+      }
+
+      // Лента наравне со списком обходов: снимок прежней починки живёт только
+      // в ней, и без этого прохода он оставался бы мёртвой ссылкой `zip:` на
+      // файл, которого после импорта уже нет.
+      if (Array.isArray(copy.events)) {
+        copy.events = [];
+        for (const event of leak.events) {
+          const eventCopy = { ...event };
+          for (const field of EVENT_PHOTO_FIELDS) {
+            if (!String(event?.[field] ?? "").startsWith("zip:")) continue;
+            photoReferences += 1;
+            const photoBlob = await readPhoto(event[field]);
+            if (!photoBlob) {
+              delete eventCopy[field];
+              missingPhotos += 1;
+              continue;
+            }
+            restoredPhotos += 1;
+            eventCopy[field] = photoBlob;
+          }
+          copy.events.push(eventCopy);
         }
       }
 
