@@ -2,6 +2,7 @@ import { lazy, Suspense, useMemo } from "react";
 import { useMainPageActions } from "./hooks/useMainPageActions";
 import StatCard from "./components/StatCard";
 import EmptyState from "./components/EmptyState";
+import RepairAnalytics from "./components/RepairAnalytics";
 import LeakCardCompact from "@/features/leakList/LeakCardCompact/LeakCardCompact";
 import Notification from "@/components/ui/Notification/Notification";
 import { STATUS, STATUS_META, getStatusMeta } from "@/utils/status";
@@ -120,6 +121,8 @@ export default function MainPage({
           onClick={() => toggleFilter(STATUS.RESOLVED)}
         />
       </section>
+
+      <RepairAnalytics leaks={scopedData} onOpenLeak={setActiveLeak} />
 
       {activeStatusMeta && (
         <div className={s.filterLabel}>
