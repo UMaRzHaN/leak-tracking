@@ -13,6 +13,7 @@ import {
 import { filterLeaksByMonitoring } from "@/pages/Monitoring/monitoringDomain";
 import { normalizeMultiFilter } from "@/pages/DataBase/hooks/useDataBaseFilters";
 import { MONITORING_FILTER, NEARBY_RADIUS_M } from "@/domain/leakFilters";
+import { isMonitoringDue } from "@/utils/monitoring";
 
 const NEARBY_RADIUS_OPTIONS = [100, 500, 1000];
 
@@ -289,7 +290,36 @@ export function useMapFilters({
     coords,
     hasGps,
   ]);
-  const markerLeaks = nearbyOnly ? visibleLeaks : monitoringLeaks;
+  /**
+   * Покрытие обхода прямо на булавке.
+   *
+   * Отбор «осмотрено / не осмотрено» на карте был и раньше, но показывал
+   * только одну половину за раз, а вопрос стоит про обе сразу: где ещё не
+   * были. Признак едет с точкой, и карта отвечает на него не переключателем,
+   * а видом.
+   *
+   * Ставится только при заведённом обходе: без него «не осмотрено» значило бы
+   * «никогда не проверялось», а это другой вопрос и другой ответ.
+   */
+  const markerLeaks = useMemo(() => {
+    const source = nearbyOnly ? visibleLeaks : monitoringLeaks;
+    if (!hasMonitoringRound) return source;
+    return source.map((leak) => ({
+      ...leak,
+      _checkedInRound: !isMonitoringDue(
+        leak,
+        monitoringRoundId,
+        monitoringRoundNumber,
+      ),
+    }));
+  }, [
+    hasMonitoringRound,
+    monitoringLeaks,
+    monitoringRoundId,
+    monitoringRoundNumber,
+    nearbyOnly,
+    visibleLeaks,
+  ]);
 
   return {
     visibleLeaks,
