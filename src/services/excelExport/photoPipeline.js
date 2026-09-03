@@ -280,6 +280,59 @@ export async function buildMonitoringPhotoEntries(
  * @param {any} photoReadCache
  * @param {string} archiveRoot
  */
+/**
+ * Снимки ленты подряд: утечка, событие, поле.
+ *
+ * Обход один на двоих — на сборщик файлов и на сборщик ссылок. Разойдись они
+ * хоть на шаг, и снимок, который один счёл дублем, другой не нашёл бы вовсе.
+ */
+function* iterateEventPhotos(orderedLeaks) {
+  for (const [leakIndex, leak] of orderedLeaks.entries()) {
+    for (const [eventIndex, event] of getLeakEvents(leak).entries()) {
+      for (const photoKey of EVENT_PHOTO_FIELDS) {
+        const path = event?.[photoKey];
+        if (!path) continue;
+        yield { leakIndex, leak, eventIndex, event, photoKey, path };
+      }
+    }
+  }
+}
+
+/**
+ * Ключи снимков ленты, которым файл в книге уже завели.
+ *
+ * Такой снимок — тот же самый файл, что у колонки или у обхода, и второй
+ * копии ему не нужно. Но ключ листу ремонтов нужен: без него лист говорит
+ * «есть, файл не найден» про снимок, который в архиве лежит — просто под
+ * именем колонки. Путь подставляется позже: до подстановки путей архива он
+ * ещё не известен.
+ *
+ * @param {any[]} orderedLeaks
+ * @param {Set<string>} takenSourcePaths
+ */
+export function collectEventPhotoAliases(
+  orderedLeaks,
+  takenSourcePaths = /** @type {Set<string>} */ (new Set()),
+) {
+  const aliases = [];
+  const seen = new Set(takenSourcePaths);
+
+  for (const { leakIndex, eventIndex, photoKey, path } of iterateEventPhotos(
+    orderedLeaks,
+  )) {
+    if (seen.has(String(path))) {
+      aliases.push({
+        mapKey: getEventPhotoMapKey(leakIndex, eventIndex, photoKey),
+        sourcePath: String(path),
+      });
+      continue;
+    }
+    seen.add(String(path));
+  }
+
+  return aliases;
+}
+
 export async function buildEventPhotoEntries(
   orderedLeaks,
   leakSegments,
@@ -291,39 +344,40 @@ export async function buildEventPhotoEntries(
   const candidates = [];
   const seen = new Set(takenSourcePaths);
 
-  for (const [leakIndex, leak] of orderedLeaks.entries()) {
+  for (const {
+    leakIndex,
+    leak,
+    eventIndex,
+    event,
+    photoKey,
+    path,
+  } of iterateEventPhotos(orderedLeaks)) {
+    if (seen.has(String(path))) continue;
+    seen.add(String(path));
     const leakSegment = leakSegments[leakIndex];
 
-    for (const [eventIndex, event] of getLeakEvents(leak).entries()) {
-      for (const photoKey of EVENT_PHOTO_FIELDS) {
-        const path = event?.[photoKey];
-        if (!path || seen.has(String(path))) continue;
-        seen.add(String(path));
-
-        candidates.push({
-          path,
-          mapKey: getEventPhotoMapKey(leakIndex, eventIndex, photoKey),
-          logicalKey: getEventPhotoIdentity(
-            leak,
-            leakIndex,
-            event,
-            eventIndex,
-            photoKey,
-          ),
-          buildArchivePath: (extension) => {
-            const backupPath = buildEventPhotoArchivePath(
-              leakSegment,
-              eventIndex,
-              extension,
-              photoKey,
-            );
-            return archiveRoot === "photos"
-              ? backupPath
-              : `${archiveRoot}/${backupPath.slice("photos/".length)}`;
-          },
-        });
-      }
-    }
+    candidates.push({
+      path,
+      mapKey: getEventPhotoMapKey(leakIndex, eventIndex, photoKey),
+      logicalKey: getEventPhotoIdentity(
+        leak,
+        leakIndex,
+        event,
+        eventIndex,
+        photoKey,
+      ),
+      buildArchivePath: (extension) => {
+        const backupPath = buildEventPhotoArchivePath(
+          leakSegment,
+          eventIndex,
+          extension,
+          photoKey,
+        );
+        return archiveRoot === "photos"
+          ? backupPath
+          : `${archiveRoot}/${backupPath.slice("photos/".length)}`;
+      },
+    });
   }
 
   return resolvePhotoCandidates(candidates, idbGet, photoReadCache);

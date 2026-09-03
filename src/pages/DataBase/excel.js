@@ -13,6 +13,7 @@ import {
 } from "@/utils/excelExportMode";
 import {
   buildEventPhotoEntries,
+  collectEventPhotoAliases,
   buildLeakPhotoEntries,
   buildMonitoringPhotoEntries,
   buildPhotoMap,
@@ -77,18 +78,25 @@ async function buildPhotoEntries(
   // Лента идёт третьей и знает, что уже выгружено: её снимки почти все —
   // те же самые, и второй копии в книге им не нужно. Своё место получают
   // только фото прежних починок, которых больше нет ни в полях, ни в обходах.
+  const taken = new Set(
+    [...leakPhotos, ...monitoringPhotos].map((entry) => entry.sourcePath),
+  );
   const eventPhotos = await buildEventPhotoEntries(
     orderedLeaks,
     leakSegments,
     idbGet,
-    new Set(
-      [...leakPhotos, ...monitoringPhotos].map((entry) => entry.sourcePath),
-    ),
+    taken,
     photoReadCache,
     archiveRoot,
   );
 
-  return [...leakPhotos, ...monitoringPhotos, ...eventPhotos];
+  // Ссылки — отдельно от файлов. Снимок, у которого файл уже есть, копии не
+  // получает, но ключ листу ремонтов нужен: без него лист говорит «есть, файл
+  // не найден» про то, что лежит в архиве под именем колонки.
+  return {
+    entries: [...leakPhotos, ...monitoringPhotos, ...eventPhotos],
+    aliases: collectEventPhotoAliases(orderedLeaks, taken),
+  };
 }
 // Resolves report + backup photo entries (each holding a full base64 copy of
 // one photo) and reduces them down to what the rest of the export actually
@@ -106,19 +114,21 @@ async function resolvePhotoExportData({
   monitoringExportMode,
   photoReadCache,
 }) {
-  const reportPhotoEntries = await buildPhotoEntries(
-    orderedLeaks,
-    idbGet,
-    monitoringExportMode,
-    photoReadCache,
-    "photos/report",
-  );
-  const backupPhotoEntries = await buildPhotoEntries(
-    backupLeaks,
-    idbGet,
-    EXCEL_MONITORING_EXPORT_MODE.FULL,
-    photoReadCache,
-  );
+  const { entries: reportPhotoEntries, aliases: reportAliases } =
+    await buildPhotoEntries(
+      orderedLeaks,
+      idbGet,
+      monitoringExportMode,
+      photoReadCache,
+      "photos/report",
+    );
+  const { entries: backupPhotoEntries, aliases: backupAliases } =
+    await buildPhotoEntries(
+      backupLeaks,
+      idbGet,
+      EXCEL_MONITORING_EXPORT_MODE.FULL,
+      photoReadCache,
+    );
   const backupPhotoPathByLogicalKey = new Map(
     backupPhotoEntries.map((entry) => [entry.logicalKey, entry.photoFileName]),
   );
@@ -134,8 +144,27 @@ async function resolvePhotoExportData({
       ]),
     ).values(),
   ];
-  const photoMap = buildPhotoMap(resolvedReportPhotoEntries);
-  const backupPhotoMap = buildPhotoMap(backupPhotoEntries);
+  // Путь у ссылки берётся уже после подстановки путей архива: до неё имя
+  // файла, на который она указывает, ещё не окончательное.
+  const resolveAliases = (aliases, entries) => {
+    const pathBySource = new Map(
+      entries.map((entry) => [entry.sourcePath, entry.photoFileName]),
+    );
+    return aliases
+      .map(({ mapKey, sourcePath }) => ({
+        mapKey,
+        photoFileName: pathBySource.get(sourcePath),
+      }))
+      .filter((alias) => Boolean(alias.photoFileName));
+  };
+  const photoMap = buildPhotoMap([
+    ...resolvedReportPhotoEntries,
+    ...resolveAliases(reportAliases, resolvedReportPhotoEntries),
+  ]);
+  const backupPhotoMap = buildPhotoMap([
+    ...backupPhotoEntries,
+    ...resolveAliases(backupAliases, backupPhotoEntries),
+  ]);
 
   return { photoMap, backupPhotoMap, photoEntries };
 }

@@ -3,6 +3,7 @@ import {
   buildEventPhotoEntries,
   buildPhotoMap,
   buildPortableLeaks,
+  collectEventPhotoAliases,
   getEventPhotoMapKey,
 } from "./photoPipeline";
 
@@ -118,5 +119,38 @@ describe("снимки ленты в книге", () => {
     expect(buildPhotoMap(entries)).toEqual({
       [getEventPhotoMapKey(0, 0, "photo")]: "photos/leak-1/events/event-1.jpg",
     });
+  });
+
+  it("оставляет ключ снимку, файл которому уже завели", () => {
+    // Лист ремонтов ищет снимок по ключу события. Второй копии файла общему
+    // снимку не нужно, а без ключа лист говорил «есть, файл не найден» про то,
+    // что лежит в архиве под именем колонки, — три снимка починки из четырёх.
+    const aliases = collectEventPhotoAliases(
+      [leakWithEvents()],
+      new Set([SHARED]),
+    );
+
+    expect(aliases).toEqual([
+      // Встреченный в ленте второй раз — файл завело первое событие.
+      { mapKey: getEventPhotoMapKey(0, 1, "photo"), sourcePath: OWN },
+      // Общий с колонкой — файл у него уже есть.
+      { mapKey: getEventPhotoMapKey(0, 2, "photo"), sourcePath: SHARED },
+    ]);
+  });
+
+  it("не выдаёт ключ снимку, который получил свой файл", async () => {
+    const taken = new Set([SHARED]);
+    const entries = await buildEventPhotoEntries(
+      [leakWithEvents()],
+      ["leak-1"],
+      null,
+      taken,
+      new Map(),
+    );
+    const aliases = collectEventPhotoAliases([leakWithEvents()], taken);
+
+    // Ключи не пересекаются: у снимка либо свой файл, либо ссылка на чужой.
+    const own = new Set(entries.map((entry) => entry.mapKey));
+    expect(aliases.some((alias) => own.has(alias.mapKey))).toBe(false);
   });
 });
