@@ -3,6 +3,7 @@ import { priorityFromSpeed } from "@/utils/priority";
 import {
   combineDateAndTime,
   formatDate,
+  formatMomentDate,
   formatTime,
   parseDateValue,
 } from "./cellDates";
@@ -35,6 +36,7 @@ const NUMERIC_KEYS = new Set([
   "GWP_Minus",
   "lat",
   "lng",
+  "coords_accuracy",
 ]);
 
 const WHOLE_PERCENT_KEYS = new Set(["gasPercentage", "uncertainty"]);
@@ -268,7 +270,9 @@ export function normalizeImportedLeak(row, rowNumber, sequence) {
     createdAt,
     updatedAt,
     index: row.index ?? sequence,
-    date: row.date || formatDate(new Date(createdAt)),
+    // Момент, а не календарный день: `createdAt` — отметка времени, и днём
+    // записи считается тот, что стоял на часах у заводившего.
+    date: row.date || formatMomentDate(new Date(createdAt)),
     status: normalizeStatus(row.status),
     leak_id: leakId,
     leak_speed: leakSpeed,

@@ -160,7 +160,9 @@ describe("parseExcelLeaks", () => {
   it("imports app-like Excel headers and defaults unknown statuses to open", async () => {
     const blob = await makeWorkbookBlob([
       ["Leak ID", "date", "status", "component", "leak_speed"],
-      ["A-42", new Date(2026, 6, 14), "unknown", "Valve", 3],
+      // Через `Date.UTC`, как день собирает сама выгрузка: местная полночь —
+      // форма, которой книга от приложения не получает.
+      ["A-42", new Date(Date.UTC(2026, 6, 14)), "unknown", "Valve", 3],
     ]);
 
     const result = await parseExcelLeaks(blob, { projectType: "upstream" });

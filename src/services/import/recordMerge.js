@@ -1,4 +1,4 @@
-import { formatDate, parseDateValue } from "./cellDates";
+import { formatMomentDate, parseDateValue } from "./cellDates";
 import { normalizeLeakTag } from "@/utils/leakIdentity";
 
 function statusFromMonitoringResult(result) {
@@ -94,7 +94,8 @@ export function attachMonitoringRecords(
       next.status = statusFromMonitoringResult(latestMonitoring?.result);
       if (next.status === "resolved") {
         const resolvedDate = parseDateValue(latestMonitoring?.date);
-        if (resolvedDate) next.resolvedAt = formatDate(resolvedDate);
+        // Дата обхода — момент со временем, и день у неё местный.
+        if (resolvedDate) next.resolvedAt = formatMomentDate(resolvedDate);
       } else {
         delete next.resolvedAt;
       }
