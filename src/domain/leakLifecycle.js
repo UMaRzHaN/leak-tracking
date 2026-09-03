@@ -54,7 +54,7 @@ const STATUS_EVENT_TYPES = {
  * не кладут вовсе, — и читать результат надёжнее, чем повторять эту развилку
  * в каждом из них.
  */
-function withStatusEvent(after, { to, user, iso, photo }) {
+function withStatusEvent(after, { to, user, iso, photo, materials, note }) {
   const type = STATUS_EVENT_TYPES[to];
   // Возврат в работу события не оставляет, а уже накопленную ленту уносит
   // расстановка `...after` у вызывающего.
@@ -67,6 +67,12 @@ function withStatusEvent(after, { to, user, iso, photo }) {
       date: iso,
       user,
       ...(photo ? { photo } : {}),
+      // МТР и примечание записи — одно поле на всю утечку: вторая починка
+      // затирает то, что вписали в первую. К событию они прикладываются
+      // только когда их вписали в этот раз — иначе событие повторяло бы
+      // текущее значение записи и выдавало чужой МТР за свой.
+      ...(materials ? { materials_equipment: materials } : {}),
+      ...(note ? { note } : {}),
     }),
   ]);
 }
@@ -80,13 +86,22 @@ function withStatusEvent(after, { to, user, iso, photo }) {
  * @param {string} entry.iso
  * @param {import("@/utils/historyChanges").LeakHistoryChange[]} [entry.changes]
  * @param {string|null} [entry.photo]
+ * @param {string|null} [entry.materials]
+ * @param {string|null} [entry.note]
  */
 function withStatusHistory(
   before,
   after,
-  { to, user, iso, changes = [], photo = null },
+  { to, user, iso, changes = [], photo = null, materials = null, note = null },
 ) {
-  const events = withStatusEvent(after, { to, user, iso, photo });
+  const events = withStatusEvent(after, {
+    to,
+    user,
+    iso,
+    photo,
+    materials,
+    note,
+  });
   return {
     ...after,
     ...(events ? { events } : {}),
@@ -168,6 +183,8 @@ export function resolveLeakRecord(leak, draft = {}, { user, now } = {}) {
     iso,
     changes,
     photo,
+    materials: draft.materials_equipment ?? null,
+    note: draft.note ?? null,
   });
 }
 
@@ -200,6 +217,8 @@ export function startLeakRepair(leak, draft = {}, { user, now } = {}) {
     iso,
     photo,
     changes,
+    materials: draft.materials_equipment ?? null,
+    note: draft.note ?? null,
   });
 }
 

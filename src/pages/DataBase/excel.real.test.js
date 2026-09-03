@@ -128,10 +128,10 @@ describe("real Excel workbook output", () => {
     await workbook.xlsx.load(buffer);
     const sheet = workbook.getWorksheet("Repairs");
 
-    expect(sheet.getCell("J2").value).toMatchObject({
+    expect(sheet.getCell("L2").value).toMatchObject({
       hyperlink: "photos/leak-1/events/event-1.jpg",
     });
     // Про снимок, которого в книге нет, сказано словами, а не ссылкой в никуда.
-    expect(sheet.getCell("K2").value).toBe("Present (file missing)");
+    expect(sheet.getCell("M2").value).toBe("Present (file missing)");
   }, 60_000);
 });

@@ -37,6 +37,8 @@ export const excelExport = {
       resolvedTime: "Время завершения",
       durationHours: "Часов на ремонт",
       user: "Исполнитель",
+      materials_equipment: "МТР ремонта",
+      note: "Примечание",
       repairPhoto: "Фото начала",
       donePhoto: "Фото завершения",
     },

@@ -82,4 +82,49 @@ describe("строки листа ремонтов", () => {
       [],
     );
   });
+  it("оставляет каждой попытке свой МТР и примечание", () => {
+    // На записи МТР один на всю утечку: вторая починка затирает вписанный в
+    // первую, и спросить запись значит подписать обеим попыткам последний.
+    const rows = getRepairExportRows([
+      {
+        index: 1,
+        leak_id: "A-42",
+        materials_equipment: "новый фланец",
+        note: "заменил узел",
+        events: [
+          {
+            id: "a",
+            type: "repair_started",
+            date: "2026-07-02T08:00:00.000Z",
+            materials_equipment: "прокладка ду50",
+          },
+          {
+            id: "b",
+            type: "repair_done",
+            date: "2026-07-02T14:00:00.000Z",
+            materials_equipment: "прокладка ду50",
+            note: "затянул",
+          },
+          {
+            id: "c",
+            type: "repair_started",
+            date: "2026-08-01T08:00:00.000Z",
+            materials_equipment: "новый фланец",
+          },
+          {
+            id: "d",
+            type: "repair_done",
+            date: "2026-08-01T18:00:00.000Z",
+            materials_equipment: "новый фланец",
+            note: "заменил узел",
+          },
+        ],
+      },
+    ]);
+
+    expect(rows.map((row) => [row.materials_equipment, row.note])).toEqual([
+      ["прокладка ду50", "затянул"],
+      ["новый фланец", "заменил узел"],
+    ]);
+  });
 });

@@ -35,6 +35,8 @@ const REPAIR_KEYS = [
   "resolvedTime",
   "durationHours",
   "user",
+  "materials_equipment",
+  "note",
   "repairPhoto",
   "donePhoto",
 ];

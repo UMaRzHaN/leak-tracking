@@ -243,3 +243,48 @@ describe("leakLifecycle", () => {
     expect(deletePhoto).toHaveBeenCalledWith("idb://unique");
   });
 });
+
+describe("МТР и примечание попытки", () => {
+  it("кладёт в событие вписанное сейчас, а не то, что лежит на записи", () => {
+    const leak = {
+      id: "L1",
+      status: "open",
+      materials_equipment: "прежний МТР",
+      note: "прежнее примечание",
+    };
+
+    const started = startLeakRepair(
+      leak,
+      { materials_equipment: "прокладка ду50", note: "первая попытка" },
+      { user: "Петров", now: Date.parse("2026-07-02T08:00:00.000Z") },
+    );
+
+    expect(started.events.at(-1)).toMatchObject({
+      type: "repair_started",
+      materials_equipment: "прокладка ду50",
+      note: "первая попытка",
+    });
+  });
+
+  it("оставляет событие без них, когда в этот раз ничего не вписали", () => {
+    // Иначе событие повторяло бы текущее значение записи и выдавало МТР
+    // прошлой починки за свой — а лист ремонтов читают именно по попыткам.
+    const leak = {
+      id: "L1",
+      status: "open",
+      materials_equipment: "прежний МТР",
+      note: "прежнее примечание",
+    };
+
+    const started = startLeakRepair(
+      leak,
+      {},
+      { user: "Петров", now: Date.parse("2026-07-02T08:00:00.000Z") },
+    );
+
+    expect(started.events.at(-1).materials_equipment).toBeUndefined();
+    expect(started.events.at(-1).note).toBeUndefined();
+    // На самой записи прежнее значение остаётся — его никто не отменял.
+    expect(started.materials_equipment).toBe("прежний МТР");
+  });
+});

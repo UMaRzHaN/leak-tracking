@@ -47,6 +47,12 @@ export function getRepairExportRows(orderedLeaks) {
           ? Math.round(((doneAt - startedAt) / HOUR) * 100) / 100
           : "",
         user: started?.user ?? done?.user ?? "",
+        // МТР и примечание берутся у той попытки, в которую их вписали.
+        // На записи они одни на всю утечку, и вторая починка затирает первую:
+        // спросить запись значит подписать всем попыткам последний МТР.
+        materials_equipment:
+          done?.materials_equipment ?? started?.materials_equipment ?? "",
+        note: done?.note ?? started?.note ?? "",
         repairPhoto: started?.photo ?? "",
         repairPhotoMapKey: photoMapKey(started),
         donePhoto: done?.photo ?? "",

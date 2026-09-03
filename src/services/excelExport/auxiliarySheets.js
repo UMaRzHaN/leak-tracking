@@ -210,6 +210,8 @@ export async function buildRepairSheet(
     "resolvedTime",
     "durationHours",
     "user",
+    "materials_equipment",
+    "note",
     "repairPhoto",
     "donePhoto",
   ];
