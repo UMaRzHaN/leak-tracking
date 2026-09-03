@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   completeMonitoringRound,
   getRestoredMonitoringRound,
+  inferMonitoringRound,
   readMonitoringRound,
   saveMonitoringRound,
 } from "./monitoringRound";
@@ -116,5 +117,28 @@ describe("monitoring round persistence", () => {
       number: 3,
       startedAt: "2026-07-14T07:00:00.000Z",
     });
+  });
+
+  it("выводит обход из ленты событий, а не только из старого списка", () => {
+    // Обход пишется теперь только в ленту. Чтение сырого `monitoringRecords`
+    // означало бы, что текущий обход выводится из одного наследства, а свежие
+    // осмотры не видны вовсе.
+    const round = inferMonitoringRound([
+      {
+        id: "leak-1",
+        events: [
+          {
+            id: "e1",
+            type: "inspection",
+            date: "2026-08-04T10:00:00.000Z",
+            roundId: "round-9",
+            roundNumber: 9,
+            result: "still_leaking",
+          },
+        ],
+      },
+    ]);
+
+    expect(round).toMatchObject({ id: "round-9", number: 9 });
   });
 });

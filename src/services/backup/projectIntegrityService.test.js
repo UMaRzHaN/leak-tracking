@@ -84,6 +84,67 @@ describe("analyzeProjectIntegrity", () => {
     expect(report.ok).toBe(false);
   });
 
+  it("видит обход, который есть только в ленте событий", async () => {
+    // Обход пишется теперь только в ленту. Чтение сырого списка означало бы,
+    // что проверка данных молча перестала смотреть на свежие осмотры: «ни
+    // одного битого» и «ничего не проверено» выглядят одинаково.
+    mocks.getPhotoSrc.mockImplementation(async () => null);
+
+    const report = await analyzeProjectIntegrity(
+      [
+        {
+          id: 1,
+          leak_id: "1001",
+          status: "open",
+          photo: "file://current.jpg",
+          lat: 41,
+          lng: 69,
+          events: [
+            {
+              id: "e1",
+              type: "inspection",
+              date: "2026-07-14T00:00:00.000Z",
+              photo: "file://gone.jpg",
+            },
+          ],
+        },
+      ],
+      { monitoringPhotoRequired: false },
+    );
+
+    expect(report.brokenPhoto).toContain("1001:monitoringRecords[0].photo");
+  });
+
+  it("проверяет и снимки ремонтов, которых нет нигде, кроме ленты", async () => {
+    mocks.getPhotoSrc.mockImplementation(async (path) =>
+      path === "file://repair-gone.jpg" ? null : "data:image/jpeg;base64,ok",
+    );
+
+    const report = await analyzeProjectIntegrity(
+      [
+        {
+          id: 1,
+          leak_id: "1001",
+          status: "open",
+          photo: "file://current.jpg",
+          lat: 41,
+          lng: 69,
+          events: [
+            {
+              id: "e1",
+              type: "repair_started",
+              date: "2026-07-14T00:00:00.000Z",
+              photo: "file://repair-gone.jpg",
+            },
+          ],
+        },
+      ],
+      { monitoringPhotoRequired: false },
+    );
+
+    expect(report.brokenPhoto).toContain("1001:events[0].photo");
+  });
+
   it("does not report a missing monitoring photo when it is optional", async () => {
     const report = await analyzeProjectIntegrity(
       [

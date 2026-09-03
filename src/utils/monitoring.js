@@ -103,10 +103,10 @@ export function getMonitoringHistoryComment(entry) {
  * импорт книги — и осмотр, показанный только после перезагрузки проекта,
  * выглядел бы потерянным. Общий номер записи не даёт ему задвоиться.
  *
- * Порядок — по дате: последний обход спрашивают чаще всего, и до сих пор он
- * получался последним лишь потому, что список пополнялся с конца.
+ * @param {any} leak
+ * @returns {any[]}
  */
-export function getMonitoringRecords(leak) {
+export function getAllMonitoringRecords(leak) {
   const inspections = getEventsOfType(leak, LEAK_EVENT_TYPES.INSPECTION);
   const known = new Set(
     inspections.map((event) => String(event?.id ?? "")).filter(Boolean),
@@ -115,8 +115,25 @@ export function getMonitoringRecords(leak) {
     Array.isArray(leak?.monitoringRecords) ? leak.monitoringRecords : []
   ).filter((record) => !known.has(String(record?.id ?? "")));
 
+  return [...inspections, ...legacy];
+}
+
+/**
+ * Те же обходы, но только датированные и по порядку.
+ *
+ * Дата обязательна почти всем читателям: по ней считают текущий обход, ищут
+ * последний и раскладывают строки выгрузки. Недатированная запись им не
+ * годится — а поиску по базе годится, и он берёт `getAllMonitoringRecords`.
+ *
+ * Порядок — по дате: последний обход спрашивают чаще всего, и до сих пор он
+ * получался последним лишь потому, что список пополнялся с конца.
+ *
+ * @param {import("@/types/domain").LeakRecord|null|undefined} leak
+ * @returns {(import("@/types/domain").MonitoringRecord & {date: string})[]}
+ */
+export function getMonitoringRecords(leak) {
   return /** @type {(import("@/types/domain").MonitoringRecord & {date: string})[]} */ (
-    [...inspections, ...legacy]
+    getAllMonitoringRecords(leak)
       .filter((record) => Boolean(record?.date))
       .sort(
         (left, right) =>

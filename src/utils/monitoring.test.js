@@ -140,7 +140,7 @@ describe("getMonitoringRecords", () => {
     ]);
   });
 
-  it("обход из приложения ложится в оба списка одной записью", () => {
+  it("обход из приложения ложится только в ленту", () => {
     const patched = buildMonitoringPatch({
       leak: { id: "leak-1", status: "open" },
       draft: { result: "still_leaking" },
@@ -151,9 +151,10 @@ describe("getMonitoringRecords", () => {
       now: new Date("2026-08-04T10:00:00.000Z"),
     });
 
-    expect(patched.monitoringRecords).toHaveLength(1);
+    // Двойная запись держалась ради телефонов прежней сборки; список
+    // остаётся читаемым, но новых записей в него больше не попадает.
+    expect(patched.monitoringRecords).toBeUndefined();
     expect(patched.events).toHaveLength(1);
-    expect(patched.events[0].id).toBe(patched.monitoringRecords[0].id);
     expect(patched.events[0].type).toBe("inspection");
     expect(getMonitoringRecords(patched)).toHaveLength(1);
   });

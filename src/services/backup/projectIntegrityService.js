@@ -5,18 +5,36 @@ import { normalizeLeakTag } from "@/utils/leakIdentity";
 import { hasValidCoordinates } from "@/utils/coordinates";
 import {
   LEAK_PHOTO_FIELDS,
+  EVENT_PHOTO_FIELDS,
   MONITORING_PHOTO_FIELDS,
 } from "@/utils/photoFields";
+import { getMonitoringRecords } from "@/utils/monitoring";
+import { LEAK_EVENT_TYPES, getLeakEvents } from "@/domain/leakEvents";
 
+/**
+ * Снимки, за которые запись отвечает.
+ *
+ * Обходы берутся через `getMonitoringRecords`: они переехали в ленту событий,
+ * и чтение сырого списка означало бы, что проверка данных перестала видеть
+ * свежие осмотры — молча, потому что «ни одного битого» и «ничего не
+ * проверено» выглядят одинаково.
+ *
+ * Ремонты идут отдельно: их снимки живут только в ленте, и до сих пор
+ * проверка о них не знала вовсе.
+ */
 function getLeakPhotoRefs(leak) {
   const refs = LEAK_PHOTO_FIELDS.map((field) => [field, leak?.[field]]);
-  if (Array.isArray(leak?.monitoringRecords)) {
-    leak.monitoringRecords.forEach((record, index) => {
-      MONITORING_PHOTO_FIELDS.forEach((field) => {
-        refs.push([`monitoringRecords[${index}].${field}`, record?.[field]]);
-      });
+  getMonitoringRecords(leak).forEach((record, index) => {
+    MONITORING_PHOTO_FIELDS.forEach((field) => {
+      refs.push([`monitoringRecords[${index}].${field}`, record?.[field]]);
     });
-  }
+  });
+  getLeakEvents(leak).forEach((event, index) => {
+    if (event?.type === LEAK_EVENT_TYPES.INSPECTION) return;
+    EVENT_PHOTO_FIELDS.forEach((field) => {
+      refs.push([`events[${index}].${field}`, event?.[field]]);
+    });
+  });
   return refs;
 }
 

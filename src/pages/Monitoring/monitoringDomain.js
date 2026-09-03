@@ -231,11 +231,11 @@ export function buildMonitoringPatch({
     ...statusPatch,
     materials_equipment: materialsEquipment,
     updatedAt: now.getTime(),
-    // Обход пишется в оба списка одной и той же записью — с общим номером,
-    // поэтому чтение сводит их в одну, а не показывает осмотр дважды. Пока в
-    // поле ходят телефоны прежней сборки, обмен доносит до них обходы только
-    // через `monitoringRecords`; убрать его можно вместе с вехами ремонта.
-    monitoringRecords: [...(leak.monitoringRecords ?? []), record],
+    // Обход пишется только в ленту. Двойная запись в `monitoringRecords`
+    // держалась ради телефонов прежней сборки: обмен доносил до них обходы
+    // единственным известным им способом. Парк обновился — и список остаётся
+    // читаемым (миграция вкладывает его в ленту при чтении), но новых записей
+    // в него больше не попадает.
     events: sortLeakEvents([
       ...getLeakEvents(leak),
       createLeakEvent({ ...record, type: LEAK_EVENT_TYPES.INSPECTION }),

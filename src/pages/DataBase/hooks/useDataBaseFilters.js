@@ -1,3 +1,4 @@
+import { getAllMonitoringRecords } from "@/utils/monitoring";
 import { useState, useMemo, useEffect } from "react";
 import { STATUS, STATUS_ORDER } from "@/utils/status";
 import { distanceMeters, filterNearbyLeaks } from "@/utils/geoUtils";
@@ -128,7 +129,9 @@ export function buildLeakSearchText(leak) {
     `t ${tag}`,
   ];
 
-  for (const record of leak?.monitoringRecords ?? []) {
+  // Все обходы, включая недатированные: искать по ним человек всё равно
+  // может, а дата поиску не нужна.
+  for (const record of getAllMonitoringRecords(leak)) {
     values.push(...collectValues(record, MONITORING_SEARCH_KEYS));
   }
   for (const entry of leak?.history ?? []) {

@@ -1,3 +1,5 @@
+import { getMonitoringRecords } from "@/utils/monitoring";
+
 const MONITORING_ROUND_STORAGE_VERSION = "v2";
 const LEGACY_MONITORING_ROUND_STORAGE_VERSION = "v1";
 
@@ -95,9 +97,10 @@ export function saveMonitoringRound(projectId, round) {
 }
 
 export function inferMonitoringRound(leaks = []) {
-  const records = leaks.flatMap((leak) =>
-    Array.isArray(leak?.monitoringRecords) ? leak.monitoringRecords : [],
-  );
+  // Через `getMonitoringRecords`, а не по сырому списку: обход теперь пишется
+  // в ленту событий, и чтение напрямую перестало бы видеть свежие осмотры —
+  // текущий обход выводился бы из одного лишь наследства.
+  const records = leaks.flatMap((leak) => getMonitoringRecords(leak));
   const candidates = records.filter(
     (record) =>
       record?.date &&
@@ -117,7 +120,7 @@ export function inferMonitoringRound(leaks = []) {
     return Date.parse(record.date) > Date.parse(selected.date)
       ? record
       : selected;
-  }, null);
+  }, /** @type {any} */ (null));
 
   const latestNumber = Number(latest.roundNumber) || 1;
   const roundRecords = candidates.filter((record) =>

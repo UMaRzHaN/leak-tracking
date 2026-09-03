@@ -84,7 +84,10 @@ vi.mock("@/features/status/ReopenLeakModal/ReopenLeakModal", () => ({
 }));
 
 import Monitoring from "./Monitoring";
-import { getMonitoringHistoryComment } from "@/utils/monitoring";
+import {
+  getMonitoringHistoryComment,
+  getMonitoringRecords,
+} from "@/utils/monitoring";
 import {
   buildMonitoringPatch,
   createMonitoringDraft,
@@ -148,10 +151,10 @@ describe("Monitoring round flow", () => {
       now,
     });
 
-    expect(unchanged.monitoringRecords.at(-1)).not.toHaveProperty(
+    expect(getMonitoringRecords(unchanged).at(-1)).not.toHaveProperty(
       "materials_equipment",
     );
-    expect(changed.monitoringRecords.at(-1)).toMatchObject({
+    expect(getMonitoringRecords(changed).at(-1)).toMatchObject({
       id: "leak-1-1784104200000",
       date: "2026-07-15T08:30:00.000Z",
       materials_equipment: "Seal replaced",
@@ -183,10 +186,10 @@ describe("Monitoring round flow", () => {
 
     expect(patch.photo).toBe("idb://monitoring-latest");
     expect(patch.photo_after).toBeNull();
-    expect(patch.monitoringRecords.at(-1).photo).toBe(
+    expect(getMonitoringRecords(patch).at(-1).photo).toBe(
       "idb://monitoring-latest",
     );
-    expect(patch.monitoringRecords.at(-1).previousPhoto).toBe(
+    expect(getMonitoringRecords(patch).at(-1).previousPhoto).toBe(
       "idb://previous-current",
     );
   });
@@ -427,7 +430,9 @@ describe("Monitoring round flow", () => {
 
     await waitFor(() => expect(setData).toHaveBeenCalledOnce());
     expect(photoStorage.savePhoto).not.toHaveBeenCalled();
-    expect(setData.mock.calls[0][0][0].monitoringRecords[0].photo).toBeNull();
+    expect(
+      getMonitoringRecords(setData.mock.calls[0][0][0])[0].photo,
+    ).toBeNull();
   });
 
   it("asks before monitoring a tag twice in the same round", async () => {
@@ -765,10 +770,10 @@ describe("Monitoring round flow", () => {
     const savedLeak = setData.mock.calls[0][0][0];
     expect(savedLeak.photo).toBe("idb://monitoring-new");
     expect(savedLeak.photo_after).toBeNull();
-    expect(savedLeak.monitoringRecords.at(-1).photo).toBe(
+    expect(getMonitoringRecords(savedLeak).at(-1).photo).toBe(
       "idb://monitoring-new",
     );
-    expect(savedLeak.monitoringRecords.at(-1).previousPhoto).toBe(
+    expect(getMonitoringRecords(savedLeak).at(-1).previousPhoto).toBe(
       "idb://resolved",
     );
     await waitFor(() =>
