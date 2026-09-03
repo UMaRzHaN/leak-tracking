@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   LEAK_EVENT_TYPES,
+  getRepairDoneAt,
+  getRepairDonePhoto,
+  getRepairPhoto,
+  getRepairStartedAt,
   appendLeakEvent,
   createLeakEvent,
   getEventsOfType,
@@ -12,6 +16,7 @@ import {
 
 const DAY = 24 * 60 * 60 * 1000;
 const DETECTED_AT = Date.UTC(2026, 0, 10, 8, 0, 0);
+const at = (days) => new Date(DETECTED_AT + days * DAY).toISOString();
 
 function legacyLeak(overrides = {}) {
   return {
@@ -235,5 +240,92 @@ describe("попытки ремонта", () => {
       { started: null, done: onlyDone.events[0] },
     ]);
     expect(getRepairDurations(onlyDone)).toEqual([]);
+  });
+});
+
+describe("вехи ремонта одним ответом", () => {
+  it("спрашивает сначала ленту", () => {
+    const leak = {
+      repairAt: "2020-01-01",
+      resolvedAt: "2020-01-02",
+      photo_repair: "idb://old-start",
+      photo_after: "idb://old-done",
+      events: [
+        {
+          id: "e1",
+          type: LEAK_EVENT_TYPES.REPAIR_STARTED,
+          date: at(1),
+          photo: "idb://start",
+        },
+        {
+          id: "e2",
+          type: LEAK_EVENT_TYPES.REPAIR_DONE,
+          date: at(2),
+          photo: "idb://done",
+        },
+      ],
+    };
+
+    expect(getRepairStartedAt(leak)).toBe(at(1));
+    expect(getRepairDoneAt(leak)).toBe(at(2));
+    expect(getRepairPhoto(leak)).toBe("idb://start");
+    expect(getRepairDonePhoto(leak)).toBe("idb://done");
+  });
+
+  it("берёт последнюю починку, а не первую из бывших", () => {
+    // Карточка показывает нынешнее состояние ремонта.
+    const leak = {
+      events: [
+        {
+          id: "e1",
+          type: LEAK_EVENT_TYPES.REPAIR_STARTED,
+          date: at(1),
+          photo: "idb://first",
+        },
+        {
+          id: "e2",
+          type: LEAK_EVENT_TYPES.REPAIR_STARTED,
+          date: at(5),
+          photo: "idb://second",
+        },
+      ],
+    };
+
+    expect(getRepairPhoto(leak)).toBe("idb://second");
+    expect(getRepairStartedAt(leak)).toBe(at(5));
+  });
+
+  it("падает на веху записи, когда ленты нет", () => {
+    const legacy = {
+      repairAt: 1_700_000_000_000,
+      resolvedAt: 1_700_000_100_000,
+      photo_repair: "idb://old-start",
+      photo_after: "idb://old-done",
+    };
+
+    expect(getRepairStartedAt(legacy)).toBe(1_700_000_000_000);
+    expect(getRepairDoneAt(legacy)).toBe(1_700_000_100_000);
+    expect(getRepairPhoto(legacy)).toBe("idb://old-start");
+    expect(getRepairDonePhoto(legacy)).toBe("idb://old-done");
+  });
+
+  it("достаёт дату из журнала, когда нет ни ленты, ни вехи", () => {
+    // Записи, заведённые до вех, других ответов не имеют.
+    const ancient = {
+      history: [
+        { action: "status_changed", to: "in_progress", date: "2026-01-01" },
+        { action: "comment", date: "2026-02-01" },
+        { action: "status_changed", to: "in_progress", date: "2026-03-01" },
+        { action: "status_changed", to: "resolved", date: "2026-03-05" },
+      ],
+    };
+
+    expect(getRepairStartedAt(ancient)).toBe("2026-03-01");
+    expect(getRepairDoneAt(ancient)).toBe("2026-03-05");
+  });
+
+  it("молчит, когда сказать нечего", () => {
+    expect(getRepairStartedAt({ id: "1" })).toBeNull();
+    expect(getRepairPhoto({ id: "1" })).toBeNull();
   });
 });

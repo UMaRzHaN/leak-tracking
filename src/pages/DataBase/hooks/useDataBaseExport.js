@@ -11,19 +11,12 @@ import { readProjectSettings } from "@/app/project/projectSettings";
 import { readMonitoringRound } from "@/utils/monitoringRound";
 import { readProjectSyncStateAsync } from "@/services/sync/projectSyncState";
 import { buildLeakCalculationParams } from "@/utils/calculationParams";
-
-function getRepairAt(row) {
-  if (row.repairAt) return row.repairAt;
-
-  const repairEntry = [...(row.history ?? [])]
-    .reverse()
-    .find(
-      (entry) =>
-        entry?.action === "status_changed" && entry?.to === STATUS.IN_PROGRESS,
-    );
-
-  return repairEntry?.date ?? null;
-}
+import {
+  getRepairDoneAt,
+  getRepairDonePhoto,
+  getRepairPhoto,
+  getRepairStartedAt,
+} from "@/domain/leakEvents";
 
 function round2(value) {
   return value != null && Number.isFinite(Number(value))
@@ -47,10 +40,13 @@ export function prepareRows(data, t, projectVars = {}) {
     Total_Annual_Methane_Loss_m3_y: round2(row.Total_Annual_Methane_Loss_m3_y),
     Emissions_t_CO2eq_year: round2(row.Emissions_t_CO2eq_year),
     photo: row.photo ? t("database.export.hasPhoto") : "",
-    photo_after: row.photo_after ? t("database.export.hasPhoto") : "",
-    photo_repair: row.photo_repair ? t("database.export.hasPhoto") : "",
-    repairAt: getRepairAt(row) ?? "",
-    resolvedAt: row.resolvedAt ?? "",
+    // Вехи спрашиваются у ленты: она знает про починку то, чего поля записи
+    // не знают, а самодельный обход истории — знал только начало ремонта и
+    // только по журналу смены статуса.
+    photo_after: getRepairDonePhoto(row) ? t("database.export.hasPhoto") : "",
+    photo_repair: getRepairPhoto(row) ? t("database.export.hasPhoto") : "",
+    repairAt: getRepairStartedAt(row) ?? "",
+    resolvedAt: getRepairDoneAt(row) ?? "",
   }));
 }
 

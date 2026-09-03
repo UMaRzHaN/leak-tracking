@@ -330,3 +330,78 @@ export function getRepairDurations(leak) {
     })
     .filter((duration) => duration != null);
 }
+
+/**
+ * Вехи ремонта, выведенные из ленты.
+ *
+ * Тот же приём, что у обходов: спрашивать надо в одном месте, а не читать
+ * поле записи там, где оно попалось. Лента отвечает первой, поле остаётся
+ * запасным — записи, заведённые до ленты, других ответов не имеют, и терять
+ * их из-за переезда нельзя.
+ *
+ * Возвращается последнее событие своего вида: карточка показывает нынешнее
+ * состояние ремонта, а не первое из бывших.
+ */
+function lastEventValue(leak, type, field) {
+  const events = getEventsOfType(leak, type);
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const value = events[index]?.[field];
+    if (value) return value;
+  }
+  return null;
+}
+
+/**
+ * Последний переход в этот статус по журналу изменений.
+ *
+ * Третий источник после ленты и вехи, и он нужен: у записей, заведённых до
+ * вех, даты ремонта нет ни в поле, ни в ленте — только отметка о смене
+ * статуса. Выгрузка это уже умела своим обходом истории; знание перенесено
+ * сюда, чтобы ответ был один на всех, а не у того, кто догадался посмотреть.
+ */
+function lastStatusChangeDate(leak, status) {
+  const history = Array.isArray(leak?.history) ? leak.history : [];
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const entry = history[index];
+    if (entry?.action === "status_changed" && entry?.to === status) {
+      return entry?.date ?? null;
+    }
+  }
+  return null;
+}
+
+/** Момент начала последнего ремонта: лента, веха записи, журнал. */
+export function getRepairStartedAt(leak) {
+  return (
+    lastEventValue(leak, LEAK_EVENT_TYPES.REPAIR_STARTED, "date") ??
+    leak?.repairAt ??
+    lastStatusChangeDate(leak, "in_progress")
+  );
+}
+
+/** Момент завершения последнего ремонта: лента, веха записи, журнал. */
+export function getRepairDoneAt(leak) {
+  return (
+    lastEventValue(leak, LEAK_EVENT_TYPES.REPAIR_DONE, "date") ??
+    leak?.resolvedAt ??
+    lastStatusChangeDate(leak, "resolved")
+  );
+}
+
+/** Снимок последней начатой починки. */
+export function getRepairPhoto(leak) {
+  return (
+    lastEventValue(leak, LEAK_EVENT_TYPES.REPAIR_STARTED, "photo") ??
+    leak?.photo_repair ??
+    null
+  );
+}
+
+/** Снимок последней завершённой починки. */
+export function getRepairDonePhoto(leak) {
+  return (
+    lastEventValue(leak, LEAK_EVENT_TYPES.REPAIR_DONE, "photo") ??
+    leak?.photo_after ??
+    null
+  );
+}

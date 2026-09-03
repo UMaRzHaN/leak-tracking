@@ -1,3 +1,4 @@
+import { getRepairDonePhoto, getRepairPhoto } from "@/domain/leakEvents";
 import { useRenderMetric } from "@/utils/renderMetrics";
 import { memo, useEffect, useState } from "react";
 import { useSwipeCard } from "@/hooks/useSwipeCard";
@@ -87,11 +88,11 @@ function LeakCardCompact({
   const photoSrc = usePhotoSrc(leak.photo ?? null);
   const monitoringPhotoSrc = usePhotoSrc(getLatestMonitoringPhotoPath(leak));
   const photoAfterSrc = usePhotoSrc(
-    status === "resolved" ? (leak.photo_after ?? null) : null,
+    status === "resolved" ? getRepairDonePhoto(leak) : null,
   );
   const photoRepairSrc = usePhotoSrc(
     status === "in_progress" || status === "resolved"
-      ? (leak.photo_repair ?? null)
+      ? getRepairPhoto(leak)
       : null,
   );
 

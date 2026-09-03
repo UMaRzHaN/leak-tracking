@@ -1,3 +1,4 @@
+import { getRepairDonePhoto, getRepairPhoto } from "@/domain/leakEvents";
 import { useState } from "react";
 import { usePhotoSrc } from "@/hooks/usePhotoSrc";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
@@ -69,8 +70,11 @@ function PhotoComparison({
 }
 
 export default function LeakRepairSection({ data, localeTexts }) {
-  const photoAfter = data.status === "resolved" ? data.photo_after : null;
-  const photoRepair = data.photo_repair;
+  // Через ленту, а не по полю записи: снимок починки живёт в событии, а поле
+  // остаётся лишь у записей, заведённых до ленты.
+  const photoAfter =
+    data.status === "resolved" ? getRepairDonePhoto(data) : null;
+  const photoRepair = getRepairPhoto(data);
   const hasPhotos =
     Boolean(data.photo) || Boolean(photoRepair) || Boolean(photoAfter);
 
