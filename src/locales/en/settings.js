@@ -266,4 +266,17 @@ export const settings = {
     clearDatabase:
       "Delete all leak records?\n\nThis action cannot be undone. Photo files will remain on the device.",
   },
+
+  voice: {
+    title: "Speech corrections",
+    hint: "Recognition fails differently at every site. Write what it hears and what to put instead — the correction applies to the whole recognised phrase and travels to the crew with the archive.",
+    heard: "Hears",
+    heardPlaceholder: "place of birth",
+    written: "Write as",
+    writtenPlaceholder: "oilfield",
+    add: "Add correction",
+    empty: "No corrections yet",
+    remove: 'Remove the "{{from}}" correction',
+    saved: "Corrections saved",
+  },
 };

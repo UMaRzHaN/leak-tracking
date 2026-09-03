@@ -6,6 +6,7 @@ import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
 import { useHiddenFields } from "@/app/project/hooks/useHiddenFields";
 import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
+import { useVoiceCorrections } from "@/app/project/hooks/useVoiceCorrections";
 import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import { getMapCacheInfo, clearMapCache } from "@/services/maps/tileCache";
 import {
@@ -117,6 +118,10 @@ export function useSettingsPage({
     setMonitoringPhotoRequired,
     setComponentPhotoRequired,
   } = usePhotoRequirements(activeProject?.id ?? null);
+  const {
+    corrections: voiceCorrections,
+    saveCorrections: setVoiceCorrections,
+  } = useVoiceCorrections(activeProject?.id ?? null);
 
   const {
     integrityReport,
@@ -716,6 +721,8 @@ export function useSettingsPage({
     isExportingZip,
     isImportingExcel,
     lang,
+    voiceCorrections,
+    setVoiceCorrections,
     leakPhotoRequired,
     componentPhotoRequired,
     setComponentPhotoRequired,

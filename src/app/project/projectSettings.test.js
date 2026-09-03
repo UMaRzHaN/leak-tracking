@@ -30,6 +30,7 @@ describe("projectSettings", () => {
         monitoringPhotoRequired: true,
         componentPhotoRequired: true,
       },
+      voiceCorrections: [],
       updatedAt: 0,
     });
   });
@@ -55,6 +56,7 @@ describe("projectSettings", () => {
         monitoringPhotoRequired: false,
         componentPhotoRequired: true,
       },
+      voiceCorrections: [],
       updatedAt: 50,
     });
 
@@ -76,10 +78,12 @@ describe("projectSettings", () => {
   it("uses the newest settings and resolves timestamp ties deterministically", () => {
     const local = normalizeProjectSettings({
       hiddenFields: ["component"],
+      voiceCorrections: [],
       updatedAt: 100,
     });
     const newer = normalizeProjectSettings({
       hiddenFields: ["note"],
+      voiceCorrections: [],
       updatedAt: 200,
     });
 

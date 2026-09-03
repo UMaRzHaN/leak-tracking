@@ -4,6 +4,7 @@ import {
   EXCEL_MONITORING_EXPORT_MODE,
   normalizeExcelMonitoringExportMode,
 } from "@/utils/excelExportMode";
+import { normalizeVoiceCorrections } from "@/features/voice/utils/voiceCorrections";
 
 export const PROJECT_SETTINGS_UPDATED_EVENT = "project-settings-updated";
 
@@ -66,6 +67,7 @@ export function normalizeProjectSettings(value) {
       value?.excelMonitoringExportMode,
     ),
     photoRequirements: normalizePhotoRequirements(value?.photoRequirements),
+    voiceCorrections: normalizeVoiceCorrections(value?.voiceCorrections),
     updatedAt: normalizeTimestamp(value?.updatedAt),
   };
 }
@@ -85,6 +87,9 @@ export function readProjectSettings(projectId) {
       STORAGE_KEYS.PROJECT_EXCEL_EXPORT_MODE(projectId),
     ),
     photoRequirements,
+    voiceCorrections: readJson(
+      STORAGE_KEYS.PROJECT_VOICE_CORRECTIONS(projectId),
+    ),
     updatedAt: localStorage.getItem(
       STORAGE_KEYS.PROJECT_SETTINGS_UPDATED_AT(projectId),
     ),
@@ -136,6 +141,13 @@ export function writeProjectSettings(projectId, value, { emit = true } = {}) {
   }
   localStorage.removeItem(STORAGE_KEYS.PROJECT_MONITORING_SETTINGS(projectId));
 
+  const voiceKey = STORAGE_KEYS.PROJECT_VOICE_CORRECTIONS(projectId);
+  if (settings.voiceCorrections.length) {
+    localStorage.setItem(voiceKey, JSON.stringify(settings.voiceCorrections));
+  } else {
+    localStorage.removeItem(voiceKey);
+  }
+
   const timestampKey = STORAGE_KEYS.PROJECT_SETTINGS_UPDATED_AT(projectId);
   if (settings.updatedAt > 0) {
     localStorage.setItem(timestampKey, String(settings.updatedAt));
@@ -163,6 +175,7 @@ export function clearProjectSettings(projectId, { emit = false } = {}) {
     STORAGE_KEYS.PROJECT_EXCEL_EXPORT_MODE(projectId),
     STORAGE_KEYS.PROJECT_MONITORING_SETTINGS(projectId),
     STORAGE_KEYS.PROJECT_PHOTO_REQUIREMENTS(projectId),
+    STORAGE_KEYS.PROJECT_VOICE_CORRECTIONS(projectId),
     STORAGE_KEYS.PROJECT_SETTINGS_UPDATED_AT(projectId),
   ].forEach((key) => localStorage.removeItem(key));
   if (emit) emitSettingsUpdated(projectId);
@@ -174,6 +187,7 @@ function comparableSettings(value) {
     hiddenFields: normalized.hiddenFields,
     excelMonitoringExportMode: normalized.excelMonitoringExportMode,
     photoRequirements: normalized.photoRequirements,
+    voiceCorrections: normalized.voiceCorrections,
   });
 }
 

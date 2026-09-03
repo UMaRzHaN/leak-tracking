@@ -79,13 +79,20 @@ vi.mock("@/utils/monitoringRound", () => ({
 vi.mock("@/app/project/projectSettings", () => ({
   readProjectSettings: mocks.readProjectSettings,
   writeProjectSettings: mocks.writeProjectSettings,
+  // Читают поправки голосового ввода: они живут при проекте и обновляются по
+  // тому же событию, что и остальные настройки.
+  PROJECT_SETTINGS_UPDATED_EVENT: "project-settings-updated",
+  touchProjectSettings: vi.fn(),
 }));
 vi.mock("@/services/sync/projectSyncState", () => ({
   readProjectSyncStateAsync: mocks.readProjectSyncStateAsync,
   writeProjectSyncState: mocks.writeProjectSyncState,
 }));
 vi.mock("@/app/project/storageKeys", () => ({
-  STORAGE_KEYS: { PROJECT_VARS: (id) => `vars:${id}` },
+  STORAGE_KEYS: {
+    PROJECT_VARS: (id) => `vars:${id}`,
+    PROJECT_VOICE_CORRECTIONS: (id) => `voice:${id}`,
+  },
 }));
 vi.mock("@/app/project/hooks/useProjectVars", () => ({
   useProjectVars: () => ({

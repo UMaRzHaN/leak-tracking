@@ -5,6 +5,8 @@ import { parseVoiceCommand } from "@/features/voice/utils/parseVoiceCommand";
 import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { applyVoiceCorrections } from "@/features/voice/utils/voiceCorrections";
+import { useVoiceCorrections } from "@/app/project/hooks/useVoiceCorrections";
 
 /**
  * Voice control hook with step-aware parsing and pending confirmation flow.
@@ -24,8 +26,9 @@ export function useVoiceControl({
   voice = /** @type {any} */ (null),
 } = {}) {
   const projectConfig = useProjectConfig();
-  const { project } = useProjectData();
+  const { activeProject, project } = useProjectData();
   const { lang } = useLanguage();
+  const { corrections } = useVoiceCorrections(activeProject?.id);
   const [pendingVoiceData, setPendingVoiceData] = useState(null);
 
   const dictationKey = useMemo(() => {
@@ -34,7 +37,11 @@ export function useVoiceControl({
   }, [steps, step]);
 
   const onSpeechResult = useCallback(
-    (text) => {
+    (raw) => {
+      // Поправки применяются раньше всего, включая разбор команд: «сохранить»,
+      // услышанное как «сохрани», — такая же ошибка распознавателя, как и
+      // «место рождения», и чинить её вторым списком незачем.
+      const text = applyVoiceCorrections(raw, corrections);
       const command = parseVoiceCommand(text, lang);
       if (command) {
         onCommand?.(command);
@@ -54,7 +61,7 @@ export function useVoiceControl({
         active?.options ?? {},
       );
     },
-    [dictationKey, lang, onCommand, project, projectConfig, voice],
+    [corrections, dictationKey, lang, onCommand, project, projectConfig, voice],
   );
 
   const { start, stop } = useSpeechRecognition(onSpeechResult, lang);

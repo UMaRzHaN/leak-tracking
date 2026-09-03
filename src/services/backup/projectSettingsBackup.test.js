@@ -29,6 +29,7 @@ const SETTINGS = {
     monitoringPhotoRequired: false,
     componentPhotoRequired: true,
   },
+  voiceCorrections: [],
   updatedAt: 200,
 };
 
@@ -181,6 +182,7 @@ describe("project settings backup and synchronization", () => {
         monitoringPhotoRequired: true,
         componentPhotoRequired: true,
       },
+      voiceCorrections: [],
       updatedAt: 0,
     });
   });
@@ -215,6 +217,7 @@ describe("project settings backup and synchronization", () => {
     const local = {
       ...SETTINGS,
       hiddenFields: ["description"],
+      voiceCorrections: [],
       updatedAt: 300,
     };
     writeProjectSettings(SOURCE_PROJECT.id, local, { emit: false });

@@ -37,6 +37,11 @@ export const STORAGE_KEYS = {
     `${APP_PREFIX}:${projectId}:monitoring_settings_${VERSION}`,
   PROJECT_PHOTO_REQUIREMENTS: (projectId) =>
     `${APP_PREFIX}:${projectId}:photo_requirements_${VERSION}`,
+  // Поправки к распознанной речи живут при проекте, а не при устройстве:
+  // ошибки распознавателя одинаковы у всей бригады, и найденную пару разумнее
+  // раздать обменом архива, чем заводить на каждом телефоне заново.
+  PROJECT_VOICE_CORRECTIONS: (projectId) =>
+    `${APP_PREFIX}:${projectId}:voice_corrections_${VERSION}`,
   PROJECT_SYNC_STATE: (projectId) =>
     `${APP_PREFIX}:${projectId}:sync_state_${VERSION}`,
   PROJECT_FILTERS: (projectId) =>

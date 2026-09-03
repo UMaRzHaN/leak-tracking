@@ -11,6 +11,7 @@ import FieldVisibilitySection from "./components/FieldVisibilitySection";
 import MapCacheSection from "./components/MapCacheSection";
 import LocalSyncSection from "./components/LocalSyncSection";
 import PhotoRequirementsSection from "./components/PhotoRequirementsSection";
+import VoiceCorrectionsSection from "./components/VoiceCorrectionsSection";
 import ProjectIntegritySection from "./components/ProjectIntegritySection";
 import ProjectList from "./components/ProjectList";
 import ImportExportDialogs from "./components/ImportExportDialogs";
@@ -89,7 +90,9 @@ export default function Settings(props) {
     syncIdEditorState,
     t,
     toggleLanguage,
+    setVoiceCorrections,
     updateSyncIdEditorValue,
+    voiceCorrections,
   } = useSettingsPage(props);
   const { data = [], onBack, setPage } = props;
   const componentFields = useComponentFieldVisibility(activeProject);
@@ -186,6 +189,15 @@ export default function Settings(props) {
             setMonitoringPhotoRequired(required);
             setIntegrityReport(null);
             notify("success", t("settings.monitoringPhotoRequirementSaved"));
+          }}
+        />
+
+        <VoiceCorrectionsSection
+          activeProject={activeProject}
+          corrections={voiceCorrections}
+          onSave={(next) => {
+            setVoiceCorrections(next);
+            notify("success", t("settings.voice.saved"));
           }}
         />
 
