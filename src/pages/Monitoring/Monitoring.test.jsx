@@ -194,6 +194,36 @@ describe("Monitoring round flow", () => {
     );
   });
 
+  it("takes the displaced photo of a resolved leak from its repair event", () => {
+    const patch = buildMonitoringPatch({
+      leak: {
+        id: "leak-1",
+        status: "resolved",
+        photo: "idb://first-sighting",
+        events: [
+          {
+            id: "e1",
+            type: "repair_done",
+            date: "2026-07-10T08:00:00.000Z",
+            photo: "idb://repair-done",
+          },
+        ],
+      },
+      draft: { result: "still_leaking", materials_equipment: "" },
+      monitoredBy: "Inspector",
+      photoPath: "idb://monitoring-latest",
+      roundId: "round-3",
+      roundNumber: 3,
+      now: new Date("2026-07-16T08:30:00.000Z"),
+    });
+
+    // Веха у такой записи пуста, и спрошенная напрямую она подписала бы обходу
+    // первичный снимок — состояние на месяц раньше того, что застал обходчик.
+    expect(getMonitoringRecords(patch).at(-1).previousPhoto).toBe(
+      "idb://repair-done",
+    );
+  });
+
   it("shows a monitoring result once and keeps only the user comment in history", () => {
     const patch = buildMonitoringPatch({
       leak: { id: "leak-1", status: "in_progress" },

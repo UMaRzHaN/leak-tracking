@@ -17,6 +17,7 @@ import {
 } from "@/utils/monitoringRound";
 import { dataUrlToBlob } from "@/utils/photoConversion";
 import { buildReopenedLeak } from "@/utils/reopenLeak";
+import { getRepairDonePhoto, getRepairPhoto } from "@/domain/leakEvents";
 import {
   changeLeakStatus,
   deleteLeakPhotosIfUnreferenced,
@@ -340,13 +341,17 @@ export function useMonitoringPage({
     reopenDraft = /** @type {any} */ (null),
   }) => {
     const displacedPhotoPaths = new Set();
-    if (reopenDraft && leak.status === STATUS.RESOLVED && leak.photo_after) {
+    if (
+      reopenDraft &&
+      leak.status === STATUS.RESOLVED &&
+      getRepairDonePhoto(leak)
+    ) {
       displacedPhotoPaths.add(leak.photo);
     }
     if (draft.result === MONITORING_RESULT.STILL_LEAKING && photoPath) {
       displacedPhotoPaths.add(leak.photo);
       if (leak.status === STATUS.RESOLVED) {
-        displacedPhotoPaths.add(leak.photo_after);
+        displacedPhotoPaths.add(getRepairDonePhoto(leak));
       }
     }
     const updated = data.map((item) =>
@@ -598,15 +603,16 @@ export function useMonitoringPage({
       );
       await setData(next);
       setResolveLeak(null);
-      if (leak.photo_after && leak.photo_after !== photo_after) {
+      const displacedAfter = getRepairDonePhoto(leak);
+      if (displacedAfter && displacedAfter !== photo_after) {
         await deletePhotoIfUnreferenced(
-          leak.photo_after,
+          displacedAfter,
           next,
           deletePhoto,
         ).catch(ignoredError("monitoring.photoCleanup"));
       }
     } catch (error) {
-      if (photo_after && photo_after !== leak.photo_after) {
+      if (photo_after && photo_after !== getRepairDonePhoto(leak)) {
         deletePhotoIfUnreferenced(photo_after, data, deletePhoto).catch(
           ignoredError("monitoring.photoCleanup"),
         );
@@ -637,9 +643,10 @@ export function useMonitoringPage({
       );
       await setData(next);
       setRepairLeak(null);
-      if (leak.photo_repair && leak.photo_repair !== photo_repair) {
+      const displacedRepair = getRepairPhoto(leak);
+      if (displacedRepair && displacedRepair !== photo_repair) {
         await deletePhotoIfUnreferenced(
-          leak.photo_repair,
+          displacedRepair,
           next,
           deletePhoto,
         ).catch(ignoredError("monitoring.photoCleanup"));
@@ -648,7 +655,7 @@ export function useMonitoringPage({
         ignoredError("monitoring.photoCleanup"),
       );
     } catch (error) {
-      if (photo_repair && photo_repair !== leak.photo_repair) {
+      if (photo_repair && photo_repair !== getRepairPhoto(leak)) {
         deletePhotoIfUnreferenced(photo_repair, data, deletePhoto).catch(
           ignoredError("monitoring.photoCleanup"),
         );

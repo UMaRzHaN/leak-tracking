@@ -56,21 +56,17 @@ export default function ResolveModal({
     setSaving(true);
     setNotification(null);
     try {
-      let photoPath = isRepair
-        ? (leak?.photo_repair ?? null)
-        : (leak?.photo_after ?? null);
-      if (photo?.raw) {
-        photoPath = await savePhoto(
-          photo.raw,
-          isRepair ? `${leak.id}_repair` : `${leak.id}_after`,
-          (isRepair
-            ? [leak?.photo, leak?.photo_after, leak?.photo_repair]
-            : [leak?.photo, leak?.photo_repair, leak?.photo_after]
-          ).filter(Boolean),
-          { cleanupOldVersions: false },
-        );
-      }
-      if (photo?.raw && !photoPath) {
+      // Снимок обязателен — без него photoMissing не пускает сюда, — так что
+      // подхватывать прежний у записи не из чего. Старые версии не метём:
+      // снимок вытесняет предыдущий не всегда, и решает это вызывающая
+      // сторона, у которой на руках вся запись.
+      const photoPath = await savePhoto(
+        photo.raw,
+        isRepair ? `${leak.id}_repair` : `${leak.id}_after`,
+        [],
+        { cleanupOldVersions: false },
+      );
+      if (!photoPath) {
         throw new Error("Photo storage did not return a saved path");
       }
       await onConfirm({

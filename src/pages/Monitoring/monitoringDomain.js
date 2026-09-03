@@ -8,6 +8,8 @@ import {
   LEAK_EVENT_TYPES,
   createLeakEvent,
   getLeakEvents,
+  getRepairDonePhoto,
+  getRepairPhoto,
   sortLeakEvents,
 } from "@/domain/leakEvents";
 
@@ -143,12 +145,15 @@ export function getMonitoringPhotoPathsToKeep(leak) {
   return collectLeakPhotoPaths(leak);
 }
 
+// «Фото до обхода» — последнее, что о записи было известно, а после переезда
+// снимок починки лежит в её событии: спросить веху напрямую значит подписать
+// обходу первичное фото и выдать его за состояние перед выездом.
 function getCurrentLeakPhoto(leak) {
   if (leak?.status === STATUS.RESOLVED) {
-    return leak.photo_after ?? leak.photo ?? null;
+    return getRepairDonePhoto(leak) ?? leak.photo ?? null;
   }
   if (leak?.status === STATUS.IN_PROGRESS) {
-    return leak.photo_repair ?? leak.photo ?? null;
+    return getRepairPhoto(leak) ?? leak.photo ?? null;
   }
   return leak?.photo ?? null;
 }
