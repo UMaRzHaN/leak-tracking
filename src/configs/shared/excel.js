@@ -30,6 +30,13 @@ const REQUIRED_EXCEL_FIELDS = [
     after: "uncertainty",
   },
   {
+    // Сразу за координатами: читают её вместе с ними, и в стороне от них она
+    // превращается в число без объяснения, что оно значит.
+    key: "coords_accuracy",
+    header: "Точность координат, м",
+    after: "lng",
+  },
+  {
     key: "photo_repair",
     header: "Фото в ремонте",
     after: "status",
@@ -81,6 +88,7 @@ const HARMONIZED_EXCEL_ORDER = [
   "installation_type",
   "lat",
   "lng",
+  "coords_accuracy",
   "leak_description",
   "leak_cause",
   "technological_solution",

@@ -30,6 +30,8 @@ export const leakDetails = {
   roundPhoto: "Round photo",
   photoBeforeRound: "Photo before round",
   noMonitoringChecks: "No monitoring checks yet",
+  coordsAccuracy: "Coordinate accuracy",
+  coordsAccuracyValue: "±{{count}} m",
   repairEvents: {
     repair_started: "Repair started",
     repair_done: "Repair finished",

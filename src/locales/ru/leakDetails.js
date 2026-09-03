@@ -30,6 +30,8 @@ export const leakDetails = {
   roundPhoto: "Фото обхода",
   photoBeforeRound: "Фото до обхода",
   noMonitoringChecks: "Проверки мониторинга пока не добавлены",
+  coordsAccuracy: "Точность координат",
+  coordsAccuracyValue: "±{{count}} м",
   repairEvents: {
     repair_started: "Начат ремонт",
     repair_done: "Ремонт завершён",

@@ -33,6 +33,29 @@ describe("exportLeaksKML", () => {
     expect(kml).toContain("Отчет по утечкам");
   });
 
+  it("выносит точность координат в описание булавки", () => {
+    const kml = exportLeaksKML(
+      [{ id: "1", leak_id: "A-1", lat: 51.5, lng: 71.4, coords_accuracy: 12 }],
+      "midstream",
+      translateRu,
+    );
+
+    expect(kml).toContain("Точность:");
+    expect(kml).toContain("±12 м");
+  });
+
+  it("молчит о точности там, где её не записали", () => {
+    // Записи до появления поля — обычный случай, а не пробел: пометка о нём в
+    // каждой второй карточке ГИС ничего не сообщает.
+    const kml = exportLeaksKML(
+      [{ id: "1", leak_id: "A-1", lat: 51.5, lng: 71.4 }],
+      "midstream",
+      translateRu,
+    );
+
+    expect(kml).not.toContain("Точность:");
+  });
+
   it("omits placemarks with out-of-range coordinates", () => {
     const kml = exportLeaksKML(
       [

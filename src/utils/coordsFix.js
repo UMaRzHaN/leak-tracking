@@ -14,11 +14,21 @@ import { toNullableNumber } from "@/utils/normalize/toNullableNumber";
 export const COORDS_WAIT_MS = 15000;
 export const COORDS_POLL_MS = 200;
 
-/** The current fix, as numbers, with anything unusable read as absent. */
+/**
+ * The current fix, as numbers, with anything unusable read as absent.
+ *
+ * `accuracy` — радиус в метрах, который сообщает приёмник. Он едет вместе с
+ * координатой, потому что без него точка под эстакадой со стометровой ошибкой
+ * на карте неотличима от снятой в чистом поле, и обе выглядят одинаково
+ * достоверно. Округляется до метра: доли метра приёмник не знает, а показывать
+ * их — выдавать шум за точность.
+ */
 export function readCoordsFix(coords) {
+  const accuracy = toNullableNumber(coords?.accuracy);
   return {
     lat: toNullableNumber(coords?.lat),
     lng: toNullableNumber(coords?.lng),
+    accuracy: accuracy != null && accuracy >= 0 ? Math.round(accuracy) : null,
   };
 }
 
@@ -36,7 +46,7 @@ export function hasCoordsFix(coords) {
  *
  * @param {{current: any}} coordsRef
  * @param {{timeoutMs?: number, pollMs?: number}} [options]
- * @returns {Promise<{lat: number, lng: number}|null>}
+ * @returns {Promise<{lat: number, lng: number, accuracy: number|null}|null>}
  */
 export async function waitForCoordsFix(
   coordsRef,
@@ -46,7 +56,9 @@ export async function waitForCoordsFix(
   while (Date.now() - start < timeoutMs) {
     const fix = readCoordsFix(coordsRef?.current);
     if (fix.lat != null && fix.lng != null) {
-      return /** @type {{lat: number, lng: number}} */ (fix);
+      return /** @type {{lat: number, lng: number, accuracy: number|null}} */ (
+        fix
+      );
     }
     await new Promise((resolve) => setTimeout(resolve, pollMs));
   }

@@ -55,6 +55,23 @@ function safeDescriptionText(value) {
 // The exported file speaks the language of the interface that asked for it,
 // so `t` comes in from the caller rather than the module reaching for a
 // global i18n instance.
+/**
+ * Строка про точность для выгрузки — только когда радиус записан.
+ *
+ * Пустой строкой «Точность: не указано» описание не засоряется: записи,
+ * заведённые до появления поля, — обычный случай, а не пробел в данных, и
+ * пометка о нём в каждой второй карточке ГИС ничего не сообщает.
+ */
+function accuracyLine(record, t) {
+  const value = Number(record?.coords_accuracy);
+  if (!Number.isFinite(value) || value <= 0) return "";
+  const label = safeDescriptionText(t("map.popup.accuracy"));
+  const metres = safeDescriptionText(
+    t("map.popup.accuracyValue", { count: Math.round(value) }),
+  );
+  return `<br/><b>${label}:</b> ${metres}`;
+}
+
 export function exportLeaksKML(leaks, project, t) {
   const config = PROJECT_LOCATION_CONFIG[project];
   // The two location fields a project uses are named by its type, and those
@@ -107,7 +124,7 @@ export function exportLeaksKML(leaks, project, t) {
               leak.leak_speed != null
                 ? `${safeDescriptionText(leak.leak_speed)} ${safeDescriptionText(t("common.units.litresPerMinute"))}`
                 : noRate
-            }
+            }${accuracyLine(leak, t)}
           ]]>
         </description>
         <Point>
@@ -189,7 +206,7 @@ export function exportComponentsKML(components, project, t) {
             <b>${safeDescriptionText(secondaryLabel)}:</b> ${safeDescriptionText(component[config.secondary]) || notSpecified}<br/>
             <b>${safeDescriptionText(t("components.tab"))}:</b> ${safeDescriptionText(component.component) || notSpecified}<br/>
             <b>${safeDescriptionText(t("map.kml.schemeTag"))}:</b> ${safeDescriptionText(component.scheme_tag) || notSpecified}<br/>
-            <b>${safeDescriptionText(t("map.popup.status"))}:</b> ${safeDescriptionText(component.component_status) || notSpecified}
+            <b>${safeDescriptionText(t("map.popup.status"))}:</b> ${safeDescriptionText(component.component_status) || notSpecified}${accuracyLine(component, t)}
           ]]>
         </description>
         <Point>

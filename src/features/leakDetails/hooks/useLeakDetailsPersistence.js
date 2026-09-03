@@ -124,9 +124,17 @@ export function useLeakDetailsPersistence({
       );
       const speedChanged = dirtyFields.some(({ key }) => key === speedKey);
 
+      // Правка координаты руками отменяет радиус приёмника: он измерял ту
+      // точку, а не эту. Оставить его — выдать вписанное значение за снятое,
+      // и на карте такая точка выглядела бы достовернее, чем она есть.
+      const coordsEditedByHand = dirtyFields.some(
+        ({ key }) => key === "lat" || key === "lng",
+      );
+
       const base = {
         ...leak,
         ...textPatch,
+        ...(coordsEditedByHand ? { coords_accuracy: undefined } : {}),
         photo: photoPath ?? leak.photo,
         photo_after: photoAfterPath ?? leak.photo_after,
         photo_repair: photoRepairPath ?? leak.photo_repair,

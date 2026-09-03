@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const leaflet = vi.hoisted(() => ({
+  circles: [],
   cluster: null,
   divIcons: [],
   map: null,
@@ -72,6 +73,11 @@ vi.mock("leaflet", () => {
       leaflet.divIcons.push(options);
       return options;
     }),
+    circle: vi.fn((latlng, options) => {
+      const instance = { latlng, options, addTo: vi.fn(() => instance) };
+      leaflet.circles.push(instance);
+      return instance;
+    }),
     map: vi.fn(() => leaflet.map),
     marker,
     markerClusterGroup: vi.fn(() => leaflet.cluster),
@@ -120,6 +126,7 @@ describe("offline map adapter", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    leaflet.circles.length = 0;
     leaflet.divIcons.length = 0;
     leaflet.markers.length = 0;
     leaflet.map = createMapMock();
@@ -206,6 +213,162 @@ describe("offline map adapter", () => {
     expect(leaflet.map.setView).toHaveBeenCalledWith([41, 69], 18, {
       animate: true,
     });
+  });
+
+  it("обводит кругом погрешности только раскрытую точку", () => {
+    // Круг у каждой точки на объекте с сотнями записей превращается в кашу из
+    // окружностей, где не видно ни одной; вопрос же задают про ту, на которую
+    // сейчас смотрят.
+    addMarkers(
+      leaflet.cluster,
+      [{ id: "1", lat: 41, lng: 69, coords_accuracy: 12 }],
+      leaflet.map,
+    );
+
+    expect(leaflet.circles).toHaveLength(0);
+
+    leaflet.markers[0].handlers.popupopen();
+    expect(leaflet.circles).toHaveLength(1);
+    expect(leaflet.circles[0].latlng).toEqual([41, 69]);
+    expect(leaflet.circles[0].options.radius).toBe(12);
+    // Круг не перехватывает нажатия: под ним лежит сама булавка.
+    expect(leaflet.circles[0].options.interactive).toBe(false);
+
+    leaflet.markers[0].handlers.popupclose();
+    expect(leaflet.map.removeLayer).toHaveBeenCalledWith(leaflet.circles[0]);
+  });
+
+  it("переход на соседнюю точку не гасит её круг", () => {
+    // Leaflet закрывает прежний пузырёк и открывает следующий; если снятие
+    // придёт вторым, оно не должно стереть только что нарисованный круг.
+    addMarkers(
+      leaflet.cluster,
+      [
+        { id: "1", lat: 41, lng: 69, coords_accuracy: 12 },
+        { id: "2", lat: 42, lng: 70, coords_accuracy: 30 },
+      ],
+      leaflet.map,
+    );
+
+    leaflet.markers[0].handlers.popupopen();
+    leaflet.markers[1].handlers.popupopen();
+    leaflet.markers[0].handlers.popupclose();
+
+    expect(leaflet.circles).toHaveLength(2);
+    expect(leaflet.map["_accuracyCircle"]).toBe(leaflet.circles[1]);
+    expect(leaflet.map.removeLayer).not.toHaveBeenCalledWith(
+      leaflet.circles[1],
+    );
+  });
+
+  it("гасит булавку, осмотренную в текущем обходе", () => {
+    addMarkers(
+      leaflet.cluster,
+      [
+        { id: "1", lat: 41, lng: 69, status: "open", _checkedInRound: true },
+        { id: "2", lat: 42, lng: 70, status: "open", _checkedInRound: false },
+      ],
+      leaflet.map,
+    );
+
+    const [checked, due] = leaflet.markers.map(
+      (marker) => marker.options.icon.html,
+    );
+    // Пройденная теряет заливку и бледнеет, непройденная остаётся яркой.
+    expect(checked).toContain("background:transparent");
+    expect(checked).toContain("opacity:0.6");
+    expect(due).not.toContain("background:transparent");
+    expect(due).not.toContain("opacity:0.6");
+  });
+
+  it("не судит о покрытии, пока обход не заведён", () => {
+    // Без обхода «не осмотрено» значило бы «никогда не проверялось» — другой
+    // вопрос, и отвечать на него видом булавки было бы подменой.
+    addMarkers(
+      leaflet.cluster,
+      [{ id: "1", lat: 41, lng: 69, status: "open" }],
+      leaflet.map,
+    );
+    const popup = leaflet.markers[0].bindPopup.mock.calls[0][0]();
+
+    expect(leaflet.markers[0].options.icon.html).not.toContain(
+      "background:transparent",
+    );
+    expect(popup.textContent).not.toContain("map.popup.round");
+  });
+
+  it("пишет в пузырьке, пройдена ли точка обходом", () => {
+    addMarkers(
+      leaflet.cluster,
+      [{ id: "1", lat: 41, lng: 69, status: "open", _checkedInRound: true }],
+      leaflet.map,
+    );
+    const popup = leaflet.markers[0].bindPopup.mock.calls[0][0]();
+
+    expect(popup.textContent).toContain("map.popup.round");
+    expect(popup.textContent).toContain("map.popup.checked");
+  });
+
+  it("обводит пунктиром точку, снятую с большой погрешностью", () => {
+    addMarkers(
+      leaflet.cluster,
+      [
+        { id: "1", lat: 41, lng: 69, status: "open", coords_accuracy: 40 },
+        { id: "2", lat: 42, lng: 70, status: "open", coords_accuracy: 8 },
+        { id: "3", lat: 43, lng: 71, status: "open" },
+      ],
+      leaflet.map,
+    );
+
+    const [poor, good, unknown] = leaflet.markers.map(
+      (marker) => marker.options.icon.html,
+    );
+    expect(poor).toContain("dashed");
+    // Точная и та, у которой радиус не записан, ободка не носят: «неизвестно»
+    // — не то же самое, что «плохо».
+    expect(good).not.toContain("dashed");
+    expect(unknown).not.toContain("dashed");
+  });
+
+  it("ставит обе пометки разом, не путая их между собой", () => {
+    // Покрытие обхода гасит булавку, погрешность добавляет ободок: оси разные,
+    // и точка может нести обе.
+    addMarkers(
+      leaflet.cluster,
+      [
+        {
+          id: "1",
+          lat: 41,
+          lng: 69,
+          status: "open",
+          coords_accuracy: 40,
+          _checkedInRound: true,
+        },
+      ],
+      leaflet.map,
+    );
+
+    const html = leaflet.markers[0].options.icon.html;
+    expect(html).toContain("dashed");
+    expect(html).toContain("opacity:0.6");
+  });
+
+  it("не рисует круг у точки без записанной точности", () => {
+    addMarkers(leaflet.cluster, [{ id: "1", lat: 41, lng: 69 }], leaflet.map);
+    leaflet.markers[0].handlers.popupopen();
+
+    expect(leaflet.circles).toHaveLength(0);
+  });
+
+  it("показывает точность в пузырьке", () => {
+    addMarkers(
+      leaflet.cluster,
+      [{ id: "1", lat: 41, lng: 69, coords_accuracy: 12 }],
+      leaflet.map,
+    );
+    const popup = leaflet.markers[0].bindPopup.mock.calls[0][0]();
+
+    expect(popup.textContent).toContain("map.popup.accuracy");
   });
 
   it("updates the marker from shared GPS fixes", () => {

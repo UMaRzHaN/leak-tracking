@@ -117,6 +117,14 @@ export default function ComponentDetailsSheet({
     [filled],
   );
 
+  // Радиус приёмника не поле паспорта, а мера доверия к снятой точке, поэтому
+  // стоит под координатами, а не среди них: `filled` их форматирует как числа
+  // карточки, а здесь нужны метры со знаком «плюс-минус».
+  const accuracy = useMemo(() => {
+    const value = Number(component?.coords_accuracy);
+    return Number.isFinite(value) && value >= 0 ? Math.round(value) : null;
+  }, [component?.coords_accuracy]);
+
   const history = [...(component?.history ?? [])].reverse();
 
   const actionLabel = (action) =>
@@ -302,6 +310,18 @@ export default function ComponentDetailsSheet({
                       <span className={s.fieldValue}>{String(value)}</span>
                     </div>
                   ))
+                )}
+                {coords.length > 0 && accuracy != null && (
+                  <div className={s.fieldRow}>
+                    <span className={s.fieldLabel}>
+                      {t("leakDetails.coordsAccuracy")}
+                    </span>
+                    <span className={s.fieldValue}>
+                      {t("leakDetails.coordsAccuracyValue", {
+                        count: accuracy,
+                      })}
+                    </span>
+                  </div>
                 )}
               </div>
             ) : (

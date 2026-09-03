@@ -180,7 +180,7 @@ export default function AddLeak({
   // same leak twice.
   const handleAdd = async (row) =>
     run(async () => {
-      let { lat, lng } = readCoords();
+      let { lat, lng, accuracy } = readCoords();
 
       // A leak without coordinates is dropped from the map, and it used to be
       // saved that way silently. Rather than ask, switch the receiver on and
@@ -191,7 +191,7 @@ export default function AddLeak({
       if (lat == null || lng == null) {
         if (!gpsEnabled) setGpsEnabled?.(true);
         const fix = await waitForCoordsFix(coordsRef);
-        if (fix) ({ lat, lng } = fix);
+        if (fix) ({ lat, lng, accuracy } = fix);
       }
 
       const savedWithoutCoords = lat == null || lng == null;
@@ -300,10 +300,21 @@ export default function AddLeak({
         cleanRow.detectedBy =
           String(cleanRow.detectedBy ?? "").trim() || profileName;
 
+        // Точность принадлежит той координате, которую снял приёмник. Если
+        // широту и долготу вписали руками — а форма это позволяет и `cleanRow`
+        // перекрывает ими фикс, — приписывать им радиус приёмника нельзя: это
+        // была бы уверенность, взятая у чужого измерения.
+        const coordsTypedByHand =
+          (cleanRow.lat != null && cleanRow.lat !== "") ||
+          (cleanRow.lng != null && cleanRow.lng !== "");
+
         const newRow = {
           id,
           lat,
           lng,
+          ...(accuracy != null && !coordsTypedByHand
+            ? { coords_accuracy: accuracy }
+            : {}),
           index: data.length + 1,
           status: STATUS.OPEN,
           priority: priorityFromSpeed(cleanRow.leak_speed),

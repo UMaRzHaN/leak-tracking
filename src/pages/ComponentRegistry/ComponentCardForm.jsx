@@ -13,7 +13,11 @@ import {
 } from "@/domain/componentRegistry";
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import { toNullableNumber } from "@/utils/normalize/toNullableNumber";
-import { hasCoordsFix, waitForCoordsFix } from "@/utils/coordsFix";
+import {
+  hasCoordsFix,
+  readCoordsFix,
+  waitForCoordsFix,
+} from "@/utils/coordsFix";
 import { hasRestorablePhoto } from "@/utils/restorablePhoto";
 import { useFormDraft } from "@/hooks/useFormDraft";
 import { isFormDirty } from "@/features/leakForm/utils/isLeakFormDirty";
@@ -86,6 +90,9 @@ export default function ComponentCardForm({
           // being left as it is.
           lat: toNullableNumber(coords?.lat) ?? "",
           lng: toNullableNumber(coords?.lng) ?? "",
+          ...(readCoordsFix(coords).accuracy != null
+            ? { coords_accuracy: readCoordsFix(coords).accuracy }
+            : {}),
         },
   );
   const [step, setStep] = useState(1);
@@ -214,6 +221,11 @@ export default function ComponentCardForm({
   const handleChange = useCallback((key, value) => {
     setForm((current) => {
       const next = { ...current, [key]: value };
+      // Точность принадлежит снятой координате. Стоит человеку поправить
+      // широту или долготу руками — радиус приёмника перестаёт про них что-то
+      // значить, и оставить его значило бы выдать вписанную точку за
+      // измеренную.
+      if (key === "lat" || key === "lng") delete next.coords_accuracy;
       // Naming the component fills the English column the workbook expects, so
       // the operator names it once instead of twice. Перевод берётся общим
       // переводчиком подсказок — тем же, что переводит это поле у утечки.
@@ -384,7 +396,16 @@ export default function ComponentCardForm({
         if (!isEditing && !hasCoordsFix(card)) {
           if (!gpsEnabled) setGpsEnabled?.(true);
           const fix = await waitForCoordsFix(coordsRef);
-          if (fix) card = { ...card, lat: fix.lat, lng: fix.lng };
+          if (fix) {
+            card = {
+              ...card,
+              lat: fix.lat,
+              lng: fix.lng,
+              ...(fix.accuracy != null
+                ? { coords_accuracy: fix.accuracy }
+                : {}),
+            };
+          }
         }
 
         await onSave(card);
