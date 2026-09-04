@@ -1,4 +1,5 @@
 import { errorText } from "@/utils/appError";
+import { useLeakDraft } from "./useLeakDraft";
 import { useEffect, useMemo, useState, useRef } from "react";
 import LeakForm from "@/features/leakForm/LeakForm";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
@@ -17,7 +18,6 @@ import { isPinkBagEquipment } from "@/utils/calculations/calculations";
 import { normalizeLeakTag } from "@/utils/leakIdentity";
 import { findLatestLeak } from "@/utils/leakOrder";
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
-import { isLeakFormDirty } from "@/features/leakForm/utils/isLeakFormDirty";
 import { createRecordId } from "@/utils/createRecordId";
 import Notification from "@/components/ui/Notification/Notification";
 import AddLeakSuccess from "./components/AddLeakSuccess";
@@ -116,48 +116,18 @@ export default function AddLeak({
     setForm((prev) => ({ ...prev, detectedBy: profileName }));
   }, [form.detectedBy, setForm, userProfile?.name]);
 
-  /* Offer to restore draft on mount */
-  useEffect(() => {
-    const storedDraft = loadDraft();
-    const draftExists = isLeakFormDirty(storedDraft?.form);
-    if (storedDraft && !draftExists) clearDraft();
-    setDraftPrompt(draftExists);
-    setDraftReadyProjectId(draftExists ? null : normalizedProjectId);
-  }, [clearDraft, loadDraft, normalizedProjectId]);
-
-  /* Autosave draft with a short debounce */
-  useEffect(() => {
-    if (draftPrompt || draftReadyProjectId !== normalizedProjectId) {
-      return;
-    }
-    if (!isLeakFormDirty(form)) {
-      clearDraft();
-      return;
-    }
-    const t = setTimeout(() => saveDraft(form, 1), 1000);
-    return () => clearTimeout(t);
-  }, [
+  const { handleDiscardDraft, handleRestoreDraft } = useLeakDraft({
     clearDraft,
     draftPrompt,
     draftReadyProjectId,
     form,
+    loadDraft,
     normalizedProjectId,
     saveDraft,
-  ]);
-
-  /* Restore draft */
-  const handleRestoreDraft = () => {
-    const draft = loadDraft();
-    if (draft?.form) setForm(draft.form);
-    setDraftPrompt(false);
-    setDraftReadyProjectId(normalizedProjectId);
-  };
-
-  const handleDiscardDraft = () => {
-    clearDraft();
-    setDraftPrompt(false);
-    setDraftReadyProjectId(normalizedProjectId);
-  };
+    setDraftPrompt,
+    setDraftReadyProjectId,
+    setForm,
+  });
 
   const waitForPhotoReady = async (timeoutMs = 2000) => {
     const start = Date.now();

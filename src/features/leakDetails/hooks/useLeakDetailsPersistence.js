@@ -22,8 +22,6 @@ import {
   changeLeakStatus,
   deletePhotoIfUnreferenced,
   getOrphanedOriginalPhoto,
-  resolveLeakRecord,
-  startLeakRepair,
 } from "@/domain/leakLifecycle";
 import {
   cleanupUncommittedPhotoReplacements,
@@ -32,6 +30,7 @@ import {
 } from "../utils/persistPhotoReplacements";
 import { ignoredError } from "@/utils/ignoredError";
 import { fromEntries } from "@/utils/fromEntries";
+import { useLeakRepairConfirm } from "./useLeakRepairConfirm";
 
 /**
  * Куда лечь заменённым снимкам починки.
@@ -287,82 +286,17 @@ export function useLeakDetailsPersistence({
     }
   };
 
-  const handleResolveConfirm = async ({
-    photo_after,
-    materials_equipment,
-    note,
-  }) => {
-    if (!requireHistoryUser()) return;
-    try {
-      const next = resolveLeakRecord(
-        leak,
-        { photo_after, materials_equipment, note },
-        { user: historyUser },
-      );
-      const nextData = replaceLeakInCollection(allLeaks, next);
-      await onSave(next);
-      setResolveOpen(false);
-      if (
-        getRepairDonePhoto(leak) &&
-        getRepairDonePhoto(leak) !== photo_after
-      ) {
-        await deletePhotoIfUnreferenced(
-          getRepairDonePhoto(leak),
-          nextData,
-          deletePhoto,
-        ).catch(ignoredError("leakDetails.photoCleanup"));
-      }
-    } catch {
-      if (photo_after && photo_after !== getRepairDonePhoto(leak)) {
-        await deletePhotoIfUnreferenced(
-          photo_after,
-          allLeaks,
-          deletePhoto,
-        ).catch(ignoredError("leakDetails.photoCleanup"));
-      }
-      reportSaveError();
-    }
-  };
-
-  const handleRepairConfirm = async ({
-    photo_repair,
-    materials_equipment,
-    note,
-  }) => {
-    if (!requireHistoryUser()) return;
-    const orphanedPhoto = getOrphanedOriginalPhoto(leak);
-    try {
-      const next = startLeakRepair(
-        leak,
-        { photo_repair, materials_equipment, note },
-        { user: historyUser },
-      );
-      const nextData = replaceLeakInCollection(allLeaks, next);
-      await onSave(next);
-      setRepairOpen(false);
-      if (getRepairPhoto(leak) && getRepairPhoto(leak) !== photo_repair) {
-        await deletePhotoIfUnreferenced(
-          getRepairPhoto(leak),
-          nextData,
-          deletePhoto,
-        ).catch(ignoredError("leakDetails.photoCleanup"));
-      }
-      await deletePhotoIfUnreferenced(
-        orphanedPhoto,
-        nextData,
-        deletePhoto,
-      ).catch(ignoredError("leakDetails.photoCleanup"));
-    } catch {
-      if (photo_repair && photo_repair !== getRepairPhoto(leak)) {
-        await deletePhotoIfUnreferenced(
-          photo_repair,
-          allLeaks,
-          deletePhoto,
-        ).catch(ignoredError("leakDetails.photoCleanup"));
-      }
-      reportSaveError();
-    }
-  };
+  const { handleRepairConfirm, handleResolveConfirm } = useLeakRepairConfirm({
+    allLeaks,
+    deletePhoto,
+    historyUser,
+    leak,
+    onSave,
+    reportSaveError,
+    requireHistoryUser,
+    setRepairOpen,
+    setResolveOpen,
+  });
 
   const handleReopenConfirm = async (draft) => {
     if (!requireHistoryUser()) return;

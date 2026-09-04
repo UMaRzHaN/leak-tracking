@@ -1,3 +1,4 @@
+import { RECORD_SYNC_IGNORED_KEYS, stableSyncValue } from "./syncConflictValue";
 import { normalizeLeakFieldVersions } from "@/services/storage/leakFieldVersions";
 import { parseTime } from "./projectMeta";
 import {
@@ -6,7 +7,6 @@ import {
   isEmptyMergeValue,
   sameMonitoringRound,
 } from "./mergeValues";
-import { fromEntries } from "@/utils/fromEntries";
 import { matchHumanDate } from "@/utils/humanDate";
 
 /**
@@ -109,8 +109,16 @@ function mergeVersionedMonitoringRecord(current, incoming) {
     const incomingWins =
       incomingVersion > currentVersion ||
       (incomingVersion === currentVersion &&
-        stableSyncValue(incomingHasValue, incoming?.[key]) >
-          stableSyncValue(currentHasValue, current?.[key]));
+        stableSyncValue(
+          incomingHasValue,
+          incoming?.[key],
+          RECORD_SYNC_IGNORED_KEYS,
+        ) >
+          stableSyncValue(
+            currentHasValue,
+            current?.[key],
+            RECORD_SYNC_IGNORED_KEYS,
+          ));
     if (!incomingWins) continue;
     if (incomingHasValue) next[key] = incoming[key];
     else delete next[key];
@@ -302,38 +310,4 @@ export function mergeRecordArray(
 
 export function hasOwn(object, key) {
   return Object.prototype.hasOwnProperty.call(object, key);
-}
-
-const SYNC_CONFLICT_IGNORED_KEYS = new Set([
-  "id",
-  "index",
-  "photo",
-  "photo_after",
-  "photo_repair",
-  "previousPhoto",
-]);
-
-function normalizeSyncConflictValue(value) {
-  if (Array.isArray(value)) {
-    return value
-      .map(normalizeSyncConflictValue)
-      .sort((left, right) =>
-        JSON.stringify(left).localeCompare(JSON.stringify(right)),
-      );
-  }
-  if (value && typeof value === "object") {
-    return fromEntries(
-      Object.keys(value)
-        .filter((key) => !SYNC_CONFLICT_IGNORED_KEYS.has(key))
-        .sort()
-        .map((key) => [key, normalizeSyncConflictValue(value[key])]),
-    );
-  }
-  return value;
-}
-
-function stableSyncValue(hasValue, value) {
-  if (!hasValue) return "0:deleted";
-  if (value === undefined) return "1:undefined";
-  return `2:${JSON.stringify(normalizeSyncConflictValue(value))}`;
 }

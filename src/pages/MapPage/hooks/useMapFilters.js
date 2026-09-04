@@ -1,12 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useActiveLocation } from "@/hooks/useActiveLocation";
 import { getDistanceMeters } from "@/utils/geoUtils";
 import { STATUS } from "@/utils/status";
 import { readMonitoringRound } from "@/utils/monitoringRound";
 import {
-  buildLocationFilterFromEnabled,
-  buildSmartLocationSelection,
-  getEnabledLocations,
   matchesLeakLocationFilter,
   normalizeLocationValue,
 } from "@/utils/locationFilter";
@@ -14,6 +11,8 @@ import { filterLeaksByMonitoring } from "@/pages/Monitoring/monitoringDomain";
 import { normalizeMultiFilter } from "@/pages/DataBase/hooks/useDataBaseFilters";
 import { MONITORING_FILTER, NEARBY_RADIUS_M } from "@/domain/leakFilters";
 import { isMonitoringDue } from "@/utils/monitoring";
+
+import { useLocationToggles } from "./useLocationToggles";
 
 const NEARBY_RADIUS_OPTIONS = [100, 500, 1000];
 
@@ -96,78 +95,23 @@ export function useMapFilters({
     ? sharedFilters.setMainLocationFilter
     : setLocalMainLocationFilter;
   const lastLocationFilter = sharedFilters?.lastLocationFilter ?? null;
-  const mainLocations = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          normalizedLeaks.map((leak) =>
-            normalizeLocationValue(leak?.[mainLocationKey]),
-          ),
-        ),
-      ),
-    [mainLocationKey, normalizedLeaks],
-  );
-  const enabledMainLocations = useMemo(
-    () =>
-      getEnabledLocations(mainLocations, mainLocationKey, mainLocationFilter),
-    [mainLocationFilter, mainLocationKey, mainLocations],
-  );
-  const enabledLocations = useMemo(
-    () => getEnabledLocations(locations, locationKey, locationFilter),
-    [locationFilter, locationKey, locations],
-  );
-
-  useEffect(() => {
-    const selection = buildSmartLocationSelection(locations, sharedSearch);
-    if (!selection) return;
-    setLocationFilter(
-      buildLocationFilterFromEnabled(locations, locationKey, selection),
-    );
-  }, [locationKey, locations, setLocationFilter, sharedSearch]);
-
-  const toggleMainLocation = useCallback(
-    (location) => {
-      setMainLocationFilter((current) => {
-        const currentEnabled = getEnabledLocations(
-          mainLocations,
-          mainLocationKey,
-          current,
-        );
-        const nextEnabled = {
-          ...currentEnabled,
-          [location]: !currentEnabled[location],
-        };
-        return buildLocationFilterFromEnabled(
-          mainLocations,
-          mainLocationKey,
-          nextEnabled,
-        );
-      });
-    },
-    [mainLocationKey, mainLocations, setMainLocationFilter],
-  );
-
-  const toggleLocation = useCallback(
-    (location) => {
-      setLocationFilter((current) => {
-        const currentEnabled = getEnabledLocations(
-          locations,
-          locationKey,
-          current,
-        );
-        const nextEnabled = {
-          ...currentEnabled,
-          [location]: !currentEnabled[location],
-        };
-        return buildLocationFilterFromEnabled(
-          locations,
-          locationKey,
-          nextEnabled,
-        );
-      });
-    },
-    [locationKey, locations, setLocationFilter],
-  );
+  const {
+    enabledLocations,
+    enabledMainLocations,
+    mainLocations,
+    toggleLocation,
+    toggleMainLocation,
+  } = useLocationToggles({
+    locationFilter,
+    locationKey,
+    locations,
+    mainLocationFilter,
+    mainLocationKey,
+    normalizedLeaks,
+    setLocationFilter,
+    setMainLocationFilter,
+    sharedSearch,
+  });
 
   const filteredLeaks = useMemo(
     () =>

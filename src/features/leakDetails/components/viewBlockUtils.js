@@ -83,3 +83,18 @@ export function getHistoryChangeLabel(change, fields, localeTexts, t) {
   const field = fields.find((item) => item.key === change.key);
   return fieldLabel(change.key, t, field?.label ?? change.key);
 }
+
+/**
+ * Значение истории, годное для показа.
+ *
+ * Объект и массив отсеиваются намеренно: React вывел бы их как
+ * `[object Object]`, и запись обхода, пришедшая из чужой сборки с полем-объектом,
+ * показывала бы читателю мусор вместо текста.
+ */
+export function displayText(value) {
+  if (value == null) return "";
+  if (["string", "number", "boolean"].includes(typeof value)) {
+    return String(value);
+  }
+  return "";
+}

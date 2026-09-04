@@ -17,7 +17,11 @@ import {
 import { hasOwn, mergeRecordArray } from "./recordArrayMerge";
 import { parseTime } from "./projectMeta";
 import { normalizeLeakTag } from "@/utils/leakIdentity";
-import { fromEntries } from "@/utils/fromEntries";
+import {
+  normalizeSyncConflictValue,
+  stableSyncValue,
+  LEAK_SYNC_IGNORED_KEYS,
+} from "./syncConflictValue";
 
 export function getLeakIdentity(leak, options = {}) {
   if (options.source !== "sync") {
@@ -62,35 +66,10 @@ function mergedRecordArraysChanged(existingLeak, merged) {
   );
 }
 
-const SYNC_CONFLICT_IGNORED_KEYS = new Set([
-  "id",
-  "index",
-  "photo",
-  "photo_after",
-  "photo_repair",
-]);
-
-function normalizeSyncConflictValue(value) {
-  if (Array.isArray(value)) {
-    return value
-      .map(normalizeSyncConflictValue)
-      .sort((left, right) =>
-        JSON.stringify(left).localeCompare(JSON.stringify(right)),
-      );
-  }
-  if (value && typeof value === "object") {
-    return fromEntries(
-      Object.keys(value)
-        .filter((key) => !SYNC_CONFLICT_IGNORED_KEYS.has(key))
-        .sort()
-        .map((key) => [key, normalizeSyncConflictValue(value[key])]),
-    );
-  }
-  return value;
-}
-
 function getSyncConflictKey(leak) {
-  return JSON.stringify(normalizeSyncConflictValue(leak));
+  return JSON.stringify(
+    normalizeSyncConflictValue(leak, LEAK_SYNC_IGNORED_KEYS),
+  );
 }
 
 export function shouldApplyIncomingLeak(
@@ -119,12 +98,6 @@ export function shouldApplyIncomingLeak(
   const currentKey = getSyncConflictKey(current);
   const incomingKey = getSyncConflictKey(incoming);
   return incomingKey !== currentKey && incomingKey > currentKey;
-}
-
-function stableSyncValue(hasValue, value) {
-  if (!hasValue) return "0:deleted";
-  if (value === undefined) return "1:undefined";
-  return `2:${JSON.stringify(normalizeSyncConflictValue(value))}`;
 }
 
 function isRestoredPhotoPath(path) {
@@ -177,8 +150,16 @@ function mergeVersionedLeakFields(existingLeak, incomingLeak, options = {}) {
     const incomingWins =
       incomingVersion > existingVersion ||
       (incomingVersion === existingVersion &&
-        stableSyncValue(incomingHasValue, incomingLeak?.[key]) >
-          stableSyncValue(existingHasValue, existingLeak?.[key]));
+        stableSyncValue(
+          incomingHasValue,
+          incomingLeak?.[key],
+          LEAK_SYNC_IGNORED_KEYS,
+        ) >
+          stableSyncValue(
+            existingHasValue,
+            existingLeak?.[key],
+            LEAK_SYNC_IGNORED_KEYS,
+          ));
 
     mergedVersions[key] = Math.max(existingVersion, incomingVersion);
     if (!incomingWins) continue;

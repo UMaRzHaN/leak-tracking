@@ -22,54 +22,10 @@ const ICON_COLORS = [
   "7CB342",
 ];
 
+import { accuracyLine, escapeXml, safeDescriptionText } from "./kmlText";
+
 function tornadoIconUrl(colorHex) {
   return `https://earth.google.com/earth/rpc/cc/icon?color=${colorHex}&amp;id=1714&amp;scale=4`;
-}
-
-function escapeXml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
-
-function cdataText(value) {
-  return String(value ?? "").replace(/]]>/g, "]]&gt;");
-}
-
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function safeDescriptionText(value) {
-  return cdataText(escapeHtml(value));
-}
-
-// The exported file speaks the language of the interface that asked for it,
-// so `t` comes in from the caller rather than the module reaching for a
-// global i18n instance.
-/**
- * Строка про точность для выгрузки — только когда радиус записан.
- *
- * Пустой строкой «Точность: не указано» описание не засоряется: записи,
- * заведённые до появления поля, — обычный случай, а не пробел в данных, и
- * пометка о нём в каждой второй карточке ГИС ничего не сообщает.
- */
-function accuracyLine(record, t) {
-  const value = Number(record?.coords_accuracy);
-  if (!Number.isFinite(value) || value <= 0) return "";
-  const label = safeDescriptionText(t("map.popup.accuracy"));
-  const metres = safeDescriptionText(
-    t("map.popup.accuracyValue", { count: Math.round(value) }),
-  );
-  return `<br/><b>${label}:</b> ${metres}`;
 }
 
 export function exportLeaksKML(leaks, project, t) {

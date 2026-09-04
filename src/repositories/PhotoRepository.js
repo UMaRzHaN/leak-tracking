@@ -3,7 +3,6 @@ import { asOutOfSpaceError } from "@/services/storage/outOfSpace";
 import { isNative } from "@/utils/platform";
 import { compressImage, isWithinPhotoBudget } from "./compressImage";
 import { idb } from "./idb";
-import { ensureNativeDirectory } from "./nativeDirectory";
 import { isPhotoPrepared } from "@/utils/photoPreparation";
 import {
   invalidateNativePhotoCachePath,
@@ -15,8 +14,16 @@ import {
   MONITORING_PHOTO_FIELDS,
 } from "@/utils/photoFields";
 import { ignoredError } from "@/utils/ignoredError";
+import {
+  cleanupOldVersions,
+  ensurePhotoFolder,
+  forgetPhotoFolder,
+  getPhotoFolder,
+  getScopedNativePhotoPath,
+  getScopedWebPhotoKey,
+  isDirectPhotoVersion,
+} from "./photoPaths";
 
-const photoFolderPromises = new Map();
 let lastPhotoTimestamp = 0;
 let photoTimestampSequence = 0;
 
@@ -102,106 +109,11 @@ function fileToBase64(file) {
   });
 }
 
-function getPhotoFolder(folderName) {
-  return `LeakReports/${folderName}/photos`;
-}
-
-function isDirectPhotoVersion(value, prefix, { extension = false } = {}) {
-  if (!String(value).startsWith(prefix)) return false;
-  const suffix = String(value).slice(prefix.length);
-  return (
-    extension
-      ? /^(?:\d+(?:_\d+)?|h_[a-f0-9]{24,64})\.jpg$/
-      : /^(?:\d+(?:_\d+)?|h_[a-f0-9]{24,64})$/
-  ).test(suffix);
-}
-
 function normalizeContentHash(value) {
   const normalized = String(value ?? "")
     .trim()
     .toLowerCase();
   return /^[a-f0-9]{24,64}$/.test(normalized) ? normalized : null;
-}
-
-function getScopedWebPhotoKey(path, projectId) {
-  if (
-    projectId == null ||
-    String(projectId).length === 0 ||
-    !String(path).startsWith("idb://")
-  ) {
-    return null;
-  }
-  const key = String(path).slice("idb://".length);
-  const projectPart = encodeStorageKeyPart(projectId);
-  return key.startsWith(`photo_${projectPart}_`) ? key : null;
-}
-
-function getScopedNativePhotoPath(path, folderName) {
-  if (!folderName || !String(path).startsWith("data://")) return null;
-  const value = String(path).slice("data://".length);
-  const prefix = `${getPhotoFolder(folderName)}/`;
-  if (!value.startsWith(prefix)) return null;
-
-  const fileName = value.slice(prefix.length);
-  if (
-    !fileName ||
-    fileName.includes("/") ||
-    fileName.includes("\\") ||
-    !fileName.startsWith("photo_") ||
-    !/\.jpg$/i.test(fileName)
-  ) {
-    return null;
-  }
-  return value;
-}
-
-function ensurePhotoFolder(folderName) {
-  if (!folderName) return Promise.resolve(null);
-
-  const folder = getPhotoFolder(folderName);
-  if (!photoFolderPromises.has(folder)) {
-    const pending = ensureNativeDirectory(folder, Directory.Data)
-      .catch((error) => {
-        photoFolderPromises.delete(folder);
-        throw error;
-      })
-      .then(() => folder);
-    photoFolderPromises.set(folder, pending);
-  }
-
-  return photoFolderPromises.get(folder);
-}
-
-async function cleanupOldVersions(
-  folder,
-  leakPart,
-  keepFileName,
-  excludeFileNames = new Set(),
-) {
-  try {
-    const { files } = await Filesystem.readdir({
-      path: folder,
-      directory: Directory.Data,
-    });
-    const prefix = `photo_${leakPart}_`;
-    for (const file of files) {
-      if (
-        isDirectPhotoVersion(file.name, prefix, { extension: true }) &&
-        file.name !== keepFileName &&
-        !excludeFileNames.has(file.name)
-      ) {
-        const stalePath = `${folder}/${file.name}`;
-        await Filesystem.deleteFile({
-          directory: Directory.Data,
-          path: stalePath,
-        })
-          .then(() => invalidateNativePhotoCachePath(Directory.Data, stalePath))
-          .catch(ignoredError("photos.deleteStale"));
-      }
-    }
-  } catch {
-    // folder may not exist yet — ok
-  }
 }
 
 export const PhotoRepository = {
@@ -364,7 +276,7 @@ export const PhotoRepository = {
     if (isNative) {
       if (folderName) {
         const folder = getPhotoFolder(folderName);
-        photoFolderPromises.delete(folder);
+        forgetPhotoFolder(folder);
         invalidateNativePhotoCachePrefix(Directory.Data, `${folder}/`);
       }
       return;

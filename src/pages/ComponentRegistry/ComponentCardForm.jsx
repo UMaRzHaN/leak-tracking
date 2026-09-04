@@ -20,7 +20,6 @@ import {
 } from "@/utils/coordsFix";
 import { hasRestorablePhoto } from "@/utils/restorablePhoto";
 import { useFormDraft } from "@/hooks/useFormDraft";
-import { isFormDirty } from "@/features/leakForm/utils/isLeakFormDirty";
 import { translateAutocompleteOption } from "@/features/search/Autocomplete/optionTranslations";
 import { getCopyPreviousKeys } from "@/features/leakForm/utils/copyPrevious";
 import { buildGhostPlaceholders } from "@/features/leakForm/utils/ghostPlaceholders";
@@ -30,7 +29,7 @@ import s from "./ComponentRegistry.module.scss";
 import { fromEntries } from "@/utils/fromEntries";
 
 /** Проставляет приложение, а не человек: фикс снимается при открытии формы. */
-const DRAFT_DERIVED_FIELDS = ["lat", "lng"];
+import { useComponentDraft } from "./useComponentDraft";
 
 /**
  * The card a walker fills in standing in front of a piece of equipment.
@@ -122,49 +121,20 @@ export default function ComponentCardForm({
   );
   const draftEnabled = Boolean(projectId) && !isEditing;
 
-  useEffect(() => {
-    if (!draftEnabled) {
-      setDraftReady(true);
-      return;
-    }
-    const stored = loadDraft();
-    const worthRestoring = isFormDirty(stored?.form, DRAFT_DERIVED_FIELDS);
-    if (stored && !worthRestoring) clearDraft();
-    setDraftPrompt(worthRestoring);
-    setDraftReady(!worthRestoring);
-  }, [clearDraft, draftEnabled, loadDraft]);
-
-  useEffect(() => {
-    if (!draftEnabled || draftPrompt || !draftReady) return undefined;
-    if (!isFormDirty(form, DRAFT_DERIVED_FIELDS)) {
-      clearDraft();
-      return undefined;
-    }
-    const timer = setTimeout(() => saveDraft(form, step), 1000);
-    return () => clearTimeout(timer);
-  }, [
+  const { handleDiscardDraft, handleRestoreDraft } = useComponentDraft({
     clearDraft,
     draftEnabled,
     draftPrompt,
     draftReady,
     form,
+    loadDraft,
     saveDraft,
+    setDraftPrompt,
+    setDraftReady,
+    setForm,
+    setStep,
     step,
-  ]);
-
-  const handleRestoreDraft = useCallback(() => {
-    const stored = loadDraft();
-    if (stored?.form) setForm(stored.form);
-    if (stored?.step) setStep(stored.step);
-    setDraftPrompt(false);
-    setDraftReady(true);
-  }, [loadDraft]);
-
-  const handleDiscardDraft = useCallback(() => {
-    clearDraft();
-    setDraftPrompt(false);
-    setDraftReady(true);
-  }, [clearDraft]);
+  });
 
   const required = useMemo(
     () =>
