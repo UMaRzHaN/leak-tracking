@@ -124,7 +124,11 @@ describe("Monitoring round flow", () => {
     ]);
   });
 
-  it("stores MTR in a monitoring record only when it changed", () => {
+  // Раньше МТР писался в запись обхода только при изменении, и в листе обхода
+  // книги колонка у неизменившегося оставалась пустой — читалось как «МТР не
+  // было», хотя он был, просто тот же. Теперь пишется всегда, а изменение
+  // отмечается признаком.
+  it("пишет МТР в каждую запись обхода, а изменение отмечает признаком", () => {
     const now = new Date("2026-07-15T08:30:00.000Z");
     const unchanged = buildMonitoringPatch({
       leak: { id: "leak-1", materials_equipment: "Graphite packing" },
@@ -151,9 +155,10 @@ describe("Monitoring round flow", () => {
       now,
     });
 
-    expect(getMonitoringRecords(unchanged).at(-1)).not.toHaveProperty(
-      "materials_equipment",
-    );
+    expect(getMonitoringRecords(unchanged).at(-1)).toMatchObject({
+      materials_equipment: "Graphite packing",
+      materialsChanged: false,
+    });
     expect(getMonitoringRecords(changed).at(-1)).toMatchObject({
       id: "leak-1-1784104200000",
       date: "2026-07-15T08:30:00.000Z",
@@ -916,5 +921,37 @@ describe("Monitoring round flow", () => {
     });
     expect(photoStorage.deletePhoto).not.toHaveBeenCalledWith("idb://original");
     expect(screen.getByRole("heading", { name: "Check" })).toBeTruthy();
+  });
+  it("отмечает снятый МТР пустым значением, а не отсутствием поля", () => {
+    // Стёртый МТР и неизменившийся — разные ответы: у первого в книге должна
+    // быть пустая клетка, у второго прежнее значение.
+    const cleared = buildMonitoringPatch({
+      leak: { id: "leak-1", materials_equipment: "Graphite packing" },
+      draft: { result: "still_leaking", materials_equipment: "" },
+      monitoredBy: "Inspector",
+      roundId: "round-1",
+      roundNumber: 1,
+      now: new Date("2026-07-15T08:30:00.000Z"),
+    });
+
+    expect(getMonitoringRecords(cleared).at(-1)).toMatchObject({
+      materials_equipment: null,
+      materialsChanged: true,
+    });
+  });
+
+  it("не выдумывает МТР там, где его никогда не было", () => {
+    const never = buildMonitoringPatch({
+      leak: { id: "leak-1" },
+      draft: { result: "still_leaking" },
+      monitoredBy: "Inspector",
+      roundId: "round-1",
+      roundNumber: 1,
+      now: new Date("2026-07-15T08:30:00.000Z"),
+    });
+
+    const record = getMonitoringRecords(never).at(-1);
+    expect(record).not.toHaveProperty("materials_equipment");
+    expect(record.materialsChanged).toBe(false);
   });
 });

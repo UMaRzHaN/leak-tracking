@@ -184,12 +184,22 @@ export function buildMonitoringPatch({
     ...(photoPath && previousPhoto && photoPath !== previousPhoto
       ? { previousPhoto }
       : {}),
-    ...(materialsChanged
-      ? {
-          materials_equipment: materialsEquipment ?? null,
-          materialsChanged: true,
-        }
-      : {}),
+    /*
+     * МТР пишется всегда, а не только когда его поменяли. Колонка листа обхода
+     * отвечает на вопрос «с чем застали утечку в этот раз», и пустая клетка у
+     * неизменившегося МТР читалась как «его не было», хотя он был — просто тот
+     * же. Признак изменения остаётся отдельным полем, и карточка отличает
+     * «вписали новое» от «оставили как есть» по нему, а не по наличию.
+     *
+     * `null` — это снятое значение: МТР был, обходчик его стёр. Пустая строка
+     * и отсутствие поля означали бы одно и то же, а это разные ответы.
+     */
+    ...(materialsEquipment != null
+      ? { materials_equipment: materialsEquipment }
+      : materialsChanged
+        ? { materials_equipment: null }
+        : {}),
+    materialsChanged,
     comment: draft.comment?.trim() || undefined,
   };
 

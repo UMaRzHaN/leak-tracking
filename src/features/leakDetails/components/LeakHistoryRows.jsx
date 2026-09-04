@@ -54,7 +54,14 @@ export function MonitoringRecordRow({ record, localeTexts, lang }) {
               )}
             </div>
 
-            {(record.materialsChanged || record.materials_equipment) && (
+            {/*
+             * Показывается изменение, а не наличие: МТР теперь пишется в
+             * каждую запись обхода, и по наличию блок появлялся бы под каждым
+             * осмотром, повторяя одно и то же. У записей старых сборок
+             * признака нет вовсе — там наличие и означало изменение.
+             */}
+            {(record.materialsChanged ??
+              Boolean(record.materials_equipment)) && (
               <div className={s.monitoringDetailBlock}>
                 <span>{localeTexts.monitoring.materials}</span>
                 <p>
