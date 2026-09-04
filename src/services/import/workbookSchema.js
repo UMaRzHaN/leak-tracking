@@ -1,219 +1,31 @@
 import { PROJECTS } from "@/configs/projects";
+import {
+  HEADER_ALIASES,
+  HISTORY_HEADER_ALIASES,
+  MONITORING_HEADER_ALIASES,
+  TECHNICAL_KEYS,
+} from "@/services/import/workbookHeaderAliases";
 
-const TECHNICAL_KEYS = [
-  "index",
-  "id",
-  "created_at",
-  "createdAt",
-  "updatedAt",
-  "date",
-  "time",
-  "status",
-  "leak_id",
-  "video_id",
-  "detectedBy",
-  "subdivision",
-  "deposit",
-  "field",
-  "station",
-  "district",
-  "locality",
-  "address",
-  "location",
-  "object",
-  "category",
-  "component",
-  "pressure",
-  "temperature",
-  "temperature_K",
-  "equipmentType",
-  "serial_number",
-  "uncertainty",
-  "gasPercentage",
-  "leak_speed",
-  "leak_speed_kg_m",
-  "leak_speed_kg_h",
-  "flareShare",
-  "utilShare",
-  "Operating_mode",
-  "weightedGWP",
-  "Total_Annual_Methane_Loss_m3_y",
-  "Total_Annual_Methane_Loss_kg_y",
-  "Total_Annual_Methane_Loss_t_y",
-  "Emissions_t_CO2eq_year",
-  "Emissions_kg_CO2_eq_year",
-  "GWP",
-  "GWP_Minus",
-  "gasType",
-  "actuator_type",
-  "connection_type",
-  "installation_type",
-  "lat",
-  "lng",
-  "leak_description",
-  "leak_cause",
-  "technological_solution",
-  "repair_recommendation",
-  "materials_equipment",
-  "note",
-  "photo",
-  "photo_repair",
-  "photo_after",
-  "repairAt",
-  "resolvedAt",
-];
-
-const HEADER_ALIASES = {
-  index: ["№", "номер", "n", "no"],
-  date: ["дата", "дата обнаружения", "date", "detected date"],
-  time: ["время", "время обнаружения", "time", "detected time"],
-  leak_id: [
-    "id утечки",
-    "ид утечки",
-    "номер утечки",
-    "индивидуальный номер утечки",
-    "индивидуальный номер бирки",
-    "individual leak number",
-    /*
-     * «Номер бирки» и «№ бирки» — то, как эту колонку подписывают в файлах,
-     * сделанных руками: приложение пишет «Индивидуальный номер утечки», а
-     * человек за таблицей — как говорит. Заголовок нормализуется до «номер
-     * бирки» и «бирки» соответственно, поэтому здесь нужны оба.
-     */
-    "номер бирки",
-    "бирки",
-    "бирка",
-    "тег",
-    "tag",
-    "tag number",
-    "tag no",
-    "leak id",
-    "leak_id",
-  ],
-  video_id: ["id видео", "video id", "video_id"],
-  status: ["статус", "status", "состояние"],
-  detectedBy: ["кто зафиксировал", "проверил", "detected by", "inspector"],
-  subdivision: ["подразделение", "цех", "subdivision"],
-  deposit: ["месторождение", "deposit"],
-  field: ["участок", "field", "умг"],
-  station: ["станция", "station", "кс"],
-  district: ["район", "district"],
-  locality: ["населенный пункт", "населённый пункт", "locality"],
-  address: ["адрес", "address"],
-  location: ["локация", "место", "location"],
-  object: ["объект", "object"],
-  category: ["категория", "category"],
-  component: ["компонент", "component"],
-  pressure: ["давление", "pressure"],
-  temperature: ["температура", "temperature"],
-  temperature_K: ["температура k", "temperature k", "temperature_k"],
-  equipmentType: [
-    "оборудование",
-    "тип оборудования",
-    "equipment",
-    "equipment type",
-  ],
-  serial_number: ["серийный номер", "serial number", "serial_number"],
-  uncertainty: ["погрешность", "uncertainty"],
-  gasPercentage: [
-    "содержание газа в смеси",
-    "содержание газа",
-    "gas content",
-    "gas percentage",
-    "gasPercentage",
-  ],
-  leak_speed: [
-    "скорость утечки",
-    "объем утечки",
-    "объём утечки",
-    "расход",
-    "leak speed",
-    "leak_speed",
-  ],
-  leak_speed_kg_m: ["кг/мин", "kg/min", "leak_speed_kg_m"],
-  leak_speed_kg_h: ["кг/ч", "kg/h", "leak_speed_kg_h"],
-  lat: ["широта", "latitude", "lat"],
-  lng: ["долгота", "longitude", "lng", "lon"],
-  leak_description: ["описание", "описание утечки", "description"],
-  leak_cause: ["причина", "причина утечки", "cause"],
-  technological_solution: ["техническое решение", "technological solution"],
-  repair_recommendation: ["рекомендация", "repair recommendation"],
-  materials_equipment: ["мтр и работы", "материалы", "materials"],
-  note: ["комментарий", "примечание", "note", "comment"],
-  photo: ["фото", "фото до", "photo"],
-  photo_repair: ["фото в ремонте", "repair photo", "photo_repair"],
-  repairAt: ["дата ремонта", "repair date", "repairAt"],
-  repairTime: ["время ремонта", "repair time", "repairTime"],
-  photo_after: ["фото после", "after photo", "photo_after"],
-  resolvedAt: ["дата устранения", "resolved date", "resolvedAt"],
-  resolvedTime: ["время устранения", "resolved time", "resolvedTime"],
-};
-
-const MONITORING_HEADER_ALIASES = {
-  index: ["№", "no", "n"],
-  leak_id: ["бирка", "tag", "leak id", "leak_id", "id утечки"],
-  roundNumber: ["обход", "round", "round number"],
-  date: ["дата мониторинга", "monitoring date", "date"],
-  time: ["время мониторинга", "monitoring time", "время", "time"],
-  monitoredBy: ["кто мониторил", "monitored by", "inspector"],
-  result: [
-    "результат",
-    "result",
-    "утечка есть",
-    "утечка есть?",
-    "leak present",
-    "is there a leak?",
-  ],
-  materials_equipment: ["мтр", "materials", "материалы"],
-  comment: ["комментарий", "comment"],
-  photo: ["фото мониторинга", "monitoring photo", "photo"],
-  previousPhoto: [
-    "предыдущее фото",
-    "фото до обхода",
-    "previous photo",
-    "photo before round",
-    "previousPhoto",
-  ],
-};
-
-const HISTORY_HEADER_ALIASES = {
-  leak_id: ["бирка", "tag", "leak id", "leak_id", "id утечки"],
-  date: ["дата", "date"],
-  time: ["время", "time"],
-  action: ["действие", "action"],
-  user: ["пользователь", "user", "кто", "who"],
-  text: ["текст", "text", "комментарий", "comment"],
-  to: ["статус", "to", "status"],
-  changes: ["изменения json", "changes json", "changes", "изменения"],
-};
-
+// `№` разворачивается в слово, а не вычёркивается вместе с прочей пунктуацией:
+// вычеркнутый, он оставлял от заголовка «№» пустую строку. «№ бирки» при этом
+// даёт «номер бирки» — как эту колонку и подписывают руками.
 export function normalizeHeader(value) {
-  return (
-    String(value ?? "")
-      .trim()
-      .toLowerCase()
-      // `№` разворачивается в слово, а не вычёркивается вместе с прочей
-      // пунктуацией. Вычеркнутый, он оставлял от заголовка «№» пустую строку —
-      // то есть ровно то, во что нормализуется пустая ячейка, — и колонка
-      // номера переставала отличаться от отсутствия колонки. «№ бирки» при этом
-      // даёт «номер бирки», как заголовок и подписывают руками.
-      .replace(/№/g, " номер ")
-      .replace(/ё/g, "е")
-      .replace(/[_/\\()[\]{}:;.,'"`%+-]+/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-  );
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/№/g, " номер ")
+    .replace(/ё/g, "е")
+    .replace(/[_/\\()[\]{}:;.,'"`%+-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**
  * Кладёт заголовок в карту, пропуская те, что нормализуются в пустую строку.
  *
- * Такой заголовок есть: `№` — псевдоним колонки `index`, а нормализация
- * вырезает `№` вместе с остальной пунктуацией. Пустой ключ в карте означает,
- * что распознанным заголовком считается любая пустая ячейка, и тогда строка
- * данных с десятком пустот обходит настоящую шапку при выборе строки
- * заголовков. Найденная «шапка» состоит из одних `index`, `leak_id` в ней
- * нет, и лист утечек отбраковывается целиком — файл читается как пустой.
+ * Пустой ключ означал бы, что распознанным заголовком считается любая пустая
+ * ячейка: строка данных с десятком пустот обходила настоящую шапку, `leak_id`
+ * в найденной не было, и лист утечек отбраковывался целиком.
  *
  * @param {Map<string, string>} entries
  * @param {unknown} header
@@ -221,8 +33,7 @@ export function normalizeHeader(value) {
  */
 function setHeaderEntry(entries, header, key) {
   const normalized = normalizeHeader(header);
-  if (!normalized) return;
-  entries.set(normalized, key);
+  if (normalized) entries.set(normalized, key);
 }
 
 export function buildHeaderMap(projectType) {
