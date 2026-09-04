@@ -22,9 +22,12 @@ const BACKUP_IDLE_MS = 30_000;
  * the caller can parse locally instead.
  */
 export function openBackupArchiveInWorker(file) {
-  const spawned = spawnExcelWorker();
-  if (spawned.error) return Promise.reject(spawned.error);
-  const { worker } = spawned;
+  let worker;
+  try {
+    worker = spawnExcelWorker();
+  } catch (error) {
+    return Promise.reject(error);
+  }
 
   const pending = new Map();
   let nextId = 0;

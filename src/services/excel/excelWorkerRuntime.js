@@ -21,26 +21,26 @@ export function isWorkerUnavailableError(error) {
 }
 
 /**
- * Поднимает воркер или объясняет, почему не вышло.
+ * Поднимает воркер.
  *
- * @returns {{worker: Worker}|{error: WorkerUnavailableError}}
+ * Отказ — это `WorkerUnavailableError` броском, а не значением: у обоих
+ * вызывающих следующий шаг всё равно `Promise.reject`, и возвращать тут
+ * «либо воркер, либо ошибку» значило бы разбирать эту развилку дважды.
+ *
+ * @returns {Worker}
  */
 export function spawnExcelWorker() {
   if (typeof Worker === "undefined") {
-    return { error: new WorkerUnavailableError("Web Workers are unavailable") };
+    throw new WorkerUnavailableError("Web Workers are unavailable");
   }
   try {
-    return {
-      worker: new Worker(new URL("./excel.worker.js", import.meta.url), {
-        type: "module",
-      }),
-    };
+    return new Worker(new URL("./excel.worker.js", import.meta.url), {
+      type: "module",
+    });
   } catch (/** @type {any} */ error) {
     // Older Android WebViews reject module workers outright.
-    return {
-      error: new WorkerUnavailableError(
-        String(error?.message ?? "Excel worker unavailable"),
-      ),
-    };
+    throw new WorkerUnavailableError(
+      String(error?.message ?? "Excel worker unavailable"),
+    );
   }
 }

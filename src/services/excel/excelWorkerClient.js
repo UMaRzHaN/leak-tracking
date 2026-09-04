@@ -21,9 +21,12 @@ const IMPORT_TIMEOUT_MS = 600_000;
  * }} request `op` — уточнение вида работ: он есть у тех, у кого их несколько.
  */
 function runInExcelWorker({ kind, op, payload, timeoutMs, readResult }) {
-  const spawned = spawnExcelWorker();
-  if (spawned.error) return Promise.reject(spawned.error);
-  const { worker } = spawned;
+  let worker;
+  try {
+    worker = spawnExcelWorker();
+  } catch (error) {
+    return Promise.reject(error);
+  }
 
   return new Promise((resolve, reject) => {
     let settled = false;
