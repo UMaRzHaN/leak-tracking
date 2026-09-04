@@ -30,7 +30,7 @@ import { logger } from "@/utils/logger";
 import { openArchive } from "./backupArchiveSession";
 import { filterIncomingLeaksForMerge, mergeLeaksByFreshness } from "./merge";
 import { collectPhotoOwners } from "@/services/storage/photoOwners";
-import { restorePhotos } from "./photoArchive";
+import { restorePhotos } from "./photoRestore";
 import {
   resolveMonitoringRound,
   readStoredProjectVars,

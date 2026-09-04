@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   buildEventPhotoEntries,
   buildPhotoMap,
-  buildPortableLeaks,
   collectEventPhotoAliases,
-  getEventPhotoMapKey,
 } from "./photoPipeline";
+import { buildPortableLeaks } from "./portableLeaks";
+import { getEventPhotoMapKey } from "./photoIdentity";
 
 const jpeg = (tag) => `data:image/jpeg;base64,${btoa(tag)}`;
 const SHARED = jpeg("shared");

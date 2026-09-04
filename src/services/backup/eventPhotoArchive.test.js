@@ -6,7 +6,8 @@ vi.mock("@/hooks/photoService", () => ({
   getPhotoBlob: vi.fn().mockResolvedValue(null),
 }));
 
-const { exportLeaksWithPhotos, restorePhotos } = await import("./photoArchive");
+const { exportLeaksWithPhotos } = await import("./photoArchive");
+const { restorePhotos } = await import("./photoRestore");
 
 const jpeg = (tag) => `data:image/jpeg;base64,${btoa(tag)}`;
 

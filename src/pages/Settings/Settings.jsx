@@ -2,6 +2,7 @@ import PageHeader from "@/components/layout/PageHeader/PageHeader";
 import LeakFieldsModal from "./components/LeakFieldsModal";
 import Notification from "@/components/ui/Notification/Notification";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
+import SettingsDialogs from "./components/SettingsDialogs";
 import AddProjectForm from "./components/AddProjectForm";
 import AppearanceSection from "./components/AppearanceSection";
 import BackupSection from "./components/BackupSection";
@@ -14,8 +15,6 @@ import PhotoRequirementsSection from "./components/PhotoRequirementsSection";
 import VoiceCorrectionsSection from "./components/VoiceCorrectionsSection";
 import ProjectIntegritySection from "./components/ProjectIntegritySection";
 import ProjectList from "./components/ProjectList";
-import ImportExportDialogs from "./components/ImportExportDialogs";
-import ProjectManagementDialogs from "./components/ProjectManagementDialogs";
 import { useSettingsPage } from "./hooks/useSettingsPage";
 import s from "./Settings.module.scss";
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
@@ -23,34 +22,18 @@ import ComponentFieldsModal from "./components/ComponentFieldsModal";
 import { useComponentFieldVisibility } from "./hooks/useComponentFieldVisibility";
 
 export default function Settings(props) {
+  const page = useSettingsPage(props);
   const {
     activeProject,
     addingProject,
     cacheInfo,
-    cancelExcelImport,
-    cancelImport,
-    cancelProjectSwitch,
-    cancelSyncIdEditor,
     checkingIntegrity,
-    confirmExcelImport,
-    confirmImport,
-    confirmProjectSwitch,
-    confirmSyncIdEditor,
-    conflictState,
-    excelConflictState,
-    excelImportState,
     fieldsModalOpen,
     handleAdd,
     handleChangeSyncId,
     handleCheckIntegrity,
     handleClearDatabase,
     handleClearMapCache,
-    handleConflictCopy,
-    handleConflictMerge,
-    handleConflictOverwrite,
-    handleExcelConflictCopy,
-    handleExcelConflictMerge,
-    handleExcelConflictOverwrite,
     handleExportZip,
     handleImportFile,
     handleRemove,
@@ -58,7 +41,6 @@ export default function Settings(props) {
     handleSelect,
     handleSettingsConfirm,
     hiddenFields,
-    importConfirmState,
     importZipRef,
     integrityReport,
     isExportingZip,
@@ -74,9 +56,7 @@ export default function Settings(props) {
     notify,
     projectConfig,
     projects,
-    projectSwitchState,
     setAddingProject,
-    setExcelConflictState,
     setFieldsModalOpen,
     setHiddenFields,
     setIntegrityReport,
@@ -85,15 +65,12 @@ export default function Settings(props) {
     setMonitoringPhotoRequired,
     setNotification,
     setSettingsConfirmAction,
-    setConflictState,
     settingsConfirmTexts,
-    syncIdEditorState,
     t,
     toggleLanguage,
     setVoiceCorrections,
-    updateSyncIdEditorValue,
     voiceCorrections,
-  } = useSettingsPage(props);
+  } = page;
   const { data = [], onBack, setPage } = props;
   const componentFields = useComponentFieldVisibility(activeProject);
 
@@ -233,6 +210,8 @@ export default function Settings(props) {
         />
       </div>
 
+      <SettingsDialogs page={page} />
+
       <ConfirmSheet
         open={Boolean(settingsConfirmTexts)}
         title={settingsConfirmTexts?.title}
@@ -241,47 +220,6 @@ export default function Settings(props) {
         cancelLabel={t("settings.cancel")}
         onConfirm={handleSettingsConfirm}
         onCancel={() => setSettingsConfirmAction(null)}
-      />
-
-      <ImportExportDialogs
-        backupConflict={{
-          state: conflictState,
-          onOverwrite: handleConflictOverwrite,
-          onMerge: handleConflictMerge,
-          onCopy: handleConflictCopy,
-          onCancel: () => setConflictState({ open: false }),
-        }}
-        excelConflict={{
-          state: excelConflictState,
-          onOverwrite: handleExcelConflictOverwrite,
-          onMerge: handleExcelConflictMerge,
-          onCopy: handleExcelConflictCopy,
-          onCancel: () => setExcelConflictState({ open: false }),
-        }}
-        excelImport={{
-          state: excelImportState,
-          onConfirm: confirmExcelImport,
-          onCancel: cancelExcelImport,
-        }}
-        importConfirm={{
-          state: importConfirmState,
-          onConfirm: confirmImport,
-          onCancel: cancelImport,
-        }}
-      />
-
-      <ProjectManagementDialogs
-        switchState={{
-          state: projectSwitchState,
-          onConfirm: confirmProjectSwitch,
-          onCancel: cancelProjectSwitch,
-        }}
-        syncIdEditor={{
-          state: syncIdEditorState,
-          onChange: updateSyncIdEditorValue,
-          onConfirm: confirmSyncIdEditor,
-          onCancel: cancelSyncIdEditor,
-        }}
       />
 
       {componentFields.available && (

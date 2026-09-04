@@ -1,0 +1,114 @@
+/* Плитка аналитики ремонтов на главной: свой блок со своей вёрсткой. */
+
+/* ── Ремонты ── */
+.repairs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-lg);
+  background: var(--c-surface);
+
+  .sectionHead {
+    margin-bottom: 0;
+  }
+}
+
+.repairStats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.repairStat {
+  --tone: var(--c-blue);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 4px;
+  border: 1px solid color-mix(in srgb, var(--tone) 26%, var(--c-border));
+  border-radius: var(--r-md);
+  background: var(--c-surface2);
+
+  &[data-tone="progress"] {
+    --tone: var(--c-progress);
+  }
+
+  &[data-tone="open"] {
+    --tone: var(--c-open);
+  }
+
+  &[data-tone="resolved"] {
+    --tone: var(--c-resolved);
+  }
+}
+
+.repairStatValue {
+  color: var(--tone);
+  font-size: 18px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.repairStatLabel {
+  color: var(--c-text2);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.repairNote {
+  color: var(--c-text2);
+  font-size: 12px;
+}
+
+.repairListTitle {
+  color: var(--c-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.repairList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style: none;
+}
+
+.repairItem {
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface2);
+  color: var(--c-text);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.repairItemText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repairAttempts {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border: 1px solid var(--c-open);
+  border-radius: var(--r-pill);
+  background: var(--c-open-bg);
+  color: var(--c-open);
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}

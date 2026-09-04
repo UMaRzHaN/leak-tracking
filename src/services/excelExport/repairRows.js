@@ -1,5 +1,5 @@
 import { getLeakEvents, getRepairIterations } from "@/domain/leakEvents";
-import { getEventPhotoMapKey } from "./photoPipeline";
+import { getEventPhotoMapKey } from "./photoIdentity";
 
 const HOUR = 60 * 60 * 1000;
 

@@ -3,8 +3,8 @@ import {
   buildLeakPhotoEntries,
   buildMonitoringPhotoEntries,
   buildPhotoMap,
-  buildPortableLeaks,
 } from "./photoPipeline";
+import { buildPortableLeaks } from "./portableLeaks";
 
 const PNG_DATA_URI = "data:image/png;base64,aGVsbG8=";
 

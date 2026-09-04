@@ -1,0 +1,97 @@
+/* Поправки голосового ввода: свой раздел настроек со своим списком правил. */
+
+/* ── Поправки голосового ввода ── */
+.voiceHint {
+  margin: 0 0 10px;
+  color: var(--c-text2);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.voiceForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.voiceField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.voiceLabel {
+  color: var(--c-text2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.voiceInput {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface2);
+  color: var(--c-text);
+  font-size: 14px;
+}
+
+.voiceAdd {
+  min-height: 40px;
+  border: none;
+  border-radius: var(--r-md);
+  background: var(--c-blue);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+}
+
+.voiceEmpty {
+  margin: 0;
+  color: var(--c-text2);
+  font-size: 12px;
+}
+
+.voiceList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+}
+
+.voiceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface2);
+}
+
+.voiceRowText {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--c-text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+}
+
+.voiceRemove {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+  color: var(--c-text2);
+  cursor: pointer;
+}
