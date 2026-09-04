@@ -565,3 +565,256 @@ describe("reconcileExcelImportPhotos device-stored slots", () => {
     expect(result.photos).toMatchObject({ added: 1 });
   });
 });
+
+describe("reconcileExcelImportPhotos и лента событий", () => {
+  const blob = (text) => new Blob([text], { type: "image/jpeg" });
+
+  it("сверяет снимки событий, а не только полей и обходов", async () => {
+    const existing = [
+      {
+        leak_id: "TAG-1",
+        events: [
+          {
+            id: "e1",
+            type: "repair_started",
+            date: "2026-08-01T08:00:00.000Z",
+            photo: "idb://existing-repair",
+          },
+        ],
+      },
+    ];
+    const incoming = [
+      {
+        leak_id: "TAG-1",
+        events: [
+          {
+            id: "e1",
+            type: "repair_started",
+            date: "2026-08-01T08:00:00.000Z",
+            photo: blob("новый снимок починки"),
+          },
+        ],
+      },
+    ];
+    const getStoredPhoto = vi.fn(async () => blob("прежний снимок починки"));
+
+    const result = await reconcileExcelImportPhotos(
+      existing,
+      incoming,
+      getStoredPhoto,
+    );
+
+    expect(result.leaks[0].events[0].photo).toBeInstanceOf(Blob);
+    expect(result.photos.replaced).toBe(1);
+  });
+
+  it("узнаёт событие по номеру, а не по месту в ленте", async () => {
+    // Ленты двух телефонов сводятся объединением, и порядок у них разный:
+    // сверка по месту приписала бы снимок чужой починке.
+    const existing = [
+      {
+        leak_id: "TAG-1",
+        events: [
+          {
+            id: "a",
+            type: "repair_started",
+            date: "2026-08-01T08:00:00.000Z",
+            photo: "idb://photo-a",
+          },
+          {
+            id: "b",
+            type: "repair_done",
+            date: "2026-08-01T14:00:00.000Z",
+            photo: "idb://photo-b",
+          },
+        ],
+      },
+    ];
+    const shared = blob("тот же снимок b");
+    const incoming = [
+      {
+        leak_id: "TAG-1",
+        events: [
+          {
+            id: "b",
+            type: "repair_done",
+            date: "2026-08-01T14:00:00.000Z",
+            photo: shared,
+          },
+          {
+            id: "a",
+            type: "repair_started",
+            date: "2026-08-01T08:00:00.000Z",
+            photo: blob("новый a"),
+          },
+        ],
+      },
+    ];
+    const getStoredPhoto = vi.fn(async (key) =>
+      key.includes("photo-b") ? shared : blob("прежний a"),
+    );
+
+    const result = await reconcileExcelImportPhotos(
+      existing,
+      incoming,
+      getStoredPhoto,
+    );
+
+    // У «b» снимок тот же — его переиспользуют, а не перезаписывают.
+    const eventB = result.leaks[0].events.find((event) => event.id === "b");
+    expect(eventB.photo).toBe("idb://photo-b");
+    expect(result.photos.reused).toBe(1);
+  });
+
+  it("оставляет событие без снимка, когда его и не было", async () => {
+    const result = await reconcileExcelImportPhotos(
+      [
+        {
+          leak_id: "TAG-1",
+          events: [
+            { id: "e1", type: "detected", date: "2026-08-01T08:00:00.000Z" },
+          ],
+        },
+      ],
+      [
+        {
+          leak_id: "TAG-1",
+          events: [
+            { id: "e1", type: "detected", date: "2026-08-01T08:00:00.000Z" },
+          ],
+        },
+      ],
+      vi.fn(async () => null),
+    );
+
+    expect(result.leaks[0].events[0].photo).toBeUndefined();
+    expect(result.photos.toSave).toBe(0);
+  });
+
+  it("собирает пути событий в список переиспользуемых", async () => {
+    // Снимок события, уже лежащий на устройстве, должен находиться по
+    // содержимому, а не сохраняться заново под новым именем.
+    const content = blob("общий снимок");
+    const hash = await fingerprintBlob(content);
+    const existing = [
+      {
+        leak_id: "TAG-1",
+        events: [
+          {
+            id: "e1",
+            type: "repair_done",
+            date: "2026-08-01T14:00:00.000Z",
+            photo: `idb://photo_p1_TAG-1_h_${hash}`,
+          },
+        ],
+      },
+    ];
+    const incoming = [
+      {
+        leak_id: "TAG-1",
+        photo: content,
+        events: [
+          {
+            id: "e1",
+            type: "repair_done",
+            date: "2026-08-01T14:00:00.000Z",
+            photo: content,
+          },
+        ],
+      },
+    ];
+
+    const result = await reconcileExcelImportPhotos(
+      existing,
+      incoming,
+      vi.fn(async () => content),
+    );
+
+    expect(result.leaks[0].events[0].photo).toBe(
+      `idb://photo_p1_TAG-1_h_${hash}`,
+    );
+  });
+});
+
+describe("чтение прежнего снимка при сверке", () => {
+  const blob = (text) => new Blob([text], { type: "image/jpeg" });
+  const dataUri = (text) => `data:image/jpeg;base64,${btoa(text)}`;
+
+  const reconcileOne = (existingPath, getStoredPhoto) =>
+    reconcileExcelImportPhotos(
+      [{ leak_id: "TAG-1", photo: existingPath }],
+      [{ leak_id: "TAG-1", photo: blob("новый") }],
+      getStoredPhoto,
+    );
+
+  it("принимает снимок, отданный как data-URI, а не как Blob", async () => {
+    // Веб-хранилище отдаёт строку, устройство — двоичные данные; сверке нужны
+    // байты в обоих случаях.
+    const result = await reconcileOne(
+      "idb://stored",
+      vi.fn(async () => dataUri("stored-before")),
+    );
+
+    expect(result.photos.replaced).toBe(1);
+  });
+
+  it("считает снимок нечитаемым, когда хранилище отдаёт мусор", async () => {
+    const result = await reconcileOne(
+      "idb://stored",
+      vi.fn(async () => "не картинка"),
+    );
+
+    expect(result.photos.replacedByReason.unreadable).toBe(1);
+  });
+
+  it("обходится без читателя хранилища вовсе", async () => {
+    // Ввоз книги в проект, где снимков ещё нет: читать нечего, и сверка не
+    // должна на этом падать.
+    const result = await reconcileOne("idb://stored", null);
+
+    expect(result.photos.replaced).toBe(1);
+  });
+
+  it("читает снимок по пути устройства через фотослужбу", async () => {
+    photoService.getPhotoBlob.mockResolvedValueOnce(blob("прежний с диска"));
+
+    const result = await reconcileExcelImportPhotos(
+      [{ leak_id: "TAG-1", photo: "data://LeakReports/alpha/photos/p.jpg" }],
+      [{ leak_id: "TAG-1", photo: blob("новый") }],
+      vi.fn(async () => null),
+    );
+
+    expect(photoService.getPhotoBlob).toHaveBeenCalled();
+    expect(result.photos.replaced).toBe(1);
+  });
+
+  it("падает обратно на строковый источник, когда байтов не дали", async () => {
+    photoService.getPhotoBlob.mockResolvedValueOnce(null);
+    photoService.getPhotoSrc.mockResolvedValueOnce(dataUri("via-src"));
+
+    const result = await reconcileExcelImportPhotos(
+      [{ leak_id: "TAG-1", photo: "data://LeakReports/alpha/photos/p.jpg" }],
+      [{ leak_id: "TAG-1", photo: blob("новый") }],
+      vi.fn(async () => null),
+    );
+
+    expect(photoService.getPhotoSrc).toHaveBeenCalled();
+    expect(result.photos.replaced).toBe(1);
+  });
+
+  it("не роняет сверку, когда хранилище бросает на проверке наличия", async () => {
+    const content = blob("тот же");
+    const hash = await fingerprintBlob(content);
+    const getStoredPhoto = vi.fn(async () => {
+      throw new Error("хранилище недоступно");
+    });
+
+    const result = await reconcileExcelImportPhotos(
+      [{ leak_id: "TAG-1", photo: `idb://photo_p1_TAG-1_h_${hash}` }],
+      [{ leak_id: "TAG-1", photo: content }],
+      getStoredPhoto,
+    );
+
+    expect(result.leaks[0].photo).toBeInstanceOf(Blob);
+  });
+});

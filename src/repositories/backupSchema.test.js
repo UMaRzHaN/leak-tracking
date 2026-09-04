@@ -364,3 +364,217 @@ describe("backupSchema recovery validation", () => {
     expect(result.error).toContain("nesting");
   });
 });
+
+describe("backupSchema leak events", () => {
+  const withEvents = (events) =>
+    validateBackup([{ id: 1, leak_id: "TAG-1", events }], validProject);
+
+  it("accepts a feed of known event types", () => {
+    const result = withEvents([
+      { id: "e1", type: "detected", date: "2026-07-01T06:00:00.000Z" },
+      {
+        id: "e2",
+        type: "repair_started",
+        date: "2026-07-02T08:00:00.000Z",
+        user: "Петров",
+        photo: "zip:photos/one/events/event-1.jpg",
+      },
+      {
+        id: "e3",
+        type: "repair_done",
+        date: "2026-07-02T14:00:00.000Z",
+        materials_equipment: "прокладка ду50",
+      },
+      {
+        id: "e4",
+        type: "inspection",
+        date: "2026-07-10T09:00:00.000Z",
+        result: "resolved",
+        monitoredBy: "Сидоров",
+      },
+    ]);
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects an event type it does not know", () => {
+    // Чужая сборка могла завести свой вид события. Принять его молча значило
+    // бы положить в базу запись, о которой некому рассказать.
+    const result = withEvents([
+      { id: "e1", type: "repair_cancelled", date: "2026-07-02T08:00:00.000Z" },
+    ]);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("type");
+  });
+
+  it("rejects an event without a readable date", () => {
+    // Дата — место события в ленте. Без неё починку не с чем сопоставить.
+    const result = withEvents([
+      { id: "e1", type: "detected", date: "позавчера" },
+    ]);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("date");
+  });
+
+  it("rejects an event that is not an object at all", () => {
+    const result = withEvents(["repair_started"]);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("events");
+  });
+
+  it("rejects a feed that is not an array", () => {
+    const result = withEvents({ id: "e1", type: "detected" });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("events");
+  });
+
+  it("rejects an event photo that is not portable", () => {
+    // Путь устройства за его пределами не значит ничего: в чужом архиве по
+    // нему нет файла.
+    const result = withEvents([
+      {
+        id: "e1",
+        type: "repair_started",
+        date: "2026-07-02T08:00:00.000Z",
+        photo: "idb://photo_local_1",
+      },
+    ]);
+
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("backupSchema history and monitoring details", () => {
+  const withLeak = (leak) =>
+    validateBackup([{ id: 1, leak_id: "TAG-1", ...leak }], validProject);
+
+  it("accepts a history entry with its list of changes", () => {
+    const result = withLeak({
+      history: [
+        {
+          action: "edited",
+          date: "2026-07-03T00:00:00.000Z",
+          user: "Иванов",
+          changes: [{ key: "note", from: "", to: "заметка" }],
+        },
+        {
+          action: "status_changed",
+          date: "2026-07-04T00:00:00.000Z",
+          from: "open",
+          to: "in_progress",
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects a status the app cannot show", () => {
+    const result = withLeak({
+      history: [
+        {
+          action: "status_changed",
+          date: "2026-07-04T00:00:00.000Z",
+          to: "postponed",
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("status");
+  });
+
+  it("rejects a change without a key", () => {
+    // Изменение без имени поля не сказать словами: журнал показал бы пустую
+    // строку «стало → было» и ничего не объяснил.
+    const result = withLeak({
+      history: [
+        {
+          action: "edited",
+          date: "2026-07-03T00:00:00.000Z",
+          changes: [{ from: "", to: "заметка" }],
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("key");
+  });
+
+  it("rejects a changes list that is not an array", () => {
+    const result = withLeak({
+      history: [
+        {
+          action: "edited",
+          date: "2026-07-03T00:00:00.000Z",
+          changes: { key: "note" },
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("changes");
+  });
+
+  it("rejects a change entry that is not an object", () => {
+    const result = withLeak({
+      history: [
+        {
+          action: "edited",
+          date: "2026-07-03T00:00:00.000Z",
+          changes: ["note"],
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects a monitoring round number that is not positive", () => {
+    // Обходы нумеруются с единицы: нулевой обход не с чем сопоставить.
+    const result = withLeak({
+      monitoringRecords: [
+        { id: "m1", date: "2026-07-10T09:00:00.000Z", roundNumber: 0 },
+      ],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("roundNumber");
+  });
+
+  it("rejects a monitoring result it does not know", () => {
+    const result = withLeak({
+      monitoringRecords: [
+        { id: "m1", date: "2026-07-10T09:00:00.000Z", result: "maybe" },
+      ],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("result");
+  });
+
+  it("rejects a non-boolean materials flag", () => {
+    const result = withLeak({
+      monitoringRecords: [
+        { id: "m1", date: "2026-07-10T09:00:00.000Z", materialsChanged: "yes" },
+      ],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("materialsChanged");
+  });
+
+  it("rejects a calendar date that never existed", () => {
+    // 31 июня разбирается как 1 июля, если довериться конструктору Date.
+    const result = withLeak({
+      monitoringRecords: [{ id: "m1", date: "31.06.2026" }],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("date");
+  });
+});
