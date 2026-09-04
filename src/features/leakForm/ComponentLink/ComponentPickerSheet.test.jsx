@@ -141,4 +141,17 @@ describe("ComponentPickerSheet", () => {
 
     expect(onPick).toHaveBeenCalledWith(near);
   });
+  it("закрывается кнопкой, а не только нажатием мимо листа", async () => {
+    // На телефоне с непустым реестром лист занимает почти весь экран, и «мимо»
+    // — это полоска у верхнего края, наполовину под строкой состояния.
+    // Аппаратная «Назад» в WebView в Escape не превращается, так что без
+    // кнопки выхода у обходчика не оставалось.
+    const user = userEvent.setup();
+    const { onClose } = open();
+    await waitFor(() => expect(uids().length).toBe(4));
+
+    await user.click(screen.getByRole("button", { name: /close/i }));
+
+    expect(onClose).toHaveBeenCalled();
+  });
 });

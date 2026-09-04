@@ -112,7 +112,24 @@ export default function ComponentPickerSheet({
         tabIndex={-1}
       >
         <header className={s.head}>
-          <h2>{t("leakForm.componentLink.title")}</h2>
+          <div className={s.headRow}>
+            <h2>{t("leakForm.componentLink.title")}</h2>
+            {/*
+             * Закрыть лист можно было только нажатием мимо него. На телефоне с
+             * непустым реестром лист занимает почти весь экран, и «мимо» — это
+             * полоска у самого верха, наполовину под строкой состояния;
+             * аппаратная «Назад» в WebView в Escape не превращается, так что
+             * выхода у обходчика не оставалось.
+             */}
+            <button
+              type="button"
+              className={s.close}
+              onClick={onClose}
+              aria-label={t("common.close")}
+            >
+              ✕
+            </button>
+          </div>
           <p>
             {hasGps
               ? t("leakForm.componentLink.nearestFirst")

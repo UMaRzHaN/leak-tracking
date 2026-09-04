@@ -48,6 +48,33 @@
   }
 }
 
+.headRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+// Кисть у пальца, а не у курсора: 44 точки — нижняя граница, ниже которой в
+// перчатке на морозе не попасть.
+.close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin: -10px -10px 0 0;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--c-text3);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+
+  &:active {
+    background: var(--c-surface2);
+  }
+}
+
 .searchRow {
   flex: none;
   padding: 10px 16px 6px;
