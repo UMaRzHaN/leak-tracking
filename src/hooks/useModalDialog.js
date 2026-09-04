@@ -13,6 +13,17 @@ const modalStack = [];
 // диалога, а не потомок фона.
 const LIVE_REGION = '[aria-live], [role="alert"], [role="status"]';
 
+// Затемнение — не фон под диалогом, а его собственная часть: нажатие по нему
+// диалог закрывает. Гасить его нельзя, а под общее правило оно попадает,
+// потому что лежит диалогу соседом, а не предком. Погашенный элемент не
+// принимает нажатий вовсе, и выход через затемнение переставал работать
+// молча — у листа выбора компонента, просмотра чертежа и карточки реестра
+// разом.
+//
+// Для чтеца с экрана оно по-прежнему прячется: `aria-hidden` ставится, а
+// `inert` — нет. Читать там нечего, а нажимать есть что.
+const BACKDROP = "[data-modal-backdrop]";
+
 // Пометка ставится своим атрибутом, а не читается из свойства `inert`: в
 // старом WebView свойства может не быть, и вложенный диалог принял бы уже
 // погашенный фон за незатронутый — а на закрытии вернул бы его, пока внешний
@@ -66,7 +77,7 @@ function inertOutside(dialog) {
       if (isLiveRegion(sibling)) continue;
       sibling.setAttribute(MARKER, "");
       sibling.setAttribute("aria-hidden", "true");
-      sibling.inert = true;
+      if (!sibling.matches(BACKDROP)) sibling.inert = true;
       marked.push(sibling);
     }
     node = node.parentElement;

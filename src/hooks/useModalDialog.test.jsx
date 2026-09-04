@@ -135,6 +135,41 @@ describe("useModalDialog: фон под диалогом", () => {
     expect(screen.getByTestId("toast")).not.toHaveAttribute("aria-hidden");
   });
 
+  // Затемнение — часть диалога, а не фон под ним: нажатие по нему закрывает.
+  // Оно лежит диалогу соседом, поэтому попадало под общее гашение, а
+  // погашенный элемент не принимает нажатий — выход через затемнение переставал
+  // работать молча, сразу у трёх листов.
+  it("оставляет затемнение нажимаемым", async () => {
+    function WithBackdrop() {
+      const ref = useModalDialog({ onClose: () => {} });
+      return (
+        <div>
+          <div data-testid="background">фон</div>
+          <div>
+            <div data-testid="backdrop" data-modal-backdrop="" />
+            <div ref={ref} role="dialog" aria-modal="true" aria-label="Диалог">
+              <button type="button">в диалоге</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    render(<WithBackdrop />);
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+
+    const backdrop = screen.getByTestId("backdrop");
+    // В jsdom свойства `inert` нет вовсе: погашенному его дописывает сам код,
+    // у непогашенного оно так и остаётся неопределённым.
+    expect(backdrop.inert).toBeFalsy();
+    // Читать в нём нечего, поэтому от чтеца он по-прежнему скрыт.
+    expect(backdrop).toHaveAttribute("aria-hidden", "true");
+    // А настоящий фон гасится как и раньше.
+    expect(screen.getByTestId("background").inert).toBe(true);
+  });
+
   it("возвращает фон при закрытии", async () => {
     const { rerender } = render(<Dialog open />);
     await act(async () => {

@@ -26,7 +26,7 @@ export default function ComponentInspectSheet({
 
   return (
     <div className={s.overlay}>
-      <div className={s.backdrop} onClick={onClose} />
+      <div className={s.backdrop} data-modal-backdrop="" onClick={onClose} />
       <div
         ref={dialogRef}
         className={s.sheet}
