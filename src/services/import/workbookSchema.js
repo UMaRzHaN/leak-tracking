@@ -188,13 +188,41 @@ const HISTORY_HEADER_ALIASES = {
 };
 
 export function normalizeHeader(value) {
-  return String(value ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/ё/g, "е")
-    .replace(/[_/\\()[\]{}:;.,'"`№%+-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return (
+    String(value ?? "")
+      .trim()
+      .toLowerCase()
+      // `№` разворачивается в слово, а не вычёркивается вместе с прочей
+      // пунктуацией. Вычеркнутый, он оставлял от заголовка «№» пустую строку —
+      // то есть ровно то, во что нормализуется пустая ячейка, — и колонка
+      // номера переставала отличаться от отсутствия колонки. «№ бирки» при этом
+      // даёт «номер бирки», как заголовок и подписывают руками.
+      .replace(/№/g, " номер ")
+      .replace(/ё/g, "е")
+      .replace(/[_/\\()[\]{}:;.,'"`%+-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+}
+
+/**
+ * Кладёт заголовок в карту, пропуская те, что нормализуются в пустую строку.
+ *
+ * Такой заголовок есть: `№` — псевдоним колонки `index`, а нормализация
+ * вырезает `№` вместе с остальной пунктуацией. Пустой ключ в карте означает,
+ * что распознанным заголовком считается любая пустая ячейка, и тогда строка
+ * данных с десятком пустот обходит настоящую шапку при выборе строки
+ * заголовков. Найденная «шапка» состоит из одних `index`, `leak_id` в ней
+ * нет, и лист утечек отбраковывается целиком — файл читается как пустой.
+ *
+ * @param {Map<string, string>} entries
+ * @param {unknown} header
+ * @param {string} key
+ */
+function setHeaderEntry(entries, header, key) {
+  const normalized = normalizeHeader(header);
+  if (!normalized) return;
+  entries.set(normalized, key);
 }
 
 export function buildHeaderMap(projectType) {
@@ -202,18 +230,18 @@ export function buildHeaderMap(projectType) {
   const entries = new Map();
 
   for (const key of TECHNICAL_KEYS) {
-    entries.set(normalizeHeader(key), key);
+    setHeaderEntry(entries, key, key);
   }
 
   if (config?.headers && config?.keysOrder) {
     config.headers.forEach((header, index) => {
       const key = config.keysOrder[index];
-      if (key) entries.set(normalizeHeader(header), key);
+      if (key) setHeaderEntry(entries, header, key);
     });
   }
 
   for (const [key, aliases] of Object.entries(HEADER_ALIASES)) {
-    aliases.forEach((alias) => entries.set(normalizeHeader(alias), key));
+    aliases.forEach((alias) => setHeaderEntry(entries, alias, key));
   }
 
   return entries;
@@ -222,8 +250,8 @@ export function buildHeaderMap(projectType) {
 export function buildMonitoringHeaderMap() {
   const entries = new Map();
   for (const [key, aliases] of Object.entries(MONITORING_HEADER_ALIASES)) {
-    entries.set(normalizeHeader(key), key);
-    aliases.forEach((alias) => entries.set(normalizeHeader(alias), key));
+    setHeaderEntry(entries, key, key);
+    aliases.forEach((alias) => setHeaderEntry(entries, alias, key));
   }
   return entries;
 }
@@ -231,8 +259,8 @@ export function buildMonitoringHeaderMap() {
 export function buildHistoryHeaderMap() {
   const entries = new Map();
   for (const [key, aliases] of Object.entries(HISTORY_HEADER_ALIASES)) {
-    entries.set(normalizeHeader(key), key);
-    aliases.forEach((alias) => entries.set(normalizeHeader(alias), key));
+    setHeaderEntry(entries, key, key);
+    aliases.forEach((alias) => setHeaderEntry(entries, alias, key));
   }
   return entries;
 }

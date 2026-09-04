@@ -33,9 +33,37 @@ function makeSheet(name, rows) {
 
 describe("Excel workbook schema discovery", () => {
   it("normalizes punctuation, spacing, underscores, and the letter ё", () => {
-    expect(normalizeHeader("  №_Населённый/пункт (%) ")).toBe(
+    expect(normalizeHeader("  _Населённый/пункт (%) ")).toBe(
       "населенный пункт",
     );
+  });
+
+  /*
+   * `№` разворачивается в слово, а не вычёркивается: вычеркнутый, он оставлял
+   * от заголовка «№» пустую строку, и колонка номера в карте заголовков
+   * становилась неотличима от пустой ячейки.
+   */
+  it("turns № into a word instead of dropping it", () => {
+    expect(normalizeHeader("№")).toBe("номер");
+    expect(normalizeHeader("№ бирки")).toBe("номер бирки");
+    expect(buildHeaderMap("unknown").get(normalizeHeader("№"))).toBe("index");
+  });
+
+  /*
+   * Пустая ячейка не заголовок. Пока `№` вычёркивался, псевдоним колонки
+   * номера сидел в карте под пустым ключом, любая пустота считалась
+   * распознанным заголовком — и строка данных с десятком пустых ячеек
+   * обходила настоящую шапку.
+   */
+  it("never maps a blank cell to a column", () => {
+    for (const map of [
+      buildHeaderMap("unknown"),
+      buildHeaderMap("upstream"),
+      buildMonitoringHeaderMap(),
+      buildHistoryHeaderMap(),
+    ]) {
+      expect(map.has("")).toBe(false);
+    }
   });
 
   it("builds maps from technical keys, aliases, and project configuration", () => {
@@ -139,6 +167,41 @@ describe("Excel workbook schema discovery", () => {
     expect(
       findLeakSheet({ worksheets: [cover, leaks] }, buildHeaderMap("upstream")),
     ).toBe(leaks);
+  });
+
+  /*
+   * Строка данных, где половина ячеек пуста, не должна выигрывать у шапки.
+   * Здесь пустые ячейки отдаются наружу — так их и отдаёт ExcelJS при
+   * `includeEmpty: false`, если ячейка в листе есть, а значения в ней нет, —
+   * и раньше каждая такая пустота считалась распознанной колонкой `index`.
+   */
+  it("does not let a mostly blank data row outrank the header row", () => {
+    const rows = [
+      ["Индивидуальный номер утечки", "Дата обнаружения", "Статус"],
+      ["4727", "", ""],
+      ["4728", "", ""],
+    ];
+    const sheet = {
+      name: "Утечки",
+      rowCount: rows.length,
+      getRow(rowNumber) {
+        const values = rows[rowNumber - 1] ?? [];
+        return {
+          eachCell(_options, callback) {
+            values.forEach((value, index) => callback({ value }, index + 1));
+          },
+        };
+      },
+    };
+
+    const header = findHeaderRow(sheet, buildHeaderMap("unknown"));
+    expect(header?.rowNumber).toBe(1);
+    expect(header?.columns.some((column) => column.key === "leak_id")).toBe(
+      true,
+    );
+    expect(
+      findLeakSheet({ worksheets: [sheet] }, buildHeaderMap("unknown")),
+    ).toBe(sheet);
   });
 
   it("recognizes monitoring and history sheets by their columns", () => {
