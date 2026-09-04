@@ -202,6 +202,16 @@ public class LocalSyncPlugin extends Plugin {
             });
     }
 
+    /**
+     * Ответы уходят через `replyProxy`, и lint на каждый из них просит рядом
+     * проверку `WebViewFeature.isFeatureSupported(WEB_MESSAGE_LISTENER)`.
+     * Проверка есть, но в другом методе: слушателя ставит
+     * `registerArchiveChannel`, и без обеих поддержанных возможностей он не
+     * ставит его вовсе. Сработать этот колбэк может только у поставленного
+     * слушателя, так что повторять проверку здесь — писать мёртвый код.
+     * Инвариант держится через два метода, и увидеть его lint не может.
+     */
+    @SuppressLint("RequiresFeature")
     private void onArchiveChannelMessage(
         @NonNull WebView view,
         @NonNull WebMessageCompat message,
