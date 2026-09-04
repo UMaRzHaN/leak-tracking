@@ -143,8 +143,10 @@ const HEADER_ALIASES = {
   photo: ["фото", "фото до", "photo"],
   photo_repair: ["фото в ремонте", "repair photo", "photo_repair"],
   repairAt: ["дата ремонта", "repair date", "repairAt"],
+  repairTime: ["время ремонта", "repair time", "repairTime"],
   photo_after: ["фото после", "after photo", "photo_after"],
   resolvedAt: ["дата устранения", "resolved date", "resolvedAt"],
+  resolvedTime: ["время устранения", "resolved time", "resolvedTime"],
 };
 
 const MONITORING_HEADER_ALIASES = {

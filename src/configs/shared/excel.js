@@ -46,6 +46,19 @@ const REQUIRED_EXCEL_FIELDS = [
     header: "Дата ремонта",
     after: "photo_repair",
   },
+  // Время отдельной колонкой, как у даты обнаружения: формат даты в книге
+  // показывает только день, а починку, начатую и законченную в одни сутки,
+  // без часов не отличить от мгновенной.
+  {
+    key: "repairTime",
+    header: "Время ремонта",
+    after: "repairAt",
+  },
+  {
+    key: "resolvedTime",
+    header: "Время устранения",
+    after: "resolvedAt",
+  },
 ];
 
 const HARMONIZED_EXCEL_ORDER = [
@@ -99,8 +112,10 @@ const HARMONIZED_EXCEL_ORDER = [
   "photo",
   "photo_repair",
   "repairAt",
+  "repairTime",
   "photo_after",
   "resolvedAt",
+  "resolvedTime",
 ];
 
 function insertAfter(list, value, after) {

@@ -55,3 +55,28 @@ describe("excel config helpers", () => {
     );
   });
 });
+
+describe("колонки времени у починки", () => {
+  // Формат даты в книге показывает только день. Починка, начатая и
+  // законченная в одни сутки, без часов выглядела мгновенной, а у даты
+  // обнаружения время отдельной колонкой стояло с самого начала.
+  it("ставит время сразу за своей датой", () => {
+    const { keysOrder } = withRequiredExcelFields(
+      ["№", "Дата обнаружения", "Статус", "Дата устранения"],
+      ["index", "date", "status", "resolvedAt"],
+    );
+
+    expect(keysOrder[keysOrder.indexOf("repairAt") + 1]).toBe("repairTime");
+    expect(keysOrder[keysOrder.indexOf("resolvedAt") + 1]).toBe("resolvedTime");
+  });
+
+  it("даёт им заголовки по-русски", () => {
+    const { headers, keysOrder } = withRequiredExcelFields(
+      ["№", "Статус", "Дата устранения"],
+      ["index", "status", "resolvedAt"],
+    );
+
+    expect(headers[keysOrder.indexOf("repairTime")]).toBe("Время ремонта");
+    expect(headers[keysOrder.indexOf("resolvedTime")]).toBe("Время устранения");
+  });
+});

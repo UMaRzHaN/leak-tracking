@@ -11,6 +11,7 @@ import { readProjectSettings } from "@/app/project/projectSettings";
 import { readMonitoringRound } from "@/utils/monitoringRound";
 import { readProjectSyncStateAsync } from "@/services/sync/projectSyncState";
 import { buildLeakCalculationParams } from "@/utils/calculationParams";
+import { formatTimeOfDay } from "@/services/excelExport/cellValues";
 import {
   getRepairDoneAt,
   getRepairDonePhoto,
@@ -46,7 +47,9 @@ export function prepareRows(data, t, projectVars = {}) {
     photo_after: getRepairDonePhoto(row) ? t("database.export.hasPhoto") : "",
     photo_repair: getRepairPhoto(row) ? t("database.export.hasPhoto") : "",
     repairAt: getRepairStartedAt(row) ?? "",
+    repairTime: formatTimeOfDay(getRepairStartedAt(row)),
     resolvedAt: getRepairDoneAt(row) ?? "",
+    resolvedTime: formatTimeOfDay(getRepairDoneAt(row)),
   }));
 }
 

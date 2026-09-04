@@ -222,3 +222,46 @@ describe("useDataBaseExport", () => {
     });
   });
 });
+
+describe("prepareRows и время починки", () => {
+  it("выдаёт время рядом с датой ремонта и устранения", () => {
+    const [row] = prepareRows(
+      [
+        {
+          id: 1,
+          status: "resolved",
+          events: [
+            {
+              id: "e1",
+              type: "repair_started",
+              date: "2026-09-04T06:04:27.000Z",
+            },
+            {
+              id: "e2",
+              type: "repair_done",
+              date: "2026-09-04T06:15:59.000Z",
+            },
+          ],
+        },
+      ],
+      translate,
+    );
+
+    // Часы местные: починку читают в том поясе, в каком её записали.
+    const local = (iso) => {
+      const d = new Date(iso);
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    };
+
+    expect(row.repairTime).toBe(local("2026-09-04T06:04:27.000Z"));
+    expect(row.resolvedTime).toBe(local("2026-09-04T06:15:59.000Z"));
+  });
+
+  it("оставляет время пустым, когда даты нет", () => {
+    const [row] = prepareRows([{ id: 1, status: "open" }], translate);
+
+    expect(row.repairTime).toBe("");
+    expect(row.resolvedTime).toBe("");
+  });
+});

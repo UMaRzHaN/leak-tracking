@@ -178,6 +178,20 @@ export function applyColumnFormats(sheet, keys) {
   });
 }
 
+/**
+ * Часы, минуты и секунды момента — местные.
+ *
+ * Момент, а не календарный день: починку начали и закончили в конкретное
+ * время суток на объекте, и читать его надо в том же часовом поясе, в каком
+ * записали.
+ */
+export function formatTimeOfDay(value) {
+  const date = parseTimestamp(value);
+  if (!date) return "";
+  const pad = (part) => String(part).padStart(2, "0");
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
 export function formatLeakTime(leak, row) {
   if (row?.time != null && String(row.time).trim() !== "") {
     return String(row.time).trim();
