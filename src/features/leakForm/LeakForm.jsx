@@ -8,13 +8,7 @@ import { useProjectData } from "@/app/project/ProjectContext";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import { useLanguage } from "@/app/hooks/useLanguage";
-import {
-  componentPlaceKeys,
-  isLinkedToComponent,
-  linkLeakToComponent,
-  unlinkLeakComponent,
-} from "@/domain/leakComponentLink";
-import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
+import { useComponentLink } from "./hooks/useComponentLink";
 import { calculateLeakWithSnapshot } from "@/utils/calculationParams";
 import { getLeakCalculationFieldErrors } from "@/utils/calculations/calculations";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
@@ -92,21 +86,9 @@ export default function LeakForm({
   const { t, lang } = useLanguage();
   const rawConfig = useProjectConfig();
   const projectConfig = useEffectiveProjectConfig();
-  const { activeProject, project } = useProjectData();
+  const { activeProject } = useProjectData();
+  const { lockedKeys, componentLink } = useComponentLink(form, setForm, coords);
 
-  /*
-   * Место берётся у карточки и правке не подлежит, пока связь стоит: реестр —
-   * источник истины о том, где стоит железо. Расхождение чинят в реестре, а не
-   * правкой в одной утечке; открепление возвращает поля обратно человеку.
-   */
-  const placeKeys = useMemo(
-    () => componentPlaceKeys(PROJECT_LOCATION_CONFIG[project]),
-    [project],
-  );
-  const lockedKeys = useMemo(
-    () => (isLinkedToComponent(form) ? new Set(placeKeys) : null),
-    [form, placeKeys],
-  );
   const { leakPhotoRequired } = usePhotoRequirements(activeProject?.id ?? null);
   const { vars, setVars } = useProjectVars(
     activeProject?.id ?? null,
@@ -407,15 +389,7 @@ export default function LeakForm({
           save={save}
           ghostPlaceholders={ghostPlaceholders}
           lockedKeys={lockedKeys}
-          componentLink={{
-            project: activeProject,
-            coords,
-            onPick: (component) =>
-              setForm((current) =>
-                linkLeakToComponent(current, component, placeKeys),
-              ),
-            onUnlink: () => setForm((current) => unlinkLeakComponent(current)),
-          }}
+          componentLink={componentLink}
         />
 
         <ClearActions
