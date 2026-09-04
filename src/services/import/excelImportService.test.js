@@ -30,16 +30,20 @@ describe("parseExcelImportFile routing", () => {
     expect(parseLocally).not.toHaveBeenCalled();
   });
 
-  it("falls back to local parsing when the worker cannot run", async () => {
+  /*
+   * Запасного разбора на главном потоке больше нет: он держал в графе
+   * приложения вторую копию ExcelJS. Отказ воркера доходит до человека как
+   * отказ, а не как молча подвисший интерфейс.
+   */
+  it("surfaces an unavailable worker instead of parsing locally", async () => {
     const unavailable = new Error("no workers");
     unavailable.name = "WorkerUnavailableError";
     parseExcelImportFileInWorker.mockRejectedValue(unavailable);
-    parseLocally.mockResolvedValue({ leaks: ["local"] });
 
-    await expect(parseExcelImportFile("file", { a: 1 })).resolves.toEqual({
-      leaks: ["local"],
-    });
-    expect(parseLocally).toHaveBeenCalledWith("file", { a: 1 });
+    await expect(parseExcelImportFile("file", { a: 1 })).rejects.toThrow(
+      "no workers",
+    );
+    expect(parseLocally).not.toHaveBeenCalled();
   });
 
   it("does not reparse a file the worker rejected", async () => {

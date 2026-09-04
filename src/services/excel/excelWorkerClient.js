@@ -19,7 +19,16 @@ export function isWorkerUnavailableError(error) {
   return error instanceof WorkerUnavailableError;
 }
 
-function runInExcelWorker({ kind, payload, timeoutMs, readResult }) {
+/**
+ * @param {{
+ *   kind: string,
+ *   op?: string,
+ *   payload: any,
+ *   timeoutMs: number,
+ *   readResult: (data: any) => any,
+ * }} request `op` — уточнение вида работ: он есть у тех, у кого их несколько.
+ */
+function runInExcelWorker({ kind, op, payload, timeoutMs, readResult }) {
   if (typeof Worker === "undefined") {
     return Promise.reject(
       new WorkerUnavailableError("Web Workers are unavailable"),
@@ -94,7 +103,7 @@ function runInExcelWorker({ kind, payload, timeoutMs, readResult }) {
     };
 
     try {
-      worker.postMessage({ kind, payload });
+      worker.postMessage({ kind, op, payload });
     } catch (/** @type {any} */ error) {
       // Structured clone rejected the payload — e.g. a duck-typed file object
       // rather than a real File. Nothing was sent, so the main thread can
@@ -125,6 +134,61 @@ export function parseExcelImportFileInWorker(file, options = {}) {
     payload: { file, options },
     timeoutMs: IMPORT_TIMEOUT_MS,
     readResult: (data) => data.result ?? undefined,
+  });
+}
+
+// Одна таблица, без снимков и без тысяч строк: рейс до воркера тут дороже
+// самой работы. Ходим всё равно — ради того, чтобы ExcelJS остался только в
+// графе воркера; поэтому и срок ожидания взят экспортный, а не импортный.
+const INVENTORY_TIMEOUT_MS = EXPORT_TIMEOUT_MS;
+
+/**
+ * Читает видимый лист инвентаризации в воркере.
+ *
+ * Отклоняется с `WorkerUnavailableError`, если воркер не завёлся; читать книгу
+ * на главном потоке взамен некому — ExcelJS туда больше не входит, — так что
+ * вызывающий показывает отказ, а не досчитывает сам.
+ */
+export function readInventorySheetInWorker(file, excel) {
+  return runInExcelWorker({
+    kind: "inventory",
+    op: "sheet",
+    payload: { file, excel },
+    timeoutMs: INVENTORY_TIMEOUT_MS,
+    readResult: (data) => data.result ?? undefined,
+  });
+}
+
+/**
+ * Читает карточки из служебного листа книги, лежащей в архиве.
+ *
+ * `cards: null` означает, что служебного листа в архиве нет, и это не ошибка:
+ * так выглядит зип, собранный не этим приложением.
+ */
+export function readInventoryArchiveCardsInWorker(file, excel) {
+  return runInExcelWorker({
+    kind: "inventory",
+    op: "cards",
+    payload: { file, excel },
+    timeoutMs: INVENTORY_TIMEOUT_MS,
+    readResult: (data) => data.result ?? undefined,
+  });
+}
+
+/**
+ * Собирает книгу инвентаризации в воркере.
+ *
+ * Снимки и чертежи сюда не едут: в книге от них только ссылки на пути внутри
+ * архива, а сам архив складывает вызывающий — там, где эти файлы уже лежат.
+ */
+export function buildInventoryWorkbookBufferInWorker(sheetSpec, options = {}) {
+  return runInExcelWorker({
+    kind: "inventory",
+    op: "workbook",
+    payload: { sheetSpec, options },
+    timeoutMs: INVENTORY_TIMEOUT_MS,
+    readResult: (data) =>
+      data.buffer instanceof ArrayBuffer ? data.buffer : undefined,
   });
 }
 

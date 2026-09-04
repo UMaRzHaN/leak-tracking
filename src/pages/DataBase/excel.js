@@ -1,9 +1,7 @@
-import { buildWorkbookBufferLocally } from "@/services/excelExport/buildWorkbookBuffer";
 import { sanitizePortableArchiveSegment } from "@/services/archive/archivePaths";
 const getJSZip = () => import("jszip");
 
 import { isNative } from "@/utils/platform";
-import { logger } from "@/utils/logger";
 import { normalizeExcelMonitoringExportMode } from "@/utils/excelExportMode";
 import { resolvePhotoExportData } from "./excelPhotoData";
 import { buildPortableLeaks } from "@/services/excelExport/portableLeaks";
@@ -23,19 +21,21 @@ function getExportFolder(projectFolderName) {
   return projectExportFolder(projectFolderName, LEAK_XLSX_DIR);
 }
 
+/**
+ * Книгу собирает воркер, и только он.
+ *
+ * Запасной сборщик на главном потоке здесь был, и убран не ради стройности:
+ * он тянул в граф приложения вторую копию ExcelJS — 900 кБ, которые сервис-
+ * воркер клал в кэш каждому, чтобы почти никогда ими не воспользоваться.
+ * Модульные воркеры есть во всех WebView, до которых дотягивается minSdk, так
+ * что отказ здесь означает не «старое устройство», а сломанную сборку — и
+ * человеку честнее увидеть ошибку, чем ждать, пока подвиснет интерфейс.
+ */
 async function createWorkbookBuffer(payload, workerBuilder) {
-  if (typeof workerBuilder === "function") {
-    try {
-      return await workerBuilder(payload);
-    } catch (error) {
-      logger.warn(
-        "[excel] Worker export failed; falling back to the main thread:",
-        error,
-      );
-    }
+  if (typeof workerBuilder !== "function") {
+    throw new Error("Excel export requires the workbook worker");
   }
-
-  return buildWorkbookBufferLocally(payload);
+  return workerBuilder(payload);
 }
 
 async function downloadBlob(
@@ -192,6 +192,3 @@ export async function exportToExcelFile(
 }
 
 export const exportToExcelZip = exportToExcelFile;
-
-// Re-exported so the export page keeps one entry point.
-export { buildWorkbookBufferLocally };

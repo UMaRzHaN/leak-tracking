@@ -15,14 +15,18 @@ const budgets = {
   initialGzipBytes: 125 * 1024,
   nonExcelChunkBytes: 360 * 1024,
   excelChunkBytes: 1_000 * 1024,
-  appGraphJsBytes: 2_500 * 1024,
-  // Re-baselined when the Excel worker took on import parsing in addition to
-  // export: its graph gained the parser plus a JSZip copy (~97 kB), since
-  // decompression moved off the main thread. Measured 1 150 190 B; this leaves
-  // ~2.5% headroom. Raised because the worker's responsibility changed, not to
-  // make a failing check pass — trimming what was avoidable (Capacitor, ~9 kB)
-  // does not close a 24 kB gap.
-  excelWorkerGraphBytes: 1_152 * 1024,
+  // Опущен с 2 500 KiB, когда реестр компонентов ушёл в воркер, а с ним и
+  // последние обращения к ExcelJS с главного потока: вместе с ними из графа
+  // пропала вторая копия библиотеки — 929 585 B, которые сервис-воркер клал в
+  // кэш каждому. Измерено 1 531 323 B; потолок оставляет ~7%. Опущен затем,
+  // чтобы копия не вернулась незамеченной: одного статического импорта хватит,
+  // чтобы её превысить.
+  appGraphJsBytes: 1_600 * 1024,
+  // Поднят с 1 152 KiB, когда воркер принял на себя реестр — чтение книги
+  // инвентаризации и сборку её листов. Измерено 1 144 788 B; потолок оставляет
+  // ~7%, а не прежние 2.5%: с таким запасом полоса предупреждения на 97%
+  // означает «осталось немного», а не срабатывает в день, когда её выставили.
+  excelWorkerGraphBytes: 1_200 * 1024,
 };
 
 const html = await readFile(path.join(DIST, "index.html"), "utf8");

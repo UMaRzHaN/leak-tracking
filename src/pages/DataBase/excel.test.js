@@ -155,7 +155,23 @@ vi.mock("@capacitor/filesystem", () => ({
 }));
 
 const { translate, translateRu } = await import("@/test/translate");
-const { exportToExcelFile, exportToExcelZip } = await import("./excel");
+const excelModule = await import("./excel");
+const { exportToExcelZip } = excelModule;
+const { buildWorkbookBufferLocally } =
+  await import("@/services/excelExport/buildWorkbookBuffer");
+
+/*
+ * Книгу теперь собирает только воркер, а его в jsdom нет. Сборщик передаётся
+ * тем же путём, что и в приложении — через опции, — и это тот самый модуль,
+ * который воркер грузит у себя.
+ */
+function exportToExcelFile(...args) {
+  const options = args[8] ?? {};
+  return excelModule.exportToExcelFile(...args.slice(0, 8), {
+    buildWorkbookBuffer: buildWorkbookBufferLocally,
+    ...options,
+  });
+}
 
 describe("excel export helpers", () => {
   let createElementSpy;
@@ -910,6 +926,6 @@ describe("excel export helpers", () => {
     expect(mocks.getPhotoSrcMock).toHaveBeenCalledTimes(12);
   });
   it("keeps exportToExcelZip as a backwards-compatible alias", () => {
-    expect(exportToExcelZip).toBe(exportToExcelFile);
+    expect(exportToExcelZip).toBe(excelModule.exportToExcelFile);
   });
 });

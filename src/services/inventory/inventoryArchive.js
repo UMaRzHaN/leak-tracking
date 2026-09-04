@@ -1,6 +1,5 @@
-import { buildComponentSheet } from "@/services/excelExport/componentSheet";
-import { buildComponentHistorySheet } from "@/services/inventory/componentHistorySheet";
-import { addInventoryBackupSheet } from "@/services/inventory/inventoryBackupSheet";
+import { buildInventoryWorkbookBufferInWorker } from "@/services/excel/excelWorkerClient";
+import { getJSZip } from "@/services/backup/runtime";
 import { sanitizePortableArchiveSegment } from "@/services/archive/archivePaths";
 
 /**
@@ -24,12 +23,11 @@ import { sanitizePortableArchiveSegment } from "@/services/archive/archivePaths"
  * json рядом: json рядом с книгой выглядит как черновик, забытый в архиве.
  */
 
-export const INVENTORY_SHEET_NAME = "Inventorization";
-export const INVENTORY_PHOTO_DIR = "Photos";
-export const INVENTORY_SCHEMA_DIR = "Schemes";
-
-const getExcelJS = () => import("exceljs");
-const getJSZip = () => import("jszip");
+export {
+  INVENTORY_PHOTO_DIR,
+  INVENTORY_SCHEMA_DIR,
+  INVENTORY_SHEET_NAME,
+} from "@/services/inventory/inventoryNames";
 
 /** `!Inventorization_<project>`, safe as a file name on any of the platforms. */
 export function buildInventoryFileStem(projectName) {
@@ -38,43 +36,6 @@ export function buildInventoryFileStem(projectName) {
       `!Inventorization_${projectName || "no_name"}`,
     ) || "!Inventorization"
   );
-}
-
-/**
- * A workbook holding nothing but the registry sheet.
- *
- * Written here rather than through the leak export's worker because there is
- * one sheet and no photographs to resolve: the worker exists to keep a
- * thousand-record report off the main thread, and paying its round trip for a
- * single table would be slower, not faster.
- *
- * @param {{name?: string, headers: string[], keysOrder: string[], rows: Record<string, any>[], ids?: string[], components?: Record<string, any>[], fields?: {key?: string, label?: string}[]}} sheetSpec
- * @param {{photoPaths?: Record<string, string>, texts?: Record<string, any>, backup?: Record<string, any>[]|null}} [options]
- *   `backup` — карточки целиком, как они уедут в служебный лист.
- */
-export async function buildInventoryWorkbookBuffer(sheetSpec, options = {}) {
-  const ExcelJS = (await getExcelJS()).default;
-  const workbook = new ExcelJS.Workbook();
-  await buildComponentSheet(
-    workbook,
-    { ...sheetSpec, name: INVENTORY_SHEET_NAME },
-    options,
-  );
-  // Вторым листом, как у утечек: сначала то, что есть, потом — как это стало
-  // таким. Реестр — набор утверждений о железе, и у каждого есть автор.
-  await buildComponentHistorySheet(workbook, {
-    components: sheetSpec?.components ?? [],
-    fields: sheetSpec?.fields ?? [],
-    texts: options.texts?.componentHistory ?? {},
-  });
-  // Последним и скрытым: это страница для машины, и открывший книгу должен
-  // сначала увидеть то, ради чего её открыл.
-  addInventoryBackupSheet(
-    workbook,
-    { data: options.backup ?? [] },
-    options.texts?.inventoryBackup ?? {},
-  );
-  return workbook.xlsx.writeBuffer();
 }
 
 /**
@@ -102,7 +63,7 @@ export async function buildInventoryArchive({
   // книгу из распакованного архива, снимок открывают нажатием на ячейку.
   zip.file(
     `${fileStem}.xlsx`,
-    await buildInventoryWorkbookBuffer(sheetSpec, {
+    await buildInventoryWorkbookBufferInWorker(sheetSpec, {
       photoPaths: registryEntry?.photoPaths ?? {},
       backup: registryEntry?.components ?? [],
       texts,

@@ -1,6 +1,11 @@
 import { buildWorkbookBufferLocally } from "@/services/excelExport/buildWorkbookBuffer";
 import { parseExcelImportFile } from "@/services/import/excelImportParse";
 import { parseBackupZip } from "@/services/backup/archiveParser";
+import {
+  readInventoryArchiveCards,
+  readInventorySheetFile,
+} from "@/services/inventory/inventoryWorkbookParse";
+import { buildInventoryWorkbookBuffer } from "@/services/inventory/inventoryWorkbookBuild";
 import { globalScope } from "@/utils/globalScope";
 
 // One worker serves both directions on purpose. Vite gives every worker its
@@ -72,6 +77,45 @@ globalScope.onmessage = async (event) => {
       });
       post({ ok: true, result });
       return;
+    }
+
+    // Реестр ходит сюда по той же причине, что и утечки: у главного потока
+    // иначе оказывается своя копия ExcelJS, вторая в сборке. Круговой рейс
+    // ради одной таблицы дороже прямого вызова, но лишние 900 кБ в графе
+    // приложения дороже рейса.
+    if (kind === "inventory") {
+      if (op === "sheet") {
+        const result = await readInventorySheetFile(
+          payload?.file,
+          payload?.excel,
+        );
+        post({ ok: true, id, result });
+        return;
+      }
+
+      if (op === "cards") {
+        // `null` — служебного листа в архиве нет; отличить его от пустого
+        // разбора вызывающему нужно, поэтому едет как есть.
+        const cards = await readInventoryArchiveCards(
+          payload?.file,
+          payload?.excel,
+        );
+        post({ ok: true, id, result: { cards } });
+        return;
+      }
+
+      if (op === "workbook") {
+        const buffer = toTransferableArrayBuffer(
+          await buildInventoryWorkbookBuffer(
+            payload?.sheetSpec,
+            payload?.options ?? {},
+          ),
+        );
+        post({ ok: true, id, buffer }, [buffer]);
+        return;
+      }
+
+      throw new Error(`Unknown inventory worker request: ${String(op)}`);
     }
 
     if (kind === "export") {

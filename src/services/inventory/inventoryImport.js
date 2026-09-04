@@ -8,9 +8,13 @@ import {
 import { restoreComponentPhotos } from "@/services/backup/componentPhotoArchive";
 import { restoreSchemasFromArchive } from "@/services/backup/schemaArchive";
 import { logger } from "@/utils/logger";
-import { componentIdFromUid, parseInventorySheet } from "./inventorySheet";
+import {
+  readInventoryArchiveCardsInWorker,
+  readInventorySheetInWorker,
+} from "@/services/excel/excelWorkerClient";
+import { getJSZip } from "@/services/backup/runtime";
+import { componentIdFromUid } from "./inventorySheet";
 import { mergeSheetEditsIntoCards } from "./inventorySheetMerge";
-import { parseInventoryBackupSheet } from "./inventoryBackupSheet";
 
 /**
  * Bringing an inventory in, whatever shape it arrives in.
@@ -26,93 +30,42 @@ import { parseInventoryBackupSheet } from "./inventoryBackupSheet";
  * значило бы молча потерять снимки, историю и подписи.
  */
 
-const getExcelJS = () => import("exceljs");
-const getJSZip = () => import("jszip");
-
-function isWorkbookName(name) {
-  return /\.xlsx$/i.test(name) && !name.startsWith("__MACOSX/");
-}
-
-async function readWorkbook(data) {
-  const ExcelJS = (await getExcelJS()).default;
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(data);
-  return workbook;
-}
-
 /**
- * The cards a workbook — loose or inside a zip — has to offer.
+ * Merges an inventory file into a project's registry.
  *
- * @param {File|Blob} file
- * @param {{headers: string[], keysOrder: string[]}} excel
- * @returns {Promise<{components: Record<string, any>[], skipped: number}>}
- */
-export async function readInventorySheetFile(file, excel) {
-  const workbook = await openInventoryWorkbook(file);
-  if (!workbook) return { components: [], skipped: 0 };
-  return parseInventorySheet(workbook, excel);
-}
-
-/** Книга инвентаризации — голая или лежащая в архиве. */
-async function openInventoryWorkbook(file, openedZip = null) {
-  const isZip =
-    /\.zip$/i.test(/** @type {File} */ (file)?.name ?? "") ||
-    String(file?.type ?? "").includes("zip");
-
-  if (!isZip && !openedZip) return readWorkbook(await file.arrayBuffer());
-
-  const zip = openedZip ?? (await openZip(file));
-  const entry = Object.keys(zip.files).find(
-    (name) => !zip.files[name].dir && isWorkbookName(name),
-  );
-  if (!entry) return null;
-  // Имя взято из списка того же архива — файл под ним точно есть.
-  const workbookEntry = /** @type {any} */ (zip.file(entry));
-  return readWorkbook(await workbookEntry.async("arraybuffer"));
-}
-
-async function openZip(file) {
-  const JSZip = (await getJSZip()).default;
-  return new JSZip().loadAsync(await file.arrayBuffer());
-}
-
-/**
- * Карточки из служебного листа книги, лежащей в архиве.
+ * Читает книгу воркер: ExcelJS в графе главного потока — вторая копия
+ * библиотеки в сборке, а всё, ради чего сюда ходят с главного потока, — это
+ * запись карточек и снимков в хранилище устройства, которой у воркера нет.
  *
- * Снимки восстанавливаются здесь же и до сведения: карточка, выигравшая
- * слияние с путём в чужое хранилище, показывала бы пустую рамку там, где есть
- * фотография.
+ * Снимки восстанавливаются здесь и до сведения карточек: карточка, выигравшая
+ * слияние со ссылкой в чужое хранилище, показывала бы пустую рамку там, где
+ * есть фотография.
  *
  * @returns {Promise<{added: number, updated: number, conflicts: number}|null>}
  *   null — если служебного листа в архиве нет вовсе.
  */
 async function restoreComponentsFromWorkbook(file, project, registry) {
-  let zip;
-  try {
-    zip = await openZip(file);
-  } catch {
-    return null;
-  }
-
   let cards;
-  let sheetCards = [];
   try {
-    const workbook = await openInventoryWorkbook(file, zip);
-    cards = workbook ? parseInventoryBackupSheet(workbook) : null;
-    // Видимый лист той же книги — это те же карточки, которые человек правит
-    // в Excel. Слепок полнее, поэтому он остаётся основой, но игнорировать
-    // правки нельзя: до этого они пропадали молча.
-    if (cards?.length && workbook && registry?.excel) {
-      sheetCards = parseInventorySheet(workbook, registry.excel).components;
-    }
+    ({ cards } = await readInventoryArchiveCardsInWorker(
+      file,
+      registry?.excel,
+    ));
   } catch (error) {
     logger.warn("[inventory] служебный лист книги не прочитался:", error);
     return null;
   }
   if (!cards?.length) return null;
 
-  const merged = mergeSheetEditsIntoCards(cards, sheetCards);
-  const restored = await restoreComponentPhotos(zip, merged.cards, project);
+  let zip;
+  try {
+    const JSZip = (await getJSZip()).default;
+    zip = await new JSZip().loadAsync(await file.arrayBuffer());
+  } catch {
+    return null;
+  }
+
+  const restored = await restoreComponentPhotos(zip, cards, project);
   return mergeIncomingComponents(project, restored);
 }
 
@@ -198,7 +151,7 @@ export async function importInventoryFile(file, project, registry) {
     return { ...nothing, ...archive, source: "archive", schemas };
   }
 
-  const { components, skipped } = await readInventorySheetFile(
+  const { components, skipped } = await readInventorySheetInWorker(
     file,
     registry.excel,
   );

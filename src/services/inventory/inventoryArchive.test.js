@@ -1,5 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import JSZip from "jszip";
+
+/*
+ * Воркера в jsdom нет, а книгу эти тесты открывают настоящую. Клиент подменён
+ * так, чтобы звать тот же чистый сборщик, который грузит воркер: проверяется
+ * содержимое архива, а не транспорт до сборщика.
+ */
+vi.mock("@/services/excel/excelWorkerClient", async () => {
+  const build = await import("@/services/inventory/inventoryWorkbookBuild");
+  return {
+    buildInventoryWorkbookBufferInWorker: build.buildInventoryWorkbookBuffer,
+  };
+});
 import {
   buildInventoryArchive,
   buildInventoryFileStem,

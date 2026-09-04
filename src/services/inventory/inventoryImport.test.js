@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   save: vi.fn(),
   restoreComponents: vi.fn(),
   restoreSchemas: vi.fn(),
+  readArchiveCards: vi.fn(),
 }));
 
 vi.mock("@/repositories/ComponentRepository", () => ({
@@ -30,6 +31,24 @@ vi.mock("@/services/backup/componentArchive", async () => {
 vi.mock("@/services/backup/schemaArchive", () => ({
   restoreSchemasFromArchive: mocks.restoreSchemas,
 }));
+/*
+ * Воркера в jsdom нет, а книгу эти тесты разбирают настоящую. Клиент подменён
+ * так, чтобы звать тот же чистый модуль, который грузит воркер: проверяется
+ * разбор, а не транспорт до него.
+ */
+vi.mock("@/services/excel/excelWorkerClient", async () => {
+  const parse = await import("@/services/inventory/inventoryWorkbookParse");
+  const build = await import("@/services/inventory/inventoryWorkbookBuild");
+  return {
+    readInventorySheetInWorker: parse.readInventorySheetFile,
+    readInventoryArchiveCardsInWorker:
+      mocks.readArchiveCards.mockImplementation(async (file, excel) => ({
+        cards: await parse.readInventoryArchiveCards(file, excel),
+      })),
+    // Тесты про служебный лист сначала собирают книгу, потом её читают.
+    buildInventoryWorkbookBufferInWorker: build.buildInventoryWorkbookBuffer,
+  };
+});
 
 const { importInventoryFile, separateSheetCards } =
   await import("./inventoryImport");
@@ -64,6 +83,36 @@ beforeEach(() => {
     conflicts: 0,
   });
   mocks.restoreSchemas.mockResolvedValue({ restored: 0, skipped: 0 });
+  mocks.readArchiveCards.mockImplementation(async (file, sheetExcel) => {
+    const parse = await import("@/services/inventory/inventoryWorkbookParse");
+    return { cards: await parse.readInventoryArchiveCards(file, sheetExcel) };
+  });
+});
+
+describe("когда книгу прочитать не удалось", () => {
+  /*
+   * Служебный лист читает воркер, и его отказ — не приговор файлу: рядом
+   * может лежать components.json, каким выгружали реестр раньше. Тот путь
+   * должен отработать, а не утонуть вместе с воркером.
+   */
+  it("уходит на components.json, а не падает вместе с воркером", async () => {
+    mocks.readArchiveCards.mockRejectedValue(new Error("воркер не завёлся"));
+    mocks.restoreComponents.mockResolvedValue({
+      added: 2,
+      updated: 0,
+      conflicts: 0,
+    });
+
+    const result = await importInventoryFile(
+      new File(["zip"], "inventory.zip"),
+      project,
+      { excel },
+    );
+
+    expect(result.source).toBe("archive");
+    expect(result.added).toBe(2);
+    expect(mocks.restoreComponents).toHaveBeenCalled();
+  });
 });
 
 describe("importing an inventory", () => {

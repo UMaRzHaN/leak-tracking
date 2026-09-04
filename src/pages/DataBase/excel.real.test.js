@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { translate } from "@/test/translate";
 import { buildExcelExportTexts } from "@/services/excelExport/exportTexts";
-import { buildWorkbookBufferLocally } from "./excel";
+import { buildWorkbookBufferLocally } from "@/services/excelExport/buildWorkbookBuffer";
 
 describe("real Excel workbook output", () => {
   it("writes plain numeric tags as numbers and preserves leading-zero tags", async () => {
