@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  componentPlaceKeys,
   describeLinkedComponent,
   isLinkedToComponent,
   linkLeakToComponent,
@@ -165,5 +166,78 @@ describe("признак и подпись", () => {
       describeLinkedComponent({ component_id: "c", component: "Задвижка" }),
     ).toBe("Задвижка");
     expect(describeLinkedComponent({})).toBe("");
+  });
+});
+
+describe("место с карточки", () => {
+  const PLACE_CARD = {
+    ...CARD,
+    subdivision: "УПГ-Север",
+    deposit: "Тенгиз",
+    location: "Скважина 7",
+    object: "Дренажная линия",
+  };
+  const upstream = {
+    main: "subdivision",
+    secondary: "deposit",
+    last: "location",
+  };
+
+  it("складывает ключи уровней своего типа проекта и объект", () => {
+    expect(componentPlaceKeys(upstream)).toEqual([
+      "subdivision",
+      "deposit",
+      "location",
+      "object",
+    ]);
+  });
+
+  it("у магистрали ключи свои", () => {
+    expect(
+      componentPlaceKeys({
+        main: "field",
+        secondary: "station",
+        last: "location",
+      }),
+    ).toEqual(["field", "station", "location", "object"]);
+  });
+
+  it("не разваливается без настройки уровней", () => {
+    expect(componentPlaceKeys(null)).toEqual(["object"]);
+  });
+
+  it("переносит место, когда ключи переданы", () => {
+    const linked = linkLeakToComponent(
+      { leak_id: "4242" },
+      PLACE_CARD,
+      componentPlaceKeys(upstream),
+    );
+
+    expect(linked.subdivision).toBe("УПГ-Север");
+    expect(linked.deposit).toBe("Тенгиз");
+    expect(linked.location).toBe("Скважина 7");
+    expect(linked.object).toBe("Дренажная линия");
+  });
+
+  it("не переносит место, когда ключей не дали", () => {
+    // Место зависит от типа проекта, и переносить его наугад нельзя: у
+    // магистрали те же значения лежат под другими именами.
+    const linked = linkLeakToComponent({ leak_id: "4242" }, PLACE_CARD);
+
+    expect(linked).not.toHaveProperty("subdivision");
+    expect(linked).not.toHaveProperty("object");
+  });
+
+  it("не подменяет биркой утечки номер карточки", () => {
+    // Разные учёты: у компонента номер присвоен при обходе железа, у утечки —
+    // при её обнаружении, и одна карточка переживает несколько утечек.
+    const linked = linkLeakToComponent(
+      { leak_id: "4242" },
+      PLACE_CARD,
+      componentPlaceKeys(upstream),
+    );
+
+    expect(linked.leak_id).toBe("4242");
+    expect(linked.component_uid).toBe("9001");
   });
 });

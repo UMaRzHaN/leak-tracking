@@ -24,6 +24,7 @@ export default function Autocomplete({
   required = false,
   onComplete,
   hint,
+  readOnly = false,
 }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
@@ -83,7 +84,12 @@ export default function Autocomplete({
           placeholder={placeholder || " "}
           enterKeyHint="next"
           inputMode="text"
-          onFocus={() => setOpen(true)}
+          // Значение пришло из карточки реестра: читать можно, править нельзя,
+          // и подсказки предлагать не из чего — выбор уже сделан.
+          readOnly={readOnly}
+          onFocus={() => {
+            if (!readOnly) setOpen(true);
+          }}
           onBlur={() => {
             requestAnimationFrame(() => {
               if (!document.activeElement?.closest(`.${s.autocompleteList}`)) {
@@ -92,6 +98,7 @@ export default function Autocomplete({
             });
           }}
           onChange={(e) => {
+            if (readOnly) return;
             const nextValue = e.target.value;
             setQuery(nextValue);
             onChange(nextValue);
@@ -113,7 +120,7 @@ export default function Autocomplete({
           }}
         />
 
-        {showClear && (
+        {showClear && !readOnly && (
           <button
             type="button"
             className={s.clearBtn}

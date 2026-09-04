@@ -17,6 +17,11 @@ export default function StepRenderer({
   // Объявляется только в шагах утечки: у карточки компонента такого поля нет —
   // она сама и есть то, на что ссылаются.
   componentLink = /** @type {any} */ (null),
+  /*
+   * Ключи, заполненные не человеком, а выбранной карточкой реестра. Правку им
+   * запрещает форма, а не поле: поле не знает, откуда пришло значение.
+   */
+  lockedKeys = /** @type {Set<string>|null} */ (null),
 }) {
   const isLastStep = step >= steps.length;
   const config = steps[step - 1];
@@ -68,6 +73,7 @@ export default function StepRenderer({
               onChange={(v) => onChange(f.key, v)}
               placeholder={ghostPlaceholders?.[f.key] ?? f.placeholder}
               hint={f.hint}
+              readOnly={lockedKeys?.has(f.key) ?? false}
             />
           );
         }
@@ -86,6 +92,7 @@ export default function StepRenderer({
               onComplete={completeFromElement}
               placeholder={ghostPlaceholders?.[f.key] ?? f.placeholder}
               hint={f.hint}
+              readOnly={lockedKeys?.has(f.key) ?? false}
             />
           );
         }

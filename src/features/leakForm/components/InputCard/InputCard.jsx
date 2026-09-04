@@ -17,6 +17,12 @@ export default function InputCard({
   rightSlot = null,
   rows = 3,
   hint,
+  /*
+   * Поле, заполненное не человеком. Правку запрещает `readOnly`, а не
+   * `disabled`: отключённое поле выпадает из обхода клавиатурой и не
+   * озвучивается, а прочитать его надо — там написано, где стоит железо.
+   */
+  readOnly = false,
 }) {
   const isTextarea = as === "textarea";
   const isNumber = type === "number";
@@ -34,6 +40,7 @@ export default function InputCard({
     hasValue && s.hasValue,
     required && s.isRequired,
     error && s.hasError,
+    readOnly && s.isReadOnly,
   ]
     .filter(Boolean)
     .join(" ");
@@ -54,6 +61,7 @@ export default function InputCard({
             id={inputId}
             className={s.control}
             rows={rows}
+            readOnly={readOnly}
             value={value ?? ""}
             placeholder={placeholder ?? ""}
             onChange={(e) => onChange(e.target.value)}
@@ -78,6 +86,7 @@ export default function InputCard({
             type={isNumber || isDate ? "text" : type}
             inputMode={isNumber ? "decimal" : isDate ? "numeric" : undefined}
             enterKeyHint="next"
+            readOnly={readOnly}
             value={value ?? ""}
             placeholder={placeholder ?? ""}
             onChange={(e) => {
@@ -97,7 +106,7 @@ export default function InputCard({
           />
         )}
 
-        {hasValue && (
+        {hasValue && !readOnly && (
           <button
             type="button"
             className={s.clearBtn}

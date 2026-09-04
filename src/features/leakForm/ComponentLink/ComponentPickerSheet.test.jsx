@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -98,21 +98,27 @@ describe("ComponentPickerSheet", () => {
   });
 
   it("ищет и по номеру, и по имени, и по тегу на чертеже", async () => {
-    const user = userEvent.setup();
     open();
     await waitFor(() => expect(uids().length).toBe(4));
 
     const search = screen.getByLabelText("Search by number or name");
-    await user.type(search, "задвижка");
-    expect(uids().map((text) => text.slice(0, 2))).toEqual(["№3"]);
+    // Значение ставится событием, а не набором по букве. Лист при открытии
+    // забирает фокус себе, и посимвольный набор изредка уходил в никуда: тест
+    // падал раз в несколько прогонов, показывая ещё неотфильтрованный список.
+    // Проверяется здесь отбор, а не то, куда попадают нажатия.
+    const ищем = (text) =>
+      fireEvent.change(search, { target: { value: text } });
 
-    await user.clear(search);
-    await user.type(search, "v-1");
-    expect(uids().length).toBe(4);
+    ищем("задвижка");
+    await waitFor(() =>
+      expect(uids().map((text) => text.slice(0, 2))).toEqual(["№3"]),
+    );
 
-    await user.clear(search);
-    await user.type(search, "нет такого");
-    expect(screen.getByText("Nothing found")).toBeInTheDocument();
+    ищем("v-1");
+    await waitFor(() => expect(uids().length).toBe(4));
+
+    ищем("нет такого");
+    expect(await screen.findByText("Nothing found")).toBeInTheDocument();
   });
 
   it("отличает нечитаемый реестр от пустого", async () => {

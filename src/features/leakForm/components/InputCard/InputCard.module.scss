@@ -135,3 +135,14 @@ textarea.control {
   margin: 0;
   line-height: 1.4;
 }
+
+/*
+ * Запертое поле: заполнено из карточки реестра. Приглушается, но остаётся
+ * читаемым — там написано, где стоит железо, и прочесть это нужнее, чем
+ * подчеркнуть запрет.
+ */
+.isReadOnly .control {
+  color: var(--c-text2);
+  background: var(--c-surface2);
+  cursor: default;
+}
