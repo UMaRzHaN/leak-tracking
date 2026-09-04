@@ -2,7 +2,7 @@ import { createArchivePhotoProxyReader } from "@/services/backup/archivePhotoPro
 import {
   isWorkerUnavailableError,
   openBackupArchiveInWorker,
-} from "@/services/excel/excelWorkerClient";
+} from "@/services/excel/backupArchiveWorkerClient";
 import { logger } from "@/utils/logger";
 import { parseBackupZip } from "./archiveParser";
 

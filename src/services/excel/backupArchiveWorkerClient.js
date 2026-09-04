@@ -1,0 +1,104 @@
+import {
+  isWorkerUnavailableError,
+  spawnExcelWorker,
+  WorkerUnavailableError,
+} from "@/services/excel/excelWorkerRuntime";
+
+export { isWorkerUnavailableError };
+
+// Photo reads run back-to-back while the main thread saves them, so a gap this
+// long means the import is done and the archive can be released. There is no
+// explicit close: the import path has three exits including two error paths,
+// and a session that only survives while it is being used cannot be leaked by
+// forgetting one of them.
+const BACKUP_IDLE_MS = 30_000;
+
+/**
+ * Parses a backup archive in the worker and keeps it open there, so photos can
+ * be pulled one at a time instead of crossing the boundary all at once.
+ *
+ * Resolves to the parse result plus a `sizes` map; the caller wraps that into a
+ * reader. Rejects with WorkerUnavailableError when the worker cannot run, so
+ * the caller can parse locally instead.
+ */
+export function openBackupArchiveInWorker(file) {
+  const spawned = spawnExcelWorker();
+  if (spawned.error) return Promise.reject(spawned.error);
+  const { worker } = spawned;
+
+  const pending = new Map();
+  let nextId = 0;
+  let idleTimer;
+  let closed = false;
+
+  const close = (error) => {
+    if (closed) return;
+    closed = true;
+    clearTimeout(idleTimer);
+    worker.terminate();
+    for (const { reject } of pending.values()) {
+      reject(error ?? new Error("Backup archive session was closed"));
+    }
+    pending.clear();
+  };
+
+  const touch = () => {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => close(), BACKUP_IDLE_MS);
+  };
+
+  const request = (op, payload) => {
+    if (closed) {
+      return Promise.reject(new Error("Backup archive session was closed"));
+    }
+    const id = (nextId += 1);
+    return new Promise((resolve, reject) => {
+      pending.set(id, { resolve, reject });
+      touch();
+      try {
+        worker.postMessage({ kind: "backup", op, id, payload });
+      } catch (/** @type {any} */ error) {
+        pending.delete(id);
+        reject(
+          new WorkerUnavailableError(
+            String(error?.message ?? "Backup payload could not be cloned"),
+          ),
+        );
+      }
+    });
+  };
+
+  worker.onmessage = (event) => {
+    const { id, ok, result, blob, error, unavailable } = event.data ?? {};
+    const entry = pending.get(id);
+    if (!entry) return;
+    pending.delete(id);
+    touch();
+    if (ok) {
+      entry.resolve(result ?? blob ?? null);
+      return;
+    }
+    const message = error || "Backup worker returned no result";
+    entry.reject(
+      unavailable ? new WorkerUnavailableError(message) : new Error(message),
+    );
+  };
+  worker.onerror = (event) => {
+    close(new WorkerUnavailableError(event.message || "Excel worker failed"));
+  };
+  worker.onmessageerror = () => {
+    close(
+      new WorkerUnavailableError("Excel worker response could not be cloned"),
+    );
+  };
+
+  return request("open", { file })
+    .then((result) => ({
+      ...result,
+      readPhoto: (path) => request("readPhoto", { path }),
+    }))
+    .catch((error) => {
+      close(error);
+      throw error;
+    });
+}

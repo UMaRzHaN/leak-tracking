@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/services/excel/excelWorkerClient", () => ({
+vi.mock("@/services/excel/backupArchiveWorkerClient", () => ({
   openBackupArchiveInWorker: vi.fn(),
   isWorkerUnavailableError: (error) => error?.name === "WorkerUnavailableError",
 }));
@@ -8,7 +8,7 @@ vi.mock("./archiveParser", () => ({ parseBackupZip: vi.fn() }));
 
 const { openArchive } = await import("./backupArchiveSession");
 const { openBackupArchiveInWorker } =
-  await import("@/services/excel/excelWorkerClient");
+  await import("@/services/excel/backupArchiveWorkerClient");
 const { parseBackupZip } = await import("./archiveParser");
 
 beforeEach(() => {
