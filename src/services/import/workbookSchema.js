@@ -31,7 +31,7 @@ export function normalizeHeader(value) {
  * @param {unknown} header
  * @param {string} key
  */
-function setHeaderEntry(entries, header, key) {
+export function setHeaderEntry(entries, header, key) {
   const normalized = normalizeHeader(header);
   if (normalized) entries.set(normalized, key);
 }

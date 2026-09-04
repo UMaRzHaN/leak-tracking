@@ -2,6 +2,7 @@ import {
   findHeaderRow,
   getCellDisplayValue,
   normalizeHeader,
+  setHeaderEntry,
 } from "@/services/import/workbookSchema";
 
 /**
@@ -34,7 +35,7 @@ function buildHeaderMap(headers, keysOrder) {
   const entries = new Map();
   headers.forEach((header, index) => {
     const key = keysOrder[index];
-    if (key) entries.set(normalizeHeader(header), key);
+    if (key) setHeaderEntry(entries, header, key);
   });
   return entries;
 }

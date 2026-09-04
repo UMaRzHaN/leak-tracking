@@ -54,6 +54,26 @@ describe("reading an inventory out of a sheet", () => {
     expect(skipped).toBe(1);
   });
 
+  /*
+   * Первая колонка реестра подписана «№», и пока нормализация её
+   * вычёркивала, в карте заголовков заводился пустой ключ: распознанным
+   * заголовком считалась любая пустая ячейка. Недозаполненная строка, которая
+   * шире шапки, набирала таких «заголовков» больше, чем шапка — настоящих,
+   * становилась шапкой сама, `component_uid` в ней не было, и лист
+   * отбраковывался целиком.
+   */
+  it("does not mistake a wide row of blanks for the header row", async () => {
+    const book = new ExcelJS.Workbook();
+    const sheet = book.addWorksheet("Inventorization");
+    sheet.addRow(excel.headers);
+    sheet.addRow([1, "Задвижка", "4242", "ЗД32"]);
+    sheet.addRow([2, "", "", "", "", ""]);
+
+    const { components } = parseInventorySheet(book, excel);
+
+    expect(components.map((card) => card.component_uid)).toEqual(["4242"]);
+  });
+
   it("finds the sheet under the customer's own tab name", async () => {
     const book = await sheetWith("Компоненты", [[1, "Кран", "9", "PG"]]);
     expect(parseInventorySheet(book, excel).components).toHaveLength(1);
