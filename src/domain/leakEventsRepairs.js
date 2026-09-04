@@ -72,12 +72,22 @@ function lastEventValue(leak, type, field) {
  * статуса. Выгрузка это уже умела своим обходом истории; знание перенесено
  * сюда, чтобы ответ был один на всех, а не у того, кто догадался посмотреть.
  */
+/**
+ * Когда запись в последний раз перешла в это состояние — по журналу.
+ *
+ * Смотрится поле `to`, а не действие: переводит запись не только смена статуса
+ * вручную, но и обход, а он пишет `action: "monitoring"`. Спрашивать только
+ * `status_changed` значило оставить устранённую в обходе утечку без даты
+ * устранения — веха погашена, события «ремонт завершён» у неё нет, и колонка
+ * книги оказывалась пустой при статусе «Устранена». Записи правки поля `to` не
+ * несут вовсе, так что лишнего это не захватывает.
+ */
 function lastStatusChangeDate(leak, status) {
   const history = Array.isArray(leak?.history) ? leak.history : [];
   for (let index = history.length - 1; index >= 0; index -= 1) {
     const entry = history[index];
-    if (entry?.action === "status_changed" && entry?.to === status) {
-      return entry?.date ?? null;
+    if (entry?.to === status && entry?.date) {
+      return entry.date;
     }
   }
   return null;

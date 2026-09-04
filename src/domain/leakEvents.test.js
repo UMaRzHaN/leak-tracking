@@ -396,3 +396,71 @@ describe("правка снимка починки", () => {
     ).toBeNull();
   });
 });
+
+describe("даты починки у записи, устранённой обходом", () => {
+  // Обход не пишет «ремонт завершён» — он пишет осмотр. Веха при этом гасится,
+  // и если журнал спрашивать только про `status_changed`, книга показывает
+  // «Устранена» без даты устранения. Ровно это и случилось на телефоне.
+  const resolvedByRound = {
+    id: "L1",
+    status: "resolved",
+    resolvedAt: null,
+    repairAt: null,
+    events: [
+      {
+        id: "r1",
+        type: "inspection",
+        date: "2026-09-04T06:15:59.884Z",
+        result: "resolved",
+        monitoredBy: "Проверяющий",
+      },
+    ],
+    history: [
+      {
+        action: "created",
+        date: "2026-09-04T06:04:27.261Z",
+        user: "Проверяющий",
+      },
+      {
+        action: "monitoring",
+        date: "2026-09-04T06:15:59.884Z",
+        to: "resolved",
+        user: "Проверяющий",
+      },
+    ],
+  };
+
+  it("берёт дату устранения из записи обхода в журнале", () => {
+    expect(getRepairDoneAt(resolvedByRound)).toBe("2026-09-04T06:15:59.884Z");
+  });
+
+  it("берёт дату начала ремонта, когда обход отправил запись в ремонт", () => {
+    const inRepair = {
+      ...resolvedByRound,
+      status: "in_progress",
+      history: [
+        resolvedByRound.history[0],
+        {
+          action: "monitoring",
+          date: "2026-09-04T07:00:00.000Z",
+          to: "in_progress",
+          user: "Проверяющий",
+        },
+      ],
+    };
+
+    expect(getRepairStartedAt(inRepair)).toBe("2026-09-04T07:00:00.000Z");
+  });
+
+  it("не принимает за смену статуса правку поля", () => {
+    // У записи правки поля `to` нет вовсе, и она не должна становиться датой.
+    const edited = {
+      status: "resolved",
+      history: [
+        { action: "edited", date: "2026-09-04T08:00:00.000Z", changes: [] },
+      ],
+    };
+
+    expect(getRepairDoneAt(edited)).toBeNull();
+  });
+});
