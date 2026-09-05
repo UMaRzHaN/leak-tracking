@@ -429,6 +429,14 @@ export default defineConfig(({ mode }) => {
       globals: true,
       environment: "jsdom",
       setupFiles: ["./src/test/setup.js"],
+      // Воркеров вдвое меньше, чем ядер: иначе набор перезаписывает процессор
+      // сам себе, воркер простаивает секунду, и тест, ждущий отрисовки, падает
+      // при исправном приложении. Так падал `SchemaList > closes the drawing
+      // with Escape` — под нагрузкой на втором заходе, ровно на 1019 мс, то
+      // есть в предел ожидания; с этой настройкой та же нагрузка прошла
+      // двенадцать заходов из двенадцати. Цена — 33.6 с против 28.
+      maxWorkers: "50%",
+
       // `scripts/` is listed because the gate scripts have tests too and the
       // pattern used to stop at `src/`, so those files were collected by
       // nobody and ran never. Coverage still measures `src/` alone, so the

@@ -93,6 +93,6 @@
     "src/services/sync/localSyncService.js": 310,
     "src/services/sync/projectSyncState.js": 515,
     "src/utils/importLimits.js": 573,
-    "vite.config.mjs": 467
+    "vite.config.mjs": 465
   }
 }
