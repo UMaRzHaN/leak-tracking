@@ -242,10 +242,10 @@
       "lines": 89
     },
     "src/repositories/legacyNativeLeakStorage.js": {
-      "statements": 62,
-      "branches": 51,
-      "functions": 62,
-      "lines": 63
+      "statements": 88,
+      "branches": 82,
+      "functions": 92,
+      "lines": 89
     },
     "src/repositories/nativeComponentStorage.js": {
       "statements": 90,
