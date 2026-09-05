@@ -459,7 +459,7 @@ public class LocalSyncPlugin extends Plugin {
                 SSLServerSocket tlsServerSocket = (SSLServerSocket) tlsHost.context
                     .getServerSocketFactory()
                     .createServerSocket(0);
-                enableModernTls(tlsServerSocket);
+                SyncTlsProtocols.enable(tlsServerSocket);
                 serverSocket = tlsServerSocket;
                 serverSocket.setReuseAddress(true);
                 scheduleHostExpiry(tlsServerSocket, hostSessionId, sessionDurationMs);
@@ -523,7 +523,7 @@ public class LocalSyncPlugin extends Plugin {
         String host = call.getString("host", "").trim();
         Integer port = call.getInt("port");
         String code = call.getString("code", "").trim();
-        String fingerprint = normalizeFingerprint(call.getString("fingerprint"));
+        String fingerprint = SyncFingerprints.normalize(call.getString("fingerprint"));
         String projectKey = normalizeProjectKey(call.getString("projectKey"));
         String syncId = normalizeSyncId(call.getString("syncId"));
         String sessionId = normalizeSessionId(call.getString("sessionId"));
@@ -539,7 +539,7 @@ public class LocalSyncPlugin extends Plugin {
             host.isEmpty() ||
             port == null ||
             code.isEmpty() ||
-            !isValidFingerprint(fingerprint) ||
+            !SyncFingerprints.isValid(fingerprint) ||
             projectKey.isEmpty() ||
             syncId.isEmpty() ||
             sessionId.isEmpty() ||
@@ -601,12 +601,12 @@ public class LocalSyncPlugin extends Plugin {
         String host = call.getString("host", "").trim();
         Integer port = call.getInt("port");
         String code = call.getString("code", "").trim();
-        String fingerprint = normalizeFingerprint(call.getString("fingerprint"));
+        String fingerprint = SyncFingerprints.normalize(call.getString("fingerprint"));
         String projectKey = normalizeProjectKey(call.getString("projectKey"));
         String syncId = normalizeSyncId(call.getString("syncId"));
         String sessionId = normalizeSessionId(call.getString("sessionId"));
 
-        if (host.isEmpty() || port == null || code.isEmpty() || !isValidFingerprint(fingerprint) || projectKey.isEmpty() || syncId.isEmpty() || sessionId.isEmpty()) {
+        if (host.isEmpty() || port == null || code.isEmpty() || !SyncFingerprints.isValid(fingerprint) || projectKey.isEmpty() || syncId.isEmpty() || sessionId.isEmpty()) {
             call.reject("host, port, code, fingerprint, projectKey, syncId and sessionId are required");
             return;
         }
@@ -693,7 +693,7 @@ public class LocalSyncPlugin extends Plugin {
             if (!(socket instanceof SSLSocket)) {
                 throw new Exception("Local sync requires TLS");
             }
-            enableModernTls((SSLSocket) socket);
+            SyncTlsProtocols.enable((SSLSocket) socket);
             ((SSLSocket) socket).startHandshake();
             synchronized (sessionLock) {
                 if (serverSocket != activeServer) return;
@@ -1104,7 +1104,7 @@ public class LocalSyncPlugin extends Plugin {
             keyManagerFactory.init(keyStore, null);
             SSLContext context = SSLContext.getInstance("TLS");
             context.init(keyManagerFactory.getKeyManagers(), null, RANDOM);
-            return new TlsHostContext(context, keyAlias, sha256(certificate.getEncoded()));
+            return new TlsHostContext(context, keyAlias, SyncFingerprints.sha256(certificate.getEncoded()));
         } catch (Exception error) {
             deleteTlsKey(keyAlias);
             throw error;
@@ -1116,7 +1116,7 @@ public class LocalSyncPlugin extends Plugin {
     // validation; it replaces CA validation with explicit certificate pinning.
     @SuppressLint("CustomX509TrustManager")
     private Socket connectPinnedTls(String host, int port, String fingerprint) throws Exception {
-        final byte[] expectedFingerprint = hexToBytes(fingerprint);
+        final byte[] expectedFingerprint = SyncFingerprints.hexToBytes(fingerprint);
         X509TrustManager trustManager = new X509TrustManager() {
             @Override
             public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
@@ -1155,7 +1155,7 @@ public class LocalSyncPlugin extends Plugin {
             // Start before connect(): the deadline covers the complete outbound
             // network setup, not only TLS records after TCP has connected.
             handshakeDeadline.start();
-            enableModernTls(socket);
+            SyncTlsProtocols.enable(socket);
             socket.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
             socket.setSoTimeout(HANDSHAKE_TIMEOUT_MS);
             socket.startHandshake();
@@ -1179,52 +1179,6 @@ public class LocalSyncPlugin extends Plugin {
             }
             throw error;
         }
-    }
-
-    private void enableModernTls(SSLServerSocket socket) throws Exception {
-        socket.setEnabledProtocols(modernTlsProtocols(socket.getSupportedProtocols()));
-    }
-
-    private void enableModernTls(SSLSocket socket) throws Exception {
-        socket.setEnabledProtocols(modernTlsProtocols(socket.getSupportedProtocols()));
-    }
-
-    private String[] modernTlsProtocols(String[] supportedProtocols) throws Exception {
-        ArrayList<String> enabled = new ArrayList<>();
-        for (String protocol : supportedProtocols) {
-            if ("TLSv1.3".equals(protocol) || "TLSv1.2".equals(protocol)) {
-                enabled.add(protocol);
-            }
-        }
-        if (enabled.isEmpty()) {
-            throw new Exception("This Android version does not support TLS 1.2");
-        }
-        return enabled.toArray(new String[0]);
-    }
-
-    private String normalizeFingerprint(String value) {
-        return value == null ? "" : value.replaceAll("[^0-9A-Fa-f]", "").toUpperCase(Locale.ROOT);
-    }
-
-    private boolean isValidFingerprint(String value) {
-        return value.length() == 64;
-    }
-
-    private byte[] hexToBytes(String value) throws Exception {
-        if (!isValidFingerprint(value)) throw new Exception("Invalid TLS certificate fingerprint");
-        byte[] result = new byte[value.length() / 2];
-        for (int index = 0; index < value.length(); index += 2) {
-            result[index / 2] = (byte) Integer.parseInt(value.substring(index, index + 2), 16);
-        }
-        return result;
-    }
-
-    private String sha256(byte[] value) throws Exception {
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        byte[] hash = digest.digest(value);
-        StringBuilder result = new StringBuilder(hash.length * 2);
-        for (byte item : hash) result.append(String.format(Locale.US, "%02X", item & 0xff));
-        return result.toString();
     }
 
     private void deleteTlsKey(String keyAlias) {
@@ -1441,7 +1395,7 @@ public class LocalSyncPlugin extends Plugin {
         if (connectivityManager != null) {
             Network activeNetwork = connectivityManager.getActiveNetwork();
             LinkProperties properties = activeNetwork == null ? null : connectivityManager.getLinkProperties(activeNetwork);
-            if (properties != null && interfaceScore(properties.getInterfaceName()) >= 0) {
+            if (properties != null && SyncNetworkInterfaces.score(properties.getInterfaceName()) >= 0) {
                 for (LinkAddress linkAddress : properties.getLinkAddresses()) {
                     InetAddress address = linkAddress.getAddress();
                     if (address instanceof Inet4Address && address.isSiteLocalAddress()) {
@@ -1455,7 +1409,7 @@ public class LocalSyncPlugin extends Plugin {
         int fallbackScore = Integer.MIN_VALUE;
         for (NetworkInterface network : Collections.list(NetworkInterface.getNetworkInterfaces())) {
             if (!network.isUp() || network.isLoopback()) continue;
-            int score = interfaceScore(network.getName());
+            int score = SyncNetworkInterfaces.score(network.getName());
             if (score < 0) continue;
             for (InetAddress address : Collections.list(network.getInetAddresses())) {
                 if (!(address instanceof Inet4Address) || address.isLoopbackAddress()) continue;
@@ -1468,18 +1422,6 @@ public class LocalSyncPlugin extends Plugin {
         }
         if (fallback != null) return fallback;
         throw new LocalSyncException(LocalSyncFailure.NO_LOCAL_NETWORK, "Подключитесь к Wi-Fi или включите точку доступа");
-    }
-
-    private int interfaceScore(String rawName) {
-        String name = rawName == null ? "" : rawName.toLowerCase(Locale.ROOT);
-        if (name.startsWith("tun") || name.startsWith("ppp") || name.startsWith("rmnet") || name.contains("vpn")) {
-            return -1;
-        }
-        if (name.startsWith("wlan")) return 100;
-        if (name.startsWith("ap") || name.contains("softap") || name.startsWith("swlan")) return 95;
-        if (name.startsWith("eth")) return 90;
-        if (name.contains("p2p")) return 50;
-        return 10;
     }
 
     private String normalizeProjectKey(String value) {
