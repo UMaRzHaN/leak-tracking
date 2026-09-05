@@ -301,7 +301,7 @@ public class LocalSyncPlugin extends Plugin {
                     chunk.length,
                     MAX_ARCHIVE_BYTES
                 ) ||
-                wouldExceedTemporaryArchiveQuotaLocked(chunk.length)
+                wouldExceedQuotaLocked(chunk.length)
             ) {
                 throw new Exception("Archive exceeds the safety limit");
             }
@@ -337,7 +337,7 @@ public class LocalSyncPlugin extends Plugin {
                     throw new Exception("Too many prepared sync archives are active");
                 }
                 if (
-                    wouldExceedTemporaryArchiveQuotaLocked(1L)
+                    wouldExceedQuotaLocked(1L)
                 ) {
                     throw new Exception("Temporary sync archive quota is exhausted");
                 }
@@ -1308,7 +1308,7 @@ public class LocalSyncPlugin extends Plugin {
         synchronized (archiveLock) {
             cleanupExpiredArchiveSessionsLocked();
             cleanupOrphanedArchiveFilesLocked();
-            if (wouldExceedTemporaryArchiveQuotaLocked(bytes)) {
+            if (wouldExceedQuotaLocked(bytes)) {
                 throw new Exception("Temporary sync archive quota is exhausted");
             }
             reservedArchiveBytes += bytes;
@@ -1338,7 +1338,7 @@ public class LocalSyncPlugin extends Plugin {
                 file.delete();
                 throw new Exception("Too many received sync archives are awaiting release");
             }
-            if (wouldExceedTemporaryArchiveQuotaLocked(0L)) {
+            if (wouldExceedQuotaLocked(0L)) {
                 activeArchives.remove(file);
                 file.delete();
                 throw new Exception("Temporary sync archive quota is exhausted");
@@ -1621,32 +1621,12 @@ public class LocalSyncPlugin extends Plugin {
         );
     }
 
-    private ArrayList<File> temporaryArchiveFilesOnDisk() {
-        ArrayList<File> files = new ArrayList<>();
-        File cacheDir = getContext().getCacheDir();
-        File[] candidates = cacheDir.listFiles(file ->
-            file.isFile() && isTemporaryArchiveName(file.getName())
-        );
-        if (candidates != null) Collections.addAll(files, candidates);
-        return files;
-    }
 
-    private boolean isTemporaryArchiveName(String name) {
-        if (name == null || !name.endsWith(".zip")) return false;
-        return (
-            name.startsWith("local-sync-outgoing-") ||
-            name.startsWith("local-sync-incoming-") ||
-            name.startsWith("local-sync-response-") ||
-            name.startsWith("local-sync-import-")
-        );
-    }
-
-    private boolean wouldExceedTemporaryArchiveQuotaLocked(long additionalBytes) {
-        if (additionalBytes < 0L || reservedArchiveBytes < 0L) return true;
-        if (Long.MAX_VALUE - reservedArchiveBytes < additionalBytes) return true;
-        return TempFilePolicy.wouldExceedAggregate(
-            temporaryArchiveFilesOnDisk(),
-            reservedArchiveBytes + additionalBytes,
+    private boolean wouldExceedQuotaLocked(long additionalBytes) {
+        return SyncArchiveFiles.wouldExceedQuota(
+            getContext().getCacheDir(),
+            reservedArchiveBytes,
+            additionalBytes,
             MAX_TEMP_ARCHIVE_BYTES
         );
     }
@@ -1668,24 +1648,12 @@ public class LocalSyncPlugin extends Plugin {
     }
 
     private void cleanupOrphanedArchiveFilesLocked() {
-        long now = System.currentTimeMillis();
-        File cacheDir = getContext().getCacheDir();
-        ArrayList<File> protectedFiles = protectedTemporaryArchivesLocked();
-        for (String prefix : new String[] {
-            "local-sync-outgoing-",
-            "local-sync-incoming-",
-            "local-sync-response-",
-            "local-sync-import-",
-        }) {
-            TempFilePolicy.sweepExpired(
-                cacheDir,
-                prefix,
-                ".zip",
-                now,
-                PREPARED_ARCHIVE_TTL_MS,
-                protectedFiles
-            );
-        }
+        SyncArchiveFiles.sweepOrphans(
+            getContext().getCacheDir(),
+            protectedTemporaryArchivesLocked(),
+            System.currentTimeMillis(),
+            PREPARED_ARCHIVE_TTL_MS
+        );
     }
 
     private void cleanupExpiredArchiveSessions() {
@@ -1696,24 +1664,9 @@ public class LocalSyncPlugin extends Plugin {
     }
 
     private void cleanupExpiredArchiveSessionsLocked() {
-        cleanupExpiredArchiveMap(preparedArchives, PREPARED_ARCHIVE_TTL_MS);
-        cleanupExpiredArchiveMap(deliveredArchives, DELIVERED_ARCHIVE_TTL_MS);
-    }
-
-    private void cleanupExpiredArchiveMap(
-        ConcurrentHashMap<String, File> archives,
-        long ttlMs
-    ) {
         long now = System.currentTimeMillis();
-        for (java.util.Map.Entry<String, File> entry : archives.entrySet()) {
-            File archive = entry.getValue();
-            if (
-                TempFilePolicy.isExpired(archive, now, ttlMs) &&
-                archives.remove(entry.getKey(), archive)
-            ) {
-                archive.delete();
-            }
-        }
+        SyncArchiveFiles.sweepExpiredEntries(preparedArchives, now, PREPARED_ARCHIVE_TTL_MS);
+        SyncArchiveFiles.sweepExpiredEntries(deliveredArchives, now, DELIVERED_ARCHIVE_TTL_MS);
     }
 
     private static ScheduledThreadPoolExecutor createCleanupExecutor() {
