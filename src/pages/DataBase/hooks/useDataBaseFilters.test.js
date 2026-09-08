@@ -200,8 +200,11 @@ describe("useDataBaseFilters multi-select", () => {
 
     expect(result.current.displayed.map((item) => item.id)).toEqual([1]);
     expect(result.current.counts.nearby).toBe(1);
-    expect(result.current.counts.open).toBe(2);
-    expect(result.current.counts.resolved).toBe(1);
+    // Счётчики статусов описывают видимый список, а не весь массив: вторая
+    // открытая и устранённая утечки лежат за радиусом и в список не попали.
+    expect(result.current.counts.all).toBe(1);
+    expect(result.current.counts.open).toBe(1);
+    expect(result.current.counts.resolved).toBe(0);
   });
 
   it("uses the same geographic distance for nearby counts and filtering", () => {
@@ -337,6 +340,40 @@ describe("useDataBaseFilters multi-select", () => {
       expect(result.current.mainLocationOptions).toEqual(["Main A", "Main B"]);
     },
   );
+
+  // Папка выбирается в шапке, а счётчики статусов считались по всему массиву:
+  // на заводе с 43 записями фильтр обещал 1603 утечки.
+  it("counts statuses inside the location picked in the header", () => {
+    const data = [
+      { id: 1, subdivision: "North", status: "open" },
+      { id: 2, subdivision: "North", status: "in_progress" },
+      { id: 3, subdivision: "South", status: "open" },
+      { id: 4, subdivision: "South", status: "resolved" },
+    ];
+    const sharedFilters = {
+      mainLocationFilter: { key: "subdivision", values: ["North"] },
+      setMainLocationFilter: vi.fn(),
+    };
+    const { result } = renderHook(() =>
+      useDataBaseFilters({ data, coords: null, sharedFilters }),
+    );
+
+    expect(result.current.counts.all).toBe(2);
+    expect(result.current.counts.open).toBe(1);
+    expect(result.current.counts.in_progress).toBe(1);
+    expect(result.current.counts.resolved).toBe(0);
+  });
+
+  it("counts statuses inside the search and priority narrowing", () => {
+    const { result } = renderHook(() => useDataBaseFilters({ data: DATA }));
+
+    act(() => result.current.setPriorityFilter(["high"]));
+
+    expect(result.current.counts.all).toBe(2);
+    expect(result.current.counts.open).toBe(0);
+    expect(result.current.counts.in_progress).toBe(1);
+    expect(result.current.counts.resolved).toBe(1);
+  });
 
   it("combines main and secondary location filters", () => {
     const data = [

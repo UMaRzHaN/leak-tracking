@@ -149,7 +149,10 @@ export function useDataBaseFilters({
     return new Map(data.map((leak) => [leak, buildLeakSearchText(leak)]));
   }, [data, searchTokens.length]);
 
-  const displayed = useMemo(() => {
+  // Счётчики и список должны видеть одну и ту же выборку, поэтому отбор по
+  // месту, поиску и приоритету вынесен отдельно: статус применяется только к
+  // списку, а счётчики строятся уже на суженном наборе.
+  const scoped = useMemo(() => {
     const applySearch = (list) =>
       searchTokens.length > 0
         ? list.filter((leak) =>
@@ -185,25 +188,11 @@ export function useDataBaseFilters({
           )
         : list;
 
-    // The toggle above this list is labelled "date", and it sorted by
-    // `compareLeakIds` — the record id. Imported records carry a numeric id and
-    // came out roughly by age, which hid it; anything added in the app gets a
-    // random UUID, so the control promised dates and delivered noise.
-    let list = [...data].sort((a, b) =>
-      sortAsc ? compareLeakRecency(b, a) : compareLeakRecency(a, b),
-    );
-    if (statusFilter.length > 0)
-      list = list.filter((l) => statusFilter.includes(l.status ?? STATUS.OPEN));
-    if (nearbyFilter && hasGps)
-      list = filterNearbyLeaks(list, coords.lat, coords.lng, nearbyRadius);
     return applySearch(
-      applyPriority(applyLastLocation(applyLocation(applyMainLocation(list)))),
+      applyPriority(applyLastLocation(applyLocation(applyMainLocation(data)))),
     );
   }, [
     data,
-    statusFilter,
-    nearbyFilter,
-    nearbyRadius,
     priorityFilter,
     mainLocationFilter,
     mainLocationKey,
@@ -213,27 +202,51 @@ export function useDataBaseFilters({
     configuredLastLocationKey,
     searchIndex,
     searchTokens,
+  ]);
+
+  const displayed = useMemo(() => {
+    // The toggle above this list is labelled "date", and it sorted by
+    // `compareLeakIds` — the record id. Imported records carry a numeric id and
+    // came out roughly by age, which hid it; anything added in the app gets a
+    // random UUID, so the control promised dates and delivered noise.
+    let list = [...scoped].sort((a, b) =>
+      sortAsc ? compareLeakRecency(b, a) : compareLeakRecency(a, b),
+    );
+    if (statusFilter.length > 0)
+      list = list.filter((l) => statusFilter.includes(l.status ?? STATUS.OPEN));
+    if (nearbyFilter && hasGps)
+      list = filterNearbyLeaks(list, coords.lat, coords.lng, nearbyRadius);
+    return list;
+  }, [
+    scoped,
+    statusFilter,
+    nearbyFilter,
+    nearbyRadius,
     hasGps,
     coords,
     sortAsc,
   ]);
 
   const counts = useMemo(() => {
-    const c = { all: data.length, [NEARBY]: 0 };
+    const c = { all: 0, [NEARBY]: 0 };
     STATUS_ORDER.forEach((st) => {
       c[st] = 0;
     });
 
-    for (const l of data) {
+    for (const l of scoped) {
+      const near =
+        hasGps &&
+        distanceMeters(coords.lat, coords.lng, l.lat, l.lng) <= nearbyRadius;
+      if (near) c[NEARBY]++;
+      // Кнопка «рядом» уже сузила список, значит и счётчики статусов должны
+      // считать только то, что осталось видимым.
+      if (nearbyFilter && hasGps && !near) continue;
+      c.all++;
       const st = l.status ?? STATUS.OPEN;
       if (c[st] !== undefined) c[st]++;
-      if (hasGps) {
-        const distance = distanceMeters(coords.lat, coords.lng, l.lat, l.lng);
-        if (distance <= nearbyRadius) c[NEARBY]++;
-      }
     }
     return c;
-  }, [data, hasGps, coords, nearbyRadius]);
+  }, [scoped, hasGps, coords, nearbyRadius, nearbyFilter]);
 
   return {
     search: searchInput,
