@@ -8,8 +8,6 @@ import { PROJECT_META } from "@/configs/projectMeta";
 import { clearMapCache } from "@/services/maps/tileCache";
 import { deleteProjectArtifacts } from "@/services/backup/projectCleanup";
 import { isLeakFormDirty } from "@/features/leakForm/utils/isLeakFormDirty";
-import { MONITORING_PHOTO_FIELDS } from "@/utils/photoFields";
-import { fromEntries } from "@/utils/fromEntries";
 
 export { deleteProjectArtifacts };
 
@@ -28,37 +26,6 @@ const CLOSED_SYNC_ID_EDITOR = {
   projectId: null,
   value: "",
 };
-
-function remapPhotoPath(path, oldPrefix, newPrefix) {
-  return typeof path === "string" && path.startsWith(oldPrefix)
-    ? path.replace(oldPrefix, newPrefix)
-    : path;
-}
-
-export function remapProjectPhotoPaths(leaks, oldFolderName, newFolderName) {
-  const oldPrefix = `data://LeakReports/${oldFolderName}/`;
-  const newPrefix = `data://LeakReports/${newFolderName}/`;
-
-  return leaks.map((leak) => ({
-    ...leak,
-    photo: remapPhotoPath(leak.photo, oldPrefix, newPrefix),
-    photo_after: remapPhotoPath(leak.photo_after, oldPrefix, newPrefix),
-    photo_repair: remapPhotoPath(leak.photo_repair, oldPrefix, newPrefix),
-    ...(Array.isArray(leak.monitoringRecords)
-      ? {
-          monitoringRecords: leak.monitoringRecords.map((record) => ({
-            ...record,
-            ...fromEntries(
-              MONITORING_PHOTO_FIELDS.map((field) => [
-                field,
-                remapPhotoPath(record?.[field], oldPrefix, newPrefix),
-              ]),
-            ),
-          })),
-        }
-      : {}),
-  }));
-}
 
 export function useProjectActions({ setCacheInfo, notify }) {
   const { t } = useLanguage();

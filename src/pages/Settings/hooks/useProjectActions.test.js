@@ -44,44 +44,7 @@ const formContextModule = await import("@/features/leakForm/LeakFormContext");
 const tileCacheModule = await import("@/services/maps/tileCache");
 const photoRepositoryModule = await import("@/repositories/PhotoRepository");
 const leakRepositoryModule = await import("@/repositories/LeakRepository");
-const { useProjectActions, remapProjectPhotoPaths } =
-  await import("./useProjectActions");
-
-describe("remapProjectPhotoPaths", () => {
-  it("updates every native photo reference after a project folder rename", () => {
-    const oldBase = "data://LeakReports/alpha/photos/";
-    const leaks = [
-      {
-        id: 1,
-        photo: `${oldBase}before.jpg`,
-        photo_after: `${oldBase}after.jpg`,
-        photo_repair: `${oldBase}repair.jpg`,
-        monitoringRecords: [
-          {
-            id: "m1",
-            photo: `${oldBase}monitoring.jpg`,
-            previousPhoto: `${oldBase}monitoring-before.jpg`,
-          },
-          { id: "m2", photo: "idb://unchanged" },
-        ],
-      },
-    ];
-
-    const [updated] = remapProjectPhotoPaths(leaks, "alpha", "alpha_renamed");
-
-    expect(updated.photo).toContain("LeakReports/alpha_renamed/photos/");
-    expect(updated.photo_after).toContain("LeakReports/alpha_renamed/photos/");
-    expect(updated.photo_repair).toContain("LeakReports/alpha_renamed/photos/");
-    expect(updated.monitoringRecords[0].photo).toContain(
-      "LeakReports/alpha_renamed/photos/",
-    );
-    expect(updated.monitoringRecords[0].previousPhoto).toContain(
-      "LeakReports/alpha_renamed/photos/",
-    );
-    expect(updated.monitoringRecords[1].photo).toBe("idb://unchanged");
-    expect(leaks[0].photo).toBe(`${oldBase}before.jpg`);
-  });
-});
+const { useProjectActions } = await import("./useProjectActions");
 
 describe("useProjectActions", () => {
   beforeEach(() => {
