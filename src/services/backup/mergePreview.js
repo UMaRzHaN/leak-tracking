@@ -1,55 +1,43 @@
-import { MONITORING_PHOTO_KEYS, PHOTO_KEYS } from "./constants";
+import {
+  EVENT_PHOTO_KEYS,
+  MONITORING_PHOTO_KEYS,
+  PHOTO_KEYS,
+} from "./constants";
 import {
   getChangedFieldKeys,
   getLeakIdentity,
   shouldApplyIncomingLeak,
 } from "./leakMergeEngine";
+import { getRecordMergeIdentity } from "./recordArrayMerge";
 
-function hasImportablePhoto(leak, key) {
-  const path = leak?.[key];
+function isImportablePhoto(path) {
   return (
     typeof path === "string" &&
     (path.startsWith("zip:") || path.startsWith("data:image/"))
   );
 }
 
-function countImportableArchivePhotos(leak) {
-  const mainPhotos = PHOTO_KEYS.filter((key) =>
-    hasImportablePhoto(leak, key),
-  ).length;
-  const monitoringPhotos = Array.isArray(leak?.monitoringRecords)
-    ? leak.monitoringRecords.reduce(
-        (count, record) =>
-          count +
-          MONITORING_PHOTO_KEYS.filter((key) => hasImportablePhoto(record, key))
-            .length,
-        0,
-      )
-    : 0;
-
-  return mainPhotos + monitoringPhotos;
-}
-
-function getArchivePhotoMergeStats(current, incoming, applies) {
-  const stats = { added: 0, replaced: 0, reused: 0 };
-  const classify = (incomingPhoto, existingPhoto) => {
-    if (
-      typeof incomingPhoto !== "string" ||
-      (!incomingPhoto.startsWith("zip:") &&
-        !incomingPhoto.startsWith("data:image/"))
-    ) {
-      return;
-    }
-    if (!applies) {
-      if (existingPhoto) stats.reused += 1;
-      return;
-    }
-    if (existingPhoto) stats.replaced += 1;
-    else stats.added += 1;
+/**
+ * Снимки входящей утечки парами «что приезжает — что на этом месте сейчас».
+ *
+ * Обход идёт в том же порядке, что и `restorePhotos`: поля, записи обхода,
+ * лента. Лента стоит последней не случайно — событие осмотра ссылается на тот
+ * же файл, что и его запись обхода, и восстановление кладёт его на устройство
+ * один раз. Поэтому и здесь уже встреченный путь второй раз не считается.
+ * Без ленты архив, где снимки есть только у событий, выглядел в превью вовсе
+ * без фото.
+ */
+function collectArchivePhotoPairs(current, incoming) {
+  const pairs = [];
+  const seen = new Set();
+  const add = (incomingPhoto, existingPhoto) => {
+    if (!isImportablePhoto(incomingPhoto) || seen.has(incomingPhoto)) return;
+    seen.add(incomingPhoto);
+    pairs.push({ incomingPhoto, existingPhoto });
   };
 
   for (const key of PHOTO_KEYS) {
-    classify(incoming?.[key], current?.[key]);
+    add(incoming?.[key], current?.[key]);
   }
 
   const currentMonitoring = current?.monitoringRecords ?? [];
@@ -63,10 +51,41 @@ function getArchivePhotoMergeStats(current, incoming, applies) {
       (record?.id != null ? currentById.get(String(record.id)) : null) ??
       currentMonitoring[index];
     for (const key of MONITORING_PHOTO_KEYS) {
-      classify(record?.[key], existingRecord?.[key]);
+      add(record?.[key], existingRecord?.[key]);
     }
   }
 
+  // Событие опознаётся так же, как при самом слиянии, — по номеру, а у
+  // событий из старых архивов по типу и моменту. По позиции нельзя: лента
+  // сортируется по дате, и новое событие сдвигает все следующие.
+  const currentEvents = new Map(
+    (current?.events ?? []).map((event, index) => [
+      getRecordMergeIdentity(event, index, "events"),
+      event,
+    ]),
+  );
+  for (const [index, event] of (incoming?.events ?? []).entries()) {
+    const existingEvent = currentEvents.get(
+      getRecordMergeIdentity(event, index, "events"),
+    );
+    for (const key of EVENT_PHOTO_KEYS) {
+      add(event?.[key], existingEvent?.[key]);
+    }
+  }
+
+  return pairs;
+}
+
+function getArchivePhotoMergeStats(photoPairs, applies) {
+  const stats = { added: 0, replaced: 0, reused: 0 };
+  for (const { existingPhoto } of photoPairs) {
+    if (!applies) {
+      if (existingPhoto) stats.reused += 1;
+      continue;
+    }
+    if (existingPhoto) stats.replaced += 1;
+    else stats.added += 1;
+  }
   return stats;
 }
 
@@ -113,10 +132,11 @@ export function previewMergeLeaks(existing = [], incoming = [], options = {}) {
       }
     } else result.skipped += 1;
 
+    const photoPairs = collectArchivePhotoPairs(current, leak);
     if (applies) {
-      result.archivePhotos += countImportableArchivePhotos(leak);
+      result.archivePhotos += photoPairs.length;
     }
-    const photoStats = getArchivePhotoMergeStats(current, leak, applies);
+    const photoStats = getArchivePhotoMergeStats(photoPairs, applies);
     result.photoStats.added += photoStats.added;
     result.photoStats.replaced += photoStats.replaced;
     result.photoStats.reused += photoStats.reused;

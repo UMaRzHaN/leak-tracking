@@ -235,7 +235,12 @@ export function useBackupActions({
               ? { legacyStorageType: existing.legacyStorageType }
               : {}),
           });
-          const mergePreview = previewMergeLeaks(existingLeaks, peek.leaks);
+          // Тем же правилом, что и само объединение архива: иначе превью
+          // решает по свежести, а импорт — по версиям полей, и обещанное на
+          // экране расходится с тем, что произойдёт.
+          const mergePreview = previewMergeLeaks(existingLeaks, peek.leaks, {
+            source: "archive",
+          });
           // Реестр приезжает в том же архиве, и его судьбу решают той же
           // кнопкой. Молчать о нём — значит просить решение вслепую.
           const registryPreview = await previewArchiveComponents(

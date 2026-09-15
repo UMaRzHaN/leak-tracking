@@ -5,9 +5,11 @@ import {
   comparableExcelDate,
   findByRoundAndTime,
   isEmptyMergeValue,
+  keepDevicePhotos,
   sameMonitoringRound,
 } from "./mergeValues";
 import { matchHumanDate } from "@/utils/humanDate";
+import { MONITORING_PHOTO_FIELDS } from "@/utils/photoFields";
 
 /**
  * Записи, у которых слияние идёт по полям, а не заменой свежайшей целиком.
@@ -18,7 +20,7 @@ function mergesFieldByField(arrayKey) {
   return arrayKey === "monitoringRecords" || arrayKey === "events";
 }
 
-function getRecordMergeIdentity(record, index, arrayKey) {
+export function getRecordMergeIdentity(record, index, arrayKey) {
   if (arrayKey === "events") {
     // Номер обязателен для всех, кроме событий, восстановленных из архива
     // прежней сборки: у них его не было. Запасное опознание — по типу и
@@ -161,6 +163,7 @@ function mergeMixedMonitoringRecord(current, incoming) {
 }
 
 function mergeMonitoringRecord(current, incoming) {
+  incoming = keepDevicePhotos(current, incoming);
   const currentVersioned = recordHasFieldVersions(current);
   const incomingVersioned = recordHasFieldVersions(incoming);
   if (currentVersioned && incomingVersioned) {
@@ -189,11 +192,8 @@ function mergeMonitoringRecord(current, incoming) {
   // import/sync the incoming photo has already been restored into this device's
   // storage, so retain that valid restored path even when the logical record
   // timestamp is equal to the local record timestamp.
-  if (!isEmptyMergeValue(incoming?.photo)) {
-    next.photo = incoming.photo;
-  }
-  if (!isEmptyMergeValue(incoming?.previousPhoto)) {
-    next.previousPhoto = incoming.previousPhoto;
+  for (const key of MONITORING_PHOTO_FIELDS) {
+    if (!isEmptyMergeValue(incoming?.[key])) next[key] = incoming[key];
   }
 
   next.id = current?.id ?? incoming?.id;

@@ -2,6 +2,7 @@ import { LEAK_FIELD_VERSIONS_KEY } from "@/services/storage/leakFieldVersions";
 import { PHOTO_KEYS } from "./constants";
 import { parseTime } from "./projectMeta";
 import { matchHumanDate } from "@/utils/humanDate";
+import { MONITORING_PHOTO_FIELDS } from "@/utils/photoFields";
 
 export const MERGE_IGNORED_FIELD_KEYS = new Set([
   "id",
@@ -43,6 +44,31 @@ export function isEmptyMergeValue(value) {
     value === "" ||
     (Array.isArray(value) && value.length === 0)
   );
+}
+
+/**
+ * Ссылка `zip:` — это файл в ещё не прочитанном архиве, а не снимок.
+ *
+ * Импорт распаковывает фото до слияния, так что до записи обхода или события
+ * такая ссылка доходит только из превью. Там она не должна вытеснять снимок,
+ * который уже лежит на устройстве: иначе каждая запись с фото выглядит
+ * изменённой, хотя это тот же файл. Для полей самой утечки то же правило
+ * держит `mergePhotoFields`. Входящая запись не меняется — возвращается копия.
+ */
+export function keepDevicePhotos(current, incoming) {
+  let next = incoming;
+  for (const key of MONITORING_PHOTO_FIELDS) {
+    const devicePhoto = current?.[key];
+    if (
+      String(incoming?.[key] ?? "").startsWith("zip:") &&
+      typeof devicePhoto === "string" &&
+      devicePhoto.trim() !== "" &&
+      !devicePhoto.startsWith("zip:")
+    ) {
+      next = { ...next, [key]: devicePhoto };
+    }
+  }
+  return next;
 }
 
 function comparableMergeValue(value) {

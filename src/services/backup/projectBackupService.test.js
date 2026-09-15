@@ -1326,6 +1326,80 @@ describe("mergeLeaksByFreshness", () => {
     });
   });
 
+  it("counts event photos, and a file shared with its monitoring record once", () => {
+    const inspectionPhoto = "zip:photos/incoming/monitoring/record-1.jpg";
+    const result = previewMergeLeaks(
+      [],
+      [
+        {
+          id: "incoming",
+          monitoringRecords: [
+            {
+              id: "r-1",
+              date: "2026-09-15T09:19:41.657Z",
+              photo: inspectionPhoto,
+            },
+          ],
+          events: [
+            {
+              id: "e-repair",
+              type: "repair_started",
+              date: "2026-09-01T10:00:00.000Z",
+              photo: "zip:photos/incoming/events/event-1.jpg",
+            },
+            {
+              id: "r-1",
+              type: "inspection",
+              date: "2026-09-15T09:19:41.657Z",
+              photo: inspectionPhoto,
+            },
+          ],
+        },
+      ],
+    );
+
+    expect(result.archivePhotos).toBe(2);
+    expect(result.photoStats).toMatchObject({
+      added: 2,
+      replaced: 0,
+      reused: 0,
+    });
+  });
+
+  it("sees an already imported archive with event-only photos as unchanged", () => {
+    // Так выглядел архив «LDAR UNG Phase I»: снимки только у событий осмотра.
+    const inspection = (photo) => ({
+      id: "leak-1-1789463981657",
+      type: "inspection",
+      date: "2026-09-15T09:19:41.657Z",
+      result: "needs_recheck",
+      photo,
+    });
+    const local = {
+      id: "leak-1",
+      leak_id: "3778",
+      status: "in_progress",
+      updatedAt: 1697137200000,
+      _fieldUpdatedAt: { status: 83026234802437 },
+      events: [inspection("idb://photo_project_3778_event")],
+    };
+    const incoming = {
+      ...local,
+      events: [inspection("zip:photos/3778/events/event-2.jpg")],
+    };
+
+    const result = previewMergeLeaks([local], [incoming], {
+      source: "archive",
+    });
+
+    expect(result).toMatchObject({ updated: 0, skipped: 1, changedFields: 0 });
+    expect(result.photoStats).toMatchObject({
+      added: 0,
+      replaced: 0,
+      reused: 1,
+    });
+  });
+
   it("counts changed fields in merge preview", () => {
     const result = previewMergeLeaks(
       [

@@ -13,6 +13,50 @@ describe("project backup nested record merge", () => {
     expect(result[0]).toMatchObject({ id: "local", result: "resolved" });
   });
 
+  describe("снимок, уже лежащий на устройстве", () => {
+    const inspection = (photo) => ({
+      id: "leak-1-1789463981657",
+      type: "inspection",
+      date: "2026-09-15T09:19:41.657Z",
+      result: "needs_recheck",
+      photo,
+    });
+
+    it("не вытесняется ссылкой в ещё не прочитанный архив", () => {
+      const [merged] = mergeRecordArray(
+        [inspection("idb://photo_project_3778_event")],
+        [inspection("zip:photos/3778/events/event-2.jpg")],
+        "events",
+      );
+
+      expect(merged.photo).toBe("idb://photo_project_3778_event");
+    });
+
+    it("то же для записи обхода с версиями полей", () => {
+      const versioned = (photo, version) => ({
+        ...inspection(photo),
+        _fieldUpdatedAt: { photo: version },
+      });
+      const [merged] = mergeRecordArray(
+        [versioned("idb://photo_project_3778_monitoring", 1)],
+        [versioned("zip:photos/3778/monitoring/record-1.jpg", 2)],
+        "monitoringRecords",
+      );
+
+      expect(merged.photo).toBe("idb://photo_project_3778_monitoring");
+    });
+
+    it("уступает снимку, который импорт уже восстановил", () => {
+      const [merged] = mergeRecordArray(
+        [inspection("idb://photo_project_3778_old")],
+        [inspection("idb://photo_project_3778_restored")],
+        "events",
+      );
+
+      expect(merged.photo).toBe("idb://photo_project_3778_restored");
+    });
+  });
+
   it("uses a calendar-day fallback for date-only Excel rows", () => {
     const result = mergeRecordArray(
       [{ date: "2026-08-01T10:30:00", roundNumber: 1, result: "open" }],
