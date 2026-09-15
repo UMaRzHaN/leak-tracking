@@ -4,6 +4,7 @@ import { readProjectSyncStateAsync } from "@/services/sync/projectSyncState";
 import { allocateUniqueLeakArchiveSegments } from "@/services/archive/archivePaths";
 import { readMonitoringRound } from "@/utils/monitoringRound";
 import { assertImportFileSize, IMPORT_LIMITS } from "@/utils/importLimits";
+import { withPortablePhotoValues } from "@/utils/photoValues";
 import { RECOVERY_RECORDS_FILE } from "./constants";
 import { parseRecoveryValidation } from "./archiveParser";
 import {
@@ -68,7 +69,13 @@ export async function buildBackupZip(leaks, idbGet) {
   const JSZip = (await getJSZip()).default;
   const zip = new JSZip();
 
-  const exportedLeaks = await exportLeaksWithPhotos(leaks, zip, idbGet);
+  // Снимки приводятся до сборщика: порченое значение он потерял бы или склеил
+  // с чужим снимком — см. `withPortablePhotoValues`. Так же во всех выгрузках.
+  const exportedLeaks = await exportLeaksWithPhotos(
+    await withPortablePhotoValues(leaks),
+    zip,
+    idbGet,
+  );
   await yieldToMainThread();
   zip.file("backup.json", JSON.stringify(exportedLeaks, null, 2));
   await yieldToMainThread();
@@ -99,7 +106,7 @@ export async function streamProjectBackupZip({
     { prefix: "recovery", reservedSegments: leakSegments },
   );
   const exportedLeaks = await exportLeaksWithPhotosToStream(
-    leaks,
+    await withPortablePhotoValues(leaks),
     zip,
     idbGet,
     {
@@ -109,7 +116,7 @@ export async function streamProjectBackupZip({
   await zip.add("backup.json", JSON.stringify(exportedLeaks, null, 2));
   if (validatedRecovery.length) {
     const exportedRecovery = await exportLeaksWithPhotosToStream(
-      validatedRecovery,
+      await withPortablePhotoValues(validatedRecovery),
       zip,
       idbGet,
       {
@@ -157,14 +164,17 @@ export async function buildProjectBackupZip({
     validatedRecovery,
     { prefix: "recovery", reservedSegments: leakSegments },
   );
-  const exportedLeaks = await exportLeaksWithPhotos(leaks, zip, idbGet, {
-    leakSegments,
-  });
+  const exportedLeaks = await exportLeaksWithPhotos(
+    await withPortablePhotoValues(leaks),
+    zip,
+    idbGet,
+    { leakSegments },
+  );
   await yieldToMainThread();
   zip.file("backup.json", JSON.stringify(exportedLeaks, null, 2));
   if (validatedRecovery.length) {
     const exportedRecovery = await exportLeaksWithPhotos(
-      validatedRecovery,
+      await withPortablePhotoValues(validatedRecovery),
       zip,
       idbGet,
       {

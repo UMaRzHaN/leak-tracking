@@ -925,6 +925,59 @@ describe("excel export helpers", () => {
     expect(maxActive).toBeLessThanOrEqual(4);
     expect(mocks.getPhotoSrcMock).toHaveBeenCalledTimes(12);
   });
+  it("exports a record that holds something other than a photo path", async () => {
+    // Так выглядела запись после импорта Excel: у события вместо пути лежал
+    // сам Blob, а на телефоне после JSON — пустой объект. Книга падала целиком
+    // на `path.startsWith`.
+    const photoConversion = await import("@/utils/photoConversion");
+    vi.mocked(photoConversion.blobToDataUri).mockResolvedValueOnce(
+      "data:image/jpeg;base64,cm91bmQ=",
+    );
+
+    await exportToExcelFile(
+      [
+        {
+          id: "corrupt",
+          leak_id: "3830",
+          status: "in_progress",
+          events: [
+            {
+              id: "e-1",
+              type: "inspection",
+              date: "2026-09-15T13:38:10.260Z",
+              result: "needs_recheck",
+              photo: new Blob(["round"], { type: "image/jpeg" }),
+            },
+            {
+              id: "e-2",
+              type: "inspection",
+              date: "2026-09-16T09:00:00.000Z",
+              result: "needs_recheck",
+              photo: {},
+            },
+          ],
+        },
+      ],
+      [{ id: "corrupt", name: "Corrupt" }],
+      ["ID", "Name"],
+      ["id", "name"],
+      "report",
+      null,
+      null,
+      translate,
+    );
+
+    const photoFiles = mocks.zipInstances[0].file.mock.calls
+      .map(([name]) => name)
+      .filter((name) => name.startsWith("photos/"));
+    expect(photoFiles).toHaveLength(1);
+    const [leak] = readEmbeddedBackup(
+      mocks.workbookInstances[0].sheets.at(-1),
+    ).leaks;
+    expect(leak.events[0].photo).toBe(`zip:${photoFiles[0]}`);
+    expect(leak.events[1]).not.toHaveProperty("photo");
+  });
+
   it("keeps exportToExcelZip as a backwards-compatible alias", () => {
     expect(exportToExcelZip).toBe(excelModule.exportToExcelFile);
   });

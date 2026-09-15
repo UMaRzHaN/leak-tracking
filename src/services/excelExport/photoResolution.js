@@ -24,7 +24,12 @@ function yieldToMainThread() {
 }
 
 async function resolvePhotoSrc(path, idbGet) {
-  if (!path) return null;
+  // Путь — строка. Порченые значения приводятся ещё на входе выгрузки, а здесь
+  // им только не дают уронить всю книгу, если какое-то пройдёт мимо.
+  if (typeof path !== "string" || !path) return null;
+  // Снимок, который уже data URI, читать неоткуда. На телефоне `getPhotoSrc`
+  // разбирает только пути хранилища и такой снимок молча терял.
+  if (path.startsWith("data:image/")) return path;
 
   if (path.startsWith("idb://")) {
     const id = path.replace("idb://", "");

@@ -465,3 +465,41 @@ describe("importBackupZip", () => {
     expect(result.meta.project.name).toBe(UPSTREAM_PROJECT.name);
   });
 });
+
+describe("buildProjectBackupZip — порченые снимки", () => {
+  it("кладёт в архив Blob, оставшийся у события вместо пути, и снимает прочий мусор", async () => {
+    // Так выглядела запись после импорта Excel: у события вместо пути лежал
+    // сам Blob, а на телефоне после JSON — пустой объект. Архив приводил Blob
+    // к "[object Blob]" и терял снимок.
+    const blob = await buildProjectBackupZip({
+      leaks: [
+        makeLeak({
+          id: "with-blob",
+          deposit: "Тенгиз",
+          events: [
+            {
+              id: "e-1",
+              type: "inspection",
+              date: "2026-09-15T13:38:10.260Z",
+              photo: new Blob(["round"], { type: "image/jpeg" }),
+            },
+            {
+              id: "e-2",
+              type: "inspection",
+              date: "2026-09-16T09:00:00.000Z",
+              photo: {},
+            },
+          ],
+        }),
+      ],
+      idbGet: null,
+      project: UPSTREAM_PROJECT,
+      vars: null,
+    });
+
+    const peek = await peekBackupZip(blob);
+    const [first, second] = peek.leaks[0].events;
+    expect(first.photo).toMatch(/^zip:photos\/.+\/events\/event-1\.jpg$/);
+    expect(second).not.toHaveProperty("photo");
+  });
+});

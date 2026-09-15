@@ -4,6 +4,7 @@ const getJSZip = () => import("jszip");
 import { isNative } from "@/utils/platform";
 import { normalizeExcelMonitoringExportMode } from "@/utils/excelExportMode";
 import { resolvePhotoExportData } from "./excelPhotoData";
+import { withPortablePhotoValues } from "@/utils/photoValues";
 import { buildPortableLeaks } from "@/services/excelExport/portableLeaks";
 import { BACKUP_SCHEMA_VERSION } from "@/services/excelExport/backupSheet";
 import { buildExcelExportTexts } from "@/services/excelExport/exportTexts";
@@ -96,7 +97,13 @@ export async function exportToExcelFile(
   // which for anything added in the app is a random UUID. The `No` column comes
   // from the record rather than the row position, so those numbers came out
   // shuffled too.
-  const paired = rawLeaks.map((leak, index) => ({ leak, row: rows[index] }));
+  // Снимки приводятся до сборщиков: одно порченое значение в записи роняло всю
+  // книгу на `path.startsWith` — см. `withPortablePhotoValues`.
+  const portableLeaks = await withPortablePhotoValues(rawLeaks);
+  const paired = portableLeaks.map((leak, index) => ({
+    leak,
+    row: rows[index],
+  }));
 
   const orderedLeaks = paired.map((pair) => pair.leak);
   const orderedRows = paired.map(({ leak, row }) => ({
@@ -109,7 +116,7 @@ export async function exportToExcelFile(
   const photosStartedAt = performance.now();
   const photoReadCache = new Map();
   const backupLeaks = Array.isArray(options.backupLeaks)
-    ? options.backupLeaks
+    ? await withPortablePhotoValues(options.backupLeaks)
     : orderedLeaks;
   // photoEntries (each holding a full base64 photo) is the only heavy value
   // kept from this call; the larger intermediate arrays it was derived from
