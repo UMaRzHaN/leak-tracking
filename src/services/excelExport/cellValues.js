@@ -100,6 +100,44 @@ export function parseTimestamp(value) {
   return Number.isFinite(date.getTime()) ? date : null;
 }
 
+const ISO_CALENDAR_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Значение ячейки-даты: показания часов, уложенные в UTC-поля.
+ *
+ * ExcelJS переводит `Date` в серийный номер по UTC, и серийный номер — это
+ * то, что человек увидит в книге. Момент, записанный как есть, показывал день
+ * по Гринвичу: осмотр в 02:30 16 сентября по Ташкенту выходил в листе
+ * пятнадцатым числом, а при импорте склеивался со своим временем в момент на
+ * сутки раньше. Поэтому момент сначала читается по местным часам — тем же,
+ * что у колонки времени рядом, — и уже эти показания уходят в ячейку.
+ *
+ * Календарный день момента не переводится: «09.10.2026» и «2026-10-09» уже
+ * собраны через `Date.UTC`, и местные часы сдвинули бы их западнее Гринвича.
+ */
+export function toExcelDateValue(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (ISO_CALENDAR_DAY.test(text) || (text && matchHumanDate(text))) {
+    return parseTimestamp(
+      ISO_CALENDAR_DAY.test(text) ? `${text}T00:00:00.000Z` : text,
+    );
+  }
+
+  const moment = parseTimestamp(value);
+  if (!moment) return null;
+  return new Date(
+    Date.UTC(
+      moment.getFullYear(),
+      moment.getMonth(),
+      moment.getDate(),
+      moment.getHours(),
+      moment.getMinutes(),
+      moment.getSeconds(),
+      moment.getMilliseconds(),
+    ),
+  );
+}
+
 export function toExcelTimeValue(value) {
   if (value instanceof Date && Number.isFinite(value.getTime())) {
     return (
@@ -141,7 +179,7 @@ export function getExcelColumnFormat(key) {
 export function toExcelCellValue(key, value) {
   if (value == null || value === "") return "";
   if (DATE_KEYS.has(key)) {
-    return parseTimestamp(value) ?? normalizeExcelCellValue(value);
+    return toExcelDateValue(value) ?? normalizeExcelCellValue(value);
   }
   if (TIME_KEYS.has(key)) return toExcelTimeValue(value);
   if (

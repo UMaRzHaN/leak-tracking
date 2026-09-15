@@ -6,6 +6,7 @@ import {
   normalizeExcelCellValue,
   parseTimestamp,
   toExcelCellValue,
+  toExcelDateValue,
   toExcelTimeValue,
 } from "./cellValues";
 
@@ -45,6 +46,28 @@ describe("Excel export cell values", () => {
     expect(parseTimestamp("09,10,2026, 14:30").toISOString()).toBe(
       "2026-10-09T14:30:00.000Z",
     );
+  });
+
+  it("пишет в ячейку-дату показания местных часов, а день — как написан", () => {
+    // Осмотр в 02:30 по местным часам. По Гринвичу он приходится на
+    // предыдущие сутки восточнее и на те же — западнее; в ячейке обязан
+    // остаться день, который видел человек.
+    const moment = new Date(2026, 8, 16, 2, 30, 0);
+    const wallClock = "2026-09-16T02:30:00.000Z";
+    expect(toExcelDateValue(moment.toISOString()).toISOString()).toBe(
+      wallClock,
+    );
+    expect(toExcelDateValue(moment.getTime()).toISOString()).toBe(wallClock);
+    expect(toExcelDateValue(moment).toISOString()).toBe(wallClock);
+
+    expect(toExcelDateValue("2026-10-09").toISOString()).toBe(
+      "2026-10-09T00:00:00.000Z",
+    );
+    expect(toExcelDateValue("09.10.2026").toISOString()).toBe(
+      "2026-10-09T00:00:00.000Z",
+    );
+    expect(toExcelDateValue("")).toBeNull();
+    expect(toExcelDateValue("invalid")).toBeNull();
   });
 
   it("converts clock values to Excel day fractions", () => {

@@ -6,6 +6,10 @@ import { parseExcelLeaks } from "./excelImportParse";
 import { buildWorkbookBufferLocally } from "@/services/excelExport/buildWorkbookBuffer";
 import { BACKUP_SCHEMA_VERSION } from "@/services/excelExport/backupSheet";
 import { PROJECTS } from "@/configs/projects";
+import { formatLeakTime } from "@/services/excelExport/cellValues";
+import { prepareRows } from "@/pages/DataBase/hooks/useDataBaseExport";
+import { buildExcelExportTexts } from "@/services/excelExport/exportTexts";
+import { translateRu } from "@/test/translate";
 
 describe("mergeSheetEditsIntoBackup", () => {
   const backup = [
@@ -76,6 +80,47 @@ describe("mergeSheetEditsIntoBackup", () => {
     expect(merged.edited).toBe(0);
   });
 
+  it("не считает правкой то, что выгрузка посчитала сама", () => {
+    const createdAt = new Date(2026, 4, 1, 9, 30, 31).getTime();
+    const merged = mergeSheetEditsIntoBackup(
+      [
+        {
+          leak_id: "TAG-1",
+          date: "2026-05-01",
+          createdAt,
+          Total_Annual_Methane_Loss_m3_y: 1309.1083,
+          status: "in_progress",
+        },
+      ],
+      [
+        {
+          leak_id: "TAG-1",
+          date: "01.05.2026",
+          time: "09:30:31",
+          Total_Annual_Methane_Loss_m3_y: 1309.11,
+          // Из переменных проекта, и вернулось из доли: 0.937 * 100.
+          gasPercentage: 0.937 * 100,
+          // Выведены из ленты: поля записи с этими именами не читаются.
+          repairAt: "16.09.2026",
+          repairTime: "02:30:00",
+        },
+      ],
+      { vars: { gasPercentage: 93.7 } },
+    );
+
+    expect(merged.edited).toBe(0);
+  });
+
+  it("доносит правку расчётной колонки, расходящуюся с показанной", () => {
+    const merged = mergeSheetEditsIntoBackup(
+      [{ leak_id: "TAG-1", Total_Annual_Methane_Loss_m3_y: 1309.1083 }],
+      [{ leak_id: "TAG-1", Total_Annual_Methane_Loss_m3_y: 1500 }],
+    );
+
+    expect(merged.edited).toBe(1);
+    expect(merged.leaks[0].Total_Annual_Methane_Loss_m3_y).toBe(1500);
+  });
+
   it("дописанная в Excel строка становится новой утечкой", () => {
     const merged = mergeSheetEditsIntoBackup(backup, [
       { leak_id: "TAG-1", component: "Задвижка" },
@@ -133,7 +178,7 @@ describe("книга, вернувшаяся из Excel", () => {
       monitoringRecords: [],
     },
   ];
-  const { headers, keysOrder } = PROJECTS.downstream.export.excel;
+  const { keysOrder } = PROJECTS.downstream.export.excel;
   const texts = {
     sheets: { leaks: "Утечки", monitoring: "Мониторинг", history: "История" },
     backup: {
@@ -156,36 +201,124 @@ describe("книга, вернувшаяся из Excel", () => {
     history: {},
   };
 
-  /** Выгрузка настоящим сборщиком, правка в Excel и импорт обратно. */
-  async function roundTrip(edit) {
+  /**
+   * Выгрузка настоящим сборщиком, правка в Excel и импорт обратно.
+   *
+   * С `prepare` строки листа готовит та же `prepareRows`, что и экран базы: с
+   * округлением, временем и датами ремонта из ленты. Без неё круг не видел
+   * колонок, которые выгрузка считает сама.
+   */
+  async function roundTrip(
+    edit,
+    {
+      source = leaks,
+      type = "downstream",
+      vars = /** @type {Record<string, any>|null} */ (null),
+      prepare = false,
+      dropBackup = false,
+    } = {},
+  ) {
+    const { headers, keysOrder } = PROJECTS[type].export.excel;
+    const orderedRows = prepare
+      ? prepareRows(source, translateRu, vars ?? {}).map((row, index) => ({
+          ...row,
+          time: formatLeakTime(source[index], row),
+        }))
+      : source.map((leak) =>
+          Object.fromEntries(keysOrder.map((key) => [key, leak[key] ?? ""])),
+        );
     const buffer = await buildWorkbookBufferLocally({
-      orderedLeaks: leaks,
-      orderedRows: leaks.map((leak) =>
-        Object.fromEntries(keysOrder.map((key) => [key, leak[key] ?? ""])),
-      ),
+      orderedLeaks: source,
+      orderedRows,
       headers,
       keysOrder,
       photoMap: {},
-      texts,
+      texts: prepare ? buildExcelExportTexts(translateRu) : texts,
       monitoringExportMode: "all",
       archivePayload: {
         schemaVersion: BACKUP_SCHEMA_VERSION,
         exportedAt: new Date().toISOString(),
-        project: { name: "Проект", type: "downstream" },
-        leaks,
+        project: { name: "Проект", type },
+        vars,
+        leaks: source,
       },
     });
 
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(buffer);
     if (edit) edit(workbook.getWorksheet("Утечки"));
+    if (dropBackup) {
+      workbook.removeWorksheet(workbook.getWorksheet("Project Backup").id);
+    }
     const resaved = await workbook.xlsx.writeBuffer();
 
     return parseExcelLeaks(
       { arrayBuffer: async () => resaved },
-      { projectType: "downstream" },
+      { projectType: type },
     );
   }
+
+  // Осмотр в 02:30 по Ташкенту — по Гринвичу это ещё предыдущие сутки.
+  const NIGHT = "2026-09-15T21:30:00.000Z";
+  const computed = [
+    {
+      id: 21,
+      leak_id: "N-5",
+      index: 1,
+      component: "Кран",
+      status: "in_progress",
+      leak_speed: 2.5,
+      date: "2026-05-01",
+      createdAt: Date.parse("2026-05-01T04:30:31.000Z"),
+      updatedAt: Date.parse(NIGHT),
+      Total_Annual_Methane_Loss_m3_y: 1309.1083,
+      Emissions_t_CO2eq_year: 22.456789,
+      history: [],
+      monitoringRecords: [
+        {
+          id: "m1",
+          roundId: "r1",
+          roundNumber: 1,
+          date: NIGHT,
+          result: "needs_recheck",
+        },
+      ],
+      events: [
+        { id: "e0", type: "detected", date: "2026-05-01T04:30:31.000Z" },
+        { id: "i1", type: "inspection", date: NIGHT, result: "needs_recheck" },
+      ],
+    },
+  ];
+  const computedOptions = {
+    source: computed,
+    type: "upstream",
+    vars: { gasPercentage: 93.7 },
+    prepare: true,
+  };
+
+  it("проходит круг с колонками, которые считает выгрузка", async () => {
+    const result = await roundTrip(null, computedOptions);
+
+    expect(result.stats).toMatchObject({ sheetEdited: 0, exactBackup: true });
+    expect(result.leaks[0]).toEqual(computed[0]);
+  }, 60_000);
+
+  it("возвращает из колонок ночной осмотр тем же моментом", async () => {
+    const result = await roundTrip(null, {
+      ...computedOptions,
+      dropBackup: true,
+    });
+    const [leak] = result.leaks;
+    const dates = [
+      ...(leak.monitoringRecords ?? []).map((record) => record.date),
+      ...(leak.events ?? [])
+        .filter((event) => event.type === "inspection")
+        .map((event) => event.date),
+    ];
+
+    expect(dates.length).toBeGreaterThan(0);
+    expect(new Set(dates)).toEqual(new Set([NIGHT]));
+  }, 60_000);
 
   it("проходит нетронутой без единой мнимой правки", async () => {
     const result = await roundTrip(null);

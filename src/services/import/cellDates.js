@@ -109,13 +109,23 @@ export function formatMomentDate(date) {
   return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()}`;
 }
 
+/**
+ * Часы из ячейки.
+ *
+ * `Date` сюда приходит только из ExcelJS, а он кладёт показания часов книги в
+ * UTC-поля: ячейка «02:30» — это 30.12.1899 02:30 UTC. Местные геттеры
+ * добавляли к ним смещение пояса, да ещё того, что действовал в 1899 году: в
+ * Ташкенте это +4:37:11, и каждое время, прошедшее круг «выгрузил —
+ * импортировал», уезжало на четыре с лишним часа вперёд вместе с моментами
+ * обходов и событий.
+ */
 function parseTimeValue(value) {
   if (value == null || value === "") return null;
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return {
-      hours: value.getHours(),
-      minutes: value.getMinutes(),
-      seconds: value.getSeconds(),
+      hours: value.getUTCHours(),
+      minutes: value.getUTCMinutes(),
+      seconds: value.getUTCSeconds(),
     };
   }
   if (typeof value === "number" && Number.isFinite(value)) {

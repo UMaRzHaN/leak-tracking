@@ -1,5 +1,8 @@
 import { LEAK_PHOTO_FIELDS } from "@/utils/photoFields";
 import { normalizeLeakTag } from "@/utils/leakIdentity";
+import { toExcelDateValue } from "@/services/excelExport/cellValues";
+import { getLeakSheetValue } from "@/services/excelExport/leakSheetValues";
+import { formatDate, parseDateValue } from "./cellDates";
 
 /**
  * Правки, сделанные в Excel, поверх служебной копии проекта.
@@ -33,10 +36,24 @@ import { normalizeLeakTag } from "@/utils/leakIdentity";
  * открытой. Теперь правки берутся из строки листа, и перечислять там нечего:
  * этих полей в ней просто нет.
  */
-const IGNORED_KEYS = new Set([...LEAK_PHOTO_FIELDS, "index"]);
+const IGNORED_KEYS = new Set([
+  ...LEAK_PHOTO_FIELDS,
+  "index",
+  // Даты и время ремонта и устранения выводятся из ленты событий по статусу.
+  // Поля записи с таким именем приложение не читает, так что правка в ячейке
+  // ничего бы не изменила, а нетронутая книга оставляла в каждой починенной
+  // утечке день без часов и строку «Sat Dec 30 1899 …» вместо времени.
+  "repairAt",
+  "repairTime",
+  "resolvedAt",
+  "resolvedTime",
+]);
 
 /** Поля, которые считаются сами и идут следом за своим источником. */
 const DERIVED_KEYS = new Map([["priority", "leak_speed"]]);
+
+/** Колонки календарного дня: в слепке и в книге день записан по-разному. */
+const CALENDAR_KEYS = new Set(["date"]);
 
 function isBlank(value) {
   return value == null || (typeof value === "string" && value.trim() === "");
@@ -47,14 +64,36 @@ function canonical(value) {
   return String(value).trim();
 }
 
-function sameValue(left, right) {
+/** День так, как его показала выгрузка и как его прочитал импорт. */
+function calendarDay(value, { exported = false } = {}) {
+  const date = exported
+    ? toExcelDateValue(value)
+    : parseDateValue(value, { calendarOnly: true });
+  return date ? formatDate(date) : null;
+}
+
+/**
+ * Числа сравниваются с допуском: процент уходит в книгу долей и
+ * возвращается умноженным на сто, а 7 / 100 * 100 — это 7.000000000000001.
+ */
+function sameNumber(left, right) {
+  const scale = Math.max(1, Math.abs(left), Math.abs(right));
+  return Math.abs(left - right) <= 1e-9 * scale;
+}
+
+function sameValue(left, right, key = "") {
   if (isBlank(left) && isBlank(right)) return true;
   if (isBlank(left) || isBlank(right)) return false;
+
+  if (CALENDAR_KEYS.has(key)) {
+    const leftDay = calendarDay(left, { exported: true });
+    if (leftDay && leftDay === calendarDay(right)) return true;
+  }
 
   const leftNumber = Number(left);
   const rightNumber = Number(right);
   if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
-    return leftNumber === rightNumber;
+    return sameNumber(leftNumber, rightNumber);
   }
 
   const leftText = canonical(left);
@@ -71,9 +110,10 @@ function sameValue(left, right) {
 /**
  * @param {Record<string, any>} base карточка из служебного листа
  * @param {Record<string, any>} row строка видимого листа
+ * @param {Record<string, any>|null} vars переменные проекта из слепка
  * @returns {{leak: Record<string, any>, changed: string[]}}
  */
-function applyRowEdits(base, row) {
+function applyRowEdits(base, row, vars) {
   const changed = [];
   const leak = { ...base };
 
@@ -83,7 +123,10 @@ function applyRowEdits(base, row) {
     // знает приложение»: в таблице нет всех полей карточки, и вычищать по ней
     // означало бы терять данные при каждом круге.
     if (isBlank(value)) continue;
-    if (sameValue(base[key], value)) continue;
+    // Сравнивается с тем, что выгрузка показала для записи, а не с сырым
+    // полем: округлённая величина расчёта или время, взятое из момента
+    // создания, иначе сходили бы за правку.
+    if (sameValue(getLeakSheetValue(key, base, vars), value, key)) continue;
     leak[key] = value;
     changed.push(key);
   }
@@ -112,7 +155,10 @@ function applyRowEdits(base, row) {
 export function mergeSheetEditsIntoBackup(
   backupLeaks,
   sheetLeaks,
-  { sheetRows = /** @type {any[]|null} */ (null) } = {},
+  {
+    sheetRows = /** @type {any[]|null} */ (null),
+    vars = /** @type {Record<string, any>|null} */ (null),
+  } = {},
 ) {
   const leaks = Array.isArray(backupLeaks) ? [...backupLeaks] : [];
   const rows = Array.isArray(sheetLeaks) ? sheetLeaks : [];
@@ -142,7 +188,7 @@ export function mergeSheetEditsIntoBackup(
     // Строка листа, если её дали. Без неё правки берутся из самой утечки —
     // так зовут этот модуль тесты и так он работал раньше.
     const edits = sheetRows?.[rowIndex] ?? row;
-    const { leak, changed } = applyRowEdits(leaks[index], edits);
+    const { leak, changed } = applyRowEdits(leaks[index], edits, vars);
     if (changed.length === 0) continue;
     leaks[index] = leak;
     edited += 1;

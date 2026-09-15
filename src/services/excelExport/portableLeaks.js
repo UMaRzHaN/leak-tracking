@@ -21,7 +21,11 @@ export function buildPortableLeaks(leaks, photoMap) {
     const copy = { ...leak };
     for (const key of PHOTO_KEYS) {
       const photoFileName = photoMap[`${leakIndex}:${key}`];
-      if (photoFileName) {
+      // Колонки ремонта и устранения выводятся из ленты, и файл у них бывает и
+      // там, где своего поля у записи нет. Дописать его в копию значило бы
+      // закрепить снимок: поле записи для карточки важнее снимка осмотра, и
+      // следующий осмотр после круга через Excel в слоте уже не появлялся.
+      if (photoFileName && leak?.[key] != null) {
         copy[key] = `zip:${photoFileName}`;
       } else if (
         copy[key] != null &&

@@ -10,15 +10,9 @@ import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { readProjectSettings } from "@/app/project/projectSettings";
 import { readMonitoringRound } from "@/utils/monitoringRound";
 import { readProjectSyncStateAsync } from "@/services/sync/projectSyncState";
-import { buildLeakCalculationParams } from "@/utils/calculationParams";
 import { formatTimeOfDay } from "@/services/excelExport/cellValues";
+import { getLeakSheetValue } from "@/services/excelExport/leakSheetValues";
 import { getStatusRepairMilestones } from "@/domain/leakEvents";
-
-function round2(value) {
-  return value != null && Number.isFinite(Number(value))
-    ? Math.round(Number(value) * 100) / 100
-    : value;
-}
 
 // Timestamps leave here raw — as numbers, not as text. They used to be run
 // through Intl first and parsed back into dates by the Excel layer, and that
@@ -36,13 +30,14 @@ export function prepareRows(data, t, projectVars = {}) {
     const hasPhoto = (path) => (path ? t("database.export.hasPhoto") : "");
     return {
       ...row,
-      gasPercentage: buildLeakCalculationParams(row, projectVars).gasPercentage,
+      gasPercentage: getLeakSheetValue("gasPercentage", row, projectVars),
       status: getStatusLabel(row.status ?? STATUS.OPEN, t),
       date: row.date ?? (row.created_at ? Number(row.created_at) : ""),
-      Total_Annual_Methane_Loss_m3_y: round2(
-        row.Total_Annual_Methane_Loss_m3_y,
+      Total_Annual_Methane_Loss_m3_y: getLeakSheetValue(
+        "Total_Annual_Methane_Loss_m3_y",
+        row,
       ),
-      Emissions_t_CO2eq_year: round2(row.Emissions_t_CO2eq_year),
+      Emissions_t_CO2eq_year: getLeakSheetValue("Emissions_t_CO2eq_year", row),
       photo: hasPhoto(row.photo),
       photo_after: hasPhoto(milestones.resolvedPhoto),
       photo_repair: hasPhoto(milestones.repairPhoto),

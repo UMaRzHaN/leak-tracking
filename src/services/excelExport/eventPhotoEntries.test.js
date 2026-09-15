@@ -89,7 +89,9 @@ describe("снимки ленты в книге", () => {
     );
     // Нынешний ссылается на файл колонки, а не на вторую копию.
     expect(portable.events[2].photo).toBe("zip:photos/leak-1/repair.jpg");
-    expect(portable.photo_repair).toBe("zip:photos/leak-1/repair.jpg");
+    // Своего поля у записи нет — копия его и не заводит: колонка выведена из
+    // ленты, а поле перекрыло бы для карточки следующий осмотр.
+    expect(portable).not.toHaveProperty("photo_repair");
   });
 
   it("снимает путь устройства у снимка, не попавшего в книгу", () => {

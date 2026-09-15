@@ -8,6 +8,21 @@ function excelTimeValue(value) {
   );
 }
 
+/** Ячейка-дата держит показания местных часов в UTC-полях. */
+function excelDateValue(value) {
+  const date = new Date(value);
+  return new Date(
+    Date.UTC(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      date.getHours(),
+      date.getMinutes(),
+      date.getSeconds(),
+    ),
+  );
+}
+
 function readEmbeddedBackup(sheet) {
   const serialized = sheet.rows
     .filter((row) => Number.isInteger(row.values[0]))
@@ -709,7 +724,7 @@ describe("excel export helpers", () => {
     expect(monitoringSheet.rows).toHaveLength(3);
     expect(monitoringSheet.rows[0].values).toContain("Monitoring time");
     expect(monitoringSheet.rows[1].values[3]).toEqual(
-      new Date("2026-07-14T10:00:00.000Z"),
+      excelDateValue("2026-07-14T10:00:00.000Z"),
     );
     expect(monitoringSheet.rows[1].values[4]).toBe(
       excelTimeValue("2026-07-14T10:00:00.000Z"),
@@ -778,7 +793,7 @@ describe("excel export helpers", () => {
     expect(historySheet.rows[1].values).toEqual([
       1,
       "TAG-9",
-      historyDate,
+      excelDateValue(historyDate),
       expectedTime,
       "edited",
       "Inspector",

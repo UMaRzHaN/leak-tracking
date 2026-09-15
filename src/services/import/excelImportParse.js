@@ -104,7 +104,7 @@ export async function parseExcelLeaks(
     const merged = mergeSheetEditsIntoBackup(
       embeddedBackup.leaks,
       sheet.leaks,
-      { sheetRows: sheet.sheetRows },
+      { sheetRows: sheet.sheetRows, vars: embeddedBackup.vars ?? null },
     );
 
     return {

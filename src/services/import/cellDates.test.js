@@ -48,6 +48,24 @@ describe("Excel cell date values", () => {
     expect(formatTime("25:00")).toBe("");
   });
 
+  it("читает время из ячейки ExcelJS по её показаниям, а не по поясу", () => {
+    // ExcelJS отдаёт ячейку «02:30» как 30.12.1899 02:30 UTC. Местные геттеры
+    // прибавляли к ней смещение пояса 1899 года — в Ташкенте +4:37:11.
+    const cellTime = new Date(Date.UTC(1899, 11, 30, 2, 30, 0));
+    expect(formatTime(cellTime)).toBe("02:30:00");
+
+    // Ячейка-дата ночного осмотра и ячейка-время рядом дают тот же момент.
+    const day = parseDateValue(new Date(Date.UTC(2026, 8, 16, 2, 30)), {
+      calendarOnly: true,
+    });
+    const combined = combineDateAndTime(day, cellTime);
+    expect([
+      combined.getDate(),
+      combined.getHours(),
+      combined.getMinutes(),
+    ]).toEqual([16, 2, 30]);
+  });
+
   it("combines time without mutating the supplied date", () => {
     const date = parseDateValue("01.08.2026");
     const combined = combineDateAndTime(date, "14:30:15");
