@@ -13,6 +13,15 @@ describe("redactDiagnosticValue", () => {
     expect(value).toContain("[redacted-coordinates]");
     expect(value).not.toContain("41.311111");
   });
+
+  it("keeps the component stack of a caught render error", () => {
+    const value = redactDiagnosticValue({
+      componentStack: "\n    at LeakRepairSection\n    at ViewBlock",
+    });
+
+    expect(value).toMatchObject({ type: "object", keys: ["componentStack"] });
+    expect(value.componentStack).toContain("at LeakRepairSection");
+  });
 });
 
 describe("appendDiagnostic", () => {

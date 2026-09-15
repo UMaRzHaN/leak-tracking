@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { isNative } from "@/utils/platform";
 import { getPhotoSrc } from "./photoService";
 import { useIndexedDB } from "./useIndexedDB";
+import { logger } from "@/utils/logger";
 
 export function usePhotoSrc(path, version = 0) {
   const [src, setSrc] = useState(/** @type {string|null} */ (null));
@@ -21,6 +22,25 @@ export function usePhotoSrc(path, version = 0) {
 
     if (!path) {
       setSrc(null);
+      return cleanup;
+    }
+
+    // Путь к снимку — строка. Не строка приходит только из испорченной записи:
+    // импорт Excel оставлял у событий сам Blob вместо пути, а на телефоне Blob
+    // в JSON становится `{}`. Одна такая запись роняла весь экран на
+    // `path.startsWith`. Blob ещё можно показать, остальное — нет; оба случая
+    // уходят в диагностику, иначе порча в данных осталась бы незамеченной.
+    if (typeof path !== "string") {
+      logger.warn(
+        "[usePhotoSrc] photo path is not a string",
+        Object.prototype.toString.call(path),
+      );
+      if (path instanceof Blob) {
+        blobUrl = URL.createObjectURL(path);
+        setSrc(blobUrl);
+      } else {
+        setSrc(null);
+      }
       return cleanup;
     }
 

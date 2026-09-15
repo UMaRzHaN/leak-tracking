@@ -1,5 +1,6 @@
 import { mapWithConcurrency } from "@/services/backup/runtime";
 import {
+  EVENT_PHOTO_FIELDS,
   LEAK_PHOTO_FIELDS,
   MONITORING_PHOTO_FIELDS,
 } from "@/utils/photoFields";
@@ -46,6 +47,46 @@ async function persistLeakPhotos(
   const copy = { ...leak };
   const baseKey = String(leak.leak_id ?? leak.id);
   const savedPaths = [];
+  // Один снимок — один файл. Разбор архива отдаёт общий снимок одним и тем же
+  // Blob, а осмотр ссылается на тот же файл, что и его запись обхода; второе
+  // сохранение развело бы их по разным копиям. Так же поступает и
+  // восстановление архива-бэкапа.
+  const persistedByValue = new Map();
+
+  const persist = async (value, storageKey) => {
+    const known = persistedByValue.get(value);
+    if (known) return known;
+    const result = await persistPhotoValue(
+      value,
+      savePhoto,
+      storageKey,
+      [...savedPaths],
+      fingerprintCache,
+    );
+    if (result?.created) createdPaths.push(result.path);
+    const path = result?.path ?? result;
+    if (path && path !== value) {
+      savedPaths.push(path);
+      persistedByValue.set(value, path);
+    }
+    return path;
+  };
+
+  const persistRecords = async (records, kind, fields) => {
+    const persisted = [];
+    for (const [index, record] of records.entries()) {
+      const recordCopy = { ...record };
+      for (const field of fields) {
+        const suffix = field === "photo" ? "" : `_${field}`;
+        recordCopy[field] = await persist(
+          record?.[field],
+          `${baseKey}_${kind}_${record?.id ?? index + 1}${suffix}`,
+        );
+      }
+      persisted.push(recordCopy);
+    }
+    return persisted;
+  };
 
   for (const key of PHOTO_KEYS) {
     const suffix =
@@ -54,39 +95,26 @@ async function persistLeakPhotos(
         : key === "photo_repair"
           ? "_repair"
           : "";
-    const result = await persistPhotoValue(
-      copy[key],
-      savePhoto,
-      `${baseKey}${suffix}`,
-      [...savedPaths],
-      fingerprintCache,
-    );
-    copy[key] = result?.path ?? result;
-    if (result?.created) createdPaths.push(result.path);
-    if (copy[key] && copy[key] !== leak[key]) savedPaths.push(copy[key]);
+    copy[key] = await persist(leak[key], `${baseKey}${suffix}`);
   }
 
   if (Array.isArray(copy.monitoringRecords)) {
-    copy.monitoringRecords = [];
-    for (const [index, record] of leak.monitoringRecords.entries()) {
-      const recordCopy = { ...record };
-      for (const field of MONITORING_PHOTO_FIELDS) {
-        const suffix = field === "photo" ? "" : `_${field}`;
-        const result = await persistPhotoValue(
-          record?.[field],
-          savePhoto,
-          `${baseKey}_monitoring_${record.id ?? index + 1}${suffix}`,
-          [...savedPaths],
-          fingerprintCache,
-        );
-        if (result?.created) createdPaths.push(result.path);
-        recordCopy[field] = result?.path ?? result;
-        if (recordCopy[field] && recordCopy[field] !== record?.[field]) {
-          savedPaths.push(recordCopy[field]);
-        }
-      }
-      copy.monitoringRecords.push(recordCopy);
-    }
+    copy.monitoringRecords = await persistRecords(
+      leak.monitoringRecords,
+      "monitoring",
+      MONITORING_PHOTO_FIELDS,
+    );
+  }
+
+  // Лента наравне с записями обхода. Без этого прохода снимок события
+  // оставался самим Blob: запись сохранялась с ним вместо пути, и экран падал
+  // на `path.startsWith`, а на телефоне Blob в JSON превращался в `{}`.
+  if (Array.isArray(copy.events)) {
+    copy.events = await persistRecords(
+      leak.events,
+      "event",
+      EVENT_PHOTO_FIELDS,
+    );
   }
 
   return copy;

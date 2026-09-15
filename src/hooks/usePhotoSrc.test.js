@@ -110,4 +110,19 @@ describe("usePhotoSrc", () => {
     rerender({ path: "data://LeakReports/missing.jpg" });
     await waitFor(() => expect(result.current).toBeNull());
   });
+
+  it("survives a record that holds something other than a path", () => {
+    // Так выглядела запись после импорта Excel: у события вместо пути лежал
+    // сам Blob, а на телефоне после JSON — пустой объект.
+    const blob = new Blob(["photo"], { type: "image/jpeg" });
+    const { result, rerender } = renderHook(({ path }) => usePhotoSrc(path), {
+      initialProps: { path: /** @type {any} */ (blob) },
+    });
+
+    expect(result.current).toBe("blob:photo-preview");
+
+    rerender({ path: {} });
+    expect(result.current).toBeNull();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:photo-preview");
+  });
 });

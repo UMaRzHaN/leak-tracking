@@ -39,7 +39,22 @@ export function redactDiagnosticValue(value) {
   }
   if (Array.isArray(value)) return `[array:${value.length}]`;
   if (typeof value === "object") {
-    return { type: "object", keys: Object.keys(value).slice(0, 20) };
+    // Второй аргумент ErrorBoundary — `{ componentStack }`, и только он говорит,
+    // какой компонент упал. От одних имён ключей в выгрузке оставалось слово
+    // `componentStack` без самого стека.
+    const componentStack =
+      typeof value.componentStack === "string"
+        ? {
+            componentStack: redactText(
+              value.componentStack.trim().split("\n").slice(0, 8).join("\n"),
+            ),
+          }
+        : {};
+    return {
+      type: "object",
+      keys: Object.keys(value).slice(0, 20),
+      ...componentStack,
+    };
   }
   return `[${typeof value}]`;
 }

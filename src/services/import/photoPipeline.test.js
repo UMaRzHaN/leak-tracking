@@ -501,6 +501,50 @@ describe("photo pipeline edge cases", () => {
   });
 });
 
+describe("persistExcelImportPhotos event photos", () => {
+  it("stores event photos and reuses a file shared with the monitoring record", async () => {
+    // Импорт Excel оставлял снимок события самим Blob: запись сохранялась с ним
+    // вместо пути, и экран падал на `path.startsWith`.
+    const round = new Blob(["round"], { type: "image/jpeg" });
+    const repair = new Blob(["repair"], { type: "image/jpeg" });
+    const savePhoto = vi.fn(async (_blob, key) => ({
+      path: `idb://photo_p_${key}`,
+      created: true,
+    }));
+
+    const {
+      leaks: [leak],
+      createdPaths,
+    } = await persistExcelImportPhotos(
+      [
+        {
+          leak_id: "3830",
+          monitoringRecords: [{ id: "r-1", photo: round }],
+          events: [
+            { id: "e-repair", type: "repair_started", photo: repair },
+            { id: "r-1", type: "inspection", photo: round },
+          ],
+        },
+      ],
+      savePhoto,
+      { returnTransaction: true },
+    );
+
+    expect(leak.monitoringRecords[0].photo).toBe(
+      "idb://photo_p_3830_monitoring_r-1",
+    );
+    expect(leak.events.map((event) => event.photo)).toEqual([
+      "idb://photo_p_3830_event_e-repair",
+      "idb://photo_p_3830_monitoring_r-1",
+    ]);
+    expect(savePhoto).toHaveBeenCalledTimes(2);
+    expect(createdPaths).toEqual([
+      "idb://photo_p_3830_monitoring_r-1",
+      "idb://photo_p_3830_event_e-repair",
+    ]);
+  });
+});
+
 describe("reconcileExcelImportPhotos device-stored slots", () => {
   const devicePath = (hash) =>
     `data://LeakReports/site/photos/photo_TAG-1_h_${hash}.jpg`;
