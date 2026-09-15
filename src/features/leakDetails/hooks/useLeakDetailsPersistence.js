@@ -2,10 +2,8 @@ import { useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { isPinkBagEquipment } from "@/utils/calculations/calculations";
 import {
-  LEAK_EVENT_TYPES,
-  getRepairDonePhoto,
-  getRepairPhoto,
-  withReplacedRepairPhoto,
+  getStatusRepairMilestones,
+  withEditedRepairPhotos,
 } from "@/domain/leakEvents";
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import {
@@ -31,29 +29,6 @@ import {
 import { ignoredError } from "@/utils/ignoredError";
 import { fromEntries } from "@/utils/fromEntries";
 import { useLeakRepairConfirm } from "./useLeakRepairConfirm";
-
-/**
- * Куда лечь заменённым снимкам починки.
- *
- * Возвращает либо новую ленту, либо вехи — смотря есть ли событие, которому
- * снимок принадлежит.
- */
-function repairPhotoPatch(leak, photoRepairPath, photoAfterPath) {
-  let events = /** @type {any[]|null} */ (null);
-  const patch = {};
-
-  for (const [path, type, field] of [
-    [photoRepairPath, LEAK_EVENT_TYPES.REPAIR_STARTED, "photo_repair"],
-    [photoAfterPath, LEAK_EVENT_TYPES.REPAIR_DONE, "photo_after"],
-  ]) {
-    if (!path) continue;
-    const next = withReplacedRepairPhoto({ ...leak, events }, type, path);
-    if (next) events = next;
-    else patch[field] = path;
-  }
-
-  return events ? { ...patch, events } : patch;
-}
 
 export function useLeakDetailsPersistence({
   leak,
@@ -125,6 +100,7 @@ export function useLeakDetailsPersistence({
 
     setSaving(true);
     setNotification(null);
+    const { repairPhoto, resolvedPhoto } = getStatusRepairMilestones(leak);
     let photoPath;
     let photoAfterPath;
     let photoRepairPath;
@@ -168,7 +144,10 @@ export function useLeakDetailsPersistence({
         // того, который уже был: меняется событие, а не поле записи. У записи
         // без события — заведённой до ленты или устранённой обходом — менять
         // нечего, и снимок остаётся там, где у неё и лежал.
-        ...repairPhotoPatch(leak, photoRepairPath, photoAfterPath),
+        ...withEditedRepairPhotos(leak, {
+          repairPhoto: photoRepairPath,
+          afterPhoto: photoAfterPath,
+        }),
         calculationParams: localCalcParams,
         calculationVersion: CALCULATION_PARAMS_VERSION,
         updatedAt: Date.now(),
@@ -216,8 +195,8 @@ export function useLeakDetailsPersistence({
         referenceLeaks: replaceLeakInCollection(allLeaks, withPriority),
         replacements: [
           [isPhotoDirty, leak.photo, photoPath],
-          [isAfterDirty, getRepairDonePhoto(leak), photoAfterPath],
-          [isRepairDirty, getRepairPhoto(leak), photoRepairPath],
+          [isAfterDirty, resolvedPhoto, photoAfterPath],
+          [isRepairDirty, repairPhoto, photoRepairPath],
         ],
         deletePhoto,
       });
@@ -227,8 +206,8 @@ export function useLeakDetailsPersistence({
         referenceLeaks: allLeaks,
         replacements: [
           [isPhotoDirty, leak.photo, photoPath],
-          [isAfterDirty, getRepairDonePhoto(leak), photoAfterPath],
-          [isRepairDirty, getRepairPhoto(leak), photoRepairPath],
+          [isAfterDirty, resolvedPhoto, photoAfterPath],
+          [isRepairDirty, repairPhoto, photoRepairPath],
         ],
         deletePhoto,
       });

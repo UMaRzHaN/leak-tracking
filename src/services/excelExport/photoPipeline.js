@@ -29,6 +29,7 @@ export async function buildLeakPhotoEntries(
   idbGet,
   photoReadCache,
   archiveRoot = "photos",
+  takenSourcePaths = /** @type {Set<any>} */ (new Set()),
 ) {
   const candidates = [];
 
@@ -36,6 +37,9 @@ export async function buildLeakPhotoEntries(
     for (const key of PHOTO_KEYS) {
       const path = getLeakPhotoPath(leak, key);
       if (!path) continue;
+      // Файл уже заведён сборщиком обходов — колонке хватит ключа, см.
+      // `collectLeakPhotoAliases`.
+      if (takenSourcePaths.has(path)) continue;
 
       const leakSegment = leakSegments[leakIndex];
       candidates.push({
@@ -57,6 +61,31 @@ export async function buildLeakPhotoEntries(
   }
 
   return resolvePhotoCandidates(candidates, idbGet, photoReadCache);
+}
+
+/**
+ * Ключи колонок снимков, чей файл уже завёл сборщик обходов.
+ *
+ * Запись, которую в ремонт или из него вывел осмотр, показывает в колонке
+ * снимок этого осмотра — тот же файл, что стоит у строки листа обходов.
+ * Вторая копия раздувала архив почти вдвое: у проекта с семью десятками
+ * осмотров — на три десятка мегабайт. Колонке нужен только ключ; путь к файлу
+ * подставляется позже, как у ссылок ленты.
+ *
+ * @param {any[]} orderedLeaks
+ * @param {Set<any>} takenSourcePaths
+ */
+export function collectLeakPhotoAliases(orderedLeaks, takenSourcePaths) {
+  const aliases = [];
+  for (const [leakIndex, leak] of orderedLeaks.entries()) {
+    for (const key of PHOTO_KEYS) {
+      const path = getLeakPhotoPath(leak, key);
+      if (path && takenSourcePaths.has(path)) {
+        aliases.push({ mapKey: `${leakIndex}:${key}`, sourcePath: path });
+      }
+    }
+  }
+  return aliases;
 }
 
 export async function buildMonitoringPhotoEntries(

@@ -1,4 +1,4 @@
-import { getRepairDonePhoto, getRepairPhoto } from "@/domain/leakEvents";
+import { getStatusRepairMilestones } from "@/domain/leakEvents";
 
 /**
  * Опознаватели снимков и ключи, под которыми они лежат в карте книги.
@@ -80,12 +80,17 @@ export function getEventPhotoMapKey(leakIndex, eventIndex, photoKey) {
  * Путь снимка утечки для колонки книги.
  *
  * Поля `photo_repair` и `photo_after` перестали писаться: починка живёт в
- * ленте. Колонки «Фото в ремонте» и «Фото после ремонта» остаются, и путь для
- * них спрашивается там же, где его теперь спрашивает карточка, — иначе книга
- * обещала бы снимок и отправляла к файлу, которого в ней нет.
+ * ленте. Колонки «Фото в ремонте» и «Фото после ремонта» остаются и
+ * заполняются по статусу — там же, где путь спрашивает карточка: снимок
+ * перехода в ремонт у записи в ремонте или устранённой, снимок устранения —
+ * у устранённой. Переход делает и осмотр, и тогда в колонке его снимок.
  */
 export function getLeakPhotoPath(leak, key) {
-  if (key === "photo_repair") return getRepairPhoto(leak);
-  if (key === "photo_after") return getRepairDonePhoto(leak);
+  if (key === "photo_repair") {
+    return getStatusRepairMilestones(leak).repairPhoto;
+  }
+  if (key === "photo_after") {
+    return getStatusRepairMilestones(leak).resolvedPhoto;
+  }
   return leak?.[key] ?? null;
 }

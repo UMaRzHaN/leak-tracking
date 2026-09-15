@@ -127,10 +127,14 @@ describe("useEditablePhoto", () => {
     });
     await act(async () => result.current.savePhoto());
 
-    expect(mocks.savePhoto).toHaveBeenCalledWith(raw, "leak-1", [
-      "idb://old",
-      "idb://after",
-    ]);
+    // Прежние версии ключа не метутся: у снимков ремонта ключ один на все
+    // починки, и уборка стирала снимок прежнего ремонта из ленты.
+    expect(mocks.savePhoto).toHaveBeenCalledWith(
+      raw,
+      "leak-1",
+      ["idb://old", "idb://after"],
+      { cleanupOldVersions: false },
+    );
   });
 
   it("rejects a failed photo write and keeps the draft dirty", async () => {

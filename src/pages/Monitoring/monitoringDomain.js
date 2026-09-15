@@ -228,7 +228,11 @@ export function buildMonitoringPatch({
           ...(nextStatus === STATUS.OPEN
             ? { photo: photoPath ?? leak.photo }
             : {}),
-          ...(nextStatus === STATUS.IN_PROGRESS ? { repairAt: null } : {}),
+          // Снимок ремонта гасится вместе с датой: поле держит только снимок,
+          // поправленный в карточке, и после нового перехода он был бы чужим.
+          ...(nextStatus === STATUS.IN_PROGRESS
+            ? { repairAt: null, photo_repair: null }
+            : {}),
         };
   const nextLeakForChanges = {
     ...leak,

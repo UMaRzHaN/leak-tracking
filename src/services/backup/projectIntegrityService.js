@@ -8,8 +8,15 @@ import {
   EVENT_PHOTO_FIELDS,
   MONITORING_PHOTO_FIELDS,
 } from "@/utils/photoFields";
-import { getMonitoringRecords } from "@/utils/monitoring";
-import { LEAK_EVENT_TYPES, getLeakEvents } from "@/domain/leakEvents";
+import {
+  getLastMonitoringRecord,
+  getMonitoringRecords,
+} from "@/utils/monitoring";
+import {
+  LEAK_EVENT_TYPES,
+  getLeakEvents,
+  getStatusRepairMilestones,
+} from "@/domain/leakEvents";
 
 /**
  * Снимки, за которые запись отвечает.
@@ -42,19 +49,13 @@ function getLeakLabel(leak) {
   return String(leak?.leak_id ?? leak?.id ?? "?");
 }
 
+/**
+ * Результат последнего обхода — из ленты, а не из списка обходов: после
+ * переезда обхода в ленту список не пополняется, и проверка отвечала бы по
+ * осмотру полугодовой давности.
+ */
 function getLatestMonitoringResult(leak) {
-  const records = Array.isArray(leak?.monitoringRecords)
-    ? leak.monitoringRecords
-    : [];
-  if (!records.length) return null;
-
-  return records.reduce((latest, record) => {
-    const latestTime = Date.parse(latest?.date ?? "");
-    const recordTime = Date.parse(record?.date ?? "");
-    if (!Number.isFinite(recordTime)) return latest ?? record;
-    if (!Number.isFinite(latestTime) || recordTime >= latestTime) return record;
-    return latest;
-  }, null)?.result;
+  return getLastMonitoringRecord(leak)?.result ?? null;
 }
 
 async function photoExists(path, idbGetPhoto) {
@@ -158,9 +159,14 @@ export async function analyzeProjectIntegrity(
       missingPhoto.push(label);
     }
 
+    // Снимки ремонта спрашиваются там же, где их берут карточка и книга. Поля
+    // `photo_repair` и `photo_after` с переезда в ленту не пишутся, и проверка
+    // по ним объявляла «без фото» каждую утечку, отремонтированную в
+    // приложении.
+    const milestones = getStatusRepairMilestones(leak);
     if (
       leak?.status === "in_progress" &&
-      !leak?.photo_repair &&
+      !milestones.repairPhoto &&
       !optionalMonitoringRepairPhoto
     ) {
       missingRepairPhoto.push(label);
@@ -168,14 +174,16 @@ export async function analyzeProjectIntegrity(
 
     if (
       leak?.status === "resolved" &&
-      !leak?.photo_after &&
+      !milestones.resolvedPhoto &&
       !optionalMonitoringAfterPhoto
     ) {
       missingAfterPhoto.push(label);
     }
 
-    if (monitoringPhotoRequired && Array.isArray(leak?.monitoringRecords)) {
-      leak.monitoringRecords.forEach((record, index) => {
+    // Обходы — вместе с осмотрами из ленты: сырой список их больше не знает, и
+    // осмотр без снимка проходил проверку незамеченным.
+    if (monitoringPhotoRequired) {
+      getMonitoringRecords(leak).forEach((record, index) => {
         if (!record?.photo) {
           missingMonitoringPhoto.push(`${label}:monitoringRecords[${index}]`);
         }

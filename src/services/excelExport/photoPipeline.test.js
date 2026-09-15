@@ -70,6 +70,8 @@ describe("Excel export photo pipeline", () => {
     const leaks = [
       {
         leak_id: "TAG-1",
+        // Колонка «Фото после ремонта» заполняется у устранённой записи.
+        status: "resolved",
         photo: "idb://same-photo",
         photo_after: "idb://same-photo",
       },

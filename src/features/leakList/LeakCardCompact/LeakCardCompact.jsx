@@ -1,4 +1,4 @@
-import { getRepairDonePhoto, getRepairPhoto } from "@/domain/leakEvents";
+import { getStatusRepairMilestones } from "@/domain/leakEvents";
 import { useRenderMetric } from "@/utils/renderMetrics";
 import { memo, useEffect, useState } from "react";
 import { useSwipeCard } from "@/hooks/useSwipeCard";
@@ -87,14 +87,10 @@ function LeakCardCompact({
 
   const photoSrc = usePhotoSrc(leak.photo ?? null);
   const monitoringPhotoSrc = usePhotoSrc(getLatestMonitoringPhotoPath(leak));
-  const photoAfterSrc = usePhotoSrc(
-    status === "resolved" ? getRepairDonePhoto(leak) : null,
-  );
-  const photoRepairSrc = usePhotoSrc(
-    status === "in_progress" || status === "resolved"
-      ? getRepairPhoto(leak)
-      : null,
-  );
+  // Снимки ремонта и устранения — по статусу, как в карточке и листе книги.
+  const milestones = getStatusRepairMilestones(leak);
+  const photoAfterSrc = usePhotoSrc(milestones.resolvedPhoto);
+  const photoRepairSrc = usePhotoSrc(milestones.repairPhoto);
 
   const emissions = fmtNum(leak.Emissions_t_CO2eq_year, 2, lang);
   const methane = fmtNum(leak.Total_Annual_Methane_Loss_m3_y, 0, lang);

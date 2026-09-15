@@ -17,38 +17,41 @@ const localeTexts = {
   empty: { photo: "No photos" },
 };
 
-const inspection = (photo, result) => ({
-  id: "leak-1-1789479490260",
+const inspection = (photo, result, date = "2026-09-15T13:38:10.260Z") => ({
+  id: `inspection-${result}`,
   type: "inspection",
-  date: "2026-09-15T13:38:10.260Z",
+  date,
   result,
   photo,
 });
 
 describe("LeakRepairSection", () => {
   it.each([
-    ["open", false],
-    ["in_progress", false],
-    ["resolved", true],
-  ])("shows the after photo only for %s leaks", (status, showsAfter) => {
-    render(
-      <LeakRepairSection
-        data={{
-          status,
-          photo: "before.jpg",
-          photo_repair: "repair.jpg",
-          photo_after: "after.jpg",
-        }}
-        localeTexts={localeTexts}
-      />,
-    );
+    ["open", false, false],
+    ["in_progress", true, false],
+    ["resolved", true, true],
+  ])(
+    "shows repair and after photos by status for %s leaks",
+    (status, showsRepair, showsAfter) => {
+      render(
+        <LeakRepairSection
+          data={{
+            status,
+            photo: "before.jpg",
+            photo_repair: "repair.jpg",
+            photo_after: "after.jpg",
+          }}
+          localeTexts={localeTexts}
+        />,
+      );
 
-    expect(screen.getByAltText("Before")).toBeTruthy();
-    expect(screen.getByAltText("Repair")).toBeTruthy();
-    expect(Boolean(screen.queryByAltText("After"))).toBe(showsAfter);
-  });
+      expect(screen.getByAltText("Before")).toBeTruthy();
+      expect(Boolean(screen.queryByAltText("Repair"))).toBe(showsRepair);
+      expect(Boolean(screen.queryByAltText("After"))).toBe(showsAfter);
+    },
+  );
 
-  it("shows the round photo when a leak in repair has no photos of its own", () => {
+  it("puts the round photo into the repair slot of a leak the round sent to repair", () => {
     // Так выглядят утечки из архива «LDAR UNG Phase I»: обход отправил их на
     // перепроверку, и единственный снимок лежит в событии осмотра.
     render(
@@ -61,11 +64,12 @@ describe("LeakRepairSection", () => {
       />,
     );
 
-    expect(screen.getByAltText("Round").getAttribute("src")).toBe("round.jpg");
+    expect(screen.getByAltText("Repair").getAttribute("src")).toBe("round.jpg");
+    expect(screen.queryByAltText("Round")).toBeNull();
     expect(screen.queryByText("No photos")).toBeNull();
   });
 
-  it("does not repeat a round photo already shown as the after photo", () => {
+  it("puts the resolving round photo into the after slot and keeps it single", () => {
     render(
       <LeakRepairSection
         data={{
@@ -78,5 +82,20 @@ describe("LeakRepairSection", () => {
 
     expect(screen.getByAltText("After").getAttribute("src")).toBe("round.jpg");
     expect(screen.queryByAltText("Round")).toBeNull();
+  });
+
+  it("keeps the round photo in its own slot for an open leak", () => {
+    render(
+      <LeakRepairSection
+        data={{
+          status: "open",
+          events: [inspection("round.jpg", "still_leaking")],
+        }}
+        localeTexts={localeTexts}
+      />,
+    );
+
+    expect(screen.getByAltText("Round").getAttribute("src")).toBe("round.jpg");
+    expect(screen.queryByAltText("Repair")).toBeNull();
   });
 });

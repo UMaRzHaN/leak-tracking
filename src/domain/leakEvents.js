@@ -11,3 +11,4 @@
 export * from "./leakEventsCore";
 export * from "./leakEventsMigration";
 export * from "./leakEventsRepairs";
+export * from "./leakEventsMilestones";

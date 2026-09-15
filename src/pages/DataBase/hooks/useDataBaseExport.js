@@ -12,12 +12,7 @@ import { readMonitoringRound } from "@/utils/monitoringRound";
 import { readProjectSyncStateAsync } from "@/services/sync/projectSyncState";
 import { buildLeakCalculationParams } from "@/utils/calculationParams";
 import { formatTimeOfDay } from "@/services/excelExport/cellValues";
-import {
-  getRepairDoneAt,
-  getRepairDonePhoto,
-  getRepairPhoto,
-  getRepairStartedAt,
-} from "@/domain/leakEvents";
+import { getStatusRepairMilestones } from "@/domain/leakEvents";
 
 function round2(value) {
   return value != null && Number.isFinite(Number(value))
@@ -33,24 +28,30 @@ function round2(value) {
 // swapped its day and month. Nothing needs the text form anyway — the column
 // carries a date format, so Excel renders it in the viewer's own locale.
 export function prepareRows(data, t, projectVars = {}) {
-  return data.map((row) => ({
-    ...row,
-    gasPercentage: buildLeakCalculationParams(row, projectVars).gasPercentage,
-    status: getStatusLabel(row.status ?? STATUS.OPEN, t),
-    date: row.date ?? (row.created_at ? Number(row.created_at) : ""),
-    Total_Annual_Methane_Loss_m3_y: round2(row.Total_Annual_Methane_Loss_m3_y),
-    Emissions_t_CO2eq_year: round2(row.Emissions_t_CO2eq_year),
-    photo: row.photo ? t("database.export.hasPhoto") : "",
-    // Вехи спрашиваются у ленты: она знает про починку то, чего поля записи
-    // не знают, а самодельный обход истории — знал только начало ремонта и
-    // только по журналу смены статуса.
-    photo_after: getRepairDonePhoto(row) ? t("database.export.hasPhoto") : "",
-    photo_repair: getRepairPhoto(row) ? t("database.export.hasPhoto") : "",
-    repairAt: getRepairStartedAt(row) ?? "",
-    repairTime: formatTimeOfDay(getRepairStartedAt(row)),
-    resolvedAt: getRepairDoneAt(row) ?? "",
-    resolvedTime: formatTimeOfDay(getRepairDoneAt(row)),
-  }));
+  return data.map((row) => {
+    // Дата со временем и снимок ремонта и устранения — по статусу, как в
+    // карточке: у записи в ремонте — момент и снимок перехода в ремонт, у
+    // устранённой — ещё и устранения. Переход делает и починка, и осмотр.
+    const milestones = getStatusRepairMilestones(row);
+    const hasPhoto = (path) => (path ? t("database.export.hasPhoto") : "");
+    return {
+      ...row,
+      gasPercentage: buildLeakCalculationParams(row, projectVars).gasPercentage,
+      status: getStatusLabel(row.status ?? STATUS.OPEN, t),
+      date: row.date ?? (row.created_at ? Number(row.created_at) : ""),
+      Total_Annual_Methane_Loss_m3_y: round2(
+        row.Total_Annual_Methane_Loss_m3_y,
+      ),
+      Emissions_t_CO2eq_year: round2(row.Emissions_t_CO2eq_year),
+      photo: hasPhoto(row.photo),
+      photo_after: hasPhoto(milestones.resolvedPhoto),
+      photo_repair: hasPhoto(milestones.repairPhoto),
+      repairAt: milestones.repairAt ?? "",
+      repairTime: formatTimeOfDay(milestones.repairAt),
+      resolvedAt: milestones.resolvedAt ?? "",
+      resolvedTime: formatTimeOfDay(milestones.resolvedAt),
+    };
+  });
 }
 
 export function useDataBaseExport({ displayed, notify }) {

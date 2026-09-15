@@ -1,4 +1,4 @@
-import { getRepairDonePhoto, getRepairPhoto } from "@/domain/leakEvents";
+import { getStatusRepairMilestones } from "@/domain/leakEvents";
 import { useRef } from "react";
 import { useEditablePhoto } from "@/hooks/useEditablePhoto";
 
@@ -9,25 +9,27 @@ export function useLeakPhotoActions(leak) {
     /** @type {HTMLInputElement|null} */ (null),
   );
 
+  // Правятся те снимки ремонта и устранения, что карточка показывает по
+  // статусу, — в том числе снимок осмотра, если переход сделал обход.
+  const { repairPhoto, resolvedPhoto } = getStatusRepairMilestones(leak);
+
   const before = useEditablePhoto({
     initialPath: leak.photo,
     leakId: String(leak.id),
     version: leak.updatedAt,
-    excludePaths: [getRepairDonePhoto(leak), getRepairPhoto(leak)].filter(
-      Boolean,
-    ),
+    excludePaths: [resolvedPhoto, repairPhoto].filter(Boolean),
   });
   const after = useEditablePhoto({
-    initialPath: getRepairDonePhoto(leak),
+    initialPath: resolvedPhoto,
     leakId: `${leak.id}_after`,
     version: leak.updatedAt,
-    excludePaths: [leak.photo, getRepairPhoto(leak)].filter(Boolean),
+    excludePaths: [leak.photo, repairPhoto].filter(Boolean),
   });
   const repair = useEditablePhoto({
-    initialPath: getRepairPhoto(leak),
+    initialPath: repairPhoto,
     leakId: `${leak.id}_repair`,
     version: leak.updatedAt,
-    excludePaths: [leak.photo, getRepairDonePhoto(leak)].filter(Boolean),
+    excludePaths: [leak.photo, resolvedPhoto].filter(Boolean),
   });
 
   return {

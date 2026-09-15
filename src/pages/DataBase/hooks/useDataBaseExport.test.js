@@ -75,7 +75,14 @@ describe("prepareRows", () => {
 
   it("превращает снимки в отметку, а не в путь к файлу", () => {
     const [row] = prepareRows(
-      [{ photo: "idb://1", photo_after: null, photo_repair: "idb://2" }],
+      [
+        {
+          status: "in_progress",
+          photo: "idb://1",
+          photo_after: null,
+          photo_repair: "idb://2",
+        },
+      ],
       translate,
     );
 
@@ -103,6 +110,7 @@ describe("prepareRows", () => {
     const [row] = prepareRows(
       [
         {
+          status: "in_progress",
           history: [
             { action: "status_changed", to: "in_progress", date: "2026-01-01" },
             { action: "comment", date: "2026-02-01" },
@@ -121,6 +129,7 @@ describe("prepareRows", () => {
     const [row] = prepareRows(
       [
         {
+          status: "in_progress",
           repairAt: "2026-05-05",
           history: [
             { action: "status_changed", to: "in_progress", date: "2026-01-01" },
@@ -263,5 +272,75 @@ describe("prepareRows и время починки", () => {
 
     expect(row.repairTime).toBe("");
     expect(row.resolvedTime).toBe("");
+  });
+});
+
+describe("prepareRows и статус", () => {
+  const local = (iso) => {
+    const d = new Date(iso);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  };
+
+  it("у утечки, которую в ремонт отправил осмотр, ставит его дату, время и снимок", () => {
+    const [row] = prepareRows(
+      [
+        {
+          id: 1,
+          status: "in_progress",
+          events: [
+            {
+              id: "i1",
+              type: "inspection",
+              date: "2026-09-15T13:38:10.000Z",
+              result: "needs_recheck",
+              photo: "idb://round",
+            },
+          ],
+        },
+      ],
+      translate,
+    );
+
+    expect(row.repairAt).toBe("2026-09-15T13:38:10.000Z");
+    expect(row.repairTime).toBe(local("2026-09-15T13:38:10.000Z"));
+    expect(row.photo_repair).toBe("Yes");
+    expect(row.resolvedAt).toBe("");
+    expect(row.photo_after).toBe("");
+  });
+
+  it("у открытой утечки не выдаёт прошлый ремонт за нынешний", () => {
+    const [row] = prepareRows(
+      [
+        {
+          id: 1,
+          status: "open",
+          events: [
+            {
+              id: "r1",
+              type: "repair_started",
+              date: "2026-01-01T10:00:00.000Z",
+              photo: "idb://repair",
+            },
+            {
+              id: "d1",
+              type: "repair_done",
+              date: "2026-01-02T10:00:00.000Z",
+              photo: "idb://after",
+            },
+          ],
+        },
+      ],
+      translate,
+    );
+
+    expect(row).toMatchObject({
+      repairAt: "",
+      repairTime: "",
+      photo_repair: "",
+      resolvedAt: "",
+      resolvedTime: "",
+      photo_after: "",
+    });
   });
 });

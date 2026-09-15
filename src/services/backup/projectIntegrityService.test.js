@@ -307,6 +307,86 @@ describe("связи утечек с карточками реестра", () =>
   });
 });
 
+describe("analyzeProjectIntegrity — снимки ремонта и обходы в ленте", () => {
+  const base = { photo: "data:image/jpeg;base64,before", lat: 41, lng: 69 };
+
+  it("не объявляет «без фото» утечку, чей снимок ремонта в событии или у осмотра", async () => {
+    // Поля photo_repair и photo_after с переезда в ленту не пишутся: проверка
+    // по ним помечала каждую утечку, отремонтированную в приложении.
+    const report = await analyzeProjectIntegrity([
+      {
+        ...base,
+        id: "r",
+        leak_id: "R-1",
+        status: "in_progress",
+        photo_repair: null,
+        events: [
+          {
+            id: "r1",
+            type: "repair_started",
+            date: "2026-09-10T10:00:00.000Z",
+            photo: "data:image/jpeg;base64,repair",
+          },
+        ],
+      },
+      {
+        ...base,
+        id: "d",
+        leak_id: "D-1",
+        status: "resolved",
+        photo_after: null,
+        events: [
+          {
+            id: "d1",
+            type: "repair_done",
+            date: "2026-09-12T10:00:00.000Z",
+            photo: "data:image/jpeg;base64,after",
+          },
+        ],
+      },
+      {
+        ...base,
+        id: "i",
+        leak_id: "I-1",
+        status: "in_progress",
+        events: [
+          {
+            id: "i1",
+            type: "inspection",
+            date: "2026-09-15T10:00:00.000Z",
+            result: "needs_recheck",
+            photo: "data:image/jpeg;base64,round",
+          },
+        ],
+      },
+    ]);
+
+    expect(report.missingRepairPhoto).toEqual([]);
+    expect(report.missingAfterPhoto).toEqual([]);
+  });
+
+  it("замечает осмотр из ленты без снимка", async () => {
+    const report = await analyzeProjectIntegrity([
+      {
+        ...base,
+        id: "o",
+        leak_id: "O-1",
+        status: "open",
+        events: [
+          {
+            id: "i1",
+            type: "inspection",
+            date: "2026-09-15T10:00:00.000Z",
+            result: "still_leaking",
+          },
+        ],
+      },
+    ]);
+
+    expect(report.missingMonitoringPhoto).toEqual(["O-1:monitoringRecords[0]"]);
+  });
+});
+
 describe("analyzeProjectIntegrity — порченые снимки", () => {
   it("reports a Blob in place of a photo path as broken instead of failing", async () => {
     // Так выглядела запись после импорта Excel: у осмотра вместо пути сам

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   buildEventPhotoEntries,
+  buildLeakPhotoEntries,
   buildPhotoMap,
   collectEventPhotoAliases,
+  collectLeakPhotoAliases,
 } from "./photoPipeline";
 import { buildPortableLeaks } from "./portableLeaks";
 import { getEventPhotoMapKey } from "./photoIdentity";
@@ -22,6 +24,8 @@ const OWN = jpeg("own");
 const leakWithEvents = () => ({
   id: 1,
   leak_id: "A-42",
+  // Вторая починка ещё идёт: колонка «Фото в ремонте» заполняется по статусу.
+  status: "in_progress",
   events: [
     { id: "e1", type: "repair_started", date: "2026-08-01", photo: OWN },
     { id: "e2", type: "repair_done", date: "2026-08-02", photo: OWN },
@@ -105,6 +109,42 @@ describe("снимки ленты в книге", () => {
     const [portable] = buildPortableLeaks([leak], {});
 
     expect(portable.events[0].photo).toBeUndefined();
+  });
+
+  it("не заводит второй файл снимку осмотра, ставшему фото ремонта", async () => {
+    // Утечка, которую в ремонт отправил осмотр: колонка «Фото в ремонте»
+    // показывает снимок осмотра, а файл ему уже завёл лист обходов.
+    const leak = {
+      id: 1,
+      leak_id: "3830",
+      status: "in_progress",
+      events: [
+        {
+          id: "i1",
+          type: "inspection",
+          date: "2026-09-15T13:38:10.260Z",
+          result: "needs_recheck",
+          photo: SHARED,
+        },
+      ],
+    };
+    const taken = new Set([SHARED]);
+
+    const own = await buildLeakPhotoEntries([leak], ["3830"], null, new Map());
+    const deduplicated = await buildLeakPhotoEntries(
+      [leak],
+      ["3830"],
+      null,
+      new Map(),
+      "photos",
+      taken,
+    );
+
+    expect(own.map((entry) => entry.mapKey)).toEqual(["0:photo_repair"]);
+    expect(deduplicated).toEqual([]);
+    expect(collectLeakPhotoAliases([leak], taken)).toEqual([
+      { mapKey: "0:photo_repair", sourcePath: SHARED },
+    ]);
   });
 
   it("сводит записи в карту по их ключам", async () => {

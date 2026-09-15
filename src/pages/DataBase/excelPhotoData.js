@@ -6,6 +6,7 @@ import {
   buildMonitoringPhotoEntries,
   buildPhotoMap,
   collectEventPhotoAliases,
+  collectLeakPhotoAliases,
 } from "@/services/excelExport/photoPipeline";
 import {
   buildMonitoringRoundLookup,
@@ -39,23 +40,28 @@ async function buildPhotoEntries(
           ).map((row) => row.photoMapKey),
         )
       : null;
-  const [leakPhotos, monitoringPhotos] = await Promise.all([
-    buildLeakPhotoEntries(
-      orderedLeaks,
-      leakSegments,
-      idbGet,
-      photoReadCache,
-      archiveRoot,
-    ),
-    buildMonitoringPhotoEntries(
-      orderedLeaks,
-      leakSegments,
-      idbGet,
-      includedMonitoringPhotoKeys,
-      photoReadCache,
-      archiveRoot,
-    ),
-  ]);
+  // Обходы идут первыми: у записи, которую в ремонт или из него вывел осмотр,
+  // колонка снимка показывает снимок этого осмотра, и файл ему уже заведён.
+  // Чтения общие через кэш, так что очерёдность почти ничего не стоит.
+  const monitoringPhotos = await buildMonitoringPhotoEntries(
+    orderedLeaks,
+    leakSegments,
+    idbGet,
+    includedMonitoringPhotoKeys,
+    photoReadCache,
+    archiveRoot,
+  );
+  const monitoringSources = new Set(
+    monitoringPhotos.map((entry) => entry.sourcePath),
+  );
+  const leakPhotos = await buildLeakPhotoEntries(
+    orderedLeaks,
+    leakSegments,
+    idbGet,
+    photoReadCache,
+    archiveRoot,
+    monitoringSources,
+  );
 
   // Лента идёт третьей и знает, что уже выгружено: её снимки почти все —
   // те же самые, и второй копии в книге им не нужно. Своё место получают
@@ -77,7 +83,10 @@ async function buildPhotoEntries(
   // не найден» про то, что лежит в архиве под именем колонки.
   return {
     entries: [...leakPhotos, ...monitoringPhotos, ...eventPhotos],
-    aliases: collectEventPhotoAliases(orderedLeaks, taken),
+    aliases: [
+      ...collectLeakPhotoAliases(orderedLeaks, monitoringSources),
+      ...collectEventPhotoAliases(orderedLeaks, taken),
+    ],
   };
 }
 // Resolves report + backup photo entries (each holding a full base64 copy of

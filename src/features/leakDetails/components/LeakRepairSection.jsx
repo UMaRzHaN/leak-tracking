@@ -1,4 +1,4 @@
-import { getRepairDonePhoto, getRepairPhoto } from "@/domain/leakEvents";
+import { getStatusRepairMilestones } from "@/domain/leakEvents";
 import { useState } from "react";
 import { usePhotoSrc } from "@/hooks/usePhotoSrc";
 import { getLatestMonitoringPhotoPath } from "@/utils/monitoring";
@@ -72,16 +72,15 @@ function PhotoComparison({
 }
 
 export default function LeakRepairSection({ data, localeTexts }) {
-  // Через ленту, а не по полю записи: снимок починки живёт в событии, а поле
-  // остаётся лишь у записей, заведённых до ленты.
-  const photoAfter =
-    data.status === "resolved" ? getRepairDonePhoto(data) : null;
-  const photoRepair = getRepairPhoto(data);
-  // Снимок последнего обхода — своим слотом, если он не повторяет уже
-  // показанный. У утечки, которую обход отправил на перепроверку, он
-  // единственный: без него вкладка писала «Фото не добавлены», хотя шапка
-  // карточки тот же снимок показывала. Устранённая обходом утечка свой осмотр
-  // уже показывает как «после», и второй раз он не нужен.
+  // Снимки ремонта и устранения — по статусу, как в листе «Утечки»: у записи
+  // в ремонте — снимок перехода в ремонт, у устранённой — ещё и устранения.
+  // Переход делает и починка, и осмотр; во втором случае в слоте стоит снимок
+  // осмотра.
+  const { repairPhoto: photoRepair, resolvedPhoto: photoAfter } =
+    getStatusRepairMilestones(data);
+  // Снимок последнего обхода — своим слотом, только если он не повторяет уже
+  // показанный: у открытой утечки, которую осмотрели, других снимков, кроме
+  // первичного, может не быть.
   const latestRoundPhoto = getLatestMonitoringPhotoPath(data);
   const photoMonitoring = [data.photo, photoRepair, photoAfter].includes(
     latestRoundPhoto,

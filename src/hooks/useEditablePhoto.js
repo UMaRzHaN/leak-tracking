@@ -98,7 +98,14 @@ export function useEditablePhoto({
     const pathsToKeep = [persistedPathRef.current, ...excludePaths].filter(
       Boolean,
     );
-    const newPath = await saveToFS(rawPhoto, leakId, pathsToKeep);
+    // Прежние версии ключа здесь не метутся. Ключ у снимка ремонта и «после»
+    // один на все починки подряд, и уборка по ключу стирала снимок прежнего
+    // ремонта, на который всё ещё ссылается его событие в ленте, — к тому же
+    // до записи карточки. Заменённый снимок убирает сохранение карточки: оно
+    // удаляет его, только если на него больше никто не ссылается.
+    const newPath = await saveToFS(rawPhoto, leakId, pathsToKeep, {
+      cleanupOldVersions: false,
+    });
 
     // защита от race-condition
     if (!mountedRef.current || activeLeakIdRef.current !== currentLeakId) {

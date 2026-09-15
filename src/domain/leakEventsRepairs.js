@@ -55,7 +55,7 @@ export function getRepairDurations(leak) {
  * Возвращается последнее событие своего вида: карточка показывает нынешнее
  * состояние ремонта, а не первое из бывших.
  */
-function lastEventValue(leak, type, field) {
+export function lastEventValue(leak, type, field) {
   const events = getEventsOfType(leak, type);
   for (let index = events.length - 1; index >= 0; index -= 1) {
     const value = events[index]?.[field];
