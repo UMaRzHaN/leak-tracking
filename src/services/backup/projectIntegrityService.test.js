@@ -307,6 +307,36 @@ describe("связи утечек с карточками реестра", () =>
   });
 });
 
+describe("analyzeProjectIntegrity — порченые снимки", () => {
+  it("reports a Blob in place of a photo path as broken instead of failing", async () => {
+    // Так выглядела запись после импорта Excel: у осмотра вместо пути сам
+    // Blob. Проверка падала на `path.startsWith`.
+    const report = await analyzeProjectIntegrity(
+      [
+        {
+          id: "leak-1",
+          leak_id: "3830",
+          status: "open",
+          photo: "data:image/jpeg;base64,before",
+          lat: 41,
+          lng: 69,
+          events: [
+            {
+              id: "leak-1-1",
+              type: "inspection",
+              date: "2026-09-15T13:38:10.260Z",
+              photo: new Blob(["round"], { type: "image/jpeg" }),
+            },
+          ],
+        },
+      ],
+      { monitoringPhotoRequired: false },
+    );
+
+    expect(report.brokenPhoto).toEqual(["3830:monitoringRecords[0].photo"]);
+  });
+});
+
 describe("readComponentRegistryIds", () => {
   const upstream = { id: "p1", type: "upstream" };
 

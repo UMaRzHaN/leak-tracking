@@ -11,16 +11,25 @@
  */
 
 import { logger } from "@/utils/logger";
+import { hasCorruptedPhotoValues } from "./photoValueRepair";
 
 /**
  * @param {{id: string, folderName?: string}|null|undefined} project
  * @param {any[]} [leaks] записи об утечках, которые останутся в проекте
- * @returns {Promise<any[]|null>} null — если реестр прочитать не удалось;
- *   собирать мусор в этом случае нельзя: молчание реестра не значит, что на
- *   его снимки никто не ссылается.
+ * @returns {Promise<any[]|null>} null — если реестр прочитать не удалось или
+ *   в записях снимок лежит не путём; собирать мусор в этих случаях нельзя:
+ *   молчание реестра не значит, что на его снимки никто не ссылается, а
+ *   порченую запись как раз чинят, и снимки, сохранённые починкой, до записи
+ *   путей числились бы сиротами.
  */
 export async function collectPhotoOwners(project, leaks = []) {
   const list = Array.isArray(leaks) ? leaks : [];
+  if (hasCorruptedPhotoValues(list)) {
+    logger.warn(
+      "[photoOwners] в записях снимок не путём, уборка снимков отложена",
+    );
+    return null;
+  }
   if (!project?.id) return list;
 
   try {

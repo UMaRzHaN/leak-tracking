@@ -15,6 +15,7 @@ import {
 } from "@/services/sync/projectSyncState";
 import { stampLeakFieldVersions } from "@/services/storage/leakFieldVersions";
 import { logger } from "@/utils/logger";
+import { useStoredPhotoRepair } from "./useStoredPhotoRepair";
 
 export function useProjectData() {
   const { activeProject } = useProjectDataCtx();
@@ -340,6 +341,9 @@ export function useProjectData() {
   const retryLoad = useCallback(() => {
     setReloadRevision((value) => value + 1);
   }, []);
+
+  // Порченые снимки чинятся здесь: тут и свежие данные, и их сохранение.
+  useStoredPhotoRepair({ dataRef, dataLoaded, dataProjectId, loadError, save });
 
   const dataForPhotoGc = preservedRecords.length
     ? [...data, ...preservedRecords]

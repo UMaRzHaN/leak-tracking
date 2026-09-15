@@ -42,6 +42,22 @@ describe("collectPhotoOwners", () => {
     await expect(collectPhotoOwners(project, [])).resolves.toBe(null);
   });
 
+  it("refuses while a record holds something other than a photo path", async () => {
+    // Такую запись как раз чинят: снимок, сохранённый починкой, до записи
+    // пути ни на что не ссылается, и уборка удалила бы его как сироту.
+    const leaks = [
+      {
+        id: "l1",
+        events: [
+          { id: "e1", photo: new Blob(["round"], { type: "image/jpeg" }) },
+        ],
+      },
+    ];
+
+    await expect(collectPhotoOwners(project, leaks)).resolves.toBe(null);
+    expect(repository.load).not.toHaveBeenCalled();
+  });
+
   it("returns the leaks unchanged when there is no project to ask about", async () => {
     const leaks = [{ id: "l1" }];
     await expect(collectPhotoOwners(null, leaks)).resolves.toEqual(leaks);

@@ -196,7 +196,9 @@ export async function analyzeProjectIntegrity(
 
     for (const [field, path] of getLeakPhotoRefs(leak)) {
       if (!path) continue;
-      if (!(await photoExists(path, idbGetPhoto))) {
+      // Не путь в поле снимка — порча, а не снимок. Спросить о нём хранилище
+      // значило уронить всю проверку на `path.startsWith`.
+      if (typeof path !== "string" || !(await photoExists(path, idbGetPhoto))) {
         brokenPhoto.push(`${label}:${field}`);
       }
     }
