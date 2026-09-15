@@ -1,6 +1,7 @@
 import { getRepairDonePhoto, getRepairPhoto } from "@/domain/leakEvents";
 import { useState } from "react";
 import { usePhotoSrc } from "@/hooks/usePhotoSrc";
+import { getLatestMonitoringPhotoPath } from "@/utils/monitoring";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
@@ -8,23 +9,30 @@ function PhotoComparison({
   photoBefore,
   photoRepair,
   photoAfter,
+  photoMonitoring,
   localeTexts,
 }) {
   const srcBefore = usePhotoSrc(photoBefore ?? null);
   const srcRepair = usePhotoSrc(photoRepair ?? null);
   const srcAfter = usePhotoSrc(photoAfter ?? null);
+  const srcMonitoring = usePhotoSrc(photoMonitoring ?? null);
   const [viewer, setViewer] = useState(/** @type {string|null} */ (null));
 
-  const hasBefore = Boolean(photoBefore);
-  const hasRepair = Boolean(photoRepair);
-  const hasAfter = Boolean(photoAfter);
-  if (!hasBefore && !hasRepair && !hasAfter) return null;
+  if (!photoBefore && !photoRepair && !photoAfter && !photoMonitoring) {
+    return null;
+  }
 
   const slots = [
     { key: "before", label: localeTexts.photo.before, src: srcBefore },
     { key: "repair", label: localeTexts.photo.repair, src: srcRepair },
     { key: "after", label: localeTexts.photo.after, src: srcAfter },
+    {
+      key: "monitoring",
+      label: localeTexts.photo.monitoring,
+      src: srcMonitoring,
+    },
   ].filter(({ key, src }) => key === "before" || Boolean(src));
+  const viewerSrc = slots.find(({ key }) => key === viewer)?.src;
 
   return (
     <>
@@ -56,14 +64,8 @@ function PhotoComparison({
         ))}
       </div>
 
-      {viewer === "before" && srcBefore && (
-        <PhotoViewer src={srcBefore} onClose={() => setViewer(null)} />
-      )}
-      {viewer === "repair" && srcRepair && (
-        <PhotoViewer src={srcRepair} onClose={() => setViewer(null)} />
-      )}
-      {viewer === "after" && srcAfter && (
-        <PhotoViewer src={srcAfter} onClose={() => setViewer(null)} />
+      {viewerSrc && (
+        <PhotoViewer src={viewerSrc} onClose={() => setViewer(null)} />
       )}
     </>
   );
@@ -75,8 +77,20 @@ export default function LeakRepairSection({ data, localeTexts }) {
   const photoAfter =
     data.status === "resolved" ? getRepairDonePhoto(data) : null;
   const photoRepair = getRepairPhoto(data);
-  const hasPhotos =
-    Boolean(data.photo) || Boolean(photoRepair) || Boolean(photoAfter);
+  // Снимок последнего обхода — своим слотом, если он не повторяет уже
+  // показанный. У утечки, которую обход отправил на перепроверку, он
+  // единственный: без него вкладка писала «Фото не добавлены», хотя шапка
+  // карточки тот же снимок показывала. Устранённая обходом утечка свой осмотр
+  // уже показывает как «после», и второй раз он не нужен.
+  const latestRoundPhoto = getLatestMonitoringPhotoPath(data);
+  const photoMonitoring = [data.photo, photoRepair, photoAfter].includes(
+    latestRoundPhoto,
+  )
+    ? null
+    : latestRoundPhoto;
+  const hasPhotos = Boolean(
+    data.photo || photoRepair || photoAfter || photoMonitoring,
+  );
 
   return (
     <div className={s.tabPane}>
@@ -85,6 +99,7 @@ export default function LeakRepairSection({ data, localeTexts }) {
           photoBefore={data.photo}
           photoRepair={photoRepair}
           photoAfter={photoAfter}
+          photoMonitoring={photoMonitoring}
           localeTexts={localeTexts}
         />
       ) : (

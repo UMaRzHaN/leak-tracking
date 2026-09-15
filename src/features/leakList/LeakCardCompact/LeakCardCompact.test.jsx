@@ -1,5 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const monitoringMocks = vi.hoisted(() => ({
+  latestPhoto: vi.fn(() => null),
+}));
 
 vi.mock("@/hooks/useSwipeCard", () => ({
   useSwipeCard: () => ({
@@ -20,9 +24,9 @@ vi.mock("@/utils/status", () => ({
 }));
 
 vi.mock("@/utils/timeAgo", () => ({ timeAgo: () => "now" }));
-vi.mock("@/hooks/usePhotoSrc", () => ({ usePhotoSrc: () => null }));
+vi.mock("@/hooks/usePhotoSrc", () => ({ usePhotoSrc: (path) => path }));
 vi.mock("@/utils/monitoring", () => ({
-  getLatestMonitoringPhotoPath: () => null,
+  getLatestMonitoringPhotoPath: monitoringMocks.latestPhoto,
 }));
 vi.mock("@/utils/locale", () => ({
   formatCompactNumber: (value) => String(value),
@@ -125,5 +129,37 @@ describe("LeakCardCompact location hierarchy", () => {
     fireEvent.keyDown(selectButton, { key: "Enter" });
 
     expect(expandButton.getAttribute("aria-expanded")).toBe("false");
+  });
+});
+
+describe("LeakCardCompact photo preview", () => {
+  afterEach(() => {
+    monitoringMocks.latestPhoto.mockReset();
+  });
+
+  const previewSources = (container) =>
+    [...container.querySelectorAll('img[src$=".jpg"]')].map((img) =>
+      img.getAttribute("src"),
+    );
+
+  it("falls back to the round photo for a leak in repair without photos of its own", () => {
+    // Так выглядят утечки из архива «LDAR UNG Phase I»: обход отправил их на
+    // перепроверку, и единственный снимок лежит в событии осмотра.
+    monitoringMocks.latestPhoto.mockReturnValue("round.jpg");
+
+    const { container } = renderCard({ status: "in_progress" });
+
+    expect(previewSources(container)).toEqual(["round.jpg"]);
+  });
+
+  it("keeps the leak's own photo ahead of the round photo while in repair", () => {
+    monitoringMocks.latestPhoto.mockReturnValue("round.jpg");
+
+    const { container } = renderCard({
+      status: "in_progress",
+      photo: "before.jpg",
+    });
+
+    expect(previewSources(container)).toEqual(["before.jpg"]);
   });
 });

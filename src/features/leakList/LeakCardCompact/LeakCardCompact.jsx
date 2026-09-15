@@ -117,10 +117,14 @@ function LeakCardCompact({
 
   const showBook = comparePairs.length >= 2;
   const showRepairStack = Boolean(photoRepairSrc) && status === "in_progress";
+  // Снимок обхода — последний запасной вариант. Утечку, которую обход отправил
+  // на перепроверку, переводят в ремонт без единого своего снимка: ни «до», ни
+  // «ремонта» у неё нет, есть только осмотр. Без этого карточка стояла пустой,
+  // хотя шапка подробностей тот же снимок показывает.
   const displayPhotoSrc =
     !showBook && status === "open" && monitoringPhotoSrc
       ? monitoringPhotoSrc
-      : photoSrc || photoRepairSrc || photoAfterSrc;
+      : photoSrc || photoRepairSrc || photoAfterSrc || monitoringPhotoSrc;
   const hasPhoto = comparePairs.length > 0 || Boolean(displayPhotoSrc);
   const hasChips =
     leak.leak_speed != null ||
