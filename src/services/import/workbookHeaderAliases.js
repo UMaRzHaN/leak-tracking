@@ -182,6 +182,22 @@ export const MONITORING_HEADER_ALIASES = {
   ],
 };
 
+export const REPAIR_HEADER_ALIASES = {
+  index: ["№", "no", "n"],
+  leak_id: ["бирка", "tag", "leak id", "leak_id", "id утечки"],
+  attempt: ["попытка", "attempt"],
+  repairAt: ["начат", "started", "дата ремонта", "repair date"],
+  repairTime: ["время начала", "start time", "время ремонта", "repair time"],
+  resolvedAt: ["завершён", "завершен", "finished", "дата устранения"],
+  resolvedTime: ["время завершения", "finish time", "время устранения"],
+  durationHours: ["часов на ремонт", "hours to repair"],
+  user: ["исполнитель", "performed by", "кто", "who"],
+  materials_equipment: ["мтр ремонта", "мтр", "materials"],
+  note: ["примечание", "note"],
+  repairPhoto: ["фото начала", "start photo"],
+  donePhoto: ["фото завершения", "finish photo"],
+};
+
 export const HISTORY_HEADER_ALIASES = {
   leak_id: ["бирка", "tag", "leak id", "leak_id", "id утечки"],
   date: ["дата", "date"],

@@ -11,13 +11,12 @@ import { hydrateZipPhotos } from "@/services/import/zipPhotoHydration";
 import {
   attachHistoryRecords,
   attachMonitoringRecords,
+  attachRepairEvents,
 } from "@/services/import/recordMerge";
 import {
   buildHeaderMap,
   findHeaderRow,
-  findHistorySheet,
   findLeakSheet,
-  findMonitoringSheet,
   getCellDisplayValue,
   getCellPhotoValue,
 } from "@/services/import/workbookSchema";
@@ -33,10 +32,7 @@ import {
 } from "@/services/import/valueNormalization";
 import { normalizeLeakTag } from "@/utils/leakIdentity";
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
-import {
-  parseHistoryRecords,
-  parseMonitoringRecords,
-} from "@/services/import/sheetRecordParsers";
+import { parseAuxiliarySheets } from "@/services/import/sheetRecordParsers";
 import {
   assertArchiveLimits,
   assertImportFileSize,
@@ -279,18 +275,18 @@ async function parseLeakSheets(workbook, { projectType } = {}) {
       continue;
     }
 
+    // Номер не уникален: две утечки под одной биркой в поле встречаются, и
+    // пропуск такой строки терял целую запись. Объединение разводит их само.
     const leakTag = normalizeLeakTag(leak.leak_id);
     if (leakTag && seenLeakTags.has(leakTag)) {
-      skipped += 1;
       duplicateLeakIds += 1;
       validation.add(
         sheet.name,
         rowNumber,
         "leak_id",
         leak.leak_id,
-        "Дубликат идентификатора утечки; строка пропущена",
+        "Повтор бирки; строка импортирована отдельной записью",
       );
-      continue;
     }
     if (leakTag) seenLeakTags.add(leakTag);
     if (raw.status) explicitStatusLeakIds.add(leakTag);
@@ -298,14 +294,8 @@ async function parseLeakSheets(workbook, { projectType } = {}) {
     sheetRows.push(raw);
   }
 
-  const monitoringSheet = findMonitoringSheet(workbook);
-  const monitoring = monitoringSheet
-    ? parseMonitoringRecords(monitoringSheet, validation)
-    : { recordsByLeakId: new Map(), count: 0 };
-  const historySheet = findHistorySheet(workbook);
-  const history = historySheet
-    ? parseHistoryRecords(historySheet)
-    : { recordsByLeakId: new Map(), count: 0 };
+  const sheets = parseAuxiliarySheets(workbook, validation);
+  const { monitoring, history, repairs, historySheet } = sheets;
   const leaksBeforeHistoryAttach = historySheet
     ? leaks.map((leak) => ({ ...leak, history: [] }))
     : leaks;
@@ -330,25 +320,31 @@ async function parseLeakSheets(workbook, { projectType } = {}) {
     leaksWithMonitoring,
     history.recordsByLeakId,
   );
-  const monitoringRound = inferMonitoringRound(leaksWithHistory);
+  const parsedLeaks = attachRepairEvents(
+    leaksWithHistory,
+    repairs.eventsByLeakId,
+  );
+  const monitoringRound = inferMonitoringRound(parsedLeaks);
 
   return {
-    leaks: leaksWithHistory,
+    leaks: parsedLeaks,
     stats: {
       totalRows,
-      imported: leaksWithHistory.length,
+      imported: parsedLeaks.length,
       skipped,
       duplicateLeakIds,
       recognizedColumns: headerRow.columns.length,
       monitoringRecords: monitoring.count,
       historyRecords: history.count,
+      repairEvents: repairs.count,
       validationWarnings: validation.warnings,
       validationWarningCount: validation.count,
     },
     columns: headerRow.columns,
     sheetName: sheet.name,
-    monitoringSheetName: monitoringSheet?.name ?? "",
+    monitoringSheetName: sheets.monitoringSheet?.name ?? "",
     historySheetName: historySheet?.name ?? "",
+    repairSheetName: sheets.repairSheet?.name ?? "",
     monitoringRound,
     inferredStatusLeakIds,
     sheetRows,

@@ -166,25 +166,35 @@ export function mergeSheetEditsIntoBackup(
     return { leaks, edited: 0, added: 0, missing: leaks.length };
   }
 
-  const indexByTag = new Map();
+  // Очередь на бирку, а не одна запись: номер не уникален, и вторая строка с
+  // тем же номером иначе ложилась на ту же карточку — настоящая утечка
+  // получала дату, координаты и статус своего однофамильца.
+  const indexesByTag = new Map();
   leaks.forEach((leak, index) => {
     const tag = normalizeLeakTag(leak?.leak_id);
-    if (tag && !indexByTag.has(tag)) indexByTag.set(tag, index);
+    if (!tag) return;
+    if (!indexesByTag.has(tag)) indexesByTag.set(tag, []);
+    indexesByTag.get(tag).push(index);
   });
 
-  const seenTags = new Set();
+  const matchedTags = new Set();
   const added = [];
   let edited = 0;
+  let missing = [...indexesByTag.values()].reduce(
+    (total, indexes) => total + indexes.length,
+    0,
+  );
 
   for (const [rowIndex, row] of rows.entries()) {
     const tag = normalizeLeakTag(row?.leak_id);
-    const index = tag ? indexByTag.get(tag) : undefined;
+    const index = tag ? indexesByTag.get(tag)?.shift() : undefined;
     if (index === undefined) {
       added.push(row);
       continue;
     }
 
-    seenTags.add(tag);
+    matchedTags.add(tag);
+    missing -= 1;
     // Строка листа, если её дали. Без неё правки берутся из самой утечки —
     // так зовут этот модуль тесты и так он работал раньше.
     const edits = sheetRows?.[rowIndex] ?? row;
@@ -198,6 +208,6 @@ export function mergeSheetEditsIntoBackup(
     leaks: [...leaks, ...added],
     edited,
     added: added.length,
-    missing: indexByTag.size - seenTags.size,
+    missing,
   };
 }

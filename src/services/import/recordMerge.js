@@ -1,4 +1,5 @@
 import { formatMomentDate, parseDateValue } from "./cellDates";
+import { migrateLeakEvents } from "@/domain/leakEvents";
 import { normalizeLeakTag } from "@/utils/leakIdentity";
 
 function statusFromMonitoringResult(result) {
@@ -102,6 +103,49 @@ export function attachMonitoringRecords(
     }
 
     return next;
+  });
+}
+
+/**
+ * События починки с листа ремонтов — в ленту утечки.
+ *
+ * Лист ремонтов — единственное место в книге, где починки записаны все: в
+ * колонках листа утечек их только одна, последняя. Без этого разбора книга без
+ * служебного листа теряла историю починок целиком, и утечка, которую чинили
+ * трижды, возвращалась из Excel нечиненой.
+ *
+ * События, уже стоящие в ленте под тем же номером, не удваиваются: номер
+ * выводится из бирки, вида события и его момента.
+ */
+export function attachRepairEvents(leaks, eventsByLeakId) {
+  if (!eventsByLeakId.size) return leaks;
+  const normalizedEvents = normalizeRecordMap(eventsByLeakId);
+
+  return leaks.map((leak) => {
+    const events = normalizedEvents.get(normalizeLeakTag(leak.leak_id));
+    if (!events?.length) return leak;
+
+    // Лента достраивается со старых полей только у записи, у которой её нет
+    // вовсе, — и, дописав починки, мы бы эту достройку отключили: утечка
+    // теряла бы событие обнаружения и осмотры. Поэтому сначала общая
+    // доменная достройка, а починки уже поверх неё.
+    const base = Array.isArray(leak.events) ? leak : migrateLeakEvents(leak);
+    const byId = new Map(
+      [...(Array.isArray(base.events) ? base.events : []), ...events].map(
+        (event) => [String(event?.id), event],
+      ),
+    );
+
+    return {
+      ...leak,
+      events: [...byId.values()].sort(
+        (left, right) => Date.parse(left?.date) - Date.parse(right?.date),
+      ),
+      updatedAt: Math.max(
+        Number(leak.updatedAt) || 0,
+        ...events.map((event) => Date.parse(event.date) || 0),
+      ),
+    };
   });
 }
 

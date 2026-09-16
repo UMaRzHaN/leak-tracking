@@ -3,6 +3,7 @@ import {
   HEADER_ALIASES,
   HISTORY_HEADER_ALIASES,
   MONITORING_HEADER_ALIASES,
+  REPAIR_HEADER_ALIASES,
   TECHNICAL_KEYS,
 } from "@/services/import/workbookHeaderAliases";
 
@@ -70,6 +71,15 @@ export function buildMonitoringHeaderMap() {
 export function buildHistoryHeaderMap() {
   const entries = new Map();
   for (const [key, aliases] of Object.entries(HISTORY_HEADER_ALIASES)) {
+    setHeaderEntry(entries, key, key);
+    aliases.forEach((alias) => setHeaderEntry(entries, alias, key));
+  }
+  return entries;
+}
+
+export function buildRepairHeaderMap() {
+  const entries = new Map();
+  for (const [key, aliases] of Object.entries(REPAIR_HEADER_ALIASES)) {
     setHeaderEntry(entries, key, key);
     aliases.forEach((alias) => setHeaderEntry(entries, alias, key));
   }
@@ -151,10 +161,22 @@ function isHistorySheet(sheet) {
   return name === "история" || name === "history" || name === "leak history";
 }
 
+function isRepairSheet(sheet) {
+  const name = normalizeHeader(sheet?.name);
+  return name === "ремонты" || name === "repairs";
+}
+
 export function findLeakSheet(workbook, headerMap) {
   let best = /** @type {{sheet: any, header: HeaderRow}|null} */ (null);
   for (const sheet of workbook.worksheets) {
-    if (!sheet.rowCount || isMonitoringSheet(sheet) || isHistorySheet(sheet)) {
+    // Лист ремонтов подписан биркой и номером, как лист утечек, и на книге без
+    // утечек сошёл бы за него.
+    if (
+      !sheet.rowCount ||
+      isMonitoringSheet(sheet) ||
+      isHistorySheet(sheet) ||
+      isRepairSheet(sheet)
+    ) {
       continue;
     }
     const header = findHeaderRow(sheet, headerMap);
@@ -191,10 +213,36 @@ export function findHistorySheet(workbook) {
   if (byName && findHeaderRow(byName, historyHeaderMap)) return byName;
 
   return workbook.worksheets.find((sheet) => {
-    if (!sheet.rowCount || isMonitoringSheet(sheet)) return false;
+    if (!sheet.rowCount || isMonitoringSheet(sheet) || isRepairSheet(sheet)) {
+      return false;
+    }
     const header = findHeaderRow(sheet, historyHeaderMap);
     return Boolean(
       header?.columns.some((column) => column.key === "action") &&
+      header?.columns.some((column) => column.key === "leak_id"),
+    );
+  });
+}
+
+/**
+ * Лист ремонтов: строка на попытку починки.
+ *
+ * Ищется так же, как обходы и история, — сначала по имени, потом по колонкам:
+ * книгу пересохраняют и переименовывают, а «Попытка» вместе с биркой больше
+ * нигде не встречается.
+ */
+export function findRepairSheet(workbook) {
+  const repairHeaderMap = buildRepairHeaderMap();
+  const byName = workbook.worksheets.find(
+    (sheet) => sheet.rowCount > 0 && isRepairSheet(sheet),
+  );
+  if (byName && findHeaderRow(byName, repairHeaderMap)) return byName;
+
+  return workbook.worksheets.find((sheet) => {
+    if (!sheet.rowCount || isMonitoringSheet(sheet)) return false;
+    const header = findHeaderRow(sheet, repairHeaderMap);
+    return Boolean(
+      header?.columns.some((column) => column.key === "attempt") &&
       header?.columns.some((column) => column.key === "leak_id"),
     );
   });

@@ -320,6 +320,66 @@ describe("книга, вернувшаяся из Excel", () => {
     expect(new Set(dates)).toEqual(new Set([NIGHT]));
   }, 60_000);
 
+  it("возвращает из колонок починки с листа ремонтов", async () => {
+    const repaired = [
+      {
+        ...computed[0],
+        status: "resolved",
+        events: [
+          ...computed[0].events,
+          {
+            id: "r1",
+            type: "repair_started",
+            date: "2026-09-16T04:00:00.000Z",
+            user: "Бригада",
+          },
+          {
+            id: "r2",
+            type: "repair_done",
+            date: "2026-09-16T07:30:00.000Z",
+            user: "Бригада",
+            note: "Заменили прокладку",
+          },
+        ],
+      },
+    ];
+
+    const result = await roundTrip(null, {
+      ...computedOptions,
+      source: repaired,
+      dropBackup: true,
+    });
+    const events = result.leaks[0].events ?? [];
+
+    expect(
+      events
+        .filter((event) => String(event.type).startsWith("repair"))
+        .map((event) => [event.type, event.date, event.user]),
+    ).toEqual([
+      ["repair_started", "2026-09-16T04:00:00.000Z", "Бригада"],
+      ["repair_done", "2026-09-16T07:30:00.000Z", "Бригада"],
+    ]);
+  }, 60_000);
+
+  it("не теряет строку с повтором бирки", async () => {
+    const twins = [
+      { ...computed[0], id: 31, index: 1, component: "Кран" },
+      { ...computed[0], id: 32, index: 2, component: "Фланец" },
+    ];
+
+    const result = await roundTrip(null, {
+      ...computedOptions,
+      source: twins,
+      dropBackup: true,
+    });
+
+    expect(result.stats).toMatchObject({ imported: 2, duplicateLeakIds: 1 });
+    expect(result.leaks.map((leak) => leak.component)).toEqual([
+      "Кран",
+      "Фланец",
+    ]);
+  }, 60_000);
+
   it("проходит нетронутой без единой мнимой правки", async () => {
     const result = await roundTrip(null);
 

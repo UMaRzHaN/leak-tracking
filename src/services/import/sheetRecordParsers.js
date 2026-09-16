@@ -3,9 +3,13 @@ import {
   buildHistoryHeaderMap,
   buildMonitoringHeaderMap,
   findHeaderRow,
+  findHistorySheet,
+  findMonitoringSheet,
+  findRepairSheet,
   getCellDisplayValue,
   getCellPhotoValue,
 } from "./workbookSchema";
+import { parseRepairRecords } from "./repairSheetParser";
 import {
   isRecognizedMonitoringResult,
   normalizeHistoryAction,
@@ -102,6 +106,32 @@ export function parseMonitoringRecords(sheet, validation) {
   }
 
   return { recordsByLeakId, count };
+}
+
+/**
+ * Вспомогательные листы книги разом: обходы, история, ремонты.
+ *
+ * Собраны здесь, а не у вызывающего: там за поиском и разбором трёх листов
+ * перестала бы читаться сама сборка утечек.
+ */
+export function parseAuxiliarySheets(workbook, validation) {
+  const empty = { recordsByLeakId: new Map(), count: 0 };
+  const monitoringSheet = findMonitoringSheet(workbook);
+  const historySheet = findHistorySheet(workbook);
+  const repairSheet = findRepairSheet(workbook);
+
+  return {
+    monitoringSheet,
+    historySheet,
+    repairSheet,
+    monitoring: monitoringSheet
+      ? parseMonitoringRecords(monitoringSheet, validation)
+      : empty,
+    history: historySheet ? parseHistoryRecords(historySheet) : empty,
+    repairs: repairSheet
+      ? parseRepairRecords(repairSheet)
+      : { eventsByLeakId: new Map(), count: 0 },
+  };
 }
 
 export function normalizeHistoryCellValue(key, value) {

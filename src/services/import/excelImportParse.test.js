@@ -18,7 +18,9 @@ async function makeWorkbookBlob(rows) {
 }
 
 describe("parseExcelLeaks", () => {
-  it("skips duplicate tags case-insensitively", async () => {
+  // Повтор бирки — не мусор: две утечки под одним номером в поле встречаются,
+  // и выброшенная строка была потерянной записью. Объединение разводит их само.
+  it("keeps a duplicate tag as its own leak and reports it", async () => {
     const blob = await makeWorkbookBlob([
       ["Leak ID", "component"],
       ["TAG-1", "First valve"],
@@ -27,13 +29,21 @@ describe("parseExcelLeaks", () => {
 
     const result = await parseExcelLeaks(blob);
 
-    expect(result.leaks).toHaveLength(1);
-    expect(result.leaks[0].component).toBe("First valve");
+    expect(result.leaks.map((leak) => leak.component)).toEqual([
+      "First valve",
+      "Duplicate valve",
+    ]);
     expect(result.stats).toMatchObject({
-      imported: 1,
-      skipped: 1,
+      imported: 2,
+      skipped: 0,
       duplicateLeakIds: 1,
     });
+    expect(result.stats.validationWarnings).toContainEqual(
+      expect.objectContaining({
+        column: "leak_id",
+        message: "Повтор бирки; строка импортирована отдельной записью",
+      }),
+    );
   }, 60_000);
 
   it("does not guess the project type from ordinary XLSX headers", async () => {
