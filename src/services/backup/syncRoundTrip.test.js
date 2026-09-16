@@ -10,6 +10,7 @@ import {
 import {
   buildProjectBackupZip,
   importIntoExistingProject,
+  importProjectZip,
 } from "./projectBackupService";
 
 vi.mock("@/hooks/photoService", () => ({
@@ -228,6 +229,49 @@ describe("обмен между телефонами: круг через нас
     );
 
     expect(second).toEqual(first);
+  });
+
+  it("отдаёт чистому телефону историю удалений вместе с проектом", async () => {
+    // Второй вход обмена: проект приезжает по коду на телефон, где его ещё
+    // нет. Проверка восстановления рядом смотрит записи, снимки и обход, но не
+    // историю удалений — а без неё чистый телефон, обменявшись потом с
+    // третьим, вернёт к жизни всё, что удалили до его появления.
+    const kept = leak("leak-1");
+    const removed = leak("leak-2");
+    await recordLeakDeletions(deviceA.id, [kept, removed], [kept], DELETED_AT);
+    const archive = await exportFrom([kept], { vars: { density: 0.9 } });
+
+    const fresh = { ...deviceB, folderName: `${deviceB.folderName}_fresh` };
+    let receivedLeaks = null;
+    const context = {
+      activeProjectIdRef: { current: null },
+      photoReadyRef: { current: true },
+      removeProject: vi.fn(),
+      addProject: vi.fn((_name, _type, options) => {
+        const project = { ...fresh, syncId: options?.syncId };
+        context.activeProjectIdRef.current = project.id;
+        return project;
+      }),
+      savePhotoRef: {
+        current: vi.fn(async (_blob, leakId) => `idb://fresh-${leakId}`),
+      },
+      saveRef: {
+        current: vi.fn(async (leaks) => {
+          receivedLeaks = leaks;
+        }),
+      },
+    };
+
+    const imported = await importProjectZip(archive, context);
+
+    expect(imported.project.syncId).toBe(deviceA.syncId);
+    expect(receivedLeaks.map((item) => item.id)).toEqual(["leak-1"]);
+    expect(readProjectSyncState(fresh.id).deleted).toMatchObject({
+      "id:leak-2": DELETED_AT,
+    });
+    expect(
+      JSON.parse(localStorage.getItem(`app:${fresh.id}:vars_v1`)),
+    ).toMatchObject({ density: 0.9 });
   });
 
   it("отвергает обмен с телефоном, который уплотнил надгробия", async () => {
