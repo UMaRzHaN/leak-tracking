@@ -1,10 +1,8 @@
 import { getPhotoBlob, getPhotoSrc, photoExists } from "@/hooks/photoService";
 import { fingerprintBlob } from "@/utils/blobHash";
 import { getPhotoPathContentHash } from "@/utils/photoContentHash";
-import {
-  getLeakIdentity,
-  getMonitoringIdentity,
-} from "@/services/import/photoIdentity";
+import { getMonitoringIdentity } from "@/services/import/photoIdentity";
+import { matchIncomingLeaks } from "@/services/backup/leakMatching";
 import { mapWithConcurrency } from "@/services/backup/runtime";
 import { hydrateZipPhotos } from "@/services/import/zipPhotoHydration";
 import {
@@ -259,7 +257,9 @@ export async function reconcileExcelImportPhotos(
   getStoredPhoto,
   options = {},
 ) {
-  const existingByIdentity = new Map();
+  const matches = matchIncomingLeaks(existingLeaks ?? [], incomingLeaks ?? [], {
+    source: "excel",
+  });
   const stats = {
     added: 0,
     reused: 0,
@@ -269,10 +269,6 @@ export async function reconcileExcelImportPhotos(
     replacedByReason: {},
   };
 
-  for (const leak of existingLeaks ?? []) {
-    const identity = getLeakIdentity(leak);
-    if (identity) existingByIdentity.set(identity, leak);
-  }
   const preserveExisting = options.preserveExisting === true;
   const concurrency =
     options.concurrency ?? DEFAULT_PHOTO_RECONCILE_CONCURRENCY;
@@ -291,8 +287,8 @@ export async function reconcileExcelImportPhotos(
   const leaks = await mapWithConcurrency(
     incomingLeaks ?? [],
     concurrency,
-    async (leak) => {
-      const current = existingByIdentity.get(getLeakIdentity(leak));
+    async (leak, position) => {
+      const current = existingLeaks?.[matches[position]];
       const copy = { ...leak };
 
       for (const key of PHOTO_KEYS) {

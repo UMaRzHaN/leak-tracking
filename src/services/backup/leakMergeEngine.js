@@ -4,8 +4,8 @@ import {
   isVersionedLeakField,
   normalizeLeakFieldVersions,
 } from "@/services/storage/leakFieldVersions";
-import { getLeakMergeIdentity } from "@/services/sync/projectSyncState";
 import { PHOTO_KEYS } from "./constants";
+import { matchIncomingLeaks } from "./leakMatching";
 import {
   buildMergeHistoryChanges,
   EXCEL_DERIVED_FIELD_KEYS,
@@ -22,14 +22,6 @@ import {
   stableSyncValue,
   LEAK_SYNC_IGNORED_KEYS,
 } from "./syncConflictValue";
-
-export function getLeakIdentity(leak, options = {}) {
-  if (options.source !== "sync") {
-    const leakTag = normalizeLeakTag(leak?.leak_id);
-    if (leakTag) return `tag:${leakTag}`;
-  }
-  return getLeakMergeIdentity(leak);
-}
 
 function getLeakFreshness(leak) {
   const historyTimes = Array.isArray(leak?.history)
@@ -444,23 +436,16 @@ export function mergeLeaksByFreshness(
   options = {},
 ) {
   const merged = [...existing];
-  const indexByIdentity = new Map();
+  const matches = matchIncomingLeaks(existing, incoming, options);
   let added = 0;
   let updated = 0;
   let changedFields = 0;
 
-  merged.forEach((leak, index) => {
-    const identity = getLeakIdentity(leak, options);
-    if (identity) indexByIdentity.set(identity, index);
-  });
+  for (const [position, leak] of incoming.entries()) {
+    const existingIndex = matches[position];
 
-  for (const leak of incoming) {
-    const identity = getLeakIdentity(leak, options);
-    const existingIndex = identity ? indexByIdentity.get(identity) : undefined;
-
-    if (existingIndex == null) {
+    if (existingIndex < 0) {
       merged.push(leak);
-      if (identity) indexByIdentity.set(identity, merged.length - 1);
       added += 1;
       continue;
     }

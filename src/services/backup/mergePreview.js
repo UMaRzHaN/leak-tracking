@@ -5,9 +5,9 @@ import {
 } from "./constants";
 import {
   getChangedFieldKeys,
-  getLeakIdentity,
   shouldApplyIncomingLeak,
 } from "./leakMergeEngine";
+import { matchIncomingLeaks } from "./leakMatching";
 import { getRecordMergeIdentity } from "./recordArrayMerge";
 
 function isImportablePhoto(path) {
@@ -90,7 +90,6 @@ function getArchivePhotoMergeStats(photoPairs, applies) {
 }
 
 export function previewMergeLeaks(existing = [], incoming = [], options = {}) {
-  const existingByIdentity = new Map();
   const result = {
     added: 0,
     updated: 0,
@@ -102,14 +101,10 @@ export function previewMergeLeaks(existing = [], incoming = [], options = {}) {
     total: incoming.length,
   };
 
-  for (const leak of existing) {
-    const identity = getLeakIdentity(leak, options);
-    if (identity) existingByIdentity.set(identity, leak);
-  }
+  const matches = matchIncomingLeaks(existing, incoming, options);
 
-  for (const leak of incoming) {
-    const identity = getLeakIdentity(leak, options);
-    const current = identity ? existingByIdentity.get(identity) : null;
+  for (const [position, leak] of incoming.entries()) {
+    const current = existing[matches[position]] ?? null;
     const changedFieldKeys = current
       ? getChangedFieldKeys(current, leak, options)
       : [];
@@ -161,18 +156,10 @@ export function filterIncomingLeaksForMerge(
   incoming = [],
   options = {},
 ) {
-  const existingByIdentity = new Map();
+  const matches = matchIncomingLeaks(existing, incoming, options);
 
-  for (const leak of existing) {
-    const identity = getLeakIdentity(leak, options);
-    if (identity) existingByIdentity.set(identity, leak);
-  }
-
-  return incoming.filter((leak) => {
-    const identity = getLeakIdentity(leak, options);
-    if (!identity) return true;
-
-    const current = existingByIdentity.get(identity);
+  return incoming.filter((leak, position) => {
+    const current = existing[matches[position]];
     if (!current) return true;
 
     return shouldApplyIncomingLeak(current, leak, options);

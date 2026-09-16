@@ -297,7 +297,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
       const mergeResult = mergeLeaksByFreshness(
         existing,
         recalculatedIncoming,
-        isSync ? { source: "sync" } : { source: "archive" },
+        isSync ? { source: "sync" } : { source: "archive", allIncoming: leaks },
       );
       finalLeaks = isSync
         ? applyProjectTombstones(mergeResult.leaks, mergedSyncState)
