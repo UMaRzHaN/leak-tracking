@@ -91,7 +91,7 @@
     "src/services/import/photoPipeline.js": 393,
     "src/services/maps/tileCache.js": 561,
     "src/services/sync/localSyncService.js": 303,
-    "src/services/sync/projectSyncState.js": 509,
+    "src/services/sync/projectSyncState.js": 469,
     "src/utils/importLimits.js": 564,
     "vite.config.mjs": 465
   }

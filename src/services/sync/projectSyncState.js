@@ -11,11 +11,18 @@ import {
   LEAK_FIELD_VERSIONS_KEY,
   normalizeLeakFieldVersions,
 } from "@/services/storage/leakFieldVersions";
-import { fromEntries } from "@/utils/fromEntries";
+import {
+  compactDeletedState,
+  normalizeDeleted,
+} from "@/services/sync/projectTombstones";
 const SYNC_DB_NAME = "LeakTrackingSyncDB";
 const SYNC_STORE_NAME = "projectStates";
-export const MAX_PROJECT_TOMBSTONES = 10_000;
-export const TOMBSTONES_AFTER_COMPACTION = 5_000;
+export {
+  DELETED_LEAKS_AFTER_COMPACTION,
+  MAX_DELETED_LEAKS,
+  MAX_PROJECT_TOMBSTONES,
+  TOMBSTONES_AFTER_COMPACTION,
+} from "@/services/sync/projectTombstones";
 const LEGACY_SYNC_EPOCH = "legacy";
 const syncStateMemory = new Map();
 const syncStateMutationQueues = new Map();
@@ -83,27 +90,6 @@ function normalizeEpochId(value, generation) {
     : `${LEGACY_SYNC_EPOCH}-${generation}`;
 }
 
-function createCompactionEpochId(state, droppedEntries) {
-  const hashes = [2166136261, 2246822519, 3266489917, 668265263];
-  const update = (text) => {
-    for (let index = 0; index < text.length; index += 1) {
-      const code = text.charCodeAt(index);
-      hashes[0] = Math.imul(hashes[0] ^ code, 16777619);
-      hashes[1] = Math.imul(hashes[1] ^ code, 2246822519);
-      hashes[2] = Math.imul(hashes[2] ^ code, 3266489917);
-      hashes[3] = Math.imul(hashes[3] ^ code, 668265263);
-    }
-  };
-  update(`${state.generation}|${state.epochId}|`);
-  for (const [identity, deletedAt] of droppedEntries) {
-    update(`${identity}:${deletedAt}|`);
-  }
-  const digest = hashes
-    .map((value) => (value >>> 0).toString(16).padStart(8, "0"))
-    .join("");
-  return `epoch-${state.generation + 1}-${digest}`;
-}
-
 export function getLeakSyncIdentity(leak) {
   if (leak?.id != null) return `id:${String(leak.id)}`;
   const leakTag = String(leak?.leak_id ?? "").trim();
@@ -143,15 +129,6 @@ export function getLeakSyncFreshness(leak) {
   );
 }
 
-function normalizeDeleted(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  return fromEntries(
-    Object.entries(value)
-      .map(([identity, deletedAt]) => [identity, toTime(deletedAt)])
-      .filter(([identity, deletedAt]) => identity && Number(deletedAt) > 0),
-  );
-}
-
 export function normalizeProjectSyncState(value) {
   const generation = toGeneration(value?.generation);
   return {
@@ -159,7 +136,7 @@ export function normalizeProjectSyncState(value) {
     generation,
     epochId: normalizeEpochId(value?.epochId, generation),
     compactedAt: toTime(value?.compactedAt),
-    deleted: normalizeDeleted(value?.deleted),
+    deleted: normalizeDeleted(value?.deleted, toTime),
     varsUpdatedAt: toTime(value?.varsUpdatedAt),
   };
 }
@@ -183,23 +160,6 @@ export function assertProjectSyncStateCompatible(localValue, incomingValue) {
   error.localEpochId = local.epochId;
   error.incomingEpochId = incoming.epochId;
   throw error;
-}
-
-function compactDeletedState(state, deletedEntries) {
-  if (deletedEntries.length <= MAX_PROJECT_TOMBSTONES) {
-    return { ...state, deleted: fromEntries(deletedEntries) };
-  }
-
-  const retained = deletedEntries.slice(0, TOMBSTONES_AFTER_COMPACTION);
-  const dropped = deletedEntries.slice(TOMBSTONES_AFTER_COMPACTION);
-  const newestDroppedAt = dropped[0]?.[1] ?? 0;
-  return {
-    ...state,
-    generation: state.generation + 1,
-    epochId: createCompactionEpochId(state, dropped),
-    compactedAt: Math.max(state.compactedAt, newestDroppedAt),
-    deleted: fromEntries(retained),
-  };
 }
 
 export function readProjectSyncState(projectId) {

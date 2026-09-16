@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LeakRepository } from "@/repositories/LeakRepository";
 import { PhotoRepository } from "@/repositories/PhotoRepository";
 import {
+  MAX_DELETED_LEAKS,
   markProjectVarsUpdated,
   readProjectSyncState,
   recordLeakDeletions,
@@ -280,8 +281,11 @@ describe("обмен между телефонами: круг через нас
     // поэтому обмен отвергается до полной передачи проекта.
     const shared = leak("leak-1");
     const many = {};
-    for (let index = 0; index <= 10_000; index += 1) {
+    // Надгробий на запись два, и предел объявлен в записях: чтобы уплотнение
+    // сработало, их нужно на одну запись больше потолка.
+    for (let index = 0; index <= MAX_DELETED_LEAKS; index += 1) {
       many[`id:gone-${index}`] = DELETED_AT + index;
+      many[`tag:GONE-${index}`] = DELETED_AT + index;
     }
     await writeProjectSyncState(deviceA.id, {
       version: 2,

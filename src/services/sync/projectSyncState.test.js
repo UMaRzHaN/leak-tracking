@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { IDBFactory } from "fake-indexeddb";
 import {
+  DELETED_LEAKS_AFTER_COMPACTION,
+  MAX_DELETED_LEAKS,
   MAX_PROJECT_TOMBSTONES,
   TOMBSTONES_AFTER_COMPACTION,
   applyProjectTombstones,
@@ -390,13 +392,13 @@ describe("projectSyncState", () => {
     expect(localStorage.getItem("app:project-1:vars_updated_at_v1")).toBeNull();
     expect(readProjectSyncState("project-1").varsUpdatedAt).toBe(0);
   });
-  it("считает потолок надгробий по опознавателям, а не по записям", async () => {
-    // На каждую удалённую запись надгробий два: по внутреннему номеру и по
-    // бирке. Потолок задан в опознавателях, поэтому в записях он вдвое ниже
-    // числа в константе — 2500 при 5000 оставляемых. Это не дефект, но цифра
-    // неочевидная: за ней стоит обрыв обмена, а не плавное замедление.
+  it("держит потолок надгробий в записях, а не в опознавателях", async () => {
+    // У каждой удалённой утечки два опознавателя — по номеру и по бирке.
+    // Предел объявлен в записях, поэтому столько записей и обязано пережить
+    // уплотнение; в опознавателях их вдвое больше. Цифра важная: за ней стоит
+    // не замедление, а обрыв обмена до полной передачи проекта.
     const deleted = {};
-    for (let index = 0; index < MAX_PROJECT_TOMBSTONES; index += 1) {
+    for (let index = 0; index <= MAX_DELETED_LEAKS; index += 1) {
       deleted[`id:leak-${index}`] = 1_772_100_000_000 + index;
       deleted[`tag:TAG-${index}`] = 1_772_100_000_000 + index;
     }
@@ -407,13 +409,14 @@ describe("projectSyncState", () => {
       deleted,
     });
     const state = await readProjectSyncStateAsync("project-ceiling");
+    const identities = Object.keys(state.deleted);
 
-    expect(Object.keys(state.deleted)).toHaveLength(
-      TOMBSTONES_AFTER_COMPACTION,
-    );
-    expect(Object.keys(state.deleted).length / 2).toBe(
-      TOMBSTONES_AFTER_COMPACTION / 2,
-    );
+    // Множитель написан здесь числом намеренно: это и есть проверяемое
+    // утверждение — опознавателей вдвое больше, чем записей.
+    expect(identities).toHaveLength(DELETED_LEAKS_AFTER_COMPACTION * 2);
+    expect(
+      identities.filter((identity) => identity.startsWith("id:")),
+    ).toHaveLength(DELETED_LEAKS_AFTER_COMPACTION);
     // Уплотнение поднимает поколение: телефоны с разными поколениями к обмену
     // не допускаются.
     expect(state.generation).toBe(1);
