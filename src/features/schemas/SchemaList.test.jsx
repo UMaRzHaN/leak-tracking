@@ -153,7 +153,15 @@ describe("schema list", () => {
     await waitFor(() => screen.getByRole("dialog"));
 
     fireEvent.keyDown(document, { key: "Escape" });
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    // Срок свой, а не общий: этот тест единственный, кто упирался в секунду по
+    // умолчанию. Причина измерена (см. `maxWorkers` в `vite.config.mjs`): под
+    // очередью длиннее ядра воркер простаивает, диалог закрывается вовремя, а
+    // ожидание не успевает. Настоящую поломку три секунды не спрячут — не
+    // случившегося закрытия не будет и через три, — а общий срок оставлен
+    // умолчанием, чтобы медлительность в других тестах не осталась незаметной.
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull(), {
+      timeout: 3000,
+    });
   });
 
   it("hands a PDF to the system viewer instead", async () => {
