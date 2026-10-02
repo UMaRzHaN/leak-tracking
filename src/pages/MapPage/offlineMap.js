@@ -14,13 +14,7 @@ import {
   leakIcon,
   showAccuracyCircle,
 } from "./mapMarkers";
-import { CachedTileLayer } from "./cachedTileLayer";
-import {
-  MAP_MAX_NATIVE_ZOOM,
-  MAP_MAX_ZOOM,
-  TILE_ATTRIBUTION,
-  TILE_URL_TEMPLATE,
-} from "@/configs/mapTiles";
+import { addBaseTileLayer } from "./cachedTileLayer";
 
 // Оборудование — не событие, и цвет статуса утечки к нему не относится.
 // Своя метка, чтобы на карте нельзя было принять компонент за открытую утечку.
@@ -148,11 +142,7 @@ export function createOfflineMap(
   let destroyed = false;
   let heatmapLayer = /** @type {any} */ (null);
 
-  new /** @type {any} */ (CachedTileLayer)(TILE_URL_TEMPLATE, {
-    maxZoom: MAP_MAX_ZOOM,
-    maxNativeZoom: MAP_MAX_NATIVE_ZOOM,
-    attribution: TILE_ATTRIBUTION,
-  }).addTo(map);
+  addBaseTileLayer(map);
 
   const markersLayer = L.markerClusterGroup({
     maxClusterRadius: 48,

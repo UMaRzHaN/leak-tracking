@@ -66,15 +66,16 @@ npm run dev
 Все переменные необязательны — без `.env` приложение собирается на значениях
 по умолчанию. Шаблон лежит в `.env.example`.
 
-| Переменная                               | По умолчанию       | Назначение                                             |
-| ---------------------------------------- | ------------------ | ------------------------------------------------------ |
-| `VITE_TILE_URL`                          | ESRI World Imagery | Базовый URL тайлового сервера                          |
-| `VITE_TILE_ATTRIBUTION`                  | —                  | Обязательна для не-ESRI провайдера тайлов              |
-| `VITE_BASE_PATH`                         | `/`                | Подпапка публикации, например `/leak-tracking/`        |
-| `VITE_OFFLINE_MAP_ONLY`                  | `false`            | Полный запрет сетевых тайлов; origin не попадает в CSP |
-| `VITE_REQUIRE_PRIVATE_TILE_PROVIDER`     | `false`            | Отклонить сборку на публичном тайловом сервере         |
-| `VITE_RENDER_METRICS`                    | выкл.              | Метрики рендеринга для perf-тестов                     |
-| `VITE_ENABLE_NATIVE_STORAGE_PERFORMANCE` | выкл.              | Замеры нативного хранилища                             |
+| Переменная                               | По умолчанию       | Назначение                                               |
+| ---------------------------------------- | ------------------ | -------------------------------------------------------- |
+| `VITE_TILE_URL`                          | ESRI World Imagery | Базовый URL тайлового сервера                            |
+| `VITE_TILE_ATTRIBUTION`                  | —                  | Обязательна для не-ESRI провайдера тайлов                |
+| `VITE_GOOGLE_MAPS_KEY`                   | —                  | Ключ Google Map Tiles API: снимки там, где их нет у Esri |
+| `VITE_BASE_PATH`                         | `/`                | Подпапка публикации, например `/leak-tracking/`          |
+| `VITE_OFFLINE_MAP_ONLY`                  | `false`            | Полный запрет сетевых тайлов; origin не попадает в CSP   |
+| `VITE_REQUIRE_PRIVATE_TILE_PROVIDER`     | `false`            | Отклонить сборку на публичном тайловом сервере           |
+| `VITE_RENDER_METRICS`                    | выкл.              | Метрики рендеринга для perf-тестов                       |
+| `VITE_ENABLE_NATIVE_STORAGE_PERFORMANCE` | выкл.              | Замеры нативного хранилища                               |
 
 ---
 
@@ -693,6 +694,13 @@ npx cap open ios
 - Для объектов с чувствительными координатами задавать `VITE_TILE_URL` на
   одобренный или собственный tile server: координаты запросов тайлов раскрывают
   просматриваемую область внешнему провайдеру
+- `VITE_GOOGLE_MAPS_KEY` попадает в сборку открытым текстом. В Cloud Console
+  ограничить ключ одним Map Tiles API и поставить дневную квоту, иначе
+  извлечённый из APK ключ расходует ваш бюджет. Тайлы Google запрашиваются
+  только там, где у Esri нет снимка, и не сохраняются на устройство — так
+  требуют условия Google; без сети на этих местах остаётся растянутый снимок
+  Esri. При `VITE_OFFLINE_MAP_ONLY=true` или
+  `VITE_REQUIRE_PRIVATE_TILE_PROVIDER=true` Google не включается
 - Для публикации в подпапке задавать `VITE_BASE_PATH`, например
   `/leak-tracking/`; manifest и service worker используют тот же scope
 
@@ -700,7 +708,8 @@ npx cap open ios
 
 CSP лежит в `<meta http-equiv>` в `index.html` и собирается на сборке
 (`cspPolicy` в `vite.config.mjs`): origin тайлов подставляется из `VITE_TILE_URL`,
-а при `VITE_OFFLINE_MAP_ONLY=true` не подставляется вовсе.
+`https://tile.googleapis.com` — только при заданном `VITE_GOOGLE_MAPS_KEY`,
+а при `VITE_OFFLINE_MAP_ONLY=true` не подставляется ни один.
 
 **Директивы `frame-ancestors`, `report-uri` и `sandbox` в meta-теге игнорируются
 браузером по спецификации** — их нельзя доставить иначе, чем HTTP-заголовком.

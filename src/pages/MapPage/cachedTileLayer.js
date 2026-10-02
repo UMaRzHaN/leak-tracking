@@ -1,7 +1,15 @@
 import L from "leaflet";
 import { cacheTile, getTileBlobUrl } from "@/services/maps/tileCache";
+import { fetchGoogleTile } from "@/services/maps/googleTiles";
 import { isPlaceholderTile } from "@/services/maps/tilePlaceholder";
-import { OFFLINE_MAP_ONLY } from "@/configs/mapTiles";
+import {
+  MAP_MAX_NATIVE_ZOOM,
+  MAP_MAX_ZOOM,
+  OFFLINE_MAP_ONLY,
+  TILE_ATTRIBUTION,
+  TILE_URL_TEMPLATE,
+} from "@/configs/mapTiles";
+import { attachGoogleAttribution } from "./googleAttribution";
 import { overzoomTileUrl } from "./tileFallback";
 import { assignTileSource, releaseTileResources } from "./tileLifecycle";
 
@@ -17,6 +25,18 @@ async function assignOverzoomTile(tile, coords, done, network) {
   });
   if (!url) return tile._removed;
   assignTileSource(tile, url, done, { blobUrl: true });
+  return true;
+}
+
+// Где у Esri дыра, сначала спрашиваем Google: его снимок того же уровня
+// лучше растянутого. В кэш он не идёт — это запрещают условия Google.
+async function assignGoogleTile(layer, tile, coords, done) {
+  const blob = await fetchGoogleTile(coords, tile._abortController?.signal);
+  if (!blob) return tile._removed;
+  const url = URL.createObjectURL(blob);
+  if (assignTileSource(tile, url, done, { blobUrl: true })) {
+    layer.fire("googletile");
+  }
   return true;
 }
 
@@ -54,6 +74,7 @@ export const CachedTileLayer = L.TileLayer.extend({
         // Снимка этого уровня здесь нет — растягиваем уровень крупнее.
         if (await isPlaceholderTile(blob)) {
           if (tile._removed) return;
+          if (await assignGoogleTile(this, tile, coords, done)) return;
           if (await assignOverzoomTile(tile, coords, done, true)) return;
           assignTileSource(tile, TRANSPARENT_GIF, done);
           return;
@@ -81,3 +102,13 @@ export const CachedTileLayer = L.TileLayer.extend({
     L.TileLayer.prototype._removeTile.call(this, key);
   },
 });
+
+export function addBaseTileLayer(map) {
+  const layer = new /** @type {any} */ (CachedTileLayer)(TILE_URL_TEMPLATE, {
+    maxZoom: MAP_MAX_ZOOM,
+    maxNativeZoom: MAP_MAX_NATIVE_ZOOM,
+    attribution: TILE_ATTRIBUTION,
+  }).addTo(map);
+  attachGoogleAttribution(map, layer);
+  return layer;
+}

@@ -64,7 +64,7 @@
     "src/pages/MapPage/MapPage.module.scss": 375,
     "src/pages/MapPage/components/MapControls.jsx": 447,
     "src/pages/MapPage/hooks/useMapPage.js": 330,
-    "src/pages/MapPage/offlineMap.js": 379,
+    "src/pages/MapPage/offlineMap.js": 369,
     "src/pages/Monitoring/Monitoring.module.scss": 546,
     "src/pages/Monitoring/hooks/useMonitoringPage.js": 754,
     "src/pages/ProjectSetup/ProjectSetupScreen.jsx": 457,
@@ -93,6 +93,6 @@
     "src/services/sync/localSyncService.js": 303,
     "src/services/sync/projectSyncState.js": 469,
     "src/utils/importLimits.js": 564,
-    "vite.config.mjs": 465
+    "vite.config.mjs": 423
   }
 }

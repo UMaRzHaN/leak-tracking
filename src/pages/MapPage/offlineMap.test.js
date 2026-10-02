@@ -100,6 +100,8 @@ vi.mock("@/services/maps/tileCache", () => ({
   getTileBlobUrl: vi.fn(async () => null),
 }));
 vi.mock("./tileFallback", () => ({ overzoomTileUrl: vi.fn() }));
+vi.mock("./googleAttribution", () => ({ attachGoogleAttribution: vi.fn() }));
+vi.mock("@/services/maps/googleTiles", () => ({ fetchGoogleTile: vi.fn() }));
 vi.mock("@/configs/mapTiles", () => ({
   MAP_MAX_NATIVE_ZOOM: 19,
   MAP_MAX_ZOOM: 21,

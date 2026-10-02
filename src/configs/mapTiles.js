@@ -49,3 +49,16 @@ export function buildMapTileUrl(z, y, x) {
 // Google и Яндекс, — вместо того чтобы упираться в потолок.
 export const MAP_MAX_NATIVE_ZOOM = 19;
 export const MAP_MAX_ZOOM = 21;
+
+// Google Map Tiles API закрывает дыры в снимках Esri: в степи у Esri снимки
+// кончаются на семнадцатом уровне, у Google обычно идут глубже. Только онлайн —
+// хранить тайлы Google на устройстве условия не разрешают. На площадках, где
+// обращение к публичным серверам запрещено, Google не включается вовсе.
+export const GOOGLE_TILES_ORIGIN = "https://tile.googleapis.com";
+export const GOOGLE_TILES_KEY = String(
+  import.meta.env.VITE_GOOGLE_MAPS_KEY ?? "",
+).trim();
+export const GOOGLE_TILES_ENABLED =
+  Boolean(GOOGLE_TILES_KEY) &&
+  !OFFLINE_MAP_ONLY &&
+  !PRIVATE_TILE_PROVIDER_REQUIRED;

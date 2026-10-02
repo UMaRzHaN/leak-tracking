@@ -9,6 +9,7 @@ const services = vi.hoisted(() => ({
   releaseTileResources: vi.fn(),
   overzoomTileUrl: vi.fn(),
   isPlaceholderTile: vi.fn(),
+  fetchGoogleTile: vi.fn(),
 }));
 
 // Слой тайлов объявляется через L.TileLayer.extend при загрузке модуля.
@@ -57,6 +58,10 @@ vi.mock("./tileLifecycle", () => ({
 vi.mock("@/services/maps/tilePlaceholder", () => ({
   isPlaceholderTile: services.isPlaceholderTile,
 }));
+vi.mock("@/services/maps/googleTiles", () => ({
+  fetchGoogleTile: services.fetchGoogleTile,
+}));
+vi.mock("./googleAttribution", () => ({ attachGoogleAttribution: vi.fn() }));
 vi.mock("./tileFallback", () => ({
   overzoomTileUrl: services.overzoomTileUrl,
 }));
@@ -88,9 +93,9 @@ function placeholderResponse() {
 
 function makeTile() {
   const done = vi.fn();
-  const layer = { getTileUrl: () => "https://tiles/14/1/2" };
+  const layer = { getTileUrl: () => "https://tiles/14/1/2", fire: vi.fn() };
   const tile = tileLayer.createTile.call(layer, { x: 1, y: 2, z: 14 }, done);
-  return { tile, done };
+  return { tile, done, layer };
 }
 
 describe("слой тайлов офлайн-карты", () => {
@@ -101,6 +106,7 @@ describe("слой тайлов офлайн-карты", () => {
     globalThis.fetch = vi.fn();
     services.overzoomTileUrl.mockResolvedValue(null);
     services.isPlaceholderTile.mockResolvedValue(false);
+    services.fetchGoogleTile.mockResolvedValue(null);
   });
 
   it("берёт тайл из кэша и не ходит в сеть", async () => {
@@ -187,6 +193,35 @@ describe("слой тайлов офлайн-карты", () => {
       done,
       { blobUrl: true },
     );
+    expect(services.cacheTile).not.toHaveBeenCalled();
+  });
+
+  it("где у Esri дыра, сначала берёт снимок Google и в кэш его не кладёт", async () => {
+    services.getTileBlobUrl.mockResolvedValue(null);
+    globalThis.fetch.mockResolvedValue(placeholderResponse());
+    services.isPlaceholderTile.mockResolvedValue(true);
+    services.fetchGoogleTile.mockResolvedValue(new Blob(["google"]));
+    globalThis.URL.createObjectURL = vi.fn(() => "blob:google");
+    services.assignTileSource.mockReturnValue(true);
+
+    const { tile, done, layer } = makeTile();
+    await vi.waitFor(() =>
+      expect(services.assignTileSource).toHaveBeenCalled(),
+    );
+
+    expect(services.fetchGoogleTile).toHaveBeenCalledWith(
+      { x: 1, y: 2, z: 14 },
+      tile._abortController.signal,
+    );
+    expect(services.assignTileSource).toHaveBeenCalledWith(
+      tile,
+      "blob:google",
+      done,
+      { blobUrl: true },
+    );
+    // По событию карта включает обязательную подпись Google.
+    expect(layer.fire).toHaveBeenCalledWith("googletile");
+    expect(services.overzoomTileUrl).not.toHaveBeenCalled();
     expect(services.cacheTile).not.toHaveBeenCalled();
   });
 

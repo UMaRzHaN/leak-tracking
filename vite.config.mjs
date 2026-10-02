@@ -5,6 +5,10 @@ import { fileURLToPath } from "url";
 import path from "path";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
+import {
+  tileCspOrigins,
+  validateTileDeployment,
+} from "./scripts/tile-deployment.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_PRECACHE_FILES = [
@@ -14,9 +18,6 @@ const PUBLIC_PRECACHE_FILES = [
   "icons/icon-192.png",
   "icons/icon-512.png",
 ];
-
-const DEFAULT_TILE_URL =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile";
 
 // Coverage floors live in one file so raising a threshold is a single edit.
 // `scripts/check-coverage-ratchet.mjs` re-checks the same floors against the
@@ -31,55 +32,12 @@ const coverageThresholds = {
   ...coveragePolicy.directories,
 };
 
-function getHttpOrigin(value) {
-  try {
-    const origin = new URL(value).origin;
-    return /^https?:\/\//.test(origin) ? origin : null;
-  } catch {
-    return null;
-  }
-}
-
-function envFlag(value) {
-  return (
-    String(value ?? "")
-      .trim()
-      .toLowerCase() === "true"
-  );
-}
-
-function validateTileDeployment(mode, env) {
-  if (mode === "development") return;
-  const offlineOnly = envFlag(env.VITE_OFFLINE_MAP_ONLY);
-  const requirePrivateProvider = envFlag(
-    env.VITE_REQUIRE_PRIVATE_TILE_PROVIDER,
-  );
-  const tileUrl = String(env.VITE_TILE_URL || DEFAULT_TILE_URL).trim();
-  if (!offlineOnly && !getHttpOrigin(tileUrl)) {
-    throw new Error(
-      "VITE_TILE_URL must be an absolute HTTP(S) URL or VITE_OFFLINE_MAP_ONLY=true",
-    );
-  }
-  if (
-    requirePrivateProvider &&
-    !offlineOnly &&
-    tileUrl.replace(/\/+$/, "") === DEFAULT_TILE_URL
-  ) {
-    throw new Error(
-      "Protected deployment requires a private VITE_TILE_URL or VITE_OFFLINE_MAP_ONLY=true",
-    );
-  }
-}
-
 function cspPolicy(mode, env) {
-  const offlineOnly = envFlag(env.VITE_OFFLINE_MAP_ONLY);
-  const tileOrigin = offlineOnly
-    ? null
-    : getHttpOrigin(env.VITE_TILE_URL || DEFAULT_TILE_URL);
-  const productionImgSources = ["'self'", "data:", "blob:", tileOrigin]
+  const tileOrigins = tileCspOrigins(env);
+  const productionImgSources = ["'self'", "data:", "blob:", ...tileOrigins]
     .filter(Boolean)
     .join(" ");
-  const productionConnectSources = ["'self'", "data:", "blob:", tileOrigin]
+  const productionConnectSources = ["'self'", "data:", "blob:", ...tileOrigins]
     .filter(Boolean)
     .join(" ");
 

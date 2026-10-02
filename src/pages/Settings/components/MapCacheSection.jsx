@@ -1,4 +1,16 @@
-import { OFFLINE_MAP_ONLY, TILE_PROVIDER_ORIGIN } from "@/configs/mapTiles";
+import {
+  GOOGLE_TILES_ENABLED,
+  GOOGLE_TILES_ORIGIN,
+  OFFLINE_MAP_ONLY,
+  TILE_PROVIDER_ORIGIN,
+} from "@/configs/mapTiles";
+
+const TILE_PROVIDERS = [
+  TILE_PROVIDER_ORIGIN,
+  GOOGLE_TILES_ENABLED && GOOGLE_TILES_ORIGIN,
+]
+  .filter(Boolean)
+  .join(", ");
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { formatStorageAmount } from "@/services/storage/deviceStorage";
 import { useDeviceStorage } from "../hooks/useDeviceStorage";
@@ -49,7 +61,7 @@ export default function MapCacheSection({ cacheInfo, localeTexts, onClear }) {
           <span className={s.cacheSize}>
             {OFFLINE_MAP_ONLY
               ? t("settings.mapProviderLocalOnly")
-              : TILE_PROVIDER_ORIGIN || t("settings.mapProviderUnknown")}
+              : TILE_PROVIDERS || t("settings.mapProviderUnknown")}
           </span>
           {!OFFLINE_MAP_ONLY && TILE_PROVIDER_ORIGIN && (
             <span className={s.cacheSize} role="note">
