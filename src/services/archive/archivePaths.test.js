@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   allocateUniqueLeakArchiveSegments,
+  buildEventPhotoArchivePath,
   buildLeakPhotoArchivePath,
   buildMonitoringPhotoArchivePath,
+  getImageMimeTypeFromExtension,
+  normalizeImageExtension,
   parseDataImageUri,
   sanitizePortableArchiveSegment,
 } from "@/services/archive/archivePaths";
@@ -64,5 +67,41 @@ describe("archivePaths", () => {
       base64: "PHN2Zz4=",
       ext: "svg",
     });
+  });
+
+  it("numbers folders by position when the input or the identity is missing", () => {
+    // Повреждённый проект не должен ронять экспорт: папки получают номер.
+    expect(allocateUniqueLeakArchiveSegments(null)).toEqual([]);
+    expect(
+      allocateUniqueLeakArchiveSegments([{ leak_id: "A" }, { leak_id: "a" }]),
+    ).toEqual(["A", "a~2"]);
+  });
+
+  it("keeps event photos of one event apart by field", () => {
+    expect(buildEventPhotoArchivePath("A-1", 0, "png")).toBe(
+      "photos/A-1/events/event-1.png",
+    );
+    expect(buildEventPhotoArchivePath("A-1", 2, "jpeg", "photo_after")).toBe(
+      "photos/A-1/events/event-3-photo_after.jpg",
+    );
+  });
+
+  it("refuses a photo field the archive has no place for", () => {
+    expect(() =>
+      buildLeakPhotoArchivePath("A-1", "photo_extra", "jpg"),
+    ).toThrow(/Unsupported leak photo field/);
+  });
+
+  it("falls back to JPEG for a missing or unknown image type", () => {
+    expect(normalizeImageExtension(undefined)).toBe("jpg");
+    expect(normalizeImageExtension("image/+++")).toBe("jpg");
+    expect(getImageMimeTypeFromExtension("image/webp")).toBe("image/webp");
+    expect(getImageMimeTypeFromExtension("xyz")).toBe("image/jpeg");
+  });
+
+  it("rejects values that are not base64 image data URIs", () => {
+    expect(parseDataImageUri(null)).toBeNull();
+    expect(parseDataImageUri("data:text/plain;base64,QQ==")).toBeNull();
+    expect(parseDataImageUri("https://example.com/photo.jpg")).toBeNull();
   });
 });
