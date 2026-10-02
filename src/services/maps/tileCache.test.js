@@ -12,6 +12,8 @@ const cachesMock = {
 };
 vi.stubGlobal("caches", cachesMock);
 vi.mock("@/utils/platform", () => ({ isNative: false }));
+const placeholder = vi.hoisted(() => ({ isPlaceholderTile: vi.fn() }));
+vi.mock("./tilePlaceholder", () => placeholder);
 
 const {
   buildTileUrls,
@@ -31,6 +33,7 @@ describe("map tile boundaries", () => {
     cache.match.mockResolvedValue(undefined);
     cache.put.mockResolvedValue(undefined);
     cache.keys.mockResolvedValue([]);
+    placeholder.isPlaceholderTile.mockResolvedValue(false);
   });
 
   it("clamps polar coordinates to valid Web Mercator tile rows", () => {
@@ -114,7 +117,7 @@ describe("map tile boundaries", () => {
       vi.fn((url) =>
         Promise.resolve({
           ok: url !== "failed",
-          blob: vi.fn(),
+          blob: vi.fn(async () => new Blob(["tile"])),
         }),
       ),
     );
@@ -133,6 +136,20 @@ describe("map tile boundaries", () => {
     });
     expect(cache.put).toHaveBeenCalledTimes(1);
     expect(onProgress).toHaveBeenLastCalledWith(3, 3, stats);
+  });
+
+  it("does not store the Esri placeholder when preloading an area", async () => {
+    cache.match.mockResolvedValue(undefined);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, blob: async () => new Blob(["stub"]) })),
+    );
+    placeholder.isPlaceholderTile.mockResolvedValue(true);
+
+    const stats = await preloadUrls(["empty"], { concurrency: 1 });
+
+    expect(cache.put).not.toHaveBeenCalled();
+    expect(stats).toMatchObject({ saved: 0, failed: 1 });
   });
 
   it("does not start another download batch after abort", async () => {
@@ -154,6 +171,16 @@ describe("map tile boundaries", () => {
     ).rejects.toMatchObject({ name: "AbortError" });
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(cache.put).not.toHaveBeenCalled();
+  });
+
+  it("drops a cached Esri placeholder so the map can overzoom instead", async () => {
+    // Before blankTile=false the «Map data not yet available» image was cached
+    // as a real tile and covered the field after every zoom-in.
+    cache.match.mockResolvedValue({ blob: async () => new Blob(["stub"]) });
+    placeholder.isPlaceholderTile.mockResolvedValue(true);
+
+    await expect(getTileBlobUrl("tile")).resolves.toBeNull();
+    expect(cache.delete).toHaveBeenCalledWith("tile");
   });
 
   it("returns safe defaults when Cache API calls fail", async () => {

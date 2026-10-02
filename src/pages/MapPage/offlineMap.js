@@ -5,9 +5,7 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
-import { getTileBlobUrl, cacheTile } from "@/services/maps/tileCache";
 import { logger } from "@/utils/logger";
-import { assignTileSource, releaseTileResources } from "./tileLifecycle";
 import {
   accuracyMetres,
   clearAccuracyCircle,
@@ -16,66 +14,13 @@ import {
   leakIcon,
   showAccuracyCircle,
 } from "./mapMarkers";
+import { CachedTileLayer } from "./cachedTileLayer";
 import {
-  OFFLINE_MAP_ONLY,
+  MAP_MAX_NATIVE_ZOOM,
+  MAP_MAX_ZOOM,
   TILE_ATTRIBUTION,
   TILE_URL_TEMPLATE,
 } from "@/configs/mapTiles";
-
-const CachedTileLayer = L.TileLayer.extend({
-  createTile(coords, done) {
-    const tile = document.createElement("img");
-    tile.alt = "";
-    tile._removed = false;
-    tile._abortController = new AbortController();
-
-    const url = this.getTileUrl(coords);
-
-    getTileBlobUrl(url).then(async (blobUrl) => {
-      if (blobUrl) {
-        assignTileSource(tile, blobUrl, done, { blobUrl: true });
-        return;
-      }
-      if (tile._removed) return;
-      if (OFFLINE_MAP_ONLY) {
-        assignTileSource(
-          tile,
-          "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
-          done,
-        );
-        return;
-      }
-
-      try {
-        const response = await fetch(url, {
-          mode: "cors",
-          signal: tile._abortController?.signal,
-        });
-        if (!response.ok) throw new Error("bad status");
-
-        const responseToCache = response.clone();
-        const blob = await response.blob();
-
-        cacheTile(url, responseToCache);
-
-        const objectUrl = URL.createObjectURL(blob);
-        assignTileSource(tile, objectUrl, done, { blobUrl: true });
-      } catch {
-        if (tile._removed) return;
-        tile.crossOrigin = "anonymous";
-        assignTileSource(tile, url, done);
-      }
-    });
-
-    return tile;
-  },
-
-  _removeTile(key) {
-    const tile = this._tiles[key];
-    releaseTileResources(tile?.el);
-    L.TileLayer.prototype._removeTile.call(this, key);
-  },
-});
 
 // Оборудование — не событие, и цвет статуса утечки к нему не относится.
 // Своя метка, чтобы на карте нельзя было принять компонент за открытую утечку.
@@ -204,7 +149,8 @@ export function createOfflineMap(
   let heatmapLayer = /** @type {any} */ (null);
 
   new /** @type {any} */ (CachedTileLayer)(TILE_URL_TEMPLATE, {
-    maxZoom: 19,
+    maxZoom: MAP_MAX_ZOOM,
+    maxNativeZoom: MAP_MAX_NATIVE_ZOOM,
     attribution: TILE_ATTRIBUTION,
   }).addTo(map);
 

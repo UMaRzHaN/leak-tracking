@@ -43,3 +43,9 @@ export function buildMapTileUrl(z, y, x) {
     .replace("{y}", String(y))
     .replace("{x}", String(x));
 }
+
+// Глубже девятнадцатого уровня Esri снимков почти нигде не держит. Карта
+// приближается дальше, растягивая тайлы этого уровня, — как это делают
+// Google и Яндекс, — вместо того чтобы упираться в потолок.
+export const MAP_MAX_NATIVE_ZOOM = 19;
+export const MAP_MAX_ZOOM = 21;

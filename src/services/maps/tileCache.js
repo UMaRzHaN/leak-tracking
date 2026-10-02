@@ -1,6 +1,9 @@
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { isNative } from "@/utils/platform";
 import { buildMapTileUrl, OFFLINE_MAP_ONLY } from "@/configs/mapTiles";
+import { isPlaceholderTile } from "./tilePlaceholder";
+import { base64ToBlob, blobToBase64 } from "./tileEncoding";
+import { clampLatitude, normalizeLongitude, tileY } from "./tileGeometry";
 import {
   clearWebMetadata,
   getNativeCount,
@@ -29,33 +32,11 @@ import { fromEntries } from "@/utils/fromEntries";
 import { errorCode } from "@/utils/appError";
 
 const CACHE_NAME = "map-tiles-v2";
-const MAX_MERCATOR_LAT = 85.05112878;
 const FILESYSTEM_NOT_FOUND_CODE = "OS-PLUG-FILE-0008";
 export const MAX_TILE_CACHE_ENTRIES = 6_000;
 const TILE_CACHE_EVICTION_TARGET = 5_400;
 
 const webSupported = typeof caches !== "undefined";
-
-function clampLatitude(value) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return null;
-  return Math.max(-MAX_MERCATOR_LAT, Math.min(MAX_MERCATOR_LAT, number));
-}
-
-function normalizeLongitude(value) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return null;
-  return ((((number + 180) % 360) + 360) % 360) - 180;
-}
-
-function tileY(latitude, tileCount) {
-  const latRad = (latitude * Math.PI) / 180;
-  const value = Math.floor(
-    ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) *
-      tileCount,
-  );
-  return Math.max(0, Math.min(tileCount - 1, value));
-}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -111,7 +92,10 @@ async function fetchWithTimeout(url, ms = 10000, signal) {
   signal?.addEventListener("abort", abort, { once: true });
   try {
     throwIfAborted(signal);
-    return await fetch(url, { mode: "cors", signal: ctrl.signal });
+    return await fetch(url, {
+      mode: "cors",
+      signal: ctrl.signal,
+    });
   } finally {
     clearTimeout(timer);
     signal?.removeEventListener("abort", abort);
@@ -134,22 +118,6 @@ async function filterWithConcurrency(items, concurrency, predicate) {
   return items.filter((_, index) => matches[index]);
 }
 
-async function blobToBase64(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(",")[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-function base64ToObjectUrl(base64) {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return URL.createObjectURL(new Blob([bytes], { type: "image/jpeg" }));
-}
-
 // ── Native (Filesystem) ───────────────────────────────────────────────────────
 
 async function nativeExists(path) {
@@ -169,8 +137,15 @@ async function nativeRead(url) {
       path,
       directory: Directory.Data,
     });
+    const blob = base64ToBlob(data);
+    if (await isPlaceholderTile(blob)) {
+      await Filesystem.deleteFile({ path, directory: Directory.Data });
+      removeMetadata([path]);
+      setNativeCount(Math.max(0, getNativeCount() - 1));
+      return null;
+    }
     touchMetadata(path);
-    return base64ToObjectUrl(data);
+    return URL.createObjectURL(blob);
   } catch {
     return null;
   }
@@ -207,7 +182,9 @@ async function nativeWrite(
       ? prefetchedResponse
       : await fetchWithTimeout(url, 10000, signal);
     if (!response.ok) return false;
-    const base64 = await blobToBase64(await response.blob());
+    const blob = await response.blob();
+    if (await isPlaceholderTile(blob)) return false;
+    const base64 = await blobToBase64(blob);
     throwIfAborted(signal);
     if (!skipMkdir) {
       const dir = path.substring(0, path.lastIndexOf("/"));
@@ -292,8 +269,14 @@ export async function getTileBlobUrl(url) {
     const cache = await caches.open(CACHE_NAME);
     const response = await cache.match(url);
     if (!response) return null;
+    const blob = await response.blob();
+    if (await isPlaceholderTile(blob)) {
+      await cache.delete(url);
+      removeMetadata([url]);
+      return null;
+    }
     touchMetadata(url);
-    return URL.createObjectURL(await response.blob());
+    return URL.createObjectURL(blob);
   } catch {
     return null;
   }
@@ -506,9 +489,10 @@ export async function preloadUrls(
         try {
           const response = await fetchWithTimeout(url, 10000, signal);
           throwIfAborted(signal);
-          if (response.ok) {
+          const blob = response.ok ? await response.blob() : null;
+          if (blob && !(await isPlaceholderTile(blob))) {
             throwIfAborted(signal);
-            await webCache.put(url, response);
+            await webCache.put(url, new Response(blob, response));
             touchMetadata(url);
             stats.saved++;
           } else {

@@ -12,6 +12,8 @@ const { filesystem } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/utils/platform", () => ({ isNative: true }));
+const placeholder = vi.hoisted(() => ({ isPlaceholderTile: vi.fn() }));
+vi.mock("./tilePlaceholder", () => placeholder);
 vi.mock("@capacitor/filesystem", () => ({
   Directory: { Data: "DATA" },
   Filesystem: filesystem,
@@ -75,6 +77,36 @@ describe("tileCache native storage", () => {
     await expect(
       getTileBlobUrl("https://server/tile/3/2/1.jpg"),
     ).resolves.toBeNull();
+  });
+
+  it("deletes a cached Esri placeholder instead of showing it", async () => {
+    // Заглушка «Map data not yet available», скачанная до этой правки, иначе
+    // так и закрывала бы собой подстановку уровня крупнее.
+    filesystem.readFile.mockResolvedValue({ data: "AQID" });
+    placeholder.isPlaceholderTile.mockResolvedValueOnce(true);
+
+    await expect(
+      getTileBlobUrl("https://server/tile/3/2/1.jpg"),
+    ).resolves.toBeNull();
+    expect(filesystem.deleteFile).toHaveBeenCalledWith({
+      path: `${NATIVE_TILE_CACHE_DIR}/3/2/1.jpg`,
+      directory: "DATA",
+    });
+  });
+
+  it("does not write the Esri placeholder to the device", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(["stub"])),
+      }),
+    );
+    placeholder.isPlaceholderTile.mockResolvedValueOnce(true);
+
+    await cacheTile("https://server/tile/3/2/1.jpg");
+
+    expect(filesystem.writeFile).not.toHaveBeenCalled();
   });
 
   it("stores a downloaded tile and updates native metadata", async () => {

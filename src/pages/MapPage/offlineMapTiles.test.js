@@ -7,6 +7,8 @@ const services = vi.hoisted(() => ({
   cacheTile: vi.fn(),
   assignTileSource: vi.fn(),
   releaseTileResources: vi.fn(),
+  overzoomTileUrl: vi.fn(),
+  isPlaceholderTile: vi.fn(),
 }));
 
 // Слой тайлов объявляется через L.TileLayer.extend при загрузке модуля.
@@ -52,7 +54,15 @@ vi.mock("./tileLifecycle", () => ({
   assignTileSource: services.assignTileSource,
   releaseTileResources: services.releaseTileResources,
 }));
+vi.mock("@/services/maps/tilePlaceholder", () => ({
+  isPlaceholderTile: services.isPlaceholderTile,
+}));
+vi.mock("./tileFallback", () => ({
+  overzoomTileUrl: services.overzoomTileUrl,
+}));
 vi.mock("@/configs/mapTiles", () => ({
+  MAP_MAX_NATIVE_ZOOM: 19,
+  MAP_MAX_ZOOM: 21,
   TILE_ATTRIBUTION: "Map provider",
   TILE_URL_TEMPLATE: "https://tiles/{z}/{x}/{y}",
   get OFFLINE_MAP_ONLY() {
@@ -68,6 +78,14 @@ const tileLayer = captured.definitions.find((d) => d.createTile);
 const TRANSPARENT_GIF =
   "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
 
+function placeholderResponse() {
+  return {
+    ok: true,
+    clone: () => "clone",
+    blob: async () => new Blob(["Map data not yet available"]),
+  };
+}
+
 function makeTile() {
   const done = vi.fn();
   const layer = { getTileUrl: () => "https://tiles/14/1/2" };
@@ -81,6 +99,8 @@ describe("слой тайлов офлайн-карты", () => {
     config.offlineOnly = false;
     globalThis.URL.createObjectURL = vi.fn(() => "blob:tile");
     globalThis.fetch = vi.fn();
+    services.overzoomTileUrl.mockResolvedValue(null);
+    services.isPlaceholderTile.mockResolvedValue(false);
   });
 
   it("берёт тайл из кэша и не ходит в сеть", async () => {
@@ -140,6 +160,70 @@ describe("слой тайлов офлайн-карты", () => {
     expect(services.assignTileSource).toHaveBeenCalledWith(
       tile,
       "blob:tile",
+      done,
+      { blobUrl: true },
+    );
+  });
+
+  it("где снимка нет, растягивает уровень крупнее", async () => {
+    // Иначе при приближении поле покрывается надписями «Map data not yet available».
+    services.getTileBlobUrl.mockResolvedValue(null);
+    services.overzoomTileUrl.mockResolvedValue("blob:parent");
+    globalThis.fetch.mockResolvedValue(placeholderResponse());
+    services.isPlaceholderTile.mockResolvedValue(true);
+
+    const { tile, done } = makeTile();
+    await vi.waitFor(() =>
+      expect(services.assignTileSource).toHaveBeenCalled(),
+    );
+
+    expect(services.overzoomTileUrl).toHaveBeenCalledWith(
+      { x: 1, y: 2, z: 14 },
+      expect.objectContaining({ network: true }),
+    );
+    expect(services.assignTileSource).toHaveBeenCalledWith(
+      tile,
+      "blob:parent",
+      done,
+      { blobUrl: true },
+    );
+    expect(services.cacheTile).not.toHaveBeenCalled();
+  });
+
+  it("без снимка и без родителя оставляет тайл пустым, а не заглушкой", async () => {
+    services.getTileBlobUrl.mockResolvedValue(null);
+    globalThis.fetch.mockResolvedValue(placeholderResponse());
+    services.isPlaceholderTile.mockResolvedValue(true);
+
+    const { tile, done } = makeTile();
+    await vi.waitFor(() =>
+      expect(services.assignTileSource).toHaveBeenCalled(),
+    );
+
+    expect(services.assignTileSource).toHaveBeenCalledWith(
+      tile,
+      TRANSPARENT_GIF,
+      done,
+    );
+  });
+
+  it("без сети берёт скачанный заранее уровень крупнее", async () => {
+    services.getTileBlobUrl.mockResolvedValue(null);
+    services.overzoomTileUrl.mockResolvedValue("blob:parent");
+    globalThis.fetch.mockRejectedValue(new Error("offline"));
+
+    const { tile, done } = makeTile();
+    await vi.waitFor(() =>
+      expect(services.assignTileSource).toHaveBeenCalled(),
+    );
+
+    expect(services.overzoomTileUrl).toHaveBeenCalledWith(
+      { x: 1, y: 2, z: 14 },
+      expect.objectContaining({ network: false }),
+    );
+    expect(services.assignTileSource).toHaveBeenCalledWith(
+      tile,
+      "blob:parent",
       done,
       { blobUrl: true },
     );

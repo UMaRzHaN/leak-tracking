@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { MAP_MAX_NATIVE_ZOOM } from "@/configs/mapTiles";
 
 export function useOfflineMapActions({ mapRef, notify }) {
   const { t } = useLanguage();
@@ -52,6 +53,8 @@ export function useOfflineMapActions({ mapRef, notify }) {
       // every leak coordinate disclosed the complete project geography to the
       // configured third-party tile provider.
       const bounds = map.getBounds();
+      // Глубже родного уровня карта лишь растягивает его тайлы, скачивать там нечего.
+      const zoom = Math.min(Math.floor(map.getZoom()), MAP_MAX_NATIVE_ZOOM);
       for (const url of buildViewportTileUrls(
         {
           north: bounds.getNorth(),
@@ -59,8 +62,8 @@ export function useOfflineMapActions({ mapRef, notify }) {
           east: bounds.getEast(),
           west: bounds.getWest(),
         },
-        Math.floor(map.getZoom()),
-        Math.floor(map.getZoom()),
+        zoom,
+        zoom,
       )) {
         urlSet.add(url);
       }
