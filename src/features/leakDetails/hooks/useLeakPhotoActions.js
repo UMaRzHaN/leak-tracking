@@ -1,6 +1,7 @@
 import { getStatusRepairMilestones } from "@/domain/leakEvents";
 import { useRef } from "react";
 import { useEditablePhoto } from "@/hooks/useEditablePhoto";
+import { isPresent } from "@/utils/isPresent";
 
 export function useLeakPhotoActions(leak) {
   const fileInputRef = useRef(/** @type {HTMLInputElement|null} */ (null));
@@ -17,19 +18,19 @@ export function useLeakPhotoActions(leak) {
     initialPath: leak.photo,
     leakId: String(leak.id),
     version: leak.updatedAt,
-    excludePaths: [resolvedPhoto, repairPhoto].filter(Boolean),
+    excludePaths: [resolvedPhoto, repairPhoto].filter(isPresent),
   });
   const after = useEditablePhoto({
     initialPath: resolvedPhoto,
     leakId: `${leak.id}_after`,
     version: leak.updatedAt,
-    excludePaths: [leak.photo, repairPhoto].filter(Boolean),
+    excludePaths: [leak.photo, repairPhoto].filter(isPresent),
   });
   const repair = useEditablePhoto({
     initialPath: repairPhoto,
     leakId: `${leak.id}_repair`,
     version: leak.updatedAt,
-    excludePaths: [leak.photo, resolvedPhoto].filter(Boolean),
+    excludePaths: [leak.photo, resolvedPhoto].filter(isPresent),
   });
 
   return {
