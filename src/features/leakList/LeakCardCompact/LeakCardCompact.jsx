@@ -11,7 +11,10 @@ import {
   formatLeakDate,
   formatNumber,
 } from "@/utils/locale";
-import { getLatestMonitoringPhotoPath } from "@/utils/monitoring";
+import {
+  getLatestMonitoringPhotoPath,
+  isLeakFiction,
+} from "@/utils/monitoring";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import s from "./LeakCardCompact.module.scss";
 import { isPresent } from "@/utils/isPresent";
@@ -71,6 +74,7 @@ function LeakCardCompact({
   const ago = timeAgo(leak.createdAt, lang);
   const absoluteDate = formatLeakDate(leak.date, {}, lang);
   const urgency = urgencyOf(leak.createdAt, status);
+  const fiction = isLeakFiction(leak);
 
   const [viewerIndex, setViewerIndex] = useState(
     /** @type {number|null} */ (null),
@@ -161,6 +165,7 @@ function LeakCardCompact({
           data-urgency={urgency}
           data-priority={leak.priority ?? "none"}
           data-selected={selected ? "true" : "false"}
+          data-fiction={fiction ? "true" : undefined}
           onClick={toggleExpanded}
           style={{
             transform: `translateX(${swipeOffset}px)`,
@@ -199,6 +204,11 @@ function LeakCardCompact({
             >
               {meta.label}
             </span>
+            {fiction && (
+              <span className={s.fictionPill}>
+                {t("monitoring.fictionBadge")}
+              </span>
+            )}
             <span className={s.id}>
               {t("cards.tagPrefix")}
               {leak.leak_id ?? leak.index}

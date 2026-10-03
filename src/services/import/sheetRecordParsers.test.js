@@ -38,6 +38,29 @@ function createValidationSpy() {
 }
 
 describe("Excel monitoring and history sheet parsers", () => {
+  it("читает ответы про физ. тег и фикцию, а пустую клетку оставляет без ответа", () => {
+    const sheet = makeSheet("Мониторинг", [
+      [
+        "Бирка",
+        "Обход",
+        "Дата мониторинга",
+        "Утечка есть",
+        "Физ. тег",
+        "Фикция",
+      ],
+      ["TAG-1", 1, "01.08.2026", "Нет", "Нет", "Да"],
+      ["TAG-2", 1, "01.08.2026", "Да", "Yes", ""],
+    ]);
+
+    const { recordsByLeakId } = parseMonitoringRecords(sheet);
+    const [first] = recordsByLeakId.get("tag-1");
+    const [second] = recordsByLeakId.get("tag-2");
+
+    expect(first).toMatchObject({ physicalTag: false, fiction: true });
+    expect(second.physicalTag).toBe(true);
+    expect(second).not.toHaveProperty("fiction");
+  });
+
   it("parses monitoring rows, combines time, and preserves photo hyperlinks", () => {
     const sheet = makeSheet("Мониторинг", [
       [

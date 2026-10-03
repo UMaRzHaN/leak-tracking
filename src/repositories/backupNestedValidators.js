@@ -241,11 +241,10 @@ export function validateMonitoringRecord(
   ) {
     pushIssue(issues, [...path, "result"], "Expected valid monitoring result");
   }
-  if (
-    record.materialsChanged != null &&
-    typeof record.materialsChanged !== "boolean"
-  ) {
-    pushIssue(issues, [...path, "materialsChanged"], "Expected boolean");
+  for (const field of ["materialsChanged", "physicalTag", "fiction"]) {
+    if (record[field] != null && typeof record[field] !== "boolean") {
+      pushIssue(issues, [...path, field], "Expected boolean");
+    }
   }
 
   for (const field of ["photo", "previousPhoto"]) {

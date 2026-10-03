@@ -350,7 +350,7 @@ describe("excel export helpers", () => {
     expect(backupSheet.getRow(8).getCell(4).value).toBe(1);
     expect(mocks.getPhotoSrcMock).toHaveBeenCalledTimes(1);
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
-      "photos/-victim-tag/before.png",
+      "photos/-victim-tag (leak present)/before.png",
       "ZmFrZQ==",
       { base64: true },
     );
@@ -396,12 +396,12 @@ describe("excel export helpers", () => {
 
     const archive = mocks.zipInstances[0];
     expect(archive.file).toHaveBeenCalledWith(
-      "photos/A-B/before.png",
+      "photos/A-B (leak present)/before.png",
       "c2hhcmVk",
       { base64: true },
     );
     expect(archive.file).toHaveBeenCalledWith(
-      "photos/A-B~second/before.png",
+      "photos/A-B~second (leak present)/before.png",
       "c2hhcmVk",
       { base64: true },
     );
@@ -410,19 +410,19 @@ describe("excel export helpers", () => {
     const leakSheet = mocks.workbookInstances[0].sheets[0];
     expect(leakSheet.getRow(2).getCell(3).value).toEqual({
       text: "Open photo",
-      hyperlink: "photos/A-B/before.png",
+      hyperlink: "photos/A-B (leak present)/before.png",
     });
     expect(leakSheet.getRow(3).getCell(3).value).toEqual({
       text: "Open photo",
-      hyperlink: "photos/A-B~second/before.png",
+      hyperlink: "photos/A-B~second (leak present)/before.png",
     });
 
     const payload = readEmbeddedBackup(
       mocks.workbookInstances[0].sheets.at(-1),
     );
     expect(payload.leaks.map((leak) => leak.photo)).toEqual([
-      "zip:photos/A-B/before.png",
-      "zip:photos/A-B~second/before.png",
+      "zip:photos/A-B (leak present)/before.png",
+      "zip:photos/A-B~second (leak present)/before.png",
     ]);
   });
 
@@ -461,12 +461,12 @@ describe("excel export helpers", () => {
 
     const archive = mocks.zipInstances[0];
     expect(archive.file).toHaveBeenCalledWith(
-      "photos/VISIBLE/before.png",
+      "photos/VISIBLE (leak present)/before.png",
       "dmlzaWJsZQ==",
       { base64: true },
     );
     expect(archive.file).toHaveBeenCalledWith(
-      "photos/VISIBLE/monitoring/record-1.png",
+      "photos/VISIBLE (leak present)/monitoring/record-1.png",
       "dmlzaWJsZQ==",
       { base64: true },
     );
@@ -479,11 +479,11 @@ describe("excel export helpers", () => {
       mocks.workbookInstances[0].sheets.at(-1),
     );
     expect(payload.leaks.map((leak) => leak.photo)).toEqual([
-      "zip:photos/VISIBLE/before.png",
+      "zip:photos/VISIBLE (leak present)/before.png",
     ]);
     expect(
       payload.leaks.map((leak) => leak.monitoringRecords[0].photo),
-    ).toEqual(["zip:photos/VISIBLE/monitoring/record-1.png"]);
+    ).toEqual(["zip:photos/VISIBLE (leak present)/monitoring/record-1.png"]);
   });
 
   it("omits unreadable local photo references from the embedded backup", async () => {
@@ -731,21 +731,21 @@ describe("excel export helpers", () => {
     );
     expect(monitoringSheet.getColumn(4).numFmt).toBe("dd\\.mm\\.yyyy");
     expect(monitoringSheet.getColumn(5).numFmt).toBe("hh:mm:ss");
-    expect(monitoringSheet.getRow(2).getCell(10).value).toEqual({
+    expect(monitoringSheet.getRow(2).getCell(12).value).toEqual({
       text: "Open photo",
-      hyperlink: "photos/7/monitoring/record-1.png",
+      hyperlink: "photos/7 (leak present)/monitoring/record-1.png",
     });
-    expect(monitoringSheet.getRow(3).getCell(10).value).toEqual({
+    expect(monitoringSheet.getRow(3).getCell(12).value).toEqual({
       text: "Open photo",
-      hyperlink: "photos/7/monitoring/record-2.png",
+      hyperlink: "photos/7 (leak present)/monitoring/record-2.png",
     });
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
-      "photos/7/monitoring/record-1.png",
+      "photos/7 (leak present)/monitoring/record-1.png",
       "ZmFrZQ==",
       { base64: true },
     );
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
-      "photos/7/monitoring/record-2.png",
+      "photos/7 (leak present)/monitoring/record-2.png",
       "ZmFrZQ==",
       { base64: true },
     );
@@ -839,17 +839,17 @@ describe("excel export helpers", () => {
 
     const monitoringSheet = mocks.workbookInstances[0].sheets[1];
     expect(monitoringSheet.rows).toHaveLength(2);
-    expect(monitoringSheet.getRow(2).getCell(10).value).toEqual({
+    expect(monitoringSheet.getRow(2).getCell(12).value).toEqual({
       text: "Open photo",
-      hyperlink: "photos/7/monitoring/record-2.png",
+      hyperlink: "photos/7 (leak present)/monitoring/record-2.png",
     });
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
-      "photos/7/monitoring/record-1.png",
+      "photos/7 (leak present)/monitoring/record-1.png",
       "ZmFrZQ==",
       { base64: true },
     );
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
-      "photos/7/monitoring/record-2.png",
+      "photos/7 (leak present)/monitoring/record-2.png",
       "ZmFrZQ==",
       { base64: true },
     );

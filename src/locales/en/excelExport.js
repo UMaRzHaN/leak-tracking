@@ -9,6 +9,11 @@ export const excelExport = {
   photo: {
     open: "Open photo",
     missing: "Present (file missing)",
+    folderStatus: {
+      open: "leak present",
+      in_progress: "under repair",
+      resolved: "no leak",
+    },
   },
 
   history: {
@@ -53,6 +58,8 @@ export const excelExport = {
       time: "Monitoring time",
       monitoredBy: "Monitored by",
       result: "Leak present",
+      physicalTag: "Physical tag",
+      fiction: "Fiction",
       materials_equipment: "Materials",
       comment: "Comment",
       photo: "Monitoring photo",
@@ -62,6 +69,10 @@ export const excelExport = {
       still_leaking: "Yes",
       needs_recheck: "Under repair",
       resolved: "No",
+    },
+    flags: {
+      yes: "Yes",
+      no: "No",
     },
   },
 

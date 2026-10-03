@@ -125,6 +125,8 @@ describe("Excel auxiliary worksheets", () => {
             date: "2026-08-02T10:00:00.000Z",
             roundNumber: 1,
             result: "resolved",
+            physicalTag: true,
+            fiction: false,
             photo: "idb://monitoring",
             previousPhoto: "idb://before-monitoring",
           },
@@ -154,19 +156,23 @@ describe("Excel auxiliary worksheets", () => {
     expect(historySheet.getRow(2).getCell(6).value).toBe("Inspector");
 
     const monitoringSheet = workbook.sheets[1];
-    expect(monitoringSheet.getRow(1).getCell(10).value).toBe(
+    expect(monitoringSheet.getRow(1).getCell(8).value).toBe("Physical tag");
+    expect(monitoringSheet.getRow(1).getCell(9).value).toBe("Fiction");
+    expect(monitoringSheet.getRow(2).getCell(8).value).toBe("Yes");
+    expect(monitoringSheet.getRow(2).getCell(9).value).toBe("No");
+    expect(monitoringSheet.getRow(1).getCell(12).value).toBe(
       "Monitoring photo",
     );
-    expect(monitoringSheet.getRow(2).getCell(10).value).toEqual({
+    expect(monitoringSheet.getRow(2).getCell(12).value).toEqual({
       text: "Open photo",
       hyperlink: "photos/TAG-1/monitoring/record-1.jpg",
     });
-    expect(monitoringSheet.getRow(1).getCell(11).value).toBe("Previous photo");
-    expect(monitoringSheet.getRow(2).getCell(11).value).toEqual({
+    expect(monitoringSheet.getRow(1).getCell(13).value).toBe("Previous photo");
+    expect(monitoringSheet.getRow(2).getCell(13).value).toEqual({
       text: "Open photo",
       hyperlink: "photos/TAG-1/monitoring/record-1-previousPhoto.jpg",
     });
-    expect(monitoringSheet.getColumn(10).width).toBe(18);
-    expect(monitoringSheet.getColumn(11).width).toBe(18);
+    expect(monitoringSheet.getColumn(12).width).toBe(18);
+    expect(monitoringSheet.getColumn(13).width).toBe(18);
   });
 });

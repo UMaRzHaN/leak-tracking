@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const monitoringMocks = vi.hoisted(() => ({
   latestPhoto: vi.fn(() => null),
+  fiction: vi.fn(() => false),
 }));
 
 vi.mock("@/hooks/useSwipeCard", () => ({
@@ -27,6 +28,7 @@ vi.mock("@/utils/timeAgo", () => ({ timeAgo: () => "now" }));
 vi.mock("@/hooks/usePhotoSrc", () => ({ usePhotoSrc: (path) => path }));
 vi.mock("@/utils/monitoring", () => ({
   getLatestMonitoringPhotoPath: monitoringMocks.latestPhoto,
+  isLeakFiction: monitoringMocks.fiction,
 }));
 vi.mock("@/utils/locale", () => ({
   formatCompactNumber: (value) => String(value),
@@ -161,5 +163,28 @@ describe("LeakCardCompact photo preview", () => {
     });
 
     expect(previewSources(container)).toEqual(["before.jpg"]);
+  });
+});
+
+describe("LeakCardCompact fiction", () => {
+  afterEach(() => {
+    monitoringMocks.fiction.mockReset();
+    monitoringMocks.fiction.mockReturnValue(false);
+  });
+
+  it("помечает фикцию плашкой и окраской карточки", () => {
+    monitoringMocks.fiction.mockReturnValue(true);
+
+    const { container } = renderCard({});
+
+    expect(screen.getByText("Fiction")).toBeTruthy();
+    expect(container.querySelector('[data-fiction="true"]')).toBeTruthy();
+  });
+
+  it("не трогает обычную карточку", () => {
+    const { container } = renderCard({});
+
+    expect(screen.queryByText("Fiction")).toBeNull();
+    expect(container.querySelector("[data-fiction]")).toBeNull();
   });
 });

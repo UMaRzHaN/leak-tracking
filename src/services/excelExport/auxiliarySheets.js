@@ -87,6 +87,12 @@ export async function buildHistorySheet(workbook, orderedLeaks, texts) {
   });
 }
 
+/** Осмотр до появления вопроса ответа не имеет — клетка остаётся пустой. */
+function formatMonitoringFlag(value, texts) {
+  if (typeof value !== "boolean") return "";
+  return value ? texts.monitoring.flags.yes : texts.monitoring.flags.no;
+}
+
 export async function buildMonitoringSheet(
   workbook,
   orderedLeaks,
@@ -104,6 +110,8 @@ export async function buildMonitoringSheet(
     date: parseTimestamp(row.dateRaw) ?? "",
     time: parseTimestamp(row.dateRaw) ?? "",
     result: texts.monitoring.answers[row.result] ?? String(row.result ?? ""),
+    physicalTag: formatMonitoringFlag(row.physicalTag, texts),
+    fiction: formatMonitoringFlag(row.fiction, texts),
   }));
 
   if (rows.length === 0) return;
@@ -117,6 +125,8 @@ export async function buildMonitoringSheet(
     "time",
     "monitoredBy",
     "result",
+    "physicalTag",
+    "fiction",
     "materials_equipment",
     "comment",
     "photo",

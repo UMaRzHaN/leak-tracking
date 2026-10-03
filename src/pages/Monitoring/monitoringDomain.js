@@ -4,6 +4,7 @@ import { buildLeakHistoryChanges } from "@/utils/historyChanges";
 import {
   MONITORING_RESULT,
   getAllMonitoringRecords,
+  getLastMonitoringFlag,
   isMonitoringDue,
 } from "@/utils/monitoring";
 import { STATUS } from "@/utils/status";
@@ -50,11 +51,24 @@ export function getInitialMonitoringResult(leak) {
   return getCurrentMonitoringResult(leak) ?? MONITORING_RESULT.STILL_LEAKING;
 }
 
+/**
+ * Флаги переносятся с прошлого осмотра: тег и фикция меняются редко, и
+ * обходчик правит только то, что изменилось. Впервые — «тег есть, не фикция»,
+ * как у обычной записи.
+ */
+export function getMonitoringFlagDefaults(leak) {
+  return {
+    physicalTag: getLastMonitoringFlag(leak, "physicalTag") ?? true,
+    fiction: getLastMonitoringFlag(leak, "fiction") ?? false,
+  };
+}
+
 export function createMonitoringDraft(leak, current = {}) {
   return {
     result: getInitialMonitoringResult(leak),
     comment: "",
     materials_equipment: leak?.materials_equipment ?? "",
+    ...getMonitoringFlagDefaults(leak),
     photo: null,
     ...current,
   };
@@ -204,6 +218,10 @@ export function buildMonitoringPatch({
         ? { materials_equipment: null }
         : {}),
     materialsChanged,
+    ...(typeof draft.physicalTag === "boolean"
+      ? { physicalTag: draft.physicalTag }
+      : {}),
+    ...(typeof draft.fiction === "boolean" ? { fiction: draft.fiction } : {}),
     comment: draft.comment?.trim() || undefined,
   };
 

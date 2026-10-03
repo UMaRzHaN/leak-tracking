@@ -9,6 +9,11 @@ export const excelExport = {
   photo: {
     open: "Открыть фото",
     missing: "Есть (файл не найден)",
+    folderStatus: {
+      open: "утечка есть",
+      in_progress: "в ремонте",
+      resolved: "утечки нет",
+    },
   },
 
   history: {
@@ -53,6 +58,8 @@ export const excelExport = {
       time: "Время мониторинга",
       monitoredBy: "Кто мониторил",
       result: "Утечка есть",
+      physicalTag: "Физ. тег",
+      fiction: "Фикция",
       materials_equipment: "МТР",
       comment: "Комментарий",
       photo: "Фото мониторинга",
@@ -62,6 +69,10 @@ export const excelExport = {
       still_leaking: "Да",
       needs_recheck: "В ремонте",
       resolved: "Нет",
+    },
+    flags: {
+      yes: "Да",
+      no: "Нет",
     },
   },
 

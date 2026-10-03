@@ -157,6 +157,27 @@ export function getLastMonitoringRecord(leak) {
   }, records[0]);
 }
 
+/**
+ * Флаги осмотра: есть ли на месте физический тег и не фикция ли утечка.
+ * Ответ «да/нет» хранится булевым; у осмотров до появления вопроса поля нет
+ * вовсе, и это «не спрашивали», а не «нет».
+ */
+export const MONITORING_FLAGS = ["physicalTag", "fiction"];
+
+/** Последний ответ на флаг среди осмотров, где его задавали; иначе `null`. */
+export function getLastMonitoringFlag(leak, key) {
+  const answered = getMonitoringRecords(leak).filter(
+    (record) => typeof record[key] === "boolean",
+  );
+  if (answered.length === 0) return null;
+  return /** @type {boolean} */ (answered[answered.length - 1][key]);
+}
+
+/** Утечка — фикция, если так ответил последний осмотр, где об этом спросили. */
+export function isLeakFiction(leak) {
+  return getLastMonitoringFlag(leak, "fiction") === true;
+}
+
 export function getLatestMonitoringPhotoPath(leak) {
   const recordsWithPhoto = getMonitoringRecords(leak).filter(
     (record) => record.photo,

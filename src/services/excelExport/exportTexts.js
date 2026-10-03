@@ -19,6 +19,8 @@ const MONITORING_KEYS = [
   "time",
   "monitoredBy",
   "result",
+  "physicalTag",
+  "fiction",
   "materials_equipment",
   "comment",
   "photo",
@@ -40,6 +42,8 @@ const REPAIR_KEYS = [
   "repairPhoto",
   "donePhoto",
 ];
+
+const PHOTO_FOLDER_STATUSES = ["open", "in_progress", "resolved"];
 
 const MONITORING_ANSWERS = ["still_leaking", "needs_recheck", "resolved"];
 
@@ -81,6 +85,9 @@ export function buildExcelExportTexts(t) {
     photo: {
       open: t("excelExport.photo.open"),
       missing: t("excelExport.photo.missing"),
+      folderStatus: byKey(PHOTO_FOLDER_STATUSES, (key) =>
+        t(`excelExport.photo.folderStatus.${key}`),
+      ),
     },
     history: {
       unknownUser: t("excelExport.history.unknownUser"),
@@ -95,6 +102,10 @@ export function buildExcelExportTexts(t) {
       answers: byKey(MONITORING_ANSWERS, (key) =>
         t(`excelExport.monitoring.answers.${key}`),
       ),
+      flags: {
+        yes: t("excelExport.monitoring.flags.yes"),
+        no: t("excelExport.monitoring.flags.no"),
+      },
     },
     repairs: {
       headers: byKey(REPAIR_KEYS, (key) =>

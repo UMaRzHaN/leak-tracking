@@ -48,6 +48,7 @@ import {
   HISTORY_ACTION_BY_VALUE,
   MONITORING_RESULT_BY_VALUE,
   STATUS_BY_VALUE,
+  YES_NO_BY_VALUE,
 } from "./valueDictionaries";
 
 export function isPhotoCellKey(key) {
@@ -81,6 +82,11 @@ export function normalizeMonitoringResult(value) {
   return (
     MONITORING_RESULT_BY_VALUE.get(normalizeHeader(value)) ?? "still_leaking"
   );
+}
+
+/** `null` — ответа нет или он не распознан: флаг тогда не записывается. */
+export function normalizeYesNo(value) {
+  return YES_NO_BY_VALUE.get(normalizeHeader(value)) ?? null;
 }
 
 export function normalizeHistoryAction(value) {
@@ -212,6 +218,7 @@ export function normalizeMonitoringCellValue(key, value) {
   }
   if (key === "time") return formatTime(value);
   if (key === "result") return normalizeMonitoringResult(value);
+  if (key === "physicalTag" || key === "fiction") return normalizeYesNo(value);
   if (key === "photo" || key === "previousPhoto") {
     const text = String(value ?? "").trim();
     if (text.startsWith("photos/")) return `zip:${text}`;

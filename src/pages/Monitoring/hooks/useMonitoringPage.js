@@ -34,6 +34,7 @@ import {
   getMonitoringItems,
   getMonitoringPhotoPathsToKeep,
   getMonitoringRoundSummary,
+  getMonitoringFlagDefaults,
   getNextMonitoringRoundNumber,
 } from "../monitoringDomain";
 import { MONITORING_FILTER as FILTERS } from "@/domain/leakFilters";
@@ -210,6 +211,7 @@ export function useMonitoringPage({
       updateDraft(leak.id, {
         result: getInitialMonitoringResult(leak),
         materials_equipment: leak.materials_equipment ?? "",
+        ...getMonitoringFlagDefaults(leak),
       });
       setMonitorLeak(leak);
     },
@@ -274,6 +276,10 @@ export function useMonitoringPage({
       detectedBy: t("monitoring.detectedBy"),
       result: t("monitoring.result"),
       currentState: t("monitoring.currentState"),
+      physicalTag: t("monitoring.physicalTag"),
+      fiction: t("monitoring.fiction"),
+      yes: t("monitoring.yes"),
+      no: t("monitoring.no"),
       comment: t("monitoring.comment"),
       commentPlaceholder: t("monitoring.commentPlaceholder"),
       materials: t("monitoring.materials"),
@@ -407,6 +413,7 @@ export function useMonitoringPage({
     if (nextQueueLeak) {
       updateDraft(nextQueueLeak.id, {
         materials_equipment: nextQueueLeak.materials_equipment ?? "",
+        ...getMonitoringFlagDefaults(nextQueueLeak),
       });
       setMonitorLeak(nextQueueLeak);
     } else {

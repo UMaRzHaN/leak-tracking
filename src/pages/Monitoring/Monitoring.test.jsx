@@ -124,6 +124,22 @@ describe("Monitoring round flow", () => {
     ]);
   });
 
+  it("пишет ответы про физ. тег и фикцию в запись обхода", () => {
+    const patched = buildMonitoringPatch({
+      leak: { id: "leak-1" },
+      draft: { result: "resolved", physicalTag: false, fiction: true },
+      monitoredBy: "Inspector",
+      roundId: "round-1",
+      roundNumber: 1,
+      now: new Date("2026-09-24T08:00:00.000Z"),
+    });
+
+    expect(getMonitoringRecords(patched).at(-1)).toMatchObject({
+      physicalTag: false,
+      fiction: true,
+    });
+  });
+
   // Раньше МТР писался в запись обхода только при изменении, и в листе обхода
   // книги колонка у неизменившегося оставалась пустой — читалось как «МТР не
   // было», хотя он был, просто тот же. Теперь пишется всегда, а изменение
@@ -379,7 +395,29 @@ describe("Monitoring round flow", () => {
       result: "resolved",
       comment: "Recheck",
       materials_equipment: "Old seal",
+      physicalTag: true,
+      fiction: false,
       photo: { src: "preview" },
+    });
+  });
+
+  it("переносит флаги тега и фикции с прошлого осмотра", () => {
+    const leak = {
+      events: [
+        {
+          type: "inspection",
+          date: "2026-09-01T10:00:00.000Z",
+          physicalTag: false,
+          fiction: true,
+        },
+        // Осмотр до появления вопроса ответ не затирает.
+        { type: "inspection", date: "2026-09-02T10:00:00.000Z" },
+      ],
+    };
+
+    expect(createMonitoringDraft(leak)).toMatchObject({
+      physicalTag: false,
+      fiction: true,
     });
   });
 

@@ -1,4 +1,7 @@
-import { allocateUniqueLeakArchiveSegments } from "@/services/archive/archivePaths";
+import {
+  allocateUniqueLeakArchiveSegments,
+  sanitizePortableArchiveSegment,
+} from "@/services/archive/archivePaths";
 import { EXCEL_MONITORING_EXPORT_MODE } from "@/utils/excelExportMode";
 import {
   buildEventPhotoEntries,
@@ -12,6 +15,26 @@ import {
   buildMonitoringRoundLookup,
   getMonitoringExportRows,
 } from "@/services/excelExport/monitoringRows";
+
+/**
+ * Папки утечек в архиве: бирка и в скобках её состояние — «3242 (утечка
+ * есть)». Архив разбирают руками, и по одному списку папок видно, где что.
+ *
+ * Состояние дописывается после того, как бирки разведены: у совпавших бирок
+ * отличие (`~id`) стоит при самой бирке, а скобка остаётся последней. Путь
+ * записывается в книгу и в резервную копию в ней, так что при загрузке архива
+ * имя папки ни из чего не выводится — его просто читают.
+ */
+export function allocateLeakFolderNames(leaks, folderStatus) {
+  const segments = allocateUniqueLeakArchiveSegments(leaks);
+  if (!folderStatus) return segments;
+  return segments.map((segment, index) => {
+    const label = folderStatus[leaks[index]?.status ?? "open"];
+    return label
+      ? (sanitizePortableArchiveSegment(`${segment} (${label})`) ?? segment)
+      : segment;
+  });
+}
 
 /**
  * Снимки книги: что читать с устройства, под какими именами класть в архив и
@@ -28,8 +51,9 @@ async function buildPhotoEntries(
   monitoringExportMode,
   photoReadCache,
   archiveRoot = "photos",
+  folderStatus = /** @type {Record<string, string>|null} */ (null),
 ) {
-  const leakSegments = allocateUniqueLeakArchiveSegments(orderedLeaks);
+  const leakSegments = allocateLeakFolderNames(orderedLeaks, folderStatus);
   const includedMonitoringPhotoKeys =
     monitoringExportMode === EXCEL_MONITORING_EXPORT_MODE.LATEST_PER_ROUND
       ? new Set(
@@ -104,6 +128,7 @@ export async function resolvePhotoExportData({
   idbGet,
   monitoringExportMode,
   photoReadCache,
+  folderStatus = /** @type {Record<string, string>|null} */ (null),
 }) {
   const { entries: reportPhotoEntries, aliases: reportAliases } =
     await buildPhotoEntries(
@@ -112,6 +137,7 @@ export async function resolvePhotoExportData({
       monitoringExportMode,
       photoReadCache,
       "photos/report",
+      folderStatus,
     );
   const { entries: backupPhotoEntries, aliases: backupAliases } =
     await buildPhotoEntries(
@@ -119,6 +145,8 @@ export async function resolvePhotoExportData({
       idbGet,
       EXCEL_MONITORING_EXPORT_MODE.FULL,
       photoReadCache,
+      "photos",
+      folderStatus,
     );
   const backupPhotoPathByLogicalKey = new Map(
     backupPhotoEntries.map((entry) => [entry.logicalKey, entry.photoFileName]),

@@ -81,6 +81,26 @@ export default function MonitoringSheet({
           </select>
         </label>
 
+        <div className={s.fieldRow}>
+          {[
+            ["physicalTag", texts.physicalTag],
+            ["fiction", texts.fiction],
+          ].map(([key, label]) => (
+            <label key={key} className={s.field}>
+              <span>{label}</span>
+              <select
+                value={draft[key] ? "yes" : "no"}
+                onChange={(event) =>
+                  onChange({ [key]: event.target.value === "yes" })
+                }
+              >
+                <option value="yes">{texts.yes}</option>
+                <option value="no">{texts.no}</option>
+              </select>
+            </label>
+          ))}
+        </div>
+
         <label className={s.field}>
           <span>{texts.comment}</span>
           <textarea

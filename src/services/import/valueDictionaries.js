@@ -94,3 +94,11 @@ export const HISTORY_ACTION_BY_VALUE = new Map(
     ...["monitoring", "мониторинг"].map((value) => [value, "monitoring"]),
   ]),
 );
+
+/** Ответ «да/нет» флага осмотра: физический тег, фикция. */
+export const YES_NO_BY_VALUE = new Map(
+  /** @type {[string, boolean][]} */ ([
+    ...["да", "yes", "y", "true", "1", "есть"].map((value) => [value, true]),
+    ...["нет", "no", "n", "false", "0"].map((value) => [value, false]),
+  ]),
+);

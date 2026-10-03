@@ -94,6 +94,10 @@ export function parseMonitoringRecords(sheet, validation) {
       roundNumber,
       monitoredBy: raw.monitoredBy || "",
       result: raw.result || "still_leaking",
+      ...(typeof raw.physicalTag === "boolean"
+        ? { physicalTag: raw.physicalTag }
+        : {}),
+      ...(typeof raw.fiction === "boolean" ? { fiction: raw.fiction } : {}),
       materials_equipment: raw.materials_equipment || "",
       comment: raw.comment || "",
       ...(raw.photo ? { photo: raw.photo } : {}),

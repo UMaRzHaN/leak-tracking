@@ -52,6 +52,8 @@ export function getMonitoringExportRows(
         dateRaw: record.date,
         monitoredBy: record.monitoredBy ?? "",
         result: record.result,
+        physicalTag: record.physicalTag,
+        fiction: record.fiction,
         materials_equipment: record.materials_equipment ?? "",
         comment: record.comment ?? "",
         photo: record.photo ?? "",
