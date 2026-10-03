@@ -19,19 +19,31 @@ import {
 import { getMonitoringRecords } from "@/utils/monitoring";
 
 /**
- * Папки утечек в архиве: бирка и в скобках её состояние — «3242 (утечка
- * есть)». Архив разбирают руками, и по одному списку папок видно, где что.
+ * Архив делится на две ветки по тому, откуда снимок:
  *
- * Состояние дописывается после того, как бирки разведены: у совпавших бирок
- * отличие (`~id`) стоит при самой бирке, а скобка остаётся последней. Путь
- * записывается в книгу и в резервную копию в ней, так что при загрузке архива
- * имя папки ни из чего не выводится — его просто читают.
+ *   photos/LDAR/3242/before.jpg                          — заведение и ремонт
+ *   photos/monitoring/2/3242 (утечки нет)/record-1.jpg   — осмотры обхода №2
+ *
+ * Снимки утечки лежат под одной биркой, без состояния: оно меняется, а
+ * папка — нет. У осмотра в скобках итог последнего осмотра утечки в этом
+ * обходе: папка обхода рассказывает о том обходе, а не о сегодняшнем дне.
+ *
+ * Пути записываются в книгу и в резервную копию в ней, так что при загрузке
+ * архива раскладка ни из чего не выводится — пути просто читают.
  */
-export function allocateLeakFolderNames(leaks, folderStatus) {
-  const segments = allocateUniqueLeakArchiveSegments(leaks);
-  if (!folderStatus) return segments;
-  return segments.map((segment, index) =>
-    withFolderLabel(segment, folderStatus[leaks[index]?.status ?? "open"]),
+const LDAR_FOLDER = "LDAR";
+const MONITORING_FOLDER = "monitoring";
+
+const STATUS_BY_MONITORING_RESULT = {
+  still_leaking: "open",
+  needs_recheck: "in_progress",
+  resolved: "resolved",
+};
+
+/** Папки снимков утечек: `LDAR/<бирка>`. */
+export function allocateLeakFolderNames(leaks) {
+  return allocateUniqueLeakArchiveSegments(leaks).map(
+    (segment) => `${LDAR_FOLDER}/${segment}`,
   );
 }
 
@@ -41,23 +53,13 @@ function withFolderLabel(segment, label) {
     : segment;
 }
 
-const STATUS_BY_MONITORING_RESULT = {
-  still_leaking: "open",
-  needs_recheck: "in_progress",
-  resolved: "resolved",
-};
-
 /**
- * Раскладка снимков осмотров по папкам обходов: «Обход 2/3242 (утечки нет)/
- * record-1.jpg». В скобках — итог последнего осмотра утечки в этом обходе, а
- * не её нынешнее состояние: папка обхода рассказывает о том обходе.
+ * Где лежит снимок каждого осмотра: `monitoring/<обход>/<бирка> (<итог>)`,
+ * записи нумеруются внутри обхода.
  *
  * @returns {(leakIndex: number, recordIndex: number) => any}
  */
-export function planRoundMonitoringFolders(
-  orderedLeaks,
-  { folderStatus, roundFolder },
-) {
+export function planRoundMonitoringFolders(orderedLeaks, { folderStatus }) {
   const roundLookup = buildMonitoringRoundLookup(orderedLeaks);
   const baseSegments = allocateUniqueLeakArchiveSegments(orderedLeaks);
   const placements = new Map();
@@ -71,9 +73,7 @@ export function planRoundMonitoringFolders(
     });
 
     for (const [round, entries] of byRound) {
-      const roundSegment =
-        sanitizePortableArchiveSegment(`${roundFolder} ${round}`) ??
-        String(round);
+      const roundSegment = `${MONITORING_FOLDER}/${round}`;
       const lastResult = entries[entries.length - 1].record.result;
       const leakSegment = withFolderLabel(
         baseSegments[leakIndex],
@@ -108,14 +108,15 @@ async function buildPhotoEntries(
   monitoringExportMode,
   photoReadCache,
   archiveRoot = "photos",
-  folderTexts = /** @type {{folderStatus: Record<string, string>, roundFolder: string}|null} */ (
+  folderTexts = /** @type {{folderStatus: Record<string, string>}|null} */ (
     null
   ),
 ) {
-  const leakSegments = allocateLeakFolderNames(
-    orderedLeaks,
-    folderTexts?.folderStatus ?? null,
-  );
+  // Без подписей состояний — прежняя раскладка по папкам бирок: так её ждут
+  // вызовы, которым архив не нужен.
+  const leakSegments = folderTexts
+    ? allocateLeakFolderNames(orderedLeaks)
+    : allocateUniqueLeakArchiveSegments(orderedLeaks);
   const includedMonitoringPhotoKeys =
     monitoringExportMode === EXCEL_MONITORING_EXPORT_MODE.LATEST_PER_ROUND
       ? new Set(
@@ -191,7 +192,7 @@ export async function resolvePhotoExportData({
   idbGet,
   monitoringExportMode,
   photoReadCache,
-  folderTexts = /** @type {{folderStatus: Record<string, string>, roundFolder: string}|null} */ (
+  folderTexts = /** @type {{folderStatus: Record<string, string>}|null} */ (
     null
   ),
 }) {

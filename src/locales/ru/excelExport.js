@@ -9,7 +9,6 @@ export const excelExport = {
   photo: {
     open: "Открыть фото",
     missing: "Есть (файл не найден)",
-    roundFolder: "Обход",
     folderStatus: {
       open: "утечка есть",
       in_progress: "в ремонте",

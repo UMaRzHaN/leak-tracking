@@ -88,7 +88,6 @@ export function buildExcelExportTexts(t) {
       folderStatus: byKey(PHOTO_FOLDER_STATUSES, (key) =>
         t(`excelExport.photo.folderStatus.${key}`),
       ),
-      roundFolder: t("excelExport.photo.roundFolder"),
     },
     history: {
       unknownUser: t("excelExport.history.unknownUser"),
