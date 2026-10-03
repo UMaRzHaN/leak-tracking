@@ -96,10 +96,10 @@ export function addBackupSheet(workbook, archivePayload, texts) {
   const round = archivePayload.monitoringRound;
   const currentRoundCheckedFromRecords = round
     ? leaks.filter((leak) =>
-        getMonitoringRecords(leak).some((record) =>
-          record.roundId
-            ? record.roundId === round.id
-            : Number(record.roundNumber) === Number(round.number),
+        getMonitoringRecords(leak).some(
+          (record) =>
+            record.roundId === round.id ||
+            Number(record.roundNumber) === Number(round.number),
         ),
       ).length
     : null;

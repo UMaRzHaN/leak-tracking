@@ -39,7 +39,12 @@ export function getMonitoringExportRows(
         Number(record.roundNumber) > 0
           ? Number(record.roundNumber)
           : (roundLookup.get(record.roundId) ?? recordIndex + 1);
-      const roundKey = record.roundId ?? `legacy-${roundNumber}`;
+      // Один номер — один обход, даже если устройства дали ему разные
+      // идентификаторы.
+      const roundKey =
+        Number(record.roundNumber) > 0
+          ? `round-number-${roundNumber}`
+          : (record.roundId ?? `legacy-${roundNumber}`);
       rows.push({
         index: leak.index ?? leakIndex + 1,
         leak_id: leak.leak_id ?? "",

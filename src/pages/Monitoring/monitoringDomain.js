@@ -1,7 +1,11 @@
 import { getIntlLocale } from "@/utils/locale";
 import { collectLeakPhotoPaths } from "@/domain/leakLifecycle";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
-import { MONITORING_RESULT, isMonitoringDue } from "@/utils/monitoring";
+import {
+  MONITORING_RESULT,
+  getAllMonitoringRecords,
+  isMonitoringDue,
+} from "@/utils/monitoring";
 import { STATUS } from "@/utils/status";
 import { MONITORING_FILTER } from "@/domain/leakFilters";
 import {
@@ -77,10 +81,10 @@ export function getMonitoringRoundSummary(data, roundId, roundNumber) {
 export function getNextMonitoringRoundNumber(data, currentRoundNumber) {
   const maxRecordNumber = (Array.isArray(data) ? data : []).reduce(
     (max, leak) => {
-      const records = Array.isArray(leak.monitoringRecords)
-        ? leak.monitoringRecords
-        : [];
-      return records.reduce((recordMax, record) => {
+      // Через `getAllMonitoringRecords`: осмотры пишутся в ленту событий, и по
+      // одному старому списку устройство без своего обхода снова начинало
+      // с №1 — тем же номером, что уже идёт на другом устройстве.
+      return getAllMonitoringRecords(leak).reduce((recordMax, record) => {
         const value = Number(record?.roundNumber);
         return Number.isFinite(value) && value > recordMax ? value : recordMax;
       }, max);

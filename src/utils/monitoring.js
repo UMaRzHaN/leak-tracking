@@ -185,12 +185,15 @@ export function isMonitoringDue(
     Number.isFinite(normalizedRoundNumber) && normalizedRoundNumber > 0;
   if (!roundId && !hasRoundNumber) return records.length === 0;
 
+  // Номер решает наравне с идентификатором: два устройства, начавшие обход
+  // каждое у себя, дают ему разные идентификаторы при одном номере, а при
+  // слиянии проекта текущим остаётся только один из них (см.
+  // `resolveMonitoringRound`). Сверка по одному идентификатору оставляла
+  // осмотры второго устройства вне обхода.
   return !records.some((record) => {
     if (roundId && record.roundId === roundId) return true;
     return (
-      !record.roundId &&
-      hasRoundNumber &&
-      Number(record.roundNumber) === normalizedRoundNumber
+      hasRoundNumber && Number(record.roundNumber) === normalizedRoundNumber
     );
   });
 }

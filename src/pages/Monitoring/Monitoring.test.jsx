@@ -353,6 +353,22 @@ describe("Monitoring round flow", () => {
     ).toBe(8);
   });
 
+  it("считает номер и по осмотрам из ленты событий", () => {
+    // Без своего обхода устройство иначе начинало бы снова с №1.
+    expect(
+      getNextMonitoringRoundNumber(
+        [
+          {
+            events: [
+              { type: "inspection", date: "2026-09-23", roundNumber: 1 },
+            ],
+          },
+        ],
+        null,
+      ),
+    ).toBe(2);
+  });
+
   it("creates a complete draft while preserving entered values", () => {
     expect(
       createMonitoringDraft(

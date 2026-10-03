@@ -80,19 +80,36 @@ describe("isMonitoringDue", () => {
     expect(isMonitoringDue(leak, "round-4", 4)).toBe(true);
   });
 
-  it("prefers exact round ids for current records", () => {
+  it("matches current records by round id", () => {
     const leak = {
       monitoringRecords: [
         {
           date: "2026-07-14T07:00:00.000Z",
           roundId: "round-original",
-          roundNumber: 3,
         },
       ],
     };
 
     expect(isMonitoringDue(leak, "round-original", 3)).toBe(false);
     expect(isMonitoringDue(leak, "round-other", 3)).toBe(true);
+  });
+
+  it("засчитывает осмотр, записанный другим устройством в тот же обход", () => {
+    // Два устройства начали обход №1 каждое у себя: идентификаторы разные,
+    // а текущим после слияния остался только один.
+    const leak = {
+      events: [
+        {
+          type: "inspection",
+          date: "2026-09-23T07:00:00.000Z",
+          roundId: "round-1789544941222",
+          roundNumber: 1,
+        },
+      ],
+    };
+
+    expect(isMonitoringDue(leak, "round-1790141516309", 1)).toBe(false);
+    expect(isMonitoringDue(leak, "round-1790141516309", 2)).toBe(true);
   });
 });
 
