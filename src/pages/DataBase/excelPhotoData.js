@@ -1,7 +1,8 @@
+import { allocateUniqueLeakArchiveSegments } from "@/services/archive/archivePaths";
 import {
-  allocateUniqueLeakArchiveSegments,
-  sanitizePortableArchiveSegment,
-} from "@/services/archive/archivePaths";
+  allocateLeakFolderNames,
+  planRoundMonitoringFolders,
+} from "@/services/archive/archiveLayout";
 import { EXCEL_MONITORING_EXPORT_MODE } from "@/utils/excelExportMode";
 import {
   buildEventPhotoEntries,
@@ -14,84 +15,13 @@ import {
 import {
   buildMonitoringRoundLookup,
   getMonitoringExportRows,
-  getRecordRoundNumber,
 } from "@/services/excelExport/monitoringRows";
-import { getMonitoringRecords } from "@/utils/monitoring";
-
-/**
- * Архив делится на две ветки по тому, откуда снимок:
- *
- *   photos/LDAR/3242/before.jpg                          — заведение и ремонт
- *   photos/monitoring/2/3242 (утечки нет)/record-1.jpg   — осмотры обхода №2
- *
- * Снимки утечки лежат под одной биркой, без состояния: оно меняется, а
- * папка — нет. У осмотра в скобках итог последнего осмотра утечки в этом
- * обходе: папка обхода рассказывает о том обходе, а не о сегодняшнем дне.
- *
- * Пути записываются в книгу и в резервную копию в ней, так что при загрузке
- * архива раскладка ни из чего не выводится — пути просто читают.
- */
-const LDAR_FOLDER = "LDAR";
-const MONITORING_FOLDER = "monitoring";
 
 const STATUS_BY_MONITORING_RESULT = {
   still_leaking: "open",
   needs_recheck: "in_progress",
   resolved: "resolved",
 };
-
-/** Папки снимков утечек: `LDAR/<бирка>`. */
-export function allocateLeakFolderNames(leaks) {
-  return allocateUniqueLeakArchiveSegments(leaks).map(
-    (segment) => `${LDAR_FOLDER}/${segment}`,
-  );
-}
-
-function withFolderLabel(segment, label) {
-  return label
-    ? (sanitizePortableArchiveSegment(`${segment} (${label})`) ?? segment)
-    : segment;
-}
-
-/**
- * Где лежит снимок каждого осмотра: `monitoring/<обход>/<бирка> (<итог>)`,
- * записи нумеруются внутри обхода.
- *
- * @returns {(leakIndex: number, recordIndex: number) => any}
- */
-export function planRoundMonitoringFolders(orderedLeaks, { folderStatus }) {
-  const roundLookup = buildMonitoringRoundLookup(orderedLeaks);
-  const baseSegments = allocateUniqueLeakArchiveSegments(orderedLeaks);
-  const placements = new Map();
-
-  orderedLeaks.forEach((leak, leakIndex) => {
-    const byRound = new Map();
-    getMonitoringRecords(leak).forEach((record, recordIndex) => {
-      const round = getRecordRoundNumber(record, recordIndex, roundLookup);
-      if (!byRound.has(round)) byRound.set(round, []);
-      byRound.get(round).push({ record, recordIndex });
-    });
-
-    for (const [round, entries] of byRound) {
-      const roundSegment = `${MONITORING_FOLDER}/${round}`;
-      const lastResult = entries[entries.length - 1].record.result;
-      const leakSegment = withFolderLabel(
-        baseSegments[leakIndex],
-        folderStatus[STATUS_BY_MONITORING_RESULT[lastResult] ?? "open"],
-      );
-      entries.forEach(({ recordIndex }, position) => {
-        placements.set(`${leakIndex}:${recordIndex}`, {
-          roundSegment,
-          leakSegment,
-          recordNumber: position + 1,
-        });
-      });
-    }
-  });
-
-  return (leakIndex, recordIndex) =>
-    placements.get(`${leakIndex}:${recordIndex}`) ?? null;
-}
 
 /**
  * Снимки книги: что читать с устройства, под какими именами класть в архив и
@@ -137,7 +67,15 @@ async function buildPhotoEntries(
     includedMonitoringPhotoKeys,
     photoReadCache,
     archiveRoot,
-    folderTexts ? planRoundMonitoringFolders(orderedLeaks, folderTexts) : null,
+    folderTexts
+      ? planRoundMonitoringFolders(
+          orderedLeaks,
+          (result) =>
+            folderTexts.folderStatus[
+              STATUS_BY_MONITORING_RESULT[result] ?? "open"
+            ],
+        ).byIndex
+      : null,
   );
   const monitoringSources = new Set(
     monitoringPhotos.map((entry) => entry.sourcePath),

@@ -1,7 +1,19 @@
 import { logger } from "@/utils/logger";
 import { readProjectSettings } from "@/app/project/projectSettings";
 import { readProjectSyncStateAsync } from "@/services/sync/projectSyncState";
+import i18next from "i18next";
 import { allocateUniqueLeakArchiveSegments } from "@/services/archive/archivePaths";
+import { toLdarFolders } from "@/services/archive/archiveLayout";
+import { getMonitoringResultLabel } from "@/utils/monitoring";
+
+/**
+ * Подпись итога осмотра в имени папки обхода — «3242 (утечка есть)». На языке
+ * приложения: бэкап собирается без текстов выгрузки, а подпись — та же, что
+ * показывает список обходов.
+ */
+function monitoringFolderLabel(result) {
+  return getMonitoringResultLabel(result, i18next.language).toLowerCase();
+}
 import { readMonitoringRound } from "@/utils/monitoringRound";
 import { assertImportFileSize, IMPORT_LIMITS } from "@/utils/importLimits";
 import { withPortablePhotoValues } from "@/utils/photoValues";
@@ -100,10 +112,11 @@ export async function streamProjectBackupZip({
   const validatedRecovery = recoveryRecords.length
     ? parseRecoveryValidation(recoveryRecords)
     : [];
-  const leakSegments = allocateUniqueLeakArchiveSegments(leaks);
+  const tagSegments = allocateUniqueLeakArchiveSegments(leaks);
+  const leakSegments = toLdarFolders(tagSegments);
   const recoveryLeakSegments = allocateUniqueLeakArchiveSegments(
     validatedRecovery,
-    { prefix: "recovery", reservedSegments: leakSegments },
+    { prefix: "recovery", reservedSegments: tagSegments },
   );
   const exportedLeaks = await exportLeaksWithPhotosToStream(
     await withPortablePhotoValues(leaks),
@@ -111,6 +124,7 @@ export async function streamProjectBackupZip({
     idbGet,
     {
       leakSegments,
+      monitoringFolderLabel,
     },
   );
   await zip.add("backup.json", JSON.stringify(exportedLeaks, null, 2));
@@ -159,16 +173,17 @@ export async function buildProjectBackupZip({
   const validatedRecovery = recoveryRecords.length
     ? parseRecoveryValidation(recoveryRecords)
     : [];
-  const leakSegments = allocateUniqueLeakArchiveSegments(leaks);
+  const tagSegments = allocateUniqueLeakArchiveSegments(leaks);
+  const leakSegments = toLdarFolders(tagSegments);
   const recoveryLeakSegments = allocateUniqueLeakArchiveSegments(
     validatedRecovery,
-    { prefix: "recovery", reservedSegments: leakSegments },
+    { prefix: "recovery", reservedSegments: tagSegments },
   );
   const exportedLeaks = await exportLeaksWithPhotos(
     await withPortablePhotoValues(leaks),
     zip,
     idbGet,
-    { leakSegments },
+    { leakSegments, monitoringFolderLabel },
   );
   await yieldToMainThread();
   zip.file("backup.json", JSON.stringify(exportedLeaks, null, 2));

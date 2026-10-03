@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   allocateLeakFolderNames,
   planRoundMonitoringFolders,
-} from "./excelPhotoData";
+} from "./archiveLayout";
 
 const folderStatus = {
   open: "утечка есть",
@@ -57,9 +57,15 @@ describe("planRoundMonitoringFolders", () => {
       ],
     };
 
-    const place = planRoundMonitoringFolders([leak], {
-      folderStatus,
-    });
+    const { byIndex: place } = planRoundMonitoringFolders(
+      [leak],
+      (result) =>
+        ({
+          still_leaking: folderStatus.open,
+          needs_recheck: folderStatus.in_progress,
+          resolved: folderStatus.resolved,
+        })[result],
+    );
 
     expect(place(0, 0)).toEqual({
       roundSegment: "monitoring/1",

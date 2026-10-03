@@ -5,6 +5,7 @@ import {
   buildEventPhotoArchivePath,
   buildLeakPhotoArchivePath,
   buildMonitoringPhotoArchivePath,
+  buildRoundMonitoringPhotoArchivePath,
   normalizeImageExtension,
   parseDataImageUri,
 } from "@/services/archive/archivePaths";
@@ -16,6 +17,52 @@ import {
   PHOTO_KEYS,
 } from "./constants";
 import { yieldToMainThread } from "./runtime";
+import { planRoundMonitoringFolders } from "@/services/archive/archiveLayout";
+import { getMonitoringRecords } from "@/utils/monitoring";
+
+/**
+ * Снимки осмотров — первыми, в папки обходов. У открытой утечки «фото до» —
+ * это и есть снимок последнего осмотра; пойди поля утечки первыми, он лёг бы в
+ * её папку, и обход остался бы без своего снимка. Дальше такие пути берутся
+ * из `archived`, второй копии не появляется.
+ */
+async function archiveInspectionPhotos(leak, placeRecord, archived, store) {
+  for (const record of getMonitoringRecords(leak)) {
+    for (const key of MONITORING_PHOTO_KEYS) {
+      const path = record?.[key];
+      if (path == null || archived.has(String(path))) continue;
+      const resolved = await store(String(path));
+      if (!resolved) continue;
+      const archivePath = inspectionPhotoPath(
+        placeRecord,
+        record,
+        resolved.ext,
+        key,
+      );
+      if (!archivePath) continue;
+      await resolved.write(archivePath);
+      archived.set(String(path), `zip:${archivePath}`);
+    }
+  }
+}
+
+/**
+ * Снимок осмотра — в папку своего обхода, если раскладка по обходам задана;
+ * иначе по-старому, в папку утечки. Без раскладки выгружаются записи
+ * восстановления: обходов у них в бэкапе не считают.
+ */
+function inspectionPhotoPath(placeRecord, record, extension, key) {
+  const placement = placeRecord?.(record);
+  return placement
+    ? buildRoundMonitoringPhotoArchivePath(
+        placement.roundSegment,
+        placement.leakSegment,
+        placement.recordNumber,
+        extension,
+        key,
+      )
+    : null;
+}
 
 async function resolveBase64(path, idbGet) {
   if (typeof path !== "string" || !path) return null;
@@ -74,6 +121,7 @@ export async function resolvePhotoBlob(path, idbGet) {
  * @param {Map<string, string>} archived путь на устройстве → путь в архиве
  * @param {(path: string) => Promise<{ext: string, write: (archivePath: string) => void|Promise<void>}|null>} store
  * @param {boolean} preserveUnresolvedPhotoPaths
+ * @param {((record: any) => any)|null} [placeRecord]
  */
 async function exportEventPhotos(
   events,
@@ -81,6 +129,7 @@ async function exportEventPhotos(
   archived,
   store,
   preserveUnresolvedPhotoPaths,
+  placeRecord = null,
 ) {
   const exported = [];
   for (const [eventIndex, event] of events.entries()) {
@@ -100,12 +149,9 @@ async function exportEventPhotos(
         if (!preserveUnresolvedPhotoPaths) delete copy[key];
         continue;
       }
-      const archivePath = buildEventPhotoArchivePath(
-        leakNumber,
-        eventIndex,
-        resolved.ext,
-        key,
-      );
+      const archivePath =
+        inspectionPhotoPath(placeRecord, event, resolved.ext, key) ??
+        buildEventPhotoArchivePath(leakNumber, eventIndex, resolved.ext, key);
       await resolved.write(archivePath);
       archived.set(String(path), `zip:${archivePath}`);
       copy[key] = `zip:${archivePath}`;
@@ -123,12 +169,18 @@ export async function exportLeaksWithPhotosToStream(
     segmentPrefix = "leak",
     preserveUnresolvedPhotoPaths = false,
     leakSegments: providedLeakSegments = /** @type {string[]|null} */ (null),
+    monitoringFolderLabel = /** @type {((result: string) => string)|null} */ (
+      null
+    ),
   } = {},
 ) {
   const exported = new Array(leaks.length);
   const leakSegments =
     providedLeakSegments ??
     allocateUniqueLeakArchiveSegments(leaks, { prefix: segmentPrefix });
+  const placeRecord = monitoringFolderLabel
+    ? planRoundMonitoringFolders(leaks, monitoringFolderLabel).byRecord
+    : null;
 
   for (const [index, leak] of leaks.entries()) {
     if (index > 0 && index % EXPORT_YIELD_EVERY === 0) {
@@ -142,10 +194,26 @@ export async function exportLeaksWithPhotosToStream(
     const leakNumber = leakSegments[index];
 
     const archived = new Map();
+    const store = async (path) => {
+      const resolved = await resolvePhotoBlob(path, idbGet);
+      if (!resolved) return null;
+      return {
+        ext: resolved.ext,
+        write: (archivePath) => zip.add(archivePath, resolved.blob),
+      };
+    };
+    if (placeRecord) {
+      await archiveInspectionPhotos(leak, placeRecord, archived, store);
+    }
 
     for (const key of PHOTO_KEYS) {
       const path = leak[key];
       if (path == null) continue;
+      const known = archived.get(String(path));
+      if (known) {
+        copy[key] = known;
+        continue;
+      }
       const resolved = await resolvePhotoBlob(path, idbGet);
       if (!resolved) {
         if (!preserveUnresolvedPhotoPaths) delete copy[key];
@@ -169,17 +237,24 @@ export async function exportLeaksWithPhotosToStream(
         for (const key of MONITORING_PHOTO_KEYS) {
           const path = record?.[key];
           if (path == null) continue;
+          const known = archived.get(String(path));
+          if (known) {
+            recordCopy[key] = known;
+            continue;
+          }
           const resolved = await resolvePhotoBlob(path, idbGet);
           if (!resolved) {
             if (!preserveUnresolvedPhotoPaths) delete recordCopy[key];
             continue;
           }
-          const archivePath = buildMonitoringPhotoArchivePath(
-            leakNumber,
-            recordIndex,
-            resolved.ext,
-            key,
-          );
+          const archivePath =
+            inspectionPhotoPath(placeRecord, record, resolved.ext, key) ??
+            buildMonitoringPhotoArchivePath(
+              leakNumber,
+              recordIndex,
+              resolved.ext,
+              key,
+            );
           await zip.add(archivePath, resolved.blob);
           recordCopy[key] = `zip:${archivePath}`;
           archived.set(String(path), `zip:${archivePath}`);
@@ -194,15 +269,9 @@ export async function exportLeaksWithPhotosToStream(
         copy.events,
         leakNumber,
         archived,
-        async (path) => {
-          const resolved = await resolvePhotoBlob(path, idbGet);
-          if (!resolved) return null;
-          return {
-            ext: resolved.ext,
-            write: (archivePath) => zip.add(archivePath, resolved.blob),
-          };
-        },
+        store,
         preserveUnresolvedPhotoPaths,
+        placeRecord,
       );
     }
 
@@ -219,12 +288,18 @@ export async function exportLeaksWithPhotos(
     segmentPrefix = "leak",
     preserveUnresolvedPhotoPaths = false,
     leakSegments: providedLeakSegments = /** @type {string[]|null} */ (null),
+    monitoringFolderLabel = /** @type {((result: string) => string)|null} */ (
+      null
+    ),
   } = {},
 ) {
   const exported = new Array(leaks.length);
   const leakSegments =
     providedLeakSegments ??
     allocateUniqueLeakArchiveSegments(leaks, { prefix: segmentPrefix });
+  const placeRecord = monitoringFolderLabel
+    ? planRoundMonitoringFolders(leaks, monitoringFolderLabel).byRecord
+    : null;
   let cursor = 0;
 
   async function exportOne(leak, index) {
@@ -236,10 +311,27 @@ export async function exportLeaksWithPhotos(
     const leakNumber = leakSegments[index];
 
     const archived = new Map();
+    const store = async (path) => {
+      const resolved = await resolveBase64(path, idbGet);
+      if (!resolved) return null;
+      return {
+        ext: resolved.ext,
+        write: (archivePath) =>
+          zip.file(archivePath, resolved.base64, { base64: true }),
+      };
+    };
+    if (placeRecord) {
+      await archiveInspectionPhotos(leak, placeRecord, archived, store);
+    }
 
     for (const key of PHOTO_KEYS) {
       const path = leak[key];
       if (path == null) continue;
+      const known = archived.get(String(path));
+      if (known) {
+        copy[key] = known;
+        continue;
+      }
       const resolved = await resolveBase64(path, idbGet);
       if (!resolved) {
         if (!preserveUnresolvedPhotoPaths) delete copy[key];
@@ -263,6 +355,11 @@ export async function exportLeaksWithPhotos(
         for (const key of MONITORING_PHOTO_KEYS) {
           const path = record?.[key];
           if (path == null) continue;
+          const known = archived.get(String(path));
+          if (known) {
+            recordCopy[key] = known;
+            continue;
+          }
 
           const resolved = await resolveBase64(path, idbGet);
           if (!resolved) {
@@ -270,12 +367,14 @@ export async function exportLeaksWithPhotos(
             continue;
           }
 
-          const archivePath = buildMonitoringPhotoArchivePath(
-            leakNumber,
-            recordIndex,
-            resolved.ext,
-            key,
-          );
+          const archivePath =
+            inspectionPhotoPath(placeRecord, record, resolved.ext, key) ??
+            buildMonitoringPhotoArchivePath(
+              leakNumber,
+              recordIndex,
+              resolved.ext,
+              key,
+            );
           zip.file(archivePath, resolved.base64, { base64: true });
           recordCopy[key] = `zip:${archivePath}`;
           archived.set(String(path), `zip:${archivePath}`);
@@ -290,16 +389,9 @@ export async function exportLeaksWithPhotos(
         copy.events,
         leakNumber,
         archived,
-        async (path) => {
-          const resolved = await resolveBase64(path, idbGet);
-          if (!resolved) return null;
-          return {
-            ext: resolved.ext,
-            write: (archivePath) =>
-              zip.file(archivePath, resolved.base64, { base64: true }),
-          };
-        },
+        store,
         preserveUnresolvedPhotoPaths,
+        placeRecord,
       );
     }
 

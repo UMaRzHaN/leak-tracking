@@ -499,7 +499,67 @@ describe("buildProjectBackupZip — порченые снимки", () => {
 
     const peek = await peekBackupZip(blob);
     const [first, second] = peek.leaks[0].events;
-    expect(first.photo).toMatch(/^zip:photos\/.+\/events\/event-1\.jpg$/);
+    expect(first.photo).toMatch(
+      /^zip:photos\/monitoring\/1\/.+\/record-1\.jpg$/,
+    );
     expect(second).not.toHaveProperty("photo");
+  });
+});
+
+describe("buildProjectBackupZip — раскладка снимков", () => {
+  it("кладёт снимки утечки в LDAR, а осмотры — в папки обходов", async () => {
+    const { default: JSZip } = await import("jszip");
+    const roundPhoto = "data:image/jpeg;base64,cm91bmQy";
+    const blob = await buildProjectBackupZip({
+      leaks: [
+        makeLeak({
+          leak_id: "3242",
+          // У открытой утечки «фото до» — снимок последнего осмотра.
+          photo: roundPhoto,
+          photo_repair: "data:image/jpeg;base64,cmVwYWly",
+          events: [
+            {
+              id: "i-1",
+              type: "inspection",
+              date: "2026-09-01T10:00:00.000Z",
+              roundNumber: 1,
+              result: "resolved",
+              photo: "data:image/jpeg;base64,cm91bmQx",
+            },
+            {
+              id: "i-2",
+              type: "inspection",
+              date: "2026-09-20T10:00:00.000Z",
+              roundNumber: 2,
+              result: "still_leaking",
+              photo: roundPhoto,
+            },
+          ],
+        }),
+      ],
+      idbGet: null,
+      project: UPSTREAM_PROJECT,
+      vars: null,
+    });
+
+    const zip = await JSZip.loadAsync(blob);
+    const photos = Object.keys(zip.files)
+      .filter((name) => name.startsWith("photos/") && !zip.files[name].dir)
+      .sort();
+    expect(photos).toEqual([
+      "photos/LDAR/3242/repair.jpg",
+      "photos/monitoring/1/3242 (утечки нет)/record-1.jpg",
+      "photos/monitoring/2/3242 (утечка есть)/record-1.jpg",
+    ]);
+
+    const peek = await peekBackupZip(blob);
+    const [leak] = peek.leaks;
+    expect(leak.photo).toBe(
+      "zip:photos/monitoring/2/3242 (утечка есть)/record-1.jpg",
+    );
+    expect(leak.events.map((event) => event.photo)).toEqual([
+      "zip:photos/monitoring/1/3242 (утечки нет)/record-1.jpg",
+      "zip:photos/monitoring/2/3242 (утечка есть)/record-1.jpg",
+    ]);
   });
 });
