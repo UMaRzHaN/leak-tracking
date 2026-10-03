@@ -160,6 +160,22 @@ export function buildMonitoringPhotoArchivePath(
 }
 
 /**
+ * Снимок осмотра в папке своего обхода: `photos/Обход 2/3242 (утечка есть)/
+ * record-1.jpg`. Обходы разбирают по одному, и снимки одного обхода лежат
+ * вместе, а не по папкам утечек. Номер записи — порядковый внутри обхода.
+ */
+export function buildRoundMonitoringPhotoArchivePath(
+  roundSegment,
+  leakSegment,
+  recordNumber,
+  extension,
+  photoKey = "photo",
+) {
+  const suffix = photoKey === "photo" ? "" : `-${photoKey}`;
+  return `photos/${roundSegment}/${leakSegment}/record-${recordNumber}${suffix}.${normalizeImageExtension(extension)}`;
+}
+
+/**
  * Снимок события ленты.
  *
  * Отдельная папка от `monitoring/` нужна только тем снимкам, которых больше

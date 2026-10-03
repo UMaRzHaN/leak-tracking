@@ -25,6 +25,17 @@ export function buildMonitoringRoundLookup(orderedLeaks) {
   );
 }
 
+/**
+ * Номер обхода записи: свой, иначе по идентификатору обхода, иначе по
+ * порядку — как у записей, заведённых до нумерации обходов.
+ * @param {any} record @param {number} recordIndex @param {Map<any, any>} roundLookup
+ */
+export function getRecordRoundNumber(record, recordIndex, roundLookup) {
+  return Number(record.roundNumber) > 0
+    ? Number(record.roundNumber)
+    : (roundLookup.get(record.roundId) ?? recordIndex + 1);
+}
+
 /** @param {any[]} orderedLeaks @param {Map<any, any>} roundLookup @param {string} [monitoringExportMode] */
 export function getMonitoringExportRows(
   orderedLeaks,
@@ -35,10 +46,11 @@ export function getMonitoringExportRows(
 
   orderedLeaks.forEach((leak, leakIndex) => {
     getMonitoringRecords(leak).forEach((record, recordIndex) => {
-      const roundNumber =
-        Number(record.roundNumber) > 0
-          ? Number(record.roundNumber)
-          : (roundLookup.get(record.roundId) ?? recordIndex + 1);
+      const roundNumber = getRecordRoundNumber(
+        record,
+        recordIndex,
+        roundLookup,
+      );
       // Один номер — один обход, даже если устройства дали ему разные
       // идентификаторы.
       const roundKey =

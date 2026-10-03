@@ -2,6 +2,7 @@ import {
   buildEventPhotoArchivePath,
   buildLeakPhotoArchivePath,
   buildMonitoringPhotoArchivePath,
+  buildRoundMonitoringPhotoArchivePath,
 } from "@/services/archive/archivePaths";
 import { resolvePhotoCandidates } from "./photoResolution";
 import { getMonitoringRecords } from "@/utils/monitoring";
@@ -95,6 +96,11 @@ export async function buildMonitoringPhotoEntries(
   includedPhotoKeys = /** @type {Set<string>|null} */ (null),
   photoReadCache,
   archiveRoot = "photos",
+  // Раскладка по папкам обходов: `(leakIndex, recordIndex) => {roundSegment,
+  // leakSegment, recordNumber}`. Без неё снимок лежит в папке утечки.
+  placeRecord = /** @type {((leakIndex: number, recordIndex: number) => any)|null} */ (
+    null
+  ),
 ) {
   const candidates = [];
 
@@ -134,12 +140,21 @@ export async function buildMonitoringPhotoEntries(
             photoKey,
           ),
           buildArchivePath: (extension) => {
-            const backupPath = buildMonitoringPhotoArchivePath(
-              leakSegment,
-              recordIndex,
-              extension,
-              photoKey,
-            );
+            const placement = placeRecord?.(leakIndex, recordIndex);
+            const backupPath = placement
+              ? buildRoundMonitoringPhotoArchivePath(
+                  placement.roundSegment,
+                  placement.leakSegment,
+                  placement.recordNumber,
+                  extension,
+                  photoKey,
+                )
+              : buildMonitoringPhotoArchivePath(
+                  leakSegment,
+                  recordIndex,
+                  extension,
+                  photoKey,
+                );
             return archiveRoot === "photos"
               ? backupPath
               : `${archiveRoot}/${backupPath.slice("photos/".length)}`;

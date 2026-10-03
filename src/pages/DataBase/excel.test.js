@@ -466,7 +466,7 @@ describe("excel export helpers", () => {
       { base64: true },
     );
     expect(archive.file).toHaveBeenCalledWith(
-      "photos/VISIBLE (leak present)/monitoring/record-1.png",
+      "photos/Round 1/VISIBLE (leak present)/record-1.png",
       "dmlzaWJsZQ==",
       { base64: true },
     );
@@ -483,7 +483,7 @@ describe("excel export helpers", () => {
     ]);
     expect(
       payload.leaks.map((leak) => leak.monitoringRecords[0].photo),
-    ).toEqual(["zip:photos/VISIBLE (leak present)/monitoring/record-1.png"]);
+    ).toEqual(["zip:photos/Round 1/VISIBLE (leak present)/record-1.png"]);
   });
 
   it("omits unreadable local photo references from the embedded backup", async () => {
@@ -733,19 +733,19 @@ describe("excel export helpers", () => {
     expect(monitoringSheet.getColumn(5).numFmt).toBe("hh:mm:ss");
     expect(monitoringSheet.getRow(2).getCell(12).value).toEqual({
       text: "Open photo",
-      hyperlink: "photos/7 (leak present)/monitoring/record-1.png",
+      hyperlink: "photos/Round 4/7 (no leak)/record-1.png",
     });
     expect(monitoringSheet.getRow(3).getCell(12).value).toEqual({
       text: "Open photo",
-      hyperlink: "photos/7 (leak present)/monitoring/record-2.png",
+      hyperlink: "photos/Round 4/7 (no leak)/record-2.png",
     });
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
-      "photos/7 (leak present)/monitoring/record-1.png",
+      "photos/Round 4/7 (no leak)/record-1.png",
       "ZmFrZQ==",
       { base64: true },
     );
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
-      "photos/7 (leak present)/monitoring/record-2.png",
+      "photos/Round 4/7 (no leak)/record-2.png",
       "ZmFrZQ==",
       { base64: true },
     );
@@ -841,15 +841,15 @@ describe("excel export helpers", () => {
     expect(monitoringSheet.rows).toHaveLength(2);
     expect(monitoringSheet.getRow(2).getCell(12).value).toEqual({
       text: "Open photo",
-      hyperlink: "photos/7 (leak present)/monitoring/record-2.png",
+      hyperlink: "photos/Round 4/7 (no leak)/record-2.png",
     });
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
-      "photos/7 (leak present)/monitoring/record-1.png",
+      "photos/Round 4/7 (no leak)/record-1.png",
       "ZmFrZQ==",
       { base64: true },
     );
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
-      "photos/7 (leak present)/monitoring/record-2.png",
+      "photos/Round 4/7 (no leak)/record-2.png",
       "ZmFrZQ==",
       { base64: true },
     );

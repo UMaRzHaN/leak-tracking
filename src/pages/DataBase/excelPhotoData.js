@@ -14,7 +14,9 @@ import {
 import {
   buildMonitoringRoundLookup,
   getMonitoringExportRows,
+  getRecordRoundNumber,
 } from "@/services/excelExport/monitoringRows";
+import { getMonitoringRecords } from "@/utils/monitoring";
 
 /**
  * Папки утечек в архиве: бирка и в скобках её состояние — «3242 (утечка
@@ -28,12 +30,67 @@ import {
 export function allocateLeakFolderNames(leaks, folderStatus) {
   const segments = allocateUniqueLeakArchiveSegments(leaks);
   if (!folderStatus) return segments;
-  return segments.map((segment, index) => {
-    const label = folderStatus[leaks[index]?.status ?? "open"];
-    return label
-      ? (sanitizePortableArchiveSegment(`${segment} (${label})`) ?? segment)
-      : segment;
+  return segments.map((segment, index) =>
+    withFolderLabel(segment, folderStatus[leaks[index]?.status ?? "open"]),
+  );
+}
+
+function withFolderLabel(segment, label) {
+  return label
+    ? (sanitizePortableArchiveSegment(`${segment} (${label})`) ?? segment)
+    : segment;
+}
+
+const STATUS_BY_MONITORING_RESULT = {
+  still_leaking: "open",
+  needs_recheck: "in_progress",
+  resolved: "resolved",
+};
+
+/**
+ * Раскладка снимков осмотров по папкам обходов: «Обход 2/3242 (утечки нет)/
+ * record-1.jpg». В скобках — итог последнего осмотра утечки в этом обходе, а
+ * не её нынешнее состояние: папка обхода рассказывает о том обходе.
+ *
+ * @returns {(leakIndex: number, recordIndex: number) => any}
+ */
+export function planRoundMonitoringFolders(
+  orderedLeaks,
+  { folderStatus, roundFolder },
+) {
+  const roundLookup = buildMonitoringRoundLookup(orderedLeaks);
+  const baseSegments = allocateUniqueLeakArchiveSegments(orderedLeaks);
+  const placements = new Map();
+
+  orderedLeaks.forEach((leak, leakIndex) => {
+    const byRound = new Map();
+    getMonitoringRecords(leak).forEach((record, recordIndex) => {
+      const round = getRecordRoundNumber(record, recordIndex, roundLookup);
+      if (!byRound.has(round)) byRound.set(round, []);
+      byRound.get(round).push({ record, recordIndex });
+    });
+
+    for (const [round, entries] of byRound) {
+      const roundSegment =
+        sanitizePortableArchiveSegment(`${roundFolder} ${round}`) ??
+        String(round);
+      const lastResult = entries[entries.length - 1].record.result;
+      const leakSegment = withFolderLabel(
+        baseSegments[leakIndex],
+        folderStatus[STATUS_BY_MONITORING_RESULT[lastResult] ?? "open"],
+      );
+      entries.forEach(({ recordIndex }, position) => {
+        placements.set(`${leakIndex}:${recordIndex}`, {
+          roundSegment,
+          leakSegment,
+          recordNumber: position + 1,
+        });
+      });
+    }
   });
+
+  return (leakIndex, recordIndex) =>
+    placements.get(`${leakIndex}:${recordIndex}`) ?? null;
 }
 
 /**
@@ -51,9 +108,14 @@ async function buildPhotoEntries(
   monitoringExportMode,
   photoReadCache,
   archiveRoot = "photos",
-  folderStatus = /** @type {Record<string, string>|null} */ (null),
+  folderTexts = /** @type {{folderStatus: Record<string, string>, roundFolder: string}|null} */ (
+    null
+  ),
 ) {
-  const leakSegments = allocateLeakFolderNames(orderedLeaks, folderStatus);
+  const leakSegments = allocateLeakFolderNames(
+    orderedLeaks,
+    folderTexts?.folderStatus ?? null,
+  );
   const includedMonitoringPhotoKeys =
     monitoringExportMode === EXCEL_MONITORING_EXPORT_MODE.LATEST_PER_ROUND
       ? new Set(
@@ -74,6 +136,7 @@ async function buildPhotoEntries(
     includedMonitoringPhotoKeys,
     photoReadCache,
     archiveRoot,
+    folderTexts ? planRoundMonitoringFolders(orderedLeaks, folderTexts) : null,
   );
   const monitoringSources = new Set(
     monitoringPhotos.map((entry) => entry.sourcePath),
@@ -128,7 +191,9 @@ export async function resolvePhotoExportData({
   idbGet,
   monitoringExportMode,
   photoReadCache,
-  folderStatus = /** @type {Record<string, string>|null} */ (null),
+  folderTexts = /** @type {{folderStatus: Record<string, string>, roundFolder: string}|null} */ (
+    null
+  ),
 }) {
   const { entries: reportPhotoEntries, aliases: reportAliases } =
     await buildPhotoEntries(
@@ -137,7 +202,7 @@ export async function resolvePhotoExportData({
       monitoringExportMode,
       photoReadCache,
       "photos/report",
-      folderStatus,
+      folderTexts,
     );
   const { entries: backupPhotoEntries, aliases: backupAliases } =
     await buildPhotoEntries(
@@ -146,7 +211,7 @@ export async function resolvePhotoExportData({
       EXCEL_MONITORING_EXPORT_MODE.FULL,
       photoReadCache,
       "photos",
-      folderStatus,
+      folderTexts,
     );
   const backupPhotoPathByLogicalKey = new Map(
     backupPhotoEntries.map((entry) => [entry.logicalKey, entry.photoFileName]),

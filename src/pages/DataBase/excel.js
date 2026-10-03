@@ -128,7 +128,10 @@ export async function exportToExcelFile(
       idbGet,
       monitoringExportMode,
       photoReadCache,
-      folderStatus: texts.photo.folderStatus,
+      folderTexts: {
+        folderStatus: texts.photo.folderStatus,
+        roundFolder: texts.photo.roundFolder,
+      },
     });
   photoReadCache.clear();
   phaseMetrics.photosMs = performance.now() - photosStartedAt;

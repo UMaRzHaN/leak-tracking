@@ -9,6 +9,7 @@ export const excelExport = {
   photo: {
     open: "Open photo",
     missing: "Present (file missing)",
+    roundFolder: "Round",
     folderStatus: {
       open: "leak present",
       in_progress: "under repair",
