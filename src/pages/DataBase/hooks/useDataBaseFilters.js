@@ -5,7 +5,8 @@ import { matchesLeakLocationFilter } from "@/utils/locationFilter";
 import { compareLeakRecency } from "@/utils/leakOrder";
 
 export const ALL = "all";
-import { NEARBY, NEARBY_RADIUS_M } from "@/domain/leakFilters";
+import { FICTION_FILTER, NEARBY, NEARBY_RADIUS_M } from "@/domain/leakFilters";
+import { isLeakFiction } from "@/utils/monitoring";
 
 export const NEARBY_RADIUS_OPTIONS = [100, 500, 1000];
 
@@ -38,6 +39,9 @@ export function useDataBaseFilters({
   const [localPriorityFilter, setLocalPriorityFilter] = useState(
     /** @type {string[]} */ ([]),
   );
+  const [localFictionFilter, setLocalFictionFilter] = useState(
+    FICTION_FILTER.ALL,
+  );
   const [localMainLocationFilter, setLocalMainLocationFilter] = useState(
     /** @type {string|null} */ (null),
   );
@@ -62,6 +66,9 @@ export function useDataBaseFilters({
   );
   const setPriorityFilter =
     sharedFilters?.setPriorityFilter ?? setLocalPriorityFilter;
+  const fictionFilter = sharedFilters?.fictionFilter ?? localFictionFilter;
+  const setFictionFilter =
+    sharedFilters?.setFictionFilter ?? setLocalFictionFilter;
   const hasSharedMainLocationFilter =
     typeof sharedFilters?.setMainLocationFilter === "function";
   const mainLocationFilter = hasSharedMainLocationFilter
@@ -152,7 +159,7 @@ export function useDataBaseFilters({
   // Счётчики и список должны видеть одну и ту же выборку, поэтому отбор по
   // месту, поиску и приоритету вынесен отдельно: статус применяется только к
   // списку, а счётчики строятся уже на суженном наборе.
-  const scoped = useMemo(() => {
+  const beforeFiction = useMemo(() => {
     const applySearch = (list) =>
       searchTokens.length > 0
         ? list.filter((leak) =>
@@ -204,6 +211,29 @@ export function useDataBaseFilters({
     searchTokens,
   ]);
 
+  // Фикция считается по осмотрам записи — это разбор ленты каждой утечки, и
+  // делать его на каждую правку данных незачем. Считается по требованию и
+  // один раз на выборку: когда включён отбор или открыта панель со счётчиками.
+  const getFictionSet = useMemo(() => {
+    let cached = /** @type {Set<any>|null} */ (null);
+    return () => {
+      cached ??= new Set(beforeFiction.filter((leak) => isLeakFiction(leak)));
+      return cached;
+    };
+  }, [beforeFiction]);
+
+  const scoped = useMemo(() => {
+    if (fictionFilter === FICTION_FILTER.ONLY) {
+      const fictions = getFictionSet();
+      return beforeFiction.filter((leak) => fictions.has(leak));
+    }
+    if (fictionFilter === FICTION_FILTER.EXCLUDE) {
+      const fictions = getFictionSet();
+      return beforeFiction.filter((leak) => !fictions.has(leak));
+    }
+    return beforeFiction;
+  }, [beforeFiction, getFictionSet, fictionFilter]);
+
   const displayed = useMemo(() => {
     // The toggle above this list is labelled "date", and it sorted by
     // `compareLeakIds` — the record id. Imported records carry a numeric id and
@@ -245,8 +275,26 @@ export function useDataBaseFilters({
       const st = l.status ?? STATUS.OPEN;
       if (c[st] !== undefined) c[st]++;
     }
+    // Кнопки фикций считают выборку до своего же отбора — иначе при «только
+    // фикции» вторая кнопка показывала бы ноль. Ленивые: их читает только
+    // открытая панель фильтров.
+    Object.defineProperties(c, {
+      fiction: { enumerable: true, get: () => getFictionSet().size },
+      notFiction: {
+        enumerable: true,
+        get: () => beforeFiction.length - getFictionSet().size,
+      },
+    });
     return c;
-  }, [scoped, hasGps, coords, nearbyRadius, nearbyFilter]);
+  }, [
+    scoped,
+    beforeFiction,
+    getFictionSet,
+    hasGps,
+    coords,
+    nearbyRadius,
+    nearbyFilter,
+  ]);
 
   return {
     search: searchInput,
@@ -255,6 +303,8 @@ export function useDataBaseFilters({
     setFilter,
     priorityFilter,
     setPriorityFilter,
+    fictionFilter,
+    setFictionFilter,
     mainLocationFilter,
     setMainLocationFilter,
     mainLocationKey,

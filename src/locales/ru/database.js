@@ -26,6 +26,9 @@ export const database = {
   filters: "Фильтры",
   status: "Статус",
   priority: "Приоритет",
+  fiction: "Фикция",
+  fictionOnly: "Фикции",
+  fictionExclude: "Без фикций",
   all: "Все",
   nearbyRadius: " • в радиусе {{radius}} м",
 

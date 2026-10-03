@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MONITORING_FILTER, NEARBY_RADIUS_M } from "@/domain/leakFilters";
+import {
+  FICTION_FILTER,
+  MONITORING_FILTER,
+  NEARBY_RADIUS_M,
+} from "@/domain/leakFilters";
 import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
 import {
   readProjectFilters,
@@ -19,6 +23,7 @@ export function useSharedFilters({ projectId, projectType }) {
   const [priorityFilter, setPriorityFilter] = useState(
     /** @type {string[]} */ ([]),
   );
+  const [fictionFilter, setFictionFilter] = useState(FICTION_FILTER.ALL);
   /*
    * Состояние железа — отдельно от статуса утечки: словари разные, а живёт
    * фильтр здесь по той же причине, что и остальные. Реестр и карта на базе
@@ -63,6 +68,7 @@ export function useSharedFilters({ projectId, projectType }) {
     setSearch(stored.search);
     setStatusFilter(stored.statusFilter);
     setPriorityFilter(stored.priorityFilter);
+    setFictionFilter(stored.fictionFilter);
     setComponentStatusFilter(stored.componentStatusFilter);
     setMainLocationFilter(
       keep(stored.mainLocationFilter, locationConfig?.main),
@@ -78,7 +84,7 @@ export function useSharedFilters({ projectId, projectType }) {
 
   useEffect(() => {
     if (!projectId || persistenceProjectRef.current !== projectId) return;
-    // The load above sets nine pieces of state; without this the first render
+    // The load above sets ten pieces of state; without this the first render
     // after it would write the freshly loaded values straight back.
     if (skipNextPersistRef.current) {
       skipNextPersistRef.current = false;
@@ -89,6 +95,7 @@ export function useSharedFilters({ projectId, projectType }) {
       search,
       statusFilter,
       priorityFilter,
+      fictionFilter,
       componentStatusFilter,
       mainLocationFilter,
       locationFilter,
@@ -103,6 +110,7 @@ export function useSharedFilters({ projectId, projectType }) {
     search,
     statusFilter,
     priorityFilter,
+    fictionFilter,
     componentStatusFilter,
     mainLocationFilter,
     locationFilter,
@@ -120,6 +128,8 @@ export function useSharedFilters({ projectId, projectType }) {
       setFilter: setStatusFilter,
       priorityFilter,
       setPriorityFilter,
+      fictionFilter,
+      setFictionFilter,
       componentStatusFilter,
       setComponentStatusFilter,
       mainLocationFilter,
@@ -139,6 +149,7 @@ export function useSharedFilters({ projectId, projectType }) {
       search,
       statusFilter,
       priorityFilter,
+      fictionFilter,
       componentStatusFilter,
       mainLocationFilter,
       locationFilter,

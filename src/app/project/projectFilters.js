@@ -1,17 +1,23 @@
 import { STORAGE_KEYS } from "./storageKeys";
 import { normalizeLocationValue } from "@/utils/locationFilter";
-import { MONITORING_FILTER, NEARBY_RADIUS_M } from "@/domain/leakFilters";
+import {
+  FICTION_FILTER,
+  MONITORING_FILTER,
+  NEARBY_RADIUS_M,
+} from "@/domain/leakFilters";
 
 // Прежде здесь стояли те же значения литералами — третья копия радиуса и
 // набора фильтров, которая расходилась бы с остальными молча.
 const DEFAULT_NEARBY_RADIUS = NEARBY_RADIUS_M;
 const DEFAULT_MONITORING_FILTER = MONITORING_FILTER.DUE;
 const MONITORING_FILTERS = new Set(Object.values(MONITORING_FILTER));
+const FICTION_FILTERS = new Set(Object.values(FICTION_FILTER));
 
 const DEFAULT_PROJECT_FILTERS = Object.freeze({
   search: "",
   statusFilter: [],
   priorityFilter: [],
+  fictionFilter: FICTION_FILTER.ALL,
   // Своим ключом, а не общим со статусом утечки: словари разные — у утечки
   // «Открыта», у железа «В работе», — и общий список отбирал бы по чужому.
   componentStatusFilter: [],
@@ -50,6 +56,9 @@ export function normalizeProjectFilters(value) {
     search: typeof value?.search === "string" ? value.search : "",
     statusFilter: normalizeValues(value?.statusFilter),
     priorityFilter: normalizeValues(value?.priorityFilter),
+    fictionFilter: FICTION_FILTERS.has(value?.fictionFilter)
+      ? value.fictionFilter
+      : FICTION_FILTER.ALL,
     componentStatusFilter: normalizeValues(value?.componentStatusFilter),
     mainLocationFilter: normalizeLocationFilter(value?.mainLocationFilter),
     locationFilter: normalizeLocationFilter(value?.locationFilter),

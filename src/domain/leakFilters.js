@@ -21,3 +21,13 @@ export const MONITORING_FILTER = {
   CHECKED: "checked",
   ALL: "all",
 };
+
+/**
+ * Отбор по фикциям: все записи, только фикции или без них. Одно значение, а
+ * не набор: вариантов два, и «оба сразу» — это просто «все».
+ */
+export const FICTION_FILTER = {
+  ALL: "all",
+  ONLY: "only",
+  EXCLUDE: "exclude",
+};

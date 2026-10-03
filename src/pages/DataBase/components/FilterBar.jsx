@@ -2,6 +2,7 @@ import { useState, memo } from "react";
 import { STATUS_META, STATUS_ORDER, getStatusMeta } from "@/utils/status";
 import { PRIORITY_ORDER, getPriorityMeta } from "@/utils/priority";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { FICTION_FILTER } from "@/domain/leakFilters";
 import s from "@/pages/DataBase/DataBase.module.scss";
 
 const ALL = "all";
@@ -25,6 +26,8 @@ function FilterBar({
   setFilter,
   priorityFilter,
   setPriorityFilter,
+  fictionFilter = FICTION_FILTER.ALL,
+  setFictionFilter = /** @type {((value: string) => void)|null} */ (null),
   nearbyFilter,
   setNearbyFilter,
   nearbyRadius,
@@ -41,6 +44,7 @@ function FilterBar({
   const hasActiveFilter =
     selectedStatuses.length > 0 ||
     selectedPriorities.length > 0 ||
+    fictionFilter !== FICTION_FILTER.ALL ||
     nearbyFilter;
   const [open, setOpen] = useState(false);
   const formatRadius = (radius) =>
@@ -185,6 +189,62 @@ function FilterBar({
               })}
             </div>
           </div>
+
+          {setFictionFilter && (
+            <>
+              <div className={s.filterDivider} />
+
+              <div className={s.filterSection}>
+                <span className={s.filterLabel}>{t("database.fiction")}</span>
+                <div className={s.filters}>
+                  {[
+                    [
+                      FICTION_FILTER.ALL,
+                      t("database.all"),
+                      counts.fiction + counts.notFiction,
+                    ],
+                    [
+                      FICTION_FILTER.ONLY,
+                      t("database.fictionOnly"),
+                      counts.fiction,
+                    ],
+                    [
+                      FICTION_FILTER.EXCLUDE,
+                      t("database.fictionExclude"),
+                      counts.notFiction,
+                    ],
+                  ].map(([id, label, count]) => {
+                    const isActive = fictionFilter === id;
+                    // Фикции — своим фиолетовым, как плашка на карточке.
+                    const style =
+                      isActive && id === FICTION_FILTER.ONLY
+                        ? {
+                            color: "var(--c-fiction)",
+                            background:
+                              "color-mix(in srgb, var(--c-fiction) 14%, transparent)",
+                            borderColor: "var(--c-fiction)",
+                          }
+                        : undefined;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        className={`${s.filterTab} ${isActive ? s.filterActive : ""}`}
+                        style={style}
+                        aria-pressed={isActive}
+                        onClick={() => setFictionFilter(id)}
+                      >
+                        {label}
+                        {count > 0 && (
+                          <span className={s.filterCount}>{count}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
 
           {hasGps && (
             <>

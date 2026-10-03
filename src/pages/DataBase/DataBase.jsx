@@ -58,6 +58,8 @@ export default function DataBase({
         setFilter={filters.setFilter}
         priorityFilter={filters.priorityFilter}
         setPriorityFilter={filters.setPriorityFilter}
+        fictionFilter={filters.fictionFilter}
+        setFictionFilter={filters.setFictionFilter}
         nearbyFilter={filters.nearbyFilter}
         setNearbyFilter={filters.setNearbyFilter}
         nearbyRadius={filters.nearbyRadius}

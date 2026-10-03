@@ -34,6 +34,17 @@ describe("project filter persistence", () => {
     expect(readProjectFilters("two").search).toBe("");
   });
 
+  it("хранит фильтр фикций и отбрасывает неизвестное значение", () => {
+    writeProjectFilters("one", { fictionFilter: "only" });
+    expect(readProjectFilters("one").fictionFilter).toBe("only");
+
+    localStorage.setItem(
+      STORAGE_KEYS.PROJECT_FILTERS("two"),
+      JSON.stringify({ fictionFilter: "maybe" }),
+    );
+    expect(readProjectFilters("two").fictionFilter).toBe("all");
+  });
+
   it("falls back safely when stored JSON is damaged", () => {
     localStorage.setItem(STORAGE_KEYS.PROJECT_FILTERS("one"), "{broken");
 

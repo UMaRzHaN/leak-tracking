@@ -92,6 +92,47 @@ describe("useDataBaseFilters multi-select", () => {
     ]);
   });
 
+  it("отбирает фикции по последнему осмотру и считает обе кнопки", () => {
+    const inspection = (date, fiction) => ({
+      type: "inspection",
+      date,
+      ...(fiction == null ? {} : { fiction }),
+    });
+    const data = [
+      // Фикция по последнему осмотру.
+      {
+        id: 1,
+        status: "open",
+        events: [inspection("2026-09-01T10:00:00.000Z", true)],
+      },
+      // Была фикцией, следующий осмотр снял.
+      {
+        id: 2,
+        status: "open",
+        events: [
+          inspection("2026-09-01T10:00:00.000Z", true),
+          inspection("2026-09-02T10:00:00.000Z", false),
+        ],
+      },
+      { id: 3, status: "resolved" },
+    ];
+    const { result } = renderHook(() =>
+      useDataBaseFilters({ data, coords: null }),
+    );
+
+    expect(result.current.counts).toMatchObject({ fiction: 1, notFiction: 2 });
+
+    act(() => result.current.setFictionFilter("only"));
+    expect(result.current.displayed.map((item) => item.id)).toEqual([1]);
+    // Счётчики кнопок фикций — до своего отбора.
+    expect(result.current.counts).toMatchObject({ fiction: 1, notFiction: 2 });
+
+    act(() => result.current.setFictionFilter("exclude"));
+    expect(result.current.displayed.map((item) => item.id).sort()).toEqual([
+      2, 3,
+    ]);
+  });
+
   it("sorts newest first and toggles to ascending order", () => {
     const { result } = renderHook(() =>
       useDataBaseFilters({ data: DATA, coords: null }),

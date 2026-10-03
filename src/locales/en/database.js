@@ -26,6 +26,9 @@ export const database = {
   filters: "Filters",
   status: "Status",
   priority: "Priority",
+  fiction: "Fiction",
+  fictionOnly: "Fictions",
+  fictionExclude: "No fictions",
   all: "All",
   nearbyRadius: " • within {{radius}} m",
 
