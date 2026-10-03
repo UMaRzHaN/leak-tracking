@@ -9,8 +9,12 @@ import {
 } from "@/utils/locationFilter";
 import { filterLeaksByMonitoring } from "@/pages/Monitoring/monitoringDomain";
 import { normalizeMultiFilter } from "@/pages/DataBase/hooks/useDataBaseFilters";
-import { MONITORING_FILTER, NEARBY_RADIUS_M } from "@/domain/leakFilters";
-import { isMonitoringDue } from "@/utils/monitoring";
+import {
+  FICTION_FILTER,
+  MONITORING_FILTER,
+  NEARBY_RADIUS_M,
+} from "@/domain/leakFilters";
+import { isLeakFiction, isMonitoringDue } from "@/utils/monitoring";
 
 import { useLocationToggles } from "./useLocationToggles";
 
@@ -48,6 +52,9 @@ export function useMapFilters({
   const [localLocationFilter, setLocalLocationFilter] = useState(
     /** @type {string|null} */ (null),
   );
+  const [localFictionFilter, setLocalFictionFilter] = useState(
+    FICTION_FILTER.ALL,
+  );
   const [localMonitoringFilter, setLocalMonitoringFilter] = useState(
     MONITORING_FILTER.DUE,
   );
@@ -73,6 +80,10 @@ export function useMapFilters({
     sharedFilters?.statusFilter ?? localStatusFilter,
   );
   const setStatusFilter = sharedFilters?.setFilter ?? setLocalStatusFilter;
+  // Общий с базой и мониторингом: выбранное там видно здесь.
+  const fictionFilter = sharedFilters?.fictionFilter ?? localFictionFilter;
+  const setFictionFilter =
+    sharedFilters?.setFictionFilter ?? setLocalFictionFilter;
   const monitoringFilter =
     sharedFilters?.monitoringFilter ?? localMonitoringFilter;
   const setMonitoringFilter =
@@ -128,7 +139,11 @@ export function useMapFilters({
           (statusFilters.length === 0 ||
             statusFilters.includes(leak.status ?? STATUS.OPEN)) &&
           (priorityFilters.length === 0 ||
-            priorityFilters.includes(leak.priority ?? null)),
+            priorityFilters.includes(leak.priority ?? null)) &&
+          // Фикция — по ленте осмотров; разбирается, только когда отбор
+          // включён.
+          (fictionFilter === FICTION_FILTER.ALL ||
+            isLeakFiction(leak) === (fictionFilter === FICTION_FILTER.ONLY)),
       ),
     [
       normalizedLeaks,
@@ -138,6 +153,7 @@ export function useMapFilters({
       mainLocationKey,
       statusFilters,
       priorityFilters,
+      fictionFilter,
     ],
   );
 
@@ -281,6 +297,8 @@ export function useMapFilters({
     nearbyRadiusOptions: NEARBY_RADIUS_OPTIONS,
     priorityFilters,
     statusFilters,
+    fictionFilter,
+    setFictionFilter,
     hasGps,
     setMonitoringFilter,
     setNearbyOnly,

@@ -175,6 +175,36 @@ describe("useMapPage", () => {
     expect(result.current.visibleLeaks[0]._distance).toBe(0);
   });
 
+  it("отбирает фикции по последнему осмотру", () => {
+    const withFiction = [
+      {
+        ...leaks[0],
+        events: [
+          {
+            type: "inspection",
+            date: "2026-09-20T10:00:00.000Z",
+            fiction: true,
+          },
+        ],
+      },
+      leaks[1],
+    ];
+    const { result } = renderHook(
+      () => useMapPage({ leaks: withFiction, coords: { lat: 41, lng: 69 } }),
+      { wrapper: noRegistry },
+    );
+
+    act(() => result.current.setFictionFilter("only"));
+    expect(result.current.visibleLeaks.map((leak) => leak.id)).toEqual([
+      "near-open",
+    ]);
+
+    act(() => result.current.setFictionFilter("exclude"));
+    expect(result.current.visibleLeaks.map((leak) => leak.id)).toEqual([
+      "far-resolved",
+    ]);
+  });
+
   it("initializes, updates, and destroys the map adapter", async () => {
     let current;
     function Harness({ gpsEnabled }) {

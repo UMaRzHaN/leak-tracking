@@ -4,7 +4,7 @@ import { PRIORITY_ORDER, getPriorityMeta } from "@/utils/priority";
 import { STATUS_ORDER, getStatusMeta } from "@/utils/status";
 
 import s from "@/pages/MapPage/MapPage.module.scss";
-import { MONITORING_FILTER } from "@/domain/leakFilters";
+import { FICTION_FILTER, MONITORING_FILTER } from "@/domain/leakFilters";
 import ComponentStatusFilter from "./ComponentStatusFilter";
 import FilterIcon from "./FilterIcon";
 
@@ -12,6 +12,7 @@ const FILTER_MENU = {
   COMPONENT_STATUS: "componentStatus",
   STATUS: "status",
   PRIORITY: "priority",
+  FICTION: "fiction",
   NEARBY: "nearby",
   MONITORING: "monitoring",
 };
@@ -32,6 +33,8 @@ export default function MapControls({
   nearbyRadiusOptions,
   priorityFilters,
   statusFilters,
+  fictionFilter = FICTION_FILTER.ALL,
+  onFictionChange = /** @type {((value: string) => void)|null} */ (null),
   monitoringFilter,
   hasMonitoringRound,
   hasGps,
@@ -54,6 +57,8 @@ export default function MapControls({
   const isComponentStatusOpen = openFilterMenu === FILTER_MENU.COMPONENT_STATUS;
   const isStatusOpen = openFilterMenu === FILTER_MENU.STATUS;
   const isPriorityOpen = openFilterMenu === FILTER_MENU.PRIORITY;
+  const isFictionOpen = openFilterMenu === FILTER_MENU.FICTION;
+  const fictionActive = fictionFilter !== FICTION_FILTER.ALL;
   const isNearbyOpen = openFilterMenu === FILTER_MENU.NEARBY;
   const isMonitoringOpen = openFilterMenu === FILTER_MENU.MONITORING;
   const activeMonitoringFilter = hasMonitoringRound
@@ -355,6 +360,67 @@ export default function MapControls({
                     onClick={() => onPriorityToggle(priority)}
                   >
                     {meta.short}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {!showsComponents && onFictionChange && (
+          <div className={s.filterControlWrap}>
+            <button
+              type="button"
+              className={`${s.controlBtn} ${fictionActive ? s.controlBtnActive : ""}`}
+              onClick={() => toggleFilterMenu(FILTER_MENU.FICTION)}
+              aria-expanded={isFictionOpen}
+              aria-label={t("map.fictionFilter")}
+            >
+              {/* Пунктирный круг с косой чертой — как пунктирная рамка фикции
+                  на карточке: «тут ничего нет». */}
+              <svg
+                className={s.controlIcon}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="8" strokeDasharray="3 3" />
+                <path d="M7 17 17 7" />
+              </svg>
+            </button>
+            <div
+              className={`${s.filterFlyout} ${isFictionOpen ? s.filterFlyoutOpen : ""}`}
+            >
+              {[
+                [FICTION_FILTER.ALL, t("map.all")],
+                [FICTION_FILTER.ONLY, t("map.fictionOnly")],
+                [FICTION_FILTER.EXCLUDE, t("map.fictionExclude")],
+              ].map(([id, label]) => {
+                const isActive = fictionFilter === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`${s.filterOptionBtn} ${
+                      isActive ? s.filterOptionBtnActive : ""
+                    }`}
+                    style={
+                      isActive && id === FICTION_FILTER.ONLY
+                        ? {
+                            borderColor: "var(--c-fiction)",
+                            color: "var(--c-fiction)",
+                            background:
+                              "color-mix(in srgb, var(--c-fiction) 14%, transparent)",
+                          }
+                        : undefined
+                    }
+                    aria-pressed={isActive}
+                    onClick={() => onFictionChange(id)}
+                  >
+                    {label}
                   </button>
                 );
               })}

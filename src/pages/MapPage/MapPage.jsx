@@ -39,6 +39,8 @@ export default function MapPage({
     nearbyOnly,
     nearbyRadius,
     nearbyRadiusOptions,
+    fictionFilter,
+    setFictionFilter,
     priorityFilters,
     statusFilters,
     hasGps,
@@ -91,6 +93,8 @@ export default function MapPage({
         nearbyRadius={nearbyRadius}
         nearbyRadiusOptions={nearbyRadiusOptions}
         priorityFilters={priorityFilters}
+        fictionFilter={fictionFilter}
+        onFictionChange={setFictionFilter}
         statusFilters={statusFilters}
         monitoringFilter={monitoringFilter}
         hasMonitoringRound={hasMonitoringRound}
