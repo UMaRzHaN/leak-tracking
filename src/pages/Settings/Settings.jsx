@@ -1,4 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Icon from "@/components/ui/Icon/Icon";
+import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
+import { getLocationLevelKeys } from "@/utils/locationTree";
+import { listProjectObjects } from "./projectObjects";
+import ObjectsScreen from "./components/ObjectsScreen";
 import PageHeader from "@/components/layout/PageHeader/PageHeader";
 import LeakFieldsModal from "./components/LeakFieldsModal";
 import Notification from "@/components/ui/Notification/Notification";
@@ -83,6 +88,16 @@ export default function Settings(props) {
     view = "settings",
   } = props;
   const contentRef = useRef(/** @type {HTMLDivElement|null} */ (null));
+  const [objectsOpen, setObjectsOpen] = useState(false);
+  // Объекты и кусты (11c) — по тем же уровням места, что выбор в шапке.
+  const objects = useMemo(
+    () =>
+      listProjectObjects(
+        data,
+        getLocationLevelKeys(PROJECT_LOCATION_CONFIG[activeProject?.type]),
+      ),
+    [data, activeProject?.type],
+  );
 
   // Меню приложения ведёт сразу в раздел — импорт, синхронизацию, список
   // проектов, — а не в начало длинной страницы.
@@ -123,6 +138,33 @@ export default function Settings(props) {
         </div>
       ) : (
         <div className={s.content} ref={contentRef}>
+          {activeProject && (
+            <div className={s.importScreen}>
+              <h2 className={s.groupCaption}>{t("settings.objects.group")}</h2>
+              <div className={s.groupCard}>
+                <div className={s.groupRow}>
+                  <span className={s.groupRowText}>
+                    <strong>{t("settings.objects.name")}</strong>
+                  </span>
+                  <span className={s.objectsCount}>{activeProject.name}</span>
+                </div>
+                <button
+                  type="button"
+                  className={`${s.groupRow} ${s.groupRowButton}`}
+                  onClick={() => setObjectsOpen(true)}
+                >
+                  <span className={s.groupRowText}>
+                    <strong>{t("settings.objects.title")}</strong>
+                  </span>
+                  <span className={s.objectsCount}>
+                    {t("settings.objects.count", { count: objects.length })}
+                  </span>
+                  <Icon name="chevronRight" size={16} strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+          )}
+
           <section className={s.section} data-settings-section="projects">
             <div className={s.sectionHead}>
               <h2 className={s.sectionTitle}>{localeTexts.projects}</h2>
@@ -247,6 +289,13 @@ export default function Settings(props) {
       )}
 
       <SettingsDialogs page={page} />
+
+      {objectsOpen && (
+        <ObjectsScreen
+          objects={objects}
+          onClose={() => setObjectsOpen(false)}
+        />
+      )}
 
       <ConfirmSheet
         open={Boolean(settingsConfirmTexts)}

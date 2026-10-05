@@ -1,4 +1,18 @@
 export const settings = {
+  objects: {
+    group: "Project",
+    name: "Name",
+    caption: "Project settings",
+    title: "Sites",
+    count: "sites: {{count}}",
+    search: "Find a site",
+    summary: "Sites: {{objects}} · records: {{points}}",
+    byName: "A to Z",
+    byCount: "By records",
+    points: "records: {{count}}",
+    empty: "No sites yet",
+    hint: "A site appears with the first record or card on it.",
+  },
   projectsOfDifferentTypes:
     "Projects of different types cannot be combined: current — {{v1}}, imported — {{v2}}.",
   theArchiveDoesNot:

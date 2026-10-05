@@ -1,3 +1,4 @@
+import Icon from "@/components/ui/Icon/Icon";
 import s from "./PageHeader.module.scss";
 
 /**
@@ -29,7 +30,7 @@ export default function PageHeader({
             aria-label={backLabel}
             title={backLabel}
           >
-            ←
+            <Icon name="chevronLeft" size={22} strokeWidth={2} />
           </button>
         )}
       </div>

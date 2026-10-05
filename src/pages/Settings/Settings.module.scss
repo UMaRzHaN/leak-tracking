@@ -30,9 +30,8 @@
 /* ── Section card ── */
 .section {
   background: var(--c-surface);
-  border-radius: var(--r-xl);
+  border-radius: 18px;
   border: 1px solid var(--c-border);
-  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
@@ -45,10 +44,10 @@
 }
 
 .sectionTitle {
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.05em;
   color: var(--c-text3);
   margin: 0;
 }
@@ -842,4 +841,118 @@
   border-radius: 14px;
   background: var(--c-accent-dim);
   color: var(--c-accent);
+}
+
+.groupRowButton {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--c-border);
+  background: none;
+  color: var(--c-text3);
+  text-align: left;
+}
+
+/* ── Объекты и кусты (11c) ── */
+.objectsScreen {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--c-surface2);
+  outline: none;
+}
+
+.objectsHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: grid;
+  gap: 14px;
+  padding: 14px 20px;
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border-soft);
+
+  @supports (padding-top: env(safe-area-inset-top)) {
+    padding-top: calc(14px + env(safe-area-inset-top));
+  }
+
+  h1 {
+    color: var(--c-ink);
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+}
+
+.objectsHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.objectsBack {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--c-border-soft);
+  border-radius: 13px;
+  background: var(--c-surface-soft);
+  color: var(--c-ink);
+}
+
+.objectsSearch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  color: var(--c-text3);
+
+  svg {
+    position: absolute;
+    left: 14px;
+  }
+
+  input {
+    width: 100%;
+    min-height: 48px;
+    padding: 0 14px 0 44px;
+    border: 1px solid var(--c-border-soft);
+    border-radius: 14px;
+    background: var(--c-surface-soft);
+    color: var(--c-text);
+    font: inherit;
+    font-size: 15px;
+    outline: none;
+  }
+}
+
+.objectsBody {
+  display: grid;
+  gap: 10px;
+  padding: 18px 20px 28px;
+}
+
+.objectsSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.objectsSort {
+  min-height: 44px;
+  border: none;
+  background: none;
+  color: var(--c-accent-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.objectsCount {
+  flex: none;
+  color: var(--c-text3);
+  font-size: 14px;
+  font-weight: 700;
 }

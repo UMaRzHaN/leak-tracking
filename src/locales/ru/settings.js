@@ -1,4 +1,18 @@
 export const settings = {
+  objects: {
+    group: "Проект",
+    name: "Название",
+    caption: "Настройки проекта",
+    title: "Объекты и кусты",
+    count: "объектов: {{count}}",
+    search: "Поиск объекта",
+    summary: "Объектов: {{objects}} · записей: {{points}}",
+    byName: "По алфавиту",
+    byCount: "По числу записей",
+    points: "записей: {{count}}",
+    empty: "Объектов пока нет",
+    hint: "Объект появляется вместе с первой записью или карточкой на нём.",
+  },
   projectsOfDifferentTypes:
     "Нельзя объединить проекты разных типов: текущий — {{v1}}, импортируемый — {{v2}}.",
   theArchiveDoesNot:

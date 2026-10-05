@@ -12,14 +12,15 @@
   gap: 12px;
 
   min-height: var(--app-header, 62px);
-  padding: 10px 14px;
+  padding: 14px 20px;
 
-  background: var(--gradient-header);
-  box-shadow: var(--shadow-header);
-  color: #fff;
+  /* Светлая шапка экранов редизайна (8a, 11a): как шапка приложения. */
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border-soft);
+  color: var(--c-ink);
 
   @supports (padding-top: env(safe-area-inset-top)) {
-    padding-top: calc(10px + env(safe-area-inset-top));
+    padding-top: calc(14px + env(safe-area-inset-top));
   }
 }
 
@@ -43,11 +44,11 @@
   align-items: center;
   justify-content: center;
 
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--r-sm);
+  background: var(--c-surface-soft);
+  border: 1px solid var(--c-border-soft);
+  border-radius: 13px;
 
-  color: #fff;
+  color: var(--c-ink);
   font-size: 18px;
   cursor: pointer;
   transition:
@@ -55,7 +56,7 @@
     transform var(--t-fast);
 
   &:active {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--c-accent-dim);
     transform: scale(0.93);
   }
 }
@@ -73,9 +74,10 @@
 }
 
 .title {
-  font-size: 17px;
-  font-weight: 700;
-  color: #fff;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--c-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -85,7 +87,7 @@
 .subtitle {
   font-size: 12px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--c-text3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -107,10 +109,10 @@
   min-width: 40px;
   height: 44px;
   padding: 0 10px;
-  background: rgba(255, 255, 255, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--r-sm);
-  color: #fff;
+  background: var(--c-surface-soft);
+  border: 1px solid var(--c-border-soft);
+  border-radius: 13px;
+  color: var(--c-accent-text);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -120,7 +122,7 @@
 }
 
 .localeSwitchButton:active {
-  background: rgba(255, 255, 255, 0.24);
+  background: var(--c-accent-dim);
   transform: scale(0.97);
 }
 
@@ -148,8 +150,8 @@
 @media (max-width: 640px) {
   .appBar {
     min-height: 56px;
-    padding: 8px 12px;
-    gap: 10px;
+    padding: 12px 16px;
+    gap: 12px;
   }
 
   .backButton {
@@ -159,6 +161,6 @@
   }
 
   .title {
-    font-size: 16px;
+    font-size: 18px;
   }
 }
