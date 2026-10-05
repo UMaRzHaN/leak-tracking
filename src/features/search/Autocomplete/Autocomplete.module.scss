@@ -33,7 +33,7 @@
 
   &:focus {
     background: var(--c-surface);
-    border-color: var(--c-blue);
+    border-color: var(--c-accent);
     box-shadow: var(--focus-ring);
   }
 
@@ -69,10 +69,10 @@
   cursor: pointer;
 
   &:hover {
-    background: var(--c-blue-dim);
+    background: var(--c-accent-dim);
   }
   &:active {
-    background: var(--c-blue-dim);
+    background: var(--c-accent-dim);
   }
 }
 

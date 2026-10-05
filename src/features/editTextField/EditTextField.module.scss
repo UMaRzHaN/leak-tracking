@@ -15,14 +15,14 @@
   }
 
   &:focus-within {
-    background: var(--c-blue-dim);
+    background: var(--c-accent-dim);
   }
 }
 
 [data-theme="dark"] .field {
   border-bottom-color: #3d5166;
   &:focus-within {
-    background: rgba(37, 99, 235, 0.12);
+    background: rgba(109, 61, 232, 0.12);
   }
 }
 
@@ -34,14 +34,14 @@
   box-shadow: var(--shadow-sm);
 
   &:focus-within {
-    border-color: var(--c-blue);
-    background: var(--c-blue-dim);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    border-color: var(--c-accent);
+    background: var(--c-accent-dim);
+    box-shadow: 0 0 0 3px rgba(109, 61, 232, 0.12);
   }
 }
 
 [data-theme="dark"] .compact:focus-within {
-  background: rgba(37, 99, 235, 0.12);
+  background: rgba(109, 61, 232, 0.12);
 }
 
 /* ── Label ── */
@@ -60,7 +60,7 @@
   text-overflow: ellipsis;
 
   .field:focus-within & {
-    color: var(--c-blue-text);
+    color: var(--c-accent-text);
   }
 }
 

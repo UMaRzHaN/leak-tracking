@@ -54,8 +54,8 @@
 /* На базе железа переключатель окрашен: с одного взгляда видно, что булавки
    на карте — не утечки. */
 .baseSwitchComponents {
-  border-color: var(--c-blue);
-  background: var(--c-blue);
+  border-color: var(--c-accent);
+  background: var(--c-accent);
   color: #fff;
 }
 
@@ -127,7 +127,7 @@
 }
 
 .controlBtnActive {
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
 
   &::before {
     content: "";
@@ -197,16 +197,16 @@
   white-space: nowrap;
 
   &:hover {
-    color: var(--c-blue-text);
-    background: var(--c-blue-dim);
-    border-color: var(--c-blue);
+    color: var(--c-accent-text);
+    background: var(--c-accent-dim);
+    border-color: var(--c-accent);
   }
 }
 
 .filterOptionBtnActive {
-  color: var(--c-blue-text);
-  background: var(--c-blue-dim);
-  border-color: var(--c-blue);
+  color: var(--c-accent-text);
+  background: var(--c-accent-dim);
+  border-color: var(--c-accent);
 }
 
 .controlBtnActive[disabled],
@@ -259,7 +259,7 @@
 
 .tileProgressBar {
   height: 3px;
-  background: var(--c-blue-light);
+  background: var(--c-accent-light);
   border-radius: 2px;
   transition: width 0.2s ease;
   min-width: 4px;
@@ -353,14 +353,14 @@
 
     &:hover {
       border-color: rgba(96, 165, 250, 0.72);
-      background: rgba(37, 99, 235, 0.22);
+      background: rgba(109, 61, 232, 0.22);
       color: #bfdbfe;
     }
   }
 
   .filterOptionBtnActive {
     border-color: rgba(96, 165, 250, 0.82);
-    background: rgba(37, 99, 235, 0.28);
+    background: rgba(109, 61, 232, 0.28);
     color: #bfdbfe;
   }
 

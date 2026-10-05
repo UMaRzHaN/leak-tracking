@@ -148,9 +148,9 @@ function FilterBar({
                 style={
                   selectedPriorities.length === 0
                     ? {
-                        color: "var(--c-blue)",
-                        background: "var(--c-blue-dim)",
-                        borderColor: "var(--c-blue)",
+                        color: "var(--c-accent)",
+                        background: "var(--c-accent-dim)",
+                        borderColor: "var(--c-accent)",
                       }
                     : undefined
                 }

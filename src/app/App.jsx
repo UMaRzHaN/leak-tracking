@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import "@fontsource-variable/manrope";
 import "@/index.scss";
 import { useLocationScope } from "@/hooks/useLocationScope";
 import { useRegistryLocationSource } from "@/hooks/useRegistryLocationSource";

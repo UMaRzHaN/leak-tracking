@@ -65,7 +65,7 @@
 }
 
 .themeToggleDark {
-  background: var(--c-blue);
+  background: var(--c-accent);
 }
 
 .themeThumb {
@@ -95,9 +95,9 @@
 }
 
 .languageToggle:hover {
-  border-color: var(--c-blue);
-  color: var(--c-blue-text);
-  background: var(--c-blue-dim);
+  border-color: var(--c-accent);
+  color: var(--c-accent-text);
+  background: var(--c-accent-dim);
 }
 /* ── Map cache ── */
 .cacheBody {

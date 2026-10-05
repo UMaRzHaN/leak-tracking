@@ -12,23 +12,34 @@
   --app-header: 76px;
   --app-footer: 64px;
 
-  /* Colors — Primary */
+  /* Colors — Accent
+     Фиолетовый акцент редизайна (design-handoff, турны 1–11). Раньше эту роль
+     нёс синий, и токены назывались по цвету — `--c-blue`; после смены цвета
+     имя по оттенку врало бы, поэтому роль названа ролью. Синий остался там,
+     где он значит «информация», а не «акцент»: приоритет medium и т. п.
+
+     `--c-accent` — заливка под белым текстом (6,0:1), `--c-accent-text` — тот
+     же смысл надписью: на светлой плашке и на любой из трёх поверхностей
+     заливочный оттенок читается хуже, а нажатое состояние в макетах — этот
+     же тёмный. */
   --c-navy: #0d1f4e;
-  --c-blue: #2563eb;
-  --c-blue-light: #3b82f6;
-  --c-blue-dim: #dbeafe;
-  /* Синий как текст, а не как заливка. Один и тот же --c-blue не может быть
-     обоими сразу: на тёмном фоне он даёт 2,8:1 подписью, на светло-голубой
-     плашке --c-blue-dim — 4,2:1, и при этом остаётся единственным цветом, на
-     котором белый текст кнопки читается. Разделены, чтобы каждая тема могла
-     подвинуть подпись в свою сторону, не трогая кнопку. */
-  --c-blue-text: #1d5dea;
+  --c-accent: #6d3de8;
+  --c-accent-light: #8a63f0;
+  --c-accent-dim: #efedf6;
+  --c-accent-text: #4b21c4;
+  /* Плашки и подложки под акцентом: выбранная строка, активный чип. */
+  --c-accent-surface: #f5f2fe;
+
+  /* Заголовки экранов — чуть теплее основного текста, как в макетах. */
+  --c-ink: #1a1a2e;
 
   /* Colors — Surface */
   --c-bg: #f0f4f8;
   --c-surface: #ffffff;
   --c-surface2: #f8fafc;
   --c-border: #e2e8f0;
+  /* Граница внутри фиолетовых групп: поля, строки списков, разделители шторок. */
+  --c-border-soft: #e9e6f2;
 
   /* Colors — Text
      Приглушённые уровни давали 4,3:1 и 2,6:1 при норме 4,5 — на них сидели
@@ -93,7 +104,7 @@
   --c-warning: #a85c05;
   --c-red: #d62121;
   --c-amber: #8d6a00;
-  --c-blue-bg: rgba(37, 99, 235, 0.08);
+  --c-accent-bg: rgba(109, 61, 232, 0.08);
 
   /* Полоса прерванного черновика. Тёмная в обеих темах — это её опознавательный
      признак, одинаковый на форме утечки и на карточке компонента. Поэтому цвет
@@ -131,15 +142,15 @@
   --shadow-nav: 0 -4px 16px rgba(0, 0, 0, 0.06);
   --shadow-header: 0 2px 12px rgba(0, 0, 0, 0.28);
   --shadow-sheet: 0 -8px 32px rgba(0, 0, 0, 0.22);
-  --shadow-fab: 0 4px 14px rgba(37, 99, 235, 0.45);
+  --shadow-fab: 0 4px 14px rgba(109, 61, 232, 0.45);
 
   /* Colors — overlays */
   --c-overlay: rgba(0, 0, 0, 0.45);
   --c-overlay-sm: rgba(0, 0, 0, 0.3);
-  --c-blue-overlay: rgba(37, 99, 235, 0.18);
+  --c-accent-overlay: rgba(109, 61, 232, 0.18);
 
   /* Focus ring */
-  --focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  --focus-ring: 0 0 0 3px rgba(109, 61, 232, 0.12);
 
   /* Radius — bottom sheets & pills */
   --r-sheet: 20px 20px 0 0;
@@ -168,10 +179,13 @@
   --c-text2: #9fb0c2;
   --c-text3: #8496ab;
 
-  --c-blue-dim: rgba(37, 99, 235, 0.18);
+  --c-accent-dim: rgba(139, 99, 240, 0.2);
   /* Активный пункт панели был темнее неактивных — ровно наоборот тому, что
      он должен показывать. */
-  --c-blue-text: #7dabf0;
+  --c-accent-text: #b8a3fb;
+  --c-accent-surface: rgba(139, 99, 240, 0.14);
+  --c-ink: #e2e8f0;
+  --c-border-soft: #3a3f5c;
 
   --c-open-bg: rgba(220, 38, 38, 0.15);
   --c-open-border: rgba(220, 38, 38, 0.35);
@@ -199,7 +213,7 @@
   --c-warning: #fbbf24;
   --c-red: #f87171;
   --c-amber: #fbbf24;
-  --c-blue-bg: rgba(96, 165, 250, 0.14);
+  --c-accent-bg: rgba(139, 99, 240, 0.14);
 
   /* Светлее --c-surface: иначе полоса черновика того же цвета, что карточка
      под ней, и перестаёт читаться как полоса. */
@@ -224,7 +238,7 @@
   --shadow-nav: 0 -4px 16px rgba(0, 0, 0, 0.2);
   --shadow-header: 0 2px 12px rgba(0, 0, 0, 0.5);
   --shadow-sheet: 0 -8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-fab: 0 4px 14px rgba(37, 99, 235, 0.6);
+  --shadow-fab: 0 4px 14px rgba(109, 61, 232, 0.6);
 }
 
 /* =====================================================
@@ -245,6 +259,7 @@ html {
 
 body {
   font-family:
+    "Manrope Variable",
     system-ui,
     -apple-system,
     "Segoe UI",
@@ -260,6 +275,14 @@ body {
 button {
   font-family: inherit;
   cursor: pointer;
+}
+
+/* Поля ввода шрифт не наследуют: без этого плейсхолдеры и введённый текст
+   оставались на системном шрифте посреди экранов на Manrope. */
+input,
+textarea,
+select {
+  font-family: inherit;
 }
 
 /* =====================================================
@@ -331,7 +354,7 @@ button {
   width: 32px;
   height: 32px;
   border: 3px solid var(--c-border);
-  border-top-color: var(--c-blue);
+  border-top-color: var(--c-accent);
   border-radius: 50%;
   animation: appLoaderSpin 0.8s linear infinite;
 }
@@ -390,7 +413,7 @@ button {
     padding: 0 20px;
     border: 0;
     border-radius: var(--r-md);
-    background: var(--c-blue);
+    background: var(--c-accent);
     color: #fff;
     font-size: 15px;
     font-weight: 700;

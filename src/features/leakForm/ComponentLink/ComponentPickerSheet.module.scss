@@ -98,7 +98,7 @@
 
   &:focus {
     outline: none;
-    border-color: var(--c-blue);
+    border-color: var(--c-accent);
   }
 }
 
@@ -147,7 +147,7 @@
   grid-area: uid;
   font-size: 15px;
   font-weight: 700;
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
 }
 
 .name {

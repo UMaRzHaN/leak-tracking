@@ -60,16 +60,16 @@
 }
 .addBtn {
   padding: 4px 12px;
-  border: 1.5px solid var(--c-blue);
+  border: 1.5px solid var(--c-accent);
   border-radius: var(--r-md);
   background: transparent;
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--t-fast);
   &:hover {
-    background: var(--c-blue);
+    background: var(--c-accent);
     color: #fff;
   }
 }
@@ -110,9 +110,9 @@
   cursor: pointer;
   transition: all var(--t-fast);
   &:hover {
-    border-color: var(--c-blue);
-    color: var(--c-blue-text);
-    background: var(--c-blue-dim);
+    border-color: var(--c-accent);
+    color: var(--c-accent-text);
+    background: var(--c-accent-dim);
   }
   &:active {
     transform: scale(0.97);
@@ -147,7 +147,7 @@
 }
 
 .localSyncSection {
-  border-color: color-mix(in srgb, var(--c-blue) 22%, var(--c-border));
+  border-color: color-mix(in srgb, var(--c-accent) 22%, var(--c-border));
 }
 
 .localSyncHero {
@@ -159,7 +159,7 @@
   border-bottom: 1px solid var(--c-border);
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--c-blue) 10%, var(--c-surface)),
+    color-mix(in srgb, var(--c-accent) 10%, var(--c-surface)),
     var(--c-surface) 62%
   );
 }
@@ -242,9 +242,9 @@
   justify-content: center;
   min-height: 42px;
   padding: 11px 12px;
-  border: 1.5px solid var(--c-blue);
+  border: 1.5px solid var(--c-accent);
   border-radius: var(--r-lg);
-  background: var(--c-blue);
+  background: var(--c-accent);
   color: #fff;
   font-size: 13px;
   font-weight: 800;
@@ -336,7 +336,7 @@
 }
 
 .localSyncTimer {
-  color: var(--c-blue) !important;
+  color: var(--c-accent) !important;
   font-variant-numeric: tabular-nums;
 }
 
@@ -571,8 +571,8 @@
 }
 
 .exportModeOptionActive {
-  border-color: var(--c-blue);
-  background: var(--c-blue-dim);
+  border-color: var(--c-accent);
+  background: var(--c-accent-dim);
 }
 
 .exportModeRadio {
@@ -586,9 +586,9 @@
 }
 
 .exportModeOptionActive .exportModeRadio {
-  border-color: var(--c-blue);
-  background: var(--c-blue);
-  box-shadow: inset 0 0 0 3px var(--c-blue-dim);
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  box-shadow: inset 0 0 0 3px var(--c-accent-dim);
 }
 
 .exportModeText {
@@ -622,9 +622,9 @@
   text-align: center;
   transition: all var(--t-fast);
   &:hover {
-    border-color: var(--c-blue);
-    color: var(--c-blue-text);
-    background: var(--c-blue-dim);
+    border-color: var(--c-accent);
+    color: var(--c-accent-text);
+    background: var(--c-accent-dim);
   }
 }
 

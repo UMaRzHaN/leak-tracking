@@ -14,6 +14,7 @@
     "Zlib"
   ],
   "exceptions": {
+    "@fontsource-variable/manrope": "OFL-1.1. Шрифт интерфейса из редизайна, вшит в сборку как woff2: приложение работает офлайн и не может тянуть его с Google Fonts. OFL разрешает встраивание и распространение вместе с программой; запрещает только продавать сам шрифт отдельно и переименовывать изменённые версии — ни того, ни другого проект не делает.",
     "lightningcss": "MPL-2.0. Build-time CSS transformer that Vite 8 depends on directly; it never reaches the shipped bundle. MPL obliges sharing changes to its own files, and the project makes none.",
     "lightningcss-android-arm64": "MPL-2.0. Build-time CSS transformer that Vite 8 depends on directly; it never reaches the shipped bundle. MPL obliges sharing changes to its own files, and the project makes none.",
     "lightningcss-darwin-arm64": "MPL-2.0. Build-time CSS transformer that Vite 8 depends on directly; it never reaches the shipped bundle. MPL obliges sharing changes to its own files, and the project makes none.",

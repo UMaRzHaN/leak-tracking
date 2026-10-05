@@ -33,7 +33,7 @@
   transition: color var(--t-fast);
 
   &.active {
-    color: var(--c-blue-text);
+    color: var(--c-accent-text);
   }
 }
 
@@ -82,7 +82,7 @@
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: var(--c-blue);
+  background: var(--c-accent);
 }
 
 /* ── FAB add button ── */
@@ -96,7 +96,7 @@
   align-items: center;
   justify-content: center;
 
-  background: linear-gradient(135deg, var(--c-blue), #1a3ac0);
+  background: linear-gradient(135deg, var(--c-accent), #1a3ac0);
   border: none;
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-fab);
@@ -107,7 +107,7 @@
 
   &:active {
     transform: scale(0.92);
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+    box-shadow: 0 2px 8px rgba(109, 61, 232, 0.35);
   }
 }
 

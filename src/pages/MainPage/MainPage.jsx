@@ -95,7 +95,7 @@ export default function MainPage({
         <StatCard
           value={stats.total}
           label={localeTexts.total}
-          accent="var(--c-blue)"
+          accent="var(--c-accent)"
           active={statusFilter === ALL}
           onClick={() => setStatusFilter(ALL)}
         />

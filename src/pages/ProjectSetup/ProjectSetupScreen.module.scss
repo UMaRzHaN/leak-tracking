@@ -9,7 +9,7 @@
    цветов не знают вовсе.
 
    Общие --c-* сюда не подошли: у экрана свой синий (#0d47a1), отличный от
-   --c-blue, и переезд на него сдвинул бы светлую тему, которой ничего не
+   --c-accent, и переезд на него сдвинул бы светлую тему, которой ничего не
    требовалось. */
 .screen {
   --setup-backdrop: linear-gradient(
@@ -77,14 +77,14 @@
   --setup-tint: rgba(96, 165, 250, 0.12);
   --setup-tint-strong: rgba(96, 165, 250, 0.22);
   --setup-status-border: rgba(96, 165, 250, 0.35);
-  --setup-selected-glow: rgba(37, 99, 235, 0.3);
+  --setup-selected-glow: rgba(109, 61, 232, 0.3);
   /* Кнопка светлеет, а не темнеет: тёмно-синий из светлой темы на тёмной
      карточке переставал читаться как главное действие. */
-  --setup-cta-from: #2563eb;
-  --setup-cta-to: #3b82f6;
-  --setup-cta-hover-from: #3b82f6;
+  --setup-cta-from: #6d3de8;
+  --setup-cta-to: #8a63f0;
+  --setup-cta-hover-from: #8a63f0;
   --setup-cta-hover-to: #60a5fa;
-  --setup-cta-glow: rgba(37, 99, 235, 0.45);
+  --setup-cta-glow: rgba(109, 61, 232, 0.45);
   --setup-danger: #f87171;
   --setup-qr: #c4b5fd;
   --setup-qr-border: #7c6ad0;

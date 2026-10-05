@@ -176,7 +176,7 @@
 .viewAll {
   background: none;
   border: none;
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -214,7 +214,7 @@
 .emptyBtn {
   margin-top: 4px;
   padding: 10px 20px;
-  background: var(--c-blue);
+  background: var(--c-accent);
   color: #fff;
   border: none;
   border-radius: var(--r-md);
@@ -223,6 +223,6 @@
   cursor: pointer;
   transition: background var(--t-fast);
   &:hover {
-    background: var(--c-blue-light);
+    background: var(--c-accent-light);
   }
 }

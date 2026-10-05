@@ -78,7 +78,7 @@
   padding: 3px 6px;
   border: 0;
   border-radius: var(--r-sm);
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
   background: transparent;
   font-size: 13px;
   cursor: pointer;
@@ -158,7 +158,7 @@
 }
 
 .rowPicked {
-  border-color: var(--c-blue);
+  border-color: var(--c-accent);
 }
 
 .check {
@@ -188,11 +188,11 @@
 }
 
 .checkOn {
-  border-color: var(--c-blue);
+  border-color: var(--c-accent);
 
   .checkBox {
-    border-color: var(--c-blue);
-    background: var(--c-blue);
+    border-color: var(--c-accent);
+    background: var(--c-accent);
   }
 }
 
@@ -257,7 +257,7 @@
 .primary {
   border-color: transparent;
   color: #fff;
-  background: var(--c-blue);
+  background: var(--c-accent);
 
   &:disabled {
     opacity: 0.5;

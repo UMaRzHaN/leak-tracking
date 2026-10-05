@@ -23,8 +23,8 @@
 
 .hintRight {
   left: 0;
-  background: linear-gradient(to right, var(--c-blue-overlay), transparent);
-  color: var(--c-blue-text);
+  background: linear-gradient(to right, var(--c-accent-overlay), transparent);
+  color: var(--c-accent-text);
 }
 
 /* Left hint color changes based on the next status */
@@ -42,8 +42,8 @@
     color: var(--c-resolved-text);
   }
   &[data-next="open"] {
-    background: linear-gradient(to left, var(--c-blue-overlay), transparent);
-    color: var(--c-blue-text);
+    background: linear-gradient(to left, var(--c-accent-overlay), transparent);
+    color: var(--c-accent-text);
   }
 }
 
@@ -103,7 +103,7 @@
     background: var(--c-progress);
   }
   &[data-priority="medium"]::before {
-    background: var(--c-blue);
+    background: var(--c-accent);
   }
   &[data-priority="low"]::before {
     background: var(--c-resolved);
@@ -119,7 +119,7 @@
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
   }
   &.swipeRight {
-    box-shadow: 0 4px 18px rgba(37, 99, 235, 0.18);
+    box-shadow: 0 4px 18px rgba(109, 61, 232, 0.18);
   }
 }
 
@@ -159,14 +159,14 @@
 }
 
 .selected {
-  border-color: rgba(37, 99, 235, 0.38);
+  border-color: rgba(109, 61, 232, 0.38);
   background: linear-gradient(
     180deg,
-    rgba(37, 99, 235, 0.07),
+    rgba(109, 61, 232, 0.07),
     var(--c-surface) 42%
   );
   box-shadow:
-    0 0 0 2px rgba(37, 99, 235, 0.1),
+    0 0 0 2px rgba(109, 61, 232, 0.1),
     var(--shadow-sm);
 }
 
@@ -187,7 +187,7 @@
   border-radius: 5px;
   border: 1px solid var(--c-border);
   background: var(--c-surface2);
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -203,7 +203,7 @@
     box-shadow var(--t-fast);
 
   &:hover {
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.08);
+    box-shadow: 0 0 0 2px rgba(109, 61, 232, 0.08);
   }
 
   &:active {
@@ -212,8 +212,8 @@
 }
 
 .selectToggleActive {
-  border-color: var(--c-blue);
-  background: var(--c-blue);
+  border-color: var(--c-accent);
+  background: var(--c-accent);
   color: #fff;
 }
 
@@ -288,8 +288,8 @@
 
   &:hover,
   &:focus-visible {
-    color: var(--c-blue-text);
-    background: var(--c-blue-dim);
+    color: var(--c-accent-text);
+    background: var(--c-accent-dim);
   }
 }
 
@@ -464,9 +464,9 @@
 .chipNear {
   font-size: 11px;
   font-weight: 600;
-  color: var(--c-blue-text);
-  background: var(--c-blue-dim);
-  border: 1px solid rgba(37, 99, 235, 0.25);
+  color: var(--c-accent-text);
+  background: var(--c-accent-dim);
+  border: 1px solid rgba(109, 61, 232, 0.25);
   border-radius: var(--r-pill);
   padding: 2px 9px;
   white-space: nowrap;
@@ -508,9 +508,9 @@
 }
 
 .photoStackbefore {
-  --photo-accent: var(--c-blue);
-  border-color: color-mix(in srgb, var(--c-blue) 45%, var(--c-border));
-  box-shadow: 3px 0 8px rgba(37, 99, 235, 0.18);
+  --photo-accent: var(--c-accent);
+  border-color: color-mix(in srgb, var(--c-accent) 45%, var(--c-border));
+  box-shadow: 3px 0 8px rgba(109, 61, 232, 0.18);
 }
 
 .photoStackrepair {
@@ -618,7 +618,7 @@
 
 .photoStackbefore .photoStackLabel,
 .photoStackbefore .photoStackBackLabel {
-  background: color-mix(in srgb, var(--c-blue) 70%, rgba(0, 0, 0, 0.5));
+  background: color-mix(in srgb, var(--c-accent) 70%, rgba(0, 0, 0, 0.5));
 }
 
 .photoStackrepair .photoStackLabel,

@@ -17,7 +17,7 @@
   }
 
   &.active {
-    background: var(--c-blue-dim, #eff6ff);
+    background: var(--c-accent-dim, #eff6ff);
   }
 }
 
@@ -36,7 +36,7 @@
 
 .activeIndicator {
   font-size: 10px;
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
   opacity: 0.4;
   flex-shrink: 0;
 
@@ -66,16 +66,16 @@
   white-space: nowrap;
 
   .active & {
-    color: var(--c-blue-text);
+    color: var(--c-accent-text);
   }
 }
 
 .nameInput {
   font-size: 14px;
   font-weight: 600;
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
   border: none;
-  border-bottom: 2px solid var(--c-blue);
+  border-bottom: 2px solid var(--c-accent);
   background: transparent;
   outline: none;
   padding: 0;

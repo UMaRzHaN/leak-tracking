@@ -155,7 +155,7 @@ export function createOfflineMap(
         className: "",
         html: `<div style="
           width:34px;height:34px;border-radius:50%;
-          background:#2563eb;border:3px solid #fff;
+          background:#6d3de8;border:3px solid #fff;
           box-shadow:0 2px 8px rgba(0,0,0,0.35);
           display:flex;align-items:center;justify-content:center;
           color:#fff;font-size:12px;font-weight:700;

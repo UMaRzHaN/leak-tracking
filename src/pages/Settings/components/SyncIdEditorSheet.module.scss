@@ -68,8 +68,8 @@
     outline: none;
 
     &:focus {
-      border-color: var(--c-blue);
-      box-shadow: 0 0 0 3px var(--c-blue-dim);
+      border-color: var(--c-accent);
+      box-shadow: 0 0 0 3px var(--c-accent-dim);
     }
   }
 }
@@ -98,7 +98,7 @@
 }
 
 .confirm {
-  background: var(--c-blue);
+  background: var(--c-accent);
   color: #fff;
 }
 

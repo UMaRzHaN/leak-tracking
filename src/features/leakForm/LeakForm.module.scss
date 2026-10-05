@@ -97,7 +97,7 @@
 
 .progressFill {
   height: 100%;
-  background: var(--c-blue);
+  background: var(--c-accent);
   border-radius: 4px;
   transition: width var(--t-normal);
 }
@@ -125,16 +125,16 @@
 }
 
 .stepDot.done {
-  background: var(--c-blue-dim);
-  border-color: var(--c-blue);
-  color: var(--c-blue-text);
+  background: var(--c-accent-dim);
+  border-color: var(--c-accent);
+  color: var(--c-accent-text);
 }
 
 .stepDot.active {
-  background: var(--c-blue);
-  border-color: var(--c-blue);
+  background: var(--c-accent);
+  border-color: var(--c-accent);
   color: #fff;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 0 0 3px rgba(109, 61, 232, 0.2);
 }
 
 /* ── Step body ── */
@@ -165,8 +165,8 @@
   white-space: nowrap;
 
   &:hover {
-    border-color: var(--c-blue);
-    color: var(--c-blue-text);
+    border-color: var(--c-accent);
+    color: var(--c-accent-text);
   }
   &:active {
     transform: scale(0.97);
@@ -211,10 +211,10 @@
   flex-shrink: 0;
   min-height: 44px;
   padding: 0 12px;
-  border: 1px solid var(--c-blue);
+  border: 1px solid var(--c-accent);
   border-radius: var(--r-sm);
-  background: var(--c-blue-bg, rgba(37, 99, 235, 0.08));
-  color: var(--c-blue-text);
+  background: var(--c-accent-bg, rgba(109, 61, 232, 0.08));
+  color: var(--c-accent-text);
   font-size: 12px;
   font-weight: 800;
 }

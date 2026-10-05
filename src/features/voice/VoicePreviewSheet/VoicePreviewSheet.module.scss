@@ -73,8 +73,8 @@
   }
 
   &.checked {
-    border-color: var(--c-blue);
-    background: var(--c-blue-dim, #eff6ff);
+    border-color: var(--c-accent);
+    background: var(--c-accent-dim, #eff6ff);
   }
 }
 
@@ -88,14 +88,14 @@
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
   font-weight: 700;
   flex-shrink: 0;
   margin-top: 1px;
 
   .checked & {
-    background: var(--c-blue);
-    border-color: var(--c-blue);
+    background: var(--c-accent);
+    border-color: var(--c-accent);
     color: #fff;
   }
 }
@@ -153,7 +153,7 @@
   font-weight: 500;
   border: none;
   cursor: pointer;
-  background: var(--c-blue);
+  background: var(--c-accent);
   color: #fff;
   transition: opacity var(--t-fast);
   &:hover {

@@ -81,7 +81,7 @@
 }
 
 .confirm {
-  background: var(--c-blue);
+  background: var(--c-accent);
   color: #fff;
 
   &:hover {
@@ -90,12 +90,12 @@
 }
 
 .secondaryAction {
-  background: var(--c-blue-dim);
-  color: var(--c-blue-text);
-  border: 1px solid color-mix(in srgb, var(--c-blue) 32%, transparent) !important;
+  background: var(--c-accent-dim);
+  color: var(--c-accent-text);
+  border: 1px solid color-mix(in srgb, var(--c-accent) 32%, transparent) !important;
 
   &:hover {
-    background: color-mix(in srgb, var(--c-blue) 16%, transparent);
+    background: color-mix(in srgb, var(--c-accent) 16%, transparent);
   }
 }
 

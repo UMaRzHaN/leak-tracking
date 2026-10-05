@@ -69,7 +69,7 @@
   cursor: pointer;
 
   input {
-    accent-color: var(--c-blue);
+    accent-color: var(--c-accent);
   }
 }
 
@@ -97,8 +97,8 @@
     }
 
     &:focus {
-      border-color: var(--c-blue);
-      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+      border-color: var(--c-accent);
+      box-shadow: 0 0 0 2px rgba(109, 61, 232, 0.15);
     }
   }
 }
@@ -161,7 +161,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--c-blue);
+  background: var(--c-accent);
   flex-shrink: 0;
 }
 
@@ -201,7 +201,7 @@
 }
 
 .exportGeo {
-  background: var(--c-blue);
+  background: var(--c-accent);
   color: #fff;
 
   &:hover {

@@ -140,7 +140,7 @@
 
   &:focus {
     outline: none;
-    border-color: var(--c-blue);
+    border-color: var(--c-accent);
   }
 }
 
@@ -151,8 +151,8 @@
   place-items: center;
   border: 1.5px solid var(--c-border);
   border-radius: var(--r-md);
-  background: var(--c-blue-dim);
-  color: var(--c-blue-text);
+  background: var(--c-accent-dim);
+  color: var(--c-accent-text);
   padding: 0;
   cursor: pointer;
 
@@ -171,10 +171,10 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid color-mix(in srgb, var(--c-blue) 35%, var(--c-border));
+  border: 1px solid color-mix(in srgb, var(--c-accent) 35%, var(--c-border));
   border-radius: var(--r-md);
-  background: var(--c-blue-dim);
-  color: var(--c-blue-text);
+  background: var(--c-accent-dim);
+  color: var(--c-accent-text);
   padding: 0 9px;
   font-size: 11px;
   font-weight: 800;
@@ -233,10 +233,10 @@
 
 .calcToggle {
   min-height: 36px;
-  border: 1.5px solid var(--c-blue);
+  border: 1.5px solid var(--c-accent);
   border-radius: var(--r-md);
-  background: var(--c-blue-dim);
-  color: var(--c-blue-text);
+  background: var(--c-accent-dim);
+  color: var(--c-accent-text);
   font-size: 12px;
   font-weight: 800;
   padding: 0 11px;
@@ -325,7 +325,7 @@
 }
 
 .calcModalDone {
-  background: var(--c-blue);
+  background: var(--c-accent);
   color: #fff;
 }
 
@@ -357,7 +357,7 @@
 .btnConfirm {
   flex: 2;
   border: none;
-  background: var(--c-blue);
+  background: var(--c-accent);
   color: #fff;
 }
 

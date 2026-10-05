@@ -35,7 +35,7 @@
 .roundBadge {
   display: inline-flex;
   align-items: center;
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
   font-weight: 800;
 }
 
@@ -47,10 +47,10 @@
   flex-shrink: 0;
   min-height: 38px;
   padding: 0 12px;
-  border: 1px solid var(--c-blue);
+  border: 1px solid var(--c-accent);
   border-radius: var(--r-md);
-  background: var(--c-blue-dim);
-  color: var(--c-blue-text);
+  background: var(--c-accent-dim);
+  color: var(--c-accent-text);
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
@@ -297,12 +297,12 @@
 }
 
 .filterBtnActive {
-  border-color: var(--c-blue);
-  color: var(--c-blue-text);
-  background: var(--c-blue-bg, rgba(37, 99, 235, 0.08));
+  border-color: var(--c-accent);
+  color: var(--c-accent-text);
+  background: var(--c-accent-bg, rgba(109, 61, 232, 0.08));
 
   strong {
-    color: var(--c-blue-text);
+    color: var(--c-accent-text);
   }
 }
 
@@ -384,7 +384,7 @@
   padding: 0 16px;
   border: none;
   border-radius: var(--r-md);
-  background: var(--c-blue);
+  background: var(--c-accent);
   color: #fff;
   font-weight: 800;
 }
@@ -481,10 +481,10 @@
 .progressBadge {
   flex-shrink: 0;
   padding: 2px 8px;
-  border: 1px solid color-mix(in srgb, var(--c-blue) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c-accent) 22%, transparent);
   border-radius: 999px;
-  background: var(--c-blue-dim);
-  color: var(--c-blue-text);
+  background: var(--c-accent-dim);
+  color: var(--c-accent-text);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.25;

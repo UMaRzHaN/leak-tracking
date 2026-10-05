@@ -46,7 +46,7 @@
   padding: 11px 16px;
   border: none;
   border-radius: var(--r-lg);
-  background: var(--c-blue);
+  background: var(--c-accent);
   color: #fff;
   font-size: 14px;
   font-weight: 600;
@@ -106,7 +106,7 @@
   font-variant-numeric: tabular-nums;
   font-size: 15px;
   font-weight: 700;
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
 }
 
 .name {
@@ -181,7 +181,7 @@
 
 .tabActive {
   border-color: transparent;
-  background: var(--c-blue);
+  background: var(--c-accent);
   color: #fff;
 }
 
@@ -200,7 +200,7 @@
   padding: 0;
   font: inherit;
   font-weight: 600;
-  color: var(--c-blue-text);
+  color: var(--c-accent-text);
   cursor: pointer;
   text-decoration: underline;
 }
@@ -255,7 +255,7 @@
 }
 
 .draftBtnRestore {
-  background: var(--c-blue);
+  background: var(--c-accent);
 }
 
 .draftBtnDiscard {
