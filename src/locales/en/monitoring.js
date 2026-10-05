@@ -22,6 +22,8 @@ export const monitoring = {
   leakNumber: "№",
   close: "Close",
   save: "Save",
+  saveCheck: "Save check",
+  checkTitle: "Leak check",
   saving: "Saving…",
   saveFailed: "Failed to save monitoring result",
   required: "Fill in the user name in profile",

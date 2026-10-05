@@ -289,6 +289,8 @@ export function useMonitoringPage({
       leakNumber: t("monitoring.leakNumber"),
       close: t("monitoring.close"),
       save: t("monitoring.save"),
+      saveCheck: t("monitoring.saveCheck"),
+      checkTitle: t("monitoring.checkTitle"),
       saving: t("monitoring.saving"),
       saveFailed: t("monitoring.saveFailed"),
       required: t("monitoring.required"),

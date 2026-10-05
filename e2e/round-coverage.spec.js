@@ -40,7 +40,9 @@ test("осмотренная в обходе булавка гаснет, неп
     .click();
   await page.getByLabel("Комментарий", { exact: true }).fill("Обход");
   await attachModalPhoto(page);
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Сохранить проверку", exact: true })
+    .click();
   await expect(page.getByRole("alert")).toContainText(
     "Результат мониторинга сохранен",
   );

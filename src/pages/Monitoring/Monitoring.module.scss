@@ -439,72 +439,6 @@
   text-align: center;
 }
 
-.sheetOverlay {
-  position: fixed;
-  inset: 0;
-  z-index: calc(var(--z-modal) + 2);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.38);
-}
-
-.sheet {
-  width: min(520px, calc(100% - 16px));
-  max-height: min(760px, calc(100dvh - 20px));
-  display: grid;
-  gap: 10px;
-  padding: 8px 14px 14px;
-  border-radius: var(--r-xl) var(--r-xl) 0 0;
-  background: var(--c-surface);
-  box-shadow: var(--shadow-sheet);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.sheetHandle {
-  justify-self: center;
-  width: 44px;
-  height: 4px;
-  border-radius: 999px;
-  background: var(--c-border);
-}
-
-.sheetHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-
-  h2 {
-    margin: 0;
-    color: var(--c-text);
-    font-size: 18px;
-  }
-
-  p {
-    margin: 2px 0 0;
-    color: var(--c-text3);
-    font-size: 12px;
-    line-height: 1.25;
-  }
-}
-
-.sheetCloseBtn {
-  flex-shrink: 0;
-  min-height: 34px;
-  padding: 0 12px;
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-sm);
-  background: var(--c-surface2);
-  color: var(--c-text);
-  font-weight: 800;
-}
-
-.sheetTitleBlock {
-  min-width: 0;
-}
-
 .sheetTitleRow {
   display: flex;
   align-items: center;
@@ -525,19 +459,131 @@
   white-space: nowrap;
 }
 
-@media (max-width: 720px) {
-  .sheet {
-    width: 100%;
-    max-height: calc(100dvh - 8px);
-    gap: 9px;
-    padding: 7px 12px 12px;
+/* ── Проверка утечки на весь экран (5c) ── */
+.checkScreen {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-modal) + 2);
+  display: flex;
+  flex-direction: column;
+  background: var(--c-surface2);
+  outline: none;
+  animation: checkIn 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.checkHeader {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border);
+
+  @supports (padding-top: env(safe-area-inset-top)) {
+    padding-top: calc(14px + env(safe-area-inset-top));
+  }
+}
+
+.checkClose {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--c-border);
+  border-radius: 13px;
+  background: var(--c-surface2);
+  color: var(--c-text2);
+}
+
+.checkTitleBlock {
+  min-width: 0;
+
+  h2 {
+    color: var(--c-ink);
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
   }
 
-  .sheetHeader h2 {
-    font-size: 17px;
+  p {
+    margin-top: 3px;
+    overflow: hidden;
+    color: var(--c-text3);
+    font-size: 13px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.checkBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  .field > span {
+    color: var(--c-text3);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .field input,
+  .field select {
+    height: 54px;
+    padding: 0 16px;
+    border-radius: 16px;
+    font-size: 16px;
   }
 
   .field textarea {
-    min-height: 44px;
+    min-height: 96px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    font-size: 15px;
+  }
+
+  .fieldRow {
+    gap: 12px;
+  }
+}
+
+.checkFooter {
+  flex: none;
+  padding: 14px 20px;
+  background: var(--c-surface);
+  border-top: 1px solid var(--c-border);
+
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+
+  .saveBtn {
+    width: 100%;
+    min-height: 54px;
+    border-radius: 16px;
+    font-size: 16px;
+  }
+}
+
+@keyframes checkIn {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkScreen {
+    animation: none;
   }
 }

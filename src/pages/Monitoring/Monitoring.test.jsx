@@ -439,10 +439,10 @@ describe("Monitoring round flow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Start round" }));
 
-    expect(screen.getByRole("heading", { name: "Check" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Leak check" })).toBeTruthy();
     expect(screen.getByText("№ 1001")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    expect(screen.queryByRole("heading", { name: "Check" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Leak check" })).toBeNull();
   });
 
   it("clears a pending monitoring request when round creation is cancelled", () => {
@@ -462,7 +462,7 @@ describe("Monitoring round flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(screen.queryByText("Start monitoring?")).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Check" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Leak check" })).toBeNull();
   });
 
   it("uses the shared monitoring filter and updates it", () => {
@@ -518,7 +518,7 @@ describe("Monitoring round flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "All tags 1" }));
     fireEvent.click(screen.getByRole("button", { name: "Swipe monitoring" }));
     fireEvent.click(screen.getByRole("button", { name: "Start round" }));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save check" }));
 
     await waitFor(() => expect(setData).toHaveBeenCalledOnce());
     expect(photoStorage.savePhoto).not.toHaveBeenCalled();
@@ -568,7 +568,7 @@ describe("Monitoring round flow", () => {
     await user.click(screen.getByRole("button", { name: "Check again" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { name: "Check" })).toBeTruthy();
+      expect(screen.getByRole("heading", { name: "Leak check" })).toBeTruthy();
       expect(screen.getByText("№ 1001")).toBeTruthy();
     });
   });
@@ -623,7 +623,7 @@ describe("Monitoring round flow", () => {
       );
       expect(storedRound.number).toBe(3);
       expect(storedRound.id).not.toBe(round.id);
-      expect(screen.getByRole("heading", { name: "Check" })).toBeTruthy();
+      expect(screen.getByRole("heading", { name: "Leak check" })).toBeTruthy();
     });
   });
 
@@ -706,15 +706,15 @@ describe("Monitoring round flow", () => {
 
     expect(screen.getByText("1 / 2")).toBeTruthy();
     expect(screen.getByText(/1001/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save check" }));
 
     await waitFor(() => expect(setData).toHaveBeenCalledTimes(1));
     expect(screen.getByText("2 / 2")).toBeTruthy();
     expect(screen.getByText(/1002/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save check" }));
 
     await waitFor(() => expect(setData).toHaveBeenCalledTimes(2));
-    expect(screen.queryByRole("heading", { name: "Check" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Leak check" })).toBeNull();
   });
 
   it("requires a monitoring photo before writing project data", () => {
@@ -733,7 +733,7 @@ describe("Monitoring round flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "All tags 1" }));
     fireEvent.click(screen.getByRole("button", { name: "Swipe monitoring" }));
     fireEvent.click(screen.getByRole("button", { name: "Start round" }));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save check" }));
 
     expect(screen.getByText("Add a monitoring photo")).toBeTruthy();
     expect(setData).not.toHaveBeenCalled();
@@ -759,7 +759,7 @@ describe("Monitoring round flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "All tags 1" }));
     fireEvent.click(screen.getByRole("button", { name: "Swipe monitoring" }));
     fireEvent.click(screen.getByRole("button", { name: "Start round" }));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save check" }));
 
     expect(screen.getByText("Fill in the user name in profile")).toBeTruthy();
     expect(setData).not.toHaveBeenCalled();
@@ -790,14 +790,14 @@ describe("Monitoring round flow", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Attach monitoring photo" }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save check" }));
 
     await waitFor(() =>
       expect(
         screen.getByText("Failed to save monitoring result: database locked"),
       ).toBeTruthy(),
     );
-    expect(screen.getByRole("heading", { name: "Check" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Leak check" })).toBeTruthy();
     expect(photoStorage.deletePhoto).toHaveBeenCalledWith(
       "idb://monitoring-new",
     );
@@ -853,7 +853,7 @@ describe("Monitoring round flow", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Attach monitoring photo" }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save check" }));
     fireEvent.click(
       await screen.findByRole("button", { name: "Confirm monitoring reopen" }),
     );
@@ -911,7 +911,7 @@ describe("Monitoring round flow", () => {
     fireEvent.change(screen.getByLabelText("Is there a leak?"), {
       target: { value: "still_leaking" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save check" }));
     fireEvent.click(
       await screen.findByRole("button", { name: "Confirm monitoring reopen" }),
     );
@@ -960,7 +960,7 @@ describe("Monitoring round flow", () => {
     fireEvent.change(screen.getByLabelText("Is there a leak?"), {
       target: { value: "still_leaking" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save check" }));
     fireEvent.click(
       await screen.findByRole("button", { name: "Confirm monitoring reopen" }),
     );
@@ -974,7 +974,7 @@ describe("Monitoring round flow", () => {
       optimistic: false,
     });
     expect(photoStorage.deletePhoto).not.toHaveBeenCalledWith("idb://original");
-    expect(screen.getByRole("heading", { name: "Check" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Leak check" })).toBeTruthy();
   });
   it("отмечает снятый МТР пустым значением, а не отсутствием поля", () => {
     // Стёртый МТР и неизменившийся — разные ответы: у первого в книге должна

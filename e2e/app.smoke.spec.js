@@ -278,7 +278,9 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
     .getByLabel("Комментарий", { exact: true })
     .fill("Сквозной контроль после редактирования");
   await attachModalPhoto(page);
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Сохранить проверку", exact: true })
+    .click();
   await expect(
     page.getByText("Все теги проверены", { exact: true }),
   ).toBeVisible();
@@ -420,13 +422,15 @@ test("records and completes a monitoring round", async ({ page }) => {
 
   await page.getByRole("button", { name: "Проверить", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Проверить", exact: true }),
+    page.getByRole("heading", { name: "Проверка утечки", exact: true }),
   ).toBeVisible();
   await page
     .getByLabel("Комментарий", { exact: true })
     .fill("Контрольный обход E2E");
   await attachModalPhoto(page);
-  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Сохранить проверку", exact: true })
+    .click();
 
   await expect(page.getByRole("alert")).toContainText(
     "Результат мониторинга сохранен",
