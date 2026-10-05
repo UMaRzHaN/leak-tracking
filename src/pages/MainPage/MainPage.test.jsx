@@ -268,4 +268,35 @@ describe("MainPage", () => {
     expect(actionsState.current.setStatusFilter).toHaveBeenCalledWith("open");
     expect(screen.getByText("empty:false")).toBeTruthy();
   });
+
+  it("lists only repairs in the repairs module, chipped by stage", () => {
+    const repair = {
+      id: "r1",
+      status: "in_progress",
+      events: [{ id: "s", type: "repair_started", date: "2026-10-01" }],
+    };
+    actionsState.current = createActions({
+      recent: [],
+      activeLeak: null,
+      pickerLeak: null,
+      resolveLeak: null,
+      repairLeak: null,
+      reopenLeak: null,
+    });
+    render(
+      <MainPage
+        setPage={vi.fn()}
+        data={[repair, { id: "o1", status: "open" }]}
+        setData={vi.fn()}
+        module="repairs"
+      />,
+    );
+
+    // Чипы стадий вместо статусов, и «Все» считает только ремонты.
+    expect(screen.getByText("repairs.stages.in_repair")).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: /repairs\.all/ }).textContent,
+    ).toContain("1");
+    expect(screen.getByText("empty:false")).toBeTruthy();
+  });
 });

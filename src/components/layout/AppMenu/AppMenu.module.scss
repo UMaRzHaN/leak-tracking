@@ -181,6 +181,11 @@
   font-weight: 700;
 }
 
+.meta_warning {
+  color: var(--c-progress-text);
+  font-weight: 700;
+}
+
 .itemActive {
   background: var(--c-accent-surface);
 

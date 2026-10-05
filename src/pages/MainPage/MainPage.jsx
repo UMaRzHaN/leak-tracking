@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useMainPageActions } from "./hooks/useMainPageActions";
 import CoverageCard from "./components/CoverageCard";
 import StatusChips from "./components/StatusChips";
@@ -8,6 +8,16 @@ import RepairAnalytics from "./components/RepairAnalytics";
 import LeakCardCompact from "@/features/leakList/LeakCardCompact/LeakCardCompact";
 import Notification from "@/components/ui/Notification/Notification";
 import { STATUS } from "@/utils/status";
+import {
+  countRepairStages,
+  getRepairLeaks,
+  getRepairStage,
+} from "@/domain/repairStages";
+import {
+  REPAIR_STAGE_ORDER,
+  getRepairStageMeta,
+  splitMaterials,
+} from "@/utils/repairStage";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { MODULE } from "@/app/modules/activeModule";
 import s from "./MainPage.module.scss";
@@ -37,6 +47,26 @@ export default function MainPage({
 }) {
   const { t } = useLanguage();
 
+  // Журнал ремонтов (7a) — те же записи, но только идущие и принятые
+  // ремонты, с чипами по стадии работ вместо статуса.
+  const repairMode = module === MODULE.REPAIRS;
+  const [stageFilter, setStageFilter] = useState("all");
+  const source = scopedData ?? data;
+  const repairLeaks = useMemo(
+    () => (repairMode ? getRepairLeaks(source) : null),
+    [repairMode, source],
+  );
+  const stageCounts = useMemo(
+    () => (repairLeaks ? countRepairStages(repairLeaks) : null),
+    [repairLeaks],
+  );
+  const listData = useMemo(() => {
+    if (!repairLeaks) return source;
+    return stageFilter === "all"
+      ? repairLeaks
+      : repairLeaks.filter((leak) => getRepairStage(leak) === stageFilter);
+  }, [repairLeaks, source, stageFilter]);
+
   const {
     activeLeak,
     setActiveLeak,
@@ -64,7 +94,12 @@ export default function MainPage({
     handleReopenConfirm,
     handleSaveLeak,
     handleDeleteLeak,
-  } = useMainPageActions({ data, scopedData, setData, userProfile });
+  } = useMainPageActions({
+    data,
+    scopedData: listData,
+    setData,
+    userProfile,
+  });
 
   const groups = useMemo(() => groupRecentLeaks(recent), [recent]);
 
@@ -75,11 +110,39 @@ export default function MainPage({
         onClose={() => setNotification(null)}
       />
 
-      {module === MODULE.MONITORING ? (
+      {repairMode ? (
         <StatusChips
-          stats={stats}
+          label={t("repairs.chipsLabel")}
+          all={{ key: "all", label: t("repairs.all"), count: stageCounts.all }}
+          items={REPAIR_STAGE_ORDER.slice(0, 3).map((stage) => ({
+            key: stage,
+            label: t(`repairs.stages.${stage}`),
+            count: stageCounts[stage],
+            dot: getRepairStageMeta(stage, t).dot,
+          }))}
+          value={stageFilter}
+          onChange={setStageFilter}
+        />
+      ) : module === MODULE.MONITORING ? (
+        <StatusChips
+          label={t("mainPage.chips.label")}
+          all={{ key: ALL, label: t("mainPage.chips.all"), count: stats.total }}
+          items={[
+            [STATUS.OPEN, "open", stats.open, "var(--c-open)"],
+            [
+              STATUS.IN_PROGRESS,
+              "inProgress",
+              stats.inProgress,
+              "var(--c-progress)",
+            ],
+            [STATUS.RESOLVED, "resolved", stats.resolved, "var(--c-resolved)"],
+          ].map(([key, label, count, dot]) => ({
+            key,
+            label: t(`mainPage.chips.${label}`),
+            count,
+            dot,
+          }))}
           value={statusFilter}
-          all={ALL}
           onChange={setStatusFilter}
         />
       ) : (
@@ -112,6 +175,14 @@ export default function MainPage({
                 <LeakCardCompact
                   key={leak.id}
                   leak={leak}
+                  badge={
+                    repairMode
+                      ? getRepairStageMeta(getRepairStage(leak), t)
+                      : null
+                  }
+                  extraChips={
+                    repairMode ? splitMaterials(leak.materials_equipment) : []
+                  }
                   onOpenDetails={setActiveLeak}
                   onPickStatus={handlePickStatus}
                   onMonitor={onMonitorLeak}
@@ -126,7 +197,7 @@ export default function MainPage({
           // Во время обхода утечек не заводят — предлагать это пустой список
           // мониторинга не должен.
           canAdd={module === MODULE.LDAR}
-          hasFilter={statusFilter !== ALL}
+          hasFilter={repairMode ? stageFilter !== "all" : statusFilter !== ALL}
         />
       )}
 

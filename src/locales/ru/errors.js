@@ -94,6 +94,8 @@ export const errors = {
   HISTORY_USER_REQUIRED:
     "Не указано, кто вносит запись: заполните имя в профиле.",
   INVALID_LEAK_EVENT_TYPE: "Неизвестный вид события в истории утечки",
+  REPAIR_NOT_IN_PROGRESS: "Стадию можно отметить только у утечки в ремонте",
+  INVALID_REPAIR_STAGE: "Неизвестная стадия ремонта",
 
   // Схемы
   SCHEMA_OPEN_FAILED: "На устройстве нет приложения, которое откроет схему",

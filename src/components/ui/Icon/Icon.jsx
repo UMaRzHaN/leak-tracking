@@ -115,6 +115,18 @@ const PATHS = {
     </>
   ),
   navigate: <path d="M12 3l7 18-7-4-7 4 7-18z" />,
+  wrench: (
+    <>
+      <path d="M14.2 4.6a4.4 4.4 0 015.9 5.9l-1.9-1.9-2.1 2.1-2-2 2.1-2.1-2-2z" />
+      <path d="M13.3 10.7L4.6 19.4a1.4 1.4 0 002 2l8.7-8.7" />
+    </>
+  ),
+  document: (
+    <>
+      <path d="M7 3.5h7l4 4V20a.5.5 0 01-.5.5h-10A.5.5 0 017 20V3.5z" />
+      <path d="M14 3.5V8h4M9.5 12.5h5M9.5 16h5" />
+    </>
+  ),
 };
 
 export default function Icon({ name, size = 22, strokeWidth = 1.9 }) {

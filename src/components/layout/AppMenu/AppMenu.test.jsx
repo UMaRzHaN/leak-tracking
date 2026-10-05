@@ -98,4 +98,12 @@ describe("AppMenu", () => {
       screen.getByRole("button", { name: /LDAR/ }).getAttribute("aria-current"),
     ).toBeNull();
   });
+
+  it("offers repair work with the number of repairs in progress", () => {
+    const { onSelectModule } = renderMenu({ repairCount: 12 });
+
+    expect(screen.getByText("12 in work")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Repair work/ }));
+    expect(onSelectModule).toHaveBeenCalledWith("repairs");
+  });
 });

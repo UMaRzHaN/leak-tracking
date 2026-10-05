@@ -90,6 +90,8 @@ export const errors = {
   HISTORY_USER_REQUIRED:
     "No one is set to record the change: fill in the name in your profile.",
   INVALID_LEAK_EVENT_TYPE: "Unknown event kind in the leak history",
+  REPAIR_NOT_IN_PROGRESS: "A stage can only be marked on a leak under repair",
+  INVALID_REPAIR_STAGE: "Unknown repair stage",
 
   // Drawings
   SCHEMA_OPEN_FAILED: "No app on this device can open the drawing",

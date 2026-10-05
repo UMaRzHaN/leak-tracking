@@ -31,6 +31,9 @@ export const LEAK_EVENT_TYPES = Object.freeze({
   INSPECTION: "inspection",
   REPAIR_STARTED: "repair_started",
   REPAIR_DONE: "repair_done",
+  // Стадия идущего ремонта: ждёт МТР, в работе, готов к проверке. Отмечается
+  // в обходе ремонтов (7b); приёмка закрывает ремонт уже событием REPAIR_DONE.
+  REPAIR_STAGE: "repair_stage",
 });
 
 const EVENT_TYPE_VALUES = new Set(

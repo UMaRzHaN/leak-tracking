@@ -7,6 +7,7 @@ export const appMenu = {
   settings: "Настройки проекта",
   leaks: "LDAR",
   openCount: "{{count}} откр.",
+  repairs: "Ремонтные работы",
   monitoring: "Мониторинг",
   inventory: "Инвентаризация",
   export: "Экспорт отчёта",

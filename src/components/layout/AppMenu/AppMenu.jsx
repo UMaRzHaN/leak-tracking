@@ -26,6 +26,7 @@ export default function AppMenu({
   userProfile,
   projectName,
   openCount = 0,
+  repairCount = 0,
   showRegistry = false,
 }) {
   const { t } = useLanguage();
@@ -49,6 +50,16 @@ export default function AppMenu({
       metaTone: "danger",
       active: module === MODULE.LDAR && page !== "components",
       onClick: () => onSelectModule(MODULE.LDAR),
+    },
+    {
+      key: "repairs",
+      icon: "wrench",
+      label: t("appMenu.repairs"),
+      meta:
+        repairCount > 0 ? t("repairs.menuMeta", { count: repairCount }) : "",
+      metaTone: "warning",
+      active: module === MODULE.REPAIRS && page !== "components",
+      onClick: () => onSelectModule(MODULE.REPAIRS),
     },
     {
       key: "monitoring",

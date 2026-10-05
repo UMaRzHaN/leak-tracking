@@ -26,6 +26,15 @@ export default function Footer({
       badge: true,
     };
     const map = { key: "map", icon: "map", label: t("footer.map") };
+    if (module === MODULE.REPAIRS) {
+      // Центр (приёмка оборудования) и «Обход» появятся вместе со своими
+      // экранами — пока ведут только записи, база и карта.
+      return [
+        { key: "", icon: "list", label: t("footer.records") },
+        database,
+        map,
+      ];
+    }
     if (module === MODULE.MONITORING) {
       return [
         { key: "", icon: "list", label: t("footer.records") },

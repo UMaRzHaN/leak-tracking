@@ -63,4 +63,10 @@ describe("Footer navigation", () => {
     expect(setPage).toHaveBeenCalledWith("monitoring");
     expect(screen.getByLabelText("Records")).toBeTruthy();
   });
+
+  it("gives the repairs module its own panel without adding leaks", () => {
+    renderFooter("", 0, { module: "repairs" });
+    expect(screen.queryByLabelText("Add Leak")).toBeNull();
+    expect(screen.getByLabelText("Records")).toBeTruthy();
+  });
 });

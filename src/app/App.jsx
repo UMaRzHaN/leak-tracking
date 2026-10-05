@@ -9,6 +9,7 @@ import { STATUS } from "@/utils/status";
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
 import { computeSurveyCoverage } from "@/utils/surveyCoverage";
 import { MODULE, useActiveModule } from "@/app/modules/activeModule";
+import { countRepairStages } from "@/domain/repairStages";
 import {
   readRoute,
   routeProgress,
@@ -177,6 +178,13 @@ export default function App() {
     ],
   );
 
+  // Счётчик пункта «Ремонтные работы» в меню: работы в производстве, без
+  // принятых.
+  const repairCount = useMemo(() => {
+    const counts = countRepairStages(leakScope.scopedLeaks);
+    return counts.all - counts.accepted;
+  }, [leakScope.scopedLeaks]);
+
   const progress = useMemo(
     () => routeProgress(storedRoute, data),
     [storedRoute, data],
@@ -309,6 +317,7 @@ export default function App() {
             userProfile={userProfile}
             projectName={activeProject?.name}
             openCount={scopedOpenCount}
+            repairCount={repairCount}
             showRegistry={showRegistry}
           />
         </Suspense>

@@ -54,6 +54,12 @@ function LeakCardCompact({
   className = "",
   collapsible = true,
   defaultExpanded = false,
+  // Модуль ремонтов показывает в шапке стадию работ, а не статус записи, и
+  // добавляет чипы МТР (7a). Остальные экраны этих пропсов не передают.
+  badge = /** @type {{label: string, color: string, bg: string, border: string}|null} */ (
+    null
+  ),
+  extraChips = /** @type {string[]} */ ([]),
 }) {
   useRenderMetric("LeakCardCompact");
 
@@ -70,7 +76,7 @@ function LeakCardCompact({
   const goingRight = swipeState === "right" || swipeOffset > 30;
 
   const status = leak.status ?? "open";
-  const meta = getStatusMeta(status, t);
+  const meta = badge ?? getStatusMeta(status, t);
   const ago = timeAgo(leak.createdAt, lang);
   const absoluteDate = formatLeakDate(leak.date, {}, lang);
   const urgency = urgencyOf(leak.createdAt, status);
@@ -127,6 +133,7 @@ function LeakCardCompact({
       : photoSrc || photoRepairSrc || photoAfterSrc || monitoringPhotoSrc;
   const hasPhoto = comparePairs.length > 0 || Boolean(displayPhotoSrc);
   const hasChips =
+    extraChips.length > 0 ||
     leak.leak_speed != null ||
     leak.pressure != null ||
     nearbyDist != null ||
@@ -279,6 +286,11 @@ function LeakCardCompact({
           {hasFooter && (
             <div className={s.foot}>
               <div className={s.chips}>
+                {extraChips.map((chip) => (
+                  <span key={chip} className={s.chip}>
+                    {chip}
+                  </span>
+                ))}
                 {nearbyDist != null && (
                   <span className={s.chipNear}>
                     📌 {nearbyDist} {t("common.units.meters")}

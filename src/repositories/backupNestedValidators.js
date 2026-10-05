@@ -12,6 +12,7 @@ const VALID_LEAK_EVENT_TYPES = new Set([
   "inspection",
   "repair_started",
   "repair_done",
+  "repair_stage",
 ]);
 const VALID_MONITORING_RESULTS = new Set([
   "still_leaking",
