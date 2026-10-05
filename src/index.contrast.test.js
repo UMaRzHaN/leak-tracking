@@ -115,7 +115,7 @@ const WHITE_ON_FILL = [
 
 // Надписи на обычных поверхностях. Светлых поверхностей три, и на самой
 // тёмной из них контраст ниже — раньше палитру сверяли только с белым.
-const SURFACES = ["--c-surface", "--c-bg", "--c-surface2"];
+const SURFACES = ["--c-surface", "--c-bg", "--c-surface2", "--c-surface-soft"];
 const TEXT_TOKENS = [
   "--c-text",
   "--c-ink",

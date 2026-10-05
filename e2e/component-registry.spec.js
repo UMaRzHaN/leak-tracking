@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  openSettings,
   createProject,
   fillLeakStepOne,
   footerTab,
@@ -82,7 +83,7 @@ test("выгружает инвентаризацию и вливает её в 
 
   // Второй проект того же типа: архив не несёт ни имени, ни типа, и тип
   // выводится как единственный, у которого объявлен реестр.
-  await page.getByTitle("Настройки").click();
+  await openSettings(page);
   await page.getByRole("button", { name: "+ Добавить", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Новый проект", exact: true }),

@@ -9,15 +9,9 @@ vi.mock("@/app/hooks/useLanguage", async () => {
 
 const Footer = (await import("./Footer")).default;
 
-const upstream = { id: "p1", type: "upstream" };
-// Тип без объявленного блока реестра: все настоящие типы его теперь ведут.
-const withoutRegistry = { id: "p2", type: "unknown" };
-
-function renderFooter(project, page = "") {
+function renderFooter(page = "", openCount = 0) {
   const setPage = vi.fn();
-  render(
-    <Footer page={page} setPage={setPage} openCount={0} project={project} />,
-  );
+  render(<Footer page={page} setPage={setPage} openCount={openCount} />);
   return setPage;
 }
 
@@ -25,7 +19,7 @@ describe("Footer navigation", () => {
   it("only offers pages the app can actually navigate to", () => {
     // The allow-list rewrites anything unknown to home without a word, so a
     // tab added here and forgotten there reads as a button that does nothing.
-    const setPage = renderFooter(upstream);
+    const setPage = renderFooter();
 
     for (const button of screen.getAllByRole("button")) {
       setPage.mockClear();
@@ -35,24 +29,17 @@ describe("Footer navigation", () => {
     }
   });
 
-  it("shows the registry for a project type that declares one", () => {
-    renderFooter(upstream);
-    expect(screen.getByLabelText("Registry")).toBeTruthy();
-  });
-
-  it("hides the registry for a project type without one", () => {
-    renderFooter(withoutRegistry);
+  it("leaves the registry to the menu", () => {
+    // Инвентаризация — отдельный модуль, её вход в бургер-меню.
+    renderFooter();
     expect(screen.queryByLabelText("Registry")).toBeNull();
   });
 
-  it("hides the registry when no project is open yet", () => {
-    renderFooter(null);
-    expect(screen.queryByLabelText("Registry")).toBeNull();
-  });
-
-  it("navigates to the registry", () => {
-    const setPage = renderFooter(upstream);
-    screen.getByLabelText("Registry").click();
-    expect(setPage).toHaveBeenCalledWith("components");
+  it("marks the current tab and caps the open badge", () => {
+    renderFooter("db", 140);
+    expect(screen.getByLabelText("Database").getAttribute("aria-current")).toBe(
+      "page",
+    );
+    expect(screen.getByText("99+")).toBeTruthy();
   });
 });

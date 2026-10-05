@@ -12,7 +12,7 @@ export default function BackupSection({
   if (!activeProject) return null;
 
   return (
-    <section className={s.section}>
+    <section className={s.section} data-settings-section="backup">
       <div className={s.sectionHead}>
         <h2 className={s.sectionTitle}>{localeTexts.backup}</h2>
       </div>

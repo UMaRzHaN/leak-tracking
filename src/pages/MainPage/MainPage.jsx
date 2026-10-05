@@ -1,11 +1,12 @@
 import { lazy, Suspense, useMemo } from "react";
 import { useMainPageActions } from "./hooks/useMainPageActions";
-import StatCard from "./components/StatCard";
+import CoverageCard from "./components/CoverageCard";
 import EmptyState from "./components/EmptyState";
+import { groupRecentLeaks } from "./recentGroups";
 import RepairAnalytics from "./components/RepairAnalytics";
 import LeakCardCompact from "@/features/leakList/LeakCardCompact/LeakCardCompact";
 import Notification from "@/components/ui/Notification/Notification";
-import { STATUS, STATUS_META, getStatusMeta } from "@/utils/status";
+import { STATUS } from "@/utils/status";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "./MainPage.module.scss";
 
@@ -29,14 +30,13 @@ export default function MainPage({
   setData,
   onMonitorLeak,
   userProfile,
+  coverage = /** @type {any} */ (null),
 }) {
   const { t } = useLanguage();
 
   const {
     activeLeak,
     setActiveLeak,
-    statusFilter,
-    setStatusFilter,
     pickerLeak,
     setPickerLeak,
     resolveLeak,
@@ -51,8 +51,6 @@ export default function MainPage({
     stats,
     recent,
     RECENT_COUNT,
-    ALL,
-    toggleFilter,
     handlePickStatus,
     handleStatusSelect,
     handleResolveConfirm,
@@ -62,27 +60,7 @@ export default function MainPage({
     handleDeleteLeak,
   } = useMainPageActions({ data, scopedData, setData, userProfile });
 
-  const localeTexts = useMemo(
-    () => ({
-      total: t("mainPage.total"),
-      open: t("mainPage.open"),
-      inProgress: t("mainPage.inProgress"),
-      resolved: t("mainPage.resolved"),
-      // Both counts describe what is on screen, not the ceiling. The heading
-      // used to announce RECENT_COUNT regardless, so five records were filed
-      // under "last 8 records".
-      recentRecords: (count) => t("mainPage.recentRecords", { count }),
-      showAll: (count) =>
-        t("mainPage.showAll", {
-          count,
-        }),
-      shownRecent: (count) => t("mainPage.shownRecent", { count }),
-    }),
-    [t],
-  );
-
-  const activeStatusMeta =
-    statusFilter !== ALL ? getStatusMeta(statusFilter, t) : null;
+  const groups = useMemo(() => groupRecentLeaks(recent), [recent]);
 
   return (
     <div className={s.page}>
@@ -91,87 +69,44 @@ export default function MainPage({
         onClose={() => setNotification(null)}
       />
 
-      <section className={s.statsRow}>
-        <StatCard
-          value={stats.total}
-          label={localeTexts.total}
-          accent="var(--c-accent)"
-          active={statusFilter === ALL}
-          onClick={() => setStatusFilter(ALL)}
-        />
-        <StatCard
-          value={stats.open}
-          label={localeTexts.open}
-          accent="var(--c-open)"
-          active={statusFilter === STATUS.OPEN}
-          onClick={() => toggleFilter(STATUS.OPEN)}
-        />
-        <StatCard
-          value={stats.inProgress}
-          label={localeTexts.inProgress}
-          accent="var(--c-progress)"
-          active={statusFilter === STATUS.IN_PROGRESS}
-          onClick={() => toggleFilter(STATUS.IN_PROGRESS)}
-        />
-        <StatCard
-          value={stats.resolved}
-          label={localeTexts.resolved}
-          accent="var(--c-resolved)"
-          active={statusFilter === STATUS.RESOLVED}
-          onClick={() => toggleFilter(STATUS.RESOLVED)}
-        />
-      </section>
+      {coverage && <CoverageCard coverage={coverage} />}
 
       <RepairAnalytics leaks={scopedData} onOpenLeak={setActiveLeak} />
 
-      {activeStatusMeta && (
-        <div className={s.filterLabel}>
-          <span
-            className={s.filterDot}
-            style={{ background: STATUS_META[statusFilter]?.color }}
-          />
-          {activeStatusMeta.label} - {localeTexts.shownRecent(recent.length)}
-          <button
-            className={s.filterClear}
-            onClick={() => setStatusFilter(ALL)}
-          >
-            ✕
-          </button>
-        </div>
+      {recent.length ? (
+        groups.map((group, index) => (
+          <section key={group.key} className={s.section}>
+            <div className={s.sectionHead}>
+              <h2 className={s.sectionTitle}>
+                {t(`mainPage.groups.${group.key}`)}
+              </h2>
+              {/* Counts the selected location, not the project: the button
+                  leads to the database, which is scoped too, so a
+                  project-wide number would promise records that screen will
+                  not show. */}
+              {index === 0 && stats.total > RECENT_COUNT && (
+                <button className={s.viewAll} onClick={() => setPage("db")}>
+                  {t("mainPage.showAll", { count: stats.total })}
+                </button>
+              )}
+            </div>
+
+            <div className={s.list}>
+              {group.leaks.map((leak) => (
+                <LeakCardCompact
+                  key={leak.id}
+                  leak={leak}
+                  onOpenDetails={setActiveLeak}
+                  onPickStatus={handlePickStatus}
+                  onMonitor={onMonitorLeak}
+                />
+              ))}
+            </div>
+          </section>
+        ))
+      ) : (
+        <EmptyState setPage={setPage} />
       )}
-
-      <section className={s.section}>
-        <div className={s.sectionHead}>
-          <h2 className={s.sectionTitle}>
-            {statusFilter === ALL
-              ? localeTexts.recentRecords(recent.length)
-              : activeStatusMeta?.label}
-          </h2>
-          {/* Counts the selected location, not the project: the button leads
-              to the database, which is scoped too, so a project-wide number
-              would promise records that screen will not show. stats.total is
-              the same count the summary tile above displays. */}
-          {stats.total > RECENT_COUNT && (
-            <button className={s.viewAll} onClick={() => setPage("db")}>
-              {localeTexts.showAll(stats.total)}
-            </button>
-          )}
-        </div>
-
-        {recent.length ? (
-          recent.map((leak) => (
-            <LeakCardCompact
-              key={leak.id}
-              leak={leak}
-              onOpenDetails={setActiveLeak}
-              onPickStatus={handlePickStatus}
-              onMonitor={onMonitorLeak}
-            />
-          ))
-        ) : (
-          <EmptyState setPage={setPage} hasFilter={statusFilter !== ALL} />
-        )}
-      </section>
 
       <Suspense fallback={null}>
         {activeLeak && (

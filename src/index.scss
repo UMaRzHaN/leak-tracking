@@ -10,7 +10,7 @@
 
   /* Layout */
   --app-header: 76px;
-  --app-footer: 64px;
+  --app-footer: 72px;
 
   /* Colors — Accent
      Фиолетовый акцент редизайна (design-handoff, турны 1–11). Раньше эту роль
@@ -40,6 +40,8 @@
   --c-border: #e2e8f0;
   /* Граница внутри фиолетовых групп: поля, строки списков, разделители шторок. */
   --c-border-soft: #e9e6f2;
+  /* Подложка кнопок и полей в светлой шапке — на тон темнее белого. */
+  --c-surface-soft: #faf9fd;
 
   /* Colors — Text
      Приглушённые уровни давали 4,3:1 и 2,6:1 при норме 4,5 — на них сидели
@@ -186,6 +188,7 @@
   --c-accent-surface: rgba(139, 99, 240, 0.14);
   --c-ink: #e2e8f0;
   --c-border-soft: #3a3f5c;
+  --c-surface-soft: #1a2436;
 
   --c-open-bg: rgba(220, 38, 38, 0.15);
   --c-open-border: rgba(220, 38, 38, 0.35);

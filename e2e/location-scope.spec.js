@@ -104,7 +104,9 @@ test("summarises only the chosen location on the main page", async ({
   await seedProject(page);
 
   await openHome(page);
-  await expect(page.getByText("Последние", { exact: false })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Охват обследования" }),
+  ).toBeVisible();
   await expect(page.getByText("№ 7003", { exact: true })).toBeVisible();
 
   await openLocationBrowser(page);
@@ -114,10 +116,8 @@ test("summarises only the chosen location on the main page", async ({
     .click();
   await openHome(page);
 
-  // The summary, the recent list and the footer badge all describe the same
-  // set now, so a disagreement between them is the regression to catch.
-  const total = page.locator("text=ВСЕГО").locator("..");
-  await expect(total).toContainText("2");
+  // The recent list and the footer badge describe the same set now, so a
+  // disagreement between them is the regression to catch.
   await expect(page.getByText("№ 7001", { exact: true })).toBeVisible();
   await expect(page.getByText("№ 7003", { exact: true })).toHaveCount(0);
   await expect(footerTab(page, "База")).toContainText("2");

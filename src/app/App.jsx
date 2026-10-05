@@ -6,9 +6,12 @@ import { useRegistryLocationSource } from "@/hooks/useRegistryLocationSource";
 import { MAP_BASE } from "@/pages/MapPage/mapBase";
 import { showsComponentTree } from "./pages";
 import { STATUS } from "@/utils/status";
+import { hasComponentRegistry } from "@/configs/componentRegistry.config";
+import { computeSurveyCoverage } from "@/utils/surveyCoverage";
 
 const Header = lazy(() => import("@/components/layout/Header/Header"));
 const Footer = lazy(() => import("@/components/layout/Footer/Footer"));
+const AppMenu = lazy(() => import("@/components/layout/AppMenu/AppMenu"));
 // Only reached from the header button, so it stays out of the initial graph.
 const LocationBrowser = lazy(
   () => import("@/features/locationScope/LocationBrowser"),
@@ -71,6 +74,19 @@ export default function App() {
   useTheme();
 
   const [locationBrowserOpen, setLocationBrowserOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Раздел настроек, к которому прокрутить: меню ведёт в импорт и
+  // синхронизацию, а они пока живут внутри настроек, а не на своих экранах.
+  const [settingsSection, setSettingsSection] = useState(
+    /** @type {string|null} */ (null),
+  );
+  useEffect(() => {
+    if (page !== "settings") setSettingsSection(null);
+  }, [page]);
+  const openSettings = (section) => {
+    setSettingsSection(section);
+    setPage("settings");
+  };
   const leakScope = useLocationScope({
     leaks: data,
     sharedFilters,
@@ -94,7 +110,14 @@ export default function App() {
     if (page !== "map") setMapBase(MAP_BASE.LEAKS);
   }, [page]);
   const componentTree = showsComponentTree(page, mapBase);
-  const registryComponents = useRegistryLocationSource(componentTree);
+  const showRegistry = hasComponentRegistry(activeProject);
+  // Главная тоже читает реестр: по нему считается, сколько объектов всего,
+  // для строки охвата. Дерево мест шапки от этого не меняется — оно по
+  // компонентам только там, где на экране железо.
+  const coverageNeedsRegistry = page === "" && showRegistry;
+  const registryComponents = useRegistryLocationSource(
+    componentTree || coverageNeedsRegistry,
+  );
   const componentScope = useLocationScope({
     leaks: registryComponents,
     sharedFilters,
@@ -108,6 +131,23 @@ export default function App() {
         (leak) => (leak.status ?? STATUS.OPEN) === STATUS.OPEN,
       ).length,
     [leakScope.scopedLeaks],
+  );
+
+  const coverage = useMemo(
+    () =>
+      page === ""
+        ? computeSurveyCoverage({
+            leaks: leakScope.scopedLeaks,
+            components: componentScope.scopedLeaks,
+            levelKeys: leakScope.levelKeys,
+          })
+        : null,
+    [
+      page,
+      leakScope.scopedLeaks,
+      leakScope.levelKeys,
+      componentScope.scopedLeaks,
+    ],
   );
 
   if (!isConfigured) {
@@ -140,8 +180,7 @@ export default function App() {
             setPage={setPage}
             gpsEnabled={gpsEnabled}
             setGpsEnabled={setGpsEnabled}
-            userProfile={userProfile}
-            onUserProfileOpen={() => setUserProfileOpen(true)}
+            onMenuOpen={() => setMenuOpen(true)}
             locationScope={locationScope}
             onLocationScopeOpen={() => setLocationBrowserOpen(true)}
           />
@@ -175,6 +214,8 @@ export default function App() {
         save={save}
         scopedData={leakScope.scopedLeaks}
         setPage={setPage}
+        settingsSection={settingsSection}
+        coverage={coverage}
         setRequestedMonitoringLeakId={setRequestedMonitoringLeakId}
         setRequestedMonitoringLeakIds={setRequestedMonitoringLeakIds}
         mapBase={mapBase}
@@ -188,11 +229,23 @@ export default function App() {
           {/* The badge counts what the "База" button leads to, and that screen
               is scoped, so counting the whole project would contradict the
               list the user lands on. */}
-          <Footer
+          <Footer page={page} setPage={setPage} openCount={scopedOpenCount} />
+        </Suspense>
+      )}
+
+      {menuOpen && (
+        <Suspense fallback={null}>
+          <AppMenu
+            open={menuOpen}
+            onClose={() => setMenuOpen(false)}
             page={page}
             setPage={setPage}
+            onOpenSettings={openSettings}
+            onEditProfile={() => setUserProfileOpen(true)}
+            userProfile={userProfile}
+            projectName={activeProject?.name}
             openCount={scopedOpenCount}
-            project={activeProject}
+            showRegistry={showRegistry}
           />
         </Suspense>
       )}

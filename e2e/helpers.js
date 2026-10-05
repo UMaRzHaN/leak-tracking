@@ -21,8 +21,21 @@ export async function createProject(page, name = "E2E Upstream") {
   ).toBeVisible();
 }
 
+// Профиль, настройки, реестр и обмен данными живут в бургер-меню шапки.
+export async function openMenuItem(page, name) {
+  await page.getByRole("button", { name: "Меню", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name, exact: true })
+    .click();
+}
+
+export async function openSettings(page) {
+  await openMenuItem(page, "Настройки проекта");
+}
+
 export async function setUserProfile(page, name = "E2E Inspector") {
-  await page.getByTitle("Пользователь").click();
+  await openMenuItem(page, "Изменить имя");
   await page.getByLabel("Имя", { exact: true }).fill(name);
   await page.getByRole("button", { name: "Сохранить", exact: true }).click();
   await expect(
@@ -128,8 +141,7 @@ export async function attachModalPhoto(page) {
 }
 
 // Каждая вкладка подписана aria-label, поэтому выбирается по имени, а не по
-// номеру: у проекта с реестром вкладок шесть, без него — пять, и нумерация
-// уезжает от одного лишь типа проекта.
+// номеру.
 export function footerTab(page, name) {
   return page
     .getByRole("contentinfo")
@@ -147,8 +159,7 @@ export async function openMap(page) {
 }
 
 export async function openComponentRegistry(page) {
-  const registry = footerTab(page, "Реестр");
-  await registry.click();
+  await openMenuItem(page, "Инвентаризация");
   await expect(
     page.getByRole("heading", { name: "Реестр компонентов" }),
   ).toBeVisible();
@@ -175,7 +186,7 @@ export async function exportExcelArchive(page, testInfo) {
 // Кнопка импорта одна на все форматы: тип определяется по содержимому файла,
 // а не по тому, какую из трёх кнопок нажали.
 export async function importFile(page, archivePath) {
-  await page.getByTitle("Настройки").click();
+  await openMenuItem(page, "Импорт данных");
   const fileChooserPromise = page.waitForEvent("filechooser");
   await page.getByRole("button", { name: "Импорт", exact: true }).click();
   const fileChooser = await fileChooserPromise;

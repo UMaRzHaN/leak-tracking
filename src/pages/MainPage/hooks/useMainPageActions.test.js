@@ -166,31 +166,6 @@ describe("useMainPageActions", () => {
         "2026-08-09T09:05:00.000Z",
       ]);
     });
-
-    it("filters the list by status and toggles the filter off on a second press", () => {
-      const { result } = renderActions({
-        data: [
-          leakWith("leak-1"),
-          leakWith("leak-2", { status: "resolved" }),
-          { id: "leak-3" },
-        ],
-      });
-
-      act(() => result.current.toggleFilter("resolved"));
-      expect(result.current.statusFilter).toBe("resolved");
-      expect(result.current.recent.map((l) => l.id)).toEqual(["leak-2"]);
-
-      // A leak with no status counts as open here too.
-      act(() => result.current.toggleFilter("open"));
-      expect(result.current.recent.map((l) => l.id)).toEqual([
-        "leak-3",
-        "leak-1",
-      ]);
-
-      act(() => result.current.toggleFilter("open"));
-      expect(result.current.statusFilter).toBe(result.current.ALL);
-      expect(result.current.recent).toHaveLength(3);
-    });
   });
 
   describe("the user name gate", () => {

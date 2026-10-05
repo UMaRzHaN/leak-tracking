@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import PageHeader from "@/components/layout/PageHeader/PageHeader";
 import LeakFieldsModal from "./components/LeakFieldsModal";
 import Notification from "@/components/ui/Notification/Notification";
@@ -71,7 +72,17 @@ export default function Settings(props) {
     setVoiceCorrections,
     voiceCorrections,
   } = page;
-  const { data = [], onBack, setPage } = props;
+  const { data = [], onBack, setPage, focusSection = null } = props;
+  const contentRef = useRef(/** @type {HTMLDivElement|null} */ (null));
+
+  // Меню приложения ведёт сразу в раздел — импорт, синхронизацию, список
+  // проектов, — а не в начало длинной страницы.
+  useEffect(() => {
+    if (!focusSection) return;
+    contentRef.current
+      ?.querySelector(`[data-settings-section="${focusSection}"]`)
+      ?.scrollIntoView?.({ block: "start" });
+  }, [focusSection]);
   const componentFields = useComponentFieldVisibility(activeProject);
 
   return (
@@ -87,8 +98,8 @@ export default function Settings(props) {
         onClose={() => setNotification(null)}
       />
 
-      <div className={s.content}>
-        <section className={s.section}>
+      <div className={s.content} ref={contentRef}>
+        <section className={s.section} data-settings-section="projects">
           <div className={s.sectionHead}>
             <h2 className={s.sectionTitle}>{localeTexts.projects}</h2>
             {!addingProject && (

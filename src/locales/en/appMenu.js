@@ -1,0 +1,15 @@
+export const appMenu = {
+  close: "Close menu",
+  noName: "No name set",
+  project: "Project",
+  switchProject: "Switch project",
+  editName: "Change name",
+  settings: "Project settings",
+  leaks: "LDAR",
+  openCount: "{{count}} open",
+  monitoring: "Monitoring",
+  inventory: "Inventory",
+  export: "Export report",
+  import: "Import data",
+  sync: "Sync",
+};

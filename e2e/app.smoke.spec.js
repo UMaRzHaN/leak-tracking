@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
+  openSettings,
+  openComponentRegistry,
   attachModalPhoto,
   chooseDetailsStatus,
   createLeak,
@@ -76,17 +78,8 @@ test("opens the main application sections", async ({ page }) => {
     page.getByRole("button", { name: "Начать мониторинг" }),
   ).toBeVisible();
 
-  // У Upstream между мониторингом и картой стоит реестр — переход по имени,
-  // а не по номеру вкладки.
-  const registryButton = page.getByRole("button", {
-    name: "Реестр",
-    exact: true,
-  });
-  await registryButton.click();
-  await expect(registryButton).toHaveAttribute("aria-current", "page");
-  await expect(
-    page.getByRole("heading", { name: "Реестр компонентов" }),
-  ).toBeVisible();
+  // Реестр у Upstream открывается из бургер-меню как «Инвентаризация».
+  await openComponentRegistry(page);
 
   await openMap(page);
 
@@ -100,7 +93,7 @@ test("opens the main application sections", async ({ page }) => {
 
 test("persists project, appearance, and export settings", async ({ page }) => {
   await createProject(page, "Settings E2E");
-  await page.getByTitle("Настройки").click();
+  await openSettings(page);
 
   await page.getByTitle("Переименовать").click();
   const projectNameInput = page.locator('input[value="Settings E2E"]');
@@ -152,7 +145,7 @@ test("persists project, appearance, and export settings", async ({ page }) => {
 test("clears a populated offline map cache from settings", async ({ page }) => {
   await createProject(page, "Map cache settings E2E");
   await seedMapCache(page);
-  await page.getByTitle("Настройки").click();
+  await openSettings(page);
 
   await expect(page.getByText(/3 тайлов/)).toBeVisible();
   await page
@@ -176,7 +169,7 @@ test("keeps map cache available when settings cleanup fails", async ({
 }) => {
   await createProject(page, "Map cache failure E2E");
   await seedMapCache(page, 1);
-  await page.getByTitle("Настройки").click();
+  await openSettings(page);
   await expect(page.getByText(/1 тайлов/)).toBeVisible();
 
   await page.evaluate(() => {
@@ -296,7 +289,7 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
   await page.getByRole("button", { name: "Завершить обход" }).click();
   await expect(page.getByText("Обход завершён", { exact: true })).toBeVisible();
 
-  await page.getByTitle("Настройки").click();
+  await openSettings(page);
   const monitoringPhotoSwitch = page.getByRole("switch", {
     name: /\u041f\u0440\u0438 \u043c\u043e\u043d\u0438\u0442\u043e\u0440\u0438\u043d\u0433\u0435/,
   });
@@ -375,7 +368,7 @@ test("rejects a corrupted ZIP backup without changing project data", async ({
   await setUserProfile(page);
   await createLeak(page, "5351");
 
-  await page.getByTitle("Настройки").click();
+  await openSettings(page);
   const fileChooserPromise = page.waitForEvent("filechooser");
   await page.getByRole("button", { name: "Импорт", exact: true }).click();
   const fileChooser = await fileChooserPromise;

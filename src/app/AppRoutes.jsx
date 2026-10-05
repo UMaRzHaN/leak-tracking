@@ -138,6 +138,8 @@ export default function AppRoutes({
   setGpsEnabled,
   scopedData,
   setPage,
+  settingsSection = /** @type {string|null} */ (null),
+  coverage = /** @type {any} */ (null),
   setRequestedMonitoringLeakId,
   setRequestedMonitoringLeakIds,
   sharedFilters,
@@ -177,6 +179,7 @@ export default function AppRoutes({
             setData={save}
             onMonitorLeak={requestMonitoring}
             userProfile={userProfile}
+            coverage={coverage}
           />
         )}
 
@@ -197,6 +200,7 @@ export default function AppRoutes({
         {dataLoaded && !loadError && page === "settings" && (
           <Settings
             setPage={setPage}
+            focusSection={settingsSection}
             onBack={() => goBack(prevPage)}
             data={data}
             setData={save}

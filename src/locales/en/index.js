@@ -1,5 +1,6 @@
 import { addLeak } from "./addLeak";
 import { app } from "./app";
+import { appMenu } from "./appMenu";
 import { cards } from "./cards";
 import { common } from "./common";
 import { components } from "./components";
@@ -37,6 +38,7 @@ import { voice } from "./voice";
 export const translation = {
   addLeak,
   app,
+  appMenu,
   cards,
   common,
   components,

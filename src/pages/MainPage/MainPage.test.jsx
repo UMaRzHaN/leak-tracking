@@ -11,12 +11,9 @@ vi.mock("@/app/hooks/useLanguage", () => ({
       `${key}${options?.count == null ? "" : `:${options.count}`}`,
   }),
 }));
-vi.mock("./components/StatCard", () => ({
-  default: ({ label, onClick }) => <button onClick={onClick}>{label}</button>,
-}));
 vi.mock("./components/EmptyState", () => ({
-  default: ({ setPage, hasFilter }) => (
-    <button onClick={() => setPage("add")}>empty:{String(hasFilter)}</button>
+  default: ({ setPage }) => (
+    <button onClick={() => setPage("add")}>empty</button>
   ),
 }));
 vi.mock("@/features/leakList/LeakCardCompact/LeakCardCompact", () => ({
@@ -73,8 +70,6 @@ function createActions(overrides = {}) {
   return {
     activeLeak: leak,
     setActiveLeak: vi.fn(),
-    statusFilter: "all",
-    setStatusFilter: vi.fn(),
     pickerLeak: leak,
     setPickerLeak: vi.fn(),
     resolveLeak: leak,
@@ -89,8 +84,6 @@ function createActions(overrides = {}) {
     stats: { total: 6, open: 2, inProgress: 2, resolved: 2 },
     recent: [leak],
     RECENT_COUNT: 5,
-    ALL: "all",
-    toggleFilter: vi.fn(),
     handlePickStatus: vi.fn(),
     handleStatusSelect: vi.fn(),
     handleResolveConfirm: vi.fn(),
@@ -107,7 +100,7 @@ describe("MainPage", () => {
     actionsState.current = createActions();
   });
 
-  it("wires statistics, recent leaks, navigation, and lifecycle modals", async () => {
+  it("wires recent leaks, navigation, and lifecycle modals", async () => {
     const setPage = vi.fn();
     const onMonitorLeak = vi.fn();
     render(
@@ -120,10 +113,6 @@ describe("MainPage", () => {
     );
 
     for (const label of [
-      "mainPage.total",
-      "mainPage.open",
-      "mainPage.inProgress",
-      "mainPage.resolved",
       "mainPage.showAll:6",
       "notification",
       "open-leak",
@@ -153,9 +142,8 @@ describe("MainPage", () => {
     expect(actionsState.current.handleReopenConfirm).toHaveBeenCalled();
   });
 
-  it("renders filtered empty state and clears the active filter", () => {
+  it("offers the first leak when the location has no records", () => {
     actionsState.current = createActions({
-      statusFilter: "resolved",
       recent: [],
       activeLeak: null,
       pickerLeak: null,
@@ -166,10 +154,55 @@ describe("MainPage", () => {
     const setPage = vi.fn();
     render(<MainPage setPage={setPage} data={[]} setData={vi.fn()} />);
 
-    fireEvent.click(screen.getByText("✕"));
-    fireEvent.click(screen.getByText("empty:true"));
-    expect(actionsState.current.setStatusFilter).toHaveBeenCalledWith("all");
+    fireEvent.click(screen.getByText("empty"));
     expect(setPage).toHaveBeenCalledWith("add");
+  });
+
+  it("groups recent records by day under their own headings", () => {
+    const now = Date.now();
+    actionsState.current = createActions({
+      recent: [
+        { id: "fresh", createdAt: now },
+        { id: "old", createdAt: now - 10 * 24 * 60 * 60 * 1000 },
+      ],
+      activeLeak: null,
+    });
+    render(<MainPage setPage={vi.fn()} data={[]} setData={vi.fn()} />);
+
+    const headings = screen
+      .getAllByRole("heading", { level: 2 })
+      .map((heading) => heading.textContent);
+    expect(headings).toEqual([
+      "mainPage.groups.today",
+      "mainPage.groups.earlier",
+    ]);
+    // «Все →» стоит один раз — у первой группы.
+    expect(screen.getAllByText(/mainPage\.showAll/)).toHaveLength(1);
+  });
+
+  it("shows coverage with a bar only when the total is known", () => {
+    const { rerender } = render(
+      <MainPage
+        setPage={vi.fn()}
+        data={[]}
+        setData={vi.fn()}
+        coverage={{ surveyed: 3, total: 10, percent: 30 }}
+      />,
+    );
+    expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe(
+      "30",
+    );
+
+    rerender(
+      <MainPage
+        setPage={vi.fn()}
+        data={[]}
+        setData={vi.fn()}
+        coverage={{ surveyed: 3, total: null, percent: null }}
+      />,
+    );
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(screen.getByText("mainPage.coverage.noRegistry")).toBeTruthy();
   });
 
   it("counts the selected location on the show-all button, not the project", () => {

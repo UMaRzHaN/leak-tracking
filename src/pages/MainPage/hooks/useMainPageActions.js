@@ -20,7 +20,6 @@ import {
 import { ignoredError } from "@/utils/ignoredError";
 
 const RECENT_COUNT = 8;
-const ALL = "all";
 
 // `data` is the whole project and `scopedData` is what the selected location
 // leaves visible. Every mutation below rebuilds the list from `data` and hands
@@ -34,7 +33,6 @@ export function useMainPageActions({
   userProfile,
 }) {
   const [activeLeak, setActiveLeak] = useState(/** @type {any} */ (null));
-  const [statusFilter, setStatusFilter] = useState(ALL);
   const [pickerLeak, setPickerLeak] = useState(/** @type {any} */ (null));
   const [resolveLeak, setResolveLeak] = useState(/** @type {any} */ (null));
   const [repairLeak, setRepairLeak] = useState(/** @type {any} */ (null));
@@ -69,18 +67,10 @@ export function useMainPageActions({
     [scopedData],
   );
 
-  const toggleFilter = useCallback(
-    (key) => setStatusFilter((prev) => (prev === key ? ALL : key)),
-    [],
+  const recent = useMemo(
+    () => [...scopedData].sort(compareLeakRecency).slice(0, RECENT_COUNT),
+    [scopedData],
   );
-
-  const recent = useMemo(() => {
-    let list = [...scopedData].sort(compareLeakRecency);
-    if (statusFilter !== ALL) {
-      list = list.filter((l) => (l.status ?? STATUS.OPEN) === statusFilter);
-    }
-    return list.slice(0, RECENT_COUNT);
-  }, [scopedData, statusFilter]);
 
   const handlePickStatus = useCallback(
     (leak) => {
@@ -325,8 +315,6 @@ export function useMainPageActions({
   return {
     activeLeak,
     setActiveLeak,
-    statusFilter,
-    setStatusFilter,
     pickerLeak,
     setPickerLeak,
     resolveLeak,
@@ -341,8 +329,6 @@ export function useMainPageActions({
     stats,
     recent,
     RECENT_COUNT,
-    ALL,
-    toggleFilter,
     handlePickStatus,
     handleStatusSelect,
     handleResolveConfirm,

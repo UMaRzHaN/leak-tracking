@@ -1,13 +1,19 @@
 export const mainPage = {
-  total: "Всего",
-  open: "Открыто",
-  inProgress: "В ремонте",
-  resolved: "Устранено",
-
-  recentRecords: "Последние {{count}} записей",
   showAll: "Все {{count}} →",
 
-  shownRecent: "показаны последние {{count}}",
+  groups: {
+    today: "Сегодня",
+    yesterday: "Вчера",
+    earlier: "Раньше",
+  },
+
+  coverage: {
+    title: "Охват обследования",
+    value: "{{surveyed}} из {{total}} · {{percent}}%",
+    hint: "Объекты с записями об утечках",
+    noRegistry:
+      "Объекты с записями об утечках. Общее число появится с реестром компонентов",
+  },
 
   repairs: {
     title: "Ремонты",

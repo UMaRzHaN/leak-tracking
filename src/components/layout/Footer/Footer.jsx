@@ -1,53 +1,24 @@
 import { useMemo } from "react";
 import s from "./Footer.module.scss";
 import { useLanguage } from "@/app/hooks/useLanguage";
-import { hasComponentRegistry } from "@/configs/componentRegistry.config";
+import Icon from "@/components/ui/Icon/Icon";
 
-export default function Footer({ page, setPage, openCount = 0, project }) {
+/**
+ * Нижняя панель модуля утечек (2b). Реестр компонентов отсюда ушёл в
+ * бургер-меню как «Инвентаризация»: у него будет своя панель, а держать
+ * чужой модуль вкладкой значило бы шесть кнопок на 375 пикселях.
+ */
+export default function Footer({ page, setPage, openCount = 0 }) {
   const { t } = useLanguage();
-  // Derived from the project config, never from a comparison against the
-  // project type: a stream that declares no registry simply has no tab.
-  const showRegistry = hasComponentRegistry(project);
   const navItems = useMemo(
     () => [
-      {
-        key: "",
-        icon: "⊞",
-        label: t("footer.home"),
-      },
-      {
-        key: "add",
-        icon: "+",
-        label: t("footer.add"),
-        fab: true,
-      },
-      {
-        key: "db",
-        icon: "☰",
-        label: t("footer.database"),
-        badge: true,
-      },
-      {
-        key: "monitoring",
-        icon: "M",
-        label: t("footer.monitoring"),
-      },
-      ...(showRegistry
-        ? [
-            {
-              key: "components",
-              icon: "⚙",
-              label: t("footer.components"),
-            },
-          ]
-        : []),
-      {
-        key: "map",
-        icon: "◎",
-        label: t("footer.map"),
-      },
+      { key: "", icon: "home", label: t("footer.home") },
+      { key: "db", icon: "database", label: t("footer.database"), badge: true },
+      { key: "add", fab: true },
+      { key: "monitoring", icon: "chart", label: t("footer.monitoring") },
+      { key: "map", icon: "map", label: t("footer.map") },
     ],
-    [t, showRegistry],
+    [t],
   );
   return (
     <footer className={s.nav}>
@@ -60,7 +31,7 @@ export default function Footer({ page, setPage, openCount = 0, project }) {
             onClick={() => setPage("add")}
             aria-label={t("footer.addLeak")}
           >
-            <span className={s.fabIcon}>+</span>
+            <Icon name="plus" size={26} strokeWidth={2.2} />
           </button>
         ) : (
           <button
@@ -72,7 +43,7 @@ export default function Footer({ page, setPage, openCount = 0, project }) {
             aria-label={item.label}
           >
             <span className={s.iconWrap}>
-              <span className={s.icon}>{item.icon}</span>
+              <Icon name={item.icon} />
               {item.badge && openCount > 0 && (
                 <span className={s.badge}>
                   {openCount > 99 ? "99+" : openCount}
@@ -80,7 +51,6 @@ export default function Footer({ page, setPage, openCount = 0, project }) {
               )}
             </span>
             <span className={s.label}>{item.label}</span>
-            {page === item.key && <span className={s.dot} />}
           </button>
         ),
       )}

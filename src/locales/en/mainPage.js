@@ -1,13 +1,19 @@
 export const mainPage = {
-  total: "Total",
-  open: "Open",
-  inProgress: "Under Repair",
-  resolved: "Resolved",
-
-  recentRecords: "Last {{count}} records",
   showAll: "All {{count}} →",
 
-  shownRecent: "showing the latest {{count}}",
+  groups: {
+    today: "Today",
+    yesterday: "Yesterday",
+    earlier: "Earlier",
+  },
+
+  coverage: {
+    title: "Survey coverage",
+    value: "{{surveyed}} of {{total}} · {{percent}}%",
+    hint: "Sites with leak records",
+    noRegistry:
+      "Sites with leak records. The total appears with the component registry",
+  },
 
   repairs: {
     title: "Repairs",
