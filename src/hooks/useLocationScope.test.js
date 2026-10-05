@@ -100,14 +100,16 @@ describe("useLocationScope", () => {
     expect(sharedFilters.setLastLocationFilter).toHaveBeenCalledWith(null);
   });
 
-  it("has no path when the database checkboxes selected several values", () => {
+  it("has no path or count when the filters are not a set of siblings", () => {
     const { result } = renderScope(
       createSharedFilters({
         mainLocationFilter: { key: "field", values: ["УМГ-1", "УМГ-2"] },
+        locationFilter: { key: "station", values: ["КС-5"] },
       }),
     );
 
     expect(result.current.path).toBeNull();
+    expect(result.current.selection).toBeNull();
     expect(result.current.scopedCount).toBeNull();
   });
 
@@ -162,5 +164,33 @@ describe("useLocationScope", () => {
     );
 
     expect(result.current.path).toBeNull();
+  });
+
+  it("writes several sibling folders into one filter", () => {
+    const sharedFilters = createSharedFilters();
+    const { result } = renderScope(sharedFilters);
+
+    result.current.setSelection([], ["УМГ-1", "УМГ-2"]);
+
+    expect(sharedFilters.setMainLocationFilter).toHaveBeenCalledWith({
+      key: "field",
+      values: ["УМГ-1", "УМГ-2"],
+    });
+    expect(sharedFilters.setLocationFilter).toHaveBeenCalledWith(null);
+  });
+
+  it("counts every picked folder in the scoped count", () => {
+    const { result } = renderScope(
+      createSharedFilters({
+        mainLocationFilter: { key: "field", values: ["УМГ-1", "УМГ-2"] },
+      }),
+    );
+
+    expect(result.current.path).toBeNull();
+    expect(result.current.selection).toEqual({
+      path: [],
+      values: ["УМГ-1", "УМГ-2"],
+    });
+    expect(result.current.scopedCount).toBe(3);
   });
 });

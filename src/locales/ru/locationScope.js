@@ -11,8 +11,10 @@ export const locationScope = {
   several: "Выбрано несколько",
   empty: "Здесь пока ничего нет",
   deepest: "Глубже уровней нет — показаны утечки этого объекта",
+  pick: "Отметить «{{name}}»",
   openFolder: "Открыть «{{name}}»",
   showAll: "Показать все ({{count}})",
   apply: "Показать выбранное",
+  applyPicked: "Показать выбранное ({{count}})",
   reset: "Сбросить выбор объекта",
 };

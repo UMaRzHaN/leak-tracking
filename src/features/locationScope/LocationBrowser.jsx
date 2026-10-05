@@ -6,20 +6,57 @@ import s from "./LocationBrowser.module.scss";
 // A folder view over the location hierarchy. Browsing is local state: the
 // filters only change when a folder is actually applied, so backing out of the
 // sheet leaves the list on screen alone.
+//
+// Ticking folders picks several siblings at once; once anything is ticked, a
+// tap on a row toggles it too, and the footer applies the whole set.
 
 export default function LocationBrowser({ open, scope, onClose, onApplied }) {
   const { t } = useLanguage();
   const dialogRef = useModalDialog({ open, onClose });
   const [draft, setDraft] = useState(/** @type {any[]} */ ([]));
+  const [picked, setPicked] = useState(/** @type {string[]} */ ([]));
 
-  const { levelKeys, levelLabels, path, setPath, childrenAtPath, totalCount } =
-    scope;
+  const {
+    levelKeys,
+    levelLabels,
+    path,
+    setPath,
+    selection,
+    setSelection,
+    childrenAtPath,
+    totalCount,
+  } = scope;
 
   // Reopening starts where the current selection left off rather than at the
-  // root, which is what makes stepping one level up cheap.
+  // root, which is what makes stepping one level up cheap. Several picked
+  // folders reopen on their parent with the ticks in place.
   useEffect(() => {
-    if (open) setDraft(path ?? []);
-  }, [open, path]);
+    if (!open) return;
+    if (path) {
+      setDraft(path);
+      setPicked([]);
+    } else if (selection) {
+      setDraft(selection.path);
+      setPicked(selection.values);
+    } else {
+      setDraft([]);
+      setPicked([]);
+    }
+  }, [open, path, selection]);
+
+  // Ticks belong to one level; carrying them into another folder would pick
+  // siblings of a parent the user has left.
+  const openLevel = (nextDraft) => {
+    setDraft(nextDraft);
+    setPicked([]);
+  };
+
+  const togglePicked = (value) =>
+    setPicked((current) =>
+      current.includes(value)
+        ? current.filter((item) => item !== value)
+        : [...current, value],
+    );
 
   const nodes = useMemo(() => childrenAtPath(draft), [childrenAtPath, draft]);
   const unnamedLabel = t("locationScope.unnamed");
@@ -32,6 +69,16 @@ export default function LocationBrowser({ open, scope, onClose, onApplied }) {
     // Landing back on whatever screen the browser was opened from would leave
     // the user to go looking for the records they just selected.
     onApplied?.(nextPath);
+    onClose?.();
+  };
+
+  const applyPicked = () => {
+    if (picked.length === 1) {
+      apply([...draft, picked[0]]);
+      return;
+    }
+    setSelection(draft, picked);
+    onApplied?.(draft, picked);
     onClose?.();
   };
 
@@ -66,7 +113,7 @@ export default function LocationBrowser({ open, scope, onClose, onApplied }) {
           <button
             type="button"
             className={s.crumb}
-            onClick={() => setDraft([])}
+            onClick={() => openLevel([])}
             disabled={draft.length === 0}
           >
             {t("locationScope.all")}
@@ -79,7 +126,7 @@ export default function LocationBrowser({ open, scope, onClose, onApplied }) {
               <button
                 type="button"
                 className={s.crumb}
-                onClick={() => setDraft(draft.slice(0, index + 1))}
+                onClick={() => openLevel(draft.slice(0, index + 1))}
                 disabled={index === draft.length - 1}
               >
                 {value || unnamedLabel}
@@ -92,7 +139,7 @@ export default function LocationBrowser({ open, scope, onClose, onApplied }) {
           <button
             type="button"
             className={s.up}
-            onClick={() => setDraft(draft.slice(0, -1))}
+            onClick={() => openLevel(draft.slice(0, -1))}
           >
             ← {t("locationScope.up")}
           </button>
@@ -110,29 +157,43 @@ export default function LocationBrowser({ open, scope, onClose, onApplied }) {
                 {nodes.map((node) => {
                   const nextPath = [...draft, node.value];
                   const hasChildren = node.children.length > 0;
+                  const isPicked = picked.includes(node.value);
+                  const name = node.value || unnamedLabel;
                   return (
                     <li key={node.value} className={s.row}>
                       <button
                         type="button"
-                        className={s.rowMain}
-                        onClick={() => apply(nextPath)}
+                        role="checkbox"
+                        aria-checked={isPicked}
+                        className={`${s.check} ${isPicked ? s.checkOn : ""}`}
+                        onClick={() => togglePicked(node.value)}
+                        aria-label={t("locationScope.pick", { name })}
+                      >
+                        <span className={s.checkBox} aria-hidden="true">
+                          {isPicked ? "✓" : ""}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`${s.rowMain} ${isPicked ? s.rowPicked : ""}`}
+                        onClick={() =>
+                          picked.length > 0
+                            ? togglePicked(node.value)
+                            : apply(nextPath)
+                        }
                       >
                         <span className={s.icon} aria-hidden="true">
                           {hasChildren ? "📁" : "📍"}
                         </span>
-                        <span className={s.name}>
-                          {node.value || unnamedLabel}
-                        </span>
+                        <span className={s.name}>{name}</span>
                         <span className={s.count}>{node.count}</span>
                       </button>
                       {hasChildren && (
                         <button
                           type="button"
                           className={s.drill}
-                          onClick={() => setDraft(nextPath)}
-                          aria-label={t("locationScope.openFolder", {
-                            name: node.value || unnamedLabel,
-                          })}
+                          onClick={() => openLevel(nextPath)}
+                          aria-label={t("locationScope.openFolder", { name })}
                         >
                           ›
                         </button>
@@ -156,10 +217,12 @@ export default function LocationBrowser({ open, scope, onClose, onApplied }) {
           <button
             type="button"
             className={s.primary}
-            onClick={() => apply(draft)}
-            disabled={draft.length === 0}
+            onClick={() => (picked.length > 0 ? applyPicked() : apply(draft))}
+            disabled={draft.length === 0 && picked.length === 0}
           >
-            {t("locationScope.apply")}
+            {picked.length > 0
+              ? t("locationScope.applyPicked", { count: picked.length })
+              : t("locationScope.apply")}
           </button>
         </div>
       </div>

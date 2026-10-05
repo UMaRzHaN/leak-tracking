@@ -126,6 +126,9 @@
 
 .list {
   display: grid;
+  // Без явной колонки трек тянется по самому длинному названию и выталкивает
+  // строки за край листа на узком экране.
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   margin: 0;
   padding: 0;
@@ -154,17 +157,56 @@
   cursor: pointer;
 }
 
+.rowPicked {
+  border-color: var(--c-blue);
+}
+
+.check {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface2);
+  cursor: pointer;
+}
+
+.checkBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--c-text2);
+  border-radius: 5px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.checkOn {
+  border-color: var(--c-blue);
+
+  .checkBox {
+    border-color: var(--c-blue);
+    background: var(--c-blue);
+  }
+}
+
 .icon {
   flex-shrink: 0;
   font-size: 14px;
 }
 
 .name {
-  overflow: hidden;
   flex: 1;
   min-width: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  // Длинные названия подразделений переносятся, а не обрезаются: на телефоне
+  // многоточие съедало именно ту часть, которой они отличаются друг от друга.
+  overflow-wrap: anywhere;
 }
 
 .count {

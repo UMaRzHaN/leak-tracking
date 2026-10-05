@@ -11,8 +11,10 @@ export const locationScope = {
   several: "Several selected",
   empty: "Nothing here yet",
   deepest: "No deeper levels — showing the leaks of this location",
+  pick: "Select “{{name}}”",
   openFolder: "Open “{{name}}”",
   showAll: "Show all ({{count}})",
   apply: "Show selected",
+  applyPicked: "Show selected ({{count}})",
   reset: "Clear the selected location",
 };

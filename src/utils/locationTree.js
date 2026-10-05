@@ -108,3 +108,40 @@ export function locationFiltersToPath(filters, levelKeys) {
   }
   return path;
 }
+
+/**
+ * Several sibling folders picked at once: one value per level down to `path`,
+ * then every picked value on the next level. The filters AND across levels and
+ * OR within one, so this is exactly "these folders under that parent".
+ */
+export function selectionToLocationFilters(path, values, levelKeys) {
+  const filters = pathToLocationFilters(path, levelKeys);
+  const depth = path.length;
+  if (depth < levelKeys.length && values.length > 0) {
+    filters[depth] = { key: levelKeys[depth], values: [...values] };
+  }
+  return filters;
+}
+
+/**
+ * The inverse of the above, so the browser can reopen on what was picked.
+ * Only the deepest filtered level may hold several values; anything else is
+ * not a set of siblings and comes back as `null`.
+ */
+export function locationFiltersToSelection(filters, levelKeys) {
+  const path = [];
+  for (const [depth, key] of levelKeys.entries()) {
+    const filter = filters?.[depth];
+    if (!filter) break;
+    if (filter.key !== key || !Array.isArray(filter.values)) return null;
+    if (filter.values.length === 0) return null;
+    const values = filter.values.map(normalizeLocationValue);
+    const deeper = filters.slice(depth + 1, levelKeys.length).some(Boolean);
+    if (values.length > 1) return deeper ? null : { path, values };
+    path.push(values[0]);
+  }
+  for (let depth = path.length; depth < levelKeys.length; depth += 1) {
+    if (filters?.[depth]) return null;
+  }
+  return { path: path.slice(0, -1), values: path.slice(-1) };
+}

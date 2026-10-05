@@ -5,7 +5,9 @@ import {
   findChildren,
   getLocationLevelKeys,
   locationFiltersToPath,
+  locationFiltersToSelection,
   pathToLocationFilters,
+  selectionToLocationFilters,
 } from "./locationTree";
 
 const KEYS = ["field", "station", "location"];
@@ -154,5 +156,59 @@ describe("locationFiltersToPath", () => {
     const filters = [{ key: "deposit", values: ["Х"] }, null, null];
 
     expect(locationFiltersToPath(filters, KEYS)).toBeNull();
+  });
+});
+
+describe("selectionToLocationFilters", () => {
+  it("puts every picked value on the level below the parent", () => {
+    expect(
+      selectionToLocationFilters(["УМГ-2"], ["КС-5", "КС-7"], KEYS),
+    ).toEqual([
+      { key: "field", values: ["УМГ-2"] },
+      { key: "station", values: ["КС-5", "КС-7"] },
+      null,
+    ]);
+  });
+
+  it("picks several folders at the root", () => {
+    expect(selectionToLocationFilters([], ["УМГ-1", "УМГ-2"], KEYS)).toEqual([
+      { key: "field", values: ["УМГ-1", "УМГ-2"] },
+      null,
+      null,
+    ]);
+  });
+});
+
+describe("locationFiltersToSelection", () => {
+  it("reads several siblings back with their parent", () => {
+    const filters = [
+      { key: "field", values: ["УМГ-2"] },
+      { key: "station", values: ["КС-5", "КС-7"] },
+      null,
+    ];
+
+    expect(locationFiltersToSelection(filters, KEYS)).toEqual({
+      path: ["УМГ-2"],
+      values: ["КС-5", "КС-7"],
+    });
+  });
+
+  it("reads a single path as a selection of one", () => {
+    const filters = [{ key: "field", values: ["УМГ-2"] }, null, null];
+
+    expect(locationFiltersToSelection(filters, KEYS)).toEqual({
+      path: [],
+      values: ["УМГ-2"],
+    });
+  });
+
+  it("rejects several values above a filtered level", () => {
+    const filters = [
+      { key: "field", values: ["УМГ-1", "УМГ-2"] },
+      { key: "station", values: ["КС-5"] },
+      null,
+    ];
+
+    expect(locationFiltersToSelection(filters, KEYS)).toBeNull();
   });
 });

@@ -202,12 +202,13 @@ export default function App() {
             open={locationBrowserOpen}
             scope={locationScope}
             onClose={() => setLocationBrowserOpen(false)}
-            onApplied={(path) => {
+            onApplied={(path, picked = []) => {
               // "Show all" is a way back out of a folder, not a request to go
               // read the whole project, so it leaves the current screen alone.
               // Реестр — тоже список, и выбранную папку он показывает сам;
               // уводить с него на базу значило бы подменить сущность.
-              if (path.length > 0 && !registryPage) setPage("db");
+              if ((path.length > 0 || picked.length > 0) && !registryPage)
+                setPage("db");
             }}
           />
         </Suspense>

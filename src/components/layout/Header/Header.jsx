@@ -92,7 +92,10 @@ export default function Header({
         <div className={s.scopeRow}>
           <button
             className={`${s.scopeBtn} ${
-              locationScope.path?.length ? s.scopeBtnActive : ""
+              locationScope.path?.length ||
+              locationScope.selection?.values.length
+                ? s.scopeBtnActive
+                : ""
             }`}
             type="button"
             onClick={onLocationScopeOpen}
@@ -103,14 +106,23 @@ export default function Header({
             </span>
             <span className={s.scopePath}>
               {locationScope.path === null
-                ? t("locationScope.several")
+                ? locationScope.selection
+                  ? [
+                      ...locationScope.selection.path,
+                      locationScope.selection.values
+                        .map((value) => value || t("locationScope.unnamed"))
+                        .join(", "),
+                    ]
+                      .map((value) => value || t("locationScope.unnamed"))
+                      .join(" › ")
+                  : t("locationScope.several")
                 : locationScope.path.length === 0
                   ? t("locationScope.all")
                   : locationScope.path
                       .map((value) => value || t("locationScope.unnamed"))
                       .join(" › ")}
             </span>
-            {locationScope.path?.length > 0 &&
+            {(locationScope.path === null || locationScope.path.length > 0) &&
               locationScope.scopedCount !== null && (
                 <span className={s.scopeCount}>
                   {locationScope.scopedCount}

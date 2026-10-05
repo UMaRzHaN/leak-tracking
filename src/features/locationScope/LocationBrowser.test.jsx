@@ -32,6 +32,8 @@ function createScope(overrides = {}) {
     tree: TREE,
     path: [],
     setPath: vi.fn(),
+    selection: { path: [], values: [] },
+    setSelection: vi.fn(),
     scopedCount: null,
     totalCount: 6,
     childrenAtPath: (path) => {
@@ -152,6 +154,71 @@ describe("LocationBrowser", () => {
     // Callers use the empty path to tell "go into this folder" from "back out
     // of it", and the latter should not drag the user to another screen.
     expect(onApplied).toHaveBeenCalledWith([]);
+  });
+
+  it("applies several ticked folders at once", async () => {
+    const user = userEvent.setup();
+    const { scope, onClose, onApplied } = renderBrowser();
+
+    await user.click(screen.getByRole("checkbox", { name: "Select “УМГ-1”" }));
+    await user.click(screen.getByRole("checkbox", { name: "Select “УМГ-2”" }));
+    expect(scope.setPath).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Show selected (2)" }));
+
+    expect(scope.setSelection).toHaveBeenCalledWith([], ["УМГ-1", "УМГ-2"]);
+    expect(onApplied).toHaveBeenCalledWith([], ["УМГ-1", "УМГ-2"]);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("toggles a row instead of applying it once something is ticked", async () => {
+    const user = userEvent.setup();
+    const { scope } = renderBrowser();
+
+    await user.click(screen.getByRole("checkbox", { name: "Select “УМГ-1”" }));
+    await user.click(screen.getByRole("button", { name: /УМГ-2\s*3/ }));
+
+    expect(scope.setPath).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("checkbox", { name: "Select “УМГ-2”" }),
+    ).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("applies a single ticked folder as a path", async () => {
+    const user = userEvent.setup();
+    const { scope } = renderBrowser();
+
+    await user.click(screen.getByLabelText("Open “УМГ-2”"));
+    await user.click(screen.getByRole("checkbox", { name: "Select “КС-7”" }));
+    await user.click(screen.getByRole("button", { name: "Show selected (1)" }));
+
+    expect(scope.setPath).toHaveBeenCalledWith(["УМГ-2", "КС-7"]);
+  });
+
+  it("drops the ticks when leaving the level", async () => {
+    const user = userEvent.setup();
+    renderBrowser();
+
+    await user.click(screen.getByRole("checkbox", { name: "Select “УМГ-1”" }));
+    await user.click(screen.getByLabelText("Open “УМГ-2”"));
+
+    expect(screen.getByRole("button", { name: "Show selected" })).toBeEnabled();
+  });
+
+  it("reopens several picked folders on their parent with the ticks", () => {
+    renderBrowser(
+      createScope({
+        path: null,
+        selection: { path: ["УМГ-2"], values: ["КС-5", "КС-7"] },
+      }),
+    );
+
+    expect(
+      screen.getByRole("checkbox", { name: "Select “КС-5”" }),
+    ).toHaveAttribute("aria-checked", "true");
+    expect(
+      screen.getByRole("button", { name: "Show selected (2)" }),
+    ).toBeInTheDocument();
   });
 
   it("renders nothing while closed", () => {
