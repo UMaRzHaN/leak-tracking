@@ -373,3 +373,63 @@
       0 0 0 1px rgba(148, 163, 184, 0.12);
   }
 }
+
+/* Чипы стадий на карте ремонтов (7i): плавают под переключателем баз, как
+   плашка маршрута на карте мониторинга. */
+.stageChips {
+  position: absolute;
+  top: 64px;
+  left: 56px;
+  right: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  gap: 7px;
+  padding-right: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.stageChip,
+.stageChipOn {
+  flex: none;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  border-radius: var(--r-pill);
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.14);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.stageChip {
+  border: 1px solid var(--c-border-soft);
+  background: var(--c-surface);
+  color: var(--c-ink);
+}
+
+.stageChipOn {
+  border: 1px solid var(--c-accent);
+  background: var(--c-accent);
+  color: #fff;
+
+  .stageCount {
+    color: inherit;
+    opacity: 0.8;
+  }
+}
+
+.stageDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.stageCount {
+  color: var(--c-text3);
+}

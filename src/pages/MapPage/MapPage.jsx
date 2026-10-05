@@ -5,7 +5,15 @@ import MapControls from "./components/MapControls";
 import TileProgress from "./components/TileProgress";
 import MobileSheet from "@/components/ui/MobileSheet/MobileSheet";
 import Notification from "@/components/ui/Notification/Notification";
+import { useMemo, useState } from "react";
 import RouteBanner from "@/features/route/RouteBanner";
+import { useLanguage } from "@/app/hooks/useLanguage";
+import {
+  countRepairStages,
+  getRepairLeaks,
+  getRepairStage,
+} from "@/domain/repairStages";
+import { REPAIR_STAGE_ORDER, getRepairStageMeta } from "@/utils/repairStage";
 import s from "./MapPage.module.scss";
 
 export default function MapPage({
@@ -21,8 +29,26 @@ export default function MapPage({
   routeProgress = /** @type {any} */ (null),
   onRouteCheck = /** @type {((leak: any) => void)|undefined} */ (undefined),
   onRouteEnd = /** @type {(() => void)|undefined} */ (undefined),
+  // Карта модуля ремонтов (7i): только ремонты и чипы по стадии работ.
+  repairMode = false,
 }) {
   useRenderMetric("MapPage");
+  const { t } = useLanguage();
+  const [stage, setStage] = useState("all");
+  const repairLeaks = useMemo(
+    () => (repairMode ? getRepairLeaks(leaks) : null),
+    [repairMode, leaks],
+  );
+  const stageCounts = useMemo(
+    () => (repairLeaks ? countRepairStages(repairLeaks) : null),
+    [repairLeaks],
+  );
+  const shownLeaks = useMemo(() => {
+    if (!repairLeaks) return leaks;
+    return stage === "all"
+      ? repairLeaks
+      : repairLeaks.filter((leak) => getRepairStage(leak) === stage);
+  }, [repairLeaks, leaks, stage]);
 
   const {
     containerRef,
@@ -62,7 +88,7 @@ export default function MapPage({
     focusLeak,
     locateMe,
   } = useMapPage({
-    leaks,
+    leaks: shownLeaks,
     coords,
     gpsEnabled,
     sharedFilters,
@@ -78,6 +104,33 @@ export default function MapPage({
       />
 
       <div ref={containerRef} className={s.mapCanvas} />
+
+      {stageCounts && !showsComponents && (
+        <div
+          className={s.stageChips}
+          role="group"
+          aria-label={t("repairs.chipsLabel")}
+        >
+          {["all", ...REPAIR_STAGE_ORDER].map((key) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={stage === key}
+              className={stage === key ? s.stageChipOn : s.stageChip}
+              onClick={() => setStage(key)}
+            >
+              {key !== "all" && (
+                <span
+                  className={s.stageDot}
+                  style={{ background: getRepairStageMeta(key, t).dot }}
+                />
+              )}
+              {key === "all" ? t("repairs.all") : t(`repairs.stages.${key}`)}
+              <span className={s.stageCount}>{stageCounts[key]}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {routeProgress && !showsComponents && (
         <RouteBanner

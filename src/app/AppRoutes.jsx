@@ -303,6 +303,7 @@ export default function AppRoutes({
             routeProgress={routeProgress}
             onRouteCheck={requestMonitoring}
             onRouteEnd={onEndRoute}
+            repairMode={module === "repairs"}
           />
         )}
       </Suspense>

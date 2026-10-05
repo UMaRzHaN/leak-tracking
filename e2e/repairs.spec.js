@@ -54,6 +54,14 @@ test("ведёт ремонт от отметки бригады до приём
   await page.reload();
   await page.getByRole("button", { name: /^Принято 1/ }).click();
   await expect(page.getByText(/^Принят:/)).toBeVisible();
+
+  // Карта модуля ремонтов делит ремонты по стадии.
+  await footerTab(page, "Карта").click();
+  await expect(
+    page.getByRole("group", { name: "Фильтр по стадии" }).getByRole("button", {
+      name: /^Принят 1/,
+    }),
+  ).toBeVisible();
 });
 
 test("принимает оборудование партиями и даёт его в МТР ремонта", async ({
