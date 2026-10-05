@@ -141,6 +141,8 @@ export default function AppRoutes({
   settingsSection = /** @type {string|null} */ (null),
   coverage = /** @type {any} */ (null),
   module = /** @type {string|undefined} */ (undefined),
+  routeProgress = /** @type {any} */ (null),
+  onEndRoute = /** @type {(() => void)|undefined} */ (undefined),
   setRequestedMonitoringLeakId,
   setRequestedMonitoringLeakIds,
   sharedFilters,
@@ -277,6 +279,9 @@ export default function AppRoutes({
             sharedFilters={sharedFilters}
             base={mapBase}
             onBaseChange={onMapBaseChange}
+            routeProgress={routeProgress}
+            onRouteCheck={requestMonitoring}
+            onRouteEnd={onEndRoute}
           />
         )}
       </Suspense>

@@ -5,6 +5,7 @@ import MapControls from "./components/MapControls";
 import TileProgress from "./components/TileProgress";
 import MobileSheet from "@/components/ui/MobileSheet/MobileSheet";
 import Notification from "@/components/ui/Notification/Notification";
+import RouteBanner from "@/features/route/RouteBanner";
 import s from "./MapPage.module.scss";
 
 export default function MapPage({
@@ -16,6 +17,10 @@ export default function MapPage({
   // отдаёт действующую базу — свою, если управляющей не передали.
   base: controlledBase,
   onBaseChange,
+  // Активный маршрут обхода (5d): плашка сверху карты.
+  routeProgress = /** @type {any} */ (null),
+  onRouteCheck = /** @type {((leak: any) => void)|undefined} */ (undefined),
+  onRouteEnd = /** @type {(() => void)|undefined} */ (undefined),
 }) {
   useRenderMetric("MapPage");
 
@@ -73,6 +78,17 @@ export default function MapPage({
       />
 
       <div ref={containerRef} className={s.mapCanvas} />
+
+      {routeProgress && !showsComponents && (
+        <RouteBanner
+          progress={routeProgress}
+          coords={coords}
+          gpsEnabled={gpsEnabled}
+          onFocus={(leak) => focusLeak(leak, 17)}
+          onCheck={(leak) => onRouteCheck?.(leak)}
+          onEnd={() => onRouteEnd?.()}
+        />
+      )}
 
       <MapControls
         onLocate={locateMe}

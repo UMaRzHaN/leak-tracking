@@ -25,6 +25,7 @@ import { projectSetup } from "./projectSetup";
 import { priority } from "./priority";
 import { pwa } from "./pwa";
 import { reopen } from "./reopen";
+import { route } from "./route";
 import { resolve } from "./resolve";
 import { schemas } from "./schemas";
 import { settings } from "./settings";
@@ -63,6 +64,7 @@ export const translation = {
   priority,
   pwa,
   reopen,
+  route,
   resolve,
   schemas,
   settings,

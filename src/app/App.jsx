@@ -9,10 +9,16 @@ import { STATUS } from "@/utils/status";
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
 import { computeSurveyCoverage } from "@/utils/surveyCoverage";
 import { MODULE, useActiveModule } from "@/app/modules/activeModule";
+import {
+  readRoute,
+  routeProgress,
+  saveRoute,
+} from "@/features/route/routePlan";
 
 const Header = lazy(() => import("@/components/layout/Header/Header"));
 const Footer = lazy(() => import("@/components/layout/Footer/Footer"));
 const AppMenu = lazy(() => import("@/components/layout/AppMenu/AppMenu"));
+const RouteSheet = lazy(() => import("@/features/route/RouteSheet"));
 // Only reached from the header button, so it stays out of the initial graph.
 const LocationBrowser = lazy(
   () => import("@/features/locationScope/LocationBrowser"),
@@ -77,6 +83,19 @@ export default function App() {
   const [locationBrowserOpen, setLocationBrowserOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [module, setModule] = useActiveModule();
+  const [routeSheetOpen, setRouteSheetOpen] = useState(false);
+  // Маршрут живёт в проекте: после перезапуска обход продолжается с той же
+  // точки, а в другом проекте своего маршрута нет.
+  const [storedRoute, setStoredRoute] = useState(() =>
+    readRoute(activeProject?.id),
+  );
+  useEffect(() => {
+    setStoredRoute(readRoute(activeProject?.id));
+  }, [activeProject?.id]);
+  const setRoute = (next) => {
+    saveRoute(activeProject?.id, next);
+    setStoredRoute(next);
+  };
   const selectModule = (next) => {
     setModule(next);
     setPage("");
@@ -158,6 +177,11 @@ export default function App() {
     ],
   );
 
+  const progress = useMemo(
+    () => routeProgress(storedRoute, data),
+    [storedRoute, data],
+  );
+
   if (!isConfigured) {
     return (
       <Suspense fallback={<AppLoader />}>
@@ -225,6 +249,8 @@ export default function App() {
         settingsSection={settingsSection}
         coverage={coverage}
         module={module}
+        routeProgress={module === MODULE.MONITORING ? progress : null}
+        onEndRoute={() => setRoute(null)}
         setRequestedMonitoringLeakId={setRequestedMonitoringLeakId}
         setRequestedMonitoringLeakIds={setRequestedMonitoringLeakIds}
         mapBase={mapBase}
@@ -243,6 +269,28 @@ export default function App() {
             setPage={setPage}
             openCount={scopedOpenCount}
             module={module}
+            onRoute={() => setRouteSheetOpen(true)}
+          />
+        </Suspense>
+      )}
+
+      {routeSheetOpen && (
+        <Suspense fallback={null}>
+          <RouteSheet
+            open={routeSheetOpen}
+            leaks={leakScope.scopedLeaks}
+            coords={coords}
+            gpsEnabled={gpsEnabled}
+            onClose={() => setRouteSheetOpen(false)}
+            onShowMap={() => {
+              setRouteSheetOpen(false);
+              setPage("map");
+            }}
+            onStart={(ids) => {
+              setRoute({ ids, startedAt: new Date().toISOString() });
+              setRouteSheetOpen(false);
+              setPage("map");
+            }}
           />
         </Suspense>
       )}
