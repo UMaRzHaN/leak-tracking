@@ -4,6 +4,7 @@ import {
   createLeak,
   createProject,
   openMap,
+  openRound,
   setUserProfile,
 } from "./helpers";
 
@@ -28,7 +29,7 @@ test("осмотренная в обходе булавка гаснет, неп
   await context.setGeolocation({ latitude: 41.3125, longitude: 69.2425 });
   await createLeak(page, "4243");
 
-  await page.getByRole("button", { name: "Мониторинг", exact: true }).click();
+  await openRound(page);
   await page.getByRole("button", { name: "Начать мониторинг" }).click();
   await page.getByRole("button", { name: "Начать обход" }).click();
 

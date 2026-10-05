@@ -9,9 +9,11 @@ vi.mock("@/app/hooks/useLanguage", async () => {
 
 const Footer = (await import("./Footer")).default;
 
-function renderFooter(page = "", openCount = 0) {
+function renderFooter(page = "", openCount = 0, props = {}) {
   const setPage = vi.fn();
-  render(<Footer page={page} setPage={setPage} openCount={openCount} />);
+  render(
+    <Footer page={page} setPage={setPage} openCount={openCount} {...props} />,
+  );
   return setPage;
 }
 
@@ -41,5 +43,24 @@ describe("Footer navigation", () => {
       "page",
     );
     expect(screen.getByText("99+")).toBeTruthy();
+  });
+
+  it("offers adding a leak only in LDAR", () => {
+    renderFooter();
+    expect(screen.getByLabelText("Add Leak")).toBeTruthy();
+    expect(screen.queryByLabelText("Round")).toBeNull();
+  });
+
+  it("puts the route in the middle of the monitoring module", () => {
+    const onRoute = vi.fn();
+    const setPage = renderFooter("", 0, { module: "monitoring", onRoute });
+
+    expect(screen.queryByLabelText("Add Leak")).toBeNull();
+    screen.getByLabelText("Build a route").click();
+    screen.getByLabelText("Round").click();
+
+    expect(onRoute).toHaveBeenCalledOnce();
+    expect(setPage).toHaveBeenCalledWith("monitoring");
+    expect(screen.getByLabelText("Records")).toBeTruthy();
   });
 });

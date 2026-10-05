@@ -1,6 +1,7 @@
 import { lazy, Suspense, useMemo } from "react";
 import { useMainPageActions } from "./hooks/useMainPageActions";
 import CoverageCard from "./components/CoverageCard";
+import StatusChips from "./components/StatusChips";
 import EmptyState from "./components/EmptyState";
 import { groupRecentLeaks } from "./recentGroups";
 import RepairAnalytics from "./components/RepairAnalytics";
@@ -8,6 +9,7 @@ import LeakCardCompact from "@/features/leakList/LeakCardCompact/LeakCardCompact
 import Notification from "@/components/ui/Notification/Notification";
 import { STATUS } from "@/utils/status";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { MODULE } from "@/app/modules/activeModule";
 import s from "./MainPage.module.scss";
 
 const LeakDetailsSheet = lazy(
@@ -31,12 +33,15 @@ export default function MainPage({
   onMonitorLeak,
   userProfile,
   coverage = /** @type {any} */ (null),
+  module = /** @type {string} */ (MODULE.LDAR),
 }) {
   const { t } = useLanguage();
 
   const {
     activeLeak,
     setActiveLeak,
+    statusFilter,
+    setStatusFilter,
     pickerLeak,
     setPickerLeak,
     resolveLeak,
@@ -51,6 +56,7 @@ export default function MainPage({
     stats,
     recent,
     RECENT_COUNT,
+    ALL,
     handlePickStatus,
     handleStatusSelect,
     handleResolveConfirm,
@@ -69,9 +75,19 @@ export default function MainPage({
         onClose={() => setNotification(null)}
       />
 
-      {coverage && <CoverageCard coverage={coverage} />}
-
-      <RepairAnalytics leaks={scopedData} onOpenLeak={setActiveLeak} />
+      {module === MODULE.MONITORING ? (
+        <StatusChips
+          stats={stats}
+          value={statusFilter}
+          all={ALL}
+          onChange={setStatusFilter}
+        />
+      ) : (
+        <>
+          {coverage && <CoverageCard coverage={coverage} />}
+          <RepairAnalytics leaks={scopedData} onOpenLeak={setActiveLeak} />
+        </>
+      )}
 
       {recent.length ? (
         groups.map((group, index) => (
@@ -105,7 +121,13 @@ export default function MainPage({
           </section>
         ))
       ) : (
-        <EmptyState setPage={setPage} />
+        <EmptyState
+          setPage={setPage}
+          // Во время обхода утечек не заводят — предлагать это пустой список
+          // мониторинга не должен.
+          canAdd={module === MODULE.LDAR}
+          hasFilter={statusFilter !== ALL}
+        />
       )}
 
       <Suspense fallback={null}>

@@ -140,6 +140,7 @@ export default function AppRoutes({
   setPage,
   settingsSection = /** @type {string|null} */ (null),
   coverage = /** @type {any} */ (null),
+  module = /** @type {string|undefined} */ (undefined),
   setRequestedMonitoringLeakId,
   setRequestedMonitoringLeakIds,
   sharedFilters,
@@ -180,6 +181,7 @@ export default function AppRoutes({
             onMonitorLeak={requestMonitoring}
             userProfile={userProfile}
             coverage={coverage}
+            module={module}
           />
         )}
 

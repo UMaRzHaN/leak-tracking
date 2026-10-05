@@ -1,6 +1,14 @@
 export const mainPage = {
   showAll: "All {{count}} →",
 
+  chips: {
+    label: "Status filter",
+    all: "All",
+    open: "Open",
+    inProgress: "Repair",
+    resolved: "Resolved",
+  },
+
   groups: {
     today: "Today",
     yesterday: "Yesterday",

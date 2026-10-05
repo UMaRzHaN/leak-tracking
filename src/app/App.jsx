@@ -8,6 +8,7 @@ import { showsComponentTree } from "./pages";
 import { STATUS } from "@/utils/status";
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
 import { computeSurveyCoverage } from "@/utils/surveyCoverage";
+import { MODULE, useActiveModule } from "@/app/modules/activeModule";
 
 const Header = lazy(() => import("@/components/layout/Header/Header"));
 const Footer = lazy(() => import("@/components/layout/Footer/Footer"));
@@ -75,6 +76,11 @@ export default function App() {
 
   const [locationBrowserOpen, setLocationBrowserOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [module, setModule] = useActiveModule();
+  const selectModule = (next) => {
+    setModule(next);
+    setPage("");
+  };
   // Раздел настроек, к которому прокрутить: меню ведёт в импорт и
   // синхронизацию, а они пока живут внутри настроек, а не на своих экранах.
   const [settingsSection, setSettingsSection] = useState(
@@ -114,7 +120,8 @@ export default function App() {
   // Главная тоже читает реестр: по нему считается, сколько объектов всего,
   // для строки охвата. Дерево мест шапки от этого не меняется — оно по
   // компонентам только там, где на экране железо.
-  const coverageNeedsRegistry = page === "" && showRegistry;
+  const coverageNeedsRegistry =
+    page === "" && module === MODULE.LDAR && showRegistry;
   const registryComponents = useRegistryLocationSource(
     componentTree || coverageNeedsRegistry,
   );
@@ -135,7 +142,7 @@ export default function App() {
 
   const coverage = useMemo(
     () =>
-      page === ""
+      page === "" && module === MODULE.LDAR
         ? computeSurveyCoverage({
             leaks: leakScope.scopedLeaks,
             components: componentScope.scopedLeaks,
@@ -144,6 +151,7 @@ export default function App() {
         : null,
     [
       page,
+      module,
       leakScope.scopedLeaks,
       leakScope.levelKeys,
       componentScope.scopedLeaks,
@@ -216,6 +224,7 @@ export default function App() {
         setPage={setPage}
         settingsSection={settingsSection}
         coverage={coverage}
+        module={module}
         setRequestedMonitoringLeakId={setRequestedMonitoringLeakId}
         setRequestedMonitoringLeakIds={setRequestedMonitoringLeakIds}
         mapBase={mapBase}
@@ -229,7 +238,12 @@ export default function App() {
           {/* The badge counts what the "База" button leads to, and that screen
               is scoped, so counting the whole project would contradict the
               list the user lands on. */}
-          <Footer page={page} setPage={setPage} openCount={scopedOpenCount} />
+          <Footer
+            page={page}
+            setPage={setPage}
+            openCount={scopedOpenCount}
+            module={module}
+          />
         </Suspense>
       )}
 
@@ -240,6 +254,8 @@ export default function App() {
             onClose={() => setMenuOpen(false)}
             page={page}
             setPage={setPage}
+            module={module}
+            onSelectModule={selectModule}
             onOpenSettings={openSettings}
             onEditProfile={() => setUserProfileOpen(true)}
             userProfile={userProfile}

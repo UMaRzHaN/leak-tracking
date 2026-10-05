@@ -148,6 +148,16 @@ export function footerTab(page, name) {
     .getByRole("button", { name, exact: true });
 }
 
+// Обход живёт в модуле мониторинга: если нижняя панель ещё от LDAR, модуль
+// переключается из меню. После перезагрузки модуль сохраняется, и тогда
+// вкладка «Обход» уже на месте.
+export async function openRound(page) {
+  const round = footerTab(page, "Обход");
+  if (!(await round.isVisible())) await openMenuItem(page, "Мониторинг");
+  await round.click();
+  await expect(round).toHaveAttribute("aria-current", "page");
+}
+
 export async function openDatabase(page) {
   await footerTab(page, "База").click();
 }

@@ -66,6 +66,69 @@
   line-height: 1.4;
 }
 
+/* ── Чипы статусов (5a) ── */
+.chips {
+  display: flex;
+  gap: 7px;
+  margin: 0 -20px;
+  padding: 0 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.chip {
+  flex: none;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--c-border-soft);
+  border-radius: var(--r-pill);
+  background: var(--c-surface);
+  color: var(--c-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chipCount {
+  color: var(--c-text3);
+  font-weight: 800;
+}
+
+.chipActive {
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: #fff;
+
+  .chipCount {
+    color: inherit;
+    opacity: 0.8;
+  }
+}
+
+.chipDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.dot_open {
+  background: var(--c-open);
+}
+
+.dot_progress {
+  background: var(--c-progress);
+}
+
+.dot_resolved {
+  background: var(--c-resolved);
+}
+
 /* ── Группы записей по дням ── */
 .section {
   display: flex;

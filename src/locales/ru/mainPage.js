@@ -1,6 +1,14 @@
 export const mainPage = {
   showAll: "Все {{count}} →",
 
+  chips: {
+    label: "Фильтр по статусу",
+    all: "Все",
+    open: "Открыто",
+    inProgress: "Ремонт",
+    resolved: "Устранено",
+  },
+
   groups: {
     today: "Сегодня",
     yesterday: "Вчера",

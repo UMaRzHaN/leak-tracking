@@ -1,38 +1,73 @@
 import { useMemo } from "react";
 import s from "./Footer.module.scss";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { MODULE } from "@/app/modules/activeModule";
 import Icon from "@/components/ui/Icon/Icon";
 
 /**
- * Нижняя панель модуля утечек (2b). Реестр компонентов отсюда ушёл в
- * бургер-меню как «Инвентаризация»: у него будет своя панель, а держать
- * чужой модуль вкладкой значило бы шесть кнопок на 375 пикселях.
+ * Нижняя панель активного модуля. В LDAR (2b) в центре «+» — новые утечки
+ * заводятся только здесь. В мониторинге (5a) в центре маршрут обхода, а
+ * вкладка «Обход» ведёт в текущий обход. Реестр — отдельный модуль, его вход
+ * в бургер-меню.
  */
-export default function Footer({ page, setPage, openCount = 0 }) {
+export default function Footer({
+  page,
+  setPage,
+  openCount = 0,
+  module = /** @type {string} */ (MODULE.LDAR),
+  onRoute = /** @type {(() => void)|null} */ (null),
+}) {
   const { t } = useLanguage();
-  const navItems = useMemo(
-    () => [
+  const navItems = useMemo(() => {
+    const database = {
+      key: "db",
+      icon: "database",
+      label: t("footer.database"),
+      badge: true,
+    };
+    const map = { key: "map", icon: "map", label: t("footer.map") };
+    if (module === MODULE.MONITORING) {
+      return [
+        { key: "", icon: "list", label: t("footer.records") },
+        database,
+        ...(onRoute ? [{ key: "route", fab: true }] : []),
+        { key: "monitoring", icon: "pulse", label: t("footer.round") },
+        map,
+      ];
+    }
+    return [
       { key: "", icon: "home", label: t("footer.home") },
-      { key: "db", icon: "database", label: t("footer.database"), badge: true },
+      database,
       { key: "add", fab: true },
-      { key: "monitoring", icon: "chart", label: t("footer.monitoring") },
-      { key: "map", icon: "map", label: t("footer.map") },
-    ],
-    [t],
-  );
+      map,
+    ];
+  }, [t, module, onRoute]);
+
   return (
     <footer className={s.nav}>
       {navItems.map((item) =>
         item.fab ? (
-          <button
-            key="add"
-            type="button"
-            className={s.fab}
-            onClick={() => setPage("add")}
-            aria-label={t("footer.addLeak")}
-          >
-            <Icon name="plus" size={26} strokeWidth={2.2} />
-          </button>
+          item.key === "add" ? (
+            <button
+              key="add"
+              type="button"
+              className={s.fab}
+              onClick={() => setPage("add")}
+              aria-label={t("footer.addLeak")}
+            >
+              <Icon name="plus" size={26} strokeWidth={2.2} />
+            </button>
+          ) : (
+            <button
+              key="route"
+              type="button"
+              className={s.fab}
+              onClick={onRoute}
+              aria-label={t("footer.route")}
+            >
+              <Icon name="route" size={26} strokeWidth={2} />
+            </button>
+          )
         ) : (
           <button
             key={item.key || "home"}

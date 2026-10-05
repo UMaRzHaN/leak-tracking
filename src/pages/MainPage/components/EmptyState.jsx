@@ -2,12 +2,17 @@ import s from "@/pages/MainPage/MainPage.module.scss";
 import { useMemo } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 
-export default function EmptyState({ setPage }) {
+export default function EmptyState({
+  setPage,
+  canAdd = true,
+  hasFilter = false,
+}) {
   const { t } = useLanguage();
 
   const localeTexts = useMemo(
     () => ({
       noRecords: t("emptyState.noRecords"),
+      noFilteredRecords: t("emptyState.noFilteredRecords"),
       addFirstLeak: t("emptyState.addFirstLeak"),
       addLeak: t("emptyState.addLeak"),
     }),
@@ -15,12 +20,18 @@ export default function EmptyState({ setPage }) {
   );
   return (
     <div className={s.empty}>
-      <span className={s.emptyIcon}>📋</span>
-      <p className={s.emptyTitle}>{localeTexts.noRecords}</p>
-      <p className={s.emptyHint}>{localeTexts.addFirstLeak}</p>
-      <button className={s.emptyBtn} onClick={() => setPage("add")}>
-        {localeTexts.addLeak}
-      </button>
+      <span className={s.emptyIcon}>{hasFilter ? "🔍" : "📋"}</span>
+      <p className={s.emptyTitle}>
+        {hasFilter ? localeTexts.noFilteredRecords : localeTexts.noRecords}
+      </p>
+      {canAdd && !hasFilter && (
+        <>
+          <p className={s.emptyHint}>{localeTexts.addFirstLeak}</p>
+          <button className={s.emptyBtn} onClick={() => setPage("add")}>
+            {localeTexts.addLeak}
+          </button>
+        </>
+      )}
     </div>
   );
 }

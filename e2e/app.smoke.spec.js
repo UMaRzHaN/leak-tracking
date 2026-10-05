@@ -12,6 +12,7 @@ import {
   openLeakDetails,
   openMap,
   setUserProfile,
+  openRound,
 } from "./helpers.js";
 
 async function seedMapCache(page, count = 3) {
@@ -62,12 +63,7 @@ test("opens the main application sections", async ({ page }) => {
   await expect(databaseButton).toHaveAttribute("aria-current", "page");
   await expect(page.getByText("Записей нет", { exact: true })).toBeVisible();
 
-  const monitoringButton = page.getByRole("button", {
-    name: "Мониторинг",
-    exact: true,
-  });
-  await monitoringButton.click();
-  await expect(monitoringButton).toHaveAttribute("aria-current", "page");
+  await openRound(page);
   await expect(
     page.getByText(
       "Активного обхода нет. Начните мониторинг, чтобы сформировать список к проверке.",
@@ -274,7 +270,7 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
     page.getByText("Уточнено в сквозном E2E", { exact: true }).first(),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "Мониторинг", exact: true }).click();
+  await openRound(page);
   await page.getByRole("button", { name: "Начать мониторинг" }).click();
   await page.getByRole("button", { name: "Начать обход" }).click();
   await page.getByRole("button", { name: "Проверить", exact: true }).click();
@@ -352,12 +348,12 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
   ).toHaveCount(2);
   await page.getByRole("button", { name: "Закрыть", exact: true }).click();
 
-  await page.getByRole("button", { name: "Мониторинг", exact: true }).click();
+  await openRound(page);
   await expect(page.getByText("Обход завершён", { exact: true })).toBeVisible();
   await expect(page.getByText("1/1", { exact: true })).toBeVisible();
 
   await page.reload();
-  await page.getByRole("button", { name: "Мониторинг", exact: true }).click();
+  await openRound(page);
   await expect(page.getByText("Обход завершён", { exact: true })).toBeVisible();
 });
 
@@ -398,7 +394,7 @@ test("records and completes a monitoring round", async ({ page }) => {
   await setUserProfile(page);
   await createLeak(page, "5401");
 
-  await page.getByRole("button", { name: "Мониторинг", exact: true }).click();
+  await openRound(page);
   await page.getByRole("button", { name: "Начать мониторинг" }).click();
   await expect(
     page.getByRole("heading", { name: "Начать мониторинг?" }),
@@ -417,7 +413,7 @@ test("records and completes a monitoring round", async ({ page }) => {
   );
 
   await page.getByRole("button", { name: "К проверке" }).click();
-  await page.getByRole("button", { name: "Мониторинг", exact: true }).click();
+  await openRound(page);
   await expect(
     page.getByRole("button", { name: "К проверке 1" }),
   ).toHaveAttribute("aria-pressed", "true");
@@ -442,7 +438,7 @@ test("records and completes a monitoring round", async ({ page }) => {
   await expect(page.getByText("Обход завершён", { exact: true })).toBeVisible();
 
   await page.reload();
-  await page.getByRole("button", { name: "Мониторинг", exact: true }).click();
+  await openRound(page);
   await expect(page.getByText("Обход завершён", { exact: true })).toBeVisible();
   await expect(page.getByText("1/1", { exact: true })).toBeVisible();
 });

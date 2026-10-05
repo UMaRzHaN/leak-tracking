@@ -15,6 +15,7 @@ function renderMenu(props = {}) {
     setPage: vi.fn(),
     onOpenSettings: vi.fn(),
     onEditProfile: vi.fn(),
+    onSelectModule: vi.fn(),
   };
   render(
     <AppMenu
@@ -75,5 +76,26 @@ describe("AppMenu", () => {
   it("asks for a name when the profile has none", () => {
     renderMenu({ userProfile: null });
     expect(screen.getByText("No name set")).toBeTruthy();
+  });
+
+  it("switches the module instead of jumping to a page", () => {
+    const { onSelectModule, setPage } = renderMenu();
+
+    fireEvent.click(screen.getByRole("button", { name: "Monitoring" }));
+
+    expect(onSelectModule).toHaveBeenCalledWith("monitoring");
+    expect(setPage).not.toHaveBeenCalled();
+  });
+
+  it("marks the active module", () => {
+    renderMenu({ module: "monitoring" });
+    expect(
+      screen
+        .getByRole("button", { name: "Monitoring" })
+        .getAttribute("aria-current"),
+    ).toBe("page");
+    expect(
+      screen.getByRole("button", { name: /LDAR/ }).getAttribute("aria-current"),
+    ).toBeNull();
   });
 });

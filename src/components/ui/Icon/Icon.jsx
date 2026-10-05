@@ -83,6 +83,38 @@ const PATHS = {
     </>
   ),
   swap: <path d="M7 15l5 5 5-5M7 9l5-5 5 5" />,
+  list: <path d="M5 6h14M5 12h14M5 18h9" />,
+  pulse: <path d="M3 13h4l2.5-6 3 12 2.5-6H21" />,
+  route: (
+    <>
+      <path d="M6 20V9a3 3 0 013-3h6a3 3 0 003-3" strokeDasharray="3 3" />
+      <circle cx="18" cy="3.5" r="2.3" />
+      <circle cx="6" cy="20.5" r="2.3" />
+    </>
+  ),
+  search: (
+    <>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M20 20l-4.2-4.2" />
+    </>
+  ),
+  filter: <path d="M4 5h16l-6.2 7.4V19l-3.6-1.8v-4.8L4 5z" />,
+  check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
+  chevronLeft: <path d="M15 5.5L8.5 12l6.5 6.5" />,
+  trash: (
+    <>
+      <path d="M5 7h14M10 4h4M7 7l1 13h8l1-13" />
+      <path d="M10.5 11v5.5M13.5 11v5.5" />
+    </>
+  ),
+  image: (
+    <>
+      <path d="M3.5 6.5h17v11h-17z" />
+      <path d="M3.5 15l4.5-4 4 3.5 3.5-3 5 4.5" />
+      <circle cx="9" cy="10" r="1.4" fill="currentColor" stroke="none" />
+    </>
+  ),
+  navigate: <path d="M12 3l7 18-7-4-7 4 7-18z" />,
 };
 
 export default function Icon({ name, size = 22, strokeWidth = 1.9 }) {

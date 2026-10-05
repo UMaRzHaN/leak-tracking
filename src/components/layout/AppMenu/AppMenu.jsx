@@ -2,6 +2,7 @@ import { useId } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useModalDialog } from "@/hooks/useModalDialog";
 import Icon from "@/components/ui/Icon/Icon";
+import { MODULE } from "@/app/modules/activeModule";
 import s from "./AppMenu.module.scss";
 
 /**
@@ -9,14 +10,17 @@ import s from "./AppMenu.module.scss";
  * переехало всё, что нужно не на каждом шагу обхода: профиль, проект,
  * настройки, модули, обмен данными.
  *
- * Пункт ведёт либо на страницу (`page`), либо в раздел настроек (`section`):
- * экспорт, импорт и синхронизация пока живут там, а не на своих экранах.
+ * Пункт модуля (LDAR, мониторинг) переключает модуль — вместе с ним меняется
+ * нижняя панель. Экспорт, импорт и синхронизация пока ведут в разделы
+ * настроек, а не на свои экраны.
  */
 export default function AppMenu({
   open,
   onClose,
   page,
   setPage,
+  module = /** @type {string} */ (MODULE.LDAR),
+  onSelectModule,
   onOpenSettings,
   onEditProfile,
   userProfile,
@@ -43,15 +47,15 @@ export default function AppMenu({
       label: t("appMenu.leaks"),
       meta: openCount > 0 ? t("appMenu.openCount", { count: openCount }) : "",
       metaTone: "danger",
-      active: page === "" || page === "db" || page === "map",
-      onClick: () => setPage(""),
+      active: module === MODULE.LDAR && page !== "components",
+      onClick: () => onSelectModule(MODULE.LDAR),
     },
     {
       key: "monitoring",
       icon: "chart",
       label: t("appMenu.monitoring"),
-      active: page === "monitoring",
-      onClick: () => setPage("monitoring"),
+      active: module === MODULE.MONITORING && page !== "components",
+      onClick: () => onSelectModule(MODULE.MONITORING),
     },
     ...(showRegistry
       ? [

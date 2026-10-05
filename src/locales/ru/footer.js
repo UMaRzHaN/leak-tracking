@@ -3,5 +3,7 @@ export const footer = {
   database: "База",
   map: "Карта",
   addLeak: "Добавить утечку",
-  monitoring: "Мониторинг",
+  records: "Записи",
+  round: "Обход",
+  route: "Построить маршрут",
 };

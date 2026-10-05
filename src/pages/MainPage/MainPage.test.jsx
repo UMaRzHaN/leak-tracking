@@ -12,8 +12,8 @@ vi.mock("@/app/hooks/useLanguage", () => ({
   }),
 }));
 vi.mock("./components/EmptyState", () => ({
-  default: ({ setPage }) => (
-    <button onClick={() => setPage("add")}>empty</button>
+  default: ({ setPage, canAdd }) => (
+    <button onClick={() => setPage("add")}>empty:{String(canAdd)}</button>
   ),
 }));
 vi.mock("@/features/leakList/LeakCardCompact/LeakCardCompact", () => ({
@@ -84,6 +84,9 @@ function createActions(overrides = {}) {
     stats: { total: 6, open: 2, inProgress: 2, resolved: 2 },
     recent: [leak],
     RECENT_COUNT: 5,
+    statusFilter: "all",
+    setStatusFilter: vi.fn(),
+    ALL: "all",
     handlePickStatus: vi.fn(),
     handleStatusSelect: vi.fn(),
     handleResolveConfirm: vi.fn(),
@@ -154,7 +157,7 @@ describe("MainPage", () => {
     const setPage = vi.fn();
     render(<MainPage setPage={setPage} data={[]} setData={vi.fn()} />);
 
-    fireEvent.click(screen.getByText("empty"));
+    fireEvent.click(screen.getByText("empty:true"));
     expect(setPage).toHaveBeenCalledWith("add");
   });
 
@@ -238,5 +241,31 @@ describe("MainPage", () => {
     );
 
     expect(screen.queryByText(/mainPage\.showAll/)).toBeNull();
+  });
+
+  it("filters by status chips in the monitoring module and offers no adding", () => {
+    actionsState.current = createActions({
+      recent: [],
+      activeLeak: null,
+      pickerLeak: null,
+      resolveLeak: null,
+      repairLeak: null,
+      reopenLeak: null,
+    });
+    render(
+      <MainPage
+        setPage={vi.fn()}
+        data={[]}
+        setData={vi.fn()}
+        module="monitoring"
+        coverage={{ surveyed: 1, total: 2, percent: 50 }}
+      />,
+    );
+
+    // Охват — на главной LDAR; в мониторинге на его месте чипы.
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    fireEvent.click(screen.getByText("mainPage.chips.open"));
+    expect(actionsState.current.setStatusFilter).toHaveBeenCalledWith("open");
+    expect(screen.getByText("empty:false")).toBeTruthy();
   });
 });
