@@ -369,6 +369,11 @@ async function databaseShots(page) {
       .first()
       .click();
     await page.getByRole("heading", { name: "Выбор объекта" }).waitFor();
+    // Две отметки показывают мультивыбор; закрытие листа их сбрасывает,
+    // так что область для следующих снимков не меняется.
+    const picks = page.getByRole("checkbox");
+    await picks.nth(0).click();
+    await picks.nth(1).click();
     await shot(page, "22-location-scope", { settle: 700 });
     await page.getByRole("button", { name: "Закрыть", exact: true }).click();
     await page.waitForTimeout(400);
