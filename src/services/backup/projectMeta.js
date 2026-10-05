@@ -11,6 +11,7 @@ export function buildProjectMeta({
   vars,
   settings,
   monitoringRound,
+  acceptances,
   syncState,
 } = {}) {
   if (!project) return null;
@@ -27,6 +28,7 @@ export function buildProjectMeta({
     vars: vars ?? undefined,
     settings: settings ?? undefined,
     monitoringRound: monitoringRound ?? undefined,
+    acceptances: acceptances?.length ? acceptances : undefined,
     sync: syncState ?? undefined,
   };
 }

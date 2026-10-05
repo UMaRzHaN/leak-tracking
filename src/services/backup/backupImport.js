@@ -26,6 +26,8 @@ import {
   readMonitoringRound,
   saveMonitoringRound,
 } from "@/utils/monitoringRound";
+import { readAcceptances, saveAcceptances } from "@/utils/acceptanceStorage";
+import { mergeInvoices } from "@/domain/equipmentAcceptance";
 import { logger } from "@/utils/logger";
 import { openArchive } from "./backupArchiveSession";
 import { filterIncomingLeaksForMerge, mergeLeaksByFreshness } from "./merge";
@@ -130,6 +132,9 @@ export async function importProjectZip(file, ctx) {
       newProject.id,
       getRestoredMonitoringRound(meta, finalLeaks),
     );
+    if (Array.isArray(meta?.acceptances)) {
+      saveAcceptances(newProject.id, meta.acceptances);
+    }
     await saveImportedProject(finalLeaks, {
       preservedRecords: restoredRecoveryRecords,
     });
@@ -333,6 +338,14 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
         localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(existingProjectId));
       }
       saveMonitoringRound(existingProjectId, nextMonitoringRound);
+      // Накладные сливаются, а не заменяются: приёмку, сделанную на этом
+      // устройстве после выгрузки архива, перезапись терять не должна.
+      if (Array.isArray(meta?.acceptances)) {
+        saveAcceptances(
+          existingProjectId,
+          mergeInvoices(readAcceptances(existingProjectId), meta.acceptances),
+        );
+      }
       if (incomingSyncState) {
         await writeProjectSyncState(
           existingProjectId,
@@ -357,6 +370,14 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
         }
       }
       saveMonitoringRound(existingProjectId, nextMonitoringRound);
+      // Накладные сливаются, а не заменяются: приёмку, сделанную на этом
+      // устройстве после выгрузки архива, перезапись терять не должна.
+      if (Array.isArray(meta?.acceptances)) {
+        saveAcceptances(
+          existingProjectId,
+          mergeInvoices(readAcceptances(existingProjectId), meta.acceptances),
+        );
+      }
       await writeProjectSyncState(
         existingProjectId,
         mergeProjectSyncStates(

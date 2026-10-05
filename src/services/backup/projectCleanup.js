@@ -8,6 +8,7 @@ import { SchemaRepository } from "@/repositories/SchemaRepository";
 import { clearProjectSyncState } from "@/services/sync/projectSyncState";
 import { isNative } from "@/utils/platform";
 import { saveMonitoringRound } from "@/utils/monitoringRound";
+import { saveAcceptances } from "@/utils/acceptanceStorage";
 import { ignoredError } from "@/utils/ignoredError";
 
 /**
@@ -72,6 +73,7 @@ export async function rollbackImportedProject(project, removeProject) {
   let cleanupError = /** @type {unknown} */ (null);
   try {
     saveMonitoringRound(project.id, null);
+    saveAcceptances(project.id, []);
     await deleteProjectArtifacts(project);
   } catch (error) {
     cleanupError = error;

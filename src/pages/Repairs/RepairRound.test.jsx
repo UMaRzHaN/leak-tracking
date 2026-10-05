@@ -5,6 +5,9 @@ vi.mock("@/app/hooks/useLanguage", async () => {
   const { englishLanguageHook } = await import("@/test/translate");
   return englishLanguageHook();
 });
+vi.mock("@/app/project/ProjectContext", () => ({
+  useProjectData: () => ({ activeProject: { id: "p1" } }),
+}));
 vi.mock("@/hooks/usePhotoStorage", () => ({
   usePhotoStorage: () => ({
     savePhoto: vi.fn(async () => "photos/after.jpg"),

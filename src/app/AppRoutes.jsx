@@ -11,6 +11,7 @@ const DataBase = lazy(() => import("@/pages/DataBase/DataBase"));
 const MapPage = lazy(() => import("@/pages/MapPage/MapPage"));
 const Monitoring = lazy(() => import("@/pages/Monitoring/Monitoring"));
 const RepairRound = lazy(() => import("@/pages/Repairs/RepairRound"));
+const AcceptanceList = lazy(() => import("@/pages/Repairs/AcceptanceList"));
 const ComponentRegistry = lazy(
   () => import("@/pages/ComponentRegistry/ComponentRegistry"),
 );
@@ -225,6 +226,13 @@ export default function AppRoutes({
             sharedFilters={sharedFilters}
             onMonitorLeak={requestMonitoring}
             onMonitorLeaks={requestMonitoringQueue}
+            userProfile={userProfile}
+          />
+        )}
+
+        {dataLoaded && !loadError && page === "acceptance" && (
+          <AcceptanceList
+            onBack={() => goBack(prevPage)}
             userProfile={userProfile}
           />
         )}

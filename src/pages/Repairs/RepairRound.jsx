@@ -20,6 +20,9 @@ import { getRepairDoneAt } from "@/domain/leakEvents";
 import { getRepairStageMeta, splitMaterials } from "@/utils/repairStage";
 import { formatMonitoringDate } from "@/utils/monitoring";
 import { errorText } from "@/utils/appError";
+import { useProjectData } from "@/app/project/ProjectContext";
+import { useAcceptances } from "@/utils/acceptanceStorage";
+import { receivedItems } from "@/domain/equipmentAcceptance";
 import { ignoredError } from "@/utils/ignoredError";
 import s from "./Repairs.module.scss";
 
@@ -63,10 +66,13 @@ export default function RepairRound({
   scopedData = data,
   setData,
   userProfile,
-  acceptanceItems = [],
 }) {
   const { t, lang } = useLanguage();
   const { deletePhoto } = usePhotoStorage();
+  const { activeProject } = useProjectData();
+  // «МТР по факту» в приёмке — из того, что принято по накладным (7f).
+  const [invoices] = useAcceptances(activeProject?.id ?? null);
+  const acceptanceItems = useMemo(() => receivedItems(invoices), [invoices]);
   const [filter, setFilter] = useState(/** @type {string} */ (FILTER.DUE));
   const [search, setSearch] = useState("");
   const [markLeak, setMarkLeak] = useState(/** @type {any} */ (null));

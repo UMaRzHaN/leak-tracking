@@ -5,5 +5,6 @@ export const footer = {
   addLeak: "Добавить утечку",
   records: "Записи",
   round: "Обход",
+  acceptance: "Приёмка оборудования",
   route: "Построить маршрут",
 };

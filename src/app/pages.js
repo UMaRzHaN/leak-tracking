@@ -25,6 +25,7 @@ export const APP_PAGES = new Set([
   "component",
   "settings",
   "repair-round",
+  "acceptance",
 ]);
 
 /**
@@ -53,7 +54,12 @@ export const LIST_PAGES = new Set([
  * Deliberately not list pages — these scroll the document, the way the leak form
  * does, rather than being pinned to the viewport.
  */
-export const FULL_SCREEN_PAGES = new Set(["add", "settings", "component"]);
+export const FULL_SCREEN_PAGES = new Set([
+  "add",
+  "settings",
+  "component",
+  "acceptance",
+]);
 
 export function isFullScreenPage(page) {
   return FULL_SCREEN_PAGES.has(page);

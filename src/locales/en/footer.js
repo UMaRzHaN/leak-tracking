@@ -5,5 +5,6 @@ export const footer = {
   addLeak: "Add Leak",
   records: "Records",
   round: "Round",
+  acceptance: "Equipment acceptance",
   route: "Build a route",
 };

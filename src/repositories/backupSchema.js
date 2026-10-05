@@ -379,6 +379,10 @@ export function validateProjectBackupMeta(parsed) {
     pushIssue(issues, ["vars"], "Expected object");
   }
 
+  if (parsed.acceptances !== undefined && !Array.isArray(parsed.acceptances)) {
+    pushIssue(issues, ["acceptances"], "Expected array");
+  }
+
   if (parsed.settings !== undefined) {
     if (!isPlainObject(parsed.settings)) {
       pushIssue(issues, ["settings"], "Expected object");

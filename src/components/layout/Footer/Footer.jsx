@@ -27,10 +27,10 @@ export default function Footer({
     };
     const map = { key: "map", icon: "map", label: t("footer.map") };
     if (module === MODULE.REPAIRS) {
-      // Центр (приёмка оборудования) появится вместе со своим экраном.
       return [
         { key: "", icon: "list", label: t("footer.records") },
         database,
+        { key: "acceptance", fab: true },
         { key: "repair-round", icon: "pulse", label: t("footer.round") },
         map,
       ];
@@ -56,7 +56,17 @@ export default function Footer({
     <footer className={s.nav}>
       {navItems.map((item) =>
         item.fab ? (
-          item.key === "add" ? (
+          item.key === "acceptance" ? (
+            <button
+              key="acceptance"
+              type="button"
+              className={s.fab}
+              onClick={() => setPage("acceptance")}
+              aria-label={t("footer.acceptance")}
+            >
+              <Icon name="document" size={26} strokeWidth={2} />
+            </button>
+          ) : item.key === "add" ? (
             <button
               key="add"
               type="button"

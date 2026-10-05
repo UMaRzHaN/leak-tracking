@@ -326,6 +326,10 @@
 .primary {
   width: 100%;
   min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   border: none;
   border-radius: 16px;
   background: var(--c-accent);
@@ -469,6 +473,7 @@
 .screenTitle {
   min-width: 0;
 
+  h1,
   h2 {
     color: var(--c-ink);
     font-size: 22px;
@@ -507,4 +512,551 @@
   @supports (padding-bottom: env(safe-area-inset-bottom)) {
     padding-bottom: calc(14px + env(safe-area-inset-bottom));
   }
+}
+
+/* ── Приёмка оборудования (7f) ── */
+.acceptancePage {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-surface2);
+}
+
+.pageHeader {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: grid;
+  gap: 14px;
+  padding: 14px 20px;
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border-soft);
+
+  @supports (padding-top: env(safe-area-inset-top)) {
+    padding-top: calc(14px + env(safe-area-inset-top));
+  }
+
+  h1 {
+    color: var(--c-ink);
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+}
+
+.pageHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.acceptanceBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px 24px;
+}
+
+.chipRow {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chipOn,
+.chipOff {
+  flex: none;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  font-weight: 800;
+
+  span {
+    opacity: 0.75;
+  }
+}
+
+.chipOn {
+  border: 1px solid var(--c-accent);
+  background: var(--c-accent);
+  color: #fff;
+}
+
+.chipOff {
+  border: 1px solid var(--c-border-soft);
+  background: var(--c-surface);
+  color: var(--c-ink);
+
+  span {
+    color: var(--c-text3);
+    opacity: 1;
+  }
+}
+
+.invoice {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-xl);
+  background: var(--c-surface);
+  box-shadow: var(--shadow-sm);
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--tone);
+  }
+}
+
+.invoice_accent {
+  --tone: var(--c-accent);
+  --tone-bg: var(--c-accent-surface);
+  --tone-text: var(--c-accent-text);
+}
+
+.invoice_warn {
+  --tone: var(--c-progress);
+  --tone-bg: var(--c-progress-bg);
+  --tone-text: var(--c-progress-text);
+}
+
+.invoice_ok {
+  --tone: var(--c-resolved);
+  --tone-bg: var(--c-resolved-bg);
+  --tone-text: var(--c-resolved-text);
+}
+
+.invoiceHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px 8px 16px;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--tone-bg);
+
+  strong {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--c-text);
+    font-size: 13px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    color: var(--c-text3);
+    font-size: 11px;
+  }
+}
+
+.invoiceBadge {
+  padding: 2px 8px;
+  border: 1.5px solid currentColor;
+  border-radius: var(--r-pill);
+  color: var(--tone-text);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.invoiceBody {
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px 12px 16px;
+  border-bottom: 1px solid var(--c-border);
+
+  strong {
+    color: var(--c-text);
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  span {
+    color: var(--c-text2);
+    font-size: 12px;
+  }
+}
+
+.invoiceFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.okText {
+  color: var(--c-resolved-text);
+}
+
+.warnText {
+  color: var(--c-progress-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ── Новая приёмка (7e) ── */
+.fieldHeadRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+
+  em {
+    color: var(--c-text3);
+    font-style: normal;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+}
+
+.formCard {
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+  border-radius: 18px;
+  background: var(--c-surface);
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  align-items: center;
+  min-height: 54px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--c-border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  span {
+    color: var(--c-text2);
+    font-size: 14px;
+  }
+
+  input {
+    min-height: 52px;
+    border: none;
+    background: none;
+    color: var(--c-ink);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    outline: none;
+  }
+}
+
+.lineRow {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.lineHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  strong {
+    flex: 1;
+    min-width: 0;
+    color: var(--c-ink);
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  input {
+    width: 64px;
+    height: 44px;
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    background: var(--c-surface2);
+    color: var(--c-ink);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    text-align: center;
+  }
+
+  small {
+    color: var(--c-text3);
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+}
+
+.qtyShort {
+  border-color: var(--c-progress-border) !important;
+  background: var(--c-progress-bg) !important;
+  color: var(--c-progress-text) !important;
+}
+
+.lineChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.chipOk,
+.chipWarn {
+  min-height: 32px;
+  padding: 0 11px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chipOk {
+  border: 1px solid var(--c-resolved-border);
+  background: var(--c-resolved-bg);
+  color: var(--c-resolved-text);
+}
+
+.chipWarn {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--c-progress-border);
+  background: var(--c-progress-bg);
+  color: var(--c-progress-text);
+}
+
+.linkBtn {
+  min-height: 32px;
+  border: none;
+  background: none;
+  color: var(--c-accent-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.remarkInput,
+.remarkFilled {
+  border-color: var(--c-progress-border) !important;
+  background: var(--c-progress-bg) !important;
+  color: var(--c-progress-text) !important;
+}
+
+.remarkInput {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.addLine {
+  width: 100%;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: none;
+  background: var(--c-surface2);
+  color: var(--c-accent);
+  text-align: left;
+
+  span {
+    display: grid;
+    gap: 2px;
+  }
+
+  strong {
+    color: var(--c-accent-text);
+    font-size: 15px;
+  }
+
+  small {
+    color: var(--c-text3);
+    font-size: 12px;
+  }
+}
+
+/* ── Ввод позиции (7g, 7h) ── */
+.qtyGroup {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  border: 1px solid var(--c-border);
+  border-radius: 16px;
+  background: var(--c-surface);
+
+  label {
+    display: grid;
+    gap: 2px;
+    padding: 10px 14px;
+    border-right: 1px solid var(--c-border);
+
+    small {
+      color: var(--c-text2);
+      font-size: 12px;
+    }
+
+    input {
+      height: auto;
+      padding: 0;
+      border: none;
+      background: none;
+      font-size: 20px;
+      font-weight: 800;
+    }
+  }
+}
+
+.unitPick {
+  position: relative;
+
+  > button {
+    height: 100%;
+    min-width: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 0 16px 16px 0;
+    background: var(--c-surface2);
+    color: var(--c-ink);
+    font-size: 15px;
+    font-weight: 800;
+  }
+}
+
+.unitList {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 2;
+  width: 200px;
+  overflow: hidden;
+  border: 1px solid var(--c-border-soft);
+  border-radius: 16px;
+  background: var(--c-surface);
+  box-shadow: var(--shadow-lg);
+  list-style: none;
+
+  button {
+    width: 100%;
+    min-height: 54px;
+    display: grid;
+    padding: 8px 16px;
+    border: none;
+    border-bottom: 1px solid var(--c-border);
+    background: none;
+    text-align: left;
+
+    strong {
+      color: var(--c-ink);
+      font-size: 15px;
+    }
+
+    small {
+      color: var(--c-text3);
+      font-size: 12px;
+    }
+  }
+}
+
+.unitActive {
+  background: var(--c-accent-surface) !important;
+
+  strong {
+    color: var(--c-accent-text) !important;
+  }
+}
+
+.checkGroup {
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+  border-radius: 16px;
+  background: var(--c-surface);
+}
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 58px;
+  padding: 6px 8px 6px 16px;
+  border-bottom: 1px solid var(--c-border);
+  color: var(--c-ink);
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.yesNo {
+  display: flex;
+  gap: 6px;
+
+  button {
+    min-width: 54px;
+    min-height: 44px;
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    background: var(--c-surface2);
+    color: var(--c-text2);
+    font-size: 15px;
+    font-weight: 700;
+  }
+}
+
+.yesActive {
+  border-color: var(--c-resolved) !important;
+  background: var(--c-resolved) !important;
+  color: #fff !important;
+}
+
+.noActive {
+  border-color: var(--c-progress) !important;
+  background: var(--c-progress) !important;
+  color: #fff !important;
+}
+
+.sheetActions {
+  display: flex;
+  gap: 10px;
+
+  .primary {
+    flex: 1;
+  }
+}
+
+.secondary {
+  flex: none;
+  min-height: 54px;
+  padding: 0 22px;
+  border: 1px solid var(--c-border);
+  border-radius: 16px;
+  background: var(--c-surface2);
+  color: var(--c-text2);
+  font-size: 16px;
+  font-weight: 800;
 }

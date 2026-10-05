@@ -1,3 +1,4 @@
+import { acceptance } from "./acceptance";
 import { addLeak } from "./addLeak";
 import { app } from "./app";
 import { appMenu } from "./appMenu";
@@ -38,6 +39,7 @@ import { userProfile } from "./userProfile";
 import { voice } from "./voice";
 
 export const translation = {
+  acceptance,
   addLeak,
   app,
   appMenu,

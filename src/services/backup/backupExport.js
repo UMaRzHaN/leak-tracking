@@ -15,6 +15,7 @@ function monitoringFolderLabel(result) {
   return getMonitoringResultLabel(result, i18next.language).toLowerCase();
 }
 import { readMonitoringRound } from "@/utils/monitoringRound";
+import { readAcceptances } from "@/utils/acceptanceStorage";
 import { assertImportFileSize, IMPORT_LIMITS } from "@/utils/importLimits";
 import { withPortablePhotoValues } from "@/utils/photoValues";
 import { RECOVERY_RECORDS_FILE } from "./constants";
@@ -155,6 +156,7 @@ export async function streamProjectBackupZip({
     vars,
     settings: readProjectSettings(project?.id),
     monitoringRound: readMonitoringRound(project?.id),
+    acceptances: readAcceptances(project?.id),
     syncState: await readProjectSyncStateAsync(project?.id),
   });
   if (meta) await zip.add("project.json", JSON.stringify(meta, null, 2));
@@ -211,6 +213,7 @@ export async function buildProjectBackupZip({
     vars,
     settings: readProjectSettings(project?.id),
     monitoringRound: readMonitoringRound(project?.id),
+    acceptances: readAcceptances(project?.id),
     syncState: await readProjectSyncStateAsync(project?.id),
   });
   if (meta) zip.file("project.json", JSON.stringify(meta, null, 2));
