@@ -25,6 +25,7 @@ import { photoViewer } from "./photoViewer";
 import { projectSetup } from "./projectSetup";
 import { priority } from "./priority";
 import { pwa } from "./pwa";
+import { reconcile } from "./reconcile";
 import { reopen } from "./reopen";
 import { repairs } from "./repairs";
 import { route } from "./route";
@@ -66,6 +67,7 @@ export const translation = {
   projectSetup,
   priority,
   pwa,
+  reconcile,
   reopen,
   repairs,
   route,

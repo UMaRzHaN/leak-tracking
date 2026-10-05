@@ -1,0 +1,20 @@
+export const reconcile = {
+  title: "Reconciliation No. {{number}}",
+  noRound: "No reconciliation yet",
+  newRound: "New reconciliation",
+  newRoundTitle: "Start a new reconciliation?",
+  newRoundDescription:
+    "Every component goes back to “To reconcile”. Past inspection marks stay on the cards.",
+  newRoundConfirm: "Start",
+  search: "Number, scheme, site, component",
+  due: "To reconcile",
+  done: "Reconciled",
+  all: "All",
+  empty: "No components",
+  searchEmpty: "Nothing found",
+  check: "Reconcile",
+  never: "Not reconciled",
+  inspectedAt: "Inspected: {{date}}",
+  reconciledAt: "Reconciled {{date}}",
+  saved: "Reconciliation saved",
+};

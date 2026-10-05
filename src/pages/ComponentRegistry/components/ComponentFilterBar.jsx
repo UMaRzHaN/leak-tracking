@@ -1,6 +1,7 @@
 import { memo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import s from "@/pages/DataBase/DataBase.module.scss";
+import Icon from "@/components/ui/Icon/Icon";
 
 /**
  * Поиск и фильтры реестра — той же полосой, что на странице базы.
@@ -45,7 +46,9 @@ function ComponentFilterBar({
     <>
       <div className={s.searchRow}>
         <div className={s.searchWrap}>
-          <span className={s.searchIcon}>🔍</span>
+          <span className={s.searchIcon}>
+            <Icon name="search" size={18} />
+          </span>
           <input
             className={s.searchInput}
             placeholder={t("components.searchPlaceholder")}

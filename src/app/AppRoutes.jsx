@@ -12,6 +12,7 @@ const MapPage = lazy(() => import("@/pages/MapPage/MapPage"));
 const Monitoring = lazy(() => import("@/pages/Monitoring/Monitoring"));
 const RepairRound = lazy(() => import("@/pages/Repairs/RepairRound"));
 const AcceptanceList = lazy(() => import("@/pages/Repairs/AcceptanceList"));
+const Reconcile = lazy(() => import("@/pages/Reconcile/Reconcile"));
 const ComponentRegistry = lazy(
   () => import("@/pages/ComponentRegistry/ComponentRegistry"),
 );
@@ -227,6 +228,14 @@ export default function AppRoutes({
             sharedFilters={sharedFilters}
             onMonitorLeak={requestMonitoring}
             onMonitorLeaks={requestMonitoringQueue}
+            userProfile={userProfile}
+          />
+        )}
+
+        {dataLoaded && !loadError && page === "reconcile" && (
+          <Reconcile
+            project={activeProject}
+            sharedFilters={sharedFilters}
             userProfile={userProfile}
           />
         )}

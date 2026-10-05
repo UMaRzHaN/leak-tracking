@@ -1,5 +1,6 @@
 /* Чипы-счётчики над списками (5a, 6a, 7a). */
 .chips {
+  flex: none;
   display: flex;
   gap: 7px;
   margin: 0 -20px;

@@ -187,3 +187,26 @@ test("открепляет карточку, оставляя заполненн
   ).toBeVisible();
   await expect(page.getByLabel(/^Компонент$/)).toHaveValue("Задвижка");
 });
+
+test("сверяет компонент в разделе «Сверка»", async ({ page }) => {
+  await createProject(page, "Reconcile E2E");
+  await setUserProfile(page);
+  await openComponentRegistry(page);
+  await addComponentCard(page, {
+    uid: "9101",
+    tag: "ЗД-1",
+    location: "Цех 2",
+    name: "Задвижка",
+  });
+
+  await page
+    .getByRole("contentinfo")
+    .getByRole("button", { name: "Сверка", exact: true })
+    .click();
+  await expect(page.getByRole("button", { name: "К сверке 1" })).toBeVisible();
+  await page.getByRole("button", { name: "Сверить", exact: true }).click();
+  await page.getByRole("button", { name: "В работе", exact: true }).click();
+
+  await expect(page.getByRole("button", { name: "Сверено 1" })).toBeVisible();
+  await expect(page.getByText("Сверка № 1")).toBeVisible();
+});

@@ -1,0 +1,20 @@
+export const reconcile = {
+  title: "Сверка № {{number}}",
+  noRound: "Сверка не начата",
+  newRound: "Новая сверка",
+  newRoundTitle: "Начать новую сверку?",
+  newRoundDescription:
+    "Все компоненты снова встанут в «К сверке». Отметки прошлых осмотров останутся в карточках.",
+  newRoundConfirm: "Начать сверку",
+  search: "Номер, схема, объект, компонент",
+  due: "К сверке",
+  done: "Сверено",
+  all: "Все",
+  empty: "Компонентов нет",
+  searchEmpty: "Ничего не найдено",
+  check: "Сверить",
+  never: "Не сверялся",
+  inspectedAt: "Инспекция: {{date}}",
+  reconciledAt: "Сверен {{date}}",
+  saved: "Сверка сохранена",
+};

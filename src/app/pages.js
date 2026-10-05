@@ -26,6 +26,7 @@ export const APP_PAGES = new Set([
   "settings",
   "repair-round",
   "acceptance",
+  "reconcile",
 ]);
 
 /**
@@ -43,6 +44,7 @@ export const LIST_PAGES = new Set([
   "monitoring",
   "components",
   "repair-round",
+  "reconcile",
 ]);
 
 /**
@@ -87,6 +89,7 @@ export function normalizePage(value) {
  * @returns {boolean}
  */
 export function showsComponentTree(page, mapBase) {
-  if (page === "components" || page === "component") return true;
+  if (page === "components" || page === "component" || page === "reconcile")
+    return true;
   return page === "map" && mapBase === MAP_BASE.COMPONENTS;
 }

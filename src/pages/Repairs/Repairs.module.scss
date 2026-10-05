@@ -12,6 +12,13 @@
   overflow: hidden;
 }
 
+.roundHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .roundHeader {
   display: flex;
   align-items: baseline;
@@ -123,6 +130,8 @@
 }
 
 .item .card {
+  overflow: hidden;
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
   margin-bottom: 0;
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
