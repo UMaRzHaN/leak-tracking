@@ -85,9 +85,7 @@ export default function AppMenu({
       key: "export",
       icon: "download",
       label: t("appMenu.export"),
-      // Отчёт Excel выгружается из базы — там же, где выбирают, что в него
-      // попадёт. Свой экран экспорта появится отдельным шагом редизайна.
-      onClick: () => setPage("db"),
+      onClick: () => setPage("export"),
     },
     {
       key: "import",

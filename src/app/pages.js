@@ -27,6 +27,7 @@ export const APP_PAGES = new Set([
   "repair-round",
   "acceptance",
   "reconcile",
+  "export",
 ]);
 
 /**
@@ -61,6 +62,7 @@ export const FULL_SCREEN_PAGES = new Set([
   "settings",
   "component",
   "acceptance",
+  "export",
 ]);
 
 export function isFullScreenPage(page) {

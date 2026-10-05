@@ -1,0 +1,394 @@
+/* Экспорт отчёта (8a, 8b): экран со своей шапкой, группы с подписями
+   капителью, итог и кнопка внизу. */
+.page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-surface2);
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border-soft);
+
+  @supports (padding-top: env(safe-area-inset-top)) {
+    padding-top: calc(14px + env(safe-area-inset-top));
+  }
+
+  h1 {
+    color: var(--c-ink);
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+}
+
+.back {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--c-border-soft);
+  border-radius: 13px;
+  background: var(--c-surface-soft);
+  color: var(--c-ink);
+}
+
+.caption {
+  color: var(--c-text3);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px;
+}
+
+.group {
+  display: grid;
+  gap: 10px;
+
+  h2 {
+    color: var(--c-text3);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pill,
+.pillOn {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--r-pill);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.pill {
+  border: 1px solid var(--c-border-soft);
+  background: var(--c-surface);
+  color: var(--c-ink);
+}
+
+.pillOn {
+  border: 1px solid var(--c-accent);
+  background: var(--c-accent);
+  color: #fff;
+}
+
+.dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+
+  label {
+    display: grid;
+    gap: 4px;
+  }
+
+  span {
+    color: var(--c-text2);
+    font-size: 12px;
+  }
+
+  input {
+    height: 48px;
+    padding: 0 12px;
+    border: 1px solid var(--c-border);
+    border-radius: 14px;
+    background: var(--c-surface);
+    color: var(--c-text);
+    font: inherit;
+  }
+}
+
+.card {
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+  border-radius: 18px;
+  background: var(--c-surface);
+}
+
+.row {
+  width: 100%;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border: none;
+  border-bottom: 1px solid var(--c-border);
+  background: none;
+  color: var(--c-accent);
+  text-align: left;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  > strong {
+    flex: 1;
+    min-width: 0;
+    color: var(--c-ink);
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  > small {
+    color: var(--c-text3);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  &:disabled {
+    opacity: 0.7;
+  }
+}
+
+.rowNum {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--c-accent-surface);
+  color: var(--c-accent-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.segment {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 11px;
+  background: var(--c-bg);
+
+  button {
+    min-height: 36px;
+    padding: 0 10px;
+    border: none;
+    border-radius: 9px;
+    background: none;
+    color: var(--c-text3);
+    font-size: 12px;
+    font-weight: 700;
+  }
+}
+
+.segmentOn {
+  background: var(--c-surface) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  color: var(--c-accent-text) !important;
+}
+
+.formatValue {
+  color: var(--c-ink) !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+}
+
+.switchOn,
+.switchOff {
+  position: relative;
+  flex: none;
+  width: 50px;
+  height: 30px;
+  border-radius: var(--r-pill);
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+}
+
+.switchOn {
+  background: var(--c-accent);
+
+  &::after {
+    right: 3px;
+  }
+}
+
+.switchOff {
+  background: var(--c-border);
+
+  &::after {
+    left: 3px;
+  }
+}
+
+.footer {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  gap: 10px;
+  padding: 14px 20px;
+  background: var(--c-surface);
+  border-top: 1px solid var(--c-border);
+
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+
+  p {
+    color: var(--c-ink);
+    font-size: 14px;
+  }
+}
+
+.primary {
+  width: 100%;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: none;
+  border-radius: 16px;
+  background: var(--c-accent);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+/* ── 8b ── */
+.doneCard {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--c-resolved-border);
+  border-radius: 20px;
+  background: var(--c-resolved-bg);
+}
+
+.doneHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--c-resolved-text);
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.doneIcon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--c-resolved);
+  color: #fff;
+}
+
+.file {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--c-resolved-border);
+  border-radius: 16px;
+  background: var(--c-surface);
+
+  span:last-child {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  strong {
+    overflow: hidden;
+    color: var(--c-ink);
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    color: var(--c-text2);
+    font-size: 12px;
+  }
+}
+
+.fileBadge,
+.fileBadgeSmall {
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  background: var(--c-surface2);
+  color: var(--c-resolved-text);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fileBadge {
+  width: 44px;
+  height: 44px;
+}
+
+.fileBadgeSmall {
+  width: 36px;
+  height: 36px;
+  color: var(--c-text2);
+}
+
+.doneMessage {
+  color: var(--c-text2);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.historyText {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+
+  strong {
+    overflow: hidden;
+    color: var(--c-ink);
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    color: var(--c-text3);
+    font-size: 12px;
+  }
+}

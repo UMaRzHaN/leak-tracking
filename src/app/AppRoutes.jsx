@@ -13,6 +13,7 @@ const Monitoring = lazy(() => import("@/pages/Monitoring/Monitoring"));
 const RepairRound = lazy(() => import("@/pages/Repairs/RepairRound"));
 const AcceptanceList = lazy(() => import("@/pages/Repairs/AcceptanceList"));
 const Reconcile = lazy(() => import("@/pages/Reconcile/Reconcile"));
+const ExportPage = lazy(() => import("@/pages/Export/ExportPage"));
 const ComponentRegistry = lazy(
   () => import("@/pages/ComponentRegistry/ComponentRegistry"),
 );
@@ -229,6 +230,14 @@ export default function AppRoutes({
             onMonitorLeak={requestMonitoring}
             onMonitorLeaks={requestMonitoringQueue}
             userProfile={userProfile}
+          />
+        )}
+
+        {dataLoaded && !loadError && page === "export" && (
+          <ExportPage
+            data={data}
+            scopedData={scopedData}
+            onBack={() => goBack(prevPage)}
           />
         )}
 

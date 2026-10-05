@@ -49,7 +49,7 @@ export function prepareRows(data, t, projectVars = {}) {
   });
 }
 
-export function useDataBaseExport({ displayed, notify }) {
+export function useDataBaseExport({ displayed, notify, onDone = null }) {
   const { t } = useLanguage();
   const [isExporting, setIsExporting] = useState(false);
   const projectConfig = useEffectiveProjectConfig();
@@ -109,6 +109,8 @@ export function useDataBaseExport({ displayed, notify }) {
         window.__EXCEL_EXPORT_METRICS__ = result?.metrics ?? null;
       }
       notify("success", result?.message || t("database.export.success"));
+      // Экран экспорта (8b) показывает итог и пишет его в историю.
+      onDone?.(result);
     } catch (err) {
       notify(
         "error",
@@ -126,6 +128,7 @@ export function useDataBaseExport({ displayed, notify }) {
     isExporting,
     monitoringExportMode,
     notify,
+    onDone,
     t,
     vars,
   ]);

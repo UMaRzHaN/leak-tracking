@@ -9,6 +9,7 @@ import { database } from "./database";
 import { emissionsSummary } from "./emissionsSummary";
 import { emptyState } from "./emptyState";
 import { excelExport } from "./excelExport";
+import { exportReport } from "./export";
 import { fieldVisibility } from "./fieldVisibility";
 import { footer } from "./footer";
 import { header } from "./header";
@@ -51,6 +52,7 @@ export const translation = {
   emissionsSummary,
   emptyState,
   excelExport,
+  export: exportReport,
   fieldVisibility,
   footer,
   header,
