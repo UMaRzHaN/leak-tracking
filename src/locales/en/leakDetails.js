@@ -4,6 +4,7 @@ export const leakDetails = {
   deleteLeak: "Delete leak",
   edit: "Edit",
   close: "Close",
+  back: "Back",
   cancel: "Cancel",
   saving: "Saving...",
   save: "Save",

@@ -172,6 +172,8 @@ export default function ComponentDetailsSheet({
             /* A component has no leak lifecycle; its state is changed by the
                inspection swipe, not from the hero. */
             onStatusChange={null}
+            onBack={onClose}
+            backLabel={t("leakDetails.back")}
           />
 
           <div className={s.tabBar}>

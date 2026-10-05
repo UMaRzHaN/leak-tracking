@@ -14,6 +14,7 @@ import StatusPickerModal from "@/features/status/StatusPickerModal/StatusPickerM
 import Notification from "@/components/ui/Notification/Notification";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import { useModalDialog } from "@/hooks/useModalDialog";
+import Icon from "@/components/ui/Icon/Icon";
 import s from "./LeakDetailsSheet.module.scss";
 
 export default function LeakDetailsSheet({
@@ -131,6 +132,8 @@ export default function LeakDetailsSheet({
             identityNum={`№ ${leak.leak_id ?? leak.index ?? "—"}`}
             identityTime={ago ?? absoluteDate ?? ""}
             onStatusChange={handleStatusChange}
+            onBack={handleClose}
+            backLabel={t("leakDetails.back")}
             onView={
               mode === MODE.VIEW && heroSrc
                 ? () => setViewerOpen(true)
@@ -224,8 +227,9 @@ export default function LeakDetailsSheet({
                     type="button"
                     onClick={armDelete}
                     title={t("leakDetails.deleteLeak")}
+                    aria-label={t("leakDetails.deleteLeak")}
                   >
-                    🗑
+                    <Icon name="trash" size={22} />
                   </button>
                 ))}
               <button className={s.btnPrimary} onClick={handleEdit}>

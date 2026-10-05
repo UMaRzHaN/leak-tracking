@@ -1,4 +1,5 @@
 import StatusBadge from "@/components/ui/StatusBadge/StatusBadge";
+import Icon from "@/components/ui/Icon/Icon";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
 /**
@@ -10,6 +11,8 @@ import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
  *   identityNum?: string,
  *   identityTime?: string,
  *   onStatusChange?: (() => void)|null,
+ *   onBack?: (() => void)|null,
+ *   backLabel?: string,
  * }} props
  */
 export default function PhotoBlock({
@@ -20,6 +23,8 @@ export default function PhotoBlock({
   identityNum,
   identityTime,
   onStatusChange,
+  onBack = null,
+  backLabel = "",
 }) {
   const hasPhoto = Boolean(src);
   const clickable = onEdit ?? onView;
@@ -42,8 +47,20 @@ export default function PhotoBlock({
         </div>
       )}
 
-      {/* ── Drag handle ── */}
-      <div className={s.heroHandle} />
+      {/* ── Назад: карточка теперь экран, а не шторка, и тянуть её некуда ── */}
+      {onBack && (
+        <button
+          type="button"
+          className={s.heroBack}
+          aria-label={backLabel}
+          onClick={(event) => {
+            event.stopPropagation();
+            onBack();
+          }}
+        >
+          <Icon name="chevronLeft" size={22} strokeWidth={2} />
+        </button>
+      )}
 
       {/* ── Dark gradient overlay for text readability ── */}
       <div className={s.heroOverlay} />

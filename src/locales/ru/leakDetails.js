@@ -4,6 +4,7 @@ export const leakDetails = {
   deleteLeak: "Удалить утечку",
   edit: "Редактировать",
   close: "Закрыть",
+  back: "Назад",
   cancel: "Отмена",
   saving: "Сохранение...",
   save: "Сохранить",
