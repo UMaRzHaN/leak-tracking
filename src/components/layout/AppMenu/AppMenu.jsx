@@ -17,7 +17,6 @@ import s from "./AppMenu.module.scss";
 export default function AppMenu({
   open,
   onClose,
-  page,
   setPage,
   module = /** @type {string} */ (MODULE.LDAR),
   onSelectModule,
@@ -48,7 +47,7 @@ export default function AppMenu({
       label: t("appMenu.leaks"),
       meta: openCount > 0 ? t("appMenu.openCount", { count: openCount }) : "",
       metaTone: "danger",
-      active: module === MODULE.LDAR && page !== "components",
+      active: module === MODULE.LDAR,
       onClick: () => onSelectModule(MODULE.LDAR),
     },
     {
@@ -58,14 +57,14 @@ export default function AppMenu({
       meta:
         repairCount > 0 ? t("repairs.menuMeta", { count: repairCount }) : "",
       metaTone: "warning",
-      active: module === MODULE.REPAIRS && page !== "components",
+      active: module === MODULE.REPAIRS,
       onClick: () => onSelectModule(MODULE.REPAIRS),
     },
     {
       key: "monitoring",
       icon: "chart",
       label: t("appMenu.monitoring"),
-      active: module === MODULE.MONITORING && page !== "components",
+      active: module === MODULE.MONITORING,
       onClick: () => onSelectModule(MODULE.MONITORING),
     },
     ...(showRegistry
@@ -74,8 +73,8 @@ export default function AppMenu({
             key: "components",
             icon: "clipboard",
             label: t("appMenu.inventory"),
-            active: page === "components" || page === "component",
-            onClick: () => setPage("components"),
+            active: module === MODULE.INVENTORY,
+            onClick: () => onSelectModule(MODULE.INVENTORY),
           },
         ]
       : []),

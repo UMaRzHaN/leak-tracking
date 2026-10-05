@@ -1,7 +1,7 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import { useMainPageActions } from "./hooks/useMainPageActions";
 import CoverageCard from "./components/CoverageCard";
-import StatusChips from "./components/StatusChips";
+import FilterChips from "@/components/ui/FilterChips/FilterChips";
 import EmptyState from "./components/EmptyState";
 import { groupRecentLeaks } from "./recentGroups";
 import RepairAnalytics from "./components/RepairAnalytics";
@@ -111,7 +111,7 @@ export default function MainPage({
       />
 
       {repairMode ? (
-        <StatusChips
+        <FilterChips
           label={t("repairs.chipsLabel")}
           all={{ key: "all", label: t("repairs.all"), count: stageCounts.all }}
           items={REPAIR_STAGE_ORDER.slice(0, 3).map((stage) => ({
@@ -124,7 +124,7 @@ export default function MainPage({
           onChange={setStageFilter}
         />
       ) : module === MODULE.MONITORING ? (
-        <StatusChips
+        <FilterChips
           label={t("mainPage.chips.label")}
           all={{ key: ALL, label: t("mainPage.chips.all"), count: stats.total }}
           items={[

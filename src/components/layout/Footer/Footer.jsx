@@ -16,6 +16,7 @@ export default function Footer({
   openCount = 0,
   module = /** @type {string} */ (MODULE.LDAR),
   onRoute = /** @type {(() => void)|null} */ (null),
+  onAddComponent = /** @type {(() => void)|null} */ (null),
 }) {
   const { t } = useLanguage();
   const navItems = useMemo(() => {
@@ -26,6 +27,17 @@ export default function Footer({
       badge: true,
     };
     const map = { key: "map", icon: "map", label: t("footer.map") };
+    if (module === MODULE.INVENTORY) {
+      // Каркас 5a, но единица записи — компонент реестра (6a): «+» заводит
+      // карточку, «Сверка» — аналог обхода.
+      return [
+        { key: "components", icon: "list", label: t("footer.registry") },
+        database,
+        ...(onAddComponent ? [{ key: "component-add", fab: true }] : []),
+        { key: "reconcile", icon: "check", label: t("footer.reconcile") },
+        map,
+      ];
+    }
     if (module === MODULE.REPAIRS) {
       return [
         { key: "", icon: "list", label: t("footer.records") },
@@ -50,13 +62,23 @@ export default function Footer({
       { key: "add", fab: true },
       map,
     ];
-  }, [t, module, onRoute]);
+  }, [t, module, onRoute, onAddComponent]);
 
   return (
     <footer className={s.nav}>
       {navItems.map((item) =>
         item.fab ? (
-          item.key === "acceptance" ? (
+          item.key === "component-add" ? (
+            <button
+              key="component-add"
+              type="button"
+              className={s.fab}
+              onClick={onAddComponent}
+              aria-label={t("components.add")}
+            >
+              <Icon name="plus" size={26} strokeWidth={2.2} />
+            </button>
+          ) : item.key === "acceptance" ? (
             <button
               key="acceptance"
               type="button"

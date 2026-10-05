@@ -11,7 +11,13 @@ export const MODULE = Object.freeze({
   LDAR: "ldar",
   MONITORING: "monitoring",
   REPAIRS: "repairs",
+  INVENTORY: "inventory",
 });
+
+/** Страница, с которой модуль открывается: у инвентаризации это реестр. */
+export function moduleHomePage(module) {
+  return module === MODULE.INVENTORY ? "components" : "";
+}
 
 const STORAGE_KEY = "app:active_module_v1";
 const KNOWN = new Set(Object.values(MODULE));

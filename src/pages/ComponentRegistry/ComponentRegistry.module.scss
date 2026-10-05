@@ -32,32 +32,6 @@
   color: var(--c-text3);
 }
 
-.actions {
-  display: flex;
-  gap: 8px;
-
-  > * {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-}
-
-.primary {
-  padding: 11px 16px;
-  border: none;
-  border-radius: var(--r-lg);
-  background: var(--c-accent);
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-}
-
 .list {
   /* Растягивается на свободную высоту: виртуализатор рисует ровно столько
      карточек, сколько её занимает, и мерить ему нужно то, что есть на самом

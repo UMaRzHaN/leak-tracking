@@ -70,13 +70,17 @@ test("несёт отбор по состоянию из реестра на к�
   // Отбор ставится в реестре.
   await page.getByRole("button", { name: "Фильтры" }).click();
   // В реестре у кнопки состояния в имени ещё и счётчик карточек.
-  await page.getByRole("button", { name: /^Требует замены/ }).click();
+  // Первая — в панели фильтров; чип над списком называется так же.
+  await page
+    .getByRole("button", { name: /^Требует замены/ })
+    .first()
+    .click();
   await expect(page.getByText("Манометр", { exact: true })).toBeVisible();
   await expect(page.getByText("Задвижка", { exact: true })).toHaveCount(0);
 
   // И действует на карте, где его никто не повторял.
   await openMap(page);
-  await page.getByRole("button", { name: /Переключить базу/ }).click();
+  // Карта инвентаризации сама открывается на базе железа.
   await expect(marker(page, "9002")).toBeVisible({ timeout: 30_000 });
   await expect(marker(page, "9001")).toHaveCount(0);
 
@@ -123,7 +127,7 @@ test("держит список состояний на карте в преде
   }
 
   await openMap(page);
-  await page.getByRole("button", { name: /Переключить базу/ }).click();
+  // Карта инвентаризации сама открывается на базе железа.
   await page
     .getByRole("button", { name: "Фильтр по состоянию железа" })
     .click();

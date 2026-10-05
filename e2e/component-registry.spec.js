@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 import {
   openSettings,
+  openHome,
   createProject,
   fillLeakStepOne,
-  footerTab,
   importFile,
   leaveSettings,
   addComponentCard,
@@ -131,7 +131,7 @@ test("привязывает утечку к карточке компонент
   await openComponentRegistry(page);
   await addComponentCard(page, VALVE);
 
-  await footerTab(page, "Главная").click();
+  await openHome(page);
   await page
     .getByRole("button", { name: "Добавить утечку", exact: true })
     .click();
@@ -170,7 +170,7 @@ test("открепляет карточку, оставляя заполненн
   await openComponentRegistry(page);
   await addComponentCard(page, VALVE);
 
-  await footerTab(page, "Главная").click();
+  await openHome(page);
   await page
     .getByRole("button", { name: "Добавить утечку", exact: true })
     .click();

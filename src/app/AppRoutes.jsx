@@ -144,6 +144,7 @@ export default function AppRoutes({
   coverage = /** @type {any} */ (null),
   module = /** @type {string|undefined} */ (undefined),
   routeProgress = /** @type {any} */ (null),
+  componentAddRequest = 0,
   onEndRoute = /** @type {(() => void)|undefined} */ (undefined),
   setRequestedMonitoringLeakId,
   setRequestedMonitoringLeakIds,
@@ -288,6 +289,7 @@ export default function AppRoutes({
               // молча ничего не отбирал.
               sharedFilters={sharedFilters}
               onOpenCard={() => setPage("component")}
+              addRequest={componentAddRequest}
               onCloseCard={() => setPage("components")}
             />
           )}

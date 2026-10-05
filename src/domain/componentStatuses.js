@@ -28,3 +28,19 @@ export function usedComponentStatuses(components) {
       .sort((left, right) => left.localeCompare(right)),
   ];
 }
+
+/**
+ * Цвет точки состояния на чипах реестра (6a): в работе — зелёный, замена —
+ * янтарный, выведенное и демонтированное — красный, резерв и прочее — серый.
+ * Значения берутся из словаря, а не пишутся строками: словарь — единственное
+ * место, где эти названия заданы.
+ *
+ * @param {string} status
+ */
+export function componentStatusColor(status) {
+  const [working, , , replace, retired, dismantled] = component_statuses;
+  if (status === working) return "var(--c-resolved)";
+  if (status === replace) return "var(--c-progress)";
+  if (status === retired || status === dismantled) return "var(--c-open)";
+  return "var(--c-text3)";
+}

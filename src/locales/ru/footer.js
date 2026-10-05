@@ -6,5 +6,7 @@ export const footer = {
   records: "Записи",
   round: "Обход",
   acceptance: "Приёмка оборудования",
+  registry: "Реестр",
+  reconcile: "Сверка",
   route: "Построить маршрут",
 };

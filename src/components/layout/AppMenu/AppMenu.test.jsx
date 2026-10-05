@@ -45,14 +45,15 @@ describe("AppMenu", () => {
   });
 
   it("closes itself before every navigation", () => {
-    const { onClose, setPage, onOpenSettings, onEditProfile } = renderMenu();
+    const { onClose, onSelectModule, onOpenSettings, onEditProfile } =
+      renderMenu();
 
     fireEvent.click(screen.getByRole("button", { name: "Inventory" }));
     fireEvent.click(screen.getByRole("button", { name: "Import data" }));
     fireEvent.click(screen.getByRole("button", { name: /Change name/ }));
     fireEvent.click(screen.getByTitle("Switch project"));
 
-    expect(setPage).toHaveBeenCalledWith("components");
+    expect(onSelectModule).toHaveBeenCalledWith("inventory");
     expect(onOpenSettings).toHaveBeenCalledWith("backup");
     expect(onOpenSettings).toHaveBeenCalledWith("projects");
     expect(onEditProfile).toHaveBeenCalledOnce();

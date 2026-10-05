@@ -7,6 +7,8 @@ import SchemaList from "@/features/schemas/SchemaList";
 import ComponentCardCompact from "@/features/componentRegistry/ComponentCardCompact";
 import VirtualizedLeakList from "@/features/leakList/VirtualizedLeakList/VirtualizedLeakList";
 import ComponentInspectSheet from "@/features/componentRegistry/ComponentInspectSheet";
+import FilterChips from "@/components/ui/FilterChips/FilterChips";
+import { componentStatusColor } from "@/domain/componentStatuses";
 import ComponentDetailsSheet from "@/features/componentRegistry/ComponentDetailsSheet";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import Notification from "@/components/ui/Notification/Notification";
@@ -61,6 +63,9 @@ export default function ComponentRegistry({
   sharedFilters = /** @type {any} */ (null),
   onOpenCard = /** @type {(() => void)|null} */ (null),
   onCloseCard = /** @type {(() => void)|null} */ (null),
+  // Номер запроса «+» из нижней панели инвентаризации: новый номер открывает
+  // пустую карточку.
+  addRequest = 0,
 }) {
   const { t } = useLanguage();
   const {
@@ -366,6 +371,17 @@ export default function ComponentRegistry({
     [onOpenCard],
   );
 
+  const handledAddRequestRef = useRef(addRequest);
+  useEffect(() => {
+    if (addRequest === handledAddRequestRef.current) return;
+    handledAddRequestRef.current = addRequest;
+    if (!canWrite) {
+      notify("error", t("components.nameRequired"));
+      return;
+    }
+    openCard({});
+  }, [addRequest, canWrite, notify, openCard, t]);
+
   const closeCard = useCallback(() => {
     setEditing(null);
     onCloseCard?.();
@@ -625,16 +641,24 @@ export default function ComponentRegistry({
             isExporting={isExporting}
           />
 
-          <div className={s.actions}>
-            <button
-              type="button"
-              className={s.primary}
-              onClick={() => openCard({})}
-              disabled={!canWrite}
-            >
-              {t("components.add")}
-            </button>
-          </div>
+          {/* Состояния компонента чипами (6a): тот же отбор, что в панели
+              фильтров, но одним касанием и с числами. */}
+          <FilterChips
+            label={t("components.statusFilter")}
+            all={{
+              key: "all",
+              label: t("components.allStatuses"),
+              count: components.length,
+            }}
+            items={usedStatuses.map((status) => ({
+              key: status,
+              label: status,
+              count: statusCounts[status] ?? 0,
+              dot: componentStatusColor(status),
+            }))}
+            value={statusFilter.length === 1 ? statusFilter[0] : "all"}
+            onChange={(key) => setStatusFilter(key === "all" ? [] : [key])}
+          />
 
           {/* Said once, where the button is, rather than after a walker has
               filled a card and pressed save. */}

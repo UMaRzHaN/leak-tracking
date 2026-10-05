@@ -1,9 +1,10 @@
-import s from "@/pages/MainPage/MainPage.module.scss";
+import s from "./FilterChips.module.scss";
 
 /**
- * Строка чипов-счётчиков (5a, 7a): «Все» и по чипу на группу. Повторное
+ * Строка чипов-счётчиков (5a, 6a, 7a): «Все» и по чипу на группу. Повторное
  * нажатие на выбранный чип возвращает «Все». Группы задаёт экран — статусы
- * записи в мониторинге, стадии работ в ремонтах.
+ * записи в мониторинге, стадии работ в ремонтах, состояния компонента в
+ * реестре.
  *
  * @param {{
  *   label: string,
@@ -13,7 +14,7 @@ import s from "@/pages/MainPage/MainPage.module.scss";
  *   onChange: (key: string) => void,
  * }} props
  */
-export default function StatusChips({ label, all, items, value, onChange }) {
+export default function FilterChips({ label, all, items, value, onChange }) {
   return (
     <div className={s.chips} role="group" aria-label={label}>
       <button

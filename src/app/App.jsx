@@ -8,7 +8,11 @@ import { showsComponentTree } from "./pages";
 import { STATUS } from "@/utils/status";
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
 import { computeSurveyCoverage } from "@/utils/surveyCoverage";
-import { MODULE, useActiveModule } from "@/app/modules/activeModule";
+import {
+  MODULE,
+  moduleHomePage,
+  useActiveModule,
+} from "@/app/modules/activeModule";
 import { countRepairStages } from "@/domain/repairStages";
 import {
   readRoute,
@@ -99,8 +103,18 @@ export default function App() {
   };
   const selectModule = (next) => {
     setModule(next);
-    setPage("");
+    setPage(moduleHomePage(next));
   };
+  // «+» инвентаризации: реестр открывает пустую карточку, когда номер
+  // запроса меняется. Номер, а не флаг — второй запрос подряд тоже должен
+  // сработать.
+  const [componentAddRequest, setComponentAddRequest] = useState(0);
+  // У инвентаризации своей главной нет: её «Записи» — это реестр.
+  useEffect(() => {
+    if (module === MODULE.INVENTORY && page === "") {
+      setPage("components", { replace: true });
+    }
+  }, [module, page, setPage]);
   // Раздел настроек, к которому прокрутить: меню ведёт в импорт и
   // синхронизацию, а они пока живут внутри настроек, а не на своих экранах.
   const [settingsSection, setSettingsSection] = useState(
@@ -134,7 +148,9 @@ export default function App() {
    */
   useEffect(() => {
     if (page !== "map") setMapBase(MAP_BASE.LEAKS);
-  }, [page]);
+    // Карта инвентаризации (6c) — это карта железа.
+    else if (module === MODULE.INVENTORY) setMapBase(MAP_BASE.COMPONENTS);
+  }, [page, module]);
   const componentTree = showsComponentTree(page, mapBase);
   const showRegistry = hasComponentRegistry(activeProject);
   // Главная тоже читает реестр: по нему считается, сколько объектов всего,
@@ -258,6 +274,7 @@ export default function App() {
         coverage={coverage}
         module={module}
         routeProgress={module === MODULE.MONITORING ? progress : null}
+        componentAddRequest={componentAddRequest}
         onEndRoute={() => setRoute(null)}
         setRequestedMonitoringLeakId={setRequestedMonitoringLeakId}
         setRequestedMonitoringLeakIds={setRequestedMonitoringLeakIds}
@@ -278,6 +295,14 @@ export default function App() {
             openCount={scopedOpenCount}
             module={module}
             onRoute={() => setRouteSheetOpen(true)}
+            onAddComponent={
+              showRegistry
+                ? () => {
+                    setComponentAddRequest((value) => value + 1);
+                    setPage("components");
+                  }
+                : null
+            }
           />
         </Suspense>
       )}
@@ -308,7 +333,6 @@ export default function App() {
           <AppMenu
             open={menuOpen}
             onClose={() => setMenuOpen(false)}
-            page={page}
             setPage={setPage}
             module={module}
             onSelectModule={selectModule}

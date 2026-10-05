@@ -6,5 +6,7 @@ export const footer = {
   records: "Records",
   round: "Round",
   acceptance: "Equipment acceptance",
+  registry: "Registry",
+  reconcile: "Reconcile",
   route: "Build a route",
 };

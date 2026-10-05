@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   openSettings,
+  openHome,
   openComponentRegistry,
   attachModalPhoto,
   chooseDetailsStatus,
@@ -77,6 +78,8 @@ test("opens the main application sections", async ({ page }) => {
   // Реестр у Upstream открывается из бургер-меню как «Инвентаризация».
   await openComponentRegistry(page);
 
+  // Карта утечек — в LDAR; у инвентаризации карта показывает железо.
+  await openHome(page);
   await openMap(page);
 
   const monitoringMapFilter = page.getByRole("button", {

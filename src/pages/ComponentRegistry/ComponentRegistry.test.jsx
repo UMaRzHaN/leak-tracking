@@ -1,5 +1,6 @@
 import {
   cleanup,
+  within,
   fireEvent,
   render,
   screen,
@@ -90,24 +91,32 @@ function renderRegistry(props = {}) {
 
   function Harness() {
     const [page, setPage] = useState("components");
+    // «+» нижней панели инвентаризации: живёт вне реестра и шлёт запрос.
+    const [addRequest, setAddRequest] = useState(0);
     return (
-      <ComponentRegistry
-        project={project}
-        userProfile={{ name: "Мухиддин" }}
-        // Приёмник по умолчанию отвечает: сохранение без фикса честно ждёт
-        // его пятнадцать секунд, и это проверяется отдельным тестом.
-        coords={{ lat: 38.4, lng: 66.1 }}
-        {...props}
-        cardPage={page === "component"}
-        onOpenCard={() => {
-          spies.onOpenCard();
-          setPage("component");
-        }}
-        onCloseCard={() => {
-          spies.onCloseCard();
-          setPage("components");
-        }}
-      />
+      <>
+        <button type="button" onClick={() => setAddRequest((n) => n + 1)}>
+          Add component
+        </button>
+        <ComponentRegistry
+          project={project}
+          userProfile={{ name: "Мухиддин" }}
+          // Приёмник по умолчанию отвечает: сохранение без фикса честно ждёт
+          // его пятнадцать секунд, и это проверяется отдельным тестом.
+          coords={{ lat: 38.4, lng: 66.1 }}
+          {...props}
+          addRequest={addRequest}
+          cardPage={page === "component"}
+          onOpenCard={() => {
+            spies.onOpenCard();
+            setPage("component");
+          }}
+          onCloseCard={() => {
+            spies.onCloseCard();
+            setPage("components");
+          }}
+        />
+      </>
     );
   }
 
@@ -147,8 +156,10 @@ describe("ComponentRegistry screen", () => {
 
   it("renders nothing for a project type without a registry", () => {
     registry.current = makeRegistry({ enabled: false });
-    const { container } = renderRegistry();
-    expect(container).toBeEmptyDOMElement();
+    renderRegistry();
+    // На месте только «+» обвязки — сам реестр ничего не рисует.
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    expect(screen.queryByText(/Recorded/)).toBeNull();
   });
 
   it("counts what has been recorded, never a percentage", () => {
@@ -226,12 +237,47 @@ describe("ComponentRegistry screen", () => {
 
     // Фильтры прячутся за кнопкой, как на странице базы.
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    // Первая — в панели фильтров, вторая — чип над списком.
     fireEvent.click(
-      screen.getByRole("button", { pressed: false, name: /Требует замены/ }),
+      screen.getAllByRole("button", {
+        pressed: false,
+        name: /Требует замены/,
+      })[0],
     );
 
     expect(screen.getByText("Труба")).toBeTruthy();
     expect(screen.queryByText("Задвижка")).toBeNull();
+  });
+
+  it("narrows the list with one tap on a state chip", () => {
+    registry.current = makeRegistry({
+      components: [
+        {
+          id: "a",
+          component_uid: "1",
+          component: "Задвижка",
+          component_status: "В работе",
+        },
+        {
+          id: "b",
+          component_uid: "2",
+          component: "Труба",
+          component_status: "Требует замены",
+        },
+      ],
+    });
+    renderRegistry();
+
+    const chips = screen.getByRole("group", { name: "Filter by state" });
+    fireEvent.click(
+      within(chips).getByRole("button", { name: /Требует замены/ }),
+    );
+
+    expect(screen.getByText("Труба")).toBeTruthy();
+    expect(screen.queryByText("Задвижка")).toBeNull();
+    expect(
+      within(chips).getByRole("button", { name: /^All/ }).textContent,
+    ).toContain("2");
   });
 
   it("offers only the states a walk actually found", () => {
@@ -244,8 +290,8 @@ describe("ComponentRegistry screen", () => {
     fireEvent.click(screen.getByRole("button", { name: "Filters" }));
 
     expect(
-      screen.getByRole("button", { name: /В работе/, pressed: false }),
-    ).toBeTruthy();
+      screen.getAllByRole("button", { name: /В работе/, pressed: false }),
+    ).toHaveLength(2);
     // An empty button selects nothing and only adds to the noise.
     expect(screen.queryByRole("button", { name: /Демонтирован/ })).toBeNull();
   });
@@ -282,10 +328,11 @@ describe("ComponentRegistry screen", () => {
     // assertions with no one behind them.
     renderRegistry({ userProfile: { name: "  " } });
 
-    expect(screen.getByText("Add component").disabled).toBe(true);
     expect(screen.getByRole("status").textContent).toMatch(
       /Set your name in the profile/i,
     );
+    fireEvent.click(screen.getByText("Add component"));
+    expect(screen.queryByText("New component")).toBeNull();
   });
 
   it("says nothing about conflicts when there are none", () => {
@@ -440,7 +487,7 @@ describe("card page switching", () => {
     fireEvent.click(screen.getByLabelText("Cancel"));
 
     expect(spies.onCloseCard).toHaveBeenCalled();
-    expect(screen.getByText("Add component")).toBeTruthy();
+    expect(screen.queryByText("New component")).toBeNull();
   });
 
   it("closes the card when the page is left from outside the form", () => {
@@ -448,14 +495,19 @@ describe("card page switching", () => {
     // header arrow; the card has to follow.
     function Harness() {
       const [page, setPage] = useState("components");
+      const [addRequest, setAddRequest] = useState(0);
       return (
         <>
           <button type="button" onClick={() => setPage("components")}>
             hardware back
           </button>
+          <button type="button" onClick={() => setAddRequest((n) => n + 1)}>
+            Add component
+          </button>
           <ComponentRegistry
             project={project}
             userProfile={{ name: "Мухиддин" }}
+            addRequest={addRequest}
             cardPage={page === "component"}
             onOpenCard={() => setPage("component")}
             onCloseCard={() => setPage("components")}
@@ -470,7 +522,6 @@ describe("card page switching", () => {
 
     fireEvent.click(screen.getByText("hardware back"));
     expect(screen.queryByText("New component")).toBeNull();
-    expect(screen.getByText("Add component")).toBeTruthy();
   });
 
   it("returns to the list page after a card is saved", async () => {

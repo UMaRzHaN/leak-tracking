@@ -181,7 +181,10 @@ export async function openComponentRegistry(page) {
 }
 
 export async function openHome(page) {
-  await footerTab(page, "Главная").click();
+  // Главная — у LDAR; из другого модуля возвращаемся через меню.
+  const home = footerTab(page, "Главная");
+  if (!(await home.isVisible())) await openMenuItem(page, /^LDAR/);
+  await home.click();
   await expect(
     page.getByRole("button", { name: "Добавить утечку", exact: true }),
   ).toBeVisible();
