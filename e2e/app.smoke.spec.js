@@ -125,8 +125,9 @@ test("persists project, appearance, and export settings", async ({ page }) => {
   await expect(page.getByText("Settings", { exact: true })).toBeVisible();
 
   await page.reload();
+  // Название теперь и в группе «Проект», и в списке проектов.
   await expect(
-    page.getByText("Settings persisted E2E", { exact: true }),
+    page.getByText("Settings persisted E2E", { exact: true }).first(),
   ).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(
