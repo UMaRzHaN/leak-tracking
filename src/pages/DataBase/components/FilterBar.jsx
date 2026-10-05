@@ -4,6 +4,7 @@ import { PRIORITY_ORDER, getPriorityMeta } from "@/utils/priority";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { FICTION_FILTER } from "@/domain/leakFilters";
 import s from "@/pages/DataBase/DataBase.module.scss";
+import Icon from "@/components/ui/Icon/Icon";
 
 const ALL = "all";
 
@@ -55,7 +56,9 @@ function FilterBar({
     <>
       <div className={s.searchRow}>
         <div className={s.searchWrap}>
-          <span className={s.searchIcon}>🔍</span>
+          <span className={s.searchIcon}>
+            <Icon name="search" size={18} />
+          </span>
           <input
             className={s.searchInput}
             placeholder={t("database.searchPlaceholder")}
@@ -72,7 +75,7 @@ function FilterBar({
               type="button"
               aria-label={t("database.clearSearch")}
             >
-              ✕
+              <Icon name="close" size={16} strokeWidth={2} />
             </button>
           )}
         </div>

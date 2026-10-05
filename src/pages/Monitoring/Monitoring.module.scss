@@ -3,7 +3,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 14px 16px 0;
+  padding: 18px 20px 0;
   overflow: hidden;
 }
 
@@ -11,11 +11,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 5px;
+  gap: 12px;
+  margin-bottom: 14px;
 
   p {
-    margin: 6px 0 0;
     color: var(--c-text2);
     font-size: 14px;
     line-height: 1.35;
@@ -24,34 +23,34 @@
 
 .roundMeta {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   flex-wrap: wrap;
-  gap: 5px;
-  color: var(--c-text2);
-  font-size: 11px;
-  line-height: 1.2;
+  gap: 6px;
+  min-width: 0;
 }
 
 .roundBadge {
-  display: inline-flex;
-  align-items: center;
-  color: var(--c-accent-text);
+  color: var(--c-ink);
+  font-size: 17px;
   font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
-.roundSeparator {
-  color: var(--c-border);
+.roundPeriod {
+  color: var(--c-text3);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .newRoundBtn {
   flex-shrink: 0;
-  min-height: 38px;
-  padding: 0 12px;
-  border: 1px solid var(--c-accent);
-  border-radius: var(--r-md);
-  background: var(--c-accent-dim);
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1.5px solid var(--c-accent);
+  border-radius: 13px;
+  background: var(--c-surface);
   color: var(--c-accent-text);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -232,7 +231,7 @@
 }
 
 .sharedFilterBar {
-  margin: 2px 0 8px;
+  margin: 0 0 12px;
 }
 
 .field span {
@@ -272,34 +271,42 @@
 }
 
 .filters {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
   gap: 6px;
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }
 
 .filterBtn {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 34px;
-  padding: 6px 9px;
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-md);
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--c-border-soft);
+  border-radius: 14px;
   background: var(--c-surface);
-  color: var(--c-text2);
-  font-size: 12px;
+  color: var(--c-ink);
+  font-size: 13px;
+  font-weight: 800;
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   strong {
-    color: var(--c-text);
+    color: var(--c-text3);
   }
 }
 
 .filterBtnActive {
-  border-color: var(--c-accent);
+  border: 1.5px solid var(--c-accent);
+  background: var(--c-accent-surface);
   color: var(--c-accent-text);
-  background: var(--c-accent-bg, rgba(109, 61, 232, 0.08));
 
   strong {
     color: var(--c-accent-text);
@@ -312,59 +319,80 @@
   overflow: hidden;
 }
 
+/* Карточка обхода (5b): карточка утечки и полоса проверки — одна плашка.
+   Нижние углы карточки срезаны, полоса доводит рамку до низа. */
 .monitoringItem {
   display: grid;
   gap: 0;
-  padding-bottom: 18px;
+  padding-bottom: 14px;
 }
 
 .monitoringItem .monitoringCard {
   margin-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+
+  > :last-child {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    box-shadow: none;
+  }
 }
 
 .monitoringBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin: -1px 12px 8px 16px;
-  padding: 8px 10px 8px 12px;
+  gap: 12px;
+  margin-top: -1px;
+  padding: 12px 14px 12px 16px;
   border: 1px solid var(--c-border);
-  border-top: none;
-  border-radius: 0 0 var(--r-md) var(--r-md);
-  background: var(--c-surface2);
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+  background: var(--c-surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .monitoringBarText {
   min-width: 0;
   display: flex;
-  align-items: center;
-  gap: 7px;
-  flex-wrap: wrap;
-  color: var(--c-text2);
-  font-size: 11px;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 14px;
   line-height: 1.25;
+}
 
-  strong {
-    color: var(--c-text);
-    font-size: 11px;
-  }
+.monitoringBarMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  color: var(--c-text2);
+  font-size: 13px;
 
+  strong,
   em {
-    color: var(--c-text3);
-    font-size: 11px;
+    font-size: inherit;
     font-style: normal;
+    font-weight: 500;
+    color: inherit;
   }
 }
 
 .dueText {
   color: var(--c-open-text);
-  font-weight: 800;
+  font-weight: 700;
+}
+
+.neverText {
+  color: var(--c-text2);
+  font-weight: 700;
 }
 
 .okText {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--c-resolved-text);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .field {
@@ -391,10 +419,16 @@
 
 .checkBtn {
   flex-shrink: 0;
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: var(--r-sm);
-  font-size: 12px;
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 14px;
+  font-size: 15px;
+}
+
+.checkBtnSecondary {
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-accent-text);
 }
 
 .empty {
@@ -492,49 +526,6 @@
 }
 
 @media (max-width: 720px) {
-  .page {
-    padding: 10px 8px 0;
-  }
-
-  .header {
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-
-    h1 {
-      font-size: 22px;
-    }
-  }
-
-  .newRoundBtn {
-    align-self: center;
-    min-height: 28px;
-    padding: 0 10px;
-    border-radius: 999px;
-    font-size: 11px;
-  }
-
-  .filters {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 4px;
-    margin-bottom: 8px;
-  }
-
-  .filterBtn {
-    min-height: 30px;
-    padding: 5px 7px;
-    border-radius: var(--r-sm);
-    font-size: 10px;
-  }
-
-  .sharedFilterBar {
-    margin-bottom: 6px;
-  }
-
-  .monitoringBar {
-    margin-inline: 10px;
-  }
-
   .sheet {
     width: 100%;
     max-height: calc(100dvh - 8px);

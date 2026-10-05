@@ -7,6 +7,7 @@ import {
   getMonitoringResultLabel,
   isMonitoringDue,
 } from "@/utils/monitoring";
+import Icon from "@/components/ui/Icon/Icon";
 import s from "./Monitoring.module.scss";
 
 function MonitoringListItem({
@@ -24,6 +25,9 @@ function MonitoringListItem({
 
   const last = getLastMonitoringRecord(leak);
   const isDue = hasActiveRound && isMonitoringDue(leak, roundId, roundNumber);
+  // Проверенная в текущем обходе — зелёная строка с галочкой (5b); повторную
+  // проверку не прячем, но кнопка становится второстепенной.
+  const checkedInRound = hasActiveRound && !isDue && Boolean(last);
   const displayedUser = last ? last.monitoredBy : leak.detectedBy;
 
   return (
@@ -39,20 +43,34 @@ function MonitoringListItem({
 
       <div className={s.monitoringBar}>
         <div className={s.monitoringBarText}>
-          <span className={isDue ? s.dueText : s.okText}>
+          <span
+            className={
+              checkedInRound
+                ? s.okText
+                : last && isDue
+                  ? s.dueText
+                  : s.neverText
+            }
+          >
+            {checkedInRound && (
+              <Icon name="check" size={16} strokeWidth={2.4} />
+            )}
             {last
               ? `${texts.lastCheck}: ${formatMonitoringDate(last.date, lang)}`
               : texts.never}
           </span>
-          {last && (
-            <strong>{getMonitoringResultLabel(last.result, lang)}</strong>
-          )}
-          {displayedUser && <em>{displayedUser}</em>}
+          <span className={s.monitoringBarMeta}>
+            {last && (
+              <strong>{getMonitoringResultLabel(last.result, lang)}</strong>
+            )}
+            {last && displayedUser && <span aria-hidden="true">·</span>}
+            {displayedUser && <em>{displayedUser}</em>}
+          </span>
         </div>
 
         <button
           type="button"
-          className={s.checkBtn}
+          className={`${s.checkBtn} ${checkedInRound ? s.checkBtnSecondary : ""}`}
           onClick={() => onMonitor(leak)}
         >
           {texts.check}

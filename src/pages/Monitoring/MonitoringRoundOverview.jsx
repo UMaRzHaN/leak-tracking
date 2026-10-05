@@ -23,11 +23,10 @@ export default function MonitoringRoundOverview({
           {round?.startedAt ? (
             <div className={s.roundMeta}>
               <span className={s.roundBadge}>
-                {t("monitoring.roundBadge")} №{round.number ?? 1}
+                {t("monitoring.roundBadge")} № {round.number ?? 1}
               </span>
-              <span className={s.roundSeparator}>·</span>
-              <span>
-                {formatRoundPeriod(round.startedAt, round.completedAt, lang)}
+              <span className={s.roundPeriod}>
+                · {formatRoundPeriod(round.startedAt, round.completedAt, lang)}
               </span>
             </div>
           ) : (
