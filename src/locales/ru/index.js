@@ -14,6 +14,7 @@ import { fieldVisibility } from "./fieldVisibility";
 import { footer } from "./footer";
 import { header } from "./header";
 import { importConflict } from "./importConflict";
+import { importScreen } from "./importScreen";
 import { leakDetails } from "./leakDetails";
 import { leakForm } from "./leakForm";
 import { localSync } from "./localSync";
@@ -57,6 +58,7 @@ export const translation = {
   footer,
   header,
   importConflict,
+  importScreen,
   leakDetails,
   leakForm,
   localSync,

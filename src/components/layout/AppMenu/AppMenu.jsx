@@ -91,7 +91,7 @@ export default function AppMenu({
       key: "import",
       icon: "upload",
       label: t("appMenu.import"),
-      onClick: () => onOpenSettings("backup"),
+      onClick: () => setPage("import"),
     },
     {
       key: "sync",

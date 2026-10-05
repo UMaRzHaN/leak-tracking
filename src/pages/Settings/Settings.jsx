@@ -16,6 +16,7 @@ import PhotoRequirementsSection from "./components/PhotoRequirementsSection";
 import VoiceCorrectionsSection from "./components/VoiceCorrectionsSection";
 import ProjectIntegritySection from "./components/ProjectIntegritySection";
 import ProjectList from "./components/ProjectList";
+import ImportSection from "./components/ImportSection";
 import { useSettingsPage } from "./hooks/useSettingsPage";
 import s from "./Settings.module.scss";
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
@@ -72,7 +73,15 @@ export default function Settings(props) {
     setVoiceCorrections,
     voiceCorrections,
   } = page;
-  const { data = [], onBack, setPage, focusSection = null } = props;
+  const {
+    data = [],
+    onBack,
+    setPage,
+    focusSection = null,
+    // «import» — экран импорта из меню (9a): те же обработчики и диалоги
+    // настроек, но на экране только импорт и синхронизация.
+    view = "settings",
+  } = props;
   const contentRef = useRef(/** @type {HTMLDivElement|null} */ (null));
 
   // Меню приложения ведёт сразу в раздел — импорт, синхронизацию, список
@@ -88,7 +97,7 @@ export default function Settings(props) {
   return (
     <div className={s.settings}>
       <PageHeader
-        title={localeTexts.title}
+        title={view === "import" ? t("importScreen.title") : localeTexts.title}
         onBack={onBack ?? (() => setPage?.(""))}
         backLabel={t("settings.back")}
       />
@@ -98,128 +107,144 @@ export default function Settings(props) {
         onClose={() => setNotification(null)}
       />
 
-      <div className={s.content} ref={contentRef}>
-        <section className={s.section} data-settings-section="projects">
-          <div className={s.sectionHead}>
-            <h2 className={s.sectionTitle}>{localeTexts.projects}</h2>
-            {!addingProject && (
-              <button
-                className={s.addBtn}
-                type="button"
-                onClick={() => setAddingProject(true)}
-              >
-                + {localeTexts.addProject}
-              </button>
-            )}
-          </div>
-
-          {addingProject && (
-            <AddProjectForm
-              onConfirm={(name, type) => {
-                handleAdd(name, type);
-                setAddingProject(false);
-              }}
-              onCancel={() => setAddingProject(false)}
-            />
+      {view === "import" ? (
+        <div className={s.content}>
+          <ImportSection
+            importRef={importZipRef}
+            busy={isImportingExcel}
+            onImport={handleImportFile}
+          />
+          {localSync.available && (
+            <>
+              <h2 className={s.groupCaption}>{t("importScreen.other")}</h2>
+              <LocalSyncSection sync={localSync} />
+            </>
           )}
+        </div>
+      ) : (
+        <div className={s.content} ref={contentRef}>
+          <section className={s.section} data-settings-section="projects">
+            <div className={s.sectionHead}>
+              <h2 className={s.sectionTitle}>{localeTexts.projects}</h2>
+              {!addingProject && (
+                <button
+                  className={s.addBtn}
+                  type="button"
+                  onClick={() => setAddingProject(true)}
+                >
+                  + {localeTexts.addProject}
+                </button>
+              )}
+            </div>
 
-          <ProjectList
-            projects={projects}
-            activeId={activeProject?.id}
-            onSelect={handleSelect}
-            onRename={handleRename}
-            onRemove={handleRemove}
-            onChangeSyncId={handleChangeSyncId}
+            {addingProject && (
+              <AddProjectForm
+                onConfirm={(name, type) => {
+                  handleAdd(name, type);
+                  setAddingProject(false);
+                }}
+                onCancel={() => setAddingProject(false)}
+              />
+            )}
+
+            <ProjectList
+              projects={projects}
+              activeId={activeProject?.id}
+              onSelect={handleSelect}
+              onRename={handleRename}
+              onRemove={handleRemove}
+              onChangeSyncId={handleChangeSyncId}
+            />
+
+            {projects.length === 0 && !addingProject && (
+              <p className={s.empty}>{localeTexts.noProjects}</p>
+            )}
+          </section>
+
+          <AppearanceSection
+            localeTexts={localeTexts}
+            onToggleLanguage={toggleLanguage}
           />
 
-          {projects.length === 0 && !addingProject && (
-            <p className={s.empty}>{localeTexts.noProjects}</p>
+          {activeProject && data.length > 0 && (
+            <EmissionsSummarySection data={data} />
           )}
-        </section>
 
-        <AppearanceSection
-          localeTexts={localeTexts}
-          onToggleLanguage={toggleLanguage}
-        />
+          <FieldVisibilitySection
+            activeProject={activeProject}
+            hiddenFields={hiddenFields}
+            localeTexts={localeTexts}
+            exportMode={monitoringExportMode}
+            onConfigure={() => setFieldsModalOpen(true)}
+            onExportModeChange={(nextMode) => {
+              setMonitoringExportMode(nextMode);
+              notify("success", localeTexts.notifications.excelExportModeSaved);
+            }}
+            registry={componentFields.column}
+          />
 
-        {activeProject && data.length > 0 && (
-          <EmissionsSummarySection data={data} />
-        )}
+          <PhotoRequirementsSection
+            activeProject={activeProject}
+            leakPhotoRequired={leakPhotoRequired}
+            monitoringPhotoRequired={monitoringPhotoRequired}
+            componentPhotoRequired={componentPhotoRequired}
+            hasComponentRegistry={hasComponentRegistry(activeProject)}
+            onComponentPhotoRequiredChange={(required) => {
+              setComponentPhotoRequired(required);
+              notify("success", t("settings.componentPhotoRequirementSaved"));
+            }}
+            onLeakPhotoRequiredChange={(required) => {
+              setLeakPhotoRequired(required);
+              notify("success", t("settings.leakPhotoRequirementSaved"));
+            }}
+            onMonitoringPhotoRequiredChange={(required) => {
+              setMonitoringPhotoRequired(required);
+              setIntegrityReport(null);
+              notify("success", t("settings.monitoringPhotoRequirementSaved"));
+            }}
+          />
 
-        <FieldVisibilitySection
-          activeProject={activeProject}
-          hiddenFields={hiddenFields}
-          localeTexts={localeTexts}
-          exportMode={monitoringExportMode}
-          onConfigure={() => setFieldsModalOpen(true)}
-          onExportModeChange={(nextMode) => {
-            setMonitoringExportMode(nextMode);
-            notify("success", localeTexts.notifications.excelExportModeSaved);
-          }}
-          registry={componentFields.column}
-        />
+          <VoiceCorrectionsSection
+            activeProject={activeProject}
+            corrections={voiceCorrections}
+            onSave={(next) => {
+              setVoiceCorrections(next);
+              notify("success", t("settings.voice.saved"));
+            }}
+          />
 
-        <PhotoRequirementsSection
-          activeProject={activeProject}
-          leakPhotoRequired={leakPhotoRequired}
-          monitoringPhotoRequired={monitoringPhotoRequired}
-          componentPhotoRequired={componentPhotoRequired}
-          hasComponentRegistry={hasComponentRegistry(activeProject)}
-          onComponentPhotoRequiredChange={(required) => {
-            setComponentPhotoRequired(required);
-            notify("success", t("settings.componentPhotoRequirementSaved"));
-          }}
-          onLeakPhotoRequiredChange={(required) => {
-            setLeakPhotoRequired(required);
-            notify("success", t("settings.leakPhotoRequirementSaved"));
-          }}
-          onMonitoringPhotoRequiredChange={(required) => {
-            setMonitoringPhotoRequired(required);
-            setIntegrityReport(null);
-            notify("success", t("settings.monitoringPhotoRequirementSaved"));
-          }}
-        />
+          <BackupSection
+            activeProject={activeProject}
+            importRef={importZipRef}
+            isExporting={isExportingZip}
+            isImportingExcel={isImportingExcel}
+            localeTexts={localeTexts}
+            onExport={handleExportZip}
+            onImport={handleImportFile}
+          />
 
-        <VoiceCorrectionsSection
-          activeProject={activeProject}
-          corrections={voiceCorrections}
-          onSave={(next) => {
-            setVoiceCorrections(next);
-            notify("success", t("settings.voice.saved"));
-          }}
-        />
+          <LocalSyncSection sync={localSync} />
 
-        <BackupSection
-          activeProject={activeProject}
-          importRef={importZipRef}
-          isExporting={isExportingZip}
-          isImportingExcel={isImportingExcel}
-          localeTexts={localeTexts}
-          onExport={handleExportZip}
-          onImport={handleImportFile}
-        />
+          <ProjectIntegritySection
+            activeProject={activeProject}
+            report={integrityReport}
+            checking={checkingIntegrity}
+            onCheck={handleCheckIntegrity}
+          />
 
-        <LocalSyncSection sync={localSync} />
+          <MapCacheSection
+            cacheInfo={cacheInfo}
+            localeTexts={localeTexts}
+            onClear={handleClearMapCache}
+          />
 
-        <ProjectIntegritySection
-          activeProject={activeProject}
-          report={integrityReport}
-          checking={checkingIntegrity}
-          onCheck={handleCheckIntegrity}
-        />
-
-        <MapCacheSection
-          cacheInfo={cacheInfo}
-          localeTexts={localeTexts}
-          onClear={handleClearMapCache}
-        />
-
-        <DangerZoneSection
-          activeProject={activeProject}
-          localeTexts={localeTexts}
-          onClearDatabase={handleClearDatabase}
-        />
-      </div>
+          <DangerZoneSection
+            activeProject={activeProject}
+            localeTexts={localeTexts}
+            onClearDatabase={handleClearDatabase}
+          />
+        </div>
+      )}
 
       <SettingsDialogs page={page} />
 

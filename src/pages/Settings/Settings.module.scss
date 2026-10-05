@@ -748,3 +748,98 @@
     transform: scale(0.97);
   }
 }
+
+/* ── Группы в языке редизайна (9a, 11a) ── */
+.groupCaption {
+  margin: 4px 2px 0;
+  color: var(--c-text3);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.groupCard {
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+  border-radius: 18px;
+  background: var(--c-surface);
+}
+
+.groupRow {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--c-border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.groupRowText {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+
+  strong {
+    color: var(--c-ink);
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  small {
+    color: var(--c-text3);
+    font-size: 12px;
+  }
+}
+
+.groupHint {
+  color: var(--c-text3);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.kindDot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c-accent);
+}
+
+.importScreen {
+  display: grid;
+  gap: 10px;
+}
+
+.pickFile {
+  width: 100%;
+  min-height: 76px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1.5px dashed color-mix(in srgb, var(--c-accent) 40%, var(--c-border));
+  border-radius: 18px;
+  background: var(--c-surface-soft);
+
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+
+.pickIcon {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--c-accent-dim);
+  color: var(--c-accent);
+}

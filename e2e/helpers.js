@@ -206,7 +206,7 @@ export async function exportExcelArchive(page, testInfo) {
 export async function importFile(page, archivePath) {
   await openMenuItem(page, "Импорт данных");
   const fileChooserPromise = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Импорт", exact: true }).click();
+  await page.getByRole("button", { name: /^Выбрать файл/ }).click();
   const fileChooser = await fileChooserPromise;
   await fileChooser.setFiles(archivePath);
 }

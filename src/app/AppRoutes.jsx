@@ -206,20 +206,23 @@ export default function AppRoutes({
           />
         )}
 
-        {dataLoaded && !loadError && page === "settings" && (
-          <Settings
-            setPage={setPage}
-            focusSection={settingsSection}
-            onBack={() => goBack(prevPage)}
-            data={data}
-            setData={save}
-            clearDatabase={clear}
-            onImportZip={handleImportZip}
-            onImportIntoExisting={handleImportIntoExisting}
-            onCreateExcelCopy={handleCreateExcelCopy}
-            onImportInventory={handleSetupImportInventory}
-          />
-        )}
+        {dataLoaded &&
+          !loadError &&
+          (page === "settings" || page === "import") && (
+            <Settings
+              view={page === "import" ? "import" : "settings"}
+              setPage={setPage}
+              focusSection={settingsSection}
+              onBack={() => goBack(prevPage)}
+              data={data}
+              setData={save}
+              clearDatabase={clear}
+              onImportZip={handleImportZip}
+              onImportIntoExisting={handleImportIntoExisting}
+              onCreateExcelCopy={handleCreateExcelCopy}
+              onImportInventory={handleSetupImportInventory}
+            />
+          )}
 
         {dataLoaded && !isImportingProject && !loadError && page === "db" && (
           <DataBase

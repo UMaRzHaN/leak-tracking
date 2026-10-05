@@ -45,7 +45,7 @@ describe("AppMenu", () => {
   });
 
   it("closes itself before every navigation", () => {
-    const { onClose, onSelectModule, onOpenSettings, onEditProfile } =
+    const { onClose, onSelectModule, onOpenSettings, onEditProfile, setPage } =
       renderMenu();
 
     fireEvent.click(screen.getByRole("button", { name: "Inventory" }));
@@ -54,7 +54,7 @@ describe("AppMenu", () => {
     fireEvent.click(screen.getByTitle("Switch project"));
 
     expect(onSelectModule).toHaveBeenCalledWith("inventory");
-    expect(onOpenSettings).toHaveBeenCalledWith("backup");
+    expect(setPage).toHaveBeenCalledWith("import");
     expect(onOpenSettings).toHaveBeenCalledWith("projects");
     expect(onEditProfile).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledTimes(4);

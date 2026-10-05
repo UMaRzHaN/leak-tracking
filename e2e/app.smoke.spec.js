@@ -494,6 +494,9 @@ test("exports and imports an Excel archive as a project copy", async ({
     page.getByText("Изменённые поля", { exact: true }).locator(".."),
   ).toContainText("0");
   await page.getByRole("button", { name: "Создать копию" }).click();
+  // Экран импорта — только импорт; копия видна в списке проектов настроек.
+  await page.getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ }).click();
+  await openSettings(page);
   await expect(
     page.getByText("Excel roundtrip (Excel)", { exact: true }).first(),
   ).toBeVisible();
