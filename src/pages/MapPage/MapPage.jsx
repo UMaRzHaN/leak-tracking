@@ -7,6 +7,7 @@ import MobileSheet from "@/components/ui/MobileSheet/MobileSheet";
 import Notification from "@/components/ui/Notification/Notification";
 import { useMemo, useState } from "react";
 import RouteBanner from "@/features/route/RouteBanner";
+import { componentStatusColor } from "@/domain/componentStatuses";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import {
   countRepairStages,
@@ -31,6 +32,8 @@ export default function MapPage({
   onRouteEnd = /** @type {(() => void)|undefined} */ (undefined),
   // Карта модуля ремонтов (7i): только ремонты и чипы по стадии работ.
   repairMode = false,
+  // Карта инвентаризации (6c): чипы по состоянию компонента.
+  inventoryMode = false,
 }) {
   useRenderMetric("MapPage");
   const { t } = useLanguage();
@@ -131,6 +134,46 @@ export default function MapPage({
           ))}
         </div>
       )}
+
+      {inventoryMode &&
+        showsComponents &&
+        componentStatus.statuses.length > 0 && (
+          <div
+            className={s.stageChips}
+            role="group"
+            aria-label={t("components.statusFilter")}
+          >
+            {["all", ...componentStatus.statuses].map((key) => {
+              const active =
+                key === "all"
+                  ? componentStatus.selected.length === 0
+                  : componentStatus.selected.length === 1 &&
+                    componentStatus.selected[0] === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={active}
+                  className={active ? s.stageChipOn : s.stageChip}
+                  onClick={() =>
+                    componentStatus.onOnly(key === "all" ? null : key)
+                  }
+                >
+                  {key !== "all" && (
+                    <span
+                      className={s.stageDot}
+                      style={{ background: componentStatusColor(key) }}
+                    />
+                  )}
+                  {key === "all" ? t("components.allStatuses") : key}
+                  <span className={s.stageCount}>
+                    {componentStatus.counts[key] ?? 0}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
       {routeProgress && !showsComponents && (
         <RouteBanner

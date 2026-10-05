@@ -84,6 +84,13 @@ test("несёт отбор по состоянию из реестра на к�
   await expect(marker(page, "9002")).toBeVisible({ timeout: 30_000 });
   await expect(marker(page, "9001")).toHaveCount(0);
 
+  // Чипы карты инвентаризации (6c) показывают тот же выбор.
+  await expect(
+    page
+      .getByRole("group", { name: "Фильтр по состоянию" })
+      .getByRole("button", { name: /^Требует замены/ }),
+  ).toHaveAttribute("aria-pressed", "true");
+
   // Кнопка карты показывает то же выбранное, а не своё. Отбор ищется внутри
   // своей обёртки: «Все» есть и в шапке — это переключатель папок.
   const mapFilter = page.locator('[class*="filterControlWrap"]', {

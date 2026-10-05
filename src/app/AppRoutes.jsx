@@ -315,6 +315,7 @@ export default function AppRoutes({
             onRouteCheck={requestMonitoring}
             onRouteEnd={onEndRoute}
             repairMode={module === "repairs"}
+            inventoryMode={module === "inventory"}
           />
         )}
       </Suspense>
