@@ -24,9 +24,14 @@ export async function createProject(page, name = "E2E Upstream") {
 // Профиль, настройки, реестр и обмен данными живут в бургер-меню шапки.
 export async function openMenuItem(page, name) {
   await page.getByRole("button", { name: "Меню", exact: true }).click();
+  // Строка — точное имя; у пунктов со счётчиком («Ремонтные работы 3 в
+  // работе») имя передаётся выражением.
   await page
     .getByRole("dialog")
-    .getByRole("button", { name, exact: true })
+    .getByRole(
+      "button",
+      typeof name === "string" ? { name, exact: true } : { name },
+    )
     .click();
 }
 

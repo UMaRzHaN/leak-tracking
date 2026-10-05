@@ -24,6 +24,7 @@ export const APP_PAGES = new Set([
   "components",
   "component",
   "settings",
+  "repair-round",
 ]);
 
 /**
@@ -36,7 +37,12 @@ export const APP_PAGES = new Set([
  * twice before and the two copies drifted, which reads as a screen that
  * scrolls the wrong thing.
  */
-export const LIST_PAGES = new Set(["db", "monitoring", "components"]);
+export const LIST_PAGES = new Set([
+  "db",
+  "monitoring",
+  "components",
+  "repair-round",
+]);
 
 /**
  * Pages that take over the screen: the app header and the bottom navigation are

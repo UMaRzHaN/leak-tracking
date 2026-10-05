@@ -10,6 +10,7 @@ const MainPage = lazy(() => import("@/pages/MainPage/MainPage"));
 const DataBase = lazy(() => import("@/pages/DataBase/DataBase"));
 const MapPage = lazy(() => import("@/pages/MapPage/MapPage"));
 const Monitoring = lazy(() => import("@/pages/Monitoring/Monitoring"));
+const RepairRound = lazy(() => import("@/pages/Repairs/RepairRound"));
 const ComponentRegistry = lazy(
   () => import("@/pages/ComponentRegistry/ComponentRegistry"),
 );
@@ -227,6 +228,18 @@ export default function AppRoutes({
             userProfile={userProfile}
           />
         )}
+
+        {dataLoaded &&
+          !isImportingProject &&
+          !loadError &&
+          page === "repair-round" && (
+            <RepairRound
+              data={data}
+              scopedData={scopedData}
+              setData={save}
+              userProfile={userProfile}
+            />
+          )}
 
         {dataLoaded &&
           !isImportingProject &&

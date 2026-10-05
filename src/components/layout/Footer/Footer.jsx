@@ -27,11 +27,11 @@ export default function Footer({
     };
     const map = { key: "map", icon: "map", label: t("footer.map") };
     if (module === MODULE.REPAIRS) {
-      // Центр (приёмка оборудования) и «Обход» появятся вместе со своими
-      // экранами — пока ведут только записи, база и карта.
+      // Центр (приёмка оборудования) появится вместе со своим экраном.
       return [
         { key: "", icon: "list", label: t("footer.records") },
         database,
+        { key: "repair-round", icon: "pulse", label: t("footer.round") },
         map,
       ];
     }
