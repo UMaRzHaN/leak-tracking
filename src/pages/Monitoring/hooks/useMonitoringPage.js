@@ -9,6 +9,7 @@ import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useDataBaseFilters } from "@/pages/DataBase/hooks/useDataBaseFilters";
 import {
   useAllowFinishRounds,
+  useAllowMergeRounds,
   useAllowNewRounds,
 } from "@/app/project/hooks/useAllowNewRounds";
 import { STATUS } from "@/utils/status";
@@ -76,6 +77,7 @@ export function useMonitoringPage({
   // Новые обходы можно запретить в настройках — от случайного нажатия.
   const [allowNewRounds] = useAllowNewRounds(activeProject?.id ?? null);
   const [allowFinishRounds] = useAllowFinishRounds(activeProject?.id ?? null);
+  const [allowMergeRounds] = useAllowMergeRounds(activeProject?.id ?? null);
   const [listHeight, setListHeight] = useState(420);
   const [localMonitoringFilter, setLocalMonitoringFilter] = useState(
     FILTERS.DUE,
@@ -169,6 +171,7 @@ export function useMonitoringPage({
   const [mergeConfirmOpen, setMergeConfirmOpen] = useState(false);
   const mergeRound = async () => {
     setMergeConfirmOpen(false);
+    if (!allowMergeRounds) return;
     const result = mergeRoundIntoPrevious(data, monitoringRound);
     if (!result) return;
     if (result.moved > 0) await setData(result.data, { optimistic: false });
@@ -799,6 +802,7 @@ export function useMonitoringPage({
     startNewRound,
     allowNewRounds,
     allowFinishRounds,
+    allowMergeRounds,
     mergeRound,
     mergeConfirmOpen,
     setMergeConfirmOpen,

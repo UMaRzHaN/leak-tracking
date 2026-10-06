@@ -651,7 +651,13 @@ export default function ExportPage({
 }
 
 /** Чип раздела в «Что включить» (8a). «Утечки» включены всегда. */
-function IncludeChip({ label, count, on, locked = false, onToggle = null }) {
+function IncludeChip({
+  label,
+  count,
+  on,
+  locked = false,
+  onToggle = /** @type {(() => void)|null} */ (null),
+}) {
   return (
     <button
       type="button"

@@ -73,6 +73,8 @@ export function normalizeProjectSettings(value) {
     allowNewRounds: value?.allowNewRounds !== false,
     // Завершение обхода — так же: выключенное прячет «Завершить обход».
     allowFinishRounds: value?.allowFinishRounds !== false,
+    // И объединение с предыдущим: выключенное прячет «Объединить с № N».
+    allowMergeRounds: value?.allowMergeRounds !== false,
     updatedAt: normalizeTimestamp(value?.updatedAt),
   };
 }
@@ -101,6 +103,10 @@ export function readProjectSettings(projectId) {
     allowFinishRounds:
       localStorage.getItem(
         STORAGE_KEYS.PROJECT_ROUND_FINISH_LOCKED(projectId),
+      ) !== "1",
+    allowMergeRounds:
+      localStorage.getItem(
+        STORAGE_KEYS.PROJECT_ROUND_MERGE_LOCKED(projectId),
       ) !== "1",
     updatedAt: localStorage.getItem(
       STORAGE_KEYS.PROJECT_SETTINGS_UPDATED_AT(projectId),
@@ -168,6 +174,10 @@ export function writeProjectSettings(projectId, value, { emit = true } = {}) {
   if (settings.allowFinishRounds) localStorage.removeItem(finishKey);
   else localStorage.setItem(finishKey, "1");
 
+  const mergeKey = STORAGE_KEYS.PROJECT_ROUND_MERGE_LOCKED(projectId);
+  if (settings.allowMergeRounds) localStorage.removeItem(mergeKey);
+  else localStorage.setItem(mergeKey, "1");
+
   const timestampKey = STORAGE_KEYS.PROJECT_SETTINGS_UPDATED_AT(projectId);
   if (settings.updatedAt > 0) {
     localStorage.setItem(timestampKey, String(settings.updatedAt));
@@ -198,6 +208,7 @@ export function clearProjectSettings(projectId, { emit = false } = {}) {
     STORAGE_KEYS.PROJECT_VOICE_CORRECTIONS(projectId),
     STORAGE_KEYS.PROJECT_ROUNDS_LOCKED(projectId),
     STORAGE_KEYS.PROJECT_ROUND_FINISH_LOCKED(projectId),
+    STORAGE_KEYS.PROJECT_ROUND_MERGE_LOCKED(projectId),
     STORAGE_KEYS.PROJECT_SETTINGS_UPDATED_AT(projectId),
   ].forEach((key) => localStorage.removeItem(key));
   if (emit) emitSettingsUpdated(projectId);
@@ -212,6 +223,7 @@ function comparableSettings(value) {
     voiceCorrections: normalized.voiceCorrections,
     allowNewRounds: normalized.allowNewRounds,
     allowFinishRounds: normalized.allowFinishRounds,
+    allowMergeRounds: normalized.allowMergeRounds,
   });
 }
 
@@ -240,6 +252,15 @@ export function readAllowFinishRounds(projectId) {
 
 export function writeAllowFinishRounds(projectId, allow) {
   writeRoundLock(projectId, STORAGE_KEYS.PROJECT_ROUND_FINISH_LOCKED, allow);
+}
+
+/** Можно ли объединять текущий обход с предыдущим. */
+export function readAllowMergeRounds(projectId) {
+  return readProjectSettings(projectId).allowMergeRounds;
+}
+
+export function writeAllowMergeRounds(projectId, allow) {
+  writeRoundLock(projectId, STORAGE_KEYS.PROJECT_ROUND_MERGE_LOCKED, allow);
 }
 
 function writeRoundLock(projectId, keyOf, allow) {

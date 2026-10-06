@@ -75,6 +75,7 @@ export default function Monitoring(props) {
     startNewRound,
     allowNewRounds,
     allowFinishRounds,
+    allowMergeRounds,
     mergeRound,
     mergeConfirmOpen,
     setMergeConfirmOpen,
@@ -102,7 +103,9 @@ export default function Monitoring(props) {
         onFinishRound={finishRound}
         canStartRound={allowNewRounds}
         canFinishRound={allowFinishRounds}
-        onMergeRound={() => setMergeConfirmOpen(true)}
+        onMergeRound={
+          allowMergeRounds ? () => setMergeConfirmOpen(true) : undefined
+        }
       />
 
       <MonitoringLeakList

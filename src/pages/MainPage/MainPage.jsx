@@ -114,11 +114,15 @@ export default function MainPage({
       {repairMode ? (
         <FilterChips
           label={t("repairs.chipsLabel")}
-          all={{ key: "all", label: t("repairs.all"), count: stageCounts.all }}
+          all={{
+            key: "all",
+            label: t("repairs.all"),
+            count: stageCounts?.all ?? 0,
+          }}
           items={REPAIR_STAGE_ORDER.map((stage) => ({
             key: stage,
             label: t(`repairs.stages.${stage}`),
-            count: stageCounts[stage],
+            count: stageCounts?.[stage] ?? 0,
             dot: getRepairStageMeta(stage, t).dot,
           }))}
           value={stageFilter}

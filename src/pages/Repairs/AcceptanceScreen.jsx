@@ -20,7 +20,7 @@ const num = (value) => Number(String(value ?? "").replace(",", ".")) || 0;
  * ввода (7g).
  */
 export default function AcceptanceScreen({
-  invoice = null,
+  invoice = /** @type {any} */ (null),
   user,
   onSave,
   onClose,

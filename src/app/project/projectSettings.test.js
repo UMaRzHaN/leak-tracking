@@ -33,6 +33,7 @@ describe("projectSettings", () => {
       voiceCorrections: [],
       allowNewRounds: true,
       allowFinishRounds: true,
+      allowMergeRounds: true,
       updatedAt: 0,
     });
   });
@@ -61,6 +62,7 @@ describe("projectSettings", () => {
       voiceCorrections: [],
       allowNewRounds: true,
       allowFinishRounds: true,
+      allowMergeRounds: true,
       updatedAt: 50,
     });
 
@@ -136,5 +138,25 @@ describe("allowFinishRounds", () => {
     expect(settings.allowFinishRounds).toBe(false);
     writeProjectSettings("p2", settings);
     expect(readAllowFinishRounds("p2")).toBe(false);
+  });
+});
+
+describe("allowMergeRounds", () => {
+  it("allows merging by default and locks it on its own", async () => {
+    const {
+      readAllowMergeRounds,
+      writeAllowMergeRounds,
+      readAllowFinishRounds,
+      readProjectSettings,
+      writeProjectSettings,
+    } = await import("./projectSettings");
+    localStorage.clear();
+    expect(readAllowMergeRounds("p1")).toBe(true);
+    writeAllowMergeRounds("p1", false);
+    expect(readAllowMergeRounds("p1")).toBe(false);
+    expect(readAllowFinishRounds("p1")).toBe(true);
+
+    writeProjectSettings("p2", readProjectSettings("p1"));
+    expect(readAllowMergeRounds("p2")).toBe(false);
   });
 });

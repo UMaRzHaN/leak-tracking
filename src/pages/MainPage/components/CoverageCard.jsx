@@ -6,7 +6,10 @@ import s from "@/pages/MainPage/MainPage.module.scss";
  * тому, что уже есть в проекте (`computeSurveyCoverage`); переход «По
  * категориям объектов» появится вместе с вводом «Обследовано без утечек».
  */
-export default function CoverageCard({ coverage, onOpen = null }) {
+export default function CoverageCard({
+  coverage,
+  onOpen = /** @type {(() => void)|null} */ (null),
+}) {
   const { t } = useLanguage();
   const { surveyed, total, percent, estimated = false } = coverage;
 

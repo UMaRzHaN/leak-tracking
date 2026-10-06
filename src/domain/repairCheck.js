@@ -48,7 +48,10 @@ export function repairCheckOutcome({ leaking, done }) {
  * @param {{ user?: string, now?: number }} [options]
  */
 export function applyRepairCheck(leak, draft, options = {}) {
-  const start = Number.isFinite(options.now) ? options.now : Date.now();
+  const start =
+    typeof options.now === "number" && Number.isFinite(options.now)
+      ? options.now
+      : Date.now();
   // Координаты правятся последними: у правки своя миллисекунда после
   // переходов, и в ленте она встаёт за ними.
   const answered = applyRepairAnswers(leak, draft, {
@@ -134,7 +137,8 @@ function withGpsCoords(leak, gps, { user, now }) {
  * @param {{ user?: string, now?: number }} [options]
  */
 function applyRepairAnswers(leak, draft, { user, now } = {}) {
-  const start = Number.isFinite(now) ? now : Date.now();
+  const start =
+    typeof now === "number" && Number.isFinite(now) ? now : Date.now();
   let tick = 0;
   const at = () => ({ user, now: start + tick++ });
   const brigade = draft.brigade?.trim() || undefined;

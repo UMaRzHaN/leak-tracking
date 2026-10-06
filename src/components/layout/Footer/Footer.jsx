@@ -78,7 +78,7 @@ export default function Footer({
               key="component-add"
               type="button"
               className={s.fab}
-              onClick={onAddComponent}
+              onClick={onAddComponent ?? undefined}
               aria-label={t("components.add")}
             >
               <Icon name="plus" size={26} strokeWidth={2.2} />
@@ -108,7 +108,7 @@ export default function Footer({
               key="route"
               type="button"
               className={s.fab}
-              onClick={onRoute}
+              onClick={onRoute ?? undefined}
               aria-label={t("footer.route")}
             >
               <Icon name="route" size={26} strokeWidth={2} />

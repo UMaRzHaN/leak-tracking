@@ -43,6 +43,8 @@ export const STORAGE_KEYS = {
     `${APP_PREFIX}:${projectId}:rounds_locked_${VERSION}`,
   PROJECT_ROUND_FINISH_LOCKED: (projectId) =>
     `${APP_PREFIX}:${projectId}:round_finish_locked_${VERSION}`,
+  PROJECT_ROUND_MERGE_LOCKED: (projectId) =>
+    `${APP_PREFIX}:${projectId}:round_merge_locked_${VERSION}`,
   // Поправки к распознанной речи живут при проекте, а не при устройстве:
   // ошибки распознавателя одинаковы у всей бригады, и найденную пару разумнее
   // раздать обменом архива, чем заводить на каждом телефоне заново.

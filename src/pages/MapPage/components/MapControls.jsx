@@ -128,7 +128,7 @@ export default function MapControls({
       if (shows(MAP_FILTER.MONITORING) && hasMonitoringRound)
         onMonitoringChange(MONITORING_FILTER.ALL);
       onTagChange?.(TAG_FILTER.ALL);
-      if (showsStage) onStageChange("all");
+      if (showsStage) onStageChange?.("all");
     }
     if (nearbyOnly) onToggleNearby(false);
   };
@@ -361,7 +361,7 @@ export default function MapControls({
                             isActive ? s.filterOptionBtnActive : ""
                           }`}
                           aria-pressed={isActive}
-                          onClick={() => onStageChange(key)}
+                          onClick={() => onStageChange?.(key)}
                         >
                           {key !== "all" && (
                             <span
@@ -375,7 +375,7 @@ export default function MapControls({
                             ? t("repairs.all")
                             : t(`repairs.stages.${key}`)}
                           <span className={s.stageCount}>
-                            {stageCounts[key] ?? 0}
+                            {stageCounts?.[key] ?? 0}
                           </span>
                         </button>
                       );
@@ -621,7 +621,7 @@ export default function MapControls({
                           }`}
                           aria-pressed={isActive}
                           onClick={() =>
-                            onTagChange(/** @type {string} */ (id))
+                            onTagChange?.(/** @type {string} */ (id))
                           }
                         >
                           {label}

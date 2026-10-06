@@ -90,7 +90,9 @@ export function createInvoice({
   user,
   now,
 }) {
-  const date = new Date(Number.isFinite(now) ? now : Date.now()).toISOString();
+  const date = new Date(
+    typeof now === "number" && Number.isFinite(now) ? now : Date.now(),
+  ).toISOString();
   const items = lines.map((line) => ({
     id: newId("item"),
     name: line.name.trim(),
@@ -136,7 +138,9 @@ function batchLine(itemId, line) {
  * @param {{ user?: string, now?: number }} [options]
  */
 export function addBatch(invoice, lines, { user, now } = {}) {
-  const date = new Date(Number.isFinite(now) ? now : Date.now()).toISOString();
+  const date = new Date(
+    typeof now === "number" && Number.isFinite(now) ? now : Date.now(),
+  ).toISOString();
   const items = [...invoice.items];
   const batchLines = lines
     .filter((line) => toQty(line.qty) > 0)
@@ -146,7 +150,7 @@ export function addBatch(invoice, lines, { user, now } = {}) {
         const item = {
           id: newId("item"),
           name: String(line.name ?? "").trim(),
-          unit: UNITS.includes(line.unit) ? line.unit : "pcs",
+          unit: UNITS.includes(line.unit ?? "") ? line.unit : "pcs",
           ordered: toQty(line.ordered) || toQty(line.qty),
         };
         items.push(item);

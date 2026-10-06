@@ -10,6 +10,11 @@ export const settings = {
       "A round can be finished with “Finish round” once every tag is checked.",
     finishLockedHint:
       "No “Finish round” button — the round stays open. Guards against a stray tap.",
+    allowMerge: "Merging rounds",
+    mergeAllowedHint:
+      "A round started by mistake can be merged into the previous one with “Merge into No. N”.",
+    mergeLockedHint:
+      "No “Merge into No. N” link — rounds stay apart. Guards against a stray tap.",
     saved: "Round setting saved",
     disabled: "New rounds are turned off in project settings",
   },

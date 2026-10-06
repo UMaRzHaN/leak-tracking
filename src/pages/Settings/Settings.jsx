@@ -14,6 +14,7 @@ import DangerZoneSection from "./components/DangerZoneSection";
 import MonitoringRoundsSection from "./components/MonitoringRoundsSection";
 import {
   useAllowFinishRounds,
+  useAllowMergeRounds,
   useAllowNewRounds,
 } from "@/app/project/hooks/useAllowNewRounds";
 import EmissionsSummarySection from "./components/EmissionsSummarySection";
@@ -86,6 +87,9 @@ export default function Settings(props) {
     activeProject?.id ?? null,
   );
   const [allowFinishRounds, setAllowFinishRounds] = useAllowFinishRounds(
+    activeProject?.id ?? null,
+  );
+  const [allowMergeRounds, setAllowMergeRounds] = useAllowMergeRounds(
     activeProject?.id ?? null,
   );
   // Удаление проекта — в опасной зоне, с подтверждением, как очистка базы.
@@ -183,6 +187,11 @@ export default function Settings(props) {
             allowFinishRounds={allowFinishRounds}
             onFinishChange={(allow) => {
               setAllowFinishRounds(allow);
+              notify("success", t("settings.rounds.saved"));
+            }}
+            allowMergeRounds={allowMergeRounds}
+            onMergeChange={(allow) => {
+              setAllowMergeRounds(allow);
               notify("success", t("settings.rounds.saved"));
             }}
           />

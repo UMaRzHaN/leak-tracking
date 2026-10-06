@@ -3,9 +3,10 @@ import RequirementToggle from "./SettingsToggle";
 import s from "../Settings.module.scss";
 
 /**
- * Мониторинг: можно ли заводить новые обходы и завершать текущий.
- * Выключенный переключатель прячет свою кнопку — «Новый обход» и «Начать
- * мониторинг» или «Завершить обход», — и случайно нажать её нельзя.
+ * Мониторинг: можно ли заводить новые обходы, завершать текущий и
+ * объединять его с предыдущим. Выключенный переключатель прячет свою кнопку —
+ * «Новый обход» и «Начать мониторинг», «Завершить обход» или «Объединить с
+ * № N», — и случайно нажать её нельзя.
  */
 export default function MonitoringRoundsSection({
   activeProject,
@@ -13,6 +14,8 @@ export default function MonitoringRoundsSection({
   onChange,
   allowFinishRounds,
   onFinishChange,
+  allowMergeRounds,
+  onMergeChange,
 }) {
   const { t } = useLanguage();
   if (!activeProject) return null;
@@ -42,6 +45,16 @@ export default function MonitoringRoundsSection({
           }
           checked={allowFinishRounds}
           onChange={onFinishChange}
+        />
+        <RequirementToggle
+          label={t("settings.rounds.allowMerge")}
+          hint={
+            allowMergeRounds
+              ? t("settings.rounds.mergeAllowedHint")
+              : t("settings.rounds.mergeLockedHint")
+          }
+          checked={allowMergeRounds}
+          onChange={onMergeChange}
         />
       </div>
     </section>

@@ -35,11 +35,13 @@ function toTime(value) {
 export function groupRecentLeaks(leaks, now = Date.now()) {
   const today = startOfDay(now);
   const yesterday = startOfDay(today - 1);
-  const groups = new Map([
-    [RECENT_GROUP.TODAY, []],
-    [RECENT_GROUP.YESTERDAY, []],
-    [RECENT_GROUP.EARLIER, []],
-  ]);
+  const groups = /** @type {Map<string, any[]>} */ (
+    new Map([
+      [RECENT_GROUP.TODAY, []],
+      [RECENT_GROUP.YESTERDAY, []],
+      [RECENT_GROUP.EARLIER, []],
+    ])
+  );
 
   for (const leak of leaks) {
     const time = toTime(leak?.createdAt);
@@ -49,7 +51,7 @@ export function groupRecentLeaks(leaks, now = Date.now()) {
         : time != null && time >= yesterday
           ? RECENT_GROUP.YESTERDAY
           : RECENT_GROUP.EARLIER;
-    groups.get(key).push(leak);
+    groups.get(key)?.push(leak);
   }
 
   return [...groups.entries()]

@@ -416,7 +416,11 @@ export function validateProjectBackupMeta(parsed) {
           "Invalid Excel monitoring export mode",
         );
       }
-      for (const field of ["allowNewRounds", "allowFinishRounds"]) {
+      for (const field of [
+        "allowNewRounds",
+        "allowFinishRounds",
+        "allowMergeRounds",
+      ]) {
         if (
           parsed.settings[field] !== undefined &&
           typeof parsed.settings[field] !== "boolean"

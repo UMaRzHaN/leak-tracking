@@ -95,7 +95,7 @@ export function routeProgress(route, leaks) {
     const leak = byId.get(id);
     if (!leak) return true;
     const last = getLastMonitoringRecord(leak);
-    return Boolean(last && Date.parse(last.date) >= started);
+    return Boolean(last && Date.parse(last.date ?? "") >= started);
   };
   const doneCount = route.ids.filter(isDone).length;
   const currentId = route.ids.find((id) => !isDone(id)) ?? null;

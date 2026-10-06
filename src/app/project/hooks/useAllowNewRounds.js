@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import {
   PROJECT_SETTINGS_UPDATED_EVENT,
   readAllowFinishRounds,
+  readAllowMergeRounds,
   readAllowNewRounds,
   writeAllowFinishRounds,
+  writeAllowMergeRounds,
   writeAllowNewRounds,
 } from "@/app/project/projectSettings";
 
@@ -54,5 +56,14 @@ export function useAllowFinishRounds(projectId) {
     projectId,
     readAllowFinishRounds,
     writeAllowFinishRounds,
+  );
+}
+
+/** Можно ли объединять текущий обход с предыдущим (настройка проекта). */
+export function useAllowMergeRounds(projectId) {
+  return useRoundSetting(
+    projectId,
+    readAllowMergeRounds,
+    writeAllowMergeRounds,
   );
 }

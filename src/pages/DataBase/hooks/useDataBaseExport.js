@@ -52,7 +52,7 @@ export function prepareRows(data, t, projectVars = {}) {
 export function useDataBaseExport({
   displayed,
   notify,
-  onDone = null,
+  onDone = /** @type {((result: any) => void)|null} */ (null),
   // Выбор экрана экспорта (8a): какие листы и класть ли фото. База
   // выгружает всё, как и раньше.
   sheets = /** @type {{monitoring?:boolean, repairs?:boolean, materials?:boolean}|null} */ (
