@@ -69,4 +69,25 @@ describe("Footer navigation", () => {
     expect(screen.queryByLabelText("Add Leak")).toBeNull();
     expect(screen.getByLabelText("Records")).toBeTruthy();
   });
+
+  it("counts the tags left in the round on the database tab in monitoring", () => {
+    renderFooter("", 3, {
+      module: "monitoring",
+      roundDueCount: 12,
+      onRoute: () => {},
+    });
+    expect(
+      screen.getByRole("button", { name: "Database" }).textContent,
+    ).toContain("12");
+    expect(screen.getByRole("button", { name: "Round" }).textContent).toBe(
+      "Round",
+    );
+  });
+
+  it("hides the database badge in monitoring when nothing is left", () => {
+    renderFooter("", 3, { module: "monitoring", roundDueCount: 0 });
+    expect(screen.getByRole("button", { name: "Database" }).textContent).toBe(
+      "Database",
+    );
+  });
 });

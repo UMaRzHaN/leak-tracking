@@ -1,7 +1,10 @@
 import { useProjectBackupExport } from "@/app/hooks/useProjectBackupExport";
 import Notification from "@/components/ui/Notification/Notification";
 import { isMonitoringDue } from "@/utils/monitoring";
-import { readMonitoringRound } from "@/utils/monitoringRound";
+import {
+  MONITORING_ROUND_EVENT,
+  readMonitoringRound,
+} from "@/utils/monitoringRound";
 import {
   lazy,
   Suspense,
@@ -237,17 +240,31 @@ export default function App() {
     { data, activeProject, notify: notifyApp },
   );
 
-  // Сколько тегов осталось в текущем обходе — для меню. Считается, только
-  // пока меню открыто: обход меняется на странице мониторинга, и меню при
-  // каждом открытии читает его заново.
+  // Сколько тегов осталось в текущем обходе — для меню и бейджа «Обхода» в
+  // нижней панели мониторинга. Вне мониторинга считается, только пока меню
+  // открыто; обход перечитывается, когда его начинают или завершают.
+  const [roundVersion, setRoundVersion] = useState(0);
+  useEffect(() => {
+    const bump = () => setRoundVersion((value) => value + 1);
+    globalScope.addEventListener?.(MONITORING_ROUND_EVENT, bump);
+    return () =>
+      globalScope.removeEventListener?.(MONITORING_ROUND_EVENT, bump);
+  }, []);
   const monitoringDueCount = useMemo(() => {
-    if (!menuOpen) return null;
+    if (!menuOpen && module !== MODULE.MONITORING) return null;
+    void roundVersion;
     const round = readMonitoringRound(activeProject?.id ?? null);
     if (!round || round.completedAt) return null;
     return leakScope.scopedLeaks.filter((leak) =>
       isMonitoringDue(leak, round.id, round.number),
     ).length;
-  }, [menuOpen, activeProject?.id, leakScope.scopedLeaks]);
+  }, [
+    menuOpen,
+    module,
+    roundVersion,
+    activeProject?.id,
+    leakScope.scopedLeaks,
+  ]);
 
   const repairCount = useMemo(() => {
     const counts = countRepairStages(leakScope.scopedLeaks);
@@ -352,6 +369,7 @@ export default function App() {
             page={page}
             setPage={setPage}
             openCount={scopedOpenCount}
+            roundDueCount={monitoringDueCount ?? 0}
             module={module}
             onRoute={() => setRouteSheetOpen(true)}
             onAddComponent={

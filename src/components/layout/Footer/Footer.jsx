@@ -14,6 +14,9 @@ export default function Footer({
   page,
   setPage,
   openCount = 0,
+  // Тегов к проверке в текущем обходе: в мониторинге бейдж «Базы» считает их,
+  // а не открытые утечки.
+  roundDueCount = 0,
   module = /** @type {string} */ (MODULE.LDAR),
   onRoute = /** @type {(() => void)|null} */ (null),
   onAddComponent = /** @type {(() => void)|null} */ (null),
@@ -121,10 +124,12 @@ export default function Footer({
           >
             <span className={s.iconWrap}>
               <Icon name={item.icon} />
-              {item.badge && openCount > 0 && (
-                <span className={s.badge}>
-                  {openCount > 99 ? "99+" : openCount}
-                </span>
+              {item.badge && (
+                <Badge
+                  count={
+                    module === MODULE.MONITORING ? roundDueCount : openCount
+                  }
+                />
               )}
             </span>
             <span className={s.label}>{item.label}</span>
@@ -133,4 +138,9 @@ export default function Footer({
       )}
     </footer>
   );
+}
+
+function Badge({ count }) {
+  if (!(count > 0)) return null;
+  return <span className={s.badge}>{count > 99 ? "99+" : count}</span>;
 }

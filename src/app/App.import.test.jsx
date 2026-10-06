@@ -164,6 +164,8 @@ vi.mock("@/configs/projects", () => ({
   },
 }));
 vi.mock("@/utils/monitoringRound", () => ({
+  MONITORING_ROUND_EVENT: "monitoring-round-updated",
+  readMonitoringRound: vi.fn(() => null),
   saveMonitoringRound: vi.fn(),
 }));
 vi.mock("@/services/sync/projectSyncState", () => ({

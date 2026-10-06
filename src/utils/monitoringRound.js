@@ -1,4 +1,5 @@
 import { getMonitoringRecords } from "@/utils/monitoring";
+import { globalScope } from "@/utils/globalScope";
 
 const MONITORING_ROUND_STORAGE_VERSION = "v2";
 const LEGACY_MONITORING_ROUND_STORAGE_VERSION = "v1";
@@ -87,6 +88,9 @@ export function readMonitoringRound(projectId) {
   }
 }
 
+/** Обход начат, завершён или заменён — счётчик «Обхода» в панели перечитывает. */
+export const MONITORING_ROUND_EVENT = "monitoring-round-updated";
+
 export function saveMonitoringRound(projectId, round) {
   const key = getMonitoringRoundStorageKey(projectId);
   if (!key || typeof localStorage === "undefined") return;
@@ -94,6 +98,9 @@ export function saveMonitoringRound(projectId, round) {
   const normalized = normalizeMonitoringRound(round);
   if (normalized) localStorage.setItem(key, JSON.stringify(normalized));
   else localStorage.removeItem(key);
+  globalScope.dispatchEvent?.(
+    new CustomEvent(MONITORING_ROUND_EVENT, { detail: { projectId } }),
+  );
 }
 
 export function inferMonitoringRound(leaks = []) {
