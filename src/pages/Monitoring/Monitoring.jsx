@@ -1,3 +1,5 @@
+import { useLanguage } from "@/app/hooks/useLanguage";
+import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import { useRenderMetric } from "@/utils/renderMetrics";
 import MonitoringRoundOverview from "./MonitoringRoundOverview";
 import MonitoringDialogs from "./components/MonitoringDialogs";
@@ -71,11 +73,15 @@ export default function Monitoring(props) {
     showCompletion,
     showMonitoringSheet,
     startNewRound,
+    mergeRound,
+    mergeConfirmOpen,
+    setMergeConfirmOpen,
     submitted,
     texts,
     updateDraft,
     vars,
   } = useMonitoringPage(props);
+  const { t } = useLanguage();
   const { userProfile } = props;
 
   return (
@@ -92,6 +98,7 @@ export default function Monitoring(props) {
           setRoundConfirmOpen(true);
         }}
         onFinishRound={finishRound}
+        onMergeRound={() => setMergeConfirmOpen(true)}
       />
 
       <MonitoringLeakList
@@ -177,6 +184,22 @@ export default function Monitoring(props) {
         texts={texts}
         userProfile={userProfile}
         vars={vars}
+      />
+
+      <ConfirmSheet
+        open={mergeConfirmOpen}
+        title={t("monitoring.mergeTitle", {
+          number: monitoringRound?.number ?? 1,
+          target: (monitoringRound?.number ?? 2) - 1,
+        })}
+        description={t("monitoring.mergeDescription", {
+          number: monitoringRound?.number ?? 1,
+          target: (monitoringRound?.number ?? 2) - 1,
+        })}
+        confirmLabel={t("monitoring.mergeConfirm")}
+        cancelLabel={t("monitoring.cancel")}
+        onConfirm={mergeRound}
+        onCancel={() => setMergeConfirmOpen(false)}
       />
     </div>
   );

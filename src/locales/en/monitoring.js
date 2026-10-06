@@ -34,6 +34,14 @@ export const monitoring = {
   searchEmpty: "Nothing found",
   noActiveRound: "No active round. Start monitoring to build the due list.",
   startRound: "Start monitoring",
+  mergeAction: "Merge into No. {{number}}",
+  mergeTitle: "Merge round No. {{number}} into No. {{target}}?",
+  mergeDescription:
+    "Inspections from round No. {{number}} move to round No. {{target}}, which becomes current again. Use it when a new round was started by mistake.",
+  mergeConfirm: "Merge",
+  mergeDone:
+    "Round No. {{number}} is current again; inspections moved for {{count}} leaks",
+  menuDue: "{{count}} to check",
   newRound: "New round",
   finishRound: "Complete round",
   roundReady: "All tags checked",

@@ -35,6 +35,14 @@ export const monitoring = {
   noActiveRound:
     "Активного обхода нет. Начните мониторинг, чтобы сформировать список к проверке.",
   startRound: "Начать мониторинг",
+  mergeAction: "Объединить с № {{number}}",
+  mergeTitle: "Объединить обход № {{number}} с № {{target}}?",
+  mergeDescription:
+    "Осмотры обхода № {{number}} перейдут в обход № {{target}}, и он снова станет текущим. Подходит, если новый обход начали по ошибке.",
+  mergeConfirm: "Объединить",
+  mergeDone:
+    "Обход № {{number}} снова текущий, осмотров перенесено у {{count}} утечек",
+  menuDue: "{{count}} к проверке",
   newRound: "Новый обход",
   finishRound: "Завершить обход",
   roundReady: "Все теги проверены",

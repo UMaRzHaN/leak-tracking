@@ -26,6 +26,8 @@ export default function AppMenu({
   userProfile,
   openCount = 0,
   repairCount = 0,
+  // Сколько тегов осталось проверить в текущем обходе; null — обхода нет.
+  monitoringDueCount = /** @type {number|null} */ (null),
   showRegistry = false,
 }) {
   const { t } = useLanguage();
@@ -64,6 +66,11 @@ export default function AppMenu({
       key: "monitoring",
       icon: "chart",
       label: t("appMenu.monitoring"),
+      meta:
+        monitoringDueCount != null
+          ? t("monitoring.menuDue", { count: monitoringDueCount })
+          : "",
+      metaTone: "accent",
       active: module === MODULE.MONITORING,
       onClick: () => onSelectModule(MODULE.MONITORING),
     },

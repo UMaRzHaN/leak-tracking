@@ -1,3 +1,5 @@
+import { isMonitoringDue } from "@/utils/monitoring";
+import { readMonitoringRound } from "@/utils/monitoringRound";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { SHOW_ON_MAP_EVENT } from "@/app/mapFocus";
 import { globalScope } from "@/utils/globalScope";
@@ -213,6 +215,18 @@ export default function App() {
 
   // Счётчик пункта «Ремонтные работы» в меню: работы в производстве, без
   // принятых.
+  // Сколько тегов осталось в текущем обходе — для меню. Считается, только
+  // пока меню открыто: обход меняется на странице мониторинга, и меню при
+  // каждом открытии читает его заново.
+  const monitoringDueCount = useMemo(() => {
+    if (!menuOpen) return null;
+    const round = readMonitoringRound(activeProject?.id ?? null);
+    if (!round || round.completedAt) return null;
+    return leakScope.scopedLeaks.filter((leak) =>
+      isMonitoringDue(leak, round.id, round.number),
+    ).length;
+  }, [menuOpen, activeProject?.id, leakScope.scopedLeaks]);
+
   const repairCount = useMemo(() => {
     const counts = countRepairStages(leakScope.scopedLeaks);
     return counts.all - counts.accepted;
@@ -359,6 +373,7 @@ export default function App() {
             userProfile={userProfile}
             openCount={scopedOpenCount}
             repairCount={repairCount}
+            monitoringDueCount={monitoringDueCount}
             showRegistry={showRegistry}
           />
         </Suspense>

@@ -36,6 +36,7 @@ import {
   getMonitoringRoundSummary,
   getMonitoringFlagDefaults,
   getNextMonitoringRoundNumber,
+  mergeRoundIntoPrevious,
 } from "../monitoringDomain";
 import { MONITORING_FILTER as FILTERS } from "@/domain/leakFilters";
 import { ignoredError } from "@/utils/ignoredError";
@@ -153,6 +154,24 @@ export function useMonitoringPage({
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
+
+  // Слить текущий обход с предыдущим: новый начали по ошибке.
+  const [mergeConfirmOpen, setMergeConfirmOpen] = useState(false);
+  const mergeRound = async () => {
+    setMergeConfirmOpen(false);
+    const result = mergeRoundIntoPrevious(data, monitoringRound);
+    if (!result) return;
+    if (result.moved > 0) await setData(result.data, { optimistic: false });
+    saveMonitoringRound(activeProject?.id ?? null, result.round);
+    setMonitoringRound(result.round);
+    setNotification({
+      type: "success",
+      message: t("monitoring.mergeDone", {
+        number: result.round.number,
+        count: result.moved,
+      }),
+    });
+  };
 
   const startNewRound = () => {
     const next = createMonitoringRound(nextMonitoringRoundNumber);
@@ -756,6 +775,9 @@ export function useMonitoringPage({
     showCompletion,
     showMonitoringSheet,
     startNewRound,
+    mergeRound,
+    mergeConfirmOpen,
+    setMergeConfirmOpen,
     submitted,
     texts,
     updateDraft,

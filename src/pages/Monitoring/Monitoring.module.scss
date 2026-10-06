@@ -42,6 +42,19 @@
   font-weight: 600;
 }
 
+.mergeRoundBtn {
+  margin-left: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--c-accent-text);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
 .newRoundBtn {
   flex-shrink: 0;
   min-height: 44px;

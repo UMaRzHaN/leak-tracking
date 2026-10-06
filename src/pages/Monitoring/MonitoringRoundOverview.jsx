@@ -11,6 +11,7 @@ export default function MonitoringRoundOverview({
   hasRound,
   onStartRound,
   onFinishRound,
+  onMergeRound = /** @type {(() => void)|null} */ (null),
 }) {
   const { t } = useLanguage();
 
@@ -28,6 +29,18 @@ export default function MonitoringRoundOverview({
               <span className={s.roundPeriod}>
                 · {formatRoundPeriod(round.startedAt, round.completedAt, lang)}
               </span>
+              {/* «Новый обход» нажали по ошибке — вернуть в предыдущий. */}
+              {onMergeRound && !isCompleted && Number(round.number) > 1 && (
+                <button
+                  type="button"
+                  className={s.mergeRoundBtn}
+                  onClick={onMergeRound}
+                >
+                  {t("monitoring.mergeAction", {
+                    number: Number(round.number) - 1,
+                  })}
+                </button>
+              )}
             </div>
           ) : (
             <p>{texts.noActiveRound}</p>

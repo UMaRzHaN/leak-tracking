@@ -114,4 +114,14 @@ describe("AppMenu", () => {
     fireEvent.click(screen.getByRole("button", { name: /Repair work/ }));
     expect(onSelectModule).toHaveBeenCalledWith("repairs");
   });
+
+  it("shows how many tags are left in the current round", () => {
+    renderMenu({ monitoringDueCount: 7 });
+    expect(screen.getByText("7 to check")).toBeTruthy();
+  });
+
+  it("says nothing about tags without an active round", () => {
+    renderMenu({ monitoringDueCount: null });
+    expect(screen.queryByText(/to check/)).toBeNull();
+  });
 });
