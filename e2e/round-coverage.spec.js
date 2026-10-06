@@ -6,6 +6,7 @@ import {
   openMap,
   openRound,
   setUserProfile,
+  openMapFilters,
 } from "./helpers";
 
 /**
@@ -48,6 +49,7 @@ test("осмотренная в обходе булавка гаснет, неп
   );
 
   await openMap(page);
+  await openMapFilters(page);
   await page.getByRole("button", { name: "Фильтр по мониторингу" }).click();
   await page.getByRole("button", { name: "Все теги", exact: true }).click();
 

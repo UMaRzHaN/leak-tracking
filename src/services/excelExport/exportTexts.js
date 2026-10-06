@@ -27,6 +27,16 @@ const MONITORING_KEYS = [
   "previousPhoto",
 ];
 
+const MATERIALS_KEYS = [
+  "index",
+  "leak_id",
+  "date",
+  "time",
+  "source",
+  "materials_equipment",
+  "user",
+];
+
 const REPAIR_KEYS = [
   "index",
   "leak_id",
@@ -81,6 +91,7 @@ export function buildExcelExportTexts(t) {
       history: t("excelExport.sheets.history"),
       monitoring: t("excelExport.sheets.monitoring"),
       repairs: t("excelExport.sheets.repairs"),
+      materials: t("excelExport.sheets.materials"),
     },
     photo: {
       open: t("excelExport.photo.open"),
@@ -111,6 +122,15 @@ export function buildExcelExportTexts(t) {
       headers: byKey(REPAIR_KEYS, (key) =>
         t(`excelExport.repairs.headers.${key}`),
       ),
+    },
+    materials: {
+      headers: byKey(MATERIALS_KEYS, (key) =>
+        t(`excelExport.materials.headers.${key}`),
+      ),
+      sources: {
+        repair: t("excelExport.materials.sources.repair"),
+        monitoring: t("excelExport.materials.sources.monitoring"),
+      },
     },
     backup: {
       title: t("excelExport.backup.title"),

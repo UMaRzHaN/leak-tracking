@@ -1,10 +1,11 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { usePhotoSrc } from "@/hooks/usePhotoSrc";
 import { formatLeakDate } from "@/utils/locale";
 import { getLeakDetailsHeroPhotoPath } from "@/utils/monitoring";
 import { useLeakDetailsSheet, MODE } from "./hooks/useLeakDetailsSheet";
 import PhotoBlock from "./components/PhotoBlock";
+import { getLeakHeroPhotoPaths } from "./utils/heroPhotoPaths";
 import ViewBlock from "./components/ViewBlock";
 import EditBlock from "./components/EditBlock";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
@@ -93,6 +94,9 @@ export default function LeakDetailsSheet({
     userProfile,
   });
   const heroSrc = usePhotoSrc(getLeakDetailsHeroPhotoPath(leak)) || src;
+  // Все снимки записи листаются в шапке; тап открывает тот, что на экране.
+  const heroPaths = useMemo(() => getLeakHeroPhotoPaths(leak), [leak]);
+  const [viewerSrc, setViewerSrc] = useState(/** @type {string|null} */ (null));
   const dialogRef = useModalDialog({
     onClose: handleClose,
     closeDisabled: saving,
@@ -128,6 +132,10 @@ export default function LeakDetailsSheet({
           </h2>
           <PhotoBlock
             src={mode === MODE.EDIT ? null : heroSrc}
+            photoPaths={mode === MODE.EDIT ? [] : heroPaths}
+            counterLabel={(index, total) =>
+              t("leakDetails.photoCounter", { index, total })
+            }
             status={status}
             identityNum={`№ ${leak.leak_id ?? leak.index ?? "—"}`}
             identityTime={ago ?? absoluteDate ?? ""}
@@ -135,8 +143,11 @@ export default function LeakDetailsSheet({
             onBack={handleClose}
             backLabel={t("leakDetails.back")}
             onView={
-              mode === MODE.VIEW && heroSrc
-                ? () => setViewerOpen(true)
+              mode === MODE.VIEW && (heroSrc || heroPaths.length > 0)
+                ? (shown) => {
+                    setViewerSrc(shown || heroSrc);
+                    setViewerOpen(true);
+                  }
                 : undefined
             }
           />
@@ -300,8 +311,11 @@ export default function LeakDetailsSheet({
         onCancel={cancelClose}
       />
 
-      {viewerOpen && heroSrc && (
-        <PhotoViewer src={heroSrc} onClose={() => setViewerOpen(false)} />
+      {viewerOpen && (viewerSrc || heroSrc) && (
+        <PhotoViewer
+          src={viewerSrc || heroSrc}
+          onClose={() => setViewerOpen(false)}
+        />
       )}
 
       {statusPickerOpen && (

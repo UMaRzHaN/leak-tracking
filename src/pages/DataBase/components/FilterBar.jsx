@@ -2,7 +2,7 @@ import { useState, memo } from "react";
 import { STATUS_META, STATUS_ORDER, getStatusMeta } from "@/utils/status";
 import { PRIORITY_ORDER, getPriorityMeta } from "@/utils/priority";
 import { useLanguage } from "@/app/hooks/useLanguage";
-import { FICTION_FILTER } from "@/domain/leakFilters";
+import { FICTION_FILTER, TAG_FILTER } from "@/domain/leakFilters";
 import s from "@/pages/DataBase/DataBase.module.scss";
 import Icon from "@/components/ui/Icon/Icon";
 
@@ -29,6 +29,9 @@ function FilterBar({
   setPriorityFilter,
   fictionFilter = FICTION_FILTER.ALL,
   setFictionFilter = /** @type {((value: string) => void)|null} */ (null),
+  // Физ. тег — только в обходе; в базе группы нет.
+  tagFilter = TAG_FILTER.ALL,
+  setTagFilter = /** @type {((value: string) => void)|null} */ (null),
   nearbyFilter,
   setNearbyFilter,
   nearbyRadius,
@@ -46,6 +49,7 @@ function FilterBar({
     selectedStatuses.length > 0 ||
     selectedPriorities.length > 0 ||
     fictionFilter !== FICTION_FILTER.ALL ||
+    (setTagFilter !== null && tagFilter !== TAG_FILTER.ALL) ||
     nearbyFilter;
   const [open, setOpen] = useState(false);
   const formatRadius = (radius) =>
@@ -236,6 +240,49 @@ function FilterBar({
                         style={style}
                         aria-pressed={isActive}
                         onClick={() => setFictionFilter(id)}
+                      >
+                        {label}
+                        {count > 0 && (
+                          <span className={s.filterCount}>{count}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+
+          {setTagFilter && (
+            <>
+              <div className={s.filterDivider} />
+
+              <div className={s.filterSection}>
+                <span className={s.filterLabel}>
+                  {t("database.physicalTag")}
+                </span>
+                <div className={s.filters}>
+                  {[
+                    [
+                      TAG_FILTER.ALL,
+                      t("database.all"),
+                      counts.tagWith + counts.tagWithout,
+                    ],
+                    [TAG_FILTER.WITH, t("database.tagWith"), counts.tagWith],
+                    [
+                      TAG_FILTER.WITHOUT,
+                      t("database.tagWithout"),
+                      counts.tagWithout,
+                    ],
+                  ].map(([id, label, count]) => {
+                    const isActive = tagFilter === id;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        className={`${s.filterTab} ${isActive ? s.filterActive : ""}`}
+                        aria-pressed={isActive}
+                        onClick={() => setTagFilter(id)}
                       >
                         {label}
                         {count > 0 && (

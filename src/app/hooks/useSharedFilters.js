@@ -3,6 +3,7 @@ import {
   FICTION_FILTER,
   MONITORING_FILTER,
   NEARBY_RADIUS_M,
+  TAG_FILTER,
 } from "@/domain/leakFilters";
 import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
 import {
@@ -24,6 +25,7 @@ export function useSharedFilters({ projectId, projectType }) {
     /** @type {string[]} */ ([]),
   );
   const [fictionFilter, setFictionFilter] = useState(FICTION_FILTER.ALL);
+  const [tagFilter, setTagFilter] = useState(TAG_FILTER.ALL);
   /*
    * Состояние железа — отдельно от статуса утечки: словари разные, а живёт
    * фильтр здесь по той же причине, что и остальные. Реестр и карта на базе
@@ -69,6 +71,7 @@ export function useSharedFilters({ projectId, projectType }) {
     setStatusFilter(stored.statusFilter);
     setPriorityFilter(stored.priorityFilter);
     setFictionFilter(stored.fictionFilter);
+    setTagFilter(stored.tagFilter);
     setComponentStatusFilter(stored.componentStatusFilter);
     setMainLocationFilter(
       keep(stored.mainLocationFilter, locationConfig?.main),
@@ -96,6 +99,7 @@ export function useSharedFilters({ projectId, projectType }) {
       statusFilter,
       priorityFilter,
       fictionFilter,
+      tagFilter,
       componentStatusFilter,
       mainLocationFilter,
       locationFilter,
@@ -111,6 +115,7 @@ export function useSharedFilters({ projectId, projectType }) {
     statusFilter,
     priorityFilter,
     fictionFilter,
+    tagFilter,
     componentStatusFilter,
     mainLocationFilter,
     locationFilter,
@@ -130,6 +135,8 @@ export function useSharedFilters({ projectId, projectType }) {
       setPriorityFilter,
       fictionFilter,
       setFictionFilter,
+      tagFilter,
+      setTagFilter,
       componentStatusFilter,
       setComponentStatusFilter,
       mainLocationFilter,
@@ -150,6 +157,7 @@ export function useSharedFilters({ projectId, projectType }) {
       statusFilter,
       priorityFilter,
       fictionFilter,
+      tagFilter,
       componentStatusFilter,
       mainLocationFilter,
       locationFilter,

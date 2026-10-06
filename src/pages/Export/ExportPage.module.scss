@@ -79,6 +79,9 @@
 
 .pill,
 .pillOn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   min-height: 44px;
   padding: 0 16px;
   border-radius: var(--r-pill);
@@ -96,6 +99,108 @@
   border: 1px solid var(--c-accent);
   background: var(--c-accent);
   color: #fff;
+}
+
+.pillCount {
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+.pill:disabled,
+.pillOn:disabled {
+  cursor: default;
+}
+
+/* Даты выбранного периода (8a): «1 — 31 марта 2026 · 31 дн.». */
+.rangeLine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 1px solid var(--c-border);
+  border-radius: 14px;
+  background: var(--c-surface);
+  color: var(--c-accent);
+
+  strong {
+    flex: 1;
+    color: var(--c-ink);
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  small {
+    color: var(--c-text3);
+    font-size: 13px;
+    font-weight: 600;
+  }
+}
+
+.groupHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+
+  small {
+    color: var(--c-text3);
+    font-size: 12px;
+  }
+}
+
+.linkButton {
+  border: none;
+  background: none;
+  color: var(--c-accent-text);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+}
+
+/* Фото у листа (8a): залитый чип — снимки раздела едут в архив. */
+.photoChip,
+.photoChipOn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.photoChip {
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-text2);
+}
+
+.photoChipOn {
+  border: 1px solid var(--c-accent);
+  background: var(--c-accent);
+  color: #fff;
+}
+
+.noPhoto {
+  flex: none;
+  color: var(--c-text3);
+  font-size: 12px;
+}
+
+.subLabel {
+  flex: 1;
+  color: var(--c-text2);
+  font-size: 13px;
 }
 
 .dates {
@@ -180,6 +285,18 @@
   font-weight: 800;
 }
 
+.rowNumOff {
+  composes: rowNum;
+  background: var(--c-surface-soft, var(--c-bg));
+  color: var(--c-text3);
+}
+
+/* Строка под переключателем «Обходы»: как писать обходы, если лист включён. */
+.subRow {
+  min-height: 0;
+  padding-top: 4px;
+}
+
 .segment {
   display: flex;
   gap: 2px;
@@ -261,8 +378,17 @@
   }
 
   p {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
     color: var(--c-ink);
     font-size: 14px;
+
+    small {
+      color: var(--c-text3);
+      font-size: 13px;
+    }
   }
 }
 

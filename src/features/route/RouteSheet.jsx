@@ -6,18 +6,14 @@ import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
 import { getLocationLevelKeys } from "@/utils/locationTree";
 import { normalizeLocationValue } from "@/utils/locationFilter";
 import Icon from "@/components/ui/Icon/Icon";
-import {
-  ROUTE_SET,
-  formatDistance,
-  planRoute,
-  routeCandidates,
-} from "./routePlan";
+import { readMonitoringRound } from "@/utils/monitoringRound";
+import { formatDistance, planRoute, routeCandidates } from "./routePlan";
 import s from "./RouteSheet.module.scss";
 
 /**
  * Лист маршрута по точкам (5a/5b): центральная кнопка нижней панели
- * мониторинга. Набор точек — открытые или в ремонте, порядок — от текущего
- * места к ближайшей. Внешний навигатор не предлагается: маршрут ведётся
+ * мониторинга. Точки — всё, что к проверке в текущем обходе, порядок — от
+ * текущего места к ближайшей. Внешний навигатор не предлагается: маршрут ведётся
  * внутри приложения, плашкой на карте.
  */
 export default function RouteSheet({
@@ -32,8 +28,11 @@ export default function RouteSheet({
   const { t, lang } = useLanguage();
   const titleId = useId();
   const dialogRef = useModalDialog({ open, onClose });
-  const [set, setSet] = useState(/** @type {string} */ (ROUTE_SET.OPEN));
-  const { project } = useProjectData();
+  const { project, activeProject } = useProjectData();
+  // Обход читается при открытии листа, как и место ниже.
+  const [round] = useState(() =>
+    readMonitoringRound(activeProject?.id ?? null),
+  );
 
   // Место берётся на момент открытия листа: порядок не должен перестраиваться
   // под пальцем на каждый шаг GPS, пока список читают.
@@ -43,8 +42,8 @@ export default function RouteSheet({
       : null,
   );
   const plan = useMemo(
-    () => planRoute(routeCandidates(leaks, set), origin),
-    [leaks, set, origin],
+    () => planRoute(routeCandidates(leaks, round), origin),
+    [leaks, round, origin],
   );
   const levelKeys = getLocationLevelKeys(PROJECT_LOCATION_CONFIG[project]);
   const units = { m: t("route.m"), km: t("route.km") };
@@ -93,23 +92,6 @@ export default function RouteSheet({
           </button>
         </div>
 
-        <div className={s.segment} role="group" aria-label={t("route.set")}>
-          {[
-            [ROUTE_SET.OPEN, t("route.setOpen")],
-            [ROUTE_SET.IN_PROGRESS, t("route.setInProgress")],
-          ].map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              className={set === key ? s.segmentActive : ""}
-              aria-pressed={set === key}
-              onClick={() => setSet(key)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
         <ol className={s.stops}>
           <li className={s.origin}>
             <span className={s.originDot} aria-hidden="true" />
@@ -122,11 +104,7 @@ export default function RouteSheet({
           </li>
           {plan.stops.map(({ leak, legMeters }, index) => (
             <li key={leak.id} className={s.stop}>
-              <span
-                className={`${s.badge} ${set === ROUTE_SET.IN_PROGRESS ? s.badgeProgress : ""}`}
-              >
-                {index + 1}
-              </span>
+              <span className={s.badge}>{index + 1}</span>
               <span className={s.stopText}>
                 <span className={s.stopName}>
                   {placeOf(leak) || `${t("route.tag")} ${leak.leak_id ?? "—"}`}

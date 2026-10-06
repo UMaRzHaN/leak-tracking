@@ -1,12 +1,30 @@
+import { useRef, useState } from "react";
 import StatusBadge from "@/components/ui/StatusBadge/StatusBadge";
+import { usePhotoSrc } from "@/hooks/usePhotoSrc";
 import Icon from "@/components/ui/Icon/Icon";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
 /**
+ * Один снимок ленты: путь разрешается в адрес здесь же, у каждого свой.
+ */
+function HeroSlide({ path, onSrc }) {
+  const src = usePhotoSrc(path);
+  onSrc(path, src);
+  return (
+    <div
+      className={s.heroSlide}
+      style={src ? { backgroundImage: `url(${src})` } : undefined}
+    />
+  );
+}
+
+/**
  * @param {{
  *   src?: string|null,
+ *   photoPaths?: string[],
+ *   counterLabel?: (index: number, total: number) => string,
  *   onEdit?: (() => void)|null,
- *   onView?: (() => void)|undefined,
+ *   onView?: ((src?: string|null) => void)|undefined,
  *   status?: import("@/types/domain").LeakStatus|null,
  *   identityNum?: string,
  *   identityTime?: string,
@@ -17,6 +35,9 @@ import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
  */
 export default function PhotoBlock({
   src,
+  // Несколько снимков листаются свайпом (5e); без них — один `src`.
+  photoPaths = /** @type {string[]} */ ([]),
+  counterLabel = (index, total) => `${index} / ${total}`,
   onEdit = null,
   onView,
   status = "open",
@@ -26,8 +47,19 @@ export default function PhotoBlock({
   onBack = null,
   backLabel = "",
 }) {
-  const hasPhoto = Boolean(src);
-  const clickable = onEdit ?? onView;
+  const [index, setIndex] = useState(0);
+  // Адреса снимков ленты — чтобы тап открыл тот, что сейчас на экране.
+  const slideSrcs = useRef(
+    /** @type {Map<string, string|null>} */ (new Map()),
+  ).current;
+  const slides = photoPaths.length > 0;
+  const hasPhoto = slides || Boolean(src);
+  const current = Math.min(index, Math.max(photoPaths.length - 1, 0));
+  const clickable = onEdit ?? (onView ? () => onView(currentSrc()) : null);
+
+  function currentSrc() {
+    return slides ? (slideSrcs.get(photoPaths[current]) ?? src) : src;
+  }
 
   return (
     <div
@@ -35,11 +67,35 @@ export default function PhotoBlock({
       onClick={clickable ?? undefined}
       role={clickable ? "button" : undefined}
       style={
-        hasPhoto
-          ? { backgroundImage: `url(${src})` }
-          : { background: `linear-gradient(145deg, #1a2035 0%, #0d1321 100%)` }
+        slides
+          ? undefined
+          : hasPhoto
+            ? { backgroundImage: `url(${src})` }
+            : {
+                background: `linear-gradient(145deg, #1a2035 0%, #0d1321 100%)`,
+              }
       }
     >
+      {/* ── Лента снимков: листается пальцем, прилипает к кадру ── */}
+      {slides && (
+        <div
+          className={s.heroTrack}
+          onScroll={(event) => {
+            const track = event.currentTarget;
+            if (!track.clientWidth) return;
+            setIndex(Math.round(track.scrollLeft / track.clientWidth));
+          }}
+        >
+          {photoPaths.map((path) => (
+            <HeroSlide
+              key={path}
+              path={path}
+              onSrc={(key, value) => slideSrcs.set(key, value)}
+            />
+          ))}
+        </div>
+      )}
+
       {/* ── Camera placeholder when no photo ── */}
       {!hasPhoto && (
         <div className={s.heroPlaceholder}>
@@ -73,6 +129,13 @@ export default function PhotoBlock({
           <StatusBadge status={status} size="md" onClick={onStatusChange} />
         )}
       </div>
+
+      {/* ── Номер снимка — снизу справа, только когда их несколько ── */}
+      {photoPaths.length > 1 && (
+        <span className={s.heroCounter} aria-live="polite">
+          {counterLabel(current + 1, photoPaths.length)}
+        </span>
+      )}
 
       {/* ── Identity info — bottom left ── */}
       <div className={s.heroIdentity}>

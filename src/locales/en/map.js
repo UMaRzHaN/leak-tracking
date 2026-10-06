@@ -1,4 +1,15 @@
 export const map = {
+  modules: {
+    leaks: "Leaks",
+    repairs: "Repairs",
+    inventory: "Inventory",
+    monitoring: "Monitoring",
+  },
+  card: { check: "Check", open: "Open record" },
+  searchPlaceholder: "Number, site, node…",
+  filters: "Map filters",
+  reset: "Reset",
+  done: "Done",
   noDataToExport: "No data to export",
   exportUnavailable: "Export is not available for this project",
   exportError: "Export error",
@@ -64,13 +75,13 @@ export const map = {
 
   // Leaks and components are two bases of one project, and the map shows one
   // at a time: mixed pins would make neither of them countable.
-  baseLeaks: "Leaks",
-  baseComponents: "Assets",
+  tagFilter: "Physical tag filter",
+  tagWith: "Tag present",
+  tagWithout: "No tag",
 
   controls: {
     myLocation: "My location",
     searchLeaks: "Search leaks",
     downloadArea: "Download current area map",
-    base: "Switch base: leaks or components",
   },
 };

@@ -5,6 +5,7 @@ export const leakDetails = {
   edit: "Редактировать",
   close: "Закрыть",
   back: "Назад",
+  photoCounter: "{{index}} / {{total}}",
   cancel: "Отмена",
   saving: "Сохранение...",
   save: "Сохранить",
@@ -33,6 +34,10 @@ export const leakDetails = {
   noMonitoringChecks: "Проверки мониторинга пока не добавлены",
   coordsAccuracy: "Точность координат",
   coordsAccuracyValue: "±{{count}} м",
+  fromYou: "От вас",
+  distanceM: "{{count}} м",
+  distanceKm: "{{count}} км",
+  showOnMap: "Показать на карте",
   repairEvents: {
     repair_started: "Начат ремонт",
     repair_done: "Ремонт завершён",

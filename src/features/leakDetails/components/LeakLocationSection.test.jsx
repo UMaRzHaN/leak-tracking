@@ -1,5 +1,8 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { setCurrentPosition } from "@/app/currentPosition";
+import { SHOW_ON_MAP_EVENT, takeMapFocus } from "@/app/mapFocus";
 import { translate } from "@/test/translate";
 import LeakLocationSection from "./LeakLocationSection";
 
@@ -15,6 +18,36 @@ const props = {
 };
 
 describe("LeakLocationSection", () => {
+  afterEach(() => {
+    setCurrentPosition(null);
+    takeMapFocus();
+  });
+
+  it("показывает расстояние от человека и ведёт на карту (5e)", () => {
+    setCurrentPosition({ lat: 41.311081, lng: 69.240562 });
+    const onShow = vi.fn();
+    window.addEventListener(SHOW_ON_MAP_EVENT, onShow);
+    render(
+      <LeakLocationSection
+        {...props}
+        data={{ lat: 41.3113, lng: 69.240562 }}
+      />,
+    );
+
+    expect(screen.getByText("From you")).toBeInTheDocument();
+    expect(screen.getByText("24 m")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show on map" }));
+    expect(onShow).toHaveBeenCalled();
+    expect(takeMapFocus()).toEqual({ lat: 41.3113, lng: 69.240562 });
+    window.removeEventListener(SHOW_ON_MAP_EVENT, onShow);
+  });
+
+  it("не пишет «от вас» без GPS", () => {
+    render(<LeakLocationSection {...props} data={{ lat: 41.3, lng: 69.2 }} />);
+    expect(screen.queryByText("From you")).not.toBeInTheDocument();
+  });
+
   it("подписывает координаты радиусом приёмника", () => {
     render(
       <LeakLocationSection

@@ -38,6 +38,21 @@ describe("FilterBar", () => {
     expect(screen.getByText("Priority")).toBeTruthy();
   });
 
+  it("offers the physical tag only where it is asked for", () => {
+    const setTagFilter = vi.fn();
+    const counts = { ...props().counts, tagWith: 4, tagWithout: 2 };
+    const { unmount } = render(<FilterBar {...props({ counts })} />);
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(screen.queryByText("Physical tag")).toBeNull();
+    unmount();
+
+    render(<FilterBar {...props({ counts, setTagFilter })} />);
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(screen.getByText("Physical tag")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /No tag/ }));
+    expect(setTagFilter).toHaveBeenCalledWith("without");
+  });
+
   it("offers no location controls", () => {
     // Location moved to the header's folder browser. Two controls writing the
     // same three filters is the duplication this removal was about, so the

@@ -18,6 +18,7 @@ import {
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import s from "./LeakCardCompact.module.scss";
 import { isPresent } from "@/utils/isPresent";
+import { getPriorityMeta } from "@/utils/priority";
 
 function fmtNum(value, decimals = 1, lang) {
   if (value == null || !Number.isFinite(Number(value))) return null;
@@ -52,8 +53,11 @@ function LeakCardCompact({
   selected = false,
   onToggleSelect = /** @type {((id: any) => void)|null} */ (null),
   className = "",
-  collapsible = true,
-  defaultExpanded = false,
+  // Карточка в языке редизайна (2b, 5a) всегда раскрыта: место и
+  // компонент — главное, ради чего её открывают, прятать их за шевроном
+  // незачем. Свернуть можно только явно.
+  collapsible = false,
+  defaultExpanded = true,
   // Модуль ремонтов показывает в шапке стадию работ, а не статус записи, и
   // добавляет чипы МТР (7a). Остальные экраны этих пропсов не передают.
   badge = /** @type {{label: string, color: string, bg: string, border: string}|null} */ (
@@ -132,7 +136,9 @@ function LeakCardCompact({
       ? monitoringPhotoSrc
       : photoSrc || photoRepairSrc || photoAfterSrc || monitoringPhotoSrc;
   const hasPhoto = comparePairs.length > 0 || Boolean(displayPhotoSrc);
+  const priorityMeta = leak.priority ? getPriorityMeta(leak.priority, t) : null;
   const hasChips =
+    Boolean(priorityMeta) ||
     extraChips.length > 0 ||
     leak.leak_speed != null ||
     leak.pressure != null ||
@@ -170,6 +176,7 @@ function LeakCardCompact({
             collapsible && !expanded ? s.collapsed : ""
           } ${goingLeft ? s.swipeLeft : ""} ${goingRight ? s.swipeRight : ""}`}
           data-urgency={urgency}
+          data-status={status}
           data-priority={leak.priority ?? "none"}
           data-selected={selected ? "true" : "false"}
           data-fiction={fiction ? "true" : undefined}
@@ -286,6 +293,18 @@ function LeakCardCompact({
           {hasFooter && (
             <div className={s.foot}>
               <div className={s.chips}>
+                {priorityMeta && (
+                  <span
+                    className={s.chip}
+                    style={{
+                      color: priorityMeta.color,
+                      background: priorityMeta.bg,
+                      borderColor: priorityMeta.border,
+                    }}
+                  >
+                    {priorityMeta.label}
+                  </span>
+                )}
                 {extraChips.map((chip) => (
                   <span key={chip} className={s.chip}>
                     {chip}

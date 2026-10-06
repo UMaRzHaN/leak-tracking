@@ -94,22 +94,19 @@
     z-index: 1;
   }
 
-  /* priority stripe */
-  &[data-priority="critical"]::before {
+  /* Полоса — статус записи, как в макетах 2b/5a: открыта, в ремонте,
+     устранена. Приоритет переехал в чип в подвале карточки. */
+  &[data-status="open"]::before {
     background: var(--c-open);
-    animation: urgencyPulse 1.8s ease-in-out infinite;
   }
-  &[data-priority="high"]::before {
+  &[data-status="in_progress"]::before {
     background: var(--c-progress);
   }
-  &[data-priority="medium"]::before {
-    background: var(--c-accent);
-  }
-  &[data-priority="low"]::before {
+  &[data-status="resolved"]::before {
     background: var(--c-resolved);
   }
-  &[data-priority="none"]::before {
-    background: var(--c-border);
+  &[data-priority="critical"]::before {
+    animation: urgencyPulse 1.8s ease-in-out infinite;
   }
 
   &:active {

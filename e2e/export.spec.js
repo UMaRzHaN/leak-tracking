@@ -19,8 +19,31 @@ test("выгружает отчёт с экрана экспорта", async ({ 
   await expect(
     page.getByRole("heading", { name: "Экспорт отчёта" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Смена", exact: true }).click();
+  await page.getByRole("button", { name: "Сегодня", exact: true }).click();
   await expect(page.getByText(/^Записей: 1 · фото: \d+$/)).toBeVisible();
+
+  // Разделы включаются чипами (8a), фото — у каждого листа своё.
+  const repairsChip = page.getByRole("button", { name: /^Ремонты/ });
+  await repairsChip.click();
+  await expect(repairsChip).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByText("Лист «Ремонты»")).toHaveCount(0);
+  // «История» в файле всегда — выключить её нечем.
+  await expect(page.getByText("Лист «История»")).toBeVisible();
+  const leakPhotos = page.getByRole("button", {
+    name: "Фото: Лист «Утечки»",
+  });
+  await leakPhotos.click();
+  await expect(page.getByText("Записей: 1 · фото: 0")).toBeVisible();
+
+  // Выбор запоминается: после перезагрузки всё как было.
+  await page.reload();
+  await expect(page.getByRole("button", { name: /^Ремонты/ })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await expect(
+    page.getByRole("button", { name: "Фото: Лист «Утечки»" }),
+  ).toHaveAttribute("aria-pressed", "false");
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Сформировать файл" }).click();

@@ -168,6 +168,15 @@ export async function openRound(page) {
   await expect(round).toHaveAttribute("aria-current", "page");
 }
 
+// Отборы карты — в шторке «Фильтры карты» (5d), а не столбцом кнопок.
+export async function openMapFilters(page) {
+  await page.getByRole("button", { name: "Фильтры карты" }).click();
+}
+
+export async function closeMapFilters(page) {
+  await page.getByRole("button", { name: "Готово", exact: true }).click();
+}
+
 export async function openDatabase(page) {
   await footerTab(page, "База").click();
 }

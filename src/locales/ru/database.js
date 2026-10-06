@@ -29,6 +29,9 @@ export const database = {
   fiction: "Фикция",
   fictionOnly: "Фикции",
   fictionExclude: "Без фикций",
+  physicalTag: "Физ. тег",
+  tagWith: "Тег есть",
+  tagWithout: "Тега нет",
   all: "Все",
   nearbyRadius: " • в радиусе {{radius}} м",
 

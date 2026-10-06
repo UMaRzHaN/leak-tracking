@@ -77,32 +77,6 @@
   color: var(--c-text2);
 }
 
-.segment {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 13px;
-  background: var(--c-bg);
-
-  button {
-    min-height: 40px;
-    border: none;
-    border-radius: 10px;
-    background: none;
-    color: var(--c-text3);
-    font-size: 13px;
-    font-weight: 700;
-  }
-}
-
-.segmentActive {
-  background: var(--c-surface) !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-  color: var(--c-accent-text) !important;
-  font-weight: 800 !important;
-}
-
 /* Точек может быть больше сотни — список прокручивается сам, а кнопки
    остаются под пальцем. */
 .stops {
@@ -152,10 +126,6 @@
   color: #fff;
   font-size: 12px;
   font-weight: 800;
-}
-
-.badgeProgress {
-  background: var(--c-progress);
 }
 
 .stopText {

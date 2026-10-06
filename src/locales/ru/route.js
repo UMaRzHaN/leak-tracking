@@ -1,11 +1,8 @@
 export const route = {
   title: "Маршрут по точкам",
   summary: "Точек: {{count}} · {{distance}}",
-  empty: "В этом наборе нет точек с координатами",
+  empty: "Нет точек к проверке с координатами",
   close: "Закрыть",
-  set: "Набор точек",
-  setOpen: "Открытые",
-  setInProgress: "В ремонте",
   origin: "Моё местоположение",
   gpsOn: "GPS",
   gpsOff: "GPS выключен — порядок от первой точки",

@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOfflineMapActions } from "./useOfflineMapActions";
 import { useMapFilters } from "./useMapFilters";
+import { mapFiltersFor } from "../mapModuleFilters";
+import { takeMapFocus } from "@/app/mapFocus";
 import { useMapSelection } from "./useMapSelection";
 import { useMapExport } from "./useMapExport";
 import { useProjectData } from "@/app/project/ProjectContext";
@@ -15,6 +17,8 @@ export function useMapPage({
   sharedFilters = /** @type {any} */ (null),
   base: controlledBase = /** @type {string|null} */ (null),
   onBaseChange = /** @type {((base: string) => void)|null} */ (null),
+  // Модуль приложения: от него зависят отборы карты.
+  module = /** @type {string|undefined} */ (undefined),
 }) {
   const { activeProject } = useProjectData();
   const exportProjectFolder = activeProject?.folderName;
@@ -64,6 +68,15 @@ export function useMapPage({
 
   const [notification, setNotification] = useState(/** @type {any} */ (null));
   const [mapReady, setMapReady] = useState(false);
+  // Утечка, по которой тапнули (5d): карточка снизу. Хранится номер, а не
+  // сама запись — после правки в карточке на карте должна быть свежая.
+  const [selectedLeakId, setSelectedLeakId] = useState(
+    /** @type {any} */ (null),
+  );
+  const selectLeak = useCallback(
+    (leak) => setSelectedLeakId(leak?.id ?? null),
+    [],
+  );
   const [heatmapEnabled, setHeatmapEnabled] = useState(false);
   const {
     visibleLeaks,
@@ -83,6 +96,9 @@ export function useMapPage({
     statusFilters,
     fictionFilter,
     setFictionFilter,
+    tagFilter,
+    setTagFilter,
+    tagCounts,
     hasGps,
     setMonitoringFilter,
     setNearbyOnly,
@@ -101,6 +117,7 @@ export function useMapPage({
     activeProjectId: activeProject?.id ?? null,
     open,
     mapCenter,
+    filters: mapFiltersFor(module),
   });
 
   const showsComponents = base === MAP_BASE.COMPONENTS;
@@ -116,6 +133,13 @@ export function useMapPage({
 
   const shownItems = showsComponents ? visibleComponents : visibleLeaks;
   const shownMarkers = showsComponents ? visibleComponents : markerLeaks;
+  const selectedLeak = useMemo(
+    () =>
+      showsComponents || selectedLeakId == null
+        ? null
+        : (leaks.find((leak) => leak?.id === selectedLeakId) ?? null),
+    [leaks, selectedLeakId, showsComponents],
+  );
 
   const notify = useCallback(
     (type, message) => setNotification({ type, message }),
@@ -181,6 +205,9 @@ export function useMapPage({
         invalidateTimeout = setTimeout(() => map.invalidateSize(), 250);
       });
 
+      // Тап по пустому месту карты убирает карточку булавки.
+      map.on("click", () => setSelectedLeakId(null));
+
       map.on("moveend", () => {
         if (map._suppressLeakClickMoveend) {
           map._suppressLeakClickMoveend = false;
@@ -208,6 +235,7 @@ export function useMapPage({
       if (invalidateFrame !== null) cancelAnimationFrame(invalidateFrame);
       if (invalidateTimeout !== null) clearTimeout(invalidateTimeout);
       mapRef.current.map?.off("moveend");
+      mapRef.current.map?.off("click");
       mapRef.current.destroy?.();
       fittedRef.current = false;
       mapRef.current = {
@@ -238,11 +266,20 @@ export function useMapPage({
       mapRef.current.markersLayer,
       shownMarkers,
       mapRef.current.map,
+      selectLeak,
     );
 
     if (fittedRef.current) return;
     const map = mapRef.current.map;
     if (!map) return;
+
+    // Карту открыли из карточки утечки: вид на её точку, а не на все сразу.
+    const focus = takeMapFocus();
+    if (focus) {
+      fittedRef.current = true;
+      map.setView([focus.lat, focus.lng], 18, { animate: false });
+      return;
+    }
 
     const validLeaks = shownMarkers.filter(
       (leak) => Number.isFinite(leak.lat) && Number.isFinite(leak.lng),
@@ -264,7 +301,7 @@ export function useMapPage({
         },
       );
     }
-  }, [shownMarkers, mapReady]);
+  }, [shownMarkers, mapReady, selectLeak]);
 
   useEffect(() => {
     mapRef.current.setHeatmap?.(heatmapEnabled ? shownMarkers : []);
@@ -314,6 +351,9 @@ export function useMapPage({
     statusFilters,
     fictionFilter,
     setFictionFilter,
+    tagFilter,
+    setTagFilter,
+    tagCounts,
     hasGps,
     setHeatmapEnabled,
     setMonitoringFilter,
@@ -330,5 +370,7 @@ export function useMapPage({
     handleExportKML,
     focusLeak,
     locateMe,
+    selectedLeak,
+    selectLeak,
   };
 }

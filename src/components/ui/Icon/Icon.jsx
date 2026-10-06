@@ -121,6 +121,12 @@ const PATHS = {
       <path d="M13.3 10.7L4.6 19.4a1.4 1.4 0 002 2l8.7-8.7" />
     </>
   ),
+  calendar: (
+    <>
+      <rect x="4" y="5.5" width="16" height="15" rx="2" />
+      <path d="M8 3.5v4M16 3.5v4M4 10h16" />
+    </>
+  ),
   document: (
     <>
       <path d="M7 3.5h7l4 4V20a.5.5 0 01-.5.5h-10A.5.5 0 017 20V3.5z" />

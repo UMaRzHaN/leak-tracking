@@ -70,6 +70,39 @@ describe("real Excel workbook output", () => {
     expect(sheet.getCell("H3").value).toBe(24);
   }, 60_000);
 
+  it("оставляет в книге только выбранные листы (8a)", async () => {
+    const event = (id, type, iso) => ({ id, type, date: iso });
+    const buffer = await buildWorkbookBufferLocally({
+      orderedLeaks: [
+        {
+          id: 1,
+          leak_id: "A-42",
+          events: [
+            event("e1", "repair_started", "2026-08-01T08:00:00.000Z"),
+            event("e2", "repair_done", "2026-08-01T14:00:00.000Z"),
+          ],
+        },
+      ],
+      orderedRows: [{ leak_id: "A-42" }],
+      headers: ["Tag"],
+      keysOrder: ["leak_id"],
+      photoMap: {},
+      texts: buildExcelExportTexts(translate),
+      monitoringExportMode: "full",
+      archivePayload: null,
+      sheets: { monitoring: false, repairs: false },
+    });
+
+    const { default: ExcelJS } = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+
+    expect(workbook.getWorksheet("Leaks")).toBeDefined();
+    expect(workbook.getWorksheet("Repairs")).toBeUndefined();
+    // «История» — всегда, выключаются только обходы и ремонты.
+    expect(workbook.getWorksheet("Monitoring")).toBeUndefined();
+  }, 60_000);
+
   it("не заводит лист ремонтов, когда чинить было нечего", async () => {
     const buffer = await buildWorkbookBufferLocally({
       orderedLeaks: [{ id: 1, leak_id: "A-42" }],

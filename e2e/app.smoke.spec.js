@@ -14,6 +14,8 @@ import {
   openMap,
   setUserProfile,
   openRound,
+  openMapFilters,
+  closeMapFilters,
 } from "./helpers.js";
 
 async function seedMapCache(page, count = 3) {
@@ -81,13 +83,15 @@ test("opens the main application sections", async ({ page }) => {
   // Карта утечек — в LDAR; у инвентаризации карта показывает железо.
   await openHome(page);
   await openMap(page);
+  await openMapFilters(page);
 
-  const monitoringMapFilter = page.getByRole("button", {
-    name: "Фильтр по мониторингу",
-  });
-  await expect(monitoringMapFilter).toBeVisible();
-  await monitoringMapFilter.click();
-  await expect(page.getByRole("button", { name: "Все теги" })).toBeVisible();
+  // В LDAR на карте статус и приоритет; отбор обхода — у мониторинга.
+  await expect(
+    page.getByRole("button", { name: "Фильтр по статусу" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Фильтр по мониторингу" }),
+  ).toHaveCount(0);
 });
 
 test("persists project, appearance, and export settings", async ({ page }) => {
@@ -409,6 +413,7 @@ test("records and completes a monitoring round", async ({ page }) => {
 
   await page.getByRole("button", { name: "Проверено 0" }).click();
   await openMap(page);
+  await openMapFilters(page);
   const monitoringMapFilter = page.getByRole("button", {
     name: "Фильтр по мониторингу",
   });
@@ -419,6 +424,7 @@ test("records and completes a monitoring round", async ({ page }) => {
   );
 
   await page.getByRole("button", { name: "К проверке" }).click();
+  await closeMapFilters(page);
   await openRound(page);
   await expect(
     page.getByRole("button", { name: "К проверке 1" }),

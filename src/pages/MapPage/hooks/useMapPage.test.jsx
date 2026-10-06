@@ -205,6 +205,43 @@ describe("useMapPage", () => {
     ]);
   });
 
+  it("в мониторинге отбирает по физ. тегу и не применяет скрытый статус", () => {
+    const inspected = (physicalTag) => ({
+      events: [
+        { type: "inspection", date: "2026-09-20T10:00:00.000Z", physicalTag },
+      ],
+    });
+    // Номер есть у обеих: отбирает ответ осмотра, а не номер утечки.
+    const tagged = [
+      { ...leaks[0], ...inspected(true) },
+      { ...leaks[1], ...inspected(false) },
+    ];
+    const { result } = renderHook(
+      () =>
+        useMapPage({
+          leaks: tagged,
+          coords: { lat: 41, lng: 69 },
+          module: "monitoring",
+        }),
+      { wrapper: noRegistry },
+    );
+
+    expect(result.current.tagCounts).toEqual({ with: 1, without: 1 });
+    act(() => result.current.setTagFilter("with"));
+    expect(result.current.visibleLeaks.map((leak) => leak.id)).toEqual([
+      "near-open",
+    ]);
+    act(() => result.current.setTagFilter("without"));
+    expect(result.current.visibleLeaks.map((leak) => leak.id)).toEqual([
+      "far-resolved",
+    ]);
+
+    // Статуса на карте мониторинга нет — значит, он и не прячет точки.
+    act(() => result.current.setTagFilter("all"));
+    act(() => result.current.toggleStatusFilter("resolved"));
+    expect(result.current.visibleLeaks).toHaveLength(2);
+  });
+
   it("initializes, updates, and destroys the map adapter", async () => {
     let current;
     function Harness({ gpsEnabled }) {
@@ -232,6 +269,8 @@ describe("useMapPage", () => {
           expect.objectContaining({ id: "far-resolved" }),
         ]),
         expect.any(Object),
+        // Тап по утечке открывает карточку снизу (5d).
+        expect.any(Function),
       ),
     );
     expect(mapMocks.fitBounds).toHaveBeenCalled();

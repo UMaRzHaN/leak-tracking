@@ -9,6 +9,7 @@ import {
   openLeakDetails,
   openMenuItem,
   setUserProfile,
+  openMapFilters,
 } from "./helpers.js";
 
 /**
@@ -55,12 +56,12 @@ test("ведёт ремонт от отметки бригады до приём
   await page.getByRole("button", { name: /^Принято 1/ }).click();
   await expect(page.getByText(/^Принят:/)).toBeVisible();
 
-  // Карта модуля ремонтов делит ремонты по стадии.
+  // Карта модуля ремонтов делит ремонты по стадии — в шторке фильтров.
   await footerTab(page, "Карта").click();
+  await openMapFilters(page);
+  await page.getByRole("button", { name: "Фильтр по стадии" }).click();
   await expect(
-    page.getByRole("group", { name: "Фильтр по стадии" }).getByRole("button", {
-      name: /^Принят 1/,
-    }),
+    page.getByRole("button", { name: /^Принят\s*1$/ }),
   ).toBeVisible();
 });
 

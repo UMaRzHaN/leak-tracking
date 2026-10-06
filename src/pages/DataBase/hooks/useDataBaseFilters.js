@@ -5,8 +5,13 @@ import { matchesLeakLocationFilter } from "@/utils/locationFilter";
 import { compareLeakRecency } from "@/utils/leakOrder";
 
 export const ALL = "all";
-import { FICTION_FILTER, NEARBY, NEARBY_RADIUS_M } from "@/domain/leakFilters";
-import { isLeakFiction } from "@/utils/monitoring";
+import {
+  FICTION_FILTER,
+  NEARBY,
+  NEARBY_RADIUS_M,
+  TAG_FILTER,
+} from "@/domain/leakFilters";
+import { getLastMonitoringFlag, isLeakFiction } from "@/utils/monitoring";
 
 export const NEARBY_RADIUS_OPTIONS = [100, 500, 1000];
 
@@ -30,6 +35,9 @@ export function useDataBaseFilters({
   configuredMainLocationKey = /** @type {string|null} */ (null),
   configuredLocationKey = /** @type {string|null} */ (null),
   configuredLastLocationKey = /** @type {string|null} */ (null),
+  // Отбор по физ. тегу есть только в обходе: в базе его нет, и выбранный в
+  // обходе не должен молча прятать записи там.
+  withTagFilter = false,
 }) {
   const [localSearchInput, setLocalSearchInput] = useState("");
   const [search, setSearch] = useState(() => sharedFilters?.search ?? "");
@@ -42,6 +50,7 @@ export function useDataBaseFilters({
   const [localFictionFilter, setLocalFictionFilter] = useState(
     FICTION_FILTER.ALL,
   );
+  const [localTagFilter, setLocalTagFilter] = useState(TAG_FILTER.ALL);
   const [localMainLocationFilter, setLocalMainLocationFilter] = useState(
     /** @type {string|null} */ (null),
   );
@@ -67,6 +76,10 @@ export function useDataBaseFilters({
   const setPriorityFilter =
     sharedFilters?.setPriorityFilter ?? setLocalPriorityFilter;
   const fictionFilter = sharedFilters?.fictionFilter ?? localFictionFilter;
+  const tagFilter = withTagFilter
+    ? (sharedFilters?.tagFilter ?? localTagFilter)
+    : TAG_FILTER.ALL;
+  const setTagFilter = sharedFilters?.setTagFilter ?? setLocalTagFilter;
   const setFictionFilter =
     sharedFilters?.setFictionFilter ?? setLocalFictionFilter;
   const hasSharedMainLocationFilter =
@@ -222,7 +235,7 @@ export function useDataBaseFilters({
     };
   }, [beforeFiction]);
 
-  const scoped = useMemo(() => {
+  const beforeTag = useMemo(() => {
     if (fictionFilter === FICTION_FILTER.ONLY) {
       const fictions = getFictionSet();
       return beforeFiction.filter((leak) => fictions.has(leak));
@@ -233,6 +246,28 @@ export function useDataBaseFilters({
     }
     return beforeFiction;
   }, [beforeFiction, getFictionSet, fictionFilter]);
+
+  // Физ. тег — ответ последнего осмотра, где о нём спросили. Не осмотренная
+  // ни разу утечка не попадает ни в «есть», ни в «нет».
+  const getTagAnswers = useMemo(() => {
+    let cached = /** @type {Map<any, boolean|null>|null} */ (null);
+    return () => {
+      cached ??= new Map(
+        beforeTag.map((leak) => [
+          leak,
+          getLastMonitoringFlag(leak, "physicalTag"),
+        ]),
+      );
+      return cached;
+    };
+  }, [beforeTag]);
+
+  const scoped = useMemo(() => {
+    if (tagFilter === TAG_FILTER.ALL) return beforeTag;
+    const want = tagFilter === TAG_FILTER.WITH;
+    const answers = getTagAnswers();
+    return beforeTag.filter((leak) => answers.get(leak) === want);
+  }, [beforeTag, getTagAnswers, tagFilter]);
 
   const displayed = useMemo(() => {
     // The toggle above this list is labelled "date", and it sorted by
@@ -284,12 +319,23 @@ export function useDataBaseFilters({
         enumerable: true,
         get: () => beforeFiction.length - getFictionSet().size,
       },
+      tagWith: {
+        enumerable: true,
+        get: () =>
+          [...getTagAnswers().values()].filter((v) => v === true).length,
+      },
+      tagWithout: {
+        enumerable: true,
+        get: () =>
+          [...getTagAnswers().values()].filter((v) => v === false).length,
+      },
     });
     return c;
   }, [
     scoped,
     beforeFiction,
     getFictionSet,
+    getTagAnswers,
     hasGps,
     coords,
     nearbyRadius,
@@ -305,6 +351,8 @@ export function useDataBaseFilters({
     setPriorityFilter,
     fictionFilter,
     setFictionFilter,
+    tagFilter,
+    setTagFilter: withTagFilter ? setTagFilter : null,
     mainLocationFilter,
     setMainLocationFilter,
     mainLocationKey,

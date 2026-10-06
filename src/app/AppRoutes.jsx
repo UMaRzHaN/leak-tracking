@@ -331,6 +331,10 @@ export default function AppRoutes({
             routeProgress={routeProgress}
             onRouteCheck={requestMonitoring}
             onRouteEnd={onEndRoute}
+            module={module}
+            setData={save}
+            userProfile={userProfile}
+            onMonitor={requestMonitoring}
             repairMode={module === "repairs"}
             inventoryMode={module === "inventory"}
           />

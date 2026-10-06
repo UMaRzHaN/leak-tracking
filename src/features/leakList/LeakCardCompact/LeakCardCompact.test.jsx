@@ -105,10 +105,15 @@ describe("LeakCardCompact location hierarchy", () => {
   });
 
   it("keeps the header and footer visible while collapsed and expands on click", () => {
-    renderCard({
-      location: "Compressor room",
-      leak_speed: 18.12,
-    });
+    // Сворачивается карточка только по явной просьбе: по умолчанию она
+    // раскрыта (2b, 5a).
+    renderCard(
+      {
+        location: "Compressor room",
+        leak_speed: 18.12,
+      },
+      { collapsible: true, defaultExpanded: false },
+    );
 
     expect(screen.getByText(/TAG-1/)).toBeTruthy();
     expect(screen.getByText(/18.12/)).toBeTruthy();
@@ -124,7 +129,10 @@ describe("LeakCardCompact location hierarchy", () => {
     expect(screen.getByRole("button", { name: "Collapse card" })).toBeTruthy();
   });
   it("does not toggle expansion from the selection control", () => {
-    renderCard({}, { onToggleSelect: vi.fn() });
+    renderCard(
+      {},
+      { onToggleSelect: vi.fn(), collapsible: true, defaultExpanded: false },
+    );
 
     const expandButton = screen.getByRole("button", { name: "Expand card" });
     const selectButton = screen.getByRole("button", { name: "Select leak" });
@@ -186,5 +194,17 @@ describe("LeakCardCompact fiction", () => {
 
     expect(screen.queryByText("Fiction")).toBeNull();
     expect(container.querySelector("[data-fiction]")).toBeNull();
+  });
+});
+
+describe("LeakCardCompact in the redesign", () => {
+  it("is open by default with the status as its stripe and priority as a chip", () => {
+    renderCard({ location: "Pad 12", status: "in_progress", priority: "high" });
+
+    expect(screen.queryByRole("button", { name: "Expand card" })).toBeNull();
+    expect(screen.getByText("Pad 12")).toBeTruthy();
+    const card = screen.getByText("Pad 12").closest("[data-status]");
+    expect(card.getAttribute("data-status")).toBe("in_progress");
+    expect(screen.getByText(/High/)).toBeTruthy();
   });
 });

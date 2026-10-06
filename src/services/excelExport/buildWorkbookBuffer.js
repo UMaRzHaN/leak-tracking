@@ -8,6 +8,7 @@ import {
 } from "@/services/excelExport/cellValues";
 import {
   buildHistorySheet,
+  buildMaterialsSheet,
   buildMonitoringSheet,
   buildRepairSheet,
 } from "@/services/excelExport/auxiliarySheets";
@@ -56,6 +57,10 @@ async function buildWorkbook({
   ExcelJS,
   monitoringExportMode,
   archivePayload,
+  // Какие листы класть в книгу (8a). «Утечки», «История» и служебный лист
+  // резервной копии — всегда: без первого нет отчёта, без второго не видно,
+  // откуда взялись значения, без третьего файл не загрузить обратно.
+  sheets = /** @type {{monitoring?:boolean, repairs?:boolean, materials?:boolean}} */ ({}),
 }) {
   const photoColumnIndexes = PHOTO_KEYS.map((key) =>
     keysOrder.indexOf(key),
@@ -118,15 +123,24 @@ async function buildWorkbook({
     );
   });
 
-  await buildMonitoringSheet(
-    workbook,
-    orderedLeaks,
-    texts,
-    photoMap,
-    monitoringExportMode,
-  );
-  await buildRepairSheet(workbook, orderedLeaks, texts, photoMap);
+  // Порядок — как на экране экспорта (8a): сам отчёт, откуда он взялся,
+  // затем разделы, которые человек мог выключить.
   await buildHistorySheet(workbook, orderedLeaks, texts);
+  if (sheets.repairs !== false) {
+    await buildRepairSheet(workbook, orderedLeaks, texts, photoMap);
+  }
+  if (sheets.monitoring !== false) {
+    await buildMonitoringSheet(
+      workbook,
+      orderedLeaks,
+      texts,
+      photoMap,
+      monitoringExportMode,
+    );
+  }
+  if (sheets.materials !== false) {
+    await buildMaterialsSheet(workbook, orderedLeaks, texts);
+  }
   addBackupSheet(workbook, archivePayload, texts);
 
   return workbook;

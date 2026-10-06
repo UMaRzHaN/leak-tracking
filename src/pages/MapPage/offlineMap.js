@@ -11,6 +11,7 @@ import {
   clearAccuracyCircle,
   createPopupEl,
   heatWeight,
+  isComponentMarker,
   leakIcon,
   showAccuracyCircle,
 } from "./mapMarkers";
@@ -337,6 +338,9 @@ export function addMarkers(
   markersLayer,
   leaks = /** @type {any[]} */ ([]),
   map = /** @type {any} */ (null),
+  // Тап по утечке (5d): карточка снизу вместо всплывающей подсказки. Железо
+  // и вызовы без обработчика остаются с подсказкой.
+  onSelect = /** @type {((leak: any) => void)|null} */ (null),
 ) {
   if (!markersLayer) return;
 
@@ -348,6 +352,25 @@ export function addMarkers(
 
     const latlng = /** @type {[number, number]} */ ([leak.lat, leak.lng]);
     const accuracy = accuracyMetres(leak);
+    if (onSelect && !isComponentMarker(leak)) {
+      L.marker(latlng, { icon: leakIcon(leak) })
+        .on("click", (event) => {
+          // Иначе щелчок дойдёт до карты, и она тут же закроет карточку.
+          L.DomEvent.stopPropagation(event);
+          if (accuracy != null) showAccuracyCircle(map, latlng, accuracy, leak);
+          else clearAccuracyCircle(map);
+          if (map) {
+            map._suppressLeakClickMoveend = true;
+            map.setView(latlng, Math.max(map.getZoom(), 17), { animate: true });
+            setTimeout(() => {
+              if (map) map._suppressLeakClickMoveend = false;
+            }, 500);
+          }
+          onSelect(leak);
+        })
+        .addTo(markersLayer);
+      return;
+    }
     L.marker(latlng, { icon: leakIcon(leak) })
       .on("popupopen", () => {
         if (accuracy != null) showAccuracyCircle(map, latlng, accuracy, leak);

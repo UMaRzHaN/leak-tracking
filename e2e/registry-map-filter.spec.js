@@ -5,6 +5,8 @@ import {
   openComponentRegistry,
   openMap,
   setUserProfile,
+  openMapFilters,
+  closeMapFilters,
 } from "./helpers.js";
 
 /*
@@ -93,6 +95,7 @@ test("несёт отбор по состоянию из реестра на к�
 
   // Кнопка карты показывает то же выбранное, а не своё. Отбор ищется внутри
   // своей обёртки: «Все» есть и в шапке — это переключатель папок.
+  await openMapFilters(page);
   const mapFilter = page.locator('[class*="filterControlWrap"]', {
     has: page.getByRole("button", { name: "Фильтр по состоянию железа" }),
   });
@@ -106,6 +109,7 @@ test("несёт отбор по состоянию из реестра на к�
   // Снятое на карте снято и в реестре: набор один, а не два похожих.
   await mapFilter.getByRole("button", { name: "Все", exact: true }).click();
   await expect(marker(page, "9001")).toBeVisible();
+  await closeMapFilters(page);
 
   await openComponentRegistry(page);
   await expect(page.getByText("Задвижка", { exact: true })).toBeVisible();
@@ -135,6 +139,7 @@ test("держит список состояний на карте в преде
 
   await openMap(page);
   // Карта инвентаризации сама открывается на базе железа.
+  await openMapFilters(page);
   await page
     .getByRole("button", { name: "Фильтр по состоянию железа" })
     .click();

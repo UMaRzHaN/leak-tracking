@@ -37,6 +37,8 @@ export default function MonitoringLeakList({
           setPriorityFilter={filters.setPriorityFilter}
           fictionFilter={filters.fictionFilter}
           setFictionFilter={filters.setFictionFilter}
+          tagFilter={filters.tagFilter}
+          setTagFilter={filters.setTagFilter}
           nearbyFilter={filters.nearbyFilter}
           setNearbyFilter={filters.setNearbyFilter}
           nearbyRadius={filters.nearbyRadius}

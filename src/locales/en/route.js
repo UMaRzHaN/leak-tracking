@@ -1,11 +1,8 @@
 export const route = {
   title: "Route through points",
   summary: "Points: {{count}} · {{distance}}",
-  empty: "No points with coordinates in this set",
+  empty: "No points left to check that have coordinates",
   close: "Close",
-  set: "Point set",
-  setOpen: "Open",
-  setInProgress: "Under repair",
   origin: "My location",
   gpsOn: "GPS",
   gpsOff: "GPS is off — ordered from the first point",

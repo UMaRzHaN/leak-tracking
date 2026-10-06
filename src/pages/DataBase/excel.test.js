@@ -997,3 +997,35 @@ describe("excel export helpers", () => {
     expect(exportToExcelZip).toBe(excelModule.exportToExcelFile);
   });
 });
+
+describe("keepPhotoSections (8a)", () => {
+  it("keeps only the switched-on sections and the files they point to", async () => {
+    const { keepPhotoSections } = await import("./excel");
+    const resolved = {
+      photoMap: {
+        "0:photo": "photos/a.jpg",
+        "monitoring:0:0": "photos/b.jpg",
+        "event:0:0": "photos/c.jpg",
+      },
+      backupPhotoMap: { "0:photo": "photos/a.jpg", "0:x": "photos/b.jpg" },
+      photoEntries: [
+        { photoFileName: "photos/a.jpg" },
+        { photoFileName: "photos/b.jpg" },
+        { photoFileName: "photos/c.jpg" },
+      ],
+    };
+    const leaks = [{ events: [{ type: "repair_done", photo: "x" }] }];
+
+    const kept = keepPhotoSections(
+      resolved,
+      { leaks: false, repairs: true, monitoring: true },
+      leaks,
+    );
+    expect(Object.keys(kept.photoMap)).toEqual(["monitoring:0:0", "event:0:0"]);
+    expect(kept.photoEntries.map((entry) => entry.photoFileName)).toEqual([
+      "photos/b.jpg",
+      "photos/c.jpg",
+    ]);
+    expect(kept.backupPhotoMap).toEqual({ "0:x": "photos/b.jpg" });
+  });
+});

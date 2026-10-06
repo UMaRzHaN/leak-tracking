@@ -1,4 +1,15 @@
 export const map = {
+  modules: {
+    leaks: "Утечки",
+    repairs: "Ремонты",
+    inventory: "Инвентаризация",
+    monitoring: "Мониторинг",
+  },
+  card: { check: "Проверить", open: "Открыть запись" },
+  searchPlaceholder: "Номер, объект, узел…",
+  filters: "Фильтры карты",
+  reset: "Сбросить",
+  done: "Готово",
   noDataToExport: "Нет данных для экспорта",
   exportUnavailable: "Экспорт недоступен для этого проекта",
   exportError: "Ошибка экспорта",
@@ -65,13 +76,13 @@ export const map = {
 
   // Утечки и компоненты — две базы одного проекта, и карта показывает по
   // одной за раз: смешанные булавки не дали бы посчитать ни те, ни другие.
-  baseLeaks: "Утечки",
-  baseComponents: "Железо",
+  tagFilter: "Фильтр по физ. тегу",
+  tagWith: "Тег есть",
+  tagWithout: "Тега нет",
 
   controls: {
     myLocation: "Моё местоположение",
     searchLeaks: "Поиск утечек",
     downloadArea: "Скачать карту текущей области",
-    base: "Переключить базу: утечки или компоненты",
   },
 };

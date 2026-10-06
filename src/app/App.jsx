@@ -1,4 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { SHOW_ON_MAP_EVENT } from "@/app/mapFocus";
+import { globalScope } from "@/utils/globalScope";
 import "@fontsource-variable/manrope";
 import "@/index.scss";
 import { useLocationScope } from "@/hooks/useLocationScope";
@@ -118,6 +120,13 @@ export default function App() {
       setPage("components", { replace: true });
     }
   }, [module, page, setPage]);
+  // «Показать на карте» из карточки утечки: точку она оставила в mapFocus,
+  // здесь — только переход.
+  useEffect(() => {
+    const show = () => setPage("map");
+    globalScope.addEventListener?.(SHOW_ON_MAP_EVENT, show);
+    return () => globalScope.removeEventListener?.(SHOW_ON_MAP_EVENT, show);
+  }, [setPage]);
   // Раздел настроек, к которому прокрутить: меню ведёт в импорт и
   // синхронизацию, а они пока живут внутри настроек, а не на своих экранах.
   const [settingsSection, setSettingsSection] = useState(

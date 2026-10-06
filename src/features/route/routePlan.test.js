@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  ROUTE_SET,
   formatDistance,
   planRoute,
   readRoute,
@@ -12,20 +11,24 @@ import {
 const at = (id, lat, lng, extra = {}) => ({ id, lat, lng, ...extra });
 
 describe("routeCandidates", () => {
-  it("takes leaks of the chosen status that can be put on a map", () => {
+  it("takes every leak still due in the round that can be put on a map", () => {
+    const checked = {
+      type: "inspection",
+      date: "2026-10-01T10:00:00.000Z",
+      roundId: "r1",
+      roundNumber: 1,
+    };
     const leaks = [
       at("a", 46.2, 53.2),
       at("b", 46.3, 53.3, { status: "in_progress" }),
       at("c", "", 53.3),
       at("d", 46.1, 53.1, { status: "resolved" }),
+      at("e", 46.1, 53.4, { events: [checked] }),
     ];
 
-    expect(routeCandidates(leaks, ROUTE_SET.OPEN).map((l) => l.id)).toEqual([
-      "a",
-    ]);
     expect(
-      routeCandidates(leaks, ROUTE_SET.IN_PROGRESS).map((l) => l.id),
-    ).toEqual(["b"]);
+      routeCandidates(leaks, { id: "r1", number: 1 }).map((l) => l.id),
+    ).toEqual(["a", "b", "d"]);
   });
 });
 

@@ -49,7 +49,22 @@ export function prepareRows(data, t, projectVars = {}) {
   });
 }
 
-export function useDataBaseExport({ displayed, notify, onDone = null }) {
+export function useDataBaseExport({
+  displayed,
+  notify,
+  onDone = null,
+  // Выбор экрана экспорта (8a): какие листы и класть ли фото. База
+  // выгружает всё, как и раньше.
+  sheets = /** @type {{monitoring?:boolean, repairs?:boolean, materials?:boolean}|null} */ (
+    null
+  ),
+  includePhotos = true,
+  // Фото по разделам и инвентаризация папкой рядом (8a).
+  photoSections = /** @type {{leaks?:boolean, repairs?:boolean, monitoring?:boolean}|null} */ (
+    null
+  ),
+  inventory = /** @type {{withPhotos:boolean}|null} */ (null),
+}) {
   const { t } = useLanguage();
   const [isExporting, setIsExporting] = useState(false);
   const projectConfig = useEffectiveProjectConfig();
@@ -102,6 +117,30 @@ export function useDataBaseExport({ displayed, notify, onDone = null }) {
           // including records (and photos) hidden by the current filters.
           backupLeaks: displayed,
           buildWorkbookBuffer: buildWorkbookBufferInWorker,
+          sheets: sheets ?? {},
+          includePhotos,
+          photoSections: photoSections ?? {},
+          addToArchive: inventory
+            ? async (zip) => {
+                const [{ prepareInventoryExport }, { addInventoryFiles }] =
+                  await Promise.all([
+                    import("@/services/inventory/inventoryExportParts"),
+                    import("@/services/inventory/inventoryArchive"),
+                  ]);
+                const parts = await prepareInventoryExport(activeProject, {
+                  idbGet: idbGetPhoto,
+                  t,
+                  withPhotos: inventory.withPhotos,
+                });
+                if (parts) {
+                  await addInventoryFiles(
+                    zip,
+                    parts,
+                    t("export.inventoryFolder"),
+                  );
+                }
+              }
+            : null,
         },
       );
 
@@ -125,10 +164,14 @@ export function useDataBaseExport({ displayed, notify, onDone = null }) {
     excelHeaders,
     excelKeys,
     idbGetPhoto,
+    includePhotos,
+    inventory,
     isExporting,
     monitoringExportMode,
     notify,
     onDone,
+    photoSections,
+    sheets,
     t,
     vars,
   ]);

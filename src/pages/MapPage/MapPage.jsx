@@ -1,11 +1,11 @@
 import { useMapPage } from "./hooks/useMapPage";
-import { MAP_BASE } from "./mapBase";
+import { mapFiltersFor } from "./mapModuleFilters";
 import { useRenderMetric } from "@/utils/renderMetrics";
 import MapControls from "./components/MapControls";
 import TileProgress from "./components/TileProgress";
 import MobileSheet from "@/components/ui/MobileSheet/MobileSheet";
 import Notification from "@/components/ui/Notification/Notification";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import RouteBanner from "@/features/route/RouteBanner";
 import { componentStatusColor } from "@/domain/componentStatuses";
 import { useLanguage } from "@/app/hooks/useLanguage";
@@ -14,8 +14,15 @@ import {
   getRepairLeaks,
   getRepairStage,
 } from "@/domain/repairStages";
-import { REPAIR_STAGE_ORDER, getRepairStageMeta } from "@/utils/repairStage";
+import MapLeakCard from "./components/MapLeakCard";
+import { useLeakActions } from "@/pages/DataBase/hooks/useLeakActions";
+import { usePhotoStorage } from "@/hooks/usePhotoStorage";
+import { MODULE } from "@/app/modules/activeModule";
 import s from "./MapPage.module.scss";
+
+const LeakDetailsSheet = lazy(
+  () => import("@/features/leakDetails/LeakDetailsSheet"),
+);
 
 export default function MapPage({
   leaks,
@@ -34,6 +41,13 @@ export default function MapPage({
   repairMode = false,
   // Карта инвентаризации (6c): чипы по состоянию компонента.
   inventoryMode = false,
+  // Модуль приложения: базу и отборы карты выбирает он, а не переключатель.
+  module = /** @type {string|undefined} */ (undefined),
+  // Карточка булавки (5d): «Открыть запись» правит её здесь же, «Проверить»
+  // ведёт в обход. Без них карточка только показывает точку.
+  setData = /** @type {((next: any) => any)|null} */ (null),
+  userProfile = /** @type {any} */ (null),
+  onMonitor = /** @type {((leak: any) => void)|null} */ (null),
 }) {
   useRenderMetric("MapPage");
   const { t } = useLanguage();
@@ -62,9 +76,6 @@ export default function MapPage({
     tileProgress,
     downloading,
     visibleLeaks,
-    base,
-    setBase,
-    componentsAvailable,
     showsComponents,
     componentStatus,
     monitoringFilter,
@@ -75,6 +86,9 @@ export default function MapPage({
     nearbyRadiusOptions,
     fictionFilter,
     setFictionFilter,
+    tagFilter,
+    setTagFilter,
+    tagCounts,
     priorityFilters,
     statusFilters,
     hasGps,
@@ -90,6 +104,8 @@ export default function MapPage({
     handleExportKML,
     focusLeak,
     locateMe,
+    selectedLeak,
+    selectLeak,
   } = useMapPage({
     leaks: shownLeaks,
     coords,
@@ -97,6 +113,21 @@ export default function MapPage({
     sharedFilters,
     base: controlledBase,
     onBaseChange,
+    module,
+  });
+
+  const { deletePhoto } = usePhotoStorage();
+  const notify = useCallback(
+    (type, message, options = {}) =>
+      setNotification({ type, message, ...options }),
+    [setNotification],
+  );
+  const leakActions = useLeakActions({
+    data: leaks,
+    setData: setData ?? (() => {}),
+    notify,
+    deletePhoto,
+    userProfile,
   });
 
   return (
@@ -107,33 +138,6 @@ export default function MapPage({
       />
 
       <div ref={containerRef} className={s.mapCanvas} />
-
-      {stageCounts && !showsComponents && (
-        <div
-          className={s.stageChips}
-          role="group"
-          aria-label={t("repairs.chipsLabel")}
-        >
-          {["all", ...REPAIR_STAGE_ORDER].map((key) => (
-            <button
-              key={key}
-              type="button"
-              aria-pressed={stage === key}
-              className={stage === key ? s.stageChipOn : s.stageChip}
-              onClick={() => setStage(key)}
-            >
-              {key !== "all" && (
-                <span
-                  className={s.stageDot}
-                  style={{ background: getRepairStageMeta(key, t).dot }}
-                />
-              )}
-              {key === "all" ? t("repairs.all") : t(`repairs.stages.${key}`)}
-              <span className={s.stageCount}>{stageCounts[key]}</span>
-            </button>
-          ))}
-        </div>
-      )}
 
       {inventoryMode &&
         showsComponents &&
@@ -187,16 +191,26 @@ export default function MapPage({
       )}
 
       <MapControls
+        moduleLabel={
+          repairMode
+            ? t("map.modules.repairs")
+            : module === "monitoring"
+              ? t("map.modules.monitoring")
+              : showsComponents
+                ? t("map.modules.inventory")
+                : t("map.modules.leaks")
+        }
         onLocate={locateMe}
         gpsEnabled={gpsEnabled}
         showsComponents={showsComponents}
         componentStatus={componentStatus}
-        componentsAvailable={componentsAvailable}
-        onToggleBase={() =>
-          setBase(
-            base === MAP_BASE.COMPONENTS ? MAP_BASE.LEAKS : MAP_BASE.COMPONENTS,
-          )
-        }
+        filters={mapFiltersFor(module)}
+        tagFilter={tagFilter}
+        onTagChange={setTagFilter}
+        tagCounts={tagCounts}
+        stage={stage}
+        stageCounts={stageCounts}
+        onStageChange={setStage}
         onOpenSheet={() => setOpen(true)}
         onDownload={handleDownloadArea}
         onCancelDownload={cancelDownload}
@@ -238,6 +252,31 @@ export default function MapPage({
           </button>
         </div>
       )}
+
+      {selectedLeak && !open && (
+        <MapLeakCard
+          leak={selectedLeak}
+          coords={gpsEnabled ? coords : null}
+          onMonitor={module === MODULE.MONITORING ? onMonitor : null}
+          onOpen={(leak) => {
+            selectLeak(null);
+            leakActions.setActiveLeak(leak);
+          }}
+        />
+      )}
+
+      <Suspense fallback={null}>
+        {leakActions.activeLeak && setData && (
+          <LeakDetailsSheet
+            leak={leakActions.activeLeak}
+            allLeaks={leaks}
+            onClose={() => leakActions.setActiveLeak(null)}
+            onSave={leakActions.handleSave}
+            onDelete={leakActions.handleDelete}
+            userProfile={userProfile}
+          />
+        )}
+      </Suspense>
 
       <TileProgress progress={tileProgress} />
 

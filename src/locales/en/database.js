@@ -29,6 +29,9 @@ export const database = {
   fiction: "Fiction",
   fictionOnly: "Fictions",
   fictionExclude: "No fictions",
+  physicalTag: "Physical tag",
+  tagWith: "Tag present",
+  tagWithout: "No tag",
   all: "All",
   nearbyRadius: " • within {{radius}} m",
 

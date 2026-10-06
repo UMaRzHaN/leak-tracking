@@ -4,6 +4,7 @@ export const excelExport = {
     history: "История",
     monitoring: "Мониторинг",
     repairs: "Ремонты",
+    materials: "Расход МТР",
   },
 
   photo: {
@@ -47,6 +48,19 @@ export const excelExport = {
       repairPhoto: "Фото начала",
       donePhoto: "Фото завершения",
     },
+  },
+
+  materials: {
+    headers: {
+      index: "№",
+      leak_id: "Бирка",
+      date: "Дата",
+      time: "Время",
+      source: "Откуда",
+      materials_equipment: "МТР",
+      user: "Кто",
+    },
+    sources: { repair: "Ремонт", monitoring: "Осмотр" },
   },
 
   monitoring: {

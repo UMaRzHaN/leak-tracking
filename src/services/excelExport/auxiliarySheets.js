@@ -8,6 +8,7 @@ import {
   getMonitoringExportRows,
 } from "./monitoringRows";
 import { getRepairExportRows } from "./repairRows";
+import { getMaterialsExportRows } from "./materialsRows";
 import {
   addStructuredTable,
   getColumnWidth,
@@ -273,6 +274,47 @@ export async function buildRepairSheet(
       key,
       rows,
       { isPhoto: key === "repairPhoto" || key === "donePhoto" },
+    );
+  });
+}
+
+/** «Расход МТР» (8a): что и когда поставили, из ремонтов и осмотров. */
+export async function buildMaterialsSheet(workbook, orderedLeaks, texts) {
+  const rows = getMaterialsExportRows(orderedLeaks).map((row) => ({
+    ...row,
+    date: parseTimestamp(row.dateRaw) ?? "",
+    time: parseTimestamp(row.dateRaw) ?? "",
+    source: texts.materials.sources[row.source] ?? row.source,
+  }));
+  if (rows.length === 0) return;
+
+  const sheet = workbook.addWorksheet(texts.sheets.materials);
+  const keys = [
+    "index",
+    "leak_id",
+    "date",
+    "time",
+    "source",
+    "materials_equipment",
+    "user",
+  ];
+  const headers = keys.map((key) => texts.materials.headers[key]);
+
+  addStructuredTable(sheet, {
+    name: "Materials",
+    headers,
+    rows: rows.map((row) => keys.map((key) => toExcelCellValue(key, row[key]))),
+    theme: "TableStyleMedium7",
+  });
+  styleHeaderRow(sheet, "FF548235");
+  await styleBodyRows(sheet, rows.length);
+  applyColumnFormats(sheet, keys);
+
+  keys.forEach((key, index) => {
+    sheet.getColumn(index + 1).width = getColumnWidth(
+      headers[index],
+      key,
+      rows,
     );
   });
 }

@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { setCurrentPosition } from "@/app/currentPosition";
 import { APP_PAGES, HOME_PAGE, normalizePage } from "@/app/pages";
 import { globalScope } from "@/utils/globalScope";
 
@@ -116,6 +117,11 @@ export function useAppState() {
     error: geoError,
     loading: geoLoading,
   } = useGeolocation(gpsEnabled);
+
+  // Карточке утечки — для строки «От вас»; без GPS позиции нет.
+  useEffect(() => {
+    setCurrentPosition(gpsEnabled ? coords : null);
+  }, [coords, gpsEnabled]);
 
   return {
     page,

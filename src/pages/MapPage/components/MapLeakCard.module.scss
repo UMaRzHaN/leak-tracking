@@ -1,0 +1,101 @@
+.card {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 14px 12px 18px;
+  overflow: hidden;
+  border: 1px solid var(--c-border);
+  border-radius: 18px;
+  background: var(--c-surface);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+
+  /* Полоска статуса слева — как у карточки в списке. */
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 4px;
+    background: var(--c-open);
+  }
+
+  &[data-status="in_progress"]::before {
+    background: var(--c-progress);
+  }
+
+  &[data-status="resolved"]::before {
+    background: var(--c-resolved);
+  }
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.num {
+  color: var(--c-ink);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.distance {
+  margin-left: auto;
+  color: var(--c-text3);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.place {
+  margin: 2px 0 0;
+  color: var(--c-ink);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.details {
+  margin: 0;
+  color: var(--c-text3);
+  font-size: 13px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.primary,
+.secondary {
+  min-height: 44px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.primary {
+  flex: 1;
+  border: none;
+  background: var(--c-accent);
+  color: #fff;
+}
+
+.secondary {
+  padding: 0 18px;
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-accent-text);
+}

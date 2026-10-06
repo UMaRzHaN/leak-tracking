@@ -133,6 +133,49 @@ describe("useDataBaseFilters multi-select", () => {
     ]);
   });
 
+  it("в обходе отбирает по физ. тегу последнего осмотра", () => {
+    const inspection = (date, physicalTag) => ({
+      type: "inspection",
+      date,
+      physicalTag,
+    });
+    const data = [
+      { id: 1, events: [inspection("2026-09-01T10:00:00.000Z", true)] },
+      // Тег был, следующий осмотр его не нашёл.
+      {
+        id: 2,
+        events: [
+          inspection("2026-09-01T10:00:00.000Z", true),
+          inspection("2026-09-02T10:00:00.000Z", false),
+        ],
+      },
+      // Не осмотрена: про тег никто не отвечал.
+      { id: 3 },
+    ];
+    const { result } = renderHook(() =>
+      useDataBaseFilters({ data, coords: null, withTagFilter: true }),
+    );
+
+    expect(result.current.counts).toMatchObject({ tagWith: 1, tagWithout: 1 });
+    act(() => result.current.setTagFilter("with"));
+    expect(result.current.displayed.map((item) => item.id)).toEqual([1]);
+    act(() => result.current.setTagFilter("without"));
+    expect(result.current.displayed.map((item) => item.id)).toEqual([2]);
+  });
+
+  it("в базе отбора по физ. тегу нет, и общий не прячет записи", () => {
+    const { result } = renderHook(() =>
+      useDataBaseFilters({
+        data: DATA,
+        coords: null,
+        sharedFilters: { tagFilter: "without", setTagFilter: vi.fn() },
+      }),
+    );
+
+    expect(result.current.setTagFilter).toBeNull();
+    expect(result.current.displayed).toHaveLength(DATA.length);
+  });
+
   it("sorts newest first and toggles to ascending order", () => {
     const { result } = renderHook(() =>
       useDataBaseFilters({ data: DATA, coords: null }),

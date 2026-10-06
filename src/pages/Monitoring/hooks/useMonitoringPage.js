@@ -103,6 +103,7 @@ export function useMonitoringPage({
     configuredMainLocationKey: projectConfig.system.location.main,
     configuredLocationKey: projectConfig.system.location.secondary,
     configuredLastLocationKey: projectConfig.system.location.last,
+    withTagFilter: true,
   });
   const monitoringRoundId = monitoringRound?.id ?? null;
   const monitoringRoundNumber = monitoringRound?.number ?? null;

@@ -6,7 +6,11 @@ vi.mock("@/app/hooks/useLanguage", async () => {
   return englishLanguageHook();
 });
 vi.mock("@/app/project/ProjectContext", () => ({
-  useProjectData: () => ({ project: "upstream" }),
+  useProjectData: () => ({ project: "upstream", activeProject: { id: "p1" } }),
+}));
+const round = vi.hoisted(() => ({ current: null }));
+vi.mock("@/utils/monitoringRound", () => ({
+  readMonitoringRound: () => round.current,
 }));
 
 const RouteSheet = (await import("./RouteSheet")).default;
@@ -30,6 +34,16 @@ function renderSheet(props = {}) {
         leak("far", 53.5),
         leak("near", 53.21),
         leak("fixing", 53.3, { status: "in_progress" }),
+        leak("checked", 53.25, {
+          events: [
+            {
+              type: "inspection",
+              date: "2026-10-01T10:00:00.000Z",
+              roundId: "r1",
+              roundNumber: 1,
+            },
+          ],
+        }),
       ]}
       coords={{ lat: 46.2, lng: 53.2 }}
       gpsEnabled
@@ -41,27 +55,21 @@ function renderSheet(props = {}) {
 }
 
 describe("RouteSheet", () => {
-  it("orders open leaks from the current position and starts with that order", () => {
+  it("routes every leak still to check in the round, whatever its status", () => {
+    round.current = { id: "r1", number: 1 };
     const { onStart } = renderSheet();
 
+    // Нет переключателя набора: мониторинг идёт по всем биркам.
+    expect(screen.queryByRole("button", { name: "Under repair" })).toBeNull();
     const names = screen
       .getAllByRole("listitem")
       .slice(1)
       .map((item) => item.textContent);
     expect(names[0]).toContain("Pad near");
-    expect(names[1]).toContain("Pad far");
 
     fireEvent.click(screen.getByRole("button", { name: "Start route" }));
-    expect(onStart).toHaveBeenCalledWith(["near", "far"]);
-  });
-
-  it("switches to leaks under repair", () => {
-    const { onStart } = renderSheet();
-
-    fireEvent.click(screen.getByRole("button", { name: "Under repair" }));
-    fireEvent.click(screen.getByRole("button", { name: "Start route" }));
-
-    expect(onStart).toHaveBeenCalledWith(["fixing"]);
+    // Проверенная в этом обходе в маршрут не попадает.
+    expect(onStart).toHaveBeenCalledWith(["near", "fixing", "far"]);
   });
 
   it("says so without GPS and cannot start an empty route", () => {

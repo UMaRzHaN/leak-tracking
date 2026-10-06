@@ -1,6 +1,5 @@
 import { distanceMeters } from "@/utils/geoUtils";
-import { getLastMonitoringRecord } from "@/utils/monitoring";
-import { STATUS } from "@/utils/status";
+import { getLastMonitoringRecord, isMonitoringDue } from "@/utils/monitoring";
 
 /**
  * Маршрут обхода: какие точки, в каком порядке и сколько уже пройдено.
@@ -11,16 +10,6 @@ import { STATUS } from "@/utils/status";
  * мгновенно и для куста скважин достаточно близко к оптимуму; точный обход
  * коммивояжёра здесь не окупился бы.
  */
-
-export const ROUTE_SET = Object.freeze({
-  OPEN: "open",
-  IN_PROGRESS: "in_progress",
-});
-
-const SET_STATUS = {
-  [ROUTE_SET.OPEN]: STATUS.OPEN,
-  [ROUTE_SET.IN_PROGRESS]: STATUS.IN_PROGRESS,
-};
 
 function hasCoords(leak) {
   return (
@@ -33,11 +22,17 @@ function hasCoords(leak) {
   );
 }
 
-/** Точки набора: утечки с нужным статусом и координатами. */
-export function routeCandidates(leaks, set) {
-  const status = SET_STATUS[set] ?? STATUS.OPEN;
+/**
+ * Точки маршрута — всё, что ещё к проверке в текущем обходе, и только то,
+ * что можно поставить на карту. Мониторинг идёт по всем биркам, поэтому
+ * статус утечки здесь не отбирает: проверяют и открытые, и в ремонте, и
+ * устранённые. Без обхода «к проверке» — то, что не проверялось ни разу.
+ */
+export function routeCandidates(leaks, round = /** @type {any} */ (null)) {
   return (Array.isArray(leaks) ? leaks : []).filter(
-    (leak) => (leak?.status ?? STATUS.OPEN) === status && hasCoords(leak),
+    (leak) =>
+      hasCoords(leak) &&
+      isMonitoringDue(leak, round?.id ?? null, round?.number ?? null),
   );
 }
 

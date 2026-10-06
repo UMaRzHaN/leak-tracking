@@ -1,3 +1,4 @@
+import { getLeakEvents } from "@/domain/leakEvents";
 import { sanitizePortableArchiveSegment } from "@/services/archive/archivePaths";
 const getJSZip = () => import("jszip");
 
@@ -32,6 +33,67 @@ function getExportFolder(projectFolderName) {
  * что отказ здесь означает не «старое устройство», а сломанную сборку — и
  * человеку честнее увидеть ошибку, чем ждать, пока подвиснет интерфейс.
  */
+/**
+ * Какие разделы идут с фото. `includePhotos: false` — старый общий
+ * переключатель: без фото везде.
+ */
+function sectionPhotoChoice(options) {
+  const all = options.includePhotos !== false;
+  const sections = options.photoSections ?? {};
+  return {
+    leaks: all && sections.leaks !== false,
+    repairs: all && sections.repairs !== false,
+    monitoring: all && sections.monitoring !== false,
+  };
+}
+
+/**
+ * Раздел снимка — по ключу, под которым его ждёт лист. Снимок ленты
+ * относится к ремонтам, только если событие ремонтное: осмотр в ленте — это
+ * та же запись обхода, и её снимок — снимок мониторинга.
+ */
+function photoSectionOf(mapKey, orderedLeaks) {
+  if (mapKey.startsWith("monitoring:")) return "monitoring";
+  if (mapKey.startsWith("event:")) {
+    const [, leakIndex, eventIndex] = mapKey.split(":");
+    const event = getLeakEvents(orderedLeaks[Number(leakIndex)])[
+      Number(eventIndex)
+    ];
+    return String(event?.type ?? "").startsWith("repair")
+      ? "repairs"
+      : "monitoring";
+  }
+  return "leaks";
+}
+
+/**
+ * Оставляет ссылки только включённых разделов — и только те файлы, на
+ * которые указывает хоть одна оставшаяся ссылка. Фильтр стоит после
+ * сборки, а не до: один файл бывает общим у колонки и осмотра, и решать по
+ * нему можно лишь по всем ссылкам сразу.
+ */
+export function keepPhotoSections(resolved, sections, orderedLeaks = []) {
+  if (Object.values(sections).every(Boolean)) return resolved;
+  const photoMap = {};
+  for (const [mapKey, file] of Object.entries(resolved.photoMap)) {
+    if (sections[photoSectionOf(mapKey, orderedLeaks)]) {
+      photoMap[mapKey] = file;
+    }
+  }
+  const kept = new Set(Object.values(photoMap));
+  const backupPhotoMap = {};
+  for (const [mapKey, file] of Object.entries(resolved.backupPhotoMap)) {
+    if (kept.has(file)) backupPhotoMap[mapKey] = file;
+  }
+  return {
+    photoMap,
+    backupPhotoMap,
+    photoEntries: resolved.photoEntries.filter((entry) =>
+      kept.has(entry.photoFileName),
+    ),
+  };
+}
+
 async function createWorkbookBuffer(payload, workerBuilder) {
   if (typeof workerBuilder !== "function") {
     throw new Error("Excel export requires the workbook worker");
@@ -121,15 +183,26 @@ export async function exportToExcelFile(
   // photoEntries (each holding a full base64 photo) is the only heavy value
   // kept from this call; the larger intermediate arrays it was derived from
   // are freed here, before the workbook build below.
-  const { photoMap, backupPhotoMap, photoEntries } =
-    await resolvePhotoExportData({
-      orderedLeaks,
-      backupLeaks,
-      idbGet,
-      monitoringExportMode,
-      photoReadCache,
-      folderTexts: { folderStatus: texts.photo.folderStatus },
-    });
+  // Фото по разделам (8a): у листа утечек, ремонтов и мониторинга свой
+  // переключатель. Если не нужно ни одно, снимки не читаются вовсе — это
+  // самая долгая часть выгрузки.
+  const photoSections = sectionPhotoChoice(options);
+  const anyPhotos = Object.values(photoSections).some(Boolean);
+  const resolved = anyPhotos
+    ? await resolvePhotoExportData({
+        orderedLeaks,
+        backupLeaks,
+        idbGet,
+        monitoringExportMode,
+        photoReadCache,
+        folderTexts: { folderStatus: texts.photo.folderStatus },
+      })
+    : { photoMap: {}, backupPhotoMap: {}, photoEntries: [] };
+  const { photoMap, backupPhotoMap, photoEntries } = keepPhotoSections(
+    resolved,
+    photoSections,
+    orderedLeaks,
+  );
   photoReadCache.clear();
   phaseMetrics.photosMs = performance.now() - photosStartedAt;
   const archivePayload = {
@@ -162,6 +235,7 @@ export async function exportToExcelFile(
       texts,
       monitoringExportMode,
       archivePayload,
+      sheets: options.sheets ?? {},
     },
     options.buildWorkbookBuffer,
   );
@@ -184,6 +258,12 @@ export async function exportToExcelFile(
     // while later ones are still being processed, instead of peaking at
     // "every photo's base64 string, all at once" for the whole loop.
     entry.base64 = null;
+  }
+
+  // Инвентаризация в том же архиве (8a): своя книга и снимки отдельной
+  // папкой, чтобы получатель отчёта по утечкам видел, где чужая работа.
+  if (typeof options.addToArchive === "function") {
+    await options.addToArchive(zip);
   }
 
   const zipBlob = await zip.generateAsync({ type: "blob" });
