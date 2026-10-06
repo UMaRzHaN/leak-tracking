@@ -12,7 +12,10 @@ import ActiveProjectCard from "./components/ActiveProjectCard";
 import AppearanceSection from "./components/AppearanceSection";
 import DangerZoneSection from "./components/DangerZoneSection";
 import MonitoringRoundsSection from "./components/MonitoringRoundsSection";
-import { useAllowNewRounds } from "@/app/project/hooks/useAllowNewRounds";
+import {
+  useAllowFinishRounds,
+  useAllowNewRounds,
+} from "@/app/project/hooks/useAllowNewRounds";
 import EmissionsSummarySection from "./components/EmissionsSummarySection";
 import FieldVisibilitySection from "./components/FieldVisibilitySection";
 import MapCacheSection from "./components/MapCacheSection";
@@ -80,6 +83,9 @@ export default function Settings(props) {
   const contentRef = useRef(/** @type {HTMLDivElement|null} */ (null));
   const [objectsOpen, setObjectsOpen] = useState(false);
   const [allowNewRounds, setAllowNewRounds] = useAllowNewRounds(
+    activeProject?.id ?? null,
+  );
+  const [allowFinishRounds, setAllowFinishRounds] = useAllowFinishRounds(
     activeProject?.id ?? null,
   );
   // Удаление проекта — в опасной зоне, с подтверждением, как очистка базы.
@@ -172,6 +178,11 @@ export default function Settings(props) {
             allowNewRounds={allowNewRounds}
             onChange={(allow) => {
               setAllowNewRounds(allow);
+              notify("success", t("settings.rounds.saved"));
+            }}
+            allowFinishRounds={allowFinishRounds}
+            onFinishChange={(allow) => {
+              setAllowFinishRounds(allow);
               notify("success", t("settings.rounds.saved"));
             }}
           />

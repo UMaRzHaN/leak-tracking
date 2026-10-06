@@ -11,6 +11,8 @@ export default function MonitoringRoundOverview({
   hasRound,
   onStartRound,
   onFinishRound,
+  // Настройка проекта: выключенное завершение прячет кнопку.
+  canFinishRound = true,
   onMergeRound = /** @type {(() => void)|null} */ (null),
   // Новые обходы выключены в настройках: кнопок нового обхода нет.
   canStartRound = true,
@@ -98,7 +100,7 @@ export default function MonitoringRoundOverview({
               <strong>{summary.resolved}</strong>
             </span>
           </div>
-          {(!isCompleted || canStartRound) && (
+          {(isCompleted ? canStartRound : canFinishRound) && (
             <button
               type="button"
               className={s.completionAction}

@@ -7,7 +7,10 @@ import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useDataBaseFilters } from "@/pages/DataBase/hooks/useDataBaseFilters";
-import { useAllowNewRounds } from "@/app/project/hooks/useAllowNewRounds";
+import {
+  useAllowFinishRounds,
+  useAllowNewRounds,
+} from "@/app/project/hooks/useAllowNewRounds";
 import { STATUS } from "@/utils/status";
 import { MONITORING_RESULT, isMonitoringDue } from "@/utils/monitoring";
 import {
@@ -72,6 +75,7 @@ export function useMonitoringPage({
   );
   // Новые обходы можно запретить в настройках — от случайного нажатия.
   const [allowNewRounds] = useAllowNewRounds(activeProject?.id ?? null);
+  const [allowFinishRounds] = useAllowFinishRounds(activeProject?.id ?? null);
   const [listHeight, setListHeight] = useState(420);
   const [localMonitoringFilter, setLocalMonitoringFilter] = useState(
     FILTERS.DUE,
@@ -206,7 +210,7 @@ export function useMonitoringPage({
   };
 
   const finishRound = () => {
-    if (!allTagsChecked || isRoundCompleted) return;
+    if (!allowFinishRounds || !allTagsChecked || isRoundCompleted) return;
     const completed = completeMonitoringRound(
       monitoringRound,
       new Date().toISOString(),
@@ -794,6 +798,7 @@ export function useMonitoringPage({
     showMonitoringSheet,
     startNewRound,
     allowNewRounds,
+    allowFinishRounds,
     mergeRound,
     mergeConfirmOpen,
     setMergeConfirmOpen,

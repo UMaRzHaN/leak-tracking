@@ -31,6 +31,7 @@ const SETTINGS = {
   },
   voiceCorrections: [],
   allowNewRounds: true,
+  allowFinishRounds: true,
   updatedAt: 200,
 };
 
@@ -185,6 +186,7 @@ describe("project settings backup and synchronization", () => {
       },
       voiceCorrections: [],
       allowNewRounds: true,
+      allowFinishRounds: true,
       updatedAt: 0,
     });
   });

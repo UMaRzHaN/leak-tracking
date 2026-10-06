@@ -32,6 +32,7 @@ describe("projectSettings", () => {
       },
       voiceCorrections: [],
       allowNewRounds: true,
+      allowFinishRounds: true,
       updatedAt: 0,
     });
   });
@@ -59,6 +60,7 @@ describe("projectSettings", () => {
       },
       voiceCorrections: [],
       allowNewRounds: true,
+      allowFinishRounds: true,
       updatedAt: 50,
     });
 
@@ -111,5 +113,28 @@ describe("allowNewRounds", () => {
     expect(readProjectSettings("p1").updatedAt).toBeGreaterThan(0);
     writeAllowNewRounds("p1", true);
     expect(readAllowNewRounds("p1")).toBe(true);
+  });
+});
+
+describe("allowFinishRounds", () => {
+  it("allows finishing by default, locks it apart from new rounds", async () => {
+    const {
+      readAllowFinishRounds,
+      writeAllowFinishRounds,
+      readAllowNewRounds,
+      readProjectSettings,
+      writeProjectSettings,
+    } = await import("./projectSettings");
+    localStorage.clear();
+    expect(readAllowFinishRounds("p1")).toBe(true);
+    writeAllowFinishRounds("p1", false);
+    expect(readAllowFinishRounds("p1")).toBe(false);
+    expect(readAllowNewRounds("p1")).toBe(true);
+
+    // Доезжает с бэкапом и синхронизацией вместе с остальными настройками.
+    const settings = readProjectSettings("p1");
+    expect(settings.allowFinishRounds).toBe(false);
+    writeProjectSettings("p2", settings);
+    expect(readAllowFinishRounds("p2")).toBe(false);
   });
 });

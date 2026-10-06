@@ -8,18 +8,14 @@ function excelTimeValue(value) {
   );
 }
 
-/** Ячейка-дата держит показания местных часов в UTC-полях. */
+/**
+ * Ячейка-дата держит местный день в UTC-полях — без часов: время у этих
+ * листов в своей колонке.
+ */
 function excelDateValue(value) {
   const date = new Date(value);
   return new Date(
-    Date.UTC(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-      date.getHours(),
-      date.getMinutes(),
-      date.getSeconds(),
-    ),
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
   );
 }
 

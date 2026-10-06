@@ -3,14 +3,16 @@ import RequirementToggle from "./SettingsToggle";
 import s from "../Settings.module.scss";
 
 /**
- * Мониторинг: можно ли заводить новые обходы. Выключенный переключатель
- * прячет «Новый обход» и «Начать мониторинг» — проверки идут только в
- * текущем обходе, и случайно начать следующий нельзя.
+ * Мониторинг: можно ли заводить новые обходы и завершать текущий.
+ * Выключенный переключатель прячет свою кнопку — «Новый обход» и «Начать
+ * мониторинг» или «Завершить обход», — и случайно нажать её нельзя.
  */
 export default function MonitoringRoundsSection({
   activeProject,
   allowNewRounds,
   onChange,
+  allowFinishRounds,
+  onFinishChange,
 }) {
   const { t } = useLanguage();
   if (!activeProject) return null;
@@ -30,6 +32,16 @@ export default function MonitoringRoundsSection({
           }
           checked={allowNewRounds}
           onChange={onChange}
+        />
+        <RequirementToggle
+          label={t("settings.rounds.allowFinish")}
+          hint={
+            allowFinishRounds
+              ? t("settings.rounds.finishAllowedHint")
+              : t("settings.rounds.finishLockedHint")
+          }
+          checked={allowFinishRounds}
+          onChange={onFinishChange}
         />
       </div>
     </section>

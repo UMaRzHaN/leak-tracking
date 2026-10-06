@@ -74,6 +74,7 @@ export default function Monitoring(props) {
     showMonitoringSheet,
     startNewRound,
     allowNewRounds,
+    allowFinishRounds,
     mergeRound,
     mergeConfirmOpen,
     setMergeConfirmOpen,
@@ -100,6 +101,7 @@ export default function Monitoring(props) {
         }}
         onFinishRound={finishRound}
         canStartRound={allowNewRounds}
+        canFinishRound={allowFinishRounds}
         onMergeRound={() => setMergeConfirmOpen(true)}
       />
 
