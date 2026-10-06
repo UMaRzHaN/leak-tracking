@@ -6,6 +6,7 @@ import {
   sliceValues,
   summarizeSurvey,
   surveyCoverage,
+  withSurveyOptions,
 } from "./surveyGroups";
 
 const survey = normalizeSurvey({
@@ -75,5 +76,37 @@ describe("survey groups", () => {
         "component",
       ),
     ).toEqual(["Задвижка", "Фланец"]);
+  });
+});
+
+describe("withSurveyOptions", () => {
+  const steps = [
+    {
+      fields: [
+        { type: "autocomplete", key: "category", options: ["Well"] },
+        { type: "autocomplete", key: "component", options: ["Valve"] },
+        { type: "input", key: "note" },
+      ],
+    },
+  ];
+  const survey = (slice, names) => ({
+    slice,
+    groups: names.map((name) => ({ id: name, name })),
+  });
+
+  it("adds hand-typed groups to the autocomplete of the slice field", () => {
+    const [step] = withSurveyOptions(
+      steps,
+      survey("category", ["Compression", "well", "Compression"]),
+    );
+    expect(step.fields[0].options).toEqual(["Well", "Compression"]);
+    expect(step.fields[1].options).toEqual(["Valve"]);
+  });
+
+  it("follows the slice to another field and leaves steps alone without groups", () => {
+    const [step] = withSurveyOptions(steps, survey("component", ["Flange"]));
+    expect(step.fields[1].options).toEqual(["Valve", "Flange"]);
+    expect(step.fields[0].options).toEqual(["Well"]);
+    expect(withSurveyOptions(steps, survey("category", []))).toBe(steps);
   });
 });

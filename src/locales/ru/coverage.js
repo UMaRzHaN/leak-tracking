@@ -37,6 +37,7 @@ export const coverage = {
   edit: "Изменить",
   addGroup: "Добавить категорию",
   add: "Добавить",
+  suggestions: "Категории из записей",
   totalChecked: "Всего осмотрено",
   objects: "объектов: {{count}}",
   save: "Сохранить обследование",

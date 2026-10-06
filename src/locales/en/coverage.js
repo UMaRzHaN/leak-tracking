@@ -37,6 +37,7 @@ export const coverage = {
   edit: "Edit",
   addGroup: "Add a category",
   add: "Add",
+  suggestions: "Categories from records",
   totalChecked: "Checked in total",
   objects: "sites: {{count}}",
   save: "Save survey",

@@ -36,6 +36,16 @@ export default function SurveyScreen({
       (value) => !taken.has(value.toLocaleLowerCase()),
     );
   }, [groups, leaks, slice, levelKeys]);
+  // Подсказки — чипами под полем, а не системным datalist: на Android он
+  // рисуется светлым списком под клавиатурой, а на пустом поле не виден вовсе.
+  const shownSuggestions = useMemo(() => {
+    const needle = adding.trim().toLocaleLowerCase();
+    return needle
+      ? suggestions.filter((value) =>
+          value.toLocaleLowerCase().includes(needle),
+        )
+      : suggestions;
+  }, [adding, suggestions]);
   const total = groups.reduce((sum, group) => sum + group.checked, 0);
 
   const patch = (id, change) =>
@@ -186,7 +196,6 @@ export default function SurveyScreen({
         <div className={s.addGroup}>
           <Icon name="plus" size={20} strokeWidth={2} />
           <input
-            list="survey-group-suggestions"
             value={adding}
             placeholder={t("coverage.addGroup")}
             aria-label={t("coverage.addGroup")}
@@ -200,12 +209,21 @@ export default function SurveyScreen({
               {t("coverage.add")}
             </button>
           )}
-          <datalist id="survey-group-suggestions">
-            {suggestions.map((value) => (
-              <option key={value} value={value} />
-            ))}
-          </datalist>
         </div>
+        {shownSuggestions.length > 0 && (
+          <div
+            className={s.suggestions}
+            role="group"
+            aria-label={t("coverage.suggestions")}
+          >
+            {shownSuggestions.map((value) => (
+              <button key={value} type="button" onClick={() => add(value)}>
+                <Icon name="plus" size={14} strokeWidth={2.2} />
+                {value}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <footer className={s.footer}>

@@ -105,3 +105,33 @@ export function surveyCoverage(survey) {
     estimated: true,
   };
 }
+
+/**
+ * Группы, введённые в «Обследовано» вручную, — в варианты автокомплита того
+ * поля, по которому режет разрез: заведённую там категорию не приходится
+ * набирать в карточке утечки заново. Свои варианты поля остаются первыми.
+ */
+export function withSurveyOptions(steps, survey, levelKeys = []) {
+  const groups = survey?.groups ?? [];
+  if (!groups.length) return steps;
+  const field = sliceField(survey.slice, levelKeys);
+  return steps.map((step) => ({
+    ...step,
+    fields: step.fields.map((item) => {
+      if (item.type !== "autocomplete" || item.key !== field) return item;
+      const options = item.options ?? [];
+      const known = new Set(
+        options.map((option) =>
+          norm(typeof option === "string" ? option : option?.value),
+        ),
+      );
+      const extra = [];
+      for (const { name } of groups) {
+        if (known.has(norm(name))) continue;
+        known.add(norm(name));
+        extra.push(name);
+      }
+      return extra.length ? { ...item, options: [...options, ...extra] } : item;
+    }),
+  }));
+}
