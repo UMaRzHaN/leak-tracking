@@ -62,7 +62,7 @@ export default function MapLeakCard({ leak, coords, onMonitor, onOpen }) {
   return (
     <section
       className={s.card}
-      data-status={leak.status ?? STATUS.OPEN}
+      data-priority={leak.priority ?? "none"}
       aria-label={`${t("map.popup.tag")} ${leak.leak_id ?? ""}`}
     >
       <div className={s.head}>
