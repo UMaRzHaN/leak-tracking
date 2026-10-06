@@ -79,6 +79,8 @@ export default function App() {
     prevPage,
     requestMonitoring,
     requestMonitoringQueue,
+    monitoringReturnPage,
+    setMonitoringReturnPage,
     requestedMonitoringLeakId,
     requestedMonitoringLeakIds,
     retryLoad,
@@ -318,6 +320,9 @@ export default function App() {
         requestMonitoringQueue={requestMonitoringQueue}
         requestedMonitoringLeakId={requestedMonitoringLeakId}
         requestedMonitoringLeakIds={requestedMonitoringLeakIds}
+        monitoringReturnPage={monitoringReturnPage}
+        notifyApp={notifyApp}
+        setMonitoringReturnPage={setMonitoringReturnPage}
         retryLoad={retryLoad}
         save={save}
         scopedData={leakScope.scopedLeaks}

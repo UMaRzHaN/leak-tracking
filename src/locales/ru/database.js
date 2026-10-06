@@ -23,6 +23,23 @@ export const database = {
   searchPlaceholder: "Бирка, место, объект, описание, проверяющий...",
   searchLeaks: "Поиск утечек",
   clearSearch: "Очистить поиск",
+  searchScope: "Где искать",
+  searchScopes: {
+    all: "Все поля",
+    tag: "Бирка",
+    place: "Место",
+    object: "Объект",
+    description: "Описание",
+    inspector: "Проверяющий",
+  },
+  // Подсказка в строке поиска, когда выбрано одно поле.
+  searchIn: {
+    tag: "Поиск по бирке...",
+    place: "Поиск по месту...",
+    object: "Поиск по объекту и компоненту...",
+    description: "Поиск по описанию и примечаниям...",
+    inspector: "Поиск по проверяющему...",
+  },
   filters: "Фильтры",
   status: "Статус",
   priority: "Приоритет",

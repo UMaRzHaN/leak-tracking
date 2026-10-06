@@ -131,6 +131,7 @@ export function useLeakDetailsPersistence({
       // Правка координаты руками отменяет радиус приёмника: он измерял ту
       // точку, а не эту. Оставить его — выдать вписанное значение за снятое,
       // и на карте такая точка выглядела бы достовернее, чем она есть.
+      // Координаты, поставленные кнопкой «по GPS», несут свой радиус.
       const coordsEditedByHand = dirtyFields.some(
         ({ key }) => key === "lat" || key === "lng",
       );
@@ -138,7 +139,13 @@ export function useLeakDetailsPersistence({
       const base = {
         ...leak,
         ...textPatch,
-        ...(coordsEditedByHand ? { coords_accuracy: undefined } : {}),
+        ...(coordsEditedByHand
+          ? {
+              coords_accuracy: Number.isFinite(localEdit.__gps?.accuracy)
+                ? Math.round(localEdit.__gps.accuracy)
+                : undefined,
+            }
+          : {}),
         photo: photoPath ?? leak.photo,
         // Правка снимка починки — не новый ремонт, а исправление вложения у
         // того, который уже был: меняется событие, а не поле записи. У записи

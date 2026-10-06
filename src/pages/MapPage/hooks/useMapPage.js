@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useOfflineMapActions } from "./useOfflineMapActions";
 import { useMapFilters } from "./useMapFilters";
 import { mapFiltersFor } from "../mapModuleFilters";
-import { takeMapFocus } from "@/app/mapFocus";
+import { MAP_FOCUS_ZOOM, takeMapFocus } from "@/app/mapFocus";
 import { useMapSelection } from "./useMapSelection";
 import { useMapExport } from "./useMapExport";
 import { useProjectData } from "@/app/project/ProjectContext";
@@ -277,7 +277,9 @@ export function useMapPage({
     const focus = takeMapFocus();
     if (focus) {
       fittedRef.current = true;
-      map.setView([focus.lat, focus.lng], 18, { animate: false });
+      map.setView([focus.lat, focus.lng], MAP_FOCUS_ZOOM, {
+        animate: false,
+      });
       return;
     }
 

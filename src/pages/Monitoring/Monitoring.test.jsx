@@ -124,6 +124,43 @@ describe("Monitoring round flow", () => {
     ]);
   });
 
+  it("обновляет координаты по GPS из проверки и пишет это в историю", () => {
+    const patched = buildMonitoringPatch({
+      leak: { id: "leak-1", lat: 41.3, lng: 69.2, coords_accuracy: 30 },
+      draft: {
+        result: "still_leaking",
+        coords: { lat: 41.3004, lng: 69.2003, accuracy: 4.6 },
+      },
+      monitoredBy: "Inspector",
+      roundId: "round-1",
+      roundNumber: 1,
+      now: new Date("2026-09-24T08:00:00.000Z"),
+    });
+
+    expect(patched).toMatchObject({
+      lat: 41.3004,
+      lng: 69.2003,
+      coords_accuracy: 5,
+    });
+    const changed = patched.history.at(-1).changes.map((change) => change.key);
+    expect(changed).toEqual(expect.arrayContaining(["lat", "lng"]));
+  });
+
+  it("не трогает координаты, если по GPS их не обновляли", () => {
+    const patched = buildMonitoringPatch({
+      leak: { id: "leak-1", lat: 41.3, lng: 69.2, coords_accuracy: 30 },
+      draft: { result: "still_leaking" },
+      monitoredBy: "Inspector",
+      roundId: "round-1",
+      roundNumber: 1,
+    });
+    expect(patched).toMatchObject({
+      lat: 41.3,
+      lng: 69.2,
+      coords_accuracy: 30,
+    });
+  });
+
   it("пишет ответы про физ. тег и фикцию в запись обхода", () => {
     const patched = buildMonitoringPatch({
       leak: { id: "leak-1" },

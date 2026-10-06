@@ -145,6 +145,7 @@ export default function Monitoring(props) {
           setMonitorLeak(null);
           setMonitorQueueIds([]);
           setMonitorQueueTotal(0);
+          props.onLeaveCheck?.();
         }}
         onCloseNotification={() => setNotification(null)}
         onClosePendingReopen={() => setPendingMonitoringReopen(null)}

@@ -8,6 +8,9 @@ import { globalScope } from "@/utils/globalScope";
  */
 export const SHOW_ON_MAP_EVENT = "app:show-on-map";
 
+/** Зум точки: на ступень ближе родного разрешения спутника. */
+export const MAP_FOCUS_ZOOM = 20;
+
 let pending = /** @type {{lat:number, lng:number}|null} */ (null);
 
 export function requestMapFocus(point) {

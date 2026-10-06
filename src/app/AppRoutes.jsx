@@ -138,6 +138,13 @@ export default function AppRoutes({
   requestMonitoringQueue,
   requestedMonitoringLeakId,
   requestedMonitoringLeakIds,
+  monitoringReturnPage = /** @type {string|null} */ (null),
+  notifyApp = /** @type {((type: string, message: string) => void)|null} */ (
+    null
+  ),
+  setMonitoringReturnPage = /** @type {(page: string|null) => void} */ (
+    () => {}
+  ),
   retryLoad,
   save,
   setGpsEnabled,
@@ -294,6 +301,16 @@ export default function AppRoutes({
               requestedLeakIds={requestedMonitoringLeakIds}
               onRequestedLeakConsumed={() => setRequestedMonitoringLeakId(null)}
               onRequestedLeaksConsumed={() => setRequestedMonitoringLeakIds([])}
+              // Проверка, позванная с другого экрана, — по крестику и после
+              // сохранения назад туда; итог сохранения — уведомлением там.
+              onLeaveCheck={(event) => {
+                const back = monitoringReturnPage;
+                setMonitoringReturnPage(null);
+                if (back == null) return false;
+                setPage(back);
+                if (event?.saved) notifyApp?.("success", event.saved);
+                return true;
+              }}
               userProfile={userProfile}
             />
           )}

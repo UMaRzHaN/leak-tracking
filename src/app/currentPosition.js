@@ -9,15 +9,30 @@ import { useSyncExternalStore } from "react";
  * С выключенным GPS позиции нет: старая точка выдавала бы расстояние от
  * места, где человека давно нет.
  */
-let current = /** @type {{lat:number, lng:number}|null} */ (null);
+let current = /** @type {{lat:number, lng:number, accuracy?:number}|null} */ (
+  null
+);
 const listeners = new Set();
 
 export function setCurrentPosition(coords) {
   const next =
     Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng)
-      ? { lat: coords.lat, lng: coords.lng }
+      ? {
+          lat: coords.lat,
+          lng: coords.lng,
+          // Радиус приёмника: с ним координаты, поставленные по GPS,
+          // сохраняют и меру доверия к себе.
+          ...(Number.isFinite(coords?.accuracy)
+            ? { accuracy: coords.accuracy }
+            : {}),
+        }
       : null;
-  if (next?.lat === current?.lat && next?.lng === current?.lng) return;
+  if (
+    next?.lat === current?.lat &&
+    next?.lng === current?.lng &&
+    next?.accuracy === current?.accuracy
+  )
+    return;
   current = next;
   for (const listener of listeners) listener();
 }

@@ -4,6 +4,7 @@ import {
   FICTION_FILTER,
   MONITORING_FILTER,
   NEARBY_RADIUS_M,
+  SEARCH_SCOPE,
   TAG_FILTER,
 } from "@/domain/leakFilters";
 
@@ -14,9 +15,11 @@ const DEFAULT_MONITORING_FILTER = MONITORING_FILTER.DUE;
 const MONITORING_FILTERS = new Set(Object.values(MONITORING_FILTER));
 const FICTION_FILTERS = new Set(Object.values(FICTION_FILTER));
 const TAG_FILTERS = new Set(Object.values(TAG_FILTER));
+const SEARCH_SCOPES = new Set(Object.values(SEARCH_SCOPE));
 
 const DEFAULT_PROJECT_FILTERS = Object.freeze({
   search: "",
+  searchScope: SEARCH_SCOPE.ALL,
   statusFilter: [],
   priorityFilter: [],
   fictionFilter: FICTION_FILTER.ALL,
@@ -57,6 +60,9 @@ export function normalizeProjectFilters(value) {
   const radius = Number(value?.nearbyRadius);
   return {
     search: typeof value?.search === "string" ? value.search : "",
+    searchScope: SEARCH_SCOPES.has(value?.searchScope)
+      ? value.searchScope
+      : SEARCH_SCOPE.ALL,
     statusFilter: normalizeValues(value?.statusFilter),
     priorityFilter: normalizeValues(value?.priorityFilter),
     fictionFilter: FICTION_FILTERS.has(value?.fictionFilter)

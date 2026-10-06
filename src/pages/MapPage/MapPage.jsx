@@ -22,7 +22,11 @@ import {
   getRepairStage,
 } from "@/domain/repairStages";
 import MapLeakCard from "./components/MapLeakCard";
-import { SHOW_ON_MAP_EVENT, takeMapFocus } from "@/app/mapFocus";
+import {
+  MAP_FOCUS_ZOOM,
+  SHOW_ON_MAP_EVENT,
+  takeMapFocus,
+} from "@/app/mapFocus";
 import { globalScope } from "@/utils/globalScope";
 import { useLeakActions } from "@/pages/DataBase/hooks/useLeakActions";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
@@ -148,7 +152,7 @@ export default function MapPage({
       if (!point) return;
       setActiveLeak(null);
       selectLeak(null);
-      focusLeak(point, 18);
+      focusLeak(point, MAP_FOCUS_ZOOM);
     };
     globalScope.addEventListener?.(SHOW_ON_MAP_EVENT, show);
     return () => globalScope.removeEventListener?.(SHOW_ON_MAP_EVENT, show);

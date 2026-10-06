@@ -569,3 +569,53 @@ describe("useDataBaseFilters multi-select", () => {
     expect(result.current.mainLocationOptions).toEqual(["", "North"]);
   });
 });
+
+describe("search scope", () => {
+  const leak = {
+    leak_id: "512",
+    location: "Скв. 77",
+    component: "Кран шаровой",
+    leak_description: "Пропуск по фланцу",
+    detectedBy: "Иванов",
+    note: "Сообщил Петров",
+    monitoringRecords: [
+      { id: "m1", date: "2026-05-01", monitoredBy: "Петров", comment: "" },
+    ],
+  };
+
+  it("searches every field by default", () => {
+    expect(matchesLeakSearch(leak, "Петров")).toBe(true);
+    expect(matchesLeakSearch(leak, "77")).toBe(true);
+  });
+
+  it("narrows the search to the chosen field", () => {
+    expect(matchesLeakSearch(leak, "Иванов", "inspector")).toBe(true);
+    expect(matchesLeakSearch(leak, "Петров", "inspector")).toBe(true);
+    expect(matchesLeakSearch(leak, "фланцу", "inspector")).toBe(false);
+    expect(matchesLeakSearch(leak, "512", "tag")).toBe(true);
+    expect(matchesLeakSearch(leak, "77", "tag")).toBe(false);
+    expect(matchesLeakSearch(leak, "77", "place")).toBe(true);
+    expect(matchesLeakSearch(leak, "кш", "object")).toBe(true);
+    expect(matchesLeakSearch(leak, "кран", "description")).toBe(false);
+  });
+
+  it("filters the list by the scope from the shared filters", () => {
+    const data = [
+      { id: "a", leak_id: "1", detectedBy: "Иванов" },
+      { id: "b", leak_id: "2", note: "Иванов звонил" },
+    ];
+    const { result } = renderHook(() =>
+      useDataBaseFilters({
+        data,
+        coords: null,
+        sharedFilters: {
+          search: "Иванов",
+          searchScope: "inspector",
+          setSearch: () => {},
+          setSearchScope: () => {},
+        },
+      }),
+    );
+    expect(result.current.displayed.map((item) => item.id)).toEqual(["a"]);
+  });
+});

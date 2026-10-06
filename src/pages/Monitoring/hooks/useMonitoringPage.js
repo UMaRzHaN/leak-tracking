@@ -50,6 +50,10 @@ export function useMonitoringPage({
   requestedLeakId,
   requestedLeakIds = /** @type {any[]} */ ([]),
   onRequestedLeakConsumed,
+  // Возврат на экран, откуда позвали проверку; true — вернулись.
+  onLeaveCheck = /** @type {((event?: {saved?: string}) => boolean)|null} */ (
+    null
+  ),
   onRequestedLeaksConsumed,
   userProfile,
 }) {
@@ -456,6 +460,8 @@ export function useMonitoringPage({
       setMonitorQueueTotal(0);
     }
     setSubmitted(false);
+    // Проверку позвали с другого экрана — туда же и вернуться, с итогом.
+    if (!nextQueueLeak && onLeaveCheck?.({ saved: texts.saved })) return;
     setNotification({ type: "success", message: texts.saved });
   };
 

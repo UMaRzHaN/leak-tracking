@@ -9,6 +9,7 @@ import {
   FICTION_FILTER,
   NEARBY,
   NEARBY_RADIUS_M,
+  SEARCH_SCOPE,
   TAG_FILTER,
 } from "@/domain/leakFilters";
 import { getLastMonitoringFlag, isLeakFiction } from "@/utils/monitoring";
@@ -41,6 +42,7 @@ export function useDataBaseFilters({
 }) {
   const [localSearchInput, setLocalSearchInput] = useState("");
   const [search, setSearch] = useState(() => sharedFilters?.search ?? "");
+  const [localSearchScope, setLocalSearchScope] = useState(SEARCH_SCOPE.ALL);
   const [localStatusFilter, setLocalStatusFilter] = useState(
     /** @type {string[]} */ ([]),
   );
@@ -66,6 +68,8 @@ export function useDataBaseFilters({
 
   const searchInput = sharedFilters?.search ?? localSearchInput;
   const setSearchInput = sharedFilters?.setSearch ?? setLocalSearchInput;
+  const searchScope = sharedFilters?.searchScope ?? localSearchScope;
+  const setSearchScope = sharedFilters?.setSearchScope ?? setLocalSearchScope;
   const statusFilter = normalizeMultiFilter(
     sharedFilters?.statusFilter ?? localStatusFilter,
   );
@@ -166,8 +170,10 @@ export function useDataBaseFilters({
   );
   const searchIndex = useMemo(() => {
     if (searchTokens.length === 0) return null;
-    return new Map(data.map((leak) => [leak, buildLeakSearchText(leak)]));
-  }, [data, searchTokens.length]);
+    return new Map(
+      data.map((leak) => [leak, buildLeakSearchText(leak, searchScope)]),
+    );
+  }, [data, searchTokens.length, searchScope]);
 
   // Счётчики и список должны видеть одну и ту же выборку, поэтому отбор по
   // месту, поиску и приоритету вынесен отдельно: статус применяется только к
@@ -345,6 +351,8 @@ export function useDataBaseFilters({
   return {
     search: searchInput,
     setSearch: setSearchInput,
+    searchScope,
+    setSearchScope,
     statusFilter,
     setFilter,
     priorityFilter,

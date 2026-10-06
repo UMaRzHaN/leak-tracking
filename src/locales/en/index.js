@@ -32,6 +32,7 @@ import { reconcile } from "./reconcile";
 import { reopen } from "./reopen";
 import { repairs } from "./repairs";
 import { route } from "./route";
+import { coordsUpdate } from "./coordsUpdate";
 import { resolve } from "./resolve";
 import { schemas } from "./schemas";
 import { settings } from "./settings";
@@ -77,6 +78,7 @@ export const translation = {
   reopen,
   repairs,
   route,
+  coordsUpdate,
   resolve,
   schemas,
   settings,

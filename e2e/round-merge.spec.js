@@ -7,6 +7,7 @@ import {
   setUserProfile,
   openSettings,
   leaveSettings,
+  openMap,
 } from "./helpers.js";
 
 /**
@@ -82,5 +83,43 @@ test("не даёт начать новый обход, если это выкл
   await expect(page.getByText(/^Обход № 1/).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Новый обход" })).toHaveCount(
     0,
+  );
+});
+
+test("крестик проверки возвращает на экран, откуда её открыли", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await createProject(page, "Check Return");
+  await setUserProfile(page);
+  await createLeak(page, "9301");
+  await openRound(page);
+  await page.getByRole("button", { name: "Начать мониторинг" }).click();
+  await page.getByRole("button", { name: "Начать обход" }).click();
+
+  // С карты: булавка → «Проверить» → крестик — снова карта.
+  await openMap(page);
+  await page.locator(".leaflet-marker-icon", { hasText: "9301" }).click();
+  await page.getByRole("button", { name: "Проверить", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Проверка утечки" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Закрыть" }).first().click();
+  const mapTab = page
+    .getByRole("contentinfo")
+    .getByRole("button", { name: "Карта" });
+  await expect(mapTab).toHaveAttribute("aria-current", "page");
+
+  // После сохранения — тоже назад на карту, с итогом проверки.
+  await page.locator(".leaflet-marker-icon", { hasText: "9301" }).click();
+  await page.getByRole("button", { name: "Проверить", exact: true }).click();
+  await page.getByLabel("Комментарий", { exact: true }).fill("С карты");
+  await attachModalPhoto(page);
+  await page
+    .getByRole("button", { name: "Сохранить проверку", exact: true })
+    .click();
+  await expect(mapTab).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("alert")).toContainText(
+    "Результат мониторинга сохранен",
   );
 });

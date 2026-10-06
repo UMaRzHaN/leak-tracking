@@ -129,6 +129,34 @@ describe("handleSave", () => {
     expect(saved.leak_speed).toBe(12.5);
   });
 
+  it("keeps the receiver accuracy for coordinates taken from GPS", async () => {
+    const { result, props } = setup({
+      localEdit: {
+        lat: 41.3,
+        lng: 69.2,
+        __gps: { lat: 41.3, lng: 69.2, accuracy: 6.4 },
+      },
+      dirtyFields: [{ key: "lat" }, { key: "lng" }],
+    });
+
+    await act(() => result.current.handleSave());
+
+    const saved = props.onSave.mock.calls[0][0];
+    expect(saved).toMatchObject({ lat: 41.3, lng: 69.2, coords_accuracy: 6 });
+    expect(saved.__gps).toBeUndefined();
+  });
+
+  it("drops the accuracy when coordinates are typed by hand", async () => {
+    const { result, props } = setup({
+      localEdit: { lat: "41,3", lng: "69,2" },
+      dirtyFields: [{ key: "lat" }, { key: "lng" }],
+    });
+
+    await act(() => result.current.handleSave());
+
+    expect(props.onSave.mock.calls[0][0].coords_accuracy).toBeUndefined();
+  });
+
   it("appends one history entry naming the editor", async () => {
     const { result, props } = setup({
       localEdit: { component: "flange" },

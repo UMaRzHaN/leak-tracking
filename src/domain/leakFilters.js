@@ -42,3 +42,17 @@ export const TAG_FILTER = {
   WITH: "with",
   WITHOUT: "without",
 };
+
+/**
+ * Где искать строку поиска. По умолчанию — во всех полях; выбранное поле
+ * сужает поиск до него одного: «Иванов» в проверяющих не найдёт утечку, где
+ * Иванов упомянут в примечании.
+ */
+export const SEARCH_SCOPE = {
+  ALL: "all",
+  TAG: "tag",
+  PLACE: "place",
+  OBJECT: "object",
+  DESCRIPTION: "description",
+  INSPECTOR: "inspector",
+};

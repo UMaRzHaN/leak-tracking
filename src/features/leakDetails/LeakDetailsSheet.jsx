@@ -178,6 +178,7 @@ export default function LeakDetailsSheet({
               />
             ) : (
               <EditBlock
+                originalCoords={{ lat: leak.lat, lng: leak.lng }}
                 localEdit={localEdit}
                 setLocalEdit={setLocalEdit}
                 localCalcParams={localCalcParams}

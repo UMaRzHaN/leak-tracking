@@ -31,6 +31,8 @@ export default function MonitoringLeakList({
         <FilterBar
           search={filters.search}
           setSearch={filters.setSearch}
+          searchScope={filters.searchScope}
+          setSearchScope={filters.setSearchScope}
           statusFilter={filters.statusFilter}
           setFilter={filters.setFilter}
           priorityFilter={filters.priorityFilter}

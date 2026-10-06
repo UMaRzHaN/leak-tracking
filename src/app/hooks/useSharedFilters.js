@@ -3,6 +3,7 @@ import {
   FICTION_FILTER,
   MONITORING_FILTER,
   NEARBY_RADIUS_M,
+  SEARCH_SCOPE,
   TAG_FILTER,
 } from "@/domain/leakFilters";
 import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
@@ -18,6 +19,7 @@ import {
 
 export function useSharedFilters({ projectId, projectType }) {
   const [search, setSearch] = useState("");
+  const [searchScope, setSearchScope] = useState(SEARCH_SCOPE.ALL);
   const [statusFilter, setStatusFilter] = useState(
     /** @type {string[]} */ ([]),
   );
@@ -68,6 +70,7 @@ export function useSharedFilters({ projectId, projectType }) {
     const keep = (filter, key) => (filter?.key === key ? filter : null);
 
     setSearch(stored.search);
+    setSearchScope(stored.searchScope);
     setStatusFilter(stored.statusFilter);
     setPriorityFilter(stored.priorityFilter);
     setFictionFilter(stored.fictionFilter);
@@ -96,6 +99,7 @@ export function useSharedFilters({ projectId, projectType }) {
 
     writeProjectFilters(projectId, {
       search,
+      searchScope,
       statusFilter,
       priorityFilter,
       fictionFilter,
@@ -112,6 +116,7 @@ export function useSharedFilters({ projectId, projectType }) {
     projectId,
     projectType,
     search,
+    searchScope,
     statusFilter,
     priorityFilter,
     fictionFilter,
@@ -129,6 +134,8 @@ export function useSharedFilters({ projectId, projectType }) {
     () => ({
       search,
       setSearch,
+      searchScope,
+      setSearchScope,
       statusFilter,
       setFilter: setStatusFilter,
       priorityFilter,
@@ -154,6 +161,7 @@ export function useSharedFilters({ projectId, projectType }) {
     }),
     [
       search,
+      searchScope,
       statusFilter,
       priorityFilter,
       fictionFilter,

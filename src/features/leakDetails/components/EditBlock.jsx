@@ -1,3 +1,4 @@
+import GpsCoordsUpdate from "@/features/coords/GpsCoordsUpdate";
 import { useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import EditTextField from "@/features/editTextField/EditTextField";
@@ -28,6 +29,8 @@ export default function EditBlock(props) {
     isNative,
     showAfter,
     showRepair,
+    // Записанные координаты — чтобы «Отменить» вернул их на место.
+    originalCoords = /** @type {{lat?: any, lng?: any}|null} */ (null),
   } = props;
 
   const allFields = useMemo(() => {
@@ -127,6 +130,28 @@ export default function EditBlock(props) {
       <div className={s.tabPane}>
         {coordFields.length > 0 ? (
           <div className={s.coordGroup}>
+            {/* Одной кнопкой — туда, где стоит человек; поля ниже — руками. */}
+            <GpsCoordsUpdate
+              current={originalCoords}
+              applied={localEdit.__gps ?? null}
+              onApply={(coords) =>
+                setLocalEdit((prev) =>
+                  coords
+                    ? {
+                        ...prev,
+                        lat: coords.lat,
+                        lng: coords.lng,
+                        __gps: coords,
+                      }
+                    : {
+                        ...prev,
+                        lat: originalCoords?.lat ?? "",
+                        lng: originalCoords?.lng ?? "",
+                        __gps: null,
+                      },
+                )
+              }
+            />
             <div className={s.coordPair}>
               {coordFields.map(({ key, label }) => (
                 <EditTextField

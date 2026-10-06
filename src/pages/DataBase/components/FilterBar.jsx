@@ -2,11 +2,12 @@ import { useState, memo } from "react";
 import { STATUS_META, STATUS_ORDER, getStatusMeta } from "@/utils/status";
 import { PRIORITY_ORDER, getPriorityMeta } from "@/utils/priority";
 import { useLanguage } from "@/app/hooks/useLanguage";
-import { FICTION_FILTER, TAG_FILTER } from "@/domain/leakFilters";
+import { FICTION_FILTER, SEARCH_SCOPE, TAG_FILTER } from "@/domain/leakFilters";
 import s from "@/pages/DataBase/DataBase.module.scss";
 import Icon from "@/components/ui/Icon/Icon";
 
 const ALL = "all";
+const SEARCH_SCOPES = Object.values(SEARCH_SCOPE);
 
 function normalizeSelected(value) {
   if (Array.isArray(value)) return value;
@@ -23,6 +24,9 @@ function toggleSelected(current, value) {
 function FilterBar({
   search,
   setSearch,
+  // Где искать: во всех полях или в одном выбранном.
+  searchScope = SEARCH_SCOPE.ALL,
+  setSearchScope = /** @type {((value: string) => void)|null} */ (null),
   statusFilter,
   setFilter,
   priorityFilter,
@@ -45,7 +49,9 @@ function FilterBar({
   const selectedPriorities = normalizeSelected(priorityFilter);
   // Location is chosen in the header's folder browser, not here: two controls
   // over the same three filters would drift apart and duplicate the logic.
+  const scoped = setSearchScope !== null && searchScope !== SEARCH_SCOPE.ALL;
   const hasActiveFilter =
+    scoped ||
     selectedStatuses.length > 0 ||
     selectedPriorities.length > 0 ||
     fictionFilter !== FICTION_FILTER.ALL ||
@@ -65,7 +71,11 @@ function FilterBar({
           </span>
           <input
             className={s.searchInput}
-            placeholder={t("database.searchPlaceholder")}
+            placeholder={
+              scoped
+                ? t(`database.searchIn.${searchScope}`)
+                : t("database.searchPlaceholder")
+            }
             value={search}
             aria-label={t("database.searchLeaks")}
             autoComplete="off"
@@ -113,6 +123,34 @@ function FilterBar({
 
       {open && (
         <div className={s.filtersPanel}>
+          {setSearchScope && (
+            <>
+              <div className={s.filterSection}>
+                <span className={s.filterLabel}>
+                  {t("database.searchScope")}
+                </span>
+                <div className={s.filters}>
+                  {SEARCH_SCOPES.map((scope) => {
+                    const isActive = searchScope === scope;
+                    return (
+                      <button
+                        key={scope}
+                        type="button"
+                        className={`${s.filterTab} ${isActive ? s.filterActive : ""}`}
+                        aria-pressed={isActive}
+                        onClick={() => setSearchScope(scope)}
+                      >
+                        {t(`database.searchScopes.${scope}`)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className={s.filterDivider} />
+            </>
+          )}
+
           <div className={s.filterSection}>
             <span className={s.filterLabel}>{t("database.status")}</span>
             <div className={s.filters}>

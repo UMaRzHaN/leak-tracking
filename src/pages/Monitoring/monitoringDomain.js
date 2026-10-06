@@ -256,20 +256,38 @@ export function buildMonitoringPatch({
             ? { repairAt: null, photo_repair: null }
             : {}),
         };
+  // Координаты по GPS из проверки: точка была записана не там. Вместе с
+  // ними — радиус приёмника, а прежний, мерявший старую точку, уходит.
+  const gps = draft.coords;
+  const coordsPatch =
+    gps && Number.isFinite(gps.lat) && Number.isFinite(gps.lng)
+      ? {
+          lat: gps.lat,
+          lng: gps.lng,
+          coords_accuracy: Number.isFinite(gps.accuracy)
+            ? Math.round(gps.accuracy)
+            : undefined,
+        }
+      : {};
   const nextLeakForChanges = {
     ...leak,
     ...statusPatch,
+    ...coordsPatch,
     materials_equipment: materialsEquipment,
   };
   const changes = buildLeakHistoryChanges({
     before: leak,
     after: nextLeakForChanges,
-    fields: [{ key: "materials_equipment" }],
+    fields: [
+      { key: "materials_equipment" },
+      ...(gps ? [{ key: "lat" }, { key: "lng" }] : []),
+    ],
   });
 
   return {
     ...leak,
     ...statusPatch,
+    ...coordsPatch,
     materials_equipment: materialsEquipment,
     updatedAt: now.getTime(),
     // Обход пишется только в ленту. Двойная запись в `monitoringRecords`

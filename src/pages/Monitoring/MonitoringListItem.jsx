@@ -53,7 +53,7 @@ function MonitoringListItem({
             }
           >
             {checkedInRound && (
-              <Icon name="check" size={16} strokeWidth={2.4} />
+              <Icon name="check" size={13} strokeWidth={2.6} />
             )}
             {last
               ? `${texts.lastCheck}: ${formatMonitoringDate(last.date, lang)}`

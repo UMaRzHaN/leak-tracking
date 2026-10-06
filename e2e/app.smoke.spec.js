@@ -324,7 +324,10 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
     .getByRole("button", { name: "Очистить базу данных", exact: true })
     .last()
     .click();
-  await expect(page.getByRole("alert")).toContainText("База данных очищена");
+  // Уведомление о скачанном бэкапе может ещё висеть рядом — ищем своё.
+  await expect(
+    page.getByRole("alert").filter({ hasText: "База данных очищена" }),
+  ).toBeVisible();
 
   // Восстановление — через «Импорт данных», как любой другой файл.
   await leaveSettings(page);
@@ -334,8 +337,9 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
     page.getByRole("heading", { name: "Проект уже существует" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Перезаписать" }).click();
-  await expect(page.getByRole("alert")).toContainText("Backup restore E2E");
-  await expect(page.getByRole("alert")).toContainText("перезаписан");
+  await expect(
+    page.getByRole("alert").filter({ hasText: "перезаписан" }),
+  ).toContainText("Backup restore E2E");
   await leaveSettings(page);
   await openSettings(page);
 
@@ -357,7 +361,11 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
   await expect(
     page.getByText("Уточнено в сквозном E2E", { exact: true }),
   ).toHaveCount(2);
-  await page.getByRole("button", { name: "Закрыть", exact: true }).click();
+  // У уведомления тоже «Закрыть» (крестик) — нужна кнопка карточки.
+  await page
+    .getByRole("button", { name: "Закрыть", exact: true })
+    .filter({ hasText: "Закрыть" })
+    .click();
 
   await openRound(page);
   await expect(page.getByText("Обход завершён", { exact: true })).toBeVisible();

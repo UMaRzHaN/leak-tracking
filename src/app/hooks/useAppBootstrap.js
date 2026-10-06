@@ -138,13 +138,19 @@ export function useAppBootstrap() {
     isSuspended: isPhotoGcSuspended,
     resumeKey: photoGcResumeRevision,
   });
+  // Экран, с которого позвали проверку (карта, база, главная): крестик в
+  // окне проверки возвращает туда, а не оставляет на странице обхода.
+  const [monitoringReturnPage, setMonitoringReturnPage] = useState(
+    /** @type {string|null} */ (null),
+  );
   const requestMonitoring = useCallback(
     (leak) => {
       setRequestedMonitoringLeakId(leak?.id ?? null);
       setRequestedMonitoringLeakIds([]);
+      setMonitoringReturnPage(page !== "monitoring" ? page : null);
       setPage("monitoring");
     },
-    [setPage],
+    [page, setPage],
   );
 
   const requestMonitoringQueue = useCallback(
@@ -155,9 +161,10 @@ export function useAppBootstrap() {
       if (ids.length === 0) return;
       setRequestedMonitoringLeakId(null);
       setRequestedMonitoringLeakIds(ids);
+      setMonitoringReturnPage(page !== "monitoring" ? page : null);
       setPage("monitoring");
     },
-    [setPage],
+    [page, setPage],
   );
 
   /* =========================
@@ -358,6 +365,8 @@ export function useAppBootstrap() {
     prevPage,
     requestMonitoring,
     requestMonitoringQueue,
+    monitoringReturnPage,
+    setMonitoringReturnPage,
     requestedMonitoringLeakId,
     requestedMonitoringLeakIds,
     retryLoad,

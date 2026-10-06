@@ -1,3 +1,4 @@
+import GpsCoordsUpdate from "@/features/coords/GpsCoordsUpdate";
 import { useId } from "react";
 import { useModalDialog } from "@/hooks/useModalDialog";
 import PhotoInput from "@/features/photos/PhotoInput/PhotoInput";
@@ -134,6 +135,13 @@ export default function MonitoringSheet({
             rows={2}
           />
         </label>
+
+        {/* Точка записана не там — поправить по месту, где стоит обходчик. */}
+        <GpsCoordsUpdate
+          current={leak}
+          applied={draft.coords ?? null}
+          onApply={(coords) => onChange({ coords })}
+        />
 
         <label className={s.field}>
           <span>{texts.comment}</span>
