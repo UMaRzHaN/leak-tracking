@@ -10,6 +10,7 @@ import {
   fetchLocalSyncArchive,
   isLocalSyncAvailable,
 } from "@/services/sync/localSyncService";
+import Icon from "@/components/ui/Icon/Icon";
 import s from "./ProjectSetupScreen.module.scss";
 import { ignoredError } from "@/utils/ignoredError";
 import { projectNameFromFile } from "@/services/import/projectNameFromFile";
@@ -302,16 +303,8 @@ export default function ProjectSetupScreen({
           )}
           {step === "welcome" && (
             <>
-              <button
-                className={s.langBtn}
-                type="button"
-                onClick={toggleLanguage}
-                aria-label={localeTexts.languageToggle}
-              >
-                {localeTexts.languageToggle}
-              </button>
               <div className={s.hero} aria-hidden="true">
-                <img src="/vema_sa_logo.jpg" alt="" />
+                <img src="/onboarding-hero.jpg" alt="" />
               </div>
               <h1 className={s.stepTitle}>{t("projectSetup.welcomeTitle")}</h1>
               <p className={s.stepLead}>{t("projectSetup.welcomeLead")}</p>
@@ -322,6 +315,15 @@ export default function ProjectSetupScreen({
                 onClick={() => setStep("name")}
               >
                 {t("projectSetup.begin")}
+              </button>
+              {/* Язык — тихой ссылкой под кнопкой, а не плашкой на снимке. */}
+              <button
+                className={s.langLink}
+                type="button"
+                onClick={toggleLanguage}
+              >
+                <Icon name="globe" size={15} />
+                {localeTexts.languageToggle}
               </button>
             </>
           )}

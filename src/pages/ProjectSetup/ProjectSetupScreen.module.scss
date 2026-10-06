@@ -70,31 +70,29 @@
   }
 }
 
-.langBtn {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  min-width: 44px;
-  height: 34px;
-  border: 1px solid var(--setup-tint-strong);
+.langLink {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  margin-top: -6px;
+  padding: 0 14px;
+  border: 0;
   border-radius: 10px;
-  background: var(--setup-tint);
-  color: var(--setup-accent);
-  font-size: 13px;
-  font-weight: 700;
+  background: transparent;
+  color: var(--setup-muted);
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    transform 0.2s ease;
 
   &:hover {
-    background: var(--setup-tint-strong);
-    border-color: var(--setup-accent-border);
+    color: var(--setup-accent);
   }
 
-  &:active {
-    transform: translateY(1px);
+  &:focus-visible {
+    outline: 2px solid var(--setup-accent-border);
+    outline-offset: 2px;
   }
 }
 
@@ -485,10 +483,16 @@
   border-radius: 22px;
   background: var(--c-accent-surface);
 
+  // Снимок на всю карточку: обрезается по ней, кадр — на фланце с утечкой.
+  position: relative;
+
   img {
-    width: 45%;
-    max-width: 180px;
-    border-radius: 24px;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 47% center;
   }
 }
 

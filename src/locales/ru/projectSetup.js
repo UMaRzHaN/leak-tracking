@@ -48,7 +48,7 @@ export const projectSetup = {
     "ZIP-бэкап, XLSX или архив инвентаризации — приложение само разберётся",
 
   importError: "Ошибка импорта",
-  languageToggle: "EN",
+  languageToggle: "English",
   projectTypes: {
     upstream: {
       title: "Upstream",

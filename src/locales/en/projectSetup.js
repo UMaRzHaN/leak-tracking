@@ -48,7 +48,7 @@ export const projectSetup = {
     "A ZIP backup, an XLSX or an inventory archive — the app works out which",
 
   importError: "Import error",
-  languageToggle: "RU",
+  languageToggle: "Russian",
   projectTypes: {
     upstream: {
       title: "Upstream",
