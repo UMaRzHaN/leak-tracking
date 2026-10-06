@@ -204,6 +204,16 @@ export async function openHome(page) {
   ).toBeVisible();
 }
 
+// Экран экспорта — на весь экран, без нижней панели. «Назад» с готового файла
+// возвращает к форме выгрузки, второе — уводит с экрана.
+export async function leaveExport(page) {
+  const heading = page.getByRole("heading", { name: "Экспорт отчёта" });
+  for (let step = 0; step < 2 && (await heading.isVisible()); step++) {
+    await page.getByRole("button", { name: "Назад", exact: true }).click();
+  }
+  await expect(heading).toHaveCount(0);
+}
+
 // The Excel archive comes from «Экспорт отчёта» in the menu: the workbook plus
 // the embedded backup the importer reads back. The list screens no longer
 // carry an XLSX button of their own. Returns to the database afterwards, where
@@ -217,8 +227,7 @@ export async function exportExcelArchive(page, testInfo) {
   const download = await downloadPromise;
   const archivePath = testInfo.outputPath(download.suggestedFilename());
   await download.saveAs(archivePath);
-  // Экран экспорта — на весь экран, без нижней панели: назад, потом в базу.
-  await page.getByRole("button", { name: "Назад", exact: true }).click();
+  await leaveExport(page);
   await openDatabase(page);
   return archivePath;
 }

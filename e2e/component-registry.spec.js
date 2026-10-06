@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   openMenuItem,
+  leaveExport,
   openHome,
   createProject,
   fillLeakStepOne,
@@ -84,6 +85,7 @@ test("выгружает инвентаризацию и вливает её в 
   const download = await downloadPromise;
   const archivePath = testInfo.outputPath(download.suggestedFilename());
   await download.saveAs(archivePath);
+  await leaveExport(page);
 
   // Второй проект того же типа: архив не несёт ни имени, ни типа, и тип
   // выводится как единственный, у которого объявлен реестр.
