@@ -7,6 +7,15 @@ vi.mock("@/app/hooks/useLanguage", async () => {
   return englishLanguageHook();
 });
 
+// Выбор проекта проверяется своим тестом: здесь — только что меню его зовёт.
+vi.mock("./ProjectPicker", () => ({
+  default: ({ onManage }) => (
+    <button type="button" onClick={onManage}>
+      Manage projects
+    </button>
+  ),
+}));
+
 const AppMenu = (await import("./AppMenu")).default;
 
 function renderMenu(props = {}) {
@@ -21,7 +30,6 @@ function renderMenu(props = {}) {
     <AppMenu
       open
       page=""
-      projectName="Тенгиз Q1 2026"
       userProfile={{ name: "Иван Ермеков" }}
       openCount={34}
       showRegistry
@@ -37,7 +45,6 @@ describe("AppMenu", () => {
     renderMenu();
 
     expect(screen.getByRole("dialog", { name: "Иван Ермеков" })).toBeTruthy();
-    expect(screen.getByText("Тенгиз Q1 2026")).toBeTruthy();
     expect(screen.getByText("34 open")).toBeTruthy();
     expect(
       screen.getByRole("button", { name: /LDAR/ }).getAttribute("aria-current"),
@@ -51,7 +58,7 @@ describe("AppMenu", () => {
     fireEvent.click(screen.getByRole("button", { name: "Inventory" }));
     fireEvent.click(screen.getByRole("button", { name: "Import data" }));
     fireEvent.click(screen.getByRole("button", { name: /Change name/ }));
-    fireEvent.click(screen.getByTitle("Switch project"));
+    fireEvent.click(screen.getByRole("button", { name: "Manage projects" }));
 
     expect(onSelectModule).toHaveBeenCalledWith("inventory");
     expect(setPage).toHaveBeenCalledWith("import");

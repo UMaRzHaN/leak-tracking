@@ -123,6 +123,53 @@
   color: var(--c-accent);
 }
 
+.projectList {
+  margin-top: 8px;
+  overflow: hidden;
+  border: 1px solid var(--c-border-soft);
+  border-radius: 12px;
+  background: var(--c-surface);
+  list-style: none;
+
+  li + li {
+    border-top: 1px solid var(--c-border-soft);
+  }
+}
+
+.projectOption,
+.projectOptionActive,
+.projectManage {
+  width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  color: var(--c-accent);
+  text-align: left;
+}
+
+.projectOptionActive {
+  background: var(--c-accent-surface);
+
+  .projectName {
+    color: var(--c-accent-text);
+  }
+}
+
+.projectType {
+  color: var(--c-text3);
+  font-size: 12px;
+}
+
+.projectManage {
+  color: var(--c-accent-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .list {
   flex: 1;
   min-height: 0;

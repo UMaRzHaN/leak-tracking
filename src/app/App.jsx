@@ -348,7 +348,6 @@ export default function App() {
             onOpenSettings={openSettings}
             onEditProfile={() => setUserProfileOpen(true)}
             userProfile={userProfile}
-            projectName={activeProject?.name}
             openCount={scopedOpenCount}
             repairCount={repairCount}
             showRegistry={showRegistry}

@@ -3,6 +3,7 @@ import { useLanguage } from "@/app/hooks/useLanguage";
 import { useModalDialog } from "@/hooks/useModalDialog";
 import Icon from "@/components/ui/Icon/Icon";
 import { MODULE } from "@/app/modules/activeModule";
+import ProjectPicker from "./ProjectPicker";
 import s from "./AppMenu.module.scss";
 
 /**
@@ -23,7 +24,6 @@ export default function AppMenu({
   onOpenSettings,
   onEditProfile,
   userProfile,
-  projectName,
   openCount = 0,
   repairCount = 0,
   showRegistry = false,
@@ -156,20 +156,10 @@ export default function AppMenu({
             </button>
           </div>
 
-          <button
-            type="button"
-            className={s.project}
-            onClick={() => go(() => onOpenSettings("projects"))}
-            title={t("appMenu.switchProject")}
-          >
-            <span className={s.projectText}>
-              <span className={s.caption}>{t("appMenu.project")}</span>
-              <span className={s.projectName}>{projectName}</span>
-            </span>
-            <span className={s.projectIcon}>
-              <Icon name="swap" size={16} strokeWidth={1.8} />
-            </span>
-          </button>
+          <ProjectPicker
+            onSwitched={onClose}
+            onManage={() => go(() => onOpenSettings("projects"))}
+          />
         </div>
 
         <div className={s.list}>

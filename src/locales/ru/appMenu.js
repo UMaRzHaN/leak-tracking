@@ -2,6 +2,8 @@ export const appMenu = {
   close: "Закрыть меню",
   noName: "Имя не указано",
   project: "Проект",
+  projects: "Проекты",
+  manageProjects: "Управление проектами",
   switchProject: "Сменить проект",
   editName: "Изменить имя",
   settings: "Настройки проекта",

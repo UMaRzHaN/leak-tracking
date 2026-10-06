@@ -2,6 +2,8 @@ export const appMenu = {
   close: "Close menu",
   noName: "No name set",
   project: "Project",
+  projects: "Projects",
+  manageProjects: "Manage projects",
   switchProject: "Switch project",
   editName: "Change name",
   settings: "Project settings",
