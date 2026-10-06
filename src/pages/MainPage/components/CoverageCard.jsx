@@ -6,9 +6,9 @@ import s from "@/pages/MainPage/MainPage.module.scss";
  * тому, что уже есть в проекте (`computeSurveyCoverage`); переход «По
  * категориям объектов» появится вместе с вводом «Обследовано без утечек».
  */
-export default function CoverageCard({ coverage }) {
+export default function CoverageCard({ coverage, onOpen = null }) {
   const { t } = useLanguage();
-  const { surveyed, total, percent } = coverage;
+  const { surveyed, total, percent, estimated = false } = coverage;
 
   return (
     <section className={s.coverage} aria-label={t("mainPage.coverage.title")}>
@@ -17,7 +17,16 @@ export default function CoverageCard({ coverage }) {
         <span className={s.coverageValue}>
           {total === null
             ? surveyed
-            : t("mainPage.coverage.value", { surveyed, total, percent })}
+            : t(
+                estimated
+                  ? "mainPage.coverage.estimated"
+                  : "mainPage.coverage.value",
+                {
+                  surveyed,
+                  total,
+                  percent,
+                },
+              )}
         </span>
       </div>
       {total !== null && (
@@ -31,13 +40,20 @@ export default function CoverageCard({ coverage }) {
           <span style={{ width: `${percent}%` }} />
         </span>
       )}
-      <p className={s.coverageHint}>
-        {t(
-          total === null
-            ? "mainPage.coverage.noRegistry"
-            : "mainPage.coverage.hint",
-        )}
-      </p>
+      {estimated ? null : (
+        <p className={s.coverageHint}>
+          {t(
+            total === null
+              ? "mainPage.coverage.noRegistry"
+              : "mainPage.coverage.hint",
+          )}
+        </p>
+      )}
+      {onOpen && (
+        <button type="button" className={s.coverageLink} onClick={onOpen}>
+          {t("mainPage.coverage.open")} ›
+        </button>
+      )}
     </section>
   );
 }

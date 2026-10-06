@@ -29,6 +29,7 @@ export const APP_PAGES = new Set([
   "reconcile",
   "export",
   "import",
+  "coverage",
 ]);
 
 /**
@@ -65,6 +66,7 @@ export const FULL_SCREEN_PAGES = new Set([
   "acceptance",
   "export",
   "import",
+  "coverage",
 ]);
 
 export function isFullScreenPage(page) {

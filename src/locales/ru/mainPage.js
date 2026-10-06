@@ -17,8 +17,10 @@ export const mainPage = {
 
   coverage: {
     title: "Охват обследования",
+    estimated: "{{surveyed}} из ~{{total}} · {{percent}}%",
     value: "{{surveyed}} из {{total}} · {{percent}}%",
     hint: "Объекты с записями об утечках",
+    open: "По категориям объектов",
     noRegistry:
       "Объекты с записями об утечках. Общее число появится с реестром компонентов",
   },

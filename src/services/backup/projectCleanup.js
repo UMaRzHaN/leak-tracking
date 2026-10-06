@@ -9,6 +9,7 @@ import { clearProjectSyncState } from "@/services/sync/projectSyncState";
 import { isNative } from "@/utils/platform";
 import { saveMonitoringRound } from "@/utils/monitoringRound";
 import { saveAcceptances } from "@/utils/acceptanceStorage";
+import { saveSurvey } from "@/utils/surveyStorage";
 import { ignoredError } from "@/utils/ignoredError";
 
 /**
@@ -74,6 +75,7 @@ export async function rollbackImportedProject(project, removeProject) {
   try {
     saveMonitoringRound(project.id, null);
     saveAcceptances(project.id, []);
+    saveSurvey(project.id, null);
     await deleteProjectArtifacts(project);
   } catch (error) {
     cleanupError = error;

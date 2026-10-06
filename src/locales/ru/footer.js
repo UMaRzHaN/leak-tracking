@@ -8,5 +8,6 @@ export const footer = {
   acceptance: "Приёмка оборудования",
   registry: "Реестр",
   reconcile: "Сверка",
+  coverage: "Охват",
   route: "Построить маршрут",
 };

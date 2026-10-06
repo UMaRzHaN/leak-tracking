@@ -27,6 +27,7 @@ import {
   saveMonitoringRound,
 } from "@/utils/monitoringRound";
 import { readAcceptances, saveAcceptances } from "@/utils/acceptanceStorage";
+import { readSurvey, saveSurvey } from "@/utils/surveyStorage";
 import { mergeInvoices } from "@/domain/equipmentAcceptance";
 import { logger } from "@/utils/logger";
 import { openArchive } from "./backupArchiveSession";
@@ -135,6 +136,7 @@ export async function importProjectZip(file, ctx) {
     if (Array.isArray(meta?.acceptances)) {
       saveAcceptances(newProject.id, meta.acceptances);
     }
+    if (meta?.survey) saveSurvey(newProject.id, meta.survey);
     await saveImportedProject(finalLeaks, {
       preservedRecords: restoredRecoveryRecords,
     });
@@ -346,6 +348,14 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
           mergeInvoices(readAcceptances(existingProjectId), meta.acceptances),
         );
       }
+      // Ввод обследования — одна запись на проект: берётся более свежая.
+      if (
+        meta?.survey &&
+        String(meta.survey.updatedAt ?? "") >
+          String(readSurvey(existingProjectId).updatedAt ?? "")
+      ) {
+        saveSurvey(existingProjectId, meta.survey);
+      }
       if (incomingSyncState) {
         await writeProjectSyncState(
           existingProjectId,
@@ -377,6 +387,14 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
           existingProjectId,
           mergeInvoices(readAcceptances(existingProjectId), meta.acceptances),
         );
+      }
+      // Ввод обследования — одна запись на проект: берётся более свежая.
+      if (
+        meta?.survey &&
+        String(meta.survey.updatedAt ?? "") >
+          String(readSurvey(existingProjectId).updatedAt ?? "")
+      ) {
+        saveSurvey(existingProjectId, meta.survey);
       }
       await writeProjectSyncState(
         existingProjectId,

@@ -8,6 +8,8 @@ import { showsComponentTree } from "./pages";
 import { STATUS } from "@/utils/status";
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
 import { computeSurveyCoverage } from "@/utils/surveyCoverage";
+import { surveyCoverage } from "@/domain/surveyGroups";
+import { useSurvey } from "@/utils/surveyStorage";
 import {
   MODULE,
   moduleHomePage,
@@ -87,6 +89,7 @@ export default function App() {
 
   const [locationBrowserOpen, setLocationBrowserOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [survey] = useSurvey(activeProject?.id ?? null);
   const [module, setModule] = useActiveModule();
   const [routeSheetOpen, setRouteSheetOpen] = useState(false);
   // Маршрут живёт в проекте: после перезапуска обход продолжается с той же
@@ -177,18 +180,22 @@ export default function App() {
     [leakScope.scopedLeaks],
   );
 
+  // Введённое обследование (4a) точнее: в нём есть и осмотренное без
+  // находок. Без ввода — нижняя граница по объектам с утечками.
   const coverage = useMemo(
     () =>
       page === "" && module === MODULE.LDAR
-        ? computeSurveyCoverage({
+        ? (surveyCoverage(survey) ??
+          computeSurveyCoverage({
             leaks: leakScope.scopedLeaks,
             components: componentScope.scopedLeaks,
             levelKeys: leakScope.levelKeys,
-          })
+          }))
         : null,
     [
       page,
       module,
+      survey,
       leakScope.scopedLeaks,
       leakScope.levelKeys,
       componentScope.scopedLeaks,

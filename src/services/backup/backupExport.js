@@ -16,6 +16,7 @@ function monitoringFolderLabel(result) {
 }
 import { readMonitoringRound } from "@/utils/monitoringRound";
 import { readAcceptances } from "@/utils/acceptanceStorage";
+import { readStoredSurvey } from "@/utils/surveyStorage";
 import { assertImportFileSize, IMPORT_LIMITS } from "@/utils/importLimits";
 import { withPortablePhotoValues } from "@/utils/photoValues";
 import { RECOVERY_RECORDS_FILE } from "./constants";
@@ -157,6 +158,7 @@ export async function streamProjectBackupZip({
     settings: readProjectSettings(project?.id),
     monitoringRound: readMonitoringRound(project?.id),
     acceptances: readAcceptances(project?.id),
+    survey: readStoredSurvey(project?.id),
     syncState: await readProjectSyncStateAsync(project?.id),
   });
   if (meta) await zip.add("project.json", JSON.stringify(meta, null, 2));
@@ -214,6 +216,7 @@ export async function buildProjectBackupZip({
     settings: readProjectSettings(project?.id),
     monitoringRound: readMonitoringRound(project?.id),
     acceptances: readAcceptances(project?.id),
+    survey: readStoredSurvey(project?.id),
     syncState: await readProjectSyncStateAsync(project?.id),
   });
   if (meta) zip.file("project.json", JSON.stringify(meta, null, 2));

@@ -147,7 +147,12 @@ export default function MainPage({
         />
       ) : (
         <>
-          {coverage && <CoverageCard coverage={coverage} />}
+          {coverage && (
+            <CoverageCard
+              coverage={coverage}
+              onOpen={() => setPage("coverage")}
+            />
+          )}
           <RepairAnalytics leaks={scopedData} onOpenLeak={setActiveLeak} />
         </>
       )}

@@ -17,8 +17,10 @@ export const mainPage = {
 
   coverage: {
     title: "Survey coverage",
+    estimated: "{{surveyed}} of ~{{total}} · {{percent}}%",
     value: "{{surveyed}} of {{total}} · {{percent}}%",
     hint: "Sites with leak records",
+    open: "By site category",
     noRegistry:
       "Sites with leak records. The total appears with the component registry",
   },

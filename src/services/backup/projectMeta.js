@@ -12,6 +12,7 @@ export function buildProjectMeta({
   settings,
   monitoringRound,
   acceptances,
+  survey,
   syncState,
 } = {}) {
   if (!project) return null;
@@ -29,6 +30,7 @@ export function buildProjectMeta({
     settings: settings ?? undefined,
     monitoringRound: monitoringRound ?? undefined,
     acceptances: acceptances?.length ? acceptances : undefined,
+    survey: survey ?? undefined,
     sync: syncState ?? undefined,
   };
 }

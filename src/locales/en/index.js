@@ -5,6 +5,7 @@ import { appMenu } from "./appMenu";
 import { cards } from "./cards";
 import { common } from "./common";
 import { components } from "./components";
+import { coverage } from "./coverage";
 import { database } from "./database";
 import { emissionsSummary } from "./emissionsSummary";
 import { emptyState } from "./emptyState";
@@ -49,6 +50,7 @@ export const translation = {
   cards,
   common,
   components,
+  coverage,
   database,
   emissionsSummary,
   emptyState,

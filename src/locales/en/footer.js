@@ -8,5 +8,6 @@ export const footer = {
   acceptance: "Equipment acceptance",
   registry: "Registry",
   reconcile: "Reconcile",
+  coverage: "Coverage",
   route: "Build a route",
 };

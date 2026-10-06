@@ -60,6 +60,7 @@ export default function Footer({
       { key: "", icon: "home", label: t("footer.home") },
       database,
       { key: "add", fab: true },
+      { key: "coverage", icon: "pulse", label: t("footer.coverage") },
       map,
     ];
   }, [t, module, onRoute, onAddComponent]);

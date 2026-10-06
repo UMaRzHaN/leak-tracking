@@ -60,6 +60,18 @@
   }
 }
 
+.coverageLink {
+  align-self: flex-start;
+  min-height: 32px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--c-accent-text);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+}
+
 .coverageHint {
   color: var(--c-text3);
   font-size: 12px;

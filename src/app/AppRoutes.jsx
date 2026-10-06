@@ -14,6 +14,7 @@ const RepairRound = lazy(() => import("@/pages/Repairs/RepairRound"));
 const AcceptanceList = lazy(() => import("@/pages/Repairs/AcceptanceList"));
 const Reconcile = lazy(() => import("@/pages/Reconcile/Reconcile"));
 const ExportPage = lazy(() => import("@/pages/Export/ExportPage"));
+const CoveragePage = lazy(() => import("@/pages/Coverage/CoveragePage"));
 const ComponentRegistry = lazy(
   () => import("@/pages/ComponentRegistry/ComponentRegistry"),
 );
@@ -234,6 +235,10 @@ export default function AppRoutes({
             onMonitorLeaks={requestMonitoringQueue}
             userProfile={userProfile}
           />
+        )}
+
+        {dataLoaded && !loadError && page === "coverage" && (
+          <CoveragePage data={data} onBack={() => goBack(prevPage)} />
         )}
 
         {dataLoaded && !loadError && page === "export" && (
