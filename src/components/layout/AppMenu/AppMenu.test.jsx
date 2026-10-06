@@ -8,6 +8,11 @@ vi.mock("@/app/hooks/useLanguage", async () => {
 });
 
 // Выбор проекта проверяется своим тестом: здесь — только что меню его зовёт.
+const platform = vi.hoisted(() => ({ android: false }));
+vi.mock("@/services/sync/localSyncPlatform", () => ({
+  isNativeAndroid: () => platform.android,
+}));
+
 vi.mock("./ProjectPicker", () => ({
   default: () => <button type="button">Project picker</button>,
 }));
@@ -131,5 +136,21 @@ describe("AppMenu", () => {
     expect(screen.getByText("preparing…")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Backup \(ZIP\)/ }));
     expect(onExportBackup).not.toHaveBeenCalled();
+  });
+
+  it("offers sync only in the Android app, where it opens its section", () => {
+    renderMenu();
+    expect(screen.queryByRole("button", { name: "Sync" })).toBeNull();
+  });
+
+  it("opens the sync section from the menu on Android", () => {
+    platform.android = true;
+    try {
+      const { onOpenSettings } = renderMenu();
+      fireEvent.click(screen.getByRole("button", { name: "Sync" }));
+      expect(onOpenSettings).toHaveBeenCalledWith("sync");
+    } finally {
+      platform.android = false;
+    }
   });
 });

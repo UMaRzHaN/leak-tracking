@@ -107,7 +107,8 @@ export function countRepairStages(leaks) {
  * после работ.
  *
  * @param {any} leak
- * @param {{ stage: string, brigade?: string, note?: string }} mark
+ * @param {{ stage: string, brigade?: string, note?: string, photo?: string,
+ *   materials_equipment?: string }} mark
  * @param {{ user?: string, now?: number }} [options]
  */
 export function markRepairStage(leak, mark, { user, now } = {}) {
@@ -134,6 +135,12 @@ export function markRepairStage(leak, mark, { user, now } = {}) {
       stage: mark.stage,
       ...(mark.brigade ? { brigade: mark.brigade.trim() } : {}),
       ...(mark.note ? { note: mark.note.trim() } : {}),
+      // Снимок и МТР с проверки, после которой ремонт продолжается: их видно
+      // в журнале ремонтов, а снимок держит уборка фото — он в событии.
+      ...(mark.photo ? { photo: mark.photo } : {}),
+      ...(mark.materials_equipment
+        ? { materials_equipment: mark.materials_equipment }
+        : {}),
       ...(user ? { user } : {}),
     }),
     updatedAt: time,

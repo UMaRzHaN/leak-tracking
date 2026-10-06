@@ -48,12 +48,12 @@
 }
 
 .hintIcon {
-  font-size: 16px;
+  font-size: var(--fs-lg);
   line-height: 1;
   font-weight: 700;
 }
 .hintText {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -63,7 +63,10 @@
    CARD
    ══════════════════════════════════════ */
 
-.collapsed .body {
+.collapsed .body,
+/* Без места и компонента тело пустое — без этого под шапкой оставалась
+   полоса из одних отступов. */
+.body:empty {
   display: none;
 }
 
@@ -142,21 +145,42 @@
   }
 }
 
-.fictionPill {
-  display: inline-flex;
-  align-items: center;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 2px 8px;
-  border-radius: var(--r-pill);
-  border: 1.5px solid var(--c-fiction);
-  color: var(--c-fiction);
-  background: color-mix(in srgb, var(--c-fiction) 14%, transparent);
-  white-space: nowrap;
-  flex-shrink: 0;
-  line-height: 1.4;
+/* Без физ. тега: та же штриховка, но своим жёлтым — тег надо повесить. */
+.card[data-no-tag="true"] {
+  border: 1.5px dashed var(--c-no-tag);
+  background:
+    repeating-linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--c-no-tag) 10%, transparent) 0 8px,
+      transparent 8px 16px
+    ),
+    var(--c-surface);
+
+  &::before {
+    background: var(--c-no-tag);
+    animation: none;
+  }
+}
+
+/* И фикция, и тега нет: полосы чередуют оба цвета, рамка и кромка —
+   переход от фиолетового к жёлтому. */
+.card[data-fiction="true"][data-no-tag="true"] {
+  border: 1.5px solid transparent;
+  background:
+    repeating-linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--c-fiction) 10%, transparent) 0 8px,
+        transparent 8px 16px,
+        color-mix(in srgb, var(--c-no-tag) 12%, transparent) 16px 24px,
+        transparent 24px 32px
+      )
+      padding-box,
+    linear-gradient(var(--c-surface), var(--c-surface)) padding-box,
+    linear-gradient(135deg, var(--c-fiction), var(--c-no-tag)) border-box;
+
+  &::before {
+    background: linear-gradient(180deg, var(--c-fiction), var(--c-no-tag));
+  }
 }
 
 .selected {
@@ -219,7 +243,7 @@
 }
 
 .selectToggleMark {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1;
   font-weight: 800;
   transform: translateY(-0.5px);
@@ -240,7 +264,7 @@
 .statusPill {
   display: inline-flex;
   align-items: center;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -253,7 +277,7 @@
 }
 
 .id {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--c-text);
   letter-spacing: -0.01em;
@@ -265,7 +289,7 @@
 }
 
 .time {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--c-text3);
   white-space: nowrap;
   flex-shrink: 0;
@@ -283,7 +307,7 @@
   border-radius: var(--r-pill);
   color: var(--c-text3);
   background: transparent;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   line-height: 1;
   cursor: pointer;
 
@@ -312,7 +336,7 @@
 }
 
 .locationName {
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--c-text);
   line-height: 1.25;
@@ -323,7 +347,7 @@
 }
 
 .objectName {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--c-text2);
   overflow: hidden;
@@ -341,13 +365,13 @@
   width: 11px;
   flex-shrink: 0;
   color: var(--c-text3);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   line-height: 1;
   text-align: center;
 }
 
 .componentName {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--c-text2);
   overflow: hidden;
   white-space: nowrap;
@@ -401,7 +425,7 @@
   width: 11px;
   flex-shrink: 0;
   color: var(--c-text3);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1;
   text-align: center;
 }
@@ -409,7 +433,7 @@
 .desc {
   min-width: 0;
   flex: 1;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--c-text3);
   line-height: 1.4;
   overflow: hidden;
@@ -441,7 +465,7 @@
 }
 
 .chip {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 500;
   color: var(--c-text2);
   background: var(--c-bg);
@@ -455,7 +479,7 @@
 }
 
 .chipCalc {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--c-resolved-text);
   background: var(--c-resolved-bg);
@@ -466,7 +490,7 @@
 }
 
 .chipNear {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--c-accent-text);
   background: var(--c-accent-dim);
@@ -590,7 +614,7 @@
   right: 0;
   padding: 2px 0;
   text-align: center;
-  font-size: 9px;
+  font-size: var(--fs-micro);
   font-weight: 700;
   color: #fff;
   background: rgba(0, 0, 0, 0.48);
@@ -606,7 +630,7 @@
   left: 0;
   padding: 2px 1px;
   text-align: center;
-  font-size: 8px;
+  font-size: var(--fs-micro);
   font-weight: 800;
   color: #fff;
   background: rgba(0, 0, 0, 0.54);

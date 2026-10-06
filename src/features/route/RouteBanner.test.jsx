@@ -17,32 +17,32 @@ const target = {
   lat: 46.2,
   lng: 53.21,
   location: "Pad 12",
+  status: "open",
+  component: "Flange DN50",
+  leak_description: "Gasket seep",
 };
 
 describe("RouteBanner", () => {
-  it("shows the step, the target, the distance and what is left", () => {
+  it("shows the tag with its component, then step, distance and status", () => {
     const onFocus = vi.fn();
-    const onCheck = vi.fn();
     render(
       <RouteBanner
         progress={{ total: 124, done: 36, left: 88, step: 37, current: target }}
         coords={{ lat: 46.2, lng: 53.2 }}
         gpsEnabled
         onFocus={onFocus}
-        onCheck={onCheck}
         onEnd={vi.fn()}
       />,
     );
 
-    expect(screen.getByText("Route · point 37 of 124")).toBeTruthy();
-    expect(screen.getByText("Pad 12")).toBeTruthy();
-    expect(screen.getByText("88 left")).toBeTruthy();
-    expect(screen.getByText(/m$/)).toBeTruthy();
+    expect(screen.getByText(/^.+ 1043 · Flange DN50$/)).toBeTruthy();
+    expect(screen.getByText(/^37\/124 · .+ · Open$/)).toBeTruthy();
+    expect(screen.queryByText(/Gasket seep/)).toBeNull();
+    expect(screen.queryByText(/Pad 12/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Check" })).toBeNull();
 
-    fireEvent.click(screen.getByText("Pad 12"));
-    fireEvent.click(screen.getByRole("button", { name: "Check" }));
+    fireEvent.click(screen.getByRole("button", { name: /point 37 of 124/ }));
     expect(onFocus).toHaveBeenCalledWith(target);
-    expect(onCheck).toHaveBeenCalledWith(target);
   });
 
   it("reports a finished route and still lets it be closed", () => {
@@ -53,13 +53,11 @@ describe("RouteBanner", () => {
         coords={null}
         gpsEnabled={false}
         onFocus={vi.fn()}
-        onCheck={vi.fn()}
         onEnd={onEnd}
       />,
     );
 
     expect(screen.getByText("Route complete")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Check" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "End route" }));
     expect(onEnd).toHaveBeenCalledOnce();
   });

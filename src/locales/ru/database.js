@@ -20,7 +20,7 @@ export const database = {
   notSpecified: "Не указано",
   radiusKm: "км",
   radiusM: "м",
-  searchPlaceholder: "Бирка, место, объект, описание, проверяющий...",
+  searchPlaceholder: "Бирка, место, объект…",
   searchLeaks: "Поиск утечек",
   clearSearch: "Очистить поиск",
   searchScope: "Где искать",

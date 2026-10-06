@@ -38,11 +38,37 @@ export function getRepairStageMeta(stage, t) {
   return { ...meta, label: t(`repairs.stages.${stage}`) };
 }
 
-/** МТР из поля формы — по одной позиции на чип. */
+const MATERIAL_CHIPS = 4;
+
+/**
+ * МТР из поля формы — по одной позиции на чип.
+ *
+ * Перенос строки делит позиции, только если следующая строка начинается не
+ * со строчной буквы: в ячейках книги длинное название переносят посреди
+ * фразы («…с ручным приводом с⏎ответными фланцами»), и такой хвост — то же
+ * название, а не новая позиция.
+ */
 export function splitMaterials(value) {
   return String(value ?? "")
-    .split(/[,;\n]/)
+    .split("\n")
+    .reduce((lines, line) => {
+      const text = line.trim();
+      if (!text) return lines;
+      if (lines.length && /^\p{Ll}/u.test(text)) {
+        lines[lines.length - 1] += ` ${text}`;
+      } else {
+        lines.push(text);
+      }
+      return lines;
+    }, /** @type {string[]} */ ([]))
+    .flatMap((line) => line.split(/[,;]/))
     .map((item) => item.trim())
     .filter(Boolean)
-    .slice(0, 4);
+    .reduce((chips, item, index, items) => {
+      // Чипов не больше четырёх; что не влезло — последним чипом «+N»,
+      // чтобы позиции не пропадали молча.
+      if (index < MATERIAL_CHIPS) chips.push(item);
+      else if (index === MATERIAL_CHIPS) chips.push(`+${items.length - index}`);
+      return chips;
+    }, /** @type {string[]} */ ([]));
 }

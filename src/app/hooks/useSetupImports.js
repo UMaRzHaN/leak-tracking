@@ -1,6 +1,5 @@
 import { appError } from "@/utils/appError";
 import { useCallback } from "react";
-import { rollbackImportedProject } from "@/services/backup/projectCleanup";
 import { waitForRefValue } from "./waitForProjectSwitch";
 import { asError } from "@/utils/appError";
 
@@ -111,6 +110,10 @@ export function useSetupImports({
           const error = asError(caught);
           try {
             try {
+              // Откат нужен только при сбое импорта — модуль уборки (с
+              // хранилищем приёмок) грузится тогда же, а не до первого экрана.
+              const { rollbackImportedProject } =
+                await import("@/services/backup/projectCleanup");
               const rollback = await rollbackImportedProject(
                 newProject,
                 removeProject,

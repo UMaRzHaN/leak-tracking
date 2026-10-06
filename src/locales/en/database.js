@@ -20,7 +20,7 @@ export const database = {
   notSpecified: "Not specified",
   radiusKm: "km",
   radiusM: "m",
-  searchPlaceholder: "Tag, location, object, description, inspector...",
+  searchPlaceholder: "Tag, location, object…",
   searchLeaks: "Search leaks",
   clearSearch: "Clear search",
   searchScope: "Search in",

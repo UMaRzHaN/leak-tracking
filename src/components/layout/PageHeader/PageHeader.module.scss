@@ -49,7 +49,7 @@
   border-radius: 13px;
 
   color: var(--c-ink);
-  font-size: 18px;
+  font-size: var(--fs-xl);
   cursor: pointer;
   transition:
     background var(--t-fast),
@@ -74,7 +74,7 @@
 }
 
 .title {
-  font-size: 20px;
+  font-size: var(--fs-xl);
   font-weight: 800;
   letter-spacing: -0.03em;
   color: var(--c-ink);
@@ -85,7 +85,7 @@
 }
 
 .subtitle {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--c-text3);
   white-space: nowrap;
@@ -113,7 +113,7 @@
   border: 1px solid var(--c-border-soft);
   border-radius: 13px;
   color: var(--c-accent-text);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   cursor: pointer;
   transition:
@@ -137,7 +137,7 @@
   background: var(--c-accent);
   border-radius: var(--r-sm);
 
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: #fff;
   letter-spacing: 0.01em;
@@ -157,10 +157,10 @@
   .backButton {
     width: 44px;
     height: 44px;
-    font-size: 16px;
+    font-size: var(--fs-lg);
   }
 
   .title {
-    font-size: 18px;
+    font-size: var(--fs-xl);
   }
 }

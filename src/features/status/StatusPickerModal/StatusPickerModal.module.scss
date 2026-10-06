@@ -44,7 +44,7 @@
 }
 
 .title {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--c-text3);
   text-align: center;
@@ -90,13 +90,13 @@
 
 .label {
   flex: 1;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 500;
   color: var(--c-text);
 }
 
 .check {
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--c-accent-text);
   font-weight: 700;
 }

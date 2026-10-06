@@ -12,7 +12,6 @@ import s from "@/pages/DataBase/DataBase.module.scss";
  */
 function ComponentResultsBar({
   visibleCount,
-  totalCount,
   sortAsc,
   onSortToggle,
   selectedCount = 0,
@@ -20,8 +19,6 @@ function ComponentResultsBar({
   onSelectDisplayed,
   onClearSelection,
   onInspectSelected,
-  onExport,
-  isExporting = false,
 }) {
   const { t } = useLanguage();
 
@@ -53,16 +50,6 @@ function ComponentResultsBar({
               {allDisplayedSelected
                 ? t("database.clearAll")
                 : t("database.selectAll")}
-            </button>
-          )}
-          {totalCount > 0 && (
-            <button
-              className={s.exportBtn}
-              onClick={onExport}
-              disabled={isExporting}
-              title={t("components.export.button")}
-            >
-              {isExporting ? t("database.exporting") : "📥 XLSX"}
             </button>
           )}
         </div>

@@ -1,5 +1,9 @@
 import { getIntlLocale } from "@/utils/locale";
-import { LEAK_EVENT_TYPES, getEventsOfType } from "@/domain/leakEvents";
+import {
+  LEAK_EVENT_TYPES,
+  getEventsOfType,
+  getLeakEvents,
+} from "@/domain/leakEvents";
 export const MONITORING_RESULT = {
   STILL_LEAKING: "still_leaking",
   RESOLVED: "resolved",
@@ -164,10 +168,26 @@ export function getLastMonitoringRecord(leak) {
  */
 export const MONITORING_FLAGS = ["physicalTag", "fiction"];
 
-/** Последний ответ на флаг среди осмотров, где его задавали; иначе `null`. */
+/**
+ * Последний ответ на флаг среди осмотров, где его задавали; иначе `null`.
+ * Про физ. тег спрашивает и приёмка ремонта — её ответ лежит в событии
+ * ремонта и встаёт в один ряд с осмотрами по дате.
+ */
 export function getLastMonitoringFlag(leak, key) {
-  const answered = getMonitoringRecords(leak).filter(
-    (record) => typeof record[key] === "boolean",
+  const fromRepairs = getLeakEvents(leak).filter(
+    (event) =>
+      event?.type !== LEAK_EVENT_TYPES.INSPECTION &&
+      typeof event?.[key] === "boolean" &&
+      Number.isFinite(Date.parse(String(event?.date ?? ""))),
+  );
+  const answered = [
+    ...getMonitoringRecords(leak).filter(
+      (record) => typeof record[key] === "boolean",
+    ),
+    ...fromRepairs,
+  ].sort(
+    (left, right) =>
+      Date.parse(String(left.date)) - Date.parse(String(right.date)),
   );
   if (answered.length === 0) return null;
   return /** @type {boolean} */ (answered[answered.length - 1][key]);

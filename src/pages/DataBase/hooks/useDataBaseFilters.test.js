@@ -153,7 +153,7 @@ describe("useDataBaseFilters multi-select", () => {
       { id: 3 },
     ];
     const { result } = renderHook(() =>
-      useDataBaseFilters({ data, coords: null, withTagFilter: true }),
+      useDataBaseFilters({ data, coords: null }),
     );
 
     expect(result.current.counts).toMatchObject({ tagWith: 1, tagWithout: 1 });
@@ -163,17 +163,18 @@ describe("useDataBaseFilters multi-select", () => {
     expect(result.current.displayed.map((item) => item.id)).toEqual([2]);
   });
 
-  it("в базе отбора по физ. тегу нет, и общий не прячет записи", () => {
+  it("берёт общий отбор по физ. тегу — тот же, что в обходе и на карте", () => {
+    const setTagFilter = vi.fn();
     const { result } = renderHook(() =>
       useDataBaseFilters({
         data: DATA,
         coords: null,
-        sharedFilters: { tagFilter: "without", setTagFilter: vi.fn() },
+        sharedFilters: { tagFilter: "without", setTagFilter },
       }),
     );
 
-    expect(result.current.setTagFilter).toBeNull();
-    expect(result.current.displayed).toHaveLength(DATA.length);
+    expect(result.current.tagFilter).toBe("without");
+    expect(result.current.setTagFilter).toBe(setTagFilter);
   });
 
   it("sorts newest first and toggles to ascending order", () => {

@@ -1,7 +1,6 @@
 import { useState, useCallback } from "react";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useBulkActions } from "./useBulkActions";
-import { useDataBaseExport } from "./useDataBaseExport";
 import { useDataBaseFilters } from "./useDataBaseFilters";
 import { useLeakActions } from "./useLeakActions";
 
@@ -48,10 +47,6 @@ export function useDataBaseController({
     userProfile,
     projectVars: actions.vars,
   });
-  const { handleExport, isExporting } = useDataBaseExport({
-    displayed: filters.displayed,
-    notify,
-  });
 
   const handleBulkPickerSelect = useCallback(
     (status) => {
@@ -72,7 +67,5 @@ export function useDataBaseController({
     filters,
     actions,
     bulk,
-    handleExport,
-    isExporting,
   };
 }

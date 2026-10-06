@@ -122,6 +122,22 @@
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 28px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
 
+  /* Шрифты — одна шкала на всё приложение. Мельче 11px текст на телефоне
+     не читается; 10px — только подписи поверх миниатюр снимков. Крупнее
+     28px — цифры-заставки и эмодзи, они остаются как есть. */
+  --fs-micro: 10px;
+  --fs-2xs: 11px; /* бейджи, счётчики, подписи капсом */
+  --fs-xs: 12px; /* подписи, мета */
+  --fs-sm: 13px; /* второстепенный текст, чипы */
+  --fs-md: 14px; /* основной текст, поля ввода */
+  --fs-lg: 15px; /* заголовки карточек, кнопки */
+  --fs-xl: 18px; /* заголовки листов и разделов */
+  --fs-2xl: 22px; /* заголовки экранов */
+  --fs-3xl: 28px; /* крупные цифры */
+
+  /* Утечка без физ. тега — по ответу последнего осмотра. */
+  --c-no-tag: var(--c-amber);
+
   /* Radius */
   --r-sm: 8px;
   --r-md: 12px;
@@ -271,7 +287,11 @@ body {
   min-height: 100dvh;
   background: var(--c-bg);
   color: var(--c-text);
+  font-size: var(--fs-md);
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   overscroll-behavior: none;
 }
 
@@ -363,7 +383,7 @@ select {
 }
 
 .appLoaderText {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
@@ -402,7 +422,7 @@ select {
 
   h1 {
     max-width: 420px;
-    font-size: 22px;
+    font-size: var(--fs-2xl);
   }
 
   p {
@@ -418,7 +438,7 @@ select {
     border-radius: var(--r-md);
     background: var(--c-accent);
     color: #fff;
-    font-size: 15px;
+    font-size: var(--fs-lg);
     font-weight: 700;
   }
 }
@@ -431,7 +451,7 @@ select {
   border-radius: 50%;
   background: var(--c-open-bg);
   color: var(--c-open-text);
-  font-size: 28px;
+  font-size: var(--fs-3xl);
   font-weight: 800;
 }
 
@@ -450,7 +470,7 @@ select {
   p {
     margin-top: 2px;
     color: var(--c-text2);
-    font-size: 13px;
+    font-size: var(--fs-sm);
     line-height: 1.4;
   }
 

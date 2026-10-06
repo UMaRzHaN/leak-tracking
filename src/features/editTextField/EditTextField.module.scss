@@ -47,7 +47,7 @@
 /* ── Label ── */
 .label {
   display: block;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--c-text3);
   text-transform: uppercase;
@@ -74,7 +74,7 @@
 /* ── Control (input or textarea) ── */
 .control {
   /* iOS zoom prevention: font-size must be >= 16px */
-  font-size: 16px;
+  font-size: var(--fs-lg);
   flex: 1;
   min-width: 0;
   border: none;
@@ -125,7 +125,7 @@
   border-radius: 50%;
   background: var(--c-border);
   color: var(--c-text3);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   line-height: 1;
   display: flex;
   align-items: center;

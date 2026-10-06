@@ -49,7 +49,6 @@ export default function MapPage({
   onBaseChange,
   // Активный маршрут обхода (5d): плашка сверху карты.
   routeProgress = /** @type {any} */ (null),
-  onRouteCheck = /** @type {((leak: any) => void)|undefined} */ (undefined),
   onRouteEnd = /** @type {(() => void)|undefined} */ (undefined),
   // Карта модуля ремонтов (7i): только ремонты и чипы по стадии работ.
   repairMode = false,
@@ -208,18 +207,21 @@ export default function MapPage({
           </div>
         )}
 
-      {routeProgress && !showsComponents && (
-        <RouteBanner
-          progress={routeProgress}
-          coords={coords}
-          gpsEnabled={gpsEnabled}
-          onFocus={(leak) => focusLeak(leak, 17)}
-          onCheck={(leak) => onRouteCheck?.(leak)}
-          onEnd={() => onRouteEnd?.()}
-        />
-      )}
-
       <MapControls
+        topContent={
+          routeProgress && !showsComponents ? (
+            <RouteBanner
+              progress={routeProgress}
+              coords={coords}
+              gpsEnabled={gpsEnabled}
+              onFocus={(leak) => {
+                focusLeak(leak, 17);
+                selectLeak(leak);
+              }}
+              onEnd={() => onRouteEnd?.()}
+            />
+          ) : null
+        }
         moduleLabel={
           repairMode
             ? t("map.modules.repairs")

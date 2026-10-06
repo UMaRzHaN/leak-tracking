@@ -36,14 +36,14 @@
 
   h2 {
     margin: 0;
-    font-size: 16px;
+    font-size: var(--fs-lg);
     font-weight: 700;
     color: var(--c-text);
   }
 
   p {
     margin: 4px 0 0;
-    font-size: 13px;
+    font-size: var(--fs-sm);
     color: var(--c-text3);
   }
 }
@@ -71,7 +71,7 @@
   border: 1.5px solid var(--c-border);
   border-radius: var(--r-lg);
   background: var(--c-surface);
-  font-size: 15px;
+  font-size: var(--fs-lg);
   color: var(--c-text);
   text-align: left;
   cursor: pointer;
@@ -85,7 +85,7 @@
 
 .badge {
   flex: none;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   color: var(--c-accent-text);
 }
@@ -103,7 +103,7 @@
     border-radius: 12px;
     background: var(--c-surface2);
     color: var(--c-text);
-    font-size: 15px;
+    font-size: var(--fs-lg);
     font-weight: 600;
     cursor: pointer;
   }

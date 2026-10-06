@@ -12,7 +12,7 @@ export const route = {
   showMap: "На карте",
   start: "Начать маршрут",
   step: "Маршрут · точка {{step}} из {{total}}",
-  left: "осталось {{count}}",
+  stepShort: "{{step}}/{{total}}",
   finished: "Маршрут пройден",
   finishedHint: "Все точки проверены",
   check: "Проверить",

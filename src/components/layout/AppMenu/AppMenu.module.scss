@@ -52,7 +52,7 @@
   border-radius: 50%;
   background: var(--c-accent);
   color: #fff;
-  font-size: 16px;
+  font-size: var(--fs-lg);
   font-weight: 800;
 }
 
@@ -61,7 +61,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--c-ink);
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -103,7 +103,7 @@
 
 .caption {
   color: var(--c-text3);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -112,7 +112,7 @@
 .projectName {
   overflow: hidden;
   color: var(--c-ink);
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -161,12 +161,12 @@
 
 .projectType {
   color: var(--c-text3);
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 
 .projectManage {
   color: var(--c-accent-text);
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 700;
 }
 
@@ -210,7 +210,7 @@
 .itemLabel {
   flex: 1;
   min-width: 0;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 600;
 }
 
@@ -218,7 +218,7 @@
   max-width: 40%;
   overflow: hidden;
   color: var(--c-text3);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

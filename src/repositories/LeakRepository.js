@@ -10,13 +10,6 @@ import {
   isProjectDataReadWarningBlocking,
 } from "@/repositories/projectDataReadState";
 import { isMissingNativeFileError } from "@/repositories/nativeFileErrors";
-import {
-  deleteNativeProjectStorage,
-  loadNativeProject,
-  readNativeSnapshot,
-  saveNativeProject,
-  writeNativeProjectSnapshot,
-} from "@/repositories/nativeLeakStorage";
 import { createNativeSqliteMutation } from "@/repositories/nativeSqliteMutation";
 import {
   compareWebEnvelopes,
@@ -47,6 +40,11 @@ import {
   PRESERVED_INVALID_RECORDS,
   filterValidLeaks,
 } from "./leakRecordValidation";
+
+// Хранилище Android (SQLite, прежние снимки и журналы) грузится по первому
+// обращению: в браузере оно не нужно вовсе, а в стартовом чанке занимало
+// несколько килобайт до первого экрана.
+const nativeStorage = () => import("@/repositories/nativeLeakStorage");
 
 export class ProjectDataReadError extends Error {
   /** @param {string} message @param {any} [options] */
@@ -123,7 +121,9 @@ async function recoverLegacyNativeArray(
     let legacyData;
     try {
       legacyData = (
-        await readNativeSnapshot(candidate.path, candidate.directory)
+        await (
+          await nativeStorage()
+        ).readNativeSnapshot(candidate.path, candidate.directory)
       ).data;
     } catch (error) {
       if (isMissingNativeFileError(error)) continue;
@@ -134,7 +134,9 @@ async function recoverLegacyNativeArray(
     }
 
     try {
-      await writeNativeProjectSnapshot(folderName, legacyData);
+      await (
+        await nativeStorage()
+      ).writeNativeProjectSnapshot(folderName, legacyData);
     } catch (error) {
       logger.warn(
         `[LeakRepository] Read legacy data from "${candidate.path}", but could not copy it to current storage:`,
@@ -164,7 +166,9 @@ export const LeakRepository = {
   async getAll({ projectId, folderName, legacyStorageType = null }) {
     if (isNative) {
       try {
-        const loaded = await loadNativeProject(folderName);
+        const loaded = await (
+          await nativeStorage()
+        ).loadNativeProject(folderName);
         if (loaded) {
           if (loaded.recovered) {
             logger.warn(
@@ -382,7 +386,9 @@ export const LeakRepository = {
     { projectId, folderName, syncState = null, previousLeaks = null },
   ) {
     if (isNative) {
-      await saveNativeProject(folderName, leaks, { syncState, previousLeaks });
+      await (
+        await nativeStorage()
+      ).saveNativeProject(folderName, leaks, { syncState, previousLeaks });
       return;
     }
 
@@ -475,7 +481,9 @@ export const LeakRepository = {
 
   async clear({ projectId, folderName, syncState = null }) {
     if (isNative) {
-      await saveNativeProject(folderName, [], {
+      await (
+        await nativeStorage()
+      ).saveNativeProject(folderName, [], {
         syncState,
         forceSnapshot: true,
       });
@@ -535,9 +543,13 @@ export const LeakRepository = {
 
   async purge({ projectId, folderName }) {
     if (isNative) {
-      const deleted = await deleteNativeProjectStorage(folderName);
+      const deleted = await (
+        await nativeStorage()
+      ).deleteNativeProjectStorage(folderName);
       if (!deleted) {
-        await saveNativeProject(folderName, [], { forceSnapshot: true });
+        await (
+          await nativeStorage()
+        ).saveNativeProject(folderName, [], { forceSnapshot: true });
       }
       return;
     }

@@ -61,7 +61,7 @@
   border-radius: 10px;
   background: var(--c-open);
   color: #fff;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 800;
   line-height: 17px;
   text-align: center;
@@ -69,7 +69,7 @@
 }
 
 .label {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
 }
 

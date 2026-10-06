@@ -66,11 +66,15 @@ function importErrorText(error, localeTexts) {
 }
 
 const STEPS = ["welcome", "name", "project", "done"];
+const STEPS_WITHOUT_NAME = ["welcome", "project", "done"];
 
 /**
  * Онбординг по шагам (1c): приветствие → имя → проект → готово. Импорт
  * вынесен со стартового экрана на шаг проекта как второстепенное действие:
  * он по-прежнему заводит проект сразу, без шага «Готово».
+ *
+ * Имя, уже записанное в профиле (проект удалили и заводят заново), второй
+ * раз не спрашивается: шаг выпадает, и точек становится на одну меньше.
  */
 export default function ProjectSetupScreen({
   onComplete,
@@ -79,6 +83,7 @@ export default function ProjectSetupScreen({
   onImportInventory,
   onSaveUserName = /** @type {((name: string) => void)|null} */ (null),
   initialStep = "welcome",
+  knownUserName = "",
 }) {
   const { t, toggleLanguage } = useLanguage();
   const localeTexts = useMemo(
@@ -155,8 +160,11 @@ export default function ProjectSetupScreen({
   };
 
   const finish = () => onComplete(type, name.trim());
-  const stepIndex = STEPS.indexOf(step);
-  const back = () => setStep(STEPS[Math.max(0, stepIndex - 1)]);
+  const steps = knownUserName.trim() ? STEPS_WITHOUT_NAME : STEPS;
+  const stepIndex = steps.indexOf(step);
+  // Точки — шаги до «Готово»: на нём навигации нет.
+  const dotCount = steps.length - 1;
+  const back = () => setStep(steps[Math.max(0, stepIndex - 1)]);
 
   const importZipFile = useCallback(
     async (file) => {
@@ -297,6 +305,7 @@ export default function ProjectSetupScreen({
           {step !== "welcome" && step !== "done" && (
             <StepNav
               index={stepIndex}
+              count={dotCount}
               onBack={back}
               label={t("projectSetup.back")}
             />
@@ -308,11 +317,11 @@ export default function ProjectSetupScreen({
               </div>
               <h1 className={s.stepTitle}>{t("projectSetup.welcomeTitle")}</h1>
               <p className={s.stepLead}>{t("projectSetup.welcomeLead")}</p>
-              <Dots index={0} />
+              <Dots index={0} count={dotCount} />
               <button
                 type="button"
                 className={s.startBtn}
-                onClick={() => setStep("name")}
+                onClick={() => setStep(steps[1])}
               >
                 {t("projectSetup.begin")}
               </button>
@@ -407,6 +416,7 @@ export default function ProjectSetupScreen({
         {initialStep !== "project" && (
           <StepNav
             index={stepIndex}
+            count={dotCount}
             onBack={back}
             label={t("projectSetup.back")}
           />
@@ -573,17 +583,17 @@ export default function ProjectSetupScreen({
   );
 }
 
-function Dots({ index }) {
+function Dots({ index, count = 3 }) {
   return (
     <div className={s.dots} aria-hidden="true">
-      {[0, 1, 2].map((dot) => (
+      {Array.from({ length: count }, (_, dot) => dot).map((dot) => (
         <span key={dot} className={dot === index ? s.dotOn : s.dot} />
       ))}
     </div>
   );
 }
 
-function StepNav({ index, onBack, label }) {
+function StepNav({ index, count, onBack, label }) {
   return (
     <div className={s.stepNav}>
       <button
@@ -594,7 +604,7 @@ function StepNav({ index, onBack, label }) {
       >
         ←
       </button>
-      <Dots index={Math.min(index, 2)} />
+      <Dots index={Math.min(index, count - 1)} count={count} />
     </div>
   );
 }

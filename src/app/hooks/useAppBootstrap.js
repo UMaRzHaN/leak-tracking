@@ -11,7 +11,6 @@ import { saveMonitoringRound } from "@/utils/monitoringRound";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { writeProjectSettings } from "@/app/project/projectSettings";
 import { writeProjectSyncState } from "@/services/sync/projectSyncState";
-import { rollbackImportedProject } from "@/services/backup/projectCleanup";
 import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
 import { useDeferredPhotoGc } from "./useDeferredPhotoGc";
 import { useSetupImports } from "./useSetupImports";
@@ -289,6 +288,10 @@ export function useAppBootstrap() {
           const error = asError(caught);
           try {
             try {
+              // Откат нужен только при сбое импорта — модуль уборки (с
+              // хранилищем приёмок) грузится тогда же, а не до первого экрана.
+              const { rollbackImportedProject } =
+                await import("@/services/backup/projectCleanup");
               const rollback = await rollbackImportedProject(
                 newProject,
                 removeProject,

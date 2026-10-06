@@ -31,7 +31,7 @@
 
 .coverageTitle {
   color: var(--c-text3);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -40,7 +40,7 @@
 .coverageValue {
   margin-left: auto;
   color: var(--c-ink);
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 800;
   white-space: nowrap;
 }
@@ -67,14 +67,14 @@
   border: none;
   background: none;
   color: var(--c-accent-text);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   text-align: left;
 }
 
 .coverageHint {
   color: var(--c-text3);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.4;
 }
 
@@ -94,7 +94,7 @@
 
 .sectionTitle {
   color: var(--c-text3);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -107,7 +107,7 @@
   background: none;
   border: none;
   color: var(--c-accent-text);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   cursor: pointer;
 }
@@ -136,12 +136,12 @@
   line-height: 1;
 }
 .emptyTitle {
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 600;
   color: var(--c-text);
 }
 .emptyHint {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--c-text2);
   max-width: 260px;
   line-height: 1.5;
@@ -154,7 +154,7 @@
   color: #fff;
   border: none;
   border-radius: var(--r-md);
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   cursor: pointer;
   transition: background var(--t-fast);

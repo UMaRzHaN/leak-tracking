@@ -12,6 +12,7 @@ import {
   formatNumber,
 } from "@/utils/locale";
 import {
+  getLastMonitoringFlag,
   getLatestMonitoringPhotoPath,
   isLeakFiction,
 } from "@/utils/monitoring";
@@ -87,6 +88,9 @@ function LeakCardCompact({
   const absoluteDate = formatLeakDate(leak.date, {}, lang);
   const urgency = urgencyOf(leak.createdAt, status);
   const fiction = isLeakFiction(leak);
+  // Фикция и «тега нет» — только окраской карточки, без плашек: те
+  // вытесняли номер бирки. Не осмотренная утечка не помечается.
+  const noTag = getLastMonitoringFlag(leak, "physicalTag") === false;
 
   const [viewerIndex, setViewerIndex] = useState(
     /** @type {number|null} */ (null),
@@ -182,6 +186,7 @@ function LeakCardCompact({
           data-priority={leak.priority ?? "none"}
           data-selected={selected ? "true" : "false"}
           data-fiction={fiction ? "true" : undefined}
+          data-no-tag={noTag ? "true" : undefined}
           onClick={toggleExpanded}
           style={{
             transform: `translateX(${swipeOffset}px)`,
@@ -220,11 +225,6 @@ function LeakCardCompact({
             >
               {meta.label}
             </span>
-            {fiction && (
-              <span className={s.fictionPill}>
-                {t("monitoring.fictionBadge")}
-              </span>
-            )}
             <span className={s.id}>
               {t("cards.tagPrefix")}
               {leak.leak_id ?? leak.index}

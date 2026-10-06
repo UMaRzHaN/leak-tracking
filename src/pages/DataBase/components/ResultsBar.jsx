@@ -5,7 +5,6 @@ import s from "@/pages/DataBase/DataBase.module.scss";
 
 export default function ResultsBar({
   visibleCount,
-  totalCount,
   statusFilter,
   sortAsc,
   onSortToggle,
@@ -15,8 +14,6 @@ export default function ResultsBar({
   onSelectDisplayed,
   onMonitorSelected,
   onEditBulkCalculation,
-  onExport,
-  isExporting = false,
 }) {
   const { intlLocale, t } = useLanguage();
 
@@ -48,16 +45,6 @@ export default function ResultsBar({
               {allDisplayedSelected
                 ? t("database.clearAll")
                 : t("database.selectAll")}
-            </button>
-          )}
-          {totalCount > 0 && (
-            <button
-              className={s.exportBtn}
-              onClick={onExport}
-              disabled={isExporting}
-              title={t("database.exportZip")}
-            >
-              {isExporting ? t("database.exporting") : "📥 XLSX"}
             </button>
           )}
         </div>

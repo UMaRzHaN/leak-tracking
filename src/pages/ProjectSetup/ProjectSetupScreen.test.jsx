@@ -505,4 +505,17 @@ describe("ProjectSetupScreen", () => {
     fireEvent.click(screen.getByRole("button", { name: "Start working" }));
     expect(onComplete).toHaveBeenCalledWith("upstream", "Tengiz Q1");
   });
+
+  it("does not ask for the name again when the profile already has one", () => {
+    render(
+      <ProjectSetupScreen onComplete={vi.fn()} knownUserName="Ivan Ermekov" />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Get started" }));
+    expect(screen.queryByLabelText("Your name")).toBeNull();
+    expect(screen.getByLabelText("Project Name")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByRole("button", { name: "Get started" })).toBeTruthy();
+  });
 });

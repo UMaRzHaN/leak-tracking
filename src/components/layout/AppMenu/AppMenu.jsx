@@ -3,6 +3,7 @@ import { useLanguage } from "@/app/hooks/useLanguage";
 import { useModalDialog } from "@/hooks/useModalDialog";
 import Icon from "@/components/ui/Icon/Icon";
 import { MODULE } from "@/app/modules/activeModule";
+import { isNativeAndroid } from "@/services/sync/localSyncPlatform";
 import ProjectPicker from "./ProjectPicker";
 import s from "./AppMenu.module.scss";
 
@@ -116,12 +117,18 @@ export default function AppMenu({
       label: t("appMenu.import"),
       onClick: () => setPage("import"),
     },
-    {
-      key: "sync",
-      icon: "sync",
-      label: t("appMenu.sync"),
-      onClick: () => onOpenSettings("sync"),
-    },
+    // Синхронизация есть только в Android-приложении: в браузере раздела в
+    // настройках нет, и пункт вёл бы в начало страницы.
+    ...(isNativeAndroid()
+      ? [
+          {
+            key: "sync",
+            icon: "sync",
+            label: t("appMenu.sync"),
+            onClick: () => onOpenSettings("sync"),
+          },
+        ]
+      : []),
   ];
 
   const renderItem = (item) => (

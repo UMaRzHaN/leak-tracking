@@ -82,7 +82,7 @@
   border-radius: 10px;
   background: transparent;
   color: var(--setup-muted);
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   cursor: pointer;
 
@@ -103,7 +103,7 @@
 }
 
 .title {
-  font-size: 24px;
+  font-size: var(--fs-2xl);
   font-weight: 700;
   color: var(--setup-title);
   margin: 0 0 6px;
@@ -111,7 +111,7 @@
 }
 
 .subtitle {
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--setup-muted);
   margin: 0 0 24px;
   text-align: center;
@@ -130,7 +130,7 @@
 }
 
 .label {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--setup-label);
   text-transform: uppercase;
@@ -147,7 +147,7 @@
   padding: 12px 14px;
   border: 2px solid var(--setup-border);
   border-radius: 10px;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   color: var(--setup-ink);
   outline: none;
   transition: border-color 0.2s ease;
@@ -164,13 +164,13 @@
 }
 
 .hint {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--setup-faint);
 }
 
 .code {
   font-family: monospace;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   background: var(--setup-code);
   padding: 1px 5px;
   border-radius: 4px;
@@ -178,7 +178,7 @@
 }
 
 .error {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--setup-danger);
   font-weight: 500;
 }
@@ -225,14 +225,14 @@
 
 .typeIcon {
   grid-row: 1 / 3;
-  font-size: 23px;
+  font-size: var(--fs-2xl);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .typeName {
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--setup-ink);
   line-height: 1.2;
@@ -243,7 +243,7 @@
 }
 
 .typeDesc {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--setup-muted);
   line-height: 1.3;
 }
@@ -264,7 +264,7 @@
   color: var(--setup-cta-ink);
   border: none;
   border-radius: 16px;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 800;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -302,7 +302,7 @@
   gap: 12px;
   margin: 14px 0 0;
   color: var(--setup-faint);
-  font-size: 13px;
+  font-size: var(--fs-sm);
 
   &::before,
   &::after {
@@ -340,7 +340,7 @@
   color: var(--setup-accent);
   border: 1.5px solid var(--setup-accent);
   border-radius: 11px;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1.1;
   cursor: pointer;
@@ -384,7 +384,7 @@
 }
 
 .importHint {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--setup-faint);
   margin: 6px 0 0;
   text-align: center;
@@ -407,7 +407,7 @@
   border: 1px solid var(--setup-status-border);
   background: var(--setup-tint);
   color: var(--setup-accent);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   text-align: center;
 }
@@ -435,7 +435,7 @@
 
   p {
     margin: 0;
-    font-size: 15px;
+    font-size: var(--fs-lg);
     font-weight: 600;
     text-align: center;
     text-shadow: 0 1px 3px #000;
@@ -458,7 +458,7 @@
   border-radius: 999px;
   background: rgb(255 255 255 / 16%);
   color: #fff;
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 700;
 }
 
@@ -498,7 +498,7 @@
 
 .stepTitle {
   color: var(--c-ink);
-  font-size: 32px;
+  font-size: var(--fs-3xl);
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.1;
@@ -509,7 +509,7 @@
   max-width: 320px;
   margin: 0 auto;
   color: var(--c-text2);
-  font-size: 15px;
+  font-size: var(--fs-lg);
   line-height: 1.5;
   text-align: center;
 }
@@ -536,7 +536,7 @@
   border: none;
   background: none;
   color: var(--c-ink);
-  font-size: 24px;
+  font-size: var(--fs-2xl);
 }
 
 .dots {
@@ -569,7 +569,7 @@
   background: none;
   color: var(--c-ink);
   font: inherit;
-  font-size: 26px;
+  font-size: var(--fs-3xl);
   font-weight: 800;
   text-align: center;
   outline: none;
@@ -582,12 +582,12 @@
   border-radius: 14px;
   background: var(--c-accent-surface);
   color: var(--c-ink);
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 800;
 
   span {
     color: var(--c-text3);
-    font-size: 11px;
+    font-size: var(--fs-2xs);
     font-weight: 800;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -619,11 +619,11 @@
 
   span {
     color: var(--c-text3);
-    font-size: 12px;
+    font-size: var(--fs-xs);
   }
 
   strong {
     color: var(--c-ink);
-    font-size: 17px;
+    font-size: var(--fs-xl);
   }
 }

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const monitoringMocks = vi.hoisted(() => ({
   latestPhoto: vi.fn(() => null),
   fiction: vi.fn(() => false),
+  flag: vi.fn(() => null),
 }));
 
 vi.mock("@/hooks/useSwipeCard", () => ({
@@ -29,6 +30,7 @@ vi.mock("@/hooks/usePhotoSrc", () => ({ usePhotoSrc: (path) => path }));
 vi.mock("@/utils/monitoring", () => ({
   getLatestMonitoringPhotoPath: monitoringMocks.latestPhoto,
   isLeakFiction: monitoringMocks.fiction,
+  getLastMonitoringFlag: monitoringMocks.flag,
 }));
 vi.mock("@/utils/locale", () => ({
   formatCompactNumber: (value) => String(value),
@@ -178,14 +180,16 @@ describe("LeakCardCompact fiction", () => {
   afterEach(() => {
     monitoringMocks.fiction.mockReset();
     monitoringMocks.fiction.mockReturnValue(false);
+    monitoringMocks.flag.mockReset();
+    monitoringMocks.flag.mockReturnValue(null);
   });
 
-  it("помечает фикцию плашкой и окраской карточки", () => {
+  it("помечает фикцию окраской карточки, без плашки", () => {
     monitoringMocks.fiction.mockReturnValue(true);
 
     const { container } = renderCard({});
 
-    expect(screen.getByText("Fiction")).toBeTruthy();
+    expect(screen.queryByText("Fiction")).toBeNull();
     expect(container.querySelector('[data-fiction="true"]')).toBeTruthy();
   });
 
@@ -194,6 +198,23 @@ describe("LeakCardCompact fiction", () => {
 
     expect(screen.queryByText("Fiction")).toBeNull();
     expect(container.querySelector("[data-fiction]")).toBeNull();
+    expect(container.querySelector("[data-no-tag]")).toBeNull();
+  });
+
+  it("помечает утечку без тега, а вместе с фикцией — смешанной окраской", () => {
+    monitoringMocks.flag.mockImplementation((_, key) =>
+      key === "physicalTag" ? false : null,
+    );
+    const { container, unmount } = renderCard({});
+    expect(screen.queryByText("No tag")).toBeNull();
+    expect(container.querySelector('[data-no-tag="true"]')).toBeTruthy();
+    unmount();
+
+    monitoringMocks.fiction.mockReturnValue(true);
+    const both = renderCard({});
+    expect(
+      both.container.querySelector('[data-fiction="true"][data-no-tag="true"]'),
+    ).toBeTruthy();
   });
 });
 

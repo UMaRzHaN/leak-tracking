@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  openMenuItem,
   openHome,
   createProject,
   fillLeakStepOne,
@@ -75,8 +76,11 @@ test("выгружает инвентаризацию и вливает её в 
   await addComponentCard(page, GAUGE);
   await expect(page.getByText("Заведено: 2")).toBeVisible();
 
+  // Утечек в проекте нет: «Экспорт отчёта» выгружает один реестр — тем же
+  // архивом, что раньше отдавала кнопка XLSX на экране реестра.
+  await openMenuItem(page, "Экспорт отчёта");
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: /XLSX$/ }).click();
+  await page.getByRole("button", { name: "Сформировать файл" }).click();
   const download = await downloadPromise;
   const archivePath = testInfo.outputPath(download.suggestedFilename());
   await download.saveAs(archivePath);

@@ -173,10 +173,9 @@ export default function RepairRound({
                   className={s.card}
                   badge={getRepairStageMeta(stage, t)}
                   extraChips={splitMaterials(leak.materials_equipment)}
-                  collapsible={false}
-                  defaultExpanded
-                  // Тап и свайп влево — проверка ремонта (7c), как кнопка в
-                  // футере; у устранённой проверять нечего.
+                  // Тап раскрывает карточку, как в остальных списках; свайп
+                  // влево — проверка ремонта (7c), как кнопка в футере; у
+                  // устранённой проверять нечего.
                   onOpenDetails={
                     stage === REPAIR_STAGE.RESOLVED
                       ? undefined

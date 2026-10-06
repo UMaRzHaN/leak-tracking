@@ -7,6 +7,7 @@ import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
 import Notification from "@/components/ui/Notification/Notification";
 import Icon from "@/components/ui/Icon/Icon";
 import { useDataBaseExport } from "@/pages/DataBase/hooks/useDataBaseExport";
+import { useInventoryExport } from "@/pages/ComponentRegistry/hooks/useInventoryExport";
 import { EXCEL_MONITORING_EXPORT_MODE } from "@/utils/excelExportMode";
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
 import { useRegistryLocationSource } from "@/hooks/useRegistryLocationSource";
@@ -292,6 +293,14 @@ export default function ExportPage({
     acceptanceRows: choice.acceptance ? acceptanceRows : null,
     deferDelivery: true,
   });
+  // Утечек нет, а реестр заведён: отчёт по утечкам собирать не из чего, и
+  // выгружается одна инвентаризация — своим архивом, тем же, что раньше
+  // отдавала кнопка XLSX в реестре (его же читает импорт). Чип тут ни при чём:
+  // кроме реестра, выгружать нечего.
+  const { exportInventory, isExporting: isExportingInventory } =
+    useInventoryExport({ project: activeProject, notify });
+  const inventoryOnly =
+    leaks.length === 0 && hasRegistry && components.length > 0;
 
   const header = (
     <header className={s.header}>
@@ -623,11 +632,17 @@ export default function ExportPage({
           <button
             type="button"
             className={s.primary}
-            disabled={isExporting || leaks.length === 0}
-            onClick={handleExport}
+            disabled={
+              isExporting ||
+              isExportingInventory ||
+              (leaks.length === 0 && !inventoryOnly)
+            }
+            onClick={inventoryOnly ? exportInventory : handleExport}
           >
             <Icon name="download" size={20} strokeWidth={2} />
-            {isExporting ? t("export.building") : t("export.build")}
+            {isExporting || isExportingInventory
+              ? t("export.building")
+              : t("export.build")}
           </button>
         </footer>
       )}

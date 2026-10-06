@@ -35,8 +35,6 @@ export default function DataBase({
     filters,
     actions,
     bulk,
-    handleExport,
-    isExporting,
   } = useDataBaseController({
     data,
     setData,
@@ -63,6 +61,8 @@ export default function DataBase({
         setPriorityFilter={filters.setPriorityFilter}
         fictionFilter={filters.fictionFilter}
         setFictionFilter={filters.setFictionFilter}
+        tagFilter={filters.tagFilter}
+        setTagFilter={filters.setTagFilter}
         nearbyFilter={filters.nearbyFilter}
         setNearbyFilter={filters.setNearbyFilter}
         nearbyRadius={filters.nearbyRadius}
@@ -74,7 +74,6 @@ export default function DataBase({
 
       <ResultsBar
         visibleCount={filters.displayed.length}
-        totalCount={data.length}
         statusFilter={filters.statusFilter}
         sortAsc={filters.sortAsc}
         onSortToggle={filters.toggleSort}
@@ -92,8 +91,6 @@ export default function DataBase({
           bulk.clearSelection();
         }}
         onEditBulkCalculation={() => setBulkCalculationOpen(true)}
-        onExport={handleExport}
-        isExporting={isExporting}
       />
 
       <LeakList

@@ -204,14 +204,22 @@ export async function openHome(page) {
   ).toBeVisible();
 }
 
-// The XLSX button lives on the DataBase screen and downloads a portable Excel
-// archive: the workbook plus the embedded backup the importer reads back.
+// The Excel archive comes from «Экспорт отчёта» in the menu: the workbook plus
+// the embedded backup the importer reads back. The list screens no longer
+// carry an XLSX button of their own. Returns to the database afterwards, where
+// the callers were.
 export async function exportExcelArchive(page, testInfo) {
+  await openMenuItem(page, "Экспорт отчёта");
+  await page.getByRole("button", { name: "Сформировать файл" }).click();
+  await expect(page.getByText("Файл сформирован")).toBeVisible();
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: /XLSX$/ }).click();
+  await page.getByRole("button", { name: "Сохранить в «Файлы»" }).click();
   const download = await downloadPromise;
   const archivePath = testInfo.outputPath(download.suggestedFilename());
   await download.saveAs(archivePath);
+  // Экран экспорта — на весь экран, без нижней панели: назад, потом в базу.
+  await page.getByRole("button", { name: "Назад", exact: true }).click();
+  await openDatabase(page);
   return archivePath;
 }
 

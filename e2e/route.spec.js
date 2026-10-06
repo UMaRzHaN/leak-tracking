@@ -51,9 +51,12 @@ test("ведёт по маршруту и сдвигается после про
   await expect(sheet.getByRole("listitem").nth(1)).toContainText("Куст 9");
   await sheet.getByRole("button", { name: "Начать маршрут" }).click();
 
-  await expect(page.getByText("Маршрут · точка 1 из 2")).toBeVisible();
-  await expect(page.getByText("осталось 2")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /^Маршрут · точка 1 из 2/ }),
+  ).toBeVisible();
 
+  // Кнопки проверки на плашке нет: тап по ней открывает карточку точки.
+  await page.getByRole("status").getByText("№ 6101").click();
   await page.getByRole("button", { name: "Проверить", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Проверка утечки" }),
@@ -68,9 +71,13 @@ test("ведёт по маршруту и сдвигается после про
     .getByRole("contentinfo")
     .getByRole("button", { name: "Карта", exact: true })
     .click();
-  await expect(page.getByText("Маршрут · точка 2 из 2")).toBeVisible();
-  await expect(page.getByText("Тенгизское · Куст 12")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /^Маршрут · точка 2 из 2/ }),
+  ).toBeVisible();
+  await expect(page.getByRole("status").getByText("№ 6102")).toBeVisible();
 
   await page.getByRole("button", { name: "Завершить маршрут" }).click();
-  await expect(page.getByText(/Маршрут · точка/)).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: /^Маршрут · точка/ }),
+  ).toHaveCount(0);
 });

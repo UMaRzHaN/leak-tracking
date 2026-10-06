@@ -36,9 +36,6 @@ export function useDataBaseFilters({
   configuredMainLocationKey = /** @type {string|null} */ (null),
   configuredLocationKey = /** @type {string|null} */ (null),
   configuredLastLocationKey = /** @type {string|null} */ (null),
-  // Отбор по физ. тегу есть только в обходе: в базе его нет, и выбранный в
-  // обходе не должен молча прятать записи там.
-  withTagFilter = false,
 }) {
   const [localSearchInput, setLocalSearchInput] = useState("");
   const [search, setSearch] = useState(() => sharedFilters?.search ?? "");
@@ -80,9 +77,8 @@ export function useDataBaseFilters({
   const setPriorityFilter =
     sharedFilters?.setPriorityFilter ?? setLocalPriorityFilter;
   const fictionFilter = sharedFilters?.fictionFilter ?? localFictionFilter;
-  const tagFilter = withTagFilter
-    ? (sharedFilters?.tagFilter ?? localTagFilter)
-    : TAG_FILTER.ALL;
+  // Отбор по физ. тегу общий для базы, обхода и карты.
+  const tagFilter = sharedFilters?.tagFilter ?? localTagFilter;
   const setTagFilter = sharedFilters?.setTagFilter ?? setLocalTagFilter;
   const setFictionFilter =
     sharedFilters?.setFictionFilter ?? setLocalFictionFilter;
@@ -360,7 +356,7 @@ export function useDataBaseFilters({
     fictionFilter,
     setFictionFilter,
     tagFilter,
-    setTagFilter: withTagFilter ? setTagFilter : null,
+    setTagFilter,
     mainLocationFilter,
     setMainLocationFilter,
     mainLocationKey,

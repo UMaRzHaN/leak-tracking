@@ -314,11 +314,28 @@ function FilterBar({
                     ],
                   ].map(([id, label, count]) => {
                     const isActive = tagFilter === id;
+                    // «Тег есть» — зелёным, «тега нет» — жёлтым, как
+                    // штриховка карточки без тега.
+                    const tone =
+                      id === TAG_FILTER.WITH
+                        ? "var(--c-low)"
+                        : id === TAG_FILTER.WITHOUT
+                          ? "var(--c-no-tag)"
+                          : null;
+                    const style =
+                      isActive && tone
+                        ? {
+                            color: tone,
+                            background: `color-mix(in srgb, ${tone} 14%, transparent)`,
+                            borderColor: tone,
+                          }
+                        : undefined;
                     return (
                       <button
                         key={id}
                         type="button"
                         className={`${s.filterTab} ${isActive ? s.filterActive : ""}`}
+                        style={style}
                         aria-pressed={isActive}
                         onClick={() => setTagFilter(id)}
                       >

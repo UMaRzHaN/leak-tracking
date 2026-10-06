@@ -69,7 +69,7 @@
     border: 1.5px solid var(--c-border);
     border-radius: var(--r-lg);
     background: var(--c-surface);
-    font-size: 13px;
+    font-size: var(--fs-sm);
     color: var(--c-text);
     cursor: pointer;
 
@@ -86,14 +86,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--c-text);
 }
 
 .zoom {
   flex: none;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
   color: var(--c-text3);
 }
@@ -126,7 +126,7 @@
   padding: 8px 12px;
   border-top: 1px solid var(--c-border);
   background: var(--c-surface);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--c-text3);
   text-align: center;
 }

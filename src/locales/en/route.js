@@ -12,7 +12,7 @@ export const route = {
   showMap: "On the map",
   start: "Start route",
   step: "Route · point {{step}} of {{total}}",
-  left: "{{count}} left",
+  stepShort: "{{step}}/{{total}}",
   finished: "Route complete",
   finishedHint: "All points checked",
   check: "Check",

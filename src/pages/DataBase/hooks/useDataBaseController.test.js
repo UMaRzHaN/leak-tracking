@@ -21,16 +21,11 @@ vi.mock("./useBulkActions", () => ({
   useBulkActions: vi.fn(),
 }));
 
-vi.mock("./useDataBaseExport", () => ({
-  useDataBaseExport: vi.fn(),
-}));
-
 const projectDataModule = await import("@/app/hooks/useProjectData");
 const photoStorageModule = await import("@/hooks/usePhotoStorage");
 const filtersModule = await import("./useDataBaseFilters");
 const leakActionsModule = await import("./useLeakActions");
 const bulkActionsModule = await import("./useBulkActions");
-const exportModule = await import("./useDataBaseExport");
 const { useDataBaseController } = await import("./useDataBaseController");
 
 describe("useDataBaseController", () => {
@@ -51,9 +46,6 @@ describe("useDataBaseController", () => {
     });
     bulkActionsModule.useBulkActions.mockReturnValue({
       handleBulkStatusChange: vi.fn(),
-    });
-    exportModule.useDataBaseExport.mockReturnValue({
-      handleExport: vi.fn(),
     });
   });
 

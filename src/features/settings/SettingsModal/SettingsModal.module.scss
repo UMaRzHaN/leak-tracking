@@ -80,7 +80,7 @@
 
   h2 {
     margin: 0;
-    font-size: 20px;
+    font-size: var(--fs-xl);
     color: var(--c-text);
     font-weight: 600;
   }
@@ -89,7 +89,7 @@
     padding: 16px;
 
     h2 {
-      font-size: 18px;
+      font-size: var(--fs-xl);
     }
   }
 }
@@ -100,7 +100,7 @@
   p {
     margin: 4px 0 0;
     color: var(--c-text3);
-    font-size: 12px;
+    font-size: var(--fs-xs);
     line-height: 1.35;
   }
 }
@@ -108,7 +108,7 @@
 .closeBtn {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: var(--fs-2xl);
   color: var(--c-text3);
   cursor: pointer;
   padding: 0;
@@ -146,7 +146,7 @@
   background: var(--c-progress-bg);
   border-bottom: 1px solid var(--c-progress-border);
   color: var(--c-progress-text);
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 500;
   animation: slideDown 0.3s ease;
 }
@@ -163,7 +163,7 @@
 }
 
 .notificationIcon {
-  font-size: 16px;
+  font-size: var(--fs-lg);
 }
 
 .notificationText {
@@ -196,19 +196,19 @@
 
   h3 {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--fs-xl);
     font-weight: 600;
   }
 
   p {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--fs-md);
     opacity: 0.9;
   }
 }
 
 .confirmIcon {
-  font-size: 32px;
+  font-size: var(--fs-3xl);
 }
 
 .confirmFooter {
@@ -223,7 +223,7 @@
   padding: 12px 16px;
   border: none;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -276,14 +276,14 @@
   padding: 10px 16px;
   border: none;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 
   @media (max-width: 640px) {
     padding: 11px 14px;
-    font-size: 13px;
+    font-size: var(--fs-sm);
   }
 }
 

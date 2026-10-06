@@ -10,7 +10,6 @@ export const monitoring = {
   currentState: "текущее состояние",
   physicalTag: "Физ. тег есть?",
   fiction: "Фикция?",
-  fictionBadge: "Фикция",
   yes: "Да",
   no: "Нет",
   comment: "Комментарий",

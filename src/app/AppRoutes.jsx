@@ -386,7 +386,6 @@ export default function AppRoutes({
             base={mapBase}
             onBaseChange={onMapBaseChange}
             routeProgress={routeProgress}
-            onRouteCheck={requestMonitoring}
             onRouteEnd={onEndRoute}
             module={module}
             setData={save}

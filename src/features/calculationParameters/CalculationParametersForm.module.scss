@@ -19,7 +19,7 @@
 .label {
   font-weight: 600;
   color: var(--c-text);
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 
 .required {
@@ -28,7 +28,7 @@
 }
 
 .unit {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--c-text3);
   font-weight: normal;
 }
@@ -37,7 +37,7 @@
   padding: 10px 12px;
   border: 1px solid var(--c-border);
   border-radius: 6px;
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-family: "Courier New", monospace;
   background: var(--c-surface2);
   color: var(--c-text);
@@ -62,7 +62,7 @@
 }
 
 .errorText {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--c-danger-text);
 }
@@ -71,7 +71,7 @@
   padding: 10px 12px;
   border: 1px solid var(--c-border);
   border-radius: 6px;
-  font-size: 14px;
+  font-size: var(--fs-md);
   background: var(--c-surface2);
   color: var(--c-text);
   transition: all 0.2s ease;
@@ -92,7 +92,7 @@
 }
 
 .current {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--c-text3);
   font-style: italic;
 }
@@ -154,7 +154,7 @@
   padding: 8px 10px;
   border: 1px solid var(--c-border);
   border-radius: 6px;
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-family: "Courier New", monospace;
   text-align: center;
   background: var(--c-surface2);
@@ -172,7 +172,7 @@
 .distribution {
   display: flex;
   gap: 12px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   background: var(--c-surface2);
   padding: 10px 12px;
   border-radius: 6px;
@@ -201,21 +201,21 @@
   }
 
   .label {
-    font-size: 13px;
+    font-size: var(--fs-sm);
   }
 
   .unit {
-    font-size: 11px;
+    font-size: var(--fs-2xs);
   }
 
   .input,
   .select {
     padding: 9px 10px;
-    font-size: 13px;
+    font-size: var(--fs-sm);
   }
 
   .current {
-    font-size: 11px;
+    font-size: var(--fs-2xs);
   }
 
   .sliderContainer {
@@ -225,13 +225,13 @@
   .numberInput {
     width: 65px;
     padding: 7px 8px;
-    font-size: 13px;
+    font-size: var(--fs-sm);
   }
 
   .distribution {
     flex-direction: column;
     gap: 6px;
-    font-size: 12px;
+    font-size: var(--fs-xs);
     padding: 8px 10px;
   }
 

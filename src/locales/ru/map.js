@@ -6,7 +6,6 @@ export const map = {
     monitoring: "Мониторинг",
   },
   card: { check: "Проверить", open: "Открыть запись" },
-  searchPlaceholder: "Поиск по номеру бирки…",
   filters: "Фильтры карты",
   reset: "Сбросить",
   done: "Готово",

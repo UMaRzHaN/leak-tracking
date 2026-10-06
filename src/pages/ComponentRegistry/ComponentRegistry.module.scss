@@ -18,7 +18,7 @@
 
   h1 {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--fs-xl);
     font-weight: 700;
     color: var(--c-text);
   }
@@ -28,7 +28,7 @@
    total number of components on the field is never known. */
 .count {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--c-text3);
 }
 
@@ -78,14 +78,14 @@
   grid-area: uid;
   align-self: center;
   font-variant-numeric: tabular-nums;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--c-accent-text);
 }
 
 .name {
   grid-area: name;
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -94,7 +94,7 @@
 
 .meta {
   grid-area: meta;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--c-text3);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -106,7 +106,7 @@
   width: 40px;
   border: none;
   background: none;
-  font-size: 20px;
+  font-size: var(--fs-xl);
   line-height: 1;
   color: var(--c-text3);
   cursor: pointer;
@@ -119,7 +119,7 @@
 .muted {
   margin: 0;
   padding: 20px 4px;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--c-text3);
   text-align: center;
 }
@@ -129,7 +129,7 @@
   padding: 10px 12px;
   border-radius: var(--r-lg);
   background: var(--c-surface2, var(--c-surface));
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--c-red, #d33);
 }
 
@@ -147,7 +147,7 @@
   border: 1.5px solid var(--c-border);
   border-radius: var(--r-lg);
   background: var(--c-surface);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--c-text3);
   cursor: pointer;
@@ -164,7 +164,7 @@
   padding: 10px 12px;
   border: 1.5px solid var(--c-amber, #e0a800);
   border-radius: var(--r-lg);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--c-text);
 }
 
@@ -200,7 +200,7 @@
   padding: 10px 14px;
   background: var(--c-banner);
   color: var(--c-banner-text);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
@@ -219,7 +219,7 @@
   color: #fff;
   border: none;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   cursor: pointer;
 

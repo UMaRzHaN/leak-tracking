@@ -62,14 +62,14 @@
 
 .num {
   color: var(--c-ink);
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 800;
 }
 
 .distance {
   margin-left: auto;
   color: var(--c-text3);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -91,7 +91,7 @@
 .place {
   margin: 2px 0 0;
   color: var(--c-ink);
-  font-size: 17px;
+  font-size: var(--fs-xl);
   font-weight: 700;
 }
 
@@ -99,7 +99,7 @@
   display: block;
   margin-top: 1px;
   color: var(--c-text2);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
 }
 
@@ -107,7 +107,7 @@
   margin: 0;
   overflow: hidden;
   color: var(--c-text3);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -124,7 +124,7 @@
   border: 1px solid var(--c-border);
   border-radius: var(--r-pill, 999px);
   color: var(--c-text2);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -147,7 +147,7 @@
 .secondary {
   min-height: 44px;
   border-radius: 12px;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   cursor: pointer;
 

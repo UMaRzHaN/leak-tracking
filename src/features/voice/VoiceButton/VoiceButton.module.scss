@@ -10,7 +10,7 @@
   border: none;
   color: #ffffff;
 
-  font-size: 20px;
+  font-size: var(--fs-xl);
   border-radius: 20px;
   cursor: pointer;
 
@@ -31,7 +31,7 @@
   width: 44px;
   height: 44px;
   border-radius: var(--r-sm, 8px);
-  font-size: 18px;
+  font-size: var(--fs-xl);
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
 

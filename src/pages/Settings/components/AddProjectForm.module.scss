@@ -33,7 +33,7 @@
 }
 
 .formTitle {
-  font-size: 17px;
+  font-size: var(--fs-xl);
   font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--addp-title);
@@ -51,7 +51,7 @@
 }
 
 .label {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 800;
   color: var(--addp-label);
   text-transform: uppercase;
@@ -68,7 +68,7 @@
   border: 1px solid var(--addp-border);
   border-radius: 14px;
   font: inherit;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   color: var(--addp-ink);
   background: var(--addp-surface);
   outline: none;
@@ -84,7 +84,7 @@
 }
 
 .hint {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--addp-muted);
 
   code {
@@ -92,12 +92,12 @@
     background: var(--addp-chip);
     padding: 1px 5px;
     border-radius: 4px;
-    font-size: 11px;
+    font-size: var(--fs-2xs);
   }
 }
 
 .error {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--addp-danger);
   font-weight: 500;
 }
@@ -125,7 +125,7 @@
   background: var(--addp-surface);
   cursor: pointer;
   text-align: left;
-  font-size: 14px;
+  font-size: var(--fs-md);
   transition:
     background 0.15s ease,
     border-color 0.15s ease;
@@ -142,7 +142,7 @@
 }
 
 .typeName {
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--addp-ink);
 
@@ -153,7 +153,7 @@
 
 .typeDesc {
   grid-column: 2;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--addp-muted);
 }
 
@@ -174,7 +174,7 @@
   border-radius: 14px;
   background: var(--addp-surface);
   color: var(--addp-muted);
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s;
@@ -192,7 +192,7 @@
   border-radius: 14px;
   background: var(--addp-accent-fill);
   color: var(--addp-on-accent);
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 800;
   cursor: pointer;
   transition: background 0.15s;

@@ -15,7 +15,6 @@ import Notification from "@/components/ui/Notification/Notification";
 import ComponentFilterBar from "./components/ComponentFilterBar";
 import { useRegistryFilters } from "./hooks/useRegistryFilters";
 import ComponentResultsBar from "./components/ComponentResultsBar";
-import { useInventoryExport } from "./hooks/useInventoryExport";
 import { matchesLeakLocationFilter } from "@/utils/locationFilter";
 import { getDistanceMeters } from "@/utils/geoUtils";
 import { hasCoordsFix } from "@/utils/coordsFix";
@@ -113,10 +112,6 @@ export default function ComponentRegistry({
   const notify = useCallback((type, message, options = {}) => {
     setNotification({ type, message, ...options });
   }, []);
-  const { exportInventory, isExporting } = useInventoryExport({
-    project,
-    notify,
-  });
 
   /*
    * Nothing is written without a name. Every history entry is signed, and a
@@ -629,7 +624,6 @@ export default function ComponentRegistry({
 
           <ComponentResultsBar
             visibleCount={visible.length}
-            totalCount={components.length}
             sortAsc={sortAsc}
             onSortToggle={() => setSortAsc((value) => !value)}
             selectedCount={selectedIds.size}
@@ -637,8 +631,6 @@ export default function ComponentRegistry({
             onSelectDisplayed={selectDisplayed}
             onClearSelection={clearSelection}
             onInspectSelected={() => setBulkInspecting(true)}
-            onExport={exportInventory}
-            isExporting={isExporting}
           />
 
           {/* Состояния компонента чипами (6a): тот же отбор, что в панели

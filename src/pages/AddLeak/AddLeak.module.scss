@@ -14,7 +14,7 @@
   padding: 10px 14px;
   background: var(--c-banner);
   color: var(--c-banner-text);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
@@ -33,7 +33,7 @@
   color: #fff;
   border: none;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   cursor: pointer;
   transition: opacity var(--t-fast);

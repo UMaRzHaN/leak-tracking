@@ -87,14 +87,14 @@
 
   h2 {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--fs-xl);
     font-weight: 700;
     color: var(--c-text);
   }
 }
 
 .counter {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--c-text3);
   background: var(--c-surface2);
@@ -107,7 +107,7 @@
 .closeBtn {
   background: none;
   border: none;
-  font-size: 22px;
+  font-size: var(--fs-2xl);
   color: var(--c-text3);
   cursor: pointer;
   width: 32px;
@@ -135,7 +135,7 @@
 }
 
 .searchIcon {
-  font-size: 18px;
+  font-size: var(--fs-xl);
   color: var(--c-text3);
   line-height: 1;
   flex-shrink: 0;
@@ -145,7 +145,7 @@
   flex: 1;
   border: none;
   background: transparent;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--c-text);
   outline: none;
   font-family: inherit;
@@ -158,7 +158,7 @@
 .searchClear {
   background: none;
   border: none;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--c-text3);
   cursor: pointer;
   padding: 2px 4px;
@@ -179,14 +179,14 @@
 .empty {
   text-align: center;
   color: var(--c-text3);
-  font-size: 14px;
+  font-size: var(--fs-md);
   padding: 32px 20px;
   margin: 0;
 }
 
 .systemNote {
   margin: 8px 16px 12px;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--c-text3);
   line-height: 1.5;
   padding: 8px 12px;
@@ -226,7 +226,7 @@
 }
 
 .chevron {
-  font-size: 18px;
+  font-size: var(--fs-xl);
   color: var(--c-text3);
   line-height: 1;
   transition: transform 0.2s;
@@ -239,7 +239,7 @@
 }
 
 .groupTitle {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -250,7 +250,7 @@
 }
 
 .groupBadge {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--c-open-text);
   background: var(--c-open-bg, #fef2f2);
@@ -265,7 +265,7 @@
   background: none;
   border: 1px solid var(--c-border);
   border-radius: 6px;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--c-text3);
   cursor: pointer;
@@ -318,7 +318,7 @@
 }
 
 .fieldLabel {
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 500;
   color: var(--c-text);
   white-space: nowrap;
@@ -326,18 +326,18 @@
   text-overflow: ellipsis;
 
   @media (max-width: 640px) {
-    font-size: 13px;
+    font-size: var(--fs-sm);
   }
 }
 
 .fieldKey {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--c-text3);
   font-family: "Courier New", monospace;
 }
 
 .requiredBadge {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: var(--c-progress-text);
   background: var(--c-progress-bg, #fffbeb);
@@ -414,7 +414,7 @@
   border-radius: 8px;
   background: transparent;
   color: var(--c-text2);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
@@ -439,7 +439,7 @@
   padding: 9px 18px;
   border: none;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
@@ -447,7 +447,7 @@
   @media (max-width: 640px) {
     flex: 1;
     padding: 11px 14px;
-    font-size: 13px;
+    font-size: var(--fs-sm);
   }
 }
 

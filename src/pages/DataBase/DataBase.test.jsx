@@ -30,17 +30,11 @@ vi.mock("./components/FilterBar", () => ({
   ),
 }));
 vi.mock("./components/ResultsBar", () => ({
-  default: ({
-    onSortToggle,
-    onMonitorSelected,
-    onEditBulkCalculation,
-    onExport,
-  }) => (
+  default: ({ onSortToggle, onMonitorSelected, onEditBulkCalculation }) => (
     <div>
       <button onClick={onSortToggle}>sort</button>
       <button onClick={onMonitorSelected}>monitor-selected</button>
       <button onClick={onEditBulkCalculation}>bulk-calculation</button>
-      <button onClick={onExport}>export</button>
     </div>
   ),
 }));
@@ -90,8 +84,6 @@ function createController() {
     bulkPickerOpen: false,
     closeBulkPicker: vi.fn(),
     handleBulkPickerSelect: vi.fn(),
-    handleExport: vi.fn(),
-    isExporting: false,
     filters: {
       search: "",
       setSearch: vi.fn(),
@@ -161,7 +153,7 @@ describe("DataBase", () => {
     controller.current = createController();
   });
 
-  it("wires filters, list actions, selection monitoring, export, and bulk calculation", () => {
+  it("wires filters, list actions, selection monitoring and bulk calculation", () => {
     const onMonitorLeak = vi.fn();
     const onMonitorLeaks = vi.fn();
     render(
@@ -183,7 +175,6 @@ describe("DataBase", () => {
     fireEvent.click(screen.getByText("monitor"));
     fireEvent.click(screen.getByText("select"));
     fireEvent.click(screen.getByText("monitor-selected"));
-    fireEvent.click(screen.getByText("export"));
     fireEvent.click(screen.getByText("delete"));
     fireEvent.click(screen.getByText("close-details"));
     fireEvent.click(screen.getByText("close-picker"));
@@ -196,7 +187,6 @@ describe("DataBase", () => {
     expect(onMonitorLeak).toHaveBeenCalled();
     expect(onMonitorLeaks).toHaveBeenCalledWith([{ id: "leak-1" }]);
     expect(controller.current.bulk.clearSelection).toHaveBeenCalled();
-    expect(controller.current.handleExport).toHaveBeenCalled();
     expect(controller.current.bulk.deselectId).toHaveBeenCalledWith("leak-1");
   });
 });

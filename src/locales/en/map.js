@@ -6,7 +6,6 @@ export const map = {
     monitoring: "Monitoring",
   },
   card: { check: "Check", open: "Open record" },
-  searchPlaceholder: "Search by tag number…",
   filters: "Map filters",
   reset: "Reset",
   done: "Done",

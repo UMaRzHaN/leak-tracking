@@ -285,6 +285,7 @@ export default function App() {
           onImportExcel={handleSetupImportExcel}
           onImportInventory={handleSetupImportInventory}
           onSaveUserName={(name) => setUserProfile({ name })}
+          knownUserName={userProfile?.name ?? ""}
         />
       </Suspense>
     );

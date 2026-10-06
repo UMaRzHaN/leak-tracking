@@ -63,6 +63,8 @@ export default function MapControls({
   onMonitoringChange,
   // Подпись модуля в строке поиска (5d): «Утечки», «Ремонты»…
   moduleLabel = "",
+  // Что встаёт в верхний ряд слева от поиска (плашка маршрута).
+  topContent = /** @type {import("react").ReactNode} */ (null),
 }) {
   const { t } = useLanguage();
   const [openFilterMenu, setOpenFilterMenu] = useState(
@@ -143,22 +145,23 @@ export default function MapControls({
 
   return (
     <>
-      {/* Строка поиска и фильтры сверху (5d): поиск по номеру — во весь
-          ряд, все отборы — одной кнопкой со счётчиком, в шторке. */}
+      {/* Верхний ряд (5d): поиск — значком, он всё равно открывает шторку со
+          списком; все отборы — одной кнопкой со счётчиком. Слева — плашка
+          маршрута, а без маршрута подпись модуля: карта остаётся открытой. */}
       <div className={s.topBar}>
+        {topContent ??
+          (moduleLabel ? (
+            <span className={s.topModule}>{moduleLabel}</span>
+          ) : (
+            <span className={s.topSpacer} />
+          ))}
         <button
           type="button"
-          className={s.topSearch}
+          className={s.topFilter}
           onClick={onOpenSheet}
           aria-label={t("map.controls.searchLeaks")}
         >
-          <Icon name="search" size={17} />
-          <span className={s.topSearchText}>
-            {moduleLabel && <span className={s.topModule}>{moduleLabel}</span>}
-            <span className={s.topPlaceholder}>
-              {t("map.searchPlaceholder")}
-            </span>
-          </span>
+          <Icon name="search" size={18} />
         </button>
         <button
           type="button"
