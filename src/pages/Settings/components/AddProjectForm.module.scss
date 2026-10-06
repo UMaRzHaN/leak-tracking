@@ -2,69 +2,40 @@
    ADD PROJECT FORM (inline inside Settings)
    ===================================================== */
 
-/* Форма живёт внутри настроек, но красилась своими литералами и в тёмной теме
-   оставалась светлым пятном на тёмном экране. Палитра собрана на корне формы
-   тем же приёмом, что на экране создания проекта: светлые значения прежние,
-   тёмные объявлены один раз ниже. */
+/* Палитра — из токенов редизайна, как у онбординга: фиолетовый акцент на
+   светлой подложке, а тёмная тема подтягивается сама, без своей копии. */
 .form {
-  --addp-tint: #eff6ff;
-  --addp-tint-strong: #dbeafe;
-  --addp-accent-border: #93c5fd;
-  --addp-title: #1e40af;
-  --addp-accent: #0d47a1;
-  --addp-accent-hover: #1565c0;
-  --addp-focus: #8a63f0;
-  --addp-label: #374151;
-  --addp-ink: #1f2937;
-  --addp-muted: #6b7280;
-  --addp-faint: #9ca3af;
-  --addp-border: #e5e7eb;
-  --addp-border-strong: #d1d5db;
-  --addp-surface: #ffffff;
-  --addp-surface-hover: #f0f9ff;
-  --addp-chip: #e5e7eb;
-  --addp-cancel-hover: #f3f4f6;
-  --addp-danger: #ef4444;
+  --addp-tint: var(--c-accent-surface);
+  --addp-tint-strong: var(--c-accent-surface);
+  --addp-accent-border: var(--c-border-soft);
+  --addp-title: var(--c-ink);
+  --addp-accent: var(--c-accent-text);
+  --addp-accent-fill: var(--c-accent);
+  --addp-focus: var(--c-accent);
+  --addp-label: var(--c-text3);
+  --addp-ink: var(--c-ink);
+  --addp-muted: var(--c-text2);
+  --addp-faint: var(--c-text3);
+  --addp-border: var(--c-border);
+  --addp-surface: var(--c-surface);
+  --addp-surface-hover: var(--c-surface-soft);
+  --addp-chip: var(--c-accent-dim);
+  --addp-cancel-hover: var(--c-surface-soft);
+  --addp-danger: var(--c-open-text);
   --addp-on-accent: #ffffff;
 
-  background: var(--addp-tint);
-  border: 2px solid var(--addp-accent-border);
-  border-radius: 12px;
+  background: var(--c-surface-soft);
+  border-top: 1px solid var(--c-border-soft);
   padding: 16px;
-  margin-bottom: 12px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-}
-
-:global([data-theme="dark"]) .form {
-  --addp-tint: rgba(96, 165, 250, 0.1);
-  --addp-tint-strong: rgba(96, 165, 250, 0.22);
-  --addp-accent-border: #40608f;
-  --addp-title: #a8c7f5;
-  --addp-accent: #8ab4f8;
-  --addp-accent-hover: #a6c8fa;
-  --addp-focus: #60a5fa;
-  --addp-label: #cbd5e1;
-  --addp-ink: #e2e8f0;
-  --addp-muted: #94a3b8;
-  --addp-faint: #8496ab;
-  --addp-border: #334155;
-  --addp-border-strong: #3f4d63;
-  --addp-surface: #172033;
-  --addp-surface-hover: #1b2740;
-  --addp-chip: #253247;
-  --addp-cancel-hover: #1f2a3d;
-  --addp-danger: #f87171;
-  /* Кнопка создания светлеет, а не темнеет: тёмно-синий на тёмной форме
-     переставал читаться как главное действие. */
-  --addp-accent-fill: #6d3de8;
-  --addp-accent-fill-hover: #8a63f0;
+  gap: 16px;
 }
 
 .formTitle {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--addp-title);
   margin: 0;
 }
@@ -81,10 +52,10 @@
 
 .label {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 800;
   color: var(--addp-label);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
 }
 
 .req {
@@ -92,10 +63,12 @@
 }
 
 .input {
-  padding: 10px 12px;
-  border: 2px solid var(--addp-border);
-  border-radius: 8px;
-  font-size: 14px;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--addp-border);
+  border-radius: 14px;
+  font: inherit;
+  font-size: 15px;
   color: var(--addp-ink);
   background: var(--addp-surface);
   outline: none;
@@ -145,14 +118,17 @@
   grid-template-rows: auto auto;
   column-gap: 8px;
   align-items: center;
-  padding: 10px 12px;
-  border: 2px solid var(--addp-border);
-  border-radius: 8px;
+  min-height: 58px;
+  padding: 10px 14px;
+  border: 1px solid var(--addp-border);
+  border-radius: 14px;
   background: var(--addp-surface);
   cursor: pointer;
   text-align: left;
   font-size: 14px;
-  transition: all 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
 
   &:hover {
     border-color: var(--addp-accent-border);
@@ -160,14 +136,14 @@
   }
 
   &.selected {
-    border-color: var(--addp-accent);
+    border: 1.5px solid var(--addp-focus);
     background: var(--addp-tint-strong);
   }
 }
 
 .typeName {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--addp-ink);
 
   .selected & {
@@ -177,7 +153,7 @@
 
 .typeDesc {
   grid-column: 2;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--addp-muted);
 }
 
@@ -192,13 +168,14 @@
 }
 
 .cancelBtn {
-  padding: 8px 16px;
-  border: 1px solid var(--addp-border-strong);
-  border-radius: 8px;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 1px solid var(--addp-border);
+  border-radius: 14px;
   background: var(--addp-surface);
   color: var(--addp-muted);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
   transition: background 0.15s;
 
@@ -208,18 +185,20 @@
 }
 
 .createBtn {
-  padding: 8px 20px;
+  flex: 1;
+  min-height: 48px;
+  padding: 0 20px;
   border: none;
-  border-radius: 8px;
-  background: var(--addp-accent-fill, var(--addp-accent));
+  border-radius: 14px;
+  background: var(--addp-accent-fill);
   color: var(--addp-on-accent);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 800;
   cursor: pointer;
   transition: background 0.15s;
 
-  &:hover:not(:disabled) {
-    background: var(--addp-accent-fill-hover, var(--addp-accent-hover));
+  &:active:not(:disabled) {
+    filter: brightness(0.92);
   }
 
   &:disabled {
