@@ -4,6 +4,7 @@ export default function DangerZoneSection({
   activeProject,
   localeTexts,
   onClearDatabase,
+  onRemoveProject = /** @type {(() => void)|null} */ (null),
 }) {
   if (!activeProject) return null;
 
@@ -22,6 +23,15 @@ export default function DangerZoneSection({
         <button className={s.dangerBtn} type="button" onClick={onClearDatabase}>
           {localeTexts.clearDatabase}
         </button>
+        {onRemoveProject && (
+          <button
+            className={s.dangerBtn}
+            type="button"
+            onClick={onRemoveProject}
+          >
+            {localeTexts.deleteProject}
+          </button>
+        )}
       </div>
     </section>
   );

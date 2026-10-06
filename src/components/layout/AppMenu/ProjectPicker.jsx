@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useId, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useProject } from "@/app/project/ProjectContext";
 import { useLeakFormContext } from "@/features/leakForm/LeakFormContext";
@@ -6,6 +7,8 @@ import { isLeakFormDirty } from "@/features/leakForm/utils/isLeakFormDirty";
 import { clearMapCache } from "@/services/maps/tileCache";
 import { PROJECT_META } from "@/configs/projectMeta";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
+import AddProjectForm from "@/pages/Settings/components/AddProjectForm";
+import { useModalDialog } from "@/hooks/useModalDialog";
 import Icon from "@/components/ui/Icon/Icon";
 import { ignoredError } from "@/utils/ignoredError";
 import s from "./AppMenu.module.scss";
@@ -13,12 +16,17 @@ import s from "./AppMenu.module.scss";
 /**
  * Выбор проекта прямо в меню (3a): кнопка раскрывает список, тап по проекту
  * переключает на него. Переключение — то же, что в настройках: недописанная
- * форма утечки сначала спрашивает, кэш карты чистится. Заводить, переименовывать
- * и удалять проекты — по-прежнему в настройках, туда ведёт последняя строка.
+ * форма утечки сначала спрашивает, кэш карты чистится. Последняя строка
+ * заводит новый проект — в окне поверх меню, не уходя в настройки.
  */
-export default function ProjectPicker({ onSwitched, onManage }) {
+export default function ProjectPicker({ onSwitched }) {
   const { t } = useLanguage();
-  const { projects, activeProject, selectProject } = useProject();
+  const { projects, activeProject, selectProject, addProject } = useProject();
+  const [adding, setAdding] = useState(false);
+  // Новый проект, ждущий подтверждения из-за недописанной формы утечки.
+  const [pendingAdd, setPendingAdd] = useState(
+    /** @type {{name: string, type: string}|null} */ (null),
+  );
   const { form, clearForm } = useLeakFormContext();
   const [open, setOpen] = useState(false);
   const [pendingId, setPendingId] = useState(/** @type {string|null} */ (null));
@@ -29,6 +37,20 @@ export default function ProjectPicker({ onSwitched, onManage }) {
     await clearMapCache().catch(ignoredError("appMenu.clearMapCache"));
     setOpen(false);
     onSwitched?.();
+  };
+
+  const performAdd = async ({ name, type }) => {
+    addProject(name, type);
+    clearForm?.();
+    await clearMapCache().catch(ignoredError("appMenu.clearMapCache"));
+    setAdding(false);
+    setOpen(false);
+    onSwitched?.();
+  };
+
+  const add = (name, type) => {
+    if (isLeakFormDirty(form)) setPendingAdd({ name, type });
+    else performAdd({ name, type });
   };
 
   const pick = (id) => {
@@ -85,10 +107,10 @@ export default function ProjectPicker({ onSwitched, onManage }) {
             <button
               type="button"
               className={s.projectManage}
-              onClick={onManage}
+              onClick={() => setAdding(true)}
             >
-              <Icon name="settings" size={18} strokeWidth={1.7} />
-              {t("appMenu.manageProjects")}
+              <Icon name="plus" size={18} strokeWidth={2} />
+              {t("appMenu.addProject")}
             </button>
           </li>
         </ul>
@@ -107,6 +129,57 @@ export default function ProjectPicker({ onSwitched, onManage }) {
         }}
         onCancel={() => setPendingId(null)}
       />
+
+      {adding && (
+        <AddProjectDialog onConfirm={add} onClose={() => setAdding(false)} />
+      )}
+
+      <ConfirmSheet
+        open={pendingAdd !== null}
+        title={t("settings.switchProject")}
+        description={t("settings.theLeakEntryForm")}
+        confirmLabel={t("settings.switch")}
+        cancelLabel={t("settings.cancel")}
+        onConfirm={async () => {
+          const next = pendingAdd;
+          setPendingAdd(null);
+          if (next) await performAdd(next);
+        }}
+        onCancel={() => setPendingAdd(null)}
+      />
     </>
+  );
+}
+
+/** Окно «Новый проект» поверх меню: та же форма, что была в настройках. */
+function AddProjectDialog({ onConfirm, onClose }) {
+  const { t } = useLanguage();
+  const titleId = useId();
+  const dialogRef = useModalDialog({ onClose });
+  // В корень страницы: меню выдвигается сдвигом, и внутри него окно
+  // занимало бы только его полосу, не затемняя экран целиком.
+  return createPortal(
+    <div className={s.addProjectRoot}>
+      <div
+        className={s.addProjectBackdrop}
+        data-modal-backdrop=""
+        onClick={onClose}
+      />
+      <div
+        ref={dialogRef}
+        className={s.addProjectDialog}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("settings.newProject")}
+        aria-labelledby={titleId}
+        tabIndex={-1}
+      >
+        <span id={titleId} hidden>
+          {t("settings.newProject")}
+        </span>
+        <AddProjectForm onConfirm={onConfirm} onCancel={onClose} />
+      </div>
+    </div>,
+    document.body,
   );
 }

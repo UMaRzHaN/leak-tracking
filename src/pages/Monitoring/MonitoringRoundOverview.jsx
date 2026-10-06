@@ -12,6 +12,8 @@ export default function MonitoringRoundOverview({
   onStartRound,
   onFinishRound,
   onMergeRound = /** @type {(() => void)|null} */ (null),
+  // Новые обходы выключены в настройках: кнопок нового обхода нет.
+  canStartRound = true,
 }) {
   const { t } = useLanguage();
 
@@ -46,7 +48,7 @@ export default function MonitoringRoundOverview({
             <p>{texts.noActiveRound}</p>
           )}
         </div>
-        {!showCompletion && (
+        {!showCompletion && canStartRound && (
           <button
             type="button"
             className={s.newRoundBtn}
@@ -96,13 +98,15 @@ export default function MonitoringRoundOverview({
               <strong>{summary.resolved}</strong>
             </span>
           </div>
-          <button
-            type="button"
-            className={s.completionAction}
-            onClick={isCompleted ? onStartRound : onFinishRound}
-          >
-            {isCompleted ? texts.newRound : texts.finishRound}
-          </button>
+          {(!isCompleted || canStartRound) && (
+            <button
+              type="button"
+              className={s.completionAction}
+              onClick={isCompleted ? onStartRound : onFinishRound}
+            >
+              {isCompleted ? texts.newRound : texts.finishRound}
+            </button>
+          )}
         </section>
       )}
     </>

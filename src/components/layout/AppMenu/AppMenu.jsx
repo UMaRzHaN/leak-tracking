@@ -28,6 +28,9 @@ export default function AppMenu({
   repairCount = 0,
   // Сколько тегов осталось проверить в текущем обходе; null — обхода нет.
   monitoringDueCount = /** @type {number|null} */ (null),
+  // ZIP-бэкап проекта: собирается из меню, пока меню закрыто.
+  onExportBackup = /** @type {(() => void)|null} */ (null),
+  exportingBackup = false,
   showRegistry = false,
 }) {
   const { t } = useLanguage();
@@ -94,6 +97,19 @@ export default function AppMenu({
       label: t("appMenu.export"),
       onClick: () => setPage("export"),
     },
+    ...(onExportBackup
+      ? [
+          {
+            key: "backup",
+            icon: "archive",
+            label: t("appMenu.backup"),
+            meta: exportingBackup ? t("appMenu.backupBusy") : "",
+            onClick: () => {
+              if (!exportingBackup) onExportBackup();
+            },
+          },
+        ]
+      : []),
     {
       key: "import",
       icon: "upload",
@@ -163,10 +179,7 @@ export default function AppMenu({
             </button>
           </div>
 
-          <ProjectPicker
-            onSwitched={onClose}
-            onManage={() => go(() => onOpenSettings("projects"))}
-          />
+          <ProjectPicker onSwitched={onClose} />
         </div>
 
         <div className={s.list}>

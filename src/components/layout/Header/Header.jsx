@@ -1,3 +1,4 @@
+import { formatLocationScopeLabel } from "@/utils/locationScopeLabel";
 import { useMemo } from "react";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { PROJECT_META } from "@/configs/projectMeta";
@@ -119,22 +120,7 @@ export default function Header({
               <Icon name="folder" size={17} strokeWidth={1.7} />
             </span>
             <span className={s.scopePath}>
-              {locationScope.path === null
-                ? locationScope.selection
-                  ? [
-                      ...locationScope.selection.path,
-                      locationScope.selection.values
-                        .map((value) => value || t("locationScope.unnamed"))
-                        .join(", "),
-                    ]
-                      .map((value) => value || t("locationScope.unnamed"))
-                      .join(" › ")
-                  : t("locationScope.several")
-                : locationScope.path.length === 0
-                  ? t("locationScope.all")
-                  : locationScope.path
-                      .map((value) => value || t("locationScope.unnamed"))
-                      .join(" › ")}
+              {formatLocationScopeLabel(locationScope, t)}
             </span>
             {scoped && locationScope.scopedCount !== null && (
               <span className={s.scopeCount}>{locationScope.scopedCount}</span>

@@ -30,6 +30,7 @@ const SETTINGS = {
     componentPhotoRequired: true,
   },
   voiceCorrections: [],
+  allowNewRounds: true,
   updatedAt: 200,
 };
 
@@ -183,6 +184,7 @@ describe("project settings backup and synchronization", () => {
         componentPhotoRequired: true,
       },
       voiceCorrections: [],
+      allowNewRounds: true,
       updatedAt: 0,
     });
   });

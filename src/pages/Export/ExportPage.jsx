@@ -1,3 +1,5 @@
+import { errorText } from "@/utils/appError";
+import { formatLocationScopeLabel } from "@/utils/locationScopeLabel";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useProjectData } from "@/app/project/ProjectContext";
@@ -6,7 +8,6 @@ import Notification from "@/components/ui/Notification/Notification";
 import Icon from "@/components/ui/Icon/Icon";
 import { useDataBaseExport } from "@/pages/DataBase/hooks/useDataBaseExport";
 import { EXCEL_MONITORING_EXPORT_MODE } from "@/utils/excelExportMode";
-import { formatMonitoringDate } from "@/utils/monitoring";
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
 import { useRegistryLocationSource } from "@/hooks/useRegistryLocationSource";
 import { countExportSections } from "./exportSections";
@@ -18,6 +19,7 @@ import {
   shownRange,
   pushExportHistory,
   readExportHistory,
+  updateExportHistory,
   readExportSheets,
   saveExportSheets,
 } from "./exportPeriod";
@@ -29,7 +31,14 @@ import s from "./ExportPage.module.scss";
  * попадёт в файл. Сам файл делает прежняя выгрузка Excel-архива; после неё
  * экран показывает итог и последние выгрузки на этом устройстве.
  */
-export default function ExportPage({ data = [], scopedData = data, onBack }) {
+export default function ExportPage({
+  data = [],
+  scopedData = data,
+  onBack,
+  // Место из шапки (8a): строка области открывает тот же выбор.
+  locationScope = /** @type {any} */ (null),
+  onLocationScopeOpen = /** @type {(() => void)|undefined} */ (undefined),
+}) {
   const { t, lang } = useLanguage();
   const { activeProject } = useProjectData();
   const { monitoringExportMode, setMonitoringExportMode } = useExcelExportMode(
@@ -37,7 +46,6 @@ export default function ExportPage({ data = [], scopedData = data, onBack }) {
   );
   const [period, setPeriod] = useState(/** @type {string} */ (PERIOD.ALL));
   const [custom, setCustom] = useState({ from: "", to: "" });
-  const [scopeOnly, setScopeOnly] = useState(scopedData.length !== data.length);
   // Что включить в файл (8a). «Утечки» и «История» — всегда: первое — сам
   // отчёт, второе — откуда взялось каждое значение в нём. Выбор запоминается
   // по проекту, чтобы не выставлять его каждый раз.
@@ -75,7 +83,10 @@ export default function ExportPage({ data = [], scopedData = data, onBack }) {
     [components],
   );
 
-  const source = scopeOnly ? scopedData : data;
+  // Отчёт — по выбранному месту, как и всё в приложении; сменить место можно
+  // прямо отсюда.
+  const source = scopedData;
+  const scoped = scopedData.length !== data.length;
   const range = useMemo(() => periodRange(period, custom), [period, custom]);
   const leaks = useMemo(() => filterByPeriod(source, range), [source, range]);
   const covered = useMemo(() => shownRange(range, leaks), [range, leaks]);
@@ -158,22 +169,97 @@ export default function ExportPage({ data = [], scopedData = data, onBack }) {
       setNotification({ type, message, ...options }),
     [],
   );
+  // Название выгрузки в истории (8b): период и что в неё вошло —
+  // «Февраль · утечки, ремонты».
+  const includedNames = [
+    t("export.chips.leaks"),
+    choice.repairs && t("export.chips.repairs"),
+    choice.materials && t("export.chips.materials"),
+    choice.monitoring && t("export.chips.monitoring"),
+    withInventory && t("export.chips.inventory"),
+  ]
+    .filter(Boolean)
+    .map((name) => String(name).toLocaleLowerCase(lang));
+  const exportTitle = `${periodTitle(period, covered, lang, t)} · ${includedNames.join(", ")}`;
+  // Разделы, чьи снимки есть, но в файл не пошли, — о них предупреждение.
+  // Строкой, чтобы обработчик ниже не пересоздавался на каждый рендер.
+  const skippedPhotosKey = sections
+    .filter((section) => section.photos && !choice.photos[section.key])
+    .map((section) => t(`export.chips.${section.key}`))
+    .join("\n");
+
   const onDone = useCallback(
     (result) => {
+      setNotification(null);
       const entry = {
-        name:
-          result?.fileName ??
-          result?.path?.split("/").pop() ??
-          t("export.report"),
+        name: exportTitle,
+        fileName: result?.fileName ?? t("export.report"),
         date: new Date().toISOString(),
         rows: leaks.length,
         photos,
+        sheets: sheetCount,
+        size: result?.blob?.size ?? null,
+        delivery: null,
       };
       setHistory(pushExportHistory(activeProject?.id, entry));
-      setDone({ ...entry, message: result?.message });
+      setDone({
+        ...entry,
+        seconds: Math.max(
+          1,
+          Math.round((result?.metrics?.totalMs ?? 0) / 1000),
+        ),
+        skippedPhotos: skippedPhotosKey.split("\n").filter(Boolean),
+        file: result,
+      });
     },
-    [activeProject?.id, leaks.length, photos, t],
+    [
+      activeProject?.id,
+      exportTitle,
+      leaks.length,
+      photos,
+      sheetCount,
+      skippedPhotosKey,
+      t,
+    ],
   );
+  const [delivering, setDelivering] = useState(false);
+  const deliver = async (how) => {
+    if (!done?.file?.blob || delivering) return;
+    setDelivering(true);
+    try {
+      const { saveExportFile, shareExportFile } =
+        await import("@/pages/DataBase/excel");
+      if (how === "share") {
+        const outcome = await shareExportFile(done.file, t);
+        if (outcome === "cancelled") return;
+        const delivery = outcome === "shared" ? "sent" : "saved";
+        setHistory(
+          updateExportHistory(activeProject?.id, done.date, { delivery }),
+        );
+        if (outcome === "downloaded") {
+          notify(
+            "success",
+            t("excelExport.downloaded", { fileName: done.fileName }),
+          );
+        }
+      } else {
+        const result = await saveExportFile(done.file, t);
+        setHistory(
+          updateExportHistory(activeProject?.id, done.date, {
+            delivery: "saved",
+          }),
+        );
+        notify("success", result?.message ?? t("database.export.success"));
+      }
+    } catch (error) {
+      notify(
+        "error",
+        t("database.export.error", { message: errorText(error, t) }),
+      );
+    } finally {
+      setDelivering(false);
+    }
+  };
   const { handleExport, isExporting } = useDataBaseExport({
     displayed: leaks,
     notify,
@@ -181,6 +267,7 @@ export default function ExportPage({ data = [], scopedData = data, onBack }) {
     sheets,
     photoSections,
     inventory,
+    deferDelivery: true,
   });
 
   const header = (
@@ -216,21 +303,37 @@ export default function ExportPage({ data = [], scopedData = data, onBack }) {
                 <Icon name="check" size={18} strokeWidth={2.4} />
               </span>
               <strong>{t("export.done")}</strong>
+              <small className={s.doneTime}>
+                {t("export.seconds", { count: done.seconds })}
+              </small>
             </div>
             <div className={s.file}>
               <span className={s.fileBadge}>ZIP</span>
               <span>
-                <strong>{done.name}</strong>
+                <strong>{done.fileName}</strong>
                 <small>
-                  {t("export.fileMeta", {
-                    rows: done.rows,
-                    photos: done.photos,
-                  })}
+                  {[
+                    done.size != null && formatBytes(done.size, lang, t),
+                    t("export.metaRows", { count: done.rows }),
+                    t("export.metaSheets", { count: done.sheets }),
+                    t("export.metaPhotos", { count: done.photos }),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </small>
               </span>
             </div>
-            {done.message && <p className={s.doneMessage}>{done.message}</p>}
           </section>
+          {done.skippedPhotos.length > 0 && (
+            <p className={s.warning}>
+              <Icon name="info" size={16} strokeWidth={2} />
+              <span>
+                {t("export.skippedPhotos", {
+                  sections: done.skippedPhotos.join(", "),
+                })}
+              </span>
+            </p>
+          )}
           <History history={history} lang={lang} t={t} />
         </div>
       ) : (
@@ -425,18 +528,24 @@ export default function ExportPage({ data = [], scopedData = data, onBack }) {
               <button
                 type="button"
                 className={s.row}
-                role="switch"
-                aria-checked={scopeOnly}
-                disabled={scopedData.length === data.length}
-                onClick={() => setScopeOnly((value) => !value)}
+                onClick={onLocationScopeOpen}
+                disabled={!onLocationScopeOpen || !locationScope?.available}
+                aria-label={t("export.scopeChange")}
               >
                 <Icon name="folder" size={18} strokeWidth={1.7} />
                 <strong>
-                  {scopeOnly
-                    ? t("export.scopeSelected", { count: scopedData.length })
+                  {scoped
+                    ? t("export.scopeSelected", {
+                        place: formatLocationScopeLabel(locationScope, t),
+                        count: scopedData.length,
+                      })
                     : t("export.scopeAll", { count: data.length })}
                 </strong>
-                <span className={scopeOnly ? s.switchOn : s.switchOff} />
+                {onLocationScopeOpen && locationScope?.available && (
+                  <span className={s.chevron}>
+                    <Icon name="chevronRight" size={16} strokeWidth={2} />
+                  </span>
+                )}
               </button>
               <div className={s.row}>
                 <Icon name="document" size={18} strokeWidth={1.7} />
@@ -450,6 +559,29 @@ export default function ExportPage({ data = [], scopedData = data, onBack }) {
 
           <History history={history} lang={lang} t={t} />
         </div>
+      )}
+
+      {done && (
+        <footer className={s.footer}>
+          <button
+            type="button"
+            className={s.primary}
+            disabled={delivering}
+            onClick={() => deliver("share")}
+          >
+            <Icon name="share" size={20} strokeWidth={2} />
+            {t("export.send")}
+          </button>
+          <button
+            type="button"
+            className={s.secondaryWide}
+            disabled={delivering}
+            onClick={() => deliver("save")}
+          >
+            <Icon name="folder" size={18} strokeWidth={1.8} />
+            {t("export.saveToFiles")}
+          </button>
+        </footer>
       )}
 
       {!done && (
@@ -506,6 +638,7 @@ function formatRange({ from, to }, lang) {
 
 function History({ history, lang, t }) {
   if (!history.length) return null;
+  const day = new Intl.DateTimeFormat(lang, { day: "numeric", month: "short" });
   return (
     <section className={s.group}>
       <h2>{t("export.history")}</h2>
@@ -516,16 +649,56 @@ function History({ history, lang, t }) {
             <span className={s.historyText}>
               <strong>{entry.name}</strong>
               <small>
-                {t("export.fileMeta", {
-                  rows: entry.rows,
-                  photos: entry.photos,
-                })}
+                {[
+                  entry.size != null && formatBytes(entry.size, lang, t),
+                  entry.delivery && t(`export.delivery.${entry.delivery}`),
+                ]
+                  .filter(Boolean)
+                  .join(" · ") ||
+                  t("export.fileMeta", {
+                    rows: entry.rows,
+                    photos: entry.photos,
+                  })}
               </small>
             </span>
-            <small>{formatMonitoringDate(entry.date, lang)}</small>
+            <small>{day.format(new Date(entry.date)).replace(".", "")}</small>
           </div>
         ))}
       </div>
     </section>
   );
+}
+
+/** «143 МБ», «1,4 МБ», «240 КБ». */
+function formatBytes(bytes, lang, t) {
+  const number = (value, digits) =>
+    new Intl.NumberFormat(lang, { maximumFractionDigits: digits }).format(
+      value,
+    );
+  if (bytes >= 1024 * 1024) {
+    const mb = bytes / 1024 / 1024;
+    return t("export.mb", { value: number(mb, mb < 10 ? 1 : 0) });
+  }
+  return t("export.kb", { value: number(Math.max(1, bytes / 1024), 0) });
+}
+
+/** Период для названия выгрузки: месяц словом, если он один. */
+function periodTitle(period, covered, lang, t) {
+  if (period === PERIOD.ALL || !covered) return t("export.periods.all");
+  const from = new Date(covered.from);
+  const to = new Date(covered.to);
+  if (
+    from.getMonth() === to.getMonth() &&
+    from.getFullYear() === to.getFullYear() &&
+    period !== PERIOD.TODAY
+  ) {
+    const month = new Intl.DateTimeFormat(lang, {
+      month: "long",
+      ...(from.getFullYear() === new Date().getFullYear()
+        ? {}
+        : { year: "numeric" }),
+    }).format(from);
+    return month.charAt(0).toLocaleUpperCase(lang) + month.slice(1);
+  }
+  return formatRange(covered, lang);
 }

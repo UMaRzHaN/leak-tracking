@@ -290,3 +290,11 @@ export async function addComponentCard(page, card) {
     page.getByText(card.name, { exact: true }).first(),
   ).toBeVisible();
 }
+
+// Проект добавляют из меню (список проектов → «Добавить проект»): в
+// настройках остался только текущий.
+export async function openAddProject(page) {
+  await page.getByRole("button", { name: "Меню", exact: true }).click();
+  await page.getByTitle("Сменить проект").click();
+  await page.getByRole("button", { name: "Добавить проект" }).click();
+}

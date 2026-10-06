@@ -1,4 +1,13 @@
 export const settings = {
+  rounds: {
+    title: "Monitoring",
+    allowNew: "New rounds",
+    allowedHint: "A new round can be started with “New round”.",
+    lockedHint:
+      "No new round can be started — checks go into the current one. Protects against an accidental tap.",
+    saved: "Round setting saved",
+    disabled: "New rounds are turned off in project settings",
+  },
   objects: {
     group: "Project",
     name: "Name",
@@ -179,6 +188,11 @@ export const settings = {
   rename: "Rename",
   deleteConfirm: "Delete?",
   deleteProject: "Delete project",
+  folder: "Folder",
+  change: "Change",
+  deleteProjectTitle: "Delete project “{{name}}”?",
+  deleteProjectDescription:
+    "The project's records, photos and settings will be removed from this device. This cannot be undone — save a backup from the menu first.",
 
   enterSerialNumber: "Enter equipment serial number",
   gases: {

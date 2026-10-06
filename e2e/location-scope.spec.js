@@ -9,6 +9,7 @@ import {
   openHome,
   openLeakDetails,
   setUserProfile,
+  openMenuItem,
 } from "./helpers.js";
 
 // The point of the folder view is that picking a place replaces filter
@@ -172,4 +173,26 @@ test("drills to the third level without leaving the sheet", async ({
   await expect(page.getByText("№ 7002", { exact: true })).toBeVisible();
   await expect(page.getByText("№ 7001", { exact: true })).toHaveCount(0);
   await expect(page.getByText("№ 7003", { exact: true })).toHaveCount(0);
+});
+
+test("chooses the report place right on the export screen", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await seedProject(page);
+
+  await openMenuItem(page, "Экспорт отчёта");
+  await expect(page.getByText("Весь проект · 3 зап.")).toBeVisible();
+  await page.getByRole("button", { name: "Выбрать место для отчёта" }).click();
+  await page
+    .getByRole("dialog", { name: "Выбор объекта" })
+    .getByRole("button", { name: /Южное УПГ\s*1/ })
+    .click();
+
+  // Остаёмся на экспорте, а отчёт теперь — по выбранному месту.
+  await expect(
+    page.getByRole("heading", { name: "Экспорт отчёта" }),
+  ).toBeVisible();
+  await expect(page.getByText(/Южное УПГ · 1 зап\./)).toBeVisible();
+  await expect(page.getByText(/^Записей: 1 ·/)).toBeVisible();
 });

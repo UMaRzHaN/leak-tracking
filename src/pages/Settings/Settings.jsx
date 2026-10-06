@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import Icon from "@/components/ui/Icon/Icon";
 import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
 import { getLocationLevelKeys } from "@/utils/locationTree";
 import { listProjectObjects } from "./projectObjects";
@@ -9,10 +8,11 @@ import LeakFieldsModal from "./components/LeakFieldsModal";
 import Notification from "@/components/ui/Notification/Notification";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import SettingsDialogs from "./components/SettingsDialogs";
-import AddProjectForm from "./components/AddProjectForm";
+import ActiveProjectCard from "./components/ActiveProjectCard";
 import AppearanceSection from "./components/AppearanceSection";
-import BackupSection from "./components/BackupSection";
 import DangerZoneSection from "./components/DangerZoneSection";
+import MonitoringRoundsSection from "./components/MonitoringRoundsSection";
+import { useAllowNewRounds } from "@/app/project/hooks/useAllowNewRounds";
 import EmissionsSummarySection from "./components/EmissionsSummarySection";
 import FieldVisibilitySection from "./components/FieldVisibilitySection";
 import MapCacheSection from "./components/MapCacheSection";
@@ -20,7 +20,6 @@ import LocalSyncSection from "./components/LocalSyncSection";
 import PhotoRequirementsSection from "./components/PhotoRequirementsSection";
 import VoiceCorrectionsSection from "./components/VoiceCorrectionsSection";
 import ProjectIntegritySection from "./components/ProjectIntegritySection";
-import ProjectList from "./components/ProjectList";
 import ImportSection from "./components/ImportSection";
 import { useSettingsPage } from "./hooks/useSettingsPage";
 import s from "./Settings.module.scss";
@@ -32,42 +31,33 @@ export default function Settings(props) {
   const page = useSettingsPage(props);
   const {
     activeProject,
-    addingProject,
     cacheInfo,
     checkingIntegrity,
     fieldsModalOpen,
-    handleAdd,
     handleChangeSyncId,
     handleCheckIntegrity,
     handleClearDatabase,
     handleClearMapCache,
-    handleExportZip,
     handleImportFile,
     handleRemove,
     handleRename,
-    handleSelect,
     handleSettingsConfirm,
     hiddenFields,
     importZipRef,
     integrityReport,
-    isExportingZip,
     isImportingExcel,
     leakPhotoRequired,
     componentPhotoRequired,
     setComponentPhotoRequired,
     localSync,
     localeTexts,
-    monitoringExportMode,
     monitoringPhotoRequired,
     notification,
     notify,
     projectConfig,
-    projects,
-    setAddingProject,
     setFieldsModalOpen,
     setHiddenFields,
     setIntegrityReport,
-    setMonitoringExportMode,
     setLeakPhotoRequired,
     setMonitoringPhotoRequired,
     setNotification,
@@ -89,6 +79,11 @@ export default function Settings(props) {
   } = props;
   const contentRef = useRef(/** @type {HTMLDivElement|null} */ (null));
   const [objectsOpen, setObjectsOpen] = useState(false);
+  const [allowNewRounds, setAllowNewRounds] = useAllowNewRounds(
+    activeProject?.id ?? null,
+  );
+  // Удаление проекта — в опасной зоне, с подтверждением, как очистка базы.
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
   // Объекты и кусты (11c) — по тем же уровням места, что выбор в шапке.
   const objects = useMemo(
     () =>
@@ -138,70 +133,22 @@ export default function Settings(props) {
         </div>
       ) : (
         <div className={s.content} ref={contentRef}>
-          {activeProject && (
+          {activeProject ? (
             <div className={s.importScreen}>
               <h2 className={s.groupCaption}>{t("settings.objects.group")}</h2>
-              <div className={s.groupCard}>
-                <div className={s.groupRow}>
-                  <span className={s.groupRowText}>
-                    <strong>{t("settings.objects.name")}</strong>
-                  </span>
-                  <span className={s.objectsCount}>{activeProject.name}</span>
-                </div>
-                <button
-                  type="button"
-                  className={`${s.groupRow} ${s.groupRowButton}`}
-                  onClick={() => setObjectsOpen(true)}
-                >
-                  <span className={s.groupRowText}>
-                    <strong>{t("settings.objects.title")}</strong>
-                  </span>
-                  <span className={s.objectsCount}>
-                    {t("settings.objects.count", { count: objects.length })}
-                  </span>
-                  <Icon name="chevronRight" size={16} strokeWidth={2} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          <section className={s.section} data-settings-section="projects">
-            <div className={s.sectionHead}>
-              <h2 className={s.sectionTitle}>{localeTexts.projects}</h2>
-              {!addingProject && (
-                <button
-                  className={s.addBtn}
-                  type="button"
-                  onClick={() => setAddingProject(true)}
-                >
-                  + {localeTexts.addProject}
-                </button>
-              )}
-            </div>
-
-            {addingProject && (
-              <AddProjectForm
-                onConfirm={(name, type) => {
-                  handleAdd(name, type);
-                  setAddingProject(false);
-                }}
-                onCancel={() => setAddingProject(false)}
+              <ActiveProjectCard
+                project={activeProject}
+                objectsCount={objects.length}
+                onOpenObjects={() => setObjectsOpen(true)}
+                onRename={(name) => handleRename(activeProject.id, name)}
+                onChangeSyncId={() =>
+                  handleChangeSyncId(activeProject.id, activeProject.syncId)
+                }
               />
-            )}
-
-            <ProjectList
-              projects={projects}
-              activeId={activeProject?.id}
-              onSelect={handleSelect}
-              onRename={handleRename}
-              onRemove={handleRemove}
-              onChangeSyncId={handleChangeSyncId}
-            />
-
-            {projects.length === 0 && !addingProject && (
-              <p className={s.empty}>{localeTexts.noProjects}</p>
-            )}
-          </section>
+            </div>
+          ) : (
+            <p className={s.empty}>{localeTexts.noProjects}</p>
+          )}
 
           <AppearanceSection
             localeTexts={localeTexts}
@@ -216,13 +163,17 @@ export default function Settings(props) {
             activeProject={activeProject}
             hiddenFields={hiddenFields}
             localeTexts={localeTexts}
-            exportMode={monitoringExportMode}
             onConfigure={() => setFieldsModalOpen(true)}
-            onExportModeChange={(nextMode) => {
-              setMonitoringExportMode(nextMode);
-              notify("success", localeTexts.notifications.excelExportModeSaved);
-            }}
             registry={componentFields.column}
+          />
+
+          <MonitoringRoundsSection
+            activeProject={activeProject}
+            allowNewRounds={allowNewRounds}
+            onChange={(allow) => {
+              setAllowNewRounds(allow);
+              notify("success", t("settings.rounds.saved"));
+            }}
           />
 
           <PhotoRequirementsSection
@@ -255,16 +206,6 @@ export default function Settings(props) {
             }}
           />
 
-          <BackupSection
-            activeProject={activeProject}
-            importRef={importZipRef}
-            isExporting={isExportingZip}
-            isImportingExcel={isImportingExcel}
-            localeTexts={localeTexts}
-            onExport={handleExportZip}
-            onImport={handleImportFile}
-          />
-
           <LocalSyncSection sync={localSync} />
 
           <ProjectIntegritySection
@@ -284,6 +225,7 @@ export default function Settings(props) {
             activeProject={activeProject}
             localeTexts={localeTexts}
             onClearDatabase={handleClearDatabase}
+            onRemoveProject={() => setRemoveConfirmOpen(true)}
           />
         </div>
       )}
@@ -296,6 +238,19 @@ export default function Settings(props) {
           onClose={() => setObjectsOpen(false)}
         />
       )}
+
+      <ConfirmSheet
+        open={removeConfirmOpen && Boolean(activeProject)}
+        title={t("settings.deleteProjectTitle", { name: activeProject?.name })}
+        description={t("settings.deleteProjectDescription")}
+        confirmLabel={t("settings.deleteProject")}
+        cancelLabel={t("settings.cancel")}
+        onConfirm={() => {
+          setRemoveConfirmOpen(false);
+          if (activeProject) handleRemove(activeProject.id);
+        }}
+        onCancel={() => setRemoveConfirmOpen(false)}
+      />
 
       <ConfirmSheet
         open={Boolean(settingsConfirmTexts)}

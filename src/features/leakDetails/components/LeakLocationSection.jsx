@@ -3,6 +3,7 @@ import { distanceMeters } from "@/utils/geoUtils";
 import { useCurrentPosition } from "@/app/currentPosition";
 import { requestMapFocus } from "@/app/mapFocus";
 import { STATUS } from "@/utils/status";
+import CoordsMapPreview from "./CoordsMapPreview";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
 /**
@@ -30,10 +31,8 @@ const PIN_COLOR = {
 };
 
 /**
- * Вкладка «Координаты» (5e): условная схема с точкой, координаты, точность,
- * расстояние до человека и переход на карту. Схема — не карта: тайлов в
- * поле может не быть, а вопрос «где это» она и так не решает — для него
- * кнопка под ней.
+ * Вкладка «Координаты» (5e): снимок карты с точкой, координаты, точность,
+ * расстояние до человека и переход на карту.
  */
 export default function LeakLocationSection({ data, fields, localeTexts, t }) {
   const position = useCurrentPosition();
@@ -64,15 +63,11 @@ export default function LeakLocationSection({ data, fields, localeTexts, t }) {
     <div className={`${s.tabPane} ${s.coordsPane}`}>
       <div className={s.coordsCard}>
         {located && (
-          <div className={s.coordsPreview} aria-hidden="true">
-            <span
-              className={s.coordsPin}
-              style={{
-                background:
-                  PIN_COLOR[data.status ?? STATUS.OPEN] ?? PIN_COLOR.open,
-              }}
-            />
-          </div>
+          <CoordsMapPreview
+            lat={lat}
+            lng={lng}
+            color={PIN_COLOR[data.status ?? STATUS.OPEN] ?? PIN_COLOR.open}
+          />
         )}
         {fields.map(({ key, label }) => {
           const value = data[key];

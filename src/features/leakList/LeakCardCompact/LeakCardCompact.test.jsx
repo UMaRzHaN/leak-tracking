@@ -198,13 +198,16 @@ describe("LeakCardCompact fiction", () => {
 });
 
 describe("LeakCardCompact in the redesign", () => {
-  it("is open by default with the status as its stripe and priority as a chip", () => {
+  it("is collapsed until tapped, with priority as its stripe", () => {
     renderCard({ location: "Pad 12", status: "in_progress", priority: "high" });
 
-    expect(screen.queryByRole("button", { name: "Expand card" })).toBeNull();
+    const toggle = screen.getByRole("button", { name: "Expand card" });
+    const card = toggle.closest("[data-priority]");
+    expect(card.getAttribute("data-priority")).toBe("high");
+    // Приоритет — полосой, отдельного чипа в подвале нет.
+    expect(screen.queryByText("High")).toBeNull();
+
+    fireEvent.click(toggle);
     expect(screen.getByText("Pad 12")).toBeTruthy();
-    const card = screen.getByText("Pad 12").closest("[data-status]");
-    expect(card.getAttribute("data-status")).toBe("in_progress");
-    expect(screen.getByText(/High/)).toBeTruthy();
   });
 });

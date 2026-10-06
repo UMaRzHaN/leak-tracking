@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 import {
-  openSettings,
   openHome,
   createProject,
   fillLeakStepOne,
@@ -9,6 +8,7 @@ import {
   addComponentCard,
   openComponentRegistry,
   setUserProfile,
+  openAddProject,
 } from "./helpers.js";
 
 /*
@@ -83,8 +83,7 @@ test("выгружает инвентаризацию и вливает её в 
 
   // Второй проект того же типа: архив не несёт ни имени, ни типа, и тип
   // выводится как единственный, у которого объявлен реестр.
-  await openSettings(page);
-  await page.getByRole("button", { name: "+ Добавить", exact: true }).click();
+  await openAddProject(page);
   await expect(
     page.getByRole("heading", { name: "Новый проект", exact: true }),
   ).toBeVisible();
@@ -95,7 +94,10 @@ test("выгружает инвентаризацию и вливает её в 
   // настройках — по-русски.
   await page.getByRole("button", { name: "⛽ Добыча Добыча" }).click();
   await page.getByRole("button", { name: "Создать", exact: true }).click();
-  await leaveSettings(page);
+  // Окно закрывается вместе с меню — настройки не открывались.
+  await expect(
+    page.getByRole("heading", { name: "Новый проект", exact: true }),
+  ).toHaveCount(0);
 
   await openComponentRegistry(page);
   await expect(page.getByText("Заведено: 0")).toBeVisible();

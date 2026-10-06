@@ -14,6 +14,7 @@ vi.mock("@/app/hooks/useLanguage", async () => {
 
 const state = vi.hoisted(() => ({
   selectProject: vi.fn(),
+  addProject: vi.fn(),
   clearForm: vi.fn(),
   form: {},
   dirty: false,
@@ -26,7 +27,18 @@ vi.mock("@/app/project/ProjectContext", () => ({
     ],
     activeProject: { id: "a", name: "Тенгиз Q1" },
     selectProject: state.selectProject,
+    addProject: state.addProject,
   }),
+}));
+vi.mock("@/pages/Settings/components/AddProjectForm", () => ({
+  default: ({ onConfirm, onCancel }) => (
+    <div>
+      <button onClick={() => onConfirm("Новый", "upstream")}>
+        confirm-add
+      </button>
+      <button onClick={onCancel}>cancel-add</button>
+    </div>
+  ),
 }));
 vi.mock("@/features/leakForm/LeakFormContext", () => ({
   useLeakFormContext: () => ({ form: state.form, clearForm: state.clearForm }),
@@ -48,7 +60,7 @@ describe("ProjectPicker", () => {
 
   it("opens the project list and switches on tap", async () => {
     const onSwitched = vi.fn();
-    render(<ProjectPicker onSwitched={onSwitched} onManage={vi.fn()} />);
+    render(<ProjectPicker onSwitched={onSwitched} />);
 
     fireEvent.click(screen.getByTitle("Switch project"));
     const list = screen.getByRole("list", { name: "Projects" });
@@ -66,7 +78,7 @@ describe("ProjectPicker", () => {
 
   it("asks before dropping an unfinished leak form", async () => {
     state.dirty = true;
-    render(<ProjectPicker onSwitched={vi.fn()} onManage={vi.fn()} />);
+    render(<ProjectPicker onSwitched={vi.fn()} />);
 
     fireEvent.click(screen.getByTitle("Switch project"));
     fireEvent.click(screen.getByRole("button", { name: /LDAR UNG Phase II/ }));
@@ -76,12 +88,29 @@ describe("ProjectPicker", () => {
     await waitFor(() => expect(state.selectProject).toHaveBeenCalledWith("b"));
   });
 
-  it("leads to project management in settings", () => {
-    const onManage = vi.fn();
-    render(<ProjectPicker onSwitched={vi.fn()} onManage={onManage} />);
+  it("adds a project in a dialog over the menu, without leaving it", async () => {
+    const onSwitched = vi.fn();
+    render(<ProjectPicker onSwitched={onSwitched} />);
 
     fireEvent.click(screen.getByTitle("Switch project"));
-    fireEvent.click(screen.getByRole("button", { name: /Manage projects/ }));
-    expect(onManage).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole("button", { name: /Add project/ }));
+    expect(screen.getByRole("dialog", { name: "New project" })).toBeTruthy();
+
+    fireEvent.click(screen.getByText("confirm-add"));
+    await waitFor(() =>
+      expect(state.addProject).toHaveBeenCalledWith("Новый", "upstream"),
+    );
+    expect(state.clearForm).toHaveBeenCalled();
+    await waitFor(() => expect(onSwitched).toHaveBeenCalled());
+  });
+
+  it("asks before adding over an unfinished leak form", () => {
+    state.dirty = true;
+    render(<ProjectPicker onSwitched={vi.fn()} />);
+
+    fireEvent.click(screen.getByTitle("Switch project"));
+    fireEvent.click(screen.getByRole("button", { name: /Add project/ }));
+    fireEvent.click(screen.getByText("confirm-add"));
+    expect(state.addProject).not.toHaveBeenCalled();
   });
 });

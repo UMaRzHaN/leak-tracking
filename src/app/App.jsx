@@ -1,6 +1,15 @@
+import { useProjectBackupExport } from "@/app/hooks/useProjectBackupExport";
+import Notification from "@/components/ui/Notification/Notification";
 import { isMonitoringDue } from "@/utils/monitoring";
 import { readMonitoringRound } from "@/utils/monitoringRound";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { SHOW_ON_MAP_EVENT } from "@/app/mapFocus";
 import { globalScope } from "@/utils/globalScope";
 import "@fontsource-variable/manrope";
@@ -215,6 +224,17 @@ export default function App() {
 
   // Счётчик пункта «Ремонтные работы» в меню: работы в производстве, без
   // принятых.
+  // ZIP-бэкап из меню; итог и ход — уведомлением поверх любой страницы.
+  const [appNotice, setAppNotice] = useState(/** @type {any} */ (null));
+  const notifyApp = useCallback(
+    (type, message, options = {}) =>
+      setAppNotice({ type, message, ...options }),
+    [],
+  );
+  const { exportBackup, isExporting: exportingBackup } = useProjectBackupExport(
+    { data, activeProject, notify: notifyApp },
+  );
+
   // Сколько тегов осталось в текущем обходе — для меню. Считается, только
   // пока меню открыто: обход меняется на странице мониторинга, и меню при
   // каждом открытии читает его заново.
@@ -301,6 +321,8 @@ export default function App() {
         retryLoad={retryLoad}
         save={save}
         scopedData={leakScope.scopedLeaks}
+        leakScope={leakScope}
+        onLocationScopeOpen={() => setLocationBrowserOpen(true)}
         setPage={setPage}
         settingsSection={settingsSection}
         coverage={coverage}
@@ -374,6 +396,8 @@ export default function App() {
             openCount={scopedOpenCount}
             repairCount={repairCount}
             monitoringDueCount={monitoringDueCount}
+            onExportBackup={activeProject ? exportBackup : null}
+            exportingBackup={exportingBackup}
             showRegistry={showRegistry}
           />
         </Suspense>
@@ -390,12 +414,23 @@ export default function App() {
               // read the whole project, so it leaves the current screen alone.
               // Реестр — тоже список, и выбранную папку он показывает сам;
               // уводить с него на базу значило бы подменить сущность.
-              if ((path.length > 0 || picked.length > 0) && !registryPage)
+              // Экспорт (8a) выбирает место для отчёта у себя — уводить с
+              // него на базу значило бы бросить настройку выгрузки.
+              if (
+                (path.length > 0 || picked.length > 0) &&
+                !registryPage &&
+                page !== "export"
+              )
                 setPage("db");
             }}
           />
         </Suspense>
       )}
+
+      <Notification
+        notification={appNotice}
+        onClose={() => setAppNotice(null)}
+      />
 
       <AppDialogs
         open={userProfileOpen}

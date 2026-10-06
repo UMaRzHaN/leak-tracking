@@ -5,9 +5,7 @@ vi.mock("@/app/hooks/useLanguage", async () => {
   const { englishLanguageHook } = await import("@/test/translate");
   return englishLanguageHook();
 });
-vi.mock("@/app/project/ProjectContext", () => ({
-  useProjectData: () => ({ project: "upstream" }),
-}));
+vi.mock("@/hooks/usePhotoSrc", () => ({ usePhotoSrc: () => null }));
 
 const MapLeakCard = (await import("./MapLeakCard")).default;
 
@@ -17,12 +15,17 @@ const leak = {
   status: "open",
   lat: 41.3113,
   lng: 69.240562,
+  location: "Pad 12",
+  object: "Separator A",
   component: "Valve",
+  leak_description: "Flange",
   leak_speed: 3.4,
+  Total_Annual_Methane_Loss_m3_y: 788,
+  Emissions_t_CO2eq_year: 15.02,
 };
 
 describe("MapLeakCard (5d)", () => {
-  it("shows the point and hands both actions back", () => {
+  it("shows what the list card shows and hands both actions back", () => {
     const onMonitor = vi.fn();
     const onOpen = vi.fn();
     render(
@@ -36,7 +39,12 @@ describe("MapLeakCard (5d)", () => {
 
     expect(screen.getByText("№ 1043")).toBeTruthy();
     expect(screen.getByText("24 m")).toBeTruthy();
-    expect(screen.getByText(/Valve · 3.4/)).toBeTruthy();
+    expect(screen.getByText("Pad 12")).toBeTruthy();
+    expect(screen.getByText("Separator A")).toBeTruthy();
+    expect(screen.getByText("Valve · Flange")).toBeTruthy();
+    expect(screen.getByText(/3\.4/)).toBeTruthy();
+    expect(screen.getByText(/~788/)).toBeTruthy();
+    expect(screen.getByText(/~15\.02/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Check" }));
     expect(onMonitor).toHaveBeenCalledWith(leak);

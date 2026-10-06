@@ -138,6 +138,72 @@ async function downloadBlob(
   };
 }
 
+/** «Сохранить в „Файлы“» (8b): как обычная выгрузка — в папку проекта. */
+export function saveExportFile({ blob, fileName, outputFolder }, t) {
+  return downloadBlob(blob, fileName, outputFolder, t);
+}
+
+/**
+ * «Отправить» (8b): системное меню «Поделиться» с готовым архивом. На
+ * устройстве файл сперва ложится во временную папку — делиться можно только
+ * файлом, у которого есть путь. В браузере без такого меню архив скачивается.
+ *
+ * @returns {Promise<"shared"|"downloaded"|"cancelled">}
+ */
+export async function shareExportFile({ blob, fileName }, t) {
+  if (isNative) {
+    const [{ Filesystem, Directory }, { Share }] = await Promise.all([
+      import("@capacitor/filesystem"),
+      import("@capacitor/share"),
+    ]);
+    const chunk = 512 * 1024;
+    for (let offset = 0; offset < blob.size || offset === 0; offset += chunk) {
+      const data = await blobToBase64(blob.slice(offset, offset + chunk));
+      const write = offset === 0 ? Filesystem.writeFile : Filesystem.appendFile;
+      await write({ path: fileName, data, directory: Directory.Cache });
+      if (blob.size === 0) break;
+    }
+    const { uri } = await Filesystem.getUri({
+      path: fileName,
+      directory: Directory.Cache,
+    });
+    try {
+      await Share.share({ title: fileName, files: [uri] });
+      return "shared";
+    } catch (/** @type {any} */ error) {
+      if (/cancel/i.test(String(error?.message ?? error))) return "cancelled";
+      throw error;
+    }
+  }
+
+  const file = new File([blob], fileName, {
+    type: blob.type || "application/zip",
+  });
+  if (
+    typeof navigator !== "undefined" &&
+    navigator.canShare?.({ files: [file] })
+  ) {
+    try {
+      await navigator.share({ files: [file], title: fileName });
+      return "shared";
+    } catch (/** @type {any} */ error) {
+      if (error?.name === "AbortError") return "cancelled";
+      throw error;
+    }
+  }
+  await downloadBlob(blob, fileName, undefined, t);
+  return "downloaded";
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+    reader.onerror = () => reject(reader.error ?? new Error("Read failed"));
+    reader.readAsDataURL(blob);
+  });
+}
+
 export async function exportToExcelFile(
   rawLeaks,
   rows,
@@ -269,6 +335,17 @@ export async function exportToExcelFile(
   const zipBlob = await zip.generateAsync({ type: "blob" });
   phaseMetrics.zipMs = performance.now() - zipStartedAt;
   phaseMetrics.totalMs = performance.now() - exportStartedAt;
+  // Экран экспорта (8b) сначала показывает готовый файл, а отправить его или
+  // сохранить решает человек — файл возвращается, а не уходит сразу.
+  if (options.deliver === false) {
+    return {
+      ok: true,
+      blob: zipBlob,
+      fileName: `${safeFileName}.zip`,
+      outputFolder,
+      metrics: phaseMetrics,
+    };
+  }
   const result = await downloadBlob(
     zipBlob,
     `${safeFileName}.zip`,

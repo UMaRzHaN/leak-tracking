@@ -1,9 +1,8 @@
 import { useLanguage } from "@/app/hooks/useLanguage";
-import { useProjectData } from "@/app/project/ProjectContext";
-import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
-import { getLocationLevelKeys } from "@/utils/locationTree";
-import { normalizeLocationValue } from "@/utils/locationFilter";
 import { distanceMeters } from "@/utils/geoUtils";
+import { formatCompactNumber, formatNumber } from "@/utils/locale";
+import { getLeakDetailsHeroPhotoPath } from "@/utils/monitoring";
+import { usePhotoSrc } from "@/hooks/usePhotoSrc";
 import { STATUS } from "@/utils/status";
 import StatusBadge from "@/components/ui/StatusBadge/StatusBadge";
 import s from "./MapLeakCard.module.scss";
@@ -14,28 +13,42 @@ function formatDistance(metres, t) {
     : t("leakDetails.distanceM", { count: Math.round(metres) });
 }
 
+/** Число как в карточке списка: крупные — сокращённо («~13 млн»). */
+function formatAmount(value, decimals, lang) {
+  if (value == null || !Number.isFinite(Number(value))) return null;
+  const number = Number(value);
+  const options = { maximumFractionDigits: decimals };
+  return Math.abs(number) >= 1_000
+    ? formatCompactNumber(number, options, lang)
+    : formatNumber(number, options, lang);
+}
+
 /**
- * Карточка булавки (5d): что за точка и два действия — проверить или
- * открыть запись. Вместо всплывающей подсказки Leaflet: та закрывала соседние
- * булавки и не давала ничего сделать, только прочитать.
+ * Карточка булавки (5d): своя компактная раскладка поверх карты, но с теми
+ * же сведениями, что карточка утечки в списке, — место и объект, компонент и
+ * описание, расход и выбросы, снимок, — и два действия: проверить или
+ * открыть запись.
  */
 export default function MapLeakCard({ leak, coords, onMonitor, onOpen }) {
-  const { t } = useLanguage();
-  const { project } = useProjectData();
-  const levelKeys = getLocationLevelKeys(PROJECT_LOCATION_CONFIG[project]);
-  const place = levelKeys
-    .slice(-2)
-    .map((key) => normalizeLocationValue(leak?.[key]))
+  const { lang, t } = useLanguage();
+  const photo = usePhotoSrc(getLeakDetailsHeroPhotoPath(leak));
+  const place = leak.location || leak.address || "";
+  const details = [leak.component, leak.leak_description]
     .filter(Boolean)
     .join(" · ");
-  const details = [
-    leak.component,
+  const methane = formatAmount(leak.Total_Annual_Methane_Loss_m3_y, 0, lang);
+  const emissions = formatAmount(leak.Emissions_t_CO2eq_year, 2, lang);
+  const chips = [
     leak.leak_speed != null
       ? `${leak.leak_speed} ${t("common.units.litresPerMinute")}`
       : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+    methane != null
+      ? `~${methane} ${t("common.units.cubicMetresPerYear")}`
+      : null,
+    emissions != null
+      ? `~${emissions} ${t("common.units.tonnesCo2PerYear")}`
+      : null,
+  ].filter(Boolean);
   const lat = Number(leak.lat);
   const lng = Number(leak.lng);
   const distance =
@@ -63,8 +76,27 @@ export default function MapLeakCard({ leak, coords, onMonitor, onOpen }) {
           <span className={s.distance}>{formatDistance(distance, t)}</span>
         )}
       </div>
-      {place && <p className={s.place}>{place}</p>}
-      {details && <p className={s.details}>{details}</p>}
+      <div className={s.main}>
+        <div className={s.text}>
+          {place && (
+            <p className={s.place}>
+              {place}
+              {leak.object && <span className={s.object}>{leak.object}</span>}
+            </p>
+          )}
+          {details && <p className={s.details}>{details}</p>}
+          {chips.length > 0 && (
+            <div className={s.chips}>
+              {chips.map((chip) => (
+                <span key={chip} className={s.chip}>
+                  {chip}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        {photo && <img className={s.photo} src={photo} alt="" />}
+      </div>
       <div className={s.actions}>
         {onMonitor && (
           <button

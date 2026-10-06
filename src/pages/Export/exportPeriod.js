@@ -141,6 +141,21 @@ export function pushExportHistory(projectId, entry) {
   return next;
 }
 
+/** Отметить, что сделали с выгрузкой (8b): отправили или сохранили. */
+export function updateExportHistory(projectId, date, patch) {
+  const key = historyKey(projectId);
+  if (!key) return [];
+  const next = readExportHistory(projectId).map((entry) =>
+    entry?.date === date ? { ...entry, ...patch } : entry,
+  );
+  try {
+    localStorage.setItem(key, JSON.stringify(next));
+  } catch {
+    // История — удобство: отметка не запомнилась, выгрузка от этого цела.
+  }
+  return next;
+}
+
 const sheetsKey = (projectId) =>
   projectId ? `app:${projectId}:export_sheets_v1` : null;
 

@@ -1,26 +1,6 @@
 import s from "../Settings.module.scss";
+import RequirementToggle from "./SettingsToggle";
 import { useLanguage } from "@/app/hooks/useLanguage";
-
-function RequirementToggle({ label, hint, checked, onChange }) {
-  return (
-    <div className={s.photoRequirementRow}>
-      <div className={s.themeInfo}>
-        <span className={s.themeLabel}>{label}</span>
-        <span className={s.themeHint}>{hint}</span>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
-        className={`${s.themeToggle} ${checked ? s.themeToggleDark : ""}`}
-        onClick={() => onChange(!checked)}
-      >
-        <span className={s.themeThumb} />
-      </button>
-    </div>
-  );
-}
 
 export default function PhotoRequirementsSection({
   activeProject,

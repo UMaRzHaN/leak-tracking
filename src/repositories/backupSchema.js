@@ -416,6 +416,12 @@ export function validateProjectBackupMeta(parsed) {
           "Invalid Excel monitoring export mode",
         );
       }
+      if (
+        parsed.settings.allowNewRounds !== undefined &&
+        typeof parsed.settings.allowNewRounds !== "boolean"
+      ) {
+        pushIssue(issues, ["settings", "allowNewRounds"], "Expected boolean");
+      }
       if (parsed.settings.photoRequirements !== undefined) {
         if (!isPlainObject(parsed.settings.photoRequirements)) {
           pushIssue(

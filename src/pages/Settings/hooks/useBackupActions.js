@@ -2,11 +2,6 @@ import { errorText } from "@/utils/appError";
 import { useCallback, useRef, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { LeakRepository } from "@/repositories/LeakRepository";
-import { isNative } from "@/utils/platform";
-import {
-  LEAK_BACKUP_DIR,
-  projectExportFolder,
-} from "@/services/storage/exportFolders";
 
 const VALID_TYPES = ["upstream", "midstream", "downstream"];
 const CONFLICT_CLOSED = /** @type {any} */ ({ open: false });
@@ -27,21 +22,6 @@ function pluralRecords(count, lang) {
     return "записи";
   }
   return "записей";
-}
-
-/** Есть ли в реестре компонентов хоть что-то, ради чего стоит собрать архив. */
-async function hasComponentsToExport(project) {
-  if (!project?.id) return false;
-  try {
-    const { ComponentRepository } =
-      await import("@/repositories/ComponentRepository");
-    const components = await ComponentRepository.load(project);
-    return Array.isArray(components) && components.length > 0;
-  } catch {
-    // Реестр, который не читается, — не повод отказать в выгрузке утечек;
-    // выше по коду решение принимается по ним.
-    return false;
-  }
 }
 
 function typeLabel(type, t) {
@@ -76,10 +56,6 @@ function projectImportErrorMessage(error, t) {
 }
 
 export function useBackupActions({
-  data,
-  idbGetPhoto,
-  activeProject,
-  vars,
   onImportZip,
   onImportIntoExisting,
   notify,
@@ -92,7 +68,6 @@ export function useBackupActions({
   const [importConfirmState, setImportConfirmState] = useState(
     IMPORT_CONFIRM_CLOSED,
   );
-  const [isExportingZip, setIsExportingZip] = useState(false);
 
   const notifyZipImportProgress = useCallback(() => {
     notify("info", t("settings.zipBackupImportIn"), { autoCloseMs: 0 });
@@ -119,78 +94,6 @@ export function useBackupActions({
     [lang, notify, onImportZip, t],
   );
 
-  const handleExportZip = useCallback(async () => {
-    if (isExportingZip) return;
-
-    // Утечки — не единственное, что лежит в архиве: туда же идут реестр
-    // компонентов и чертежи. Проект, где утечек ещё нет, а компоненты уже
-    // заведены, отказывался выгружаться, хотя выгружать было что.
-    if (!data.length && !(await hasComponentsToExport(activeProject))) {
-      notify("warning", t("settings.noDataToExport"));
-      return;
-    }
-
-    const projectFolder = activeProject?.folderName ?? "backup";
-    // Своей папкой внутри проекта, рядом с zip_xlsx: на телефоне два архива
-    // с похожими именами различаются только тем, где они лежат.
-    const folder = projectExportFolder(projectFolder, LEAK_BACKUP_DIR);
-    const fileName = `${projectFolder}.zip`;
-
-    try {
-      setIsExportingZip(true);
-      notify("info", t("settings.zipBackupExportIn"), { autoCloseMs: 0 });
-
-      if (isNative) {
-        const [{ streamProjectBackupZip }, { writePublicFileStream }] =
-          await Promise.all([
-            import("@/services/backup/projectBackupService"),
-            import("@/services/storage/publicFileWriter"),
-          ]);
-        await writePublicFileStream({
-          folder,
-          fileName,
-          mimeType: "application/zip",
-          produce: (writeChunk) =>
-            streamProjectBackupZip({
-              leaks: data,
-              idbGet: idbGetPhoto,
-              project: activeProject,
-              vars,
-              writeChunk,
-            }),
-        });
-
-        notify("success", t("settings.zipSavedToDocuments", { v1: folder }));
-      } else {
-        const { buildProjectBackupZip } =
-          await import("@/services/backup/projectBackupService");
-        const blob = await buildProjectBackupZip({
-          leaks: data,
-          idbGet: idbGetPhoto,
-          project: activeProject,
-          vars,
-        });
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = fileName;
-        anchor.click();
-        setTimeout(() => URL.revokeObjectURL(url), 60_000);
-
-        notify(
-          "success",
-          t("settings.zipArchiveDownloadedV", {
-            v1: data.length,
-            v2: pluralRecords(data.length, lang),
-          }),
-        );
-      }
-    } catch (error) {
-      notify("error", `${t("settings.exportError")}: ${errorText(error, t)}`);
-    } finally {
-      setIsExportingZip(false);
-    }
-  }, [activeProject, data, idbGetPhoto, isExportingZip, lang, notify, t, vars]);
   const handleImportZip = useCallback(
     async (event) => {
       const file = event.target.files?.[0];
@@ -406,8 +309,6 @@ export function useBackupActions({
   }, [conflictState, lang, notify, notifyZipImportProgress, onImportZip, t]);
   return {
     importZipRef,
-    handleExportZip,
-    isExportingZip,
     handleImportZip,
     importConfirmState,
     confirmImport,

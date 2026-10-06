@@ -16,6 +16,9 @@ import {
   openRound,
   openMapFilters,
   closeMapFilters,
+  openMenuItem,
+  importFile,
+  leaveSettings,
 } from "./helpers.js";
 
 async function seedMapCache(page, count = 3) {
@@ -102,7 +105,7 @@ test("persists project, appearance, and export settings", async ({ page }) => {
   const projectNameInput = page.locator('input[value="Settings E2E"]');
   await projectNameInput.fill("Settings persisted E2E");
   await page.locator('input[value="Settings persisted E2E"]').press("Enter");
-  await expect(page.getByTitle("Активный проект")).toContainText(
+  await expect(page.getByTitle("Переименовать")).toContainText(
     "Settings persisted E2E",
   );
 
@@ -116,12 +119,6 @@ test("persists project, appearance, and export settings", async ({ page }) => {
   await expect(monitoringPhotoSwitch).toHaveAttribute("aria-checked", "true");
   await monitoringPhotoSwitch.click();
   await expect(monitoringPhotoSwitch).toHaveAttribute("aria-checked", "false");
-
-  const latestExportMode = page.getByRole("radio", {
-    name: /Последняя запись в обходе/,
-  });
-  await latestExportMode.click();
-  await expect(latestExportMode).toHaveAttribute("aria-checked", "true");
 
   await page.getByRole("button", { name: "Переключить тему" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
@@ -137,9 +134,6 @@ test("persists project, appearance, and export settings", async ({ page }) => {
   await expect(
     page.getByRole("switch", { name: "During monitoring" }),
   ).toHaveAttribute("aria-checked", "false");
-  await expect(
-    page.getByRole("radio", { name: /Latest Record per Round/ }),
-  ).toHaveAttribute("aria-checked", "true");
 
   await expect(
     page.getByRole("button", { name: "Edit Parameters" }),
@@ -301,18 +295,25 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
   });
   await monitoringPhotoSwitch.click();
   await expect(monitoringPhotoSwitch).toHaveAttribute("aria-checked", "false");
+  await leaveSettings(page);
+
+  // Как писать журнал мониторинга, выбирают на экране экспорта.
+  await openMenuItem(page, "Экспорт отчёта");
   const latestExportMode = page.getByRole("radio", {
-    name: /\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u044f\u044f \u0437\u0430\u043f\u0438\u0441\u044c \u0432 \u043e\u0431\u0445\u043e\u0434\u0435/,
+    name: "Последняя в обходе",
   });
   await latestExportMode.click();
   await expect(latestExportMode).toHaveAttribute("aria-checked", "true");
+  await page.getByRole("button", { name: "Назад" }).click();
 
+  // ZIP-бэкап — из меню, в настройках его больше нет.
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Экспорт ZIP" }).click();
+  await openMenuItem(page, "Резервная копия (ZIP)");
   const download = await downloadPromise;
   const backupPath = await download.path();
   expect(backupPath).toBeTruthy();
 
+  await openSettings(page);
   await page
     .getByRole("button", { name: "Очистить базу данных", exact: true })
     .click();
@@ -325,10 +326,9 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
     .click();
   await expect(page.getByRole("alert")).toContainText("База данных очищена");
 
-  const fileChooserPromise = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Импорт", exact: true }).click();
-  const fileChooser = await fileChooserPromise;
-  await fileChooser.setFiles(backupPath);
+  // Восстановление — через «Импорт данных», как любой другой файл.
+  await leaveSettings(page);
+  await importFile(page, backupPath);
 
   await expect(
     page.getByRole("heading", { name: "Проект уже существует" }),
@@ -336,19 +336,20 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
   await page.getByRole("button", { name: "Перезаписать" }).click();
   await expect(page.getByRole("alert")).toContainText("Backup restore E2E");
   await expect(page.getByRole("alert")).toContainText("перезаписан");
+  await leaveSettings(page);
+  await openSettings(page);
 
   await expect(
     page.getByRole("switch", {
       name: /\u041f\u0440\u0438 \u043c\u043e\u043d\u0438\u0442\u043e\u0440\u0438\u043d\u0433\u0435/,
     }),
   ).toHaveAttribute("aria-checked", "false");
+  await leaveSettings(page);
+  await openMenuItem(page, "Экспорт отчёта");
   await expect(
-    page.getByRole("radio", {
-      name: /\u041f\u043e\u0441\u043b\u0435\u0434\u043d\u044f\u044f \u0437\u0430\u043f\u0438\u0441\u044c \u0432 \u043e\u0431\u0445\u043e\u0434\u0435/,
-    }),
+    page.getByRole("radio", { name: "Последняя в обходе" }),
   ).toHaveAttribute("aria-checked", "true");
-
-  await page.getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ }).click();
+  await page.getByRole("button", { name: "Назад" }).click();
   await openDatabase(page);
   await expect(page.getByText("№ 5301", { exact: true })).toBeVisible();
 
@@ -374,9 +375,9 @@ test("rejects a corrupted ZIP backup without changing project data", async ({
   await setUserProfile(page);
   await createLeak(page, "5351");
 
-  await openSettings(page);
+  await openMenuItem(page, "Импорт данных");
   const fileChooserPromise = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Импорт", exact: true }).click();
+  await page.getByRole("button", { name: /^Выбрать файл/ }).click();
   const fileChooser = await fileChooserPromise;
   await fileChooser.setFiles({
     name: "broken-upstream.zip",
@@ -511,4 +512,17 @@ test("exports and imports an Excel archive as a project copy", async ({
   await page.getByRole("button", { name: /^(?:←\s*)?(?:Назад|Back)$/ }).click();
   await openDatabase(page);
   await expect(page.getByText("№ 5501", { exact: true })).toBeVisible();
+});
+
+test("adds a project straight from the menu's project list", async ({
+  page,
+}) => {
+  await createProject(page, "Menu Add Project");
+  await page.getByRole("button", { name: "Меню", exact: true }).click();
+  await page.getByTitle("Сменить проект").click();
+  await page.getByRole("button", { name: "Добавить проект" }).click();
+  // Настройки открываются сразу с формой нового проекта.
+  await expect(
+    page.getByRole("heading", { name: "Новый проект", level: 3 }),
+  ).toBeVisible();
 });

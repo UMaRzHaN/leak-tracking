@@ -89,7 +89,10 @@ export default function MonitoringDialogs({
         description={t("monitoring.repeatDescription")}
         confirmLabel={t("monitoring.repeatConfirm")}
         cancelLabel={t("monitoring.cancel")}
-        secondaryActionLabel={t("monitoring.repeatSecondary")}
+        // Без «нового обхода», если новые обходы выключены в настройках.
+        secondaryActionLabel={
+          onRepeatNewRound ? t("monitoring.repeatSecondary") : null
+        }
         onSecondaryAction={onRepeatNewRound}
         onConfirm={onRepeatConfirm}
         onCancel={onRepeatCancel}

@@ -3,6 +3,7 @@ import {
   createLeak,
   createProject,
   openLeakDetails,
+  openMap,
   setUserProfile,
 } from "./helpers";
 
@@ -46,4 +47,26 @@ test("точность координат сохраняется и снимае
   await page.getByRole("button", { name: "Координаты", exact: true }).click();
   await expect(page.getByText("41.400000")).toBeVisible();
   await expect(page.getByText(/Точность координат/)).toHaveCount(0);
+});
+
+test("«Показать на карте» из записи, открытой на карте, закрывает её", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await createProject(page, "Show On Map");
+  await setUserProfile(page);
+  await createLeak(page, "7701");
+  await openMap(page);
+
+  await page.locator(".leaflet-marker-icon", { hasText: "7701" }).click();
+  await page.getByRole("button", { name: "Открыть запись" }).click();
+  const coords = page.getByRole("button", { name: "Координаты", exact: true });
+  await coords.click();
+  await page.getByRole("button", { name: "Показать на карте" }).click();
+
+  // Карточка закрылась, карта на месте.
+  await expect(coords).toHaveCount(0);
+  await expect(
+    page.locator(".leaflet-marker-icon", { hasText: "7701" }),
+  ).toBeVisible();
 });

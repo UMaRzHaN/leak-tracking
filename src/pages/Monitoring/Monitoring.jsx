@@ -73,6 +73,7 @@ export default function Monitoring(props) {
     showCompletion,
     showMonitoringSheet,
     startNewRound,
+    allowNewRounds,
     mergeRound,
     mergeConfirmOpen,
     setMergeConfirmOpen,
@@ -98,6 +99,7 @@ export default function Monitoring(props) {
           setRoundConfirmOpen(true);
         }}
         onFinishRound={finishRound}
+        canStartRound={allowNewRounds}
         onMergeRound={() => setMergeConfirmOpen(true)}
       />
 
@@ -161,12 +163,16 @@ export default function Monitoring(props) {
           if (leak) showMonitoringSheet(leak);
         }}
         onRepeatCancel={() => setRepeatConfirmLeak(null)}
-        onRepeatNewRound={() => {
-          const leak = repeatConfirmLeak;
-          setRepeatConfirmLeak(null);
-          setPendingRoundLeakId(leak?.id ?? null);
-          setRoundConfirmOpen(true);
-        }}
+        onRepeatNewRound={
+          allowNewRounds
+            ? () => {
+                const leak = repeatConfirmLeak;
+                setRepeatConfirmLeak(null);
+                setPendingRoundLeakId(leak?.id ?? null);
+                setRoundConfirmOpen(true);
+              }
+            : null
+        }
         onSaveLeak={saveLeak}
         onSaveRecord={saveRecord}
         onSelectStatus={handleStatusSelect}

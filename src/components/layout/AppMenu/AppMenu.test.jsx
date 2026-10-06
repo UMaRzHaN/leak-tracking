@@ -9,11 +9,7 @@ vi.mock("@/app/hooks/useLanguage", async () => {
 
 // Выбор проекта проверяется своим тестом: здесь — только что меню его зовёт.
 vi.mock("./ProjectPicker", () => ({
-  default: ({ onManage }) => (
-    <button type="button" onClick={onManage}>
-      Manage projects
-    </button>
-  ),
+  default: () => <button type="button">Project picker</button>,
 }));
 
 const AppMenu = (await import("./AppMenu")).default;
@@ -52,19 +48,16 @@ describe("AppMenu", () => {
   });
 
   it("closes itself before every navigation", () => {
-    const { onClose, onSelectModule, onOpenSettings, onEditProfile, setPage } =
-      renderMenu();
+    const { onClose, onSelectModule, onEditProfile, setPage } = renderMenu();
 
     fireEvent.click(screen.getByRole("button", { name: "Inventory" }));
     fireEvent.click(screen.getByRole("button", { name: "Import data" }));
     fireEvent.click(screen.getByRole("button", { name: /Change name/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Manage projects" }));
 
     expect(onSelectModule).toHaveBeenCalledWith("inventory");
     expect(setPage).toHaveBeenCalledWith("import");
-    expect(onOpenSettings).toHaveBeenCalledWith("projects");
     expect(onEditProfile).toHaveBeenCalledOnce();
-    expect(onClose).toHaveBeenCalledTimes(4);
+    expect(onClose).toHaveBeenCalledTimes(3);
   });
 
   it("only leads to pages the app knows", () => {
@@ -123,5 +116,20 @@ describe("AppMenu", () => {
   it("says nothing about tags without an active round", () => {
     renderMenu({ monitoringDueCount: null });
     expect(screen.queryByText(/to check/)).toBeNull();
+  });
+
+  it("builds the ZIP backup from the menu, once at a time", () => {
+    const onExportBackup = vi.fn();
+    renderMenu({ onExportBackup });
+    fireEvent.click(screen.getByRole("button", { name: /Backup \(ZIP\)/ }));
+    expect(onExportBackup).toHaveBeenCalledOnce();
+  });
+
+  it("shows that a backup is already being prepared", () => {
+    const onExportBackup = vi.fn();
+    renderMenu({ onExportBackup, exportingBackup: true });
+    expect(screen.getByText("preparing…")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Backup \(ZIP\)/ }));
+    expect(onExportBackup).not.toHaveBeenCalled();
   });
 });

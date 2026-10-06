@@ -68,6 +68,9 @@ export function normalizeProjectSettings(value) {
     ),
     photoRequirements: normalizePhotoRequirements(value?.photoRequirements),
     voiceCorrections: normalizeVoiceCorrections(value?.voiceCorrections),
+    // Новые обходы мониторинга: выключенные защищают текущий обход от
+    // случайного «Новый обход». Старые настройки этого поля не знают — можно.
+    allowNewRounds: value?.allowNewRounds !== false,
     updatedAt: normalizeTimestamp(value?.updatedAt),
   };
 }
@@ -90,6 +93,9 @@ export function readProjectSettings(projectId) {
     voiceCorrections: readJson(
       STORAGE_KEYS.PROJECT_VOICE_CORRECTIONS(projectId),
     ),
+    allowNewRounds:
+      localStorage.getItem(STORAGE_KEYS.PROJECT_ROUNDS_LOCKED(projectId)) !==
+      "1",
     updatedAt: localStorage.getItem(
       STORAGE_KEYS.PROJECT_SETTINGS_UPDATED_AT(projectId),
     ),
@@ -148,6 +154,10 @@ export function writeProjectSettings(projectId, value, { emit = true } = {}) {
     localStorage.removeItem(voiceKey);
   }
 
+  const roundsKey = STORAGE_KEYS.PROJECT_ROUNDS_LOCKED(projectId);
+  if (settings.allowNewRounds) localStorage.removeItem(roundsKey);
+  else localStorage.setItem(roundsKey, "1");
+
   const timestampKey = STORAGE_KEYS.PROJECT_SETTINGS_UPDATED_AT(projectId);
   if (settings.updatedAt > 0) {
     localStorage.setItem(timestampKey, String(settings.updatedAt));
@@ -176,6 +186,7 @@ export function clearProjectSettings(projectId, { emit = false } = {}) {
     STORAGE_KEYS.PROJECT_MONITORING_SETTINGS(projectId),
     STORAGE_KEYS.PROJECT_PHOTO_REQUIREMENTS(projectId),
     STORAGE_KEYS.PROJECT_VOICE_CORRECTIONS(projectId),
+    STORAGE_KEYS.PROJECT_ROUNDS_LOCKED(projectId),
     STORAGE_KEYS.PROJECT_SETTINGS_UPDATED_AT(projectId),
   ].forEach((key) => localStorage.removeItem(key));
   if (emit) emitSettingsUpdated(projectId);
@@ -188,6 +199,7 @@ function comparableSettings(value) {
     excelMonitoringExportMode: normalized.excelMonitoringExportMode,
     photoRequirements: normalized.photoRequirements,
     voiceCorrections: normalized.voiceCorrections,
+    allowNewRounds: normalized.allowNewRounds,
   });
 }
 
@@ -198,4 +210,18 @@ export function shouldApplyIncomingProjectSettings(localValue, incomingValue) {
     return incoming.updatedAt > local.updatedAt;
   }
   return comparableSettings(incoming) > comparableSettings(local);
+}
+
+/** Можно ли заводить новые обходы мониторинга в проекте. */
+export function readAllowNewRounds(projectId) {
+  return readProjectSettings(projectId).allowNewRounds;
+}
+
+export function writeAllowNewRounds(projectId, allow) {
+  if (!projectId || typeof localStorage === "undefined") return;
+  const key = STORAGE_KEYS.PROJECT_ROUNDS_LOCKED(projectId);
+  if (allow) localStorage.removeItem(key);
+  else localStorage.setItem(key, "1");
+  touchProjectSettings(projectId);
+  emitSettingsUpdated(projectId);
 }

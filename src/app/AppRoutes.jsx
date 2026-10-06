@@ -142,6 +142,9 @@ export default function AppRoutes({
   save,
   setGpsEnabled,
   scopedData,
+  // Выбор места — для строки области на экране экспорта (8a).
+  leakScope = /** @type {any} */ (null),
+  onLocationScopeOpen = /** @type {(() => void)|undefined} */ (undefined),
   setPage,
   settingsSection = /** @type {string|null} */ (null),
   coverage = /** @type {any} */ (null),
@@ -245,6 +248,8 @@ export default function AppRoutes({
           <ExportPage
             data={data}
             scopedData={scopedData}
+            locationScope={leakScope}
+            onLocationScopeOpen={onLocationScopeOpen}
             onBack={() => goBack(prevPage)}
           />
         )}

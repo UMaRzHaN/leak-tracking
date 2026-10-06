@@ -7,6 +7,7 @@ import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useDataBaseFilters } from "@/pages/DataBase/hooks/useDataBaseFilters";
+import { useAllowNewRounds } from "@/app/project/hooks/useAllowNewRounds";
 import { STATUS } from "@/utils/status";
 import { MONITORING_RESULT, isMonitoringDue } from "@/utils/monitoring";
 import {
@@ -65,6 +66,8 @@ export function useMonitoringPage({
   const [monitoringRound, setMonitoringRound] = useState(() =>
     readMonitoringRound(activeProject?.id ?? null),
   );
+  // Новые обходы можно запретить в настройках — от случайного нажатия.
+  const [allowNewRounds] = useAllowNewRounds(activeProject?.id ?? null);
   const [listHeight, setListHeight] = useState(420);
   const [localMonitoringFilter, setLocalMonitoringFilter] = useState(
     FILTERS.DUE,
@@ -174,6 +177,7 @@ export function useMonitoringPage({
   };
 
   const startNewRound = () => {
+    if (!allowNewRounds) return;
     const next = createMonitoringRound(nextMonitoringRoundNumber);
     const pendingLeak = data.find((leak) => leak.id === pendingRoundLeakId);
     saveMonitoringRound(activeProject?.id ?? null, next);
@@ -242,6 +246,13 @@ export function useMonitoringPage({
     (leak) => {
       if (!leak) return;
       if (!hasActiveMonitoringRound) {
+        if (!allowNewRounds) {
+          setNotification({
+            type: "warning",
+            message: t("settings.rounds.disabled"),
+          });
+          return;
+        }
         setPendingRoundLeakId(leak.id);
         setRoundConfirmOpen(true);
         return;
@@ -253,10 +264,12 @@ export function useMonitoringPage({
       showMonitoringSheet(leak);
     },
     [
+      allowNewRounds,
       hasActiveMonitoringRound,
       monitoringRoundId,
       monitoringRoundNumber,
       showMonitoringSheet,
+      t,
     ],
   );
 
@@ -775,6 +788,7 @@ export function useMonitoringPage({
     showCompletion,
     showMonitoringSheet,
     startNewRound,
+    allowNewRounds,
     mergeRound,
     mergeConfirmOpen,
     setMergeConfirmOpen,

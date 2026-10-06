@@ -275,3 +275,31 @@
     animation: none;
   }
 }
+
+/* Окно «Новый проект» (из выбора проекта в меню). */
+.addProjectRoot {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-modal, 1000) + 10);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.addProjectBackdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.addProjectDialog {
+  position: relative;
+  width: min(100%, 520px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  border-radius: 22px;
+  outline: none;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}

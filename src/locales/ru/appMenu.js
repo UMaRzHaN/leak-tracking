@@ -3,7 +3,7 @@ export const appMenu = {
   noName: "Имя не указано",
   project: "Проект",
   projects: "Проекты",
-  manageProjects: "Управление проектами",
+  addProject: "Добавить проект",
   switchProject: "Сменить проект",
   editName: "Изменить имя",
   settings: "Настройки проекта",
@@ -13,6 +13,8 @@ export const appMenu = {
   monitoring: "Мониторинг",
   inventory: "Инвентаризация",
   export: "Экспорт отчёта",
+  backup: "Резервная копия (ZIP)",
+  backupBusy: "готовится…",
   import: "Импорт данных",
   sync: "Синхронизация",
 };

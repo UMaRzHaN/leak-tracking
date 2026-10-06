@@ -45,11 +45,18 @@ test("выгружает отчёт с экрана экспорта", async ({ 
     page.getByRole("button", { name: "Фото: Лист «Утечки»" }),
   ).toHaveAttribute("aria-pressed", "false");
 
-  const downloadPromise = page.waitForEvent("download");
+  // Файл сначала собирается (8b), а сохранить его или отправить решают на
+  // экране готового файла.
   await page.getByRole("button", { name: "Сформировать файл" }).click();
+  await expect(page.getByText("Файл сформирован")).toBeVisible();
+  await expect(page.getByText(/^\d+ сек$/)).toBeVisible();
+  await expect(page.getByText(/«Утечки» в файл не вошли/)).toBeVisible();
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Сохранить в «Файлы»" }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/\.zip$/);
 
-  await expect(page.getByText("Файл сформирован")).toBeVisible();
   await expect(page.getByText("Последние выгрузки")).toBeVisible();
+  await expect(page.getByText(/сохранено локально/)).toBeVisible();
 });

@@ -59,8 +59,16 @@
   border: none;
   border-radius: 13px;
   background: rgba(255, 255, 255, 0.92);
-  color: var(--c-ink);
+  /* Не --c-ink: в тёмной теме он светлый, и стрелка терялась на белом. */
+  color: #0f172a;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+
+  :global([data-theme="dark"]) & {
+    background: rgba(15, 23, 42, 0.72);
+    color: #fff;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
 }
 
 /* ══════════════════════════════════════════
@@ -538,6 +546,7 @@
 /* Условная схема: сетка вместо тайлов и точка по центру. */
 .coordsPreview {
   position: relative;
+  overflow: hidden;
   height: 150px;
   border-bottom: 1px solid var(--c-border);
   background-color: var(--c-surface-soft, var(--c-bg));
@@ -548,8 +557,20 @@
   background-position: center;
 }
 
+/* Неподвижная карта поверх сетки: пока тайлов нет, видна сетка. */
+.coordsMap {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+
+  &:global(.leaflet-container) {
+    background: transparent;
+  }
+}
+
 .coordsPin {
   position: absolute;
+  z-index: 500;
   top: 50%;
   left: 50%;
   width: 18px;
@@ -589,9 +610,10 @@
   background: var(--c-surface);
 }
 
+/* Длинные поля (описание, решение, МТР) — тем же видом, что и остальные:
+   подпись слева, значение справа тем же шрифтом и цветом (5e). Отличие одно —
+   значение переносится по строкам, а подпись остаётся у верхней строки. */
 .fieldRowMulti {
-  flex-direction: column;
-  gap: 5px;
   align-items: flex-start;
 }
 
@@ -614,12 +636,7 @@
 }
 
 .fieldValueMulti {
-  text-align: left;
-  color: var(--c-text2);
-  font-weight: 400;
-  line-height: 1.55;
-  font-size: 13px;
-  width: 100%;
+  white-space: pre-line;
 }
 
 .monitoringRecord {

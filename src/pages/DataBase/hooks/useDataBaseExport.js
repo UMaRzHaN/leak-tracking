@@ -64,6 +64,8 @@ export function useDataBaseExport({
     null
   ),
   inventory = /** @type {{withPhotos:boolean}|null} */ (null),
+  // Экран экспорта (8b): собрать файл и вернуть его, не сохраняя сразу.
+  deferDelivery = false,
 }) {
   const { t } = useLanguage();
   const [isExporting, setIsExporting] = useState(false);
@@ -117,6 +119,7 @@ export function useDataBaseExport({
           // including records (and photos) hidden by the current filters.
           backupLeaks: displayed,
           buildWorkbookBuffer: buildWorkbookBufferInWorker,
+          deliver: !deferDelivery,
           sheets: sheets ?? {},
           includePhotos,
           photoSections: photoSections ?? {},
@@ -147,7 +150,12 @@ export function useDataBaseExport({
       if (typeof window !== "undefined") {
         window.__EXCEL_EXPORT_METRICS__ = result?.metrics ?? null;
       }
-      notify("success", result?.message || t("database.export.success"));
+      if (!deferDelivery) {
+        notify(
+          "success",
+          /** @type {any} */ (result)?.message || t("database.export.success"),
+        );
+      }
       // Экран экспорта (8b) показывает итог и пишет его в историю.
       onDone?.(result);
     } catch (err) {
@@ -160,6 +168,7 @@ export function useDataBaseExport({
     }
   }, [
     activeProject,
+    deferDelivery,
     displayed,
     excelHeaders,
     excelKeys,

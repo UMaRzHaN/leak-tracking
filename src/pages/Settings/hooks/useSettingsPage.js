@@ -5,7 +5,6 @@ import { useProjectIntegrityCheck } from "./useProjectIntegrityCheck";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
 import { useHiddenFields } from "@/app/project/hooks/useHiddenFields";
-import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
 import { useVoiceCorrections } from "@/app/project/hooks/useVoiceCorrections";
 import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import { getMapCacheInfo, clearMapCache } from "@/services/maps/tileCache";
@@ -107,9 +106,6 @@ export function useSettingsPage({
   const { hiddenFields, setHiddenFields } = useHiddenFields(
     activeProject?.id ?? null,
   );
-  const { monitoringExportMode, setMonitoringExportMode } = useExcelExportMode(
-    activeProject?.id ?? null,
-  );
   const {
     leakPhotoRequired,
     monitoringPhotoRequired,
@@ -140,8 +136,6 @@ export function useSettingsPage({
 
   const {
     importZipRef,
-    handleExportZip,
-    isExportingZip,
     handleImportZip,
     importConfirmState,
     confirmImport,
@@ -152,10 +146,6 @@ export function useSettingsPage({
     handleConflictMerge,
     handleConflictCopy,
   } = useBackupActions({
-    data,
-    idbGetPhoto,
-    activeProject,
-    vars,
     onImportZip,
     onImportIntoExisting,
     notify,
@@ -705,7 +695,6 @@ export function useSettingsPage({
     handleExcelConflictCopy,
     handleExcelConflictMerge,
     handleExcelConflictOverwrite,
-    handleExportZip,
     handleImportExcel,
     handleImportFile,
     handleImportZip,
@@ -718,7 +707,6 @@ export function useSettingsPage({
     importExcelRef,
     importZipRef,
     integrityReport,
-    isExportingZip,
     isImportingExcel,
     lang,
     voiceCorrections,
@@ -728,7 +716,6 @@ export function useSettingsPage({
     setComponentPhotoRequired,
     localSync,
     localeTexts,
-    monitoringExportMode,
     monitoringPhotoRequired,
     notification,
     notify,
@@ -740,7 +727,6 @@ export function useSettingsPage({
     setFieldsModalOpen,
     setHiddenFields,
     setIntegrityReport,
-    setMonitoringExportMode,
     setLeakPhotoRequired,
     setMonitoringPhotoRequired,
     setNotification,

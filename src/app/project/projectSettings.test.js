@@ -31,6 +31,7 @@ describe("projectSettings", () => {
         componentPhotoRequired: true,
       },
       voiceCorrections: [],
+      allowNewRounds: true,
       updatedAt: 0,
     });
   });
@@ -57,6 +58,7 @@ describe("projectSettings", () => {
         componentPhotoRequired: true,
       },
       voiceCorrections: [],
+      allowNewRounds: true,
       updatedAt: 50,
     });
 
@@ -95,5 +97,19 @@ describe("projectSettings", () => {
     const aAcceptsB = shouldApplyIncomingProjectSettings(tiedA, tiedB);
     const bAcceptsA = shouldApplyIncomingProjectSettings(tiedB, tiedA);
     expect(aAcceptsB).not.toBe(bAcceptsA);
+  });
+});
+
+describe("allowNewRounds", () => {
+  it("allows new rounds by default and remembers when they are locked", async () => {
+    const { readAllowNewRounds, writeAllowNewRounds, readProjectSettings } =
+      await import("./projectSettings");
+    localStorage.clear();
+    expect(readAllowNewRounds("p1")).toBe(true);
+    writeAllowNewRounds("p1", false);
+    expect(readAllowNewRounds("p1")).toBe(false);
+    expect(readProjectSettings("p1").updatedAt).toBeGreaterThan(0);
+    writeAllowNewRounds("p1", true);
+    expect(readAllowNewRounds("p1")).toBe(true);
   });
 });

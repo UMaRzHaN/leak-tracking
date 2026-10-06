@@ -121,6 +121,19 @@ const PATHS = {
       <path d="M13.3 10.7L4.6 19.4a1.4 1.4 0 002 2l8.7-8.7" />
     </>
   ),
+  archive: (
+    <>
+      <rect x="3.5" y="4.5" width="17" height="4" rx="1" />
+      <path d="M5 8.5V19a1 1 0 001 1h12a1 1 0 001-1V8.5M10 12.5h4" />
+    </>
+  ),
+  info: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 11v5M12 8h.01" />
+    </>
+  ),
+  share: <path d="M12 15V4M8 8l4-4 4 4M5 13v6a1 1 0 001 1h12a1 1 0 001-1v-6" />,
   calendar: (
     <>
       <rect x="4" y="5.5" width="16" height="15" rx="2" />

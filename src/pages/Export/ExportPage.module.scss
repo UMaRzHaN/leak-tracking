@@ -322,6 +322,13 @@
   color: var(--c-accent-text) !important;
 }
 
+.chevron {
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--c-text3);
+}
+
 .formatValue {
   color: var(--c-ink) !important;
   font-size: 15px !important;
@@ -516,5 +523,51 @@
   small {
     color: var(--c-text3);
     font-size: 12px;
+  }
+}
+
+/* ── Файл готов (8b) ── */
+.doneTime {
+  margin-left: auto;
+  color: var(--c-resolved);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Предупреждение: снимки части разделов в файл не вошли. */
+.warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--c-progress) 35%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--c-progress) 10%, transparent);
+  color: var(--c-progress-text, var(--c-progress));
+  font-size: 13px;
+  line-height: 1.45;
+
+  svg {
+    flex: none;
+    margin-top: 1px;
+  }
+}
+
+.secondaryWide {
+  min-height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--c-border);
+  border-radius: 16px;
+  background: var(--c-surface);
+  color: var(--c-ink);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
   }
 }

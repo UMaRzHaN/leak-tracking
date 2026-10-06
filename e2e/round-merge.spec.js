@@ -5,6 +5,8 @@ import {
   createProject,
   openRound,
   setUserProfile,
+  openSettings,
+  leaveSettings,
 } from "./helpers.js";
 
 /**
@@ -53,4 +55,32 @@ test("сливает ошибочно начатый обход с предыд�
   await expect(
     page.getByRole("dialog").getByText("1 к проверке"),
   ).toBeVisible();
+});
+
+test("не даёт начать новый обход, если это выключено в настройках", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await createProject(page, "Rounds Locked");
+  await setUserProfile(page);
+  await createLeak(page, "9201");
+
+  await openRound(page);
+  await page.getByRole("button", { name: "Начать мониторинг" }).click();
+  await page.getByRole("button", { name: "Начать обход" }).click();
+  await expect(page.getByRole("button", { name: "Новый обход" })).toBeVisible();
+
+  await openSettings(page);
+  const allowRounds = page.getByRole("switch", { name: "Новые обходы" });
+  await expect(allowRounds).toHaveAttribute("aria-checked", "true");
+  await allowRounds.click();
+  await expect(allowRounds).toHaveAttribute("aria-checked", "false");
+  await leaveSettings(page);
+
+  // Обход идёт дальше, но начать следующий нечем.
+  await openRound(page);
+  await expect(page.getByText(/^Обход № 1/).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Новый обход" })).toHaveCount(
+    0,
+  );
 });

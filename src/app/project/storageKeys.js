@@ -37,6 +37,10 @@ export const STORAGE_KEYS = {
     `${APP_PREFIX}:${projectId}:monitoring_settings_${VERSION}`,
   PROJECT_PHOTO_REQUIREMENTS: (projectId) =>
     `${APP_PREFIX}:${projectId}:photo_requirements_${VERSION}`,
+  // Можно ли заводить новые обходы мониторинга. Хранится только «нельзя»:
+  // по умолчанию обходы заводят, как и раньше.
+  PROJECT_ROUNDS_LOCKED: (projectId) =>
+    `${APP_PREFIX}:${projectId}:rounds_locked_${VERSION}`,
   // Поправки к распознанной речи живут при проекте, а не при устройстве:
   // ошибки распознавателя одинаковы у всей бригады, и найденную пару разумнее
   // раздать обменом архива, чем заводить на каждом телефоне заново.

@@ -5,7 +5,14 @@ import MapControls from "./components/MapControls";
 import TileProgress from "./components/TileProgress";
 import MobileSheet from "@/components/ui/MobileSheet/MobileSheet";
 import Notification from "@/components/ui/Notification/Notification";
-import { lazy, Suspense, useCallback, useMemo, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import RouteBanner from "@/features/route/RouteBanner";
 import { componentStatusColor } from "@/domain/componentStatuses";
 import { useLanguage } from "@/app/hooks/useLanguage";
@@ -15,6 +22,8 @@ import {
   getRepairStage,
 } from "@/domain/repairStages";
 import MapLeakCard from "./components/MapLeakCard";
+import { SHOW_ON_MAP_EVENT, takeMapFocus } from "@/app/mapFocus";
+import { globalScope } from "@/utils/globalScope";
 import { useLeakActions } from "@/pages/DataBase/hooks/useLeakActions";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { MODULE } from "@/app/modules/activeModule";
@@ -129,6 +138,21 @@ export default function MapPage({
     deletePhoto,
     userProfile,
   });
+
+  // «Показать на карте» из карточки, открытой на самой карте: переходить
+  // некуда, поэтому карточка закрывается, а карта встаёт на точку.
+  const { setActiveLeak } = leakActions;
+  useEffect(() => {
+    const show = () => {
+      const point = takeMapFocus();
+      if (!point) return;
+      setActiveLeak(null);
+      selectLeak(null);
+      focusLeak(point, 18);
+    };
+    globalScope.addEventListener?.(SHOW_ON_MAP_EVENT, show);
+    return () => globalScope.removeEventListener?.(SHOW_ON_MAP_EVENT, show);
+  }, [focusLeak, selectLeak, setActiveLeak]);
 
   return (
     <div className={s.mapWrapper}>
