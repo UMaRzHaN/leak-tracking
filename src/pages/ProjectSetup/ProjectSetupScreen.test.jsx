@@ -51,7 +51,11 @@ describe("ProjectSetupScreen", () => {
   it("shows an import progress notice while importing zip into an empty app", async () => {
     const onImportZip = vi.fn(() => new Promise(() => {}));
     const { container } = render(
-      <ProjectSetupScreen onComplete={vi.fn()} onImportZip={onImportZip} />,
+      <ProjectSetupScreen
+        initialStep="project"
+        onComplete={vi.fn()}
+        onImportZip={onImportZip}
+      />,
     );
 
     const input = container.querySelector('input[type="file"]');
@@ -74,6 +78,7 @@ describe("ProjectSetupScreen", () => {
     const onImportInventory = vi.fn().mockResolvedValue({ components: 3 });
     const { container } = render(
       <ProjectSetupScreen
+        initialStep="project"
         onComplete={vi.fn()}
         onImportZip={vi.fn()}
         onImportInventory={onImportInventory}
@@ -96,6 +101,7 @@ describe("ProjectSetupScreen", () => {
     const onImportExcel = vi.fn().mockResolvedValue({});
     const { container } = render(
       <ProjectSetupScreen
+        initialStep="project"
         onComplete={vi.fn()}
         onImportZip={vi.fn()}
         onImportExcel={onImportExcel}
@@ -132,7 +138,11 @@ describe("ProjectSetupScreen", () => {
     const onImportZip = vi.fn().mockResolvedValue({});
 
     render(
-      <ProjectSetupScreen onComplete={vi.fn()} onImportZip={onImportZip} />,
+      <ProjectSetupScreen
+        initialStep="project"
+        onComplete={vi.fn()}
+        onImportZip={onImportZip}
+      />,
     );
 
     fireEvent.click(screen.getByText("QR Import by QR"));
@@ -158,6 +168,7 @@ describe("ProjectSetupScreen", () => {
     const onImportExcel = vi.fn().mockResolvedValue({});
     const { container } = render(
       <ProjectSetupScreen
+        initialStep="project"
         onComplete={vi.fn()}
         onImportZip={vi.fn()}
         onImportExcel={onImportExcel}
@@ -181,26 +192,35 @@ describe("ProjectSetupScreen", () => {
   it("creates the first project with a trimmed name", () => {
     const onComplete = vi.fn();
     render(
-      <ProjectSetupScreen onComplete={onComplete} onImportZip={vi.fn()} />,
+      <ProjectSetupScreen
+        initialStep="project"
+        onComplete={onComplete}
+        onImportZip={vi.fn()}
+      />,
     );
 
     fireEvent.change(screen.getByLabelText("Project Name"), {
       target: { value: "  Alpha Field  " },
     });
     fireEvent.click(screen.getByText("Upstream"));
-    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start working" }));
 
     expect(onComplete).toHaveBeenCalledWith("upstream", "Alpha Field");
   });
 
   it("submits from Enter after a project type is selected", () => {
     const onComplete = vi.fn();
-    render(<ProjectSetupScreen onComplete={onComplete} />);
+    render(
+      <ProjectSetupScreen initialStep="project" onComplete={onComplete} />,
+    );
 
     fireEvent.click(screen.getByText("Downstream"));
     const input = screen.getByLabelText("Project Name");
     fireEvent.change(input, { target: { value: "City Network" } });
     fireEvent.keyDown(input, { key: "Enter" });
+    // Enter ведёт к «Готово», проект заводит последняя кнопка.
+    fireEvent.click(screen.getByRole("button", { name: "Start working" }));
 
     expect(onComplete).toHaveBeenCalledWith("downstream", "City Network");
   });
@@ -213,7 +233,11 @@ describe("ProjectSetupScreen", () => {
     });
     const onImportZip = vi.fn().mockResolvedValue({});
     const { container } = render(
-      <ProjectSetupScreen onComplete={vi.fn()} onImportZip={onImportZip} />,
+      <ProjectSetupScreen
+        initialStep="project"
+        onComplete={vi.fn()}
+        onImportZip={onImportZip}
+      />,
     );
     const file = new File(["zip"], "backup.zip", {
       type: "application/zip",
@@ -240,7 +264,11 @@ describe("ProjectSetupScreen", () => {
     });
     const onImportZip = vi.fn().mockResolvedValue({});
     const { container } = render(
-      <ProjectSetupScreen onComplete={vi.fn()} onImportZip={onImportZip} />,
+      <ProjectSetupScreen
+        initialStep="project"
+        onComplete={vi.fn()}
+        onImportZip={onImportZip}
+      />,
     );
 
     fireEvent.click(screen.getByText("Upstream"));
@@ -263,7 +291,11 @@ describe("ProjectSetupScreen", () => {
     backupService.peekBackupZip.mockRejectedValueOnce(new Error("bad preview"));
     const onImportZip = vi.fn().mockResolvedValue({});
     const { container } = render(
-      <ProjectSetupScreen onComplete={vi.fn()} onImportZip={onImportZip} />,
+      <ProjectSetupScreen
+        initialStep="project"
+        onComplete={vi.fn()}
+        onImportZip={onImportZip}
+      />,
     );
     const file = new File(["zip"], "midstream_backup.zip", {
       type: "application/zip",
@@ -288,7 +320,11 @@ describe("ProjectSetupScreen", () => {
     const error = Object.assign(new Error("raw import error"), { code });
     const onImportExcel = vi.fn().mockRejectedValue(error);
     const { container } = render(
-      <ProjectSetupScreen onComplete={vi.fn()} onImportExcel={onImportExcel} />,
+      <ProjectSetupScreen
+        initialStep="project"
+        onComplete={vi.fn()}
+        onImportExcel={onImportExcel}
+      />,
     );
     routing.detectImportKind.mockResolvedValue({ kind: "excel" });
     const file = new File(["xlsx"], "inspection.xlsx");
@@ -304,7 +340,11 @@ describe("ProjectSetupScreen", () => {
     });
     localSync.scanLocalSyncQr.mockRejectedValueOnce(cancelled);
     const { unmount } = render(
-      <ProjectSetupScreen onComplete={vi.fn()} onImportZip={vi.fn()} />,
+      <ProjectSetupScreen
+        initialStep="project"
+        onComplete={vi.fn()}
+        onImportZip={vi.fn()}
+      />,
     );
 
     fireEvent.click(screen.getByText("QR Import by QR"));
@@ -313,7 +353,13 @@ describe("ProjectSetupScreen", () => {
     unmount();
 
     localSync.scanLocalSyncQr.mockRejectedValueOnce(new Error("camera failed"));
-    render(<ProjectSetupScreen onComplete={vi.fn()} onImportZip={vi.fn()} />);
+    render(
+      <ProjectSetupScreen
+        initialStep="project"
+        onComplete={vi.fn()}
+        onImportZip={vi.fn()}
+      />,
+    );
     fireEvent.click(screen.getByText("QR Import by QR"));
 
     expect(await screen.findByText("camera failed")).toBeTruthy();
@@ -323,6 +369,7 @@ describe("ProjectSetupScreen", () => {
     localSync.isLocalSyncAvailable.mockReturnValue(false);
     const { unmount } = render(
       <ProjectSetupScreen
+        initialStep="project"
         onComplete={vi.fn()}
         onImportZip={vi.fn()}
         onImportExcel={vi.fn()}
@@ -342,6 +389,7 @@ describe("ProjectSetupScreen", () => {
       const onImportZip = vi.fn().mockResolvedValue({});
       const { container } = render(
         <ProjectSetupScreen
+          initialStep="project"
           onComplete={vi.fn()}
           onImportZip={onImportZip}
           onImportExcel={vi.fn()}
@@ -363,6 +411,7 @@ describe("ProjectSetupScreen", () => {
       const onImportInventory = vi.fn().mockResolvedValue({});
       const { container } = render(
         <ProjectSetupScreen
+          initialStep="project"
           onComplete={vi.fn()}
           onImportZip={vi.fn()}
           onImportInventory={onImportInventory}
@@ -385,6 +434,7 @@ describe("ProjectSetupScreen", () => {
       routing.detectImportKind.mockResolvedValue({ kind: "unknown" });
       const { container } = render(
         <ProjectSetupScreen
+          initialStep="project"
           onComplete={vi.fn()}
           onImportZip={vi.fn()}
           onImportExcel={vi.fn()}
@@ -409,6 +459,7 @@ describe("ProjectSetupScreen", () => {
         );
       const { container } = render(
         <ProjectSetupScreen
+          initialStep="project"
           onComplete={vi.fn()}
           onImportZip={vi.fn()}
           onImportInventory={onImportInventory}
@@ -423,5 +474,35 @@ describe("ProjectSetupScreen", () => {
         await screen.findByText(/No component cards were found/),
       ).toBeTruthy();
     });
+  });
+
+  it("walks from the welcome through the name to a ready project", () => {
+    const onComplete = vi.fn();
+    const onSaveUserName = vi.fn();
+    render(
+      <ProjectSetupScreen
+        onComplete={onComplete}
+        onSaveUserName={onSaveUserName}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Get started" }));
+    fireEvent.change(screen.getByLabelText("Your name"), {
+      target: { value: "Ivan Ermekov" },
+    });
+    expect(screen.getByText("Checked by: Ivan Ermekov")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(onSaveUserName).toHaveBeenCalledWith("Ivan Ermekov");
+
+    fireEvent.change(screen.getByLabelText("Project Name"), {
+      target: { value: "Tengiz Q1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Upstream/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByText("All set!")).toBeTruthy();
+    expect(onComplete).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Start working" }));
+    expect(onComplete).toHaveBeenCalledWith("upstream", "Tengiz Q1");
   });
 });

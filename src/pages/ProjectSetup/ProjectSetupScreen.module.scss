@@ -11,40 +11,37 @@
    Общие --c-* сюда не подошли: у экрана свой синий (#0d47a1), отличный от
    --c-accent, и переезд на него сдвинул бы светлую тему, которой ничего не
    требовалось. */
+/* Онбординг 1c: светлый экран без карточки, фиолетовый акцент. Палитра
+   — из токенов, поэтому тёмная тема подтягивается сама, без своей копии. */
 .screen {
-  --setup-backdrop: linear-gradient(
-    135deg,
-    #1a237e 0%,
-    #0d47a1 50%,
-    #1565c0 100%
-  );
-  --setup-card: #ffffff;
-  --setup-card-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
-  --setup-title: #1a237e;
-  --setup-ink: #1f2937;
-  --setup-label: #374151;
-  --setup-muted: #6b7280;
-  --setup-faint: #9ca3af;
-  --setup-border: #e5e7eb;
-  --setup-field: #f9fafb;
-  --setup-field-focus: #ffffff;
-  --setup-code: #f3f4f6;
-  --setup-accent: #0d47a1;
-  --setup-accent-border: #93c5fd;
-  --setup-tint: #eff6ff;
-  --setup-tint-strong: #dbeafe;
-  --setup-status-border: #bfdbfe;
-  --setup-selected-glow: rgba(13, 71, 161, 0.15);
-  --setup-cta-from: #0d47a1;
-  --setup-cta-to: #1565c0;
-  --setup-cta-hover-from: #1565c0;
-  --setup-cta-hover-to: #1976d2;
+  --setup-backdrop: var(--c-surface-soft);
+  --setup-card: transparent;
+  --setup-card-shadow: none;
+  --setup-title: var(--c-ink);
+  --setup-ink: var(--c-ink);
+  --setup-label: var(--c-text2);
+  --setup-muted: var(--c-text2);
+  --setup-faint: var(--c-text3);
+  --setup-border: var(--c-border-soft);
+  --setup-field: var(--c-surface);
+  --setup-field-focus: var(--c-surface);
+  --setup-code: var(--c-accent-dim);
+  --setup-accent: var(--c-accent-text);
+  --setup-accent-border: var(--c-accent);
+  --setup-tint: var(--c-accent-surface);
+  --setup-tint-strong: var(--c-accent-dim);
+  --setup-status-border: var(--c-border-soft);
+  --setup-selected-glow: rgba(109, 61, 232, 0.15);
+  --setup-cta-from: var(--c-accent);
+  --setup-cta-to: var(--c-accent);
+  --setup-cta-hover-from: var(--c-accent);
+  --setup-cta-hover-to: var(--c-accent);
   --setup-cta-ink: #ffffff;
-  --setup-cta-glow: rgba(13, 71, 161, 0.35);
-  --setup-danger: #ef4444;
-  --setup-qr: #7c3aed;
-  --setup-qr-border: #8b5cf6;
-  --setup-qr-tint: #f5f3ff;
+  --setup-cta-glow: rgba(109, 61, 232, 0.3);
+  --setup-danger: var(--c-open-text);
+  --setup-qr: var(--c-accent-text);
+  --setup-qr-border: var(--c-accent);
+  --setup-qr-tint: var(--c-accent-surface);
 
   min-height: 100dvh;
   display: flex;
@@ -52,43 +49,6 @@
   justify-content: center;
   background: var(--setup-backdrop);
   padding: 20px;
-}
-
-:global([data-theme="dark"]) .screen {
-  --setup-backdrop: linear-gradient(
-    135deg,
-    #0b1226 0%,
-    #101c38 50%,
-    #14233f 100%
-  );
-  --setup-card: #1e293b;
-  --setup-card-shadow: 0 24px 64px rgba(0, 0, 0, 0.62);
-  --setup-title: #c7d7f5;
-  --setup-ink: #e2e8f0;
-  --setup-label: #cbd5e1;
-  --setup-muted: #94a3b8;
-  --setup-faint: #8496ab;
-  --setup-border: #334155;
-  --setup-field: #172033;
-  --setup-field-focus: #1b2740;
-  --setup-code: #1f2a3d;
-  --setup-accent: #8ab4f8;
-  --setup-accent-border: #4c78bd;
-  --setup-tint: rgba(96, 165, 250, 0.12);
-  --setup-tint-strong: rgba(96, 165, 250, 0.22);
-  --setup-status-border: rgba(96, 165, 250, 0.35);
-  --setup-selected-glow: rgba(109, 61, 232, 0.3);
-  /* Кнопка светлеет, а не темнеет: тёмно-синий из светлой темы на тёмной
-     карточке переставал читаться как главное действие. */
-  --setup-cta-from: #6d3de8;
-  --setup-cta-to: #8a63f0;
-  --setup-cta-hover-from: #8a63f0;
-  --setup-cta-hover-to: #60a5fa;
-  --setup-cta-glow: rgba(109, 61, 232, 0.45);
-  --setup-danger: #f87171;
-  --setup-qr: #c4b5fd;
-  --setup-qr-border: #7c6ad0;
-  --setup-qr-tint: rgba(139, 92, 246, 0.16);
 }
 
 .card {
@@ -296,7 +256,7 @@
 
 .startBtn {
   width: 100%;
-  min-height: 48px;
+  min-height: 54px;
   padding: 12px 16px;
   background: linear-gradient(
     135deg,
@@ -305,9 +265,9 @@
   );
   color: var(--setup-cta-ink);
   border: none;
-  border-radius: 11px;
+  border-radius: 16px;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 800;
   cursor: pointer;
   transition: all 0.2s ease;
   letter-spacing: 0.02em;
@@ -502,4 +462,164 @@
   color: #fff;
   font-size: 14px;
   font-weight: 700;
+}
+
+/* ── Шаги онбординга (1c) ── */
+.stepCard {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  min-height: calc(100dvh - 40px);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px 6px 20px;
+}
+
+.hero {
+  flex: 1;
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 22px;
+  background: var(--c-accent-surface);
+
+  img {
+    width: 45%;
+    max-width: 180px;
+    border-radius: 24px;
+  }
+}
+
+.stepTitle {
+  color: var(--c-ink);
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.stepLead {
+  max-width: 320px;
+  margin: 0 auto;
+  color: var(--c-text2);
+  font-size: 15px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.stepCenter {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+}
+
+.stepNav {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.stepBack {
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: none;
+  color: var(--c-ink);
+  font-size: 24px;
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.dot,
+.dotOn {
+  width: 9px;
+  height: 9px;
+  border-radius: 99px;
+}
+
+.dot {
+  background: var(--c-border-soft);
+}
+
+.dotOn {
+  background: var(--c-accent);
+}
+
+.bigInput {
+  width: 100%;
+  margin-top: 20px;
+  padding: 12px 4px;
+  border: none;
+  border-bottom: 2px solid var(--c-accent);
+  background: none;
+  color: var(--c-ink);
+  font: inherit;
+  font-size: 26px;
+  font-weight: 800;
+  text-align: center;
+  outline: none;
+}
+
+.namePreview {
+  display: grid;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--c-accent-surface);
+  color: var(--c-ink);
+  font-size: 15px;
+  font-weight: 800;
+
+  span {
+    color: var(--c-text3);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+}
+
+.doneBadge {
+  align-self: center;
+  width: 120px;
+  height: 120px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--c-accent);
+  box-shadow: 0 0 0 24px var(--c-accent-surface);
+  color: #fff;
+  font-size: 54px;
+  font-weight: 800;
+  margin-bottom: 18px;
+}
+
+.summary {
+  display: grid;
+  gap: 2px;
+  padding: 14px 16px;
+  border: 1px solid var(--c-border-soft);
+  border-radius: 16px;
+  background: var(--c-surface);
+
+  span {
+    color: var(--c-text3);
+    font-size: 12px;
+  }
+
+  strong {
+    color: var(--c-ink);
+    font-size: 17px;
+  }
 }

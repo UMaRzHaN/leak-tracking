@@ -7,13 +7,18 @@ export const PHOTO_FIXTURE = path.resolve("public/vema_sa_logo.jpg");
 
 export async function createProject(page, name = "E2E Upstream") {
   await page.goto("/");
+  // Онбординг по шагам (1c): приветствие, имя (пропускаем — профиль
+  // заполняет setUserProfile), проект, готово.
+  await page.getByRole("button", { name: "Начало работы" }).click();
+  await page.getByRole("button", { name: "Пропустить" }).click();
   await expect(
     page.getByRole("heading", { name: "Журнал утечек", exact: true }),
   ).toBeVisible();
 
   await page.getByLabel("Название проекта", { exact: true }).fill(name);
   await page.getByRole("button", { name: /Upstream/ }).click();
-  await page.getByRole("button", { name: "Начать работу" }).click();
+  await page.getByRole("button", { name: "Продолжить" }).click();
+  await page.getByRole("button", { name: "Перейти к работе" }).click();
 
   await expect(page.getByText(name, { exact: true })).toBeVisible();
   await expect(

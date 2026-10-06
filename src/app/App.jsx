@@ -215,6 +215,7 @@ export default function App() {
           onImportZip={handleSetupImportZip}
           onImportExcel={handleSetupImportExcel}
           onImportInventory={handleSetupImportInventory}
+          onSaveUserName={(name) => setUserProfile({ name })}
         />
       </Suspense>
     );

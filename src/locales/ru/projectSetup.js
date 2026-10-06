@@ -1,4 +1,20 @@
 export const projectSetup = {
+  back: "Назад",
+  welcomeTitle: "Leak Tracking",
+  welcomeLead:
+    "Приложение для идентификации, квантификации и мониторинга утечек",
+  begin: "Начало работы",
+  nameTitle: "Как вас зовут?",
+  nameLead: "Имя подписывает записи и проверки. Его можно изменить в меню.",
+  nameLabel: "Ваше имя",
+  namePlaceholder: "Имя и фамилия",
+  namePreviewCaption: "Так это выглядит в записи",
+  namePreview: "Проверил: {{name}}",
+  continue: "Продолжить",
+  skip: "Пропустить",
+  doneTitle: "Готово!",
+  doneLead: "Проект настроен. Вы готовы начать работу.",
+  goToWork: "Перейти к работе",
   title: "Журнал утечек",
   subtitle: "Создайте первый проект для начала работы",
 

@@ -64,11 +64,20 @@ function importErrorText(error, localeTexts) {
   return error?.message ?? localeTexts.importError;
 }
 
+const STEPS = ["welcome", "name", "project", "done"];
+
+/**
+ * Онбординг по шагам (1c): приветствие → имя → проект → готово. Импорт
+ * вынесен со стартового экрана на шаг проекта как второстепенное действие:
+ * он по-прежнему заводит проект сразу, без шага «Готово».
+ */
 export default function ProjectSetupScreen({
   onComplete,
   onImportZip,
   onImportExcel,
   onImportInventory,
+  onSaveUserName = /** @type {((name: string) => void)|null} */ (null),
+  initialStep = "welcome",
 }) {
   const { t, toggleLanguage } = useLanguage();
   const localeTexts = useMemo(
@@ -123,6 +132,8 @@ export default function ProjectSetupScreen({
     }),
     [t],
   );
+  const [step, setStep] = useState(initialStep);
+  const [userName, setUserName] = useState("");
   const [name, setName] = useState("");
   const [type, setType] = useState("");
   const [error, setError] = useState("");
@@ -139,8 +150,12 @@ export default function ProjectSetupScreen({
       setError(localeTexts.selectProjectType);
       return;
     }
-    onComplete(type, name.trim());
+    setStep("done");
   };
+
+  const finish = () => onComplete(type, name.trim());
+  const stepIndex = STEPS.indexOf(step);
+  const back = () => setStep(STEPS[Math.max(0, stepIndex - 1)]);
 
   const importZipFile = useCallback(
     async (file) => {
@@ -274,6 +289,108 @@ export default function ProjectSetupScreen({
     [],
   );
 
+  if (step === "welcome" || step === "name" || step === "done") {
+    return (
+      <div className={s.screen}>
+        <div className={s.stepCard}>
+          {step !== "welcome" && step !== "done" && (
+            <StepNav
+              index={stepIndex}
+              onBack={back}
+              label={t("projectSetup.back")}
+            />
+          )}
+          {step === "welcome" && (
+            <>
+              <button
+                className={s.langBtn}
+                type="button"
+                onClick={toggleLanguage}
+                aria-label={localeTexts.languageToggle}
+              >
+                {localeTexts.languageToggle}
+              </button>
+              <div className={s.hero} aria-hidden="true">
+                <img src="/vema_sa_logo.jpg" alt="" />
+              </div>
+              <h1 className={s.stepTitle}>{t("projectSetup.welcomeTitle")}</h1>
+              <p className={s.stepLead}>{t("projectSetup.welcomeLead")}</p>
+              <Dots index={0} />
+              <button
+                type="button"
+                className={s.startBtn}
+                onClick={() => setStep("name")}
+              >
+                {t("projectSetup.begin")}
+              </button>
+            </>
+          )}
+
+          {step === "name" && (
+            <>
+              <div className={s.stepCenter}>
+                <h1 className={s.stepTitle}>{t("projectSetup.nameTitle")}</h1>
+                <p className={s.stepLead}>{t("projectSetup.nameLead")}</p>
+                <input
+                  className={s.bigInput}
+                  aria-label={t("projectSetup.nameLabel")}
+                  placeholder={t("projectSetup.namePlaceholder")}
+                  value={userName}
+                  onChange={(event) => setUserName(event.target.value)}
+                  maxLength={80}
+                  autoFocus
+                />
+                {userName.trim() && (
+                  <p className={s.namePreview}>
+                    <span>{t("projectSetup.namePreviewCaption")}</span>
+                    {t("projectSetup.namePreview", { name: userName.trim() })}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                className={s.startBtn}
+                onClick={() => {
+                  if (userName.trim()) onSaveUserName?.(userName.trim());
+                  setStep("project");
+                }}
+              >
+                {userName.trim()
+                  ? t("projectSetup.continue")
+                  : t("projectSetup.skip")}
+              </button>
+            </>
+          )}
+
+          {step === "done" && (
+            <>
+              <div className={s.stepCenter}>
+                <span className={s.doneBadge} aria-hidden="true">
+                  ✓
+                </span>
+                <h1 className={s.stepTitle}>{t("projectSetup.doneTitle")}</h1>
+                <p className={s.stepLead}>{t("projectSetup.doneLead")}</p>
+                <div className={s.summary}>
+                  <span>{localeTexts.projectName}</span>
+                  <strong>
+                    {name.trim() || localeTexts.projectTypes[type]?.title}
+                  </strong>
+                </div>
+                <div className={s.summary}>
+                  <span>{localeTexts.projectType}</span>
+                  <strong>{localeTexts.projectTypes[type]?.title}</strong>
+                </div>
+              </div>
+              <button type="button" className={s.startBtn} onClick={finish}>
+                {t("projectSetup.goToWork")}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const folderPreview = name.trim()
     ? toFolderName(name.trim())
     : type
@@ -285,15 +402,13 @@ export default function ProjectSetupScreen({
   return (
     <div className={s.screen}>
       <div className={s.card}>
-        <button
-          className={s.langBtn}
-          type="button"
-          onClick={toggleLanguage}
-          aria-label={localeTexts.languageToggle}
-        >
-          {localeTexts.languageToggle}
-        </button>
-        <div className={s.logo}>📋</div>
+        {initialStep !== "project" && (
+          <StepNav
+            index={stepIndex}
+            onBack={back}
+            label={t("projectSetup.back")}
+          />
+        )}
         <h1 className={s.title}>{localeTexts.title}</h1>
         <p className={s.subtitle}>{localeTexts.subtitle}</p>
 
@@ -362,7 +477,7 @@ export default function ProjectSetupScreen({
           onClick={handleSubmit}
           disabled={!type || isImporting}
         >
-          {localeTexts.start}
+          {t("projectSetup.continue")}
         </button>
 
         {(onImportZip || onImportExcel) && (
@@ -452,6 +567,32 @@ export default function ProjectSetupScreen({
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function Dots({ index }) {
+  return (
+    <div className={s.dots} aria-hidden="true">
+      {[0, 1, 2].map((dot) => (
+        <span key={dot} className={dot === index ? s.dotOn : s.dot} />
+      ))}
+    </div>
+  );
+}
+
+function StepNav({ index, onBack, label }) {
+  return (
+    <div className={s.stepNav}>
+      <button
+        type="button"
+        className={s.stepBack}
+        onClick={onBack}
+        aria-label={label}
+      >
+        ←
+      </button>
+      <Dots index={Math.min(index, 2)} />
     </div>
   );
 }

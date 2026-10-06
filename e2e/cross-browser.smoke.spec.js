@@ -4,6 +4,8 @@ test("boots the project setup screen and accepts basic input", async ({
   page,
 }) => {
   await page.goto("/");
+  await page.getByRole("button", { name: "Начало работы" }).click();
+  await page.getByRole("button", { name: "Пропустить" }).click();
   await expect(
     page.getByRole("heading", { name: "Журнал утечек", exact: true }),
   ).toBeVisible();
@@ -11,7 +13,5 @@ test("boots the project setup screen and accepts basic input", async ({
     .getByLabel("Название проекта", { exact: true })
     .fill("Browser smoke");
   await page.getByRole("button", { name: /Upstream/ }).click();
-  await expect(
-    page.getByRole("button", { name: "Начать работу" }),
-  ).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Продолжить" })).toBeEnabled();
 });
