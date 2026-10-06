@@ -5,7 +5,24 @@ import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import PhotoInput from "@/features/photos/PhotoInput/PhotoInput";
 import Icon from "@/components/ui/Icon/Icon";
 import { getRepairBrigade } from "@/domain/repairStages";
+import { REPAIR_CHECK_OUTCOME, repairCheckOutcome } from "@/domain/repairCheck";
 import s from "./Repairs.module.scss";
+
+// Кнопка и строка под ответами говорят, куда уйдёт запись.
+const OUTCOME_TEXT = {
+  [REPAIR_CHECK_OUTCOME.RESOLVED]: {
+    submit: "repairs.accept.submit",
+    result: "repairs.accept.resultResolved",
+  },
+  [REPAIR_CHECK_OUTCOME.IN_REPAIR]: {
+    submit: "repairs.accept.keepInRepair",
+    result: "repairs.accept.resultInRepair",
+  },
+  [REPAIR_CHECK_OUTCOME.WAITING_MTR]: {
+    submit: "repairs.accept.toWaiting",
+    result: "repairs.accept.resultWaiting",
+  },
+};
 
 export const MTR_SOURCE = Object.freeze({
   ACCEPTANCE: "acceptance",
@@ -13,10 +30,10 @@ export const MTR_SOURCE = Object.freeze({
 });
 
 /**
- * Приёмка ремонта на весь экран (7c). Если ремонт не выполнен или утечка
- * осталась, принять нечего: экран возвращает работу в ремонт с замечанием.
- * Иначе нужен снимок после работ, и ремонт закрывается переходом в
- * «устранена» — тем же, что и раньше.
+ * Проверка ремонта на весь экран (7c). Ответы решают, куда уходит запись
+ * (`repairCheckOutcome`): утечки нет — ремонт закрыт, нужен снимок после
+ * работ; утечка есть и ремонт выполнен — «в ремонте»; ремонт не выполнен —
+ * «ожидает МТР».
  *
  * МТР по факту — из принятых по накладным позиций («Приёмка») или от
  * заказчика (два поля ввода).
@@ -25,8 +42,7 @@ export const MTR_SOURCE = Object.freeze({
  *   leak: any,
  *   items?: Array<{ id: string, name: string, unit: string, invoice: string, available: number }>,
  *   saving?: boolean,
- *   onAccept: (draft: { photo_after: string, materials_equipment?: string, note?: string, brigade?: string }) => Promise<void>|void,
- *   onReturn: (mark: { brigade?: string, note?: string }) => Promise<void>|void,
+ *   onSave: (draft: { leaking: boolean, done: boolean, photo_after?: string, materials_equipment?: string, note?: string, brigade?: string }) => Promise<boolean|void>|boolean|void,
  *   onClose: () => void,
  * }} props
  */
@@ -34,8 +50,7 @@ export default function AcceptRepairScreen({
   leak,
   items = [],
   saving = false,
-  onAccept,
-  onReturn,
+  onSave,
   onClose,
 }) {
   const { t } = useLanguage();
@@ -59,7 +74,8 @@ export default function AcceptRepairScreen({
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const accepting = done && !stillLeaking;
+  const outcome = repairCheckOutcome({ leaking: stillLeaking, done });
+  const accepting = outcome === REPAIR_CHECK_OUTCOME.RESOLVED;
   const item = items.find((candidate) => candidate.id === itemId) ?? null;
   const locked = saving || busy;
 
@@ -76,8 +92,14 @@ export default function AcceptRepairScreen({
 
   const submit = async () => {
     setSubmitted(true);
+    const answers = {
+      leaking: stillLeaking,
+      done,
+      note: note.trim() || undefined,
+      brigade: brigade.trim() || undefined,
+    };
     if (!accepting) {
-      await onReturn({ brigade, note });
+      await onSave(answers);
       return;
     }
     if (!photo?.raw) return;
@@ -88,11 +110,10 @@ export default function AcceptRepairScreen({
       });
       const path = typeof saved === "string" ? saved : saved?.path;
       if (!path) throw new Error("Photo storage did not return a saved path");
-      await onAccept({
+      await onSave({
+        ...answers,
         photo_after: path,
         materials_equipment: materials(),
-        note: note.trim() || undefined,
-        brigade: brigade.trim() || undefined,
       });
     } finally {
       setBusy(false);
@@ -145,6 +166,9 @@ export default function AcceptRepairScreen({
           {yesNo(done, setDone, t("repairs.accept.done"))}
           {yesNo(stillLeaking, setStillLeaking, t("repairs.accept.leaking"))}
         </div>
+        <p className={s.hint} aria-live="polite">
+          {t(OUTCOME_TEXT[outcome].result)}
+        </p>
 
         <label className={s.field}>
           <span>{t("repairs.brigade")}</span>
@@ -277,7 +301,7 @@ export default function AcceptRepairScreen({
           disabled={locked}
           onClick={submit}
         >
-          {accepting ? t("repairs.accept.submit") : t("repairs.accept.return")}
+          {t(OUTCOME_TEXT[outcome].submit)}
         </button>
       </footer>
     </div>

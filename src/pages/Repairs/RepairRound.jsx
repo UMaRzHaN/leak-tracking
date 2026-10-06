@@ -1,13 +1,8 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
-import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import LeakCardCompact from "@/features/leakList/LeakCardCompact/LeakCardCompact";
 import Notification from "@/components/ui/Notification/Notification";
 import Icon from "@/components/ui/Icon/Icon";
-import {
-  resolveLeakRecord,
-  deletePhotoIfUnreferenced,
-} from "@/domain/leakLifecycle";
 import {
   REPAIR_STAGE,
   getLastRepairStageMark,
@@ -20,14 +15,10 @@ import { getRepairDoneAt } from "@/domain/leakEvents";
 import { getRepairStageMeta, splitMaterials } from "@/utils/repairStage";
 import { formatMonitoringDate } from "@/utils/monitoring";
 import { errorText } from "@/utils/appError";
-import { useProjectData } from "@/app/project/ProjectContext";
-import { useAcceptances } from "@/utils/acceptanceStorage";
-import { receivedItems } from "@/domain/equipmentAcceptance";
-import { ignoredError } from "@/utils/ignoredError";
 import s from "./Repairs.module.scss";
 
 const RepairMarkSheet = lazy(() => import("./RepairMarkSheet"));
-const AcceptRepairScreen = lazy(() => import("./AcceptRepairScreen"));
+const RepairCheck = lazy(() => import("./RepairCheck"));
 
 const FILTER = Object.freeze({ DUE: "due", ACCEPTED: "accepted", ALL: "all" });
 
@@ -68,11 +59,6 @@ export default function RepairRound({
   userProfile,
 }) {
   const { t, lang } = useLanguage();
-  const { deletePhoto } = usePhotoStorage();
-  const { activeProject } = useProjectData();
-  // «МТР по факту» в приёмке — из того, что принято по накладным (7f).
-  const [invoices] = useAcceptances(activeProject?.id ?? null);
-  const acceptanceItems = useMemo(() => receivedItems(invoices), [invoices]);
   const [filter, setFilter] = useState(/** @type {string} */ (FILTER.DUE));
   const [search, setSearch] = useState("");
   const [markLeak, setMarkLeak] = useState(/** @type {any} */ (null));
@@ -231,12 +217,16 @@ export default function RepairRound({
                   extraChips={splitMaterials(leak.materials_equipment)}
                   collapsible={false}
                   defaultExpanded
-                  // Свайп ведёт туда же, куда кнопка в футере: в обходе
-                  // ремонтов у карточки одно действие.
+                  // Тап — туда же, куда кнопка в футере; свайп влево —
+                  // проверка ремонта (7c), как в «Базе» модуля ремонтов.
                   onOpenDetails={() =>
                     footer.accept ? setAcceptLeak(leak) : setMarkLeak(leak)
                   }
-                  onMonitor={() => setMarkLeak(leak)}
+                  onMonitor={
+                    stage === REPAIR_STAGE.ACCEPTED
+                      ? undefined
+                      : () => setAcceptLeak(leak)
+                  }
                   onPickStatus={() => setMarkLeak(leak)}
                 />
                 <div className={s.bar}>
@@ -290,59 +280,13 @@ export default function RepairRound({
         )}
 
         {acceptLeak && (
-          <AcceptRepairScreen
+          <RepairCheck
             leak={acceptLeak}
-            items={acceptanceItems}
-            saving={saving}
+            data={data}
+            setData={setData}
+            userProfile={userProfile}
             onClose={() => setAcceptLeak(null)}
-            onReturn={async ({ brigade, note }) => {
-              const saved = await update(acceptLeak, (record) =>
-                markRepairStage(
-                  record,
-                  { stage: REPAIR_STAGE.IN_REPAIR, brigade, note },
-                  { user },
-                ),
-              );
-              if (saved) {
-                setAcceptLeak(null);
-                setNotification({
-                  type: "success",
-                  message: t("repairs.accept.returned"),
-                });
-              }
-            }}
-            onAccept={async ({
-              photo_after,
-              materials_equipment,
-              note,
-              brigade,
-            }) => {
-              const saved = await update(acceptLeak, (record) =>
-                resolveLeakRecord(
-                  brigade && brigade !== getRepairBrigade(record)
-                    ? markRepairStage(
-                        record,
-                        { stage: REPAIR_STAGE.READY, brigade },
-                        { user },
-                      )
-                    : record,
-                  { photo_after, materials_equipment, note },
-                  { user },
-                ),
-              );
-              if (saved) {
-                setAcceptLeak(null);
-                setNotification({
-                  type: "success",
-                  message: t("repairs.accept.saved"),
-                });
-              } else {
-                // Снимок уже лежит в хранилище, а запись его не получила.
-                deletePhotoIfUnreferenced(photo_after, data, deletePhoto).catch(
-                  ignoredError("repairs.photoCleanup"),
-                );
-              }
-            }}
+            onNotify={setNotification}
           />
         )}
       </Suspense>

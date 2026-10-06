@@ -369,7 +369,11 @@ export default function App() {
             page={page}
             setPage={setPage}
             openCount={scopedOpenCount}
-            roundDueCount={monitoringDueCount ?? 0}
+            remainingCount={
+              module === MODULE.REPAIRS
+                ? repairCount
+                : (monitoringDueCount ?? 0)
+            }
             module={module}
             onRoute={() => setRouteSheetOpen(true)}
             onAddComponent={

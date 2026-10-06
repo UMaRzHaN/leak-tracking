@@ -42,7 +42,7 @@ describe("getRepairStage", () => {
     expect(getRepairStage(leak)).toBe(REPAIR_STAGE.WAITING_MTR);
   });
 
-  it("calls a resolved leak with a repair accepted and keeps others out", () => {
+  it("calls a resolved leak with a repair accepted and an open one waiting", () => {
     expect(
       getRepairStage({
         status: "resolved",
@@ -50,7 +50,8 @@ describe("getRepairStage", () => {
       }),
     ).toBe(REPAIR_STAGE.ACCEPTED);
     expect(getRepairStage({ status: "resolved", events: [] })).toBeNull();
-    expect(getRepairStage({ status: "open" })).toBeNull();
+    // Открытая утечка — ремонт по ней не начат, она ждёт МТР.
+    expect(getRepairStage({ status: "open" })).toBe(REPAIR_STAGE.WAITING_MTR);
   });
 });
 
@@ -74,14 +75,15 @@ describe("repair lists", () => {
     expect(getRepairLeaks(leaks).map((leak) => leak.id)).toEqual([
       "a",
       "b",
+      "c",
       "d",
     ]);
     expect(countRepairStages(leaks)).toMatchObject({
-      all: 3,
+      all: 4,
       in_repair: 1,
       ready: 1,
       accepted: 1,
-      waiting_mtr: 0,
+      waiting_mtr: 1,
     });
   });
 });

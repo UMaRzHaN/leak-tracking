@@ -63,6 +63,9 @@ function LeakCardCompact({
     null
   ),
   extraChips = /** @type {string[]} */ ([]),
+  // Подпись свайпа влево, когда он ведёт не в мониторинг: в ремонтах —
+  // «Проверить ремонт».
+  monitorLabel = /** @type {string|null} */ (null),
 }) {
   useRenderMetric("LeakCardCompact");
 
@@ -163,7 +166,9 @@ function LeakCardCompact({
           <div className={s.hintLeft}>
             <span className={s.hintIcon}>☰</span>
             <span className={s.hintText}>
-              {onMonitor ? t("cards.monitoring") : t("cards.status")}
+              {onMonitor
+                ? (monitorLabel ?? t("cards.monitoring"))
+                : t("cards.status")}
             </span>
           </div>
         )}

@@ -286,7 +286,7 @@ describe("MainPage", () => {
     render(
       <MainPage
         setPage={vi.fn()}
-        data={[repair, { id: "o1", status: "open" }]}
+        data={[repair, { id: "x1", status: "resolved", events: [] }]}
         setData={vi.fn()}
         module="repairs"
       />,

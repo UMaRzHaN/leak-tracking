@@ -1,6 +1,8 @@
 import { lazy, Suspense, useState } from "react";
 import { useLanguage } from "./hooks/useLanguage";
 import { isListPage } from "@/app/pages";
+import { MODULE } from "@/app/modules/activeModule";
+import { STATUS } from "@/utils/status";
 import { useModalDialog } from "@/hooks/useModalDialog";
 import { saveRecoveryFile } from "@/services/storage/saveRecoveryFile";
 
@@ -11,6 +13,7 @@ const DataBase = lazy(() => import("@/pages/DataBase/DataBase"));
 const MapPage = lazy(() => import("@/pages/MapPage/MapPage"));
 const Monitoring = lazy(() => import("@/pages/Monitoring/Monitoring"));
 const RepairRound = lazy(() => import("@/pages/Repairs/RepairRound"));
+const RepairCheck = lazy(() => import("@/pages/Repairs/RepairCheck"));
 const AcceptanceList = lazy(() => import("@/pages/Repairs/AcceptanceList"));
 const Reconcile = lazy(() => import("@/pages/Reconcile/Reconcile"));
 const ExportPage = lazy(() => import("@/pages/Export/ExportPage"));
@@ -167,6 +170,23 @@ export default function AppRoutes({
   userProfile,
 }) {
   const listPage = isListPage(page);
+  const { t } = useLanguage();
+  // В модуле ремонтов свайп по карточке ведёт не в мониторинг, а в проверку
+  // ремонта (7c) — поверх той же страницы, без перехода.
+  const [repairCheckLeak, setRepairCheckLeak] = useState(
+    /** @type {any} */ (null),
+  );
+  const repairMode = module === MODULE.REPAIRS;
+  const checkLeak = repairMode
+    ? (leak) => {
+        if ((leak?.status ?? STATUS.OPEN) === STATUS.RESOLVED) {
+          notifyApp?.("warning", t("repairs.accept.alreadyAccepted"));
+          return;
+        }
+        setRepairCheckLeak(leak);
+      }
+    : requestMonitoring;
+  const checkLabel = repairMode ? t("repairs.checkSwipe") : null;
 
   return (
     <div
@@ -196,7 +216,7 @@ export default function AppRoutes({
             data={data}
             scopedData={scopedData}
             setData={save}
-            onMonitorLeak={requestMonitoring}
+            onMonitorLeak={checkLeak}
             userProfile={userProfile}
             coverage={coverage}
             module={module}
@@ -241,8 +261,9 @@ export default function AppRoutes({
             setData={save}
             coords={coords}
             sharedFilters={sharedFilters}
-            onMonitorLeak={requestMonitoring}
+            onMonitorLeak={checkLeak}
             onMonitorLeaks={requestMonitoringQueue}
+            monitorLabel={checkLabel}
             userProfile={userProfile}
           />
         )}
@@ -356,9 +377,19 @@ export default function AppRoutes({
             module={module}
             setData={save}
             userProfile={userProfile}
-            onMonitor={requestMonitoring}
+            onMonitor={checkLeak}
             repairMode={module === "repairs"}
             inventoryMode={module === "inventory"}
+          />
+        )}
+        {repairCheckLeak && (
+          <RepairCheck
+            leak={repairCheckLeak}
+            data={data}
+            setData={save}
+            userProfile={userProfile}
+            onClose={() => setRepairCheckLeak(null)}
+            onNotify={({ type, message }) => notifyApp?.(type, message)}
           />
         )}
       </Suspense>

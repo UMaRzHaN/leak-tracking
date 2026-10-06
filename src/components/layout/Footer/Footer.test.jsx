@@ -73,7 +73,7 @@ describe("Footer navigation", () => {
   it("counts the tags left in the round on the database tab in monitoring", () => {
     renderFooter("", 3, {
       module: "monitoring",
-      roundDueCount: 12,
+      remainingCount: 12,
       onRoute: () => {},
     });
     expect(
@@ -85,9 +85,16 @@ describe("Footer navigation", () => {
   });
 
   it("hides the database badge in monitoring when nothing is left", () => {
-    renderFooter("", 3, { module: "monitoring", roundDueCount: 0 });
+    renderFooter("", 3, { module: "monitoring", remainingCount: 0 });
     expect(screen.getByRole("button", { name: "Database" }).textContent).toBe(
       "Database",
     );
+  });
+
+  it("counts unaccepted repairs on the database tab in repairs", () => {
+    renderFooter("", 3, { module: "repairs", remainingCount: 7 });
+    expect(
+      screen.getByRole("button", { name: "Database" }).textContent,
+    ).toContain("7");
   });
 });

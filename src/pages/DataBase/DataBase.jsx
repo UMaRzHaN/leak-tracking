@@ -18,6 +18,7 @@ export default function DataBase({
   sharedFilters,
   onMonitorLeak,
   onMonitorLeaks,
+  monitorLabel = /** @type {string|null} */ (null),
   userProfile,
 }) {
   useRenderMetric("DataBase");
@@ -103,6 +104,7 @@ export default function DataBase({
         onOpenDetails={actions.setActiveLeak}
         onPickStatus={actions.handlePickStatus}
         onMonitor={onMonitorLeak}
+        monitorLabel={monitorLabel}
         onToggleSelect={bulk.toggleSelected}
       />
 

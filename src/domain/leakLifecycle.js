@@ -223,6 +223,32 @@ export function startLeakRepair(leak, draft = {}, { user, now } = {}) {
 }
 
 /**
+ * Ремонт встал без МТР: из «в ремонте» назад в «открыта» (проверка ремонта,
+ * «утечка есть, ремонт не выполнен»). Строгий порядок статусов такого шага
+ * не знает, поэтому переход отдельный; событий он не оставляет — как и
+ * возврат в работу, — только запись в журнале.
+ *
+ * @param {any} leak @param {{ note?: string }} [draft] @param {{user?: any, now?: number}} [options]
+ */
+export function returnLeakToWaiting(leak, draft = {}, { user, now } = {}) {
+  if ((leak?.status ?? STATUS.OPEN) !== STATUS.IN_PROGRESS) {
+    const error = new Error(
+      `Invalid leak status transition: ${leak?.status} -> ${STATUS.OPEN}`,
+    );
+    error.code = "INVALID_LEAK_STATUS_TRANSITION";
+    throw error;
+  }
+  const { timestamp, iso } = lifecycleTime(now);
+  const after = { ...leak, status: STATUS.OPEN, updatedAt: timestamp };
+  return withStatusHistory(leak, after, {
+    to: STATUS.OPEN,
+    user,
+    iso,
+    note: draft.note ?? null,
+  });
+}
+
+/**
  * Оба списка обходятся, пока записи обхода не переехали в ленту событий целиком.
  * Снимок, оставшийся только в одном из них, — это снимок, который сборка мусора
  * сочла бы бесхозным и удалила; объединение здесь дешевле потерянного фото.

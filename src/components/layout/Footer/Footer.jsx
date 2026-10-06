@@ -14,9 +14,10 @@ export default function Footer({
   page,
   setPage,
   openCount = 0,
-  // Тегов к проверке в текущем обходе: в мониторинге бейдж «Базы» считает их,
-  // а не открытые утечки.
-  roundDueCount = 0,
+  // Что осталось сделать в модуле: в мониторинге — тегов к проверке в
+  // обходе, в ремонтах — непринятых работ. Бейдж «Базы» там считает это, а
+  // не открытые утечки.
+  remainingCount = 0,
   module = /** @type {string} */ (MODULE.LDAR),
   onRoute = /** @type {(() => void)|null} */ (null),
   onAddComponent = /** @type {(() => void)|null} */ (null),
@@ -127,7 +128,9 @@ export default function Footer({
               {item.badge && (
                 <Badge
                   count={
-                    module === MODULE.MONITORING ? roundDueCount : openCount
+                    module === MODULE.MONITORING || module === MODULE.REPAIRS
+                      ? remainingCount
+                      : openCount
                   }
                 />
               )}

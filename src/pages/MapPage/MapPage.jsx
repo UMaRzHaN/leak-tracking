@@ -31,6 +31,7 @@ import { globalScope } from "@/utils/globalScope";
 import { useLeakActions } from "@/pages/DataBase/hooks/useLeakActions";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { MODULE } from "@/app/modules/activeModule";
+import { STATUS } from "@/utils/status";
 import s from "./MapPage.module.scss";
 
 const LeakDetailsSheet = lazy(
@@ -285,7 +286,15 @@ export default function MapPage({
         <MapLeakCard
           leak={selectedLeak}
           coords={gpsEnabled ? coords : null}
-          onMonitor={module === MODULE.MONITORING ? onMonitor : null}
+          // «Проверить» — в мониторинге осмотр, в ремонтах проверка ремонта
+          // (куда ведёт, решает приложение). Принятый ремонт проверять нечем.
+          onMonitor={
+            module === MODULE.MONITORING ||
+            (module === MODULE.REPAIRS &&
+              (selectedLeak.status ?? STATUS.OPEN) !== STATUS.RESOLVED)
+              ? onMonitor
+              : null
+          }
           onOpen={(leak) => {
             selectLeak(null);
             leakActions.setActiveLeak(leak);

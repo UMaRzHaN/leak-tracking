@@ -446,9 +446,12 @@
   color: var(--c-text2);
   background: var(--c-bg);
   border: 1px solid var(--c-border);
-  border-radius: var(--r-pill);
+  border-radius: 12px;
   padding: 2px 9px;
-  white-space: nowrap;
+  // Длинный МТР из ремонтов переносится внутри карточки, а не уходит за край.
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .chipCalc {

@@ -15,9 +15,14 @@ vi.mock("@/hooks/usePhotoStorage", () => ({
   }),
 }));
 vi.mock("@/features/leakList/LeakCardCompact/LeakCardCompact", () => ({
-  default: ({ leak, badge }) => (
+  default: ({ leak, badge, onMonitor }) => (
     <div>
       {leak.leak_id} {badge?.label}
+      {onMonitor && (
+        <button type="button" onClick={() => onMonitor(leak)}>
+          swipe-left
+        </button>
+      )}
     </div>
   ),
 }));
@@ -61,7 +66,9 @@ function renderRound(data) {
 
 describe("RepairRound", () => {
   it("marks a repair's stage with the crew", async () => {
-    const setData = renderRound([repair("r1"), { id: "o", status: "open" }]);
+    // Устранённая без ремонта — не ремонт; открытые теперь «ожидают МТР».
+    const outsider = { id: "o", status: "resolved", events: [] };
+    const setData = renderRound([repair("r1"), outsider]);
 
     expect(screen.getByRole("button", { name: "To accept 1" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Mark" }));
@@ -81,7 +88,7 @@ describe("RepairRound", () => {
       brigade: "Crew 2",
       user: "Ivan",
     });
-    expect(untouched).toEqual({ id: "o", status: "open" });
+    expect(untouched).toEqual(outsider);
   });
 
   it("accepts a finished repair with a photo and closes it", async () => {
@@ -132,13 +139,31 @@ describe("RepairRound", () => {
     fireEvent.change(await screen.findByLabelText("Still leaking?"), {
       target: { value: "yes" },
     });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Send back to repair" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Keep in repair" }));
 
     await waitFor(() => expect(setData).toHaveBeenCalled());
     const [back] = setData.mock.calls[0][0];
     expect(back.status).toBe("in_progress");
     expect(back.events[back.events.length - 1].stage).toBe("in_repair");
+  });
+
+  it("returns the leak to open when the repair was not done", async () => {
+    const setData = renderRound([repair("r4")]);
+
+    // Свайп влево по карточке — проверка ремонта.
+    fireEvent.click(screen.getAllByRole("button", { name: "swipe-left" })[0]);
+    fireEvent.change(await screen.findByLabelText("Still leaking?"), {
+      target: { value: "yes" },
+    });
+    fireEvent.change(screen.getByLabelText("Repair done?"), {
+      target: { value: "no" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Back to awaiting materials" }),
+    );
+
+    await waitFor(() => expect(setData).toHaveBeenCalled());
+    const [back] = setData.mock.calls[0][0];
+    expect(back.status).toBe("open");
   });
 });

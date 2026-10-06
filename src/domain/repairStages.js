@@ -11,8 +11,9 @@ import { STATUS } from "@/utils/status";
 /**
  * Стадии ремонта для модуля «Ремонт» (7a–7c).
  *
- * Статус записи по-прежнему один из трёх; стадия уточняет «в ремонте»: ждут
- * ли МТР, идёт ли работа, закончила ли бригада и ждёт ли приёмки. «Принят» —
+ * Статус записи по-прежнему один из трёх; стадия его уточняет. Открытая
+ * утечка — это «ожидает МТР»: ремонт по ней ещё не начат. «В ремонте» —
+ * идёт ли работа, закончила ли бригада и ждёт ли приёмки. «Принят» —
  * это устранённая утечка, у которой был ремонт: приёмка закрывает его тем же
  * переходом в «устранена», что и раньше, поэтому отдельного события для неё
  * нет.
@@ -55,6 +56,7 @@ function stageEventsOfCurrentRepair(leak) {
  */
 export function getRepairStage(leak) {
   const status = leak?.status ?? STATUS.OPEN;
+  if (status === STATUS.OPEN) return REPAIR_STAGE.WAITING_MTR;
   if (status === STATUS.IN_PROGRESS) {
     const marks = stageEventsOfCurrentRepair(leak);
     return marks[marks.length - 1]?.stage ?? REPAIR_STAGE.IN_REPAIR;
@@ -80,7 +82,7 @@ export function getRepairBrigade(leak) {
   return null;
 }
 
-/** Записи модуля ремонтов: идущие ремонты и принятые. */
+/** Записи модуля ремонтов: ждущие МТР (открытые), идущие и принятые. */
 export function getRepairLeaks(leaks) {
   return (Array.isArray(leaks) ? leaks : []).filter(
     (leak) => getRepairStage(leak) !== null,
@@ -114,7 +116,12 @@ export function countRepairStages(leaks) {
  * @param {{ user?: string, now?: number }} [options]
  */
 export function markRepairStage(leak, mark, { user, now } = {}) {
-  if ((leak?.status ?? STATUS.OPEN) !== STATUS.IN_PROGRESS) {
+  const status = leak?.status ?? STATUS.OPEN;
+  // Открытая утечка и есть «ожидает МТР»: ей можно оставить бригаду и
+  // замечание, но не другую стадию — для неё ремонт надо начать.
+  const waiting =
+    status === STATUS.OPEN && mark?.stage === REPAIR_STAGE.WAITING_MTR;
+  if (status !== STATUS.IN_PROGRESS && !waiting) {
     const error = new Error("Repair stage can only be marked during a repair");
     /** @type {any} */ (error).code = "REPAIR_NOT_IN_PROGRESS";
     throw error;

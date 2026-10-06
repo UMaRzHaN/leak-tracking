@@ -14,6 +14,7 @@ function LeakList({
   onOpenDetails,
   onPickStatus,
   onMonitor,
+  monitorLabel = /** @type {string|null} */ (null),
   onToggleSelect,
 }) {
   const { t } = useTranslation();
@@ -46,12 +47,20 @@ function LeakList({
         onOpenDetails={onOpenDetails}
         onPickStatus={onPickStatus}
         onMonitor={onMonitor}
+        monitorLabel={monitorLabel}
         nearbyDist={leak._nearbyDist}
         selected={selectedIds.has(leak.id)}
         onToggleSelect={onToggleSelect}
       />
     ),
-    [onMonitor, onOpenDetails, onPickStatus, selectedIds, onToggleSelect],
+    [
+      onMonitor,
+      monitorLabel,
+      onOpenDetails,
+      onPickStatus,
+      selectedIds,
+      onToggleSelect,
+    ],
   );
 
   if (!items.length) {

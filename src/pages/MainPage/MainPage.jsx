@@ -12,6 +12,7 @@ import {
   countRepairStages,
   getRepairLeaks,
   getRepairStage,
+  REPAIR_STAGE,
 } from "@/domain/repairStages";
 import {
   REPAIR_STAGE_ORDER,
@@ -190,7 +191,14 @@ export default function MainPage({
                   }
                   onOpenDetails={setActiveLeak}
                   onPickStatus={handlePickStatus}
-                  onMonitor={onMonitorLeak}
+                  // В ремонтах свайп влево — проверка ремонта; у принятого
+                  // проверять нечего, там свайп снова ведёт к статусу.
+                  onMonitor={
+                    repairMode && getRepairStage(leak) === REPAIR_STAGE.ACCEPTED
+                      ? undefined
+                      : onMonitorLeak
+                  }
+                  monitorLabel={repairMode ? t("repairs.checkSwipe") : null}
                 />
               ))}
             </div>
