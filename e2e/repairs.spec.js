@@ -14,9 +14,9 @@ import {
 
 /**
  * Модуль ремонтов от начала работ до приёмки: утечка в ремонте попадает в
- * журнал, бригада отмечает готовность, приёмка со снимком закрывает ремонт.
+ * журнал, проверка ремонта со снимком и бригадой закрывает его.
  */
-test("ведёт ремонт от отметки бригады до приёмки", async ({ page }) => {
+test("ведёт ремонт от начала работ до устранения", async ({ page }) => {
   test.setTimeout(120_000);
   await createProject(page, "Repairs E2E");
   await setUserProfile(page);
@@ -36,32 +36,28 @@ test("ведёт ремонт от отметки бригады до приём
   ).toHaveCount(0);
 
   await footerTab(page, "Обход").click();
-  await page.getByRole("button", { name: "Отметить", exact: true }).click();
-  await page.getByRole("radio", { name: "Готово к проверке" }).click();
-  await page.getByLabel("Бригада", { exact: true }).fill("Бригада 2");
-  await page.getByRole("button", { name: "Сохранить отметку" }).click();
-
-  await page.getByRole("button", { name: "Принять", exact: true }).click();
+  await page.getByRole("button", { name: "Проверить", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Приёмка ремонта" }),
   ).toBeVisible();
+  await page.getByLabel("Бригада", { exact: true }).fill("Бригада 2");
   await page.getByRole("radio", { name: "Заказчик" }).click();
   await page.getByLabel("Наименование МТР").fill("Прокладка СНП-Д 200-16");
   await attachModalPhoto(page);
   await page.getByRole("button", { name: "Принять и закрыть ремонт" }).click();
 
-  await page.getByRole("button", { name: /^Принято 1/ }).click();
+  await page.getByRole("button", { name: /^Устранено 1/ }).click();
   await expect(page.getByText("№ 7301", { exact: true })).toBeVisible();
   await page.reload();
-  await page.getByRole("button", { name: /^Принято 1/ }).click();
-  await expect(page.getByText(/^Принят:/)).toBeVisible();
+  await page.getByRole("button", { name: /^Устранено 1/ }).click();
+  await expect(page.getByText(/^Устранена:/)).toBeVisible();
 
   // Карта модуля ремонтов делит ремонты по стадии — в шторке фильтров.
   await footerTab(page, "Карта").click();
   await openMapFilters(page);
   await page.getByRole("button", { name: "Фильтр по стадии" }).click();
   await expect(
-    page.getByRole("button", { name: /^Принят\s*1$/ }),
+    page.getByRole("button", { name: /^Устранена\s*1$/ }),
   ).toBeVisible();
 });
 
@@ -104,10 +100,7 @@ test("принимает оборудование партиями и даёт �
 
   await page.getByRole("button", { name: "Назад" }).click();
   await footerTab(page, "Обход").click();
-  await page.getByRole("button", { name: "Отметить", exact: true }).click();
-  await page.getByRole("radio", { name: "Готово к проверке" }).click();
-  await page.getByRole("button", { name: "Сохранить отметку" }).click();
-  await page.getByRole("button", { name: "Принять", exact: true }).click();
+  await page.getByRole("button", { name: "Проверить", exact: true }).click();
 
   // МТР по умолчанию — из принятого по накладной.
   await expect(page.getByRole("radio", { name: "Приёмка" })).toHaveAttribute(
@@ -119,6 +112,6 @@ test("принимает оборудование партиями и даёт �
   );
   await attachModalPhoto(page);
   await page.getByRole("button", { name: "Принять и закрыть ремонт" }).click();
-  await page.getByRole("button", { name: /^Принято 1/ }).click();
+  await page.getByRole("button", { name: /^Устранено 1/ }).click();
   await expect(page.getByText("№ 7401", { exact: true })).toBeVisible();
 });

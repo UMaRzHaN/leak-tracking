@@ -68,7 +68,7 @@ describe("applyRepairCheck", () => {
         options,
       );
       expect(next.status).toBe(STATUS.RESOLVED);
-      expect(getRepairStage(next)).toBe(REPAIR_STAGE.ACCEPTED);
+      expect(getRepairStage(next)).toBe(REPAIR_STAGE.RESOLVED);
       expect(getRepairBrigade(next)).toBe("Бригада 2");
     }
   });

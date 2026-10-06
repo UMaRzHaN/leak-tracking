@@ -148,6 +148,14 @@ function makeRegistry(overrides = {}) {
   };
 }
 
+// Карточка компонента открывается только свайпом вправо: тап по ней ничего не
+// делает, чтобы касание при прокрутке не открывало чужую карточку.
+function swipeOpen(element) {
+  fireEvent.mouseDown(element, { clientX: 0, clientY: 0 });
+  fireEvent.mouseMove(element, { clientX: 120, clientY: 0 });
+  fireEvent.mouseUp(element, { clientX: 120, clientY: 0 });
+}
+
 describe("ComponentRegistry screen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -389,7 +397,7 @@ describe("ComponentRegistry screen", () => {
     });
     renderRegistry();
 
-    fireEvent.click(screen.getByText("Задвижка"));
+    swipeOpen(screen.getByText("Задвижка"));
 
     // The trail lives on its own tab, as it does on the leak sheet.
     fireEvent.click(screen.getByText("History"));
@@ -409,7 +417,7 @@ describe("ComponentRegistry screen", () => {
     });
     renderRegistry();
 
-    fireEvent.click(screen.getByText("Задвижка"));
+    swipeOpen(screen.getByText("Задвижка"));
     fireEvent.click(screen.getByRole("button", { name: "Delete component" }));
     expect(registry.current.removeComponent).not.toHaveBeenCalled();
 
@@ -794,7 +802,7 @@ describe("component card form", () => {
 
     // Opening a card lands on what it says; editing is a step further in —
     // и остаётся в этом же листе, как у утечки, а не открывает мастер заново.
-    fireEvent.click(screen.getByText("Задвижка"));
+    swipeOpen(screen.getByText("Задвижка"));
     const sheet = screen.getByRole("dialog", { name: "Component card" });
     fireEvent.click(screen.getByText("Edit"));
 
@@ -926,7 +934,7 @@ describe("copying from the previous card", () => {
       lastComponent: { id: "prev", component_uid: "6", scheme_tag: "PG" },
     });
     renderRegistry();
-    fireEvent.click(screen.getByText("Задвижка"));
+    swipeOpen(screen.getByText("Задвижка"));
     fireEvent.click(screen.getByText("Edit"));
 
     expect(
@@ -1079,8 +1087,18 @@ describe("the card in full", () => {
   function openCard(component = walked) {
     registry.current = makeRegistry({ components: [component] });
     renderRegistry();
-    fireEvent.click(screen.getByText("Задвижка"));
+    swipeOpen(screen.getByText("Задвижка"));
   }
+
+  it("opens only by a swipe, not by a tap", () => {
+    registry.current = makeRegistry({ components: [walked] });
+    renderRegistry();
+    fireEvent.click(screen.getByText("Задвижка"));
+    expect(screen.queryByText("Coordinates")).toBeNull();
+
+    swipeOpen(screen.getByText("Задвижка"));
+    expect(screen.getByText("Coordinates")).toBeTruthy();
+  });
 
   it("keeps the coordinates off the passport list and on their own tab", () => {
     openCard();

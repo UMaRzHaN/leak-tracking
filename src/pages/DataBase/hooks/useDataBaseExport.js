@@ -64,6 +64,8 @@ export function useDataBaseExport({
     null
   ),
   inventory = /** @type {{withPhotos:boolean}|null} */ (null),
+  // Строки листа «Приёмка оборудования» за период — готовит экран экспорта.
+  acceptanceRows = /** @type {any[]|null} */ (null),
   // Экран экспорта (8b): собрать файл и вернуть его, не сохраняя сразу.
   deferDelivery = false,
 }) {
@@ -121,6 +123,7 @@ export function useDataBaseExport({
           buildWorkbookBuffer: buildWorkbookBufferInWorker,
           deliver: !deferDelivery,
           sheets: sheets ?? {},
+          acceptanceRows: acceptanceRows ?? [],
           includePhotos,
           photoSections: photoSections ?? {},
           addToArchive: inventory
@@ -167,6 +170,7 @@ export function useDataBaseExport({
       setIsExporting(false);
     }
   }, [
+    acceptanceRows,
     activeProject,
     deferDelivery,
     displayed,

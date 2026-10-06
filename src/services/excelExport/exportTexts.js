@@ -47,11 +47,54 @@ const REPAIR_KEYS = [
   "resolvedTime",
   "durationHours",
   "user",
+  "brigade",
   "materials_equipment",
   "note",
   "repairPhoto",
   "donePhoto",
 ];
+
+const REPAIR_LOG_KEYS = [
+  "index",
+  "leak_id",
+  "date",
+  "time",
+  "event",
+  "brigade",
+  "materials_equipment",
+  "note",
+  "user",
+];
+const REPAIR_LOG_EVENTS = [
+  "repair_started",
+  "repair_done",
+  "returned",
+  "waiting_mtr",
+  "in_repair",
+  "ready",
+];
+
+const ACCEPTANCE_KEYS = [
+  "invoice",
+  "supplier",
+  "warehouse",
+  "status",
+  "batch",
+  "date",
+  "time",
+  "name",
+  "unit",
+  "ordered",
+  "qty",
+  "received",
+  "left",
+  "complete",
+  "dnpnMatch",
+  "remark",
+  "user",
+];
+const ACCEPTANCE_STATUSES = ["pending", "partial", "accepted"];
+const ACCEPTANCE_UNITS = ["pcs", "set", "m", "kg", "l"];
 
 const PHOTO_FOLDER_STATUSES = ["open", "in_progress", "resolved"];
 
@@ -92,6 +135,8 @@ export function buildExcelExportTexts(t) {
       monitoring: t("excelExport.sheets.monitoring"),
       repairs: t("excelExport.sheets.repairs"),
       materials: t("excelExport.sheets.materials"),
+      repairLog: t("excelExport.sheets.repairLog"),
+      acceptance: t("excelExport.sheets.acceptance"),
     },
     photo: {
       open: t("excelExport.photo.open"),
@@ -122,6 +167,27 @@ export function buildExcelExportTexts(t) {
       headers: byKey(REPAIR_KEYS, (key) =>
         t(`excelExport.repairs.headers.${key}`),
       ),
+    },
+    repairLog: {
+      headers: byKey(REPAIR_LOG_KEYS, (key) =>
+        t(`excelExport.repairLog.headers.${key}`),
+      ),
+      events: byKey(REPAIR_LOG_EVENTS, (key) =>
+        t(`excelExport.repairLog.events.${key}`),
+      ),
+    },
+    acceptance: {
+      headers: byKey(ACCEPTANCE_KEYS, (key) =>
+        t(`excelExport.acceptance.headers.${key}`),
+      ),
+      statuses: byKey(ACCEPTANCE_STATUSES, (key) =>
+        t(`acceptance.status.${key}`),
+      ),
+      units: byKey(ACCEPTANCE_UNITS, (key) =>
+        t(`acceptance.units.${key}.short`),
+      ),
+      yes: t("repairs.yes"),
+      no: t("repairs.no"),
     },
     materials: {
       headers: byKey(MATERIALS_KEYS, (key) =>

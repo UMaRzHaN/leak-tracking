@@ -164,6 +164,7 @@ export const DEFAULT_EXPORT_SHEETS = Object.freeze({
   repairs: true,
   monitoring: true,
   materials: true,
+  acceptance: true,
   inventory: false,
   photos: Object.freeze({
     leaks: true,
@@ -192,7 +193,13 @@ export function readExportSheets(projectId) {
   if (!key) return result;
   try {
     const stored = JSON.parse(localStorage.getItem(key) ?? "null");
-    for (const name of ["repairs", "monitoring", "materials", "inventory"]) {
+    for (const name of [
+      "repairs",
+      "monitoring",
+      "materials",
+      "acceptance",
+      "inventory",
+    ]) {
       if (typeof stored?.[name] === "boolean") result[name] = stored[name];
     }
     if (typeof stored?.photos === "boolean") {

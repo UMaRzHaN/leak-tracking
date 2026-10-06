@@ -171,21 +171,35 @@ export default function AppRoutes({
 }) {
   const listPage = isListPage(page);
   const { t } = useLanguage();
-  // В модуле ремонтов свайп по карточке ведёт не в мониторинг, а в проверку
-  // ремонта (7c) — поверх той же страницы, без перехода.
-  const [repairCheckLeak, setRepairCheckLeak] = useState(
-    /** @type {any} */ (null),
+  // В модуле ремонтов свайп по карточке и «Проверить» у выбранных ведут не в
+  // мониторинг, а в проверку ремонта (7c) — поверх той же страницы, без
+  // перехода. Выбранные проверяются по очереди: после сохранения открывается
+  // следующая, крестик очередь прерывает.
+  const [repairQueue, setRepairQueue] = useState(
+    /** @type {{ ids: any[], total: number }} */ ({ ids: [], total: 0 }),
   );
   const repairMode = module === MODULE.REPAIRS;
+  const startRepairQueue = (leaks) => {
+    const open = leaks.filter(
+      (leak) => (leak?.status ?? STATUS.OPEN) !== STATUS.RESOLVED,
+    );
+    if (!open.length) {
+      notifyApp?.("warning", t("repairs.accept.alreadyAccepted"));
+      return;
+    }
+    setRepairQueue({
+      ids: open.map((leak) => leak.id),
+      total: open.length,
+    });
+  };
   const checkLeak = repairMode
-    ? (leak) => {
-        if ((leak?.status ?? STATUS.OPEN) === STATUS.RESOLVED) {
-          notifyApp?.("warning", t("repairs.accept.alreadyAccepted"));
-          return;
-        }
-        setRepairCheckLeak(leak);
-      }
+    ? (leak) => startRepairQueue([leak])
     : requestMonitoring;
+  const checkLeaks = repairMode ? startRepairQueue : requestMonitoringQueue;
+  const repairCheckLeak =
+    repairQueue.ids.length > 0
+      ? (data.find((leak) => leak.id === repairQueue.ids[0]) ?? null)
+      : null;
   const checkLabel = repairMode ? t("repairs.checkSwipe") : null;
 
   return (
@@ -262,7 +276,7 @@ export default function AppRoutes({
             coords={coords}
             sharedFilters={sharedFilters}
             onMonitorLeak={checkLeak}
-            onMonitorLeaks={requestMonitoringQueue}
+            onMonitorLeaks={checkLeaks}
             monitorLabel={checkLabel}
             userProfile={userProfile}
           />
@@ -384,11 +398,27 @@ export default function AppRoutes({
         )}
         {repairCheckLeak && (
           <RepairCheck
+            // Новый ключ — чистая форма для следующей утечки очереди.
+            key={repairCheckLeak.id}
             leak={repairCheckLeak}
             data={data}
             setData={save}
             userProfile={userProfile}
-            onClose={() => setRepairCheckLeak(null)}
+            progress={
+              repairQueue.total > 1
+                ? {
+                    index: repairQueue.total - repairQueue.ids.length + 1,
+                    total: repairQueue.total,
+                  }
+                : null
+            }
+            onSaved={() =>
+              setRepairQueue((queue) => ({
+                ...queue,
+                ids: queue.ids.slice(1),
+              }))
+            }
+            onClose={() => setRepairQueue({ ids: [], total: 0 })}
             onNotify={({ type, message }) => notifyApp?.(type, message)}
           />
         )}

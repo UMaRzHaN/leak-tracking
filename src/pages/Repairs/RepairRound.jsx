@@ -9,25 +9,21 @@ import {
   getRepairBrigade,
   getRepairLeaks,
   getRepairStage,
-  markRepairStage,
 } from "@/domain/repairStages";
 import { getRepairDoneAt } from "@/domain/leakEvents";
 import { getRepairStageMeta, splitMaterials } from "@/utils/repairStage";
 import { formatMonitoringDate } from "@/utils/monitoring";
-import { errorText } from "@/utils/appError";
 import s from "./Repairs.module.scss";
 
-const RepairMarkSheet = lazy(() => import("./RepairMarkSheet"));
 const RepairCheck = lazy(() => import("./RepairCheck"));
 
-const FILTER = Object.freeze({ DUE: "due", ACCEPTED: "accepted", ALL: "all" });
+const FILTER = Object.freeze({ DUE: "due", RESOLVED: "resolved", ALL: "all" });
 
-// К приёмке — первыми готовые, за ними идущие работы и ждущие МТР.
+// В работе — сначала идущие ремонты, за ними ждущие МТР, устранённые в конце.
 const STAGE_RANK = {
-  [REPAIR_STAGE.READY]: 0,
-  [REPAIR_STAGE.IN_REPAIR]: 1,
-  [REPAIR_STAGE.WAITING_MTR]: 2,
-  [REPAIR_STAGE.ACCEPTED]: 3,
+  [REPAIR_STAGE.IN_REPAIR]: 0,
+  [REPAIR_STAGE.WAITING_MTR]: 1,
+  [REPAIR_STAGE.RESOLVED]: 2,
 };
 
 function matches(leak, query) {
@@ -61,29 +57,26 @@ export default function RepairRound({
   const { t, lang } = useLanguage();
   const [filter, setFilter] = useState(/** @type {string} */ (FILTER.DUE));
   const [search, setSearch] = useState("");
-  const [markLeak, setMarkLeak] = useState(/** @type {any} */ (null));
-  const [acceptLeak, setAcceptLeak] = useState(/** @type {any} */ (null));
-  const [saving, setSaving] = useState(false);
+  const [checkLeak, setCheckLeak] = useState(/** @type {any} */ (null));
   // Дата обхода — день, когда экран открыли.
   const [openedAt] = useState(() => new Date().toISOString());
   const [notification, setNotification] = useState(/** @type {any} */ (null));
-  const user = userProfile?.name?.trim() || undefined;
 
   const repairs = useMemo(() => getRepairLeaks(scopedData), [scopedData]);
   const counts = useMemo(() => {
-    const accepted = repairs.filter(
-      (leak) => getRepairStage(leak) === REPAIR_STAGE.ACCEPTED,
+    const resolved = repairs.filter(
+      (leak) => getRepairStage(leak) === REPAIR_STAGE.RESOLVED,
     ).length;
-    return { due: repairs.length - accepted, accepted, all: repairs.length };
+    return { due: repairs.length - resolved, resolved, all: repairs.length };
   }, [repairs]);
 
   const items = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
     return repairs
       .filter((leak) => {
-        const accepted = getRepairStage(leak) === REPAIR_STAGE.ACCEPTED;
-        if (filter === FILTER.DUE && accepted) return false;
-        if (filter === FILTER.ACCEPTED && !accepted) return false;
+        const resolved = getRepairStage(leak) === REPAIR_STAGE.RESOLVED;
+        if (filter === FILTER.DUE && resolved) return false;
+        if (filter === FILTER.RESOLVED && !resolved) return false;
         return matches(leak, query);
       })
       .sort(
@@ -92,55 +85,20 @@ export default function RepairRound({
       );
   }, [repairs, filter, search]);
 
-  // Каждое изменение пишется во весь проект, а не в отфильтрованный список:
-  // иначе сохранение стёрло бы всё, что вне выбранного места.
-  const update = async (leak, change) => {
-    if (!user) {
-      setNotification({ type: "error", message: t("database.fillUserName") });
-      return false;
-    }
-    setSaving(true);
-    try {
-      await setData(
-        data.map((record) => (record.id === leak.id ? change(record) : record)),
-      );
-      return true;
-    } catch (error) {
-      setNotification({
-        type: "error",
-        message: t("common.saveError", { message: errorText(error, t) }),
-      });
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const footerOf = (leak) => {
     const stage = getRepairStage(leak);
     const mark = getLastRepairStageMark(leak);
     const brigade = getRepairBrigade(leak);
-    if (stage === REPAIR_STAGE.ACCEPTED) {
+    if (stage === REPAIR_STAGE.RESOLVED) {
+      const doneAt = getRepairDoneAt(leak);
       return {
         tone: "ok",
-        title: t("repairs.round.acceptedAt", {
-          date: formatMonitoringDate(getRepairDoneAt(leak), lang),
-        }),
-        meta: brigade,
-      };
-    }
-    if (stage === REPAIR_STAGE.READY) {
-      return {
-        tone: "ok",
-        title: mark
-          ? t("repairs.round.doneAt", {
-              date: formatMonitoringDate(mark.date, lang),
+        title: doneAt
+          ? t("repairs.round.resolvedAt", {
+              date: formatMonitoringDate(doneAt, lang),
             })
-          : t("repairs.stages.ready"),
-        meta: [t("repairs.round.awaiting"), brigade]
-          .filter(Boolean)
-          .join(" · "),
-        accept: true,
+          : t("repairs.stages.resolved"),
+        meta: brigade,
       };
     }
     return {
@@ -182,7 +140,7 @@ export default function RepairRound({
       <div className={s.filters}>
         {[
           [FILTER.DUE, t("repairs.round.due"), counts.due],
-          [FILTER.ACCEPTED, t("repairs.round.accepted"), counts.accepted],
+          [FILTER.RESOLVED, t("repairs.round.resolved"), counts.resolved],
           [FILTER.ALL, t("repairs.round.all"), counts.all],
         ].map(([id, label, count]) => (
           <button
@@ -217,17 +175,21 @@ export default function RepairRound({
                   extraChips={splitMaterials(leak.materials_equipment)}
                   collapsible={false}
                   defaultExpanded
-                  // Тап — туда же, куда кнопка в футере; свайп влево —
-                  // проверка ремонта (7c), как в «Базе» модуля ремонтов.
-                  onOpenDetails={() =>
-                    footer.accept ? setAcceptLeak(leak) : setMarkLeak(leak)
+                  // Тап и свайп влево — проверка ремонта (7c), как кнопка в
+                  // футере; у устранённой проверять нечего.
+                  onOpenDetails={
+                    stage === REPAIR_STAGE.RESOLVED
+                      ? undefined
+                      : () => setCheckLeak(leak)
                   }
                   onMonitor={
-                    stage === REPAIR_STAGE.ACCEPTED
+                    stage === REPAIR_STAGE.RESOLVED
                       ? undefined
-                      : () => setAcceptLeak(leak)
+                      : () => setCheckLeak(leak)
                   }
-                  onPickStatus={() => setMarkLeak(leak)}
+                  onPickStatus={() => {
+                    if (stage !== REPAIR_STAGE.RESOLVED) setCheckLeak(leak);
+                  }}
                 />
                 <div className={s.bar}>
                   <div className={s.barText}>
@@ -238,17 +200,13 @@ export default function RepairRound({
                       <span className={s.barMeta}>{footer.meta}</span>
                     )}
                   </div>
-                  {stage !== REPAIR_STAGE.ACCEPTED && (
+                  {stage !== REPAIR_STAGE.RESOLVED && (
                     <button
                       type="button"
-                      className={footer.accept ? s.acceptBtn : s.markBtn}
-                      onClick={() =>
-                        footer.accept ? setAcceptLeak(leak) : setMarkLeak(leak)
-                      }
+                      className={s.acceptBtn}
+                      onClick={() => setCheckLeak(leak)}
                     >
-                      {footer.accept
-                        ? t("repairs.round.accept")
-                        : t("repairs.round.mark")}
+                      {t("repairs.round.check")}
                     </button>
                   )}
                 </div>
@@ -259,33 +217,13 @@ export default function RepairRound({
       </section>
 
       <Suspense fallback={null}>
-        {markLeak && (
-          <RepairMarkSheet
-            leak={markLeak}
-            saving={saving}
-            onClose={() => setMarkLeak(null)}
-            onSave={async (mark) => {
-              const saved = await update(markLeak, (record) =>
-                markRepairStage(record, mark, { user }),
-              );
-              if (saved) {
-                setMarkLeak(null);
-                setNotification({
-                  type: "success",
-                  message: t("repairs.mark.saved"),
-                });
-              }
-            }}
-          />
-        )}
-
-        {acceptLeak && (
+        {checkLeak && (
           <RepairCheck
-            leak={acceptLeak}
+            leak={checkLeak}
             data={data}
             setData={setData}
             userProfile={userProfile}
-            onClose={() => setAcceptLeak(null)}
+            onClose={() => setCheckLeak(null)}
             onNotify={setNotification}
           />
         )}

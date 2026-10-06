@@ -87,12 +87,13 @@
   border: none;
   background: none;
   text-align: left;
-  cursor: pointer;
   color: var(--c-text);
 }
 
 .thumb {
   flex: none;
+  padding: 0;
+  border: none;
   width: 52px;
   height: 52px;
   border-radius: var(--r-md, 10px);
@@ -102,16 +103,13 @@
   align-items: center;
   justify-content: center;
 
+  cursor: zoom-in;
+
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
-}
-
-.thumbEmpty {
-  font-size: 20px;
-  color: var(--c-text3);
 }
 
 .text {

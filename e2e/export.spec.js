@@ -1,7 +1,9 @@
+import fs from "node:fs";
 import { expect, test } from "@playwright/test";
 import {
   createLeak,
   createProject,
+  footerTab,
   openMenuItem,
   setUserProfile,
 } from "./helpers.js";
@@ -59,4 +61,66 @@ test("выгружает отчёт с экрана экспорта", async ({ 
 
   await expect(page.getByText("Последние выгрузки")).toBeVisible();
   await expect(page.getByText(/сохранено локально/)).toBeVisible();
+});
+
+// Ремонты и приёмка оборудования доходят до книги своими листами: журнал
+// ремонтов с бригадой и приёмка с партиями накладной.
+test("кладёт в книгу журнал ремонтов и приёмку оборудования", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  await createProject(page, "Export repairs E2E");
+  await setUserProfile(page);
+  await createLeak(page, "8201");
+
+  await openMenuItem(page, /^Ремонтные работы/);
+  await page.getByRole("button", { name: "Приёмка оборудования" }).click();
+  await page.getByRole("button", { name: "Новая приёмка" }).click();
+  await page.getByLabel("Накладная", { exact: true }).fill("М-11 № 4471");
+  await page.getByRole("button", { name: /Добавить позицию/ }).click();
+  const item = page.getByRole("dialog", { name: "Добавить позицию" });
+  await item.getByLabel("Наименование").fill("Прокладка СНП-Д 200-16");
+  await item.getByLabel("Пришло").fill("2");
+  await item.getByLabel("Заказано").fill("4");
+  await item.getByRole("button", { name: "Добавить", exact: true }).click();
+  await page.getByRole("button", { name: "Сохранить и отправить" }).click();
+  await page.getByRole("button", { name: "Назад" }).click();
+
+  await footerTab(page, "Обход").click();
+  await page.getByRole("button", { name: "Проверить", exact: true }).click();
+  const sheet = page.getByRole("dialog", { name: "Приёмка ремонта" });
+  await sheet.getByLabel("Утечка есть?").selectOption("yes");
+  await sheet.getByLabel("Бригада", { exact: true }).fill("Бригада 2");
+  await sheet.getByRole("button", { name: "Оставить в ремонте" }).click();
+  await expect(sheet).toHaveCount(0);
+
+  await openMenuItem(page, "Экспорт отчёта");
+  await expect(page.getByText("Лист «Журнал ремонтов»")).toBeVisible();
+  await expect(page.getByText("Лист «Приёмка оборудования»")).toBeVisible();
+  await page.getByRole("button", { name: "Сформировать файл" }).click();
+  await expect(page.getByText("Файл сформирован")).toBeVisible();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Сохранить в «Файлы»" }).click();
+  const zipPath = testInfo.outputPath("report.zip");
+  await (await downloadPromise).saveAs(zipPath);
+
+  const { default: JSZip } = await import("jszip");
+  const { default: ExcelJS } = await import("exceljs");
+  const zip = await JSZip.loadAsync(fs.readFileSync(zipPath));
+  const xlsxName = Object.keys(zip.files).find((name) =>
+    name.endsWith(".xlsx"),
+  );
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await zip.file(xlsxName).async("nodebuffer"));
+
+  const log = workbook.getWorksheet("Журнал ремонтов");
+  const logText = JSON.stringify(log.getSheetValues());
+  expect(logText).toContain("Бригада 2");
+  expect(logText).toContain("В ремонте");
+
+  const acceptance = workbook.getWorksheet("Приёмка оборудования");
+  const acceptanceText = JSON.stringify(acceptance.getSheetValues());
+  expect(acceptanceText).toContain("М-11 № 4471");
+  expect(acceptanceText).toContain("Прокладка СНП-Д 200-16");
+  expect(acceptanceText).toContain("Частично");
 });

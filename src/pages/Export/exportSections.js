@@ -8,6 +8,7 @@ import {
 import { getLeakPhotoPath } from "@/services/excelExport/photoIdentity";
 import { getRepairExportRows } from "@/services/excelExport/repairRows";
 import { getMaterialsExportRows } from "@/services/excelExport/materialsRows";
+import { getRepairLogExportRows } from "@/services/excelExport/repairLogRows";
 
 const isRepairEvent = (event) => String(event?.type ?? "").startsWith("repair");
 
@@ -51,6 +52,7 @@ export function countExportSections(leaks) {
       photos: repairPhotos.size,
     },
     monitoring: { rows: monitoring, photos: monitoringPhotos.size },
+    repairLog: { rows: getRepairLogExportRows(leaks).length, photos: 0 },
     materials: { rows: getMaterialsExportRows(leaks).length, photos: 0 },
   };
 }

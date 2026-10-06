@@ -161,10 +161,11 @@ describe("real Excel workbook output", () => {
     await workbook.xlsx.load(buffer);
     const sheet = workbook.getWorksheet("Repairs");
 
-    expect(sheet.getCell("L2").value).toMatchObject({
+    // «Бригада» стоит перед МТР, поэтому снимки — в M и N.
+    expect(sheet.getCell("M2").value).toMatchObject({
       hyperlink: "photos/leak-1/events/event-1.jpg",
     });
     // Про снимок, которого в книге нет, сказано словами, а не ссылкой в никуда.
-    expect(sheet.getCell("M2").value).toBe("Present (file missing)");
+    expect(sheet.getCell("N2").value).toBe("Present (file missing)");
   }, 60_000);
 });

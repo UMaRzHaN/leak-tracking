@@ -6,6 +6,7 @@ import {
   getRepairLeaks,
   getRepairStage,
   markRepairStage,
+  getRepairLog,
 } from "./repairStages";
 
 const started = (date) => ({ id: `s-${date}`, type: "repair_started", date });
@@ -28,7 +29,7 @@ describe("getRepairStage", () => {
     ).toBe(REPAIR_STAGE.IN_REPAIR);
   });
 
-  it("follows the latest mark of the current repair only", () => {
+  it("keeps a repair in repair whatever old marks say", () => {
     const leak = {
       status: "in_progress",
       events: [
@@ -39,17 +40,22 @@ describe("getRepairStage", () => {
         stage("waiting_mtr", "2026-10-02"),
       ],
     };
-    expect(getRepairStage(leak)).toBe(REPAIR_STAGE.WAITING_MTR);
+    // «Ожидает МТР» — это открытая утечка; отметки прошлых версий
+    // («ждём МТР», «готово») стадию идущего ремонта не меняют.
+    expect(getRepairStage(leak)).toBe(REPAIR_STAGE.IN_REPAIR);
   });
 
-  it("calls a resolved leak with a repair accepted and an open one waiting", () => {
+  it("follows the status: resolved, open waiting for materials", () => {
     expect(
       getRepairStage({
         status: "resolved",
         events: [started("2026-10-01"), done("2026-10-02")],
       }),
-    ).toBe(REPAIR_STAGE.ACCEPTED);
-    expect(getRepairStage({ status: "resolved", events: [] })).toBeNull();
+    ).toBe(REPAIR_STAGE.RESOLVED);
+    // Устранённая и без ремонта — тоже «устранена».
+    expect(getRepairStage({ status: "resolved", events: [] })).toBe(
+      REPAIR_STAGE.RESOLVED,
+    );
     // Открытая утечка — ремонт по ней не начат, она ждёт МТР.
     expect(getRepairStage({ status: "open" })).toBe(REPAIR_STAGE.WAITING_MTR);
   });
@@ -80,9 +86,8 @@ describe("repair lists", () => {
     ]);
     expect(countRepairStages(leaks)).toMatchObject({
       all: 4,
-      in_repair: 1,
-      ready: 1,
-      accepted: 1,
+      in_repair: 2,
+      resolved: 1,
       waiting_mtr: 1,
     });
   });
@@ -99,11 +104,15 @@ describe("markRepairStage", () => {
     const now = Date.parse("2026-10-05T10:20:00Z");
     const marked = markRepairStage(
       leak,
-      { stage: "ready", brigade: " Бригада 2 ", note: "Прокладка заменена" },
+      {
+        stage: "in_repair",
+        brigade: " Бригада 2 ",
+        note: "Прокладка заменена",
+      },
       { user: "Иван", now },
     );
 
-    expect(getRepairStage(marked)).toBe(REPAIR_STAGE.READY);
+    expect(getRepairStage(marked)).toBe(REPAIR_STAGE.IN_REPAIR);
     expect(getRepairBrigade(marked)).toBe("Бригада 2");
     expect(marked.events[marked.events.length - 1]).toMatchObject({
       user: "Иван",
@@ -116,6 +125,89 @@ describe("markRepairStage", () => {
     expect(() =>
       markRepairStage({ status: "open" }, { stage: "ready" }),
     ).toThrow();
-    expect(() => markRepairStage(leak, { stage: "accepted" })).toThrow();
+    expect(() => markRepairStage(leak, { stage: "resolved" })).toThrow();
+  });
+});
+
+describe("getRepairLog", () => {
+  it("lists repair events and returns to open, newest first", () => {
+    const leak = {
+      status: "open",
+      events: [
+        started("2026-10-01"),
+        {
+          ...stage("in_repair", "2026-10-02"),
+          brigade: "Бригада 2",
+          note: "Хомут",
+        },
+      ],
+      history: [
+        { action: "created", date: "2026-09-30T00:00:00Z" },
+        {
+          action: "status_changed",
+          to: "in_progress",
+          date: "2026-10-01T00:00:00Z",
+        },
+        {
+          action: "status_changed",
+          to: "open",
+          date: "2026-10-03T00:00:00Z",
+          user: "Ким",
+        },
+      ],
+    };
+    const log = getRepairLog(leak);
+    expect(log.map((item) => item.kind)).toEqual([
+      "returned",
+      "repair_stage",
+      "repair_started",
+    ]);
+    expect(log[1]).toMatchObject({
+      stage: "in_repair",
+      brigade: "Бригада 2",
+      note: "Хомут",
+    });
+    expect(log[0].user).toBe("Ким");
+  });
+
+  it("does not count reopening a resolved leak as a repair return", () => {
+    const log = getRepairLog({
+      history: [
+        {
+          action: "status_changed",
+          to: "in_progress",
+          date: "2026-10-01T00:00:00Z",
+        },
+        {
+          action: "status_changed",
+          to: "resolved",
+          date: "2026-10-02T00:00:00Z",
+        },
+        { action: "status_changed", to: "open", date: "2026-10-03T00:00:00Z" },
+      ],
+    });
+    expect(log).toEqual([]);
+  });
+
+  it("shows a return with its waiting mark as one row", () => {
+    const log = getRepairLog({
+      status: "open",
+      events: [
+        started("2026-10-01"),
+        stage("waiting_mtr", "2026-10-03T00:00:00.001Z"),
+      ],
+      history: [
+        {
+          action: "status_changed",
+          to: "in_progress",
+          date: "2026-10-01T00:00:00Z",
+        },
+        { action: "status_changed", to: "open", date: "2026-10-03T00:00:00Z" },
+      ],
+    });
+    expect(log.map((item) => item.stage ?? item.kind)).toEqual([
+      "waiting_mtr",
+      "repair_started",
+    ]);
   });
 });

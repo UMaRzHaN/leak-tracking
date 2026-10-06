@@ -302,6 +302,7 @@ export async function exportToExcelFile(
       monitoringExportMode,
       archivePayload,
       sheets: options.sheets ?? {},
+      acceptanceRows: options.acceptanceRows ?? [],
     },
     options.buildWorkbookBuffer,
   );

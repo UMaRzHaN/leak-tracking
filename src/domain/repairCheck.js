@@ -57,7 +57,7 @@ export function applyRepairCheck(leak, draft, { user, now } = {}) {
     if (brigade && brigade !== getRepairBrigade(record)) {
       record = markRepairStage(
         record,
-        { stage: REPAIR_STAGE.READY, brigade },
+        { stage: REPAIR_STAGE.IN_REPAIR, brigade },
         at(),
       );
     }

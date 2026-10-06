@@ -20,6 +20,7 @@ export const TAB = {
   PARAMS: "params",
   COORDS: "coords",
   MONITORING: "monitoring",
+  REPAIRS: "repairs",
   LOG: "log",
 };
 
@@ -253,6 +254,7 @@ export function useLeakDetailsSheet({
             id: TAB.MONITORING,
             label: t("leakDetails.tabs.monitoring"),
           },
+          { id: TAB.REPAIRS, label: t("leakDetails.tabs.repairs") },
           { id: TAB.LOG, label: t("leakDetails.tabs.log") },
         ]
       : [

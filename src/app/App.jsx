@@ -268,7 +268,7 @@ export default function App() {
 
   const repairCount = useMemo(() => {
     const counts = countRepairStages(leakScope.scopedLeaks);
-    return counts.all - counts.accepted;
+    return counts.all - counts.resolved;
   }, [leakScope.scopedLeaks]);
 
   const progress = useMemo(

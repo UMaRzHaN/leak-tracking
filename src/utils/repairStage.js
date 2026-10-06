@@ -19,25 +19,18 @@ const STAGE_META = {
     border: "var(--c-medium-border)",
     dot: "var(--c-medium)",
   },
-  [REPAIR_STAGE.READY]: {
+  [REPAIR_STAGE.RESOLVED]: {
     color: "var(--c-resolved-text)",
     bg: "var(--c-resolved-bg)",
     border: "var(--c-resolved-border)",
     dot: "var(--c-resolved)",
-  },
-  [REPAIR_STAGE.ACCEPTED]: {
-    color: "var(--c-text2)",
-    bg: "var(--c-surface2)",
-    border: "var(--c-border)",
-    dot: "var(--c-text3)",
   },
 };
 
 export const REPAIR_STAGE_ORDER = [
   REPAIR_STAGE.WAITING_MTR,
   REPAIR_STAGE.IN_REPAIR,
-  REPAIR_STAGE.READY,
-  REPAIR_STAGE.ACCEPTED,
+  REPAIR_STAGE.RESOLVED,
 ];
 
 export function getRepairStageMeta(stage, t) {

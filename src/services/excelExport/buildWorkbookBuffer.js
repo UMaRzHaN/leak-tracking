@@ -9,6 +9,8 @@ import {
 import {
   buildHistorySheet,
   buildMaterialsSheet,
+  buildRepairLogSheet,
+  buildAcceptanceSheet,
   buildMonitoringSheet,
   buildRepairSheet,
 } from "@/services/excelExport/auxiliarySheets";
@@ -60,7 +62,10 @@ async function buildWorkbook({
   // Какие листы класть в книгу (8a). «Утечки», «История» и служебный лист
   // резервной копии — всегда: без первого нет отчёта, без второго не видно,
   // откуда взялись значения, без третьего файл не загрузить обратно.
-  sheets = /** @type {{monitoring?:boolean, repairs?:boolean, materials?:boolean}} */ ({}),
+  sheets = /** @type {{monitoring?:boolean, repairs?:boolean, materials?:boolean, acceptance?:boolean}} */ ({}),
+  // Строки приёмки оборудования готовит вызывающий: накладные живут вне
+  // записей утечек, а в воркер передаются только данные.
+  acceptanceRows = /** @type {any[]} */ ([]),
 }) {
   const photoColumnIndexes = PHOTO_KEYS.map((key) =>
     keysOrder.indexOf(key),
@@ -128,6 +133,7 @@ async function buildWorkbook({
   await buildHistorySheet(workbook, orderedLeaks, texts);
   if (sheets.repairs !== false) {
     await buildRepairSheet(workbook, orderedLeaks, texts, photoMap);
+    await buildRepairLogSheet(workbook, orderedLeaks, texts);
   }
   if (sheets.monitoring !== false) {
     await buildMonitoringSheet(
@@ -140,6 +146,9 @@ async function buildWorkbook({
   }
   if (sheets.materials !== false) {
     await buildMaterialsSheet(workbook, orderedLeaks, texts);
+  }
+  if (sheets.acceptance !== false) {
+    await buildAcceptanceSheet(workbook, acceptanceRows, texts);
   }
   addBackupSheet(workbook, archivePayload, texts);
 

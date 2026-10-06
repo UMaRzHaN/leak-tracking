@@ -9,6 +9,7 @@ import {
 } from "./monitoringRows";
 import { getRepairExportRows } from "./repairRows";
 import { getMaterialsExportRows } from "./materialsRows";
+import { getRepairLogExportRows } from "./repairLogRows";
 import {
   addStructuredTable,
   getColumnWidth,
@@ -221,6 +222,7 @@ export async function buildRepairSheet(
     "resolvedTime",
     "durationHours",
     "user",
+    "brigade",
     "materials_equipment",
     "note",
     "repairPhoto",
@@ -307,6 +309,110 @@ export async function buildMaterialsSheet(workbook, orderedLeaks, texts) {
     theme: "TableStyleMedium7",
   });
   styleHeaderRow(sheet, "FF548235");
+  await styleBodyRows(sheet, rows.length);
+  applyColumnFormats(sheet, keys);
+
+  keys.forEach((key, index) => {
+    sheet.getColumn(index + 1).width = getColumnWidth(
+      headers[index],
+      key,
+      rows,
+    );
+  });
+}
+
+/**
+ * «Журнал ремонтов»: начала, отметки стадий с бригадой и замечанием,
+ * приёмки и возвраты в «ожидает МТР» — строкой на событие, по времени.
+ */
+export async function buildRepairLogSheet(workbook, orderedLeaks, texts) {
+  const rows = getRepairLogExportRows(orderedLeaks).map((row) => ({
+    ...row,
+    date: parseTimestamp(row.dateRaw) ?? "",
+    time: parseTimestamp(row.dateRaw) ?? "",
+    event: texts.repairLog.events[row.event] ?? row.event,
+  }));
+  if (rows.length === 0) return;
+
+  const sheet = workbook.addWorksheet(texts.sheets.repairLog);
+  const keys = [
+    "index",
+    "leak_id",
+    "date",
+    "time",
+    "event",
+    "brigade",
+    "materials_equipment",
+    "note",
+    "user",
+  ];
+  const headers = keys.map((key) => texts.repairLog.headers[key]);
+
+  addStructuredTable(sheet, {
+    name: "RepairLog",
+    headers,
+    rows: rows.map((row) => keys.map((key) => toExcelCellValue(key, row[key]))),
+    theme: "TableStyleMedium3",
+  });
+  styleHeaderRow(sheet, "FFC55A11");
+  await styleBodyRows(sheet, rows.length);
+  applyColumnFormats(sheet, keys);
+
+  keys.forEach((key, index) => {
+    sheet.getColumn(index + 1).width = getColumnWidth(
+      headers[index],
+      key,
+      rows,
+    );
+  });
+}
+
+/**
+ * «Приёмка оборудования»: строка на позицию в партии — что пришло в этот
+ * раз, сколько набралось по позиции и сколько осталось по накладной.
+ */
+export async function buildAcceptanceSheet(workbook, acceptanceRows, texts) {
+  const { acceptance } = texts;
+  const rows = (acceptanceRows ?? []).map((row) => ({
+    ...row,
+    date: parseTimestamp(row.dateRaw) ?? "",
+    time: parseTimestamp(row.dateRaw) ?? "",
+    status: acceptance.statuses[row.status] ?? row.status,
+    unit: acceptance.units[row.unit] ?? row.unit,
+    complete: row.complete ? acceptance.yes : acceptance.no,
+    dnpnMatch: row.dnpnMatch ? acceptance.yes : acceptance.no,
+  }));
+  if (rows.length === 0) return;
+
+  const sheet = workbook.addWorksheet(texts.sheets.acceptance);
+  const keys = [
+    "invoice",
+    "supplier",
+    "warehouse",
+    "status",
+    "batch",
+    "date",
+    "time",
+    "name",
+    "unit",
+    "ordered",
+    "qty",
+    "received",
+    "left",
+    "complete",
+    "dnpnMatch",
+    "remark",
+    "user",
+  ];
+  const headers = keys.map((key) => acceptance.headers[key]);
+
+  addStructuredTable(sheet, {
+    name: "Acceptance",
+    headers,
+    rows: rows.map((row) => keys.map((key) => toExcelCellValue(key, row[key]))),
+    theme: "TableStyleMedium4",
+  });
+  styleHeaderRow(sheet, "FF2F5597");
   await styleBodyRows(sheet, rows.length);
   applyColumnFormats(sheet, keys);
 

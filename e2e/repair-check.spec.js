@@ -3,6 +3,7 @@ import {
   createLeak,
   createProject,
   openDatabase,
+  openLeakDetails,
   openMap,
   openMenuItem,
   setUserProfile,
@@ -61,6 +62,17 @@ test("в ремонтах свайп открывает проверку рем�
   await expect(
     page.getByRole("alert").filter({ hasText: "Ожидает МТР" }),
   ).toBeVisible();
+
+  // Всё это видно в карточке, на вкладке «Ремонты».
+  await openLeakDetails(page, "Открыта");
+  await page.getByRole("button", { name: "Ремонты", exact: true }).click();
+  // Возврат и отметка «ожидает МТР» — одно действие, одна строка.
+  const log = page.locator("[data-event]");
+  await expect(log).toHaveCount(3);
+  await expect(log.nth(0)).toContainText("Ожидает МТР");
+  await expect(log.nth(1)).toContainText("В ремонте");
+  await expect(log.nth(2)).toContainText("Начат ремонт");
+  await page.screenshot({ path: testInfo.outputPath("repair-log.png") });
 });
 
 test("на карте ремонтов «Проверить» открывает проверку ремонта", async ({
@@ -80,4 +92,30 @@ test("на карте ремонтов «Проверить» открывает
   const sheet = page.getByRole("dialog", { name: "Приёмка ремонта" });
   await expect(sheet).toBeVisible();
   await expect(sheet.getByText("№ 2042")).toBeVisible();
+});
+
+test("в ремонтах «Проверить» у выбранных проверяет их по очереди", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await createProject(page, "Repair queue E2E");
+  await setUserProfile(page);
+  await createLeak(page, "3101");
+  await createLeak(page, "3102");
+
+  await openMenuItem(page, /^Ремонтные работы/);
+  await openDatabase(page);
+  await page.getByRole("button", { name: "Выбрать всё" }).click();
+  await page.getByRole("button", { name: "Проверить", exact: true }).click();
+
+  const sheet = page.getByRole("dialog", { name: "Приёмка ремонта" });
+  await expect(sheet).toContainText("1 из 2");
+  await sheet.getByLabel("Утечка есть?").selectOption("yes");
+  await sheet.getByRole("button", { name: "Оставить в ремонте" }).click();
+
+  await expect(sheet).toContainText("2 из 2");
+  await sheet.getByLabel("Утечка есть?").selectOption("yes");
+  await sheet.getByRole("button", { name: "Оставить в ремонте" }).click();
+  await expect(sheet).toHaveCount(0);
+  await expect(page.getByText("В ремонте", { exact: true })).toHaveCount(2);
 });

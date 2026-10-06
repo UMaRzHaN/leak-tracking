@@ -48,8 +48,8 @@ export default function MainPage({
 }) {
   const { t } = useLanguage();
 
-  // Журнал ремонтов (7a) — те же записи, но только идущие и принятые
-  // ремонты, с чипами по стадии работ вместо статуса.
+  // Журнал ремонтов (7a) — те же записи с чипами по стадии работ вместо
+  // статуса: ожидают МТР, в ремонте, устранены.
   const repairMode = module === MODULE.REPAIRS;
   const [stageFilter, setStageFilter] = useState("all");
   const source = scopedData ?? data;
@@ -115,7 +115,7 @@ export default function MainPage({
         <FilterChips
           label={t("repairs.chipsLabel")}
           all={{ key: "all", label: t("repairs.all"), count: stageCounts.all }}
-          items={REPAIR_STAGE_ORDER.slice(0, 3).map((stage) => ({
+          items={REPAIR_STAGE_ORDER.map((stage) => ({
             key: stage,
             label: t(`repairs.stages.${stage}`),
             count: stageCounts[stage],
@@ -194,7 +194,7 @@ export default function MainPage({
                   // В ремонтах свайп влево — проверка ремонта; у принятого
                   // проверять нечего, там свайп снова ведёт к статусу.
                   onMonitor={
-                    repairMode && getRepairStage(leak) === REPAIR_STAGE.ACCEPTED
+                    repairMode && getRepairStage(leak) === REPAIR_STAGE.RESOLVED
                       ? undefined
                       : onMonitorLeak
                   }

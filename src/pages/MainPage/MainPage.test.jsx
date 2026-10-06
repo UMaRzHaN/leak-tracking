@@ -269,7 +269,7 @@ describe("MainPage", () => {
     expect(screen.getByText("empty:false")).toBeTruthy();
   });
 
-  it("lists only repairs in the repairs module, chipped by stage", () => {
+  it("chips every leak by repair stage in the repairs module", () => {
     const repair = {
       id: "r1",
       status: "in_progress",
@@ -292,11 +292,13 @@ describe("MainPage", () => {
       />,
     );
 
-    // Чипы стадий вместо статусов, и «Все» считает только ремонты.
+    // Чипы стадий вместо статусов: ожидает МТР, в ремонте, устранена.
     expect(screen.getByText("repairs.stages.in_repair")).toBeTruthy();
+    expect(screen.getByText("repairs.stages.resolved")).toBeTruthy();
+    expect(screen.queryByText("repairs.stages.ready")).toBeNull();
     expect(
       screen.getByRole("button", { name: /repairs\.all/ }).textContent,
-    ).toContain("1");
+    ).toContain("2");
     expect(screen.getByText("empty:false")).toBeTruthy();
   });
 });

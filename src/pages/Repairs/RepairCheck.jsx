@@ -31,6 +31,8 @@ const SAVED_TEXT = {
  *   data: any[],
  *   setData: (next: any[]) => Promise<void>|void,
  *   userProfile?: { name?: string }|null,
+ *   progress?: { index: number, total: number }|null,
+ *   onSaved?: () => void,
  *   onClose: () => void,
  *   onNotify: (notice: { type: string, message: string }) => void,
  * }} props
@@ -40,6 +42,8 @@ export default function RepairCheck({
   data,
   setData,
   userProfile,
+  progress = null,
+  onSaved,
   onClose,
   onNotify,
 }) {
@@ -66,7 +70,8 @@ export default function RepairCheck({
             : record,
         ),
       );
-      onClose();
+      // В очереди после сохранения открывается следующая утечка.
+      (onSaved ?? onClose)();
       onNotify({
         type: "success",
         message: t(SAVED_TEXT[repairCheckOutcome(draft)]),
@@ -92,6 +97,7 @@ export default function RepairCheck({
       leak={leak}
       items={items}
       saving={saving}
+      progress={progress}
       onSave={save}
       onClose={onClose}
     />

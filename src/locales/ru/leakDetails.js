@@ -44,6 +44,15 @@ export const leakDetails = {
     photo: "Фото ремонта",
   },
   user: "Пользователь",
+  repairLog: {
+    started: "Начат ремонт",
+    done: "Ремонт принят",
+    returned: "Вернули: ожидает МТР",
+    brigade: "Бригада",
+    materials: "МТР",
+    note: "Комментарий",
+    empty: "Ремонтов по этой утечке не было",
+  },
 
   historyDamaged: "История записи повреждена и не может быть показана",
   removed: "Удалено",
@@ -59,6 +68,7 @@ export const leakDetails = {
     parameters: "Параметры",
     coordinates: "Координаты",
     monitoring: "Мониторинг",
+    repairs: "Ремонты",
     log: "Лог",
   },
 

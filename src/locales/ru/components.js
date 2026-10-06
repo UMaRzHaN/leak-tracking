@@ -33,6 +33,7 @@ export const components = {
   inspectTitle: "Состояние на момент осмотра",
   statusNow: "сейчас",
   swipeInspect: "Осмотр",
+  openPhoto: "Открыть фото",
   swipeDetails: "Подробно",
   noLocation: "Место не указано",
   unnamed: "Без наименования",

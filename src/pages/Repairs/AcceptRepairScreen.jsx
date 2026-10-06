@@ -42,6 +42,7 @@ export const MTR_SOURCE = Object.freeze({
  *   leak: any,
  *   items?: Array<{ id: string, name: string, unit: string, invoice: string, available: number }>,
  *   saving?: boolean,
+ *   progress?: { index: number, total: number }|null,
  *   onSave: (draft: { leaking: boolean, done: boolean, photo_after?: string, materials_equipment?: string, note?: string, brigade?: string }) => Promise<boolean|void>|boolean|void,
  *   onClose: () => void,
  * }} props
@@ -50,6 +51,7 @@ export default function AcceptRepairScreen({
   leak,
   items = [],
   saving = false,
+  progress = null,
   onSave,
   onClose,
 }) {
@@ -157,6 +159,11 @@ export default function AcceptRepairScreen({
           <p>
             {t("cards.tagPrefix")}
             {leak.leak_id ?? "—"}
+            {progress &&
+              ` · ${t("repairs.accept.progress", {
+                index: progress.index,
+                total: progress.total,
+              })}`}
           </p>
         </div>
       </header>

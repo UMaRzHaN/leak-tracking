@@ -65,30 +65,30 @@ function renderRound(data) {
 }
 
 describe("RepairRound", () => {
-  it("marks a repair's stage with the crew", async () => {
-    // Устранённая без ремонта — не ремонт; открытые теперь «ожидают МТР».
-    const outsider = { id: "o", status: "resolved", events: [] };
-    const setData = renderRound([repair("r1"), outsider]);
+  it("counts work in progress and checks a repair with the crew", async () => {
+    const resolved = { id: "o", status: "resolved", events: [] };
+    const setData = renderRound([repair("r1"), resolved]);
 
-    expect(screen.getByRole("button", { name: "To accept 1" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Mark" }));
-    fireEvent.click(
-      await screen.findByRole("radio", { name: "Ready for check" }),
-    );
+    expect(screen.getByRole("button", { name: "In work 1" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Resolved 1" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Check" }));
+    fireEvent.change(await screen.findByLabelText("Still leaking?"), {
+      target: { value: "yes" },
+    });
     fireEvent.change(screen.getByLabelText("Crew"), {
       target: { value: "Crew 2" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save mark" }));
+    fireEvent.click(screen.getByRole("button", { name: "Keep in repair" }));
 
     await waitFor(() => expect(setData).toHaveBeenCalled());
     const [saved, untouched] = setData.mock.calls[0][0];
     expect(saved.events[saved.events.length - 1]).toMatchObject({
       type: "repair_stage",
-      stage: "ready",
+      stage: "in_repair",
       brigade: "Crew 2",
       user: "Ivan",
     });
-    expect(untouched).toEqual(outsider);
+    expect(untouched).toEqual(resolved);
   });
 
   it("accepts a finished repair with a photo and closes it", async () => {
@@ -105,7 +105,7 @@ describe("RepairRound", () => {
     });
     const setData = renderRound([ready]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check" }));
     fireEvent.click(await screen.findByRole("radio", { name: "Customer" }));
     fireEvent.change(screen.getByLabelText("Material name"), {
       target: { value: "Gasket" },
@@ -135,7 +135,7 @@ describe("RepairRound", () => {
     });
     const setData = renderRound([ready]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check" }));
     fireEvent.change(await screen.findByLabelText("Still leaking?"), {
       target: { value: "yes" },
     });

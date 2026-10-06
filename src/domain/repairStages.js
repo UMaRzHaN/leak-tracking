@@ -5,24 +5,23 @@ import {
   getLeakEvents,
   sortLeakEvents,
 } from "./leakEventsCore";
-import { getRepairIterations } from "./leakEventsRepairs";
 import { STATUS } from "@/utils/status";
 
 /**
  * Стадии ремонта для модуля «Ремонт» (7a–7c).
  *
- * Статус записи по-прежнему один из трёх; стадия его уточняет. Открытая
- * утечка — это «ожидает МТР»: ремонт по ней ещё не начат. «В ремонте» —
- * идёт ли работа, закончила ли бригада и ждёт ли приёмки. «Принят» —
- * это устранённая утечка, у которой был ремонт: приёмка закрывает его тем же
- * переходом в «устранена», что и раньше, поэтому отдельного события для неё
- * нет.
+ * Стадия повторяет статус записи: открытая утечка — «ожидает МТР» (ремонт
+ * не начат), в ремонте — «в ремонте», устранённая — «устранена». Отметки
+ * обхода с бригадой и замечанием лежат в ленте событий; закрытие ремонта —
+ * тот же переход в «устранена», что и раньше, без отдельного события.
  */
 export const REPAIR_STAGE = Object.freeze({
   WAITING_MTR: "waiting_mtr",
   IN_REPAIR: "in_repair",
+  // Отметка «готово» осталась в записях обходов прошлых версий. Читается, но
+  // своей стадией больше не показывается: такой ремонт — всё ещё «в ремонте».
   READY: "ready",
-  ACCEPTED: "accepted",
+  RESOLVED: "resolved",
 });
 
 const ACTIVE_STAGES = new Set([
@@ -57,13 +56,10 @@ function stageEventsOfCurrentRepair(leak) {
 export function getRepairStage(leak) {
   const status = leak?.status ?? STATUS.OPEN;
   if (status === STATUS.OPEN) return REPAIR_STAGE.WAITING_MTR;
-  if (status === STATUS.IN_PROGRESS) {
-    const marks = stageEventsOfCurrentRepair(leak);
-    return marks[marks.length - 1]?.stage ?? REPAIR_STAGE.IN_REPAIR;
-  }
-  if (status === STATUS.RESOLVED && getRepairIterations(leak).length > 0) {
-    return REPAIR_STAGE.ACCEPTED;
-  }
+  // Отметки обхода прошлых версий («ждём МТР», «готово») стадию в ремонте
+  // не меняют: «ожидает МТР» — это открытая утечка.
+  if (status === STATUS.IN_PROGRESS) return REPAIR_STAGE.IN_REPAIR;
+  if (status === STATUS.RESOLVED) return REPAIR_STAGE.RESOLVED;
   return null;
 }
 
@@ -82,7 +78,7 @@ export function getRepairBrigade(leak) {
   return null;
 }
 
-/** Записи модуля ремонтов: ждущие МТР (открытые), идущие и принятые. */
+/** Записи модуля ремонтов: ждущие МТР (открытые), идущие и устранённые. */
 export function getRepairLeaks(leaks) {
   return (Array.isArray(leaks) ? leaks : []).filter(
     (leak) => getRepairStage(leak) !== null,
@@ -94,8 +90,7 @@ export function countRepairStages(leaks) {
     all: 0,
     [REPAIR_STAGE.WAITING_MTR]: 0,
     [REPAIR_STAGE.IN_REPAIR]: 0,
-    [REPAIR_STAGE.READY]: 0,
-    [REPAIR_STAGE.ACCEPTED]: 0,
+    [REPAIR_STAGE.RESOLVED]: 0,
   };
   for (const leak of Array.isArray(leaks) ? leaks : []) {
     const stage = getRepairStage(leak);
@@ -143,4 +138,73 @@ export function markRepairStage(leak, mark, { user, now } = {}) {
     }),
     updatedAt: time,
   };
+}
+
+/**
+ * Лог ремонтов для карточки утечки: начала и завершения ремонтов, отметки
+ * стадий с бригадой и замечанием и возвраты в «открыта» (ремонт встал без
+ * МТР). Возврат событием не пишется — он есть только в журнале статусов, —
+ * поэтому берётся оттуда. Новые сверху.
+ *
+ * @returns {Array<{ id: string, kind: string, date: string, user?: string,
+ *   stage?: string, brigade?: string, note?: string, materials?: string,
+ *   photo?: string }>}
+ */
+export function getRepairLog(leak) {
+  const kinds = new Set([
+    LEAK_EVENT_TYPES.REPAIR_STARTED,
+    LEAK_EVENT_TYPES.REPAIR_STAGE,
+    LEAK_EVENT_TYPES.REPAIR_DONE,
+  ]);
+  const fromEvents = getLeakEvents(leak)
+    .filter((event) => kinds.has(event?.type) && event?.date)
+    .map((event, index) => ({
+      id: String(event.id ?? `${event.type}-${index}`),
+      kind: event.type,
+      date: new Date(event.date).toISOString(),
+      ...(event.user ? { user: String(event.user) } : {}),
+      ...(event.stage ? { stage: event.stage } : {}),
+      ...(event.brigade ? { brigade: String(event.brigade) } : {}),
+      ...(event.note ? { note: String(event.note) } : {}),
+      ...(event.materials_equipment
+        ? { materials: String(event.materials_equipment) }
+        : {}),
+      ...(event.photo ? { photo: String(event.photo) } : {}),
+    }));
+  // Возврат в «открыта» — только тот, что шёл из ремонта: переоткрытие
+  // устранённой утечки обходом — уже не про ремонт.
+  const history = Array.isArray(leak?.history) ? leak.history : [];
+  const returns = [];
+  let previous = /** @type {string} */ (STATUS.OPEN);
+  history.forEach((entry, index) => {
+    if (entry?.action !== "status_changed") return;
+    if (
+      entry.to === STATUS.OPEN &&
+      previous === STATUS.IN_PROGRESS &&
+      entry.date
+    ) {
+      returns.push({
+        id: `returned-${index}`,
+        kind: "returned",
+        date: new Date(entry.date).toISOString(),
+        ...(entry.user ? { user: String(entry.user) } : {}),
+      });
+    }
+    previous = entry.to ?? previous;
+  });
+  // Проверка ремонта пишет возврат и следом отметку «ожидает МТР» с бригадой
+  // и замечанием — это одно действие, и в логе оно одной строкой.
+  const waitingMarks = fromEvents.filter(
+    (item) => item.stage === REPAIR_STAGE.WAITING_MTR,
+  );
+  const lonelyReturns = returns.filter(
+    (item) =>
+      !waitingMarks.some((mark) => {
+        const gap = Date.parse(mark.date) - Date.parse(item.date);
+        return gap >= 0 && gap < 5000;
+      }),
+  );
+  return [...fromEvents, ...lonelyReturns].sort(
+    (left, right) => Date.parse(right.date) - Date.parse(left.date),
+  );
 }

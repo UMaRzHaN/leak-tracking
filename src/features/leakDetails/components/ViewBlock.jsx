@@ -5,6 +5,7 @@ import LeakLocationSection from "./LeakLocationSection";
 import LeakMeasurementSection from "./LeakMeasurementSection";
 import LeakRepairSection from "./LeakRepairSection";
 import LeakHistorySection from "./LeakHistorySection";
+import LeakRepairLog from "./LeakRepairLog";
 
 function splitFields(fields) {
   return {
@@ -123,6 +124,9 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
         t={t}
       />
     );
+  }
+  if (activeTab === "repairs") {
+    return <LeakRepairLog data={data} />;
   }
   if (activeTab === "monitoring" || activeTab === "log") {
     return (

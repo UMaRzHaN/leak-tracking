@@ -11,6 +11,8 @@ import { EXCEL_MONITORING_EXPORT_MODE } from "@/utils/excelExportMode";
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
 import { useRegistryLocationSource } from "@/hooks/useRegistryLocationSource";
 import { countExportSections } from "./exportSections";
+import { useAcceptances } from "@/utils/acceptanceStorage";
+import { getAcceptanceExportRows } from "@/services/excelExport/acceptanceRows";
 import {
   PERIOD,
   daysIn,
@@ -91,6 +93,13 @@ export default function ExportPage({
   const leaks = useMemo(() => filterByPeriod(source, range), [source, range]);
   const covered = useMemo(() => shownRange(range, leaks), [range, leaks]);
   const counts = useMemo(() => countExportSections(leaks), [leaks]);
+  // Приёмка оборудования — накладные проекта, партии за выбранный период.
+  // Места у накладной нет, поэтому выбор места её не сужает.
+  const [invoices] = useAcceptances(activeProject?.id ?? null);
+  const acceptanceRows = useMemo(
+    () => getAcceptanceExportRows(invoices, range),
+    [invoices, range],
+  );
   const withInventory = hasRegistry && choice.inventory;
 
   // Листы в том порядке, в каком они лягут в книгу.
@@ -116,10 +125,20 @@ export default function ExportPage({
           rows: counts.monitoring.rows,
           photos: counts.monitoring.photos,
         },
+        choice.repairs && {
+          key: "repairLog",
+          label: t("export.sheetRepairLog"),
+          rows: counts.repairLog.rows,
+        },
         choice.materials && {
           key: "materials",
           label: t("export.sheetMaterials"),
           rows: counts.materials.rows,
+        },
+        choice.acceptance && {
+          key: "acceptance",
+          label: t("export.sheetAcceptance"),
+          rows: acceptanceRows.length,
         },
         withInventory && {
           key: "inventory",
@@ -141,6 +160,7 @@ export default function ExportPage({
     choice.repairs &&
     choice.monitoring &&
     choice.materials &&
+    choice.acceptance &&
     (!hasRegistry || choice.inventory);
 
   const sheets = useMemo(
@@ -148,8 +168,9 @@ export default function ExportPage({
       repairs: choice.repairs,
       monitoring: choice.monitoring,
       materials: choice.materials,
+      acceptance: choice.acceptance,
     }),
-    [choice.repairs, choice.monitoring, choice.materials],
+    [choice.repairs, choice.monitoring, choice.materials, choice.acceptance],
   );
   const photoSections = useMemo(
     () => ({
@@ -175,6 +196,7 @@ export default function ExportPage({
     t("export.chips.leaks"),
     choice.repairs && t("export.chips.repairs"),
     choice.materials && t("export.chips.materials"),
+    choice.acceptance && t("export.chips.acceptance"),
     choice.monitoring && t("export.chips.monitoring"),
     withInventory && t("export.chips.inventory"),
   ]
@@ -267,6 +289,7 @@ export default function ExportPage({
     sheets,
     photoSections,
     inventory,
+    acceptanceRows: choice.acceptance ? acceptanceRows : null,
     deferDelivery: true,
   });
 
@@ -411,6 +434,7 @@ export default function ExportPage({
                     repairs: true,
                     monitoring: true,
                     materials: true,
+                    acceptance: true,
                     inventory: hasRegistry ? true : value.inventory,
                   }))
                 }
@@ -436,6 +460,12 @@ export default function ExportPage({
                 count={counts.materials.rows}
                 on={choice.materials}
                 onToggle={() => toggleSection("materials")}
+              />
+              <IncludeChip
+                label={t("export.chips.acceptance")}
+                count={acceptanceRows.length}
+                on={choice.acceptance}
+                onToggle={() => toggleSection("acceptance")}
               />
               <IncludeChip
                 label={t("export.chips.monitoring")}

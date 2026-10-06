@@ -29,6 +29,7 @@ const INTEGER_KEYS = new Set([
   "index",
   "roundNumber",
   "attempt",
+  "batch",
   "coords_accuracy",
   "Operating_mode",
 ]);
@@ -42,6 +43,11 @@ const WHOLE_PERCENT_KEYS = new Set(["gasPercentage", "uncertainty"]);
 const COORDINATE_KEYS = new Set(["lat", "lng"]);
 const DECIMAL_KEYS = new Set([
   "durationHours",
+  // Количества приёмки оборудования: бывают и дробные — метры, килограммы.
+  "ordered",
+  "qty",
+  "received",
+  "left",
   "pressure",
   "temperature",
   "temperature_K",

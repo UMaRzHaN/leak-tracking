@@ -32,6 +32,7 @@ export const components = {
   inspectTitle: "State at the time of inspection",
   statusNow: "now",
   swipeInspect: "Inspect",
+  openPhoto: "Open photo",
   swipeDetails: "Details",
   noLocation: "No location given",
   unnamed: "Unnamed",
