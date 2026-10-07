@@ -61,4 +61,87 @@ describe("лист «Сверка»", () => {
     await buildReconcileSheet(workbook, { components, texts });
     expect(workbook.getWorksheet("Сверка").rowCount).toBe(4);
   });
+
+  describe("снимки «до» и «после»", () => {
+    const card = {
+      id: "c1",
+      component_uid: "4242",
+      photo: "idb://card",
+      history: [
+        { ...inspect("2026-08-20T09:00:00Z"), photo: "idb://check-1" },
+        { ...inspect("2026-09-01T09:00:00Z", 3), photo: "idb://check-2" },
+      ],
+    };
+    // Та же карточка, как она уехала в архив.
+    const archivedCard = {
+      ...card,
+      photo: "zip:Photos/4242.jpg",
+      history: [
+        { ...card.history[0], photo: "zip:Photos/4242_inspection_1.jpg" },
+        { ...card.history[1], photo: "zip:Photos/4242_inspection_2.jpg" },
+      ],
+    };
+
+    it("ссылаются на файлы архива: «до» — прошлая сверка или снимок карточки", () => {
+      const rows = buildReconcileRows([card], texts, undefined, {
+        archived: [archivedCard],
+        archivedPhotos: [
+          "Photos/4242.jpg",
+          "Photos/4242_inspection_1.jpg",
+          "Photos/4242_inspection_2.jpg",
+        ],
+      });
+
+      expect(rows.map((row) => [row.previousPhotoLink, row.photoLink])).toEqual(
+        [
+          ["Photos/4242.jpg", "Photos/4242_inspection_1.jpg"],
+          ["Photos/4242_inspection_1.jpg", "Photos/4242_inspection_2.jpg"],
+        ],
+      );
+    });
+
+    it("не ссылается на то, что в архив не легло", () => {
+      const rows = buildReconcileRows([card], texts, undefined, {
+        archived: [archivedCard],
+        archivedPhotos: ["Photos/4242_inspection_2.jpg"],
+      });
+      expect(rows[1].previousPhotoLink).toBeNull();
+      expect(rows[1].photoLink).toBe("Photos/4242_inspection_2.jpg");
+
+      // Без архивной копии — ни одной ссылки на хранилище устройства.
+      const local = buildReconcileRows([card], texts);
+      expect(
+        local.every((row) => !row.photoLink && !row.previousPhotoLink),
+      ).toBe(true);
+    });
+
+    it("пишет ссылку в ячейку листа", async () => {
+      const workbook = new ExcelJS.Workbook();
+      await buildReconcileSheet(workbook, {
+        components: [card],
+        texts: {
+          ...texts,
+          headers: {
+            ...texts.headers,
+            photo: "Фото",
+            previousPhoto: "Фото до",
+          },
+          photoOpen: "Открыть фото",
+          photoMissing: "Есть (файл не найден)",
+        },
+        archived: [archivedCard],
+        archivedPhotos: ["Photos/4242_inspection_1.jpg"],
+      });
+
+      const sheet = workbook.getWorksheet("Сверка");
+      const header = sheet.getRow(1).values;
+      expect(sheet.getRow(2).getCell(header.indexOf("Фото")).value).toEqual({
+        text: "Открыть фото",
+        hyperlink: "Photos/4242_inspection_1.jpg",
+      });
+      expect(sheet.getRow(2).getCell(header.indexOf("Фото до")).value).toBe(
+        "Есть (файл не найден)",
+      );
+    });
+  });
 });

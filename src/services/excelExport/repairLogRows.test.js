@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { getRepairLogExportRows } from "./repairLogRows";
 import { getRepairExportRows } from "./repairRows";
+import ExcelJS from "exceljs";
+import { buildRepairLogSheet } from "./repairLogSheet";
 
 const leak = {
   leak_id: "1038",
@@ -65,5 +67,67 @@ describe("repair sheets", () => {
 
   it("names the crew of each repair attempt", () => {
     expect(getRepairExportRows([leak])[0].brigade).toBe("Бригада 2");
+  });
+
+  describe("снимки «до» и «после»", () => {
+    const photographed = {
+      leak_id: "1040",
+      status: "resolved",
+      photo: "idb://first",
+      events: [
+        { ...leak.events[0], photo: "idb://start" },
+        { ...leak.events[2], photo: "idb://done" },
+      ],
+    };
+
+    it("дают строке ключи карты: свой снимок и прежний", () => {
+      const [started, done] = getRepairLogExportRows([photographed]);
+
+      // «До» начала ремонта — снимок самой записи, под колонкой «Фото».
+      expect(started).toMatchObject({
+        previousPhoto: "idb://first",
+        previousPhotoMapKey: "0:photo",
+        photo: "idb://start",
+        photoMapKey: "event:0:0",
+      });
+      // «До» приёмки — снимок начала, под его местом в ленте.
+      expect(done).toMatchObject({
+        previousPhotoMapKey: "event:0:0",
+        photoMapKey: "event:0:1",
+      });
+    });
+
+    it("ставят ссылку, где файл есть, и говорят словами, где нет", async () => {
+      const workbook = new ExcelJS.Workbook();
+      const sheetTexts = {
+        sheets: { repairLog: "Журнал ремонтов" },
+        // Подпись колонки — её ключ: так её и ищут ниже.
+        repairLog: {
+          headers: new Proxy({}, { get: (_, key) => String(key) }),
+          events: {},
+        },
+        photo: { open: "Открыть фото", missing: "Есть (файл не найден)" },
+      };
+      await buildRepairLogSheet(workbook, [photographed], sheetTexts, "full", {
+        "0:photo": "photos/report/1040/photo.jpg",
+        "event:0:0": "photos/report/1040/repair.jpg",
+      });
+
+      const sheet = workbook.getWorksheet("Журнал ремонтов");
+      const header = sheet.getRow(1).values;
+      const before = header.indexOf("previousPhoto");
+      const after = header.indexOf("photo");
+      expect(sheet.getRow(2).getCell(before).value).toEqual({
+        text: "Открыть фото",
+        hyperlink: "photos/report/1040/photo.jpg",
+      });
+      expect(sheet.getRow(2).getCell(after).value).toMatchObject({
+        hyperlink: "photos/report/1040/repair.jpg",
+      });
+      // Снимок приёмки в книгу не лёг — так и сказано.
+      expect(sheet.getRow(3).getCell(after).value).toBe(
+        "Есть (файл не найден)",
+      );
+    });
   });
 });

@@ -11,6 +11,8 @@ const RECONCILE_KEYS = [
   "object",
   "to",
   "user",
+  "previousPhoto",
+  "photo",
 ];
 import { buildExcelExportTexts } from "@/services/excelExport/exportTexts";
 
@@ -96,6 +98,8 @@ export function buildInventoryTexts(t) {
     reconcileSheet: {
       sheet: t("components.export.reconcileSheet.sheet"),
       unknownUser: t("components.export.historySheet.unknownUser"),
+      photoOpen: t("excelExport.photo.open"),
+      photoMissing: t("excelExport.photo.missing"),
       headers: fromEntries(
         RECONCILE_KEYS.map((key) => [
           key,

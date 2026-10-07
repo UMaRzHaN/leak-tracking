@@ -66,6 +66,8 @@ export const excelExport = {
       materials_equipment: "МТР",
       note: "Комментарий",
       user: "Кто",
+      previousPhoto: "Фото до",
+      photo: "Фото",
     },
     events: {
       repair_started: "Начат ремонт",

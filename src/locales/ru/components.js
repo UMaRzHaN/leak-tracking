@@ -228,6 +228,8 @@ export const components = {
         object: "Объект",
         to: "Состояние",
         user: "Кто",
+        previousPhoto: "Фото до",
+        photo: "Фото",
       },
     },
     historySheet: {

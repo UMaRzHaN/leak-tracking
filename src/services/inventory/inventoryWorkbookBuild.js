@@ -24,8 +24,9 @@ const getExcelJS = () => import("exceljs");
  * single table would be slower, not faster.
  *
  * @param {{name?: string, headers: string[], keysOrder: string[], rows: Record<string, any>[], ids?: string[], components?: Record<string, any>[], fields?: {key?: string, label?: string}[], reconcileExportMode?: string}} sheetSpec
- * @param {{photoPaths?: Record<string, string>, texts?: Record<string, any>, backup?: Record<string, any>[]|null}} [options]
- *   `backup` — карточки целиком, как они уедут в служебный лист.
+ * @param {{photoPaths?: Record<string, string>, texts?: Record<string, any>, backup?: Record<string, any>[]|null, archivedPhotos?: string[]}} [options]
+ *   `backup` — карточки целиком, как они уедут в служебный лист;
+ *   `archivedPhotos` — снимки, которые легли в архив рядом с книгой.
  */
 export async function buildInventoryWorkbookBuffer(sheetSpec, options = {}) {
   const ExcelJS = (await getExcelJS()).default;
@@ -47,6 +48,8 @@ export async function buildInventoryWorkbookBuffer(sheetSpec, options = {}) {
     components: sheetSpec?.components ?? [],
     texts: options.texts?.reconcileSheet ?? {},
     mode: sheetSpec?.reconcileExportMode,
+    archived: options.backup ?? null,
+    archivedPhotos: options.archivedPhotos ?? [],
   });
   // Последним и скрытым: это страница для машины, и открывший книгу должен
   // сначала увидеть то, ради чего её открыл.

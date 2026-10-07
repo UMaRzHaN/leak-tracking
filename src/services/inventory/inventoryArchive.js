@@ -90,6 +90,10 @@ export async function addInventoryFiles(
     await buildInventoryWorkbookBufferInWorker(sheetSpec, {
       photoPaths: registryEntry?.photoPaths ?? {},
       backup: registryEntry?.components ?? [],
+      // Лист «Сверка» ссылается только на то, что легло рядом.
+      archivedPhotos: (registryEntry?.photoEntries ?? []).map(
+        (entry) => entry.path,
+      ),
       texts,
     }),
   );

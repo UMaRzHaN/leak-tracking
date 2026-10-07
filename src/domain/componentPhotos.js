@@ -33,26 +33,35 @@ export function getComponentDisplayPhoto(component) {
 }
 
 /**
- * Лог сверок, новые сверху, — у каждого осмотра со снимком ещё и снимок «до»:
+ * Осмотры компонента по порядку, у каждого со снимком — ещё и снимок «до»:
  * снимок прошлой сверки, а у первой — тот, с которым компонент заводили.
- * Так же, как «фото до обхода» у утечки, только считается при чтении: записи
- * сверок, сделанные раньше, получают пару без переписывания истории.
+ * Так же, как «фото до обхода» у утечки, только считается при чтении:
+ * записи сверок, сделанные раньше, получают пару без переписывания истории.
+ *
+ * Одна и та же пара и в карточке, и в листе «Сверка» книги.
  *
  * @param {any} component
  * @returns {Array<Record<string, any>>}
  */
-export function getComponentReconcileLog(component) {
+export function getInspectionsWithPreviousPhoto(component) {
   let previous = component?.photo ? String(component.photo) : null;
-  const log = [];
+  const inspections = [];
   for (const entry of history(component)) {
-    if (!isInspection(entry)) continue;
+    if (entry?.action !== COMPONENT_HISTORY_ACTIONS.INSPECTED) continue;
     const photo = entry.photo ? String(entry.photo) : null;
-    log.push(
+    inspections.push(
       photo && previous && previous !== photo
         ? { ...entry, previousPhoto: previous }
         : entry,
     );
     if (photo) previous = photo;
   }
-  return log.reverse();
+  return inspections;
+}
+
+/** Лог сверок для карточки: осмотры с датой, новые сверху. */
+export function getComponentReconcileLog(component) {
+  return getInspectionsWithPreviousPhoto(component)
+    .filter((entry) => entry.date)
+    .reverse();
 }

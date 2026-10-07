@@ -226,6 +226,8 @@ export const components = {
         object: "Object",
         to: "Condition",
         user: "By",
+        previousPhoto: "Photo before",
+        photo: "Photo",
       },
     },
     historySheet: {

@@ -9,11 +9,11 @@ import {
 import {
   buildHistorySheet,
   buildMaterialsSheet,
-  buildRepairLogSheet,
   buildAcceptanceSheet,
   buildMonitoringSheet,
   buildRepairSheet,
 } from "@/services/excelExport/auxiliarySheets";
+import { buildRepairLogSheet } from "@/services/excelExport/repairLogSheet";
 import {
   addStructuredTable,
   getColumnWidth,
@@ -141,6 +141,7 @@ async function buildWorkbook({
       orderedLeaks,
       texts,
       repairLogExportMode,
+      photoMap,
     );
   }
   if (sheets.monitoring !== false) {

@@ -9,7 +9,7 @@ import {
   styleBodyRows,
   styleHeaderRow,
 } from "@/services/excelExport/sheetLayout";
-import { COMPONENT_HISTORY_ACTIONS } from "@/domain/componentHistory";
+import { getInspectionsWithPreviousPhoto } from "@/domain/componentPhotos";
 import {
   EXCEL_MONITORING_EXPORT_MODE,
   keepLatestPerRound,
@@ -37,31 +37,66 @@ const KEYS = [
   "object",
   "to",
   "user",
+  "previousPhoto",
+  "photo",
 ];
+
+const PHOTO_COLUMNS = ["previousPhoto", "photo"];
+const ARCHIVE_PREFIX = "zip:";
+
+/**
+ * Путь снимка внутри архива — тот, на который ссылается ячейка, — или null.
+ *
+ * Карточки в архиве переписаны на `zip:Photos/…`; ссылка ставится только на
+ * то, что действительно легло в архив: выгрузка без фото пути оставляет, а
+ * файлов не кладёт.
+ *
+ * @param {any} path
+ * @param {Set<string>} archived
+ */
+function archivedPhotoLink(path, archived) {
+  const value = String(path ?? "");
+  if (!value.startsWith(ARCHIVE_PREFIX)) return null;
+  const inArchive = value.slice(ARCHIVE_PREFIX.length);
+  return archived.has(inArchive) ? inArchive : null;
+}
 
 /**
  * @param {Record<string, any>[]} components
  * @param {Record<string, any>} texts
  * @param {string} [mode] режим листа: все осмотры или последний в обходе
+ * @param {{ archived?: Record<string, any>[]|null, archivedPhotos?: string[] }} [photos]
+ *   `archived` — те же карточки, как они уехали в архив (снимки — пути
+ *   `zip:…`); `archivedPhotos` — файлы, которые в архив действительно легли.
  */
-export function buildReconcileRows(components, texts, mode) {
+export function buildReconcileRows(components, texts, mode, photos = {}) {
+  const archivedById = new Map(
+    (photos.archived ?? []).map((card) => [card?.id, card]),
+  );
+  const archived = new Set(photos.archivedPhotos ?? []);
   const rows = (components ?? []).flatMap((component, index) =>
-    (Array.isArray(component?.history) ? component.history : [])
-      .filter((entry) => entry?.action === COMPONENT_HISTORY_ACTIONS.INSPECTED)
-      .map((entry) => ({
-        index,
-        dateRaw: entry.date,
-        round: Number.isFinite(entry.roundNumber) ? entry.roundNumber : "",
-        roundNumber: entry.roundNumber,
-        date: parseTimestamp(entry.date) ?? "",
-        time: parseTimestamp(entry.date) ?? "",
-        component_uid: component.component_uid ?? "",
-        scheme_tag: component.scheme_tag ?? "",
-        component: component.component ?? "",
-        object: component.object ?? "",
-        to: entry.to ?? "",
-        user: entry.user ?? texts.unknownUser ?? "",
-      })),
+    // История — из архивной копии карточки: в ней снимки уже под путями
+    // архива. Без неё — своя, и ссылок на снимки нет.
+    getInspectionsWithPreviousPhoto(
+      archivedById.get(component?.id) ?? component,
+    ).map((entry) => ({
+      index,
+      dateRaw: entry.date,
+      round: Number.isFinite(entry.roundNumber) ? entry.roundNumber : "",
+      roundNumber: entry.roundNumber,
+      date: parseTimestamp(entry.date) ?? "",
+      time: parseTimestamp(entry.date) ?? "",
+      component_uid: component.component_uid ?? "",
+      scheme_tag: component.scheme_tag ?? "",
+      component: component.component ?? "",
+      object: component.object ?? "",
+      to: entry.to ?? "",
+      user: entry.user ?? texts.unknownUser ?? "",
+      previousPhoto: entry.previousPhoto ?? "",
+      previousPhotoLink: archivedPhotoLink(entry.previousPhoto, archived),
+      photo: entry.photo ?? "",
+      photoLink: archivedPhotoLink(entry.photo, archived),
+    })),
   );
   const kept =
     mode === EXCEL_MONITORING_EXPORT_MODE.LATEST_PER_ROUND
@@ -81,11 +116,14 @@ export function buildReconcileRows(components, texts, mode) {
 
 /**
  * @param {any} workbook
- * @param {{components: Record<string, any>[], texts?: Record<string, any>, mode?: string}} spec
+ * @param {{components: Record<string, any>[], texts?: Record<string, any>, mode?: string, archived?: Record<string, any>[]|null, archivedPhotos?: string[]}} spec
  */
 export async function buildReconcileSheet(workbook, spec) {
-  const { components, texts = {}, mode } = spec ?? {};
-  const rows = buildReconcileRows(components, texts, mode);
+  const { components, texts = {}, mode, archived, archivedPhotos } = spec ?? {};
+  const rows = buildReconcileRows(components, texts, mode, {
+    archived,
+    archivedPhotos,
+  });
   // Пустой вкладки нет: компоненты ещё ни разу не осматривали.
   if (rows.length === 0) return;
 
@@ -95,11 +133,28 @@ export async function buildReconcileSheet(workbook, spec) {
   addStructuredTable(sheet, {
     name: "ComponentReconcile",
     headers,
-    rows: rows.map((row) => KEYS.map((key) => toExcelCellValue(key, row[key]))),
+    // Ячейки снимков заполняются ниже: ссылка — свойство ячейки.
+    rows: rows.map((row) =>
+      KEYS.map((key) =>
+        PHOTO_COLUMNS.includes(key) ? "" : toExcelCellValue(key, row[key]),
+      ),
+    ),
     theme: RECONCILE_TABLE_THEME,
   });
   styleHeaderRow(sheet, "FF4BACC6");
   await styleBodyRows(sheet, rows.length);
+  rows.forEach((row, rowIndex) => {
+    for (const key of PHOTO_COLUMNS) {
+      const cell = sheet.getRow(rowIndex + 2).getCell(KEYS.indexOf(key) + 1);
+      const link = row[`${key}Link`];
+      if (link) {
+        cell.value = { text: texts.photoOpen ?? link, hyperlink: link };
+        cell.font = { color: { argb: "FF1155CC" }, underline: true };
+      } else {
+        cell.value = row[key] ? (texts.photoMissing ?? "") : "";
+      }
+    }
+  });
   applyColumnFormats(sheet, KEYS);
 
   KEYS.forEach((key, index) => {
@@ -107,6 +162,7 @@ export async function buildReconcileSheet(workbook, spec) {
       headers[index],
       key,
       rows,
+      { isPhoto: PHOTO_COLUMNS.includes(key) },
     );
   });
 }

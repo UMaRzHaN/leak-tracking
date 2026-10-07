@@ -64,6 +64,8 @@ const REPAIR_LOG_KEYS = [
   "materials_equipment",
   "note",
   "user",
+  "previousPhoto",
+  "photo",
 ];
 const REPAIR_LOG_EVENTS = [
   "repair_started",

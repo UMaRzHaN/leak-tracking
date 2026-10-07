@@ -9,17 +9,15 @@ import {
 } from "./monitoringRows";
 import { getRepairExportRows } from "./repairRows";
 import { getMaterialsExportRows } from "./materialsRows";
-import { getRepairLogExportRows } from "./repairLogRows";
 import {
   addStructuredTable,
   getColumnWidth,
   styleBodyRows,
   styleHeaderRow,
-  yieldToMainThread,
+  writePhotoLinks,
 } from "./sheetLayout";
 
 const MONITORING_TABLE_THEME = "TableStyleMedium4";
-const EXPORT_YIELD_EVERY = 40;
 
 export function buildHistoryRows(orderedLeaks, texts) {
   const fallbackUser = texts.history.unknownUser;
@@ -155,27 +153,17 @@ export async function buildMonitoringSheet(
   styleHeaderRow(sheet, "FF548235");
   await styleBodyRows(sheet, rows.length);
 
-  for (const [rowIndex, row] of rows.entries()) {
-    if (rowIndex > 0 && rowIndex % EXPORT_YIELD_EVERY === 0) {
-      await yieldToMainThread();
-    }
-
-    for (const [key, mapKey] of [
-      ["photo", row.photoMapKey],
-      ["previousPhoto", row.previousPhotoMapKey],
-    ]) {
-      const photoColumnIndex = keys.indexOf(key) + 1;
-      const photoFile = photoMap[mapKey];
-      const photoCell = sheet.getRow(rowIndex + 2).getCell(photoColumnIndex);
-
-      if (photoFile) {
-        photoCell.value = { text: texts.photo.open, hyperlink: photoFile };
-        photoCell.font = { color: { argb: "FF1155CC" }, underline: true };
-      } else {
-        photoCell.value = row[key] ? texts.photo.missing : "";
-      }
-    }
-  }
+  await writePhotoLinks(
+    sheet,
+    rows,
+    keys,
+    [
+      ["photo", "photoMapKey"],
+      ["previousPhoto", "previousPhotoMapKey"],
+    ],
+    photoMap,
+    texts,
+  );
 
   applyColumnFormats(sheet, keys);
 
@@ -251,22 +239,7 @@ export async function buildRepairSheet(
   styleHeaderRow(sheet, "FFC55A11");
   await styleBodyRows(sheet, rows.length);
 
-  for (const [rowIndex, row] of rows.entries()) {
-    if (rowIndex > 0 && rowIndex % EXPORT_YIELD_EVERY === 0) {
-      await yieldToMainThread();
-    }
-
-    for (const [key, mapKey] of photoColumns) {
-      const cell = sheet.getRow(rowIndex + 2).getCell(keys.indexOf(key) + 1);
-      const photoFile = map[row[mapKey]];
-      if (photoFile) {
-        cell.value = { text: texts.photo.open, hyperlink: photoFile };
-        cell.font = { color: { argb: "FF1155CC" }, underline: true };
-      } else {
-        cell.value = row[key] ? texts.photo.missing : "";
-      }
-    }
-  }
+  await writePhotoLinks(sheet, rows, keys, photoColumns, map, texts);
 
   applyColumnFormats(sheet, keys);
 
@@ -309,52 +282,6 @@ export async function buildMaterialsSheet(workbook, orderedLeaks, texts) {
     theme: "TableStyleMedium7",
   });
   styleHeaderRow(sheet, "FF548235");
-  await styleBodyRows(sheet, rows.length);
-  applyColumnFormats(sheet, keys);
-
-  keys.forEach((key, index) => {
-    sheet.getColumn(index + 1).width = getColumnWidth(
-      headers[index],
-      key,
-      rows,
-    );
-  });
-}
-
-/**
- * «Журнал ремонтов»: начала, отметки стадий с бригадой и замечанием,
- * приёмки и возвраты в «ожидает МТР» — строкой на событие, по времени.
- */
-export async function buildRepairLogSheet(workbook, orderedLeaks, texts, mode) {
-  const rows = getRepairLogExportRows(orderedLeaks, mode).map((row) => ({
-    ...row,
-    date: parseTimestamp(row.dateRaw) ?? "",
-    time: parseTimestamp(row.dateRaw) ?? "",
-    event: texts.repairLog.events[row.event] ?? row.event,
-  }));
-  if (rows.length === 0) return;
-
-  const sheet = workbook.addWorksheet(texts.sheets.repairLog);
-  const keys = [
-    "index",
-    "leak_id",
-    "date",
-    "time",
-    "event",
-    "brigade",
-    "materials_equipment",
-    "note",
-    "user",
-  ];
-  const headers = keys.map((key) => texts.repairLog.headers[key]);
-
-  addStructuredTable(sheet, {
-    name: "RepairLog",
-    headers,
-    rows: rows.map((row) => keys.map((key) => toExcelCellValue(key, row[key]))),
-    theme: "TableStyleMedium3",
-  });
-  styleHeaderRow(sheet, "FFC55A11");
   await styleBodyRows(sheet, rows.length);
   applyColumnFormats(sheet, keys);
 
