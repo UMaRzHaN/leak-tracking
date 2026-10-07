@@ -62,6 +62,7 @@ export const leakDetails = {
     brigade: "Бригада",
     materials: "МТР",
     note: "Комментарий",
+    photoBefore: "Фото до ремонта",
     empty: "Ремонтов по этой утечке не было",
   },
 

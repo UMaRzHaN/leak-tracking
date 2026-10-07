@@ -36,6 +36,7 @@ export const components = {
     comment: "Comment",
     user: "By",
     photo: "Inspection photo",
+    photoBefore: "Photo before inspection",
     empty: "The component has not been inspected yet",
   },
   check: {

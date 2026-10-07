@@ -7,7 +7,7 @@ import {
   createFieldValue,
 } from "./componentFieldText";
 import { useModalDialog } from "@/hooks/useModalDialog";
-import { usePhotoSrc } from "@/hooks/usePhotoSrc";
+import { useComponentPhotoSrc } from "./useComponentPhotoSrc";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import PhotoBlock from "@/features/leakDetails/components/PhotoBlock";
 import LeakLocationSection from "@/features/leakDetails/components/LeakLocationSection";
@@ -52,7 +52,7 @@ export default function ComponentDetailsSheet({
 }) {
   const { t, lang } = useLanguage();
   const dialogRef = useModalDialog({ open: true, onClose });
-  const photoSrc = usePhotoSrc(component?.photo ?? null);
+  const photoSrc = useComponentPhotoSrc(component);
 
   const [tab, setTab] = useState("card");
   const [viewerOpen, setViewerOpen] = useState(false);

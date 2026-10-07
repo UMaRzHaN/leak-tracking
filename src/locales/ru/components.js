@@ -37,6 +37,7 @@ export const components = {
     comment: "Комментарий",
     user: "Кто",
     photo: "Фото осмотра",
+    photoBefore: "Фото до осмотра",
     empty: "Компонент ещё не осматривали",
   },
   check: {

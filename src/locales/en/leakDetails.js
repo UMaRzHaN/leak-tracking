@@ -62,6 +62,7 @@ export const leakDetails = {
     brigade: "Crew",
     materials: "Materials",
     note: "Comment",
+    photoBefore: "Photo before repair",
     empty: "This leak has had no repairs",
   },
 

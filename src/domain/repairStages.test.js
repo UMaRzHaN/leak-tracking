@@ -130,6 +130,65 @@ describe("markRepairStage", () => {
 });
 
 describe("getRepairLog", () => {
+  it("даёт снимку ремонта пару — последний снимок записи до него", () => {
+    const leak = {
+      status: "resolved",
+      photo: "idb://first",
+      events: [
+        { ...started("2026-10-01"), photo: "idb://start" },
+        { ...done("2026-10-02"), photo: "idb://done" },
+      ],
+    };
+    const [doneRow, startedRow] = getRepairLog(leak);
+
+    expect(doneRow).toMatchObject({
+      photo: "idb://done",
+      previousPhoto: "idb://start",
+    });
+    // Перед первым ремонтом — снимок, с которым утечку заводили.
+    expect(startedRow).toMatchObject({
+      photo: "idb://start",
+      previousPhoto: "idb://first",
+    });
+  });
+
+  it("берёт в «до» и снимок осмотра, и первичный, подменённый им", () => {
+    const leak = {
+      status: "resolved",
+      // Осмотр «утечка есть» подменил первичный снимок своим.
+      photo: "idb://round",
+      events: [
+        {
+          id: "i1",
+          type: "inspection",
+          date: "2026-10-01",
+          photo: "idb://round",
+          previousPhoto: "idb://first",
+        },
+        { ...started("2026-09-20"), photo: "idb://early" },
+        { ...done("2026-10-05"), photo: "idb://done" },
+      ],
+    };
+    const log = getRepairLog(leak);
+
+    expect(log[0]).toMatchObject({ previousPhoto: "idb://round" });
+    expect(log[1]).toMatchObject({ previousPhoto: "idb://first" });
+  });
+
+  it("не даёт пары строке без снимка и снимку, что не менялся", () => {
+    const leak = {
+      status: "in_progress",
+      photo: "idb://same",
+      events: [
+        started("2026-10-01"),
+        { ...stage("in_repair", "2026-10-02"), photo: "idb://same" },
+      ],
+    };
+    for (const row of getRepairLog(leak)) {
+      expect(row).not.toHaveProperty("previousPhoto");
+    }
+  });
+
   it("lists repair events and returns to open, newest first", () => {
     const leak = {
       status: "open",

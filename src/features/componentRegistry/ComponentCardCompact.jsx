@@ -1,6 +1,6 @@
 import { memo, useRef, useState } from "react";
 import { useSwipeActions } from "@/hooks/useSwipeActions";
-import { usePhotoSrc } from "@/hooks/usePhotoSrc";
+import { useComponentPhotoSrc } from "./useComponentPhotoSrc";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { formatLeakDate } from "@/utils/locale";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
@@ -39,7 +39,7 @@ function ComponentCardCompact({
    * card on top. The flag outlives that reset by one event.
    */
   const swipedRef = useRef(false);
-  const photoSrc = usePhotoSrc(component.photo ?? null);
+  const photoSrc = useComponentPhotoSrc(component);
   const [viewerOpen, setViewerOpen] = useState(false);
 
   const swipe = useSwipeActions({

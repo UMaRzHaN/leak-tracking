@@ -186,9 +186,13 @@ function appendStageMark(leak, mark, { user, now }) {
  * МТР). Возврат событием не пишется — он есть только в журнале статусов, —
  * поэтому берётся оттуда. Новые сверху.
  *
+ * У строки со снимком есть и снимок «до» — как «фото до обхода» у осмотра.
+ * Он считается при чтении (см. `photosBeforeEvents`), поэтому пару получают
+ * и ремонты, записанные раньше.
+ *
  * @returns {Array<{ id: string, kind: string, date: string, user?: string,
  *   stage?: string, brigade?: string, note?: string, materials?: string,
- *   photo?: string, roundNumber?: number }>}
+ *   photo?: string, previousPhoto?: string, roundNumber?: number }>}
  */
 export function getRepairLog(leak) {
   const kinds = new Set([
@@ -196,7 +200,9 @@ export function getRepairLog(leak) {
     LEAK_EVENT_TYPES.REPAIR_STAGE,
     LEAK_EVENT_TYPES.REPAIR_DONE,
   ]);
-  const fromEvents = getLeakEvents(leak)
+  const events = getLeakEvents(leak);
+  const photosBefore = photosBeforeEvents(leak, events);
+  const fromEvents = events
     .filter((event) => kinds.has(event?.type) && event?.date)
     .map((event, index) => ({
       id: String(event.id ?? `${event.type}-${index}`),
@@ -210,6 +216,11 @@ export function getRepairLog(leak) {
         ? { materials: String(event.materials_equipment) }
         : {}),
       ...(event.photo ? { photo: String(event.photo) } : {}),
+      ...(event.photo &&
+      photosBefore.get(event) &&
+      photosBefore.get(event) !== String(event.photo)
+        ? { previousPhoto: photosBefore.get(event) }
+        : {}),
       ...(Number.isFinite(event.roundNumber)
         ? { roundNumber: event.roundNumber }
         : {}),
@@ -255,4 +266,34 @@ export function getRepairLog(leak) {
   return [...fromEvents, ...lonelyReturns].sort(
     (left, right) => Date.parse(right.date) - Date.parse(left.date),
   );
+}
+
+/**
+ * Какой снимок был у записи перед каждым событием ленты: последний снимок
+ * события раньше него, а до первого такого — первичный.
+ *
+ * Первичный не всегда лежит в `photo`: осмотр «утечка есть» подменяет его
+ * своим и помнит прежний как `previousPhoto`. Самый ранний такой прежний
+ * снимок, которого нет ни у одного события, и есть снятый при заведении.
+ *
+ * @param {any} leak
+ * @param {any[]} events лента той же записи — по ней ищутся сами события
+ * @returns {Map<any, string>}
+ */
+function photosBeforeEvents(leak, events) {
+  const ordered = sortLeakEvents(events);
+  const eventPhotos = new Set(
+    ordered.map((event) => event?.photo).filter(Boolean),
+  );
+  const replaced = ordered.find(
+    (event) => event?.previousPhoto && !eventPhotos.has(event.previousPhoto),
+  )?.previousPhoto;
+  let current = replaced ?? leak?.photo ?? null;
+
+  const before = new Map();
+  for (const event of ordered) {
+    if (current) before.set(event, String(current));
+    if (event?.photo) current = event.photo;
+  }
+  return before;
 }

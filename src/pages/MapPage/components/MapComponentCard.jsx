@@ -2,7 +2,7 @@ import { useLanguage } from "@/app/hooks/useLanguage";
 import { distanceMeters } from "@/utils/geoUtils";
 import { formatLeakDate } from "@/utils/locale";
 import { timeAgo } from "@/utils/timeAgo";
-import { usePhotoSrc } from "@/hooks/usePhotoSrc";
+import { useComponentPhotoSrc } from "@/features/componentRegistry/useComponentPhotoSrc";
 import s from "./MapLeakCard.module.scss";
 
 function formatDistance(metres, t) {
@@ -23,7 +23,7 @@ export default function MapComponentCard({
   onOpen,
 }) {
   const { lang, t } = useLanguage();
-  const photo = usePhotoSrc(component.photo ?? null);
+  const photo = useComponentPhotoSrc(component);
   const status = String(component.component_status ?? "").trim();
   const place = component.location || component.address || "";
   const details = [component.component || t("components.unnamed")]

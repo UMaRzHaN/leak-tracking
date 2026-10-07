@@ -1,11 +1,9 @@
-import { useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
-import { usePhotoSrc } from "@/hooks/usePhotoSrc";
-import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import { getRepairLog } from "@/domain/repairStages";
 import { getRepairStageMeta } from "@/utils/repairStage";
 import { displayText } from "./viewBlockUtils";
 import InspectionFlags from "./InspectionFlags";
+import RecordPhotos from "./RecordPhotos";
 import { getIntlLocale } from "@/utils/locale";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
@@ -29,8 +27,6 @@ const KIND_TEXT = {
 
 function RepairLogRow({ item, lang }) {
   const { t } = useLanguage();
-  const photoSrc = usePhotoSrc(item.photo ?? null);
-  const [viewerSrc, setViewerSrc] = useState(/** @type {string|null} */ (null));
   const title = item.stage
     ? getRepairStageMeta(item.stage, t).label
     : t(KIND_TEXT[item.kind] ?? "leakDetails.repairLog.started");
@@ -42,60 +38,37 @@ function RepairLogRow({ item, lang }) {
   ].filter(([, value]) => value);
 
   return (
-    <>
-      <article className={s.monitoringRecord} data-event={item.kind}>
-        <header className={s.monitoringRecordHeader}>
-          <time className={s.monitoringRecordDate} dateTime={item.date}>
-            {fmtDateTime(item.date, lang)}
-          </time>
-          <span className={s.monitoringRoundBadge}>{title}</span>
-        </header>
+    <article className={s.monitoringRecord} data-event={item.kind}>
+      <header className={s.monitoringRecordHeader}>
+        <time className={s.monitoringRecordDate} dateTime={item.date}>
+          {fmtDateTime(item.date, lang)}
+        </time>
+        <span className={s.monitoringRoundBadge}>{title}</span>
+      </header>
 
-        <div className={s.monitoringRecordContent}>
-          <div className={s.monitoringRecordText}>
-            {rows.map(([label, value]) => (
-              <div key={label} className={s.monitoringMetaRow}>
-                <span>{label}</span>
-                <strong>{displayText(value)}</strong>
-              </div>
-            ))}
-            {/* Проверка ремонта спрашивает и про бирку на месте. */}
-            <InspectionFlags
-              physicalTag={item.physicalTag}
-              fiction={item.fiction}
-            />
-          </div>
-
-          {photoSrc && (
-            <div className={s.monitoringPhotos}>
-              <div className={s.monitoringPhotoBlock}>
-                <span className={s.monitoringPhotoTitle}>
-                  {t("leakDetails.repairEvents.photo")}
-                </span>
-                <button
-                  type="button"
-                  className={s.monitoringPhotoBtn}
-                  onClick={() => setViewerSrc(photoSrc)}
-                  aria-label={t("leakDetails.repairEvents.photo")}
-                >
-                  <img
-                    src={photoSrc}
-                    alt={t("leakDetails.repairEvents.photo")}
-                    className={s.monitoringPhotoImg}
-                    loading="lazy"
-                    draggable={false}
-                  />
-                </button>
-              </div>
+      <div className={s.monitoringRecordContent}>
+        <div className={s.monitoringRecordText}>
+          {rows.map(([label, value]) => (
+            <div key={label} className={s.monitoringMetaRow}>
+              <span>{label}</span>
+              <strong>{displayText(value)}</strong>
             </div>
-          )}
+          ))}
+          {/* Проверка ремонта спрашивает и про бирку на месте. */}
+          <InspectionFlags
+            physicalTag={item.physicalTag}
+            fiction={item.fiction}
+          />
         </div>
-      </article>
 
-      {viewerSrc && (
-        <PhotoViewer src={viewerSrc} onClose={() => setViewerSrc(null)} />
-      )}
-    </>
+        <RecordPhotos
+          before={item.previousPhoto}
+          beforeLabel={t("leakDetails.repairLog.photoBefore")}
+          after={item.photo}
+          afterLabel={t("leakDetails.repairEvents.photo")}
+        />
+      </div>
+    </article>
   );
 }
 
