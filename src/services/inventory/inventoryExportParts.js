@@ -10,6 +10,7 @@ const RECONCILE_KEYS = [
   "component",
   "object",
   "to",
+  "comment",
   "user",
   "previousPhoto",
   "photo",

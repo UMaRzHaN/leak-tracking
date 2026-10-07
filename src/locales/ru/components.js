@@ -227,6 +227,7 @@ export const components = {
         component: "Компонент",
         object: "Объект",
         to: "Состояние",
+        comment: "Комментарий",
         user: "Кто",
         previousPhoto: "Фото до",
         photo: "Фото",

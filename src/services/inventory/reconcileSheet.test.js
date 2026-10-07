@@ -144,4 +144,23 @@ describe("лист «Сверка»", () => {
       );
     });
   });
+
+  it("выгружает замечание осмотра, как его показывает карточка", () => {
+    const rows = buildReconcileRows(
+      [
+        {
+          component_uid: "4242",
+          history: [
+            {
+              ...inspect("2026-09-01T09:00:00Z", 3),
+              comment: "Течь по фланцу",
+            },
+            inspect("2026-09-02T09:00:00Z", 3),
+          ],
+        },
+      ],
+      texts,
+    );
+    expect(rows.map((row) => row.comment)).toEqual(["Течь по фланцу", ""]);
+  });
 });

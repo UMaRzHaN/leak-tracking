@@ -225,6 +225,7 @@ export const components = {
         component: "Component",
         object: "Object",
         to: "Condition",
+        comment: "Comment",
         user: "By",
         previousPhoto: "Photo before",
         photo: "Photo",
