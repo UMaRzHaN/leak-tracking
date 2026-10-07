@@ -241,6 +241,16 @@ describe("useLeakDetailsSheet", () => {
     expect(event.defaultPrevented).toBe(false);
   });
 
+  it("в правке открывает осмотры и ремонты, а лог — только в просмотре", () => {
+    const { result } = renderDetails();
+
+    act(() => result.current.handleEdit());
+
+    const ids = result.current.TABS.map((tab) => tab.id);
+    expect(ids).toEqual(expect.arrayContaining(["monitoring", "repairs"]));
+    expect(ids).not.toContain("log");
+  });
+
   it("returns to viewing on cancel, dropping the draft", () => {
     const { result } = renderDetails();
 

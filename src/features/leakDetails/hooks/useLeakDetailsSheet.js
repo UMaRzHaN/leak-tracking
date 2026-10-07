@@ -99,6 +99,8 @@ export function useLeakDetailsSheet({
     dirtyFields,
     calcParamsDirty,
     isDirty,
+    recordEdits,
+    setRecordEdits,
     resetDraft,
   } = useLeakDetailsForm({
     leak,
@@ -176,6 +178,7 @@ export function useLeakDetailsSheet({
     editFields,
     localEdit,
     localCalcParams,
+    recordEdits,
     dirtyFields,
     calcParamsDirty,
     originalCalcParams,
@@ -268,6 +271,12 @@ export function useLeakDetailsSheet({
             id: TAB.COORDS,
             label: t("leakDetails.tabs.coordinates"),
           },
+          // Записанные осмотры и проверки ремонта — ответы и текст.
+          {
+            id: TAB.MONITORING,
+            label: t("leakDetails.tabs.monitoring"),
+          },
+          { id: TAB.REPAIRS, label: t("leakDetails.tabs.repairs") },
         ];
 
   return {
@@ -301,6 +310,8 @@ export function useLeakDetailsSheet({
     srcRepair,
     isNative,
     isDirty,
+    recordEdits,
+    setRecordEdits,
     projectConfig,
     vars,
     status,

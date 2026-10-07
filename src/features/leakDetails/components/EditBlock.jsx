@@ -4,6 +4,8 @@ import { useLanguage } from "@/app/hooks/useLanguage";
 import EditTextField from "@/features/editTextField/EditTextField";
 import SettingsModal from "@/features/settings/SettingsModal/SettingsModal";
 import EditPhotoRow from "./EditPhotoRow";
+import RecordEditList from "./RecordEditList";
+import { RECORD_KIND } from "@/domain/recordEdits";
 import { fieldLabel } from "@/utils/fieldLabels";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
@@ -60,6 +62,22 @@ export default function EditBlock(props) {
 
   const setField = (key, value) =>
     setLocalEdit((prev) => ({ ...prev, [key]: value }));
+
+  // Записанные осмотры и проверки ремонта — ответы и текст (см. recordEdits).
+  if (activeTab === "monitoring" || activeTab === "repairs") {
+    return (
+      <RecordEditList
+        leak={props.leak}
+        kind={
+          activeTab === "monitoring"
+            ? RECORD_KIND.INSPECTION
+            : RECORD_KIND.REPAIR
+        }
+        edits={props.recordEdits}
+        setEdits={props.setRecordEdits}
+      />
+    );
+  }
 
   if (activeTab === "info") {
     const hasText = textFields.length > 0;

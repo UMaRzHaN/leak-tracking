@@ -213,6 +213,11 @@ export function getRepairLog(leak) {
       ...(Number.isFinite(event.roundNumber)
         ? { roundNumber: event.roundNumber }
         : {}),
+      // Ответы проверки ремонта («физ. тег есть?»; фикция снимается ею же).
+      ...(typeof event.physicalTag === "boolean"
+        ? { physicalTag: event.physicalTag }
+        : {}),
+      ...(typeof event.fiction === "boolean" ? { fiction: event.fiction } : {}),
     }));
   // Возврат в «открыта» — только тот, что шёл из ремонта: переоткрытие
   // устранённой утечки обходом — уже не про ремонт.

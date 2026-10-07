@@ -29,6 +29,7 @@ import {
 import { ignoredError } from "@/utils/ignoredError";
 import { fromEntries } from "@/utils/fromEntries";
 import { useLeakRepairConfirm } from "./useLeakRepairConfirm";
+import { applyRecordEdits } from "@/domain/recordEdits";
 
 export function useLeakDetailsPersistence({
   leak,
@@ -40,6 +41,7 @@ export function useLeakDetailsPersistence({
   editFields,
   localEdit,
   localCalcParams,
+  recordEdits = /** @type {Record<string, Record<string, any>>} */ ({}),
   dirtyFields,
   calcParamsDirty,
   originalCalcParams,
@@ -163,9 +165,14 @@ export function useLeakDetailsPersistence({
         measurementChanged || calcParamsDirty
           ? calculateLeakWithSnapshot(base, vars, localCalcParams)
           : base;
-      const withoutHistory = speedChanged
+      const withSpeed = speedChanged
         ? { ...withCalc, priority: priorityFromSpeed(withCalc[speedKey]) }
         : withCalc;
+      // Исправленные осмотры и ремонты; итог последнего осмотра ведёт статус.
+      const { leak: withoutHistory, changes: recordChanges } = applyRecordEdits(
+        withSpeed,
+        recordEdits,
+      );
       const fieldChanges = buildLeakHistoryChanges({
         before: leak,
         after: withoutHistory,
@@ -182,7 +189,7 @@ export function useLeakDetailsPersistence({
         after: localCalcParams,
         fields: CALCULATION_PARAM_KEYS.map((key) => ({ key })),
       });
-      const changes = [...fieldChanges, ...calcChanges];
+      const changes = [...fieldChanges, ...calcChanges, ...recordChanges];
       const withPriority = {
         ...withoutHistory,
         history: [

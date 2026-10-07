@@ -173,6 +173,41 @@ describe("handleSave", () => {
     });
   });
 
+  it("сохраняет исправленный осмотр и статус, пошедший за его итогом", async () => {
+    const leak = {
+      ...LEAK,
+      status: STATUS.RESOLVED,
+      events: [
+        {
+          id: "i1",
+          type: "inspection",
+          date: "2026-10-05T10:00:00.000Z",
+          result: "resolved",
+        },
+      ],
+    };
+    const { result, props } = setup({
+      leak,
+      allLeaks: [leak],
+      recordEdits: { i1: { result: "still_leaking", physicalTag: false } },
+    });
+
+    await act(() => result.current.handleSave());
+
+    const saved = props.onSave.mock.calls[0][0];
+    expect(saved.status).toBe(STATUS.OPEN);
+    expect(saved.events[0]).toMatchObject({
+      result: "still_leaking",
+      physicalTag: false,
+    });
+    expect(saved.history.at(-1).changes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "result", to: "still_leaking" }),
+        expect.objectContaining({ key: "status", to: STATUS.OPEN }),
+      ]),
+    );
+  });
+
   it("recomputes priority when the speed changed", async () => {
     const { result, props } = setup({
       localEdit: { leak_speed: "500" },

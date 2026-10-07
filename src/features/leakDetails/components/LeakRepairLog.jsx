@@ -5,6 +5,7 @@ import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import { getRepairLog } from "@/domain/repairStages";
 import { getRepairStageMeta } from "@/utils/repairStage";
 import { displayText } from "./viewBlockUtils";
+import InspectionFlags from "./InspectionFlags";
 import { getIntlLocale } from "@/utils/locale";
 import s from "@/features/leakDetails/LeakDetailsSheet.module.scss";
 
@@ -58,6 +59,11 @@ function RepairLogRow({ item, lang }) {
                 <strong>{displayText(value)}</strong>
               </div>
             ))}
+            {/* Проверка ремонта спрашивает и про бирку на месте. */}
+            <InspectionFlags
+              physicalTag={item.physicalTag}
+              fiction={item.fiction}
+            />
           </div>
 
           {photoSrc && (

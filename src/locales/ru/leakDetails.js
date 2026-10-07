@@ -44,6 +44,17 @@ export const leakDetails = {
     photo: "Фото ремонта",
   },
   user: "Пользователь",
+  recordEdit: {
+    inspection: "Осмотр",
+    repair: "Ремонт",
+    result: "Итог осмотра",
+    status: "Статус",
+  },
+  flags: {
+    tagPresent: "Физ. тег есть",
+    tagMissing: "Физ. тега нет",
+    fiction: "Фикция",
+  },
   repairLog: {
     started: "Начат ремонт",
     done: "Ремонт принят",

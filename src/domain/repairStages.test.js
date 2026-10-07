@@ -170,6 +170,23 @@ describe("getRepairLog", () => {
     expect(log[0].user).toBe("Ким");
   });
 
+  it("несёт ответы проверки ремонта про физ. тег и фикцию", () => {
+    const log = getRepairLog({
+      status: "in_progress",
+      events: [
+        started("2026-10-01"),
+        {
+          ...stage("in_repair", "2026-10-02"),
+          physicalTag: false,
+          fiction: false,
+        },
+      ],
+    });
+    expect(log[0]).toMatchObject({ physicalTag: false, fiction: false });
+    // Начало ремонта ни о чём не спрашивало — и полей у него нет.
+    expect(log[1]).not.toHaveProperty("physicalTag");
+  });
+
   it("does not count reopening a resolved leak as a repair return", () => {
     const log = getRepairLog({
       history: [

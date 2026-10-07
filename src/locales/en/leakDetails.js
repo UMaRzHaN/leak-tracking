@@ -44,6 +44,17 @@ export const leakDetails = {
     photo: "Repair photo",
   },
   user: "User",
+  recordEdit: {
+    inspection: "Inspection",
+    repair: "Repair",
+    result: "Inspection result",
+    status: "Status",
+  },
+  flags: {
+    tagPresent: "Physical tag in place",
+    tagMissing: "No physical tag",
+    fiction: "Fiction",
+  },
   repairLog: {
     started: "Repair started",
     done: "Repair accepted",
