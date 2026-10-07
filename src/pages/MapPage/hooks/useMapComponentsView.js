@@ -14,19 +14,9 @@ import { filterComponentMarkers } from "@/pages/MapPage/componentMarkers";
  */
 export function useComponentStatusFilter(markers, sharedFilters) {
   return useMemo(() => {
-    // Счётчики для чипов карты инвентаризации (6c).
-    const counts = { all: markers.length };
-    for (const marker of markers) {
-      const status = String(marker?.component_status ?? "").trim();
-      if (status) counts[status] = (counts[status] ?? 0) + 1;
-    }
     return {
       statuses: usedComponentStatuses(markers),
-      counts,
       selected: sharedFilters?.componentStatusFilter ?? [],
-      // Чип выбирает одно состояние, а не добавляет к набору.
-      onOnly: (status) =>
-        sharedFilters?.setComponentStatusFilter?.(status ? [status] : []),
       onToggle: (status) =>
         sharedFilters?.setComponentStatusFilter?.((current) =>
           current.includes(status)

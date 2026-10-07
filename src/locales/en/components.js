@@ -1,12 +1,9 @@
 export const components = {
-  title: "Component registry",
   tab: "Components",
   conflictBanner:
     "{{count}} duplicated number(s). Both cards were kept — renumber one.",
   showConflicts: "Show them",
   showAll: "Show all",
-  count: "Recorded: {{count}}",
-  shown: "{{count}} shown",
   add: "Add component",
   addTitle: "New component",
   editTitle: "Component card",
@@ -41,6 +38,26 @@ export const components = {
   noMatches: "Nothing found",
   loadError: "Could not read the registry. Nothing is lost — try again later.",
   searchPlaceholder: "Number, name, drawing tag...",
+  // Search box hint when a single field is chosen.
+  searchIn: "Search: {{field}}...",
+  // Short field names for "Search in": the full card labels do not fit a chip
+  // or the search box. Fields missing here fall back to the card label.
+  searchFields: {
+    component_uid: "Number",
+    scheme_tag: "Drawing tag",
+    deposit: "Field",
+    station: "CS",
+    district: "District",
+    address: "Address",
+    location: "Location",
+    object: "Facility",
+    component: "Component",
+    component_type: "Type",
+    equipment_type: "Equipment",
+    body_material: "Material",
+    manufacturer: "Manufacturer",
+    component_status: "Condition",
+  },
   locationFilter: "Filter by location",
   statusFilter: "Filter by state",
   allStatuses: "All",

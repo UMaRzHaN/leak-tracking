@@ -17,6 +17,10 @@ import Icon from "@/components/ui/Icon/Icon";
 function ComponentFilterBar({
   search,
   setSearch,
+  // Поля, по которым можно искать, — из конфигурации реестра типа проекта.
+  searchFields = /** @type {{key: string, label: string}[]} */ ([]),
+  searchField = "all",
+  onSearchFieldChange = /** @type {((key: string) => void)|null} */ (null),
   statuses = /** @type {any[]} */ ([]),
   statusFilter = /** @type {string[]} */ ([]),
   onToggleStatus,
@@ -35,8 +39,22 @@ function ComponentFilterBar({
 }) {
   const { t } = useLanguage();
   const [open, setOpen] = useState(false);
+  const scoped = searchField !== "all";
   const hasActiveFilter =
-    statusFilter.length > 0 || conflictsOnly || nearbyOnly;
+    scoped || statusFilter.length > 0 || conflictsOnly || nearbyOnly;
+  const fieldLabel = (field) =>
+    field.key === "all"
+      ? t("database.searchScopes.all")
+      : t(`components.searchFields.${field.key}`, {
+          defaultValue: t(`components.fields.${field.key}.label`, {
+            defaultValue: field.label,
+          }),
+        });
+  const activeField = searchFields.find((field) => field.key === searchField);
+  const placeholder =
+    scoped && activeField
+      ? t("components.searchIn", { field: fieldLabel(activeField) })
+      : t("components.searchPlaceholder");
   const formatRadius = (radius) =>
     radius >= 1000
       ? `${radius / 1000} ${t("database.radiusKm")}`
@@ -51,9 +69,9 @@ function ComponentFilterBar({
           </span>
           <input
             className={s.searchInput}
-            placeholder={t("components.searchPlaceholder")}
+            placeholder={placeholder}
             value={search}
-            aria-label={t("components.searchPlaceholder")}
+            aria-label={placeholder}
             autoComplete="off"
             enterKeyHint="search"
             onChange={(event) => setSearch(event.target.value)}
@@ -98,6 +116,34 @@ function ComponentFilterBar({
 
       {open && (
         <div className={s.filtersPanel}>
+          {onSearchFieldChange && searchFields.length > 1 && (
+            <>
+              <div className={s.filterSection}>
+                <span className={s.filterLabel}>
+                  {t("database.searchScope")}
+                </span>
+                <div className={s.filters}>
+                  {searchFields.map((field) => {
+                    const isActive = searchField === field.key;
+                    return (
+                      <button
+                        key={field.key}
+                        type="button"
+                        className={`${s.filterTab} ${isActive ? s.filterActive : ""}`}
+                        aria-pressed={isActive}
+                        onClick={() => onSearchFieldChange(field.key)}
+                      >
+                        {fieldLabel(field)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className={s.filterDivider} />
+            </>
+          )}
+
           {/* Только состояния, которые встречаются: пустая кнопка ничего не
               отбирает и лишь удлиняет ряд. */}
           {statuses.length > 0 && (

@@ -1,6 +1,5 @@
 import {
   cleanup,
-  within,
   fireEvent,
   render,
   screen,
@@ -167,7 +166,7 @@ describe("ComponentRegistry screen", () => {
     renderRegistry();
     // На месте только «+» обвязки — сам реестр ничего не рисует.
     expect(screen.getAllByRole("button")).toHaveLength(1);
-    expect(screen.queryByText(/Recorded/)).toBeNull();
+    expect(screen.queryByText(/records?\b/)).toBeNull();
   });
 
   it("counts what has been recorded, never a percentage", () => {
@@ -181,7 +180,7 @@ describe("ComponentRegistry screen", () => {
     });
     renderRegistry();
 
-    expect(screen.getByText("Recorded: 2")).toBeTruthy();
+    expect(screen.getByText(/^2 records/)).toBeTruthy();
     expect(screen.queryByText(/%/)).toBeNull();
   });
 
@@ -257,37 +256,6 @@ describe("ComponentRegistry screen", () => {
     expect(screen.queryByText("Задвижка")).toBeNull();
   });
 
-  it("narrows the list with one tap on a state chip", () => {
-    registry.current = makeRegistry({
-      components: [
-        {
-          id: "a",
-          component_uid: "1",
-          component: "Задвижка",
-          component_status: "В работе",
-        },
-        {
-          id: "b",
-          component_uid: "2",
-          component: "Труба",
-          component_status: "Требует замены",
-        },
-      ],
-    });
-    renderRegistry();
-
-    const chips = screen.getByRole("group", { name: "Filter by state" });
-    fireEvent.click(
-      within(chips).getByRole("button", { name: /Требует замены/ }),
-    );
-
-    expect(screen.getByText("Труба")).toBeTruthy();
-    expect(screen.queryByText("Задвижка")).toBeNull();
-    expect(
-      within(chips).getByRole("button", { name: /^All/ }).textContent,
-    ).toContain("2");
-  });
-
   it("offers only the states a walk actually found", () => {
     registry.current = makeRegistry({
       components: [
@@ -299,7 +267,7 @@ describe("ComponentRegistry screen", () => {
 
     expect(
       screen.getAllByRole("button", { name: /В работе/, pressed: false }),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     // An empty button selects nothing and only adds to the noise.
     expect(screen.queryByRole("button", { name: /Демонтирован/ })).toBeNull();
   });
@@ -329,6 +297,38 @@ describe("ComponentRegistry screen", () => {
 
     expect(screen.getByText("Задвижка")).toBeTruthy();
     expect(screen.queryByText("Труба")).toBeNull();
+  });
+
+  it("searches one chosen field when asked to", () => {
+    // «12» по всем полям находит и номер, и номер на схеме; выбрав поле,
+    // ищут только в нём — как «Где искать» у базы утечек.
+    registry.current = makeRegistry({
+      components: [
+        { id: "a", component_uid: "12", component: "Задвижка" },
+        { id: "b", component_uid: "7", component: "Труба", scheme_tag: "КШ12" },
+      ],
+      fields: {
+        ...makeRegistry().fields,
+        search: [
+          { key: "all", label: "По всем полям" },
+          { key: "scheme_tag", label: "Номер на схеме" },
+        ],
+      },
+    });
+    renderRegistry();
+
+    fireEvent.change(screen.getByLabelText(/Number, name, drawing tag/i), {
+      target: { value: "12" },
+    });
+    expect(screen.getByText("Задвижка")).toBeTruthy();
+    expect(screen.getByText("Труба")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Drawing tag" }));
+
+    expect(screen.getByLabelText("Search: Drawing tag...")).toBeTruthy();
+    expect(screen.queryByText("Задвижка")).toBeNull();
+    expect(screen.getByText("Труба")).toBeTruthy();
   });
 
   it("will not let an unsigned walker write to the registry", () => {

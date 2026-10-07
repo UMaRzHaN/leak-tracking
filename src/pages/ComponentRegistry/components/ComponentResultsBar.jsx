@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
+import { pluralRecords } from "@/pages/DataBase/pluralRecords";
 import s from "@/pages/DataBase/DataBase.module.scss";
 
 /**
@@ -20,22 +21,25 @@ function ComponentResultsBar({
   onClearSelection,
   onInspectSelected,
 }) {
-  const { t } = useLanguage();
+  const { intlLocale, t } = useLanguage();
 
   return (
     <>
       <div className={s.resultsRow}>
         <span className={s.resultsInfo}>
-          {/* Счётчик отсюда убран: сколько карточек заведено, сказано выше в
-              шапке, а при отборе там же появляется и сколько показано. */}
+          {/* Счётчик — как у базы утечек: сколько показано сейчас, с учётом
+              отборов. Своей шапки у экрана нет, как и у базы. */}
           {visibleCount > 0 && (
-            <button
-              className={s.sortToggle}
-              onClick={onSortToggle}
-              title={t("components.changeSortOrder")}
-            >
-              {sortAsc ? t("components.uidAsc") : t("components.uidDesc")}
-            </button>
+            <>
+              {`${visibleCount} ${pluralRecords(visibleCount, t, intlLocale)}`}
+              <button
+                className={s.sortToggle}
+                onClick={onSortToggle}
+                title={t("components.changeSortOrder")}
+              >
+                {sortAsc ? t("components.uidAsc") : t("components.uidDesc")}
+              </button>
+            </>
           )}
         </span>
 

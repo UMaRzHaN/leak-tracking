@@ -33,10 +33,11 @@ export default function Footer({
     const map = { key: "map", icon: "map", label: t("footer.map") };
     if (module === MODULE.INVENTORY) {
       // Каркас 5a, но единица записи — компонент реестра (6a): «+» заводит
-      // карточку, «Сверка» — аналог обхода.
+      // карточку, «Сверка» — аналог обхода. «Реестр» здесь — схемы, а
+      // «База» — само железо; счётчик открытых утечек к нему не относится.
       return [
-        { key: "components", icon: "list", label: t("footer.registry") },
-        database,
+        { key: "schemas", icon: "list", label: t("footer.registry") },
+        { key: "components", icon: "database", label: t("footer.database") },
         ...(onAddComponent ? [{ key: "component-add", fab: true }] : []),
         { key: "reconcile", icon: "check", label: t("footer.reconcile") },
         map,

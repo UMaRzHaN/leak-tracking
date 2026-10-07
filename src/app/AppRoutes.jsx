@@ -18,6 +18,7 @@ const AcceptanceList = lazy(() => import("@/pages/Repairs/AcceptanceList"));
 const Reconcile = lazy(() => import("@/pages/Reconcile/Reconcile"));
 const ExportPage = lazy(() => import("@/pages/Export/ExportPage"));
 const CoveragePage = lazy(() => import("@/pages/Coverage/CoveragePage"));
+const SchemasPage = lazy(() => import("@/pages/Schemas/SchemasPage"));
 const ComponentRegistry = lazy(
   () => import("@/pages/ComponentRegistry/ComponentRegistry"),
 );
@@ -377,6 +378,11 @@ export default function AppRoutes({
             />
           )}
 
+        {dataLoaded &&
+          !isImportingProject &&
+          !loadError &&
+          page === "schemas" && <SchemasPage project={activeProject} />}
+
         {dataLoaded && !isImportingProject && !loadError && page === "map" && (
           <MapPage
             leaks={data}
@@ -392,7 +398,6 @@ export default function AppRoutes({
             userProfile={userProfile}
             onMonitor={checkLeak}
             repairMode={module === "repairs"}
-            inventoryMode={module === "inventory"}
           />
         )}
         {repairCheckLeak && (

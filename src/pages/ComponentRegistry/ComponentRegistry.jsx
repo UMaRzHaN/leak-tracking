@@ -3,12 +3,9 @@ import { useLanguage } from "@/app/hooks/useLanguage";
 import { useComponentRegistry } from "@/features/componentRegistry/useComponentRegistry";
 import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import ComponentCardForm from "./ComponentCardForm";
-import SchemaList from "@/features/schemas/SchemaList";
 import ComponentCardCompact from "@/features/componentRegistry/ComponentCardCompact";
 import VirtualizedLeakList from "@/features/leakList/VirtualizedLeakList/VirtualizedLeakList";
 import ComponentInspectSheet from "@/features/componentRegistry/ComponentInspectSheet";
-import FilterChips from "@/components/ui/FilterChips/FilterChips";
-import { componentStatusColor } from "@/domain/componentStatuses";
 import ComponentDetailsSheet from "@/features/componentRegistry/ComponentDetailsSheet";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import Notification from "@/components/ui/Notification/Notification";
@@ -30,6 +27,8 @@ import {
 } from "@/domain/componentHistory";
 import s from "./ComponentRegistry.module.scss";
 
+const SEARCH_ALL = "all";
+
 function withinRadius(component, coords, radius) {
   return (
     getDistanceMeters(coords.lat, coords.lng, component.lat, component.lng) <=
@@ -37,10 +36,17 @@ function withinRadius(component, coords, radius) {
   );
 }
 
-function matchesSearch(component, query) {
+/**
+ * Поиск по всей карточке или по одному полю — как «Где искать» у базы утечек:
+ * номер «12» по всем полям находит и давление 12, и диаметр, а по номеру на
+ * схеме — только ту задвижку.
+ */
+function matchesSearch(component, query, field = SEARCH_ALL) {
   if (!query) return true;
   const needle = query.trim().toLowerCase();
-  return Object.values(component).some(
+  const values =
+    field === SEARCH_ALL ? Object.values(component) : [component[field]];
+  return values.some(
     (value) => value != null && String(value).toLowerCase().includes(needle),
   );
 }
@@ -88,6 +94,7 @@ export default function ComponentRegistry({
   const { savePhoto } = usePhotoStorage();
 
   const [search, setSearch] = useState("");
+  const [searchField, setSearchField] = useState(SEARCH_ALL);
   const {
     statusFilter,
     setStatusFilter,
@@ -101,7 +108,6 @@ export default function ComponentRegistry({
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [bulkInspecting, setBulkInspecting] = useState(false);
   const [editing, setEditing] = useState(/** @type {any} */ (null));
-  const [tab, setTab] = useState("components");
   const [conflictsOnly, setConflictsOnly] = useState(false);
   const [inspecting, setInspecting] = useState(/** @type {any} */ (null));
   const listRef = useRef(/** @type {HTMLDivElement|null} */ (null));
@@ -168,7 +174,7 @@ export default function ComponentRegistry({
     const observer = new ResizeObserver(measure);
     observer.observe(node);
     return () => observer.disconnect();
-  }, [tab]);
+  }, []);
 
   /*
    * Место берётся из выбора в шапке, а не из своего списка: там уже стоит
@@ -200,7 +206,7 @@ export default function ComponentRegistry({
             statusFilter.includes(String(component.component_status ?? ""))) &&
           (!conflictsOnly || conflictingIds.has(component.id)) &&
           (!nearby || withinRadius(component, coords, nearbyRadius)) &&
-          matchesSearch(component, search),
+          matchesSearch(component, search, searchField),
       ),
     [
       components,
@@ -210,6 +216,7 @@ export default function ComponentRegistry({
       nearby,
       nearbyRadius,
       search,
+      searchField,
       sharedFilters,
       statusFilter,
     ],
@@ -503,41 +510,6 @@ export default function ComponentRegistry({
         notification={notification}
         onClose={() => setNotification(null)}
       />
-      <header className={s.head}>
-        <h1>{t("components.title")}</h1>
-        {/* Drawings sit next to the registry rather than in settings: they are
-            consulted while a card is being filled in, not configured once. */}
-        <div className={s.tabs} role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "components"}
-            className={tab === "components" ? s.tabActive : s.tab}
-            onClick={() => setTab("components")}
-          >
-            {t("components.tab")}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "schemas"}
-            className={tab === "schemas" ? s.tabActive : s.tab}
-            onClick={() => setTab("schemas")}
-          >
-            {t("schemas.tab")}
-          </button>
-        </div>
-        {tab === "components" && (
-          <p className={s.count}>
-            {t("components.count", { count: components.length })}
-            {visible.length !== components.length &&
-              ` · ${t("components.shown", { count: visible.length })}`}
-          </p>
-        )}
-      </header>
-
-      {tab === "schemas" && <SchemaList project={project} />}
-
       {viewing && (
         <ComponentDetailsSheet
           component={viewing}
@@ -573,118 +545,98 @@ export default function ComponentRegistry({
         />
       )}
 
-      {tab === "components" && (
-        <>
-          {error && (
-            <p className={s.error} role="alert">
-              {t("components.loadError")}
-            </p>
-          )}
+      {error && (
+        <p className={s.error} role="alert">
+          {t("components.loadError")}
+        </p>
+      )}
 
-          {/* Two devices with no allotted number ranges collide by design. The
+      {/* Two devices with no allotted number ranges collide by design. The
               merge keeps both cards and says so here; renumbering is a call
               only somebody who saw the equipment can make. */}
-          {conflicts.length > 0 && (
-            <p className={s.warning} role="status">
-              {t("components.conflictBanner", { count: conflicts.length })}{" "}
-              <button
-                type="button"
-                className={s.link}
-                onClick={() => setConflictsOnly((value) => !value)}
-              >
-                {conflictsOnly
-                  ? t("components.showAll")
-                  : t("components.showConflicts")}
-              </button>
-            </p>
-          )}
+      {conflicts.length > 0 && (
+        <p className={s.warning} role="status">
+          {t("components.conflictBanner", { count: conflicts.length })}{" "}
+          <button
+            type="button"
+            className={s.link}
+            onClick={() => setConflictsOnly((value) => !value)}
+          >
+            {conflictsOnly
+              ? t("components.showAll")
+              : t("components.showConflicts")}
+          </button>
+        </p>
+      )}
 
-          <ComponentFilterBar
-            search={search}
-            setSearch={setSearch}
-            statuses={usedStatuses}
-            statusFilter={statusFilter}
-            onToggleStatus={toggleStatus}
-            onClearStatuses={() => setStatusFilter([])}
-            conflictsOnly={conflictsOnly}
-            onToggleConflicts={() => setConflictsOnly((value) => !value)}
-            conflictCount={conflicts.length}
-            counts={statusCounts}
-            hasGps={hasGps}
-            nearbyOnly={nearbyOnly}
-            nearbyRadius={nearbyRadius}
-            nearbyRadiusOptions={NEARBY_RADIUS_OPTIONS}
-            nearbyCount={nearbyCount}
-            onToggleNearby={() => setNearbyOnly((value) => !value)}
-            onRadiusChange={(radius) => {
-              setNearbyRadius(radius);
-              setNearbyOnly(true);
-            }}
-          />
+      <ComponentFilterBar
+        search={search}
+        setSearch={setSearch}
+        searchFields={fields?.search ?? []}
+        searchField={searchField}
+        onSearchFieldChange={setSearchField}
+        statuses={usedStatuses}
+        statusFilter={statusFilter}
+        onToggleStatus={toggleStatus}
+        onClearStatuses={() => setStatusFilter([])}
+        conflictsOnly={conflictsOnly}
+        onToggleConflicts={() => setConflictsOnly((value) => !value)}
+        conflictCount={conflicts.length}
+        counts={statusCounts}
+        hasGps={hasGps}
+        nearbyOnly={nearbyOnly}
+        nearbyRadius={nearbyRadius}
+        nearbyRadiusOptions={NEARBY_RADIUS_OPTIONS}
+        nearbyCount={nearbyCount}
+        onToggleNearby={() => setNearbyOnly((value) => !value)}
+        onRadiusChange={(radius) => {
+          setNearbyRadius(radius);
+          setNearbyOnly(true);
+        }}
+      />
 
-          <ComponentResultsBar
-            visibleCount={visible.length}
-            sortAsc={sortAsc}
-            onSortToggle={() => setSortAsc((value) => !value)}
-            selectedCount={selectedIds.size}
-            allDisplayedSelected={allDisplayedSelected}
-            onSelectDisplayed={selectDisplayed}
-            onClearSelection={clearSelection}
-            onInspectSelected={() => setBulkInspecting(true)}
-          />
+      <ComponentResultsBar
+        visibleCount={visible.length}
+        sortAsc={sortAsc}
+        onSortToggle={() => setSortAsc((value) => !value)}
+        selectedCount={selectedIds.size}
+        allDisplayedSelected={allDisplayedSelected}
+        onSelectDisplayed={selectDisplayed}
+        onClearSelection={clearSelection}
+        onInspectSelected={() => setBulkInspecting(true)}
+      />
 
-          {/* Состояния компонента чипами (6a): тот же отбор, что в панели
-              фильтров, но одним касанием и с числами. */}
-          <FilterChips
-            label={t("components.statusFilter")}
-            all={{
-              key: "all",
-              label: t("components.allStatuses"),
-              count: components.length,
-            }}
-            items={usedStatuses.map((status) => ({
-              key: status,
-              label: status,
-              count: statusCounts[status] ?? 0,
-              dot: componentStatusColor(status),
-            }))}
-            value={statusFilter.length === 1 ? statusFilter[0] : "all"}
-            onChange={(key) => setStatusFilter(key === "all" ? [] : [key])}
-          />
-
-          {/* Said once, where the button is, rather than after a walker has
+      {/* Said once, where the button is, rather than after a walker has
               filled a card and pressed save. */}
-          {!canWrite && (
-            <p className={s.warning} role="status">
-              {t("components.nameRequired")}
-            </p>
-          )}
+      {!canWrite && (
+        <p className={s.warning} role="status">
+          {t("components.nameRequired")}
+        </p>
+      )}
 
-          {loading ? (
-            <p className={s.muted}>{t("components.loading")}</p>
-          ) : visible.length === 0 ? (
-            <p className={s.muted}>
-              {components.length === 0
-                ? t("components.empty")
-                : t("components.noMatches")}
-            </p>
-          ) : (
-            /*
-             * The same virtualiser the leak list uses. A finished walk is
-             * thousands of cards, each with a photograph — rendering them all
-             * would cost the scroll long before the registry is complete.
-             */
-            <div ref={listRef} className={s.list}>
-              <VirtualizedLeakList
-                items={ordered}
-                height={listHeight}
-                bottomPadding={88}
-                gap={8}
-                renderItem={renderCard}
-              />
-            </div>
-          )}
-        </>
+      {loading ? (
+        <p className={s.muted}>{t("components.loading")}</p>
+      ) : visible.length === 0 ? (
+        <p className={s.muted}>
+          {components.length === 0
+            ? t("components.empty")
+            : t("components.noMatches")}
+        </p>
+      ) : (
+        /*
+         * The same virtualiser the leak list uses. A finished walk is
+         * thousands of cards, each with a photograph — rendering them all
+         * would cost the scroll long before the registry is complete.
+         */
+        <div ref={listRef} className={s.list}>
+          <VirtualizedLeakList
+            items={ordered}
+            height={listHeight}
+            bottomPadding={88}
+            gap={8}
+            renderItem={renderCard}
+          />
+        </div>
       )}
     </div>
   );

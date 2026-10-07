@@ -167,7 +167,10 @@ export default function App() {
    * с железом: фильтр общий, а деревья у сущностей разные.
    */
   const registryPage =
-    page === "components" || page === "component" || page === "reconcile";
+    page === "components" ||
+    page === "component" ||
+    page === "schemas" ||
+    page === "reconcile";
   const [mapBase, setMapBase] = useState(MAP_BASE.LEAKS);
   /*
    * Уходя с карты, база возвращается к утечкам — так было, пока она жила

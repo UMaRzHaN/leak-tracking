@@ -24,14 +24,6 @@
   }
 }
 
-/* Absolute, never a percentage: the app does not mark a node as walked, so the
-   total number of components on the field is never known. */
-.count {
-  margin: 0;
-  font-size: var(--fs-sm);
-  color: var(--c-text3);
-}
-
 .list {
   /* Растягивается на свободную высоту: виртуализатор рисует ровно столько
      карточек, сколько её занимает, и мерить ему нужно то, что есть на самом
