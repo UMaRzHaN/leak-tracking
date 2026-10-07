@@ -23,6 +23,7 @@ export const exportReport = {
   sheetRepairLog: "Лист «Журнал ремонтов»",
   sheetAcceptance: "Лист «Приёмка оборудования»",
   sheetInventory: "Инвентаризация",
+  sheetReconcileHistory: "Инвентаризация: лист «История»",
   inventoryFolder: "Инвентаризация",
   chips: {
     leaks: "Утечки",

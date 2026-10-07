@@ -84,12 +84,15 @@ export function recordComponentEdited(
  * — but it is carried on the card as well as in the history, because the
  * customer's workbook has a column for it and reads the latest value.
  *
+ * The round number, when a reconcile round is running, goes with the entry:
+ * the export can then keep only the last inspection of each round.
+ *
  * @param {Record<string, any>} component
- * @param {{status?: string, user?: string, now?: number}} options
+ * @param {{status?: string, user?: string, now?: number, roundNumber?: number}} options
  */
 export function recordComponentInspected(
   component,
-  { status, user, now } = {},
+  { status, user, now, roundNumber } = {},
 ) {
   const timestamp = typeof now === "number" ? now : Date.now();
   const inspectedAt = new Date(timestamp).toISOString();
@@ -119,6 +122,7 @@ export function recordComponentInspected(
       now: timestamp,
       to: nextStatus ?? null,
       ...(changes.length > 0 ? { changes } : {}),
+      ...(Number.isFinite(roundNumber) ? { roundNumber } : {}),
     }),
   );
 }

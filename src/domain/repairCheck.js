@@ -52,7 +52,7 @@ export function repairCheckOutcome({ leaking, done }) {
  *   photo_after?: string, materials_equipment?: string,
  *   coords?: { lat: number, lng: number, accuracy?: number }|null,
  *   physicalTag?: boolean }} draft
- * @param {{ user?: string, now?: number }} [options]
+ * @param {{ user?: string, now?: number, roundNumber?: number }} [options]
  */
 export function applyRepairCheck(leak, draft, options = {}) {
   const start =
@@ -71,10 +71,30 @@ export function applyRepairCheck(leak, draft, options = {}) {
   const record = isLeakFiction(leak)
     ? withFlag(leak, tagged, "fiction", false)
     : tagged;
-  return withGpsCoords(record, draft.coords, {
-    user: options.user,
-    now: start + 10,
-  });
+  return withGpsCoords(
+    withRoundNumber(leak, record, options.roundNumber),
+    draft.coords,
+    { user: options.user, now: start + 10 },
+  );
+}
+
+/**
+ * Проверка в идущем обходе ремонтов метит свои события его номером: выгрузка
+ * может оставить на ремонт одну последнюю запись в обходе.
+ *
+ * @param {any} before
+ * @param {any} after
+ * @param {number|undefined} roundNumber
+ */
+function withRoundNumber(before, after, roundNumber) {
+  if (!Number.isFinite(roundNumber)) return after;
+  const known = new Set(getLeakEvents(before).map((event) => event?.id));
+  return {
+    ...after,
+    events: getLeakEvents(after).map((event) =>
+      known.has(event?.id) ? event : { ...event, roundNumber },
+    ),
+  };
 }
 
 /**

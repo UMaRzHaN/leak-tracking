@@ -221,7 +221,7 @@ describe("RepairRound", () => {
 
   it("starts the first round with the first check", async () => {
     localStorage.clear();
-    renderRound([repair("r5")]);
+    const setData = renderRound([repair("r5")]);
     expect(screen.getByText("No repair round yet")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Check" }));
@@ -231,6 +231,14 @@ describe("RepairRound", () => {
     fireEvent.click(screen.getByRole("button", { name: "Keep in repair" }));
 
     expect(await screen.findByText("Repair round № 1")).toBeTruthy();
+    // Обход начат до записи проверки — она в нём засчитана и несёт номер.
+    await waitFor(() => expect(setData).toHaveBeenCalled());
+    const mark = setData.mock.calls[0][0][0].events.at(-1);
+    const round = JSON.parse(localStorage.getItem("app:p1:repair_round_v1"));
+    expect(mark.roundNumber).toBe(1);
+    expect(Date.parse(mark.date)).toBeGreaterThanOrEqual(
+      Date.parse(round.startedAt),
+    );
   });
 
   it("asks before checking a repair already checked in the round", async () => {

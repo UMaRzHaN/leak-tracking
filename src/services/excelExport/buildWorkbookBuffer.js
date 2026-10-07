@@ -58,6 +58,7 @@ async function buildWorkbook({
   texts,
   ExcelJS,
   monitoringExportMode,
+  repairLogExportMode,
   archivePayload,
   // Какие листы класть в книгу (8a). «Утечки», «История» и служебный лист
   // резервной копии — всегда: без первого нет отчёта, без второго не видно,
@@ -133,7 +134,12 @@ async function buildWorkbook({
   await buildHistorySheet(workbook, orderedLeaks, texts);
   if (sheets.repairs !== false) {
     await buildRepairSheet(workbook, orderedLeaks, texts, photoMap);
-    await buildRepairLogSheet(workbook, orderedLeaks, texts);
+    await buildRepairLogSheet(
+      workbook,
+      orderedLeaks,
+      texts,
+      repairLogExportMode,
+    );
   }
   if (sheets.monitoring !== false) {
     await buildMonitoringSheet(

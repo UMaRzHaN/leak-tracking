@@ -3,12 +3,12 @@ import { formatLocationScopeLabel } from "@/utils/locationScopeLabel";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useProjectData } from "@/app/project/ProjectContext";
-import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
+import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import Notification from "@/components/ui/Notification/Notification";
 import Icon from "@/components/ui/Icon/Icon";
 import { useDataBaseExport } from "@/pages/DataBase/hooks/useDataBaseExport";
 import { useInventoryExport } from "@/pages/ComponentRegistry/hooks/useInventoryExport";
-import { EXCEL_MONITORING_EXPORT_MODE } from "@/utils/excelExportMode";
+import RoundModeRow from "./RoundModeRow";
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
 import { useRegistryLocationSource } from "@/hooks/useRegistryLocationSource";
 import { countExportSections } from "./exportSections";
@@ -44,9 +44,7 @@ export default function ExportPage({
 }) {
   const { t, lang } = useLanguage();
   const { activeProject } = useProjectData();
-  const { monitoringExportMode, setMonitoringExportMode } = useExcelExportMode(
-    activeProject?.id ?? null,
-  );
+  const projectId = activeProject?.id ?? null;
   const [period, setPeriod] = useState(/** @type {string} */ (PERIOD.ALL));
   const [custom, setCustom] = useState({ from: "", to: "" });
   // Что включить в файл (8a). «Утечки» и «История» — всегда: первое — сам
@@ -526,37 +524,30 @@ export default function ExportPage({
                   )}
                 </div>
               ))}
+              {/* Листы с обходами — у каждого свой режим (8a). */}
               {choice.monitoring && (
-                <div className={`${s.row} ${s.subRow}`}>
-                  <span className={s.subLabel}>
-                    {t("export.sheetMonitoring")}
-                  </span>
-                  <div className={s.segment} role="radiogroup">
-                    {[
-                      [
-                        EXCEL_MONITORING_EXPORT_MODE.FULL,
-                        t("export.monitoringFull"),
-                      ],
-                      [
-                        EXCEL_MONITORING_EXPORT_MODE.LATEST_PER_ROUND,
-                        t("export.monitoringLatest"),
-                      ],
-                    ].map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        role="radio"
-                        aria-checked={monitoringExportMode === value}
-                        className={
-                          monitoringExportMode === value ? s.segmentOn : ""
-                        }
-                        onClick={() => setMonitoringExportMode(value)}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <RoundModeRow
+                  label={t("export.sheetMonitoring")}
+                  projectId={projectId}
+                />
+              )}
+              {choice.repairs && (
+                <RoundModeRow
+                  label={t("export.sheetRepairLog")}
+                  projectId={projectId}
+                  storageKeyOf={
+                    STORAGE_KEYS.PROJECT_EXCEL_REPAIR_LOG_EXPORT_MODE
+                  }
+                />
+              )}
+              {withInventory && (
+                <RoundModeRow
+                  label={t("export.sheetReconcileHistory")}
+                  projectId={projectId}
+                  storageKeyOf={
+                    STORAGE_KEYS.PROJECT_EXCEL_RECONCILE_EXPORT_MODE
+                  }
+                />
               )}
             </div>
           </section>

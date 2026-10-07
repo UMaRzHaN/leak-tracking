@@ -1,3 +1,4 @@
+import { readProjectSettings } from "@/app/project/projectSettings";
 import { buildExcelExportTexts } from "@/services/excelExport/exportTexts";
 
 /**
@@ -46,7 +47,13 @@ export async function prepareInventoryExport(
 
   return {
     fileStem: buildInventoryFileStem(project.name),
-    sheetSpec,
+    // Режим листа истории — из настроек проекта: так его получат и свой
+    // архив реестра, и папка инвентаризации в отчёте по утечкам.
+    sheetSpec: {
+      ...sheetSpec,
+      historyExportMode: readProjectSettings(project?.id)
+        .excelReconcileExportMode,
+    },
     // Без фото (8a) — без файлов и без ссылок на них; карточки остаются.
     registryEntry: withPhotos
       ? registryEntry

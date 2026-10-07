@@ -18,11 +18,20 @@ function readExportMode(storageKey) {
   }
 }
 
-export function useExcelExportMode(projectId) {
+/**
+ * Режим выгрузки листа с обходами: все записи или последняя в обходе.
+ * По умолчанию — лист мониторинга; `keyOf` выбирает другой лист.
+ *
+ * @param {string|null} projectId
+ * @param {(projectId: string) => string} [keyOf]
+ */
+export function useExcelExportMode(
+  projectId,
+  keyOf = STORAGE_KEYS.PROJECT_EXCEL_EXPORT_MODE,
+) {
   const storageKey = useMemo(
-    () =>
-      projectId ? STORAGE_KEYS.PROJECT_EXCEL_EXPORT_MODE(projectId) : null,
-    [projectId],
+    () => (projectId ? keyOf(projectId) : null),
+    [projectId, keyOf],
   );
   const [revision, setRevision] = useState(0);
   useEffect(() => {
@@ -61,5 +70,10 @@ export function useExcelExportMode(projectId) {
     [projectId, storageKey],
   );
 
-  return { monitoringExportMode, setMonitoringExportMode };
+  return {
+    mode: monitoringExportMode,
+    setMode: setMonitoringExportMode,
+    monitoringExportMode,
+    setMonitoringExportMode,
+  };
 }

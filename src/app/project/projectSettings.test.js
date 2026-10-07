@@ -16,6 +16,8 @@ describe("projectSettings", () => {
       normalizeProjectSettings({
         hiddenFields: ["component", "photo", "photo_after", "component", 42],
         excelMonitoringExportMode: "unknown",
+        excelRepairLogExportMode: "full",
+        excelReconcileExportMode: "full",
         photoRequirements: {
           leakPhotoRequired: false,
           monitoringPhotoRequired: "no",
@@ -25,6 +27,8 @@ describe("projectSettings", () => {
     ).toEqual({
       hiddenFields: ["component"],
       excelMonitoringExportMode: "full",
+      excelRepairLogExportMode: "full",
+      excelReconcileExportMode: "full",
       photoRequirements: {
         leakPhotoRequired: false,
         monitoringPhotoRequired: true,
@@ -57,6 +61,8 @@ describe("projectSettings", () => {
     expect(legacy).toEqual({
       hiddenFields: ["component"],
       excelMonitoringExportMode: "latest_per_round",
+      excelRepairLogExportMode: "full",
+      excelReconcileExportMode: "full",
       photoRequirements: {
         leakPhotoRequired: true,
         monitoringPhotoRequired: false,

@@ -404,17 +404,21 @@ export function validateProjectBackupMeta(parsed) {
           "Expected string array",
         );
       }
-      if (
-        parsed.settings.excelMonitoringExportMode !== undefined &&
-        !["full", "latest_per_round"].includes(
-          parsed.settings.excelMonitoringExportMode,
-        )
-      ) {
-        pushIssue(
-          issues,
-          ["settings", "excelMonitoringExportMode"],
-          "Invalid Excel monitoring export mode",
-        );
+      for (const field of [
+        "excelMonitoringExportMode",
+        "excelRepairLogExportMode",
+        "excelReconcileExportMode",
+      ]) {
+        if (
+          parsed.settings[field] !== undefined &&
+          !["full", "latest_per_round"].includes(parsed.settings[field])
+        ) {
+          pushIssue(
+            issues,
+            ["settings", field],
+            "Invalid Excel monitoring export mode",
+          );
+        }
       }
       for (const field of [
         "allowNewRounds",

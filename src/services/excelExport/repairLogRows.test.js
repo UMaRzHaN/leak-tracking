@@ -25,6 +25,30 @@ const leak = {
 };
 
 describe("repair sheets", () => {
+  it("keeps one mark per repair per round in the latest-per-round mode", () => {
+    const rechecked = {
+      ...leak,
+      status: "in_progress",
+      events: [
+        leak.events[0],
+        { ...leak.events[1], roundNumber: 2 },
+        {
+          id: "m2",
+          type: "repair_stage",
+          stage: "waiting_mtr",
+          date: "2026-10-02T09:00:00Z",
+          roundNumber: 2,
+        },
+      ],
+    };
+    expect(
+      getRepairLogExportRows([rechecked], "latest_per_round").map(
+        (row) => row.event,
+      ),
+    ).toEqual(["repair_started", "waiting_mtr"]);
+    expect(getRepairLogExportRows([rechecked], "full")).toHaveLength(3);
+  });
+
   it("lists the repair log oldest first, one row per event", () => {
     const rows = getRepairLogExportRows([leak]);
     expect(rows.map((row) => row.event)).toEqual([

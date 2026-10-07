@@ -6,6 +6,7 @@ import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useExcelExportMode } from "@/app/project/hooks/useExcelExportMode";
+import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { readProjectSettings } from "@/app/project/projectSettings";
 import { readMonitoringRound } from "@/utils/monitoringRound";
@@ -79,6 +80,10 @@ export function useDataBaseExport({
   const { monitoringExportMode } = useExcelExportMode(
     activeProject?.id ?? null,
   );
+  const { mode: repairLogExportMode } = useExcelExportMode(
+    activeProject?.id ?? null,
+    STORAGE_KEYS.PROJECT_EXCEL_REPAIR_LOG_EXPORT_MODE,
+  );
   const { vars } = useProjectVars(activeProject?.id ?? null);
 
   const handleExport = useCallback(async () => {
@@ -112,6 +117,7 @@ export function useDataBaseExport({
         t,
         {
           monitoringExportMode,
+          repairLogExportMode,
           project: activeProject,
           vars,
           settings: readProjectSettings(activeProject?.id),
@@ -181,6 +187,7 @@ export function useDataBaseExport({
     inventory,
     isExporting,
     monitoringExportMode,
+    repairLogExportMode,
     notify,
     onDone,
     photoSections,

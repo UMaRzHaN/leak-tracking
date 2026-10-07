@@ -188,7 +188,7 @@ function appendStageMark(leak, mark, { user, now }) {
  *
  * @returns {Array<{ id: string, kind: string, date: string, user?: string,
  *   stage?: string, brigade?: string, note?: string, materials?: string,
- *   photo?: string }>}
+ *   photo?: string, roundNumber?: number }>}
  */
 export function getRepairLog(leak) {
   const kinds = new Set([
@@ -210,6 +210,9 @@ export function getRepairLog(leak) {
         ? { materials: String(event.materials_equipment) }
         : {}),
       ...(event.photo ? { photo: String(event.photo) } : {}),
+      ...(Number.isFinite(event.roundNumber)
+        ? { roundNumber: event.roundNumber }
+        : {}),
     }));
   // Возврат в «открыта» — только тот, что шёл из ремонта: переоткрытие
   // устранённой утечки обходом — уже не про ремонт.

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { activeReconcileRoundNumber } from "@/pages/Reconcile/reconcileRound";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useComponentRegistry } from "@/features/componentRegistry/useComponentRegistry";
 import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
@@ -346,16 +347,25 @@ export default function ComponentRegistry({
     async (status) => {
       setBulkInspecting(false);
       const user = userProfile?.name;
+      // Осмотр в реестре во время сверки — тоже её отметка.
+      const roundNumber = activeReconcileRoundNumber(project?.id);
       for (const card of components) {
         if (!selectedIds.has(card.id)) continue;
         await updateComponent(
           card.id,
-          recordComponentInspected(card, { status, user }),
+          recordComponentInspected(card, { status, user, roundNumber }),
         );
       }
       clearSelection();
     },
-    [clearSelection, components, selectedIds, updateComponent, userProfile],
+    [
+      clearSelection,
+      components,
+      project?.id,
+      selectedIds,
+      updateComponent,
+      userProfile,
+    ],
   );
 
   /**
@@ -469,10 +479,14 @@ export default function ComponentRegistry({
       if (!card) return;
       await updateComponent(
         card.id,
-        recordComponentInspected(card, { status, user: userProfile?.name }),
+        recordComponentInspected(card, {
+          status,
+          user: userProfile?.name,
+          roundNumber: activeReconcileRoundNumber(project?.id),
+        }),
       );
     },
-    [inspecting, updateComponent, userProfile],
+    [inspecting, project?.id, updateComponent, userProfile],
   );
 
   if (!enabled) return null;

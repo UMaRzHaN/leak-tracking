@@ -19,7 +19,7 @@ import { useProjectData } from "@/app/project/ProjectContext";
 import { useRoundPermissions } from "@/app/project/hooks/useAllowNewRounds";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import MonitoringRoundOverview from "@/pages/Monitoring/MonitoringRoundOverview";
-import { createProjectRound } from "@/utils/projectRound";
+import { repairRound } from "./repairRoundStore";
 import RepairLeakDetails from "./RepairLeakDetails";
 import {
   REPAIR_ROUND_FILTER as FILTER,
@@ -31,9 +31,6 @@ import {
 import s from "./Repairs.module.scss";
 
 const RepairCheck = lazy(() => import("./RepairCheck"));
-
-// Номер и начало обхода ремонтов — как у сверки реестра.
-const repairRound = createProjectRound("repair_round_v1");
 
 /**
  * Обход ремонтов (7b): карточка из обхода мониторинга, но в футере — стадия
@@ -288,12 +285,12 @@ export default function RepairRound({
             data={data}
             setData={setData}
             userProfile={userProfile}
-            onSaved={() => {
-              // Первая проверка без начатого обхода начинает первый — иначе
-              // отметка ушла бы в никуда и ремонт не встал бы в проверенные.
+            // Первая проверка без начатого обхода начинает первый — до
+            // записи, иначе обход начался бы после неё и её не засчитал.
+            onBeforeSave={() => {
               if (!round) setRound(repairRound.start(projectId));
-              setCheckLeak(null);
             }}
+            onSaved={() => setCheckLeak(null)}
             onClose={() => setCheckLeak(null)}
             onNotify={setNotification}
           />

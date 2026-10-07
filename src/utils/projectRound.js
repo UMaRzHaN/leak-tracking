@@ -78,3 +78,8 @@ export function isInRound(date, round) {
   const time = Date.parse(String(date));
   return Number.isFinite(time) && time >= Date.parse(round.startedAt);
 }
+
+/** Номер идущего обхода — им метят записи; у завершённого и без обхода нет. */
+export function activeRoundNumber(round) {
+  return round && !round.completedAt ? Number(round.number) : undefined;
+}

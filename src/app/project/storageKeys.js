@@ -33,6 +33,12 @@ export const STORAGE_KEYS = {
     `${APP_PREFIX}:${projectId}:hidden_component_fields_${VERSION}`,
   PROJECT_EXCEL_EXPORT_MODE: (projectId) =>
     `${APP_PREFIX}:${projectId}:excel_export_mode_${VERSION}`,
+  // «Последняя в обходе» для журнала ремонтов и истории сверки — свои
+  // переключатели, как у листа мониторинга.
+  PROJECT_EXCEL_REPAIR_LOG_EXPORT_MODE: (projectId) =>
+    `${APP_PREFIX}:${projectId}:excel_repair_log_export_mode_${VERSION}`,
+  PROJECT_EXCEL_RECONCILE_EXPORT_MODE: (projectId) =>
+    `${APP_PREFIX}:${projectId}:excel_reconcile_export_mode_${VERSION}`,
   PROJECT_MONITORING_SETTINGS: (projectId) =>
     `${APP_PREFIX}:${projectId}:monitoring_settings_${VERSION}`,
   PROJECT_PHOTO_REQUIREMENTS: (projectId) =>

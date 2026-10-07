@@ -144,3 +144,18 @@ describe("inspections", () => {
     expect(result.component_status).toBe("В работе");
   });
 });
+
+describe("inspections during a reconcile round", () => {
+  it("carry the round number, so the export can keep the last one", () => {
+    const inspected = recordComponentInspected(
+      { id: "a" },
+      { status: "В работе", user: "Азиз", roundNumber: 4 },
+    );
+    expect(inspected.history.at(-1).roundNumber).toBe(4);
+    const outside = recordComponentInspected(
+      { id: "a" },
+      { status: "В работе", user: "Азиз" },
+    );
+    expect(outside.history.at(-1)).not.toHaveProperty("roundNumber");
+  });
+});

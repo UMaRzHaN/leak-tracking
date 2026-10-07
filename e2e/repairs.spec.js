@@ -46,10 +46,11 @@ test("ведёт ремонт от начала работ до устранен
   await attachModalPhoto(page);
   await page.getByRole("button", { name: "Принять и закрыть ремонт" }).click();
 
-  await page.getByRole("button", { name: /^Устранено 1/ }).click();
+  // Первая проверка начала обход — закрытый ремонт в нём проверен.
+  await page.getByRole("button", { name: /^Проверено 1/ }).click();
   await expect(page.getByText("№ 7301", { exact: true })).toBeVisible();
   await page.reload();
-  await page.getByRole("button", { name: /^Устранено 1/ }).click();
+  await page.getByRole("button", { name: /^Проверено 1/ }).click();
   await expect(page.getByText(/^Устранена:/)).toBeVisible();
 
   // Карта модуля ремонтов делит ремонты по стадии — в шторке фильтров.
@@ -112,6 +113,6 @@ test("принимает оборудование партиями и даёт �
   );
   await attachModalPhoto(page);
   await page.getByRole("button", { name: "Принять и закрыть ремонт" }).click();
-  await page.getByRole("button", { name: /^Устранено 1/ }).click();
+  await page.getByRole("button", { name: /^Проверено 1/ }).click();
   await expect(page.getByText("№ 7401", { exact: true })).toBeVisible();
 });

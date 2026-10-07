@@ -325,8 +325,8 @@ export async function buildMaterialsSheet(workbook, orderedLeaks, texts) {
  * «Журнал ремонтов»: начала, отметки стадий с бригадой и замечанием,
  * приёмки и возвраты в «ожидает МТР» — строкой на событие, по времени.
  */
-export async function buildRepairLogSheet(workbook, orderedLeaks, texts) {
-  const rows = getRepairLogExportRows(orderedLeaks).map((row) => ({
+export async function buildRepairLogSheet(workbook, orderedLeaks, texts, mode) {
+  const rows = getRepairLogExportRows(orderedLeaks, mode).map((row) => ({
     ...row,
     date: parseTimestamp(row.dateRaw) ?? "",
     time: parseTimestamp(row.dateRaw) ?? "",

@@ -300,6 +300,9 @@ export async function exportToExcelFile(
       photoMap,
       texts,
       monitoringExportMode,
+      repairLogExportMode: normalizeExcelMonitoringExportMode(
+        options.repairLogExportMode,
+      ),
       archivePayload,
       sheets: options.sheets ?? {},
       acceptanceRows: options.acceptanceRows ?? [],

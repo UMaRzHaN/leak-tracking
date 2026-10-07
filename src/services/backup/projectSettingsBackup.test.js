@@ -24,6 +24,8 @@ const SOURCE_PROJECT = {
 const SETTINGS = {
   hiddenFields: ["component", "note"],
   excelMonitoringExportMode: "latest_per_round",
+  excelRepairLogExportMode: "full",
+  excelReconcileExportMode: "full",
   photoRequirements: {
     leakPhotoRequired: false,
     monitoringPhotoRequired: false,
@@ -183,6 +185,8 @@ describe("project settings backup and synchronization", () => {
     expect(readProjectSettings(SOURCE_PROJECT.id)).toEqual({
       hiddenFields: [],
       excelMonitoringExportMode: "full",
+      excelRepairLogExportMode: "full",
+      excelReconcileExportMode: "full",
       photoRequirements: {
         leakPhotoRequired: true,
         monitoringPhotoRequired: true,

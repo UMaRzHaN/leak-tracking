@@ -1,4 +1,5 @@
 import { STORAGE_KEYS } from "./storageKeys";
+import { fromEntries } from "@/utils/fromEntries";
 import { PROTECTED_FIELD_KEYS } from "@/configs/shared/protectedFields";
 import {
   EXCEL_MONITORING_EXPORT_MODE,
@@ -7,6 +8,28 @@ import {
 import { normalizeVoiceCorrections } from "@/features/voice/utils/voiceCorrections";
 
 export const PROJECT_SETTINGS_UPDATED_EVENT = "project-settings-updated";
+
+/** Режимы выгрузки листов с обходами: поле настроек — ключ хранения. */
+export const EXPORT_MODE_KEYS = Object.freeze({
+  excelMonitoringExportMode: STORAGE_KEYS.PROJECT_EXCEL_EXPORT_MODE,
+  excelRepairLogExportMode: STORAGE_KEYS.PROJECT_EXCEL_REPAIR_LOG_EXPORT_MODE,
+  excelReconcileExportMode: STORAGE_KEYS.PROJECT_EXCEL_RECONCILE_EXPORT_MODE,
+});
+
+/**
+ * @param {(field: string) => unknown} read
+ * @returns {{ excelMonitoringExportMode: string, excelRepairLogExportMode: string, excelReconcileExportMode: string }}
+ */
+function mapExportModes(read) {
+  return /** @type {any} */ (
+    fromEntries(
+      Object.keys(EXPORT_MODE_KEYS).map((field) => [
+        field,
+        normalizeExcelMonitoringExportMode(read(field)),
+      ]),
+    )
+  );
+}
 
 export const DEFAULT_PHOTO_REQUIREMENTS = Object.freeze({
   leakPhotoRequired: true,
@@ -94,9 +117,7 @@ export function normalizeRoundPermissions(value) {
 export function normalizeProjectSettings(value) {
   return {
     hiddenFields: normalizeHiddenFields(value?.hiddenFields),
-    excelMonitoringExportMode: normalizeExcelMonitoringExportMode(
-      value?.excelMonitoringExportMode,
-    ),
+    ...mapExportModes((field) => value?.[field]),
     photoRequirements: normalizePhotoRequirements(value?.photoRequirements),
     voiceCorrections: normalizeVoiceCorrections(value?.voiceCorrections),
     // Новые обходы мониторинга: выключенные защищают текущий обход от
@@ -123,8 +144,8 @@ export function readProjectSettings(projectId) {
 
   return normalizeProjectSettings({
     hiddenFields: readJson(STORAGE_KEYS.PROJECT_HIDDEN_FIELDS(projectId)),
-    excelMonitoringExportMode: localStorage.getItem(
-      STORAGE_KEYS.PROJECT_EXCEL_EXPORT_MODE(projectId),
+    ...mapExportModes((field) =>
+      localStorage.getItem(EXPORT_MODE_KEYS[field](projectId)),
     ),
     photoRequirements,
     voiceCorrections: readJson(
@@ -169,14 +190,12 @@ export function writeProjectSettings(projectId, value, { emit = true } = {}) {
     localStorage.removeItem(hiddenKey);
   }
 
-  const excelKey = STORAGE_KEYS.PROJECT_EXCEL_EXPORT_MODE(projectId);
-  if (
-    settings.excelMonitoringExportMode ===
-    EXCEL_MONITORING_EXPORT_MODE.LATEST_PER_ROUND
-  ) {
-    localStorage.setItem(excelKey, settings.excelMonitoringExportMode);
-  } else {
-    localStorage.removeItem(excelKey);
+  for (const [field, keyOf] of Object.entries(EXPORT_MODE_KEYS)) {
+    if (settings[field] === EXCEL_MONITORING_EXPORT_MODE.LATEST_PER_ROUND) {
+      localStorage.setItem(keyOf(projectId), settings[field]);
+    } else {
+      localStorage.removeItem(keyOf(projectId));
+    }
   }
 
   const photoKey = STORAGE_KEYS.PROJECT_PHOTO_REQUIREMENTS(projectId);
@@ -234,7 +253,7 @@ export function clearProjectSettings(projectId, { emit = false } = {}) {
   if (!projectId || typeof localStorage === "undefined") return;
   [
     STORAGE_KEYS.PROJECT_HIDDEN_FIELDS(projectId),
-    STORAGE_KEYS.PROJECT_EXCEL_EXPORT_MODE(projectId),
+    ...Object.values(EXPORT_MODE_KEYS).map((keyOf) => keyOf(projectId)),
     STORAGE_KEYS.PROJECT_MONITORING_SETTINGS(projectId),
     STORAGE_KEYS.PROJECT_PHOTO_REQUIREMENTS(projectId),
     STORAGE_KEYS.PROJECT_VOICE_CORRECTIONS(projectId),
@@ -252,7 +271,7 @@ function comparableSettings(value) {
   const normalized = normalizeProjectSettings(value);
   return JSON.stringify({
     hiddenFields: normalized.hiddenFields,
-    excelMonitoringExportMode: normalized.excelMonitoringExportMode,
+    ...mapExportModes((field) => normalized[field]),
     photoRequirements: normalized.photoRequirements,
     voiceCorrections: normalized.voiceCorrections,
     allowNewRounds: normalized.allowNewRounds,

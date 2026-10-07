@@ -187,10 +187,14 @@ export async function openMap(page) {
   await expect(map).toHaveAttribute("aria-current", "page");
 }
 
+// Инвентаризация открывается на «Базе» — списке компонентов без заголовка;
+// «Реестр» в нижней панели теперь — схемы.
 export async function openComponentRegistry(page) {
   await openMenuItem(page, "Инвентаризация");
+  await expect(footerTab(page, "Сверка")).toBeVisible();
+  await footerTab(page, "База").click();
   await expect(
-    page.getByRole("heading", { name: "Реестр компонентов" }),
+    page.getByRole("textbox", { name: /^Номер, наименование/ }),
   ).toBeVisible();
 }
 

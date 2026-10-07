@@ -1,4 +1,8 @@
-import { createProjectRound, isInRound } from "@/utils/projectRound";
+import {
+  activeRoundNumber,
+  createProjectRound,
+  isInRound,
+} from "@/utils/projectRound";
 
 /**
  * Сверка реестра (6b) — аналог обхода мониторинга. Сверенным считается
@@ -15,4 +19,9 @@ export const mergeReconcileRound = round.merge;
 
 export function isReconciled(component, current) {
   return isInRound(component?.inspected_at, current);
+}
+
+/** Номер идущей сверки проекта — им метятся осмотры компонентов. */
+export function activeReconcileRoundNumber(projectId) {
+  return activeRoundNumber(round.read(projectId));
 }

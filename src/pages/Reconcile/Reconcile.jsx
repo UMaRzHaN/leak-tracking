@@ -11,6 +11,7 @@ import {
   recordComponentInspected,
 } from "@/domain/componentHistory";
 import { matchesLeakLocationFilter } from "@/utils/locationFilter";
+import { activeRoundNumber } from "@/utils/projectRound";
 import { formatMonitoringDate } from "@/utils/monitoring";
 import { useRoundPermissions } from "@/app/project/hooks/useAllowNewRounds";
 import MonitoringRoundOverview from "@/pages/Monitoring/MonitoringRoundOverview";
@@ -98,10 +99,15 @@ export default function Reconcile({ project, sharedFilters, userProfile }) {
     if (!card) return;
     // Сверка без начатого номера начинает первую — иначе отметка ушла бы
     // в никуда и компонент не встал бы в «Сверено».
-    if (!round) setRound(startReconcileRound(project?.id));
+    const current = round ?? startReconcileRound(project?.id);
+    if (!round) setRound(current);
     await updateComponent(
       card.id,
-      recordComponentInspected(card, { status, user: userProfile?.name }),
+      recordComponentInspected(card, {
+        status,
+        user: userProfile?.name,
+        roundNumber: activeRoundNumber(current),
+      }),
     );
     setNotification({ type: "success", message: t("reconcile.saved") });
   };

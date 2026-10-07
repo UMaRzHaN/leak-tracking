@@ -48,18 +48,17 @@ test("заводит карточку компонента и показывае
   await setUserProfile(page);
   await openComponentRegistry(page);
 
-  await expect(page.getByText("Заведено: 0")).toBeVisible();
   await expect(page.getByText("Реестр пуст.", { exact: false })).toBeVisible();
 
   await addComponentCard(page, VALVE);
 
-  await expect(page.getByText("Заведено: 1")).toBeVisible();
+  await expect(page.getByText(/^1 запись/)).toBeVisible();
   await expect(page.getByText("ЗД-32", { exact: false }).first()).toBeVisible();
 
   // Реестр живёт в той же базе, что и утечки, — перезагрузка это проверяет.
   await page.reload();
   await openComponentRegistry(page);
-  await expect(page.getByText("Заведено: 1")).toBeVisible();
+  await expect(page.getByText(/^1 запись/)).toBeVisible();
   await expect(
     page.getByText("Задвижка", { exact: true }).first(),
   ).toBeVisible();
@@ -75,7 +74,7 @@ test("выгружает инвентаризацию и вливает её в 
 
   await addComponentCard(page, VALVE);
   await addComponentCard(page, GAUGE);
-  await expect(page.getByText("Заведено: 2")).toBeVisible();
+  await expect(page.getByText(/^2 записи/)).toBeVisible();
 
   // Утечек в проекте нет: «Экспорт отчёта» выгружает один реестр — тем же
   // архивом, что раньше отдавала кнопка XLSX на экране реестра.
@@ -106,7 +105,7 @@ test("выгружает инвентаризацию и вливает её в 
   ).toHaveCount(0);
 
   await openComponentRegistry(page);
-  await expect(page.getByText("Заведено: 0")).toBeVisible();
+  await expect(page.getByText("Реестр пуст.", { exact: false })).toBeVisible();
 
   await importFile(page, archivePath);
   await expect(page.getByRole("alert")).toContainText("Инвентаризация", {
@@ -116,7 +115,7 @@ test("выгружает инвентаризацию и вливает её в 
   await leaveSettings(page);
 
   await openComponentRegistry(page);
-  await expect(page.getByText("Заведено: 2")).toBeVisible();
+  await expect(page.getByText(/^2 записи/)).toBeVisible();
   await expect(
     page.getByText("Задвижка", { exact: true }).first(),
   ).toBeVisible();

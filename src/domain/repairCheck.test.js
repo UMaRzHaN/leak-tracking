@@ -241,3 +241,22 @@ describe("rechecking a closed repair", () => {
     expect(getRepairLog(back)[0].stage).toBe(REPAIR_STAGE.WAITING_MTR);
   });
 });
+
+describe("checks during a repair round", () => {
+  it("mark the events they leave with the round number", () => {
+    const checked = applyRepairCheck(
+      inRepair,
+      { leaking: true, done: true, brigade: "Бригада 3" },
+      { user: "Ким", now: NOW, roundNumber: 5 },
+    );
+    const before = new Set(inRepair.events.map((event) => event.id));
+    const created = checked.events.filter((event) => !before.has(event.id));
+    expect(created.length).toBeGreaterThan(0);
+    expect(created.every((event) => event.roundNumber === 5)).toBe(true);
+    expect(
+      checked.events
+        .filter((event) => before.has(event.id))
+        .some((event) => "roundNumber" in event),
+    ).toBe(false);
+  });
+});
