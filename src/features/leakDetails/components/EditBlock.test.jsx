@@ -26,7 +26,30 @@ vi.mock("./EditPhotoRow", () => ({
   ),
 }));
 
+// Список записанных осмотров и кнопка GPS проверяются у себя; здесь — что
+// карточка отдаёт им нужное и правильно принимает ответ.
+vi.mock("./RecordEditList", () => ({
+  default: ({ kind, edits, setEdits }) => (
+    <button type="button" onClick={() => setEdits({ r1: "x" })}>
+      records:{kind}:{JSON.stringify(edits)}
+    </button>
+  ),
+}));
+vi.mock("@/features/coords/GpsCoordsUpdate", () => ({
+  default: ({ onApply }) => (
+    <>
+      <button type="button" onClick={() => onApply({ lat: 41.1, lng: 69.2 })}>
+        gps-apply
+      </button>
+      <button type="button" onClick={() => onApply(null)}>
+        gps-undo
+      </button>
+    </>
+  ),
+}));
+
 const EditBlock = (await import("./EditBlock")).default;
+const { RECORD_KIND } = await import("@/domain/recordEdits");
 
 const projectConfig = {
   system: {
@@ -130,6 +153,64 @@ describe("EditBlock", () => {
     open("photo", { showAfter: true });
 
     expect(screen.getByTestId("photos")).toHaveTextContent("true");
+  });
+
+  it("на вкладках осмотров и ремонта отдаёт записи нужного вида", async () => {
+    const user = userEvent.setup();
+    const setRecordEdits = vi.fn();
+
+    open("monitoring", { recordEdits: { a: 1 }, setRecordEdits });
+    expect(
+      screen.getByText(`records:${RECORD_KIND.INSPECTION}:{"a":1}`),
+    ).toBeInTheDocument();
+
+    open("repairs", { recordEdits: {}, setRecordEdits });
+    await user.click(screen.getByText(`records:${RECORD_KIND.REPAIR}:{}`));
+    expect(setRecordEdits).toHaveBeenCalledWith({ r1: "x" });
+  });
+
+  it("GPS ставит координаты, а «Отменить» возвращает записанные", async () => {
+    const user = userEvent.setup();
+    open("coords", { originalCoords: { lat: 40, lng: 70 } });
+
+    await user.click(screen.getByText("gps-apply"));
+    expect(applied({ note: "n" })).toEqual({
+      note: "n",
+      lat: 41.1,
+      lng: 69.2,
+      __gps: { lat: 41.1, lng: 69.2 },
+    });
+
+    await user.click(screen.getByText("gps-undo"));
+    expect(applied({ lat: 41.1, lng: 69.2, __gps: {} })).toEqual({
+      lat: 40,
+      lng: 70,
+      __gps: null,
+    });
+  });
+
+  it("без записанных координат «Отменить» очищает поля", async () => {
+    const user = userEvent.setup();
+    open("coords");
+
+    await user.click(screen.getByText("gps-undo"));
+    expect(applied({ lat: 1, lng: 2 })).toEqual({
+      lat: "",
+      lng: "",
+      __gps: null,
+    });
+  });
+
+  it("правка координаты и замера доходит до состояния", async () => {
+    const user = userEvent.setup();
+
+    open("coords", { localEdit: { lat: "41" } });
+    await user.type(screen.getByDisplayValue("41"), "5");
+    expect(applied({ lat: "41" })).toEqual({ lat: 415 });
+
+    open("params", { localEdit: { pressure: "4" } });
+    await user.type(screen.getByDisplayValue("4"), "2");
+    expect(applied({ pressure: "4" })).toEqual({ pressure: 42 });
   });
 
   it("на незнакомой вкладке не рисует ничего", () => {

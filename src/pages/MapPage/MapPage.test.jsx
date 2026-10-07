@@ -1,10 +1,37 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mapState = vi.hoisted(() => ({ current: null }));
+const leakActions = vi.hoisted(() => ({ setActiveLeak: null }));
 vi.mock("@/utils/renderMetrics", () => ({ useRenderMetric: vi.fn() }));
 vi.mock("@/pages/DataBase/hooks/useLeakActions", () => ({
-  useLeakActions: () => ({ activeLeak: null, setActiveLeak: vi.fn() }),
+  useLeakActions: () => ({
+    activeLeak: null,
+    setActiveLeak: leakActions.setActiveLeak,
+  }),
+}));
+vi.mock("@/features/route/RouteBanner", () => ({
+  default: ({ onFocus, onEnd }) => (
+    <>
+      <button onClick={() => onFocus({ id: "next" })}>route-focus</button>
+      <button onClick={onEnd}>route-end</button>
+    </>
+  ),
+}));
+vi.mock("./components/MapPinCard", () => ({
+  default: ({ onOpenLeak, onOpenComponent }) => (
+    <>
+      <button onClick={() => onOpenLeak({ id: "leak-1" })}>open-leak</button>
+      <button onClick={() => onOpenComponent({ id: "c-7" })}>
+        open-component
+      </button>
+    </>
+  ),
+}));
+vi.mock("./components/MapComponentDetails", () => ({
+  default: ({ componentId, onClose }) => (
+    <button onClick={onClose}>component:{componentId}</button>
+  ),
 }));
 vi.mock("@/hooks/usePhotoStorage", () => ({
   usePhotoStorage: () => ({ deletePhoto: vi.fn() }),
@@ -19,6 +46,7 @@ vi.mock("@/components/ui/Notification/Notification", () => ({
 vi.mock("./components/MapControls", () => ({
   default: (props) => (
     <div>
+      {props.topContent}
       <button onClick={props.onLocate}>locate</button>
       <button onClick={props.onOpenSheet}>open-sheet</button>
       <button onClick={props.onDownload}>download</button>
@@ -102,12 +130,15 @@ function createState() {
     handleExportKML: vi.fn(),
     focusLeak: vi.fn(),
     locateMe: vi.fn(),
+    selectedLeak: null,
+    selectLeak: vi.fn(),
   };
 }
 
 describe("MapPage", () => {
   beforeEach(() => {
     mapState.current = createState();
+    leakActions.setActiveLeak = vi.fn();
   });
 
   it("connects map controls, export, filters, and sheet selection", () => {
@@ -165,5 +196,67 @@ describe("MapPage", () => {
     render(<MapPage leaks={[]} coords={null} />);
 
     expect(screen.queryByText(/KML/)).toBeNull();
+  });
+
+  it("встаёт на точку, когда карточка просит «Показать на карте»", async () => {
+    const { requestMapFocus } = await import("@/app/mapFocus");
+    render(<MapPage leaks={[]} coords={null} />);
+
+    act(() => requestMapFocus({ lat: 41, lng: 69 }));
+
+    expect(leakActions.setActiveLeak).toHaveBeenCalledWith(null);
+    expect(mapState.current.selectLeak).toHaveBeenCalledWith(null);
+    expect(mapState.current.focusLeak).toHaveBeenCalledWith(
+      { lat: 41, lng: 69 },
+      20,
+    );
+  });
+
+  it("ведёт по маршруту обхода и завершает его", () => {
+    const onRouteEnd = vi.fn();
+    render(
+      <MapPage
+        leaks={[]}
+        coords={null}
+        routeProgress={{ done: 0 }}
+        onRouteEnd={onRouteEnd}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("route-focus"));
+    expect(mapState.current.focusLeak).toHaveBeenCalledWith({ id: "next" }, 17);
+    expect(mapState.current.selectLeak).toHaveBeenCalledWith({ id: "next" });
+
+    fireEvent.click(screen.getByText("route-end"));
+    expect(onRouteEnd).toHaveBeenCalled();
+  });
+
+  it("на карте инвентаризации плашку маршрута не показывает", () => {
+    mapState.current.showsComponents = true;
+    render(<MapPage leaks={[]} coords={null} routeProgress={{ done: 0 }} />);
+
+    expect(screen.queryByText("route-focus")).toBeNull();
+  });
+
+  it("из карточки булавки открывает запись и компонент", async () => {
+    mapState.current.selectedLeak = { id: "leak-1" };
+    render(<MapPage leaks={[]} coords={null} />);
+
+    fireEvent.click(screen.getByText("open-leak"));
+    expect(mapState.current.selectLeak).toHaveBeenCalledWith(null);
+    expect(leakActions.setActiveLeak).toHaveBeenCalledWith({ id: "leak-1" });
+
+    fireEvent.click(screen.getByText("open-component"));
+    const details = await screen.findByText("component:c-7");
+    fireEvent.click(details);
+    expect(screen.queryByText("component:c-7")).toBeNull();
+  });
+
+  it("прячет карточку булавки, пока открыт список", () => {
+    mapState.current.selectedLeak = { id: "leak-1" };
+    mapState.current.open = true;
+    render(<MapPage leaks={[]} coords={null} />);
+
+    expect(screen.queryByText("open-leak")).toBeNull();
   });
 });
