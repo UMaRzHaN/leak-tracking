@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   COORD_KEYS,
   createActionLabel,
+  createChangeLabel,
   createFieldLabel,
   createFieldValue,
 } from "./componentFieldText";
@@ -12,6 +13,8 @@ import PhotoBlock from "@/features/leakDetails/components/PhotoBlock";
 import LeakLocationSection from "@/features/leakDetails/components/LeakLocationSection";
 import GpsCoordsUpdate from "@/features/coords/GpsCoordsUpdate";
 import ComponentReconcileLog from "./ComponentReconcileLog";
+import ComponentReconcileEdit from "./ComponentReconcileEdit";
+import { applyReconcileEdits } from "@/domain/componentReconcileEdits";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import PhotoInput from "@/features/photos/PhotoInput/PhotoInput";
 import EditTextField from "@/features/editTextField/EditTextField";
@@ -61,6 +64,10 @@ export default function ComponentDetailsSheet({
    * должен оставить всё как было, а не отменять по полю.
    */
   const [draft, setDraft] = useState(/** @type {any} */ ({}));
+  // Правки записанных сверок — по ключу записи (см. componentReconcileEdits).
+  const [reconcileDraft, setReconcileDraft] = useState(
+    /** @type {Record<string, Record<string, any>>} */ ({}),
+  );
 
   const editable = useMemo(
     () => fields.filter((field) => field.editable && !field.coord),
@@ -73,13 +80,15 @@ export default function ComponentDetailsSheet({
 
   const startEditing = () => {
     setDraft({ ...component });
+    setReconcileDraft({});
     setEditing(true);
-    if (tab === "history" || tab === "reconcile") setTab("card");
+    if (tab === "history") setTab("card");
   };
 
   const cancelEditing = () => {
     setEditing(false);
     setDraft({});
+    setReconcileDraft({});
   };
 
   const setField = (key, value) =>
@@ -90,7 +99,13 @@ export default function ComponentDetailsSheet({
     try {
       // Как у утечки: точка, поставленная по GPS, несёт радиус приёмника;
       // вписанная руками — нет, прежний радиус мерил другую точку.
-      const { __gps, ...card } = draft;
+      const { __gps, ...fieldsCard } = draft;
+      // Исправленные сверки; состояние последней ведёт состояние карточки.
+      const { component: card, changes } = applyReconcileEdits(
+        fieldsCard,
+        reconcileDraft,
+        component,
+      );
       const moved = ["lat", "lng"].some(
         (key) => String(card[key] ?? "") !== String(component?.[key] ?? ""),
       );
@@ -103,6 +118,7 @@ export default function ComponentDetailsSheet({
                 : undefined,
             }
           : card,
+        { changes },
       );
       setEditing(false);
     } finally {
@@ -134,18 +150,20 @@ export default function ComponentDetailsSheet({
   const actionLabel = createActionLabel(t);
   const fieldValue = createFieldValue(lang);
   const labelOf = createFieldLabel(fields);
+  const changeLabel = createChangeLabel(labelOf, t, (iso) =>
+    fmtDate(iso, lang),
+  );
 
   // В правке истории нет: она про то, что уже случилось, и править её нельзя.
   const tabs = [
     { id: "card", label: t("components.tabs.params") },
     { id: "photo", label: t("components.tabs.photo") },
     { id: "coords", label: t("components.tabs.coords") },
+    // Сверки правятся (состояние и замечание), история — только смотрится.
+    { id: "reconcile", label: t("components.tabs.reconcile") },
     ...(editing
       ? []
-      : [
-          { id: "reconcile", label: t("components.tabs.reconcile") },
-          { id: "history", label: t("components.tabs.history") },
-        ]),
+      : [{ id: "history", label: t("components.tabs.history") }]),
   ];
 
   return (
@@ -259,6 +277,12 @@ export default function ComponentDetailsSheet({
                   </div>
                 </div>
               </div>
+            ) : tab === "reconcile" && editing ? (
+              <ComponentReconcileEdit
+                component={component}
+                edits={reconcileDraft}
+                setEdits={setReconcileDraft}
+              />
             ) : tab === "card" ? (
               <div className={s.tabPane}>
                 {params.length === 0 ? (
@@ -362,7 +386,7 @@ export default function ComponentDetailsSheet({
                                   className={s.logChange}
                                 >
                                   <span className={s.logChangeLabel}>
-                                    {labelOf(change.key)}
+                                    {changeLabel(change)}
                                   </span>
                                   <span
                                     className={`${s.logChangeValue} ${s.logChangeValueBefore}`}

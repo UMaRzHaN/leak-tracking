@@ -27,6 +27,9 @@ export const components = {
   historyCreated: "Карточка заведена",
   historyEdited: "Правка",
   historyInspected: "Осмотр",
+  reconcileEdit: {
+    label: "Сверка {{date}}: {{field}}",
+  },
   reconcileLog: {
     round: "Сверка № {{number}}",
     inspection: "Осмотр",

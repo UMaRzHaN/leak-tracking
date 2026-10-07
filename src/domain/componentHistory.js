@@ -60,14 +60,23 @@ export function recordComponentCreated(component, { user, now } = {}) {
  *
  * @param {Record<string, any>} before
  * @param {Record<string, any>} after
- * @param {{user?: string, now?: number, fields?: {key: string}[]}} options
+ * @param {{user?: string, now?: number, fields?: {key: string}[], extraChanges?: any[]}} options
  */
 export function recordComponentEdited(
   before,
   after,
-  { user, now, fields = [] } = {},
+  {
+    user,
+    now,
+    fields = [],
+    // Правки записанных сверок — в ту же запись, что и правки полей.
+    extraChanges = [],
+  } = {},
 ) {
-  const changes = buildLeakHistoryChanges({ before, after, fields });
+  const changes = [
+    ...buildLeakHistoryChanges({ before, after, fields }),
+    ...extraChanges,
+  ];
   if (changes.length === 0) return after;
 
   return withEntry(

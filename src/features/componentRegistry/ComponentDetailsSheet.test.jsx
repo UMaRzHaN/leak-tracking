@@ -121,3 +121,44 @@ describe("ComponentDetailsSheet reconciliation log", () => {
     expect(screen.queryByText("М")).toBeNull();
   });
 });
+
+describe("ComponentDetailsSheet reconcile edits", () => {
+  it("правит состояние последней сверки и отдаёт правку с карточкой", async () => {
+    const onSave = vi.fn(async () => {});
+    render(
+      <ComponentDetailsSheet
+        component={{
+          ...component,
+          component_status: "В работе",
+          history: [
+            {
+              action: "component_inspected",
+              date: "2026-10-05T10:00:00.000Z",
+              user: "Азиз",
+              to: "В работе",
+              roundNumber: 2,
+            },
+          ],
+        }}
+        fields={fields}
+        onSave={onSave}
+        onClose={() => {}}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.click(screen.getByText("Reconciliation"));
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "Законсервирован" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    const [card, { changes }] = onSave.mock.calls[0];
+    expect(card.component_status).toBe("Законсервирован");
+    expect(card.history[0].to).toBe("Законсервирован");
+    expect(changes).toEqual([
+      expect.objectContaining({ key: "to", to: "Законсервирован" }),
+    ]);
+  });
+});

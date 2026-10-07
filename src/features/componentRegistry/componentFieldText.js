@@ -42,3 +42,23 @@ export function createFieldValue(lang) {
 export function createFieldLabel(fields) {
   return (key) => fields.find((field) => field.key === key)?.label ?? key;
 }
+
+/**
+ * Подпись изменения в истории: поле карточки — по объявлению реестра,
+ * исправленная сверка — «Сверка 05.10.2026: Состояние».
+ *
+ * @param {(key: string) => string} labelOf
+ * @param {(key: string, params?: any) => string} t
+ * @param {(iso: string) => string} formatDate
+ */
+export function createChangeLabel(labelOf, t, formatDate) {
+  return (change) =>
+    change?.record
+      ? t("components.reconcileEdit.label", {
+          date: formatDate(change.record.date),
+          field: t(
+            `components.reconcileLog.${change.key === "to" ? "state" : "comment"}`,
+          ),
+        })
+      : labelOf(change.key);
+}

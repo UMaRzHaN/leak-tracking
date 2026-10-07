@@ -26,6 +26,9 @@ export const components = {
   historyCreated: "Card created",
   historyEdited: "Edited",
   historyInspected: "Inspected",
+  reconcileEdit: {
+    label: "Reconciliation {{date}}: {{field}}",
+  },
   reconcileLog: {
     round: "Round № {{number}}",
     inspection: "Inspection",

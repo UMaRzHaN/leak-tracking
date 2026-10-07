@@ -27,7 +27,7 @@ export function useComponentDetails({
   const { savePhoto } = usePhotoStorage();
   const [viewing, setViewing] = useState(/** @type {any} */ (null));
 
-  const save = async (form) => {
+  const save = async (form, { changes = [] } = {}) => {
     const target = viewing;
     if (!target?.id) return;
     const card = await withStoredPhoto(
@@ -38,7 +38,11 @@ export function useComponentDetails({
     const recorded = recordComponentEdited(
       target,
       { ...target, ...card },
-      { user: userProfile?.name, fields: fields?.all ?? [] },
+      {
+        user: userProfile?.name,
+        fields: fields?.all ?? [],
+        extraChanges: changes,
+      },
     );
     await updateComponent(target.id, recorded);
     // Лист остаётся открытым и показывает сохранённое — вместе с только что
