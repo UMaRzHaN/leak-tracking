@@ -192,7 +192,8 @@ function appendStageMark(leak, mark, { user, now }) {
  *
  * @returns {Array<{ id: string, kind: string, date: string, user?: string,
  *   stage?: string, brigade?: string, note?: string, materials?: string,
- *   photo?: string, previousPhoto?: string, roundNumber?: number }>}
+ *   photo?: string, previousPhoto?: string, roundNumber?: number,
+ *   physicalTag?: boolean, fiction?: boolean }>}
  */
 export function getRepairLog(leak) {
   const kinds = new Set([

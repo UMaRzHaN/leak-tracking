@@ -28,6 +28,10 @@ export async function buildRepairLogSheet(
     date: parseTimestamp(row.dateRaw) ?? "",
     time: parseTimestamp(row.dateRaw) ?? "",
     event: texts.repairLog.events[row.event] ?? row.event,
+    // Ответы проверки ремонта — теми же словами, что у осмотра в листе
+    // обходов; у проверки без вопроса клетка пустая.
+    physicalTag: formatFlag(row.physicalTag, texts),
+    fiction: formatFlag(row.fiction, texts),
   }));
   if (rows.length === 0) return;
 
@@ -35,12 +39,15 @@ export async function buildRepairLogSheet(
   const keys = [
     "index",
     "leak_id",
+    "roundNumber",
     "date",
     "time",
     "event",
     "brigade",
     "materials_equipment",
     "note",
+    "physicalTag",
+    "fiction",
     "user",
     "previousPhoto",
     "photo",
@@ -74,4 +81,9 @@ export async function buildRepairLogSheet(
       { isPhoto: isPhoto(key) },
     );
   });
+}
+
+function formatFlag(value, texts) {
+  if (typeof value !== "boolean") return "";
+  return value ? texts.monitoring.flags.yes : texts.monitoring.flags.no;
 }

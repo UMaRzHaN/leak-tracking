@@ -130,4 +130,50 @@ describe("repair sheets", () => {
       );
     });
   });
+
+  it("несёт номер обхода и ответы проверки, как лист обходов", async () => {
+    const checked = {
+      ...leak,
+      status: "in_progress",
+      events: [
+        leak.events[0],
+        {
+          ...leak.events[1],
+          roundNumber: 2,
+          physicalTag: false,
+          fiction: true,
+        },
+      ],
+    };
+    const [, mark] = getRepairLogExportRows([checked]);
+    expect(mark).toMatchObject({
+      roundNumber: 2,
+      physicalTag: false,
+      fiction: true,
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    await buildRepairLogSheet(
+      workbook,
+      [checked],
+      {
+        sheets: { repairLog: "Журнал ремонтов" },
+        repairLog: {
+          headers: new Proxy({}, { get: (_, key) => String(key) }),
+          events: {},
+        },
+        monitoring: { flags: { yes: "Да", no: "Нет" } },
+        photo: { open: "Открыть фото", missing: "Есть (файл не найден)" },
+      },
+      "full",
+    );
+    const sheet = workbook.getWorksheet("Журнал ремонтов");
+    const header = sheet.getRow(1).values;
+    const row = sheet.getRow(3);
+    expect(row.getCell(header.indexOf("roundNumber")).value).toBe(2);
+    expect(row.getCell(header.indexOf("physicalTag")).value).toBe("Нет");
+    expect(row.getCell(header.indexOf("fiction")).value).toBe("Да");
+    // У начала ремонта вопросов не было — клетки пустые.
+    expect(sheet.getRow(2).getCell(header.indexOf("fiction")).value).toBe("");
+  });
 });
