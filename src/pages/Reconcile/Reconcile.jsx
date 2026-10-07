@@ -17,7 +17,7 @@ import MonitoringRoundOverview from "@/pages/Monitoring/MonitoringRoundOverview"
 import {
   finishReconcileRound,
   isReconciled,
-  mergeReconcileRound,
+  mergeReconcileRoundWithChecks,
   readReconcileRound,
   startReconcileRound,
 } from "./reconcileRound";
@@ -61,8 +61,14 @@ export default function Reconcile({
   ),
 }) {
   const { t, lang } = useLanguage();
-  const { components, fields, updateComponent, removeComponent, loading } =
-    useComponentRegistry(project);
+  const {
+    components,
+    fields,
+    updateComponent,
+    removeComponent,
+    rewriteComponents,
+    loading,
+  } = useComponentRegistry(project);
   const [round, setRound] = useState(() => readReconcileRound(project?.id));
   const [filter, setFilter] = useState(/** @type {string} */ (FILTER.DUE));
   const [search, setSearch] = useState("");
@@ -388,9 +394,19 @@ export default function Reconcile({
         })}
         description={t("reconcile.mergeDescription")}
         confirmLabel={t("reconcile.mergeConfirm")}
-        onConfirm={() => {
+        onConfirm={async () => {
           setConfirmMerge(false);
-          const merged = mergeReconcileRound(project?.id);
+          // Осмотры ошибочной сверки уходят в предыдущую вместе с ней.
+          const merged = await mergeReconcileRoundWithChecks(
+            project?.id,
+            rewriteComponents,
+          ).catch((error) => {
+            setNotification({
+              type: "error",
+              message: t("common.saveError", { message: errorText(error, t) }),
+            });
+            return null;
+          });
           if (!merged) return;
           setRound(merged);
           setNotification({

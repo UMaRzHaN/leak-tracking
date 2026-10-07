@@ -115,3 +115,24 @@ describe("repair round", () => {
     expect(ids(FILTER.ALL, "WAIT")).toEqual(["waiting"]);
   });
 });
+
+describe("слияние обхода ремонтов", () => {
+  it("переносит проверки слитого обхода в предыдущий, осмотры не трогает", async () => {
+    const { moveRepairChecksToRound } = await import("./repairRoundDomain");
+    const leak = {
+      id: "l1",
+      events: [
+        { id: "s", type: "repair_started", date: "2026-10-01", roundNumber: 3 },
+        { id: "m", type: "repair_stage", date: "2026-10-02", roundNumber: 2 },
+        { id: "i", type: "inspection", date: "2026-10-03", roundNumber: 3 },
+      ],
+    };
+    const untouched = { id: "l2", events: [] };
+
+    const { data, moved } = moveRepairChecksToRound([leak, untouched], 3, 2);
+
+    expect(moved).toBe(1);
+    expect(data[0].events.map((event) => event.roundNumber)).toEqual([2, 2, 3]);
+    expect(data[1]).toBe(untouched);
+  });
+});

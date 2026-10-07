@@ -171,6 +171,8 @@ export function useComponentRegistry(project) {
     addComponent,
     updateComponent,
     removeComponent,
+    // Весь реестр одной записью — для правок, касающихся многих карточек.
+    rewriteComponents: write,
     findConflicts,
   };
 }

@@ -133,3 +133,42 @@ export function getRepairRoundItems(repairs, { filter, round, search = "" }) {
     )
     .map(({ leak }) => leak);
 }
+
+/** События, которыми ремонт отмечается в обходе (осмотры — мониторинга). */
+const REPAIR_ROUND_EVENTS = new Set([
+  LEAK_EVENT_TYPES.REPAIR_STARTED,
+  LEAK_EVENT_TYPES.REPAIR_STAGE,
+  LEAK_EVENT_TYPES.REPAIR_DONE,
+]);
+
+/**
+ * «Новый обход» начали по ошибке: проверки ремонта, записанные в нём, уходят
+ * в предыдущий — как осмотры при слиянии обходов мониторинга. Иначе книга
+ * показывала бы номер обхода, которого после слияния уже нет.
+ *
+ * @param {any[]} leaks
+ * @param {number} from номер слитого обхода
+ * @param {number} to номер предыдущего
+ * @returns {{ data: any[], moved: number }} `moved` — сколько утечек тронуто
+ */
+export function moveRepairChecksToRound(leaks, from, to) {
+  let moved = 0;
+  const data = (Array.isArray(leaks) ? leaks : []).map((leak) => {
+    if (!Array.isArray(leak?.events)) return leak;
+    let touched = false;
+    const events = leak.events.map((event) => {
+      if (
+        !REPAIR_ROUND_EVENTS.has(event?.type) ||
+        Number(event.roundNumber) !== Number(from)
+      ) {
+        return event;
+      }
+      touched = true;
+      return { ...event, roundNumber: to };
+    });
+    if (!touched) return leak;
+    moved += 1;
+    return { ...leak, events };
+  });
+  return { data, moved };
+}

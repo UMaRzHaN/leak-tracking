@@ -1,3 +1,4 @@
+import { errorText } from "@/utils/appError";
 import { lazy, Suspense, useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import LeakCardCompact from "@/features/leakList/LeakCardCompact/LeakCardCompact";
@@ -21,7 +22,7 @@ import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import MonitoringRoundOverview from "@/pages/Monitoring/MonitoringRoundOverview";
 import { ROUND_KIND } from "@/app/project/roundConflict";
 import { useRoundStartGuard } from "@/app/project/hooks/useRoundStartGuard";
-import { repairRound } from "./repairRoundStore";
+import { mergeRepairRoundWithChecks, repairRound } from "./repairRoundStore";
 import RepairLeakDetails from "./RepairLeakDetails";
 import {
   REPAIR_ROUND_FILTER as FILTER,
@@ -354,9 +355,20 @@ export default function RepairRound({
         })}
         description={t("repairs.round.mergeDescription")}
         confirmLabel={t("repairs.round.mergeConfirm")}
-        onConfirm={() => {
+        onConfirm={async () => {
           setConfirmMerge(false);
-          const merged = repairRound.merge(projectId);
+          // Проверки ошибочного обхода уходят в предыдущий вместе с ним.
+          const merged = await mergeRepairRoundWithChecks(
+            projectId,
+            data,
+            setData,
+          ).catch((error) => {
+            setNotification({
+              type: "error",
+              message: t("common.saveError", { message: errorText(error, t) }),
+            });
+            return null;
+          });
           if (!merged) return;
           setRound(merged);
           setNotification({

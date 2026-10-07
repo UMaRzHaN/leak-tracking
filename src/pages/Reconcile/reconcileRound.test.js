@@ -1,8 +1,10 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   finishReconcileRound,
   isReconciled,
   mergeReconcileRound,
+  mergeReconcileRoundWithChecks,
+  moveReconcileChecksToRound,
   readReconcileRound,
   startReconcileRound,
 } from "./reconcileRound";
@@ -56,5 +58,50 @@ describe("reconcile round", () => {
     // Завершённую сверку не сливают.
     finishReconcileRound("p1");
     expect(mergeReconcileRound("p1")).toBeNull();
+  });
+});
+
+const KEY = "app:p1:reconcile_round_v1";
+
+describe("слияние сверки", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("переносит осмотры слитой сверки в предыдущую", () => {
+    const card = {
+      id: "c1",
+      history: [
+        { action: "component_inspected", date: "2026-10-01", roundNumber: 4 },
+        { action: "component_edited", date: "2026-10-02", roundNumber: 4 },
+        { action: "component_inspected", date: "2026-09-01", roundNumber: 3 },
+      ],
+    };
+    const untouched = { id: "c2", history: [] };
+
+    const [moved, same] = moveReconcileChecksToRound([card, untouched], 4, 3);
+
+    expect(moved.history.map((entry) => entry.roundNumber)).toEqual([3, 4, 3]);
+    expect(same).toBe(untouched);
+  });
+
+  it("сначала пишет осмотры, потом сливает; не записались — сверка прежняя", async () => {
+    const current = {
+      number: 4,
+      startedAt: "2026-10-01T00:00:00.000Z",
+      previous: { number: 3, startedAt: "2026-09-01T00:00:00.000Z" },
+    };
+    localStorage.setItem(KEY, JSON.stringify(current));
+
+    const failing = vi.fn(async () => {
+      throw new Error("disk full");
+    });
+    await expect(
+      mergeReconcileRoundWithChecks("p1", failing),
+    ).rejects.toThrow();
+    expect(JSON.parse(localStorage.getItem(KEY))).toEqual(current);
+
+    const rewrite = vi.fn(async (recompute) => recompute([]));
+    const merged = await mergeReconcileRoundWithChecks("p1", rewrite);
+    expect(merged).toMatchObject({ number: 3 });
+    expect(rewrite).toHaveBeenCalledTimes(1);
   });
 });
