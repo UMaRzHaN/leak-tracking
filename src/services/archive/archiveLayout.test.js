@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   allocateLeakFolderNames,
   monitoringPlaceField,
+  placeFolder,
   planRoundMonitoringFolders,
 } from "./archiveLayout";
 
@@ -12,6 +13,20 @@ const folderStatus = {
 };
 
 describe("allocateLeakFolderNames", () => {
+  it("делит LDAR по первому уровню места, как обходы", () => {
+    const place = { placeField: "subdivision", noPlace: "Не указано" };
+    expect(
+      allocateLeakFolderNames(
+        [
+          { leak_id: "3242", subdivision: "НГДУ-1" },
+          { leak_id: "3243", subdivision: "НГДУ-2" },
+          { leak_id: "3244" },
+        ],
+        place,
+      ),
+    ).toEqual(["LDAR/НГДУ-1/3242", "LDAR/НГДУ-2/3243", "LDAR/Не указано/3244"]);
+  });
+
   it("кладёт снимки утечки в LDAR под одну бирку, без состояния", () => {
     expect(
       allocateLeakFolderNames([
@@ -120,5 +135,17 @@ describe("папка места первого уровня в обходе", ()
     expect(monitoringPlaceField("midstream")).toBe("field");
     expect(monitoringPlaceField("downstream")).toBe("locality");
     expect(monitoringPlaceField("unknown")).toBeNull();
+  });
+});
+
+describe("placeFolder", () => {
+  it("без поля места папки нет, без значения — «не указано»", () => {
+    expect(placeFolder({ subdivision: "НГДУ-1" })).toBeNull();
+    expect(
+      placeFolder({}, { placeField: "subdivision", noPlace: "Не указано" }),
+    ).toBe("Не указано");
+    expect(
+      placeFolder({ subdivision: "НГДУ/1" }, { placeField: "subdivision" }),
+    ).not.toContain("/");
   });
 });

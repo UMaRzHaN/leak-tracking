@@ -4,6 +4,7 @@ import {
   getImageMimeTypeFromExtension,
   normalizeImageExtension,
 } from "@/services/archive/archivePaths";
+import { placeFolder } from "@/services/archive/archiveLayout";
 import { fingerprintBlob } from "@/utils/blobHash";
 import { readArchiveEntry } from "@/utils/importLimits";
 import { logger } from "@/utils/logger";
@@ -54,7 +55,8 @@ function archivePathOf(value) {
  *
  * @param {Record<string, any>[]} components
  * @param {(id: string) => Promise<any>} [idbGet] web photo storage reader
- * @param {{dir?: string}} [options]
+ * @param {{dir?: string, place?: {placeField?: string|null, noPlace?: string}}} [options]
+ *   `place` — первый уровень места папкой: `<dir>/<место>/<снимок>`.
  * `paths` is the same rewriting, keyed by card id: the sheet writes a link to
  * the picture rather than the storage path nobody outside this device can
  * follow, and it needs to find one by the card it is printing.
@@ -64,7 +66,11 @@ function archivePathOf(value) {
 export async function buildComponentPhotoArchive(
   components,
   idbGet,
-  { dir = COMPONENT_PHOTO_ARCHIVE_DIR } = {},
+  {
+    dir = COMPONENT_PHOTO_ARCHIVE_DIR,
+    // Первый уровень места — папкой, как у LDAR (см. archiveLayout).
+    place = {},
+  } = {},
 ) {
   const list = Array.isArray(components) ? components : [];
   const segments = allocateUniqueLeakArchiveSegments(list, {
@@ -78,7 +84,7 @@ export async function buildComponentPhotoArchive(
   /** @type {Record<string, string>} */
   const paths = {};
 
-  const pack = async (path, name) => {
+  const pack = async (path, name, component) => {
     let resolved = /** @type {{blob: Blob, ext: any}|null} */ (null);
     try {
       resolved = await resolvePhotoBlob(path, idbGet);
@@ -86,7 +92,8 @@ export async function buildComponentPhotoArchive(
       logger.warn("[components] skipped an unreadable photo on export:", error);
     }
     if (!resolved) return null;
-    const archivePath = `${dir}/${name}.${normalizeImageExtension(
+    const folder = placeFolder(component, place);
+    const archivePath = `${folder ? `${dir}/${folder}` : dir}/${name}.${normalizeImageExtension(
       resolved.ext,
     )}`;
     entries.push({ path: archivePath, blob: resolved.blob });
@@ -101,7 +108,7 @@ export async function buildComponentPhotoArchive(
     let card = component;
     const path = component.photo;
     if (typeof path === "string" && path) {
-      const archivePath = await pack(path, segments[index]);
+      const archivePath = await pack(path, segments[index], component);
       if (archivePath) {
         paths[component.id] = archivePath;
         card = { ...card, photo: `${ARCHIVE_PREFIX}${archivePath}` };
@@ -122,6 +129,7 @@ export async function buildComponentPhotoArchive(
         const archivePath = await pack(
           entry.photo,
           `${segments[index]}_inspection_${entryIndex + 1}`,
+          component,
         );
         if (archivePath) {
           history.push({ ...entry, photo: `${ARCHIVE_PREFIX}${archivePath}` });

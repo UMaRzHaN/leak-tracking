@@ -299,18 +299,18 @@ describe("projectBackupService legacy imports", () => {
     const backup = JSON.parse(await zip.file("backup.json").async("string"));
 
     expect(backup.map((leak) => leak.photo)).toEqual([
-      "zip:photos/LDAR/A-B/before.png",
-      "zip:photos/LDAR/A-B~second/before.png",
+      "zip:photos/LDAR/-/A-B/before.png",
+      "zip:photos/LDAR/-/A-B~second/before.png",
     ]);
     expect(backup.map((leak) => leak.monitoringRecords[0].photo)).toEqual([
-      "zip:photos/LDAR/A-B/monitoring/record-1.png",
-      "zip:photos/LDAR/A-B~second/monitoring/record-1.png",
+      "zip:photos/LDAR/-/A-B/monitoring/record-1.png",
+      "zip:photos/LDAR/-/A-B~second/monitoring/record-1.png",
     ]);
-    expect(await zip.file("photos/LDAR/A-B/before.png").async("string")).toBe(
+    expect(await zip.file("photos/LDAR/-/A-B/before.png").async("string")).toBe(
       "one",
     );
     expect(
-      await zip.file("photos/LDAR/A-B~second/before.png").async("string"),
+      await zip.file("photos/LDAR/-/A-B~second/before.png").async("string"),
     ).toBe("two");
   });
 
@@ -342,11 +342,11 @@ describe("projectBackupService legacy imports", () => {
       await zip.file("recovery-invalid-records.json").async("string"),
     );
 
-    expect(backup[0].photo).toBe("zip:photos/LDAR/TAG-1/before.png");
+    expect(backup[0].photo).toBe("zip:photos/LDAR/-/TAG-1/before.png");
     expect(recovery[0].photo).toBe("zip:photos/tag-1~recovery/before.png");
-    expect(await zip.file("photos/LDAR/TAG-1/before.png").async("string")).toBe(
-      "main",
-    );
+    expect(
+      await zip.file("photos/LDAR/-/TAG-1/before.png").async("string"),
+    ).toBe("main");
     expect(
       await zip.file("photos/tag-1~recovery/before.png").async("string"),
     ).toBe("recovery");
@@ -476,9 +476,9 @@ describe("streamProjectBackupZip", () => {
     }
     const zip = await JSZip.loadAsync(archiveBytes);
     const backup = JSON.parse(await zip.file("backup.json").async("string"));
-    expect(backup[0].photo).toBe("zip:photos/LDAR/LEAK-42/before.jpg");
+    expect(backup[0].photo).toBe("zip:photos/LDAR/-/LEAK-42/before.jpg");
     expect(
-      await zip.file("photos/LDAR/LEAK-42/before.jpg").async("uint8array"),
+      await zip.file("photos/LDAR/-/LEAK-42/before.jpg").async("uint8array"),
     ).toHaveLength(photo.size);
     expect(Object.keys(zip.files)).not.toContain("photos/../before.jpg");
     expect(zip.file("project.json")).not.toBeNull();
@@ -508,14 +508,14 @@ describe("streamProjectBackupZip", () => {
     const backup = JSON.parse(await zip.file("backup.json").async("string"));
 
     expect(backup.map((leak) => leak.photo)).toEqual([
-      "zip:photos/LDAR/TAG-1/before.png",
-      "zip:photos/LDAR/tag-1~second/before.png",
+      "zip:photos/LDAR/-/TAG-1/before.png",
+      "zip:photos/LDAR/-/tag-1~second/before.png",
     ]);
-    expect(await zip.file("photos/LDAR/TAG-1/before.png").async("string")).toBe(
-      "first",
-    );
     expect(
-      await zip.file("photos/LDAR/tag-1~second/before.png").async("string"),
+      await zip.file("photos/LDAR/-/TAG-1/before.png").async("string"),
+    ).toBe("first");
+    expect(
+      await zip.file("photos/LDAR/-/tag-1~second/before.png").async("string"),
     ).toBe("second");
   });
 

@@ -507,7 +507,7 @@ describe("buildProjectBackupZip — порченые снимки", () => {
 });
 
 describe("buildProjectBackupZip — раскладка снимков", () => {
-  it("кладёт снимки утечки в LDAR, а осмотры — в папки обходов по подразделению", async () => {
+  it("кладёт снимки утечки и осмотров в папки подразделения: LDAR и обходы", async () => {
     const { default: JSZip } = await import("jszip");
     const roundPhoto = "data:image/jpeg;base64,cm91bmQy";
     const blob = await buildProjectBackupZip({
@@ -548,7 +548,7 @@ describe("buildProjectBackupZip — раскладка снимков", () => {
       .filter((name) => name.startsWith("photos/") && !zip.files[name].dir)
       .sort();
     expect(photos).toEqual([
-      "photos/LDAR/3242/repair.jpg",
+      "photos/LDAR/НГДУ-1/3242/repair.jpg",
       "photos/monitoring/1/НГДУ-1/3242 (утечки нет)/record-1.jpg",
       "photos/monitoring/2/НГДУ-1/3242 (утечка есть)/record-1.jpg",
     ]);

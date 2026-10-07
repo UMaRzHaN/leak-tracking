@@ -393,8 +393,9 @@ describe("excel export helpers", () => {
     expect(backupSheet.getRow(8).getCell(3).value).toBe("Leaks");
     expect(backupSheet.getRow(8).getCell(4).value).toBe(1);
     expect(mocks.getPhotoSrcMock).toHaveBeenCalledTimes(1);
+    // Утечка без УМГ — в папке места «не указано», как у обхода.
     expect(mocks.zipInstances[0].file).toHaveBeenCalledWith(
-      "photos/LDAR/-victim-tag/before.png",
+      "photos/LDAR/Not specified/-victim-tag/before.png",
       "ZmFrZQ==",
       { base64: true },
     );

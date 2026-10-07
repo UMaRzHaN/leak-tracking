@@ -1,3 +1,5 @@
+import i18next from "i18next";
+import { monitoringPlaceField } from "@/services/archive/archiveLayout";
 import { notifyComponentRegistryChanged } from "@/repositories/componentRegistrySignal";
 import { mergeComponentRegistries } from "@/domain/componentMerge";
 import { liveComponents } from "@/domain/componentTombstones";
@@ -68,7 +70,14 @@ export async function buildComponentArchiveEntry(project, options = {}) {
     const { components, entries, paths } = await buildComponentPhotoArchive(
       stored,
       idbGet,
-      photoDir ? { dir: photoDir } : {},
+      {
+        ...(photoDir ? { dir: photoDir } : {}),
+        // Снимки реестра делятся по первому уровню места, как у LDAR.
+        place: {
+          placeField: monitoringPlaceField(project.type),
+          noPlace: i18next.t("excelExport.photo.noPlace"),
+        },
+      },
     );
 
     return {

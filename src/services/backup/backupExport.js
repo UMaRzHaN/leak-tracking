@@ -18,7 +18,7 @@ function monitoringFolderLabel(result) {
   return getMonitoringResultLabel(result, i18next.language).toLowerCase();
 }
 
-/** Папка места первого уровня в обходе — по типу проекта. */
+/** Папка места первого уровня — у LDAR и в обходе — по типу проекта. */
 function monitoringPlace(project) {
   return {
     placeField: monitoringPlaceField(project?.type),
@@ -126,7 +126,11 @@ export async function streamProjectBackupZip({
     ? parseRecoveryValidation(recoveryRecords)
     : [];
   const tagSegments = allocateUniqueLeakArchiveSegments(leaks);
-  const leakSegments = toLdarFolders(tagSegments);
+  const leakSegments = toLdarFolders(
+    tagSegments,
+    leaks,
+    monitoringPlace(project),
+  );
   const recoveryLeakSegments = allocateUniqueLeakArchiveSegments(
     validatedRecovery,
     { prefix: "recovery", reservedSegments: tagSegments },
@@ -190,7 +194,11 @@ export async function buildProjectBackupZip({
     ? parseRecoveryValidation(recoveryRecords)
     : [];
   const tagSegments = allocateUniqueLeakArchiveSegments(leaks);
-  const leakSegments = toLdarFolders(tagSegments);
+  const leakSegments = toLdarFolders(
+    tagSegments,
+    leaks,
+    monitoringPlace(project),
+  );
   const recoveryLeakSegments = allocateUniqueLeakArchiveSegments(
     validatedRecovery,
     { prefix: "recovery", reservedSegments: tagSegments },

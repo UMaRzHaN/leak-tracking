@@ -12,15 +12,16 @@ import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
 /**
  * Раскладка снимков в архиве — одна для Excel-архива и ZIP-бэкапа:
  *
- *   photos/LDAR/3242/before.jpg                          — заведение и ремонт
+ *   photos/LDAR/УПГ-1/3242/before.jpg                    — заведение и ремонт
  *   photos/monitoring/2/УПГ-1/3242 (утечки нет)/record-1.jpg — осмотры обхода №2
  *
  * Снимки утечки лежат под одной биркой, без состояния: оно меняется, а
  * папка — нет. У осмотра в скобках итог последнего осмотра утечки в этом
  * обходе: папка обхода рассказывает о том обходе, а не о сегодняшнем дне.
- * Между обходом и биркой — первый уровень места (подразделение, УМГ,
- * населённый пункт): обход разбирают по участкам, и снимки одного участка
- * должны лежать рядом.
+ * Перед биркой — первый уровень места (подразделение, УМГ, населённый пункт),
+ * и у LDAR, и у обхода: записи разбирают по участкам, и снимки одного участка
+ * должны лежать рядом. Снимки ремонтов лежат в папке утечки и делятся так же;
+ * снимки реестра компонентов — тоже (см. `placeFolder`).
  *
  * Пути записываются в книгу и в `backup.json`, так что при загрузке архива
  * раскладка ни из чего не выводится — пути просто читают.
@@ -28,13 +29,44 @@ import { PROJECT_LOCATION_CONFIG } from "@/configs/projectLocation.config";
 export const LDAR_FOLDER = "LDAR";
 export const MONITORING_FOLDER = "monitoring";
 
-/** Папки снимков утечек: `LDAR/<бирка>`. */
-export function toLdarFolders(segments) {
-  return segments.map((segment) => `${LDAR_FOLDER}/${segment}`);
+/**
+ * Папка места первого уровня для записи: значение поля, а без значения —
+ * подпись «не указано». Без поля (тип проекта неизвестен) — `null`, и папки
+ * места нет вовсе.
+ *
+ * @param {any} record утечка или компонент
+ * @param {{ placeField?: string|null, noPlace?: string }} [place]
+ * @returns {string|null}
+ */
+export function placeFolder(record, { placeField = null, noPlace = "-" } = {}) {
+  if (!placeField) return null;
+  return (
+    sanitizePortableArchiveSegment(record?.[placeField]) ??
+    sanitizePortableArchiveSegment(noPlace) ??
+    "-"
+  );
 }
 
-export function allocateLeakFolderNames(leaks) {
-  return toLdarFolders(allocateUniqueLeakArchiveSegments(leaks));
+/**
+ * Папки снимков утечек: `LDAR/<место первого уровня>/<бирка>`, без поля места
+ * — `LDAR/<бирка>`. Бирки уникальны на весь проект, так что папка места их
+ * не разводит, а только группирует.
+ *
+ * @param {string[]} segments бирки, по одной на утечку
+ * @param {any[]} [leaks] те же утечки в том же порядке
+ * @param {{ placeField?: string|null, noPlace?: string }} [place]
+ */
+export function toLdarFolders(segments, leaks = [], place = {}) {
+  return segments.map((segment, index) => {
+    const folder = placeFolder(leaks[index], place);
+    return folder
+      ? `${LDAR_FOLDER}/${folder}/${segment}`
+      : `${LDAR_FOLDER}/${segment}`;
+  });
+}
+
+export function allocateLeakFolderNames(leaks, place = {}) {
+  return toLdarFolders(allocateUniqueLeakArchiveSegments(leaks), leaks, place);
 }
 
 function withFolderLabel(segment, label) {
@@ -77,11 +109,7 @@ export function planRoundMonitoringFolders(
   const byRecord = new Map();
 
   leaks.forEach((leak, leakIndex) => {
-    const place = placeField
-      ? (sanitizePortableArchiveSegment(leak?.[placeField]) ??
-        sanitizePortableArchiveSegment(noPlace) ??
-        "-")
-      : null;
+    const place = placeFolder(leak, { placeField, noPlace });
     const rounds = new Map();
     getMonitoringRecords(leak).forEach((record, recordIndex) => {
       const round = getRecordRoundNumber(record, recordIndex, roundLookup);

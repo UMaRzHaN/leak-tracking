@@ -37,6 +37,36 @@ describe("carrying component photographs out", () => {
     expect(components[0].photo).toBe("zip:component_photos/4242.jpg");
   });
 
+  it("кладёт снимки карточки и её сверок в папку места первого уровня", async () => {
+    const { components, entries } = await buildComponentPhotoArchive(
+      [
+        {
+          id: "a",
+          component_uid: "4242",
+          subdivision: "НГДУ-1",
+          photo: "idb://photo_a",
+          history: [
+            {
+              action: "component_inspected",
+              date: "2026-10-01",
+              photo: "idb://check",
+            },
+          ],
+        },
+      ],
+      vi.fn(async () => pixel()),
+      { place: { placeField: "subdivision", noPlace: "Не указано" } },
+    );
+
+    expect(entries.map((entry) => entry.path)).toEqual([
+      "component_photos/НГДУ-1/4242.jpg",
+      "component_photos/НГДУ-1/4242_inspection_1.jpg",
+    ]);
+    expect(components[0].history[0].photo).toBe(
+      "zip:component_photos/НГДУ-1/4242_inspection_1.jpg",
+    );
+  });
+
   it("keeps two cards with the same number apart", async () => {
     const idbGet = vi.fn(async () => pixel());
 
