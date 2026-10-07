@@ -32,6 +32,11 @@ export async function deleteProjectArtifacts(project) {
   localStorage.removeItem(STORAGE_KEYS.PROJECT_IMPORT_OPERATION(project.id));
   clearProjectFilters(project.id);
   clearProjectSettings(project.id);
+  // Обход, накладные и обследование лежат в localStorage по id проекта, как и
+  // настройки: без уборки они переживали удаление проекта навсегда.
+  saveMonitoringRound(project.id, null);
+  saveAcceptances(project.id, []);
+  saveSurvey(project.id, null);
   await clearProjectSyncState(project.id);
   await (LeakRepository.purge ?? LeakRepository.clear)({
     projectId: project.id,
@@ -73,9 +78,6 @@ export async function rollbackImportedProject(project, removeProject) {
 
   let cleanupError = /** @type {unknown} */ (null);
   try {
-    saveMonitoringRound(project.id, null);
-    saveAcceptances(project.id, []);
-    saveSurvey(project.id, null);
     await deleteProjectArtifacts(project);
   } catch (error) {
     cleanupError = error;

@@ -116,6 +116,17 @@ describe("deleteProjectArtifacts", () => {
     expect(mocks.deleteProjectPhotos).toHaveBeenCalledWith("p1", "alpha");
   });
 
+  it("removes the round, invoices and survey kept in localStorage", async () => {
+    localStorage.setItem("app:p1:acceptances_v1", "[]");
+    localStorage.setItem("app:p1:survey_v1", "{}");
+
+    await deleteProjectArtifacts(project);
+
+    expect(mocks.saveMonitoringRound).toHaveBeenCalledWith("p1", null);
+    expect(localStorage.getItem("app:p1:acceptances_v1")).toBeNull();
+    expect(localStorage.getItem("app:p1:survey_v1")).toBeNull();
+  });
+
   it("finishes the cleanup even when the registry refuses to go", async () => {
     mocks.removeComponents.mockRejectedValue(new Error("реестр занят"));
 

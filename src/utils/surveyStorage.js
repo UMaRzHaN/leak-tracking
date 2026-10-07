@@ -27,14 +27,24 @@ export function readStoredSurvey(projectId) {
   return survey.groups.length ? survey : null;
 }
 
-export function saveSurvey(projectId, survey) {
+/**
+ * `keepUpdatedAt` — для импорта: запись из архива сохраняет свою метку. Иначе
+ * старое обследование, принятое сегодня, выглядело бы свежее правки, сделанной
+ * на другом телефоне после выгрузки архива, и при следующем обмене вытесняло бы
+ * её.
+ */
+export function saveSurvey(projectId, survey, { keepUpdatedAt = false } = {}) {
   const storageKey = key(projectId);
   if (!storageKey) return;
   const normalized = normalizeSurvey(survey);
   if (normalized.groups.length) {
+    const updatedAt =
+      keepUpdatedAt && normalized.updatedAt
+        ? normalized.updatedAt
+        : new Date().toISOString();
     localStorage.setItem(
       storageKey,
-      JSON.stringify({ ...normalized, updatedAt: new Date().toISOString() }),
+      JSON.stringify({ ...normalized, updatedAt }),
     );
   } else {
     localStorage.removeItem(storageKey);

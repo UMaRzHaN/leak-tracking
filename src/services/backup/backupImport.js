@@ -136,7 +136,9 @@ export async function importProjectZip(file, ctx) {
     if (Array.isArray(meta?.acceptances)) {
       saveAcceptances(newProject.id, meta.acceptances);
     }
-    if (meta?.survey) saveSurvey(newProject.id, meta.survey);
+    if (meta?.survey) {
+      saveSurvey(newProject.id, meta.survey, { keepUpdatedAt: true });
+    }
     await saveImportedProject(finalLeaks, {
       preservedRecords: restoredRecoveryRecords,
     });
@@ -182,6 +184,27 @@ export async function importProjectZip(file, ctx) {
       }
     }
     throw error;
+  }
+}
+
+/**
+ * Накладные сливаются, а не заменяются: приёмку, сделанную на этом устройстве
+ * после выгрузки архива, перезапись терять не должна. Ввод обследования — одна
+ * запись на проект: берётся более свежая, со своей меткой из архива.
+ */
+function mergeAcceptancesAndSurvey(projectId, meta) {
+  if (Array.isArray(meta?.acceptances)) {
+    saveAcceptances(
+      projectId,
+      mergeInvoices(readAcceptances(projectId), meta.acceptances),
+    );
+  }
+  if (
+    meta?.survey &&
+    String(meta.survey.updatedAt ?? "") >
+      String(readSurvey(projectId).updatedAt ?? "")
+  ) {
+    saveSurvey(projectId, meta.survey, { keepUpdatedAt: true });
   }
 }
 
@@ -340,22 +363,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
         localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(existingProjectId));
       }
       saveMonitoringRound(existingProjectId, nextMonitoringRound);
-      // Накладные сливаются, а не заменяются: приёмку, сделанную на этом
-      // устройстве после выгрузки архива, перезапись терять не должна.
-      if (Array.isArray(meta?.acceptances)) {
-        saveAcceptances(
-          existingProjectId,
-          mergeInvoices(readAcceptances(existingProjectId), meta.acceptances),
-        );
-      }
-      // Ввод обследования — одна запись на проект: берётся более свежая.
-      if (
-        meta?.survey &&
-        String(meta.survey.updatedAt ?? "") >
-          String(readSurvey(existingProjectId).updatedAt ?? "")
-      ) {
-        saveSurvey(existingProjectId, meta.survey);
-      }
+      mergeAcceptancesAndSurvey(existingProjectId, meta);
       if (incomingSyncState) {
         await writeProjectSyncState(
           existingProjectId,
@@ -380,22 +388,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
         }
       }
       saveMonitoringRound(existingProjectId, nextMonitoringRound);
-      // Накладные сливаются, а не заменяются: приёмку, сделанную на этом
-      // устройстве после выгрузки архива, перезапись терять не должна.
-      if (Array.isArray(meta?.acceptances)) {
-        saveAcceptances(
-          existingProjectId,
-          mergeInvoices(readAcceptances(existingProjectId), meta.acceptances),
-        );
-      }
-      // Ввод обследования — одна запись на проект: берётся более свежая.
-      if (
-        meta?.survey &&
-        String(meta.survey.updatedAt ?? "") >
-          String(readSurvey(existingProjectId).updatedAt ?? "")
-      ) {
-        saveSurvey(existingProjectId, meta.survey);
-      }
+      mergeAcceptancesAndSurvey(existingProjectId, meta);
       await writeProjectSyncState(
         existingProjectId,
         mergeProjectSyncStates(

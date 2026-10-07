@@ -12,7 +12,9 @@ const ASSETS = path.join(DIST, "assets");
 // не ради трафика — трафик считается по totalJs.
 const budgets = {
   initialRawBytes: 410 * 1024,
-  initialGzipBytes: 125 * 1024,
+  // Поднят со 125 KiB после редизайна: измерено 128 181 B. Запас ~5% — чтобы
+  // предупреждение на 97% не срабатывало в день, когда потолок выставили.
+  initialGzipBytes: 132 * 1024,
   nonExcelChunkBytes: 360 * 1024,
   excelChunkBytes: 1_000 * 1024,
   // Опущен с 2 500 KiB, когда реестр компонентов ушёл в воркер, а с ним и
