@@ -83,14 +83,14 @@
   flex: none;
   display: flex;
   align-items: center;
-  gap: 7px;
-  min-height: 44px;
-  padding: 0 13px;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 10px;
   border: 1.5px solid var(--c-border);
-  border-radius: 13px;
+  border-radius: 11px;
   background: var(--c-surface);
   color: var(--c-text2);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: -0.01em;
   white-space: nowrap;
@@ -101,8 +101,8 @@
 }
 
 .gpsDot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: currentColor;
   opacity: 0.45;

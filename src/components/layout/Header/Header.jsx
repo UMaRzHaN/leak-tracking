@@ -102,7 +102,7 @@ export default function Header({
           aria-label={gpsTitle}
           aria-pressed={Boolean(gpsEnabled)}
         >
-          <Icon name="pin" size={16} />
+          <Icon name="pin" size={14} />
           <span className={s.gpsLabel}>{gpsStatus}</span>
           <span className={s.gpsDot} aria-hidden="true" />
         </button>
