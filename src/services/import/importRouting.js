@@ -22,7 +22,23 @@ const WORKBOOK_MARKER = "xl/workbook.xml";
 const INVENTORY_SHEET_NAMES = ["inventorization", "inventory", "компоненты"];
 const LEAK_SHEET_HINTS = ["утечк", "leak"];
 
-function sheetNamesFromWorkbookXml(xml) {
+/**
+ * Книга инвентаризации — по именам её листов: лист реестра есть, а листа
+ * утечек нет (книга с обоими — отчёт по утечкам с реестром на вкладке).
+ *
+ * @param {string[]} sheets имена листов в нижнем регистре
+ */
+export function isInventorySheetSet(sheets) {
+  const hasLeaks = sheets.some((name) =>
+    LEAK_SHEET_HINTS.some((hint) => name.includes(hint)),
+  );
+  const hasInventory = sheets.some((name) =>
+    INVENTORY_SHEET_NAMES.includes(name.trim()),
+  );
+  return hasInventory && !hasLeaks;
+}
+
+export function sheetNamesFromWorkbookXml(xml) {
   return matchAll(String(xml), /<sheet\b[^>]*\bname="([^"]*)"/g).map((match) =>
     match[1].toLowerCase(),
   );
@@ -54,15 +70,9 @@ export async function detectImportKind(file) {
     const sheets = sheetNamesFromWorkbookXml(
       await zip.file(WORKBOOK_MARKER).async("string"),
     );
-    const hasLeaks = sheets.some((name) =>
-      LEAK_SHEET_HINTS.some((hint) => name.includes(hint)),
-    );
-    const hasInventory = sheets.some((name) =>
-      INVENTORY_SHEET_NAMES.includes(name.trim()),
-    );
     // A workbook holding both is the leak report with the registry as one of
     // its tabs: it goes down the leak route, which reads that tab too.
-    if (hasInventory && !hasLeaks) {
+    if (isInventorySheetSet(sheets)) {
       return { kind: "inventory", reason: "workbook-sheet" };
     }
     return { kind: "excel", reason: "workbook" };

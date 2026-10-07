@@ -299,7 +299,11 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
 
   // Как писать журнал мониторинга, выбирают на экране экспорта.
   await openMenuItem(page, "Экспорт отчёта");
-  const latestExportMode = page.getByRole("radio", {
+  // «Последняя в обходе» есть и у журнала ремонтов — ищется в группе
+  // мониторинга.
+  const monitoringMode = () =>
+    page.getByRole("radiogroup", { name: "Мониторинг", exact: true });
+  const latestExportMode = monitoringMode().getByRole("radio", {
     name: "Последняя в обходе",
   });
   await latestExportMode.click();
@@ -351,7 +355,7 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
   await leaveSettings(page);
   await openMenuItem(page, "Экспорт отчёта");
   await expect(
-    page.getByRole("radio", { name: "Последняя в обходе" }),
+    monitoringMode().getByRole("radio", { name: "Последняя в обходе" }),
   ).toHaveAttribute("aria-checked", "true");
   await page.getByRole("button", { name: "Назад" }).click();
   await openDatabase(page);

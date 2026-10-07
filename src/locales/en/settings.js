@@ -310,6 +310,8 @@ export const settings = {
     'A component registry lives in its own project — created "{{v1}}" and merged {{v2}} card(s) into it.',
   inventoryImportNoRegistry:
     'Only "{{v1}}" projects keep a component registry. Create one and merge the inventory there — on the first screen an inventory archive creates the project by itself.',
+  bundledInventoryNoRegistry:
+    "The inventory in the archive was not loaded: projects of this type keep no component registry.",
   inventoryImportError: "Inventory import error",
 
   mapCache: "Map Cache",

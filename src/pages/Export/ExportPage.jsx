@@ -216,13 +216,16 @@ export default function ExportPage({
   );
   const photoSections = useMemo(
     () => ({
-      // Снимки колонок утечек живут на листе утечек: без листа им негде быть.
+      // Снимки раздела идут только с его листом: без листа на них нечему
+      // ссылаться, внизу экрана они не считаются, а снять их нечем.
       leaks: choice.leaks && choice.photos.leaks,
-      repairs: choice.photos.repairs,
-      monitoring: choice.photos.monitoring,
+      repairs: choice.repairs && choice.photos.repairs,
+      monitoring: choice.monitoring && choice.photos.monitoring,
     }),
     [
       choice.leaks,
+      choice.repairs,
+      choice.monitoring,
       choice.photos.leaks,
       choice.photos.repairs,
       choice.photos.monitoring,

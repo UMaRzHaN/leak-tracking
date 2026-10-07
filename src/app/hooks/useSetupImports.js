@@ -2,6 +2,7 @@ import { appError } from "@/utils/appError";
 import { useCallback } from "react";
 import { waitForRefValue } from "./waitForProjectSwitch";
 import { asError } from "@/utils/appError";
+import { logger } from "@/utils/logger";
 
 /**
  * Первый экран: проект заводится из файла, а не из формы.
@@ -182,7 +183,7 @@ export function useSetupImports({
         error.code = "MISSING_PROJECT_TYPE";
         throw error;
       }
-      return handleCreateExcelCopy({
+      const created = await handleCreateExcelCopy({
         name: result.project?.name || name,
         type: resolvedType,
         leaks: result.leaks,
@@ -192,6 +193,20 @@ export function useSetupImports({
         syncId: result.project?.syncId,
         sync: result.sync,
       });
+      // Инвентаризация папкой рядом с отчётом (8a) — в тот же новый проект.
+      // Проект уже заведён, и сбой реестра его не отменяет: утечки на месте,
+      // а инвентаризацию можно влить потом из настроек.
+      try {
+        const { extractBundledInventory, importBundledInventory } =
+          await import("@/services/inventory/bundledInventory");
+        await importBundledInventory(
+          await extractBundledInventory(file),
+          created?.project,
+        );
+      } catch (error) {
+        logger.warn("[setup] инвентаризация из архива не влилась:", error);
+      }
+      return created;
     },
     [handleCreateExcelCopy],
   );
