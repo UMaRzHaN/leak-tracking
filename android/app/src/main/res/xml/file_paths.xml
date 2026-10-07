@@ -1,7 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="my_images" path="." />
+    <!--
+        Чертежи открываются в системном просмотрщике через Share из
+        Directory.Data (filesDir/LeakReports/<проект>/schemas). Без этого корня
+        FileProvider.getUriForFile отказывал, и «открыть схему» на телефоне
+        всегда заканчивалось «нет приложения, чтобы открыть чертёж». Корень шире
+        папки схем, потому что уже нельзя: папка проекта в пути переменная, а
+        корни FileProvider — только префиксы.
+    -->
+    <files-path name="leak_reports" path="LeakReports/" />
+    <!-- Снимок камеры: CameraUtils пишет в getExternalFilesDir(PICTURES). -->
     <external-files-path name="my_external_files_images" path="." />
+    <!-- Правка снимка камерой и выгрузка Excel/ZIP через Share — из кэша. -->
     <cache-path name="my_cache_images" path="." />
     <external-cache-path name="my_external_cache_images" path="." />
+    <!--
+        external-path "." убран: он открывал провайдеру всё общее хранилище, а
+        ни один путь приложения туда не ведёт — экспорт пишет через MediaStore.
+    -->
 </paths>
