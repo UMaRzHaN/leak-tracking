@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mapState = vi.hoisted(() => ({ current: null }));
 const leakActions = vi.hoisted(() => ({ setActiveLeak: null }));
 vi.mock("@/utils/renderMetrics", () => ({ useRenderMetric: vi.fn() }));
+vi.mock("@/pages/Repairs/useCanCheckRepair", () => ({
+  useCanCheckRepair: () => () => true,
+}));
 vi.mock("@/pages/DataBase/hooks/useLeakActions", () => ({
   useLeakActions: () => ({
     activeLeak: null,

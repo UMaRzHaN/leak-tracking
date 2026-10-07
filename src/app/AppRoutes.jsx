@@ -1,8 +1,8 @@
 import { lazy, Suspense, useCallback, useRef, useState } from "react";
+import { repairsToCheck } from "@/pages/Repairs/repairRoundStore";
 import { useLanguage } from "./hooks/useLanguage";
 import { isListPage } from "@/app/pages";
 import { MODULE } from "@/app/modules/activeModule";
-import { STATUS } from "@/utils/status";
 import { useModalDialog } from "@/hooks/useModalDialog";
 import { saveRecoveryFile } from "@/services/storage/saveRecoveryFile";
 
@@ -175,15 +175,13 @@ export default function AppRoutes({
   // В модуле ремонтов свайп по карточке и «Проверить» у выбранных ведут не в
   // мониторинг, а в проверку ремонта (7c) — поверх той же страницы. Свайп
   // открывает и принятый ремонт: его перепроверяют (см. applyRepairCheck).
-  // Выбранные — только открытые, по очереди; крестик очередь прерывает.
+  // Выбранные — по тому же правилу, по очереди; крестик очередь прерывает.
   const [repairQueue, setRepairQueue] = useState(
     /** @type {{ ids: any[], total: number }} */ ({ ids: [], total: 0 }),
   );
   const repairMode = module === MODULE.REPAIRS;
   const startRepairQueue = (leaks) => {
-    const open = leaks.filter(
-      (leak) => (leak?.status ?? STATUS.OPEN) !== STATUS.RESOLVED,
-    );
+    const open = repairsToCheck(activeProject?.id ?? null, leaks);
     if (!open.length) {
       notifyApp?.("warning", t("repairs.accept.alreadyAccepted"));
       return;

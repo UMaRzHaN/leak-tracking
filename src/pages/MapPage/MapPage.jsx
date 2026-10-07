@@ -19,6 +19,8 @@ import {
 import { globalScope } from "@/utils/globalScope";
 import { useLeakActions } from "@/pages/DataBase/hooks/useLeakActions";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
+import { useCanCheckRepair } from "@/pages/Repairs/useCanCheckRepair";
+import { MODULE } from "@/app/modules/activeModule";
 import s from "./MapPage.module.scss";
 
 const LeakDetailsSheet = lazy(
@@ -118,6 +120,7 @@ export default function MapPage({
   });
 
   const { deletePhoto } = usePhotoStorage();
+  const canCheckRepair = useCanCheckRepair(module === MODULE.REPAIRS);
   const notify = useCallback(
     (type, message, options = {}) =>
       setNotification({ type, message, ...options }),
@@ -231,6 +234,7 @@ export default function MapPage({
           module={module}
           userProfile={userProfile}
           onMonitor={onMonitor}
+          canCheckRepair={canCheckRepair}
           onReconcile={onReconcile}
           onOpenLeak={(leak) => {
             selectLeak(null);

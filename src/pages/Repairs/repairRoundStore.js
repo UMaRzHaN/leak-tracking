@@ -1,5 +1,8 @@
 import { activeRoundNumber, createProjectRound } from "@/utils/projectRound";
-import { moveRepairChecksToRound } from "./repairRoundDomain";
+import {
+  canSwipeCheckRepair,
+  moveRepairChecksToRound,
+} from "./repairRoundDomain";
 
 /**
  * Обход ремонтов — номер и начало, как у сверки реестра. Общий модуль: им
@@ -34,4 +37,17 @@ export async function mergeRepairRoundWithChecks(projectId, data, setData) {
   );
   if (moved > 0) await setData(next);
   return repairRound.merge(projectId);
+}
+
+/**
+ * Какие из ремонтов можно проверить — по тому же правилу, что свайп
+ * (`canSwipeCheckRepair`): принятый перепроверяют, кроме принятого до начала
+ * идущего обхода. Одно правило на свайп, карту и «Проверить» у выбранных.
+ *
+ * @param {string|null} projectId
+ * @param {any[]} leaks
+ */
+export function repairsToCheck(projectId, leaks) {
+  const round = repairRound.read(projectId);
+  return (leaks ?? []).filter((leak) => canSwipeCheckRepair(leak, round));
 }
