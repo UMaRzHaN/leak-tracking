@@ -7,7 +7,9 @@ import ComponentCardForm from "./ComponentCardForm";
 import ComponentCardCompact from "@/features/componentRegistry/ComponentCardCompact";
 import VirtualizedLeakList from "@/features/leakList/VirtualizedLeakList/VirtualizedLeakList";
 import ComponentInspectSheet from "@/features/componentRegistry/ComponentInspectSheet";
-import ComponentDetailsSheet from "@/features/componentRegistry/ComponentDetailsSheet";
+import { useComponentCheck } from "@/features/componentRegistry/useComponentCheck";
+import { errorText } from "@/utils/appError";
+import { useComponentDetails } from "@/features/componentRegistry/useComponentDetails";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
 import Notification from "@/components/ui/Notification/Notification";
 import ComponentFilterBar from "./components/ComponentFilterBar";
@@ -110,15 +112,25 @@ export default function ComponentRegistry({
   const [bulkInspecting, setBulkInspecting] = useState(false);
   const [editing, setEditing] = useState(/** @type {any} */ (null));
   const [conflictsOnly, setConflictsOnly] = useState(false);
-  const [inspecting, setInspecting] = useState(/** @type {any} */ (null));
   const listRef = useRef(/** @type {HTMLDivElement|null} */ (null));
   const [listHeight, setListHeight] = useState(600);
-  const [viewing, setViewing] = useState(/** @type {any} */ (null));
   const [notification, setNotification] = useState(/** @type {any} */ (null));
 
   const notify = useCallback((type, message, options = {}) => {
     setNotification({ type, message, ...options });
   }, []);
+
+  // Осмотр одной карточки — тем же экраном, что в «Сверке»: со снимком,
+  // замечанием и точкой по GPS. Во время сверки — её отметка.
+  const check = useComponentCheck({
+    project,
+    updateComponent,
+    userProfile,
+    roundNumber: () => activeReconcileRoundNumber(project?.id),
+    onError: (error) =>
+      notify("error", t("common.saveError", { message: errorText(error, t) })),
+  });
+  const openCheck = check.open;
 
   /*
    * Nothing is written without a name. Every history entry is signed, and a
@@ -126,6 +138,15 @@ export default function ComponentRegistry({
    * first disagreement about a reading would have nowhere to go.
    */
   const canWrite = canWriteRegistry(userProfile);
+  // Карточка целиком — тот же лист, что открывает свайп в «Сверке».
+  const details = useComponentDetails({
+    fields,
+    canEdit: canWrite,
+    userProfile,
+    updateComponent,
+    removeComponent,
+  });
+  const openDetails = details.open;
 
   const texts = useMemo(
     () => ({
@@ -327,11 +348,19 @@ export default function ComponentRegistry({
         selected={selectedIds.has(component.id)}
         distance={distanceTo(component)}
         onToggleSelect={canWrite ? toggleSelect : undefined}
-        onOpenDetails={setViewing}
-        onInspect={canWrite ? setInspecting : undefined}
+        onOpenDetails={openDetails}
+        onInspect={canWrite ? openCheck : undefined}
       />
     ),
-    [canWrite, conflictingIds, distanceTo, selectedIds, toggleSelect],
+    [
+      canWrite,
+      conflictingIds,
+      distanceTo,
+      openCheck,
+      openDetails,
+      selectedIds,
+      toggleSelect,
+    ],
   );
 
   /*
@@ -444,51 +473,6 @@ export default function ComponentRegistry({
     ],
   );
 
-  /**
-   * Правка из подробной карточки. Мастер заведения к ней отношения не имеет:
-   * там четыре шага для того, кто стоит у железа впервые, а здесь исправляют
-   * одно поле, не теряя карточку из виду.
-   */
-  const handleEditSaved = useCallback(
-    async (form) => {
-      const target = viewing;
-      if (!target?.id) return;
-      const card = await withStoredPhoto(
-        { ...form, id: target.id },
-        target.id,
-        savePhoto,
-      );
-      const recorded = recordComponentEdited(
-        target,
-        { ...target, ...card },
-        { user: userProfile?.name, fields: fields?.all ?? [] },
-      );
-      await updateComponent(target.id, recorded);
-      // Лист остаётся открытым и показывает сохранённое — вместе с только что
-      // дописанной строкой истории: правка редко бывает одна, а закрытие
-      // отправляло бы искать ту же карточку заново.
-      setViewing(recorded);
-    },
-    [fields, savePhoto, updateComponent, userProfile, viewing],
-  );
-
-  const handleInspect = useCallback(
-    async (status) => {
-      const card = inspecting;
-      setInspecting(null);
-      if (!card) return;
-      await updateComponent(
-        card.id,
-        recordComponentInspected(card, {
-          status,
-          user: userProfile?.name,
-          roundNumber: activeReconcileRoundNumber(project?.id),
-        }),
-      );
-    },
-    [inspecting, project?.id, updateComponent, userProfile],
-  );
-
   if (!enabled) return null;
 
   // The form waits on the declaration that arrives with the screen; the list
@@ -524,29 +508,9 @@ export default function ComponentRegistry({
         notification={notification}
         onClose={() => setNotification(null)}
       />
-      {viewing && (
-        <ComponentDetailsSheet
-          component={viewing}
-          // Целиком, а не только видимые: подписи в истории берутся отсюда, и
-          // поле, скрытое из карточки, всё равно должно называться по-русски.
-          fields={fields?.all ?? []}
-          canEdit={canWrite}
-          onSave={handleEditSaved}
-          onRemove={async (card) => {
-            setViewing(null);
-            await removeComponent(card.id);
-          }}
-          onClose={() => setViewing(null)}
-        />
-      )}
+      {details.element}
 
-      {inspecting && (
-        <ComponentInspectSheet
-          component={inspecting}
-          onPick={handleInspect}
-          onClose={() => setInspecting(null)}
-        />
-      )}
+      {check.element}
 
       {bulkInspecting && (
         <ComponentInspectSheet

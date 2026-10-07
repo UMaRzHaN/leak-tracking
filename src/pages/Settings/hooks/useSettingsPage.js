@@ -115,6 +115,8 @@ export function useSettingsPage({
     setComponentPhotoRequired,
     repairPhotoRequired,
     setRepairPhotoRequired,
+    reconcilePhotoRequired,
+    setReconcilePhotoRequired,
   } = usePhotoRequirements(activeProject?.id ?? null);
   const {
     corrections: voiceCorrections,
@@ -718,6 +720,8 @@ export function useSettingsPage({
     setComponentPhotoRequired,
     repairPhotoRequired,
     setRepairPhotoRequired,
+    reconcilePhotoRequired,
+    setReconcilePhotoRequired,
     localSync,
     localeTexts,
     monitoringPhotoRequired,

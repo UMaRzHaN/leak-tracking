@@ -57,6 +57,8 @@ export default function Settings(props) {
     setComponentPhotoRequired,
     repairPhotoRequired,
     setRepairPhotoRequired,
+    reconcilePhotoRequired,
+    setReconcilePhotoRequired,
     localSync,
     localeTexts,
     monitoringPhotoRequired,
@@ -236,10 +238,15 @@ export default function Settings(props) {
             monitoringPhotoRequired={monitoringPhotoRequired}
             componentPhotoRequired={componentPhotoRequired}
             repairPhotoRequired={repairPhotoRequired}
+            reconcilePhotoRequired={reconcilePhotoRequired}
             hasComponentRegistry={hasComponentRegistry(activeProject)}
             onComponentPhotoRequiredChange={(required) => {
               setComponentPhotoRequired(required);
               notify("success", t("settings.componentPhotoRequirementSaved"));
+            }}
+            onReconcilePhotoRequiredChange={(required) => {
+              setReconcilePhotoRequired(required);
+              notify("success", t("settings.reconcilePhotoRequirementSaved"));
             }}
             onRepairPhotoRequiredChange={(required) => {
               setRepairPhotoRequired(required);

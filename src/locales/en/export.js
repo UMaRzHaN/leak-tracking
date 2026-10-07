@@ -23,7 +23,7 @@ export const exportReport = {
   sheetRepairLog: "Repair log sheet",
   sheetAcceptance: "Equipment acceptance sheet",
   sheetInventory: "Inventory",
-  sheetReconcileHistory: "Inventory: History sheet",
+  sheetReconcileHistory: "Inventory: Reconciliation sheet",
   inventoryFolder: "Inventory",
   chips: {
     leaks: "Leaks",

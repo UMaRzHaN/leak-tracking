@@ -203,6 +203,8 @@ export const settings = {
   photoWhenAdding: "When adding a leak",
   photoWhenRepair: "When accepting a repair",
   repairPhotoRequirementSaved: "Repair photo requirement saved",
+  photoWhenReconcile: "When reconciling components",
+  reconcilePhotoRequirementSaved: "Reconciliation photo requirement saved",
   photoWhenComponent: "Photo when adding a component",
   componentPhotoRequirementSaved: "Component photo requirement saved",
   photoWhenMonitoring: "During monitoring",

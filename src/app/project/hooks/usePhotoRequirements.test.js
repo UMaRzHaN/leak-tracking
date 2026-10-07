@@ -42,6 +42,7 @@ describe("usePhotoRequirements", () => {
       monitoringPhotoRequired: false,
       componentPhotoRequired: true,
       repairPhotoRequired: true,
+      reconcilePhotoRequired: true,
     });
   });
 });

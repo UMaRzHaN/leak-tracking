@@ -8,11 +8,13 @@ export default function PhotoRequirementsSection({
   monitoringPhotoRequired,
   componentPhotoRequired,
   repairPhotoRequired,
+  reconcilePhotoRequired,
   hasComponentRegistry = false,
   onLeakPhotoRequiredChange,
   onMonitoringPhotoRequiredChange,
   onComponentPhotoRequiredChange,
   onRepairPhotoRequiredChange,
+  onReconcilePhotoRequiredChange,
 }) {
   const { t } = useLanguage();
 
@@ -49,12 +51,20 @@ export default function PhotoRequirementsSection({
             appears — a switch for a screen this project type does not have
             would be a promise the app cannot keep. */}
         {hasComponentRegistry && (
-          <RequirementToggle
-            label={t("settings.photoWhenComponent")}
-            hint={componentPhotoRequired ? requiredHint : optionalHint}
-            checked={componentPhotoRequired}
-            onChange={onComponentPhotoRequiredChange}
-          />
+          <>
+            <RequirementToggle
+              label={t("settings.photoWhenComponent")}
+              hint={componentPhotoRequired ? requiredHint : optionalHint}
+              checked={componentPhotoRequired}
+              onChange={onComponentPhotoRequiredChange}
+            />
+            <RequirementToggle
+              label={t("settings.photoWhenReconcile")}
+              hint={reconcilePhotoRequired ? requiredHint : optionalHint}
+              checked={reconcilePhotoRequired}
+              onChange={onReconcilePhotoRequiredChange}
+            />
+          </>
         )}
       </div>
     </section>

@@ -1109,8 +1109,8 @@ describe("the card in full", () => {
     expect(screen.queryByText("38.4")).toBeNull();
 
     fireEvent.click(screen.getByText("Coordinates"));
-    expect(screen.getByText("38.4")).toBeTruthy();
-    expect(screen.getByText("66.1")).toBeTruthy();
+    expect(screen.getByText("38.400000")).toBeTruthy();
+    expect(screen.getByText("66.100000")).toBeTruthy();
   });
 
   it("says outright when a card never got a fix", () => {

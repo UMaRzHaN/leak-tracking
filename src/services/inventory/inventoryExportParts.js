@@ -1,4 +1,17 @@
 import { readProjectSettings } from "@/app/project/projectSettings";
+import { fromEntries } from "@/utils/fromEntries";
+
+const RECONCILE_KEYS = [
+  "round",
+  "date",
+  "time",
+  "component_uid",
+  "scheme_tag",
+  "component",
+  "object",
+  "to",
+  "user",
+];
 import { buildExcelExportTexts } from "@/services/excelExport/exportTexts";
 
 /**
@@ -47,11 +60,11 @@ export async function prepareInventoryExport(
 
   return {
     fileStem: buildInventoryFileStem(project.name),
-    // Режим листа истории — из настроек проекта: так его получат и свой
+    // Режим листа сверки — из настроек проекта: так его получат и свой
     // архив реестра, и папка инвентаризации в отчёте по утечкам.
     sheetSpec: {
       ...sheetSpec,
-      historyExportMode: readProjectSettings(project?.id)
+      reconcileExportMode: readProjectSettings(project?.id)
         .excelReconcileExportMode,
     },
     // Без фото (8a) — без файлов и без ссылок на них; карточки остаются.
@@ -79,6 +92,16 @@ export function buildInventoryTexts(t) {
         withPhoto: t("components.export.inventoryBackup.summary.withPhoto"),
         version: t("components.export.inventoryBackup.summary.version"),
       },
+    },
+    reconcileSheet: {
+      sheet: t("components.export.reconcileSheet.sheet"),
+      unknownUser: t("components.export.historySheet.unknownUser"),
+      headers: fromEntries(
+        RECONCILE_KEYS.map((key) => [
+          key,
+          t(`components.export.reconcileSheet.headers.${key}`),
+        ]),
+      ),
     },
     // Лист истории подписан своими словами: у железа заводят карточку и
     // осматривают, а не открывают и устраняют.

@@ -134,3 +134,73 @@ describe("bringing component photographs back", () => {
     expect(restored[0].photo).toBe("zip:component_photos/gone.jpg");
   });
 });
+
+describe("inspection photographs in the card's history", () => {
+  it("travel out beside the card and come back into storage", async () => {
+    const idbGet = vi.fn(async () => pixel());
+    const card = {
+      id: "a",
+      component_uid: "4242",
+      history: [
+        { action: "component_created", date: "2026-08-01T09:00:00Z" },
+        {
+          action: "component_inspected",
+          date: "2026-09-01T09:00:00Z",
+          photo: "idb://photo_inspection",
+        },
+      ],
+    };
+
+    const { components, entries } = await buildComponentPhotoArchive(
+      [card],
+      idbGet,
+    );
+    expect(entries.map((entry) => entry.path)).toEqual([
+      "component_photos/4242_inspection_2.jpg",
+    ]);
+    expect(components[0].history[1].photo).toBe(
+      "zip:component_photos/4242_inspection_2.jpg",
+    );
+
+    const JSZip = (await getJSZip()).default;
+    const zip = new JSZip();
+    zip.file(entries[0].path, entries[0].blob);
+    const reopened = await new JSZip().loadAsync(
+      await zip.generateAsync({ type: "blob" }),
+    );
+    const restored = await restoreComponentPhotos(
+      reopened,
+      components,
+      project,
+    );
+    expect(restored[0].history[1].photo).toBe("idb://photo_restored");
+    expect(restored[0].history[0]).toEqual(card.history[0]);
+  });
+
+  it("drops an unreadable inspection photo but keeps the inspection", async () => {
+    const idbGet = vi.fn(async () => null);
+    const { components, entries } = await buildComponentPhotoArchive(
+      [
+        {
+          id: "a",
+          component_uid: "4242",
+          history: [
+            {
+              action: "component_inspected",
+              date: "2026-09-01T09:00:00Z",
+              photo: "idb://photo_missing",
+              comment: "Течи нет",
+            },
+          ],
+        },
+      ],
+      idbGet,
+    );
+    expect(entries).toHaveLength(0);
+    expect(components[0].history[0]).toEqual({
+      action: "component_inspected",
+      date: "2026-09-01T09:00:00Z",
+      comment: "Течи нет",
+    });
+  });
+});

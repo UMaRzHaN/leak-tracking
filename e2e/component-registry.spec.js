@@ -8,6 +8,7 @@ import {
   importFile,
   leaveSettings,
   addComponentCard,
+  attachModalPhoto,
   openComponentRegistry,
   setUserProfile,
   openAddProject,
@@ -212,7 +213,17 @@ test("сверяет компонент в разделе «Сверка»", asy
     .click();
   await expect(page.getByRole("button", { name: "К сверке 1" })).toBeVisible();
   await page.getByRole("button", { name: "Сверить", exact: true }).click();
-  await page.getByRole("button", { name: "В работе", exact: true }).click();
+  // Осмотр — экраном, как проверка мониторинга; снимок по умолчанию обязателен.
+  await expect(
+    page.getByRole("heading", { name: "Осмотр компонента" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Сохранить осмотр" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Осмотр компонента" }),
+  ).toBeVisible();
+  await page.getByLabel("Состояние на момент осмотра").selectOption("В работе");
+  await attachModalPhoto(page);
+  await page.getByRole("button", { name: "Сохранить осмотр" }).click();
 
   await expect(page.getByRole("button", { name: "Сверено 1" })).toBeVisible();
   await expect(page.getByText("Сверка № 1")).toBeVisible();

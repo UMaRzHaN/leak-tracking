@@ -61,36 +61,6 @@ const walked = [
 ];
 
 describe("история реестра строками", () => {
-  it("в режиме «последняя в обходе» оставляет один осмотр на обход сверки", () => {
-    const inspect = (date, round) => ({
-      action: "component_inspected",
-      date,
-      user: "Азиз",
-      to: "В работе",
-      ...(round ? { roundNumber: round } : {}),
-    });
-    const component = {
-      ...walked[0],
-      history: [
-        ...walked[0].history,
-        inspect("2026-09-01T09:00:00.000Z", 3),
-        inspect("2026-09-01T10:00:00.000Z", 3),
-      ],
-    };
-    const latest = buildComponentHistoryRows(
-      [component],
-      fields,
-      texts,
-      "latest_per_round",
-    );
-    // Заведение, правка и осмотр без номера остаются, из двух осмотров
-    // обхода № 3 — последний.
-    expect(latest).toHaveLength(4);
-    expect(buildComponentHistoryRows([component], fields, texts)).toHaveLength(
-      5,
-    );
-  });
-
   it("пишет по строке на событие, подписанное человеком", () => {
     const rows = buildComponentHistoryRows(walked, fields, texts);
 

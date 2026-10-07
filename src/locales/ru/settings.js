@@ -202,6 +202,8 @@ export const settings = {
   photoWhenAdding: "При добавлении утечки",
   photoWhenRepair: "При приёмке ремонта",
   repairPhotoRequirementSaved: "Требование к фото ремонта сохранено",
+  photoWhenReconcile: "При сверке компонентов",
+  reconcilePhotoRequirementSaved: "Требование к фото сверки сохранено",
   photoWhenComponent: "Фото при добавлении компонента",
   componentPhotoRequirementSaved: "Требование фото для компонента сохранено",
   photoWhenMonitoring: "При мониторинге",

@@ -9,6 +9,9 @@ import { useModalDialog } from "@/hooks/useModalDialog";
 import { usePhotoSrc } from "@/hooks/usePhotoSrc";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import PhotoBlock from "@/features/leakDetails/components/PhotoBlock";
+import LeakLocationSection from "@/features/leakDetails/components/LeakLocationSection";
+import GpsCoordsUpdate from "@/features/coords/GpsCoordsUpdate";
+import ComponentReconcileLog from "./ComponentReconcileLog";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
 import PhotoInput from "@/features/photos/PhotoInput/PhotoInput";
 import EditTextField from "@/features/editTextField/EditTextField";
@@ -71,7 +74,7 @@ export default function ComponentDetailsSheet({
   const startEditing = () => {
     setDraft({ ...component });
     setEditing(true);
-    if (tab === "history") setTab("card");
+    if (tab === "history" || tab === "reconcile") setTab("card");
   };
 
   const cancelEditing = () => {
@@ -85,7 +88,22 @@ export default function ComponentDetailsSheet({
   const commit = async () => {
     setSaving(true);
     try {
-      await onSave?.(draft);
+      // Как у утечки: точка, поставленная по GPS, несёт радиус приёмника;
+      // вписанная руками — нет, прежний радиус мерил другую точку.
+      const { __gps, ...card } = draft;
+      const moved = ["lat", "lng"].some(
+        (key) => String(card[key] ?? "") !== String(component?.[key] ?? ""),
+      );
+      await onSave?.(
+        moved
+          ? {
+              ...card,
+              coords_accuracy: Number.isFinite(__gps?.accuracy)
+                ? Math.round(__gps.accuracy)
+                : undefined,
+            }
+          : card,
+      );
       setEditing(false);
     } finally {
       setSaving(false);
@@ -112,19 +130,6 @@ export default function ComponentDetailsSheet({
     () => filled.filter(({ key }) => !COORD_KEYS.has(key)),
     [filled],
   );
-  const coords = useMemo(
-    () => filled.filter(({ key }) => COORD_KEYS.has(key)),
-    [filled],
-  );
-
-  // Радиус приёмника не поле паспорта, а мера доверия к снятой точке, поэтому
-  // стоит под координатами, а не среди них: `filled` их форматирует как числа
-  // карточки, а здесь нужны метры со знаком «плюс-минус».
-  const accuracy = useMemo(() => {
-    const value = Number(component?.coords_accuracy);
-    return Number.isFinite(value) && value >= 0 ? Math.round(value) : null;
-  }, [component?.coords_accuracy]);
-
   const history = [...(component?.history ?? [])].reverse();
   const actionLabel = createActionLabel(t);
   const fieldValue = createFieldValue(lang);
@@ -137,7 +142,10 @@ export default function ComponentDetailsSheet({
     { id: "coords", label: t("components.tabs.coords") },
     ...(editing
       ? []
-      : [{ id: "history", label: t("components.tabs.history") }]),
+      : [
+          { id: "reconcile", label: t("components.tabs.reconcile") },
+          { id: "history", label: t("components.tabs.history") },
+        ]),
   ];
 
   return (
@@ -214,6 +222,29 @@ export default function ComponentDetailsSheet({
             ) : tab === "coords" && editing ? (
               <div className={s.tabPane}>
                 <div className={s.coordGroup}>
+                  {/* Одной кнопкой — туда, где стоит человек, как у утечки;
+                      поля ниже — руками. */}
+                  <GpsCoordsUpdate
+                    current={component}
+                    applied={draft.__gps ?? null}
+                    onApply={(gps) =>
+                      setDraft((current) =>
+                        gps
+                          ? {
+                              ...current,
+                              lat: gps.lat,
+                              lng: gps.lng,
+                              __gps: gps,
+                            }
+                          : {
+                              ...current,
+                              lat: component?.lat ?? "",
+                              lng: component?.lng ?? "",
+                              __gps: null,
+                            },
+                      )
+                    }
+                  />
                   <div className={s.coordPair}>
                     {coordFields.map(({ key, label }) => (
                       <EditTextField
@@ -275,34 +306,19 @@ export default function ComponentDetailsSheet({
                 )}
               </div>
             ) : tab === "coords" ? (
-              <div className={s.tabPane}>
-                {coords.length === 0 ? (
-                  <div className={s.tabEmpty}>
-                    {/* Карточка на месте, компонента на карте нет — это стоит
-                        сказать прямо, а не пустой вкладкой. */}
-                    <p>{t("components.noCoords.missing")}</p>
-                  </div>
-                ) : (
-                  coords.map(({ key, label, value }) => (
-                    <div key={key} className={s.fieldRow}>
-                      <span className={s.fieldLabel}>{label}</span>
-                      <span className={s.fieldValue}>{String(value)}</span>
-                    </div>
-                  ))
-                )}
-                {coords.length > 0 && accuracy != null && (
-                  <div className={s.fieldRow}>
-                    <span className={s.fieldLabel}>
-                      {t("leakDetails.coordsAccuracy")}
-                    </span>
-                    <span className={s.fieldValue}>
-                      {t("leakDetails.coordsAccuracyValue", {
-                        count: accuracy,
-                      })}
-                    </span>
-                  </div>
-                )}
-              </div>
+              /* Та же вкладка, что у утечки: снимок карты с точкой,
+                 координаты, точность, расстояние до человека и переход на
+                 карту. Карточка на месте, а точки нет — это сказано прямо. */
+              <LeakLocationSection
+                data={component ?? {}}
+                fields={coordFields}
+                localeTexts={{
+                  empty: { coords: t("components.noCoords.missing") },
+                }}
+                t={t}
+              />
+            ) : tab === "reconcile" ? (
+              <ComponentReconcileLog component={component} />
             ) : (
               <div className={s.tabPane}>
                 {history.length === 0 ? (
@@ -329,6 +345,9 @@ export default function ComponentDetailsSheet({
                         )}
                         {entry.to && (
                           <span className={s.logStatus}>{entry.to}</span>
+                        )}
+                        {entry.comment && (
+                          <span className={s.logUser}>{entry.comment}</span>
                         )}
                         {/* Прежнее значение и новое, как в истории утечки.
                             Раньше здесь стояло имя поля из кода — «medium»,

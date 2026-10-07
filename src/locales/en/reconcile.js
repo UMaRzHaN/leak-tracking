@@ -13,6 +13,10 @@ export const reconcile = {
   merged: "Reconciliation No. {{number}} is current again",
   noRound: "No reconciliation yet",
   newRound: "New reconciliation",
+  repeatTitle: "Component already reconciled in this round",
+  repeatDescription:
+    "An inspection has already been saved for this component in the round. Reconcile it again?",
+  repeatConfirm: "Reconcile again",
   newRoundTitle: "Start a new reconciliation?",
   newRoundDescription:
     "Every component goes back to “To reconcile”. Past inspection marks stay on the cards.",

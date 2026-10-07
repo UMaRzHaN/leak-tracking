@@ -86,8 +86,15 @@ export function usePhotoRequirements(projectId) {
     [save, settings],
   );
 
+  const setReconcilePhotoRequired = useCallback(
+    (required) =>
+      save({ ...settings, reconcilePhotoRequired: Boolean(required) }),
+    [save, settings],
+  );
+
   return {
     ...settings,
+    setReconcilePhotoRequired,
     setLeakPhotoRequired,
     setMonitoringPhotoRequired,
     setComponentPhotoRequired,

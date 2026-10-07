@@ -37,6 +37,8 @@ export const DEFAULT_PHOTO_REQUIREMENTS = Object.freeze({
   componentPhotoRequired: true,
   // Снимок после ремонта при приёмке (7c).
   repairPhotoRequired: true,
+  // Снимок осмотра компонента при сверке (6b).
+  reconcilePhotoRequired: true,
 });
 
 function readJson(key) {

@@ -10,10 +10,6 @@ import {
   styleHeaderRow,
 } from "@/services/excelExport/sheetLayout";
 import { COMPONENT_HISTORY_ACTIONS } from "@/domain/componentHistory";
-import {
-  EXCEL_MONITORING_EXPORT_MODE,
-  keepLatestPerRound,
-} from "@/utils/excelExportMode";
 
 /**
  * Кто и когда трогал карточку — листом, как у утечек.
@@ -70,49 +66,36 @@ function describeChanges(changes, labelOf, texts) {
  * @param {Record<string, any>[]} components в том же порядке, что и лист реестра
  * @param {{key?: string, label?: string}[]} fields объявление реестра — для подписей
  * @param {Record<string, any>} texts
- * @param {string} [mode] режим листа. Последняя в обходе оставляет на
- *   компонент один осмотр в каждом обходе сверки; правки и осмотры без
- *   номера обхода остаются все.
  */
-export function buildComponentHistoryRows(components, fields, texts, mode) {
+export function buildComponentHistoryRows(components, fields, texts) {
   const labelOf = (key) =>
     fields.find((field) => field.key === key)?.label ?? key;
-  const entriesOf = (component) => {
-    const history = Array.isArray(component?.history) ? component.history : [];
-    if (mode !== EXCEL_MONITORING_EXPORT_MODE.LATEST_PER_ROUND) return history;
-    return keepLatestPerRound(history, {
-      keyOf: () => 0,
-      roundOf: (entry) =>
-        entry?.action === COMPONENT_HISTORY_ACTIONS.INSPECTED
-          ? entry.roundNumber
-          : undefined,
-      timeOf: (entry) => Date.parse(String(entry?.date ?? "")),
-    });
-  };
 
   return (components ?? []).flatMap((component, index) =>
-    entriesOf(component).map((entry) => ({
-      index: index + 1,
-      component_uid: component.component_uid ?? "",
-      date: parseTimestamp(entry?.date) ?? "",
-      time: parseTimestamp(entry?.date) ?? "",
-      action: actionLabel(entry?.action, texts),
-      // Подпись обязательна при записи, но архив может прийти и из сборки,
-      // которая её ещё не требовала.
-      user: entry?.user ?? texts.unknownUser ?? "",
-      to: entry?.to ?? "",
-      changes: describeChanges(entry?.changes, labelOf, texts),
-    })),
+    (Array.isArray(component?.history) ? component.history : []).map(
+      (entry) => ({
+        index: index + 1,
+        component_uid: component.component_uid ?? "",
+        date: parseTimestamp(entry?.date) ?? "",
+        time: parseTimestamp(entry?.date) ?? "",
+        action: actionLabel(entry?.action, texts),
+        // Подпись обязательна при записи, но архив может прийти и из сборки,
+        // которая её ещё не требовала.
+        user: entry?.user ?? texts.unknownUser ?? "",
+        to: entry?.to ?? "",
+        changes: describeChanges(entry?.changes, labelOf, texts),
+      }),
+    ),
   );
 }
 
 /**
  * @param {any} workbook
- * @param {{components: Record<string, any>[], fields?: {key?: string, label?: string}[], texts?: Record<string, any>, mode?: string}} spec
+ * @param {{components: Record<string, any>[], fields?: {key?: string, label?: string}[], texts?: Record<string, any>}} spec
  */
 export async function buildComponentHistorySheet(workbook, spec) {
-  const { components, fields = [], texts = {}, mode } = spec ?? {};
-  const rows = buildComponentHistoryRows(components, fields, texts, mode);
+  const { components, fields = [], texts = {} } = spec ?? {};
+  const rows = buildComponentHistoryRows(components, fields, texts);
   // Пустой вкладки нет: обход, в котором ещё ничего не правили и не осматривали,
   // историей не беден — её просто пока нет.
   if (rows.length === 0) return;

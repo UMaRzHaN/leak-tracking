@@ -459,6 +459,7 @@ export function validateProjectBackupMeta(parsed) {
             "monitoringPhotoRequired",
             "componentPhotoRequired",
             "repairPhotoRequired",
+            "reconcilePhotoRequired",
           ]) {
             if (
               parsed.settings.photoRequirements[key] !== undefined &&

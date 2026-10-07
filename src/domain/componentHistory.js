@@ -87,22 +87,39 @@ export function recordComponentEdited(
  * The round number, when a reconcile round is running, goes with the entry:
  * the export can then keep only the last inspection of each round.
  *
+ * Осмотр со своего экрана (как проверка мониторинга) несёт снимок и
+ * замечание — они ложатся в запись истории, — и точку по GPS: она меняет
+ * координаты карточки и попадает в изменения той же записи.
+ *
  * @param {Record<string, any>} component
- * @param {{status?: string, user?: string, now?: number, roundNumber?: number}} options
+ * @param {{status?: string, user?: string, now?: number, roundNumber?: number,
+ *   photo?: string, comment?: string,
+ *   coords?: {lat: number, lng: number, accuracy?: number}|null}} options
  */
 export function recordComponentInspected(
   component,
-  { status, user, now, roundNumber } = {},
+  { status, user, now, roundNumber, photo, comment, coords } = {},
 ) {
   const timestamp = typeof now === "number" ? now : Date.now();
   const inspectedAt = new Date(timestamp).toISOString();
   const nextStatus =
     status == null || status === "" ? component?.component_status : status;
 
+  const located =
+    coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng);
   const inspected = {
     ...component,
     component_status: nextStatus,
     inspected_at: inspectedAt,
+    ...(located
+      ? {
+          lat: coords.lat,
+          lng: coords.lng,
+          coords_accuracy: Number.isFinite(coords.accuracy)
+            ? Math.round(/** @type {number} */ (coords.accuracy))
+            : undefined,
+        }
+      : {}),
   };
 
   const changes = [];
@@ -113,6 +130,16 @@ export function recordComponentInspected(
       to: nextStatus ?? null,
     });
   }
+  for (const key of located ? ["lat", "lng"] : []) {
+    if (component?.[key] !== inspected[key]) {
+      changes.push({
+        key,
+        from: component?.[key] ?? null,
+        to: inspected[key],
+      });
+    }
+  }
+  const note = String(comment ?? "").trim();
 
   return withEntry(
     inspected,
@@ -123,6 +150,8 @@ export function recordComponentInspected(
       to: nextStatus ?? null,
       ...(changes.length > 0 ? { changes } : {}),
       ...(Number.isFinite(roundNumber) ? { roundNumber } : {}),
+      ...(photo ? { photo } : {}),
+      ...(note ? { comment: note } : {}),
     }),
   );
 }

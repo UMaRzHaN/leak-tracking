@@ -1,15 +1,14 @@
 import { useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import ComponentCardCompact from "@/features/componentRegistry/ComponentCardCompact";
-import ComponentInspectSheet from "@/features/componentRegistry/ComponentInspectSheet";
+import { useComponentCheck } from "@/features/componentRegistry/useComponentCheck";
+import { useComponentDetails } from "@/features/componentRegistry/useComponentDetails";
+import { errorText } from "@/utils/appError";
 import { useComponentRegistry } from "@/features/componentRegistry/useComponentRegistry";
 import Notification from "@/components/ui/Notification/Notification";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import Icon from "@/components/ui/Icon/Icon";
-import {
-  canWriteRegistry,
-  recordComponentInspected,
-} from "@/domain/componentHistory";
+import { canWriteRegistry } from "@/domain/componentHistory";
 import { matchesLeakLocationFilter } from "@/utils/locationFilter";
 import { activeRoundNumber } from "@/utils/projectRound";
 import { formatMonitoringDate } from "@/utils/monitoring";
@@ -48,13 +47,16 @@ function matches(component, query) {
  */
 export default function Reconcile({ project, sharedFilters, userProfile }) {
   const { t, lang } = useLanguage();
-  const { components, updateComponent, loading } =
+  const { components, fields, updateComponent, removeComponent, loading } =
     useComponentRegistry(project);
   const [round, setRound] = useState(() => readReconcileRound(project?.id));
   const [filter, setFilter] = useState(/** @type {string} */ (FILTER.DUE));
   const [search, setSearch] = useState("");
-  const [inspecting, setInspecting] = useState(/** @type {any} */ (null));
   const [confirmNew, setConfirmNew] = useState(false);
+  // Повторная сверка уже сверенного — с подтверждением, как в мониторинге;
+  // «Новая сверка» из него открывает осмотр после старта.
+  const [repeatCard, setRepeatCard] = useState(/** @type {any} */ (null));
+  const [pendingCard, setPendingCard] = useState(/** @type {any} */ (null));
   const [confirmMerge, setConfirmMerge] = useState(false);
   // Разрешения сверки из настроек проекта — как у обходов мониторинга.
   const [allowed] = useRoundPermissions(project?.id ?? null, "reconcile");
@@ -93,23 +95,38 @@ export default function Reconcile({ project, sharedFilters, userProfile }) {
     });
   }, [scoped, filter, search, round]);
 
-  const pick = async (status) => {
-    const card = inspecting;
-    setInspecting(null);
-    if (!card) return;
-    // Сверка без начатого номера начинает первую — иначе отметка ушла бы
-    // в никуда и компонент не встал бы в «Сверено».
-    const current = round ?? startReconcileRound(project?.id);
-    if (!round) setRound(current);
-    await updateComponent(
-      card.id,
-      recordComponentInspected(card, {
-        status,
-        user: userProfile?.name,
-        roundNumber: activeRoundNumber(current),
+  // Осмотр — экраном, как проверка в обходе мониторинга. Сверка без
+  // начатого номера начинает первую до записи — иначе отметка ушла бы в
+  // никуда и компонент не встал бы в «Сверено».
+  const check = useComponentCheck({
+    project,
+    updateComponent,
+    userProfile,
+    roundNumber: () => {
+      const current = round ?? startReconcileRound(project?.id);
+      if (!round) setRound(current);
+      return activeRoundNumber(current);
+    },
+    onSaved: () =>
+      setNotification({ type: "success", message: t("reconcile.saved") }),
+    onError: (error) =>
+      setNotification({
+        type: "error",
+        message: t("common.saveError", { message: errorText(error, t) }),
       }),
-    );
-    setNotification({ type: "success", message: t("reconcile.saved") });
+  });
+  // Свайп вправо открывает карточку целиком, как в базе компонентов.
+  const details = useComponentDetails({
+    fields,
+    canEdit: canWrite,
+    userProfile,
+    updateComponent,
+    removeComponent,
+  });
+  const openCheck = (component) => {
+    const active = round && !round.completedAt;
+    if (active && isReconciled(component, round)) setRepeatCard(component);
+    else check.open(component);
   };
 
   return (
@@ -220,8 +237,8 @@ export default function Reconcile({ project, sharedFilters, userProfile }) {
                 <div className={s.card}>
                   <ComponentCardCompact
                     component={component}
-                    onOpenDetails={() => {}}
-                    onInspect={canWrite ? setInspecting : undefined}
+                    onOpenDetails={details.open}
+                    onInspect={canWrite ? openCheck : undefined}
                   />
                 </div>
                 <div className={s.bar}>
@@ -248,11 +265,11 @@ export default function Reconcile({ project, sharedFilters, userProfile }) {
                         .join(" · ")}
                     </span>
                   </div>
-                  {!done && canWrite && (
+                  {canWrite && (
                     <button
                       type="button"
                       className={s.acceptBtn}
-                      onClick={() => setInspecting(component)}
+                      onClick={() => openCheck(component)}
                     >
                       {t("reconcile.check")}
                     </button>
@@ -264,13 +281,8 @@ export default function Reconcile({ project, sharedFilters, userProfile }) {
         )}
       </section>
 
-      {inspecting && (
-        <ComponentInspectSheet
-          component={inspecting}
-          onPick={pick}
-          onClose={() => setInspecting(null)}
-        />
-      )}
+      {details.element}
+      {check.element}
 
       <ConfirmSheet
         open={confirmNew}
@@ -281,8 +293,31 @@ export default function Reconcile({ project, sharedFilters, userProfile }) {
           setRound(startReconcileRound(project?.id));
           setFilter(FILTER.DUE);
           setConfirmNew(false);
+          if (pendingCard) check.open(pendingCard);
+          setPendingCard(null);
         }}
-        onCancel={() => setConfirmNew(false)}
+        onCancel={() => {
+          setConfirmNew(false);
+          setPendingCard(null);
+        }}
+      />
+
+      <ConfirmSheet
+        open={Boolean(repeatCard)}
+        title={t("reconcile.repeatTitle")}
+        description={t("reconcile.repeatDescription")}
+        confirmLabel={t("reconcile.repeatConfirm")}
+        secondaryActionLabel={allowed.allowNew ? t("reconcile.newRound") : null}
+        onSecondaryAction={() => {
+          setPendingCard(repeatCard);
+          setRepeatCard(null);
+          setConfirmNew(true);
+        }}
+        onConfirm={() => {
+          check.open(repeatCard);
+          setRepeatCard(null);
+        }}
+        onCancel={() => setRepeatCard(null)}
       />
 
       <ConfirmSheet

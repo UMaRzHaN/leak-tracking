@@ -29,6 +29,14 @@ import { resolvePhotoBlob } from "./photoArchive";
 export const COMPONENT_PHOTO_ARCHIVE_DIR = "component_photos";
 const ARCHIVE_PREFIX = "zip:";
 
+function hasLocalPhoto(entry) {
+  return (
+    typeof entry?.photo === "string" &&
+    entry.photo !== "" &&
+    !entry.photo.startsWith(ARCHIVE_PREFIX)
+  );
+}
+
 function archivePathOf(value) {
   return typeof value === "string" && value.startsWith(ARCHIVE_PREFIX)
     ? value.slice(ARCHIVE_PREFIX.length)
@@ -69,36 +77,62 @@ export async function buildComponentPhotoArchive(
   /** @type {Record<string, string>} */
   const paths = {};
 
-  for (const [index, component] of list.entries()) {
-    if (!component || typeof component !== "object") {
-      rewritten.push(component);
-      continue;
-    }
-    const path = component.photo;
-    if (typeof path !== "string" || !path) {
-      rewritten.push(component);
-      continue;
-    }
-
+  const pack = async (path, name) => {
     let resolved = /** @type {{blob: Blob, ext: any}|null} */ (null);
     try {
       resolved = await resolvePhotoBlob(path, idbGet);
     } catch (error) {
       logger.warn("[components] skipped an unreadable photo on export:", error);
     }
-    if (!resolved) {
-      const { photo, ...rest } = component;
-      void photo;
-      rewritten.push(rest);
-      continue;
-    }
-
-    const archivePath = `${dir}/${segments[index]}.${normalizeImageExtension(
+    if (!resolved) return null;
+    const archivePath = `${dir}/${name}.${normalizeImageExtension(
       resolved.ext,
     )}`;
     entries.push({ path: archivePath, blob: resolved.blob });
-    paths[component.id] = archivePath;
-    rewritten.push({ ...component, photo: `${ARCHIVE_PREFIX}${archivePath}` });
+    return archivePath;
+  };
+
+  for (const [index, component] of list.entries()) {
+    if (!component || typeof component !== "object") {
+      rewritten.push(component);
+      continue;
+    }
+    let card = component;
+    const path = component.photo;
+    if (typeof path === "string" && path) {
+      const archivePath = await pack(path, segments[index]);
+      if (archivePath) {
+        paths[component.id] = archivePath;
+        card = { ...card, photo: `${ARCHIVE_PREFIX}${archivePath}` };
+      } else {
+        const { photo, ...rest } = card;
+        void photo;
+        card = rest;
+      }
+    }
+    // Снимки осмотров (сверка, 6b) живут в записях истории — едут с ними.
+    if (Array.isArray(card.history) && card.history.some(hasLocalPhoto)) {
+      const history = [];
+      for (const [entryIndex, entry] of card.history.entries()) {
+        if (!hasLocalPhoto(entry)) {
+          history.push(entry);
+          continue;
+        }
+        const archivePath = await pack(
+          entry.photo,
+          `${segments[index]}_inspection_${entryIndex + 1}`,
+        );
+        if (archivePath) {
+          history.push({ ...entry, photo: `${ARCHIVE_PREFIX}${archivePath}` });
+        } else {
+          const { photo, ...rest } = entry;
+          void photo;
+          history.push(rest);
+        }
+      }
+      card = { ...card, history };
+    }
+    rewritten.push(card);
   }
 
   return { components: rewritten, entries, paths };
@@ -121,20 +155,12 @@ export async function restoreComponentPhotos(zip, components, project) {
   const list = Array.isArray(components) ? components : [];
   if (!zip || !project?.id) return list;
 
-  const restored = [];
-  for (const component of list) {
-    const archivePath = archivePathOf(component?.photo);
-    if (!archivePath) {
-      restored.push(component);
-      continue;
-    }
-
+  const restoreOne = async (value, id) => {
+    const archivePath = archivePathOf(value);
+    if (!archivePath) return value;
     try {
       const entry = zip.file(archivePath);
-      if (!entry) {
-        restored.push(component);
-        continue;
-      }
+      if (!entry) return value;
       const raw = await entry.async("blob");
       const extension = archivePath.split(".").pop();
       // A zip carries no media type; the extension is all there is, and photo
@@ -152,20 +178,51 @@ export async function restoreComponentPhotos(zip, components, project) {
         blob,
         {
           projectId: project.id,
-          leakId: String(component.id),
+          leakId: String(id),
           folderName: project.folderName,
         },
         [],
         { cleanupOldVersions: false, contentHash },
       );
-      restored.push(stored ? { ...component, photo: stored } : component);
+      return stored || value;
     } catch (error) {
       logger.warn(
         `[components] could not restore the photo "${archivePath}":`,
         error,
       );
-      restored.push(component);
+      return value;
     }
+  };
+
+  const restored = [];
+  for (const component of list) {
+    if (!component || typeof component !== "object") {
+      restored.push(component);
+      continue;
+    }
+    let card = component;
+    if (archivePathOf(card.photo)) {
+      card = { ...card, photo: await restoreOne(card.photo, card.id) };
+    }
+    // Снимки осмотров — из записей истории, тем же путём.
+    if (
+      Array.isArray(card.history) &&
+      card.history.some((entry) => archivePathOf(entry?.photo))
+    ) {
+      const history = [];
+      for (const entry of card.history) {
+        history.push(
+          archivePathOf(entry?.photo)
+            ? {
+                ...entry,
+                photo: await restoreOne(entry.photo, `${card.id}_inspection`),
+              }
+            : entry,
+        );
+      }
+      card = { ...card, history };
+    }
+    restored.push(card);
   }
 
   return restored;
