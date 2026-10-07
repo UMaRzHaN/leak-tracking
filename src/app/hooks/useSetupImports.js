@@ -188,6 +188,7 @@ export function useSetupImports({
         type: resolvedType,
         leaks: result.leaks,
         monitoringRound: result.monitoringRound,
+        rounds: result.rounds,
         vars: result.vars,
         settings: result.settings,
         syncId: result.project?.syncId,

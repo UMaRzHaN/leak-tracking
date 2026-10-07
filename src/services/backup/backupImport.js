@@ -31,6 +31,11 @@ import { readSurvey, saveSurvey } from "@/utils/surveyStorage";
 import { mergeInvoices } from "@/domain/equipmentAcceptance";
 import { logger } from "@/utils/logger";
 import { openArchive } from "./backupArchiveSession";
+import {
+  applyProjectRounds,
+  readProjectRounds,
+  restoreProjectRounds,
+} from "@/app/project/projectRounds";
 import { filterIncomingLeaksForMerge, mergeLeaksByFreshness } from "./merge";
 import { collectPhotoOwners } from "@/services/storage/photoOwners";
 import { restorePhotos } from "./photoRestore";
@@ -133,6 +138,7 @@ export async function importProjectZip(file, ctx) {
       newProject.id,
       getRestoredMonitoringRound(meta, finalLeaks),
     );
+    applyProjectRounds(newProject.id, meta?.rounds);
     if (Array.isArray(meta?.acceptances)) {
       saveAcceptances(newProject.id, meta.acceptances);
     }
@@ -241,6 +247,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
   const localSyncState = await readProjectSyncStateAsync(existingProjectId);
   const localSettings = readProjectSettings(existingProjectId);
   const localMonitoringRound = readMonitoringRound(existingProjectId);
+  const localRounds = readProjectRounds(existingProjectId);
   const localVarsRaw = localStorage.getItem(
     STORAGE_KEYS.PROJECT_VARS(existingProjectId),
   );
@@ -363,6 +370,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
         localStorage.removeItem(STORAGE_KEYS.PROJECT_VARS(existingProjectId));
       }
       saveMonitoringRound(existingProjectId, nextMonitoringRound);
+      applyProjectRounds(existingProjectId, meta?.rounds);
       mergeAcceptancesAndSurvey(existingProjectId, meta);
       if (incomingSyncState) {
         await writeProjectSyncState(
@@ -388,6 +396,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
         }
       }
       saveMonitoringRound(existingProjectId, nextMonitoringRound);
+      applyProjectRounds(existingProjectId, meta?.rounds, { resolve: true });
       mergeAcceptancesAndSurvey(existingProjectId, meta);
       await writeProjectSyncState(
         existingProjectId,
@@ -452,6 +461,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     }
     writeProjectSettings(existingProjectId, localSettings);
     saveMonitoringRound(existingProjectId, localMonitoringRound);
+    restoreProjectRounds(existingProjectId, localRounds);
     await writeProjectSyncState(
       existingProjectId,
       localSyncState,

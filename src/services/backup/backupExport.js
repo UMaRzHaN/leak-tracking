@@ -26,6 +26,7 @@ function monitoringPlace(project) {
   };
 }
 import { readMonitoringRound } from "@/utils/monitoringRound";
+import { readProjectRounds } from "@/app/project/projectRounds";
 import { readAcceptances } from "@/utils/acceptanceStorage";
 import { readStoredSurvey } from "@/utils/surveyStorage";
 import { assertImportFileSize, IMPORT_LIMITS } from "@/utils/importLimits";
@@ -173,6 +174,7 @@ export async function streamProjectBackupZip({
     vars,
     settings: readProjectSettings(project?.id),
     monitoringRound: readMonitoringRound(project?.id),
+    rounds: readProjectRounds(project?.id ?? null),
     acceptances: readAcceptances(project?.id),
     survey: readStoredSurvey(project?.id),
     syncState: await readProjectSyncStateAsync(project?.id),
@@ -239,6 +241,7 @@ export async function buildProjectBackupZip({
     vars,
     settings: readProjectSettings(project?.id),
     monitoringRound: readMonitoringRound(project?.id),
+    rounds: readProjectRounds(project?.id ?? null),
     acceptances: readAcceptances(project?.id),
     survey: readStoredSurvey(project?.id),
     syncState: await readProjectSyncStateAsync(project?.id),

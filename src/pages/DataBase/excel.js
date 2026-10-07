@@ -309,6 +309,7 @@ export async function exportToExcelFile(
     vars: options.vars ?? null,
     settings: options.settings ?? null,
     monitoringRound: options.monitoringRound ?? null,
+    rounds: options.rounds ?? null,
     sync: options.sync ?? null,
     leaks: buildPortableLeaks(backupLeaks, backupPhotoMap),
   };

@@ -1,3 +1,4 @@
+import { readProjectRounds } from "@/app/project/projectRounds";
 import { errorText } from "@/utils/appError";
 import { useCallback, useState } from "react";
 import { STATUS, getStatusLabel } from "@/utils/status";
@@ -135,6 +136,7 @@ export function useDataBaseExport({
           vars,
           settings: readProjectSettings(activeProject?.id),
           monitoringRound: readMonitoringRound(activeProject?.id),
+          rounds: readProjectRounds(activeProject?.id ?? null),
           sync: await readProjectSyncStateAsync(activeProject?.id),
           // A filtered export must be self-contained without silently
           // including records (and photos) hidden by the current filters.

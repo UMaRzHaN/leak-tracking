@@ -242,6 +242,33 @@ describe("buildProjectBackupZip + peekBackupZip — round-trip", () => {
     expect(peek.detectedType).toBe("upstream");
   });
 
+  it("везёт обходы ремонтов и сверки, отличая «не было» от старого архива", async () => {
+    localStorage.clear();
+    const repairs = { number: 3, startedAt: "2026-10-01T00:00:00.000Z" };
+    localStorage.setItem(
+      `app:${UPSTREAM_PROJECT.id}:repair_round_v1`,
+      JSON.stringify(repairs),
+    );
+    const blob = await buildProjectBackupZip({
+      leaks,
+      idbGet: null,
+      project: UPSTREAM_PROJECT,
+      vars: null,
+    });
+    const peek = await peekBackupZip(blob);
+    // Вид без обхода — явный null: архив знает, что сверки не было.
+    expect(peek.meta.rounds).toEqual({ repairs, reconcile: null });
+    localStorage.clear();
+  });
+
+  it("отклоняет обход без номера в rounds", () => {
+    const result = validateProjectBackupMeta({
+      project: { name: "x", type: "upstream" },
+      rounds: { repairs: { startedAt: "2026-10-01" }, reconcile: null },
+    });
+    expect(result.ok).toBe(false);
+  });
+
   it("сохраняет и восстанавливает vars", async () => {
     const vars = { density: 0.668, GWP: 28, percentage_gas_to_flare: 50 };
     const blob = await buildProjectBackupZip({

@@ -12,6 +12,9 @@ import {
  */
 const round = createProjectRound("reconcile_round_v1");
 
+/** Хранилище целиком — для бэкапа и обмена (см. projectRounds). */
+export const reconcileRoundStore = round;
+
 export const readReconcileRound = round.read;
 export const startReconcileRound = round.start;
 export const finishReconcileRound = round.finish;

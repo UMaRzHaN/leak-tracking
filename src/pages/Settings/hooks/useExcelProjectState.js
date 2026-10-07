@@ -1,3 +1,8 @@
+import {
+  applyProjectRounds,
+  readProjectRounds,
+  restoreProjectRounds,
+} from "@/app/project/projectRounds";
 import { useCallback } from "react";
 import {
   readMonitoringRound,
@@ -52,6 +57,7 @@ export function useExcelProjectState({
       }
       if (result.portableArchive) {
         saveMonitoringRound(activeProject.id, result.monitoringRound ?? null);
+        applyProjectRounds(activeProject.id, result.rounds);
       }
       if (result.sync) {
         await writeProjectSyncState(activeProject.id, result.sync, leaks);
@@ -68,6 +74,7 @@ export function useExcelProjectState({
       varsRaw: localStorage.getItem(STORAGE_KEYS.PROJECT_VARS(projectId)),
       settings: readProjectSettings(projectId),
       monitoringRound: readMonitoringRound(projectId),
+      rounds: readProjectRounds(projectId),
       sync: await readProjectSyncStateAsync(projectId),
     };
   }, [activeProject]);
@@ -87,6 +94,7 @@ export function useExcelProjectState({
       );
       writeProjectSettings(projectId, snapshot.settings);
       saveMonitoringRound(projectId, snapshot.monitoringRound);
+      restoreProjectRounds(projectId, snapshot.rounds);
       await writeProjectSyncState(projectId, snapshot.sync, data);
     },
     [data, restoreProjectSnapshot],

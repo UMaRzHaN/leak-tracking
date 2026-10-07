@@ -11,6 +11,7 @@ export function buildProjectMeta({
   vars,
   settings,
   monitoringRound,
+  rounds,
   acceptances,
   survey,
   syncState,
@@ -29,6 +30,8 @@ export function buildProjectMeta({
     vars: vars ?? undefined,
     settings: settings ?? undefined,
     monitoringRound: monitoringRound ?? undefined,
+    // Обходы ремонтов и сверки (см. projectRounds).
+    rounds: rounds ?? undefined,
     acceptances: acceptances?.length ? acceptances : undefined,
     survey: survey ?? undefined,
     sync: syncState ?? undefined,

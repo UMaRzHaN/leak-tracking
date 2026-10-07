@@ -1,3 +1,4 @@
+import { applyProjectRounds } from "@/app/project/projectRounds";
 import { appError } from "@/utils/appError";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useProject } from "../project/ProjectContext";
@@ -238,6 +239,7 @@ export function useAppBootstrap() {
           type,
           leaks,
           monitoringRound,
+          rounds,
           vars,
           settings,
           syncId,
@@ -280,6 +282,7 @@ export function useAppBootstrap() {
             await writeProjectSyncState(newProject.id, sync, withPhotos);
           if (monitoringRound)
             saveMonitoringRound(newProject.id, monitoringRound);
+          applyProjectRounds(newProject.id, rounds);
           clearForm();
           return { project: newProject, leakCount: withPhotos.length };
         } catch (caught) {

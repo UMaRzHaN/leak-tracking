@@ -122,6 +122,7 @@ export async function parseExcelLeaks(
       columns: [],
       sheetName: "Project Backup",
       monitoringRound: embeddedBackup.monitoringRound ?? null,
+      rounds: embeddedBackup.rounds ?? null,
       project: embeddedBackup.project,
       vars: embeddedBackup.vars ?? null,
       settings: embeddedBackup.settings ?? null,

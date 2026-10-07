@@ -1,3 +1,4 @@
+import { validateRoundsMeta } from "./backupRoundsSchema";
 import { isValidLatitude, isValidLongitude } from "@/utils/coordinates";
 import {
   validateHistoryEntry,
@@ -483,6 +484,8 @@ export function validateProjectBackupMeta(parsed) {
       }
     }
   }
+
+  issues.push(...validateRoundsMeta(parsed.rounds));
 
   if (parsed.monitoringRound !== undefined) {
     if (!isPlainObject(parsed.monitoringRound)) {

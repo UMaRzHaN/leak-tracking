@@ -61,7 +61,18 @@ export function createProjectRound(name) {
     return round;
   }
 
-  return { read, start, finish, merge };
+  /**
+   * Обход целиком — так его приносят бэкап и обмен с другим телефоном;
+   * `null` (или не обход) — убрать: в архиве его не было.
+   */
+  function replace(projectId, round) {
+    const storageKey = key(projectId);
+    if (!storageKey) return;
+    if (round?.startedAt && Number(round.number) > 0) write(projectId, round);
+    else localStorage.removeItem(storageKey);
+  }
+
+  return { read, start, finish, merge, replace };
 }
 
 function withoutPrevious(round) {
