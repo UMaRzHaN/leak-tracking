@@ -2,6 +2,7 @@ import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import { parseNumericInput } from "@/utils/normalize/parseNumericInput";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
+import { cleanFloat } from "@/utils/normalize/cleanFloat";
 import s from "./EditTextField.module.scss";
 
 /**
@@ -25,8 +26,9 @@ export default function EditTextField({
 }) {
   const { t } = useTranslation();
   const id = useId();
-  // 0 is a valid numeric value — never coerce with ||
-  const display = value ?? "";
+  // 0 is a valid numeric value — never coerce with ||. A stored number is
+  // shown without its float tail; the value itself stays until edited.
+  const display = (numeric ? cleanFloat(value) : value) ?? "";
   const filled = display !== "" && display !== null;
 
   const handleChange = (raw) =>
