@@ -20,6 +20,8 @@ import {
   readMonitoringRound,
   saveMonitoringRound,
 } from "@/utils/monitoringRound";
+import { ROUND_KIND } from "@/app/project/roundConflict";
+import { useRoundStartGuard } from "@/app/project/hooks/useRoundStartGuard";
 import { dataUrlToBlob } from "@/utils/photoConversion";
 import { buildReopenedLeak } from "@/utils/reopenLeak";
 import { getRepairDonePhoto } from "@/domain/leakEvents";
@@ -178,8 +180,19 @@ export function useMonitoringPage({
     });
   };
 
+  const roundBlocked = useRoundStartGuard(
+    activeProject?.id ?? null,
+    ROUND_KIND.MONITORING,
+    setNotification,
+  );
   const startNewRound = () => {
     if (!allowNewRounds) return;
+    // Обход ремонтов не завершён — второй открытый обход не начинается.
+    if (roundBlocked()) {
+      setRoundConfirmOpen(false);
+      setPendingRoundLeakId(null);
+      return;
+    }
     const next = createMonitoringRound(nextMonitoringRoundNumber);
     const pendingLeak = data.find((leak) => leak.id === pendingRoundLeakId);
     saveMonitoringRound(activeProject?.id ?? null, next);

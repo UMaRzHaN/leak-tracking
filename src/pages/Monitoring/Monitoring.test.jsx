@@ -482,6 +482,33 @@ describe("Monitoring round flow", () => {
     expect(screen.queryByRole("heading", { name: "Leak check" })).toBeNull();
   });
 
+  it("не начинает обход, пока не завершён обход ремонтов", () => {
+    localStorage.setItem(
+      "app:project-1:repair_round_v1",
+      JSON.stringify({ number: 2, startedAt: "2026-10-02T00:00:00.000Z" }),
+    );
+    const leak = { id: "leak-1", leak_id: "1001", status: "open" };
+    render(
+      <Monitoring
+        data={[leak]}
+        setData={vi.fn()}
+        coords={null}
+        sharedFilters={{}}
+        userProfile={{ name: "Inspector" }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "All tags 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "Swipe monitoring" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start round" }));
+
+    expect(screen.getByText(/Repair round № 2 is still open/)).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Leak check" })).toBeNull();
+    expect(
+      localStorage.getItem("app:project-1:monitoring_round_v2"),
+    ).toBeNull();
+  });
+
   it("clears a pending monitoring request when round creation is cancelled", () => {
     const leak = { id: "leak-1", leak_id: "1001", status: "open" };
     render(

@@ -21,6 +21,8 @@ export const repairs = {
     roundReady: "Every repair checked",
     roundCompleted: "Round finished",
     finished: "Repair round finished",
+    blockedByMonitoring:
+      "Monitoring round № {{number}} is still open. Finish it before starting a repair round",
     newRoundTitle: "Start a new repair round?",
     newRoundDescription:
       "Every repair in progress is due for a check again. Earlier checks stay in the repair log.",

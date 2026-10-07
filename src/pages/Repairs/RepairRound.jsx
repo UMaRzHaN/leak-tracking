@@ -19,6 +19,8 @@ import { useProjectData } from "@/app/project/ProjectContext";
 import { useRoundPermissions } from "@/app/project/hooks/useAllowNewRounds";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import MonitoringRoundOverview from "@/pages/Monitoring/MonitoringRoundOverview";
+import { ROUND_KIND } from "@/app/project/roundConflict";
+import { useRoundStartGuard } from "@/app/project/hooks/useRoundStartGuard";
 import { repairRound } from "./repairRoundStore";
 import RepairLeakDetails from "./RepairLeakDetails";
 import {
@@ -88,7 +90,15 @@ export default function RepairRound({
     [filters.displayed, filter, round],
   );
   const roundActive = Boolean(round && !round.completedAt);
+  // Пока не завершён обход мониторинга, обход ремонтов не начинается.
+  const roundBlocked = useRoundStartGuard(
+    projectId,
+    ROUND_KIND.REPAIRS,
+    setNotification,
+  );
   const openCheck = (leak) => {
+    // Первая проверка без обхода начинает его — её держит то же правило.
+    if (!round && roundBlocked()) return;
     if (roundActive && isRepairChecked(leak, round)) setRepeatLeak(leak);
     else setCheckLeak(leak);
   };
@@ -178,7 +188,9 @@ export default function RepairRound({
           (round.completedAt || (summary.checked > 0 && summary.due === 0)),
         )}
         hasRound={Boolean(round)}
-        onStartRound={() => setConfirmNew(true)}
+        onStartRound={() => {
+          if (!roundBlocked()) setConfirmNew(true);
+        }}
         onFinishRound={() => {
           setRound(repairRound.finish(projectId));
           setNotification({
@@ -302,9 +314,10 @@ export default function RepairRound({
         description={t("repairs.round.newRoundDescription")}
         confirmLabel={t("repairs.round.newRoundConfirm")}
         onConfirm={() => {
+          setConfirmNew(false);
+          if (roundBlocked()) return setPendingLeak(null);
           setRound(repairRound.start(projectId));
           setFilter(FILTER.DUE);
-          setConfirmNew(false);
           if (pendingLeak) setCheckLeak(pendingLeak);
           setPendingLeak(null);
         }}

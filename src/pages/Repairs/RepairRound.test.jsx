@@ -358,4 +358,53 @@ describe("RepairRound", () => {
     fireEvent.click(screen.getByRole("button", { name: "Finish round" }));
     expect(screen.getByText("Round finished")).toBeTruthy();
   });
+
+  describe("пока идёт обход мониторинга", () => {
+    const monitoringRound = () =>
+      localStorage.setItem(
+        "app:p1:monitoring_round_v2",
+        JSON.stringify({
+          id: "round-1",
+          number: 3,
+          startedAt: "2026-10-01T00:00:00.000Z",
+        }),
+      );
+
+    it("первая проверка не начинает обход ремонтов", () => {
+      localStorage.clear();
+      monitoringRound();
+      renderRound([repair("r7")]);
+
+      fireEvent.click(screen.getByRole("button", { name: "Check" }));
+
+      expect(
+        screen.getByText(/Monitoring round № 3 is still open/),
+      ).toBeTruthy();
+      expect(screen.queryByLabelText("Still leaking?")).toBeNull();
+      expect(localStorage.getItem("app:p1:repair_round_v1")).toBeNull();
+    });
+
+    it("«Новый обход» после завершённого не начинается", () => {
+      localStorage.clear();
+      monitoringRound();
+      localStorage.setItem(
+        "app:p1:repair_round_v1",
+        JSON.stringify({
+          number: 1,
+          startedAt: "2026-09-01T00:00:00.000Z",
+          completedAt: "2026-09-05T00:00:00.000Z",
+        }),
+      );
+      renderRound([repair("r8")]);
+
+      fireEvent.click(screen.getByRole("button", { name: "New round" }));
+
+      expect(
+        screen.getByText(/Monitoring round № 3 is still open/),
+      ).toBeTruthy();
+      expect(
+        JSON.parse(localStorage.getItem("app:p1:repair_round_v1")).number,
+      ).toBe(1);
+    });
+  });
 });

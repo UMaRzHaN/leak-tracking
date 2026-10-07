@@ -51,6 +51,8 @@ export const monitoring = {
   resolvedResult: "Resolved",
   roundBadge: "Round",
   roundCompletedNotice: "Round completed",
+  roundBlockedByRepairs:
+    "Repair round № {{number}} is still open. Finish it before starting a monitoring round",
   photoSaveFailed: "Failed to save the monitoring photo",
   startNewRoundTitle: "Start a new round?",
   startMonitoringTitle: "Start monitoring?",

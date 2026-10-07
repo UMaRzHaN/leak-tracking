@@ -52,6 +52,8 @@ export const monitoring = {
   resolvedResult: "Устранено",
   roundBadge: "Обход",
   roundCompletedNotice: "Обход успешно завершён",
+  roundBlockedByRepairs:
+    "Идёт обход ремонтов № {{number}}. Завершите его, прежде чем начинать обход мониторинга",
   photoSaveFailed: "Не удалось сохранить фотографию мониторинга",
   startNewRoundTitle: "Начать новый обход?",
   startMonitoringTitle: "Начать мониторинг?",
