@@ -61,6 +61,7 @@ vi.mock("leaflet", () => {
   const api = {
     Layer,
     TileLayer,
+    DomEvent: { stopPropagation: vi.fn() },
     DomUtil: {
       create: vi.fn(() => {
         const canvas = document.createElement("canvas");
@@ -218,6 +219,16 @@ describe("offline map adapter", () => {
     expect(leaflet.map.setView).toHaveBeenCalledWith([41, 69], 18, {
       animate: true,
     });
+  });
+
+  it("тап по компоненту открывает карточку снизу, как у утечки", () => {
+    const onSelect = vi.fn();
+    const component = { id: "c1", kind: "component", lat: 41, lng: 69 };
+    addMarkers(leaflet.cluster, [component], leaflet.map, onSelect);
+
+    expect(leaflet.markers[0].bindPopup).not.toHaveBeenCalled();
+    leaflet.markers[0].handlers.click({});
+    expect(onSelect).toHaveBeenCalledWith(component);
   });
 
   it("обводит кругом погрешности только раскрытую точку", () => {

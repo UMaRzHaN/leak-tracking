@@ -55,6 +55,7 @@ export async function applyComponentCheck(
  *   roundNumber?: () => number|undefined,
  *   onSaved?: (card: any) => void,
  *   onError?: (error: unknown) => void,
+ *   onClose?: () => void,
  * }} options
  */
 export function useComponentCheck({
@@ -64,6 +65,8 @@ export function useComponentCheck({
   roundNumber = () => undefined,
   onSaved,
   onError,
+  // Осмотр закрыли крестиком, не сохранив.
+  onClose,
 }) {
   const { savePhoto } = usePhotoStorage();
   const { reconcilePhotoRequired } = usePhotoRequirements(project?.id ?? null);
@@ -95,7 +98,10 @@ export function useComponentCheck({
       photoRequired={reconcilePhotoRequired}
       saving={saving}
       onSave={save}
-      onClose={() => setCard(null)}
+      onClose={() => {
+        setCard(null);
+        onClose?.();
+      }}
     />
   ) : null;
 

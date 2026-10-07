@@ -242,6 +242,71 @@ describe("useMapPage", () => {
     expect(result.current.visibleLeaks).toHaveLength(2);
   });
 
+  it("поиск по бирке сужает и список, и булавки на карте", async () => {
+    const tagged = [
+      { ...leaks[0], leak_id: "0112" },
+      { ...leaks[1], leak_id: "0115" },
+    ];
+    let current;
+    function Harness() {
+      current = useMapPage({ leaks: tagged, coords: { lat: 41, lng: 69 } });
+      return <div ref={current.containerRef} />;
+    }
+    render(<Harness />, { wrapper: noRegistry });
+    await waitFor(() => expect(mapMocks.addMarkers).toHaveBeenCalled());
+
+    act(() => current.setTagQuery(" 0112 "));
+    await waitFor(() =>
+      expect(current.searchedLeaks.map((leak) => leak.id)).toEqual([
+        "near-open",
+      ]),
+    );
+    expect(mapMocks.addMarkers).toHaveBeenLastCalledWith(
+      { id: "markers" },
+      [expect.objectContaining({ id: "near-open" })],
+      expect.any(Object),
+      expect.any(Function),
+    );
+    // Выгрузка и счётчики живут по фильтрам карты, а не по поиску.
+    expect(current.visibleLeaks).toHaveLength(2);
+
+    act(() => current.setTagQuery(""));
+    await waitFor(() => expect(current.searchedLeaks).toHaveLength(2));
+  });
+
+  it("выбранная из списка бирка встаёт в поиск и оставляет на карте только себя", async () => {
+    // «433» входит в «4334»: поиск по вхождению показал бы обе.
+    const tagged = [
+      { ...leaks[0], leak_id: "433" },
+      { ...leaks[1], leak_id: "4334" },
+    ];
+    let current;
+    function Harness() {
+      current = useMapPage({ leaks: tagged, coords: { lat: 41, lng: 69 } });
+      return <div ref={current.containerRef} />;
+    }
+    render(<Harness />, { wrapper: noRegistry });
+    await waitFor(() => expect(mapMocks.addMarkers).toHaveBeenCalled());
+
+    act(() => current.pickTag(tagged[0]));
+    expect(current.tagQuery).toBe("433");
+    await waitFor(() =>
+      expect(current.searchedLeaks.map((leak) => leak.id)).toEqual([
+        "near-open",
+      ]),
+    );
+    expect(mapMocks.addMarkers).toHaveBeenLastCalledWith(
+      { id: "markers" },
+      [expect.objectContaining({ id: "near-open" })],
+      expect.any(Object),
+      expect.any(Function),
+    );
+
+    // Правка руками — снова по вхождению.
+    act(() => current.setTagQuery("433"));
+    await waitFor(() => expect(current.searchedLeaks).toHaveLength(2));
+  });
+
   it("initializes, updates, and destroys the map adapter", async () => {
     let current;
     function Harness({ gpsEnabled }) {
@@ -336,6 +401,7 @@ describe("useMapPage", () => {
       "upstream",
       "project-folder",
       expect.any(Function),
+      "leaks",
     );
     expect(current.notification).toEqual({
       type: "success",

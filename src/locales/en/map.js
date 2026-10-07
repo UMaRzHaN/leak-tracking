@@ -64,6 +64,14 @@ export const map = {
   },
 
   kml: {
+    monitoringDocumentName: "Monitoring round",
+    repairsDocumentName: "Repairs",
+    due: "To inspect",
+    checked: "Inspected this round",
+    lastInspection: "Last inspection",
+    neverInspected: "Never inspected",
+    brigade: "Crew",
+    exportLabel: "Export to KML: {{count}}",
     componentsDocumentName: "Components",
     schemeTag: "Drawing tag",
     documentName: "Leak Report",

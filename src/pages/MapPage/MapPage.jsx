@@ -2,25 +2,15 @@ import { useMapPage } from "./hooks/useMapPage";
 import { mapFiltersFor } from "./mapModuleFilters";
 import { useRenderMetric } from "@/utils/renderMetrics";
 import MapControls from "./components/MapControls";
+import MapPinCard from "./components/MapPinCard";
+import MapExportButton from "./components/MapExportButton";
 import TileProgress from "./components/TileProgress";
 import MobileSheet from "@/components/ui/MobileSheet/MobileSheet";
 import Notification from "@/components/ui/Notification/Notification";
-import {
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import RouteBanner from "@/features/route/RouteBanner";
 import { useLanguage } from "@/app/hooks/useLanguage";
-import {
-  countRepairStages,
-  getRepairLeaks,
-  getRepairStage,
-} from "@/domain/repairStages";
-import MapLeakCard from "./components/MapLeakCard";
+import { useRepairStages } from "./hooks/useRepairStages";
 import {
   MAP_FOCUS_ZOOM,
   SHOW_ON_MAP_EVENT,
@@ -29,12 +19,13 @@ import {
 import { globalScope } from "@/utils/globalScope";
 import { useLeakActions } from "@/pages/DataBase/hooks/useLeakActions";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
-import { MODULE } from "@/app/modules/activeModule";
-import { STATUS } from "@/utils/status";
 import s from "./MapPage.module.scss";
 
 const LeakDetailsSheet = lazy(
   () => import("@/features/leakDetails/LeakDetailsSheet"),
+);
+const MapComponentDetails = lazy(
+  () => import("./components/MapComponentDetails"),
 );
 
 export default function MapPage({
@@ -58,24 +49,20 @@ export default function MapPage({
   setData = /** @type {((next: any) => any)|null} */ (null),
   userProfile = /** @type {any} */ (null),
   onMonitor = /** @type {((leak: any) => void)|null} */ (null),
+  // «Сверить» у булавки компонента: ведёт на экран сверки (решает приложение).
+  onReconcile = /** @type {((component: any) => void)|null} */ (null),
 }) {
   useRenderMetric("MapPage");
   const { t } = useLanguage();
-  const [stage, setStage] = useState("all");
-  const repairLeaks = useMemo(
-    () => (repairMode ? getRepairLeaks(leaks) : null),
-    [repairMode, leaks],
+  // Компонент, открытый из карточки булавки целиком.
+  const [openComponentId, setOpenComponentId] = useState(
+    /** @type {any} */ (null),
   );
-  const stageCounts = useMemo(
-    () => (repairLeaks ? countRepairStages(repairLeaks) : null),
-    [repairLeaks],
+  const closeComponent = useCallback(() => setOpenComponentId(null), []);
+  const { stage, setStage, stageCounts, shownLeaks } = useRepairStages(
+    leaks,
+    repairMode,
   );
-  const shownLeaks = useMemo(() => {
-    if (!repairLeaks) return leaks;
-    return stage === "all"
-      ? repairLeaks
-      : repairLeaks.filter((leak) => getRepairStage(leak) === stage);
-  }, [repairLeaks, leaks, stage]);
 
   const {
     containerRef,
@@ -85,7 +72,10 @@ export default function MapPage({
     setNotification,
     tileProgress,
     downloading,
-    visibleLeaks,
+    searchedLeaks,
+    tagQuery,
+    setTagQuery,
+    pickTag,
     showsComponents,
     componentStatus,
     monitoringFilter,
@@ -112,6 +102,7 @@ export default function MapPage({
     handleDownloadArea,
     cancelDownload,
     handleExportKML,
+    exportCount,
     focusLeak,
     locateMe,
     selectedLeak,
@@ -200,6 +191,7 @@ export default function MapPage({
         stageCounts={stageCounts}
         onStageChange={setStage}
         onOpenSheet={() => setOpen(true)}
+        searchActive={tagQuery.trim() !== ""}
         onDownload={handleDownloadArea}
         onCancelDownload={cancelDownload}
         downloading={downloading}
@@ -229,39 +221,38 @@ export default function MapPage({
         onMonitoringChange={setMonitoringFilter}
       />
 
-      {activeProject && visibleLeaks.length > 0 && (
-        <div className={s.exportGroup}>
-          <button
-            type="button"
-            className={s.exportBtn}
-            onClick={handleExportKML}
-          >
-            ↗ KML
-          </button>
-        </div>
+      {activeProject && exportCount > 0 && (
+        <MapExportButton count={exportCount} onExport={handleExportKML} />
       )}
 
       {selectedLeak && !open && (
-        <MapLeakCard
-          leak={selectedLeak}
+        <MapPinCard
+          pin={selectedLeak}
           coords={gpsEnabled ? coords : null}
-          // «Проверить» — в мониторинге осмотр, в ремонтах проверка ремонта
-          // (куда ведёт, решает приложение). Принятый ремонт проверять нечем.
-          onMonitor={
-            module === MODULE.MONITORING ||
-            (module === MODULE.REPAIRS &&
-              (selectedLeak.status ?? STATUS.OPEN) !== STATUS.RESOLVED)
-              ? onMonitor
-              : null
-          }
-          onOpen={(leak) => {
+          module={module}
+          userProfile={userProfile}
+          onMonitor={onMonitor}
+          onReconcile={onReconcile}
+          onOpenLeak={(leak) => {
             selectLeak(null);
             leakActions.setActiveLeak(leak);
+          }}
+          onOpenComponent={(component) => {
+            selectLeak(null);
+            setOpenComponentId(component.id);
           }}
         />
       )}
 
       <Suspense fallback={null}>
+        {openComponentId != null && (
+          <MapComponentDetails
+            project={activeProject}
+            componentId={openComponentId}
+            userProfile={userProfile}
+            onClose={closeComponent}
+          />
+        )}
         {leakActions.activeLeak && setData && (
           <LeakDetailsSheet
             leak={leakActions.activeLeak}
@@ -278,10 +269,13 @@ export default function MapPage({
 
       <MobileSheet
         open={open}
-        leaks={visibleLeaks}
+        leaks={searchedLeaks}
+        query={tagQuery}
+        onQueryChange={setTagQuery}
         onClose={() => setOpen(false)}
         onSelect={(leak) => {
-          focusLeak(leak, 17);
+          pickTag(leak);
+          focusLeak(leak, MAP_FOCUS_ZOOM);
           setOpen(false);
         }}
       />

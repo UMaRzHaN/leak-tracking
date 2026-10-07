@@ -60,6 +60,11 @@ function createState() {
     tileProgress: { total: 1 },
     downloading: false,
     visibleLeaks: [{ id: "leak-1" }],
+    exportCount: 1,
+    searchedLeaks: [{ id: "leak-1" }],
+    tagQuery: "",
+    setTagQuery: vi.fn(),
+    pickTag: vi.fn(),
     monitoringFilter: "all",
     hasMonitoringRound: true,
     mainLocations: ["field"],
@@ -141,14 +146,15 @@ describe("MapPage", () => {
     expect(mapState.current.handleExportKML).toHaveBeenCalled();
     expect(mapState.current.focusLeak).toHaveBeenCalledWith(
       { id: "leak-1" },
-      17,
+      20,
     );
+    expect(mapState.current.pickTag).toHaveBeenCalledWith({ id: "leak-1" });
   });
 
   // Переключатель базы — единственная кнопка, у которой обе стороны тернарника
   // ведут в разные слои карты, поэтому проверяем оба направления.
   it("hides the KML export when there is nothing to export", () => {
-    mapState.current.visibleLeaks = [];
+    mapState.current.exportCount = 0;
     render(<MapPage leaks={[]} coords={null} />);
 
     expect(screen.queryByText(/KML/)).toBeNull();

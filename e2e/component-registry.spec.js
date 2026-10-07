@@ -213,6 +213,11 @@ test("сверяет компонент в разделе «Сверка»", asy
     .click();
   await expect(page.getByRole("button", { name: "К сверке 1" })).toBeVisible();
   await page.getByRole("button", { name: "Сверить", exact: true }).click();
+  // Сверки ещё нет — как в мониторинге, сначала вопрос о новой.
+  await page
+    .getByRole("dialog", { name: "Начать новую сверку?" })
+    .getByRole("button", { name: "Начать сверку", exact: true })
+    .click();
   // Осмотр — экраном, как проверка мониторинга; снимок по умолчанию обязателен.
   await expect(
     page.getByRole("heading", { name: "Осмотр компонента" }),

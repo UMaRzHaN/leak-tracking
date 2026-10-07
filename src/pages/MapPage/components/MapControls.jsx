@@ -41,6 +41,8 @@ export default function MapControls({
   stageCounts = /** @type {Record<string, number>|null} */ (null),
   onStageChange = /** @type {((value: string) => void)|null} */ (null),
   onOpenSheet,
+  // В поиске набрана бирка: булавки сужены ею и после закрытия списка.
+  searchActive = false,
   onDownload,
   onCancelDownload,
   downloading,
@@ -162,6 +164,7 @@ export default function MapControls({
           aria-label={t("map.controls.searchLeaks")}
         >
           <Icon name="search" size={18} />
+          {searchActive && <span className={s.topFilterDot} />}
         </button>
         <button
           type="button"

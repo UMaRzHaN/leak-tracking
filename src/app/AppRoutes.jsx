@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useCallback, useRef, useState } from "react";
 import { useLanguage } from "./hooks/useLanguage";
 import { isListPage } from "@/app/pages";
 import { MODULE } from "@/app/modules/activeModule";
@@ -202,6 +202,22 @@ export default function AppRoutes({
       ? (data.find((leak) => leak.id === repairQueue.ids[0]) ?? null)
       : null;
   const checkLabel = repairMode ? t("repairs.checkSwipe") : null;
+  // «Сверить» у булавки компонента на карте — как «Проверить» в
+  // мониторинге: осмотр на экране сверки, затем назад.
+  const [reconcileRequest, setReconcileRequest] = useState(
+    /** @type {{ id: any }|null} */ (null),
+  );
+  const reconcileReturnRef = useRef(/** @type {string|null} */ (null));
+  const consumeReconcileRequest = useCallback(
+    () => setReconcileRequest(null),
+    [],
+  );
+  const requestReconcile = (component) => {
+    if (component?.id == null) return;
+    reconcileReturnRef.current = page;
+    setReconcileRequest({ id: component.id });
+    setPage("reconcile");
+  };
 
   return (
     <div
@@ -303,6 +319,19 @@ export default function AppRoutes({
             project={activeProject}
             sharedFilters={sharedFilters}
             userProfile={userProfile}
+            requestedComponentId={reconcileRequest?.id ?? null}
+            onRequestedComponentConsumed={consumeReconcileRequest}
+            // Как у проверки мониторинга: назад туда, откуда позвали, а итог
+            // сохранения — уведомлением там.
+            onLeaveCheck={(event) => {
+              const back = reconcileReturnRef.current;
+              reconcileReturnRef.current = null;
+              if (back == null) return false;
+              setPage(back);
+              if (event?.saved) notifyApp?.("success", event.saved);
+              if (event?.warning) notifyApp?.("warning", event.warning);
+              return true;
+            }}
           />
         )}
 
@@ -400,6 +429,7 @@ export default function AppRoutes({
             setData={save}
             userProfile={userProfile}
             onMonitor={checkLeak}
+            onReconcile={requestReconcile}
             repairMode={module === "repairs"}
           />
         )}

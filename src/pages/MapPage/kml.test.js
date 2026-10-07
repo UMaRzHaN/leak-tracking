@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { translate, translateRu } from "@/test/translate";
-import { exportComponentsKML, exportLeaksKML } from "./kml";
+import { KML_MODE, exportComponentsKML, exportLeaksKML } from "./kml";
 
 describe("exportLeaksKML", () => {
   it("escapes XML tag values and keeps description content readable", () => {
@@ -117,5 +117,83 @@ describe("exportComponentsKML", () => {
     );
 
     expect(kml).not.toContain("<Placemark>");
+  });
+});
+
+describe("KML по смыслу карты", () => {
+  const place = {
+    subdivision: "УПГ",
+    deposit: "Бузахур",
+    lat: 38.4,
+    lng: 66.1,
+  };
+  const open = { id: "1", leak_id: "101", status: "open", ...place };
+  const repair = { id: "2", leak_id: "102", status: "in_progress", ...place };
+  const done = { id: "3", leak_id: "103", status: "resolved", ...place };
+  const folderNames = (kml) =>
+    [...kml.matchAll(/<Folder>\s*<name>([^<]*)<\/name>/g)].map((m) => m[1]);
+
+  it("утечки — папками по статусу, внутри по месту", () => {
+    const kml = exportLeaksKML([done, open], "upstream", translateRu);
+    expect(folderNames(kml)).toEqual([
+      "Открыта (1)",
+      "Бузахур",
+      "Устранена (1)",
+      "Бузахур",
+    ]);
+    // Цвет метки — цвет статуса, как у булавки.
+    expect(kml).toContain("color=E53935");
+    expect(kml).toContain("color=43A047");
+  });
+
+  it("мониторинг в обходе — к осмотру отдельно, осмотренные серым", () => {
+    const kml = exportLeaksKML(
+      [
+        { ...open, _checkedInRound: false },
+        { ...repair, _checkedInRound: true },
+      ],
+      "upstream",
+      translateRu,
+      KML_MODE.MONITORING,
+    );
+    const names = folderNames(kml);
+    expect(names[0]).toMatch(/^К осмотру · Открыта \(1\)$/);
+    expect(names).toContain("Осмотрено в обходе (1)");
+    expect(kml).toContain("color=9E9E9E");
+    expect(kml).toContain("Последний осмотр:</b> Не осматривалась");
+    expect(kml).toContain("<name>Обход мониторинга</name>");
+  });
+
+  it("ремонты — папками по стадии работ", () => {
+    const kml = exportLeaksKML(
+      [open, repair],
+      "upstream",
+      translateRu,
+      KML_MODE.REPAIRS,
+    );
+    expect(folderNames(kml)).toEqual([
+      "Ожидает МТР (1)",
+      "Бузахур",
+      "В ремонте (1)",
+      "Бузахур",
+    ]);
+  });
+
+  it("инвентаризация — папками по состоянию, с датой осмотра", () => {
+    const kml = exportComponentsKML(
+      [
+        {
+          id: "c",
+          component_uid: "0001",
+          component_status: "В работе",
+          inspected_at: "2026-10-07T10:00:00.000Z",
+          ...place,
+        },
+      ],
+      "upstream",
+      translateRu,
+    );
+    expect(folderNames(kml)[0]).toBe("В работе (1)");
+    expect(kml).toContain("Последний осмотр:</b> 2026-10-07");
   });
 });

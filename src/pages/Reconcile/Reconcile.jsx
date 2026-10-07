@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import ComponentCardCompact from "@/features/componentRegistry/ComponentCardCompact";
 import { useComponentCheck } from "@/features/componentRegistry/useComponentCheck";
@@ -45,7 +45,21 @@ function matches(component, query) {
  * кнопкой «Сверить». Сверить — это осмотр: подтвердить или поправить
  * состояние, и в карточке встанет отметка времени и подпись.
  */
-export default function Reconcile({ project, sharedFilters, userProfile }) {
+export default function Reconcile({
+  project,
+  sharedFilters,
+  userProfile,
+  // Осмотр, позванный с другого экрана (булавка на карте), — как проверка
+  // мониторинга: открыть его сразу, а по сохранению или крестику вернуть
+  // туда. `onLeaveCheck` отвечает, увело ли приложение с экрана.
+  requestedComponentId = /** @type {any} */ (null),
+  onRequestedComponentConsumed = /** @type {(() => void)|undefined} */ (
+    undefined
+  ),
+  onLeaveCheck = /** @type {((event?: {saved?: string, warning?: string}) => boolean)|null} */ (
+    null
+  ),
+}) {
   const { t, lang } = useLanguage();
   const { components, fields, updateComponent, removeComponent, loading } =
     useComponentRegistry(project);
@@ -95,20 +109,28 @@ export default function Reconcile({ project, sharedFilters, userProfile }) {
     });
   }, [scoped, filter, search, round]);
 
-  // Осмотр — экраном, как проверка в обходе мониторинга. Сверка без
-  // начатого номера начинает первую до записи — иначе отметка ушла бы в
-  // никуда и компонент не встал бы в «Сверено».
+  // Осмотр пришёл с другого экрана: его конец — сохранение, крестик или
+  // отказ в подтверждении — возвращает туда.
+  const returningRef = useRef(false);
+  /** @param {{saved?: string, warning?: string}} [event] */
+  const leave = (event) => {
+    if (!returningRef.current) return false;
+    returningRef.current = false;
+    return Boolean(onLeaveCheck?.(event));
+  };
+
+  // Осмотр — экраном, как проверка в обходе мониторинга.
   const check = useComponentCheck({
     project,
     updateComponent,
     userProfile,
-    roundNumber: () => {
-      const current = round ?? startReconcileRound(project?.id);
-      if (!round) setRound(current);
-      return activeRoundNumber(current);
+    // Сверку осмотр уже не начинает: её начинают подтверждением до него.
+    roundNumber: () => activeRoundNumber(round),
+    onSaved: () => {
+      if (leave({ saved: t("reconcile.saved") })) return;
+      setNotification({ type: "success", message: t("reconcile.saved") });
     },
-    onSaved: () =>
-      setNotification({ type: "success", message: t("reconcile.saved") }),
+    onClose: () => leave(),
     onError: (error) =>
       setNotification({
         type: "error",
@@ -123,11 +145,46 @@ export default function Reconcile({ project, sharedFilters, userProfile }) {
     updateComponent,
     removeComponent,
   });
+  // Как проверка в мониторинге: без идущей сверки осмотр сначала спрашивает,
+  // начинать ли новую, а не начинает её молча.
   const openCheck = (component) => {
     const active = round && !round.completedAt;
-    if (active && isReconciled(component, round)) setRepeatCard(component);
+    if (!active) {
+      if (!allowed.allowNew) {
+        const warning = t("reconcile.disabled");
+        if (!leave({ warning })) {
+          setNotification({ type: "warning", message: warning });
+        }
+        return;
+      }
+      setPendingCard(component);
+      setConfirmNew(true);
+      return;
+    }
+    if (isReconciled(component, round)) setRepeatCard(component);
     else check.open(component);
   };
+
+  const openCheckRef = useRef(openCheck);
+  openCheckRef.current = openCheck;
+  // Один запрос — один осмотр, даже если список перерисуется до того, как
+  // приложение запрос снимет.
+  const handledRequestRef = useRef(/** @type {any} */ (null));
+  useEffect(() => {
+    if (requestedComponentId == null) {
+      handledRequestRef.current = null;
+      return;
+    }
+    if (loading || handledRequestRef.current === requestedComponentId) return;
+    handledRequestRef.current = requestedComponentId;
+    const component = components.find(
+      (item) => item?.id === requestedComponentId,
+    );
+    onRequestedComponentConsumed?.();
+    if (!component) return;
+    returningRef.current = true;
+    openCheckRef.current(component);
+  }, [requestedComponentId, loading, components, onRequestedComponentConsumed]);
 
   return (
     <div className={`${s.page} content`}>
@@ -298,6 +355,7 @@ export default function Reconcile({ project, sharedFilters, userProfile }) {
         }}
         onCancel={() => {
           setConfirmNew(false);
+          if (pendingCard) leave();
           setPendingCard(null);
         }}
       />
@@ -317,7 +375,10 @@ export default function Reconcile({ project, sharedFilters, userProfile }) {
           check.open(repeatCard);
           setRepeatCard(null);
         }}
-        onCancel={() => setRepeatCard(null)}
+        onCancel={() => {
+          setRepeatCard(null);
+          leave();
+        }}
       />
 
       <ConfirmSheet

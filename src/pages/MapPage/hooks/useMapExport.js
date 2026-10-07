@@ -8,6 +8,8 @@ export function useMapExport({
   projectFolder,
   notify,
   showsComponents = false,
+  // Раскладка файла по смыслу карты: "leaks" | "monitoring" | "repairs".
+  mode = "leaks",
 }) {
   const { t } = useLanguage();
 
@@ -17,17 +19,27 @@ export function useMapExport({
     // у железа нет скорости утечки, зато есть номер на схеме и состояние.
     const { saveComponentsKML, saveLeaksKML } =
       await import("@/pages/MapPage/kml");
-    const save = showsComponents ? saveComponentsKML : saveLeaksKML;
 
     await handleExport({
       leaks: visibleLeaks,
-      saveFn: () => save(visibleLeaks, projectType, projectFolder, t),
+      saveFn: () =>
+        showsComponents
+          ? saveComponentsKML(visibleLeaks, projectType, projectFolder, t)
+          : saveLeaksKML(visibleLeaks, projectType, projectFolder, t, mode),
       onSuccess: (result) =>
         notify("success", result?.message || t("map.kmlExported")),
       onError: (message) => notify("error", message),
       t,
     });
-  }, [visibleLeaks, projectType, projectFolder, notify, showsComponents, t]);
+  }, [
+    visibleLeaks,
+    projectType,
+    projectFolder,
+    notify,
+    showsComponents,
+    mode,
+    t,
+  ]);
 
   return { handleExportKML };
 }

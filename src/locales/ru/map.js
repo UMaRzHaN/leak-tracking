@@ -65,6 +65,14 @@ export const map = {
   },
 
   kml: {
+    monitoringDocumentName: "Обход мониторинга",
+    repairsDocumentName: "Ремонты",
+    due: "К осмотру",
+    checked: "Осмотрено в обходе",
+    lastInspection: "Последний осмотр",
+    neverInspected: "Не осматривалась",
+    brigade: "Бригада",
+    exportLabel: "Выгрузить в KML: {{count}}",
     componentsDocumentName: "Компоненты",
     schemeTag: "Номер на схеме",
     documentName: "Отчет по утечкам",

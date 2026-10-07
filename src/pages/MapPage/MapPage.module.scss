@@ -236,8 +236,13 @@
 }
 
 .exportBtn {
-  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 8px 6px 12px;
   border-radius: 20px;
+  font-weight: 700;
   border: none;
   background: var(--c-surface);
   color: var(--c-text);
@@ -255,6 +260,17 @@
   &:active {
     transform: scale(0.97);
   }
+}
+
+.exportCount {
+  min-width: 22px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--c-accent);
+  color: #fff;
+  font-size: var(--fs-2xs);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 
 :global([data-theme="dark"]) {
@@ -394,6 +410,17 @@
   font-weight: 800;
   line-height: 14px;
   text-align: center;
+}
+
+.topFilterDot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--c-surface);
+  border-radius: 50%;
+  background: var(--c-accent);
 }
 
 /* Зум Leaflet — под строкой поиска, а не под ней внахлёст. */

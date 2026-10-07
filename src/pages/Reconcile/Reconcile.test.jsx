@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ open: vi.fn() }));
+const mocks = vi.hoisted(() => ({ open: vi.fn(), checkOptions: null }));
 
 vi.mock("@/app/hooks/useLanguage", async () => {
   const { englishLanguageHook } = await import("@/test/translate");
@@ -43,7 +43,10 @@ vi.mock("@/features/componentRegistry/ComponentDetailsSheet", () => ({
   ),
 }));
 vi.mock("@/features/componentRegistry/useComponentCheck", () => ({
-  useComponentCheck: () => ({ open: mocks.open, element: null }),
+  useComponentCheck: (options) => {
+    mocks.checkOptions = options;
+    return { open: mocks.open, element: null };
+  },
 }));
 
 const Reconcile = (await import("./Reconcile")).default;
@@ -86,5 +89,70 @@ describe("Reconcile", () => {
     fireEvent.click(screen.getByRole("button", { name: /^All 1/ }));
     fireEvent.click(screen.getByRole("button", { name: "open 0001" }));
     expect(screen.getByRole("dialog", { name: "card 0001" })).toBeTruthy();
+  });
+
+  it("с карты открывает осмотр сразу и после сохранения возвращает туда", () => {
+    const onLeaveCheck = vi.fn(() => true);
+    const consumed = vi.fn();
+    render(
+      <Reconcile
+        project={{ id: "p1" }}
+        userProfile={{ name: "Азиз" }}
+        requestedComponentId="a"
+        onRequestedComponentConsumed={consumed}
+        onLeaveCheck={onLeaveCheck}
+      />,
+    );
+
+    expect(consumed).toHaveBeenCalledOnce();
+    // Сверки ещё нет — как в мониторинге, сначала вопрос о новой.
+    expect(mocks.open).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    expect(mocks.open).toHaveBeenCalledOnce();
+    expect(mocks.open).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "a" }),
+    );
+
+    mocks.checkOptions.onSaved();
+    expect(onLeaveCheck).toHaveBeenCalledWith({
+      saved: "Reconciliation saved",
+    });
+    // Следующий осмотр — уже здесь, на экране сверки: назад не уводит.
+    mocks.checkOptions.onClose();
+    expect(onLeaveCheck).toHaveBeenCalledOnce();
+  });
+
+  it("с карты: отказ от повторной сверки тоже возвращает назад", () => {
+    localStorage.setItem(
+      "app:p1:reconcile_round_v1",
+      JSON.stringify({ number: 3, startedAt: "2026-10-07T09:00:00.000Z" }),
+    );
+    const onLeaveCheck = vi.fn(() => true);
+    render(
+      <Reconcile
+        project={{ id: "p1" }}
+        userProfile={{ name: "Азиз" }}
+        requestedComponentId="a"
+        onLeaveCheck={onLeaveCheck}
+      />,
+    );
+
+    expect(mocks.open).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "common.cancel" }));
+    expect(onLeaveCheck).toHaveBeenCalledWith(undefined);
+  });
+
+  it("без идущей сверки сначала спрашивает, начинать ли новую", () => {
+    render(<Reconcile project={{ id: "p1" }} userProfile={{ name: "Азиз" }} />);
+    fireEvent.click(screen.getByRole("button", { name: /^All 1/ }));
+    fireEvent.click(screen.getByRole("button", { name: "swipe 0001" }));
+
+    expect(mocks.open).not.toHaveBeenCalled();
+    expect(screen.getByText("Start a new reconciliation?")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    expect(mocks.open).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "a" }),
+    );
+    expect(mocks.checkOptions.roundNumber()).toBe(1);
   });
 });

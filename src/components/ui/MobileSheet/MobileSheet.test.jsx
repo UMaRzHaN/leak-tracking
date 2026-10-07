@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import MobileSheet from "./MobileSheet";
 
@@ -24,6 +24,8 @@ function sheetProps(overrides = {}) {
   return {
     open: true,
     leaks: [kashaganLeak, tengizLeak],
+    query: "",
+    onQueryChange: vi.fn(),
     onClose: vi.fn(),
     onSelect: vi.fn(),
     ...overrides,
@@ -44,25 +46,22 @@ describe("MobileSheet tag search", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("searches only by tag number", async () => {
-    render(<MobileSheet {...sheetProps()} />);
+  it("reports the typed tag to the map, which owns the filtering", () => {
+    const onQueryChange = vi.fn();
+    render(<MobileSheet {...sheetProps({ query: "10", onQueryChange })} />);
     const search = screen.getByRole("searchbox", {
       name: "Search by tag number",
     });
 
+    expect(search.value).toBe("10");
     fireEvent.change(search, { target: { value: "1001" } });
-    await waitFor(() => expect(screen.getByText(/1001/)).toBeTruthy());
-    expect(screen.queryByText(/1002/)).toBeNull();
+    expect(onQueryChange).toHaveBeenCalledWith("1001");
   });
 
-  it("does not search leak cards by location or object text", async () => {
-    render(<MobileSheet {...sheetProps()} />);
-    const search = screen.getByRole("searchbox", {
-      name: "Search by tag number",
-    });
+  it("shows the empty state when nothing matches", () => {
+    render(<MobileSheet {...sheetProps({ leaks: [], query: "9999" })} />);
 
-    fireEvent.change(search, { target: { value: "Кашаганское" } });
-    await waitFor(() => expect(screen.getByText("Nothing found")).toBeTruthy());
+    expect(screen.getByText("Nothing found")).toBeTruthy();
   });
 
   it("no longer offers location checkboxes", () => {

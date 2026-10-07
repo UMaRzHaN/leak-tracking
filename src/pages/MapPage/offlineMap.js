@@ -11,7 +11,6 @@ import {
   clearAccuracyCircle,
   createPopupEl,
   heatWeight,
-  isComponentMarker,
   leakIcon,
   showAccuracyCircle,
 } from "./mapMarkers";
@@ -338,8 +337,8 @@ export function addMarkers(
   markersLayer,
   leaks = /** @type {any[]} */ ([]),
   map = /** @type {any} */ (null),
-  // Тап по утечке (5d): карточка снизу вместо всплывающей подсказки. Железо
-  // и вызовы без обработчика остаются с подсказкой.
+  // Тап по булавке (5d): карточка снизу вместо всплывающей подсказки — у
+  // утечки и у железа одинаково. Вызовы без обработчика остаются с подсказкой.
   onSelect = /** @type {((leak: any) => void)|null} */ (null),
 ) {
   if (!markersLayer) return;
@@ -352,7 +351,7 @@ export function addMarkers(
 
     const latlng = /** @type {[number, number]} */ ([leak.lat, leak.lng]);
     const accuracy = accuracyMetres(leak);
-    if (onSelect && !isComponentMarker(leak)) {
+    if (onSelect) {
       L.marker(latlng, { icon: leakIcon(leak) })
         .on("click", (event) => {
           // Иначе щелчок дойдёт до карты, и она тут же закроет карточку.
