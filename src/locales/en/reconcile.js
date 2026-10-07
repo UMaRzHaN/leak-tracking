@@ -1,5 +1,16 @@
 export const reconcile = {
-  title: "Reconciliation No. {{number}}",
+  badge: "Reconciliation",
+  startRound: "Start reconciliation",
+  finishRound: "Finish reconciliation",
+  roundReady: "Everything reconciled",
+  roundCompleted: "Reconciliation finished",
+  finished: "Reconciliation finished",
+  mergeAction: "Merge into No. {{number}}",
+  mergeTitle: "Merge into reconciliation No. {{number}}?",
+  mergeDescription:
+    "The current reconciliation was started by mistake: it merges into the previous one, and everything reconciled in it counts there.",
+  mergeConfirm: "Merge",
+  merged: "Reconciliation No. {{number}} is current again",
   noRound: "No reconciliation yet",
   newRound: "New reconciliation",
   newRoundTitle: "Start a new reconciliation?",

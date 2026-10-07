@@ -166,4 +166,43 @@ describe("RepairRound", () => {
     const [back] = setData.mock.calls[0][0];
     expect(back.status).toBe("open");
   });
+
+  it("starts the first round with the first check", async () => {
+    localStorage.clear();
+    renderRound([repair("r5")]);
+    expect(screen.getByText("No repair round yet")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Check" }));
+    fireEvent.change(await screen.findByLabelText("Still leaking?"), {
+      target: { value: "yes" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Keep in repair" }));
+
+    expect(await screen.findByText("Repair round № 1")).toBeTruthy();
+  });
+
+  it("offers to finish a round once every repair in it is checked", () => {
+    localStorage.clear();
+    localStorage.setItem(
+      "app:p1:repair_round_v1",
+      JSON.stringify({ number: 2, startedAt: "2026-10-02T00:00:00.000Z" }),
+    );
+    const marked = repair("r6", {
+      events: [
+        started,
+        {
+          id: "m",
+          type: "repair_stage",
+          date: "2026-10-03T08:00:00Z",
+          stage: "in_repair",
+        },
+      ],
+    });
+    renderRound([marked]);
+
+    expect(screen.getByText("Every repair checked")).toBeTruthy();
+    expect(screen.getByText("1/1")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Finish round" }));
+    expect(screen.getByText("Round finished")).toBeTruthy();
+  });
 });

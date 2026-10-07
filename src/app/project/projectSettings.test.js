@@ -34,6 +34,8 @@ describe("projectSettings", () => {
       allowNewRounds: true,
       allowFinishRounds: true,
       allowMergeRounds: true,
+      reconcile: { allowNew: true, allowFinish: true, allowMerge: true },
+      repairs: { allowNew: true, allowFinish: true, allowMerge: true },
       updatedAt: 0,
     });
   });
@@ -63,6 +65,8 @@ describe("projectSettings", () => {
       allowNewRounds: true,
       allowFinishRounds: true,
       allowMergeRounds: true,
+      reconcile: { allowNew: true, allowFinish: true, allowMerge: true },
+      repairs: { allowNew: true, allowFinish: true, allowMerge: true },
       updatedAt: 50,
     });
 
@@ -158,5 +162,35 @@ describe("allowMergeRounds", () => {
 
     writeProjectSettings("p2", readProjectSettings("p1"));
     expect(readAllowMergeRounds("p2")).toBe(false);
+  });
+});
+
+describe("reconcile settings", () => {
+  it("allows everything by default and keeps each permission apart", async () => {
+    const {
+      readRoundPermissions,
+      writeRoundPermissions,
+      readAllowNewRounds,
+      readProjectSettings,
+      writeProjectSettings,
+    } = await import("./projectSettings");
+    localStorage.clear();
+    expect(readRoundPermissions("p1", "reconcile")).toEqual({
+      allowNew: true,
+      allowFinish: true,
+      allowMerge: true,
+    });
+    writeRoundPermissions("p1", "reconcile", { allowMerge: false });
+    expect(readRoundPermissions("p1", "repairs").allowMerge).toBe(true);
+    expect(readRoundPermissions("p1", "reconcile")).toEqual({
+      allowNew: true,
+      allowFinish: true,
+      allowMerge: false,
+    });
+    // Разрешения сверки не трогают обходы мониторинга.
+    expect(readAllowNewRounds("p1")).toBe(true);
+
+    writeProjectSettings("p2", readProjectSettings("p1"));
+    expect(readRoundPermissions("p2", "reconcile").allowMerge).toBe(false);
   });
 });

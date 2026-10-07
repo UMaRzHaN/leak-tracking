@@ -1,3 +1,5 @@
+import { shortenPlaceName } from "@/utils/abbreviations";
+
 /**
  * Подпись выбранного места — та же, что в шапке: «Все», путь через «›» или
  * «Несколько мест». Экран экспорта (8a) показывает её у своей строки области,
@@ -7,7 +9,9 @@
  * @param {(key: string) => string} t
  */
 export function formatLocationScopeLabel(locationScope, t) {
-  const name = (value) => value || t("locationScope.unnamed");
+  // Названия — с сокращениями из словаря: путь «Газлийское НГДУ › ДКС-1»
+  // помещается в шапку, а полный уже нет.
+  const name = (value) => shortenPlaceName(value) || t("locationScope.unnamed");
   if (locationScope?.path === null) {
     const selection = locationScope.selection;
     return selection

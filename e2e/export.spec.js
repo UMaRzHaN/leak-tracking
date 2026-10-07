@@ -111,7 +111,9 @@ test("кладёт в книгу журнал ремонтов и приёмку
     name.endsWith(".xlsx"),
   );
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(await zip.file(xlsxName).async("nodebuffer"));
+  // ExcelJS ждёт свой тип Buffer, и с Buffer новых @types/node он не сходится
+  // по полям, которые ему не нужны; ArrayBuffer он принимает без оговорок.
+  await workbook.xlsx.load(await zip.file(xlsxName).async("arraybuffer"));
 
   const log = workbook.getWorksheet("Журнал ремонтов");
   const logText = JSON.stringify(log.getSheetValues());

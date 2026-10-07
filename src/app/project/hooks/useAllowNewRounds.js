@@ -4,9 +4,11 @@ import {
   readAllowFinishRounds,
   readAllowMergeRounds,
   readAllowNewRounds,
+  readRoundPermissions,
   writeAllowFinishRounds,
   writeAllowMergeRounds,
   writeAllowNewRounds,
+  writeRoundPermissions,
 } from "@/app/project/projectSettings";
 
 /**
@@ -66,4 +68,42 @@ export function useAllowMergeRounds(projectId) {
     readAllowMergeRounds,
     writeAllowMergeRounds,
   );
+}
+
+/**
+ * Разрешения обхода `kind` (сверка реестра, обход ремонтов): новый,
+ * завершение, объединение.
+ *
+ * @param {string|null} projectId
+ * @param {"reconcile"|"repairs"} kind
+ * @returns {[{allowNew: boolean, allowFinish: boolean, allowMerge: boolean},
+ *   (patch: {allowNew?: boolean, allowFinish?: boolean, allowMerge?: boolean}) => void]}
+ */
+export function useRoundPermissions(projectId, kind) {
+  const [settings, setSettings] = useState(() =>
+    readRoundPermissions(projectId, kind),
+  );
+
+  useEffect(() => {
+    setSettings(readRoundPermissions(projectId, kind));
+    if (!projectId || typeof window === "undefined") return undefined;
+    const handle = (event) => {
+      if (event.detail?.projectId === projectId) {
+        setSettings(readRoundPermissions(projectId, kind));
+      }
+    };
+    window.addEventListener(PROJECT_SETTINGS_UPDATED_EVENT, handle);
+    return () =>
+      window.removeEventListener(PROJECT_SETTINGS_UPDATED_EVENT, handle);
+  }, [projectId, kind]);
+
+  const update = useCallback(
+    (patch) => {
+      writeRoundPermissions(projectId, kind, patch);
+      setSettings(readRoundPermissions(projectId, kind));
+    },
+    [projectId, kind],
+  );
+
+  return [settings, update];
 }

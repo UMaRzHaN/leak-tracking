@@ -217,4 +217,16 @@ test("сверяет компонент в разделе «Сверка»", asy
 
   await expect(page.getByRole("button", { name: "Сверено 1" })).toBeVisible();
   await expect(page.getByText("Сверка № 1")).toBeVisible();
+
+  // Всё сверено — карточка завершения, как у обхода мониторинга.
+  await expect(page.getByText("Всё сверено", { exact: true })).toBeVisible();
+  await page
+    .getByRole("button", { name: "Завершить сверку", exact: true })
+    .click();
+  await expect(
+    page.getByText("Сверка завершена", { exact: true }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Новая сверка", exact: true }),
+  ).toBeVisible();
 });

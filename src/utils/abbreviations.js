@@ -48,6 +48,8 @@ export const ABBREV_MAP = {
   gprs: "пункт редуцирования газа",
   ugs: "подземное хранилище газа",
   fs: "факельное хозяйство",
+  gcc: "газохимический комплекс",
+  gpp: "газоперерабатывающий завод",
 
   змс: "задвижка механическая стальная",
   зд: "задвижка дисковая",
@@ -88,4 +90,46 @@ export const ABBREV_MAP = {
   прг: "пункт редуцирования газа",
   пхг: "подземное хранилище газа",
   фх: "факельное хозяйство",
+  гхк: "газохимический комплекс",
+  гпз: "газоперерабатывающий завод",
 };
+
+/*
+ * Обратный словарь для подписей мест: «Газлийское нефтегазодобывающее
+ * управление» → «Газлийское НГДУ». Только русские сокращения и только
+ * многословные названия — одиночное слово («Пылеуловитель № 3») понятнее
+ * целиком. Длинные фразы проверяются раньше: иначе «нефтегазодобывающее
+ * управление» распалось бы на «нефте» и «ГДУ». Меняется только подпись на
+ * экране, данные остаются полными.
+ */
+const PLACE_ABBREVIATIONS = new Map(
+  Object.entries(ABBREV_MAP)
+    .filter(([abbr, phrase]) => /^[а-яё]+$/.test(abbr) && phrase.includes(" "))
+    .map(([abbr, phrase]) => [phrase.toLowerCase(), abbr.toUpperCase()]),
+);
+
+const PLACE_PATTERN = new RegExp(
+  `(?<!\\p{L})(${[...PLACE_ABBREVIATIONS.keys()]
+    .sort((left, right) => right.length - left.length)
+    .map((phrase) => phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .map((phrase) => phrase.replace(/ /g, "\\s+"))
+    .join("|")})(?!\\p{L})`,
+  "giu",
+);
+
+/**
+ * @template T
+ * @param {T} value
+ * @returns {T}
+ */
+export function shortenPlaceName(value) {
+  if (typeof value !== "string" || !value) return value;
+  return /** @type {T} */ (
+    value.replace(
+      PLACE_PATTERN,
+      (match) =>
+        PLACE_ABBREVIATIONS.get(match.toLowerCase().replace(/\s+/g, " ")) ??
+        match,
+    )
+  );
+}

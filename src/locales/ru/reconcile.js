@@ -1,5 +1,16 @@
 export const reconcile = {
-  title: "Сверка № {{number}}",
+  badge: "Сверка",
+  startRound: "Начать сверку",
+  finishRound: "Завершить сверку",
+  roundReady: "Всё сверено",
+  roundCompleted: "Сверка завершена",
+  finished: "Сверка завершена",
+  mergeAction: "Объединить с № {{number}}",
+  mergeTitle: "Объединить со сверкой № {{number}}?",
+  mergeDescription:
+    "Текущую сверку начали по ошибке: она вливается в предыдущую, и всё сверенное в ней засчитывается туда.",
+  mergeConfirm: "Объединить",
+  merged: "Сверка № {{number}} снова текущая",
   noRound: "Сверка не начата",
   newRound: "Новая сверка",
   newRoundTitle: "Начать новую сверку?",

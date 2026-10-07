@@ -45,6 +45,10 @@ export const STORAGE_KEYS = {
     `${APP_PREFIX}:${projectId}:round_finish_locked_${VERSION}`,
   PROJECT_ROUND_MERGE_LOCKED: (projectId) =>
     `${APP_PREFIX}:${projectId}:round_merge_locked_${VERSION}`,
+  PROJECT_RECONCILE_SETTINGS: (projectId) =>
+    `${APP_PREFIX}:${projectId}:reconcile_settings_${VERSION}`,
+  PROJECT_REPAIR_ROUND_SETTINGS: (projectId) =>
+    `${APP_PREFIX}:${projectId}:repair_round_settings_${VERSION}`,
   // Поправки к распознанной речи живут при проекте, а не при устройстве:
   // ошибки распознавателя одинаковы у всей бригады, и найденную пару разумнее
   // раздать обменом архива, чем заводить на каждом телефоне заново.

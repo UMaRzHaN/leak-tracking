@@ -33,6 +33,8 @@ const SETTINGS = {
   allowNewRounds: true,
   allowFinishRounds: true,
   allowMergeRounds: true,
+  reconcile: { allowNew: true, allowFinish: true, allowMerge: true },
+  repairs: { allowNew: true, allowFinish: true, allowMerge: true },
   updatedAt: 200,
 };
 
@@ -189,6 +191,8 @@ describe("project settings backup and synchronization", () => {
       allowNewRounds: true,
       allowFinishRounds: true,
       allowMergeRounds: true,
+      reconcile: { allowNew: true, allowFinish: true, allowMerge: true },
+      repairs: { allowNew: true, allowFinish: true, allowMerge: true },
       updatedAt: 0,
     });
   });

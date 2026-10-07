@@ -1,4 +1,36 @@
 export const settings = {
+  repairRounds: {
+    title: "Repairs",
+    allowNew: "New repair rounds",
+    allowedHint: "A new repair round can be started with “New round”.",
+    lockedHint:
+      "No new repair round can be started — checks go into the current one. Guards against a stray tap.",
+    allowFinish: "Finishing repair rounds",
+    finishAllowedHint:
+      "A round can be finished with “Finish round” once every repair is checked.",
+    finishLockedHint: "No “Finish round” button — the round stays open.",
+    allowMerge: "Merging repair rounds",
+    mergeAllowedHint:
+      "A round started by mistake can be merged into the previous one with “Merge into No. N”.",
+    mergeLockedHint: "No “Merge into No. N” link — rounds stay apart.",
+  },
+  reconcile: {
+    title: "Inventory",
+    allowNew: "New reconciliations",
+    allowedHint:
+      "A new reconciliation can be started with “New reconciliation”.",
+    lockedHint:
+      "No new reconciliation can be started — components go into the current one. Guards against a stray tap.",
+    allowFinish: "Finishing reconciliations",
+    finishAllowedHint:
+      "A reconciliation can be finished with “Finish reconciliation” once everything is reconciled.",
+    finishLockedHint:
+      "No “Finish reconciliation” button — the reconciliation stays open.",
+    allowMerge: "Merging reconciliations",
+    mergeAllowedHint:
+      "A reconciliation started by mistake can be merged into the previous one with “Merge into No. N”.",
+    mergeLockedHint: "No “Merge into No. N” link — reconciliations stay apart.",
+  },
   rounds: {
     title: "Monitoring",
     allowNew: "New rounds",

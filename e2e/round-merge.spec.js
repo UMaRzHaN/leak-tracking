@@ -72,7 +72,10 @@ test("не даёт начать новый обход, если это выкл
   await expect(page.getByRole("button", { name: "Новый обход" })).toBeVisible();
 
   await openSettings(page);
-  const allowRounds = page.getByRole("switch", { name: "Новые обходы" });
+  const allowRounds = page.getByRole("switch", {
+    name: "Новые обходы",
+    exact: true,
+  });
   await expect(allowRounds).toHaveAttribute("aria-checked", "true");
   await allowRounds.click();
   await expect(allowRounds).toHaveAttribute("aria-checked", "false");

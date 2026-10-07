@@ -12,8 +12,12 @@ import {
 } from "@/domain/componentHistory";
 import { matchesLeakLocationFilter } from "@/utils/locationFilter";
 import { formatMonitoringDate } from "@/utils/monitoring";
+import { useRoundPermissions } from "@/app/project/hooks/useAllowNewRounds";
+import MonitoringRoundOverview from "@/pages/Monitoring/MonitoringRoundOverview";
 import {
+  finishReconcileRound,
   isReconciled,
+  mergeReconcileRound,
   readReconcileRound,
   startReconcileRound,
 } from "./reconcileRound";
@@ -50,6 +54,9 @@ export default function Reconcile({ project, sharedFilters, userProfile }) {
   const [search, setSearch] = useState("");
   const [inspecting, setInspecting] = useState(/** @type {any} */ (null));
   const [confirmNew, setConfirmNew] = useState(false);
+  const [confirmMerge, setConfirmMerge] = useState(false);
+  // Разрешения сверки из настроек проекта — как у обходов мониторинга.
+  const [allowed] = useRoundPermissions(project?.id ?? null, "reconcile");
   const [notification, setNotification] = useState(/** @type {any} */ (null));
   const canWrite = canWriteRegistry(userProfile);
 
@@ -106,25 +113,56 @@ export default function Reconcile({ project, sharedFilters, userProfile }) {
         onClose={() => setNotification(null)}
       />
 
-      <header className={s.roundHeaderRow}>
-        <div className={s.roundHeader}>
-          <h1>
-            {round
-              ? t("reconcile.title", { number: round.number })
-              : t("reconcile.noRound")}
-          </h1>
-          {round && (
-            <span>· {formatMonitoringDate(round.startedAt, lang)}</span>
-          )}
-        </div>
-        <button
-          type="button"
-          className={s.markBtn}
-          onClick={() => setConfirmNew(true)}
-        >
-          {t("reconcile.newRound")}
-        </button>
-      </header>
+      {/* Шапка — та же, что у обхода мониторинга: номер, период,
+          «Объединить с № N», «Новая сверка» и карточка завершения. */}
+      <MonitoringRoundOverview
+        round={round}
+        lang={lang}
+        badge={t("reconcile.badge")}
+        mergeLabel={(number) => t("reconcile.mergeAction", { number })}
+        texts={{
+          noActiveRound: t("reconcile.noRound"),
+          newRound: t("reconcile.newRound"),
+          startRound: t("reconcile.startRound"),
+          finishRound: t("reconcile.finishRound"),
+          roundReady: t("reconcile.roundReady"),
+          roundCompleted: t("reconcile.roundCompleted"),
+        }}
+        summary={{ checked: counts.done, total: counts.all }}
+        stats={[
+          {
+            key: "done",
+            label: t("reconcile.done"),
+            value: counts.done,
+            tone: "resolved",
+          },
+          {
+            key: "due",
+            label: t("reconcile.due"),
+            value: counts.due,
+            tone: "open",
+          },
+        ]}
+        showCompletion={Boolean(
+          round && (round.completedAt || (counts.all > 0 && counts.due === 0)),
+        )}
+        hasRound={Boolean(round)}
+        onStartRound={() => setConfirmNew(true)}
+        onFinishRound={() => {
+          setRound(finishReconcileRound(project?.id));
+          setNotification({
+            type: "success",
+            message: t("reconcile.finished"),
+          });
+        }}
+        canStartRound={allowed.allowNew}
+        canFinishRound={allowed.allowFinish}
+        onMergeRound={
+          allowed.allowMerge && round?.previous
+            ? () => setConfirmMerge(true)
+            : null
+        }
+      />
 
       <div className={s.search}>
         <Icon name="search" size={18} />
@@ -239,6 +277,26 @@ export default function Reconcile({ project, sharedFilters, userProfile }) {
           setConfirmNew(false);
         }}
         onCancel={() => setConfirmNew(false)}
+      />
+
+      <ConfirmSheet
+        open={confirmMerge}
+        title={t("reconcile.mergeTitle", {
+          number: (round?.number ?? 1) - 1,
+        })}
+        description={t("reconcile.mergeDescription")}
+        confirmLabel={t("reconcile.mergeConfirm")}
+        onConfirm={() => {
+          setConfirmMerge(false);
+          const merged = mergeReconcileRound(project?.id);
+          if (!merged) return;
+          setRound(merged);
+          setNotification({
+            type: "success",
+            message: t("reconcile.merged", { number: merged.number }),
+          });
+        }}
+        onCancel={() => setConfirmMerge(false)}
       />
     </div>
   );

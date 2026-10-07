@@ -2,6 +2,11 @@ import { useLanguage } from "@/app/hooks/useLanguage";
 import { formatRoundPeriod } from "./monitoringDomain";
 import s from "./Monitoring.module.scss";
 
+/**
+ * Шапка обхода: номер, период, «Объединить с № N−1», «Новый обход» и
+ * карточка завершения. Ею же пользуется сверка реестра — со своим словом в
+ * номере («Сверка № 2»), своей ссылкой объединения и своей статистикой.
+ */
 export default function MonitoringRoundOverview({
   round,
   lang,
@@ -16,10 +21,36 @@ export default function MonitoringRoundOverview({
   onMergeRound = /** @type {(() => void)|null} */ (null),
   // Новые обходы выключены в настройках: кнопок нового обхода нет.
   canStartRound = true,
+  badge = /** @type {string|null} */ (null),
+  mergeLabel = /** @type {((number: number) => string)|null} */ (null),
+  // Строки статистики карточки завершения; по умолчанию — итоги утечек.
+  stats = /** @type {Array<{key: string, label: string, value: number, tone: "open"|"repair"|"resolved"}>|null} */ (
+    null
+  ),
 }) {
   const { t } = useLanguage();
 
   const isCompleted = Boolean(round?.completedAt);
+  const toneClass = {
+    open: s.statOpen,
+    repair: s.statRepair,
+    resolved: s.statResolved,
+  };
+  const statRows = stats ?? [
+    { key: "open", label: texts.openResult, value: summary.open, tone: "open" },
+    {
+      key: "repair",
+      label: texts.repairResult,
+      value: summary.inProgress,
+      tone: "repair",
+    },
+    {
+      key: "resolved",
+      label: texts.resolvedResult,
+      value: summary.resolved,
+      tone: "resolved",
+    },
+  ];
 
   return (
     <>
@@ -28,7 +59,7 @@ export default function MonitoringRoundOverview({
           {round?.startedAt ? (
             <div className={s.roundMeta}>
               <span className={s.roundBadge}>
-                {t("monitoring.roundBadge")} № {round.number ?? 1}
+                {badge ?? t("monitoring.roundBadge")} № {round.number ?? 1}
               </span>
               <span className={s.roundPeriod}>
                 · {formatRoundPeriod(round.startedAt, round.completedAt, lang)}
@@ -40,9 +71,11 @@ export default function MonitoringRoundOverview({
                   className={s.mergeRoundBtn}
                   onClick={onMergeRound}
                 >
-                  {t("monitoring.mergeAction", {
-                    number: Number(round.number) - 1,
-                  })}
+                  {mergeLabel
+                    ? mergeLabel(Number(round.number) - 1)
+                    : t("monitoring.mergeAction", {
+                        number: Number(round.number) - 1,
+                      })}
                 </button>
               )}
             </div>
@@ -84,21 +117,13 @@ export default function MonitoringRoundOverview({
             </div>
           </div>
           <div className={s.completionStats}>
-            <span className={s.completionStat}>
-              <i className={s.statOpen} />
-              <small>{texts.openResult}</small>
-              <strong>{summary.open}</strong>
-            </span>
-            <span className={s.completionStat}>
-              <i className={s.statRepair} />
-              <small>{texts.repairResult}</small>
-              <strong>{summary.inProgress}</strong>
-            </span>
-            <span className={s.completionStat}>
-              <i className={s.statResolved} />
-              <small>{texts.resolvedResult}</small>
-              <strong>{summary.resolved}</strong>
-            </span>
+            {statRows.map((row) => (
+              <span key={row.key} className={s.completionStat}>
+                <i className={toneClass[row.tone]} />
+                <small>{row.label}</small>
+                <strong>{row.value}</strong>
+              </span>
+            ))}
           </div>
           {(isCompleted ? canStartRound : canFinishRound) && (
             <button

@@ -1,3 +1,4 @@
+import { shortenPlaceName } from "@/utils/abbreviations";
 import { getStatusRepairMilestones } from "@/domain/leakEvents";
 import { useRenderMetric } from "@/utils/renderMetrics";
 import { memo, useEffect, useState } from "react";
@@ -250,10 +251,12 @@ function LeakCardCompact({
             {(leak.location || leak.address) && (
               <div className={s.titleBlock}>
                 <span className={s.locationName}>
-                  {leak.location || leak.address}
+                  {shortenPlaceName(leak.location || leak.address)}
                 </span>
                 {leak.object && (
-                  <span className={s.objectName}>{leak.object}</span>
+                  <span className={s.objectName}>
+                    {shortenPlaceName(leak.object)}
+                  </span>
                 )}
               </div>
             )}

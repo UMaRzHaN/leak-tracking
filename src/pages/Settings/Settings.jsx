@@ -12,10 +12,12 @@ import ActiveProjectCard from "./components/ActiveProjectCard";
 import AppearanceSection from "./components/AppearanceSection";
 import DangerZoneSection from "./components/DangerZoneSection";
 import MonitoringRoundsSection from "./components/MonitoringRoundsSection";
+import RoundPermissionsSection from "./components/RoundPermissionsSection";
 import {
   useAllowFinishRounds,
   useAllowMergeRounds,
   useAllowNewRounds,
+  useRoundPermissions,
 } from "@/app/project/hooks/useAllowNewRounds";
 import EmissionsSummarySection from "./components/EmissionsSummarySection";
 import FieldVisibilitySection from "./components/FieldVisibilitySection";
@@ -91,6 +93,14 @@ export default function Settings(props) {
   );
   const [allowMergeRounds, setAllowMergeRounds] = useAllowMergeRounds(
     activeProject?.id ?? null,
+  );
+  const [reconcileSettings, setReconcileSettings] = useRoundPermissions(
+    activeProject?.id ?? null,
+    "reconcile",
+  );
+  const [repairRoundSettings, setRepairRoundSettings] = useRoundPermissions(
+    activeProject?.id ?? null,
+    "repairs",
   );
   // Удаление проекта — в опасной зоне, с подтверждением, как очистка базы.
   const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
@@ -195,6 +205,28 @@ export default function Settings(props) {
               notify("success", t("settings.rounds.saved"));
             }}
           />
+
+          {activeProject && (
+            <RoundPermissionsSection
+              kind="repairs"
+              settings={repairRoundSettings}
+              onChange={(patch) => {
+                setRepairRoundSettings(patch);
+                notify("success", t("settings.rounds.saved"));
+              }}
+            />
+          )}
+
+          {activeProject && hasComponentRegistry(activeProject) && (
+            <RoundPermissionsSection
+              kind="reconcile"
+              settings={reconcileSettings}
+              onChange={(patch) => {
+                setReconcileSettings(patch);
+                notify("success", t("settings.rounds.saved"));
+              }}
+            />
+          )}
 
           <PhotoRequirementsSection
             activeProject={activeProject}

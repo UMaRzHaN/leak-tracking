@@ -60,6 +60,32 @@ function normalizePhotoRequirements(value) {
   };
 }
 
+/**
+ * Сверка реестра и обход ремонтов — те же три разрешения, что у обходов
+ * мониторинга, но у каждого свои: инвентаризацию, ремонты и обходы утечек
+ * ведут разные люди. По умолчанию всё можно.
+ */
+export const ROUND_KINDS = /** @type {const} */ (["reconcile", "repairs"]);
+
+const ROUND_SETTINGS_KEYS = {
+  reconcile: STORAGE_KEYS.PROJECT_RECONCILE_SETTINGS,
+  repairs: STORAGE_KEYS.PROJECT_REPAIR_ROUND_SETTINGS,
+};
+
+export const DEFAULT_ROUND_PERMISSIONS = Object.freeze({
+  allowNew: true,
+  allowFinish: true,
+  allowMerge: true,
+});
+
+export function normalizeRoundPermissions(value) {
+  return {
+    allowNew: value?.allowNew !== false,
+    allowFinish: value?.allowFinish !== false,
+    allowMerge: value?.allowMerge !== false,
+  };
+}
+
 export function normalizeProjectSettings(value) {
   return {
     hiddenFields: normalizeHiddenFields(value?.hiddenFields),
@@ -75,6 +101,8 @@ export function normalizeProjectSettings(value) {
     allowFinishRounds: value?.allowFinishRounds !== false,
     // И объединение с предыдущим: выключенное прячет «Объединить с № N».
     allowMergeRounds: value?.allowMergeRounds !== false,
+    reconcile: normalizeRoundPermissions(value?.reconcile),
+    repairs: normalizeRoundPermissions(value?.repairs),
     updatedAt: normalizeTimestamp(value?.updatedAt),
   };
 }
@@ -108,6 +136,8 @@ export function readProjectSettings(projectId) {
       localStorage.getItem(
         STORAGE_KEYS.PROJECT_ROUND_MERGE_LOCKED(projectId),
       ) !== "1",
+    reconcile: readJson(STORAGE_KEYS.PROJECT_RECONCILE_SETTINGS(projectId)),
+    repairs: readJson(STORAGE_KEYS.PROJECT_REPAIR_ROUND_SETTINGS(projectId)),
     updatedAt: localStorage.getItem(
       STORAGE_KEYS.PROJECT_SETTINGS_UPDATED_AT(projectId),
     ),
@@ -178,6 +208,10 @@ export function writeProjectSettings(projectId, value, { emit = true } = {}) {
   if (settings.allowMergeRounds) localStorage.removeItem(mergeKey);
   else localStorage.setItem(mergeKey, "1");
 
+  for (const kind of ROUND_KINDS) {
+    writeRoundPermissionsKey(projectId, kind, settings[kind]);
+  }
+
   const timestampKey = STORAGE_KEYS.PROJECT_SETTINGS_UPDATED_AT(projectId);
   if (settings.updatedAt > 0) {
     localStorage.setItem(timestampKey, String(settings.updatedAt));
@@ -209,6 +243,8 @@ export function clearProjectSettings(projectId, { emit = false } = {}) {
     STORAGE_KEYS.PROJECT_ROUNDS_LOCKED(projectId),
     STORAGE_KEYS.PROJECT_ROUND_FINISH_LOCKED(projectId),
     STORAGE_KEYS.PROJECT_ROUND_MERGE_LOCKED(projectId),
+    STORAGE_KEYS.PROJECT_RECONCILE_SETTINGS(projectId),
+    STORAGE_KEYS.PROJECT_REPAIR_ROUND_SETTINGS(projectId),
     STORAGE_KEYS.PROJECT_SETTINGS_UPDATED_AT(projectId),
   ].forEach((key) => localStorage.removeItem(key));
   if (emit) emitSettingsUpdated(projectId);
@@ -224,6 +260,8 @@ function comparableSettings(value) {
     allowNewRounds: normalized.allowNewRounds,
     allowFinishRounds: normalized.allowFinishRounds,
     allowMergeRounds: normalized.allowMergeRounds,
+    reconcile: normalized.reconcile,
+    repairs: normalized.repairs,
   });
 }
 
@@ -261,6 +299,41 @@ export function readAllowMergeRounds(projectId) {
 
 export function writeAllowMergeRounds(projectId, allow) {
   writeRoundLock(projectId, STORAGE_KEYS.PROJECT_ROUND_MERGE_LOCKED, allow);
+}
+
+/**
+ * Разрешения обхода `kind` в проекте: новый, завершение, объединение.
+ *
+ * @param {string|null} projectId
+ * @param {"reconcile"|"repairs"} kind
+ */
+export function readRoundPermissions(projectId, kind) {
+  return readProjectSettings(projectId)[kind];
+}
+
+/**
+ * @param {string|null} projectId
+ * @param {"reconcile"|"repairs"} kind
+ * @param {Partial<typeof DEFAULT_ROUND_PERMISSIONS>} patch
+ */
+export function writeRoundPermissions(projectId, kind, patch) {
+  if (!projectId || typeof localStorage === "undefined") return;
+  writeRoundPermissionsKey(projectId, kind, {
+    ...readRoundPermissions(projectId, kind),
+    ...patch,
+  });
+  touchProjectSettings(projectId);
+  emitSettingsUpdated(projectId);
+}
+
+function writeRoundPermissionsKey(projectId, kind, value) {
+  const key = ROUND_SETTINGS_KEYS[kind](projectId);
+  const settings = normalizeRoundPermissions(value);
+  const isDefault = Object.entries(DEFAULT_ROUND_PERMISSIONS).every(
+    ([name, allowed]) => settings[name] === allowed,
+  );
+  if (isDefault) localStorage.removeItem(key);
+  else localStorage.setItem(key, JSON.stringify(settings));
 }
 
 function writeRoundLock(projectId, keyOf, allow) {

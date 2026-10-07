@@ -428,6 +428,20 @@ export function validateProjectBackupMeta(parsed) {
           pushIssue(issues, ["settings", field], "Expected boolean");
         }
       }
+      for (const kind of ["reconcile", "repairs"]) {
+        const permissions = parsed.settings[kind];
+        if (permissions === undefined) continue;
+        if (!isPlainObject(permissions)) {
+          pushIssue(issues, ["settings", kind], "Expected object");
+          continue;
+        }
+        for (const field of ["allowNew", "allowFinish", "allowMerge"]) {
+          const value = permissions[field];
+          if (value !== undefined && typeof value !== "boolean") {
+            pushIssue(issues, ["settings", kind, field], "Expected boolean");
+          }
+        }
+      }
       if (parsed.settings.photoRequirements !== undefined) {
         if (!isPlainObject(parsed.settings.photoRequirements)) {
           pushIssue(

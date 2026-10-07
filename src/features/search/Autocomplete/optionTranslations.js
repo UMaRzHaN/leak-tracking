@@ -109,6 +109,8 @@ const RU_TO_EN = {
   "Установка предварительного сброса воды": "Produced water separation unit",
   "Установка подготовки нефти": "Oil treatment unit",
   "Газосборный пункт": "Gas gathering point",
+  "Газоперерабатывающий завод": "Gas processing plant",
+  "Газохимический комплекс": "Gas chemical complex",
   "Магистральный газопровод": "Main gas pipeline",
   "Газораспределительная станция": "Gas distribution station",
   "Газоизмерительная станция": "Gas metering station",

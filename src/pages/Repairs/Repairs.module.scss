@@ -12,32 +12,6 @@
   overflow: hidden;
 }
 
-.roundHeaderRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.roundHeader {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-
-  h1 {
-    color: var(--c-ink);
-    font-size: var(--fs-xl);
-    font-weight: 800;
-    letter-spacing: -0.02em;
-  }
-
-  span {
-    color: var(--c-text3);
-    font-size: var(--fs-sm);
-    font-weight: 600;
-  }
-}
-
 .search {
   position: relative;
   display: flex;
@@ -149,9 +123,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   margin-top: -1px;
-  padding: 12px 14px 12px 16px;
+  /* Как полоса обхода мониторинга: подпись к карточке, а не вторая карточка. */
+  padding: 7px 10px 7px 14px;
   border: 1px solid var(--c-border);
   border-radius: 0 0 var(--r-xl) var(--r-xl);
   background: var(--c-surface);
@@ -162,15 +137,15 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  font-size: var(--fs-md);
+  gap: 1px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   line-height: 1.25;
 }
 
 .barMeta {
-  color: var(--c-text2);
-  font-size: var(--fs-sm);
+  color: var(--c-text3);
+  font-size: var(--fs-2xs);
   font-weight: 500;
 }
 
@@ -186,26 +161,16 @@
   color: var(--c-medium);
 }
 
-.acceptBtn,
-.markBtn {
-  flex-shrink: 0;
-  min-height: 44px;
-  padding: 0 20px;
-  border-radius: 14px;
-  font-size: var(--fs-lg);
-  font-weight: 800;
-}
-
 .acceptBtn {
+  flex-shrink: 0;
+  min-height: 34px;
+  padding: 0 14px;
   border: none;
+  border-radius: 10px;
   background: var(--c-accent);
   color: #fff;
-}
-
-.markBtn {
-  border: 1.5px solid var(--c-accent);
-  background: var(--c-accent-surface);
-  color: var(--c-accent-text);
+  font-size: var(--fs-sm);
+  font-weight: 800;
 }
 
 /* ── Поля ── */
