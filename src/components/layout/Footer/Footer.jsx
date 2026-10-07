@@ -14,9 +14,9 @@ export default function Footer({
   page,
   setPage,
   openCount = 0,
-  // Что осталось сделать в модуле: в мониторинге — тегов к проверке в
-  // обходе, в ремонтах — непринятых работ. Бейдж «Базы» там считает это, а
-  // не открытые утечки.
+  // Сколько осталось проверить в идущем обходе модуля — мониторинга,
+  // ремонтов или сверки (см. useRoundRemaining). Бейдж «Базы» вне LDAR
+  // считает это, а не открытые утечки.
   remainingCount = 0,
   module = /** @type {string} */ (MODULE.LDAR),
   onRoute = /** @type {(() => void)|null} */ (null),
@@ -37,7 +37,12 @@ export default function Footer({
       // «База» — само железо; счётчик открытых утечек к нему не относится.
       return [
         { key: "schemas", icon: "list", label: t("footer.registry") },
-        { key: "components", icon: "database", label: t("footer.database") },
+        {
+          key: "components",
+          icon: "database",
+          label: t("footer.database"),
+          badge: true,
+        },
         ...(onAddComponent ? [{ key: "component-add", fab: true }] : []),
         { key: "reconcile", icon: "check", label: t("footer.reconcile") },
         map,
@@ -128,11 +133,7 @@ export default function Footer({
               <Icon name={item.icon} />
               {item.badge && (
                 <Badge
-                  count={
-                    module === MODULE.MONITORING || module === MODULE.REPAIRS
-                      ? remainingCount
-                      : openCount
-                  }
+                  count={module === MODULE.LDAR ? openCount : remainingCount}
                 />
               )}
             </span>

@@ -18,6 +18,7 @@ import { globalScope } from "@/utils/globalScope";
 import "@fontsource-variable/manrope";
 import "@/index.scss";
 import { useLocationScope } from "@/hooks/useLocationScope";
+import { useRoundRemaining } from "./hooks/useRoundRemaining";
 import { useRegistryLocationSource } from "@/hooks/useRegistryLocationSource";
 import { MAP_BASE } from "@/pages/MapPage/mapBase";
 import { showsComponentTree } from "./pages";
@@ -269,6 +270,15 @@ export default function App() {
     leakScope.scopedLeaks,
   ]);
 
+  const roundRemaining = useRoundRemaining({
+    module,
+    page,
+    projectId: activeProject?.id ?? null,
+    leaks: leakScope.scopedLeaks,
+    components: componentScope.scopedLeaks,
+    monitoringDue: monitoringDueCount,
+  });
+
   const repairCount = useMemo(() => {
     const counts = countRepairStages(leakScope.scopedLeaks);
     return counts.all - counts.resolved;
@@ -373,11 +383,7 @@ export default function App() {
             page={page}
             setPage={setPage}
             openCount={scopedOpenCount}
-            remainingCount={
-              module === MODULE.REPAIRS
-                ? repairCount
-                : (monitoringDueCount ?? 0)
-            }
+            remainingCount={roundRemaining ?? 0}
             module={module}
             onRoute={() => setRouteSheetOpen(true)}
             onAddComponent={
