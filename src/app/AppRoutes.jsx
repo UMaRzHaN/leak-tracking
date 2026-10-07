@@ -279,6 +279,7 @@ export default function AppRoutes({
             onMonitorLeak={checkLeak}
             onMonitorLeaks={checkLeaks}
             monitorLabel={checkLabel}
+            repairMode={repairMode}
             userProfile={userProfile}
           />
         )}
@@ -320,6 +321,8 @@ export default function AppRoutes({
               data={data}
               scopedData={scopedData}
               setData={save}
+              coords={coords}
+              sharedFilters={sharedFilters}
               userProfile={userProfile}
             />
           )}

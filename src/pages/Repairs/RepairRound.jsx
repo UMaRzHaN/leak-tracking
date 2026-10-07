@@ -2,7 +2,9 @@ import { lazy, Suspense, useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import LeakCardCompact from "@/features/leakList/LeakCardCompact/LeakCardCompact";
 import Notification from "@/components/ui/Notification/Notification";
-import Icon from "@/components/ui/Icon/Icon";
+import FilterBar from "@/pages/DataBase/components/FilterBar";
+import { useDataBaseFilters } from "@/pages/DataBase/hooks/useDataBaseFilters";
+import { useProjectConfig } from "@/app/project/hooks/useProjectConfig";
 import {
   REPAIR_STAGE,
   getLastRepairStageMark,
@@ -23,6 +25,7 @@ import {
   REPAIR_ROUND_FILTER as FILTER,
   getRepairRoundItems,
   isRepairChecked,
+  repairRoundState,
   summarizeRepairRound,
 } from "./repairRoundDomain";
 import s from "./Repairs.module.scss";
@@ -41,6 +44,8 @@ export default function RepairRound({
   data,
   scopedData = data,
   setData,
+  coords = /** @type {any} */ (null),
+  sharedFilters = /** @type {any} */ (null),
   userProfile,
 }) {
   const { t, lang } = useLanguage();
@@ -52,7 +57,6 @@ export default function RepairRound({
   // Разрешения обхода ремонтов из настроек проекта — как у мониторинга.
   const [allowed] = useRoundPermissions(projectId, "repairs");
   const [filter, setFilter] = useState(/** @type {string} */ (FILTER.DUE));
-  const [search, setSearch] = useState("");
   const [checkLeak, setCheckLeak] = useState(/** @type {any} */ (null));
   // Повторная проверка уже проверенного в обходе — с подтверждением, как в
   // мониторинге; «Новый обход» из него открывает проверку после старта.
@@ -62,15 +66,29 @@ export default function RepairRound({
   const [notification, setNotification] = useState(/** @type {any} */ (null));
 
   const repairs = useMemo(() => getRepairLeaks(scopedData), [scopedData]);
-  // Счётчики вкладок и шапки: проверенным в обходе считается ремонт, который
-  // после его начала отметили или закрыли.
+  // Панель фильтров — та же, что в обходе мониторинга; отбор идёт по
+  // ремонтам, а шапка обхода считает все ремонты, без отбора.
+  const projectConfig = useProjectConfig();
+  const allRepairs = useMemo(() => getRepairLeaks(data), [data]);
+  const filters = useDataBaseFilters({
+    data: allRepairs,
+    coords,
+    sharedFilters,
+    configuredMainLocationKey: projectConfig.system.location.main,
+    configuredLocationKey: projectConfig.system.location.secondary,
+    configuredLastLocationKey: projectConfig.system.location.last,
+  });
   const summary = useMemo(
     () => summarizeRepairRound(repairs, round),
     [repairs, round],
   );
+  const tabs = useMemo(
+    () => summarizeRepairRound(filters.displayed, round),
+    [filters.displayed, round],
+  );
   const items = useMemo(
-    () => getRepairRoundItems(repairs, { filter, search, round }),
-    [repairs, filter, search, round],
+    () => getRepairRoundItems(filters.displayed, { filter, round }),
+    [filters.displayed, filter, round],
   );
   const roundActive = Boolean(round && !round.completedAt);
   const openCheck = (leak) => {
@@ -180,22 +198,14 @@ export default function RepairRound({
         }
       />
 
-      <div className={s.search}>
-        <Icon name="search" size={18} />
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder={t("repairs.round.search")}
-          aria-label={t("repairs.round.search")}
-          enterKeyHint="search"
-        />
-      </div>
+      {/* Имена в хуке отбора те же, что у панели: она берёт свои. */}
+      <FilterBar {...filters} repairMode />
 
       <div className={s.filters}>
         {[
-          [FILTER.DUE, t("repairs.round.due"), summary.due],
-          [FILTER.CHECKED, t("repairs.round.checked"), summary.checked],
-          [FILTER.ALL, t("repairs.round.all"), summary.all],
+          [FILTER.DUE, t("repairs.round.due"), tabs.due],
+          [FILTER.CHECKED, t("repairs.round.checked"), tabs.checked],
+          [FILTER.ALL, t("repairs.round.all"), tabs.all],
         ].map(([id, label, count]) => (
           <button
             key={id}
@@ -214,16 +224,16 @@ export default function RepairRound({
       <section className={s.list}>
         {items.length === 0 ? (
           <p className={s.empty}>
-            {search ? t("repairs.round.searchEmpty") : t("repairs.round.empty")}
+            {filters.search
+              ? t("repairs.round.searchEmpty")
+              : t("repairs.round.empty")}
           </p>
         ) : (
           items.map((leak) => {
             const footer = footerOf(leak);
             const stage = getRepairStage(leak);
-            // Закрытый ремонт проверяют повторно, только если его закрыли
-            // или проверяли в этом обходе; прошлые — во «Всех ремонтах».
-            const checkable =
-              stage !== REPAIR_STAGE.RESOLVED || isRepairChecked(leak, round);
+            // Закрытый до обхода ремонт без фикции проверять нечего.
+            const checkable = repairRoundState(leak, round) !== "outside";
             return (
               <article key={leak.id} className={s.item}>
                 <LeakCardCompact

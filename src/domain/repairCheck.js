@@ -2,6 +2,7 @@ import { STATUS } from "@/utils/status";
 import { getLeakEvents } from "./leakEvents";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
 import { requireHistoryUser } from "@/utils/historyUser";
+import { isLeakFiction } from "@/utils/monitoring";
 import {
   changeLeakStatus,
   resolveLeakRecord,
@@ -64,7 +65,12 @@ export function applyRepairCheck(leak, draft, options = {}) {
     user: options.user,
     now: start,
   });
-  const record = withPhysicalTag(leak, answered, draft.physicalTag);
+  // Проверка ремонта, который осмотр счёл фикцией, отвечает на этот вопрос:
+  // ремонт подтвердили или переоткрыли, мнимого устранения больше нет.
+  const tagged = withFlag(leak, answered, "physicalTag", draft.physicalTag);
+  const record = isLeakFiction(leak)
+    ? withFlag(leak, tagged, "fiction", false)
+    : tagged;
   return withGpsCoords(record, draft.coords, {
     user: options.user,
     now: start + 10,
@@ -72,16 +78,18 @@ export function applyRepairCheck(leak, draft, options = {}) {
 }
 
 /**
- * Ответ «физ. тег есть?» ложится в последнее событие, которое оставила эта
- * проверка (отметка стадии или завершение ремонта): отдельного события под
- * него нет, а читает его `getLastMonitoringFlag` вместе с осмотрами.
+ * Ответы осмотра («физ. тег есть?», «фикция?») ложатся в последнее событие,
+ * которое оставила эта проверка (отметка стадии или завершение ремонта):
+ * отдельного события под них нет, а читает их `getLastMonitoringFlag` вместе
+ * с осмотрами.
  *
  * @param {any} before
  * @param {any} after
- * @param {boolean|undefined} physicalTag
+ * @param {string} key
+ * @param {boolean|undefined} value
  */
-function withPhysicalTag(before, after, physicalTag) {
-  if (typeof physicalTag !== "boolean") return after;
+function withFlag(before, after, key, value) {
+  if (typeof value !== "boolean") return after;
   const known = new Set(getLeakEvents(before).map((event) => event?.id));
   const events = getLeakEvents(after);
   const created = events.filter((event) => !known.has(event?.id));
@@ -90,7 +98,7 @@ function withPhysicalTag(before, after, physicalTag) {
   return {
     ...after,
     events: events.map((event) =>
-      event === own ? { ...event, physicalTag } : event,
+      event === own ? { ...event, [key]: value } : event,
     ),
   };
 }

@@ -5,6 +5,7 @@ import {
 } from "@/domain/repairStages";
 import { LEAK_EVENT_TYPES, getLeakEvents } from "@/domain/leakEvents";
 import { isInRound } from "@/utils/projectRound";
+import { isLeakFiction } from "@/utils/monitoring";
 
 /**
  * Отбор обхода ремонтов — как у обхода мониторинга: «К проверке», «Проверено»
@@ -47,13 +48,15 @@ export function isRepairChecked(leak, round) {
 
 /**
  * Место ремонта в обходе. Устранённый до начала обхода в нём не участвует:
- * проверять у него нечего, он виден только во «Всех ремонтах».
+ * проверять у него нечего, он виден только во «Всех ремонтах». Кроме фикции:
+ * осмотр счёл устранение мнимым, и ремонт снова к проверке.
  *
  * @returns {"due"|"checked"|"outside"}
  */
 export function repairRoundState(leak, round) {
   if (isRepairChecked(leak, round)) return "checked";
-  return getRepairStage(leak) === REPAIR_STAGE.RESOLVED ? "outside" : "due";
+  const resolved = getRepairStage(leak) === REPAIR_STAGE.RESOLVED;
+  return resolved && !isLeakFiction(leak) ? "outside" : "due";
 }
 
 const STATE_RANK = { due: 0, checked: 1, outside: 2 };
@@ -97,7 +100,11 @@ export function summarizeRepairRound(repairs, round) {
   return summary;
 }
 
-export function getRepairRoundItems(repairs, { filter, search, round }) {
+/**
+ * @param {any[]} repairs
+ * @param {{ filter: string, round: any, search?: string }} options
+ */
+export function getRepairRoundItems(repairs, { filter, round, search = "" }) {
   const query = String(search ?? "")
     .trim()
     .toLocaleLowerCase();

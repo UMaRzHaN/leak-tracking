@@ -243,7 +243,11 @@
   }
 }
 
+// Колонкой и сжимаемой: раскрытые фильтры ужимаются до места на странице.
 .sharedFilterBar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   margin: 0 0 12px;
 }
 

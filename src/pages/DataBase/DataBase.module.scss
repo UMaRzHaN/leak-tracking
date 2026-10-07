@@ -115,11 +115,27 @@
 }
 
 /* ── Filters panel ── */
+// Страницы базы и обходов не прокручиваются — прокручивается список внутри
+// них. Раскрытая панель выше экрана обрезалась под нижней панелью, и до её
+// низа было не добраться: теперь она сжимается до места, оставшегося на
+// странице, и прокручивается сама; на высоком экране — не выше половины,
+// чтобы под ней оставался список.
 .filtersPanel {
   display: flex;
   flex-direction: column;
+  flex: 0 1 auto;
+  min-height: 0;
   gap: 10px;
+  max-height: 50vh;
+  max-height: 50dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 12px;
+
+  // Разделы держат свою высоту: иначе колонка ужала бы их, а не прокрутилась.
+  > * {
+    flex-shrink: 0;
+  }
   background: var(--c-surface);
   border: 1px solid var(--c-border);
   border-radius: var(--r-lg);

@@ -1,5 +1,7 @@
 import { useState, memo } from "react";
 import { STATUS_META, STATUS_ORDER, getStatusMeta } from "@/utils/status";
+import { getRepairStage } from "@/domain/repairStages";
+import { getRepairStageMeta } from "@/utils/repairStage";
 import { PRIORITY_ORDER, getPriorityMeta } from "@/utils/priority";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { FICTION_FILTER, SEARCH_SCOPE, TAG_FILTER } from "@/domain/leakFilters";
@@ -43,6 +45,9 @@ function FilterBar({
   nearbyRadiusOptions,
   counts,
   hasGps,
+  // В модуле ремонтов статус показывается стадией ремонта: открытая утечка —
+  // «Ожидает МТР». Отбор тот же — по статусу записи.
+  repairMode = false,
 }) {
   const { t } = useLanguage();
   const selectedStatuses = normalizeSelected(statusFilter);
@@ -152,7 +157,9 @@ function FilterBar({
           )}
 
           <div className={s.filterSection}>
-            <span className={s.filterLabel}>{t("database.status")}</span>
+            <span className={s.filterLabel}>
+              {repairMode ? t("repairs.stageFilter") : t("database.status")}
+            </span>
             <div className={s.filters}>
               <FilterTab
                 id={ALL}
@@ -162,19 +169,24 @@ function FilterBar({
                 onSelect={setFilter}
               />
               {STATUS_ORDER.map((status) => {
-                const meta = getStatusMeta(status, t);
+                const meta = repairMode
+                  ? getRepairStageMeta(getRepairStage({ status }), t)
+                  : {
+                      ...STATUS_META[status],
+                      label: getStatusMeta(status, t).short,
+                    };
 
                 return (
                   <FilterTab
                     key={status}
                     id={status}
-                    label={meta.short}
+                    label={meta.label}
                     count={counts[status]}
                     active={selectedStatuses.includes(status)}
                     onSelect={setFilter}
-                    color={STATUS_META[status].color}
-                    bg={STATUS_META[status].bg}
-                    border={STATUS_META[status].border}
+                    color={meta.color}
+                    bg={meta.bg}
+                    border={meta.border}
                   />
                 );
               })}

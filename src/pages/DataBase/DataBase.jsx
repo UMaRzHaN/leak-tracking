@@ -19,6 +19,7 @@ export default function DataBase({
   onMonitorLeak,
   onMonitorLeaks,
   monitorLabel = /** @type {string|null} */ (null),
+  repairMode = false,
   userProfile,
 }) {
   useRenderMetric("DataBase");
@@ -51,6 +52,7 @@ export default function DataBase({
       <Notification notification={notification} onClose={clearNotification} />
 
       <FilterBar
+        repairMode={repairMode}
         search={filters.search}
         setSearch={filters.setSearch}
         searchScope={filters.searchScope}

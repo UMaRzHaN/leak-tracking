@@ -5,6 +5,7 @@ export const repairs = {
     ready: "Готово к проверке",
     resolved: "Устранена",
   },
+  stageFilter: "Стадия ремонта",
   close: "Закрыть",
   brigade: "Бригада",
   brigadePlaceholder: "Например: Бригада 2",

@@ -38,6 +38,19 @@ describe("FilterBar", () => {
     expect(screen.getByText("Priority")).toBeTruthy();
   });
 
+  it("shows repair stages instead of statuses in the repairs module", () => {
+    const setFilter = vi.fn();
+    render(<FilterBar {...props({ setFilter, repairMode: true })} />);
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+
+    expect(screen.getByText("Repair stage")).toBeTruthy();
+    expect(screen.queryByText("Status")).toBeNull();
+    // «Ожидает МТР» — та же открытая утечка: отбор идёт по статусу.
+    fireEvent.click(screen.getByRole("button", { name: /Awaiting materials/ }));
+    const update = setFilter.mock.calls[0][0];
+    expect(update([])).toEqual(["open"]);
+  });
+
   it("offers the physical tag only where it is asked for", () => {
     const setTagFilter = vi.fn();
     const counts = { ...props().counts, tagWith: 4, tagWithout: 2 };

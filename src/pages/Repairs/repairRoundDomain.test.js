@@ -50,6 +50,25 @@ describe("repair round", () => {
     expect(repairRoundState(checked, null)).toBe("due");
   });
 
+  it("puts a fictitious closed repair back up for a check", () => {
+    // Осмотр после устранения счёл его фикцией — ремонт снова к проверке.
+    const fiction = repair(
+      "fiction",
+      [
+        { id: "d", type: "repair_done", date: "2026-09-20T10:00Z" },
+        {
+          id: "i",
+          type: "inspection",
+          result: "still_leaking",
+          date: "2026-09-25T10:00Z",
+          fiction: true,
+        },
+      ],
+      { status: "resolved" },
+    );
+    expect(repairRoundState(fiction, round)).toBe("due");
+  });
+
   it("counts the tabs and the header", () => {
     expect(summarizeRepairRound(all, round)).toEqual({
       due: 2,

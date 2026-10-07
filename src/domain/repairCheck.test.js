@@ -13,7 +13,7 @@ import {
   markRepairStage,
 } from "./repairStages";
 import { startLeakRepair } from "./leakLifecycle";
-import { getLastMonitoringFlag } from "@/utils/monitoring";
+import { getLastMonitoringFlag, isLeakFiction } from "@/utils/monitoring";
 
 const NOW = Date.UTC(2026, 9, 6, 12);
 const open = { id: "a", leak_id: "1038", status: STATUS.OPEN, history: [] };
@@ -199,6 +199,36 @@ describe("rechecking a closed repair", () => {
     );
     expect(back.status).toBe(STATUS.IN_PROGRESS);
     expect(getRepairLog(back)[0].stage).toBe(REPAIR_STAGE.IN_REPAIR);
+  });
+
+  it("settles a fiction: the check answers whether the repair is real", () => {
+    const fiction = {
+      ...resolved,
+      events: [
+        ...resolved.events,
+        {
+          id: "i",
+          type: "inspection",
+          result: "still_leaking",
+          date: new Date(NOW + 1000).toISOString(),
+          fiction: true,
+        },
+      ],
+    };
+    expect(isLeakFiction(fiction)).toBe(true);
+    const confirmed = applyRepairCheck(
+      fiction,
+      { leaking: false, done: true },
+      options,
+    );
+    expect(isLeakFiction(confirmed)).toBe(false);
+    const reopened = applyRepairCheck(
+      fiction,
+      { leaking: true, done: true },
+      options,
+    );
+    expect(isLeakFiction(reopened)).toBe(false);
+    expect(reopened.status).toBe(STATUS.IN_PROGRESS);
   });
 
   it("reopens it as awaiting materials when the repair was not done", () => {

@@ -313,6 +313,19 @@ describe("RepairRound", () => {
     expect(screen.queryByRole("button", { name: "Check" })).toBeNull();
   });
 
+  it("filters the round with the same filter bar as monitoring", () => {
+    localStorage.clear();
+    renderRound([repair("r10"), repair("r11", { status: "open" })]);
+
+    expect(screen.getByRole("button", { name: "Due 2" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    // Статус в ремонтах — стадией: «Ожидает МТР» — открытые.
+    fireEvent.click(screen.getByRole("button", { name: /Awaiting materials/ }));
+    expect(screen.getByRole("button", { name: "Due 1" })).toBeTruthy();
+    expect(screen.getByText(/R11/)).toBeTruthy();
+    expect(screen.queryByText(/R10/)).toBeNull();
+  });
+
   it("offers to finish a round once every repair in it is checked", () => {
     localStorage.clear();
     localStorage.setItem(

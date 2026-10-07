@@ -268,6 +268,26 @@ describe("useDataBaseFilters multi-select", () => {
     expect(normalizeLeakSearchText("  Ёлка № 10  ")).toBe("елка 10");
   });
 
+  it("finds a repair by the crew and note from its stage marks", () => {
+    const leak = {
+      id: "leak-31",
+      leak_id: "31",
+      events: [
+        {
+          id: "m",
+          type: "repair_stage",
+          stage: "in_repair",
+          date: "2026-10-03T08:00:00Z",
+          brigade: "Бригада 7",
+          note: "Ждём прокладку",
+        },
+      ],
+    };
+    expect(matchesLeakSearch(leak, "бригада 7")).toBe(true);
+    expect(matchesLeakSearch(leak, "прокладку")).toBe(true);
+    expect(matchesLeakSearch(leak, "бригада 8")).toBe(false);
+  });
+
   it("treats zero coordinates as valid GPS and applies nearby radius", () => {
     const data = [
       { id: 1, lat: 0, lng: 0, status: "open" },

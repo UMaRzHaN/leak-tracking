@@ -1,6 +1,7 @@
 import { getAllMonitoringRecords } from "@/utils/monitoring";
 import { ABBREV_MAP } from "@/features/search/Autocomplete/smartFilter";
 import { SEARCH_SCOPE } from "@/domain/leakFilters";
+import { LEAK_EVENT_TYPES, getLeakEvents } from "@/domain/leakEvents";
 
 /**
  * Текст записи для поиска: всё, по чему её могут искать, одной строкой.
@@ -43,6 +44,8 @@ const MONITORING_SEARCH_KEYS = [
 ];
 
 const HISTORY_SEARCH_KEYS = ["user", "text", "from", "to"];
+
+const REPAIR_SEARCH_KEYS = ["brigade", "note", "materials_equipment"];
 
 // Поля одной области поиска: свои — у записи, у обхода и у истории.
 const SCOPE_KEYS = {
@@ -181,6 +184,12 @@ export function buildLeakSearchText(leak, scope = SEARCH_SCOPE.ALL) {
   // может, а дата поиску не нужна.
   for (const record of getAllMonitoringRecords(leak)) {
     values.push(...collectValues(record, MONITORING_SEARCH_KEYS));
+  }
+  // Отметки ремонта: бригаду и замечание из обхода ремонтов ищут так же.
+  for (const event of getLeakEvents(leak)) {
+    if (event?.type === LEAK_EVENT_TYPES.REPAIR_STAGE) {
+      values.push(...collectValues(event, REPAIR_SEARCH_KEYS));
+    }
   }
   for (const entry of leak?.history ?? []) {
     values.push(...collectValues(entry, HISTORY_SEARCH_KEYS));
