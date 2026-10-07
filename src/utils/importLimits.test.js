@@ -7,6 +7,7 @@ import {
   readArchiveEntry,
   verifyArchiveLimits,
 } from "./importLimits";
+import { declaredEntrySize } from "./zipEntrySize";
 
 function rangeFile(bytes) {
   return {
@@ -306,5 +307,33 @@ describe("readArchiveEntry", () => {
         "uint8array",
       ),
     ).resolves.toBeTruthy();
+  });
+});
+
+describe("declaredEntrySize", () => {
+  const entry = (uncompressedSize) => ({ _data: { uncompressedSize } });
+
+  it("читает 32-битный размер, который JSZip отдал знаковым", () => {
+    // 0xFFFFFFF0 приходит из JSZip как -16; нулём он прятал бомбу от
+    // предварительной проверки.
+    expect(declaredEntrySize(entry(-16))).toBe(0xfffffff0);
+    expect(declaredEntrySize(entry(-0x80000000))).toBe(0x80000000);
+  });
+
+  it("отдаёт обычный и ZIP64-размер как есть", () => {
+    expect(declaredEntrySize(entry(1024))).toBe(1024);
+    expect(declaredEntrySize(entry(2 ** 40))).toBe(2 ** 40);
+  });
+
+  it("считает нулём то, что размером не является", () => {
+    expect(declaredEntrySize(entry(undefined))).toBe(0);
+    expect(declaredEntrySize(entry(Number.NaN))).toBe(0);
+    expect(declaredEntrySize(entry(-(2 ** 40)))).toBe(0);
+    expect(declaredEntrySize(null)).toBe(0);
+  });
+
+  it("не пропускает честно объявленную бомбу в 4 ГБ", () => {
+    const zip = { files: { "bomb.bin": { name: "bomb.bin", ...entry(-16) } } };
+    expect(() => assertArchiveLimits(zip)).toThrow(/too large/);
   });
 });

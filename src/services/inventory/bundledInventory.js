@@ -1,5 +1,10 @@
 import { getJSZip } from "@/services/backup/runtime";
 import {
+  assertArchiveLimits,
+  assertImportFileSize,
+  readArchiveEntry,
+} from "@/utils/importLimits";
+import {
   isInventorySheetSet,
   sheetNamesFromWorkbookXml,
 } from "@/services/import/importRouting";
@@ -25,7 +30,9 @@ export async function extractBundledInventory(file) {
   const JSZip = (await getJSZip()).default;
   let zip;
   try {
+    assertImportFileSize(file);
     zip = await new JSZip().loadAsync(await file.arrayBuffer());
+    assertArchiveLimits(zip);
   } catch {
     return null;
   }
@@ -39,29 +46,32 @@ export async function extractBundledInventory(file) {
   );
 
   for (const name of workbooks) {
-    let inner;
+    // Вложенная книга — такой же чужой zip: её записи читаются под теми же
+    // лимитами, что и внешний архив, иначе бомба пряталась бы на втором уровне.
+    let sheets;
     try {
-      inner = await new JSZip().loadAsync(
-        await zip.file(name).async("arraybuffer"),
+      const inner = await new JSZip().loadAsync(
+        await readArchiveEntry(zip, zip.file(name), "arraybuffer"),
+      );
+      assertArchiveLimits(inner);
+      const marker = inner.file(WORKBOOK_MARKER);
+      if (!marker) continue;
+      sheets = sheetNamesFromWorkbookXml(
+        await readArchiveEntry(inner, marker, "string"),
       );
     } catch {
       continue;
     }
-    const marker = inner.file(WORKBOOK_MARKER);
-    if (!marker) continue;
-    if (
-      !isInventorySheetSet(
-        sheetNamesFromWorkbookXml(await marker.async("string")),
-      )
-    ) {
-      continue;
-    }
+    if (!isInventorySheetSet(sheets)) continue;
 
     const folder = name.slice(0, name.lastIndexOf("/") + 1);
     const rebased = new JSZip();
     for (const [path, entry] of Object.entries(zip.files)) {
       if (entry.dir || !path.startsWith(folder)) continue;
-      rebased.file(path.slice(folder.length), await entry.async("uint8array"));
+      rebased.file(
+        path.slice(folder.length),
+        await readArchiveEntry(zip, entry),
+      );
     }
     const stem = name.slice(folder.length).replace(/\.xlsx$/i, "");
     const blob = await rebased.generateAsync({ type: "blob" });

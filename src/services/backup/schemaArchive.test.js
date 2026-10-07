@@ -179,6 +179,20 @@ describe("restoring from an archive", () => {
     });
   });
 
+  it("does not unpack a drawing that inflates past the import limit", async () => {
+    const { inflatedArchive } = await import("@/test/zipBomb");
+    const archive = await inflatedArchive(
+      { [`${SCHEMA_ARCHIVE_DIR}/bomb.png`]: "drawing" },
+      [`${SCHEMA_ARCHIVE_DIR}/bomb.png`],
+    );
+
+    await expect(restoreSchemasFromArchive(archive, project)).resolves.toEqual({
+      restored: 0,
+      skipped: 0,
+    });
+    expect(mocks.addSchema).not.toHaveBeenCalled();
+  });
+
   it("does nothing without a project", async () => {
     const archive = await makeArchive({
       [`${SCHEMA_ARCHIVE_DIR}/a.png`]: "drawing",

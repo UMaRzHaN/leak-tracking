@@ -86,6 +86,15 @@ describe("extractBundledInventory", () => {
     expect(await extractBundledInventory(file)).toBeNull();
   }, 60_000);
 
+  it("не распаковывает папку с раздутой книгой", async () => {
+    const { inflatedArchive } = await import("@/test/zipBomb");
+    const file = await inflatedArchive({ "inv/book.xlsx": "x".repeat(64) }, [
+      "inv/book.xlsx",
+    ]);
+    expect(await extractBundledInventory(file)).toBeNull();
+    expect(await readInventoryArchiveCards(file, null)).toBeNull();
+  });
+
   it("не падает на файле, который не архив", async () => {
     expect(
       await extractBundledInventory(new File(["not a zip"], "x.xlsx")),

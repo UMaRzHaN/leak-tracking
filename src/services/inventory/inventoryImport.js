@@ -7,6 +7,7 @@ import {
 } from "@/services/backup/componentArchive";
 import { restoreComponentPhotos } from "@/services/backup/componentPhotoArchive";
 import { restoreSchemasFromArchive } from "@/services/backup/schemaArchive";
+import { assertArchiveLimits } from "@/utils/importLimits";
 import { logger } from "@/utils/logger";
 import {
   readInventoryArchiveCardsInWorker,
@@ -61,6 +62,7 @@ async function restoreComponentsFromWorkbook(file, project, registry) {
   try {
     const JSZip = (await getJSZip()).default;
     zip = await new JSZip().loadAsync(await file.arrayBuffer());
+    assertArchiveLimits(zip);
   } catch {
     return null;
   }

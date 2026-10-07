@@ -1,4 +1,5 @@
 import { globalScope } from "@/utils/globalScope";
+import { declaredEntrySize } from "@/utils/zipEntrySize";
 export const IMPORT_LIMITS = Object.freeze({
   // A whole gigabyte, matching MAX_EXPORT_BYTES in PublicFileWriterPlugin and
   // MAX_ARCHIVE_BYTES in LocalSyncPlugin: an archive this app can write is one
@@ -377,11 +378,6 @@ export async function preflightZipFile(file) {
   return { entryCount: Number(entryCount) };
 }
 
-function getEntrySize(entry) {
-  const size = Number(entry?._data?.uncompressedSize);
-  return Number.isFinite(size) && size >= 0 ? size : 0;
-}
-
 function entryTooLargeError(entry, size) {
   return new Error(
     `Archive entry "${entry.name}" is too large (${formatMegabytes(size)} MB).`,
@@ -405,7 +401,7 @@ export function assertArchiveLimits(zip) {
 
   let total = 0;
   for (const entry of entries) {
-    const size = getEntrySize(entry);
+    const size = declaredEntrySize(entry);
     if (size > IMPORT_LIMITS.maxSingleEntryBytes) {
       throw entryTooLargeError(entry, size);
     }

@@ -1,6 +1,12 @@
 import { parseInventorySheet } from "@/services/inventory/inventorySheet";
 import { parseInventoryBackupSheet } from "@/services/inventory/inventoryBackupSheet";
 import { mergeSheetEditsIntoCards } from "@/services/inventory/inventorySheetMerge";
+import {
+  assertArchiveLimits,
+  assertImportFileSize,
+  readArchiveEntry,
+  verifyArchiveLimits,
+} from "@/utils/importLimits";
 
 /**
  * Чтение книги инвентаризации: файл на входе, карточки на выходе.
@@ -22,6 +28,12 @@ function isWorkbookName(name) {
 }
 
 async function readWorkbook(data) {
+  // ExcelJS распаковывает книгу своим JSZip, без каких-либо лимитов. Поэтому
+  // сначала тот же проход, что у импорта утечек: настоящие байты считаются
+  // при распаковке, и бомба отсекается до того, как ExcelJS её раздует.
+  const JSZip = (await getJSZip()).default;
+  await verifyArchiveLimits(await new JSZip().loadAsync(data));
+
   const ExcelJS = (await getExcelJS()).default;
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(data);
@@ -29,8 +41,11 @@ async function readWorkbook(data) {
 }
 
 export async function openZip(file) {
+  assertImportFileSize(file);
   const JSZip = (await getJSZip()).default;
-  return new JSZip().loadAsync(await file.arrayBuffer());
+  const zip = await new JSZip().loadAsync(await file.arrayBuffer());
+  assertArchiveLimits(zip);
+  return zip;
 }
 
 /** Книга инвентаризации — голая или лежащая в архиве. */
@@ -39,7 +54,10 @@ async function openInventoryWorkbook(file, openedZip = null) {
     /\.zip$/i.test(/** @type {File} */ (file)?.name ?? "") ||
     String(file?.type ?? "").includes("zip");
 
-  if (!isZip && !openedZip) return readWorkbook(await file.arrayBuffer());
+  if (!isZip && !openedZip) {
+    assertImportFileSize(file);
+    return readWorkbook(await file.arrayBuffer());
+  }
 
   const zip = openedZip ?? (await openZip(file));
   const entry = Object.keys(zip.files).find(
@@ -48,7 +66,9 @@ async function openInventoryWorkbook(file, openedZip = null) {
   if (!entry) return null;
   // Имя взято из списка того же архива — файл под ним точно есть.
   const workbookEntry = /** @type {any} */ (zip.file(entry));
-  return readWorkbook(await workbookEntry.async("arraybuffer"));
+  return readWorkbook(
+    await readArchiveEntry(zip, workbookEntry, "arraybuffer"),
+  );
 }
 
 /**

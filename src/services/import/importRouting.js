@@ -1,3 +1,8 @@
+import {
+  assertArchiveLimits,
+  assertImportFileSize,
+  readArchiveEntry,
+} from "@/utils/importLimits";
 import { matchAll } from "@/utils/matchAll";
 
 const getJSZip = () => import("jszip");
@@ -49,6 +54,22 @@ export function sheetNamesFromWorkbookXml(xml) {
  * @returns {Promise<{kind: ImportKind, reason: string}>}
  */
 export async function detectImportKind(file) {
+  return detectKind(file, true);
+}
+
+/**
+ * @param {File|Blob} file
+ * @param {boolean} allowNested заглянуть ли во вложенную книгу. Только на
+ *   первом уровне: книга в архиве бывает, архив в книге в архиве — нет, а
+ *   zip-«квайн» без этого ограничения раскрывал бы себя бесконечно.
+ * @returns {Promise<{kind: ImportKind, reason: string}>}
+ */
+async function detectKind(file, allowNested) {
+  // Определение формата — первое, что делается с любым выбранным файлом, так
+  // что лимиты импорта действуют уже здесь: иначе zip-бомба роняла WebView
+  // раньше, чем до неё доходила защищённая ветка импорта.
+  assertImportFileSize(file);
+
   // Загрузчик — вне try: не загрузившийся jszip это отказ инструмента, а не
   // приговор файлу. Пока он был внутри, любая осечка на этой строке выдавала
   // «не удалось понять, что это за файл» — и человек шёл искать беду в
@@ -63,12 +84,13 @@ export async function detectImportKind(file) {
     // than guessing from the extension.
     return { kind: "unknown", reason: "not-an-archive" };
   }
+  assertArchiveLimits(zip);
 
   const names = Object.keys(zip.files);
 
   if (names.includes(WORKBOOK_MARKER)) {
     const sheets = sheetNamesFromWorkbookXml(
-      await zip.file(WORKBOOK_MARKER).async("string"),
+      await readArchiveEntry(zip, zip.file(WORKBOOK_MARKER), "string"),
     );
     // A workbook holding both is the leak report with the registry as one of
     // its tabs: it goes down the leak route, which reads that tab too.
@@ -91,11 +113,17 @@ export async function detectImportKind(file) {
     (name) => /\.xlsx$/i.test(name) && !name.startsWith("__MACOSX/"),
   );
   if (workbook) {
-    const inner = await zip.file(workbook).async("arraybuffer");
-    const nested = await detectImportKind(
+    if (!allowNested) return { kind: "excel", reason: "zipped-workbook" };
+    const inner = await readArchiveEntry(
+      zip,
+      zip.file(workbook),
+      "arraybuffer",
+    );
+    const nested = await detectKind(
       new Blob([inner], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       }),
+      false,
     );
     return nested.kind === "inventory"
       ? { kind: "inventory", reason: "zipped-workbook" }

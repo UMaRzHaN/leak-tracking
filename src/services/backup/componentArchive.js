@@ -1,6 +1,11 @@
 import { notifyComponentRegistryChanged } from "@/repositories/componentRegistrySignal";
 import { mergeComponentRegistries } from "@/domain/componentMerge";
 import { liveComponents } from "@/domain/componentTombstones";
+import {
+  assertArchiveLimits,
+  assertImportFileSize,
+  readArchiveEntry,
+} from "@/utils/importLimits";
 import { logger } from "@/utils/logger";
 import {
   buildComponentPhotoArchive,
@@ -125,11 +130,15 @@ function unwrap(parsed) {
 export async function previewArchiveComponents(file, project) {
   try {
     const JSZip = (await getJSZip()).default;
+    assertImportFileSize(file);
     const zip = await new JSZip().loadAsync(file);
+    assertArchiveLimits(zip);
     const entry = zip.file(COMPONENT_ARCHIVE_FILE);
     if (!entry) return null;
 
-    const incoming = unwrap(JSON.parse(await entry.async("string")));
+    const incoming = unwrap(
+      JSON.parse(await readArchiveEntry(zip, entry, "string")),
+    );
     if (!Array.isArray(incoming) || incoming.length === 0) return null;
 
     const local = project
@@ -162,11 +171,13 @@ export async function restoreComponentsFromArchive(file, project) {
   let incoming;
   try {
     const JSZip = (await getJSZip()).default;
+    assertImportFileSize(file);
     const zip = await new JSZip().loadAsync(file);
+    assertArchiveLimits(zip);
     const entry = zip.file(COMPONENT_ARCHIVE_FILE);
     if (!entry) return nothing;
 
-    incoming = unwrap(JSON.parse(await entry.async("string")));
+    incoming = unwrap(JSON.parse(await readArchiveEntry(zip, entry, "string")));
     // Before the merge, not after: the merge decides which card wins, and a
     // card that won with a path into another device's storage would show an
     // empty frame where a photograph is.

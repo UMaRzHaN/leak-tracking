@@ -5,6 +5,7 @@ import {
   normalizeImageExtension,
 } from "@/services/archive/archivePaths";
 import { fingerprintBlob } from "@/utils/blobHash";
+import { readArchiveEntry } from "@/utils/importLimits";
 import { logger } from "@/utils/logger";
 import { resolvePhotoBlob } from "./photoArchive";
 
@@ -161,7 +162,7 @@ export async function restoreComponentPhotos(zip, components, project) {
     try {
       const entry = zip.file(archivePath);
       if (!entry) return value;
-      const raw = await entry.async("blob");
+      const raw = await readArchiveEntry(zip, entry, "blob");
       const extension = archivePath.split(".").pop();
       // A zip carries no media type; the extension is all there is, and photo
       // storage refuses a blob it cannot recognise as an image.
