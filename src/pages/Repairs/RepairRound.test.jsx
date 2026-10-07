@@ -4,8 +4,9 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/app/hooks/useLanguage", async () => {
   const { englishLanguageHook } = await import("@/test/translate");
@@ -97,6 +98,16 @@ function renderRound(data) {
 }
 
 describe("RepairRound", () => {
+  // Проверка идёт внутри обхода: без него она сначала спрашивает, начинать
+  // ли новый (см. тесты ниже). Тесты, которым нужен другой обход, задают свой.
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem(
+      "app:p1:repair_round_v1",
+      JSON.stringify({ number: 1, startedAt: "2026-10-02T12:00:00.000Z" }),
+    );
+  });
+
   it("opens the leak card on swipe right and checks the repair on swipe left", async () => {
     renderRound([repair("r1")]);
 
@@ -219,12 +230,19 @@ describe("RepairRound", () => {
     expect(back.status).toBe("open");
   });
 
-  it("starts the first round with the first check", async () => {
+  it("asks before the first check whether to start a round", async () => {
     localStorage.clear();
     const setData = renderRound([repair("r5")]);
     expect(screen.getByText("No repair round yet")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Check" }));
+    // Как в мониторинге и сверке: обход не начинается молча.
+    expect(screen.queryByLabelText("Still leaking?")).toBeNull();
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Start round",
+      }),
+    );
     fireEvent.change(await screen.findByLabelText("Still leaking?"), {
       target: { value: "yes" },
     });
@@ -406,5 +424,41 @@ describe("RepairRound", () => {
         JSON.parse(localStorage.getItem("app:p1:repair_round_v1")).number,
       ).toBe(1);
     });
+  });
+
+  it("без идущего обхода и с выключенными новыми — предупреждает", async () => {
+    localStorage.clear();
+    const { writeRoundPermissions } =
+      await import("@/app/project/projectSettings");
+    writeRoundPermissions("p1", "repairs", { allowNew: false });
+    renderRound([repair("r9")]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Check" }));
+
+    expect(
+      screen.getByText(
+        "New repair rounds are turned off in the project settings",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByLabelText("Still leaking?")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Start round" })).toBeNull();
+    expect(localStorage.getItem("app:p1:repair_round_v1")).toBeNull();
+  });
+
+  it("после завершённого обхода тоже спрашивает про новый", () => {
+    localStorage.setItem(
+      "app:p1:repair_round_v1",
+      JSON.stringify({
+        number: 1,
+        startedAt: "2026-09-01T00:00:00.000Z",
+        completedAt: "2026-09-05T00:00:00.000Z",
+      }),
+    );
+    renderRound([repair("r10")]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Check" }));
+
+    expect(screen.getByText("Start a new repair round?")).toBeTruthy();
+    expect(screen.queryByLabelText("Still leaking?")).toBeNull();
   });
 });

@@ -30,6 +30,11 @@ test("ведёт ремонт от начала работ до устранен
 
   await footerTab(page, "Обход").click();
   await page.getByRole("button", { name: "Проверить", exact: true }).click();
+  // Обхода ещё нет — проверка сначала спрашивает, начинать ли его.
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Начать обход", exact: true })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Приёмка ремонта" }),
   ).toBeVisible();
@@ -90,6 +95,11 @@ test("принимает оборудование партиями и даёт �
   await page.getByRole("button", { name: "Назад" }).click();
   await footerTab(page, "Обход").click();
   await page.getByRole("button", { name: "Проверить", exact: true }).click();
+  // Обхода ещё нет — проверка сначала спрашивает, начинать ли его.
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Начать обход", exact: true })
+    .click();
 
   // МТР по умолчанию — из принятого по накладной.
   await expect(page.getByRole("radio", { name: "Приёмка" })).toHaveAttribute(

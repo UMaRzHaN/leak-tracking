@@ -34,7 +34,6 @@ const SAVED_TEXT = {
  *   setData: (next: any[]) => Promise<void>|void,
  *   userProfile?: { name?: string }|null,
  *   progress?: { index: number, total: number }|null,
- *   onBeforeSave?: () => void,
  *   onSaved?: () => void,
  *   onClose: () => void,
  *   onNotify: (notice: { type: string, message: string }) => void,
@@ -46,9 +45,6 @@ export default function RepairCheck({
   setData,
   userProfile,
   progress = null,
-  // Зовётся перед записью: обход ремонтов, которого ещё нет, начинается
-  // до проверки — она в нём засчитывается и несёт его номер.
-  onBeforeSave = /** @type {(() => void)|undefined} */ (undefined),
   onSaved,
   onClose,
   onNotify,
@@ -70,7 +66,6 @@ export default function RepairCheck({
       onNotify({ type: "error", message: t("database.fillUserName") });
       return;
     }
-    onBeforeSave?.();
     setSaving(true);
     try {
       await setData(

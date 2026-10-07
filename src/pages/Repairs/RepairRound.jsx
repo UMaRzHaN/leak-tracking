@@ -97,11 +97,22 @@ export default function RepairRound({
     ROUND_KIND.REPAIRS,
     setNotification,
   );
+  // Как в мониторинге и сверке: без идущего обхода проверка сначала
+  // спрашивает, начинать ли новый, а не начинает его молча (и не проходит
+  // мимо всякого обхода, когда прошлый завершён).
   const openCheck = (leak) => {
-    // Первая проверка без обхода начинает его — её держит то же правило.
-    if (!round && roundBlocked()) return;
-    if (roundActive && isRepairChecked(leak, round)) setRepeatLeak(leak);
-    else setCheckLeak(leak);
+    if (roundActive) {
+      if (isRepairChecked(leak, round)) setRepeatLeak(leak);
+      else setCheckLeak(leak);
+      return;
+    }
+    if (!allowed.allowNew) {
+      const warning = t("repairs.round.disabled");
+      return setNotification({ type: "warning", message: warning });
+    }
+    if (roundBlocked()) return;
+    setPendingLeak(leak);
+    setConfirmNew(true);
   };
 
   const footerOf = (leak) => {
@@ -297,11 +308,6 @@ export default function RepairRound({
             data={data}
             setData={setData}
             userProfile={userProfile}
-            // Первая проверка без начатого обхода начинает первый — до
-            // записи, иначе обход начался бы после неё и её не засчитал.
-            onBeforeSave={() => {
-              if (!round) setRound(repairRound.start(projectId));
-            }}
             onSaved={() => setCheckLeak(null)}
             onClose={() => setCheckLeak(null)}
             onNotify={setNotification}

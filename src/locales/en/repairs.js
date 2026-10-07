@@ -15,6 +15,7 @@ export const repairs = {
   round: {
     badge: "Repair round",
     noRound: "No repair round yet",
+    disabled: "New repair rounds are turned off in the project settings",
     newRound: "New round",
     startRound: "Start round",
     finishRound: "Finish round",

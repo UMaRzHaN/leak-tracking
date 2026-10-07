@@ -15,6 +15,7 @@ export const repairs = {
   round: {
     badge: "Обход ремонтов",
     noRound: "Обход ремонтов не начат",
+    disabled: "Новые обходы ремонтов выключены в настройках проекта",
     newRound: "Новый обход",
     startRound: "Начать обход",
     finishRound: "Завершить обход",
