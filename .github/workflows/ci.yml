@@ -6,6 +6,10 @@ name: CI
 # is narrowed to main, so branch work is covered by the pull_request trigger
 # alone and every commit is built exactly once.
 on:
+  # Только main: ветки проверяются через pull_request. Пара
+  # `push: "**"` + `pull_request` прогоняла каждый коммит в PR дважды,
+  # а задач семь — на приватном репозитории это удвоенный расход
+  # бесплатных минут.
   push:
     branches:
       - main
@@ -26,6 +30,12 @@ concurrency:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # На main отменять нельзя: у каждого коммита должен остаться свой
+  # зелёный прогон. В PR устаревший прогон никому не нужен.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   quality:
