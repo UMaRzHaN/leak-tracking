@@ -124,11 +124,22 @@
 }
 
 .projectList {
+  /* Высота строки проекта — фиксированная, чтобы список показывал ровно
+     три проекта, а остальные уходили в прокрутку. */
+  --project-row: 56px;
+
   margin-top: 8px;
   overflow: hidden;
   border: 1px solid var(--c-border-soft);
   border-radius: 12px;
   background: var(--c-surface);
+}
+
+.projectScroll {
+  /* Три строки и две черты между ними. */
+  max-height: calc(3 * var(--project-row) + 2px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   list-style: none;
 
   li + li {
@@ -151,6 +162,11 @@
   text-align: left;
 }
 
+.projectOption,
+.projectOptionActive {
+  height: var(--project-row);
+}
+
 .projectOptionActive {
   background: var(--c-accent-surface);
 
@@ -160,11 +176,15 @@
 }
 
 .projectType {
+  overflow: hidden;
   color: var(--c-text3);
   font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .projectManage {
+  border-top: 1px solid var(--c-border-soft);
   color: var(--c-accent-text);
   font-size: var(--fs-md);
   font-weight: 700;

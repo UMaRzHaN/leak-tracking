@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useCallback, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useProject } from "@/app/project/ProjectContext";
@@ -30,6 +30,12 @@ export default function ProjectPicker({ onSwitched }) {
   const { form, clearForm } = useLeakFormContext();
   const [open, setOpen] = useState(false);
   const [pendingId, setPendingId] = useState(/** @type {string|null} */ (null));
+  // Текущий проект при раскрытии — в видимых трёх, даже если он десятый.
+  const activeRef = useCallback(
+    (/** @type {HTMLLIElement|null} */ node) =>
+      node?.scrollIntoView?.({ block: "nearest" }),
+    [],
+  );
 
   const perform = async (id) => {
     selectProject(id);
@@ -81,39 +87,44 @@ export default function ProjectPicker({ onSwitched }) {
       </button>
 
       {open && (
-        <ul className={s.projectList} aria-label={t("appMenu.projects")}>
-          {projects.map((project) => {
-            const active = project.id === activeProject?.id;
-            return (
-              <li key={project.id}>
-                <button
-                  type="button"
-                  className={active ? s.projectOptionActive : s.projectOption}
-                  aria-current={active ? "true" : undefined}
-                  onClick={() => pick(project.id)}
-                >
-                  <span className={s.projectText}>
-                    <span className={s.projectName}>{project.name}</span>
-                    <span className={s.projectType}>
-                      {PROJECT_META[project.type]?.title ?? project.type}
+        <div className={s.projectList}>
+          {/* Видно три проекта, остальные — прокруткой: длинный список
+              иначе выталкивал пункты меню за край экрана. «Добавить» стоит
+              под списком и с ним не уезжает. */}
+          <ul className={s.projectScroll} aria-label={t("appMenu.projects")}>
+            {projects.map((project) => {
+              const active = project.id === activeProject?.id;
+              return (
+                <li key={project.id} ref={active ? activeRef : undefined}>
+                  <button
+                    type="button"
+                    className={active ? s.projectOptionActive : s.projectOption}
+                    aria-current={active ? "true" : undefined}
+                    onClick={() => pick(project.id)}
+                  >
+                    <span className={s.projectText}>
+                      <span className={s.projectName}>{project.name}</span>
+                      <span className={s.projectType}>
+                        {PROJECT_META[project.type]?.title ?? project.type}
+                      </span>
                     </span>
-                  </span>
-                  {active && <Icon name="check" size={18} strokeWidth={2.4} />}
-                </button>
-              </li>
-            );
-          })}
-          <li>
-            <button
-              type="button"
-              className={s.projectManage}
-              onClick={() => setAdding(true)}
-            >
-              <Icon name="plus" size={18} strokeWidth={2} />
-              {t("appMenu.addProject")}
-            </button>
-          </li>
-        </ul>
+                    {active && (
+                      <Icon name="check" size={18} strokeWidth={2.4} />
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <button
+            type="button"
+            className={s.projectManage}
+            onClick={() => setAdding(true)}
+          >
+            <Icon name="plus" size={18} strokeWidth={2} />
+            {t("appMenu.addProject")}
+          </button>
+        </div>
       )}
 
       <ConfirmSheet
