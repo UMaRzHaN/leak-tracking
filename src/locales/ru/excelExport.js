@@ -72,6 +72,7 @@ export const excelExport = {
       waiting_mtr: "Ожидает МТР",
       in_repair: "В ремонте",
       ready: "Готово к проверке",
+      resolved: "Подтверждено устранение",
     },
   },
 

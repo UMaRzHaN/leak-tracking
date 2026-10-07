@@ -113,6 +113,8 @@ export function useSettingsPage({
     setLeakPhotoRequired,
     setMonitoringPhotoRequired,
     setComponentPhotoRequired,
+    repairPhotoRequired,
+    setRepairPhotoRequired,
   } = usePhotoRequirements(activeProject?.id ?? null);
   const {
     corrections: voiceCorrections,
@@ -714,6 +716,8 @@ export function useSettingsPage({
     leakPhotoRequired,
     componentPhotoRequired,
     setComponentPhotoRequired,
+    repairPhotoRequired,
+    setRepairPhotoRequired,
     localSync,
     localeTexts,
     monitoringPhotoRequired,

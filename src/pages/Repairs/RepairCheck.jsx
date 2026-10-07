@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { usePhotoStorage } from "@/hooks/usePhotoStorage";
+import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
 import { useProjectData } from "@/app/project/ProjectContext";
 import { useAcceptances } from "@/utils/acceptanceStorage";
 import { receivedItems } from "@/domain/equipmentAcceptance";
@@ -53,6 +54,9 @@ export default function RepairCheck({
   // «МТР по факту» — из того, что принято по накладным (7f).
   const [invoices] = useAcceptances(activeProject?.id ?? null);
   const items = useMemo(() => receivedItems(invoices), [invoices]);
+  const { repairPhotoRequired } = usePhotoRequirements(
+    activeProject?.id ?? null,
+  );
   const [saving, setSaving] = useState(false);
   const user = userProfile?.name?.trim() || undefined;
 
@@ -98,6 +102,7 @@ export default function RepairCheck({
       items={items}
       saving={saving}
       progress={progress}
+      photoRequired={repairPhotoRequired}
       onSave={save}
       onClose={onClose}
     />

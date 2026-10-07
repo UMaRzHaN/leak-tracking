@@ -200,6 +200,8 @@ export const settings = {
   photoOptional: "Фото можно добавить по желанию.",
   photoRequirements: "Требования к фото",
   photoWhenAdding: "При добавлении утечки",
+  photoWhenRepair: "При приёмке ремонта",
+  repairPhotoRequirementSaved: "Требование к фото ремонта сохранено",
   photoWhenComponent: "Фото при добавлении компонента",
   componentPhotoRequirementSaved: "Требование фото для компонента сохранено",
   photoWhenMonitoring: "При мониторинге",

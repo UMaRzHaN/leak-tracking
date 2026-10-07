@@ -55,6 +55,8 @@ export default function Settings(props) {
     leakPhotoRequired,
     componentPhotoRequired,
     setComponentPhotoRequired,
+    repairPhotoRequired,
+    setRepairPhotoRequired,
     localSync,
     localeTexts,
     monitoringPhotoRequired,
@@ -233,10 +235,15 @@ export default function Settings(props) {
             leakPhotoRequired={leakPhotoRequired}
             monitoringPhotoRequired={monitoringPhotoRequired}
             componentPhotoRequired={componentPhotoRequired}
+            repairPhotoRequired={repairPhotoRequired}
             hasComponentRegistry={hasComponentRegistry(activeProject)}
             onComponentPhotoRequiredChange={(required) => {
               setComponentPhotoRequired(required);
               notify("success", t("settings.componentPhotoRequirementSaved"));
+            }}
+            onRepairPhotoRequiredChange={(required) => {
+              setRepairPhotoRequired(required);
+              notify("success", t("settings.repairPhotoRequirementSaved"));
             }}
             onLeakPhotoRequiredChange={(required) => {
               setLeakPhotoRequired(required);

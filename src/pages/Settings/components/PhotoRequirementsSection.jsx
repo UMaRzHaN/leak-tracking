@@ -7,10 +7,12 @@ export default function PhotoRequirementsSection({
   leakPhotoRequired,
   monitoringPhotoRequired,
   componentPhotoRequired,
+  repairPhotoRequired,
   hasComponentRegistry = false,
   onLeakPhotoRequiredChange,
   onMonitoringPhotoRequiredChange,
   onComponentPhotoRequiredChange,
+  onRepairPhotoRequiredChange,
 }) {
   const { t } = useLanguage();
 
@@ -36,6 +38,12 @@ export default function PhotoRequirementsSection({
           hint={monitoringPhotoRequired ? requiredHint : optionalHint}
           checked={monitoringPhotoRequired}
           onChange={onMonitoringPhotoRequiredChange}
+        />
+        <RequirementToggle
+          label={t("settings.photoWhenRepair")}
+          hint={repairPhotoRequired ? requiredHint : optionalHint}
+          checked={repairPhotoRequired}
+          onChange={onRepairPhotoRequiredChange}
         />
         {/* Offered only where a registry exists, the same way the tab itself
             appears — a switch for a screen this project type does not have

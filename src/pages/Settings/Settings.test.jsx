@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   setLeakPhotoRequired: vi.fn(),
   setMonitoringPhotoRequired: vi.fn(),
   setComponentPhotoRequired: vi.fn(),
+  setRepairPhotoRequired: vi.fn(),
   handleAdd: vi.fn(),
   handleSelect: vi.fn(),
   handleRename: vi.fn(),
@@ -55,6 +56,7 @@ vi.mock("@/app/project/hooks/usePhotoRequirements", () => ({
     setLeakPhotoRequired: mocks.setLeakPhotoRequired,
     setMonitoringPhotoRequired: mocks.setMonitoringPhotoRequired,
     setComponentPhotoRequired: mocks.setComponentPhotoRequired,
+    setRepairPhotoRequired: mocks.setRepairPhotoRequired,
   }),
 }));
 vi.mock("./hooks/useSettingsTexts", () => ({
@@ -181,6 +183,7 @@ vi.mock("./components/PhotoRequirementsSection", () => ({
     onLeakPhotoRequiredChange,
     onMonitoringPhotoRequiredChange,
     onComponentPhotoRequiredChange,
+    onRepairPhotoRequiredChange,
     hasComponentRegistry,
   }) => (
     <div>
@@ -190,6 +193,9 @@ vi.mock("./components/PhotoRequirementsSection", () => ({
       </button>
       <button onClick={() => onMonitoringPhotoRequiredChange(true)}>
         require-monitor-photo
+      </button>
+      <button onClick={() => onRepairPhotoRequiredChange(false)}>
+        optional-repair-photo
       </button>
       <button onClick={() => onComponentPhotoRequiredChange(true)}>
         require-component-photo
@@ -318,6 +324,7 @@ describe("Settings", () => {
       "appearance",
       "require-leak-photo",
       "require-monitor-photo",
+      "optional-repair-photo",
     ])
       fireEvent.click(screen.getByText(label));
 
@@ -345,6 +352,7 @@ describe("Settings", () => {
     expect(mocks.setHiddenFields).toHaveBeenCalled();
     expect(mocks.setLeakPhotoRequired).toHaveBeenCalledWith(true);
     expect(mocks.setMonitoringPhotoRequired).toHaveBeenCalledWith(true);
+    expect(mocks.setRepairPhotoRequired).toHaveBeenCalledWith(false);
   });
 
   it("routes an imported ZIP backup from the import screen", async () => {

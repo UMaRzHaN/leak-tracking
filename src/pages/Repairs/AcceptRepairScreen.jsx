@@ -8,23 +8,9 @@ import Icon from "@/components/ui/Icon/Icon";
 import { getRepairBrigade } from "@/domain/repairStages";
 import { REPAIR_CHECK_OUTCOME, repairCheckOutcome } from "@/domain/repairCheck";
 import { getLastMonitoringFlag } from "@/utils/monitoring";
+import { STATUS } from "@/utils/status";
+import { repairCheckTexts } from "./repairCheckTexts";
 import s from "./Repairs.module.scss";
-
-// Кнопка и строка под ответами говорят, куда уйдёт запись.
-const OUTCOME_TEXT = {
-  [REPAIR_CHECK_OUTCOME.RESOLVED]: {
-    submit: "repairs.accept.submit",
-    result: "repairs.accept.resultResolved",
-  },
-  [REPAIR_CHECK_OUTCOME.IN_REPAIR]: {
-    submit: "repairs.accept.keepInRepair",
-    result: "repairs.accept.resultInRepair",
-  },
-  [REPAIR_CHECK_OUTCOME.WAITING_MTR]: {
-    submit: "repairs.accept.toWaiting",
-    result: "repairs.accept.resultWaiting",
-  },
-};
 
 export const MTR_SOURCE = Object.freeze({
   ACCEPTANCE: "acceptance",
@@ -45,6 +31,7 @@ export const MTR_SOURCE = Object.freeze({
  *   items?: Array<{ id: string, name: string, unit: string, invoice: string, available: number }>,
  *   saving?: boolean,
  *   progress?: { index: number, total: number }|null,
+ *   photoRequired?: boolean,
  *   onSave: (draft: { leaking: boolean, done: boolean, photo_after?: string, materials_equipment?: string, note?: string, brigade?: string, physicalTag?: boolean, coords?: { lat: number, lng: number, accuracy?: number } }) => Promise<boolean|void>|boolean|void,
  *   onClose: () => void,
  * }} props
@@ -54,6 +41,7 @@ export default function AcceptRepairScreen({
   items = [],
   saving = false,
   progress = null,
+  photoRequired = true,
   onSave,
   onClose,
 }) {
@@ -87,12 +75,17 @@ export default function AcceptRepairScreen({
 
   const outcome = repairCheckOutcome({ leaking: stillLeaking, done });
   const accepting = outcome === REPAIR_CHECK_OUTCOME.RESOLVED;
+  const recheck = leak?.status === STATUS.RESOLVED;
+  const texts = repairCheckTexts(outcome, recheck);
+  // Снимок нужен, только когда ремонт закрывается, и если настройки проекта
+  // его требуют. Закрытый ремонт уже снят при приёмке.
+  const photoNeeded = accepting && photoRequired && !recheck;
   const item = items.find((candidate) => candidate.id === itemId) ?? null;
   const locked = saving || busy;
-
+  const unitShort = (unit) => t(`acceptance.units.${unit}.short`);
   const materials = () => {
     if (source === MTR_SOURCE.ACCEPTANCE && item) {
-      return `${item.name} × ${qty} ${item.unit} (${item.invoice})`;
+      return `${item.name} × ${qty} ${unitShort(item.unit)} (${item.invoice})`;
     }
     if (source === MTR_SOURCE.CUSTOMER && customerName.trim()) {
       const amount = customerQty.trim() ? ` × ${customerQty.trim()}` : "";
@@ -111,9 +104,9 @@ export default function AcceptRepairScreen({
       physicalTag,
       ...(coords ? { coords } : {}),
     };
-    // Снимок обязателен, только когда ремонт закрывается; иначе он по
-    // желанию и вместе с МТР ложится в отметку стадии.
-    if (accepting && !photo?.raw) return;
+    // Без обязательного снимка он по желанию и вместе с МТР ложится в
+    // отметку стадии.
+    if (photoNeeded && !photo?.raw) return;
     setBusy(true);
     try {
       let photoPath;
@@ -206,7 +199,7 @@ export default function AcceptRepairScreen({
           ))}
         </div>
         <p className={s.hint} aria-live="polite">
-          {t(OUTCOME_TEXT[outcome].result)}
+          {t(texts.result)}
         </p>
 
         <label className={s.field}>
@@ -265,7 +258,7 @@ export default function AcceptRepairScreen({
                       −
                     </button>
                     <span>
-                      {qty} {item?.unit}
+                      {qty} {item && unitShort(item.unit)}
                     </span>
                     <button
                       type="button"
@@ -324,9 +317,9 @@ export default function AcceptRepairScreen({
           value={photo}
           onChange={setPhoto}
           label={t("repairs.accept.photo")}
-          required={accepting}
+          required={photoNeeded}
           compact
-          error={accepting && submitted && !photo?.raw}
+          error={photoNeeded && submitted && !photo?.raw}
         />
       </div>
 
@@ -337,7 +330,7 @@ export default function AcceptRepairScreen({
           disabled={locked}
           onClick={submit}
         >
-          {t(OUTCOME_TEXT[outcome].submit)}
+          {t(texts.submit)}
         </button>
       </footer>
     </div>

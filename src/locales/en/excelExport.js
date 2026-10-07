@@ -72,6 +72,7 @@ export const excelExport = {
       waiting_mtr: "Awaiting materials",
       in_repair: "Under repair",
       ready: "Ready for check",
+      resolved: "Confirmed resolved",
     },
   },
 

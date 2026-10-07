@@ -450,7 +450,12 @@ export function validateProjectBackupMeta(parsed) {
             "Expected object",
           );
         } else {
-          for (const key of ["leakPhotoRequired", "monitoringPhotoRequired"]) {
+          for (const key of [
+            "leakPhotoRequired",
+            "monitoringPhotoRequired",
+            "componentPhotoRequired",
+            "repairPhotoRequired",
+          ]) {
             if (
               parsed.settings.photoRequirements[key] !== undefined &&
               typeof parsed.settings.photoRequirements[key] !== "boolean"

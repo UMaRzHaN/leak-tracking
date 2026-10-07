@@ -41,6 +41,7 @@ describe("usePhotoRequirements", () => {
       leakPhotoRequired: false,
       monitoringPhotoRequired: false,
       componentPhotoRequired: true,
+      repairPhotoRequired: true,
     });
   });
 });

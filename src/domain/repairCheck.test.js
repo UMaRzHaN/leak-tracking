@@ -167,3 +167,47 @@ describe("applyRepairCheck", () => {
     });
   });
 });
+
+describe("rechecking a closed repair", () => {
+  const options = { user: "Ким", now: NOW + 5000 };
+  const resolved = applyRepairCheck(
+    inRepair,
+    { leaking: false, done: true, photo_after: "photos/after.jpg" },
+    { user: "Ким", now: NOW },
+  );
+
+  it("keeps it closed and records the check when the leak is gone", () => {
+    const checked = applyRepairCheck(
+      resolved,
+      { leaking: false, done: true, brigade: "Бригада 3" },
+      options,
+    );
+    expect(checked.status).toBe(STATUS.RESOLVED);
+    expect(getRepairLog(checked)[0]).toMatchObject({
+      kind: "repair_stage",
+      stage: REPAIR_STAGE.RESOLVED,
+      brigade: "Бригада 3",
+      user: "Ким",
+    });
+  });
+
+  it("reopens it back into repair when the leak is still there", () => {
+    const back = applyRepairCheck(
+      resolved,
+      { leaking: true, done: true },
+      options,
+    );
+    expect(back.status).toBe(STATUS.IN_PROGRESS);
+    expect(getRepairLog(back)[0].stage).toBe(REPAIR_STAGE.IN_REPAIR);
+  });
+
+  it("reopens it as awaiting materials when the repair was not done", () => {
+    const back = applyRepairCheck(
+      resolved,
+      { leaking: true, done: false },
+      options,
+    );
+    expect(back.status).toBe(STATUS.OPEN);
+    expect(getRepairLog(back)[0].stage).toBe(REPAIR_STAGE.WAITING_MTR);
+  });
+});

@@ -72,6 +72,7 @@ const REPAIR_LOG_EVENTS = [
   "waiting_mtr",
   "in_repair",
   "ready",
+  "resolved",
 ];
 
 const ACCEPTANCE_KEYS = [

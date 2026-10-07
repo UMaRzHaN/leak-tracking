@@ -8,10 +8,12 @@ import { normalizeVoiceCorrections } from "@/features/voice/utils/voiceCorrectio
 
 export const PROJECT_SETTINGS_UPDATED_EVENT = "project-settings-updated";
 
-const DEFAULT_PHOTO_REQUIREMENTS = Object.freeze({
+export const DEFAULT_PHOTO_REQUIREMENTS = Object.freeze({
   leakPhotoRequired: true,
   monitoringPhotoRequired: true,
   componentPhotoRequired: true,
+  // Снимок после ремонта при приёмке (7c).
+  repairPhotoRequired: true,
 });
 
 function readJson(key) {
@@ -41,23 +43,26 @@ function normalizeHiddenFields(value) {
   ].sort();
 }
 
-function normalizePhotoRequirements(value) {
-  return {
-    leakPhotoRequired:
-      typeof value?.leakPhotoRequired === "boolean"
-        ? value.leakPhotoRequired
-        : DEFAULT_PHOTO_REQUIREMENTS.leakPhotoRequired,
-    monitoringPhotoRequired:
-      typeof value?.monitoringPhotoRequired === "boolean"
-        ? value.monitoringPhotoRequired
-        : typeof value?.photoRequired === "boolean"
-          ? value.photoRequired
-          : DEFAULT_PHOTO_REQUIREMENTS.monitoringPhotoRequired,
-    componentPhotoRequired:
-      typeof value?.componentPhotoRequired === "boolean"
-        ? value.componentPhotoRequired
-        : DEFAULT_PHOTO_REQUIREMENTS.componentPhotoRequired,
-  };
+export function normalizePhotoRequirements(value) {
+  const requirements = { ...DEFAULT_PHOTO_REQUIREMENTS };
+  for (const key of Object.keys(requirements)) {
+    if (typeof value?.[key] === "boolean") requirements[key] = value[key];
+  }
+  // До раздельных требований было одно — к фото мониторинга.
+  if (
+    typeof value?.monitoringPhotoRequired !== "boolean" &&
+    typeof value?.photoRequired === "boolean"
+  ) {
+    requirements.monitoringPhotoRequired = value.photoRequired;
+  }
+  return requirements;
+}
+
+/** Все требования к фото по умолчанию — хранить нечего. */
+export function usesDefaultPhotoRequirements(requirements) {
+  return Object.entries(DEFAULT_PHOTO_REQUIREMENTS).every(
+    ([key, value]) => requirements[key] === value,
+  );
 }
 
 /**
@@ -175,14 +180,7 @@ export function writeProjectSettings(projectId, value, { emit = true } = {}) {
   }
 
   const photoKey = STORAGE_KEYS.PROJECT_PHOTO_REQUIREMENTS(projectId);
-  const usesPhotoDefaults =
-    settings.photoRequirements.leakPhotoRequired ===
-      DEFAULT_PHOTO_REQUIREMENTS.leakPhotoRequired &&
-    settings.photoRequirements.monitoringPhotoRequired ===
-      DEFAULT_PHOTO_REQUIREMENTS.monitoringPhotoRequired &&
-    settings.photoRequirements.componentPhotoRequired ===
-      DEFAULT_PHOTO_REQUIREMENTS.componentPhotoRequired;
-  if (usesPhotoDefaults) {
+  if (usesDefaultPhotoRequirements(settings.photoRequirements)) {
     localStorage.removeItem(photoKey);
   } else {
     localStorage.setItem(photoKey, JSON.stringify(settings.photoRequirements));

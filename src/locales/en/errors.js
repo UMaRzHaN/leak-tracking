@@ -91,6 +91,7 @@ export const errors = {
     "No one is set to record the change: fill in the name in your profile.",
   INVALID_LEAK_EVENT_TYPE: "Unknown event kind in the leak history",
   REPAIR_NOT_IN_PROGRESS: "A stage can only be marked on a leak under repair",
+  REPAIR_NOT_RESOLVED: "Only a closed repair can be confirmed as resolved",
   INVALID_REPAIR_STAGE: "Unknown repair stage",
 
   // Drawings

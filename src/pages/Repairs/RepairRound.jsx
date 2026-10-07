@@ -17,47 +17,20 @@ import { useProjectData } from "@/app/project/ProjectContext";
 import { useRoundPermissions } from "@/app/project/hooks/useAllowNewRounds";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import MonitoringRoundOverview from "@/pages/Monitoring/MonitoringRoundOverview";
-import { createProjectRound, isInRound } from "@/utils/projectRound";
+import { createProjectRound } from "@/utils/projectRound";
+import RepairLeakDetails from "./RepairLeakDetails";
+import {
+  REPAIR_ROUND_FILTER as FILTER,
+  getRepairRoundItems,
+  isRepairChecked,
+  summarizeRepairRound,
+} from "./repairRoundDomain";
 import s from "./Repairs.module.scss";
 
 const RepairCheck = lazy(() => import("./RepairCheck"));
 
 // Номер и начало обхода ремонтов — как у сверки реестра.
 const repairRound = createProjectRound("repair_round_v1");
-
-/** Последнее, что сделали с ремонтом: отметка стадии или устранение. */
-function lastRepairActivity(leak) {
-  const dates = [getLastRepairStageMark(leak)?.date, getRepairDoneAt(leak)]
-    .map((date) => Date.parse(String(date ?? "")))
-    .filter(Number.isFinite);
-  return dates.length ? new Date(Math.max(...dates)).toISOString() : null;
-}
-
-const FILTER = Object.freeze({ DUE: "due", RESOLVED: "resolved", ALL: "all" });
-
-// В работе — сначала идущие ремонты, за ними ждущие МТР, устранённые в конце.
-const STAGE_RANK = {
-  [REPAIR_STAGE.IN_REPAIR]: 0,
-  [REPAIR_STAGE.WAITING_MTR]: 1,
-  [REPAIR_STAGE.RESOLVED]: 2,
-};
-
-function matches(leak, query) {
-  if (!query) return true;
-  const haystack = [
-    leak.leak_id,
-    leak.location,
-    leak.object,
-    leak.component,
-    leak.repair_recommendation,
-    leak.materials_equipment,
-    getRepairBrigade(leak),
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLocaleLowerCase();
-  return haystack.includes(query);
-}
 
 /**
  * Обход ремонтов (7b): карточка из обхода мониторинга, но в футере — стадия
@@ -81,53 +54,29 @@ export default function RepairRound({
   const [filter, setFilter] = useState(/** @type {string} */ (FILTER.DUE));
   const [search, setSearch] = useState("");
   const [checkLeak, setCheckLeak] = useState(/** @type {any} */ (null));
+  // Повторная проверка уже проверенного в обходе — с подтверждением, как в
+  // мониторинге; «Новый обход» из него открывает проверку после старта.
+  const [repeatLeak, setRepeatLeak] = useState(/** @type {any} */ (null));
+  const [pendingLeak, setPendingLeak] = useState(/** @type {any} */ (null));
+  const [detailsLeak, setDetailsLeak] = useState(/** @type {any} */ (null));
   const [notification, setNotification] = useState(/** @type {any} */ (null));
 
   const repairs = useMemo(() => getRepairLeaks(scopedData), [scopedData]);
-  const counts = useMemo(() => {
-    const resolved = repairs.filter(
-      (leak) => getRepairStage(leak) === REPAIR_STAGE.RESOLVED,
-    ).length;
-    return { due: repairs.length - resolved, resolved, all: repairs.length };
-  }, [repairs]);
-
-  // Ремонты обхода — те, что в работе, и устранённые уже в нём. Проверенным
-  // в обходе считается ремонт, который после его начала отметили или закрыли.
-  const roundSummary = useMemo(() => {
-    const summary = {
-      total: 0,
-      checked: 0,
-      resolved: 0,
-      inRepair: 0,
-      waiting: 0,
-    };
-    for (const leak of repairs) {
-      const stage = getRepairStage(leak);
-      const checked = isInRound(lastRepairActivity(leak), round);
-      if (stage === REPAIR_STAGE.RESOLVED && !checked) continue;
-      summary.total += 1;
-      if (checked) summary.checked += 1;
-      if (stage === REPAIR_STAGE.RESOLVED) summary.resolved += 1;
-      else if (stage === REPAIR_STAGE.WAITING_MTR) summary.waiting += 1;
-      else summary.inRepair += 1;
-    }
-    return summary;
-  }, [repairs, round]);
-
-  const items = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    return repairs
-      .filter((leak) => {
-        const resolved = getRepairStage(leak) === REPAIR_STAGE.RESOLVED;
-        if (filter === FILTER.DUE && resolved) return false;
-        if (filter === FILTER.RESOLVED && !resolved) return false;
-        return matches(leak, query);
-      })
-      .sort(
-        (left, right) =>
-          STAGE_RANK[getRepairStage(left)] - STAGE_RANK[getRepairStage(right)],
-      );
-  }, [repairs, filter, search]);
+  // Счётчики вкладок и шапки: проверенным в обходе считается ремонт, который
+  // после его начала отметили или закрыли.
+  const summary = useMemo(
+    () => summarizeRepairRound(repairs, round),
+    [repairs, round],
+  );
+  const items = useMemo(
+    () => getRepairRoundItems(repairs, { filter, search, round }),
+    [repairs, filter, search, round],
+  );
+  const roundActive = Boolean(round && !round.completedAt);
+  const openCheck = (leak) => {
+    if (roundActive && isRepairChecked(leak, round)) setRepeatLeak(leak);
+    else setCheckLeak(leak);
+  };
 
   const footerOf = (leak) => {
     const stage = getRepairStage(leak);
@@ -145,7 +94,7 @@ export default function RepairRound({
         meta: brigade,
       };
     }
-    const checked = isInRound(lastRepairActivity(leak), round);
+    const checked = isRepairChecked(leak, round);
     return {
       tone: checked
         ? "ok"
@@ -186,34 +135,32 @@ export default function RepairRound({
           roundCompleted: t("repairs.round.roundCompleted"),
         }}
         summary={{
-          checked: roundSummary.checked,
-          total: roundSummary.total,
+          checked: summary.checked,
+          total: summary.due + summary.checked,
         }}
         stats={[
           {
             key: "resolved",
             label: t("repairs.stages.resolved"),
-            value: roundSummary.resolved,
+            value: summary.resolved,
             tone: "resolved",
           },
           {
             key: "in_repair",
             label: t("repairs.stages.in_repair"),
-            value: roundSummary.inRepair,
+            value: summary.inRepair,
             tone: "repair",
           },
           {
             key: "waiting",
             label: t("repairs.stages.waiting_mtr"),
-            value: roundSummary.waiting,
+            value: summary.waiting,
             tone: "open",
           },
         ]}
         showCompletion={Boolean(
           round &&
-          (round.completedAt ||
-            (roundSummary.total > 0 &&
-              roundSummary.checked === roundSummary.total)),
+          (round.completedAt || (summary.checked > 0 && summary.due === 0)),
         )}
         hasRound={Boolean(round)}
         onStartRound={() => setConfirmNew(true)}
@@ -246,9 +193,9 @@ export default function RepairRound({
 
       <div className={s.filters}>
         {[
-          [FILTER.DUE, t("repairs.round.due"), counts.due],
-          [FILTER.RESOLVED, t("repairs.round.resolved"), counts.resolved],
-          [FILTER.ALL, t("repairs.round.all"), counts.all],
+          [FILTER.DUE, t("repairs.round.due"), summary.due],
+          [FILTER.CHECKED, t("repairs.round.checked"), summary.checked],
+          [FILTER.ALL, t("repairs.round.all"), summary.all],
         ].map(([id, label, count]) => (
           <button
             key={id}
@@ -273,6 +220,10 @@ export default function RepairRound({
           items.map((leak) => {
             const footer = footerOf(leak);
             const stage = getRepairStage(leak);
+            // Закрытый ремонт проверяют повторно, только если его закрыли
+            // или проверяли в этом обходе; прошлые — во «Всех ремонтах».
+            const checkable =
+              stage !== REPAIR_STAGE.RESOLVED || isRepairChecked(leak, round);
             return (
               <article key={leak.id} className={s.item}>
                 <LeakCardCompact
@@ -280,22 +231,11 @@ export default function RepairRound({
                   className={s.card}
                   badge={getRepairStageMeta(stage, t)}
                   extraChips={splitMaterials(leak.materials_equipment)}
-                  // Тап раскрывает карточку, как в остальных списках; свайп
-                  // влево — проверка ремонта (7c), как кнопка в футере; у
-                  // устранённой проверять нечего.
-                  onOpenDetails={
-                    stage === REPAIR_STAGE.RESOLVED
-                      ? undefined
-                      : () => setCheckLeak(leak)
-                  }
-                  onMonitor={
-                    stage === REPAIR_STAGE.RESOLVED
-                      ? undefined
-                      : () => setCheckLeak(leak)
-                  }
-                  onPickStatus={() => {
-                    if (stage !== REPAIR_STAGE.RESOLVED) setCheckLeak(leak);
-                  }}
+                  // Свайп вправо — карточка, влево — проверка ремонта (7c).
+                  onOpenDetails={setDetailsLeak}
+                  onMonitor={checkable ? openCheck : undefined}
+                  onPickStatus={() => {}}
+                  monitorLabel={t("repairs.checkSwipe")}
                 />
                 <div className={s.bar}>
                   <div className={s.barText}>
@@ -307,11 +247,11 @@ export default function RepairRound({
                       <span className={s.barMeta}>{footer.meta}</span>
                     )}
                   </div>
-                  {stage !== REPAIR_STAGE.RESOLVED && (
+                  {checkable && (
                     <button
                       type="button"
                       className={s.acceptBtn}
-                      onClick={() => setCheckLeak(leak)}
+                      onClick={() => openCheck(leak)}
                     >
                       {t("repairs.round.check")}
                     </button>
@@ -322,6 +262,14 @@ export default function RepairRound({
           })
         )}
       </section>
+
+      <RepairLeakDetails
+        leak={detailsLeak}
+        data={data}
+        setData={setData}
+        userProfile={userProfile}
+        onChange={setDetailsLeak}
+      />
 
       <Suspense fallback={null}>
         {checkLeak && (
@@ -351,8 +299,33 @@ export default function RepairRound({
           setRound(repairRound.start(projectId));
           setFilter(FILTER.DUE);
           setConfirmNew(false);
+          if (pendingLeak) setCheckLeak(pendingLeak);
+          setPendingLeak(null);
         }}
-        onCancel={() => setConfirmNew(false)}
+        onCancel={() => {
+          setConfirmNew(false);
+          setPendingLeak(null);
+        }}
+      />
+
+      <ConfirmSheet
+        open={Boolean(repeatLeak)}
+        title={t("repairs.round.repeatTitle")}
+        description={t("repairs.round.repeatDescription")}
+        confirmLabel={t("monitoring.repeatConfirm")}
+        secondaryActionLabel={
+          allowed.allowNew ? t("monitoring.repeatSecondary") : null
+        }
+        onSecondaryAction={() => {
+          setPendingLeak(repeatLeak);
+          setRepeatLeak(null);
+          setConfirmNew(true);
+        }}
+        onConfirm={() => {
+          setCheckLeak(repeatLeak);
+          setRepeatLeak(null);
+        }}
+        onCancel={() => setRepeatLeak(null)}
       />
 
       <ConfirmSheet

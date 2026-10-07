@@ -127,6 +127,39 @@ export function markRepairStage(leak, mark, { user, now } = {}) {
     /** @type {any} */ (error).code = "INVALID_REPAIR_STAGE";
     throw error;
   }
+  return appendStageMark(leak, mark, { user, now });
+}
+
+/**
+ * Повторная проверка закрытого ремонта: утечки нет, ремонт остаётся закрытым.
+ * Статус не меняется — в ленту ложится отметка со стадией «устранена»: её видно
+ * в журнале ремонтов, и обход ремонтов засчитывает проверку по ней.
+ *
+ * @param {any} leak
+ * @param {{ brigade?: string, note?: string, photo?: string,
+ *   materials_equipment?: string }} mark
+ * @param {{ user?: string, now?: number }} [options]
+ */
+export function confirmRepairResolved(leak, mark, { user, now } = {}) {
+  if (leak?.status !== STATUS.RESOLVED) {
+    const error = new Error("Only a resolved repair can be confirmed");
+    /** @type {any} */ (error).code = "REPAIR_NOT_RESOLVED";
+    throw error;
+  }
+  return appendStageMark(
+    leak,
+    { ...mark, stage: REPAIR_STAGE.RESOLVED },
+    { user, now },
+  );
+}
+
+/**
+ * @param {any} leak
+ * @param {{ stage: string, brigade?: string, note?: string, photo?: string,
+ *   materials_equipment?: string }} mark
+ * @param {{ user?: string, now?: number }} options
+ */
+function appendStageMark(leak, mark, { user, now }) {
   const time = Number.isFinite(now) ? now : Date.now();
   return {
     ...appendLeakEvent(leak, {
