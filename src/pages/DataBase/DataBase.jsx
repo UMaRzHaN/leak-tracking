@@ -9,6 +9,7 @@ import ResultsBar from "./components/ResultsBar";
 import LeakList from "./components/LeakList";
 import LeakModals from "./components/LeakModals";
 import { useDataBaseController } from "./hooks/useDataBaseController";
+import { useCanCheckRepair } from "@/pages/Repairs/useCanCheckRepair";
 import s from "./DataBase.module.scss";
 
 export default function DataBase({
@@ -27,25 +28,18 @@ export default function DataBase({
   const { t } = useLanguage();
   const projectConfig = useProjectConfig();
   const [bulkCalculationOpen, setBulkCalculationOpen] = useState(false);
-  const {
-    notification,
-    clearNotification,
-    bulkPickerOpen,
-    closeBulkPicker,
-    handleBulkPickerSelect,
-    filters,
-    actions,
-    bulk,
-  } = useDataBaseController({
-    data,
-    setData,
-    coords,
-    sharedFilters,
-    configuredMainLocationKey: projectConfig.system.location.main,
-    configuredLocationKey: projectConfig.system.location.secondary,
-    configuredLastLocationKey: projectConfig.system.location.last,
-    userProfile,
-  });
+  const canCheckRepair = useCanCheckRepair(repairMode);
+  const { notification, clearNotification, filters, actions, bulk } =
+    useDataBaseController({
+      data,
+      setData,
+      coords,
+      sharedFilters,
+      configuredMainLocationKey: projectConfig.system.location.main,
+      configuredLocationKey: projectConfig.system.location.secondary,
+      configuredLastLocationKey: projectConfig.system.location.last,
+      userProfile,
+    });
 
   return (
     <div className={s.page}>
@@ -101,8 +95,8 @@ export default function DataBase({
         statusFilter={filters.statusFilter}
         selectedIds={bulk.selectedIds}
         onOpenDetails={actions.setActiveLeak}
-        onPickStatus={actions.handlePickStatus}
         onMonitor={onMonitorLeak}
+        canMonitor={canCheckRepair}
         monitorLabel={monitorLabel}
         onToggleSelect={bulk.toggleSelected}
       />
@@ -115,30 +109,6 @@ export default function DataBase({
         onDelete={(id) =>
           actions.handleDelete(id, { onDeleted: bulk.deselectId })
         }
-        pickerLeak={actions.pickerLeak}
-        onStatusSelect={actions.handleStatusSelect}
-        onClosePicker={() => actions.setPickerLeak(null)}
-        resolveLeak={actions.resolveLeak}
-        onResolveConfirm={actions.handleResolveConfirm}
-        onCloseResolve={() => actions.setResolveLeak(null)}
-        repairLeak={actions.repairLeak}
-        onRepairConfirm={actions.handleRepairConfirm}
-        onCloseRepair={() => actions.setRepairLeak(null)}
-        reopenLeak={actions.reopenLeak}
-        vars={actions.vars}
-        onReopenConfirm={actions.handleReopenConfirm}
-        onCloseReopen={() => actions.setReopenLeak(null)}
-        resolveQueue={bulk.resolveQueue}
-        resolveTotal={bulk.resolveTotal}
-        onSequentialResolveConfirm={bulk.handleSequentialResolveConfirm}
-        onCancelBulkResolve={bulk.cancelBulkResolve}
-        repairQueue={bulk.repairQueue}
-        repairTotal={bulk.repairTotal}
-        onSequentialRepairConfirm={bulk.handleSequentialRepairConfirm}
-        onCancelBulkRepair={bulk.cancelBulkRepair}
-        bulkPickerOpen={bulkPickerOpen}
-        onBulkStatusSelect={handleBulkPickerSelect}
-        onCloseBulkPicker={closeBulkPicker}
         userProfile={userProfile}
       />
 

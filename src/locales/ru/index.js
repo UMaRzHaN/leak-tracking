@@ -33,7 +33,6 @@ import { reopen } from "./reopen";
 import { repairs } from "./repairs";
 import { route } from "./route";
 import { coordsUpdate } from "./coordsUpdate";
-import { resolve } from "./resolve";
 import { schemas } from "./schemas";
 import { settings } from "./settings";
 import { settingsModal } from "./settingsModal";
@@ -79,7 +78,6 @@ export const translation = {
   repairs,
   route,
   coordsUpdate,
-  resolve,
   schemas,
   settings,
   settingsModal,

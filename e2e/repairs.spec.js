@@ -1,16 +1,14 @@
 import { expect, test } from "@playwright/test";
 import {
   attachModalPhoto,
-  chooseDetailsStatus,
   createLeak,
   createProject,
   footerTab,
-  openDatabase,
-  openLeakDetails,
   openMenuItem,
   setUserProfile,
   openMapFilters,
 } from "./helpers.js";
+import { startRepairByCheck } from "./repairSteps.js";
 
 /**
  * Модуль ремонтов от начала работ до приёмки: утечка в ремонте попадает в
@@ -22,12 +20,7 @@ test("ведёт ремонт от начала работ до устранен
   await setUserProfile(page);
   await createLeak(page, "7301");
 
-  await openDatabase(page);
-  await openLeakDetails(page);
-  await chooseDetailsStatus(page, "В ремонте");
-  await attachModalPhoto(page);
-  await page.getByRole("button", { name: "Подтвердить" }).click();
-  await expect(page.getByText(/^В ремонте$/i).first()).toBeVisible();
+  await startRepairByCheck(page);
 
   await openMenuItem(page, /^Ремонтные работы/);
   await expect(page.getByText("№ 7301", { exact: true })).toBeVisible();
@@ -69,12 +62,7 @@ test("принимает оборудование партиями и даёт �
   await createProject(page, "Acceptance E2E");
   await setUserProfile(page);
   await createLeak(page, "7401");
-  await openDatabase(page);
-  await openLeakDetails(page);
-  await chooseDetailsStatus(page, "В ремонте");
-  await attachModalPhoto(page);
-  await page.getByRole("button", { name: "Подтвердить" }).click();
-  await expect(page.getByText(/^В ремонте$/i).first()).toBeVisible();
+  await startRepairByCheck(page);
 
   await openMenuItem(page, /^Ремонтные работы/);
   await page.getByRole("button", { name: "Приёмка оборудования" }).click();

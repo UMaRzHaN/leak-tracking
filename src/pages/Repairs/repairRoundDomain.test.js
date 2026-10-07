@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   REPAIR_ROUND_FILTER as FILTER,
+  canSwipeCheckRepair,
   getRepairRoundItems,
   repairRoundState,
   summarizeRepairRound,
@@ -48,6 +49,23 @@ describe("repair round", () => {
     expect(repairRoundState(resolvedBefore, round)).toBe("outside");
     // Без обхода проверять предстоит всё, что в работе.
     expect(repairRoundState(checked, null)).toBe("due");
+  });
+
+  it("в идущем обходе свайп не открывает ремонт, принятый до него", () => {
+    expect(canSwipeCheckRepair(resolvedBefore, round)).toBe(false);
+    // Принятый уже в этом обходе перепроверить можно, как и идущие.
+    expect(canSwipeCheckRepair(resolvedInRound, round)).toBe(true);
+    expect(canSwipeCheckRepair(due, round)).toBe(true);
+  });
+
+  it("без идущего обхода свайп открывает и принятый ремонт", () => {
+    expect(canSwipeCheckRepair(resolvedBefore, null)).toBe(true);
+    expect(
+      canSwipeCheckRepair(resolvedBefore, {
+        ...round,
+        completedAt: "2026-10-05T00:00:00.000Z",
+      }),
+    ).toBe(true);
   });
 
   it("puts a fictitious closed repair back up for a check", () => {

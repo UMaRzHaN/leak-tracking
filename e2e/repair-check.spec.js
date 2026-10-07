@@ -8,21 +8,7 @@ import {
   openMenuItem,
   setUserProfile,
 } from "./helpers";
-
-// Свайп влево по карточке в модуле ремонтов — проверка ремонта (7c), а не
-// мониторинг. Ответы решают, куда уходит запись.
-async function swipeLeft(page) {
-  const card = page.locator("[data-urgency]").first();
-  await expect(card).toBeVisible();
-  const box = await card.boundingBox();
-  if (!box) throw new Error("Leak card is not visible");
-  const startX = box.x + box.width - 40;
-  const y = box.y + Math.min(box.height / 2, 40);
-  await page.mouse.move(startX, y);
-  await page.mouse.down();
-  await page.mouse.move(startX - 120, y, { steps: 6 });
-  await page.mouse.up();
-}
+import { swipeCardLeft as swipeLeft } from "./repairSteps.js";
 
 test("в ремонтах свайп открывает проверку ремонта и двигает стадию", async ({
   page,

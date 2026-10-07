@@ -57,10 +57,6 @@ export function useLeakDetailsSheet({
   const [viewerOpen, setViewerOpen] = useState(false);
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
   const [deleteArmed, setDeleteArmed] = useState(false);
-  const [resolveOpen, setResolveOpen] = useState(false);
-  const [repairOpen, setRepairOpen] = useState(false);
-  const [reopenOpen, setReopenOpen] = useState(false);
-  const [statusPickerOpen, setStatusPickerOpen] = useState(false);
 
   const deleteTimerRef = useRef(
     /** @type {ReturnType<typeof setTimeout>|undefined} */ (undefined),
@@ -160,15 +156,7 @@ export function useLeakDetailsSheet({
     setCloseConfirmOpen(false);
   }, []);
 
-  const {
-    saving,
-    handleSave,
-    handleStatusChange,
-    handleStatusSelect,
-    handleResolveConfirm,
-    handleRepairConfirm,
-    handleReopenConfirm,
-  } = useLeakDetailsPersistence({
+  const { saving, handleSave } = useLeakDetailsPersistence({
     leak,
     allLeaks,
     onSave,
@@ -191,10 +179,6 @@ export function useLeakDetailsSheet({
     setNotification,
     setActiveTab,
     requireHistoryUser,
-    setStatusPickerOpen,
-    setResolveOpen,
-    setRepairOpen,
-    setReopenOpen,
     paramsTab: TAB.PARAMS,
   });
 
@@ -294,14 +278,6 @@ export function useLeakDetailsSheet({
     setViewerOpen,
     closeConfirmOpen,
     deleteArmed,
-    resolveOpen,
-    setResolveOpen,
-    repairOpen,
-    setRepairOpen,
-    reopenOpen,
-    setReopenOpen,
-    statusPickerOpen,
-    setStatusPickerOpen,
     fileInputRef,
     fileInputAfterRef,
     fileInputRepairRef,
@@ -323,11 +299,6 @@ export function useLeakDetailsSheet({
     handleClose,
     confirmClose,
     cancelClose,
-    handleStatusChange,
-    handleStatusSelect,
-    handleResolveConfirm,
-    handleRepairConfirm,
-    handleReopenConfirm,
     handleEdit,
     handleCancel,
     armDelete,

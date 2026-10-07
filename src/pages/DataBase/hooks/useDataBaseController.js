@@ -15,7 +15,6 @@ export function useDataBaseController({
   userProfile,
 }) {
   const [notification, setNotification] = useState(/** @type {any} */ (null));
-  const [bulkPickerOpen, setBulkPickerOpen] = useState(false);
 
   const notify = useCallback((type, message, options = {}) => {
     setNotification({ type, message, ...options });
@@ -36,33 +35,19 @@ export function useDataBaseController({
     setData,
     notify,
     deletePhoto,
-    userProfile,
   });
   const bulk = useBulkActions({
     data,
     setData,
     displayed: filters.displayed,
     notify,
-    deletePhoto,
     userProfile,
     projectVars: actions.vars,
   });
 
-  const handleBulkPickerSelect = useCallback(
-    (status) => {
-      setBulkPickerOpen(false);
-      bulk.handleBulkStatusChange(status);
-    },
-    [bulk],
-  );
-
   return {
     notification,
     clearNotification: () => setNotification(null),
-    bulkPickerOpen,
-    openBulkPicker: () => setBulkPickerOpen(true),
-    closeBulkPicker: () => setBulkPickerOpen(false),
-    handleBulkPickerSelect,
     notify,
     filters,
     actions,

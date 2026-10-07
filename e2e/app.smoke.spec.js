@@ -4,7 +4,6 @@ import {
   openHome,
   openComponentRegistry,
   attachModalPhoto,
-  chooseDetailsStatus,
   createLeak,
   createProject,
   exportExcelArchive,
@@ -20,6 +19,7 @@ import {
   importFile,
   leaveSettings,
 } from "./helpers.js";
+import { startRepairByCheck, swipeCardLeft } from "./repairSteps.js";
 
 async function seedMapCache(page, count = 3) {
   await page.evaluate(async (entryCount) => {
@@ -212,6 +212,7 @@ test("creates a leak with a photo and keeps it after reload", async ({
   await expect(page.locator("img")).toHaveCount(1);
 });
 
+// Статус вручную не меняют: весь путь записи — проверками ремонта со свайпа.
 test("moves a leak through repair, resolution, and reopening", async ({
   page,
 }) => {
@@ -219,33 +220,29 @@ test("moves a leak through repair, resolution, and reopening", async ({
   await setUserProfile(page);
   await createLeak(page, "5201");
 
-  await openDatabase(page);
-  await openLeakDetails(page);
+  // В ремонт: «утечка есть, ремонт выполнен».
+  await startRepairByCheck(page);
 
-  await chooseDetailsStatus(page, "В ремонте");
-  await expect(
-    page.getByRole("heading", { name: "Утечка в ремонте" }),
-  ).toBeVisible();
+  // Устранение: «утечки нет» — бригада, МТР и снимок.
+  const sheet = page.getByRole("dialog", { name: "Приёмка ремонта" });
+  await swipeCardLeft(page);
+  await sheet.getByLabel("Бригада", { exact: true }).fill("Бригада 1");
+  await sheet.getByRole("radio", { name: "Заказчик" }).click();
+  await sheet.getByLabel("Наименование МТР").fill("Хомут");
   await attachModalPhoto(page);
-  await page.getByRole("button", { name: "Подтвердить" }).click();
-  await expect(page.getByText(/^В ремонте$/i).first()).toBeVisible();
-  await openLeakDetails(page, "В ремонте");
-
-  await chooseDetailsStatus(page, "Устранена");
-  await expect(
-    page.getByRole("heading", { name: "Устранение утечки" }),
-  ).toBeVisible();
-  await attachModalPhoto(page);
-  await page.getByRole("button", { name: "Подтвердить" }).click();
+  await sheet.getByRole("button", { name: "Принять и закрыть ремонт" }).click();
+  await expect(sheet).toHaveCount(0);
   await expect(page.getByText(/^Устранена$/i).first()).toBeVisible();
-  await openLeakDetails(page, "Устранена");
 
-  await chooseDetailsStatus(page, "Открыта");
-  await expect(
-    page.getByRole("heading", { name: "Повторное открытие утечки" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Открыть", exact: true }).click();
+  // Переоткрытие: перепроверка принятого — течь снова есть, ремонт не сделан.
+  await swipeCardLeft(page);
+  await sheet.getByLabel("Утечка есть?").selectOption("yes");
+  await sheet.getByLabel("Ремонт выполнен?").selectOption("no");
+  await sheet.getByRole("button", { name: "Вернуть: ожидает МТР" }).click();
+  await expect(sheet).toHaveCount(0);
 
+  await openMenuItem(page, /^LDAR/);
+  await openDatabase(page);
   await expect(page.getByText(/^Открыта$/i).first()).toBeVisible();
   await page.reload();
   await expect(page.getByText(/^Открыта$/i).first()).toBeVisible();

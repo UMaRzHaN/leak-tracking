@@ -1,42 +1,23 @@
-import { getRepairDonePhoto, getRepairPhoto } from "@/domain/leakEvents";
 import { errorText } from "@/utils/appError";
 import { useState, useCallback, useMemo } from "react";
-import { STATUS } from "@/utils/status";
 import { hapticSuccess } from "@/utils/haptics";
 import { useLanguage } from "@/app/hooks/useLanguage";
-import { pluralRecords } from "@/pages/DataBase/pluralRecords";
-import {
-  changeLeakStatus,
-  deletePhotoIfUnreferenced,
-  getOrphanedOriginalPhoto,
-  resolveLeakRecord,
-  startLeakRepair,
-} from "@/domain/leakLifecycle";
 import {
   buildLeakCalculationParams,
   updateLeakCalculationParams,
 } from "@/utils/calculationParams";
-import { ignoredError } from "@/utils/ignoredError";
-
-/** @type {(path: string) => Promise<void>} */
-const noopDeletePhoto = async () => {};
 
 export function useBulkActions({
   data,
   setData,
   displayed,
   notify,
-  deletePhoto = noopDeletePhoto,
   userProfile,
   projectVars = {},
 }) {
-  const { t, intlLocale } = useLanguage();
+  const { t } = useLanguage();
   const historyUser = userProfile?.name?.trim() || undefined;
   const [selectedIds, setSelectedIds] = useState(() => new Set());
-  const [resolveQueue, setResolveQueue] = useState(/** @type {any[]} */ ([]));
-  const [resolveTotal, setResolveTotal] = useState(0);
-  const [repairQueue, setRepairQueue] = useState(/** @type {any[]} */ ([]));
-  const [repairTotal, setRepairTotal] = useState(0);
   const requireHistoryUser = useCallback(() => {
     if (historyUser) return true;
     notify("error", t("database.fillUserName"));
@@ -129,241 +110,6 @@ export function useBulkActions({
     ],
   );
 
-  const handleBulkStatusChange = useCallback(
-    async (status) => {
-      if (!selectedIds.size) return;
-      if (!requireHistoryUser()) return;
-
-      const affected = data.filter(
-        (item) =>
-          selectedIds.has(item.id) && (item.status ?? STATUS.OPEN) !== status,
-      );
-      if (affected.length === 0) {
-        clearSelection();
-        return;
-      }
-
-      if (status === STATUS.RESOLVED) {
-        setResolveQueue(affected);
-        setResolveTotal(affected.length);
-        return;
-      }
-
-      if (status === STATUS.IN_PROGRESS) {
-        setRepairQueue(affected);
-        setRepairTotal(affected.length);
-        return;
-      }
-
-      const orphanedPhotos = affected
-        .map(getOrphanedOriginalPhoto)
-        .filter(Boolean);
-      const now = Date.now();
-      const next = data.map((item) =>
-        selectedIds.has(item.id) && (item.status ?? STATUS.OPEN) !== status
-          ? changeLeakStatus(item, status, { user: historyUser, now })
-          : item,
-      );
-
-      try {
-        await setData(next);
-        hapticSuccess();
-        for (const path of orphanedPhotos) {
-          await deletePhotoIfUnreferenced(path, next, deletePhoto).catch(
-            ignoredError("database.photoCleanup"),
-          );
-        }
-        notify(
-          "success",
-          t("database.bulk.statusChanged", {
-            count: affected.length,
-            records: pluralRecords(
-              affected.length,
-              t,
-              intlLocale,
-              "database.bulk.records",
-            ),
-          }),
-        );
-        clearSelection();
-      } catch (err) {
-        notify(
-          "error",
-          t("database.bulk.saveError", { message: errorText(err, t) }),
-        );
-      }
-    },
-    [
-      clearSelection,
-      data,
-      deletePhoto,
-      historyUser,
-      intlLocale,
-      notify,
-      requireHistoryUser,
-      selectedIds,
-      setData,
-      t,
-    ],
-  );
-
-  const handleSequentialResolveConfirm = useCallback(
-    async ({ photo_after, materials_equipment, note }) => {
-      const leak = resolveQueue[0];
-      if (!leak) return;
-      if (!requireHistoryUser()) return;
-
-      const next = data.map((item) =>
-        item.id === leak.id
-          ? resolveLeakRecord(
-              item,
-              { photo_after, materials_equipment, note },
-              { user: historyUser },
-            )
-          : item,
-      );
-
-      try {
-        await setData(next);
-        hapticSuccess();
-        // Прежний снимок спрашивается у ленты: веха больше не пишется, и
-        // сравнение с ней объявляло бы заменённым то, чего на записи нет.
-        if (
-          getRepairDonePhoto(leak) &&
-          getRepairDonePhoto(leak) !== photo_after
-        ) {
-          await deletePhotoIfUnreferenced(
-            getRepairDonePhoto(leak),
-            next,
-            deletePhoto,
-          ).catch(ignoredError("database.photoCleanup"));
-        }
-      } catch (err) {
-        if (photo_after && photo_after !== getRepairDonePhoto(leak)) {
-          await deletePhotoIfUnreferenced(photo_after, data, deletePhoto).catch(
-            ignoredError("database.photoCleanup"),
-          );
-        }
-        notify(
-          "error",
-          t("database.bulk.saveError", { message: errorText(err, t) }),
-        );
-        return;
-      }
-
-      const remaining = resolveQueue.slice(1);
-      setResolveQueue(remaining);
-      if (remaining.length === 0) {
-        notify(
-          "success",
-          t("database.bulk.resolved", {
-            count: resolveTotal,
-            records: pluralRecords(
-              resolveTotal,
-              t,
-              intlLocale,
-              "database.bulk.records",
-            ),
-          }),
-        );
-        clearSelection();
-        setResolveTotal(0);
-      }
-    },
-    [
-      clearSelection,
-      data,
-      deletePhoto,
-      historyUser,
-      intlLocale,
-      notify,
-      requireHistoryUser,
-      resolveQueue,
-      resolveTotal,
-      setData,
-      t,
-    ],
-  );
-
-  const handleSequentialRepairConfirm = useCallback(
-    async ({ photo_repair, materials_equipment, note }) => {
-      const leak = repairQueue[0];
-      if (!leak) return;
-      if (!requireHistoryUser()) return;
-
-      const orphanedPhoto = getOrphanedOriginalPhoto(leak);
-      const next = data.map((item) =>
-        item.id === leak.id
-          ? startLeakRepair(
-              item,
-              { photo_repair, materials_equipment, note },
-              { user: historyUser },
-            )
-          : item,
-      );
-
-      try {
-        await setData(next);
-        hapticSuccess();
-        if (getRepairPhoto(leak) && getRepairPhoto(leak) !== photo_repair) {
-          await deletePhotoIfUnreferenced(
-            getRepairPhoto(leak),
-            next,
-            deletePhoto,
-          ).catch(ignoredError("database.photoCleanup"));
-        }
-        await deletePhotoIfUnreferenced(orphanedPhoto, next, deletePhoto).catch(
-          ignoredError("database.photoCleanup"),
-        );
-      } catch (err) {
-        if (photo_repair && photo_repair !== getRepairPhoto(leak)) {
-          await deletePhotoIfUnreferenced(
-            photo_repair,
-            data,
-            deletePhoto,
-          ).catch(ignoredError("database.photoCleanup"));
-        }
-        notify(
-          "error",
-          t("database.bulk.saveError", { message: errorText(err, t) }),
-        );
-        return;
-      }
-
-      const remaining = repairQueue.slice(1);
-      setRepairQueue(remaining);
-      if (remaining.length === 0) {
-        notify(
-          "success",
-          t("database.bulk.statusChanged", {
-            count: repairTotal,
-            records: pluralRecords(
-              repairTotal,
-              t,
-              intlLocale,
-              "database.bulk.records",
-            ),
-          }),
-        );
-        clearSelection();
-        setRepairTotal(0);
-      }
-    },
-    [
-      clearSelection,
-      data,
-      deletePhoto,
-      historyUser,
-      intlLocale,
-      notify,
-      requireHistoryUser,
-      repairQueue,
-      repairTotal,
-      setData,
-      t,
-    ],
-  );
-
   const selectedCount = selectedIds.size;
   const allDisplayedSelected =
     displayed.length > 0 && displayed.every((item) => selectedIds.has(item.id));
@@ -378,20 +124,5 @@ export function useBulkActions({
     selectDisplayed,
     bulkCalculationVars,
     handleBulkCalculationSave,
-    resolveQueue,
-    resolveTotal,
-    repairQueue,
-    repairTotal,
-    handleBulkStatusChange,
-    handleSequentialResolveConfirm,
-    handleSequentialRepairConfirm,
-    cancelBulkResolve: () => {
-      setResolveQueue([]);
-      setResolveTotal(0);
-    },
-    cancelBulkRepair: () => {
-      setRepairQueue([]);
-      setRepairTotal(0);
-    },
   };
 }

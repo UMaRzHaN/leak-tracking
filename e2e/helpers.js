@@ -129,19 +129,10 @@ export async function openLeakDetails(page, currentStatus = "Открыта") {
   await page.mouse.down();
   await page.mouse.move(startX + 100, y, { steps: 5 });
   await page.mouse.up();
+  // Статус в шапке карточки — плашка, а не кнопка: вручную его не меняют.
   await expect(
-    page.getByRole("button", { name: currentStatus, exact: true }),
+    page.getByRole("dialog").getByText(currentStatus, { exact: true }).first(),
   ).toBeVisible();
-}
-
-export async function chooseDetailsStatus(page, status) {
-  await page
-    .getByRole("button", {
-      name: /^(Открыта|В ремонте|Устранена)$/,
-      exact: true,
-    })
-    .click();
-  await page.getByRole("button", { name: status, exact: true }).click();
 }
 
 export async function attachModalPhoto(page) {

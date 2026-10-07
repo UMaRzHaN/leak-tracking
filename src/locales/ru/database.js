@@ -88,20 +88,6 @@ export const database = {
   paramsUpdated: "Параметры и расчёты обновлены: {{changed}}",
   paramsUpdateFailed: "Не удалось обновить параметры: {{message}}",
 
-  bulk: {
-    statusChanged: "Статус изменён у {{count}} {{records}}",
-    resolved: "Устранено {{count}} {{records}}",
-    saveError: "Ошибка сохранения: {{message}}",
-    // Родительный падеж: строка читается как «у 1 записи», «у 2 записей».
-    // Именительный набор для счётчика лежит отдельно, в database.records.
-    records: {
-      one: "записи",
-      few: "записей",
-      many: "записей",
-      other: "записей",
-    },
-  },
-
   export: {
     hasPhoto: "Да",
     success: "ZIP-архив успешно скачан",

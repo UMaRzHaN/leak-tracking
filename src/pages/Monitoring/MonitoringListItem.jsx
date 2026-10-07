@@ -18,7 +18,6 @@ function MonitoringListItem({
   roundNumber,
   hasActiveRound,
   onOpenDetails,
-  onPickStatus,
   onMonitor,
 }) {
   useRenderMetric("MonitoringListItem");
@@ -36,7 +35,6 @@ function MonitoringListItem({
         leak={leak}
         className={s.monitoringCard}
         onOpenDetails={onOpenDetails}
-        onPickStatus={onPickStatus}
         onMonitor={onMonitor}
         nearbyDist={leak._nearbyDist}
       />

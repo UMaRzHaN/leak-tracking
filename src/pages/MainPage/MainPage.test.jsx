@@ -2,8 +2,17 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const actionsState = vi.hoisted(() => ({ current: null }));
+// Правило обхода ремонтов проверяется у себя (repairRoundDomain); здесь —
+// что карточка слушается его ответа.
+const repairGate = vi.hoisted(() => ({ canCheck: () => true }));
+vi.mock("@/pages/Repairs/useCanCheckRepair", () => ({
+  useCanCheckRepair: () => (leak) => repairGate.canCheck(leak),
+}));
 vi.mock("./hooks/useMainPageActions", () => ({
-  useMainPageActions: () => actionsState.current,
+  useMainPageActions: (args) => {
+    actionsState.args = args;
+    return actionsState.current;
+  },
 }));
 vi.mock("@/app/hooks/useLanguage", () => ({
   useLanguage: () => ({
@@ -17,12 +26,13 @@ vi.mock("./components/EmptyState", () => ({
   ),
 }));
 vi.mock("@/features/leakList/LeakCardCompact/LeakCardCompact", () => ({
-  default: ({ leak, onOpenDetails, onPickStatus, onMonitor }) => (
+  default: ({ leak, onOpenDetails, onMonitor }) => (
     <div>
       <span>{leak.id}</span>
       <button onClick={() => onOpenDetails(leak)}>open-leak</button>
-      <button onClick={() => onPickStatus(leak)}>pick-status</button>
-      <button onClick={() => onMonitor(leak)}>monitor-leak</button>
+      {onMonitor && (
+        <button onClick={() => onMonitor(leak)}>monitor-leak</button>
+      )}
     </div>
   ),
 }));
@@ -38,31 +48,6 @@ vi.mock("@/features/leakDetails/LeakDetailsSheet", () => ({
     </div>
   ),
 }));
-vi.mock("@/features/status/StatusPickerModal/StatusPickerModal", () => ({
-  default: ({ onSelect, onClose }) => (
-    <div>
-      <button onClick={() => onSelect("resolved")}>select-status</button>
-      <button onClick={onClose}>close-status</button>
-    </div>
-  ),
-}));
-vi.mock("@/features/resolve/ResolveModal/ResolveModal", () => ({
-  default: ({ mode, onConfirm, onClose }) => (
-    <div>
-      <button onClick={onConfirm}>confirm-{mode ?? "resolve"}</button>
-      <button onClick={onClose}>close-{mode ?? "resolve"}</button>
-    </div>
-  ),
-}));
-vi.mock("@/features/status/ReopenLeakModal/ReopenLeakModal", () => ({
-  default: ({ onConfirm, onClose }) => (
-    <div>
-      <button onClick={onConfirm}>confirm-reopen</button>
-      <button onClick={onClose}>close-reopen</button>
-    </div>
-  ),
-}));
-
 import MainPage from "./MainPage";
 
 function createActions(overrides = {}) {
@@ -70,15 +55,6 @@ function createActions(overrides = {}) {
   return {
     activeLeak: leak,
     setActiveLeak: vi.fn(),
-    pickerLeak: leak,
-    setPickerLeak: vi.fn(),
-    resolveLeak: leak,
-    setResolveLeak: vi.fn(),
-    repairLeak: leak,
-    setRepairLeak: vi.fn(),
-    reopenLeak: leak,
-    setReopenLeak: vi.fn(),
-    vars: {},
     notification: { message: "ready" },
     setNotification: vi.fn(),
     stats: { total: 6, open: 2, inProgress: 2, resolved: 2 },
@@ -87,11 +63,6 @@ function createActions(overrides = {}) {
     statusFilter: "all",
     setStatusFilter: vi.fn(),
     ALL: "all",
-    handlePickStatus: vi.fn(),
-    handleStatusSelect: vi.fn(),
-    handleResolveConfirm: vi.fn(),
-    handleRepairConfirm: vi.fn(),
-    handleReopenConfirm: vi.fn(),
     handleSaveLeak: vi.fn(),
     handleDeleteLeak: vi.fn(),
     ...overrides,
@@ -103,7 +74,7 @@ describe("MainPage", () => {
     actionsState.current = createActions();
   });
 
-  it("wires recent leaks, navigation, and lifecycle modals", async () => {
+  it("wires recent leaks, navigation, and the details sheet", async () => {
     const setPage = vi.fn();
     const onMonitorLeak = vi.fn();
     render(
@@ -119,19 +90,10 @@ describe("MainPage", () => {
       "mainPage.showAll:6",
       "notification",
       "open-leak",
-      "pick-status",
       "monitor-leak",
       "close-details",
       "save-details",
       "delete-details",
-      "select-status",
-      "close-status",
-      "confirm-resolve",
-      "close-resolve",
-      "confirm-repair",
-      "close-repair",
-      "confirm-reopen",
-      "close-reopen",
     ])
       fireEvent.click(await screen.findByText(label));
 
@@ -140,19 +102,14 @@ describe("MainPage", () => {
       id: "leak-1",
       status: "open",
     });
-    expect(actionsState.current.handleResolveConfirm).toHaveBeenCalled();
-    expect(actionsState.current.handleRepairConfirm).toHaveBeenCalled();
-    expect(actionsState.current.handleReopenConfirm).toHaveBeenCalled();
+    expect(actionsState.current.handleSaveLeak).toHaveBeenCalled();
+    expect(actionsState.current.handleDeleteLeak).toHaveBeenCalled();
   });
 
   it("offers the first leak when the location has no records", () => {
     actionsState.current = createActions({
       recent: [],
       activeLeak: null,
-      pickerLeak: null,
-      resolveLeak: null,
-      repairLeak: null,
-      reopenLeak: null,
     });
     const setPage = vi.fn();
     render(<MainPage setPage={setPage} data={[]} setData={vi.fn()} />);
@@ -247,10 +204,6 @@ describe("MainPage", () => {
     actionsState.current = createActions({
       recent: [],
       activeLeak: null,
-      pickerLeak: null,
-      resolveLeak: null,
-      repairLeak: null,
-      reopenLeak: null,
     });
     render(
       <MainPage
@@ -278,10 +231,6 @@ describe("MainPage", () => {
     actionsState.current = createActions({
       recent: [],
       activeLeak: null,
-      pickerLeak: null,
-      resolveLeak: null,
-      repairLeak: null,
-      reopenLeak: null,
     });
     render(
       <MainPage
@@ -300,5 +249,87 @@ describe("MainPage", () => {
       screen.getByRole("button", { name: /repairs\.all/ }).textContent,
     ).toContain("2");
     expect(screen.getByText("empty:false")).toBeTruthy();
+  });
+
+  it("свайп по принятому ремонту тоже ведёт в проверку", () => {
+    const resolved = { id: "x1", status: "resolved", events: [] };
+    const onMonitorLeak = vi.fn();
+    actionsState.current = createActions({
+      recent: [resolved],
+      activeLeak: null,
+    });
+    render(
+      <MainPage
+        setPage={vi.fn()}
+        data={[resolved]}
+        setData={vi.fn()}
+        module="repairs"
+        onMonitorLeak={onMonitorLeak}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("monitor-leak"));
+    expect(onMonitorLeak).toHaveBeenCalledWith(resolved);
+  });
+
+  it("в идущем обходе не ведёт в проверку ремонт, принятый до него", () => {
+    const resolved = { id: "x1", status: "resolved", events: [] };
+    repairGate.canCheck = () => false;
+    actionsState.current = createActions({
+      recent: [resolved],
+      activeLeak: null,
+    });
+    render(
+      <MainPage
+        setPage={vi.fn()}
+        data={[resolved]}
+        setData={vi.fn()}
+        module="repairs"
+        onMonitorLeak={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("monitor-leak")).toBeNull();
+    repairGate.canCheck = () => true;
+  });
+
+  it("чип стадии отбирает ремонты этой стадии", () => {
+    const inRepair = {
+      id: "r1",
+      status: "in_progress",
+      events: [{ id: "s", type: "repair_started", date: "2026-10-01" }],
+    };
+    const resolved = { id: "x1", status: "resolved", events: [] };
+    actionsState.current = createActions({ recent: [], activeLeak: null });
+    render(
+      <MainPage
+        setPage={vi.fn()}
+        data={[inRepair, resolved]}
+        setData={vi.fn()}
+        module="repairs"
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /repairs\.stages\.resolved/ }),
+    );
+
+    expect(actionsState.args.scopedData).toEqual([resolved]);
+  });
+
+  it("ведёт с карточки покрытия на экран покрытия", () => {
+    const setPage = vi.fn();
+    render(
+      <MainPage
+        setPage={setPage}
+        data={[]}
+        setData={vi.fn()}
+        coverage={{ surveyed: 3, total: 10, percent: 30 }}
+      />,
+    );
+
+    fireEvent.click(screen.getByText(/mainPage\.coverage\.open/));
+
+    expect(setPage).toHaveBeenCalledWith("coverage");
   });
 });

@@ -173,9 +173,9 @@ export default function AppRoutes({
   const listPage = isListPage(page);
   const { t } = useLanguage();
   // В модуле ремонтов свайп по карточке и «Проверить» у выбранных ведут не в
-  // мониторинг, а в проверку ремонта (7c) — поверх той же страницы, без
-  // перехода. Выбранные проверяются по очереди: после сохранения открывается
-  // следующая, крестик очередь прерывает.
+  // мониторинг, а в проверку ремонта (7c) — поверх той же страницы. Свайп
+  // открывает и принятый ремонт: его перепроверяют (см. applyRepairCheck).
+  // Выбранные — только открытые, по очереди; крестик очередь прерывает.
   const [repairQueue, setRepairQueue] = useState(
     /** @type {{ ids: any[], total: number }} */ ({ ids: [], total: 0 }),
   );
@@ -194,7 +194,7 @@ export default function AppRoutes({
     });
   };
   const checkLeak = repairMode
-    ? (leak) => startRepairQueue([leak])
+    ? (leak) => setRepairQueue({ ids: [leak.id], total: 1 })
     : requestMonitoring;
   const checkLeaks = repairMode ? startRepairQueue : requestMonitoringQueue;
   const repairCheckLeak =

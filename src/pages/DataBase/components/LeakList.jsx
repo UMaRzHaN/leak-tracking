@@ -12,8 +12,9 @@ function LeakList({
   statusFilter,
   selectedIds,
   onOpenDetails,
-  onPickStatus,
   onMonitor,
+  // Чьей карточке свайп влево даёт проверку; у остальных он ничего не делает.
+  canMonitor = /** @type {(leak: any) => boolean} */ (() => true),
   monitorLabel = /** @type {string|null} */ (null),
   onToggleSelect,
 }) {
@@ -45,8 +46,7 @@ function LeakList({
       <LeakCardCompact
         leak={leak}
         onOpenDetails={onOpenDetails}
-        onPickStatus={onPickStatus}
-        onMonitor={onMonitor}
+        onMonitor={canMonitor(leak) ? onMonitor : undefined}
         monitorLabel={monitorLabel}
         nearbyDist={leak._nearbyDist}
         selected={selectedIds.has(leak.id)}
@@ -55,9 +55,9 @@ function LeakList({
     ),
     [
       onMonitor,
+      canMonitor,
       monitorLabel,
       onOpenDetails,
-      onPickStatus,
       selectedIds,
       onToggleSelect,
     ],

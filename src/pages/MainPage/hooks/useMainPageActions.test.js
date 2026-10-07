@@ -1,4 +1,3 @@
-import { getRepairDonePhoto, getRepairPhoto } from "@/domain/leakEvents";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useMainPageActions } from "./useMainPageActions";
@@ -29,11 +28,10 @@ vi.mock("@/utils/haptics", () => ({
 function renderActions({
   data,
   scopedData,
-  userProfile = { name: "Inspector" },
   setData = vi.fn().mockResolvedValue(undefined),
 }) {
   const hook = renderHook(() =>
-    useMainPageActions({ data, scopedData, setData, userProfile }),
+    useMainPageActions({ data, scopedData, setData }),
   );
   return { ...hook, setData };
 }
@@ -168,207 +166,6 @@ describe("useMainPageActions", () => {
     });
   });
 
-  describe("the user name gate", () => {
-    it("does not open the status picker and says why", () => {
-      const leak = leakWith("leak-1");
-      const { result } = renderActions({
-        data: [leak],
-        userProfile: { name: "  " },
-      });
-
-      act(() => result.current.handlePickStatus(leak));
-
-      expect(result.current.pickerLeak).toBeNull();
-      expect(result.current.notification).toEqual({
-        type: "error",
-        message: "Fill in the user name in the profile",
-      });
-    });
-
-    it("blocks every confirm handler, writing nothing", async () => {
-      const leak = leakWith("leak-1", { status: "resolved" });
-      const { result, setData } = renderActions({
-        data: [leak],
-        userProfile: null,
-      });
-
-      act(() => {
-        result.current.setResolveLeak(leak);
-        result.current.setRepairLeak(leak);
-        result.current.setReopenLeak(leak);
-      });
-      await act(async () => {
-        await result.current.handleResolveConfirm({});
-        await result.current.handleRepairConfirm({});
-        await result.current.handleReopenConfirm({});
-      });
-
-      expect(setData).not.toHaveBeenCalled();
-    });
-  });
-
-  // The lifecycle is a strict cycle — open → in_progress → resolved → open.
-  describe("choosing a status", () => {
-    it("routes resolve, repair and reopen to their own sheets", async () => {
-      const cases = [
-        { status: "in_progress", pick: "resolved", sheet: "resolveLeak" },
-        { status: "open", pick: "in_progress", sheet: "repairLeak" },
-        { status: "resolved", pick: "open", sheet: "reopenLeak" },
-      ];
-
-      for (const { status, pick, sheet } of cases) {
-        const leak = leakWith("leak-1", { status });
-        const { result, setData } = renderActions({ data: [leak] });
-
-        act(() => result.current.setPickerLeak(leak));
-        await act(async () => {
-          await result.current.handleStatusSelect(pick);
-        });
-
-        expect(result.current[sheet]).toEqual(leak);
-        expect(setData).not.toHaveBeenCalled();
-      }
-    });
-
-    it("ignores a pick that changes nothing and one with no leak", async () => {
-      const leak = leakWith("leak-1");
-      const { result, setData } = renderActions({ data: [leak] });
-
-      act(() => result.current.setPickerLeak(leak));
-      await act(async () => {
-        await result.current.handleStatusSelect("open");
-      });
-      await act(async () => {
-        await result.current.handleStatusSelect("in_progress");
-      });
-
-      expect(setData).not.toHaveBeenCalled();
-    });
-
-    it("reports a transition that skips a step instead of throwing", async () => {
-      const leak = leakWith("leak-1", { status: "in_progress" });
-      const { result, setData } = renderActions({ data: [leak] });
-
-      act(() => result.current.setPickerLeak(leak));
-      await act(async () => {
-        await result.current.handleStatusSelect("open");
-      });
-
-      expect(setData).not.toHaveBeenCalled();
-      expect(result.current.notification.message).toBe(
-        // Код перехода перестал утекать на экран: у него теперь есть перевод,
-        // и `errorText` берёт его вместо отладочного текста с именами статусов.
-        "Save error: This status change is not allowed",
-      );
-    });
-  });
-
-  describe("resolving and repairing", () => {
-    it("stores the resolution and closes the sheet", async () => {
-      const leak = leakWith("leak-1", { status: "in_progress" });
-      const { result, setData } = renderActions({ data: [leak] });
-
-      act(() => result.current.setResolveLeak(leak));
-      await act(async () => {
-        await result.current.handleResolveConfirm({
-          photo_after: "idb://after",
-          note: "sealed",
-        });
-      });
-
-      const saved = setData.mock.calls[0][0][0];
-      expect(saved).toMatchObject({ status: "resolved", note: "sealed" });
-      // Снимок лежит в событии, а не в вехе записи.
-      expect(getRepairDonePhoto(saved)).toBe("idb://after");
-      expect(result.current.resolveLeak).toBeNull();
-    });
-
-    // The photo lands before the record. A failed write leaves a file that
-    // nothing points at.
-    it("collects the new after-photo when the write fails", async () => {
-      const setData = vi.fn().mockRejectedValue(new Error("no space"));
-      const leak = leakWith("leak-1", { status: "in_progress" });
-      const { result } = renderActions({ data: [leak], setData });
-
-      act(() => result.current.setResolveLeak(leak));
-      await act(async () => {
-        await result.current.handleResolveConfirm({
-          photo_after: "idb://orphan",
-        });
-      });
-
-      expect(deletePhoto).toHaveBeenCalledWith("idb://orphan");
-      expect(result.current.notification.message).toBe("Save error: no space");
-      expect(result.current.resolveLeak).toEqual(leak);
-    });
-
-    it("stores the repair and drops the photo it replaced", async () => {
-      const leak = leakWith("leak-1", { photo_repair: "idb://old" });
-      const { result, setData } = renderActions({ data: [leak] });
-
-      act(() => result.current.setRepairLeak(leak));
-      await act(async () => {
-        await result.current.handleRepairConfirm({ photo_repair: "idb://new" });
-      });
-
-      const saved = setData.mock.calls[0][0][0];
-      expect(saved).toMatchObject({ status: "in_progress" });
-      expect(getRepairPhoto(saved)).toBe("idb://new");
-      expect(deletePhoto).toHaveBeenCalledWith("idb://old");
-      expect(result.current.repairLeak).toBeNull();
-    });
-
-    it("collects the new repair photo when the write fails", async () => {
-      const setData = vi.fn().mockRejectedValue(new Error("io error"));
-      const leak = leakWith("leak-1");
-      const { result } = renderActions({ data: [leak], setData });
-
-      act(() => result.current.setRepairLeak(leak));
-      await act(async () => {
-        await result.current.handleRepairConfirm({
-          photo_repair: "idb://orphan",
-        });
-      });
-
-      expect(deletePhoto).toHaveBeenCalledWith("idb://orphan");
-      expect(result.current.notification.message).toBe("Save error: io error");
-    });
-  });
-
-  describe("reopening", () => {
-    it("writes without an optimistic update, because the record is recalculated", async () => {
-      const leak = leakWith("leak-1", {
-        status: "resolved",
-        resolvedAt: "2026-01-01T00:00:00.000Z",
-      });
-      const { result, setData } = renderActions({ data: [leak] });
-
-      act(() => result.current.setReopenLeak(leak));
-      await act(async () => {
-        await result.current.handleReopenConfirm({ leak_speed: "12" });
-      });
-
-      const [written, options] = setData.mock.calls[0];
-      expect(options).toEqual({ optimistic: false });
-      expect(written[0]).toMatchObject({ status: "open", resolvedAt: null });
-      expect(result.current.reopenLeak).toBeNull();
-    });
-
-    it("reports a failed reopen and keeps the sheet open", async () => {
-      const setData = vi.fn().mockRejectedValue(new Error("conflict"));
-      const leak = leakWith("leak-1", { status: "resolved" });
-      const { result } = renderActions({ data: [leak], setData });
-
-      act(() => result.current.setReopenLeak(leak));
-      await act(async () => {
-        await result.current.handleReopenConfirm({});
-      });
-
-      expect(result.current.notification.message).toBe("Save error: conflict");
-      expect(result.current.reopenLeak).toEqual(leak);
-    });
-  });
-
   describe("saving and deleting", () => {
     it("replaces the record and closes the details sheet", async () => {
       const leak = leakWith("leak-1", { note: "before" });
@@ -456,5 +253,15 @@ describe("useMainPageActions", () => {
       );
       expect(deletePhoto).not.toHaveBeenCalled();
     });
+  });
+
+  it("отбирает недавние по чипу статуса, считая запись без статуса открытой", () => {
+    const { result } = renderActions({
+      data: [{ id: "no-status" }, leakWith("leak-2", { status: "resolved" })],
+    });
+
+    act(() => result.current.setStatusFilter("open"));
+
+    expect(result.current.recent.map((leak) => leak.id)).toEqual(["no-status"]);
   });
 });

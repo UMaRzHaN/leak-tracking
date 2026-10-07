@@ -4,7 +4,7 @@ import {
   getRepairStage,
 } from "@/domain/repairStages";
 import { LEAK_EVENT_TYPES, getLeakEvents } from "@/domain/leakEvents";
-import { isInRound } from "@/utils/projectRound";
+import { activeRoundNumber, isInRound } from "@/utils/projectRound";
 import { isLeakFiction } from "@/utils/monitoring";
 
 /**
@@ -57,6 +57,16 @@ export function repairRoundState(leak, round) {
   if (isRepairChecked(leak, round)) return "checked";
   const resolved = getRepairStage(leak) === REPAIR_STAGE.RESOLVED;
   return resolved && !isLeakFiction(leak) ? "outside" : "due";
+}
+
+/**
+ * Открывает ли свайп по карточке проверку ремонта. В идущем обходе — по тому
+ * же правилу, что экран обхода: устранённый до его начала проверять нечего.
+ * Без обхода (или после завершённого) перепроверить можно любой ремонт.
+ */
+export function canSwipeCheckRepair(leak, round) {
+  if (activeRoundNumber(round) === undefined) return true;
+  return repairRoundState(leak, round) !== "outside";
 }
 
 const STATE_RANK = { due: 0, checked: 1, outside: 2 };

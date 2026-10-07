@@ -4,7 +4,6 @@ import { useSwipeActions } from "./useSwipeActions";
 export function useSwipeCard({
   onOpenDetails,
   leak,
-  onPickStatus = /** @type {((leak: any) => void)|null} */ (null),
   onMonitor = /** @type {((leak: any) => void)|null} */ (null),
 }) {
   const [swipeState, setSwipeState] = useState(
@@ -13,13 +12,17 @@ export function useSwipeCard({
   const [swipeOffset, setSwipeOffset] = useState(0);
 
   const swipe = useSwipeActions({
-    onSwipeMove: (offset) => setSwipeOffset(offset),
+    // Влево карточка уходит, только когда там есть проверка: без неё свайп
+    // влево ничего не делает и карточку не сдвигает.
+    onSwipeMove: (offset) =>
+      setSwipeOffset(onMonitor ? offset : Math.max(0, offset)),
 
-    // 👈 справа → налево — открыть выбор статуса
+    // 👈 справа → налево — проверка (мониторинг или ремонт)
     onSwipeLeft: () => {
+      if (!onMonitor) return;
       setSwipeState("left");
       setTimeout(() => {
-        (onMonitor ?? onPickStatus)?.(leak);
+        onMonitor(leak);
         setSwipeState(null);
         setSwipeOffset(0);
       }, 200);

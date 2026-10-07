@@ -24,11 +24,6 @@ export default function Monitoring(props) {
     filters,
     finishRound,
     handleMonitoringReopenConfirm,
-    handlePickStatus,
-    handleReopenConfirm,
-    handleRepairConfirm,
-    handleResolveConfirm,
-    handleStatusSelect,
     hasActiveMonitoringRound,
     hasMonitoringRound,
     isSaving,
@@ -47,11 +42,7 @@ export default function Monitoring(props) {
     openMonitoringSheet,
     pendingMonitoringReopen,
     photoRequired,
-    pickerLeak,
-    reopenLeak,
-    repairLeak,
     repeatConfirmLeak,
-    resolveLeak,
     roundConfirmOpen,
     saveLeak,
     saveRecord,
@@ -63,11 +54,7 @@ export default function Monitoring(props) {
     setNotification,
     setPendingMonitoringReopen,
     setPendingRoundLeakId,
-    setPickerLeak,
-    setReopenLeak,
-    setRepairLeak,
     setRepeatConfirmLeak,
-    setResolveLeak,
     setRoundConfirmOpen,
     setSubmitted,
     showCompletion,
@@ -122,7 +109,6 @@ export default function Monitoring(props) {
         monitoringRoundNumber={monitoringRoundNumber}
         onMonitor={openMonitoringSheet}
         onOpenDetails={setActiveLeak}
-        onPickStatus={handlePickStatus}
         setMonitoringFilter={setMonitoringFilter}
         texts={texts}
       />
@@ -154,14 +140,7 @@ export default function Monitoring(props) {
         }}
         onCloseNotification={() => setNotification(null)}
         onClosePendingReopen={() => setPendingMonitoringReopen(null)}
-        onClosePicker={() => setPickerLeak(null)}
-        onCloseReopen={() => setReopenLeak(null)}
-        onCloseRepair={() => setRepairLeak(null)}
-        onCloseResolve={() => setResolveLeak(null)}
         onConfirmMonitoringReopen={handleMonitoringReopenConfirm}
-        onConfirmReopen={handleReopenConfirm}
-        onConfirmRepair={handleRepairConfirm}
-        onConfirmResolve={handleResolveConfirm}
         onDeleteLeak={deleteLeak}
         onRepeatConfirm={() => {
           const leak = repeatConfirmLeak;
@@ -181,16 +160,11 @@ export default function Monitoring(props) {
         }
         onSaveLeak={saveLeak}
         onSaveRecord={saveRecord}
-        onSelectStatus={handleStatusSelect}
         onStartRound={startNewRound}
         onUpdateDraft={updateDraft}
         pendingMonitoringReopen={pendingMonitoringReopen}
         photoRequired={photoRequired}
-        pickerLeak={pickerLeak}
-        reopenLeak={reopenLeak}
-        repairLeak={repairLeak}
         repeatConfirmLeak={repeatConfirmLeak}
-        resolveLeak={resolveLeak}
         roundConfirmOpen={roundConfirmOpen}
         submitted={submitted}
         texts={texts}

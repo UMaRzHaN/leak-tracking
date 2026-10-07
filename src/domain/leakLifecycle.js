@@ -118,22 +118,6 @@ function withStatusHistory(
   };
 }
 
-export function getOrphanedOriginalPhoto(leak) {
-  // Снимок «после» спрашивается у ленты: у записей, заведённых после переезда,
-  // поля `photo_after` нет, и сравнение с ним признало бы исходный снимок
-  // нужным навсегда.
-  const after = getRepairDonePhoto(leak);
-  if (
-    leak?.status !== STATUS.RESOLVED ||
-    !leak.photo ||
-    !after ||
-    leak.photo === after
-  ) {
-    return null;
-  }
-  return leak.photo;
-}
-
 /** @param {any} leak @param {any} status @param {{user?: any, now?: number}} [options] */
 export function changeLeakStatus(leak, status, { user, now } = {}) {
   assertStatusTransition(leak, status);

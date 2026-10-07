@@ -19,7 +19,6 @@ export default function MonitoringLeakList({
   monitoringRoundNumber,
   onMonitor,
   onOpenDetails,
-  onPickStatus,
   setMonitoringFilter,
   texts,
 }) {
@@ -90,7 +89,6 @@ export default function MonitoringLeakList({
                 roundNumber={monitoringRoundNumber}
                 hasActiveRound={hasActiveMonitoringRound}
                 onOpenDetails={onOpenDetails}
-                onPickStatus={onPickStatus}
                 onMonitor={onMonitor}
               />
             )}

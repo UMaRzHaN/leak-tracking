@@ -128,7 +128,6 @@ export default function MapPage({
     setData: setData ?? (() => {}),
     notify,
     deletePhoto,
-    userProfile,
   });
 
   // «Показать на карте» из карточки, открытой на самой карте: переходить

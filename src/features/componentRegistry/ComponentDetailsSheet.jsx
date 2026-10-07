@@ -195,9 +195,6 @@ export default function ComponentDetailsSheet({
             onView={
               !editing && photoSrc ? () => setViewerOpen(true) : undefined
             }
-            /* A component has no leak lifecycle; its state is changed by the
-               inspection swipe, not from the hero. */
-            onStatusChange={null}
             onBack={onClose}
             backLabel={t("leakDetails.back")}
           />

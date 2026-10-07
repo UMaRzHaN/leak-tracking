@@ -66,11 +66,7 @@ export default function MapLeakCard({ leak, coords, onMonitor, onOpen }) {
       aria-label={`${t("map.popup.tag")} ${leak.leak_id ?? ""}`}
     >
       <div className={s.head}>
-        <StatusBadge
-          status={leak.status ?? STATUS.OPEN}
-          size="sm"
-          onClick={null}
-        />
+        <StatusBadge status={leak.status ?? STATUS.OPEN} size="sm" />
         <strong className={s.num}>№ {leak.leak_id ?? "—"}</strong>
         {distance != null && (
           <span className={s.distance}>{formatDistance(distance, t)}</span>

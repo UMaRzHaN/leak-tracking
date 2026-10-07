@@ -11,24 +11,15 @@ import {
   CALCULATION_PARAMS_VERSION,
   calculateLeakWithSnapshot,
 } from "@/utils/calculationParams";
-import { STATUS } from "@/utils/status";
 import { priorityFromSpeed } from "@/utils/priority";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
-import { buildReopenedLeak } from "@/utils/reopenLeak";
-import {
-  changeLeakStatus,
-  deletePhotoIfUnreferenced,
-  getOrphanedOriginalPhoto,
-} from "@/domain/leakLifecycle";
 import {
   cleanupUncommittedPhotoReplacements,
   persistPhotoReplacements,
   replaceLeakInCollection,
 } from "../utils/persistPhotoReplacements";
-import { ignoredError } from "@/utils/ignoredError";
 import { fromEntries } from "@/utils/fromEntries";
-import { useLeakRepairConfirm } from "./useLeakRepairConfirm";
 import { applyRecordEdits } from "@/domain/recordEdits";
 
 export function useLeakDetailsPersistence({
@@ -54,10 +45,6 @@ export function useLeakDetailsPersistence({
   setNotification,
   setActiveTab,
   requireHistoryUser,
-  setStatusPickerOpen,
-  setResolveOpen,
-  setRepairOpen,
-  setReopenOpen,
   paramsTab,
 }) {
   const { t } = useLanguage();
@@ -234,88 +221,9 @@ export function useLeakDetailsPersistence({
       setSaving(false);
     }
   };
-  const reportSaveError = () => {
-    setNotification({
-      type: "error",
-      message: t("leakDetails.saveError"),
-    });
-  };
-
-  const handleStatusChange = () => setStatusPickerOpen(true);
-
-  const handleStatusSelect = async (newStatus) => {
-    setStatusPickerOpen(false);
-    if (newStatus === leak.status) return;
-
-    if (!requireHistoryUser()) return;
-
-    if (newStatus === STATUS.RESOLVED) {
-      setResolveOpen(true);
-      return;
-    }
-
-    if (newStatus === STATUS.IN_PROGRESS) {
-      setRepairOpen(true);
-      return;
-    }
-
-    if (newStatus === STATUS.OPEN && leak.status === STATUS.RESOLVED) {
-      setReopenOpen(true);
-      return;
-    }
-
-    const orphanedPhoto = getOrphanedOriginalPhoto(leak);
-    try {
-      const next = changeLeakStatus(leak, newStatus, { user: historyUser });
-      const nextData = replaceLeakInCollection(allLeaks, next);
-      await onSave(next);
-      await deletePhotoIfUnreferenced(
-        orphanedPhoto,
-        nextData,
-        deletePhoto,
-      ).catch(ignoredError("leakDetails.photoCleanup"));
-    } catch {
-      reportSaveError();
-    }
-  };
-
-  const { handleRepairConfirm, handleResolveConfirm } = useLeakRepairConfirm({
-    allLeaks,
-    deletePhoto,
-    historyUser,
-    leak,
-    onSave,
-    reportSaveError,
-    requireHistoryUser,
-    setRepairOpen,
-    setResolveOpen,
-  });
-
-  const handleReopenConfirm = async (draft) => {
-    if (!requireHistoryUser()) return;
-    const next = buildReopenedLeak({ leak, draft, vars, user: historyUser });
-    const nextData = replaceLeakInCollection(allLeaks, next);
-    const orphanedPhoto = getOrphanedOriginalPhoto(leak);
-    try {
-      await onSave(next, { optimistic: false });
-      setReopenOpen(false);
-      await deletePhotoIfUnreferenced(
-        orphanedPhoto,
-        nextData,
-        deletePhoto,
-      ).catch(ignoredError("leakDetails.photoCleanup"));
-    } catch {
-      reportSaveError();
-    }
-  };
 
   return {
     saving,
     handleSave,
-    handleStatusChange,
-    handleStatusSelect,
-    handleResolveConfirm,
-    handleRepairConfirm,
-    handleReopenConfirm,
   };
 }

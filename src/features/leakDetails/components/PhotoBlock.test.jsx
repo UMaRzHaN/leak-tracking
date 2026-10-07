@@ -31,4 +31,15 @@ describe("PhotoBlock photo strip (5e)", () => {
     render(<PhotoBlock photoPaths={["a"]} identityNum="№ 1" />);
     expect(screen.queryByText("1 / 1")).toBeNull();
   });
+
+  it("показывает статус плашкой, а не кнопкой", () => {
+    // Статус меняют проверки мониторинга и ремонта: нажатие на плашку в
+    // шапке больше ничего не открывает.
+    const { container } = render(
+      <PhotoBlock photoPaths={[]} identityNum="№ 1" status="resolved" />,
+    );
+
+    expect(container.querySelector('span[class*="badge"]')).not.toBeNull();
+    expect(screen.queryAllByRole("button")).toEqual([]);
+  });
 });

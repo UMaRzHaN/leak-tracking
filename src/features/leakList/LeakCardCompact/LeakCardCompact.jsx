@@ -47,7 +47,6 @@ function urgencyOf(createdAt, status) {
 
 function LeakCardCompact({
   leak,
-  onPickStatus,
   onMonitor,
   onOpenDetails,
   nearbyDist = /** @type {number|null} */ (null),
@@ -75,7 +74,6 @@ function LeakCardCompact({
   const { swipeState, swipeOffset, close, handlers } = useSwipeCard({
     leak,
     onOpenDetails,
-    onPickStatus,
     onMonitor,
   });
 
@@ -167,13 +165,11 @@ function LeakCardCompact({
           </div>
         )}
 
-        {goingLeft && (
+        {goingLeft && onMonitor && (
           <div className={s.hintLeft}>
             <span className={s.hintIcon}>☰</span>
             <span className={s.hintText}>
-              {onMonitor
-                ? (monitorLabel ?? t("cards.monitoring"))
-                : t("cards.status")}
+              {monitorLabel ?? t("cards.monitoring")}
             </span>
           </div>
         )}

@@ -56,15 +56,6 @@ vi.mock("./components/EditBlock", () => ({
 vi.mock("@/features/photos/PhotoViewer/PhotoViewer", () => ({
   default: ({ src }) => <div data-testid="viewer">{src}</div>,
 }));
-vi.mock("@/features/resolve/ResolveModal/ResolveModal", () => ({
-  default: ({ mode }) => <div data-testid="resolve">{mode ?? "resolve"}</div>,
-}));
-vi.mock("@/features/status/ReopenLeakModal/ReopenLeakModal", () => ({
-  default: () => <div data-testid="reopen" />,
-}));
-vi.mock("@/features/status/StatusPickerModal/StatusPickerModal", () => ({
-  default: () => <div data-testid="status-picker" />,
-}));
 vi.mock("@/components/ui/Notification/Notification", () => ({
   default: ({ notification }) =>
     notification ? <div role="alert">{notification.message}</div> : null,
@@ -96,14 +87,6 @@ function sheetState(overrides = {}) {
     setViewerOpen: vi.fn(),
     closeConfirmOpen: false,
     deleteArmed: false,
-    resolveOpen: false,
-    setResolveOpen: noop,
-    repairOpen: false,
-    setRepairOpen: noop,
-    reopenOpen: false,
-    setReopenOpen: noop,
-    statusPickerOpen: false,
-    setStatusPickerOpen: noop,
     fileInputRef: { current: null },
     fileInputAfterRef: { current: null },
     fileInputRepairRef: { current: null },
@@ -112,7 +95,6 @@ function sheetState(overrides = {}) {
     srcRepair: null,
     isNative: false,
     projectConfig: { steps: { steps: [] } },
-    vars: {},
     status: STATUS.OPEN,
     ago: "5 минут назад",
     TABS: [
@@ -124,11 +106,6 @@ function sheetState(overrides = {}) {
     handleClose: vi.fn(),
     confirmClose: vi.fn(),
     cancelClose: vi.fn(),
-    handleStatusChange: vi.fn(),
-    handleStatusSelect: vi.fn(),
-    handleResolveConfirm: vi.fn(),
-    handleRepairConfirm: vi.fn(),
-    handleReopenConfirm: vi.fn(),
     handleEdit: vi.fn(),
     handleCancel: vi.fn(),
     armDelete: vi.fn(),
@@ -282,20 +259,10 @@ describe("LeakDetailsSheet поднимает окна поверх себя", (
     expect(state.confirmClose).toHaveBeenCalledOnce();
   });
 
-  it("просмотр снимка, выбор статуса, устранение, ремонт и переоткрытие", () => {
-    for (const [flag, testId, text] of [
-      ["viewerOpen", "viewer", "blob:герой"],
-      ["statusPickerOpen", "status-picker", null],
-      ["resolveOpen", "resolve", "resolve"],
-      ["repairOpen", "resolve", "repair"],
-      ["reopenOpen", "reopen", null],
-    ]) {
-      const { unmount } = renderSheet({ [flag]: true });
-      const node = screen.getByTestId(testId);
-      if (text) expect(node).toHaveTextContent(text);
-      else expect(node).toBeInTheDocument();
-      unmount();
-    }
+  it("просмотр снимка", () => {
+    renderSheet({ viewerOpen: true });
+
+    expect(screen.getByTestId("viewer")).toHaveTextContent("blob:герой");
   });
 
   it("уведомление показывается поверх всего", () => {

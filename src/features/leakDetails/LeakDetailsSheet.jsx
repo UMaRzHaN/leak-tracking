@@ -9,9 +9,6 @@ import { getLeakHeroPhotoPaths } from "./utils/heroPhotoPaths";
 import ViewBlock from "./components/ViewBlock";
 import EditBlock from "./components/EditBlock";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
-import ResolveModal from "@/features/resolve/ResolveModal/ResolveModal";
-import ReopenLeakModal from "@/features/status/ReopenLeakModal/ReopenLeakModal";
-import StatusPickerModal from "@/features/status/StatusPickerModal/StatusPickerModal";
 import Notification from "@/components/ui/Notification/Notification";
 import ConfirmSheet from "@/components/ui/ConfirmSheet/ConfirmSheet";
 import { useModalDialog } from "@/hooks/useModalDialog";
@@ -47,14 +44,6 @@ export default function LeakDetailsSheet({
     setViewerOpen,
     closeConfirmOpen,
     deleteArmed,
-    resolveOpen,
-    setResolveOpen,
-    repairOpen,
-    setRepairOpen,
-    reopenOpen,
-    setReopenOpen,
-    statusPickerOpen,
-    setStatusPickerOpen,
     fileInputRef,
     fileInputAfterRef,
     fileInputRepairRef,
@@ -63,7 +52,6 @@ export default function LeakDetailsSheet({
     srcRepair,
     isNative,
     projectConfig,
-    vars,
     status,
     ago,
     TABS,
@@ -72,11 +60,6 @@ export default function LeakDetailsSheet({
     handleClose,
     confirmClose,
     cancelClose,
-    handleStatusChange,
-    handleStatusSelect,
-    handleResolveConfirm,
-    handleRepairConfirm,
-    handleReopenConfirm,
     handleEdit,
     handleCancel,
     armDelete,
@@ -141,7 +124,6 @@ export default function LeakDetailsSheet({
             status={status}
             identityNum={`№ ${leak.leak_id ?? leak.index ?? "—"}`}
             identityTime={ago ?? absoluteDate ?? ""}
-            onStatusChange={handleStatusChange}
             onBack={handleClose}
             backLabel={t("leakDetails.back")}
             onView={
@@ -321,40 +303,6 @@ export default function LeakDetailsSheet({
         <PhotoViewer
           src={viewerSrc || heroSrc}
           onClose={() => setViewerOpen(false)}
-        />
-      )}
-
-      {statusPickerOpen && (
-        <StatusPickerModal
-          current={status}
-          onSelect={handleStatusSelect}
-          onClose={() => setStatusPickerOpen(false)}
-        />
-      )}
-
-      {resolveOpen && (
-        <ResolveModal
-          leak={leak}
-          onConfirm={handleResolveConfirm}
-          onClose={() => setResolveOpen(false)}
-        />
-      )}
-
-      {repairOpen && (
-        <ResolveModal
-          leak={leak}
-          mode="repair"
-          onConfirm={handleRepairConfirm}
-          onClose={() => setRepairOpen(false)}
-        />
-      )}
-
-      {reopenOpen && (
-        <ReopenLeakModal
-          leak={leak}
-          vars={vars}
-          onConfirm={handleReopenConfirm}
-          onClose={() => setReopenOpen(false)}
         />
       )}
     </>

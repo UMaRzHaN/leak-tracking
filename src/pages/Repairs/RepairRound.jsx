@@ -241,7 +241,6 @@ export default function RepairRound({
                   // Свайп вправо — карточка, влево — проверка ремонта (7c).
                   onOpenDetails={setDetailsLeak}
                   onMonitor={checkable ? openCheck : undefined}
-                  onPickStatus={() => {}}
                   monitorLabel={t("repairs.checkSwipe")}
                 />
                 <div className={s.bar}>

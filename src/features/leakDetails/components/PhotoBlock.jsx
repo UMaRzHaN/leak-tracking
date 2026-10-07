@@ -28,7 +28,6 @@ function HeroSlide({ path, onSrc }) {
  *   status?: import("@/types/domain").LeakStatus|null,
  *   identityNum?: string,
  *   identityTime?: string,
- *   onStatusChange?: (() => void)|null,
  *   onBack?: (() => void)|null,
  *   backLabel?: string,
  * }} props
@@ -43,7 +42,6 @@ export default function PhotoBlock({
   status = "open",
   identityNum,
   identityTime,
-  onStatusChange,
   onBack = null,
   backLabel = "",
 }) {
@@ -125,9 +123,7 @@ export default function PhotoBlock({
       <div className={s.heroBadgeRow}>
         {/* A component has no leak lifecycle, so it passes no status and the
             badge is simply absent rather than claiming the card is "open". */}
-        {status && (
-          <StatusBadge status={status} size="md" onClick={onStatusChange} />
-        )}
+        {status && <StatusBadge status={status} size="md" />}
       </div>
 
       {/* ── Номер снимка — снизу справа, только когда их несколько ── */}

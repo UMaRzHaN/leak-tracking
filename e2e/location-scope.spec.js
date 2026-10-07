@@ -1,7 +1,5 @@
 import { expect, test } from "@playwright/test";
 import {
-  attachModalPhoto,
-  chooseDetailsStatus,
   createLeak,
   createProject,
   footerTab,
@@ -140,13 +138,16 @@ test("keeps leaks outside the location when one inside it is edited", async ({
   // would delete every record outside it, and only a later reload would show
   // the loss.
   await openLeakDetails(page);
-  await chooseDetailsStatus(page, "В ремонте");
+  await page
+    .getByRole("button", { name: "Редактировать", exact: true })
+    .click();
+  await page
+    .getByLabel("Описание утечки", { exact: true })
+    .fill("Правка внутри папки");
+  await page.getByRole("button", { name: "Сохранить", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Утечка в ремонте" }),
+    page.getByText("Правка внутри папки", { exact: true }).first(),
   ).toBeVisible();
-  await attachModalPhoto(page);
-  await page.getByRole("button", { name: "Подтвердить" }).click();
-  await expect(page.getByText(/^В ремонте$/i).first()).toBeVisible();
 
   await page.reload();
   await page.getByRole("button", { name: "Сбросить выбор объекта" }).click();

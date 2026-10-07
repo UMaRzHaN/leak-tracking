@@ -17,18 +17,3 @@
   font-size: var(--fs-2xs);
   padding: 2px 7px;
 }
-
-.clickable {
-  cursor: pointer;
-  background: none;
-  transition:
-    opacity var(--t-fast),
-    transform var(--t-fast);
-
-  &:hover {
-    opacity: 0.8;
-  }
-  &:active {
-    transform: scale(0.95);
-  }
-}

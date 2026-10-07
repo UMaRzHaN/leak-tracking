@@ -23,8 +23,12 @@ vi.mock("@/features/leakList/VirtualizedLeakList/VirtualizedLeakList", () => ({
   ),
 }));
 vi.mock("@/features/leakList/LeakCardCompact/LeakCardCompact", () => ({
-  default: ({ leak, selected, nearbyDist }) => (
-    <div data-testid="card" data-selected={String(selected)}>
+  default: ({ leak, selected, nearbyDist, onMonitor }) => (
+    <div
+      data-testid="card"
+      data-selected={String(selected)}
+      data-monitor={onMonitor ? "yes" : "no"}
+    >
       {leak.leak_id}
       {nearbyDist != null && <span>{`${nearbyDist} м`}</span>}
     </div>
@@ -103,5 +107,13 @@ describe("LeakList", () => {
     renderList();
 
     expect(screen.getByTestId("virtualized")).toHaveAttribute("data-pad", "88");
+  });
+
+  it("даёт свайп в проверку только тем, кого пропускает правило", () => {
+    renderList({ canMonitor: (leak) => leak.id === "a" });
+
+    expect(
+      screen.getAllByTestId("card").map((card) => card.dataset.monitor),
+    ).toEqual(["yes", "no"]);
   });
 });

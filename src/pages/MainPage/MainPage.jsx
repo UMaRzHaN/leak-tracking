@@ -12,7 +12,6 @@ import {
   countRepairStages,
   getRepairLeaks,
   getRepairStage,
-  REPAIR_STAGE,
 } from "@/domain/repairStages";
 import {
   REPAIR_STAGE_ORDER,
@@ -21,19 +20,11 @@ import {
 } from "@/utils/repairStage";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { MODULE } from "@/app/modules/activeModule";
+import { useCanCheckRepair } from "@/pages/Repairs/useCanCheckRepair";
 import s from "./MainPage.module.scss";
 
 const LeakDetailsSheet = lazy(
   () => import("@/features/leakDetails/LeakDetailsSheet"),
-);
-const StatusPickerModal = lazy(
-  () => import("@/features/status/StatusPickerModal/StatusPickerModal"),
-);
-const ResolveModal = lazy(
-  () => import("@/features/resolve/ResolveModal/ResolveModal"),
-);
-const ReopenLeakModal = lazy(
-  () => import("@/features/status/ReopenLeakModal/ReopenLeakModal"),
 );
 
 export default function MainPage({
@@ -51,6 +42,7 @@ export default function MainPage({
   // Журнал ремонтов (7a) — те же записи с чипами по стадии работ вместо
   // статуса: ожидают МТР, в ремонте, устранены.
   const repairMode = module === MODULE.REPAIRS;
+  const canCheckRepair = useCanCheckRepair(repairMode);
   const [stageFilter, setStageFilter] = useState("all");
   const source = scopedData ?? data;
   const repairLeaks = useMemo(
@@ -73,33 +65,18 @@ export default function MainPage({
     setActiveLeak,
     statusFilter,
     setStatusFilter,
-    pickerLeak,
-    setPickerLeak,
-    resolveLeak,
-    setResolveLeak,
-    repairLeak,
-    setRepairLeak,
-    reopenLeak,
-    setReopenLeak,
-    vars,
     notification,
     setNotification,
     stats,
     recent,
     RECENT_COUNT,
     ALL,
-    handlePickStatus,
-    handleStatusSelect,
-    handleResolveConfirm,
-    handleRepairConfirm,
-    handleReopenConfirm,
     handleSaveLeak,
     handleDeleteLeak,
   } = useMainPageActions({
     data,
     scopedData: listData,
     setData,
-    userProfile,
   });
 
   const groups = useMemo(() => groupRecentLeaks(recent), [recent]);
@@ -194,14 +171,9 @@ export default function MainPage({
                     repairMode ? splitMaterials(leak.materials_equipment) : []
                   }
                   onOpenDetails={setActiveLeak}
-                  onPickStatus={handlePickStatus}
-                  // В ремонтах свайп влево — проверка ремонта; у принятого
-                  // проверять нечего, там свайп снова ведёт к статусу.
-                  onMonitor={
-                    repairMode && getRepairStage(leak) === REPAIR_STAGE.RESOLVED
-                      ? undefined
-                      : onMonitorLeak
-                  }
+                  // В ремонтах свайп влево — проверка ремонта, и у принятого
+                  // тоже; в идущем обходе — кроме принятых до него.
+                  onMonitor={canCheckRepair(leak) ? onMonitorLeak : undefined}
                   monitorLabel={repairMode ? t("repairs.checkSwipe") : null}
                 />
               ))}
@@ -227,40 +199,6 @@ export default function MainPage({
             onSave={handleSaveLeak}
             onDelete={handleDeleteLeak}
             userProfile={userProfile}
-          />
-        )}
-
-        {pickerLeak && (
-          <StatusPickerModal
-            current={pickerLeak.status ?? STATUS.OPEN}
-            onSelect={handleStatusSelect}
-            onClose={() => setPickerLeak(null)}
-          />
-        )}
-
-        {resolveLeak && (
-          <ResolveModal
-            leak={resolveLeak}
-            onConfirm={handleResolveConfirm}
-            onClose={() => setResolveLeak(null)}
-          />
-        )}
-
-        {repairLeak && (
-          <ResolveModal
-            leak={repairLeak}
-            mode="repair"
-            onConfirm={handleRepairConfirm}
-            onClose={() => setRepairLeak(null)}
-          />
-        )}
-
-        {reopenLeak && (
-          <ReopenLeakModal
-            leak={reopenLeak}
-            vars={vars}
-            onConfirm={handleReopenConfirm}
-            onClose={() => setReopenLeak(null)}
           />
         )}
       </Suspense>

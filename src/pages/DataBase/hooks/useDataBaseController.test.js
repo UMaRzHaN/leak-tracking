@@ -49,35 +49,6 @@ describe("useDataBaseController", () => {
     });
   });
 
-  it("opens bulk picker, delegates status change and closes it", () => {
-    const handleBulkStatusChange = vi.fn();
-    bulkActionsModule.useBulkActions.mockReturnValue({
-      handleBulkStatusChange,
-    });
-
-    const { result } = renderHook(() =>
-      useDataBaseController({
-        data: [{ id: "l1" }],
-        setData: vi.fn(),
-        coords: null,
-      }),
-    );
-
-    expect(result.current.bulkPickerOpen).toBe(false);
-
-    act(() => {
-      result.current.openBulkPicker();
-    });
-    expect(result.current.bulkPickerOpen).toBe(true);
-
-    act(() => {
-      result.current.handleBulkPickerSelect("resolved");
-    });
-
-    expect(handleBulkStatusChange).toHaveBeenCalledWith("resolved");
-    expect(result.current.bulkPickerOpen).toBe(false);
-  });
-
   it("stores and clears notifications", () => {
     const { result } = renderHook(() =>
       useDataBaseController({
