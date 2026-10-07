@@ -23,7 +23,6 @@ export const exportReport = {
   sheetRepairLog: "Журнал ремонтов",
   sheetAcceptance: "Приёмка оборудования",
   sheetInventory: "Инвентаризация",
-  sheetReconcileHistory: "Инвентаризация · Сверка",
   inventoryFolder: "Инвентаризация",
   chips: {
     leaks: "Утечки",
@@ -36,6 +35,13 @@ export const exportReport = {
   contents: "Что ляжет в файл",
   sheetMonitoring: "Мониторинг",
   sheetRepairs: "Ремонты",
+  roundMode: {
+    title: "Записи обхода: {{sheet}}",
+    fullHint:
+      "Каждая запись — своей строкой: видно, сколько раз и когда проверяли в каждом обходе.",
+    latestHint:
+      "По одной строке на бирку в каждом обходе — последняя запись. Для отчёта об итогах обхода.",
+  },
   monitoringFull: "Все записи",
   monitoringLatest: "Последняя в обходе",
   photos: "Фото в архиве",

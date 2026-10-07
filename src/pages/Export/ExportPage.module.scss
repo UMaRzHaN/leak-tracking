@@ -24,7 +24,7 @@
 
   h1 {
     color: var(--c-ink);
-    font-size: var(--fs-2xl);
+    font-size: var(--fs-xl);
     font-weight: 800;
     letter-spacing: -0.03em;
   }
@@ -44,7 +44,7 @@
 
 .caption {
   color: var(--c-text3);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-2xs);
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -64,7 +64,7 @@
 
   h2 {
     color: var(--c-text3);
-    font-size: var(--fs-xs);
+    font-size: var(--fs-2xs);
     font-weight: 800;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -85,7 +85,7 @@
   min-height: 44px;
   padding: 0 16px;
   border-radius: var(--r-pill);
-  font-size: var(--fs-md);
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
@@ -102,7 +102,7 @@
 }
 
 .pillCount {
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   font-weight: 700;
   opacity: 0.75;
 }
@@ -127,13 +127,13 @@
   strong {
     flex: 1;
     color: var(--c-ink);
-    font-size: var(--fs-lg);
+    font-size: var(--fs-md);
     font-weight: 700;
   }
 
   small {
     color: var(--c-text3);
-    font-size: var(--fs-sm);
+    font-size: var(--fs-xs);
     font-weight: 600;
   }
 }
@@ -146,7 +146,7 @@
 
   small {
     color: var(--c-text3);
-    font-size: var(--fs-xs);
+    font-size: var(--fs-2xs);
   }
 }
 
@@ -154,7 +154,7 @@
   border: none;
   background: none;
   color: var(--c-accent-text);
-  font-size: var(--fs-md);
+  font-size: var(--fs-sm);
   font-weight: 800;
   cursor: pointer;
 
@@ -174,7 +174,7 @@
   min-height: 32px;
   padding: 0 12px;
   border-radius: var(--r-pill);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   font-weight: 700;
   cursor: pointer;
 }
@@ -194,13 +194,7 @@
 .noPhoto {
   flex: none;
   color: var(--c-text3);
-  font-size: var(--fs-xs);
-}
-
-.subLabel {
-  flex: 1;
-  color: var(--c-text2);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-2xs);
 }
 
 .dates {
@@ -215,7 +209,7 @@
 
   span {
     color: var(--c-text2);
-    font-size: var(--fs-xs);
+    font-size: var(--fs-2xs);
   }
 
   input {
@@ -257,13 +251,13 @@
     flex: 1;
     min-width: 0;
     color: var(--c-ink);
-    font-size: var(--fs-lg);
+    font-size: var(--fs-md);
     font-weight: 700;
   }
 
   > small {
     color: var(--c-text3);
-    font-size: var(--fs-sm);
+    font-size: var(--fs-xs);
     font-weight: 700;
   }
 
@@ -276,7 +270,7 @@
   display: block;
   margin-top: 2px;
   color: var(--c-text3);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-2xs);
   font-weight: 500;
 }
 
@@ -289,7 +283,7 @@
   border-radius: 8px;
   background: var(--c-accent-surface);
   color: var(--c-accent-text);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   font-weight: 800;
 }
 
@@ -297,37 +291,6 @@
   composes: rowNum;
   background: var(--c-surface-soft, var(--c-bg));
   color: var(--c-text3);
-}
-
-/* Строка под переключателем «Обходы»: как писать обходы, если лист включён. */
-.subRow {
-  min-height: 0;
-  padding-top: 4px;
-}
-
-.segment {
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 11px;
-  background: var(--c-bg);
-
-  button {
-    min-height: 36px;
-    padding: 0 10px;
-    border: none;
-    border-radius: 9px;
-    background: none;
-    color: var(--c-text3);
-    font-size: var(--fs-xs);
-    font-weight: 700;
-  }
-}
-
-.segmentOn {
-  background: var(--c-surface) !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-  color: var(--c-accent-text) !important;
 }
 
 .chevron {
@@ -339,7 +302,7 @@
 
 .formatValue {
   color: var(--c-ink) !important;
-  font-size: var(--fs-lg) !important;
+  font-size: var(--fs-md) !important;
   font-weight: 800 !important;
 }
 
@@ -398,11 +361,11 @@
     justify-content: space-between;
     gap: 12px;
     color: var(--c-ink);
-    font-size: var(--fs-md);
+    font-size: var(--fs-sm);
 
     small {
       color: var(--c-text3);
-      font-size: var(--fs-sm);
+      font-size: var(--fs-xs);
     }
   }
 }
@@ -418,7 +381,7 @@
   border-radius: 16px;
   background: var(--c-accent);
   color: #fff;
-  font-size: var(--fs-lg);
+  font-size: var(--fs-md);
   font-weight: 800;
 
   &:disabled {
@@ -441,7 +404,7 @@
   align-items: center;
   gap: 10px;
   color: var(--c-resolved-text);
-  font-size: var(--fs-xl);
+  font-size: var(--fs-lg);
   font-weight: 800;
 }
 
@@ -473,14 +436,14 @@
   strong {
     overflow: hidden;
     color: var(--c-ink);
-    font-size: var(--fs-md);
+    font-size: var(--fs-sm);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   small {
     color: var(--c-text2);
-    font-size: var(--fs-xs);
+    font-size: var(--fs-2xs);
   }
 }
 
@@ -493,7 +456,7 @@
   border-radius: 10px;
   background: var(--c-surface2);
   color: var(--c-resolved-text);
-  font-size: var(--fs-2xs);
+  font-size: var(--fs-micro);
   font-weight: 800;
 }
 
@@ -510,7 +473,7 @@
 
 .doneMessage {
   color: var(--c-text2);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   line-height: 1.4;
 }
 
@@ -523,14 +486,14 @@
   strong {
     overflow: hidden;
     color: var(--c-ink);
-    font-size: var(--fs-md);
+    font-size: var(--fs-sm);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   small {
     color: var(--c-text3);
-    font-size: var(--fs-xs);
+    font-size: var(--fs-2xs);
   }
 }
 
@@ -538,7 +501,7 @@
 .doneTime {
   margin-left: auto;
   color: var(--c-resolved);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 
@@ -552,7 +515,7 @@
   border-radius: 14px;
   background: color-mix(in srgb, var(--c-progress) 10%, transparent);
   color: var(--c-progress-text, var(--c-progress));
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   line-height: 1.45;
 
   svg {
@@ -571,11 +534,61 @@
   border-radius: 16px;
   background: var(--c-surface);
   color: var(--c-ink);
-  font-size: var(--fs-lg);
+  font-size: var(--fs-md);
   font-weight: 700;
   cursor: pointer;
 
   &:disabled {
     opacity: 0.6;
+  }
+}
+
+/* «⋯» у листа с обходами и выбор режима записей в нижнем окне. */
+.moreButton {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--c-border);
+  border-radius: 10px;
+  background: none;
+  color: var(--c-text2);
+  cursor: pointer;
+}
+
+.modeOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.modeOption,
+.modeOptionOn {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--c-border);
+  border-radius: 14px;
+  background: none;
+  color: var(--c-text2);
+  font-size: var(--fs-xs);
+  text-align: left;
+  cursor: pointer;
+
+  strong {
+    color: var(--c-ink);
+    font-size: var(--fs-md);
+  }
+}
+
+.modeOptionOn {
+  border-color: var(--c-accent);
+  background: var(--c-accent-surface);
+
+  strong {
+    color: var(--c-accent-text);
   }
 }

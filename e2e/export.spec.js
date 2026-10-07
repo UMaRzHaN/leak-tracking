@@ -97,9 +97,9 @@ test("кладёт в книгу журнал ремонтов и приёмку
   await expect(sheet).toHaveCount(0);
 
   await openMenuItem(page, "Экспорт отчёта");
-  // Подпись есть и у листа, и у строки режима обходов под ним.
+  // Лист журнала ремонтов — со своим «⋯» для записей обхода.
   await expect(
-    page.getByText("Журнал ремонтов", { exact: true }).first(),
+    page.getByRole("button", { name: "Записи обхода: Журнал ремонтов" }),
   ).toBeVisible();
   await expect(
     page.getByText("Приёмка оборудования", { exact: true }),

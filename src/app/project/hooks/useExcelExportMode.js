@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import {
   PROJECT_SETTINGS_UPDATED_EVENT,
+  emitSettingsUpdated,
   touchProjectSettings,
 } from "@/app/project/projectSettings";
 import {
@@ -66,6 +67,9 @@ export function useExcelExportMode(
       );
       touchProjectSettings(projectId);
       setRevision((value) => value + 1);
+      // Режим читают и другие копии хука на том же экране — подпись листа и
+      // сама выгрузка; без события они собрали бы файл в прежнем режиме.
+      if (projectId) emitSettingsUpdated(projectId);
     },
     [projectId, storageKey],
   );

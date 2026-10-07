@@ -299,15 +299,20 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
 
   // Как писать журнал мониторинга, выбирают на экране экспорта.
   await openMenuItem(page, "Экспорт отчёта");
-  // «Последняя в обходе» есть и у журнала ремонтов — ищется в группе
-  // мониторинга.
-  const monitoringMode = () =>
-    page.getByRole("radiogroup", { name: "Мониторинг", exact: true });
-  const latestExportMode = monitoringMode().getByRole("radio", {
-    name: "Последняя в обходе",
-  });
+  // Режим записей обхода — в окне за «⋯» у строки листа мониторинга.
+  const monitoringMode = async () => {
+    await page
+      .getByRole("button", { name: "Записи обхода: Мониторинг" })
+      .click();
+    return page
+      .getByRole("dialog", { name: "Записи обхода: Мониторинг" })
+      .getByRole("radio", { name: /Последняя в обходе/ });
+  };
+  const latestExportMode = await monitoringMode();
   await latestExportMode.click();
-  await expect(latestExportMode).toHaveAttribute("aria-checked", "true");
+  // Выбор закрывает окно и виден подписью под строкой листа.
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByText("Последняя в обходе")).toBeVisible();
   await page.getByRole("button", { name: "Назад" }).click();
 
   // ZIP-бэкап — из меню, в настройках его больше нет.
@@ -354,9 +359,8 @@ test("preserves an edited leak and monitoring round through ZIP backup restore",
   ).toHaveAttribute("aria-checked", "false");
   await leaveSettings(page);
   await openMenuItem(page, "Экспорт отчёта");
-  await expect(
-    monitoringMode().getByRole("radio", { name: "Последняя в обходе" }),
-  ).toHaveAttribute("aria-checked", "true");
+  await expect(await monitoringMode()).toHaveAttribute("aria-checked", "true");
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Назад" }).click();
   await openDatabase(page);
   await expect(page.getByText("№ 5301", { exact: true })).toBeVisible();

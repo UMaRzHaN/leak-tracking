@@ -172,7 +172,13 @@ export function readProjectSettings(projectId) {
   });
 }
 
-function emitSettingsUpdated(projectId) {
+/**
+ * Сообщает открытым экранам, что настройки проекта поменялись: каждый хук
+ * держит свою копию прочитанного и без этого видел бы старое.
+ *
+ * @param {string} projectId
+ */
+export function emitSettingsUpdated(projectId) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(
     new CustomEvent(PROJECT_SETTINGS_UPDATED_EVENT, {

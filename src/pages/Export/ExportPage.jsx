@@ -10,7 +10,7 @@ import Notification from "@/components/ui/Notification/Notification";
 import Icon from "@/components/ui/Icon/Icon";
 import { useDataBaseExport } from "@/pages/DataBase/hooks/useDataBaseExport";
 import { useInventoryExport } from "@/pages/ComponentRegistry/hooks/useInventoryExport";
-import RoundModeRow from "./RoundModeRow";
+import RoundModeButton, { RoundModeCaption } from "./RoundModeButton";
 import { hasComponentRegistry } from "@/configs/componentRegistry.config";
 import { useRegistryLocationSource } from "@/hooks/useRegistryLocationSource";
 import { countExportSections } from "./exportSections";
@@ -123,7 +123,7 @@ export default function ExportPage({
 
   // Листы в том порядке, в каком они лягут в книгу.
   const sections =
-    /** @type {Array<{key: string, label: string, rows?: number, photos?: number, parts?: string[]}>} */ (
+    /** @type {Array<{key: string, label: string, rows?: number, photos?: number, parts?: string[], roundMode?: {storageKeyOf?: (projectId: string) => string}}>} */ (
       [
         // Одной строкой, как инвентаризация: «История» объясняет значения
         // листа утечек и ходит вместе с ним. Пустой вкладки сборщик не
@@ -148,12 +148,18 @@ export default function ExportPage({
         },
         choice.monitoring && {
           key: "monitoring",
+          // Записи обхода — «⋯» у строки листа.
+          roundMode: {},
           label: t("export.sheetMonitoring"),
           rows: counts.monitoring.rows,
           photos: counts.monitoring.photos,
         },
         choice.repairs && {
           key: "repairLog",
+          // Записи обхода — «⋯» у строки листа.
+          roundMode: {
+            storageKeyOf: STORAGE_KEYS.PROJECT_EXCEL_REPAIR_LOG_EXPORT_MODE,
+          },
           label: t("export.sheetRepairLog"),
           rows: counts.repairLog.rows,
         },
@@ -169,6 +175,10 @@ export default function ExportPage({
         },
         withInventory && {
           key: "inventory",
+          // Записи обхода — «⋯» у строки листа.
+          roundMode: {
+            storageKeyOf: STORAGE_KEYS.PROJECT_EXCEL_RECONCILE_EXPORT_MODE,
+          },
           label: t("export.sheetInventory"),
           rows: components.length,
           photos: componentPhotos,
@@ -562,6 +572,13 @@ export default function ExportPage({
                         {section.parts.join(" · ")}
                       </span>
                     )}
+                    {section.roundMode && (
+                      <RoundModeCaption
+                        className={s.rowParts}
+                        projectId={projectId}
+                        storageKeyOf={section.roundMode.storageKeyOf}
+                      />
+                    )}
                   </strong>
                   {section.rows != null && <small>{section.rows}</small>}
                   {section.photos ? (
@@ -584,33 +601,15 @@ export default function ExportPage({
                   ) : (
                     <small className={s.noPhoto}>{t("export.noPhoto")}</small>
                   )}
+                  {section.roundMode && (
+                    <RoundModeButton
+                      label={section.label}
+                      projectId={projectId}
+                      storageKeyOf={section.roundMode.storageKeyOf}
+                    />
+                  )}
                 </div>
               ))}
-              {/* Листы с обходами — у каждого свой режим (8a). */}
-              {choice.monitoring && (
-                <RoundModeRow
-                  label={t("export.sheetMonitoring")}
-                  projectId={projectId}
-                />
-              )}
-              {choice.repairs && (
-                <RoundModeRow
-                  label={t("export.sheetRepairLog")}
-                  projectId={projectId}
-                  storageKeyOf={
-                    STORAGE_KEYS.PROJECT_EXCEL_REPAIR_LOG_EXPORT_MODE
-                  }
-                />
-              )}
-              {withInventory && (
-                <RoundModeRow
-                  label={t("export.sheetReconcileHistory")}
-                  projectId={projectId}
-                  storageKeyOf={
-                    STORAGE_KEYS.PROJECT_EXCEL_RECONCILE_EXPORT_MODE
-                  }
-                />
-              )}
             </div>
           </section>
 

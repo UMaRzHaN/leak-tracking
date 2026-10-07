@@ -23,7 +23,6 @@ export const exportReport = {
   sheetRepairLog: "Repair log",
   sheetAcceptance: "Equipment acceptance",
   sheetInventory: "Inventory",
-  sheetReconcileHistory: "Inventory · Reconciliation",
   inventoryFolder: "Inventory",
   chips: {
     leaks: "Leaks",
@@ -36,6 +35,13 @@ export const exportReport = {
   contents: "What goes into the file",
   sheetMonitoring: "Monitoring",
   sheetRepairs: "Repairs",
+  roundMode: {
+    title: "Round records: {{sheet}}",
+    fullHint:
+      "Every record on its own row: how many times and when each tag was checked in every round.",
+    latestHint:
+      "One row per tag in each round — the latest record. For a report on round results.",
+  },
   monitoringFull: "All records",
   monitoringLatest: "Latest per round",
   photos: "Photos in archive",
