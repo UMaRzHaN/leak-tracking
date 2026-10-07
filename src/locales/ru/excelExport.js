@@ -12,6 +12,8 @@ export const excelExport = {
   photo: {
     open: "Открыть фото",
     missing: "Есть (файл не найден)",
+    // Папка обхода для записи без места первого уровня.
+    noPlace: "Не указано",
     folderStatus: {
       open: "утечка есть",
       in_progress: "в ремонте",

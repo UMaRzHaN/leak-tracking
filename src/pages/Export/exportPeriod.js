@@ -161,6 +161,7 @@ const sheetsKey = (projectId) =>
 
 /** Разделы и фото по умолчанию: всё, как выгружала база. */
 export const DEFAULT_EXPORT_SHEETS = Object.freeze({
+  leaks: true,
   repairs: true,
   monitoring: true,
   materials: true,
@@ -194,6 +195,7 @@ export function readExportSheets(projectId) {
   try {
     const stored = JSON.parse(localStorage.getItem(key) ?? "null");
     for (const name of [
+      "leaks",
       "repairs",
       "monitoring",
       "materials",

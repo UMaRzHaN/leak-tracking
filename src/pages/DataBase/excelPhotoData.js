@@ -38,7 +38,7 @@ async function buildPhotoEntries(
   monitoringExportMode,
   photoReadCache,
   archiveRoot = "photos",
-  folderTexts = /** @type {{folderStatus: Record<string, string>}|null} */ (
+  folderTexts = /** @type {{folderStatus: Record<string, string>, placeField?: string|null, noPlace?: string}|null} */ (
     null
   ),
 ) {
@@ -74,6 +74,10 @@ async function buildPhotoEntries(
             folderTexts.folderStatus[
               STATUS_BY_MONITORING_RESULT[result] ?? "open"
             ],
+          {
+            placeField: folderTexts.placeField ?? null,
+            noPlace: folderTexts.noPlace,
+          },
         ).byIndex
       : null,
   );
@@ -130,7 +134,7 @@ export async function resolvePhotoExportData({
   idbGet,
   monitoringExportMode,
   photoReadCache,
-  folderTexts = /** @type {{folderStatus: Record<string, string>}|null} */ (
+  folderTexts = /** @type {{folderStatus: Record<string, string>, placeField?: string|null, noPlace?: string}|null} */ (
     null
   ),
 }) {

@@ -50,6 +50,9 @@ export function prepareRows(data, t, projectVars = {}) {
   });
 }
 
+// Папка отчёта по утечкам в архиве, где рядом лежит инвентаризация.
+export const DATABASE_FOLDER = "Database";
+
 export function useDataBaseExport({
   displayed,
   notify,
@@ -65,6 +68,8 @@ export function useDataBaseExport({
     null
   ),
   inventory = /** @type {{withPhotos:boolean}|null} */ (null),
+  // Книга по утечкам в архиве; `false` — выбрана одна инвентаризация.
+  leakWorkbook = true,
   // Строки листа «Приёмка оборудования» за период — готовит экран экспорта.
   acceptanceRows = /** @type {any[]|null} */ (null),
   // Экран экспорта (8b): собрать файл и вернуть его, не сохраняя сразу.
@@ -105,13 +110,21 @@ export function useDataBaseExport({
           import("@/pages/DataBase/excel"),
           import("@/services/excel/excelWorkerClient"),
         ]);
+      // Одна инвентаризация — тот же архив, что отдаёт её своя выгрузка:
+      // то же имя, книга в корне, а не в папке рядом с отчётом.
+      const inventoryOnly = !leakWorkbook && inventory;
+      const fileStem = inventoryOnly
+        ? (
+            await import("@/services/inventory/inventoryArchive")
+          ).buildInventoryFileStem(activeProject?.name)
+        : `!Database_${activeProject?.name || "no_name"}`;
 
       const result = await exportToExcelFile(
         displayed,
         prepareRows(displayed, t, vars),
         excelHeaders,
         excelKeys,
-        `!Database_${activeProject?.name || "no_name"}`,
+        fileStem,
         idbGetPhoto,
         activeProject?.folderName,
         t,
@@ -129,6 +142,9 @@ export function useDataBaseExport({
           buildWorkbookBuffer: buildWorkbookBufferInWorker,
           deliver: !deferDelivery,
           sheets: sheets ?? {},
+          leakWorkbook,
+          // С инвентаризацией в одном архиве у отчёта своя папка, как у неё.
+          archiveFolder: inventory && !inventoryOnly ? DATABASE_FOLDER : null,
           acceptanceRows: acceptanceRows ?? [],
           includePhotos,
           photoSections: photoSections ?? {},
@@ -148,7 +164,7 @@ export function useDataBaseExport({
                   await addInventoryFiles(
                     zip,
                     parts,
-                    t("export.inventoryFolder"),
+                    inventoryOnly ? "" : t("export.inventoryFolder"),
                   );
                 }
               }
@@ -186,6 +202,7 @@ export function useDataBaseExport({
     includePhotos,
     inventory,
     isExporting,
+    leakWorkbook,
     monitoringExportMode,
     repairLogExportMode,
     notify,

@@ -1,4 +1,5 @@
 import { getLeakEvents } from "@/domain/leakEvents";
+import { monitoringPlaceField } from "@/services/archive/archiveLayout";
 import { sanitizePortableArchiveSegment } from "@/services/archive/archivePaths";
 const getJSZip = () => import("jszip");
 
@@ -12,6 +13,7 @@ import { buildExcelExportTexts } from "@/services/excelExport/exportTexts";
 import { formatLeakTime } from "@/services/excelExport/cellValues";
 import { yieldToMainThread } from "@/services/excelExport/sheetLayout";
 import {
+  INVENTORY_EXPORT_DIR,
   LEAK_XLSX_DIR,
   projectExportFolder,
 } from "@/services/storage/exportFolders";
@@ -219,6 +221,24 @@ export async function exportToExcelFile(
   const safeFileName = sanitizePortableArchiveSegment(fileName) || "report";
   const exportStartedAt = performance.now();
   const phaseMetrics = {};
+  // Ни одного листа по утечкам не выбрано (8a): их книги и снимков в архиве
+  // нет вовсе — иначе в нём лежал бы пустой отчёт с одним служебным листом.
+  // Такой архив — выгрузка инвентаризации, и лежит он рядом с ними.
+  if (options.leakWorkbook === false) {
+    const JSZip = (await getJSZip()).default;
+    return finishArchive(new JSZip(), {
+      options,
+      safeFileName,
+      outputFolder: projectExportFolder(
+        projectFolderName,
+        INVENTORY_EXPORT_DIR,
+      ),
+      phaseMetrics,
+      zipStartedAt: performance.now(),
+      exportStartedAt,
+      t,
+    });
+  }
   // Deliberately not re-sorted. The caller hands over exactly what the database
   // screen shows, already filtered and ordered by the user's own date toggle;
   // re-sorting here threw that away and put the sheet in order of record id,
@@ -261,7 +281,11 @@ export async function exportToExcelFile(
         idbGet,
         monitoringExportMode,
         photoReadCache,
-        folderTexts: { folderStatus: texts.photo.folderStatus },
+        folderTexts: {
+          folderStatus: texts.photo.folderStatus,
+          placeField: monitoringPlaceField(options.project?.type),
+          noPlace: texts.photo.noPlace,
+        },
       })
     : { photoMap: {}, backupPhotoMap: {}, photoEntries: [] };
   const { photoMap, backupPhotoMap, photoEntries } = keepPhotoSections(
@@ -314,13 +338,20 @@ export async function exportToExcelFile(
   const zipStartedAt = performance.now();
   const JSZip = (await getJSZip()).default;
   const zip = new JSZip();
-  zip.file(`${safeFileName}.xlsx`, xlsxBuffer);
+  // Рядом с инвентаризацией отчёт ложится своей папкой (8a), вместе со
+  // снимками: ссылки в книге относительные и открываются из той же папки.
+  const folder = options.archiveFolder
+    ? `${sanitizePortableArchiveSegment(options.archiveFolder) ?? "Database"}/`
+    : "";
+  zip.file(`${folder}${safeFileName}.xlsx`, xlsxBuffer);
 
   for (const [index, entry] of photoEntries.entries()) {
     if (index > 0 && index % EXPORT_YIELD_EVERY === 0) {
       await yieldToMainThread();
     }
-    zip.file(entry.photoFileName, entry.base64, { base64: true });
+    zip.file(`${folder}${entry.photoFileName}`, entry.base64, {
+      base64: true,
+    });
     // JSZip decodes base64 into its own internal bytes synchronously above,
     // so our copy of the string is redundant from this point on. Dropping it
     // per-entry (rather than only when the whole photoEntries array goes out
@@ -330,6 +361,32 @@ export async function exportToExcelFile(
     entry.base64 = null;
   }
 
+  return finishArchive(zip, {
+    options,
+    safeFileName,
+    outputFolder,
+    phaseMetrics,
+    zipStartedAt,
+    exportStartedAt,
+    t,
+  });
+}
+
+/**
+ * Досборка и отдача архива — общая для архива с книгой по утечкам и без неё.
+ */
+async function finishArchive(
+  zip,
+  {
+    options,
+    safeFileName,
+    outputFolder,
+    phaseMetrics,
+    zipStartedAt,
+    exportStartedAt,
+    t,
+  },
+) {
   // Инвентаризация в том же архиве (8a): своя книга и снимки отдельной
   // папкой, чтобы получатель отчёта по утечкам видел, где чужая работа.
   if (typeof options.addToArchive === "function") {

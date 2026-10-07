@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   allocateLeakFolderNames,
+  monitoringPlaceField,
   planRoundMonitoringFolders,
 } from "./archiveLayout";
 
@@ -81,5 +82,43 @@ describe("planRoundMonitoringFolders", () => {
       roundSegment: "monitoring/2",
       recordNumber: 2,
     });
+  });
+});
+
+describe("папка места первого уровня в обходе", () => {
+  const inspected = (leak_id, subdivision) => ({
+    leak_id,
+    subdivision,
+    events: [
+      {
+        type: "inspection",
+        date: "2026-09-20T10:00:00.000Z",
+        roundNumber: 3,
+        result: "still_leaking",
+      },
+    ],
+  });
+
+  it("кладёт осмотры в monitoring/<обход>/<подразделение>/<бирка (итог)>", () => {
+    const { byIndex: place } = planRoundMonitoringFolders(
+      [inspected("4334", "УПГ/1"), inspected("4335", "")],
+      () => folderStatus.open,
+      { placeField: monitoringPlaceField("upstream"), noPlace: "Не указано" },
+    );
+
+    expect(place(0, 0)).toEqual({
+      roundSegment: "monitoring/3/УПГ-1",
+      leakSegment: "4334 (утечка есть)",
+      recordNumber: 1,
+    });
+    // Без места — своя папка, а не корень обхода.
+    expect(place(1, 0).roundSegment).toBe("monitoring/3/Не указано");
+  });
+
+  it("первый уровень берётся по типу проекта", () => {
+    expect(monitoringPlaceField("upstream")).toBe("subdivision");
+    expect(monitoringPlaceField("midstream")).toBe("field");
+    expect(monitoringPlaceField("downstream")).toBe("locality");
+    expect(monitoringPlaceField("unknown")).toBeNull();
   });
 });

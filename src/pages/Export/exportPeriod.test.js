@@ -75,6 +75,7 @@ describe("export sheet choice", () => {
 
   it("remembers the chosen sections and photos per project", () => {
     const initial = readExportSheets("p1");
+    expect(initial.leaks).toBe(true);
     expect(initial.repairs).toBe(true);
     expect(initial.inventory).toBe(false);
     expect(initial.photos).toEqual({
@@ -86,9 +87,11 @@ describe("export sheet choice", () => {
 
     saveExportSheets("p1", {
       ...initial,
+      leaks: false,
       repairs: false,
       photos: { ...initial.photos, leaks: false },
     });
+    expect(readExportSheets("p1").leaks).toBe(false);
     expect(readExportSheets("p1").repairs).toBe(false);
     expect(readExportSheets("p1").photos.leaks).toBe(false);
     expect(readExportSheets("p2").repairs).toBe(true);

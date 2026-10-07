@@ -172,6 +172,8 @@ export async function exportLeaksWithPhotosToStream(
     monitoringFolderLabel = /** @type {((result: string) => string)|null} */ (
       null
     ),
+    // Первый уровень места в папке обхода (см. planRoundMonitoringFolders).
+    monitoringPlace = /** @type {{placeField?: string|null, noPlace?: string}} */ ({}),
   } = {},
 ) {
   const exported = new Array(leaks.length);
@@ -179,7 +181,8 @@ export async function exportLeaksWithPhotosToStream(
     providedLeakSegments ??
     allocateUniqueLeakArchiveSegments(leaks, { prefix: segmentPrefix });
   const placeRecord = monitoringFolderLabel
-    ? planRoundMonitoringFolders(leaks, monitoringFolderLabel).byRecord
+    ? planRoundMonitoringFolders(leaks, monitoringFolderLabel, monitoringPlace)
+        .byRecord
     : null;
 
   for (const [index, leak] of leaks.entries()) {
@@ -291,6 +294,8 @@ export async function exportLeaksWithPhotos(
     monitoringFolderLabel = /** @type {((result: string) => string)|null} */ (
       null
     ),
+    // Первый уровень места в папке обхода (см. planRoundMonitoringFolders).
+    monitoringPlace = /** @type {{placeField?: string|null, noPlace?: string}} */ ({}),
   } = {},
 ) {
   const exported = new Array(leaks.length);
@@ -298,7 +303,8 @@ export async function exportLeaksWithPhotos(
     providedLeakSegments ??
     allocateUniqueLeakArchiveSegments(leaks, { prefix: segmentPrefix });
   const placeRecord = monitoringFolderLabel
-    ? planRoundMonitoringFolders(leaks, monitoringFolderLabel).byRecord
+    ? planRoundMonitoringFolders(leaks, monitoringFolderLabel, monitoringPlace)
+        .byRecord
     : null;
   let cursor = 0;
 

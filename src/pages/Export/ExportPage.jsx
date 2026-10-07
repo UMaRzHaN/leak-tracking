@@ -1,4 +1,6 @@
 import { errorText } from "@/utils/appError";
+import { COMPONENT_HISTORY_ACTIONS } from "@/domain/componentHistory";
+import { INVENTORY_SHEET_NAME } from "@/services/inventory/inventoryNames";
 import { formatLocationScopeLabel } from "@/utils/locationScopeLabel";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/app/hooks/useLanguage";
@@ -34,6 +36,24 @@ import s from "./ExportPage.module.scss";
  * попадёт в файл. Сам файл делает прежняя выгрузка Excel-архива; после неё
  * экран показывает итог и последние выгрузки на этом устройстве.
  */
+/**
+ * Видимые листы книги инвентаризации, по порядку (см. inventoryWorkbookBuild).
+ * Пустых вкладок сборщик не заводит: «История» — когда у карточек есть
+ * записи, «Сверка» — когда среди них есть осмотры.
+ */
+function inventoryBookSheets(components) {
+  const entries = components.flatMap((component) =>
+    Array.isArray(component?.history) ? component.history : [],
+  );
+  return [
+    INVENTORY_SHEET_NAME,
+    entries.length > 0 && "components.export.historySheet.sheet",
+    entries.some(
+      (entry) => entry?.action === COMPONENT_HISTORY_ACTIONS.INSPECTED,
+    ) && "components.export.reconcileSheet.sheet",
+  ].filter(Boolean);
+}
+
 export default function ExportPage({
   data = [],
   scopedData = data,
@@ -103,15 +123,23 @@ export default function ExportPage({
 
   // Листы в том порядке, в каком они лягут в книгу.
   const sections =
-    /** @type {Array<{key: string, label: string, rows?: number, photos?: number}>} */ (
+    /** @type {Array<{key: string, label: string, rows?: number, photos?: number, parts?: string[]}>} */ (
       [
-        {
+        // Одной строкой, как инвентаризация: «История» объясняет значения
+        // листа утечек и ходит вместе с ним. Пустой вкладки сборщик не
+        // заводит — без записей истории её нет и здесь.
+        choice.leaks && {
           key: "leaks",
-          label: t("export.sheetLeaks"),
+          label: t("export.chips.leaks"),
           rows: counts.leaks.rows,
           photos: counts.leaks.photos,
+          parts: [
+            t("excelExport.sheets.leaks"),
+            leaks.some(
+              (leak) => Array.isArray(leak?.history) && leak.history.length > 0,
+            ) && t("excelExport.sheets.history"),
+          ].filter(Boolean),
         },
-        { key: "history", label: t("export.sheetHistory") },
         choice.repairs && {
           key: "repairs",
           label: t("export.sheetRepairs"),
@@ -144,6 +172,11 @@ export default function ExportPage({
           label: t("export.sheetInventory"),
           rows: components.length,
           photos: componentPhotos,
+          // Своя книга в архиве: реестр, его история и сверки — под одним
+          // чипом. Имена — те же, что у листов в файле.
+          parts: inventoryBookSheets(components).map((name) =>
+            name === INVENTORY_SHEET_NAME ? name : t(name),
+          ),
         },
       ].filter(Boolean)
     );
@@ -152,10 +185,13 @@ export default function ExportPage({
       section.photos && choice.photos[section.key] ? sum + section.photos : sum,
     0,
   );
-  const sheetCount = sections.filter(
-    (section) => section.key !== "inventory",
-  ).length;
+  // Листы обеих книг: у инвентаризации их несколько, и все видимые.
+  const sheetCount = sections.reduce(
+    (sum, section) => sum + (section.parts?.length ?? 1),
+    0,
+  );
   const allOn =
+    choice.leaks &&
     choice.repairs &&
     choice.monitoring &&
     choice.materials &&
@@ -164,20 +200,33 @@ export default function ExportPage({
 
   const sheets = useMemo(
     () => ({
+      leaks: choice.leaks,
       repairs: choice.repairs,
       monitoring: choice.monitoring,
       materials: choice.materials,
       acceptance: choice.acceptance,
     }),
-    [choice.repairs, choice.monitoring, choice.materials, choice.acceptance],
+    [
+      choice.leaks,
+      choice.repairs,
+      choice.monitoring,
+      choice.materials,
+      choice.acceptance,
+    ],
   );
   const photoSections = useMemo(
     () => ({
-      leaks: choice.photos.leaks,
+      // Снимки колонок утечек живут на листе утечек: без листа им негде быть.
+      leaks: choice.leaks && choice.photos.leaks,
       repairs: choice.photos.repairs,
       monitoring: choice.photos.monitoring,
     }),
-    [choice.photos.leaks, choice.photos.repairs, choice.photos.monitoring],
+    [
+      choice.leaks,
+      choice.photos.leaks,
+      choice.photos.repairs,
+      choice.photos.monitoring,
+    ],
   );
   const inventory = useMemo(
     () => (withInventory ? { withPhotos: choice.photos.inventory } : null),
@@ -192,7 +241,7 @@ export default function ExportPage({
   // Название выгрузки в истории (8b): период и что в неё вошло —
   // «Февраль · утечки, ремонты».
   const includedNames = [
-    t("export.chips.leaks"),
+    choice.leaks && t("export.chips.leaks"),
     choice.repairs && t("export.chips.repairs"),
     choice.materials && t("export.chips.materials"),
     choice.acceptance && t("export.chips.acceptance"),
@@ -290,6 +339,8 @@ export default function ExportPage({
     inventory,
     acceptanceRows: choice.acceptance ? acceptanceRows : null,
     deferDelivery: true,
+    // Листов по утечкам нет — в архиве одна инвентаризация.
+    leakWorkbook: sections.some((section) => section.key !== "inventory"),
   });
   // Утечек нет, а реестр заведён: отчёт по утечкам собирать не из чего, и
   // выгружается одна инвентаризация — своим архивом, тем же, что раньше
@@ -438,6 +489,7 @@ export default function ExportPage({
                 onClick={() =>
                   updateChoice((value) => ({
                     ...value,
+                    leaks: true,
                     repairs: true,
                     monitoring: true,
                     materials: true,
@@ -453,8 +505,8 @@ export default function ExportPage({
               <IncludeChip
                 label={t("export.chips.leaks")}
                 count={counts.leaks.rows}
-                on
-                locked
+                on={choice.leaks}
+                onToggle={() => toggleSection("leaks")}
               />
               <IncludeChip
                 label={t("export.chips.repairs")}
@@ -500,7 +552,14 @@ export default function ExportPage({
               {sections.map((section, index) => (
                 <div key={section.key} className={s.row}>
                   <span className={s.rowNum}>{index + 1}</span>
-                  <strong>{section.label}</strong>
+                  <strong>
+                    {section.label}
+                    {section.parts && (
+                      <span className={s.rowParts}>
+                        {section.parts.join(" · ")}
+                      </span>
+                    )}
+                  </strong>
                   {section.rows != null && <small>{section.rows}</small>}
                   {section.photos ? (
                     <button
@@ -626,7 +685,9 @@ export default function ExportPage({
             disabled={
               isExporting ||
               isExportingInventory ||
-              (leaks.length === 0 && !inventoryOnly)
+              (leaks.length === 0 && !inventoryOnly) ||
+              // Ни одного листа не выбрано — в книге был бы один служебный.
+              (sheetCount === 0 && !withInventory)
             }
             onClick={inventoryOnly ? exportInventory : handleExport}
           >
@@ -641,7 +702,7 @@ export default function ExportPage({
   );
 }
 
-/** Чип раздела в «Что включить» (8a). «Утечки» включены всегда. */
+/** Чип раздела в «Что включить» (8a). */
 function IncludeChip({
   label,
   count,

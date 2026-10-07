@@ -142,6 +142,7 @@ export function buildExcelExportTexts(t) {
     photo: {
       open: t("excelExport.photo.open"),
       missing: t("excelExport.photo.missing"),
+      noPlace: t("excelExport.photo.noPlace"),
       folderStatus: byKey(PHOTO_FOLDER_STATUSES, (key) =>
         t(`excelExport.photo.folderStatus.${key}`),
       ),

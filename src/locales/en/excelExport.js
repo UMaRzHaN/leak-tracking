@@ -12,6 +12,8 @@ export const excelExport = {
   photo: {
     open: "Open photo",
     missing: "Present (file missing)",
+    // Папка обхода для записи без места первого уровня.
+    noPlace: "Not specified",
     folderStatus: {
       open: "leak present",
       in_progress: "under repair",

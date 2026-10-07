@@ -3,7 +3,10 @@ import { readProjectSettings } from "@/app/project/projectSettings";
 import { readProjectSyncStateAsync } from "@/services/sync/projectSyncState";
 import i18next from "i18next";
 import { allocateUniqueLeakArchiveSegments } from "@/services/archive/archivePaths";
-import { toLdarFolders } from "@/services/archive/archiveLayout";
+import {
+  monitoringPlaceField,
+  toLdarFolders,
+} from "@/services/archive/archiveLayout";
 import { getMonitoringResultLabel } from "@/utils/monitoring";
 
 /**
@@ -13,6 +16,14 @@ import { getMonitoringResultLabel } from "@/utils/monitoring";
  */
 function monitoringFolderLabel(result) {
   return getMonitoringResultLabel(result, i18next.language).toLowerCase();
+}
+
+/** Папка места первого уровня в обходе — по типу проекта. */
+function monitoringPlace(project) {
+  return {
+    placeField: monitoringPlaceField(project?.type),
+    noPlace: i18next.t("excelExport.photo.noPlace"),
+  };
 }
 import { readMonitoringRound } from "@/utils/monitoringRound";
 import { readAcceptances } from "@/utils/acceptanceStorage";
@@ -127,6 +138,7 @@ export async function streamProjectBackupZip({
     {
       leakSegments,
       monitoringFolderLabel,
+      monitoringPlace: monitoringPlace(project),
     },
   );
   await zip.add("backup.json", JSON.stringify(exportedLeaks, null, 2));
@@ -187,7 +199,11 @@ export async function buildProjectBackupZip({
     await withPortablePhotoValues(leaks),
     zip,
     idbGet,
-    { leakSegments, monitoringFolderLabel },
+    {
+      leakSegments,
+      monitoringFolderLabel,
+      monitoringPlace: monitoringPlace(project),
+    },
   );
   await yieldToMainThread();
   zip.file("backup.json", JSON.stringify(exportedLeaks, null, 2));

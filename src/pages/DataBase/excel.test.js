@@ -254,6 +254,33 @@ describe("excel export helpers", () => {
     });
   });
 
+  it("без листов по утечкам кладёт в архив одну инвентаризацию", async () => {
+    const addToArchive = vi.fn(async (zip) =>
+      zip.file("Инвентаризация/a.xlsx", "x"),
+    );
+    const result = await exportToExcelFile(
+      [{ id: 2, leak_id: 2, photo: "data:image/jpeg;base64,cGhvdG8=" }],
+      [{ id: 2, name: "Leak 2", photo: "data:image/jpeg;base64,cGhvdG8=" }],
+      ["ID", "Name", "Photo"],
+      ["id", "name", "photo"],
+      "report",
+      null,
+      null,
+      translate,
+      { leakWorkbook: false, addToArchive, deliver: false },
+    );
+
+    // Книги по утечкам нет — ни листов, ни служебного слепка, ни снимков.
+    expect(mocks.workbookInstances).toHaveLength(0);
+    const zip = mocks.zipInstances[0];
+    expect(zip.file).toHaveBeenCalledTimes(1);
+    expect(zip.file).toHaveBeenCalledWith("Инвентаризация/a.xlsx", "x");
+    expect(addToArchive).toHaveBeenCalledOnce();
+    expect(result.fileName).toBe("report.zip");
+    // Лежит с выгрузками инвентаризации, а не с отчётами по утечкам.
+    expect(result.outputFolder).toBe("Inventorization");
+  });
+
   // The export used to re-sort by record id. The caller already hands over what
   // the database screen shows — filtered, and ordered by the user's own date
   // toggle — and for anything added in the app the id is a random UUID, so the
@@ -298,6 +325,27 @@ describe("excel export helpers", () => {
     expect(workbookEntry).toMatch(/escape\.xlsx$/);
     expect(workbookEntry).not.toMatch(/\.\.|[/\\]/);
     expect(result.message).toMatch(/escape\.zip/);
+  });
+
+  it("рядом с инвентаризацией кладёт отчёт и снимки в свою папку", async () => {
+    mocks.getPhotoSrcMock.mockResolvedValue("data:image/png;base64,ZmFrZQ==");
+
+    await exportToExcelFile(
+      [{ id: 1, leak_id: "7", photo: "file://photo.png" }],
+      [{ id: 1, photo: "Yes" }],
+      ["ID", "Photo"],
+      ["id", "photo"],
+      "report",
+      null,
+      null,
+      translate,
+      { archiveFolder: "Database", deliver: false },
+    );
+
+    const names = mocks.zipInstances[0].file.mock.calls.map(([name]) => name);
+    expect(names).toContain("Database/report.xlsx");
+    expect(names).toContain("Database/photos/LDAR/7/before.png");
+    expect(names.every((name) => name.startsWith("Database/"))).toBe(true);
   });
 
   it("exports zip with linked photos when photos are present", async () => {

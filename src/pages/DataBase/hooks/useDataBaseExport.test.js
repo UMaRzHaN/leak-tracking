@@ -182,6 +182,39 @@ describe("useDataBaseExport", () => {
     expect(options.buildWorkbookBuffer).toBe(mocks.buildInWorker);
   });
 
+  it("одну инвентаризацию называет и кладёт как её собственную выгрузку", async () => {
+    const { result } = renderHook(() =>
+      useDataBaseExport({
+        displayed,
+        notify,
+        inventory: { withPhotos: true },
+        leakWorkbook: false,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleExport();
+    });
+
+    const call = mocks.exportToExcelFile.mock.calls[0];
+    expect(call[4]).toBe("!Inventorization_Тенгиз");
+    expect(call.at(-1).leakWorkbook).toBe(false);
+  });
+
+  it("с инвентаризацией рядом кладёт отчёт по утечкам в папку Database", async () => {
+    const { result } = renderHook(() =>
+      useDataBaseExport({ displayed, notify, inventory: { withPhotos: true } }),
+    );
+
+    await act(async () => {
+      await result.current.handleExport();
+    });
+
+    const call = mocks.exportToExcelFile.mock.calls[0];
+    expect(call[4]).toBe("!Database_Тенгиз");
+    expect(call.at(-1).archiveFolder).toBe("Database");
+  });
+
   it("сообщает об успехе и отпускает кнопку", async () => {
     const result = setup();
 

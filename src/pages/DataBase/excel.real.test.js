@@ -99,8 +99,28 @@ describe("real Excel workbook output", () => {
 
     expect(workbook.getWorksheet("Leaks")).toBeDefined();
     expect(workbook.getWorksheet("Repairs")).toBeUndefined();
-    // «История» — всегда, выключаются только обходы и ремонты.
     expect(workbook.getWorksheet("Monitoring")).toBeUndefined();
+  }, 60_000);
+
+  it("выгружает без листа утечек и его «Истории», если их сняли", async () => {
+    const buffer = await buildWorkbookBufferLocally({
+      orderedLeaks: [{ id: 1, leak_id: "A-42" }],
+      orderedRows: [{ leak_id: "A-42" }],
+      headers: ["Tag"],
+      keysOrder: ["leak_id"],
+      photoMap: {},
+      texts: buildExcelExportTexts(translate),
+      monitoringExportMode: "full",
+      archivePayload: null,
+      sheets: { leaks: false },
+    });
+
+    const { default: ExcelJS } = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+
+    expect(workbook.getWorksheet("Leaks")).toBeUndefined();
+    expect(workbook.getWorksheet("Leak History")).toBeUndefined();
   }, 60_000);
 
   it("не заводит лист ремонтов, когда чинить было нечего", async () => {

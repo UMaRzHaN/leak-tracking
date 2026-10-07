@@ -28,11 +28,13 @@ test("выгружает отчёт с экрана экспорта", async ({ 
   const repairsChip = page.getByRole("button", { name: /^Ремонты/ });
   await repairsChip.click();
   await expect(repairsChip).toHaveAttribute("aria-pressed", "false");
-  await expect(page.getByText("Лист «Ремонты»")).toHaveCount(0);
-  // «История» в файле всегда — выключить её нечем.
-  await expect(page.getByText("Лист «История»")).toBeVisible();
+  // Подпись строки совпадает с чипом, поэтому ищется среди строк файла.
+  await expect(page.locator("strong", { hasText: /^Ремонты$/ })).toHaveCount(0);
+  // «История» — в строке утечек, как листы у инвентаризации: отдельно её
+  // не выключить.
+  await expect(page.getByText("Утечки · История")).toBeVisible();
   const leakPhotos = page.getByRole("button", {
-    name: "Фото: Лист «Утечки»",
+    name: "Фото: Утечки",
   });
   await leakPhotos.click();
   await expect(page.getByText("Записей: 1 · фото: 0")).toBeVisible();
@@ -44,7 +46,7 @@ test("выгружает отчёт с экрана экспорта", async ({ 
     "false",
   );
   await expect(
-    page.getByRole("button", { name: "Фото: Лист «Утечки»" }),
+    page.getByRole("button", { name: "Фото: Утечки" }),
   ).toHaveAttribute("aria-pressed", "false");
 
   // Файл сначала собирается (8b), а сохранить его или отправить решают на
@@ -95,8 +97,13 @@ test("кладёт в книгу журнал ремонтов и приёмку
   await expect(sheet).toHaveCount(0);
 
   await openMenuItem(page, "Экспорт отчёта");
-  await expect(page.getByText("Лист «Журнал ремонтов»")).toBeVisible();
-  await expect(page.getByText("Лист «Приёмка оборудования»")).toBeVisible();
+  // Подпись есть и у листа, и у строки режима обходов под ним.
+  await expect(
+    page.getByText("Журнал ремонтов", { exact: true }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Приёмка оборудования", { exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Сформировать файл" }).click();
   await expect(page.getByText("Файл сформирован")).toBeVisible();
   const downloadPromise = page.waitForEvent("download");

@@ -272,6 +272,14 @@
   }
 }
 
+.rowParts {
+  display: block;
+  margin-top: 2px;
+  color: var(--c-text3);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+
 .rowNum {
   flex: none;
   width: 28px;
