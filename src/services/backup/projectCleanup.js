@@ -1,5 +1,5 @@
 import { Directory, Filesystem } from "@capacitor/filesystem";
-import { STORAGE_KEYS } from "@/app/project/storageKeys";
+import { projectKeyPrefix, STORAGE_KEYS } from "@/app/project/storageKeys";
 import { clearProjectSettings } from "@/app/project/projectSettings";
 import { clearProjectFilters } from "@/app/project/projectFilters";
 import { LeakRepository } from "@/repositories/LeakRepository";
@@ -90,6 +90,11 @@ export async function deleteProjectArtifacts(project) {
     }).catch(ignoredError("projectCleanup.removeFolder"));
   }
 
+  // Последним, после хранилищ: всё, что ещё осталось под префиксом проекта, —
+  // маршрут обхода, черновики форм, скрытые поля реестра, история и листы
+  // выгрузок. Поимённая уборка выше пропускала каждый ключ, заведённый позже.
+  await step(() => removeProjectScopedKeys(project.id));
+
   if (errors.length === 1) throw errors[0];
   if (errors.length > 1) {
     throw new AggregateError(
@@ -97,6 +102,16 @@ export async function deleteProjectArtifacts(project) {
       `Project cleanup failed in ${errors.length} steps`,
     );
   }
+}
+
+function removeProjectScopedKeys(projectId) {
+  const prefix = projectKeyPrefix(projectId);
+  const keys = [];
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (key?.startsWith(prefix)) keys.push(key);
+  }
+  for (const key of keys) localStorage.removeItem(key);
 }
 
 export async function rollbackImportedProject(project, removeProject) {

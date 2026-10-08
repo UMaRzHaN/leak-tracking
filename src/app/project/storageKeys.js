@@ -6,6 +6,14 @@ export function getProjectMobileDir(project) {
   return `projects/${project?.id ?? "unknown"}`;
 }
 
+/**
+ * Общий префикс всех ключей проекта в localStorage. Его держат не только
+ * STORAGE_KEYS ниже, но и модули со своими ключами — маршрут обхода, черновики
+ * форм, история выгрузок, обходы, накладные, обследование. Удаление проекта
+ * чистит по нему, а не по списку: список отставал от каждого нового ключа.
+ */
+export const projectKeyPrefix = (projectId) => `${APP_PREFIX}:${projectId}:`;
+
 export const STORAGE_KEYS = {
   /* =========================
      GLOBAL

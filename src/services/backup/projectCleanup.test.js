@@ -164,6 +164,27 @@ describe("deleteProjectArtifacts", () => {
     expect(mocks.removeSchemas).toHaveBeenCalledWith(project);
   });
 
+  it("removes every key under the project prefix and nothing else", async () => {
+    const leftovers = [
+      "app:p1:route_v1",
+      "app:p1:form_draft_v2",
+      "app:p1:component_draft_v1",
+      "app:p1:hidden_component_fields_v1",
+      "app:p1:export_history_v1",
+      "app:p1:export_sheets_v1",
+    ];
+    for (const key of leftovers) localStorage.setItem(key, "{}");
+    localStorage.setItem("app:p10:route_v1", "keep");
+    localStorage.setItem("app:projects_v1", "keep");
+
+    await deleteProjectArtifacts(project);
+
+    for (const key of leftovers) expect(localStorage.getItem(key)).toBeNull();
+    // Чужой проект с похожим id и общие ключи приложения не трогаются.
+    expect(localStorage.getItem("app:p10:route_v1")).toBe("keep");
+    expect(localStorage.getItem("app:projects_v1")).toBe("keep");
+  });
+
   it("finishes the cleanup even when the registry refuses to go", async () => {
     mocks.removeComponents.mockRejectedValue(new Error("реестр занят"));
 
