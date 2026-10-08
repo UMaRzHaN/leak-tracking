@@ -102,6 +102,9 @@ describe("deleteProjectArtifacts", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.clear.mockReset().mockResolvedValue(undefined);
+    mocks.deleteProjectPhotos.mockReset().mockResolvedValue(undefined);
+    mocks.clearProjectSyncState.mockReset().mockResolvedValue(undefined);
     mocks.removeComponents.mockResolvedValue(true);
     mocks.removeSchemas.mockResolvedValue(true);
   });
@@ -131,6 +134,34 @@ describe("deleteProjectArtifacts", () => {
     expect(localStorage.getItem("app:p1:reconcile_round_v1")).toBeNull();
     expect(localStorage.getItem("app:p1:acceptances_v1")).toBeNull();
     expect(localStorage.getItem("app:p1:survey_v1")).toBeNull();
+  });
+
+  it("removes the registry and drawings even when leaks and photos fail", async () => {
+    // Шаги шли цепочкой await: осечка стирания утечек обрывала уборку, и
+    // реестр с чертежами оставались на диске навсегда.
+    const purgeError = new Error("база занята");
+    const photoError = new Error("снимки не стёрлись");
+    mocks.clear.mockRejectedValueOnce(purgeError);
+    mocks.deleteProjectPhotos.mockRejectedValueOnce(photoError);
+    localStorage.setItem("app:p1:survey_v1", "{}");
+
+    const error = await deleteProjectArtifacts(project).catch((e) => e);
+
+    expect(mocks.deleteProjectPhotos).toHaveBeenCalledWith("p1", "alpha");
+    expect(mocks.removeComponents).toHaveBeenCalledWith(project);
+    expect(mocks.removeSchemas).toHaveBeenCalledWith(project);
+    expect(localStorage.getItem("app:p1:survey_v1")).toBeNull();
+    expect(error).toBeInstanceOf(AggregateError);
+    expect(error.errors).toEqual([purgeError, photoError]);
+  });
+
+  it("throws a single failure as it is", async () => {
+    const syncError = new Error("sync state locked");
+    mocks.clearProjectSyncState.mockRejectedValueOnce(syncError);
+
+    await expect(deleteProjectArtifacts(project)).rejects.toBe(syncError);
+    expect(mocks.clear).toHaveBeenCalled();
+    expect(mocks.removeSchemas).toHaveBeenCalledWith(project);
   });
 
   it("finishes the cleanup even when the registry refuses to go", async () => {
