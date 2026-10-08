@@ -8,6 +8,7 @@ import { SchemaRepository } from "@/repositories/SchemaRepository";
 import { clearProjectSyncState } from "@/services/sync/projectSyncState";
 import { isNative } from "@/utils/platform";
 import { saveMonitoringRound } from "@/utils/monitoringRound";
+import { restoreProjectRounds } from "@/app/project/projectRounds";
 import { saveAcceptances } from "@/utils/acceptanceStorage";
 import { saveSurvey } from "@/utils/surveyStorage";
 import { ignoredError } from "@/utils/ignoredError";
@@ -32,9 +33,11 @@ export async function deleteProjectArtifacts(project) {
   localStorage.removeItem(STORAGE_KEYS.PROJECT_IMPORT_OPERATION(project.id));
   clearProjectFilters(project.id);
   clearProjectSettings(project.id);
-  // Обход, накладные и обследование лежат в localStorage по id проекта, как и
-  // настройки: без уборки они переживали удаление проекта навсегда.
+  // Обходы, накладные и обследование лежат в localStorage по id проекта, как
+  // и настройки: без уборки они переживали удаление проекта навсегда. Обходы
+  // ремонтов и сверки — вместе с обходом мониторинга.
   saveMonitoringRound(project.id, null);
+  restoreProjectRounds(project.id, null);
   saveAcceptances(project.id, []);
   saveSurvey(project.id, null);
   await clearProjectSyncState(project.id);

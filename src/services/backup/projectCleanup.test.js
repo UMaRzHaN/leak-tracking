@@ -116,13 +116,19 @@ describe("deleteProjectArtifacts", () => {
     expect(mocks.deleteProjectPhotos).toHaveBeenCalledWith("p1", "alpha");
   });
 
-  it("removes the round, invoices and survey kept in localStorage", async () => {
+  it("removes the rounds, invoices and survey kept in localStorage", async () => {
     localStorage.setItem("app:p1:acceptances_v1", "[]");
     localStorage.setItem("app:p1:survey_v1", "{}");
+    const round = JSON.stringify({ number: 2, startedAt: "2026-10-01" });
+    localStorage.setItem("app:p1:repair_round_v1", round);
+    localStorage.setItem("app:p1:reconcile_round_v1", round);
 
     await deleteProjectArtifacts(project);
 
     expect(mocks.saveMonitoringRound).toHaveBeenCalledWith("p1", null);
+    // Обходы ремонтов и сверки уходят вместе с обходом мониторинга.
+    expect(localStorage.getItem("app:p1:repair_round_v1")).toBeNull();
+    expect(localStorage.getItem("app:p1:reconcile_round_v1")).toBeNull();
     expect(localStorage.getItem("app:p1:acceptances_v1")).toBeNull();
     expect(localStorage.getItem("app:p1:survey_v1")).toBeNull();
   });
