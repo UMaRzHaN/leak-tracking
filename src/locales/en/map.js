@@ -9,6 +9,7 @@ export const map = {
   filters: "Map filters",
   reset: "Reset",
   done: "Done",
+  youAreHere: "You are here",
   noDataToExport: "No data to export",
   exportUnavailable: "Export is not available for this project",
   exportError: "Export error",

@@ -198,7 +198,8 @@ export function createOfflineMap(
     if (!userMarker) {
       userMarker = L.marker(latlng, { icon: buildUserIcon(heading) })
         .addTo(map)
-        .bindPopup(i18n.language === "en" ? "You are here" : "Вы здесь");
+        // Функцией, а не строкой: язык могут сменить, пока маркер на карте.
+        .bindPopup(() => i18n.t("map.youAreHere"));
     } else {
       userMarker.setLatLng(latlng).setIcon(buildUserIcon(heading));
     }

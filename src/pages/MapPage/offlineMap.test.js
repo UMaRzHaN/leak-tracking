@@ -164,6 +164,10 @@ describe("offline map adapter", () => {
     expect(leaflet.map.setView).toHaveBeenCalledWith([41, 69], 13);
     expect(geolocation.watchPosition).not.toHaveBeenCalled();
     expect(leaflet.markers[0].latlng).toEqual([41.1, 69.1]);
+    // Подпись маркера — через i18n и на момент открытия, а не зашитой строкой.
+    expect(leaflet.markers[0].bindPopup.mock.calls[0][0]()).toBe(
+      "map.youAreHere",
+    );
 
     adapter.locateMe();
     expect(leaflet.map.setView).toHaveBeenLastCalledWith([41.1, 69.1], 17, {

@@ -9,6 +9,7 @@ export const map = {
   filters: "Фильтры карты",
   reset: "Сбросить",
   done: "Готово",
+  youAreHere: "Вы здесь",
   noDataToExport: "Нет данных для экспорта",
   exportUnavailable: "Экспорт недоступен для этого проекта",
   exportError: "Ошибка экспорта",
