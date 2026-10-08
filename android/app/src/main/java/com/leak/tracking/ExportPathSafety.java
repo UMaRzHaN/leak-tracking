@@ -11,17 +11,19 @@ final class ExportPathSafety {
 
         List<String> safeSegments = new ArrayList<>();
         for (String rawSegment : path.replace('\\', '/').split("/+")) {
-            if (
-                rawSegment.isEmpty() ||
-                ".".equals(rawSegment) ||
-                "..".equals(rawSegment)
-            ) {
-                continue;
-            }
+            // Сравнение с "." и ".." — только после trim(): иначе " .. "
+            // проходит проверку, а trim() тут же делает из него шаг наверх.
             String segment = rawSegment
                 .replaceAll("[\\p{Cntrl}<>:\"|?*]", "_")
                 .trim();
-            if (!segment.isEmpty()) safeSegments.add(segment);
+            if (
+                segment.isEmpty() ||
+                ".".equals(segment) ||
+                "..".equals(segment)
+            ) {
+                continue;
+            }
+            safeSegments.add(segment);
         }
         return String.join("/", safeSegments);
     }
