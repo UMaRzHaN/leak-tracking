@@ -82,6 +82,17 @@ describe("useProjectVars", () => {
     expect(mocks.markProjectVarsUpdated).toHaveBeenCalledTimes(2);
   });
 
+  it("updates every mounted instance of the same project", () => {
+    const editor = renderHook(() => useProjectVars("project-1", defaults));
+    const exporter = renderHook(() => useProjectVars("project-1", defaults));
+
+    act(() => editor.result.current.setVars({ ...defaults, pressure: 7 }));
+    expect(exporter.result.current.vars.pressure).toBe(7);
+
+    act(() => editor.result.current.resetVars());
+    expect(exporter.result.current.vars).toBe(defaults);
+  });
+
   it("returns the synchronization promise to transactional callers", async () => {
     let finishSync;
     mocks.markProjectVarsUpdated.mockReturnValueOnce(

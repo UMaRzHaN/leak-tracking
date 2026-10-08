@@ -6,6 +6,17 @@ import { markProjectVarsUpdated } from "@/services/sync/projectSyncState";
 
 const defaultVars = VAR_DEFAULTS;
 
+// Экземпляров хука несколько, и каждый держит параметры у себя. Без события
+// постоянный экземпляр в App не узнавал о правке из формы утечки, и ZIP-бэкап
+// из меню уходил со старыми параметрами при свежей отметке времени — второй
+// телефон принимал их за новые.
+function announceVarsUpdated(projectId) {
+  if (!projectId || typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent("project-vars-updated", { detail: { projectId } }),
+  );
+}
+
 /**
  * Параметры расчёта для конкретного проекта.
  * @param {string} projectId — project.id (не тип!)
@@ -70,6 +81,7 @@ export function useProjectVars(projectId, defaults = defaultVars) {
         syncUpdate = Promise.resolve(markProjectVarsUpdated(projectId));
       }
       setRevision((r) => r + 1);
+      announceVarsUpdated(projectId);
       return syncUpdate;
     },
     [projectId, storageKey],
@@ -89,6 +101,7 @@ export function useProjectVars(projectId, defaults = defaultVars) {
       syncUpdate = Promise.resolve(markProjectVarsUpdated(projectId));
     }
     setRevision((r) => r + 1);
+    announceVarsUpdated(projectId);
     return syncUpdate;
   }, [projectId, storageKey]);
 
