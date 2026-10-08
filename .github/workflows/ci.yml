@@ -349,7 +349,6 @@ jobs:
             android/app/build/reports/lint-results-release.html
             android/app/build/reports/tests/
             android/app/build/outputs/apk/
-            android/app/build/outputs/bundle/
             .artifacts/
           if-no-files-found: warn
           include-hidden-files: true
