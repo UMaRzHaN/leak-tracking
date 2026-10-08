@@ -1,10 +1,14 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ touchProjectSettings: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  touchProjectSettings: vi.fn(),
+  emitSettingsUpdated: vi.fn(),
+}));
 vi.mock("@/app/project/projectSettings", () => ({
   PROJECT_SETTINGS_UPDATED_EVENT: "project-settings-updated",
   touchProjectSettings: mocks.touchProjectSettings,
+  emitSettingsUpdated: mocks.emitSettingsUpdated,
 }));
 
 import { useHiddenFields } from "./useHiddenFields";
@@ -26,6 +30,8 @@ describe("useHiddenFields", () => {
       JSON.parse(localStorage.getItem("app:project-1:hidden_fields_v1")),
     ).toEqual(["pressure", "temperature"]);
     expect(mocks.touchProjectSettings).toHaveBeenLastCalledWith("project-1");
+    // Другие экземпляры хука (форма, выгрузка) узнают о правке только так.
+    expect(mocks.emitSettingsUpdated).toHaveBeenLastCalledWith("project-1");
 
     act(() => result.current.setHiddenFields(new Set()));
     expect(result.current.hiddenFields.size).toBe(0);

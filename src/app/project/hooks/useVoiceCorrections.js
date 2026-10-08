@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import {
   PROJECT_SETTINGS_UPDATED_EVENT,
+  emitSettingsUpdated,
   touchProjectSettings,
 } from "@/app/project/projectSettings";
 import { normalizeVoiceCorrections } from "@/features/voice/utils/voiceCorrections";
@@ -63,6 +64,8 @@ export function useVoiceCorrections(projectId) {
         localStorage.removeItem(key);
       }
       touchProjectSettings(projectId);
+      // Свою копию обновляет ревизия ниже, чужие экземпляры хука — событие.
+      emitSettingsUpdated(projectId);
       setRevision((value) => value + 1);
     },
     [key, projectId],

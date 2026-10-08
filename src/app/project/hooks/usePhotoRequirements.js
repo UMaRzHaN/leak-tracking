@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import {
   PROJECT_SETTINGS_UPDATED_EVENT,
+  emitSettingsUpdated,
   normalizePhotoRequirements as normalizeSettings,
   touchProjectSettings,
   usesDefaultPhotoRequirements,
@@ -60,6 +61,8 @@ export function usePhotoRequirements(projectId) {
       } else localStorage.setItem(keys.current, JSON.stringify(normalized));
       if (keys.legacy) localStorage.removeItem(keys.legacy);
       touchProjectSettings(projectId);
+      // Свою копию обновляет ревизия ниже, чужие экземпляры хука — событие.
+      emitSettingsUpdated(projectId);
       setRevision((value) => value + 1);
     },
     [keys, projectId],
