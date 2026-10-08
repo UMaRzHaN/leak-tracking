@@ -26,6 +26,7 @@ import { useLocalSync } from "./useLocalSync";
 import { performSettingsCleanup } from "../settingsCleanup";
 import { resolvePortableExcelArchiveRoute } from "../excelArchiveRouting";
 import { importRollbackNote } from "@/services/import/excelImportTransaction";
+import { mergeAcceptancesAndSurvey } from "@/services/backup/acceptancesAndSurvey";
 
 export function useSettingsPage({
   data = /** @type {any[]} */ ([]),
@@ -256,6 +257,8 @@ export function useSettingsPage({
             settings: result.settings,
             syncId: result.project.syncId,
             sync: result.sync,
+            acceptances: result.acceptances,
+            survey: result.survey,
           });
           const inventoryNote = await importInventoryAlongside(
             result,
@@ -563,6 +566,10 @@ export function useSettingsPage({
           });
           await setData?.(mergeResult.leaks);
           saveExcelMonitoringRound(excelConflictState.result?.monitoringRound);
+          mergeAcceptancesAndSurvey(
+            activeProject?.id,
+            excelConflictState.result,
+          );
         },
         rollbackState: async () => {
           await setData?.(data);
@@ -633,6 +640,8 @@ export function useSettingsPage({
         settings: excelConflictState.result?.settings,
         syncId: excelConflictState.result?.project?.syncId,
         sync: excelConflictState.result?.sync,
+        acceptances: excelConflictState.result?.acceptances,
+        survey: excelConflictState.result?.survey,
       });
       const inventoryNote = await importInventoryAlongside(
         excelConflictState.result,

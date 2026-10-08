@@ -11,6 +11,8 @@ import { STORAGE_KEYS } from "@/app/project/storageKeys";
 import { useProjectVars } from "@/app/project/hooks/useProjectVars";
 import { readProjectSettings } from "@/app/project/projectSettings";
 import { readMonitoringRound } from "@/utils/monitoringRound";
+import { readAcceptances } from "@/utils/acceptanceStorage";
+import { readStoredSurvey } from "@/utils/surveyStorage";
 import { readProjectSyncStateAsync } from "@/services/sync/projectSyncState";
 import { formatTimeOfDay } from "@/services/excelExport/cellValues";
 import { getLeakSheetValue } from "@/services/excelExport/leakSheetValues";
@@ -138,6 +140,10 @@ export function useDataBaseExport({
           monitoringRound: readMonitoringRound(activeProject?.id),
           rounds: readProjectRounds(activeProject?.id ?? null),
           sync: await readProjectSyncStateAsync(activeProject?.id),
+          // Накладные и обследование едут в служебном листе, как в ZIP:
+          // без них книга, прошедшая круг экспорт → импорт, их теряла.
+          acceptances: readAcceptances(activeProject?.id),
+          survey: readStoredSurvey(activeProject?.id),
           // A filtered export must be self-contained without silently
           // including records (and photos) hidden by the current filters.
           backupLeaks: displayed,

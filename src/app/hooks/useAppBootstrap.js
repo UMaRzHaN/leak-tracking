@@ -283,6 +283,11 @@ export function useAppBootstrap() {
           if (monitoringRound)
             saveMonitoringRound(newProject.id, monitoringRound);
           applyProjectRounds(newProject.id, rounds);
+          // Накладные и обследование из служебного листа книги. Откат нового
+          // проекта их и уберёт — см. rollbackImportedProject.
+          const { mergeAcceptancesAndSurvey } =
+            await import("@/services/backup/acceptancesAndSurvey");
+          mergeAcceptancesAndSurvey(newProject.id, payload);
           clearForm();
           return { project: newProject, leakCount: withPhotos.length };
         } catch (caught) {

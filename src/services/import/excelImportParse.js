@@ -127,6 +127,8 @@ export async function parseExcelLeaks(
       vars: embeddedBackup.vars ?? null,
       settings: embeddedBackup.settings ?? null,
       sync: embeddedBackup.sync ?? null,
+      acceptances: embeddedBackup.acceptances ?? null,
+      survey: embeddedBackup.survey ?? null,
       portableArchive: true,
     };
   }

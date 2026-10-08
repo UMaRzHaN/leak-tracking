@@ -531,6 +531,31 @@ describe("excel export helpers", () => {
     ).toEqual(["zip:photos/monitoring/1/VISIBLE (leak present)/record-1.png"]);
   });
 
+  it("carries invoices and the survey in the embedded backup", async () => {
+    // Без них круг Excel → импорт терял приёмку и ввод обследования.
+    const acceptances = [
+      { id: "inv-1", number: "1", items: [], batches: [], updatedAt: "x" },
+    ];
+    const survey = { slice: "category", groups: [], updatedAt: "y" };
+    await exportToExcelFile(
+      [],
+      [],
+      ["ID"],
+      ["id"],
+      "report",
+      null,
+      null,
+      translate,
+      { backupLeaks: [], acceptances, survey },
+    );
+
+    const payload = readEmbeddedBackup(
+      mocks.workbookInstances[0].sheets.at(-1),
+    );
+    expect(payload.acceptances).toEqual(acceptances);
+    expect(payload.survey).toEqual(survey);
+  });
+
   it("omits unreadable local photo references from the embedded backup", async () => {
     mocks.getPhotoSrcMock.mockResolvedValue(null);
     const getStoredPhoto = vi.fn().mockResolvedValue(null);

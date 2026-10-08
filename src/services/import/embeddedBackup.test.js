@@ -68,6 +68,29 @@ describe("embedded Excel project backup", () => {
     ]);
   });
 
+  it("carries invoices and the survey, as a ZIP backup does", () => {
+    const acceptances = [
+      { id: "inv-1", number: "1", items: [], batches: [], updatedAt: "x" },
+    ];
+    const survey = { groups: [{ name: "Цех 1", checked: 3 }] };
+    const payload = JSON.stringify({
+      project: { name: "P", type: "upstream" },
+      acceptances,
+      survey,
+      leaks: [],
+    });
+    const result = parseEmbeddedBackup(
+      makeWorkbook([
+        ["LEAK_TRACKER_EXCEL_BACKUP", 1],
+        ["Chunk", "Payload"],
+        [1, payload],
+      ]),
+    );
+
+    expect(result.acceptances).toEqual(acceptances);
+    expect(result.survey).toEqual(survey);
+  });
+
   it("keeps project null for legacy snapshots without project metadata", () => {
     const payload = JSON.stringify({
       leaks: [{ id: "legacy", status: "open" }],

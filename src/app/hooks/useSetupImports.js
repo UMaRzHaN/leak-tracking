@@ -193,6 +193,8 @@ export function useSetupImports({
         settings: result.settings,
         syncId: result.project?.syncId,
         sync: result.sync,
+        acceptances: result.acceptances,
+        survey: result.survey,
       });
       // Инвентаризация папкой рядом с отчётом (8a) — в тот же новый проект.
       // Проект уже заведён, и сбой реестра его не отменяет: утечки на месте,

@@ -311,6 +311,8 @@ export async function exportToExcelFile(
     monitoringRound: options.monitoringRound ?? null,
     rounds: options.rounds ?? null,
     sync: options.sync ?? null,
+    acceptances: options.acceptances ?? null,
+    survey: options.survey ?? null,
     leaks: buildPortableLeaks(backupLeaks, backupPhotoMap),
   };
   const outputFolder = getExportFolder(projectFolderName);
