@@ -33,7 +33,7 @@ import {
   snapshotAcceptancesAndSurvey,
 } from "./acceptancesAndSurvey";
 import { logger } from "@/utils/logger";
-import { openArchive } from "./backupArchiveSession";
+import { openArchive, releaseArchive } from "./backupArchiveSession";
 import {
   applyProjectRounds,
   readProjectRounds,
@@ -159,6 +159,10 @@ export async function importProjectZip(file, ctx) {
     // committed and outside its rollback: a project that arrived intact must
     // not be thrown away because one drawing would not store, and the operator
     // can always load that drawing again by hand.
+    //
+    // Снимки утечек уже прочитаны, а реестр и чертежи открывают файл заново в
+    // главном потоке — копию в воркере держать незачем.
+    releaseArchive(photos);
     const schemaResult = await restoreProjectSchemas(file, importedProject);
     const componentResult = await restoreProjectComponents(
       file,
@@ -509,6 +513,10 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
   // a ZIP backup, an archive merged into an existing project, and a QR
   // exchange all arrive here, and until now only a brand-new project got them
   // — two phones syncing in the field kept their walks to themselves.
+  //
+  // Сессию воркера — закрыть до них: оба заново открывают файл в главном
+  // потоке, и копия в воркере полминуты простоя была бы второй.
+  releaseArchive(photos);
   await restoreProjectComponents(zipFile, existingProject);
   await restoreProjectSchemas(zipFile, existingProject);
 

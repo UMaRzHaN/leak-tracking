@@ -85,6 +85,21 @@ describe("openBackupArchiveInWorker", () => {
     await expect(session.readPhoto("zip:a.jpg")).rejects.toThrow("closed");
   });
 
+  it("releases the archive at once when the import closes the session", async () => {
+    const instances = installSessionWorker((worker, { id }) => {
+      worker.onmessage({ data: { ok: true, id, result: { sizes: {} } } });
+    });
+
+    const session = await openBackupArchiveInWorker("archive");
+    session.close();
+    session.close();
+
+    // Не через 30 секунд простоя, а сразу: следом реестр и чертежи заново
+    // открывают тот же файл в главном потоке.
+    expect(instances[0].terminate).toHaveBeenCalledTimes(1);
+    await expect(session.readPhoto("zip:a.jpg")).rejects.toThrow("closed");
+  });
+
   it("reports a worker that dies mid-session as unavailable", async () => {
     let liveWorker;
     installSessionWorker((worker, { op, id }) => {

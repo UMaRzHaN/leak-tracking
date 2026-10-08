@@ -6,7 +6,7 @@ vi.mock("@/services/excel/backupArchiveWorkerClient", () => ({
 }));
 vi.mock("./archiveParser", () => ({ parseBackupZip: vi.fn() }));
 
-const { openArchive } = await import("./backupArchiveSession");
+const { openArchive, releaseArchive } = await import("./backupArchiveSession");
 const { openBackupArchiveInWorker } =
   await import("@/services/excel/backupArchiveWorkerClient");
 const { parseBackupZip } = await import("./archiveParser");
@@ -36,6 +36,25 @@ describe("openArchive", () => {
     expect(archive.sizes).toBeUndefined();
     expect(archive.readPhoto).toBeUndefined();
     expect(parseBackupZip).not.toHaveBeenCalled();
+  });
+
+  it("lets the import close the worker session", async () => {
+    const close = vi.fn();
+    openBackupArchiveInWorker.mockResolvedValue({
+      leaks: [],
+      sizes: {},
+      readPhoto: vi.fn(),
+      close,
+    });
+
+    const archive = await openArchive("file");
+    releaseArchive(archive.photos);
+
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(archive.close).toBeUndefined();
+    // У разбора в главном потоке закрывать нечего — и это не ошибка.
+    expect(() => releaseArchive({ has: () => false })).not.toThrow();
+    expect(() => releaseArchive(null)).not.toThrow();
   });
 
   it("parses locally when the worker cannot run", async () => {

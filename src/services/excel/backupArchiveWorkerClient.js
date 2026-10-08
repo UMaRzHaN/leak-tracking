@@ -7,10 +7,11 @@ import {
 export { isWorkerUnavailableError };
 
 // Photo reads run back-to-back while the main thread saves them, so a gap this
-// long means the import is done and the archive can be released. There is no
-// explicit close: the import path has three exits including two error paths,
-// and a session that only survives while it is being used cannot be leaked by
-// forgetting one of them.
+// long means the import is done and the archive can be released. The idle
+// timer stays the safety net: the import path has three exits including two
+// error paths, and a session that only survives while it is being used cannot
+// be leaked by forgetting one of them. The happy path closes explicitly — see
+// `close` below.
 const BACKUP_IDLE_MS = 30_000;
 
 /**
@@ -99,6 +100,10 @@ export function openBackupArchiveInWorker(file) {
     .then((result) => ({
       ...result,
       readPhoto: (path) => request("readPhoto", { path }),
+      // Импорт закрывает сессию сам, как только снимки утечек прочитаны:
+      // реестр и чертежи затем заново открывают тот же файл в главном потоке,
+      // и все 30 секунд простоя архив лежал бы в памяти дважды.
+      close: () => close(),
     }))
     .catch((error) => {
       close(error);

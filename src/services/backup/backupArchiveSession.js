@@ -7,6 +7,21 @@ import { logger } from "@/utils/logger";
 import { parseBackupZip } from "./archiveParser";
 
 /**
+ * Отпускает архив, открытый openArchive, когда снимки из него больше не нужны.
+ * У разбора в главном потоке закрывать нечего — там архив уходит со сборщиком
+ * мусора вместе с читателем.
+ *
+ * @param {{close?: () => void} | null | undefined} photos
+ */
+export function releaseArchive(photos) {
+  try {
+    photos?.close?.();
+  } catch (error) {
+    logger.warn("Backup archive session could not be closed", error);
+  }
+}
+
+/**
  * Opens a backup archive for import, off the main thread when the platform
  * allows it. Returns exactly what parseBackupZip returns, so callers cannot
  * tell where the archive is being read.
@@ -17,8 +32,10 @@ import { parseBackupZip } from "./archiveParser";
  */
 export async function openArchive(file) {
   try {
-    const { sizes, readPhoto, ...data } = await openBackupArchiveInWorker(file);
-    return { ...data, photos: createArchivePhotoProxyReader(sizes, readPhoto) };
+    const { sizes, readPhoto, close, ...data } =
+      await openBackupArchiveInWorker(file);
+    const photos = createArchivePhotoProxyReader(sizes, readPhoto);
+    return { ...data, photos: Object.assign(photos, { close }) };
   } catch (error) {
     if (!isWorkerUnavailableError(error)) throw error;
     logger.warn(
