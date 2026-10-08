@@ -26,9 +26,12 @@ import {
   readMonitoringRound,
   saveMonitoringRound,
 } from "@/utils/monitoringRound";
-import { readAcceptances, saveAcceptances } from "@/utils/acceptanceStorage";
-import { readSurvey, saveSurvey } from "@/utils/surveyStorage";
-import { mergeInvoices } from "@/domain/equipmentAcceptance";
+import { saveAcceptances } from "@/utils/acceptanceStorage";
+import { saveSurvey } from "@/utils/surveyStorage";
+import {
+  mergeAcceptancesAndSurvey,
+  snapshotAcceptancesAndSurvey,
+} from "./acceptancesAndSurvey";
 import { logger } from "@/utils/logger";
 import { openArchive } from "./backupArchiveSession";
 import {
@@ -193,27 +196,6 @@ export async function importProjectZip(file, ctx) {
   }
 }
 
-/**
- * Накладные сливаются, а не заменяются: приёмку, сделанную на этом устройстве
- * после выгрузки архива, перезапись терять не должна. Ввод обследования — одна
- * запись на проект: берётся более свежая, со своей меткой из архива.
- */
-function mergeAcceptancesAndSurvey(projectId, meta) {
-  if (Array.isArray(meta?.acceptances)) {
-    saveAcceptances(
-      projectId,
-      mergeInvoices(readAcceptances(projectId), meta.acceptances),
-    );
-  }
-  if (
-    meta?.survey &&
-    String(meta.survey.updatedAt ?? "") >
-      String(readSurvey(projectId).updatedAt ?? "")
-  ) {
-    saveSurvey(projectId, meta.survey, { keepUpdatedAt: true });
-  }
-}
-
 export async function importIntoExistingProject(zipFile, ctx, mode) {
   const {
     overwriteProject,
@@ -248,6 +230,8 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
   const localSettings = readProjectSettings(existingProjectId);
   const localMonitoringRound = readMonitoringRound(existingProjectId);
   const localRounds = readProjectRounds(existingProjectId);
+  const restoreAcceptancesAndSurvey =
+    snapshotAcceptancesAndSurvey(existingProjectId);
   const localVarsRaw = localStorage.getItem(
     STORAGE_KEYS.PROJECT_VARS(existingProjectId),
   );
@@ -371,7 +355,6 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
       }
       saveMonitoringRound(existingProjectId, nextMonitoringRound);
       applyProjectRounds(existingProjectId, meta?.rounds);
-      mergeAcceptancesAndSurvey(existingProjectId, meta);
       if (incomingSyncState) {
         await writeProjectSyncState(
           existingProjectId,
@@ -397,7 +380,6 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
       }
       saveMonitoringRound(existingProjectId, nextMonitoringRound);
       applyProjectRounds(existingProjectId, meta?.rounds, { resolve: true });
-      mergeAcceptancesAndSurvey(existingProjectId, meta);
       await writeProjectSyncState(
         existingProjectId,
         mergeProjectSyncStates(
@@ -407,6 +389,10 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
         finalLeaks,
       );
     }
+
+    // Накладные и обследование сливаются при любом режиме: «Объединить» их
+    // раньше не принимал вовсе, и приёмка с другого телефона пропадала.
+    mergeAcceptancesAndSurvey(existingProjectId, meta);
 
     if (shouldApplyIncomingSettings) {
       if (incomingSettings) {
@@ -462,6 +448,7 @@ export async function importIntoExistingProject(zipFile, ctx, mode) {
     writeProjectSettings(existingProjectId, localSettings);
     saveMonitoringRound(existingProjectId, localMonitoringRound);
     restoreProjectRounds(existingProjectId, localRounds);
+    restoreAcceptancesAndSurvey();
     await writeProjectSyncState(
       existingProjectId,
       localSyncState,
