@@ -10,6 +10,8 @@ import {
   schemaIdentity,
 } from "@/domain/schemaTombstones";
 import { SchemaRepository } from "@/repositories/SchemaRepository";
+import { isSafeSchemaId } from "@/repositories/schemaPaths";
+import { createRecordId } from "@/utils/createRecordId";
 import {
   assertArchiveLimits,
   assertImportFileSize,
@@ -200,7 +202,11 @@ async function restoreFromIndex(project, zip, files, indexEntry) {
     const parsed = JSON.parse(
       await readArchiveEntry(zip, indexEntry, "string"),
     );
-    incoming = Array.isArray(parsed?.data) ? parsed.data : [];
+    // Свой идентификатор чертежа из архива не нужен — сводятся они по имени
+    // и размеру. А чужой, похожий на путь, стал бы именем файла.
+    incoming = (Array.isArray(parsed?.data) ? parsed.data : []).map((schema) =>
+      isSafeSchemaId(schema?.id) ? schema : { ...schema, id: createRecordId() },
+    );
   } catch (error) {
     logger.warn("[schemas] could not read the archive schema list:", error);
     return { restored: 0, skipped: files.size };

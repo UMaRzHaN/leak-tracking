@@ -270,6 +270,21 @@ describe("удаление схемы переживает обмен", () => {
     expect(result.restored).toBe(0);
   });
 
+  it("не берёт из архива идентификатор, похожий на путь", async () => {
+    const archive = await archiveWith(
+      [{ ...drawing({ id: "../../other/photos/h_1" }), file: "узел.pdf" }],
+      { [`${SCHEMA_ARCHIVE_DIR}/узел.pdf`]: "pdf" },
+    );
+
+    const result = await restoreSchemasFromArchive(archive, project);
+
+    expect(result.restored).toBe(1);
+    const [, stored] = mocks.addSchema.mock.calls[0];
+    expect(stored.id).toMatch(/^[A-Za-z0-9_-]+$/);
+    const [, savedIndex] = mocks.saveIndex.mock.calls.at(-1);
+    expect(savedIndex.map((schema) => schema.id)).toEqual([stored.id]);
+  });
+
   it("удалённая здесь схема не возвращается из чужого архива", async () => {
     // Обратная сторона: надгробие держится здесь, а чертёж приезжает оттуда.
     mocks.readIndex.mockResolvedValue([
