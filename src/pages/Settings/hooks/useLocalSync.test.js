@@ -299,6 +299,43 @@ describe("useLocalSync", () => {
     expect(notify).toHaveBeenCalledWith("info", "The QR code has expired");
   });
 
+  it.each([
+    [
+      "auth-limit",
+      "Session stopped: too many wrong connection codes. Create a new QR code.",
+    ],
+    [
+      "error",
+      "The sync session was interrupted by an error. Create a new QR code.",
+    ],
+  ])(
+    "closes the QR and explains a host session ended by %s",
+    async (reason, message) => {
+      let hostOptions;
+      const stop = vi.fn().mockResolvedValue(undefined);
+      syncService.startLocalSyncHost.mockImplementation(async (options) => {
+        hostOptions = options;
+        return {
+          host: "192.168.43.1",
+          port: 49152,
+          code: "123456",
+          fingerprint: "A".repeat(64),
+          ...QR_SESSION,
+          transferCount: 0,
+          stop,
+        };
+      });
+      const { result, notify } = renderSync();
+      await act(async () => result.current.startHost());
+      expect(result.current.state.status).toBe("hosting");
+
+      act(() => hostOptions.onSessionEnded({ reason, transferCount: 0 }));
+      await waitFor(() => expect(result.current.state.status).toBe("idle"));
+      expect(stop).toHaveBeenCalledOnce();
+      expect(notify).toHaveBeenCalledWith("error", message);
+    },
+  );
+
   it("allows an empty matching project to receive its first sync", async () => {
     syncService.startLocalSyncHost.mockResolvedValue({
       host: "192.168.43.1",

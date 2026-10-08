@@ -149,6 +149,10 @@ export const settings = {
   syncCompleteVChanges: "Синхронизация завершена: применено изменений — {{v1}}",
   theQrCodeHas: "Срок действия QR-кода истёк",
   transferCompleteDevicesV: "Передача завершена. Устройств: {{v1}}",
+  hostStoppedAuthLimit:
+    "Сеанс остановлен: слишком много неверных кодов подключения. Создайте новый QR-код.",
+  hostStoppedError:
+    "Сеанс синхронизации прервался из-за ошибки. Создайте новый QR-код.",
   localSyncError: "Ошибка локальной синхронизации",
   couldNotCreateSession: "Не удалось создать сеанс",
   connectionError: "Ошибка подключения",

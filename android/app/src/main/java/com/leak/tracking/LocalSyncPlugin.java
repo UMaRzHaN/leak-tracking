@@ -612,11 +612,20 @@ public class LocalSyncPlugin extends Plugin {
                 }
             }
         } finally {
+            // Сюда цикл доходит и сам по себе — сервер закрылся не через
+            // остановку сеанса или вылетела ошибка, которую catch не ловит.
+            // Тогда сеанс закрывается здесь, и WebView должно об этом узнать:
+            // иначе экран так и показывает QR, по которому уже не подключиться.
+            int transferCount = 0;
+            boolean stopped = false;
             synchronized (sessionLock) {
                 if (serverSocket == activeServer) {
+                    transferCount = hostCompletedTransfers;
                     stopHostInternal();
+                    stopped = true;
                 }
             }
+            if (stopped) notifyHostSessionEnded(HostSessionEnd.ERROR, transferCount);
         }
     }
 
@@ -666,16 +675,26 @@ public class LocalSyncPlugin extends Plugin {
             // cannot return its shouldStop flag, but the session must still
             // close after the configured authentication budget.
             boolean stopped = false;
-            if (outcome.shouldStop || connectionGuard.isFailureLimitReached()) {
+            boolean failureLimitReached = connectionGuard.isFailureLimitReached();
+            int transferCount = outcome.transferCount;
+            if (outcome.shouldStop || failureLimitReached) {
                 synchronized (sessionLock) {
                     if (serverSocket == activeServer) {
+                        // Сеанс, закрытый по лимиту кодов, мог до того уже
+                        // отдать базу нескольким устройствам.
+                        transferCount = Math.max(transferCount, hostCompletedTransfers);
                         stopHostInternal();
                         stopped = true;
                     }
                 }
             }
-            if (stopped && outcome.endReason != null) {
-                notifyHostSessionEnded(outcome.endReason, outcome.transferCount);
+            String endReason = HostSessionEnd.afterClient(
+                outcome.endReason,
+                outcome.shouldStop,
+                failureLimitReached
+            );
+            if (stopped && endReason != null) {
+                notifyHostSessionEnded(endReason, transferCount);
             }
         }
     }
@@ -723,7 +742,7 @@ public class LocalSyncPlugin extends Plugin {
                 boolean shouldStop = registerFailedAuthAttempt();
                 connectionGuard.registerPreAuthFailure(peerKey);
                 rejectPeer(output, LocalSyncFailure.INVALID_CODE, "Неверный код подключения");
-                return shouldStop ? ClientOutcome.STOP : ClientOutcome.CONTINUE;
+                return shouldStop ? ClientOutcome.AUTH_LIMIT : ClientOutcome.CONTINUE;
             }
             connectionDeadline.markAuthenticated();
             connectionGuard.markAuthenticated(peerKey);
@@ -832,7 +851,7 @@ public class LocalSyncPlugin extends Plugin {
             boolean shouldStop = registerFailedAuthAttempt();
             connectionGuard.registerPreAuthFailure(peerKey);
             rejectPeer(output, LocalSyncFailure.INVALID_CODE, "Неверный код подключения");
-            return shouldStop ? ClientOutcome.STOP : ClientOutcome.CONTINUE;
+            return shouldStop ? ClientOutcome.AUTH_LIMIT : ClientOutcome.CONTINUE;
         }
         connectionDeadline.markAuthenticated();
         connectionGuard.markAuthenticated(peerKey);
@@ -1362,7 +1381,7 @@ public class LocalSyncPlugin extends Plugin {
                         expired = true;
                     }
                 }
-                if (expired) notifyHostSessionEnded("expired", transferCount);
+                if (expired) notifyHostSessionEnded(HostSessionEnd.EXPIRED, transferCount);
             },
             durationMs,
             TimeUnit.MILLISECONDS
@@ -1558,6 +1577,11 @@ public class LocalSyncPlugin extends Plugin {
     private static final class ClientOutcome {
         private static final ClientOutcome CONTINUE = new ClientOutcome(false, null, 0);
         private static final ClientOutcome STOP = new ClientOutcome(true, null, 0);
+        private static final ClientOutcome AUTH_LIMIT = new ClientOutcome(
+            true,
+            HostSessionEnd.AUTH_LIMIT,
+            0
+        );
 
         private final boolean shouldStop;
         private final String endReason;
@@ -1570,7 +1594,7 @@ public class LocalSyncPlugin extends Plugin {
         }
 
         private static ClientOutcome completedImport(int transferCount) {
-            return new ClientOutcome(true, "completed", transferCount);
+            return new ClientOutcome(true, HostSessionEnd.COMPLETED, transferCount);
         }
     }
 

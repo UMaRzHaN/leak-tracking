@@ -150,6 +150,10 @@ export const settings = {
   syncCompleteVChanges: "Sync complete: {{v1}} changes applied",
   theQrCodeHas: "The QR code has expired",
   transferCompleteDevicesV: "Transfer complete. Devices: {{v1}}",
+  hostStoppedAuthLimit:
+    "Session stopped: too many wrong connection codes. Create a new QR code.",
+  hostStoppedError:
+    "The sync session was interrupted by an error. Create a new QR code.",
   localSyncError: "Local sync error",
   couldNotCreateSession: "Could not create session",
   connectionError: "Connection error",
