@@ -310,6 +310,27 @@ describe("PhotoRepository on web", () => {
     expect(mocks.remove).toHaveBeenCalledWith("photo_project_dropped");
   });
 
+  it("оставляет снимки из истории осмотров карточки реестра", async () => {
+    mocks.listKeys.mockResolvedValue([
+      "photo_project_card",
+      "photo_project_inspection",
+      "photo_project_orphan",
+    ]);
+
+    await PhotoRepository.gcOrphaned(
+      async () => [
+        {
+          photo: "idb://photo_project_card",
+          history: [{ photo: "idb://photo_project_inspection" }, null, {}],
+        },
+      ],
+      { projectId: "project" },
+    );
+
+    expect(mocks.remove).toHaveBeenCalledOnce();
+    expect(mocks.remove).toHaveBeenCalledWith("photo_project_orphan");
+  });
+
   it("не убирает ничего, когда о владельцах не смогли ответить", async () => {
     // Молчание реестра — не то же самое, что отсутствие ссылок.
     mocks.listKeys.mockResolvedValue(["photo_project_orphan"]);
