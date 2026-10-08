@@ -84,4 +84,15 @@ describe("equipment acceptance", () => {
     expect(merged).toHaveLength(2);
     expect(merged.find((invoice) => invoice.id === local.id).number).toBe("X");
   });
+
+  it("skips broken invoices instead of failing the whole import", () => {
+    // `acceptances: [null]` в project.json ронял слияние TypeError, и откат
+    // уносил весь импорт — вместе с утечками.
+    const local = first();
+    const merged = mergeInvoices(
+      [local, null],
+      [null, "мусор", { id: 7 }, { ...first(), id: "other" }],
+    );
+    expect(merged.map((invoice) => invoice.id)).toEqual([local.id, "other"]);
+  });
 });

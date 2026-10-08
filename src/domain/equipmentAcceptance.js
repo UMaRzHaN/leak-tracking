@@ -196,10 +196,16 @@ export function receivedItems(invoices) {
   return result;
 }
 
-/** Слияние при импорте: по id, свежая накладная побеждает. */
+/**
+ * Слияние при импорте: по id, свежая накладная побеждает. Битые записи
+ * отбрасываются до слияния: одна `null` в архиве иначе роняла бы TypeError, а
+ * с ним откатывался бы весь импорт.
+ */
 export function mergeInvoices(current = [], incoming = []) {
-  const byId = new Map(current.map((invoice) => [invoice.id, invoice]));
-  for (const invoice of incoming) {
+  const valid = (list) =>
+    (Array.isArray(list) ? list : []).filter(isValidInvoice);
+  const byId = new Map(valid(current).map((invoice) => [invoice.id, invoice]));
+  for (const invoice of valid(incoming)) {
     const existing = byId.get(invoice.id);
     if (
       !existing ||
