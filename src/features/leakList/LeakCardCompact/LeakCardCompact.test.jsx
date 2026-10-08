@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const monitoringMocks = vi.hoisted(() => ({
   latestPhoto: vi.fn(() => null),
+  heroPhoto: vi.fn(() => null),
   fiction: vi.fn(() => false),
   flag: vi.fn(() => null),
 }));
@@ -29,6 +30,7 @@ vi.mock("@/utils/timeAgo", () => ({ timeAgo: () => "now" }));
 vi.mock("@/hooks/usePhotoSrc", () => ({ usePhotoSrc: (path) => path }));
 vi.mock("@/utils/monitoring", () => ({
   getLatestMonitoringPhotoPath: monitoringMocks.latestPhoto,
+  getLeakDetailsHeroPhotoPath: monitoringMocks.heroPhoto,
   isLeakFiction: monitoringMocks.fiction,
   getLastMonitoringFlag: monitoringMocks.flag,
 }));
@@ -147,6 +149,18 @@ describe("LeakCardCompact location hierarchy", () => {
 describe("LeakCardCompact photo preview", () => {
   afterEach(() => {
     monitoringMocks.latestPhoto.mockReset();
+    monitoringMocks.heroPhoto.mockReset();
+  });
+
+  it("у открытой записи — главный снимок шапки, а не последний осмотр", () => {
+    // После осмотра была проверка ремонта со снимком — шапка и карта
+    // показывают её, и карточка списка не должна отставать.
+    monitoringMocks.latestPhoto.mockReturnValue("round.jpg");
+    monitoringMocks.heroPhoto.mockReturnValue("check.jpg");
+
+    const { container } = renderCard({ status: "open", photo: "before.jpg" });
+
+    expect(previewSources(container)).toEqual(["check.jpg"]);
   });
 
   const previewSources = (container) =>

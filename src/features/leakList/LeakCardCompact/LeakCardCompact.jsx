@@ -15,6 +15,7 @@ import {
 import {
   getLastMonitoringFlag,
   getLatestMonitoringPhotoPath,
+  getLeakDetailsHeroPhotoPath,
   isLeakFiction,
 } from "@/utils/monitoring";
 import PhotoViewer from "@/features/photos/PhotoViewer/PhotoViewer";
@@ -106,6 +107,12 @@ function LeakCardCompact({
 
   const photoSrc = usePhotoSrc(leak.photo ?? null);
   const monitoringPhotoSrc = usePhotoSrc(getLatestMonitoringPhotoPath(leak));
+  // Открытая запись показывает тот же главный снимок, что шапка карточки и
+  // булавка на карте: последний снимок проверки — осмотра или ремонта. Снимок
+  // одного осмотра отставал, если после него была проверка ремонта.
+  const heroPhotoSrc = usePhotoSrc(
+    status === "open" ? getLeakDetailsHeroPhotoPath(leak) : null,
+  );
   // Снимки ремонта и устранения — по статусу, как в карточке и листе книги.
   const milestones = getStatusRepairMilestones(leak);
   const photoAfterSrc = usePhotoSrc(milestones.resolvedPhoto);
@@ -137,8 +144,8 @@ function LeakCardCompact({
   // «ремонта» у неё нет, есть только осмотр. Без этого карточка стояла пустой,
   // хотя шапка подробностей тот же снимок показывает.
   const displayPhotoSrc =
-    !showBook && status === "open" && monitoringPhotoSrc
-      ? monitoringPhotoSrc
+    !showBook && status === "open" && heroPhotoSrc
+      ? heroPhotoSrc
       : photoSrc || photoRepairSrc || photoAfterSrc || monitoringPhotoSrc;
   const hasPhoto = comparePairs.length > 0 || Boolean(displayPhotoSrc);
   const hasChips =
