@@ -10,7 +10,10 @@ import {
   CALCULATION_PARAM_KEYS,
   CALCULATION_PARAMS_VERSION,
   calculateLeakWithSnapshot,
+  findCalculationBlocker,
 } from "@/utils/calculationParams";
+import { fieldLabel } from "@/utils/fieldLabels";
+import { normalizeLeakTag } from "@/utils/leakIdentity";
 import { priorityFromSpeed } from "@/utils/priority";
 import { normalizeNumber } from "@/utils/normalize/normalizeNumber";
 import { buildLeakHistoryChanges } from "@/utils/historyChanges";
@@ -66,6 +69,69 @@ export function useLeakDetailsPersistence({
         message: t("leakDetails.enterSerialNumber"),
       });
       return;
+    }
+
+    const fieldError = (key, reason) =>
+      setNotification({
+        type: "error",
+        message: t("leakDetails.fieldInvalid", {
+          field: fieldLabel(key, t, key),
+          reason,
+        }),
+      });
+
+    // Номер бирки сводит записи при импорте и обмене: дубль склеил бы две
+    // разные утечки. При заведении это проверяется, а здесь номер правился
+    // свободно.
+    if (dirtyFields.some(({ key }) => key === "leak_id")) {
+      const tag = normalizeLeakTag(localEdit.leak_id);
+      if (!tag) {
+        fieldError("leak_id", t("leakForm.validation.required"));
+        return;
+      }
+      if (
+        allLeaks?.some(
+          (other) =>
+            other.id !== leak.id && normalizeLeakTag(other.leak_id) === tag,
+        )
+      ) {
+        setNotification({
+          type: "error",
+          message: t("addLeak.errors.duplicateTag"),
+        });
+        return;
+      }
+    }
+
+    // `calculations` на неверном входе возвращает запись как есть, и новая
+    // скорость сохранилась бы рядом с выбросами от прежней.
+    const measurementKeys = ["leak_speed", "pressure", "temperature"];
+    const editedMeasurements = dirtyFields.filter(({ key }) =>
+      measurementKeys.includes(key),
+    );
+    if (editedMeasurements.length > 0 || calcParamsDirty) {
+      const candidate = { ...leak };
+      for (const { key } of editedMeasurements) {
+        candidate[key] = normalizeNumber(localEdit[key]);
+      }
+      const speedCleared =
+        editedMeasurements.some(({ key }) => key === "leak_speed") &&
+        (candidate.leak_speed == null || candidate.leak_speed === "");
+      const blocker = speedCleared
+        ? { key: "leak_speed", code: "required" }
+        : findCalculationBlocker(candidate, vars, localCalcParams);
+      if (blocker?.key === "params") {
+        setActiveTab(paramsTab);
+        setNotification({
+          type: "error",
+          message: t("leakDetails.calcParamsInvalid"),
+        });
+        return;
+      }
+      if (blocker) {
+        fieldError(blocker.key, t(`leakForm.validation.${blocker.code}`));
+        return;
+      }
     }
 
     const lat = Number(localEdit.lat ?? leak.lat);

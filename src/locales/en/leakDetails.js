@@ -70,6 +70,8 @@ export const leakDetails = {
   removed: "Removed",
 
   enterSerialNumber: "Enter the equipment serial number",
+  calcParamsInvalid: "Calculation parameters are out of range",
+  fieldInvalid: "{{field}}: {{reason}}",
   saveError: "Save error",
   fillUserName: "Fill in the user name in the profile",
 

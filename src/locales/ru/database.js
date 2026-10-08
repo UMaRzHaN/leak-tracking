@@ -85,6 +85,7 @@ export const database = {
 
   fillUserName: "Заполните имя пользователя в профиле",
   paramsAlreadyApplied: "Выбранные параметры уже применены",
+  paramsInvalid: "Параметры расчёта вне допустимых значений",
   paramsUpdated: "Параметры и расчёты обновлены: {{changed}}",
   paramsUpdateFailed: "Не удалось обновить параметры: {{message}}",
 

@@ -70,6 +70,8 @@ export const leakDetails = {
   removed: "Удалено",
 
   enterSerialNumber: "Укажите серийный номер оборудования",
+  calcParamsInvalid: "Параметры расчёта вне допустимых значений",
+  fieldInvalid: "{{field}}: {{reason}}",
   saveError: "Ошибка сохранения",
   fillUserName: "Заполните имя пользователя в профиле",
 

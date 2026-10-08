@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { STATUS } from "@/utils/status";
 import { useLeakDetailsPersistence } from "./useLeakDetailsPersistence";
+import { VAR_DEFAULTS } from "@/data/variables";
 
 // Resolves against the real English locale, so a lost translation fails here
 // instead of quietly falling back to the key.
@@ -29,7 +30,7 @@ function setup(overrides = {}) {
     onSave: vi.fn().mockResolvedValue(undefined),
     deletePhoto: vi.fn().mockResolvedValue(undefined),
     historyUser: "inspector",
-    vars: {},
+    vars: VAR_DEFAULTS,
     editFields: [
       { key: "component" },
       { key: "leak_speed", numeric: true },
@@ -110,6 +111,73 @@ describe("handleSave guards", () => {
     expect(props.setNotification).toHaveBeenCalledWith(
       expect.objectContaining({ type: "error" }),
     );
+    expect(props.onSave).not.toHaveBeenCalled();
+  });
+});
+
+describe("handleSave refuses records it could not keep consistent", () => {
+  const OTHER = Object.freeze({ ...LEAK, id: 2, leak_id: "TAG-2" });
+
+  it("rejects a tag another leak already has", async () => {
+    const { result, props } = setup({
+      allLeaks: [LEAK, OTHER],
+      localEdit: { leak_id: " tag-2 " },
+      dirtyFields: [{ key: "leak_id" }],
+    });
+
+    await act(() => result.current.handleSave());
+
+    expect(props.setNotification).toHaveBeenCalledWith({
+      type: "error",
+      message: "A leak with this tag already exists",
+    });
+    expect(props.onSave).not.toHaveBeenCalled();
+  });
+
+  it("rejects a cleared tag", async () => {
+    const { result, props } = setup({
+      localEdit: { leak_id: "  " },
+      dirtyFields: [{ key: "leak_id" }],
+    });
+
+    await act(() => result.current.handleSave());
+
+    expect(props.onSave).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["cleared", ""],
+    ["negative", "-3"],
+  ])(
+    "rejects a %s leak speed instead of keeping old emissions",
+    async (_label, speed) => {
+      const { result, props } = setup({
+        localEdit: { leak_speed: speed },
+        dirtyFields: [{ key: "leak_speed" }],
+      });
+
+      await act(() => result.current.handleSave());
+
+      expect(props.setNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "error" }),
+      );
+      expect(props.onSave).not.toHaveBeenCalled();
+    },
+  );
+
+  it("sends out-of-range calculation parameters back to their tab", async () => {
+    const { result, props } = setup({
+      localCalcParams: {
+        equipmentType: "GFM 2.0",
+        serial_number: "SN-1",
+        Operating_mode: 400,
+      },
+      calcParamsDirty: true,
+    });
+
+    await act(() => result.current.handleSave());
+
+    expect(props.setActiveTab).toHaveBeenCalledWith("params");
     expect(props.onSave).not.toHaveBeenCalled();
   });
 });

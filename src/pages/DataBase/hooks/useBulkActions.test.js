@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { STATUS } from "@/utils/status";
 import { useBulkActions } from "./useBulkActions";
+import { VAR_DEFAULTS } from "@/data/variables";
 
 vi.mock("@/app/hooks/useLanguage", async () => {
   const { englishLanguageHook } = await import("@/test/translate");
@@ -79,7 +80,12 @@ describe("bulk selection", () => {
 });
 
 describe("bulk recalculation", () => {
-  const projectVars = { gasType: "methane", GWP: 28, Operating_mode: 365 };
+  const projectVars = {
+    ...VAR_DEFAULTS,
+    gasType: "methane",
+    GWP: 28,
+    Operating_mode: 365,
+  };
 
   it("offers the first selected leak's parameters as the starting point", () => {
     const { result } = renderWith(
@@ -135,6 +141,30 @@ describe("bulk recalculation", () => {
 
   // Applying the values a leak already has is a no-op, not an error — the
   // selection still clears, so the sheet closes.
+  it("refuses out-of-range parameters instead of keeping old emissions", async () => {
+    const setData = vi.fn().mockResolvedValue(undefined);
+    const { result, notify } = renderWith(
+      [{ id: "a", status: STATUS.OPEN, leak_speed: 5, ...projectVars }],
+      { setData, projectVars },
+    );
+
+    act(() => result.current.toggleSelected("a"));
+    let saved;
+    await act(async () => {
+      saved = await result.current.handleBulkCalculationSave({
+        ...result.current.bulkCalculationVars,
+        Operating_mode: 400,
+      });
+    });
+
+    expect(saved).toBe(false);
+    expect(setData).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalledWith(
+      "error",
+      "Calculation parameters are out of range",
+    );
+  });
+
   it("says so and writes nothing when the parameters already match", async () => {
     const setData = vi.fn().mockResolvedValue(undefined);
     const { result, notify } = renderWith(

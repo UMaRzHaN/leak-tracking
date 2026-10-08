@@ -79,6 +79,7 @@ export const database = {
 
   fillUserName: "Fill in the user name in the profile",
   paramsAlreadyApplied: "Selected parameters are already applied",
+  paramsInvalid: "Calculation parameters are out of range",
   paramsUpdated: "Parameters and calculations updated: {{changed}}",
   paramsUpdateFailed: "Failed to update parameters: {{message}}",
 

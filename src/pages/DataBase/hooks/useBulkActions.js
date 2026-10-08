@@ -5,6 +5,7 @@ import { useLanguage } from "@/app/hooks/useLanguage";
 import {
   buildLeakCalculationParams,
   updateLeakCalculationParams,
+  findCalculationBlocker,
 } from "@/utils/calculationParams";
 
 export function useBulkActions({
@@ -63,10 +64,30 @@ export function useBulkActions({
       if (!selectedIds.size) return;
       if (!requireHistoryUser()) return false;
 
+      // Параметры одни на все выбранные: вне допустимых значений расчёт
+      // молча вернул бы записи с прежними выбросами, а счётчик назвал бы их
+      // пересчитанными.
+      const selected = data.filter((item) => selectedIds.has(item.id));
+      if (
+        selected.some(
+          (item) =>
+            findCalculationBlocker(item, projectVars, calculationParams)
+              ?.key === "params",
+        )
+      ) {
+        notify("error", t("database.paramsInvalid"));
+        return false;
+      }
+
       const now = Date.now();
       let changed = 0;
       const next = data.map((item) => {
         if (!selectedIds.has(item.id)) return item;
+        // Розовому мешку нужны давление и температура записи: где их нет,
+        // запись остаётся как была и в «изменено» не считается.
+        if (findCalculationBlocker(item, projectVars, calculationParams)) {
+          return item;
+        }
         const updated = updateLeakCalculationParams(
           item,
           projectVars,
