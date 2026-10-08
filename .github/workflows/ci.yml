@@ -21,13 +21,6 @@ on:
   # пользуются, и позволяет проверить любую ветку, ничего никуда не вливая.
   workflow_dispatch:
 
-# Superseded runs are cancelled on branches, where only the newest commit is
-# interesting. main is exempt: its runs are the release record, and cancelling
-# one would leave a commit on the release branch with no verdict.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-
 permissions:
   contents: read
 
