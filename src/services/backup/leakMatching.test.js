@@ -90,6 +90,25 @@ describe("сопоставление утечек при объединении"
     );
   });
 
+  it("узнаёт утечку по `id`, если номер у неё поправили", () => {
+    // Номер «100» здесь исправили на «101», а «100» досталось другой утечке.
+    // Старый бэкап везёт ту же запись под прежним номером.
+    const existing = [
+      { ...leak("x", "Задвижка"), leak_id: "101" },
+      { ...leak("y", "Фланец"), leak_id: "100" },
+    ];
+    const incoming = [{ ...leak("x", "Задвижка", 50), leak_id: "100" }];
+
+    expect(
+      matchIncomingLeaks(existing, incoming, { source: "archive" }),
+    ).toEqual([0]);
+    const result = mergeLeaksByFreshness(existing, incoming, {
+      source: "archive",
+    });
+    expect(result.added).toBe(0);
+    expect(result.leaks.map((item) => item.id)).toEqual(["x", "y"]);
+  });
+
   it("узнаёт номер без учёта регистра и пробелов", () => {
     expect(
       matchIncomingLeaks(
