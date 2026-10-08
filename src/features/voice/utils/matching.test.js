@@ -1,4 +1,9 @@
 import { fuzzyMatchOption } from "./matching";
+import {
+  body_materials,
+  component_statuses,
+  mediums,
+} from "@/data/component/componentDictionary";
 
 const OPTIONS = [
   "Кран Шаровой",
@@ -86,6 +91,43 @@ describe("fuzzyMatchOption", () => {
     it("does not strip when there is no slash", () => {
       expect(fuzzyMatchOption("сппк", OPTIONS)).toBe("СППК");
     });
+  });
+});
+
+describe("ложные подстановки", () => {
+  // Каждая из них молча клала в карточку значение, которого человек не
+  // говорил, — а в листе подтверждения видно было только подставленное.
+  it("не путает «не работает» с «В работе»", () => {
+    expect(fuzzyMatchOption("не работает", component_statuses)).toBeNull();
+  });
+
+  it("не сводит другую марку стали к «Сталь 20»", () => {
+    expect(fuzzyMatchOption("сталь 40х", body_materials)).toBeNull();
+    expect(fuzzyMatchOption("сталь 10", body_materials)).toBeNull();
+  });
+
+  it("не считает частицу «не» началом «Нержавеющей стали»", () => {
+    expect(fuzzyMatchOption("не знаю", body_materials)).toBeNull();
+    expect(fuzzyMatchOption("не сталь", body_materials)).toBeNull();
+  });
+
+  it("не принимает газовый конденсат за сырой газ", () => {
+    expect(fuzzyMatchOption("газовый конденсат", mediums)).toBeNull();
+  });
+
+  it("при ничьей не подставляет первый вариант списка", () => {
+    expect(fuzzyMatchOption("сталь", body_materials)).toBeNull();
+    expect(fuzzyMatchOption("кран", OPTIONS)).toBeNull();
+  });
+
+  it("верные подстановки по тем же словарям остаются", () => {
+    expect(fuzzyMatchOption("сталь 20", body_materials)).toBe("Сталь 20");
+    expect(fuzzyMatchOption("нержавеющей стали", body_materials)).toBe(
+      "Нержавеющая сталь",
+    );
+    expect(fuzzyMatchOption("сырой газ", mediums)).toBe("Сырой газ");
+    expect(fuzzyMatchOption("в работе", component_statuses)).toBe("В работе");
+    expect(fuzzyMatchOption("в резерве", component_statuses)).toBe("В резерве");
   });
 });
 

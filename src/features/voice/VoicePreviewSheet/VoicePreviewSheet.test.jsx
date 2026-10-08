@@ -58,4 +58,29 @@ describe("VoicePreviewSheet", () => {
       true,
     );
   });
+
+  it("показывает сказанное рядом с подставленным словарём значением", () => {
+    // Иначе «не работает», ставшее «В работе», не заметить до сохранения.
+    render(
+      <VoicePreviewSheet
+        pending={{ object: "Valve", component: "Flange" }}
+        heard={{
+          phrase: "object valve component flanges",
+          fields: { component: "flanges" },
+        }}
+        steps={steps}
+        onConfirm={vi.fn()}
+        onDismiss={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText("Heard: «object valve component flanges»"),
+    ).toBeTruthy();
+    const row = screen.getByRole("button", { name: /Component Flange/ });
+    expect(row.textContent).toContain("«flanges»");
+    expect(
+      screen.getByRole("button", { name: /Object Valve/ }).textContent,
+    ).not.toContain("«");
+  });
 });

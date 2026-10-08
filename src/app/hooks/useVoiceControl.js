@@ -30,6 +30,13 @@ export function useVoiceControl({
   const { lang } = useLanguage();
   const { corrections } = useVoiceCorrections(activeProject?.id);
   const [pendingVoiceData, setPendingVoiceData] = useState(null);
+  // Что было сказано на месте подставленного словарём — для листа
+  // подтверждения: по полям и фраза целиком.
+  const [pendingVoiceHeard, setPendingVoiceHeard] = useState(
+    /** @type {{ phrase: string, fields: Record<string, string> } | null} */ (
+      null
+    ),
+  );
 
   const dictationKey = useMemo(() => {
     const currentStep = steps[step - 1];
@@ -53,7 +60,7 @@ export function useVoiceControl({
       const active = voice ?? projectConfig?.voice;
       const synonymsFields = active?.synonymsFields ?? [];
       const outputFields = active?.outputFields ?? [];
-      handleVoiceText(
+      const fields = handleVoiceText(
         synonymsFields,
         text,
         setPendingVoiceData,
@@ -62,6 +69,7 @@ export function useVoiceControl({
         outputFields,
         active?.options ?? {},
       );
+      setPendingVoiceHeard({ phrase: text, fields: fields ?? {} });
     },
     [corrections, dictationKey, lang, onCommand, project, projectConfig, voice],
   );
@@ -70,10 +78,12 @@ export function useVoiceControl({
 
   const dismissVoiceData = useCallback(() => {
     setPendingVoiceData(null);
+    setPendingVoiceHeard(null);
   }, []);
 
   return {
     pendingVoiceData,
+    pendingVoiceHeard,
     dismissVoiceData,
     startVoiceInput: start,
     stopVoiceInput: stop,

@@ -186,3 +186,43 @@ describe("услышанное к словарю поля", () => {
     });
   });
 });
+
+describe("ложные подстановки голосом", () => {
+  const registry = {
+    medium: ["Сырой газ", "Очищенный газ (товарный газ)"],
+    body_material: ["Сталь 20", "Сталь 09Г2С", "Нержавеющая сталь"],
+    component_status: ["В работе", "Требует замены"],
+  };
+  const allowed = ["medium", "body_material", "component_status"];
+
+  function run(text) {
+    const setVoiceData = vi.fn();
+    const heard = handleVoiceText(
+      [],
+      text,
+      setVoiceData,
+      "upstream",
+      null,
+      allowed,
+      registry,
+    );
+    return { data: setVoiceData.mock.calls[0]?.[0] ?? {}, heard };
+  }
+
+  it("оставляет сказанное, если словарь подходит не по смыслу", () => {
+    const { data } = run(
+      "среда газовый конденсат материал корпуса сталь 40х состояние не работает",
+    );
+    expect(data.medium).toMatch(/газовый конденсат/i);
+    expect(data.body_material).toMatch(/сталь 40х/i);
+    expect(data.component_status).toMatch(/не работает/i);
+  });
+
+  it("возвращает услышанное там, где словарь заменил сказанное", () => {
+    const { data, heard } = run("состояние в работу материал корпуса сталь 20");
+    expect(data.component_status).toBe("В работе");
+    expect(heard.component_status).toMatch(/в работу/i);
+    // «Сталь 20» сказана как есть — показывать рядом нечего.
+    expect(heard.body_material).toBeUndefined();
+  });
+});

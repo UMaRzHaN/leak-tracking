@@ -121,6 +121,22 @@
   line-height: 1.4;
 }
 
+.said {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-xs);
+  color: var(--c-text3);
+}
+
+.phrase {
+  font-size: var(--fs-sm);
+  color: var(--c-text3);
+  text-align: center;
+  margin: -6px 0 12px;
+  word-break: break-word;
+  flex-shrink: 0;
+}
+
 .actions {
   display: grid;
   grid-template-columns: 1fr 1fr;

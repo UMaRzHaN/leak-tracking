@@ -170,6 +170,7 @@ export default function ComponentCardForm({
    */
   const {
     pendingVoiceData,
+    pendingVoiceHeard,
     dismissVoiceData,
     startVoiceInput,
     stopVoiceInput,
@@ -534,6 +535,7 @@ export default function ComponentCardForm({
 
       <VoicePreviewSheet
         pending={pendingVoiceData}
+        heard={pendingVoiceHeard}
         steps={steps}
         onConfirm={handleVoiceConfirm}
         onDismiss={dismissVoiceData}

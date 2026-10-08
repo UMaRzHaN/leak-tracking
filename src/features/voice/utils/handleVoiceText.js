@@ -43,6 +43,8 @@ const normalizeComponentDisplayCase = (value) => {
  *   полям. Приходят от сущности, а не лежат здесь: словари оборудования весят
  *   одиннадцать килобайт и нужны только реестру, а этот модуль грузится вместе
  *   с обеими формами.
+ * @returns {Record<string, string>} услышанное по полям, где словарь заменил
+ *   сказанное другим значением.
  */
 export const handleVoiceText = (
   arr,
@@ -54,10 +56,10 @@ export const handleVoiceText = (
   fieldOptions = {},
 ) => {
   const parsed = parseVoiceText(text);
-  const normalizedData = normalizeSynonyms(
-    normalizeVoiceResult(parsed, project),
-    arr,
-  );
+  const located = normalizeVoiceResult(parsed, project);
+  // Как расслышалось, до словарей синонимов и списков полей.
+  const spoken = { ...located };
+  const normalizedData = normalizeSynonyms(located, arr);
   const allowed = new Set(allowedFields);
   const data =
     allowed.size > 0
@@ -69,7 +71,7 @@ export const handleVoiceText = (
   // Dictation mode: no structured fields recognized → put raw text into textarea field
   if (dictationKey && Object.keys(data).length === 0) {
     setVoiceData({ [dictationKey]: text });
-    return;
+    return {};
   }
 
   // Synonym normalization
@@ -136,5 +138,20 @@ export const handleVoiceText = (
       .join(" ");
   }
 
+  /*
+   * Что было сказано на месте подставленного словарём значения. Лист
+   * подтверждения показывает это рядом: иначе человек видел только итог и не
+   * мог заметить, что «не работает» стало «В работе».
+   */
+  /** @type {Record<string, string>} */
+  const heard = {};
+  for (const [field, value] of Object.entries(data)) {
+    const said = spoken[field];
+    if (typeof said !== "string" || typeof value !== "string") continue;
+    if (said.trim().toLowerCase() !== value.trim().toLowerCase())
+      heard[field] = said.trim();
+  }
+
   setVoiceData(data);
+  return heard;
 };

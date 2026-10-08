@@ -266,6 +266,7 @@ export default function LeakForm({
 
   const {
     pendingVoiceData,
+    pendingVoiceHeard,
     dismissVoiceData,
     startVoiceInput,
     stopVoiceInput,
@@ -421,6 +422,7 @@ export default function LeakForm({
 
       <VoicePreviewSheet
         pending={pendingVoiceData}
+        heard={pendingVoiceHeard}
         steps={STEPS}
         onConfirm={handleVoiceConfirm}
         onDismiss={dismissVoiceData}
