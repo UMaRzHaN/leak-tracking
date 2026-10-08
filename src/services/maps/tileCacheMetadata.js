@@ -57,9 +57,24 @@ function metadataKey() {
   return isNative ? NATIVE_TILE_CACHE_METADATA_KEY : WEB_METADATA_KEY;
 }
 
-export function readMetadata() {
+/*
+ * Отметки последнего использования живут в памяти, а в localStorage уходят
+ * отложенно. Раньше каждый показанный тайл разбирал и заново сериализовал всю
+ * таблицу — до шести тысяч записей — и синхронно писал её обратно: на панораме
+ * карты это десятки полных циклов JSON в секунду на главном потоке.
+ */
+const FLUSH_DELAY_MS = 2000;
+
+/** @type {{ key: string, data: Record<string, number> } | null} */
+let memory = null;
+let dirty = false;
+/** @type {ReturnType<typeof setTimeout> | null} */
+let flushTimer = null;
+let pageListenersAttached = false;
+
+function loadFromStorage(key) {
   try {
-    const parsed = JSON.parse(localStorage.getItem(metadataKey()) ?? "{}");
+    const parsed = JSON.parse(localStorage.getItem(key) ?? "{}");
     return parsed && typeof parsed === "object" && !Array.isArray(parsed)
       ? parsed
       : {};
@@ -68,24 +83,81 @@ export function readMetadata() {
   }
 }
 
-export function writeMetadata(metadata) {
+function cancelScheduledFlush() {
+  if (flushTimer !== null) clearTimeout(flushTimer);
+  flushTimer = null;
+}
+
+/** Пишет накопленное в localStorage сразу. */
+export function flushMetadata() {
+  cancelScheduledFlush();
+  if (!memory || !dirty) return;
+  dirty = false;
   try {
-    localStorage.setItem(metadataKey(), JSON.stringify(metadata));
+    localStorage.setItem(memory.key, JSON.stringify(memory.data));
   } catch {
     // Cache remains usable when localStorage is unavailable.
   }
 }
 
+function attachPageListeners() {
+  if (pageListenersAttached || typeof window === "undefined") return;
+  pageListenersAttached = true;
+  // Уход со страницы или сворачивание приложения — последний надёжный момент:
+  // отложенный таймер после этого может уже не сработать.
+  window.addEventListener("pagehide", flushMetadata);
+  document.addEventListener?.("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushMetadata();
+  });
+}
+
+function scheduleFlush() {
+  dirty = true;
+  attachPageListeners();
+  if (flushTimer !== null) return;
+  flushTimer = setTimeout(flushMetadata, FLUSH_DELAY_MS);
+}
+
+/**
+ * Забывает таблицу в памяти вместе с несброшенными отметками — когда хранилище
+ * очистили или подменили в обход этого модуля (очистка кэша, тесты).
+ */
+export function resetMetadataMemory() {
+  cancelScheduledFlush();
+  memory = null;
+  dirty = false;
+}
+
+/**
+ * Живая таблица из памяти — не копия: менять её можно только через функции
+ * этого модуля, иначе изменение не дойдёт до хранилища.
+ */
+export function readMetadata() {
+  const key = metadataKey();
+  if (!memory || memory.key !== key) {
+    memory = { key, data: loadFromStorage(key) };
+    dirty = false;
+  }
+  return memory.data;
+}
+
+export function writeMetadata(metadata) {
+  memory = { key: metadataKey(), data: metadata };
+  // Пересборка таблицы — редкий проход квоты, его не откладываем.
+  dirty = true;
+  flushMetadata();
+}
+
 export function touchMetadata(key) {
-  const metadata = readMetadata();
-  metadata[key] = Date.now();
-  writeMetadata(metadata);
+  readMetadata()[key] = Date.now();
+  scheduleFlush();
 }
 
 export function removeMetadata(keys) {
   const metadata = readMetadata();
   keys.forEach((key) => delete metadata[key]);
-  writeMetadata(metadata);
+  dirty = true;
+  flushMetadata();
 }
 
 export function oldestKeys(keys, metadata, count) {
@@ -115,5 +187,6 @@ export function isTileCacheStorageKey(key) {
 }
 
 export function clearWebMetadata() {
+  resetMetadataMemory();
   localStorage.removeItem(WEB_METADATA_KEY);
 }

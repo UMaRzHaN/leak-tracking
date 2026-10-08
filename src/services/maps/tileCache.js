@@ -13,6 +13,7 @@ import {
   oldestKeys,
   readMetadata,
   removeMetadata,
+  resetMetadataMemory,
   resetNativeCount,
   setNativeCount,
   TILE_ROOT_DIR,
@@ -22,6 +23,8 @@ import {
 
 export {
   buildNativeTileCacheNamespace,
+  flushMetadata,
+  resetMetadataMemory,
   NATIVE_TILE_CACHE_COUNT_KEY,
   NATIVE_TILE_CACHE_DIR,
   NATIVE_TILE_CACHE_METADATA_KEY,
@@ -344,6 +347,7 @@ export async function clearMapCache() {
       if (errorCode(error) !== FILESYSTEM_NOT_FOUND_CODE) throw error;
     }
     resetNativeCount();
+    resetMetadataMemory();
     for (let index = localStorage.length - 1; index >= 0; index--) {
       const key = localStorage.key(index);
       if (isTileCacheStorageKey(key)) localStorage.removeItem(key);

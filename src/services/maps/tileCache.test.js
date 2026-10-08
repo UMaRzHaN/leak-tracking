@@ -23,11 +23,13 @@ const {
   getMapCacheInfo,
   getTileBlobUrl,
   preloadUrls,
+  resetMetadataMemory,
 } = await import("./tileCache");
 
 describe("map tile boundaries", () => {
   beforeEach(() => {
     localStorage.clear();
+    resetMetadataMemory();
     vi.clearAllMocks();
     cachesMock.open.mockResolvedValue(cache);
     cache.match.mockResolvedValue(undefined);
