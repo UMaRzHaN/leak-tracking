@@ -25,6 +25,7 @@ import { useSettingsTexts } from "./useSettingsTexts";
 import { useLocalSync } from "./useLocalSync";
 import { performSettingsCleanup } from "../settingsCleanup";
 import { resolvePortableExcelArchiveRoute } from "../excelArchiveRouting";
+import { prepareExcelLeaks as prepareLeaksForProject } from "../excelLeakPreparation";
 import { importRollbackNote } from "@/services/import/excelImportTransaction";
 import { mergeAcceptancesAndSurvey } from "@/services/backup/acceptancesAndSurvey";
 
@@ -181,34 +182,7 @@ export function useSettingsPage({
     setSettingsConfirmAction("clearDatabase");
   }, []);
   const prepareExcelLeaks = useCallback(
-    (leaks, { mode = "append" } = {}) => {
-      const now = Date.now();
-      const existingByTag = new Map(
-        /** @type {[string, any][]} */ (
-          data
-            .map((leak) => [String(leak?.leak_id ?? "").trim(), leak])
-            .filter(([tag]) => Boolean(tag))
-        ),
-      );
-
-      return leaks.map((leak, index) => {
-        const existing =
-          mode === "merge" && String(leak?.leak_id ?? "").trim()
-            ? existingByTag.get(String(leak.leak_id).trim())
-            : null;
-
-        return {
-          ...leak,
-          id: existing?.id ?? now + index,
-          index:
-            mode === "overwrite" || mode === "copy"
-              ? index + 1
-              : (existing?.index ?? data.length + index + 1),
-          importedFromExcel: true,
-          importedAt: now,
-        };
-      });
-    },
+    (leaks, options) => prepareLeaksForProject(data, leaks, options),
     [data],
   );
 

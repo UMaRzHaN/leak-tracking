@@ -93,7 +93,7 @@
     "src/pages/Settings/hooks/useBackupActions.js": 421,
     "src/pages/Settings/hooks/useLocalSync.js": 511,
     "src/pages/Settings/hooks/useProjectActions.js": 310,
-    "src/pages/Settings/hooks/useSettingsPage.js": 811,
+    "src/pages/Settings/hooks/useSettingsPage.js": 785,
     "src/repositories/ComponentRepository.js": 382,
     "src/repositories/LeakRepository.js": 579,
     "src/repositories/PhotoRepository.js": 412,
