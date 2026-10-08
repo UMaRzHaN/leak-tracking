@@ -1171,6 +1171,8 @@ describe("working with a set of cards at once", () => {
 
     fireEvent.click(screen.getByText("Select all"));
     fireEvent.click(screen.getByText("Change state"));
+    // Сверки нет — сначала вопрос о новой, как у осмотра в мониторинге.
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
     fireEvent.click(screen.getByText("В работе"));
 
     await waitFor(() =>

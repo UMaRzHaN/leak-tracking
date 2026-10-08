@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { activeReconcileRoundNumber } from "@/pages/Reconcile/reconcileRound";
+import {
+  activeReconcileRoundNumber,
+  reconcileRoundStore,
+} from "@/pages/Reconcile/reconcileRound";
 import { useLanguage } from "@/app/hooks/useLanguage";
 import { useComponentRegistry } from "@/features/componentRegistry/useComponentRegistry";
 import { usePhotoRequirements } from "@/app/project/hooks/usePhotoRequirements";
@@ -7,6 +10,7 @@ import ComponentCardForm from "./ComponentCardForm";
 import ComponentCardCompact from "@/features/componentRegistry/ComponentCardCompact";
 import VirtualizedLeakList from "@/features/leakList/VirtualizedLeakList/VirtualizedLeakList";
 import ComponentInspectSheet from "@/features/componentRegistry/ComponentInspectSheet";
+import { useRoundStartGate } from "@/app/project/hooks/useRoundStartGate";
 import { useComponentCheck } from "@/features/componentRegistry/useComponentCheck";
 import { errorText } from "@/utils/appError";
 import { useComponentDetails } from "@/features/componentRegistry/useComponentDetails";
@@ -130,7 +134,23 @@ export default function ComponentRegistry({
     onError: (error) =>
       notify("error", t("common.saveError", { message: errorText(error, t) })),
   });
-  const openCheck = check.open;
+  // Осмотр вне «Сверки» — как осмотр мониторинга: без идущей сверки сначала
+  // вопрос о новой (а не осмотр мимо всякой сверки).
+  const reconcileGate = useRoundStartGate({
+    projectId: project?.id ?? null,
+    kind: "reconcile",
+    store: reconcileRoundStore,
+    texts: {
+      disabled: t("reconcile.disabled"),
+      title: t("reconcile.newRoundTitle"),
+      description: t("reconcile.newRoundDescription"),
+      confirm: t("reconcile.newRoundConfirm"),
+    },
+    notify: ({ type, message }) => notify(type, message),
+    onReady: (component) =>
+      component ? check.open(component) : setBulkInspecting(true),
+  });
+  const openCheck = reconcileGate.request;
 
   /*
    * Nothing is written without a name. Every history entry is signed, and a
@@ -511,6 +531,7 @@ export default function ComponentRegistry({
       {details.element}
 
       {check.element}
+      {reconcileGate.element}
 
       {bulkInspecting && (
         <ComponentInspectSheet
@@ -581,7 +602,7 @@ export default function ComponentRegistry({
         allDisplayedSelected={allDisplayedSelected}
         onSelectDisplayed={selectDisplayed}
         onClearSelection={clearSelection}
-        onInspectSelected={() => setBulkInspecting(true)}
+        onInspectSelected={() => reconcileGate.request(null)}
       />
 
       {/* Said once, where the button is, rather than after a walker has

@@ -8,7 +8,10 @@ import {
   openMenuItem,
   setUserProfile,
 } from "./helpers";
-import { swipeCardLeft as swipeLeft } from "./repairSteps.js";
+import {
+  confirmNewRepairRound,
+  swipeCardLeft as swipeLeft,
+} from "./repairSteps.js";
 
 test("в ремонтах свайп открывает проверку ремонта и двигает стадию", async ({
   page,
@@ -20,6 +23,7 @@ test("в ремонтах свайп открывает проверку рем�
   await openMenuItem(page, /^Ремонтные работы/);
   await openDatabase(page);
   await swipeLeft(page);
+  await confirmNewRepairRound(page);
 
   const sheet = page.getByRole("dialog", { name: "Приёмка ремонта" });
   await expect(sheet).toBeVisible();
@@ -74,6 +78,7 @@ test("на карте ремонтов «Проверить» открывает
   await openMap(page);
   await page.locator(".leaflet-marker-icon", { hasText: "2042" }).click();
   await page.getByRole("button", { name: "Проверить", exact: true }).click();
+  await confirmNewRepairRound(page);
 
   const sheet = page.getByRole("dialog", { name: "Приёмка ремонта" });
   await expect(sheet).toBeVisible();
@@ -93,6 +98,7 @@ test("в ремонтах «Проверить» у выбранных пров�
   await openDatabase(page);
   await page.getByRole("button", { name: "Выбрать всё" }).click();
   await page.getByRole("button", { name: "Проверить", exact: true }).click();
+  await confirmNewRepairRound(page);
 
   const sheet = page.getByRole("dialog", { name: "Приёмка ремонта" });
   await expect(sheet).toContainText("1 из 2");

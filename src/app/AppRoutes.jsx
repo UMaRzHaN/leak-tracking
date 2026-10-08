@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useRef, useState } from "react";
-import { repairsToCheck } from "@/pages/Repairs/repairRoundStore";
+import { repairRound, repairsToCheck } from "@/pages/Repairs/repairRoundStore";
+import { useRoundStartGate } from "@/app/project/hooks/useRoundStartGate";
 import { useLanguage } from "./hooks/useLanguage";
 import { isListPage } from "@/app/pages";
 import { MODULE } from "@/app/modules/activeModule";
@@ -180,19 +181,30 @@ export default function AppRoutes({
     /** @type {{ ids: any[], total: number }} */ ({ ids: [], total: 0 }),
   );
   const repairMode = module === MODULE.REPAIRS;
+  // Без идущего обхода — сначала вопрос о новом, как у мониторинга.
+  const repairGate = useRoundStartGate({
+    projectId: activeProject?.id ?? null,
+    kind: "repairs",
+    store: repairRound,
+    texts: {
+      disabled: t("repairs.round.disabled"),
+      title: t("repairs.round.newRoundTitle"),
+      description: t("repairs.round.newRoundDescription"),
+      confirm: t("repairs.round.newRoundConfirm"),
+    },
+    notify: (notice) => notifyApp?.(notice.type, notice.message),
+    onReady: (ids) => setRepairQueue({ ids, total: ids.length }),
+  });
   const startRepairQueue = (leaks) => {
     const open = repairsToCheck(activeProject?.id ?? null, leaks);
     if (!open.length) {
       notifyApp?.("warning", t("repairs.accept.alreadyAccepted"));
       return;
     }
-    setRepairQueue({
-      ids: open.map((leak) => leak.id),
-      total: open.length,
-    });
+    repairGate.request(open.map((leak) => leak.id));
   };
   const checkLeak = repairMode
-    ? (leak) => setRepairQueue({ ids: [leak.id], total: 1 })
+    ? (leak) => repairGate.request([leak.id])
     : requestMonitoring;
   const checkLeaks = repairMode ? startRepairQueue : requestMonitoringQueue;
   const repairCheckLeak =
@@ -431,6 +443,7 @@ export default function AppRoutes({
             repairMode={module === "repairs"}
           />
         )}
+        {repairGate.element}
         {repairCheckLeak && (
           <RepairCheck
             // Новый ключ — чистая форма для следующей утечки очереди.

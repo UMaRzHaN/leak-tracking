@@ -16,12 +16,22 @@ export async function swipeCardLeft(page) {
   await page.mouse.up();
 }
 
+// Первая проверка без идущего обхода сначала спрашивает, начинать ли его —
+// как осмотр мониторинга.
+export async function confirmNewRepairRound(page) {
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Начать обход", exact: true })
+    .click();
+}
+
 // Ремонт начинается проверкой ремонта: ручного выбора статуса больше нет.
 // «Утечка есть, ремонт выполнен» оставляет её «В ремонте».
 export async function startRepairByCheck(page) {
   await openMenuItem(page, /^Ремонтные работы/);
   await openDatabase(page);
   await swipeCardLeft(page);
+  await confirmNewRepairRound(page);
   const sheet = page.getByRole("dialog", { name: "Приёмка ремонта" });
   await sheet.getByLabel("Утечка есть?").selectOption("yes");
   await sheet.getByRole("button", { name: "Оставить в ремонте" }).click();

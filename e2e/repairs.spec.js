@@ -29,11 +29,13 @@ test("ведёт ремонт от начала работ до устранен
   ).toHaveCount(0);
 
   await footerTab(page, "Обход").click();
+  // Обход начала проверка, которой ремонт пошёл: он уже в «Проверено», и
+  // эта проверка — повторная.
+  await page.getByRole("button", { name: /^Проверено 1/ }).click();
   await page.getByRole("button", { name: "Проверить", exact: true }).click();
-  // Обхода ещё нет — проверка сначала спрашивает, начинать ли его.
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Начать обход", exact: true })
+    .getByRole("button", { name: "Проверить повторно", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "Приёмка ремонта" }),
@@ -94,11 +96,13 @@ test("принимает оборудование партиями и даёт �
 
   await page.getByRole("button", { name: "Назад" }).click();
   await footerTab(page, "Обход").click();
+  // Обход начала проверка, которой ремонт пошёл: он уже в «Проверено», и
+  // эта проверка — повторная.
+  await page.getByRole("button", { name: /^Проверено 1/ }).click();
   await page.getByRole("button", { name: "Проверить", exact: true }).click();
-  // Обхода ещё нет — проверка сначала спрашивает, начинать ли его.
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Начать обход", exact: true })
+    .getByRole("button", { name: "Проверить повторно", exact: true })
     .click();
 
   // МТР по умолчанию — из принятого по накладной.
