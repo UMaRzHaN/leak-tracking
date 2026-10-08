@@ -1117,3 +1117,9 @@
   font-size: var(--fs-lg);
   font-weight: 800;
 }
+
+.saveError {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--c-red, #d33);
+}

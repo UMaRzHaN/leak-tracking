@@ -400,18 +400,36 @@ export default function ComponentRegistry({
       const roundNumber = activeReconcileRoundNumber(project?.id);
       for (const card of components) {
         if (!selectedIds.has(card.id)) continue;
-        await updateComponent(
-          card.id,
-          recordComponentInspected(card, { status, user, roundNumber }),
-        );
+        try {
+          await updateComponent(
+            card.id,
+            recordComponentInspected(card, { status, user, roundNumber }),
+          );
+        } catch (error) {
+          // Записанные уже сняты с выбора — выбранными остаются те, до кого
+          // осмотр не дошёл, и повтор начнётся с них. Молча оборванный цикл
+          // выглядел как выполненный.
+          notify(
+            "error",
+            t("common.saveError", { message: errorText(error, t) }),
+          );
+          return;
+        }
+        setSelectedIds((current) => {
+          const next = new Set(current);
+          next.delete(card.id);
+          return next;
+        });
       }
       clearSelection();
     },
     [
       clearSelection,
       components,
+      notify,
       project?.id,
       selectedIds,
+      t,
       updateComponent,
       userProfile,
     ],

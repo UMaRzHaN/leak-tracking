@@ -9,6 +9,7 @@ import { getRepairBrigade } from "@/domain/repairStages";
 import { REPAIR_CHECK_OUTCOME, repairCheckOutcome } from "@/domain/repairCheck";
 import { getLastMonitoringFlag } from "@/utils/monitoring";
 import { STATUS } from "@/utils/status";
+import { errorText } from "@/utils/appError";
 import { repairCheckTexts } from "./repairCheckTexts";
 import s from "./Repairs.module.scss";
 
@@ -72,6 +73,7 @@ export default function AcceptRepairScreen({
   );
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState(/** @type {string|null} */ (null));
 
   const outcome = repairCheckOutcome({ leaking: stillLeaking, done });
   const accepting = outcome === REPAIR_CHECK_OUTCOME.RESOLVED;
@@ -108,6 +110,7 @@ export default function AcceptRepairScreen({
     // отметку стадии.
     if (photoNeeded && !photo?.raw) return;
     setBusy(true);
+    setSaveError(null);
     try {
       let photoPath;
       if (photo?.raw) {
@@ -124,6 +127,11 @@ export default function AcceptRepairScreen({
         ...(photoPath ? { photo_after: photoPath } : {}),
         materials_equipment: materials(),
       });
+    } catch (error) {
+      // Запись сохраняет и о своих ошибках сообщает `onSave`; сюда доходит
+      // то, что случилось до неё, — чаще всего снимок не лёг в хранилище.
+      // Без этого кнопка молча отжималась, и проверка выглядела ненажатой.
+      setSaveError(t("common.saveError", { message: errorText(error, t) }));
     } finally {
       setBusy(false);
     }
@@ -324,6 +332,11 @@ export default function AcceptRepairScreen({
       </div>
 
       <footer className={s.screenFooter}>
+        {saveError && (
+          <p className={s.saveError} role="alert">
+            {saveError}
+          </p>
+        )}
         <button
           type="button"
           className={s.primary}

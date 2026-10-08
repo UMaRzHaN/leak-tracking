@@ -343,6 +343,39 @@ describe("ComponentRegistry screen", () => {
     expect(screen.queryByText("New component")).toBeNull();
   });
 
+  /** Выбрать показанные и отметить их состояние списком. */
+  async function inspectDisplayed() {
+    fireEvent.click(screen.getByText("Select all"));
+    fireEvent.click(screen.getByText("Change state"));
+    // Без идущей сверки сначала спрашивают о новой.
+    const start = screen.queryByRole("button", { name: "Start" });
+    if (start) fireEvent.click(start);
+    fireEvent.click(await screen.findByRole("button", { name: "В работе" }));
+  }
+
+  it("сообщает, что осмотр списком не записался, и не сбрасывает выбор", async () => {
+    localStorage.clear();
+    registry.current = makeRegistry({
+      components: [
+        { id: "a", component_uid: "1", component: "Задвижка" },
+        { id: "b", component_uid: "2", component: "Труба" },
+      ],
+      updateComponent: vi
+        .fn()
+        .mockResolvedValueOnce([])
+        .mockRejectedValueOnce(new Error("disk full")),
+    });
+    renderRegistry();
+
+    await inspectDisplayed();
+
+    expect(await screen.findByText(/disk full/)).toBeTruthy();
+    // Записанная снята с выбора, незаписанная ждёт повтора.
+    expect(screen.getByText("1 selected of 2")).toBeTruthy();
+    // Начатая здесь сверка не должна достаться соседним тестам.
+    localStorage.clear();
+  });
+
   it("says nothing about conflicts when there are none", () => {
     renderRegistry();
     expect(screen.queryByText(/duplicated number/i)).toBeNull();
