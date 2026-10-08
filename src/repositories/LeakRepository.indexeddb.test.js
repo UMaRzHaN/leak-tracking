@@ -858,6 +858,56 @@ describe("LeakRepository web IndexedDB storage", () => {
     ]);
   });
 
+  // Дельта считается от последнего успешного сохранения, а дописывалась в
+  // копию, если та стояла на ревизии, которую эта вкладка в неё записала. Копия,
+  // отклонившая одну запись, осталась на позапрошлой ревизии — и следующая
+  // дельта ложилась на чужую основу: контрольная сумма не сходилась, и после
+  // перезагрузки проект открывался только для чтения.
+  it("does not stack a delta on a copy that refused the previous save", async () => {
+    const { LeakRepository } = await loadRepository();
+    const original = [makeLeak("a"), makeLeak("b"), makeLeak("c")];
+    await LeakRepository.saveAll(original, PROJECT);
+
+    const originalPut = IDBObjectStore.prototype.put;
+    const failingPut = vi
+      .spyOn(IDBObjectStore.prototype, "put")
+      .mockImplementation(function put(value) {
+        if (
+          this.transaction.db.name === PRIMARY_DB &&
+          this.name === PRIMARY.store &&
+          value?.id === PROJECT.projectId
+        ) {
+          throw new DOMException("Primary store put failed", "UnknownError");
+        }
+        return originalPut.call(this, value);
+      });
+    const first = [
+      { ...original[0], leak_id: "L-first" },
+      ...original.slice(1),
+    ];
+    await LeakRepository.saveAll(first, {
+      ...PROJECT,
+      previousLeaks: original,
+    });
+    failingPut.mockRestore();
+
+    const second = [first[0], { ...first[1], leak_id: "L-second" }, first[2]];
+    await LeakRepository.saveAll(second, {
+      ...PROJECT,
+      previousLeaks: first,
+    });
+
+    vi.resetModules();
+    const reloaded = await import("./LeakRepository");
+    const result = await reloaded.LeakRepository.getAll(PROJECT);
+    expect(reloaded.getProjectDataReadWarning(result)).toBeFalsy();
+    expect(result).toMatchObject([
+      { id: "a", leak_id: "L-first" },
+      { id: "b", leak_id: "L-second" },
+      { id: "c" },
+    ]);
+  });
+
   it("drops the legacy localStorage copy once a save reaches IndexedDB", async () => {
     const { LeakRepository } = await loadRepository();
     const key = storageKey(PROJECT.projectId);
