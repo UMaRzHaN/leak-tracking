@@ -7,13 +7,12 @@ import {
 } from "@/services/backup/componentArchive";
 import { restoreComponentPhotos } from "@/services/backup/componentPhotoArchive";
 import { restoreSchemasFromArchive } from "@/services/backup/schemaArchive";
-import { assertArchiveLimits } from "@/utils/importLimits";
+import { openZip } from "@/utils/openZip";
 import { logger } from "@/utils/logger";
 import {
   readInventoryArchiveCardsInWorker,
   readInventorySheetInWorker,
 } from "@/services/excel/excelWorkerClient";
-import { getJSZip } from "@/services/backup/runtime";
 import { componentIdFromUid } from "./inventorySheet";
 import { mergeSheetEditsIntoCards } from "./inventorySheetMerge";
 
@@ -60,9 +59,7 @@ async function restoreComponentsFromWorkbook(file, project, registry) {
 
   let zip;
   try {
-    const JSZip = (await getJSZip()).default;
-    zip = await new JSZip().loadAsync(await file.arrayBuffer());
-    assertArchiveLimits(zip);
+    zip = await openZip(file, { asArrayBuffer: true });
   } catch {
     return null;
   }

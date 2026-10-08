@@ -1,11 +1,6 @@
-import {
-  assertArchiveLimits,
-  assertImportFileSize,
-  readArchiveEntry,
-} from "@/utils/importLimits";
+import { assertImportFileSize, readArchiveEntry } from "@/utils/importLimits";
 import { matchAll } from "@/utils/matchAll";
-
-const getJSZip = () => import("jszip");
+import { openZip } from "@/utils/openZip";
 
 /**
  * Working out what a file is before asking anyone.
@@ -70,21 +65,14 @@ async function detectKind(file, allowNested) {
   // раньше, чем до неё доходила защищённая ветка импорта.
   assertImportFileSize(file);
 
-  // Загрузчик — вне try: не загрузившийся jszip это отказ инструмента, а не
-  // приговор файлу. Пока он был внутри, любая осечка на этой строке выдавала
-  // «не удалось понять, что это за файл» — и человек шёл искать беду в
-  // исправном архиве.
-  const JSZip = (await getJSZip()).default;
-
-  let zip;
-  try {
-    zip = await new JSZip().loadAsync(await file.arrayBuffer());
-  } catch {
-    // Not a zip at all, so not one of the three. The caller says so rather
-    // than guessing from the extension.
-    return { kind: "unknown", reason: "not-an-archive" };
-  }
-  assertArchiveLimits(zip);
+  // Предпроверка — внутри openZip и до разбора: архив с миллионом записей
+  // отсекается по каталогу, а не после того, как JSZip построит по объекту на
+  // каждую. Загрузчик там же вне try: не загрузившийся jszip это отказ
+  // инструмента, а не приговор файлу.
+  const zip = await openZip(file, { asArrayBuffer: true, nullIfNotZip: true });
+  // Not a zip at all, so not one of the three. The caller says so rather than
+  // guessing from the extension.
+  if (!zip) return { kind: "unknown", reason: "not-an-archive" };
 
   const names = Object.keys(zip.files);
 

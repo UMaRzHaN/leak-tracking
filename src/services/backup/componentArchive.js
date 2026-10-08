@@ -3,17 +3,13 @@ import { monitoringPlaceField } from "@/services/archive/archiveLayout";
 import { notifyComponentRegistryChanged } from "@/repositories/componentRegistrySignal";
 import { mergeComponentRegistries } from "@/domain/componentMerge";
 import { liveComponents } from "@/domain/componentTombstones";
-import {
-  assertArchiveLimits,
-  assertImportFileSize,
-  readArchiveEntry,
-} from "@/utils/importLimits";
+import { readArchiveEntry } from "@/utils/importLimits";
 import { logger } from "@/utils/logger";
+import { openZip } from "@/utils/openZip";
 import {
   buildComponentPhotoArchive,
   restoreComponentPhotos,
 } from "./componentPhotoArchive";
-import { getJSZip } from "./runtime";
 
 /**
  * The component registry travelling in a project archive.
@@ -138,10 +134,7 @@ function unwrap(parsed) {
  */
 export async function previewArchiveComponents(file, project) {
   try {
-    const JSZip = (await getJSZip()).default;
-    assertImportFileSize(file);
-    const zip = await new JSZip().loadAsync(file);
-    assertArchiveLimits(zip);
+    const zip = await openZip(file);
     const entry = zip.file(COMPONENT_ARCHIVE_FILE);
     if (!entry) return null;
 
@@ -179,10 +172,7 @@ export async function restoreComponentsFromArchive(file, project) {
 
   let incoming;
   try {
-    const JSZip = (await getJSZip()).default;
-    assertImportFileSize(file);
-    const zip = await new JSZip().loadAsync(file);
-    assertArchiveLimits(zip);
+    const zip = await openZip(file);
     const entry = zip.file(COMPONENT_ARCHIVE_FILE);
     if (!entry) return nothing;
 

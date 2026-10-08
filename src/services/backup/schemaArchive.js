@@ -12,13 +12,9 @@ import {
 import { SchemaRepository } from "@/repositories/SchemaRepository";
 import { isSafeSchemaId } from "@/repositories/schemaPaths";
 import { createRecordId } from "@/utils/createRecordId";
-import {
-  assertArchiveLimits,
-  assertImportFileSize,
-  readArchiveEntry,
-} from "@/utils/importLimits";
+import { readArchiveEntry } from "@/utils/importLimits";
 import { logger } from "@/utils/logger";
-import { getJSZip } from "./runtime";
+import { openZip } from "@/utils/openZip";
 
 /**
  * Technological schemas travelling in and out of a project archive.
@@ -126,10 +122,7 @@ export async function restoreSchemasFromArchive(file, project) {
 
   let zip;
   try {
-    const JSZip = (await getJSZip()).default;
-    assertImportFileSize(file);
-    zip = await new JSZip().loadAsync(file);
-    assertArchiveLimits(zip);
+    zip = await openZip(file);
   } catch (error) {
     logger.warn("[schemas] could not reopen the archive for drawings:", error);
     return { restored: 0, skipped: 0 };
