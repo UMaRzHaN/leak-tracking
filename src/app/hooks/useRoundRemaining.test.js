@@ -1,6 +1,7 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
-import { useRoundRemaining } from "./useRoundRemaining";
+import { componentRegistryWrapper } from "@/test/componentRegistry";
+import { reconcileNeedsRegistry, useRoundRemaining } from "./useRoundRemaining";
 
 const startedAt = "2026-10-02T00:00:00.000Z";
 const repairs = [
@@ -31,17 +32,19 @@ const components = [
   { id: "c3" },
 ];
 
-function remaining(module, overrides = {}) {
-  return renderHook(() =>
-    useRoundRemaining({
-      module,
-      page: "",
-      projectId: "p1",
-      leaks: repairs,
-      components,
-      monitoringDue: 7,
-      ...overrides,
-    }),
+function remaining(module, overrides = {}, registry = {}) {
+  return renderHook(
+    () =>
+      useRoundRemaining({
+        module,
+        page: "",
+        projectId: "p1",
+        leaks: repairs,
+        components,
+        monitoringDue: 7,
+        ...overrides,
+      }),
+    { wrapper: componentRegistryWrapper(registry) },
   ).result.current.remaining;
 }
 
@@ -84,19 +87,45 @@ describe("useRoundRemaining", () => {
       JSON.stringify({ number: 1, startedAt }),
     );
     const reconcileDue = (menuOpen) =>
-      renderHook(() =>
-        useRoundRemaining({
-          module: "ldar",
-          page: "",
-          menuOpen,
-          projectId: "p1",
-          leaks: [],
-          components,
-          monitoringDue: null,
-        }),
+      renderHook(
+        () =>
+          useRoundRemaining({
+            module: "ldar",
+            page: "",
+            menuOpen,
+            projectId: "p1",
+            leaks: [],
+            components,
+            monitoringDue: null,
+          }),
+        { wrapper: componentRegistryWrapper() },
       ).result.current.reconcileDue;
 
     expect(reconcileDue(true)).toBe(2);
     expect(reconcileDue(false)).toBeNull();
+  });
+
+  it("пока реестр не прочитан — не «0 к сверке», а без счётчика", () => {
+    // Реестр читается по требованию: до прочтения список пуст, и остаток по
+    // нему вышел бы нулём посреди идущей сверки.
+    localStorage.setItem(
+      "app:p1:reconcile_round_v1",
+      JSON.stringify({ number: 1, startedAt }),
+    );
+    expect(
+      remaining("inventory", { components: [] }, { loaded: false }),
+    ).toBeNull();
+  });
+
+  it("реестр ради меню читается только при идущей сверке", () => {
+    expect(reconcileNeedsRegistry(true, "ldar", "p1")).toBe(false);
+
+    localStorage.setItem(
+      "app:p1:reconcile_round_v1",
+      JSON.stringify({ number: 1, startedAt }),
+    );
+    expect(reconcileNeedsRegistry(true, "ldar", "p1")).toBe(true);
+    expect(reconcileNeedsRegistry(false, "inventory", "p1")).toBe(true);
+    expect(reconcileNeedsRegistry(false, "ldar", "p1")).toBe(false);
   });
 });

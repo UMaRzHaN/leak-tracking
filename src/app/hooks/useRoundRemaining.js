@@ -3,6 +3,7 @@ import { MODULE } from "@/app/modules/activeModule";
 import { getRepairLeaks } from "@/domain/repairStages";
 import { liveComponents } from "@/domain/componentTombstones";
 import { repairRound } from "@/pages/Repairs/repairRoundStore";
+import { useComponentRegistryStore } from "@/features/componentRegistry/ComponentRegistryContext";
 import { summarizeRepairRound } from "@/pages/Repairs/repairRoundDomain";
 import {
   isReconciled,
@@ -18,6 +19,12 @@ import {
  * Обходы ремонтов и сверки событий не шлют, поэтому перечитываются при
  * смене страницы: начать или завершить их можно только на своём экране.
  *
+ * Остаток сверки считается по реестру, а реестр читается по требованию.
+ * Пока он не прочитан, `components` — пустой список, и «осталось» вышло бы
+ * нулём посреди идущей сверки. Поэтому до прочтения реестра — `null`, как
+ * без сверки: лучше не показать счётчик, чем показать неверный. Прочитать
+ * реестр App просит через `reconcileNeedsRegistry`.
+ *
  * @param {{ module: string, page: string, menuOpen?: boolean,
  *   projectId: string|null, leaks: any[], components: any[],
  *   monitoringDue: number|null }} options
@@ -32,12 +39,15 @@ export function useRoundRemaining({
   components,
   monitoringDue,
 }) {
+  const { loaded: registryLoaded } = useComponentRegistryStore({
+    active: false,
+  });
   const reconcileDue = useMemo(() => {
     void page;
-    return menuOpen || module === MODULE.INVENTORY
-      ? reconcileRemaining(projectId, components)
+    return countsReconcile(menuOpen, module)
+      ? reconcileRemaining(projectId, registryLoaded ? components : null)
       : null;
-  }, [menuOpen, module, page, projectId, components]);
+  }, [menuOpen, module, page, projectId, components, registryLoaded]);
 
   const remaining = useMemo(() => {
     if (module === MODULE.MONITORING) return monitoringDue;
@@ -52,17 +62,39 @@ export function useRoundRemaining({
   return { remaining, reconcileDue };
 }
 
+function countsReconcile(menuOpen, module) {
+  return menuOpen || module === MODULE.INVENTORY;
+}
+
+/**
+ * Нужен ли App реестр ради остатка сверки: меню открыто или модуль —
+ * инвентаризация, и сверка идёт. Без идущей сверки реестр ради меню не
+ * читается — проекту, где сверку не ведут, открытие меню ничего не стоит.
+ *
+ * @param {boolean} menuOpen
+ * @param {string} module
+ * @param {string|null|undefined} projectId
+ * @returns {boolean}
+ */
+export function reconcileNeedsRegistry(menuOpen, module, projectId) {
+  if (!countsReconcile(menuOpen, module)) return false;
+  const round = readReconcileRound(projectId ?? null);
+  return Boolean(round && !round.completedAt);
+}
+
 /**
  * Сколько компонентов не сверено в идущей сверке; без неё — `null`. Им же
  * подписан пункт «Инвентаризация» в меню, как «N к проверке» у мониторинга.
+ * Реестр ещё не прочитан (`components` — `null`) — тоже `null`: пустой
+ * список дал бы «0 к сверке» посреди сверки.
  *
  * @param {string|null} projectId
- * @param {any[]} components
+ * @param {any[]|null} components
  * @returns {number|null}
  */
 export function reconcileRemaining(projectId, components) {
   const round = readReconcileRound(projectId);
-  if (!round || round.completedAt) return null;
+  if (!round || round.completedAt || !Array.isArray(components)) return null;
   return liveComponents(components).filter(
     (component) => !isReconciled(component, round),
   ).length;

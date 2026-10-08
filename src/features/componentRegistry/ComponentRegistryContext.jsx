@@ -74,6 +74,11 @@ export function ComponentRegistryProvider({ children }) {
   // читатель успевает принять пустоту за ответ.
   const [settledRevision, setSettledRevision] = useState(NOTHING_SETTLED);
   const loading = requested && settledRevision !== revision;
+  // Список прочитан хотя бы раз и без отказа. Пустой `components` до этого —
+  // не «карточек нет», а «ещё не знаю»: счётчик, посчитанный по нему, вышел
+  // бы нулём (см. useRoundRemaining).
+  const loaded =
+    enabled && requested && settledRevision !== NOTHING_SETTLED && !error;
 
   /** @type {import("react").MutableRefObject<Promise<any>>} */
   const writeQueueRef = useRef(Promise.resolve(EMPTY));
@@ -193,12 +198,13 @@ export function ComponentRegistryProvider({ children }) {
       enabled,
       components,
       loading,
+      loaded,
       error,
       requestLoad,
       reload,
       persist,
     }),
-    [components, enabled, error, loading, persist, reload, requestLoad],
+    [components, enabled, error, loaded, loading, persist, reload, requestLoad],
   );
 
   return (

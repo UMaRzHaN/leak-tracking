@@ -18,7 +18,10 @@ import { globalScope } from "@/utils/globalScope";
 import "@fontsource-variable/manrope";
 import "@/index.scss";
 import { useLocationScope } from "@/hooks/useLocationScope";
-import { useRoundRemaining } from "./hooks/useRoundRemaining";
+import {
+  reconcileNeedsRegistry,
+  useRoundRemaining,
+} from "./hooks/useRoundRemaining";
 import { useRegistryLocationSource } from "@/hooks/useRegistryLocationSource";
 import { MAP_BASE } from "@/pages/MapPage/mapBase";
 import { showsComponentTree } from "./pages";
@@ -187,12 +190,12 @@ export default function App() {
   const componentTree = showsComponentTree(page, mapBase);
   const showRegistry = hasComponentRegistry(activeProject);
   // Главная тоже читает реестр: по нему считается, сколько объектов всего,
-  // для строки охвата. Дерево мест шапки от этого не меняется — оно по
-  // компонентам только там, где на экране железо.
-  const coverageNeedsRegistry =
-    page === "" && module === MODULE.LDAR && showRegistry;
+  // для строки охвата. И меню при идущей сверке — «N к сверке». Дерево мест
+  // шапки от этого не меняется — оно по компонентам только там, где железо.
   const registryComponents = useRegistryLocationSource(
-    componentTree || coverageNeedsRegistry,
+    componentTree ||
+      (page === "" && module === MODULE.LDAR && showRegistry) ||
+      reconcileNeedsRegistry(menuOpen, module, activeProject?.id),
   );
   const componentScope = useLocationScope({
     leaks: registryComponents,

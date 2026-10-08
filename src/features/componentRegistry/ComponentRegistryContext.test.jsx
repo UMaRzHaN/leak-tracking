@@ -134,6 +134,18 @@ describe("ComponentRegistryProvider", () => {
     await waitFor(() => expect(result.current.error).toBeTruthy());
     expect(result.current.loading).toBe(false);
     expect(result.current.components).toEqual([]);
+    expect(result.current.loaded).toBe(false);
+  });
+
+  it("отличает непрочитанный реестр от пустого", async () => {
+    // Пустой список до прочтения — «ещё не знаю», а не «карточек нет»:
+    // остаток сверки по нему вышел бы нулём.
+    mocks.load.mockResolvedValue([]);
+    const { result } = mount();
+    expect(result.current.loaded).toBe(false);
+
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+    expect(result.current.components).toEqual([]);
   });
 
   it("требует провайдера, а не отвечает пустым списком", () => {
