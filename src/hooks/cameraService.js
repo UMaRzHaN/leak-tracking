@@ -1,4 +1,5 @@
 import { isNative } from "@/utils/platform";
+import { appError, errorCode } from "@/utils/appError";
 import { markPhotoPrepared } from "@/utils/photoPreparation";
 import { dataUrlToBlob } from "@/utils/photoConversion";
 
@@ -6,7 +7,7 @@ export const MAX_PHOTO_INPUT_BYTES = 32 * 1024 * 1024;
 
 function assertPhotoSize(blob) {
   if (blob.size > MAX_PHOTO_INPUT_BYTES) {
-    throw new Error("Photo is larger than 32 MB");
+    throw appError("PHOTO_TOO_LARGE", "Photo is larger than 32 MB");
   }
   return blob;
 }
@@ -26,11 +27,55 @@ function loadCamera() {
   return import("@capacitor/camera");
 }
 
+/*
+ * Коды отмены из CameraErrorCode плагина: съёмка, правка и выбор из галереи.
+ * Старый путь getPhoto отменяется без кода, текстом «User cancelled photos
+ * app» — его узнаём по слову.
+ */
+const CANCEL_CODES = new Set([
+  "OS-PLUG-CAMR-0006",
+  "OS-PLUG-CAMR-0013",
+  "OS-PLUG-CAMR-0020",
+]);
+
+/**
+ * Человек закрыл камеру или галерею, ничего не выбрав. Это не ошибка:
+ * сообщать о ней нечего.
+ * @param {unknown} error
+ */
+export function isCameraCancel(error) {
+  const code = errorCode(error);
+  if (code && CANCEL_CODES.has(code)) return true;
+  const message = /** @type {any} */ (error)?.message ?? error;
+  return typeof message === "string" && /cancel/i.test(message);
+}
+
+/**
+ * Снимок через плагин: отмена — null, а не исключение; прочий отказ плагина
+ * приходит с его собственным английским текстом и уходит наружу кодом,
+ * чтобы на экран попал перевод, а не сырой текст плагина.
+ * @param {(message: string) => Error} toFailure ошибка с кодом этого действия
+ * @param {Record<string, unknown>} options
+ */
+async function getPhoto(toFailure, options) {
+  const { Camera } = await loadCamera();
+  try {
+    return await Camera.getPhoto(options);
+  } catch (error) {
+    if (isCameraCancel(error)) return null;
+    const failure = /** @type {Error & { cause?: unknown }} */ (
+      toFailure(/** @type {any} */ (error)?.message || "Camera failed")
+    );
+    failure.cause = error;
+    throw failure;
+  }
+}
+
 async function requestCameraPermission() {
   const { Camera } = await loadCamera();
   const perm = await Camera.requestPermissions({ permissions: ["camera"] });
   if (perm.camera !== "granted") {
-    throw new Error("Camera permission denied");
+    throw appError("CAMERA_PERMISSION_REQUIRED", "Camera permission denied");
   }
 }
 
@@ -38,7 +83,7 @@ async function uriPhotoToDraft(photo) {
   if (photo?.dataUrl) {
     const blob = dataUrlToBlob(photo.dataUrl);
     if (!blob?.type?.toLowerCase().startsWith("image/")) {
-      throw new Error("Camera returned an invalid photo");
+      throw appError("PHOTO_INVALID", "Camera returned an invalid photo");
     }
     return {
       raw: markPhotoPrepared(assertPhotoSize(blob)),
@@ -46,9 +91,11 @@ async function uriPhotoToDraft(photo) {
     };
   }
 
-  if (!photo?.webPath) throw new Error("Camera did not return a photo URI");
+  if (!photo?.webPath)
+    throw appError("PHOTO_NOT_RETURNED", "Camera did not return a photo URI");
   const response = await fetch(photo.webPath);
-  if (!response.ok) throw new Error("Unable to read the selected photo");
+  if (!response.ok)
+    throw appError("PHOTO_READ_FAILED", "Unable to read the selected photo");
   const blob = assertPhotoSize(await response.blob());
   return {
     raw: markPhotoPrepared(blob),
@@ -59,46 +106,55 @@ async function uriPhotoToDraft(photo) {
 /* 📸 Камера (native) */
 export async function takePhotoFromCamera() {
   if (!isNative) {
-    throw new Error("Camera is available only on mobile");
+    throw appError("CAMERA_MOBILE_ONLY", "Camera is available only on mobile");
   }
 
   await requestCameraPermission();
 
-  const { Camera, CameraResultType, CameraSource } = await loadCamera();
-  const photo = await Camera.getPhoto({
-    quality: 80,
-    width: 1280,
-    source: CameraSource.Camera,
-    resultType: CameraResultType.Uri,
-  });
+  const { CameraResultType, CameraSource } = await loadCamera();
+  const photo = await getPhoto(
+    (message) => appError("CAMERA_FAILED", message),
+    {
+      quality: 80,
+      width: 1280,
+      source: CameraSource.Camera,
+      resultType: CameraResultType.Uri,
+    },
+  );
 
-  return uriPhotoToDraft(photo);
+  return photo ? uriPhotoToDraft(photo) : null;
 }
 
 /* 🖼 Галерея — читаем через Base64, не добавляем новый файл в галерею */
 export async function pickPhotoFromGallery() {
   if (!isNative) {
-    throw new Error("Gallery is available only on mobile");
+    throw appError(
+      "GALLERY_MOBILE_ONLY",
+      "Gallery is available only on mobile",
+    );
   }
 
-  const { Camera, CameraResultType, CameraSource } = await loadCamera();
-  const photo = await Camera.getPhoto({
-    quality: 70,
-    width: 1280,
-    source: CameraSource.Photos,
-    resultType: CameraResultType.Uri,
-  });
+  const { CameraResultType, CameraSource } = await loadCamera();
+  const photo = await getPhoto(
+    (message) => appError("GALLERY_FAILED", message),
+    {
+      quality: 70,
+      width: 1280,
+      source: CameraSource.Photos,
+      resultType: CameraResultType.Uri,
+    },
+  );
 
-  return uriPhotoToDraft(photo);
+  return photo ? uriPhotoToDraft(photo) : null;
 }
 
 /* 🖥 Browser: File input */
 export async function readPhotoFromFile(file) {
   if (!(file instanceof File)) {
-    throw new Error("Expected File from input");
+    throw appError("PHOTO_READ_FAILED", "Expected File from input");
   }
   if (file.type && !file.type.toLowerCase().startsWith("image/")) {
-    throw new Error("Selected file is not an image");
+    throw appError("PHOTO_NOT_IMAGE", "Selected file is not an image");
   }
   assertPhotoSize(file);
 
@@ -107,12 +163,17 @@ export async function readPhotoFromFile(file) {
     reader.onload = () => {
       const result = reader.result;
       if (typeof result !== "string") {
-        reject(new Error("FileReader result is not string"));
+        reject(
+          appError("PHOTO_READ_FAILED", "FileReader result is not string"),
+        );
         return;
       }
       resolve(result);
     };
-    reader.onerror = reject;
+    reader.onerror = () =>
+      reject(
+        appError("PHOTO_READ_FAILED", "Unable to read the selected photo"),
+      );
     reader.readAsDataURL(file);
   });
 

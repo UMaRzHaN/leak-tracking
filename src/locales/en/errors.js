@@ -12,6 +12,17 @@ export const errors = {
   VOICE_UNSUPPORTED: "Voice input is not supported",
   CAMERA_PERMISSION_REQUIRED: "Allow the app to use the camera",
 
+  // Camera and photos
+  CAMERA_FAILED: "Could not open the camera",
+  GALLERY_FAILED: "Could not open the gallery",
+  CAMERA_MOBILE_ONLY: "The camera is available only on a phone",
+  GALLERY_MOBILE_ONLY: "The gallery is available only on a phone",
+  PHOTO_READ_FAILED: "Could not read the photo",
+  PHOTO_NOT_RETURNED: "The camera did not return a photo",
+  PHOTO_INVALID: "The camera returned a damaged photo",
+  PHOTO_NOT_IMAGE: "The selected file is not an image",
+  PHOTO_TOO_LARGE: "The photo is larger than 32 MB",
+
   // Sync QR code
   QR_SCAN_CANCELLED: "Scanning cancelled",
   QR_SCAN_UNSUPPORTED: "This phone does not support QR scanning",
