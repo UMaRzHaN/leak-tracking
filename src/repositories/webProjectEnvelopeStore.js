@@ -173,6 +173,16 @@ export function createWebDatasetStore(dataset, { legacyMirror = false } = {}) {
     deleteMirror,
     readMirrorRevision: (projectId) =>
       readStoredRevision(openMirrorDb, keyOf(projectId)),
+    /**
+     * Отказ затирать набор, который другая вкладка записала после того, как
+     * эта его прочитала. То же, что `assertLeakDataUnchanged`, для любого
+     * набора: ключ ревизий строится здесь.
+     *
+     * @param {string} projectId
+     * @param {Array<unknown>} storedRevisions ревизии всех копий набора
+     */
+    assertUnchanged: (projectId, storedRevisions) =>
+      assertNotOverwritingNewer(keyOf(projectId), storedRevisions),
   };
 }
 

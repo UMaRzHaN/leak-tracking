@@ -230,6 +230,11 @@ async function writeDurableRegistry(projectId, components, previous) {
     store.readRevision(projectId),
     store.readMirrorRevision(projectId),
   ]);
+  // Страж второй вкладки — тот же, что у утечек. Ревизия выдаётся как «максимум
+  // известных плюс один», так что без него вкладка, державшая реестр в памяти
+  // с утра, молча стирала карточки, заведённые с тех пор в соседней. Проверка
+  // до записи: после неё чужие карточки уже затёрты.
+  store.assertUnchanged(projectId, [primaryRevision, mirrorRevision]);
   const envelope = createWebEnvelope(components, {
     previousRevisions: [primaryRevision, mirrorRevision],
   });
@@ -349,7 +354,14 @@ export const ComponentRepository = {
       await writeDurableRegistry(project.id, normalized, previous);
       return normalized;
     } catch (error) {
-      if (error instanceof ComponentDataError) throw error;
+      // Отказ стража уходит как есть: его код и есть объяснение человеку —
+      // обновить страницу, а не искать беду в хранилище.
+      if (
+        error instanceof ComponentDataError ||
+        error?.code === "PROJECT_CHANGED_ELSEWHERE"
+      ) {
+        throw error;
+      }
       logger.error("[components] failed to write registry:", error);
       throw new ComponentDataError("Failed to write the component registry", {
         cause: error,
