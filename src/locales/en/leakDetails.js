@@ -92,6 +92,7 @@ export const leakDetails = {
     edited: "Data updated",
     comment: "Comment",
     monitoring: "Monitoring",
+    repair_check: "Repair check",
   },
 
   statuses: {

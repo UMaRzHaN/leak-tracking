@@ -8,6 +8,7 @@ export const ACTION_ICONS = {
   edited: "✎",
   comment: "💬",
   monitoring: "M",
+  repair_check: "R",
 };
 
 export const STATUS_COLORS = {

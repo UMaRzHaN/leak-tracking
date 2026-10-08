@@ -61,10 +61,12 @@ export function applyRepairCheck(leak, draft, options = {}) {
       : Date.now();
   // Координаты правятся последними: у правки своя миллисекунда после
   // переходов, и в ленте она встаёт за ними.
-  const answered = applyRepairAnswers(leak, draft, {
-    user: options.user,
-    now: start,
-  });
+  const answered = withCheckHistory(
+    leak,
+    applyRepairAnswers(leak, draft, { user: options.user, now: start }),
+    draft,
+    { user: options.user, now: start + 5 },
+  );
   // Проверка ремонта, который осмотр счёл фикцией, отвечает на этот вопрос:
   // ремонт подтвердили или переоткрыли, мнимого устранения больше нет.
   const tagged = withFlag(leak, answered, "physicalTag", draft.physicalTag);
@@ -76,6 +78,41 @@ export function applyRepairCheck(leak, draft, options = {}) {
     draft.coords,
     { user: options.user, now: start + 10 },
   );
+}
+
+/**
+ * Проверка, не сменившая статус («оставить в ремонте», подтверждение
+ * устранения), оставляет запись в журнале изменений — как осмотр мониторинга.
+ * Без неё такую проверку было видно только во вкладке «Ремонты», а «Лог» и
+ * лист «История» её не знали. Проверка со сменой статуса там уже есть:
+ * переход пишет свою запись, и второй не нужно.
+ *
+ * @param {any} before
+ * @param {any} after
+ * @param {{ note?: string }} draft
+ * @param {{ user?: string, now: number }} options
+ */
+function withCheckHistory(before, after, draft, { user, now }) {
+  const status = after?.status ?? STATUS.OPEN;
+  if (status !== (before?.status ?? STATUS.OPEN)) return after;
+  const known = new Set(getLeakEvents(before).map((event) => event?.id));
+  const created = getLeakEvents(after).filter((event) => !known.has(event?.id));
+  const mark = created[created.length - 1];
+  const note = draft.note?.trim();
+  return {
+    ...after,
+    history: [
+      ...(after.history ?? []),
+      {
+        action: "repair_check",
+        date: new Date(now).toISOString(),
+        to: status,
+        ...(mark?.stage ? { stage: mark.stage } : {}),
+        ...(user ? { user } : {}),
+        ...(note ? { text: note } : {}),
+      },
+    ],
+  };
 }
 
 /**

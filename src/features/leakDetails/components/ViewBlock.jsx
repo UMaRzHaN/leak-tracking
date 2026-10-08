@@ -29,6 +29,7 @@ export default function ViewBlock({ data, activeTab, projectConfig }) {
         edited: t("leakDetails.actions.edited"),
         comment: t("leakDetails.actions.comment"),
         monitoring: t("leakDetails.actions.monitoring"),
+        repair_check: t("leakDetails.actions.repair_check"),
       },
 
       statuses: {

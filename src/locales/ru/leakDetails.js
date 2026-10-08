@@ -92,6 +92,7 @@ export const leakDetails = {
     edited: "Данные изменены",
     comment: "Комментарий",
     monitoring: "Мониторинг",
+    repair_check: "Проверка ремонта",
   },
 
   statuses: {

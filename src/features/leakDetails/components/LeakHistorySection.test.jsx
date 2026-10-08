@@ -184,4 +184,35 @@ describe("LeakHistorySection", () => {
     expect(screen.getByText("Repair started")).toBeInTheDocument();
     expect(screen.getByText("Repair finished")).toBeInTheDocument();
   });
+
+  it("показывает проверку ремонта в журнале со стадией и замечанием", () => {
+    render(
+      <LeakHistorySection
+        {...props}
+        localeTexts={{
+          ...localeTexts,
+          actions: { repair_check: "Repair check" },
+        }}
+        activeTab="history"
+        data={{
+          id: "x",
+          history: [
+            {
+              action: "repair_check",
+              date: "2026-10-06T10:00:00.000Z",
+              to: "in_progress",
+              stage: "in_repair",
+              user: "Ким",
+              text: "Подтянули хомут",
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText("Repair check · repairs.stages.in_repair"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Подтянули хомут")).toBeInTheDocument();
+  });
 });

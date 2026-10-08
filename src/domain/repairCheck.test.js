@@ -260,3 +260,36 @@ describe("checks during a repair round", () => {
     ).toBe(false);
   });
 });
+
+describe("журнал изменений", () => {
+  const actions = (leak) => (leak.history ?? []).map((entry) => entry.action);
+
+  it("проверка без смены статуса оставляет запись, как осмотр", () => {
+    const checked = applyRepairCheck(
+      inRepair,
+      { leaking: true, done: true, note: "Подтянули хомут" },
+      { user: "Ким", now: NOW },
+    );
+
+    expect(checked.status).toBe(STATUS.IN_PROGRESS);
+    expect(checked.history.at(-1)).toMatchObject({
+      action: "repair_check",
+      to: STATUS.IN_PROGRESS,
+      stage: REPAIR_STAGE.IN_REPAIR,
+      user: "Ким",
+      text: "Подтянули хомут",
+    });
+  });
+
+  it("проверка со сменой статуса второй записи не пишет", () => {
+    const closed = applyRepairCheck(
+      inRepair,
+      { leaking: false, done: true },
+      { user: "Ким", now: NOW },
+    );
+
+    expect(closed.status).toBe(STATUS.RESOLVED);
+    expect(actions(closed)).not.toContain("repair_check");
+    expect(actions(closed)).toContain("status_changed");
+  });
+});
