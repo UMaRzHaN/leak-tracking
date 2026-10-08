@@ -42,4 +42,34 @@ describe("getLeakHeroPhotoPaths", () => {
       "idb://before",
     ]);
   });
+
+  it("ставит первым снимок проверки ремонта, сделанный после осмотра", () => {
+    const leak = {
+      status: "in_progress",
+      photo: "idb://before",
+      events: [
+        {
+          id: "i",
+          type: "inspection",
+          date: "2026-10-01T10:00:00Z",
+          result: "still_leaking",
+          photo: "idb://round",
+        },
+        { id: "s", type: "repair_started", date: "2026-10-02T10:00:00Z" },
+        {
+          id: "m",
+          type: "repair_stage",
+          stage: "in_repair",
+          date: "2026-10-03T10:00:00Z",
+          photo: "idb://repair-check",
+        },
+      ],
+    };
+
+    expect(getLeakHeroPhotoPaths(leak)).toEqual([
+      "idb://repair-check",
+      "idb://round",
+      "idb://before",
+    ]);
+  });
 });

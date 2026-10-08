@@ -211,8 +211,36 @@ export function getLatestMonitoringPhotoPath(leak) {
   }, recordsWithPhoto[0]).photo;
 }
 
+function photoTime(record) {
+  const value = record?.date;
+  return typeof value === "number" ? value : Date.parse(String(value ?? ""));
+}
+
+/**
+ * Снимки проверок записи — осмотров и проверок ремонта, — от новых к старым.
+ *
+ * @param {any} leak
+ * @returns {any[]} записи со снимком
+ */
+export function getLeakCheckPhotoRecords(leak) {
+  return [
+    ...getMonitoringRecords(leak),
+    ...getLeakEvents(leak).filter(
+      (event) => event?.type !== LEAK_EVENT_TYPES.INSPECTION,
+    ),
+  ]
+    .filter((record) => record?.photo && Number.isFinite(photoTime(record)))
+    .sort((left, right) => photoTime(right) - photoTime(left));
+}
+
+/**
+ * Главный снимок записи — последний снимок её проверки, осмотра или ремонта;
+ * без проверок со снимком — первичный. Как у компонента: последний снимок
+ * сверки. Раньше брался только осмотр, и проверка ремонта со снимком,
+ * сделанная после него, в шапку не попадала.
+ */
 export function getLeakDetailsHeroPhotoPath(leak) {
-  return getLatestMonitoringPhotoPath(leak) ?? leak?.photo ?? null;
+  return getLeakCheckPhotoRecords(leak)[0]?.photo ?? leak?.photo ?? null;
 }
 
 export function isMonitoringDue(
