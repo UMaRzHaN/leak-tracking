@@ -109,6 +109,15 @@ describe("normalization", () => {
     expect(normalized.component_uid).toBe("5");
   });
 
+  it("reads a decimal comma instead of blanking the value", () => {
+    const normalized = normalizeComponent(
+      { component_uid: "5", working_pressure: "1,6", lat: "41,3" },
+      { numericKeys: ["working_pressure"] },
+    );
+    expect(normalized.working_pressure).toBe(1.6);
+    expect(normalized.lat).toBe(41.3);
+  });
+
   it("normalizes coordinates even when they are not declared numeric", () => {
     const normalized = normalizeComponent({
       component_uid: "1",
