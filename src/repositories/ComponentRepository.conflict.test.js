@@ -65,6 +65,19 @@ describe("ComponentRepository.save: правки другой вкладки", (
     expect(stored.map((component) => component.id)).toEqual(["a", "b"]);
   });
 
+  it("взгляд для предпросмотра импорта не снимает защиту", async () => {
+    await ComponentRepository.save(project, [card("a")]);
+    const ourRevision = await store.readRevision(project.id);
+    await writeFromAnotherTab([card("a"), card("b")], ourRevision);
+
+    const preview = await ComponentRepository.load(project, { peek: true });
+    expect(preview.map((component) => component.id)).toEqual(["a", "b"]);
+
+    await expect(
+      ComponentRepository.save(project, [card("a"), card("c")]),
+    ).rejects.toMatchObject({ code: "PROJECT_CHANGED_ELSEWHERE" });
+  });
+
   it("после перечитывания снова сохраняет", async () => {
     await ComponentRepository.save(project, [card("a")]);
     const ourRevision = await store.readRevision(project.id);

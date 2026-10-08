@@ -144,7 +144,9 @@ export async function previewArchiveComponents(file, project) {
     if (!Array.isArray(incoming) || incoming.length === 0) return null;
 
     const local = project
-      ? await (await componentRepository()).load(project)
+      ? // Взгляд, а не чтение: реестр в памяти вкладки остаётся прежним, и
+        // запомненная здесь свежая ревизия отключила бы страж второй вкладки.
+        await (await componentRepository()).load(project, { peek: true })
       : [];
     const { added, updated, removed } = mergeComponentRegistries(
       local,

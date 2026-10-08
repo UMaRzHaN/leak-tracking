@@ -115,9 +115,12 @@ describe("useBackupActions", () => {
       await result.current.handleImportZip(event);
     });
 
+    // Только взгляд: ревизия, запомненная превью, отключила бы страж второй
+    // вкладки для утечек, которые эта вкладка держит в памяти.
     expect(repositoryModule.LeakRepository.getAll).toHaveBeenCalledWith({
       projectId: "p1",
       folderName: "alpha",
+      peek: true,
     });
     expect(result.current.conflictState.open).toBe(true);
     expect(result.current.conflictState.resolvedName).toBe("Alpha");

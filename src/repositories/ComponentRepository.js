@@ -153,7 +153,7 @@ async function readLegacyRegistry(projectId) {
  * а не устарелость, и переписать по ней копию неизвестной свежести значит
  * потерять то, что в ней лежало.
  */
-async function readDurableRegistry(projectId) {
+async function readDurableRegistry(projectId, { peek = false } = {}) {
   let primary = /** @type {Envelope} */ (null);
   let mirror = /** @type {Envelope} */ (null);
   let primaryError = /** @type {any} */ (null);
@@ -161,7 +161,7 @@ async function readDurableRegistry(projectId) {
 
   try {
     primary = normalizeWebEnvelope(
-      await store.read(projectId),
+      await store.read(projectId, { remember: !peek }),
       `IndexedDB[${COMPONENT_DATASET}:${projectId}]`,
     );
   } catch (error) {
@@ -171,7 +171,7 @@ async function readDurableRegistry(projectId) {
 
   try {
     mirror = normalizeWebEnvelope(
-      await store.readMirror(projectId),
+      await store.readMirror(projectId, { remember: !peek }),
       `IndexedDB-mirror[${COMPONENT_DATASET}:${projectId}]`,
     );
   } catch (error) {
@@ -200,6 +200,10 @@ async function readDurableRegistry(projectId) {
   const selected = available.reduce((latest, candidate) =>
     compareWebEnvelopes(candidate, latest) > 0 ? candidate : latest,
   );
+
+  // Взгляд для предпросмотра ничего не чинит: починка — это запись, а её
+  // отметка в памяти ревизий отключила бы страж второй вкладки.
+  if (peek) return selected.deleted ? [] : selected.data;
 
   if (!primaryError && !sameWebEnvelope(primary, selected)) {
     await store.write(projectId, selected).catch((error) => {
@@ -267,9 +271,11 @@ export const ComponentRepository = {
    * before anyone has walked anywhere.
    *
    * @param {{id: string, folderName?: string}} project
+   * @param {{peek?: boolean}} [options] peek — посмотреть для предпросмотра,
+   *   не запоминая ревизию: в памяти вкладки остаётся прежний список.
    * @returns {Promise<object[]>}
    */
-  async load(project) {
+  async load(project, { peek = false } = {}) {
     if (!project?.id) return [];
 
     try {
@@ -278,7 +284,7 @@ export const ComponentRepository = {
           await loadNativeComponents(project.folderName ?? project.id),
         );
       }
-      return migrateStored(await readDurableRegistry(project.id));
+      return migrateStored(await readDurableRegistry(project.id, { peek }));
     } catch (error) {
       if (error instanceof ComponentDataError) throw error;
       logger.error("[components] failed to read registry:", error);

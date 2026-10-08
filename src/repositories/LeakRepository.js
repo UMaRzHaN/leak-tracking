@@ -163,7 +163,18 @@ export function getEmbeddedProjectSyncState(leaks) {
 }
 
 export const LeakRepository = {
-  async getAll({ projectId, folderName, legacyStorageType = null }) {
+  /**
+   * `peek: true` — посмотреть, не взяв в работу: для предпросмотра импорта.
+   * Ревизия не запоминается, копии не чинятся. В памяти вкладки при этом
+   * остаётся то, что было прочитано раньше, и отметка свежей ревизии отключила
+   * бы страж второй вкладки: старый набор из памяти молча затёр бы свежий.
+   */
+  async getAll({
+    projectId,
+    folderName,
+    legacyStorageType = null,
+    peek = false,
+  }) {
     if (isNative) {
       try {
         const loaded = await (
@@ -212,7 +223,7 @@ export const LeakRepository = {
 
     try {
       indexedEnvelope = normalizeWebEnvelope(
-        await readWebData(projectId),
+        await readWebData(projectId, { remember: !peek }),
         `IndexedDB[${projectId}]`,
       );
     } catch (error) {
@@ -225,7 +236,7 @@ export const LeakRepository = {
 
     try {
       mirrorEnvelope = normalizeWebEnvelope(
-        await readMirrorData(projectId),
+        await readMirrorData(projectId, { remember: !peek }),
         `IndexedDB-mirror[${projectId}]`,
       );
     } catch (error) {
@@ -300,7 +311,7 @@ export const LeakRepository = {
       compareWebEnvelopes(candidate, latest) > 0 ? candidate : latest,
     );
     // На этой копии основано унесённое отсюда — а починка ниже умеет не состояться.
-    rememberLeakDataRevision(projectId, selected.revision);
+    if (!peek) rememberLeakDataRevision(projectId, selected.revision);
 
     // Repair only stores that were read successfully. A transient read error
     // must never cause an older fallback copy to overwrite an unknown version.
@@ -308,7 +319,7 @@ export const LeakRepository = {
     // IndexedDB is unavailable, writeWebData/writeMirrorData resolve to
     // `false` without throwing, and that must NOT be treated as success.
     let indexedHoldsSelected = sameWebEnvelope(indexedEnvelope, selected);
-    if (!indexedDbError && !indexedHoldsSelected) {
+    if (!peek && !indexedDbError && !indexedHoldsSelected) {
       indexedHoldsSelected = await writeWebData(projectId, selected).catch(
         (error) => {
           logger.warn(
@@ -320,7 +331,7 @@ export const LeakRepository = {
       );
     }
     let mirrorHoldsSelected = sameWebEnvelope(mirrorEnvelope, selected);
-    if (!mirrorError && !mirrorHoldsSelected) {
+    if (!peek && !mirrorError && !mirrorHoldsSelected) {
       mirrorHoldsSelected = await writeMirrorData(projectId, selected).catch(
         (error) => {
           logger.warn(
@@ -336,7 +347,11 @@ export const LeakRepository = {
     // is unavailable entirely, both repairs silently no-op (they resolve
     // `false`, not an error), and the legacy copy is the only durable data —
     // clearing it here would delete the project.
-    if (legacyEnvelope && (indexedHoldsSelected || mirrorHoldsSelected)) {
+    if (
+      !peek &&
+      legacyEnvelope &&
+      (indexedHoldsSelected || mirrorHoldsSelected)
+    ) {
       clearLegacyLocalStorageEnvelope(projectId);
     }
 
