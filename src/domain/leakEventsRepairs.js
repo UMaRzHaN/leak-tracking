@@ -4,6 +4,55 @@ import {
   getLeakEvents,
   sortLeakEvents,
 } from "./leakEventsCore";
+import { STATUS } from "@/utils/status";
+
+// Итоги осмотра строками: `@/utils/monitoring` сам читает ленту отсюда, и
+// импорт оттуда замкнул бы круг.
+const INSPECTION_RESOLVED = "resolved";
+const INSPECTION_STILL_LEAKING = "still_leaking";
+
+/**
+ * Что обрывает идущий ремонт, кроме его завершения.
+ *
+ * Завершение ремонт оставляет событием, а обрыв — нет: возврат в «ожидает
+ * МТР» (`returnLeakToWaiting`) пишется только в журнал статусов, а осмотр,
+ * нашедший утечку устранённой или снова текущей, кладёт в ленту осмотр, а не
+ * «ремонт завершён». Без этих отметок брошенный ремонт числился бы в работе
+ * вечно, а следующий за ним — «возвратом после починки», которой не было.
+ *
+ * `closed` — ремонт кончился тем, что утечки нет (осмотр «устранена»);
+ * `abandoned` — запись вернулась в «открыта», ремонт не доведён.
+ */
+function repairInterruptions(leak) {
+  const marks = [];
+  const history = Array.isArray(leak?.history) ? leak.history : [];
+  for (const entry of history) {
+    if (!entry?.date) continue;
+    if (entry.to === STATUS.OPEN) {
+      marks.push({ date: entry.date, reason: "abandoned" });
+    } else if (entry.to === STATUS.RESOLVED && entry.action === "monitoring") {
+      // Ручное «устранена» уже оставило REPAIR_DONE — его не повторяем.
+      marks.push({ date: entry.date, reason: "closed" });
+    }
+  }
+  // Осмотр в ленте — на случай записей, у которых журнал не доехал (импорт).
+  for (const event of getEventsOfType(leak, LEAK_EVENT_TYPES.INSPECTION)) {
+    if (event?.result === INSPECTION_RESOLVED) {
+      marks.push({ date: event.date, reason: "closed" });
+    } else if (event?.result === INSPECTION_STILL_LEAKING) {
+      marks.push({ date: event.date, reason: "abandoned" });
+    }
+  }
+  return marks.filter((mark) =>
+    Number.isFinite(Date.parse(String(mark.date ?? ""))),
+  );
+}
+
+/** Событие без разобранной даты — в конец, как и в `sortLeakEvents`. */
+function timelineTime({ event, mark }) {
+  const time = Date.parse(String((event ?? mark)?.date ?? ""));
+  return Number.isFinite(time) ? time : Number.POSITIVE_INFINITY;
+}
 
 /**
  * Попытки ремонта, парами «начали → закончили».
@@ -12,13 +61,24 @@ import {
  * концом: сколько ремонтов идёт прямо сейчас, спрашивают так же часто, как
  * сколько их завершено. Пара без начала тоже возможна — у записей, где
  * `repairAt` не сохранился, а `resolvedAt` есть.
+ *
+ * Пара, оборванная без завершения (см. `repairInterruptions`), несёт
+ * `interrupted: { date, reason }` и в работе уже не числится.
  */
 export function getRepairIterations(leak) {
   const iterations = [];
   let started = null;
 
-  for (const event of sortLeakEvents(getLeakEvents(leak))) {
-    if (event?.type === LEAK_EVENT_TYPES.REPAIR_STARTED) {
+  const timeline = [
+    ...sortLeakEvents(getLeakEvents(leak)).map((event) => ({ event })),
+    ...repairInterruptions(leak).map((mark) => ({ mark })),
+  ].sort((left, right) => timelineTime(left) - timelineTime(right));
+
+  for (const { event, mark } of timeline) {
+    if (mark) {
+      if (started) iterations.push({ started, done: null, interrupted: mark });
+      started = null;
+    } else if (event?.type === LEAK_EVENT_TYPES.REPAIR_STARTED) {
       if (started) iterations.push({ started, done: null });
       started = event;
     } else if (event?.type === LEAK_EVENT_TYPES.REPAIR_DONE) {
