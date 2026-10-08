@@ -237,7 +237,13 @@ export function getRepairLog(leak) {
   const returns = [];
   let previous = /** @type {string} */ (STATUS.OPEN);
   history.forEach((entry, index) => {
-    if (entry?.action !== "status_changed") return;
+    // Прежний статус двигает любая запись с `to`, а не только ручная смена:
+    // обход пишет `action: "monitoring"`, и без этого устранённая осмотром,
+    // а потом переоткрытая утечка показала бы «Вернули: ожидает МТР».
+    if (entry?.action !== "status_changed") {
+      if (entry?.to) previous = entry.to;
+      return;
+    }
     if (
       entry.to === STATUS.OPEN &&
       previous === STATUS.IN_PROGRESS &&

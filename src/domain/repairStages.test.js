@@ -229,6 +229,25 @@ describe("getRepairLog", () => {
     expect(log[0].user).toBe("Ким");
   });
 
+  it("не пишет возврат, если ремонт до переоткрытия закрыл осмотр", () => {
+    const leak = {
+      status: "open",
+      events: [started("2026-10-01")],
+      history: [
+        {
+          action: "status_changed",
+          to: "in_progress",
+          date: "2026-10-01T00:00:00Z",
+        },
+        { action: "monitoring", to: "resolved", date: "2026-10-02T00:00:00Z" },
+        { action: "status_changed", to: "open", date: "2026-10-03T00:00:00Z" },
+      ],
+    };
+    expect(getRepairLog(leak).map((item) => item.kind)).toEqual([
+      "repair_started",
+    ]);
+  });
+
   it("несёт ответы проверки ремонта про физ. тег и фикцию", () => {
     const log = getRepairLog({
       status: "in_progress",
