@@ -23,6 +23,8 @@ const SOURCE_PROJECT = {
 
 const SETTINGS = {
   hiddenFields: ["component", "note"],
+  // Поля карточки компонента едут в архиве рядом с полями утечки.
+  hiddenComponentFields: ["note"],
   excelMonitoringExportMode: "latest_per_round",
   excelRepairLogExportMode: "full",
   excelReconcileExportMode: "full",
@@ -185,6 +187,7 @@ describe("project settings backup and synchronization", () => {
 
     expect(readProjectSettings(SOURCE_PROJECT.id)).toEqual({
       hiddenFields: [],
+      hiddenComponentFields: [],
       excelMonitoringExportMode: "full",
       excelRepairLogExportMode: "full",
       excelReconcileExportMode: "full",

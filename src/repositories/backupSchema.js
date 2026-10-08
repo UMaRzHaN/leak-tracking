@@ -392,18 +392,16 @@ export function validateProjectBackupMeta(parsed) {
     if (!isPlainObject(parsed.settings)) {
       pushIssue(issues, ["settings"], "Expected object");
     } else {
-      if (
-        parsed.settings.hiddenFields !== undefined &&
-        (!Array.isArray(parsed.settings.hiddenFields) ||
-          parsed.settings.hiddenFields.some(
-            (key) => typeof key !== "string" || key.length === 0,
-          ))
-      ) {
-        pushIssue(
-          issues,
-          ["settings", "hiddenFields"],
-          "Expected string array",
-        );
+      for (const field of ["hiddenFields", "hiddenComponentFields"]) {
+        if (
+          parsed.settings[field] !== undefined &&
+          (!Array.isArray(parsed.settings[field]) ||
+            parsed.settings[field].some(
+              (key) => typeof key !== "string" || key.length === 0,
+            ))
+        ) {
+          pushIssue(issues, ["settings", field], "Expected string array");
+        }
       }
       for (const field of [
         "excelMonitoringExportMode",

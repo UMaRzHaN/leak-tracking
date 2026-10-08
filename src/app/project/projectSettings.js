@@ -68,6 +68,20 @@ function normalizeHiddenFields(value) {
   ].sort();
 }
 
+/**
+ * Скрытые поля карточки компонента — свой список, без защиты полей утечки:
+ * системные поля утечки к карточке отношения не имеют, и фильтр по ним снимал
+ * бы с компонента поле с тем же именем, которое скрыть можно.
+ */
+function normalizeHiddenComponentFields(value) {
+  if (!Array.isArray(value)) return [];
+  return [
+    ...new Set(
+      value.filter((key) => typeof key === "string" && key.length > 0),
+    ),
+  ].sort();
+}
+
 export function normalizePhotoRequirements(value) {
   const requirements = { ...DEFAULT_PHOTO_REQUIREMENTS };
   for (const key of Object.keys(requirements)) {
@@ -119,6 +133,12 @@ export function normalizeRoundPermissions(value) {
 export function normalizeProjectSettings(value) {
   return {
     hiddenFields: normalizeHiddenFields(value?.hiddenFields),
+    // Поля карточки компонента — отдельный список (см. hiddenFieldsStorage):
+    // без него в архив и книгу уезжала только половина видимости полей, а
+    // импорт с перезаписью оставлял чужую.
+    hiddenComponentFields: normalizeHiddenComponentFields(
+      value?.hiddenComponentFields,
+    ),
     ...mapExportModes((field) => value?.[field]),
     photoRequirements: normalizePhotoRequirements(value?.photoRequirements),
     voiceCorrections: normalizeVoiceCorrections(value?.voiceCorrections),
@@ -146,6 +166,9 @@ export function readProjectSettings(projectId) {
 
   return normalizeProjectSettings({
     hiddenFields: readJson(STORAGE_KEYS.PROJECT_HIDDEN_FIELDS(projectId)),
+    hiddenComponentFields: readJson(
+      STORAGE_KEYS.PROJECT_HIDDEN_COMPONENT_FIELDS(projectId),
+    ),
     ...mapExportModes((field) =>
       localStorage.getItem(EXPORT_MODE_KEYS[field](projectId)),
     ),
@@ -196,6 +219,17 @@ export function writeProjectSettings(projectId, value, { emit = true } = {}) {
     localStorage.setItem(hiddenKey, JSON.stringify(settings.hiddenFields));
   } else {
     localStorage.removeItem(hiddenKey);
+  }
+
+  const hiddenComponentKey =
+    STORAGE_KEYS.PROJECT_HIDDEN_COMPONENT_FIELDS(projectId);
+  if (settings.hiddenComponentFields.length) {
+    localStorage.setItem(
+      hiddenComponentKey,
+      JSON.stringify(settings.hiddenComponentFields),
+    );
+  } else {
+    localStorage.removeItem(hiddenComponentKey);
   }
 
   for (const [field, keyOf] of Object.entries(EXPORT_MODE_KEYS)) {
@@ -261,6 +295,7 @@ export function clearProjectSettings(projectId, { emit = false } = {}) {
   if (!projectId || typeof localStorage === "undefined") return;
   [
     STORAGE_KEYS.PROJECT_HIDDEN_FIELDS(projectId),
+    STORAGE_KEYS.PROJECT_HIDDEN_COMPONENT_FIELDS(projectId),
     ...Object.values(EXPORT_MODE_KEYS).map((keyOf) => keyOf(projectId)),
     STORAGE_KEYS.PROJECT_MONITORING_SETTINGS(projectId),
     STORAGE_KEYS.PROJECT_PHOTO_REQUIREMENTS(projectId),
@@ -279,6 +314,7 @@ function comparableSettings(value) {
   const normalized = normalizeProjectSettings(value);
   return JSON.stringify({
     hiddenFields: normalized.hiddenFields,
+    hiddenComponentFields: normalized.hiddenComponentFields,
     ...mapExportModes((field) => normalized[field]),
     photoRequirements: normalized.photoRequirements,
     voiceCorrections: normalized.voiceCorrections,

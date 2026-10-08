@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  clearProjectSettings,
   normalizeProjectSettings,
   readProjectSettings,
   shouldApplyIncomingProjectSettings,
@@ -26,6 +27,7 @@ describe("projectSettings", () => {
       }),
     ).toEqual({
       hiddenFields: ["component"],
+      hiddenComponentFields: [],
       excelMonitoringExportMode: "full",
       excelRepairLogExportMode: "full",
       excelReconcileExportMode: "full",
@@ -61,6 +63,7 @@ describe("projectSettings", () => {
     const legacy = readProjectSettings("legacy");
     expect(legacy).toEqual({
       hiddenFields: ["component"],
+      hiddenComponentFields: [],
       excelMonitoringExportMode: "latest_per_round",
       excelRepairLogExportMode: "full",
       excelReconcileExportMode: "full",
@@ -85,6 +88,35 @@ describe("projectSettings", () => {
     expect(
       localStorage.getItem("app:restored:monitoring_settings_v1"),
     ).toBeNull();
+  });
+
+  it("везёт скрытые поля карточки компонента и стирает их при сбросе", () => {
+    localStorage.setItem(
+      "app:source:hidden_component_fields_v1",
+      JSON.stringify(["note", "photo", "note"]),
+    );
+    const source = readProjectSettings("source");
+    expect(source.hiddenComponentFields).toEqual(["note", "photo"]);
+
+    writeProjectSettings("target", source);
+    expect(
+      JSON.parse(
+        localStorage.getItem("app:target:hidden_component_fields_v1") ?? "null",
+      ),
+    ).toEqual(["note", "photo"]);
+
+    clearProjectSettings("target");
+    expect(
+      localStorage.getItem("app:target:hidden_component_fields_v1"),
+    ).toBeNull();
+
+    // Разница только в полях компонента — тоже разные настройки: при равных
+    // метках одна из сторон обязана победить, а не считаться той же.
+    const bare = { hiddenComponentFields: [] };
+    const hidden = { hiddenComponentFields: ["note"] };
+    expect(shouldApplyIncomingProjectSettings(bare, hidden)).not.toBe(
+      shouldApplyIncomingProjectSettings(hidden, bare),
+    );
   });
 
   it("advances timestamps monotonically even when the clock does not move", () => {
