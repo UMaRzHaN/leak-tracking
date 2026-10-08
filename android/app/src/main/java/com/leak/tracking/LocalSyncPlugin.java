@@ -94,6 +94,8 @@ public class LocalSyncPlugin extends Plugin {
     private static final long MAX_PROTOCOL_DURATION_MS = TimeUnit.MINUTES.toMillis(15);
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int MAX_FAILED_AUTH_ATTEMPTS = 5;
+    // Та же очередь, что у серверного сокета, открытого без адреса.
+    private static final int SERVER_BACKLOG = 50;
     private static final int MAX_CONCURRENT_HANDSHAKES = 4;
     private static final String TLS_KEY_ALIAS_PREFIX = "local-sync-";
     private static final long DEFAULT_SESSION_DURATION_MS = TimeUnit.MINUTES.toMillis(3);
@@ -407,6 +409,11 @@ public class LocalSyncPlugin extends Plugin {
         try {
             assertArchiveSize(preparedArchive.length());
             TempFilePolicy.touch(preparedArchive, System.currentTimeMillis());
+            // Адрес выбирается до сокета: сервер слушает только его, а не все
+            // интерфейсы сразу. Иначе тот же порт открыт и в мобильной сети, и
+            // в VPN, хотя объявлен лишь локальный адрес. Нет подходящей сети —
+            // ошибка, как и раньше, а не сервер на всех интерфейсах.
+            InetAddress bindAddress = findLocalIpv4Address();
             TlsHostContext tlsHost = createTlsHostContext();
 
             synchronized (sessionLock) {
@@ -424,7 +431,7 @@ public class LocalSyncPlugin extends Plugin {
                 hostCertificateFingerprint = tlsHost.fingerprint;
                 SSLServerSocket tlsServerSocket = (SSLServerSocket) tlsHost.context
                     .getServerSocketFactory()
-                    .createServerSocket(0);
+                    .createServerSocket(0, SERVER_BACKLOG, bindAddress);
                 SyncTlsProtocols.enable(tlsServerSocket);
                 serverSocket = tlsServerSocket;
                 serverSocket.setReuseAddress(true);
@@ -441,7 +448,7 @@ public class LocalSyncPlugin extends Plugin {
             }
 
             JSObject result = new JSObject();
-            result.put("host", findLocalIpv4Address());
+            result.put("host", bindAddress.getHostAddress());
             result.put("port", activeServer.getLocalPort());
             result.put("code", sessionCode);
             result.put("fingerprint", hostCertificateFingerprint);
@@ -1305,7 +1312,7 @@ public class LocalSyncPlugin extends Plugin {
         return value.toString();
     }
 
-    private String findLocalIpv4Address() throws Exception {
+    private InetAddress findLocalIpv4Address() throws Exception {
         ConnectivityManager connectivityManager = (ConnectivityManager) getContext().getSystemService(
             Context.CONNECTIVITY_SERVICE
         );
@@ -1316,13 +1323,13 @@ public class LocalSyncPlugin extends Plugin {
                 for (LinkAddress linkAddress : properties.getLinkAddresses()) {
                     InetAddress address = linkAddress.getAddress();
                     if (address instanceof Inet4Address && address.isSiteLocalAddress()) {
-                        return address.getHostAddress();
+                        return address;
                     }
                 }
             }
         }
 
-        String fallback = null;
+        InetAddress fallback = null;
         int fallbackScore = Integer.MIN_VALUE;
         for (NetworkInterface network : Collections.list(NetworkInterface.getNetworkInterfaces())) {
             if (!network.isUp() || network.isLoopback()) continue;
@@ -1330,9 +1337,8 @@ public class LocalSyncPlugin extends Plugin {
             if (score < 0) continue;
             for (InetAddress address : Collections.list(network.getInetAddresses())) {
                 if (!(address instanceof Inet4Address) || address.isLoopbackAddress()) continue;
-                String host = address.getHostAddress();
                 if (address.isSiteLocalAddress() && score > fallbackScore) {
-                    fallback = host;
+                    fallback = address;
                     fallbackScore = score;
                 }
             }
