@@ -123,6 +123,16 @@ describe("AppMenu", () => {
     expect(screen.queryByText(/to check/)).toBeNull();
   });
 
+  it("подписывает инвентаризацию остатком идущей сверки, как мониторинг", () => {
+    renderMenu({ reconcileDueCount: 4 });
+    expect(screen.getByText("4 to reconcile")).toBeTruthy();
+  });
+
+  it("без идущей сверки инвентаризацию не подписывает", () => {
+    renderMenu({ reconcileDueCount: null });
+    expect(screen.queryByText(/to reconcile/)).toBeNull();
+  });
+
   it("builds the ZIP backup from the menu, once at a time", () => {
     const onExportBackup = vi.fn();
     renderMenu({ onExportBackup });

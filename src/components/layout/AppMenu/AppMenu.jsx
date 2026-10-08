@@ -29,6 +29,8 @@ export default function AppMenu({
   repairCount = 0,
   // Сколько тегов осталось проверить в текущем обходе; null — обхода нет.
   monitoringDueCount = /** @type {number|null} */ (null),
+  // Сколько компонентов не сверено в идущей сверке; null — сверки нет.
+  reconcileDueCount = /** @type {number|null} */ (null),
   // ZIP-бэкап проекта: собирается из меню, пока меню закрыто.
   onExportBackup = /** @type {(() => void)|null} */ (null),
   exportingBackup = false,
@@ -84,6 +86,11 @@ export default function AppMenu({
             key: "components",
             icon: "clipboard",
             label: t("appMenu.inventory"),
+            meta:
+              reconcileDueCount != null
+                ? t("reconcile.menuDue", { count: reconcileDueCount })
+                : "",
+            metaTone: "accent",
             active: module === MODULE.INVENTORY,
             onClick: () => onSelectModule(MODULE.INVENTORY),
           },

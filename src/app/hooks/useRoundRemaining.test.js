@@ -42,7 +42,7 @@ function remaining(module, overrides = {}) {
       monitoringDue: 7,
       ...overrides,
     }),
-  ).result.current;
+  ).result.current.remaining;
 }
 
 describe("useRoundRemaining", () => {
@@ -76,5 +76,27 @@ describe("useRoundRemaining", () => {
     expect(remaining("repairs")).toBeNull();
     expect(remaining("inventory")).toBeNull();
     expect(remaining("ldar")).toBeNull();
+  });
+
+  it("остаток сверки для меню — и вне инвентаризации, пока меню открыто", () => {
+    localStorage.setItem(
+      "app:p1:reconcile_round_v1",
+      JSON.stringify({ number: 1, startedAt }),
+    );
+    const reconcileDue = (menuOpen) =>
+      renderHook(() =>
+        useRoundRemaining({
+          module: "ldar",
+          page: "",
+          menuOpen,
+          projectId: "p1",
+          leaks: [],
+          components,
+          monitoringDue: null,
+        }),
+      ).result.current.reconcileDue;
+
+    expect(reconcileDue(true)).toBe(2);
+    expect(reconcileDue(false)).toBeNull();
   });
 });

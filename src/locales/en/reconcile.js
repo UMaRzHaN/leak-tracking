@@ -12,6 +12,7 @@ export const reconcile = {
   mergeConfirm: "Merge",
   merged: "Reconciliation No. {{number}} is current again",
   noRound: "No reconciliation yet",
+  menuDue: "{{count}} to reconcile",
   disabled: "New reconciliations are turned off in project settings",
   newRound: "New reconciliation",
   repeatTitle: "Component already reconciled in this round",

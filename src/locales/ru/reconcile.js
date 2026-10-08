@@ -12,6 +12,7 @@ export const reconcile = {
   mergeConfirm: "Объединить",
   merged: "Сверка № {{number}} снова текущая",
   noRound: "Сверка не начата",
+  menuDue: "{{count}} к сверке",
   disabled: "Новые сверки выключены в настройках проекта",
   newRound: "Новая сверка",
   repeatTitle: "Компонент уже сверен в этой сверке",

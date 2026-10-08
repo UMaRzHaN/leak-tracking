@@ -270,8 +270,9 @@ export default function App() {
     leakScope.scopedLeaks,
   ]);
 
-  const roundRemaining = useRoundRemaining({
+  const { remaining: roundRemaining, reconcileDue } = useRoundRemaining({
     module,
+    menuOpen,
     page,
     projectId: activeProject?.id ?? null,
     leaks: leakScope.scopedLeaks,
@@ -433,6 +434,7 @@ export default function App() {
             openCount={scopedOpenCount}
             repairCount={repairCount}
             monitoringDueCount={monitoringDueCount}
+            reconcileDueCount={reconcileDue}
             onExportBackup={activeProject ? exportBackup : null}
             exportingBackup={exportingBackup}
             showRegistry={showRegistry}
