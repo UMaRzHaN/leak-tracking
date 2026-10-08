@@ -25,4 +25,19 @@ describe("parseVoiceCommand", () => {
       parseVoiceCommand("месторождение тенгиз локация куст 12", "ru"),
     ).toBe(null);
   });
+
+  it("accepts recogniser punctuation around a command", () => {
+    expect(parseVoiceCommand("Сохранить.", "ru")).toBe("save");
+    expect(parseVoiceCommand("  Next step!  ", "en")).toBe("next");
+  });
+
+  it("does not treat dictation containing a command word as a command", () => {
+    expect(parseVoiceCommand("описание очистить фланец", "ru")).toBe(null);
+    expect(parseVoiceCommand("примечание сбросить давление", "ru")).toBe(null);
+    expect(parseVoiceCommand("note cleared", "en")).toBe(null);
+    expect(parseVoiceCommand("cause seal reset", "en")).toBe(null);
+    expect(parseVoiceCommand("comment done", "en")).toBe(null);
+    expect(parseVoiceCommand("cause backflow", "en")).toBe(null);
+    expect(parseVoiceCommand("производитель Backer", "ru")).toBe(null);
+  });
 });

@@ -42,9 +42,11 @@ export function useVoiceControl({
       // услышанное как «сохрани», — такая же ошибка распознавателя, как и
       // «место рождения», и чинить её вторым списком незачем.
       const text = applyVoiceCorrections(raw, corrections);
-      const command = parseVoiceCommand(text, lang);
+      // Без обработчика команд фраза — просто диктовка: «назад», сказанное в
+      // карточке реестра, иначе пропадало бы молча.
+      const command = onCommand ? parseVoiceCommand(text, lang) : null;
       if (command) {
-        onCommand?.(command);
+        onCommand(command);
         return;
       }
 
