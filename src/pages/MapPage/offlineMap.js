@@ -142,7 +142,7 @@ export function createOfflineMap(
   let destroyed = false;
   let heatmapLayer = /** @type {any} */ (null);
 
-  addBaseTileLayer(map);
+  const { detachAttribution } = addBaseTileLayer(map);
 
   const markersLayer = L.markerClusterGroup({
     maxClusterRadius: 48,
@@ -312,6 +312,7 @@ export function createOfflineMap(
   const destroy = () => {
     if (destroyed) return;
     destroyed = true;
+    detachAttribution?.();
 
     try {
       if (heatmapLayer) {

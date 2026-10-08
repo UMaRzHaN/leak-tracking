@@ -109,6 +109,6 @@ export function addBaseTileLayer(map) {
     maxNativeZoom: MAP_MAX_NATIVE_ZOOM,
     attribution: TILE_ATTRIBUTION,
   }).addTo(map);
-  attachGoogleAttribution(map, layer);
-  return layer;
+  const detachAttribution = attachGoogleAttribution(map, layer);
+  return { layer, detachAttribution };
 }

@@ -9,6 +9,7 @@ function evented() {
   const handlers = {};
   return {
     on: vi.fn((name, handler) => (handlers[name] = handler)),
+    off: vi.fn((name) => delete handlers[name]),
     fire: (name) => handlers[name]?.(),
   };
 }
@@ -29,8 +30,8 @@ function setup() {
     getZoom: () => 18.4,
   };
   const layer = evented();
-  attachGoogleAttribution(map, layer);
-  return { map, layer, control: map.attributionControl };
+  const detach = attachGoogleAttribution(map, layer);
+  return { map, layer, detach, control: map.attributionControl };
 }
 
 describe("подпись Google на карте", () => {
@@ -98,5 +99,25 @@ describe("подпись Google на карте", () => {
     );
 
     expect(control.addAttribution).toHaveBeenCalledTimes(1);
+  });
+
+  it("после destroy карты отложенное обновление не трогает её", async () => {
+    // offlineMap делает map.off() до map.remove(): подписка на unload
+    // пропадала, и таймер подписи бился о удалённую карту.
+    const { map, layer, detach } = setup();
+    layer.fire("googletile");
+    await vi.waitFor(() =>
+      expect(google.fetchGoogleCopyright).toHaveBeenCalledTimes(1),
+    );
+    map.getBounds = () => {
+      throw new Error("map removed");
+    };
+
+    map.fire("moveend");
+    detach();
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(google.fetchGoogleCopyright).toHaveBeenCalledTimes(1);
+    expect(map.off).toHaveBeenCalledWith("moveend", expect.any(Function));
   });
 });
