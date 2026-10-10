@@ -1,5 +1,7 @@
 export const coverage = {
   title: "Survey coverage",
+  projectWide:
+    "Whole project: the survey is entered without splitting by location",
   ofObjects: "{{checked}} of ~{{total}} sites",
   byGroup: {
     category: "By site category",

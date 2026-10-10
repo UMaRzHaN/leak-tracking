@@ -16,7 +16,11 @@ import s from "./Coverage.module.scss";
  * сколько осмотрено, сколько утечек и сколько их на осмотренный объект.
  * «Отметить обследование» открывает ввод (4a).
  */
-export default function CoveragePage({ data = [], onBack }) {
+export default function CoveragePage({
+  data = [],
+  projectWide = false,
+  onBack,
+}) {
   const { t, lang } = useLanguage();
   const { activeProject } = useProjectData();
   const [survey, saveSurvey] = useSurvey(activeProject?.id ?? null);
@@ -58,6 +62,9 @@ export default function CoveragePage({ data = [], onBack }) {
             })}
           </span>
         </div>
+        {projectWide && (
+          <p className={s.scopeNote}>{t("coverage.projectWide")}</p>
+        )}
         <span
           className={s.bar}
           role="progressbar"

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildLocationTree,
+  isLocationScoped,
   countLeaksAtPath,
   findChildren,
   getLocationLevelKeys,
@@ -18,6 +19,14 @@ const LEAKS = [
   { id: 3, field: "УМГ-2", station: "КС-7", location: "Цех 1" },
   { id: 4, field: "УМГ-1", station: "КС-3", location: "Цех 1" },
 ];
+
+describe("isLocationScoped", () => {
+  it("treats only the empty path as «Все»", () => {
+    expect(isLocationScoped([])).toBe(false);
+    expect(isLocationScoped(["Куст 9"])).toBe(true);
+    expect(isLocationScoped(null)).toBe(true);
+  });
+});
 
 describe("getLocationLevelKeys", () => {
   it("orders the three levels and drops the ones a project does not define", () => {

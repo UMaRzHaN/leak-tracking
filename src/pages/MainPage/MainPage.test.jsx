@@ -165,6 +165,24 @@ describe("MainPage", () => {
     expect(screen.getByText("mainPage.coverage.noRegistry")).toBeTruthy();
   });
 
+  it("says a survey-based coverage covers the whole project, not the place", () => {
+    render(
+      <MainPage
+        setPage={vi.fn()}
+        data={[]}
+        setData={vi.fn()}
+        coverage={{
+          surveyed: 3,
+          total: 10,
+          percent: 30,
+          estimated: true,
+          projectWide: true,
+        }}
+      />,
+    );
+    expect(screen.getByText("mainPage.coverage.projectWide")).toBeTruthy();
+  });
+
   it("counts the selected location on the show-all button, not the project", () => {
     // The button leads to the database, which is scoped, so a project-wide
     // number would promise records that screen will not show.

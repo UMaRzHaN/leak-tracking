@@ -1,5 +1,6 @@
 export const coverage = {
   title: "Охват обследования",
+  projectWide: "По всему проекту: обследование вводится без деления по местам",
   ofObjects: "{{checked}} из ~{{total}} объектов",
   byGroup: {
     category: "По категориям объектов",

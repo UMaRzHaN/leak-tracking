@@ -11,7 +11,13 @@ export default function CoverageCard({
   onOpen = /** @type {(() => void)|null} */ (null),
 }) {
   const { t } = useLanguage();
-  const { surveyed, total, percent, estimated = false } = coverage;
+  const {
+    surveyed,
+    total,
+    percent,
+    estimated = false,
+    projectWide = false,
+  } = coverage;
 
   return (
     <section className={s.coverage} aria-label={t("mainPage.coverage.title")}>
@@ -42,6 +48,9 @@ export default function CoverageCard({
         >
           <span style={{ width: `${percent}%` }} />
         </span>
+      )}
+      {projectWide && (
+        <p className={s.coverageHint}>{t("mainPage.coverage.projectWide")}</p>
       )}
       {estimated ? null : (
         <p className={s.coverageHint}>

@@ -55,6 +55,12 @@
   color: var(--c-ink);
 }
 
+.scopeNote {
+  margin: 4px 0 0;
+  color: var(--c-text2);
+  font-size: var(--fs-sm);
+}
+
 .total {
   display: flex;
   align-items: baseline;
