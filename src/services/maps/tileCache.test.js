@@ -1,3 +1,4 @@
+import { Blob as NodeBlob } from "node:buffer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const cache = {
@@ -112,12 +113,15 @@ describe("map tile boundaries", () => {
     cache.match.mockImplementation((url) =>
       Promise.resolve(url === "cached" ? { ok: true } : undefined),
     );
+    // Blob из Node, а не из jsdom: тайл кладётся в кэш через `new Response`,
+    // а `Response` в Node требует у тела `stream()`, которого у Blob из jsdom
+    // нет. С ним сохранение падало, и тайл засчитывался как не скачанный.
     vi.stubGlobal(
       "fetch",
       vi.fn((url) =>
         Promise.resolve({
           ok: url !== "failed",
-          blob: vi.fn(async () => new Blob(["tile"])),
+          blob: vi.fn(async () => new NodeBlob(["tile"])),
         }),
       ),
     );
