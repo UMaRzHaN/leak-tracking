@@ -9,6 +9,7 @@ import {
   NativeLeakStorage,
   isSqlitePluginUnavailable,
 } from "@/repositories/nativeSqlitePlugin";
+import { componentSqliteMarker as marker } from "@/repositories/sqliteMarker";
 import { logger } from "@/utils/logger";
 
 /**
@@ -50,12 +51,21 @@ let fallbackWarningLogged = false;
  * two are indistinguishable to a walker and one of them invites redoing a day
  * of work.
  */
-async function invoke(method, payload) {
-  if (pluginUnavailable) return null;
+async function invoke(method, folderName, payload) {
+  if (pluginUnavailable) {
+    await marker.assertLegacyFallbackAllowed(folderName, null);
+    return null;
+  }
   try {
-    return await NativeLeakStorage[method](payload);
+    return await NativeLeakStorage[method]({
+      projectKey: projectKeyOf(folderName),
+      ...payload,
+    });
   } catch (error) {
     if (!isSqlitePluginUnavailable(error)) throw error;
+    // Реестр, уже переехавший в базу, из JSON-файла читать нельзя: там
+    // обход на день переезда, и запись в файл разошлась бы с базой.
+    await marker.assertLegacyFallbackAllowed(folderName, error);
     pluginUnavailable = true;
     if (!fallbackWarningLogged) {
       fallbackWarningLogged = true;
@@ -113,11 +123,11 @@ async function writeJsonFile(folderName, envelope) {
 }
 
 async function replaceAll(folderName, components) {
-  const result = await invoke("replaceAll", {
-    projectKey: projectKeyOf(folderName),
+  const result = await invoke("replaceAll", folderName, {
     recordsJson: JSON.stringify(components),
     syncStateJson: null,
   });
+  if (result !== null) await marker.write(folderName);
   return result !== null;
 }
 
@@ -128,12 +138,18 @@ async function replaceAll(folderName, components) {
  * @returns {Promise<object[]>}
  */
 export async function loadNativeComponents(folderName) {
-  const result = await invoke("load", {
-    projectKey: projectKeyOf(folderName),
-  });
+  const result = await invoke("load", folderName, {});
 
   if (result === null) return (await readJsonFile(folderName)) ?? [];
-  if (result.found) return parseRecords(result.recordsJson);
+  if (result.found) {
+    const records = parseRecords(result.recordsJson);
+    await marker.write(folderName);
+    return records;
+  }
+  // Маркер есть, а базы о реестре не знают: обход пропал (файл базы испорчен
+  // или пересоздан), а не «ещё не переехал». Пустой реестр затёр бы остатки
+  // первой же карточкой, JSON-файл — откатил бы обход ко дню переезда.
+  await marker.assertNotLost(folderName);
 
   // Nothing in the store yet: either a project that has never had a registry,
   // or one walked before this existed. The file answers which, and if it holds
@@ -177,15 +193,17 @@ export async function saveNativeComponents(
     mutation &&
     !shouldReplaceNativeSqliteDataset(mutation, components.length)
   ) {
-    const result = await invoke("applyChanges", {
-      projectKey: projectKeyOf(folderName),
+    const result = await invoke("applyChanges", folderName, {
       upsertsJson: JSON.stringify(mutation.upserts),
       deletedIdsJson: JSON.stringify(mutation.deletedIds),
       syncStateJson: null,
     });
     // A project the store has never seen cannot take a diff; it takes the
     // whole list below.
-    if (result !== null && !result.projectMissing) return;
+    if (result !== null && !result.projectMissing) {
+      await marker.write(folderName);
+      return;
+    }
   }
 
   if (await replaceAll(folderName, components)) return;
@@ -198,15 +216,15 @@ export async function saveNativeComponents(
 
 /** Drops the registry. Used when the project itself is deleted. */
 export async function deleteNativeComponents(folderName) {
-  await invoke("deleteProject", { projectKey: projectKeyOf(folderName) });
+  await invoke("deleteProject", folderName, {});
 
-  try {
-    await Filesystem.deleteFile({
-      path: getJsonPath(folderName),
-      directory: Directory.Data,
-    });
-  } catch (error) {
-    if (!isMissingNativeFileError(error)) throw error;
+  marker.forget(folderName);
+  for (const path of [getJsonPath(folderName), marker.path(folderName)]) {
+    try {
+      await Filesystem.deleteFile({ path, directory: Directory.Data });
+    } catch (error) {
+      if (!isMissingNativeFileError(error)) throw error;
+    }
   }
   return true;
 }
@@ -214,4 +232,5 @@ export async function deleteNativeComponents(folderName) {
 export function resetNativeComponentStorageForTests() {
   pluginUnavailable = false;
   fallbackWarningLogged = false;
+  marker.forget();
 }
