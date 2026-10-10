@@ -1,0 +1,12 @@
+.backupStatus {
+  font-size: 13px;
+  color: var(--c-text2);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.backupStatusOverdue {
+  composes: backupStatus;
+  color: var(--c-danger-text);
+  font-weight: 600;
+}
