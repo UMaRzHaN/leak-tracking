@@ -43,7 +43,7 @@ export default function StoragePersistenceStatus() {
       {t("settings.storagePersistence.persisted")}
     </p>
   ) : (
-    <p className={s.backupStatusOverdue} role="alert">
+    <p className={s.backupStatusOverdue}>
       {t("settings.storagePersistence.notPersisted")}
     </p>
   );
