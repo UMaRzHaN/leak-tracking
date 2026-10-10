@@ -1,4 +1,3 @@
-import { applyProjectRounds } from "@/app/project/projectRounds";
 import { appError } from "@/utils/appError";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useProject } from "../project/ProjectContext";
@@ -267,11 +266,15 @@ export function useAppBootstrap() {
           // Снимок, сохранённый в неготовое хранилище, не сохраняется вовсе, и
           // никакой ошибки при этом не видно. На первом запуске хранилище
           // готово не сразу — а Excel-копия заводится как раз оттуда.
-          const [{ persistExcelImportPhotos }, { waitForPhotoStorage }] =
-            await Promise.all([
-              import("@/services/import/excelImportService"),
-              import("@/services/backup/runtime"),
-            ]);
+          const [
+            { persistExcelImportPhotos },
+            { waitForPhotoStorage },
+            { applyProjectRounds },
+          ] = await Promise.all([
+            import("@/services/import/excelImportService"),
+            import("@/services/backup/runtime"),
+            import("@/app/project/projectRounds"),
+          ]);
           await waitForPhotoStorage(photoReadyRef);
           const withPhotos = await persistExcelImportPhotos(
             leaks,

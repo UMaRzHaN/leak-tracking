@@ -1,6 +1,6 @@
 import { LEAK_FIELD_VERSIONS_KEY } from "@/services/storage/leakFieldVersions";
 import { PHOTO_KEYS } from "./constants";
-import { parseTime } from "./projectMeta";
+import { parseTime } from "./monitoringRoundResolution";
 import { matchHumanDate } from "@/utils/humanDate";
 import { MONITORING_PHOTO_FIELDS } from "@/utils/photoFields";
 

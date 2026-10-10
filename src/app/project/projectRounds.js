@@ -1,6 +1,6 @@
 import { repairRound } from "@/pages/Repairs/repairRoundStore";
 import { reconcileRoundStore } from "@/pages/Reconcile/reconcileRound";
-import { resolveMonitoringRound } from "@/services/backup/projectMeta";
+import { resolveMonitoringRound } from "@/services/backup/monitoringRoundResolution";
 
 /**
  * Обходы ремонтов и сверки в бэкапе и при обмене.

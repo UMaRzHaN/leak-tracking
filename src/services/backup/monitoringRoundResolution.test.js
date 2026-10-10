@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveMonitoringRound } from "./projectMeta";
+import { resolveMonitoringRound } from "./monitoringRoundResolution";
 
 /**
  * Какой обход становится текущим после обмена архивами.

@@ -1,6 +1,6 @@
 import { RECORD_SYNC_IGNORED_KEYS, stableSyncValue } from "./syncConflictValue";
 import { normalizeLeakFieldVersions } from "@/services/storage/leakFieldVersions";
-import { parseTime } from "./projectMeta";
+import { parseTime } from "./monitoringRoundResolution";
 import {
   comparableExcelDate,
   findByRoundAndTime,
