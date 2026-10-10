@@ -734,6 +734,10 @@ public class LocalSyncPlugin extends Plugin {
             String sessionId = normalizeSessionId(input.readUTF());
             long archiveSize = input.readLong();
             String expectedHash = input.readUTF();
+            // projectKey is deliberately not compared here, unlike in
+            // handleImportClient. It is "type:name", and a project renamed on
+            // one phone keeps its syncId; syncId alone says the two databases
+            // share an origin and may be merged.
             if (!expectedSyncId.equals(syncId)) {
                 rejectPeer(output, LocalSyncFailure.DIFFERENT_ORIGIN, "Проекты имеют разное происхождение и не могут быть объединены");
                 return ClientOutcome.CONTINUE;

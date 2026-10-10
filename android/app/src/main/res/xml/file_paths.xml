@@ -1,6 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Корни, из которых FileProvider выдаёт content:// URI. Сам провайдер не
+    экспортирован, URI получает только тот, кому его выдали явно, — но корень
+    шире нужного всё равно лишний.
+
+    files-path: схемы, которые «Открыть в другом приложении» передаёт через
+    Share (Directory.Data = filesDir, см. src/repositories/schemaPaths.js).
+    Без этого корня getUriForFile бросал исключение, и схема не открывалась.
+
+    external-files-path, cache-path, external-cache-path: временные снимки
+    @capacitor/camera.
+
+    external-path (корень общего хранилища) убран: с minSdk 33 и без разрешений
+    на хранилище приложение туда файлов не пишет, экспорт идёт через MediaStore.
+-->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <external-path name="my_images" path="." />
+    <files-path name="schemas" path="LeakReports/" />
     <external-files-path name="my_external_files_images" path="." />
     <cache-path name="my_cache_images" path="." />
     <external-cache-path name="my_external_cache_images" path="." />
