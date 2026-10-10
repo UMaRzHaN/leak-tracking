@@ -55,7 +55,7 @@ export function isCameraCancel(error) {
  * приходит с его собственным английским текстом и уходит наружу кодом,
  * чтобы на экран попал перевод, а не сырой текст плагина.
  * @param {(message: string) => Error} toFailure ошибка с кодом этого действия
- * @param {Record<string, unknown>} options
+ * @param {import("@capacitor/camera").ImageOptions} options
  */
 async function getPhoto(toFailure, options) {
   const { Camera } = await loadCamera();

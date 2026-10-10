@@ -48,7 +48,10 @@ function repairInterruptions(leak) {
   );
 }
 
-/** Событие без разобранной даты — в конец, как и в `sortLeakEvents`. */
+/**
+ * Событие без разобранной даты — в конец, как и в `sortLeakEvents`.
+ * @param {{event?: any, mark?: any}} entry
+ */
 function timelineTime({ event, mark }) {
   const time = Date.parse(String((event ?? mark)?.date ?? ""));
   return Number.isFinite(time) ? time : Number.POSITIVE_INFINITY;
@@ -69,10 +72,12 @@ export function getRepairIterations(leak) {
   const iterations = [];
   let started = null;
 
+  /** @type {{event?: any, mark?: any}[]} */
   const timeline = [
     ...sortLeakEvents(getLeakEvents(leak)).map((event) => ({ event })),
     ...repairInterruptions(leak).map((mark) => ({ mark })),
-  ].sort((left, right) => timelineTime(left) - timelineTime(right));
+  ];
+  timeline.sort((left, right) => timelineTime(left) - timelineTime(right));
 
   for (const { event, mark } of timeline) {
     if (mark) {
