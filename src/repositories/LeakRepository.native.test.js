@@ -84,7 +84,23 @@ const sqlitePlugin = vi.hoisted(() => ({
     diagnostics(nativeState.projects.get(projectKey)),
   ),
   deleteProject: vi.fn(async ({ projectKey }) => {
+    if (nativeState.unavailable) throw new Error("Plugin is not available");
     nativeState.projects.delete(projectKey);
+  }),
+  loadPage: vi.fn(async ({ projectKey, offset, limit }) => {
+    if (nativeState.unavailable) throw new Error("Plugin is not available");
+    const project = nativeState.projects.get(projectKey);
+    if (!project) return { found: false };
+    const page = project.records.slice(offset, offset + limit);
+    return {
+      found: true,
+      recordsJson: JSON.stringify(page),
+      totalCount: project.records.length,
+      offset,
+      limit,
+      hasMore: offset + limit < project.records.length,
+      updatedAt: 7,
+    };
   }),
 }));
 
@@ -150,9 +166,12 @@ const { LeakRepository, getEmbeddedProjectSyncState } =
   await import("./LeakRepository");
 const {
   clearNativeProjectStorageCache,
+  deleteNativeProjectStorage,
   getNativeStorageDiagnostics,
   loadNativeProject,
+  loadNativeProjectPage,
   resetNativeStorageStrategyForTests,
+  saveNativeProject,
 } = await import("./nativeLeakStorage");
 
 const project = { projectId: "p1", folderName: "alpha" };
@@ -483,5 +502,90 @@ describe("LeakRepository Android SQLite storage", () => {
     await expect(LeakRepository.getAll(project)).resolves.toEqual([
       { id: "legacy", status: "open" },
     ]);
+  });
+});
+
+describe("native SQLite storage edges", () => {
+  it("reads a project page by page", async () => {
+    await LeakRepository.saveAll(
+      [
+        { id: "a", status: "open" },
+        { id: "b", status: "open" },
+        { id: "c", status: "open" },
+      ],
+      project,
+    );
+
+    await expect(
+      loadNativeProjectPage("alpha", { offset: 1, limit: 1 }),
+    ).resolves.toEqual({
+      leaks: [{ id: "b", status: "open" }],
+      totalCount: 3,
+      offset: 1,
+      limit: 1,
+      hasMore: true,
+      updatedAt: 7,
+    });
+    await expect(loadNativeProjectPage("missing")).resolves.toBeNull();
+  });
+
+  it("answers null for paging without the plugin", async () => {
+    nativeState.unavailable = true;
+    await expect(loadNativeProjectPage("alpha")).resolves.toBeNull();
+  });
+
+  it("rejects a page that is not an array", async () => {
+    sqlitePlugin.loadPage.mockResolvedValueOnce({
+      found: true,
+      recordsJson: "{}",
+    });
+    await expect(loadNativeProjectPage("alpha")).rejects.toThrow(
+      "Native SQLite page records must be an array",
+    );
+  });
+
+  it("rejects stored records that are not an array", async () => {
+    sqlitePlugin.load.mockResolvedValueOnce({ found: true, recordsJson: "{}" });
+    await expect(loadNativeProject("alpha")).rejects.toThrow(
+      "Native SQLite records must be an array",
+    );
+  });
+
+  it("refuses to save something that is not a list", async () => {
+    await expect(saveNativeProject("alpha", {})).rejects.toThrow(
+      "Native project data must be an array",
+    );
+  });
+
+  // Дельта для проекта, которого база не знает, становится полной записью.
+  it("writes the whole list when a diff targets a missing project", async () => {
+    const previous = [{ id: "a", status: "open" }];
+    await saveNativeProject(
+      "alpha",
+      [...previous, { id: "b", status: "open" }],
+      {
+        previousLeaks: previous,
+        syncState: { clock: 1 },
+      },
+    );
+
+    expect(sqlitePlugin.applyChanges).toHaveBeenCalledOnce();
+    expect(nativeState.projects.get("alpha").records).toHaveLength(2);
+    expect(nativeState.projects.get("alpha").syncState).toEqual({ clock: 1 });
+  });
+
+  it("reports nothing deleted when the plugin is unavailable", async () => {
+    nativeState.unavailable = true;
+    await expect(deleteNativeProjectStorage("alpha")).resolves.toBe(false);
+  });
+
+  it("deletes the project and its migration marker", async () => {
+    await LeakRepository.saveAll([{ id: "a", status: "open" }], project);
+    await expect(deleteNativeProjectStorage("alpha")).resolves.toBe(true);
+
+    expect(nativeState.projects.has("alpha")).toBe(false);
+    expect(
+      nativeState.files.has("LeakReports/alpha/data/data.sqlite.json"),
+    ).toBe(false);
   });
 });
